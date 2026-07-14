@@ -1,0 +1,16 @@
+{
+  "code": 0,
+  "data": {
+    "userId": 10086,
+    "accessToken": "eyJhbGciOi...",
+    "refreshToken": "rt_xxx",
+    "expiresIn": 7200,
+    "require2fa": false,
+    "isNewUser": false,
+    "profile": {
+      "nickname": "Tom",
+      "avatar": "https://cdn.moyuyo.com/avatar/default.png",
+      "memberLevel": "NORMAL"
+    }
+  }
+}

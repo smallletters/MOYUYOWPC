@@ -1,0 +1,16 @@
+{
+  "code": 0,
+  "data": {
+    "banners": [
+      { "imageUrl": "https://...", "linkType": "PRODUCT", "linkId": 1001 }
+    ],
+    "quickEntries": [
+      { "icon": "...", "title": "沐浴洗护", "linkType": "CATEGORY", "linkId": 101 }
+    ],
+    "recommend": [
+      { "productId": 5001, "name": "...", "price": 39.9, "mainImage": "..." }
+    ],
+    "hotRank": [...],
+    "newArrival": [...]
+  }
+}

@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOYUYO 拼团购买</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04); /* Hairline */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04); /* Subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05); /* Card */
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* Raised */
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Card Hover */
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05); /* Float */
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06); /* Overlay */
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12); /* Modal */
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+/*
+ * components.css - aggregated component CSS
+ * Auto-extracted from preview/component-*.html files.
+ * DO NOT EDIT. Regenerate with extract-components-css.mjs.
+ *
+ * Foundation tokens live in colors_and_type.css.
+ * This file consumes those tokens via var(--*) references.
+ */
+
+/* ============================================================
+ * Button
+ * source: preview/component-button.html
+ * rules: 10
+ */
+/* @anatomy
+   <div class="row"><span class="label">Primary 56</span><button class="btn btn-primary btn-lg">Buy now</button><button class="btn btn-primary btn-lg" disabled>Buy now</button></div>
+*/
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+/* ============================================================
+ * Card
+ * source: preview/component-card.html
+ * rules: 12
+ */
+/* @anatomy
+   <div class="row">
+   <span class="label">Info</span>
+   <article class="card">
+   <div><div class="eyebrow">Pinguo Apple</div>
+*/
+.card{width:188px;min-height:148px;padding:calc(var(--spacing)*5);display:flex;flex-direction:column;justify-content:space-between;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);transition:transform .18s ease,box-shadow .18s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.card.disabled,.card.disabled:hover{opacity:.5;transform:none;box-shadow:var(--shadow-md)}
+.eyebrow,.meta{color:var(--muted-foreground);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.title{margin:6px 0 8px;font-size:18px;line-height:1.15}
+.body-copy{margin:0;color:var(--muted-foreground);font-size:13px}
+.cta{display:inline-flex;align-items:center;justify-content:center;width:max-content;margin-top:12px;padding:calc(var(--spacing)*2) calc(var(--spacing)*3.5);border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;font-weight:700;text-decoration:none}
+.media{aspect-ratio:4/3;border-radius:calc(var(--radius) - 4px);background:linear-gradient(135deg,var(--secondary),var(--accent));border:1px solid var(--border)}
+.media-card{min-height:212px;padding:calc(var(--spacing)*4)}
+.media-card .title{font-size:16px;margin:10px 0 6px}
+.price{font-size:12px;color:var(--muted-foreground)}
+.dark{background:var(--card);color:var(--card-foreground)}
+
+/* ============================================================
+ * Comparison Table
+ * source: preview/component-comparison-table.html
+ * rules: 13
+ */
+/* @anatomy
+   <div class="row"><span class="label">Default</span><div class="t"><div class="c m">Compare models</div>
+*/
+.t{display:grid;grid-template-columns:96px repeat(3,1fr);overflow:hidden;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-sm)}
+.q{grid-template-columns:82px repeat(4,1fr)}
+.c{padding:10px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.t>.c:nth-child(4n),.q>.c:nth-child(5n){border-right:0}
+.t>.c:nth-last-child(-n+4),.q>.c:nth-last-child(-n+5){border-bottom:0}
+.m{background:var(--background);color:var(--muted-foreground);font:700 10px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase}
+.h{background:var(--background);font-weight:700}
+.k{display:block;font-size:14px;line-height:1.1}
+.s{display:block;margin-top:4px;color:var(--chart-2);font-size:11px;font-weight:700}
+.b .k{color:var(--chart-2)}
+.v{font-weight:600}
+.n{color:var(--muted-foreground);font-size:12px}
+.x{opacity:.45}
+
+/* ============================================================
+ * Input
+ * source: preview/component-input.html
+ * rules: 10
+ */
+/* @anatomy
+   <div class="row">
+   <span class="label">Search 44</span>
+   <div class="field">
+   <span class="icon">⌕</span>
+   <input class="control" aria-label="Search products" placeholder="Search products">
+   <button class="clear" type="button" aria-label="Clear search">×</button>
+   </div>
+*/
+.surface{display:flex;gap:calc(var(--spacing)*2);padding:calc(var(--spacing)*3);border:1px solid var(--border);border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow-sm)}
+.dark{background:var(--background);color:var(--foreground)}
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field.small{height:40px}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.field.disabled{opacity:.55}
+.icon,.clear{padding:0;border:0;background:transparent;color:var(--icon-muted);font:inherit}
+.icon{font-size:13px}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+
+/* ============================================================
+ * Navigation
+ * source: preview/component-navigation.html
+ * rules: 16
+ */
+/* @anatomy
+   <div class="row"><span class="label">Global 44</span><nav class="webbar dark" aria-label="Pinguo Apple global navigation"><span class="brand">Pinguo Apple</span><div class="rail"><a class="link" href="#">Store</a><a class="link" href="#">Explore</a><a class="link" href="#">Community</a><a class="link" href="#">Support</a></div>
+*/
+.webbar,.mobile{border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.webbar{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:320px;height:44px;padding:0 calc(var(--spacing)*3);border-radius:var(--radius);background:var(--sidebar)}
+.brand{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.link,.tab{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;color:inherit;text-decoration:none;white-space:nowrap;transition:background-color .18s ease,color .18s ease,opacity .18s ease}
+.link{height:32px;padding:0 calc(var(--spacing)*2.5)}
+.link:hover,.tab:hover{background:var(--secondary)}
+.link:focus-visible,.tab:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.dark{background:var(--sidebar);color:var(--foreground)}
+.disabled{opacity:.48}
+.disabled .link,.disabled .tab{pointer-events:none}
+.mobile{padding:calc(var(--spacing)*2);border-radius:calc(var(--radius)*1.1);background:var(--card)}
+.screen{display:flex;align-items:flex-end;justify-content:center;width:188px;height:164px;padding:calc(var(--spacing)*3);border-radius:calc(var(--radius)*.9);background:linear-gradient(180deg,var(--background),var(--secondary))}
+.tabbar{display:flex;gap:calc(var(--spacing)*1.5);padding:calc(var(--spacing)*1.5);border:1px solid var(--border);border-radius:999px;background:var(--card);box-shadow:var(--shadow-md)}
+.tab{flex-direction:column;gap:2px;min-width:56px;height:56px;padding:0 calc(var(--spacing)*1.5);font-size:11px;text-align:center}
+.dot{width:18px;height:18px;border-radius:999px;background:var(--secondary);box-shadow:inset 0 0 0 1px var(--border)}
+.tab:hover .dot{background:var(--primary)}
+
+/* ============================================================
+ * Product Grid
+ * source: preview/component-product-grid.html
+ * rules: 12
+ */
+/* @anatomy
+   <div class="row">
+   <span class="label">4-up</span>
+   <div class="grid grid-4">
+   <article class="card"><div class="media"></div>
+*/
+.grid{display:grid;gap:8px;flex:1}
+.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.card{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-xs);transition:border-color .2s ease,transform .2s ease}
+.card:hover{border-color:var(--primary);transform:translateY(-1px)}
+.media{aspect-ratio:1;border-radius:calc(var(--radius) - 4px);background:linear-gradient(135deg,var(--secondary),var(--background));border:1px solid var(--border)}
+.eyebrow{color:var(--muted-foreground);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.title{font-size:15px;line-height:1.25}
+.price{font-variant-numeric:tabular-nums}
+.cta{display:inline-flex;align-self:flex-start;padding:7px 10px;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;text-decoration:none}
+.muted{color:var(--muted-foreground)}
+.is-disabled{opacity:.55}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased" style="background: var(--background-100);">
+
+  <!-- 移动端容器 -->
+  <div class="mx-auto max-w-[430px] min-h-screen" style="width: 375px; background: var(--background-50);">
+
+    <!-- ===== 顶部导航栏 ===== -->
+    <nav class="sticky top-0 z-50 flex items-center justify-center px-4" style="height: 44px; background: var(--background-800);">
+      <!-- 返回箭头 -->
+      <button class="absolute left-4 flex items-center justify-center w-8 h-8 rounded-full" style="color: var(--background-50);" aria-label="返回">
+        <i data-lucide="chevron-left" class="w-5 h-5"></i>
+      </button>
+      <!-- 标题 -->
+      <span class="text-base font-semibold" style="color: var(--background-50);">拼团购买</span>
+    </nav>
+
+    <main class="pb-6">
+
+      <!-- ===== 商品展示区 ===== -->
+      <div class="rounded-b-2xl overflow-hidden" style="background: var(--card);">
+        <!-- 商品图占位 -->
+        <div class="w-full aspect-square" style="background: linear-gradient(145deg, var(--brand-50) 0%, var(--brand-100) 40%, var(--secondary) 100%);"></div>
+
+        <!-- 商品信息 -->
+        <div class="px-4 pt-4 pb-3">
+          <!-- 团购标签 -->
+          <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md mb-2" style="background: var(--destructive); background: rgba(255, 59, 48, 0.1); color: var(--destructive);">
+            <i data-lucide="users" class="w-3.5 h-3.5"></i>
+            <span class="text-xs font-semibold">3人拼团</span>
+          </div>
+          <h1 class="text-lg font-semibold leading-snug mb-1" style="color: var(--foreground);">MILO联名探险胸背带</h1>
+          <!-- 价格区 -->
+          <div class="flex items-baseline gap-2 mt-2">
+            <span class="text-2xl font-bold" style="color: var(--destructive);">$35.99</span>
+            <span class="text-sm line-through" style="color: var(--muted-foreground);">$49</span>
+            <span class="text-xs font-semibold px-1.5 py-0.5 rounded" style="background: var(--destructive); background: rgba(255, 59, 48, 0.1); color: var(--destructive);">省 $13.01</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 拼团进度区 ===== -->
+      <div class="mx-4 mt-3 p-4 rounded-2xl" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-sm);">
+        <!-- 进度文字 -->
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-sm font-semibold" style="color: var(--foreground);">已有 <span style="color: var(--primary);">2/3</span> 人参团，还差 <span style="color: var(--primary);">1</span> 人</span>
+          <!-- 倒计时 -->
+          <div class="flex items-center gap-1 px-2 py-1 rounded-lg" style="background: var(--background-100);">
+            <i data-lucide="clock" class="w-3.5 h-3.5" style="color: var(--destructive);"></i>
+            <span class="text-xs font-bold tabular-nums" style="color: var(--destructive);" id="countdown">剩余 18:32:15</span>
+          </div>
+        </div>
+
+        <!-- 进度条 -->
+        <div class="w-full h-1.5 rounded-full mb-4 overflow-hidden" style="background: var(--background-200);">
+          <div class="h-full rounded-full" style="width: 66.67%; background: var(--primary);"></div>
+        </div>
+
+        <!-- 参团用户头像列表 -->
+        <div class="flex items-center gap-3">
+          <!-- 用户1: 我 -->
+          <div class="relative">
+            <div class="w-12 h-12 rounded-full flex items-center justify-center text-xs font-bold" style="background: linear-gradient(135deg, var(--brand-400), var(--brand-600)); color: var(--primary-foreground);">
+              我
+            </div>
+            <span class="absolute -bottom-0.5 left-1/2 -translate-x-1/2 text-[10px] font-medium whitespace-nowrap" style="color: var(--muted-foreground);">团长</span>
+          </div>
+          <!-- 用户2: 好友 -->
+          <div class="relative">
+            <div class="w-12 h-12 rounded-full flex items-center justify-center text-xs font-bold" style="background: linear-gradient(135deg, #5856d6, #af52de); color: #ffffff;">
+              J
+            </div>
+            <span class="absolute -bottom-0.5 left-1/2 -translate-x-1/2 text-[10px] font-medium whitespace-nowrap" style="color: var(--muted-foreground);">好友</span>
+          </div>
+          <!-- 用户3: 等待中（虚线圆圈） -->
+          <div class="relative">
+            <div class="w-12 h-12 rounded-full flex items-center justify-center" style="border: 2px dashed var(--background-400); background: var(--background-100);">
+              <i data-lucide="plus" class="w-5 h-5" style="color: var(--muted-foreground);"></i>
+            </div>
+            <span class="absolute -bottom-0.5 left-1/2 -translate-x-1/2 text-[10px] font-medium whitespace-nowrap" style="color: var(--muted-foreground);">等待中</span>
+          </div>
+
+          <!-- 右侧装饰文字 -->
+          <div class="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full" style="background: var(--brand-50);">
+            <i data-lucide="share-2" class="w-3.5 h-3.5" style="color: var(--primary);"></i>
+            <span class="text-xs font-medium" style="color: var(--primary);">邀请好友加速成团</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 操作按钮区 ===== -->
+      <div class="mx-4 mt-4 flex flex-col gap-3">
+        <!-- 主按钮: 邀请好友参团 -->
+        <button class="btn btn-primary btn-lg w-full rounded-2xl flex items-center justify-center gap-2" style="height: 52px; font-size: 16px; border-radius: 16px;">
+          <i data-lucide="share-2" class="w-5 h-5"></i>
+          <span>邀请好友参团</span>
+        </button>
+        <!-- 次级按钮: 我一个人买 -->
+        <button class="w-full rounded-2xl flex items-center justify-center gap-2 transition-colors" style="height: 48px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--foreground); font-size: 14px; font-weight: 600;">
+          <span>我一个人买</span>
+          <span class="font-semibold" style="color: var(--muted-foreground);">$49</span>
+        </button>
+      </div>
+
+      <!-- ===== 拼团规则折叠面板 ===== -->
+      <div class="mx-4 mt-4 rounded-2xl overflow-hidden" style="background: var(--card); border: 1px solid var(--border);">
+        <!-- 折叠面板头部 -->
+        <button class="w-full flex items-center justify-between px-4 py-3.5" id="rules-toggle" onclick="toggleRules()" style="color: var(--foreground);">
+          <div class="flex items-center gap-2">
+            <i data-lucide="info" class="w-4 h-4" style="color: var(--muted-foreground);"></i>
+            <span class="text-sm font-semibold">拼团规则</span>
+          </div>
+          <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200" style="color: var(--muted-foreground);" id="rules-chevron"></i>
+        </button>
+        <!-- 折叠内容 -->
+        <div class="overflow-hidden transition-all duration-200" id="rules-content" style="max-height: 0;">
+          <div class="px-4 pb-4 space-y-3" style="border-top: 1px solid var(--border);">
+            <!-- 规则项1 -->
+            <div class="flex items-start gap-3 pt-3">
+              <div class="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style="background: var(--brand-50);">
+                <i data-lucide="clock" class="w-3 h-3" style="color: var(--primary);"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium" style="color: var(--foreground);">24小时倒计时</p>
+                <p class="text-xs mt-0.5" style="color: var(--muted-foreground);">开团后24小时内邀请好友参团，超时未成团自动退款</p>
+              </div>
+            </div>
+            <!-- 规则项2 -->
+            <div class="flex items-start gap-3">
+              <div class="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style="background: var(--success-surface);">
+                <i data-lucide="check" class="w-3 h-3" style="color: var(--success);"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium" style="color: var(--foreground);">成团自动发货</p>
+                <p class="text-xs mt-0.5" style="color: var(--muted-foreground);">拼团成功后系统自动发货，无需手动确认</p>
+              </div>
+            </div>
+            <!-- 规则项3 -->
+            <div class="flex items-start gap-3">
+              <div class="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style="background: rgba(255, 149, 0, 0.1);">
+                <i data-lucide="rotate-ccw" class="w-3 h-3" style="color: #ff9500;"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium" style="color: var(--foreground);">未成团自动退款</p>
+                <p class="text-xs mt-0.5" style="color: var(--muted-foreground);">拼团失败时系统自动全额退款至原支付账户</p>
+              </div>
+            </div>
+            <!-- 规则项4 -->
+            <div class="flex items-start gap-3">
+              <div class="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style="background: var(--background-100);">
+                <i data-lucide="shield-check" class="w-3 h-3" style="color: var(--muted-foreground);"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium" style="color: var(--foreground);">每人限参1团</p>
+                <p class="text-xs mt-0.5" style="color: var(--muted-foreground);">同一用户每个拼团活动仅可参与一次</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 推荐其他拼团商品区 ===== -->
+      <div class="mt-6">
+        <div class="flex items-center justify-between px-4 mb-3">
+          <h2 class="text-base font-semibold" style="color: var(--foreground);">更多拼团好物</h2>
+          <a class="flex items-center gap-0.5 text-xs font-medium" style="color: var(--primary);">
+            查看全部
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </a>
+        </div>
+
+        <!-- 横向滚动卡片 -->
+        <div class="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-2">
+          <!-- 推荐商品卡片1 -->
+          <a class="flex-shrink-0 rounded-2xl overflow-hidden" style="width: 140px; background: var(--card); border: 1px solid var(--border);">
+            <div class="w-full aspect-square" style="background: linear-gradient(145deg, #e9f9ee 0%, #c6f6d5 50%, var(--secondary) 100%);"></div>
+            <div class="p-2.5">
+              <p class="text-xs font-medium leading-tight line-clamp-2" style="color: var(--foreground);">MILO联名探险牵引绳</p>
+              <div class="flex items-baseline gap-1.5 mt-1.5">
+                <span class="text-sm font-bold" style="color: var(--destructive);">$19.99</span>
+                <span class="text-[10px] line-through" style="color: var(--muted-foreground);">$29</span>
+              </div>
+              <div class="flex items-center gap-1 mt-1">
+                <i data-lucide="users" class="w-3 h-3" style="color: var(--primary);"></i>
+                <span class="text-[10px]" style="color: var(--muted-foreground);">2/3人参团</span>
+              </div>
+            </div>
+          </a>
+
+          <!-- 推荐商品卡片2 -->
+          <a class="flex-shrink-0 rounded-2xl overflow-hidden" style="width: 140px; background: var(--card); border: 1px solid var(--border);">
+            <div class="w-full aspect-square" style="background: linear-gradient(145deg, var(--brand-50) 0%, #ddd6fe 50%, var(--secondary) 100%);"></div>
+            <div class="p-2.5">
+              <p class="text-xs font-medium leading-tight line-clamp-2" style="color: var(--foreground);">智能GPS宠物定位项圈</p>
+              <div class="flex items-baseline gap-1.5 mt-1.5">
+                <span class="text-sm font-bold" style="color: var(--destructive);">$59.99</span>
+                <span class="text-[10px] line-through" style="color: var(--muted-foreground);">$89</span>
+              </div>
+              <div class="flex items-center gap-1 mt-1">
+                <i data-lucide="users" class="w-3 h-3" style="color: var(--primary);"></i>
+                <span class="text-[10px]" style="color: var(--muted-foreground);">1/3人参团</span>
+              </div>
+            </div>
+          </a>
+
+          <!-- 推荐商品卡片3 -->
+          <a class="flex-shrink-0 rounded-2xl overflow-hidden" style="width: 140px; background: var(--card); border: 1px solid var(--border);">
+            <div class="w-full aspect-square" style="background: linear-gradient(145deg, #fff3e0 0%, #ffe0b2 50%, var(--secondary) 100%);"></div>
+            <div class="p-2.5">
+              <p class="text-xs font-medium leading-tight line-clamp-2" style="color: var(--foreground);">有机鸡肉配方零食</p>
+              <div class="flex items-baseline gap-1.5 mt-1.5">
+                <span class="text-sm font-bold" style="color: var(--destructive);">$12.99</span>
+                <span class="text-[10px] line-through" style="color: var(--muted-foreground);">$18</span>
+              </div>
+              <div class="flex items-center gap-1 mt-1">
+                <i data-lucide="users" class="w-3 h-3" style="color: var(--primary);"></i>
+                <span class="text-[10px]" style="color: var(--muted-foreground);">3/3人已成团</span>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+
+    </main>
+
+  </div>
+
+  <script>
+    // 拼团规则折叠面板交互
+    function toggleRules() {
+      var content = document.getElementById('rules-content');
+      var chevron = document.getElementById('rules-chevron');
+      if (content.style.maxHeight === '0px' || content.style.maxHeight === '0') {
+        content.style.maxHeight = content.scrollHeight + 'px';
+        chevron.style.transform = 'rotate(180deg)';
+      } else {
+        content.style.maxHeight = '0px';
+        chevron.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    // 倒计时功能
+    (function () {
+      var totalSeconds = 18 * 3600 + 32 * 60 + 15; // 18:32:15
+      var countdownEl = document.getElementById('countdown');
+
+      function updateCountdown() {
+        if (totalSeconds <= 0) return;
+        totalSeconds--;
+        var h = Math.floor(totalSeconds / 3600);
+        var m = Math.floor((totalSeconds % 3600) / 60);
+        var s = totalSeconds % 60;
+        var hStr = h < 10 ? '0' + h : '' + h;
+        var mStr = m < 10 ? '0' + m : '' + m;
+        var sStr = s < 10 ? '0' + s : '' + s;
+        countdownEl.textContent = '剩余 ' + hStr + ':' + mStr + ':' + sStr;
+      }
+
+      setInterval(updateCountdown, 1000);
+    })();
+
+    // 初始化 Lucide 图标
+    lucide.createIcons();
+  </script>
+
+</body>
+</html>

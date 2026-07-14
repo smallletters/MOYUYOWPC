@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOYUYO 过敏档案</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04); /* Hairline */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04); /* Subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05); /* Card */
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* Raised */
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Card Hover */
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05); /* Float */
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06); /* Overlay */
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12); /* Modal */
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+/*
+ * components.css - aggregated component CSS
+ * Auto-extracted from preview/component-*.html files.
+ * DO NOT EDIT. Regenerate with extract-components-css.mjs.
+ *
+ * Foundation tokens live in colors_and_type.css.
+ * This file consumes those tokens via var(--*) references.
+ */
+
+/* ============================================================
+ * Button
+ * source: preview/component-button.html
+ * rules: 10
+ */
+/* @anatomy
+   <div class="row"><span class="label">Primary 56</span><button class="btn btn-primary btn-lg">Buy now</button><button class="btn btn-primary btn-lg" disabled>Buy now</button></div>
+*/
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+/* ============================================================
+ * Card
+ * source: preview/component-card.html
+ * rules: 12
+ */
+/* @anatomy
+   <div class="row">
+   <span class="label">Info</span>
+   <article class="card">
+   <div><div class="eyebrow">Pinguo Apple</div>
+*/
+.card{width:188px;min-height:148px;padding:calc(var(--spacing)*5);display:flex;flex-direction:column;justify-content:space-between;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);transition:transform .18s ease,box-shadow .18s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.card.disabled,.card.disabled:hover{opacity:.5;transform:none;box-shadow:var(--shadow-md)}
+.eyebrow,.meta{color:var(--muted-foreground);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.title{margin:6px 0 8px;font-size:18px;line-height:1.15}
+.body-copy{margin:0;color:var(--muted-foreground);font-size:13px}
+.cta{display:inline-flex;align-items:center;justify-content:center;width:max-content;margin-top:12px;padding:calc(var(--spacing)*2) calc(var(--spacing)*3.5);border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;font-weight:700;text-decoration:none}
+.media{aspect-ratio:4/3;border-radius:calc(var(--radius) - 4px);background:linear-gradient(135deg,var(--secondary),var(--accent));border:1px solid var(--border)}
+.media-card{min-height:212px;padding:calc(var(--spacing)*4)}
+.media-card .title{font-size:16px;margin:10px 0 6px}
+.price{font-size:12px;color:var(--muted-foreground)}
+.dark{background:var(--card);color:var(--card-foreground)}
+
+/* ============================================================
+ * Comparison Table
+ * source: preview/component-comparison-table.html
+ * rules: 13
+ */
+/* @anatomy
+   <div class="row"><span class="label">Default</span><div class="t"><div class="c m">Compare models</div>
+*/
+.t{display:grid;grid-template-columns:96px repeat(3,1fr);overflow:hidden;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-sm)}
+.q{grid-template-columns:82px repeat(4,1fr)}
+.c{padding:10px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.t>.c:nth-child(4n),.q>.c:nth-child(5n){border-right:0}
+.t>.c:nth-last-child(-n+4),.q>.c:nth-last-child(-n+5){border-bottom:0}
+.m{background:var(--background);color:var(--muted-foreground);font:700 10px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase}
+.h{background:var(--background);font-weight:700}
+.k{display:block;font-size:14px;line-height:1.1}
+.s{display:block;margin-top:4px;color:var(--chart-2);font-size:11px;font-weight:700}
+.b .k{color:var(--chart-2)}
+.v{font-weight:600}
+.n{color:var(--muted-foreground);font-size:12px}
+.x{opacity:.45}
+
+/* ============================================================
+ * Input
+ * source: preview/component-input.html
+ * rules: 10
+ */
+/* @anatomy
+   <div class="row">
+   <span class="label">Search 44</span>
+   <div class="field">
+   <span class="icon">⌕</span>
+   <input class="control" aria-label="Search products" placeholder="Search products">
+   <button class="clear" type="button" aria-label="Clear search">×</button>
+   </div>
+*/
+.surface{display:flex;gap:calc(var(--spacing)*2);padding:calc(var(--spacing)*3);border:1px solid var(--border);border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow-sm)}
+.dark{background:var(--background);color:var(--foreground)}
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field.small{height:40px}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.field.disabled{opacity:.55}
+.icon,.clear{padding:0;border:0;background:transparent;color:var(--icon-muted);font:inherit}
+.icon{font-size:13px}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+
+/* ============================================================
+ * Navigation
+ * source: preview/component-navigation.html
+ * rules: 16
+ */
+/* @anatomy
+   <div class="row"><span class="label">Global 44</span><nav class="webbar dark" aria-label="Pinguo Apple global navigation"><span class="brand">Pinguo Apple</span><div class="rail"><a class="link" href="#">Store</a><a class="link" href="#">Explore</a><a class="link" href="#">Community</a><a class="link" href="#">Support</a></div>
+*/
+.webbar,.mobile{border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.webbar{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:320px;height:44px;padding:0 calc(var(--spacing)*3);border-radius:var(--radius);background:var(--sidebar)}
+.brand{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.link,.tab{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;color:inherit;text-decoration:none;white-space:nowrap;transition:background-color .18s ease,color .18s ease,opacity .18s ease}
+.link{height:32px;padding:0 calc(var(--spacing)*2.5)}
+.link:hover,.tab:hover{background:var(--secondary)}
+.link:focus-visible,.tab:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.dark{background:var(--sidebar);color:var(--foreground)}
+.disabled{opacity:.48}
+.disabled .link,.disabled .tab{pointer-events:none}
+.mobile{padding:calc(var(--spacing)*2);border-radius:calc(var(--radius)*1.1);background:var(--card)}
+.screen{display:flex;align-items:flex-end;justify-content:center;width:188px;height:164px;padding:calc(var(--spacing)*3);border-radius:calc(var(--radius)*.9);background:linear-gradient(180deg,var(--background),var(--secondary))}
+.tabbar{display:flex;gap:calc(var(--spacing)*1.5);padding:calc(var(--spacing)*1.5);border:1px solid var(--border);border-radius:999px;background:var(--card);box-shadow:var(--shadow-md)}
+.tab{flex-direction:column;gap:2px;min-width:56px;height:56px;padding:0 calc(var(--spacing)*1.5);font-size:11px;text-align:center}
+.dot{width:18px;height:18px;border-radius:999px;background:var(--secondary);box-shadow:inset 0 0 0 1px var(--border)}
+.tab:hover .dot{background:var(--primary)}
+
+/* ============================================================
+ * Product Grid
+ * source: preview/component-product-grid.html
+ * rules: 12
+ */
+/* @anatomy
+   <div class="row">
+   <span class="label">4-up</span>
+   <div class="grid grid-4">
+   <article class="card"><div class="media"></div>
+*/
+.grid{display:grid;gap:8px;flex:1}
+.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.card{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-xs);transition:border-color .2s ease,transform .2s ease}
+.card:hover{border-color:var(--primary);transform:translateY(-1px)}
+.media{aspect-ratio:1;border-radius:calc(var(--radius) - 4px);background:linear-gradient(135deg,var(--secondary),var(--background));border:1px solid var(--border)}
+.eyebrow{color:var(--muted-foreground);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.title{font-size:15px;line-height:1.25}
+.price{font-variant-numeric:tabular-nums}
+.cta{display:inline-flex;align-self:flex-start;padding:7px 10px;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;text-decoration:none}
+.muted{color:var(--muted-foreground)}
+.is-disabled{opacity:.55}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+  <!-- 页面容器：移动端宽度居中 -->
+  <div class="mx-auto max-w-[430px] min-h-screen relative" style="background: var(--background);">
+
+    <main class="pb-28">
+
+      <!-- ==================== 顶部导航栏 ==================== -->
+      <header class="sticky top-0 z-30" style="background: var(--background-800);">
+        <div class="h-12 flex items-center justify-between px-4">
+          <!-- 返回箭头 -->
+          <button class="w-9 h-9 flex items-center justify-center rounded-full" style="color: var(--background-50);" aria-label="返回">
+            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+          </button>
+          <!-- 标题 -->
+          <h1 class="text-base font-semibold" style="color: var(--background-50);">过敏档案</h1>
+          <!-- 编辑按钮 -->
+          <button class="h-8 px-3 rounded-full text-xs font-medium" style="background: var(--background-700); color: var(--background-100);" aria-label="编辑过敏档案">
+            编辑
+          </button>
+        </div>
+      </header>
+
+      <!-- ==================== 宠物选择器 ==================== -->
+      <section class="px-4 pt-5 pb-2" aria-label="宠物选择">
+        <div class="flex gap-4 justify-center">
+          <!-- Milo - 已选中 -->
+          <button class="flex flex-col items-center gap-1.5 relative" aria-label="选择 Milo" aria-pressed="true">
+            <div class="w-14 h-14 rounded-full flex items-center justify-center" style="background: linear-gradient(135deg, var(--brand-200), var(--brand-400)); border: 2.5px solid var(--primary); box-shadow: 0 0 0 3px var(--brand-50);">
+              <span class="text-lg font-bold" style="color: var(--primary-foreground);">M</span>
+            </div>
+            <span class="text-xs font-semibold" style="color: var(--primary);">Milo</span>
+            <!-- 选中指示点 -->
+            <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full" style="background: var(--primary);"></span>
+          </button>
+          <!-- Luna - 未选中 -->
+          <button class="flex flex-col items-center gap-1.5 relative" aria-label="选择 Luna" aria-pressed="false">
+            <div class="w-14 h-14 rounded-full flex items-center justify-center" style="background: linear-gradient(135deg, var(--background-300), var(--background-400)); border: 2.5px solid transparent;">
+              <span class="text-lg font-bold" style="color: var(--text-600);">L</span>
+            </div>
+            <span class="text-xs font-medium" style="color: var(--text-500);">Luna</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ==================== 过敏原标签区 ==================== -->
+      <section class="px-4 pt-3 pb-1" aria-label="过敏原管理">
+        <!-- 区域标题 -->
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold" style="color: var(--foreground);">过敏原</h2>
+          <span class="text-xs" style="color: var(--muted-foreground);">已标记 3 项</span>
+        </div>
+
+        <!-- 已标记的过敏原（高亮标签） -->
+        <div class="flex flex-wrap gap-2 mb-4">
+          <!-- 鸡肉 - 已标记（可删除） -->
+          <span class="inline-flex items-center gap-1.5 h-8 pl-3 pr-2 rounded-full text-xs font-medium" style="background: var(--state-error-surface); color: var(--destructive); border: 1px solid var(--destructive);">
+            鸡肉
+            <button class="w-4 h-4 flex items-center justify-center rounded-full" style="background: var(--destructive); color: var(--destructive-foreground);" aria-label="移除鸡肉过敏原">
+              <i data-lucide="x" class="w-3 h-3"></i>
+            </button>
+          </span>
+          <!-- 谷物 - 已标记 -->
+          <span class="inline-flex items-center gap-1.5 h-8 pl-3 pr-2 rounded-full text-xs font-medium" style="background: var(--state-error-surface); color: var(--destructive); border: 1px solid var(--destructive);">
+            谷物
+            <button class="w-4 h-4 flex items-center justify-center rounded-full" style="background: var(--destructive); color: var(--destructive-foreground);" aria-label="移除谷物过敏原">
+              <i data-lucide="x" class="w-3 h-3"></i>
+            </button>
+          </span>
+          <!-- 乳制品 - 已标记 -->
+          <span class="inline-flex items-center gap-1.5 h-8 pl-3 pr-2 rounded-full text-xs font-medium" style="background: var(--state-error-surface); color: var(--destructive); border: 1px solid var(--destructive);">
+            乳制品
+            <button class="w-4 h-4 flex items-center justify-center rounded-full" style="background: var(--destructive); color: var(--destructive-foreground);" aria-label="移除乳制品过敏原">
+              <i data-lucide="x" class="w-3 h-3"></i>
+            </button>
+          </span>
+        </div>
+
+        <!-- 未标记的常见过敏原（灰色可选） -->
+        <div class="mb-3">
+          <p class="text-xs font-medium mb-2" style="color: var(--muted-foreground);">常见过敏原</p>
+          <div class="flex flex-wrap gap-2">
+            <button class="h-8 px-3 rounded-full text-xs font-medium transition-colors" style="background: var(--secondary); color: var(--text-500); border: 1px solid var(--border);" aria-label="添加牛肉过敏原">
+              牛肉
+            </button>
+            <button class="h-8 px-3 rounded-full text-xs font-medium transition-colors" style="background: var(--secondary); color: var(--text-500); border: 1px solid var(--border);" aria-label="添加鱼类过敏原">
+              鱼类
+            </button>
+            <button class="h-8 px-3 rounded-full text-xs font-medium transition-colors" style="background: var(--secondary); color: var(--text-500); border: 1px solid var(--border);" aria-label="添加大豆过敏原">
+              大豆
+            </button>
+            <button class="h-8 px-3 rounded-full text-xs font-medium transition-colors" style="background: var(--secondary); color: var(--text-500); border: 1px solid var(--border);" aria-label="添加香精过敏原">
+              香精
+            </button>
+            <button class="h-8 px-3 rounded-full text-xs font-medium transition-colors" style="background: var(--secondary); color: var(--text-500); border: 1px solid var(--border);" aria-label="添加防腐剂过敏原">
+              防腐剂
+            </button>
+            <button class="h-8 px-3 rounded-full text-xs font-medium transition-colors" style="background: var(--secondary); color: var(--text-500); border: 1px solid var(--border);" aria-label="添加花粉过敏原">
+              花粉
+            </button>
+            <button class="h-8 px-3 rounded-full text-xs font-medium transition-colors" style="background: var(--secondary); color: var(--text-500); border: 1px solid var(--border);" aria-label="添加跳蚤过敏原">
+              跳蚤
+            </button>
+          </div>
+        </div>
+
+        <!-- 自定义过敏原输入 -->
+        <div class="flex items-center gap-2">
+          <div class="flex-1 h-10 px-3 rounded-xl flex items-center" style="background: var(--secondary); border: 1px solid var(--border);">
+            <input type="text" placeholder="自定义过敏原..." class="flex-1 bg-transparent text-sm outline-none" style="color: var(--foreground);">
+          </div>
+          <button class="h-10 px-4 rounded-xl text-xs font-semibold shrink-0" style="background: var(--primary); color: var(--primary-foreground);" aria-label="添加自定义过敏原">
+            添加
+          </button>
+        </div>
+      </section>
+
+      <!-- ==================== 过敏记录时间线 ==================== -->
+      <section class="px-4 pt-5 pb-1" aria-label="过敏记录">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold" style="color: var(--foreground);">过敏记录</h2>
+          <button class="text-xs font-medium" style="color: var(--primary);">查看全部</button>
+        </div>
+
+        <!-- 时间线 -->
+        <div class="relative pl-5">
+          <!-- 时间线竖线 -->
+          <div class="absolute left-[7px] top-2 bottom-2 w-px" style="background: var(--border);"></div>
+
+          <!-- 记录 1：2026-06-20 -->
+          <div class="relative pb-5">
+            <!-- 时间线节点 -->
+            <span class="absolute left-[-13px] top-1 w-3.5 h-3.5 rounded-full border-2" style="background: var(--state-error-surface); border-color: var(--destructive);"></span>
+            <div class="ml-3 p-3 rounded-xl" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-xs);">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-semibold" style="color: var(--destructive);">皮肤红肿</span>
+                <span class="text-[11px]" style="color: var(--muted-foreground);">2026-06-20</span>
+              </div>
+              <p class="text-xs leading-relaxed" style="color: var(--text-600);">怀疑鸡肉过敏，食用鸡肉配方狗粮后出现腹部皮肤泛红、轻微瘙痒</p>
+            </div>
+          </div>
+
+          <!-- 记录 2：2026-05-15 -->
+          <div class="relative pb-5">
+            <!-- 时间线节点 -->
+            <span class="absolute left-[-13px] top-1 w-3.5 h-3.5 rounded-full border-2" style="background: var(--brand-50); border-color: var(--brand-300);"></span>
+            <div class="ml-3 p-3 rounded-xl" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-xs);">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-semibold" style="color: var(--brand-600);">轻微腹泻</span>
+                <span class="text-[11px]" style="color: var(--muted-foreground);">2026-05-15</span>
+              </div>
+              <p class="text-xs leading-relaxed" style="color: var(--text-600);">食用含谷物零食后出现软便，持续约 24 小时后自行恢复</p>
+            </div>
+          </div>
+
+          <!-- 记录 3：2026-04-02 -->
+          <div class="relative">
+            <!-- 时间线节点 -->
+            <span class="absolute left-[-13px] top-1 w-3.5 h-3.5 rounded-full border-2" style="background: var(--brand-50); border-color: var(--brand-300);"></span>
+            <div class="ml-3 p-3 rounded-xl" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-xs);">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-semibold" style="color: var(--brand-600);">打喷嚏</span>
+                <span class="text-[11px]" style="color: var(--muted-foreground);">2026-04-02</span>
+              </div>
+              <p class="text-xs leading-relaxed" style="color: var(--text-600);">花粉季节开始，频繁打喷嚏及鼻部发痒，疑似环境过敏原</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== 安全商品推荐区 ==================== -->
+      <section class="px-4 pt-5 pb-2" aria-label="安全商品推荐">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <h2 class="text-sm font-semibold" style="color: var(--foreground);">安全商品清单</h2>
+            <span class="inline-flex items-center justify-center h-5 px-2 rounded-full text-[10px] font-semibold" style="background: var(--state-success-surface); color: var(--success);">自动生成</span>
+          </div>
+          <button class="text-xs font-medium" style="color: var(--primary);">更多</button>
+        </div>
+
+        <!-- 横向滚动商品卡片 -->
+        <div class="flex gap-3 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4 snap-x snap-mandatory">
+          <!-- 商品卡片 1 -->
+          <div class="shrink-0 w-36 snap-start rounded-xl overflow-hidden" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-sm);">
+            <!-- CSS 渐变占位图 -->
+            <div class="w-full aspect-square" style="background: linear-gradient(145deg, var(--brand-50), var(--brand-100));"></div>
+            <div class="p-2.5">
+              <!-- 安全标识 -->
+              <div class="flex items-center gap-1 mb-1.5">
+                <i data-lucide="shield-check" class="w-3.5 h-3.5" style="color: var(--success);"></i>
+                <span class="text-[10px] font-semibold" style="color: var(--success);">安全</span>
+              </div>
+              <h3 class="text-xs font-medium truncate" style="color: var(--foreground);">无谷三文鱼配方</h3>
+              <p class="text-[10px] mt-0.5 truncate" style="color: var(--muted-foreground);">天然狗粮 2kg</p>
+              <span class="text-xs font-semibold mt-1 block" style="color: var(--primary);">$38.99</span>
+            </div>
+          </div>
+
+          <!-- 商品卡片 2 -->
+          <div class="shrink-0 w-36 snap-start rounded-xl overflow-hidden" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-sm);">
+            <div class="w-full aspect-square" style="background: linear-gradient(145deg, var(--state-success-surface), var(--brand-50));"></div>
+            <div class="p-2.5">
+              <div class="flex items-center gap-1 mb-1.5">
+                <i data-lucide="shield-check" class="w-3.5 h-3.5" style="color: var(--success);"></i>
+                <span class="text-[10px] font-semibold" style="color: var(--success);">安全</span>
+              </div>
+              <h3 class="text-xs font-medium truncate" style="color: var(--foreground);">低敏羊奶粉</h3>
+              <p class="text-[10px] mt-0.5 truncate" style="color: var(--muted-foreground);">宠物营养补充 400g</p>
+              <span class="text-xs font-semibold mt-1 block" style="color: var(--primary);">$24.50</span>
+            </div>
+          </div>
+
+          <!-- 商品卡片 3 -->
+          <div class="shrink-0 w-36 snap-start rounded-xl overflow-hidden" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-sm);">
+            <div class="w-full aspect-square" style="background: linear-gradient(145deg, var(--brand-50), var(--state-success-surface));"></div>
+            <div class="p-2.5">
+              <div class="flex items-center gap-1 mb-1.5">
+                <i data-lucide="shield-check" class="w-3.5 h-3.5" style="color: var(--success);"></i>
+                <span class="text-[10px] font-semibold" style="color: var(--success);">安全</span>
+              </div>
+              <h3 class="text-xs font-medium truncate" style="color: var(--foreground);">纯肉冻干零食</h3>
+              <p class="text-[10px] mt-0.5 truncate" style="color: var(--muted-foreground);">单一蛋白 100g</p>
+              <span class="text-xs font-semibold mt-1 block" style="color: var(--primary);">$15.99</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== 成分预警提示卡片 ==================== -->
+      <section class="px-4 pt-4 pb-4" aria-label="成分预警">
+        <div class="p-4 rounded-xl flex items-start gap-3" style="background: linear-gradient(135deg, var(--brand-50), var(--state-success-surface)); border: 1px solid var(--brand-200);">
+          <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style="background: var(--primary);">
+            <i data-lucide="bell" class="w-4 h-4" style="color: var(--primary-foreground);"></i>
+          </div>
+          <div>
+            <h3 class="text-xs font-semibold mb-0.5" style="color: var(--foreground);">成分预警已开启</h3>
+            <p class="text-[11px] leading-relaxed" style="color: var(--text-500);">浏览商品详情时，系统将自动比对商品成分表与 Milo 的过敏原列表，并弹出安全提醒。</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ==================== 底部浮动按钮 ==================== -->
+    <div class="fixed bottom-6 inset-x-0 z-40 flex justify-center pointer-events-none">
+      <button class="pointer-events-auto h-12 px-8 rounded-full text-sm font-semibold flex items-center gap-2" style="background: var(--primary); color: var(--primary-foreground); box-shadow: var(--shadow-xl);" aria-label="添加过敏记录">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        添加过敏记录
+      </button>
+    </div>
+
+  </div>
+
+  <script>lucide.createIcons();</script>
+</body>
+</html>

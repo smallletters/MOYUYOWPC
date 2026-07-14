@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+    <title>MOYUYO ATELIER</title>
+    <script>
+      // 注入构建期环境变量到全局（仅 H5）
+      window.__MOYUYO_CONFIG__ = {
+        API_BASE: '%VITE_API_BASE%',
+        WP_BASE: '%VITE_WP_BASE%',
+        CONSUMER_KEY: '%VITE_CONSUMER_KEY%',
+        CONSUMER_SECRET: '%VITE_CONSUMER_SECRET%'
+      }
+    </script>
+    <style>
+      html, body, #app { height: 100%; margin: 0; padding: 0; background: #F6F2EE; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

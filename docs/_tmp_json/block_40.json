@@ -1,0 +1,14 @@
+{
+  "code": 0,
+  "data": [
+    {
+      "categoryId": 1,
+      "name": "洗护用品",
+      "icon": "https://...",
+      "children": [
+        { "categoryId": 101, "name": "沐浴露" },
+        { "categoryId": 102, "name": "护毛素" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOYUYO 系统配置</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* state-warning */
+  --state-warning: #ff9500;
+  --state-warning-dark: #ff9f0a;
+  --state-warning-surface: #fff4e6;
+  --state-warning-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+  --warning: var(--state-warning);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04); /* Hairline */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04); /* Subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05); /* Card */
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* Raised */
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Card Hover */
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05); /* Float */
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06); /* Overlay */
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12); /* Modal */
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --warning: var(--state-warning-dark);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+/*
+ * components.css - aggregated component CSS
+ * Auto-extracted from preview/component-*.html files.
+ * DO NOT EDIT. Regenerate with extract-components-css.mjs.
+ *
+ * Foundation tokens live in colors_and_type.css.
+ * This file consumes those tokens via var(--*) references.
+ */
+
+/* ============================================================
+ * Button
+ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+/* ============================================================
+ * Card
+ */
+.card{width:188px;min-height:148px;padding:calc(var(--spacing)*5);display:flex;flex-direction:column;justify-content:space-between;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);transition:transform .18s ease,box-shadow .18s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.card.disabled,.card.disabled:hover{opacity:.5;transform:none;box-shadow:var(--shadow-md)}
+.eyebrow,.meta{color:var(--muted-foreground);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.title{margin:6px 0 8px;font-size:18px;line-height:1.15}
+.body-copy{margin:0;color:var(--muted-foreground);font-size:13px}
+.cta{display:inline-flex;align-items:center;justify-content:center;width:max-content;margin-top:12px;padding:calc(var(--spacing)*2) calc(var(--spacing)*3.5);border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;font-weight:700;text-decoration:none}
+.media{aspect-ratio:4/3;border-radius:calc(var(--radius) - 4px);background:linear-gradient(135deg,var(--secondary),var(--accent));border:1px solid var(--border)}
+.media-card{min-height:212px;padding:calc(var(--spacing)*4)}
+.media-card .title{font-size:16px;margin:10px 0 6px}
+.price{font-size:12px;color:var(--muted-foreground)}
+
+/* ============================================================
+ * Input
+ */
+.surface{display:flex;gap:calc(var(--spacing)*2);padding:calc(var(--spacing)*3);border:1px solid var(--border);border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow-sm)}
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field.small{height:40px}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.field.disabled{opacity:.55}
+.icon,.clear{padding:0;border:0;background:transparent;color:var(--icon-muted);font:inherit}
+.icon{font-size:13px}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+
+      /* ===== iOS 风格 Toggle 开关 ===== */
+      .toggle-track {
+        position: relative;
+        width: 51px;
+        height: 31px;
+        border-radius: 16px;
+        background: var(--background-400);
+        cursor: pointer;
+        transition: background-color 0.25s ease;
+        flex-shrink: 0;
+      }
+      .toggle-track[aria-checked="true"] {
+        background: var(--state-success);
+      }
+      .toggle-thumb {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 27px;
+        height: 27px;
+        border-radius: 50%;
+        background: var(--background-50);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15), 0 1px 1px rgba(0,0,0,0.1);
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .toggle-track[aria-checked="true"] .toggle-thumb {
+        transform: translateX(20px);
+      }
+
+      /* ===== 配置卡片样式 ===== */
+      .config-card {
+        background: var(--card);
+        border-radius: var(--radius);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        overflow: hidden;
+      }
+      .config-section {
+        padding: 16px;
+      }
+      .config-section + .config-section {
+        border-top: 1px solid var(--background-200);
+      }
+      .config-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 44px;
+      }
+      .config-row + .config-row {
+        margin-top: 14px;
+      }
+      .config-label {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-800);
+        flex-shrink: 0;
+      }
+      .config-desc {
+        font-size: 12px;
+        color: var(--text-400);
+        margin-top: 2px;
+      }
+      .config-value {
+        font-size: 14px;
+        color: var(--text-500);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .config-input {
+        height: 40px;
+        padding: 0 12px;
+        border: 1px solid var(--input);
+        border-radius: 10px;
+        background: var(--background);
+        color: var(--text-800);
+        font-size: 14px;
+        font-family: var(--font-sans);
+        outline: none;
+        transition: border-color 0.18s ease;
+        max-width: 200px;
+        text-align: right;
+      }
+      .config-input:focus {
+        border-color: var(--ring);
+        box-shadow: 0 0 0 1px var(--ring);
+      }
+      .config-input-full {
+        width: 100%;
+        max-width: none;
+        text-align: left;
+        margin-top: 8px;
+      }
+
+      /* ===== Tab 样式 ===== */
+      .config-tab-bar {
+        display: flex;
+        overflow-x: auto;
+        gap: 4px;
+        padding: 0 16px;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .config-tab-bar::-webkit-scrollbar { display: none; }
+      .config-tab {
+        flex-shrink: 0;
+        height: 36px;
+        padding: 0 16px;
+        border-radius: 18px;
+        border: none;
+        background: transparent;
+        color: var(--text-500);
+        font-size: 13px;
+        font-weight: 600;
+        font-family: var(--font-sans);
+        cursor: pointer;
+        transition: background-color 0.2s ease, color 0.2s ease;
+        white-space: nowrap;
+      }
+      .config-tab.active {
+        background: var(--primary);
+        color: var(--primary-foreground);
+      }
+      .config-tab:not(.active):hover {
+        background: var(--background-200);
+      }
+
+      /* ===== Tab 面板 ===== */
+      .tab-panel {
+        display: none;
+      }
+      .tab-panel.active {
+        display: block;
+      }
+
+      /* ===== 分组标题 ===== */
+      .section-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-400);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: 16px 16px 8px;
+      }
+
+      /* ===== Logo 上传区域 ===== */
+      .logo-upload-area {
+        width: 64px;
+        height: 64px;
+        border-radius: 14px;
+        border: 2px dashed var(--background-400);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        cursor: pointer;
+        transition: border-color 0.2s ease, background-color 0.2s ease;
+        background: var(--background-200);
+      }
+      .logo-upload-area:hover {
+        border-color: var(--primary);
+        background: var(--brand-50);
+      }
+      .logo-upload-text {
+        font-size: 9px;
+        font-weight: 600;
+        color: var(--text-400);
+      }
+
+      /* ===== 状态标签 ===== */
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .status-badge.configured {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+      .status-badge.not-configured {
+        background: var(--background-200);
+        color: var(--text-400);
+      }
+
+      /* ===== 密钥遮罩 ===== */
+      .key-masked {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        color: var(--text-500);
+        letter-spacing: 0.02em;
+      }
+
+      /* ===== 支付方式排序项 ===== */
+      .payment-method-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px;
+      }
+      .payment-method-item + .payment-method-item {
+        border-top: 1px solid var(--background-200);
+      }
+      .payment-drag-handle {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-400);
+        cursor: grab;
+      }
+
+      /* ===== 单选按钮组 ===== */
+      .radio-group {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .radio-option {
+        height: 36px;
+        padding: 0 16px;
+        border-radius: 18px;
+        border: 1px solid var(--input);
+        background: var(--background);
+        color: var(--text-500);
+        font-size: 13px;
+        font-weight: 500;
+        font-family: var(--font-sans);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .radio-option.selected {
+        border-color: var(--primary);
+        background: var(--brand-50);
+        color: var(--primary);
+      }
+
+      /* ===== 底部保存栏 ===== */
+      .save-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 40;
+        padding: 12px 16px;
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        background: rgba(255,255,255,0.88);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-top: 1px solid var(--border);
+      }
+
+      /* ===== 通知项样式 ===== */
+      .notification-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+      }
+      .notification-item + .notification-item {
+        border-top: 1px solid var(--background-200);
+      }
+
+      /* ===== 安全规则输入组 ===== */
+      .security-input-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .security-input {
+        height: 40px;
+        padding: 0 12px;
+        border: 1px solid var(--input);
+        border-radius: 10px;
+        background: var(--background);
+        color: var(--text-800);
+        font-size: 14px;
+        font-family: var(--font-sans);
+        outline: none;
+        flex: 1;
+        transition: border-color 0.18s ease;
+      }
+      .security-input:focus {
+        border-color: var(--ring);
+        box-shadow: 0 0 0 1px var(--ring);
+      }
+      .security-input-suffix {
+        font-size: 13px;
+        color: var(--text-400);
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+    
+    /* 妗岄潰绔鐞嗛〉闈㈡渶灏忓搴︾害鏉?*/
+    body { min-width: 1280px; }</style>
+</head>
+<body class="min-h-screen antialiased" style="font-family: 'DM Sans', -apple-system, sans-serif;">
+    <main class="pb-28">
+
+      <!-- ===== 顶部导航栏 ===== -->
+      <div class="sticky top-0 z-30" style="background: var(--background); border-bottom: 1px solid var(--border);">
+        <div class="flex items-center h-11 px-4">
+          <!-- 返回按钮 -->
+          <button data-dom-id="cta-back" aria-label="返回" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: none; background: transparent; color: var(--primary); cursor: pointer; border-radius: 8px; transition: background-color 0.15s ease;">
+            <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-left.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-left.svg');"></span>
+          </button>
+          <!-- 标题 -->
+          <h1 class="flex-1 text-center text-base font-semibold" style="color: var(--text-800); margin: 0;">系统配置</h1>
+          <!-- 占位，保持标题居中 -->
+          <div style="width: 32px;"></div>
+        </div>
+
+        <!-- 配置分类 Tab -->
+        <div style="padding: 8px 0 12px;">
+          <div class="config-tab-bar" role="tablist" aria-label="配置分类">
+            <button class="config-tab active" role="tab" aria-selected="true" data-tab="basic">基础配置</button>
+            <button class="config-tab" role="tab" aria-selected="false" data-tab="payment">支付配置</button>
+            <button class="config-tab" role="tab" aria-selected="false" data-tab="shipping">物流配置</button>
+            <button class="config-tab" role="tab" aria-selected="false" data-tab="notification">通知配置</button>
+            <button class="config-tab" role="tab" aria-selected="false" data-tab="security">安全配置</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- 基础配置 Tab 面板 -->
+      <!-- ================================================================ -->
+      <div class="tab-panel active" id="panel-basic" role="tabpanel">
+
+        <!-- 站点信息 -->
+        <p class="section-title">站点信息</p>
+        <div class="config-card" style="margin: 0 16px;">
+          <div class="config-section">
+            <!-- Logo 上传 + 站点名称 -->
+            <div class="config-row">
+              <div style="flex: 1;">
+                <div class="config-label">站点名称</div>
+                <div class="config-desc">将显示在页面标题和导航栏中</div>
+              </div>
+              <input type="text" class="config-input" value="MOYUYO" style="max-width: 120px;">
+            </div>
+            <div class="config-row">
+              <div>
+                <div class="config-label">站点 Logo</div>
+                <div class="config-desc">建议上传 512x512 像素的 PNG 图片</div>
+              </div>
+              <div class="logo-upload-area" aria-label="上传 Logo">
+                <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-plus.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-plus.svg'); color: var(--text-400);"></span>
+                <span class="logo-upload-text">上传</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 语言与地区 -->
+        <p class="section-title" style="margin-top: 20px;">语言与地区</p>
+        <div class="config-card" style="margin: 0 16px;">
+          <div class="config-section">
+            <div class="config-row">
+              <div>
+                <div class="config-label">默认语言</div>
+                <div class="config-desc">新用户的默认显示语言</div>
+              </div>
+              <div class="config-value">
+                <span>简体中文</span>
+                <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg');"></span>
+              </div>
+            </div>
+            <div class="config-row">
+              <div>
+                <div class="config-label">支持语言</div>
+                <div class="config-desc">商城前台可切换的语言列表</div>
+              </div>
+              <div class="config-value">
+                <span>3 种语言</span>
+                <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg');"></span>
+              </div>
+            </div>
+            <!-- 支持语言列表展示 -->
+            <div style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px;">
+              <span style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 999px; background: var(--background-200); font-size: 12px; font-weight: 500; color: var(--text-600);">简体中文</span>
+              <span style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 999px; background: var(--background-200); font-size: 12px; font-weight: 500; color: var(--text-600);">English</span>
+              <span style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 999px; background: var(--background-200); font-size: 12px; font-weight: 500; color: var(--text-600);">日本語</span>
+            </div>
+          </div>
+          <div class="config-section">
+            <div class="config-row">
+              <div>
+                <div class="config-label">时区设置</div>
+                <div class="config-desc">影响订单时间、定时任务等</div>
+              </div>
+              <div class="config-value">
+                <span>UTC+8</span>
+                <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg');"></span>
+              </div>
+            </div>
+            <div class="config-row">
+              <div>
+                <div class="config-label">货币设置</div>
+                <div class="config-desc">商品价格显示币种</div>
+              </div>
+              <div class="config-value">
+                <span>CNY (¥)</span>
+                <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg');"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 订单规则 -->
+        <p class="section-title" style="margin-top: 20px;">订单规则</p>
+        <div class="config-card" style="margin: 0 16px 16px;">
+          <div class="config-section">
+            <div>
+              <div class="config-label">订单自动取消时间</div>
+              <div class="config-desc">未支付订单超过设定时间后自动取消</div>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+                <input type="number" class="security-input" value="30" style="width: 72px; text-align: center;">
+                <span class="security-input-suffix">分钟</span>
+              </div>
+            </div>
+          </div>
+          <div class="config-section">
+            <div>
+              <div class="config-label">订单自动确认收货时间</div>
+              <div class="config-desc">发货后超过设定天数未操作则自动确认收货</div>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+                <input type="number" class="security-input" value="15" style="width: 72px; text-align: center;">
+                <span class="security-input-suffix">天</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- 支付配置 Tab 面板 -->
+      <!-- ================================================================ -->
+      <div class="tab-panel" id="panel-payment" role="tabpanel">
+
+        <!-- Stripe 配置 -->
+        <p class="section-title">Stripe</p>
+        <div class="config-card" style="margin: 0 16px;">
+          <div class="config-section">
+            <div class="config-row">
+              <div>
+                <div class="config-label">密钥状态</div>
+                <div class="config-desc">Stripe API 密钥配置</div>
+              </div>
+              <span class="status-badge configured">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg');"></span>
+                已配置
+              </span>
+            </div>
+            <div class="config-row">
+              <div class="config-label" style="flex-shrink: 0;">Publishable Key</div>
+              <span class="key-masked">pk_live_...7f2x</span>
+            </div>
+          </div>
+          <div class="config-section">
+            <div>
+              <div class="config-label">Webhook URL</div>
+              <div class="config-desc">用于接收 Stripe 支付事件回调</div>
+              <input type="text" class="config-input config-input-full" value="https://api.moyuyo.com/webhook/stripe" style="font-family: var(--font-mono); font-size: 12px;">
+            </div>
+          </div>
+          <div class="config-section">
+            <div class="config-row">
+              <div>
+                <div class="config-label">测试模式</div>
+                <div class="config-desc">启用后将使用 Stripe 测试密钥</div>
+              </div>
+              <div class="toggle-track" role="switch" aria-checked="true" aria-label="Stripe 测试模式" tabindex="0">
+                <div class="toggle-thumb"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PayPal 配置 -->
+        <p class="section-title" style="margin-top: 20px;">PayPal</p>
+        <div class="config-card" style="margin: 0 16px;">
+          <div class="config-section">
+            <div class="config-row">
+              <div>
+                <div class="config-label">Client ID 状态</div>
+                <div class="config-desc">PayPal API 凭据配置</div>
+              </div>
+              <span class="status-badge configured">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg');"></span>
+                已配置
+              </span>
+            </div>
+            <div class="config-row">
+              <div class="config-label" style="flex-shrink: 0;">Client ID</div>
+              <span class="key-masked">AXr82...9kNp</span>
+            </div>
+          </div>
+          <div class="config-section">
+            <div class="config-row">
+              <div>
+                <div class="config-label">Sandbox 模式</div>
+                <div class="config-desc">启用后将使用 PayPal 沙盒环境</div>
+              </div>
+              <div class="toggle-track" role="switch" aria-checked="true" aria-label="PayPal Sandbox 模式" tabindex="0">
+                <div class="toggle-thumb"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 支付方式排序 -->
+        <p class="section-title" style="margin-top: 20px;">支付方式</p>
+        <div class="config-card" style="margin: 0 16px 16px;">
+          <!-- Stripe -->
+          <div class="payment-method-item">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div class="payment-drag-handle">
+                <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/grip.svg'); mask-image: url('../assets/icons/dl-builtin-apple/grip.svg');"></span>
+              </div>
+              <div>
+                <div class="config-label">Stripe</div>
+                <div class="config-desc">信用卡 / 借记卡支付</div>
+              </div>
+            </div>
+            <div class="toggle-track" role="switch" aria-checked="true" aria-label="启用 Stripe" tabindex="0">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <!-- PayPal -->
+          <div class="payment-method-item">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div class="payment-drag-handle">
+                <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/grip.svg'); mask-image: url('../assets/icons/dl-builtin-apple/grip.svg');"></span>
+              </div>
+              <div>
+                <div class="config-label">PayPal</div>
+                <div class="config-desc">PayPal 账户支付</div>
+              </div>
+            </div>
+            <div class="toggle-track" role="switch" aria-checked="true" aria-label="启用 PayPal" tabindex="0">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <!-- 微信支付 -->
+          <div class="payment-method-item">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div class="payment-drag-handle">
+                <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/grip.svg'); mask-image: url('../assets/icons/dl-builtin-apple/grip.svg');"></span>
+              </div>
+              <div>
+                <div class="config-label">微信支付</div>
+                <div class="config-desc">微信扫码 / JSAPI 支付</div>
+              </div>
+            </div>
+            <div class="toggle-track" role="switch" aria-checked="false" aria-label="启用微信支付" tabindex="0">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <!-- 支付宝 -->
+          <div class="payment-method-item">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div class="payment-drag-handle">
+                <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/grip.svg'); mask-image: url('../assets/icons/dl-builtin-apple/grip.svg');"></span>
+              </div>
+              <div>
+                <div class="config-label">支付宝</div>
+                <div class="config-desc">支付宝扫码 / H5 支付</div>
+              </div>
+            </div>
+            <div class="toggle-track" role="switch" aria-checked="false" aria-label="启用支付宝" tabindex="0">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- 物流配置 Tab 面板 -->
+      <!-- ================================================================ -->
+      <div class="tab-panel" id="panel-shipping" role="tabpanel">
+
+        <!-- 承运商与包装 -->
+        <p class="section-title">承运商与包装</p>
+        <div class="config-card" style="margin: 0 16px;">
+          <div class="config-section">
+            <div class="config-row">
+              <div>
+                <div class="config-label">默认承运商</div>
+                <div class="config-desc">创建发货单时的默认物流商</div>
+              </div>
+              <div class="config-value">
+                <span>顺丰速运</span>
+                <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg');"></span>
+              </div>
+            </div>
+            <div class="config-row">
+              <div>
+                <div class="config-label">默认包装尺寸</div>
+                <div class="config-desc">用于自动计算运费体积重</div>
+              </div>
+              <div class="config-value">
+                <span>中号包裹</span>
+                <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg');"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 运费计算规则 -->
+        <p class="section-title" style="margin-top: 20px;">运费计算规则</p>
+        <div class="config-card" style="margin: 0 16px;">
+          <div class="config-section">
+            <div class="config-label">计算方式</div>
+            <div class="config-desc">根据以下方式自动计算运费</div>
+            <div class="radio-group">
+              <button class="radio-option" data-radio="shipping" data-value="weight">按重量</button>
+              <button class="radio-option selected" data-radio="shipping" data-value="volume">按体积</button>
+              <button class="radio-option" data-radio="shipping" data-value="flat">固定费率</button>
+            </div>
+          </div>
+          <div class="config-section">
+            <div>
+              <div class="config-label">基础运费</div>
+              <div class="config-desc">首重/首件运费价格</div>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+                <span style="font-size: 14px; color: var(--text-500);">¥</span>
+                <input type="number" class="security-input" value="12" style="width: 80px; text-align: center;">
+                <span class="security-input-suffix">/ 首 1kg</span>
+              </div>
+            </div>
+          </div>
+          <div class="config-section">
+            <div>
+              <div class="config-label">续费单价</div>
+              <div class="config-desc">超出基础重量后每增加单位的价格</div>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+                <span style="font-size: 14px; color: var(--text-500);">¥</span>
+                <input type="number" class="security-input" value="5" style="width: 80px; text-align: center;">
+                <span class="security-input-suffix">/ 续 1kg</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 免运费门槛 -->
+        <p class="section-title" style="margin-top: 20px;">免运费门槛</p>
+        <div class="config-card" style="margin: 0 16px 16px;">
+          <div class="config-section">
+            <div class="config-row">
+              <div style="flex: 1;">
+                <div class="config-label">启用免运费</div>
+                <div class="config-desc">订单金额达到门槛后自动免运费</div>
+              </div>
+              <div class="toggle-track" role="switch" aria-checked="true" aria-label="启用免运费" tabindex="0">
+                <div class="toggle-thumb"></div>
+              </div>
+            </div>
+            <div>
+              <div class="config-label">免运费门槛金额</div>
+              <div class="config-desc">订单满此金额可享免费配送</div>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+                <span style="font-size: 14px; color: var(--text-500);">满 ¥</span>
+                <input type="number" class="security-input" value="199" style="width: 100px; text-align: center;">
+                <span class="security-input-suffix">免运费</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- 通知配置 Tab 面板 -->
+      <!-- ================================================================ -->
+      <div class="tab-panel" id="panel-notification" role="tabpanel">
+
+        <!-- 邮件服务器配置 -->
+        <p class="section-title">邮件服务器 (SMTP)</p>
+        <div class="config-card" style="margin: 0 16px;">
+          <div class="config-section">
+            <div>
+              <div class="config-label">SMTP 服务器</div>
+              <div class="config-desc">发送通知邮件的 SMTP 服务器地址</div>
+              <input type="text" class="config-input config-input-full" value="smtp.moyuyo.com" style="font-family: var(--font-mono); font-size: 12px;">
+            </div>
+          </div>
+          <div class="config-section">
+            <div>
+              <div class="config-label">端口</div>
+              <input type="number" class="config-input config-input-full" value="465" style="max-width: 100px; font-family: var(--font-mono); font-size: 12px;">
+            </div>
+          </div>
+          <div class="config-section">
+            <div>
+              <div class="config-label">发件人邮箱</div>
+              <input type="email" class="config-input config-input-full" value="noreply@moyuyo.com" style="font-family: var(--font-mono); font-size: 12px;">
+            </div>
+          </div>
+          <div class="config-section">
+            <div>
+              <div class="config-label">SMTP 密码</div>
+              <input type="password" class="config-input config-input-full" value="••••••••••" style="font-family: var(--font-mono); font-size: 12px;">
+            </div>
+          </div>
+          <div class="config-section">
+            <div class="config-row">
+              <div>
+                <div class="config-label">启用 SSL</div>
+                <div class="config-desc">使用 SSL/TLS 加密连接</div>
+              </div>
+              <div class="toggle-track" role="switch" aria-checked="true" aria-label="启用 SSL" tabindex="0">
+                <div class="toggle-thumb"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 通知触发场景 -->
+        <p class="section-title" style="margin-top: 20px;">通知触发场景</p>
+        <div class="config-card" style="margin: 0 16px 16px;">
+          <div class="notification-item">
+            <div>
+              <div class="config-label">订单确认通知</div>
+              <div class="config-desc">用户下单成功后发送确认邮件</div>
+            </div>
+            <div class="toggle-track" role="switch" aria-checked="true" aria-label="订单确认通知" tabindex="0">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <div class="notification-item">
+            <div>
+              <div class="config-label">发货通知</div>
+              <div class="config-desc">订单发货后通知用户物流信息</div>
+            </div>
+            <div class="toggle-track" role="switch" aria-checked="true" aria-label="发货通知" tabindex="0">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <div class="notification-item">
+            <div>
+              <div class="config-label">订单取消通知</div>
+              <div class="config-desc">订单被取消时通知用户</div>
+            </div>
+            <div class="toggle-track" role="switch" aria-checked="true" aria-label="订单取消通知" tabindex="0">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <div class="notification-item">
+            <div>
+              <div class="config-label">促销活动通知</div>
+              <div class="config-desc">向用户推送促销活动和优惠信息</div>
+            </div>
+            <div class="toggle-track" role="switch" aria-checked="false" aria-label="促销活动通知" tabindex="0">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <div class="notification-item">
+            <div>
+              <div class="config-label">库存预警通知</div>
+              <div class="config-desc">商品库存低于阈值时通知管理员</div>
+            </div>
+            <div class="toggle-track" role="switch" aria-checked="true" aria-label="库存预警通知" tabindex="0">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <div class="notification-item">
+            <div>
+              <div class="config-label">退款处理通知</div>
+              <div class="config-desc">退款申请和处理状态更新时通知</div>
+            </div>
+            <div class="toggle-track" role="switch" aria-checked="true" aria-label="退款处理通知" tabindex="0">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <div class="notification-item">
+            <div>
+              <div class="config-label">系统异常通知</div>
+              <div class="config-desc">系统出现异常时通知运维管理员</div>
+            </div>
+            <div class="toggle-track" role="switch" aria-checked="true" aria-label="系统异常通知" tabindex="0">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- 安全配置 Tab 面板 -->
+      <!-- ================================================================ -->
+      <div class="tab-panel" id="panel-security" role="tabpanel">
+
+        <!-- 风控规则 -->
+        <p class="section-title">风控规则</p>
+        <div class="config-card" style="margin: 0 16px;">
+          <div class="config-section">
+            <div>
+              <div class="config-label">单日下单限额</div>
+              <div class="config-desc">单个用户每日最大下单次数</div>
+              <div class="security-input-group">
+                <input type="number" class="security-input" value="50" style="width: 80px; text-align: center;">
+                <span class="security-input-suffix">单 / 天</span>
+              </div>
+            </div>
+          </div>
+          <div class="config-section">
+            <div>
+              <div class="config-label">单笔金额上限</div>
+              <div class="config-desc">单笔订单允许的最大支付金额</div>
+              <div class="security-input-group">
+                <span style="font-size: 14px; color: var(--text-500);">¥</span>
+                <input type="number" class="security-input" value="50000" style="width: 120px; text-align: center;">
+                <span class="security-input-suffix">/ 单</span>
+              </div>
+            </div>
+          </div>
+          <div class="config-section">
+            <div>
+              <div class="config-label">IP 频率限制</div>
+              <div class="config-desc">同一 IP 每分钟最大请求数</div>
+              <div class="security-input-group">
+                <input type="number" class="security-input" value="60" style="width: 80px; text-align: center;">
+                <span class="security-input-suffix">次 / 分钟</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 登录安全 -->
+        <p class="section-title" style="margin-top: 20px;">登录安全</p>
+        <div class="config-card" style="margin: 0 16px;">
+          <div class="config-section">
+            <div class="config-row">
+              <div style="flex: 1;">
+                <div class="config-label">双因子认证 (2FA)</div>
+                <div class="config-desc">管理员登录时要求二次验证</div>
+              </div>
+              <div class="toggle-track" role="switch" aria-checked="true" aria-label="双因子认证" tabindex="0">
+                <div class="toggle-thumb"></div>
+              </div>
+            </div>
+          </div>
+          <div class="config-section">
+            <div>
+              <div class="config-label">密码策略</div>
+              <div class="config-desc">管理员密码复杂度要求</div>
+              <div class="radio-group">
+                <button class="radio-option" data-radio="password" data-value="basic">基础</button>
+                <button class="radio-option selected" data-radio="password" data-value="standard">标准</button>
+                <button class="radio-option" data-radio="password" data-value="strict">严格</button>
+              </div>
+              <div style="margin-top: 8px; font-size: 12px; color: var(--text-400);">
+                当前策略：8位以上，含大小写字母和数字
+              </div>
+            </div>
+          </div>
+          <div class="config-section">
+            <div class="config-row">
+              <div style="flex: 1;">
+                <div class="config-label">登录失败锁定</div>
+                <div class="config-desc">连续登录失败后锁定账号</div>
+              </div>
+              <div class="toggle-track" role="switch" aria-checked="true" aria-label="登录失败锁定" tabindex="0">
+                <div class="toggle-thumb"></div>
+              </div>
+            </div>
+            <div>
+              <div class="config-label" style="font-size: 13px; color: var(--text-500);">最大失败次数</div>
+              <div class="security-input-group">
+                <input type="number" class="security-input" value="5" style="width: 72px; text-align: center;">
+                <span class="security-input-suffix">次后锁定 30 分钟</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 数据备份 -->
+        <p class="section-title" style="margin-top: 20px;">数据备份</p>
+        <div class="config-card" style="margin: 0 16px 16px;">
+          <div class="config-section">
+            <div class="config-row">
+              <div style="flex: 1;">
+                <div class="config-label">自动备份</div>
+                <div class="config-desc">自动定期备份系统数据</div>
+              </div>
+              <div class="toggle-track" role="switch" aria-checked="true" aria-label="自动备份" tabindex="0">
+                <div class="toggle-thumb"></div>
+              </div>
+            </div>
+          </div>
+          <div class="config-section">
+            <div class="config-row">
+              <div>
+                <div class="config-label">备份频率</div>
+                <div class="config-desc">自动备份的执行周期</div>
+              </div>
+              <div class="config-value">
+                <span>每日</span>
+                <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg');"></span>
+              </div>
+            </div>
+            <div class="config-row">
+              <div>
+                <div class="config-label">备份保留天数</div>
+                <div class="config-desc">超过保留期的备份将自动清理</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="number" class="config-input" value="30" style="width: 72px; text-align: center;">
+                <span class="security-input-suffix">天</span>
+              </div>
+            </div>
+          </div>
+          <div class="config-section">
+            <div class="config-row">
+              <div style="flex: 1;">
+                <div class="config-label">最近备份时间</div>
+                <div class="config-desc">上一次成功备份的时间</div>
+              </div>
+              <div class="config-value" style="font-size: 13px;">
+                <span>2026-07-08 03:00</span>
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); color: var(--state-success);"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ===== 底部保存栏 ===== -->
+    <div class="save-bar">
+      <button class="btn btn-primary btn-lg" style="width: 100%; height: 50px; font-size: 15px; border-radius: 14px;" data-dom-id="cta-save">
+        保存配置
+      </button>
+    </div>
+
+    <!-- ===== 交互脚本 ===== -->
+    <script>
+      // 初始化 Lucide 图标
+      lucide.createIcons();
+
+      // ===== Tab 切换逻辑 =====
+      const tabButtons = document.querySelectorAll('.config-tab');
+      const tabPanels = document.querySelectorAll('.tab-panel');
+
+      tabButtons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var target = this.getAttribute('data-tab');
+
+          // 更新 Tab 按钮状态
+          tabButtons.forEach(function(b) {
+            b.classList.remove('active');
+            b.setAttribute('aria-selected', 'false');
+          });
+          this.classList.add('active');
+          this.setAttribute('aria-selected', 'true');
+
+          // 切换面板显示
+          tabPanels.forEach(function(panel) {
+            panel.classList.remove('active');
+          });
+          var targetPanel = document.getElementById('panel-' + target);
+          if (targetPanel) {
+            targetPanel.classList.add('active');
+          }
+
+          // 滚动回顶部
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      });
+
+      // ===== Toggle 开关交互 =====
+      document.querySelectorAll('.toggle-track').forEach(function(toggle) {
+        function handleToggle() {
+          var isChecked = toggle.getAttribute('aria-checked') === 'true';
+          toggle.setAttribute('aria-checked', isChecked ? 'false' : 'true');
+        }
+
+        toggle.addEventListener('click', handleToggle);
+        toggle.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleToggle();
+          }
+        });
+      });
+
+      // ===== 单选按钮组交互 =====
+      document.querySelectorAll('.radio-group').forEach(function(group) {
+        var options = group.querySelectorAll('.radio-option');
+        options.forEach(function(opt) {
+          opt.addEventListener('click', function() {
+            options.forEach(function(o) { o.classList.remove('selected'); });
+            this.classList.add('selected');
+          });
+        });
+      });
+    </script>
+</body>
+</html>

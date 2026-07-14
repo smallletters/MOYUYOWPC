@@ -1,0 +1,8 @@
+{
+  "cartIds": [1, 2],
+  "addressId": 88,
+  "couponId": 9001,
+  "pointsUsed": 0,
+  "remark": "Please handle with care",
+  "payChannel": "STRIPE"
+}

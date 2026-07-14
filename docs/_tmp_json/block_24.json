@@ -1,0 +1,19 @@
+{
+  "code": 0,
+  "data": {
+    "userId": 10086,
+    "email": "tom@example.com",
+    "emailVerified": true,
+    "phone": null,
+    "nickname": "Tom",
+    "avatar": "https://cdn.moyuyo.com/avatar/u10086.png",
+    "country": "US",
+    "locale": "en_US",
+    "timezone": "America/Los_Angeles",
+    "memberLevel": "GOLD",
+    "points": 1280,
+    "couponCount": 5,
+    "twoFactorEnabled": true,
+    "registerTime": "2025-08-12T10:23:11Z"
+  }
+}

@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>搜索词分析 - MOYUYO 管理后台</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04); /* Hairline */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04); /* Subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05); /* Card */
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* Raised */
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Card Hover */
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05); /* Float */
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06); /* Overlay */
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12); /* Modal */
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+/*
+ * components.css - aggregated component CSS
+ * Auto-extracted from preview/component-*.html files.
+ * DO NOT EDIT. Regenerate with extract-components-css.mjs.
+ *
+ * Foundation tokens live in colors_and_type.css.
+ * This file consumes those tokens via var(--*) references.
+ */
+
+/* ============================================================
+ * Button
+ * source: preview/component-button.html
+ * rules: 10
+ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+/* ============================================================
+ * Card
+ * source: preview/component-card.html
+ * rules: 12
+ */
+.card{width:188px;min-height:148px;padding:calc(var(--spacing)*5);display:flex;flex-direction:column;justify-content:space-between;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);transition:transform .18s ease,box-shadow .18s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.card.disabled,.card.disabled:hover{opacity:.5;transform:none;box-shadow:var(--shadow-md)}
+.eyebrow,.meta{color:var(--muted-foreground);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.title{margin:6px 0 8px;font-size:18px;line-height:1.15}
+.body-copy{margin:0;color:var(--muted-foreground);font-size:13px}
+.cta{display:inline-flex;align-items:center;justify-content:center;width:max-content;margin-top:12px;padding:calc(var(--spacing)*2) calc(var(--spacing)*3.5);border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;font-weight:700;text-decoration:none}
+.media{aspect-ratio:4/3;border-radius:calc(var(--radius) - 4px);background:linear-gradient(135deg,var(--secondary),var(--accent));border:1px solid var(--border)}
+.media-card{min-height:212px;padding:calc(var(--spacing)*4)}
+.media-card .title{font-size:16px;margin:10px 0 6px}
+.price{font-size:12px;color:var(--muted-foreground)}
+
+/* ============================================================
+ * Comparison Table
+ * source: preview/component-comparison-table.html
+ * rules: 13
+ */
+.t{display:grid;grid-template-columns:96px repeat(3,1fr);overflow:hidden;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-sm)}
+.q{grid-template-columns:82px repeat(4,1fr)}
+.c{padding:10px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.t>.c:nth-child(4n),.q>.c:nth-child(5n){border-right:0}
+.t>.c:nth-last-child(-n+4),.q>.c:nth-last-child(-n+5){border-bottom:0}
+.m{background:var(--background);color:var(--muted-foreground);font:700 10px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase}
+.h{background:var(--background);font-weight:700}
+.k{display:block;font-size:14px;line-height:1.1}
+.s{display:block;margin-top:4px;color:var(--chart-2);font-size:11px;font-weight:700}
+.b .k{color:var(--chart-2)}
+.v{font-weight:600}
+.n{color:var(--muted-foreground);font-size:12px}
+.x{opacity:.45}
+
+/* ============================================================
+ * Input
+ * source: preview/component-input.html
+ * rules: 10
+ */
+.surface{display:flex;gap:calc(var(--spacing)*2);padding:calc(var(--spacing)*3);border:1px solid var(--border);border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow-sm)}
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field.small{height:40px}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.field.disabled{opacity:.55}
+.icon,.clear{padding:0;border:0;background:transparent;color:var(--icon-muted);font:inherit}
+.icon{font-size:13px}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+
+/* ============================================================
+ * Navigation
+ * source: preview/component-navigation.html
+ * rules: 16
+ */
+.webbar,.mobile{border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.webbar{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:320px;height:44px;padding:0 calc(var(--spacing)*3);border-radius:var(--radius);background:var(--sidebar)}
+.brand{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.link,.tab{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;color:inherit;text-decoration:none;white-space:nowrap;transition:background-color .18s ease,color .18s ease,opacity .18s ease}
+.link{height:32px;padding:0 calc(var(--spacing)*2.5)}
+.link:hover,.tab:hover{background:var(--secondary)}
+.link:focus-visible,.tab:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.disabled{opacity:.48}
+.disabled .link,.disabled .tab{pointer-events:none}
+.mobile{padding:calc(var(--spacing)*2);border-radius:calc(var(--radius)*1.1);background:var(--card)}
+.screen{display:flex;align-items:flex-end;justify-content:center;width:188px;height:164px;padding:calc(var(--spacing)*3);border-radius:calc(var(--radius)*.9);background:linear-gradient(180deg,var(--background),var(--secondary))}
+.tabbar{display:flex;gap:calc(var(--spacing)*1.5);padding:calc(var(--spacing)*1.5);border:1px solid var(--border);border-radius:999px;background:var(--card);box-shadow:var(--shadow-md)}
+.tab{flex-direction:column;gap:2px;min-width:56px;height:56px;padding:0 calc(var(--spacing)*1.5);font-size:11px;text-align:center}
+.dot{width:18px;height:18px;border-radius:999px;background:var(--secondary);box-shadow:inset 0 0 0 1px var(--border)}
+.tab:hover .dot{background:var(--primary)}
+
+/* ============================================================
+ * Product Grid
+ * source: preview/component-product-grid.html
+ * rules: 12
+ */
+.grid{display:grid;gap:8px;flex:1}
+.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.card{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-xs);transition:border-color .2s ease,transform .2s ease}
+.card:hover{border-color:var(--primary);transform:translateY(-1px)}
+.media{aspect-ratio:1;border-radius:calc(var(--radius) - 4px);background:linear-gradient(135deg,var(--secondary),var(--background));border:1px solid var(--border)}
+.eyebrow{color:var(--muted-foreground);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.title{font-size:15px;line-height:1.25}
+.price{font-variant-numeric:tabular-nums}
+.cta{display:inline-flex;align-self:flex-start;padding:7px 10px;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;text-decoration:none}
+.muted{color:var(--muted-foreground)}
+.is-disabled{opacity:.55}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      /* 管理后台布局基础样式 */
+      body {
+        font-family: var(--font-sans);
+        overflow: hidden;
+      }
+      .admin-layout {
+        display: flex;
+        height: 100vh;
+      }
+      /* 左侧导航栏 */
+      .admin-sidebar {
+        width: 220px;
+        min-width: 220px;
+        background: var(--background-800);
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid var(--background-700);
+      }
+      .sidebar-logo {
+        height: 56px;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--background-700);
+      }
+      .sidebar-logo span {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-50);
+        letter-spacing: 0.04em;
+      }
+      .sidebar-nav {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px 0;
+      }
+      .sidebar-nav::-webkit-scrollbar { display: none; }
+      .sidebar-nav { scrollbar-width: none; }
+      .nav-section-label {
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--text-300);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 12px 20px 6px;
+      }
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 40px;
+        padding: 0 20px;
+        color: var(--text-200);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.15s ease, color 0.15s ease;
+        border-left: 3px solid transparent;
+        text-decoration: none;
+      }
+      .nav-item:hover {
+        background: var(--background-700);
+        color: var(--text-50);
+      }
+      .nav-item.active {
+        background: rgba(0, 122, 255, 0.12);
+        color: var(--brand-400);
+        border-left-color: var(--brand-500);
+      }
+      .nav-item i,
+      .nav-item [data-lucide] {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+      /* 右侧内容区 */
+      .admin-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: var(--background-100);
+      }
+      /* 顶部栏 */
+      .admin-topbar {
+        height: 56px;
+        min-height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        background: var(--card);
+        border-bottom: 1px solid var(--border);
+      }
+      .topbar-breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+      }
+      .breadcrumb-sep {
+        color: var(--text-400);
+      }
+      .breadcrumb-current {
+        color: var(--text-800);
+        font-weight: 600;
+      }
+      .breadcrumb-link {
+        color: var(--text-400);
+        text-decoration: none;
+      }
+      .breadcrumb-link:hover {
+        color: var(--primary);
+      }
+      .topbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      /* 主内容滚动区 */
+      .admin-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px;
+      }
+      .admin-content::-webkit-scrollbar { width: 6px; }
+      .admin-content::-webkit-scrollbar-track { background: transparent; }
+      .admin-content::-webkit-scrollbar-thumb { background: var(--background-400); border-radius: 3px; }
+      /* KPI 卡片趋势 */
+      .kpi-trend-up { color: var(--state-success); }
+      .kpi-trend-down { color: var(--state-error); }
+      .kpi-trend-neutral { color: var(--text-400); }
+      /* 表格样式 */
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .data-table thead th {
+        background: var(--background-100);
+        color: var(--text-500);
+        font-weight: 600;
+        font-size: 12px;
+        text-align: left;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      .data-table tbody td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text-800);
+      }
+      .data-table tbody tr:hover {
+        background: var(--accent);
+      }
+      .data-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+      /* 趋势标签 */
+      .trend-up {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        color: var(--state-success);
+        font-weight: 600;
+        font-size: 12px;
+      }
+      .trend-down {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        color: var(--state-error);
+        font-weight: 600;
+        font-size: 12px;
+      }
+      .trend-neutral {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        color: var(--text-400);
+        font-weight: 600;
+        font-size: 12px;
+      }
+      .trend-new {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        background: var(--brand-50);
+        color: var(--brand-600);
+        font-weight: 600;
+        font-size: 11px;
+        border-radius: 999px;
+      }
+      /* 时间选择器 */
+      .time-selector {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        background: var(--background-100);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 3px;
+      }
+      .time-btn {
+        padding: 6px 14px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-500);
+        background: transparent;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.15s ease, color 0.15s ease;
+      }
+      .time-btn:hover {
+        color: var(--text-800);
+      }
+      .time-btn.active {
+        background: var(--card);
+        color: var(--primary);
+        font-weight: 600;
+        box-shadow: var(--shadow-xs);
+      }
+      /* 操作按钮 */
+      .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 5px 12px;
+        font-size: 12px;
+        font-weight: 500;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--card);
+        color: var(--text-600);
+        cursor: pointer;
+        transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+      }
+      .action-btn:hover {
+        background: var(--accent);
+        color: var(--primary);
+        border-color: var(--primary);
+      }
+      .action-btn-primary {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border-color: var(--primary);
+      }
+      .action-btn-primary:hover {
+        filter: brightness(0.96);
+        color: var(--primary-foreground);
+      }
+      /* 搜索词云 */
+      .word-cloud {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 8px 16px;
+        padding: 32px 24px;
+        min-height: 200px;
+      }
+      .word-cloud-item {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: default;
+        transition: background-color 0.15s ease;
+        white-space: nowrap;
+      }
+      .word-cloud-item:hover {
+        background: var(--brand-50);
+      }
+      /* 零结果警告标签 */
+      .suggestion-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        background: var(--state-error-surface);
+        color: var(--state-error);
+      }
+      /* 卡片头部 */
+      .section-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-xs);
+        overflow: hidden;
+      }
+      .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+      }
+      .section-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text-800);
+      }
+      /* KPI 卡片数字 */
+      .kpi-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text-800);
+        font-variant-numeric: tabular-nums;
+        line-height: 1.2;
+      }
+      .kpi-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-400);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .kpi-change {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-top: 6px;
+      }
+      /* 零结果行操作区 */
+      .zero-result-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .zero-result-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .search-count-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        background: var(--accent);
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-500);
+      }
+    
+    /* 妗岄潰绔鐞嗛〉闈㈡渶灏忓搴︾害鏉?*/
+    body { min-width: 1280px; }</style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+
+  <!-- 后台管理布局：侧边栏 + 主内容 -->
+  <div class="admin-layout">
+
+    <!-- ===== 左侧导航栏 ===== -->
+    <aside class="admin-sidebar">
+      <!-- Logo -->
+      <div class="sidebar-logo">
+        <span>MOYUYO Admin</span>
+      </div>
+
+      <!-- 导航菜单 -->
+      <nav class="sidebar-nav" aria-label="主导航">
+
+        <div class="nav-section-label">概览</div>
+        <a class="nav-item" href="#">
+          <i data-lucide="layout-dashboard"></i>
+          <span>仪表盘</span>
+        </a>
+
+        <div class="nav-section-label">运营</div>
+        <a class="nav-item" href="#">
+          <i data-lucide="package"></i>
+          <span>商品管理</span>
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="clipboard-list"></i>
+          <span>订单管理</span>
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="users"></i>
+          <span>用户管理</span>
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="megaphone"></i>
+          <span>营销管理</span>
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="file-text"></i>
+          <span>内容管理</span>
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="headphones"></i>
+          <span>客服管理</span>
+        </a>
+
+        <div class="nav-section-label">数据</div>
+        <a class="nav-item active" href="#" aria-current="page">
+          <i data-lucide="bar-chart-3"></i>
+          <span>数据统计</span>
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="truck"></i>
+          <span>物流管理</span>
+        </a>
+
+        <div class="nav-section-label">系统</div>
+        <a class="nav-item" href="#">
+          <i data-lucide="shield-alert"></i>
+          <span>风控管理</span>
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="settings"></i>
+          <span>系统设置</span>
+        </a>
+
+      </nav>
+    </aside>
+
+    <!-- ===== 右侧主区域 ===== -->
+    <div class="admin-main">
+
+      <!-- 顶部栏 -->
+      <header class="admin-topbar">
+        <!-- 面包屑 -->
+        <div class="topbar-breadcrumb">
+          <a class="breadcrumb-link" href="#">数据统计</a>
+          <span class="breadcrumb-sep">/</span>
+          <a class="breadcrumb-link" href="#">商品分析</a>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current">搜索词分析</span>
+        </div>
+        <!-- 右侧操作 -->
+        <div class="topbar-actions">
+          <!-- 导出按钮 -->
+          <button class="action-btn" aria-label="导出报告">
+            <i data-lucide="download" style="width:14px;height:14px;"></i>
+            <span>导出</span>
+          </button>
+          <!-- 通知 -->
+          <button class="relative" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:var(--background-100);border:1px solid var(--border);border-radius:8px;cursor:pointer;" aria-label="通知">
+            <i data-lucide="bell" style="width:16px;height:16px;color:var(--text-500);"></i>
+            <span class="absolute" style="top:-2px;right:-2px;width:8px;height:8px;background:var(--state-error);border-radius:50%;border:2px solid var(--card);"></span>
+          </button>
+          <!-- 管理员头像 -->
+          <div style="width:32px;height:32px;border-radius:8px;background:var(--brand-50);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;">
+            <i data-lucide="user" style="width:16px;height:16px;color:var(--primary);"></i>
+          </div>
+        </div>
+      </header>
+
+      <!-- 主内容滚动区 -->
+      <div class="admin-content">
+
+        <!-- 页面标题 + 时间选择器 -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <div>
+            <h1 style="font-size:20px;font-weight:700;color:var(--text-800);margin:0;">搜索词分析</h1>
+            <p style="font-size:13px;color:var(--text-400);margin:4px 0 0;">分析用户搜索行为，优化搜索体验与商品覆盖</p>
+          </div>
+          <div class="time-selector">
+            <button class="time-btn" data-range="today">今日</button>
+            <button class="time-btn active" data-range="7d">7天</button>
+            <button class="time-btn" data-range="30d">30天</button>
+            <button class="time-btn" data-range="custom">自定义</button>
+          </div>
+        </div>
+
+        <!-- ===== 搜索概览 KPI 卡片 ===== -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
+
+          <!-- 今日搜索量 -->
+          <div class="section-card" style="padding:20px;">
+            <div class="kpi-label">
+              <i data-lucide="search" style="width:14px;height:14px;color:var(--text-400);"></i>
+              今日搜索量
+            </div>
+            <div class="kpi-value">12,345</div>
+            <div class="kpi-change kpi-trend-up">
+              <i data-lucide="trending-up" style="width:14px;height:14px;"></i>
+              <span>+8.5%</span>
+            </div>
+          </div>
+
+          <!-- 搜索->加购转化率 -->
+          <div class="section-card" style="padding:20px;">
+            <div class="kpi-label">
+              <i data-lucide="shopping-cart" style="width:14px;height:14px;color:var(--text-400);"></i>
+              搜索->加购转化率
+            </div>
+            <div class="kpi-value">12.3%</div>
+            <div class="kpi-change kpi-trend-up">
+              <i data-lucide="trending-up" style="width:14px;height:14px;"></i>
+              <span>+0.5%</span>
+            </div>
+          </div>
+
+          <!-- 零结果搜索占比 -->
+          <div class="section-card" style="padding:20px;">
+            <div class="kpi-label">
+              <i data-lucide="search-x" style="width:14px;height:14px;color:var(--text-400);"></i>
+              零结果搜索占比
+            </div>
+            <div class="kpi-value">3.2%</div>
+            <div class="kpi-change kpi-trend-up">
+              <i data-lucide="trending-down" style="width:14px;height:14px;"></i>
+              <span>-0.8%</span>
+            </div>
+          </div>
+
+          <!-- 平均搜索结果点击率 -->
+          <div class="section-card" style="padding:20px;">
+            <div class="kpi-label">
+              <i data-lucide="mouse-pointer-click" style="width:14px;height:14px;color:var(--text-400);"></i>
+              平均搜索结果点击率
+            </div>
+            <div class="kpi-value">45.6%</div>
+            <div class="kpi-change kpi-trend-neutral">
+              <i data-lucide="minus" style="width:14px;height:14px;"></i>
+              <span>持平</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ===== 热门搜索词排行 ===== -->
+        <div class="section-card" style="margin-bottom:24px;">
+          <div class="section-header">
+            <div class="section-title">热门搜索词排行</div>
+            <span style="font-size:12px;color:var(--text-400);">Top 20</span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width:60px;">排名</th>
+                  <th>搜索词</th>
+                  <th style="text-align:right;">搜索量</th>
+                  <th style="text-align:right;">搜索->点击率</th>
+                  <th style="text-align:right;">搜索->加购率</th>
+                  <th style="text-align:right;">趋势（较上周）</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- 第1名 -->
+                <tr>
+                  <td>
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:var(--brand-50);color:var(--brand-600);font-size:12px;font-weight:700;">1</span>
+                  </td>
+                  <td style="font-weight:600;">dog harness</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">1,234</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">52.3%</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">15.2%</td>
+                  <td style="text-align:right;">
+                    <span class="trend-up">
+                      <i data-lucide="arrow-up-right" style="width:14px;height:14px;"></i>
+                      12%
+                    </span>
+                  </td>
+                </tr>
+                <!-- 第2名 -->
+                <tr>
+                  <td>
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:var(--brand-50);color:var(--brand-600);font-size:12px;font-weight:700;">2</span>
+                  </td>
+                  <td style="font-weight:600;">cat shampoo</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">987</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">48.1%</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">12.8%</td>
+                  <td style="text-align:right;">
+                    <span class="trend-up">
+                      <i data-lucide="arrow-up-right" style="width:14px;height:14px;"></i>
+                      8%
+                    </span>
+                  </td>
+                </tr>
+                <!-- 第3名 -->
+                <tr>
+                  <td>
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:var(--brand-50);color:var(--brand-600);font-size:12px;font-weight:700;">3</span>
+                  </td>
+                  <td style="font-weight:600;">pet food</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">856</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">45.6%</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">10.5%</td>
+                  <td style="text-align:right;">
+                    <span class="trend-down">
+                      <i data-lucide="arrow-down-right" style="width:14px;height:14px;"></i>
+                      3%
+                    </span>
+                  </td>
+                </tr>
+                <!-- 第4名 -->
+                <tr>
+                  <td>
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:var(--brand-50);color:var(--brand-600);font-size:12px;font-weight:700;">4</span>
+                  </td>
+                  <td style="font-weight:600;">dog leash</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">723</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">50.2%</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">14.1%</td>
+                  <td style="text-align:right;">
+                    <span class="trend-up">
+                      <i data-lucide="arrow-up-right" style="width:14px;height:14px;"></i>
+                      15%
+                    </span>
+                  </td>
+                </tr>
+                <!-- 第5名 -->
+                <tr>
+                  <td>
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:var(--accent);color:var(--text-500);font-size:12px;font-weight:700;">5</span>
+                  </td>
+                  <td style="font-weight:600;">cat toy</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">654</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">42.3%</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">8.9%</td>
+                  <td style="text-align:right;">
+                    <span class="trend-up">
+                      <i data-lucide="arrow-up-right" style="width:14px;height:14px;"></i>
+                      5%
+                    </span>
+                  </td>
+                </tr>
+                <!-- 第6名 -->
+                <tr>
+                  <td>
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:var(--accent);color:var(--text-500);font-size:12px;font-weight:700;">6</span>
+                  </td>
+                  <td style="font-weight:600;">pet bed</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">598</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">38.7%</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">7.2%</td>
+                  <td style="text-align:right;">
+                    <span class="trend-neutral">
+                      <i data-lucide="minus" style="width:14px;height:14px;"></i>
+                      0%
+                    </span>
+                  </td>
+                </tr>
+                <!-- 第7名 -->
+                <tr>
+                  <td>
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:var(--accent);color:var(--text-500);font-size:12px;font-weight:700;">7</span>
+                  </td>
+                  <td style="font-weight:600;">dog collar</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">567</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">55.1%</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">16.8%</td>
+                  <td style="text-align:right;">
+                    <span class="trend-up">
+                      <i data-lucide="arrow-up-right" style="width:14px;height:14px;"></i>
+                      20%
+                    </span>
+                  </td>
+                </tr>
+                <!-- 第8名 -->
+                <tr>
+                  <td>
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:var(--accent);color:var(--text-500);font-size:12px;font-weight:700;">8</span>
+                  </td>
+                  <td style="font-weight:600;">organic pet treats</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">512</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">30.2%</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">5.6%</td>
+                  <td style="text-align:right;">
+                    <span class="trend-new">新上榜</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ===== 零结果搜索词列表 + 搜索词云（两栏布局） ===== -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+
+          <!-- 零结果搜索词列表 -->
+          <div class="section-card">
+            <div class="section-header">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="section-title">零结果搜索词</div>
+                <span class="suggestion-tag">
+                  <i data-lucide="alert-triangle" style="width:12px;height:12px;"></i>
+                  需要关注
+                </span>
+              </div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>搜索词</th>
+                    <th style="text-align:right;">搜索次数</th>
+                    <th>建议操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- 行1 -->
+                  <tr>
+                    <td style="font-weight:500;">hypoallergenic dog shampoo</td>
+                    <td style="text-align:right;">
+                      <span class="search-count-badge">89次</span>
+                    </td>
+                    <td>
+                      <div style="display:flex;gap:6px;">
+                        <button class="action-btn-primary action-btn" style="font-size:11px;padding:3px 10px;">
+                          <i data-lucide="plus" style="width:12px;height:12px;"></i>
+                          创建选品需求
+                        </button>
+                        <button class="action-btn" style="font-size:11px;padding:3px 10px;">
+                          <i data-lucide="check" style="width:12px;height:12px;"></i>
+                          标记已处理
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <!-- 行2 -->
+                  <tr>
+                    <td style="font-weight:500;">large breed dog harness</td>
+                    <td style="text-align:right;">
+                      <span class="search-count-badge">67次</span>
+                    </td>
+                    <td>
+                      <div style="display:flex;gap:6px;">
+                        <button class="action-btn-primary action-btn" style="font-size:11px;padding:3px 10px;">
+                          <i data-lucide="plus" style="width:12px;height:12px;"></i>
+                          创建选品需求
+                        </button>
+                        <button class="action-btn" style="font-size:11px;padding:3px 10px;">
+                          <i data-lucide="check" style="width:12px;height:12px;"></i>
+                          标记已处理
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <!-- 行3 -->
+                  <tr>
+                    <td style="font-weight:500;">eco-friendly cat litter</td>
+                    <td style="text-align:right;">
+                      <span class="search-count-badge">45次</span>
+                    </td>
+                    <td>
+                      <div style="display:flex;gap:6px;">
+                        <button class="action-btn-primary action-btn" style="font-size:11px;padding:3px 10px;">
+                          <i data-lucide="plus" style="width:12px;height:12px;"></i>
+                          创建选品需求
+                        </button>
+                        <button class="action-btn" style="font-size:11px;padding:3px 10px;">
+                          <i data-lucide="check" style="width:12px;height:12px;"></i>
+                          标记已处理
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <!-- 行4 -->
+                  <tr>
+                    <td style="font-weight:500;">pet stroller for cats</td>
+                    <td style="text-align:right;">
+                      <span class="search-count-badge">38次</span>
+                    </td>
+                    <td>
+                      <div style="display:flex;gap:6px;">
+                        <button class="action-btn-primary action-btn" style="font-size:11px;padding:3px 10px;">
+                          <i data-lucide="plus" style="width:12px;height:12px;"></i>
+                          创建选品需求
+                        </button>
+                        <button class="action-btn" style="font-size:11px;padding:3px 10px;">
+                          <i data-lucide="check" style="width:12px;height:12px;"></i>
+                          标记已处理
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <!-- 行5 -->
+                  <tr>
+                    <td style="font-weight:500;">grain free senior dog food</td>
+                    <td style="text-align:right;">
+                      <span class="search-count-badge">32次</span>
+                    </td>
+                    <td>
+                      <div style="display:flex;gap:6px;">
+                        <button class="action-btn-primary action-btn" style="font-size:11px;padding:3px 10px;">
+                          <i data-lucide="plus" style="width:12px;height:12px;"></i>
+                          创建选品需求
+                        </button>
+                        <button class="action-btn" style="font-size:11px;padding:3px 10px;">
+                          <i data-lucide="check" style="width:12px;height:12px;"></i>
+                          标记已处理
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- 底部操作说明 -->
+            <div style="padding:12px 20px;border-top:1px solid var(--border);background:var(--background-100);">
+              <p style="font-size:11px;color:var(--text-400);margin:0;display:flex;align-items:center;gap:6px;">
+                <i data-lucide="info" style="width:13px;height:13px;"></i>
+                以上搜索词在近7天内无任何搜索结果，建议补充相关商品以提升用户搜索体验。
+              </p>
+            </div>
+          </div>
+
+          <!-- 搜索词云 -->
+          <div class="section-card">
+            <div class="section-header">
+              <div class="section-title">搜索词云</div>
+              <span style="font-size:12px;color:var(--text-400);">词频越高字号越大</span>
+            </div>
+            <!-- CSS 词云区域 -->
+            <div class="word-cloud">
+              <!-- 高频词 - 大字号 -->
+              <span class="word-cloud-item" style="font-size:28px;color:var(--brand-600);font-weight:700;opacity:1;">dog harness</span>
+              <span class="word-cloud-item" style="font-size:24px;color:var(--brand-500);font-weight:700;opacity:0.95;">cat shampoo</span>
+              <span class="word-cloud-item" style="font-size:22px;color:var(--text-700);font-weight:700;opacity:0.9;">pet food</span>
+              <span class="word-cloud-item" style="font-size:20px;color:var(--text-700);font-weight:600;opacity:0.85;">dog leash</span>
+              <span class="word-cloud-item" style="font-size:19px;color:var(--text-600);font-weight:600;opacity:0.8;">cat toy</span>
+              <span class="word-cloud-item" style="font-size:18px;color:var(--text-600);font-weight:600;opacity:0.75;">pet bed</span>
+              <!-- 中频词 - 中字号 -->
+              <span class="word-cloud-item" style="font-size:17px;color:var(--brand-600);font-weight:600;opacity:0.85;">dog collar</span>
+              <span class="word-cloud-item" style="font-size:16px;color:var(--text-500);font-weight:500;opacity:0.7;">organic pet treats</span>
+              <span class="word-cloud-item" style="font-size:15px;color:var(--text-500);font-weight:500;opacity:0.65;">pet carrier</span>
+              <span class="word-cloud-item" style="font-size:14px;color:var(--text-500);font-weight:500;opacity:0.6;">cat tree</span>
+              <span class="word-cloud-item" style="font-size:14px;color:var(--brand-500);font-weight:500;opacity:0.7;">dog food</span>
+              <!-- 低频词 - 小字号 -->
+              <span class="word-cloud-item" style="font-size:13px;color:var(--text-400);font-weight:500;opacity:0.55;">cat litter</span>
+              <span class="word-cloud-item" style="font-size:13px;color:var(--text-400);font-weight:500;opacity:0.5;">pet supplements</span>
+              <span class="word-cloud-item" style="font-size:12px;color:var(--text-400);font-weight:500;opacity:0.5;">dog grooming</span>
+              <span class="word-cloud-item" style="font-size:12px;color:var(--text-300);font-weight:500;opacity:0.45;">pet bowl</span>
+              <span class="word-cloud-item" style="font-size:11px;color:var(--text-300);font-weight:500;opacity:0.4;">cat harness</span>
+              <span class="word-cloud-item" style="font-size:11px;color:var(--text-300);font-weight:500;opacity:0.4;">pet sweater</span>
+              <span class="word-cloud-item" style="font-size:11px;color:var(--text-300);font-weight:500;opacity:0.35;">dog jacket</span>
+              <span class="word-cloud-item" style="font-size:10px;color:var(--text-300);font-weight:500;opacity:0.3;">fish tank</span>
+              <span class="word-cloud-item" style="font-size:10px;color:var(--text-300);font-weight:500;opacity:0.3;">bird cage</span>
+              <span class="word-cloud-item" style="font-size:10px;color:var(--text-300);font-weight:500;opacity:0.25;">reptile heater</span>
+              <span class="word-cloud-item" style="font-size:10px;color:var(--text-300);font-weight:500;opacity:0.25;">hamster wheel</span>
+            </div>
+            <!-- 词云说明 -->
+            <div style="padding:12px 20px;border-top:1px solid var(--border);background:var(--background-100);">
+              <p style="font-size:11px;color:var(--text-400);margin:0;display:flex;align-items:center;gap:6px;">
+                <i data-lucide="info" style="width:13px;height:13px;"></i>
+                字号和透明度反映搜索频率，可作为搜索词联想优化和选品参考。
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>lucide.createIcons();</script>
+</body>
+</html>

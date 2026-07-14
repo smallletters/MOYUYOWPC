@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A/B 实验 - MOYUYO 管理后台</title>
+    <style id="theme-vars">
+/*
+ * MOYUYO design tokens
+ * Brand: MOYUYO
+ * Domain: Pet e-commerce admin
+ * Style: Apple Design Library, desktop admin
+ * Theme mode: light-dark
+ * Source language: zh
+ */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff;
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759;
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30;
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* state-warning */
+  --state-warning: #ff9500;
+  --state-warning-dark: #ff9f0a;
+  --state-warning-surface: #fff3e0;
+  --state-warning-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: 'DM Sans', -apple-system, sans-serif;
+  --font-serif: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12);
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+}
+    </style>
+    <style id="component-vars">
+/* ============================================================
+ * Button
+ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); font-family: 'DM Sans', -apple-system, sans-serif; }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      /* 滚动条隐藏 */
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* 后台管理布局 */
+      .admin-layout {
+        display: flex;
+        min-height: 100vh;
+      }
+      .admin-sidebar {
+        width: 240px;
+        min-height: 100vh;
+        background: #1d1d1f;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+      .admin-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        background: var(--background);
+      }
+
+      /* 侧边栏品牌区 */
+      .sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 20px 20px 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+      }
+      .sidebar-brand-text {
+        font-size: 16px;
+        font-weight: 700;
+        color: #ffffff;
+        letter-spacing: 0.02em;
+      }
+
+      /* 侧边栏导航 */
+      .sidebar-nav {
+        flex: 1;
+        padding: 12px 10px;
+        overflow-y: auto;
+      }
+      .sidebar-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 8px;
+        color: rgba(255,255,255,0.6);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        text-decoration: none;
+        margin-bottom: 2px;
+      }
+      .sidebar-nav-item:hover {
+        background: rgba(255,255,255,0.06);
+        color: rgba(255,255,255,0.9);
+      }
+      .sidebar-nav-item.active {
+        background: var(--brand-500);
+        color: #ffffff;
+      }
+      .sidebar-nav-item .nav-icon {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+
+      /* 顶部栏 */
+      .admin-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 56px;
+        padding: 0 24px;
+        border-bottom: 1px solid var(--border);
+        background: var(--card);
+        flex-shrink: 0;
+      }
+
+      /* 面包屑 */
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--text-400);
+      }
+      .breadcrumb a {
+        color: var(--text-500);
+        text-decoration: none;
+        transition: color 0.15s ease;
+      }
+      .breadcrumb a:hover {
+        color: var(--primary);
+      }
+      .breadcrumb .current {
+        color: var(--text-800);
+        font-weight: 600;
+      }
+      .breadcrumb .separator {
+        color: var(--text-300);
+      }
+
+      /* 状态标签脉冲动画 */
+      @keyframes pulse-dot {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+      }
+      .status-pulse {
+        animation: pulse-dot 1.5s ease-in-out infinite;
+      }
+
+      /* 置信度进度条渐变 */
+      .confidence-bar-fill {
+        transition: width 0.6s ease;
+      }
+
+      /* 流量分配进度条 */
+      .traffic-bar {
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+        display: flex;
+      }
+      .traffic-bar > div {
+        transition: width 0.3s ease;
+      }
+
+      /* 实验卡片样式 */
+      .exp-card {
+        background: var(--card);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        padding: 20px;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+      }
+      .exp-card:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-lg);
+      }
+
+      /* 摘要卡片 */
+      .summary-card {
+        background: var(--card);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        padding: 20px;
+      }
+
+      /* 标签胶囊 */
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+      }
+      .tag-ui {
+        background: var(--brand-50);
+        color: var(--brand-600);
+      }
+      .tag-copy {
+        background: var(--state-warning-surface);
+        color: var(--state-warning);
+      }
+      .tag-price {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+      .tag-feature {
+        background: var(--brand-50);
+        color: var(--brand-700);
+      }
+      .tag-algo {
+        background: rgba(88, 86, 214, 0.1);
+        color: #5856d6;
+      }
+
+      /* 状态标签 */
+      .status-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .status-running {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+      .status-stopped {
+        background: var(--state-error-surface);
+        color: var(--state-error);
+      }
+      .status-completed {
+        background: var(--brand-50);
+        color: var(--brand-500);
+      }
+
+      /* 操作按钮组 */
+      .action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 32px;
+        padding: 0 12px;
+        border-radius: calc(var(--radius) * 0.6);
+        font-size: 12px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: background-color .18s ease, filter .18s ease;
+      }
+      .action-primary {
+        background: var(--primary);
+        color: var(--primary-foreground);
+      }
+      .action-primary:hover {
+        filter: brightness(0.96);
+      }
+      .action-secondary {
+        background: var(--secondary);
+        color: var(--secondary-foreground);
+      }
+      .action-secondary:hover {
+        background: var(--muted);
+      }
+      .action-danger {
+        background: var(--state-error-surface);
+        color: var(--state-error);
+      }
+      .action-danger:hover {
+        background: var(--state-error);
+        color: var(--state-error-foreground);
+      }
+
+      /* Tab 筛选栏 */
+      .filter-tab {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 36px;
+        padding: 0 14px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: all .18s ease;
+        white-space: nowrap;
+      }
+      .filter-tab-active {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        box-shadow: var(--shadow-sm);
+      }
+      .filter-tab-inactive {
+        background: var(--secondary);
+        color: var(--text-500);
+      }
+      .filter-tab-inactive:hover {
+        background: var(--background-300);
+      }
+
+      /* 指标对比行 */
+      .metric-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--background-200);
+      }
+      .metric-row:last-child {
+        border-bottom: none;
+      }
+
+      /* 引导步骤 */
+      .guide-step {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 0;
+      }
+      .guide-step-number {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: var(--primary-foreground);
+        font-size: 13px;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+      .guide-step-arrow {
+        color: var(--text-300);
+        font-size: 16px;
+        flex-shrink: 0;
+      }
+
+      body { min-width: 1280px; }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <div class="admin-layout">
+
+        <!-- ========== 左侧导航栏 ========== -->
+        <aside class="admin-sidebar">
+            <!-- 品牌标识 -->
+            <div class="sidebar-brand">
+                <i data-lucide="paw-print" class="w-6 h-6" style="color: var(--brand-500);"></i>
+                <span class="sidebar-brand-text">MOYUYO Admin</span>
+            </div>
+
+            <!-- 导航菜单 -->
+            <nav class="sidebar-nav">
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="layout-dashboard" class="nav-icon"></i>
+                    <span>仪表盘</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="package" class="nav-icon"></i>
+                    <span>商品管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="shopping-bag" class="nav-icon"></i>
+                    <span>订单管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="users" class="nav-icon"></i>
+                    <span>用户管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="megaphone" class="nav-icon"></i>
+                    <span>营销管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="file-text" class="nav-icon"></i>
+                    <span>内容管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="headphones" class="nav-icon"></i>
+                    <span>客服管理</span>
+                </a>
+                <!-- 当前高亮：数据统计 -->
+                <a class="sidebar-nav-item active" href="#">
+                    <i data-lucide="bar-chart-3" class="nav-icon"></i>
+                    <span>数据统计</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="truck" class="nav-icon"></i>
+                    <span>物流管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="shield-alert" class="nav-icon"></i>
+                    <span>风控管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="settings" class="nav-icon"></i>
+                    <span>系统设置</span>
+                </a>
+            </nav>
+
+            <!-- 侧边栏底部 -->
+            <div style="padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--brand-500); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="user" style="width: 16px; height: 16px; color: #fff;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9);">Admin</div>
+                        <div style="font-size: 11px; color: rgba(255,255,255,0.4);">超级管理员</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ========== 主内容区 ========== -->
+        <div class="admin-main">
+
+            <!-- 顶部栏 -->
+            <header class="admin-topbar">
+                <!-- 面包屑 -->
+                <div class="breadcrumb">
+                    <a href="#">数据统计</a>
+                    <span class="separator">/</span>
+                    <span class="current">A/B 实验</span>
+                </div>
+                <!-- 右侧操作区 -->
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="btn btn-primary" style="height: 36px; padding: 0 16px; font-size: 13px; gap: 6px;" data-dom-id="cta-create-experiment">
+                        <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+                        新建实验
+                    </button>
+                    <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--background-200); cursor: pointer;">
+                        <i data-lucide="bell" style="width: 18px; height: 18px; color: var(--text-600);"></i>
+                        <span style="position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--state-error);"></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 内容区 -->
+            <main style="flex: 1; padding: 24px; overflow-y: auto;">
+
+                <!-- 页面标题 -->
+                <div style="margin-bottom: 24px;">
+                    <h1 style="font-size: 22px; font-weight: 700; color: var(--text-800); margin: 0 0 6px;">A/B 实验</h1>
+                    <p style="font-size: 13px; color: var(--text-400); margin: 0;">管理实验创建、流量分配与效果分析，数据驱动产品决策</p>
+                </div>
+
+                <!-- ===== 实验状态筛选 Tab ===== -->
+                <div class="flex gap-2 mb-5" role="tablist" aria-label="实验状态筛选">
+                    <button class="filter-tab filter-tab-active" role="tab" aria-selected="true" data-status="all">全部</button>
+                    <button class="filter-tab filter-tab-inactive" role="tab" aria-selected="false" data-status="running">
+                        <span class="inline-block w-1.5 h-1.5 rounded-full status-pulse" style="background: var(--state-success);"></span>
+                        运行中
+                    </button>
+                    <button class="filter-tab filter-tab-inactive" role="tab" aria-selected="false" data-status="completed">已完成</button>
+                    <button class="filter-tab filter-tab-inactive" role="tab" aria-selected="false" data-status="stopped">已终止</button>
+                </div>
+
+                <!-- ===== 实验效果摘要卡片（运行中实验概览） ===== -->
+                <section style="margin-bottom: 24px;" aria-label="运行中实验效果摘要">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-sm font-bold" style="color: var(--foreground);">实验效果总览</h2>
+                        <span class="text-xs" style="color: var(--text-400);">3 个运行中</span>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="w-2 h-2 rounded-full status-pulse" style="background: var(--state-success);"></span>
+                            <span class="text-sm font-semibold" style="color: var(--foreground);">首页推荐算法优化</span>
+                        </div>
+
+                        <!-- 胜出 vs 下降指标 -->
+                        <div class="flex gap-3 mb-3">
+                            <!-- 胜出指标 -->
+                            <div class="flex-1 rounded-xl p-3" style="background: var(--state-success-surface);">
+                                <div class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--state-success);">胜出指标</div>
+                                <div class="mt-2 space-y-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs" style="color: var(--text-600);">转化率</span>
+                                        <span class="text-xs font-bold" style="color: var(--state-success);">+18.3%</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs" style="color: var(--text-600);">点击率</span>
+                                        <span class="text-xs font-bold" style="color: var(--state-success);">+12.7%</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs" style="color: var(--text-600);">GMV</span>
+                                        <span class="text-xs font-bold" style="color: var(--state-success);">+23.1%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 下降指标 -->
+                            <div class="flex-1 rounded-xl p-3" style="background: var(--state-error-surface);">
+                                <div class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--state-error);">下降指标</div>
+                                <div class="mt-2 space-y-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs" style="color: var(--text-600);">跳出率</span>
+                                        <span class="text-xs font-bold" style="color: var(--state-success);">-8.2%</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs" style="color: var(--text-600);">无变化</span>
+                                        <span class="text-xs font-bold" style="color: var(--text-400);">--</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs" style="color: var(--text-600);">无变化</span>
+                                        <span class="text-xs font-bold" style="color: var(--text-400);">--</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 统计显著性标记 -->
+                        <div class="flex items-center justify-between rounded-lg px-3 py-2" style="background: var(--background-200);">
+                            <div class="flex items-center gap-1.5">
+                                <i data-lucide="check-circle" style="width: 14px; height: 14px; color: var(--state-success);"></i>
+                                <span class="text-xs font-semibold" style="color: var(--state-success);">已达到统计显著性</span>
+                            </div>
+                            <span class="text-xs font-medium" style="color: var(--text-500);">置信度 97.8%</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== 实验列表 ===== -->
+                <section aria-label="实验列表">
+
+                    <!-- 实验卡片 1：运行中 - 推荐算法 -->
+                    <article class="exp-card mb-4" data-experiment="algo-v2">
+                      <!-- 标题行 -->
+                      <div class="flex items-start justify-between mb-2">
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-center gap-2 mb-1">
+                            <h3 class="text-[15px] font-bold truncate" style="color: var(--foreground);">首页推荐算法 V2</h3>
+                            <span class="status-tag status-running">
+                              <span class="w-1.5 h-1.5 rounded-full status-pulse" style="background: currentColor;"></span>
+                              运行中
+                            </span>
+                          </div>
+                          <p class="text-xs" style="color: var(--text-500);">目标指标：转化率</p>
+                        </div>
+                      </div>
+
+                      <!-- 标签 -->
+                      <div class="flex gap-1.5 mb-3">
+                        <span class="tag tag-algo">推荐算法</span>
+                      </div>
+
+                      <!-- 流量分配 -->
+                      <div class="mb-3">
+                        <div class="flex items-center justify-between mb-1.5">
+                          <span class="text-xs font-medium" style="color: var(--text-600);">流量分配</span>
+                          <div class="flex gap-3">
+                            <span class="text-xs" style="color: var(--text-500);">对照组 <strong style="color: var(--text-800);">50%</strong></span>
+                            <span class="text-xs" style="color: var(--text-500);">实验组 <strong style="color: var(--text-800);">50%</strong></span>
+                          </div>
+                        </div>
+                        <div class="traffic-bar" style="background: var(--background-200);">
+                          <div style="width: 50%; background: var(--brand-200); border-radius: 4px 0 0 4px;"></div>
+                          <div style="width: 50%; background: var(--brand-500); border-radius: 0 4px 4px 0;"></div>
+                        </div>
+                      </div>
+
+                      <!-- 运行天数 / 预计结束 -->
+                      <div class="flex items-center gap-4 mb-3">
+                        <div class="flex items-center gap-1.5">
+                          <i data-lucide="clock" style="width: 14px; height: 14px; color: var(--icon-muted);"></i>
+                          <span class="text-xs" style="color: var(--text-500);">已运行 <strong style="color: var(--text-800);">12 天</strong></span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                          <i data-lucide="calendar" style="width: 14px; height: 14px; color: var(--icon-muted);"></i>
+                          <span class="text-xs" style="color: var(--text-500);">预计结束 7/20</span>
+                        </div>
+                      </div>
+
+                      <!-- 核心指标对比 -->
+                      <div class="rounded-xl p-3 mb-3" style="background: var(--background-100);">
+                        <div class="text-[10px] font-semibold uppercase tracking-wide mb-2" style="color: var(--text-400);">核心指标对比</div>
+                        <div class="metric-row">
+                          <span class="text-xs" style="color: var(--text-600);">转化率</span>
+                          <div class="flex items-center gap-3">
+                            <span class="text-xs" style="color: var(--text-500);">对照 <strong style="color: var(--text-800);">3.2%</strong></span>
+                            <span class="text-xs font-bold" style="color: var(--state-success);">3.8% +18.3%</span>
+                          </div>
+                        </div>
+                        <div class="metric-row">
+                          <span class="text-xs" style="color: var(--text-600);">点击率</span>
+                          <div class="flex items-center gap-3">
+                            <span class="text-xs" style="color: var(--text-500);">对照 <strong style="color: var(--text-800);">12.5%</strong></span>
+                            <span class="text-xs font-bold" style="color: var(--state-success);">14.1% +12.7%</span>
+                          </div>
+                        </div>
+                        <div class="metric-row">
+                          <span class="text-xs" style="color: var(--text-600);">GMV</span>
+                          <div class="flex items-center gap-3">
+                            <span class="text-xs" style="color: var(--text-500);">对照 <strong style="color: var(--text-800);">¥52.3k</strong></span>
+                            <span class="text-xs font-bold" style="color: var(--state-success);">¥64.4k +23.1%</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- 置信度进度条 -->
+                      <div class="mb-3">
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-xs font-medium" style="color: var(--text-600);">置信度</span>
+                          <span class="text-xs font-bold" style="color: var(--state-success);">97.8%</span>
+                        </div>
+                        <div class="relative" style="height: 6px; background: var(--background-200); border-radius: 3px; overflow: visible;">
+                          <div class="confidence-bar-fill" style="width: 97.8%; height: 100%; background: var(--state-success); border-radius: 3px;"></div>
+                          <div class="absolute top-[-2px]" style="left: 95%;">
+                            <div style="width: 2px; height: 10px; background: var(--state-warning); border-radius: 1px;"></div>
+                            <div class="text-[9px] font-medium mt-0.5" style="color: var(--state-warning); white-space: nowrap; transform: translateX(-50%); margin-left: -1px;">95%</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- 操作按钮 -->
+                      <div class="flex gap-2">
+                        <button class="action-btn action-primary flex-1" data-dom-id="btn-view-detail">查看详情</button>
+                        <button class="action-btn action-secondary" data-dom-id="btn-stop-exp">终止</button>
+                        <button class="action-btn action-primary" data-dom-id="btn-rollout" style="background: var(--state-success); color: var(--state-success-foreground);">推全量</button>
+                      </div>
+                    </article>
+
+                    <!-- 实验卡片 2：运行中 - UI改版 -->
+                    <article class="exp-card mb-4" data-experiment="ui-redesign">
+                      <div class="flex items-start justify-between mb-2">
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-center gap-2 mb-1">
+                            <h3 class="text-[15px] font-bold truncate" style="color: var(--foreground);">商品详情页 UI 改版</h3>
+                            <span class="status-tag status-running">
+                              <span class="w-1.5 h-1.5 rounded-full status-pulse" style="background: currentColor;"></span>
+                              运行中
+                            </span>
+                          </div>
+                          <p class="text-xs" style="color: var(--text-500);">目标指标：加购率</p>
+                        </div>
+                      </div>
+
+                      <div class="flex gap-1.5 mb-3">
+                        <span class="tag tag-ui">UI改版</span>
+                      </div>
+
+                      <!-- 流量分配 -->
+                      <div class="mb-3">
+                        <div class="flex items-center justify-between mb-1.5">
+                          <span class="text-xs font-medium" style="color: var(--text-600);">流量分配</span>
+                          <div class="flex gap-3">
+                            <span class="text-xs" style="color: var(--text-500);">对照组 <strong style="color: var(--text-800);">70%</strong></span>
+                            <span class="text-xs" style="color: var(--text-500);">实验组 <strong style="color: var(--text-800);">30%</strong></span>
+                          </div>
+                        </div>
+                        <div class="traffic-bar" style="background: var(--background-200);">
+                          <div style="width: 70%; background: var(--brand-200); border-radius: 4px 0 0 4px;"></div>
+                          <div style="width: 30%; background: var(--brand-500); border-radius: 0 4px 4px 0;"></div>
+                        </div>
+                      </div>
+
+                      <div class="flex items-center gap-4 mb-3">
+                        <div class="flex items-center gap-1.5">
+                          <i data-lucide="clock" style="width: 14px; height: 14px; color: var(--icon-muted);"></i>
+                          <span class="text-xs" style="color: var(--text-500);">已运行 <strong style="color: var(--text-800);">5 天</strong></span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                          <i data-lucide="calendar" style="width: 14px; height: 14px; color: var(--icon-muted);"></i>
+                          <span class="text-xs" style="color: var(--text-500);">预计结束 7/22</span>
+                        </div>
+                      </div>
+
+                      <!-- 核心指标对比 -->
+                      <div class="rounded-xl p-3 mb-3" style="background: var(--background-100);">
+                        <div class="text-[10px] font-semibold uppercase tracking-wide mb-2" style="color: var(--text-400);">核心指标对比</div>
+                        <div class="metric-row">
+                          <span class="text-xs" style="color: var(--text-600);">加购率</span>
+                          <div class="flex items-center gap-3">
+                            <span class="text-xs" style="color: var(--text-500);">对照 <strong style="color: var(--text-800);">8.6%</strong></span>
+                            <span class="text-xs font-bold" style="color: var(--state-success);">9.2% +7.0%</span>
+                          </div>
+                        </div>
+                        <div class="metric-row">
+                          <span class="text-xs" style="color: var(--text-600);">转化率</span>
+                          <div class="flex items-center gap-3">
+                            <span class="text-xs" style="color: var(--text-500);">对照 <strong style="color: var(--text-800);">3.4%</strong></span>
+                            <span class="text-xs font-bold" style="color: var(--text-400);">3.3% -2.9%</span>
+                          </div>
+                        </div>
+                        <div class="metric-row">
+                          <span class="text-xs" style="color: var(--text-600);">停留时长</span>
+                          <div class="flex items-center gap-3">
+                            <span class="text-xs" style="color: var(--text-500);">对照 <strong style="color: var(--text-800);">42s</strong></span>
+                            <span class="text-xs font-bold" style="color: var(--state-success);">51s +21.4%</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- 置信度进度条 -->
+                      <div class="mb-3">
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-xs font-medium" style="color: var(--text-600);">置信度</span>
+                          <span class="text-xs font-bold" style="color: var(--state-warning);">72.3%</span>
+                        </div>
+                        <div class="relative" style="height: 6px; background: var(--background-200); border-radius: 3px; overflow: visible;">
+                          <div class="confidence-bar-fill" style="width: 72.3%; height: 100%; background: var(--state-warning); border-radius: 3px;"></div>
+                          <div class="absolute top-[-2px]" style="left: 95%;">
+                            <div style="width: 2px; height: 10px; background: var(--state-warning); border-radius: 1px;"></div>
+                            <div class="text-[9px] font-medium mt-0.5" style="color: var(--state-warning); white-space: nowrap; transform: translateX(-50%); margin-left: -1px;">95%</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="flex gap-2">
+                        <button class="action-btn action-primary flex-1" data-dom-id="btn-view-detail">查看详情</button>
+                        <button class="action-btn action-secondary" data-dom-id="btn-stop-exp">终止</button>
+                      </div>
+                    </article>
+
+                    <!-- 实验卡片 3：已完成 - 文案优化 -->
+                    <article class="exp-card mb-4" data-experiment="copy-test">
+                      <div class="flex items-start justify-between mb-2">
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-center gap-2 mb-1">
+                            <h3 class="text-[15px] font-bold truncate" style="color: var(--foreground);">商品标题文案优化</h3>
+                            <span class="status-tag status-completed">已完成</span>
+                          </div>
+                          <p class="text-xs" style="color: var(--text-500);">目标指标：点击率</p>
+                        </div>
+                      </div>
+
+                      <div class="flex gap-1.5 mb-3">
+                        <span class="tag tag-copy">文案</span>
+                      </div>
+
+                      <div class="mb-3">
+                        <div class="flex items-center justify-between mb-1.5">
+                          <span class="text-xs font-medium" style="color: var(--text-600);">流量分配</span>
+                          <div class="flex gap-3">
+                            <span class="text-xs" style="color: var(--text-500);">对照组 <strong style="color: var(--text-800);">50%</strong></span>
+                            <span class="text-xs" style="color: var(--text-500);">实验组 <strong style="color: var(--text-800);">50%</strong></span>
+                          </div>
+                        </div>
+                        <div class="traffic-bar" style="background: var(--background-200);">
+                          <div style="width: 50%; background: var(--brand-200); border-radius: 4px 0 0 4px;"></div>
+                          <div style="width: 50%; background: var(--brand-500); border-radius: 0 4px 4px 0;"></div>
+                        </div>
+                      </div>
+
+                      <div class="flex items-center gap-4 mb-3">
+                        <div class="flex items-center gap-1.5">
+                          <i data-lucide="clock" style="width: 14px; height: 14px; color: var(--icon-muted);"></i>
+                          <span class="text-xs" style="color: var(--text-500);">运行了 <strong style="color: var(--text-800);">14 天</strong></span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                          <i data-lucide="check-circle" style="width: 14px; height: 14px; color: var(--state-success);"></i>
+                          <span class="text-xs" style="color: var(--text-500);">已于 7/5 结束</span>
+                        </div>
+                      </div>
+
+                      <!-- 核心指标对比 -->
+                      <div class="rounded-xl p-3 mb-3" style="background: var(--background-100);">
+                        <div class="text-[10px] font-semibold uppercase tracking-wide mb-2" style="color: var(--text-400);">核心指标对比</div>
+                        <div class="metric-row">
+                          <span class="text-xs" style="color: var(--text-600);">点击率</span>
+                          <div class="flex items-center gap-3">
+                            <span class="text-xs" style="color: var(--text-500);">对照 <strong style="color: var(--text-800);">11.8%</strong></span>
+                            <span class="text-xs font-bold" style="color: var(--state-success);">13.6% +15.3%</span>
+                          </div>
+                        </div>
+                        <div class="metric-row">
+                          <span class="text-xs" style="color: var(--text-600);">转化率</span>
+                          <div class="flex items-center gap-3">
+                            <span class="text-xs" style="color: var(--text-500);">对照 <strong style="color: var(--text-800);">3.5%</strong></span>
+                            <span class="text-xs font-bold" style="color: var(--state-success);">3.7% +5.7%</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- 置信度 -->
+                      <div class="mb-3">
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-xs font-medium" style="color: var(--text-600);">置信度</span>
+                          <span class="text-xs font-bold" style="color: var(--brand-500);">96.2%</span>
+                        </div>
+                        <div class="relative" style="height: 6px; background: var(--background-200); border-radius: 3px; overflow: visible;">
+                          <div class="confidence-bar-fill" style="width: 96.2%; height: 100%; background: var(--brand-500); border-radius: 3px;"></div>
+                          <div class="absolute top-[-2px]" style="left: 95%;">
+                            <div style="width: 2px; height: 10px; background: var(--state-warning); border-radius: 1px;"></div>
+                            <div class="text-[9px] font-medium mt-0.5" style="color: var(--state-warning); white-space: nowrap; transform: translateX(-50%); margin-left: -1px;">95%</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="flex gap-2">
+                        <button class="action-btn action-primary flex-1" data-dom-id="btn-view-detail">查看详情</button>
+                        <button class="action-btn action-primary" data-dom-id="btn-rollout" style="background: var(--state-success); color: var(--state-success-foreground);">推全量</button>
+                      </div>
+                    </article>
+
+                    <!-- 实验卡片 4：已终止 - 价格实验 -->
+                    <article class="exp-card mb-4" style="opacity: 0.75;" data-experiment="price-test">
+                      <div class="flex items-start justify-between mb-2">
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-center gap-2 mb-1">
+                            <h3 class="text-[15px] font-bold truncate" style="color: var(--foreground);">会员定价策略实验</h3>
+                            <span class="status-tag status-stopped">已终止</span>
+                          </div>
+                          <p class="text-xs" style="color: var(--text-500);">目标指标：GMV</p>
+                        </div>
+                      </div>
+
+                      <div class="flex gap-1.5 mb-3">
+                        <span class="tag tag-price">价格</span>
+                      </div>
+
+                      <div class="mb-3">
+                        <div class="flex items-center justify-between mb-1.5">
+                          <span class="text-xs font-medium" style="color: var(--text-600);">流量分配</span>
+                          <div class="flex gap-3">
+                            <span class="text-xs" style="color: var(--text-500);">对照组 <strong style="color: var(--text-800);">60%</strong></span>
+                            <span class="text-xs" style="color: var(--text-500);">实验组 <strong style="color: var(--text-800);">40%</strong></span>
+                          </div>
+                        </div>
+                        <div class="traffic-bar" style="background: var(--background-200);">
+                          <div style="width: 60%; background: var(--brand-200); border-radius: 4px 0 0 4px;"></div>
+                          <div style="width: 40%; background: var(--brand-500); border-radius: 0 4px 4px 0;"></div>
+                        </div>
+                      </div>
+
+                      <div class="flex items-center gap-4 mb-3">
+                        <div class="flex items-center gap-1.5">
+                          <i data-lucide="clock" style="width: 14px; height: 14px; color: var(--icon-muted);"></i>
+                          <span class="text-xs" style="color: var(--text-500);">运行了 <strong style="color: var(--text-800);">3 天</strong></span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                          <i data-lucide="x-circle" style="width: 14px; height: 14px; color: var(--state-error);"></i>
+                          <span class="text-xs" style="color: var(--text-500);">已于 7/3 终止</span>
+                        </div>
+                      </div>
+
+                      <!-- 核心指标对比 -->
+                      <div class="rounded-xl p-3 mb-3" style="background: var(--background-100);">
+                        <div class="text-[10px] font-semibold uppercase tracking-wide mb-2" style="color: var(--text-400);">核心指标对比</div>
+                        <div class="metric-row">
+                          <span class="text-xs" style="color: var(--text-600);">GMV</span>
+                          <div class="flex items-center gap-3">
+                            <span class="text-xs" style="color: var(--text-500);">对照 <strong style="color: var(--text-800);">¥48.7k</strong></span>
+                            <span class="text-xs font-bold" style="color: var(--state-error);">¥41.2k -15.4%</span>
+                          </div>
+                        </div>
+                        <div class="metric-row">
+                          <span class="text-xs" style="color: var(--text-600);">转化率</span>
+                          <div class="flex items-center gap-3">
+                            <span class="text-xs" style="color: var(--text-500);">对照 <strong style="color: var(--text-800);">3.1%</strong></span>
+                            <span class="text-xs font-bold" style="color: var(--state-error);">2.8% -9.7%</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- 置信度 -->
+                      <div class="mb-3">
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-xs font-medium" style="color: var(--text-600);">置信度</span>
+                          <span class="text-xs font-bold" style="color: var(--text-400);">45.6%</span>
+                        </div>
+                        <div class="relative" style="height: 6px; background: var(--background-200); border-radius: 3px; overflow: visible;">
+                          <div class="confidence-bar-fill" style="width: 45.6%; height: 100%; background: var(--background-400); border-radius: 3px;"></div>
+                          <div class="absolute top-[-2px]" style="left: 95%;">
+                            <div style="width: 2px; height: 10px; background: var(--state-warning); border-radius: 1px;"></div>
+                            <div class="text-[9px] font-medium mt-0.5" style="color: var(--state-warning); white-space: nowrap; transform: translateX(-50%); margin-left: -1px;">95%</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="flex gap-2">
+                        <button class="action-btn action-primary flex-1" data-dom-id="btn-view-detail">查看详情</button>
+                      </div>
+                    </article>
+
+                    <!-- 实验卡片 5：运行中 - 功能开关 -->
+                    <article class="exp-card mb-4" data-experiment="feature-toggle">
+                      <div class="flex items-start justify-between mb-2">
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-center gap-2 mb-1">
+                            <h3 class="text-[15px] font-bold truncate" style="color: var(--foreground);">购物车满减提示功能</h3>
+                            <span class="status-tag status-running">
+                              <span class="w-1.5 h-1.5 rounded-full status-pulse" style="background: currentColor;"></span>
+                              运行中
+                            </span>
+                          </div>
+                          <p class="text-xs" style="color: var(--text-500);">目标指标：客单价</p>
+                        </div>
+                      </div>
+
+                      <div class="flex gap-1.5 mb-3">
+                        <span class="tag tag-feature">功能</span>
+                      </div>
+
+                      <div class="mb-3">
+                        <div class="flex items-center justify-between mb-1.5">
+                          <span class="text-xs font-medium" style="color: var(--text-600);">流量分配</span>
+                          <div class="flex gap-3">
+                            <span class="text-xs" style="color: var(--text-500);">对照组 <strong style="color: var(--text-800);">50%</strong></span>
+                            <span class="text-xs" style="color: var(--text-500);">实验组 <strong style="color: var(--text-800);">50%</strong></span>
+                          </div>
+                        </div>
+                        <div class="traffic-bar" style="background: var(--background-200);">
+                          <div style="width: 50%; background: var(--brand-200); border-radius: 4px 0 0 4px;"></div>
+                          <div style="width: 50%; background: var(--brand-500); border-radius: 0 4px 4px 0;"></div>
+                        </div>
+                      </div>
+
+                      <div class="flex items-center gap-4 mb-3">
+                        <div class="flex items-center gap-1.5">
+                          <i data-lucide="clock" style="width: 14px; height: 14px; color: var(--icon-muted);"></i>
+                          <span class="text-xs" style="color: var(--text-500);">已运行 <strong style="color: var(--text-800);">8 天</strong></span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                          <i data-lucide="calendar" style="width: 14px; height: 14px; color: var(--icon-muted);"></i>
+                          <span class="text-xs" style="color: var(--text-500);">预计结束 7/25</span>
+                        </div>
+                      </div>
+
+                      <!-- 核心指标对比 -->
+                      <div class="rounded-xl p-3 mb-3" style="background: var(--background-100);">
+                        <div class="text-[10px] font-semibold uppercase tracking-wide mb-2" style="color: var(--text-400);">核心指标对比</div>
+                        <div class="metric-row">
+                          <span class="text-xs" style="color: var(--text-600);">客单价</span>
+                          <div class="flex items-center gap-3">
+                            <span class="text-xs" style="color: var(--text-500);">对照 <strong style="color: var(--text-800);">¥128</strong></span>
+                            <span class="text-xs font-bold" style="color: var(--state-success);">¥142 +10.9%</span>
+                          </div>
+                        </div>
+                        <div class="metric-row">
+                          <span class="text-xs" style="color: var(--text-600);">转化率</span>
+                          <div class="flex items-center gap-3">
+                            <span class="text-xs" style="color: var(--text-500);">对照 <strong style="color: var(--text-800);">3.3%</strong></span>
+                            <span class="text-xs font-bold" style="color: var(--state-success);">3.5% +6.1%</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- 置信度进度条 -->
+                      <div class="mb-3">
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-xs font-medium" style="color: var(--text-600);">置信度</span>
+                          <span class="text-xs font-bold" style="color: var(--state-warning);">83.5%</span>
+                        </div>
+                        <div class="relative" style="height: 6px; background: var(--background-200); border-radius: 3px; overflow: visible;">
+                          <div class="confidence-bar-fill" style="width: 83.5%; height: 100%; background: var(--state-warning); border-radius: 3px;"></div>
+                          <div class="absolute top-[-2px]" style="left: 95%;">
+                            <div style="width: 2px; height: 10px; background: var(--state-warning); border-radius: 1px;"></div>
+                            <div class="text-[9px] font-medium mt-0.5" style="color: var(--state-warning); white-space: nowrap; transform: translateX(-50%); margin-left: -1px;">95%</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="flex gap-2">
+                        <button class="action-btn action-primary flex-1" data-dom-id="btn-view-detail">查看详情</button>
+                        <button class="action-btn action-secondary" data-dom-id="btn-stop-exp">终止</button>
+                      </div>
+                    </article>
+
+                </section>
+
+                <!-- ===== 新建实验引导入口 ===== -->
+                <section aria-label="新建实验引导">
+                    <div class="exp-card" style="background: linear-gradient(135deg, var(--brand-50), var(--card)); border: 1px dashed var(--brand-300);">
+                      <div class="flex items-center gap-2 mb-3">
+                        <i data-lucide="flask-conical" style="width: 20px; height: 20px; color: var(--primary);"></i>
+                        <h3 class="text-[15px] font-bold" style="color: var(--foreground);">新建 A/B 实验</h3>
+                      </div>
+                      <p class="text-xs mb-4" style="color: var(--text-500);">四步快速创建实验，数据驱动产品决策</p>
+
+                      <!-- 步骤引导 -->
+                      <div class="space-y-0">
+                        <div class="guide-step">
+                          <div class="guide-step-number">1</div>
+                          <div>
+                            <div class="text-sm font-semibold" style="color: var(--foreground);">实验目标</div>
+                            <div class="text-xs" style="color: var(--text-500);">选择要优化的核心指标</div>
+                          </div>
+                          <span class="guide-step-arrow">
+                            <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
+                          </span>
+                        </div>
+
+                        <div class="guide-step">
+                          <div class="guide-step-number">2</div>
+                          <div>
+                            <div class="text-sm font-semibold" style="color: var(--foreground);">变量设置</div>
+                            <div class="text-xs" style="color: var(--text-500);">配置对照组与实验组差异</div>
+                          </div>
+                          <span class="guide-step-arrow">
+                            <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
+                          </span>
+                        </div>
+
+                        <div class="guide-step">
+                          <div class="guide-step-number">3</div>
+                          <div>
+                            <div class="text-sm font-semibold" style="color: var(--foreground);">流量分配</div>
+                            <div class="text-xs" style="color: var(--text-500);">设置各组流量占比比例</div>
+                          </div>
+                          <span class="guide-step-arrow">
+                            <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
+                          </span>
+                        </div>
+
+                        <div class="guide-step">
+                          <div class="guide-step-number">4</div>
+                          <div>
+                            <div class="text-sm font-semibold" style="color: var(--foreground);">上线运行</div>
+                            <div class="text-xs" style="color: var(--text-500);">审核并启动实验上线</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button class="w-full mt-4 action-btn action-primary" style="height: 44px; border-radius: var(--radius); font-size: 14px;" data-dom-id="cta-create-experiment-guide">
+                        开始创建实验
+                      </button>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <script>lucide.createIcons();</script>
+</body>
+</html>

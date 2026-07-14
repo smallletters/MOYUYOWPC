@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOYUYO 物流管理</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04); /* Hairline */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04); /* Subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05); /* Card */
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* Raised */
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Card Hover */
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05); /* Float */
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06); /* Overlay */
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12); /* Modal */
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+/*
+ * components.css - aggregated component CSS
+ * Auto-extracted from preview/component-*.html files.
+ * DO NOT EDIT. Regenerate with extract-components-css.mjs.
+ *
+ * Foundation tokens live in colors_and_type.css.
+ * This file consumes those tokens via var(--*) references.
+ */
+
+/* ============================================================
+ * Button
+ * source: preview/component-button.html
+ * rules: 10
+ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+/* ============================================================
+ * Card
+ * source: preview/component-card.html
+ * rules: 12
+ */
+.card{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-xs);transition:border-color .2s ease,transform .2s ease}
+.card:hover{border-color:var(--primary);transform:translateY(-1px)}
+.eyebrow,.meta{color:var(--muted-foreground);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.title{margin:6px 0 8px;font-size:18px;line-height:1.15}
+.body-copy{margin:0;color:var(--muted-foreground);font-size:13px}
+.cta{display:inline-flex;align-items:center;justify-content:center;width:max-content;margin-top:12px;padding:calc(var(--spacing)*2) calc(var(--spacing)*3.5);border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;font-weight:700;text-decoration:none}
+.media{aspect-ratio:4/3;border-radius:calc(var(--radius) - 4px);background:linear-gradient(135deg,var(--secondary),var(--accent));border:1px solid var(--border)}
+.media-card{min-height:212px;padding:calc(var(--spacing)*4)}
+.media-card .title{font-size:16px;margin:10px 0 6px}
+.price{font-size:12px;color:var(--muted-foreground)}
+
+/* ============================================================
+ * Input
+ * source: preview/component-input.html
+ * rules: 10
+ */
+.surface{display:flex;gap:calc(var(--spacing)*2);padding:calc(var(--spacing)*3);border:1px solid var(--border);border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow-sm)}
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field.small{height:40px}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.field.disabled{opacity:.55}
+.icon,.clear{padding:0;border:0;background:transparent;color:var(--icon-muted);font:inherit}
+.icon{font-size:13px}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+
+/* ============================================================
+ * Navigation
+ * source: preview/component-navigation.html
+ * rules: 16
+ */
+.webbar,.mobile{border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.webbar{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:320px;height:44px;padding:0 calc(var(--spacing)*3);border-radius:var(--radius);background:var(--sidebar)}
+.brand{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.link,.tab{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;color:inherit;text-decoration:none;white-space:nowrap;transition:background-color .18s ease,color .18s ease,opacity .18s ease}
+.link{height:32px;padding:0 calc(var(--spacing)*2.5)}
+.link:hover,.tab:hover{background:var(--secondary)}
+.link:focus-visible,.tab:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.disabled{opacity:.48}
+.disabled .link,.disabled .tab{pointer-events:none}
+.mobile{padding:calc(var(--spacing)*2);border-radius:calc(var(--radius)*1.1);background:var(--card)}
+.screen{display:flex;align-items:flex-end;justify-content:center;width:188px;height:164px;padding:calc(var(--spacing)*3);border-radius:calc(var(--radius)*.9);background:linear-gradient(180deg,var(--background),var(--secondary))}
+.tabbar{display:flex;gap:calc(var(--spacing)*1.5);padding:calc(var(--spacing)*1.5);border:1px solid var(--border);border-radius:999px;background:var(--card);box-shadow:var(--shadow-md)}
+.tab{flex-direction:column;gap:2px;min-width:56px;height:56px;padding:0 calc(var(--spacing)*1.5);font-size:11px;text-align:center}
+.dot{width:18px;height:18px;border-radius:999px;background:var(--secondary);box-shadow:inset 0 0 0 1px var(--border)}
+.tab:hover .dot{background:var(--primary)}
+
+/* ============================================================
+ * Product Grid
+ * source: preview/component-product-grid.html
+ * rules: 12
+ */
+.grid{display:grid;gap:8px;flex:1}
+.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.price{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted-foreground)}
+.is-disabled{opacity:.55}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* 桌面端管理后台布局 */
+      body { min-width: 1280px; }
+
+      .admin-layout {
+        display: flex;
+        min-height: 100vh;
+      }
+      .admin-sidebar {
+        width: 240px;
+        min-height: 100vh;
+        background: #1d1d1f;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+      .admin-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        background: var(--background);
+      }
+
+      /* 侧边栏品牌区 */
+      .sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 20px 20px 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+      }
+      .sidebar-brand-text {
+        font-size: 16px;
+        font-weight: 700;
+        color: #ffffff;
+        letter-spacing: 0.02em;
+      }
+
+      /* 侧边栏导航 */
+      .sidebar-nav {
+        flex: 1;
+        padding: 12px 10px;
+        overflow-y: auto;
+      }
+      .sidebar-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 8px;
+        color: rgba(255,255,255,0.6);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        text-decoration: none;
+        margin-bottom: 2px;
+      }
+      .sidebar-nav-item:hover {
+        background: rgba(255,255,255,0.06);
+        color: rgba(255,255,255,0.9);
+      }
+      .sidebar-nav-item.active {
+        background: var(--brand-500);
+        color: #ffffff;
+      }
+      .sidebar-nav-item .nav-icon {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+
+      /* 顶部栏 */
+      .admin-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 56px;
+        padding: 0 24px;
+        border-bottom: 1px solid var(--border);
+        background: var(--card);
+        flex-shrink: 0;
+      }
+
+      /* 面包屑 */
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--text-400);
+      }
+      .breadcrumb a {
+        color: var(--text-500);
+        text-decoration: none;
+        transition: color 0.15s ease;
+      }
+      .breadcrumb a:hover {
+        color: var(--primary);
+      }
+      .breadcrumb .current {
+        color: var(--text-800);
+        font-weight: 600;
+      }
+      .breadcrumb .separator {
+        color: var(--text-300);
+      }
+
+      /* KPI 卡片桌面样式 */
+      .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+      }
+      .kpi-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        box-shadow: var(--shadow-xs);
+        transition: border-color 0.2s ease, transform 0.2s ease;
+      }
+      .kpi-card:hover {
+        border-color: var(--primary);
+        transform: translateY(-1px);
+      }
+      .kpi-card-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-500);
+        margin-bottom: 10px;
+      }
+      .kpi-card-value {
+        font-size: 28px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* 仓库切换标签 */
+      .warehouse-tabs {
+        display: flex;
+        gap: 4px;
+        padding: 4px;
+        background: var(--background-200);
+        border-radius: 10px;
+        width: fit-content;
+      }
+      .warehouse-tab {
+        padding: 8px 18px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-500);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        border: none;
+        background: transparent;
+        font-family: var(--font-sans);
+      }
+      .warehouse-tab:hover {
+        color: var(--text-700);
+      }
+      .warehouse-tab.active {
+        background: var(--card);
+        color: var(--primary);
+        box-shadow: var(--shadow-sm);
+      }
+
+      /* 内容区两栏布局 */
+      .content-grid {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 20px;
+      }
+
+      /* 库存预警表格 */
+      .stock-alert-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+      }
+      .stock-alert-table thead th {
+        background: var(--background-100);
+        padding: 10px 16px;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-600);
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+        letter-spacing: 0.02em;
+      }
+      .stock-alert-table tbody td {
+        padding: 12px 16px;
+        font-size: 13px;
+        color: var(--text-700);
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+      }
+      .stock-alert-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+      .stock-alert-table tbody tr:hover {
+        background: var(--accent);
+      }
+
+      /* 在途包裹表格 */
+      .package-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+      }
+      .package-table thead th {
+        background: var(--background-100);
+        padding: 10px 16px;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-600);
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+        letter-spacing: 0.02em;
+      }
+      .package-table tbody td {
+        padding: 12px 16px;
+        font-size: 13px;
+        color: var(--text-700);
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+      }
+      .package-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+      .package-table tbody tr:hover {
+        background: var(--accent);
+      }
+      .package-table tbody tr.row-error {
+        background: var(--state-error-surface);
+      }
+      .package-table tbody tr.row-error:hover {
+        background: var(--state-error-surface);
+      }
+      .package-table tbody tr.row-error td:first-child {
+        position: relative;
+      }
+      .package-table tbody tr.row-error td:first-child::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: var(--state-error);
+        border-radius: 0 2px 2px 0;
+      }
+
+      /* 标签样式 */
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .tag-blue {
+        background: var(--brand-50);
+        color: var(--brand-600);
+      }
+      .tag-green {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+      .tag-red {
+        background: var(--state-error-surface);
+        color: var(--state-error);
+      }
+      .tag-gray {
+        background: var(--background-200);
+        color: var(--text-600);
+      }
+
+      /* 渠道分布条形图 */
+      .channel-bar-group {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .channel-bar-item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .channel-bar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .channel-bar-track {
+        width: 100%;
+        height: 8px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: var(--background-200);
+      }
+      .channel-bar-fill {
+        height: 100%;
+        border-radius: 999px;
+        transition: width 0.3s ease;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <div class="admin-layout">
+
+        <!-- ========== 左侧导航栏 ========== -->
+        <aside class="admin-sidebar">
+            <!-- 品牌标识 -->
+            <div class="sidebar-brand">
+                <i data-lucide="paw-print" class="w-6 h-6" style="color: var(--brand-500);"></i>
+                <span class="sidebar-brand-text">MOYUYO Admin</span>
+            </div>
+
+            <!-- 导航菜单 -->
+            <nav class="sidebar-nav">
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="layout-dashboard" class="nav-icon"></i>
+                    <span>仪表盘</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="package" class="nav-icon"></i>
+                    <span>商品管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="shopping-bag" class="nav-icon"></i>
+                    <span>订单管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="users" class="nav-icon"></i>
+                    <span>用户管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="megaphone" class="nav-icon"></i>
+                    <span>营销管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="file-text" class="nav-icon"></i>
+                    <span>内容管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="headphones" class="nav-icon"></i>
+                    <span>客服管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="bar-chart-3" class="nav-icon"></i>
+                    <span>数据统计</span>
+                </a>
+                <!-- 物流管理 - 当前高亮 -->
+                <a class="sidebar-nav-item active" href="#">
+                    <i data-lucide="truck" class="nav-icon"></i>
+                    <span>物流管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="shield-alert" class="nav-icon"></i>
+                    <span>风控管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="settings" class="nav-icon"></i>
+                    <span>系统设置</span>
+                </a>
+            </nav>
+
+            <!-- 侧边栏底部 -->
+            <div style="padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--brand-500); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="user" style="width: 16px; height: 16px; color: #fff;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9);">Admin</div>
+                        <div style="font-size: 11px; color: rgba(255,255,255,0.4);">超级管理员</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ========== 主内容区 ========== -->
+        <div class="admin-main">
+
+            <!-- 顶部栏 -->
+            <header class="admin-topbar">
+                <!-- 面包屑：物流管理 > 物流管理 -->
+                <div class="breadcrumb">
+                    <a href="#">物流管理</a>
+                    <span class="separator">/</span>
+                    <span class="current">物流管理</span>
+                </div>
+                <!-- 右侧操作区 -->
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text-600); font-size: 13px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);">
+                        <i data-lucide="download" style="width: 14px; height: 14px;"></i>
+                        导出报表
+                    </button>
+                    <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--background-200); cursor: pointer;">
+                        <i data-lucide="bell" style="width: 18px; height: 18px; color: var(--text-600);"></i>
+                        <span style="position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--state-error);"></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 内容区 -->
+            <main style="flex: 1; padding: 24px; overflow-y: auto;">
+
+                <!-- 页面标题 -->
+                <div style="margin-bottom: 24px;">
+                    <h1 style="font-size: 22px; font-weight: 700; color: var(--text-800); margin: 0 0 6px;">物流管理</h1>
+                    <p style="font-size: 13px; color: var(--text-400); margin: 0;">实时追踪包裹状态、管理库存预警、分析配送渠道效率</p>
+                </div>
+
+                <!-- ====== 物流概况 KPI 卡片 ====== -->
+                <section style="margin-bottom: 24px;">
+                    <div class="kpi-grid">
+                        <!-- 待发货 -->
+                        <div class="kpi-card">
+                            <div class="kpi-card-label">
+                                <i data-lucide="package" style="width: 16px; height: 16px; color: var(--brand-500);"></i>
+                                待发货
+                            </div>
+                            <p class="kpi-card-value" style="color: var(--brand-500);">12</p>
+                        </div>
+                        <!-- 运输中 -->
+                        <div class="kpi-card">
+                            <div class="kpi-card-label">
+                                <i data-lucide="truck" style="width: 16px; height: 16px; color: var(--brand-500);"></i>
+                                运输中
+                            </div>
+                            <p class="kpi-card-value" style="color: var(--brand-500);">45</p>
+                        </div>
+                        <!-- 异常 -->
+                        <div class="kpi-card">
+                            <div class="kpi-card-label">
+                                <i data-lucide="alert-triangle" style="width: 16px; height: 16px; color: var(--state-error);"></i>
+                                异常
+                            </div>
+                            <p class="kpi-card-value" style="color: var(--state-error);">2</p>
+                        </div>
+                        <!-- 平均配送时效 -->
+                        <div class="kpi-card" style="background: var(--brand-50); border-color: var(--brand-100);">
+                            <div class="kpi-card-label">
+                                <i data-lucide="map-pin" style="width: 16px; height: 16px; color: var(--brand-500);"></i>
+                                平均配送时效
+                            </div>
+                            <p class="kpi-card-value" style="color: var(--brand-500);">3.2 天</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ====== 仓库切换 + 操作栏 ====== -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                    <div class="warehouse-tabs">
+                        <button class="warehouse-tab active">洛杉矶仓</button>
+                        <button class="warehouse-tab">纽约仓</button>
+                        <button class="warehouse-tab">伦敦仓</button>
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-400); display: flex; align-items: center; gap: 4px;">
+                        <i data-lucide="info" style="width: 13px; height: 13px;"></i>
+                        <span>当前仓库：洛杉矶仓</span>
+                    </div>
+                </div>
+
+                <!-- ====== 两栏内容区：左边在途包裹 + 右边库存预警 & 渠道分布 ====== -->
+                <div class="content-grid">
+
+                    <!-- 左栏：在途包裹 -->
+                    <section>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+                            <i data-lucide="package-search" style="width: 18px; height: 18px; color: var(--primary);"></i>
+                            <h2 style="font-size: 16px; font-weight: 700; color: var(--text-800); margin: 0;">在途包裹</h2>
+                            <span style="font-size: 12px; color: var(--text-400); margin-left: auto;">共 6 件</span>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="package-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 180px;">运单号</th>
+                                        <th>承运商</th>
+                                        <th>路线</th>
+                                        <th>状态</th>
+                                        <th>发货时间</th>
+                                        <th>预计送达</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- 包裹 1：运输中 -->
+                                    <tr>
+                                        <td>
+                                            <span style="font-weight: 600; color: var(--text-800); font-variant-numeric: tabular-nums;">MOYU-LA20260708001</span>
+                                        </td>
+                                        <td><span class="tag tag-blue">FedEx</span></td>
+                                        <td style="color: var(--text-500);">洛杉矶 → 纽约</td>
+                                        <td><span class="tag tag-blue">运输中</span></td>
+                                        <td style="color: var(--text-400); font-variant-numeric: tabular-nums;">2026-07-07 14:30</td>
+                                        <td style="font-weight: 600; color: var(--text-700); font-variant-numeric: tabular-nums;">2026-07-10</td>
+                                    </tr>
+                                    <!-- 包裹 2：派送中 -->
+                                    <tr>
+                                        <td>
+                                            <span style="font-weight: 600; color: var(--text-800); font-variant-numeric: tabular-nums;">MOYU-LA20260706023</span>
+                                        </td>
+                                        <td><span class="tag tag-green">UPS</span></td>
+                                        <td style="color: var(--text-500);">洛杉矶 → 旧金山</td>
+                                        <td><span class="tag tag-green">派送中</span></td>
+                                        <td style="color: var(--text-400); font-variant-numeric: tabular-nums;">2026-07-06 09:15</td>
+                                        <td style="font-weight: 600; color: var(--text-700); font-variant-numeric: tabular-nums;">2026-07-08</td>
+                                    </tr>
+                                    <!-- 包裹 3：运输中 -->
+                                    <tr>
+                                        <td>
+                                            <span style="font-weight: 600; color: var(--text-800); font-variant-numeric: tabular-nums;">MOYU-LA20260705045</span>
+                                        </td>
+                                        <td><span class="tag tag-blue">FedEx</span></td>
+                                        <td style="color: var(--text-500);">洛杉矶 → 西雅图</td>
+                                        <td><span class="tag tag-blue">运输中</span></td>
+                                        <td style="color: var(--text-400); font-variant-numeric: tabular-nums;">2026-07-05 16:40</td>
+                                        <td style="font-weight: 600; color: var(--text-700); font-variant-numeric: tabular-nums;">2026-07-09</td>
+                                    </tr>
+                                    <!-- 包裹 4：异常 -->
+                                    <tr class="row-error">
+                                        <td>
+                                            <span style="font-weight: 600; color: var(--text-800); font-variant-numeric: tabular-nums;">MOYU-LA20260704012</span>
+                                        </td>
+                                        <td><span class="tag tag-gray">USPS</span></td>
+                                        <td style="color: var(--text-500);">洛杉矶 → 芝加哥</td>
+                                        <td><span class="tag tag-red">异常</span></td>
+                                        <td style="color: var(--text-400); font-variant-numeric: tabular-nums;">2026-07-04 11:20</td>
+                                        <td style="font-weight: 600; color: var(--text-700); font-variant-numeric: tabular-nums;">2026-07-08</td>
+                                    </tr>
+                                    <!-- 异常原因行 -->
+                                    <tr class="row-error">
+                                        <td colspan="6">
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <i data-lucide="alert-circle" style="width: 14px; height: 14px; color: var(--state-error); flex-shrink: 0;"></i>
+                                                <span style="font-size: 12px; color: var(--state-error);">派送延迟，地址信息需核实</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <!-- 包裹 5：派送中 -->
+                                    <tr>
+                                        <td>
+                                            <span style="font-weight: 600; color: var(--text-800); font-variant-numeric: tabular-nums;">MOYU-LA20260703078</span>
+                                        </td>
+                                        <td><span class="tag tag-green">UPS</span></td>
+                                        <td style="color: var(--text-500);">洛杉矶 → 波士顿</td>
+                                        <td><span class="tag tag-green">派送中</span></td>
+                                        <td style="color: var(--text-400); font-variant-numeric: tabular-nums;">2026-07-03 08:50</td>
+                                        <td style="font-weight: 600; color: var(--text-700); font-variant-numeric: tabular-nums;">2026-07-08</td>
+                                    </tr>
+                                    <!-- 包裹 6：异常 -->
+                                    <tr class="row-error">
+                                        <td>
+                                            <span style="font-weight: 600; color: var(--text-800); font-variant-numeric: tabular-nums;">MOYU-LA20260702056</span>
+                                        </td>
+                                        <td><span class="tag tag-blue">FedEx</span></td>
+                                        <td style="color: var(--text-500);">洛杉矶 → 迈阿密</td>
+                                        <td><span class="tag tag-red">异常</span></td>
+                                        <td style="color: var(--text-400); font-variant-numeric: tabular-nums;">2026-07-02 13:05</td>
+                                        <td style="font-weight: 600; color: var(--text-700); font-variant-numeric: tabular-nums;">2026-07-07</td>
+                                    </tr>
+                                    <!-- 异常原因行 -->
+                                    <tr class="row-error">
+                                        <td colspan="6">
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <i data-lucide="alert-circle" style="width: 14px; height: 14px; color: var(--state-error); flex-shrink: 0;"></i>
+                                                <span style="font-size: 12px; color: var(--state-error);">物流信息超48小时未更新</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- 右栏：库存预警 + 配送渠道分布 -->
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+
+                        <!-- 库存预警 -->
+                        <section>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+                                <i data-lucide="alert-triangle" style="width: 18px; height: 18px; color: var(--state-error);"></i>
+                                <h2 style="font-size: 16px; font-weight: 700; color: var(--text-800); margin: 0;">库存预警</h2>
+                                <span class="tag tag-red" style="font-size: 10px; padding: 1px 8px;">3 项</span>
+                            </div>
+                            <div style="background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden;">
+                                <!-- 预警提示条 -->
+                                <div style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--state-error-surface);">
+                                    <i data-lucide="alert-triangle" style="width: 14px; height: 14px; color: var(--state-error); flex-shrink: 0;"></i>
+                                    <span style="font-size: 12px; font-weight: 600; color: var(--state-error);">3 个商品库存低于预警线</span>
+                                </div>
+                                <!-- 预警商品列表 -->
+                                <div style="display: flex; flex-direction: column;">
+                                    <!-- 商品 1 -->
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border);">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--background-200); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                                <i data-lucide="box" style="width: 16px; height: 16px; color: var(--icon-500);"></i>
+                                            </div>
+                                            <span style="font-size: 13px; font-weight: 500; color: var(--text-800);">MOYUYO 旗舰款猫粮 5kg</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums;">
+                                            <span style="font-size: 13px; font-weight: 700; color: var(--state-error);">8</span>
+                                            <span style="font-size: 12px; color: var(--text-400);">/ 50</span>
+                                        </div>
+                                    </div>
+                                    <!-- 商品 2 -->
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border);">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--background-200); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                                <i data-lucide="heart" style="width: 16px; height: 16px; color: var(--icon-500);"></i>
+                                            </div>
+                                            <span style="font-size: 13px; font-weight: 500; color: var(--text-800);">宠物智能饮水机</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums;">
+                                            <span style="font-size: 13px; font-weight: 700; color: var(--state-error);">5</span>
+                                            <span style="font-size: 12px; color: var(--text-400);">/ 30</span>
+                                        </div>
+                                    </div>
+                                    <!-- 商品 3 -->
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px;">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--background-200); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                                <i data-lucide="star" style="width: 16px; height: 16px; color: var(--icon-500);"></i>
+                                            </div>
+                                            <span style="font-size: 13px; font-weight: 500; color: var(--text-800);">天然鹿角磨牙棒 L号</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums;">
+                                            <span style="font-size: 13px; font-weight: 700; color: var(--state-error);">3</span>
+                                            <span style="font-size: 12px; color: var(--text-400);">/ 20</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- 配送渠道分布 -->
+                        <section>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+                                <i data-lucide="bar-chart-3" style="width: 18px; height: 18px; color: var(--primary);"></i>
+                                <h2 style="font-size: 16px; font-weight: 700; color: var(--text-800); margin: 0;">配送渠道分布</h2>
+                            </div>
+                            <div style="background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 20px;">
+                                <div class="channel-bar-group">
+                                    <!-- FedEx 45% -->
+                                    <div class="channel-bar-item">
+                                        <div class="channel-bar-header">
+                                            <span class="tag tag-blue">FedEx</span>
+                                            <span style="font-size: 14px; font-weight: 700; color: var(--text-800); font-variant-numeric: tabular-nums;">45%</span>
+                                        </div>
+                                        <div class="channel-bar-track">
+                                            <div class="channel-bar-fill" style="width: 45%; background: var(--brand-500);"></div>
+                                        </div>
+                                    </div>
+                                    <!-- UPS 30% -->
+                                    <div class="channel-bar-item">
+                                        <div class="channel-bar-header">
+                                            <span class="tag tag-green">UPS</span>
+                                            <span style="font-size: 14px; font-weight: 700; color: var(--text-800); font-variant-numeric: tabular-nums;">30%</span>
+                                        </div>
+                                        <div class="channel-bar-track">
+                                            <div class="channel-bar-fill" style="width: 30%; background: var(--state-success);"></div>
+                                        </div>
+                                    </div>
+                                    <!-- USPS 20% -->
+                                    <div class="channel-bar-item">
+                                        <div class="channel-bar-header">
+                                            <span class="tag tag-gray">USPS</span>
+                                            <span style="font-size: 14px; font-weight: 700; color: var(--text-800); font-variant-numeric: tabular-nums;">20%</span>
+                                        </div>
+                                        <div class="channel-bar-track">
+                                            <div class="channel-bar-fill" style="width: 20%; background: var(--chart-3);"></div>
+                                        </div>
+                                    </div>
+                                    <!-- 其他 5% -->
+                                    <div class="channel-bar-item">
+                                        <div class="channel-bar-header">
+                                            <span class="tag tag-gray" style="background: var(--background-200); color: var(--text-500);">其他</span>
+                                            <span style="font-size: 14px; font-weight: 700; color: var(--text-800); font-variant-numeric: tabular-nums;">5%</span>
+                                        </div>
+                                        <div class="channel-bar-track">
+                                            <div class="channel-bar-fill" style="width: 5%; background: var(--chart-4);"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- 初始化 Lucide 图标 -->
+    <script>
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    </script>
+</body>
+</html>

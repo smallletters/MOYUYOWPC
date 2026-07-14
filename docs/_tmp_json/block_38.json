@@ -1,0 +1,18 @@
+{
+  "code": 0,
+  "data": {
+    "code": "MILO",
+    "nameEn": "MILO",
+    "nameZh": "探险家",
+    "tagline": "带宠看更大的世界",
+    "portrait2D": "https://cdn.moyuyo.com/ip/milo_2d.png",
+    "turnaround": ["https://cdn.moyuyo.com/ip/milo_front.png", "https://cdn.moyuyo.com/ip/milo_side.png"],
+    "collection": { "code": "GEAR", "nameZh": "出行装备系列" },
+    "products": [
+      { "productId": 5001, "name": "Harness Pro", "price": 49.0, "mainImage": "https://cdn.moyuyo.com/product/5001_1.jpg" }
+    ],
+    "posts": [
+      { "postId": 9001, "title": "周末带 MILO 徒步", "cover": "https://cdn.moyuyo.com/post/9001_cover.jpg" }
+    ]
+  }
+}

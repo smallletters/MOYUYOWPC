@@ -1,0 +1,7 @@
+{
+  "type": "REFUND_ONLY",
+  "reason": "商品破损",
+  "description": "收到时瓶口裂开",
+  "images": ["https://..."],
+  "refundAmount": 49.9
+}

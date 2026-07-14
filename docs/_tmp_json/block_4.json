@@ -1,0 +1,9 @@
+{
+  "code": 0,
+  "data": {
+    "userId": 10086,
+    "email": "tom@example.com",
+    "verifyEmailSent": true,
+    "verifyEmailExpire": 86400
+  }
+}

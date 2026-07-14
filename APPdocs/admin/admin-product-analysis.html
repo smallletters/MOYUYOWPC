@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOYUYO 商品分析</title>
+    <style id="theme-vars">
+/*
+ * MOYUYO design tokens
+ * Brand: MOYUYO
+ * Domain: Pet lifestyle e-commerce
+ * Style: Apple-inspired, restrained, elegant
+ * Theme mode: light
+ * Source language: zh
+ */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff;
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759;
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30;
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* state-warning */
+  --state-warning: #ff9500;
+  --state-warning-surface: #fff4e5;
+  --state-warning-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: var(--state-warning);
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* TYPOGRAPHY */
+  --font-sans: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0,0,0,0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0,0,0,0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05), 0 1px 3px -1px rgba(0,0,0,0.05);
+  --shadow: 0 2px 4px -1px rgba(0,0,0,0.06), 0 1px 2px -1px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0,0,0,0.06), 0 2px 4px -2px rgba(0,0,0,0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0,0,0,0.08), 0 4px 8px -4px rgba(0,0,0,0.05);
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+    </style>
+    <style id="component-vars">
+/*
+ * components.css - 核心组件样式
+ */
+
+/* ===== Button ===== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+
+      /* ===== 后台管理页面专用样式 ===== */
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: 'DM Sans', -apple-system, sans-serif;
+        background: var(--background-200);
+        color: var(--text-800);
+        max-width: 393px;
+        margin: 0 auto;
+        min-height: 100vh;
+        position: relative;
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* 顶部导航栏 */
+      .admin-nav-bar {
+        position: sticky; top: 0; z-index: 30;
+        background: var(--background-50);
+        border-bottom: 1px solid var(--background-300);
+        display: flex; align-items: center;
+        height: 48px; padding: 0 16px; gap: 12px;
+      }
+      .admin-nav-bar .back-btn {
+        display: flex; align-items: center; justify-content: center;
+        width: 32px; height: 32px; border: none;
+        background: transparent; color: var(--primary);
+        cursor: pointer; border-radius: 50%;
+        transition: background-color 0.15s ease;
+      }
+      .admin-nav-bar .back-btn:active { background: var(--background-200); }
+      .admin-nav-bar .nav-title {
+        flex: 1; font-size: 17px; font-weight: 600;
+        color: var(--text-800); text-align: center;
+        margin-right: 32px;
+      }
+      .admin-nav-bar .time-filter-btn {
+        display: flex; align-items: center; justify-content: center;
+        width: 32px; height: 32px; border: none;
+        background: transparent; color: var(--primary);
+        cursor: pointer; border-radius: 50%;
+        transition: background-color 0.15s ease;
+      }
+      .admin-nav-bar .time-filter-btn:active { background: var(--background-200); }
+
+      /* 分析维度 Tab 栏 */
+      .analysis-tabs {
+        display: flex; overflow-x: auto; gap: 0;
+        padding: 0 16px; background: var(--background-50);
+        border-bottom: 1px solid var(--background-300);
+      }
+      .analysis-tabs::-webkit-scrollbar { display: none; }
+      .analysis-tab {
+        flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+        height: 44px; padding: 0 14px; font-size: 13px; font-weight: 500;
+        color: var(--text-500); background: transparent; border: none;
+        cursor: pointer; position: relative;
+        transition: color 0.15s ease; white-space: nowrap;
+      }
+      .analysis-tab.active { color: var(--primary); font-weight: 600; }
+      .analysis-tab.active::after {
+        content: ''; position: absolute; bottom: 0; left: 50%;
+        transform: translateX(-50%); width: 24px; height: 2.5px;
+        border-radius: 2px; background: var(--primary);
+      }
+
+      /* 内容区域 */
+      .content-area {
+        padding: 16px;
+      }
+
+      /* 通用卡片 */
+      .section-card {
+        background: var(--background-50);
+        border-radius: var(--radius);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        overflow: hidden;
+        margin-bottom: 16px;
+      }
+      .section-card-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 16px 10px;
+      }
+      .section-card-title {
+        font-size: 15px; font-weight: 600; color: var(--text-800);
+      }
+      .section-card-action {
+        font-size: 12px; font-weight: 500; color: var(--primary);
+        background: transparent; border: none; cursor: pointer;
+        display: flex; align-items: center; gap: 4px;
+      }
+
+      /* 筛选入口 */
+      .filter-chips {
+        display: flex; gap: 8px; overflow-x: auto;
+        padding: 0 16px 12px;
+      }
+      .filter-chips::-webkit-scrollbar { display: none; }
+      .filter-chip {
+        flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px;
+        height: 30px; padding: 0 12px;
+        background: var(--background-200);
+        border: 1px solid var(--background-300);
+        border-radius: 999px; font-size: 12px; font-weight: 500;
+        color: var(--text-500); cursor: pointer;
+        transition: all 0.15s ease; white-space: nowrap;
+      }
+      .filter-chip.active {
+        background: var(--brand-50);
+        border-color: var(--brand-200);
+        color: var(--brand-500);
+      }
+
+      /* 销售排行列表 */
+      .rank-list { padding: 0 16px 16px; }
+      .rank-item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--background-200);
+      }
+      .rank-item:last-child { border-bottom: none; }
+      .rank-badge {
+        width: 24px; height: 24px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12px; font-weight: 700;
+        background: var(--background-200);
+        color: var(--text-500);
+        flex-shrink: 0;
+      }
+      .rank-badge.gold { background: #FFF2CC; color: #C49A1A; }
+      .rank-badge.silver { background: #EDEDF0; color: #8A8A8E; }
+      .rank-badge.bronze { background: #F5DEB3; color: #A67C52; }
+      .rank-info { flex: 1; min-width: 0; }
+      .rank-name {
+        font-size: 14px; font-weight: 500; color: var(--text-800);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .rank-stats {
+        display: flex; gap: 16px; margin-top: 4px;
+      }
+      .rank-stat-label {
+        font-size: 11px; color: var(--text-400);
+      }
+      .rank-stat-value {
+        font-size: 12px; font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      .rank-stat-value.sales { color: var(--text-800); }
+      .rank-stat-value.revenue { color: var(--brand-500); }
+      .rank-stat-value.profit { color: var(--state-success); }
+      .rank-profit-tag {
+        font-size: 11px; font-weight: 600; padding: 2px 8px;
+        border-radius: 999px; white-space: nowrap;
+      }
+      .rank-profit-tag.high {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+      .rank-profit-tag.medium {
+        background: var(--state-warning-surface);
+        color: var(--state-warning);
+      }
+      .rank-profit-tag.low {
+        background: var(--state-error-surface);
+        color: var(--state-error);
+      }
+
+      /* 新品表现追踪卡片 */
+      .new-product-card { padding: 0 16px 16px; }
+      .new-product-period-tabs {
+        display: flex; gap: 0; padding: 0 16px 12px;
+        border-bottom: 1px solid var(--background-200);
+      }
+      .new-product-period-tab {
+        flex: 1; display: flex; align-items: center; justify-content: center;
+        height: 32px; font-size: 12px; font-weight: 500;
+        color: var(--text-400); background: transparent; border: none;
+        cursor: pointer; position: relative; transition: color 0.15s ease;
+      }
+      .new-product-period-tab.active { color: var(--primary); font-weight: 600; }
+      .new-product-period-tab.active::after {
+        content: ''; position: absolute; bottom: 0; left: 50%;
+        transform: translateX(-50%); width: 16px; height: 2px;
+        border-radius: 2px; background: var(--primary);
+      }
+      .new-product-metrics {
+        display: grid; grid-template-columns: repeat(2, 1fr);
+        gap: 12px; padding-top: 12px;
+      }
+      .metric-card {
+        background: var(--background-100);
+        border-radius: calc(var(--radius) * 0.7);
+        padding: 12px;
+      }
+      .metric-label {
+        font-size: 11px; color: var(--text-400); margin-bottom: 4px;
+      }
+      .metric-value {
+        font-size: 22px; font-weight: 700; color: var(--text-800);
+        font-variant-numeric: tabular-nums;
+        line-height: 1.2;
+      }
+      .metric-change {
+        display: inline-flex; align-items: center; gap: 2px;
+        font-size: 11px; font-weight: 600; margin-top: 4px;
+      }
+      .metric-change.up { color: var(--state-success); }
+      .metric-change.down { color: var(--state-error); }
+
+      /* CSS 简化趋势线 */
+      .trend-line {
+        display: flex; align-items: flex-end; gap: 3px;
+        height: 32px; margin-top: 8px;
+      }
+      .trend-bar {
+        flex: 1; border-radius: 2px;
+        background: var(--brand-200);
+        transition: height 0.3s ease;
+        min-height: 4px;
+      }
+      .trend-bar:last-child {
+        background: var(--brand-500);
+      }
+
+      /* 滞销商品预警 */
+      .slow-moving-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 16px; cursor: pointer;
+        transition: background-color 0.15s ease;
+      }
+      .slow-moving-header:active { background: var(--background-100); }
+      .slow-moving-header-left {
+        display: flex; align-items: center; gap: 8px;
+      }
+      .slow-moving-title {
+        font-size: 15px; font-weight: 600; color: var(--text-800);
+      }
+      .slow-moving-badge {
+        display: flex; align-items: center; justify-content: center;
+        min-width: 20px; height: 20px; padding: 0 6px;
+        background: var(--state-error);
+        color: var(--state-error-foreground);
+        border-radius: 999px; font-size: 11px; font-weight: 600;
+      }
+      .slow-moving-toggle-icon {
+        width: 20px; height: 20px; color: var(--text-400);
+        transition: transform 0.25s ease;
+      }
+      .slow-moving-toggle-icon.expanded {
+        transform: rotate(180deg);
+      }
+      .slow-moving-body {
+        max-height: 0; overflow: hidden;
+        transition: max-height 0.35s ease;
+      }
+      .slow-moving-body.expanded {
+        max-height: 600px;
+      }
+      .slow-moving-list { padding: 0 16px 16px; }
+      .slow-moving-item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 12px; background: var(--background-100);
+        border-radius: calc(var(--radius) * 0.5);
+        margin-bottom: 8px;
+      }
+      .slow-moving-item:last-child { margin-bottom: 0; }
+      .slow-moving-item-info { flex: 1; min-width: 0; }
+      .slow-moving-item-name {
+        font-size: 13px; font-weight: 500; color: var(--text-800);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .slow-moving-item-meta {
+        display: flex; gap: 12px; margin-top: 2px;
+      }
+      .slow-moving-item-meta span {
+        font-size: 11px; color: var(--text-400);
+      }
+      .slow-moving-days {
+        font-size: 12px; font-weight: 600; padding: 2px 8px;
+        border-radius: 999px; white-space: nowrap;
+      }
+      .slow-moving-days.danger {
+        background: var(--state-error-surface);
+        color: var(--state-error);
+      }
+      .slow-moving-days.warning {
+        background: var(--state-warning-surface);
+        color: var(--state-warning);
+      }
+
+      /* 热门搜索词横向柱状图 */
+      .search-keyword-list { padding: 0 16px 16px; }
+      .search-keyword-item {
+        margin-bottom: 14px;
+      }
+      .search-keyword-item:last-child { margin-bottom: 0; }
+      .search-keyword-header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 6px;
+      }
+      .search-keyword-name {
+        font-size: 13px; font-weight: 500; color: var(--text-800);
+      }
+      .search-keyword-stats {
+        display: flex; gap: 12px;
+      }
+      .search-keyword-count {
+        font-size: 11px; color: var(--text-400); font-variant-numeric: tabular-nums;
+      }
+      .search-keyword-rate {
+        font-size: 11px; font-weight: 600; color: var(--brand-500);
+        font-variant-numeric: tabular-nums;
+      }
+      .search-keyword-bar-track {
+        width: 100%; height: 8px;
+        background: var(--background-200);
+        border-radius: 999px; overflow: hidden;
+      }
+      .search-keyword-bar-fill {
+        height: 100%; border-radius: 999px;
+        background: linear-gradient(90deg, var(--brand-400), var(--brand-500));
+        transition: width 0.6s ease;
+      }
+
+      /* 库存健康度概览 */
+      .inventory-health {
+        display: flex; flex-direction: column; gap: 10px;
+        padding: 0 16px 16px;
+      }
+      .inventory-health-row {
+        display: flex; align-items: center; gap: 12px;
+      }
+      .inventory-health-label {
+        width: 48px; font-size: 12px; font-weight: 500; color: var(--text-500);
+        flex-shrink: 0;
+      }
+      .inventory-health-bar-track {
+        flex: 1; height: 20px;
+        background: var(--background-200);
+        border-radius: 999px; overflow: hidden;
+        position: relative;
+      }
+      .inventory-health-bar-fill {
+        height: 100%; border-radius: 999px;
+        display: flex; align-items: center; justify-content: flex-end;
+        padding-right: 10px;
+        font-size: 11px; font-weight: 700; color: var(--background-50);
+        transition: width 0.6s ease;
+      }
+      .inventory-health-bar-fill.slow {
+        background: var(--state-error);
+      }
+      .inventory-health-bar-fill.normal {
+        background: var(--state-success);
+      }
+      .inventory-health-bar-fill.low {
+        background: var(--state-warning);
+      }
+      .inventory-health-percent {
+        width: 36px; text-align: right;
+        font-size: 13px; font-weight: 600; color: var(--text-800);
+        font-variant-numeric: tabular-nums;
+        flex-shrink: 0;
+      }
+
+      /* 分析面板切换 - 各面板通用 */
+      .analysis-panel { display: none; }
+      .analysis-panel.active { display: block; }
+
+      /* 时间筛选弹窗 */
+      .time-filter-sheet {
+        position: fixed; inset: 0; z-index: 50;
+        display: none;
+      }
+      .time-filter-sheet.active { display: flex; flex-direction: column; }
+      .time-filter-sheet-overlay {
+        flex: 1; background: rgba(0,0,0,0.32);
+      }
+      .time-filter-sheet-content {
+        background: var(--background-50);
+        border-radius: var(--radius) var(--radius) 0 0;
+        padding: 20px 16px;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+        box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
+      }
+      .time-filter-sheet-title {
+        font-size: 15px; font-weight: 600; color: var(--text-800);
+        text-align: center; margin-bottom: 16px;
+      }
+      .time-filter-options {
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+      .time-filter-option {
+        display: flex; flex-direction: column; align-items: center;
+        justify-content: center; height: 56px;
+        background: var(--background-100);
+        border: 1.5px solid var(--background-300);
+        border-radius: calc(var(--radius) * 0.6);
+        cursor: pointer; transition: all 0.15s ease;
+      }
+      .time-filter-option.active {
+        background: var(--brand-50);
+        border-color: var(--brand-300);
+      }
+      .time-filter-option-label {
+        font-size: 13px; font-weight: 500; color: var(--text-600);
+      }
+      .time-filter-option.active .time-filter-option-label {
+        color: var(--brand-500);
+      }
+      .time-filter-option-sub {
+        font-size: 11px; color: var(--text-400); margin-top: 2px;
+      }
+
+      /* 空状态 / 评价分析 */
+      .review-summary {
+        padding: 0 16px 16px;
+      }
+      .review-summary-row {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--background-200);
+      }
+      .review-summary-row:last-child { border-bottom: none; }
+      .review-summary-icon {
+        width: 36px; height: 36px; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+      }
+      .review-summary-icon.good {
+        background: var(--state-success-surface); color: var(--state-success);
+      }
+      .review-summary-icon.mid {
+        background: var(--state-warning-surface); color: var(--state-warning);
+      }
+      .review-summary-icon.bad {
+        background: var(--state-error-surface); color: var(--state-error);
+      }
+      .review-summary-info { flex: 1; }
+      .review-summary-label {
+        font-size: 13px; font-weight: 500; color: var(--text-800);
+      }
+      .review-summary-desc {
+        font-size: 11px; color: var(--text-400); margin-top: 2px;
+      }
+      .review-summary-value {
+        font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;
+      }
+
+      /* 流转率面板 */
+      .turnover-rate-header {
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        gap: 8px; padding: 0 16px 12px;
+      }
+      .turnover-rate-card {
+        background: var(--background-100);
+        border-radius: calc(var(--radius) * 0.5);
+        padding: 10px; text-align: center;
+      }
+      .turnover-rate-label {
+        font-size: 11px; color: var(--text-400); margin-bottom: 4px;
+      }
+      .turnover-rate-value {
+        font-size: 18px; font-weight: 700; color: var(--text-800);
+        font-variant-numeric: tabular-nums;
+      }
+    
+    /* 妗岄潰绔鐞嗛〉闈㈡渶灏忓搴︾害鏉?*/
+    body { min-width: 1280px; }</style>
+</head>
+<body>
+
+    <!-- 顶部导航栏 -->
+    <header class="admin-nav-bar">
+      <button class="back-btn" data-dom-id="cta-back" aria-label="返回">
+        <i data-lucide="chevron-left" style="width:20px;height:20px;"></i>
+      </button>
+      <h1 class="nav-title">商品分析</h1>
+      <button class="time-filter-btn" id="openTimeFilter" aria-label="时间筛选">
+        <i data-lucide="calendar" style="width:18px;height:18px;"></i>
+      </button>
+    </header>
+
+    <!-- 分析维度 Tab 栏 -->
+    <nav class="analysis-tabs no-scrollbar" aria-label="分析维度">
+      <button class="analysis-tab active" data-tab="sales-rank">销售排行</button>
+      <button class="analysis-tab" data-tab="turnover-rate">流转率</button>
+      <button class="analysis-tab" data-tab="search-keywords">搜索词</button>
+      <button class="analysis-tab" data-tab="review-analysis">评价分析</button>
+      <button class="analysis-tab" data-tab="inventory-turnover">库存周转</button>
+    </nav>
+
+    <!-- 主内容区域 -->
+    <main class="content-area">
+
+      <!-- ==================== 销售排行面板（默认显示） ==================== -->
+      <div class="analysis-panel active" id="panel-sales-rank">
+
+        <!-- 筛选入口 -->
+        <div class="filter-chips">
+          <button class="filter-chip active">
+            <i data-lucide="layers" style="width:12px;height:12px;"></i>
+            全部分类
+          </button>
+          <button class="filter-chip">
+            <i data-lucide="tag" style="width:12px;height:12px;"></i>
+            品牌
+          </button>
+          <button class="filter-chip">
+            <i data-lucide="sliders-horizontal" style="width:12px;height:12px;"></i>
+            价格带
+          </button>
+        </div>
+
+        <!-- Top 10 商品排行 -->
+        <section class="section-card">
+          <div class="section-card-header">
+            <h2 class="section-card-title">Top 10 商品排行</h2>
+            <button class="section-card-action">
+              更多
+              <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
+            </button>
+          </div>
+          <div class="rank-list">
+            <!-- 第1名 金 -->
+            <div class="rank-item">
+              <span class="rank-badge gold">1</span>
+              <div class="rank-info">
+                <div class="rank-name">高端宠物洗护套装</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">销量 <span class="rank-stat-value sales">2,847</span></span>
+                  <span class="rank-stat-label">销售额 <span class="rank-stat-value revenue">¥538k</span></span>
+                </div>
+              </div>
+              <span class="rank-profit-tag high">38.2%</span>
+            </div>
+            <!-- 第2名 银 -->
+            <div class="rank-item">
+              <span class="rank-badge silver">2</span>
+              <div class="rank-info">
+                <div class="rank-name">舒适透气胸背带</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">销量 <span class="rank-stat-value sales">2,156</span></span>
+                  <span class="rank-stat-label">销售额 <span class="rank-stat-value revenue">¥278k</span></span>
+                </div>
+              </div>
+              <span class="rank-profit-tag high">42.5%</span>
+            </div>
+            <!-- 第3名 铜 -->
+            <div class="rank-item">
+              <span class="rank-badge bronze">3</span>
+              <div class="rank-info">
+                <div class="rank-name">互动益智玩具套装</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">销量 <span class="rank-stat-value sales">1,932</span></span>
+                  <span class="rank-stat-label">销售额 <span class="rank-stat-value revenue">¥133k</span></span>
+                </div>
+              </div>
+              <span class="rank-profit-tag medium">31.7%</span>
+            </div>
+            <!-- 第4名 -->
+            <div class="rank-item">
+              <span class="rank-badge">4</span>
+              <div class="rank-info">
+                <div class="rank-name">宠物潮流防水外套</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">销量 <span class="rank-stat-value sales">1,645</span></span>
+                  <span class="rank-stat-label">销售额 <span class="rank-stat-value revenue">¥360k</span></span>
+                </div>
+              </div>
+              <span class="rank-profit-tag high">39.1%</span>
+            </div>
+            <!-- 第5名 -->
+            <div class="rank-item">
+              <span class="rank-badge">5</span>
+              <div class="rank-info">
+                <div class="rank-name">天然有机狗粮 5kg</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">销量 <span class="rank-stat-value sales">1,423</span></span>
+                  <span class="rank-stat-label">销售额 <span class="rank-stat-value revenue">¥285k</span></span>
+                </div>
+              </div>
+              <span class="rank-profit-tag high">35.8%</span>
+            </div>
+            <!-- 第6名 -->
+            <div class="rank-item">
+              <span class="rank-badge">6</span>
+              <div class="rank-info">
+                <div class="rank-name">猫砂盆智能除臭款</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">销量 <span class="rank-stat-value sales">1,287</span></span>
+                  <span class="rank-stat-label">销售额 <span class="rank-stat-value revenue">¥449k</span></span>
+                </div>
+              </div>
+              <span class="rank-profit-tag medium">28.4%</span>
+            </div>
+            <!-- 第7名 -->
+            <div class="rank-item">
+              <span class="rank-badge">7</span>
+              <div class="rank-info">
+                <div class="rank-name">宠物营养补充膏</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">销量 <span class="rank-stat-value sales">1,108</span></span>
+                  <span class="rank-stat-label">销售额 <span class="rank-stat-value revenue">¥199k</span></span>
+                </div>
+              </div>
+              <span class="rank-profit-tag medium">29.6%</span>
+            </div>
+            <!-- 第8名 -->
+            <div class="rank-item">
+              <span class="rank-badge">8</span>
+              <div class="rank-info">
+                <div class="rank-name">可伸缩宠物牵引绳</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">销量 <span class="rank-stat-value sales">986</span></span>
+                  <span class="rank-stat-label">销售额 <span class="rank-stat-value revenue">¥118k</span></span>
+                </div>
+              </div>
+              <span class="rank-profit-tag medium">25.3%</span>
+            </div>
+            <!-- 第9名 -->
+            <div class="rank-item">
+              <span class="rank-badge">9</span>
+              <div class="rank-info">
+                <div class="rank-name">宠物指甲修剪器</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">销量 <span class="rank-stat-value sales">845</span></span>
+                  <span class="rank-stat-label">销售额 <span class="rank-stat-value revenue">¥76k</span></span>
+                </div>
+              </div>
+              <span class="rank-profit-tag low">18.2%</span>
+            </div>
+            <!-- 第10名 -->
+            <div class="rank-item">
+              <span class="rank-badge">10</span>
+              <div class="rank-info">
+                <div class="rank-name">猫抓板瓦楞纸款</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">销量 <span class="rank-stat-value sales">768</span></span>
+                  <span class="rank-stat-label">销售额 <span class="rank-stat-value revenue">¥38k</span></span>
+                </div>
+              </div>
+              <span class="rank-profit-tag low">15.7%</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 新品表现追踪 -->
+        <section class="section-card">
+          <div class="section-card-header">
+            <h2 class="section-card-title">新品表现追踪</h2>
+          </div>
+          <div class="new-product-period-tabs">
+            <button class="new-product-period-tab active" data-period="7d">近 7 天</button>
+            <button class="new-product-period-tab" data-period="14d">近 14 天</button>
+            <button class="new-product-period-tab" data-period="30d">近 30 天</button>
+          </div>
+          <div class="new-product-card">
+            <div class="new-product-metrics">
+              <!-- 销量指标 -->
+              <div class="metric-card">
+                <div class="metric-label">新品销量</div>
+                <div class="metric-value">3,462</div>
+                <div class="metric-change up">
+                  <i data-lucide="trending-up" style="width:12px;height:12px;"></i>
+                  +12.5%
+                </div>
+                <div class="trend-line">
+                  <div class="trend-bar" style="height:45%"></div>
+                  <div class="trend-bar" style="height:60%"></div>
+                  <div class="trend-bar" style="height:40%"></div>
+                  <div class="trend-bar" style="height:72%"></div>
+                  <div class="trend-bar" style="height:55%"></div>
+                  <div class="trend-bar" style="height:80%"></div>
+                  <div class="trend-bar" style="height:92%"></div>
+                </div>
+              </div>
+              <!-- 转化率指标 -->
+              <div class="metric-card">
+                <div class="metric-label">新品转化率</div>
+                <div class="metric-value">6.8%</div>
+                <div class="metric-change up">
+                  <i data-lucide="trending-up" style="width:12px;height:12px;"></i>
+                  +0.3%
+                </div>
+                <div class="trend-line">
+                  <div class="trend-bar" style="height:50%"></div>
+                  <div class="trend-bar" style="height:55%"></div>
+                  <div class="trend-bar" style="height:48%"></div>
+                  <div class="trend-bar" style="height:65%"></div>
+                  <div class="trend-bar" style="height:58%"></div>
+                  <div class="trend-bar" style="height:70%"></div>
+                  <div class="trend-bar" style="height:85%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 滞销商品预警（折叠区域） -->
+        <section class="section-card">
+          <div class="slow-moving-header" id="slowMovingToggle">
+            <div class="slow-moving-header-left">
+              <h2 class="slow-moving-title">滞销商品预警</h2>
+              <span class="slow-moving-badge">6</span>
+            </div>
+            <i data-lucide="chevron-down" class="slow-moving-toggle-icon" id="slowMovingIcon" style="width:20px;height:20px;"></i>
+          </div>
+          <div class="slow-moving-body" id="slowMovingBody">
+            <div class="slow-moving-list">
+              <div class="slow-moving-item">
+                <div class="slow-moving-item-info">
+                  <div class="slow-moving-item-name">复古皮质狗项圈</div>
+                  <div class="slow-moving-item-meta">
+                    <span>库存: 328</span>
+                    <span>近30天售出: 2</span>
+                  </div>
+                </div>
+                <span class="slow-moving-days danger">96天</span>
+              </div>
+              <div class="slow-moving-item">
+                <div class="slow-moving-item-info">
+                  <div class="slow-moving-item-name">夏季薄款宠物T恤</div>
+                  <div class="slow-moving-item-meta">
+                    <span>库存: 215</span>
+                    <span>近30天售出: 5</span>
+                  </div>
+                </div>
+                <span class="slow-moving-days danger">72天</span>
+              </div>
+              <div class="slow-moving-item">
+                <div class="slow-moving-item-info">
+                  <div class="slow-moving-item-name">迷你陶瓷宠物食盆</div>
+                  <div class="slow-moving-item-meta">
+                    <span>库存: 186</span>
+                    <span>近30天售出: 8</span>
+                  </div>
+                </div>
+                <span class="slow-moving-days danger">58天</span>
+              </div>
+              <div class="slow-moving-item">
+                <div class="slow-moving-item-info">
+                  <div class="slow-moving-item-name">猫用电动剃毛器</div>
+                  <div class="slow-moving-item-meta">
+                    <span>库存: 142</span>
+                    <span>近30天售出: 12</span>
+                  </div>
+                </div>
+                <span class="slow-moving-days warning">45天</span>
+              </div>
+              <div class="slow-moving-item">
+                <div class="slow-moving-item-info">
+                  <div class="slow-moving-item-name">宠物车载安全带</div>
+                  <div class="slow-moving-item-meta">
+                    <span>库存: 96</span>
+                    <span>近30天售出: 6</span>
+                  </div>
+                </div>
+                <span class="slow-moving-days warning">42天</span>
+              </div>
+              <div class="slow-moving-item">
+                <div class="slow-moving-item-info">
+                  <div class="slow-moving-item-name">宠物冰垫凉席</div>
+                  <div class="slow-moving-item-meta">
+                    <span>库存: 267</span>
+                    <span>近30天售出: 18</span>
+                  </div>
+                </div>
+                <span class="slow-moving-days warning">38天</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div><!-- /销售排行面板 -->
+
+      <!-- ==================== 流转率面板 ==================== -->
+      <div class="analysis-panel" id="panel-turnover-rate">
+        <section class="section-card">
+          <div class="section-card-header">
+            <h2 class="section-card-title">流转率概览</h2>
+            <button class="section-card-action">
+              更多
+              <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
+            </button>
+          </div>
+          <!-- 核心指标 -->
+          <div class="turnover-rate-header">
+            <div class="turnover-rate-card">
+              <div class="turnover-rate-label">平均流转率</div>
+              <div class="turnover-rate-value">68.4%</div>
+            </div>
+            <div class="turnover-rate-card">
+              <div class="turnover-rate-label">加购率</div>
+              <div class="turnover-rate-value">12.7%</div>
+            </div>
+            <div class="turnover-rate-card">
+              <div class="turnover-rate-label">收藏率</div>
+              <div class="turnover-rate-value">8.3%</div>
+            </div>
+          </div>
+          <!-- 分类流转率 -->
+          <div style="padding: 0 16px 16px;">
+            <div class="rank-item">
+              <span class="rank-badge gold">1</span>
+              <div class="rank-info">
+                <div class="rank-name">洗护用品</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">浏览 <span class="rank-stat-value sales">12.4k</span></span>
+                  <span class="rank-stat-label">成交 <span class="rank-stat-value revenue">8.5k</span></span>
+                </div>
+              </div>
+              <span class="rank-profit-tag high">68.5%</span>
+            </div>
+            <div class="rank-item">
+              <span class="rank-badge silver">2</span>
+              <div class="rank-info">
+                <div class="rank-name">主粮</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">浏览 <span class="rank-stat-value sales">18.2k</span></span>
+                  <span class="rank-stat-label">成交 <span class="rank-stat-value revenue">11.9k</span></span>
+                </div>
+              </div>
+              <span class="rank-profit-tag high">65.4%</span>
+            </div>
+            <div class="rank-item">
+              <span class="rank-badge bronze">3</span>
+              <div class="rank-info">
+                <div class="rank-name">装备</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">浏览 <span class="rank-stat-value sales">8.7k</span></span>
+                  <span class="rank-stat-label">成交 <span class="rank-stat-value revenue">5.2k</span></span>
+                </div>
+              </div>
+              <span class="rank-profit-tag medium">59.8%</span>
+            </div>
+            <div class="rank-item">
+              <span class="rank-badge">4</span>
+              <div class="rank-info">
+                <div class="rank-name">玩具</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">浏览 <span class="rank-stat-value sales">6.1k</span></span>
+                  <span class="rank-stat-label">成交 <span class="rank-stat-value revenue">3.4k</span></span>
+                </div>
+              </div>
+              <span class="rank-profit-tag medium">55.7%</span>
+            </div>
+            <div class="rank-item">
+              <span class="rank-badge">5</span>
+              <div class="rank-info">
+                <div class="rank-name">家居</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">浏览 <span class="rank-stat-value sales">4.3k</span></span>
+                  <span class="rank-stat-label">成交 <span class="rank-stat-value revenue">2.1k</span></span>
+                </div>
+              </div>
+              <span class="rank-profit-tag low">48.9%</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ==================== 搜索词面板 ==================== -->
+      <div class="analysis-panel" id="panel-search-keywords">
+
+        <!-- 热门搜索词 Top 10 横向柱状图 -->
+        <section class="section-card">
+          <div class="section-card-header">
+            <h2 class="section-card-title">热门搜索词 Top 10</h2>
+            <button class="section-card-action">
+              更多
+              <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
+            </button>
+          </div>
+          <div class="search-keyword-list">
+            <div class="search-keyword-item">
+              <div class="search-keyword-header">
+                <span class="search-keyword-name">猫粮</span>
+                <div class="search-keyword-stats">
+                  <span class="search-keyword-count">3,847次</span>
+                  <span class="search-keyword-rate">加购率 18.2%</span>
+                </div>
+              </div>
+              <div class="search-keyword-bar-track">
+                <div class="search-keyword-bar-fill" style="width: 100%"></div>
+              </div>
+            </div>
+            <div class="search-keyword-item">
+              <div class="search-keyword-header">
+                <span class="search-keyword-name">狗粮</span>
+                <div class="search-keyword-stats">
+                  <span class="search-keyword-count">3,126次</span>
+                  <span class="search-keyword-rate">加购率 15.7%</span>
+                </div>
+              </div>
+              <div class="search-keyword-bar-track">
+                <div class="search-keyword-bar-fill" style="width: 81.2%"></div>
+              </div>
+            </div>
+            <div class="search-keyword-item">
+              <div class="search-keyword-header">
+                <span class="search-keyword-name">猫砂</span>
+                <div class="search-keyword-stats">
+                  <span class="search-keyword-count">2,845次</span>
+                  <span class="search-keyword-rate">加购率 22.4%</span>
+                </div>
+              </div>
+              <div class="search-keyword-bar-track">
+                <div class="search-keyword-bar-fill" style="width: 73.9%"></div>
+              </div>
+            </div>
+            <div class="search-keyword-item">
+              <div class="search-keyword-header">
+                <span class="search-keyword-name">胸背带</span>
+                <div class="search-keyword-stats">
+                  <span class="search-keyword-count">2,198次</span>
+                  <span class="search-keyword-rate">加购率 16.8%</span>
+                </div>
+              </div>
+              <div class="search-keyword-bar-track">
+                <div class="search-keyword-bar-fill" style="width: 57.1%"></div>
+              </div>
+            </div>
+            <div class="search-keyword-item">
+              <div class="search-keyword-header">
+                <span class="search-keyword-name">宠物洗护</span>
+                <div class="search-keyword-stats">
+                  <span class="search-keyword-count">1,876次</span>
+                  <span class="search-keyword-rate">加购率 14.3%</span>
+                </div>
+              </div>
+              <div class="search-keyword-bar-track">
+                <div class="search-keyword-bar-fill" style="width: 48.8%"></div>
+              </div>
+            </div>
+            <div class="search-keyword-item">
+              <div class="search-keyword-header">
+                <span class="search-keyword-name">猫玩具</span>
+                <div class="search-keyword-stats">
+                  <span class="search-keyword-count">1,654次</span>
+                  <span class="search-keyword-rate">加购率 19.5%</span>
+                </div>
+              </div>
+              <div class="search-keyword-bar-track">
+                <div class="search-keyword-bar-fill" style="width: 43.0%"></div>
+              </div>
+            </div>
+            <div class="search-keyword-item">
+              <div class="search-keyword-header">
+                <span class="search-keyword-name">狗玩具</span>
+                <div class="search-keyword-stats">
+                  <span class="search-keyword-count">1,423次</span>
+                  <span class="search-keyword-rate">加购率 17.1%</span>
+                </div>
+              </div>
+              <div class="search-keyword-bar-track">
+                <div class="search-keyword-bar-fill" style="width: 37.0%"></div>
+              </div>
+            </div>
+            <div class="search-keyword-item">
+              <div class="search-keyword-header">
+                <span class="search-keyword-name">宠物外套</span>
+                <div class="search-keyword-stats">
+                  <span class="search-keyword-count">1,187次</span>
+                  <span class="search-keyword-rate">加购率 12.8%</span>
+                </div>
+              </div>
+              <div class="search-keyword-bar-track">
+                <div class="search-keyword-bar-fill" style="width: 30.9%"></div>
+              </div>
+            </div>
+            <div class="search-keyword-item">
+              <div class="search-keyword-header">
+                <span class="search-keyword-name">牵引绳</span>
+                <div class="search-keyword-stats">
+                  <span class="search-keyword-count">986次</span>
+                  <span class="search-keyword-rate">加购率 13.5%</span>
+                </div>
+              </div>
+              <div class="search-keyword-bar-track">
+                <div class="search-keyword-bar-fill" style="width: 25.6%"></div>
+              </div>
+            </div>
+            <div class="search-keyword-item">
+              <div class="search-keyword-header">
+                <span class="search-keyword-name">宠物营养</span>
+                <div class="search-keyword-stats">
+                  <span class="search-keyword-count">845次</span>
+                  <span class="search-keyword-rate">加购率 10.6%</span>
+                </div>
+              </div>
+              <div class="search-keyword-bar-track">
+                <div class="search-keyword-bar-fill" style="width: 22.0%"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ==================== 评价分析面板 ==================== -->
+      <div class="analysis-panel" id="panel-review-analysis">
+        <section class="section-card">
+          <div class="section-card-header">
+            <h2 class="section-card-title">评价分析概览</h2>
+          </div>
+          <div class="review-summary">
+            <div class="review-summary-row">
+              <div class="review-summary-icon good">
+                <i data-lucide="smile" style="width:18px;height:18px;"></i>
+              </div>
+              <div class="review-summary-info">
+                <div class="review-summary-label">好评</div>
+                <div class="review-summary-desc">占比最高的评价类型</div>
+              </div>
+              <span class="review-summary-value" style="color: var(--state-success);">89.2%</span>
+            </div>
+            <div class="review-summary-row">
+              <div class="review-summary-icon mid">
+                <i data-lucide="meh" style="width:18px;height:18px;"></i>
+              </div>
+              <div class="review-summary-info">
+                <div class="review-summary-label">中评</div>
+                <div class="review-summary-desc">需关注改进的商品体验</div>
+              </div>
+              <span class="review-summary-value" style="color: var(--state-warning);">7.4%</span>
+            </div>
+            <div class="review-summary-row">
+              <div class="review-summary-icon bad">
+                <i data-lucide="frown" style="width:18px;height:18px;"></i>
+              </div>
+              <div class="review-summary-info">
+                <div class="review-summary-label">差评</div>
+                <div class="review-summary-desc">需要紧急处理的问题</div>
+              </div>
+              <span class="review-summary-value" style="color: var(--state-error);">3.4%</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 高频评价关键词 -->
+        <section class="section-card">
+          <div class="section-card-header">
+            <h2 class="section-card-title">高频评价关键词</h2>
+          </div>
+          <div style="padding: 0 16px 16px;">
+            <div class="filter-chips" style="padding: 0 0 12px;">
+              <button class="filter-chip active" style="background: var(--state-success-surface); border-color: var(--state-success); color: var(--state-success);">质量好</button>
+              <button class="filter-chip" style="background: var(--state-success-surface); border-color: var(--state-success); color: var(--state-success);">快递快</button>
+              <button class="filter-chip">性价比高</button>
+              <button class="filter-chip">包装精美</button>
+              <button class="filter-chip" style="background: var(--state-warning-surface); border-color: var(--state-warning); color: var(--state-warning);">偏小</button>
+              <button class="filter-chip" style="background: var(--state-error-surface); border-color: var(--state-error); color: var(--state-error);">味道大</button>
+            </div>
+            <div style="background: var(--background-100); border-radius: calc(var(--radius) * 0.5); padding: 12px;">
+              <div style="font-size: 12px; color: var(--text-400); margin-bottom: 8px;">最近30天评价提及趋势</div>
+              <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;">
+                <div style="text-align: center;">
+                  <div style="height: 48px; display: flex; align-items: flex-end; justify-content: center;">
+                    <div style="width: 100%; height: 55%; background: var(--state-success); border-radius: 3px; opacity: 0.7;"></div>
+                  </div>
+                  <div style="font-size: 10px; color: var(--text-400); margin-top: 4px;">周一</div>
+                </div>
+                <div style="text-align: center;">
+                  <div style="height: 48px; display: flex; align-items: flex-end; justify-content: center;">
+                    <div style="width: 100%; height: 70%; background: var(--state-success); border-radius: 3px; opacity: 0.7;"></div>
+                  </div>
+                  <div style="font-size: 10px; color: var(--text-400); margin-top: 4px;">周二</div>
+                </div>
+                <div style="text-align: center;">
+                  <div style="height: 48px; display: flex; align-items: flex-end; justify-content: center;">
+                    <div style="width: 100%; height: 45%; background: var(--state-success); border-radius: 3px; opacity: 0.7;"></div>
+                  </div>
+                  <div style="font-size: 10px; color: var(--text-400); margin-top: 4px;">周三</div>
+                </div>
+                <div style="text-align: center;">
+                  <div style="height: 48px; display: flex; align-items: flex-end; justify-content: center;">
+                    <div style="width: 100%; height: 85%; background: var(--state-success); border-radius: 3px; opacity: 0.85;"></div>
+                  </div>
+                  <div style="font-size: 10px; color: var(--text-400); margin-top: 4px;">周四</div>
+                </div>
+                <div style="text-align: center;">
+                  <div style="height: 48px; display: flex; align-items: flex-end; justify-content: center;">
+                    <div style="width: 100%; height: 60%; background: var(--state-success); border-radius: 3px; opacity: 0.7;"></div>
+                  </div>
+                  <div style="font-size: 10px; color: var(--text-400); margin-top: 4px;">周五</div>
+                </div>
+                <div style="text-align: center;">
+                  <div style="height: 48px; display: flex; align-items: flex-end; justify-content: center;">
+                    <div style="width: 100%; height: 95%; background: var(--state-success); border-radius: 3px;"></div>
+                  </div>
+                  <div style="font-size: 10px; color: var(--text-400); margin-top: 4px;">周六</div>
+                </div>
+                <div style="text-align: center;">
+                  <div style="height: 48px; display: flex; align-items: flex-end; justify-content: center;">
+                    <div style="width: 100%; height: 78%; background: var(--state-success); border-radius: 3px; opacity: 0.85;"></div>
+                  </div>
+                  <div style="font-size: 10px; color: var(--text-400); margin-top: 4px;">周日</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ==================== 库存周转面板 ==================== -->
+      <div class="analysis-panel" id="panel-inventory-turnover">
+
+        <!-- 库存健康度概览 -->
+        <section class="section-card">
+          <div class="section-card-header">
+            <h2 class="section-card-title">库存健康度概览</h2>
+            <button class="section-card-action">
+              更多
+              <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
+            </button>
+          </div>
+          <div class="inventory-health">
+            <!-- 滞销 -->
+            <div class="inventory-health-row">
+              <span class="inventory-health-label" style="color: var(--state-error);">滞销</span>
+              <div class="inventory-health-bar-track">
+                <div class="inventory-health-bar-fill slow" style="width: 18%;">
+                  <span>156</span>
+                </div>
+              </div>
+              <span class="inventory-health-percent" style="color: var(--state-error);">18%</span>
+            </div>
+            <!-- 正常 -->
+            <div class="inventory-health-row">
+              <span class="inventory-health-label" style="color: var(--state-success);">正常</span>
+              <div class="inventory-health-bar-track">
+                <div class="inventory-health-bar-fill normal" style="width: 65%;">
+                  <span>564</span>
+                </div>
+              </div>
+              <span class="inventory-health-percent" style="color: var(--state-success);">65%</span>
+            </div>
+            <!-- 紧缺 -->
+            <div class="inventory-health-row">
+              <span class="inventory-health-label" style="color: var(--state-warning);">紧缺</span>
+              <div class="inventory-health-bar-track">
+                <div class="inventory-health-bar-fill low" style="width: 17%;">
+                  <span>147</span>
+                </div>
+              </div>
+              <span class="inventory-health-percent" style="color: var(--state-warning);">17%</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 库存周转天数排行 -->
+        <section class="section-card">
+          <div class="section-card-header">
+            <h2 class="section-card-title">库存周转天数排行</h2>
+          </div>
+          <div style="padding: 0 16px 16px;">
+            <div class="rank-item">
+              <span class="rank-badge" style="background: var(--state-error-surface); color: var(--state-error);">1</span>
+              <div class="rank-info">
+                <div class="rank-name">复古皮质狗项圈</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">库存 <span class="rank-stat-value sales">328</span></span>
+                  <span class="rank-stat-label">周转 <span class="rank-stat-value" style="color: var(--state-error);">96天</span></span>
+                </div>
+              </div>
+            </div>
+            <div class="rank-item">
+              <span class="rank-badge" style="background: var(--state-error-surface); color: var(--state-error);">2</span>
+              <div class="rank-info">
+                <div class="rank-name">夏季薄款宠物T恤</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">库存 <span class="rank-stat-value sales">215</span></span>
+                  <span class="rank-stat-label">周转 <span class="rank-stat-value" style="color: var(--state-error);">72天</span></span>
+                </div>
+              </div>
+            </div>
+            <div class="rank-item">
+              <span class="rank-badge" style="background: var(--state-warning-surface); color: var(--state-warning);">3</span>
+              <div class="rank-info">
+                <div class="rank-name">迷你陶瓷宠物食盆</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">库存 <span class="rank-stat-value sales">186</span></span>
+                  <span class="rank-stat-label">周转 <span class="rank-stat-value" style="color: var(--state-warning);">58天</span></span>
+                </div>
+              </div>
+            </div>
+            <div class="rank-item">
+              <span class="rank-badge">4</span>
+              <div class="rank-info">
+                <div class="rank-name">猫用电动剃毛器</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">库存 <span class="rank-stat-value sales">142</span></span>
+                  <span class="rank-stat-label">周转 <span class="rank-stat-value sales">45天</span></span>
+                </div>
+              </div>
+            </div>
+            <div class="rank-item">
+              <span class="rank-badge">5</span>
+              <div class="rank-info">
+                <div class="rank-name">高端宠物洗护套装</div>
+                <div class="rank-stats">
+                  <span class="rank-stat-label">库存 <span class="rank-stat-value sales">89</span></span>
+                  <span class="rank-stat-label">周转 <span class="rank-stat-value" style="color: var(--state-success);">12天</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+    </main>
+
+    <!-- 时间筛选底部弹窗 -->
+    <div class="time-filter-sheet" id="timeFilterSheet">
+      <div class="time-filter-sheet-overlay" id="closeTimeFilter"></div>
+      <div class="time-filter-sheet-content">
+        <h3 class="time-filter-sheet-title">选择时间范围</h3>
+        <div class="time-filter-options">
+          <button class="time-filter-option" data-range="today">
+            <span class="time-filter-option-label">今日</span>
+            <span class="time-filter-option-sub">实时数据</span>
+          </button>
+          <button class="time-filter-option active" data-range="7d">
+            <span class="time-filter-option-label">近7天</span>
+            <span class="time-filter-option-sub">周环比</span>
+          </button>
+          <button class="time-filter-option" data-range="30d">
+            <span class="time-filter-option-label">近30天</span>
+            <span class="time-filter-option-sub">月环比</span>
+          </button>
+          <button class="time-filter-option" data-range="90d">
+            <span class="time-filter-option-label">近90天</span>
+            <span class="time-filter-option-sub">季对比</span>
+          </button>
+          <button class="time-filter-option" data-range="half-year">
+            <span class="time-filter-option-label">近半年</span>
+            <span class="time-filter-option-sub">半年报</span>
+          </button>
+          <button class="time-filter-option" data-range="custom">
+            <span class="time-filter-option-label">自定义</span>
+            <span class="time-filter-option-sub">选日期范围</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 交互逻辑 -->
+    <script>
+    // 初始化 Lucide 图标
+    lucide.createIcons();
+
+    // ===== 分析维度 Tab 切换 =====
+    document.querySelectorAll('.analysis-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        // 更新 Tab 激活状态
+        document.querySelectorAll('.analysis-tab').forEach(function(t) {
+          t.classList.remove('active');
+        });
+        this.classList.add('active');
+
+        // 切换对应面板
+        var targetPanel = this.getAttribute('data-tab');
+        document.querySelectorAll('.analysis-panel').forEach(function(p) {
+          p.classList.remove('active');
+        });
+        var panel = document.getElementById('panel-' + targetPanel);
+        if (panel) {
+          panel.classList.add('active');
+        }
+      });
+    });
+
+    // ===== 时间筛选弹窗 =====
+    var timeFilterSheet = document.getElementById('timeFilterSheet');
+    document.getElementById('openTimeFilter').addEventListener('click', function() {
+      timeFilterSheet.classList.add('active');
+    });
+    document.getElementById('closeTimeFilter').addEventListener('click', function() {
+      timeFilterSheet.classList.remove('active');
+    });
+
+    // 时间范围选项切换
+    document.querySelectorAll('.time-filter-option').forEach(function(opt) {
+      opt.addEventListener('click', function() {
+        document.querySelectorAll('.time-filter-option').forEach(function(o) {
+          o.classList.remove('active');
+        });
+        this.classList.add('active');
+        // 关闭弹窗
+        setTimeout(function() {
+          timeFilterSheet.classList.remove('active');
+        }, 200);
+      });
+    });
+
+    // ===== 滞销商品预警折叠/展开 =====
+    var slowMovingToggle = document.getElementById('slowMovingToggle');
+    var slowMovingBody = document.getElementById('slowMovingBody');
+    var slowMovingIcon = document.getElementById('slowMovingIcon');
+
+    slowMovingToggle.addEventListener('click', function() {
+      var isExpanded = slowMovingBody.classList.contains('expanded');
+      if (isExpanded) {
+        slowMovingBody.classList.remove('expanded');
+        slowMovingIcon.classList.remove('expanded');
+      } else {
+        slowMovingBody.classList.add('expanded');
+        slowMovingIcon.classList.add('expanded');
+      }
+    });
+
+    // ===== 筛选 Chip 切换 =====
+    document.querySelectorAll('.filter-chips').forEach(function(chipGroup) {
+      chipGroup.querySelectorAll('.filter-chip').forEach(function(chip) {
+        chip.addEventListener('click', function() {
+          chipGroup.querySelectorAll('.filter-chip').forEach(function(c) {
+            c.classList.remove('active');
+            c.style.background = '';
+            c.style.borderColor = '';
+            c.style.color = '';
+          });
+          this.classList.add('active');
+        });
+      });
+    });
+
+    // ===== 新品表现周期 Tab 切换 =====
+    document.querySelectorAll('.new-product-period-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.new-product-period-tab').forEach(function(t) {
+          t.classList.remove('active');
+        });
+        this.classList.add('active');
+      });
+    });
+    </script>
+
+</body>
+</html>

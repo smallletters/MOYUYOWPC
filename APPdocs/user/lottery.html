@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOYUYO 幸运大转盘</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04); /* Hairline */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04); /* Subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05); /* Card */
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* Raised */
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Card Hover */
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05); /* Float */
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06); /* Overlay */
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12); /* Modal */
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+/*
+ * components.css - aggregated component CSS
+ * Auto-extracted from preview/component-*.html files.
+ * DO NOT EDIT. Regenerate with extract-components-css.mjs.
+ *
+ * Foundation tokens live in colors_and_type.css.
+ * This file consumes those tokens via var(--*) references.
+ */
+
+/* ============================================================
+ * Button
+ * source: preview/component-button.html
+ * rules: 10
+ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+/* ============================================================
+ * Card
+ * source: preview/component-card.html
+ * rules: 12
+ */
+.card{width:188px;min-height:148px;padding:calc(var(--spacing)*5);display:flex;flex-direction:column;justify-content:space-between;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);transition:transform .18s ease,box-shadow .18s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.card.disabled,.card.disabled:hover{opacity:.5;transform:none;box-shadow:var(--shadow-md)}
+.eyebrow,.meta{color:var(--muted-foreground);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.title{margin:6px 0 8px;font-size:18px;line-height:1.15}
+.body-copy{margin:0;color:var(--muted-foreground);font-size:13px}
+.cta{display:inline-flex;align-items:center;justify-content:center;width:max-content;margin-top:12px;padding:calc(var(--spacing)*2) calc(var(--spacing)*3.5);border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;font-weight:700;text-decoration:none}
+.media{aspect-ratio:4/3;border-radius:calc(var(--radius) - 4px);background:linear-gradient(135deg,var(--secondary),var(--accent));border:1px solid var(--border)}
+.media-card{min-height:212px;padding:calc(var(--spacing)*4)}
+.media-card .title{font-size:16px;margin:10px 0 6px}
+.price{font-size:12px;color:var(--muted-foreground)}
+.dark{background:var(--card);color:var(--card-foreground)}
+
+/* ============================================================
+ * Comparison Table
+ * source: preview/component-comparison-table.html
+ * rules: 13
+ */
+.t{display:grid;grid-template-columns:96px repeat(3,1fr);overflow:hidden;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-sm)}
+.q{grid-template-columns:82px repeat(4,1fr)}
+.c{padding:10px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.t>.c:nth-child(4n),.q>.c:nth-child(5n){border-right:0}
+.t>.c:nth-last-child(-n+4),.q>.c:nth-last-child(-n+5){border-bottom:0}
+.m{background:var(--background);color:var(--muted-foreground);font:700 10px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase}
+.h{background:var(--background);font-weight:700}
+.k{display:block;font-size:14px;line-height:1.1}
+.s{display:block;margin-top:4px;color:var(--chart-2);font-size:11px;font-weight:700}
+.b .k{color:var(--chart-2)}
+.v{font-weight:600}
+.n{color:var(--muted-foreground);font-size:12px}
+.x{opacity:.45}
+
+/* ============================================================
+ * Input
+ * source: preview/component-input.html
+ * rules: 10
+ */
+.surface{display:flex;gap:calc(var(--spacing)*2);padding:calc(var(--spacing)*3);border:1px solid var(--border);border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow-sm)}
+.dark{background:var(--background);color:var(--foreground)}
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field.small{height:40px}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.field.disabled{opacity:.55}
+.icon,.clear{padding:0;border:0;background:transparent;color:var(--icon-muted);font:inherit}
+.icon{font-size:13px}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+
+/* ============================================================
+ * Navigation
+ * source: preview/component-navigation.html
+ * rules: 16
+ */
+.webbar,.mobile{border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.webbar{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:320px;height:44px;padding:0 calc(var(--spacing)*3);border-radius:var(--radius);background:var(--sidebar)}
+.brand{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.link,.tab{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;color:inherit;text-decoration:none;white-space:nowrap;transition:background-color .18s ease,color .18s ease,opacity .18s ease}
+.link{height:32px;padding:0 calc(var(--spacing)*2.5)}
+.link:hover,.tab:hover{background:var(--secondary)}
+.link:focus-visible,.tab:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.dark{background:var(--sidebar);color:var(--foreground)}
+.disabled{opacity:.48}
+.disabled .link,.disabled .tab{pointer-events:none}
+.mobile{padding:calc(var(--spacing)*2);border-radius:calc(var(--radius)*1.1);background:var(--card)}
+.screen{display:flex;align-items:flex-end;justify-content:center;width:188px;height:164px;padding:calc(var(--spacing)*3);border-radius:calc(var(--radius)*.9);background:linear-gradient(180deg,var(--background),var(--secondary))}
+.tabbar{display:flex;gap:calc(var(--spacing)*1.5);padding:calc(var(--spacing)*1.5);border:1px solid var(--border);border-radius:999px;background:var(--card);box-shadow:var(--shadow-md)}
+.tab{flex-direction:column;gap:2px;min-width:56px;height:56px;padding:0 calc(var(--spacing)*1.5);font-size:11px;text-align:center}
+.dot{width:18px;height:18px;border-radius:999px;background:var(--secondary);box-shadow:inset 0 0 0 1px var(--border)}
+.tab:hover .dot{background:var(--primary)}
+
+/* ============================================================
+ * Product Grid
+ * source: preview/component-product-grid.html
+ * rules: 12
+ */
+.grid{display:grid;gap:8px;flex:1}
+.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.card{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-xs);transition:border-color .2s ease,transform .2s ease}
+.card:hover{border-color:var(--primary);transform:translateY(-1px)}
+.media{aspect-ratio:1;border-radius:calc(var(--radius) - 4px);background:linear-gradient(135deg,var(--secondary),var(--background));border:1px solid var(--border)}
+.eyebrow{color:var(--muted-foreground);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.title{font-size:15px;line-height:1.25}
+.price{font-variant-numeric:tabular-nums}
+.cta{display:inline-flex;align-self:flex-start;padding:7px 10px;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;text-decoration:none}
+.muted{color:var(--muted-foreground)}
+.is-disabled{opacity:.55}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+
+      /* ===== 转盘专用样式 ===== */
+
+      /* 转盘旋转动画 */
+      .wheel-spin {
+        transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+      }
+
+      /* 转盘指针 */
+      .wheel-pointer {
+        width: 0;
+        height: 0;
+        border-left: 14px solid transparent;
+        border-right: 14px solid transparent;
+        border-top: 28px solid var(--primary);
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+      }
+
+      /* 中奖弹窗遮罩 */
+      .modal-overlay {
+        transition: opacity 0.3s ease;
+      }
+
+      /* 折叠面板动画 */
+      .collapse-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.35s ease;
+      }
+      .collapse-content.open {
+        max-height: 600px;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+  <main class="pb-12">
+
+    <!-- 顶部导航栏：深色背景 -->
+    <div class="sticky top-0 z-30" style="background: var(--background-800);">
+      <div class="h-11 flex items-center justify-between px-5">
+        <span class="text-sm font-semibold" style="color: var(--text-50);">9:41</span>
+        <div class="flex items-center gap-1.5">
+          <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/triangle-alert.svg'); mask-image: url('../assets/icons/dl-builtin-apple/triangle-alert.svg'); color: var(--text-50);"></span>
+          <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/box.svg'); mask-image: url('../assets/icons/dl-builtin-apple/box.svg'); color: var(--text-50);"></span>
+          <span class="w-6 h-3 rounded-sm" style="background: var(--text-50);"></span>
+        </div>
+      </div>
+      <!-- 导航：返回箭头 + 标题 -->
+      <div class="flex items-center h-12 px-4 gap-3" style="background: var(--background-800);">
+        <button class="w-9 h-9 flex items-center justify-center rounded-full" style="background: var(--background-700);" aria-label="返回">
+          <i data-lucide="arrow-left" class="w-5 h-5" style="color: var(--text-50);"></i>
+        </button>
+        <h1 class="text-base font-semibold flex-1 text-center pr-9" style="color: var(--text-50);">幸运大转盘</h1>
+      </div>
+    </div>
+
+    <!-- 剩余抽奖次数卡片 -->
+    <section class="px-4 pt-5">
+      <div class="rounded-[var(--radius)] p-4 flex items-center justify-between" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-600)); box-shadow: var(--shadow-md);">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background: rgba(255,255,255,0.2);">
+            <i data-lucide="ticket" class="w-5 h-5" style="color: var(--background-50);"></i>
+          </div>
+          <div>
+            <p class="text-sm font-semibold" style="color: var(--background-50);">剩余 3 次抽奖机会</p>
+            <p class="text-xs mt-0.5" style="color: rgba(255,255,255,0.75);">消费满 $50 再获得 1 次</p>
+          </div>
+        </div>
+        <div class="w-8 h-8 rounded-full flex items-center justify-center" style="background: rgba(255,255,255,0.2);">
+          <i data-lucide="chevron-right" class="w-4 h-4" style="color: var(--background-50);"></i>
+        </div>
+      </div>
+    </section>
+
+    <!-- 转盘主体区域 -->
+    <section class="flex flex-col items-center px-4 pt-8 pb-6">
+      <!-- 转盘容器 -->
+      <div class="relative" style="width: 300px; height: 300px;">
+
+        <!-- 外圈装饰环 -->
+        <div class="absolute inset-0 rounded-full" style="border: 4px solid var(--brand-500); box-shadow: 0 0 0 8px var(--brand-50), 0 0 0 12px var(--brand-200), var(--shadow-lg);"></div>
+
+        <!-- 指针（转盘顶部） -->
+        <div class="absolute top-[-2px] left-1/2 -translate-x-1/2 z-10">
+          <div class="wheel-pointer"></div>
+        </div>
+
+        <!-- 转盘本体 -->
+        <div id="wheel" class="wheel-spin absolute inset-[4px] rounded-full overflow-hidden cursor-pointer"
+             style="background: conic-gradient(
+               #007AFF 0deg 45deg,
+               #34C759 45deg 90deg,
+               #FF9500 90deg 135deg,
+               #5856D6 135deg 180deg,
+               #AF52DE 180deg 225deg,
+               #FF3B30 225deg 270deg,
+               #00C7BE 270deg 315deg,
+               #8E8E93 315deg 360deg
+             );">
+
+          <!-- 扇区标签容器 -->
+          <div class="absolute inset-0">
+            <!-- 8个扇区奖品标签，通过旋转定位 -->
+            <div class="absolute flex items-center justify-center" style="top: 50%; left: 50%; width: 50%; height: 2px; transform-origin: 0% 50%; transform: rotate(22.5deg) translateY(-50%);">
+              <span class="text-[10px] font-bold whitespace-nowrap" style="color: #fff; transform: translateX(40%); text-shadow: 0 1px 2px rgba(0,0,0,0.3);">$5优惠券</span>
+            </div>
+            <div class="absolute flex items-center justify-center" style="top: 50%; left: 50%; width: 50%; height: 2px; transform-origin: 0% 50%; transform: rotate(67.5deg) translateY(-50%);">
+              <span class="text-[10px] font-bold whitespace-nowrap" style="color: #fff; transform: translateX(40%); text-shadow: 0 1px 2px rgba(0,0,0,0.3);">10积分</span>
+            </div>
+            <div class="absolute flex items-center justify-center" style="top: 50%; left: 50%; width: 50%; height: 2px; transform-origin: 0% 50%; transform: rotate(112.5deg) translateY(-50%);">
+              <span class="text-[10px] font-bold whitespace-nowrap" style="color: #fff; transform: translateX(40%); text-shadow: 0 1px 2px rgba(0,0,0,0.3);">$10优惠券</span>
+            </div>
+            <div class="absolute flex items-center justify-center" style="top: 50%; left: 50%; width: 50%; height: 2px; transform-origin: 0% 50%; transform: rotate(157.5deg) translateY(-50%);">
+              <span class="text-[10px] font-bold whitespace-nowrap" style="color: #fff; transform: translateX(40%); text-shadow: 0 1px 2px rgba(0,0,0,0.3);">限定礼盒</span>
+            </div>
+            <div class="absolute flex items-center justify-center" style="top: 50%; left: 50%; width: 50%; height: 2px; transform-origin: 0% 50%; transform: rotate(202.5deg) translateY(-50%);">
+              <span class="text-[10px] font-bold whitespace-nowrap" style="color: #fff; transform: translateX(40%); text-shadow: 0 1px 2px rgba(0,0,0,0.3);">20积分</span>
+            </div>
+            <div class="absolute flex items-center justify-center" style="top: 50%; left: 50%; width: 50%; height: 2px; transform-origin: 0% 50%; transform: rotate(247.5deg) translateY(-50%);">
+              <span class="text-[10px] font-bold whitespace-nowrap" style="color: #fff; transform: translateX(40%); text-shadow: 0 1px 2px rgba(0,0,0,0.3);">免邮券</span>
+            </div>
+            <div class="absolute flex items-center justify-center" style="top: 50%; left: 50%; width: 50%; height: 2px; transform-origin: 0% 50%; transform: rotate(292.5deg) translateY(-50%);">
+              <span class="text-[10px] font-bold whitespace-nowrap" style="color: #fff; transform: translateX(40%); text-shadow: 0 1px 2px rgba(0,0,0,0.3);">50积分</span>
+            </div>
+            <div class="absolute flex items-center justify-center" style="top: 50%; left: 50%; width: 50%; height: 2px; transform-origin: 0% 50%; transform: rotate(337.5deg) translateY(-50%);">
+              <span class="text-[10px] font-bold whitespace-nowrap" style="color: #fff; transform: translateX(40%); text-shadow: 0 1px 2px rgba(0,0,0,0.3);">谢谢参与</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 中心按钮 -->
+        <button id="spinBtn" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-16 h-16 rounded-full flex items-center justify-center"
+                style="background: var(--primary); box-shadow: 0 4px 16px rgba(0,122,255,0.4); border: 3px solid var(--background-50);"
+                aria-label="开始抽奖">
+          <span class="text-sm font-bold" style="color: var(--background-50);">开始</span>
+        </button>
+      </div>
+
+      <!-- 转盘下方提示 -->
+      <p class="text-xs mt-5 text-center" style="color: var(--muted-foreground);">点击「开始」按钮进行抽奖</p>
+    </section>
+
+    <!-- 抽奖记录折叠面板 -->
+    <section class="px-4 mt-2">
+      <button id="toggleHistory" class="w-full flex items-center justify-between p-4 rounded-t-[var(--radius)]"
+              style="background: var(--secondary); border: 1px solid var(--border); border-bottom: none;">
+        <div class="flex items-center gap-2">
+          <i data-lucide="history" class="w-4 h-4" style="color: var(--primary);"></i>
+          <span class="text-sm font-semibold" style="color: var(--foreground);">抽奖记录</span>
+          <span class="text-xs px-1.5 py-0.5 rounded-full" style="background: var(--brand-100); color: var(--primary);">10</span>
+        </div>
+        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" style="color: var(--muted-foreground);" id="historyArrow"></i>
+      </button>
+      <div id="historyContent" class="collapse-content rounded-b-[var(--radius)]" style="background: var(--card); border: 1px solid var(--border); border-top: none;">
+        <div class="divide-y" style="border-color: var(--border);">
+          <!-- 记录 1 -->
+          <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--brand-50);">
+                <i data-lucide="tag" class="w-4 h-4" style="color: var(--primary);"></i>
+              </div>
+              <span class="text-sm font-medium" style="color: var(--foreground);">$5优惠券</span>
+            </div>
+            <span class="text-xs" style="color: var(--muted-foreground);">2025-07-08 14:32</span>
+          </div>
+          <!-- 记录 2 -->
+          <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--state-success-surface);">
+                <i data-lucide="star" class="w-4 h-4" style="color: var(--state-success);"></i>
+              </div>
+              <span class="text-sm font-medium" style="color: var(--foreground);">20积分</span>
+            </div>
+            <span class="text-xs" style="color: var(--muted-foreground);">2025-07-07 09:15</span>
+          </div>
+          <!-- 记录 3 -->
+          <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--brand-50);">
+                <i data-lucide="tag" class="w-4 h-4" style="color: var(--primary);"></i>
+              </div>
+              <span class="text-sm font-medium" style="color: var(--foreground);">$10优惠券</span>
+            </div>
+            <span class="text-xs" style="color: var(--muted-foreground);">2025-07-06 20:41</span>
+          </div>
+          <!-- 记录 4 -->
+          <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: #f3e8ff;">
+                <i data-lucide="gift" class="w-4 h-4" style="color: #5856D6;"></i>
+              </div>
+              <span class="text-sm font-medium" style="color: var(--foreground);">限定礼盒</span>
+            </div>
+            <span class="text-xs" style="color: var(--muted-foreground);">2025-07-05 16:08</span>
+          </div>
+          <!-- 记录 5 -->
+          <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--brand-50);">
+                <i data-lucide="truck" class="w-4 h-4" style="color: var(--primary);"></i>
+              </div>
+              <span class="text-sm font-medium" style="color: var(--foreground);">免邮券</span>
+            </div>
+            <span class="text-xs" style="color: var(--muted-foreground);">2025-07-04 11:22</span>
+          </div>
+          <!-- 记录 6 -->
+          <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--state-success-surface);">
+                <i data-lucide="star" class="w-4 h-4" style="color: var(--state-success);"></i>
+              </div>
+              <span class="text-sm font-medium" style="color: var(--foreground);">50积分</span>
+            </div>
+            <span class="text-xs" style="color: var(--muted-foreground);">2025-07-03 08:55</span>
+          </div>
+          <!-- 记录 7 -->
+          <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--background-200);">
+                <i data-lucide="frown" class="w-4 h-4" style="color: var(--text-400);"></i>
+              </div>
+              <span class="text-sm font-medium" style="color: var(--foreground);">谢谢参与</span>
+            </div>
+            <span class="text-xs" style="color: var(--muted-foreground);">2025-07-02 19:33</span>
+          </div>
+          <!-- 记录 8 -->
+          <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--brand-50);">
+                <i data-lucide="tag" class="w-4 h-4" style="color: var(--primary);"></i>
+              </div>
+              <span class="text-sm font-medium" style="color: var(--foreground);">$5优惠券</span>
+            </div>
+            <span class="text-xs" style="color: var(--muted-foreground);">2025-07-01 13:17</span>
+          </div>
+          <!-- 记录 9 -->
+          <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--state-success-surface);">
+                <i data-lucide="star" class="w-4 h-4" style="color: var(--state-success);"></i>
+              </div>
+              <span class="text-sm font-medium" style="color: var(--foreground);">10积分</span>
+            </div>
+            <span class="text-xs" style="color: var(--muted-foreground);">2025-06-30 10:44</span>
+          </div>
+          <!-- 记录 10 -->
+          <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--brand-50);">
+                <i data-lucide="tag" class="w-4 h-4" style="color: var(--primary);"></i>
+              </div>
+              <span class="text-sm font-medium" style="color: var(--foreground);">$10优惠券</span>
+            </div>
+            <span class="text-xs" style="color: var(--muted-foreground);">2025-06-29 17:29</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 底部规则说明 -->
+    <section class="px-4 pt-6 pb-8">
+      <div class="rounded-[var(--radius)] p-4" style="background: var(--secondary);">
+        <div class="flex items-center gap-2 mb-3">
+          <i data-lucide="info" class="w-4 h-4" style="color: var(--primary);"></i>
+          <span class="text-sm font-semibold" style="color: var(--foreground);">活动规则</span>
+        </div>
+        <ul class="space-y-2">
+          <li class="flex gap-2 text-xs leading-relaxed" style="color: var(--muted-foreground);">
+            <span class="mt-1 shrink-0 w-1 h-1 rounded-full" style="background: var(--muted-foreground);"></span>
+            消费满 $50 获得 1 次抽奖机会，每日上限 5 次
+          </li>
+          <li class="flex gap-2 text-xs leading-relaxed" style="color: var(--muted-foreground);">
+            <span class="mt-1 shrink-0 w-1 h-1 rounded-full" style="background: var(--muted-foreground);"></span>
+            奖品包括优惠券、积分、免邮券及限定礼盒
+          </li>
+          <li class="flex gap-2 text-xs leading-relaxed" style="color: var(--muted-foreground);">
+            <span class="mt-1 shrink-0 w-1 h-1 rounded-full" style="background: var(--muted-foreground);"></span>
+            优惠券有效期为发放后 7 天，积分实时到账
+          </li>
+          <li class="flex gap-2 text-xs leading-relaxed" style="color: var(--muted-foreground);">
+            <span class="mt-1 shrink-0 w-1 h-1 rounded-full" style="background: var(--muted-foreground);"></span>
+            限定礼盒中奖后 3 个工作日内发货
+          </li>
+          <li class="flex gap-2 text-xs leading-relaxed" style="color: var(--muted-foreground);">
+            <span class="mt-1 shrink-0 w-1 h-1 rounded-full" style="background: var(--muted-foreground);"></span>
+            活动最终解释权归 MOYUYO 所有
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 中奖结果弹窗（默认隐藏） -->
+    <div id="prizeModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(0,0,0,0.5); opacity: 0; pointer-events: none;">
+      <div class="mx-4 w-full max-w-[340px] rounded-2xl p-6 text-center" style="background: var(--card); box-shadow: var(--shadow-2xl);">
+        <!-- 奖品图标 -->
+        <div id="prizeIcon" class="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style="background: var(--brand-50);">
+          <i data-lucide="gift" class="w-8 h-8" style="color: var(--primary);"></i>
+        </div>
+        <!-- 奖品名称 -->
+        <h2 id="prizeTitle" class="text-lg font-bold mb-2" style="color: var(--foreground);">恭喜中奖</h2>
+        <!-- 奖品说明 -->
+        <p id="prizeDesc" class="text-sm mb-6" style="color: var(--muted-foreground);">您获得了一张 $5 优惠券</p>
+        <!-- 收下奖品按钮 -->
+        <button id="claimBtn" class="w-full h-12 rounded-full text-sm font-semibold"
+                style="background: var(--primary); color: var(--primary-foreground); box-shadow: var(--shadow-md);">
+          收下奖品
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- 交互脚本 -->
+  <script>
+    // ===== 转盘旋转逻辑 =====
+    const prizes = [
+      { name: '$5优惠券', desc: '您获得了一张 $5 优惠券，下单立减', icon: 'tag', color: 'var(--brand-50)' },
+      { name: '10积分', desc: '您获得了 10 积分奖励', icon: 'star', color: 'var(--state-success-surface)' },
+      { name: '$10优惠券', desc: '您获得了一张 $10 优惠券，下单立减', icon: 'tag', color: 'var(--brand-50)' },
+      { name: '限定礼盒', desc: '恭喜获得限定礼盒，将在 3 个工作日内发货', icon: 'gift', color: '#f3e8ff' },
+      { name: '20积分', desc: '您获得了 20 积分奖励', icon: 'star', color: 'var(--state-success-surface)' },
+      { name: '免邮券', desc: '您获得了一张免邮券，可免一次运费', icon: 'truck', color: 'var(--brand-50)' },
+      { name: '50积分', desc: '您获得了 50 积分奖励', icon: 'star', color: 'var(--state-success-surface)' },
+      { name: '谢谢参与', desc: '很遗憾未中奖，再试一次吧', icon: 'frown', color: 'var(--background-200)' }
+    ];
+
+    const wheel = document.getElementById('wheel');
+    const spinBtn = document.getElementById('spinBtn');
+    const prizeModal = document.getElementById('prizeModal');
+    const prizeTitle = document.getElementById('prizeTitle');
+    const prizeDesc = document.getElementById('prizeDesc');
+    const prizeIcon = document.getElementById('prizeIcon');
+    const claimBtn = document.getElementById('claimBtn');
+    let isSpinning = false;
+    let currentRotation = 0;
+
+    // 点击开始按钮旋转转盘
+    spinBtn.addEventListener('click', function () {
+      if (isSpinning) return;
+      isSpinning = true;
+
+      // 随机选择奖品（加权：谢谢参与概率更高）
+      const weights = [15, 15, 10, 2, 10, 10, 5, 33]; // 概率权重
+      const totalWeight = weights.reduce((a, b) => a + b, 0);
+      let random = Math.random() * totalWeight;
+      let selectedIndex = 0;
+      for (let i = 0; i < weights.length; i++) {
+        random -= weights[i];
+        if (random <= 0) { selectedIndex = i; break; }
+      }
+
+      // 计算旋转角度（至少转5圈 + 目标扇区偏移）
+      const sectorAngle = 360 / prizes.length;
+      const targetAngle = 360 * 5 + (360 - (selectedIndex * sectorAngle + sectorAngle / 2));
+      currentRotation += targetAngle;
+
+      // 应用旋转
+      wheel.style.transform = 'rotate(' + currentRotation + 'deg)';
+
+      // 旋转结束后显示弹窗
+      setTimeout(function () {
+        showPrize(selectedIndex);
+        isSpinning = false;
+      }, 4200);
+    });
+
+    // 显示中奖弹窗
+    function showPrize(index) {
+      const prize = prizes[index];
+      prizeTitle.textContent = prize.name === '谢谢参与' ? '差一点就中了' : '恭喜中奖';
+      prizeDesc.textContent = prize.desc;
+
+      // 更新弹窗图标
+      prizeIcon.style.background = prize.color;
+      prizeIcon.innerHTML = '<i data-lucide="' + prize.icon + '" class="w-8 h-8" style="color: ' +
+        (prize.name === '谢谢参与' ? 'var(--text-400)' : prize.icon === 'gift' ? '#5856D6' : 'var(--primary)') +
+        ';"></i>';
+      lucide.createIcons();
+
+      // 显示弹窗
+      prizeModal.style.opacity = '1';
+      prizeModal.style.pointerEvents = 'auto';
+    }
+
+    // 关闭弹窗
+    claimBtn.addEventListener('click', function () {
+      prizeModal.style.opacity = '0';
+      prizeModal.style.pointerEvents = 'none';
+    });
+
+    // 点击遮罩关闭
+    prizeModal.addEventListener('click', function (e) {
+      if (e.target === prizeModal) {
+        prizeModal.style.opacity = '0';
+        prizeModal.style.pointerEvents = 'none';
+      }
+    });
+
+    // ===== 折叠面板逻辑 =====
+    const toggleHistory = document.getElementById('toggleHistory');
+    const historyContent = document.getElementById('historyContent');
+    const historyArrow = document.getElementById('historyArrow');
+    let historyOpen = false;
+
+    toggleHistory.addEventListener('click', function () {
+      historyOpen = !historyOpen;
+      historyContent.classList.toggle('open', historyOpen);
+      historyArrow.style.transform = historyOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+    });
+  </script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "code": 0,
+  "data": {
+    "list": [
+      {
+        "cartId": 1,
+        "productId": 5001,
+        "skuId": 500101,
+        "name": "MOYUYO 草本舒缓沐浴露 500ml",
+        "mainImage": "https://...",
+        "price": 49.9,
+        "quantity": 2,
+        "selected": true,
+        "stock": 120,
+        "stockStatus": "IN_STOCK"
+      }
+    ],
+    "totalAmount": 99.8,
+    "selectedAmount": 99.8,
+    "selectedCount": 1
+  }
+}

@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Facebook 动态发布模拟 - BloomWitness 仿真花</title>
+  <style>
+    /* ===== 全局重置 ===== */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(145deg, #fdf2f5 0%, #fce4ec 30%, #fff8e7 70%, #fdf2f5 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 16px;
+    }
+
+    /* ===== 手机容器 ===== */
+    .phone-frame {
+      width: 100%;
+      max-width: 420px;
+      background: #ffffff;
+      border-radius: 32px;
+      box-shadow:
+        0 20px 60px rgba(187, 134, 148, 0.25),
+        0 0 0 1px rgba(200, 160, 170, 0.15);
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ===== 状态栏 ===== */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #1c1e21;
+      background: #ffffff;
+    }
+
+    .status-bar .time {
+      font-weight: 700;
+    }
+    .status-bar .icons {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .status-bar .icons svg {
+      width: 16px;
+      height: 16px;
+      fill: #1c1e21;
+    }
+
+    /* ===== Facebook 顶部导航 ===== */
+    .fb-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 16px;
+      background: #ffffff;
+      border-bottom: 1px solid #e4e6eb;
+    }
+
+    .fb-header .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .fb-header .logo svg {
+      width: 32px;
+      height: 32px;
+    }
+
+    .fb-header .logo .fb-text {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1877f2;
+      letter-spacing: -0.3px;
+    }
+
+    .fb-header .actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .fb-header .actions svg {
+      width: 24px;
+      height: 24px;
+      fill: #1c1e21;
+      cursor: default;
+    }
+
+    /* ===== 帖子容器 ===== */
+    .post {
+      padding: 0;
+    }
+
+    /* ===== 帖子头部 ===== */
+    .post-header {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px 8px;
+      gap: 10px;
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #f8a5b0, #f5c6d0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .post-meta {
+      flex: 1;
+    }
+
+    .post-meta .brand-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1c1e21;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .post-meta .brand-name .verified {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .post-meta .brand-name .verified svg {
+      width: 14px;
+      height: 14px;
+      fill: #1877f2;
+    }
+
+    .post-meta .time {
+      font-size: 12px;
+      color: #65676b;
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .post-meta .time .public-badge {
+      font-size: 12px;
+    }
+
+    .post-header .more-btn {
+      color: #65676b;
+      cursor: default;
+    }
+
+    .post-header .more-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: #65676b;
+    }
+
+    /* ===== 图片展示区域 ===== */
+    .image-area {
+      margin: 8px 0 0;
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      background: linear-gradient(
+        135deg,
+        #fce4ec 0%,
+        #f8bbd0 15%,
+        #f5d5e0 30%,
+        #fce4ec 45%,
+        #fff3e0 60%,
+        #fce4ec 75%,
+        #f8bbd0 90%,
+        #fce4ec 100%
+      );
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 装饰性花艺图案（纯 CSS 模拟） */
+    .flower-decoration {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 花艺 SVG 容器 */
+    .flower-art {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .flower-art svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* 图片标注 */
+    .image-label {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 6px 18px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    /* ===== 帖子正文 ===== */
+    .post-body {
+      padding: 12px 16px 8px;
+    }
+
+    .post-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #1c1e21;
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+
+    .post-title .highlight {
+      color: #d6336c;
+    }
+
+    .post-text {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #1c1e21;
+    }
+
+    .post-text p {
+      margin-bottom: 10px;
+    }
+
+    .post-text p:last-child {
+      margin-bottom: 0;
+    }
+
+    .post-text .emoji-icon {
+      font-size: 16px;
+    }
+
+    /* 卖点列表 */
+    .benefit-list {
+      margin: 6px 0 10px;
+      padding-left: 20px;
+      list-style: none;
+    }
+
+    .benefit-list li {
+      position: relative;
+      font-size: 15px;
+      line-height: 1.7;
+      color: #1c1e21;
+      margin-bottom: 4px;
+      padding-left: 6px;
+    }
+
+    .benefit-list li::before {
+      content: "✦";
+      position: absolute;
+      left: -18px;
+      color: #d4af37;
+      font-size: 12px;
+      top: 2px;
+    }
+
+    .cta-text {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #1c1e21;
+      margin-top: 6px;
+      padding: 10px 14px;
+      background: linear-gradient(135deg, #fdf2f5, #fff8e7);
+      border-radius: 10px;
+      border-left: 3px solid #d4af37;
+    }
+
+    .cta-text strong {
+      color: #d6336c;
+    }
+
+    /* ===== 标签 ===== */
+    .tags {
+      padding: 4px 16px 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tags .tag {
+      font-size: 13px;
+      color: #1877f2;
+      cursor: default;
+      line-height: 1.5;
+    }
+
+    .tags .tag:hover {
+      text-decoration: underline;
+    }
+
+    /* ===== 互动统计 ===== */
+    .engagement-stats {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 16px;
+      border-top: 1px solid #e4e6eb;
+      font-size: 13px;
+      color: #65676b;
+    }
+
+    .engagement-stats .likes {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .engagement-stats .likes .like-icons {
+      display: flex;
+    }
+
+    .engagement-stats .likes .like-icons .icon-bg {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      border: 1.5px solid #fff;
+      margin-right: -4px;
+    }
+
+    .engagement-stats .likes .like-icons .icon-bg.like {
+      background: #1877f2;
+    }
+    .engagement-stats .likes .like-icons .icon-bg.heart {
+      background: #f33e58;
+    }
+    .engagement-stats .likes .like-icons .icon-bg.care {
+      background: #f7b125;
+    }
+
+    .engagement-stats .comments {
+      color: #65676b;
+    }
+
+    /* ===== 互动按钮 ===== */
+    .action-bar {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 4px 0 8px;
+      border-top: 1px solid #e4e6eb;
+      margin: 0 16px;
+    }
+
+    .action-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border: none;
+      background: none;
+      font-size: 13px;
+      font-weight: 600;
+      color: #65676b;
+      cursor: default;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+
+    .action-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: #65676b;
+    }
+
+    .action-btn.liked svg {
+      fill: #1877f2;
+    }
+    .action-btn.liked {
+      color: #1877f2;
+    }
+
+    /* ===== 发布建议区域 ===== */
+    .tips-section {
+      margin: 20px 16px 24px;
+      padding: 20px;
+      background: linear-gradient(135deg, #fdf6f8, #fef9ef);
+      border-radius: 16px;
+      border: 1px solid rgba(212, 175, 55, 0.2);
+      position: relative;
+    }
+
+    .tips-section::before {
+      content: "发布建议";
+      position: absolute;
+      top: -11px;
+      left: 20px;
+      background: #ffffff;
+      padding: 0 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #d4af37;
+      letter-spacing: 1px;
+    }
+
+    .tips-section .tip-item {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .tips-section .tip-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .tips-section .tip-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #f8a5b0, #d4af37);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+      color: #fff;
+    }
+
+    .tips-section .tip-content {
+      flex: 1;
+    }
+
+    .tips-section .tip-content .tip-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1c1e21;
+      margin-bottom: 2px;
+    }
+
+    .tips-section .tip-content .tip-desc {
+      font-size: 13px;
+      color: #65676b;
+      line-height: 1.5;
+    }
+
+    /* ===== 底部版权 ===== */
+    .footer-note {
+      text-align: center;
+      padding: 16px 16px 20px;
+      font-size: 11px;
+      color: #a0a4a8;
+      border-top: 1px solid #e4e6eb;
+    }
+
+    .footer-note a {
+      color: #1877f2;
+      text-decoration: none;
+    }
+
+    /* ===== 响应式 ===== */
+    @media (max-width: 460px) {
+      body {
+        padding: 0;
+      }
+      .phone-frame {
+        max-width: 100%;
+        border-radius: 0;
+        box-shadow: none;
+      }
+    }
+
+    @media (min-width: 768px) {
+      body {
+        padding: 40px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== 手机框架 ===== -->
+  <div class="phone-frame">
+
+    <!-- ===== 状态栏 ===== -->
+    <div class="status-bar">
+      <span class="time">9:41</span>
+      <div class="icons">
+        <!-- 信号 -->
+        <svg viewBox="0 0 16 16"><path d="M1 10l3-3v6H1v-3zm4-4l3-3v10H5V6zm4-4l3 3v10H9V2z"/></svg>
+        <!-- WiFi -->
+        <svg viewBox="0 0 16 16"><path d="M8 1C4.5 1 1.5 2.5 0 5l1.5 1.5C2.8 4.5 5.3 3.5 8 3.5s5.2 1 6.5 3L16 5C14.5 2.5 11.5 1 8 1zm0 5c-2 0-3.8.8-5.2 2.2l1.5 1.5C5.5 8.5 6.7 8 8 8s2.5.5 3.7 1.7l1.5-1.5C11.8 6.8 10 6 8 6zm0 5c-1 0-1.8.4-2.5 1L8 15l2.5-3c-.7-.6-1.5-1-2.5-1z"/></svg>
+        <!-- 电池 -->
+        <svg viewBox="0 0 24 12"><rect x="0.5" y="0.5" width="20" height="11" rx="2" fill="none" stroke="#1c1e21" stroke-width="1"/><rect x="2" y="2" width="17" height="7" rx="1" fill="#1c1e21"/><rect x="22" y="3.5" width="1.5" height="5" rx="0.5" fill="#1c1e21"/></svg>
+      </div>
+    </div>
+
+    <!-- ===== Facebook 顶部导航 ===== -->
+    <div class="fb-header">
+      <div class="logo">
+        <svg viewBox="0 0 48 48"><path fill="#1877F2" d="M24 5C13.5 5 5 13.5 5 24c0 9.5 6.9 17.4 16 18.9V30h-4.5v-6H21v-4.5c0-5 3-7.8 7.5-7.8 2.2 0 4.5.4 4.5.4v5h-2.5c-2.5 0-3.3 1.6-3.3 3.2V24h5.6l-0.9 6H27v12.9c9.1-1.5 16-9.4 16-18.9 0-10.5-8.5-19-19-19z"/></svg>
+        <span class="fb-text">Facebook</span>
+      </div>
+      <div class="actions">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1 15h-2v-6h2v6zm-1-7c-.6 0-1-.4-1-1s.4-1 1-1 1 .4 1 1-.4 1-1 1zm8 7h-2v-3c0-1.1-.9-2-2-2s-2 .9-2 2v3h-2v-6h2v1c.6-.8 1.5-1.3 2.5-1.3 1.8 0 3.3 1.5 3.3 3.3v3z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15v-6h2v6h-2zm0-8V7h2v2h-2z"/></svg>
+      </div>
+    </div>
+
+    <!-- ===== 帖子 ===== -->
+    <div class="post">
+
+      <!-- ===== 帖子头部 ===== -->
+      <div class="post-header">
+        <div class="avatar">BW</div>
+        <div class="post-meta">
+          <div class="brand-name">
+            BloomWitness 仿真花
+            <span class="verified">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.4-1.4L10 14.2l7.6-7.6L19 8l-9 9z"/></svg>
+            </span>
+          </div>
+          <div class="time">
+            刚刚发布
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="#65676b"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.4-1.4L10 14.2l7.6-7.6L19 8l-9 9z"/></svg>
+            <span class="public-badge">&#x1F310; 公开</span>
+          </div>
+        </div>
+        <div class="more-btn">
+          <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+        </div>
+      </div>
+
+      <!-- ===== 图片展示区域 ===== -->
+      <div class="image-area">
+        <div class="flower-decoration">
+          <!-- 花艺装饰 SVG -->
+          <div class="flower-art">
+            <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <linearGradient id="petalPink" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#f8bbd0"/>
+                  <stop offset="100%" stop-color="#f48fb1"/>
+                </linearGradient>
+                <linearGradient id="petalWhite" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#ffffff"/>
+                  <stop offset="100%" stop-color="#fce4ec"/>
+                </linearGradient>
+                <linearGradient id="vaseSilver" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#e0e0e0"/>
+                  <stop offset="40%" stop-color="#bdbdbd"/>
+                  <stop offset="100%" stop-color="#9e9e9e"/>
+                </linearGradient>
+                <radialGradient id="candleGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#fff8e1" stop-opacity="0.9"/>
+                  <stop offset="60%" stop-color="#ffe082" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="#ffe082" stop-opacity="0"/>
+                </radialGradient>
+                <linearGradient id="goldAccent" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#d4af37"/>
+                  <stop offset="50%" stop-color="#f0d68a"/>
+                  <stop offset="100%" stop-color="#d4af37"/>
+                </linearGradient>
+              </defs>
+
+              <!-- 背景 -->
+              <rect width="400" height="300" fill="#fdf2f5"/>
+
+              <!-- 桌面 -->
+              <rect x="0" y="230" width="400" height="70" fill="#f5f0eb" rx="0"/>
+              <rect x="0" y="228" width="400" height="4" fill="rgba(212,175,55,0.15)"/>
+
+              <!-- 花瓶（银色金属质感） -->
+              <path d="M170 170 L165 230 L235 230 L230 170 Z" fill="url(#vaseSilver)" stroke="#a0a0a0" stroke-width="0.5"/>
+              <ellipse cx="200" cy="170" rx="30" ry="8" fill="url(#vaseSilver)" stroke="#a0a0a0" stroke-width="0.5"/>
+              <ellipse cx="200" cy="230" rx="35" ry="5" fill="#b0b0b0"/>
+              <!-- 花瓶高光 -->
+              <path d="M178 175 L176 225" stroke="rgba(255,255,255,0.5)" stroke-width="2" fill="none"/>
+              <path d="M185 172 L183 225" stroke="rgba(255,255,255,0.3)" stroke-width="1" fill="none"/>
+
+              <!-- 金色餐具（右侧） -->
+              <rect x="280" y="210" width="6" height="55" rx="2" fill="url(#goldAccent)" transform="rotate(15, 283, 237)"/>
+              <ellipse cx="284" cy="210" rx="8" ry="3" fill="url(#goldAccent)" transform="rotate(15, 284, 210)"/>
+              <rect x="310" y="215" width="5" height="50" rx="2" fill="url(#goldAccent)" transform="rotate(-10, 312, 240)"/>
+              <ellipse cx="312" cy="215" rx="7" ry="2.5" fill="url(#goldAccent)" transform="rotate(-10, 312, 215)"/>
+
+              <!-- 白色蜡烛（左侧） -->
+              <rect x="80" y="185" width="14" height="50" rx="3" fill="#f5f0e8"/>
+              <ellipse cx="87" cy="185" rx="7" ry="3" fill="#faf5ee"/>
+              <!-- 烛芯 -->
+              <line x1="87" y1="185" x2="87" y2="178" stroke="#5d4037" stroke-width="1"/>
+              <!-- 烛光 -->
+              <ellipse cx="87" cy="175" rx="6" ry="8" fill="url(#candleGlow)"/>
+              <ellipse cx="87" cy="176" rx="3" ry="4" fill="#fff8e1" opacity="0.8"/>
+
+              <!-- 郁金香群 - 粉色郁金香 -->
+              <!-- 花1（中央偏左，粉色） -->
+              <g transform="translate(180, 100)">
+                <path d="M0 0 C-8 -15 -15 -25 -5 -35 C2 -40 10 -35 12 -28 C15 -22 10 -10 0 0Z" fill="url(#petalPink)"/>
+                <path d="M0 0 C8 -15 15 -25 5 -35 C-2 -40 -10 -35 -12 -28 C-15 -22 -10 -10 0 0Z" fill="url(#petalPink)" opacity="0.85"/>
+                <path d="M0 -5 C-3 -18 -5 -28 0 -35 C5 -28 3 -18 0 -5Z" fill="#fce4ec" opacity="0.6"/>
+                <!-- 茎 -->
+                <line x1="0" y1="0" x2="0" y2="70" stroke="#66bb6a" stroke-width="2.5"/>
+                <!-- 叶子 -->
+                <path d="M0 30 C-12 25 -20 35 -10 45" stroke="#66bb6a" stroke-width="2" fill="none"/>
+                <path d="M0 40 C10 35 18 42 8 50" stroke="#66bb6a" stroke-width="2" fill="none"/>
+              </g>
+
+              <!-- 花2（中央偏右，白色） -->
+              <g transform="translate(210, 95)">
+                <path d="M0 0 C-7 -13 -13 -22 -4 -32 C2 -37 9 -32 11 -26 C14 -20 9 -9 0 0Z" fill="url(#petalWhite)"/>
+                <path d="M0 0 C7 -13 13 -22 4 -32 C-2 -37 -9 -32 -11 -26 C-14 -20 -9 -9 0 0Z" fill="url(#petalWhite)" opacity="0.85"/>
+                <path d="M0 -5 C-3 -16 -4 -25 0 -32 C4 -25 3 -16 0 -5Z" fill="#ffffff" opacity="0.7"/>
+                <line x1="0" y1="0" x2="0" y2="75" stroke="#66bb6a" stroke-width="2.5"/>
+              </g>
+
+              <!-- 花3（左侧，粉色） -->
+              <g transform="translate(155, 110)">
+                <path d="M0 0 C-6 -12 -12 -20 -3 -28 C2 -32 8 -28 9 -22 C11 -17 7 -7 0 0Z" fill="url(#petalPink)"/>
+                <path d="M0 0 C6 -12 12 -20 3 -28 C-2 -32 -8 -28 -9 -22 C-11 -17 -7 -7 0 0Z" fill="url(#petalPink)" opacity="0.8"/>
+                <line x1="0" y1="0" x2="0" y2="65" stroke="#66bb6a" stroke-width="2"/>
+                <path d="M0 25 C-10 20 -16 28 -8 38" stroke="#66bb6a" stroke-width="1.5" fill="none"/>
+              </g>
+
+              <!-- 花4（右侧，白色） -->
+              <g transform="translate(240, 105)">
+                <path d="M0 0 C-6 -11 -10 -18 -3 -26 C2 -30 7 -26 9 -20 C10 -15 7 -7 0 0Z" fill="url(#petalWhite)"/>
+                <path d="M0 0 C6 -11 10 -18 3 -26 C-2 -30 -7 -26 -9 -20 C-10 -15 -7 -7 0 0Z" fill="url(#petalWhite)" opacity="0.8"/>
+                <line x1="0" y1="0" x2="0" y2="68" stroke="#66bb6a" stroke-width="2"/>
+                <path d="M0 30 C10 25 16 32 8 42" stroke="#66bb6a" stroke-width="1.5" fill="none"/>
+              </g>
+
+              <!-- 花5（最高，中央偏左，粉色） -->
+              <g transform="translate(195, 75)">
+                <path d="M0 0 C-7 -14 -14 -24 -5 -34 C1 -38 9 -34 11 -27 C14 -21 9 -10 0 0Z" fill="url(#petalPink)"/>
+                <path d="M0 0 C7 -14 14 -24 5 -34 C-1 -38 -9 -34 -11 -27 C-14 -21 -9 -10 0 0Z" fill="url(#petalPink)" opacity="0.8"/>
+                <line x1="0" y1="0" x2="0" y2="95" stroke="#66bb6a" stroke-width="2.5"/>
+              </g>
+
+              <!-- 花6（右侧，粉色） -->
+              <g transform="translate(225, 85)">
+                <path d="M0 0 C-6 -12 -12 -20 -4 -30 C2 -34 8 -30 10 -24 C12 -18 8 -8 0 0Z" fill="url(#petalPink)"/>
+                <path d="M0 0 C6 -12 12 -20 4 -30 C-2 -34 -8 -30 -10 -24 C-12 -18 -8 -8 0 0Z" fill="url(#petalPink)" opacity="0.8"/>
+                <line x1="0" y1="0" x2="0" y2="80" stroke="#66bb6a" stroke-width="2"/>
+              </g>
+
+              <!-- 配叶/填充 -->
+              <g opacity="0.4">
+                <circle cx="165" cy="140" r="6" fill="#c8e6c9"/>
+                <circle cx="235" cy="135" r="5" fill="#c8e6c9"/>
+                <circle cx="175" cy="150" r="4" fill="#c8e6c9"/>
+                <circle cx="220" cy="145" r="5" fill="#c8e6c9"/>
+              </g>
+
+              <!-- 金色装饰线（桌面上的点缀） -->
+              <line x1="100" y1="245" x2="300" y2="245" stroke="rgba(212,175,55,0.2)" stroke-width="1" stroke-dasharray="4,4"/>
+
+              <!-- 底部光晕 -->
+              <ellipse cx="200" cy="260" rx="120" ry="8" fill="rgba(212,175,55,0.06)"/>
+            </svg>
+          </div>
+          <div class="image-label">&#x1F4F7; 参考图片：粉白郁金香宴会桌花布置</div>
+        </div>
+      </div>
+
+      <!-- ===== 帖子正文 ===== -->
+      <div class="post-body">
+        <div class="post-title">
+          <span class="highlight">&#x1F338 婚礼季</span> 还要为真花三天就枯萎而烦恼吗？<br>
+          试试这束 <span class="highlight">永不凋谢</span> 的仿真郁金香吧！
+        </div>
+
+        <div class="post-text">
+          <p>
+            婚礼季又到了，看着 ins 上那些美到窒息的宴会花艺布置，是不是既心动又犹豫？真花确实美，但几天就枯萎了，几千块打水漂 <span class="emoji-icon">&#x1F62D</span>
+          </p>
+
+          <p>
+            但我们的仿真花不一样——<strong>它永远不会凋谢</strong>。今天布置好的这桌粉白郁金香，半年后、一年后走进这个房间，它还是这个状态。真花最美的时候只有几天，而我们的花可以美上好几年。
+          </p>
+
+          <ul class="benefit-list">
+            <li><strong>无需打理</strong> — 不用浇水、不用修剪、不必担心光照</li>
+            <li><strong>过敏友好</strong> — 花粉过敏的宾客也能安心靠近</li>
+            <li><strong>不怕碰触</strong> — 宾客走动、孩子好奇，花型依然完美</li>
+            <li><strong>婚礼后还能带回家</strong> — 作为新家的装饰，把美好回忆延续下去</li>
+          </ul>
+
+          <p>
+            无论是婚礼主桌、订婚宴、生日派对、开业花篮，还是日常家居装饰，BloomWitness 都能为你打造专属的花艺方案。我们采用 <strong>高仿真材质</strong>，1 米之外完全看不出是假花，很多宾客直到婚礼结束都没发现摸到的竟然是仿真花 <span class="emoji-icon">&#x1F92F</span>
+          </p>
+
+          <div class="cta-text">
+            <strong>&#x1F3C6 限时福利</strong><br>
+            即日起至本月底，首次下单即享 <strong>8 折优惠</strong>！<br>
+            私信我们询价/定制，免费获取专属方案 &#x1F447&#x1F3FB
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 标签 ===== -->
+      <div class="tags">
+        <span class="tag">#仿真花</span>
+        <span class="tag">#婚礼布置</span>
+        <span class="tag">#婚礼花艺</span>
+        <span class="tag">#永生花</span>
+        <span class="tag">#宴会布置</span>
+        <span class="tag">#人造花</span>
+        <span class="tag">#婚礼策划</span>
+        <span class="tag">#花艺设计</span>
+        <span class="tag">#BloomWitness</span>
+      </div>
+
+      <!-- ===== 互动统计 ===== -->
+      <div class="engagement-stats">
+        <div class="likes">
+          <div class="like-icons">
+            <span class="icon-bg like">&#x1F44D;</span>
+            <span class="icon-bg heart">&#x2764;</span>
+            <span class="icon-bg care">&#x2B50;</span>
+          </div>
+          <span>99+ 人已赞</span>
+        </div>
+        <div class="comments">12 条评论</div>
+      </div>
+
+      <!-- ===== 互动按钮 ===== -->
+      <div class="action-bar">
+        <div class="action-btn liked">
+          <svg viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.3a2 2 0 0 0 2-1.7l1.4-8.2a2 2 0 0 0-2-2.3H14zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3v11z"/></svg>
+          赞
+        </div>
+        <div class="action-btn">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12c0 2.5 0.9 4.8 2.4 6.6L3 22l4.2-1.4c1.5 0.8 3.1 1.2 4.8 1.2 5.5 0 10-4.5 10-10S17.5 2 12 2z"/></svg>
+          评论
+        </div>
+        <div class="action-btn">
+          <svg viewBox="0 0 24 24"><path d="M21 12l-7-7v4C7 9 4 14 3 19c2.5-3.5 6-4 11-4v4l7-7z"/></svg>
+          分享
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===== 发布建议区域 ===== -->
+    <div class="tips-section">
+      <div class="tip-item">
+        <div class="tip-icon">&#x23F0;</div>
+        <div class="tip-content">
+          <div class="tip-title">最佳发布时间</div>
+          <div class="tip-desc">工作日晚上 7:00–9:00，周末上午 10:00–12:00，此时目标用户活跃度最高，互动率可提升 40% 以上。</div>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-icon">&#x1F4F8;</div>
+        <div class="tip-content">
+          <div class="tip-title">搭配多图发布</div>
+          <div class="tip-desc">建议配合 3–5 张实拍产品图一起发布，不同角度展示花艺细节，让用户更直观感受仿真度。</div>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-icon">&#x1F4CC;</div>
+        <div class="tip-content">
+          <div class="tip-title">评论区置顶</div>
+          <div class="tip-desc">建议在评论区置顶一条优惠信息，例如："本月下单享 8 折 + 免费配送，私信即可领取专属优惠券！"</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 底部版权 ===== -->
+    <div class="footer-note">
+      BloomWitness 仿真花 · 社交媒体内容模拟 · 仅供展示参考
+    </div>
+
+  </div>
+
+</body>
+</html>

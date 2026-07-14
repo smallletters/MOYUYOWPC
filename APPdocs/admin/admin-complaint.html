@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOYUYO 投诉管理 - 管理后台</title>
+    <style id="theme-vars">
+/*
+ * MOYUYO design tokens
+ * Brand: MOYUYO
+ * Style: Apple-inspired, restrained, elegant
+ * Theme mode: light-dark
+ * Source language: zh
+ */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff;
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759;
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30;
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* state-warning */
+  --state-warning: #ff9500;
+  --state-warning-surface: #fff4e5;
+  --state-warning-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: 'DM Sans', -apple-system, sans-serif;
+  --font-serif: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12);
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+    </style>
+    <style id="component-vars">
+/* ============================================================
+ * Button - 基础按钮组件
+ * ============================================================*/
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+.btn-sm{height:32px;padding:0 12px;font-size:12px;border-radius:calc(var(--radius)*1.5)}
+
+/* ============================================================
+ * Card - 基础卡片组件
+ * ============================================================*/
+.card{width:100%;padding:calc(var(--spacing)*5);display:flex;flex-direction:column;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);transition:transform .18s ease,box-shadow .18s ease}
+.card:hover{box-shadow:var(--shadow-md)}
+.eyebrow,.meta{color:var(--muted-foreground);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.title{margin:6px 0 8px;font-size:18px;line-height:1.15}
+.body-copy{margin:0;color:var(--muted-foreground);font-size:13px}
+
+/* ============================================================
+ * Field - 输入框组件
+ * ============================================================*/
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+
+/* ============================================================
+ * Navigation - 导航组件
+ * ============================================================*/
+.link,.tab{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;color:inherit;text-decoration:none;white-space:nowrap;transition:background-color .18s ease,color .18s ease}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+
+      /* ===== 后台管理布局 ===== */
+      .admin-layout {
+        display: flex;
+        min-height: 100vh;
+      }
+      .admin-sidebar {
+        width: 240px;
+        min-height: 100vh;
+        background: #1d1d1f;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+      .admin-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        background: var(--background);
+      }
+
+      /* 侧边栏品牌区 */
+      .sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 20px 20px 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+      }
+      .sidebar-brand-text {
+        font-size: 16px;
+        font-weight: 700;
+        color: #ffffff;
+        letter-spacing: 0.02em;
+      }
+
+      /* 侧边栏导航 */
+      .sidebar-nav {
+        flex: 1;
+        padding: 12px 10px;
+        overflow-y: auto;
+      }
+      .sidebar-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 8px;
+        color: rgba(255,255,255,0.6);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        text-decoration: none;
+        margin-bottom: 2px;
+      }
+      .sidebar-nav-item:hover {
+        background: rgba(255,255,255,0.06);
+        color: rgba(255,255,255,0.9);
+      }
+      .sidebar-nav-item.active {
+        background: var(--brand-500);
+        color: #ffffff;
+      }
+      .sidebar-nav-item .nav-icon {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+
+      /* 顶部栏 */
+      .admin-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 56px;
+        padding: 0 24px;
+        border-bottom: 1px solid var(--border);
+        background: var(--card);
+        flex-shrink: 0;
+      }
+
+      /* 面包屑 */
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--text-400);
+      }
+      .breadcrumb a {
+        color: var(--text-500);
+        text-decoration: none;
+        transition: color 0.15s ease;
+      }
+      .breadcrumb a:hover {
+        color: var(--primary);
+      }
+      .breadcrumb .current {
+        color: var(--text-800);
+        font-weight: 600;
+      }
+      .breadcrumb .separator {
+        color: var(--text-300);
+      }
+
+      /* ===== 投诉管理页面专用样式 ===== */
+
+      /* 统计卡片网格 */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+      }
+      .stat-card {
+        padding: 20px;
+        border-radius: var(--radius);
+        background: var(--card);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-xs);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        transition: border-color 0.2s ease, transform 0.2s ease;
+      }
+      .stat-card:hover {
+        border-color: var(--primary);
+        transform: translateY(-1px);
+      }
+      .stat-card .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        font-family: var(--font-sans);
+        line-height: 1.2;
+      }
+      .stat-card .stat-label {
+        font-size: 13px;
+        color: var(--text-500);
+        font-weight: 500;
+      }
+      .stat-card .stat-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: calc(var(--radius) * 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 4px;
+      }
+
+      /* 等级筛选 Tab */
+      .level-tabs {
+        display: flex;
+        gap: 6px;
+      }
+      .level-tabs::-webkit-scrollbar { display: none; }
+      .level-tab {
+        flex-shrink: 0;
+        height: 36px;
+        padding: 0 16px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text-500);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .18s ease;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--font-sans);
+      }
+      .level-tab.active {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border-color: var(--primary);
+      }
+      .level-tab:not(.active):hover {
+        background: var(--secondary);
+        color: var(--foreground);
+      }
+
+      /* 投诉列表项 */
+      .complaint-item {
+        padding: 20px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-xs);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      .complaint-item:hover {
+        border-color: var(--primary);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+      }
+
+      /* 投诉等级标签 */
+      .level-badge {
+        display: inline-flex;
+        align-items: center;
+        height: 24px;
+        padding: 0 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+      .level-badge.l1 {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+      .level-badge.l2 {
+        background: var(--state-warning-surface);
+        color: var(--state-warning);
+      }
+      .level-badge.l3 {
+        background: #f0e6ff;
+        color: #5856d6;
+      }
+      .level-badge.l4 {
+        background: var(--state-error-surface);
+        color: var(--state-error);
+      }
+
+      /* 来源标签 */
+      .source-badge {
+        display: inline-flex;
+        align-items: center;
+        height: 22px;
+        padding: 0 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        background: var(--background-200);
+        color: var(--text-500);
+      }
+
+      /* 处理状态标签 */
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        height: 24px;
+        padding: 0 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .status-badge.pending {
+        background: var(--state-warning-surface);
+        color: var(--state-warning);
+      }
+      .status-badge.processing {
+        background: #e8f0ff;
+        color: var(--brand-500);
+      }
+      .status-badge.resolved {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+      .status-badge.unsatisfied {
+        background: var(--state-error-surface);
+        color: var(--state-error);
+      }
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      /* SLA 倒计时 */
+      .sla-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: calc(var(--radius) * 0.6);
+        background: var(--background-100);
+      }
+      .sla-bar .sla-track {
+        flex: 1;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--background-300);
+        overflow: hidden;
+      }
+      .sla-bar .sla-fill {
+        height: 100%;
+        border-radius: 2px;
+        transition: width .4s ease;
+      }
+      .sla-bar .sla-fill.safe { background: var(--state-success); }
+      .sla-bar .sla-fill.warning { background: var(--state-warning); }
+      .sla-bar .sla-fill.danger { background: var(--state-error); }
+      .sla-bar .sla-text {
+        font-size: 13px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        min-width: 40px;
+        text-align: right;
+      }
+
+      /* 操作按钮组 */
+      .action-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .action-btn {
+        height: 32px;
+        padding: 0 14px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text-800);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .18s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-family: var(--font-sans);
+      }
+      .action-btn:hover {
+        background: var(--secondary);
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+      .action-btn.primary {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border-color: var(--primary);
+      }
+      .action-btn.primary:hover {
+        filter: brightness(0.92);
+      }
+      .action-btn.danger {
+        border-color: var(--state-error);
+        color: var(--state-error);
+      }
+      .action-btn.danger:hover {
+        background: var(--state-error-surface);
+      }
+
+      /* 升级链路时间线 */
+      .timeline {
+        padding: 24px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-xs);
+      }
+      .timeline-node {
+        display: flex;
+        gap: 14px;
+        position: relative;
+        padding-bottom: 24px;
+      }
+      .timeline-node:last-child {
+        padding-bottom: 0;
+      }
+      .timeline-node:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        left: 15px;
+        top: 36px;
+        width: 2px;
+        height: calc(100% - 36px);
+        background: var(--background-300);
+      }
+      .timeline-node.completed:not(:last-child)::after {
+        background: var(--state-success);
+      }
+      .timeline-dot {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 12px;
+        font-weight: 700;
+        z-index: 1;
+      }
+      .timeline-dot.completed {
+        background: var(--state-success);
+        color: var(--state-success-foreground);
+      }
+      .timeline-dot.current {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+      }
+      .timeline-dot.pending {
+        background: var(--background-300);
+        color: var(--text-400);
+      }
+      .timeline-content {
+        flex: 1;
+        min-width: 0;
+      }
+      .timeline-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-800);
+      }
+      .timeline-desc {
+        font-size: 13px;
+        color: var(--text-500);
+        margin-top: 2px;
+        line-height: 1.5;
+      }
+      .timeline-time {
+        font-size: 12px;
+        color: var(--text-400);
+        margin-top: 4px;
+      }
+
+      /* 柱状图 */
+      .chart-container {
+        padding: 24px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-xs);
+      }
+      .bar-chart {
+        display: flex;
+        align-items: flex-end;
+        gap: 12px;
+        height: 160px;
+        padding-top: 10px;
+      }
+      .bar-col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        height: 100%;
+        justify-content: flex-end;
+      }
+      .bar-fill {
+        width: 100%;
+        max-width: 36px;
+        border-radius: 6px 6px 2px 2px;
+        background: var(--primary);
+        transition: height .4s ease;
+        min-height: 4px;
+      }
+      .bar-label {
+        font-size: 11px;
+        color: var(--text-400);
+        font-weight: 500;
+        white-space: nowrap;
+      }
+      .bar-value {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-800);
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* 信息行 */
+      .info-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--text-500);
+      }
+      .info-row svg,
+      .info-row [data-icon] {
+        flex-shrink: 0;
+      }
+
+      /* 关联入口按钮 */
+      .link-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 13px;
+        color: var(--primary);
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .link-btn:hover {
+        text-decoration: underline;
+      }
+
+      /* 区块标题 */
+      .section-title {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--text-800);
+        margin-bottom: 12px;
+      }
+
+      /* 投诉类别标签 */
+      .category-tag {
+        display: inline-flex;
+        align-items: center;
+        height: 22px;
+        padding: 0 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 500;
+        background: var(--background-200);
+        color: var(--text-600);
+      }
+
+      /* 脉冲动画 - 待处理 */
+      @keyframes pulse-ring {
+        0% { transform: scale(1); opacity: 1; }
+        100% { transform: scale(1.8); opacity: 0; }
+      }
+      .pulse-dot {
+        position: relative;
+      }
+      .pulse-dot::before {
+        content: '';
+        position: absolute;
+        inset: -3px;
+        border-radius: 50%;
+        background: var(--state-error);
+        animation: pulse-ring 1.5s ease-out infinite;
+      }
+
+      /* 页面最小宽度 */
+      body { min-width: 1280px; }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased" style="font-family: 'DM Sans', -apple-system, sans-serif;">
+    <div class="admin-layout">
+
+        <!-- ========== 左侧导航栏 ========== -->
+        <aside class="admin-sidebar">
+            <!-- 品牌标识 -->
+            <div class="sidebar-brand">
+                <i data-lucide="paw-print" class="w-6 h-6" style="color: var(--brand-500);"></i>
+                <span class="sidebar-brand-text">MOYUYO Admin</span>
+            </div>
+
+            <!-- 导航菜单 -->
+            <nav class="sidebar-nav">
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="layout-dashboard" class="nav-icon"></i>
+                    <span>仪表盘</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="package" class="nav-icon"></i>
+                    <span>商品管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="shopping-bag" class="nav-icon"></i>
+                    <span>订单管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="users" class="nav-icon"></i>
+                    <span>用户管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="megaphone" class="nav-icon"></i>
+                    <span>营销管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="file-text" class="nav-icon"></i>
+                    <span>内容管理</span>
+                </a>
+                <a class="sidebar-nav-item active" href="#">
+                    <i data-lucide="headphones" class="nav-icon"></i>
+                    <span>客服管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="bar-chart-3" class="nav-icon"></i>
+                    <span>数据统计</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="truck" class="nav-icon"></i>
+                    <span>物流管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="shield-alert" class="nav-icon"></i>
+                    <span>风控管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="settings" class="nav-icon"></i>
+                    <span>系统设置</span>
+                </a>
+            </nav>
+
+            <!-- 侧边栏底部 -->
+            <div style="padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--brand-500); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="user" style="width: 16px; height: 16px; color: #fff;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9);">Admin</div>
+                        <div style="font-size: 11px; color: rgba(255,255,255,0.4);">超级管理员</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ========== 主内容区 ========== -->
+        <div class="admin-main">
+
+            <!-- 顶部栏 -->
+            <header class="admin-topbar">
+                <!-- 面包屑 -->
+                <div class="breadcrumb">
+                    <a href="#">客服管理</a>
+                    <span class="separator">/</span>
+                    <span class="current">投诉管理</span>
+                </div>
+                <!-- 右侧操作区 -->
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text-600); font-size: 13px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);">
+                        <i data-lucide="download" style="width: 14px; height: 14px;"></i>
+                        导出报表
+                    </button>
+                    <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--background-200); cursor: pointer;">
+                        <i data-lucide="bell" style="width: 18px; height: 18px; color: var(--text-600);"></i>
+                        <span style="position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--state-error);"></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 内容区 -->
+            <main style="flex: 1; padding: 24px; overflow-y: auto;">
+
+                <!-- 页面标题 -->
+                <div style="margin-bottom: 24px;">
+                    <h1 style="font-size: 22px; font-weight: 700; color: var(--text-800); margin: 0 0 6px;">投诉管理</h1>
+                    <p style="font-size: 13px; color: var(--text-400); margin: 0;">受理、升级与跟踪用户投诉，保障服务质量</p>
+                </div>
+
+                <!-- 投诉统计概览 4列网格 -->
+                <section style="margin-bottom: 24px;">
+                    <div class="stats-grid">
+                        <!-- 待处理 -->
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: var(--state-warning-surface);">
+                                <i data-lucide="clock" class="w-5 h-5" style="color: var(--state-warning);"></i>
+                            </div>
+                            <div class="stat-value" style="color: var(--state-warning);">12</div>
+                            <div class="stat-label">待处理</div>
+                        </div>
+                        <!-- 升级中 -->
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: #f0e6ff;">
+                                <i data-lucide="arrow-up-circle" class="w-5 h-5" style="color: #5856d6;"></i>
+                            </div>
+                            <div class="stat-value" style="color: #5856d6;">5</div>
+                            <div class="stat-label">升级中</div>
+                        </div>
+                        <!-- 已解决 -->
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: var(--state-success-surface);">
+                                <i data-lucide="check-circle-2" class="w-5 h-5" style="color: var(--state-success);"></i>
+                            </div>
+                            <div class="stat-value" style="color: var(--state-success);">48</div>
+                            <div class="stat-label">本月已解决</div>
+                        </div>
+                        <!-- 平均处理时长 -->
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: #e8f0ff;">
+                                <i data-lucide="timer" class="w-5 h-5" style="color: var(--brand-500);"></i>
+                            </div>
+                            <div class="stat-value" style="color: var(--brand-500);">6.2<span style="font-size: 14px; font-weight: 500;">h</span></div>
+                            <div class="stat-label">平均处理时长</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 投诉等级筛选 Tab -->
+                <section style="margin-bottom: 20px;">
+                    <div class="level-tabs no-scrollbar">
+                        <button class="level-tab active" data-level="all">全部</button>
+                        <button class="level-tab" data-level="l1">
+                            <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--state-success);"></span>
+                            L1 一线
+                        </button>
+                        <button class="level-tab" data-level="l2">
+                            <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--state-warning);"></span>
+                            L2 主管
+                        </button>
+                        <button class="level-tab" data-level="l3">
+                            <span style="width: 6px; height: 6px; border-radius: 50%; background: #5856d6;"></span>
+                            L3 经理
+                        </button>
+                        <button class="level-tab" data-level="l4">
+                            <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--state-error);"></span>
+                            L4 高管
+                        </button>
+                    </div>
+                </section>
+
+                <!-- 投诉列表 -->
+                <section style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 32px;">
+
+                    <!-- 投诉项 1 - L2 升级中 -->
+                    <article class="complaint-item">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="source-badge">客服转办</span>
+                                <span style="font-size: 13px; color: var(--text-400); font-weight: 500; font-variant-numeric: tabular-nums;">TS-20240708-001</span>
+                            </div>
+                            <span class="level-badge l2">L2</span>
+                        </div>
+
+                        <div>
+                            <h3 style="font-size: 15px; font-weight: 600; color: var(--text-800); line-height: 1.4;">猫粮配送延误导致宠物断粮</h3>
+                            <p style="font-size: 13px; margin-top: 4px; color: var(--text-500); line-height: 1.5;">用户反映订购的猫粮已超承诺时效5天仍未送达，期间多次联系客服未得到有效解决...</p>
+                        </div>
+
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="category-tag">物流问题</span>
+                            <span class="status-badge processing">
+                                <span class="status-dot"></span>
+                                处理中
+                            </span>
+                        </div>
+
+                        <div class="flex flex-col gap-1.5">
+                            <div class="info-row">
+                                <i data-lucide="user" class="w-4 h-4" style="color: var(--text-400);"></i>
+                                <span>张** (138****6789)</span>
+                            </div>
+                            <div class="info-row">
+                                <i data-lucide="package" class="w-4 h-4" style="color: var(--text-400);"></i>
+                                <span>订单 ORD-20240630-8821</span>
+                                <a class="link-btn" style="margin-left: auto;">
+                                    <i data-lucide="external-link" class="w-3 h-3"></i>
+                                    查看原会话
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- SLA 倒计时 -->
+                        <div class="sla-bar">
+                            <span style="font-size: 12px; color: var(--text-400); white-space: nowrap;">SLA</span>
+                            <div class="sla-track">
+                                <div class="sla-fill warning" style="width: 62%;"></div>
+                            </div>
+                            <span class="sla-text" style="color: var(--state-warning);">9h12m</span>
+                        </div>
+
+                        <div class="action-row">
+                            <button class="action-btn primary">
+                                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                                查看详情
+                            </button>
+                            <button class="action-btn">
+                                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+                                升级
+                            </button>
+                            <button class="action-btn">
+                                <i data-lucide="share" class="w-3.5 h-3.5"></i>
+                                转办
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- 投诉项 2 - L1 待处理 -->
+                    <article class="complaint-item">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="source-badge">用户直接投诉</span>
+                                <span style="font-size: 13px; color: var(--text-400); font-weight: 500; font-variant-numeric: tabular-nums;">TS-20240708-002</span>
+                            </div>
+                            <span class="level-badge l1">L1</span>
+                        </div>
+
+                        <div>
+                            <h3 style="font-size: 15px; font-weight: 600; color: var(--text-800); line-height: 1.4;">客服态度冷漠拒绝对话</h3>
+                            <p style="font-size: 13px; margin-top: 4px; color: var(--text-500); line-height: 1.5;">用户反馈在线客服响应缓慢，回答敷衍，多次要求转接人工客服被拒绝...</p>
+                        </div>
+
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="category-tag">服务态度</span>
+                            <span class="status-badge pending">
+                                <span class="status-dot pulse-dot"></span>
+                                待处理
+                            </span>
+                        </div>
+
+                        <div class="flex flex-col gap-1.5">
+                            <div class="info-row">
+                                <i data-lucide="user" class="w-4 h-4" style="color: var(--text-400);"></i>
+                                <span>李** (186****2345)</span>
+                            </div>
+                            <div class="info-row">
+                                <i data-lucide="message-circle" class="w-4 h-4" style="color: var(--text-400);"></i>
+                                <span>原客服会话 CS-90231</span>
+                                <a class="link-btn" style="margin-left: auto;">
+                                    <i data-lucide="external-link" class="w-3 h-3"></i>
+                                    进入会话
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- SLA 倒计时 -->
+                        <div class="sla-bar">
+                            <span style="font-size: 12px; color: var(--text-400); white-space: nowrap;">SLA</span>
+                            <div class="sla-track">
+                                <div class="sla-fill safe" style="width: 88%;"></div>
+                            </div>
+                            <span class="sla-text" style="color: var(--state-success);">3h31m</span>
+                        </div>
+
+                        <div class="action-row">
+                            <button class="action-btn primary">
+                                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                受理
+                            </button>
+                            <button class="action-btn">
+                                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+                                升级
+                            </button>
+                            <button class="action-btn">
+                                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                                查看详情
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- 投诉项 3 - L3 经理处理中 -->
+                    <article class="complaint-item">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="source-badge">客服转办</span>
+                                <span style="font-size: 13px; color: var(--text-400); font-weight: 500; font-variant-numeric: tabular-nums;">TS-20240707-015</span>
+                            </div>
+                            <span class="level-badge l3">L3</span>
+                        </div>
+
+                        <div>
+                            <h3 style="font-size: 15px; font-weight: 600; color: var(--text-800); line-height: 1.4;">宠物保健品质量问题致健康受损</h3>
+                            <p style="font-size: 13px; margin-top: 4px; color: var(--text-500); line-height: 1.5;">用户投诉购买的宠物营养膏开封后有明显异味，宠物食用后出现呕吐症状，已提供就医凭证...</p>
+                        </div>
+
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="category-tag">商品质量</span>
+                            <span class="status-badge processing">
+                                <span class="status-dot"></span>
+                                处理中
+                            </span>
+                        </div>
+
+                        <div class="flex flex-col gap-1.5">
+                            <div class="info-row">
+                                <i data-lucide="user" class="w-4 h-4" style="color: var(--text-400);"></i>
+                                <span>王** (159****8876)</span>
+                            </div>
+                            <div class="info-row">
+                                <i data-lucide="package" class="w-4 h-4" style="color: var(--text-400);"></i>
+                                <span>订单 ORD-20240701-5543</span>
+                                <a class="link-btn" style="margin-left: auto;">
+                                    <i data-lucide="external-link" class="w-3 h-3"></i>
+                                    查看原会话
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- SLA 倒计时 - L3 48h -->
+                        <div class="sla-bar">
+                            <span style="font-size: 12px; color: var(--text-400); white-space: nowrap;">SLA</span>
+                            <div class="sla-track">
+                                <div class="sla-fill safe" style="width: 45%;"></div>
+                            </div>
+                            <span class="sla-text" style="color: var(--state-success);">26h18m</span>
+                        </div>
+
+                        <div class="action-row">
+                            <button class="action-btn primary">
+                                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                                查看详情
+                            </button>
+                            <button class="action-btn danger">
+                                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+                                升级至L4
+                            </button>
+                            <button class="action-btn">
+                                <i data-lucide="share" class="w-3.5 h-3.5"></i>
+                                转办
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- 投诉项 4 - L4 高管 已解决 -->
+                    <article class="complaint-item">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="source-badge">用户直接投诉</span>
+                                <span style="font-size: 13px; color: var(--text-400); font-weight: 500; font-variant-numeric: tabular-nums;">TS-20240705-008</span>
+                            </div>
+                            <span class="level-badge l4">L4</span>
+                        </div>
+
+                        <div>
+                            <h3 style="font-size: 15px; font-weight: 600; color: var(--text-800); line-height: 1.4;">退款争议未到账，多次投诉无果</h3>
+                            <p style="font-size: 13px; margin-top: 4px; color: var(--text-500); line-height: 1.5;">用户申请退货退款已超过15个工作日，退款金额仍未到账，经过L1-L3处理均未妥善解决...</p>
+                        </div>
+
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="category-tag">账务问题</span>
+                            <span class="status-badge resolved">
+                                <span class="status-dot"></span>
+                                已解决
+                            </span>
+                        </div>
+
+                        <div class="flex flex-col gap-1.5">
+                            <div class="info-row">
+                                <i data-lucide="user" class="w-4 h-4" style="color: var(--text-400);"></i>
+                                <span>陈** (177****1234)</span>
+                            </div>
+                            <div class="info-row">
+                                <i data-lucide="package" class="w-4 h-4" style="color: var(--text-400);"></i>
+                                <span>订单 ORD-20240620-7782</span>
+                                <a class="link-btn" style="margin-left: auto;">
+                                    <i data-lucide="external-link" class="w-3 h-3"></i>
+                                    查看原会话
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- SLA 已完成 -->
+                        <div class="sla-bar">
+                            <span style="font-size: 12px; color: var(--text-400); white-space: nowrap;">SLA</span>
+                            <div class="sla-track">
+                                <div class="sla-fill safe" style="width: 100%;"></div>
+                            </div>
+                            <span class="sla-text" style="color: var(--state-success);">已完成</span>
+                        </div>
+
+                        <div class="action-row">
+                            <button class="action-btn primary">
+                                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                                查看详情
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- 投诉项 5 - 用户不满意 -->
+                    <article class="complaint-item">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="source-badge">客服转办</span>
+                                <span style="font-size: 13px; color: var(--text-400); font-weight: 500; font-variant-numeric: tabular-nums;">TS-20240706-022</span>
+                            </div>
+                            <span class="level-badge l2">L2</span>
+                        </div>
+
+                        <div>
+                            <h3 style="font-size: 15px; font-weight: 600; color: var(--text-800); line-height: 1.4;">售后服务推诿，退货流程异常复杂</h3>
+                            <p style="font-size: 13px; margin-top: 4px; color: var(--text-500); line-height: 1.5;">用户反馈申请退货后被多次要求补充材料，客服人员互相推诿，流程不透明...</p>
+                        </div>
+
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="category-tag">售后纠纷</span>
+                            <span class="status-badge unsatisfied">
+                                <span class="status-dot"></span>
+                                用户不满意
+                            </span>
+                        </div>
+
+                        <div class="flex flex-col gap-1.5">
+                            <div class="info-row">
+                                <i data-lucide="user" class="w-4 h-4" style="color: var(--text-400);"></i>
+                                <span>赵** (135****5678)</span>
+                            </div>
+                            <div class="info-row">
+                                <i data-lucide="package" class="w-4 h-4" style="color: var(--text-400);"></i>
+                                <span>订单 ORD-20240628-3301</span>
+                                <a class="link-btn" style="margin-left: auto;">
+                                    <i data-lucide="external-link" class="w-3 h-3"></i>
+                                    查看原会话
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- SLA 已超时 -->
+                        <div class="sla-bar">
+                            <span style="font-size: 12px; color: var(--text-400); white-space: nowrap;">SLA</span>
+                            <div class="sla-track">
+                                <div class="sla-fill danger" style="width: 8%;"></div>
+                            </div>
+                            <span class="sla-text" style="color: var(--state-error);">超时</span>
+                        </div>
+
+                        <div class="action-row">
+                            <button class="action-btn primary">
+                                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                                查看详情
+                            </button>
+                            <button class="action-btn danger">
+                                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+                                升级至L3
+                            </button>
+                            <button class="action-btn">
+                                <i data-lucide="share" class="w-3.5 h-3.5"></i>
+                                转办
+                            </button>
+                        </div>
+                    </article>
+
+                </section>
+
+                <!-- 升级链路与投诉趋势 - 双列布局 -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+
+                    <!-- 升级链路展示 - 时间线 -->
+                    <section>
+                        <div class="section-title">升级链路</div>
+                        <div style="font-size: 13px; margin-bottom: 12px; color: var(--text-400);">TS-20240705-008 处理记录</div>
+
+                        <div class="timeline">
+                            <!-- L1 一线 已完成 -->
+                            <div class="timeline-node completed">
+                                <div class="timeline-dot completed">L1</div>
+                                <div class="timeline-content">
+                                    <div class="timeline-title">一线客服 - 受理处理</div>
+                                    <div class="timeline-desc">客服小王受理投诉，核实订单信息后提交退款申请，告知用户3-5个工作日到账。</div>
+                                    <div class="timeline-time">2024-07-05 14:23  处理人: 小王 (CS-10234)</div>
+                                </div>
+                            </div>
+
+                            <!-- L2 主管 已完成 -->
+                            <div class="timeline-node completed">
+                                <div class="timeline-dot completed">L2</div>
+                                <div class="timeline-content">
+                                    <div class="timeline-title">客服主管 - 跟进升级</div>
+                                    <div class="timeline-desc">用户反馈超时未到账，主管介入核实财务流水，发现退款通道异常，协调财务加急处理。</div>
+                                    <div class="timeline-time">2024-07-06 10:15  处理人: 李主管 (CS-SUP-001)</div>
+                                </div>
+                            </div>
+
+                            <!-- L3 经理 已完成 -->
+                            <div class="timeline-node completed">
+                                <div class="timeline-dot completed">L3</div>
+                                <div class="timeline-content">
+                                    <div class="timeline-title">客服经理 - 方案决策</div>
+                                    <div class="timeline-desc">经核实，系统退款模块存在Bug导致批量退款延迟。经理批准先行垫付退款+补偿优惠券方案。</div>
+                                    <div class="timeline-time">2024-07-07 09:30  处理人: 张经理 (CS-MGR-003)</div>
+                                </div>
+                            </div>
+
+                            <!-- L4 高管 当前已解决 -->
+                            <div class="timeline-node completed">
+                                <div class="timeline-dot completed">L4</div>
+                                <div class="timeline-content">
+                                    <div class="timeline-title">运营总监 - 最终审批</div>
+                                    <div class="timeline-desc">审批垫付方案，要求技术团队48小时内修复退款模块。用户已确认收到退款并表示满意。</div>
+                                    <div class="timeline-time">2024-07-07 16:45  处理人: 周总监 (OPS-DIR-001)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 投诉趋势图 - 近7天 CSS 柱状图 -->
+                    <section>
+                        <div class="section-title">投诉趋势（近7天）</div>
+
+                        <div class="chart-container">
+                            <div class="flex items-center justify-between mb-3">
+                                <span style="font-size: 13px; font-weight: 500; color: var(--text-500);">日投诉量</span>
+                                <span style="font-size: 13px; font-weight: 500; color: var(--text-400);">日均 8.4 件</span>
+                            </div>
+                            <div class="bar-chart">
+                                <!-- 周一 -->
+                                <div class="bar-col">
+                                    <span class="bar-value">6</span>
+                                    <div class="bar-fill" style="height: 50%; background: var(--brand-500);"></div>
+                                    <span class="bar-label">7/2</span>
+                                </div>
+                                <!-- 周二 -->
+                                <div class="bar-col">
+                                    <span class="bar-value">9</span>
+                                    <div class="bar-fill" style="height: 75%; background: var(--brand-500);"></div>
+                                    <span class="bar-label">7/3</span>
+                                </div>
+                                <!-- 周三 -->
+                                <div class="bar-col">
+                                    <span class="bar-value">7</span>
+                                    <div class="bar-fill" style="height: 58%; background: var(--brand-500);"></div>
+                                    <span class="bar-label">7/4</span>
+                                </div>
+                                <!-- 周四 -->
+                                <div class="bar-col">
+                                    <span class="bar-value">12</span>
+                                    <div class="bar-fill" style="height: 100%; background: var(--state-error);"></div>
+                                    <span class="bar-label">7/5</span>
+                                </div>
+                                <!-- 周五 -->
+                                <div class="bar-col">
+                                    <span class="bar-value">8</span>
+                                    <div class="bar-fill" style="height: 67%; background: var(--brand-500);"></div>
+                                    <span class="bar-label">7/6</span>
+                                </div>
+                                <!-- 周六 -->
+                                <div class="bar-col">
+                                    <span class="bar-value">10</span>
+                                    <div class="bar-fill" style="height: 83%; background: var(--state-warning);"></div>
+                                    <span class="bar-label">7/7</span>
+                                </div>
+                                <!-- 周日 -->
+                                <div class="bar-col">
+                                    <span class="bar-value">7</span>
+                                    <div class="bar-fill" style="height: 58%; background: var(--brand-500);"></div>
+                                    <span class="bar-label">7/8</span>
+                                </div>
+                            </div>
+                            <!-- 图例 -->
+                            <div class="flex items-center gap-4 mt-3 pt-3" style="border-top: 1px solid var(--border);">
+                                <div class="flex items-center gap-1.5">
+                                    <span style="width: 8px; height: 8px; border-radius: 2px; background: var(--brand-500);"></span>
+                                    <span style="font-size: 12px; color: var(--text-400);">正常</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span style="width: 8px; height: 8px; border-radius: 2px; background: var(--state-warning);"></span>
+                                    <span style="font-size: 12px; color: var(--text-400);">偏高</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span style="width: 8px; height: 8px; border-radius: 2px; background: var(--state-error);"></span>
+                                    <span style="font-size: 12px; color: var(--text-400);">预警</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <script>
+      // 初始化 Lucide 图标
+      document.addEventListener('DOMContentLoaded', function() {
+        if (window.lucide) {
+          lucide.createIcons();
+        }
+
+        // 等级筛选 Tab 切换逻辑
+        const tabs = document.querySelectorAll('.level-tab');
+        tabs.forEach(function(tab) {
+          tab.addEventListener('click', function() {
+            tabs.forEach(function(t) { t.classList.remove('active'); });
+            tab.classList.add('active');
+            const level = tab.getAttribute('data-level');
+            filterComplaintsByLevel(level);
+          });
+        });
+      });
+
+      /**
+       * 根据投诉等级筛选投诉列表
+       * @param {string} level - 筛选等级: all | l1 | l2 | l3 | l4
+       */
+      function filterComplaintsByLevel(level) {
+        const items = document.querySelectorAll('.complaint-item');
+        items.forEach(function(item) {
+          const badge = item.querySelector('.level-badge');
+          if (!badge) return;
+          const itemLevel = badge.classList.contains('l1') ? 'l1'
+            : badge.classList.contains('l2') ? 'l2'
+            : badge.classList.contains('l3') ? 'l3'
+            : badge.classList.contains('l4') ? 'l4'
+            : 'unknown';
+          if (level === 'all' || itemLevel === level) {
+            item.style.display = 'flex';
+          } else {
+            item.style.display = 'none';
+          }
+        });
+      }
+    </script>
+</body>
+</html>

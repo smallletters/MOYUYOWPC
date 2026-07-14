@@ -1,0 +1,29 @@
+{
+  "code": 0,
+  "data": {
+    "productId": 5001,
+    "name": "MOYUYO 草本舒缓沐浴露 500ml",
+    "brand": { "brandId": 31, "name": "MOYUYO" },
+    "categoryId": 101,
+    "mainImages": ["https://..."],
+    "video": "https://...",
+    "price": 49.9,
+    "memberPrice": 44.9,
+    "originalPrice": 69.9,
+    "stock": 268,
+    "stockStatus": "IN_STOCK",
+    "sales": 1280,
+    "skus": [
+      { "skuId": 500101, "spec": "500ml/舒缓", "price": 49.9, "stock": 120 },
+      { "skuId": 500102, "spec": "500ml/留香", "price": 54.9, "stock": 148 }
+    ],
+    "attributes": [
+      { "name": "适用宠物", "value": "猫狗通用" },
+      { "name": "主要成分", "value": "燕麦 / 芦荟 / 椰油" }
+    ],
+    "detailImages": ["https://..."],
+    "serviceTags": ["正品保障", "7天无理由", "满99包邮"],
+    "commentCount": 286,
+    "commentScore": 4.8
+  }
+}

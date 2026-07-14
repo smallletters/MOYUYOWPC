@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理 - MOYUYO 管理后台</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04); /* Hairline */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04); /* Subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05); /* Card */
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* Raised */
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Card Hover */
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05); /* Float */
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06); /* Overlay */
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12); /* Modal */
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+/*
+ * components.css - aggregated component CSS
+ * Auto-extracted from preview/component-*.html files.
+ * DO NOT EDIT. Regenerate with extract-components-css.mjs.
+ *
+ * Foundation tokens live in colors_and_type.css.
+ * This file consumes those tokens via var(--*) references.
+ */
+
+/* ============================================================
+ * Button
+ * source: preview/component-button.html
+ * rules: 10
+ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+/* ============================================================
+ * Card
+ * source: preview/component-card.html
+ * rules: 12
+ */
+.card{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-xs);transition:border-color .2s ease,transform .2s ease}
+.card:hover{border-color:var(--primary);transform:translateY(-1px)}
+
+/* ============================================================
+ * Input
+ * source: preview/component-input.html
+ * rules: 10
+ */
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field.small{height:40px}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.field.disabled{opacity:.55}
+.icon,.clear{padding:0;border:0;background:transparent;color:var(--icon-muted);font:inherit}
+.icon{font-size:13px}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+
+/* ============================================================
+ * Product Grid
+ * source: preview/component-product-grid.html
+ * rules: 12
+ */
+.grid{display:grid;gap:8px;flex:1}
+.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.eyebrow{color:var(--muted-foreground);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.title{font-size:15px;line-height:1.25}
+.price{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted-foreground)}
+.is-disabled{opacity:.55}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* 后台管理布局 */
+      .admin-layout {
+        display: flex;
+        min-height: 100vh;
+      }
+      .admin-sidebar {
+        width: 240px;
+        min-height: 100vh;
+        background: #1d1d1f;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+      .admin-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        background: var(--background);
+      }
+
+      /* 侧边栏品牌区 */
+      .sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 20px 20px 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+      }
+      .sidebar-brand-text {
+        font-size: 16px;
+        font-weight: 700;
+        color: #ffffff;
+        letter-spacing: 0.02em;
+      }
+
+      /* 侧边栏导航 */
+      .sidebar-nav {
+        flex: 1;
+        padding: 12px 10px;
+        overflow-y: auto;
+      }
+      .sidebar-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 8px;
+        color: rgba(255,255,255,0.6);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        text-decoration: none;
+        margin-bottom: 2px;
+      }
+      .sidebar-nav-item:hover {
+        background: rgba(255,255,255,0.06);
+        color: rgba(255,255,255,0.9);
+      }
+      .sidebar-nav-item.active {
+        background: var(--brand-500);
+        color: #ffffff;
+      }
+      .sidebar-nav-item .nav-icon {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+
+      /* 顶部栏 */
+      .admin-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 56px;
+        padding: 0 24px;
+        border-bottom: 1px solid var(--border);
+        background: var(--card);
+        flex-shrink: 0;
+      }
+
+      /* 面包屑 */
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--text-400);
+      }
+      .breadcrumb a {
+        color: var(--text-500);
+        text-decoration: none;
+        transition: color 0.15s ease;
+      }
+      .breadcrumb a:hover {
+        color: var(--primary);
+      }
+      .breadcrumb .current {
+        color: var(--text-800);
+        font-weight: 600;
+      }
+      .breadcrumb .separator {
+        color: var(--text-300);
+      }
+
+      /* 筛选条件面板 */
+      .query-panel {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px 24px;
+        box-shadow: var(--shadow-sm);
+      }
+      .query-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: flex-end;
+      }
+      .query-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .query-field label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-500);
+      }
+      .query-field select,
+      .query-field input {
+        height: 38px;
+        padding: 0 12px;
+        border: 1px solid var(--input);
+        border-radius: 8px;
+        background: var(--background);
+        color: var(--foreground);
+        font-size: 13px;
+        font-family: var(--font-sans);
+        outline: none;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        min-width: 160px;
+      }
+      .query-field select:focus,
+      .query-field input:focus {
+        border-color: var(--ring);
+        box-shadow: 0 0 0 1px var(--ring);
+      }
+
+      /* 用户数据表格 */
+      .user-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+      }
+      .user-table thead th {
+        background: var(--background-100);
+        padding: 12px 16px;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-600);
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+        letter-spacing: 0.02em;
+      }
+      .user-table tbody td {
+        padding: 14px 16px;
+        font-size: 13px;
+        color: var(--text-700);
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+      }
+      .user-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+      .user-table tbody tr:hover {
+        background: var(--accent);
+      }
+
+      /* 首字母头像圆形 */
+      .avatar-initial {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--background-50);
+        background: var(--brand-500);
+        flex-shrink: 0;
+      }
+
+      /* 会员等级标签 */
+      .badge-vip {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+      .badge-vip--vip {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .badge-vip--v2 {
+        background: var(--background-200);
+        color: var(--text-600);
+      }
+      .badge-vip--v1 {
+        background: var(--brand-50);
+        color: var(--brand-700);
+      }
+      .badge-vip--normal {
+        background: var(--background-200);
+        color: var(--text-500);
+      }
+
+      /* 状态标签 */
+      .status-dot {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .status-dot::before {
+        content: '';
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+      }
+      .status-dot--active::before {
+        background: var(--state-success);
+      }
+      .status-dot--active {
+        color: var(--state-success);
+      }
+      .status-dot--frozen::before {
+        background: var(--state-error);
+      }
+      .status-dot--frozen {
+        color: var(--state-error);
+      }
+
+      /* 统计概览卡片 */
+      .stat-cards {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+      }
+      .stat-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+        box-shadow: var(--shadow-xs);
+      }
+      .stat-card-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-400);
+        margin-bottom: 6px;
+      }
+      .stat-card-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-800);
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* 分页器 */
+      .pagination {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .pagination-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        height: 36px;
+        padding: 0 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text-600);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        font-family: var(--font-sans);
+      }
+      .pagination-btn:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+      .pagination-btn.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: var(--primary-foreground);
+      }
+      .pagination-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      /* 操作按钮 */
+      .action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text-500);
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .action-btn:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+
+      /* 最小宽度 */
+      body { min-width: 1280px; }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <div class="admin-layout">
+
+        <!-- ========== 左侧导航栏 ========== -->
+        <aside class="admin-sidebar">
+            <!-- 品牌标识 -->
+            <div class="sidebar-brand">
+                <i data-lucide="paw-print" class="w-6 h-6" style="color: var(--brand-500);"></i>
+                <span class="sidebar-brand-text">MOYUYO Admin</span>
+            </div>
+
+            <!-- 导航菜单 -->
+            <nav class="sidebar-nav">
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="layout-dashboard" class="nav-icon"></i>
+                    <span>仪表盘</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="package" class="nav-icon"></i>
+                    <span>商品管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="shopping-bag" class="nav-icon"></i>
+                    <span>订单管理</span>
+                </a>
+                <!-- 当前页面高亮 -->
+                <a class="sidebar-nav-item active" href="#">
+                    <i data-lucide="users" class="nav-icon"></i>
+                    <span>用户管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="megaphone" class="nav-icon"></i>
+                    <span>营销管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="file-text" class="nav-icon"></i>
+                    <span>内容管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="headphones" class="nav-icon"></i>
+                    <span>客服管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="bar-chart-3" class="nav-icon"></i>
+                    <span>数据统计</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="truck" class="nav-icon"></i>
+                    <span>物流管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="settings" class="nav-icon"></i>
+                    <span>系统设置</span>
+                </a>
+            </nav>
+
+            <!-- 侧边栏底部用户信息 -->
+            <div style="padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--brand-500); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="user" style="width: 16px; height: 16px; color: #fff;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9);">Admin</div>
+                        <div style="font-size: 11px; color: rgba(255,255,255,0.4);">超级管理员</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ========== 主内容区 ========== -->
+        <div class="admin-main">
+
+            <!-- 顶部栏 -->
+            <header class="admin-topbar">
+                <!-- 面包屑 -->
+                <div class="breadcrumb">
+                    <a href="#">用户管理</a>
+                    <span class="separator">/</span>
+                    <span class="current">用户列表</span>
+                </div>
+                <!-- 右侧操作区 -->
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text-600); font-size: 13px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);">
+                        <i data-lucide="download" style="width: 14px; height: 14px;"></i>
+                        导出用户
+                    </button>
+                    <button style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text-600); font-size: 13px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);">
+                        <i data-lucide="circle-alert" style="width: 14px; height: 14px; color: var(--state-error);"></i>
+                        黑名单 (3)
+                    </button>
+                    <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--background-200); cursor: pointer;">
+                        <i data-lucide="bell" style="width: 18px; height: 18px; color: var(--text-600);"></i>
+                        <span style="position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--state-error);"></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 内容区 -->
+            <main style="flex: 1; padding: 24px; overflow-y: auto;">
+
+                <!-- 页面标题 -->
+                <div style="margin-bottom: 20px;">
+                    <h1 style="font-size: 22px; font-weight: 700; color: var(--text-800); margin: 0 0 6px;">用户管理</h1>
+                    <p style="font-size: 13px; color: var(--text-400); margin: 0;">管理平台注册用户，查看用户信息、订单及消费数据</p>
+                </div>
+
+                <!-- ====== 用户统计概览 ====== -->
+                <section class="stat-cards" style="margin-bottom: 20px;">
+                    <div class="stat-card">
+                        <div class="stat-card-label">总用户数</div>
+                        <div class="stat-card-value">12,580</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">今日新增</div>
+                        <div class="stat-card-value" style="color: var(--state-success);">+45</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">活跃用户</div>
+                        <div class="stat-card-value">3,210</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">GDPR 待处理</div>
+                        <div class="stat-card-value" style="color: var(--state-error);">2</div>
+                    </div>
+                </section>
+
+                <!-- ====== 筛选条件面板 ====== -->
+                <section class="query-panel" style="margin-bottom: 20px;">
+                    <div class="query-row">
+                        <div class="query-field">
+                            <label>关键词搜索</label>
+                            <input type="text" placeholder="搜索用户名、邮箱或手机号" style="min-width: 220px;">
+                        </div>
+                        <div class="query-field">
+                            <label>会员等级</label>
+                            <select>
+                                <option value="all">全部等级</option>
+                                <option value="vip">VIP</option>
+                                <option value="v2">V2</option>
+                                <option value="v1">V1</option>
+                                <option value="normal">普通</option>
+                            </select>
+                        </div>
+                        <div class="query-field">
+                            <label>注册渠道</label>
+                            <select>
+                                <option value="all">全部渠道</option>
+                                <option value="app">APP</option>
+                                <option value="web">Web</option>
+                                <option value="mini">小程序</option>
+                            </select>
+                        </div>
+                        <div class="query-field">
+                            <label>用户状态</label>
+                            <select>
+                                <option value="all">全部状态</option>
+                                <option value="active">正常</option>
+                                <option value="frozen">冻结</option>
+                            </select>
+                        </div>
+                        <div class="query-field">
+                            <label>注册时间</label>
+                            <input type="date" style="min-width: 160px;">
+                        </div>
+                        <div class="query-field" style="justify-content: flex-end;">
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-primary" style="height: 38px; padding: 0 20px; font-size: 13px; gap: 6px;">
+                                    <i data-lucide="search" style="width: 14px; height: 14px;"></i>
+                                    搜索
+                                </button>
+                                <button style="height: 38px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text-500); font-size: 13px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);">
+                                    <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>
+                                    重置
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ====== 用户数据表格 ====== -->
+                <section style="margin-bottom: 20px; overflow-x: auto;">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 70px;">ID</th>
+                                <th>用户信息</th>
+                                <th>邮箱</th>
+                                <th>注册时间</th>
+                                <th>会员等级</th>
+                                <th>订单数</th>
+                                <th>消费额</th>
+                                <th>状态</th>
+                                <th style="width: 100px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 用户 1: Luna Chen - VIP -->
+                            <tr>
+                                <td style="font-variant-numeric: tabular-nums; color: var(--text-500); font-size: 12px;">#10001</td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <div class="avatar-initial" style="background: var(--brand-600);">L</div>
+                                        <span style="font-weight: 600; color: var(--text-800);">Luna Chen</span>
+                                    </div>
+                                </td>
+                                <td style="color: var(--text-500);">luna.chen@email.com</td>
+                                <td style="font-variant-numeric: tabular-nums; color: var(--text-500); font-size: 12px;">2024-01-15</td>
+                                <td><span class="badge-vip badge-vip--vip">VIP</span></td>
+                                <td style="font-variant-numeric: tabular-nums; font-weight: 600;">32</td>
+                                <td style="font-variant-numeric: tabular-nums; font-weight: 600;">¥8,920</td>
+                                <td><span class="status-dot status-dot--active">正常</span></td>
+                                <td>
+                                    <div style="display: flex; gap: 6px;">
+                                        <button class="action-btn" title="查看详情" aria-label="查看用户详情">
+                                            <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                        <button class="action-btn" title="编辑" aria-label="编辑用户">
+                                            <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                        <button class="action-btn" title="冻结" aria-label="冻结用户">
+                                            <i data-lucide="snowflake" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 用户 2: Milo Wang - V2 -->
+                            <tr>
+                                <td style="font-variant-numeric: tabular-nums; color: var(--text-500); font-size: 12px;">#10002</td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <div class="avatar-initial" style="background: var(--brand-700);">M</div>
+                                        <span style="font-weight: 600; color: var(--text-800);">Milo Wang</span>
+                                    </div>
+                                </td>
+                                <td style="color: var(--text-500);">milo.w@email.com</td>
+                                <td style="font-variant-numeric: tabular-nums; color: var(--text-500); font-size: 12px;">2024-03-22</td>
+                                <td><span class="badge-vip badge-vip--v2">V2</span></td>
+                                <td style="font-variant-numeric: tabular-nums; font-weight: 600;">15</td>
+                                <td style="font-variant-numeric: tabular-nums; font-weight: 600;">¥3,450</td>
+                                <td><span class="status-dot status-dot--active">正常</span></td>
+                                <td>
+                                    <div style="display: flex; gap: 6px;">
+                                        <button class="action-btn" title="查看详情" aria-label="查看用户详情">
+                                            <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                        <button class="action-btn" title="编辑" aria-label="编辑用户">
+                                            <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                        <button class="action-btn" title="冻结" aria-label="冻结用户">
+                                            <i data-lucide="snowflake" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 用户 3: Sophie Li - V1 -->
+                            <tr>
+                                <td style="font-variant-numeric: tabular-nums; color: var(--text-500); font-size: 12px;">#10003</td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <div class="avatar-initial" style="background: var(--brand-400);">S</div>
+                                        <span style="font-weight: 600; color: var(--text-800);">Sophie Li</span>
+                                    </div>
+                                </td>
+                                <td style="color: var(--text-500);">sophie.li@email.com</td>
+                                <td style="font-variant-numeric: tabular-nums; color: var(--text-500); font-size: 12px;">2024-05-10</td>
+                                <td><span class="badge-vip badge-vip--v1">V1</span></td>
+                                <td style="font-variant-numeric: tabular-nums; font-weight: 600;">7</td>
+                                <td style="font-variant-numeric: tabular-nums; font-weight: 600;">¥1,280</td>
+                                <td><span class="status-dot status-dot--active">正常</span></td>
+                                <td>
+                                    <div style="display: flex; gap: 6px;">
+                                        <button class="action-btn" title="查看详情" aria-label="查看用户详情">
+                                            <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                        <button class="action-btn" title="编辑" aria-label="编辑用户">
+                                            <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                        <button class="action-btn" title="冻结" aria-label="冻结用户">
+                                            <i data-lucide="snowflake" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 用户 4: Kevin Zhang - 普通 -->
+                            <tr>
+                                <td style="font-variant-numeric: tabular-nums; color: var(--text-500); font-size: 12px;">#10004</td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <div class="avatar-initial" style="background: var(--text-400);">K</div>
+                                        <span style="font-weight: 600; color: var(--text-800);">Kevin Zhang</span>
+                                    </div>
+                                </td>
+                                <td style="color: var(--text-500);">kevin.z@email.com</td>
+                                <td style="font-variant-numeric: tabular-nums; color: var(--text-500); font-size: 12px;">2024-06-08</td>
+                                <td><span class="badge-vip badge-vip--normal">普通</span></td>
+                                <td style="font-variant-numeric: tabular-nums; font-weight: 600;">2</td>
+                                <td style="font-variant-numeric: tabular-nums; font-weight: 600;">¥320</td>
+                                <td><span class="status-dot status-dot--active">正常</span></td>
+                                <td>
+                                    <div style="display: flex; gap: 6px;">
+                                        <button class="action-btn" title="查看详情" aria-label="查看用户详情">
+                                            <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                        <button class="action-btn" title="编辑" aria-label="编辑用户">
+                                            <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                        <button class="action-btn" title="冻结" aria-label="冻结用户">
+                                            <i data-lucide="snowflake" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 用户 5: Amy Xu - V1 / 冻结 -->
+                            <tr>
+                                <td style="font-variant-numeric: tabular-nums; color: var(--text-500); font-size: 12px;">#10005</td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <div class="avatar-initial" style="background: var(--state-error);">A</div>
+                                        <span style="font-weight: 600; color: var(--text-800);">Amy Xu</span>
+                                    </div>
+                                </td>
+                                <td style="color: var(--text-500);">amy.xu@email.com</td>
+                                <td style="font-variant-numeric: tabular-nums; color: var(--text-500); font-size: 12px;">2024-02-28</td>
+                                <td><span class="badge-vip badge-vip--v1">V1</span></td>
+                                <td style="font-variant-numeric: tabular-nums; font-weight: 600;">4</td>
+                                <td style="font-variant-numeric: tabular-nums; font-weight: 600;">¥560</td>
+                                <td><span class="status-dot status-dot--frozen">冻结</span></td>
+                                <td>
+                                    <div style="display: flex; gap: 6px;">
+                                        <button class="action-btn" title="查看详情" aria-label="查看用户详情">
+                                            <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                        <button class="action-btn" title="编辑" aria-label="编辑用户">
+                                            <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                        <button class="action-btn" title="解冻" aria-label="解冻用户" style="border-color: var(--state-success); color: var(--state-success);">
+                                            <i data-lucide="flame" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 用户 6: Oliver Zhao - VIP -->
+                            <tr>
+                                <td style="font-variant-numeric: tabular-nums; color: var(--text-500); font-size: 12px;">#10006</td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <div class="avatar-initial" style="background: var(--brand-500);">O</div>
+                                        <span style="font-weight: 600; color: var(--text-800);">Oliver Zhao</span>
+                                    </div>
+                                </td>
+                                <td style="color: var(--text-500);">oliver.z@email.com</td>
+                                <td style="font-variant-numeric: tabular-nums; color: var(--text-500); font-size: 12px;">2023-11-05</td>
+                                <td><span class="badge-vip badge-vip--vip">VIP</span></td>
+                                <td style="font-variant-numeric: tabular-nums; font-weight: 600;">58</td>
+                                <td style="font-variant-numeric: tabular-nums; font-weight: 600;">¥12,100</td>
+                                <td><span class="status-dot status-dot--active">正常</span></td>
+                                <td>
+                                    <div style="display: flex; gap: 6px;">
+                                        <button class="action-btn" title="查看详情" aria-label="查看用户详情">
+                                            <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                        <button class="action-btn" title="编辑" aria-label="编辑用户">
+                                            <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                        <button class="action-btn" title="冻结" aria-label="冻结用户">
+                                            <i data-lucide="snowflake" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 用户 7: Emma Liu - V2 -->
+                            <tr>
+                                <td style="font-variant-numeric: tabular-nums; color: var(--text-500); font-size: 12px;">#10007</td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <div class="avatar-initial" style="background: var(--brand-300);">E</div>
+                                        <span style="font-weight: 600; color: var(--text-800);">Emma Liu</span>
+                                    </div>
+                                </td>
+                                <td style="color: var(--text-500);">emma.liu@email.com</td>
+                                <td style="font-variant-numeric: tabular-nums; color: var(--text-500); font-size: 12px;">2024-04-17</td>
+                                <td><span class="badge-vip badge-vip--v2">V2</span></td>
+                                <td style="font-variant-numeric: tabular-nums; font-weight: 600;">21</td>
+                                <td style="font-variant-numeric: tabular-nums; font-weight: 600;">¥5,670</td>
+                                <td><span class="status-dot status-dot--active">正常</span></td>
+                                <td>
+                                    <div style="display: flex; gap: 6px;">
+                                        <button class="action-btn" title="查看详情" aria-label="查看用户详情">
+                                            <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                        <button class="action-btn" title="编辑" aria-label="编辑用户">
+                                            <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                        <button class="action-btn" title="冻结" aria-label="冻结用户">
+                                            <i data-lucide="snowflake" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 用户 8: Jack Huang - 普通 -->
+                            <tr>
+                                <td style="font-variant-numeric: tabular-nums; color: var(--text-500); font-size: 12px;">#10008</td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <div class="avatar-initial" style="background: var(--text-500);">J</div>
+                                        <span style="font-weight: 600; color: var(--text-800);">Jack Huang</span>
+                                    </div>
+                                </td>
+                                <td style="color: var(--text-500);">jack.h@email.com</td>
+                                <td style="font-variant-numeric: tabular-nums; color: var(--text-500); font-size: 12px;">2024-07-01</td>
+                                <td><span class="badge-vip badge-vip--normal">普通</span></td>
+                                <td style="font-variant-numeric: tabular-nums; font-weight: 600;">1</td>
+                                <td style="font-variant-numeric: tabular-nums; font-weight: 600;">¥89</td>
+                                <td><span class="status-dot status-dot--active">正常</span></td>
+                                <td>
+                                    <div style="display: flex; gap: 6px;">
+                                        <button class="action-btn" title="查看详情" aria-label="查看用户详情">
+                                            <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                        <button class="action-btn" title="编辑" aria-label="编辑用户">
+                                            <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                        <button class="action-btn" title="冻结" aria-label="冻结用户">
+                                            <i data-lucide="snowflake" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <!-- ====== 分页 ====== -->
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="font-size: 13px; color: var(--text-400);">
+                        共 <span style="font-weight: 600; color: var(--text-600);">12,580</span> 条记录，当前第 <span style="font-weight: 600; color: var(--text-600);">1</span> / <span style="font-weight: 600; color: var(--text-600);">1,573</span> 页
+                    </div>
+                    <div class="pagination">
+                        <button class="pagination-btn" disabled aria-label="上一页">
+                            <i data-lucide="chevron-left" style="width: 14px; height: 14px;"></i>
+                        </button>
+                        <button class="pagination-btn active">1</button>
+                        <button class="pagination-btn">2</button>
+                        <button class="pagination-btn">3</button>
+                        <button class="pagination-btn">4</button>
+                        <button class="pagination-btn">5</button>
+                        <button class="pagination-btn" aria-label="更多">
+                            <i data-lucide="more-horizontal" style="width: 14px; height: 14px;"></i>
+                        </button>
+                        <button class="pagination-btn">1573</button>
+                        <button class="pagination-btn" aria-label="下一页">
+                            <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
+                        </button>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <script>lucide.createIcons();</script>
+</body>
+</html>

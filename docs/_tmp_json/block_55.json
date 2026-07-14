@@ -1,0 +1,12 @@
+{
+  "code": 0,
+  "data": {
+    "payChannel": "STRIPE",
+    "payParams": {
+      "clientSecret": "pi_3MqXxxxxxxxxxxxx_secret_YZ",
+      "ephemeralKey": "ek_xxx",
+      "customerId": "cus_xxx",
+      "publishableKey": "pk_live_xxx"
+    }
+  }
+}

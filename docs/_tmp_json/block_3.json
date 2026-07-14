@@ -1,0 +1,10 @@
+{
+  "email": "tom@example.com",
+  "password": "MyStr0ng!Pass",
+  "birthday": "1995-06-15",
+  "acceptTerms": true,
+  "acceptPrivacy": true,
+  "marketingOptIn": false,
+  "country": "US",
+  "locale": "en_US"
+}

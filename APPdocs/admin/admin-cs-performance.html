@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MOYUYO 客服绩效看板</title>
+    <style id="theme-vars">
+/*
+ * MOYUYO design tokens
+ * 基于 Apple Design Library 风格
+ * 移动端管理后台 (iPhone 15 Pro 393x852)
+ */
+
+:root {
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff;
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759;
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30;
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* state-warning */
+  --state-warning: #ff9500;
+  --state-warning-surface: #fff6e5;
+  --state-warning-foreground: #ffffff;
+
+  /* 语义角色 */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* 排版 */
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --tracking-normal: 0em;
+
+  /* 圆角 */
+  --radius: 1.2rem;
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+
+  /* 间距 */
+  --spacing: 0.24rem;
+}
+
+/* ===== 深色模式 ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+}
+    </style>
+    <style id="component-vars">
+/* 按钮 */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-text{height:40px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+    </style>
+    <style>
+      /* 隐藏滚动条 */
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* SVG 图标遮罩 */
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+
+      /* ===== 页面基础 ===== */
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: var(--font-sans);
+        background: var(--background-200);
+        color: var(--foreground);
+        min-height: 100vh;
+        max-width: 393px;
+        margin: 0 auto;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* ===== 顶部导航栏 ===== */
+      .nav-bar {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 44px;
+        padding: 0 16px;
+        background: var(--background);
+        border-bottom: 1px solid var(--border);
+      }
+      .nav-bar-left {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        width: 80px;
+      }
+      .nav-bar-title {
+        font-size: 17px;
+        font-weight: 600;
+        color: var(--foreground);
+        text-align: center;
+        flex: 1;
+      }
+      .nav-bar-right {
+        width: 80px;
+        display: flex;
+        justify-content: flex-end;
+      }
+      .btn-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--primary);
+        cursor: pointer;
+        transition: background-color .18s ease;
+      }
+      .btn-icon:hover {
+        background: var(--secondary);
+      }
+      .btn-export {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0 12px;
+        height: 32px;
+        border: none;
+        border-radius: 999px;
+        background: var(--secondary);
+        color: var(--primary);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color .18s ease;
+      }
+      .btn-export:hover {
+        background: var(--muted);
+      }
+
+      /* ===== 时间筛选 ===== */
+      .time-filter {
+        display: flex;
+        gap: 8px;
+        padding: 16px 16px 8px;
+      }
+      .filter-chip {
+        flex: 1;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 999px;
+        background: var(--background);
+        color: var(--text-500);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color .18s ease, color .18s ease;
+        box-shadow: var(--shadow-sm);
+      }
+      .filter-chip.active {
+        background: var(--primary);
+        color: var(--primary-foreground);
+      }
+      .filter-chip:not(.active):hover {
+        background: var(--secondary);
+      }
+
+      /* ===== 区块标题 ===== */
+      .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 16px 10px;
+      }
+      .section-title {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--foreground);
+      }
+      .section-subtitle {
+        font-size: 13px;
+        color: var(--text-400);
+      }
+
+      /* ===== KPI 卡片网格 ===== */
+      .kpi-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        padding: 0 16px 8px;
+      }
+      .kpi-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      }
+      .kpi-label {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text-400);
+        letter-spacing: 0.02em;
+        margin-bottom: 8px;
+      }
+      .kpi-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--foreground);
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .kpi-unit {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-500);
+        margin-left: 2px;
+      }
+      .kpi-trend {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        margin-top: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--state-success);
+      }
+      .kpi-trend.down {
+        color: var(--state-error);
+      }
+
+      /* ===== 客服排名列表 ===== */
+      .ranking-list {
+        padding: 0 16px 8px;
+      }
+      .ranking-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-bottom: 8px;
+        box-shadow: var(--shadow-sm);
+        cursor: pointer;
+        transition: box-shadow .18s ease;
+      }
+      .ranking-item:hover {
+        box-shadow: var(--shadow-md);
+      }
+      .ranking-badge {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        flex-shrink: 0;
+        background: var(--background-200);
+        color: var(--text-500);
+      }
+      .ranking-badge.gold { background: #FFD700; color: #7B6B00; }
+      .ranking-badge.silver { background: #C0C0C0; color: #5A5A5A; }
+      .ranking-badge.bronze { background: #CD7F32; color: #5A3A10; }
+      .ranking-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        overflow: hidden;
+        background: var(--secondary);
+      }
+      .ranking-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .ranking-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .ranking-name-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .ranking-name {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--foreground);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .lang-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        background: var(--brand-50);
+        color: var(--brand-500);
+        flex-shrink: 0;
+      }
+      .ranking-stats {
+        display: flex;
+        gap: 10px;
+        margin-top: 4px;
+      }
+      .ranking-stat {
+        font-size: 11px;
+        color: var(--text-400);
+        font-variant-numeric: tabular-nums;
+      }
+      .ranking-stat strong {
+        color: var(--text-600);
+        font-weight: 600;
+      }
+
+      /* ===== 趋势柱状图 ===== */
+      .chart-section {
+        padding: 0 16px 8px;
+      }
+      .chart-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      }
+      .chart-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+      .chart-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--foreground);
+      }
+      .chart-legend {
+        font-size: 11px;
+        color: var(--text-400);
+      }
+      .bar-chart {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        height: 120px;
+        padding-top: 8px;
+      }
+      .bar-col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        height: 100%;
+        justify-content: flex-end;
+      }
+      .bar-value {
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--text-500);
+        font-variant-numeric: tabular-nums;
+      }
+      .bar-fill {
+        width: 100%;
+        border-radius: 6px 6px 2px 2px;
+        background: var(--primary);
+        min-height: 4px;
+        transition: height .3s ease;
+        max-width: 32px;
+      }
+      .bar-fill.highlight {
+        background: var(--brand-400);
+        box-shadow: 0 0 8px rgba(0, 122, 255, 0.25);
+      }
+      .bar-label {
+        font-size: 10px;
+        color: var(--text-400);
+        font-weight: 500;
+      }
+
+      /* ===== 低分预警卡片 ===== */
+      .alert-card {
+        margin: 0 16px 24px;
+        padding: 16px;
+        background: var(--state-error-surface);
+        border: 1px solid var(--state-error);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+      }
+      .alert-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .alert-icon-wrap {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--state-error);
+        color: var(--state-error-foreground);
+        flex-shrink: 0;
+      }
+      .alert-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--state-error);
+      }
+      .alert-count {
+        font-size: 13px;
+        color: var(--text-500);
+        margin-bottom: 12px;
+      }
+      .alert-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .alert-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        background: var(--background);
+        border-radius: calc(var(--radius) * 0.6);
+      }
+      .alert-item-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--secondary);
+        flex-shrink: 0;
+        overflow: hidden;
+      }
+      .alert-item-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .alert-item-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .alert-item-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--foreground);
+      }
+      .alert-item-detail {
+        font-size: 11px;
+        color: var(--text-400);
+        margin-top: 1px;
+      }
+      .alert-item-score {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--state-error);
+        flex-shrink: 0;
+      }
+      .alert-action {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        width: 100%;
+        height: 38px;
+        margin-top: 12px;
+        border: none;
+        border-radius: 999px;
+        background: var(--state-error);
+        color: var(--state-error-foreground);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: filter .18s ease;
+      }
+      .alert-action:hover {
+        filter: brightness(0.96);
+      }
+
+      /* ===== 底部安全距离 ===== */
+      .safe-bottom {
+        height: calc(env(safe-area-inset-bottom, 0px) + 16px);
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    
+    /* 妗岄潰绔鐞嗛〉闈㈡渶灏忓搴︾害鏉?*/
+    body { min-width: 1280px; }</style>
+</head>
+<body>
+  <main>
+
+    <!-- ===== 顶部导航栏 ===== -->
+    <header class="nav-bar">
+      <div class="nav-bar-left">
+        <button class="btn-icon" data-dom-id="cta-back" aria-label="返回">
+          <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-left.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-left.svg');"></span>
+        </button>
+      </div>
+      <span class="nav-bar-title">客服绩效看板</span>
+      <div class="nav-bar-right">
+        <button class="btn-export" aria-label="导出报表">
+          <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/share.svg'); mask-image: url('../assets/icons/dl-builtin-apple/share.svg');"></span>
+          <span>导出</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ===== 时间筛选 ===== -->
+    <div class="time-filter" role="tablist" aria-label="时间筛选">
+      <button class="filter-chip active" role="tab" aria-selected="true">今日</button>
+      <button class="filter-chip" role="tab" aria-selected="false">本周</button>
+      <button class="filter-chip" role="tab" aria-selected="false">本月</button>
+    </div>
+
+    <!-- ===== 团队整体 KPI 卡片 ===== -->
+    <div class="section-header">
+      <span class="section-title">团队整体 KPI</span>
+      <span class="section-subtitle">实时数据</span>
+    </div>
+    <div class="kpi-grid">
+      <!-- 平均首次响应时间 -->
+      <div class="kpi-card">
+        <div class="kpi-label">平均首次响应时间</div>
+        <div class="kpi-value">25<span class="kpi-unit">s</span></div>
+        <div class="kpi-trend">
+          <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/arrow-down.svg'); mask-image: url('../assets/icons/dl-builtin-apple/arrow-down.svg');"></span>
+          较昨日 -8%
+        </div>
+      </div>
+      <!-- 一次解决率 -->
+      <div class="kpi-card">
+        <div class="kpi-label">一次解决率</div>
+        <div class="kpi-value">82<span class="kpi-unit">%</span></div>
+        <div class="kpi-trend">
+          <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/arrow-up.svg'); mask-image: url('../assets/icons/dl-builtin-apple/arrow-up.svg');"></span>
+          较昨日 +3%
+        </div>
+      </div>
+      <!-- 平均满意度 -->
+      <div class="kpi-card">
+        <div class="kpi-label">平均满意度</div>
+        <div class="kpi-value">4.6<span class="kpi-unit">/5.0</span></div>
+        <div class="kpi-trend">
+          <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/arrow-up.svg'); mask-image: url('../assets/icons/dl-builtin-apple/arrow-up.svg');"></span>
+          较昨日 +0.1
+        </div>
+      </div>
+      <!-- 今日工单处理量 -->
+      <div class="kpi-card">
+        <div class="kpi-label">今日工单处理量</div>
+        <div class="kpi-value">156<span class="kpi-unit">单</span></div>
+        <div class="kpi-trend">
+          <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/arrow-up.svg'); mask-image: url('../assets/icons/dl-builtin-apple/arrow-up.svg');"></span>
+          较昨日 +12%
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 客服排名列表 ===== -->
+    <div class="section-header">
+      <span class="section-title">客服排名</span>
+      <span class="section-subtitle">按综合评分排序</span>
+    </div>
+    <div class="ranking-list">
+
+      <!-- 第1名 - 金色 -->
+      <div class="ranking-item">
+        <span class="ranking-badge gold">1</span>
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--background-300);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-400);font-size:14px;font-weight:600;">张</div>
+        <div class="ranking-info">
+          <div class="ranking-name-row">
+            <span class="ranking-name">张小萌</span>
+            <span class="lang-tag">EN</span>
+            <span class="lang-tag">DE</span>
+          </div>
+          <div class="ranking-stats">
+            <span class="ranking-stat">响应 <strong>18s</strong></span>
+            <span class="ranking-stat">解决率 <strong>92%</strong></span>
+            <span class="ranking-stat">满意度 <strong>4.9</strong></span>
+            <span class="ranking-stat">工单 <strong>28</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第2名 - 银色 -->
+      <div class="ranking-item">
+        <span class="ranking-badge silver">2</span>
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--background-300);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-400);font-size:14px;font-weight:600;">李</div>
+        <div class="ranking-info">
+          <div class="ranking-name-row">
+            <span class="ranking-name">李文轩</span>
+            <span class="lang-tag">EN</span>
+            <span class="lang-tag">FR</span>
+          </div>
+          <div class="ranking-stats">
+            <span class="ranking-stat">响应 <strong>21s</strong></span>
+            <span class="ranking-stat">解决率 <strong>88%</strong></span>
+            <span class="ranking-stat">满意度 <strong>4.8</strong></span>
+            <span class="ranking-stat">工单 <strong>25</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第3名 - 铜色 -->
+      <div class="ranking-item">
+        <span class="ranking-badge bronze">3</span>
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--background-300);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-400);font-size:14px;font-weight:600;">王</div>
+        <div class="ranking-info">
+          <div class="ranking-name-row">
+            <span class="ranking-name">王思雨</span>
+            <span class="lang-tag">EN</span>
+            <span class="lang-tag">JA</span>
+          </div>
+          <div class="ranking-stats">
+            <span class="ranking-stat">响应 <strong>22s</strong></span>
+            <span class="ranking-stat">解决率 <strong>85%</strong></span>
+            <span class="ranking-stat">满意度 <strong>4.7</strong></span>
+            <span class="ranking-stat">工单 <strong>24</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第4名 -->
+      <div class="ranking-item">
+        <span class="ranking-badge">4</span>
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--background-300);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-400);font-size:14px;font-weight:600;">赵</div>
+        <div class="ranking-info">
+          <div class="ranking-name-row">
+            <span class="ranking-name">赵晨曦</span>
+            <span class="lang-tag">EN</span>
+          </div>
+          <div class="ranking-stats">
+            <span class="ranking-stat">响应 <strong>24s</strong></span>
+            <span class="ranking-stat">解决率 <strong>83%</strong></span>
+            <span class="ranking-stat">满意度 <strong>4.6</strong></span>
+            <span class="ranking-stat">工单 <strong>22</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第5名 -->
+      <div class="ranking-item">
+        <span class="ranking-badge">5</span>
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--background-300);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-400);font-size:14px;font-weight:600;">陈</div>
+        <div class="ranking-info">
+          <div class="ranking-name-row">
+            <span class="ranking-name">陈嘉怡</span>
+            <span class="lang-tag">DE</span>
+            <span class="lang-tag">EN</span>
+          </div>
+          <div class="ranking-stats">
+            <span class="ranking-stat">响应 <strong>27s</strong></span>
+            <span class="ranking-stat">解决率 <strong>80%</strong></span>
+            <span class="ranking-stat">满意度 <strong>4.5</strong></span>
+            <span class="ranking-stat">工单 <strong>20</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第6名 -->
+      <div class="ranking-item">
+        <span class="ranking-badge">6</span>
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--background-300);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-400);font-size:14px;font-weight:600;">刘</div>
+        <div class="ranking-info">
+          <div class="ranking-name-row">
+            <span class="ranking-name">刘子豪</span>
+            <span class="lang-tag">EN</span>
+            <span class="lang-tag">ES</span>
+          </div>
+          <div class="ranking-stats">
+            <span class="ranking-stat">响应 <strong>30s</strong></span>
+            <span class="ranking-stat">解决率 <strong>78%</strong></span>
+            <span class="ranking-stat">满意度 <strong>4.3</strong></span>
+            <span class="ranking-stat">工单 <strong>19</strong></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===== 绩效趋势图（过去7天工单处理量） ===== -->
+    <div class="section-header">
+      <span class="section-title">绩效趋势</span>
+      <span class="section-subtitle">过去 7 天</span>
+    </div>
+    <div class="chart-section">
+      <div class="chart-card">
+        <div class="chart-header">
+          <span class="chart-title">工单处理量</span>
+          <span class="chart-legend">单位: 单</span>
+        </div>
+        <div class="bar-chart">
+          <!-- 周一 -->
+          <div class="bar-col">
+            <span class="bar-value">120</span>
+            <div class="bar-fill" style="height: 60%;"></div>
+            <span class="bar-label">周一</span>
+          </div>
+          <!-- 周二 -->
+          <div class="bar-col">
+            <span class="bar-value">135</span>
+            <div class="bar-fill" style="height: 67.5%;"></div>
+            <span class="bar-label">周二</span>
+          </div>
+          <!-- 周三 -->
+          <div class="bar-col">
+            <span class="bar-value">142</span>
+            <div class="bar-fill" style="height: 71%;"></div>
+            <span class="bar-label">周三</span>
+          </div>
+          <!-- 周四 -->
+          <div class="bar-col">
+            <span class="bar-value">128</span>
+            <div class="bar-fill" style="height: 64%;"></div>
+            <span class="bar-label">周四</span>
+          </div>
+          <!-- 周五 -->
+          <div class="bar-col">
+            <span class="bar-value">150</span>
+            <div class="bar-fill" style="height: 75%;"></div>
+            <span class="bar-label">周五</span>
+          </div>
+          <!-- 周六 -->
+          <div class="bar-col">
+            <span class="bar-value">98</span>
+            <div class="bar-fill" style="height: 49%;"></div>
+            <span class="bar-label">周六</span>
+          </div>
+          <!-- 今日 - 高亮 -->
+          <div class="bar-col">
+            <span class="bar-value">156</span>
+            <div class="bar-fill highlight" style="height: 78%;"></div>
+            <span class="bar-label">今日</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 低分预警卡片 ===== -->
+    <div class="section-header">
+      <span class="section-title">低分预警</span>
+      <span class="section-subtitle">满意度 &le; 2.0</span>
+    </div>
+    <div class="alert-card">
+      <div class="alert-header">
+        <div class="alert-icon-wrap">
+          <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/triangle-alert.svg'); mask-image: url('../assets/icons/dl-builtin-apple/triangle-alert.svg');"></span>
+        </div>
+        <span class="alert-title">满意度低分预警</span>
+      </div>
+      <div class="alert-count">共 2 位客服存在低分评价，需及时关注</div>
+      <div class="alert-list">
+        <!-- 低分客服1 -->
+        <div class="alert-item">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--background-300);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-400);font-size:12px;font-weight:600;">周</div>
+          <div class="alert-item-info">
+            <div class="alert-item-name">周明哲</div>
+            <div class="alert-item-detail">近 24 小时收到 3 条差评</div>
+          </div>
+          <span class="alert-item-score">1.8</span>
+        </div>
+        <!-- 低分客服2 -->
+        <div class="alert-item">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--background-300);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-400);font-size:12px;font-weight:600;">吴</div>
+          <div class="alert-item-info">
+            <div class="alert-item-name">吴佳琪</div>
+            <div class="alert-item-detail">近 24 小时收到 2 条差评</div>
+          </div>
+          <span class="alert-item-score">2.0</span>
+        </div>
+      </div>
+      <button class="alert-action" aria-label="查看低分详情">
+        <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/arrow-right.svg'); mask-image: url('../assets/icons/dl-builtin-apple/arrow-right.svg');"></span>
+        查看详情
+      </button>
+    </div>
+
+    <!-- 底部安全距离 -->
+    <div class="safe-bottom"></div>
+
+  </main>
+</body>
+</html>

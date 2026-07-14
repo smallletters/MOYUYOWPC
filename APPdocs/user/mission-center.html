@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOYUYO 任务中心</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* state-warning */
+  --state-warning: #ff9500;
+  --state-warning-surface: #fff4e5;
+  --state-warning-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04); /* Hairline */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04); /* Subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05); /* Card */
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* Raised */
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Card Hover */
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05); /* Float */
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06); /* Overlay */
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12); /* Modal */
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+/*
+ * components.css - aggregated component CSS
+ */
+
+/* ============================================================
+ * Button
+ * ============================================================ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+/* ============================================================
+ * Card
+ * ============================================================ */
+.card{width:188px;min-height:148px;padding:calc(var(--spacing)*5);display:flex;flex-direction:column;justify-content:space-between;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);transition:transform .18s ease,box-shadow .18s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.card.disabled,.card.disabled:hover{opacity:.5;transform:none;box-shadow:var(--shadow-md)}
+.eyebrow,.meta{color:var(--muted-foreground);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.title{margin:6px 0 8px;font-size:18px;line-height:1.15}
+.body-copy{margin:0;color:var(--muted-foreground);font-size:13px}
+.cta{display:inline-flex;align-items:center;justify-content:center;width:max-content;margin-top:12px;padding:calc(var(--spacing)*2) calc(var(--spacing)*3.5);border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;font-weight:700;text-decoration:none}
+
+/* ============================================================
+ * Input
+ * ============================================================ */
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field.small{height:40px}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.field.disabled{opacity:.55}
+.icon,.clear{padding:0;border:0;background:transparent;color:var(--icon-muted);font:inherit}
+.icon{font-size:13px}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+
+      /* ===== 任务中心页面专用样式 ===== */
+
+      /* 环形进度图容器 */
+      .ring-progress {
+        position: relative;
+        width: 120px;
+        height: 120px;
+      }
+      .ring-progress svg {
+        transform: rotate(-90deg);
+      }
+      .ring-progress .ring-track {
+        fill: none;
+        stroke: var(--background-200);
+        stroke-width: 8;
+      }
+      .ring-progress .ring-bar {
+        fill: none;
+        stroke: var(--brand-500);
+        stroke-width: 8;
+        stroke-linecap: round;
+        transition: stroke-dashoffset 0.6s ease;
+      }
+      .ring-progress .ring-text {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* 任务项卡片 */
+      .mission-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        transition: transform 0.18s ease;
+      }
+      .mission-item:active {
+        transform: scale(0.985);
+      }
+
+      /* 任务图标容器 */
+      .mission-icon-wrap {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      /* 任务进度条 */
+      .progress-track {
+        width: 100%;
+        height: 6px;
+        border-radius: 3px;
+        background: var(--background-200);
+        overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%;
+        border-radius: 3px;
+        background: var(--brand-500);
+        transition: width 0.4s ease;
+      }
+      .progress-fill.complete {
+        background: var(--state-success);
+      }
+
+      /* 任务按钮 */
+      .mission-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 16px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+        flex-shrink: 0;
+        cursor: pointer;
+        border: none;
+        transition: opacity 0.18s ease, filter 0.18s ease;
+      }
+      .mission-btn:active {
+        filter: brightness(0.92);
+      }
+      .mission-btn-primary {
+        background: var(--brand-500);
+        color: var(--background-50);
+      }
+      .mission-btn-done {
+        background: var(--background-200);
+        color: var(--text-400);
+        cursor: default;
+      }
+
+      /* 积分标签 */
+      .points-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--state-warning);
+      }
+
+      /* 成就徽章占位 */
+      .badge-placeholder {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .badge-placeholder.earned {
+        background: linear-gradient(135deg, var(--brand-500), var(--brand-600));
+        color: var(--background-50);
+      }
+      .badge-placeholder.locked {
+        background: var(--background-200);
+        color: var(--text-400);
+      }
+
+      /* Tab 切换下划线动画 */
+      .tab-btn {
+        position: relative;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 44px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-400);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        transition: color 0.2s ease;
+      }
+      .tab-btn.active {
+        font-weight: 600;
+        color: var(--brand-500);
+      }
+      .tab-btn.active::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 32px;
+        height: 2px;
+        border-radius: 1px;
+        background: var(--brand-500);
+      }
+
+      /* 任务面板切换 */
+      .tab-panel {
+        display: none;
+      }
+      .tab-panel.active {
+        display: block;
+      }
+
+      /* 进度卡片 */
+      .progress-card {
+        background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+        color: var(--background-50);
+        border-radius: var(--radius);
+        padding: 20px;
+        box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased" style="font-family: 'DM Sans', -apple-system, sans-serif;">
+
+    <main class="min-h-screen" style="background: var(--background-200);">
+
+      <!-- iOS 状态栏模拟 -->
+      <div class="sticky top-0 z-30" style="background: var(--background);">
+        <div class="h-11 flex items-center justify-between px-5">
+          <span class="text-sm font-semibold" style="color: var(--foreground);">9:41</span>
+          <div class="flex items-center gap-1.5">
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/triangle-alert.svg'); mask-image: url('../assets/icons/dl-builtin-apple/triangle-alert.svg');"></span>
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/box.svg'); mask-image: url('../assets/icons/dl-builtin-apple/box.svg');"></span>
+            <span class="w-6 h-3 rounded-sm" style="background: var(--foreground);"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 顶部导航栏 -->
+      <header class="sticky top-11 z-20 flex items-center h-11 px-4 gap-3" style="background: var(--background); border-bottom: 1px solid var(--border);">
+        <button data-dom-id="cta-back" class="flex items-center justify-center w-8 h-8 -ml-1 rounded-full" style="background: transparent; border: none; color: var(--brand-500);" aria-label="返回">
+          <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-left.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-left.svg');"></span>
+        </button>
+        <h1 class="text-base font-semibold flex-1 text-center -mr-8" style="color: var(--foreground);">任务中心</h1>
+      </header>
+
+      <!-- 页面内容区 -->
+      <div class="px-4 pt-4 pb-8 space-y-4">
+
+        <!-- ===== 今日进度卡片 ===== -->
+        <section class="progress-card" aria-label="今日进度">
+          <div class="flex items-center justify-between">
+            <!-- 环形进度图 -->
+            <div class="ring-progress">
+              <svg width="120" height="120" viewBox="0 0 120 120">
+                <circle class="ring-track" cx="60" cy="60" r="50"></circle>
+                <!-- 进度 2/5 = 40% -->
+                <circle class="ring-bar" cx="60" cy="60" r="50"
+                  stroke-dasharray="314.16"
+                  stroke-dashoffset="188.5"></circle>
+              </svg>
+              <div class="ring-text">
+                <span class="text-2xl font-bold" style="line-height: 1;">2/5</span>
+                <span class="text-[11px] mt-0.5" style="opacity: 0.8;">今日任务</span>
+              </div>
+            </div>
+
+            <!-- 右侧信息 -->
+            <div class="flex flex-col items-end gap-1">
+              <span class="text-xs" style="opacity: 0.7;">今日已获积分</span>
+              <span class="text-3xl font-bold" style="line-height: 1;">+8</span>
+              <div class="flex items-center gap-1 mt-1">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/flame.svg'); mask-image: url('../assets/icons/dl-builtin-apple/flame.svg'); opacity: 0.8;"></span>
+                <span class="text-xs" style="opacity: 0.8;">连续签到 3 天</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== 任务分类 Tab ===== -->
+        <nav class="rounded-[var(--radius)] overflow-hidden" style="background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.08);" aria-label="任务分类">
+          <div class="flex" style="border-bottom: 1px solid var(--border);">
+            <button class="tab-btn active" data-tab="daily" aria-selected="true">每日</button>
+            <button class="tab-btn" data-tab="weekly" aria-selected="false">每周</button>
+            <button class="tab-btn" data-tab="achievement" aria-selected="false">成就</button>
+          </div>
+
+          <!-- ===== 每日任务面板 ===== -->
+          <div class="tab-panel active" id="panel-daily">
+            <div class="p-3 space-y-3">
+
+              <!-- 每日签到（已完成） -->
+              <div class="mission-item">
+                <div class="mission-icon-wrap" style="background: var(--state-success-surface);">
+                  <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/calendar-check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/calendar-check.svg'); color: var(--state-success);"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium" style="color: var(--foreground);">每日签到</span>
+                    <span class="points-tag">+5</span>
+                  </div>
+                  <span class="text-xs mt-0.5 block" style="color: var(--state-success);">已完成</span>
+                </div>
+                <button class="mission-btn mission-btn-done" disabled>已完成</button>
+              </div>
+
+              <!-- 浏览 5 个商品（进行中 3/5） -->
+              <div class="mission-item">
+                <div class="mission-icon-wrap" style="background: var(--brand-50);">
+                  <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/eye.svg'); mask-image: url('../assets/icons/dl-builtin-apple/eye.svg'); color: var(--brand-500);"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium" style="color: var(--foreground);">浏览 5 个商品</span>
+                    <span class="points-tag">+3</span>
+                  </div>
+                  <div class="flex items-center gap-2 mt-1.5">
+                    <div class="progress-track">
+                      <div class="progress-fill" style="width: 60%;"></div>
+                    </div>
+                    <span class="text-xs flex-shrink-0" style="color: var(--text-500);">3/5</span>
+                  </div>
+                </div>
+                <button class="mission-btn mission-btn-primary">去完成</button>
+              </div>
+
+              <!-- 分享 1 个商品（未完成） -->
+              <div class="mission-item">
+                <div class="mission-icon-wrap" style="background: var(--state-warning-surface);">
+                  <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/share.svg'); mask-image: url('../assets/icons/dl-builtin-apple/share.svg'); color: var(--state-warning);"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium" style="color: var(--foreground);">分享 1 个商品</span>
+                    <span class="points-tag">+5</span>
+                  </div>
+                  <span class="text-xs mt-0.5 block" style="color: var(--text-400);">未完成</span>
+                </div>
+                <button class="mission-btn mission-btn-primary">去完成</button>
+              </div>
+
+              <!-- 完成 1 次 Pet Hub 互动（未完成） -->
+              <div class="mission-item">
+                <div class="mission-icon-wrap" style="background: var(--brand-50);">
+                  <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/heart.svg'); mask-image: url('../assets/icons/dl-builtin-apple/heart.svg'); color: var(--brand-500);"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium" style="color: var(--foreground);">完成 1 次 Pet Hub 互动</span>
+                    <span class="points-tag">+2</span>
+                  </div>
+                  <span class="text-xs mt-0.5 block" style="color: var(--text-400);">未完成</span>
+                </div>
+                <button class="mission-btn mission-btn-primary">去完成</button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ===== 每周任务面板 ===== -->
+          <div class="tab-panel" id="panel-weekly">
+            <div class="p-3 space-y-3">
+
+              <!-- 累计签到 5 天（进行中 3/5） -->
+              <div class="mission-item">
+                <div class="mission-icon-wrap" style="background: var(--brand-50);">
+                  <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/calendar-days.svg'); mask-image: url('../assets/icons/dl-builtin-apple/calendar-days.svg'); color: var(--brand-500);"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium" style="color: var(--foreground);">累计签到 5 天</span>
+                    <span class="points-tag">+20</span>
+                  </div>
+                  <div class="flex items-center gap-2 mt-1.5">
+                    <div class="progress-track">
+                      <div class="progress-fill" style="width: 60%;"></div>
+                    </div>
+                    <span class="text-xs flex-shrink-0" style="color: var(--text-500);">3/5</span>
+                  </div>
+                </div>
+                <button class="mission-btn mission-btn-primary">去完成</button>
+              </div>
+
+              <!-- 完成 1 单购物（未完成） -->
+              <div class="mission-item">
+                <div class="mission-icon-wrap" style="background: var(--state-warning-surface);">
+                  <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/shopping-bag.svg'); mask-image: url('../assets/icons/dl-builtin-apple/shopping-bag.svg'); color: var(--state-warning);"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium" style="color: var(--foreground);">完成 1 单购物</span>
+                    <span class="points-tag">+30</span>
+                  </div>
+                  <span class="text-xs mt-0.5 block" style="color: var(--text-400);">未完成</span>
+                </div>
+                <button class="mission-btn mission-btn-primary">去完成</button>
+              </div>
+
+              <!-- 发布 1 条社区笔记（未完成） -->
+              <div class="mission-item">
+                <div class="mission-icon-wrap" style="background: var(--brand-50);">
+                  <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/pencil.svg'); mask-image: url('../assets/icons/dl-builtin-apple/pencil.svg'); color: var(--brand-500);"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium" style="color: var(--foreground);">发布 1 条社区笔记</span>
+                    <span class="points-tag">+15</span>
+                  </div>
+                  <span class="text-xs mt-0.5 block" style="color: var(--text-400);">未完成</span>
+                </div>
+                <button class="mission-btn mission-btn-primary">去完成</button>
+              </div>
+
+              <!-- 邀请 1 位好友注册（未完成） -->
+              <div class="mission-item">
+                <div class="mission-icon-wrap" style="background: var(--state-error-surface);">
+                  <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/user-plus.svg'); mask-image: url('../assets/icons/dl-builtin-apple/user-plus.svg'); color: var(--state-error);"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium" style="color: var(--foreground);">邀请 1 位好友注册</span>
+                    <span class="points-tag">+50</span>
+                  </div>
+                  <span class="text-xs mt-0.5 block" style="color: var(--text-400);">未完成</span>
+                </div>
+                <button class="mission-btn mission-btn-primary">去完成</button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ===== 成就任务面板 ===== -->
+          <div class="tab-panel" id="panel-achievement">
+            <div class="p-3 space-y-3">
+
+              <!-- 首单完成（已获得） -->
+              <div class="mission-item">
+                <div class="badge-placeholder earned">
+                  <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/award.svg'); mask-image: url('../assets/icons/dl-builtin-apple/award.svg'); color: var(--background-50);"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium" style="color: var(--foreground);">首单完成</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 mt-0.5">
+                    <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/check-circle.svg'); mask-image: url('../assets/icons/dl-builtin-apple/check-circle.svg'); color: var(--state-success);"></span>
+                    <span class="text-xs" style="color: var(--state-success);">已获得「新人徽章」</span>
+                  </div>
+                </div>
+                <button class="mission-btn mission-btn-done" disabled>已获得</button>
+              </div>
+
+              <!-- 累计消费满 $500（进行中 $380/500） -->
+              <div class="mission-item">
+                <div class="badge-placeholder locked">
+                  <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/award.svg'); mask-image: url('../assets/icons/dl-builtin-apple/award.svg');"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium" style="color: var(--foreground);">累计消费满 $500</span>
+                  </div>
+                  <div class="flex items-center gap-2 mt-1.5">
+                    <div class="progress-track">
+                      <div class="progress-fill" style="width: 76%;"></div>
+                    </div>
+                    <span class="text-xs flex-shrink-0" style="color: var(--text-500);">$380/500</span>
+                  </div>
+                </div>
+                <button class="mission-btn mission-btn-primary">去完成</button>
+              </div>
+
+              <!-- 连续签到 30 天（进行中 12/30） -->
+              <div class="mission-item">
+                <div class="badge-placeholder locked">
+                  <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/award.svg'); mask-image: url('../assets/icons/dl-builtin-apple/award.svg');"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium" style="color: var(--foreground);">连续签到 30 天</span>
+                  </div>
+                  <div class="flex items-center gap-2 mt-1.5">
+                    <div class="progress-track">
+                      <div class="progress-fill" style="width: 40%;"></div>
+                    </div>
+                    <span class="text-xs flex-shrink-0" style="color: var(--text-500);">12/30</span>
+                  </div>
+                </div>
+                <button class="mission-btn mission-btn-primary">去完成</button>
+              </div>
+
+              <!-- 发布 10 条笔记（进行中 4/10） -->
+              <div class="mission-item">
+                <div class="badge-placeholder locked">
+                  <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/award.svg'); mask-image: url('../assets/icons/dl-builtin-apple/award.svg');"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium" style="color: var(--foreground);">发布 10 条笔记</span>
+                  </div>
+                  <div class="flex items-center gap-2 mt-1.5">
+                    <div class="progress-track">
+                      <div class="progress-fill" style="width: 40%;"></div>
+                    </div>
+                    <span class="text-xs flex-shrink-0" style="color: var(--text-500);">4/10</span>
+                  </div>
+                </div>
+                <button class="mission-btn mission-btn-primary">去完成</button>
+              </div>
+
+              <!-- 邀请 10 位好友（进行中 1/10） -->
+              <div class="mission-item">
+                <div class="badge-placeholder locked">
+                  <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/award.svg'); mask-image: url('../assets/icons/dl-builtin-apple/award.svg');"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium" style="color: var(--foreground);">邀请 10 位好友</span>
+                  </div>
+                  <div class="flex items-center gap-2 mt-1.5">
+                    <div class="progress-track">
+                      <div class="progress-fill" style="width: 10%;"></div>
+                    </div>
+                    <span class="text-xs flex-shrink-0" style="color: var(--text-500);">1/10</span>
+                  </div>
+                </div>
+                <button class="mission-btn mission-btn-primary">去完成</button>
+              </div>
+
+            </div>
+          </div>
+
+        </nav>
+
+      </div>
+
+    </main>
+
+    <!-- Tab 切换逻辑 -->
+    <script>
+      // Tab 切换功能
+      document.querySelectorAll('.tab-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var tabId = this.getAttribute('data-tab');
+
+          // 更新 Tab 按钮状态
+          document.querySelectorAll('.tab-btn').forEach(function(b) {
+            b.classList.remove('active');
+            b.setAttribute('aria-selected', 'false');
+          });
+          this.classList.add('active');
+          this.setAttribute('aria-selected', 'true');
+
+          // 切换面板显示
+          document.querySelectorAll('.tab-panel').forEach(function(panel) {
+            panel.classList.remove('active');
+          });
+          var targetPanel = document.getElementById('panel-' + tabId);
+          if (targetPanel) {
+            targetPanel.classList.add('active');
+          }
+        });
+      });
+    </script>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

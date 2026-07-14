@@ -1,0 +1,9 @@
+{
+  "identityToken": "eyJraWQiOi...",
+  "authorizationCode": "c_xxx",
+  "user": {
+    "name": { "firstName": "Tom", "lastName": "Lee" }
+  },
+  "realUserStatus": "2",
+  "deviceId": "abc123"
+}

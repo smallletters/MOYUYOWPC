@@ -1,0 +1,8 @@
+{
+  "code": 0,
+  "data": {
+    "deleteScheduledAt": "2026-08-01T10:23:11Z",
+    "recoverDeadline": "2026-08-01T10:23:11Z",
+    "recoverUrl": "https://app.moyuyo.com/recover?token=rec_xxx"
+  }
+}

@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>敏感词库 - MOYUYO 管理后台</title>
+    <style id="theme-vars">
+/*
+ * MOYUYO design tokens
+ * Brand: MOYUYO
+ * Domain: Pet lifestyle e-commerce
+ * Style: Apple Design Library, mobile admin
+ * Theme mode: light-dark
+ * Source language: zh
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff;
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759;
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30;
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* state-warning */
+  --state-warning: #ff9500;
+  --state-warning-dark: #ff9f0a;
+  --state-warning-surface: #fff4e5;
+  --state-warning-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-4-surface: #f0e6ff;
+  --chart-5: #af52de;
+
+  /* TYPOGRAPHY */
+  --font-sans: 'DM Sans', -apple-system, sans-serif;
+  --font-serif: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12);
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+/*
+ * components.css - aggregated component CSS
+ */
+
+/* ============================================================
+ * Button
+ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+/* ============================================================
+ * Card
+ */
+.card{width:188px;min-height:148px;padding:calc(var(--spacing)*5);display:flex;flex-direction:column;justify-content:space-between;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);transition:transform .18s ease,box-shadow .18s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.card.disabled,.card.disabled:hover{opacity:.5;transform:none;box-shadow:var(--shadow-md)}
+.eyebrow,.meta{color:var(--muted-foreground);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.title{margin:6px 0 8px;font-size:18px;line-height:1.15}
+.body-copy{margin:0;color:var(--muted-foreground);font-size:13px}
+
+/* ============================================================
+ * Input
+ */
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field.small{height:40px}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.field.disabled{opacity:.55}
+.icon,.clear{padding:0;border:0;background:transparent;color:var(--icon-muted);font:inherit}
+.icon{font-size:13px}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+
+/* ============================================================
+ * Navigation
+ */
+.webbar,.mobile{border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.webbar{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:320px;height:44px;padding:0 calc(var(--spacing)*3);border-radius:var(--radius);background:var(--secondary)}
+.brand{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.link,.tab{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;color:inherit;text-decoration:none;white-space:nowrap;transition:background-color .18s ease,color .18s ease,opacity .18s ease}
+.link{height:32px;padding:0 calc(var(--spacing)*2.5)}
+.link:hover,.tab:hover{background:var(--secondary)}
+.link:focus-visible,.tab:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+    </style>
+
+    <!-- 敏感词库管理页面专用样式 -->
+    <style>
+      /* 基础重置 */
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: 'DM Sans', -apple-system, sans-serif;
+        background: var(--background-200);
+        color: var(--text-800);
+        max-width: 393px;
+        margin: 0 auto;
+        min-height: 852px;
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* 隐藏滚动条 */
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* 顶部导航栏 */
+      .admin-nav {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        background: var(--background-50);
+        border-bottom: 1px solid var(--border);
+      }
+      .admin-nav-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 52px;
+        padding: 0 16px;
+      }
+      .admin-nav-bar h1 {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--text-800);
+      }
+      .admin-nav-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 50%;
+        background: var(--background-200);
+        color: var(--text-800);
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+        flex-shrink: 0;
+      }
+      .admin-nav-btn:hover {
+        background: var(--background-300);
+      }
+      /* 批量导入按钮（导航栏右侧文字按钮） */
+      .nav-action-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 32px;
+        padding: 0 14px;
+        border: none;
+        border-radius: 999px;
+        background: var(--primary);
+        color: var(--primary-foreground);
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: filter 0.15s ease;
+        flex-shrink: 0;
+      }
+      .nav-action-btn:hover {
+        filter: brightness(0.92);
+      }
+      .nav-action-btn svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      /* 词库统计概览 2x2 网格 */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        padding: 12px 16px;
+        background: var(--background-200);
+      }
+      .stat-card {
+        padding: 14px 12px;
+        border-radius: var(--radius);
+        background: var(--background-50);
+        border: 1px solid var(--border);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        text-align: center;
+        transition: box-shadow 0.18s ease;
+      }
+      .stat-card:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      }
+      .stat-card .stat-value {
+        font-size: 26px;
+        font-weight: 800;
+        color: var(--text-800);
+        line-height: 1.1;
+      }
+      .stat-card .stat-value.brand { color: var(--brand-500); }
+      .stat-card .stat-value.warning { color: var(--state-warning); }
+      .stat-card .stat-value.error { color: var(--state-error); }
+      .stat-card .stat-value.success { color: var(--state-success); }
+      .stat-card .stat-label {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text-500);
+        margin-top: 4px;
+      }
+
+      /* 语言版本 Tab 区域 */
+      .lang-section {
+        padding: 0 16px 12px;
+        background: var(--background-200);
+      }
+      .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+      .section-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-500);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .lang-tabs {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+      }
+      .lang-tab {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 32px;
+        padding: 0 12px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--background-50);
+        color: var(--text-500);
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .lang-tab.active {
+        background: var(--text-800);
+        color: var(--background-50);
+        border-color: var(--text-800);
+      }
+      .lang-tab:not(.active):hover {
+        border-color: var(--text-500);
+        color: var(--text-800);
+      }
+
+      /* 分类筛选区域 */
+      .category-section {
+        padding: 0 16px 12px;
+        background: var(--background-50);
+        border-top: 1px solid var(--border);
+      }
+      .category-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .category-chip {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 30px;
+        padding: 0 12px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--background-50);
+        color: var(--text-500);
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .category-chip.active {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border-color: var(--primary);
+        box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+      }
+      .category-chip:not(.active):hover {
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+      .category-chip .chip-count {
+        font-size: 10px;
+        opacity: 0.7;
+      }
+
+      /* 列表头部 */
+      .list-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px 8px;
+        background: var(--background-50);
+      }
+      .list-header .list-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-500);
+      }
+      .list-header .list-count {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-400);
+      }
+
+      /* 敏感词列表 */
+      .word-list {
+        padding: 0 16px 16px;
+        background: var(--background-50);
+      }
+
+      /* 单条敏感词卡片 */
+      .word-item {
+        border-radius: var(--radius);
+        background: var(--background-50);
+        border: 1px solid var(--border);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        padding: 14px;
+        margin-bottom: 10px;
+        transition: box-shadow 0.18s ease;
+      }
+      .word-item:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      }
+
+      /* 卡片顶部：敏感词内容 + 匹配模式标签 */
+      .word-item-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .word-content {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-800);
+        line-height: 1.3;
+        word-break: break-all;
+        flex: 1;
+      }
+      /* 匹配模式标签 */
+      .match-mode-tag {
+        display: inline-flex;
+        align-items: center;
+        height: 22px;
+        padding: 0 8px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 600;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .match-mode-tag.exact {
+        background: var(--brand-50);
+        color: var(--brand-500);
+      }
+      .match-mode-tag.fuzzy {
+        background: var(--state-warning-surface);
+        color: var(--state-warning);
+      }
+      .match-mode-tag.regex {
+        background: var(--chart-4-surface);
+        color: var(--chart-4);
+      }
+
+      /* 卡片中间：分类 + 命中统计 */
+      .word-item-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+      }
+      .category-tag {
+        display: inline-flex;
+        align-items: center;
+        height: 22px;
+        padding: 0 8px;
+        border-radius: 6px;
+        font-size: 10px;
+        font-weight: 600;
+        background: var(--background-200);
+        color: var(--text-600);
+      }
+      .hit-info {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        color: var(--text-400);
+      }
+      .hit-info .hit-count {
+        font-weight: 600;
+        color: var(--text-600);
+      }
+      .hit-info svg {
+        width: 12px;
+        height: 12px;
+        color: var(--text-400);
+      }
+
+      /* 卡片底部：最近命中时间 + 操作按钮 */
+      .word-item-bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--background-200);
+      }
+      .last-hit-time {
+        font-size: 11px;
+        color: var(--text-400);
+      }
+      .word-actions {
+        display: flex;
+        gap: 6px;
+      }
+      .word-action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        background: var(--background-50);
+        color: var(--text-500);
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .word-action-btn:hover {
+        background: var(--background-200);
+        color: var(--text-800);
+      }
+      .word-action-btn.delete:hover {
+        background: var(--state-error-surface);
+        color: var(--state-error);
+        border-color: var(--state-error);
+      }
+      .word-action-btn svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      /* 折叠区域通用 */
+      .collapsible-section {
+        margin: 0 16px 12px;
+        border-radius: var(--radius);
+        background: var(--background-50);
+        border: 1px solid var(--border);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        overflow: hidden;
+      }
+      .collapsible-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px;
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+      }
+      .collapsible-header:hover {
+        background: var(--background-100);
+      }
+      .collapsible-header .chevron {
+        width: 18px;
+        height: 18px;
+        color: var(--text-400);
+        transition: transform 0.25s ease;
+      }
+      .collapsible-header.open .chevron {
+        transform: rotate(180deg);
+      }
+      .collapsible-header .header-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .collapsible-header .header-icon {
+        width: 20px;
+        height: 20px;
+        color: var(--primary);
+      }
+      .collapsible-header .header-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-800);
+      }
+      .collapsible-body {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+      }
+      .collapsible-body.open {
+        max-height: 600px;
+      }
+      .collapsible-content {
+        padding: 0 14px 14px;
+      }
+
+      /* 新增敏感词表单 */
+      .form-group {
+        margin-bottom: 12px;
+      }
+      .form-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-500);
+        margin-bottom: 6px;
+      }
+      .form-input {
+        width: 100%;
+        height: 42px;
+        padding: 0 12px;
+        border: 1px solid var(--input);
+        border-radius: calc(var(--radius) * 0.6);
+        background: var(--background);
+        color: var(--foreground);
+        font-size: 14px;
+        font-family: var(--font-sans);
+        outline: none;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .form-input:focus {
+        border-color: var(--ring);
+        box-shadow: 0 0 0 1px var(--ring);
+      }
+      .form-input::placeholder {
+        color: var(--muted-foreground);
+      }
+      .form-select {
+        width: 100%;
+        height: 42px;
+        padding: 0 12px;
+        border: 1px solid var(--input);
+        border-radius: calc(var(--radius) * 0.6);
+        background: var(--background);
+        color: var(--foreground);
+        font-size: 14px;
+        font-family: var(--font-sans);
+        outline: none;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238e8e93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 32px;
+        cursor: pointer;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .form-select:focus {
+        border-color: var(--ring);
+        box-shadow: 0 0 0 1px var(--ring);
+      }
+      .form-row {
+        display: flex;
+        gap: 10px;
+      }
+      .form-row .form-group {
+        flex: 1;
+      }
+      .form-submit-btn {
+        width: 100%;
+        height: 44px;
+        border: none;
+        border-radius: calc(var(--radius) * 0.6);
+        background: var(--primary);
+        color: var(--primary-foreground);
+        font-size: 14px;
+        font-weight: 600;
+        font-family: var(--font-sans);
+        cursor: pointer;
+        transition: filter 0.15s ease;
+      }
+      .form-submit-btn:hover {
+        filter: brightness(0.92);
+      }
+
+      /* 正则表达式测试区 */
+      .regex-test-area {
+        width: 100%;
+        min-height: 100px;
+        padding: 12px;
+        border: 1px solid var(--input);
+        border-radius: calc(var(--radius) * 0.6);
+        background: var(--background);
+        color: var(--foreground);
+        font-size: 14px;
+        font-family: var(--font-sans);
+        line-height: 1.5;
+        outline: none;
+        resize: vertical;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .regex-test-area:focus {
+        border-color: var(--ring);
+        box-shadow: 0 0 0 1px var(--ring);
+      }
+      .regex-test-area::placeholder {
+        color: var(--muted-foreground);
+      }
+      .regex-result {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: calc(var(--radius) * 0.5);
+        background: var(--background-200);
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--text-800);
+        word-break: break-all;
+      }
+      .regex-result .highlight {
+        background: var(--state-error-surface);
+        color: var(--state-error);
+        padding: 1px 4px;
+        border-radius: 4px;
+        font-weight: 600;
+      }
+      .regex-result-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-500);
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .regex-match-count {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text-400);
+      }
+      .regex-test-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        height: 36px;
+        padding: 0 16px;
+        border: none;
+        border-radius: calc(var(--radius) * 0.6);
+        background: var(--primary);
+        color: var(--primary-foreground);
+        font-size: 12px;
+        font-weight: 600;
+        font-family: var(--font-sans);
+        cursor: pointer;
+        transition: filter 0.15s ease;
+        margin-top: 10px;
+      }
+      .regex-test-btn:hover {
+        filter: brightness(0.92);
+      }
+
+      /* 底部安全间距 */
+      .bottom-spacer {
+        height: 32px;
+        background: var(--background-50);
+      }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    
+    /* 妗岄潰绔鐞嗛〉闈㈡渶灏忓搴︾害鏉?*/
+    body { min-width: 1280px; }</style>
+</head>
+<body>
+
+  <!-- ===== 顶部导航栏 ===== -->
+  <nav class="admin-nav">
+    <div class="admin-nav-bar">
+      <!-- 返回按钮 -->
+      <button class="admin-nav-btn" data-dom-id="cta-back" aria-label="返回">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <h1>敏感词库</h1>
+      <!-- 批量导入按钮 -->
+      <button class="nav-action-btn" data-dom-id="cta-batch-import">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        批量导入
+      </button>
+    </div>
+  </nav>
+
+  <!-- ===== 词库统计概览 2x2 网格 ===== -->
+  <section class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value brand">2,847</div>
+      <div class="stat-label">总词量</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value error">436</div>
+      <div class="stat-label">涉政敏感</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value warning">612</div>
+      <div class="stat-label">色情词汇</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value success">198</div>
+      <div class="stat-label">违禁品</div>
+    </div>
+  </section>
+
+  <!-- ===== 语言版本 Tab ===== -->
+  <section class="lang-section">
+    <div class="section-header">
+      <span class="section-label">语言版本</span>
+    </div>
+    <div class="lang-tabs no-scrollbar">
+      <button class="lang-tab active">全部</button>
+      <button class="lang-tab">English</button>
+      <button class="lang-tab">Deutsch</button>
+      <button class="lang-tab">Fran&ccedil;ais</button>
+      <button class="lang-tab">Espa&ntilde;ol</button>
+      <button class="lang-tab">中文</button>
+    </div>
+  </section>
+
+  <!-- ===== 敏感词分类筛选 ===== -->
+  <section class="category-section">
+    <div class="section-header" style="padding: 12px 0 8px;">
+      <span class="section-label">分类筛选</span>
+    </div>
+    <div class="category-chips">
+      <button class="category-chip active">全部 <span class="chip-count">2847</span></button>
+      <button class="category-chip">色情 <span class="chip-count">612</span></button>
+      <button class="category-chip">暴力 <span class="chip-count">234</span></button>
+      <button class="category-chip">仇恨言论 <span class="chip-count">187</span></button>
+      <button class="category-chip">政治敏感 <span class="chip-count">436</span></button>
+      <button class="category-chip">违禁品 <span class="chip-count">198</span></button>
+      <button class="category-chip">虚假医疗 <span class="chip-count">312</span></button>
+      <button class="category-chip">虐待动物 <span class="chip-count">156</span></button>
+      <button class="category-chip">自定义 <span class="chip-count">712</span></button>
+    </div>
+  </section>
+
+  <!-- ===== 列表头部 ===== -->
+  <div class="list-header">
+    <span class="list-title">敏感词列表</span>
+    <span class="list-count">共 2,847 条</span>
+  </div>
+
+  <!-- ===== 敏感词列表 ===== -->
+  <section class="word-list">
+
+    <!-- 条目 1 -->
+    <div class="word-item">
+      <div class="word-item-top">
+        <span class="word-content">fake.*pet.*medicine</span>
+        <span class="match-mode-tag regex">正则表达式</span>
+      </div>
+      <div class="word-item-meta">
+        <span class="category-tag">虚假医疗</span>
+        <span class="hit-info">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          命中 <span class="hit-count">1,284</span> 次
+        </span>
+      </div>
+      <div class="word-item-bottom">
+        <span class="last-hit-time">最近命中: 2 分钟前</span>
+        <div class="word-actions">
+          <button class="word-action-btn" aria-label="编辑" data-dom-id="action-edit-1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          </button>
+          <button class="word-action-btn delete" aria-label="删除" data-dom-id="action-delete-1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+          <button class="word-action-btn" aria-label="测试" data-dom-id="action-test-1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 条目 2 -->
+    <div class="word-item">
+      <div class="word-item-top">
+        <span class="word-content">违禁宠物药品</span>
+        <span class="match-mode-tag exact">精确匹配</span>
+      </div>
+      <div class="word-item-meta">
+        <span class="category-tag">违禁品</span>
+        <span class="hit-info">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          命中 <span class="hit-count">856</span> 次
+        </span>
+      </div>
+      <div class="word-item-bottom">
+        <span class="last-hit-time">最近命中: 15 分钟前</span>
+        <div class="word-actions">
+          <button class="word-action-btn" aria-label="编辑" data-dom-id="action-edit-2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          </button>
+          <button class="word-action-btn delete" aria-label="删除" data-dom-id="action-delete-2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+          <button class="word-action-btn" aria-label="测试" data-dom-id="action-test-2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 条目 3 -->
+    <div class="word-item">
+      <div class="word-item-top">
+        <span class="word-content">虐待</span>
+        <span class="match-mode-tag fuzzy">模糊匹配</span>
+      </div>
+      <div class="word-item-meta">
+        <span class="category-tag">虐待动物</span>
+        <span class="hit-info">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          命中 <span class="hit-count">2,103</span> 次
+        </span>
+      </div>
+      <div class="word-item-bottom">
+        <span class="last-hit-time">最近命中: 32 分钟前</span>
+        <div class="word-actions">
+          <button class="word-action-btn" aria-label="编辑" data-dom-id="action-edit-3">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          </button>
+          <button class="word-action-btn delete" aria-label="删除" data-dom-id="action-delete-3">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+          <button class="word-action-btn" aria-label="测试" data-dom-id="action-test-3">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 条目 4 -->
+    <div class="word-item">
+      <div class="word-item-top">
+        <span class="word-content">(?i)(暴|毒|杀).*(狗|猫|宠)</span>
+        <span class="match-mode-tag regex">正则表达式</span>
+      </div>
+      <div class="word-item-meta">
+        <span class="category-tag">暴力</span>
+        <span class="hit-info">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          命中 <span class="hit-count">547</span> 次
+        </span>
+      </div>
+      <div class="word-item-bottom">
+        <span class="last-hit-time">最近命中: 1 小时前</span>
+        <div class="word-actions">
+          <button class="word-action-btn" aria-label="编辑" data-dom-id="action-edit-4">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          </button>
+          <button class="word-action-btn delete" aria-label="删除" data-dom-id="action-delete-4">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+          <button class="word-action-btn" aria-label="测试" data-dom-id="action-test-4">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 条目 5 -->
+    <div class="word-item">
+      <div class="word-item-top">
+        <span class="word-content">unlicensed veterinary</span>
+        <span class="match-mode-tag fuzzy">模糊匹配</span>
+      </div>
+      <div class="word-item-meta">
+        <span class="category-tag">虚假医疗</span>
+        <span class="hit-info">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          命中 <span class="hit-count">321</span> 次
+        </span>
+      </div>
+      <div class="word-item-bottom">
+        <span class="last-hit-time">最近命中: 3 小时前</span>
+        <div class="word-actions">
+          <button class="word-action-btn" aria-label="编辑" data-dom-id="action-edit-5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          </button>
+          <button class="word-action-btn delete" aria-label="删除" data-dom-id="action-delete-5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+          <button class="word-action-btn" aria-label="测试" data-dom-id="action-test-5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ===== 新增敏感词区域（折叠） ===== -->
+  <div class="collapsible-section" data-dom-id="section-add-word">
+    <div class="collapsible-header" onclick="toggleCollapsible(this)">
+      <div class="header-left">
+        <svg class="header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="16"></line>
+          <line x1="8" y1="12" x2="16" y2="12"></line>
+        </svg>
+        <span class="header-title">新增敏感词</span>
+      </div>
+      <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    </div>
+    <div class="collapsible-body">
+      <div class="collapsible-content">
+        <!-- 敏感词输入 -->
+        <div class="form-group">
+          <label class="form-label">敏感词内容</label>
+          <input type="text" class="form-input" placeholder="输入敏感词或正则表达式" data-dom-id="input-word-content">
+        </div>
+        <!-- 分类 + 匹配模式 -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">分类</label>
+            <select class="form-select" data-dom-id="select-category">
+              <option value="">选择分类</option>
+              <option value="porn">色情</option>
+              <option value="violence">暴力</option>
+              <option value="hate">仇恨言论</option>
+              <option value="political">政治敏感</option>
+              <option value="prohibited">违禁品</option>
+              <option value="medical">虚假医疗</option>
+              <option value="animal_abuse">虐待动物</option>
+              <option value="custom">自定义</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">匹配模式</label>
+            <select class="form-select" data-dom-id="select-match-mode">
+              <option value="">选择模式</option>
+              <option value="exact">精确匹配</option>
+              <option value="fuzzy">模糊匹配</option>
+              <option value="regex">正则表达式</option>
+            </select>
+          </div>
+        </div>
+        <!-- 添加按钮 -->
+        <button class="form-submit-btn" data-dom-id="cta-add-word">添加敏感词</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 正则表达式测试区（折叠） ===== -->
+  <div class="collapsible-section" data-dom-id="section-regex-test">
+    <div class="collapsible-header" onclick="toggleCollapsible(this)">
+      <div class="header-left">
+        <svg class="header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        <span class="header-title">正则表达式测试</span>
+      </div>
+      <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    </div>
+    <div class="collapsible-body">
+      <div class="collapsible-content">
+        <!-- 测试文本输入 -->
+        <div class="form-group">
+          <label class="form-label">输入测试文本</label>
+          <textarea class="regex-test-area" placeholder="在此输入文本，测试正则表达式匹配效果..." data-dom-id="input-regex-test-text">这款宠物保健品效果很好，请通过 fake-pet-medicine-buy 购买。我们提供无证兽医服务，使用违禁宠物药品给您的爱宠治疗。</textarea>
+        </div>
+        <!-- 测试按钮 -->
+        <button class="regex-test-btn" onclick="runRegexTest()" data-dom-id="cta-regex-test">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          执行测试
+        </button>
+        <!-- 测试结果 -->
+        <div class="regex-result" data-dom-id="regex-result">
+          <div class="regex-result-label">
+            <span>匹配结果</span>
+            <span class="regex-match-count" data-dom-id="regex-match-count"></span>
+          </div>
+          <div data-dom-id="regex-highlight-content">
+            这款宠物保健品效果很好，请通过 <span class="highlight">fake-pet-medicine-buy</span> 购买。我们提供<span class="highlight">无证兽医</span>服务，使用<span class="highlight">违禁宠物药品</span>给您的爱宠治疗。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部安全间距 -->
+  <div class="bottom-spacer"></div>
+
+  <!-- ===== 交互脚本 ===== -->
+  <script>
+    /**
+     * 折叠区域展开/收起
+     */
+    function toggleCollapsible(header) {
+      header.classList.toggle('open');
+      const body = header.nextElementSibling;
+      body.classList.toggle('open');
+    }
+
+    /**
+     * 语言 Tab 切换
+     */
+    document.querySelectorAll('.lang-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.lang-tab').forEach(function(t) {
+          t.classList.remove('active');
+        });
+        tab.classList.add('active');
+      });
+    });
+
+    /**
+     * 分类 Chip 切换
+     */
+    document.querySelectorAll('.category-chip').forEach(function(chip) {
+      chip.addEventListener('click', function() {
+        document.querySelectorAll('.category-chip').forEach(function(c) {
+          c.classList.remove('active');
+        });
+        chip.classList.add('active');
+      });
+    });
+
+    /**
+     * 正则表达式测试
+     * 遍历词库中所有正则模式，在测试文本中高亮匹配
+     */
+    function runRegexTest() {
+      var testText = document.querySelector('[data-dom-id="input-regex-test-text"]').value;
+      var resultContainer = document.querySelector('[data-dom-id="regex-highlight-content"]');
+      var countEl = document.querySelector('[data-dom-id="regex-match-count"]');
+
+      // 模拟词库中的正则和精确匹配词
+      var patterns = [
+        { regex: /fake[.\-\w]*pet[.\-\w]*medicine/gi, type: 'regex' },
+        { regex: /违禁宠物药品/g, type: 'exact' },
+        { regex: /无证兽医/g, type: 'exact' },
+        { regex: /虐待/g, type: 'fuzzy' },
+        { regex: /(?i)(暴|毒|杀).*(狗|猫|宠)/g, type: 'regex' }
+      ];
+
+      var totalMatches = 0;
+      var matchRanges = [];
+
+      // 收集所有匹配范围
+      patterns.forEach(function(p) {
+        var re = new RegExp(p.regex.source, p.regex.flags);
+        var match;
+        while ((match = re.exec(testText)) !== null) {
+          matchRanges.push({ start: match.index, end: match.index + match[0].length });
+          totalMatches++;
+          // 防止死循环
+          if (match.index === re.lastIndex) {
+            re.lastIndex++;
+          }
+        }
+      });
+
+      // 按位置排序并合并重叠区间
+      matchRanges.sort(function(a, b) { return a.start - b.start; });
+      var merged = [];
+      matchRanges.forEach(function(range) {
+        if (merged.length > 0 && range.start <= merged[merged.length - 1].end) {
+          merged[merged.length - 1].end = Math.max(merged[merged.length - 1].end, range.end);
+        } else {
+          merged.push({ start: range.start, end: range.end });
+        }
+      });
+
+      // 构建高亮 HTML
+      var html = '';
+      var lastEnd = 0;
+      merged.forEach(function(range) {
+        if (range.start > lastEnd) {
+          html += escapeHtml(testText.substring(lastEnd, range.start));
+        }
+        html += '<span class="highlight">' + escapeHtml(testText.substring(range.start, range.end)) + '</span>';
+        lastEnd = range.end;
+      });
+      if (lastEnd < testText.length) {
+        html += escapeHtml(testText.substring(lastEnd));
+      }
+
+      resultContainer.innerHTML = html;
+      countEl.textContent = totalMatches > 0 ? ('匹配 ' + totalMatches + ' 处') : '无匹配';
+    }
+
+    /**
+     * HTML 转义防止 XSS
+     */
+    function escapeHtml(text) {
+      var div = document.createElement('div');
+      div.appendChild(document.createTextNode(text));
+      return div.innerHTML;
+    }
+
+    // 页面加载后自动执行一次测试以展示效果
+    document.addEventListener('DOMContentLoaded', function() {
+      runRegexTest();
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "code": 0,
+  "data": {
+    "payChannel": "APPLE_PAY",
+    "payParams": {
+      "clientSecret": "pi_xxx_secret_xxx",
+      "merchantIdentifier": "merchant.com.moyuyo.app",
+      "publishableKey": "pk_live_xxx"
+    }
+  }
+}

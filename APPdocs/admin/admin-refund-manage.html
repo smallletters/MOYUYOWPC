@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MOYUYO 退款管理</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12);
+
+  /* SPACING */
+  --spacing: 0.24rem;
+
+  /* 退款管理专用：预警色 */
+  --state-warning: #ff9500;
+  --state-warning-surface: #fff6ec;
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+.card{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-xs);transition:border-color .2s ease,transform .2s ease}
+.card:hover{border-color:var(--primary);transform:translateY(-1px)}
+.eyebrow,.meta{color:var(--muted-foreground);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background); --color-foreground: var(--foreground);
+    --color-card: var(--card); --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring);
+    --color-destructive: var(--destructive); --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success); --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius); --radius-md: var(--radius); --radius-lg: var(--radius); --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      /* 通用工具类 */
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+
+      /* 退款管理页面专用样式 */
+      .admin-page {
+        max-width: 393px;
+        margin: 0 auto;
+        min-height: 852px;
+        font-family: 'DM Sans', -apple-system, sans-serif;
+      }
+
+      /* KPI 卡片 */
+      .kpi-card {
+        padding: 14px;
+        border-radius: var(--radius);
+        background: var(--card);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        border: 1px solid var(--border);
+      }
+      .kpi-label {
+        font-size: 11px;
+        color: var(--text-400);
+        letter-spacing: 0.02em;
+      }
+      .kpi-value {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text-800);
+        line-height: 1.2;
+        margin-top: 4px;
+      }
+      .kpi-sub {
+        font-size: 11px;
+        color: var(--text-500);
+        margin-top: 2px;
+      }
+
+      /* 筛选 Tab 样式 */
+      .filter-tab {
+        display: flex;
+        align-items: center;
+        height: 36px;
+        padding: 0 14px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background-color .18s ease, color .18s ease;
+        color: var(--text-500);
+        background: transparent;
+        border: none;
+      }
+      .filter-tab.active {
+        background: var(--primary);
+        color: var(--primary-foreground);
+      }
+      .filter-tab:not(.active):hover {
+        background: var(--background-200);
+        color: var(--text-800);
+      }
+
+      /* 退款列表卡片 */
+      .refund-card {
+        padding: 14px;
+        border-radius: var(--radius);
+        background: var(--card);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        border: 1px solid var(--border);
+      }
+      .refund-card + .refund-card {
+        margin-top: 10px;
+      }
+
+      /* 商品缩略图占位 */
+      .product-thumb {
+        width: 56px;
+        height: 56px;
+        border-radius: calc(var(--radius) - 4px);
+        flex-shrink: 0;
+        background: linear-gradient(135deg, var(--brand-50), var(--background-200));
+        border: 1px solid var(--border);
+      }
+
+      /* 用户举证图片占位 */
+      .evidence-thumb {
+        width: 48px;
+        height: 48px;
+        border-radius: calc(var(--radius) - 6px);
+        flex-shrink: 0;
+        background: linear-gradient(135deg, var(--background-200), var(--background-300));
+        border: 1px solid var(--border);
+        cursor: pointer;
+        transition: transform .15s ease;
+      }
+      .evidence-thumb:hover {
+        transform: scale(1.05);
+      }
+
+      /* 退款原因标签 */
+      .reason-tag {
+        display: inline-flex;
+        align-items: center;
+        height: 22px;
+        padding: 0 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 500;
+      }
+      .reason-tag.quality { background: var(--state-error-surface); color: var(--state-error); }
+      .reason-tag.unwanted { background: var(--state-warning-surface); color: var(--state-warning); }
+      .reason-tag.damaged { background: #f0e8ff; color: var(--chart-5); }
+      .reason-tag.empty-pkg { background: #e8f0ff; color: var(--brand-600); }
+      .reason-tag.other { background: var(--background-200); color: var(--text-500); }
+
+      /* 退款状态标签 */
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        height: 22px;
+        padding: 0 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .status-badge.pending { background: var(--state-warning-surface); color: var(--state-warning); }
+      .status-badge.approved { background: var(--state-success-surface); color: var(--state-success); }
+      .status-badge.rejected { background: var(--state-error-surface); color: var(--state-error); }
+      .status-badge.processing { background: #e8f0ff; color: var(--brand-500); }
+      .status-badge.completed { background: var(--background-200); color: var(--text-500); }
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      /* SLA 倒计时 */
+      .sla-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      .sla-badge.urgent { background: var(--state-error-surface); color: var(--state-error); }
+      .sla-badge.normal { background: var(--state-warning-surface); color: var(--state-warning); }
+      .sla-badge.done { background: var(--background-200); color: var(--text-400); }
+
+      /* 操作按钮 */
+      .action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        height: 32px;
+        padding: 0 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: background-color .18s ease, filter .18s ease;
+      }
+      .action-btn.approve { background: var(--state-success); color: var(--state-success-foreground); }
+      .action-btn.approve:hover { filter: brightness(0.92); }
+      .action-btn.reject { background: var(--state-error); color: var(--state-error-foreground); }
+      .action-btn.reject:hover { filter: brightness(0.92); }
+      .action-btn.detail { background: var(--background-200); color: var(--text-600); }
+      .action-btn.detail:hover { background: var(--background-300); }
+
+      /* 退款原因统计横向柱状图 */
+      .reason-chart-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .reason-chart-label {
+        width: 64px;
+        flex-shrink: 0;
+        font-size: 12px;
+        color: var(--text-600);
+        text-align: right;
+      }
+      .reason-chart-bar-bg {
+        flex: 1;
+        height: 20px;
+        border-radius: 4px;
+        background: var(--background-200);
+        overflow: hidden;
+      }
+      .reason-chart-bar {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.6s ease;
+      }
+      .reason-chart-value {
+        width: 40px;
+        flex-shrink: 0;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-800);
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* 底部悬浮操作栏 */
+      .floating-bar {
+        position: fixed;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 393px;
+        z-index: 40;
+        padding: 12px 16px;
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-top: 1px solid var(--border);
+      }
+    
+    /* 妗岄潰绔鐞嗛〉闈㈡渶灏忓搴︾害鏉?*/
+    body { min-width: 1280px; }</style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <div class="admin-page">
+
+      <!-- 顶部导航栏 -->
+      <div class="sticky top-0 z-30" style="background: var(--background);">
+        <div class="flex items-center justify-between h-11 px-4">
+          <!-- 返回按钮 -->
+          <button class="flex items-center justify-center w-9 h-9 rounded-full" style="background: var(--background-200);" data-dom-id="cta-back" aria-label="返回">
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-left.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-left.svg'); color: var(--text-800);"></span>
+          </button>
+          <h1 class="text-base font-semibold" style="color: var(--text-800);">退款管理</h1>
+          <button class="flex items-center justify-center w-9 h-9 rounded-full" style="background: var(--background-200);" aria-label="筛选">
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/funnel.svg'); mask-image: url('../assets/icons/dl-builtin-apple/funnel.svg'); color: var(--text-600);"></span>
+          </button>
+        </div>
+      </div>
+
+      <main class="pb-28">
+
+        <!-- 退款统计 KPI (2x2 网格) -->
+        <section class="px-4 pt-3 pb-1" aria-label="退款统计">
+          <div class="grid grid-cols-2 gap-2.5">
+            <!-- 待处理退款 -->
+            <div class="kpi-card">
+              <div class="kpi-label">待处理退款</div>
+              <div class="kpi-value" style="color: var(--state-warning);">23</div>
+              <div class="kpi-sub">较昨日 +5</div>
+            </div>
+            <!-- 今日退款金额 -->
+            <div class="kpi-card">
+              <div class="kpi-label">今日退款金额</div>
+              <div class="kpi-value">¥3,842</div>
+              <div class="kpi-sub">较昨日 -12%</div>
+            </div>
+            <!-- 退款率 -->
+            <div class="kpi-card">
+              <div class="kpi-label">退款率</div>
+              <div class="kpi-value">2.8%</div>
+              <div class="kpi-sub">近7日均值</div>
+            </div>
+            <!-- 平均处理时长 -->
+            <div class="kpi-card">
+              <div class="kpi-label">平均处理时长</div>
+              <div class="kpi-value">4.2h</div>
+              <div class="kpi-sub">SLA 24h 内</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 退款类型筛选 Tab -->
+        <section class="px-4 pt-4 pb-2" aria-label="退款类型筛选">
+          <div class="flex gap-2 overflow-x-auto no-scrollbar">
+            <button class="filter-tab active" data-dom-id="tab-all">全部</button>
+            <button class="filter-tab" data-dom-id="tab-refund-only">仅退款</button>
+            <button class="filter-tab" data-dom-id="tab-return-refund">退货退款</button>
+            <button class="filter-tab" data-dom-id="tab-exchange">换货</button>
+          </div>
+        </section>
+
+        <!-- 退款列表 -->
+        <section class="px-4 pt-2" aria-label="退款列表">
+
+          <!-- 退款项 1：待审核 - 紧急 -->
+          <div class="refund-card">
+            <!-- 头部：退款单号 + 订单号 + SLA -->
+            <div class="flex items-center justify-between mb-2.5">
+              <div>
+                <div class="text-xs font-semibold" style="color: var(--text-800);">RF20250708001</div>
+                <div class="text-[11px] mt-0.5" style="color: var(--text-400);">关联订单 ORD20250705023</div>
+              </div>
+              <div class="sla-badge urgent">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/clock.svg'); mask-image: url('../assets/icons/dl-builtin-apple/clock.svg');"></span>
+                剩余 2h18m
+              </div>
+            </div>
+
+            <!-- 商品信息行 -->
+            <div class="flex gap-3 mb-2.5">
+              <div class="product-thumb"></div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium truncate" style="color: var(--text-800);">高端宠物洗护套装</div>
+                <div class="text-xs mt-0.5" style="color: var(--text-400);">SKU: SHMP-001 / 套装装 500ml</div>
+                <div class="flex items-center gap-2 mt-1.5">
+                  <span class="text-sm font-bold" style="color: var(--text-800);">¥189.00</span>
+                  <span class="reason-tag quality">质量问题</span>
+                  <span class="status-badge pending">
+                    <span class="status-dot" style="background: var(--state-warning);"></span>
+                    待审核
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 用户举证图片 -->
+            <div class="mb-3">
+              <div class="text-[11px] font-medium mb-1.5" style="color: var(--text-500);">用户举证</div>
+              <div class="flex gap-2">
+                <div class="evidence-thumb" aria-label="查看举证图片1"></div>
+                <div class="evidence-thumb" aria-label="查看举证图片2"></div>
+                <div class="evidence-thumb" aria-label="查看举证图片3"></div>
+              </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="flex items-center gap-2">
+              <button class="action-btn approve" data-dom-id="btn-approve-1">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/check.svg');"></span>
+                同意退款
+              </button>
+              <button class="action-btn reject" data-dom-id="btn-reject-1">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/x.svg'); mask-image: url('../assets/icons/dl-builtin-apple/x.svg');"></span>
+                拒绝退款
+              </button>
+              <button class="action-btn detail" data-dom-id="btn-detail-1">查看详情</button>
+            </div>
+          </div>
+
+          <!-- 退款项 2：待审核 - 正常 -->
+          <div class="refund-card">
+            <div class="flex items-center justify-between mb-2.5">
+              <div>
+                <div class="text-xs font-semibold" style="color: var(--text-800);">RF20250708002</div>
+                <div class="text-[11px] mt-0.5" style="color: var(--text-400);">关联订单 ORD20250706045</div>
+              </div>
+              <div class="sla-badge normal">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/clock.svg'); mask-image: url('../assets/icons/dl-builtin-apple/clock.svg');"></span>
+                剩余 18h42m
+              </div>
+            </div>
+            <div class="flex gap-3 mb-2.5">
+              <div class="product-thumb" style="background: linear-gradient(135deg, var(--background-200), var(--brand-50));"></div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium truncate" style="color: var(--text-800);">舒适胸背带</div>
+                <div class="text-xs mt-0.5" style="color: var(--text-400);">SKU: HRNS-002 / M码 黑色</div>
+                <div class="flex items-center gap-2 mt-1.5">
+                  <span class="text-sm font-bold" style="color: var(--text-800);">¥129.00</span>
+                  <span class="reason-tag unwanted">不想要了</span>
+                  <span class="status-badge pending">
+                    <span class="status-dot" style="background: var(--state-warning);"></span>
+                    待审核
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="mb-3">
+              <div class="text-[11px] font-medium mb-1.5" style="color: var(--text-500);">用户举证</div>
+              <div class="flex gap-2">
+                <div class="evidence-thumb" aria-label="查看举证图片1"></div>
+                <div class="evidence-thumb" aria-label="查看举证图片2"></div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="action-btn approve" data-dom-id="btn-approve-2">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/check.svg');"></span>
+                同意退款
+              </button>
+              <button class="action-btn reject" data-dom-id="btn-reject-2">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/x.svg'); mask-image: url('../assets/icons/dl-builtin-apple/x.svg');"></span>
+                拒绝退款
+              </button>
+              <button class="action-btn detail" data-dom-id="btn-detail-2">查看详情</button>
+            </div>
+          </div>
+
+          <!-- 退款项 3：已同意 -->
+          <div class="refund-card">
+            <div class="flex items-center justify-between mb-2.5">
+              <div>
+                <div class="text-xs font-semibold" style="color: var(--text-800);">RF20250707018</div>
+                <div class="text-[11px] mt-0.5" style="color: var(--text-400);">关联订单 ORD20250704089</div>
+              </div>
+              <div class="sla-badge done">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/check-circle.svg'); mask-image: url('../assets/icons/dl-builtin-apple/check-circle.svg');"></span>
+                已处理
+              </div>
+            </div>
+            <div class="flex gap-3 mb-2.5">
+              <div class="product-thumb" style="background: linear-gradient(135deg, var(--state-success-surface), var(--background-200));"></div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium truncate" style="color: var(--text-800);">互动益智玩具</div>
+                <div class="text-xs mt-0.5" style="color: var(--text-400);">SKU: TOYS-005 / L号 混色</div>
+                <div class="flex items-center gap-2 mt-1.5">
+                  <span class="text-sm font-bold" style="color: var(--text-800);">¥69.00</span>
+                  <span class="reason-tag damaged">商品损坏</span>
+                  <span class="status-badge approved">
+                    <span class="status-dot" style="background: var(--state-success);"></span>
+                    已同意
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="action-btn detail" data-dom-id="btn-detail-3">查看详情</button>
+            </div>
+          </div>
+
+          <!-- 退款项 4：已拒绝 -->
+          <div class="refund-card">
+            <div class="flex items-center justify-between mb-2.5">
+              <div>
+                <div class="text-xs font-semibold" style="color: var(--text-800);">RF20250707012</div>
+                <div class="text-[11px] mt-0.5" style="color: var(--text-400);">关联订单 ORD20250703076</div>
+              </div>
+              <div class="sla-badge done">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/x-circle.svg'); mask-image: url('../assets/icons/dl-builtin-apple/x-circle.svg');"></span>
+                已处理
+              </div>
+            </div>
+            <div class="flex gap-3 mb-2.5">
+              <div class="product-thumb" style="background: linear-gradient(135deg, var(--state-error-surface), var(--background-200));"></div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium truncate" style="color: var(--text-800);">宠物潮流外套</div>
+                <div class="text-xs mt-0.5" style="color: var(--text-400);">SKU: JACT-003 / S码 卡其</div>
+                <div class="flex items-center gap-2 mt-1.5">
+                  <span class="text-sm font-bold" style="color: var(--text-800);">¥219.00</span>
+                  <span class="reason-tag other">其他</span>
+                  <span class="status-badge rejected">
+                    <span class="status-dot" style="background: var(--state-error);"></span>
+                    已拒绝
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="action-btn detail" data-dom-id="btn-detail-4">查看详情</button>
+            </div>
+          </div>
+
+          <!-- 退款项 5：退款中 -->
+          <div class="refund-card">
+            <div class="flex items-center justify-between mb-2.5">
+              <div>
+                <div class="text-xs font-semibold" style="color: var(--text-800);">RF20250706035</div>
+                <div class="text-[11px] mt-0.5" style="color: var(--text-400);">关联订单 ORD20250702054</div>
+              </div>
+              <div class="sla-badge normal">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/clock.svg'); mask-image: url('../assets/icons/dl-builtin-apple/clock.svg');"></span>
+                退款中
+              </div>
+            </div>
+            <div class="flex gap-3 mb-2.5">
+              <div class="product-thumb" style="background: linear-gradient(135deg, #e8f0ff, var(--background-200));"></div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium truncate" style="color: var(--text-800);">智能自动喂食器</div>
+                <div class="text-xs mt-0.5" style="color: var(--text-400);">SKU: FEED-010 / 3L 白色</div>
+                <div class="flex items-center gap-2 mt-1.5">
+                  <span class="text-sm font-bold" style="color: var(--text-800);">¥459.00</span>
+                  <span class="reason-tag empty-pkg">空包裹</span>
+                  <span class="status-badge processing">
+                    <span class="status-dot" style="background: var(--brand-500);"></span>
+                    退款中
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="mb-3">
+              <div class="text-[11px] font-medium mb-1.5" style="color: var(--text-500);">用户举证</div>
+              <div class="flex gap-2">
+                <div class="evidence-thumb" aria-label="查看举证图片1"></div>
+                <div class="evidence-thumb" aria-label="查看举证图片2"></div>
+                <div class="evidence-thumb" aria-label="查看举证图片3"></div>
+                <div class="evidence-thumb" aria-label="查看举证图片4"></div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="action-btn detail" data-dom-id="btn-detail-5">查看详情</button>
+            </div>
+          </div>
+
+          <!-- 退款项 6：已完成 -->
+          <div class="refund-card">
+            <div class="flex items-center justify-between mb-2.5">
+              <div>
+                <div class="text-xs font-semibold" style="color: var(--text-800);">RF20250705029</div>
+                <div class="text-[11px] mt-0.5" style="color: var(--text-400);">关联订单 ORD20250701033</div>
+              </div>
+              <div class="sla-badge done">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/check-circle.svg'); mask-image: url('../assets/icons/dl-builtin-apple/check-circle.svg');"></span>
+                已完成
+              </div>
+            </div>
+            <div class="flex gap-3 mb-2.5">
+              <div class="product-thumb" style="background: linear-gradient(135deg, var(--background-200), var(--background-100));"></div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium truncate" style="color: var(--text-800);">天然猫粮 2kg</div>
+                <div class="text-xs mt-0.5" style="color: var(--text-400);">SKU: FOOD-007 / 鸡肉味 2kg</div>
+                <div class="flex items-center gap-2 mt-1.5">
+                  <span class="text-sm font-bold" style="color: var(--text-800);">¥158.00</span>
+                  <span class="reason-tag unwanted">不想要了</span>
+                  <span class="status-badge completed">
+                    <span class="status-dot" style="background: var(--text-400);"></span>
+                    已完成
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="action-btn detail" data-dom-id="btn-detail-6">查看详情</button>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- 退款原因统计（横向柱状图） -->
+        <section class="px-4 pt-5 pb-4" aria-label="退款原因统计">
+          <div class="refund-card">
+            <div class="text-sm font-semibold mb-4" style="color: var(--text-800);">退款原因分布</div>
+
+            <!-- 质量问题 35% -->
+            <div class="reason-chart-row mb-2.5">
+              <div class="reason-chart-label">质量问题</div>
+              <div class="reason-chart-bar-bg">
+                <div class="reason-chart-bar" style="width: 35%; background: var(--state-error);"></div>
+              </div>
+              <div class="reason-chart-value">35%</div>
+            </div>
+
+            <!-- 不想要了 28% -->
+            <div class="reason-chart-row mb-2.5">
+              <div class="reason-chart-label">不想要了</div>
+              <div class="reason-chart-bar-bg">
+                <div class="reason-chart-bar" style="width: 28%; background: var(--state-warning);"></div>
+              </div>
+              <div class="reason-chart-value">28%</div>
+            </div>
+
+            <!-- 商品损坏 18% -->
+            <div class="reason-chart-row mb-2.5">
+              <div class="reason-chart-label">商品损坏</div>
+              <div class="reason-chart-bar-bg">
+                <div class="reason-chart-bar" style="width: 18%; background: var(--chart-5);"></div>
+              </div>
+              <div class="reason-chart-value">18%</div>
+            </div>
+
+            <!-- 空包裹 12% -->
+            <div class="reason-chart-row mb-2.5">
+              <div class="reason-chart-label">空包裹</div>
+              <div class="reason-chart-bar-bg">
+                <div class="reason-chart-bar" style="width: 12%; background: var(--brand-500);"></div>
+              </div>
+              <div class="reason-chart-value">12%</div>
+            </div>
+
+            <!-- 其他 7% -->
+            <div class="reason-chart-row">
+              <div class="reason-chart-label">其他</div>
+              <div class="reason-chart-bar-bg">
+                <div class="reason-chart-bar" style="width: 7%; background: var(--background-400);"></div>
+              </div>
+              <div class="reason-chart-value">7%</div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- 底部悬浮：批量同意按钮 -->
+      <div class="floating-bar" id="floatingBar">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <!-- 全选复选框 -->
+            <label class="flex items-center gap-2 cursor-pointer">
+              <div class="w-5 h-5 rounded-md border-2 flex items-center justify-center" style="border-color: var(--background-400); background: var(--background-50);" id="selectAllBox">
+                <span data-icon class="w-3 h-3 hidden" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/check.svg'); color: var(--primary-foreground);"></span>
+              </div>
+              <span class="text-xs font-medium" style="color: var(--text-500);">全选</span>
+            </label>
+            <span class="text-xs" style="color: var(--text-400);" id="selectedCount">已选 0 项</span>
+          </div>
+          <button class="action-btn approve" style="height: 40px; padding: 0 20px; border-radius: calc(var(--radius)*2); font-size: 14px;" id="batchApproveBtn" disabled>
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/check.svg');"></span>
+            批量同意
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+      // 初始化 Lucide 图标
+      lucide.createIcons();
+
+      // 筛选 Tab 切换逻辑
+      const filterTabs = document.querySelectorAll('.filter-tab');
+      filterTabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+          filterTabs.forEach(function(t) { t.classList.remove('active'); });
+          tab.classList.add('active');
+        });
+      });
+
+      // 全选 / 批量选择模拟逻辑
+      const selectAllBox = document.getElementById('selectAllBox');
+      const checkIcon = selectAllBox.querySelector('span[data-icon]');
+      const selectedCount = document.getElementById('selectedCount');
+      const batchApproveBtn = document.getElementById('batchApproveBtn');
+      let allSelected = false;
+      let selectedItems = 0;
+
+      selectAllBox.addEventListener('click', function() {
+        allSelected = !allSelected;
+        if (allSelected) {
+          selectAllBox.style.background = 'var(--primary)';
+          selectAllBox.style.borderColor = 'var(--primary)';
+          checkIcon.classList.remove('hidden');
+          selectedItems = 23; // 模拟全选数量
+        } else {
+          selectAllBox.style.background = 'var(--background-50)';
+          selectAllBox.style.borderColor = 'var(--background-400)';
+          checkIcon.classList.add('hidden');
+          selectedItems = 0;
+        }
+        selectedCount.textContent = '已选 ' + selectedItems + ' 项';
+        batchApproveBtn.disabled = selectedItems === 0;
+        batchApproveBtn.style.opacity = selectedItems === 0 ? '0.42' : '1';
+        batchApproveBtn.style.cursor = selectedItems === 0 ? 'not-allowed' : 'pointer';
+      });
+    </script>
+</body>
+</html>

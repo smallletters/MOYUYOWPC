@@ -1,0 +1,10 @@
+{
+  "code": 0,
+  "data": {
+    "payChannel": "PAYPAL",
+    "payParams": {
+      "orderId": "8MC12345-67890",
+      "approvalUrl": "https://www.sandbox.paypal.com/checkoutnow?token=EC-xxx"
+    }
+  }
+}

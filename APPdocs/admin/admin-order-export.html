@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单导出 - MOYUYO 管理后台</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* state-warning */
+  --state-warning: #ff9500;
+  --state-warning-surface: #fff4e5;
+  --state-warning-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12);
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+/*
+ * components.css - aggregated component CSS
+ */
+
+/* ============================================================
+ * Button
+ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+/* ============================================================
+ * Card
+ */
+.card{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-xs);transition:border-color .2s ease,transform .2s ease}
+.card:hover{border-color:var(--primary);transform:translateY(-1px)}
+
+/* ============================================================
+ * Input
+ */
+.surface{display:flex;gap:calc(var(--spacing)*2);padding:calc(var(--spacing)*3);border:1px solid var(--border);border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow-sm)}
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field.small{height:40px}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.field.disabled{opacity:.55}
+.icon,.clear{padding:0;border:0;background:transparent;color:var(--icon-muted);font:inherit}
+.icon{font-size:13px}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+
+/* ============================================================
+ * Navigation
+ */
+.webbar,.mobile{border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.webbar{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:320px;height:44px;padding:0 calc(var(--spacing)*3);border-radius:var(--radius);background:var(--sidebar)}
+.brand{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.link,.tab{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;color:inherit;text-decoration:none;white-space:nowrap;transition:background-color .18s ease,color .18s ease,opacity .18s ease}
+.link{height:32px;padding:0 calc(var(--spacing)*2.5)}
+.link:hover,.tab:hover{background:var(--secondary)}
+.link:focus-visible,.tab:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.disabled{opacity:.48}
+.disabled .link,.disabled .tab{pointer-events:none}
+.mobile{padding:calc(var(--spacing)*2);border-radius:calc(var(--radius)*1.1);background:var(--card)}
+.tabbar{display:flex;gap:calc(var(--spacing)*1.5);padding:calc(var(--spacing)*1.5);border:1px solid var(--border);border-radius:999px;background:var(--card);box-shadow:var(--shadow-md)}
+.tab{flex-direction:column;gap:2px;min-width:56px;height:56px;padding:0 calc(var(--spacing)*1.5);font-size:11px;text-align:center}
+.dot{width:18px;height:18px;border-radius:999px;background:var(--secondary);box-shadow:inset 0 0 0 1px var(--border)}
+.tab:hover .dot{background:var(--primary)}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      /* 隐藏滚动条 */
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* 后台管理布局 */
+      .admin-layout {
+        display: flex;
+        min-height: 100vh;
+      }
+      .admin-sidebar {
+        width: 240px;
+        min-height: 100vh;
+        background: #1d1d1f;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+      .admin-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        background: var(--background);
+      }
+
+      /* 侧边栏品牌区 */
+      .sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 20px 20px 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+      }
+      .sidebar-brand-text {
+        font-size: 16px;
+        font-weight: 700;
+        color: #ffffff;
+        letter-spacing: 0.02em;
+      }
+
+      /* 侧边栏导航 */
+      .sidebar-nav {
+        flex: 1;
+        padding: 12px 10px;
+        overflow-y: auto;
+      }
+      .sidebar-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 8px;
+        color: rgba(255,255,255,0.6);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        text-decoration: none;
+        margin-bottom: 2px;
+      }
+      .sidebar-nav-item:hover {
+        background: rgba(255,255,255,0.06);
+        color: rgba(255,255,255,0.9);
+      }
+      .sidebar-nav-item.active {
+        background: var(--brand-500);
+        color: #ffffff;
+      }
+      .sidebar-nav-item .nav-icon {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+
+      /* 顶部栏 */
+      .admin-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 56px;
+        padding: 0 24px;
+        border-bottom: 1px solid var(--border);
+        background: var(--card);
+        flex-shrink: 0;
+      }
+
+      /* 面包屑 */
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--text-400);
+      }
+      .breadcrumb a {
+        color: var(--text-500);
+        text-decoration: none;
+        transition: color 0.15s ease;
+      }
+      .breadcrumb a:hover {
+        color: var(--primary);
+      }
+      .breadcrumb .current {
+        color: var(--text-800);
+        font-weight: 600;
+      }
+      .breadcrumb .separator {
+        color: var(--text-300);
+      }
+
+      /* 自定义复选框样式 */
+      .checkbox-field {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        border: 2px solid var(--input);
+        background: var(--background);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        cursor: pointer;
+        transition: background-color 0.15s ease, border-color 0.15s ease;
+      }
+      .checkbox-field.checked {
+        background: var(--primary);
+        border-color: var(--primary);
+      }
+      .checkbox-field.checked::after {
+        content: '';
+        display: block;
+        width: 6px;
+        height: 10px;
+        border: 2px solid var(--primary-foreground);
+        border-top: 0;
+        border-left: 0;
+        transform: rotate(45deg) translateY(-1px);
+      }
+
+      /* 文件上传区域 */
+      .upload-zone {
+        border: 2px dashed var(--input);
+        border-radius: var(--radius);
+        padding: 32px;
+        text-align: center;
+        transition: border-color 0.15s ease, background-color 0.15s ease;
+        cursor: pointer;
+      }
+      .upload-zone:hover {
+        border-color: var(--primary);
+        background: var(--brand-50);
+      }
+
+      /* 功能 Tab 样式（桌面端） */
+      .page-tabs {
+        display: flex;
+        gap: 4px;
+        padding: 4px;
+        background: var(--background-200);
+        border-radius: 10px;
+        width: fit-content;
+      }
+      .page-tab {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 18px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-500);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        border: none;
+        background: transparent;
+        font-family: var(--font-sans);
+      }
+      .page-tab:hover {
+        color: var(--text-700);
+      }
+      .page-tab.active {
+        background: var(--card);
+        color: var(--primary);
+        box-shadow: var(--shadow-sm);
+      }
+
+      /* 内容卡片 */
+      .content-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px 24px;
+        box-shadow: var(--shadow-xs);
+      }
+      .content-card-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-800);
+        margin-bottom: 14px;
+      }
+
+      /* 导出记录卡片 */
+      .record-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px 20px;
+        box-shadow: var(--shadow-xs);
+        transition: border-color 0.2s ease, transform 0.2s ease;
+      }
+      .record-card:hover {
+        border-color: var(--primary);
+        transform: translateY(-1px);
+      }
+
+      /* 状态标签 */
+      .status-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .status-success {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+      .status-processing {
+        background: var(--brand-50);
+        color: var(--brand-500);
+      }
+      .status-error {
+        background: var(--state-error-surface);
+        color: var(--state-error);
+      }
+
+      /* 导出格式按钮 */
+      .format-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 44px;
+        padding: 0 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        border: 1px solid var(--border);
+        background: var(--background);
+        color: var(--text-500);
+        font-family: var(--font-sans);
+      }
+      .format-btn:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+      .format-btn.active {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border-color: var(--primary);
+      }
+
+      /* 筛选条件行（桌面端） */
+      .filter-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 42px;
+        padding: 0 14px;
+        border-radius: 8px;
+        background: var(--background-100);
+        border: 1px solid var(--border);
+        transition: border-color 0.15s ease;
+        cursor: pointer;
+      }
+      .filter-row:hover {
+        border-color: var(--primary);
+      }
+
+      /* 打印模板卡片 */
+      .template-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 16px;
+        border-radius: 10px;
+        border: 2px solid var(--border);
+        background: var(--background-50);
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .template-card:hover {
+        border-color: var(--primary);
+      }
+      .template-card.active {
+        background: var(--brand-50);
+        border-color: var(--primary);
+      }
+      .template-card .template-preview {
+        width: 100%;
+        aspect-ratio: 3/4;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--background-200);
+        border: 1px solid var(--border);
+      }
+      .template-card .template-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-500);
+        transition: color 0.15s ease;
+      }
+      .template-card.active .template-label {
+        color: var(--primary);
+      }
+
+      /* 承运商按钮 */
+      .carrier-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 42px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        border: 1px solid var(--border);
+        background: var(--background);
+        color: var(--text-500);
+        font-family: var(--font-sans);
+      }
+      .carrier-btn:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+      .carrier-btn.active {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border-color: var(--primary);
+      }
+
+      /* 结果统计块 */
+      .result-stat {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 16px;
+        border-radius: 10px;
+      }
+
+      /* 失败原因条 */
+      .error-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 8px;
+        background: var(--background-100);
+      }
+
+      /* 桌面端最小宽度 */
+      body { min-width: 1280px; }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased" style="font-family: 'DM Sans', -apple-system, sans-serif;">
+    <div class="admin-layout">
+
+        <!-- ========== 左侧导航栏 ========== -->
+        <aside class="admin-sidebar">
+            <!-- 品牌标识 -->
+            <div class="sidebar-brand">
+                <i data-lucide="paw-print" class="w-6 h-6" style="color: var(--brand-500);"></i>
+                <span class="sidebar-brand-text">MOYUYO Admin</span>
+            </div>
+
+            <!-- 导航菜单 -->
+            <nav class="sidebar-nav">
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="layout-dashboard" class="nav-icon"></i>
+                    <span>仪表盘</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="package" class="nav-icon"></i>
+                    <span>商品管理</span>
+                </a>
+                <!-- 订单管理高亮 -->
+                <a class="sidebar-nav-item active" href="#">
+                    <i data-lucide="shopping-bag" class="nav-icon"></i>
+                    <span>订单管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="users" class="nav-icon"></i>
+                    <span>用户管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="megaphone" class="nav-icon"></i>
+                    <span>营销管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="file-text" class="nav-icon"></i>
+                    <span>内容管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="headphones" class="nav-icon"></i>
+                    <span>客服管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="bar-chart-3" class="nav-icon"></i>
+                    <span>数据统计</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="truck" class="nav-icon"></i>
+                    <span>物流管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="shield-alert" class="nav-icon"></i>
+                    <span>风控管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="settings" class="nav-icon"></i>
+                    <span>系统设置</span>
+                </a>
+            </nav>
+
+            <!-- 侧边栏底部 -->
+            <div style="padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--brand-500); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="user" style="width: 16px; height: 16px; color: #fff;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9);">Admin</div>
+                        <div style="font-size: 11px; color: rgba(255,255,255,0.4);">超级管理员</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ========== 主内容区 ========== -->
+        <div class="admin-main">
+
+            <!-- 顶部栏 -->
+            <header class="admin-topbar">
+                <!-- 面包屑 -->
+                <div class="breadcrumb">
+                    <a href="#">订单管理</a>
+                    <span class="separator">/</span>
+                    <span class="current">订单导出</span>
+                </div>
+                <!-- 右侧操作区 -->
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--background-200); cursor: pointer;">
+                        <i data-lucide="bell" style="width: 18px; height: 18px; color: var(--text-600);"></i>
+                        <span style="position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--state-error);"></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 内容区 -->
+            <main style="flex: 1; padding: 24px; overflow-y: auto;">
+
+                <!-- 页面标题 + Tab 切换 -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+                    <div>
+                        <h1 style="font-size: 22px; font-weight: 700; color: var(--text-800); margin: 0 0 6px;">订单导出打印</h1>
+                        <p style="font-size: 13px; color: var(--text-400); margin: 0;">导出、打印订单数据，或批量录入运单号进行发货</p>
+                    </div>
+                    <!-- 功能 Tab: 导出 / 打印 / 批量发货 -->
+                    <div class="page-tabs" id="pageTabs">
+                        <button class="page-tab active" data-tab="export" data-dom-id="tab-export">
+                            <i data-lucide="download" style="width: 15px; height: 15px;"></i>
+                            导出
+                        </button>
+                        <button class="page-tab" data-tab="print" data-dom-id="tab-print">
+                            <i data-lucide="printer" style="width: 15px; height: 15px;"></i>
+                            打印
+                        </button>
+                        <button class="page-tab" data-tab="batch" data-dom-id="tab-batch">
+                            <i data-lucide="truck" style="width: 15px; height: 15px;"></i>
+                            批量发货
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- 导出面板（默认显示） -->
+                <!-- ========================================== -->
+                <div id="panel-export" style="display: flex; flex-direction: column; gap: 20px;">
+
+                    <!-- 导出格式 + 预估信息并排 -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <!-- 导出格式选择 -->
+                        <section class="content-card">
+                            <h2 class="content-card-title">导出格式</h2>
+                            <div style="display: flex; gap: 12px;">
+                                <button class="format-btn active" data-format="csv" data-dom-id="format-csv">
+                                    <i data-lucide="file-text" style="width: 16px; height: 16px;"></i>
+                                    CSV
+                                </button>
+                                <button class="format-btn" data-format="excel" data-dom-id="format-excel">
+                                    <i data-lucide="sheet" style="width: 16px; height: 16px;"></i>
+                                    Excel
+                                </button>
+                            </div>
+                        </section>
+
+                        <!-- 预估导出信息 -->
+                        <section class="content-card">
+                            <h2 class="content-card-title">预估导出信息</h2>
+                            <div style="display: flex; gap: 32px;">
+                                <div>
+                                    <p style="font-size: 12px; color: var(--text-400); margin: 0 0 4px;">预估导出条数</p>
+                                    <p style="font-size: 24px; font-weight: 700; color: var(--text-800); margin: 0;">3,842</p>
+                                </div>
+                                <div>
+                                    <p style="font-size: 12px; color: var(--text-400); margin: 0 0 4px;">预估文件大小</p>
+                                    <p style="font-size: 24px; font-weight: 700; color: var(--text-800); margin: 0;">1.2 MB</p>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- 筛选条件 -->
+                    <section class="content-card">
+                        <h2 class="content-card-title">筛选条件</h2>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <!-- 时间范围 -->
+                            <div class="filter-row">
+                                <span style="font-size: 13px; color: var(--text-500);">时间范围</span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-800);">最近 30 天</span>
+                                    <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: var(--text-400);"></i>
+                                </div>
+                            </div>
+                            <!-- 订单状态 -->
+                            <div class="filter-row">
+                                <span style="font-size: 13px; color: var(--text-500);">订单状态</span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-800);">全部状态</span>
+                                    <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: var(--text-400);"></i>
+                                </div>
+                            </div>
+                            <!-- 商品 -->
+                            <div class="filter-row">
+                                <span style="font-size: 13px; color: var(--text-500);">商品</span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-800);">全部商品</span>
+                                    <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: var(--text-400);"></i>
+                                </div>
+                            </div>
+                            <!-- 支付方式 -->
+                            <div class="filter-row">
+                                <span style="font-size: 13px; color: var(--text-500);">支付方式</span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-800);">全部方式</span>
+                                    <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: var(--text-400);"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 自定义字段选择 -->
+                    <section class="content-card">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+                            <h2 style="font-size: 14px; font-weight: 700; color: var(--text-800); margin: 0;">导出字段</h2>
+                            <button style="font-size: 12px; font-weight: 600; color: var(--primary); background: none; border: none; cursor: pointer; padding: 4px 0;" id="toggleAllFields">全选/取消</button>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 24px;">
+                            <!-- 订单号 -->
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <div class="checkbox-field checked"></div>
+                                <span style="font-size: 13px; color: var(--text-800);">订单号</span>
+                            </label>
+                            <!-- 商品名 -->
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <div class="checkbox-field checked"></div>
+                                <span style="font-size: 13px; color: var(--text-800);">商品名</span>
+                            </label>
+                            <!-- SKU -->
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <div class="checkbox-field checked"></div>
+                                <span style="font-size: 13px; color: var(--text-800);">SKU</span>
+                            </label>
+                            <!-- 金额 -->
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <div class="checkbox-field checked"></div>
+                                <span style="font-size: 13px; color: var(--text-800);">金额</span>
+                            </label>
+                            <!-- 收货人 -->
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <div class="checkbox-field checked"></div>
+                                <span style="font-size: 13px; color: var(--text-800);">收货人</span>
+                            </label>
+                            <!-- 物流状态 -->
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <div class="checkbox-field checked"></div>
+                                <span style="font-size: 13px; color: var(--text-800);">物流状态</span>
+                            </label>
+                            <!-- 下单时间 -->
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <div class="checkbox-field"></div>
+                                <span style="font-size: 13px; color: var(--text-800);">下单时间</span>
+                            </label>
+                            <!-- 用户备注 -->
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <div class="checkbox-field"></div>
+                                <span style="font-size: 13px; color: var(--text-800);">用户备注</span>
+                            </label>
+                            <!-- 收货地址 -->
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <div class="checkbox-field"></div>
+                                <span style="font-size: 13px; color: var(--text-800);">收货地址</span>
+                            </label>
+                            <!-- 支付方式 -->
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <div class="checkbox-field"></div>
+                                <span style="font-size: 13px; color: var(--text-800);">支付方式</span>
+                            </label>
+                            <!-- 订单状态 -->
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <div class="checkbox-field"></div>
+                                <span style="font-size: 13px; color: var(--text-800);">订单状态</span>
+                            </label>
+                            <!-- 联系电话 -->
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <div class="checkbox-field"></div>
+                                <span style="font-size: 13px; color: var(--text-800);">联系电话</span>
+                            </label>
+                        </div>
+                    </section>
+
+                    <!-- 大数据量提示 + 开始导出按钮 -->
+                    <div style="display: flex; align-items: center; gap: 16px;" id="export-warning-area">
+                        <div id="export-warning" style="display: none; flex: 1;">
+                            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-radius: 8px; background: var(--state-warning-surface);">
+                                <i data-lucide="info" style="width: 18px; height: 18px; color: var(--state-warning); flex-shrink: 0; margin-top: 1px;"></i>
+                                <div>
+                                    <p style="font-size: 13px; font-weight: 600; color: var(--state-warning); margin: 0 0 2px;">数据量较大</p>
+                                    <p style="font-size: 12px; color: var(--text-500); margin: 0;">超过 10,000 条将进行异步处理，导出完成后会通过消息通知您。</p>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" style="height: 44px; padding: 0 28px; font-size: 14px; gap: 8px; flex-shrink: 0;" data-dom-id="cta-start-export">
+                            <i data-lucide="download" style="width: 16px; height: 16px;"></i>
+                            开始导出
+                        </button>
+                    </div>
+
+                    <!-- 导出记录列表 -->
+                    <section>
+                        <h2 style="font-size: 14px; font-weight: 700; color: var(--text-800); margin: 0 0 14px;">导出记录</h2>
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+
+                            <!-- 记录 1: 完成 -->
+                            <article class="record-card">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span class="status-tag status-success">已完成</span>
+                                        <span style="font-size: 12px; color: var(--text-400);">CSV</span>
+                                        <span style="font-size: 12px; color: var(--text-500);">2026-07-08 14:30</span>
+                                    </div>
+                                    <button class="btn btn-secondary" style="height: 34px; padding: 0 14px; font-size: 12px; gap: 6px;" data-dom-id="cta-download-1">
+                                        <i data-lucide="download" style="width: 14px; height: 14px;"></i>
+                                        下载
+                                    </button>
+                                </div>
+                                <div style="display: flex; gap: 24px;">
+                                    <span style="font-size: 12px; color: var(--text-400);">筛选: 最近30天 / 全部状态</span>
+                                    <span style="font-size: 12px; color: var(--text-400);">3,842 条 / 1.2 MB</span>
+                                </div>
+                            </article>
+
+                            <!-- 记录 2: 处理中 -->
+                            <article class="record-card">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span class="status-tag status-processing">处理中</span>
+                                        <span style="font-size: 12px; color: var(--text-400);">Excel</span>
+                                        <span style="font-size: 12px; color: var(--text-500);">2026-07-08 15:12</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px; padding: 0 14px; height: 34px; border-radius: 8px; background: var(--background-200);">
+                                        <div style="width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--brand-500); border-top-color: transparent; animation: spin 0.8s linear infinite;"></div>
+                                        <span style="font-size: 12px; font-weight: 500; color: var(--text-400);">导出中</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 24px;">
+                                    <span style="font-size: 12px; color: var(--text-400);">筛选: 最近90天 / 已完成</span>
+                                    <span style="font-size: 12px; color: var(--text-400);">12,560 条</span>
+                                </div>
+                            </article>
+
+                            <!-- 记录 3: 失败 -->
+                            <article class="record-card">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span class="status-tag status-error">失败</span>
+                                        <span style="font-size: 12px; color: var(--text-400);">CSV</span>
+                                        <span style="font-size: 12px; color: var(--text-500);">2026-07-07 09:45</span>
+                                    </div>
+                                    <button class="btn btn-secondary" style="height: 34px; padding: 0 14px; font-size: 12px; gap: 6px;">
+                                        <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+                                        重试
+                                    </button>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <div style="display: flex; gap: 24px;">
+                                        <span style="font-size: 12px; color: var(--text-400);">筛选: 最近7天 / 待发货</span>
+                                        <span style="font-size: 12px; color: var(--text-400);">856 条</span>
+                                    </div>
+                                    <span style="font-size: 12px; color: var(--state-error);">失败原因: 数据格式异常，请联系技术支持</span>
+                                </div>
+                            </article>
+
+                        </div>
+
+                        <!-- 30天保留提示 -->
+                        <p style="font-size: 12px; color: var(--text-400); margin: 12px 0 0;">导出文件保留 30 天，过期自动清理</p>
+                    </section>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- 打印面板（默认隐藏） -->
+                <!-- ========================================== -->
+                <div id="panel-print" style="display: none; flex-direction: column; gap: 20px;">
+
+                    <!-- 打印模板选择 -->
+                    <section class="content-card">
+                        <h2 class="content-card-title">打印模板</h2>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+                            <!-- 拣货单 -->
+                            <div class="template-card active" data-dom-id="template-pick">
+                                <div class="template-preview">
+                                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                        <i data-lucide="clipboard-list" style="width: 32px; height: 32px; color: var(--primary);"></i>
+                                        <div style="width: 64px; height: 4px; border-radius: 2px; background: var(--background-400);"></div>
+                                        <div style="width: 48px; height: 4px; border-radius: 2px; background: var(--background-400);"></div>
+                                        <div style="width: 56px; height: 4px; border-radius: 2px; background: var(--background-400);"></div>
+                                    </div>
+                                </div>
+                                <span class="template-label">拣货单</span>
+                            </div>
+                            <!-- 打包单 -->
+                            <div class="template-card" data-dom-id="template-pack">
+                                <div class="template-preview">
+                                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                        <i data-lucide="package" style="width: 32px; height: 32px; color: var(--icon-500);"></i>
+                                        <div style="width: 64px; height: 4px; border-radius: 2px; background: var(--background-400);"></div>
+                                        <div style="width: 48px; height: 4px; border-radius: 2px; background: var(--background-400);"></div>
+                                    </div>
+                                </div>
+                                <span class="template-label">打包单</span>
+                            </div>
+                            <!-- 发货单 -->
+                            <div class="template-card" data-dom-id="template-ship">
+                                <div class="template-preview">
+                                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                        <i data-lucide="truck" style="width: 32px; height: 32px; color: var(--icon-500);"></i>
+                                        <div style="width: 64px; height: 4px; border-radius: 2px; background: var(--background-400);"></div>
+                                        <div style="width: 56px; height: 4px; border-radius: 2px; background: var(--background-400);"></div>
+                                        <div style="width: 40px; height: 4px; border-radius: 2px; background: var(--background-400);"></div>
+                                    </div>
+                                </div>
+                                <span class="template-label">发货单</span>
+                            </div>
+                            <!-- 配货标签 -->
+                            <div class="template-card" data-dom-id="template-label">
+                                <div class="template-preview">
+                                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                        <i data-lucide="tag" style="width: 32px; height: 32px; color: var(--icon-500);"></i>
+                                        <div style="width: 64px; height: 4px; border-radius: 2px; background: var(--background-400);"></div>
+                                        <div style="width: 48px; height: 4px; border-radius: 2px; background: var(--background-400);"></div>
+                                    </div>
+                                </div>
+                                <span class="template-label">配货标签</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 打印设置 + 已选订单 -->
+                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: start;">
+                        <!-- 打印设置 -->
+                        <section class="content-card">
+                            <h2 class="content-card-title">打印设置</h2>
+                            <div style="display: flex; flex-direction: column; gap: 16px;">
+                                <!-- 纸张规格 -->
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <span style="font-size: 13px; color: var(--text-500);">纸张规格</span>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="format-btn active" style="height: 38px; padding: 0 16px; font-size: 13px; gap: 6px;" data-dom-id="paper-a4">
+                                            <i data-lucide="file-text" style="width: 14px; height: 14px;"></i>
+                                            A4
+                                        </button>
+                                        <button class="format-btn" style="height: 38px; padding: 0 16px; font-size: 13px; gap: 6px;" data-dom-id="paper-thermal">
+                                            <i data-lucide="receipt" style="width: 14px; height: 14px;"></i>
+                                            热敏纸
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- 打印份数 -->
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <span style="font-size: 13px; color: var(--text-500);">打印份数</span>
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <button style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: var(--background-200); border: none; cursor: pointer;" data-dom-id="btn-copy-minus" aria-label="减少份数">
+                                            <i data-lucide="minus" style="width: 16px; height: 16px; color: var(--text-800);"></i>
+                                        </button>
+                                        <span style="font-size: 14px; font-weight: 700; color: var(--text-800); width: 24px; text-align: center;" id="print-copies">1</span>
+                                        <button style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: var(--background-200); border: none; cursor: pointer;" data-dom-id="btn-copy-plus" aria-label="增加份数">
+                                            <i data-lucide="plus" style="width: 16px; height: 16px; color: var(--text-800);"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- 已选订单 + 打印按钮 -->
+                        <section class="content-card" style="min-width: 200px;">
+                            <h2 class="content-card-title">已选订单</h2>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+                                <span style="font-size: 36px; font-weight: 700; color: var(--text-800);">5</span>
+                                <span style="font-size: 13px; color: var(--text-400);">个订单</span>
+                            </div>
+                            <button class="btn btn-primary" style="width: 100%; height: 44px; font-size: 14px; gap: 8px;" data-dom-id="cta-batch-print">
+                                <i data-lucide="printer" style="width: 16px; height: 16px;"></i>
+                                批量打印
+                            </button>
+                        </section>
+                    </div>
+
+                </div>
+
+                <!-- ========================================== -->
+                <!-- 批量发货面板（默认隐藏） -->
+                <!-- ========================================== -->
+                <div id="panel-batch" style="display: none; flex-direction: column; gap: 20px;">
+
+                    <!-- 运单号批量导入 + 承运商并排 -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <!-- 运单号导入 -->
+                        <section class="content-card">
+                            <h2 class="content-card-title">运单号导入</h2>
+                            <p style="font-size: 12px; color: var(--text-400); margin: 0 0 14px;">上传 CSV 或 Excel 文件，批量录入运单号并关联订单</p>
+
+                            <!-- 模板下载 -->
+                            <button style="display: flex; align-items: center; gap: 8px; width: 100%; height: 40px; border-radius: 8px; padding: 0 14px; margin-bottom: 14px; background: var(--background-100); border: 1px solid var(--border); cursor: pointer; font-family: var(--font-sans);" data-dom-id="cta-download-template">
+                                <i data-lucide="download" style="width: 16px; height: 16px; color: var(--primary);"></i>
+                                <span style="font-size: 13px; font-weight: 600; color: var(--primary);">下载导入模板</span>
+                                <span style="margin-left: auto; font-size: 12px; color: var(--text-400);">.xlsx</span>
+                            </button>
+
+                            <!-- 文件上传区域 -->
+                            <div class="upload-zone" data-dom-id="cta-upload-tracking">
+                                <i data-lucide="upload-cloud" style="width: 36px; height: 36px; color: var(--icon-400); margin: 0 auto 8px;"></i>
+                                <p style="font-size: 13px; font-weight: 600; color: var(--text-800); margin: 0 0 4px;">点击上传或拖拽文件</p>
+                                <p style="font-size: 12px; color: var(--text-400); margin: 0;">支持 .csv / .xlsx，单次最多 5,000 条</p>
+                            </div>
+                        </section>
+
+                        <!-- 承运商选择 -->
+                        <section class="content-card">
+                            <h2 class="content-card-title">承运商</h2>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                                <button class="carrier-btn" data-dom-id="carrier-usps">USPS</button>
+                                <button class="carrier-btn active" data-dom-id="carrier-ups">UPS</button>
+                                <button class="carrier-btn" data-dom-id="carrier-fedex">FedEx</button>
+                                <button class="carrier-btn" data-dom-id="carrier-dhl">DHL</button>
+                                <button class="carrier-btn" data-dom-id="carrier-royal-mail">Royal Mail</button>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- 一键生成电子面单按钮 -->
+                    <div>
+                        <button class="btn btn-primary" style="height: 44px; padding: 0 28px; font-size: 14px; gap: 8px;" data-dom-id="cta-gen-label">
+                            <i data-lucide="file-text" style="width: 16px; height: 16px;"></i>
+                            一键生成电子面单
+                        </button>
+                    </div>
+
+                    <!-- 导入结果 -->
+                    <section class="content-card">
+                        <h2 class="content-card-title">导入结果</h2>
+                        <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+                            <div class="result-stat" style="background: var(--state-success-surface); flex: 1;">
+                                <span style="font-size: 28px; font-weight: 700; color: var(--state-success);">128</span>
+                                <span style="font-size: 13px; color: var(--state-success);">成功</span>
+                            </div>
+                            <div class="result-stat" style="background: var(--state-error-surface); flex: 1;">
+                                <span style="font-size: 28px; font-weight: 700; color: var(--state-error);">3</span>
+                                <span style="font-size: 13px; color: var(--state-error);">失败</span>
+                            </div>
+                        </div>
+
+                        <!-- 失败原因列表 -->
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <div class="error-item">
+                                <i data-lucide="x-circle" style="width: 16px; height: 16px; color: var(--state-error); flex-shrink: 0; margin-top: 2px;"></i>
+                                <div>
+                                    <p style="font-size: 13px; font-weight: 600; color: var(--text-800); margin: 0;">MOYU20260708005</p>
+                                    <p style="font-size: 12px; color: var(--state-error); margin: 2px 0 0;">运单号格式不正确</p>
+                                </div>
+                            </div>
+                            <div class="error-item">
+                                <i data-lucide="x-circle" style="width: 16px; height: 16px; color: var(--state-error); flex-shrink: 0; margin-top: 2px;"></i>
+                                <div>
+                                    <p style="font-size: 13px; font-weight: 600; color: var(--text-800); margin: 0;">MOYU20260708012</p>
+                                    <p style="font-size: 12px; color: var(--state-error); margin: 2px 0 0;">订单不存在或已发货</p>
+                                </div>
+                            </div>
+                            <div class="error-item">
+                                <i data-lucide="x-circle" style="width: 16px; height: 16px; color: var(--state-error); flex-shrink: 0; margin-top: 2px;"></i>
+                                <div>
+                                    <p style="font-size: 13px; font-weight: 600; color: var(--text-800); margin: 0;">MOYU20260708019</p>
+                                    <p style="font-size: 12px; color: var(--state-error); margin: 2px 0 0;">承运商与运单号不匹配</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- CSS 动画补充 -->
+    <style>
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+
+    <!-- Tab 切换与交互脚本 -->
+    <script>
+      // 初始化 Lucide 图标
+      lucide.createIcons();
+
+      // Tab 切换逻辑
+      document.querySelectorAll('[data-tab]').forEach(function(tabBtn) {
+        tabBtn.addEventListener('click', function() {
+          var tabName = this.getAttribute('data-tab');
+
+          // 更新 Tab 按钮样式
+          document.querySelectorAll('.page-tab').forEach(function(btn) {
+            btn.classList.remove('active');
+          });
+          this.classList.add('active');
+
+          // 切换面板显示
+          var panels = {
+            export: document.getElementById('panel-export'),
+            print: document.getElementById('panel-print'),
+            batch: document.getElementById('panel-batch')
+          };
+          Object.keys(panels).forEach(function(key) {
+            panels[key].style.display = key === tabName ? 'flex' : 'none';
+          });
+        });
+      });
+
+      // 导出格式切换
+      document.querySelectorAll('[data-format]').forEach(function(fmtBtn) {
+        fmtBtn.addEventListener('click', function() {
+          document.querySelectorAll('[data-format]').forEach(function(btn) {
+            btn.classList.remove('active');
+          });
+          this.classList.add('active');
+        });
+      });
+
+      // 复选框切换
+      document.querySelectorAll('.checkbox-field').forEach(function(cb) {
+        cb.addEventListener('click', function() {
+          this.classList.toggle('checked');
+        });
+      });
+
+      // 全选/取消
+      document.getElementById('toggleAllFields').addEventListener('click', function() {
+        var allChecked = document.querySelectorAll('.checkbox-field.checked').length === document.querySelectorAll('.checkbox-field').length;
+        document.querySelectorAll('.checkbox-field').forEach(function(cb) {
+          if (allChecked) {
+            cb.classList.remove('checked');
+          } else {
+            cb.classList.add('checked');
+          }
+        });
+      });
+
+      // 打印份数控制
+      var copiesEl = document.getElementById('print-copies');
+      var copies = 1;
+      document.querySelector('[data-dom-id="btn-copy-minus"]').addEventListener('click', function() {
+        if (copies > 1) {
+          copies--;
+          copiesEl.textContent = copies;
+        }
+      });
+      document.querySelector('[data-dom-id="btn-copy-plus"]').addEventListener('click', function() {
+        if (copies < 99) {
+          copies++;
+          copiesEl.textContent = copies;
+        }
+      });
+
+      // 打印模板切换
+      document.querySelectorAll('[data-dom-id^="template-"]').forEach(function(tmplBtn) {
+        tmplBtn.addEventListener('click', function() {
+          document.querySelectorAll('[data-dom-id^="template-"]').forEach(function(btn) {
+            btn.classList.remove('active');
+          });
+          this.classList.add('active');
+        });
+      });
+
+      // 承运商切换
+      document.querySelectorAll('[data-dom-id^="carrier-"]').forEach(function(carrierBtn) {
+        carrierBtn.addEventListener('click', function() {
+          document.querySelectorAll('[data-dom-id^="carrier-"]').forEach(function(btn) {
+            btn.classList.remove('active');
+          });
+          this.classList.add('active');
+        });
+      });
+    </script>
+</body>
+</html>

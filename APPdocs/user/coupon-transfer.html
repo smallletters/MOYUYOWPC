@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>转赠优惠券 - MOYUYO</title>
+    <style id="theme-vars">
+/*
+ * MOYUYO design tokens
+ * Brand: MOYUYO
+ * Domain: Pet lifestyle e-commerce
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12);
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+/*
+ * components.css - aggregated component CSS
+ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+
+      /* 页面级自定义样式 */
+      /* 优惠券卡片左侧色带渐变 */
+      .coupon-gradient {
+        background: linear-gradient(135deg, var(--brand-500), var(--brand-300));
+      }
+
+      /* 优惠券虚线分割 */
+      .coupon-divider {
+        border-left: 2px dashed var(--background-300);
+        position: relative;
+      }
+      .coupon-divider::before,
+      .coupon-divider::after {
+        content: '';
+        position: absolute;
+        left: -7px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--background-100);
+      }
+      .coupon-divider::before { top: -6px; }
+      .coupon-divider::after { bottom: -6px; }
+
+      /* 二维码模拟占位 */
+      .qr-placeholder {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        grid-template-rows: repeat(7, 1fr);
+        gap: 2px;
+        width: 120px;
+        height: 120px;
+        padding: 8px;
+        border-radius: 8px;
+        background: var(--background-50);
+      }
+      .qr-placeholder span {
+        border-radius: 1px;
+        background: var(--text-800);
+      }
+      .qr-placeholder span:nth-child(odd) {
+        opacity: 0.9;
+      }
+      .qr-placeholder span:nth-child(3n) {
+        opacity: 0.3;
+      }
+      .qr-placeholder span:nth-child(5n+1) {
+        opacity: 0.7;
+      }
+      .qr-placeholder span:nth-child(7n) {
+        opacity: 0.15;
+      }
+      .qr-placeholder span:nth-child(even):not(:nth-child(3n)) {
+        opacity: 0.5;
+      }
+
+      /* 转赠方式选项卡交互 */
+      .transfer-option {
+        transition: border-color 0.18s ease, box-shadow 0.18s ease;
+      }
+      .transfer-option:hover {
+        border-color: var(--brand-400);
+        box-shadow: var(--shadow-md);
+      }
+      .transfer-option.active {
+        border-color: var(--brand-500);
+        box-shadow: 0 0 0 1px var(--brand-500);
+      }
+
+      /* 头像占位渐变 */
+      .avatar-placeholder {
+        flex-shrink: 0;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <!-- 移动端容器 -->
+    <div class="mx-auto min-h-screen flex flex-col" style="max-width: 430px; width: 100%;">
+
+        <!-- 顶部导航栏 -->
+        <nav class="sticky top-0 z-30 flex items-center justify-between h-12 px-4" style="background: var(--background-800);">
+            <!-- 返回按钮 -->
+            <button class="flex items-center justify-center w-9 h-9 rounded-full" style="background: var(--background-700);" aria-label="返回">
+                <i data-lucide="chevron-left" class="w-5 h-5" style="color: var(--text-50);"></i>
+            </button>
+            <!-- 页面标题 -->
+            <span class="text-base font-semibold" style="color: var(--text-50);">转赠优惠券</span>
+            <!-- 占位保持居中 -->
+            <div class="w-9 h-9"></div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <main class="flex-1 overflow-y-auto px-4 pt-5 pb-8" style="background: var(--background-100);">
+
+            <!-- 转赠的优惠券卡片 -->
+            <section class="rounded-2xl overflow-hidden mb-5" style="background: var(--card); box-shadow: var(--shadow-md);">
+                <div class="flex">
+                    <!-- 左侧色带 + 面额 -->
+                    <div class="coupon-gradient flex flex-col items-center justify-center px-5 py-6" style="min-width: 110px;">
+                        <span class="text-xs font-semibold tracking-wide uppercase" style="color: var(--background-50); opacity: 0.85;">MOYUYO</span>
+                        <span class="text-3xl font-bold mt-1" style="color: var(--background-50);">$10</span>
+                        <span class="text-sm font-bold" style="color: var(--background-50); opacity: 0.9;">OFF</span>
+                    </div>
+                    <!-- 右侧虚线分割 + 券详情 -->
+                    <div class="coupon-divider flex-1 px-5 py-6 flex flex-col justify-between">
+                        <div>
+                            <h2 class="text-base font-semibold leading-tight" style="color: var(--text-800);">CARE 洗护专场满减券</h2>
+                            <p class="text-xs mt-1.5" style="color: var(--muted-foreground);">满 $50 可用</p>
+                        </div>
+                        <div class="flex items-center gap-2 mt-3">
+                            <i data-lucide="clock" class="w-3.5 h-3.5" style="color: var(--muted-foreground);"></i>
+                            <span class="text-xs" style="color: var(--muted-foreground);">有效期至 2026-07-15</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 转赠方式选择区标题 -->
+            <h3 class="text-sm font-semibold mb-3 px-1" style="color: var(--text-700);">选择转赠方式</h3>
+
+            <!-- 方式一：App 内好友 -->
+            <section class="transfer-option active rounded-2xl p-4 mb-3" style="background: var(--card); border: 1.5px solid var(--border);">
+                <div class="flex items-center gap-3 mb-3.5">
+                    <div class="flex items-center justify-center w-9 h-9 rounded-xl" style="background: var(--brand-50);">
+                        <i data-lucide="users" class="w-4.5 h-4.5" style="color: var(--brand-500);"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold" style="color: var(--text-800);">App 内好友</p>
+                        <p class="text-xs mt-0.5" style="color: var(--muted-foreground);">选择好友直接转赠</p>
+                    </div>
+                    <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center" style="border-color: var(--brand-500);">
+                        <div class="w-2.5 h-2.5 rounded-full" style="background: var(--brand-500);"></div>
+                    </div>
+                </div>
+
+                <!-- 搜索好友 -->
+                <div class="field mb-3" style="min-width: auto; height: 40px; border-radius: 10px; background: var(--background-100);">
+                    <i data-lucide="search" class="w-4 h-4 shrink-0" style="color: var(--icon-500);"></i>
+                    <input class="control text-sm" type="text" placeholder="搜索好友昵称" aria-label="搜索好友">
+                </div>
+
+                <!-- 最近互动好友列表 -->
+                <div class="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
+                    <!-- 好友 1 -->
+                    <div class="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer">
+                        <div class="avatar-placeholder w-12 h-12 rounded-full" style="background: linear-gradient(135deg, #ff9a9e, #fecfef);"></div>
+                        <span class="text-xs truncate max-w-14 text-center" style="color: var(--text-600);">小糯米</span>
+                    </div>
+                    <!-- 好友 2 -->
+                    <div class="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer">
+                        <div class="avatar-placeholder w-12 h-12 rounded-full" style="background: linear-gradient(135deg, #a18cd1, #fbc2eb);"></div>
+                        <span class="text-xs truncate max-w-14 text-center" style="color: var(--text-600);">柴柴爸</span>
+                    </div>
+                    <!-- 好友 3 -->
+                    <div class="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer">
+                        <div class="avatar-placeholder w-12 h-12 rounded-full" style="background: linear-gradient(135deg, #84fab0, #8fd3f4);"></div>
+                        <span class="text-xs truncate max-w-14 text-center" style="color: var(--text-600);">猫咪酱</span>
+                    </div>
+                    <!-- 添加更多好友按钮 -->
+                    <div class="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer">
+                        <div class="flex items-center justify-center w-12 h-12 rounded-full" style="border: 1.5px dashed var(--background-400); background: var(--background-50);">
+                            <i data-lucide="plus" class="w-5 h-5" style="color: var(--muted-foreground);"></i>
+                        </div>
+                        <span class="text-xs" style="color: var(--muted-foreground);">更多</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 方式二：分享链接 -->
+            <section class="transfer-option rounded-2xl p-4 mb-3" style="background: var(--card); border: 1.5px solid var(--border);">
+                <div class="flex items-center gap-3 mb-3.5">
+                    <div class="flex items-center justify-center w-9 h-9 rounded-xl" style="background: var(--brand-50);">
+                        <i data-lucide="link" class="w-4.5 h-4.5" style="color: var(--brand-500);"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold" style="color: var(--text-800);">分享链接</p>
+                        <p class="text-xs mt-0.5" style="color: var(--muted-foreground);">生成链接，发送给好友领取</p>
+                    </div>
+                    <div class="w-5 h-5 rounded-full border-2" style="border-color: var(--background-400);"></div>
+                </div>
+
+                <!-- 链接展示区域 -->
+                <div class="flex items-center gap-2 rounded-xl px-3.5 h-10" style="background: var(--background-100); border: 1px solid var(--border);">
+                    <i data-lucide="copy" class="w-4 h-4 shrink-0" style="color: var(--icon-500);"></i>
+                    <span class="text-xs truncate flex-1" style="color: var(--text-500);">https://moyuyo.com/c/clm/X9k2F</span>
+                    <button class="text-xs font-semibold shrink-0 px-2.5 py-1 rounded-lg" style="color: var(--brand-500); background: var(--brand-50);">复制</button>
+                </div>
+            </section>
+
+            <!-- 方式三：二维码 -->
+            <section class="transfer-option rounded-2xl p-4 mb-6" style="background: var(--card); border: 1.5px solid var(--border);">
+                <div class="flex items-center gap-3 mb-3.5">
+                    <div class="flex items-center justify-center w-9 h-9 rounded-xl" style="background: var(--brand-50);">
+                        <i data-lucide="qr-code" class="w-4.5 h-4.5" style="color: var(--brand-500);"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold" style="color: var(--text-800);">二维码</p>
+                        <p class="text-xs mt-0.5" style="color: var(--muted-foreground);">好友扫码即可领取优惠券</p>
+                    </div>
+                    <div class="w-5 h-5 rounded-full border-2" style="border-color: var(--background-400);"></div>
+                </div>
+
+                <!-- 二维码展示区域 -->
+                <div class="flex flex-col items-center py-3">
+                    <!-- CSS 模拟二维码占位 -->
+                    <div class="qr-placeholder">
+                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                    </div>
+                    <p class="text-xs mt-3" style="color: var(--muted-foreground);">MOYUYO 优惠券领取码</p>
+                </div>
+            </section>
+
+            <!-- 底部提示 -->
+            <div class="flex items-start gap-2 px-1 mb-6">
+                <i data-lucide="info" class="w-4 h-4 shrink-0 mt-0.5" style="color: var(--muted-foreground);"></i>
+                <p class="text-xs leading-relaxed" style="color: var(--muted-foreground);">受赠人需在 24 小时内领取，逾期自动退回至您的账户</p>
+            </div>
+
+        </main>
+
+        <!-- 底部操作按钮 -->
+        <div class="sticky bottom-0 z-20 px-4 pb-6 pt-3" style="background: linear-gradient(to top, var(--background-100) 60%, transparent);">
+            <button class="btn btn-primary btn-lg w-full rounded-2xl text-base font-semibold" style="height: 52px;">
+                确认转赠
+            </button>
+        </div>
+
+    </div>
+
+    <!-- 初始化 Lucide 图标 -->
+    <script>
+      lucide.createIcons();
+    </script>
+</body>
+</html>

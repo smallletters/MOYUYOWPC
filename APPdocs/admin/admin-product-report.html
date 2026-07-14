@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOYUYO 商品举报管理</title>
+    <style id="theme-vars">
+:root {
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff;
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+  --state-success: #34c759;
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+  --state-error: #ff3b30;
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+  --state-warning: #ff9500;
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+  --font-sans: 'DM Sans', ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+  --radius: 1.2rem;
+  --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05), 0 1px 3px -1px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0,0,0,0.06), 0 2px 4px -2px rgba(0,0,0,0.05);
+  --spacing: 0.24rem;
+}
+    </style>
+    <style id="component-vars">
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+    </style>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+
+      /* ===== 后台管理页面专用样式 ===== */
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: 'DM Sans', -apple-system, sans-serif;
+        background: var(--background-200);
+        color: var(--text-800);
+        max-width: 393px;
+        margin: 0 auto;
+        min-height: 100vh;
+        position: relative;
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* 顶部导航栏 */
+      .admin-nav-bar {
+        position: sticky; top: 0; z-index: 30;
+        background: var(--background-50);
+        border-bottom: 1px solid var(--background-300);
+        display: flex; align-items: center;
+        height: 48px; padding: 0 16px; gap: 12px;
+      }
+      .admin-nav-bar .back-btn {
+        display: flex; align-items: center; justify-content: center;
+        width: 32px; height: 32px; border: none;
+        background: transparent; color: var(--primary);
+        cursor: pointer; border-radius: 50%;
+        transition: background-color 0.15s ease;
+      }
+      .admin-nav-bar .back-btn:active { background: var(--background-200); }
+      .admin-nav-bar .nav-title {
+        flex: 1; font-size: 17px; font-weight: 600;
+        color: var(--text-800); text-align: center;
+        margin-right: 32px;
+      }
+
+      /* 筛选 Tab 栏 */
+      .filter-tabs {
+        display: flex; overflow-x: auto; gap: 0;
+        padding: 0 16px; background: var(--background-50);
+        border-bottom: 1px solid var(--background-300);
+      }
+      .filter-tabs::-webkit-scrollbar { display: none; }
+      .filter-tab {
+        flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+        height: 44px; padding: 0 14px; font-size: 13px; font-weight: 500;
+        color: var(--text-500); background: transparent; border: none;
+        cursor: pointer; position: relative;
+        transition: color 0.15s ease; white-space: nowrap;
+      }
+      .filter-tab.active { color: var(--primary); font-weight: 600; }
+      .filter-tab.active::after {
+        content: ''; position: absolute; bottom: 0; left: 50%;
+        transform: translateX(-50%); width: 24px; height: 2.5px;
+        border-radius: 2px; background: var(--primary);
+      }
+
+      /* SLA 汇总卡片 */
+      .sla-summary {
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        gap: 8px; padding: 16px;
+      }
+      .sla-card {
+        background: var(--background-50); border-radius: var(--radius);
+        padding: 14px 10px; text-align: center;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        border: 1px solid var(--background-300);
+      }
+      .sla-card .sla-number { font-size: 22px; font-weight: 700; line-height: 1.2; }
+      .sla-card .sla-number.urgent { color: var(--state-error); }
+      .sla-card .sla-number.warning { color: var(--state-warning); }
+      .sla-card .sla-number.info { color: var(--primary); }
+      .sla-card .sla-label { font-size: 11px; color: var(--text-500); margin-top: 4px; line-height: 1.3; }
+
+      /* 举报列表 */
+      .report-list {
+        padding: 0 16px 16px;
+        display: flex; flex-direction: column; gap: 12px;
+      }
+      .report-item {
+        background: var(--background-50); border-radius: var(--radius);
+        padding: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        border: 1px solid var(--background-300);
+        transition: transform 0.18s ease;
+      }
+      .report-item:active { transform: scale(0.99); }
+
+      /* 商品信息行 */
+      .report-product {
+        display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+      }
+      .report-product-thumb {
+        width: 56px; height: 56px; border-radius: 12px;
+        background: linear-gradient(135deg, var(--background-200), var(--background-300));
+        border: 1px solid var(--background-300);
+        flex-shrink: 0; overflow: hidden;
+      }
+      .report-product-thumb img { width: 100%; height: 100%; object-fit: cover; }
+      .report-product-info { flex: 1; min-width: 0; }
+      .report-product-name {
+        font-size: 14px; font-weight: 600; color: var(--text-800);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;
+      }
+      .report-product-link {
+        font-size: 11px; color: var(--primary); margin-top: 2px;
+        display: inline-flex; align-items: center; gap: 2px; text-decoration: none;
+      }
+      .report-product-link span[data-icon] { width: 12px; height: 12px; }
+
+      /* 举报类型标签（颜色区分） */
+      .report-tag {
+        display: inline-flex; align-items: center;
+        padding: 3px 10px; border-radius: 999px;
+        font-size: 11px; font-weight: 600; line-height: 1.3;
+        flex-shrink: 0; align-self: flex-start; margin-top: 2px;
+      }
+      .report-tag.fake-ad { background: #fff3e0; color: #e65100; }
+      .report-tag.quality { background: var(--state-error-surface); color: var(--state-error); }
+      .report-tag.infringement { background: #f3e8ff; color: #7c3aed; }
+      .report-tag.banned { background: #ffecea; color: #c62828; }
+
+      /* 举报原因描述 */
+      .report-reason {
+        font-size: 13px; color: var(--text-600); line-height: 1.5;
+        margin-bottom: 10px;
+        display: -webkit-box; -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical; overflow: hidden;
+      }
+
+      /* 举报人 + 时间行 */
+      .report-meta {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 12px; font-size: 12px;
+      }
+      .report-reporter {
+        color: var(--text-400);
+        display: flex; align-items: center; gap: 4px;
+      }
+      .report-reporter span[data-icon] { width: 14px; height: 14px; }
+      .report-time { color: var(--text-400); }
+      .report-sla-countdown {
+        color: var(--state-error); font-weight: 600;
+        display: flex; align-items: center; gap: 3px;
+      }
+      .report-sla-countdown span[data-icon] { width: 13px; height: 13px; }
+
+      /* 处理状态 */
+      .report-status-row {
+        display: flex; align-items: center; justify-content: space-between;
+      }
+      .report-status {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 10px; border-radius: 999px;
+        font-size: 11px; font-weight: 600; line-height: 1.3;
+      }
+      .report-status span[data-icon] { width: 12px; height: 12px; }
+      .report-status.pending {
+        background: #fff3e0; color: #e65100;
+      }
+      .report-status.processing {
+        background: var(--brand-50); color: var(--brand-600);
+      }
+      .report-status.done {
+        background: var(--state-success-surface); color: var(--state-success);
+      }
+
+      /* 操作按钮组 */
+      .report-actions {
+        display: flex; gap: 8px;
+      }
+      .report-actions .btn-detail {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 6px 14px; border-radius: 999px;
+        background: var(--secondary); color: var(--secondary-foreground);
+        border: 1px solid var(--background-300);
+        font-size: 12px; font-weight: 500; cursor: pointer;
+        transition: background-color 0.15s ease;
+      }
+      .report-actions .btn-detail:active { background: var(--background-300); }
+      .report-actions .btn-detail span[data-icon] { width: 14px; height: 14px; }
+      .report-actions .btn-handle {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 6px 14px; border-radius: 999px;
+        background: var(--primary); color: var(--primary-foreground);
+        border: none; font-size: 12px; font-weight: 600; cursor: pointer;
+        transition: filter 0.15s ease;
+      }
+      .report-actions .btn-handle:active { filter: brightness(0.9); }
+      .report-actions .btn-handle span[data-icon] { width: 14px; height: 14px; }
+
+      /* 底部侵权投诉入口卡片 */
+      .infringement-entry {
+        margin: 0 16px 32px;
+        background: var(--background-50); border-radius: var(--radius);
+        padding: 20px 16px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        border: 1px solid var(--background-300);
+        display: flex; flex-direction: column; gap: 12px;
+      }
+      .infringement-entry-title {
+        font-size: 15px; font-weight: 600; color: var(--text-800);
+        display: flex; align-items: center; gap: 8px;
+      }
+      .infringement-entry-title span[data-icon] {
+        width: 20px; height: 20px; color: var(--primary);
+      }
+      .infringement-entry-desc {
+        font-size: 12px; color: var(--text-500); line-height: 1.5;
+      }
+      .infringement-types {
+        display: flex; gap: 8px; flex-wrap: wrap;
+      }
+      .infringement-type-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 10px 16px; border-radius: calc(var(--radius) * 0.8);
+        background: var(--secondary); border: 1px solid var(--background-300);
+        font-size: 13px; font-weight: 500; color: var(--text-700);
+        cursor: pointer; transition: background-color 0.15s ease;
+        flex: 1; min-width: calc(50% - 4px);
+        justify-content: center;
+      }
+      .infringement-type-btn:active { background: var(--background-300); }
+      .infringement-type-btn span[data-icon] { width: 16px; height: 16px; }
+      .infringement-type-btn.dmca span[data-icon] { color: var(--state-error); }
+      .infringement-type-btn.trademark span[data-icon] { color: var(--brand-600); }
+      .infringement-type-btn.patent span[data-icon] { color: var(--state-warning); }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    
+    /* 妗岄潰绔鐞嗛〉闈㈡渶灏忓搴︾害鏉?*/
+    body { min-width: 1280px; }</style>
+</head>
+<body>
+    <main>
+
+      <!-- 顶部导航栏 -->
+      <header class="admin-nav-bar">
+        <button class="back-btn" data-dom-id="cta-back" aria-label="返回">
+          <i data-lucide="chevron-left" style="width:22px;height:22px;"></i>
+        </button>
+        <span class="nav-title">商品举报管理</span>
+      </header>
+
+      <!-- 举报类型筛选 Tab -->
+      <nav class="filter-tabs no-scrollbar" aria-label="举报类型筛选">
+        <button class="filter-tab active">全部</button>
+        <button class="filter-tab">虚假宣传</button>
+        <button class="filter-tab">质量问题</button>
+        <button class="filter-tab">侵权投诉</button>
+        <button class="filter-tab">违禁品</button>
+      </nav>
+
+      <!-- SLA 倒计时汇总卡片 -->
+      <section class="sla-summary" aria-label="SLA汇总">
+        <div class="sla-card">
+          <div class="sla-number urgent">5</div>
+          <div class="sla-label">24h 内需响应</div>
+        </div>
+        <div class="sla-card">
+          <div class="sla-number warning">12</div>
+          <div class="sla-label">72h 内需处理</div>
+        </div>
+        <div class="sla-card">
+          <div class="sla-number info">3</div>
+          <div class="sla-label">紧急投诉</div>
+        </div>
+      </section>
+
+      <!-- 举报列表 -->
+      <section class="report-list" aria-label="举报列表">
+
+        <!-- 举报项 1：虚假宣传 - 待处理 -->
+        <article class="report-item">
+          <div class="report-product">
+            <div class="report-product-thumb">
+              <div style="width:56px;height:56px;border-radius:12px;background:var(--background-200);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-400);font-size:11px;">缩略图</div>
+            </div>
+            <div class="report-product-info">
+              <div class="report-product-name">进口天然有机猫粮 成猫专用</div>
+              <a class="report-product-link" href="#">
+                查看商品
+                <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/external-link.svg'); mask-image: url('../assets/icons/dl-builtin-apple/external-link.svg');"></span>
+              </a>
+            </div>
+            <span class="report-tag fake-ad">虚假宣传</span>
+          </div>
+          <p class="report-reason">商品描述标注"进口天然有机"，但实际配料表含有多种人工添加剂，涉嫌虚假宣传误导消费者。</p>
+          <div class="report-meta">
+            <span class="report-reporter">
+              <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/user.svg'); mask-image: url('../assets/icons/dl-builtin-apple/user.svg');"></span>
+              用户 1**8
+            </span>
+            <span class="report-time">2026-07-07 14:30</span>
+            <span class="report-sla-countdown">
+              <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/clock.svg'); mask-image: url('../assets/icons/dl-builtin-apple/clock.svg');"></span>
+              剩余 6h 12m
+            </span>
+          </div>
+          <div class="report-status-row">
+            <span class="report-status pending">
+              <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-dot.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-dot.svg');"></span>
+              待处理
+            </span>
+            <div class="report-actions">
+              <button class="btn-detail">
+                <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/eye.svg'); mask-image: url('../assets/icons/dl-builtin-apple/eye.svg');"></span>
+                查看详情
+              </button>
+              <button class="btn-handle">
+                <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/gavel.svg'); mask-image: url('../assets/icons/dl-builtin-apple/gavel.svg');"></span>
+                处理
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 举报项 2：质量问题 - 处理中 -->
+        <article class="report-item">
+          <div class="report-product">
+            <div class="report-product-thumb">
+              <div style="width:56px;height:56px;border-radius:12px;background:var(--background-200);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-400);font-size:11px;">缩略图</div>
+            </div>
+            <div class="report-product-info">
+              <div class="report-product-name">宠物自动饮水机 静音循环过滤</div>
+              <a class="report-product-link" href="#">
+                查看商品
+                <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/external-link.svg'); mask-image: url('../assets/icons/dl-builtin-apple/external-link.svg');"></span>
+              </a>
+            </div>
+            <span class="report-tag quality">质量问题</span>
+          </div>
+          <p class="report-reason">饮水机使用不到一周出现漏水问题，且过滤芯存在异味，怀疑材料不达标存在安全隐患。</p>
+          <div class="report-meta">
+            <span class="report-reporter">
+              <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/user.svg'); mask-image: url('../assets/icons/dl-builtin-apple/user.svg');"></span>
+              用户 3**2
+            </span>
+            <span class="report-time">2026-07-06 09:15</span>
+            <span class="report-sla-countdown">
+              <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/clock.svg'); mask-image: url('../assets/icons/dl-builtin-apple/clock.svg');"></span>
+              剩余 18h 45m
+            </span>
+          </div>
+          <div class="report-status-row">
+            <span class="report-status processing">
+              <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/loader.svg'); mask-image: url('../assets/icons/dl-builtin-apple/loader.svg');"></span>
+              处理中
+            </span>
+            <div class="report-actions">
+              <button class="btn-detail">
+                <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/eye.svg'); mask-image: url('../assets/icons/dl-builtin-apple/eye.svg');"></span>
+                查看详情
+              </button>
+              <button class="btn-handle">
+                <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/gavel.svg'); mask-image: url('../assets/icons/dl-builtin-apple/gavel.svg');"></span>
+                处理
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 举报项 3：侵权投诉 - 待处理（紧急） -->
+        <article class="report-item">
+          <div class="report-product">
+            <div class="report-product-thumb">
+              <div style="width:56px;height:56px;border-radius:12px;background:var(--background-200);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-400);font-size:11px;">缩略图</div>
+            </div>
+            <div class="report-product-info">
+              <div class="report-product-name">MOYUYO联名宠物服饰 设计师限定款</div>
+              <a class="report-product-link" href="#">
+                查看商品
+                <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/external-link.svg'); mask-image: url('../assets/icons/dl-builtin-apple/external-link.svg');"></span>
+              </a>
+            </div>
+            <span class="report-tag infringement">侵权投诉</span>
+          </div>
+          <p class="report-reason">该商品未经授权使用我方注册商标"MOYUYO"，且商品图片盗用官方宣传素材，严重侵犯商标权及著作权。</p>
+          <div class="report-meta">
+            <span class="report-reporter">
+              <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/user.svg'); mask-image: url('../assets/icons/dl-builtin-apple/user.svg');"></span>
+              用户 6**5
+            </span>
+            <span class="report-time">2026-07-07 18:42</span>
+            <span class="report-sla-countdown">
+              <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/clock.svg'); mask-image: url('../assets/icons/dl-builtin-apple/clock.svg');"></span>
+              剩余 2h 08m
+            </span>
+          </div>
+          <div class="report-status-row">
+            <span class="report-status pending">
+              <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-dot.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-dot.svg');"></span>
+              待处理
+            </span>
+            <div class="report-actions">
+              <button class="btn-detail">
+                <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/eye.svg'); mask-image: url('../assets/icons/dl-builtin-apple/eye.svg');"></span>
+                查看详情
+              </button>
+              <button class="btn-handle">
+                <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/gavel.svg'); mask-image: url('../assets/icons/dl-builtin-apple/gavel.svg');"></span>
+                处理
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 举报项 4：违禁品 - 已完成 -->
+        <article class="report-item">
+          <div class="report-product">
+            <div class="report-product-thumb">
+              <div style="width:56px;height:56px;border-radius:12px;background:var(--background-200);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-400);font-size:11px;">缩略图</div>
+            </div>
+            <div class="report-product-info">
+              <div class="report-product-name">进口宠物保健药品 免处方驱虫</div>
+              <a class="report-product-link" href="#">
+                查看商品
+                <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/external-link.svg'); mask-image: url('../assets/icons/dl-builtin-apple/external-link.svg');"></span>
+              </a>
+            </div>
+            <span class="report-tag banned">违禁品</span>
+          </div>
+          <p class="report-reason">该商品为处方类兽药，需持兽医处方购买，商家无资质销售处方药涉嫌违规，且部分成分属于管制药物。</p>
+          <div class="report-meta">
+            <span class="report-reporter">
+              <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/user.svg'); mask-image: url('../assets/icons/dl-builtin-apple/user.svg');"></span>
+              用户 9**1
+            </span>
+            <span class="report-time">2026-07-05 11:20</span>
+            <span class="report-time" style="color: var(--state-success);">已超时完成</span>
+          </div>
+          <div class="report-status-row">
+            <span class="report-status done">
+              <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg');"></span>
+              已完成
+            </span>
+            <div class="report-actions">
+              <button class="btn-detail">
+                <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/eye.svg'); mask-image: url('../assets/icons/dl-builtin-apple/eye.svg');"></span>
+                查看详情
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 举报项 5：虚假宣传 - 待处理 -->
+        <article class="report-item">
+          <div class="report-product">
+            <div class="report-product-thumb">
+              <div style="width:56px;height:56px;border-radius:12px;background:var(--background-200);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-400);font-size:11px;">缩略图</div>
+            </div>
+            <div class="report-product-info">
+              <div class="report-product-name">宠物智能 GPS 定位项圈 防丢防水</div>
+              <a class="report-product-link" href="#">
+                查看商品
+                <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/external-link.svg'); mask-image: url('../assets/icons/dl-builtin-apple/external-link.svg');"></span>
+              </a>
+            </div>
+            <span class="report-tag fake-ad">虚假宣传</span>
+          </div>
+          <p class="report-reason">宣传"全球精准定位"实际定位误差超过500米，且防水等级虚假标注，正常淋水即损坏。</p>
+          <div class="report-meta">
+            <span class="report-reporter">
+              <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/user.svg'); mask-image: url('../assets/icons/dl-builtin-apple/user.svg');"></span>
+              用户 2**7
+            </span>
+            <span class="report-time">2026-07-08 08:05</span>
+            <span class="report-sla-countdown">
+              <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/clock.svg'); mask-image: url('../assets/icons/dl-builtin-apple/clock.svg');"></span>
+              剩余 22h 55m
+            </span>
+          </div>
+          <div class="report-status-row">
+            <span class="report-status pending">
+              <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-dot.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-dot.svg');"></span>
+              待处理
+            </span>
+            <div class="report-actions">
+              <button class="btn-detail">
+                <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/eye.svg'); mask-image: url('../assets/icons/dl-builtin-apple/eye.svg');"></span>
+                查看详情
+              </button>
+              <button class="btn-handle">
+                <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/gavel.svg'); mask-image: url('../assets/icons/dl-builtin-apple/gavel.svg');"></span>
+                处理
+              </button>
+            </div>
+          </div>
+        </article>
+
+      </section>
+
+      <!-- 底部侵权投诉表单入口 -->
+      <section class="infringement-entry" aria-label="侵权投诉入口">
+        <div class="infringement-entry-title">
+          <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/shield-alert.svg'); mask-image: url('../assets/icons/dl-builtin-apple/shield-alert.svg');"></span>
+          侵权投诉专用入口
+        </div>
+        <p class="infringement-entry-desc">
+          如果您是知识产权权利人，可通过以下专用通道提交 DMCA 版权、商标侵权或专利侵权投诉。
+        </p>
+        <div class="infringement-types">
+          <button class="infringement-type-btn dmca">
+            <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/file-text.svg'); mask-image: url('../assets/icons/dl-builtin-apple/file-text.svg');"></span>
+            DMCA 版权投诉
+          </button>
+          <button class="infringement-type-btn trademark">
+            <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/trademark.svg'); mask-image: url('../assets/icons/dl-builtin-apple/trademark.svg');"></span>
+            商标侵权投诉
+          </button>
+          <button class="infringement-type-btn patent">
+            <span data-icon style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/patent.svg'); mask-image: url('../assets/icons/dl-builtin-apple/patent.svg');"></span>
+            专利侵权投诉
+          </button>
+        </div>
+      </section>
+
+    </main>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

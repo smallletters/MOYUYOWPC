@@ -1,0 +1,10 @@
+{
+  "code": 0,
+  "data": {
+    "uploadUrl": "https://oss-cn-shanghai.aliyuncs.com/",
+    "ossKey": "moyuyo/post/2026/07/02/abc.jpg",
+    "signature": "...",
+    "expireSeconds": 600,
+    "cdnUrl": "https://cdn.moyuyo.com/moyuyo/post/2026/07/02/abc.jpg"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "code": 0,
+  "data": {
+    "orderNo": "MO20260702000001",
+    "payStatus": "PAID",
+    "paidAt": "2026-07-02T10:35:22Z",
+    "payChannel": "STRIPE",
+    "transactionId": "pi_3MqXxxxx"
+  }
+}

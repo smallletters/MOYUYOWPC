@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单改价 - MOYUYO 管理后台</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* state-warning */
+  --state-warning: #ff9500;
+  --state-warning-surface: #fff4e5;
+  --state-warning-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12);
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+/* ============================================================
+ * Button
+ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+/* ============================================================
+ * Card
+ */
+.card{width:188px;min-height:148px;padding:calc(var(--spacing)*5);display:flex;flex-direction:column;justify-content:space-between;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);transition:transform .18s ease,box-shadow .18s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+
+/* ============================================================
+ * Input
+ */
+.surface{display:flex;gap:calc(var(--spacing)*2);padding:calc(var(--spacing)*3);border:1px solid var(--border);border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow-sm)}
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field.small{height:40px}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.field.disabled{opacity:.55}
+.icon,.clear{padding:0;border:0;background:transparent;color:var(--icon-muted);font:inherit}
+.icon{font-size:13px}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* 后台管理侧边栏样式 */
+      .admin-sidebar {
+        background: #1d1d1f;
+        width: 220px;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 50;
+      }
+      .admin-sidebar .logo {
+        padding: 20px 20px 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+      }
+      .admin-sidebar .logo-text {
+        font-size: 16px;
+        font-weight: 700;
+        color: #ffffff;
+        letter-spacing: 0.02em;
+      }
+      .admin-sidebar .nav-section {
+        padding: 12px 12px 4px;
+      }
+      .admin-sidebar .nav-label {
+        font-size: 10px;
+        font-weight: 600;
+        color: rgba(255,255,255,0.35);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        padding: 0 8px 8px;
+      }
+      .admin-sidebar .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        color: rgba(255,255,255,0.6);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        text-decoration: none;
+        margin-bottom: 2px;
+      }
+      .admin-sidebar .nav-item:hover {
+        background: rgba(255,255,255,0.06);
+        color: rgba(255,255,255,0.9);
+      }
+      .admin-sidebar .nav-item.active {
+        background: rgba(0,122,255,0.2);
+        color: #ffffff;
+      }
+      .admin-sidebar .nav-item.active i {
+        color: var(--brand-500);
+      }
+
+      /* 主内容区 */
+      .admin-main {
+        margin-left: 220px;
+        min-height: 100vh;
+        background: var(--background-100);
+      }
+
+      /* 顶部栏 */
+      .admin-topbar {
+        height: 56px;
+        background: var(--background);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        position: sticky;
+        top: 0;
+        z-index: 40;
+      }
+
+      /* 表格样式 */
+      .admin-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .admin-table th {
+        text-align: left;
+        padding: 10px 14px;
+        font-weight: 600;
+        font-size: 12px;
+        color: var(--text-400);
+        border-bottom: 1px solid var(--border);
+        background: var(--background-100);
+        white-space: nowrap;
+      }
+      .admin-table td {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text-700);
+        vertical-align: middle;
+      }
+      .admin-table tbody tr:hover {
+        background: var(--accent);
+      }
+      .admin-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+
+      /* 审批状态标签 */
+      .tag-approved {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+      .tag-pending {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        background: var(--state-warning-surface);
+        color: var(--state-warning);
+      }
+      .tag-rejected {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        background: var(--state-error-surface);
+        color: var(--state-error);
+      }
+      .tag-none {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        background: var(--background-200);
+        color: var(--text-500);
+      }
+
+      /* Tab 样式 */
+      .tab-item {
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-400);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.15s ease;
+      }
+      .tab-item:hover {
+        color: var(--text-700);
+      }
+      .tab-item.active {
+        color: var(--brand-500);
+        border-bottom-color: var(--brand-500);
+      }
+
+      /* 改价面板表单 */
+      .form-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-600);
+        margin-bottom: 6px;
+      }
+      .form-label .required {
+        color: var(--state-error);
+        margin-left: 2px;
+      }
+      .form-input {
+        width: 100%;
+        height: 40px;
+        padding: 0 12px;
+        border: 1px solid var(--input);
+        border-radius: 8px;
+        background: var(--background);
+        color: var(--foreground);
+        font-size: 13px;
+        font-weight: 500;
+        outline: none;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .form-input:focus {
+        border-color: var(--ring);
+        box-shadow: 0 0 0 3px rgba(0,122,255,0.12);
+      }
+      .form-input.readonly {
+        background: var(--background-200);
+        color: var(--text-500);
+        cursor: not-allowed;
+      }
+      .form-select {
+        width: 100%;
+        height: 40px;
+        padding: 0 32px 0 12px;
+        border: 1px solid var(--input);
+        border-radius: 8px;
+        background: var(--background);
+        color: var(--foreground);
+        font-size: 13px;
+        font-weight: 500;
+        outline: none;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238e8e93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .form-select:focus {
+        border-color: var(--ring);
+        box-shadow: 0 0 0 3px rgba(0,122,255,0.12);
+      }
+      .form-textarea {
+        width: 100%;
+        min-height: 72px;
+        padding: 10px 12px;
+        border: 1px solid var(--input);
+        border-radius: 8px;
+        background: var(--background);
+        color: var(--foreground);
+        font-size: 13px;
+        font-weight: 500;
+        outline: none;
+        resize: vertical;
+        font-family: var(--font-sans);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .form-textarea:focus {
+        border-color: var(--ring);
+        box-shadow: 0 0 0 3px rgba(0,122,255,0.12);
+      }
+
+      /* 变动金额颜色 */
+      .price-up {
+        color: var(--state-error);
+        font-weight: 600;
+      }
+      .price-down {
+        color: var(--state-success);
+        font-weight: 600;
+      }
+
+      /* 小按钮 */
+      .btn-sm {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 5px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .btn-sm.btn-approve {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+      .btn-sm.btn-approve:hover {
+        background: var(--state-success);
+        color: var(--state-success-foreground);
+      }
+      .btn-sm.btn-reject {
+        background: var(--state-error-surface);
+        color: var(--state-error);
+      }
+      .btn-sm.btn-reject:hover {
+        background: var(--state-error);
+        color: var(--state-error-foreground);
+      }
+      .btn-sm.btn-outline {
+        background: transparent;
+        color: var(--primary);
+        border: 1px solid var(--primary);
+      }
+      .btn-sm.btn-outline:hover {
+        background: var(--brand-50);
+      }
+
+      /* 面包屑 */
+      .breadcrumb-item {
+        font-size: 13px;
+        color: var(--text-400);
+        text-decoration: none;
+      }
+      .breadcrumb-item:hover {
+        color: var(--primary);
+      }
+      .breadcrumb-item.current {
+        color: var(--text-800);
+        font-weight: 600;
+      }
+
+      /* 审批提示 */
+      .approval-notice {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .approval-notice.info {
+        background: var(--brand-50);
+        color: var(--brand-700);
+        border: 1px solid var(--brand-200);
+      }
+      .approval-notice.warning {
+        background: var(--state-warning-surface);
+        color: var(--state-warning);
+        border: 1px solid #ffc97a;
+      }
+    
+    /* 妗岄潰绔鐞嗛〉闈㈡渶灏忓搴︾害鏉?*/
+    body { min-width: 1280px; }</style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+  <div class="flex">
+
+    <!-- ========== 左侧导航栏（深色） ========== -->
+    <aside class="admin-sidebar">
+      <!-- Logo -->
+      <div class="logo">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--brand-500);">
+          <i data-lucide="paw-print" class="w-5 h-5" style="color: #ffffff;"></i>
+        </div>
+        <span class="logo-text">MOYUYO</span>
+      </div>
+
+      <!-- 导航菜单 -->
+      <div class="nav-section flex-1 overflow-y-auto no-scrollbar" style="padding-top: 16px;">
+        <div class="nav-label">主菜单</div>
+
+        <a class="nav-item" href="#">
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+          <span>仪表盘</span>
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="package" class="w-4 h-4"></i>
+          <span>商品管理</span>
+        </a>
+
+        <!-- 订单管理（当前高亮） -->
+        <a class="nav-item active" href="#">
+          <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+          <span>订单管理</span>
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="users" class="w-4 h-4"></i>
+          <span>用户管理</span>
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="megaphone" class="w-4 h-4"></i>
+          <span>营销管理</span>
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="file-text" class="w-4 h-4"></i>
+          <span>内容管理</span>
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="headphones" class="w-4 h-4"></i>
+          <span>客服管理</span>
+        </a>
+
+        <div class="nav-label" style="margin-top: 12px;">数据与运营</div>
+
+        <a class="nav-item" href="#">
+          <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+          <span>数据统计</span>
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="truck" class="w-4 h-4"></i>
+          <span>物流管理</span>
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="shield-alert" class="w-4 h-4"></i>
+          <span>风控管理</span>
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="settings" class="w-4 h-4"></i>
+          <span>系统设置</span>
+        </a>
+      </div>
+
+      <!-- 底部用户信息 -->
+      <div style="padding: 16px; border-top: 1px solid rgba(255,255,255,0.08);">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center" style="background: var(--brand-500);">
+            <i data-lucide="user" class="w-4 h-4" style="color: #ffffff;"></i>
+          </div>
+          <div>
+            <div style="font-size: 12px; font-weight: 600; color: #ffffff;">Admin</div>
+            <div style="font-size: 10px; color: rgba(255,255,255,0.4);">运营主管</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ========== 右侧主内容区 ========== -->
+    <div class="admin-main">
+
+      <!-- 顶部栏 -->
+      <header class="admin-topbar">
+        <!-- 左侧面包屑 -->
+        <div class="flex items-center gap-2">
+          <a class="breadcrumb-item" href="#">订单管理</a>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5" style="color: var(--text-400);"></i>
+          <span class="breadcrumb-item current">订单改价</span>
+        </div>
+        <!-- 右侧操作 -->
+        <div class="flex items-center gap-3">
+          <!-- 搜索 -->
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg" style="background: var(--background-200); border: 1px solid var(--border); width: 220px;">
+            <i data-lucide="search" class="w-4 h-4" style="color: var(--text-400);"></i>
+            <input type="text" placeholder="搜索功能..." class="bg-transparent border-none outline-none text-sm flex-1" style="color: var(--foreground);">
+          </div>
+          <!-- 通知 -->
+          <button class="relative w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--background-200); border: 1px solid var(--border);" aria-label="通知">
+            <i data-lucide="bell" class="w-4 h-4" style="color: var(--text-500);"></i>
+            <span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full" style="background: var(--state-error); border: 2px solid var(--background);"></span>
+          </button>
+          <!-- 用户 -->
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--brand-50); border: 1px solid var(--border);">
+            <i data-lucide="user" class="w-4 h-4" style="color: var(--brand-500);"></i>
+          </div>
+        </div>
+      </header>
+
+      <!-- 页面内容 -->
+      <div style="padding: 24px;">
+
+        <!-- ===== 页面标题 ===== -->
+        <div class="flex items-center justify-between" style="margin-bottom: 20px;">
+          <div>
+            <h1 class="text-xl font-bold" style="color: var(--text-900);">订单改价</h1>
+            <p class="text-sm mt-1" style="color: var(--text-400);">管理订单价格调整、审批流程及改价记录</p>
+          </div>
+        </div>
+
+        <!-- ===== 改价统计卡片（3个） ===== -->
+        <div class="grid grid-cols-3 gap-4" style="margin-bottom: 24px;">
+
+          <!-- 今日改价 -->
+          <div class="rounded-xl p-5" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-xs);">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: var(--brand-50);">
+                  <i data-lucide="receipt" class="w-4.5 h-4.5" style="color: var(--brand-500);"></i>
+                </div>
+                <span class="text-xs font-medium" style="color: var(--text-400);">今日改价</span>
+              </div>
+              <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--background-200); color: var(--text-500);">单</span>
+            </div>
+            <div class="text-2xl font-bold" style="color: var(--text-900);">12</div>
+            <div class="flex items-center gap-1 mt-1.5">
+              <i data-lucide="trending-up" class="w-3.5 h-3.5" style="color: var(--state-success);"></i>
+              <span class="text-xs font-semibold" style="color: var(--state-success);">+3</span>
+              <span class="text-xs" style="color: var(--text-400);">vs 昨日</span>
+            </div>
+          </div>
+
+          <!-- 待审批 -->
+          <div class="rounded-xl p-5" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-xs);">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: var(--state-warning-surface);">
+                  <i data-lucide="clock" class="w-4.5 h-4.5" style="color: var(--state-warning);"></i>
+                </div>
+                <span class="text-xs font-medium" style="color: var(--text-400);">待审批</span>
+              </div>
+              <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--state-warning-surface); color: var(--state-warning);">需处理</span>
+            </div>
+            <div class="text-2xl font-bold" style="color: var(--text-900);">3</div>
+            <div class="flex items-center gap-1 mt-1.5">
+              <i data-lucide="alert-circle" class="w-3.5 h-3.5" style="color: var(--state-warning);"></i>
+              <span class="text-xs" style="color: var(--text-400);">2 笔超过 2 小时</span>
+            </div>
+          </div>
+
+          <!-- 平均改价幅度 -->
+          <div class="rounded-xl p-5" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-xs);">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: var(--brand-50);">
+                  <i data-lucide="percent" class="w-4.5 h-4.5" style="color: var(--brand-500);"></i>
+                </div>
+                <span class="text-xs font-medium" style="color: var(--text-400);">平均改价幅度</span>
+              </div>
+            </div>
+            <div class="text-2xl font-bold" style="color: var(--state-success);">-5.2%</div>
+            <div class="flex items-center gap-1 mt-1.5">
+              <i data-lucide="trending-down" class="w-3.5 h-3.5" style="color: var(--state-success);"></i>
+              <span class="text-xs" style="color: var(--text-400);">近 7 天趋势</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ===== 改价操作区（顶部操作栏） ===== -->
+        <div class="rounded-xl p-5" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-xs); margin-bottom: 24px;">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <!-- 订单号搜索 -->
+              <div class="flex items-center gap-2 px-3 py-2 rounded-lg" style="background: var(--background); border: 1px solid var(--input); width: 240px;">
+                <i data-lucide="search" class="w-4 h-4" style="color: var(--text-400);"></i>
+                <input type="text" placeholder="输入订单号搜索..." class="bg-transparent border-none outline-none text-sm flex-1" style="color: var(--foreground);" value="MOYU2026070500123">
+              </div>
+              <!-- 改价类型下拉 -->
+              <select class="form-select" style="width: 160px; height: 40px;">
+                <option>全部类型</option>
+                <option>补运费</option>
+                <option>减差价</option>
+                <option>人工优惠</option>
+              </select>
+            </div>
+            <!-- 发起改价按钮 -->
+            <button class="btn btn-primary" style="height: 40px; padding: 0 20px;">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>发起改价</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ===== 改价表单（页内面板） ===== -->
+        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-xs); margin-bottom: 24px;">
+          <div class="flex items-center justify-between" style="margin-bottom: 20px;">
+            <div class="flex items-center gap-2">
+              <i data-lucide="pencil-line" class="w-5 h-5" style="color: var(--brand-500);"></i>
+              <h2 class="text-base font-bold" style="color: var(--text-900);">改价操作</h2>
+            </div>
+            <button class="btn-sm btn-outline">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+              <span>关闭</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-x-6 gap-y-4">
+            <!-- 订单号（只读） -->
+            <div>
+              <label class="form-label">订单号</label>
+              <input type="text" class="form-input readonly" value="MOYU2026070500123" readonly>
+            </div>
+
+            <!-- 原始金额（只读） -->
+            <div>
+              <label class="form-label">原始金额</label>
+              <input type="text" class="form-input readonly" value="$85.00" readonly>
+            </div>
+
+            <!-- 改价类型 -->
+            <div>
+              <label class="form-label">改价类型</label>
+              <select class="form-select">
+                <option>补运费</option>
+                <option selected>减差价</option>
+                <option>人工优惠</option>
+              </select>
+            </div>
+
+            <!-- 改价后金额 -->
+            <div>
+              <label class="form-label">改价后金额</label>
+              <input type="number" class="form-input" value="78.00" step="0.01">
+            </div>
+
+            <!-- 改价原因分类 -->
+            <div>
+              <label class="form-label">改价原因分类 <span class="required">*</span></label>
+              <select class="form-select">
+                <option value="">请选择原因分类</option>
+                <option selected>价格保护</option>
+                <option>协商降价</option>
+                <option>补偿性质</option>
+                <option>其他</option>
+              </select>
+            </div>
+
+            <!-- 审批状态 -->
+            <div>
+              <label class="form-label">审批状态</label>
+              <div class="flex items-center gap-2 h-[40px]">
+                <span class="tag-approved">
+                  <i data-lucide="check-circle-2" class="w-3 h-3"></i>
+                  无需审批
+                </span>
+                <span class="text-xs" style="color: var(--text-400);">（变动金额 &lt; $50）</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 改价说明 -->
+          <div style="margin-top: 16px;">
+            <label class="form-label">改价说明 <span class="required">*</span></label>
+            <textarea class="form-textarea" placeholder="请详细说明改价原因...">客户反馈同一商品在竞品平台售价更低，经核实后执行价格保护政策，按照差价进行减免。</textarea>
+          </div>
+
+          <!-- 审批提示 -->
+          <div class="approval-notice info" style="margin-top: 16px;">
+            <i data-lucide="info" class="w-4 h-4 shrink-0" style="margin-top: 1px;"></i>
+            <span>当前改价变动金额为 $7.00，未超过 $50 阈值，无需主管审批即可生效。</span>
+          </div>
+
+          <!-- 操作按钮 -->
+          <div class="flex items-center gap-3" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
+            <button class="btn btn-primary">
+              <i data-lucide="check" class="w-4 h-4"></i>
+              <span>提交改价</span>
+            </button>
+            <button class="btn" style="background: var(--secondary); color: var(--secondary-foreground);">
+              <span>取消</span>
+            </button>
+            <div class="flex-1"></div>
+            <span class="text-xs" style="color: var(--text-400);">操作人：Admin · 运营主管</span>
+          </div>
+        </div>
+
+        <!-- ===== Tab 切换区域 ===== -->
+        <div class="rounded-xl overflow-hidden" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-xs);">
+          <!-- Tab 头部 -->
+          <div class="flex items-center" style="border-bottom: 1px solid var(--border);">
+            <div class="tab-item active" id="tabRecords" onclick="switchTab('records')">
+              <span>改价记录</span>
+            </div>
+            <div class="tab-item" id="tabApproval" onclick="switchTab('approval')">
+              <span>审批队列</span>
+              <span class="inline-flex items-center justify-center w-4.5 h-4.5 rounded-full text-[10px] font-bold ml-1" style="background: var(--state-error); color: #ffffff; width: 18px; height: 18px;">3</span>
+            </div>
+          </div>
+
+          <!-- ===== 改价记录列表（表格） ===== -->
+          <div id="panelRecords">
+            <!-- 筛选栏 -->
+            <div class="flex items-center gap-3 px-5 py-3" style="border-bottom: 1px solid var(--border);">
+              <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg" style="background: var(--background); border: 1px solid var(--input); width: 200px;">
+                <i data-lucide="search" class="w-3.5 h-3.5" style="color: var(--text-400);"></i>
+                <input type="text" placeholder="按订单号查询..." class="bg-transparent border-none outline-none text-xs flex-1" style="color: var(--foreground);">
+              </div>
+              <select class="form-select" style="width: 120px; height: 32px; font-size: 12px;">
+                <option>全部操作人</option>
+                <option>Admin</option>
+                <option>Sarah</option>
+                <option>Mike</option>
+              </select>
+              <div class="flex items-center gap-2">
+                <input type="date" class="form-input" style="width: 140px; height: 32px; font-size: 12px;" value="2026-07-01">
+                <span class="text-xs" style="color: var(--text-400);">至</span>
+                <input type="date" class="form-input" style="width: 140px; height: 32px; font-size: 12px;" value="2026-07-09">
+              </div>
+              <div class="flex-1"></div>
+              <button class="btn-sm btn-outline" style="height: 32px;">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>导出</span>
+              </button>
+            </div>
+
+            <!-- 表格 -->
+            <div class="overflow-x-auto">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>订单号</th>
+                    <th>改价类型</th>
+                    <th>原金额</th>
+                    <th>改后金额</th>
+                    <th>变动金额</th>
+                    <th>原因</th>
+                    <th>操作人</th>
+                    <th>审批状态</th>
+                    <th>操作时间</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- 记录 1 -->
+                  <tr>
+                    <td style="font-weight: 600; color: var(--text-800);">MOYU2026070500123</td>
+                    <td>
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium" style="background: var(--state-error-surface); color: var(--state-error);">减差价</span>
+                    </td>
+                    <td>$85.00</td>
+                    <td>$78.00</td>
+                    <td><span class="price-down">-$7.00</span></td>
+                    <td style="max-width: 160px;">
+                      <span class="text-xs" style="color: var(--text-500);">价格保护 - 客户竞品比价</span>
+                    </td>
+                    <td>Admin</td>
+                    <td><span class="tag-none">无需审批</span></td>
+                    <td style="color: var(--text-400); font-size: 12px;">2026-07-09 14:32</td>
+                  </tr>
+                  <!-- 记录 2 -->
+                  <tr>
+                    <td style="font-weight: 600; color: var(--text-800);">MOYU2026070500098</td>
+                    <td>
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium" style="background: var(--brand-50); color: var(--brand-700);">补运费</span>
+                    </td>
+                    <td>$42.00</td>
+                    <td>$56.80</td>
+                    <td><span class="price-up">+$14.80</span></td>
+                    <td style="max-width: 160px;">
+                      <span class="text-xs" style="color: var(--text-500);">偏远地区附加运费</span>
+                    </td>
+                    <td>Sarah</td>
+                    <td><span class="tag-approved">
+                      <i data-lucide="check-circle-2" class="w-3 h-3"></i>已通过
+                    </span></td>
+                    <td style="color: var(--text-400); font-size: 12px;">2026-07-09 11:15</td>
+                  </tr>
+                  <!-- 记录 3 -->
+                  <tr>
+                    <td style="font-weight: 600; color: var(--text-800);">MOYU2026070500087</td>
+                    <td>
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium" style="background: var(--brand-50); color: var(--brand-700);">人工优惠</span>
+                    </td>
+                    <td>$156.00</td>
+                    <td>$128.00</td>
+                    <td><span class="price-down">-$28.00</span></td>
+                    <td style="max-width: 160px;">
+                      <span class="text-xs" style="color: var(--text-500);">协商降价 - 大客户折扣</span>
+                    </td>
+                    <td>Mike</td>
+                    <td><span class="tag-approved">
+                      <i data-lucide="check-circle-2" class="w-3 h-3"></i>已通过
+                    </span></td>
+                    <td style="color: var(--text-400); font-size: 12px;">2026-07-08 16:48</td>
+                  </tr>
+                  <!-- 记录 4 -->
+                  <tr>
+                    <td style="font-weight: 600; color: var(--text-800);">MOYU2026070500065</td>
+                    <td>
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium" style="background: var(--state-error-surface); color: var(--state-error);">减差价</span>
+                    </td>
+                    <td>$230.00</td>
+                    <td>$185.00</td>
+                    <td><span class="price-down">-$45.00</span></td>
+                    <td style="max-width: 160px;">
+                      <span class="text-xs" style="color: var(--text-500);">补偿性质 - 物流破损致歉</span>
+                    </td>
+                    <td>Admin</td>
+                    <td><span class="tag-pending">
+                      <i data-lucide="clock" class="w-3 h-3"></i>待审批
+                    </span></td>
+                    <td style="color: var(--text-400); font-size: 12px;">2026-07-08 10:20</td>
+                  </tr>
+                  <!-- 记录 5 -->
+                  <tr>
+                    <td style="font-weight: 600; color: var(--text-800);">MOYU2026070400152</td>
+                    <td>
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium" style="background: var(--brand-50); color: var(--brand-700);">人工优惠</span>
+                    </td>
+                    <td>$99.00</td>
+                    <td>$49.00</td>
+                    <td><span class="price-down">-$50.00</span></td>
+                    <td style="max-width: 160px;">
+                      <span class="text-xs" style="color: var(--text-500);">协商降价 - VIP 客户优惠</span>
+                    </td>
+                    <td>Sarah</td>
+                    <td><span class="tag-rejected">
+                      <i data-lucide="x-circle" class="w-3 h-3"></i>已驳回
+                    </span></td>
+                    <td style="color: var(--text-400); font-size: 12px;">2026-07-07 15:30</td>
+                  </tr>
+                  <!-- 记录 6 -->
+                  <tr>
+                    <td style="font-weight: 600; color: var(--text-800);">MOYU2026070400133</td>
+                    <td>
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium" style="background: var(--brand-50); color: var(--brand-700);">补运费</span>
+                    </td>
+                    <td>$78.00</td>
+                    <td>$92.50</td>
+                    <td><span class="price-up">+$14.50</span></td>
+                    <td style="max-width: 160px;">
+                      <span class="text-xs" style="color: var(--text-500);">换货补发运费</span>
+                    </td>
+                    <td>Mike</td>
+                    <td><span class="tag-none">无需审批</span></td>
+                    <td style="color: var(--text-400); font-size: 12px;">2026-07-07 09:45</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 分页 -->
+            <div class="flex items-center justify-between px-5 py-3" style="border-top: 1px solid var(--border);">
+              <span class="text-xs" style="color: var(--text-400);">共 86 条记录</span>
+              <div class="flex items-center gap-1">
+                <button class="w-8 h-8 rounded-lg flex items-center justify-center text-xs" style="background: var(--background-200); color: var(--text-400); border: 1px solid var(--border);">
+                  <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+                </button>
+                <button class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold" style="background: var(--brand-500); color: #ffffff; border: 1px solid var(--brand-500);">1</button>
+                <button class="w-8 h-8 rounded-lg flex items-center justify-center text-xs" style="background: var(--background); color: var(--text-600); border: 1px solid var(--border);">2</button>
+                <button class="w-8 h-8 rounded-lg flex items-center justify-center text-xs" style="background: var(--background); color: var(--text-600); border: 1px solid var(--border);">3</button>
+                <span class="text-xs px-1" style="color: var(--text-400);">...</span>
+                <button class="w-8 h-8 rounded-lg flex items-center justify-center text-xs" style="background: var(--background); color: var(--text-600); border: 1px solid var(--border);">9</button>
+                <button class="w-8 h-8 rounded-lg flex items-center justify-center text-xs" style="background: var(--background-200); color: var(--text-400); border: 1px solid var(--border);">
+                  <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== 审批队列面板 ===== -->
+          <div id="panelApproval" style="display: none;">
+            <div class="px-5 py-3" style="border-bottom: 1px solid var(--border);">
+              <div class="flex items-center gap-2">
+                <i data-lucide="info" class="w-4 h-4" style="color: var(--state-warning);"></i>
+                <span class="text-xs" style="color: var(--text-500);">以下改价申请变动金额 >= $50，需要主管审批后生效。请仔细审核改价原因。</span>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>订单号</th>
+                    <th>改价类型</th>
+                    <th>原金额</th>
+                    <th>改后金额</th>
+                    <th>变动金额</th>
+                    <th>原因分类</th>
+                    <th>改价说明</th>
+                    <th>申请人</th>
+                    <th>申请时间</th>
+                    <th style="text-align: center;">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- 待审批 1 -->
+                  <tr>
+                    <td style="font-weight: 600; color: var(--text-800);">MOYU2026070500065</td>
+                    <td>
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium" style="background: var(--state-error-surface); color: var(--state-error);">减差价</span>
+                    </td>
+                    <td>$230.00</td>
+                    <td>$185.00</td>
+                    <td><span class="price-down">-$45.00</span></td>
+                    <td>补偿性质</td>
+                    <td style="max-width: 140px;">
+                      <span class="text-xs" style="color: var(--text-500);">客户收到商品外包装破损，协商后补偿差价</span>
+                    </td>
+                    <td>Admin</td>
+                    <td style="color: var(--text-400); font-size: 12px;">2026-07-08 10:20</td>
+                    <td>
+                      <div class="flex items-center justify-center gap-2">
+                        <button class="btn-sm btn-approve">
+                          <i data-lucide="check" class="w-3 h-3"></i>
+                          通过
+                        </button>
+                        <button class="btn-sm btn-reject">
+                          <i data-lucide="x" class="w-3 h-3"></i>
+                          驳回
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <!-- 待审批 2 -->
+                  <tr>
+                    <td style="font-weight: 600; color: var(--text-800);">MOYU2026070500112</td>
+                    <td>
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium" style="background: var(--brand-50); color: var(--brand-700);">人工优惠</span>
+                    </td>
+                    <td>$320.00</td>
+                    <td>$260.00</td>
+                    <td><span class="price-down">-$60.00</span></td>
+                    <td>协商降价</td>
+                    <td style="max-width: 140px;">
+                      <span class="text-xs" style="color: var(--text-500);">批量采购客户申请折扣优惠</span>
+                    </td>
+                    <td>Sarah</td>
+                    <td style="color: var(--text-400); font-size: 12px;">2026-07-08 14:55</td>
+                    <td>
+                      <div class="flex items-center justify-center gap-2">
+                        <button class="btn-sm btn-approve">
+                          <i data-lucide="check" class="w-3 h-3"></i>
+                          通过
+                        </button>
+                        <button class="btn-sm btn-reject">
+                          <i data-lucide="x" class="w-3 h-3"></i>
+                          驳回
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <!-- 待审批 3 -->
+                  <tr>
+                    <td style="font-weight: 600; color: var(--text-800);">MOYU2026070900018</td>
+                    <td>
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium" style="background: var(--state-error-surface); color: var(--state-error);">减差价</span>
+                    </td>
+                    <td>$198.00</td>
+                    <td>$142.00</td>
+                    <td><span class="price-down">-$56.00</span></td>
+                    <td>价格保护</td>
+                    <td style="max-width: 140px;">
+                      <span class="text-xs" style="color: var(--text-500);">客户举证竞品同款售价更低，符合价格保护政策</span>
+                    </td>
+                    <td>Mike</td>
+                    <td style="color: var(--text-400); font-size: 12px;">2026-07-09 09:12</td>
+                    <td>
+                      <div class="flex items-center justify-center gap-2">
+                        <button class="btn-sm btn-approve">
+                          <i data-lucide="check" class="w-3 h-3"></i>
+                          通过
+                        </button>
+                        <button class="btn-sm btn-reject">
+                          <i data-lucide="x" class="w-3 h-3"></i>
+                          驳回
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+      <!-- /页面内容 -->
+
+    </div>
+    <!-- /右侧主内容区 -->
+
+  </div>
+
+  <!-- Tab 切换逻辑 -->
+  <script>
+    // 切换改价记录 / 审批队列 Tab
+    function switchTab(tab) {
+      var tabRecords = document.getElementById('tabRecords');
+      var tabApproval = document.getElementById('tabApproval');
+      var panelRecords = document.getElementById('panelRecords');
+      var panelApproval = document.getElementById('panelApproval');
+
+      if (tab === 'records') {
+        tabRecords.classList.add('active');
+        tabApproval.classList.remove('active');
+        panelRecords.style.display = 'block';
+        panelApproval.style.display = 'none';
+      } else {
+        tabApproval.classList.add('active');
+        tabRecords.classList.remove('active');
+        panelApproval.style.display = 'block';
+        panelRecords.style.display = 'none';
+      }
+    }
+  </script>
+
+  <!-- 初始化 Lucide 图标 -->
+  <script>lucide.createIcons();</script>
+</body>
+</html>

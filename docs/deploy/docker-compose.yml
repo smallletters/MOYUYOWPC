@@ -1,0 +1,155 @@
+version: '3.8'
+
+services:
+  # ==================== MySQL ====================
+  mysql:
+    image: mysql:8.0.35
+    container_name: moyuyo-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Shanghai
+    volumes:
+      - /opt/moyuyo/data/mysql:/var/lib/mysql
+      - /opt/moyuyo/logs/mysql:/var/log/mysql
+      - ./init-sql:/docker-entrypoint-initdb.d
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+      - --max_connections=1000
+      - --innodb_buffer_pool_size=512M
+      - --innodb_log_file_size=256M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==================== Redis ====================
+  redis:
+    image: redis:7.2-alpine
+    container_name: moyuyo-redis
+    ports:
+      - "6379:6379"
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - /opt/moyuyo/data/redis:/data
+      - /opt/moyuyo/logs/redis:/var/log/redis
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==================== RocketMQ NameServer ====================
+  rocketmq-namesrv:
+    image: apache/rocketmq:4.9.5
+    container_name: moyuyo-rocketmq-namesrv
+    ports:
+      - "9876:9876"
+    environment:
+      TZ: Asia/Shanghai
+      NAMESRV_ADDR: 0.0.0.0:9876
+    volumes:
+      - /opt/moyuyo/data/rocketmq/namesrv:/home/rocketmq/store
+      - /opt/moyuyo/logs/rocketmq/namesrv:/home/rocketmq/logs
+    command: sh mqnamesrv
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "sh", "-c", "echo 'ping' | nc localhost 9876"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==================== RocketMQ Broker ====================
+  rocketmq-broker:
+    image: apache/rocketmq:4.9.5
+    container_name: moyuyo-rocketmq-broker
+    ports:
+      - "10911:10911"
+      - "10909:10909"
+    environment:
+      TZ: Asia/Shanghai
+      NAMESRV_ADDR: rocketmq-namesrv:9876
+      BROKER_NAME: broker-a
+      BROKER_ID: 0
+      DEFAULT_TOPIC_QUEUE_NUMS: 4
+      AUTO_CREATE_TOPIC_ENABLE: "true"
+    volumes:
+      - /opt/moyuyo/data/rocketmq/broker:/home/rocketmq/store
+      - /opt/moyuyo/logs/rocketmq/broker:/home/rocketmq/logs
+    command: sh mqbroker -n rocketmq-namesrv:9876
+    depends_on:
+      rocketmq-namesrv:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ==================== MOYUYO Backend ====================
+  moyuyo-backend:
+    image: ${DOCKER_IMAGE}:${DOCKER_TAG}
+    container_name: moyuyo-backend
+    ports:
+      - "8080:8080"
+    environment:
+      TZ: Asia/Shanghai
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=utf8mb4
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      ROCKETMQ_NAME_SERVER: rocketmq-namesrv:9876
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS}
+      JWT_REFRESH_EXPIRE_DAYS: ${JWT_REFRESH_EXPIRE_DAYS}
+      STRIPE_API_KEY: ${STRIPE_API_KEY}
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET}
+      APPLE_PAY_MERCHANT_ID: ${APPLE_PAY_MERCHANT_ID}
+      GOOGLE_PAY_MERCHANT_ID: ${GOOGLE_PAY_MERCHANT_ID}
+      CLOUDFLARE_API_KEY: ${CLOUDFLARE_API_KEY}
+      AWS_ACCESS_KEY: ${AWS_ACCESS_KEY}
+      AWS_SECRET_KEY: ${AWS_SECRET_KEY}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+    volumes:
+      - /opt/moyuyo/logs/backend:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rocketmq-namesrv:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==================== Nginx ====================
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: moyuyo-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/html:/usr/share/nginx/html
+      - ./nginx/logs:/var/log/nginx
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      moyuyo-backend:
+        condition: service_healthy
+    restart: unless-stopped

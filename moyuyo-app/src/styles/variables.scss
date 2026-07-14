@@ -1,0 +1,104 @@
+/**
+ * MOYUYO 品牌色板 + Design Tokens
+ * 来源：需求文档 §7.1 品牌色板
+ * 所有颜色采用 CSS 变量驱动，支持深色模式自动切换
+ */
+
+:root {
+  /* ===== 品牌主色 ===== */
+  --color-primary: #DBC98A;          /* Sand Gold 主色（CTA、Logo 主色、卡片高亮） */
+  --color-primary-light: #E8DDB5;    /* 主色浅一档 */
+  --color-primary-dark: #B8A66B;     /* 主色深一档 */
+
+  /* ===== 中性色 ===== */
+  --color-background: #F6F2EE;       /* Linen 背景 */
+  --color-surface: #FFFFFF;          /* 卡片表面 */
+  --color-text: #2E2B29;              /* Charcoal 文字 */
+  --color-text-secondary: #6E6962;    /* 次要文字 */
+  --color-text-tertiary: #9A948C;     /* 三级文字 */
+  --color-divider: #EAE5DD;           /* 分割线 */
+
+  /* ===== 强调色 ===== */
+  --color-accent: #B38A5A;            /* Antique Brass 强调色 */
+  --color-success: #ABB9AD;           /* Sage Mist 成功 */
+  --color-warm: #D9B4B0;              /* Dusty Rose 情感 */
+  --color-warning: #E6B97A;
+  --color-danger: #C96E5F;            /* 错误/删除 */
+  --color-info: #8FA8B6;
+
+  /* ===== 4 大产品线色 ===== */
+  --color-care: #DBC98A;              /* Care 洗护：Linen + Sand Gold */
+  --color-gear: #ABB9AD;              /* Gear 出行：Sage Mist */
+  --color-play: #B38A5A;              /* Play 玩具：Antique Brass */
+  --color-home: #D9B4B0;              /* Home 家居：Dusty Rose */
+
+  /* ===== 圆角 ===== */
+  --radius-sm: 8rpx;
+  --radius-md: 16rpx;
+  --radius-lg: 24rpx;
+  --radius-pill: 9999rpx;
+
+  /* ===== 间距 ===== */
+  --space-xs: 8rpx;
+  --space-sm: 16rpx;
+  --space-md: 24rpx;
+  --space-lg: 32rpx;
+  --space-xl: 48rpx;
+  --space-2xl: 64rpx;
+
+  /* ===== 阴影 ===== */
+  --shadow-sm: 0 1rpx 4rpx rgba(46, 43, 41, 0.04);
+  --shadow-md: 0 4rpx 16rpx rgba(46, 43, 41, 0.06);
+  --shadow-lg: 0 8rpx 24rpx rgba(46, 43, 41, 0.10);
+
+  /* ===== 字号 ===== */
+  --font-size-xs: 22rpx;
+  --font-size-sm: 26rpx;
+  --font-size-base: 28rpx;
+  --font-size-md: 30rpx;
+  --font-size-lg: 32rpx;
+  --font-size-xl: 36rpx;
+  --font-size-2xl: 44rpx;
+  --font-size-3xl: 56rpx;
+
+  /* ===== 字重 ===== */
+  --font-weight-light: 300;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+}
+
+/* ===== 深色模式 ===== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #1A1816;
+    --color-surface: #2A2724;
+    --color-text: #F6F2EE;
+    --color-text-secondary: #B8B0A5;
+    --color-text-tertiary: #807A72;
+    --color-divider: #3A3530;
+    --color-primary: #C9B47A;     /* 降低饱和度适配深色 */
+    --color-primary-light: #D9C68F;
+    --color-primary-dark: #A8964F;
+    --shadow-sm: 0 1rpx 4rpx rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4rpx 16rpx rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8rpx 24rpx rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* 强制深色模式（用户在设置中切换） */
+.theme-dark {
+  --color-background: #1A1816;
+  --color-surface: #2A2724;
+  --color-text: #F6F2EE;
+  --color-text-secondary: #B8B0A5;
+  --color-text-tertiary: #807A72;
+  --color-divider: #3A3530;
+  --color-primary: #C9B47A;
+  --color-primary-light: #D9C68F;
+  --color-primary-dark: #A8964F;
+  --shadow-sm: 0 1rpx 4rpx rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4rpx 16rpx rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8rpx 24rpx rgba(0, 0, 0, 0.5);
+}

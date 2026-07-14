@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MOYUYO 管理后台 - 财务结算</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* state-warning */
+  --state-warning: #ff9500;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: 'DM Sans', -apple-system, sans-serif;
+  --font-serif: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12);
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+/*
+ * components.css - aggregated component CSS
+ */
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+.card{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-xs);transition:border-color .2s ease,transform .2s ease}
+.card:hover{border-color:var(--primary);transform:translateY(-1px)}
+.eyebrow{color:var(--muted-foreground);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.title{font-size:15px;line-height:1.25}
+.price{font-variant-numeric:tabular-nums}
+
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      /* 基础工具样式 */
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+
+      /* 页面专用样式 */
+      body {
+        font-family: 'DM Sans', -apple-system, sans-serif;
+        max-width: 393px;
+        margin: 0 auto;
+        min-height: 100vh;
+        position: relative;
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* 对账记录行 */
+      .recon-record {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--background-200);
+        transition: background-color 0.15s ease;
+      }
+      .recon-record:last-child {
+        border-bottom: none;
+      }
+      .recon-record:active {
+        background: var(--background-200);
+      }
+      .recon-record.has-discrepancy {
+        background: var(--state-error-surface);
+        border-left: 3px solid var(--state-error);
+      }
+
+      /* Tab 指示器 */
+      .channel-tab {
+        position: relative;
+        padding: 10px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-400);
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        transition: color 0.2s ease;
+        white-space: nowrap;
+      }
+      .channel-tab.active {
+        color: var(--primary);
+        font-weight: 600;
+      }
+      .channel-tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 24px;
+        height: 2.5px;
+        border-radius: 2px;
+        background: var(--primary);
+      }
+
+      /* 状态标签 */
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .status-badge.reconciled {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+      .status-badge.discrepancy {
+        background: var(--state-error-surface);
+        color: var(--state-error);
+      }
+      .status-badge.pending {
+        background: var(--background-200);
+        color: var(--text-500);
+      }
+
+      /* 折叠区域 */
+      .collapse-body {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+      }
+      .collapse-body.open {
+        max-height: 800px;
+      }
+      .collapse-trigger .collapse-arrow {
+        transition: transform 0.25s ease;
+      }
+      .collapse-trigger.open .collapse-arrow {
+        transform: rotate(180deg);
+      }
+
+      /* 异常告警项 */
+      .alert-item {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--background-200);
+        border-left: 3px solid var(--state-warning);
+        background: var(--background-50);
+      }
+      .alert-item:last-child {
+        border-bottom: none;
+      }
+      .alert-item.resolved {
+        border-left-color: var(--state-success);
+        opacity: 0.7;
+      }
+
+      /* 税务按钮 */
+      .tax-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--background-50);
+        color: var(--primary);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.15s ease, border-color 0.15s ease;
+      }
+      .tax-btn:active {
+        background: var(--background-200);
+        border-color: var(--primary);
+      }
+
+      /* 导出按钮 */
+      .export-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--background-50);
+        color: var(--primary);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+      }
+      .export-btn:active {
+        background: var(--background-200);
+      }
+
+      /* 操作链接 */
+      .action-link {
+        color: var(--primary);
+        font-size: 12px;
+        font-weight: 600;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        padding: 0;
+      }
+      .action-link:active {
+        opacity: 0.7;
+      }
+      .action-link.destructive {
+        color: var(--state-error);
+      }
+    
+    /* 妗岄潰绔鐞嗛〉闈㈡渶灏忓搴︾害鏉?*/
+    body { min-width: 1280px; }</style>
+</head>
+<body class="min-h-screen antialiased">
+    <main class="pb-8">
+
+      <!-- iOS 状态栏 -->
+      <div class="sticky top-0 z-30" style="background: var(--background);">
+        <div class="h-11 flex items-center justify-between px-5">
+          <span class="text-sm font-semibold" style="color: var(--foreground);">9:41</span>
+          <div class="flex items-center gap-1.5">
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/triangle-alert.svg'); mask-image: url('../assets/icons/dl-builtin-apple/triangle-alert.svg');"></span>
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/box.svg'); mask-image: url('../assets/icons/dl-builtin-apple/box.svg');"></span>
+            <span class="w-6 h-3 rounded-sm" style="background: var(--foreground);"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 顶部导航栏 -->
+      <div class="sticky top-11 z-20 flex items-center justify-between px-4 h-12" style="background: var(--background); border-bottom: 1px solid var(--border);">
+        <!-- 返回按钮 -->
+        <button class="flex items-center gap-1" data-dom-id="cta-back" aria-label="返回">
+          <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-left.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-left.svg'); color: var(--primary);"></span>
+        </button>
+        <!-- 页面标题 -->
+        <h1 class="text-base font-semibold" style="color: var(--foreground);">财务结算</h1>
+        <!-- 导出报表按钮 -->
+        <button class="export-btn" data-dom-id="cta-export-report" aria-label="导出报表">
+          <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/file.svg'); mask-image: url('../assets/icons/dl-builtin-apple/file.svg');"></span>
+          <span>导出</span>
+        </button>
+      </div>
+
+      <!-- ===== 结算概览 KPI 卡片 (2x2 网格) ===== -->
+      <section class="px-4 pt-4" aria-label="结算概览">
+        <div class="grid grid-cols-2 gap-3">
+          <!-- KPI 1: 本月结算总额 -->
+          <div class="rounded-[var(--radius)] p-3.5" style="background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
+            <div class="flex items-center gap-1.5 mb-2">
+              <div class="w-6 h-6 rounded-lg flex items-center justify-center" style="background: var(--brand-50);">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/box.svg'); mask-image: url('../assets/icons/dl-builtin-apple/box.svg'); color: var(--primary);"></span>
+              </div>
+              <span class="text-xs font-medium" style="color: var(--text-400);">本月结算总额</span>
+            </div>
+            <p class="text-xl font-bold" style="color: var(--foreground); font-variant-numeric: tabular-nums;">
+              &yen;128,560.00
+            </p>
+            <p class="text-xs mt-1" style="color: var(--state-success);">
+              <span>+12.3%</span>
+              <span style="color: var(--text-400);"> 较上月</span>
+            </p>
+          </div>
+
+          <!-- KPI 2: 待结算金额 -->
+          <div class="rounded-[var(--radius)] p-3.5" style="background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
+            <div class="flex items-center gap-1.5 mb-2">
+              <div class="w-6 h-6 rounded-lg flex items-center justify-center" style="background: #fff3e0;">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-pause.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-pause.svg'); color: var(--state-warning);"></span>
+              </div>
+              <span class="text-xs font-medium" style="color: var(--text-400);">待结算金额</span>
+            </div>
+            <p class="text-xl font-bold" style="color: var(--foreground); font-variant-numeric: tabular-nums;">
+              &yen;23,180.50
+            </p>
+            <p class="text-xs mt-1" style="color: var(--text-400);">3 笔 Payout 处理中</p>
+          </div>
+
+          <!-- KPI 3: 对账异常数 -->
+          <div class="rounded-[var(--radius)] p-3.5" style="background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
+            <div class="flex items-center gap-1.5 mb-2">
+              <div class="w-6 h-6 rounded-lg flex items-center justify-center" style="background: var(--state-error-surface);">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-alert.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-alert.svg'); color: var(--state-error);"></span>
+              </div>
+              <span class="text-xs font-medium" style="color: var(--text-400);">对账异常数</span>
+            </div>
+            <p class="text-xl font-bold" style="color: var(--state-error); font-variant-numeric: tabular-nums;">
+              5
+            </p>
+            <p class="text-xs mt-1" style="color: var(--text-400);">2 待处理 / 3 已处理</p>
+          </div>
+
+          <!-- KPI 4: 退款总额 -->
+          <div class="rounded-[var(--radius)] p-3.5" style="background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
+            <div class="flex items-center gap-1.5 mb-2">
+              <div class="w-6 h-6 rounded-lg flex items-center justify-center" style="background: var(--state-success-surface);">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/arrow-down.svg'); mask-image: url('../assets/icons/dl-builtin-apple/arrow-down.svg'); color: var(--state-success);"></span>
+              </div>
+              <span class="text-xs font-medium" style="color: var(--text-400);">退款总额</span>
+            </div>
+            <p class="text-xl font-bold" style="color: var(--foreground); font-variant-numeric: tabular-nums;">
+              &yen;3,420.00
+            </p>
+            <p class="text-xs mt-1" style="color: var(--text-400);">本月退款率 2.7%</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 对账渠道 Tab ===== -->
+      <section class="mt-5 px-4" aria-label="对账渠道">
+        <div class="flex" style="border-bottom: 1px solid var(--border);">
+          <button class="channel-tab active" data-tab="stripe" data-dom-id="tab-stripe">Stripe</button>
+          <button class="channel-tab" data-tab="paypal" data-dom-id="tab-paypal">PayPal</button>
+          <button class="channel-tab" data-tab="manual" data-dom-id="tab-manual">手动对账</button>
+        </div>
+      </section>
+
+      <!-- ===== Stripe 对账面板 (默认视图) ===== -->
+      <div id="panel-stripe" class="px-4 pt-3 pb-2">
+        <!-- 最近 Payout 汇总 -->
+        <div class="rounded-[var(--radius)] p-4 mb-3" style="background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold" style="color: var(--foreground);">最近 Payout 汇总</h3>
+            <span class="text-xs" style="color: var(--text-400);">自动对账 T+3</span>
+          </div>
+          <div class="flex items-baseline gap-2 mb-1">
+            <span class="text-2xl font-bold" style="color: var(--foreground); font-variant-numeric: tabular-nums;">&yen;105,379.50</span>
+          </div>
+          <div class="flex items-center gap-3 mt-2">
+            <span class="text-xs" style="color: var(--text-500);">
+              <span class="font-semibold" style="color: var(--foreground);">24 笔</span> Payout
+            </span>
+            <span class="w-px h-3" style="background: var(--background-300);"></span>
+            <span class="status-badge reconciled">
+              <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg');"></span>
+              已到账
+            </span>
+          </div>
+        </div>
+
+        <!-- 对账记录列表 -->
+        <div class="rounded-[var(--radius)] overflow-hidden" style="background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
+          <div class="flex items-center justify-between px-4 py-3" style="border-bottom: 1px solid var(--background-200);">
+            <h3 class="text-sm font-semibold" style="color: var(--foreground);">对账记录</h3>
+            <span class="text-xs" style="color: var(--text-400);">本月</span>
+          </div>
+
+          <!-- 记录 1: 已对账 -->
+          <div class="recon-record">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-mono font-medium" style="color: var(--foreground);">PO_20260705_001</span>
+              <span class="status-badge reconciled">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg');"></span>
+                已对账
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs" style="color: var(--text-400);">2026-07-05 10:32</span>
+              <span class="text-sm font-semibold" style="color: var(--foreground); font-variant-numeric: tabular-nums;">&yen;12,580.00</span>
+            </div>
+          </div>
+
+          <!-- 记录 2: 已对账 -->
+          <div class="recon-record">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-mono font-medium" style="color: var(--foreground);">PO_20260702_003</span>
+              <span class="status-badge reconciled">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg');"></span>
+                已对账
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs" style="color: var(--text-400);">2026-07-02 14:18</span>
+              <span class="text-sm font-semibold" style="color: var(--foreground); font-variant-numeric: tabular-nums;">&yen;8,920.50</span>
+            </div>
+          </div>
+
+          <!-- 记录 3: 差异 (红色标记) -->
+          <div class="recon-record has-discrepancy" data-dom-id="cta-discrepancy-detail" style="cursor: pointer;">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-mono font-medium" style="color: var(--state-error);">PO_20260628_007</span>
+              <span class="status-badge discrepancy">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-alert.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-alert.svg');"></span>
+                差异
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs" style="color: var(--text-400);">2026-06-28 09:45</span>
+              <span class="text-sm font-semibold" style="color: var(--state-error); font-variant-numeric: tabular-nums;">&yen;3,150.00</span>
+            </div>
+            <p class="text-xs mt-1.5" style="color: var(--state-error);">差异金额: &yen;-45.80，点击查看详情</p>
+          </div>
+
+          <!-- 记录 4: 待对账 -->
+          <div class="recon-record">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-mono font-medium" style="color: var(--foreground);">PO_20260707_002</span>
+              <span class="status-badge pending">待对账</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs" style="color: var(--text-400);">2026-07-07 预计 07-10</span>
+              <span class="text-sm font-semibold" style="color: var(--foreground); font-variant-numeric: tabular-nums;">&yen;15,320.00</span>
+            </div>
+          </div>
+
+          <!-- 记录 5: 已对账 -->
+          <div class="recon-record">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-mono font-medium" style="color: var(--foreground);">PO_20260625_012</span>
+              <span class="status-badge reconciled">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg');"></span>
+                已对账
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs" style="color: var(--text-400);">2026-06-25 16:50</span>
+              <span class="text-sm font-semibold" style="color: var(--foreground); font-variant-numeric: tabular-nums;">&yen;22,780.00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PayPal 对账面板 (默认隐藏) ===== -->
+      <div id="panel-paypal" class="px-4 pt-3 pb-2" style="display: none;">
+        <!-- 最近 Payout 汇总 -->
+        <div class="rounded-[var(--radius)] p-4 mb-3" style="background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold" style="color: var(--foreground);">最近 Payout 汇总</h3>
+            <span class="text-xs" style="color: var(--text-400);">自动对账 T+3</span>
+          </div>
+          <div class="flex items-baseline gap-2 mb-1">
+            <span class="text-2xl font-bold" style="color: var(--foreground); font-variant-numeric: tabular-nums;">&yen;18,460.20</span>
+          </div>
+          <div class="flex items-center gap-3 mt-2">
+            <span class="text-xs" style="color: var(--text-500);">
+              <span class="font-semibold" style="color: var(--foreground);">8 笔</span> Payout
+            </span>
+            <span class="w-px h-3" style="background: var(--background-300);"></span>
+            <span class="status-badge reconciled">
+              <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg');"></span>
+              已到账
+            </span>
+          </div>
+        </div>
+
+        <!-- 对账记录列表 -->
+        <div class="rounded-[var(--radius)] overflow-hidden" style="background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
+          <div class="flex items-center justify-between px-4 py-3" style="border-bottom: 1px solid var(--background-200);">
+            <h3 class="text-sm font-semibold" style="color: var(--foreground);">对账记录</h3>
+            <span class="text-xs" style="color: var(--text-400);">本月</span>
+          </div>
+
+          <!-- 记录 1 -->
+          <div class="recon-record">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-mono font-medium" style="color: var(--foreground);">PP_20260704_002</span>
+              <span class="status-badge reconciled">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg');"></span>
+                已对账
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs" style="color: var(--text-400);">2026-07-04 08:12</span>
+              <span class="text-sm font-semibold" style="color: var(--foreground); font-variant-numeric: tabular-nums;">&yen;5,230.80</span>
+            </div>
+          </div>
+
+          <!-- 记录 2: 待对账 -->
+          <div class="recon-record">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-mono font-medium" style="color: var(--foreground);">PP_20260706_001</span>
+              <span class="status-badge pending">待对账</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs" style="color: var(--text-400);">2026-07-06 预计 07-09</span>
+              <span class="text-sm font-semibold" style="color: var(--foreground); font-variant-numeric: tabular-nums;">&yen;3,890.00</span>
+            </div>
+          </div>
+
+          <!-- 记录 3 -->
+          <div class="recon-record">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-mono font-medium" style="color: var(--foreground);">PP_20260701_005</span>
+              <span class="status-badge reconciled">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg');"></span>
+                已对账
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs" style="color: var(--text-400);">2026-07-01 22:30</span>
+              <span class="text-sm font-semibold" style="color: var(--foreground); font-variant-numeric: tabular-nums;">&yen;9,339.40</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 手动对账面板 (默认隐藏) ===== -->
+      <div id="panel-manual" class="px-4 pt-3 pb-2" style="display: none;">
+        <div class="rounded-[var(--radius)] p-6 text-center" style="background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3" style="background: var(--background-200);">
+            <span data-icon class="w-6 h-6" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/pen-line.svg'); mask-image: url('../assets/icons/dl-builtin-apple/pen-line.svg'); color: var(--text-500);"></span>
+          </div>
+          <p class="text-sm font-semibold mb-1" style="color: var(--foreground);">手动对账</p>
+          <p class="text-xs leading-relaxed" style="color: var(--text-400);">适用于银行转账及其他非自动渠道。上传对账文件或手动录入流水进行核销。</p>
+          <button class="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold" style="background: var(--primary); color: var(--primary-foreground);" data-dom-id="cta-manual-reconcile">
+            开始手动对账
+          </button>
+        </div>
+      </div>
+
+      <!-- ===== 税务报表入口卡片 ===== -->
+      <section class="px-4 mt-5" aria-label="税务报表">
+        <div class="rounded-[var(--radius)] overflow-hidden" style="background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
+          <div class="flex items-center justify-between px-4 py-3" style="border-bottom: 1px solid var(--background-200);">
+            <h3 class="text-sm font-semibold" style="color: var(--foreground);">税务报表</h3>
+            <span class="text-xs" style="color: var(--text-400);">2026年7月</span>
+          </div>
+
+          <!-- 当月税额汇总 -->
+          <div class="px-4 py-3" style="border-bottom: 1px solid var(--background-200);">
+            <div class="flex items-center justify-between">
+              <span class="text-xs" style="color: var(--text-500);">当月税额汇总</span>
+              <span class="text-sm font-bold" style="color: var(--foreground); font-variant-numeric: tabular-nums;">&yen;8,962.30</span>
+            </div>
+          </div>
+
+          <!-- 税务导出按钮 -->
+          <div class="px-4 py-4 flex flex-col gap-3">
+            <!-- EU VAT -->
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-medium" style="color: var(--foreground);">EU VAT</p>
+                <p class="text-xs" style="color: var(--text-400);">欧盟增值税</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold" style="color: var(--foreground); font-variant-numeric: tabular-nums;">&yen;4,120.00</span>
+                <button class="tax-btn" data-dom-id="cta-export-eu-vat">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/arrow-down.svg'); mask-image: url('../assets/icons/dl-builtin-apple/arrow-down.svg');"></span>
+                  导出
+                </button>
+              </div>
+            </div>
+
+            <!-- 分隔线 -->
+            <div class="h-px" style="background: var(--background-200);"></div>
+
+            <!-- US Sales Tax -->
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-medium" style="color: var(--foreground);">US Sales Tax</p>
+                <p class="text-xs" style="color: var(--text-400);">美国销售税</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold" style="color: var(--foreground); font-variant-numeric: tabular-nums;">&yen;2,850.50</span>
+                <button class="tax-btn" data-dom-id="cta-export-us-tax">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/arrow-down.svg'); mask-image: url('../assets/icons/dl-builtin-apple/arrow-down.svg');"></span>
+                  导出
+                </button>
+              </div>
+            </div>
+
+            <!-- 分隔线 -->
+            <div class="h-px" style="background: var(--background-200);"></div>
+
+            <!-- UK VAT -->
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-medium" style="color: var(--foreground);">UK VAT</p>
+                <p class="text-xs" style="color: var(--text-400);">英国增值税</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold" style="color: var(--foreground); font-variant-numeric: tabular-nums;">&yen;1,991.80</span>
+                <button class="tax-btn" data-dom-id="cta-export-uk-vat">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/arrow-down.svg'); mask-image: url('../assets/icons/dl-builtin-apple/arrow-down.svg');"></span>
+                  导出
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 对账异常告警列表 (折叠区域) ===== -->
+      <section class="px-4 mt-5 mb-4" aria-label="对账异常告警">
+        <div class="rounded-[var(--radius)] overflow-hidden" style="background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
+          <!-- 折叠触发器 -->
+          <button class="collapse-trigger open w-full flex items-center justify-between px-4 py-3" style="border-bottom: 1px solid var(--background-200);" data-dom-id="cta-collapse-alerts" aria-expanded="true" aria-controls="alerts-collapse">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 rounded-lg flex items-center justify-center" style="background: var(--state-error-surface);">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/triangle-alert.svg'); mask-image: url('../assets/icons/dl-builtin-apple/triangle-alert.svg'); color: var(--state-error);"></span>
+              </div>
+              <h3 class="text-sm font-semibold" style="color: var(--foreground);">对账异常告警</h3>
+              <span class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold" style="background: var(--state-error); color: var(--state-error-foreground);">5</span>
+            </div>
+            <span data-icon class="w-4 h-4 collapse-arrow" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-down.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-down.svg'); color: var(--text-400);"></span>
+          </button>
+
+          <!-- 折叠内容 -->
+          <div id="alerts-collapse" class="collapse-body open">
+
+            <!-- 告警 1: 金额差异 - 待处理 -->
+            <div class="alert-item">
+              <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center gap-1.5">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-alert.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-alert.svg'); color: var(--state-warning);"></span>
+                  <span class="text-xs font-semibold" style="color: var(--state-warning);">金额差异</span>
+                </div>
+                <span class="text-xs px-2 py-0.5 rounded" style="background: var(--background-200); color: var(--text-500); font-weight: 600;">待处理</span>
+              </div>
+              <p class="text-xs leading-relaxed mt-1" style="color: var(--text-600);">
+                Payout PO_20260628_007 与系统订单合计差额 &yen;-45.80，涉及 3 笔订单。
+              </p>
+              <div class="flex items-center gap-3 mt-2">
+                <button class="action-link" data-dom-id="cta-alert-detail-1">查看详情</button>
+                <button class="action-link" data-dom-id="cta-alert-resolve-1">手动核销</button>
+              </div>
+            </div>
+
+            <!-- 告警 2: 订单缺失 - 待处理 -->
+            <div class="alert-item">
+              <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center gap-1.5">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-alert.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-alert.svg'); color: var(--state-error);"></span>
+                  <span class="text-xs font-semibold" style="color: var(--state-error);">订单缺失</span>
+                </div>
+                <span class="text-xs px-2 py-0.5 rounded" style="background: var(--background-200); color: var(--text-500); font-weight: 600;">待处理</span>
+              </div>
+              <p class="text-xs leading-relaxed mt-1" style="color: var(--text-600);">
+                Stripe Payout PO_20260702_003 中包含 1 笔系统未匹配的订单 (#ORD-98012)，金额 &yen;189.00。
+              </p>
+              <div class="flex items-center gap-3 mt-2">
+                <button class="action-link" data-dom-id="cta-alert-detail-2">查看详情</button>
+                <button class="action-link" data-dom-id="cta-alert-resolve-2">手动核销</button>
+              </div>
+            </div>
+
+            <!-- 告警 3: 退款不一致 - 已处理 -->
+            <div class="alert-item resolved">
+              <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center gap-1.5">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); color: var(--state-success);"></span>
+                  <span class="text-xs font-semibold" style="color: var(--state-success);">退款不一致</span>
+                </div>
+                <span class="text-xs px-2 py-0.5 rounded" style="background: var(--state-success-surface); color: var(--state-success); font-weight: 600;">已处理</span>
+              </div>
+              <p class="text-xs leading-relaxed mt-1" style="color: var(--text-500);">
+                PayPal 订单 #ORD-97856 退款金额 &yen;68.00 与渠道记录 &yen;65.50 不一致，已手动核销。
+              </p>
+              <div class="flex items-center gap-3 mt-2">
+                <button class="action-link" data-dom-id="cta-alert-detail-3">查看详情</button>
+              </div>
+            </div>
+
+            <!-- 告警 4: 金额差异 - 已处理 -->
+            <div class="alert-item resolved">
+              <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center gap-1.5">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); color: var(--state-success);"></span>
+                  <span class="text-xs font-semibold" style="color: var(--state-success);">金额差异</span>
+                </div>
+                <span class="text-xs px-2 py-0.5 rounded" style="background: var(--state-success-surface); color: var(--state-success); font-weight: 600;">已处理</span>
+              </div>
+              <p class="text-xs leading-relaxed mt-1" style="color: var(--text-500);">
+                Stripe Payout PO_20260625_012 汇率换算差异 &yen;12.30，确认为汇率浮动导致，已核销。
+              </p>
+              <div class="flex items-center gap-3 mt-2">
+                <button class="action-link" data-dom-id="cta-alert-detail-4">查看详情</button>
+              </div>
+            </div>
+
+            <!-- 告警 5: 订单缺失 - 已处理 -->
+            <div class="alert-item resolved">
+              <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center gap-1.5">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); mask-image: url('../assets/icons/dl-builtin-apple/circle-check.svg'); color: var(--state-success);"></span>
+                  <span class="text-xs font-semibold" style="color: var(--state-success);">订单缺失</span>
+                </div>
+                <span class="text-xs px-2 py-0.5 rounded" style="background: var(--state-success-surface); color: var(--state-success); font-weight: 600;">已处理</span>
+              </div>
+              <p class="text-xs leading-relaxed mt-1" style="color: var(--text-500);">
+                测试订单 #ORD-TEST-001 未同步至结算系统，已补录并核销。
+              </p>
+              <div class="flex items-center gap-3 mt-2">
+                <button class="action-link" data-dom-id="cta-alert-detail-5">查看详情</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- 页面交互脚本 -->
+    <script>
+      // Tab 切换逻辑
+      const channelTabs = document.querySelectorAll('.channel-tab');
+      const panels = {
+        stripe: document.getElementById('panel-stripe'),
+        paypal: document.getElementById('panel-paypal'),
+        manual: document.getElementById('panel-manual')
+      };
+
+      channelTabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+          // 移除所有 tab 激活态
+          channelTabs.forEach(function(t) {
+            t.classList.remove('active');
+          });
+          // 激活当前 tab
+          tab.classList.add('active');
+
+          // 切换面板显示
+          var target = tab.getAttribute('data-tab');
+          Object.keys(panels).forEach(function(key) {
+            if (key === target) {
+              panels[key].style.display = 'block';
+            } else {
+              panels[key].style.display = 'none';
+            }
+          });
+        });
+      });
+
+      // 折叠区域逻辑
+      var collapseTrigger = document.querySelector('.collapse-trigger');
+      var collapseBody = document.getElementById('alerts-collapse');
+
+      if (collapseTrigger && collapseBody) {
+        collapseTrigger.addEventListener('click', function() {
+          var isOpen = collapseBody.classList.contains('open');
+          if (isOpen) {
+            collapseBody.classList.remove('open');
+            collapseTrigger.classList.remove('open');
+            collapseTrigger.setAttribute('aria-expanded', 'false');
+          } else {
+            collapseBody.classList.add('open');
+            collapseTrigger.classList.add('open');
+            collapseTrigger.setAttribute('aria-expanded', 'true');
+          }
+        });
+      }
+
+      // 初始化 Lucide 图标
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>运费模板 - MOYUYO 管理后台</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* state-warning (自定义补充) */
+  --state-warning: #ff9500;
+  --state-warning-surface: #fff4e5;
+  --state-warning-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12);
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+.card{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-xs);transition:border-color .2s ease,transform .2s ease}
+.card:hover{border-color:var(--primary);transform:translateY(-1px)}
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field.small{height:40px}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.field.disabled{opacity:.55}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* 后台管理布局 */
+      .admin-layout {
+        display: flex;
+        min-height: 100vh;
+      }
+      .admin-sidebar {
+        width: 240px;
+        min-height: 100vh;
+        background: #1d1d1f;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+      .admin-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        background: var(--background);
+      }
+
+      /* 侧边栏品牌区 */
+      .sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 20px 20px 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+      }
+      .sidebar-brand-text {
+        font-size: 16px;
+        font-weight: 700;
+        color: #ffffff;
+        letter-spacing: 0.02em;
+      }
+
+      /* 侧边栏导航 */
+      .sidebar-nav {
+        flex: 1;
+        padding: 12px 10px;
+        overflow-y: auto;
+      }
+      .sidebar-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 8px;
+        color: rgba(255,255,255,0.6);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        text-decoration: none;
+        margin-bottom: 2px;
+      }
+      .sidebar-nav-item:hover {
+        background: rgba(255,255,255,0.06);
+        color: rgba(255,255,255,0.9);
+      }
+      .sidebar-nav-item.active {
+        background: var(--brand-500);
+        color: #ffffff;
+      }
+      .sidebar-nav-item .nav-icon {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+
+      /* 顶部栏 */
+      .admin-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 56px;
+        padding: 0 24px;
+        border-bottom: 1px solid var(--border);
+        background: var(--card);
+        flex-shrink: 0;
+      }
+
+      /* 面包屑 */
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--text-400);
+      }
+      .breadcrumb a {
+        color: var(--text-500);
+        text-decoration: none;
+        transition: color 0.15s ease;
+      }
+      .breadcrumb a:hover {
+        color: var(--primary);
+      }
+      .breadcrumb .current {
+        color: var(--text-800);
+        font-weight: 600;
+      }
+      .breadcrumb .separator {
+        color: var(--text-300);
+      }
+
+      /* Tab 面板切换 */
+      .tab-panel { display: none; }
+      .tab-panel.active { display: block; }
+
+      /* 策略切换标签页（桌面端） */
+      .strategy-tabs {
+        display: flex;
+        gap: 4px;
+        padding: 4px;
+        background: var(--background-200);
+        border-radius: 10px;
+        width: fit-content;
+      }
+      .strategy-tab {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 18px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-500);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        border: none;
+        background: transparent;
+        font-family: var(--font-sans);
+      }
+      .strategy-tab:hover {
+        color: var(--text-700);
+      }
+      .strategy-tab.active {
+        background: var(--card);
+        color: var(--primary);
+        box-shadow: var(--shadow-sm);
+      }
+
+      /* 开关组件 */
+      .toggle-switch {
+        position: relative;
+        width: 44px;
+        height: 26px;
+        border-radius: 13px;
+        background: var(--background-400);
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.25s ease;
+        flex-shrink: 0;
+      }
+      .toggle-switch.on {
+        background: var(--state-success);
+      }
+      .toggle-switch::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--background-50);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        transition: transform 0.25s ease;
+      }
+      .toggle-switch.on::after {
+        transform: translateX(18px);
+      }
+
+      /* 标签 */
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .tag-green {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+      .tag-gray {
+        background: var(--background-200);
+        color: var(--text-400);
+      }
+
+      /* 策略卡片（桌面端宽卡片） */
+      .strategy-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+        transition: border-color 0.2s ease, transform 0.2s ease;
+      }
+      .strategy-card:hover {
+        border-color: var(--primary);
+        transform: translateY(-1px);
+      }
+      .strategy-card.disabled-card {
+        opacity: 0.6;
+      }
+
+      /* 桌面端最小宽度 */
+      body { min-width: 1280px; }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <div class="admin-layout">
+
+        <!-- ========== 左侧导航栏 ========== -->
+        <aside class="admin-sidebar">
+            <!-- 品牌标识 -->
+            <div class="sidebar-brand">
+                <i data-lucide="paw-print" class="w-6 h-6" style="color: var(--brand-500);"></i>
+                <span class="sidebar-brand-text">MOYUYO Admin</span>
+            </div>
+
+            <!-- 导航菜单 -->
+            <nav class="sidebar-nav">
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="layout-dashboard" class="nav-icon"></i>
+                    <span>仪表盘</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="package" class="nav-icon"></i>
+                    <span>商品管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="shopping-bag" class="nav-icon"></i>
+                    <span>订单管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="users" class="nav-icon"></i>
+                    <span>用户管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="megaphone" class="nav-icon"></i>
+                    <span>营销管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="file-text" class="nav-icon"></i>
+                    <span>内容管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="headphones" class="nav-icon"></i>
+                    <span>客服管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="bar-chart-3" class="nav-icon"></i>
+                    <span>数据统计</span>
+                </a>
+                <!-- 当前高亮：物流管理 -->
+                <a class="sidebar-nav-item active" href="#">
+                    <i data-lucide="truck" class="nav-icon"></i>
+                    <span>物流管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="shield-alert" class="nav-icon"></i>
+                    <span>风控管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="settings" class="nav-icon"></i>
+                    <span>系统设置</span>
+                </a>
+            </nav>
+
+            <!-- 侧边栏底部用户信息 -->
+            <div style="padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--brand-500); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="user" style="width: 16px; height: 16px; color: #fff;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9);">Admin</div>
+                        <div style="font-size: 11px; color: rgba(255,255,255,0.4);">超级管理员</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ========== 主内容区 ========== -->
+        <div class="admin-main">
+
+            <!-- 顶部栏：面包屑 -->
+            <header class="admin-topbar">
+                <div class="breadcrumb">
+                    <a href="#">物流管理</a>
+                    <span class="separator">/</span>
+                    <span class="current">运费模板</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--background-200); cursor: pointer;">
+                        <i data-lucide="bell" style="width: 18px; height: 18px; color: var(--text-600);"></i>
+                        <span style="position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--state-error);"></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 内容区 -->
+            <main style="flex: 1; padding: 24px; overflow-y: auto;">
+
+                <!-- 页面标题 -->
+                <div style="margin-bottom: 24px;">
+                    <h1 style="font-size: 22px; font-weight: 700; color: var(--text-800); margin: 0 0 6px;">物流策略管理</h1>
+                    <p style="font-size: 13px; color: var(--text-400); margin: 0;">管理运费模板、拆包规则、合包规则和关税模式</p>
+                </div>
+
+                <!-- 策略管理 Tab 切换 -->
+                <div style="margin-bottom: 20px;">
+                    <div class="strategy-tabs" id="strategy-tabs">
+                        <button class="strategy-tab active" data-tab="freight">
+                            <i data-lucide="truck" style="width: 14px; height: 14px;"></i>
+                            运费模板
+                        </button>
+                        <button class="strategy-tab" data-tab="split">
+                            <i data-lucide="scissors" style="width: 14px; height: 14px;"></i>
+                            拆包规则
+                        </button>
+                        <button class="strategy-tab" data-tab="merge">
+                            <i data-lucide="package" style="width: 14px; height: 14px;"></i>
+                            合包规则
+                        </button>
+                        <button class="strategy-tab" data-tab="tariff">
+                            <i data-lucide="shield" style="width: 14px; height: 14px;"></i>
+                            关税模式
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ========== Tab 1: 运费模板 ========== -->
+                <div class="tab-panel active" id="panel-freight" data-tab-panel="freight">
+
+                    <!-- 新建模板按钮 -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <span style="font-size: 14px; color: var(--text-400);">共 3 个运费模板</span>
+                        <button class="btn btn-primary" style="height: 36px; padding: 0 20px; font-size: 13px; gap: 6px;" data-dom-id="btn-create-template">
+                            <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+                            新建模板
+                        </button>
+                    </div>
+
+                    <!-- 运费模板列表（桌面端宽卡片网格） -->
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+
+                        <!-- 模板 1：北美标准 -->
+                        <article class="strategy-card">
+                            <div style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div style="width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--brand-50);">
+                                        <i data-lucide="truck" style="width: 18px; height: 18px; color: var(--brand-500);"></i>
+                                    </div>
+                                    <div>
+                                        <p style="font-size: 14px; font-weight: 600; color: var(--text-800); margin: 0;">北美标准运费</p>
+                                        <p style="font-size: 12px; margin: 2px 0 0; color: var(--text-400);">美国 / 加拿大</p>
+                                    </div>
+                                </div>
+                                <button class="toggle-switch on" aria-label="启用状态"></button>
+                            </div>
+                            <div style="padding: 16px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; border-bottom: 1px solid var(--border);">
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">计费方式</p>
+                                    <p style="font-size: 13px; font-weight: 600; margin: 2px 0 0; color: var(--text-800);">按重量</p>
+                                </div>
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">基础运费</p>
+                                    <p style="font-size: 13px; font-weight: 600; margin: 2px 0 0; color: var(--text-800);">¥68.00 / 首 0.5kg</p>
+                                </div>
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">续重费率</p>
+                                    <p style="font-size: 13px; font-weight: 600; margin: 2px 0 0; color: var(--text-800);">¥22.00 / 0.5kg</p>
+                                </div>
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">预计时效</p>
+                                    <p style="font-size: 13px; font-weight: 600; margin: 2px 0 0; color: var(--brand-500);">7-12 工作日</p>
+                                </div>
+                            </div>
+                            <div style="padding: 12px 20px; display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
+                                <button style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: none; background: var(--background-200); color: var(--text-500); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);" data-dom-id="btn-edit-template">
+                                    <i data-lucide="pencil" style="width: 12px; height: 12px;"></i>
+                                    编辑
+                                </button>
+                                <button style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: none; background: var(--background-200); color: var(--text-500); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);" data-dom-id="btn-copy-template">
+                                    <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+                                    复制
+                                </button>
+                                <button style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: none; background: var(--state-error-surface); color: var(--state-error); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);" data-dom-id="btn-delete-template">
+                                    <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
+                                    删除
+                                </button>
+                            </div>
+                        </article>
+
+                        <!-- 模板 2：欧洲标准 -->
+                        <article class="strategy-card">
+                            <div style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div style="width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--brand-50);">
+                                        <i data-lucide="plane" style="width: 18px; height: 18px; color: var(--brand-500);"></i>
+                                    </div>
+                                    <div>
+                                        <p style="font-size: 14px; font-weight: 600; color: var(--text-800); margin: 0;">欧洲标准运费</p>
+                                        <p style="font-size: 12px; margin: 2px 0 0; color: var(--text-400);">欧盟 27 国 / 英国</p>
+                                    </div>
+                                </div>
+                                <button class="toggle-switch on" aria-label="启用状态"></button>
+                            </div>
+                            <div style="padding: 16px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; border-bottom: 1px solid var(--border);">
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">计费方式</p>
+                                    <p style="font-size: 13px; font-weight: 600; margin: 2px 0 0; color: var(--text-800);">按重量</p>
+                                </div>
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">基础运费</p>
+                                    <p style="font-size: 13px; font-weight: 600; margin: 2px 0 0; color: var(--text-800);">¥85.00 / 首 0.5kg</p>
+                                </div>
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">续重费率</p>
+                                    <p style="font-size: 13px; font-weight: 600; margin: 2px 0 0; color: var(--text-800);">¥28.00 / 0.5kg</p>
+                                </div>
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">预计时效</p>
+                                    <p style="font-size: 13px; font-weight: 600; margin: 2px 0 0; color: var(--brand-500);">10-15 工作日</p>
+                                </div>
+                            </div>
+                            <div style="padding: 12px 20px; display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
+                                <button style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: none; background: var(--background-200); color: var(--text-500); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);" data-dom-id="btn-edit-template">
+                                    <i data-lucide="pencil" style="width: 12px; height: 12px;"></i>
+                                    编辑
+                                </button>
+                                <button style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: none; background: var(--background-200); color: var(--text-500); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);" data-dom-id="btn-copy-template">
+                                    <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+                                    复制
+                                </button>
+                                <button style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: none; background: var(--state-error-surface); color: var(--state-error); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);" data-dom-id="btn-delete-template">
+                                    <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
+                                    删除
+                                </button>
+                            </div>
+                        </article>
+
+                        <!-- 模板 3：亚太专线（固定费率，已停用） -->
+                        <article class="strategy-card disabled-card">
+                            <div style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div style="width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--background-200);">
+                                        <i data-lucide="globe" style="width: 18px; height: 18px; color: var(--text-400);"></i>
+                                    </div>
+                                    <div>
+                                        <p style="font-size: 14px; font-weight: 600; color: var(--text-800); margin: 0;">亚太专线</p>
+                                        <p style="font-size: 12px; margin: 2px 0 0; color: var(--text-400);">日本 / 韩国 / 澳大利亚</p>
+                                    </div>
+                                </div>
+                                <button class="toggle-switch" aria-label="停用状态"></button>
+                            </div>
+                            <div style="padding: 16px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; border-bottom: 1px solid var(--border);">
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">计费方式</p>
+                                    <p style="font-size: 13px; font-weight: 600; margin: 2px 0 0; color: var(--text-800);">固定费率</p>
+                                </div>
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">基础运费</p>
+                                    <p style="font-size: 13px; font-weight: 600; margin: 2px 0 0; color: var(--text-800);">¥120.00 / 单</p>
+                                </div>
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">续重费率</p>
+                                    <p style="font-size: 13px; font-weight: 600; margin: 2px 0 0; color: var(--text-400);">--</p>
+                                </div>
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">预计时效</p>
+                                    <p style="font-size: 13px; font-weight: 600; margin: 2px 0 0; color: var(--text-500);">5-8 工作日</p>
+                                </div>
+                            </div>
+                            <div style="padding: 12px 20px; display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
+                                <button style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: none; background: var(--background-200); color: var(--text-500); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);" data-dom-id="btn-edit-template">
+                                    <i data-lucide="pencil" style="width: 12px; height: 12px;"></i>
+                                    编辑
+                                </button>
+                                <button style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: none; background: var(--background-200); color: var(--text-500); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);" data-dom-id="btn-copy-template">
+                                    <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+                                    复制
+                                </button>
+                                <button style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: none; background: var(--state-error-surface); color: var(--state-error); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);" data-dom-id="btn-delete-template">
+                                    <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
+                                    删除
+                                </button>
+                            </div>
+                        </article>
+
+                    </div>
+                </div>
+
+                <!-- ========== Tab 2: 拆包规则 ========== -->
+                <div class="tab-panel" id="panel-split" data-tab-panel="split">
+
+                    <!-- 拆包效果统计（桌面端 4 列） -->
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px;">
+                        <div class="strategy-card" style="padding: 20px; text-align: center;">
+                            <p style="font-size: 28px; font-weight: 700; color: var(--brand-500); margin: 0;">18.5%</p>
+                            <p style="font-size: 13px; margin: 4px 0 0; color: var(--text-500);">拆包率</p>
+                        </div>
+                        <div class="strategy-card" style="padding: 20px; text-align: center;">
+                            <p style="font-size: 28px; font-weight: 700; color: var(--state-success); margin: 0;">¥3,280</p>
+                            <p style="font-size: 13px; margin: 4px 0 0; color: var(--text-500);">本月节省成本</p>
+                        </div>
+                        <div class="strategy-card" style="padding: 20px; text-align: center;">
+                            <p style="font-size: 28px; font-weight: 700; color: var(--text-800); margin: 0;">342</p>
+                            <p style="font-size: 13px; margin: 4px 0 0; color: var(--text-500);">本月拆包订单数</p>
+                        </div>
+                        <div class="strategy-card" style="padding: 20px; text-align: center;">
+                            <p style="font-size: 28px; font-weight: 700; color: var(--state-warning); margin: 0;">3</p>
+                            <p style="font-size: 13px; margin: 4px 0 0; color: var(--text-500);">活跃规则数</p>
+                        </div>
+                    </div>
+
+                    <!-- 拆包规则列表（桌面端三列网格） -->
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+
+                        <!-- 规则 1：超重拆包 -->
+                        <article class="strategy-card">
+                            <div style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div style="width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--state-warning-surface);">
+                                        <i data-lucide="weight" style="width: 18px; height: 18px; color: var(--state-warning);"></i>
+                                    </div>
+                                    <div>
+                                        <p style="font-size: 14px; font-weight: 600; color: var(--text-800); margin: 0;">超重拆包</p>
+                                        <p style="font-size: 12px; margin: 2px 0 0; color: var(--text-400);">单包裹超 2kg 自动拆分</p>
+                                    </div>
+                                </div>
+                                <button class="toggle-switch on" aria-label="启用状态"></button>
+                            </div>
+                            <div style="padding: 16px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; border-bottom: 1px solid var(--border);">
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">触发条件</p>
+                                    <p style="font-size: 13px; font-weight: 600; margin: 2px 0 0; color: var(--text-800);">超重拆包</p>
+                                </div>
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">优先级</p>
+                                    <div style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
+                                        <span class="tag tag-green" style="font-size: 10px; padding: 2px 8px; background: var(--state-error-surface); color: var(--state-error);">P1</span>
+                                        <span style="font-size: 13px; font-weight: 600; color: var(--text-800);">最高</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="padding: 12px 20px; display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
+                                <button style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: none; background: var(--background-200); color: var(--text-500); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);" data-dom-id="btn-edit-split">
+                                    <i data-lucide="pencil" style="width: 12px; height: 12px;"></i>
+                                    编辑
+                                </button>
+                                <button style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: none; background: var(--brand-50); color: var(--brand-500); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);" data-dom-id="btn-test-split">
+                                    <i data-lucide="flask-conical" style="width: 12px; height: 12px;"></i>
+                                    测试
+                                </button>
+                            </div>
+                        </article>
+
+                        <!-- 规则 2：禁运品拆包 -->
+                        <article class="strategy-card">
+                            <div style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div style="width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--state-error-surface);">
+                                        <i data-lucide="ban" style="width: 18px; height: 18px; color: var(--state-error);"></i>
+                                    </div>
+                                    <div>
+                                        <p style="font-size: 14px; font-weight: 600; color: var(--text-800); margin: 0;">禁运品拆包</p>
+                                        <p style="font-size: 12px; margin: 2px 0 0; color: var(--text-400);">含禁运品商品独立打包</p>
+                                    </div>
+                                </div>
+                                <button class="toggle-switch on" aria-label="启用状态"></button>
+                            </div>
+                            <div style="padding: 16px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; border-bottom: 1px solid var(--border);">
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">触发条件</p>
+                                    <p style="font-size: 13px; font-weight: 600; margin: 2px 0 0; color: var(--text-800);">禁运品拆包</p>
+                                </div>
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">优先级</p>
+                                    <div style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
+                                        <span class="tag" style="font-size: 10px; padding: 2px 8px; background: var(--state-warning-surface); color: var(--state-warning);">P2</span>
+                                        <span style="font-size: 13px; font-weight: 600; color: var(--text-800);">高</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="padding: 12px 20px; display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
+                                <button style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: none; background: var(--background-200); color: var(--text-500); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);" data-dom-id="btn-edit-split">
+                                    <i data-lucide="pencil" style="width: 12px; height: 12px;"></i>
+                                    编辑
+                                </button>
+                                <button style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: none; background: var(--brand-50); color: var(--brand-500); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);" data-dom-id="btn-test-split">
+                                    <i data-lucide="flask-conical" style="width: 12px; height: 12px;"></i>
+                                    测试
+                                </button>
+                            </div>
+                        </article>
+
+                        <!-- 规则 3：关税优化拆包（停用） -->
+                        <article class="strategy-card disabled-card">
+                            <div style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div style="width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--background-200);">
+                                        <i data-lucide="trending-down" style="width: 18px; height: 18px; color: var(--text-400);"></i>
+                                    </div>
+                                    <div>
+                                        <p style="font-size: 14px; font-weight: 600; color: var(--text-800); margin: 0;">关税优化拆包</p>
+                                        <p style="font-size: 12px; margin: 2px 0 0; color: var(--text-400);">分摊价值降低关税</p>
+                                    </div>
+                                </div>
+                                <button class="toggle-switch" aria-label="停用状态"></button>
+                            </div>
+                            <div style="padding: 16px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; border-bottom: 1px solid var(--border);">
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">触发条件</p>
+                                    <p style="font-size: 13px; font-weight: 600; margin: 2px 0 0; color: var(--text-800);">关税优化</p>
+                                </div>
+                                <div>
+                                    <p style="font-size: 11px; color: var(--text-400); margin: 0;">优先级</p>
+                                    <div style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
+                                        <span class="tag tag-gray" style="font-size: 10px; padding: 2px 8px;">P3</span>
+                                        <span style="font-size: 13px; font-weight: 600; color: var(--text-800);">中</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="padding: 12px 20px; display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
+                                <button style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: none; background: var(--background-200); color: var(--text-500); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);" data-dom-id="btn-edit-split">
+                                    <i data-lucide="pencil" style="width: 12px; height: 12px;"></i>
+                                    编辑
+                                </button>
+                                <button style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: none; background: var(--brand-50); color: var(--brand-500); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);" data-dom-id="btn-test-split">
+                                    <i data-lucide="flask-conical" style="width: 12px; height: 12px;"></i>
+                                    测试
+                                </button>
+                            </div>
+                        </article>
+
+                    </div>
+                </div>
+
+                <!-- ========== Tab 3: 合包规则 ========== -->
+                <div class="tab-panel" id="panel-merge" data-tab-panel="merge">
+
+                    <!-- 合包效果统计（桌面端 4 列） -->
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px;">
+                        <div class="strategy-card" style="padding: 20px; text-align: center;">
+                            <p style="font-size: 28px; font-weight: 700; color: var(--brand-500); margin: 0;">126</p>
+                            <p style="font-size: 13px; margin: 4px 0 0; color: var(--text-500);">本月合包数量</p>
+                        </div>
+                        <div class="strategy-card" style="padding: 20px; text-align: center;">
+                            <p style="font-size: 28px; font-weight: 700; color: var(--state-success); margin: 0;">¥5,640</p>
+                            <p style="font-size: 13px; margin: 4px 0 0; color: var(--text-500);">节省运费</p>
+                        </div>
+                        <div class="strategy-card" style="padding: 20px; text-align: center;">
+                            <p style="font-size: 28px; font-weight: 700; color: var(--text-800); margin: 0;">92%</p>
+                            <p style="font-size: 13px; margin: 4px 0 0; color: var(--text-500);">合包成功率</p>
+                        </div>
+                        <div class="strategy-card" style="padding: 20px; text-align: center;">
+                            <p style="font-size: 28px; font-weight: 700; color: var(--state-warning); margin: 0;">4 / 6</p>
+                            <p style="font-size: 13px; margin: 4px 0 0; color: var(--text-500);">已启用条件数</p>
+                        </div>
+                    </div>
+
+                    <!-- 合包条件配置（桌面端双列布局） -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <article class="strategy-card">
+                            <div style="padding: 16px 20px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border);">
+                                <i data-lucide="settings" style="width: 16px; height: 16px; color: var(--brand-500);"></i>
+                                <p style="font-size: 14px; font-weight: 600; color: var(--text-800); margin: 0;">基础条件</p>
+                            </div>
+
+                            <!-- 同地址合包 -->
+                            <div style="padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                                <div>
+                                    <p style="font-size: 13px; font-weight: 500; color: var(--text-800); margin: 0;">同地址合包</p>
+                                    <p style="font-size: 12px; margin: 2px 0 0; color: var(--text-400);">收货地址完全一致时自动合包</p>
+                                </div>
+                                <button class="toggle-switch on" aria-label="同地址合包开关"></button>
+                            </div>
+
+                            <!-- 同仓库合包 -->
+                            <div style="padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                                <div>
+                                    <p style="font-size: 13px; font-weight: 500; color: var(--text-800); margin: 0;">同仓库合包</p>
+                                    <p style="font-size: 12px; margin: 2px 0 0; color: var(--text-400);">同一发货仓库才可合并</p>
+                                </div>
+                                <button class="toggle-switch on" aria-label="同仓库合包开关"></button>
+                            </div>
+
+                            <!-- 预售商品合包 -->
+                            <div style="padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;">
+                                <div>
+                                    <p style="font-size: 13px; font-weight: 500; color: var(--text-800); margin: 0;">预售商品合包</p>
+                                    <p style="font-size: 12px; margin: 2px 0 0; color: var(--text-400);">预售商品到货后自动与已有订单合并</p>
+                                </div>
+                                <button class="toggle-switch" aria-label="预售商品合包开关"></button>
+                            </div>
+                        </article>
+
+                        <article class="strategy-card">
+                            <div style="padding: 16px 20px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border);">
+                                <i data-lucide="sliders-horizontal" style="width: 16px; height: 16px; color: var(--brand-500);"></i>
+                                <p style="font-size: 14px; font-weight: 600; color: var(--text-800); margin: 0;">阈值配置</p>
+                            </div>
+
+                            <!-- 时间窗口 -->
+                            <div style="padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                                <div>
+                                    <p style="font-size: 13px; font-weight: 500; color: var(--text-800); margin: 0;">时间窗口</p>
+                                    <p style="font-size: 12px; margin: 2px 0 0; color: var(--text-400);">订单创建时间在此范围内才触发</p>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; background: var(--background-200);">
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--brand-500);">48 小时</span>
+                                    <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: var(--text-400);"></i>
+                                </div>
+                            </div>
+
+                            <!-- 重量上限 -->
+                            <div style="padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                                <div>
+                                    <p style="font-size: 13px; font-weight: 500; color: var(--text-800); margin: 0;">重量上限</p>
+                                    <p style="font-size: 12px; margin: 2px 0 0; color: var(--text-400);">合并后包裹总重量上限</p>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; background: var(--background-200);">
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-800);">5.0 kg</span>
+                                    <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: var(--text-400);"></i>
+                                </div>
+                            </div>
+
+                            <!-- 体积上限 -->
+                            <div style="padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;">
+                                <div>
+                                    <p style="font-size: 13px; font-weight: 500; color: var(--text-800); margin: 0;">体积上限</p>
+                                    <p style="font-size: 12px; margin: 2px 0 0; color: var(--text-400);">合并后包裹总体积上限</p>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; background: var(--background-200);">
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-800);">0.1 m3</span>
+                                    <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: var(--text-400);"></i>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+
+                <!-- ========== Tab 4: 关税模式 ========== -->
+                <div class="tab-panel" id="panel-tariff" data-tab-panel="tariff">
+
+                    <!-- 关税模式说明 -->
+                    <div style="border-radius: var(--radius); padding: 14px 18px; display: flex; align-items: flex-start; gap: 10px; margin-bottom: 20px; background: var(--brand-50); border: 1px solid var(--brand-100);">
+                        <i data-lucide="info" style="width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; color: var(--brand-500);"></i>
+                        <p style="font-size: 13px; line-height: 1.6; margin: 0; color: var(--brand-700);">DDP（完税后交货）：商家代缴关税，买家无额外费用。DDU（未完税交货）：买家收货时自行缴纳关税。</p>
+                    </div>
+
+                    <!-- 双列布局：国家/地区配置 + 保证金/免税额 -->
+                    <div style="display: grid; grid-template-columns: 3fr 2fr; gap: 16px;">
+
+                        <!-- 按国家/地区配置 -->
+                        <article class="strategy-card">
+                            <div style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i data-lucide="globe" style="width: 16px; height: 16px; color: var(--brand-500);"></i>
+                                    <p style="font-size: 14px; font-weight: 600; color: var(--text-800); margin: 0;">按国家/地区配置</p>
+                                </div>
+                                <button style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: none; background: var(--background-200); color: var(--text-500); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans);" data-dom-id="btn-add-tariff">
+                                    <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
+                                    添加
+                                </button>
+                            </div>
+
+                            <!-- 国家列表 -->
+                            <div style="padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 14px; font-weight: 700; color: var(--text-600); min-width: 28px;">US</span>
+                                    <div>
+                                        <p style="font-size: 13px; font-weight: 500; color: var(--text-800); margin: 0;">美国</p>
+                                        <p style="font-size: 12px; margin: 1px 0 0; color: var(--text-400);">免税额 $800</p>
+                                    </div>
+                                </div>
+                                <span class="tag tag-green">DDP</span>
+                            </div>
+
+                            <div style="padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 14px; font-weight: 700; color: var(--text-600); min-width: 28px;">EU</span>
+                                    <div>
+                                        <p style="font-size: 13px; font-weight: 500; color: var(--text-800); margin: 0;">欧盟</p>
+                                        <p style="font-size: 12px; margin: 1px 0 0; color: var(--text-400);">免税额 EUR 22</p>
+                                    </div>
+                                </div>
+                                <span class="tag tag-green">DDP</span>
+                            </div>
+
+                            <div style="padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 14px; font-weight: 700; color: var(--text-600); min-width: 28px;">UK</span>
+                                    <div>
+                                        <p style="font-size: 13px; font-weight: 500; color: var(--text-800); margin: 0;">英国</p>
+                                        <p style="font-size: 12px; margin: 1px 0 0; color: var(--text-400);">免税额 GBP 135</p>
+                                    </div>
+                                </div>
+                                <span class="tag" style="background: var(--state-warning-surface); color: var(--state-warning);">DDU</span>
+                            </div>
+
+                            <div style="padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 14px; font-weight: 700; color: var(--text-600); min-width: 28px;">JP</span>
+                                    <div>
+                                        <p style="font-size: 13px; font-weight: 500; color: var(--text-800); margin: 0;">日本</p>
+                                        <p style="font-size: 12px; margin: 1px 0 0; color: var(--text-400);">免税额 JPY 10,000</p>
+                                    </div>
+                                </div>
+                                <span class="tag tag-green">DDP</span>
+                            </div>
+
+                            <div style="padding: 12px 20px; display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 14px; font-weight: 700; color: var(--text-600); min-width: 28px;">AU</span>
+                                    <div>
+                                        <p style="font-size: 13px; font-weight: 500; color: var(--text-800); margin: 0;">澳大利亚</p>
+                                        <p style="font-size: 12px; margin: 1px 0 0; color: var(--text-400);">免税额 AUD 1,000</p>
+                                    </div>
+                                </div>
+                                <span class="tag" style="background: var(--state-warning-surface); color: var(--state-warning);">DDU</span>
+                            </div>
+                        </article>
+
+                        <!-- 右侧：保证金 + 免税额度 -->
+                        <div style="display: flex; flex-direction: column; gap: 16px;">
+
+                            <!-- 关税保证金比例 -->
+                            <article class="strategy-card">
+                                <div style="padding: 16px 20px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border);">
+                                    <i data-lucide="banknote" style="width: 16px; height: 16px; color: var(--brand-500);"></i>
+                                    <p style="font-size: 14px; font-weight: 600; color: var(--text-800); margin: 0;">关税保证金比例</p>
+                                </div>
+                                <div style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;">
+                                    <div>
+                                        <p style="font-size: 13px; font-weight: 500; color: var(--text-800); margin: 0;">默认保证金比例</p>
+                                        <p style="font-size: 12px; margin: 2px 0 0; color: var(--text-400);">按商品申报价值的百分比预收</p>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; background: var(--background-200);">
+                                        <span style="font-size: 13px; font-weight: 600; color: var(--brand-500);">15%</span>
+                                        <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: var(--text-400);"></i>
+                                    </div>
+                                </div>
+                            </article>
+
+                            <!-- 免税额度配置 -->
+                            <article class="strategy-card">
+                                <div style="padding: 16px 20px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border);">
+                                    <i data-lucide="receipt" style="width: 16px; height: 16px; color: var(--brand-500);"></i>
+                                    <p style="font-size: 14px; font-weight: 600; color: var(--text-800); margin: 0;">免税额度配置</p>
+                                </div>
+
+                                <div style="padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                                    <div>
+                                        <p style="font-size: 13px; font-weight: 500; color: var(--text-800); margin: 0;">欧盟</p>
+                                        <p style="font-size: 12px; margin: 1px 0 0; color: var(--text-400);">EUR 22 以下免征关税</p>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; background: var(--background-200);">
+                                        <span style="font-size: 13px; font-weight: 600; color: var(--text-800);">EUR 22</span>
+                                        <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: var(--text-400);"></i>
+                                    </div>
+                                </div>
+
+                                <div style="padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                                    <div>
+                                        <p style="font-size: 13px; font-weight: 500; color: var(--text-800); margin: 0;">美国</p>
+                                        <p style="font-size: 12px; margin: 1px 0 0; color: var(--text-400);">Section 321 de minimis</p>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; background: var(--background-200);">
+                                        <span style="font-size: 13px; font-weight: 600; color: var(--text-800);">$800</span>
+                                        <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: var(--text-400);"></i>
+                                    </div>
+                                </div>
+
+                                <div style="padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;">
+                                    <div>
+                                        <p style="font-size: 13px; font-weight: 500; color: var(--text-800); margin: 0;">英国</p>
+                                        <p style="font-size: 12px; margin: 1px 0 0; color: var(--text-400);">UK VAT threshold</p>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; background: var(--background-200);">
+                                        <span style="font-size: 13px; font-weight: 600; color: var(--text-800);">GBP 135</span>
+                                        <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: var(--text-400);"></i>
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Tab 切换交互脚本 -->
+    <script>
+      /* Tab 切换逻辑 */
+      (function() {
+        var tabs = document.querySelectorAll('.strategy-tab');
+        var panels = document.querySelectorAll('.tab-panel');
+
+        /* 初始化 Tab 样式 */
+        function updateTabStyles() {
+          tabs.forEach(function(tab) {
+            if (tab.classList.contains('active')) {
+              tab.style.background = 'var(--card)';
+              tab.style.color = 'var(--primary)';
+              tab.style.boxShadow = 'var(--shadow-sm)';
+            } else {
+              tab.style.background = 'transparent';
+              tab.style.color = 'var(--text-500)';
+              tab.style.boxShadow = 'none';
+            }
+          });
+        }
+
+        /* 切换 Tab 面板 */
+        function switchTab(targetTab) {
+          var tabName = targetTab.getAttribute('data-tab');
+
+          tabs.forEach(function(t) {
+            t.classList.remove('active');
+          });
+          targetTab.classList.add('active');
+
+          panels.forEach(function(panel) {
+            panel.classList.remove('active');
+          });
+          var targetPanel = document.querySelector('[data-tab-panel="' + tabName + '"]');
+          if (targetPanel) {
+            targetPanel.classList.add('active');
+          }
+
+          updateTabStyles();
+        }
+
+        /* 绑定点击事件 */
+        tabs.forEach(function(tab) {
+          tab.addEventListener('click', function() {
+            switchTab(tab);
+          });
+        });
+
+        /* 初始化 */
+        updateTabStyles();
+      })();
+
+      /* 开关切换交互 */
+      (function() {
+        document.querySelectorAll('.toggle-switch').forEach(function(sw) {
+          sw.addEventListener('click', function() {
+            sw.classList.toggle('on');
+          });
+        });
+      })();
+    </script>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

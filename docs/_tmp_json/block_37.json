@@ -1,0 +1,17 @@
+{
+  "code": 0,
+  "data": [
+    {
+      "code": "MILO",
+      "nameEn": "MILO",
+      "nameZh": "探险家",
+      "species": "灵缇犬",
+      "speciesLabel": "DOG",
+      "personality": "自由 / 好奇",
+      "tagline": "带宠看更大的世界",
+      "portrait2D": "https://cdn.moyuyo.com/ip/milo_2d.png",
+      "portrait3D": "https://cdn.moyuyo.com/ip/milo_3d.glb",
+      "colorHint": "#B38A5A"
+    }
+  ]
+}

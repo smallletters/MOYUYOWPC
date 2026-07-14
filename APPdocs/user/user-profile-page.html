@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>用户主页 - MOYUYO</title>
+    <style id="theme-vars">
+/*
+ * MOYUYO design tokens
+ * 基于 Apple Design Library 风格
+ * Style: 简洁、优雅、Apple-inspired
+ * Theme mode: light-dark
+ */
+
+:root {
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff;
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state */
+  --state-success: #34c759;
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+  --state-error: #ff3b30;
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+  --state-warning: #ff9500;
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* typography */
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --tracking-normal: 0em;
+
+  /* radius */
+  --radius: 1.2rem;
+
+  /* shadows */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+
+  /* spacing */
+  --spacing: 0.24rem;
+}
+
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+}
+
+    </style>
+    <style id="component-vars">
+/* 组件样式 - 复用自设计系统 */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      /* 基础工具样式 */
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+
+      /* 页面专用样式 */
+      .profile-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--brand-300), var(--brand-500), var(--brand-700));
+        flex-shrink: 0;
+      }
+
+      .profile-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        height: 22px;
+        padding: 0 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+
+      .tab-indicator {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 24px;
+        height: 2.5px;
+        border-radius: 999px;
+        background: var(--primary);
+        transition: all 0.25s ease;
+      }
+
+      .note-cover {
+        width: 96px;
+        height: 96px;
+        border-radius: calc(var(--radius) - 4px);
+        background: linear-gradient(135deg, var(--background-200), var(--background-300));
+        flex-shrink: 0;
+      }
+
+      .collection-cover {
+        width: 64px;
+        height: 64px;
+        border-radius: calc(var(--radius) - 6px);
+        background: linear-gradient(135deg, var(--brand-100), var(--brand-200));
+        flex-shrink: 0;
+      }
+
+      .stat-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        flex: 1;
+      }
+
+      .stat-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--foreground);
+        line-height: 1.2;
+      }
+
+      .stat-label {
+        font-size: 12px;
+        color: var(--text-400);
+      }
+
+      .action-btn-follow {
+        flex: 1;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: all 0.18s ease;
+      }
+
+      .action-btn-message {
+        flex: 1;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 600;
+        border: 1.5px solid var(--border);
+        background: var(--background-50);
+        color: var(--foreground);
+        cursor: pointer;
+        transition: all 0.18s ease;
+      }
+
+      .action-btn-message:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+
+      .note-card {
+        display: flex;
+        gap: 12px;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .note-card:last-child {
+        border-bottom: none;
+      }
+
+      .collection-item {
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .collection-item:last-child {
+        border-bottom: none;
+      }
+
+      .collection-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .collection-body {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+      }
+
+      .collection-body.expanded {
+        max-height: 300px;
+      }
+
+      /* 宠物档案卡片 */
+      .pet-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px;
+        border-radius: var(--radius);
+        background: var(--card);
+        border: 1px solid var(--border);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+      }
+
+      .pet-avatar {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      .pet-avatar--cat {
+        background: linear-gradient(135deg, var(--state-warning), var(--brand-300));
+      }
+
+      .pet-avatar--dog {
+        background: linear-gradient(135deg, var(--brand-200), var(--brand-400));
+      }
+
+      /* Tab 内容切换 */
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased" style="font-family: var(--font-sans);">
+    <main class="pb-24">
+
+      <!-- iOS 状态栏 -->
+      <div class="sticky top-0 z-30" style="background: var(--background);">
+        <div class="h-11 flex items-center justify-between px-5">
+          <span class="text-sm font-semibold" style="color: var(--foreground);">9:41</span>
+          <div class="flex items-center gap-1.5">
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/triangle-alert.svg'); mask-image: url('../assets/icons/dl-builtin-apple/triangle-alert.svg');"></span>
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/box.svg'); mask-image: url('../assets/icons/dl-builtin-apple/box.svg');"></span>
+            <span class="w-6 h-3 rounded-sm" style="background: var(--foreground);"></span>
+          </div>
+        </div>
+
+        <!-- 导航栏 -->
+        <div class="h-11 flex items-center justify-between px-4">
+          <button class="w-9 h-9 flex items-center justify-center" aria-label="返回">
+            <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-left.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-left.svg'); color: var(--primary);"></span>
+          </button>
+          <span class="text-base font-semibold" style="color: var(--foreground);">个人主页</span>
+          <button class="w-9 h-9 flex items-center justify-center" aria-label="更多">
+            <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/gear.svg'); mask-image: url('../assets/icons/dl-builtin-apple/gear.svg'); color: var(--icon-600);"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 用户信息区域 -->
+      <section class="px-4 pt-4 pb-3">
+        <div class="flex items-start gap-4">
+          <!-- 头像 -->
+          <div class="profile-avatar"></div>
+          <!-- 用户信息 -->
+          <div class="flex-1 min-w-0 pt-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h1 class="text-lg font-bold" style="color: var(--foreground);">小鱼养宠记</h1>
+              <!-- 会员等级标签 -->
+              <span class="profile-tag" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-600)); color: var(--primary-foreground);">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg);"></span>
+                LV.6
+              </span>
+            </div>
+            <!-- IP 偏好标签 -->
+            <div class="flex items-center gap-2 mt-1.5">
+              <span class="profile-tag" style="background: var(--secondary); color: var(--text-500);">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/map-pin.svg'); mask-image: url('../assets/icons/dl-builtin-apple/map-pin.svg');"></span>
+                上海
+              </span>
+              <span class="profile-tag" style="background: var(--secondary); color: var(--text-500);">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/heart.svg'); mask-image: url('../assets/icons/dl-builtin-apple/heart.svg);"></span>
+                猫咪爱好者
+              </span>
+            </div>
+            <p class="text-sm mt-2 line-clamp-2" style="color: var(--text-500);">三只猫咪的铲屎官，分享科学养宠日常，致力于让每一只毛孩子都能健康快乐地成长。</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 操作按钮区域（查看他人主页时展示） -->
+      <section class="px-4 pb-4">
+        <div class="flex gap-3">
+          <button class="action-btn-follow" style="background: var(--primary); color: var(--primary-foreground);" aria-label="关注">
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/user.svg'); mask-image: url('../assets/icons/dl-builtin-apple/user.svg');"></span>
+            关注
+          </button>
+          <button class="action-btn-message" aria-label="私信">
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/send-horizontal.svg'); mask-image: url('../assets/icons/dl-builtin-apple/send-horizontal.svg');"></span>
+            私信
+          </button>
+        </div>
+      </section>
+
+      <!-- 数据统计栏 -->
+      <section class="mx-4 mb-4 p-4 rounded-[var(--radius)]" style="background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
+        <div class="flex items-center">
+          <div class="stat-item">
+            <span class="stat-value">128</span>
+            <span class="stat-label">关注</span>
+          </div>
+          <div class="stat-item" style="border-left: 1px solid var(--border); border-right: 1px solid var(--border);">
+            <span class="stat-value">3.2k</span>
+            <span class="stat-label">粉丝</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">12.8k</span>
+            <span class="stat-label">获赞</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 切换 -->
+      <section class="sticky top-[88px] z-20" style="background: var(--background);">
+        <div class="flex border-b" style="border-color: var(--border);">
+          <button class="tab-btn flex-1 h-11 flex items-center justify-center text-sm font-semibold relative" style="color: var(--primary);" data-tab="notes" aria-selected="true">
+            笔记
+            <span class="tab-indicator"></span>
+          </button>
+          <button class="tab-btn flex-1 h-11 flex items-center justify-center text-sm font-medium" style="color: var(--text-400);" data-tab="collections" aria-selected="false">
+            合集
+          </button>
+          <button class="tab-btn flex-1 h-11 flex items-center justify-center text-sm font-medium" style="color: var(--text-400);" data-tab="pets" aria-selected="false">
+            宠物档案
+          </button>
+        </div>
+      </section>
+
+      <!-- 笔记列表（默认 Tab） -->
+      <div class="tab-content active" id="tab-notes">
+        <div class="px-4">
+          <!-- 笔记 1 -->
+          <article class="note-card">
+            <div class="note-cover"></div>
+            <div class="flex-1 min-w-0 flex flex-col justify-between">
+              <div>
+                <h3 class="text-sm font-semibold truncate" style="color: var(--foreground);">新手养猫必备清单：这些装备你都需要</h3>
+                <p class="text-xs mt-1 line-clamp-2" style="color: var(--text-400);">分享我从养第一只猫到现在积累的必备好物清单，从猫粮到玩具，帮你少走弯路...</p>
+              </div>
+              <div class="flex items-center gap-4 mt-2">
+                <span class="flex items-center gap-1 text-xs" style="color: var(--text-400);">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/thumbs-up.svg'); mask-image: url('../assets/icons/dl-builtin-apple/thumbs-up.svg');"></span>
+                  2.1k
+                </span>
+                <span class="flex items-center gap-1 text-xs" style="color: var(--text-400);">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/message-circle-more.svg'); mask-image: url('../assets/icons/dl-builtin-apple/message-circle-more.svg');"></span>
+                  186
+                </span>
+                <span class="flex items-center gap-1 text-xs" style="color: var(--text-400);">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+                  943
+                </span>
+                <span class="text-xs ml-auto" style="color: var(--text-300);">3天前</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- 笔记 2 -->
+          <article class="note-card">
+            <div class="note-cover" style="background: linear-gradient(135deg, var(--brand-50), var(--brand-200));"></div>
+            <div class="flex-1 min-w-0 flex flex-col justify-between">
+              <div>
+                <h3 class="text-sm font-semibold truncate" style="color: var(--foreground);">我家布偶猫的一天：从早到晚有多治愈</h3>
+                <p class="text-xs mt-1 line-clamp-2" style="color: var(--text-400);">记录我家布偶"团子"的日常作息，从清晨叫我起床到晚上趴在腿上打呼噜的完整过程...</p>
+              </div>
+              <div class="flex items-center gap-4 mt-2">
+                <span class="flex items-center gap-1 text-xs" style="color: var(--text-400);">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/thumbs-up.svg'); mask-image: url('../assets/icons/dl-builtin-apple/thumbs-up.svg');"></span>
+                  5.6k
+                </span>
+                <span class="flex items-center gap-1 text-xs" style="color: var(--text-400);">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/message-circle-more.svg'); mask-image: url('../assets/icons/dl-builtin-apple/message-circle-more.svg');"></span>
+                  412
+                </span>
+                <span class="flex items-center gap-1 text-xs" style="color: var(--text-400);">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+                  2.3k
+                </span>
+                <span class="text-xs ml-auto" style="color: var(--text-300);">1周前</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- 笔记 3 -->
+          <article class="note-card">
+            <div class="note-cover" style="background: linear-gradient(135deg, var(--state-success-surface), var(--background-200));"></div>
+            <div class="flex-1 min-w-0 flex flex-col justify-between">
+              <div>
+                <h3 class="text-sm font-semibold truncate" style="color: var(--foreground);">猫粮选购指南：如何看配料表避坑</h3>
+                <p class="text-xs mt-1 line-clamp-2" style="color: var(--text-400);">手把手教你读懂猫粮配料表，了解哪些成分是优质蛋白，哪些是应该避开的填充物...</p>
+              </div>
+              <div class="flex items-center gap-4 mt-2">
+                <span class="flex items-center gap-1 text-xs" style="color: var(--text-400);">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/thumbs-up.svg'); mask-image: url('../assets/icons/dl-builtin-apple/thumbs-up.svg');"></span>
+                  8.9k
+                </span>
+                <span class="flex items-center gap-1 text-xs" style="color: var(--text-400);">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/message-circle-more.svg'); mask-image: url('../assets/icons/dl-builtin-apple/message-circle-more.svg');"></span>
+                  678
+                </span>
+                <span class="flex items-center gap-1 text-xs" style="color: var(--text-400);">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+                  4.5k
+                </span>
+                <span class="text-xs ml-auto" style="color: var(--text-300);">2周前</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- 笔记 4 -->
+          <article class="note-card">
+            <div class="note-cover" style="background: linear-gradient(135deg, var(--background-200), var(--background-100));"></div>
+            <div class="flex-1 min-w-0 flex flex-col justify-between">
+              <div>
+                <h3 class="text-sm font-semibold truncate" style="color: var(--foreground);">夏季猫咪护理：防暑降温小妙招</h3>
+                <p class="text-xs mt-1 line-clamp-2" style="color: var(--text-400);">夏天到了，分享几个实用的猫咪防暑降温方法，让毛孩子也能清凉度夏...</p>
+              </div>
+              <div class="flex items-center gap-4 mt-2">
+                <span class="flex items-center gap-1 text-xs" style="color: var(--text-400);">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/thumbs-up.svg'); mask-image: url('../assets/icons/dl-builtin-apple/thumbs-up.svg');"></span>
+                  1.3k
+                </span>
+                <span class="flex items-center gap-1 text-xs" style="color: var(--text-400);">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/message-circle-more.svg'); mask-image: url('../assets/icons/dl-builtin-apple/message-circle-more.svg');"></span>
+                  95
+                </span>
+                <span class="flex items-center gap-1 text-xs" style="color: var(--text-400);">
+                  <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+                  521
+                </span>
+                <span class="text-xs ml-auto" style="color: var(--text-300);">1个月前</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <!-- 合集 Tab -->
+      <div class="tab-content" id="tab-collections">
+        <div class="px-4">
+          <!-- 合集 1 -->
+          <div class="collection-item">
+            <button class="collection-header w-full text-left" data-collection-toggle aria-expanded="false">
+              <div class="collection-cover" style="background: linear-gradient(135deg, var(--brand-100), var(--brand-300));"></div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-sm font-semibold truncate" style="color: var(--foreground);">新手养猫完全指南</h3>
+                <div class="flex items-center gap-3 mt-1">
+                  <span class="text-xs" style="color: var(--text-400);">12 篇笔记</span>
+                  <span class="text-xs" style="color: var(--text-400);">856 订阅</span>
+                </div>
+              </div>
+              <span data-icon class="w-4 h-4 chevron-icon transition-transform" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-down.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-down.svg'); color: var(--text-400);"></span>
+            </button>
+            <div class="collection-body">
+              <div class="pt-3 pl-0 space-y-2">
+                <div class="flex items-center gap-2 py-1.5">
+                  <span class="w-1 h-1 rounded-full" style="background: var(--text-300);"></span>
+                  <span class="text-xs" style="color: var(--text-500);">新手养猫必备清单</span>
+                </div>
+                <div class="flex items-center gap-2 py-1.5">
+                  <span class="w-1 h-1 rounded-full" style="background: var(--text-300);"></span>
+                  <span class="text-xs" style="color: var(--text-500);">猫粮选购指南</span>
+                </div>
+                <div class="flex items-center gap-2 py-1.5">
+                  <span class="w-1 h-1 rounded-full" style="background: var(--text-300);"></span>
+                  <span class="text-xs" style="color: var(--text-500);">第一次带猫去体检</span>
+                </div>
+                <button class="text-xs font-medium mt-1" style="color: var(--primary); background: none; border: none; padding: 0; cursor: pointer;">查看全部 12 篇</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 合集 2 -->
+          <div class="collection-item">
+            <button class="collection-header w-full text-left" data-collection-toggle aria-expanded="false">
+              <div class="collection-cover" style="background: linear-gradient(135deg, var(--brand-200), var(--brand-400));"></div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-sm font-semibold truncate" style="color: var(--foreground);">猫咪健康护理手册</h3>
+                <div class="flex items-center gap-3 mt-1">
+                  <span class="text-xs" style="color: var(--text-400);">8 篇笔记</span>
+                  <span class="text-xs" style="color: var(--text-400);">1.2k 订阅</span>
+                </div>
+              </div>
+              <span data-icon class="w-4 h-4 chevron-icon transition-transform" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-down.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-down.svg'); color: var(--text-400);"></span>
+            </button>
+            <div class="collection-body">
+              <div class="pt-3 pl-0 space-y-2">
+                <div class="flex items-center gap-2 py-1.5">
+                  <span class="w-1 h-1 rounded-full" style="background: var(--text-300);"></span>
+                  <span class="text-xs" style="color: var(--text-500);">猫咪疫苗接种时间表</span>
+                </div>
+                <div class="flex items-center gap-2 py-1.5">
+                  <span class="w-1 h-1 rounded-full" style="background: var(--text-300);"></span>
+                  <span class="text-xs" style="color: var(--text-500);">如何判断猫咪生病了</span>
+                </div>
+                <div class="flex items-center gap-2 py-1.5">
+                  <span class="w-1 h-1 rounded-full" style="background: var(--text-300);"></span>
+                  <span class="text-xs" style="color: var(--text-500);">夏季防暑降温小妙招</span>
+                </div>
+                <button class="text-xs font-medium mt-1" style="color: var(--primary); background: none; border: none; padding: 0; cursor: pointer;">查看全部 8 篇</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 合集 3 -->
+          <div class="collection-item">
+            <button class="collection-header w-full text-left" data-collection-toggle aria-expanded="false">
+              <div class="collection-cover" style="background: linear-gradient(135deg, var(--state-success-surface), var(--brand-100));"></div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-sm font-semibold truncate" style="color: var(--foreground);">猫咪好物推荐合集</h3>
+                <div class="flex items-center gap-3 mt-1">
+                  <span class="text-xs" style="color: var(--text-400);">15 篇笔记</span>
+                  <span class="text-xs" style="color: var(--text-400);">2.4k 订阅</span>
+                </div>
+              </div>
+              <span data-icon class="w-4 h-4 chevron-icon transition-transform" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-down.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-down.svg'); color: var(--text-400);"></span>
+            </button>
+            <div class="collection-body">
+              <div class="pt-3 pl-0 space-y-2">
+                <div class="flex items-center gap-2 py-1.5">
+                  <span class="w-1 h-1 rounded-full" style="background: var(--text-300);"></span>
+                  <span class="text-xs" style="color: var(--text-500);">年度最佳猫砂盆推荐</span>
+                </div>
+                <div class="flex items-center gap-2 py-1.5">
+                  <span class="w-1 h-1 rounded-full" style="background: var(--text-300);"></span>
+                  <span class="text-xs" style="color: var(--text-500);">高性价比猫粮 Top 5</span>
+                </div>
+                <div class="flex items-center gap-2 py-1.5">
+                  <span class="w-1 h-1 rounded-full" style="background: var(--text-300);"></span>
+                  <span class="text-xs" style="color: var(--text-500);">猫咪最爱的玩具推荐</span>
+                </div>
+                <button class="text-xs font-medium mt-1" style="color: var(--primary); background: none; border: none; padding: 0; cursor: pointer;">查看全部 15 篇</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 宠物档案 Tab -->
+      <div class="tab-content" id="tab-pets">
+        <div class="px-4 space-y-3">
+          <!-- 宠物 1 -->
+          <div class="pet-card">
+            <div class="pet-avatar pet-avatar--cat"></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-semibold" style="color: var(--foreground);">团子</h3>
+                <span class="profile-tag" style="background: var(--secondary); color: var(--text-500); font-size: 10px; height: 18px; padding: 0 6px;">
+                  布偶猫
+                </span>
+              </div>
+              <div class="flex items-center gap-3 mt-1">
+                <span class="text-xs" style="color: var(--text-400);">3岁</span>
+                <span class="text-xs" style="color: var(--text-400);">公</span>
+                <span class="text-xs" style="color: var(--text-400);">已绝育</span>
+              </div>
+              <p class="text-xs mt-1 line-clamp-1" style="color: var(--text-400);">性格温柔，喜欢被抱着</p>
+            </div>
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg'); color: var(--text-300);"></span>
+          </div>
+
+          <!-- 宠物 2 -->
+          <div class="pet-card">
+            <div class="pet-avatar pet-avatar--cat" style="background: linear-gradient(135deg, var(--brand-100), var(--brand-300));"></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-semibold" style="color: var(--foreground);">麻糬</h3>
+                <span class="profile-tag" style="background: var(--secondary); color: var(--text-500); font-size: 10px; height: 18px; padding: 0 6px;">
+                  英短蓝猫
+                </span>
+              </div>
+              <div class="flex items-center gap-3 mt-1">
+                <span class="text-xs" style="color: var(--text-400);">2岁</span>
+                <span class="text-xs" style="color: var(--text-400);">母</span>
+                <span class="text-xs" style="color: var(--text-400);">已绝育</span>
+              </div>
+              <p class="text-xs mt-1 line-clamp-1" style="color: var(--text-400);">活泼好动，喜欢追逐玩具</p>
+            </div>
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg'); color: var(--text-300);"></span>
+          </div>
+
+          <!-- 宠物 3 -->
+          <div class="pet-card">
+            <div class="pet-avatar pet-avatar--dog"></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-semibold" style="color: var(--foreground);">豆豆</h3>
+                <span class="profile-tag" style="background: var(--secondary); color: var(--text-500); font-size: 10px; height: 18px; padding: 0 6px;">
+                  柯基
+                </span>
+              </div>
+              <div class="flex items-center gap-3 mt-1">
+                <span class="text-xs" style="color: var(--text-400);">1岁</span>
+                <span class="text-xs" style="color: var(--text-400);">公</span>
+                <span class="text-xs" style="color: var(--text-400);">未绝育</span>
+              </div>
+              <p class="text-xs mt-1 line-clamp-1" style="color: var(--text-400);">小短腿大能量，最爱散步</p>
+            </div>
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg'); color: var(--text-300);"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 底部 TabBar -->
+      <nav class="fixed bottom-0 inset-x-0 z-40" style="background: rgba(255,255,255,0.88); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid var(--border);" aria-label="主导航">
+        <div class="flex items-stretch justify-around h-[49px]" style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+          <!-- 首页 -->
+          <button class="flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0" style="color: var(--text-400);" aria-label="首页">
+            <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/house.svg'); mask-image: url('../assets/icons/dl-builtin-apple/house.svg');"></span>
+            <span class="text-[10px] font-medium">首页</span>
+          </button>
+          <!-- 分类 -->
+          <button class="flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0" style="color: var(--text-400);" aria-label="分类">
+            <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/grip.svg'); mask-image: url('../assets/icons/dl-builtin-apple/grip.svg');"></span>
+            <span class="text-[10px] font-medium">分类</span>
+          </button>
+          <!-- Pet Hub -->
+          <button class="flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0" style="color: var(--text-400);" aria-label="Pet Hub">
+            <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/heart.svg'); mask-image: url('../assets/icons/dl-builtin-apple/heart.svg');"></span>
+            <span class="text-[10px] font-medium">Pet Hub</span>
+          </button>
+          <!-- 社区 -->
+          <button class="flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0" style="color: var(--primary);" aria-label="社区" aria-current="page">
+            <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/message-circle-more.svg'); mask-image: url('../assets/icons/dl-builtin-apple/message-circle-more.svg');"></span>
+            <span class="text-[10px] font-medium">社区</span>
+          </button>
+          <!-- 我的 -->
+          <button class="flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0" style="color: var(--text-400);" aria-label="个人中心">
+            <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/user.svg'); mask-image: url('../assets/icons/dl-builtin-apple/user.svg');"></span>
+            <span class="text-[10px] font-medium">我的</span>
+          </button>
+        </div>
+        <div class="h-[env(safe-area-inset-bottom,0px)]" style="background: rgba(255,255,255,0.88);"></div>
+      </nav>
+
+    </main>
+
+    <!-- Tab 切换与合集折叠交互 -->
+    <script>
+      // Tab 切换逻辑
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      const tabContents = document.querySelectorAll('.tab-content');
+
+      tabBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var target = btn.getAttribute('data-tab');
+
+          // 更新按钮样式
+          tabBtns.forEach(function(b) {
+            b.style.color = 'var(--text-400)';
+            b.style.fontWeight = '500';
+            b.setAttribute('aria-selected', 'false');
+            // 移除指示器
+            var indicator = b.querySelector('.tab-indicator');
+            if (indicator) indicator.remove();
+          });
+
+          btn.style.color = 'var(--primary)';
+          btn.style.fontWeight = '600';
+          btn.setAttribute('aria-selected', 'true');
+
+          // 添加指示器
+          var newIndicator = document.createElement('span');
+          newIndicator.className = 'tab-indicator';
+          btn.appendChild(newIndicator);
+
+          // 切换内容
+          tabContents.forEach(function(content) {
+            content.classList.remove('active');
+          });
+          document.getElementById('tab-' + target).classList.add('active');
+        });
+      });
+
+      // 合集折叠展开逻辑
+      var collectionToggles = document.querySelectorAll('[data-collection-toggle]');
+      collectionToggles.forEach(function(toggle) {
+        toggle.addEventListener('click', function() {
+          var body = toggle.parentElement.querySelector('.collection-body');
+          var chevron = toggle.querySelector('.chevron-icon');
+          var expanded = toggle.getAttribute('aria-expanded') === 'true';
+
+          if (expanded) {
+            body.classList.remove('expanded');
+            chevron.style.transform = 'rotate(0deg)';
+            toggle.setAttribute('aria-expanded', 'false');
+          } else {
+            body.classList.add('expanded');
+            chevron.style.transform = 'rotate(180deg)';
+            toggle.setAttribute('aria-expanded', 'true');
+          }
+        });
+      });
+    </script>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

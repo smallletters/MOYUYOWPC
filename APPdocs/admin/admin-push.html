@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Push推送 - MOYUYO 管理后台</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff;
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759;
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30;
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* state-warning */
+  --state-warning: #ff9500;
+  --state-warning-surface: #fff4e5;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12);
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+    </style>
+    <style id="component-vars">
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* ===== 后台管理布局 ===== */
+      .admin-layout {
+        display: flex;
+        min-height: 100vh;
+      }
+      .admin-sidebar {
+        width: 240px;
+        min-height: 100vh;
+        background: #1d1d1f;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+      .admin-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        background: var(--background);
+      }
+
+      /* 侧边栏品牌区 */
+      .sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 20px 20px 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+      }
+      .sidebar-brand-text {
+        font-size: 16px;
+        font-weight: 700;
+        color: #ffffff;
+        letter-spacing: 0.02em;
+      }
+
+      /* 侧边栏导航 */
+      .sidebar-nav {
+        flex: 1;
+        padding: 12px 10px;
+        overflow-y: auto;
+      }
+      .sidebar-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 8px;
+        color: rgba(255,255,255,0.6);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        text-decoration: none;
+        margin-bottom: 2px;
+      }
+      .sidebar-nav-item:hover {
+        background: rgba(255,255,255,0.06);
+        color: rgba(255,255,255,0.9);
+      }
+      .sidebar-nav-item.active {
+        background: var(--brand-500);
+        color: #ffffff;
+      }
+      .sidebar-nav-item .nav-icon {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+
+      /* 顶部栏 */
+      .admin-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 56px;
+        padding: 0 24px;
+        border-bottom: 1px solid var(--border);
+        background: var(--card);
+        flex-shrink: 0;
+      }
+
+      /* 面包屑 */
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--text-400);
+      }
+      .breadcrumb a {
+        color: var(--text-500);
+        text-decoration: none;
+        transition: color 0.15s ease;
+      }
+      .breadcrumb a:hover {
+        color: var(--primary);
+      }
+      .breadcrumb .current {
+        color: var(--text-800);
+        font-weight: 600;
+      }
+      .breadcrumb .separator {
+        color: var(--text-300);
+      }
+
+      /* ===== 推送类型 Tab ===== */
+      .push-tabs {
+        display: flex;
+        gap: 8px;
+        padding: 0;
+      }
+      .push-tab {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 36px;
+        padding: 0 18px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text-500);
+        font-size: 13px;
+        font-weight: 500;
+        font-family: var(--font-sans);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+      }
+      .push-tab:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+      .push-tab.active {
+        background: var(--primary);
+        color: var(--background-50);
+        border-color: var(--primary);
+      }
+
+      /* ===== 统计卡片网格 ===== */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+      }
+      .stat-card {
+        background: var(--card);
+        border-radius: var(--radius);
+        padding: 20px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-xs);
+        transition: border-color 0.2s ease, transform 0.2s ease;
+      }
+      .stat-card:hover {
+        border-color: var(--primary);
+        transform: translateY(-1px);
+      }
+      .stat-label {
+        font-size: 13px;
+        color: var(--text-500);
+        font-weight: 500;
+      }
+      .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text-800);
+        margin-top: 6px;
+        line-height: 1.1;
+      }
+      .stat-value .stat-unit {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-500);
+        margin-left: 2px;
+      }
+      .stat-trend {
+        font-size: 12px;
+        font-weight: 500;
+        margin-top: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+      }
+      .stat-trend.up { color: var(--state-success); }
+      .stat-trend.down { color: var(--state-error); }
+
+      /* ===== 区域标题 ===== */
+      .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .section-title {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--text-800);
+      }
+      .section-action {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--primary);
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-family: var(--font-sans);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      /* ===== 推送记录卡片 ===== */
+      .push-record {
+        background: var(--card);
+        border-radius: var(--radius);
+        padding: 20px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-xs);
+        transition: border-color 0.2s ease;
+      }
+      .push-record:hover {
+        border-color: var(--primary);
+      }
+      .push-record-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .push-record-title-area {
+        flex: 1;
+        min-width: 0;
+      }
+      .push-record-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-800);
+        line-height: 1.3;
+      }
+      .push-record-summary {
+        font-size: 13px;
+        color: var(--text-500);
+        line-height: 1.4;
+        margin-top: 4px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      /* 推送类型标签 */
+      .push-type-tag {
+        display: inline-flex;
+        align-items: center;
+        height: 24px;
+        padding: 0 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .push-type-tag.app-push {
+        background: var(--brand-50);
+        color: var(--brand-600);
+      }
+      .push-type-tag.sms {
+        background: var(--state-warning-surface);
+        color: var(--state-warning);
+      }
+      .push-type-tag.email {
+        background: #f0e6ff;
+        color: #5856d6;
+      }
+
+      /* 推送状态标签 */
+      .push-status-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        height: 24px;
+        padding: 0 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .push-status-tag.pending {
+        background: var(--state-warning-surface);
+        color: var(--state-warning);
+      }
+      .push-status-tag.sent {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+      .push-status-tag.cancelled {
+        background: var(--background-200);
+        color: var(--text-400);
+      }
+
+      /* 推送元信息 */
+      .push-meta {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+        flex-wrap: wrap;
+      }
+      .push-meta-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 13px;
+        color: var(--text-500);
+        white-space: nowrap;
+      }
+
+      /* 推送数据行 */
+      .push-data-row {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        margin-top: 12px;
+      }
+      .push-data-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+      .push-data-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-800);
+        font-variant-numeric: tabular-nums;
+      }
+      .push-data-label {
+        font-size: 12px;
+        color: var(--text-400);
+      }
+
+      /* 推送操作按钮 */
+      .push-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+      .push-action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        height: 34px;
+        padding: 0 14px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text-600);
+        font-size: 13px;
+        font-weight: 500;
+        font-family: var(--font-sans);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .push-action-btn:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+      .push-action-btn.primary-action {
+        background: var(--primary);
+        color: var(--background-50);
+        border-color: var(--primary);
+      }
+      .push-action-btn.primary-action:hover {
+        filter: brightness(0.96);
+      }
+      .push-action-btn.danger-action {
+        color: var(--state-error);
+        border-color: var(--state-error);
+      }
+      .push-action-btn.danger-action:hover {
+        background: var(--state-error);
+        color: var(--state-error-foreground);
+      }
+
+      /* ===== 定时推送折叠区域 ===== */
+      .collapsible-section {
+        border-radius: var(--radius);
+        background: var(--card);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-xs);
+        overflow: hidden;
+        transition: border-color 0.2s ease;
+      }
+      .collapsible-section:hover {
+        border-color: var(--primary);
+      }
+      .collapsible-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 16px 20px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-family: var(--font-sans);
+      }
+      .collapsible-trigger:hover {
+        background: var(--accent);
+      }
+      .collapsible-trigger-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .collapsible-trigger-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-800);
+      }
+      .collapsible-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        height: 22px;
+        padding: 0 7px;
+        border-radius: 999px;
+        background: var(--state-error);
+        color: var(--background-50);
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .collapsible-trigger .chevron-icon {
+        width: 18px;
+        height: 18px;
+        color: var(--text-400);
+        transition: transform 0.3s ease;
+      }
+      .collapsible-trigger.expanded .chevron-icon {
+        transform: rotate(180deg);
+      }
+      .collapsible-content {
+        display: none;
+        padding: 0 20px 20px;
+      }
+      .collapsible-content.show {
+        display: block;
+      }
+
+      /* 定时推送项 */
+      .scheduled-item {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .scheduled-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+      .scheduled-item:first-child {
+        padding-top: 0;
+      }
+      .scheduled-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: calc(var(--radius) * 0.6);
+        background: var(--brand-50);
+        color: var(--brand-500);
+        flex-shrink: 0;
+      }
+      .scheduled-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .scheduled-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-800);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .scheduled-time {
+        font-size: 13px;
+        color: var(--text-500);
+        margin-top: 2px;
+      }
+      .scheduled-countdown {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--state-warning-surface);
+        color: var(--state-warning);
+        font-size: 13px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      /* ===== 快速新建入口卡片 ===== */
+      .quick-entry-card {
+        background: var(--card);
+        border-radius: var(--radius);
+        padding: 20px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-xs);
+        transition: border-color 0.2s ease;
+      }
+      .quick-entry-card:hover {
+        border-color: var(--primary);
+      }
+      .quick-entry-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+      .quick-entry-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 18px 12px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: var(--card);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .quick-entry-item:hover {
+        background: var(--accent);
+        border-color: var(--primary);
+        transform: translateY(-1px);
+      }
+      .quick-entry-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border-radius: calc(var(--radius) * 0.7);
+      }
+      .quick-entry-icon.blue {
+        background: var(--brand-50);
+        color: var(--brand-500);
+      }
+      .quick-entry-icon.green {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+      .quick-entry-icon.orange {
+        background: var(--state-warning-surface);
+        color: var(--state-warning);
+      }
+      .quick-entry-label {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-800);
+      }
+      .quick-entry-desc {
+        font-size: 12px;
+        color: var(--text-400);
+        text-align: center;
+      }
+
+      /* 页面最小宽度 */
+      body { min-width: 1280px; }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <div class="admin-layout">
+
+        <!-- ========== 左侧导航栏 ========== -->
+        <aside class="admin-sidebar">
+            <!-- 品牌标识 -->
+            <div class="sidebar-brand">
+                <i data-lucide="paw-print" class="w-6 h-6" style="color: var(--brand-500);"></i>
+                <span class="sidebar-brand-text">MOYUYO Admin</span>
+            </div>
+
+            <!-- 导航菜单 -->
+            <nav class="sidebar-nav">
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="layout-dashboard" class="nav-icon"></i>
+                    <span>仪表盘</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="package" class="nav-icon"></i>
+                    <span>商品管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="shopping-bag" class="nav-icon"></i>
+                    <span>订单管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="users" class="nav-icon"></i>
+                    <span>用户管理</span>
+                </a>
+                <!-- 营销管理 - 当前高亮 -->
+                <a class="sidebar-nav-item active" href="#">
+                    <i data-lucide="megaphone" class="nav-icon"></i>
+                    <span>营销管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="file-text" class="nav-icon"></i>
+                    <span>内容管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="headphones" class="nav-icon"></i>
+                    <span>客服管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="bar-chart-3" class="nav-icon"></i>
+                    <span>数据统计</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="truck" class="nav-icon"></i>
+                    <span>物流管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="shield-alert" class="nav-icon"></i>
+                    <span>风控管理</span>
+                </a>
+                <a class="sidebar-nav-item" href="#">
+                    <i data-lucide="settings" class="nav-icon"></i>
+                    <span>系统设置</span>
+                </a>
+            </nav>
+
+            <!-- 侧边栏底部 -->
+            <div style="padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--brand-500); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="user" style="width: 16px; height: 16px; color: #fff;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9);">Admin</div>
+                        <div style="font-size: 11px; color: rgba(255,255,255,0.4);">超级管理员</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ========== 主内容区 ========== -->
+        <div class="admin-main">
+
+            <!-- 顶部栏 -->
+            <header class="admin-topbar">
+                <!-- 面包屑：营销管理 > Push推送 -->
+                <div class="breadcrumb">
+                    <a href="#">营销管理</a>
+                    <span class="separator">/</span>
+                    <span class="current">Push推送</span>
+                </div>
+                <!-- 右侧操作区 -->
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="btn btn-primary" style="height: 36px; padding: 0 18px; font-size: 13px; gap: 6px;">
+                        <i data-lucide="plus" style="width: 15px; height: 15px;"></i>
+                        新建推送
+                    </button>
+                    <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--background-200); cursor: pointer;">
+                        <i data-lucide="bell" style="width: 18px; height: 18px; color: var(--text-600);"></i>
+                        <span style="position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--state-error);"></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 内容区 -->
+            <main style="flex: 1; padding: 24px; overflow-y: auto;">
+
+                <!-- 页面标题 -->
+                <div style="margin-bottom: 24px;">
+                    <h1 style="font-size: 22px; font-weight: 700; color: var(--text-800); margin: 0 0 6px;">Push推送管理</h1>
+                    <p style="font-size: 13px; color: var(--text-400); margin: 0;">管理 App Push、短信和邮件推送任务，追踪送达与转化数据</p>
+                </div>
+
+                <!-- 推送类型 Tab + 筛选 -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                    <div class="push-tabs">
+                        <button class="push-tab active">全部</button>
+                        <button class="push-tab">App Push</button>
+                        <button class="push-tab">短信</button>
+                        <button class="push-tab">邮件</button>
+                    </div>
+                    <button class="section-action">
+                        <i data-lucide="filter" style="width: 14px; height: 14px;"></i>
+                        筛选
+                    </button>
+                </div>
+
+                <!-- ====== 推送统计概览 ====== -->
+                <section class="stats-grid" style="margin-bottom: 24px;">
+                    <!-- 今日推送数 -->
+                    <div class="stat-card">
+                        <div class="stat-label">今日推送数</div>
+                        <div class="stat-value">3,482</div>
+                        <div class="stat-trend up">
+                            <i data-lucide="trending-up" style="width: 14px; height: 14px;"></i>
+                            +12.5%
+                        </div>
+                    </div>
+                    <!-- 送达率 -->
+                    <div class="stat-card">
+                        <div class="stat-label">送达率</div>
+                        <div class="stat-value">96.8<span class="stat-unit">%</span></div>
+                        <div class="stat-trend up">
+                            <i data-lucide="trending-up" style="width: 14px; height: 14px;"></i>
+                            +0.3%
+                        </div>
+                    </div>
+                    <!-- 打开率 -->
+                    <div class="stat-card">
+                        <div class="stat-label">打开率</div>
+                        <div class="stat-value">24.6<span class="stat-unit">%</span></div>
+                        <div class="stat-trend down">
+                            <i data-lucide="trending-down" style="width: 14px; height: 14px;"></i>
+                            -1.2%
+                        </div>
+                    </div>
+                    <!-- 转化率 -->
+                    <div class="stat-card">
+                        <div class="stat-label">转化率</div>
+                        <div class="stat-value">8.3<span class="stat-unit">%</span></div>
+                        <div class="stat-trend up">
+                            <i data-lucide="trending-up" style="width: 14px; height: 14px;"></i>
+                            +2.1%
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ====== 推送记录列表 ====== -->
+                <div class="section-header" style="margin-bottom: 16px;">
+                    <span class="section-title">推送记录</span>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+
+                    <!-- 推送记录 1: 已发送 - App Push -->
+                    <div class="push-record">
+                        <div class="push-record-header">
+                            <div class="push-record-title-area">
+                                <div class="push-record-title">618 年中大促即将开始</div>
+                                <div class="push-record-summary">精选宠物好物低至5折，限时抢购即将开始，千万别错过！</div>
+                            </div>
+                            <span class="push-type-tag app-push">App Push</span>
+                        </div>
+                        <div class="push-meta">
+                            <span class="push-status-tag sent">
+                                <i data-lucide="check-circle" style="width: 14px; height: 14px;"></i>
+                                已发送
+                            </span>
+                            <span class="push-meta-item">
+                                <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
+                                06-18 10:00
+                            </span>
+                            <span class="push-meta-item">
+                                <i data-lucide="users" style="width: 14px; height: 14px;"></i>
+                                全部用户
+                            </span>
+                        </div>
+                        <div class="push-data-row">
+                            <div class="push-data-item">
+                                <span class="push-data-value">52,136</span>
+                                <span class="push-data-label">送达</span>
+                            </div>
+                            <div class="push-data-item">
+                                <span class="push-data-value">12,834</span>
+                                <span class="push-data-label">打开</span>
+                            </div>
+                            <div class="push-data-item">
+                                <span class="push-data-value">4,217</span>
+                                <span class="push-data-label">点击</span>
+                            </div>
+                        </div>
+                        <div class="push-actions">
+                            <button class="push-action-btn primary-action">
+                                <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+                                查看详情
+                            </button>
+                            <button class="push-action-btn">
+                                <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                                复制
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 推送记录 2: 待发送 - 短信 - 定时 -->
+                    <div class="push-record">
+                        <div class="push-record-header">
+                            <div class="push-record-title-area">
+                                <div class="push-record-title">新品到货通知</div>
+                                <div class="push-record-summary">您关注的商品已到货，快来选购吧！限量库存先到先得。</div>
+                            </div>
+                            <span class="push-type-tag sms">短信</span>
+                        </div>
+                        <div class="push-meta">
+                            <span class="push-status-tag pending">
+                                <i data-lucide="pause-circle" style="width: 14px; height: 14px;"></i>
+                                待发送
+                            </span>
+                            <span class="push-meta-item">
+                                <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
+                                定时 06-20 18:00
+                            </span>
+                            <span class="push-meta-item">
+                                <i data-lucide="users" style="width: 14px; height: 14px;"></i>
+                                新用户
+                            </span>
+                        </div>
+                        <div class="push-actions">
+                            <button class="push-action-btn primary-action">
+                                <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+                                查看详情
+                            </button>
+                            <button class="push-action-btn">
+                                <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                                复制
+                            </button>
+                            <button class="push-action-btn danger-action">
+                                <i data-lucide="x-circle" style="width: 14px; height: 14px;"></i>
+                                取消
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 推送记录 3: 已发送 - 邮件 -->
+                    <div class="push-record">
+                        <div class="push-record-header">
+                            <div class="push-record-title-area">
+                                <div class="push-record-title">六月会员权益报告</div>
+                                <div class="push-record-summary">您的专属会员月度报告已生成，查看本月消费明细与专属优惠。</div>
+                            </div>
+                            <span class="push-type-tag email">邮件</span>
+                        </div>
+                        <div class="push-meta">
+                            <span class="push-status-tag sent">
+                                <i data-lucide="check-circle" style="width: 14px; height: 14px;"></i>
+                                已发送
+                            </span>
+                            <span class="push-meta-item">
+                                <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
+                                06-15 09:00
+                            </span>
+                            <span class="push-meta-item">
+                                <i data-lucide="users" style="width: 14px; height: 14px;"></i>
+                                VIP
+                            </span>
+                        </div>
+                        <div class="push-data-row">
+                            <div class="push-data-item">
+                                <span class="push-data-value">8,421</span>
+                                <span class="push-data-label">送达</span>
+                            </div>
+                            <div class="push-data-item">
+                                <span class="push-data-value">2,109</span>
+                                <span class="push-data-label">打开</span>
+                            </div>
+                            <div class="push-data-item">
+                                <span class="push-data-value">893</span>
+                                <span class="push-data-label">点击</span>
+                            </div>
+                        </div>
+                        <div class="push-actions">
+                            <button class="push-action-btn primary-action">
+                                <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+                                查看详情
+                            </button>
+                            <button class="push-action-btn">
+                                <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                                复制
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 推送记录 4: 已取消 - App Push -->
+                    <div class="push-record">
+                        <div class="push-record-header">
+                            <div class="push-record-title-area">
+                                <div class="push-record-title">系统维护通知</div>
+                                <div class="push-record-summary">尊敬的用户，系统将于今晚进行升级维护，预计持续2小时。</div>
+                            </div>
+                            <span class="push-type-tag app-push">App Push</span>
+                        </div>
+                        <div class="push-meta">
+                            <span class="push-status-tag cancelled">
+                                <i data-lucide="x-circle" style="width: 14px; height: 14px;"></i>
+                                已取消
+                            </span>
+                            <span class="push-meta-item">
+                                <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
+                                定时 06-14 22:00
+                            </span>
+                            <span class="push-meta-item">
+                                <i data-lucide="users" style="width: 14px; height: 14px;"></i>
+                                自定义
+                            </span>
+                        </div>
+                        <div class="push-actions">
+                            <button class="push-action-btn primary-action">
+                                <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+                                查看详情
+                            </button>
+                            <button class="push-action-btn">
+                                <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                                复制
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ====== 定时推送队列（折叠区域） ====== -->
+                <div class="collapsible-section" style="margin-bottom: 24px;">
+                    <button class="collapsible-trigger" id="scheduledToggle" aria-expanded="false">
+                        <div class="collapsible-trigger-left">
+                            <span class="collapsible-trigger-title">定时推送队列</span>
+                            <span class="collapsible-badge">3</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="chevron-icon"></i>
+                    </button>
+                    <div class="collapsible-content" id="scheduledContent">
+                        <!-- 定时项 1 -->
+                        <div class="scheduled-item">
+                            <div class="scheduled-icon">
+                                <i data-lucide="bell" style="width: 18px; height: 18px;"></i>
+                            </div>
+                            <div class="scheduled-info">
+                                <div class="scheduled-title">新品到货通知</div>
+                                <div class="scheduled-time">发送时间：06-20 18:00</div>
+                            </div>
+                            <span class="scheduled-countdown">
+                                <i data-lucide="timer" style="width: 14px; height: 14px;"></i>
+                                2天 3小时
+                            </span>
+                        </div>
+                        <!-- 定时项 2 -->
+                        <div class="scheduled-item">
+                            <div class="scheduled-icon" style="background: var(--state-warning-surface); color: var(--state-warning);">
+                                <i data-lucide="mail" style="width: 18px; height: 18px;"></i>
+                            </div>
+                            <div class="scheduled-info">
+                                <div class="scheduled-title">周末促销邮件</div>
+                                <div class="scheduled-time">发送时间：06-21 09:00</div>
+                            </div>
+                            <span class="scheduled-countdown">
+                                <i data-lucide="timer" style="width: 14px; height: 14px;"></i>
+                                3天 18小时
+                            </span>
+                        </div>
+                        <!-- 定时项 3 -->
+                        <div class="scheduled-item">
+                            <div class="scheduled-icon" style="background: #f0e6ff; color: #5856d6;">
+                                <i data-lucide="send" style="width: 18px; height: 18px;"></i>
+                            </div>
+                            <div class="scheduled-info">
+                                <div class="scheduled-title">618 回顾推送</div>
+                                <div class="scheduled-time">发送时间：06-22 10:00</div>
+                            </div>
+                            <span class="scheduled-countdown">
+                                <i data-lucide="timer" style="width: 14px; height: 14px;"></i>
+                                4天 19小时
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ====== 快速新建推送入口 ====== -->
+                <div class="quick-entry-card">
+                    <div class="section-header" style="margin-bottom: 16px;">
+                        <span class="section-title">快速新建</span>
+                    </div>
+                    <div class="quick-entry-grid">
+                        <!-- 单推 -->
+                        <button class="quick-entry-item">
+                            <div class="quick-entry-icon blue">
+                                <i data-lucide="send" style="width: 20px; height: 20px;"></i>
+                            </div>
+                            <span class="quick-entry-label">单推</span>
+                            <span class="quick-entry-desc">指定用户</span>
+                        </button>
+                        <!-- 群推 -->
+                        <button class="quick-entry-item">
+                            <div class="quick-entry-icon green">
+                                <i data-lucide="users" style="width: 20px; height: 20px;"></i>
+                            </div>
+                            <span class="quick-entry-label">群推</span>
+                            <span class="quick-entry-desc">用户群体</span>
+                        </button>
+                        <!-- 定时推 -->
+                        <button class="quick-entry-item">
+                            <div class="quick-entry-icon orange">
+                                <i data-lucide="clock" style="width: 20px; height: 20px;"></i>
+                            </div>
+                            <span class="quick-entry-label">定时推</span>
+                            <span class="quick-entry-desc">计划发送</span>
+                        </button>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <script>
+      // 初始化 Lucide 图标
+      lucide.createIcons();
+
+      /* 定时推送折叠展开 */
+      var scheduledToggle = document.getElementById('scheduledToggle');
+      var scheduledContent = document.getElementById('scheduledContent');
+      if (scheduledToggle && scheduledContent) {
+        scheduledToggle.addEventListener('click', function() {
+          var isExpanded = this.getAttribute('aria-expanded') === 'true';
+          this.setAttribute('aria-expanded', String(!isExpanded));
+          this.classList.toggle('expanded', !isExpanded);
+          scheduledContent.classList.toggle('show', !isExpanded);
+        });
+      }
+
+      /* 推送类型 Tab 切换 */
+      var pushTabs = document.querySelectorAll('.push-tab');
+      pushTabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+          pushTabs.forEach(function(t) { t.classList.remove('active'); });
+          this.classList.add('active');
+        });
+      });
+    </script>
+</body>
+</html>

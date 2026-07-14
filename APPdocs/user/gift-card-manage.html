@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOYUYO 礼品卡管理</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* state-warning */
+  --state-warning: #ff9500;
+  --state-warning-surface: #fff4e5;
+  --state-warning-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: 'DM Sans', -apple-system, sans-serif;
+  --font-serif: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12);
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+/* components.css - aggregated component CSS */
+
+/* Button */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+/* Card */
+.card{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-xs);transition:border-color .2s ease,transform .2s ease}
+.card:hover{border-color:var(--primary);transform:translateY(-1px)}
+.eyebrow{color:var(--muted-foreground);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.title{font-size:15px;line-height:1.25}
+.price{font-variant-numeric:tabular-nums}
+
+/* Input */
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field.small{height:40px}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.field.disabled{opacity:.55}
+.icon,.clear{padding:0;border:0;background:transparent;color:var(--icon-muted);font:inherit}
+.icon{font-size:13px}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+
+      /* ========== 礼品卡管理页专用样式 ========== */
+
+      /* 礼品卡卡片 - 信用卡风格 */
+      .gcm-card {
+        position: relative;
+        border-radius: calc(var(--radius) * 1.2);
+        padding: 20px;
+        min-height: 168px;
+        overflow: hidden;
+        box-shadow: var(--shadow-lg);
+      }
+
+      /* 卡面装饰圆 */
+      .gcm-card-deco::before {
+        content: '';
+        position: absolute;
+        top: -30px;
+        right: -30px;
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        pointer-events: none;
+      }
+      .gcm-card-deco::after {
+        content: '';
+        position: absolute;
+        bottom: -40px;
+        right: 30px;
+        width: 160px;
+        height: 160px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.06);
+        pointer-events: none;
+      }
+
+      /* 芯片图标 */
+      .gcm-chip {
+        width: 36px;
+        height: 26px;
+        border-radius: 4px;
+        border: 1.5px solid rgba(255, 255, 255, 0.35);
+        background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 100%);
+        position: relative;
+      }
+      .gcm-chip::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 4px;
+        right: 4px;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.25);
+        transform: translateY(-50%);
+      }
+      /* 灰色芯片（已用/已过期） */
+      .gcm-chip-muted {
+        border-color: var(--background-400);
+        background: linear-gradient(135deg, var(--background-300) 0%, var(--background-200) 100%);
+      }
+
+      /* Tab 切换下划线 */
+      .gcm-tab-btn {
+        position: relative;
+        transition: color 0.18s ease;
+      }
+      .gcm-tab-btn.active::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 24px;
+        height: 2px;
+        border-radius: 1px;
+        background: var(--primary);
+      }
+
+      /* 弹窗遮罩 */
+      .gcm-modal-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.4);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+      }
+      .gcm-modal-overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      /* 弹窗面板 */
+      .gcm-modal-panel {
+        width: 100%;
+        max-width: 420px;
+        background: var(--card);
+        border-radius: calc(var(--radius) * 1.2) calc(var(--radius) * 1.2) 0 0;
+        padding: 24px 20px;
+        padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+        transform: translateY(100%);
+        transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+      }
+      .gcm-modal-overlay.active .gcm-modal-panel {
+        transform: translateY(0);
+      }
+
+      /* 弹窗把手 */
+      .gcm-modal-handle {
+        width: 36px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--background-400);
+        margin: 0 auto 20px;
+      }
+
+      /* 折叠区域动画 */
+      .gcm-collapse-body {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.35s cubic-bezier(0.32, 0.72, 0, 1), padding 0.35s ease;
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+      .gcm-collapse-body.open {
+        max-height: 600px;
+        padding-top: 16px;
+        padding-bottom: 4px;
+      }
+
+      /* 快捷入口卡片 */
+      .gcm-quick-entry {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        min-width: 100px;
+        padding: 16px 12px;
+        border-radius: var(--radius);
+        background: var(--card);
+        border: 1px solid var(--border);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        cursor: pointer;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+      }
+      .gcm-quick-entry:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+      }
+
+      /* 自定义面额滑块 */
+      .gcm-range-slider {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 6px;
+        border-radius: 3px;
+        background: var(--background-300);
+        outline: none;
+      }
+      .gcm-range-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--primary);
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,122,255,0.3);
+      }
+
+      /* 状态标签 */
+      .gcm-status-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      /* 使用记录时间线 */
+      .gcm-timeline-item {
+        position: relative;
+        padding-left: 20px;
+        padding-bottom: 16px;
+      }
+      .gcm-timeline-item::before {
+        content: '';
+        position: absolute;
+        left: 4px;
+        top: 8px;
+        bottom: 0;
+        width: 1px;
+        background: var(--background-300);
+      }
+      .gcm-timeline-item:last-child::before {
+        display: none;
+      }
+      .gcm-timeline-dot {
+        position: absolute;
+        left: 0;
+        top: 6px;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--primary);
+      }
+
+      /* 礼品卡不同面额渐变方案 */
+      .gcm-gradient-25 {
+        background: linear-gradient(135deg, #5856d6 0%, #7b68ee 60%, #9b8bff 100%);
+      }
+      .gcm-gradient-50 {
+        background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-500) 60%, var(--brand-400) 100%);
+      }
+      .gcm-gradient-100 {
+        background: linear-gradient(135deg, var(--brand-800) 0%, var(--brand-600) 60%, var(--brand-500) 100%);
+      }
+      .gcm-gradient-200 {
+        background: linear-gradient(135deg, #1c1c1e 0%, #2c2c2e 40%, #48484a 100%);
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <main class="min-h-screen" style="background: var(--background);">
+
+        <!-- 顶部导航栏 -->
+        <header class="sticky top-0 z-30 flex h-14 items-center px-4" style="background: var(--background); border-bottom: 1px solid var(--border);">
+            <button data-dom-id="cta-back" class="inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors duration-150 hover:bg-[var(--secondary)] focus-visible:outline-2 focus-visible:outline-[var(--ring)]" aria-label="返回">
+                <span data-icon class="h-5 w-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-left.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-left.svg');"></span>
+            </button>
+            <h1 class="flex-1 text-center text-base font-semibold tracking-[-0.02em]" style="color: var(--foreground);">礼品卡</h1>
+            <div class="w-9"></div>
+        </header>
+
+        <div class="px-4 pb-10 pt-5">
+
+            <!-- ========== 快捷入口区域（横向滚动） ========== -->
+            <section class="flex gap-3 overflow-x-auto no-scrollbar pb-1" aria-label="快捷操作">
+                <!-- 购买礼品卡 -->
+                <div class="gcm-quick-entry" data-dom-id="cta-buy-giftcard" role="button" tabindex="0" aria-label="购买礼品卡">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--brand-50);">
+                        <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/shopping-bag.svg'); mask-image: url('../assets/icons/dl-builtin-apple/shopping-bag.svg'); color: var(--brand-500);"></span>
+                    </div>
+                    <span class="text-xs font-semibold" style="color: var(--foreground);">购买礼品卡</span>
+                </div>
+                <!-- 绑定礼品卡 -->
+                <div class="gcm-quick-entry" data-dom-id="cta-bind-giftcard" role="button" tabindex="0" aria-label="绑定礼品卡" id="quick-bind-trigger">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--state-success-surface);">
+                        <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/link.svg'); mask-image: url('../assets/icons/dl-builtin-apple/link.svg'); color: var(--state-success);"></span>
+                    </div>
+                    <span class="text-xs font-semibold" style="color: var(--foreground);">绑定礼品卡</span>
+                </div>
+                <!-- 赠送礼品卡 -->
+                <div class="gcm-quick-entry" data-dom-id="cta-send-giftcard" role="button" tabindex="0" aria-label="赠送礼品卡">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--state-warning-surface);">
+                        <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/gift.svg'); mask-image: url('../assets/icons/dl-builtin-apple/gift.svg'); color: var(--state-warning);"></span>
+                    </div>
+                    <span class="text-xs font-semibold" style="color: var(--foreground);">赠送礼品卡</span>
+                </div>
+            </section>
+
+            <!-- ========== 礼品卡列表 Tab ========== -->
+            <nav class="mt-6 flex border-b" style="border-color: var(--border);" aria-label="礼品卡状态筛选">
+                <button class="gcm-tab-btn active flex-1 h-11 flex items-center justify-center text-sm font-semibold" style="color: var(--primary);" data-tab="all" aria-selected="true">
+                    全部
+                </button>
+                <button class="gcm-tab-btn flex-1 h-11 flex items-center justify-center text-sm font-medium" style="color: var(--text-400);" data-tab="available" aria-selected="false">
+                    可用
+                </button>
+                <button class="gcm-tab-btn flex-1 h-11 flex items-center justify-center text-sm font-medium" style="color: var(--text-400);" data-tab="used" aria-selected="false">
+                    已用
+                </button>
+                <button class="gcm-tab-btn flex-1 h-11 flex items-center justify-center text-sm font-medium" style="color: var(--text-400);" data-tab="expired" aria-selected="false">
+                    已过期
+                </button>
+            </nav>
+
+            <!-- ========== 礼品卡列表内容 ========== -->
+            <div class="mt-4 flex flex-col gap-4">
+
+                <!-- === 全部 Tab（默认显示） === -->
+                <div id="tab-all" class="gcm-tab-content flex flex-col gap-4">
+
+                    <!-- 礼品卡 1：$100 可用（部分使用） -->
+                    <article class="gcm-card gcm-card-deco gcm-gradient-100" data-card-id="1">
+                        <div class="relative z-10 flex flex-col justify-between h-full" style="min-height: 140px;">
+                            <div class="flex items-start justify-between">
+                                <span class="text-sm font-bold tracking-widest uppercase" style="color: rgba(255,255,255,0.9);">MOYUYO</span>
+                                <div class="gc-chip"></div>
+                            </div>
+                            <div class="mt-3">
+                                <span class="text-2xl font-semibold tracking-tight" style="color: #ffffff; font-variant-numeric: tabular-nums;">$100.00</span>
+                            </div>
+                            <div class="mt-4 flex items-end justify-between">
+                                <div>
+                                    <div class="text-xs tracking-wider" style="color: rgba(255,255,255,0.5); font-variant-numeric: tabular-nums;">****  ****  ****  5678</div>
+                                    <div class="mt-1 text-xs" style="color: rgba(255,255,255,0.5);">有效期至 2027-07-08</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs" style="color: rgba(255,255,255,0.5);">余额 $45.00 / $100.00</div>
+                                    <div class="gcm-status-tag mt-1" style="background: rgba(52,199,89,0.2);">
+                                        <span class="w-1.5 h-1.5 rounded-full inline-block" style="background: var(--state-success);"></span>
+                                        <span style="color: var(--state-success);">可用</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 已用部分灰化遮罩 -->
+                        <div class="absolute inset-0 pointer-events-none" style="background: linear-gradient(90deg, transparent 55%, rgba(0,0,0,0.25) 100%); border-radius: inherit;"></div>
+                    </article>
+                    <!-- 操作按钮 -->
+                    <div class="flex gap-3">
+                        <button class="btn btn-text flex-1 rounded-full" style="height: 40px; font-size: 13px; color: var(--primary);" data-action="detail" data-card="1">
+                            查看详情
+                        </button>
+                        <button class="btn btn-primary flex-1 rounded-full" style="height: 40px; font-size: 13px;" data-action="use" data-card="1">
+                            使用
+                        </button>
+                        <button class="btn flex-1 rounded-full" style="height: 40px; font-size: 13px; color: var(--primary); border: 1px solid var(--primary); background: transparent; box-shadow: none;" data-action="gift" data-card="1">
+                            赠送
+                        </button>
+                    </div>
+
+                    <!-- 礼品卡 2：$200 可用（未使用） -->
+                    <article class="gcm-card gcm-card-deco gcm-gradient-200" data-card-id="2">
+                        <div class="relative z-10 flex flex-col justify-between h-full" style="min-height: 140px;">
+                            <div class="flex items-start justify-between">
+                                <span class="text-sm font-bold tracking-widest uppercase" style="color: rgba(255,255,255,0.9);">MOYUYO</span>
+                                <div class="gc-chip"></div>
+                            </div>
+                            <div class="mt-3">
+                                <span class="text-2xl font-semibold tracking-tight" style="color: #ffffff; font-variant-numeric: tabular-nums;">$200.00</span>
+                            </div>
+                            <div class="mt-4 flex items-end justify-between">
+                                <div>
+                                    <div class="text-xs tracking-wider" style="color: rgba(255,255,255,0.5); font-variant-numeric: tabular-nums;">****  ****  ****  9012</div>
+                                    <div class="mt-1 text-xs" style="color: rgba(255,255,255,0.5);">有效期至 2027-12-31</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs" style="color: rgba(255,255,255,0.5);">余额 $200.00 / $200.00</div>
+                                    <div class="gcm-status-tag mt-1" style="background: rgba(52,199,89,0.2);">
+                                        <span class="w-1.5 h-1.5 rounded-full inline-block" style="background: var(--state-success);"></span>
+                                        <span style="color: var(--state-success);">可用</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                    <div class="flex gap-3">
+                        <button class="btn btn-text flex-1 rounded-full" style="height: 40px; font-size: 13px; color: var(--primary);" data-action="detail" data-card="2">查看详情</button>
+                        <button class="btn btn-primary flex-1 rounded-full" style="height: 40px; font-size: 13px;" data-action="use" data-card="2">使用</button>
+                        <button class="btn flex-1 rounded-full" style="height: 40px; font-size: 13px; color: var(--primary); border: 1px solid var(--primary); background: transparent; box-shadow: none;" data-action="gift" data-card="2">赠送</button>
+                    </div>
+
+                    <!-- 礼品卡 3：$50 已使用 -->
+                    <article class="gcm-card" style="background: var(--background-200); opacity: 0.65;" data-card-id="3">
+                        <div class="relative z-10 flex flex-col justify-between" style="min-height: 140px;">
+                            <div class="flex items-start justify-between">
+                                <span class="text-sm font-bold tracking-widest uppercase" style="color: var(--text-400);">MOYUYO</span>
+                                <div class="gc-chip gcm-chip-muted"></div>
+                            </div>
+                            <div class="mt-3">
+                                <span class="text-2xl font-semibold tracking-tight" style="color: var(--text-400); font-variant-numeric: tabular-nums; text-decoration: line-through;">$50.00</span>
+                            </div>
+                            <div class="mt-4 flex items-end justify-between">
+                                <div>
+                                    <div class="text-xs tracking-wider" style="color: var(--text-400); font-variant-numeric: tabular-nums;">****  ****  ****  3456</div>
+                                    <div class="mt-1 text-xs" style="color: var(--text-400);">已于 2026-06-15 使用完毕</div>
+                                </div>
+                                <div class="gcm-status-tag" style="background: var(--background-300);">
+                                    <span class="w-1.5 h-1.5 rounded-full inline-block" style="background: var(--text-400);"></span>
+                                    <span style="color: var(--text-400);">已使用</span>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- 礼品卡 4：$25 已赠送 -->
+                    <article class="gcm-card" style="background: var(--background-200); opacity: 0.75;" data-card-id="4">
+                        <div class="relative z-10 flex flex-col justify-between" style="min-height: 140px;">
+                            <div class="flex items-start justify-between">
+                                <span class="text-sm font-bold tracking-widest uppercase" style="color: var(--text-400);">MOYUYO</span>
+                                <div class="gc-chip gcm-chip-muted"></div>
+                            </div>
+                            <div class="mt-3">
+                                <span class="text-2xl font-semibold tracking-tight" style="color: var(--text-500); font-variant-numeric: tabular-nums;">$25.00</span>
+                            </div>
+                            <div class="mt-4 flex items-end justify-between">
+                                <div>
+                                    <div class="text-xs tracking-wider" style="color: var(--text-400); font-variant-numeric: tabular-nums;">****  ****  ****  7890</div>
+                                    <div class="mt-1 text-xs" style="color: var(--text-400);">已赠送于 2026-06-20</div>
+                                </div>
+                                <div class="gcm-status-tag" style="background: var(--brand-50);">
+                                    <span class="w-1.5 h-1.5 rounded-full inline-block" style="background: var(--brand-500);"></span>
+                                    <span style="color: var(--brand-500);">已赠送</span>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- 礼品卡 5：$30 已过期 -->
+                    <article class="gcm-card" style="background: var(--background-200); opacity: 0.55;" data-card-id="5">
+                        <div class="relative z-10 flex flex-col justify-between" style="min-height: 140px;">
+                            <div class="flex items-start justify-between">
+                                <span class="text-sm font-bold tracking-widest uppercase" style="color: var(--text-400);">MOYUYO</span>
+                                <div class="gc-chip gcm-chip-muted"></div>
+                            </div>
+                            <div class="mt-3">
+                                <span class="text-2xl font-semibold tracking-tight" style="color: var(--text-400); font-variant-numeric: tabular-nums;">$30.00</span>
+                            </div>
+                            <div class="mt-4 flex items-end justify-between">
+                                <div>
+                                    <div class="text-xs tracking-wider" style="color: var(--text-400); font-variant-numeric: tabular-nums;">****  ****  ****  1234</div>
+                                    <div class="mt-1 text-xs" style="color: var(--text-400);">已于 2026-01-01 过期</div>
+                                </div>
+                                <div class="gcm-status-tag" style="background: var(--state-error-surface);">
+                                    <span class="w-1.5 h-1.5 rounded-full inline-block" style="background: var(--state-error);"></span>
+                                    <span style="color: var(--state-error);">已过期</span>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+
+                <!-- === 可用 Tab === -->
+                <div id="tab-available" class="gcm-tab-content hidden flex flex-col gap-4">
+                    <article class="gcm-card gcm-card-deco gcm-gradient-100" data-card-id="1">
+                        <div class="relative z-10 flex flex-col justify-between h-full" style="min-height: 140px;">
+                            <div class="flex items-start justify-between">
+                                <span class="text-sm font-bold tracking-widest uppercase" style="color: rgba(255,255,255,0.9);">MOYUYO</span>
+                                <div class="gc-chip"></div>
+                            </div>
+                            <div class="mt-3">
+                                <span class="text-2xl font-semibold tracking-tight" style="color: #ffffff; font-variant-numeric: tabular-nums;">$100.00</span>
+                            </div>
+                            <div class="mt-4 flex items-end justify-between">
+                                <div>
+                                    <div class="text-xs tracking-wider" style="color: rgba(255,255,255,0.5); font-variant-numeric: tabular-nums;">****  ****  ****  5678</div>
+                                    <div class="mt-1 text-xs" style="color: rgba(255,255,255,0.5);">有效期至 2027-07-08</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs" style="color: rgba(255,255,255,0.5);">余额 $45.00 / $100.00</div>
+                                    <div class="gcm-status-tag mt-1" style="background: rgba(52,199,89,0.2);">
+                                        <span class="w-1.5 h-1.5 rounded-full inline-block" style="background: var(--state-success);"></span>
+                                        <span style="color: var(--state-success);">可用</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="absolute inset-0 pointer-events-none" style="background: linear-gradient(90deg, transparent 55%, rgba(0,0,0,0.25) 100%); border-radius: inherit;"></div>
+                    </article>
+                    <div class="flex gap-3">
+                        <button class="btn btn-text flex-1 rounded-full" style="height: 40px; font-size: 13px; color: var(--primary);" data-action="detail" data-card="1">查看详情</button>
+                        <button class="btn btn-primary flex-1 rounded-full" style="height: 40px; font-size: 13px;" data-action="use" data-card="1">使用</button>
+                        <button class="btn flex-1 rounded-full" style="height: 40px; font-size: 13px; color: var(--primary); border: 1px solid var(--primary); background: transparent; box-shadow: none;" data-action="gift" data-card="1">赠送</button>
+                    </div>
+                    <article class="gcm-card gcm-card-deco gcm-gradient-200" data-card-id="2">
+                        <div class="relative z-10 flex flex-col justify-between h-full" style="min-height: 140px;">
+                            <div class="flex items-start justify-between">
+                                <span class="text-sm font-bold tracking-widest uppercase" style="color: rgba(255,255,255,0.9);">MOYUYO</span>
+                                <div class="gc-chip"></div>
+                            </div>
+                            <div class="mt-3">
+                                <span class="text-2xl font-semibold tracking-tight" style="color: #ffffff; font-variant-numeric: tabular-nums;">$200.00</span>
+                            </div>
+                            <div class="mt-4 flex items-end justify-between">
+                                <div>
+                                    <div class="text-xs tracking-wider" style="color: rgba(255,255,255,0.5); font-variant-numeric: tabular-nums;">****  ****  ****  9012</div>
+                                    <div class="mt-1 text-xs" style="color: rgba(255,255,255,0.5);">有效期至 2027-12-31</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs" style="color: rgba(255,255,255,0.5);">余额 $200.00 / $200.00</div>
+                                    <div class="gcm-status-tag mt-1" style="background: rgba(52,199,89,0.2);">
+                                        <span class="w-1.5 h-1.5 rounded-full inline-block" style="background: var(--state-success);"></span>
+                                        <span style="color: var(--state-success);">可用</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                    <div class="flex gap-3">
+                        <button class="btn btn-text flex-1 rounded-full" style="height: 40px; font-size: 13px; color: var(--primary);" data-action="detail" data-card="2">查看详情</button>
+                        <button class="btn btn-primary flex-1 rounded-full" style="height: 40px; font-size: 13px;" data-action="use" data-card="2">使用</button>
+                        <button class="btn flex-1 rounded-full" style="height: 40px; font-size: 13px; color: var(--primary); border: 1px solid var(--primary); background: transparent; box-shadow: none;" data-action="gift" data-card="2">赠送</button>
+                    </div>
+                </div>
+
+                <!-- === 已用 Tab === -->
+                <div id="tab-used" class="gcm-tab-content hidden flex flex-col gap-4">
+                    <article class="gcm-card" style="background: var(--background-200); opacity: 0.6;" data-card-id="3">
+                        <div class="relative z-10 flex flex-col justify-between" style="min-height: 140px;">
+                            <div class="flex items-start justify-between">
+                                <span class="text-sm font-bold tracking-widest uppercase" style="color: var(--text-400);">MOYUYO</span>
+                                <div class="gc-chip gcm-chip-muted"></div>
+                            </div>
+                            <div class="mt-3">
+                                <span class="text-2xl font-semibold tracking-tight" style="color: var(--text-400); font-variant-numeric: tabular-nums; text-decoration: line-through;">$50.00</span>
+                            </div>
+                            <div class="mt-4 flex items-end justify-between">
+                                <div>
+                                    <div class="text-xs tracking-wider" style="color: var(--text-400); font-variant-numeric: tabular-nums;">****  ****  ****  3456</div>
+                                    <div class="mt-1 text-xs" style="color: var(--text-400);">已于 2026-06-15 使用完毕</div>
+                                </div>
+                                <div class="gcm-status-tag" style="background: var(--background-300);">
+                                    <span class="w-1.5 h-1.5 rounded-full inline-block" style="background: var(--text-400);"></span>
+                                    <span style="color: var(--text-400);">已使用</span>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+
+                <!-- === 已过期 Tab === -->
+                <div id="tab-expired" class="gcm-tab-content hidden flex flex-col gap-4">
+                    <article class="gcm-card" style="background: var(--background-200); opacity: 0.55;" data-card-id="5">
+                        <div class="relative z-10 flex flex-col justify-between" style="min-height: 140px;">
+                            <div class="flex items-start justify-between">
+                                <span class="text-sm font-bold tracking-widest uppercase" style="color: var(--text-400);">MOYUYO</span>
+                                <div class="gc-chip gcm-chip-muted"></div>
+                            </div>
+                            <div class="mt-3">
+                                <span class="text-2xl font-semibold tracking-tight" style="color: var(--text-400); font-variant-numeric: tabular-nums;">$30.00</span>
+                            </div>
+                            <div class="mt-4 flex items-end justify-between">
+                                <div>
+                                    <div class="text-xs tracking-wider" style="color: var(--text-400); font-variant-numeric: tabular-nums;">****  ****  ****  1234</div>
+                                    <div class="mt-1 text-xs" style="color: var(--text-400);">已于 2026-01-01 过期</div>
+                                </div>
+                                <div class="gcm-status-tag" style="background: var(--state-error-surface);">
+                                    <span class="w-1.5 h-1.5 rounded-full inline-block" style="background: var(--state-error);"></span>
+                                    <span style="color: var(--state-error);">已过期</span>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+
+            </div>
+
+            <!-- ========== 购买礼品卡入口卡片 ========== -->
+            <section class="mt-6 rounded-[var(--radius)] p-5" style="background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.08);" aria-label="购买礼品卡">
+                <div class="flex items-center gap-3 mb-5">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--brand-50);">
+                        <span data-icon class="w-5 h-5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/shopping-bag.svg'); mask-image: url('../assets/icons/dl-builtin-apple/shopping-bag.svg'); color: var(--brand-500);"></span>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold" style="color: var(--foreground);">购买礼品卡</h3>
+                        <p class="text-xs mt-0.5" style="color: var(--text-400);">自定义面额，心意无限</p>
+                    </div>
+                </div>
+
+                <!-- 面额预设选择 -->
+                <div class="flex gap-2 mb-4">
+                    <button class="flex-1 h-10 rounded-lg text-sm font-semibold transition-all duration-150" style="background: var(--secondary); color: var(--text-500);" data-amount="25">$25</button>
+                    <button class="flex-1 h-10 rounded-lg text-sm font-semibold transition-all duration-150" style="background: var(--secondary); color: var(--text-500);" data-amount="50">$50</button>
+                    <button class="flex-1 h-10 rounded-lg text-sm font-semibold transition-all duration-150" style="background: var(--primary); color: var(--primary-foreground);" data-amount="100">$100</button>
+                    <button class="flex-1 h-10 rounded-lg text-sm font-semibold transition-all duration-150" style="background: var(--secondary); color: var(--text-500);" data-amount="200">$200</button>
+                </div>
+
+                <!-- 自定义面额滑块 -->
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-medium" style="color: var(--text-500);">自定义面额</span>
+                        <span class="text-sm font-bold" style="color: var(--primary);" id="custom-amount-display">$100</span>
+                    </div>
+                    <input type="range" class="gcm-range-slider" id="custom-amount-slider" min="10" max="500" step="10" value="100" aria-label="自定义面额">
+                    <div class="flex justify-between mt-1">
+                        <span class="text-xs" style="color: var(--text-400);">$10</span>
+                        <span class="text-xs" style="color: var(--text-400);">$500</span>
+                    </div>
+                </div>
+
+                <!-- 购买数量 -->
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm font-medium" style="color: var(--foreground);">购买数量</span>
+                    <div class="flex items-center gap-4">
+                        <button class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--secondary);" id="qty-decrease" aria-label="减少数量">
+                            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/minus.svg'); mask-image: url('../assets/icons/dl-builtin-apple/minus.svg'); color: var(--text-600);"></span>
+                        </button>
+                        <span class="text-sm font-semibold w-6 text-center" style="color: var(--foreground);" id="qty-display">1</span>
+                        <button class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--secondary);" id="qty-increase" aria-label="增加数量">
+                            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/plus.svg'); mask-image: url('../assets/icons/dl-builtin-apple/plus.svg'); color: var(--text-600);"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 购买后赠送（折叠区域） -->
+                <div class="rounded-lg" style="background: var(--background-200);">
+                    <button class="w-full flex items-center justify-between px-4 h-11" id="gift-after-buy-toggle" aria-expanded="false" aria-controls="gift-after-buy-body">
+                        <div class="flex items-center gap-2">
+                            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/gift.svg'); mask-image: url('../assets/icons/dl-builtin-apple/gift.svg'); color: var(--state-warning);"></span>
+                            <span class="text-sm font-medium" style="color: var(--foreground);">购买后直接赠送</span>
+                        </div>
+                        <span data-icon class="w-4 h-4 transition-transform duration-200" id="gift-after-buy-arrow" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-down.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-down.svg'); color: var(--text-400);"></span>
+                    </button>
+                    <div class="gcm-collapse-body px-4" id="gift-after-buy-body">
+                        <div class="flex flex-col gap-3">
+                            <div>
+                                <label class="block text-xs font-medium mb-1.5" style="color: var(--text-500);">收件人邮箱</label>
+                                <div class="field w-full" style="min-width: 0;">
+                                    <span data-icon class="w-4 h-4 shrink-0" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/mail.svg'); mask-image: url('../assets/icons/dl-builtin-apple/mail.svg'); color: var(--icon-muted);"></span>
+                                    <input class="control text-sm" type="email" placeholder="输入对方邮箱" aria-label="收件人邮箱">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium mb-1.5" style="color: var(--text-500);">手机号码</label>
+                                <div class="field w-full" style="min-width: 0;">
+                                    <span data-icon class="w-4 h-4 shrink-0" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/smartphone.svg'); mask-image: url('../assets/icons/dl-builtin-apple/smartphone.svg'); color: var(--icon-muted);"></span>
+                                    <input class="control text-sm" type="tel" placeholder="输入对方手机号" aria-label="收件人手机号">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 购买按钮 -->
+                <button class="btn btn-primary w-full rounded-full mt-4" style="height: 48px; font-size: 15px;" data-dom-id="cta-buy-giftcard-confirm">
+                    立即购买
+                </button>
+            </section>
+
+            <!-- ========== 绑定礼品卡区域（折叠） ========== -->
+            <section class="mt-4 rounded-[var(--radius)]" style="background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.08);" aria-label="绑定礼品卡">
+                <button class="w-full flex items-center justify-between px-4 h-12" id="bind-collapse-toggle" aria-expanded="false" aria-controls="bind-collapse-body">
+                    <div class="flex items-center gap-2">
+                        <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/link.svg'); mask-image: url('../assets/icons/dl-builtin-apple/link.svg'); color: var(--state-success);"></span>
+                        <span class="text-sm font-semibold" style="color: var(--foreground);">绑定礼品卡</span>
+                    </div>
+                    <span data-icon class="w-4 h-4 transition-transform duration-200" id="bind-collapse-arrow" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-down.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-down.svg'); color: var(--text-400);"></span>
+                </button>
+                <div class="gcm-collapse-body px-4" id="bind-collapse-body">
+                    <div class="flex flex-col gap-3">
+                        <!-- 卡号输入 -->
+                        <div>
+                            <label class="block text-xs font-medium mb-1.5" style="color: var(--text-500);">礼品卡卡号</label>
+                            <div class="field w-full" style="min-width: 0; height: 48px;">
+                                <span data-icon class="w-4 h-4 shrink-0" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/credit-card.svg'); mask-image: url('../assets/icons/dl-builtin-apple/credit-card.svg'); color: var(--icon-muted);"></span>
+                                <input class="control text-sm" type="text" placeholder="请输入16位卡号" maxlength="16" aria-label="礼品卡卡号">
+                            </div>
+                        </div>
+                        <!-- 密码输入 -->
+                        <div>
+                            <label class="block text-xs font-medium mb-1.5" style="color: var(--text-500);">礼品卡密码</label>
+                            <div class="field w-full" style="min-width: 0; height: 48px;">
+                                <span data-icon class="w-4 h-4 shrink-0" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/lock.svg'); mask-image: url('../assets/icons/dl-builtin-apple/lock.svg'); color: var(--icon-muted);"></span>
+                                <input class="control text-sm" type="password" placeholder="请输入礼品卡密码" maxlength="20" aria-label="礼品卡密码">
+                            </div>
+                        </div>
+                        <!-- 绑定按钮 -->
+                        <button class="btn btn-primary w-full rounded-full" style="height: 48px; font-size: 15px;" data-dom-id="cta-bind-confirm">
+                            绑定
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========== 礼品卡使用记录（查看详情展开） ========== -->
+            <section class="mt-4 rounded-[var(--radius)] p-5" style="background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.08);" aria-label="使用记录">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/receipt.svg'); mask-image: url('../assets/icons/dl-builtin-apple/receipt.svg'); color: var(--brand-500);"></span>
+                        <h3 class="text-sm font-semibold" style="color: var(--foreground);">礼品卡 **** 5678 使用记录</h3>
+                    </div>
+                    <button class="btn btn-text rounded-full" style="height: 32px; font-size: 12px; color: var(--primary); padding: 0 12px;" id="usage-toggle" aria-expanded="false" aria-controls="usage-detail-body">
+                        展开详情
+                    </button>
+                </div>
+
+                <div class="gcm-collapse-body" id="usage-detail-body">
+                    <!-- 使用记录时间线 -->
+                    <div class="mt-2">
+                        <!-- 记录 1 -->
+                        <div class="gcm-timeline-item">
+                            <div class="gcm-timeline-dot"></div>
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <div class="text-xs font-medium" style="color: var(--foreground);">2026-07-01 14:23</div>
+                                    <div class="text-xs mt-1" style="color: var(--text-400);">关联订单：#MOY20260701001</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-semibold" style="color: var(--state-error);">-$35.00</div>
+                                    <div class="text-xs mt-0.5" style="color: var(--text-400);">剩余 $45.00</div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 记录 2 -->
+                        <div class="gcm-timeline-item">
+                            <div class="gcm-timeline-dot" style="background: var(--state-success);"></div>
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <div class="text-xs font-medium" style="color: var(--foreground);">2026-06-10 09:15</div>
+                                    <div class="text-xs mt-1" style="color: var(--text-400);">关联订单：#MOY20260610023</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-semibold" style="color: var(--state-error);">-$20.00</div>
+                                    <div class="text-xs mt-0.5" style="color: var(--text-400);">剩余 $80.00</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 汇总 -->
+                    <div class="mt-2 pt-3 flex items-center justify-between" style="border-top: 1px solid var(--border);">
+                        <span class="text-xs" style="color: var(--text-400);">累计使用</span>
+                        <span class="text-sm font-semibold" style="color: var(--foreground);">$55.00</span>
+                    </div>
+                    <div class="flex items-center justify-between mt-1">
+                        <span class="text-xs" style="color: var(--text-400);">当前余额</span>
+                        <span class="text-sm font-bold" style="color: var(--primary);">$45.00</span>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+    </main>
+
+    <script>
+        // 初始化 Lucide 图标
+        lucide.createIcons();
+
+        // ========== Tab 切换逻辑 ==========
+        var tabButtons = document.querySelectorAll('.gcm-tab-btn');
+        var tabContents = document.querySelectorAll('.gcm-tab-content');
+
+        tabButtons.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                // 清除所有活跃状态
+                tabButtons.forEach(function(b) {
+                    b.classList.remove('active');
+                    b.style.color = 'var(--text-400)';
+                    b.style.fontWeight = '500';
+                    b.setAttribute('aria-selected', 'false');
+                });
+                // 设置当前活跃状态
+                btn.classList.add('active');
+                btn.style.color = 'var(--primary)';
+                btn.style.fontWeight = '600';
+                btn.setAttribute('aria-selected', 'true');
+
+                // 切换内容
+                var targetTab = btn.getAttribute('data-tab');
+                tabContents.forEach(function(content) {
+                    content.classList.add('hidden');
+                });
+                var targetContent = document.getElementById('tab-' + targetTab);
+                if (targetContent) {
+                    targetContent.classList.remove('hidden');
+                }
+            });
+        });
+
+        // ========== 折叠面板逻辑 ==========
+        function setupCollapse(toggleId, bodyId, arrowId) {
+            var toggle = document.getElementById(toggleId);
+            var body = document.getElementById(bodyId);
+            var arrow = document.getElementById(arrowId);
+
+            if (!toggle || !body) return;
+
+            toggle.addEventListener('click', function() {
+                var isOpen = body.classList.contains('open');
+                if (isOpen) {
+                    body.classList.remove('open');
+                    toggle.setAttribute('aria-expanded', 'false');
+                    if (arrow) arrow.style.transform = 'rotate(0deg)';
+                } else {
+                    body.classList.add('open');
+                    toggle.setAttribute('aria-expanded', 'true');
+                    if (arrow) arrow.style.transform = 'rotate(180deg)';
+                }
+            });
+        }
+
+        // 初始化各折叠面板
+        setupCollapse('gift-after-buy-toggle', 'gift-after-buy-body', 'gift-after-buy-arrow');
+        setupCollapse('bind-collapse-toggle', 'bind-collapse-body', 'bind-collapse-arrow');
+        setupCollapse('usage-toggle', 'usage-detail-body', null);
+
+        // ========== 自定义面额滑块 ==========
+        var amountSlider = document.getElementById('custom-amount-slider');
+        var amountDisplay = document.getElementById('custom-amount-display');
+        var amountPresets = document.querySelectorAll('[data-amount]');
+
+        if (amountSlider && amountDisplay) {
+            amountSlider.addEventListener('input', function() {
+                amountDisplay.textContent = '$' + amountSlider.value;
+                // 更新预设按钮高亮
+                amountPresets.forEach(function(btn) {
+                    if (btn.getAttribute('data-amount') === amountSlider.value) {
+                        btn.style.background = 'var(--primary)';
+                        btn.style.color = 'var(--primary-foreground)';
+                    } else {
+                        btn.style.background = 'var(--secondary)';
+                        btn.style.color = 'var(--text-500)';
+                    }
+                });
+            });
+
+            // 预设按钮点击同步滑块
+            amountPresets.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var amount = btn.getAttribute('data-amount');
+                    amountSlider.value = amount;
+                    amountDisplay.textContent = '$' + amount;
+                    amountPresets.forEach(function(b) {
+                        b.style.background = 'var(--secondary)';
+                        b.style.color = 'var(--text-500)';
+                    });
+                    btn.style.background = 'var(--primary)';
+                    btn.style.color = 'var(--primary-foreground)';
+                });
+            });
+        }
+
+        // ========== 购买数量控制 ==========
+        var qtyDisplay = document.getElementById('qty-display');
+        var qtyDecrease = document.getElementById('qty-decrease');
+        var qtyIncrease = document.getElementById('qty-increase');
+        var currentQty = 1;
+
+        if (qtyDecrease && qtyIncrease && qtyDisplay) {
+            qtyDecrease.addEventListener('click', function() {
+                if (currentQty > 1) {
+                    currentQty--;
+                    qtyDisplay.textContent = currentQty;
+                }
+            });
+            qtyIncrease.addEventListener('click', function() {
+                if (currentQty < 99) {
+                    currentQty++;
+                    qtyDisplay.textContent = currentQty;
+                }
+            });
+        }
+
+        // ========== 使用记录展开按钮文案切换 ==========
+        var usageToggle = document.getElementById('usage-toggle');
+        var usageBody = document.getElementById('usage-detail-body');
+        if (usageToggle && usageBody) {
+            // 覆盖折叠逻辑以增加文案切换
+            usageToggle.addEventListener('click', function() {
+                var isOpen = usageBody.classList.contains('open');
+                usageToggle.textContent = isOpen ? '展开详情' : '收起详情';
+            });
+        }
+
+        // ========== 快捷入口 - 绑定礼品卡触发折叠 ==========
+        var quickBindTrigger = document.getElementById('quick-bind-trigger');
+        if (quickBindTrigger) {
+            quickBindTrigger.addEventListener('click', function() {
+                var bindBody = document.getElementById('bind-collapse-body');
+                var bindToggle = document.getElementById('bind-collapse-toggle');
+                var bindArrow = document.getElementById('bind-collapse-arrow');
+                if (bindBody && !bindBody.classList.contains('open')) {
+                    bindBody.classList.add('open');
+                    if (bindToggle) bindToggle.setAttribute('aria-expanded', 'true');
+                    if (bindArrow) bindArrow.style.transform = 'rotate(180deg)';
+                    // 滚动到绑定区域
+                    bindBody.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        }
+    </script>
+</body>
+</html>

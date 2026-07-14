@@ -1,0 +1,31 @@
+{
+  "code": 0,
+  "data": [
+    {
+      "code": "GEAR",
+      "nameEn": "Gear Collection",
+      "nameZh": "出行装备系列",
+      "ipCode": "MILO",
+      "icon": "https://cdn.moyuyo.com/ip/gear_icon.svg",
+      "banner": "https://cdn.moyuyo.com/ip/gear_banner.jpg"
+    },
+    {
+      "code": "CARE",
+      "nameEn": "Care Collection",
+      "nameZh": "洗护护理系列",
+      "ipCode": "LUNA"
+    },
+    {
+      "code": "PLAY",
+      "nameEn": "Play Collection",
+      "nameZh": "玩具娱乐系列",
+      "ipCode": "ATLAS"
+    },
+    {
+      "code": "HOME",
+      "nameEn": "Home & Atelier Collection",
+      "nameZh": "家居与时尚系列",
+      "ipCode": "OLIVE"
+    }
+  ]
+}

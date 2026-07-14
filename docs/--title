@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Untitled</title>
+    <style id="theme-vars">
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MOYUYO 商品分类</title>
+
+  <!-- 设计系统 CSS Token（内联嵌入，确保路径无依赖） -->
+  <style>
+    /* ===== Apple 设计系统 Token（来源：colors_and_type.css） ===== */
+    :root {
+      /* brand */
+      --brand-50: #e8f2ff;
+      --brand-100: #cfe5ff;
+      --brand-200: #9fcbff;
+      --brand-300: #66abff;
+      --brand-400: #2e8dff;
+      --brand-500: #007aff;
+      --brand-600: #0064d6;
+      --brand-700: #004fad;
+      --brand-800: #003b82;
+      --brand-900: #00275a;
+      /* background */
+      --background-50: #ffffff;
+      --background-100: #f7f7fa;
+      --background-200: #f2f2f7;
+      --background-300: #e5e5ea;
+      --background-400: #d1d1d6;
+      --background-500: #aeaeb2;
+      --background-600: #8e8e93;
+      --background-700: #3a3a3c;
+      --background-800: #1c1c1e;
+      --background-900: #000000;
+      /* text */
+      --text-50: #f5f5f7;
+      --text-100: #e3e3e8;
+      --text-200: #c7c7cc;
+      --text-300: #aeaeb2;
+      --text-400: #8e8e93;
+      --text-500: #6e6e73;
+      --text-600: #48484a;
+      --text-700: #3c3c43;
+      --text-800: #1d1d1f;
+      --text-900: #000000;
+      /* icon */
+      --icon-50: #f5f5f7;
+      --icon-100: #e5e5ea;
+      --icon-200: #d1d1d6;
+      --icon-300: #c7c7cc;
+      --icon-400: #aeaeb2;
+      --icon-500: #8e8e93;
+      --icon-600: #6e6e73;
+      --icon-700: #48484a;
+      --icon-800: #2c2c2e;
+      --icon-900: #1d1d1f;
+      /* state */
+      --state-success: #34c759;
+      --state-success-dark: #30d158;
+      --state-error: #ff3b30;
+      --state-error-dark: #ff453a;
+      /* semantic */
+      --background: var(--background-50);
+      --foreground: var(--text-800);
+      --card: var(--background-50);
+      --card-foreground: var(--text-800);
+      --primary: var(--brand-500);
+      --primary-foreground: var(--background-50);
+      --secondary: var(--background-200);
+      --secondary-foreground: var(--text-800);
+      --muted: var(--background-200);
+      --muted-foreground: var(--text-400);
+      --border: var(--background-300);
+      --input: var(--background-400);
+      --ring: var(--brand-500);
+      --icon: var(--icon-900);
+      --icon-muted: var(--icon-500);
+      /* typography */
+      --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+      --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+      --font-mono: JetBrains Mono, monospace;
+      /* radius */
+      --radius: 1.2rem;
+      /* shadows */
+      --shadow-2xs: 0 1px 2px -1px rgba(0,0,0,0.04);
+      --shadow-xs: 0 1px 2px 0 rgba(0,0,0,0.04);
+      --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05), 0 1px 3px -1px rgba(0,0,0,0.05);
+      --shadow: 0 2px 4px -1px rgba(0,0,0,0.06), 0 1px 2px -1px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 8px -2px rgba(0,0,0,0.06), 0 2px 4px -2px rgba(0,0,0,0.05);
+      --shadow-lg: 0 8px 24px -8px rgba(0,0,0,0.08), 0 4px 8px -4px rgba(0,0,0,0.05);
+      /* spacing */
+      --spacing: 0.24rem;
+    }
+  </style>
+
+  <style>
+    /* ===== 基础重置 ===== */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      font-size: 16px;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--background);
+      color: var(--foreground);
+      line-height: 1.47;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+      max-width: 375px;
+      margin: 0 auto;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* ===== 页面整体布局 ===== */
+    .page-category {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      padding-bottom: calc(50px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* ===== 顶部搜索栏 ===== */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      padding-top: calc(8px + env(safe-area-inset-top, 0px));
+      background: var(--background);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .back-btn {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .back-btn .icon-back {
+      width: 20px;
+      height: 20px;
+      background-color: var(--foreground);
+      -webkit-mask: url("../assets/icons/dl-builtin-apple/chevron-left.svg") no-repeat center / contain;
+      mask: url("../assets/icons/dl-builtin-apple/chevron-left.svg") no-repeat center / contain;
+    }
+
+    .search-bar {
+      flex: 1;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--secondary);
+      border-radius: 10px;
+      padding: 0 12px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .search-bar .icon-search {
+      width: 16px;
+      height: 16px;
+      background-color: var(--muted-foreground);
+      flex-shrink: 0;
+    }
+
+    /* 使用 CSS 绘制搜索图标（无 SVG） */
+    .search-bar .icon-search::after {
+      content: '';
+      display: block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--muted-foreground);
+      border-radius: 50%;
+      position: relative;
+      top: -1px;
+    }
+    .search-bar .icon-search::before {
+      content: '';
+      display: block;
+      width: 2px;
+      height: 6px;
+      background: var(--muted-foreground);
+      transform: rotate(-45deg);
+      position: relative;
+      top: 5px;
+      left: 10px;
+    }
+
+    .search-bar .search-text {
+      font-size: 13px;
+      color: var(--muted-foreground);
+      font-weight: 400;
+    }
+
+    /* ===== 产品线 Tab ===== */
+    .product-tabs {
+      display: flex;
+      gap: 0;
+      padding: 4px 16px 0;
+      background: var(--background);
+      position: sticky;
+      top: 52px;
+      z-index: 19;
+    }
+
+    .product-tab {
+      flex: 1;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted-foreground);
+      padding: 8px 0 10px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      position: relative;
+      transition: color 0.2s ease;
+      letter-spacing: 0.02em;
+    }
+
+    .product-tab.active {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .product-tab::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%) scaleX(0);
+      width: 20px;
+      height: 2.5px;
+      border-radius: 2px;
+      background: var(--primary);
+      transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    .product-tab.active::after {
+      transform: translateX(-50%) scaleX(1);
+    }
+
+    /* ===== 主体内容区（左分类 + 右商品） ===== */
+    .content-body {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      background: var(--background);
+    }
+
+    /* ===== 左侧分类导航 ===== */
+    .category-sidebar {
+      width: 80px;
+      flex-shrink: 0;
+      background: var(--secondary);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 4px 0;
+    }
+
+    /* 隐藏滚动条 */
+    .category-sidebar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .category-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 6px;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--muted-foreground);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      text-align: center;
+      line-height: 1.3;
+      transition: all 0.2s ease;
+      position: relative;
+      border: none;
+      background: none;
+      width: 100%;
+    }
+
+    .category-item.active {
+      color: var(--primary);
+      font-weight: 600;
+      background: var(--background);
+    }
+
+    .category-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2.5px;
+      height: 16px;
+      border-radius: 0 2px 2px 0;
+      background: var(--primary);
+    }
+
+    /* ===== 右侧商品网格 ===== */
+    .product-area {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 8px 10px;
+    }
+
+    /* 隐藏滚动条 */
+    .product-area::-webkit-scrollbar {
+      display: none;
+    }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    /* ===== 商品卡片 ===== */
+    .product-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) * 0.6);
+      overflow: hidden;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: box-shadow 0.25s ease;
+    }
+
+    .product-card:active {
+      box-shadow: var(--shadow-md);
+    }
+
+    .product-card .card-image {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      background: var(--secondary);
+      display: block;
+    }
+
+    .product-card .card-info {
+      padding: 8px 8px 10px;
+    }
+
+    .product-card .card-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--foreground);
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+
+    .product-card .card-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .product-card .card-price {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--foreground);
+      letter-spacing: -0.02em;
+    }
+
+    .product-card .card-price .price-symbol {
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .product-card .card-brand {
+      font-size: 9px;
+      font-weight: 500;
+      color: var(--muted-foreground);
+      padding: 1px 5px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      line-height: 1.5;
+      letter-spacing: 0.02em;
+    }
+
+    /* ===== 底部 TabBar ===== */
+    .tab-bar {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 375px;
+      display: flex;
+      justify-content: space-around;
+      align-items: flex-start;
+      padding: 6px 0 calc(6px + env(safe-area-inset-bottom, 0px));
+      background: rgba(255, 255, 255, 0.82);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      backdrop-filter: saturate(180%) blur(20px);
+      border-top: 0.5px solid var(--border);
+      z-index: 100;
+    }
+
+    .tab-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      min-width: 44px;
+      min-height: 44px;
+      justify-content: center;
+      text-decoration: none;
+      padding: 4px 0;
+    }
+
+    .tab-item .tab-icon {
+      width: 24px;
+      height: 24px;
+      background-color: var(--icon-muted);
+      -webkit-mask-size: contain;
+      mask-size: contain;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      mask-position: center;
+    }
+
+    .tab-item .tab-label {
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--icon-muted);
+      line-height: 1;
+    }
+
+    .tab-item.active .tab-icon {
+      background-color: var(--primary);
+    }
+
+    .tab-item.active .tab-label {
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    /* Tab 图标路径 */
+    .tab-icon-home {
+      -webkit-mask-image: url("../assets/icons/dl-builtin-apple/house.svg");
+      mask-image: url("../assets/icons/dl-builtin-apple/house.svg");
+    }
+    .tab-icon-category {
+      -webkit-mask-image: url("../assets/icons/dl-builtin-apple/grip.svg");
+      mask-image: url("../assets/icons/dl-builtin-apple/grip.svg");
+    }
+    .tab-icon-pethub {
+      -webkit-mask-image: url("../assets/icons/dl-builtin-apple/heart.svg");
+      mask-image: url("../assets/icons/dl-builtin-apple/heart.svg");
+    }
+    .tab-icon-community {
+      -webkit-mask-image: url("../assets/icons/dl-builtin-apple/message-circle-more.svg");
+      mask-image: url("../assets/icons/dl-builtin-apple/message-circle-more.svg");
+    }
+    .tab-icon-profile {
+      -webkit-mask-image: url("../assets/icons/dl-builtin-apple/user.svg");
+      mask-image: url("../assets/icons/dl-builtin-apple/user.svg");
+    }
+
+    /* ===== 过渡动画 ===== */
+    .fade-in {
+      animation: fadeIn 0.35s cubic-bezier(0.32, 0.72, 0, 1) both;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="page-category">
+
+    <!-- ===== 顶部搜索栏 ===== -->
+    <div class="top-bar">
+      <div class="back-btn" data-dom-id="back-previous" role="button" aria-label="返回">
+        <span class="icon-back"></span>
+      </div>
+      <div class="search-bar" data-dom-id="cta-search" role="button" aria-label="搜索商品">
+        <span class="icon-search"></span>
+        <span class="search-text">搜索宠物用品</span>
+      </div>
+    </div>
+
+    <!-- ===== 产品线 Tab ===== -->
+    <div class="product-tabs">
+      <div class="product-tab active" data-tab="gear">GEAR 装备</div>
+      <div class="product-tab" data-tab="care">CARE 护理</div>
+      <div class="product-tab" data-tab="play">PLAY 玩具</div>
+      <div class="product-tab" data-tab="home">HOME 家居</div>
+    </div>
+
+    <!-- ===== 主体内容区 ===== -->
+    <div class="content-body">
+
+      <!-- 左侧分类导航 -->
+      <div class="category-sidebar" role="navigation" aria-label="分类导航">
+        <button class="category-item active" data-category="all">全部</button>
+        <button class="category-item" data-category="collar-leash">牵引绳</button>
+        <button class="category-item" data-category="harness">胸背带</button>
+        <button class="category-item" data-category="clothing">宠物服饰</button>
+        <button class="category-item" data-category="carrier">出行装备</button>
+        <button class="category-item" data-category="outdoor">户外运动</button>
+        <button class="category-item" data-category="waterproof">防水系列</button>
+        <button class="category-item" data-category="seasonal">季节限定</button>
+      </div>
+
+      <!-- 右侧商品网格 -->
+      <div class="product-area">
+        <div class="product-grid">
+
+          <!-- 商品卡片 1 -->
+          <a class="product-card fade-in" data-dom-id="link-product-detail" href="#" style="animation-delay: 0s">
+            <img class="card-image" src="../assets/product-harness-gear.jpg" alt="宠物胸背带" loading="lazy">
+            <div class="card-info">
+              <div class="card-name">Premium 户外胸背带 透气网面</div>
+              <div class="card-bottom">
+                <span class="card-price"><span class="price-symbol">&yen;</span>268</span>
+                <span class="card-brand">GEAR</span>
+              </div>
+            </div>
+          </a>
+
+          <!-- 商品卡片 2 -->
+          <a class="product-card fade-in" data-dom-id="link-product-detail" href="#" style="animation-delay: 0.05s">
+            <img class="card-image" src="../assets/product-pet-jacket.jpg" alt="宠物夹克" loading="lazy">
+            <div class="card-info">
+              <div class="card-name">Urban 宠物防风夹克 时尚机能风</div>
+              <div class="card-bottom">
+                <span class="card-price"><span class="price-symbol">&yen;</span>358</span>
+                <span class="card-brand">GEAR</span>
+              </div>
+            </div>
+          </a>
+
+          <!-- 商品卡片 3 -->
+          <a class="product-card fade-in" data-dom-id="link-product-detail" href="#" style="animation-delay: 0.1s">
+            <img class="card-image" src="../assets/product-pet-carrier.jpg" alt="宠物航空箱" loading="lazy">
+            <div class="card-info">
+              <div class="card-name">AeroLite 航空旅行箱 万向轮</div>
+              <div class="card-bottom">
+                <span class="card-price"><span class="price-symbol">&yen;</span>598</span>
+                <span class="card-brand">HOME</span>
+              </div>
+            </div>
+          </a>
+
+          <!-- 商品卡片 4 -->
+          <a class="product-card fade-in" data-dom-id="link-product-detail" href="#" style="animation-delay: 0.15s">
+            <img class="card-image" src="../assets/product-shampoo-bottle.jpg" alt="宠物洗护" loading="lazy">
+            <div class="card-info">
+              <div class="card-name">Botanical 植萃沐浴露 低敏配方</div>
+              <div class="card-bottom">
+                <span class="card-price"><span class="price-symbol">&yen;</span>128</span>
+                <span class="card-brand">CARE</span>
+              </div>
+            </div>
+          </a>
+
+          <!-- 商品卡片 5 -->
+          <a class="product-card fade-in" data-dom-id="link-product-detail" href="#" style="animation-delay: 0.2s">
+            <img class="card-image" src="../assets/product-toy-play.jpg" alt="宠物玩具" loading="lazy">
+            <div class="card-info">
+              <div class="card-name">Interactive 耐咬互动玩具 环保橡胶</div>
+              <div class="card-bottom">
+                <span class="card-price"><span class="price-symbol">&yen;</span>89</span>
+                <span class="card-brand">PLAY</span>
+              </div>
+            </div>
+          </a>
+
+          <!-- 商品卡片 6 -->
+          <a class="product-card fade-in" data-dom-id="link-product-detail" href="#" style="animation-delay: 0.25s">
+            <img class="card-image" src="../assets/product-pet-treats.jpg" alt="宠物零食" loading="lazy">
+            <div class="card-info">
+              <div class="card-name">Organic 有机冻干零食 鸡肉配方</div>
+              <div class="card-bottom">
+                <span class="card-price"><span class="price-symbol">&yen;</span>68</span>
+                <span class="card-brand">CARE</span>
+              </div>
+            </div>
+          </a>
+
+          <!-- 商品卡片 7 -->
+          <a class="product-card fade-in" data-dom-id="link-product-detail" href="#" style="animation-delay: 0.3s">
+            <img class="card-image" src="../assets/product-dental-care.jpg" alt="牙齿护理" loading="lazy">
+            <div class="card-info">
+              <div class="card-name">Dental Care 洁齿骨 清新薄荷</div>
+              <div class="card-bottom">
+                <span class="card-price"><span class="price-symbol">&yen;</span>45</span>
+                <span class="card-brand">CARE</span>
+              </div>
+            </div>
+          </a>
+
+          <!-- 商品卡片 8 -->
+          <a class="product-card fade-in" data-dom-id="link-product-detail" href="#" style="animation-delay: 0.35s">
+            <img class="card-image" src="../assets/product-harness-gear.jpg" alt="牵引套装" loading="lazy">
+            <div class="card-info">
+              <div class="card-name">Classic 尼龙牵引套装 可调节</div>
+              <div class="card-bottom">
+                <span class="card-price"><span class="price-symbol">&yen;</span>168</span>
+                <span class="card-brand">GEAR</span>
+              </div>
+            </div>
+          </a>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===== 底部 TabBar ===== -->
+    <nav class="tab-bar" role="navigation" aria-label="主导航">
+      <a class="tab-item" data-dom-id="nav-home" href="#" aria-label="首页">
+        <span class="tab-icon tab-icon-home"></span>
+        <span class="tab-label">首页</span>
+      </a>
+      <a class="tab-item active" href="#" aria-label="分类" aria-current="page">
+        <span class="tab-icon tab-icon-category"></span>
+        <span class="tab-label">分类</span>
+      </a>
+      <a class="tab-item" data-dom-id="nav-pet-hub" href="#" aria-label="Pet Hub">
+        <span class="tab-icon tab-icon-pethub"></span>
+        <span class="tab-label">Pet Hub</span>
+      </a>
+      <a class="tab-item" href="#" aria-label="社区">
+        <span class="tab-icon tab-icon-community"></span>
+        <span class="tab-label">社区</span>
+      </a>
+      <a class="tab-item" data-dom-id="nav-profile" href="#" aria-label="我的">
+        <span class="tab-icon tab-icon-profile"></span>
+        <span class="tab-label">我的</span>
+      </a>
+    </nav>
+
+  </div>
+
+  <!-- ===== 交互脚本 ===== -->
+  <script>
+    /* 产品线 Tab 切换 */
+    document.querySelectorAll('.product-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.product-tab').forEach(function(t) {
+          t.classList.remove('active');
+        });
+        this.classList.add('active');
+      });
+    });
+
+    /* 左侧分类导航切换 */
+    document.querySelectorAll('.category-item').forEach(function(item) {
+      item.addEventListener('click', function() {
+        document.querySelectorAll('.category-item').forEach(function(i) {
+          i.classList.remove('active');
+        });
+        this.classList.add('active');
+      });
+    });
+  </script>
+
+</body>
+</html>
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-foreground: var(--card-foreground);
+  }
+  @layer base {
+    body { background: var(--card-background); color: var(--card-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body>
+</body>
+</html>
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  
+  @layer base {
+    body { background: #ffffff; color: #0f172a; }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <main>
+    </main>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

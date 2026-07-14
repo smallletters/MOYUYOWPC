@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>风控管理 - MOYUYO 管理后台</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12);
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+.card{width:188px;min-height:148px;padding:calc(var(--spacing)*5);display:flex;flex-direction:column;justify-content:space-between;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);transition:transform .18s ease,box-shadow .18s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.card.disabled,.card.disabled:hover{opacity:.5;transform:none;box-shadow:var(--shadow-md)}
+.eyebrow,.meta{color:var(--muted-foreground);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.title{margin:6px 0 8px;font-size:18px;line-height:1.15}
+.body-copy{margin:0;color:var(--muted-foreground);font-size:13px}
+.cta{display:inline-flex;align-items:center;justify-content:center;width:max-content;margin-top:12px;padding:calc(var(--spacing)*2) calc(var(--spacing)*3.5);border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;font-weight:700;text-decoration:none}
+.media{aspect-ratio:4/3;border-radius:calc(var(--radius) - 4px);background:linear-gradient(135deg,var(--secondary),var(--accent));border:1px solid var(--border)}
+
+.surface{display:flex;gap:calc(var(--spacing)*2);padding:calc(var(--spacing)*3);border:1px solid var(--border);border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow-sm)}
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field.small{height:40px}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.field.disabled{opacity:.55}
+.icon,.clear{padding:0;border:0;background:transparent;color:var(--icon-muted);font:inherit}
+.icon{font-size:13px}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+
+.webbar,.mobile{border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.webbar{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:320px;height:44px;padding:0 calc(var(--spacing)*3);border-radius:var(--radius);background:var(--sidebar)}
+.brand{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.link,.tab{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;color:inherit;text-decoration:none;white-space:nowrap;transition:background-color .18s ease,color .18s ease,opacity .18s ease}
+.link{height:32px;padding:0 calc(var(--spacing)*2.5)}
+.link:hover,.tab:hover{background:var(--secondary)}
+.link:focus-visible,.tab:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.disabled{opacity:.48}
+.disabled .link,.disabled .tab{pointer-events:none}
+
+.grid{display:grid;gap:8px;flex:1}
+.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* ===== 后台管理布局 ===== */
+      .admin-layout {
+        display: flex;
+        min-height: 100vh;
+      }
+
+      /* 左侧导航栏 */
+      .admin-sidebar {
+        width: 240px;
+        min-height: 100vh;
+        background: var(--background-800);
+        color: var(--text-50);
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+      .admin-sidebar .sidebar-brand {
+        padding: 20px 20px 16px;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        border-bottom: 1px solid var(--background-700);
+      }
+      .admin-sidebar .sidebar-brand span {
+        color: var(--brand-400);
+      }
+      .admin-sidebar nav {
+        flex: 1;
+        padding: 12px 0;
+        overflow-y: auto;
+      }
+      .admin-sidebar .nav-group-title {
+        padding: 8px 20px 4px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-400);
+      }
+      .admin-sidebar .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 20px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-200);
+        text-decoration: none;
+        transition: background-color 0.15s ease, color 0.15s ease;
+        cursor: pointer;
+      }
+      .admin-sidebar .nav-item:hover {
+        background: var(--background-700);
+        color: var(--text-50);
+      }
+      .admin-sidebar .nav-item.active {
+        background: rgba(0, 122, 255, 0.15);
+        color: var(--brand-400);
+      }
+      .admin-sidebar .nav-item .nav-icon {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+
+      /* 右侧主区域 */
+      .admin-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        background: var(--background-100);
+      }
+
+      /* 顶部栏 */
+      .admin-topbar {
+        height: 56px;
+        background: var(--background-50);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        flex-shrink: 0;
+      }
+      .admin-topbar .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--text-400);
+      }
+      .admin-topbar .breadcrumb .current {
+        color: var(--text-800);
+        font-weight: 600;
+      }
+      .admin-topbar .topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      /* 内容区 */
+      .admin-content {
+        flex: 1;
+        padding: 24px;
+        overflow-y: auto;
+      }
+
+      /* ===== 风控概览卡片 ===== */
+      .risk-overview-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .risk-stat-card {
+        padding: 20px;
+        background: var(--background-50);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-xs);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .risk-stat-card .stat-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-400);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .risk-stat-card .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+      .risk-stat-card .stat-sub {
+        font-size: 11px;
+        color: var(--text-400);
+      }
+      .risk-stat-card.red .stat-value { color: var(--state-error); }
+      .risk-stat-card.red .stat-icon { color: var(--state-error); }
+      .risk-stat-card.orange .stat-value { color: var(--chart-3); }
+      .risk-stat-card.orange .stat-icon { color: var(--chart-3); }
+      .risk-stat-card.blue .stat-value { color: var(--primary); }
+      .risk-stat-card.blue .stat-icon { color: var(--primary); }
+
+      /* ===== 风险评分分布柱状图 ===== */
+      .risk-chart-container {
+        padding: 20px;
+        background: var(--background-50);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-xs);
+        margin-bottom: 24px;
+      }
+      .risk-chart-container .chart-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-800);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .risk-bar-chart {
+        display: flex;
+        align-items: flex-end;
+        gap: 24px;
+        height: 160px;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 12px;
+      }
+      .risk-bar-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        justify-content: flex-end;
+        height: 100%;
+      }
+      .risk-bar-fill {
+        width: 100%;
+        max-width: 56px;
+        border-radius: 4px 4px 0 0;
+        transition: height 0.3s ease;
+        min-height: 4px;
+      }
+      .risk-bar-value {
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .risk-bar-labels {
+        display: flex;
+        gap: 24px;
+        padding: 0 20px;
+      }
+      .risk-bar-labels .bar-label-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+      .risk-bar-labels .bar-label-text {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-700);
+      }
+      .risk-bar-labels .bar-label-range {
+        font-size: 10px;
+        color: var(--text-400);
+      }
+      .risk-bar-labels .bar-label-count {
+        font-size: 11px;
+        color: var(--text-500);
+      }
+
+      /* ===== 风控规则表格 ===== */
+      .risk-table-container {
+        padding: 20px;
+        background: var(--background-50);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-xs);
+        margin-bottom: 24px;
+        overflow-x: auto;
+      }
+      .risk-table-container .table-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+      .risk-table-container .table-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-800);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .risk-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .risk-table th {
+        text-align: left;
+        padding: 10px 12px;
+        background: var(--background-100);
+        color: var(--text-500);
+        font-weight: 600;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--border);
+      }
+      .risk-table td {
+        padding: 12px 12px;
+        color: var(--text-700);
+        border-bottom: 1px solid var(--background-200);
+        vertical-align: middle;
+      }
+      .risk-table tr:last-child td {
+        border-bottom: none;
+      }
+      .risk-table tr:hover td {
+        background: var(--background-100);
+      }
+
+      /* 状态标签 */
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .status-badge.enabled {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+      .status-badge.disabled {
+        background: var(--background-200);
+        color: var(--text-400);
+      }
+      .status-badge .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+      }
+      .status-badge.enabled .status-dot {
+        background: var(--state-success);
+      }
+      .status-badge.disabled .status-dot {
+        background: var(--text-400);
+      }
+
+      /* 规则类型标签 */
+      .rule-type-tag {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .rule-type-tag.trade {
+        background: var(--brand-50);
+        color: var(--brand-700);
+      }
+      .rule-type-tag.marketing {
+        background: #fff8e1;
+        color: #b8860b;
+      }
+      .rule-type-tag.account {
+        background: #f3e8ff;
+        color: #7c3aed;
+      }
+
+      /* 动作标签 */
+      .action-tag {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .action-tag.block {
+        background: var(--state-error-surface);
+        color: var(--state-error);
+      }
+      .action-tag.review {
+        background: #fff3e0;
+        color: #e65100;
+      }
+      .action-tag.alert {
+        background: #e8f5e9;
+        color: #2e7d32;
+      }
+
+      /* 表格操作按钮 */
+      .table-actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .table-action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--background-50);
+        color: var(--text-500);
+        font-size: 11px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+      }
+      .table-action-btn:hover {
+        background: var(--background-200);
+        color: var(--primary);
+        border-color: var(--primary);
+      }
+
+      /* ===== 风险事件卡片 ===== */
+      .risk-events-container {
+        margin-bottom: 24px;
+      }
+      .risk-events-container .events-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-800);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .risk-event-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px 16px;
+        background: var(--background-50);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-xs);
+        margin-bottom: 8px;
+        border-left: 4px solid transparent;
+      }
+      .risk-event-card.critical {
+        border-left-color: var(--state-error);
+      }
+      .risk-event-card.high {
+        border-left-color: var(--chart-3);
+      }
+      .risk-event-card.medium {
+        border-left-color: #fbbf24;
+      }
+      .risk-event-card .event-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .risk-event-card.critical .event-icon {
+        background: var(--state-error-surface);
+        color: var(--state-error);
+      }
+      .risk-event-card.high .event-icon {
+    background: #fff3e0;
+    color: var(--chart-3);
+  }
+  .risk-event-card.medium .event-icon {
+    background: #fef9c3;
+    color: #ca8a04;
+  }
+  .risk-event-card .event-content {
+    flex: 1;
+    min-width: 0;
+  }
+  .risk-event-card .event-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-800);
+    margin-bottom: 2px;
+  }
+  .risk-event-card .event-time {
+    font-size: 11px;
+    color: var(--text-400);
+  }
+  .risk-event-card .event-level {
+    flex-shrink: 0;
+  }
+  .risk-level-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .risk-level-tag.critical {
+    background: var(--state-error-surface);
+    color: var(--state-error);
+  }
+  .risk-level-tag.high {
+    background: #fff3e0;
+    color: #e65100;
+  }
+  .risk-level-tag.medium {
+    background: #fef9c3;
+    color: #ca8a04;
+  }
+    
+    /* 妗岄潰绔鐞嗛〉闈㈡渶灏忓搴︾害鏉?*/
+    body { min-width: 1280px; }</style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+  <div class="admin-layout">
+
+    <!-- ===== 左侧导航栏 ===== -->
+    <aside class="admin-sidebar">
+      <div class="sidebar-brand">
+        <span>MOYUYO</span> 管理后台
+      </div>
+      <nav>
+        <div class="nav-group-title">核心功能</div>
+        <a class="nav-item" href="#">
+          <i data-lucide="layout-dashboard" class="nav-icon"></i>
+          仪表盘
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="package" class="nav-icon"></i>
+          商品管理
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="shopping-cart" class="nav-icon"></i>
+          订单管理
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="users" class="nav-icon"></i>
+          用户管理
+        </a>
+
+        <div class="nav-group-title">运营管理</div>
+        <a class="nav-item" href="#">
+          <i data-lucide="megaphone" class="nav-icon"></i>
+          营销管理
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="file-text" class="nav-icon"></i>
+          内容管理
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="headphones" class="nav-icon"></i>
+          客服管理
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="bar-chart-3" class="nav-icon"></i>
+          数据统计
+        </a>
+
+        <div class="nav-group-title">系统</div>
+        <a class="nav-item" href="#">
+          <i data-lucide="truck" class="nav-icon"></i>
+          物流管理
+        </a>
+        <a class="nav-item active" href="#">
+          <i data-lucide="shield-alert" class="nav-icon"></i>
+          风控管理
+        </a>
+        <a class="nav-item" href="#">
+          <i data-lucide="settings" class="nav-icon"></i>
+          系统设置
+        </a>
+      </nav>
+    </aside>
+
+    <!-- ===== 右侧主区域 ===== -->
+    <div class="admin-main">
+
+      <!-- 顶部栏 -->
+      <header class="admin-topbar">
+        <div class="breadcrumb">
+          <span>风控管理</span>
+          <i data-lucide="chevron-right" style="width:14px;height:14px;color:var(--text-400);"></i>
+          <span class="current">风控总览</span>
+        </div>
+        <div class="topbar-right">
+          <button class="table-action-btn" style="display:flex;align-items:center;gap:6px;padding:6px 14px;">
+            <i data-lucide="download" style="width:14px;height:14px;"></i>
+            导出报告
+          </button>
+          <div class="relative" style="width:32px;height:32px;">
+            <i data-lucide="bell" style="width:20px;height:20px;color:var(--text-500);cursor:pointer;"></i>
+            <span style="position:absolute;top:0;right:0;width:8px;height:8px;border-radius:50%;background:var(--state-error);border:2px solid var(--background-50);"></span>
+          </div>
+          <div style="width:32px;height:32px;border-radius:8px;background:var(--background-200);display:flex;align-items:center;justify-content:center;cursor:pointer;">
+            <i data-lucide="user" style="width:16px;height:16px;color:var(--text-500);"></i>
+          </div>
+        </div>
+      </header>
+
+      <!-- 内容区 -->
+      <div class="admin-content">
+
+        <!-- 页面标题 -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <div>
+            <h1 style="font-size:20px;font-weight:700;color:var(--text-800);margin:0;">风控总览</h1>
+            <p style="font-size:12px;color:var(--text-400);margin-top:4px;">实时监控平台风险状态，管理风控规则</p>
+          </div>
+          <button class="btn btn-primary" style="display:flex;align-items:center;gap:6px;">
+            <i data-lucide="plus" style="width:16px;height:16px;"></i>
+            新建规则
+          </button>
+        </div>
+
+        <!-- ===== 风控状态概览卡片 ===== -->
+        <div class="risk-overview-grid">
+          <!-- 今日拦截订单 -->
+          <div class="risk-stat-card red">
+            <div class="stat-label">
+              <i data-lucide="ban" style="width:16px;height:16px;" class="stat-icon"></i>
+              今日拦截订单
+            </div>
+            <div class="stat-value">12<span style="font-size:14px;font-weight:400;">单</span></div>
+            <div class="stat-sub">较昨日 +3 单</div>
+          </div>
+          <!-- 待人工审核 -->
+          <div class="risk-stat-card orange">
+            <div class="stat-label">
+              <i data-lucide="clock" style="width:16px;height:16px;" class="stat-icon"></i>
+              待人工审核
+            </div>
+            <div class="stat-value">8<span style="font-size:14px;font-weight:400;">单</span></div>
+            <div class="stat-sub">最久等待 2h 15min</div>
+          </div>
+          <!-- 高风险账号 -->
+          <div class="risk-stat-card red">
+            <div class="stat-label">
+              <i data-lucide="user-x" style="width:16px;height:16px;" class="stat-icon"></i>
+              高风险账号
+            </div>
+            <div class="stat-value">5<span style="font-size:14px;font-weight:400;">个</span></div>
+            <div class="stat-sub">本周新增 2 个</div>
+          </div>
+          <!-- 风控规则数 -->
+          <div class="risk-stat-card blue">
+            <div class="stat-label">
+              <i data-lucide="list-checks" style="width:16px;height:16px;" class="stat-icon"></i>
+              风控规则数
+            </div>
+            <div class="stat-value">23<span style="font-size:14px;font-weight:400;">条</span></div>
+            <div class="stat-sub">启用 22 / 停用 1</div>
+          </div>
+        </div>
+
+        <!-- ===== 风险评分分布 ===== -->
+        <div class="risk-chart-container">
+          <div class="chart-title">
+            <i data-lucide="bar-chart-3" style="width:18px;height:18px;color:var(--primary);"></i>
+            风险评分分布
+          </div>
+          <div class="risk-bar-chart">
+            <!-- 低风险 0-30: 1234人，最大值 -->
+            <div class="risk-bar-item">
+              <div class="risk-bar-value" style="color:var(--state-success);">1,234</div>
+              <div class="risk-bar-fill" style="height:100%;background:var(--state-success);"></div>
+            </div>
+            <!-- 中风险 31-60: 567人 -->
+            <div class="risk-bar-item">
+              <div class="risk-bar-value" style="color:#eab308;">567</div>
+              <div class="risk-bar-fill" style="height:46%;background:#eab308;"></div>
+            </div>
+            <!-- 高风险 61-80: 89人 -->
+            <div class="risk-bar-item">
+              <div class="risk-bar-value" style="color:var(--chart-3);">89</div>
+              <div class="risk-bar-fill" style="height:7%;background:var(--chart-3);"></div>
+            </div>
+            <!-- 极高风险 81-100: 12人 -->
+            <div class="risk-bar-item">
+              <div class="risk-bar-value" style="color:var(--state-error);">12</div>
+              <div class="risk-bar-fill" style="height:1%;background:var(--state-error);"></div>
+            </div>
+          </div>
+          <div class="risk-bar-labels">
+            <div class="bar-label-item">
+              <span class="bar-label-text" style="color:var(--state-success);">低风险</span>
+              <span class="bar-label-range">0 - 30 分</span>
+              <span class="bar-label-count">1,234 人</span>
+            </div>
+            <div class="bar-label-item">
+              <span class="bar-label-text" style="color:#eab308;">中风险</span>
+              <span class="bar-label-range">31 - 60 分</span>
+              <span class="bar-label-count">567 人</span>
+            </div>
+            <div class="bar-label-item">
+              <span class="bar-label-text" style="color:var(--chart-3);">高风险</span>
+              <span class="bar-label-range">61 - 80 分</span>
+              <span class="bar-label-count">89 人</span>
+            </div>
+            <div class="bar-label-item">
+              <span class="bar-label-text" style="color:var(--state-error);">极高风险</span>
+              <span class="bar-label-range">81 - 100 分</span>
+              <span class="bar-label-count">12 人</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== 风控规则列表 ===== -->
+        <div class="risk-table-container">
+          <div class="table-header">
+            <div class="table-title">
+              <i data-lucide="shield-check" style="width:18px;height:18px;color:var(--primary);"></i>
+              风控规则列表
+            </div>
+            <button class="table-action-btn" style="display:flex;align-items:center;gap:6px;">
+              <i data-lucide="filter" style="width:14px;height:14px;"></i>
+              筛选
+            </button>
+          </div>
+          <table class="risk-table">
+            <thead>
+              <tr>
+                <th>规则名称</th>
+                <th>规则类型</th>
+                <th>触发条件</th>
+                <th>动作</th>
+                <th>状态</th>
+                <th>触发次数/今日</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-weight:600;color:var(--text-800);">新账号首单限额</td>
+                <td><span class="rule-type-tag trade">交易风控</span></td>
+                <td>注册 &lt; 7 天</td>
+                <td><span class="action-tag block">拦截</span></td>
+                <td>
+                  <span class="status-badge enabled">
+                    <span class="status-dot"></span>
+                    启用
+                  </span>
+                </td>
+                <td style="font-variant-numeric:tabular-nums;">23 次</td>
+                <td>
+                  <div class="table-actions">
+                    <button class="table-action-btn" title="编辑"><i data-lucide="pencil" style="width:13px;height:13px;"></i></button>
+                    <button class="table-action-btn" title="停用"><i data-lucide="pause" style="width:13px;height:13px;"></i></button>
+                    <button class="table-action-btn" title="查看触发日志"><i data-lucide="scroll-text" style="width:13px;height:13px;"></i></button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style="font-weight:600;color:var(--text-800);">同IP高频下单</td>
+                <td><span class="rule-type-tag trade">交易风控</span></td>
+                <td>同 IP &gt; 5 单/日</td>
+                <td><span class="action-tag review">人工审核</span></td>
+                <td>
+                  <span class="status-badge enabled">
+                    <span class="status-dot"></span>
+                    启用
+                  </span>
+                </td>
+                <td style="font-variant-numeric:tabular-nums;">8 次</td>
+                <td>
+                  <div class="table-actions">
+                    <button class="table-action-btn" title="编辑"><i data-lucide="pencil" style="width:13px;height:13px;"></i></button>
+                    <button class="table-action-btn" title="停用"><i data-lucide="pause" style="width:13px;height:13px;"></i></button>
+                    <button class="table-action-btn" title="查看触发日志"><i data-lucide="scroll-text" style="width:13px;height:13px;"></i></button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style="font-weight:600;color:var(--text-800);">新人券设备限制</td>
+                <td><span class="rule-type-tag marketing">营销风控</span></td>
+                <td>同设备仅首号可领</td>
+                <td><span class="action-tag block">拦截</span></td>
+                <td>
+                  <span class="status-badge enabled">
+                    <span class="status-dot"></span>
+                    启用
+                  </span>
+                </td>
+                <td style="font-variant-numeric:tabular-nums;">45 次</td>
+                <td>
+                  <div class="table-actions">
+                    <button class="table-action-btn" title="编辑"><i data-lucide="pencil" style="width:13px;height:13px;"></i></button>
+                    <button class="table-action-btn" title="停用"><i data-lucide="pause" style="width:13px;height:13px;"></i></button>
+                    <button class="table-action-btn" title="查看触发日志"><i data-lucide="scroll-text" style="width:13px;height:13px;"></i></button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style="font-weight:600;color:var(--text-800);">代理IP检测</td>
+                <td><span class="rule-type-tag account">账号风控</span></td>
+                <td>VPN / 机房 IP</td>
+                <td><span class="action-tag alert">告警+标记</span></td>
+                <td>
+                  <span class="status-badge enabled">
+                    <span class="status-dot"></span>
+                    启用
+                  </span>
+                </td>
+                <td style="font-variant-numeric:tabular-nums;">3 次</td>
+                <td>
+                  <div class="table-actions">
+                    <button class="table-action-btn" title="编辑"><i data-lucide="pencil" style="width:13px;height:13px;"></i></button>
+                    <button class="table-action-btn" title="停用"><i data-lucide="pause" style="width:13px;height:13px;"></i></button>
+                    <button class="table-action-btn" title="查看触发日志"><i data-lucide="scroll-text" style="width:13px;height:13px;"></i></button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style="font-weight:600;color:var(--text-800);">秒杀频率限制</td>
+                <td><span class="rule-type-tag marketing">营销风控</span></td>
+                <td>每人限 1 次</td>
+                <td><span class="action-tag block">拦截</span></td>
+                <td>
+                  <span class="status-badge disabled">
+                    <span class="status-dot"></span>
+                    停用
+                  </span>
+                </td>
+                <td style="font-variant-numeric:tabular-nums;">0 次</td>
+                <td>
+                  <div class="table-actions">
+                    <button class="table-action-btn" title="编辑"><i data-lucide="pencil" style="width:13px;height:13px;"></i></button>
+                    <button class="table-action-btn" title="启用"><i data-lucide="play" style="width:13px;height:13px;"></i></button>
+                    <button class="table-action-btn" title="查看触发日志"><i data-lucide="scroll-text" style="width:13px;height:13px;"></i></button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ===== 最近风险事件 ===== -->
+        <div class="risk-events-container">
+          <div class="events-title">
+            <i data-lucide="alert-triangle" style="width:18px;height:18px;color:var(--state-error);"></i>
+            最近风险事件
+          </div>
+
+          <!-- 事件1：极高风险 -->
+          <div class="risk-event-card critical">
+            <div class="event-icon">
+              <i data-lucide="shield-alert" style="width:18px;height:18px;"></i>
+            </div>
+            <div class="event-content">
+              <div class="event-title">账号 user_3829 使用代理IP高频下单</div>
+              <div class="event-time">2 分钟前 | 触发规则：代理IP检测、同IP高频下单 | 风险评分：92</div>
+            </div>
+            <div class="event-level">
+              <span class="risk-level-tag critical">极高风险</span>
+            </div>
+          </div>
+
+          <!-- 事件2：高风险 -->
+          <div class="risk-event-card high">
+            <div class="event-icon">
+              <i data-lucide="user-x" style="width:18px;height:18px;"></i>
+            </div>
+            <div class="event-content">
+              <div class="event-title">账号 user_1562 新注册设备异常</div>
+              <div class="event-time">18 分钟前 | 触发规则：新人券设备限制 | 风险评分：73</div>
+            </div>
+            <div class="event-level">
+              <span class="risk-level-tag high">高风险</span>
+            </div>
+          </div>
+
+          <!-- 事件3：中风险 -->
+          <div class="risk-event-card medium">
+            <div class="event-icon">
+              <i data-lucide="globe" style="width:18px;height:18px;"></i>
+            </div>
+            <div class="event-content">
+              <div class="event-title">IP 192.168.x.x 短时间 5 个账号下单</div>
+              <div class="event-time">45 分钟前 | 触发规则：同IP高频下单 | 风险评分：55</div>
+            </div>
+            <div class="event-level">
+              <span class="risk-level-tag medium">中风险</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 初始化 Lucide 图标 -->
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

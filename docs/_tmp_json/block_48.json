@@ -1,0 +1,14 @@
+{
+  "code": 0,
+  "data": {
+    "items": [...],
+    "goodsAmount": 199.6,
+    "freight": 0,
+    "couponDiscount": 10,
+    "pointsDiscount": 0,
+    "payAmount": 189.6,
+    "availableCoupons": [
+      { "couponId": 9001, "name": "满100减10", "bestMatch": true }
+    ]
+  }
+}

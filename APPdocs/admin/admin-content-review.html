@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>内容审核 - MOYUYO 管理后台</title>
+    <style id="theme-vars">
+/*
+ * MOYUYO design tokens
+ * Brand: MOYUYO
+ * Domain: Pet lifestyle e-commerce
+ * Style: Apple Design Library, mobile admin
+ * Theme mode: light-dark
+ * Source language: zh
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff;
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759;
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30;
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* state-warning */
+  --state-warning: #ff9500;
+  --state-warning-dark: #ff9f0a;
+  --state-warning-surface: #fff4e5;
+  --state-warning-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* TYPOGRAPHY */
+  --font-sans: 'DM Sans', -apple-system, sans-serif;
+  --font-serif: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12);
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <style id="component-vars">
+/*
+ * components.css - aggregated component CSS
+ */
+
+/* ============================================================
+ * Button
+ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+/* ============================================================
+ * Card
+ */
+.card{width:188px;min-height:148px;padding:calc(var(--spacing)*5);display:flex;flex-direction:column;justify-content:space-between;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);transition:transform .18s ease,box-shadow .18s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.card.disabled,.card.disabled:hover{opacity:.5;transform:none;box-shadow:var(--shadow-md)}
+.eyebrow,.meta{color:var(--muted-foreground);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.title{margin:6px 0 8px;font-size:18px;line-height:1.15}
+.body-copy{margin:0;color:var(--muted-foreground);font-size:13px}
+
+/* ============================================================
+ * Input
+ */
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field.small{height:40px}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.field.disabled{opacity:.55}
+.icon,.clear{padding:0;border:0;background:transparent;color:var(--icon-muted);font:inherit}
+.icon{font-size:13px}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+
+/* ============================================================
+ * Navigation
+ */
+.webbar,.mobile{border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.webbar{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:320px;height:44px;padding:0 calc(var(--spacing)*3);border-radius:var(--radius);background:var(--secondary)}
+.brand{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.link,.tab{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;color:inherit;text-decoration:none;white-space:nowrap;transition:background-color .18s ease,color .18s ease,opacity .18s ease}
+.link{height:32px;padding:0 calc(var(--spacing)*2.5)}
+.link:hover,.tab:hover{background:var(--secondary)}
+.link:focus-visible,.tab:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+    </style>
+
+    <!-- 审核页面专用样式 -->
+    <style>
+      /* 基础重置 */
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: 'DM Sans', -apple-system, sans-serif;
+        background: var(--background-200);
+        color: var(--text-800);
+        max-width: 393px;
+        margin: 0 auto;
+        min-height: 852px;
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* 隐藏滚动条 */
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* 顶部导航栏 */
+      .admin-nav {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        background: var(--background-50);
+        border-bottom: 1px solid var(--border);
+      }
+      .admin-nav-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 52px;
+        padding: 0 16px;
+      }
+      .admin-nav-bar h1 {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--text-800);
+      }
+      .admin-nav-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 50%;
+        background: var(--background-200);
+        color: var(--text-800);
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+      }
+      .admin-nav-btn:hover {
+        background: var(--background-300);
+      }
+
+      /* 审核模式选择器 */
+      .review-mode-section {
+        padding: 16px;
+        background: var(--background-50);
+        border-bottom: 1px solid var(--border);
+      }
+      .review-mode-section .section-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-500);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 10px;
+      }
+      .review-modes {
+        display: flex;
+        gap: 8px;
+      }
+      .review-mode-chip {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 36px;
+        border: 1.5px solid var(--border);
+        border-radius: 999px;
+        background: var(--background-50);
+        color: var(--text-500);
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.18s ease;
+      }
+      .review-mode-chip.active {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border-color: var(--primary);
+        box-shadow: 0 2px 8px rgba(0, 122, 255, 0.25);
+      }
+      .review-mode-chip:not(.active):hover {
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+
+      /* 统计卡片区域 */
+      .stats-row {
+        display: flex;
+        gap: 10px;
+        padding: 12px 16px;
+      }
+      .stat-card {
+        flex: 1;
+        padding: 14px 12px;
+        border-radius: var(--radius);
+        background: var(--background-50);
+        border: 1px solid var(--border);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        text-align: center;
+      }
+      .stat-card .stat-value {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text-800);
+        line-height: 1.1;
+      }
+      .stat-card .stat-value.warning { color: var(--state-warning); }
+      .stat-card .stat-value.error { color: var(--state-error); }
+      .stat-card .stat-value.success { color: var(--state-success); }
+      .stat-card .stat-label {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text-500);
+        margin-top: 4px;
+      }
+
+      /* 违规类型筛选 Tab */
+      .filter-section {
+        padding: 0 16px 12px;
+        background: var(--background-50);
+        margin-top: 1px;
+      }
+      .filter-tabs {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+      .filter-tab {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 32px;
+        padding: 0 14px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--background-50);
+        color: var(--text-500);
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .filter-tab.active {
+        background: var(--text-800);
+        color: var(--background-50);
+        border-color: var(--text-800);
+      }
+      .filter-tab:not(.active):hover {
+        border-color: var(--text-500);
+        color: var(--text-800);
+      }
+
+      /* 审核内容列表 */
+      .review-list {
+        padding: 0 16px 16px;
+      }
+      .review-list-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0 8px;
+      }
+      .review-list-header .list-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-500);
+      }
+      .review-list-header .list-count {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-400);
+      }
+
+      /* 单条审核卡片 */
+      .review-item {
+        border-radius: var(--radius);
+        background: var(--background-50);
+        border: 1px solid var(--border);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        padding: 14px;
+        margin-bottom: 12px;
+        transition: box-shadow 0.18s ease;
+      }
+      .review-item:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      }
+
+      /* 审核卡片顶部：缩略图 + 基本信息 */
+      .review-item-top {
+        display: flex;
+        gap: 12px;
+      }
+      .review-thumbnail {
+        width: 72px;
+        height: 72px;
+        border-radius: calc(var(--radius) - 4px);
+        flex-shrink: 0;
+        overflow: hidden;
+        border: 1px solid var(--border);
+      }
+      /* 不同内容类型的渐变占位 */
+      .thumb-post {
+        background: linear-gradient(135deg, var(--brand-50), var(--brand-100));
+      }
+      .thumb-comment {
+        background: linear-gradient(135deg, var(--background-200), var(--background-100));
+      }
+      .thumb-image {
+        background: linear-gradient(135deg, var(--state-success-surface), var(--brand-50));
+      }
+      .thumb-video {
+        background: linear-gradient(135deg, var(--background-800), var(--background-700));
+        position: relative;
+      }
+      .thumb-video::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.25);
+      }
+      .review-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .review-info-row-1 {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      /* 内容类型标签 */
+      .content-type-tag {
+        display: inline-flex;
+        align-items: center;
+        height: 20px;
+        padding: 0 8px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+      .tag-post {
+        background: var(--brand-50);
+        color: var(--brand-600);
+      }
+      .tag-comment {
+        background: var(--background-200);
+        color: var(--text-600);
+      }
+      .tag-image {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+      .tag-video {
+        background: var(--background-800);
+        color: var(--background-50);
+      }
+
+      /* 机审结果标签 */
+      .machine-result {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        height: 20px;
+        padding: 0 8px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 700;
+      }
+      .machine-result.violation {
+        background: var(--state-error-surface);
+        color: var(--state-error);
+      }
+      .machine-result.pass {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+
+      /* 发布者信息 */
+      .review-info-row-2 {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .avatar-placeholder {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--background-300), var(--background-400));
+        flex-shrink: 0;
+      }
+      .publisher-name {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-600);
+      }
+      .publish-time {
+        font-size: 11px;
+        color: var(--text-400);
+      }
+
+      /* 疑似违规类型标签 */
+      .violation-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 10px;
+      }
+      .violation-tag {
+        height: 20px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: var(--state-warning-surface);
+        color: var(--state-warning);
+        font-size: 10px;
+        font-weight: 600;
+      }
+
+      /* 处理动作按钮区 */
+      .review-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+      .action-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        height: 36px;
+        border: 1px solid var(--border);
+        border-radius: calc(var(--radius) - 4px);
+        background: var(--background-50);
+        color: var(--text-600);
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .action-btn:hover {
+        background: var(--background-200);
+      }
+      .action-btn.btn-approve {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+        border-color: var(--state-success-surface);
+      }
+      .action-btn.btn-approve:hover {
+        background: var(--state-success);
+        color: var(--state-success-foreground);
+        border-color: var(--state-success);
+      }
+      .action-btn.btn-hide {
+        background: var(--state-warning-surface);
+        color: var(--state-warning);
+        border-color: var(--state-warning-surface);
+      }
+      .action-btn.btn-hide:hover {
+        background: var(--state-warning);
+        color: var(--state-warning-foreground);
+        border-color: var(--state-warning);
+      }
+      .action-btn.btn-delete {
+        background: var(--state-error-surface);
+        color: var(--state-error);
+        border-color: var(--state-error-surface);
+      }
+      .action-btn.btn-delete:hover {
+        background: var(--state-error);
+        color: var(--state-error-foreground);
+        border-color: var(--state-error);
+      }
+      .action-btn.btn-ban {
+        background: var(--background-800);
+        color: var(--background-50);
+        border-color: var(--background-800);
+      }
+      .action-btn.btn-ban:hover {
+        background: var(--background-900);
+      }
+
+      /* 审核趋势图 */
+      .chart-section {
+        padding: 0 16px 24px;
+        background: var(--background-50);
+        border-top: 1px solid var(--border);
+        margin-top: 1px;
+      }
+      .chart-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 0 12px;
+      }
+      .chart-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text-800);
+      }
+      .chart-subtitle {
+        font-size: 12px;
+        color: var(--text-400);
+      }
+      .chart-container {
+        position: relative;
+        height: 160px;
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        padding-bottom: 24px;
+      }
+      .chart-bar-group {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+      }
+      .chart-bar {
+        width: 100%;
+        border-radius: 6px 6px 2px 2px;
+        transition: height 0.3s ease;
+        min-height: 4px;
+      }
+      .chart-bar.bar-total {
+        background: var(--primary);
+      }
+      .chart-bar-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-500);
+        white-space: nowrap;
+      }
+      .chart-bar-value {
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--text-400);
+      }
+      /* 图例 */
+      .chart-legend {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        margin-top: 12px;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11px;
+        color: var(--text-500);
+      }
+      .legend-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+
+      /* 内联图标样式 */
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    
+    /* 妗岄潰绔鐞嗛〉闈㈡渶灏忓搴︾害鏉?*/
+    body { min-width: 1280px; }</style>
+</head>
+<body>
+
+  <!-- 顶部导航栏 -->
+  <nav class="admin-nav">
+    <div class="admin-nav-bar">
+      <!-- 返回按钮 -->
+      <button class="admin-nav-btn" data-dom-id="cta-back" aria-label="返回">
+        <i data-lucide="chevron-left" style="width:20px;height:20px;color:var(--text-800);"></i>
+      </button>
+      <!-- 页面标题 -->
+      <h1>内容审核</h1>
+      <!-- 审核规则配置按钮 -->
+      <button class="admin-nav-btn" aria-label="审核规则配置" data-dom-id="cta-review-rules">
+        <i data-lucide="settings" style="width:18px;height:18px;color:var(--text-800);"></i>
+      </button>
+    </div>
+  </nav>
+
+  <!-- 审核模式选择 -->
+  <section class="review-mode-section">
+    <div class="section-label">审核模式</div>
+    <div class="review-modes">
+      <button class="review-mode-chip" data-mode="auto">机审自动通过</button>
+      <button class="review-mode-chip active" data-mode="mixed">机审+人审</button>
+      <button class="review-mode-chip" data-mode="manual">纯人审</button>
+    </div>
+  </section>
+
+  <!-- 审核队列统计 -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value error">23</div>
+      <div class="stat-label">待审核</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value warning">4h</div>
+      <div class="stat-label">SLA 剩余</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value success">156</div>
+      <div class="stat-label">今日已审</div>
+    </div>
+  </div>
+
+  <!-- 违规类型筛选 Tab -->
+  <section class="filter-section">
+    <div class="filter-tabs no-scrollbar" style="overflow-x:auto;">
+      <button class="filter-tab active" data-filter="all">全部</button>
+      <button class="filter-tab" data-filter="porn">色情</button>
+      <button class="filter-tab" data-filter="violence">暴力</button>
+      <button class="filter-tab" data-filter="hate">仇恨言论</button>
+      <button class="filter-tab" data-filter="copyright">侵权</button>
+      <button class="filter-tab" data-filter="fake">虚假信息</button>
+      <button class="filter-tab" data-filter="abuse">虐待动物</button>
+    </div>
+  </section>
+
+  <!-- 待审核内容列表 -->
+  <section class="review-list">
+    <div class="review-list-header">
+      <span class="list-title">审核队列</span>
+      <span class="list-count">共 23 条待处理</span>
+    </div>
+
+    <!-- 审核项 1：帖子 - 疑似违规 -->
+    <article class="review-item">
+      <div class="review-item-top">
+        <!-- 缩略图占位 -->
+        <div class="review-thumbnail thumb-post"></div>
+        <div class="review-info">
+          <div class="review-info-row-1">
+            <span class="content-type-tag tag-post">帖子</span>
+            <span class="machine-result violation">
+              <i data-lucide="alert-triangle" style="width:10px;height:10px;"></i>
+              疑似违规
+            </span>
+          </div>
+          <div class="review-info-row-2">
+            <div class="avatar-placeholder"></div>
+            <span class="publisher-name">用户1**8</span>
+            <span class="publish-time">3 分钟前</span>
+          </div>
+        </div>
+      </div>
+      <!-- 违规类型标签 -->
+      <div class="violation-tags">
+        <span class="violation-tag">虚假信息</span>
+        <span class="violation-tag">误导性内容</span>
+      </div>
+      <!-- 处理动作 -->
+      <div class="review-actions">
+        <button class="action-btn btn-approve">
+          <i data-lucide="check" style="width:14px;height:14px;"></i>
+          通过
+        </button>
+        <button class="action-btn btn-hide">
+          <i data-lucide="eye-off" style="width:14px;height:14px;"></i>
+          隐藏
+        </button>
+        <button class="action-btn btn-delete">
+          <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+          删除
+        </button>
+        <button class="action-btn btn-ban">
+          <i data-lucide="ban" style="width:14px;height:14px;"></i>
+          封禁
+        </button>
+      </div>
+    </article>
+
+    <!-- 审核项 2：评论 - 疑似违规 -->
+    <article class="review-item">
+      <div class="review-item-top">
+        <div class="review-thumbnail thumb-comment"></div>
+        <div class="review-info">
+          <div class="review-info-row-1">
+            <span class="content-type-tag tag-comment">评论</span>
+            <span class="machine-result violation">
+              <i data-lucide="alert-triangle" style="width:10px;height:10px;"></i>
+              疑似违规
+            </span>
+          </div>
+          <div class="review-info-row-2">
+            <div class="avatar-placeholder"></div>
+            <span class="publisher-name">宠物达人3**2</span>
+            <span class="publish-time">8 分钟前</span>
+          </div>
+        </div>
+      </div>
+      <div class="violation-tags">
+        <span class="violation-tag">仇恨言论</span>
+      </div>
+      <div class="review-actions">
+        <button class="action-btn btn-approve">
+          <i data-lucide="check" style="width:14px;height:14px;"></i>
+          通过
+        </button>
+        <button class="action-btn btn-hide">
+          <i data-lucide="eye-off" style="width:14px;height:14px;"></i>
+          隐藏
+        </button>
+        <button class="action-btn btn-delete">
+          <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+          删除
+        </button>
+        <button class="action-btn btn-ban">
+          <i data-lucide="ban" style="width:14px;height:14px;"></i>
+          封禁
+        </button>
+      </div>
+    </article>
+
+    <!-- 审核项 3：图片 - 机审通过 -->
+    <article class="review-item">
+      <div class="review-item-top">
+        <div class="review-thumbnail thumb-image"></div>
+        <div class="review-info">
+          <div class="review-info-row-1">
+            <span class="content-type-tag tag-image">图片</span>
+            <span class="machine-result pass">
+              <i data-lucide="check-circle" style="width:10px;height:10px;"></i>
+              机审通过
+            </span>
+          </div>
+          <div class="review-info-row-2">
+            <div class="avatar-placeholder"></div>
+            <span class="publisher-name">萌宠日常5**1</span>
+            <span class="publish-time">15 分钟前</span>
+          </div>
+        </div>
+      </div>
+      <div class="review-actions">
+        <button class="action-btn btn-approve">
+          <i data-lucide="check" style="width:14px;height:14px;"></i>
+          通过
+        </button>
+        <button class="action-btn btn-hide">
+          <i data-lucide="eye-off" style="width:14px;height:14px;"></i>
+          隐藏
+        </button>
+        <button class="action-btn btn-delete">
+          <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+          删除
+        </button>
+        <button class="action-btn btn-ban">
+          <i data-lucide="ban" style="width:14px;height:14px;"></i>
+          封禁
+        </button>
+      </div>
+    </article>
+
+    <!-- 审核项 4：视频 - 疑似违规 -->
+    <article class="review-item">
+      <div class="review-item-top">
+        <div class="review-thumbnail thumb-video"></div>
+        <div class="review-info">
+          <div class="review-info-row-1">
+            <span class="content-type-tag tag-video">视频</span>
+            <span class="machine-result violation">
+              <i data-lucide="alert-triangle" style="width:10px;height:10px;"></i>
+              疑似违规
+            </span>
+          </div>
+          <div class="review-info-row-2">
+            <div class="avatar-placeholder"></div>
+            <span class="publisher-name">猫咪控7**6</span>
+            <span class="publish-time">22 分钟前</span>
+          </div>
+        </div>
+      </div>
+      <div class="violation-tags">
+        <span class="violation-tag">虐待动物</span>
+        <span class="violation-tag">暴力</span>
+      </div>
+      <div class="review-actions">
+        <button class="action-btn btn-approve">
+          <i data-lucide="check" style="width:14px;height:14px;"></i>
+          通过
+        </button>
+        <button class="action-btn btn-hide">
+          <i data-lucide="eye-off" style="width:14px;height:14px;"></i>
+          隐藏
+        </button>
+        <button class="action-btn btn-delete">
+          <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+          删除
+        </button>
+        <button class="action-btn btn-ban">
+          <i data-lucide="ban" style="width:14px;height:14px;"></i>
+          封禁
+        </button>
+      </div>
+    </article>
+
+    <!-- 审核项 5：帖子 - 疑似违规 -->
+    <article class="review-item">
+      <div class="review-item-top">
+        <div class="review-thumbnail thumb-post"></div>
+        <div class="review-info">
+          <div class="review-info-row-1">
+            <span class="content-type-tag tag-post">帖子</span>
+            <span class="machine-result violation">
+              <i data-lucide="alert-triangle" style="width:10px;height:10px;"></i>
+              疑似违规
+            </span>
+          </div>
+          <div class="review-info-row-2">
+            <div class="avatar-placeholder"></div>
+            <span class="publisher-name">铲屎官9**0</span>
+            <span class="publish-time">35 分钟前</span>
+          </div>
+        </div>
+      </div>
+      <div class="violation-tags">
+        <span class="violation-tag">侵权</span>
+        <span class="violation-tag">未授权转载</span>
+      </div>
+      <div class="review-actions">
+        <button class="action-btn btn-approve">
+          <i data-lucide="check" style="width:14px;height:14px;"></i>
+          通过
+        </button>
+        <button class="action-btn btn-hide">
+          <i data-lucide="eye-off" style="width:14px;height:14px;"></i>
+          隐藏
+        </button>
+        <button class="action-btn btn-delete">
+          <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+          删除
+        </button>
+        <button class="action-btn btn-ban">
+          <i data-lucide="ban" style="width:14px;height:14px;"></i>
+          封禁
+        </button>
+      </div>
+    </article>
+  </section>
+
+  <!-- 审核统计趋势 -->
+  <section class="chart-section">
+    <div class="chart-header">
+      <div>
+        <div class="chart-title">审核趋势</div>
+        <div class="chart-subtitle">近 7 天审核量</div>
+      </div>
+    </div>
+    <!-- 简化柱状图 -->
+    <div class="chart-container">
+      <!-- 周一 -->
+      <div class="chart-bar-group">
+        <div class="chart-bar-value">128</div>
+        <div class="chart-bar bar-total" style="height: 82px;"></div>
+        <div class="chart-bar-label">周一</div>
+      </div>
+      <!-- 周二 -->
+      <div class="chart-bar-group">
+        <div class="chart-bar-value">95</div>
+        <div class="chart-bar bar-total" style="height: 61px;"></div>
+        <div class="chart-bar-label">周二</div>
+      </div>
+      <!-- 周三 -->
+      <div class="chart-bar-group">
+        <div class="chart-bar-value">142</div>
+        <div class="chart-bar bar-total" style="height: 91px;"></div>
+        <div class="chart-bar-label">周三</div>
+      </div>
+      <!-- 周四 -->
+      <div class="chart-bar-group">
+        <div class="chart-bar-value">168</div>
+        <div class="chart-bar bar-total" style="height: 108px;"></div>
+        <div class="chart-bar-label">周四</div>
+      </div>
+      <!-- 周五 -->
+      <div class="chart-bar-group">
+        <div class="chart-bar-value">203</div>
+        <div class="chart-bar bar-total" style="height: 130px;"></div>
+        <div class="chart-bar-label">周五</div>
+      </div>
+      <!-- 周六 -->
+      <div class="chart-bar-group">
+        <div class="chart-bar-value">187</div>
+        <div class="chart-bar bar-total" style="height: 120px;"></div>
+        <div class="chart-bar-label">周六</div>
+      </div>
+      <!-- 周日 -->
+      <div class="chart-bar-group">
+        <div class="chart-bar-value">156</div>
+        <div class="chart-bar bar-total" style="height: 100px;"></div>
+        <div class="chart-bar-label">周日</div>
+      </div>
+    </div>
+    <!-- 图例 -->
+    <div class="chart-legend">
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--primary);"></div>
+        <span>审核总量</span>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // 初始化 Lucide 图标
+    lucide.createIcons();
+
+    // 审核模式切换交互
+    document.querySelectorAll('.review-mode-chip').forEach(function(chip) {
+      chip.addEventListener('click', function() {
+        document.querySelectorAll('.review-mode-chip').forEach(function(c) {
+          c.classList.remove('active');
+        });
+        this.classList.add('active');
+      });
+    });
+
+    // 违规类型筛选 Tab 切换交互
+    document.querySelectorAll('.filter-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.filter-tab').forEach(function(t) {
+          t.classList.remove('active');
+        });
+        this.classList.add('active');
+      });
+    });
+
+    // 处理动作按钮点击反馈
+    document.querySelectorAll('.action-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        // 找到所属的审核卡片
+        var reviewItem = this.closest('.review-item');
+        var allBtns = reviewItem.querySelectorAll('.action-btn');
+
+        // 重置所有按钮状态
+        allBtns.forEach(function(b) {
+          b.style.opacity = '1';
+          b.style.transform = 'scale(1)';
+        });
+
+        // 高亮当前点击按钮
+        this.style.transform = 'scale(0.95)';
+        var clickedBtn = this;
+        setTimeout(function() {
+          clickedBtn.style.transform = 'scale(1)';
+        }, 150);
+
+        // 降低未选中按钮的透明度
+        allBtns.forEach(function(b) {
+          if (b !== clickedBtn) {
+            b.style.opacity = '0.5';
+          }
+        });
+      });
+    });
+  </script>
+
+</body>
+</html>

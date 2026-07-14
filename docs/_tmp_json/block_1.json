@@ -1,0 +1,7 @@
+{
+  "environment": {
+    "site_url": "https://shop.moyuyo.com",
+    "wp_version": "6.4",
+    "wc_version": "8.5"
+  }
+}

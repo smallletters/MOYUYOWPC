@@ -1,0 +1,11 @@
+{
+  "code": 0,
+  "data": {
+    "syncStatus": "SUCCESS",
+    "wooOrderId": 10245,
+    "syncRetryCount": 0,
+    "syncLastTime": "2026-07-02T10:30:15",
+    "trackingNumber": "SF1234567890",
+    "shippingCarrier": "顺丰"
+  }
+}

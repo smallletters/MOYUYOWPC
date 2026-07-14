@@ -1,0 +1,8 @@
+{
+  "code": 0,
+  "data": {
+    "secret": "JBSWY3DPEHPK3PXP",
+    "qrCodeUrl": "otpauth://totp/MOYUYO:tom@example.com?secret=JBSWY3DPEHPK3PXP&issuer=MOYUYO",
+    "backupCodes": ["12345-abcde", "67890-fghij"]
+  }
+}

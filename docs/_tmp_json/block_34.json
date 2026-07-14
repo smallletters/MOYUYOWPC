@@ -1,0 +1,17 @@
+{
+  "code": 0,
+  "data": {
+    "list": [
+      {
+        "petId": 1,
+        "name": "豆豆",
+        "type": "DOG",
+        "breed": "柯基",
+        "ageMonths": 16,
+        "weightKg": 11.2,
+        "avatar": "https://cdn.moyuyo.com/pet/p1.jpg",
+        "preferredIpCode": "MILO"
+      }
+    ]
+  }
+}

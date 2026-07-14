@@ -1,0 +1,11 @@
+{
+  "code": 0,
+  "data": {
+    "level": "GOLD",
+    "growthValue": 1280,
+    "nextLevel": "DIAMOND",
+    "nextLevelNeed": 2000,
+    "benefits": ["9.5折", "生日礼", "专属客服"],
+    "expireAt": "2027-07-02"
+  }
+}

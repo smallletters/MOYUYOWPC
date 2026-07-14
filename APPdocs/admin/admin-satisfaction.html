@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>满意度管理 - MOYUYO 管理后台</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - brand / background / text / icon / state-*
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff;
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759;
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30;
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12);
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+    </style>
+    <style id="component-vars">
+/*
+ * components.css - aggregated component CSS
+ * Auto-extracted from preview/component-*.html files.
+ */
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{filter:brightness(.96)}
+.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-text{height:48px;padding:0 4px;box-shadow:none}
+.btn-text:hover{color:var(--primary)}
+.btn-lg{height:56px;padding:0 28px;font-size:16px}
+
+.card{width:188px;min-height:148px;padding:calc(var(--spacing)*5);display:flex;flex-direction:column;justify-content:space-between;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);transition:transform .18s ease,box-shadow .18s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.card.disabled,.card.disabled:hover{opacity:.5;transform:none;box-shadow:var(--shadow-md)}
+.eyebrow,.meta{color:var(--muted-foreground);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.title{margin:6px 0 8px;font-size:18px;line-height:1.15}
+.body-copy{margin:0;color:var(--muted-foreground);font-size:13px}
+.cta{display:inline-flex;align-items:center;justify-content:center;width:max-content;margin-top:12px;padding:calc(var(--spacing)*2) calc(var(--spacing)*3.5);border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;font-weight:700;text-decoration:none}
+
+.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}
+.field.small{height:40px}
+.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.field.disabled{opacity:.55}
+.icon,.clear{padding:0;border:0;background:transparent;color:var(--icon-muted);font:inherit}
+.icon{font-size:13px}
+.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.control::placeholder{color:var(--muted-foreground)}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: var(--radius);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      /* 全局滚动条隐藏 */
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* data-icon SVG 遮罩图标 */
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+
+      /* ===== 管理后台页面专用样式 ===== */
+      .admin-page {
+        max-width: 393px;
+        margin: 0 auto;
+        min-height: 852px;
+        background: var(--background);
+        font-family: 'DM Sans', -apple-system, sans-serif;
+      }
+
+      /* 管理后台卡片通用 */
+      .admin-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        padding: 16px;
+      }
+
+      /* KPI 卡片 */
+      .kpi-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .kpi-card .kpi-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-500);
+        letter-spacing: 0.02em;
+      }
+      .kpi-card .kpi-value {
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--text-800);
+        line-height: 1.2;
+      }
+      .kpi-card .kpi-trend {
+        font-size: 11px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+      }
+      .kpi-trend.up { color: var(--state-success); }
+      .kpi-trend.down { color: var(--state-error); }
+
+      /* 切换开关 */
+      .toggle-switch {
+        position: relative;
+        width: 44px;
+        height: 26px;
+        border-radius: 13px;
+        background: var(--background-400);
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        flex-shrink: 0;
+      }
+      .toggle-switch.active {
+        background: var(--state-success);
+      }
+      .toggle-switch::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--background-50);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        transition: transform 0.2s ease;
+      }
+      .toggle-switch.active::after {
+        transform: translateX(18px);
+      }
+
+      /* 问卷模板行 */
+      .template-row {
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .template-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+      .template-row:first-child {
+        padding-top: 0;
+      }
+
+      /* 状态标签 */
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .status-badge.active {
+        background: var(--state-success-surface);
+        color: var(--state-success);
+      }
+      .status-badge.disabled {
+        background: var(--background-200);
+        color: var(--text-500);
+      }
+      .status-badge.draft {
+        background: var(--brand-50);
+        color: var(--brand-600);
+      }
+      .status-badge.warning {
+        background: var(--state-error-surface);
+        color: var(--state-error);
+      }
+      .status-badge.pending {
+        background: #fff3e0;
+        color: #ff9500;
+      }
+
+      /* 星级评分 */
+      .star-rating {
+        display: inline-flex;
+        gap: 2px;
+      }
+      .star-rating .star {
+        width: 14px;
+        height: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .star-rating .star.filled {
+        color: #ff9500;
+      }
+      .star-rating .star.empty {
+        color: var(--background-400);
+      }
+
+      /* CSS 折线图容器 */
+      .chart-container {
+        position: relative;
+        width: 100%;
+        height: 160px;
+        overflow: hidden;
+      }
+
+      /* 低分反馈行 */
+      .feedback-row {
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .feedback-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+      .feedback-row:first-child {
+        padding-top: 0;
+      }
+
+      /* 区块标题 */
+      .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+      .section-title {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--text-800);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .section-action {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--primary);
+        text-decoration: none;
+      }
+
+      /* 操作按钮组 */
+      .action-group {
+        display: flex;
+        gap: 8px;
+      }
+      .action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+      }
+      .action-btn.primary-action {
+        background: var(--primary);
+        color: var(--primary-foreground);
+      }
+      .action-btn.secondary-action {
+        background: var(--secondary);
+        color: var(--secondary-foreground);
+      }
+      .action-btn.text-action {
+        background: transparent;
+        color: var(--primary);
+        padding: 6px 4px;
+      }
+
+      /* 导航栏 */
+      .admin-navbar {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        background: var(--background);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .admin-navbar .nav-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .admin-navbar .nav-back {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: none;
+        background: var(--secondary);
+        color: var(--foreground);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+      }
+      .admin-navbar .nav-back:hover {
+        background: var(--muted);
+      }
+      .admin-navbar .nav-title {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--text-800);
+      }
+      .admin-navbar .nav-right .create-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: var(--primary);
+        color: var(--primary-foreground);
+        font-size: 13px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,122,255,0.25);
+        transition: filter 0.15s ease;
+      }
+      .admin-navbar .nav-right .create-btn:hover {
+        filter: brightness(0.92);
+      }
+
+      /* 发送渠道标签 */
+      .channel-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        border: 1px solid var(--border);
+        color: var(--text-600);
+        background: var(--background);
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .channel-tag.selected {
+        border-color: var(--primary);
+        background: var(--brand-50);
+        color: var(--primary);
+      }
+
+      /* 触发规则项 */
+      .rule-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .rule-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+      .rule-item:first-child {
+        padding-top: 0;
+      }
+      .rule-item .rule-label {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-800);
+      }
+      .rule-item .rule-desc {
+        font-size: 12px;
+        color: var(--text-400);
+        margin-top: 2px;
+      }
+    
+    /* 妗岄潰绔鐞嗛〉闈㈡渶灏忓搴︾害鏉?*/
+    body { min-width: 1280px; }</style>
+</head>
+<body class="min-h-screen font-sans antialiased" style="background: var(--background-200);">
+  <div class="admin-page">
+
+    <!-- ===== 顶部导航栏 ===== -->
+    <nav class="admin-navbar">
+      <div class="nav-left">
+        <button class="nav-back" data-dom-id="cta-back" aria-label="返回">
+          <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-left.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-left.svg');"></span>
+        </button>
+        <span class="nav-title">满意度管理</span>
+      </div>
+      <div class="nav-right">
+        <button class="create-btn" data-dom-id="cta-create-survey">
+          <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/plus.svg'); mask-image: url('../assets/icons/dl-builtin-apple/plus.svg');"></span>
+          新建问卷
+        </button>
+      </div>
+    </nav>
+
+    <!-- ===== 主内容区 ===== -->
+    <main class="px-4 py-4" style="padding-bottom: 40px;">
+
+      <!-- ===== KPI 概览 (2x2 网格) ===== -->
+      <section aria-label="调研概览" class="mb-5">
+        <div class="section-header">
+          <h2 class="section-title">
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/bar-chart-3.svg'); mask-image: url('../assets/icons/dl-builtin-apple/bar-chart-3.svg'); color: var(--primary);"></span>
+            调研概览
+          </h2>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <!-- KPI: 平均满意度 -->
+          <div class="kpi-card">
+            <span class="kpi-label">平均满意度</span>
+            <span class="kpi-value">4.6</span>
+            <span class="kpi-trend up">
+              <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/trending-up.svg'); mask-image: url('../assets/icons/dl-builtin-apple/trending-up.svg');"></span>
+              +0.2 较上周
+            </span>
+          </div>
+          <!-- KPI: 问卷回收率 -->
+          <div class="kpi-card">
+            <span class="kpi-label">问卷回收率</span>
+            <span class="kpi-value">78%</span>
+            <span class="kpi-trend up">
+              <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/trending-up.svg'); mask-image: url('../assets/icons/dl-builtin-apple/trending-up.svg');"></span>
+              +3% 较上周
+            </span>
+          </div>
+          <!-- KPI: NPS 净推荐值 -->
+          <div class="kpi-card">
+            <span class="kpi-label">NPS 净推荐值</span>
+            <span class="kpi-value">62</span>
+            <span class="kpi-trend up">
+              <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/trending-up.svg'); mask-image: url('../assets/icons/dl-builtin-apple/trending-up.svg');"></span>
+              +5 较上周
+            </span>
+          </div>
+          <!-- KPI: 低分预警数 -->
+          <div class="kpi-card">
+            <span class="kpi-label">低分预警数</span>
+            <span class="kpi-value" style="color: var(--state-error);">12</span>
+            <span class="kpi-trend down">
+              <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/trending-down.svg'); mask-image: url('../assets/icons/dl-builtin-apple/trending-down.svg');"></span>
+              +3 较上周
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 调研触发规则 ===== -->
+      <section aria-label="调研触发规则" class="mb-5">
+        <div class="section-header">
+          <h2 class="section-title">
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/settings.svg'); mask-image: url('../assets/icons/dl-builtin-apple/settings.svg'); color: var(--primary);"></span>
+            调研触发规则
+          </h2>
+        </div>
+        <div class="admin-card">
+          <!-- 触发时机开关 -->
+          <div class="rule-item">
+            <div>
+              <div class="rule-label">订单完成后</div>
+              <div class="rule-desc">用户确认收货后触发调研</div>
+            </div>
+            <div class="toggle-switch active" data-dom-id="toggle-order-complete" role="switch" aria-checked="true" tabindex="0"></div>
+          </div>
+          <div class="rule-item">
+            <div>
+              <div class="rule-label">客服关闭后</div>
+              <div class="rule-desc">客服工单完结后触发调研</div>
+            </div>
+            <div class="toggle-switch active" data-dom-id="toggle-cs-close" role="switch" aria-checked="true" tabindex="0"></div>
+          </div>
+          <div class="rule-item">
+            <div>
+              <div class="rule-label">退款完成后</div>
+              <div class="rule-desc">退款到账后触发调研</div>
+            </div>
+            <div class="toggle-switch" data-dom-id="toggle-refund" role="switch" aria-checked="false" tabindex="0"></div>
+          </div>
+
+          <!-- 触发延迟 -->
+          <div class="rule-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+              <div>
+                <div class="rule-label">触发延迟</div>
+                <div class="rule-desc">事件发生后等待多久发送问卷</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <div class="field small" style="min-width: 60px; width: 60px; justify-content: center; padding: 0 8px;">
+                  <input class="control" type="number" value="24" min="1" max="168" style="text-align: center; font-weight: 600; font-size: 14px;" data-dom-id="input-delay-hours">
+                </div>
+                <span style="font-size: 13px; color: var(--text-500); font-weight: 500;">小时后</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 发送渠道 -->
+          <div class="rule-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+            <div>
+              <div class="rule-label">发送渠道</div>
+              <div class="rule-desc">选择问卷发送方式（可多选）</div>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <span class="channel-tag selected" data-dom-id="channel-app">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/smartphone.svg'); mask-image: url('../assets/icons/dl-builtin-apple/smartphone.svg');"></span>
+                App 内
+              </span>
+              <span class="channel-tag selected" data-dom-id="channel-email">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/mail.svg'); mask-image: url('../assets/icons/dl-builtin-apple/mail.svg');"></span>
+                邮件
+              </span>
+              <span class="channel-tag" data-dom-id="channel-sms">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/message-square.svg'); mask-image: url('../assets/icons/dl-builtin-apple/message-square.svg');"></span>
+                短信
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 问卷模板列表 ===== -->
+      <section aria-label="问卷模板列表" class="mb-5">
+        <div class="section-header">
+          <h2 class="section-title">
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/file-text.svg'); mask-image: url('../assets/icons/dl-builtin-apple/file-text.svg'); color: var(--primary);"></span>
+            问卷模板
+          </h2>
+          <a href="#" class="section-action" data-dom-id="cta-all-templates">查看全部</a>
+        </div>
+        <div class="admin-card">
+          <!-- 模板 1 -->
+          <div class="template-row">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px;">
+              <div>
+                <div style="font-size: 15px; font-weight: 600; color: var(--text-800);">订单满意度调研</div>
+                <div style="font-size: 12px; color: var(--text-400); margin-top: 2px;">订单完成后评估购物体验</div>
+              </div>
+              <span class="status-badge active">使用中</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+              <span style="font-size: 12px; color: var(--text-500);">8 道题目</span>
+              <span style="font-size: 12px; color: var(--text-500);">约 2 分钟</span>
+            </div>
+            <div class="action-group">
+              <button class="action-btn text-action" data-dom-id="cta-edit-template">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/pencil.svg'); mask-image: url('../assets/icons/dl-builtin-apple/pencil.svg');"></span>
+                编辑
+              </button>
+              <button class="action-btn text-action" data-dom-id="cta-preview-template">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/eye.svg'); mask-image: url('../assets/icons/dl-builtin-apple/eye.svg');"></span>
+                预览
+              </button>
+              <button class="action-btn text-action" data-dom-id="cta-analytics-template">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/bar-chart-3.svg'); mask-image: url('../assets/icons/dl-builtin-apple/bar-chart-3.svg');"></span>
+                数据分析
+              </button>
+            </div>
+          </div>
+
+          <!-- 模板 2 -->
+          <div class="template-row">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px;">
+              <div>
+                <div style="font-size: 15px; font-weight: 600; color: var(--text-800);">客服满意度调研</div>
+                <div style="font-size: 12px; color: var(--text-400); margin-top: 2px;">客服会话结束后评估服务</div>
+              </div>
+              <span class="status-badge active">使用中</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+              <span style="font-size: 12px; color: var(--text-500);">5 道题目</span>
+              <span style="font-size: 12px; color: var(--text-500);">约 1 分钟</span>
+            </div>
+            <div class="action-group">
+              <button class="action-btn text-action" data-dom-id="cta-edit-template">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/pencil.svg'); mask-image: url('../assets/icons/dl-builtin-apple/pencil.svg');"></span>
+                编辑
+              </button>
+              <button class="action-btn text-action" data-dom-id="cta-preview-template">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/eye.svg'); mask-image: url('../assets/icons/dl-builtin-apple/eye.svg');"></span>
+                预览
+              </button>
+              <button class="action-btn text-action" data-dom-id="cta-analytics-template">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/bar-chart-3.svg'); mask-image: url('../assets/icons/dl-builtin-apple/bar-chart-3.svg');"></span>
+                数据分析
+              </button>
+            </div>
+          </div>
+
+          <!-- 模板 3 -->
+          <div class="template-row">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px;">
+              <div>
+                <div style="font-size: 15px; font-weight: 600; color: var(--text-800);">退款体验调研</div>
+                <div style="font-size: 12px; color: var(--text-400); margin-top: 2px;">退款完成后了解用户反馈</div>
+              </div>
+              <span class="status-badge disabled">已停用</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+              <span style="font-size: 12px; color: var(--text-500);">6 道题目</span>
+              <span style="font-size: 12px; color: var(--text-500);">约 1.5 分钟</span>
+            </div>
+            <div class="action-group">
+              <button class="action-btn text-action" data-dom-id="cta-edit-template">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/pencil.svg'); mask-image: url('../assets/icons/dl-builtin-apple/pencil.svg');"></span>
+                编辑
+              </button>
+              <button class="action-btn text-action" data-dom-id="cta-preview-template">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/eye.svg'); mask-image: url('../assets/icons/dl-builtin-apple/eye.svg');"></span>
+                预览
+              </button>
+              <button class="action-btn text-action" data-dom-id="cta-analytics-template">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/bar-chart-3.svg'); mask-image: url('../assets/icons/dl-builtin-apple/bar-chart-3.svg');"></span>
+                数据分析
+              </button>
+            </div>
+          </div>
+
+          <!-- 模板 4 -->
+          <div class="template-row">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px;">
+              <div>
+                <div style="font-size: 15px; font-weight: 600; color: var(--text-800);">物流体验调研</div>
+                <div style="font-size: 12px; color: var(--text-400); margin-top: 2px;">评估配送时效与包裹完好性</div>
+              </div>
+              <span class="status-badge draft">草稿</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+              <span style="font-size: 12px; color: var(--text-500);">4 道题目</span>
+              <span style="font-size: 12px; color: var(--text-500);">约 1 分钟</span>
+            </div>
+            <div class="action-group">
+              <button class="action-btn text-action" data-dom-id="cta-edit-template">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/pencil.svg'); mask-image: url('../assets/icons/dl-builtin-apple/pencil.svg');"></span>
+                编辑
+              </button>
+              <button class="action-btn text-action" data-dom-id="cta-preview-template">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/eye.svg'); mask-image: url('../assets/icons/dl-builtin-apple/eye.svg');"></span>
+                预览
+              </button>
+              <button class="action-btn text-action" data-dom-id="cta-analytics-template" style="opacity: 0.35; pointer-events: none;">
+                <span data-icon class="w-3.5 h-3.5" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/bar-chart-3.svg'); mask-image: url('../assets/icons/dl-builtin-apple/bar-chart-3.svg');"></span>
+                数据分析
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 满意度趋势图 ===== -->
+      <section aria-label="满意度趋势" class="mb-5">
+        <div class="section-header">
+          <h2 class="section-title">
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/trending-up.svg'); mask-image: url('../assets/icons/dl-builtin-apple/trending-up.svg'); color: var(--primary);"></span>
+            近 30 天满意度趋势
+          </h2>
+          <a href="#" class="section-action" data-dom-id="cta-trend-detail">详情</a>
+        </div>
+        <div class="admin-card">
+          <!-- CSS 柱状图 + 折线图混合 -->
+          <div style="display: flex; align-items: flex-end; justify-content: space-between; height: 16px; margin-bottom: 6px;">
+            <span style="font-size: 11px; color: var(--text-400);">5.0</span>
+            <span style="font-size: 11px; color: var(--text-400);">0.0</span>
+          </div>
+          <div class="chart-container">
+            <!-- SVG 折线图 -->
+            <svg viewBox="0 0 340 140" width="100%" height="100%" preserveAspectRatio="none" style="display: block;">
+              <!-- 网格线 -->
+              <line x1="0" y1="0" x2="340" y2="0" stroke="var(--background-300)" stroke-width="0.5" stroke-dasharray="4,4"/>
+              <line x1="0" y1="35" x2="340" y2="35" stroke="var(--background-300)" stroke-width="0.5" stroke-dasharray="4,4"/>
+              <line x1="0" y1="70" x2="340" y2="70" stroke="var(--background-300)" stroke-width="0.5" stroke-dasharray="4,4"/>
+              <line x1="0" y1="105" x2="340" y2="105" stroke="var(--background-300)" stroke-width="0.5" stroke-dasharray="4,4"/>
+              <line x1="0" y1="140" x2="340" y2="140" stroke="var(--background-300)" stroke-width="0.5"/>
+
+              <!-- 柱状图（每日回收量） -->
+              <rect x="4" y="90" width="6" height="50" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="16" y="85" width="6" height="55" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="28" y="88" width="6" height="52" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="40" y="80" width="6" height="60" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="52" y="75" width="6" height="65" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="64" y="82" width="6" height="58" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="76" y="70" width="6" height="70" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="88" y="65" width="6" height="75" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="100" y="72" width="6" height="68" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="112" y="60" width="6" height="80" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="124" y="55" width="6" height="85" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="136" y="58" width="6" height="82" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="148" y="50" width="6" height="90" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="160" y="48" width="6" height="92" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="172" y="52" width="6" height="88" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="184" y="45" width="6" height="95" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="196" y="42" width="6" height="98" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="208" y="46" width="6" height="94" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="220" y="40" width="6" height="100" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="232" y="38" width="6" height="102" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="244" y="43" width="6" height="97" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="256" y="35" width="6" height="105" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="268" y="32" width="6" height="108" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="280" y="36" width="6" height="104" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="292" y="30" width="6" height="110" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="304" y="28" width="6" height="112" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="316" y="25" width="6" height="115" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+              <rect x="328" y="22" width="6" height="118" rx="2" fill="var(--brand-200)" opacity="0.5"/>
+
+              <!-- 折线（满意度分数） -->
+              <polyline
+                points="7,48 19,42 31,45 43,38 55,33 67,40 79,28 91,24 103,30 115,18 127,15 139,17 151,10 163,8 175,12 187,6 199,4 211,7 223,2 235,0 247,5 259,-2 271,-5 283,-1 295,-7 307,-9 319,-11 331,-13"
+                fill="none"
+                stroke="var(--primary)"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                style="transform: translateY(52px);"
+              />
+              <!-- 折线关键点（最近7天） -->
+              <circle cx="265" cy="50" r="3" fill="var(--primary)" style="transform: translateY(0);"/>
+              <circle cx="277" cy="47" r="3" fill="var(--primary)" style="transform: translateY(3);"/>
+              <circle cx="289" cy="45" r="3" fill="var(--primary)" style="transform: translateY(5);"/>
+              <circle cx="301" cy="43" r="3" fill="var(--primary)" style="transform: translateY(7);"/>
+              <circle cx="313" cy="41" r="3" fill="var(--primary)" style="transform: translateY(9);"/>
+              <circle cx="325" cy="39" r="3" fill="var(--primary)" style="transform: translateY(11);"/>
+              <circle cx="337" cy="37" r="3.5" fill="var(--primary)" style="transform: translateY(13);"/>
+            </svg>
+          </div>
+          <!-- X 轴日期 -->
+          <div style="display: flex; justify-content: space-between; padding-top: 6px;">
+            <span style="font-size: 10px; color: var(--text-400);">6/8</span>
+            <span style="font-size: 10px; color: var(--text-400);">6/15</span>
+            <span style="font-size: 10px; color: var(--text-400);">6/22</span>
+            <span style="font-size: 10px; color: var(--text-400);">6/29</span>
+            <span style="font-size: 10px; color: var(--text-400);">7/8</span>
+          </div>
+          <!-- 图例 -->
+          <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-top: 10px;">
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <div style="width: 12px; height: 3px; border-radius: 2px; background: var(--primary);"></div>
+              <span style="font-size: 11px; color: var(--text-500);">满意度评分</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <div style="width: 8px; height: 10px; border-radius: 2px; background: var(--brand-200); opacity: 0.7;"></div>
+              <span style="font-size: 11px; color: var(--text-500);">问卷回收量</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 最新低分反馈列表 ===== -->
+      <section aria-label="最新低分反馈" class="mb-5">
+        <div class="section-header">
+          <h2 class="section-title">
+            <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/triangle-alert.svg'); mask-image: url('../assets/icons/dl-builtin-apple/triangle-alert.svg'); color: var(--state-error);"></span>
+            最新低分反馈
+          </h2>
+          <a href="#" class="section-action" data-dom-id="cta-all-feedback">查看全部</a>
+        </div>
+        <div class="admin-card">
+
+          <!-- 反馈项 1 -->
+          <div class="feedback-row">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--secondary); display: flex; align-items: center; justify-content: center;">
+                  <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/user.svg'); mask-image: url('../assets/icons/dl-builtin-apple/user.svg'); color: var(--text-500);"></span>
+                </div>
+                <div>
+                  <div style="font-size: 13px; font-weight: 600; color: var(--text-800);">138****5621</div>
+                  <div style="font-size: 11px; color: var(--text-400);">2026-07-07 14:23</div>
+                </div>
+              </div>
+              <div class="star-rating">
+                <span data-icon class="star filled" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+                <span data-icon class="star filled" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+                <span data-icon class="star empty" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+                <span data-icon class="star empty" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+                <span data-icon class="star empty" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+              </div>
+            </div>
+            <div style="font-size: 13px; color: var(--text-600); line-height: 1.5; margin-bottom: 8px; padding: 8px 10px; background: var(--secondary); border-radius: 8px;">
+              发货速度太慢，等了快一周才收到。包装也有点破损，希望能改善物流合作方。
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/package.svg'); mask-image: url('../assets/icons/dl-builtin-apple/package.svg'); color: var(--text-400);"></span>
+                <span style="font-size: 11px; color: var(--text-400);">订单 #2026070103847</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="status-badge pending">待跟进</span>
+                <button class="action-btn text-action" style="font-size: 12px; padding: 4px 8px;" data-dom-id="cta-view-feedback">
+                  查看详情
+                  <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg');"></span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 反馈项 2 -->
+          <div class="feedback-row">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--secondary); display: flex; align-items: center; justify-content: center;">
+                  <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/user.svg'); mask-image: url('../assets/icons/dl-builtin-apple/user.svg'); color: var(--text-500);"></span>
+                </div>
+                <div>
+                  <div style="font-size: 13px; font-weight: 600; color: var(--text-800);">159****8834</div>
+                  <div style="font-size: 11px; color: var(--text-400);">2026-07-06 09:15</div>
+                </div>
+              </div>
+              <div class="star-rating">
+                <span data-icon class="star filled" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+                <span data-icon class="star filled" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+                <span data-icon class="star filled" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+                <span data-icon class="star empty" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+                <span data-icon class="star empty" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+              </div>
+            </div>
+            <div style="font-size: 13px; color: var(--text-600); line-height: 1.5; margin-bottom: 8px; padding: 8px 10px; background: var(--secondary); border-radius: 8px;">
+              客服回复速度太慢，在线等了半个小时才有人应答。问题也没有得到有效解决。
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/headset.svg'); mask-image: url('../assets/icons/dl-builtin-apple/headset.svg'); color: var(--text-400);"></span>
+                <span style="font-size: 11px; color: var(--text-400);">客服会话 #CS2026070512</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="status-badge active">已跟进</span>
+                <button class="action-btn text-action" style="font-size: 12px; padding: 4px 8px;" data-dom-id="cta-view-feedback">
+                  查看详情
+                  <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg');"></span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 反馈项 3 -->
+          <div class="feedback-row">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--secondary); display: flex; align-items: center; justify-content: center;">
+                  <span data-icon class="w-4 h-4" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/user.svg'); mask-image: url('../assets/icons/dl-builtin-apple/user.svg'); color: var(--text-500);"></span>
+                </div>
+                <div>
+                  <div style="font-size: 13px; font-weight: 600; color: var(--text-800);">176****2290</div>
+                  <div style="font-size: 11px; color: var(--text-400);">2026-07-05 18:47</div>
+                </div>
+              </div>
+              <div class="star-rating">
+                <span data-icon class="star filled" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+                <span data-icon class="star empty" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+                <span data-icon class="star empty" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+                <span data-icon class="star empty" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+                <span data-icon class="star empty" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/star.svg'); mask-image: url('../assets/icons/dl-builtin-apple/star.svg');"></span>
+              </div>
+            </div>
+            <div style="font-size: 13px; color: var(--text-600); line-height: 1.5; margin-bottom: 8px; padding: 8px 10px; background: var(--secondary); border-radius: 8px;">
+              商品与描述不符，色差很大。申请退货后退款流程过于复杂，体验很差。
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/package.svg'); mask-image: url('../assets/icons/dl-builtin-apple/package.svg'); color: var(--text-400);"></span>
+                <span style="font-size: 11px; color: var(--text-400);">订单 #2026070206153</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="status-badge pending">待跟进</span>
+                <button class="action-btn text-action" style="font-size: 12px; padding: 4px 8px;" data-dom-id="cta-view-feedback">
+                  查看详情
+                  <span data-icon class="w-3 h-3" style="-webkit-mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg'); mask-image: url('../assets/icons/dl-builtin-apple/chevron-right.svg');"></span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ===== 交互脚本 ===== -->
+  <script>
+    // 切换开关交互
+    document.querySelectorAll('.toggle-switch').forEach(function(toggle) {
+      toggle.addEventListener('click', function() {
+        this.classList.toggle('active');
+        var isActive = this.classList.contains('active');
+        this.setAttribute('aria-checked', isActive ? 'true' : 'false');
+      });
+      toggle.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.click();
+        }
+      });
+    });
+
+    // 渠道标签选择交互（多选）
+    document.querySelectorAll('.channel-tag').forEach(function(tag) {
+      tag.addEventListener('click', function() {
+        this.classList.toggle('selected');
+      });
+    });
+  </script>
+</body>
+</html>

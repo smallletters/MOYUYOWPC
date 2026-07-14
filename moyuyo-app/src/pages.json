@@ -1,0 +1,211 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^u-(.*)": "uview-plus/components/u-$1/u-$1.vue"
+    }
+  },
+  "pages": [
+    {
+      "path": "pages/tabbar/home",
+      "style": {
+        "navigationBarTitleText": "MOYUYO",
+        "enablePullDownRefresh": true,
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/tabbar/category",
+      "style": {
+        "navigationBarTitleText": "分类",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/tabbar/pet",
+      "style": {
+        "navigationBarTitleText": "Pet Hub",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/tabbar/community",
+      "style": {
+        "navigationBarTitleText": "社区",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/tabbar/user",
+      "style": {
+        "navigationBarTitleText": "我的",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/goods/list",
+      "style": {
+        "navigationBarTitleText": "商品列表",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/goods/detail",
+      "style": {
+        "navigationBarTitleText": "商品详情"
+      }
+    },
+    {
+      "path": "pages/goods/search",
+      "style": {
+        "navigationBarTitleText": "搜索"
+      }
+    },
+    {
+      "path": "pages/cart/index",
+      "style": {
+        "navigationBarTitleText": "购物车"
+      }
+    },
+    {
+      "path": "pages/cart/checkout",
+      "style": {
+        "navigationBarTitleText": "确认订单"
+      }
+    },
+    {
+      "path": "pages/user/login",
+      "style": {
+        "navigationBarTitleText": "登录"
+      }
+    },
+    {
+      "path": "pages/user/register",
+      "style": {
+        "navigationBarTitleText": "注册"
+      }
+    },
+    {
+      "path": "pages/user/profile",
+      "style": {
+        "navigationBarTitleText": "个人资料"
+      }
+    },
+    {
+      "path": "pages/user/address",
+      "style": {
+        "navigationBarTitleText": "收货地址"
+      }
+    },
+    {
+      "path": "pages/user/address-edit",
+      "style": {
+        "navigationBarTitleText": "编辑地址"
+      }
+    },
+    {
+      "path": "pages/user/devices",
+      "style": {
+        "navigationBarTitleText": "登录设备"
+      }
+    },
+    {
+      "path": "pages/user/security",
+      "style": {
+        "navigationBarTitleText": "账号安全"
+      }
+    },
+    {
+      "path": "pages/order/list",
+      "style": {
+        "navigationBarTitleText": "我的订单"
+      }
+    },
+    {
+      "path": "pages/order/detail",
+      "style": {
+        "navigationBarTitleText": "订单详情"
+      }
+    },
+    {
+      "path": "pages/order/logistics",
+      "style": {
+        "navigationBarTitleText": "物流追踪"
+      }
+    },
+    {
+      "path": "pages/order/review",
+      "style": {
+        "navigationBarTitleText": "评价晒图"
+      }
+    },
+    {
+      "path": "pages/pet/profile",
+      "style": {
+        "navigationBarTitleText": "宠物档案"
+      }
+    },
+    {
+      "path": "pages/pet/health",
+      "style": {
+        "navigationBarTitleText": "健康日历"
+      }
+    },
+    {
+      "path": "pages/pet/achievement",
+      "style": {
+        "navigationBarTitleText": "成就墙"
+      }
+    },
+    {
+      "path": "pages/webview/pay",
+      "style": {
+        "navigationBarTitleText": "支付"
+      }
+    }
+  ],
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#DBC98A",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/tabbar/home",
+        "text": "首页",
+        "iconPath": "static/images/tabbar/home.png",
+        "selectedIconPath": "static/images/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/tabbar/category",
+        "text": "分类",
+        "iconPath": "static/images/tabbar/category.png",
+        "selectedIconPath": "static/images/tabbar/category-active.png"
+      },
+      {
+        "pagePath": "pages/tabbar/pet",
+        "text": "Pet",
+        "iconPath": "static/images/tabbar/pet.png",
+        "selectedIconPath": "static/images/tabbar/pet-active.png"
+      },
+      {
+        "pagePath": "pages/tabbar/community",
+        "text": "社区",
+        "iconPath": "static/images/tabbar/community.png",
+        "selectedIconPath": "static/images/tabbar/community-active.png"
+      },
+      {
+        "pagePath": "pages/tabbar/user",
+        "text": "我的",
+        "iconPath": "static/images/tabbar/user.png",
+        "selectedIconPath": "static/images/tabbar/user-active.png"
+      }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "MOYUYO",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F6F2EE"
+  }
+}
