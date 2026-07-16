@@ -1,0 +1,37 @@
+/* MOYUYO 品牌主题 - 覆盖 uview-plus 默认主题色 */
+/* 参考：docs/MOYUYO_BrandSystem.md §2 品牌色板 */
+
+/* #ifndef APP-NVUE */
+$u-main-color: #2e2b29;
+$u-content-color: #6e6962;
+$u-tips-color: #9a948c;
+$u-light-color: #c0bcb4;
+$u-border-color: #eae5dd;
+$u-bg-color: #f6f2ee;
+$u-disabled-color: #c8c5bd;
+
+$u-primary: #dbc98a;
+$u-primary-dark: #b8a66b;
+$u-primary-disabled: #ede5c2;
+$u-primary-light: #f8f3e6;
+
+$u-warning: #e6b97a;
+$u-warning-dark: #d4a768;
+$u-warning-disabled: #f2d9b5;
+$u-warning-light: #fef6eb;
+
+$u-success: #abb9ad;
+$u-success-dark: #8a9e8e;
+$u-success-disabled: #d1dbd3;
+$u-success-light: #f2f5f2;
+
+$u-error: #c96e5f;
+$u-error-dark: #b05a4d;
+$u-error-disabled: #e2afa6;
+$u-error-light: #fdf0ed;
+
+$u-info: #8fa8b6;
+$u-info-dark: #718e9e;
+$u-info-disabled: #c5d5de;
+$u-info-light: #eef3f6;
+/* #endif */

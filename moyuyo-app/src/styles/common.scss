@@ -3,6 +3,55 @@
  */
 @use './variables.scss' as *;
 
+/* Apple 设计系统 token → MOYUYO 品牌映射 */
+:root {
+  --primary: var(--color-primary);
+  --primary-foreground: #2e2b29;
+  --foreground: var(--color-text);
+  --background: var(--color-background);
+  --background-50: #fafafa;
+  --background-100: #f5f3f0;
+  --background-200: #ede9e4;
+  --background-300: #e0dcd6;
+  --background-400: #d1ccc4;
+  --background-500: #a8a29e;
+  --background-600: #8a847c;
+  --background-700: #3a3530;
+  --background-800: #1c1a16;
+  --background-900: #000000;
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text);
+  --border: var(--color-divider);
+  --input: var(--color-divider);
+  --muted: var(--color-background);
+  --muted-foreground: var(--color-text-tertiary);
+  --text-50: #faf8f5;
+  --text-100: #f0ede8;
+  --text-200: #e0dcd6;
+  --text-300: #c0bcb4;
+  --text-400: var(--color-text-tertiary);
+  --text-500: #7a746c;
+  --text-600: var(--color-text-secondary);
+  --text-700: #3a3530;
+  --text-800: var(--color-text);
+  --text-900: #1a1816;
+  --icon: var(--color-text);
+  --icon-muted: var(--color-text-tertiary);
+  --success: var(--color-success);
+  --destructive: var(--color-danger);
+  --destructive-foreground: #ffffff;
+  --ring: var(--color-accent);
+  --radius: var(--radius-md);
+  --brand-50: #f8f3e6;
+  --brand-100: #ede5c2;
+  --brand-200: #e2d8a0;
+  --brand-300: #d7ca7d;
+  --brand-400: #ccbd5a;
+  --brand-500: var(--color-primary);
+  --brand-600: #b8a66b;
+  --brand-700: #9c8a50;
+}
+
 page {
   background-color: var(--color-background);
   color: var(--color-text);

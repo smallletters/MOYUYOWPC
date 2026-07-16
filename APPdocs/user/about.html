@@ -500,6 +500,37 @@
       </footer>
 
     </main>
-    <script>lucide.createIcons();</script>
+    <script>
+      lucide.createIcons();
+
+      // Toast 提示组件
+      function showToast(msg) {
+        var t = document.createElement('div');
+        t.textContent = msg;
+        Object.assign(t.style, {
+          position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(0,0,0,0.8)', color: '#fff', padding: '10px 24px',
+          borderRadius: '999px', fontSize: '14px', zIndex: '9999',
+          transition: 'opacity 0.3s ease', opacity: '0'
+        });
+        document.body.appendChild(t);
+        requestAnimationFrame(function() { t.style.opacity = '1'; });
+        setTimeout(function() { t.style.opacity = '0'; setTimeout(function() { t.remove(); }, 300); }, 2000);
+      }
+
+      // 返回按钮
+      document.querySelector('[data-dom-id="back-previous"]').addEventListener('click', function() {
+        window.history.length > 1 ? window.history.back() : window.location.href = 'settings.html';
+      });
+
+      // 法律链接 - 模拟页面跳转提示
+      document.querySelectorAll('section a').forEach(function(a) {
+        a.addEventListener('click', function(e) {
+          e.preventDefault();
+          var page = this.querySelector('span') ? this.querySelector('span').textContent : '页面';
+          showToast('正在打开「' + page + '」…');
+        });
+      });
+    </script>
 </body>
 </html>

@@ -330,9 +330,38 @@ export default {
 </script>
 
 <style scoped lang="scss">
+/* MOYUYO 品牌变量映射（替换原 Apple 设计系统 token） */
 .bundle-deal {
+  /* 颜色映射 */
+  --primary: var(--color-primary);
+  --primary-foreground: #2e2b29;
+  --foreground: var(--color-text);
+  --background: var(--color-background);
+  --background-50: var(--color-surface);
+  --background-100: #faf8f5;
+  --background-200: #f0ede8;
+  --background-700: #3a3530;
+  --background-800: #1c1a16;
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text);
+  --border: var(--color-divider);
+  --input: #c0bcb4;
+  --muted-foreground: var(--color-text-tertiary);
+  --text-400: var(--color-text-tertiary);
+  --text-500: #7a746c;
+  --text-600: var(--color-text-secondary);
+  --icon-muted: var(--color-text-tertiary);
+  --destructive: var(--color-danger);
+  --destructive-foreground: #ffffff;
+  --success: var(--color-success);
+  --brand-50: #f8f3e6;
+  --brand-100: #ede5c2;
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
   min-height: 100vh;
-  background: var(--background);
+  background: var(--color-background);
 }
 .nav-header {
   display: flex;

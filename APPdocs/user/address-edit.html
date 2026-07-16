@@ -530,12 +530,106 @@
       // 初始化 Lucide 图标
       lucide.createIcons();
 
-      // iOS 风格 Toggle 开关交互逻辑
+      // Toast 提示
+      function showToast(msg) {
+        var t = document.createElement('div');
+        t.textContent = msg;
+        Object.assign(t.style, {
+          position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(0,0,0,0.8)', color: '#fff', padding: '10px 24px',
+          borderRadius: '999px', fontSize: '14px', zIndex: '9999',
+          transition: 'opacity 0.3s ease', opacity: '0'
+        });
+        document.body.appendChild(t);
+        requestAnimationFrame(function() { t.style.opacity = '1'; });
+        setTimeout(function() { t.style.opacity = '0'; setTimeout(function() { t.remove(); }, 300); }, 2000);
+      }
+
+      // ===== 地址数据管理 =====
+      function getAddresses() {
+        try { return JSON.parse(localStorage.getItem('moyuyo_addresses')) || []; } catch(e) { return []; }
+      }
+      function saveAddresses(arr) {
+        localStorage.setItem('moyuyo_addresses', JSON.stringify(arr));
+      }
+
+      // ===== 判断编辑/新增模式 =====
+      var urlParams = new URLSearchParams(window.location.search);
+      var editId = urlParams.get('id');
+      var editingAddress = null;
+      var isEditMode = false;
+
+      if (editId) {
+        var list = getAddresses();
+        for (var i = 0; i < list.length; i++) {
+          if (list[i].id === editId) {
+            editingAddress = list[i];
+            isEditMode = true;
+            break;
+          }
+        }
+      }
+
+      // ===== 编辑模式回填数据 =====
+      if (isEditMode && editingAddress) {
+        // 标题改为"编辑地址"
+        document.querySelector('.text-center.text-base.font-semibold').textContent = '编辑地址';
+
+        // 回填表单字段
+        var inputs = document.querySelectorAll('input[type="text"], input[type="tel"], textarea, select');
+        var addr = editingAddress;
+        if (inputs.length >= 5) {
+          inputs[0].value = addr.name || '';
+          // 手机号字段特殊处理 - 去掉区号前缀
+          inputs[1].value = (addr.phone || '').replace(/^\+1\s*/, '');
+          inputs[2].value = addr.state || '';
+          inputs[3].value = addr.city || '';
+          if (inputs[4]) { // textarea
+            inputs[4].value = addr.street || '';
+          }
+          if (inputs[5]) {
+            inputs[5].value = addr.zip || '';
+          }
+          if (inputs[6]) {
+            inputs[6].value = addr.company || '';
+          }
+        }
+
+        // 回填地址标签
+        var tag = (addr.tag || '').toLowerCase();
+        document.querySelectorAll('.address-tag').forEach(function(t) {
+          var tTag = t.textContent.trim().toLowerCase();
+          if (tTag === tag) {
+            t.style.backgroundColor = 'var(--brand-500)';
+            t.style.color = 'var(--primary-foreground)';
+          } else {
+            t.style.backgroundColor = 'var(--background-200)';
+            t.style.color = 'var(--text-600)';
+          }
+        });
+
+        // 回填默认地址开关
+        var defaultCheckbox = document.querySelector('input[type="checkbox"].sr-only');
+        if (defaultCheckbox) {
+          defaultCheckbox.checked = !!addr.isDefault;
+          // 触发 toggle 更新
+          var evt = document.createEvent('Event');
+          evt.initEvent('change', true, false);
+          defaultCheckbox.dispatchEvent(evt);
+        }
+
+        // 显示删除按钮（编辑模式）
+        document.querySelector('[data-dom-id="cta-delete"]').style.display = 'flex';
+      } else {
+        // 新增模式隐藏删除按钮
+        document.querySelector('[data-dom-id="cta-delete"]').style.display = 'none';
+      }
+
+      // ===== iOS 风格 Toggle 开关交互逻辑 =====
       document.querySelectorAll('input[type="checkbox"].sr-only').forEach(function(checkbox) {
         var track = checkbox.nextElementSibling;
         var thumb = track.nextElementSibling;
 
-        // 根据 checkbox 状态初始化开关外观
         function updateToggle() {
           if (checkbox.checked) {
             track.style.backgroundColor = 'var(--state-success)';
@@ -545,15 +639,11 @@
             thumb.style.transform = 'translateX(0)';
           }
         }
-
-        // 初始化状态
         updateToggle();
-
-        // 切换状态
         checkbox.addEventListener('change', updateToggle);
       });
 
-      // 地址标签切换逻辑
+      // ===== 地址标签切换逻辑 =====
       document.querySelectorAll('.address-tag').forEach(function(tag) {
         tag.addEventListener('click', function() {
           document.querySelectorAll('.address-tag').forEach(function(t) {
@@ -563,6 +653,120 @@
           tag.style.backgroundColor = 'var(--brand-500)';
           tag.style.color = 'var(--primary-foreground)';
         });
+      });
+
+      // ===== 获取选中的地址标签 =====
+      function getSelectedTag() {
+        var selected = '';
+        document.querySelectorAll('.address-tag').forEach(function(t) {
+          if (t.style.backgroundColor === 'var(--brand-500)' || t.style.backgroundColor === '#007aff') {
+            selected = t.textContent.trim();
+          }
+        });
+        return selected;
+      }
+
+      // ===== 保存地址 =====
+      document.querySelector('[data-dom-id="cta-save"]').addEventListener('click', function() {
+        var inputs = document.querySelectorAll('input[type="text"], input[type="tel"], textarea, select');
+        var name = inputs[0] ? inputs[0].value.trim() : '';
+        var phone = inputs[1] ? inputs[1].value.trim() : '';
+        var state = inputs[2] ? inputs[2].value.trim() : '';
+        var city = inputs[3] ? inputs[3].value.trim() : '';
+        var street = inputs[4] ? inputs[4].value.trim() : '';
+        var zip = inputs[5] ? inputs[5].value.trim() : '';
+        var company = inputs[6] ? inputs[6].value.trim() : '';
+        var tag = getSelectedTag();
+        var isDefault = document.querySelector('input[type="checkbox"].sr-only').checked;
+
+        // 表单验证
+        if (!name) { showToast('请输入收货人姓名'); return; }
+        if (!phone) { showToast('请输入手机号'); return; }
+        if (!phone.match(/^[\d\-+\s()]{7,20}$/)) { showToast('请输入有效的手机号'); return; }
+        if (!street) { showToast('请输入街道地址'); return; }
+
+        var fullAddress = [street, city, state, zip].filter(Boolean).join(', ');
+
+        var list = getAddresses();
+
+        if (isEditMode && editingAddress) {
+          // 更新已有地址
+          for (var i = 0; i < list.length; i++) {
+            if (list[i].id === editId) {
+              list[i].name = name;
+              list[i].phone = phone;
+              list[i].state = state;
+              list[i].city = city;
+              list[i].street = street;
+              list[i].zip = zip;
+              list[i].company = company;
+              list[i].tag = tag || '家';
+              list[i].fullAddress = fullAddress;
+              list[i].isDefault = isDefault;
+              break;
+            }
+          }
+          // 如果设为默认, 取消其他地址的默认状态
+          if (isDefault) {
+            for (var i = 0; i < list.length; i++) {
+              if (list[i].id !== editId) list[i].isDefault = false;
+            }
+          }
+          saveAddresses(list);
+          showToast('地址已更新');
+        } else {
+          // 新增地址
+          var newAddr = {
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            name: name,
+            phone: phone,
+            state: state,
+            city: city,
+            street: street,
+            zip: zip,
+            company: company,
+            tag: tag || '家',
+            fullAddress: fullAddress,
+            isDefault: isDefault
+          };
+          // 如果设为默认, 取消其他地址的默认状态
+          if (isDefault) {
+            for (var i = 0; i < list.length; i++) list[i].isDefault = false;
+          }
+          list.push(newAddr);
+          saveAddresses(list);
+          showToast('地址已添加');
+        }
+
+        // 延迟后返回地址列表
+        setTimeout(function() {
+          window.location.href = 'address-list.html';
+        }, 800);
+      });
+
+      // ===== 删除地址 =====
+      document.querySelector('[data-dom-id="cta-delete"]').addEventListener('click', function() {
+        if (!isEditMode || !editId) return;
+        if (confirm('确定要删除该地址吗？')) {
+          var list = getAddresses();
+          for (var i = 0; i < list.length; i++) {
+            if (list[i].id === editId) {
+              list.splice(i, 1);
+              break;
+            }
+          }
+          saveAddresses(list);
+          showToast('地址已删除');
+          setTimeout(function() {
+            window.location.href = 'address-list.html';
+          }, 800);
+        }
+      });
+
+      // ===== 返回按钮 =====
+      document.querySelector('[data-dom-id="cta-back"]').addEventListener('click', function(e) {
+        e.preventDefault();
+        window.location.href = 'address-list.html';
       });
     </script>
 </body>

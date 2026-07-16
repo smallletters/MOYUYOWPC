@@ -426,7 +426,7 @@
         <!-- 登录密码 -->
         <section class="rounded-xl overflow-hidden" style="background-color: var(--background-50);">
           <p class="px-4 pt-3 pb-1 text-xs font-medium uppercase tracking-wide" style="color: var(--text-400); letter-spacing: 0.06em;">登录密码</p>
-          <div class="flex items-center justify-between px-4" style="height: 52px;">
+          <div data-dom-id="menu-change-password" class="flex items-center justify-between px-4" style="height: 52px; cursor: pointer;">
             <div class="flex items-center gap-3">
               <i data-lucide="lock" class="w-5 h-5 shrink-0" style="color: var(--icon-600);"></i>
               <span class="text-sm font-medium" style="color: var(--text-800);">修改密码</span>
@@ -448,13 +448,14 @@
               <span class="text-sm font-medium" style="color: var(--text-800);">开启两步验证</span>
             </div>
             <!-- Toggle ON -->
-            <div class="relative inline-flex h-[31px] w-[51px] shrink-0 cursor-pointer rounded-full transition-colors duration-200" style="background-color: var(--brand-500);">
-              <div class="absolute top-[2px] shadow-sm" style="left: 22px; width: 27px; height: 27px; border-radius: 999px; background-color: var(--background-50); transition: transform 200ms cubic-bezier(0.32, 0.72, 0, 1); box-shadow: 0 1px 3px rgba(0,0,0,0.15);"></div>
+            <div data-dom-id="toggle-2fa" class="relative inline-flex h-[31px] w-[51px] shrink-0 cursor-pointer rounded-full transition-colors duration-200" style="background-color: var(--brand-500);">
+              <div data-part="track" class="absolute inset-0 rounded-full" style="background: transparent;"></div>
+              <div data-part="thumb" class="absolute top-[2px] shadow-sm" style="left: 2px; width: 27px; height: 27px; border-radius: 999px; background-color: var(--background-50); transition: transform 200ms cubic-bezier(0.32, 0.72, 0, 1); box-shadow: 0 1px 3px rgba(0,0,0,0.15);"></div>
             </div>
           </div>
           <div style="height: 1px; background-color: var(--border); margin-left: 52px;"></div>
           <!-- 验证方式 -->
-          <div class="flex items-center justify-between px-4" style="height: 52px;">
+          <div data-dom-id="menu-verify-method" class="flex items-center justify-between px-4" style="height: 52px; cursor: pointer;">
             <div class="flex items-center gap-3">
               <i data-lucide="key-round" class="w-5 h-5 shrink-0" style="color: var(--icon-600);"></i>
               <span class="text-sm font-medium" style="color: var(--text-800);">验证方式</span>
@@ -469,7 +470,7 @@
         <!-- 登录设备管理 -->
         <section class="rounded-xl overflow-hidden" style="background-color: var(--background-50);">
           <p class="px-4 pt-3 pb-1 text-xs font-medium uppercase tracking-wide" style="color: var(--text-400); letter-spacing: 0.06em;">设备管理</p>
-          <div class="flex items-center justify-between px-4" style="height: 52px;">
+          <div data-dom-id="menu-devices" class="flex items-center justify-between px-4" style="height: 52px; cursor: pointer;">
             <div class="flex items-center gap-3">
               <i data-lucide="monitor" class="w-5 h-5 shrink-0" style="color: var(--icon-600);"></i>
               <span class="text-sm font-medium" style="color: var(--text-800);">登录设备管理</span>
@@ -516,7 +517,7 @@
             </div>
             <div class="flex items-center gap-2">
               <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold" style="background-color: var(--background-200); color: var(--text-500);">未绑定</span>
-              <button class="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-semibold transition-opacity duration-150 hover:opacity-80" style="background-color: var(--brand-500); color: var(--primary-foreground);">绑定</button>
+              <button data-dom-id="bind-facebook" class="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-semibold transition-opacity duration-150 hover:opacity-80" style="background-color: var(--brand-500); color: var(--primary-foreground);">绑定</button>
             </div>
           </div>
         </section>
@@ -525,7 +526,7 @@
         <section class="rounded-xl overflow-hidden" style="background-color: var(--background-50);">
           <p class="px-4 pt-3 pb-1 text-xs font-medium uppercase tracking-wide" style="color: var(--text-400); letter-spacing: 0.06em;">其他</p>
           <!-- 账号合并 -->
-          <div class="flex items-center justify-between px-4" style="height: 52px;">
+          <div data-dom-id="menu-merge-account" class="flex items-center justify-between px-4" style="height: 52px; cursor: pointer;">
             <div class="flex items-center gap-3">
               <i data-lucide="git-merge" class="w-5 h-5 shrink-0" style="color: var(--icon-600);"></i>
               <span class="text-sm font-medium" style="color: var(--text-800);">账号合并</span>
@@ -534,7 +535,7 @@
           </div>
           <div style="height: 1px; background-color: var(--border); margin-left: 52px;"></div>
           <!-- 账号锁定记录 -->
-          <div class="flex items-center justify-between px-4" style="height: 52px;">
+          <div data-dom-id="menu-lock-records" class="flex items-center justify-between px-4" style="height: 52px; cursor: pointer;">
             <div class="flex items-center gap-3">
               <i data-lucide="file-text" class="w-5 h-5 shrink-0" style="color: var(--icon-600);"></i>
               <span class="text-sm font-medium" style="color: var(--text-800);">账号锁定记录</span>
@@ -556,6 +557,79 @@
       </div>
 
     </main>
-    <script>lucide.createIcons();</script>
+    <script>
+      lucide.createIcons();
+
+      // Toast 提示
+      function showToast(msg) {
+        var t = document.createElement('div');
+        t.textContent = msg;
+        Object.assign(t.style, {
+          position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(0,0,0,0.8)', color: '#fff', padding: '10px 24px',
+          borderRadius: '999px', fontSize: '14px', zIndex: '9999',
+          transition: 'opacity 0.3s ease', opacity: '0'
+        });
+        document.body.appendChild(t);
+        requestAnimationFrame(function() { t.style.opacity = '1'; });
+        setTimeout(function() { t.style.opacity = '0'; setTimeout(function() { t.remove(); }, 300); }, 2000);
+      }
+
+      // === 2FA Toggle 持久化 ===
+      (function() {
+        var toggle = document.querySelector('[data-dom-id="toggle-2fa"]');
+        if (!toggle) return;
+        var track = toggle.querySelector('[data-part="track"]');
+        var thumb = toggle.querySelector('[data-part="thumb"]');
+        // 读取 localStorage 状态
+        var isOn = localStorage.getItem('moyuyo_2fa_enabled') !== 'false';
+        function updateUI() {
+          if (isOn) {
+            track.style.backgroundColor = 'var(--brand-500)';
+            thumb.style.transform = 'translateX(24px)';
+          } else {
+            track.style.backgroundColor = 'var(--background-400)';
+            thumb.style.transform = 'translateX(0)';
+          }
+        }
+        updateUI();
+        toggle.addEventListener('click', function() {
+          isOn = !isOn;
+          localStorage.setItem('moyuyo_2fa_enabled', isOn);
+          updateUI();
+          showToast(isOn ? '已开启两步验证' : '已关闭两步验证');
+        });
+      })();
+
+      // === 菜单项点击反馈 ===
+      document.querySelectorAll('[data-dom-id^="menu-"]').forEach(function(item) {
+        item.addEventListener('click', function() {
+          var label = this.querySelector('span') ? this.querySelector('span').textContent : '功能';
+          showToast('正在打开「' + label + '」…');
+        });
+      });
+
+      // === 第三方绑定 ===
+      document.querySelectorAll('[data-dom-id^="bind-"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var label = this.closest('[style*="height: 52px;"]').querySelector('span').textContent;
+          showToast('正在绑定「' + label + '」…');
+        });
+      });
+
+      // === 注销账号确认 ===
+      document.querySelector('[data-dom-id="cta-delete-account"]').addEventListener('click', function() {
+        if (confirm('确定要注销账号吗？\n此操作不可撤销，所有数据将被永久删除。')) {
+          showToast('账号注销申请已提交');
+        }
+      });
+
+      // === 返回按钮 ===
+      document.querySelector('[data-dom-id="cta-back"]').addEventListener('click', function(e) {
+        e.preventDefault();
+        window.history.length > 1 ? window.history.back() : window.location.href = 'settings.html';
+      });
+    </script>
 </body>
 </html>

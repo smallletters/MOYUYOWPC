@@ -411,93 +411,8 @@
       </header>
 
       <!-- 地址列表区域 -->
-      <div class="flex flex-col gap-3 p-4">
-
-        <!-- 地址卡片 1 - 默认地址 -->
-        <article class="relative flex items-start gap-3 overflow-hidden" style="background-color: var(--background-50); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 14px 14px 18px; box-shadow: var(--shadow-xs); cursor: pointer; transition: transform 0.18s ease, box-shadow 0.18s ease;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='var(--shadow-sm)'" onmouseout="this.style.transform='none'; this.style.boxShadow='var(--shadow-xs)'">
-          <!-- 默认地址左侧指示条 -->
-          <div class="absolute left-0 top-0 bottom-0 w-1" style="background-color: var(--brand-100);"></div>
-          <!-- 地址图标 -->
-          <div class="flex h-10 w-10 shrink-0 items-center justify-center" style="background-color: var(--background-200); border-radius: calc(var(--radius) * 0.8);">
-            <i data-lucide="map-pin" class="h-5 w-5" style="color: var(--brand-500);"></i>
-          </div>
-          <!-- 地址信息 -->
-          <div class="flex min-w-0 flex-1 flex-col gap-1">
-            <!-- 姓名电话行 -->
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-semibold" style="color: var(--text-800);">小雅</span>
-              <span class="text-sm" style="color: var(--text-500);">138****8888</span>
-              <!-- 默认标签 -->
-              <span class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium whitespace-nowrap" style="background-color: var(--brand-100); color: var(--brand-500); border-radius: 999px; height: 20px;">默认</span>
-            </div>
-            <!-- 详细地址 -->
-            <p class="text-sm leading-relaxed" style="color: var(--text-500);">上海市浦东新区张江高科技园区碧波路690号MOYUYO总部</p>
-          </div>
-          <!-- 右侧操作按钮 -->
-          <div class="flex shrink-0 items-center gap-1">
-            <button class="inline-flex h-8 w-8 items-center justify-center" style="border-radius: calc(var(--radius) * 0.6); color: var(--icon-muted); cursor: pointer; transition: background-color 0.16s ease, color 0.16s ease;" aria-label="编辑" onmouseover="this.style.backgroundColor='var(--background-200)'; this.style.color='var(--brand-500)'" onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--icon-muted)'">
-              <i data-lucide="pencil" class="h-4 w-4"></i>
-            </button>
-            <button class="inline-flex h-8 w-8 items-center justify-center" style="border-radius: calc(var(--radius) * 0.6); color: var(--icon-muted); cursor: pointer; transition: background-color 0.16s ease, color 0.16s ease;" aria-label="删除" onmouseover="this.style.backgroundColor='var(--state-error-surface)'; this.style.color='var(--state-error)'" onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--icon-muted)'">
-              <i data-lucide="trash-2" class="h-4 w-4"></i>
-            </button>
-          </div>
-        </article>
-
-        <!-- 地址卡片 2 -->
-        <article class="relative flex items-start gap-3 overflow-hidden" style="background-color: var(--background-50); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 14px 14px 18px; box-shadow: var(--shadow-xs); cursor: pointer; transition: transform 0.18s ease, box-shadow 0.18s ease;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='var(--shadow-sm)'" onmouseout="this.style.transform='none'; this.style.boxShadow='var(--shadow-xs)'">
-          <!-- 地址图标 -->
-          <div class="flex h-10 w-10 shrink-0 items-center justify-center" style="background-color: var(--background-200); border-radius: calc(var(--radius) * 0.8);">
-            <i data-lucide="map-pin" class="h-5 w-5" style="color: var(--icon-muted);"></i>
-          </div>
-          <!-- 地址信息 -->
-          <div class="flex min-w-0 flex-1 flex-col gap-1">
-            <!-- 姓名电话行 -->
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-semibold" style="color: var(--text-800);">小雅</span>
-              <span class="text-sm" style="color: var(--text-500);">138****8888</span>
-            </div>
-            <!-- 详细地址 -->
-            <p class="text-sm leading-relaxed" style="color: var(--text-500);">上海市浦东新区张江路1158号</p>
-          </div>
-          <!-- 右侧操作按钮 -->
-          <div class="flex shrink-0 items-center gap-1">
-            <button class="inline-flex h-8 w-8 items-center justify-center" style="border-radius: calc(var(--radius) * 0.6); color: var(--icon-muted); cursor: pointer; transition: background-color 0.16s ease, color 0.16s ease;" aria-label="编辑" onmouseover="this.style.backgroundColor='var(--background-200)'; this.style.color='var(--brand-500)'" onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--icon-muted)'">
-              <i data-lucide="pencil" class="h-4 w-4"></i>
-            </button>
-            <button class="inline-flex h-8 w-8 items-center justify-center" style="border-radius: calc(var(--radius) * 0.6); color: var(--icon-muted); cursor: pointer; transition: background-color 0.16s ease, color 0.16s ease;" aria-label="删除" onmouseover="this.style.backgroundColor='var(--state-error-surface)'; this.style.color='var(--state-error)'" onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--icon-muted)'">
-              <i data-lucide="trash-2" class="h-4 w-4"></i>
-            </button>
-          </div>
-        </article>
-
-        <!-- 地址卡片 3 -->
-        <article class="relative flex items-start gap-3 overflow-hidden" style="background-color: var(--background-50); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 14px 14px 18px; box-shadow: var(--shadow-xs); cursor: pointer; transition: transform 0.18s ease, box-shadow 0.18s ease;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='var(--shadow-sm)'" onmouseout="this.style.transform='none'; this.style.boxShadow='var(--shadow-xs)'">
-          <!-- 地址图标 -->
-          <div class="flex h-10 w-10 shrink-0 items-center justify-center" style="background-color: var(--background-200); border-radius: calc(var(--radius) * 0.8);">
-            <i data-lucide="map-pin" class="h-5 w-5" style="color: var(--icon-muted);"></i>
-          </div>
-          <!-- 地址信息 -->
-          <div class="flex min-w-0 flex-1 flex-col gap-1">
-            <!-- 姓名电话行 -->
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-semibold" style="color: var(--text-800);">小明</span>
-              <span class="text-sm" style="color: var(--text-500);">139****6666</span>
-            </div>
-            <!-- 详细地址 -->
-            <p class="text-sm leading-relaxed" style="color: var(--text-500);">北京市朝阳区望京SOHO T3 1205</p>
-          </div>
-          <!-- 右侧操作按钮 -->
-          <div class="flex shrink-0 items-center gap-1">
-            <button class="inline-flex h-8 w-8 items-center justify-center" style="border-radius: calc(var(--radius) * 0.6); color: var(--icon-muted); cursor: pointer; transition: background-color 0.16s ease, color 0.16s ease;" aria-label="编辑" onmouseover="this.style.backgroundColor='var(--background-200)'; this.style.color='var(--brand-500)'" onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--icon-muted)'">
-              <i data-lucide="pencil" class="h-4 w-4"></i>
-            </button>
-            <button class="inline-flex h-8 w-8 items-center justify-center" style="border-radius: calc(var(--radius) * 0.6); color: var(--icon-muted); cursor: pointer; transition: background-color 0.16s ease, color 0.16s ease;" aria-label="删除" onmouseover="this.style.backgroundColor='var(--state-error-surface)'; this.style.color='var(--state-error)'" onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--icon-muted)'">
-              <i data-lucide="trash-2" class="h-4 w-4"></i>
-            </button>
-          </div>
-        </article>
-
+      <div id="address-list-container" class="flex flex-col gap-3 p-4">
+        <!-- 由 JavaScript 动态渲染 -->
       </div>
 
       <!-- 底部新增地址按钮 -->
@@ -509,6 +424,137 @@
       </div>
 
     </main>
-    <script>lucide.createIcons();</script>
+    <script>
+      lucide.createIcons();
+
+      // Toast 提示
+      function showToast(msg) {
+        var t = document.createElement('div');
+        t.textContent = msg;
+        Object.assign(t.style, {
+          position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(0,0,0,0.8)', color: '#fff', padding: '10px 24px',
+          borderRadius: '999px', fontSize: '14px', zIndex: '9999',
+          transition: 'opacity 0.3s ease', opacity: '0'
+        });
+        document.body.appendChild(t);
+        requestAnimationFrame(function() { t.style.opacity = '1'; });
+        setTimeout(function() { t.style.opacity = '0'; setTimeout(function() { t.remove(); }, 300); }, 2000);
+      }
+
+      // ===== 地址数据管理 =====
+      function getAddresses() {
+        try { return JSON.parse(localStorage.getItem('moyuyo_addresses')) || []; } catch(e) { return []; }
+      }
+      function saveAddresses(arr) {
+        localStorage.setItem('moyuyo_addresses', JSON.stringify(arr));
+      }
+      function generateId() {
+        return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      }
+
+      // ===== 渲染地址列表 =====
+      function renderAddressList() {
+        var container = document.getElementById('address-list-container');
+        var list = getAddresses();
+
+        if (list.length === 0) {
+          container.innerHTML = '<div class="flex flex-col items-center justify-center py-16"><i data-lucide="map-pin" class="w-10 h-10 mb-3" style="color: var(--icon-300);"></i><p class="text-sm" style="color: var(--text-400);">暂无收货地址</p><p class="text-xs mt-1" style="color: var(--text-400);">点击下方按钮添加新地址</p></div>';
+          lucide.createIcons();
+          return;
+        }
+
+        var html = '';
+        for (var i = 0; i < list.length; i++) {
+          var addr = list[i];
+          var isDefault = addr.isDefault;
+          html += '<article data-addr-id="' + addr.id + '" class="relative flex items-start gap-3 overflow-hidden" style="background-color: var(--background-50); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 14px 14px 18px; box-shadow: var(--shadow-xs); cursor: pointer; transition: transform 0.18s ease, box-shadow 0.18s ease;" onmouseover="this.style.transform=\'translateY(-1px)\'; this.style.boxShadow=\'var(--shadow-sm)\'" onmouseout="this.style.transform=\'none\'; this.style.boxShadow=\'var(--shadow-xs)\'">' +
+            (isDefault ? '<div class="absolute left-0 top-0 bottom-0 w-1" style="background-color: var(--brand-100);"></div>' : '') +
+            '<div class="flex h-10 w-10 shrink-0 items-center justify-center" style="background-color: var(--background-200); border-radius: calc(var(--radius) * 0.8);">' +
+            '<i data-lucide="map-pin" class="h-5 w-5" style="color: ' + (isDefault ? 'var(--brand-500)' : 'var(--icon-muted)') + ';"></i></div>' +
+            '<div class="flex min-w-0 flex-1 flex-col gap-1">' +
+            '<div class="flex items-center gap-2">' +
+            '<span class="text-sm font-semibold" style="color: var(--text-800);">' + escapeHtml(addr.name) + '</span>' +
+            '<span class="text-sm" style="color: var(--text-500);">' + escapeHtml(addr.phone) + '</span>' +
+            (isDefault ? '<span class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium whitespace-nowrap" style="background-color: var(--brand-100); color: var(--brand-500); border-radius: 999px; height: 20px;">默认</span>' : '') +
+            '</div>' +
+            '<p class="text-sm leading-relaxed" style="color: var(--text-500);">' + escapeHtml(addr.fullAddress) + '</p></div>' +
+            '<div class="flex shrink-0 items-center gap-1">' +
+            '<button data-action="edit" class="inline-flex h-8 w-8 items-center justify-center" style="border-radius: calc(var(--radius) * 0.6); color: var(--icon-muted); cursor: pointer; transition: background-color 0.16s ease, color 0.16s ease;" aria-label="编辑" onmouseover="this.style.backgroundColor=\'var(--background-200)\'; this.style.color=\'var(--brand-500)\'" onmouseout="this.style.backgroundColor=\'transparent\'; this.style.color=\'var(--icon-muted)\'">' +
+            '<i data-lucide="pencil" class="h-4 w-4"></i></button>' +
+            '<button data-action="delete" class="inline-flex h-8 w-8 items-center justify-center" style="border-radius: calc(var(--radius) * 0.6); color: var(--icon-muted); cursor: pointer; transition: background-color 0.16s ease, color 0.16s ease;" aria-label="删除" onmouseover="this.style.backgroundColor=\'var(--state-error-surface)\'; this.style.color=\'var(--state-error)\'" onmouseout="this.style.backgroundColor=\'transparent\'; this.style.color=\'var(--icon-muted)\'">' +
+            '<i data-lucide="trash-2" class="h-4 w-4"></i></button></div></article>';
+        }
+        container.innerHTML = html;
+        lucide.createIcons();
+        bindAddressEvents();
+      }
+
+      // HTML 转义
+      function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.textContent = str || '';
+        return div.innerHTML;
+      }
+
+      // ===== 绑定地址卡片事件 =====
+      function bindAddressEvents() {
+        // 编辑按钮
+        document.querySelectorAll('[data-action="edit"]').forEach(function(btn) {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var id = this.closest('[data-addr-id]').getAttribute('data-addr-id');
+            window.location.href = 'address-edit.html?id=' + id;
+          });
+        });
+        // 删除按钮
+        document.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var article = this.closest('[data-addr-id]');
+            var id = article.getAttribute('data-addr-id');
+            if (confirm('确定要删除该地址吗？')) {
+              var list = getAddresses();
+              var idx = -1;
+              for (var i = 0; i < list.length; i++) {
+                if (list[i].id === id) { idx = i; break; }
+              }
+              if (idx !== -1) {
+                list.splice(idx, 1);
+                saveAddresses(list);
+                renderAddressList();
+                showToast('地址已删除');
+              }
+            }
+          });
+        });
+        // 点击设为默认
+        document.querySelectorAll('[data-addr-id]').forEach(function(card) {
+          card.addEventListener('click', function() {
+            var id = this.getAttribute('data-addr-id');
+            var list = getAddresses();
+            for (var i = 0; i < list.length; i++) {
+              list[i].isDefault = (list[i].id === id);
+            }
+            saveAddresses(list);
+            renderAddressList();
+            showToast('已设为默认地址');
+          });
+        });
+      }
+
+      // ===== 初始化 =====
+      renderAddressList();
+
+      // 返回按钮
+      document.getElementById('back-previous') && document.getElementById('back-previous').addEventListener('click', function() {
+        window.history.length > 1 ? window.history.back() : window.location.href = 'settings.html';
+      });
+
+      // 新增地址
+      document.querySelector('[data-dom-id="cta-add-address"]').addEventListener('click', function() {
+        window.location.href = 'address-edit.html';
+      });
+    </script>
 </body>
 </html>
