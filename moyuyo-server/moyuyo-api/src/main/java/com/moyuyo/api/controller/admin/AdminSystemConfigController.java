@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.service.admin.SystemConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -15,40 +16,35 @@ import java.util.*;
 @RequiredArgsConstructor
 public class AdminSystemConfigController {
 
+    private final SystemConfigService systemConfigService;
+
     @Operation(summary = "获取系统配置")
     @GetMapping("/config")
     public Result<List<Map<String, Object>>> getConfig(@RequestParam(defaultValue = "basic") String group) {
+        Map<String, Object> config = systemConfigService.getConfig(group);
+        // 将 Map 转换为前端期望的 List 格式
         List<Map<String, Object>> list = new ArrayList<>();
-        switch (group) {
-            case "basic":
-                list.add(createConfigItem("site_name", "Moyuyo宠物商城", "text", "站点名称"));
-                list.add(createConfigItem("site_description", "专注宠物用品", "text", "站点描述"));
-                list.add(createConfigItem("record_no", "粤ICP备2026XXXX号", "text", "备案号"));
-                list.add(createConfigItem("maintenance_mode", "false", "boolean", "维护模式"));
-                break;
-            case "order":
-                list.add(createConfigItem("auto_cancel_minutes", "30", "number", "未付款自动取消（分钟）"));
-                list.add(createConfigItem("auto_confirm_days", "7", "number", "自动确认收货（天）"));
-                list.add(createConfigItem("max_quantity", "99", "number", "单次最大购买数量"));
-                list.add(createConfigItem("refund_deadline_days", "15", "number", "退款申请截止（天）"));
-                break;
-            case "payment":
-                list.add(createConfigItem("wechat_enabled", "true", "boolean", "微信支付"));
-                list.add(createConfigItem("alipay_enabled", "true", "boolean", "支付宝支付"));
-                list.add(createConfigItem("min_payment", "0.01", "number", "最低支付金额"));
-                break;
-            case "notification":
-                list.add(createConfigItem("sms_enabled", "true", "boolean", "短信通知"));
-                list.add(createConfigItem("email_enabled", "false", "boolean", "邮件通知"));
-                list.add(createConfigItem("push_enabled", "true", "boolean", "推送通知"));
-                break;
+        for (Map.Entry<String, Object> entry : config.entrySet()) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("key", entry.getKey());
+            item.put("value", entry.getValue());
+            item.put("type", "text");
+            item.put("label", entry.getKey());
+            list.add(item);
         }
         return Result.success(list);
     }
 
     @Operation(summary = "保存配置")
     @PutMapping("/config")
-    public Result<Map<String, Object>> saveConfig(@RequestBody List<Map<String, Object>> configs) {
+    public Result<Map<String, Object>> saveConfig(@RequestParam(defaultValue = "basic") String group,
+                                                   @RequestBody List<Map<String, Object>> configs) {
+        // 将前端传入的 List 转换为 Map
+        Map<String, Object> configMap = new LinkedHashMap<>();
+        for (Map<String, Object> item : configs) {
+            configMap.put((String) item.get("key"), item.get("value"));
+        }
+        systemConfigService.saveConfig(group, configMap);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("updated", configs.size());
         result.put("message", "配置保存成功");

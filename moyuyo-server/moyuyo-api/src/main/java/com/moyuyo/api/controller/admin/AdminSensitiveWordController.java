@@ -1,6 +1,8 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.dao.admin.entity.SensitiveWordEntity;
+import com.moyuyo.service.admin.SensitiveWordService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -15,23 +17,24 @@ import java.util.*;
 @RequiredArgsConstructor
 public class AdminSensitiveWordController {
 
+    private final SensitiveWordService sensitiveWordService;
+
     @Operation(summary = "敏感词列表")
     @GetMapping("/list")
     public Result<List<Map<String, Object>>> list(
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String keyword) {
+        List<SensitiveWordEntity> entities = sensitiveWordService.listAll(category, keyword);
         List<Map<String, Object>> list = new ArrayList<>();
-        String[] categories = {"SPAM", "VIOLENCE", "AD", "POLITICAL", "OTHER"};
-        for (int i = 1; i <= 15; i++) {
+        for (SensitiveWordEntity e : entities) {
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", i);
-            item.put("word", "敏感词" + i);
-            item.put("category", categories[i % 5]);
-            item.put("level", i % 3 == 0 ? "HIGH" : i % 2 == 0 ? "MEDIUM" : "LOW");
-            item.put("status", i % 4 == 0 ? "DISABLED" : "ENABLED");
-            item.put("hitCount", (int) (Math.random() * 100));
-            item.put("createTime", LocalDateTime.now().minusDays(i));
-            item.put("updateTime", LocalDateTime.now().minusHours(i));
+            item.put("id", e.getId());
+            item.put("word", e.getWord());
+            item.put("category", e.getCategory());
+            item.put("status", e.getStatus());
+            item.put("hitCount", e.getHitCount());
+            item.put("createTime", e.getCreatedAt());
+            item.put("updateTime", e.getUpdatedAt());
             list.add(item);
         }
         return Result.success(list);
@@ -40,6 +43,7 @@ public class AdminSensitiveWordController {
     @Operation(summary = "分类统计")
     @GetMapping("/categories")
     public Result<List<Map<String, Object>>> categories() {
+        // TODO: SensitiveWordService 暂未提供分类统计方法，后续补充
         List<Map<String, Object>> list = new ArrayList<>();
         String[][] data = {
                 {"SPAM", "广告垃圾", "156"},
@@ -61,9 +65,14 @@ public class AdminSensitiveWordController {
     @Operation(summary = "新增敏感词")
     @PostMapping("/create")
     public Result<Map<String, Object>> create(@RequestBody Map<String, Object> body) {
+        SensitiveWordEntity entity = new SensitiveWordEntity();
+        entity.setWord((String) body.get("word"));
+        entity.setCategory((String) body.get("category"));
+        entity.setStatus((String) body.get("status"));
+        sensitiveWordService.create(entity);
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("id", new Random().nextInt(1000));
-        result.put("word", body.get("word"));
+        result.put("id", entity.getId());
+        result.put("word", entity.getWord());
         result.put("message", "敏感词新增成功");
         return Result.success(result);
     }
@@ -71,9 +80,15 @@ public class AdminSensitiveWordController {
     @Operation(summary = "更新敏感词")
     @PutMapping("/update")
     public Result<Map<String, Object>> update(@RequestBody Map<String, Object> body) {
+        SensitiveWordEntity entity = new SensitiveWordEntity();
+        entity.setId(Long.valueOf(body.get("id").toString()));
+        entity.setWord((String) body.get("word"));
+        entity.setCategory((String) body.get("category"));
+        entity.setStatus((String) body.get("status"));
+        sensitiveWordService.update(entity);
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("id", body.get("id"));
-        result.put("word", body.get("word"));
+        result.put("id", entity.getId());
+        result.put("word", entity.getWord());
         result.put("message", "敏感词更新成功");
         return Result.success(result);
     }
@@ -81,6 +96,7 @@ public class AdminSensitiveWordController {
     @Operation(summary = "删除敏感词")
     @DeleteMapping("/{id}")
     public Result<Map<String, Object>> delete(@PathVariable Long id) {
+        sensitiveWordService.delete(id);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", id);
         result.put("message", "敏感词删除成功");
@@ -90,6 +106,7 @@ public class AdminSensitiveWordController {
     @Operation(summary = "批量删除敏感词")
     @PostMapping("/batch-delete")
     public Result<Map<String, Object>> batchDelete(@RequestBody List<Long> ids) {
+        sensitiveWordService.batchDelete(ids);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("deletedCount", ids.size());
         result.put("message", "批量删除成功");

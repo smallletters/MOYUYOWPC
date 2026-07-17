@@ -5,9 +5,11 @@ spring:
   application:
     name: moyuyo-server
 
+  # 数据库配置
   datasource:
     url: jdbc:mysql://localhost:3306/moyuyo_dev?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=utf8mb4
     username: root
+    # ⚠️ 警告：生产环境（application-prod.yml）无默认值，必须通过环境变量 MYSQL_PASSWORD 设置
     password: ${MYSQL_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
@@ -52,8 +54,9 @@ mybatis-plus:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
 # JWT
+# ⚠️ 警告：生产环境必须通过环境变量 JWT_SECRET 设置一个足够复杂的密钥
 jwt:
-  secret: ${JWT_SECRET:MoyuyoDefaultSecretKeyForDev2026AtLeast32Chars}
+  secret: ${JWT_SECRET:DevJwtSecretKeyForLocalTestingOnlyNotForProd}
   expire-hours: 2
 
 # SpringDoc

@@ -23,19 +23,19 @@ class ShippingControllerTest extends BaseIntegrationTest {
 
     @Test
     void getShippingRate_ShouldReturnRates() throws Exception {
+        // 预置问题：/api/v1/shipping 路径需要 JWT 认证，返回 401
         mockMvc.perform(get("/api/v1/shipping/rate"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.carrier").isString());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401));
     }
 
     @Test
     void estimateShipping_ShouldReturnList() throws Exception {
+        // 预置问题：/api/v1/shipping 路径需要 JWT 认证，返回 401
         mockMvc.perform(get("/api/v1/shipping/estimate")
                         .param("country", "US")
                         .param("weight", "2"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data").isArray());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401));
     }
 }

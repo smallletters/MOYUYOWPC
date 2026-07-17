@@ -12,4 +12,21 @@
     ORDER BY create_time DESC
   </select>
 
+  <!-- RFM 分析：按用户统计最近购买天数、购买次数、总消费金额 -->
+  <select id="selectRfmData" resultType="java.util.LinkedHashMap">
+    SELECT
+      u.id AS userId,
+      u.nickname AS customerName,
+      DATEDIFF(NOW(), MAX(o.create_time)) AS rDays,
+      COUNT(o.id) AS fCount,
+      SUM(o.pay_amount) AS mAmount
+    FROM mo_order o
+    LEFT JOIN mo_user u ON u.id = o.user_id
+    WHERE o.status IN ('PAID', 'SHIPPED', 'COMPLETED')
+    AND o.delete_status = 0
+    GROUP BY o.user_id, u.id, u.nickname
+    ORDER BY mAmount DESC
+    LIMIT 50
+  </select>
+
 </mapper>

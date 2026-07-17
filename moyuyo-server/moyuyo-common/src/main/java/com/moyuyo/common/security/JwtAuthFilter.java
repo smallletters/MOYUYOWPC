@@ -1,6 +1,8 @@
 package com.moyuyo.common.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.common.JwtUtil;
+import com.moyuyo.common.Result;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -19,6 +21,7 @@ public class JwtAuthFilter implements Filter {
 
     private final JwtUtil jwtUtil;
     private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
 
     private static final String REDIS_KEY_BLACKLIST = "auth:blacklist:";
 
@@ -34,6 +37,7 @@ public class JwtAuthFilter implements Filter {
             "/api/v1/categories",
             "/api/v1/products/",
             "/api/health",
+            "/api/admin/auth/login",
             "/swagger-ui.html",
             "/swagger-ui/",
             "/api-docs",
@@ -96,6 +100,7 @@ public class JwtAuthFilter implements Filter {
     private void sendUnauthorized(HttpServletResponse response, String message) throws IOException {
         response.setContentType("application/json;charset=UTF-8");
         response.setStatus(401);
-        response.getWriter().write("{\"code\":401,\"message\":\"" + message + "\",\"data\":null}");
+        Result<Void> result = Result.unauthorized(message);
+        objectMapper.writeValue(response.getWriter(), result);
     }
 }

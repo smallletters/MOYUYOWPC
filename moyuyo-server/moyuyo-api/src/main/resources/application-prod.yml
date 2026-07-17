@@ -25,7 +25,14 @@ springdoc:
     enabled: false
 
 payment:
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET}
+    currency: usd
   paypal:
+    client-id: ${PAYPAL_CLIENT_ID}
+    client-secret: ${PAYPAL_CLIENT_SECRET}
+    webhook-id: ${PAYPAL_WEBHOOK_ID}
     mode: live
 
 admin:

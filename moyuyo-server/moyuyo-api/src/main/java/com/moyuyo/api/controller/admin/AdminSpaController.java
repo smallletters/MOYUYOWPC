@@ -5,6 +5,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 
 @Controller
+// TODO: 静态页面预览功能，无 Service 依赖
 public class AdminSpaController {
 
     @GetMapping(value = "/admin/**")
