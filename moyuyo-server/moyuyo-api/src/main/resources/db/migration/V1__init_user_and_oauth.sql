@@ -2,28 +2,13 @@
 -- V1__init_user_and_oauth.sql
 -- 初始化：用户表改造 + 7 张 GDPR / OAuth / 2FA / 登录日志表
 -- ============================================================
+-- 注意：mo_user 表的创建和索引在 V0__init_base.sql 中完成
+-- 此处仅创建关联表
 
--- 1. 改造 mo_user 表
-ALTER TABLE mo_user
-  ADD COLUMN email             VARCHAR(128)  COMMENT '邮箱（欧美主键）'        AFTER id,
-  ADD COLUMN password_hash     VARCHAR(128)  COMMENT '密码 BCrypt 加盐'           AFTER email,
-  ADD COLUMN country           VARCHAR(8)    COMMENT '国家 ISO 3166-1 alpha-2'    AFTER birthday,
-  ADD COLUMN locale            VARCHAR(16)   COMMENT '区域（en_US 等）'          AFTER country,
-  ADD COLUMN timezone          VARCHAR(64)   COMMENT '时区（IANA 标识）'         AFTER locale,
-  ADD COLUMN two_factor_enabled TINYINT(1)   DEFAULT 0 COMMENT '2FA 是否启用'     AFTER points,
-  ADD COLUMN email_verified    TINYINT(1)    DEFAULT 0 COMMENT '邮箱是否验证'         AFTER two_factor_enabled,
-  ADD COLUMN marketing_opt_in  TINYINT(1)    DEFAULT 0 COMMENT '营销订阅'             AFTER email_verified,
-  ADD COLUMN delete_scheduled_at DATETIME    DEFAULT NULL COMMENT '账号注销计划时间' AFTER last_login_time;
-
--- 2. 邮箱唯一约束（先清理重复数据）
-UPDATE mo_user SET email = CONCAT('legacy_', id, '@moyuyo.local') WHERE email IS NULL;
-ALTER TABLE mo_user
-  ADD UNIQUE KEY uk_email (email);
-
--- 3. 索引
-CREATE INDEX idx_user_country   ON mo_user(country);
-CREATE INDEX idx_user_delete    ON mo_user(status, delete_scheduled_at);
-CREATE INDEX idx_phone          ON mo_user(phone);
+-- 1. mo_user 表的检查和补充（如字段已存在则跳过）
+SET @exist := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='mo_user' AND COLUMN_NAME='email');
+SET @sql := IF(@exist = 0, 'ALTER TABLE mo_user ADD COLUMN email VARCHAR(128) AFTER id', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- 4. 第三方登录绑定
 CREATE TABLE mo_oauth_binding (
