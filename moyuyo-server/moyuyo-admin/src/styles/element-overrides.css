@@ -1,0 +1,71 @@
+/* ===== Element Plus 主题覆盖 ===== */
+/* 与现有 Pinguo 设计令牌对齐 */
+
+:root {
+  --el-color-primary: #007aff;
+  --el-color-primary-light-3: #2e8dff;
+  --el-color-primary-light-5: #66abff;
+  --el-color-primary-light-7: #9fcbff;
+  --el-color-primary-light-8: #cfe5ff;
+  --el-color-primary-light-9: #e8f2ff;
+  --el-color-primary-dark-2: #0064d6;
+
+  --el-color-success: #34c759;
+  --el-color-warning: #ff9500;
+  --el-color-danger: #ff3b30;
+  --el-color-info: #8e8e93;
+
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 6px;
+  --el-border-radius-round: 20px;
+
+  --el-font-size-base: 14px;
+  --el-font-size-small: 12px;
+  --el-font-size-large: 16px;
+
+  --el-bg-color: #f7f7fa;
+  --el-bg-color-overlay: #ffffff;
+  --el-text-color-primary: #1d1d1f;
+  --el-text-color-regular: #3c3c43;
+  --el-text-color-secondary: #8e8e93;
+  --el-border-color: #e5e5ea;
+}
+
+/* 表格样式微调 */
+.el-table {
+  font-size: 13px;
+}
+
+.el-table th.el-table__cell {
+  font-weight: 600;
+  color: var(--text-500);
+  background-color: var(--background-100);
+}
+
+.el-pagination {
+  padding: 16px 0;
+  justify-content: flex-end;
+}
+
+/* 卡片样式 */
+.el-card {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+/* 按钮icon间距 */
+.el-button [class*="el-icon"] + span {
+  margin-left: 4px;
+}
+
+/* 表单标签 */
+.el-form-item__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-600);
+}
+
+/* 标签样式与现有设计对齐 */
+.el-tag {
+  border: none;
+}

@@ -1,66 +1,94 @@
 <template>
   <div class="login-page">
     <div class="login-card">
-      <div class="login-header">
-        <div class="brand-icon">
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-            <rect width="48" height="48" rx="12" fill="#2563eb" />
-            <path d="M14 24L22 32L34 18" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      <!-- 品牌区域 -->
+      <div class="login-brand">
+        <div class="brand-icon-box">
+          <!-- 使用内联 SVG 作为品牌图标（56px 蓝色圆角方块） -->
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+            <line x1="12" y1="22.08" x2="12" y2="12" />
           </svg>
         </div>
         <h1 class="brand-title">管理后台</h1>
         <p class="brand-subtitle">MOYUYO Admin Console</p>
       </div>
 
-      <form class="login-form" @submit.prevent="handleLogin">
-        <div class="form-group">
-          <label>邮箱地址</label>
-          <input
+      <!-- 登录表单 -->
+      <el-form class="login-form" @submit.prevent="handleLogin">
+        <!-- 邮箱输入框 -->
+        <el-form-item>
+          <el-input
             v-model="form.email"
             type="email"
-            class="form-input"
-            placeholder="请输入邮箱地址"
+            placeholder="管理员邮箱"
             autocomplete="email"
-          />
-        </div>
+            size="large"
+          >
+            <!-- 使用内联 SVG Mail 图标 -->
+            <template #prefix>
+              <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <path d="M22 4l-10 8L2 4" />
+              </svg>
+            </template>
+          </el-input>
+        </el-form-item>
 
-        <div class="form-group">
-          <label>密码</label>
-          <div class="password-wrapper">
-            <input
-              v-model="form.password"
-              :type="showPassword ? 'text' : 'password'"
-              class="form-input"
-              placeholder="请输入密码"
-              autocomplete="current-password"
-            />
-            <button type="button" class="eye-toggle" @click="showPassword = !showPassword">
-              {{ showPassword ? '🙈' : '👁️' }}
-            </button>
-          </div>
-        </div>
+        <!-- 密码输入框 -->
+        <el-form-item>
+          <el-input
+            v-model="form.password"
+            :type="showPassword ? 'text' : 'password'"
+            placeholder="密码"
+            autocomplete="current-password"
+            size="large"
+            show-password
+            @click:show-password="showPassword = !showPassword"
+          >
+            <!-- 使用内联 SVG Lock 图标 -->
+            <template #prefix>
+              <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </template>
+          </el-input>
+        </el-form-item>
 
+        <!-- 记住我 + 忘记密码 -->
         <div class="form-options">
           <label class="remember-me">
-            <input v-model="form.remember" type="checkbox" />
+            <el-checkbox v-model="form.remember" size="default" />
             <span>记住我</span>
           </label>
           <a href="#" class="forgot-link" @click.prevent>忘记密码？</a>
         </div>
 
-        <button type="submit" class="btn btn-primary login-btn" :disabled="loading">
+        <!-- 登录按钮 -->
+        <el-button
+          type="primary"
+          native-type="submit"
+          class="login-btn"
+          :loading="loading"
+          :disabled="loading"
+        >
           {{ loading ? '登录中...' : '登录' }}
-        </button>
+        </el-button>
 
+        <!-- 分隔线 -->
         <div class="divider">
           <span>或</span>
         </div>
 
-        <button type="button" class="btn sso-btn" @click="handleSSO">
+        <!-- SSO 登录按钮 -->
+        <el-button class="sso-btn" @click="handleSSO">
           使用企业SSO登录
-        </button>
-      </form>
+        </el-button>
+      </el-form>
 
+      <!-- 底部版本信息 -->
       <p class="login-version">v2.1.0</p>
     </div>
   </div>
@@ -80,186 +108,180 @@ const form = reactive({
 
 const showPassword = ref(false)
 const loading = ref(false)
-const errorMsg = ref('')
 
 async function handleLogin() {
   if (!form.email || !form.password) {
-    errorMsg.value = '请输入邮箱和密码'
     return
   }
   loading.value = true
-  errorMsg.value = ''
   try {
     // 模拟登录请求
     await new Promise(resolve => setTimeout(resolve, 800))
-    // 登录成功
     router.push('/dashboard')
   } catch (e) {
-    errorMsg.value = '登录失败，请检查账号密码'
+    // 登录失败处理
   } finally {
     loading.value = false
   }
 }
 
 function handleSSO() {
-  // SSO登录占位
   console.log('SSO login triggered')
 }
 </script>
 
-<style scoped lang="css">
+<style scoped>
 .login-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--background-200);
   padding: 20px;
 }
 
 .login-card {
   width: 100%;
-  max-width: 420px;
-  background: #fff;
-  border-radius: 16px;
-  padding: 40px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  max-width: 400px;
+  background: var(--background-50);
+  border-radius: calc(var(--radius) * 1.4);
+  padding: 40px 32px 32px;
+  box-shadow: var(--shadow-xl);
+  animation: cardEnter 0.5s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
 
-.login-header {
+/* 品牌区域 */
+.login-brand {
   text-align: center;
   margin-bottom: 32px;
 }
 
-.brand-icon {
-  margin-bottom: 16px;
+.brand-icon-box {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--brand-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
 }
 
 .brand-title {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
-  color: #1d1d1f;
-  margin: 0 0 4px 0;
+  color: var(--text-800);
+  letter-spacing: 0.04em;
+  margin: 0 0 4px;
 }
 
 .brand-subtitle {
-  font-size: 14px;
-  color: #8e8e93;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-400);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   margin: 0;
 }
 
+/* 表单 */
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
 }
 
-.form-group label {
-  display: block;
+.login-form :deep(.el-form-item) {
+  margin-bottom: 14px;
+}
+
+.login-form :deep(.el-input__wrapper) {
+  height: 48px;
+  padding: 0 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--input);
+  box-shadow: none;
+  background: var(--background-100);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.login-form :deep(.el-input__wrapper:hover) {
+  box-shadow: none;
+}
+
+.login-form :deep(.el-input__wrapper.is-focus) {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 1px var(--ring);
+  background: var(--background-50);
+}
+
+.login-form :deep(.el-input__inner) {
   font-size: 14px;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 6px;
+  color: var(--text-800);
+  background: transparent;
 }
 
-.form-input {
-  width: 100%;
-  padding: 10px 14px;
-  border: 1px solid #e5e5ea;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #1d1d1f;
-  background: #f9f9fb;
-  transition: border-color 0.2s;
-  box-sizing: border-box;
+.login-form :deep(.el-input__inner::placeholder) {
+  color: var(--text-400);
 }
 
-.form-input:focus {
-  outline: none;
-  border-color: #2563eb;
-  background: #fff;
+.input-icon {
+  color: var(--text-400);
+  flex-shrink: 0;
 }
 
-.password-wrapper {
-  position: relative;
-}
-
-.password-wrapper .form-input {
-  padding-right: 40px;
-}
-
-.eye-toggle {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 18px;
-  padding: 4px;
-  line-height: 1;
-}
-
+/* 记住我 + 忘记密码 */
 .form-options {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 24px;
 }
 
 .remember-me {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
-  color: #666;
+  font-size: 13px;
+  color: var(--text-500);
   cursor: pointer;
 }
 
-.remember-me input {
-  width: 16px;
-  height: 16px;
-  accent-color: #2563eb;
-}
-
 .forgot-link {
-  font-size: 14px;
-  color: #2563eb;
+  font-size: 13px;
+  color: var(--brand-500);
+  font-weight: 500;
   text-decoration: none;
+  transition: opacity 0.18s ease;
 }
 
 .forgot-link:hover {
-  text-decoration: underline;
+  opacity: 0.7;
 }
 
-.error-msg {
-  background: #fef2f2;
-  color: #dc2626;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 13px;
-  text-align: center;
-}
-
+/* 登录按钮 */
 .login-btn {
   width: 100%;
-  padding: 12px;
-  font-size: 16px;
+  height: 48px;
+  border-radius: 999px;
+  font-size: 15px;
   font-weight: 600;
-  border-radius: 8px;
+  letter-spacing: 0.02em;
 }
 
-.login-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.login-btn :deep(.el-button__inner) {
+  letter-spacing: 0.02em;
 }
 
+/* 分隔线 */
 .divider {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #aeaeb2;
-  font-size: 13px;
+  margin: 24px 0;
+  color: var(--text-400);
+  font-size: 12px;
 }
 
 .divider::before,
@@ -267,29 +289,50 @@ function handleSSO() {
   content: '';
   flex: 1;
   height: 1px;
-  background: #e5e5ea;
+  background: var(--background-300);
 }
 
+/* SSO 登录按钮 */
 .sso-btn {
   width: 100%;
-  padding: 12px;
+  height: 48px;
+  border-radius: 999px;
   font-size: 14px;
-  border: 1px solid #e5e5ea;
-  background: #fff;
-  color: #333;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
+  font-weight: 500;
+  border: 1px solid var(--background-300);
+  background: var(--background-100);
+  color: var(--text-800);
 }
 
 .sso-btn:hover {
-  background: #f5f5f7;
+  border-color: var(--background-400);
+  background: var(--background-200);
 }
 
+/* 底部版本信息 */
 .login-version {
   text-align: center;
-  font-size: 12px;
-  color: #aeaeb2;
-  margin-top: 24px;
+  margin-top: 32px;
+  font-size: 11px;
+  color: var(--text-400);
+  letter-spacing: 0.02em;
+}
+
+/* 入场动画 */
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-card {
+    animation: none;
+  }
 }
 </style>
