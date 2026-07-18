@@ -179,34 +179,20 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getSensitiveList, getSensitiveCategories, createSensitive, updateSensitive, deleteSensitive, batchDeleteSensitive } from '../api/admin'
 
 // ---- 搜索 ----
 const searchKeyword = ref('')
 const activeCategory = ref('全部')
 
 // ---- 分类数据 ----
-const categories = [
-  { key: '全部', label: '全部', count: 48 },
-  { key: '广告', label: '广告', count: 12 },
-  { key: '政治', label: '政治', count: 8 },
-  { key: '色情', label: '色情', count: 6 },
-  { key: '暴力', label: '暴力', count: 4 },
-  { key: '其他', label: '其他', count: 18 }
-]
+const categories = ref([])
 
-const categoryOptions = ['广告', '政治', '色情', '暴力', '其他']
+// 分类选项（用于表单下拉）
+const categoryOptions = ref(['广告', '政治', '色情', '暴力', '其他'])
 
-// ---- 模拟数据 ----
-const mockWords = ref([
-  { id: 1, word: '代开发票', replacement: '***', matchMode: '精确匹配', category: '广告', hitCount: 1284, lastHitTime: '2 分钟前' },
-  { id: 2, word: '色情', replacement: '***', matchMode: '模糊匹配', category: '色情', hitCount: 856, lastHitTime: '15 分钟前' },
-  { id: 3, word: '政治敏感内容', replacement: '***', matchMode: '精确匹配', category: '政治', hitCount: 2103, lastHitTime: '32 分钟前' },
-  { id: 4, word: '(?i)赌博.*', replacement: '***', matchMode: '正则表达式', category: '广告', hitCount: 547, lastHitTime: '1 小时前' },
-  { id: 5, word: '打架斗殴', replacement: '文明用语', matchMode: '模糊匹配', category: '暴力', hitCount: 321, lastHitTime: '3 小时前' },
-  { id: 6, word: '枪支弹药', replacement: '***', matchMode: '精确匹配', category: '其他', hitCount: 189, lastHitTime: '4 小时前' },
-  { id: 7, word: '性交易', replacement: '***', matchMode: '精确匹配', category: '色情', hitCount: 432, lastHitTime: '6 小时前' },
-  { id: 8, word: '翻墙工具', replacement: '***', matchMode: '模糊匹配', category: '其他', hitCount: 267, lastHitTime: '8 小时前' }
-])
+// ---- 数据（从API加载） ----
+const words = ref([])
 
 // ---- 表单状态 ----
 const showForm = ref(false)
@@ -223,10 +209,10 @@ const formData = reactive({
 })
 
 // ---- 筛选逻辑 ----
-const filteredWords = ref([...mockWords.value])
+const filteredWords = ref([])
 
 function filterWords() {
-  let list = [...mockWords.value]
+  let list = [...words.value]
   // 分类筛选
   if (activeCategory.value !== '全部') {
     list = list.filter(w => w.category === activeCategory.value)
@@ -243,10 +229,31 @@ function handleSearch() {
   filterWords()
 }
 
+// ---- 从API加载数据 ----
+async function loadData() {
+  try {
+    // 并行加载敏感词列表和分类数据
+    const [listRes, catRes] = await Promise.all([
+      getSensitiveList(),
+      getSensitiveCategories()
+    ])
+    const wordList = (listRes && listRes.records) || listRes || []
+    words.value = wordList
+    // 填充分类数据
+    if (catRes) {
+      categories.value = catRes
+      // 提取分类选项
+      categoryOptions.value = catRes.filter(c => c.key !== '全部').map(c => c.key)
+    }
+    filterWords()
+  } catch (e) {
+    console.error('加载敏感词数据失败:', e)
+    ElMessage.error('加载敏感词数据失败')
+  }
+}
 // ---- 表单操作 ----
 function toggleAddForm() {
   if (isEditing.value && showForm.value) {
-    // 如果正在编辑，关闭时重置
     resetForm()
   }
   showForm.value = !showForm.value
@@ -266,7 +273,8 @@ function cancelForm() {
   showForm.value = false
 }
 
-function handleSubmit() {
+// 新增/编辑敏感词（调用API）
+async function handleSubmit() {
   if (!formData.word.trim()) {
     ElMessage.warning('请输入敏感词')
     return
@@ -276,36 +284,35 @@ function handleSubmit() {
     return
   }
 
-  if (isEditing.value && editingId.value !== null) {
-    // 编辑保存
-    const idx = mockWords.value.findIndex(w => w.id === editingId.value)
-    if (idx !== -1) {
-      mockWords.value[idx] = {
-        ...mockWords.value[idx],
+  try {
+    if (isEditing.value && editingId.value !== null) {
+      // 编辑保存
+      await updateSensitive({
+        id: editingId.value,
         word: formData.word,
         replacement: formData.replacement,
         matchMode: formData.matchMode,
         category: formData.category
-      }
+      })
+      ElMessage.success('修改成功')
+    } else {
+      // 新增
+      await createSensitive({
+        word: formData.word,
+        replacement: formData.replacement,
+        matchMode: formData.matchMode,
+        category: formData.category
+      })
+      ElMessage.success('添加成功')
     }
-    ElMessage.success('修改成功')
-  } else {
-    // 新增
-    const newId = Math.max(...mockWords.value.map(w => w.id), 0) + 1
-    mockWords.value.push({
-      id: newId,
-      word: formData.word,
-      replacement: formData.replacement,
-      matchMode: formData.matchMode,
-      category: formData.category,
-      hitCount: 0,
-      lastHitTime: '刚刚'
-    })
-    ElMessage.success('添加成功')
+    resetForm()
+    showForm.value = false
+    // 重新加载数据
+    loadData()
+  } catch (e) {
+    console.error('提交敏感词失败:', e)
+    ElMessage.error('操作失败')
   }
-  resetForm()
-  showForm.value = false
-  filterWords()
 }
 
 function handleEdit(item) {
@@ -318,30 +325,41 @@ function handleEdit(item) {
   showForm.value = true
 }
 
-function handleDelete(item) {
-  ElMessageBox.confirm('确认删除该敏感词吗？', '提示', { type: 'warning' }).then(() => {
-    const idx = mockWords.value.findIndex(w => w.id === item.id)
-    if (idx !== -1) mockWords.value.splice(idx, 1)
-    filterWords()
+// 删除单个敏感词（调用API）
+async function handleDelete(item) {
+  try {
+    await ElMessageBox.confirm('确认删除该敏感词吗？', '提示', { type: 'warning' })
+    await deleteSensitive(item.id)
     ElMessage.success('删除成功')
-  }).catch(() => {})
+    loadData()
+  } catch (e) {
+    if (e !== 'cancel') {
+      console.error('删除敏感词失败:', e)
+    }
+  }
 }
 
-function handleBatchDelete() {
+// 批量删除敏感词（调用API）
+async function handleBatchDelete() {
   if (filteredWords.value.length === 0) {
     ElMessage.info('没有可删除的词条')
     return
   }
-  ElMessageBox.confirm(`确认删除当前筛选出的 ${filteredWords.value.length} 条敏感词？`, '提示', { type: 'warning' }).then(() => {
-    const idsToDelete = new Set(filteredWords.value.map(w => w.id))
-    mockWords.value = mockWords.value.filter(w => !idsToDelete.has(w.id))
-    filterWords()
+  try {
+    await ElMessageBox.confirm(`确认删除当前筛选出的 ${filteredWords.value.length} 条敏感词？`, '提示', { type: 'warning' })
+    const ids = filteredWords.value.map(w => w.id)
+    await batchDeleteSensitive(ids)
     ElMessage.success('批量删除成功')
-  }).catch(() => {})
+    loadData()
+  } catch (e) {
+    if (e !== 'cancel') {
+      console.error('批量删除敏感词失败:', e)
+    }
+  }
 }
 
 onMounted(() => {
-  filterWords()
+  loadData()
 })
 </script>
 

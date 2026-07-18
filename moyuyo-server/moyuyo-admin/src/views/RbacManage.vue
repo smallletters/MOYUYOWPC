@@ -242,60 +242,16 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  getRbacRoles, createRbacRole, getRolePermissions, updateRolePermissions
+} from '../api/admin'
 
-// ---- 角色模拟数据 ----
-const roles = ref([
-  {
-    id: 1,
-    name: '超级管理员',
-    description: '拥有系统全部权限，不可修改或删除',
-    userCount: 2,
-    isPreset: true,
-    permissions: ['商品管理', '订单管理', '用户管理', '营销管理', '数据统计', '系统设置', '财务管理', '内容审核']
-  },
-  {
-    id: 2,
-    name: '运营管理员',
-    description: '负责日常运营活动、促销配置和内容管理',
-    userCount: 5,
-    isPreset: false,
-    permissions: ['商品管理', '订单管理', '营销管理', '数据统计']
-  },
-  {
-    id: 3,
-    name: '商品管理员',
-    description: '负责商品上架、信息维护和库存管理',
-    userCount: 8,
-    isPreset: false,
-    permissions: ['商品管理', '数据统计']
-  },
-  {
-    id: 4,
-    name: '客服主管',
-    description: '负责用户服务、工单处理和售后管理',
-    userCount: 4,
-    isPreset: false,
-    permissions: ['用户管理', '订单管理', '数据统计']
-  },
-  {
-    id: 5,
-    name: '财务管理员',
-    description: '负责财务核算、对账和报表管理',
-    userCount: 3,
-    isPreset: false,
-    permissions: ['财务管理', '数据统计']
-  },
-  {
-    id: 6,
-    name: '只读用户',
-    description: '仅可查看数据报表，无任何编辑权限',
-    userCount: 12,
-    isPreset: true,
-    permissions: ['数据统计']
-  }
-])
+// ---- 角色列表（从API获取） ----
+const roles = ref([])
+// 当前选中角色的权限数据
+const currentPerms = ref({})
 
-// ---- 权限模块 ----
+// ---- 权限模块（静态UI配置） ----
 const permModules = [
   { key: 'product', name: '商品管理' },
   { key: 'order', name: '订单管理' },
@@ -307,16 +263,6 @@ const permModules = [
   { key: 'review', name: '内容审核' }
 ]
 
-// ---- 权限矩阵（每个角色的权限配置） ----
-const permMatrix = reactive({
-  1: { product: { view: true, create: true, edit: true, delete: true }, order: { view: true, create: true, edit: true, delete: true }, user: { view: true, create: true, edit: true, delete: true }, marketing: { view: true, create: true, edit: true, delete: true }, stats: { view: true, create: true, edit: true, delete: true }, system: { view: true, create: true, edit: true, delete: true }, finance: { view: true, create: true, edit: true, delete: true }, review: { view: true, create: true, edit: true, delete: true } },
-  2: { product: { view: true, create: true, edit: true, delete: false }, order: { view: true, create: true, edit: true, delete: false }, user: { view: true, create: false, edit: false, delete: false }, marketing: { view: true, create: true, edit: true, delete: true }, stats: { view: true, create: true, edit: true, delete: false }, system: { view: false, create: false, edit: false, delete: false }, finance: { view: false, create: false, edit: false, delete: false }, review: { view: true, create: false, edit: false, delete: false } },
-  3: { product: { view: true, create: true, edit: true, delete: false }, order: { view: false, create: false, edit: false, delete: false }, user: { view: false, create: false, edit: false, delete: false }, marketing: { view: false, create: false, edit: false, delete: false }, stats: { view: true, create: true, edit: true, delete: false }, system: { view: false, create: false, edit: false, delete: false }, finance: { view: false, create: false, edit: false, delete: false }, review: { view: false, create: false, edit: false, delete: false } },
-  4: { product: { view: false, create: false, edit: false, delete: false }, order: { view: true, create: true, edit: true, delete: false }, user: { view: true, create: true, edit: true, delete: false }, marketing: { view: false, create: false, edit: false, delete: false }, stats: { view: true, create: true, edit: true, delete: false }, system: { view: false, create: false, edit: false, delete: false }, finance: { view: false, create: false, edit: false, delete: false }, review: { view: false, create: false, edit: false, delete: false } },
-  5: { product: { view: false, create: false, edit: false, delete: false }, order: { view: false, create: false, edit: false, delete: false }, user: { view: false, create: false, edit: false, delete: false }, marketing: { view: false, create: false, edit: false, delete: false }, stats: { view: true, create: true, edit: true, delete: false }, system: { view: false, create: false, edit: false, delete: false }, finance: { view: true, create: true, edit: true, delete: false }, review: { view: false, create: false, edit: false, delete: false } },
-  6: { product: { view: true, create: false, edit: false, delete: false }, order: { view: true, create: false, edit: false, delete: false }, user: { view: true, create: false, edit: false, delete: false }, marketing: { view: true, create: false, edit: false, delete: false }, stats: { view: true, create: false, edit: false, delete: false }, system: { view: false, create: false, edit: false, delete: false }, finance: { view: false, create: false, edit: false, delete: false }, review: { view: false, create: false, edit: false, delete: false } }
-})
-
 // ---- 选中角色 ----
 const selectedRole = ref(null)
 const showCreateForm = ref(false)
@@ -326,29 +272,68 @@ const newRole = reactive({
   description: ''
 })
 
+// 加载角色列表
+async function loadRoles() {
+  try {
+    const data = await getRbacRoles()
+    roles.value = (data || []).map(role => ({
+      id: role.id,
+      name: role.name,
+      description: role.description || '暂无描述',
+      userCount: role.userCount ?? 0,
+      isPreset: role.isPreset ?? false,
+      permissions: role.permissions || []
+    }))
+    // 默认选中第一个角色并加载其权限
+    if (roles.value.length > 0) {
+      selectedRole.value = roles.value[0]
+      await loadPermissions(roles.value[0].id)
+    }
+  } catch (e) {
+    console.error('获取角色列表失败', e)
+  }
+}
+
+// 加载指定角色的权限矩阵
+async function loadPermissions(roleId) {
+  try {
+    const perms = await getRolePermissions(roleId)
+    currentPerms.value = perms || {}
+  } catch (e) {
+    console.error('获取权限数据失败', e)
+    currentPerms.value = {}
+  }
+}
+
 // ---- 角色选择 ----
-function selectRole(role) {
+async function selectRole(role) {
   selectedRole.value = role
+  await loadPermissions(role.id)
 }
 
 // ---- 权限读取/切换 ----
 function getPerm(moduleKey, action) {
   if (!selectedRole.value) return false
-  const mod = permMatrix[selectedRole.value.id]?.[moduleKey]
-  return mod ? mod[action] : false
+  return currentPerms.value[moduleKey]?.[action] ?? false
 }
 
 function togglePerm(moduleKey, action) {
   if (!selectedRole.value || selectedRole.value.isPreset) return
-  const rolePerms = permMatrix[selectedRole.value.id]
-  if (!rolePerms) return
-  rolePerms[moduleKey][action] = !rolePerms[moduleKey][action]
+  if (!currentPerms.value[moduleKey]) {
+    currentPerms.value[moduleKey] = { view: false, create: false, edit: false, delete: false }
+  }
+  currentPerms.value[moduleKey][action] = !currentPerms.value[moduleKey][action]
 }
 
 // ---- 保存权限 ----
-function handleSavePerms() {
+async function handleSavePerms() {
   if (!selectedRole.value) return
-  ElMessage.success(`「${selectedRole.value.name}」权限配置已更新`)
+  try {
+    await updateRolePermissions(selectedRole.value.id, currentPerms.value)
+    ElMessage.success(`「${selectedRole.value.name}」权限配置已更新`)
+  } catch (e) {
+    ElMessage.error('保存权限失败')
+  }
 }
 
 // ---- 查看成员 ----
@@ -371,37 +356,36 @@ function cancelCreate() {
   newRole.description = ''
 }
 
-function handleCreateSubmit() {
+async function handleCreateSubmit() {
   if (!newRole.name.trim()) {
     ElMessage.warning('请输入角色名称')
     return
   }
-  const newId = Math.max(...roles.value.map(r => r.id), 0) + 1
-  roles.value.push({
-    id: newId,
-    name: newRole.name,
-    description: newRole.description || '暂无描述',
-    userCount: 0,
-    isPreset: false,
-    permissions: []
-  })
-  // 初始化权限矩阵
-  const emptyPerms = {}
-  permModules.forEach(m => {
-    emptyPerms[m.key] = { view: false, create: false, edit: false, delete: false }
-  })
-  permMatrix[newId] = emptyPerms
-
-  ElMessage.success(`角色「${newRole.name}」创建成功`)
-  newRole.name = ''
-  newRole.description = ''
-  showCreateForm.value = false
+  try {
+    const created = await createRbacRole({
+      name: newRole.name,
+      description: newRole.description || '暂无描述'
+    })
+    // 将新角色加入到本地列表
+    roles.value.push({
+      id: created.id,
+      name: created.name,
+      description: created.description || '暂无描述',
+      userCount: created.userCount ?? 0,
+      isPreset: created.isPreset ?? false,
+      permissions: created.permissions || []
+    })
+    ElMessage.success(`角色「${newRole.name}」创建成功`)
+    newRole.name = ''
+    newRole.description = ''
+    showCreateForm.value = false
+  } catch (e) {
+    ElMessage.error('创建角色失败')
+  }
 }
 
 onMounted(() => {
-  if (roles.value.length > 0) {
-    selectedRole.value = roles.value[0]
-  }
+  loadRoles()
 })
 </script>
 

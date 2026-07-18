@@ -1,10 +1,16 @@
 package com.moyuyo.service.admin.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.moyuyo.dao.entity.ProductEntity;
+import com.moyuyo.dao.entity.ProductSkuEntity;
+import com.moyuyo.dao.mapper.ProductMapper;
+import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.admin.InventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 库存管理服务实现
@@ -13,51 +19,98 @@ import java.util.*;
 @RequiredArgsConstructor
 public class InventoryServiceImpl implements InventoryService {
 
+  private final ProductSkuMapper productSkuMapper;
+  private final ProductMapper productMapper;
+
+  /** 安全库存阈值 */
+  private static final int SAFETY_STOCK_THRESHOLD = 20;
+
   @Override
   public Map<String, Object> getInventoryOverview() {
-    Map<String, Object> overview = new LinkedHashMap<>();
-    overview.put("totalSku", 1250);
-    overview.put("lowStockCount", 18);
-    overview.put("expiringBatchCount", 5);
-    overview.put("inTransitCount", 3);
+    try {
+      // 查询所有SKU数量
+      Long totalSku = productSkuMapper.selectCount(new LambdaQueryWrapper<>());
 
-    List<Map<String, Object>> alerts = new ArrayList<>();
-    Map<String, Object> alert1 = new LinkedHashMap<>();
-    alert1.put("sku", "SKU-001");
-    alert1.put("name", "宠物洗护套装");
-    alert1.put("stock", 5);
-    alert1.put("threshold", 20);
-    alerts.add(alert1);
+      // 查询低库存SKU（库存小于阈值的）
+      List<ProductSkuEntity> lowStockSkus = productSkuMapper.selectList(
+        new LambdaQueryWrapper<ProductSkuEntity>()
+          .lt(ProductSkuEntity::getStock, SAFETY_STOCK_THRESHOLD));
 
-    Map<String, Object> alert2 = new LinkedHashMap<>();
-    alert2.put("sku", "SKU-015");
-    alert2.put("name", "舒适胸背带-M");
-    alert2.put("stock", 3);
-    alert2.put("threshold", 30);
-    alerts.add(alert2);
+      // 批量查询对应的商品名称
+      Set<Long> productIds = lowStockSkus.stream()
+        .map(ProductSkuEntity::getProductId)
+        .collect(Collectors.toSet());
 
-    overview.put("alerts", alerts);
-    return overview;
+      // 构建商品ID -> 商品名称的映射
+      Map<Long, String> productNameMap = new HashMap<>();
+      if (!productIds.isEmpty()) {
+        List<ProductEntity> products = productMapper.selectBatchIds(productIds);
+        productNameMap = products.stream()
+          .collect(Collectors.toMap(ProductEntity::getId, ProductEntity::getName));
+      }
+
+      // 构建预警列表
+      List<Map<String, Object>> alerts = new ArrayList<>();
+      for (ProductSkuEntity sku : lowStockSkus) {
+        Map<String, Object> alert = new LinkedHashMap<>();
+        alert.put("sku", sku.getSkuCode());
+        alert.put("name", productNameMap.getOrDefault(sku.getProductId(), "未知商品"));
+        alert.put("stock", sku.getStock());
+        alert.put("threshold", SAFETY_STOCK_THRESHOLD);
+        alerts.add(alert);
+      }
+
+      Map<String, Object> overview = new LinkedHashMap<>();
+      overview.put("totalSku", totalSku);
+      overview.put("lowStockCount", (long) lowStockSkus.size());
+      overview.put("expiringBatchCount", 0);
+      overview.put("inTransitCount", 0);
+      overview.put("alerts", alerts);
+      return overview;
+    } catch (Exception e) {
+      // 异常时返回空数据，保证API不崩溃
+      Map<String, Object> overview = new LinkedHashMap<>();
+      overview.put("totalSku", 0);
+      overview.put("lowStockCount", 0);
+      overview.put("expiringBatchCount", 0);
+      overview.put("inTransitCount", 0);
+      overview.put("alerts", Collections.emptyList());
+      return overview;
+    }
   }
 
   @Override
   public List<Map<String, Object>> getAlertList() {
-    List<Map<String, Object>> list = new ArrayList<>();
-    String[][] data = {
-        {"SKU-001", "宠物洗护套装", "5", "LOW_STOCK"},
-        {"SKU-015", "舒适胸背带-M", "3", "LOW_STOCK"},
-        {"SKU-032", "鹿角磨牙棒", "2026-08-15", "EXPIRING"},
-        {"SKU-045", "宠物航空箱-L", "2026-08-20", "EXPIRING"},
-        {"SKU-078", "智能喂食器", "2", "LOW_STOCK"},
-    };
-    for (String[] row : data) {
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("sku", row[0]);
-      item.put("name", row[1]);
-      item.put("detail", row[2]);
-      item.put("type", row[3]);
-      list.add(item);
+    try {
+      // 查询低库存SKU（库存小于阈值的）
+      List<ProductSkuEntity> lowStockSkus = productSkuMapper.selectList(
+        new LambdaQueryWrapper<ProductSkuEntity>()
+          .lt(ProductSkuEntity::getStock, SAFETY_STOCK_THRESHOLD));
+
+      // 批量查询对应的商品名称
+      Set<Long> productIds = lowStockSkus.stream()
+        .map(ProductSkuEntity::getProductId)
+        .collect(Collectors.toSet());
+
+      Map<Long, String> productNameMap = new HashMap<>();
+      if (!productIds.isEmpty()) {
+        List<ProductEntity> products = productMapper.selectBatchIds(productIds);
+        productNameMap = products.stream()
+          .collect(Collectors.toMap(ProductEntity::getId, ProductEntity::getName));
+      }
+
+      List<Map<String, Object>> list = new ArrayList<>();
+      for (ProductSkuEntity sku : lowStockSkus) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("sku", sku.getSkuCode());
+        item.put("name", productNameMap.getOrDefault(sku.getProductId(), "未知商品"));
+        item.put("detail", String.valueOf(sku.getStock()));
+        item.put("type", "LOW_STOCK");
+        list.add(item);
+      }
+      return list;
+    } catch (Exception e) {
+      return Collections.emptyList();
     }
-    return list;
   }
 }

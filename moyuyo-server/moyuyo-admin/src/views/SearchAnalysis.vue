@@ -9,7 +9,7 @@
         <el-card shadow="never">
           <div class="kpi-card-content">
             <div class="kpi-label">总搜索次数</div>
-            <div class="kpi-value">45,680</div>
+            <div class="kpi-value">{{ kpi.totalSearches }}</div>
           </div>
         </el-card>
       </el-col>
@@ -17,7 +17,7 @@
         <el-card shadow="never">
           <div class="kpi-card-content">
             <div class="kpi-label">搜索用户数</div>
-            <div class="kpi-value">18,290</div>
+            <div class="kpi-value">{{ kpi.searchUsers }}</div>
           </div>
         </el-card>
       </el-col>
@@ -25,7 +25,7 @@
         <el-card shadow="never">
           <div class="kpi-card-content">
             <div class="kpi-label">无结果率</div>
-            <div class="kpi-value" style="color:#e67e22">8.3%</div>
+            <div class="kpi-value" style="color:#e67e22">{{ kpi.noResultRate }}</div>
           </div>
         </el-card>
       </el-col>
@@ -33,7 +33,7 @@
         <el-card shadow="never">
           <div class="kpi-card-content">
             <div class="kpi-label">平均搜索次数</div>
-            <div class="kpi-value">2.5</div>
+            <div class="kpi-value">{{ kpi.avgSearches }}</div>
           </div>
         </el-card>
       </el-col>
@@ -61,21 +61,33 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getSearchAnalysis } from '../api/admin'
 
-const tableData = ref([
-  { id: 1, keyword: 'T恤', searchCount: 8920, resultCount: 256, userCount: 5230, conversionRate: 12.5 },
-  { id: 2, keyword: '蓝牙耳机', searchCount: 6540, resultCount: 89, userCount: 3890, conversionRate: 15.2 },
-  { id: 3, keyword: '充电宝', searchCount: 5210, resultCount: 67, userCount: 3120, conversionRate: 10.8 },
-  { id: 4, keyword: '机械键盘', searchCount: 4890, resultCount: 45, userCount: 2780, conversionRate: 18.3 },
-  { id: 5, keyword: '保温杯', searchCount: 3560, resultCount: 78, userCount: 2150, conversionRate: 8.6 },
-  { id: 6, keyword: '双肩背包', searchCount: 2890, resultCount: 34, userCount: 1690, conversionRate: 14.1 },
-  { id: 7, keyword: '鼠标垫', searchCount: 2340, resultCount: 56, userCount: 1450, conversionRate: 6.4 },
-  { id: 8, keyword: '扩展坞', searchCount: 1890, resultCount: 23, userCount: 1120, conversionRate: 9.7 },
-])
+const kpi = ref({ totalSearches: '—', searchUsers: '—', noResultRate: '—', avgSearches: '—' })
+const tableData = ref([])
+
+async function loadData() {
+  try {
+    const res = await getSearchAnalysis()
+    if (res) {
+      kpi.value = {
+        totalSearches: res.totalSearches ?? '—',
+        searchUsers: res.searchUsers ?? '—',
+        noResultRate: res.noResultRate ?? '—',
+        avgSearches: res.avgSearches ?? '—'
+      }
+      tableData.value = res.list || []
+    }
+  } catch (err) {
+    console.error('获取搜索分析数据失败', err)
+  }
+}
 
 function handleView(row) { ElMessage.info('查看搜索词详情：' + row.keyword) }
+
+onMounted(() => loadData())
 </script>
 
 <style scoped>

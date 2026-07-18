@@ -5,19 +5,19 @@
     <!-- KPI 卡片 -->
     <div class="kpi-row">
       <div class="kpi-card">
-        <div class="kpi-value red">8</div>
+        <div class="kpi-value red">{{ kpiData.pending }}</div>
         <div class="kpi-label">待处理</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value blue">12</div>
+        <div class="kpi-value blue">{{ kpiData.processing }}</div>
         <div class="kpi-label">进行中</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value green">23</div>
+        <div class="kpi-value green">{{ kpiData.closedToday }}</div>
         <div class="kpi-label">今日已关闭</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value">96%</div>
+        <div class="kpi-value">{{ kpiData.slaRate }}</div>
         <div class="kpi-label">SLA达标率</div>
       </div>
     </div>
@@ -101,7 +101,7 @@
         </tbody>
       </table>
       <div class="pagination">
-        <div class="pagination-info">显示 1-10 条，共 24 条</div>
+        <div class="pagination-info">共 {{ tickets.length }} 条</div>
         <div class="pagination-btns">
           <button class="pagination-btn">上一页</button>
           <button class="pagination-btn active">1</button>
@@ -115,12 +115,15 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, onMounted } from 'vue'
+import { getTicketList, getTicketStats } from '../api/admin'
+import { ElMessage } from 'element-plus'
 
 const activeTab = ref('all')
 const typeFilter = ref('')
 const priorityFilter = ref('')
 const searchText = ref('')
+const loading = ref(false)
 
 const statusTabs = [
   { key: 'all', label: '全部' },
@@ -130,19 +133,79 @@ const statusTabs = [
   { key: 'overdue', label: '超时' }
 ]
 
-const tickets = reactive([
-  { id: 1, no: 'TK-20260708-001', typeLabel: '退款', typeClass: 'tag-yellow', priorityLabel: '高', priorityClass: 'tag-red', title: '商品破损要求退款', user: '张三', createTime: '07-08 10:30', statusLabel: '待处理', statusDot: 'red', assignee: '-', responseTime: '-:--' },
-  { id: 2, no: 'TK-20260708-002', typeLabel: '投诉', typeClass: 'tag-red', priorityLabel: '高', priorityClass: 'tag-red', title: '物流配送态度恶劣', user: '李四', createTime: '07-08 11:15', statusLabel: '进行中', statusDot: 'yellow', assignee: '客服小王', responseTime: '5min' },
-  { id: 3, no: 'TK-20260708-003', typeLabel: '咨询', typeClass: 'tag-blue', priorityLabel: '低', priorityClass: 'tag-gray', title: '如何查询物流信息', user: '王五', createTime: '07-08 12:00', statusLabel: '已关闭', statusDot: 'green', assignee: '客服小李', responseTime: '2min' },
-  { id: 4, no: 'TK-20260708-004', typeLabel: '退款', typeClass: 'tag-yellow', priorityLabel: '中', priorityClass: 'tag-orange', title: '充值未到账问题', user: '赵六', createTime: '07-08 13:45', statusLabel: '待处理', statusDot: 'red', assignee: '-', responseTime: '-:--' },
-  { id: 5, no: 'TK-20260708-005', typeLabel: '投诉', typeClass: 'tag-red', priorityLabel: '高', priorityClass: 'tag-red', title: '商品与描述严重不符', user: '孙七', createTime: '07-08 14:20', statusLabel: '超时', statusDot: 'red', assignee: '客服小王', responseTime: '2h+' }
-])
+// KPI数据
+const kpiData = ref({
+  pending: 0,
+  processing: 0,
+  closedToday: 0,
+  slaRate: '0%'
+})
+
+const tickets = ref([])
+
+// 获取工单统计数据
+async function fetchStats() {
+  try {
+    const res = await getTicketStats()
+    if (res) {
+      kpiData.value = res
+    }
+  } catch (err) {
+    console.error('获取工单统计数据失败:', err)
+  }
+}
+
+const tickets = ref([])
+
+// 获取工单列表
+async function fetchTickets() {
+  loading.value = true
+  try {
+    const params = {
+      status: activeTab.value,
+      type: typeFilter.value,
+      priority: priorityFilter.value,
+      search: searchText.value
+    }
+    Object.keys(params).forEach(k => {
+      if (!params[k]) delete params[k]
+    })
+    const res = await getTicketList()
+    if (res) {
+      const list = res.records || res.list || res
+      // 如果有筛选参数，在前端过滤（简化处理）
+      if (activeTab.value !== 'all' || typeFilter.value || priorityFilter.value || searchText.value) {
+        tickets.value = Array.isArray(list) ? list.filter(t => {
+          let match = true
+          if (activeTab.value !== 'all' && t.statusKey !== activeTab.value) match = false
+          if (typeFilter.value && t.typeKey !== typeFilter.value) match = false
+          if (priorityFilter.value && t.priorityKey !== priorityFilter.value) match = false
+          if (searchText.value && !t.no?.includes(searchText.value) && !t.user?.includes(searchText.value)) match = false
+          return match
+        }) : list
+      } else {
+        tickets.value = list
+      }
+    }
+  } catch (err) {
+    console.error('获取工单列表失败:', err)
+    ElMessage.error('获取工单列表失败')
+  } finally {
+    loading.value = false
+  }
+}
 
 function resetFilter() {
   typeFilter.value = ''
   priorityFilter.value = ''
   searchText.value = ''
+  fetchTickets()
 }
+
+onMounted(() => {
+  fetchStats()
+  fetchTickets()
+})
 </script>
 
 <style scoped lang="css">

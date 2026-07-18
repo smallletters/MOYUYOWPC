@@ -108,6 +108,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getCampaigns, createCampaign, updateCampaign, deleteCampaign } from '../api/admin'
 
 const pageTitle = '活动创建'
 const currentPage = ref(1)
@@ -132,14 +133,8 @@ const editForm = reactive({
   budget: 0
 })
 
-const mockData = [
-  { id: 1, name: '618年中大促', type: '满减', startTime: '2026-06-01 00:00:00', endTime: '2026-06-18 23:59:59', status: '已结束', description: '618全品类满减活动', budget: 500000 },
-  { id: 2, name: '夏日清凉特惠', type: '折扣', startTime: '2026-07-01 00:00:00', endTime: '2026-07-31 23:59:59', status: '进行中', description: '夏季商品折扣促销', budget: 200000 },
-  { id: 3, name: '限时秒杀专场', type: '秒杀', startTime: '2026-07-20 00:00:00', endTime: '2026-07-20 23:59:59', status: '未开始', description: '整点秒杀特价商品', budget: 100000 },
-  { id: 4, name: '拼团狂欢节', type: '拼团', startTime: '2026-08-01 00:00:00', endTime: '2026-08-15 23:59:59', status: '未开始', description: '多人拼团享优惠', budget: 150000 },
-  { id: 5, name: '开学季大促', type: '满减', startTime: '2026-08-20 00:00:00', endTime: '2026-09-10 23:59:59', status: '未开始', description: '开学季满减优惠活动', budget: 300000 }
-]
-
+// 活动数据列表（通过API获取）
+const allCampaigns = ref([])
 const tableData = ref([])
 
 function typeTag(type) {
@@ -152,17 +147,42 @@ function statusTag(status) {
   return map[status] || ''
 }
 
-function loadData() {
-  const start = (currentPage.value - 1) * pageSize.value
-  const list = mockData.filter(d => {
-    const kw = filters.keyword.toLowerCase()
+// 从API加载活动列表
+async function loadCampaigns() {
+  try {
+    const data = await getCampaigns()
+    allCampaigns.value = (data || []).map(item => ({
+      id: item.id,
+      name: item.name || '',
+      type: item.type || '',
+      startTime: item.startTime || '',
+      endTime: item.endTime || '',
+      status: item.status || '未开始',
+      description: item.description || '',
+      budget: item.budget ?? 0
+    }))
+    applyFilters()
+  } catch (e) {
+    console.error('获取活动列表失败', e)
+  }
+}
+
+// 根据筛选条件过滤并分页
+function applyFilters() {
+  const kw = filters.keyword.toLowerCase()
+  const filtered = allCampaigns.value.filter(d => {
     if (kw && !d.name.toLowerCase().includes(kw)) return false
     if (filters.type && d.type !== filters.type) return false
     if (filters.status && d.status !== filters.status) return false
     return true
   })
-  total.value = list.length
-  tableData.value = list.slice(start, start + pageSize.value)
+  total.value = filtered.length
+  const start = (currentPage.value - 1) * pageSize.value
+  tableData.value = filtered.slice(start, start + pageSize.value)
+}
+
+function loadData() {
+  applyFilters()
 }
 
 function handleSearch() {
@@ -197,49 +217,54 @@ function handleEdit(row) {
   dialogVisible.value = true
 }
 
-function handleDelete(row) {
-  ElMessageBox.confirm('确认删除该活动吗？', '提示', { type: 'warning' }).then(() => {
-    const idx = mockData.findIndex(d => d.id === row.id)
-    if (idx > -1) mockData.splice(idx, 1)
-    loadData()
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确认删除该活动吗？', '提示', { type: 'warning' })
+    await deleteCampaign(row.id)
     ElMessage.success('删除成功')
-  }).catch(() => {})
+    await loadCampaigns()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败: ' + (e.message || '未知错误'))
+    }
+  }
 }
 
-function handleSave() {
+async function handleSave() {
   if (!editForm.name || !editForm.type) {
     ElMessage.warning('请填写必要信息')
     return
   }
-  if (isEdit.value) {
-    const item = mockData.find(d => d.id === editForm.id)
-    if (item) {
-      Object.assign(item, editForm)
-      if (dateRange.value) {
-        item.startTime = dateRange.value[0].toLocaleString('zh-CN', { hour12: false })
-        item.endTime = dateRange.value[1].toLocaleString('zh-CN', { hour12: false })
-      }
+  try {
+    if (isEdit.value) {
+      await updateCampaign(editForm.id, {
+        name: editForm.name,
+        type: editForm.type,
+        description: editForm.description,
+        budget: editForm.budget,
+        startTime: dateRange.value ? dateRange.value[0].toISOString() : '',
+        endTime: dateRange.value ? dateRange.value[1].toISOString() : ''
+      })
+      ElMessage.success('编辑成功')
+    } else {
+      const created = await createCampaign({
+        name: editForm.name,
+        type: editForm.type,
+        description: editForm.description,
+        budget: editForm.budget,
+        startTime: dateRange.value ? dateRange.value[0].toISOString() : '',
+        endTime: dateRange.value ? dateRange.value[1].toISOString() : ''
+      })
+      ElMessage.success('创建成功')
     }
-    ElMessage.success('编辑成功')
-  } else {
-    const newId = Math.max(...mockData.map(d => d.id)) + 1
-    mockData.push({
-      id: newId,
-      name: editForm.name,
-      type: editForm.type,
-      startTime: dateRange.value ? dateRange.value[0].toLocaleString('zh-CN', { hour12: false }) : '',
-      endTime: dateRange.value ? dateRange.value[1].toLocaleString('zh-CN', { hour12: false }) : '',
-      status: '未开始',
-      description: editForm.description,
-      budget: editForm.budget
-    })
-    ElMessage.success('创建成功')
+    dialogVisible.value = false
+    await loadCampaigns()
+  } catch (e) {
+    ElMessage.error('保存失败，请重试')
   }
-  dialogVisible.value = false
-  loadData()
 }
 
-onMounted(() => { loadData() })
+onMounted(() => { loadCampaigns() })
 </script>
 
 <style scoped>

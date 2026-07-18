@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <!-- 日志输出格式 -->
+    <!-- 日志输出格式（含 MDC traceId，用于请求追踪） -->
     <property name="LOG_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{traceId:-no-trace}] - %msg%n"/>
     <!-- 日志文件路径（可通过 application-prod.yml 中 logging.file.path 覆盖） -->
     <property name="LOG_PATH" value="${LOG_PATH:-./logs}"/>
 
@@ -61,4 +61,11 @@
             <appender-ref ref="ERROR_FILE"/>
         </root>
     </springProfile>
+
+    <!-- 默认配置（无 profile 匹配时的兜底） -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+        <appender-ref ref="ERROR_FILE"/>
+    </root>
 </configuration>

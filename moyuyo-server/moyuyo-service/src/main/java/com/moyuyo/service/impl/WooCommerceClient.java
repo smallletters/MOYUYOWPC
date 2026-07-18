@@ -4,8 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.common.config.WooCommerceProperties;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -15,12 +15,19 @@ import java.util.*;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class WooCommerceClient {
 
     private final RestTemplate restTemplate;
     private final WooCommerceProperties properties;
     private final ObjectMapper objectMapper;
+
+    public WooCommerceClient(@Qualifier("restTemplate") RestTemplate restTemplate,
+                              WooCommerceProperties properties,
+                              ObjectMapper objectMapper) {
+        this.restTemplate = restTemplate;
+        this.properties = properties;
+        this.objectMapper = objectMapper;
+    }
 
     public String getBaseUrl() {
         String url = properties.getUrl();

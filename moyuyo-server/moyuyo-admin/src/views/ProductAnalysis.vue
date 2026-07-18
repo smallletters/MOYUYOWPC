@@ -82,6 +82,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getProductAnalysisKpi, getProductAnalysisList } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -91,32 +92,42 @@ const filters = reactive({
   keyword: ''
 })
 
+// KPI数据，从API获取
 const kpiData = reactive({
-  totalProducts: 1286,
-  activeProducts: 945,
-  totalViews: 285430,
-  totalSales: 15682
+  totalProducts: 0,
+  activeProducts: 0,
+  totalViews: 0,
+  totalSales: 0
 })
-
-const mockData = [
-  { id: 1, productName: '无线蓝牙耳机 Pro', views: 28500, favorites: 3200, cartAdds: 1800, sales: 1200, revenue: 179880 },
-  { id: 2, productName: '智能手表S3', views: 19200, favorites: 2100, cartAdds: 950, sales: 680, revenue: 231200 },
-  { id: 3, productName: '运动休闲鞋', views: 15300, favorites: 1800, cartAdds: 1200, sales: 890, revenue: 106800 },
-  { id: 4, productName: '不锈钢保温杯', views: 12800, favorites: 2400, cartAdds: 1600, sales: 1500, revenue: 89700 },
-  { id: 5, productName: '轻薄笔记本电脑包', views: 9600, favorites: 1100, cartAdds: 680, sales: 420, revenue: 62700 }
-]
 
 const tableData = ref([])
 
-function loadData() {
-  const start = (currentPage.value - 1) * pageSize.value
-  const list = mockData.filter(d => {
-    const kw = filters.keyword.toLowerCase()
-    if (kw && !d.productName.toLowerCase().includes(kw)) return false
-    return true
-  })
-  total.value = list.length
-  tableData.value = list.slice(start, start + pageSize.value)
+// 从API加载KPI和列表数据
+async function loadData() {
+  try {
+    // 并行加载KPI和列表数据
+    const [kpiRes, listRes] = await Promise.all([
+      getProductAnalysisKpi(),
+      getProductAnalysisList()
+    ])
+    // 填充KPI
+    if (kpiRes) {
+      Object.assign(kpiData, kpiRes)
+    }
+    // 填充列表
+    const list = (listRes && listRes.records) || listRes || []
+    const filtered = list.filter(d => {
+      const kw = filters.keyword.toLowerCase()
+      if (kw && !d.productName.toLowerCase().includes(kw)) return false
+      return true
+    })
+    total.value = filtered.length
+    const start = (currentPage.value - 1) * pageSize.value
+    tableData.value = filtered.slice(start, start + pageSize.value)
+  } catch (e) {
+    console.error('加载商品分析数据失败:', e)
+    ElMessage.error('加载商品分析数据失败')
+  }
 }
 
 function handleSearch() { currentPage.value = 1; loadData() }

@@ -107,8 +107,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getCmsList, createCms, updateCms, updateCmsStatus, reorderCms } from '../api/admin'
 
 const activeTab = ref('banner')
 const dialogVisible = ref(false)
@@ -122,13 +123,25 @@ const tabList = [
   { key: 'push', label: 'Push推送' }
 ]
 
-// Banner 模拟数据
-const bannerData = ref([
-  { id: 1, title: '春季新品上市活动', locations: ['首页', '分类页'], status: '投放中', dateRange: '03/01 - 04/30', ctr: '3.2%' },
-  { id: 2, title: '会员专享优惠', locations: ['首页', '活动页'], status: '投放中', dateRange: '03/15 - 04/15', ctr: '5.8%' },
-  { id: 3, title: '宠物节大促', locations: ['首页'], status: '已暂停', dateRange: '04/01 - 04/20', ctr: '1.4%' },
-  { id: 4, title: '年货节特惠', locations: ['活动页'], status: '已过期', dateRange: '01/20 - 02/10', ctr: '2.1%' }
-])
+// Banner 列表（通过API获取）
+const bannerData = ref([])
+
+// 加载Banner列表
+async function loadBannerData() {
+  try {
+    const list = await getCmsList()
+    bannerData.value = (list || []).map(item => ({
+      id: item.id,
+      title: item.title || '',
+      locations: item.locations || [],
+      status: item.status || '已暂停',
+      dateRange: item.dateRange || '',
+      ctr: item.ctr || '0%'
+    }))
+  } catch (e) {
+    console.error('获取CMS列表失败', e)
+  }
+}
 
 function statusTagClass(status) {
   const map = {
@@ -145,20 +158,44 @@ function handleEdit(item) {
   dialogVisible.value = true
 }
 
-function handleMove(item, dir) {
-  ElMessage.success(`已将 "${item.title}" ${dir === 'up' ? '上移' : '下移'}`)
+// 上下移动排序
+async function handleMove(item, dir) {
+  try {
+    await reorderCms({ id: item.id, direction: dir })
+    ElMessage.success(`已将 "${item.title}" ${dir === 'up' ? '上移' : '下移'}`)
+    await loadBannerData()
+  } catch (e) {
+    ElMessage.error('排序操作失败')
+  }
 }
 
-function handleToggleStatus(item) {
-  const old = item.status
-  item.status = item.status === '投放中' ? '已暂停' : '投放中'
-  ElMessage.success(`Banner 已${item.status === '投放中' ? '恢复投放' : '暂停'}`)
+// 切换投放/暂停状态
+async function handleToggleStatus(item) {
+  const newStatus = item.status === '投放中' ? '已暂停' : '投放中'
+  try {
+    await updateCmsStatus(item.id, { status: newStatus })
+    item.status = newStatus
+    ElMessage.success(`Banner 已${item.status === '投放中' ? '恢复投放' : '暂停'}`)
+  } catch (e) {
+    ElMessage.error('状态更新失败')
+  }
 }
 
-function handleSave() {
-  ElMessage.success('保存成功')
-  dialogVisible.value = false
+// 保存Banner编辑
+async function handleSave() {
+  try {
+    await updateCms(editForm.value)
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    await loadBannerData()
+  } catch (e) {
+    ElMessage.error('保存失败')
+  }
 }
+
+onMounted(() => {
+  loadBannerData()
+})
 </script>
 
 <style scoped>

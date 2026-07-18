@@ -85,6 +85,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getOverseasWarehouse, createOverseasWarehouse, updateOverseasWarehouse, deleteOverseasWarehouse } from '../api/admin'
 
 const pageTitle = '海外仓管理'
 const filters = reactive({ keyword: '' })
@@ -103,29 +104,66 @@ const editForm = reactive({
   status: '正常'
 })
 
-const mockData = [
-  { id: 1, name: '洛杉矶海外仓', country: '美国', skuCount: 320, totalStock: 15800, usageRate: 72, status: '正常' },
-  { id: 2, name: '纽约海外仓', country: '美国', skuCount: 280, totalStock: 12300, usageRate: 85, status: '正常' },
-  { id: 3, name: '伦敦海外仓', country: '英国', skuCount: 150, totalStock: 7600, usageRate: 95, status: '满仓' },
-  { id: 4, name: '东京海外仓', country: '日本', skuCount: 200, totalStock: 9800, usageRate: 55, status: '正常' },
-  { id: 5, name: '法兰克福海外仓', country: '德国', skuCount: 180, totalStock: 8500, usageRate: 45, status: '维护中' },
-  { id: 6, name: '悉尼海外仓', country: '澳大利亚', skuCount: 90, totalStock: 4200, usageRate: 38, status: '正常' }
-]
-
-function loadData() {
-  let filtered = [...mockData]
-  if (filters.keyword) {
-    filtered = filtered.filter(item => item.name.includes(filters.keyword) || item.country.includes(filters.keyword))
+// 加载海外仓数据
+async function loadData() {
+  try {
+    const res = await getOverseasWarehouse()
+    const list = res || []
+    let filtered = [...list]
+    if (filters.keyword) {
+      filtered = filtered.filter(item => item.name.includes(filters.keyword) || item.country.includes(filters.keyword))
+    }
+    tableData.value = filtered
+    total.value = filtered.length
+  } catch (error) {
+    console.error('获取海外仓数据失败:', error)
+    ElMessage.error('获取海外仓数据失败')
   }
-  tableData.value = filtered
-  total.value = filtered.length
 }
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.keyword = ''; handleSearch() }
 function handleAdd() { dialogTitle.value = '新建海外仓'; editForm.name = ''; editForm.country = ''; editForm.skuCount = 0; editForm.totalStock = 0; editForm.usageRate = 0; editForm.status = '正常'; dialogVisible.value = true }
 function handleEdit(row) { dialogTitle.value = '编辑海外仓'; Object.assign(editForm, row); dialogVisible.value = true }
-function handleDelete(row) { ElMessageBox.confirm('确定删除？','提示').then(() => { ElMessage.success('删除成功'); loadData() }) }
-function handleSave() { ElMessage.success('保存成功'); dialogVisible.value = false; loadData() }
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确定删除？', '提示')
+    await deleteOverseasWarehouse(row.id)
+    ElMessage.success('删除成功')
+    await loadData()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败: ' + (e.message || '未知错误'))
+    }
+  }
+}
+async function handleSave() {
+  try {
+    if (editForm.id) {
+      await updateOverseasWarehouse(editForm.id, {
+        name: editForm.name,
+        country: editForm.country,
+        skuCount: editForm.skuCount,
+        totalStock: editForm.totalStock,
+        usageRate: editForm.usageRate,
+        status: editForm.status
+      })
+    } else {
+      await createOverseasWarehouse({
+        name: editForm.name,
+        country: editForm.country,
+        skuCount: editForm.skuCount,
+        totalStock: editForm.totalStock,
+        usageRate: editForm.usageRate,
+        status: editForm.status
+      })
+    }
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    await loadData()
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e.message || '未知错误'))
+  }
+}
 onMounted(() => loadData())
 </script>
 

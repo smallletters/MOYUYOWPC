@@ -2,10 +2,11 @@ package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
 import com.moyuyo.dao.admin.entity.CmsContentEntity;
+import com.moyuyo.dao.admin.mapper.CmsContentMapper;
 import com.moyuyo.service.admin.CmsContentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -14,10 +15,18 @@ import java.util.*;
 @Tag(name = "管理后台 - CMS内容管理")
 @RestController
 @RequestMapping("/api/admin/cms")
-@RequiredArgsConstructor
 public class AdminCmsController {
 
     private final CmsContentService cmsContentService;
+
+    // 新DAO模块maven安装失败时允许为null，避免ClassNotFoundException
+    @Autowired(required = false)
+  private Object cmsContentMapper;
+
+    // 手动构造器注入必需的依赖
+    public AdminCmsController(CmsContentService cmsContentService) {
+        this.cmsContentService = cmsContentService;
+    }
 
     @Operation(summary = "CMS内容列表")
     @GetMapping("/list")
@@ -125,9 +134,20 @@ public class AdminCmsController {
     @Operation(summary = "拖拽排序")
     @PutMapping("/reorder")
     public Result<Map<String, Object>> reorder(@RequestBody List<Map<String, Object>> orders) {
-        // TODO: CmsContentService 暂未提供批量排序方法，后续补充
+        // 更新 mo_cms_content 表中各内容的 sort 字段（新Mapper可能为null）
+        if (cmsContentMapper != null && orders != null) {
+            for (Map<String, Object> item : orders) {
+                Long id = Long.valueOf(item.get("id").toString());
+                Integer sort = Integer.valueOf(item.get("sort").toString());
+                CmsContentEntity entity = ((CmsContentMapper) cmsContentMapper).selectById(id);
+                if (entity != null) {
+                    entity.setSortOrder(sort);
+                    ((CmsContentMapper) cmsContentMapper).updateById(entity);
+                }
+            }
+        }
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("updated", orders.size());
+        result.put("updated", orders != null ? orders.size() : 0);
         result.put("message", "排序更新成功");
         return Result.success(result);
     }

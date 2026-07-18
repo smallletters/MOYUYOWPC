@@ -17,10 +17,10 @@
             </div>
             <span class="kpi-label">本月 GMV</span>
           </div>
-          <div class="kpi-value">$156,800</div>
-          <div class="kpi-trend kpi-trend-up">
-            <span class="trend-arrow">↑</span>
-            <span class="trend-value">+12.5%</span>
+          <div class="kpi-value">{{ overviewData.gmv }}</div>
+          <div class="kpi-trend" :class="overviewData.gmvTrend && overviewData.gmvTrend.startsWith('+') ? 'kpi-trend-up' : 'kpi-trend-down'" v-if="overviewData.gmvTrend">
+            <span class="trend-arrow">{{ overviewData.gmvTrend.startsWith('+') ? '↑' : '↓' }}</span>
+            <span class="trend-value">{{ overviewData.gmvTrend }}</span>
             <span class="trend-label">vs 上月</span>
           </div>
         </div>
@@ -32,7 +32,7 @@
             </div>
             <span class="kpi-label">实收金额</span>
           </div>
-          <div class="kpi-value">$148,200</div>
+          <div class="kpi-value">{{ overviewData.received }}</div>
           <div class="kpi-trend">
             <span class="trend-label">扣除退款/优惠后</span>
           </div>
@@ -45,7 +45,7 @@
             </div>
             <span class="kpi-label">待结算</span>
           </div>
-          <div class="kpi-value kpi-value-brand">$8,600</div>
+          <div class="kpi-value kpi-value-brand">{{ overviewData.pendingSettlement }}</div>
           <div class="kpi-trend">
             <span class="trend-label">预计 T+3 到账</span>
           </div>
@@ -58,7 +58,7 @@
             </div>
             <span class="kpi-label">退款金额</span>
           </div>
-          <div class="kpi-value kpi-value-error">$5,230</div>
+          <div class="kpi-value kpi-value-error">{{ overviewData.refundAmount }}</div>
           <div class="kpi-trend">
             <span class="trend-label">本月累计</span>
           </div>
@@ -75,72 +75,23 @@
             <span class="section-title-icon">📊</span>
             支付渠道分布
           </h2>
-          <span class="section-subtitle">本月总 GMV $156,800</span>
+          <span class="section-subtitle">本月总 GMV {{ overviewData.gmv }}</span>
         </div>
         <div class="chart-card">
           <div class="bar-chart">
-            <!-- Stripe 62% -->
-            <div class="bar-row-item">
+            <div class="bar-row-item" v-for="ch in paymentChannels" :key="ch.name">
               <div class="bar-header-row">
                 <div class="bar-label-group">
-                  <span class="bar-dot bar-dot-primary"></span>
-                  <span class="bar-name">Stripe</span>
+                  <span class="bar-dot" :class="ch.dotClass || 'bar-dot-muted'"></span>
+                  <span class="bar-name">{{ ch.name }}</span>
                 </div>
                 <div class="bar-value-group">
-                  <span class="bar-amount">$97,100</span>
-                  <span class="bar-percent">62%</span>
+                  <span class="bar-amount">{{ ch.amount }}</span>
+                  <span class="bar-percent">{{ ch.percent }}%</span>
                 </div>
               </div>
               <div class="bar-track-bg">
-                <div class="bar-fill-h bar-fill-primary" style="width: 62%;"></div>
-              </div>
-            </div>
-            <!-- Apple Pay 23% -->
-            <div class="bar-row-item">
-              <div class="bar-header-row">
-                <div class="bar-label-group">
-                  <span class="bar-dot bar-dot-chart3"></span>
-                  <span class="bar-name">Apple Pay</span>
-                </div>
-                <div class="bar-value-group">
-                  <span class="bar-amount">$36,100</span>
-                  <span class="bar-percent">23%</span>
-                </div>
-              </div>
-              <div class="bar-track-bg">
-                <div class="bar-fill-h bar-fill-chart3" style="width: 23%;"></div>
-              </div>
-            </div>
-            <!-- PayPal 12% -->
-            <div class="bar-row-item">
-              <div class="bar-header-row">
-                <div class="bar-label-group">
-                  <span class="bar-dot bar-dot-chart4"></span>
-                  <span class="bar-name">PayPal</span>
-                </div>
-                <div class="bar-value-group">
-                  <span class="bar-amount">$18,800</span>
-                  <span class="bar-percent">12%</span>
-                </div>
-              </div>
-              <div class="bar-track-bg">
-                <div class="bar-fill-h bar-fill-chart4" style="width: 12%;"></div>
-              </div>
-            </div>
-            <!-- 其他 3% -->
-            <div class="bar-row-item">
-              <div class="bar-header-row">
-                <div class="bar-label-group">
-                  <span class="bar-dot bar-dot-muted"></span>
-                  <span class="bar-name">其他</span>
-                </div>
-                <div class="bar-value-group">
-                  <span class="bar-amount">$4,700</span>
-                  <span class="bar-percent">3%</span>
-                </div>
-              </div>
-              <div class="bar-track-bg">
-                <div class="bar-fill-h bar-fill-muted" style="width: 3%;"></div>
+                <div class="bar-fill-h" :class="ch.fillClass || 'bar-fill-muted'" :style="{ width: ch.percent + '%' }"></div>
               </div>
             </div>
           </div>
@@ -154,39 +105,24 @@
             <span class="section-title-icon section-title-icon-error">⚠️</span>
             待处理异常
           </h2>
-          <span class="section-badge-error">2 笔需处理</span>
+          <span class="section-badge-error">{{ exceptions.length }} 笔需处理</span>
         </div>
         <!-- 红色提示条 -->
-        <div class="alert-banner-error">
+        <div class="alert-banner-error" v-if="exceptions.length > 0">
           <span class="alert-banner-icon">❗</span>
-          <span class="alert-banner-text">2 笔结算异常需处理，请尽快核实并操作</span>
+          <span class="alert-banner-text">{{ exceptions.length }} 笔结算异常需处理，请尽快核实并操作</span>
         </div>
         <!-- 异常列表 -->
         <div class="exception-list">
-          <!-- 异常 1 -->
-          <div class="exception-card">
+          <div class="exception-card" v-for="exc in exceptions" :key="exc.id">
             <div class="exception-card-body">
               <div class="exception-info">
                 <div class="exception-meta">
                   <span class="exception-badge">异常</span>
-                  <span class="exception-source">PayPal / 07.01-07.07</span>
+                  <span class="exception-source">{{ exc.source }}</span>
                 </div>
-                <p class="exception-desc">结算失败：银行账户信息已过期，需更新收款账户后重新发起结算。</p>
-                <div class="exception-amount">$3,760</div>
-              </div>
-              <button class="btn btn-primary exception-btn">处理</button>
-            </div>
-          </div>
-          <!-- 异常 2 -->
-          <div class="exception-card">
-            <div class="exception-card-body">
-              <div class="exception-info">
-                <div class="exception-meta">
-                  <span class="exception-badge">异常</span>
-                  <span class="exception-source">Stripe / 06.18-06.24</span>
-                </div>
-                <p class="exception-desc">退款争议：买家发起 chargeback，争议金额暂冻结，需提交举证材料。</p>
-                <div class="exception-amount">$1,470</div>
+                <p class="exception-desc">{{ exc.description }}</p>
+                <div class="exception-amount">{{ exc.amount }}</div>
               </div>
               <button class="btn btn-primary exception-btn">处理</button>
             </div>
@@ -237,16 +173,61 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getFinanceOverview, getSettlements, getFinanceRecords } from '../api/admin'
 
-const settlementData = ref([
-  { id: 1, period: '2026/06/25 - 2026/06/30', channel: 'Stripe', amount: '$24,350', status: '已结算' },
-  { id: 2, period: '2026/06/25 - 2026/06/30', channel: 'Apple Pay', amount: '$8,920', status: '已结算' },
-  { id: 3, period: '2026/07/01 - 2026/07/07', channel: 'Stripe', amount: '$18,640', status: '结算中' },
-  { id: 4, period: '2026/07/01 - 2026/07/07', channel: 'PayPal', amount: '$3,760', status: '异常' },
-  { id: 5, period: '2026/07/01 - 2026/07/07', channel: 'Apple Pay', amount: '$6,980', status: '结算中' }
-])
+// 财务概览KPI数据
+const overviewData = ref({
+  gmv: 0,
+  gmvTrend: '',
+  received: 0,
+  pendingSettlement: 0,
+  refundAmount: 0
+})
+
+// 支付渠道分布
+const paymentChannels = ref([])
+
+// 待处理异常
+const exceptions = ref([])
+
+// 结算明细
+const settlementData = ref([])
+
+// 加载状态
+const loading = ref(false)
+
+// 获取所有财务数据
+async function fetchData() {
+  loading.value = true
+  try {
+    // 获取财务概览
+    const overviewRes = await getFinanceOverview()
+    if (overviewRes) {
+      overviewData.value = {
+        gmv: overviewRes.gmv || 0,
+        gmvTrend: overviewRes.gmvTrend || '',
+        received: overviewRes.received || 0,
+        pendingSettlement: overviewRes.pendingSettlement || 0,
+        refundAmount: overviewRes.refundAmount || 0
+      }
+      paymentChannels.value = overviewRes.paymentChannels || []
+      exceptions.value = overviewRes.exceptions || []
+    }
+
+    // 获取结算明细
+    const settlementsRes = await getSettlements()
+    if (settlementsRes) {
+      settlementData.value = settlementsRes
+    }
+  } catch (err) {
+    console.error('获取财务数据失败:', err)
+    ElMessage.error('获取财务数据失败')
+  } finally {
+    loading.value = false
+  }
+}
 
 function statusClass(status) {
   const map = {
@@ -264,4 +245,8 @@ function handleSettle() {
 function handleExport() {
   ElMessage.success('报表导出任务已提交，请稍后在下载中心查看')
 }
+
+onMounted(() => {
+  fetchData()
+})
 </script>

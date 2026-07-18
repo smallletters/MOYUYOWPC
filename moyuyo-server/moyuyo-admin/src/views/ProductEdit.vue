@@ -79,29 +79,63 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { reactive, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import api from '../api/index'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const route = useRoute()
 
 const form = reactive({
-  name: '天然深海鱼油软胶囊',
-  category: 'health',
-  sku: 'FISH-OIL-001',
-  price: 298.00,
-  stock: 128,
-  description: '优质深海鱼油软胶囊，富含 Omega-3 脂肪酸，有助于心脑血管健康。每粒含 EPA 180mg、DHA 120mg。',
+  name: '',
+  category: '',
+  sku: '',
+  price: 0,
+  stock: 0,
+  description: '',
   status: true
 })
 
-function handleSave() {
-  alert('商品已保存')
-  router.push('/products')
+// 获取商品详情
+async function fetchProduct() {
+  const id = route.query.id
+  if (!id) return
+  try {
+    const res = await api.get(`/products/${id}`)
+    if (res) {
+      Object.assign(form, res)
+    }
+  } catch (err) {
+    console.error('获取商品详情失败:', err)
+    ElMessage.error('获取商品详情失败')
+  }
+}
+
+async function handleSave() {
+  try {
+    const id = route.query.id
+    if (id) {
+      await api.put(`/products/${id}`, { ...form })
+      ElMessage.success('商品已更新')
+    } else {
+      await api.post('/products/create', { ...form })
+      ElMessage.success('商品已创建')
+    }
+    router.push('/products')
+  } catch (err) {
+    console.error('保存商品失败:', err)
+    ElMessage.error('保存商品失败')
+  }
 }
 
 function handleCancel() {
   router.push('/products')
 }
+
+onMounted(() => {
+  fetchProduct()
+})
 </script>
 
 <style scoped lang="css">

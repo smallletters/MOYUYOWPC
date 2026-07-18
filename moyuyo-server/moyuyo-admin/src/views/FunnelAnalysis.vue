@@ -20,17 +20,26 @@
 </template>
 
 <script setup>
-const funnelData = [
-  { name: '浏览商品', count: 100000, rate: 100, percent: 100 },
-  { name: '加入购物车', count: 45000, rate: 45, percent: 45 },
-  { name: '提交订单', count: 20000, rate: 20, percent: 20 },
-  { name: '支付成功', count: 15000, rate: 15, percent: 15 },
-  { name: '完成交易', count: 12000, rate: 12, percent: 12 },
-]
+import { ref, onMounted } from 'vue'
+import { getFunnelAnalysis } from '../api/admin'
+
+const funnelData = ref([])
+
+async function loadData() {
+  try {
+    const res = await getFunnelAnalysis()
+    funnelData.value = res && res.steps ? res.steps : []
+  } catch (err) {
+    console.error('获取漏斗数据失败', err)
+  }
+}
+
 function getColor(index) {
   const colors = ['#007aff','#2e8dff','#66abff','#9fcbff','#cfe5ff']
   return colors[index]
 }
+
+onMounted(() => loadData())
 </script>
 
 <style scoped>

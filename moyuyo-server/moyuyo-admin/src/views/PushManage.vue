@@ -12,34 +12,34 @@
     <section class="stats-grid">
       <div class="stat-card">
         <div class="stat-label">今日推送数</div>
-        <div class="stat-value">3,482</div>
+        <div class="stat-value">{{ pushStats.todaySent }}</div>
         <div class="stat-trend stat-trend-up">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-          +12.5%
+          +{{ pushStats.todayGrowth }}%
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-label">本月推送</div>
-        <div class="stat-value">58,247</div>
+        <div class="stat-value">{{ pushStats.monthlySent }}</div>
         <div class="stat-trend stat-trend-up">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-          +8.3%
+          +{{ pushStats.monthlyGrowth }}%
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-label">推送成功率</div>
-        <div class="stat-value">96.8<span class="stat-unit">%</span></div>
+        <div class="stat-value">{{ pushStats.successRate }}<span class="stat-unit">%</span></div>
         <div class="stat-trend stat-trend-up">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-          +0.3%
+          +{{ pushStats.rateGrowth }}%
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-label">订阅用户数</div>
-        <div class="stat-value">24.6K</div>
+        <div class="stat-value">{{ pushStats.subscriberCount }}</div>
         <div class="stat-trend stat-trend-up">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-          +5.2%
+          +{{ pushStats.subscriberGrowth }}%
         </div>
       </div>
     </section>
@@ -163,122 +163,104 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getPushStats, getPushRecords, getPushScheduled, createPush, sendPush, cancelPush, deletePush } from '../api/admin'
 
 const scheduledExpanded = ref(false)
 
-const pushList = ref([
-  {
-    id: 1,
-    title: '618 年中大促即将开始',
-    summary: '精选宠物好物低至5折，限时抢购即将开始，千万别错过！',
-    typeLabel: 'App Push',
-    typeClass: 'app-push',
-    status: 'sent',
-    statusLabel: '已发送',
-    statusClass: 'sent',
-    time: '06-18 10:00',
-    targetLabel: '全部用户',
-    data: [
-      { label: '送达', value: '52,136' },
-      { label: '到达率', value: '96.8%' },
-      { label: '打开', value: '12,834' },
-      { label: '点击', value: '4,217' }
-    ]
-  },
-  {
-    id: 2,
-    title: '新品到货通知',
-    summary: '您关注的商品已到货，快来选购吧！限量库存先到先得。',
-    typeLabel: '短信',
-    typeClass: 'sms',
-    status: 'pending',
-    statusLabel: '待发送',
-    statusClass: 'pending',
-    time: '定时 06-20 18:00',
-    targetLabel: '新用户',
-    data: []
-  },
-  {
-    id: 3,
-    title: '六月会员权益报告',
-    summary: '您的专属会员月度报告已生成，查看本月消费明细与专属优惠。',
-    typeLabel: '邮件',
-    typeClass: 'email',
-    status: 'sent',
-    statusLabel: '已发送',
-    statusClass: 'sent',
-    time: '06-15 09:00',
-    targetLabel: 'VIP',
-    data: [
-      { label: '送达', value: '8,421' },
-      { label: '到达率', value: '98.2%' },
-      { label: '打开', value: '2,109' },
-      { label: '点击', value: '893' }
-    ]
-  },
-  {
-    id: 4,
-    title: '系统维护通知',
-    summary: '尊敬的用户，系统将于今晚进行升级维护，预计持续2小时。',
-    typeLabel: 'App Push',
-    typeClass: 'app-push',
-    status: 'cancelled',
-    statusLabel: '已取消',
-    statusClass: 'cancelled',
-    time: '定时 06-14 22:00',
-    targetLabel: '自定义',
-    data: []
-  },
-  {
-    id: 5,
-    title: '新用户注册礼包',
-    summary: '欢迎加入！您的新用户注册礼包已到账，登录即可领取。',
-    typeLabel: '邮件',
-    typeClass: 'email',
-    status: 'sent',
-    statusLabel: '已发送',
-    statusClass: 'sent',
-    time: '06-13 08:30',
-    targetLabel: '新注册用户',
-    data: [
-      { label: '送达', value: '4,823' },
-      { label: '到达率', value: '97.5%' },
-      { label: '打开', value: '3,211' },
-      { label: '点击', value: '1,876' }
-    ]
+// 推送统计KPI数据
+const pushStats = reactive({
+  todaySent: 0,
+  todayGrowth: 0,
+  monthlySent: 0,
+  monthlyGrowth: 0,
+  successRate: 0,
+  rateGrowth: 0,
+  subscriberCount: 0,
+  subscriberGrowth: 0
+})
+
+// 推送记录列表
+const pushList = ref([])
+
+// 定时推送列表
+const scheduledList = ref([])
+
+// 从API加载推送数据
+async function loadData() {
+  try {
+    const [statsRes, recordsRes, scheduledRes] = await Promise.all([
+      getPushStats(),
+      getPushRecords(),
+      getPushScheduled()
+    ])
+    // 填充统计KPI
+    if (statsRes) {
+      Object.assign(pushStats, statsRes)
+    }
+    // 填充推送记录列表
+    const records = (recordsRes && recordsRes.records) || recordsRes || []
+    pushList.value = records
+    // 填充定时推送列表
+    const scheduled = (scheduledRes && scheduledRes.records) || scheduledRes || []
+    scheduledList.value = scheduled
+  } catch (e) {
+    console.error('加载推送数据失败:', e)
+    ElMessage.error('加载推送数据失败')
   }
-])
-
-const scheduledList = ref([
-  { title: '新品到货通知', time: '发送时间：06-20 18:00', countdown: '2天 3小时', iconClass: 'scheduled-blue' },
-  { title: '周末促销邮件', time: '发送时间：06-21 09:00', countdown: '3天 18小时', iconClass: 'scheduled-orange' },
-  { title: '618 回顾推送', time: '发送时间：06-22 10:00', countdown: '4天 19小时', iconClass: 'scheduled-purple' }
-])
-
-function handleQuickCreate(type) {
-  console.log('快速新建:', type)
 }
 
-function handleView(item) {
+function handleQuickCreate(type) {
+  ElMessage.info(`快速新建: ${type}`)
+}
+
+async function handleView(item) {
   console.log('查看推送:', item.title)
 }
 
-function handleSend(item) {
-  console.log('发送推送:', item.title)
+// 发送推送（调用API）
+async function handleSend(item) {
+  try {
+    await sendPush(item.id)
+    ElMessage.success('推送发送成功')
+    loadData()
+  } catch (e) {
+    console.error('发送推送失败:', e)
+    ElMessage.error('发送失败')
+  }
 }
 
-function handleCancel(item) {
-  console.log('取消推送:', item.title)
+// 取消推送（调用API）
+async function handleCancel(item) {
+  try {
+    await cancelPush(item.id)
+    ElMessage.success('推送已取消')
+    loadData()
+  } catch (e) {
+    console.error('取消推送失败:', e)
+    ElMessage.error('取消失败')
+  }
 }
 
 function handleCopy(item) {
-  console.log('复制推送:', item.title)
+  ElMessage.success('推送已复制')
 }
 
-function handleDelete(item) {
-  console.log('删除推送:', item.title)
+// 删除推送（调用API）
+async function handleDelete(item) {
+  try {
+    ElMessageBox.confirm('确定删除该推送？', '提示', { type: 'warning' }).then(async () => {
+      await deletePush(item.id)
+      ElMessage.success('删除成功')
+      loadData()
+    }).catch(() => {})
+  } catch (e) {
+    console.error('删除推送失败:', e)
+  }
 }
+
+onMounted(() => { loadData() })
 </script>
 
 <style scoped>

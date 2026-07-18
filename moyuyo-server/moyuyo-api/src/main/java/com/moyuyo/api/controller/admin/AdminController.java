@@ -1,5 +1,6 @@
 package com.moyuyo.api.controller.admin;
 
+import com.moyuyo.common.JwtUtil;
 import com.moyuyo.common.Result;
 import com.moyuyo.service.admin.AdminDashboardService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,6 +18,7 @@ import java.util.*;
 public class AdminController {
 
     private final AdminDashboardService dashboardService;
+    private final JwtUtil jwtUtil;
 
     @Value("${admin.email:}")
     private String adminEmail;
@@ -34,7 +36,8 @@ public class AdminController {
         }
         if (adminEmail.equals(email) && adminPassword.equals(password)) {
             Map<String, Object> data = new HashMap<>();
-            data.put("token", "admin_token_" + UUID.randomUUID().toString().substring(0, 8));
+            // 生成有效的 JWT token，使用固定管理员 ID 0
+            data.put("token", jwtUtil.generate(0L, email));
             data.put("name", "Admin");
             data.put("role", "超级管理员");
             return Result.success(data);

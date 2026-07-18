@@ -122,21 +122,25 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import api from '../api/index'
+import { ElMessage } from 'element-plus'
 
 const activeTab = ref('all')
 const selectAll = ref(false)
 const selectedIds = ref([])
 const currentPage = ref(1)
 const pageSize = 10
+const loading = ref(false)
+const total = ref(0)
 
-const tabs = [
-  { key: 'all', label: '全部', count: 28 },
-  { key: 'active', label: '在售', count: 18 },
-  { key: 'inactive', label: '已下架', count: 5 },
-  { key: 'draft', label: '草稿', count: 3 },
-  { key: 'pending', label: '待审核', count: 2 }
-]
+const tabs = ref([
+  { key: 'all', label: '全部', count: 0 },
+  { key: 'active', label: '在售', count: 0 },
+  { key: 'inactive', label: '已下架', count: 0 },
+  { key: 'draft', label: '草稿', count: 0 },
+  { key: 'pending', label: '待审核', count: 0 }
+])
 
 const filters = reactive({
   search: '',
@@ -145,39 +149,43 @@ const filters = reactive({
   stock: ''
 })
 
-const productList = [
-  { id: 1, name: '纯棉圆领T恤', sku: 'TS-001', price: '89.00', stock: 256, sales: 1280, status: '在售', statusClass: 'green', color: '#3b82f6' },
-  { id: 2, name: '无线蓝牙耳机', sku: 'BT-002', price: '299.00', stock: 48, sales: 856, status: '在售', statusClass: 'green', color: '#1d1d1f' },
-  { id: 3, name: '便携式充电宝', sku: 'PB-003', price: '149.00', stock: 0, sales: 623, status: '缺货', statusClass: 'red', color: '#f59e0b' },
-  { id: 4, name: '机械键盘 87键', sku: 'KB-004', price: '399.00', stock: 12, sales: 445, status: '库存紧张', statusClass: 'yellow', color: '#6366f1' },
-  { id: 5, name: '鼠标垫 大号', sku: 'MP-005', price: '29.90', stock: 520, sales: 2100, status: '在售', statusClass: 'green', color: '#10b981' },
-  { id: 6, name: '简约双肩背包', sku: 'BP-006', price: '259.00', stock: 3, sales: 334, status: '待审核', statusClass: 'yellow', color: '#8b5cf6' },
-  { id: 7, name: '智能手环', sku: 'WB-007', price: '599.00', stock: 0, sales: 189, status: '已下架', statusClass: 'gray', color: '#ef4444' },
-  { id: 8, name: '不锈钢保温杯', sku: 'BC-008', price: '79.00', stock: 180, sales: 756, status: '在售', statusClass: 'green', color: '#06b6d4' },
-  { id: 9, name: 'USB-C 扩展坞', sku: 'DH-009', price: '189.00', stock: 65, sales: 410, status: '草稿', statusClass: 'gray', color: '#1d1d1f' },
-  { id: 10, name: '运动速干短裤', sku: 'ST-010', price: '129.00', stock: 92, sales: 567, status: '在售', statusClass: 'green', color: '#22c55e' }
-]
+const productList = ref([])
+
+// 获取商品列表
+async function fetchProducts() {
+  loading.value = true
+  try {
+    const params = {
+      page: currentPage.value,
+      pageSize: pageSize,
+      tab: activeTab.value,
+      ...filters
+    }
+    Object.keys(params).forEach(k => {
+      if (!params[k]) delete params[k]
+    })
+    const res = await api.get('/products/list', { params })
+    if (res) {
+      productList.value = res.records || res.list || res
+      total.value = res.total || 0
+      // 如果有分类统计，更新 tab 计数
+      if (res.tabCounts) {
+        tabs.value = res.tabCounts
+      }
+    }
+  } catch (err) {
+    console.error('获取商品列表失败:', err)
+    ElMessage.error('获取商品列表失败')
+  } finally {
+    loading.value = false
+  }
+}
 
 const filteredProducts = computed(() => {
-  let list = [...productList]
-  // tab 过滤
-  if (activeTab.value === 'active') {
-    list = list.filter(p => p.statusClass === 'green')
-  } else if (activeTab.value === 'inactive') {
-    list = list.filter(p => p.status === '已下架')
-  } else if (activeTab.value === 'draft') {
-    list = list.filter(p => p.status === '草稿')
-  } else if (activeTab.value === 'pending') {
-    list = list.filter(p => p.status === '待审核')
-  }
-  if (filters.search) {
-    const q = filters.search.toLowerCase()
-    list = list.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q))
-  }
-  return list
+  return productList.value
 })
 
-const totalPages = computed(() => Math.ceil(filteredProducts.value.length / pageSize) || 1)
+const totalPages = computed(() => Math.ceil(total.value / pageSize) || 1)
 
 function toggleSelectAll() {
   if (selectAll.value) {
@@ -189,6 +197,7 @@ function toggleSelectAll() {
 
 function handleSearch() {
   currentPage.value = 1
+  fetchProducts()
 }
 
 function handleReset() {
@@ -197,6 +206,7 @@ function handleReset() {
   filters.category = ''
   filters.stock = ''
   currentPage.value = 1
+  fetchProducts()
 }
 
 function handleAddProduct() {
@@ -214,6 +224,16 @@ function handleToggleStatus(product) {
 function handleBatchAction(action) {
   console.log('批量操作', action, selectedIds.value)
 }
+
+// 切换 tab 时重新加载数据
+watch(activeTab, () => {
+  currentPage.value = 1
+  fetchProducts()
+})
+
+onMounted(() => {
+  fetchProducts()
+})
 </script>
 
 <style scoped lang="css">

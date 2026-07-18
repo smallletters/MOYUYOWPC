@@ -1,13 +1,15 @@
 package com.moyuyo.api.controller.admin;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.moyuyo.common.Result;
+import com.moyuyo.dao.admin.entity.AuditLogEntity;
+import com.moyuyo.dao.admin.mapper.AuditLogMapper;
 import com.moyuyo.service.admin.SystemConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.*;
 
 @Tag(name = "管理后台 - 系统配置")
@@ -17,6 +19,8 @@ import java.util.*;
 public class AdminSystemConfigController {
 
     private final SystemConfigService systemConfigService;
+
+    private final AuditLogMapper auditLogMapper;
 
     @Operation(summary = "获取系统配置")
     @GetMapping("/config")
@@ -58,14 +62,18 @@ public class AdminSystemConfigController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
         List<Map<String, Object>> list = new ArrayList<>();
-        for (int i = 1; i <= size; i++) {
+        // 从 mo_audit_log 表查询真实日志数据，按 createTime 降序排列
+        List<AuditLogEntity> logList = auditLogMapper.selectList(
+          new LambdaQueryWrapper<AuditLogEntity>()
+            .orderByDesc(AuditLogEntity::getCreateTime));
+        for (AuditLogEntity log : logList) {
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", i);
-            item.put("operator", "管理员" + (i % 4 + 1));
-            item.put("action", type.equals("operation") ? getOperationAction(i) : getBusinessAction(i));
-            item.put("detail", "执行了操作" + i);
-            item.put("ip", "192.168.1." + (i % 255 + 1));
-            item.put("createTime", LocalDateTime.now().minusHours(i * 2));
+            item.put("id", log.getId());
+            item.put("operator", log.getOperatorName());
+            item.put("action", log.getAction());
+            item.put("detail", log.getDetail());
+            item.put("ip", log.getIp());
+            item.put("createTime", log.getCreateTime());
             list.add(item);
         }
         return Result.success(list);
@@ -78,15 +86,5 @@ public class AdminSystemConfigController {
         item.put("type", type);
         item.put("label", label);
         return item;
-    }
-
-    private String getOperationAction(int i) {
-        String[] actions = {"登录后台", "修改配置", "新增商品", "下架商品", "审核退款", "导出数据"};
-        return actions[i % actions.length];
-    }
-
-    private String getBusinessAction(int i) {
-        String[] actions = {"用户注册", "下单购买", "提交退款", "商品浏览", "收藏商品", "发布评价"};
-        return actions[i % actions.length];
     }
 }

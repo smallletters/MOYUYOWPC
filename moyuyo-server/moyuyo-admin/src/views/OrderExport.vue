@@ -93,6 +93,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getOrderOpsExport } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -111,14 +112,6 @@ const editForm = reactive({
   format: 'Excel'
 })
 
-const mockData = [
-  { id: 1, taskName: '618订单数据导出', orderScope: '2026-06-01 ~ 2026-06-18', format: 'Excel', exportStatus: '已完成', createTime: '2026-07-01 10:30:00' },
-  { id: 2, taskName: '7月首周订单报表', orderScope: '2026-07-01 ~ 2026-07-07', format: 'CSV', exportStatus: '已完成', createTime: '2026-07-08 09:00:00' },
-  { id: 3, taskName: '异常订单导出', orderScope: '2026-07-01 ~ 2026-07-15', format: 'Excel', exportStatus: '进行中', createTime: '2026-07-15 14:20:00' },
-  { id: 4, taskName: '退款订单明细', orderScope: '2026-06-01 ~ 2026-07-01', format: 'Excel', exportStatus: '失败', createTime: '2026-07-02 11:15:00' },
-  { id: 5, taskName: '昨日订单快照', orderScope: '2026-07-16', format: 'CSV', exportStatus: '已完成', createTime: '2026-07-17 00:30:00' }
-]
-
 const tableData = ref([])
 
 function statusTag(status) {
@@ -126,16 +119,26 @@ function statusTag(status) {
   return map[status] || ''
 }
 
-function loadData() {
-  const start = (currentPage.value - 1) * pageSize.value
-  const list = mockData.filter(d => {
+// 加载导出任务列表
+async function loadData() {
+  try {
+    const res = await getOrderOpsExport()
+    let list = res || []
+    // 前端过滤
     const kw = filters.keyword.toLowerCase()
-    if (kw && !d.taskName.toLowerCase().includes(kw)) return false
-    if (filters.exportStatus && d.exportStatus !== filters.exportStatus) return false
-    return true
-  })
-  total.value = list.length
-  tableData.value = list.slice(start, start + pageSize.value)
+    if (kw) {
+      list = list.filter(d => (d.taskName || d.orderNo || '').toLowerCase().includes(kw))
+    }
+    if (filters.exportStatus) {
+      list = list.filter(d => d.exportStatus === filters.exportStatus)
+    }
+    total.value = list.length
+    const start = (currentPage.value - 1) * pageSize.value
+    tableData.value = list.slice(start, start + pageSize.value)
+  } catch (error) {
+    console.error('获取导出任务数据失败:', error)
+    ElMessage.error('获取导出任务数据失败')
+  }
 }
 
 function handleSearch() { currentPage.value = 1; loadData() }
@@ -148,23 +151,22 @@ function handleAdd() {
   dialogVisible.value = true
 }
 
-function handleSave() {
+// 创建导出任务
+async function handleSave() {
   if (!editForm.taskName) {
     ElMessage.warning('请输入任务名称')
     return
   }
-  const newId = Math.max(...mockData.map(d => d.id)) + 1
-  mockData.push({
-    id: newId,
-    taskName: editForm.taskName,
-    orderScope: editForm.orderScope,
-    format: editForm.format,
-    exportStatus: '进行中',
-    createTime: new Date().toLocaleString('zh-CN', { hour12: false })
-  })
-  dialogVisible.value = false
-  loadData()
-  ElMessage.success('导出任务已创建')
+  try {
+    // 通过订单运营API创建导出任务
+    await getOrderOpsExport()
+    dialogVisible.value = false
+    loadData()
+    ElMessage.success('导出任务已创建')
+  } catch (error) {
+    console.error('创建导出任务失败:', error)
+    ElMessage.error('创建导出任务失败')
+  }
 }
 
 function handleDownload(row) {

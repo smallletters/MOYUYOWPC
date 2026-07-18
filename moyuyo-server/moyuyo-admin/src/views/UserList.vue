@@ -120,19 +120,23 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import api from '../api/index'
+import { ElMessage } from 'element-plus'
 
 const selectAll = ref(false)
 const selectedIds = ref([])
 const currentPage = ref(1)
 const pageSize = 10
+const loading = ref(false)
+const total = ref(0)
 
-const statsList = [
-  { label: '总用户数', value: '12,580' },
-  { label: '今日新增', value: '+45', change: '+45', trend: 'up' },
-  { label: '活跃用户', value: '3,210', change: '25.5%', trend: 'up' },
-  { label: 'GDPR 待处理', value: '2', change: '', trend: 'down' }
-]
+const statsList = ref([
+  { label: '总用户数', value: '-' },
+  { label: '今日新增', value: '-', change: '', trend: 'up' },
+  { label: '活跃用户', value: '-', change: '', trend: 'up' },
+  { label: 'GDPR 待处理', value: '-', change: '', trend: 'down' }
+])
 
 const filters = reactive({
   search: '',
@@ -141,42 +145,50 @@ const filters = reactive({
   status: ''
 })
 
-const userList = [
-  { id: 1001, name: '张三', email: 'zhangsan@example.com', registerTime: '2024-03-10', level: '钻石会员', levelClass: 'diamond', orders: 28, spent: '12,580', status: '正常', statusClass: 'active', avatarColor: '#2563eb', channel: 'web' },
-  { id: 1002, name: '李四', email: 'lisi@example.com', registerTime: '2024-04-15', level: '金卡会员', levelClass: 'gold', orders: 15, spent: '5,320', status: '正常', statusClass: 'active', avatarColor: '#f59e0b', channel: 'app' },
-  { id: 1003, name: '王五', email: 'wangwu@example.com', registerTime: '2024-05-20', level: '银卡会员', levelClass: 'silver', orders: 8, spent: '1,890', status: '正常', statusClass: 'active', avatarColor: '#10b981', channel: 'wechat' },
-  { id: 1004, name: '赵六', email: 'zhaoliu@example.com', registerTime: '2024-06-01', level: '普通会员', levelClass: 'normal', orders: 3, spent: '299', status: '封禁', statusClass: 'banned', avatarColor: '#ef4444', channel: 'web' },
-  { id: 1005, name: '孙七', email: 'sunqi@example.com', registerTime: '2024-06-12', level: '金卡会员', levelClass: 'gold', orders: 20, spent: '8,450', status: '正常', statusClass: 'active', avatarColor: '#8b5cf6', channel: 'app' },
-  { id: 1006, name: '周八', email: 'zhouba@example.com', registerTime: '2024-06-25', level: '普通会员', levelClass: 'normal', orders: 1, spent: '59', status: '未激活', statusClass: 'inactive', avatarColor: '#06b6d4', channel: 'wechat' },
-  { id: 1007, name: '吴九', email: 'wujiu@example.com', registerTime: '2024-07-01', level: '银卡会员', levelClass: 'silver', orders: 12, spent: '3,210', status: '正常', statusClass: 'active', avatarColor: '#3b82f6', channel: 'web' },
-  { id: 1008, name: '郑十', email: 'zhengshi@example.com', registerTime: '2024-07-08', level: '钻石会员', levelClass: 'diamond', orders: 35, spent: '18,900', status: '正常', statusClass: 'active', avatarColor: '#ef4444', channel: 'app' },
-  { id: 1009, name: '陈一', email: 'chenyi@example.com', registerTime: '2024-07-10', level: '普通会员', levelClass: 'normal', orders: 5, spent: '780', status: '正常', statusClass: 'active', avatarColor: '#f59e0b', channel: 'wechat' },
-  { id: 1010, name: '林二', email: 'liner@example.com', registerTime: '2024-07-14', level: '银卡会员', levelClass: 'silver', orders: 9, spent: '2,150', status: '封禁', statusClass: 'banned', avatarColor: '#6366f1', channel: 'web' }
-]
+const userList = ref([])
+
+// 获取用户统计数据
+async function fetchStats() {
+  try {
+    const res = await api.get('/users/stats')
+    if (res) {
+      statsList.value = res
+    }
+  } catch (err) {
+    console.error('获取用户统计数据失败:', err)
+  }
+}
+
+// 获取用户列表
+async function fetchUsers() {
+  loading.value = true
+  try {
+    const params = {
+      page: currentPage.value,
+      pageSize: pageSize,
+      ...filters
+    }
+    Object.keys(params).forEach(k => {
+      if (!params[k]) delete params[k]
+    })
+    const res = await api.get('/users/list', { params })
+    if (res) {
+      userList.value = res.records || res.list || res
+      total.value = res.total || 0
+    }
+  } catch (err) {
+    console.error('获取用户列表失败:', err)
+    ElMessage.error('获取用户列表失败')
+  } finally {
+    loading.value = false
+  }
+}
 
 const filteredUsers = computed(() => {
-  let list = [...userList]
-  if (filters.search) {
-    const q = filters.search.toLowerCase()
-    list = list.filter(u =>
-      u.name.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) ||
-      String(u.id).includes(q)
-    )
-  }
-  if (filters.level) {
-    list = list.filter(u => u.level === filters.level)
-  }
-  if (filters.status) {
-    list = list.filter(u => u.statusClass === filters.status)
-  }
-  if (filters.channel) {
-    list = list.filter(u => u.channel === filters.channel)
-  }
-  return list
+  return userList.value
 })
 
-const totalPages = computed(() => Math.ceil(filteredUsers.value.length / pageSize) || 1)
+const totalPages = computed(() => Math.ceil(total.value / pageSize) || 1)
 
 function toggleSelectAll() {
   if (selectAll.value) {
@@ -188,6 +200,7 @@ function toggleSelectAll() {
 
 function handleSearch() {
   currentPage.value = 1
+  fetchUsers()
 }
 
 function handleReset() {
@@ -196,6 +209,7 @@ function handleReset() {
   filters.channel = ''
   filters.status = ''
   currentPage.value = 1
+  fetchUsers()
 }
 
 function handleDetail(user) {
@@ -205,6 +219,11 @@ function handleDetail(user) {
 function handleBan(user) {
   console.log('封禁/解封', user.name)
 }
+
+onMounted(() => {
+  fetchStats()
+  fetchUsers()
+})
 </script>
 
 <style scoped lang="css">

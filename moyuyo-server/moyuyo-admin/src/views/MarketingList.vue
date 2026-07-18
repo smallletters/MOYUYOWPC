@@ -68,29 +68,49 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { ref, onMounted } from 'vue'
+import { getCampaigns } from '../api/admin'
+import { ElMessage } from 'element-plus'
 
-const modules = reactive([
-  { title: '优惠券管理', icon: '🎫', iconBg: '#ebf5ff', metrics: [{ value: 12, label: '活跃券' }, { value: 5, label: '即将过期' }, { value: 23, label: '总计' }] },
-  { title: '秒杀活动', icon: '⚡', iconBg: '#fff4e5', metrics: [{ value: 1, label: '进行中' }, { value: 456, label: '参与' }, { value: '38%', label: '转化率' }] },
-  { title: '积分活动', icon: '⭐', iconBg: '#f0fdf4', metrics: [{ value: 3, label: '进行中' }, { value: 892, label: '已兑换' }, { value: '¥5.6k', label: '积分价值' }] },
-  { title: '分销管理', icon: '🔗', iconBg: '#fdf2f8', metrics: [{ value: 28, label: '分销商' }, { value: '¥12k', label: '分销额' }, { value: '15%', label: '佣金率' }] }
+const modules = ref([
+  { title: '优惠券管理', icon: '🎫', iconBg: '#ebf5ff', metrics: [{ value: '-', label: '活跃券' }, { value: '-', label: '即将过期' }, { value: '-', label: '总计' }] },
+  { title: '秒杀活动', icon: '⚡', iconBg: '#fff4e5', metrics: [{ value: '-', label: '进行中' }, { value: '-', label: '参与' }, { value: '-', label: '转化率' }] },
+  { title: '积分活动', icon: '⭐', iconBg: '#f0fdf4', metrics: [{ value: '-', label: '进行中' }, { value: '-', label: '已兑换' }, { value: '-', label: '积分价值' }] },
+  { title: '分销管理', icon: '🔗', iconBg: '#fdf2f8', metrics: [{ value: '-', label: '分销商' }, { value: '-', label: '分销额' }, { value: '-', label: '佣金率' }] }
 ])
 
-const campaigns = reactive([
-  { id: 1, name: '夏日宠物狂欢节', icon: '🏖️', bg: 'linear-gradient(135deg, #f97316, #f59e0b)', statusLabel: '进行中', statusClass: 'tag-green', participants: '1,234', revenue: '¥89,200', roi: '3.2x', dateRange: '2026-07-01 ~ 2026-07-15' },
-  { id: 2, name: '满减特惠周', icon: '🎉', bg: 'linear-gradient(135deg, #8b5cf6, #a78bfa)', statusLabel: '即将开始', statusClass: 'tag-blue', participants: '-', revenue: '-', roi: '-', dateRange: '2026-07-20 ~ 2026-07-27' },
-  { id: 3, name: '新品首发限时折扣', icon: '✨', bg: 'linear-gradient(135deg, #ec4899, #f472b6)', statusLabel: '进行中', statusClass: 'tag-green', participants: '567', revenue: '¥34,500', roi: '2.8x', dateRange: '2026-07-10 ~ 2026-07-20' }
-])
+const campaigns = ref([])
+
+// 获取活动列表
+async function fetchCampaigns() {
+  try {
+    const res = await getCampaigns()
+    if (res) {
+      campaigns.value = res.records || res.list || res
+    }
+  } catch (err) {
+    console.error('获取活动列表失败:', err)
+  }
+}
+
+// 获取模块数据（后端暂无独立模块端点，使用本地默认数据）
+async function fetchModules() {
+  // 预留：后端接入时替换为 api.get('/marketing/modules')
+}
 
 function handleModuleClick(mod) {
-  alert(`进入 ${mod.title}`)
+  ElMessage.info(`进入 ${mod.title}`)
 }
 
 function handleQuickAction(action) {
   const labels = { coupon: '创建优惠券', campaign: '创建活动', notification: '推送通知' }
-  alert(labels[action])
+  ElMessage.info(labels[action])
 }
+
+onMounted(() => {
+  fetchCampaigns()
+  fetchModules()
+})
 </script>
 
 <style scoped lang="css">

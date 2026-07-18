@@ -79,6 +79,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getMergePackages, createMergePackage, updateMergePackage, deleteMergePackage } from '../api/admin'
 
 const pageTitle = '合包管理'
 const filters = reactive({ keyword: '' })
@@ -96,29 +97,64 @@ const editForm = reactive({
   status: '待合包'
 })
 
-const mockData = [
-  { id: 1, mergeNo: 'MG-20260701-001', orderCount: 3, packageCount: 2, totalWeight: 5.2, status: '已合包', createTime: '2026-07-01 10:00' },
-  { id: 2, mergeNo: 'MG-20260702-002', orderCount: 5, packageCount: 3, totalWeight: 8.7, status: '已合包', createTime: '2026-07-02 11:30' },
-  { id: 3, mergeNo: 'MG-20260703-003', orderCount: 2, packageCount: 1, totalWeight: 3.1, status: '待合包', createTime: '2026-07-03 09:15' },
-  { id: 4, mergeNo: 'MG-20260704-004', orderCount: 4, packageCount: 4, totalWeight: 12.5, status: '待合包', createTime: '2026-07-04 14:20' },
-  { id: 5, mergeNo: 'MG-20260705-005', orderCount: 6, packageCount: 5, totalWeight: 15.0, status: '已合包', createTime: '2026-07-05 16:45' },
-  { id: 6, mergeNo: 'MG-20260706-006', orderCount: 1, packageCount: 1, totalWeight: 2.3, status: '待合包', createTime: '2026-07-06 08:30' }
-]
-
-function loadData() {
-  let filtered = [...mockData]
-  if (filters.keyword) {
-    filtered = filtered.filter(item => item.mergeNo.includes(filters.keyword))
+// 加载合包数据
+async function loadData() {
+  try {
+    const res = await getMergePackages()
+    const list = res || []
+    let filtered = [...list]
+    if (filters.keyword) {
+      filtered = filtered.filter(item => item.mergeNo.includes(filters.keyword))
+    }
+    tableData.value = filtered
+    total.value = filtered.length
+  } catch (error) {
+    console.error('获取合包数据失败:', error)
+    ElMessage.error('获取合包数据失败')
   }
-  tableData.value = filtered
-  total.value = filtered.length
 }
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.keyword = ''; handleSearch() }
 function handleAdd() { dialogTitle.value = '新建合包'; editForm.mergeNo = ''; editForm.orderCount = 1; editForm.packageCount = 1; editForm.totalWeight = 0; editForm.status = '待合包'; dialogVisible.value = true }
 function handleEdit(row) { dialogTitle.value = '编辑合包'; Object.assign(editForm, row); dialogVisible.value = true }
-function handleDelete(row) { ElMessageBox.confirm('确定删除？', '提示').then(() => { ElMessage.success('删除成功'); loadData() }) }
-function handleSave() { ElMessage.success('保存成功'); dialogVisible.value = false; loadData() }
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确定删除？', '提示')
+    await deleteMergePackage(row.id)
+    ElMessage.success('删除成功')
+    await loadData()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败: ' + (e.message || '未知错误'))
+    }
+  }
+}
+async function handleSave() {
+  try {
+    if (editForm.id) {
+      await updateMergePackage(editForm.id, {
+        mergeNo: editForm.mergeNo,
+        orderCount: editForm.orderCount,
+        packageCount: editForm.packageCount,
+        totalWeight: editForm.totalWeight,
+        status: editForm.status
+      })
+    } else {
+      await createMergePackage({
+        mergeNo: editForm.mergeNo,
+        orderCount: editForm.orderCount,
+        packageCount: editForm.packageCount,
+        totalWeight: editForm.totalWeight,
+        status: editForm.status
+      })
+    }
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    await loadData()
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e.message || '未知错误'))
+  }
+}
 onMounted(() => loadData())
 </script>
 

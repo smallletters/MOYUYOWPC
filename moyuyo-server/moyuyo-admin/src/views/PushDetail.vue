@@ -89,6 +89,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getPushRecords, createPush, deletePush } from '../api/admin'
 
 const pageTitle = '推送详情'
 const filters = reactive({ taskName: '', status: '' })
@@ -104,32 +105,56 @@ const editForm = reactive({
   status: '发送中'
 })
 
-const mockData = [
-  { id: 1, taskName: '618大促活动推送', platform: '全部', sendCount: 50000, reachCount: 48500, clickCount: 12580, status: '已完成' },
-  { id: 2, taskName: '新用户注册提醒', platform: 'iOS', sendCount: 12000, reachCount: 11500, clickCount: 3200, status: '已完成' },
-  { id: 3, taskName: '订单物流通知', platform: 'Android', sendCount: 8000, reachCount: 7800, clickCount: 2100, status: '发送中' },
-  { id: 4, taskName: '优惠券到期提醒', platform: '全部', sendCount: 35000, reachCount: 34200, clickCount: 5600, status: '已完成' },
-  { id: 5, taskName: '直播开播提醒', platform: 'iOS', sendCount: 15000, reachCount: 0, clickCount: 0, status: '失败' },
-  { id: 6, taskName: '商品降价通知', platform: 'Android', sendCount: 22000, reachCount: 21500, clickCount: 4800, status: '发送中' }
-]
-
-function loadData() {
-  let filtered = [...mockData]
-  if (filters.taskName) {
-    filtered = filtered.filter(item => item.taskName.includes(filters.taskName))
+// 从API加载推送记录数据
+async function loadData() {
+  try {
+    const res = await getPushRecords()
+    const records = (res && res.records) || res || []
+    let filtered = records
+    if (filters.taskName) {
+      filtered = filtered.filter(item => item.taskName.includes(filters.taskName))
+    }
+    if (filters.status) {
+      filtered = filtered.filter(item => item.status === filters.status)
+    }
+    tableData.value = filtered
+    total.value = filtered.length
+  } catch (e) {
+    console.error('加载推送记录失败:', e)
+    ElMessage.error('加载推送记录失败')
   }
-  if (filters.status) {
-    filtered = filtered.filter(item => item.status === filters.status)
-  }
-  tableData.value = filtered
-  total.value = filtered.length
 }
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.taskName = ''; filters.status = ''; handleSearch() }
 function handleAdd() { dialogTitle.value = '新建推送'; editForm.taskName = ''; editForm.platform = '全部'; editForm.status = '发送中'; dialogVisible.value = true }
 function handleEdit(row) { dialogTitle.value = '编辑推送'; Object.assign(editForm, row); dialogVisible.value = true }
-function handleDelete(row) { ElMessageBox.confirm('确定删除？','提示').then(() => { ElMessage.success('删除成功'); loadData() }) }
-function handleSave() { ElMessage.success('保存成功'); dialogVisible.value = false; loadData() }
+
+// 删除推送（调用API）
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确定删除？','提示')
+    await deletePush(row.id)
+    ElMessage.success('删除成功')
+    loadData()
+  } catch (e) {
+    if (e !== 'cancel') {
+      console.error('删除推送失败:', e)
+    }
+  }
+}
+
+// 保存推送（调用API）
+async function handleSave() {
+  try {
+    await createPush(editForm)
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    loadData()
+  } catch (e) {
+    console.error('保存推送失败:', e)
+    ElMessage.error('保存失败')
+  }
+}
 onMounted(() => loadData())
 </script>
 

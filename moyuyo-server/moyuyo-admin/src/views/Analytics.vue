@@ -95,15 +95,13 @@
           <div class="card-body">
             <div class="churn-point">
               <div class="churn-badge">最大流失</div>
-              <div class="churn-step">结算 → 提交订单</div>
-              <div class="churn-desc">此步骤流失率高达 42%，建议优化结算流程</div>
+              <div class="churn-step">{{ churnStep }}</div>
+              <div class="churn-desc">此步骤流失率高达 {{ churnRate }}%，建议优化结算流程</div>
             </div>
             <div class="churn-reasons">
               <h4>主要原因</h4>
               <ul>
-                <li>运费过高导致用户放弃</li>
-                <li>支付方式不够丰富</li>
-                <li>登录流程繁琐</li>
+                <li v-for="(reason, idx) in churnReasons" :key="idx">{{ reason }}</li>
               </ul>
             </div>
           </div>
@@ -115,12 +113,12 @@
           </div>
           <div class="card-body">
             <div class="repurchase-rate">
-              <span class="rate-number">23%</span>
-              <span class="rate-trend up">↑ 2.3%</span>
+              <span class="rate-number">{{ repurchaseRate }}%</span>
+              <span class="rate-trend up">↑ {{ repurchaseTrend }}%</span>
             </div>
             <div class="rate-subtitle">30天复购率</div>
             <div class="rate-bar">
-              <div class="rate-bar-fill" style="width: 23%"></div>
+              <div class="rate-bar-fill" :style="{ width: repurchaseRate + '%' }"></div>
             </div>
           </div>
         </div>
@@ -130,7 +128,8 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { getFunnelAnalysis, getMarketingEffects } from '../api/admin'
 
 const activeTime = ref('7d')
 
@@ -140,21 +139,68 @@ const timeOptions = [
   { key: 'custom', label: '自定义' }
 ]
 
-const funnelSteps = reactive([
-  { key: 'view', label: '浏览', count: '12,458', width: 100, rate: '—' },
-  { key: 'cart', label: '加购', count: '3,892', width: 78, rate: '31.2%' },
-  { key: 'checkout', label: '结算', count: '2,156', width: 62, rate: '55.4%' },
-  { key: 'submit', label: '提交', count: '1,250', width: 48, rate: '58.0%' },
-  { key: 'pay', label: '支付', count: '1,098', width: 42, rate: '87.8%' },
-  { key: 'receive', label: '收货', count: '1,023', width: 38, rate: '93.2%' },
-  { key: 'repurchase', label: '复购', count: '235', width: 22, rate: '23.0%' }
-])
+const funnelSteps = reactive([])
+const channels = reactive([])
 
-const channels = reactive([
-  { name: '自然搜索', value: '45% 占比', color: 'var(--primary)', impression: 100, click: 28, conversion: 12 },
-  { name: '付费广告', value: '32% 占比', color: 'var(--state-warning)', impression: 85, click: 35, conversion: 8 },
-  { name: '社交媒体', value: '23% 占比', color: 'var(--state-success)', impression: 60, click: 22, conversion: 6 }
-])
+// 流失分析数据
+const churnRate = ref(42) // 流失率（百分比）
+const churnStep = ref('结算 → 提交订单') // 流失步骤
+const churnReasons = ref([
+  '运费过高导致用户放弃',
+  '支付方式不够丰富',
+  '登录流程繁琐'
+]) // 流失原因列表
+// 复购率数据
+const repurchaseRate = ref(23) // 复购率（百分比）
+const repurchaseTrend = ref(2.3) // 复购率涨幅（百分比）
+
+// 加载漏斗数据
+async function loadFunnelData() {
+  try {
+    const res = await getFunnelAnalysis()
+    if (res && Array.isArray(res)) {
+      funnelSteps.length = 0
+      const maxCount = Math.max(...res.map(s => s.userCount || 0), 1)
+      funnelSteps.push(...res.map((s, idx) => ({
+        key: s.stage || idx,
+        label: s.stage || '',
+        count: s.userCount || 0,
+        width: (s.userCount || 0) / maxCount * 100,
+        rate: (s.conversionRate != null ? s.conversionRate + '%' : '0%')
+      })))
+    }
+    // 从 API 返回值中提取流失分析与复购率数据（如果后端返回了这些字段则覆盖默认值）
+    if (res && typeof res === 'object') {
+      if (res.churnRate != null) churnRate.value = res.churnRate
+      if (res.churnStep) churnStep.value = res.churnStep
+      if (res.churnReasons) churnReasons.value = res.churnReasons
+      if (res.repurchaseRate != null) repurchaseRate.value = res.repurchaseRate
+      if (res.repurchaseTrend != null) repurchaseTrend.value = res.repurchaseTrend
+    }
+  } catch (err) {
+    console.error('获取漏斗数据失败', err)
+  }
+}
+
+// 加载渠道数据
+async function loadChannelData() {
+  try {
+    const res = await getMarketingEffects()
+    // 后端返回 { totalGmv, campaignGmv, campaignRatio, totalOrders, ... }
+    // 目前无 channels 数据，保留空数组
+    if (res && Array.isArray(res.channels)) {
+      channels.length = 0
+      channels.push(...res.channels)
+    }
+  } catch (err) {
+    console.error('获取渠道数据失败', err)
+  }
+}
+
+onMounted(() => {
+  loadFunnelData()
+  loadChannelData()
+})
 </script>
 
 <style scoped lang="css">

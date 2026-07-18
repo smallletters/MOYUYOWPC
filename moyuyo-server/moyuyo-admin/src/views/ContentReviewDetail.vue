@@ -61,6 +61,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getReviewList, approveReview, rejectReview } from '../api/admin'
 
 const pageTitle = '内容审核详情'
 const filters = reactive({ reviewer: '', status: '' })
@@ -69,37 +70,53 @@ const currentPage = ref(1)
 const pageSize = ref(15)
 const total = ref(0)
 
-const mockData = [
-  { id: 1, title: '这款深海鱼油效果真好！', contentType: '评论', submitter: '用户A', reviewStatus: '待审核', submitTime: '2026-07-17 08:30' },
-  { id: 2, title: '跨境购物攻略分享', contentType: '图文', submitter: '用户B', reviewStatus: '已通过', submitTime: '2026-07-16 14:20' },
-  { id: 3, title: '开箱测评视频', contentType: '视频', submitter: '用户C', reviewStatus: '待审核', submitTime: '2026-07-17 10:00' },
-  { id: 4, title: '产品质量有问题', contentType: '评论', submitter: '用户D', reviewStatus: '已驳回', submitTime: '2026-07-15 09:45' },
-  { id: 5, title: '保健品选购指南', contentType: '图文', submitter: '商家小张', reviewStatus: '已通过', submitTime: '2026-07-14 16:30' },
-  { id: 6, title: '促销活动宣传视频', contentType: '视频', submitter: '商家小李', reviewStatus: '待审核', submitTime: '2026-07-17 11:15' }
-]
-
-function loadData() {
-  let filtered = [...mockData]
-  if (filters.reviewer) {
-    filtered = filtered.filter(item => item.submitter.includes(filters.reviewer))
+// 获取审核详情列表
+async function loadData() {
+  try {
+    const res = await getReviewList()
+    const records = res.records || res || []
+      // 映射为前端需要的格式
+      let mapped = records.map(item => ({
+        id: item.id,
+        title: item.title || item.content || item.productName || '',
+        contentType: item.contentType || (item.rating ? '评论' : '图文'),
+        submitter: item.userName || item.submitter || item.operator || '',
+        reviewStatus: item.auditStatus || item.status || '待审核',
+        submitTime: item.submitTime || item.createTime || ''
+      }))
+      // 客户端筛选
+      if (filters.reviewer) {
+        mapped = mapped.filter(item => item.submitter.includes(filters.reviewer))
+      }
+      if (filters.status) {
+        mapped = mapped.filter(item => item.reviewStatus === filters.status)
+      }
+      tableData.value = mapped
+      total.value = mapped.length
+    }
+  } catch (e) {
+    ElMessage.error('获取审核列表失败')
   }
-  if (filters.status) {
-    filtered = filtered.filter(item => item.reviewStatus === filters.status)
-  }
-  tableData.value = filtered
-  total.value = filtered.length
 }
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.reviewer = ''; filters.status = ''; handleSearch() }
-function handleApprove(row) {
-  ElMessage.success('已通过：' + row.title)
-  row.reviewStatus = '已通过'
-  loadData()
+async function handleApprove(row) {
+  try {
+    await approveReview(row.id)
+    ElMessage.success('已通过：' + row.title)
+    await loadData()
+  } catch (e) {
+    ElMessage.error('操作失败')
+  }
 }
-function handleReject(row) {
-  ElMessage.warning('已驳回：' + row.title)
-  row.reviewStatus = '已驳回'
-  loadData()
+async function handleReject(row) {
+  try {
+    await rejectReview(row.id)
+    ElMessage.warning('已驳回：' + row.title)
+    await loadData()
+  } catch (e) {
+    ElMessage.error('操作失败')
+  }
 }
 function handleDetail(row) { ElMessage.info('查看内容详情 ID: ' + row.id) }
 onMounted(() => loadData())

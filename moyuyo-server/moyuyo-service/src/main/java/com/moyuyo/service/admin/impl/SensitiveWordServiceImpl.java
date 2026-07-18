@@ -7,7 +7,10 @@ import com.moyuyo.service.admin.SensitiveWordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 敏感词管理服务实现
@@ -28,6 +31,22 @@ public class SensitiveWordServiceImpl implements SensitiveWordService {
       wrapper.like(SensitiveWordEntity::getWord, keyword);
     }
     return sensitiveWordMapper.selectList(wrapper);
+  }
+
+  @Override
+  public List<Map<String, Object>> categoryStats() {
+    // 从数据库查询所有记录，按 category 分组统计
+    List<SensitiveWordEntity> all = sensitiveWordMapper.selectList(new LambdaQueryWrapper<>());
+    Map<String, Long> groupMap = all.stream()
+        .collect(Collectors.groupingBy(SensitiveWordEntity::getCategory, Collectors.counting()));
+
+    List<Map<String, Object>> result = groupMap.entrySet().stream().map(entry -> {
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("code", entry.getKey());
+      item.put("count", entry.getValue());
+      return item;
+    }).collect(Collectors.toList());
+    return result;
   }
 
   @Override

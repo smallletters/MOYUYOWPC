@@ -12,7 +12,7 @@
         <el-card shadow="never">
           <div class="kpi-card-content">
             <div class="kpi-label">满意度评分</div>
-            <div class="kpi-value" style="color:#f59e0b">4.8</div>
+            <div class="kpi-value" style="color:#f59e0b">{{ kpi.avgScore }}</div>
           </div>
         </el-card>
       </el-col>
@@ -20,7 +20,7 @@
         <el-card shadow="never">
           <div class="kpi-card-content">
             <div class="kpi-label">评价总数</div>
-            <div class="kpi-value">2,560</div>
+            <div class="kpi-value">{{ kpi.totalReviews }}</div>
           </div>
         </el-card>
       </el-col>
@@ -28,7 +28,7 @@
         <el-card shadow="never">
           <div class="kpi-card-content">
             <div class="kpi-label">好评率</div>
-            <div class="kpi-value" style="color:#10b981">96.2%</div>
+            <div class="kpi-value" style="color:#10b981">{{ kpi.positiveRate }}</div>
           </div>
         </el-card>
       </el-col>
@@ -36,7 +36,7 @@
         <el-card shadow="never">
           <div class="kpi-card-content">
             <div class="kpi-label">回复率</div>
-            <div class="kpi-value">88.5%</div>
+            <div class="kpi-value">{{ kpi.replyRate }}</div>
           </div>
         </el-card>
       </el-col>
@@ -70,23 +70,48 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getSatisfactionStats, getSatisfactionList } from '../api/admin'
 
 const rateColors = ['#f56c6c', '#e6a23c', '#5cb87a', '#1989fa', '#f59e0b']
 
-const tableData = ref([
-  { id: 1, user: '张***', content: '商品质量很好，物流速度也很快，非常满意！', score: 5, replyStatus: '已回复', createTime: '2026-07-17 14:30' },
-  { id: 2, user: '李***', content: '衣服质量一般，洗了一次就变形了，希望能改进。', score: 3, replyStatus: '未回复', createTime: '2026-07-16 20:15' },
-  { id: 3, user: '王***', content: '性价比很高，推荐购买。', score: 5, replyStatus: '已回复', createTime: '2026-07-15 18:20' },
-  { id: 4, user: '赵***', content: '发货速度太慢了，等了一个星期才收到。', score: 2, replyStatus: '未回复', createTime: '2026-07-14 09:45' },
-  { id: 5, user: '孙***', content: '包装很精美，细节做得好，以后还会回购。', score: 5, replyStatus: '已回复', createTime: '2026-07-13 11:30' },
-  { id: 6, user: '周***', content: '和描述一致，好评！', score: 5, replyStatus: '已回复', createTime: '2026-07-12 16:00' },
-])
+const kpi = ref({ avgScore: '—', totalReviews: '—', positiveRate: '—', replyRate: '—' })
+const tableData = ref([])
 
-function handleAdd() { ElMessage.info('发起满意度调查') }
-function handleReply(row) { ElMessage.info('回复评价：' + row.user) }
-function handleView(row) { ElMessage.info('查看评价详情') }
+async function loadStats() {
+  try {
+    const res = await getSatisfactionStats()
+    if (res) {
+      kpi.value = {
+        avgScore: res.avgScore ?? '—',
+        totalReviews: res.totalReviews ?? '—',
+        positiveRate: res.positiveRate ?? '—',
+        replyRate: res.replyRate ?? '—'
+      }
+    }
+  } catch (err) {
+    console.error('获取满意度统计失败', err)
+  }
+}
+
+async function loadList() {
+  try {
+    const res = await getSatisfactionList()
+    tableData.value = res || []
+  } catch (err) {
+    console.error('获取满意度列表失败', err)
+  }
+}
+
+function handleAdd() { ElMessage.warning('满意度调查功能开发中') }
+function handleReply(row) { ElMessage.warning('回复功能开发中') }
+function handleView(row) { ElMessage.warning('详情功能开发中') }
+
+onMounted(() => {
+  loadStats()
+  loadList()
+})
 </script>
 
 <style scoped>

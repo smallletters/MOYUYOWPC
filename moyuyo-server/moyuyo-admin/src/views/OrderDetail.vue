@@ -11,7 +11,7 @@
     <div class="page-header">
       <div class="page-header-left">
         <h2 class="page-title">订单详情</h2>
-        <span class="page-subtitle">Order #MOY2026070812</span>
+        <span class="page-subtitle">Order #{{ orderNo }}</span>
       </div>
       <div class="page-header-actions">
         <button class="btn btn-primary" @click="handleShip">确认发货</button>
@@ -80,10 +80,10 @@
         <!-- 价格汇总 -->
         <div class="price-summary card">
           <div class="card-body">
-            <div class="price-row"><span>商品金额</span><span class="money">¥2,358.00</span></div>
-            <div class="price-row"><span>运费</span><span class="money">¥0.00</span></div>
-            <div class="price-row"><span>优惠减免</span><span class="money">-¥200.00</span></div>
-            <div class="price-row total"><span>实付金额</span><span class="money total-amount">¥2,158.00</span></div>
+            <div class="price-row"><span>商品金额</span><span class="money">¥{{ priceSummary.goodsAmount }}</span></div>
+            <div class="price-row"><span>运费</span><span class="money">¥{{ priceSummary.freight }}</span></div>
+            <div class="price-row"><span>优惠减免</span><span class="money">-¥{{ priceSummary.discount }}</span></div>
+            <div class="price-row total"><span>实付金额</span><span class="money total-amount">¥{{ priceSummary.total }}</span></div>
           </div>
         </div>
 
@@ -112,12 +112,12 @@
         <div class="card info-card">
           <div class="card-header"><h3>订单信息</h3></div>
           <div class="card-body">
-            <div class="info-row"><span class="info-label">订单编号</span><span class="info-value">MOY2026070812</span></div>
-            <div class="info-row"><span class="info-label">下单时间</span><span class="info-value">2026-07-08 14:32:18</span></div>
-            <div class="info-row"><span class="info-label">支付时间</span><span class="info-value">2026-07-08 14:32:50</span></div>
-            <div class="info-row"><span class="info-label">支付方式</span><span class="info-value">支付宝</span></div>
-            <div class="info-row"><span class="info-label">订单来源</span><span class="info-value">PC端</span></div>
-            <div class="info-row"><span class="info-label">订单状态</span><span class="tag tag-yellow">待发货</span></div>
+            <div class="info-row"><span class="info-label">订单编号</span><span class="info-value">{{ orderInfo.orderNo }}</span></div>
+            <div class="info-row"><span class="info-label">下单时间</span><span class="info-value">{{ orderInfo.createTime }}</span></div>
+            <div class="info-row"><span class="info-label">支付时间</span><span class="info-value">{{ orderInfo.payTime }}</span></div>
+            <div class="info-row"><span class="info-label">支付方式</span><span class="info-value">{{ orderInfo.payMethod }}</span></div>
+            <div class="info-row"><span class="info-label">订单来源</span><span class="info-value">{{ orderInfo.source }}</span></div>
+            <div class="info-row"><span class="info-label">订单状态</span><span class="tag" :class="orderInfo.statusClass">{{ orderInfo.status }}</span></div>
           </div>
         </div>
 
@@ -125,12 +125,12 @@
         <div class="card info-card">
           <div class="card-header"><h3>收货信息</h3></div>
           <div class="card-body">
-            <div class="info-row"><span class="info-label">收件人</span><span class="info-value">张三</span></div>
-            <div class="info-row"><span class="info-label">联系电话</span><span class="info-value">138****5678</span></div>
+            <div class="info-row"><span class="info-label">收件人</span><span class="info-value">{{ shippingInfo.name }}</span></div>
+            <div class="info-row"><span class="info-label">联系电话</span><span class="info-value">{{ shippingInfo.phone }}</span></div>
             <div class="info-row address-row">
               <span class="info-label">收货地址</span>
               <div class="info-value address-value">
-                <span>浙江省杭州市西湖区文三路138号浙大科技园A座12楼</span>
+                <span>{{ shippingInfo.address }}</span>
                 <button class="copy-btn" @click="copyAddress">复制</button>
               </div>
             </div>
@@ -190,59 +190,130 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import api from '../api/index'
+import { ElMessage } from 'element-plus'
 
-const currentStep = 2
+const router = useRouter()
+const route = useRoute()
 
-const progressSteps = [
-  { key: 'paid', label: '待付款', date: '07-08 14:32' },
-  { key: 'shipping', label: '待发货', date: '07-08 14:33' },
-  { key: 'shipped', label: '已发货', date: null },
-  { key: 'done', label: '已完成', date: null }
-]
+const currentStep = ref(0)
+const orderNo = ref('')
+const loading = ref(false)
 
-const orderItems = reactive([
-  { name: '天然深海鱼油软胶囊', sku: 'FISH-OIL-001', price: '298.00', qty: 2, subtotal: '596.00' },
-  { name: '有机螺旋藻片', sku: 'SPIR-002', price: '168.00', qty: 3, subtotal: '504.00' },
-  { name: '维生素C泡腾片', sku: 'VITC-003', price: '89.00', qty: 5, subtotal: '445.00' },
-  { name: '益生菌固体饮料', sku: 'PROB-004', price: '139.00', qty: 3, subtotal: '417.00' }
-])
+const progressSteps = ref([])
+const orderItems = ref([])
+const operationLogs = ref([])
 
-const operationLogs = reactive([
-  { action: '订单已提交', operator: '系统', time: '2026-07-08 14:32:18', status: 'done' },
-  { action: '订单已支付', operator: '系统', time: '2026-07-08 14:32:50', status: 'done' },
-  { action: '订单已分配仓库', operator: '仓库管理员', time: '2026-07-08 15:10:22', status: 'done' },
-  { action: '等待发货', operator: '系统', time: '2026-07-08 15:10:23', status: 'current' }
-])
+// 价格汇总
+const priceSummary = reactive({
+  goodsAmount: '0.00',
+  freight: '0.00',
+  discount: '0.00',
+  total: '0.00'
+})
+
+// 订单信息
+const orderInfo = reactive({
+  orderNo: '',
+  createTime: '',
+  payTime: '',
+  payMethod: '',
+  source: '',
+  status: '',
+  statusClass: ''
+})
+
+// 收货信息
+const shippingInfo = reactive({
+  name: '',
+  phone: '',
+  address: ''
+})
 
 const showAddressModal = ref(false)
 const showNoteModal = ref(false)
 const noteContent = ref('')
 
 const addressForm = reactive({
-  name: '张三',
-  phone: '138****5678',
-  address: '浙江省杭州市西湖区文三路138号浙大科技园A座12楼'
+  name: '',
+  phone: '',
+  address: ''
 })
 
+// 获取订单详情
+async function fetchOrderDetail() {
+  const id = route.query.id
+  if (!id) return
+  loading.value = true
+  try {
+    const res = await api.get(`/orders/${id}`)
+    if (res) {
+      const data = res
+      orderNo.value = data.orderNo || data.no || ''
+      currentStep.value = data.currentStep || 0
+      progressSteps.value = data.progressSteps || []
+      orderItems.value = data.items || []
+      operationLogs.value = data.operationLogs || []
+
+      priceSummary.goodsAmount = data.goodsAmount || '0.00'
+      priceSummary.freight = data.freight || '0.00'
+      priceSummary.discount = data.discount || '0.00'
+      priceSummary.total = data.total || '0.00'
+
+      Object.assign(orderInfo, {
+        orderNo: data.orderNo || data.no || '',
+        createTime: data.createTime || '',
+        payTime: data.payTime || '',
+        payMethod: data.payMethod || '',
+        source: data.source || '',
+        status: data.status || '',
+        statusClass: data.statusClass || ''
+      })
+
+      Object.assign(shippingInfo, {
+        name: data.shippingName || '',
+        phone: data.shippingPhone || '',
+        address: data.shippingAddress || ''
+      })
+
+      Object.assign(addressForm, {
+        name: data.shippingName || '',
+        phone: data.shippingPhone || '',
+        address: data.shippingAddress || ''
+      })
+    }
+  } catch (err) {
+    console.error('获取订单详情失败:', err)
+    ElMessage.error('获取订单详情失败')
+  } finally {
+    loading.value = false
+  }
+}
+
 function handleShip() {
-  alert('确认发货操作')
+  ElMessage.success('确认发货操作')
 }
 
 function copyAddress() {
-  navigator.clipboard.writeText('浙江省杭州市西湖区文三路138号浙大科技园A座12楼')
-  alert('地址已复制')
+  navigator.clipboard.writeText(shippingInfo.address)
+  ElMessage.success('地址已复制')
 }
 
 function confirmAddress() {
   showAddressModal.value = false
-  alert('地址已修改')
+  ElMessage.success('地址已修改')
 }
 
 function confirmNote() {
   showNoteModal.value = false
-  alert('备注已保存')
+  ElMessage.success('备注已保存')
 }
+
+onMounted(() => {
+  fetchOrderDetail()
+})
 </script>
 
 <style scoped lang="css">

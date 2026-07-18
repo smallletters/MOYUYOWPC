@@ -75,6 +75,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getSplitPackages, createSplitPackage, updateSplitPackage, deleteSplitPackage } from '../api/admin'
 
 const pageTitle = '分包裹'
 const filters = reactive({ keyword: '' })
@@ -91,29 +92,62 @@ const editForm = reactive({
   status: '待分包裹'
 })
 
-const mockData = [
-  { id: 1, orderNo: 'ORD-20260701-001', productCount: 5, splitCount: 2, status: '已分包裹', createTime: '2026-07-01 10:00' },
-  { id: 2, orderNo: 'ORD-20260702-002', productCount: 8, splitCount: 3, status: '已分包裹', createTime: '2026-07-02 11:30' },
-  { id: 3, orderNo: 'ORD-20260703-003', productCount: 3, splitCount: 1, status: '待分包裹', createTime: '2026-07-03 09:15' },
-  { id: 4, orderNo: 'ORD-20260704-004', productCount: 10, splitCount: 4, status: '待分包裹', createTime: '2026-07-04 14:20' },
-  { id: 5, orderNo: 'ORD-20260705-005', productCount: 6, splitCount: 2, status: '已分包裹', createTime: '2026-07-05 16:45' },
-  { id: 6, orderNo: 'ORD-20260706-006', productCount: 4, splitCount: 1, status: '待分包裹', createTime: '2026-07-06 08:30' }
-]
-
-function loadData() {
-  let filtered = [...mockData]
-  if (filters.keyword) {
-    filtered = filtered.filter(item => item.orderNo.includes(filters.keyword))
+// 加载拆包数据
+async function loadData() {
+  try {
+    const res = await getSplitPackages()
+    const list = res || []
+    let filtered = [...list]
+    if (filters.keyword) {
+      filtered = filtered.filter(item => item.orderNo.includes(filters.keyword))
+    }
+    tableData.value = filtered
+    total.value = filtered.length
+  } catch (error) {
+    console.error('获取拆包数据失败:', error)
+    ElMessage.error('获取拆包数据失败')
   }
-  tableData.value = filtered
-  total.value = filtered.length
 }
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.keyword = ''; handleSearch() }
 function handleAdd() { dialogTitle.value = '新建分包裹'; editForm.orderNo = ''; editForm.productCount = 1; editForm.splitCount = 1; editForm.status = '待分包裹'; dialogVisible.value = true }
 function handleEdit(row) { dialogTitle.value = '编辑分包裹'; Object.assign(editForm, row); dialogVisible.value = true }
-function handleDelete(row) { ElMessageBox.confirm('确定删除？','提示').then(() => { ElMessage.success('删除成功'); loadData() }) }
-function handleSave() { ElMessage.success('保存成功'); dialogVisible.value = false; loadData() }
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确定删除？', '提示')
+    await deleteSplitPackage(row.id)
+    ElMessage.success('删除成功')
+    await loadData()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败: ' + (e.message || '未知错误'))
+    }
+  }
+}
+async function handleSave() {
+  try {
+    if (editForm.id) {
+      await updateSplitPackage(editForm.id, {
+        orderNo: editForm.orderNo,
+        productCount: editForm.productCount,
+        splitCount: editForm.splitCount,
+        status: editForm.status
+      })
+    } else {
+      await createSplitPackage({
+        orderNo: editForm.orderNo,
+        productCount: editForm.productCount,
+        splitCount: editForm.splitCount,
+        status: editForm.status
+      })
+    }
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    await loadData()
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e.message || '未知错误'))
+  }
+}
 onMounted(() => loadData())
 </script>
 

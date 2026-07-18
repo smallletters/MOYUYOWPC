@@ -1,8 +1,8 @@
 <template>
   <div class="logistics-list">
     <!-- 警告横幅 -->
-    <div class="alert-banner">
-      ⚠️ 3个商品库存低于预警线
+    <div class="alert-banner" v-if="inventoryAlerts.length > 0">
+      ⚠️ {{ inventoryAlerts.length }}个商品库存低于预警线
     </div>
 
     <h2 class="page-title">物流管理</h2>
@@ -10,19 +10,19 @@
     <!-- KPI 卡片 -->
     <div class="kpi-row">
       <div class="kpi-card">
-        <div class="kpi-value yellow">12</div>
+        <div class="kpi-value yellow">{{ kpiData.pendingShip }}</div>
         <div class="kpi-label">待发货</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value blue">45</div>
+        <div class="kpi-value blue">{{ kpiData.inTransit }}</div>
         <div class="kpi-label">运输中</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value red">2</div>
+        <div class="kpi-value red">{{ kpiData.abnormal }}</div>
         <div class="kpi-label">异常</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value">3.2</div>
+        <div class="kpi-value">{{ kpiData.avgTime }}</div>
         <div class="kpi-label">平均时效（天）</div>
       </div>
     </div>
@@ -72,7 +72,7 @@
             </tbody>
           </table>
           <div class="pagination">
-            <div class="pagination-info">显示 1-6 条，共 45 条</div>
+            <div class="pagination-info">共 {{ packages.length }} 条</div>
             <div class="pagination-btns">
               <button class="pagination-btn">上一页</button>
               <button class="pagination-btn active">1</button>
@@ -132,37 +132,108 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, watch, onMounted } from 'vue'
+import api from '../api/index'
+import { getWarehouses, getInventoryAlerts, getCarriers } from '../api/admin'
+import { ElMessage } from 'element-plus'
 
-const activeWarehouse = ref('la')
+const activeWarehouse = ref('')
+const loading = ref(false)
 
-const warehouses = [
-  { key: 'la', label: '洛杉矶仓' },
-  { key: 'ny', label: '纽约仓' },
-  { key: 'london', label: '伦敦仓' }
-]
+const warehouses = ref([])
+const packages = ref([])
+const inventoryAlerts = ref([])
+const carrierDist = ref([])
 
-const packages = reactive([
-  { trackingNo: 'FDX-20260708-001', carrier: 'FedEx', carrierClass: 'tag-blue', route: '洛杉矶 → 纽约', statusLabel: '运输中', statusClass: 'tag-blue', shipTime: '07-06 09:00', eta: '07-10' },
-  { trackingNo: 'UPS-20260708-002', carrier: 'UPS', carrierClass: 'tag-orange', route: '洛杉矶 → 芝加哥', statusLabel: '派送中', statusClass: 'tag-green', shipTime: '07-07 14:00', eta: '07-09' },
-  { trackingNo: 'USPS-20260708-003', carrier: 'USPS', carrierClass: 'tag-gray', route: '纽约 → 波士顿', statusLabel: '已签收', statusClass: 'tag-gray', shipTime: '07-05 10:00', eta: '07-08' },
-  { trackingNo: 'FDX-20260708-004', carrier: 'FedEx', carrierClass: 'tag-blue', route: '洛杉矶 → 旧金山', statusLabel: '异常', statusClass: 'tag-red', shipTime: '07-06 16:00', eta: '—' },
-  { trackingNo: 'UPS-20260708-005', carrier: 'UPS', carrierClass: 'tag-orange', route: '纽约 → 华盛顿', statusLabel: '运输中', statusClass: 'tag-blue', shipTime: '07-08 08:00', eta: '07-11' },
-  { trackingNo: 'FDX-20260708-006', carrier: 'FedEx', carrierClass: 'tag-blue', route: '洛杉矶 → 西雅图', statusLabel: '运输中', statusClass: 'tag-blue', shipTime: '07-08 10:00', eta: '07-12' }
-])
+// KPI数据
+const kpiData = ref({
+  pendingShip: 0,
+  inTransit: 0,
+  abnormal: 0,
+  avgTime: 0
+})
 
-const inventoryAlerts = reactive([
-  { name: '天然深海鱼油软胶囊', sku: 'FISH-OIL-001', stock: 12 },
-  { name: '有机螺旋藻片', sku: 'SPIR-002', stock: 8 },
-  { name: '维生素C泡腾片', sku: 'VITC-003', stock: 5 }
-])
+// 获取物流KPI数据
+async function fetchKpi() {
+  try {
+    const res = await api.get('/logistics/kpi')
+    if (res) {
+      kpiData.value = res
+    }
+  } catch (err) {
+    console.error('获取物流KPI失败:', err)
+  }
+}
 
-const carrierDist = reactive([
-  { name: 'FedEx', percent: 42, color: 'var(--brand-500)' },
-  { name: 'UPS', percent: 28, color: 'var(--state-warning)' },
-  { name: 'USPS', percent: 18, color: 'var(--state-success)' },
-  { name: '其他', percent: 12, color: 'var(--text-300)' }
-])
+// 获取仓库列表
+async function fetchWarehouses() {
+  try {
+    const res = await getWarehouses()
+    if (res) {
+      warehouses.value = res
+      if (warehouses.value.length > 0 && !activeWarehouse.value) {
+        activeWarehouse.value = warehouses.value[0].key
+      }
+    }
+  } catch (err) {
+    console.error('获取仓库列表失败:', err)
+  }
+}
+
+// 获取包裹列表
+async function fetchPackages() {
+  loading.value = true
+  try {
+    const params = {}
+    if (activeWarehouse.value) params.warehouse = activeWarehouse.value
+    const res = await api.get('/logistics/packages', { params })
+    if (res) {
+      packages.value = res.records || res.list || res
+    }
+  } catch (err) {
+    console.error('获取包裹列表失败:', err)
+    ElMessage.error('获取包裹列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 获取库存预警
+async function fetchInventoryAlerts() {
+  try {
+    const res = await getInventoryAlerts()
+    if (res) {
+      inventoryAlerts.value = res.records || res.list || res
+    }
+  } catch (err) {
+    console.error('获取库存预警失败:', err)
+  }
+}
+
+// 获取承运商分布
+async function fetchCarriers() {
+  try {
+    const res = await getCarriers()
+    if (res) {
+      carrierDist.value = res
+    }
+  } catch (err) {
+    console.error('获取承运商分布失败:', err)
+  }
+}
+
+// 切换仓库时重新加载包裹
+watch(activeWarehouse, () => {
+  fetchPackages()
+})
+
+onMounted(() => {
+  fetchKpi()
+  fetchWarehouses()
+  fetchPackages()
+  fetchInventoryAlerts()
+  fetchCarriers()
+})
 </script>
 
 <style scoped lang="css">

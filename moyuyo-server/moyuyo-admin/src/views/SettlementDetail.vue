@@ -56,6 +56,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getSettlementDetail } from '../api/admin'
 
 const pageTitle = '结算详情'
 const filters = reactive({ keyword: '' })
@@ -66,30 +67,35 @@ const total = ref(0)
 
 // 结算单摘要信息
 const summary = reactive({
-  settleNo: 'ST-20260701-001',
-  period: '2026-07上',
-  merchant: '全球购旗舰店',
-  amount: 128500.00,
-  orderCount: 156,
-  totalAmount: 128500.00,
-  totalCommission: 19275.00,
-  actualSettlement: 109225.00
+  settleNo: '',
+  period: '',
+  merchant: '',
+  amount: 0,
+  orderCount: 0,
+  totalAmount: 0,
+  totalCommission: 0,
+  actualSettlement: 0
 })
 
-const mockData = [
-  { id: 1, orderNo: 'ORD-20260601-001', productName: '深海鱼油软胶囊', quantity: 2, amount: 356.00, commission: 53.40, actualSettlement: 302.60 },
-  { id: 2, orderNo: 'ORD-20260602-002', productName: '有机螺旋藻片', quantity: 1, amount: 168.00, commission: 25.20, actualSettlement: 142.80 },
-  { id: 3, orderNo: 'ORD-20260603-003', productName: '维生素C泡腾片', quantity: 3, amount: 237.00, commission: 35.55, actualSettlement: 201.45 },
-  { id: 4, orderNo: 'ORD-20260604-004', productName: '辅酶Q10胶囊', quantity: 1, amount: 298.00, commission: 44.70, actualSettlement: 253.30 },
-  { id: 5, orderNo: 'ORD-20260605-005', productName: '益生菌胶囊', quantity: 2, amount: 396.00, commission: 59.40, actualSettlement: 336.60 },
-  { id: 6, orderNo: 'ORD-20260606-006', productName: '钙镁锌片', quantity: 1, amount: 128.00, commission: 19.20, actualSettlement: 108.80 }
-]
-
-function loadData() {
-  tableData.value = [...mockData]
-  total.value = mockData.length
+// 从API加载结算详情数据
+async function loadData() {
+  try {
+    const res = await getSettlementDetail()
+    const data = res || {}
+    // 填充摘要信息
+    if (data.summary) {
+      Object.assign(summary, data.summary)
+    }
+    // 填充明细列表
+    const list = data.records || data.items || []
+    tableData.value = list
+    total.value = list.length
+  } catch (e) {
+    console.error('加载结算详情失败:', e)
+    ElMessage.error('加载结算详情失败')
+  }
 }
-function handleAdd() { ElMessage.info('跳转至新增结算明细页面') }
+function handleAdd() { ElMessage.warning('新增功能开发中') }
 function handleDetail(row) { ElMessage.info('查看订单 ' + row.orderNo + ' 详情') }
 onMounted(() => loadData())
 </script>

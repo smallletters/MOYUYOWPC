@@ -8,8 +8,8 @@ import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.PaymentMapper;
 import com.moyuyo.service.OrderService;
 import com.moyuyo.service.PaymentService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -23,13 +23,22 @@ import java.util.Map;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
 
     private final OrderService orderService;
     private final PaymentMapper paymentMapper;
     private final OrderMapper orderMapper;
     private final RestTemplate restTemplate;
+
+    public PaymentServiceImpl(OrderService orderService,
+                               PaymentMapper paymentMapper,
+                               OrderMapper orderMapper,
+                               @Qualifier("restTemplate") RestTemplate restTemplate) {
+        this.orderService = orderService;
+        this.paymentMapper = paymentMapper;
+        this.orderMapper = orderMapper;
+        this.restTemplate = restTemplate;
+    }
 
     @Value("${payment.stripe.secret-key}")
     private String stripeSecretKey;
@@ -240,7 +249,10 @@ public class PaymentServiceImpl implements PaymentService {
                         new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<PaymentEntity>()
                                 .eq(PaymentEntity::getTransactionId, paymentIntentId));
                 if (payment != null) {
-                    orderNo = orderMapper.selectById(payment.getOrderId()).getOrderNo();
+                    OrderEntity order = orderMapper.selectById(payment.getOrderId());
+                    if (order != null) {
+                        orderNo = order.getOrderNo();
+                    }
                 }
             }
 
@@ -286,9 +298,12 @@ public class PaymentServiceImpl implements PaymentService {
                         new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<PaymentEntity>()
                                 .eq(PaymentEntity::getTransactionId, paypalOrderId));
                 if (payment != null) {
-                    String orderNo = orderMapper.selectById(payment.getOrderId()).getOrderNo();
-                    orderService.payCallback(orderNo, "PAYPAL", paypalOrderId);
-                    log.info("PayPal webhook processed: orderNo={}, paypalOrderId={}", orderNo, paypalOrderId);
+                    OrderEntity order = orderMapper.selectById(payment.getOrderId());
+                    if (order != null) {
+                        String orderNo = order.getOrderNo();
+                        orderService.payCallback(orderNo, "PAYPAL", paypalOrderId);
+                        log.info("PayPal webhook processed: orderNo={}, paypalOrderId={}", orderNo, paypalOrderId);
+                    }
                 }
             }
         } catch (Exception e) {

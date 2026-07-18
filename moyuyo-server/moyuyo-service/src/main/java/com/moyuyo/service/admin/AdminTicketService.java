@@ -21,6 +21,11 @@ public interface AdminTicketService {
   TicketEntity getById(Long id);
 
   /**
+   * 获取工单详情（含用户信息、回复列表等）
+   */
+  Map<String, Object> getTicketDetail(Long id);
+
+  /**
    * 更新工单
    */
   void update(TicketEntity entity);

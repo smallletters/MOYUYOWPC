@@ -93,6 +93,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getWarehouses, createWarehouse, updateWarehouse } from '../api/admin'
 
 const pageTitle = '仓库管理'
 const filters = reactive({ keyword: '' })
@@ -111,30 +112,46 @@ const editForm = reactive({
   phone: '',
   status: '启用'
 })
+// 储存当前编辑的ID，用于判断新增还是编辑
+const editingId = ref(null)
 
-const mockData = [
-  { id: 1, name: '华南中心仓', type: '自营', city: '广州', area: 5000, manager: '张伟', phone: '13800138001', status: '启用' },
-  { id: 2, name: '华东中心仓', type: '自营', city: '上海', area: 8000, manager: '李强', phone: '13800138002', status: '启用' },
-  { id: 3, name: '华北分仓', type: '第三方', city: '北京', area: 3000, manager: '王芳', phone: '13800138003', status: '启用' },
-  { id: 4, name: '西南分仓', type: '第三方', city: '成都', area: 2500, manager: '赵明', phone: '13800138004', status: '停用' },
-  { id: 5, name: '华中分仓', type: '自营', city: '武汉', area: 4000, manager: '刘洋', phone: '13800138005', status: '启用' },
-  { id: 6, name: '西北分仓', type: '第三方', city: '西安', area: 2000, manager: '陈静', phone: '13800138006', status: '启用' }
-]
-
-function loadData() {
-  let filtered = [...mockData]
-  if (filters.keyword) {
-    filtered = filtered.filter(item => item.name.includes(filters.keyword) || item.city.includes(filters.keyword))
+// 加载仓库数据
+async function loadData() {
+  try {
+    const res = await getWarehouses()
+    const list = res || []
+    let filtered = [...list]
+    if (filters.keyword) {
+      filtered = filtered.filter(item => item.name.includes(filters.keyword) || item.city.includes(filters.keyword))
+    }
+    tableData.value = filtered
+    total.value = filtered.length
+  } catch (error) {
+    console.error('获取仓库数据失败:', error)
+    ElMessage.error('获取仓库数据失败')
   }
-  tableData.value = filtered
-  total.value = filtered.length
 }
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.keyword = ''; handleSearch() }
-function handleAdd() { dialogTitle.value = '新建仓库'; editForm.name = ''; editForm.type = '自营'; editForm.city = ''; editForm.area = 0; editForm.manager = ''; editForm.phone = ''; editForm.status = '启用'; dialogVisible.value = true }
-function handleEdit(row) { dialogTitle.value = '编辑仓库'; Object.assign(editForm, row); dialogVisible.value = true }
+function handleAdd() { editingId.value = null; dialogTitle.value = '新建仓库'; editForm.name = ''; editForm.type = '自营'; editForm.city = ''; editForm.area = 0; editForm.manager = ''; editForm.phone = ''; editForm.status = '启用'; dialogVisible.value = true }
+function handleEdit(row) { editingId.value = row.id; dialogTitle.value = '编辑仓库'; Object.assign(editForm, row); dialogVisible.value = true }
 function handleDelete(row) { ElMessageBox.confirm('确定删除？','提示').then(() => { ElMessage.success('删除成功'); loadData() }) }
-function handleSave() { ElMessage.success('保存成功'); dialogVisible.value = false; loadData() }
+// 保存仓库（新增或编辑）
+async function handleSave() {
+  try {
+    if (editingId.value) {
+      await updateWarehouse(editingId.value, { ...editForm })
+    } else {
+      await createWarehouse({ ...editForm })
+    }
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    loadData()
+  } catch (error) {
+    console.error('保存仓库失败:', error)
+    ElMessage.error('保存仓库失败')
+  }
+}
 onMounted(() => loadData())
 </script>
 

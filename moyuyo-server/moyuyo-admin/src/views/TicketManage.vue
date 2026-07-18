@@ -17,7 +17,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </div>
         </div>
-        <div class="kpi-value kpi-value-red">8</div>
+        <div class="kpi-value kpi-value-red">{{ ticketStats.pending }}</div>
         <div class="kpi-desc">需优先处理</div>
       </div>
       <div class="kpi-card">
@@ -27,7 +27,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           </div>
         </div>
-        <div class="kpi-value kpi-value-blue">12</div>
+        <div class="kpi-value kpi-value-blue">{{ ticketStats.inProgress }}</div>
         <div class="kpi-desc">正在跟进</div>
       </div>
       <div class="kpi-card">
@@ -37,7 +37,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           </div>
         </div>
-        <div class="kpi-value kpi-value-green">23</div>
+        <div class="kpi-value kpi-value-green">{{ ticketStats.closed }}</div>
         <div class="kpi-desc">已完成工单</div>
       </div>
       <div class="kpi-card kpi-card-accent">
@@ -47,7 +47,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </div>
         </div>
-        <div class="kpi-value" style="color: var(--primary)">96%</div>
+        <div class="kpi-value" style="color: var(--primary)">{{ ticketStats.slaRate }}%</div>
         <div class="kpi-desc" style="color: var(--brand-600)">当前响应表现优秀，继续保持</div>
       </div>
     </section>
@@ -166,7 +166,8 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { getTicketList, getTicketStats } from '../api/admin'
 
 const activeStatus = ref('all')
 const filterType = ref('')
@@ -174,6 +175,17 @@ const filterPriority = ref('')
 const searchKeyword = ref('')
 const currentPage = ref(1)
 const pageSize = 5
+
+// 工单统计KPI数据
+const ticketStats = ref({
+  pending: 0,
+  inProgress: 0,
+  closed: 0,
+  slaRate: 0
+})
+
+// 从API加载的工单列表
+const ticketList = ref([])
 
 const statusTabs = [
   { key: 'all', label: '全部' },
@@ -183,29 +195,15 @@ const statusTabs = [
   { key: 'timeout', label: '超时' }
 ]
 
-const mockData = [
-  { id: 1, ticketNo: 'TK-20260708-001', type: '退款', priority: '高', title: '购买的高端猫粮收到后包装破损严重，要求全额退款', user: '李小宠', createTime: '07-08 10:23', status: '待处理', agent: '客服-小王', responseTime: '响应超时 32min', timeout: true },
-  { id: 2, ticketNo: 'TK-20260708-002', type: '物流', priority: '中', title: '快递显示已签收但本人未收到包裹，物流单号 SF2026070800123', user: '张喵喵', createTime: '07-08 09:15', status: '进行中', agent: '客服-小刘', responseTime: '响应 8min', timeout: false },
-  { id: 3, ticketNo: 'TK-20260707-018', type: '咨询', priority: '低', title: '请问这款猫爬架承重多少斤，适合多大的猫咪使用', user: '林萌萌', createTime: '07-07 16:42', status: '已关闭', agent: '客服-小陈', responseTime: '响应 3min', timeout: false },
-  { id: 4, ticketNo: 'TK-20260707-025', type: '投诉', priority: '高', title: '自动喂食器使用一周后出现故障无法出粮，多次联系未得到有效解决', user: '王大毛', createTime: '07-07 14:08', status: '进行中', agent: '客服-小赵', responseTime: '响应超时 15min', timeout: true },
-  { id: 5, ticketNo: 'TK-20260708-005', type: '退款', priority: '中', title: '购买两件宠物衣服尺码不合适，申请换货但页面无换货选项', user: '赵嘟嘟', createTime: '07-08 11:56', status: '待处理', agent: '', responseTime: '新建 12min', timeout: false },
-  { id: 6, ticketNo: 'TK-20260706-011', type: '物流', priority: '高', title: '海外仓发货迟迟未更新物流轨迹，订单已超过预计送达时间', user: '陈小白', createTime: '07-06 18:30', status: '待处理', agent: '客服-小王', responseTime: '响应超时 2h', timeout: true },
-  { id: 7, ticketNo: 'TK-20260705-008', type: '咨询', priority: '低', title: '不同规格猫砂的使用效果区别以及如何选择', user: '刘小花', createTime: '07-05 20:15', status: '已关闭', agent: '客服-小陈', responseTime: '响应 5min', timeout: false },
-  { id: 8, ticketNo: 'TK-20260704-003', type: '投诉', priority: '中', title: '客服态度恶劣，要求投诉并更换对接客服人员', user: '徐大橘', createTime: '07-04 15:40', status: '进行中', agent: '客服-小赵', responseTime: '响应 12min', timeout: false }
-]
-
+// 前端筛选计算属性
 const filteredList = computed(() => {
-  let list = [...mockData]
-  // 状态筛选
+  let list = [...ticketList.value]
   if (activeStatus.value === 'pending') list = list.filter(i => i.status === '待处理')
   else if (activeStatus.value === 'progress') list = list.filter(i => i.status === '进行中')
   else if (activeStatus.value === 'closed') list = list.filter(i => i.status === '已关闭')
   else if (activeStatus.value === 'timeout') list = list.filter(i => i.timeout)
-  // 类型筛选
   if (filterType.value) list = list.filter(i => i.type === filterType.value)
-  // 优先级筛选
   if (filterPriority.value) list = list.filter(i => i.priority === filterPriority.value)
-  // 搜索筛选
   if (searchKeyword.value) {
     const kw = searchKeyword.value.toLowerCase()
     list = list.filter(i =>
@@ -238,6 +236,23 @@ const pageNumbers = computed(() => {
   return pages
 })
 
+// 从API加载工单统计和列表数据
+async function loadData() {
+  try {
+    const [statsRes, listRes] = await Promise.all([
+      getTicketStats(),
+      getTicketList()
+    ])
+    if (statsRes) {
+      ticketStats.value = statsRes
+    }
+    const list = (listRes && listRes.records) || listRes || []
+    ticketList.value = list
+  } catch (e) {
+    console.error('加载工单数据失败:', e)
+  }
+}
+
 function handleFilter() {
   currentPage.value = 1
 }
@@ -267,6 +282,8 @@ function userAvatarClass(user) {
 function handleView(item) {
   console.log('查看工单:', item.ticketNo)
 }
+
+onMounted(() => { loadData() })
 </script>
 
 <style scoped>

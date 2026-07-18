@@ -36,12 +36,12 @@ public class AdminPushController {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("id", e.getId());
             item.put("title", e.getTitle());
-            item.put("content", e.getSummary());
+            item.put("content", e.getContent());
             item.put("channel", e.getType());
             item.put("status", e.getStatus());
-            item.put("sentCount", e.getSentCount());
-            item.put("openCount", e.getDeliveredCount());
-            item.put("clickCount", e.getClickCount());
+            item.put("sentCount", e.getSuccessCount() != null ? e.getSuccessCount() : 0);
+            item.put("openCount", 0);
+            item.put("clickCount", 0);
             item.put("sendTime", e.getSentTime());
             list.add(item);
         }
@@ -53,7 +53,7 @@ public class AdminPushController {
     public Result<Map<String, Object>> create(@RequestBody Map<String, Object> body) {
         PushRecordEntity entity = new PushRecordEntity();
         entity.setTitle((String) body.get("title"));
-        entity.setSummary((String) body.get("content"));
+        entity.setContent((String) body.get("content"));
         entity.setType((String) body.get("channel"));
         pushManageService.create(entity);
         Map<String, Object> result = new LinkedHashMap<>();
@@ -95,27 +95,34 @@ public class AdminPushController {
     @Operation(summary = "定时推送列表")
     @GetMapping("/scheduled")
     public Result<List<Map<String, Object>>> scheduled() {
-        // TODO: PushManageService 暂未提供定时推送列表方法，后续补充
+        List<PushRecordEntity> entities = pushManageService.listScheduledRecords();
         List<Map<String, Object>> list = new ArrayList<>();
-        for (int i = 1; i <= 3; i++) {
+        for (PushRecordEntity e : entities) {
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", i);
-            item.put("title", "定时推送" + i);
-            item.put("scheduledTime", LocalDateTime.now().plusDays(i));
-            item.put("status", "SCHEDULED");
-            item.put("channel", "NOTIFICATION");
+            item.put("id", e.getId());
+            item.put("title", e.getTitle());
+            item.put("scheduledTime", e.getScheduledTime());
+            item.put("type", e.getType());
+            item.put("status", e.getStatus());
             list.add(item);
         }
         return Result.success(list);
     }
 
     @Operation(summary = "设置定时推送")
-    @PostMapping("/{id}/schedule")
-    public Result<Map<String, Object>> schedule(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        // TODO: PushManageService 暂未提供设置定时方法，后续补充
+    @PostMapping("/schedule")
+    public Result<Map<String, Object>> schedule(@RequestBody Map<String, Object> body) {
+        PushRecordEntity entity = new PushRecordEntity();
+        entity.setTitle((String) body.get("title"));
+        entity.setContent((String) body.get("content"));
+        entity.setType((String) body.get("type"));
+        if (body.get("scheduledTime") != null) {
+            entity.setScheduledTime(LocalDateTime.parse((String) body.get("scheduledTime")));
+        }
+        pushManageService.saveSchedule(entity);
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("id", id);
-        result.put("scheduledTime", body.get("scheduledTime"));
+        result.put("id", entity.getId());
+        result.put("scheduledTime", entity.getScheduledTime());
         result.put("message", "定时推送设置成功");
         return Result.success(result);
     }

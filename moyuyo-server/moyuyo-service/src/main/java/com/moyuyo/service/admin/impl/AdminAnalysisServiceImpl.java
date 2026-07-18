@@ -5,6 +5,10 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.moyuyo.dao.entity.BrowsingHistoryEntity;
 import com.moyuyo.dao.entity.CartEntity;
 import com.moyuyo.dao.entity.OrderEntity;
+import com.moyuyo.dao.admin.entity.SearchLogEntity;
+import com.moyuyo.dao.admin.entity.VisitLogEntity;
+import com.moyuyo.dao.admin.mapper.SearchLogMapper;
+import com.moyuyo.dao.admin.mapper.VisitLogMapper;
 import com.moyuyo.dao.mapper.BrowsingHistoryMapper;
 import com.moyuyo.dao.mapper.CartMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
@@ -31,6 +35,8 @@ public class AdminAnalysisServiceImpl implements AdminAnalysisService {
   private final UserMapper userMapper;
   private final BrowsingHistoryMapper browsingHistoryMapper;
   private final CartMapper cartMapper;
+  private final SearchLogMapper searchLogMapper;
+  private final VisitLogMapper visitLogMapper;
 
   @Override
   public List<Map<String, Object>> funnel() {
@@ -114,48 +120,129 @@ public class AdminAnalysisServiceImpl implements AdminAnalysisService {
 
   @Override
   public Map<String, Object> searchStats() {
-    // TODO: 需要创建 mo_search_log 表记录用户搜索行为后实现真实统计
     Map<String, Object> result = new LinkedHashMap<>();
 
-    // 使用商品数量作为参考，提供部分真实数据
     long totalProducts = productMapper.selectCount(null);
     long totalUsers = userMapper.selectCount(null);
 
-    result.put("totalSearches", 0);
-    result.put("searchUsers", 0);
-    result.put("noResultRate", BigDecimal.ZERO);
-    result.put("avgSearchesPerUser", BigDecimal.ZERO);
+    // 总搜索次数
+    long totalSearches = searchLogMapper.selectCount(null);
+
+    // 独立搜索用户数
+    List<Object> searchUsersResult = searchLogMapper.selectObjs(
+        new QueryWrapper<SearchLogEntity>()
+            .select("COUNT(DISTINCT user_id)")
+    );
+    long searchUsers = searchUsersResult.isEmpty() || searchUsersResult.get(0) == null
+        ? 0 : ((Number) searchUsersResult.get(0)).longValue();
+
+    // 无结果搜索数（result_count = 0）
+    List<Object> noResultResult = searchLogMapper.selectObjs(
+        new QueryWrapper<SearchLogEntity>()
+            .select("COUNT(*)")
+            .eq("result_count", 0)
+    );
+    long noResultCount = noResultResult.isEmpty() || noResultResult.get(0) == null
+        ? 0 : ((Number) noResultResult.get(0)).longValue();
+
+    // 无结果率
+    BigDecimal noResultRate = totalSearches > 0
+        ? BigDecimal.valueOf(noResultCount)
+            .multiply(BigDecimal.valueOf(100))
+            .divide(BigDecimal.valueOf(totalSearches), 1, RoundingMode.HALF_UP)
+        : BigDecimal.ZERO;
+
+    // 人均搜索次数
+    BigDecimal avgSearchesPerUser = searchUsers > 0
+        ? BigDecimal.valueOf(totalSearches)
+            .divide(BigDecimal.valueOf(searchUsers), 1, RoundingMode.HALF_UP)
+        : BigDecimal.ZERO;
+
+    // 热门搜索关键词 TOP10
+    List<Map<String, Object>> hotKeywords = searchLogMapper.selectMaps(
+        new QueryWrapper<SearchLogEntity>()
+            .select("keyword, COUNT(*) as count")
+            .groupBy("keyword")
+            .orderByDesc("count")
+            .last("LIMIT 10")
+    );
+
+    result.put("totalSearches", totalSearches);
+    result.put("searchUsers", searchUsers);
+    result.put("noResultRate", noResultRate);
+    result.put("avgSearchesPerUser", avgSearchesPerUser);
     result.put("totalProducts", totalProducts);
     result.put("totalUsers", totalUsers);
-
-    List<Map<String, Object>> hotWords = Collections.emptyList();
-    result.put("hotKeywords", hotWords);
-    result.put("note", "搜索统计需要创建 mo_search_log 表记录用户搜索词后才能提供真实数据");
+    result.put("hotKeywords", hotKeywords);
     return result;
   }
 
   @Override
   public Map<String, Object> trafficStats() {
-    // TODO: 需要创建 mo_visit_log 表记录页面访问后实现真实流量统计
     Map<String, Object> result = new LinkedHashMap<>();
 
-    long todayUsers = userMapper.selectCount(
-        new LambdaQueryWrapper<com.moyuyo.dao.entity.UserEntity>()
-            .apply("DATE(last_login_time) = CURDATE()"));
-
-    // 今日订单数作为参考指标
+    // 今日订单数
     long todayOrders = orderMapper.selectCount(
         new LambdaQueryWrapper<OrderEntity>()
             .apply("DATE(create_time) = CURDATE()"));
 
-    result.put("todayVisitors", todayUsers);
-    result.put("todayPageViews", 0);
-    result.put("todayOrders", todayOrders);
-    result.put("bounceRate", BigDecimal.ZERO);
-    result.put("avgStayDuration", "暂无数据");
+    // 今日独立访客（按 session_id 去重）
+    List<Object> visitorsResult = visitLogMapper.selectObjs(
+        new QueryWrapper<VisitLogEntity>()
+            .select("COUNT(DISTINCT session_id)")
+            .apply("DATE(create_time) = CURDATE()")
+    );
+    long todayVisitors = visitorsResult.isEmpty() || visitorsResult.get(0) == null
+        ? 0 : ((Number) visitorsResult.get(0)).longValue();
 
-    result.put("channels", Collections.emptyList());
-    result.put("note", "流量统计需要创建 mo_visit_log 表记录页面访问后才能提供真实数据");
+    // 今日页面浏览量（PV）
+    long todayPageViews = visitLogMapper.selectCount(
+        new QueryWrapper<VisitLogEntity>()
+            .apply("DATE(create_time) = CURDATE()")
+    );
+
+    // 跳出率 = 单页会话数 / 总会话数
+    List<Object> bouncedResult = visitLogMapper.selectObjs(
+        new QueryWrapper<VisitLogEntity>()
+            .select("COUNT(*)")
+            .inSql("session_id",
+                "SELECT session_id FROM mo_visit_log WHERE DATE(create_time) = CURDATE() GROUP BY session_id HAVING COUNT(*) = 1")
+            .apply("DATE(create_time) = CURDATE()")
+    );
+    long bouncedSessions = bouncedResult.isEmpty() || bouncedResult.get(0) == null
+        ? 0 : ((Number) bouncedResult.get(0)).longValue();
+
+    BigDecimal bounceRate = todayVisitors > 0
+        ? BigDecimal.valueOf(bouncedSessions)
+            .multiply(BigDecimal.valueOf(100))
+            .divide(BigDecimal.valueOf(todayVisitors), 1, RoundingMode.HALF_UP)
+        : BigDecimal.ZERO;
+
+    // 平均停留时长
+    List<Object> avgStayResult = visitLogMapper.selectObjs(
+        new QueryWrapper<VisitLogEntity>()
+            .select("COALESCE(AVG(stay_duration), 0)")
+            .apply("DATE(create_time) = CURDATE()")
+    );
+    Object avgStayObj = avgStayResult.isEmpty() ? null : avgStayResult.get(0);
+    String avgStayDuration = avgStayObj != null
+        ? Math.round(((Number) avgStayObj).doubleValue()) + "秒"
+        : "暂无数据";
+
+    // 按渠道分组统计流量分布
+    List<Map<String, Object>> channels = visitLogMapper.selectMaps(
+        new QueryWrapper<VisitLogEntity>()
+            .select("COALESCE(channel, '直接访问') as channel, COUNT(DISTINCT session_id) as visits, COUNT(*) as pv")
+            .groupBy("channel")
+            .orderByDesc("visits")
+    );
+
+    result.put("todayVisitors", todayVisitors);
+    result.put("todayPageViews", todayPageViews);
+    result.put("todayOrders", todayOrders);
+    result.put("bounceRate", bounceRate);
+    result.put("avgStayDuration", avgStayDuration);
+    result.put("channels", channels);
     return result;
   }
 

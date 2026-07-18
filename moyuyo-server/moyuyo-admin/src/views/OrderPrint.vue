@@ -56,6 +56,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getOrderOpsExport, batchShip } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -66,37 +67,43 @@ const filters = reactive({
   printStatus: ''
 })
 
-const mockData = [
-  { id: 1, orderNo: 'MOY20260717001', productInfo: '无线蓝牙耳机 Pro × 1', receiver: '张三', printStatus: '待打印', printCount: 0, createTime: '2026-07-17 10:30:00' },
-  { id: 2, orderNo: 'MOY20260717002', productInfo: '智能手表S3 × 1, 表带 × 1', receiver: '李四', printStatus: '已打印', printCount: 1, createTime: '2026-07-17 09:20:00' },
-  { id: 3, orderNo: 'MOY20260716003', productInfo: '运动休闲鞋 × 2', receiver: '王五', printStatus: '待打印', printCount: 0, createTime: '2026-07-16 14:45:00' },
-  { id: 4, orderNo: 'MOY20260715004', productInfo: '不锈钢保温杯 × 3', receiver: '赵六', printStatus: '已打印', printCount: 2, createTime: '2026-07-15 11:10:00' },
-  { id: 5, orderNo: 'MOY20260714005', productInfo: '轻薄笔记本电脑包 × 1', receiver: '孙七', printStatus: '待打印', printCount: 0, createTime: '2026-07-14 16:30:00' }
-]
-
 const tableData = ref([])
 
-function loadData() {
-  const start = (currentPage.value - 1) * pageSize.value
-  const list = mockData.filter(d => {
+// 加载打印列表数据
+async function loadData() {
+  try {
+    const res = await getOrderOpsExport()
+    let list = res || []
     const kw = filters.keyword.toLowerCase()
-    if (kw && !d.orderNo.toLowerCase().includes(kw)) return false
-    if (filters.printStatus && d.printStatus !== filters.printStatus) return false
-    return true
-  })
-  total.value = list.length
-  tableData.value = list.slice(start, start + pageSize.value)
+    if (kw) {
+      list = list.filter(d => (d.orderNo || '').toLowerCase().includes(kw))
+    }
+    if (filters.printStatus) {
+      list = list.filter(d => d.printStatus === filters.printStatus)
+    }
+    total.value = list.length
+    const start = (currentPage.value - 1) * pageSize.value
+    tableData.value = list.slice(start, start + pageSize.value)
+  } catch (error) {
+    console.error('获取打印数据失败:', error)
+    ElMessage.error('获取打印数据失败')
+  }
 }
 
 function handleSearch() { currentPage.value = 1; loadData() }
 
 function handleReset() { filters.keyword = ''; filters.printStatus = ''; handleSearch() }
 
-function handlePrint(row) {
-  row.printStatus = '已打印'
-  row.printCount++
-  loadData()
-  ElMessage.success('打印任务已提交，订单：' + row.orderNo)
+// 提交打印任务
+async function handlePrint(row) {
+  try {
+    await batchShip({ orderIds: [row.id], action: 'print' })
+    ElMessage.success('打印任务已提交，订单：' + row.orderNo)
+    loadData()
+  } catch (error) {
+    console.error('提交打印任务失败:', error)
+    ElMessage.error('提交打印任务失败')
+  }
 }
 
 onMounted(() => { loadData() })

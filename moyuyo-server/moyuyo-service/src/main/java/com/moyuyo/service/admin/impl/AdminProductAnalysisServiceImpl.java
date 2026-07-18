@@ -16,7 +16,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 管理后台商品分析服务实现
@@ -113,6 +115,40 @@ public class AdminProductAnalysisServiceImpl implements AdminProductAnalysisServ
       Map<String, Object> item = new LinkedHashMap<>();
       item.put("range", range[0]);
       item.put("productCount", count);
+      result.add(item);
+    }
+    return result;
+  }
+
+  @Override
+  public List<Map<String, Object>> report() {
+    // 从数据库查询所有商品，生成商品报表
+    List<ProductEntity> products = productMapper.selectList(
+        new LambdaQueryWrapper<ProductEntity>().orderByDesc(ProductEntity::getSales));
+
+    // 查询所有订单明细用于计算收入
+    List<OrderItemEntity> allItems = orderItemMapper.selectList(new LambdaQueryWrapper<>());
+    // 按商品ID聚合：销量和收入
+    Map<Long, LongSummaryStatistics> itemStats = allItems.stream()
+        .collect(Collectors.groupingBy(
+            OrderItemEntity::getProductId,
+            Collectors.summarizingLong(OrderItemEntity::getQuantity)));
+
+    List<Map<String, Object>> result = new ArrayList<>();
+    for (ProductEntity product : products) {
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("id", product.getId());
+      item.put("productName", product.getName());
+      item.put("price", product.getPrice());
+      item.put("stock", product.getStock());
+      item.put("sales", product.getSales());
+
+      // 计算收入 = 销量 * 单价
+      LongSummaryStatistics stats = itemStats.get(product.getId());
+      long totalSalesFromOrders = stats != null ? stats.getSum() : 0;
+      BigDecimal revenue = product.getPrice().multiply(BigDecimal.valueOf(totalSalesFromOrders));
+      item.put("revenue", revenue);
+
       result.add(item);
     }
     return result;

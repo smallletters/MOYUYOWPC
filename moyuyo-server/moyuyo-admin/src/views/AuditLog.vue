@@ -57,8 +57,9 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getAuditLogList } from '../api/admin'
 
 const filters = reactive({
   operator: '',
@@ -66,16 +67,7 @@ const filters = reactive({
   dateRange: null,
 })
 
-const tableData = ref([
-  { id: 1, operator: 'admin', actionType: '修改', target: '商品 #1024', detail: '修改商品价格：¥89.00 → ¥79.00，修改库存数量：200 → 180', ipAddress: '192.168.1.100', createTime: '2026-07-17 14:30:25' },
-  { id: 2, operator: 'editor01', actionType: '新增', target: '商品 #1025', detail: '新增商品「运动速干短裤」，SKU: ST-011，价格: ¥129.00', ipAddress: '192.168.1.101', createTime: '2026-07-17 13:20:10' },
-  { id: 3, operator: 'admin', actionType: '删除', target: '用户 #U10086', detail: '删除已注销用户账号及相关数据', ipAddress: '192.168.1.100', createTime: '2026-07-16 16:45:00' },
-  { id: 4, operator: 'csm01', actionType: '查询', target: '订单 #ORD-20260715', detail: '查询订单详情及退款状态', ipAddress: '192.168.1.102', createTime: '2026-07-16 14:30:30' },
-  { id: 5, operator: 'editor01', actionType: '修改', target: '知识库 #8', detail: '编辑知识库文章「如何申请退款」，更新内容及分类', ipAddress: '192.168.1.101', createTime: '2026-07-15 11:30:15' },
-  { id: 6, operator: 'admin', actionType: '新增', target: '用户 #U10090', detail: '新增管理员账号 editor02，角色：内容编辑', ipAddress: '192.168.1.100', createTime: '2026-07-15 09:15:45' },
-  { id: 7, operator: 'system', actionType: '新增', target: '订单 #ORD-20260714', detail: '系统自动创建退款订单，金额: ¥298.00', ipAddress: '127.0.0.1', createTime: '2026-07-14 22:00:00' },
-  { id: 8, operator: 'csm01', actionType: '查询', target: '用户 #U10045', detail: '查询用户订单历史及售后记录', ipAddress: '192.168.1.102', createTime: '2026-07-14 10:20:20' },
-])
+const tableData = ref([])
 
 function actionTag(type) {
   if (type === '新增') return 'success'
@@ -84,9 +76,28 @@ function actionTag(type) {
   return 'info'
 }
 
-function handleSearch() { ElMessage.success('搜索完成') }
-function handleReset() { filters.operator = ''; filters.actionType = ''; filters.dateRange = null }
+// 从API加载审计日志数据
+async function loadData() {
+  try {
+    const res = await getAuditLogList()
+    const list = res || []
+    // 前端筛选
+    let filtered = list.filter(item => {
+      if (filters.operator && !item.operator.includes(filters.operator)) return false
+      if (filters.actionType && item.actionType !== filters.actionType) return false
+      return true
+    })
+    tableData.value = filtered
+  } catch (e) {
+    console.error('加载审计日志失败:', e)
+    ElMessage.error('加载审计日志失败')
+  }
+}
+function handleSearch() { loadData() }
+function handleReset() { filters.operator = ''; filters.actionType = ''; filters.dateRange = null; loadData() }
 function handleExport() { ElMessage.success('正在导出审计日志...') }
+
+onMounted(() => { loadData() })
 </script>
 
 <style scoped>

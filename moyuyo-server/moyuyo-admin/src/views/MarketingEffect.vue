@@ -89,6 +89,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getCampaigns, getMarketingEffects, deleteCampaign, createCampaign, updateCampaign } from '../api/admin'
 
 const pageTitle = '营销效果'
 const filters = reactive({ keyword: '' })
@@ -105,34 +106,105 @@ const editForm = reactive({
   conversions: 0
 })
 
-// KPI数据
+// KPI数据（通过API获取）
 const kpiData = reactive({
-  campaignCount: 8,
-  totalImpression: 568000,
-  totalClicks: 85600,
-  conversionRate: 3.2
+  campaignCount: 0,
+  totalImpression: 0,
+  totalClicks: 0,
+  conversionRate: 0
 })
 
-const mockData = [
-  { id: 1, campaignName: '夏日清凉大促', impression: 125000, clicks: 18500, clickRate: 14.8, conversions: 620, roi: '3.5' },
-  { id: 2, campaignName: '618大促活动', impression: 250000, clicks: 42000, clickRate: 16.8, conversions: 1580, roi: '5.2' },
-  { id: 3, campaignName: '新用户首单优惠', impression: 85000, clicks: 12800, clickRate: 15.1, conversions: 890, roi: '4.8' },
-  { id: 4, campaignName: '海外购专场', impression: 58000, clicks: 6500, clickRate: 11.2, conversions: 280, roi: '2.9' },
-  { id: 5, campaignName: '会员日特惠', impression: 32000, clicks: 3800, clickRate: 11.9, conversions: 150, roi: '3.1' },
-  { id: 6, campaignName: '限时秒杀活动', impression: 18000, clicks: 2000, clickRate: 11.1, conversions: 95, roi: '2.6' }
-]
+// 原始营销活动数据
+const allCampaigns = ref([])
+
+// 加载KPI统计
+async function loadKpi() {
+  try {
+    const effects = await getMarketingEffects()
+    if (effects) {
+      kpiData.campaignCount = effects.campaignCount ?? 0
+      kpiData.totalImpression = effects.totalImpression ?? 0
+      kpiData.totalClicks = effects.totalClicks ?? 0
+      kpiData.conversionRate = effects.conversionRate ?? 0
+    }
+  } catch (e) {
+    console.error('获取营销效果KPI失败', e)
+  }
+}
+
+// 加载活动列表
+async function loadCampaignEffects() {
+  try {
+    const data = await getCampaigns()
+    allCampaigns.value = (data || []).map(item => ({
+      id: item.id,
+      campaignName: item.name || item.campaignName || '',
+      impression: item.impression ?? 0,
+      clicks: item.clicks ?? 0,
+      clickRate: item.clickRate ?? 0,
+      conversions: item.conversions ?? 0,
+      roi: item.roi ?? '0'
+    }))
+    applyFilters()
+  } catch (e) {
+    console.error('获取活动列表失败', e)
+  }
+}
+
+// 本地筛选
+function applyFilters() {
+  tableData.value = [...allCampaigns.value]
+  total.value = allCampaigns.value.length
+}
 
 function loadData() {
-  tableData.value = [...mockData]
-  total.value = mockData.length
+  applyFilters()
 }
+
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.keyword = ''; handleSearch() }
 function handleAdd() { dialogTitle.value = '新建活动'; editForm.campaignName = ''; editForm.impression = 0; editForm.clicks = 0; editForm.conversions = 0; dialogVisible.value = true }
 function handleEdit(row) { dialogTitle.value = '编辑活动'; Object.assign(editForm, row); dialogVisible.value = true }
-function handleDelete(row) { ElMessageBox.confirm('确定删除？','提示').then(() => { ElMessage.success('删除成功'); loadData() }) }
-function handleSave() { ElMessage.success('保存成功'); dialogVisible.value = false; loadData() }
-onMounted(() => loadData())
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确定删除？', '提示')
+    await deleteCampaign(row.id)
+    ElMessage.success('删除成功')
+    await loadCampaignEffects()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败: ' + (e.message || '未知错误'))
+    }
+  }
+}
+async function handleSave() {
+  try {
+    if (editForm.id) {
+      await updateCampaign(editForm.id, {
+        campaignName: editForm.campaignName,
+        impression: editForm.impression,
+        clicks: editForm.clicks,
+        conversions: editForm.conversions
+      })
+    } else {
+      await createCampaign({
+        campaignName: editForm.campaignName,
+        impression: editForm.impression,
+        clicks: editForm.clicks,
+        conversions: editForm.conversions
+      })
+    }
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    await loadCampaignEffects()
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e.message || '未知错误'))
+  }
+}
+
+onMounted(async () => {
+  await Promise.all([loadKpi(), loadCampaignEffects()])
+})
 </script>
 
 <style scoped>

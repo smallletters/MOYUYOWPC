@@ -1,18 +1,20 @@
 package com.moyuyo.common.security;
 
 import jakarta.servlet.Filter;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.client.RestTemplate;
 
 @Configuration
 public class WebConfig {
 
     @Bean
-    public RestTemplate restTemplate(RestTemplateBuilder builder) {
-        return builder.build();
+    public FilterRegistrationBean<Filter> requestLoggingFilterRegistration(RequestLoggingFilter loggingFilter) {
+        FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(loggingFilter);
+        registration.addUrlPatterns("/api/*");
+        registration.setOrder(0);
+        return registration;
     }
 
     @Bean

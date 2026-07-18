@@ -57,6 +57,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { getPriceList } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -67,25 +68,25 @@ const filters = reactive({
   keyword: ''
 })
 
-const mockData = [
-  { id: 1, productName: '无线蓝牙耳机 Pro', sku: 'BT-PRO-001', originalPrice: 129, adjustedPrice: 149, adjustType: '涨价', operator: '管理员A', adjustTime: '2026-07-10 14:30:00' },
-  { id: 2, productName: '智能手表S3', sku: 'SW-S3-002', originalPrice: 359, adjustedPrice: 339, adjustType: '降价', operator: '管理员B', adjustTime: '2026-07-11 09:20:00' },
-  { id: 3, productName: '运动休闲鞋', sku: 'SNEAKER-003', originalPrice: 219, adjustedPrice: 199, adjustType: '降价', operator: '管理员A', adjustTime: '2026-07-12 16:45:00' },
-  { id: 4, productName: '不锈钢保温杯', sku: 'CUP-004', originalPrice: 49, adjustedPrice: 59, adjustType: '涨价', operator: '管理员C', adjustTime: '2026-07-13 11:10:00' },
-  { id: 5, productName: '轻薄笔记本电脑包', sku: 'BAG-005', originalPrice: 199, adjustedPrice: 189, adjustType: '降价', operator: '管理员B', adjustTime: '2026-07-14 08:30:00' }
-]
-
 const tableData = ref([])
 
-function loadData() {
-  const start = (currentPage.value - 1) * pageSize.value
-  const list = mockData.filter(d => {
-    const kw = filters.keyword.toLowerCase()
-    if (kw && !d.productName.toLowerCase().includes(kw)) return false
-    return true
-  })
-  total.value = list.length
-  tableData.value = list.slice(start, start + pageSize.value)
+// 从API加载价格历史数据（复用价格列表API）
+async function loadData() {
+  try {
+    const res = await getPriceList()
+    const list = (res && res.records) || res || []
+    // 根据关键词过滤
+    let filtered = list.filter(d => {
+      const kw = filters.keyword.toLowerCase()
+      if (kw && !d.productName.toLowerCase().includes(kw)) return false
+      return true
+    })
+    total.value = filtered.length
+    const start = (currentPage.value - 1) * pageSize.value
+    tableData.value = filtered.slice(start, start + pageSize.value)
+  } catch (e) {
+    console.error('加载价格历史失败:', e)
+  }
 }
 
 function handleSearch() { currentPage.value = 1; loadData() }

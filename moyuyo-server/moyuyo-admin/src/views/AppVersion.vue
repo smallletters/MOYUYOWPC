@@ -65,8 +65,9 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getAppVersionList, createAppVersion, updateAppVersion, publishAppVersion, deleteAppVersion } from '../api/admin'
 
 const dialogVisible = ref(false)
 const isEdit = ref(false)
@@ -79,14 +80,7 @@ const form = reactive({
   forceUpdate: false,
 })
 
-const tableData = ref([
-  { id: 1, version: '2.1.0', platform: 'iOS', description: '新增购物车功能，优化结算流程，修复已知 Bug', forceUpdate: false, status: '已发布', publishTime: '2026-07-15 10:00' },
-  { id: 2, version: '2.0.5', platform: 'Android', description: '优化首页加载速度，修复支付回调问题', forceUpdate: true, status: '已发布', publishTime: '2026-07-10 14:30' },
-  { id: 3, version: '2.1.0', platform: 'Android', description: '新增购物车功能，优化结算流程，修复已知 Bug', forceUpdate: false, status: '待发布', publishTime: '2026-07-18 09:00' },
-  { id: 4, version: '2.0.4', platform: 'iOS', description: '兼容 iOS 16 系统，修复闪退问题', forceUpdate: false, status: '已发布', publishTime: '2026-07-05 11:00' },
-  { id: 5, version: '2.0.6', platform: 'iOS', description: '优化搜索推荐算法，增加用户反馈入口', forceUpdate: false, status: '草稿', publishTime: '-' },
-  { id: 6, version: '2.0.3', platform: 'Android', description: '优化图片加载，修复商品详情页显示异常', forceUpdate: true, status: '已发布', publishTime: '2026-06-28 16:00' },
-])
+const tableData = ref([])
 
 function statusTag(status) {
   if (status === '已发布') return 'success'
@@ -99,6 +93,16 @@ function resetForm() {
   form.platform = 'iOS'
   form.description = ''
   form.forceUpdate = false
+}
+
+// 加载版本列表
+async function loadData() {
+  try {
+    const res = await getAppVersionList()
+    tableData.value = res.records || res || []
+  } catch (e) {
+    ElMessage.error('获取版本列表失败')
+  }
 }
 
 function handleAdd() {
@@ -118,50 +122,51 @@ function handleEdit(row) {
   dialogVisible.value = true
 }
 
-function handleSave() {
+async function handleSave() {
   if (!form.version || !form.description) {
     ElMessage.warning('请填写完整信息')
     return
   }
-  if (isEdit.value) {
-    const item = tableData.value.find(item => item.id === editId.value)
-    if (item) {
-      item.version = form.version
-      item.platform = form.platform
-      item.description = form.description
-      item.forceUpdate = form.forceUpdate
+  try {
+    if (isEdit.value) {
+      // 编辑更新版本
+      await updateAppVersion({ id: editId.value, ...form })
+      ElMessage.success('编辑成功')
+    } else {
+      // 创建新版本
+      await createAppVersion({ ...form })
+      ElMessage.success('创建成功')
     }
-    ElMessage.success('编辑成功')
-  } else {
-    const newId = tableData.value.length + 1
-    tableData.value.unshift({
-      id: newId,
-      version: form.version,
-      platform: form.platform,
-      description: form.description,
-      forceUpdate: form.forceUpdate,
-      status: '草稿',
-      publishTime: '-'
-    })
-    ElMessage.success('创建成功')
+    dialogVisible.value = false
+    await loadData()
+  } catch (e) {
+    ElMessage.error('保存失败')
   }
-  dialogVisible.value = false
 }
 
-function handlePublish(row) {
-  ElMessageBox.confirm('确定发布版本 ' + row.version + ' 吗？', '提示').then(() => {
-    row.status = '待发布'
-    row.publishTime = new Date().toLocaleString()
+async function handlePublish(row) {
+  try {
+    await ElMessageBox.confirm('确定发布版本 ' + row.version + ' 吗？', '提示')
+    await publishAppVersion(row.id)
     ElMessage.success('版本已发布')
-  }).catch(() => {})
+    await loadData()
+  } catch (e) {
+    // 用户取消不处理
+  }
 }
 
-function handleDelete(row) {
-  ElMessageBox.confirm('确定删除版本 ' + row.version + ' 吗？', '提示').then(() => {
-    tableData.value = tableData.value.filter(item => item.id !== row.id)
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确定删除版本 ' + row.version + ' 吗？', '提示')
+    await deleteAppVersion(row.id)
     ElMessage.success('已删除')
-  }).catch(() => {})
+    await loadData()
+  } catch (e) {
+    // 用户取消不处理
+  }
 }
+
+onMounted(() => { loadData() })
 </script>
 
 <style scoped>

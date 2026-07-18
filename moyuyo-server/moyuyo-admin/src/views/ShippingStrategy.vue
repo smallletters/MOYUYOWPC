@@ -90,6 +90,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getShippingStrategies, createShippingStrategy, updateShippingStrategy, deleteShippingStrategy } from '../api/admin'
 
 const pageTitle = '发货策略'
 const filters = reactive({ keyword: '' })
@@ -108,29 +109,65 @@ const editForm = reactive({
   status: '启用'
 })
 
-const mockData = [
-  { id: 1, strategyName: '华东次日达', region: '华东地区', shippingMethod: '快递', feeRule: '首重10元，续重5元/kg', priority: 1, status: '启用' },
-  { id: 2, strategyName: '华北经济型', region: '华北地区', shippingMethod: '快递', feeRule: '首重8元，续重4元/kg', priority: 2, status: '启用' },
-  { id: 3, strategyName: '美国西岸海运', region: '美国西海岸', shippingMethod: '海运', feeRule: '首重50元，续重20元/kg', priority: 3, status: '启用' },
-  { id: 4, strategyName: '欧洲空运特快', region: '欧洲主要国家', shippingMethod: '空运', feeRule: '首重80元，续重35元/kg', priority: 4, status: '停用' },
-  { id: 5, strategyName: '华南极速达', region: '华南地区', shippingMethod: '快递', feeRule: '首重12元，续重6元/kg', priority: 1, status: '启用' },
-  { id: 6, strategyName: '日本海运经济', region: '日本', shippingMethod: '海运', feeRule: '首重30元，续重12元/kg', priority: 5, status: '启用' }
-]
-
-function loadData() {
-  let filtered = [...mockData]
-  if (filters.keyword) {
-    filtered = filtered.filter(item => item.strategyName.includes(filters.keyword))
+async function loadData() {
+  try {
+    const res = await getShippingStrategies()
+    const list = res || []
+    // 前端过滤
+    let filtered = [...list]
+    if (filters.keyword) {
+      filtered = filtered.filter(item => item.strategyName && item.strategyName.includes(filters.keyword))
+    }
+    tableData.value = filtered
+    total.value = filtered.length
+  } catch (err) {
+    console.error('获取物流策略失败', err)
   }
-  tableData.value = filtered
-  total.value = filtered.length
 }
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.keyword = ''; handleSearch() }
 function handleAdd() { dialogTitle.value = '新建策略'; editForm.strategyName = ''; editForm.region = ''; editForm.shippingMethod = '快递'; editForm.feeRule = ''; editForm.priority = 1; editForm.status = '启用'; dialogVisible.value = true }
 function handleEdit(row) { dialogTitle.value = '编辑策略'; Object.assign(editForm, row); dialogVisible.value = true }
-function handleDelete(row) { ElMessageBox.confirm('确定删除？','提示').then(() => { ElMessage.success('删除成功'); loadData() }) }
-function handleSave() { ElMessage.success('保存成功'); dialogVisible.value = false; loadData() }
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确定删除？', '提示')
+    await deleteShippingStrategy(row.id)
+    ElMessage.success('删除成功')
+    await loadData()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败: ' + (e.message || '未知错误'))
+    }
+  }
+}
+async function handleSave() {
+  try {
+    if (editForm.id) {
+      await updateShippingStrategy(editForm.id, {
+        strategyName: editForm.strategyName,
+        region: editForm.region,
+        shippingMethod: editForm.shippingMethod,
+        feeRule: editForm.feeRule,
+        priority: editForm.priority,
+        status: editForm.status
+      })
+    } else {
+      await createShippingStrategy({
+        strategyName: editForm.strategyName,
+        region: editForm.region,
+        shippingMethod: editForm.shippingMethod,
+        feeRule: editForm.feeRule,
+        priority: editForm.priority,
+        status: editForm.status
+      })
+    }
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    await loadData()
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e.message || '未知错误'))
+  }
+}
 onMounted(() => loadData())
 </script>
 

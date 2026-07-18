@@ -12,7 +12,7 @@
         <el-card shadow="never">
           <div class="kpi-card-content">
             <div class="kpi-label">今日访客</div>
-            <div class="kpi-value">12,580</div>
+            <div class="kpi-value">{{ kpi.todayVisitors }}</div>
           </div>
         </el-card>
       </el-col>
@@ -20,7 +20,7 @@
         <el-card shadow="never">
           <div class="kpi-card-content">
             <div class="kpi-label">今日浏览量</div>
-            <div class="kpi-value">45,680</div>
+            <div class="kpi-value">{{ kpi.todayPageViews }}</div>
           </div>
         </el-card>
       </el-col>
@@ -28,7 +28,7 @@
         <el-card shadow="never">
           <div class="kpi-card-content">
             <div class="kpi-label">跳出率</div>
-            <div class="kpi-value" style="color:#e67e22">32.5%</div>
+            <div class="kpi-value" style="color:#e67e22">{{ kpi.bounceRate }}</div>
           </div>
         </el-card>
       </el-col>
@@ -36,7 +36,7 @@
         <el-card shadow="never">
           <div class="kpi-card-content">
             <div class="kpi-label">平均停留时长</div>
-            <div class="kpi-value">3m 42s</div>
+            <div class="kpi-value">{{ kpi.avgDuration }}</div>
           </div>
         </el-card>
       </el-col>
@@ -61,20 +61,35 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getTrafficAnalysis } from '../api/admin'
 
-const tableData = ref([
-  { id: 1, channel: '自然搜索', visitors: '5,280', pageViews: '18,920', percentage: 42, bounceRate: 28.5 },
-  { id: 2, channel: '付费广告', visitors: '3,560', pageViews: '12,450', percentage: 28, bounceRate: 35.2 },
-  { id: 3, channel: '社交媒体', visitors: '2,120', pageViews: '7,890', percentage: 17, bounceRate: 38.6 },
-  { id: 4, channel: '直接访问', visitors: '890', pageViews: '3,560', percentage: 7, bounceRate: 25.8 },
-  { id: 5, channel: '外部链接', visitors: '730', pageViews: '2,860', percentage: 6, bounceRate: 30.4 },
-])
+const kpi = ref({ todayVisitors: '—', todayPageViews: '—', bounceRate: '—', avgDuration: '—' })
+const tableData = ref([])
+
+async function loadData() {
+  try {
+    const res = await getTrafficAnalysis()
+    if (res) {
+      kpi.value = {
+        todayVisitors: res.todayVisitors ?? '—',
+        todayPageViews: res.todayPageViews ?? '—',
+        bounceRate: res.bounceRate ?? '—',
+        avgDuration: res.avgDuration ?? '—'
+      }
+      tableData.value = res.list || []
+    }
+  } catch (err) {
+    console.error('获取流量数据失败', err)
+  }
+}
 
 function handleExport() {
   ElMessage.success('正在导出流量数据...')
 }
+
+onMounted(() => loadData())
 </script>
 
 <style scoped>

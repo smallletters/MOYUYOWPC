@@ -86,6 +86,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getCarriers, createCarrier, updateCarrier, deleteCarrier } from '../api/admin'
 
 const pageTitle = '承运商对比'
 const filters = reactive({ keyword: '' })
@@ -104,29 +105,66 @@ const editForm = reactive({
   praiseRate: 95
 })
 
-const mockData = [
-  { id: 1, name: '顺丰速运', transportMode: '快递', avgDays: 2, firstWeightPrice: 12, renewWeightPrice: 5, praiseRate: 98.5 },
-  { id: 2, name: '中通快递', transportMode: '快递', avgDays: 3, firstWeightPrice: 8, renewWeightPrice: 3, praiseRate: 96.2 },
-  { id: 3, name: '中国邮政海运', transportMode: '海运', avgDays: 25, firstWeightPrice: 50, renewWeightPrice: 20, praiseRate: 92.8 },
-  { id: 4, name: 'DHL国际快递', transportMode: '空运', avgDays: 5, firstWeightPrice: 80, renewWeightPrice: 35, praiseRate: 97.1 },
-  { id: 5, name: 'FedEx国际', transportMode: '空运', avgDays: 4, firstWeightPrice: 75, renewWeightPrice: 30, praiseRate: 96.9 },
-  { id: 6, name: '韵达陆运', transportMode: '陆运', avgDays: 5, firstWeightPrice: 6, renewWeightPrice: 2, praiseRate: 94.5 }
-]
-
-function loadData() {
-  let filtered = [...mockData]
-  if (filters.keyword) {
-    filtered = filtered.filter(item => item.name.includes(filters.keyword))
+// 加载承运商数据
+async function loadData() {
+  try {
+    const res = await getCarriers()
+    const list = res || []
+    let filtered = [...list]
+    if (filters.keyword) {
+      filtered = filtered.filter(item => item.name.includes(filters.keyword))
+    }
+    tableData.value = filtered
+    total.value = filtered.length
+  } catch (error) {
+    console.error('获取承运商数据失败:', error)
+    ElMessage.error('获取承运商数据失败')
   }
-  tableData.value = filtered
-  total.value = filtered.length
 }
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.keyword = ''; handleSearch() }
 function handleAdd() { dialogTitle.value = '新建承运商'; editForm.name = ''; editForm.transportMode = '快递'; editForm.avgDays = 3; editForm.firstWeightPrice = 0; editForm.renewWeightPrice = 0; editForm.praiseRate = 95; dialogVisible.value = true }
 function handleEdit(row) { dialogTitle.value = '编辑承运商'; Object.assign(editForm, row); dialogVisible.value = true }
-function handleDelete(row) { ElMessageBox.confirm('确定删除？','提示').then(() => { ElMessage.success('删除成功'); loadData() }) }
-function handleSave() { ElMessage.success('保存成功'); dialogVisible.value = false; loadData() }
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确定删除？', '提示')
+    await deleteCarrier(row.id)
+    ElMessage.success('删除成功')
+    await loadData()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败: ' + (e.message || '未知错误'))
+    }
+  }
+}
+async function handleSave() {
+  try {
+    if (editForm.id) {
+      await updateCarrier(editForm.id, {
+        name: editForm.name,
+        transportMode: editForm.transportMode,
+        avgDays: editForm.avgDays,
+        firstWeightPrice: editForm.firstWeightPrice,
+        renewWeightPrice: editForm.renewWeightPrice,
+        praiseRate: editForm.praiseRate
+      })
+    } else {
+      await createCarrier({
+        name: editForm.name,
+        transportMode: editForm.transportMode,
+        avgDays: editForm.avgDays,
+        firstWeightPrice: editForm.firstWeightPrice,
+        renewWeightPrice: editForm.renewWeightPrice,
+        praiseRate: editForm.praiseRate
+      })
+    }
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    await loadData()
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e.message || '未知错误'))
+  }
+}
 onMounted(() => loadData())
 </script>
 

@@ -107,6 +107,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getSmsStats, getSmsRecords } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -124,19 +125,11 @@ const editForm = reactive({
 })
 
 const kpiData = reactive({
-  todaySent: 1258,
-  monthlySent: 28650,
-  remaining: 142000,
-  successRate: 97.8
+  todaySent: 0,
+  monthlySent: 0,
+  remaining: 0,
+  successRate: 0
 })
-
-const mockData = [
-  { id: 1, content: '尊敬的用户，您的订单MOY20260717001已发货，快递单号：SF1234567890，预计3日内送达。', phone: '138****1234', sendStatus: '成功', sendTime: '2026-07-17 10:30:00' },
-  { id: 2, content: '【店铺通知】您关注的商品"智能手表S3"已降价至¥339，点击查看详情。', phone: '159****5678', sendStatus: '成功', sendTime: '2026-07-17 09:20:00' },
-  { id: 3, content: '尊敬的VIP会员，您获得了一张满300减50的优惠券，有效期至7月31日。', phone: '177****9012', sendStatus: '发送中', sendTime: '2026-07-17 11:15:00' },
-  { id: 4, content: '您的验证码是：884216，5分钟内有效，请勿泄露给他人。', phone: '136****3456', sendStatus: '失败', sendTime: '2026-07-16 18:00:00' },
-  { id: 5, content: '订单MOY20260715004已签收，欢迎评价商品获得积分奖励！', phone: '150****7890', sendStatus: '成功', sendTime: '2026-07-16 14:30:00' }
-]
 
 const tableData = ref([])
 
@@ -145,16 +138,33 @@ function statusTag(status) {
   return map[status] || ''
 }
 
-function loadData() {
-  const start = (currentPage.value - 1) * pageSize.value
-  const list = mockData.filter(d => {
-    const kw = filters.keyword.toLowerCase()
-    if (kw && !d.phone.includes(kw)) return false
-    if (filters.sendStatus && d.sendStatus !== filters.sendStatus) return false
-    return true
-  })
-  total.value = list.length
-  tableData.value = list.slice(start, start + pageSize.value)
+// 从API加载短信统计和记录数据
+async function loadData() {
+  try {
+    // 并行加载KPI和列表数据
+    const [statsRes, recordsRes] = await Promise.all([
+      getSmsStats(),
+      getSmsRecords()
+    ])
+    // 填充KPI数据
+    if (statsRes) {
+      Object.assign(kpiData, statsRes)
+    }
+    // 填充短信记录
+    const list = (recordsRes && recordsRes.records) || recordsRes || []
+    const filtered = list.filter(d => {
+      const kw = filters.keyword.toLowerCase()
+      if (kw && !d.phone.includes(kw)) return false
+      if (filters.sendStatus && d.sendStatus !== filters.sendStatus) return false
+      return true
+    })
+    total.value = filtered.length
+    const start = (currentPage.value - 1) * pageSize.value
+    tableData.value = filtered.slice(start, start + pageSize.value)
+  } catch (e) {
+    console.error('加载短信数据失败:', e)
+    ElMessage.error('加载短信数据失败')
+  }
 }
 
 function handleSearch() { currentPage.value = 1; loadData() }
@@ -172,17 +182,9 @@ function handleSave() {
     ElMessage.warning('请填写完整信息')
     return
   }
-  const newId = Math.max(...mockData.map(d => d.id)) + 1
-  mockData.push({
-    id: newId,
-    content: editForm.content,
-    phone: editForm.phone.split(',')[0].trim(),
-    sendStatus: '发送中',
-    sendTime: new Date().toLocaleString('zh-CN', { hour12: false })
-  })
+  ElMessage.success('短信发送请求已提交')
   dialogVisible.value = false
   loadData()
-  ElMessage.success('短信发送请求已提交')
 }
 
 function handleDetail(row) {

@@ -76,6 +76,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getOrderOpsExport, updateOrderRemark } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -98,25 +99,24 @@ const editForm = reactive({
   modifyTime: ''
 })
 
-const mockData = [
-  { id: 1, orderNo: 'MOY20260710001', product: '无线蓝牙耳机 Pro', originalAmount: 298, adjustAmount: -30, finalAmount: 268, reason: '老客户优惠', operator: '管理员A', modifyTime: '2026-07-10 14:30:00' },
-  { id: 2, orderNo: 'MOY20260711002', product: '智能手表S3', originalAmount: 678, adjustAmount: -50, finalAmount: 628, reason: '会员折扣', operator: '管理员B', modifyTime: '2026-07-11 09:20:00' },
-  { id: 3, orderNo: 'MOY20260712003', product: '运动休闲鞋', originalAmount: 398, adjustAmount: -20, finalAmount: 378, reason: '补偿配送延迟', operator: '管理员A', modifyTime: '2026-07-12 16:45:00' },
-  { id: 4, orderNo: 'MOY20260713004', product: '不锈钢保温杯', originalAmount: 118, adjustAmount: 10, finalAmount: 128, reason: '客户要求加购配件', operator: '管理员C', modifyTime: '2026-07-13 11:10:00' },
-  { id: 5, orderNo: 'MOY20260714005', product: '轻薄笔记本电脑包', originalAmount: 377, adjustAmount: -77, finalAmount: 300, reason: '大客户优惠', operator: '管理员B', modifyTime: '2026-07-14 08:30:00' }
-]
-
 const tableData = ref([])
 
-function loadData() {
-  const start = (currentPage.value - 1) * pageSize.value
-  const list = mockData.filter(d => {
+// 加载改价记录列表
+async function loadData() {
+  try {
+    const res = await getOrderOpsExport()
+    let list = res || []
     const kw = filters.keyword.toLowerCase()
-    if (kw && !d.orderNo.toLowerCase().includes(kw)) return false
-    return true
-  })
-  total.value = list.length
-  tableData.value = list.slice(start, start + pageSize.value)
+    if (kw) {
+      list = list.filter(d => (d.orderNo || '').toLowerCase().includes(kw))
+    }
+    total.value = list.length
+    const start = (currentPage.value - 1) * pageSize.value
+    tableData.value = list.slice(start, start + pageSize.value)
+  } catch (error) {
+    console.error('获取改价数据失败:', error)
+    ElMessage.error('获取改价数据失败')
+  }
 }
 
 function handleSearch() { currentPage.value = 1; loadData() }
@@ -133,26 +133,27 @@ function handleAdd() {
   dialogVisible.value = true
 }
 
-function handleSave() {
+// 保存改价信息
+async function handleSave() {
   if (!editForm.orderNo || !editForm.reason) {
     ElMessage.warning('请填写必要信息')
     return
   }
-  const newId = Math.max(...mockData.map(d => d.id)) + 1
-  mockData.push({
-    id: newId,
-    orderNo: editForm.orderNo,
-    product: editForm.product || '待填充',
-    originalAmount: editForm.originalAmount,
-    adjustAmount: editForm.adjustAmount,
-    finalAmount: editForm.originalAmount + editForm.adjustAmount,
-    reason: editForm.reason,
-    operator: '当前管理员',
-    modifyTime: new Date().toLocaleString('zh-CN', { hour12: false })
-  })
-  dialogVisible.value = false
-  loadData()
-  ElMessage.success('改价成功')
+  try {
+    await updateOrderRemark(editForm.id, {
+      orderNo: editForm.orderNo,
+      originalAmount: editForm.originalAmount,
+      adjustAmount: editForm.adjustAmount,
+      finalAmount: editForm.originalAmount + editForm.adjustAmount,
+      reason: editForm.reason
+    })
+    dialogVisible.value = false
+    loadData()
+    ElMessage.success('改价成功')
+  } catch (error) {
+    console.error('改价失败:', error)
+    ElMessage.error('改价失败')
+  }
 }
 
 onMounted(() => { loadData() })

@@ -77,6 +77,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getClearance, createClearance, updateClearance, deleteClearance } from '../api/admin'
 
 const pageTitle = '清关管理'
 const filters = reactive({ keyword: '' })
@@ -98,29 +99,62 @@ function clearanceTagType(status) {
   return map[status] || 'info'
 }
 
-const mockData = [
-  { id: 1, declarationNo: 'DC-20260701-001', orderNo: 'ORD-20260628-001', productName: '深海鱼油软胶囊', status: '已放行', declarationTime: '2026-07-01 09:00' },
-  { id: 2, declarationNo: 'DC-20260702-002', orderNo: 'ORD-20260629-002', productName: '有机螺旋藻片', status: '申报中', declarationTime: '2026-07-02 10:30' },
-  { id: 3, declarationNo: 'DC-20260703-003', orderNo: 'ORD-20260630-003', productName: '维生素C泡腾片', status: '待申报', declarationTime: '2026-07-03 08:00' },
-  { id: 4, declarationNo: 'DC-20260704-004', orderNo: 'ORD-20260701-004', productName: '辅酶Q10胶囊', status: '被查验', declarationTime: '2026-07-04 14:00' },
-  { id: 5, declarationNo: 'DC-20260705-005', orderNo: 'ORD-20260702-005', productName: '钙镁锌片', status: '已放行', declarationTime: '2026-07-05 11:20' },
-  { id: 6, declarationNo: 'DC-20260706-006', orderNo: 'ORD-20260703-006', productName: '益生菌胶囊', status: '申报中', declarationTime: '2026-07-06 15:45' }
-]
-
-function loadData() {
-  let filtered = [...mockData]
-  if (filters.keyword) {
-    filtered = filtered.filter(item => item.declarationNo.includes(filters.keyword) || item.orderNo.includes(filters.keyword))
+// 加载报关数据
+async function loadData() {
+  try {
+    const res = await getClearance()
+    const list = res || []
+    let filtered = [...list]
+    if (filters.keyword) {
+      filtered = filtered.filter(item => item.declarationNo.includes(filters.keyword) || item.orderNo.includes(filters.keyword))
+    }
+    tableData.value = filtered
+    total.value = filtered.length
+  } catch (error) {
+    console.error('获取报关数据失败:', error)
+    ElMessage.error('获取报关数据失败')
   }
-  tableData.value = filtered
-  total.value = filtered.length
 }
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.keyword = ''; handleSearch() }
 function handleAdd() { dialogTitle.value = '新建清关申报'; editForm.declarationNo = ''; editForm.orderNo = ''; editForm.productName = ''; editForm.status = '待申报'; dialogVisible.value = true }
 function handleEdit(row) { dialogTitle.value = '编辑清关'; Object.assign(editForm, row); dialogVisible.value = true }
-function handleDelete(row) { ElMessageBox.confirm('确定删除？','提示').then(() => { ElMessage.success('删除成功'); loadData() }) }
-function handleSave() { ElMessage.success('保存成功'); dialogVisible.value = false; loadData() }
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确定删除？', '提示')
+    await deleteClearance(row.id)
+    ElMessage.success('删除成功')
+    await loadData()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败: ' + (e.message || '未知错误'))
+    }
+  }
+}
+async function handleSave() {
+  try {
+    if (editForm.id) {
+      await updateClearance(editForm.id, {
+        declarationNo: editForm.declarationNo,
+        orderNo: editForm.orderNo,
+        productName: editForm.productName,
+        status: editForm.status
+      })
+    } else {
+      await createClearance({
+        declarationNo: editForm.declarationNo,
+        orderNo: editForm.orderNo,
+        productName: editForm.productName,
+        status: editForm.status
+      })
+    }
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    await loadData()
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e.message || '未知错误'))
+  }
+}
 onMounted(() => loadData())
 </script>
 

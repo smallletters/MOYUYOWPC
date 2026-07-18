@@ -81,57 +81,62 @@
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { getRealtimeData, getRealtimeOrderFlow, getRealtimeTopProducts } from '../api/admin'
 
 const kpi = reactive({
-  onlineUsers: 1283,
-  todayVisitors: '12,580',
-  todayOrders: 356,
-  todaySales: '45,680.00'
+  onlineUsers: '—',
+  todayVisitors: '—',
+  todayOrders: '—',
+  todaySales: '—'
 })
 
-const realtimeOrders = ref([
-  { orderNo: 'ORD-20260717-0001', user: '张*', amount: '299.00', status: '支付成功', time: '14:32:18' },
-  { orderNo: 'ORD-20260717-0002', user: '李*', amount: '159.00', status: '支付成功', time: '14:31:45' },
-  { orderNo: 'ORD-20260717-0003', user: '王*', amount: '899.00', status: '待支付', time: '14:31:02' },
-  { orderNo: 'ORD-20260717-0004', user: '赵*', amount: '59.90', status: '支付成功', time: '14:30:30' },
-  { orderNo: 'ORD-20260717-0005', user: '孙*', amount: '1,299.00', status: '支付成功', time: '14:29:58' },
-  { orderNo: 'ORD-20260717-0006', user: '周*', amount: '445.00', status: '待支付', time: '14:29:12' },
-  { orderNo: 'ORD-20260717-0007', user: '吴*', amount: '89.00', status: '支付成功', time: '14:28:40' },
-  { orderNo: 'ORD-20260717-0008', user: '郑*', amount: '689.00', status: '支付成功', time: '14:28:05' },
-])
-
-const hotProducts = ref([
-  { id: 1, name: '纯棉圆领T恤', sales: 1280 },
-  { id: 2, name: '无线蓝牙耳机', sales: 856 },
-  { id: 3, name: '不锈钢保温杯', sales: 756 },
-  { id: 4, name: '运动速干短裤', sales: 567 },
-  { id: 5, name: '机械键盘 87键', sales: 445 },
-  { id: 6, name: 'USB-C 扩展坞', sales: 410 },
-  { id: 7, name: '简约双肩背包', sales: 334 },
-  { id: 8, name: '智能手环', sales: 189 },
-])
+const realtimeOrders = ref([])
+const hotProducts = ref([])
 
 let timer = null
 
-function simulateRealtime() {
-  kpi.onlineUsers += Math.floor(Math.random() * 5) - 2
-  if (kpi.onlineUsers < 0) kpi.onlineUsers = 0
-  // 模拟新订单
-  if (Math.random() > 0.6) {
-    const idx = Math.floor(Math.random() * 8) + 1
-    realtimeOrders.value.unshift({
-      orderNo: `ORD-20260717-${String(idx + 8).padStart(4, '0')}`,
-      user: '匿名用户',
-      amount: (Math.random() * 1000 + 50).toFixed(2),
-      status: Math.random() > 0.3 ? '支付成功' : '待支付',
-      time: new Date().toLocaleTimeString()
-    })
-    if (realtimeOrders.value.length > 20) realtimeOrders.value.pop()
+async function loadKpi() {
+  try {
+    const res = await getRealtimeData()
+    if (res) {
+      kpi.onlineUsers = res.onlineUsers ?? '—'
+      kpi.todayVisitors = res.todayVisitors ?? '—'
+      kpi.todayOrders = res.todayOrders ?? '—'
+      kpi.todaySales = res.todaySales ?? '—'
+    }
+  } catch (err) {
+    console.error('获取实时数据失败', err)
+  }
+}
+
+async function loadOrders() {
+  try {
+    const res = await getRealtimeOrderFlow()
+    realtimeOrders.value = res || []
+  } catch (err) {
+    console.error('获取实时订单流失败', err)
+  }
+}
+
+async function loadHotProducts() {
+  try {
+    const res = await getRealtimeTopProducts()
+    hotProducts.value = res || []
+  } catch (err) {
+    console.error('获取热门商品失败', err)
   }
 }
 
 onMounted(() => {
-  timer = setInterval(simulateRealtime, 5000)
+  loadKpi()
+  loadOrders()
+  loadHotProducts()
+  // 定时刷新
+  timer = setInterval(() => {
+    loadKpi()
+    loadOrders()
+    loadHotProducts()
+  }, 30000)
 })
 
 onUnmounted(() => {

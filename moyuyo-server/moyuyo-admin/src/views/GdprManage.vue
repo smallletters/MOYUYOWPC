@@ -12,9 +12,9 @@
         <el-card shadow="never">
           <template #header><span>当前隐私政策</span></template>
           <div class="policy-info">
-            <div class="policy-version">版本 3.0</div>
-            <div class="policy-date">生效日期：2026-07-01</div>
-            <div class="policy-desc">涵盖了用户数据收集、存储、使用和分享的完整政策说明，符合 GDPR 最新要求。</div>
+            <div class="policy-version">版本 {{ policy.version }}</div>
+            <div class="policy-date">生效日期：{{ policy.effectiveDate }}</div>
+            <div class="policy-desc">{{ policy.description }}</div>
             <el-button type="primary" link @click="handleViewPolicy">查看全文</el-button>
           </div>
         </el-card>
@@ -25,19 +25,19 @@
           <div class="compliance-grid">
             <div class="compliance-item">
               <span class="compliance-label">用户同意记录</span>
-              <span class="compliance-value">12,580 条</span>
+              <span class="compliance-value">{{ compliance.consentRecords }}</span>
             </div>
             <div class="compliance-item">
               <span class="compliance-label">数据导出请求</span>
-              <span class="compliance-value">23 条</span>
+              <span class="compliance-value">{{ compliance.dataExportRequests }}</span>
             </div>
             <div class="compliance-item">
               <span class="compliance-label">数据删除请求</span>
-              <span class="compliance-value">15 条</span>
+              <span class="compliance-value">{{ compliance.dataDeleteRequests }}</span>
             </div>
             <div class="compliance-item">
               <span class="compliance-label">同意率</span>
-              <span class="compliance-value" style="color:#10b981">96.8%</span>
+              <span class="compliance-value" style="color:#10b981">{{ compliance.consentRate }}</span>
             </div>
           </div>
         </el-card>
@@ -67,17 +67,46 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getGdprConsentRecords, getGdprDataRequests, getActivePolicy } from '../api/admin'
 
-const tableData = ref([
-  { id: 1, user: '张三', consentType: '隐私政策', consentStatus: '已同意', ipAddress: '192.168.1.100', createTime: '2026-07-17 10:30:25' },
-  { id: 2, user: '李四', consentType: '数据收集', consentStatus: '已同意', ipAddress: '192.168.1.101', createTime: '2026-07-16 14:20:10' },
-  { id: 3, user: '王五', consentType: '营销推送', consentStatus: '已拒绝', ipAddress: '192.168.1.102', createTime: '2026-07-15 09:00:00' },
-  { id: 4, user: '赵六', consentType: '隐私政策', consentStatus: '已同意', ipAddress: '192.168.1.103', createTime: '2026-07-14 16:45:30' },
-  { id: 5, user: '孙七', consentType: '数据收集', consentStatus: '已同意', ipAddress: '192.168.1.104', createTime: '2026-07-13 11:30:15' },
-  { id: 6, user: '周八', consentType: '营销推送', consentStatus: '已同意', ipAddress: '192.168.1.105', createTime: '2026-07-12 08:15:45' },
-])
+const compliance = ref({ consentRecords: '—', dataExportRequests: '—', dataDeleteRequests: '—', consentRate: '—' })
+const policy = ref({ version: '3.0', effectiveDate: '2026-07-01', description: '涵盖了用户数据收集、存储、使用和分享的完整政策说明，符合 GDPR 最新要求。' })
+const tableData = ref([])
+
+async function loadData() {
+  try {
+    const [consentRes, requestRes] = await Promise.all([
+      getGdprConsentRecords(),
+      getGdprDataRequests()
+    ])
+    // 加载当前隐私政策
+    try {
+      const policyRes = await getActivePolicy()
+      if (policyRes) {
+        policy.value = {
+          version: policyRes.version || '3.0',
+          effectiveDate: policyRes.effectiveDate || '2026-07-01',
+          description: policyRes.description || '涵盖了用户数据收集、存储、使用和分享的完整政策说明，符合 GDPR 最新要求。'
+        }
+      }
+    } catch (e) {
+      console.error('获取隐私政策失败，使用默认值', e)
+    }
+    if (consentRes) {
+      compliance.value = {
+        consentRecords: consentRes.consentRecords ?? '—',
+        dataExportRequests: consentRes.dataExportRequests ?? '—',
+        dataDeleteRequests: consentRes.dataDeleteRequests ?? '—',
+        consentRate: consentRes.consentRate ?? '—'
+      }
+      tableData.value = consentRes.list || []
+    }
+  } catch (err) {
+    console.error('获取GDPR数据失败', err)
+  }
+}
 
 function consentTag(type) {
   if (type === '隐私政策') return 'primary'
@@ -85,8 +114,10 @@ function consentTag(type) {
   return 'info'
 }
 
-function handleAdd() { ElMessage.info('新建隐私政策版本') }
+function handleAdd() { ElMessage.warning('新建功能开发中') }
 function handleViewPolicy() { ElMessage.info('查看隐私政策全文') }
+
+onMounted(() => loadData())
 </script>
 
 <style scoped>

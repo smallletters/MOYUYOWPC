@@ -88,6 +88,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getPriceList, createPrice, updatePrice, deletePrice } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -114,27 +115,28 @@ const editForm = reactive({
   lastModifyTime: ''
 })
 
-const mockData = [
-  { id: 1, productName: '无线蓝牙耳机 Pro', sku: 'BT-PRO-001', originalPrice: 199, sellingPrice: 149, costPrice: 89, margin: 40.3, lastModifyTime: '2026-07-10 14:30:00' },
-  { id: 2, productName: '智能手表S3', sku: 'SW-S3-002', originalPrice: 499, sellingPrice: 339, costPrice: 199, margin: 41.3, lastModifyTime: '2026-07-11 09:20:00' },
-  { id: 3, productName: '运动休闲鞋', sku: 'SNEAKER-003', originalPrice: 299, sellingPrice: 199, costPrice: 129, margin: 35.2, lastModifyTime: '2026-07-12 16:45:00' },
-  { id: 4, productName: '不锈钢保温杯', sku: 'CUP-004', originalPrice: 89, sellingPrice: 59, costPrice: 35, margin: 40.7, lastModifyTime: '2026-07-13 11:10:00' },
-  { id: 5, productName: '轻薄笔记本电脑包', sku: 'BAG-005', originalPrice: 259, sellingPrice: 189, costPrice: 119, margin: 37.0, lastModifyTime: '2026-07-14 08:30:00' }
-]
-
 const tableData = ref([])
 
-function loadData() {
-  const start = (currentPage.value - 1) * pageSize.value
-  const list = mockData.filter(d => {
-    const kw = filters.keyword.toLowerCase()
-    if (kw && !d.productName.toLowerCase().includes(kw)) return false
-    if (filters.priceMin !== null && d.sellingPrice < filters.priceMin) return false
-    if (filters.priceMax !== null && d.sellingPrice > filters.priceMax) return false
-    return true
-  })
-  total.value = list.length
-  tableData.value = list.slice(start, start + pageSize.value)
+// 从API加载价格列表数据
+async function loadData() {
+  try {
+    const res = await getPriceList()
+    const list = (res && res.records) || res || []
+    // 根据筛选条件过滤
+    let filtered = list.filter(d => {
+      const kw = filters.keyword.toLowerCase()
+      if (kw && !d.productName.toLowerCase().includes(kw)) return false
+      if (filters.priceMin !== null && d.sellingPrice < filters.priceMin) return false
+      if (filters.priceMax !== null && d.sellingPrice > filters.priceMax) return false
+      return true
+    })
+    total.value = filtered.length
+    const start = (currentPage.value - 1) * pageSize.value
+    tableData.value = filtered.slice(start, start + pageSize.value)
+  } catch (e) {
+    console.error('加载价格列表失败:', e)
+    ElMessage.error('加载价格列表失败')
+  }
 }
 
 function handleSearch() { currentPage.value = 1; loadData() }
@@ -163,25 +165,36 @@ function handleEdit(row) {
   dialogVisible.value = true
 }
 
-function handleSave() {
+// 保存调价信息（调用API）
+async function handleSave() {
   if (editForm.sellingPrice <= 0) {
     ElMessage.warning('请输入有效的销售价')
     return
   }
-  if (isEdit.value) {
-    const item = mockData.find(d => d.id === editForm.id)
-    if (item) {
-      item.sellingPrice = editForm.sellingPrice
-      item.costPrice = editForm.costPrice
-      item.margin = editForm.costPrice > 0 ? Math.round((editForm.sellingPrice - editForm.costPrice) / editForm.sellingPrice * 1000) / 10 : 0
-      item.lastModifyTime = new Date().toLocaleString('zh-CN', { hour12: false })
+  try {
+    if (isEdit.value) {
+      await updatePrice({
+        id: editForm.id,
+        sellingPrice: editForm.sellingPrice,
+        costPrice: editForm.costPrice,
+        reason: editForm.reason
+      })
+      ElMessage.success('调价成功')
+    } else {
+      await createPrice({
+        productName: editForm.productName,
+        sku: editForm.sku,
+        sellingPrice: editForm.sellingPrice,
+        costPrice: editForm.costPrice
+      })
+      ElMessage.success('新增价格成功')
     }
-    ElMessage.success('调价成功')
-  } else {
-    ElMessage.success('新增价格成功')
+    dialogVisible.value = false
+    loadData()
+  } catch (e) {
+    console.error('保存价格失败:', e)
+    ElMessage.error('保存失败')
   }
-  dialogVisible.value = false
-  loadData()
 }
 
 onMounted(() => { loadData() })

@@ -103,6 +103,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getReviewList, approveReview, replyReview } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -128,27 +129,32 @@ const editForm = reactive({
   reviewTime: ''
 })
 
-const mockData = [
-  { id: 1, productName: '无线蓝牙耳机 Pro', userName: '张三', rating: 5, summary: '音质非常好，佩戴舒适，续航也很给力', content: '音质非常好，佩戴舒适，续航也很给力，推荐购买！', status: '已审核', reviewTime: '2026-07-10 14:30:00', reply: '感谢您的支持！' },
-  { id: 2, productName: '智能手表S3', userName: '李四', rating: 4, summary: '功能丰富，但续航有待提升', content: '功能丰富，但续航有待提升，希望后续固件优化', status: '已审核', reviewTime: '2026-07-11 09:20:00', reply: '感谢反馈，我们会持续优化' },
-  { id: 3, productName: '运动休闲鞋', userName: '王五', rating: 3, summary: '鞋子码数偏小，其他方面还行', content: '鞋子码数偏小，建议买大一码，质量还可以', status: '待审核', reviewTime: '2026-07-12 16:45:00', reply: '' },
-  { id: 4, productName: '不锈钢保温杯', userName: '赵六', rating: 5, summary: '保温效果很好，外观也很精致', content: '保温效果很好，外观也很精致，值得购买', status: '已审核', reviewTime: '2026-07-13 11:10:00', reply: '谢谢亲的支持~' },
-  { id: 5, productName: '轻薄笔记本电脑包', userName: '孙七', rating: 2, summary: '质量一般，背带缝线处有开线', content: '质量一般，背带缝线处有开线，不太满意', status: '待审核', reviewTime: '2026-07-14 08:30:00', reply: '' }
-]
-
 const tableData = ref([])
 
-function loadData() {
-  const start = (currentPage.value - 1) * pageSize.value
-  const list = mockData.filter(d => {
-    const kw = filters.keyword.toLowerCase()
-    if (kw && !d.productName.toLowerCase().includes(kw)) return false
-    if (filters.rating && d.rating !== Number(filters.rating)) return false
-    if (filters.status && d.status !== filters.status) return false
-    return true
-  })
-  total.value = list.length
-  tableData.value = list.slice(start, start + pageSize.value)
+// 加载评价列表
+async function loadData() {
+  try {
+    const res = await getReviewList()
+    const records = res.records || res || []
+      // 客户端筛选
+      let list = [...records]
+      const kw = filters.keyword.toLowerCase()
+      if (kw) {
+        list = list.filter(d => (d.productName || '').toLowerCase().includes(kw))
+      }
+      if (filters.rating) {
+        list = list.filter(d => d.rating === Number(filters.rating))
+      }
+      if (filters.status) {
+        list = list.filter(d => d.status === filters.status)
+      }
+      total.value = list.length
+      const start = (currentPage.value - 1) * pageSize.value
+      tableData.value = list.slice(start, start + pageSize.value)
+    }
+  } catch (e) {
+    ElMessage.error('获取评价列表失败')
+  }
 }
 
 function handleSearch() { currentPage.value = 1; loadData() }
@@ -176,31 +182,42 @@ function handleEdit(row) {
   dialogVisible.value = true
 }
 
-function handleDelete(row) {
-  ElMessageBox.confirm('确认删除该评价吗？', '提示', { type: 'warning' }).then(() => {
-    const idx = mockData.findIndex(d => d.id === row.id)
-    if (idx > -1) mockData.splice(idx, 1)
-    loadData()
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确认删除该评价吗？', '提示', { type: 'warning' })
+    const { rejectReview } = await import('../api/admin')
+    await rejectReview(row.id)
     ElMessage.success('删除成功')
-  }).catch(() => {})
+    await loadData()
+  } catch (e) {
+    // 用户取消不处理
+  }
 }
 
-function handleSave() {
-  if (isEdit.value) {
-    const item = mockData.find(d => d.id === editForm.id)
-    if (item) Object.assign(item, { status: editForm.status, reply: editForm.reply })
-    ElMessage.success('审核完成')
-  } else {
-    const newId = Math.max(...mockData.map(d => d.id)) + 1
-    mockData.push({
-      ...editForm,
-      id: newId,
-      reviewTime: new Date().toLocaleString('zh-CN', { hour12: false })
-    })
-    ElMessage.success('回复成功')
+async function handleSave() {
+  try {
+    if (isEdit.value) {
+      // 审核评价：通过或驳回
+      if (editForm.status === '已审核') {
+        await approveReview(editForm.id)
+      } else {
+        const { rejectReview } = await import('../api/admin')
+        await rejectReview(editForm.id)
+      }
+      // 有回复内容则保存回复
+      if (editForm.reply) {
+        await replyReview(editForm.id, { content: editForm.reply })
+      }
+      ElMessage.success('审核完成')
+    } else {
+      // 回复评价（选择一条已有评价进行回复）
+      ElMessage.success('回复成功')
+    }
+    dialogVisible.value = false
+    await loadData()
+  } catch (e) {
+    ElMessage.error('操作失败')
   }
-  dialogVisible.value = false
-  loadData()
 }
 
 onMounted(() => { loadData() })

@@ -17,7 +17,7 @@
     <!-- 提示栏 -->
     <div class="alert-bar">
       <span class="alert-icon">📢</span>
-      <span>5笔待发货 3条待审核 1笔退款申请</span>
+      <span>{{ dashboardData.pendingShip || 0 }}笔待发货 {{ dashboardData.pendingReview || 0 }}条待审核 {{ dashboardData.pendingRefund || 0 }}笔退款申请</span>
     </div>
 
     <!-- 快捷操作 -->
@@ -87,17 +87,17 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { getDashboardStats, getRecentOrders, getSalesTrend } from '../api/admin'
 
 const router = useRouter()
 
-const kpiList = [
-  { label: 'GMV', value: '¥12,580', change: '+12.5%', trend: 'up' },
-  { label: '订单数', value: '156', change: '+8.3%', trend: 'up' },
-  { label: '用户数', value: '2,341', change: '-2.1%', trend: 'down' },
-  { label: '转化率', value: '3.8%', change: '+0.5%', trend: 'up' }
-]
+const dashboardData = ref({})
+const kpiList = ref([])
+const recentOrders = ref([])
+const salesData = ref([])
 
 const quickActions = [
   { icon: '📦', label: '发布商品', path: '/products' },
@@ -110,27 +110,66 @@ const quickActions = [
   { icon: '⚙️', label: '系统设置', path: '/settings' }
 ]
 
-const recentOrders = [
-  { id: 1, no: 'ORD-20240716001', user: '张三', amount: '299.00', status: '已发货', statusClass: 'blue', time: '2024-07-16 14:30' },
-  { id: 2, no: 'ORD-20240716002', user: '李四', amount: '159.00', status: '待发货', statusClass: 'yellow', time: '2024-07-16 13:20' },
-  { id: 3, no: 'ORD-20240716003', user: '王五', amount: '899.00', status: '已完成', statusClass: 'green', time: '2024-07-16 11:45' },
-  { id: 4, no: 'ORD-20240715004', user: '赵六', amount: '59.90', status: '待付款', statusClass: 'gray', time: '2024-07-15 18:10' },
-  { id: 5, no: 'ORD-20240715005', user: '孙七', amount: '1,299.00', status: '已取消', statusClass: 'red', time: '2024-07-15 16:00' }
-]
+// 加载仪表盘统计数据
+async function loadDashboardData() {
+  try {
+    const stats = await getDashboardStats()
+    dashboardData.value = stats
+    kpiList.value = [
+      { label: 'GMV', value: '¥' + (stats.todayGmv || 0), change: (stats.gmvTrend != null ? stats.gmvTrend + '%' : '0%'), trend: stats.gmvTrend >= 0 ? 'up' : 'down' },
+      { label: '订单数', value: String(stats.todayOrders ?? 0), change: (stats.ordersTrend != null ? stats.ordersTrend + '%' : '0%'), trend: stats.ordersTrend >= 0 ? 'up' : 'down' },
+      { label: '用户数', value: String(stats.activeUsers ?? 0), change: (stats.usersTrend != null ? stats.usersTrend + '%' : '0%'), trend: stats.usersTrend >= 0 ? 'up' : 'down' },
+      { label: '转化率', value: (stats.conversionRate != null ? stats.conversionRate + '%' : '0%'), change: (stats.rateTrend != null ? stats.rateTrend + '%' : '0%'), trend: stats.rateTrend >= 0 ? 'up' : 'down' }
+    ]
+  } catch (e) {
+    console.error('获取仪表盘统计失败', e)
+    ElMessage.error('获取仪表盘数据失败')
+  }
+}
 
-const salesData = [
-  { day: '周一', value: '¥3,200', percent: 65 },
-  { day: '周二', value: '¥4,800', percent: 80 },
-  { day: '周三', value: '¥2,900', percent: 55 },
-  { day: '周四', value: '¥5,600', percent: 90 },
-  { day: '周五', value: '¥4,100', percent: 70 },
-  { day: '周六', value: '¥6,200', percent: 100 },
-  { day: '周日', value: '¥3,800', percent: 60 }
-]
+// 加载最近订单
+async function loadRecentOrders() {
+  try {
+    const orders = await getRecentOrders()
+    recentOrders.value = (orders || []).map(order => ({
+      id: order.orderNo || '',
+      no: order.orderNo || '',
+      user: order.productName || '',
+      amount: order.amount != null ? String(order.amount) : '0.00',
+      status: order.status || '未知',
+      statusClass: 'gray',
+      time: ''
+    }))
+  } catch (e) {
+    console.error('获取最近订单失败', e)
+    ElMessage.error('获取最近订单失败')
+  }
+}
+
+// 加载销售额趋势
+async function loadSalesTrend() {
+  try {
+    const trend = await getSalesTrend()
+    const items = trend || []
+    const maxValue = Math.max(...items.map(i => Number(i.value || 0)), 1)
+    salesData.value = items.map(item => ({
+      day: item.day || '',
+      value: '¥' + (item.value || 0),
+      percent: Number(item.value || 0) / maxValue * 100
+    }))
+  } catch (e) {
+    console.error('获取销售额趋势失败', e)
+    ElMessage.error('获取销售额趋势失败')
+  }
+}
 
 function handleQuickAction(action) {
   router.push(action.path)
 }
+
+onMounted(async () => {
+  await Promise.all([loadDashboardData(), loadRecentOrders(), loadSalesTrend()])
+})
 </script>
 
 <style scoped lang="css">

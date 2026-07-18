@@ -57,24 +57,37 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { getRiskRules } from '../api/admin'
 
-const tableData = ref([
-  { id: 1, name: '高频下单检测', priority: 1, condition: '同一用户1小时内下单超过5次', action: '阻断交易', status: '启用' },
-  { id: 2, name: '异地登录预警', priority: 2, condition: '用户登录IP与常用地不一致', action: '二次验证', status: '启用' },
-  { id: 3, name: '大额交易审核', priority: 3, condition: '单笔交易金额超过5000元', action: '人工审核', status: '启用' },
-  { id: 4, name: '频繁退款检测', priority: 4, condition: '用户30天内退款率超过30%', action: '标记观察', status: '禁用' },
-  { id: 5, name: '新设备登录提醒', priority: 5, condition: '用户从未知设备登录', action: '发送通知', status: '启用' },
-  { id: 6, name: '批量注册检测', priority: 6, condition: '同一IP注册超过3个账号', action: '限制注册', status: '启用' },
-])
+const tableData = ref([])
 
-function handleAdd() { ElMessage.info('新建规则') }
-function handleEdit(row) { ElMessage.info('编辑规则：' + row.name) }
-function handleToggle(row) {
-  row.status = row.status === '启用' ? '禁用' : '启用'
-  ElMessage.success('规则已' + row.status)
+// 加载风控规则列表
+async function loadData() {
+  try {
+    const res = await getRiskRules()
+    tableData.value = res.records || res || []
+  } catch (e) {
+    ElMessage.error('获取规则列表失败')
+  }
 }
+
+function handleAdd() { ElMessage.warning('新建功能开发中') }
+function handleEdit(row) { ElMessage.info('编辑规则：' + row.name) }
+async function handleToggle(row) {
+  try {
+    const newStatus = row.status === '启用' ? '禁用' : '启用'
+    const { toggleRiskRule } = await import('../api/admin')
+    await toggleRiskRule(row.id, { enabled: newStatus === '启用' })
+    ElMessage.success('规则已' + newStatus)
+    await loadData()
+  } catch (e) {
+    ElMessage.error('操作失败')
+  }
+}
+
+onMounted(() => { loadData() })
 </script>
 
 <style scoped>

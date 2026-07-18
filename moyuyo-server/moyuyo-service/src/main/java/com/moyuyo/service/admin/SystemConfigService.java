@@ -16,4 +16,9 @@ public interface SystemConfigService {
    * 保存配置
    */
   void saveConfig(String group, Map<String, Object> config);
+
+  /**
+   * 保存配置（简化版）
+   */
+  void saveConfig(Map<String, String> config);
 }

@@ -164,7 +164,9 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { getSystemConfig, saveSystemConfig, getPaymentMethods } from '../api/admin'
 
 const activeTab = ref('basic')
 
@@ -190,19 +192,65 @@ const form = reactive({
   smsNotify: false
 })
 
-const paymentMethods = reactive([
+const paymentMethods = ref([
   { key: 'stripe', name: 'Stripe', desc: '信用卡 / 借记卡支付', enabled: true },
   { key: 'paypal', name: 'PayPal', desc: 'PayPal 账户支付', enabled: true },
   { key: 'applepay', name: 'Apple Pay', desc: 'Apple 设备快捷支付', enabled: false }
 ])
 
-function handleUploadLogo() {
-  console.log('上传 Logo')
+// 加载系统配置
+async function loadConfig() {
+  try {
+    const res = await getSystemConfig()
+    const configList = res || []
+      // 将后端返回的配置项列表映射到 form 中
+      configList.forEach(item => {
+        if (item.key === 'siteName') form.siteName = item.value || form.siteName
+        if (item.key === 'icpNumber') form.icpNumber = item.value || form.icpNumber
+        if (item.key === 'autoCancel') form.autoCancel = Number(item.value) || form.autoCancel
+        if (item.key === 'autoConfirm') form.autoConfirm = item.value === 'true' || item.value === true
+        if (item.key === 'emailNotify') form.emailNotify = item.value === 'true' || item.value === true
+        if (item.key === 'smsNotify') form.smsNotify = item.value === 'true' || item.value === true
+      })
+    }
+    // 加载支付方式配置
+    try {
+      const payRes = await getPaymentMethods()
+      if (payRes && payRes.length > 0) {
+        paymentMethods.value = payRes
+      }
+    } catch (e) {
+      console.error('获取支付方式失败，使用默认值', e)
+    }
+  } catch (e) {
+    ElMessage.error('获取配置失败')
+  }
 }
 
-function handleSave() {
-  console.log('保存配置:', { ...form, paymentMethods: paymentMethods.map(m => ({ ...m })) })
+function handleUploadLogo() {
+  ElMessage.info('上传 Logo')
 }
+
+// 保存系统配置
+async function handleSave() {
+  try {
+    // 将表单数据转换为后端需要的配置项列表格式
+    const configs = [
+      { key: 'siteName', value: form.siteName, type: 'text', label: '站点名称' },
+      { key: 'icpNumber', value: form.icpNumber, type: 'text', label: '备案号' },
+      { key: 'autoCancel', value: String(form.autoCancel), type: 'text', label: '自动取消时间' },
+      { key: 'autoConfirm', value: String(form.autoConfirm), type: 'text', label: '自动确认收货' },
+      { key: 'emailNotify', value: String(form.emailNotify), type: 'text', label: '邮件通知' },
+      { key: 'smsNotify', value: String(form.smsNotify), type: 'text', label: '短信通知' },
+    ]
+    await saveSystemConfig(configs)
+    ElMessage.success('配置保存成功')
+  } catch (e) {
+    ElMessage.error('保存配置失败')
+  }
+}
+
+onMounted(() => { loadConfig() })
 </script>
 
 <style scoped>

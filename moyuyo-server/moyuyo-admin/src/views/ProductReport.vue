@@ -63,6 +63,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getProductAnalysisReport, getProductAnalysisList } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -73,25 +74,30 @@ const filters = reactive({
   keyword: ''
 })
 
-const mockData = [
-  { id: 1, productName: '无线蓝牙耳机 Pro', sku: 'BT-PRO-001', sales: 1200, revenue: 179880, profit: 53964, profitRate: 30 },
-  { id: 2, productName: '智能手表S3', sku: 'SW-S3-002', sales: 680, revenue: 231200, profit: 69360, profitRate: 30 },
-  { id: 3, productName: '运动休闲鞋', sku: 'SNEAKER-003', sales: 890, revenue: 106800, profit: 32040, profitRate: 30 },
-  { id: 4, productName: '不锈钢保温杯', sku: 'CUP-004', sales: 1500, revenue: 89700, profit: 31395, profitRate: 35 },
-  { id: 5, productName: '轻薄笔记本电脑包', sku: 'BAG-005', sales: 420, revenue: 62700, profit: 18810, profitRate: 30 }
-]
-
 const tableData = ref([])
 
-function loadData() {
-  const start = (currentPage.value - 1) * pageSize.value
-  const list = mockData.filter(d => {
-    const kw = filters.keyword.toLowerCase()
-    if (kw && !d.productName.toLowerCase().includes(kw)) return false
-    return true
-  })
-  total.value = list.length
-  tableData.value = list.slice(start, start + pageSize.value)
+// 从API加载商品报表数据
+async function loadData() {
+  try {
+    // 并行加载报表和列表数据
+    const [reportRes, listRes] = await Promise.all([
+      getProductAnalysisReport(),
+      getProductAnalysisList()
+    ])
+    const list = (listRes && listRes.records) || listRes || []
+    // 根据关键词过滤
+    const filtered = list.filter(d => {
+      const kw = filters.keyword.toLowerCase()
+      if (kw && !d.productName.toLowerCase().includes(kw)) return false
+      return true
+    })
+    total.value = filtered.length
+    const start = (currentPage.value - 1) * pageSize.value
+    tableData.value = filtered.slice(start, start + pageSize.value)
+  } catch (e) {
+    console.error('加载商品报表数据失败:', e)
+    ElMessage.error('加载商品报表数据失败')
+  }
 }
 
 function handleSearch() { currentPage.value = 1; loadData() }

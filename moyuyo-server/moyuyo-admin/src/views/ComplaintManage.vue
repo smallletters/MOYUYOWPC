@@ -110,6 +110,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getComplaintList, getComplaintDetail, startComplaintProcess, closeComplaint } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -136,14 +137,6 @@ const editForm = reactive({
   submitTime: ''
 })
 
-const mockData = [
-  { id: 1, complaintNo: 'CP-20260701-001', complainant: '张三', defendant: '李四', type: '商品质量', status: '待处理', submitTime: '2026-07-01 10:30:00', content: '收到的商品有质量问题，表面有明显划痕', remark: '' },
-  { id: 2, complaintNo: 'CP-20260702-002', complainant: '王五', defendant: '赵六', type: '服务态度', status: '处理中', submitTime: '2026-07-02 14:20:00', content: '客服态度恶劣，拒绝处理售后问题', remark: '已联系客服主管跟进' },
-  { id: 3, complaintNo: 'CP-20260703-003', complainant: '孙七', defendant: '周八', type: '物流问题', status: '已完结', submitTime: '2026-07-03 09:15:00', content: '快递配送超时3天未送达', remark: '已协调物流公司配送并赔偿' },
-  { id: 4, complaintNo: 'CP-20260705-004', complainant: '吴九', defendant: '郑十', type: '虚假宣传', status: '待处理', submitTime: '2026-07-05 16:45:00', content: '商品描述与实物严重不符，存在虚假宣传', remark: '' },
-  { id: 5, complaintNo: 'CP-20260706-005', complainant: '陈一', defendant: '林二', type: '其他', status: '已完结', submitTime: '2026-07-06 11:00:00', content: '重复扣款问题，订单支付了两次', remark: '已核实并退款处理' }
-]
-
 const tableData = ref([])
 
 function statusTag(status) {
@@ -151,17 +144,30 @@ function statusTag(status) {
   return map[status] || ''
 }
 
-function loadData() {
-  const start = (currentPage.value - 1) * pageSize.value
-  const list = mockData.filter(d => {
-    const kw = filters.keyword.toLowerCase()
-    if (kw && !d.complaintNo.toLowerCase().includes(kw) && !d.complainant.includes(kw)) return false
-    if (filters.type && d.type !== filters.type) return false
-    if (filters.status && d.status !== filters.status) return false
-    return true
-  })
-  total.value = list.length
-  tableData.value = list.slice(start, start + pageSize.value)
+// 从API加载投诉列表数据
+async function loadData() {
+  try {
+    const res = await getComplaintList()
+    const list = res || []
+    // 根据筛选条件过滤
+    let filtered = list
+    if (filters.keyword) {
+      const kw = filters.keyword.toLowerCase()
+      filtered = filtered.filter(d => d.complaintNo.toLowerCase().includes(kw) || d.complainant.includes(kw))
+    }
+    if (filters.type) {
+      filtered = filtered.filter(d => d.type === filters.type)
+    }
+    if (filters.status) {
+      filtered = filtered.filter(d => d.status === filters.status)
+    }
+    total.value = filtered.length
+    const start = (currentPage.value - 1) * pageSize.value
+    tableData.value = filtered.slice(start, start + pageSize.value)
+  } catch (e) {
+    console.error('加载投诉列表失败:', e)
+    ElMessage.error('加载投诉列表失败')
+  }
 }
 
 function handleSearch() { currentPage.value = 1; loadData() }
@@ -175,7 +181,7 @@ function handleAdd() {
   isEdit.value = false
   dialogTitle.value = '新增投诉记录'
   editForm.id = null
-  editForm.complaintNo = 'CP-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-00' + (mockData.length + 1)
+  editForm.complaintNo = ''
   editForm.complainant = ''
   editForm.defendant = ''
   editForm.type = ''
@@ -197,26 +203,37 @@ function handleDetail(row) {
   ElMessage.info('投诉详情：' + row.content)
 }
 
-function handleSave() {
+// 保存投诉（调用API）
+async function handleSave() {
   if (!editForm.complainant || !editForm.defendant || !editForm.type) {
     ElMessage.warning('请填写必要信息')
     return
   }
-  if (isEdit.value) {
-    const item = mockData.find(d => d.id === editForm.id)
-    if (item) Object.assign(item, editForm)
-    ElMessage.success('保存成功')
-  } else {
-    const newId = Math.max(...mockData.map(d => d.id)) + 1
-    mockData.push({
-      ...editForm,
-      id: newId,
-      submitTime: new Date().toLocaleString('zh-CN', { hour12: false })
-    })
-    ElMessage.success('新增成功')
+  try {
+    if (isEdit.value) {
+      // 更新投诉状态
+      if (editForm.status === '已完结') {
+        await closeComplaint(editForm.id)
+      } else {
+        await startComplaintProcess(editForm.id)
+      }
+      ElMessage.success('保存成功')
+    } else {
+      // 新建投诉，使用API
+      await startComplaintProcess({
+        complainant: editForm.complainant,
+        defendant: editForm.defendant,
+        type: editForm.type,
+        content: editForm.content
+      })
+      ElMessage.success('新增成功')
+    }
+    dialogVisible.value = false
+    loadData()
+  } catch (e) {
+    console.error('保存投诉失败:', e)
+    ElMessage.error('保存失败')
   }
-  dialogVisible.value = false
-  loadData()
 }
 
 onMounted(() => { loadData() })

@@ -69,6 +69,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getCustoms, syncCustoms, createCustoms, updateCustoms, deleteCustoms } from '../api/admin'
 
 const pageTitle = '海关管理'
 const filters = reactive({ keyword: '' })
@@ -85,35 +86,73 @@ const editForm = reactive({
   regulatoryConditions: ''
 })
 
-const mockData = [
-  { id: 1, customsCode: '2106.90', productName: '深海鱼油软胶囊', taxRate: 6.5, regulatoryConditions: 'A/B' },
-  { id: 2, customsCode: '2106.90', productName: '有机螺旋藻片', taxRate: 6.5, regulatoryConditions: 'A/B' },
-  { id: 3, customsCode: '2936.21', productName: '维生素C泡腾片', taxRate: 5.0, regulatoryConditions: 'A' },
-  { id: 4, customsCode: '3004.50', productName: '辅酶Q10胶囊', taxRate: 3.0, regulatoryConditions: 'Q' },
-  { id: 5, customsCode: '2106.90', productName: '益生菌胶囊', taxRate: 6.5, regulatoryConditions: 'A/B' },
-  { id: 6, customsCode: '3304.99', productName: '保湿面霜', taxRate: 10.0, regulatoryConditions: 'A' }
-]
-
-function loadData() {
-  let filtered = [...mockData]
-  if (filters.keyword) {
-    filtered = filtered.filter(item => item.customsCode.includes(filters.keyword) || item.productName.includes(filters.keyword))
+// 加载海关数据
+async function loadData() {
+  try {
+    const res = await getCustoms()
+    const list = res || []
+    let filtered = [...list]
+    if (filters.keyword) {
+      filtered = filtered.filter(item => item.customsCode.includes(filters.keyword) || item.productName.includes(filters.keyword))
+    }
+    tableData.value = filtered
+    total.value = filtered.length
+  } catch (error) {
+    console.error('获取海关数据失败:', error)
+    ElMessage.error('获取海关数据失败')
   }
-  tableData.value = filtered
-  total.value = filtered.length
 }
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.keyword = ''; handleSearch() }
-function handleSync() {
-  ElMessage.success('数据同步中，请稍候...')
-  setTimeout(() => {
+// 同步海关数据
+async function handleSync() {
+  try {
+    ElMessage.success('数据同步中，请稍候...')
+    await syncCustoms()
     ElMessage.success('海关数据同步完成')
     loadData()
-  }, 1500)
+  } catch (error) {
+    console.error('同步海关数据失败:', error)
+    ElMessage.error('同步海关数据失败')
+  }
 }
 function handleEdit(row) { dialogTitle.value = '编辑海关编码'; Object.assign(editForm, row); dialogVisible.value = true }
-function handleDelete(row) { ElMessageBox.confirm('确定删除？','提示').then(() => { ElMessage.success('删除成功'); loadData() }) }
-function handleSave() { ElMessage.success('保存成功'); dialogVisible.value = false; loadData() }
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确定删除？', '提示')
+    await deleteCustoms(row.id)
+    ElMessage.success('删除成功')
+    await loadData()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败: ' + (e.message || '未知错误'))
+    }
+  }
+}
+async function handleSave() {
+  try {
+    if (editForm.id) {
+      await updateCustoms(editForm.id, {
+        customsCode: editForm.customsCode,
+        productName: editForm.productName,
+        taxRate: editForm.taxRate,
+        regulatoryConditions: editForm.regulatoryConditions
+      })
+    } else {
+      await createCustoms({
+        customsCode: editForm.customsCode,
+        productName: editForm.productName,
+        taxRate: editForm.taxRate,
+        regulatoryConditions: editForm.regulatoryConditions
+      })
+    }
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    await loadData()
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e.message || '未知错误'))
+  }
+}
 onMounted(() => loadData())
 </script>
 

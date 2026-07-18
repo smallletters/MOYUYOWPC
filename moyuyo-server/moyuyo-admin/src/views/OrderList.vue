@@ -3,11 +3,11 @@
     <div class="page-header">
       <h2 class="page-title">订单列表</h2>
       <div class="status-summary">
-        <span class="summary-item">待发货 <strong>12</strong></span>
+        <span class="summary-item">待发货 <strong>{{ statsData.pendingShip }}</strong></span>
         <span class="summary-divider">|</span>
-        <span class="summary-item">售后中 <strong>3</strong></span>
+        <span class="summary-item">售后中 <strong>{{ statsData.afterSale }}</strong></span>
         <span class="summary-divider">|</span>
-        <span class="summary-item summary-item--warn">异常 <strong>1</strong></span>
+        <span class="summary-item" :class="{ 'summary-item--warn': statsData.abnormal > 0 }">异常 <strong>{{ statsData.abnormal }}</strong></span>
       </div>
     </div>
 
@@ -92,7 +92,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import api from '../api/index'
+import { getOrderOpsStats } from '../api/admin'
+import { ElMessage } from 'element-plus'
 
 const filters = reactive({
   status: '',
@@ -101,37 +104,63 @@ const filters = reactive({
   search: ''
 })
 
+const statsData = ref({
+  pendingShip: 0,
+  afterSale: 0,
+  abnormal: 0
+})
+
 const selectAll = ref(false)
 const selectedIds = ref([])
 const currentPage = ref(1)
 const pageSize = 10
+const loading = ref(false)
+const total = ref(0)
 
-const orderList = [
-  { id: 1, no: 'ORD-20240716001', user: '张三', items: '纯棉T恤 × 2', amount: '299.00', status: '待发货', statusClass: 'yellow', time: '2024-07-16 14:30' },
-  { id: 2, no: 'ORD-20240716002', user: '李四', items: '运动鞋 × 1', amount: '459.00', status: '已发货', statusClass: 'blue', time: '2024-07-16 13:20' },
-  { id: 3, no: 'ORD-20240716003', user: '王五', items: '背包 × 1, 水壶 × 1', amount: '899.00', status: '已完成', statusClass: 'green', time: '2024-07-16 11:45' },
-  { id: 4, no: 'ORD-20240715004', user: '赵六', items: '笔记本 × 1', amount: '59.90', status: '待付款', statusClass: 'gray', time: '2024-07-15 18:10' },
-  { id: 5, no: 'ORD-20240715005', user: '孙七', items: '耳机 × 1', amount: '1,299.00', status: '已取消', statusClass: 'red', time: '2024-07-15 16:00' },
-  { id: 6, no: 'ORD-20240714006', user: '周八', items: '键盘 × 1, 鼠标 × 1', amount: '689.00', status: '待发货', statusClass: 'yellow', time: '2024-07-14 10:15' },
-  { id: 7, no: 'ORD-20240714007', user: '吴九', items: '显示器 × 1', amount: '2,199.00', status: '已发货', statusClass: 'blue', time: '2024-07-14 09:30' },
-  { id: 8, no: 'ORD-20240713008', user: '郑十', items: '鼠标垫 × 3', amount: '89.70', status: '已完成', statusClass: 'green', time: '2024-07-13 20:00' },
-  { id: 9, no: 'ORD-20240713009', user: '陈一', items: '手机壳 × 2', amount: '59.00', status: '待发货', statusClass: 'yellow', time: '2024-07-13 15:45' },
-  { id: 10, no: 'ORD-20240712010', user: '林二', items: '充电宝 × 1', amount: '149.00', status: '已完成', statusClass: 'green', time: '2024-07-12 12:30' }
-]
+const orderList = ref([])
+
+// 获取订单统计数据
+async function fetchStats() {
+  try {
+    const res = await getOrderOpsStats()
+    if (res) {
+      statsData.value = res
+    }
+  } catch (err) {
+    console.error('获取订单统计数据失败:', err)
+  }
+}
+
+// 获取订单列表
+async function fetchOrders() {
+  loading.value = true
+  try {
+    const params = {
+      page: currentPage.value,
+      pageSize: pageSize,
+      ...filters
+    }
+    Object.keys(params).forEach(k => {
+      if (!params[k]) delete params[k]
+    })
+    const res = await api.get('/orders/list', { params })
+    if (res) {
+      orderList.value = res.records || res.list || res
+      total.value = res.total || 0
+    }
+  } catch (err) {
+    console.error('获取订单列表失败:', err)
+    ElMessage.error('获取订单列表失败')
+  } finally {
+    loading.value = false
+  }
+}
 
 const filteredOrders = computed(() => {
-  let list = [...orderList]
-  if (filters.status) {
-    list = list.filter(o => o.statusClass === filters.status)
-  }
-  if (filters.search) {
-    const q = filters.search.toLowerCase()
-    list = list.filter(o => o.no.toLowerCase().includes(q) || o.user.toLowerCase().includes(q))
-  }
-  return list
+  return orderList.value
 })
 
-const totalPages = computed(() => Math.ceil(filteredOrders.value.length / pageSize) || 1)
+const totalPages = computed(() => Math.ceil(total.value / pageSize) || 1)
 
 function toggleSelectAll() {
   if (selectAll.value) {
@@ -143,6 +172,7 @@ function toggleSelectAll() {
 
 function handleSearch() {
   currentPage.value = 1
+  fetchOrders()
 }
 
 function handleReset() {
@@ -151,6 +181,7 @@ function handleReset() {
   filters.dateEnd = ''
   filters.search = ''
   currentPage.value = 1
+  fetchOrders()
 }
 
 function handleConfirmShip(order) {
@@ -164,6 +195,11 @@ function handleLogistics(order) {
 function handleDetail(order) {
   console.log('查看详情', order.no)
 }
+
+onMounted(() => {
+  fetchStats()
+  fetchOrders()
+})
 </script>
 
 <style scoped lang="css">

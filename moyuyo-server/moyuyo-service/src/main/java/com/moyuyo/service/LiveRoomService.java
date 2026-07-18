@@ -12,4 +12,19 @@ public interface LiveRoomService {
   LiveRoomEntity getDetail(Long id);
 
   List<LiveRoomProductEntity> getProducts(Long id);
+
+  /**
+   * 创建直播间
+   */
+  void createRoom(LiveRoomEntity entity);
+
+  /**
+   * 更新直播间
+   */
+  void updateRoom(LiveRoomEntity entity);
+
+  /**
+   * 更新直播状态
+   */
+  void updateRoomStatus(Long id, String status);
 }

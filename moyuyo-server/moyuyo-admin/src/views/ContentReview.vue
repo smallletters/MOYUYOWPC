@@ -102,7 +102,9 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { getReviewList, approveReview } from '../api/admin'
 
 const activeMode = ref('auto_manual')
 const activeTab = ref('all')
@@ -123,12 +125,7 @@ const violationTabs = [
   { key: 'abuse', label: '虐待动物' }
 ]
 
-const reviewItems = reactive([
-  { id: 1, thumb: '📷', contentType: '图片', contentTypeClass: 'tag-blue', autoResult: '违规', description: '含有敏感内容的商品图片，疑似违规展示', publisher: '用户_张三', submitTime: '2分钟前' },
-  { id: 2, thumb: '📝', contentType: '评论', contentTypeClass: 'tag-green', autoResult: '待审核', description: '用户评论内容包含可疑链接和推广信息', publisher: '匿名用户', submitTime: '5分钟前' },
-  { id: 3, thumb: '🎬', contentType: '视频', contentTypeClass: 'tag-orange', autoResult: '通过', description: '用户上传的产品使用教程视频，内容合规', publisher: '李四', submitTime: '8分钟前' },
-  { id: 4, thumb: '📷', contentType: '图片', contentTypeClass: 'tag-blue', autoResult: '违规', description: '疑似盗用他人原创设计的商品主图', publisher: '王五', submitTime: '12分钟前' }
-])
+const reviewItems = ref([])
 
 const trendData = reactive([
   { label: '07/10', pass: 80, reject: 20 },
@@ -140,15 +137,47 @@ const trendData = reactive([
   { label: '07/16', pass: 82, reject: 18 }
 ])
 
-function handleReview(id, action) {
+// 加载待审核内容列表
+async function loadReviewItems() {
+  try {
+    const res = await getReviewList()
+    const records = res.records || res || []
+      // 映射为前端需要的格式
+      reviewItems.value = records.map((item, index) => ({
+        id: item.id,
+        thumb: item.contentType === '视频' ? '🎬' : item.contentType === '图片' ? '📷' : '📝',
+        contentType: item.contentType || (item.rating ? '评论' : '图文'),
+        contentTypeClass: item.contentType === '视频' ? 'tag-orange' : item.contentType === '图片' ? 'tag-blue' : 'tag-green',
+        autoResult: item.auditStatus || '待审核',
+        description: item.content || item.title || '',
+        publisher: item.userName || item.submitter || '用户',
+        submitTime: item.submitTime || item.createTime || ''
+      }))
+    }
+  } catch (e) {
+    ElMessage.error('获取审核内容失败')
+  }
+}
+
+async function handleReview(id, action) {
   const actionLabels = {
     approve: '已通过',
     hide: '已隐藏',
     delete: '已删除',
     ban: '已封禁'
   }
-  alert(`内容 #${id} ${actionLabels[action]}`)
+  try {
+    if (action === 'approve') {
+      await approveReview(id)
+    }
+    ElMessage.success(`内容 #${id} ${actionLabels[action]}`)
+    await loadReviewItems()
+  } catch (e) {
+    ElMessage.error('操作失败')
+  }
 }
+
+onMounted(() => { loadReviewItems() })
 </script>
 
 <style scoped lang="css">

@@ -9,10 +9,10 @@
           <div class="profile-avatar">A</div>
           <div class="profile-info">
             <div class="profile-name">
-              Admin
-              <span class="tag tag-blue" style="margin-left: 8px;">超级管理员</span>
+              {{ adminInfo.name || 'Admin' }}
+              <span class="tag tag-blue" style="margin-left: 8px;">{{ adminInfo.role || '超级管理员' }}</span>
             </div>
-            <div class="profile-email">admin@moyuyo.com</div>
+            <div class="profile-email">{{ adminInfo.email || 'admin@moyuyo.com' }}</div>
           </div>
         </div>
       </div>
@@ -82,26 +82,12 @@
           </div>
           <div class="card-body">
             <div class="security-list">
-              <div class="security-item">
+              <div class="security-item" v-for="item in securityConfig" :key="item.label">
                 <div class="security-info">
-                  <div class="security-label">双因素认证</div>
-                  <div class="security-desc">额外安全保护</div>
+                  <div class="security-label">{{ item.label }}</div>
+                  <div class="security-desc">{{ item.desc }}</div>
                 </div>
-                <span class="tag tag-green">已开启</span>
-              </div>
-              <div class="security-item">
-                <div class="security-info">
-                  <div class="security-label">IP白名单</div>
-                  <div class="security-desc">限制登录IP地址</div>
-                </div>
-                <span class="tag tag-gray">未配置</span>
-              </div>
-              <div class="security-item">
-                <div class="security-info">
-                  <div class="security-label">会话超时</div>
-                  <div class="security-desc">30分钟无操作自动退出</div>
-                </div>
-                <span class="tag tag-green">已开启</span>
+                <span :class="'tag tag-' + (item.statusType || 'gray')">{{ item.status }}</span>
               </div>
             </div>
           </div>
@@ -114,10 +100,10 @@
           </div>
           <div class="card-body">
             <div class="sys-info">
-              <div class="sys-row"><span>系统版本</span><span>v1.0.0</span></div>
-              <div class="sys-row"><span>数据库状态</span><span class="status-ok">正常</span></div>
-              <div class="sys-row"><span>缓存状态</span><span class="status-ok">正常</span></div>
-              <div class="sys-row"><span>上次备份</span><span>2026-07-08 03:00</span></div>
+              <div class="sys-row"><span>系统版本</span><span>{{ systemInfo.version || 'v1.0.0' }}</span></div>
+              <div class="sys-row"><span>数据库状态</span><span :class="systemInfo.dbStatus === '正常' ? 'status-ok' : ''">{{ systemInfo.dbStatus || '正常' }}</span></div>
+              <div class="sys-row"><span>缓存状态</span><span :class="systemInfo.cacheStatus === '正常' ? 'status-ok' : ''">{{ systemInfo.cacheStatus || '正常' }}</span></div>
+              <div class="sys-row"><span>上次备份</span><span>{{ systemInfo.lastBackup || '2026-07-08 03:00' }}</span></div>
             </div>
           </div>
         </div>
@@ -127,32 +113,85 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { getSystemLogs, getRoles, getPermissions, getAdminInfo, getSecurityConfig, getSystemInfo } from '../api/admin'
 
-const roles = reactive([
-  { name: '超级管理员', count: 2 },
-  { name: '运营管理员', count: 5 },
-  { name: '客服人员', count: 8 },
-  { name: '商品编辑', count: 4 },
-  { name: '数据分析师', count: 3 }
-])
+const roles = ref([])
+const recentLogs = ref([])
+const permissions = ref([])
+const adminInfo = ref({ name: '', email: '', role: '' })
+const securityConfig = ref([])
+const systemInfo = ref({ version: '', dbStatus: '', cacheStatus: '', lastBackup: '' })
 
-const recentLogs = reactive([
-  { action: '修改了系统配置', operator: 'Admin', time: '10分钟前' },
-  { action: '新增运营管理员账号', operator: 'Admin', time: '1小时前' },
-  { action: '修改商品分类结构', operator: '运营_张三', time: '2小时前' }
-])
+// 加载角色列表
+async function loadRoles() {
+  try {
+    const res = await getRoles()
+    roles.value = res || []
+  } catch (e) {
+    console.error('获取角色列表失败', e)
+  }
+}
 
-const permissions = reactive([
-  { key: 'product', label: '商品管理', enabled: true },
-  { key: 'order', label: '订单管理', enabled: true },
-  { key: 'user', label: '用户管理', enabled: true },
-  { key: 'marketing', label: '营销管理', enabled: true },
-  { key: 'analytics', label: '数据分析', enabled: true },
-  { key: 'settings', label: '系统设置', enabled: false },
-  { key: 'finance', label: '财务管理', enabled: false },
-  { key: 'review', label: '内容审核', enabled: true }
-])
+// 加载权限配置
+async function loadPermissions() {
+  try {
+    const res = await getPermissions()
+    permissions.value = res || []
+  } catch (e) {
+    console.error('获取权限配置失败', e)
+  }
+}
+
+// 加载管理员信息
+async function loadAdminInfo() {
+  try {
+    const res = await getAdminInfo()
+    adminInfo.value = res || { name: '', email: '', role: '' }
+  } catch (e) {
+    ElMessage.error('获取管理员信息失败')
+  }
+}
+
+// 加载安全设置
+async function loadSecurityConfig() {
+  try {
+    const res = await getSecurityConfig()
+    securityConfig.value = res || []
+  } catch (e) {
+    ElMessage.error('获取安全设置失败')
+  }
+}
+
+// 加载系统信息
+async function loadSystemInfo() {
+  try {
+    const res = await getSystemInfo()
+    systemInfo.value = res || { version: '', dbStatus: '', cacheStatus: '', lastBackup: '' }
+  } catch (e) {
+    ElMessage.error('获取系统信息失败')
+  }
+}
+
+// 加载最近操作日志
+async function loadRecentLogs() {
+  try {
+    const res = await getSystemLogs()
+    const logs = res.records || res || []
+    recentLogs.value = logs.slice(0, 5).map(item => ({
+      action: item.action || item.content || '执行了操作',
+      operator: item.operator || item.operatorName || '系统',
+      time: item.createTime || item.operationTime || ''
+    }))
+  } catch (e) {
+    // 静默失败，日志非关键数据
+  }
+}
+
+onMounted(() => {
+  Promise.all([loadRoles(), loadPermissions(), loadAdminInfo(), loadSecurityConfig(), loadSystemInfo(), loadRecentLogs()])
+})
 </script>
 
 <style scoped lang="css">

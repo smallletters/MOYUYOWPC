@@ -19,18 +19,19 @@
     <el-card shadow="never" style="margin-bottom:16px">
       <template #header><span>用户基本信息</span></template>
       <el-descriptions :column="3" border>
-        <el-descriptions-item label="用户ID">U10001</el-descriptions-item>
-        <el-descriptions-item label="用户名">zhangsan</el-descriptions-item>
-        <el-descriptions-item label="昵称">张三</el-descriptions-item>
-        <el-descriptions-item label="手机号">138****5678</el-descriptions-item>
-        <el-descriptions-item label="邮箱">zhang***@example.com</el-descriptions-item>
-        <el-descriptions-item label="注册时间">2025-03-15 10:30</el-descriptions-item>
+        <el-descriptions-item label="用户ID">{{ userInfo.userId }}</el-descriptions-item>
+        <el-descriptions-item label="用户名">{{ userInfo.username }}</el-descriptions-item>
+        <el-descriptions-item label="昵称">{{ userInfo.nickname }}</el-descriptions-item>
+        <el-descriptions-item label="手机号">{{ userInfo.phone }}</el-descriptions-item>
+        <el-descriptions-item label="邮箱">{{ userInfo.email }}</el-descriptions-item>
+        <el-descriptions-item label="注册时间">{{ userInfo.registerTime }}</el-descriptions-item>
         <el-descriptions-item label="会员等级">
-          <el-tag type="warning" size="small">黄金会员</el-tag>
+          <el-tag :type="userInfo.levelTag || 'info'" size="small">{{ userInfo.level }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="累计消费">¥12,580</el-descriptions-item>
+        <el-descriptions-item label="累计消费">{{ userInfo.totalSpent }}</el-descriptions-item>
         <el-descriptions-item label="用户标签">
-          <el-tag v-for="tag in userTags" :key="tag" size="small" style="margin-right:4px">{{ tag }}</el-tag>
+          <el-tag v-for="tag in userInfo.tags" :key="tag" size="small" style="margin-right:4px">{{ tag }}</el-tag>
+          <span v-if="userInfo.tags.length === 0" style="color:var(--text-400);font-size:12px;">暂无标签</span>
         </el-descriptions-item>
       </el-descriptions>
     </el-card>
@@ -49,28 +50,76 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getUserProfile, getUserBehaviors } from '../api/admin'
 
 const searchForm = reactive({ keyword: '' })
 
-const userTags = ['高价值', '高频购买', '新品偏好', '移动端用户', '优惠券敏感']
+// 用户基本信息
+const userInfo = reactive({
+  userId: '-',
+  username: '-',
+  nickname: '-',
+  phone: '-',
+  email: '-',
+  registerTime: '-',
+  level: '-',
+  levelTag: '',
+  totalSpent: '-',
+  tags: []
+})
 
-const behaviorData = ref([
-  { type: '浏览商品', count: 256, lastTime: '2026-07-17 14:30' },
-  { type: '加入购物车', count: 89, lastTime: '2026-07-16 20:15' },
-  { type: '提交订单', count: 45, lastTime: '2026-07-15 18:20' },
-  { type: '支付成功', count: 42, lastTime: '2026-07-15 18:22' },
-  { type: '搜索关键词', count: 178, lastTime: '2026-07-17 13:00' },
-  { type: '收藏商品', count: 34, lastTime: '2026-07-14 09:45' },
-  { type: '评价商品', count: 18, lastTime: '2026-07-10 11:30' },
-  { type: '客服咨询', count: 6, lastTime: '2026-07-08 15:00' },
-])
+// 用户行为数据
+const behaviorData = ref([])
 
-function handleSearch() {
-  ElMessage.success('搜索完成：' + searchForm.keyword)
+const loading = ref(false)
+
+// 搜索用户
+async function handleSearch() {
+  const keyword = searchForm.keyword.trim()
+  if (!keyword) {
+    ElMessage.warning('请输入用户名或ID')
+    return
+  }
+  loading.value = true
+  try {
+    const res = await getUserProfile(keyword)
+    if (res) {
+      Object.assign(userInfo, {
+        userId: res.userId || res.id || '-',
+        username: res.username || '-',
+        nickname: res.nickname || '-',
+        phone: res.phone || '-',
+        email: res.email || '-',
+        registerTime: res.registerTime || '-',
+        level: res.level || '-',
+        levelTag: res.levelTag || '',
+        totalSpent: res.totalSpent || '-',
+        tags: res.tags || []
+      })
+    }
+
+    // 获取行为数据
+    const behaviorRes = await getUserBehaviors(keyword)
+    if (behaviorRes) {
+      behaviorData.value = behaviorRes.records || behaviorRes.list || behaviorRes
+    }
+
+    ElMessage.success('搜索完成')
+  } catch (err) {
+    console.error('获取用户数据失败:', err)
+    ElMessage.error('未找到该用户或查询失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 function handleReset() {
   searchForm.keyword = ''
+  Object.assign(userInfo, {
+    userId: '-', username: '-', nickname: '-', phone: '-', email: '-',
+    registerTime: '-', level: '-', levelTag: '', totalSpent: '-', tags: []
+  })
+  behaviorData.value = []
 }
 </script>
 

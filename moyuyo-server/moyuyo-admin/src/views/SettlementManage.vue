@@ -81,6 +81,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getSettlements, createSettlement, updateSettlement, deleteSettlement } from '../api/admin'
 
 const pageTitle = '结算管理'
 const filters = reactive({ keyword: '' })
@@ -98,29 +99,65 @@ const editForm = reactive({
   status: '待确认'
 })
 
-const mockData = [
-  { id: 1, settleNo: 'ST-20260701-001', period: '2026-07上', merchant: '全球购旗舰店', amount: 128500.00, status: '已结算' },
-  { id: 2, settleNo: 'ST-20260701-002', period: '2026-07上', merchant: '保健品专营店', amount: 86200.50, status: '已确认' },
-  { id: 3, settleNo: 'ST-20260701-003', period: '2026-07上', merchant: '美妆海外店', amount: 54300.00, status: '待确认' },
-  { id: 4, settleNo: 'ST-20260702-001', period: '2026-07下', merchant: '全球购旗舰店', amount: 156800.00, status: '已结算' },
-  { id: 5, settleNo: 'ST-20260702-002', period: '2026-07下', merchant: '母婴用品店', amount: 42100.00, status: '已确认' },
-  { id: 6, settleNo: 'ST-20260702-003', period: '2026-07下', merchant: '家居生活馆', amount: 32500.00, status: '待确认' }
-]
-
-function loadData() {
-  let filtered = [...mockData]
-  if (filters.keyword) {
-    filtered = filtered.filter(item => item.settleNo.includes(filters.keyword) || item.merchant.includes(filters.keyword))
+// 从API加载结算列表数据
+async function loadData() {
+  try {
+    const res = await getSettlements()
+    const list = res || []
+    // 根据关键词过滤
+    let filtered = [...list]
+    if (filters.keyword) {
+      filtered = filtered.filter(item => item.settleNo.includes(filters.keyword) || item.merchant.includes(filters.keyword))
+    }
+    tableData.value = filtered
+    total.value = filtered.length
+  } catch (e) {
+    console.error('加载结算列表失败:', e)
+    ElMessage.error('加载结算列表失败')
   }
-  tableData.value = filtered
-  total.value = filtered.length
 }
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.keyword = ''; handleSearch() }
 function handleAdd() { dialogTitle.value = '新建结算单'; editForm.settleNo = ''; editForm.period = ''; editForm.merchant = ''; editForm.amount = 0; editForm.status = '待确认'; dialogVisible.value = true }
 function handleEdit(row) { dialogTitle.value = '编辑结算单'; Object.assign(editForm, row); dialogVisible.value = true }
-function handleDelete(row) { ElMessageBox.confirm('确定删除？','提示').then(() => { ElMessage.success('删除成功'); loadData() }) }
-function handleSave() { ElMessage.success('保存成功'); dialogVisible.value = false; loadData() }
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确定删除？', '提示')
+    await deleteSettlement(row.id)
+    ElMessage.success('删除成功')
+    await loadData()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败: ' + (e.message || '未知错误'))
+    }
+  }
+}
+async function handleSave() {
+  try {
+    if (editForm.id) {
+      await updateSettlement(editForm.id, {
+        settleNo: editForm.settleNo,
+        period: editForm.period,
+        merchant: editForm.merchant,
+        amount: editForm.amount,
+        status: editForm.status
+      })
+    } else {
+      await createSettlement({
+        settleNo: editForm.settleNo,
+        period: editForm.period,
+        merchant: editForm.merchant,
+        amount: editForm.amount,
+        status: editForm.status
+      })
+    }
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    await loadData()
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e.message || '未知错误'))
+  }
+}
 onMounted(() => loadData())
 </script>
 

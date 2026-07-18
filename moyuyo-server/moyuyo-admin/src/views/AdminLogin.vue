@@ -97,6 +97,8 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { login } from '../api/auth'
 
 const router = useRouter()
 
@@ -115,11 +117,16 @@ async function handleLogin() {
   }
   loading.value = true
   try {
-    // 模拟登录请求
-    await new Promise(resolve => setTimeout(resolve, 800))
-    router.push('/dashboard')
+    const res = await login({ email: form.email, password: form.password })
+    if (res && res.token) {
+      localStorage.setItem('admin_token', res.token)
+      ElMessage.success('登录成功')
+      router.push('/dashboard')
+    } else {
+      ElMessage.error(res?.message || '登录失败')
+    }
   } catch (e) {
-    // 登录失败处理
+    ElMessage.error('网络错误，请检查后端服务是否正常运行')
   } finally {
     loading.value = false
   }

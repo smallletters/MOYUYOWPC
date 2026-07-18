@@ -76,32 +76,45 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getOrderOpsStats, getOrderOpsExport } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
 const kpiData = reactive({
-  todayOrders: 186,
-  pendingShip: 42,
-  abnormalOrders: 7,
-  intercepting: 3
+  todayOrders: 0,
+  pendingShip: 0,
+  abnormalOrders: 0,
+  intercepting: 0
 })
-
-const mockData = [
-  { id: 1, orderNo: 'MOY20260717001', product: '无线蓝牙耳机 Pro', amount: 298, status: '待发货', abnormalType: '', updateTime: '2026-07-17 10:30:00' },
-  { id: 2, orderNo: 'MOY20260717002', product: '智能手表S3', amount: 678, status: '已付款', abnormalType: '支付异常', updateTime: '2026-07-17 11:20:00' },
-  { id: 3, orderNo: 'MOY20260717003', product: '运动休闲鞋', amount: 398, status: '已拦截', abnormalType: '地址异常', updateTime: '2026-07-17 09:15:00' },
-  { id: 4, orderNo: 'MOY20260716004', product: '不锈钢保温杯', amount: 118, status: '已完成', abnormalType: '', updateTime: '2026-07-16 18:00:00' },
-  { id: 5, orderNo: 'MOY20260716005', product: '轻薄笔记本电脑包', amount: 377, status: '待发货', abnormalType: '缺货', updateTime: '2026-07-16 14:30:00' }
-]
 
 const tableData = ref([])
 
-function loadData() {
-  const start = (currentPage.value - 1) * pageSize.value
-  total.value = mockData.length
-  tableData.value = mockData.slice(start, start + pageSize.value)
+// 加载KPI统计和订单列表
+async function loadData() {
+  try {
+    // 同时获取统计数据和订单列表
+    const [statsRes, listRes] = await Promise.all([
+      getOrderOpsStats(),
+      getOrderOpsExport()
+    ])
+    // 填充KPI数据
+    const stats = statsRes.data || statsRes || {}
+    kpiData.todayOrders = stats.todayOrders || 0
+    kpiData.pendingShip = stats.pendingShip || 0
+    kpiData.abnormalOrders = stats.abnormalOrders || 0
+    kpiData.intercepting = stats.intercepting || 0
+
+    // 填充列表数据
+    const list = listRes.data || listRes || []
+    total.value = list.length
+    const start = (currentPage.value - 1) * pageSize.value
+    tableData.value = list.slice(start, start + pageSize.value)
+  } catch (error) {
+    console.error('获取订单监控数据失败:', error)
+    ElMessage.error('获取订单监控数据失败')
+  }
 }
 
 function handleDetail(row) {

@@ -61,19 +61,22 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getKnowledgeList, updateKnowledge, deleteKnowledge } from '../api/admin'
 
 const filters = reactive({ title: '', category: '', status: '' })
 
-const tableData = ref([
-  { id: 1, title: '如何申请退款？', category: '常见问题', status: '已发布', viewCount: 12580, updateTime: '2026-07-17 10:30' },
-  { id: 2, title: '商品上架操作指南', category: '操作指南', status: '已发布', viewCount: 8920, updateTime: '2026-07-16 14:20' },
-  { id: 3, title: '用户隐私保护政策', category: '政策法规', status: '已发布', viewCount: 6540, updateTime: '2026-07-15 09:00' },
-  { id: 4, title: '订单处理方法汇总', category: '常见问题', status: '草稿', viewCount: 0, updateTime: '2026-07-14 16:45' },
-  { id: 5, title: '物流发货操作指南', category: '操作指南', status: '已发布', viewCount: 4560, updateTime: '2026-07-13 11:30' },
-  { id: 6, title: '平台交易管理规定', category: '政策法规', status: '草稿', viewCount: 0, updateTime: '2026-07-12 08:15' },
-])
+const tableData = ref([])
+
+async function loadData() {
+  try {
+    const res = await getKnowledgeList()
+    tableData.value = res || []
+  } catch (err) {
+    console.error('获取知识库数据失败', err)
+  }
+}
 
 function categoryTag(category) {
   if (category === '常见问题') return 'warning'
@@ -85,16 +88,29 @@ function handleSearch() { ElMessage.success('搜索完成') }
 function handleReset() { filters.title = ''; filters.category = ''; filters.status = '' }
 function handleAdd() { ElMessage.info('新建知识库文章') }
 function handleEdit(row) { ElMessage.info('编辑文章：' + row.title) }
-function handlePublish(row) {
-  row.status = '已发布'
-  ElMessage.success('文章已发布')
+async function handlePublish(row) {
+  try {
+    await updateKnowledge({ id: row.id, status: '已发布' })
+    ElMessage.success('文章已发布')
+    await loadData()
+  } catch (e) {
+    ElMessage.error('发布失败: ' + (e.message || '未知错误'))
+  }
 }
-function handleDelete(row) {
-  ElMessageBox.confirm('确定删除文章「' + row.title + '」吗？', '提示').then(() => {
-    tableData.value = tableData.value.filter(item => item.id !== row.id)
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确定删除文章「' + row.title + '」吗？', '提示')
+    await deleteKnowledge(row.id)
     ElMessage.success('已删除')
-  }).catch(() => {})
+    await loadData()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败: ' + (e.message || '未知错误'))
+    }
+  }
 }
+
+onMounted(() => loadData())
 </script>
 
 <style scoped>

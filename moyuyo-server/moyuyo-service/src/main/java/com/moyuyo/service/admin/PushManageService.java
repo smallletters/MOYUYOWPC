@@ -44,4 +44,14 @@ public interface PushManageService {
    * 获取推送统计
    */
   Map<String, Object> getStats();
+
+  /**
+   * 定时推送列表
+   */
+  List<PushRecordEntity> listScheduledRecords();
+
+  /**
+   * 保存定时推送
+   */
+  void saveSchedule(PushRecordEntity record);
 }

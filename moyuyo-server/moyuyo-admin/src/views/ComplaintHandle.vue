@@ -84,6 +84,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getComplaintList, closeComplaint, assignComplaint } from '../api/admin'
 
 const pageTitle = '投诉处理详情'
 const filters = reactive({ keyword: '' })
@@ -102,29 +103,64 @@ const editForm = reactive({
   status: '待处理'
 })
 
-const mockData = [
-  { id: 1, complaintNo: 'CP-20260701-001', complainant: '王小明', target: '商家-全球购', reason: '收到的商品包装破损，要求退换', handler: '客服-张', status: '已完结', handleTime: '2026-07-05 14:30' },
-  { id: 2, complaintNo: 'CP-20260702-002', complainant: '李小红', target: '商家-保健品专营', reason: '商品与描述不符，要求退货退款', handler: '客服-李', status: '处理中', handleTime: '2026-07-15 10:00' },
-  { id: 3, complaintNo: 'CP-20260703-003', complainant: '赵大勇', target: '物流-顺丰速运', reason: '物流配送严重超时，要求赔偿', handler: '客服-王', status: '待处理', handleTime: '' },
-  { id: 4, complaintNo: 'CP-20260704-004', complainant: '陈美丽', target: '商家-母婴用品店', reason: '购买的商品缺件，少发了一个配件', handler: '客服-张', status: '已完结', handleTime: '2026-07-12 16:00' },
-  { id: 5, complaintNo: 'CP-20260705-005', complainant: '刘强东', target: '商家-家居生活馆', reason: '收到货物有异味，怀疑质量问题', handler: '客服-李', status: '处理中', handleTime: '2026-07-16 09:20' },
-  { id: 6, complaintNo: 'CP-20260706-006', complainant: '周思思', target: '保税仓', reason: '清关时间太久，超过承诺时效', handler: '', status: '待处理', handleTime: '' }
-]
-
-function loadData() {
-  let filtered = [...mockData]
-  if (filters.keyword) {
-    filtered = filtered.filter(item => item.complaintNo.includes(filters.keyword) || item.complainant.includes(filters.keyword))
+// 从API加载投诉列表数据
+async function loadData() {
+  try {
+    const res = await getComplaintList()
+    const list = res || []
+    // 根据关键词筛选
+    let filtered = [...list]
+    if (filters.keyword) {
+      filtered = filtered.filter(item => item.complaintNo.includes(filters.keyword) || item.complainant.includes(filters.keyword))
+    }
+    tableData.value = filtered
+    total.value = filtered.length
+  } catch (e) {
+    console.error('加载投诉列表失败:', e)
+    ElMessage.error('加载投诉列表失败')
   }
-  tableData.value = filtered
-  total.value = filtered.length
 }
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.keyword = ''; handleSearch() }
 function handleAdd() { dialogTitle.value = '新建投诉'; editForm.complaintNo = ''; editForm.complainant = ''; editForm.target = ''; editForm.reason = ''; editForm.handler = ''; editForm.status = '待处理'; dialogVisible.value = true }
-function handleEdit(row) { dialogTitle.value = '处理投诉'; Object.assign(editForm, row); dialogVisible.value = true }
-function handleDelete(row) { ElMessageBox.confirm('确定删除？','提示').then(() => { ElMessage.success('删除成功'); loadData() }) }
-function handleSave() { ElMessage.success('保存成功'); dialogVisible.value = false; loadData() }
+
+// 编辑投诉（分配处理人）
+async function handleEdit(row) {
+  dialogTitle.value = '处理投诉'
+  Object.assign(editForm, row)
+  dialogVisible.value = true
+}
+
+// 删除投诉
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确定删除？','提示')
+    await closeComplaint(row.id)
+    ElMessage.success('投诉已关闭')
+    loadData()
+  } catch (e) {
+    if (e !== 'cancel') {
+      console.error('关闭投诉失败:', e)
+    }
+  }
+}
+
+// 保存投诉处理（调用API分配处理人）
+async function handleSave() {
+  try {
+    await assignComplaint({
+      id: editForm.id,
+      handler: editForm.handler,
+      status: editForm.status
+    })
+    ElMessage.success('投诉处理已保存')
+    dialogVisible.value = false
+    loadData()
+  } catch (e) {
+    console.error('保存投诉处理失败:', e)
+    ElMessage.error('保存失败')
+  }
+}
 onMounted(() => loadData())
 </script>
 

@@ -66,6 +66,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getReviewList, approveReview, rejectReview } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -77,14 +78,6 @@ const filters = reactive({
   auditStatus: ''
 })
 
-const mockData = [
-  { id: 1, productName: '无线蓝牙耳机 Pro', userName: '张三', rating: 5, content: '音质非常好，佩戴舒适，续航也很给力，推荐购买！', auditStatus: '已通过', submitTime: '2026-07-10 14:30:00' },
-  { id: 2, productName: '智能手表S3', userName: '李四', rating: 3, content: '功能丰富但续航有待提升，希望后续固件优化', auditStatus: '待审核', submitTime: '2026-07-11 09:20:00' },
-  { id: 3, productName: '运动休闲鞋', userName: '王五', rating: 4, content: '鞋子穿起来很舒适，码数标准，推荐购买', auditStatus: '已通过', submitTime: '2026-07-12 16:45:00' },
-  { id: 4, productName: '不锈钢保温杯', userName: '赵六', rating: 2, content: '保温效果一般，外观有轻微划痕，不太满意', auditStatus: '待审核', submitTime: '2026-07-13 11:10:00' },
-  { id: 5, productName: '轻薄笔记本电脑包', userName: '孙七', rating: 5, content: '包包很轻便，质量很好，出差用非常合适', auditStatus: '已驳回', submitTime: '2026-07-14 08:30:00' }
-]
-
 const tableData = ref([])
 
 function auditTag(status) {
@@ -92,16 +85,30 @@ function auditTag(status) {
   return map[status] || ''
 }
 
-function loadData() {
-  const start = (currentPage.value - 1) * pageSize.value
-  const list = mockData.filter(d => {
-    const kw = filters.keyword.toLowerCase()
-    if (kw && !d.productName.toLowerCase().includes(kw) && !d.userName.includes(kw)) return false
-    if (filters.auditStatus && d.auditStatus !== filters.auditStatus) return false
-    return true
-  })
-  total.value = list.length
-  tableData.value = list.slice(start, start + pageSize.value)
+// 加载商品评价列表
+async function loadData() {
+  try {
+    const res = await getReviewList()
+    const records = res.records || res || []
+      // 客户端筛选
+      let list = [...records]
+      const kw = filters.keyword.toLowerCase()
+      if (kw) {
+        list = list.filter(d =>
+          (d.productName || '').toLowerCase().includes(kw) ||
+          (d.userName || '').includes(kw)
+        )
+      }
+      if (filters.auditStatus) {
+        list = list.filter(d => d.auditStatus === filters.auditStatus)
+      }
+      total.value = list.length
+      const start = (currentPage.value - 1) * pageSize.value
+      tableData.value = list.slice(start, start + pageSize.value)
+    }
+  } catch (e) {
+    ElMessage.error('获取评价列表失败')
+  }
 }
 
 function handleSearch() { currentPage.value = 1; loadData() }
@@ -112,29 +119,39 @@ function handleSelectionChange(rows) {
   selectedIds.value = rows.map(r => r.id)
 }
 
-function handlePass(row) {
-  row.auditStatus = '已通过'
-  loadData()
-  ElMessage.success('审核通过')
+async function handlePass(row) {
+  try {
+    await approveReview(row.id)
+    ElMessage.success('审核通过')
+    await loadData()
+  } catch (e) {
+    ElMessage.error('操作失败')
+  }
 }
 
-function handleReject(row) {
-  ElMessageBox.confirm('确认驳回该评价吗？', '提示', { type: 'warning' }).then(() => {
-    row.auditStatus = '已驳回'
-    loadData()
+async function handleReject(row) {
+  try {
+    await ElMessageBox.confirm('确认驳回该评价吗？', '提示', { type: 'warning' })
+    await rejectReview(row.id)
     ElMessage.success('已驳回')
-  }).catch(() => {})
+    await loadData()
+  } catch (e) {
+    // 用户取消不处理
+  }
 }
 
-function handleBatchPass() {
+async function handleBatchPass() {
   const count = selectedIds.value.length
-  mockData.forEach(d => {
-    if (selectedIds.value.includes(d.id) && d.auditStatus === '待审核') {
-      d.auditStatus = '已通过'
+  try {
+    // 批量通过选中的评价
+    for (const id of selectedIds.value) {
+      await approveReview(id)
     }
-  })
-  loadData()
-  ElMessage.success('批量通过 ' + count + ' 条评价')
+    ElMessage.success('批量通过 ' + count + ' 条评价')
+    await loadData()
+  } catch (e) {
+    ElMessage.error('批量操作失败')
+  }
 }
 
 onMounted(() => { loadData() })

@@ -5,19 +5,19 @@
     <!-- KPI 卡片 -->
     <div class="kpi-row">
       <div class="kpi-card">
-        <div class="kpi-value orange">23</div>
+        <div class="kpi-value orange">{{ kpiData.pending }}</div>
         <div class="kpi-label">待处理</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value">¥3,842</div>
+        <div class="kpi-value">{{ kpiData.todayAmount }}</div>
         <div class="kpi-label">今日退款金额</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value">2.8%</div>
+        <div class="kpi-value">{{ kpiData.refundRate }}</div>
         <div class="kpi-label">退款率</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value">4.2h</div>
+        <div class="kpi-value">{{ kpiData.avgProcessTime }}</div>
         <div class="kpi-label">平均处理时长</div>
       </div>
     </div>
@@ -104,11 +104,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import api from '../api/index'
+import { ElMessage } from 'element-plus'
 
 const activeType = ref('all')
 const selectAll = ref(false)
 const selectedItems = ref(new Set())
+const loading = ref(false)
 
 const refundTypes = [
   { key: 'all', label: '全部' },
@@ -117,42 +120,87 @@ const refundTypes = [
   { key: 'exchange', label: '换货' }
 ]
 
-const refunds = reactive([
-  { id: 1, refundNo: 'RE-20260708-001', orderNo: 'MOY2026070812', thumb: '📦', reasonLabel: '质量问题', reasonClass: 'tag-red', slaIcon: '🔴', slaLabel: '剩余 2h', slaClass: 'urgent', amount: '298.00', statusLabel: '待处理', statusClass: 'tag-yellow' },
-  { id: 2, refundNo: 'RE-20260708-002', orderNo: 'MOY2026070811', thumb: '📦', reasonLabel: '不想要了', reasonClass: 'tag-gray', slaIcon: '🟡', slaLabel: '剩余 12h', slaClass: 'normal', amount: '168.00', statusLabel: '待处理', statusClass: 'tag-yellow' },
-  { id: 3, refundNo: 'RE-20260708-003', orderNo: 'MOY2026070810', thumb: '📦', reasonLabel: '商品损坏', reasonClass: 'tag-red', slaIcon: '🟢', slaLabel: '已完成', slaClass: 'done', amount: '445.00', statusLabel: '已通过', statusClass: 'tag-green' },
-  { id: 4, refundNo: 'RE-20260708-004', orderNo: 'MOY2026070809', thumb: '📦', reasonLabel: '空包裹', reasonClass: 'tag-orange', slaIcon: '🟢', slaLabel: '已完成', slaClass: 'done', amount: '596.00', statusLabel: '已拒绝', statusClass: 'tag-gray' }
-])
+const refunds = ref([])
 
-const reasonDist = reactive([
-  { label: '质量问题', percent: 35, color: 'var(--state-error)' },
-  { label: '不想要了', percent: 28, color: 'var(--text-400)' },
-  { label: '商品损坏', percent: 18, color: 'var(--state-warning)' },
-  { label: '空包裹', percent: 12, color: 'var(--brand-500)' },
-  { label: '其他', percent: 7, color: 'var(--text-300)' }
-])
+// KPI 数据
+const kpiData = ref({
+  pending: 0,
+  todayAmount: '¥0',
+  refundRate: '0%',
+  avgProcessTime: '0h'
+})
+
+// 退款原因分布
+const reasonDist = ref([])
+
+// 获取退款统计数据
+async function fetchStats() {
+  try {
+    const res = await api.get('/refunds/stats')
+    if (res) {
+      kpiData.value = res
+    }
+  } catch (err) {
+    console.error('获取退款统计数据失败:', err)
+  }
+}
+
+// 获取退款列表
+async function fetchRefunds() {
+  loading.value = true
+  try {
+    const params = { type: activeType.value }
+    const res = await api.get('/refunds/list', { params })
+    if (res) {
+      refunds.value = res.records || res.list || res
+    }
+  } catch (err) {
+    console.error('获取退款列表失败:', err)
+    ElMessage.error('获取退款列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 获取退款原因分布
+async function fetchReasonDist() {
+  try {
+    const res = await api.get('/refunds/reason-distribution')
+    if (res) {
+      reasonDist.value = res
+    }
+  } catch (err) {
+    console.error('获取退款原因分布失败:', err)
+  }
+}
 
 const selectedCount = computed(() => selectedItems.value.size)
 
 function toggleSelectAll() {
   if (selectAll.value) {
-    refunds.forEach(item => selectedItems.value.add(item.id))
+    refunds.value.forEach(item => selectedItems.value.add(item.id))
   } else {
     selectedItems.value.clear()
   }
 }
 
 function handleApprove(id) {
-  alert(`退款 #${id} 已批准`)
+  ElMessage.success(`退款 #${id} 已批准`)
 }
 
 function handleReject(id) {
-  alert(`退款 #${id} 已拒绝`)
+  ElMessage.success(`退款 #${id} 已拒绝`)
 }
 
 function batchApprove() {
-  alert(`批量同意 ${selectedCount.value} 项退款`)
+  ElMessage.success(`批量同意 ${selectedCount.value} 项退款`)
 }
+
+onMounted(() => {
+  fetchStats()
+  fetchRefunds()
+  fetchReasonDist()
+})
 </script>
 
 <style scoped lang="css">

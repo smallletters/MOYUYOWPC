@@ -38,17 +38,20 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getAbTests, updateAbTest } from '../api/admin'
 
-const tableData = ref([
-  { id: 1, name: '首页 Banner 样式优化', versionA: '旧版 Banner', versionB: '新版 Banner', sampleSize: 50000, conversionA: 3.2, conversionB: 4.8, status: '运行中' },
-  { id: 2, name: '商品详情页布局', versionA: '左右布局', versionB: '上下布局', sampleSize: 30000, conversionA: 5.1, conversionB: 5.6, status: '已结束' },
-  { id: 3, name: '购物车按钮颜色', versionA: '蓝色', versionB: '红色', sampleSize: 80000, conversionA: 8.3, conversionB: 9.1, status: '运行中' },
-  { id: 4, name: '搜索推荐算法', versionA: '热门推荐', versionB: '个性化推荐', sampleSize: 20000, conversionA: 12.5, conversionB: 15.2, status: '待开始' },
-  { id: 5, name: '结算流程优化', versionA: '3步结算', versionB: '1步结算', sampleSize: 25000, conversionA: 18.6, conversionB: 22.3, status: '已结束' },
-  { id: 6, name: '推送文案测试', versionA: '促销型', versionB: '故事型', sampleSize: 60000, conversionA: 6.7, conversionB: 5.9, status: '待开始' },
-])
+const tableData = ref([])
+
+async function loadData() {
+  try {
+    const res = await getAbTests()
+    tableData.value = res || []
+  } catch (err) {
+    console.error('获取A/B测试数据失败', err)
+  }
+}
 
 function statusTag(status) {
   if (status === '运行中') return 'success'
@@ -57,14 +60,22 @@ function statusTag(status) {
 }
 
 function handleAdd() { ElMessage.info('新建 A/B 实验') }
-function handleEdit(row) { ElMessage.info('编辑实验：' + row.name) }
-function handleStop(row) {
-  ElMessageBox.confirm('确定结束实验「' + row.name + '」吗？', '提示').then(() => {
-    row.status = '已结束'
+function handleEdit(row) { ElMessage.warning('编辑功能开发中') }
+async function handleStop(row) {
+  try {
+    await ElMessageBox.confirm('确定结束实验「' + row.name + '」吗？', '提示')
+    await updateAbTest(row.id, { status: '已结束' })
     ElMessage.success('实验已结束')
-  }).catch(() => {})
+    await loadData()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('结束实验失败: ' + (e.message || '未知错误'))
+    }
+  }
 }
-function handleView(row) { ElMessage.info('查看实验详情：' + row.name) }
+function handleView(row) { ElMessage.warning('详情功能开发中') }
+
+onMounted(() => loadData())
 </script>
 
 <style scoped>

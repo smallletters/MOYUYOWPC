@@ -17,9 +17,9 @@
             </div>
             <span class="kpi-label">总 SKU 数</span>
           </div>
-          <div class="kpi-value">1,286</div>
+          <div class="kpi-value">{{ overview.totalSku }}</div>
           <div class="kpi-trend">
-            <span class="trend-label">较上周 +12</span>
+            <span class="trend-label">较上周 +{{ overview.weeklyIncrease }}</span>
           </div>
         </div>
         <!-- 低库存预警 -->
@@ -30,9 +30,9 @@
             </div>
             <span class="kpi-label">低库存预警</span>
           </div>
-          <div class="kpi-value kpi-value-error">23</div>
+          <div class="kpi-value kpi-value-error">{{ overview.lowStockAlerts }}</div>
           <div class="kpi-trend">
-            <span class="trend-label" style="color:var(--state-error);font-weight:600;">需立即补货 8 项</span>
+            <span class="trend-label" style="color:var(--state-error);font-weight:600;">需立即补货 {{ overview.urgentReplenish }} 项</span>
           </div>
         </div>
         <!-- 临期批次 -->
@@ -43,7 +43,7 @@
             </div>
             <span class="kpi-label">临期批次</span>
           </div>
-          <div class="kpi-value kpi-value-warning">15</div>
+          <div class="kpi-value kpi-value-warning">{{ overview.expiringBatches }}</div>
           <div class="kpi-trend">
             <span class="trend-label">30天内到期</span>
           </div>
@@ -56,7 +56,7 @@
             </div>
             <span class="kpi-label">在途调拨</span>
           </div>
-          <div class="kpi-value kpi-value-success">7</div>
+          <div class="kpi-value kpi-value-success">{{ overview.inTransit }}</div>
           <div class="kpi-trend">
             <span class="trend-label">预计3日内到货</span>
           </div>
@@ -76,9 +76,8 @@
           <div class="alert-panel-header">
             <span class="alert-dot alert-dot-error"></span>
             <span class="alert-panel-title">严重预警</span>
-            <span class="alert-count-badge alert-count-badge-error">8 项</span>
+            <span class="alert-count-badge alert-count-badge-error">{{ severeAlerts.length }} 项</span>
           </div>
-          <!-- 严重预警项 1 -->
           <div class="alert-item" v-for="item in severeAlerts" :key="item.sku">
             <div class="alert-item-top">
               <div class="alert-item-info">
@@ -104,9 +103,8 @@
           <div class="alert-panel-header">
             <span class="alert-dot alert-dot-warning"></span>
             <span class="alert-panel-title">一般预警</span>
-            <span class="alert-count-badge alert-count-badge-warning">15 项</span>
+            <span class="alert-count-badge alert-count-badge-warning">{{ generalAlerts.length }} 项</span>
           </div>
-          <!-- 一般预警项 1 -->
           <div class="alert-item" v-for="item in generalAlerts" :key="item.sku">
             <div class="alert-item-top">
               <div class="alert-item-info">
@@ -170,31 +168,53 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getInventoryOverview, getInventoryAlerts, getInventoryList } from '../api/admin'
 
-// 严重预警数据
-const severeAlerts = ref([
-  { name: '皇家猫粮室内成猫 2kg', sku: 'RCL-IND-2K', currentStock: 5, safeThreshold: 50, gap: 45, percent: 10 },
-  { name: '渴望六种鱼猫粮 5.4kg', sku: 'ORJ-CAT-54', currentStock: 12, safeThreshold: 40, gap: 28, percent: 24 }
-])
+// 库存概览KPI数据
+const overview = reactive({
+  totalSku: 0,
+  weeklyIncrease: 0,
+  lowStockAlerts: 0,
+  urgentReplenish: 0,
+  expiringBatches: 0,
+  inTransit: 0
+})
 
-// 一般预警数据
-const generalAlerts = ref([
-  { name: '宠物益生菌调理粉 120g', sku: 'PBT-PRO-120', currentStock: 32, safeThreshold: 50, gap: 18, percent: 64 },
-  { name: '豆腐猫砂 6L 经典款', sku: 'TDL-CLS-6L', currentStock: 40, safeThreshold: 50, gap: 10, percent: 80 }
-])
+// 严重预警和一般预警数据
+const severeAlerts = ref([])
+const generalAlerts = ref([])
 
-// 商品库存模拟数据（至少5条）
-const inventoryData = ref([
-  { id: 1, name: '皇家猫粮室内成猫 2kg', sku: 'RCL-IND-2K', stock: 5, safeThreshold: 50, updateTime: '2026-07-17 10:30', stockStatus: 'low' },
-  { id: 2, name: '渴望六种鱼猫粮 5.4kg', sku: 'ORJ-CAT-54', stock: 12, safeThreshold: 40, updateTime: '2026-07-17 09:15', stockStatus: 'low' },
-  { id: 3, name: '无线蓝牙耳机 Pro', sku: 'BT-EAR-001', stock: 256, safeThreshold: 50, updateTime: '2026-07-16 16:20', stockStatus: 'normal' },
-  { id: 4, name: '宠物益生菌调理粉 120g', sku: 'PBT-PRO-120', stock: 32, safeThreshold: 50, updateTime: '2026-07-16 14:00', stockStatus: 'low' },
-  { id: 5, name: '豆腐猫砂 6L 经典款', sku: 'TDL-CLS-6L', stock: 40, safeThreshold: 50, updateTime: '2026-07-16 11:45', stockStatus: 'low' },
-  { id: 6, name: '手机保护壳 iPhone 16', sku: 'CASE-IP16-004', stock: 0, safeThreshold: 30, updateTime: '2026-07-15 16:30', stockStatus: 'out' },
-  { id: 7, name: '笔记本电脑支架铝合金', sku: 'STAND-NB-006', stock: 128, safeThreshold: 20, updateTime: '2026-07-15 10:20', stockStatus: 'normal' }
-])
+// 商品库存列表
+const inventoryData = ref([])
+
+// 从API加载所有库存数据
+async function loadData() {
+  try {
+    // 并行加载概览、预警和列表数据
+    const [overviewRes, alertsRes, listRes] = await Promise.all([
+      getInventoryOverview(),
+      getInventoryAlerts(),
+      getInventoryList()
+    ])
+    // 填充概览KPI
+    if (overviewRes) {
+      Object.assign(overview, overviewRes)
+    }
+    // 填充预警数据
+    if (alertsRes) {
+      severeAlerts.value = alertsRes.severe || []
+      generalAlerts.value = alertsRes.general || []
+    }
+    // 填充库存列表
+    const list = (listRes && listRes.records) || listRes || []
+    inventoryData.value = list
+  } catch (e) {
+    console.error('加载库存数据失败:', e)
+    ElMessage.error('加载库存数据失败')
+  }
+}
 
 function stockColor(stock, threshold) {
   if (stock === 0) return 'td-stock-out'
@@ -217,6 +237,8 @@ function stockStatusText(item) {
 function handleEdit(item) {
   ElMessage.info(`编辑: ${item.name}`)
 }
+
+onMounted(() => { loadData() })
 </script>
 
 <style scoped>

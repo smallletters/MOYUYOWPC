@@ -61,6 +61,8 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { getSystemLogs } from '../api/admin'
 
 const pageTitle = '运营日志'
 const filters = reactive({ operator: '', operationType: '', dateRange: null })
@@ -69,31 +71,32 @@ const currentPage = ref(1)
 const pageSize = ref(15)
 const total = ref(0)
 
-const mockData = [
-  { id: 1, operator: '超级管理员', operationType: '登录', content: '登录后台管理系统', ipAddress: '192.168.1.100', operationTime: '2026-07-17 08:30:00' },
-  { id: 2, operator: '运营专员-张', operationType: '新增', content: '新增商品「天然深海鱼油软胶囊」', ipAddress: '192.168.1.101', operationTime: '2026-07-17 09:15:00' },
-  { id: 3, operator: '运营专员-李', operationType: '编辑', content: '修改订单 ORD-20260701-001 的物流信息', ipAddress: '192.168.1.102', operationTime: '2026-07-17 10:00:00' },
-  { id: 4, operator: '超级管理员', operationType: '删除', content: '删除违规评论 ID: 1024', ipAddress: '192.168.1.100', operationTime: '2026-07-17 10:30:00' },
-  { id: 5, operator: '运营专员-王', operationType: '导出', content: '导出2026年6月订单报表', ipAddress: '192.168.1.103', operationTime: '2026-07-17 11:20:00' },
-  { id: 6, operator: '运营专员-张', operationType: '登录', content: '登录后台管理系统', ipAddress: '192.168.1.101', operationTime: '2026-07-17 13:00:00' },
-  { id: 7, operator: '运营专员-李', operationType: '编辑', content: '更新商品「有机螺旋藻片」库存为500', ipAddress: '192.168.1.102', operationTime: '2026-07-17 14:15:00' }
-]
-
-function loadData() {
-  let filtered = [...mockData]
-  if (filters.operator) {
-    filtered = filtered.filter(item => item.operator.includes(filters.operator))
+// 获取操作日志列表
+async function loadData() {
+  try {
+    const res = await getSystemLogs()
+    const logs = res.records || res || []
+      // 客户端筛选
+      let filtered = [...logs]
+      if (filters.operator) {
+        filtered = filtered.filter(item => (item.operator || item.operatorName || '').includes(filters.operator))
+      }
+      if (filters.operationType) {
+        filtered = filtered.filter(item => item.operationType === filters.operationType)
+      }
+      if (filters.dateRange && filters.dateRange.length === 2) {
+        const start = filters.dateRange[0]
+        const end = filters.dateRange[1]
+        filtered = filtered.filter(item => (item.operationTime || item.createTime) >= start && (item.operationTime || item.createTime) <= end + ' 23:59:59')
+      }
+      total.value = filtered.length
+      // 服务端分页，但日志也支持客户端分页
+      const start = (currentPage.value - 1) * pageSize.value
+      tableData.value = filtered.slice(start, start + pageSize.value)
+    }
+  } catch (e) {
+    ElMessage.error('获取操作日志失败')
   }
-  if (filters.operationType) {
-    filtered = filtered.filter(item => item.operationType === filters.operationType)
-  }
-  if (filters.dateRange && filters.dateRange.length === 2) {
-    const start = filters.dateRange[0]
-    const end = filters.dateRange[1]
-    filtered = filtered.filter(item => item.operationTime >= start && item.operationTime <= end + ' 23:59:59')
-  }
-  tableData.value = filtered
-  total.value = filtered.length
 }
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.operator = ''; filters.operationType = ''; filters.dateRange = null; handleSearch() }

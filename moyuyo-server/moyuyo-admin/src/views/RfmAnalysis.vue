@@ -9,7 +9,7 @@
         <el-card shadow="never">
           <div class="kpi-card-content">
             <div class="kpi-label">R 平均（天）</div>
-            <div class="kpi-value">12.5</div>
+            <div class="kpi-value">{{ kpi.avgR }}</div>
           </div>
         </el-card>
       </el-col>
@@ -17,7 +17,7 @@
         <el-card shadow="never">
           <div class="kpi-card-content">
             <div class="kpi-label">F 平均（次）</div>
-            <div class="kpi-value">6.8</div>
+            <div class="kpi-value">{{ kpi.avgF }}</div>
           </div>
         </el-card>
       </el-col>
@@ -25,7 +25,7 @@
         <el-card shadow="never">
           <div class="kpi-card-content">
             <div class="kpi-label">M 平均（元）</div>
-            <div class="kpi-value">1,256.00</div>
+            <div class="kpi-value">{{ kpi.avgM }}</div>
           </div>
         </el-card>
       </el-col>
@@ -54,17 +54,40 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getRfmAnalysis } from '../api/admin'
 
-const tableData = ref([
-  { id: 1, name: '张三', rValue: 3, fValue: 15, mValue: 5200, level: '高价值' },
-  { id: 2, name: '李四', rValue: 8, fValue: 8, mValue: 3200, level: '重要发展' },
-  { id: 3, name: '王五', rValue: 15, fValue: 5, mValue: 1800, level: '重要保持' },
-  { id: 4, name: '赵六', rValue: 25, fValue: 3, mValue: 800, level: '一般' },
-  { id: 5, name: '孙七', rValue: 6, fValue: 10, mValue: 4500, level: '高价值' },
-  { id: 6, name: '周八', rValue: 18, fValue: 4, mValue: 1200, level: '一般' },
-])
+const kpi = ref({ avgR: '—', avgF: '—', avgM: '—' })
+const tableData = ref([])
+
+async function loadData() {
+  try {
+    const res = await getRfmAnalysis()
+    // 后端返回扁平数组 [{ customerName, rDays, fCount, mAmount, rfmLevel }, ...]
+    if (res && Array.isArray(res) && res.length > 0) {
+      // 从列表数据计算平均值
+      const avgR = (res.reduce((sum, r) => sum + Number(r.rDays || 0), 0) / res.length).toFixed(1)
+      const avgF = (res.reduce((sum, r) => sum + Number(r.fCount || 0), 0) / res.length).toFixed(1)
+      const avgM = (res.reduce((sum, r) => sum + Number(r.mAmount || 0), 0) / res.length).toFixed(2)
+      kpi.value = { avgR, avgF, avgM }
+      // 映射字段以匹配表格的 prop
+      tableData.value = res.map((item, idx) => ({
+        id: idx + 1,
+        name: item.customerName || '',
+        rValue: item.rDays || 0,
+        fValue: item.fCount || 0,
+        mValue: item.mAmount || 0,
+        level: item.rfmLevel || ''
+      }))
+    } else {
+      kpi.value = { avgR: '—', avgF: '—', avgM: '—' }
+      tableData.value = []
+    }
+  } catch (err) {
+    console.error('获取RFM数据失败', err)
+  }
+}
 
 function tagType(level) {
   if (level === '高价值') return 'danger'
@@ -74,8 +97,10 @@ function tagType(level) {
 }
 
 function handleEdit(row) {
-  ElMessage.info('查看客户：' + row.name)
+  ElMessage.warning('客户详情功能开发中')
 }
+
+onMounted(() => loadData())
 </script>
 
 <style scoped>

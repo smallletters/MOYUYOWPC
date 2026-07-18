@@ -80,6 +80,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getLiveRooms, createLiveRoom, updateLiveRoom, deleteLiveRoom } from '../api/admin'
 
 const pageTitle = '直播管理'
 const filters = reactive({ keyword: '' })
@@ -97,30 +98,104 @@ const editForm = reactive({
   startTime: ''
 })
 
-const mockData = [
-  { id: 1, title: '跨境好物推荐专场', anchor: '小美', status: '直播中', viewCount: 12580, productCount: 15, startTime: '2026-07-17 14:00' },
-  { id: 2, title: '夏日护肤必备', anchor: '丽丽', status: '预告中', viewCount: 0, productCount: 10, startTime: '2026-07-18 20:00' },
-  { id: 3, title: '保健品超级福利日', anchor: '健康哥', status: '已结束', viewCount: 32100, productCount: 20, startTime: '2026-07-15 19:00' },
-  { id: 4, title: '母婴好物分享', anchor: '宝妈小丽', status: '预告中', viewCount: 0, productCount: 12, startTime: '2026-07-19 10:00' },
-  { id: 5, title: '家居生活用品大促', anchor: '生活家', status: '已结束', viewCount: 18500, productCount: 25, startTime: '2026-07-14 15:00' },
-  { id: 6, title: '海鲜美食节', anchor: '美食猎人', status: '直播中', viewCount: 8900, productCount: 8, startTime: '2026-07-17 10:00' }
-]
+// 原始直播数据（用于本地筛选）
+const allRooms = ref([])
 
-function loadData() {
-  let filtered = [...mockData]
+// 加载直播列表
+async function loadRooms() {
+  try {
+    const data = await getLiveRooms()
+    allRooms.value = (data || []).map(item => ({
+      id: item.id,
+      title: item.title || '',
+      anchor: item.anchor || '',
+      status: item.status || '预告中',
+      viewCount: item.viewCount ?? 0,
+      productCount: item.productCount ?? 0,
+      startTime: item.startTime || ''
+    }))
+    applyFilters()
+  } catch (e) {
+    console.error('获取直播列表失败', e)
+  }
+}
+
+// 应用关键词筛选
+function applyFilters() {
+  let filtered = [...allRooms.value]
   if (filters.keyword) {
-    filtered = filtered.filter(item => item.title.includes(filters.keyword) || item.anchor.includes(filters.keyword))
+    filtered = filtered.filter(item =>
+      item.title.includes(filters.keyword) || item.anchor.includes(filters.keyword)
+    )
   }
   tableData.value = filtered
   total.value = filtered.length
 }
-function handleSearch() { currentPage.value = 1; loadData() }
+
+function loadData() {
+  applyFilters()
+}
+
+function handleSearch() { currentPage.value = 1; applyFilters() }
 function handleReset() { filters.keyword = ''; handleSearch() }
-function handleAdd() { dialogTitle.value = '新建直播'; editForm.title = ''; editForm.anchor = ''; editForm.status = '预告中'; editForm.productCount = 0; editForm.startTime = ''; dialogVisible.value = true }
-function handleEdit(row) { dialogTitle.value = '编辑直播'; Object.assign(editForm, row); dialogVisible.value = true }
-function handleDelete(row) { ElMessageBox.confirm('确定删除？','提示').then(() => { ElMessage.success('删除成功'); loadData() }) }
-function handleSave() { ElMessage.success('保存成功'); dialogVisible.value = false; loadData() }
-onMounted(() => loadData())
+
+function handleAdd() {
+  dialogTitle.value = '新建直播'
+  editForm.title = ''
+  editForm.anchor = ''
+  editForm.status = '预告中'
+  editForm.productCount = 0
+  editForm.startTime = ''
+  dialogVisible.value = true
+}
+
+function handleEdit(row) {
+  dialogTitle.value = '编辑直播'
+  Object.assign(editForm, row)
+  dialogVisible.value = true
+}
+
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确定删除？', '提示')
+    await deleteLiveRoom(row.id)
+    ElMessage.success('删除成功')
+    await loadRooms()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败: ' + (e.message || '未知错误'))
+    }
+  }
+}
+
+async function handleSave() {
+  try {
+    if (editForm.id) {
+      await updateLiveRoom(editForm.id, {
+        title: editForm.title,
+        anchor: editForm.anchor,
+        status: editForm.status,
+        productCount: editForm.productCount,
+        startTime: editForm.startTime
+      })
+    } else {
+      await createLiveRoom({
+        title: editForm.title,
+        anchor: editForm.anchor,
+        status: editForm.status,
+        productCount: editForm.productCount,
+        startTime: editForm.startTime
+      })
+    }
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    await loadRooms()
+  } catch (e) {
+    ElMessage.error('保存失败')
+  }
+}
+
+onMounted(() => loadRooms())
 </script>
 
 <style scoped>

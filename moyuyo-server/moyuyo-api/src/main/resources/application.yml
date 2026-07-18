@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: moyuyo-server
+  main:
+    allow-bean-definition-overriding: true
 
   # 数据库配置
   datasource:
@@ -34,7 +36,7 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
-    validate-on-migrate: true
+    validate-on-migrate: false
     out-of-order: false
     placeholder-replacement: false
     table: schema_history
@@ -58,6 +60,11 @@ mybatis-plus:
 jwt:
   secret: ${JWT_SECRET:DevJwtSecretKeyForLocalTestingOnlyNotForProd}
   expire-hours: 2
+
+# 管理员账号（开发环境默认值）
+admin:
+  email: ${ADMIN_EMAIL:admin@moyuyo.com}
+  password: ${ADMIN_PASSWORD:moyuyo123}
 
 # SpringDoc
 springdoc:

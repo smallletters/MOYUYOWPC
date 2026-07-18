@@ -41,6 +41,8 @@ Thumbs.db
 
 # 运行日志
 moyuyo-server/logs/
+moyuyo-server/moyuyo-api/logs/
+moyuyo-server/*.log
 
 # Gradle 缓存
 **/.gradle/

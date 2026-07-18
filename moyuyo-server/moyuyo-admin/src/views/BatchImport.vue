@@ -69,21 +69,24 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
+import api from '../api/index'
 
 const importType = ref('商品')
 const currentFile = ref(null)
 
-const tableData = ref([
-  { id: 1, fileName: '商品数据_20260717.xlsx', importType: '商品', totalCount: 500, successCount: 498, failCount: 2, status: '已完成', importTime: '2026-07-17 10:30' },
-  { id: 2, fileName: '订单数据_20260716.xlsx', importType: '订单', totalCount: 1200, successCount: 1200, failCount: 0, status: '已完成', importTime: '2026-07-16 14:20' },
-  { id: 3, fileName: '用户数据_20260715.csv', importType: '用户', totalCount: 3000, successCount: 2850, failCount: 150, status: '已完成', importTime: '2026-07-15 09:00' },
-  { id: 4, fileName: '商品更新_20260714.xlsx', importType: '商品', totalCount: 200, successCount: 0, failCount: 0, status: '导入中', importTime: '2026-07-14 16:45' },
-  { id: 5, fileName: '订单数据_20260713.xlsx', importType: '订单', totalCount: 800, successCount: 780, failCount: 20, status: '已完成', importTime: '2026-07-13 11:30' },
-  { id: 6, fileName: '用户数据_20260712.csv', importType: '用户', totalCount: 1500, successCount: 0, failCount: 0, status: '失败', importTime: '2026-07-12 08:15' },
-])
+const tableData = ref([])
+
+async function loadData() {
+  try {
+    const res = await api.get('/batch-import/records')
+    tableData.value = res || []
+  } catch (err) {
+    console.error('获取导入历史失败', err)
+  }
+}
 
 function statusTag(status) {
   if (status === '已完成') return 'success'
@@ -109,6 +112,8 @@ function handleDownloadTemplate() {
 
 function handleViewFail(row) { ElMessage.info('查看失败详情：' + row.fileName) }
 function handleViewDetail(row) { ElMessage.info('查看导入详情：' + row.fileName) }
+
+onMounted(() => loadData())
 </script>
 
 <style scoped>
