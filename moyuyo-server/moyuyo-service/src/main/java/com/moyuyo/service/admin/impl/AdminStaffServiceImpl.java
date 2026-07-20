@@ -28,7 +28,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     // 查询所有管理员用户，按创建时间倒序
     List<AdminUserEntity> entities = adminUserMapper.selectList(
         new LambdaQueryWrapper<AdminUserEntity>()
-            .orderByDesc(AdminUserEntity::getCreatedAt)
+            .orderByDesc(AdminUserEntity::getCreateTime)
     );
 
     List<Map<String, Object>> list = new ArrayList<>();

@@ -30,7 +30,7 @@ api.interceptors.response.use(
   response => {
     const body = response.data
     // 后端统一返回 { code, data, message } 格式，解出 data
-    if (body && body.code === 200) {
+    if (body && body.code === 0) {
       return body.data
     }
     // 非标准格式原样返回

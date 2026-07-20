@@ -157,7 +157,8 @@ async function fetchOrders() {
 }
 
 const filteredOrders = computed(() => {
-  return orderList.value
+  // 过滤 null/undefined 条目，防止 v-for 渲染时报错
+  return (orderList.value || []).filter(o => o != null)
 })
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize) || 1)

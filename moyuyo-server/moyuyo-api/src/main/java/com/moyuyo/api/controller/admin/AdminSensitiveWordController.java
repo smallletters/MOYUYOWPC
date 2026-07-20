@@ -32,8 +32,8 @@ public class AdminSensitiveWordController {
             item.put("category", e.getCategory());
             item.put("status", e.getStatus());
             item.put("hitCount", e.getHitCount());
-            item.put("createTime", e.getCreatedAt());
-            item.put("updateTime", e.getUpdatedAt());
+            item.put("createTime", e.getCreateTime());
+            item.put("updateTime", e.getUpdateTime());
             list.add(item);
         }
         return Result.success(list);

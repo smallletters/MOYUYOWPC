@@ -19,9 +19,8 @@ public class AdminCmsController {
 
     private final CmsContentService cmsContentService;
 
-    // 新DAO模块maven安装失败时允许为null，避免ClassNotFoundException
     @Autowired(required = false)
-  private Object cmsContentMapper;
+  private CmsContentMapper cmsContentMapper;
 
     // 手动构造器注入必需的依赖
     public AdminCmsController(CmsContentService cmsContentService) {
@@ -41,7 +40,7 @@ public class AdminCmsController {
             item.put("cover", e.getImageUrl());
             item.put("sortOrder", e.getSortOrder());
             item.put("status", e.getStatus());
-            item.put("createTime", e.getCreatedAt());
+            item.put("createTime", e.getCreateTime());
             list.add(item);
         }
         return Result.success(list);
@@ -64,7 +63,7 @@ public class AdminCmsController {
         item.put("status", e.getStatus());
         item.put("startTime", e.getStartTime());
         item.put("endTime", e.getEndTime());
-        item.put("createTime", e.getCreatedAt());
+        item.put("createTime", e.getCreateTime());
         item.put("description", e.getContent());
         return Result.success(item);
     }

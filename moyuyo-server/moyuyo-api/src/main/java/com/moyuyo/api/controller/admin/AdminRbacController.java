@@ -31,7 +31,7 @@ public class AdminRbacController {
       item.put("name", e.getName());
       item.put("description", e.getDescription());
       item.put("status", e.getStatus());
-      item.put("createTime", e.getCreatedAt());
+      item.put("createTime", e.getCreateTime());
       list.add(item);
     }
     return Result.success(list);

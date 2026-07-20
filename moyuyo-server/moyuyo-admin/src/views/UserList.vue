@@ -152,7 +152,14 @@ async function fetchStats() {
   try {
     const res = await api.get('/users/stats')
     if (res) {
-      statsList.value = res
+      // 后端返回 { totalUsers, newToday, activeToday, totalMembers, newMembersToday }
+      // 转换为前端模板需要的 [{ label, value, change, trend }] 格式
+      statsList.value = [
+        { label: '总用户数', value: res.totalUsers ?? '-', change: '', trend: 'up' },
+        { label: '今日新增', value: res.newToday ?? '-', change: '', trend: 'up' },
+        { label: '活跃用户', value: res.activeToday ?? '-', change: '', trend: 'up' },
+        { label: '会员总数', value: res.totalMembers ?? '-', change: '', trend: 'down' }
+      ]
     }
   } catch (err) {
     console.error('获取用户统计数据失败:', err)
@@ -173,7 +180,21 @@ async function fetchUsers() {
     })
     const res = await api.get('/users/list', { params })
     if (res) {
-      userList.value = res.records || res.list || res
+      const rawList = res.list || res.records || res || []
+      // 后端返回字段转换为前端模板所需格式
+      userList.value = (Array.isArray(rawList) ? rawList : []).map(u => ({
+        id: u.id,
+        name: u.nickname || u.name || '-',
+        email: u.email || '',
+        registerTime: u.registerTime || '-',
+        level: u.level || 'NORMAL',
+        levelClass: (u.level || 'NORMAL').toLowerCase(),
+        orders: u.orders ?? '-',
+        spent: u.spent ?? '0',
+        status: u.status === 'ACTIVE' ? '正常' : '禁用',
+        statusClass: u.status === 'ACTIVE' ? 'active' : 'inactive',
+        avatarColor: '#409eff'  // 默认头像颜色
+      }))
       total.value = res.total || 0
     }
   } catch (err) {

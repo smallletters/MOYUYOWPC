@@ -25,5 +25,5 @@ public class AdminPermissionEntity {
     private String action;
 
     @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createdAt;
+    private LocalDateTime createTime;
 }

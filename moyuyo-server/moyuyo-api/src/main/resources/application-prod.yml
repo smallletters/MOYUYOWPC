@@ -1,6 +1,11 @@
 # ===== 生产环境配置（仅覆盖与 application.yml 不同的部分） =====
 
 spring:
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS}
+    connection-timeout: 5s
+    socket-timeout: 60s
+
   datasource:
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/moyuyo_prod?useSSL=true&requireSSL=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8mb4
     username: ${MYSQL_USER:moyuyo}
@@ -23,6 +28,14 @@ jwt:
 springdoc:
   swagger-ui:
     enabled: false
+
+# RocketMQ
+rocketmq:
+  name-server: ${ROCKETMQ_NAMESRV_ADDR:rocketmq-namesrv:9876}
+  producer:
+    group: moyuyo-producer-group
+    send-message-timeout: 3000
+    retry-times-when-send-failed: 2
 
 payment:
   stripe:

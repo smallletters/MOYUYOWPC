@@ -25,8 +25,8 @@ public class AdminRoleEntity {
     private String status;
 
     @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createdAt;
+    private LocalDateTime createTime;
 
     @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updatedAt;
+    private LocalDateTime updateTime;
 }

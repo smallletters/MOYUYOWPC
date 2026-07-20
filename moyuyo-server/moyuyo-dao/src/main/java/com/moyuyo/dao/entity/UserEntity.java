@@ -49,7 +49,7 @@ public class UserEntity {
 
     private String oauthUid;
 
-    @TableLogic
+    @TableField(exist = false)
     private Integer deleted;
 
     @TableField(fill = FieldFill.INSERT)

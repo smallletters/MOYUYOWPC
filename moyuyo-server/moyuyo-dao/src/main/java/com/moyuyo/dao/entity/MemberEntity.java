@@ -22,12 +22,11 @@ public class MemberEntity {
 
   private Integer growthValue;
 
-  @TableLogic
+  private LocalDateTime levelExpireAt;
+
+  @TableField(exist = false)
   private Integer deleted;
 
   @TableField(fill = FieldFill.INSERT)
-  private LocalDateTime createdAt;
-
-  @TableField(fill = FieldFill.INSERT_UPDATE)
-  private LocalDateTime updatedAt;
+  private LocalDateTime createTime;
 }

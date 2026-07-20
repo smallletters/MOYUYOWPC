@@ -50,5 +50,5 @@ public class TicketEntity {
 
     /** 更新时间 */
     @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updatedAt;
+    private LocalDateTime updateTime;
 }

@@ -6,8 +6,8 @@ import com.moyuyo.common.Result;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -16,12 +16,18 @@ import java.util.List;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class JwtAuthFilter implements Filter {
 
     private final JwtUtil jwtUtil;
-    private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+
+    @Autowired(required = false)
+    private StringRedisTemplate redisTemplate;
+
+    public JwtAuthFilter(JwtUtil jwtUtil, ObjectMapper objectMapper) {
+        this.jwtUtil = jwtUtil;
+        this.objectMapper = objectMapper;
+    }
 
     private static final String REDIS_KEY_BLACKLIST = "auth:blacklist:";
 
@@ -38,6 +44,7 @@ public class JwtAuthFilter implements Filter {
             "/api/v1/products/",
             "/api/health",
             "/api/admin/auth/login",
+            "/api/admin/auth/logout",
             "/swagger-ui.html",
             "/swagger-ui/",
             "/api-docs",
@@ -71,10 +78,12 @@ public class JwtAuthFilter implements Filter {
                 return;
             }
 
-            String blacklisted = redisTemplate.opsForValue().get(REDIS_KEY_BLACKLIST + token);
-            if (blacklisted != null) {
-                sendUnauthorized(response, "Token has been revoked");
-                return;
+            if (redisTemplate != null) {
+                String blacklisted = redisTemplate.opsForValue().get(REDIS_KEY_BLACKLIST + token);
+                if (blacklisted != null) {
+                    sendUnauthorized(response, "Token has been revoked");
+                    return;
+                }
             }
 
             Long userId = jwtUtil.getUserId(token);

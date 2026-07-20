@@ -55,7 +55,7 @@ public class AdminUserManageServiceImpl implements AdminUserManageService {
     // 今日新增会员
     Long newMembersToday = memberMapper.selectCount(
         new LambdaQueryWrapper<MemberEntity>()
-            .ge(MemberEntity::getCreatedAt, today)
+            .ge(MemberEntity::getCreateTime, today)
     );
 
     Map<String, Object> result = new LinkedHashMap<>();
