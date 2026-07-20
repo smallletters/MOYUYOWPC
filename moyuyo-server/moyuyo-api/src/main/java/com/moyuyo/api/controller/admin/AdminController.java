@@ -63,4 +63,71 @@ public class AdminController {
         return Result.success(dashboardService.getSalesTrend());
     }
 
+    @Operation(summary = "管理员退出登录")
+    @PostMapping("/auth/logout")
+    public Result<Void> logout() {
+        // JWT 无状态，客户端清除 token 即可
+        return Result.success();
+    }
+
+    @Operation(summary = "获取管理员信息")
+    @GetMapping("/auth/me")
+    public Result<Map<String, Object>> adminInfo() {
+        Map<String, Object> info = new HashMap<>();
+        info.put("name", "Admin");
+        info.put("email", adminEmail);
+        info.put("role", "超级管理员");
+        return Result.success(info);
+    }
+
+    @Operation(summary = "获取系统安全配置")
+    @GetMapping("/system/security-config")
+    public Result<List<Map<String, Object>>> securityConfig() {
+        List<Map<String, Object>> configs = new ArrayList<>();
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("key", "password_policy");
+        item.put("value", "medium");
+        item.put("description", "密码策略");
+        configs.add(item);
+        item = new LinkedHashMap<>();
+        item.put("key", "session_timeout");
+        item.put("value", "30");
+        item.put("description", "会话超时时间(分钟)");
+        configs.add(item);
+        item = new LinkedHashMap<>();
+        item.put("key", "max_login_attempts");
+        item.put("value", "5");
+        item.put("description", "最大登录尝试次数");
+        configs.add(item);
+        return Result.success(configs);
+    }
+
+    @Operation(summary = "获取系统信息")
+    @GetMapping("/system/info")
+    public Result<Map<String, Object>> systemInfo() {
+        Map<String, Object> info = new LinkedHashMap<>();
+        info.put("version", "1.0.0");
+        info.put("dbStatus", "正常");
+        info.put("cacheStatus", "正常");
+        info.put("lastBackup", "2026-07-18");
+        return Result.success(info);
+    }
+
+    @Operation(summary = "获取支付方式")
+    @GetMapping("/settings/payment-methods")
+    public Result<List<Map<String, String>>> paymentMethods() {
+        List<Map<String, String>> methods = new ArrayList<>();
+        Map<String, String> stripe = new LinkedHashMap<>();
+        stripe.put("name", "Stripe");
+        stripe.put("code", "stripe");
+        stripe.put("status", "active");
+        methods.add(stripe);
+        Map<String, String> paypal = new LinkedHashMap<>();
+        paypal.put("name", "PayPal");
+        paypal.put("code", "paypal");
+        paypal.put("status", "active");
+        methods.add(paypal);
+        return Result.success(methods);
+    }
+
 }

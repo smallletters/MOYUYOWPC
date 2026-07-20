@@ -93,7 +93,6 @@ async function loadData() {
       // 服务端分页，但日志也支持客户端分页
       const start = (currentPage.value - 1) * pageSize.value
       tableData.value = filtered.slice(start, start + pageSize.value)
-    }
   } catch (e) {
     ElMessage.error('获取操作日志失败')
   }

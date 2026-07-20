@@ -271,6 +271,53 @@ const routes = [
         component: () => import('../views/AuditLog.vue')
       },
 
+      // ===== 新增功能模块 =====
+      {
+        path: 'product-approval',
+        name: 'ProductApproval',
+        component: () => import('../views/ProductApproval.vue')
+      },
+      {
+        path: 'coupon-manage',
+        name: 'CouponManage',
+        component: () => import('../views/CouponManage.vue')
+      },
+      {
+        path: 'flash-sale-manage',
+        name: 'FlashSaleManage',
+        component: () => import('../views/FlashSaleManage.vue')
+      },
+      {
+        path: 'blacklist',
+        name: 'BlacklistManage',
+        component: () => import('../views/BlacklistManage.vue')
+      },
+      {
+        path: 'tariff',
+        name: 'TariffManage',
+        component: () => import('../views/TariffManage.vue')
+      },
+      {
+        path: 'risk-alert',
+        name: 'RiskAlert',
+        component: () => import('../views/RiskAlert.vue')
+      },
+      {
+        path: 'cs-sessions',
+        name: 'CsSessions',
+        component: () => import('../views/CsSessions.vue')
+      },
+      {
+        path: 'order-tags',
+        name: 'OrderTags',
+        component: () => import('../views/OrderTags.vue')
+      },
+      {
+        path: 'inventory-transfer',
+        name: 'InventoryTransfer',
+        component: () => import('../views/InventoryTransfer.vue')
+      },
+
       // ===== 第四阶段：物流/订单/系统辅助模块 =====
       {
         path: 'merge-package',

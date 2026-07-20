@@ -1,27 +1,53 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.service.admin.AdminBatchImportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
-/**
- * 批量导入控制器
- * 注：DataExportRequestMapper 因多模块类路径问题暂时无法注入，等 mvn install 成功后可恢复注入
- */
 @Tag(name = "管理后台 - 批量导入")
 @RestController
 @RequestMapping("/api/admin/batch-import")
+@RequiredArgsConstructor
 public class AdminBatchImportController {
 
-  @Operation(summary = "导入记录列表")
-  @GetMapping("/records")
-  public Result<List<Map<String, Object>>> records(
-      @RequestParam(defaultValue = "1") int page,
-      @RequestParam(defaultValue = "15") int size) {
-    // TODO: 等 Maven 多模块依赖问题解决后，注入 DataExportRequestMapper 替换为真实查询
-    return Result.success(new ArrayList<>());
-  }
+    private final AdminBatchImportService batchImportService;
+
+    @Operation(summary = "导入记录列表")
+    @GetMapping("/records")
+    public Result<List<Map<String, Object>>> records(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "15") int size) {
+        return Result.success(batchImportService.listRecords(page, size));
+    }
+
+    @Operation(summary = "提交导入请求")
+    @PostMapping("/import")
+    public Result<Map<String, Object>> importData(@RequestBody Map<String, Object> body) {
+        return Result.success(batchImportService.importData(body));
+    }
+
+    @Operation(summary = "下载导入模板")
+    @GetMapping("/template/{type}")
+    public Result<Map<String, String>> template(@PathVariable String type) {
+        return Result.success(batchImportService.getTemplate(type));
+    }
+
+    @Operation(summary = "查询导入错误详情")
+    @GetMapping("/{id}/errors")
+    public Result<List<Map<String, Object>>> errors(@PathVariable Long id) {
+        List<Map<String, Object>> errors = batchImportService.getErrors(id);
+        return Result.success(errors);
+    }
+
+    @Operation(summary = "删除导入记录")
+    @DeleteMapping("/{id}")
+    public Result<Map<String, Object>> delete(@PathVariable Long id) {
+        return Result.success(batchImportService.deleteRecord(id));
+    }
 }

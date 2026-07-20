@@ -24,7 +24,7 @@ public class AdminUserProfileController {
 
   // 新DAO模块maven安装失败时允许为null，避免ClassNotFoundException
   @Autowired(required = false)
-  private Object userBehaviorMapper;
+  private UserBehaviorMapper userBehaviorMapper;
 
   // 手动构造器注入必需的依赖
   public AdminUserProfileController(AdminUserProfileService adminUserProfileService,

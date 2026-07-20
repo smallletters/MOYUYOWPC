@@ -72,7 +72,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
-import api from '../api/index'
+import { getImportRecords, getImportTemplate, submitImport } from '../api/admin'
 
 const importType = ref('商品')
 const currentFile = ref(null)
@@ -81,7 +81,7 @@ const tableData = ref([])
 
 async function loadData() {
   try {
-    const res = await api.get('/batch-import/records')
+    const res = await getImportRecords({ page: 1, size: 15 })
     tableData.value = res || []
   } catch (err) {
     console.error('获取导入历史失败', err)

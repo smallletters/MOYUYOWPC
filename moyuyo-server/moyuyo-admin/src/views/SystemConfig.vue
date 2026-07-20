@@ -212,7 +212,6 @@ async function loadConfig() {
         if (item.key === 'emailNotify') form.emailNotify = item.value === 'true' || item.value === true
         if (item.key === 'smsNotify') form.smsNotify = item.value === 'true' || item.value === true
       })
-    }
     // 加载支付方式配置
     try {
       const payRes = await getPaymentMethods()

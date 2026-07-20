@@ -34,17 +34,17 @@ public class AdminLogisticsController {
 
   // 以下Mapper均为新DAO模块（20260718迁移），maven安装失败时允许为null（字段类型改为Object避免ClassNotFoundException）
   @Autowired(required = false)
-  private Object warehouseMapper;
+  private WarehouseMapper warehouseMapper;
   @Autowired(required = false)
-  private Object carrierMapper;
+  private CarrierMapper carrierMapper;
   @Autowired(required = false)
-  private Object clearanceMapper;
+  private ClearanceMapper clearanceMapper;
   @Autowired(required = false)
-  private Object shippingStrategyMapper;
+  private ShippingStrategyMapper shippingStrategyMapper;
   @Autowired(required = false)
-  private Object mergePackageMapper;
+  private MergePackageMapper mergePackageMapper;
   @Autowired(required = false)
-  private Object splitPackageMapper;
+  private SplitPackageMapper splitPackageMapper;
 
   // 手动构造器注入必需的依赖
   public AdminLogisticsController(AdminLogisticsService adminLogisticsService,

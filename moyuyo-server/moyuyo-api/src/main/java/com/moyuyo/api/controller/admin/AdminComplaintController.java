@@ -26,7 +26,7 @@ public class AdminComplaintController {
 
   // 新DAO模块maven安装失败时允许为null，避免ClassNotFoundException
   @Autowired(required = false)
-  private Object complaintProcessMapper;
+  private ComplaintProcessMapper complaintProcessMapper;
 
   // 手动构造器注入必需的依赖
   public AdminComplaintController(AdminComplaintService adminComplaintService,

@@ -151,7 +151,6 @@ async function loadData() {
       total.value = list.length
       const start = (currentPage.value - 1) * pageSize.value
       tableData.value = list.slice(start, start + pageSize.value)
-    }
   } catch (e) {
     ElMessage.error('获取评价列表失败')
   }

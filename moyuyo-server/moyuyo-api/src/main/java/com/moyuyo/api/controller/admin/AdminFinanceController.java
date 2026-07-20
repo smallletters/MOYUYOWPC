@@ -34,10 +34,10 @@ public class AdminFinanceController {
 
     // 新DAO模块maven安装失败时允许为null，避免ClassNotFoundException
     @Autowired(required = false)
-  private Object settlementMapper;
+  private SettlementMapper settlementMapper;
 
   @Autowired(required = false)
-  private Object financeRecordMapper;
+  private FinanceRecordMapper financeRecordMapper;
 
     // 手动构造器注入必需的依赖
     public AdminFinanceController(FinanceService financeService,

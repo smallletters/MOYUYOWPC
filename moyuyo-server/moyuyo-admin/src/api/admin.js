@@ -602,28 +602,44 @@ export function getPermissions() {
 }
 
 export function getAdminInfo() {
-  // 后端无独立管理员信息端点
-  return Promise.resolve({ name: 'Admin', email: 'admin@moyuyo.com', role: '超级管理员' })
+  return api.get('/auth/me')
 }
 
 export function getSecurityConfig() {
-  // 后端无独立安全设置端点
-  return Promise.resolve([])
+  return api.get('/system/security-config')
 }
 
 export function getSystemInfo() {
-  // 后端无独立系统信息端点
-  return Promise.resolve({ version: '1.0.0', dbStatus: '正常', cacheStatus: '正常', lastBackup: '2026-07-18' })
+  return api.get('/system/info')
 }
 
 export function getPaymentMethods() {
-  // 后端无独立支付方式端点
-  return Promise.resolve(['Stripe', 'PayPal'])
+  return api.get('/settings/payment-methods')
 }
 
 export function getActivePolicy() {
-  // 后端无独立 GDPR 政策端点
-  return Promise.resolve({ version: '3.0', effectiveDate: '2026-07-01', description: 'GDPR 隐私政策' })
+  return api.get('/gdpr/policy')
+}
+
+// ==================== 批量导入 ====================
+export function getImportRecords(params) {
+  return api.get('/batch-import/records', { params })
+}
+
+export function submitImport(data) {
+  return api.post('/batch-import/import', data)
+}
+
+export function getImportTemplate(type) {
+  return api.get(`/batch-import/template/${type}`)
+}
+
+export function getImportErrors(id) {
+  return api.get(`/batch-import/${id}/errors`)
+}
+
+export function deleteImportRecord(id) {
+  return api.delete(`/batch-import/${id}`)
 }
 
 // ==================== 直播 ====================
@@ -712,62 +728,79 @@ export function deleteWarehouse(id) {
   return api.delete(`/logistics/warehouses/${id}`)
 }
 
-export function deleteOverseasWarehouse(id) {
-  return api.delete(`/logistics/overseas/${id}`)
-}
+// ==================== 商品审核 ====================
+export function getProductApprovalList(params) { return api.get('/product-approval/list', { params }) }
+export function getProductApprovalDetail(id) { return api.get(`/product-approval/${id}`) }
+export function approveProductApproval(id) { return api.put(`/product-approval/${id}/approve`) }
+export function rejectProductApproval(id, data) { return api.put(`/product-approval/${id}/reject`, data) }
+export function setProductApprovalUrgent(id) { return api.put(`/product-approval/${id}/urgent`) }
 
-export function deleteMergePackage(id) {
-  return api.delete(`/logistics/merge-packages/${id}`)
-}
+// ==================== 内容审核 ====================
+export function getContentReviewList(params) { return api.get('/content-review/list', { params }) }
+export function getContentReviewDetail(id) { return api.get(`/content-review/${id}`) }
+export function approveContentReview(id) { return api.put(`/content-review/${id}/approve`) }
+export function rejectContentReview(id, data) { return api.put(`/content-review/${id}/reject`, data) }
 
-export function deleteSplitPackage(id) {
-  return api.delete(`/logistics/split-packages/${id}`)
-}
+// ==================== 优惠券管理 ====================
+export function getCouponList() { return api.get('/coupons/list') }
+export function createCoupon(data) { return api.post('/coupons/create', data) }
+export function updateCoupon(data) { return api.put('/coupons/update', data) }
+export function deleteCoupon(id) { return api.delete(`/coupons/${id}`) }
+export function getCouponStats() { return api.get('/coupons/stats') }
 
-export function deleteCarrier(id) {
-  return api.delete(`/logistics/carriers/${id}`)
-}
+// ==================== 秒杀管理 ====================
+export function getFlashSaleList() { return api.get('/flash-sales/list') }
+export function createFlashSale(data) { return api.post('/flash-sales/create', data) }
+export function updateFlashSale(data) { return api.put('/flash-sales/update', data) }
+export function deleteFlashSale(id) { return api.delete(`/flash-sales/${id}`) }
+export function updateFlashSaleStatus(id, data) { return api.put(`/flash-sales/${id}/status`, data) }
 
-export function deleteClearance(id) {
-  return api.delete(`/logistics/clearance/${id}`)
-}
+// ==================== 积分管理 ====================
+export function getPointsActivities() { return api.get('/points/activities') }
+export function createPointsActivity(data) { return api.post('/points/activities/create', data) }
+export function getPointsLogs(params) { return api.get('/points/logs', { params }) }
+export function getPointsStats() { return api.get('/points/stats') }
 
-export function deleteCustoms(id) {
-  return api.delete(`/logistics/customs/${id}`)
-}
+// ==================== 黑名单 ====================
+export function getBlacklistList(params) { return api.get('/blacklist/list', { params }) }
+export function createBlacklist(data) { return api.post('/blacklist/create', data) }
+export function batchCreateBlacklist(data) { return api.post('/blacklist/batch-create', data) }
+export function deleteBlacklist(id) { return api.delete(`/blacklist/${id}`) }
+export function updateBlacklist(id, data) { return api.put(`/blacklist/${id}`, data) }
 
-export function deleteShippingStrategy(id) {
-  return api.delete(`/logistics/shipping-strategies/${id}`)
-}
+// ==================== 关税管理 ====================
+export function getTariffConfigs(params) { return api.get('/tariff/configs', { params }) }
+export function createTariffConfig(data) { return api.post('/tariff/configs/create', data) }
+export function updateTariffConfig(data) { return api.put('/tariff/configs/update', data) }
+export function deleteTariffConfig(id) { return api.delete(`/tariff/configs/${id}`) }
+export function calculateTariff(data) { return api.post('/tariff/calculate', data) }
 
-export function createShippingStrategy(data) {
-  return api.post('/logistics/shipping-strategies', data)
-}
+// ==================== 客服会话 ====================
+export function getCsSessionList(params) { return api.get('/cs-sessions/list', { params }) }
+export function getCsSessionDetail(id) { return api.get(`/cs-sessions/${id}`) }
+export function getCsSessionStats() { return api.get('/cs-sessions/stats') }
 
-export function updateShippingStrategy(data) {
-  return api.put('/logistics/shipping-strategies', data)
-}
+// ==================== 风控告警 ====================
+export function getRiskAlertConfigs() { return api.get('/risk-alert/configs') }
+export function createRiskAlertConfig(data) { return api.post('/risk-alert/configs/create', data) }
+export function updateRiskAlertConfig(data) { return api.put('/risk-alert/configs/update', data) }
+export function deleteRiskAlertConfig(id) { return api.delete(`/risk-alert/configs/${id}`) }
+export function getRiskAlertHistory(params) { return api.get('/risk-alert/history', { params }) }
 
-export function createCarrier(data) {
-  return api.post('/logistics/carriers', data)
-}
+// ==================== 订单标签 ====================
+export function getOrderTagList() { return api.get('/order-tags/list') }
+export function createOrderTag(data) { return api.post('/order-tags/create', data) }
+export function updateOrderTag(data) { return api.put('/order-tags/update', data) }
+export function deleteOrderTag(id) { return api.delete(`/order-tags/${id}`) }
+export function setOrderTags(orderId, data) { return api.post(`/order-tags/${orderId}/tags`, data) }
+export function getOrderTags(orderId) { return api.get(`/order-tags/${orderId}/tags`) }
 
-export function updateCarrier(data) {
-  return api.put('/logistics/carriers', data)
-}
+// ==================== 库存调拨 ====================
+export function getInventoryTransferList(params) { return api.get('/inventory-transfer/list', { params }) }
+export function createInventoryTransfer(data) { return api.post('/inventory-transfer/create', data) }
+export function approveInventoryTransfer(id) { return api.put(`/inventory-transfer/${id}/approve`) }
+export function rejectInventoryTransfer(id, data) { return api.put(`/inventory-transfer/${id}/reject`, data) }
+export function completeInventoryTransfer(id) { return api.put(`/inventory-transfer/${id}/complete`) }
 
-export function createClearance(data) {
-  return api.post('/logistics/clearance', data)
-}
 
-export function updateClearance(data) {
-  return api.put('/logistics/clearance', data)
-}
 
-export function createCustoms(data) {
-  return api.post('/logistics/customs', data)
-}
-
-export function updateCustoms(data) {
-  return api.put('/logistics/customs', data)
-}

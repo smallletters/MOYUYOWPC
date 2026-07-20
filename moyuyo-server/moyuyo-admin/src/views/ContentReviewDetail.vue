@@ -93,7 +93,6 @@ async function loadData() {
       }
       tableData.value = mapped
       total.value = mapped.length
-    }
   } catch (e) {
     ElMessage.error('获取审核列表失败')
   }

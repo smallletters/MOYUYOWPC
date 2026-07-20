@@ -155,8 +155,6 @@ async function fetchStats() {
   }
 }
 
-const tickets = ref([])
-
 // 获取工单列表
 async function fetchTickets() {
   loading.value = true

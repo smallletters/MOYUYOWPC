@@ -153,7 +153,6 @@ async function loadReviewItems() {
         publisher: item.userName || item.submitter || '用户',
         submitTime: item.submitTime || item.createTime || ''
       }))
-    }
   } catch (e) {
     ElMessage.error('获取审核内容失败')
   }

@@ -85,7 +85,6 @@ async function loadData() {
         list = list.filter(item => item.status === filters.status)
       }
       tableData.value = list
-    }
   } catch (e) {
     ElMessage.error('获取风控规则失败')
   }
