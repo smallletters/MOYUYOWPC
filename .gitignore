@@ -49,3 +49,9 @@ moyuyo-server/*.log
 
 # 管理后台前端构建产物
 moyuyo-server/moyuyo-api/src/main/resources/static/admin/
+
+# Trae 计划文档
+.trae/
+
+# 服务器错误日志
+moyuyo-server/server.err
