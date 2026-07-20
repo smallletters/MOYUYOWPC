@@ -40,6 +40,7 @@ Thumbs.db
 **/target/
 
 # 运行日志
+logs/
 moyuyo-server/logs/
 moyuyo-server/moyuyo-api/logs/
 moyuyo-server/*.log
