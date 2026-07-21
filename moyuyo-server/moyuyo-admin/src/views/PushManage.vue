@@ -216,7 +216,7 @@ function handleQuickCreate(type) {
 }
 
 async function handleView(item) {
-  console.log('查看推送:', item.title)
+  ElMessage.info(`查看推送：${item.title}`)
 }
 
 // 发送推送（调用API）

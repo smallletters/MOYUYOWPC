@@ -1,6 +1,10 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.dto.admin.OperationResult;
+import com.moyuyo.common.dto.admin.live.LiveRoomProductResponse;
+import com.moyuyo.common.dto.admin.live.LiveRoomResponse;
+import com.moyuyo.common.dto.admin.live.LiveRoomStatusRequest;
 import com.moyuyo.dao.entity.LiveRoomEntity;
 import com.moyuyo.dao.entity.LiveRoomProductEntity;
 import com.moyuyo.dao.mapper.LiveRoomMapper;
@@ -23,18 +27,17 @@ public class AdminLiveController {
 
   @Operation(summary = "直播间列表")
   @GetMapping("/rooms")
-  public Result<List<Map<String, Object>>> rooms() {
+  public Result<List<LiveRoomResponse>> rooms() {
     List<LiveRoomEntity> roomList = liveRoomService.list();
-    List<Map<String, Object>> list = new ArrayList<>();
+    List<LiveRoomResponse> list = new ArrayList<>();
     for (LiveRoomEntity room : roomList) {
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("id", room.getId());
-      item.put("title", room.getName());
-      item.put("anchor", room.getHostName());
-      item.put("status", room.getStatus());
-      item.put("viewerCount", room.getViewerCount());
-      item.put("productCount", room.getProductCount());
-      item.put("startTime", room.getStartTime());
+      LiveRoomResponse item = new LiveRoomResponse();
+      item.setId(room.getId());
+      item.setName(room.getName());
+      item.setStatus(room.getStatus());
+      item.setViewerCount(room.getViewerCount());
+      item.setProductCount(room.getProductCount());
+      item.setStartTime(room.getStartTime());
       list.add(item);
     }
     return Result.success(list);
@@ -42,82 +45,77 @@ public class AdminLiveController {
 
   @Operation(summary = "创建直播间")
   @PostMapping("/rooms")
-  public Result<Map<String, Object>> createRoom(@RequestBody LiveRoomEntity entity) {
+  public Result<OperationResult> createRoom(@RequestBody LiveRoomEntity entity) {
     // 写入数据库
     liveRoomService.createRoom(entity);
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", entity.getId());
-    result.put("message", "直播间创建成功");
+    OperationResult result = new OperationResult();
+    result.setId(entity.getId());
+    result.setMessage("直播间创建成功");
     return Result.success(result);
   }
 
   @Operation(summary = "更新直播间")
   @PutMapping("/rooms/{id}")
-  public Result<Map<String, Object>> updateRoom(@PathVariable Long id, @RequestBody LiveRoomEntity entity) {
+  public Result<OperationResult> updateRoom(@PathVariable Long id, @RequestBody LiveRoomEntity entity) {
     // 更新数据库中的直播间信息
     entity.setId(id);
     liveRoomService.updateRoom(entity);
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", id);
-    result.put("message", "直播间更新成功");
+    OperationResult result = new OperationResult();
+    result.setId(id);
+    result.setMessage("直播间更新成功");
     return Result.success(result);
   }
 
   @Operation(summary = "更新直播状态")
   @PutMapping("/rooms/{id}/status")
-  public Result<Map<String, Object>> updateRoomStatus(@PathVariable Long id, @RequestParam String status) {
+  public Result<OperationResult> updateRoomStatus(@PathVariable Long id, @RequestParam String status) {
     // 更新数据库中的直播间状态
     liveRoomService.updateRoomStatus(id, status);
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", id);
-    result.put("status", status);
-    result.put("message", "直播状态更新成功");
+    OperationResult result = new OperationResult();
+    result.setId(id);
+    result.setMessage("直播状态更新成功");
     return Result.success(result);
   }
 
   @Operation(summary = "直播间详情")
   @GetMapping("/rooms/{id}")
-  public Result<Map<String, Object>> roomDetail(@PathVariable Long id) {
+  public Result<LiveRoomResponse> roomDetail(@PathVariable Long id) {
     LiveRoomEntity room = liveRoomService.getDetail(id);
     if (room == null) {
       return Result.error("直播间不存在");
     }
     List<LiveRoomProductEntity> products = liveRoomService.getProducts(id);
 
-    Map<String, Object> item = new LinkedHashMap<>();
-    item.put("id", room.getId());
-    item.put("title", room.getName());
-    item.put("anchor", room.getHostName());
-    item.put("status", room.getStatus());
-    item.put("viewerCount", room.getViewerCount());
-    item.put("productCount", room.getProductCount());
-    item.put("startTime", room.getStartTime());
-    item.put("cover", room.getCoverUrl());
+    LiveRoomResponse item = new LiveRoomResponse();
+    item.setId(room.getId());
+    item.setName(room.getName());
+    item.setStatus(room.getStatus());
+    item.setViewerCount(room.getViewerCount());
+    item.setProductCount(room.getProductCount());
+    item.setStartTime(room.getStartTime());
 
     // 商品列表
-    List<Map<String, Object>> productList = new ArrayList<>();
+    List<LiveRoomProductResponse> productList = new ArrayList<>();
     for (LiveRoomProductEntity p : products) {
-      Map<String, Object> product = new LinkedHashMap<>();
-      product.put("id", p.getId());
-      product.put("productId", p.getProductId());
-      product.put("sortOrder", p.getSortOrder());
+      LiveRoomProductResponse product = new LiveRoomProductResponse();
+      product.setId(p.getId());
       productList.add(product);
     }
-    item.put("products", productList);
+    item.setProducts(productList);
     return Result.success(item);
   }
 
   @Operation(summary = "删除直播间")
   @DeleteMapping("/rooms/{id}")
-  public Result<Map<String, Object>> deleteRoom(@PathVariable Long id) {
+  public Result<OperationResult> deleteRoom(@PathVariable Long id) {
     LiveRoomEntity entity = liveRoomMapper.selectById(id);
     if (entity == null) {
       return Result.error("直播间不存在");
     }
     liveRoomMapper.deleteById(id);
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", id);
-    result.put("message", "直播间删除成功");
+    OperationResult result = new OperationResult();
+    result.setId(id);
+    result.setMessage("直播间删除成功");
     return Result.success(result);
   }
 }

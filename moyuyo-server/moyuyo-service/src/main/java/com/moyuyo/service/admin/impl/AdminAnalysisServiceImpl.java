@@ -76,15 +76,15 @@ public class AdminAnalysisServiceImpl implements AdminAnalysisService {
       return Collections.emptyList();
     }
 
-    // 提取 R/F/M 值计算分位数阈值
+    // 提取 R/F/M 值计算分位数阈值（对NULL值使用默认值）
     List<Long> rValues = rawData.stream()
-        .map(m -> ((Number) m.get("rDays")).longValue())
+        .map(m -> m.get("rDays") != null ? ((Number) m.get("rDays")).longValue() : 999L)
         .sorted().collect(Collectors.toList());
     List<Long> fValues = rawData.stream()
-        .map(m -> ((Number) m.get("fCount")).longValue())
+        .map(m -> m.get("fCount") != null ? ((Number) m.get("fCount")).longValue() : 0L)
         .sorted().collect(Collectors.toList());
     List<BigDecimal> mValues = rawData.stream()
-        .map(m -> new BigDecimal(m.get("mAmount").toString()))
+        .map(m -> m.get("mAmount") != null ? new BigDecimal(m.get("mAmount").toString()) : BigDecimal.ZERO)
         .sorted().collect(Collectors.toList());
 
     long rLow = percentileLong(rValues, 33);   // R 越小越好，低分段为高价值
@@ -98,9 +98,9 @@ public class AdminAnalysisServiceImpl implements AdminAnalysisService {
     List<Map<String, Object>> result = new ArrayList<>();
     for (Map<String, Object> row : rawData) {
       Map<String, Object> item = new LinkedHashMap<>();
-      long rDays = ((Number) row.get("rDays")).longValue();
-      long fCount = ((Number) row.get("fCount")).longValue();
-      BigDecimal mAmount = new BigDecimal(row.get("mAmount").toString());
+      long rDays = row.get("rDays") != null ? ((Number) row.get("rDays")).longValue() : 999L;
+      long fCount = row.get("fCount") != null ? ((Number) row.get("fCount")).longValue() : 0L;
+      BigDecimal mAmount = row.get("mAmount") != null ? new BigDecimal(row.get("mAmount").toString()) : BigDecimal.ZERO;
 
       // R 评分：天数越少得分越高（取反）
       int rScore = rDays <= rLow ? 5 : rDays <= rHigh ? 3 : 1;

@@ -4,12 +4,18 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyuyo.common.dto.order.CreateOrderRequest;
+import com.moyuyo.common.dto.order.OrderItemRequest;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.PaymentEntity;
+import com.moyuyo.dao.entity.ProductEntity;
+import com.moyuyo.dao.entity.ProductSkuEntity;
 import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.PaymentMapper;
+import com.moyuyo.dao.mapper.ProductMapper;
+import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -30,6 +37,8 @@ public class OrderServiceImpl implements OrderService {
   private final OrderMapper orderMapper;
   private final OrderItemMapper orderItemMapper;
   private final PaymentMapper paymentMapper;
+  private final ProductMapper productMapper;
+  private final ProductSkuMapper productSkuMapper;
 
   @Override
   @Transactional
@@ -69,10 +78,41 @@ public class OrderServiceImpl implements OrderService {
   }
 
   @Override
+  @Transactional
+  public OrderEntity createOrderFromRequest(Long userId, CreateOrderRequest request) {
+    // 将请求中的商品信息转换为订单项实体（含 SKU/商品校验）
+    List<OrderItemEntity> items = new ArrayList<>();
+    for (OrderItemRequest itemReq : request.getItems()) {
+      ProductSkuEntity sku = productSkuMapper.selectById(itemReq.getSkuId());
+      if (sku == null) {
+        throw new IllegalArgumentException("SKU不存在: " + itemReq.getSkuId());
+      }
+      ProductEntity product = productMapper.selectById(itemReq.getProductId());
+      if (product == null) {
+        throw new IllegalArgumentException("商品不存在: " + itemReq.getProductId());
+      }
+
+      OrderItemEntity item = new OrderItemEntity();
+      item.setSkuId(itemReq.getSkuId());
+      item.setProductId(itemReq.getProductId());
+      item.setProductName(product.getName());
+      item.setMainImage(product.getMainImage());
+      item.setPrice(sku.getPrice());
+      item.setQuantity(itemReq.getQuantity());
+      items.add(item);
+    }
+
+    return createOrder(userId, items, request.getAddressId(), request.getRemark(), request.getCouponId());
+  }
+
+  @Override
   public IPage<OrderEntity> listOrders(Long userId, int page, int size, String status) {
     LambdaQueryWrapper<OrderEntity> wrapper = new LambdaQueryWrapper<OrderEntity>()
-        .eq(OrderEntity::getUserId, userId)
         .eq(OrderEntity::getDeleteStatus, 0);
+    // 管理员(userId=null)查看全部订单，不限制userId
+    if (userId != null) {
+        wrapper.eq(OrderEntity::getUserId, userId);
+    }
 
     // 按状态筛选
     if (status != null && !status.isEmpty()) {
@@ -90,7 +130,8 @@ public class OrderServiceImpl implements OrderService {
     if (order == null) {
       throw new IllegalArgumentException("订单不存在");
     }
-    if (!Objects.equals(order.getUserId(), userId)) {
+    // 管理员(userId=null)跳过权限校验
+    if (userId != null && !Objects.equals(order.getUserId(), userId)) {
       throw new IllegalArgumentException("无权访问该订单");
     }
     return order;

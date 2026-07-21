@@ -234,11 +234,11 @@ function handleReset() {
 }
 
 function handleDetail(user) {
-  console.log('用户详情', user.name)
+  ElMessage.info(`用户详情：${user.name}`)
 }
 
 function handleBan(user) {
-  console.log('封禁/解封', user.name)
+  ElMessage.info(`封禁/解封操作：${user.name}`)
 }
 
 onMounted(() => {

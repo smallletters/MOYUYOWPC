@@ -69,6 +69,19 @@ management:
     redis:
       enabled: true
 
+# Resilience4j 生产环境限流覆盖（比开发环境更严格）
+resilience4j:
+  ratelimiter:
+    instances:
+      authLogin:
+        limit-for-period: 300
+      orderCreate:
+        limit-for-period: 200
+      paymentApi:
+        limit-for-period: 300
+      seckillApi:
+        limit-for-period: 1000
+
 logging:
   level:
     root: INFO

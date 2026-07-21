@@ -230,82 +230,6 @@ const navGroups = [
   }
 ]
 
-// 页面标题映射（包含所有页面）
-const pageTitleMap = {
-  '/dashboard': '仪表盘',
-  '/products': '商品管理',
-  '/orders': '订单管理',
-  '/users': '用户管理',
-  '/marketing': '营销管理',
-  '/reviews': '内容审核',
-  '/cs': '客服管理',
-  '/analytics': '数据分析',
-  '/logistics': '物流管理',
-  '/settings': '系统设置',
-  '/refund': '退款管理',
-
-  // 第一阶段
-  '/cms': 'CMS内容管理',
-  '/rbac': 'RBAC权限管理',
-  '/finance': '财务概览',
-  '/inventory': '库存管理',
-  '/push-manage': '推送管理',
-  '/ticket': '工单管理',
-
-  // 第二阶段
-  '/campaign': '活动创建',
-  '/complaint': '投诉管理',
-  '/review-manage': '评价管理',
-  '/product-analysis': '商品分析',
-  '/product-report': '商品报表',
-  '/product-review': '商品评价审核',
-  '/price-manage': '价格管理',
-  '/price-history': '价格历史',
-  '/order-export': '订单导出',
-  '/order-intercept': '订单拦截',
-  '/order-monitor': '订单监控',
-  '/order-price-modify': '订单改价',
-  '/order-print': '订单打印',
-  '/sms': '短信管理',
-  '/sensitive-words': '敏感词管理',
-
-  // 第三阶段
-  '/funnel': '漏斗分析',
-  '/rfm': 'RFM分析',
-  '/risk-control': '风控管理',
-  '/risk-rule-engine': '风控规则引擎',
-  '/realtime-screen': '实时大屏',
-  '/user-profile': '用户画像',
-  '/ab-test': 'A/B测试',
-  '/app-version': '应用版本管理',
-  '/batch-import': '批量导入',
-  '/knowledge-base': '知识库',
-  '/search-analysis': '搜索分析',
-  '/traffic-analysis': '流量分析',
-  '/satisfaction': '满意度管理',
-  '/gdpr': 'GDPR合规',
-  '/audit-log': '审计日志',
-
-  // 第四阶段
-  '/merge-package': '合包管理',
-  '/split-package': '分包裹',
-  '/carrier-compare': '承运商对比',
-  '/overseas-warehouse': '海外仓管理',
-  '/warehouse-manage': '仓库管理',
-  '/clearance': '清关管理',
-  '/customs': '海关管理',
-  '/settlement': '结算管理',
-  '/settlement-detail': '结算详情',
-  '/system-config': '系统配置',
-  '/operation-log': '运营日志',
-  '/live-manage': '直播管理',
-  '/marketing-effect': '营销效果',
-  '/shipping-strategy': '发货策略',
-  '/content-review-detail': '内容审核详情',
-  '/push-detail': '推送详情',
-  '/complaint-handle': '投诉处理详情'
-}
-
 // 默认展开的组
 const expandedGroups = reactive({
   '商品运营': true,
@@ -316,8 +240,9 @@ function toggleGroup(label) {
   expandedGroups[label] = !expandedGroups[label]
 }
 
+// 页面标题：从路由元数据自动获取
 const currentPage = computed(() => {
-  return pageTitleMap[route.path] || '未知页面'
+  return route.meta?.title || '未知页面'
 })
 
 function handleLogout() {

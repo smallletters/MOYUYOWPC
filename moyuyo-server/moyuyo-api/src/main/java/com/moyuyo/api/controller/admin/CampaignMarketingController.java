@@ -1,15 +1,17 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.dto.admin.campaign.AbTestResponse;
+import com.moyuyo.common.dto.admin.campaign.CampaignRequest;
+import com.moyuyo.common.dto.admin.campaign.CampaignResponse;
+import com.moyuyo.common.dto.admin.campaign.EffectResponse;
 import com.moyuyo.service.admin.CampaignMarketingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 @Tag(name = "管理后台 - 营销管理")
 @RestController
@@ -29,14 +31,26 @@ public class CampaignMarketingController {
 
   @Operation(summary = "创建活动")
   @PostMapping("/campaigns")
-  public Result<Map<String, Object>> createCampaign(@RequestBody Map<String, Object> body) {
-    return Result.success(campaignMarketingService.createCampaign(body));
+  public Result<Map<String, Object>> createCampaign(@RequestBody CampaignRequest body) {
+    Map<String, Object> params = new LinkedHashMap<>();
+    params.put("name", body.getName());
+    params.put("type", body.getType());
+    params.put("startDate", body.getStartDate());
+    params.put("endDate", body.getEndDate());
+    params.put("budget", body.getBudget());
+    return Result.success(campaignMarketingService.createCampaign(params));
   }
 
   @Operation(summary = "更新活动")
   @PutMapping("/campaigns/{id}")
-  public Result<Map<String, Object>> updateCampaign(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-    return Result.success(campaignMarketingService.updateCampaign(id, body));
+  public Result<Map<String, Object>> updateCampaign(@PathVariable Long id, @RequestBody CampaignRequest body) {
+    Map<String, Object> params = new LinkedHashMap<>();
+    params.put("name", body.getName());
+    params.put("type", body.getType());
+    params.put("startDate", body.getStartDate());
+    params.put("endDate", body.getEndDate());
+    params.put("budget", body.getBudget());
+    return Result.success(campaignMarketingService.updateCampaign(id, params));
   }
 
   @Operation(summary = "活动详情")

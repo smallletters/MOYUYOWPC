@@ -123,8 +123,11 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '../api/index'
 import { ElMessage } from 'element-plus'
+
+const router = useRouter()
 
 const activeTab = ref('all')
 const selectAll = ref(false)
@@ -181,9 +184,8 @@ async function fetchProducts() {
   }
 }
 
-const filteredProducts = computed(() => {
-  return productList.value
-})
+// 直接使用 productList，无需额外 computed 包装
+const filteredProducts = productList
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize) || 1)
 
@@ -209,20 +211,39 @@ function handleReset() {
   fetchProducts()
 }
 
+// 跳转到新增商品页
 function handleAddProduct() {
-  console.log('新增商品')
+  router.push('/products/edit')
 }
 
+// 跳转到编辑商品页，携带商品 ID
 function handleEdit(product) {
-  console.log('编辑商品', product.name)
+  router.push(`/products/edit?id=${product.id}`)
 }
 
-function handleToggleStatus(product) {
-  console.log('切换状态', product.name)
+// 发送 API 请求切换商品状态（上架/下架）
+async function handleToggleStatus(product) {
+  try {
+    await api.put(`/products/${product.id}/status`)
+    ElMessage.success(`商品「${product.name}」状态已更新`)
+    fetchProducts()
+  } catch (err) {
+    console.error('切换商品状态失败:', err)
+    ElMessage.error('切换状态失败')
+  }
 }
 
-function handleBatchAction(action) {
-  console.log('批量操作', action, selectedIds.value)
+// 发送 API 请求执行批量操作
+async function handleBatchAction(action) {
+  try {
+    await api.post('/products/batch', { action, ids: selectedIds.value })
+    ElMessage.success(`批量${action === 'shelf' ? '上架' : action === 'unshelf' ? '下架' : '删除'}成功`)
+    selectedIds.value = []
+    fetchProducts()
+  } catch (err) {
+    console.error('批量操作失败:', err)
+    ElMessage.error('批量操作失败')
+  }
 }
 
 // 切换 tab 时重新加载数据

@@ -119,7 +119,7 @@ public class AdminUserManageServiceImpl implements AdminUserManageService {
       item.put("nickname", user.getNickname());
       item.put("email", user.getEmail() != null ? user.getEmail() : "");
       item.put("phone", user.getPhone() != null ? user.getPhone() : "");
-      item.put("level", member != null ? member.getLevel().name() : "NORMAL");
+      item.put("level", member != null && member.getLevel() != null ? member.getLevel().name() : "NORMAL");
       item.put("status", user.getStatus() != null && user.getStatus() == 1 ? "ACTIVE" : "INACTIVE");
       item.put("registerTime", user.getCreatedAt() != null ? user.getCreatedAt().toString().replace("T", " ") : "");
       list.add(item);

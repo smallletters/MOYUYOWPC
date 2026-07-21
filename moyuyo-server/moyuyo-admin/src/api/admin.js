@@ -592,13 +592,11 @@ export function getSystemLogs() {
 }
 
 // ==================== 系统设置（角色/权限/管理员信息等）====================
-export function getRoles() {
-  return api.get('/rbac/roles')
-}
-
+// getRbacRoles 是主入口，位于上方 RBAC 区域
+// 此注释保留以标识系统设置区域
 export function getPermissions() {
-  // 后端无独立权限端点，从角色权限中获取
-  return api.get('/rbac/roles')
+  // 后端无独立权限端点，通过 getRbacRoles() 获取角色列表后提取权限
+  return getRbacRoles()
 }
 
 export function getAdminInfo() {

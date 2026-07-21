@@ -1,5 +1,6 @@
 package com.moyuyo.service.impl;
 
+import com.moyuyo.common.annotation.OperationLog;
 import com.moyuyo.common.dto.payment.CreatePaymentRequest;
 import com.moyuyo.common.dto.payment.CreatePaymentResponse;
 import com.moyuyo.dao.entity.OrderEntity;
@@ -11,6 +12,7 @@ import com.moyuyo.service.PaymentService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,24 +22,30 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
 public class PaymentServiceImpl implements PaymentService {
 
+    private static final String IDEMPOTENT_KEY_PREFIX = "idempotent:webhook:";
+
     private final OrderService orderService;
     private final PaymentMapper paymentMapper;
     private final OrderMapper orderMapper;
     private final RestTemplate restTemplate;
+    private final StringRedisTemplate redisTemplate;
 
     public PaymentServiceImpl(OrderService orderService,
                                PaymentMapper paymentMapper,
                                OrderMapper orderMapper,
-                               @Qualifier("restTemplate") RestTemplate restTemplate) {
+                               @Qualifier("restTemplate") RestTemplate restTemplate,
+                               StringRedisTemplate redisTemplate) {
         this.orderService = orderService;
         this.paymentMapper = paymentMapper;
         this.orderMapper = orderMapper;
         this.restTemplate = restTemplate;
+        this.redisTemplate = redisTemplate;
     }
 
     @Value("${payment.stripe.secret-key}")
@@ -215,13 +223,43 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
+    @OperationLog(type = "支付回调", detail = "#payChannel", logParams = false)
     public void handleWebhook(String payChannel, String payload, String signature) {
+        // 提取事件 ID 用于幂等检查
+        String eventId = extractEventId(payload);
+        if (eventId != null) {
+            String idempotentKey = IDEMPOTENT_KEY_PREFIX + eventId;
+            // Redis SET NX：仅当 key 不存在时设置成功，TTL 24 小时
+            Boolean acquired = redisTemplate.opsForValue()
+                    .setIfAbsent(idempotentKey, "1", 24, TimeUnit.HOURS);
+            if (Boolean.FALSE.equals(acquired)) {
+                log.info("Webhook 已处理，幂等跳过: eventId={}, channel={}", eventId, payChannel);
+                return;
+            }
+        }
+
         if ("STRIPE".equalsIgnoreCase(payChannel)) {
             handleStripeWebhook(payload);
         } else if ("PAYPAL".equalsIgnoreCase(payChannel)) {
             handlePayPalWebhook(payload);
         } else {
             log.warn("Unknown webhook channel: {}", payChannel);
+        }
+    }
+
+    /**
+     * 从 webhook payload 中提取事件唯一 ID
+     * Stripe: event.id
+     * PayPal: event.id
+     */
+    private String extractEventId(String payload) {
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            Map<String, Object> event = mapper.readValue(payload, Map.class);
+            return (String) event.get("id");
+        } catch (Exception e) {
+            log.warn("提取 webhook 事件 ID 失败", e);
+            return null;
         }
     }
 

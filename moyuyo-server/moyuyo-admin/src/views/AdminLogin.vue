@@ -133,7 +133,7 @@ async function handleLogin() {
 }
 
 function handleSSO() {
-  console.log('SSO login triggered')
+  ElMessage.info('SSO 登录功能开发中')
 }
 </script>
 

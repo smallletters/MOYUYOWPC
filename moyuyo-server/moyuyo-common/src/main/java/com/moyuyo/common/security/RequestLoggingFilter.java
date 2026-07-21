@@ -16,7 +16,6 @@ import java.util.UUID;
  * 配合 JwtAuthFilter 使用，在 JwtAuthFilter 之前执行（order=0）
  */
 @Slf4j
-@Component
 public class RequestLoggingFilter implements Filter {
 
   private static final String TRACE_ID_KEY = "traceId";

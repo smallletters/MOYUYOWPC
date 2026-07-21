@@ -70,12 +70,10 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
     entity.setStatus((String) data.get("status"));
     entity.setDescription((String) data.get("description"));
     if (data.get("startDate") != null) {
-      entity.setStartDate(LocalDateTime.parse(data.get("startDate") + " 00:00:00",
-          DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+      entity.setStartDate(parseDateTime(data.get("startDate")));
     }
     if (data.get("endDate") != null) {
-      entity.setEndDate(LocalDateTime.parse(data.get("endDate") + " 00:00:00",
-          DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+      entity.setEndDate(parseDateTime(data.get("endDate")));
     }
     if (data.get("budget") != null) {
       entity.setBudget(new BigDecimal(data.get("budget").toString()));
@@ -147,12 +145,10 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
     if (data.get("status") != null) entity.setStatus((String) data.get("status"));
     if (data.get("description") != null) entity.setDescription((String) data.get("description"));
     if (data.get("startDate") != null) {
-      entity.setStartDate(LocalDateTime.parse(data.get("startDate") + " 00:00:00",
-          DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+      entity.setStartDate(parseDateTime(data.get("startDate")));
     }
     if (data.get("endDate") != null) {
-      entity.setEndDate(LocalDateTime.parse(data.get("endDate") + " 00:00:00",
-          DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+      entity.setEndDate(parseDateTime(data.get("endDate")));
     }
     if (data.get("budget") != null) {
       entity.setBudget(new BigDecimal(data.get("budget").toString()));
@@ -284,5 +280,19 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
     }
     data.put("trend", trend);
     return data;
+  }
+
+  /**
+   * 解析日期字符串，兼容 yyyy-MM-dd 和 ISO 格式
+   */
+  private LocalDateTime parseDateTime(Object dateObj) {
+    if (dateObj == null) return null;
+    String dateStr = dateObj.toString().trim();
+    if (dateStr.isEmpty()) return null;
+    if (dateStr.length() <= 10) {
+      return LocalDateTime.parse(dateStr + " 00:00:00",
+          DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+    }
+    return LocalDateTime.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
   }
 }

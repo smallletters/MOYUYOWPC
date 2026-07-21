@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 public class MemberEntity {
 
   public enum Level {
-    NORMAL, SILVER, GOLD, DIAMOND
+    NORMAL, SILVER, GOLD, DIAMOND, PLATINUM
   }
 
   @TableId(type = IdType.ASSIGN_ID)

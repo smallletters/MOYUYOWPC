@@ -168,6 +168,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { getTicketList, getTicketStats } from '../api/admin'
+import { ElMessage } from 'element-plus'
 
 const activeStatus = ref('all')
 const filterType = ref('')
@@ -280,7 +281,7 @@ function userAvatarClass(user) {
 }
 
 function handleView(item) {
-  console.log('查看工单:', item.ticketNo)
+  ElMessage.info(`查看工单：${item.ticketNo}`)
 }
 
 onMounted(() => { loadData() })

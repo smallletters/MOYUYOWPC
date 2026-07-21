@@ -15,7 +15,6 @@ import java.io.IOException;
 import java.util.List;
 
 @Slf4j
-@Component
 public class JwtAuthFilter implements Filter {
 
     private final JwtUtil jwtUtil;
@@ -40,13 +39,11 @@ public class JwtAuthFilter implements Filter {
             "/api/v1/auth/password/forgot",
             "/api/v1/auth/password/reset",
             "/api/v1/products",
-            "/api/v1/categories",
             "/api/v1/products/",
+            "/api/v1/categories",
             "/api/health",
             "/api/admin/auth/login",
-            "/api/admin/auth/logout",
-            "/swagger-ui.html",
-            "/swagger-ui/",
+            "/api/webhook/",
             "/api-docs",
             "/v3/api-docs"
     );

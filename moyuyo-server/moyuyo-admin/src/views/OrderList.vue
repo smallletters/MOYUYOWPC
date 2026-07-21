@@ -93,9 +93,12 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '../api/index'
 import { getOrderOpsStats } from '../api/admin'
 import { ElMessage } from 'element-plus'
+
+const router = useRouter()
 
 const filters = reactive({
   status: '',
@@ -185,16 +188,21 @@ function handleReset() {
   fetchOrders()
 }
 
+// 确认发货：跳转到订单详情页
 function handleConfirmShip(order) {
-  console.log('确认发货', order.no)
+  ElMessage.info(`确认发货：${order.no}`)
+  router.push(`/orders/${order.id}`)
 }
 
+// 查看物流：跳转物流管理页
 function handleLogistics(order) {
-  console.log('查看物流', order.no)
+  ElMessage.info(`查看物流：${order.no}`)
+  router.push('/logistics')
 }
 
+// 查看订单详情
 function handleDetail(order) {
-  console.log('查看详情', order.no)
+  router.push(`/orders/${order.id}`)
 }
 
 onMounted(() => {

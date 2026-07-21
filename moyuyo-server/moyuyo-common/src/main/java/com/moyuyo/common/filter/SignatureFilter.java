@@ -16,14 +16,15 @@ import java.util.Arrays;
 import java.util.List;
 
 @Slf4j
-@Component
-@RequiredArgsConstructor
 public class SignatureFilter implements Filter {
 
     private final ObjectMapper objectMapper;
+    private final String apiSecret;
 
-    @Value("${api.signature.secret:}")
-    private String apiSecret;
+    public SignatureFilter(ObjectMapper objectMapper, @Value("${api.signature.secret:}") String apiSecret) {
+        this.objectMapper = objectMapper;
+        this.apiSecret = apiSecret;
+    }
 
     private static final List<String> SKIP_PATHS = Arrays.asList(
             "/api/admin/auth/login",

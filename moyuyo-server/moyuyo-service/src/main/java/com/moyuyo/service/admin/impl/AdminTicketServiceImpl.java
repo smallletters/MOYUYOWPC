@@ -68,7 +68,7 @@ public class AdminTicketServiceImpl implements AdminTicketService {
     // 查询工单基础信息
     TicketEntity ticket = ticketMapper.selectById(id);
     if (ticket == null) {
-      return null;
+      throw new IllegalArgumentException("工单不存在");
     }
 
     Map<String, Object> detail = new LinkedHashMap<>();

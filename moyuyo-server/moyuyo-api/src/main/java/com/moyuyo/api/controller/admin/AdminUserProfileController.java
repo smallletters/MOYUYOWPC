@@ -2,6 +2,8 @@ package com.moyuyo.api.controller.admin;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.moyuyo.common.Result;
+import com.moyuyo.common.dto.admin.userprofile.UserBehaviorResponse;
+import com.moyuyo.common.dto.admin.userprofile.UserProfileResponse;
 import com.moyuyo.dao.admin.entity.UserBehaviorEntity;
 import com.moyuyo.dao.admin.mapper.UserBehaviorMapper;
 import com.moyuyo.dao.entity.OrderEntity;
@@ -35,29 +37,38 @@ public class AdminUserProfileController {
 
   @Operation(summary = "用户画像信息")
   @GetMapping("/{userId}")
-  public Result<Map<String, Object>> profile(@PathVariable Long userId) {
-    Map<String, Object> result = adminUserProfileService.getDetail(userId);
-    return Result.success(result);
+  public Result<UserProfileResponse> profile(@PathVariable Long userId) {
+    Map<String, Object> svcResult = adminUserProfileService.getDetail(userId);
+    UserProfileResponse resp = new UserProfileResponse();
+    resp.setUserId((Long) svcResult.get("userId"));
+    resp.setNickname((String) svcResult.get("nickname"));
+    resp.setAvatar((String) svcResult.get("avatar"));
+    resp.setEmail((String) svcResult.get("email"));
+    resp.setPhone((String) svcResult.get("phone"));
+    resp.setOrderCount((Integer) svcResult.get("orderCount"));
+    resp.setRegisterTime((String) svcResult.get("registerTime"));
+    resp.setTotalSpent((Integer) svcResult.get("totalSpent"));
+    return Result.success(resp);
   }
 
   @Operation(summary = "用户行为数据")
   @GetMapping("/{userId}/behaviors")
-  public Result<List<Map<String, Object>>> behaviors(@PathVariable Long userId) {
+  public Result<List<UserBehaviorResponse>> behaviors(@PathVariable Long userId) {
     // 新Mapper可能因maven安装失败为null，返回空列表
     if (userBehaviorMapper == null) {
       return Result.success(Collections.emptyList());
     }
     // 从 mo_user_behavior 表查询该用户的行为数据
     List<UserBehaviorEntity> behaviorList = ((UserBehaviorMapper) userBehaviorMapper).selectList(
-        new LambdaQueryWrapper<UserBehaviorEntity>()
-            .eq(UserBehaviorEntity::getUserId, userId));
+      new LambdaQueryWrapper<UserBehaviorEntity>()
+        .eq(UserBehaviorEntity::getUserId, userId));
 
-    List<Map<String, Object>> list = new ArrayList<>();
+    List<UserBehaviorResponse> list = new ArrayList<>();
     for (UserBehaviorEntity entity : behaviorList) {
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("behaviorType", entity.getBehaviorType());
-      item.put("count", entity.getCount());
-      item.put("lastTime", entity.getLastTime());
+      UserBehaviorResponse item = new UserBehaviorResponse();
+      item.setBehaviorType(entity.getBehaviorType());
+      item.setCount(entity.getCount());
+      item.setLastTime(entity.getLastTime());
       list.add(item);
     }
     return Result.success(list);
@@ -68,9 +79,9 @@ public class AdminUserProfileController {
   public Result<List<Map<String, Object>>> orders(@PathVariable Long userId) {
     // 从 mo_order 表查询该用户的订单，按创建时间降序
     List<OrderEntity> orderList = orderMapper.selectList(
-        new LambdaQueryWrapper<OrderEntity>()
-            .eq(OrderEntity::getUserId, userId)
-            .orderByDesc(OrderEntity::getCreateTime));
+      new LambdaQueryWrapper<OrderEntity>()
+        .eq(OrderEntity::getUserId, userId)
+        .orderByDesc(OrderEntity::getCreateTime));
 
     List<Map<String, Object>> list = new ArrayList<>();
     for (OrderEntity entity : orderList) {

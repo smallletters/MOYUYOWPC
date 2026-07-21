@@ -24,24 +24,16 @@ public class AdminOrderController {
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "10") int size,
       @RequestParam(required = false) String status) {
-    try {
-      // 管理后台查看所有订单，userId 传 null
-      return Result.success(orderService.listOrders(null, page, size, status));
-    } catch (Exception e) {
-      return Result.error("查询订单列表失败: " + e.getMessage());
-    }
+    // 管理后台查看所有订单，userId 传 null
+    return Result.success(orderService.listOrders(null, page, size, status));
   }
 
   @Operation(summary = "订单详情")
   @GetMapping("/{id}")
   public Result<?> detail(@PathVariable Long id) {
-    try {
-      // 管理后台按订单ID查询详情，userId 传 null
-      OrderEntity order = orderService.getOrderDetail(id, null);
-      order.setItems(orderService.getOrderItems(id));
-      return Result.success(order);
-    } catch (Exception e) {
-      return Result.error("查询订单详情失败: " + e.getMessage());
-    }
+    // 管理后台按订单ID查询详情，userId 传 null
+    OrderEntity order = orderService.getOrderDetail(id, null);
+    order.setItems(orderService.getOrderItems(id));
+    return Result.success(order);
   }
 }

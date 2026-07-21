@@ -97,9 +97,11 @@ const form = reactive({
   status: true
 })
 
+const productId = computed(() => route.query.id)
+
 // 获取商品详情
 async function fetchProduct() {
-  const id = route.query.id
+  const id = productId.value
   if (!id) return
   try {
     const res = await api.get(`/products/${id}`)
@@ -114,7 +116,7 @@ async function fetchProduct() {
 
 async function handleSave() {
   try {
-    const id = route.query.id
+    const id = productId.value
     if (id) {
       await api.put(`/products/${id}`, { ...form })
       ElMessage.success('商品已更新')

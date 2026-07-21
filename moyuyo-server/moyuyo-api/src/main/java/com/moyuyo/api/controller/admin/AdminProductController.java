@@ -31,84 +31,68 @@ public class AdminProductController {
       @RequestParam(required = false) String keyword,
       @RequestParam(required = false) String sortBy,
       @RequestParam(required = false) String sortOrder) {
-    try {
-      return Result.success(productService.listProducts(page, size, categoryId, sortBy, sortOrder, keyword, null));
-    } catch (Exception e) {
-      return Result.error("查询商品列表失败: " + e.getMessage());
-    }
+    return Result.success(productService.listProducts(page, size, categoryId, sortBy, sortOrder, keyword, null));
   }
 
   @Operation(summary = "商品详情")
   @GetMapping("/{id}")
   public Result<?> detail(@PathVariable Long id) {
-    try {
-      return Result.success(productService.getProductDetail(id));
-    } catch (Exception e) {
-      return Result.error("查询商品详情失败: " + e.getMessage());
-    }
+    return Result.success(productService.getProductDetail(id));
   }
 
   @Operation(summary = "创建商品")
   @PostMapping("/create")
   public Result<Map<String, Object>> createProduct(@RequestBody Map<String, Object> body) {
-    try {
-      ProductEntity entity = new ProductEntity();
-      entity.setName((String) body.get("name"));
-      if (body.get("price") != null) {
-        entity.setPrice(new BigDecimal(body.get("price").toString()));
-      }
-      if (body.get("originalPrice") != null) {
-        entity.setOriginalPrice(new BigDecimal(body.get("originalPrice").toString()));
-      }
-      if (body.get("categoryId") != null) {
-        entity.setCategoryId(Long.valueOf(body.get("categoryId").toString()));
-      }
-      entity.setMainImage((String) body.get("mainImage"));
-      entity.setDetail((String) body.get("detail"));
-      entity.setStock(body.get("stock") != null ? Integer.valueOf(body.get("stock").toString()) : 0);
-      entity.setOnSale((Boolean) body.getOrDefault("onSale", true));
-      if (body.get("spuCode") != null) {
-        entity.setSpuCode((String) body.get("spuCode"));
-      }
-
-      productMapper.insert(entity);
-
-      Map<String, Object> result = new LinkedHashMap<>();
-      result.put("id", entity.getId());
-      result.put("message", "商品创建成功");
-      return Result.success(result);
-    } catch (Exception e) {
-      return Result.error("创建商品失败: " + e.getMessage());
+    ProductEntity entity = new ProductEntity();
+    entity.setName((String) body.get("name"));
+    if (body.get("price") != null) {
+      entity.setPrice(new BigDecimal(body.get("price").toString()));
     }
+    if (body.get("originalPrice") != null) {
+      entity.setOriginalPrice(new BigDecimal(body.get("originalPrice").toString()));
+    }
+    if (body.get("categoryId") != null) {
+      entity.setCategoryId(Long.valueOf(body.get("categoryId").toString()));
+    }
+    entity.setMainImage((String) body.get("mainImage"));
+    entity.setDetail((String) body.get("detail"));
+    entity.setStock(body.get("stock") != null ? Integer.valueOf(body.get("stock").toString()) : 0);
+    entity.setOnSale((Boolean) body.getOrDefault("onSale", true));
+    if (body.get("spuCode") != null) {
+      entity.setSpuCode((String) body.get("spuCode"));
+    }
+
+    productMapper.insert(entity);
+
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("id", entity.getId());
+    result.put("message", "商品创建成功");
+    return Result.success(result);
   }
 
   @Operation(summary = "更新商品")
   @PutMapping("/{id}")
   public Result<Map<String, Object>> updateProduct(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-    try {
-      ProductEntity entity = productMapper.selectById(id);
-      if (entity == null) {
-        return Result.error("商品不存在");
-      }
-
-      if (body.get("name") != null) entity.setName((String) body.get("name"));
-      if (body.get("price") != null) entity.setPrice(new BigDecimal(body.get("price").toString()));
-      if (body.get("originalPrice") != null) entity.setOriginalPrice(new BigDecimal(body.get("originalPrice").toString()));
-      if (body.get("categoryId") != null) entity.setCategoryId(Long.valueOf(body.get("categoryId").toString()));
-      if (body.get("mainImage") != null) entity.setMainImage((String) body.get("mainImage"));
-      if (body.get("detail") != null) entity.setDetail((String) body.get("detail"));
-      if (body.get("stock") != null) entity.setStock(Integer.valueOf(body.get("stock").toString()));
-      if (body.containsKey("onSale")) entity.setOnSale((Boolean) body.get("onSale"));
-      if (body.get("spuCode") != null) entity.setSpuCode((String) body.get("spuCode"));
-
-      productMapper.updateById(entity);
-
-      Map<String, Object> result = new LinkedHashMap<>();
-      result.put("id", id);
-      result.put("message", "商品更新成功");
-      return Result.success(result);
-    } catch (Exception e) {
-      return Result.error("更新商品失败: " + e.getMessage());
+    ProductEntity entity = productMapper.selectById(id);
+    if (entity == null) {
+      return Result.error("商品不存在");
     }
+
+    if (body.get("name") != null) entity.setName((String) body.get("name"));
+    if (body.get("price") != null) entity.setPrice(new BigDecimal(body.get("price").toString()));
+    if (body.get("originalPrice") != null) entity.setOriginalPrice(new BigDecimal(body.get("originalPrice").toString()));
+    if (body.get("categoryId") != null) entity.setCategoryId(Long.valueOf(body.get("categoryId").toString()));
+    if (body.get("mainImage") != null) entity.setMainImage((String) body.get("mainImage"));
+    if (body.get("detail") != null) entity.setDetail((String) body.get("detail"));
+    if (body.get("stock") != null) entity.setStock(Integer.valueOf(body.get("stock").toString()));
+    if (body.containsKey("onSale")) entity.setOnSale((Boolean) body.get("onSale"));
+    if (body.get("spuCode") != null) entity.setSpuCode((String) body.get("spuCode"));
+
+    productMapper.updateById(entity);
+
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("id", id);
+    result.put("message", "商品更新成功");
+    return Result.success(result);
   }
 }

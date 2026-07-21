@@ -134,7 +134,7 @@ async function loadRecentOrders() {
     recentOrders.value = (orders || []).map(order => ({
       id: order.orderNo || '',
       no: order.orderNo || '',
-      user: order.productName || '',
+      user: order.userName || order.productName || '',
       amount: order.amount != null ? String(order.amount) : '0.00',
       status: order.status || '未知',
       statusClass: 'gray',

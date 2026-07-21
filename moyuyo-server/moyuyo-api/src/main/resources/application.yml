@@ -1,5 +1,10 @@
 server:
   port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
 
 spring:
   application:
@@ -52,10 +57,7 @@ spring:
     placeholder-replacement: false
     table: schema_history
 
-  # Sentinel 限流熔断（开发环境禁用，生产环境通过 sentinel:enabled: true 和 SENTINEL_DASHBOARD_URL 启用）
-  cloud:
-    sentinel:
-      enabled: false
+  # Resilience4j 限流熔断默认启用，具体规则见 resilience4j 配置块
 
 # MyBatis-Plus
 mybatis-plus:
@@ -73,6 +75,12 @@ mybatis-plus:
 jwt:
   secret: ${JWT_SECRET:DevJwtSecretKeyForLocalTestingOnlyNotForProd}
   expire-hours: 2
+
+# CORS 允许的来源（逗号分隔），生产环境应设为具体的前端域名
+# 示例：moyuyo.cors.allowed-origins=https://admin.moyuyo.com,https://www.moyuyo.com
+moyuyo:
+  cors:
+    allowed-origins: ${MOYUYO_CORS_ORIGINS:*}
 
 # API 签名验证
 api:
@@ -118,4 +126,49 @@ woocommerce:
   consumer-secret: ${WOOCOMMERCE_CONSUMER_SECRET:}
   connect-timeout: 10000
   read-timeout: 30000
+
+# Resilience4j 限流熔断规则
+resilience4j:
+  ratelimiter:
+    instances:
+      authLogin:
+        limit-refresh-period: 1m
+        limit-for-period: 600
+        timeout-duration: 500ms
+      orderCreate:
+        limit-refresh-period: 1m
+        limit-for-period: 300
+        timeout-duration: 500ms
+      paymentApi:
+        limit-refresh-period: 1m
+        limit-for-period: 500
+        timeout-duration: 500ms
+      seckillApi:
+        limit-refresh-period: 1m
+        limit-for-period: 2000
+        timeout-duration: 1s
+  circuitbreaker:
+    instances:
+      paymentGateway:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 30
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+      dbWrite:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 15s
+        permitted-number-of-calls-in-half-open-state: 3
+  retry:
+    instances:
+      paymentCallback:
+        max-attempts: 3
+        wait-duration: 500ms
+        retry-exceptions:
+          - org.springframework.dao.DataAccessException
+      woocommerceSync:
+        max-attempts: 3
+        wait-duration: 1s
 
