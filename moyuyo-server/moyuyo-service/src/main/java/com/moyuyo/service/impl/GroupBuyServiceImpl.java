@@ -1,6 +1,7 @@
 package com.moyuyo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.moyuyo.dao.entity.GroupBuyEntity;
 import com.moyuyo.dao.entity.GroupBuyMemberEntity;
 import com.moyuyo.dao.mapper.GroupBuyMapper;
@@ -57,11 +58,17 @@ public class GroupBuyServiceImpl implements GroupBuyService {
     member.setUserId(userId);
     member.setIsLeader(groupBuy.getCurrentMembers() == 0);
     groupBuyMemberMapper.insert(member);
-    groupBuy.setCurrentMembers(groupBuy.getCurrentMembers() + 1);
-    if (groupBuy.getCurrentMembers() >= groupBuy.getMinMembers()) {
-      groupBuy.setStatus("ENDED");
+
+    // 使用原子更新防止并发超员：WHERE current_members < min_members
+    LambdaUpdateWrapper<GroupBuyEntity> updateWrapper = new LambdaUpdateWrapper<>();
+    updateWrapper.eq(GroupBuyEntity::getId, id)
+        .setSql("current_members = COALESCE(current_members, 0) + 1")
+        .apply("COALESCE(current_members, 0) < min_members");
+    int rows = groupBuyMapper.update(null, updateWrapper);
+    if (rows == 0) {
+      throw new IllegalStateException("拼团人数已满，参与失败");
     }
-    groupBuyMapper.updateById(groupBuy);
+
     log.info("GroupBuy join: groupBuyId={}, userId={}", id, userId);
     return member;
   }

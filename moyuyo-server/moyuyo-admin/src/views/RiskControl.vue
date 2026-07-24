@@ -9,17 +9,18 @@
     <!-- 筛选 -->
     <el-card shadow="never" class="filter-card">
       <el-form :model="filters" inline>
-        <el-form-item label="风险等级">
-          <el-select v-model="filters.level" placeholder="全部" clearable style="width:140px">
-            <el-option label="高" value="高" />
-            <el-option label="中" value="中" />
-            <el-option label="低" value="低" />
+        <el-form-item label="规则类型">
+          <el-select v-model="filters.ruleType" placeholder="全部" clearable style="width:140px">
+            <el-option label="登录" value="LOGIN" />
+            <el-option label="下单" value="ORDER" />
+            <el-option label="支付" value="PAYMENT" />
+            <el-option label="优惠券" value="COUPON" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="filters.status" placeholder="全部" clearable style="width:140px">
-            <el-option label="启用" value="启用" />
-            <el-option label="禁用" value="禁用" />
+          <el-select v-model="filters.enabled" placeholder="全部" clearable style="width:140px">
+            <el-option label="启用" value="true" />
+            <el-option label="禁用" value="false" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -32,24 +33,23 @@
     <el-card shadow="never">
       <el-table :data="tableData" stripe style="width: 100%">
         <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="name" label="规则名称" />
-        <el-table-column prop="level" label="风险等级" width="100">
+        <el-table-column prop="ruleName" label="规则名称" />
+        <el-table-column prop="ruleType" label="规则类型" width="100">
           <template #default="{ row }">
-            <el-tag :type="levelTag(row.level)" size="small">{{ row.level }}</el-tag>
+            <el-tag :type="ruleTypeTag(row.ruleType)" size="small">{{ ruleTypeLabel(row.ruleType) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="hitCount" label="命中次数" width="100" />
-        <el-table-column prop="triggerCondition" label="触发条件" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="conditionJson" label="触发条件" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="enabled" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.status === '启用' ? 'success' : 'info'" size="small">{{ row.status }}</el-tag>
+            <el-tag :type="row.enabled ? 'success' : 'info'" size="small">{{ row.enabled ? '启用' : '禁用' }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="updateTime" label="更新时间" width="180" />
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="primary" link size="small" @click="handleToggle(row)">{{ row.status === '启用' ? '禁用' : '启用' }}</el-button>
+            <el-button type="primary" link size="small" @click="handleToggle(row)">{{ row.enabled ? '禁用' : '启用' }}</el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -63,13 +63,20 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getRiskRules, deleteRiskRule } from '../api/admin'
 
-const filters = reactive({ level: '', status: '' })
+const filters = reactive({ ruleType: '', enabled: '' })
 const tableData = ref([])
 
-function levelTag(level) {
-  if (level === '高') return 'danger'
-  if (level === '中') return 'warning'
+function ruleTypeTag(type) {
+  if (type === 'LOGIN') return ''
+  if (type === 'ORDER') return 'warning'
+  if (type === 'PAYMENT') return 'danger'
+  if (type === 'COUPON') return 'success'
   return 'info'
+}
+
+function ruleTypeLabel(type) {
+  const map = { LOGIN: '登录', ORDER: '下单', PAYMENT: '支付', COUPON: '优惠券' }
+  return map[type] || type
 }
 
 // 加载风控规则列表
@@ -78,11 +85,11 @@ async function loadData() {
     const res = await getRiskRules()
     // 根据筛选条件过滤
     let list = res.records || res || []
-      if (filters.level) {
-        list = list.filter(item => item.level === filters.level)
+      if (filters.ruleType) {
+        list = list.filter(item => item.ruleType === filters.ruleType)
       }
-      if (filters.status) {
-        list = list.filter(item => item.status === filters.status)
+      if (filters.enabled) {
+        list = list.filter(item => String(item.enabled) === filters.enabled)
       }
       tableData.value = list
   } catch (e) {
@@ -91,15 +98,15 @@ async function loadData() {
 }
 
 function handleSearch() { loadData() }
-function handleReset() { filters.level = ''; filters.status = ''; loadData() }
+function handleReset() { filters.ruleType = ''; filters.enabled = ''; loadData() }
 function handleAdd() { ElMessage.warning('新建功能开发中') }
-function handleEdit(row) { ElMessage.info('编辑规则：' + row.name) }
+function handleEdit(row) { ElMessage.info('编辑规则：' + row.ruleName) }
 async function handleToggle(row) {
   try {
-    const newStatus = row.status === '启用' ? '禁用' : '启用'
+    const newEnabled = !row.enabled
     const { toggleRiskRule } = await import('../api/admin')
-    await toggleRiskRule(row.id, { enabled: newStatus === '启用' })
-    ElMessage.success('规则已' + newStatus)
+    await toggleRiskRule(row.id, { enabled: newEnabled })
+    ElMessage.success('规则已' + (newEnabled ? '启用' : '禁用'))
     await loadData()
   } catch (e) {
     ElMessage.error('操作失败')
@@ -107,7 +114,7 @@ async function handleToggle(row) {
 }
 async function handleDelete(row) {
   try {
-    await ElMessageBox.confirm('确定删除规则「' + row.name + '」吗？', '提示')
+    await ElMessageBox.confirm('确定删除规则「' + row.ruleName + '」吗？', '提示')
     await deleteRiskRule(row.id)
     ElMessage.success('已删除')
     await loadData()

@@ -69,7 +69,7 @@
         <el-table-column prop="agentName" label="客服" width="120" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="statusTag(row.status)" size="small">{{ statusMap(row.status) }}</el-tag>
+            <el-tag :type="getStatusType(row.status)" size="small">{{ getStatusText(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="messageCount" label="消息数" width="80" />
@@ -93,7 +93,7 @@
           <el-descriptions-item label="用户名称">{{ detailData.userName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="客服">{{ detailData.agentName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag :type="statusTag(detailData.status)" size="small">{{ statusMap(detailData.status) }}</el-tag>
+            <el-tag :type="getStatusType(detailData.status)" size="small">{{ getStatusText(detailData.status) }}</el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="消息数">{{ detailData.messageCount || 0 }}</el-descriptions-item>
           <el-descriptions-item label="开始时间">{{ detailData.createdAt }}</el-descriptions-item>
@@ -113,6 +113,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useStatusTag } from '../composables/useStatusTag'
 import { getCsSessionList, getCsSessionDetail, getCsSessionStats } from '../api/admin'
 
 const tableData = ref([])
@@ -126,19 +127,10 @@ const searchForm = reactive({
   status: '',
 })
 
-function statusTag(status) {
-  if (status === 'active') return 'success'
-  if (status === 'ended') return 'info'
-  if (status === 'waiting') return 'warning'
-  return 'info'
-}
-
-function statusMap(status) {
-  if (status === 'active') return '进行中'
-  if (status === 'ended') return '已结束'
-  if (status === 'waiting') return '等待中'
-  return status
-}
+const { getStatusText, getStatusType } = useStatusTag(
+  { active: '进行中', ended: '已结束', waiting: '等待中' },
+  { active: 'success', ended: 'info', waiting: 'warning' }
+)
 
 async function loadData() {
   try {

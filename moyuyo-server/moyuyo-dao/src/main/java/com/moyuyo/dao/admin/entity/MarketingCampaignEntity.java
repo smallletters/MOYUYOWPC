@@ -19,6 +19,9 @@ public class MarketingCampaignEntity {
   /** 活动名称 */
   private String name;
 
+  /** 活动类型：满减/折扣/秒杀/拼团 */
+  private String type;
+
   /** 活动状态：ACTIVE / UPCOMING / ENDED */
   private String status;
 

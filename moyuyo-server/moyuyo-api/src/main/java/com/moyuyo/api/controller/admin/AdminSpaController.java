@@ -12,13 +12,8 @@ import java.io.IOException;
 @RestController
 public class AdminSpaController {
 
-    @GetMapping("/admin")
+    @GetMapping({"/admin", "/admin/", "/admin/index.html"})
     public ResponseEntity<byte[]> adminRoot() throws IOException {
-        return getIndexHtml();
-    }
-
-    @GetMapping("/admin/index.html")
-    public ResponseEntity<byte[]> adminIndex() throws IOException {
         return getIndexHtml();
     }
 

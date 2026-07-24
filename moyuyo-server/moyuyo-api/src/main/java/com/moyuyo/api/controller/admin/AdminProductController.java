@@ -2,15 +2,15 @@ package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
 import com.moyuyo.dao.entity.ProductEntity;
-import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Tag(name = "管理后台 - 商品管理")
@@ -20,79 +20,143 @@ import java.util.Map;
 public class AdminProductController {
 
   private final ProductService productService;
-  private final ProductMapper productMapper;
 
   @Operation(summary = "商品列表")
   @GetMapping("/list")
   public Result<?> list(
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "10") int size,
-      @RequestParam(required = false) Long categoryId,
+      @RequestParam(required = false) String categoryId,
+      @RequestParam(required = false) String category,
       @RequestParam(required = false) String keyword,
+      @RequestParam(required = false) String status,
+      @RequestParam(required = false) String stockStatus,
       @RequestParam(required = false) String sortBy,
       @RequestParam(required = false) String sortOrder) {
-    return Result.success(productService.listProducts(page, size, categoryId, sortBy, sortOrder, keyword, null));
+    // 合并 categoryId 和 category 参数
+    String catParam = categoryId != null ? categoryId : category;
+    Long catIdLong = null;
+    if (catParam != null && !catParam.isEmpty()) {
+      try {
+        catIdLong = Long.valueOf(catParam);
+      } catch (NumberFormatException e) {
+        // 字符串分类名转换为ID
+        catIdLong = resolveCategoryId(catParam);
+      }
+    }
+    return Result.success(productService.listProducts(page, size, catIdLong, sortBy, sortOrder, keyword, status, stockStatus, null));
   }
 
   @Operation(summary = "商品详情")
   @GetMapping("/{id}")
   public Result<?> detail(@PathVariable Long id) {
-    return Result.success(productService.getProductDetail(id));
+    try {
+      ProductEntity entity = productService.getProductWithDetails(id);
+      return Result.success(entity);
+    } catch (IllegalArgumentException e) {
+      return Result.error(e.getMessage());
+    } catch (Exception e) {
+      return Result.error("查询商品详情失败: " + e.getMessage());
+    }
   }
 
   @Operation(summary = "创建商品")
   @PostMapping("/create")
   public Result<Map<String, Object>> createProduct(@RequestBody Map<String, Object> body) {
-    ProductEntity entity = new ProductEntity();
-    entity.setName((String) body.get("name"));
-    if (body.get("price") != null) {
-      entity.setPrice(new BigDecimal(body.get("price").toString()));
+    try {
+      ProductEntity entity = productService.createProduct(body);
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("id", entity.getId());
+      result.put("message", "商品创建成功");
+      return Result.success(result);
+    } catch (IllegalArgumentException e) {
+      return Result.error(e.getMessage());
+    } catch (Exception e) {
+      return Result.error("创建商品失败: " + e.getMessage());
     }
-    if (body.get("originalPrice") != null) {
-      entity.setOriginalPrice(new BigDecimal(body.get("originalPrice").toString()));
-    }
-    if (body.get("categoryId") != null) {
-      entity.setCategoryId(Long.valueOf(body.get("categoryId").toString()));
-    }
-    entity.setMainImage((String) body.get("mainImage"));
-    entity.setDetail((String) body.get("detail"));
-    entity.setStock(body.get("stock") != null ? Integer.valueOf(body.get("stock").toString()) : 0);
-    entity.setOnSale((Boolean) body.getOrDefault("onSale", true));
-    if (body.get("spuCode") != null) {
-      entity.setSpuCode((String) body.get("spuCode"));
-    }
-
-    productMapper.insert(entity);
-
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", entity.getId());
-    result.put("message", "商品创建成功");
-    return Result.success(result);
   }
 
   @Operation(summary = "更新商品")
   @PutMapping("/{id}")
   public Result<Map<String, Object>> updateProduct(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-    ProductEntity entity = productMapper.selectById(id);
-    if (entity == null) {
-      return Result.error("商品不存在");
+    try {
+      productService.updateProduct(id, body);
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("id", id);
+      result.put("message", "商品更新成功");
+      return Result.success(result);
+    } catch (IllegalArgumentException e) {
+      return Result.error(e.getMessage());
+    } catch (Exception e) {
+      return Result.error("更新商品失败: " + e.getMessage());
     }
+  }
 
-    if (body.get("name") != null) entity.setName((String) body.get("name"));
-    if (body.get("price") != null) entity.setPrice(new BigDecimal(body.get("price").toString()));
-    if (body.get("originalPrice") != null) entity.setOriginalPrice(new BigDecimal(body.get("originalPrice").toString()));
-    if (body.get("categoryId") != null) entity.setCategoryId(Long.valueOf(body.get("categoryId").toString()));
-    if (body.get("mainImage") != null) entity.setMainImage((String) body.get("mainImage"));
-    if (body.get("detail") != null) entity.setDetail((String) body.get("detail"));
-    if (body.get("stock") != null) entity.setStock(Integer.valueOf(body.get("stock").toString()));
-    if (body.containsKey("onSale")) entity.setOnSale((Boolean) body.get("onSale"));
-    if (body.get("spuCode") != null) entity.setSpuCode((String) body.get("spuCode"));
+  @Operation(summary = "切换商品上架/下架状态")
+  @PutMapping("/{id}/status")
+  public Result<Map<String, Object>> toggleStatus(@PathVariable Long id) {
+    try {
+      ProductEntity entity = productService.toggleProductStatus(id);
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("id", id);
+      result.put("onSale", entity.getOnSale());
+      result.put("message", entity.getOnSale() ? "商品已上架" : "商品已下架");
+      return Result.success(result);
+    } catch (IllegalArgumentException e) {
+      return Result.error(e.getMessage());
+    } catch (Exception e) {
+      return Result.error("切换商品状态失败: " + e.getMessage());
+    }
+  }
 
-    productMapper.updateById(entity);
+  @Operation(summary = "批量操作商品")
+  @PostMapping("/batch")
+  public Result<Map<String, Object>> batchAction(@RequestBody Map<String, Object> body) {
+    String action = (String) body.get("action");
+    List<Long> ids = extractIds(body.get("ids"));
+    if (ids.isEmpty()) {
+      return Result.error("请选择要操作的商品");
+    }
+    try {
+      int count = productService.batchProductAction(action, ids);
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("count", count);
+      result.put("message", "批量操作成功，共处理 " + count + " 条记录");
+      return Result.success(result);
+    } catch (Exception e) {
+      return Result.error("批量操作失败: " + e.getMessage());
+    }
+  }
 
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", id);
-    result.put("message", "商品更新成功");
-    return Result.success(result);
+  /** 安全地从请求体中提取ID列表，兼容 Integer/Long 类型 */
+  private List<Long> extractIds(Object idsObj) {
+    List<Long> ids = new ArrayList<>();
+    if (idsObj instanceof List) {
+      for (Object item : (List<?>) idsObj) {
+        if (item instanceof Number) {
+          ids.add(((Number) item).longValue());
+        }
+      }
+    }
+    return ids;
+  }
+
+  /** 将前端分类名转换为分类ID */
+  private Long resolveCategoryId(String categoryName) {
+    if (categoryName == null || categoryName.isEmpty()) return null;
+    return switch (categoryName) {
+      case "clothing" -> 1L;
+      case "electronics" -> 2L;
+      case "accessories" -> 3L;
+      case "home" -> 4L;
+      case "health" -> 1L;
+      case "food" -> 2L;
+      case "beauty" -> 3L;
+      case "daily" -> 4L;
+      default -> {
+        try { yield Long.valueOf(categoryName); }
+        catch (NumberFormatException e) { yield null; }
+      }
+    };
   }
 }

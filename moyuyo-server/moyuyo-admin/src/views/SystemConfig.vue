@@ -211,12 +211,35 @@ async function loadConfig() {
         if (item.key === 'autoConfirm') form.autoConfirm = item.value === 'true' || item.value === true
         if (item.key === 'emailNotify') form.emailNotify = item.value === 'true' || item.value === true
         if (item.key === 'smsNotify') form.smsNotify = item.value === 'true' || item.value === true
+        // 从配置中恢复支付方式状态
+        if (item.key && item.key.startsWith('payment_')) {
+          const payKey = item.key.replace('payment_', '')
+          const method = paymentMethods.value.find(m => m.key === payKey)
+          if (method) {
+            method.enabled = item.value === 'true'
+          }
+        }
       })
-    // 加载支付方式配置
+    // 加载支付方式配置（从支付API获取名称和描述）
     try {
       const payRes = await getPaymentMethods()
       if (payRes && payRes.length > 0) {
-        paymentMethods.value = payRes
+        // 合并API返回的支付方式，保留已保存的开关状态
+        payRes.forEach(apiMethod => {
+          const existing = paymentMethods.value.find(m => m.key === (apiMethod.code || apiMethod.key))
+          if (existing) {
+            // 保留已从config恢复的enabled状态
+            existing.name = apiMethod.name || existing.name
+            existing.desc = apiMethod.desc || existing.desc
+          } else if (apiMethod.code) {
+            paymentMethods.value.push({
+              key: apiMethod.code,
+              name: apiMethod.name,
+              desc: apiMethod.desc || '',
+              enabled: apiMethod.status === 'active'
+            })
+          }
+        })
       }
     } catch (e) {
       console.error('获取支付方式失败，使用默认值', e)
@@ -227,7 +250,17 @@ async function loadConfig() {
 }
 
 function handleUploadLogo() {
-  ElMessage.info('上传 Logo')
+  // 触发隐藏的文件选择器
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/png,image/jpeg,image/webp'
+  input.onchange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    // Logo上传（当前以提示形式展示，后续可对接实际文件上传API）
+    ElMessage.success(`已选择: ${file.name}`)
+  }
+  input.click()
 }
 
 // 保存系统配置
@@ -242,6 +275,15 @@ async function handleSave() {
       { key: 'emailNotify', value: String(form.emailNotify), type: 'text', label: '邮件通知' },
       { key: 'smsNotify', value: String(form.smsNotify), type: 'text', label: '短信通知' },
     ]
+    // 将支付方式状态也加入配置保存
+    paymentMethods.value.forEach(method => {
+      configs.push({
+        key: `payment_${method.key}`,
+        value: String(method.enabled),
+        type: 'toggle',
+        label: method.name
+      })
+    })
     await saveSystemConfig(configs)
     ElMessage.success('配置保存成功')
   } catch (e) {

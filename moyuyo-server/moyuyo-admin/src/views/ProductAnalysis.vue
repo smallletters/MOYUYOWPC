@@ -112,12 +112,24 @@ async function loadData() {
     ])
     // 填充KPI
     if (kpiRes) {
-      Object.assign(kpiData, kpiRes)
+      kpiData.totalProducts = kpiRes.totalProductCount ?? 0
+      kpiData.activeProducts = kpiRes.activeProductCount ?? 0
+      kpiData.totalViews = kpiRes.totalFavorites ?? 0
+      kpiData.totalSales = kpiRes.totalSales ?? 0
     }
     // 填充列表
     const list = (listRes && listRes.records) || listRes || []
-    const filtered = list.filter(d => {
-      const kw = filters.keyword.toLowerCase()
+    // 映射后端字段到前端期望的字段名
+    const mapped = list.map(d => ({
+      id: d.id,
+      productName: d.name || d.productName,
+      views: d.views || 0,
+      favorites: d.favorites || 0,
+      cartAdds: d.cartAdds || 0,
+      sales: d.sales || 0,
+      revenue: d.revenue || (d.price && d.sales ? d.price * d.sales : 0)
+    }))
+    const filtered = mapped.filter(d => {      const kw = filters.keyword.toLowerCase()
       if (kw && !d.productName.toLowerCase().includes(kw)) return false
       return true
     })

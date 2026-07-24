@@ -39,14 +39,14 @@ class WebhookIdempotencyTest extends BaseIntegrationTest {
                 """;
 
         // 第一次发送
-        mockMvc.perform(post("/api/webhook/stripe")
+        mockMvc.perform(post("/api/v1/payments/stripe/webhook")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Stripe-Signature", "test_sig")
                         .content(payload))
                 .andExpect(status().isOk());
 
         // 第二次发送（相同 event_id）
-        mockMvc.perform(post("/api/webhook/stripe")
+        mockMvc.perform(post("/api/v1/payments/stripe/webhook")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Stripe-Signature", "test_sig")
                         .content(payload))
@@ -84,13 +84,13 @@ class WebhookIdempotencyTest extends BaseIntegrationTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/webhook/stripe")
+        mockMvc.perform(post("/api/v1/payments/stripe/webhook")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Stripe-Signature", "test_sig")
                         .content(payload1))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(post("/api/webhook/stripe")
+        mockMvc.perform(post("/api/v1/payments/stripe/webhook")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Stripe-Signature", "test_sig")
                         .content(payload2))
@@ -111,13 +111,13 @@ class WebhookIdempotencyTest extends BaseIntegrationTest {
                 """;
 
         // 第一次
-        mockMvc.perform(post("/api/webhook/paypal")
+        mockMvc.perform(post("/api/v1/payments/paypal/webhook")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(status().isOk());
 
         // 重复
-        mockMvc.perform(post("/api/webhook/paypal")
+        mockMvc.perform(post("/api/v1/payments/paypal/webhook")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(status().isOk());

@@ -21,6 +21,10 @@
 
     <!-- ===== Banner 面板 ===== -->
     <div v-show="activeTab === 'banner'">
+      <div class="section-header">
+        <h2 class="section-title">Banner 管理</h2>
+        <button class="btn btn-sm btn-primary" @click="handleAdd">新建 Banner</button>
+      </div>
       <div class="banner-grid">
         <div
           v-for="(item, index) in bannerData"
@@ -61,6 +65,7 @@
               <button class="action-btn" @click="handleToggleStatus(item)">
                 {{ item.status === '投放中' ? '⏸' : '▶' }}
               </button>
+              <button class="action-btn action-btn-danger" @click="handleDelete(item)">删除</button>
             </div>
           </div>
         </div>
@@ -68,18 +73,32 @@
     </div>
 
     <!-- ===== 推荐位面板 ===== -->
-    <div v-show="activeTab === 'recommend'" class="empty-panel">
-      <p>推荐位管理功能开发中</p>
+    <div v-show="activeTab === 'recommend'">
+      <div class="section-header">
+        <h2 class="section-title">推荐位管理</h2>
+        <button class="btn btn-sm btn-primary" @click="handleAddRecommend">新建推荐位</button>
+      </div>
+      <div class="empty-panel">
+        <p>暂无推荐位数据</p>
+        <button class="btn btn-outline" style="margin-top:12px" @click="handleAddRecommend">添加第一个推荐位</button>
+      </div>
     </div>
 
     <!-- ===== 专题页面板 ===== -->
-    <div v-show="activeTab === 'topic'" class="empty-panel">
-      <p>专题页管理功能开发中</p>
+    <div v-show="activeTab === 'topic'">
+      <div class="section-header">
+        <h2 class="section-title">专题页管理</h2>
+        <button class="btn btn-sm btn-primary" @click="handleAddTopic">新建专题页</button>
+      </div>
+      <div class="empty-panel">
+        <p>暂无专题页数据</p>
+        <button class="btn btn-outline" style="margin-top:12px" @click="handleAddTopic">添加第一个专题页</button>
+      </div>
     </div>
 
     <!-- ===== Push推送面板 ===== -->
     <div v-show="activeTab === 'push'" class="empty-panel">
-      <p>Push 推送功能开发中</p>
+      <p>Push 推送功能请前往 <a href="#" @click.prevent="router.push('/push-manage')" style="color:var(--primary);font-weight:600;">推送管理</a> 页面操作</p>
     </div>
 
     <!-- 编辑对话框 -->
@@ -87,6 +106,30 @@
       <el-form :model="editForm" label-width="100px">
         <el-form-item label="标题">
           <el-input v-model="editForm.title" placeholder="请输入 Banner 标题" />
+        </el-form-item>
+        <el-form-item label="类型">
+          <el-select v-model="editForm.type" style="width:100%">
+            <el-option label="BANNER" value="BANNER" />
+            <el-option label="RECOMMEND" value="RECOMMEND" />
+            <el-option label="TOPIC" value="TOPIC" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="封面图片URL">
+          <el-input v-model="editForm.imageUrl" placeholder="请输入封面图片 URL" />
+        </el-form-item>
+        <el-form-item label="链接URL">
+          <el-input v-model="editForm.linkUrl" placeholder="请输入跳转链接" />
+        </el-form-item>
+        <el-form-item label="内容描述">
+          <el-input
+            v-model="editForm.content"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入内容描述"
+          />
+        </el-form-item>
+        <el-form-item label="排序值">
+          <el-input-number v-model="editForm.sortOrder" :min="0" style="width:100%" />
         </el-form-item>
         <el-form-item label="日期范围">
           <el-input v-model="editForm.dateRange" placeholder="例如: 03/01 - 04/30" />
@@ -108,8 +151,11 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getCmsList, createCms, updateCms, updateCmsStatus, reorderCms } from '../api/admin'
+
+const router = useRouter()
 
 const activeTab = ref('banner')
 const dialogVisible = ref(false)
@@ -126,6 +172,19 @@ const tabList = [
 // Banner 列表（通过API获取）
 const bannerData = ref([])
 
+// 格式化日期范围
+function formatDateRange(startTime, endTime) {
+  if (!startTime && !endTime) return ''
+  const fmt = (val) => {
+    if (!val) return ''
+    const d = new Date(val)
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    return mm + '/' + dd
+  }
+  return fmt(startTime) + ' - ' + fmt(endTime)
+}
+
 // 加载Banner列表
 async function loadBannerData() {
   try {
@@ -133,10 +192,15 @@ async function loadBannerData() {
     bannerData.value = (list || []).map(item => ({
       id: item.id,
       title: item.title || '',
-      locations: item.locations || [],
+      type: item.type || 'BANNER',
+      imageUrl: item.cover || item.imageUrl || '',
+      linkUrl: item.link || item.linkUrl || '',
+      content: item.description || item.content || '',
+      sortOrder: item.sortOrder ?? 0,
+      locations: item.location ? [item.location] : [],
       status: item.status || '已暂停',
-      dateRange: item.dateRange || '',
-      ctr: item.ctr || '0%'
+      dateRange: formatDateRange(item.startTime, item.endTime),
+      ctr: item.ctr != null ? (Number(item.ctr) * 100).toFixed(1) + '%' : '0%'
     }))
   } catch (e) {
     console.error('获取CMS列表失败', e)
@@ -158,10 +222,43 @@ function handleEdit(item) {
   dialogVisible.value = true
 }
 
+// 新建 Banner
+function handleAdd() {
+  dialogTitle.value = '新建 Banner'
+  editForm.value = {
+    title: '',
+    type: 'BANNER',
+    imageUrl: '',
+    linkUrl: '',
+    content: '',
+    sortOrder: 0,
+    dateRange: '',
+    status: '已暂停'
+  }
+  dialogVisible.value = true
+}
+
 // 上下移动排序
 async function handleMove(item, dir) {
   try {
-    await reorderCms({ id: item.id, direction: dir })
+    const idx = bannerData.value.findIndex(i => i.id === item.id)
+    if (idx === -1) return
+    const swapIdx = dir === 'up' ? idx - 1 : idx + 1
+    if (swapIdx < 0 || swapIdx >= bannerData.value.length) return
+    
+    // 交换位置
+    const newList = [...bannerData.value]
+    const temp = newList[idx].sortOrder
+    newList[idx].sortOrder = newList[swapIdx].sortOrder
+    newList[swapIdx].sortOrder = temp
+    
+    // 构建后端期望的排序数组
+    const orders = newList.map((item, index) => ({
+      id: item.id,
+      sort: item.sortOrder || index
+    }))
+    
+    await reorderCms(orders)
     ElMessage.success(`已将 "${item.title}" ${dir === 'up' ? '上移' : '下移'}`)
     await loadBannerData()
   } catch (e) {
@@ -181,16 +278,54 @@ async function handleToggleStatus(item) {
   }
 }
 
-// 保存Banner编辑
+// 保存Banner编辑/新建
 async function handleSave() {
   try {
-    await updateCms(editForm.value)
+    // 将前端字段映射为后端期望的字段名
+    const payload = {
+      title: editForm.value.title,
+      type: editForm.value.type,
+      cover: editForm.value.imageUrl,
+      link: editForm.value.linkUrl,
+      description: editForm.value.content,
+      sortOrder: editForm.value.sortOrder,
+      status: editForm.value.status,
+      dateRange: editForm.value.dateRange
+    }
+    if (editForm.value.id) {
+      // 编辑：带上id调用更新接口
+      payload.id = editForm.value.id
+      await updateCms(payload)
+    } else {
+      // 新建：调用创建接口
+      await createCms(payload)
+    }
     ElMessage.success('保存成功')
     dialogVisible.value = false
     await loadBannerData()
   } catch (e) {
     ElMessage.error('保存失败')
   }
+}
+
+// 删除 Banner
+async function handleDelete(item) {
+  try {
+    await deleteCms(item.id)
+    ElMessage.success(`已删除 "${item.title}"`)
+    await loadBannerData()
+  } catch (e) {
+    ElMessage.error('删除失败')
+  }
+}
+
+// 推荐位和专题页新增操作
+function handleAddRecommend() {
+  ElMessage.info('推荐位创建功能开发中，请联系管理员')
+}
+
+function handleAddTopic() {
+  ElMessage.info('专题页创建功能开发中，请联系管理员')
 }
 
 onMounted(() => {
@@ -409,14 +544,37 @@ onMounted(() => {
 .action-btn-primary:hover {
   filter: brightness(0.96);
 }
+.action-btn-danger {
+  color: var(--state-error);
+  border-color: var(--state-error);
+}
+.action-btn-danger:hover {
+  background: var(--state-error-surface);
+  color: var(--state-error);
+}
 
 /* 空面板 */
 .empty-panel {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 200px;
   color: var(--text-400);
   font-size: 14px;
+}
+
+/* Section header 通用样式 */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-800);
+  margin: 0;
 }
 </style>

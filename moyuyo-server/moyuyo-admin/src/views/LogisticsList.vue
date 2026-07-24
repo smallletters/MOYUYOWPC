@@ -158,7 +158,12 @@ async function fetchKpi() {
   try {
     const res = await api.get('/logistics/kpi')
     if (res) {
-      kpiData.value = res
+      kpiData.value = {
+        pendingShip: res.pendingPick || 0,
+        inTransit: res.inTransit || 0,
+        abnormal: res.abnormal || 0,
+        avgTime: res.avgDeliveryHours ? (res.avgDeliveryHours / 24).toFixed(1) : 0
+      }
     }
   } catch (err) {
     console.error('获取物流KPI失败:', err)
@@ -170,7 +175,11 @@ async function fetchWarehouses() {
   try {
     const res = await getWarehouses()
     if (res) {
-      warehouses.value = res
+      warehouses.value = (Array.isArray(res) ? res : []).map(w => ({
+        key: String(w.id),
+        label: w.name,
+        ...w
+      }))
       if (warehouses.value.length > 0 && !activeWarehouse.value) {
         activeWarehouse.value = warehouses.value[0].key
       }
@@ -188,7 +197,17 @@ async function fetchPackages() {
     if (activeWarehouse.value) params.warehouse = activeWarehouse.value
     const res = await api.get('/logistics/packages', { params })
     if (res) {
-      packages.value = res.records || res.list || res
+      const list = res.records || res.list || res
+      packages.value = (Array.isArray(list) ? list : []).map(p => ({
+        ...p,
+        trackingNo: p.trackingNo || p.trackingNumber || '',
+        route: [p.origin, p.destination].filter(Boolean).join(' → ') || '',
+        statusLabel: ({'PENDING':'待发货','IN_TRANSIT':'运输中','DELIVERED':'已签收'})[p.status] || p.status,
+        statusClass: ({'PENDING':'tag-yellow','IN_TRANSIT':'tag-blue','DELIVERED':'tag-green'})[p.status] || '',
+        carrierClass: 'tag-blue',
+        shipTime: p.estimatedDelivery ? new Date(p.estimatedDelivery).toLocaleDateString() : '',
+        eta: p.estimatedDelivery ? new Date(p.estimatedDelivery).toLocaleDateString() : ''
+      }))
     }
   } catch (err) {
     console.error('获取包裹列表失败:', err)
@@ -203,7 +222,12 @@ async function fetchInventoryAlerts() {
   try {
     const res = await getInventoryAlerts()
     if (res) {
-      inventoryAlerts.value = res.records || res.list || res
+      const list = res.records || res.list || res
+      inventoryAlerts.value = (Array.isArray(list) ? list : []).map(a => ({
+        sku: a.sku || a.productCode || '',
+        name: a.name || a.productName || '',
+        stock: a.stock || a.currentStock || 0
+      }))
     }
   } catch (err) {
     console.error('获取库存预警失败:', err)

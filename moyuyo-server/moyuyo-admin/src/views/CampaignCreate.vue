@@ -43,8 +43,8 @@
             <el-tag :type="typeTag(row.type)" size="small">{{ row.type }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="startTime" label="开始时间" width="170" />
-        <el-table-column prop="endTime" label="结束时间" width="170" />
+        <el-table-column prop="startDate" label="开始时间" width="170" />
+        <el-table-column prop="endDate" label="结束时间" width="170" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="statusTag(row.status)" size="small">{{ row.status }}</el-tag>
@@ -110,7 +110,6 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCampaigns, createCampaign, updateCampaign, deleteCampaign } from '../api/admin'
 
-const pageTitle = '活动创建'
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -151,12 +150,14 @@ function statusTag(status) {
 async function loadCampaigns() {
   try {
     const data = await getCampaigns()
-    allCampaigns.value = (data || []).map(item => ({
+    // API返回 {list: [...], total: N}，拦截器已解包data层
+    const rawList = data.list || data || []
+    allCampaigns.value = rawList.map(item => ({
       id: item.id,
       name: item.name || '',
       type: item.type || '',
-      startTime: item.startTime || '',
-      endTime: item.endTime || '',
+      startDate: item.startDate || '',
+      endDate: item.endDate || '',
       status: item.status || '未开始',
       description: item.description || '',
       budget: item.budget ?? 0
@@ -213,7 +214,7 @@ function handleEdit(row) {
   isEdit.value = true
   dialogTitle.value = '编辑活动'
   Object.assign(editForm, row)
-  dateRange.value = [new Date(row.startTime), new Date(row.endTime)]
+  dateRange.value = [new Date(row.startDate), new Date(row.endDate)]
   dialogVisible.value = true
 }
 
@@ -242,8 +243,8 @@ async function handleSave() {
         type: editForm.type,
         description: editForm.description,
         budget: editForm.budget,
-        startTime: dateRange.value ? dateRange.value[0].toISOString() : '',
-        endTime: dateRange.value ? dateRange.value[1].toISOString() : ''
+        startDate: dateRange.value ? dateRange.value[0].toISOString() : '',
+        endDate: dateRange.value ? dateRange.value[1].toISOString() : ''
       })
       ElMessage.success('编辑成功')
     } else {
@@ -252,8 +253,8 @@ async function handleSave() {
         type: editForm.type,
         description: editForm.description,
         budget: editForm.budget,
-        startTime: dateRange.value ? dateRange.value[0].toISOString() : '',
-        endTime: dateRange.value ? dateRange.value[1].toISOString() : ''
+        startDate: dateRange.value ? dateRange.value[0].toISOString() : '',
+        endDate: dateRange.value ? dateRange.value[1].toISOString() : ''
       })
       ElMessage.success('创建成功')
     }

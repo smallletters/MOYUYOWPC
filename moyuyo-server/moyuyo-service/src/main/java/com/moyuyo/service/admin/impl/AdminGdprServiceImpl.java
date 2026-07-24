@@ -6,7 +6,10 @@ import com.moyuyo.dao.admin.entity.GdprConsentEntity;
 import com.moyuyo.dao.admin.entity.GdprRequestEntity;
 import com.moyuyo.dao.admin.mapper.GdprConsentMapper;
 import com.moyuyo.dao.admin.mapper.GdprRequestMapper;
+import com.moyuyo.dao.admin.mapper.GdprPolicyMapper;
+import com.moyuyo.dao.admin.entity.GdprPolicyEntity;
 import com.moyuyo.service.admin.AdminGdprService;
+import static com.moyuyo.common.enums.GeneralStatusEnum.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +27,7 @@ public class AdminGdprServiceImpl implements AdminGdprService {
 
   private final GdprConsentMapper gdprConsentMapper;
   private final GdprRequestMapper gdprRequestMapper;
+    private final GdprPolicyMapper gdprPolicyMapper;
 
   @Override
   public Page<Map<String, Object>> listConsents(Long userId, int page, int size) {
@@ -84,5 +88,26 @@ public class AdminGdprServiceImpl implements AdminGdprService {
       entity.setProcessedTime(LocalDateTime.now());
       gdprRequestMapper.updateById(entity);
     }
+  }
+
+  @Override
+  public Map<String, Object> getActivePolicy() {
+    // 查询最新生效的隐私政策
+    LambdaQueryWrapper<GdprPolicyEntity> wrapper = new LambdaQueryWrapper<GdprPolicyEntity>()
+        .eq(GdprPolicyEntity::getStatus, ACTIVE.name())
+        .orderByDesc(GdprPolicyEntity::getCreateTime)
+        .last("LIMIT 1");
+    GdprPolicyEntity policy = gdprPolicyMapper.selectOne(wrapper);
+    if (policy == null) {
+      return new LinkedHashMap<>();
+    }
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("id", policy.getId());
+    result.put("version", policy.getVersion());
+    result.put("title", policy.getTitle());
+    result.put("content", policy.getContent());
+    result.put("effectiveDate", policy.getEffectiveDate());
+    result.put("createTime", policy.getCreateTime());
+    return result;
   }
 }

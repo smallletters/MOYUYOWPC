@@ -3,7 +3,7 @@
     <div class="page-header">
       <h2>商品报表</h2>
       <div class="header-actions">
-        <el-button type="primary" @click="handleExport">导出报表</el-button>
+        <el-button type="primary" :loading="exporting" @click="handleExport">导出报表</el-button>
       </div>
     </div>
     <el-card shadow="never" class="filter-card">
@@ -63,7 +63,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getProductAnalysisReport, getProductAnalysisList } from '../api/admin'
+import { getProductAnalysisReport, getProductAnalysisList, getOrderOpsExport } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -104,8 +104,19 @@ function handleSearch() { currentPage.value = 1; loadData() }
 
 function handleReset() { filters.keyword = ''; dateRange.value = null; handleSearch() }
 
-function handleExport() {
-  ElMessage.success('报表导出中，请稍后下载')
+const exporting = ref(false)
+
+async function handleExport() {
+  exporting.value = true
+  try {
+    await getOrderOpsExport()
+    ElMessage.success('报表导出成功，请稍后下载')
+  } catch (e) {
+    console.error('导出失败:', e)
+    ElMessage.error('导出失败: ' + (e.message || '未知错误'))
+  } finally {
+    exporting.value = false
+  }
 }
 
 function handleDetail(row) {

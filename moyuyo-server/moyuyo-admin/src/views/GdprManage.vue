@@ -3,7 +3,7 @@
     <div class="page-header">
       <h2>GDPR 合规</h2>
       <div class="header-actions">
-        <el-button type="primary" @click="handleAdd">新建隐私政策</el-button>
+        <el-button type="primary" disabled @click="handleAdd">新建隐私政策</el-button>
       </div>
     </div>
     <!-- 隐私政策版本 -->
@@ -15,7 +15,7 @@
             <div class="policy-version">版本 {{ policy.version }}</div>
             <div class="policy-date">生效日期：{{ policy.effectiveDate }}</div>
             <div class="policy-desc">{{ policy.description }}</div>
-            <el-button type="primary" link @click="handleViewPolicy">查看全文</el-button>
+            <el-button type="primary" link disabled @click="handleViewPolicy">查看全文</el-button>
           </div>
         </el-card>
       </el-col>

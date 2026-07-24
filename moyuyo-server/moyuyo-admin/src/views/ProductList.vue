@@ -160,21 +160,30 @@ async function fetchProducts() {
   try {
     const params = {
       page: currentPage.value,
-      pageSize: pageSize,
-      tab: activeTab.value,
-      ...filters
+      size: pageSize,
+      keyword: filters.search || undefined
     }
+    // 根据 activeTab 设置状态筛选
+    if (activeTab.value !== 'all') {
+      params.status = activeTab.value
+    }
+    // 传递分类筛选参数
+    if (filters.category) {
+      params.categoryId = filters.category
+    }
+    // 传递库存状态筛选参数
+    if (filters.stock) {
+      params.stockStatus = filters.stock
+    }
+    // 删除空值
     Object.keys(params).forEach(k => {
       if (!params[k]) delete params[k]
     })
     const res = await api.get('/products/list', { params })
     if (res) {
-      productList.value = res.records || res.list || res
+      const list = res.records || res.list || res
+      productList.value = Array.isArray(list) ? list : []
       total.value = res.total || 0
-      // 如果有分类统计，更新 tab 计数
-      if (res.tabCounts) {
-        tabs.value = res.tabCounts
-      }
     }
   } catch (err) {
     console.error('获取商品列表失败:', err)
@@ -213,12 +222,12 @@ function handleReset() {
 
 // 跳转到新增商品页
 function handleAddProduct() {
-  router.push('/products/edit')
+  router.push('/products/add')
 }
 
 // 跳转到编辑商品页，携带商品 ID
 function handleEdit(product) {
-  router.push(`/products/edit?id=${product.id}`)
+  router.push(`/products/edit/${product.id}`)
 }
 
 // 发送 API 请求切换商品状态（上架/下架）
@@ -249,6 +258,11 @@ async function handleBatchAction(action) {
 // 切换 tab 时重新加载数据
 watch(activeTab, () => {
   currentPage.value = 1
+  fetchProducts()
+})
+
+// 监听页码变化，重新加载数据
+watch(currentPage, () => {
   fetchProducts()
 })
 

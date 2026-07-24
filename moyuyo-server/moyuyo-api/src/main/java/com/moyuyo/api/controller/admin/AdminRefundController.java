@@ -98,4 +98,63 @@ public class AdminRefundController {
       return Result.error("查询退款原因分布失败: " + e.getMessage());
     }
   }
+
+  @Operation(summary = "同意退款")
+  @PutMapping("/{id}/approve")
+  public Result<Map<String, Object>> approve(@PathVariable Long id) {
+    try {
+      refundService.approveRefund(id, 0L);
+      return Result.success(Map.of("id", id, "message", "退款已批准"));
+    } catch (IllegalArgumentException | IllegalStateException e) {
+      return Result.error(e.getMessage());
+    } catch (Exception e) {
+      return Result.error("同意退款失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "拒绝退款")
+  @PutMapping("/{id}/reject")
+  public Result<Map<String, Object>> reject(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
+    try {
+      String reason = body != null ? body.get("reason") : null;
+      refundService.rejectRefund(id, 0L, reason);
+      return Result.success(Map.of("id", id, "message", "退款已拒绝"));
+    } catch (IllegalArgumentException | IllegalStateException e) {
+      return Result.error(e.getMessage());
+    } catch (Exception e) {
+      return Result.error("拒绝退款失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "批量同意退款")
+  @PutMapping("/batch-approve")
+  public Result<Map<String, Object>> batchApprove(@RequestBody Map<String, Object> body) {
+    try {
+      List<Long> ids = new ArrayList<>();
+      Object idsObj = body.get("ids");
+      if (idsObj instanceof List) {
+        for (Object item : (List<?>) idsObj) {
+          if (item instanceof Number) {
+            ids.add(((Number) item).longValue());
+          }
+        }
+      }
+      if (ids.isEmpty()) {
+        return Result.error("请选择要批准的退款");
+      }
+      int success = 0;
+      int fail = 0;
+      for (Long id : ids) {
+        try {
+          refundService.approveRefund(id, 0L);
+          success++;
+        } catch (Exception e) {
+          fail++;
+        }
+      }
+      return Result.success(Map.of("success", success, "fail", fail, "message", "批量处理完成"));
+    } catch (Exception e) {
+      return Result.error("批量同意退款失败: " + e.getMessage());
+    }
+  }
 }

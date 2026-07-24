@@ -103,6 +103,8 @@ CREATE TABLE mo_order (
     points_discount DECIMAL(10,2) DEFAULT 0,
     pay_amount DECIMAL(10,2) DEFAULT 0,
     currency VARCHAR(10) DEFAULT 'USD',
+    coupon_id VARCHAR(100),
+    points_used INT DEFAULT 0,
     status VARCHAR(20) DEFAULT 'PENDING_PAY',
     pay_channel VARCHAR(20),
     pay_transaction_id VARCHAR(255),
@@ -112,10 +114,16 @@ CREATE TABLE mo_order (
     sync_last_time DATETIME,
     tracking_number VARCHAR(100),
     shipping_carrier VARCHAR(100),
+    remark VARCHAR(500),
+    sender_name VARCHAR(100),
+    sender_phone VARCHAR(50),
+    sender_address VARCHAR(500),
     receiver_name VARCHAR(100),
     receiver_phone VARCHAR(50),
     receiver_address VARCHAR(500),
     receiver_zip VARCHAR(20),
+    shipping_method VARCHAR(100),
+    delivery_note TEXT,
     delete_status INT DEFAULT 0,
     create_time DATETIME NOT NULL,
     paid_at DATETIME,
@@ -308,6 +316,21 @@ CREATE TABLE mo_flash_sale_order (
 
 -- ===== Admin 模块表（测试用） =====
 
+DROP TABLE IF EXISTS mo_product_review;
+CREATE TABLE mo_product_review (
+    id BIGINT PRIMARY KEY,
+    product_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    order_id BIGINT,
+    order_item_id BIGINT,
+    rating INT DEFAULT 5,
+    content TEXT,
+    tags VARCHAR(500),
+    images TEXT,
+    status VARCHAR(20) DEFAULT 'PENDING',
+    create_time DATETIME NOT NULL
+);
+
 DROP TABLE IF EXISTS mo_admin_user;
 CREATE TABLE mo_admin_user (
     id BIGINT PRIMARY KEY,
@@ -328,35 +351,35 @@ CREATE TABLE mo_admin_role (
     name VARCHAR(64) NOT NULL,
     description VARCHAR(255),
     status VARCHAR(20) DEFAULT 'ACTIVE',
-    created_at DATETIME,
-    updated_at DATETIME
+    create_time DATETIME,
+    update_time DATETIME
 );
 
 DROP TABLE IF EXISTS mo_admin_permission;
 CREATE TABLE mo_admin_permission (
     id BIGINT PRIMARY KEY,
     role_id BIGINT NOT NULL,
-    permission_code VARCHAR(64) NOT NULL,
-    created_at DATETIME,
-    updated_at DATETIME
+    resource VARCHAR(64),
+    action VARCHAR(32),
+    create_time DATETIME
 );
 
 DROP TABLE IF EXISTS mo_push_record;
 CREATE TABLE mo_push_record (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    id BIGINT PRIMARY KEY,
     title VARCHAR(200),
-    summary TEXT,
+    content TEXT,
     type VARCHAR(32),
-    target_url VARCHAR(500),
-    target_user_count INT DEFAULT 0,
+    target_type VARCHAR(32),
+    target_ids VARCHAR(500),
     status VARCHAR(16) DEFAULT 'DRAFT',
-    sent_count INT DEFAULT 0,
-    delivered_count INT DEFAULT 0,
-    click_count INT DEFAULT 0,
+    success_count INT DEFAULT 0,
+    fail_count INT DEFAULT 0,
     scheduled_time DATETIME,
     sent_time DATETIME,
-    created_at DATETIME NOT NULL,
-    updated_at DATETIME
+    create_by BIGINT,
+    create_time DATETIME NOT NULL,
+    update_time DATETIME
 );
 
 DROP TABLE IF EXISTS mo_cms_content;

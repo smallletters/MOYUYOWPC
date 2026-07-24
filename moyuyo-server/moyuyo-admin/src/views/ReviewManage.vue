@@ -103,7 +103,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getReviewList, approveReview, replyReview } from '../api/admin'
+import { getReviewList, approveReview, replyReview, rejectReview } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -184,7 +184,6 @@ function handleEdit(row) {
 async function handleDelete(row) {
   try {
     await ElMessageBox.confirm('确认删除该评价吗？', '提示', { type: 'warning' })
-    const { rejectReview } = await import('../api/admin')
     await rejectReview(row.id)
     ElMessage.success('删除成功')
     await loadData()
@@ -200,7 +199,6 @@ async function handleSave() {
       if (editForm.status === '已审核') {
         await approveReview(editForm.id)
       } else {
-        const { rejectReview } = await import('../api/admin')
         await rejectReview(editForm.id)
       }
       // 有回复内容则保存回复

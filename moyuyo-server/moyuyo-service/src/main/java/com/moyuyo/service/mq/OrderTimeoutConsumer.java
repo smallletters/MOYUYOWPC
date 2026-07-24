@@ -1,6 +1,10 @@
 package com.moyuyo.service.mq;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.common.mq.TopicConstant;
+import com.moyuyo.dao.entity.OrderEntity;
+import com.moyuyo.service.OrderService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.annotation.MessageModel;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
@@ -14,6 +18,8 @@ import org.springframework.stereotype.Component;
  * </p>
  */
 @Slf4j
+@Component
+@RequiredArgsConstructor
 @RocketMQMessageListener(
     topic = TopicConstant.ORDER_CREATED,
     consumerGroup = TopicConstant.CONSUMER_GROUP_ORDER,
@@ -21,10 +27,40 @@ import org.springframework.stereotype.Component;
 )
 public class OrderTimeoutConsumer implements RocketMQListener<String> {
 
+    private final OrderService orderService;
+    private final ObjectMapper objectMapper;
+
     @Override
     public void onMessage(String message) {
         log.info("收到订单超时检查消息: {}", message);
-        // 延迟30分钟后检查订单是否已支付，未支付则自动取消
-        // TODO: 实际逻辑使用 RocketMQ 延迟消息等级
+        try {
+            // 解析消息获取订单ID
+            Long orderId = null;
+            try {
+                @SuppressWarnings("unchecked")
+                var msgMap = objectMapper.readValue(message, java.util.Map.class);
+                orderId = Long.valueOf(msgMap.get("orderId").toString());
+            } catch (Exception e) {
+                log.warn("无法解析消息中的订单ID，尝试直接解析为数字: {}", message);
+                orderId = Long.valueOf(message.trim());
+            }
+
+            // 查询订单详情
+            OrderEntity order = orderService.getOrderDetail(orderId, null);
+            if (order == null) {
+                log.warn("订单不存在: {}", orderId);
+                return;
+            }
+
+            // 检查订单状态，仅自动取消未支付的订单
+            if ("PENDING".equals(order.getStatus()) || "UNPAID".equals(order.getStatus())) {
+                log.info("订单 {} 超时未支付，自动取消", orderId);
+                orderService.cancelOrder(orderId, null, "订单超时自动取消");
+            } else {
+                log.info("订单 {} 当前状态为 {}，无需自动取消", orderId, order.getStatus());
+            }
+        } catch (Exception e) {
+            log.error("处理订单超时检查消息失败: {}", e.getMessage(), e);
+        }
     }
 }

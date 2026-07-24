@@ -6,10 +6,11 @@ import com.moyuyo.dao.entity.ProductImageEntity;
 import com.moyuyo.dao.entity.ProductSkuEntity;
 
 import java.util.List;
+import java.util.Map;
 
 public interface ProductService {
 
-  Page<ProductEntity> listProducts(int page, int size, Long categoryId, String sortBy, String sortOrder, String keyword, Long brandIpId);
+  Page<ProductEntity> listProducts(int page, int size, Long categoryId, String sortBy, String sortOrder, String keyword, String status, String stockStatus, Long brandIpId);
 
   ProductEntity getProductDetail(Long productId);
 
@@ -18,4 +19,16 @@ public interface ProductService {
   List<ProductImageEntity> getImagesByProductId(Long productId);
 
   ProductEntity getProductWithDetails(Long productId);
+
+  /** 创建商品，含SPU编码唯一性校验 */
+  ProductEntity createProduct(Map<String, Object> body);
+
+  /** 更新商品，含存在性校验 */
+  ProductEntity updateProduct(Long id, Map<String, Object> body);
+
+  /** 切换商品上架/下架状态 */
+  ProductEntity toggleProductStatus(Long id);
+
+  /** 批量操作商品（上架/下架/删除） */
+  int batchProductAction(String action, List<Long> ids);
 }

@@ -7,6 +7,7 @@ import com.moyuyo.dao.entity.LogisticsEntity;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.mapper.LogisticsMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
+import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.service.LogisticsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +31,7 @@ public class LogisticsServiceImpl implements LogisticsService {
     public LogisticsEntity shipOrder(Long orderId, String carrier, String trackingNumber) {
         OrderEntity order = orderMapper.selectById(orderId);
         if (order == null) throw new IllegalArgumentException("订单不存在");
-        if (!"PAID".equals(order.getStatus())) throw new IllegalStateException("订单未支付，不能发货");
+        if (!OrderStatusEnum.PAID.name().equals(order.getStatus())) throw new IllegalStateException("订单未支付，不能发货");
 
         LogisticsEntity existing = logisticsMapper.selectOne(
                 new LambdaQueryWrapper<LogisticsEntity>()
@@ -45,7 +46,7 @@ public class LogisticsServiceImpl implements LogisticsService {
         logistics.setTraces(toTracesJson("Shipped", carrier, trackingNumber));
         logisticsMapper.insert(logistics);
 
-        order.setStatus("PENDING_SHIP");
+        order.setStatus(OrderStatusEnum.SHIPPED.name());
         order.setShippingCarrier(carrier);
         order.setTrackingNumber(trackingNumber);
         order.setDeliverTime(LocalDateTime.now());
@@ -85,7 +86,7 @@ public class LogisticsServiceImpl implements LogisticsService {
 
         OrderEntity order = orderMapper.selectById(orderId);
         if (order != null) {
-            order.setStatus("RECEIVED");
+            order.setStatus(OrderStatusEnum.RECEIVED.name());
             order.setReceivedTime(LocalDateTime.now());
             orderMapper.updateById(order);
         }

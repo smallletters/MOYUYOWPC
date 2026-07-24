@@ -26,11 +26,11 @@ public class AdminProductAnalysisController {
     return Result.success(data);
   }
 
-  @Operation(summary = "商品分析列表")
+  @Operation(summary = "商品分析列表（销量排行）")
   @GetMapping("/list")
-  // TODO: 需要基于 overview/topSales 返回值或创建更详细的查询方法
-  public Result<List<Map<String, Object>>> list() {
-    List<Map<String, Object>> list = adminProductAnalysisService.topSales(20);
+  public Result<List<Map<String, Object>>> list(@RequestParam(defaultValue = "20") int limit) {
+    // 返回销量排行数据，支持自定义返回条数
+    List<Map<String, Object>> list = adminProductAnalysisService.topSales(limit);
     return Result.success(list);
   }
 
@@ -39,8 +39,8 @@ public class AdminProductAnalysisController {
   public Result<List<Map<String, Object>>> report(
       @RequestParam(required = false) LocalDate startDate,
       @RequestParam(required = false) LocalDate endDate) {
-    // 从数据库查询真实商品数据
-    List<Map<String, Object>> list = adminProductAnalysisService.report();
+    // 传入日期范围参数进行数据筛选
+    List<Map<String, Object>> list = adminProductAnalysisService.report(startDate, endDate);
     return Result.success(list);
   }
 }

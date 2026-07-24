@@ -1,5 +1,6 @@
 package com.moyuyo.service.admin;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -26,4 +27,29 @@ public interface AdminContentReviewService {
    * 审核驳回
    */
   void reject(Long id, Long reviewerId, String reason, String comment);
+
+  /**
+   * 隐藏内容
+   */
+  void hide(Long id);
+
+  /**
+   * 删除内容
+   */
+  void deleteContent(Long id);
+
+  /**
+   * 封禁内容
+   */
+  void ban(Long id);
+
+  /**
+   * 审核统计数据
+   */
+  Map<String, Object> getStats();
+
+  /**
+   * 审核趋势数据
+   */
+  List<Map<String, Object>> getTrend(int days);
 }

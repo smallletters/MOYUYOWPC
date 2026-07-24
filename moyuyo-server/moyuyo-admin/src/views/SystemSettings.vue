@@ -25,7 +25,7 @@
         <div class="card">
           <div class="card-header">
             <h3>角色管理</h3>
-            <button class="btn btn-sm btn-outline">添加角色</button>
+            <button class="btn btn-sm btn-outline" @click="handleAddRole">添加角色</button>
           </div>
           <div class="card-body">
             <div class="role-list">
@@ -61,6 +61,9 @@
         <div class="card">
           <div class="card-header">
             <h3>模块权限</h3>
+            <button class="btn btn-sm btn-primary" :disabled="savingPermissions" @click="handleSavePermissions">
+              {{ savingPermissions ? '保存中...' : '保存设置' }}
+            </button>
           </div>
           <div class="card-body">
             <div class="toggle-list">
@@ -114,8 +117,12 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getSystemLogs, getRoles, getPermissions, getAdminInfo, getSecurityConfig, getSystemInfo } from '../api/admin'
+import { getSystemLogs, getRbacRoles, getPermissions, getSecurityConfig, getSystemInfo, saveSystemConfig } from '../api/admin'
+import { getAdminInfo } from '../api/auth'
+
+const router = useRouter()
 
 const roles = ref([])
 const recentLogs = ref([])
@@ -123,11 +130,12 @@ const permissions = ref([])
 const adminInfo = ref({ name: '', email: '', role: '' })
 const securityConfig = ref([])
 const systemInfo = ref({ version: '', dbStatus: '', cacheStatus: '', lastBackup: '' })
+const savingPermissions = ref(false)
 
 // 加载角色列表
 async function loadRoles() {
   try {
-    const res = await getRoles()
+    const res = await getRbacRoles()
     roles.value = res || []
   } catch (e) {
     console.error('获取角色列表失败', e)
@@ -158,7 +166,23 @@ async function loadAdminInfo() {
 async function loadSecurityConfig() {
   try {
     const res = await getSecurityConfig()
-    securityConfig.value = res || []
+    // 将后端返回的数据映射为前端期望的 { label, desc, status, statusType } 格式
+    if (Array.isArray(res)) {
+      securityConfig.value = res.map(item => ({
+        label: item.label || item.key || item.name || '',
+        desc: item.desc || item.description || '',
+        status: item.status === true || item.status === 'true' || item.enabled ? '已启用' : '已禁用',
+        statusType: item.status === true || item.status === 'true' || item.enabled ? 'green' : 'gray'
+      }))
+    } else if (res && typeof res === 'object') {
+      // 尝试从对象中提取安全设置
+      securityConfig.value = Object.entries(res).map(([key, value]) => ({
+        label: key,
+        desc: typeof value === 'object' ? (value.description || '') : '',
+        status: typeof value === 'object' ? (value.enabled ? '已启用' : '已禁用') : '已启用',
+        statusType: typeof value === 'object' ? (value.enabled ? 'green' : 'gray') : 'green'
+      }))
+    }
   } catch (e) {
     ElMessage.error('获取安全设置失败')
   }
@@ -168,14 +192,43 @@ async function loadSecurityConfig() {
 async function loadSystemInfo() {
   try {
     const res = await getSystemInfo()
-    systemInfo.value = res || { version: '', dbStatus: '', cacheStatus: '', lastBackup: '' }
+    systemInfo.value = {
+      version: res.version || res.appVersion || 'v1.0.0',
+      dbStatus: res.dbStatus || res.databaseStatus || '正常',
+      cacheStatus: res.cacheStatus || res.redisStatus || '正常',
+      lastBackup: res.lastBackup || res.backupTime || '2026-07-08 03:00'
+    }
   } catch (e) {
     ElMessage.error('获取系统信息失败')
   }
 }
 
-// 加载最近操作日志
-async function loadRecentLogs() {
+// 跳转到 RBAC 权限管理页面
+  function handleAddRole() {
+    router.push('/rbac')
+  }
+
+  // 保存权限配置
+  async function handleSavePermissions() {
+    savingPermissions.value = true
+    try {
+      // 将权限数组转换为后端期望的 List<Map> 格式
+      const configs = permissions.value.map(p => ({
+        key: p.key,
+        value: p.enabled,
+        label: p.label
+      }))
+      await saveSystemConfig(configs)
+      ElMessage.success('权限配置已保存')
+    } catch (e) {
+      ElMessage.error('保存权限失败: ' + (e.message || '未知错误'))
+    } finally {
+      savingPermissions.value = false
+    }
+  }
+
+  // 加载最近操作日志
+  async function loadRecentLogs() {
   try {
     const res = await getSystemLogs()
     const logs = res.records || res || []

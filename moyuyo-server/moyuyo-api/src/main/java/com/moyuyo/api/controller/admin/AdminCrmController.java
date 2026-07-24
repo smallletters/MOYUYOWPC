@@ -13,7 +13,7 @@ import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -25,36 +25,21 @@ import java.util.stream.Collectors;
 
 @Tag(name = "管理后台 - CRM管理")
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/admin/crm")
 public class AdminCrmController {
 
   private final OrderMapper orderMapper;
   private final UserMapper userMapper;
   private final OrderItemMapper orderItemMapper;
-
-  // 新DAO模块maven安装失败时允许为null，避免ClassNotFoundException
-  @Autowired(required = false)
-  private CsPerformanceMapper csPerformanceMapper;
-
-  // 手动构造器注入必需的依赖
-  public AdminCrmController(OrderMapper orderMapper,
-                              UserMapper userMapper,
-                              OrderItemMapper orderItemMapper) {
-    this.orderMapper = orderMapper;
-    this.userMapper = userMapper;
-    this.orderItemMapper = orderItemMapper;
-  }
+  private final CsPerformanceMapper csPerformanceMapper;
 
   @Operation(summary = "客服绩效列表")
   @GetMapping("/cs-performance")
   public Result<List<Map<String, Object>>> csPerformance(
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "15") int size) {
-    // 新Mapper可能因maven安装失败为null，返回空列表
-    if (csPerformanceMapper == null) {
-      return Result.success(Collections.emptyList());
-    }
-    Page<CsPerformanceEntity> pageResult = ((CsPerformanceMapper) csPerformanceMapper).selectPage(
+    Page<CsPerformanceEntity> pageResult = csPerformanceMapper.selectPage(
         new Page<>(page, size),
         new LambdaQueryWrapper<CsPerformanceEntity>()
             .orderByDesc(CsPerformanceEntity::getTodayTickets));
@@ -76,11 +61,7 @@ public class AdminCrmController {
   @Operation(summary = "客服详情")
   @GetMapping("/{agentId}/cs-detail")
   public Result<Map<String, Object>> csDetail(@PathVariable Long agentId) {
-    // 新Mapper可能因maven安装失败为null
-    if (csPerformanceMapper == null) {
-      return Result.error("客服服务暂不可用");
-    }
-    CsPerformanceEntity entity = ((CsPerformanceMapper) csPerformanceMapper).selectOne(
+    CsPerformanceEntity entity = csPerformanceMapper.selectOne(
         new LambdaQueryWrapper<CsPerformanceEntity>().eq(CsPerformanceEntity::getId, agentId));
     if (entity == null) {
       return Result.error("客服不存在");

@@ -22,8 +22,10 @@ public class AdminCsSessionController {
     public Result<Map<String, Object>> list(
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "10") int size,
-        @RequestParam(required = false) String status) {
-        return Result.success(adminCsSessionService.listAll(page, size, status));
+        @RequestParam(required = false) String status,
+        @RequestParam(required = false) String sessionId,
+        @RequestParam(required = false) String userId) {
+        return Result.success(adminCsSessionService.listAll(page, size, status, sessionId, userId));
     }
 
     @Operation(summary = "会话详情")

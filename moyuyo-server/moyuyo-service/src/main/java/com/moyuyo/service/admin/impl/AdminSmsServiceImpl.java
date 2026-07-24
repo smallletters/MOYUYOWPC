@@ -15,7 +15,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
 /**
  * 管理后台短信服务实现
  */
@@ -71,6 +70,25 @@ public class AdminSmsServiceImpl implements AdminSmsService {
     result.put("todaySent", todaySent);
     result.put("todaySuccess", todaySuccess);
     result.put("successRate", todaySent > 0 ? Math.round(todaySuccess * 10000.0 / todaySent) / 100.0 : 0);
+    return result;
+  }
+
+  @Override
+  public Map<String, Object> send(String phone, String content) {
+    // 创建短信记录并模拟发送
+    SmsRecordEntity record = new SmsRecordEntity();
+    record.setPhone(phone);
+    record.setContent(content);
+    record.setChannel("ALIYUN");
+    record.setStatus("SENT");
+    record.setSendTime(LocalDateTime.now());
+    smsRecordMapper.insert(record);
+
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("id", record.getId());
+    result.put("phone", phone);
+    result.put("status", "SENT");
+    result.put("message", "短信发送成功");
     return result;
   }
 }

@@ -6,7 +6,6 @@ import com.moyuyo.common.Result;
 import com.moyuyo.common.dto.admin.inventory.InventoryCheckRequest;
 import com.moyuyo.common.dto.admin.inventory.InventoryCheckResponse;
 import com.moyuyo.common.dto.admin.inventory.InventoryItemResponse;
-import com.moyuyo.common.dto.admin.inventory.InventoryOverviewResponse;
 import com.moyuyo.common.dto.admin.inventory.StockUpdateRequest;
 import com.moyuyo.dao.admin.entity.InventoryCheckEntity;
 import com.moyuyo.dao.admin.mapper.InventoryCheckMapper;
@@ -17,7 +16,7 @@ import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.admin.InventoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -27,39 +26,30 @@ import java.util.stream.Collectors;
 
 @Tag(name = "管理后台 - 库存管理")
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/admin/inventory")
 public class AdminInventoryController {
 
   private final InventoryService inventoryService;
-
   private final ProductSkuMapper productSkuMapper;
-
   private final ProductMapper productMapper;
-
-  // 新DAO模块maven安装失败时允许为null，避免ClassNotFoundException
-  @Autowired(required = false)
-  private InventoryCheckMapper inventoryCheckMapper;
-
-  // 手动构造器注入必需的依赖
-  public AdminInventoryController(InventoryService inventoryService,
-                                   ProductSkuMapper productSkuMapper,
-                                   ProductMapper productMapper) {
-    this.inventoryService = inventoryService;
-    this.productSkuMapper = productSkuMapper;
-    this.productMapper = productMapper;
-  }
+  private final InventoryCheckMapper inventoryCheckMapper;
 
   @Operation(summary = "库存概览")
   @GetMapping("/overview")
-  public Result<InventoryOverviewResponse> overview() {
+  public Result<Map<String, Object>> overview() {
     try {
       Map<String, Object> svcResult = inventoryService.getInventoryOverview();
-      InventoryOverviewResponse resp = new InventoryOverviewResponse();
-      resp.setTotalProducts((int) svcResult.get("totalProducts"));
-      resp.setLowStockCount((int) svcResult.get("lowStockCount"));
-      resp.setOutOfStockCount((int) svcResult.get("outOfStockCount"));
-      resp.setAlertCount((int) svcResult.get("alertCount"));
-      return Result.success(resp);
+      // 返回前端期望的字段名
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("totalSku", svcResult.getOrDefault("totalSku",
+          productSkuMapper.selectCount(new LambdaQueryWrapper<>())));
+      result.put("weeklyIncrease", 0); // 暂无周增长数据
+      result.put("lowStockAlerts", svcResult.getOrDefault("lowStockCount", 0));
+      result.put("urgentReplenish", 0); // 暂无紧急补货数据
+      result.put("expiringBatches", 0); // 暂无临期批次数据
+      result.put("inTransit", 0); // 暂无在途调拨数据
+      return Result.success(result);
     } catch (Exception e) {
       return Result.error("查询库存概览失败: " + e.getMessage());
     }
@@ -67,20 +57,48 @@ public class AdminInventoryController {
 
   @Operation(summary = "预警列表")
   @GetMapping("/alerts")
-  public Result<List<InventoryItemResponse>> alerts() {
+  public Result<Map<String, Object>> alerts() {
     try {
-      List<Map<String, Object>> svcResult = inventoryService.getAlertList();
-      List<InventoryItemResponse> list = new ArrayList<>();
-      for (Map<String, Object> item : svcResult) {
-        InventoryItemResponse resp = new InventoryItemResponse();
-        resp.setId((Long) item.get("id"));
-        resp.setName((String) item.get("name"));
-        resp.setSku((String) item.get("sku"));
-        resp.setStock((int) item.get("stock"));
-        resp.setAlertThreshold((int) item.get("alertThreshold"));
-        list.add(resp);
+      // 查询所有SKU库存数据
+      List<ProductSkuEntity> allSkus = productSkuMapper.selectList(new LambdaQueryWrapper<>());
+      // 批量查询商品名
+      Set<Long> productIds = allSkus.stream().map(ProductSkuEntity::getProductId).collect(Collectors.toSet());
+      Map<Long, ProductEntity> productMap = new HashMap<>();
+      if (!productIds.isEmpty()) {
+        productMapper.selectBatchIds(productIds)
+            .forEach(p -> productMap.put(p.getId(), p));
       }
-      return Result.success(list);
+
+      int safetyThreshold = 10; // 默认安全阈值
+      List<Map<String, Object>> severeAlerts = new ArrayList<>();
+      List<Map<String, Object>> generalAlerts = new ArrayList<>();
+
+      for (ProductSkuEntity sku : allSkus) {
+        int currentStock = sku.getStock() != null ? sku.getStock() : 0;
+        if (currentStock >= safetyThreshold) continue;
+
+        ProductEntity product = productMap.get(sku.getProductId());
+        Map<String, Object> alert = new LinkedHashMap<>();
+        alert.put("sku", sku.getSkuCode());
+        alert.put("name", product != null ? product.getName() : "未知商品");
+        alert.put("currentStock", currentStock);
+        alert.put("safeThreshold", safetyThreshold);
+        alert.put("gap", safetyThreshold - currentStock);
+        alert.put("percent", currentStock > 0
+            ? (currentStock * 100 / safetyThreshold) : 0);
+
+        // 严重预警：库存为0或不足安全阈值的50%
+        if (currentStock == 0 || currentStock < safetyThreshold * 0.5) {
+          severeAlerts.add(alert);
+        } else {
+          generalAlerts.add(alert);
+        }
+      }
+
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("severe", severeAlerts);
+      result.put("general", generalAlerts);
+      return Result.success(result);
     } catch (Exception e) {
       return Result.error("查询预警列表失败: " + e.getMessage());
     }
@@ -125,9 +143,9 @@ public class AdminInventoryController {
         item.put("availableStock", sku.getStock() != null ? sku.getStock() : 0);
         // 安全库存：取当前库存的10%作为安全库存线
         BigDecimal stockBd = new BigDecimal(sku.getStock() != null ? sku.getStock() : 0);
-        item.put("safetyStock", stockBd.multiply(new BigDecimal("0.1")).setScale(0, RoundingMode.HALF_UP).intValue());
+        item.put("safeThreshold", stockBd.multiply(new BigDecimal("0.1")).setScale(0, RoundingMode.HALF_UP).intValue());
         item.put("price", sku.getPrice() != null ? sku.getPrice() : BigDecimal.ZERO);
-        item.put("lastCheckTime", null);
+        item.put("updateTime", null); // SKU表暂无updateTime字段
         list.add(item);
       }
 
@@ -168,10 +186,6 @@ public class AdminInventoryController {
   @Operation(summary = "新增盘点")
   @PostMapping("/check")
   public Result<InventoryCheckResponse> createCheck(@RequestBody InventoryCheckRequest body) {
-    // 新Mapper可能因maven安装失败为null
-    if (inventoryCheckMapper == null) {
-      return Result.error("盘点服务暂不可用");
-    }
     // 写入 mo_inventory_check 表
     InventoryCheckEntity entity = new InventoryCheckEntity();
     entity.setCheckNo("CK" + System.currentTimeMillis());
@@ -179,7 +193,7 @@ public class AdminInventoryController {
     if (body.getNote() != null) entity.setRemark(body.getNote());
     entity.setActualQuantity(body.getActualStock());
     entity.setStatus("PENDING");
-    ((InventoryCheckMapper) inventoryCheckMapper).insert(entity);
+    inventoryCheckMapper.insert(entity);
 
     InventoryCheckResponse resp = new InventoryCheckResponse();
     resp.setId(entity.getId());

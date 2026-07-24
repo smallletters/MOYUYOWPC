@@ -4,7 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.dao.entity.AfterSalesEntity;
+import com.moyuyo.dao.entity.OrderEntity;
+import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.mapper.AfterSalesMapper;
+import com.moyuyo.dao.mapper.OrderItemMapper;
+import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.service.AfterSalesService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +24,8 @@ import java.util.Objects;
 public class AfterSalesServiceImpl implements AfterSalesService {
 
   private final AfterSalesMapper afterSalesMapper;
+  private final OrderMapper orderMapper;
+  private final OrderItemMapper orderItemMapper;
 
   @Override
   public IPage<AfterSalesEntity> listAfterSales(Long userId, int page, int size, String status) {
@@ -50,6 +56,23 @@ public class AfterSalesServiceImpl implements AfterSalesService {
   @Transactional
   public AfterSalesEntity createAfterSales(Long userId, Long orderId, Long orderItemId, String type,
                                            String reason, BigDecimal amount, String description, String images) {
+    // 校验订单是否存在且属于该用户
+    OrderEntity order = orderMapper.selectById(orderId);
+    if (order == null) {
+      throw new IllegalArgumentException("订单不存在");
+    }
+    if (!Objects.equals(order.getUserId(), userId)) {
+      throw new IllegalArgumentException("订单不属于当前用户");
+    }
+
+    // 校验订单项是否属于该订单
+    if (orderItemId != null) {
+      OrderItemEntity orderItem = orderItemMapper.selectById(orderItemId);
+      if (orderItem == null || !Objects.equals(orderItem.getOrderId(), orderId)) {
+        throw new IllegalArgumentException("订单项不属于该订单");
+      }
+    }
+
     AfterSalesEntity entity = new AfterSalesEntity();
     entity.setUserId(userId);
     entity.setOrderId(orderId);

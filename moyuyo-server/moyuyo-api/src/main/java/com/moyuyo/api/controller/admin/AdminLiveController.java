@@ -37,7 +37,7 @@ public class AdminLiveController {
       item.setStatus(room.getStatus());
       item.setViewerCount(room.getViewerCount());
       item.setProductCount(room.getProductCount());
-      item.setStartTime(room.getStartTime());
+      item.setStartTime(room.getStartTime() != null ? room.getStartTime().toString() : null);
       list.add(item);
     }
     return Result.success(list);
@@ -68,8 +68,14 @@ public class AdminLiveController {
 
   @Operation(summary = "更新直播状态")
   @PutMapping("/rooms/{id}/status")
-  public Result<OperationResult> updateRoomStatus(@PathVariable Long id, @RequestParam String status) {
-    // 更新数据库中的直播间状态
+  public Result<OperationResult> updateRoomStatus(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+    // 更新数据库中的直播间状态；支持 body 传参和 query param 兼容
+    String status = body != null && body.containsKey("status")
+        ? (String) body.get("status")
+        : null;
+    if (status == null || status.isEmpty()) {
+      return Result.error("状态参数不能为空");
+    }
     liveRoomService.updateRoomStatus(id, status);
     OperationResult result = new OperationResult();
     result.setId(id);
@@ -92,7 +98,7 @@ public class AdminLiveController {
     item.setStatus(room.getStatus());
     item.setViewerCount(room.getViewerCount());
     item.setProductCount(room.getProductCount());
-    item.setStartTime(room.getStartTime());
+    item.setStartTime(room.getStartTime() != null ? room.getStartTime().toString() : null);
 
     // 商品列表
     List<LiveRoomProductResponse> productList = new ArrayList<>();

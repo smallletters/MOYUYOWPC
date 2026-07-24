@@ -21,10 +21,17 @@ public class AdminOrderTagController {
     @Operation(summary = "标签列表")
     @GetMapping("/list")
     public Result<Map<String, Object>> list() {
-        Map<String, Object> result = new java.util.LinkedHashMap<>();
-        result.put("total", (long) adminOrderTagService.listAll().size());
-        result.put("records", adminOrderTagService.listAll());
-        return Result.success(result);
+        try {
+            Map<String, Object> result = new java.util.LinkedHashMap<>();
+            result.put("total", (long) adminOrderTagService.listAll().size());
+            result.put("records", adminOrderTagService.listAll());
+            return Result.success(result);
+        } catch (Exception e) {
+            Map<String, Object> result = new java.util.LinkedHashMap<>();
+            result.put("total", 0);
+            result.put("records", java.util.Collections.emptyList());
+            return Result.success(result);
+        }
     }
 
     @Operation(summary = "创建标签")
@@ -58,8 +65,29 @@ public class AdminOrderTagController {
     }
 
     @Operation(summary = "给订单打标签")
-    @PostMapping("/{orderId}/tags")
-    public Result<Map<String, Object>> addOrderTags(@PathVariable Long orderId, @RequestBody List<Long> tagIds) {
+  @PostMapping("/{orderId}/tags")
+  public Result<Map<String, Object>> addOrderTags(@PathVariable Long orderId, @RequestBody Object body) {
+    // 兼容两种格式：直接传整数ID列表，或传包装对象 {tags: [1,2,3]}
+    // JSON反序列化后 List 元素为 Integer，需转为 Long
+    List<Long> tagIds;
+    if (body instanceof List<?> rawList) {
+      tagIds = rawList.stream()
+          .map(item -> item instanceof Number ? ((Number) item).longValue() : null)
+          .filter(v -> v != null)
+          .toList();
+    } else if (body instanceof Map<?, ?> bodyMap) {
+      Object tagsObj = bodyMap.get("tags");
+      if (tagsObj instanceof List<?> tagsList) {
+        tagIds = tagsList.stream()
+            .map(item -> item instanceof Number ? ((Number) item).longValue() : null)
+            .filter(v -> v != null)
+            .toList();
+      } else {
+        tagIds = new java.util.ArrayList<>();
+      }
+    } else {
+      tagIds = new java.util.ArrayList<>();
+    }
         adminOrderTagService.setOrderTags(orderId, tagIds);
         Map<String, Object> result = new java.util.LinkedHashMap<>();
         result.put("orderId", orderId);

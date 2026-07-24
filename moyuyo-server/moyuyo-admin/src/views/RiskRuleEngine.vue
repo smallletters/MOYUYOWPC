@@ -45,23 +45,94 @@
             <el-tag :type="row.status === '启用' ? 'success' : 'info'" size="small">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
             <el-button type="primary" link size="small" @click="handleToggle(row)">{{ row.status === '启用' ? '禁用' : '启用' }}</el-button>
+            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
+
+    <!-- 新建/编辑规则对话框 -->
+    <el-dialog
+      v-model="dialogVisible"
+      :title="isEditing ? '编辑规则' : '新建规则'"
+      width="560px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <el-form :model="formData" label-width="80px" label-position="top">
+        <el-form-item label="规则名称" required>
+          <el-input v-model="formData.name" placeholder="输入规则名称" maxlength="50" show-word-limit />
+        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="优先级">
+              <el-input-number v-model="formData.priority" :min="1" :max="10" style="width:100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="处置动作">
+              <el-select v-model="formData.action" style="width:100%">
+                <el-option v-for="act in actionOptions" :key="act" :label="act" :value="act" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="匹配条件" required>
+          <el-input
+            v-model="formData.condition"
+            type="textarea"
+            :rows="3"
+            placeholder="输入匹配条件，如：单日下单次数 > 10 AND 设备指纹异常"
+          />
+        </el-form-item>
+        <el-form-item label="启用状态">
+          <el-switch
+            v-model="formData.status"
+            active-value="启用"
+            inactive-value="禁用"
+            active-text="启用"
+            inactive-text="禁用"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="handleSave">
+          {{ isEditing ? '保存修改' : '创建规则' }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { getRiskRules } from '../api/admin'
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getRiskRules, createRiskRule, updateRiskRule, toggleRiskRule, deleteRiskRule } from '../api/admin'
 
 const tableData = ref([])
+
+// ---- 对话框状态 ----
+const dialogVisible = ref(false)
+const isEditing = ref(false)
+const editingId = ref(null)
+const submitting = ref(false)
+
+// ---- 表单数据 ----
+const formData = reactive({
+  name: '',
+  priority: 1,
+  condition: '',
+  action: '审核',
+  status: '启用'
+})
+
+// ---- 优先级选项 ----
+const actionOptions = ['阻断', '审核', '预警', '放行']
 
 // 加载风控规则列表
 async function loadData() {
@@ -73,17 +144,81 @@ async function loadData() {
   }
 }
 
-function handleAdd() { ElMessage.warning('新建功能开发中') }
-function handleEdit(row) { ElMessage.info('编辑规则：' + row.name) }
+// 新建规则：打开空白表单
+function handleAdd() {
+  isEditing.value = false
+  editingId.value = null
+  formData.name = ''
+  formData.priority = 1
+  formData.condition = ''
+  formData.action = '审核'
+  formData.status = '启用'
+  dialogVisible.value = true
+}
+
+// 编辑规则：填充表单
+function handleEdit(row) {
+  isEditing.value = true
+  editingId.value = row.id
+  formData.name = row.name
+  formData.priority = row.priority
+  formData.condition = row.condition
+  formData.action = row.action
+  formData.status = row.status
+  dialogVisible.value = true
+}
+
+// 保存规则（新建或编辑）
+async function handleSave() {
+  if (!formData.name.trim()) {
+    ElMessage.warning('请输入规则名称')
+    return
+  }
+  if (!formData.condition.trim()) {
+    ElMessage.warning('请输入匹配条件')
+    return
+  }
+  submitting.value = true
+  try {
+    if (isEditing.value) {
+      await updateRiskRule(editingId.value, { ...formData })
+      ElMessage.success('规则已更新')
+    } else {
+      await createRiskRule({ ...formData })
+      ElMessage.success('规则已创建')
+    }
+    dialogVisible.value = false
+    await loadData()
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e.message || '未知错误'))
+  } finally {
+    submitting.value = false
+  }
+}
+
+// 启用/禁用规则
 async function handleToggle(row) {
   try {
     const newStatus = row.status === '启用' ? '禁用' : '启用'
-    const { toggleRiskRule } = await import('../api/admin')
     await toggleRiskRule(row.id, { enabled: newStatus === '启用' })
     ElMessage.success('规则已' + newStatus)
     await loadData()
   } catch (e) {
     ElMessage.error('操作失败')
+  }
+}
+
+// 删除规则
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确定删除规则「' + row.name + '」吗？', '提示', { type: 'warning' })
+    await deleteRiskRule(row.id)
+    ElMessage.success('规则已删除')
+    await loadData()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
   }
 }
 

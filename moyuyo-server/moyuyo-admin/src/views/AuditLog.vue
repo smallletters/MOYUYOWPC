@@ -3,7 +3,7 @@
     <div class="page-header">
       <h2>审计日志</h2>
       <div class="header-actions">
-        <el-button @click="handleExport">导出日志</el-button>
+        <el-button disabled @click="handleExport">导出日志</el-button>
       </div>
     </div>
     <!-- 筛选 -->

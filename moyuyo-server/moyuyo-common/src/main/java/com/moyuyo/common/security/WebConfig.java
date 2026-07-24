@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 @Configuration
 public class WebConfig {
@@ -30,8 +31,8 @@ public class WebConfig {
     }
 
     @Bean
-    public JwtAuthFilter jwtAuthFilter(JwtUtil jwtUtil, ObjectMapper objectMapper) {
-        return new JwtAuthFilter(jwtUtil, objectMapper);
+    public JwtAuthFilter jwtAuthFilter(JwtUtil jwtUtil, ObjectMapper objectMapper, StringRedisTemplate redisTemplate) {
+        return new JwtAuthFilter(jwtUtil, objectMapper, redisTemplate);
     }
 
     @Bean

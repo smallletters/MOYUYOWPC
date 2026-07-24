@@ -6,6 +6,7 @@ import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.UserEntity;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.UserMapper;
+import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.service.admin.AdminUserProfileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -71,7 +72,7 @@ public class AdminUserProfileServiceImpl implements AdminUserProfileService {
     java.util.List<OrderEntity> completedOrders = orderMapper.selectList(
         new LambdaQueryWrapper<OrderEntity>()
             .eq(OrderEntity::getUserId, id)
-            .eq(OrderEntity::getStatus, "COMPLETED"));
+            .eq(OrderEntity::getStatus, OrderStatusEnum.COMPLETED.name()));
     java.math.BigDecimal totalConsumption = completedOrders.stream()
         .map(OrderEntity::getPayAmount)
         .filter(Objects::nonNull)
@@ -80,12 +81,13 @@ public class AdminUserProfileServiceImpl implements AdminUserProfileService {
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("userId", user.getId());
     result.put("nickname", user.getNickname());
+    result.put("avatar", user.getAvatar());
     result.put("email", user.getEmail());
     result.put("phone", user.getPhone());
     result.put("status", user.getStatus());
-    result.put("registerTime", user.getCreatedAt());
+    result.put("registerTime", user.getCreatedAt() != null ? user.getCreatedAt().toString() : null);
     result.put("orderCount", orderCount);
-    result.put("totalConsumption", totalConsumption);
+    result.put("totalSpent", totalConsumption);
     return result;
   }
 

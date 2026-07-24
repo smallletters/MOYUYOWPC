@@ -98,7 +98,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave">发送</el-button>
+        <el-button type="primary" :loading="submitting" @click="handleSave">发送</el-button>
       </template>
     </el-dialog>
   </div>
@@ -107,12 +107,13 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getSmsStats, getSmsRecords } from '../api/admin'
+import { getSmsStats, getSmsRecords, sendSms } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const dialogVisible = ref(false)
+const submitting = ref(false)
 
 const filters = reactive({
   keyword: '',
@@ -177,14 +178,23 @@ function handleAdd() {
   dialogVisible.value = true
 }
 
-function handleSave() {
+async function handleSave() {
   if (!editForm.phone || !editForm.content) {
     ElMessage.warning('请填写完整信息')
     return
   }
-  ElMessage.success('短信发送请求已提交')
-  dialogVisible.value = false
-  loadData()
+  submitting.value = true
+  try {
+    await sendSms({ phone: editForm.phone, content: editForm.content })
+    ElMessage.success('短信发送成功')
+    dialogVisible.value = false
+    loadData()
+  } catch (e) {
+    console.error('短信发送失败:', e)
+    ElMessage.error('短信发送失败: ' + (e.message || '未知错误'))
+  } finally {
+    submitting.value = false
+  }
 }
 
 function handleDetail(row) {

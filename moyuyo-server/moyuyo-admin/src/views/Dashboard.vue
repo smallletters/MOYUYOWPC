@@ -131,15 +131,26 @@ async function loadDashboardData() {
 async function loadRecentOrders() {
   try {
     const orders = await getRecentOrders()
-    recentOrders.value = (orders || []).map(order => ({
-      id: order.orderNo || '',
-      no: order.orderNo || '',
-      user: order.userName || order.productName || '',
-      amount: order.amount != null ? String(order.amount) : '0.00',
-      status: order.status || '未知',
-      statusClass: 'gray',
-      time: ''
-    }))
+    recentOrders.value = (orders || []).map(order => {
+      // 根据订单状态映射CSS class
+      const statusClassMap = {
+        'PENDING_PAY': 'gray',
+        'PENDING_SHIP': 'blue',
+        'SHIPPED': 'orange',
+        'COMPLETED': 'green',
+        'CANCELLED': 'red',
+        'REFUNDED': 'red'
+      }
+      return {
+        id: order.orderNo || '',
+        no: order.orderNo || '',
+        user: order.userName || order.productName || '',
+        amount: order.amount != null ? String(order.amount) : '0.00',
+        status: order.status || '未知',
+        statusClass: statusClassMap[order.status] || 'gray',
+        time: ''
+      }
+    })
   } catch (e) {
     console.error('获取最近订单失败', e)
     ElMessage.error('获取最近订单失败')

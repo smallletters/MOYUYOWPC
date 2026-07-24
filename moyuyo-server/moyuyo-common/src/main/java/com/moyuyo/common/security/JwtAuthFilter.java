@@ -7,9 +7,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.List;
@@ -19,13 +17,12 @@ public class JwtAuthFilter implements Filter {
 
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
+    private final StringRedisTemplate redisTemplate;
 
-    @Autowired(required = false)
-    private StringRedisTemplate redisTemplate;
-
-    public JwtAuthFilter(JwtUtil jwtUtil, ObjectMapper objectMapper) {
+    public JwtAuthFilter(JwtUtil jwtUtil, ObjectMapper objectMapper, StringRedisTemplate redisTemplate) {
         this.jwtUtil = jwtUtil;
         this.objectMapper = objectMapper;
+        this.redisTemplate = redisTemplate;
     }
 
     private static final String REDIS_KEY_BLACKLIST = "auth:blacklist:";
@@ -43,7 +40,8 @@ public class JwtAuthFilter implements Filter {
             "/api/v1/categories",
             "/api/health",
             "/api/admin/auth/login",
-            "/api/webhook/",
+            "/api/v1/payments/stripe/webhook",
+            "/api/v1/payments/paypal/webhook",
             "/api-docs",
             "/v3/api-docs"
     );
@@ -75,12 +73,11 @@ public class JwtAuthFilter implements Filter {
                 return;
             }
 
-            if (redisTemplate != null) {
-                String blacklisted = redisTemplate.opsForValue().get(REDIS_KEY_BLACKLIST + token);
-                if (blacklisted != null) {
-                    sendUnauthorized(response, "Token has been revoked");
-                    return;
-                }
+            // 检查 Token 是否在黑名单中（已登出）
+            String blacklisted = redisTemplate.opsForValue().get(REDIS_KEY_BLACKLIST + token);
+            if (blacklisted != null) {
+                sendUnauthorized(response, "Token has been revoked");
+                return;
             }
 
             Long userId = jwtUtil.getUserId(token);

@@ -68,7 +68,7 @@
     <section aria-label="预警看板" class="section-block">
       <div class="section-header">
         <h2 class="section-title">预警看板</h2>
-        <button class="link-btn">查看全部 →</button>
+        <button class="link-btn" @click="router.push('/inventory-transfer')">查看全部 →</button>
       </div>
       <div class="alert-dashboard-grid">
         <!-- 严重预警 -->
@@ -164,13 +164,44 @@
         </table>
       </div>
     </section>
+
+    <!-- 库存编辑弹窗 -->
+    <el-dialog
+      v-model="showEditModal"
+      title="编辑库存"
+      width="480px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <el-form :model="stockForm" label-width="100px">
+        <el-form-item label="商品名称">
+          <el-input :model-value="stockForm.name" disabled />
+        </el-form-item>
+        <el-form-item label="SKU">
+          <el-input :model-value="stockForm.sku" disabled />
+        </el-form-item>
+        <el-form-item label="库存数量" required>
+          <el-input-number v-model="stockForm.stock" :min="0" :max="999999" style="width:100%" />
+        </el-form-item>
+        <el-form-item label="安全阈值" required>
+          <el-input-number v-model="stockForm.safeThreshold" :min="1" :max="99999" style="width:100%" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showEditModal = false">取消</el-button>
+        <el-button type="primary" :loading="editSubmitting" @click="handleStockSave">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getInventoryOverview, getInventoryAlerts, getInventoryList } from '../api/admin'
+import { getInventoryOverview, getInventoryAlerts, getInventoryList, updateStock } from '../api/admin'
+
+const router = useRouter()
 
 // 库存概览KPI数据
 const overview = reactive({
@@ -188,6 +219,17 @@ const generalAlerts = ref([])
 
 // 商品库存列表
 const inventoryData = ref([])
+
+// 库存编辑弹窗
+const showEditModal = ref(false)
+const editSubmitting = ref(false)
+const stockForm = reactive({
+  id: null,
+  name: '',
+  sku: '',
+  stock: 0,
+  safeThreshold: 10
+})
 
 // 从API加载所有库存数据
 async function loadData() {
@@ -235,7 +277,32 @@ function stockStatusText(item) {
 }
 
 function handleEdit(item) {
-  ElMessage.info(`编辑: ${item.name}`)
+  // 打开库存编辑弹窗，传递商品信息
+  stockForm.id = item.id
+  stockForm.name = item.name || item.productName || ''
+  stockForm.sku = item.sku || ''
+  stockForm.stock = item.stock || 0
+  stockForm.safeThreshold = item.safeThreshold || 10
+  showEditModal.value = true
+}
+
+// 保存库存修改
+async function handleStockSave() {
+  if (!stockForm.id) return
+  editSubmitting.value = true
+  try {
+    await updateStock(stockForm.id, {
+      stock: stockForm.stock,
+      safeThreshold: stockForm.safeThreshold
+    })
+    ElMessage.success('库存已更新')
+    showEditModal.value = false
+    await loadData()
+  } catch (e) {
+    ElMessage.error('更新库存失败: ' + (e.message || '未知错误'))
+  } finally {
+    editSubmitting.value = false
+  }
 }
 
 onMounted(() => { loadData() })

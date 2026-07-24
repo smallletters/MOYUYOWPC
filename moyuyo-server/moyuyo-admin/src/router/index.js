@@ -1,5 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+const BASE_PATH = '/admin/'
+const TOKEN_KEY = 'admin_token'
+
 const routes = [
   {
     path: '/login',
@@ -341,6 +344,12 @@ const routes = [
         meta: { title: '秒杀管理' }
       },
       {
+        path: 'points-manage',
+        name: 'PointsManage',
+        component: () => import('../views/PointsManage.vue'),
+        meta: { title: '积分管理' }
+      },
+      {
         path: 'blacklist',
         name: 'BlacklistManage',
         component: () => import('../views/BlacklistManage.vue'),
@@ -492,12 +501,12 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory('/admin/'),
+  history: createWebHistory(BASE_PATH),
   routes
 })
 
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('admin_token')
+  const token = localStorage.getItem(TOKEN_KEY)
   if (to.meta.requiresAuth && !token) {
     next('/login')
   } else if (to.meta.guest && token) {

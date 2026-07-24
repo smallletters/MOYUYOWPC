@@ -2,6 +2,9 @@ package com.moyuyo.api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.BaseIntegrationTest;
+import com.moyuyo.common.JwtUtil;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -27,10 +30,18 @@ class OrderFlowTest extends BaseIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    /** 模拟用户 JWT Token */
-    private static final String TEST_TOKEN = "Bearer test-jwt-token-for-integration-test";
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    private String validToken;
+
+    @BeforeEach
+    void setUp() {
+        validToken = "Bearer " + jwtUtil.generate(1L, "test@moyuyo.com");
+    }
 
     @Test
+    @DisplayName("未认证访问应返回401")
     void orderFlow_Unauthenticated_ShouldReturn401() throws Exception {
         // 未登录用户创建订单
         mockMvc.perform(post("/api/v1/orders")
@@ -41,6 +52,7 @@ class OrderFlowTest extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("无效参数创建订单应返回400")
     void orderFlow_CreateOrder_InvalidParams_ShouldReturn400() throws Exception {
         // 空参数的订单创建请求
         String invalidReq = """
@@ -51,40 +63,44 @@ class OrderFlowTest extends BaseIntegrationTest {
                 """;
 
         mockMvc.perform(post("/api/v1/orders")
-                        .header("Authorization", TEST_TOKEN)
+                        .header("Authorization", validToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidReq))
                 .andExpect(status().is4xxClientError());
     }
 
     @Test
+    @DisplayName("分页查询订单列表应返回200")
     void orderFlow_ListOrders_ShouldReturnPage() throws Exception {
         mockMvc.perform(get("/api/v1/orders")
-                        .header("Authorization", TEST_TOKEN)
+                        .header("Authorization", validToken)
                         .param("page", "1")
                         .param("size", "10"))
                 .andExpect(status().isOk());
     }
 
     @Test
+    @DisplayName("查询不存在订单应返回404")
     void orderFlow_GetOrderDetail_NotFound() throws Exception {
         mockMvc.perform(get("/api/v1/orders/{id}", 999999L)
-                        .header("Authorization", TEST_TOKEN))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0));
+                        .header("Authorization", validToken))
+                .andExpect(status().is4xxClientError())
+                .andExpect(jsonPath("$.code").value(400));
     }
 
     @Test
+    @DisplayName("无效状态转换应返回400")
     void orderFlow_InvalidOrderStatusTransition() throws Exception {
         // 尝试对不存在的订单执行取消操作
         mockMvc.perform(post("/api/v1/orders/{id}/cancel", 999999L)
-                        .header("Authorization", TEST_TOKEN)
+                        .header("Authorization", validToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isOk());
+                .andExpect(status().is4xxClientError());
     }
 
     @Test
+    @DisplayName("未认证退款请求应返回401")
     void orderFlow_Refund_Unauthenticated() throws Exception {
         mockMvc.perform(post("/api/v1/refunds")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -100,9 +116,10 @@ class OrderFlowTest extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("无效退款金额应返回400")
     void orderFlow_Refund_InvalidAmount() throws Exception {
         mockMvc.perform(post("/api/v1/refunds")
-                        .header("Authorization", TEST_TOKEN)
+                        .header("Authorization", validToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -116,6 +133,7 @@ class OrderFlowTest extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("未认证支付请求应返回401")
     void orderFlow_PaymentWithoutAuth() throws Exception {
         String paymentReq = """
                 {

@@ -23,7 +23,7 @@
         <div class="card">
           <div class="card-header">
             <h3>转化漏斗</h3>
-            <button class="btn btn-sm btn-outline">自定义漏斗</button>
+            <button class="btn btn-sm btn-outline" @click="ElMessage.info('自定义漏斗功能开发中')">自定义漏斗</button>
           </div>
           <div class="card-body">
             <div class="funnel-chart">
@@ -129,6 +129,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { getFunnelAnalysis, getMarketingEffects } from '../api/admin'
 
 const activeTime = ref('7d')

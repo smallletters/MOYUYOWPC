@@ -9,7 +9,7 @@ import com.moyuyo.dao.mapper.FeedbackMapper;
 import com.moyuyo.service.admin.AdminComplaintService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -17,22 +17,29 @@ import java.util.*;
 
 @Tag(name = "管理后台 - 投诉管理")
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/admin/complaint")
 public class AdminComplaintController {
 
   private final AdminComplaintService adminComplaintService;
-
   private final FeedbackMapper feedbackMapper;
+  private final ComplaintProcessMapper complaintProcessMapper;
 
-  // 新DAO模块maven安装失败时允许为null，避免ClassNotFoundException
-  @Autowired(required = false)
-  private ComplaintProcessMapper complaintProcessMapper;
+  @Operation(summary = "新建投诉")
+  @PostMapping("/create")
+  public Result<Map<String, Object>> create(@RequestBody Map<String, Object> body) {
+    FeedbackEntity feedback = new FeedbackEntity();
+    feedback.setUserId(body.get("userId") != null ? Long.valueOf(body.get("userId").toString()) : null);
+    feedback.setType(body.get("type") != null ? body.get("type").toString() : "");
+    feedback.setContent(body.get("content") != null ? body.get("content").toString() : "");
+    feedback.setContact(body.get("contact") != null ? body.get("contact").toString() : "");
+    feedback.setStatus("PENDING");
+    feedbackMapper.insert(feedback);
 
-  // 手动构造器注入必需的依赖
-  public AdminComplaintController(AdminComplaintService adminComplaintService,
-                                   FeedbackMapper feedbackMapper) {
-    this.adminComplaintService = adminComplaintService;
-    this.feedbackMapper = feedbackMapper;
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("id", feedback.getId());
+    result.put("message", "投诉创建成功");
+    return Result.success(result);
   }
 
   @Operation(summary = "投诉列表")
@@ -79,14 +86,11 @@ public class AdminComplaintController {
     data.put("status", feedback.getStatus());
     data.put("createTime", feedback.getCreateTime());
 
-    // 从 mo_complaint_process 表查询处理记录（新Mapper可能因maven安装失败为null）
-    List<ComplaintProcessEntity> processList = Collections.emptyList();
-    if (complaintProcessMapper != null) {
-      processList = ((ComplaintProcessMapper) complaintProcessMapper).selectList(
-          new LambdaQueryWrapper<ComplaintProcessEntity>()
-              .eq(ComplaintProcessEntity::getComplaintId, id)
-              .orderByAsc(ComplaintProcessEntity::getCreateTime));
-    }
+    // 从 mo_complaint_process 表查询处理记录
+    List<ComplaintProcessEntity> processList = complaintProcessMapper.selectList(
+        new LambdaQueryWrapper<ComplaintProcessEntity>()
+            .eq(ComplaintProcessEntity::getComplaintId, id)
+            .orderByAsc(ComplaintProcessEntity::getCreateTime));
     List<Map<String, Object>> processRecords = new ArrayList<>();
     for (ComplaintProcessEntity p : processList) {
       Map<String, Object> record = new LinkedHashMap<>();
@@ -116,8 +120,8 @@ public class AdminComplaintController {
 
   @Operation(summary = "完结投诉")
   @PostMapping("/{id}/close")
-  public Result<Map<String, Object>> close(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-    String remark = body.get("remark") != null ? body.get("remark").toString() : "";
+  public Result<Map<String, Object>> close(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
+    String remark = body != null && body.get("remark") != null ? body.get("remark").toString() : "";
     adminComplaintService.handle(id, "CLOSED", remark);
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("id", id);
@@ -132,15 +136,13 @@ public class AdminComplaintController {
   @Operation(summary = "分配处理人")
   @PutMapping("/{id}/assign")
   public Result<Map<String, Object>> assign(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-    // 创建处理记录并持久化（新Mapper可能因maven安装失败为null）
-    if (complaintProcessMapper != null) {
-      ComplaintProcessEntity process = new ComplaintProcessEntity();
-      process.setComplaintId(id);
-      process.setAction("分配处理人");
-      process.setOperator(body.get("assignee") != null ? body.get("assignee").toString() : "");
-      process.setRemark("已分配给 " + process.getOperator() + " 处理");
-      ((ComplaintProcessMapper) complaintProcessMapper).insert(process);
-    }
+    // 创建处理记录并持久化
+    ComplaintProcessEntity process = new ComplaintProcessEntity();
+    process.setComplaintId(id);
+    process.setAction("分配处理人");
+    process.setOperator(body.get("assignee") != null ? body.get("assignee").toString() : "");
+    process.setRemark("已分配给 " + process.getOperator() + " 处理");
+    complaintProcessMapper.insert(process);
 
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("id", id);

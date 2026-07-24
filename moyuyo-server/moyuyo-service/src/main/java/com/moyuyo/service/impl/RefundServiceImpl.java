@@ -3,13 +3,14 @@ package com.moyuyo.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.common.dto.refund.RefundApplyRequest;
 import com.moyuyo.common.dto.refund.RefundVO;
+import com.moyuyo.common.utils.PageUtils;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.RefundEntity;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.RefundMapper;
+import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.service.RefundService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,9 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -29,7 +28,6 @@ public class RefundServiceImpl implements RefundService {
 
     private final RefundMapper refundMapper;
     private final OrderMapper orderMapper;
-    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -38,7 +36,7 @@ public class RefundServiceImpl implements RefundService {
         if (order == null || !order.getUserId().equals(userId)) {
             throw new IllegalArgumentException("订单不存在");
         }
-        if (!"PAID".equals(order.getStatus()) && !"RECEIVED".equals(order.getStatus())) {
+        if (!OrderStatusEnum.PAID.name().equals(order.getStatus()) && !OrderStatusEnum.RECEIVED.name().equals(order.getStatus())) {
             throw new IllegalStateException("当前订单状态不允许申请退款");
         }
 
@@ -89,7 +87,7 @@ public class RefundServiceImpl implements RefundService {
 
         OrderEntity order = orderMapper.selectById(entity.getOrderId());
         if (order != null) {
-            order.setStatus("REFUNDING");
+            order.setStatus(OrderStatusEnum.REFUNDING.name());
             orderMapper.updateById(order);
         }
         log.info("Refund approved: refundId={}, operatorId={}", refundId, operatorId);
@@ -120,7 +118,7 @@ public class RefundServiceImpl implements RefundService {
 
         OrderEntity order = orderMapper.selectById(entity.getOrderId());
         if (order != null) {
-            order.setStatus("REFUNDED");
+            order.setStatus(OrderStatusEnum.REFUNDED.name());
             orderMapper.updateById(order);
         }
         log.info("Refund completed: refundId={}, operatorId={}, transactionId={}", refundId, operatorId, transactionId);
@@ -162,11 +160,6 @@ public class RefundServiceImpl implements RefundService {
     }
 
     private IPage<RefundVO> toRefundVOPage(IPage<RefundEntity> entityPage) {
-        List<RefundVO> voList = entityPage.getRecords().stream()
-                .map(this::toRefundVO).collect(Collectors.toList());
-        IPage<RefundVO> voPage = new Page<>(entityPage.getCurrent(), entityPage.getSize());
-        voPage.setTotal(entityPage.getTotal());
-        voPage.setRecords(voList);
-        return voPage;
+        return PageUtils.convertPage(entityPage, this::toRefundVO);
     }
 }

@@ -14,11 +14,11 @@ import java.util.Map;
 
 /**
  * 管理后台 — 系统管理相关接口
- * 原 AdminController 拆分而来，负责系统配置和系统信息
+ * 原 AdminController 拆分而来，负责系统安全配置和系统信息
  */
 @Tag(name = "管理后台 - 系统管理")
 @RestController
-@RequestMapping("/api/admin/system")
+@RequestMapping("/api/admin/system-info")
 public class AdminSystemController {
 
     @Operation(summary = "获取系统安全配置")
@@ -36,10 +36,19 @@ public class AdminSystemController {
     @GetMapping("/info")
     public Result<Map<String, Object>> systemInfo() {
         Map<String, Object> info = new LinkedHashMap<>();
+        // 从应用上下文获取真实系统信息
         info.put("version", "1.0.0");
-        info.put("dbStatus", "正常");
-        info.put("cacheStatus", "正常");
-        info.put("lastBackup", "2026-07-18");
+        info.put("javaVersion", System.getProperty("java.version"));
+        info.put("osName", System.getProperty("os.name"));
+        info.put("availableProcessors", Runtime.getRuntime().availableProcessors());
+        long maxMemory = Runtime.getRuntime().maxMemory() / (1024 * 1024);
+        long totalMemory = Runtime.getRuntime().totalMemory() / (1024 * 1024);
+        long freeMemory = Runtime.getRuntime().freeMemory() / (1024 * 1024);
+        info.put("maxMemory", maxMemory + "MB");
+        info.put("totalMemory", totalMemory + "MB");
+        info.put("freeMemory", freeMemory + "MB");
+        info.put("uptime", System.currentTimeMillis());
         return Result.success(info);
     }
+
 }

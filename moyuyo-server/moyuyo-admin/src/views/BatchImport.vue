@@ -103,11 +103,35 @@ function handleImport() {
     ElMessage.warning('请选择文件')
     return
   }
-  ElMessage.success('导入任务已提交')
+  // 使用 FormData 上传文件，以 multipart/form-data 格式发送
+  const formData = new FormData()
+  formData.append('file', currentFile.value.raw || currentFile.value)
+  formData.append('type', importType.value)
+  submitImport(formData)
+    .then(res => {
+      ElMessage.success('导入任务已提交')
+      loadData()
+    })
+    .catch(err => {
+      ElMessage.error('导入失败: ' + (err.message || '未知错误'))
+    })
 }
 
 function handleDownloadTemplate() {
-  ElMessage.success('模板下载中...')
+  // 根据当前选中的导入类型下载对应模板
+  const typeMap = { '商品': 'product', '订单': 'order', '用户': 'user' }
+  const type = typeMap[importType.value] || 'product'
+  getImportTemplate(type)
+    .then(res => {
+      ElMessage.success('模板下载中...')
+      // 触发文件下载
+      if (res && res.url) {
+        window.open(res.url, '_blank')
+      }
+    })
+    .catch(err => {
+      ElMessage.error('模板下载失败: ' + (err.message || '未知错误'))
+    })
 }
 
 function handleViewFail(row) { ElMessage.info('查看失败详情：' + row.fileName) }

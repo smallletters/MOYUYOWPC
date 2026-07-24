@@ -61,7 +61,7 @@ class ProductServiceTest {
         .thenReturn(mockPage);
 
     // 执行：分页查询
-    Page<ProductEntity> result = productService.listProducts(1, 10, null, null, null, null, null);
+    Page<ProductEntity> result = productService.listProducts(1, 10, null, null, null, null, null, null, null);
 
     // 验证
     assertNotNull(result);
@@ -83,7 +83,7 @@ class ProductServiceTest {
         .thenReturn(mockPage);
 
     // 执行：按分类筛选
-    productService.listProducts(1, 10, 100L, "price", "asc", "测试关键词", null);
+    productService.listProducts(1, 10, 100L, "price", "asc", "测试关键词", null, null, null);
 
     // 验证
     verify(productMapper).selectPage(any(Page.class), wrapperCaptor.capture());

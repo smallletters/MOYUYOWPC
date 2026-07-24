@@ -1,6 +1,7 @@
 package com.moyuyo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.moyuyo.dao.entity.BargainEntity;
 import com.moyuyo.dao.entity.BargainHelpEntity;
 import com.moyuyo.dao.mapper.BargainHelpMapper;
@@ -46,9 +47,6 @@ public class BargainServiceImpl implements BargainService {
     if (bargain == null || !"ACTIVE".equals(bargain.getStatus())) {
       throw new IllegalArgumentException("砍价活动不存在或已结束");
     }
-    if (bargain.getRemainingStock() <= 0) {
-      throw new IllegalArgumentException("库存不足");
-    }
     long helped = bargainHelpMapper.selectCount(
         new LambdaQueryWrapper<BargainHelpEntity>()
             .eq(BargainHelpEntity::getBargainId, id)
@@ -56,14 +54,23 @@ public class BargainServiceImpl implements BargainService {
     if (helped > 0) {
       throw new IllegalArgumentException("您已参与过该砍价活动");
     }
+
+    // 使用原子更新防止并发超卖：WHERE remaining_stock > 0
+    LambdaUpdateWrapper<BargainEntity> updateWrapper = new LambdaUpdateWrapper<>();
+    updateWrapper.eq(BargainEntity::getId, id)
+        .setSql("remaining_stock = remaining_stock - 1")
+        .gt(BargainEntity::getRemainingStock, 0);
+    int rows = bargainMapper.update(null, updateWrapper);
+    if (rows == 0) {
+      throw new IllegalStateException("库存不足，砍价失败");
+    }
+
     BigDecimal remaining = bargain.getOriginalPrice().subtract(bargain.getBargainPrice());
     BargainHelpEntity help = new BargainHelpEntity();
     help.setBargainId(id);
     help.setUserId(userId);
     help.setHelpAmount(remaining.divide(BigDecimal.valueOf(3), 2, java.math.RoundingMode.HALF_UP));
     bargainHelpMapper.insert(help);
-    bargain.setRemainingStock(bargain.getRemainingStock() - 1);
-    bargainMapper.updateById(bargain);
     log.info("Bargain help: bargainId={}, userId={}, amount={}", id, userId, help.getHelpAmount());
     return help;
   }

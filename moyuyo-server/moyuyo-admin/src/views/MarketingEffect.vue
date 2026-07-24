@@ -6,46 +6,50 @@
         <el-button type="primary" @click="handleAdd">新建活动</el-button>
       </div>
     </div>
-    <!-- KPI 卡片 -->
+    <!-- KPI 卡片 - 匹配后端返回的总GMV/订单数据 -->
     <el-row :gutter="16" class="kpi-row">
       <el-col :span="6">
         <el-card shadow="never" class="kpi-card">
-          <div class="kpi-value">{{ kpiData.campaignCount }}</div>
-          <div class="kpi-label">营销活动数</div>
+          <div class="kpi-value">{{ kpiData.totalGmv }}</div>
+          <div class="kpi-label">总GMV</div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card shadow="never" class="kpi-card">
-          <div class="kpi-value blue">{{ kpiData.totalImpression }}</div>
-          <div class="kpi-label">总曝光</div>
+          <div class="kpi-value blue">{{ kpiData.totalOrders }}</div>
+          <div class="kpi-label">总订单数</div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card shadow="never" class="kpi-card">
-          <div class="kpi-value green">{{ kpiData.totalClicks }}</div>
-          <div class="kpi-label">总点击</div>
+          <div class="kpi-value green">{{ kpiData.campaignGmv }}</div>
+          <div class="kpi-label">近期活动GMV</div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card shadow="never" class="kpi-card">
-          <div class="kpi-value orange">{{ kpiData.conversionRate }}%</div>
-          <div class="kpi-label">转化率</div>
+          <div class="kpi-value orange">{{ kpiData.campaignRatio }}%</div>
+          <div class="kpi-label">活动订单占比</div>
         </el-card>
       </el-col>
     </el-row>
     <el-card shadow="never">
       <el-table :data="tableData" stripe>
         <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="campaignName" label="活动名称" width="180" />
-        <el-table-column prop="impression" label="曝光量" width="100" />
-        <el-table-column prop="clicks" label="点击量" width="90" />
-        <el-table-column label="点击率" width="90">
-          <template #default="{ row }">{{ row.clickRate }}%</template>
+        <el-table-column prop="name" label="活动名称" width="180" show-overflow-tooltip />
+        <el-table-column prop="type" label="活动类型" width="100" />
+        <el-table-column label="状态" width="90">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'ACTIVE' ? 'success' : row.status === 'UPCOMING' ? 'warning' : 'info'">
+              {{ row.status === 'ACTIVE' ? '进行中' : row.status === 'UPCOMING' ? '预告中' : '已结束' }}
+            </el-tag>
+          </template>
         </el-table-column>
-        <el-table-column prop="conversions" label="转化数" width="80" />
-        <el-table-column label="ROI" width="80">
-          <template #default="{ row }">{{ row.roi }}</template>
-        </el-table-column>
+        <el-table-column prop="startDate" label="开始日期" width="110" />
+        <el-table-column prop="endDate" label="结束日期" width="110" />
+        <el-table-column prop="participants" label="参与人数" width="90" />
+        <el-table-column prop="gmv" label="GMV" width="100" />
+        <el-table-column prop="budget" label="预算" width="100" />
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
@@ -63,19 +67,31 @@
         />
       </div>
     </el-card>
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="700px">
+    <!-- 新建/编辑活动对话框 - 匹配 CampaignRequest DTO -->
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px">
       <el-form :model="editForm" label-width="100px">
         <el-form-item label="活动名称">
-          <el-input v-model="editForm.campaignName" placeholder="请输入活动名称" />
+          <el-input v-model="editForm.name" placeholder="请输入活动名称" />
         </el-form-item>
-        <el-form-item label="曝光量">
-          <el-input-number v-model="editForm.impression" :min="0" />
+        <el-form-item label="活动类型">
+          <el-select v-model="editForm.type" placeholder="请选择活动类型" style="width:100%">
+            <el-option label="满减" value="满减" />
+            <el-option label="折扣" value="折扣" />
+            <el-option label="秒杀" value="秒杀" />
+            <el-option label="拼团" value="拼团" />
+          </el-select>
         </el-form-item>
-        <el-form-item label="点击量">
-          <el-input-number v-model="editForm.clicks" :min="0" />
+        <el-form-item label="开始日期">
+          <el-date-picker v-model="editForm.startDate" type="date" value-format="YYYY-MM-DD" placeholder="选择开始日期" style="width:100%" />
         </el-form-item>
-        <el-form-item label="转化数">
-          <el-input-number v-model="editForm.conversions" :min="0" />
+        <el-form-item label="结束日期">
+          <el-date-picker v-model="editForm.endDate" type="date" value-format="YYYY-MM-DD" placeholder="选择结束日期" style="width:100%" />
+        </el-form-item>
+        <el-form-item label="活动描述">
+          <el-input v-model="editForm.description" type="textarea" placeholder="请输入活动描述" />
+        </el-form-item>
+        <el-form-item label="预算">
+          <el-input-number v-model="editForm.budget" :min="0" :precision="2" style="width:100%" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -92,29 +108,32 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCampaigns, getMarketingEffects, deleteCampaign, createCampaign, updateCampaign } from '../api/admin'
 
 const pageTitle = '营销效果'
-const filters = reactive({ keyword: '' })
 const tableData = ref([])
 const currentPage = ref(1)
 const pageSize = ref(15)
 const total = ref(0)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
+
+// 编辑表单字段对应后端 CampaignRequest DTO：name, type, startDate, endDate, description, budget
 const editForm = reactive({
-  campaignName: '',
-  impression: 0,
-  clicks: 0,
-  conversions: 0
+  name: '',
+  type: '满减',
+  startDate: '',
+  endDate: '',
+  description: '',
+  budget: 0
 })
 
-// KPI数据（通过API获取）
+// KPI数据对应后端 getMarketingEffects 返回：totalGmv, totalOrders, campaignGmv, campaignRatio
 const kpiData = reactive({
-  campaignCount: 0,
-  totalImpression: 0,
-  totalClicks: 0,
-  conversionRate: 0
+  totalGmv: '0',
+  totalOrders: 0,
+  campaignGmv: '0',
+  campaignRatio: 0
 })
 
-// 原始营销活动数据
+// 原始活动数据
 const allCampaigns = ref([])
 
 // 加载KPI统计
@@ -122,28 +141,32 @@ async function loadKpi() {
   try {
     const effects = await getMarketingEffects()
     if (effects) {
-      kpiData.campaignCount = effects.campaignCount ?? 0
-      kpiData.totalImpression = effects.totalImpression ?? 0
-      kpiData.totalClicks = effects.totalClicks ?? 0
-      kpiData.conversionRate = effects.conversionRate ?? 0
+      kpiData.totalGmv = effects.totalGmv != null ? effects.totalGmv : '0'
+      kpiData.totalOrders = effects.totalOrders ?? 0
+      kpiData.campaignGmv = effects.campaignGmv != null ? effects.campaignGmv : '0'
+      kpiData.campaignRatio = effects.campaignRatio ?? 0
     }
   } catch (e) {
     console.error('获取营销效果KPI失败', e)
   }
 }
 
-// 加载活动列表
+// 加载活动列表 - 后端返回：id, name, type, status, startDate, endDate, participants, gmv, budget
 async function loadCampaignEffects() {
   try {
     const data = await getCampaigns()
-    allCampaigns.value = (data || []).map(item => ({
+    const list = data && data.list ? data.list : (data || [])
+    allCampaigns.value = list.map(item => ({
       id: item.id,
-      campaignName: item.name || item.campaignName || '',
-      impression: item.impression ?? 0,
-      clicks: item.clicks ?? 0,
-      clickRate: item.clickRate ?? 0,
-      conversions: item.conversions ?? 0,
-      roi: item.roi ?? '0'
+      name: item.name || '',
+      type: item.type || '',
+      status: item.status || 'UPCOMING',
+      startDate: item.startDate || '',
+      endDate: item.endDate || '',
+      participants: item.participants ?? 0,
+      gmv: item.gmv != null ? item.gmv : '-',
+      budget: item.budget != null ? item.budget : '-',
+      description: item.description || ''
     }))
     applyFilters()
   } catch (e) {
@@ -151,7 +174,7 @@ async function loadCampaignEffects() {
   }
 }
 
-// 本地筛选
+// 本地筛选（分页）
 function applyFilters() {
   tableData.value = [...allCampaigns.value]
   total.value = allCampaigns.value.length
@@ -161,10 +184,31 @@ function loadData() {
   applyFilters()
 }
 
-function handleSearch() { currentPage.value = 1; loadData() }
-function handleReset() { filters.keyword = ''; handleSearch() }
-function handleAdd() { dialogTitle.value = '新建活动'; editForm.campaignName = ''; editForm.impression = 0; editForm.clicks = 0; editForm.conversions = 0; dialogVisible.value = true }
-function handleEdit(row) { dialogTitle.value = '编辑活动'; Object.assign(editForm, row); dialogVisible.value = true }
+function handleAdd() {
+  dialogTitle.value = '新建活动'
+  editForm.name = ''
+  editForm.type = '满减'
+  editForm.startDate = ''
+  editForm.endDate = ''
+  editForm.description = ''
+  editForm.budget = 0
+  dialogVisible.value = true
+}
+
+function handleEdit(row) {
+  dialogTitle.value = '编辑活动'
+  // 从行数据还原编辑表单
+  editForm.name = row.name || ''
+  editForm.type = row.type || '满减'
+  editForm.startDate = row.startDate || ''
+  editForm.endDate = row.endDate || ''
+  editForm.description = row.description || ''
+  editForm.budget = row.budget != null ? Number(row.budget) : 0
+  // 保存ID用于区分新建/更新
+  editForm.id = row.id
+  dialogVisible.value = true
+}
+
 async function handleDelete(row) {
   try {
     await ElMessageBox.confirm('确定删除？', '提示')
@@ -177,22 +221,22 @@ async function handleDelete(row) {
     }
   }
 }
+
 async function handleSave() {
   try {
+    // 发送后端 CampaignRequest 期望的字段
+    const payload = {
+      name: editForm.name,
+      type: editForm.type,
+      startDate: editForm.startDate,
+      endDate: editForm.endDate,
+      description: editForm.description,
+      budget: editForm.budget
+    }
     if (editForm.id) {
-      await updateCampaign(editForm.id, {
-        campaignName: editForm.campaignName,
-        impression: editForm.impression,
-        clicks: editForm.clicks,
-        conversions: editForm.conversions
-      })
+      await updateCampaign(editForm.id, payload)
     } else {
-      await createCampaign({
-        campaignName: editForm.campaignName,
-        impression: editForm.impression,
-        clicks: editForm.clicks,
-        conversions: editForm.conversions
-      })
+      await createCampaign(payload)
     }
     ElMessage.success('保存成功')
     dialogVisible.value = false

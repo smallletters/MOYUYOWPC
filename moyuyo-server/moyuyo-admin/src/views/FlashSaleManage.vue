@@ -9,17 +9,17 @@
     <el-card shadow="never">
       <el-table :data="tableData" stripe style="width: 100%">
         <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="title" label="活动名称" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="name" label="活动名称" min-width="160" show-overflow-tooltip />
         <el-table-column prop="productName" label="商品名称" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="price" label="秒杀价" width="100">
-          <template #default="{ row }">¥{{ row.price }}</template>
+        <el-table-column prop="flashPrice" label="秒杀价" width="100">
+          <template #default="{ row }">¥{{ row.flashPrice }}</template>
         </el-table-column>
         <el-table-column prop="stock" label="库存" width="80" />
         <el-table-column prop="startTime" label="开始时间" width="160" />
         <el-table-column prop="endTime" label="结束时间" width="160" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="statusTag(row.status)" size="small">{{ statusMap(row.status) }}</el-tag>
+            <el-tag :type="getStatusType(row.status)" size="small">{{ getStatusText(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
@@ -41,13 +41,16 @@
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑秒杀' : '新建秒杀'" width="550px">
       <el-form :model="form" label-width="100px">
         <el-form-item label="活动名称" required>
-          <el-input v-model="form.title" placeholder="秒杀活动名称" />
+          <el-input v-model="form.name" placeholder="秒杀活动名称" />
         </el-form-item>
         <el-form-item label="商品ID" required>
           <el-input-number v-model="form.productId" :min="1" />
         </el-form-item>
         <el-form-item label="秒杀价" required>
-          <el-input-number v-model="form.price" :min="0.01" :precision="2" />
+          <el-input-number v-model="form.flashPrice" :min="0.01" :precision="2" />
+        </el-form-item>
+        <el-form-item label="原价">
+          <el-input-number v-model="form.originalPrice" :min="0" :precision="2" />
         </el-form-item>
         <el-form-item label="库存" required>
           <el-input-number v-model="form.stock" :min="1" />
@@ -70,6 +73,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useStatusTag } from '../composables/useStatusTag'
 import { getFlashSaleList, createFlashSale, updateFlashSale, deleteFlashSale, updateFlashSaleStatus } from '../api/admin'
 
 const tableData = ref([])
@@ -78,35 +82,28 @@ const isEdit = ref(false)
 const editId = ref(null)
 
 const form = reactive({
-  title: '',
+  name: '',
   productId: null,
-  price: 0,
+  flashPrice: 0,
+  originalPrice: 0,
   stock: 0,
-  startTime: '',
-  endTime: '',
+  startTime: null,
+  endTime: null,
 })
 
-function statusTag(status) {
-  if (status === 'active') return 'success'
-  if (status === 'inactive') return 'info'
-  if (status === 'ended') return 'warning'
-  return 'info'
-}
-
-function statusMap(status) {
-  if (status === 'active') return '进行中'
-  if (status === 'inactive') return '已停用'
-  if (status === 'ended') return '已结束'
-  return status
-}
+const { getStatusText, getStatusType } = useStatusTag(
+  { active: '进行中', inactive: '未开始', ended: '已结束' },
+  { active: 'success', inactive: 'warning', ended: 'info' }
+)
 
 function resetForm() {
-  form.title = ''
+  form.name = ''
   form.productId = null
-  form.price = 0
+  form.flashPrice = 0
+  form.originalPrice = 0
   form.stock = 0
-  form.startTime = ''
-  form.endTime = ''
+  form.startTime = null
+  form.endTime = null
 }
 
 async function loadData() {
@@ -128,9 +125,10 @@ function handleAdd() {
 function handleEdit(row) {
   isEdit.value = true
   editId.value = row.id
-  form.title = row.title
+  form.name = row.name
   form.productId = row.productId
-  form.price = row.price
+  form.flashPrice = row.flashPrice
+  form.originalPrice = row.originalPrice
   form.stock = row.stock
   form.startTime = row.startTime
   form.endTime = row.endTime
@@ -138,16 +136,25 @@ function handleEdit(row) {
 }
 
 async function handleSave() {
-  if (!form.title || !form.productId) {
+  if (!form.name || !form.productId) {
     ElMessage.warning('请填写完整信息')
     return
   }
   try {
+    const payload = {
+      name: form.name,
+      productId: form.productId,
+      flashPrice: form.flashPrice,
+      originalPrice: form.originalPrice,
+      stock: form.stock,
+      startTime: form.startTime ? new Date(form.startTime).toISOString() : null,
+      endTime: form.endTime ? new Date(form.endTime).toISOString() : null,
+    }
     if (isEdit.value) {
-      await updateFlashSale({ id: editId.value, ...form })
+      await updateFlashSale({ id: editId.value, ...payload })
       ElMessage.success('编辑成功')
     } else {
-      await createFlashSale({ ...form })
+      await createFlashSale(payload)
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false
@@ -161,8 +168,8 @@ async function handleToggleStatus(row) {
   const newStatus = row.status === 'active' ? 'inactive' : 'active'
   const label = newStatus === 'active' ? '启用' : '停用'
   try {
-    await ElMessageBox.confirm(`确定${label}秒杀「${row.title}」吗？`, '提示')
-    await updateFlashSaleStatus(row.id, { status: newStatus })
+    await ElMessageBox.confirm(`确定${label}秒杀「${row.name}」吗？`, '提示')
+    await updateFlashSaleStatus(row.id, { active: newStatus === 'active' })
     ElMessage.success(`已${label}`)
     await loadData()
   } catch (e) {
@@ -172,7 +179,7 @@ async function handleToggleStatus(row) {
 
 async function handleDelete(row) {
   try {
-    await ElMessageBox.confirm('确定删除秒杀「' + row.title + '」吗？', '提示')
+    await ElMessageBox.confirm('确定删除秒杀「' + row.name + '」吗？', '提示')
     await deleteFlashSale(row.id)
     ElMessage.success('已删除')
     await loadData()

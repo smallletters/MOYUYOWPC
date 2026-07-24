@@ -21,6 +21,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.moyuyo.common.enums.OrderStatusEnum.*;
+
 /**
  * 营销活动服务实现
  */
@@ -43,6 +45,7 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
       Map<String, Object> item = new LinkedHashMap<>();
       item.put("id", c.getId());
       item.put("name", c.getName());
+      item.put("type", c.getType());
       item.put("status", c.getStatus());
       item.put("description", c.getDescription());
       item.put("startDate", c.getStartDate() != null
@@ -67,7 +70,7 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
   public Map<String, Object> createCampaign(Map<String, Object> data) {
     MarketingCampaignEntity entity = new MarketingCampaignEntity();
     entity.setName((String) data.get("name"));
-    entity.setStatus((String) data.get("status"));
+    entity.setType((String) data.get("type"));
     entity.setDescription((String) data.get("description"));
     if (data.get("startDate") != null) {
       entity.setStartDate(parseDateTime(data.get("startDate")));
@@ -78,6 +81,8 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
     if (data.get("budget") != null) {
       entity.setBudget(new BigDecimal(data.get("budget").toString()));
     }
+    // 根据时间自动计算状态
+    entity.setStatus(calculateStatus(entity.getStartDate(), entity.getEndDate()));
     marketingCampaignMapper.insert(entity);
 
     Map<String, Object> result = new LinkedHashMap<>();
@@ -112,7 +117,7 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
 
     // 查询已完成订单统计
     LambdaQueryWrapper<OrderEntity> orderWrapper = new LambdaQueryWrapper<OrderEntity>()
-        .eq(OrderEntity::getStatus, "COMPLETED");
+        .eq(OrderEntity::getStatus, COMPLETED.name());
     Long totalOrders = orderMapper.selectCount(orderWrapper);
     BigDecimal totalPayAmount = orderMapper.selectList(orderWrapper).stream()
         .map(o -> o.getPayAmount() != null ? o.getPayAmount() : BigDecimal.ZERO)
@@ -142,6 +147,7 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
       return error;
     }
     if (data.get("name") != null) entity.setName((String) data.get("name"));
+    if (data.get("type") != null) entity.setType((String) data.get("type"));
     if (data.get("status") != null) entity.setStatus((String) data.get("status"));
     if (data.get("description") != null) entity.setDescription((String) data.get("description"));
     if (data.get("startDate") != null) {
@@ -224,9 +230,41 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
   }
 
   @Override
+  public Map<String, Object> updateAbTest(Long id, Map<String, Object> data) {
+    AbTestEntity entity = abTestMapper.selectById(id);
+    if (entity == null) {
+      Map<String, Object> error = new LinkedHashMap<>();
+      error.put("message", "A/B测试不存在");
+      return error;
+    }
+    if (data.get("name") != null) entity.setName((String) data.get("name"));
+    if (data.get("status") != null) entity.setStatus((String) data.get("status"));
+    if (data.get("description") != null) entity.setDescription((String) data.get("description"));
+    if (data.get("groupAVisitors") != null) {
+      entity.setGroupAVisitors(Integer.valueOf(data.get("groupAVisitors").toString()));
+    }
+    if (data.get("groupBVisitors") != null) {
+      entity.setGroupBVisitors(Integer.valueOf(data.get("groupBVisitors").toString()));
+    }
+    if (data.get("groupAConvRate") != null) {
+      entity.setGroupAConvRate(new BigDecimal(data.get("groupAConvRate").toString()));
+    }
+    if (data.get("groupBConvRate") != null) {
+      entity.setGroupBConvRate(new BigDecimal(data.get("groupBConvRate").toString()));
+    }
+    abTestMapper.updateById(entity);
+
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("id", id);
+    result.put("name", entity.getName());
+    result.put("message", "A/B测试更新成功");
+    return result;
+  }
+
+  @Override
   public Map<String, Object> getMarketingEffects(int days) {
     LambdaQueryWrapper<OrderEntity> totalWrapper = new LambdaQueryWrapper<OrderEntity>()
-        .eq(OrderEntity::getStatus, "COMPLETED");
+        .eq(OrderEntity::getStatus, COMPLETED.name());
     List<OrderEntity> allOrders = orderMapper.selectList(totalWrapper);
     BigDecimal totalGmv = allOrders.stream()
         .map(o -> o.getPayAmount() != null ? o.getPayAmount() : BigDecimal.ZERO)
@@ -235,7 +273,7 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
 
     LocalDateTime since = LocalDateTime.now().minusDays(days);
     LambdaQueryWrapper<OrderEntity> recentWrapper = new LambdaQueryWrapper<OrderEntity>()
-        .eq(OrderEntity::getStatus, "COMPLETED")
+        .eq(OrderEntity::getStatus, COMPLETED.name())
         .ge(OrderEntity::getCreateTime, since);
     List<OrderEntity> recentOrders = orderMapper.selectList(recentWrapper);
     BigDecimal recentGmv = recentOrders.stream()
@@ -280,6 +318,17 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
     }
     data.put("trend", trend);
     return data;
+  }
+
+  /**
+   * 根据时间计算活动状态
+   */
+  private String calculateStatus(LocalDateTime start, LocalDateTime end) {
+    if (start == null || end == null) return "UPCOMING";
+    LocalDateTime now = LocalDateTime.now();
+    if (now.isBefore(start)) return "UPCOMING";
+    if (now.isAfter(end)) return "ENDED";
+    return "ACTIVE";
   }
 
   /**

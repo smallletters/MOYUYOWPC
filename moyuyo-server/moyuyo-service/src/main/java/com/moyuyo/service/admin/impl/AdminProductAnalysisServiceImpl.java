@@ -17,6 +17,9 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -121,13 +124,21 @@ public class AdminProductAnalysisServiceImpl implements AdminProductAnalysisServ
   }
 
   @Override
-  public List<Map<String, Object>> report() {
+  public List<Map<String, Object>> report(LocalDate startDate, LocalDate endDate) {
     // 从数据库查询所有商品，生成商品报表
     List<ProductEntity> products = productMapper.selectList(
         new LambdaQueryWrapper<ProductEntity>().orderByDesc(ProductEntity::getSales));
 
-    // 查询所有订单明细用于计算收入
-    List<OrderItemEntity> allItems = orderItemMapper.selectList(new LambdaQueryWrapper<>());
+    // 查询订单明细，支持日期范围筛选
+    LambdaQueryWrapper<OrderItemEntity> itemWrapper = new LambdaQueryWrapper<>();
+    if (startDate != null) {
+      itemWrapper.ge(OrderItemEntity::getCreateTime, startDate.atStartOfDay());
+    }
+    if (endDate != null) {
+      itemWrapper.le(OrderItemEntity::getCreateTime, endDate.atTime(LocalTime.MAX));
+    }
+    List<OrderItemEntity> allItems = orderItemMapper.selectList(itemWrapper);
+
     // 按商品ID聚合：销量和收入
     Map<Long, LongSummaryStatistics> itemStats = allItems.stream()
         .collect(Collectors.groupingBy(

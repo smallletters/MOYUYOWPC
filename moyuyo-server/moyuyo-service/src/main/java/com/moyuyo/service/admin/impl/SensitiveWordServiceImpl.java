@@ -6,6 +6,7 @@ import com.moyuyo.dao.admin.mapper.SensitiveWordMapper;
 import com.moyuyo.service.admin.SensitiveWordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -50,21 +51,25 @@ public class SensitiveWordServiceImpl implements SensitiveWordService {
   }
 
   @Override
+  @Transactional
   public void create(SensitiveWordEntity entity) {
     sensitiveWordMapper.insert(entity);
   }
 
   @Override
+  @Transactional
   public void update(SensitiveWordEntity entity) {
     sensitiveWordMapper.updateById(entity);
   }
 
   @Override
+  @Transactional
   public void delete(Long id) {
     sensitiveWordMapper.deleteById(id);
   }
 
   @Override
+  @Transactional
   public void batchDelete(List<Long> ids) {
     sensitiveWordMapper.deleteBatchIds(ids);
   }

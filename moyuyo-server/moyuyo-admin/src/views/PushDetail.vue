@@ -8,8 +8,8 @@
     </div>
     <el-card shadow="never" class="filter-card">
       <el-form :model="filters" inline>
-        <el-form-item label="推送任务">
-          <el-input v-model="filters.taskName" placeholder="请输入推送任务名称" clearable />
+        <el-form-item label="推送名称">
+          <el-input v-model="filters.title" placeholder="请输入推送名称" clearable />
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="filters.status" placeholder="请选择" clearable style="width:120px">
@@ -27,14 +27,14 @@
     <el-card shadow="never">
       <el-table :data="tableData" stripe>
         <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="taskName" label="推送任务" width="180" />
-        <el-table-column label="推送平台" width="130">
+        <el-table-column prop="title" label="推送任务" width="180" />
+        <el-table-column label="推送渠道" width="130">
           <template #default="{ row }">
-            <el-tag :type="row.platform === '全部' ? 'primary' : row.platform === 'iOS' ? 'info' : 'success'">{{ row.platform }}</el-tag>
+            <el-tag :type="row.channel === 'all' ? 'primary' : row.channel === 'ios' ? 'info' : 'success'">{{ row.channel }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="sendCount" label="发送数" width="80" />
-        <el-table-column prop="reachCount" label="到达数" width="80" />
+        <el-table-column prop="sentCount" label="发送数" width="80" />
+        <el-table-column prop="openCount" label="到达数" width="80" />
         <el-table-column prop="clickCount" label="点击数" width="80" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
@@ -60,14 +60,14 @@
     </el-card>
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="700px">
       <el-form :model="editForm" label-width="100px">
-        <el-form-item label="推送任务">
-          <el-input v-model="editForm.taskName" placeholder="请输入推送任务名称" />
+        <el-form-item label="推送名称">
+          <el-input v-model="editForm.title" placeholder="请输入推送名称" />
         </el-form-item>
-        <el-form-item label="推送平台">
-          <el-select v-model="editForm.platform">
-            <el-option label="iOS" value="iOS" />
-            <el-option label="Android" value="Android" />
-            <el-option label="全部" value="全部" />
+        <el-form-item label="推送渠道">
+          <el-select v-model="editForm.channel">
+            <el-option label="iOS" value="ios" />
+            <el-option label="Android" value="android" />
+            <el-option label="全部" value="all" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
@@ -92,7 +92,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPushRecords, createPush, deletePush } from '../api/admin'
 
 const pageTitle = '推送详情'
-const filters = reactive({ taskName: '', status: '' })
+const filters = reactive({ title: '', status: '' })
 const tableData = ref([])
 const currentPage = ref(1)
 const pageSize = ref(15)
@@ -100,8 +100,8 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const editForm = reactive({
-  taskName: '',
-  platform: '全部',
+  title: '',
+  channel: 'all',
   status: '发送中'
 })
 
@@ -111,8 +111,8 @@ async function loadData() {
     const res = await getPushRecords()
     const records = (res && res.records) || res || []
     let filtered = records
-    if (filters.taskName) {
-      filtered = filtered.filter(item => item.taskName.includes(filters.taskName))
+    if (filters.title) {
+      filtered = filtered.filter(item => (item.title || '').includes(filters.title))
     }
     if (filters.status) {
       filtered = filtered.filter(item => item.status === filters.status)
@@ -125,8 +125,8 @@ async function loadData() {
   }
 }
 function handleSearch() { currentPage.value = 1; loadData() }
-function handleReset() { filters.taskName = ''; filters.status = ''; handleSearch() }
-function handleAdd() { dialogTitle.value = '新建推送'; editForm.taskName = ''; editForm.platform = '全部'; editForm.status = '发送中'; dialogVisible.value = true }
+function handleReset() { filters.title = ''; filters.status = ''; handleSearch() }
+function handleAdd() { dialogTitle.value = '新建推送'; editForm.title = ''; editForm.channel = 'all'; editForm.status = '发送中'; dialogVisible.value = true }
 function handleEdit(row) { dialogTitle.value = '编辑推送'; Object.assign(editForm, row); dialogVisible.value = true }
 
 // 删除推送（调用API）
@@ -143,11 +143,23 @@ async function handleDelete(row) {
   }
 }
 
-// 保存推送（调用API）
+// 保存推送（调用API：新建或编辑）
 async function handleSave() {
   try {
-    await createPush(editForm)
-    ElMessage.success('保存成功')
+    // 发送后端期望的字段名：title, channel
+    const payload = {
+      title: editForm.title,
+      channel: editForm.channel,
+      content: editForm.content || '',
+      status: editForm.status
+    }
+    if (editForm.id) {
+      await createPush({ ...payload, id: editForm.id })
+      ElMessage.success('更新成功')
+    } else {
+      await createPush(payload)
+      ElMessage.success('创建成功')
+    }
     dialogVisible.value = false
     loadData()
   } catch (e) {

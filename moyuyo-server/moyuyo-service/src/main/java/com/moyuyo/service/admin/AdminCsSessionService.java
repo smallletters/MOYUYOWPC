@@ -10,7 +10,7 @@ public interface AdminCsSessionService {
   /**
    * 会话列表（分页）
    */
-  Map<String, Object> listAll(int page, int size, String status);
+  Map<String, Object> listAll(int page, int size, String status, String sessionId, String userId);
 
   /**
    * 会话详情

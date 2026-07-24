@@ -67,4 +67,13 @@ public class AdminTariffController {
       @RequestParam String category) {
     return Result.success(adminTariffService.calculate(countryCode, amount, category));
   }
+
+  @Operation(summary = "试算关税(POST版)")
+  @PostMapping("/calculate")
+  public Result<Map<String, Object>> calculatePost(@RequestBody Map<String, Object> body) {
+    String countryCode = (String) body.get("countryCode");
+    BigDecimal amount = body.get("amount") != null ? new BigDecimal(body.get("amount").toString()) : BigDecimal.ZERO;
+    String category = (String) body.get("category");
+    return Result.success(adminTariffService.calculate(countryCode, amount, category));
+  }
 }

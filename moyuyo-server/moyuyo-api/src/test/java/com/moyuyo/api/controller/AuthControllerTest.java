@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.BaseIntegrationTest;
 import com.moyuyo.common.dto.auth.LoginRequest;
 import com.moyuyo.common.dto.auth.RegisterRequest;
-import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -24,8 +24,8 @@ class AuthControllerTest extends BaseIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Disabled("预置问题：AuthService 依赖 Redis 完整模拟，注册返回 500")
     @Test
+    @DisplayName("注册成功应返回200")
     void register_ShouldReturnSuccess() throws Exception {
         RegisterRequest request = new RegisterRequest();
         request.setEmail("test@moyuyo.com");
@@ -40,8 +40,8 @@ class AuthControllerTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.data.email").value("test@moyuyo.com"));
     }
 
-    @Disabled("预置问题：AuthService 依赖 Redis 完整模拟，注册返回 500")
     @Test
+    @DisplayName("重复邮箱注册应返回409")
     void register_WithExistingEmail_ShouldFail() throws Exception {
         RegisterRequest request = new RegisterRequest();
         request.setEmail("duplicate@moyuyo.com");
@@ -59,8 +59,8 @@ class AuthControllerTest extends BaseIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
-    @Disabled("预置问题：AuthService 依赖 Redis 完整模拟，登录返回 500")
     @Test
+    @DisplayName("正确凭据登录应返回Token")
     void login_WithValidCredentials_ShouldReturnToken() throws Exception {
         RegisterRequest reg = new RegisterRequest();
         reg.setEmail("login-test@moyuyo.com");
@@ -82,8 +82,8 @@ class AuthControllerTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.data.accessToken").isNotEmpty());
     }
 
-    @Disabled("预置问题：AuthService 依赖 Redis 完整模拟，登录返回 500")
     @Test
+    @DisplayName("错误密码登录应返回401")
     void login_WithWrongPassword_ShouldFail() throws Exception {
         LoginRequest login = new LoginRequest();
         login.setEmail("nonexistent@moyuyo.com");
@@ -96,6 +96,7 @@ class AuthControllerTest extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("无效邮箱格式应返回400")
     void register_WithInvalidEmail_ShouldReturn400() throws Exception {
         RegisterRequest request = new RegisterRequest();
         request.setEmail("invalid-email");
@@ -109,6 +110,7 @@ class AuthControllerTest extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("弱密码应返回400")
     void register_WithWeakPassword_ShouldReturn400() throws Exception {
         RegisterRequest request = new RegisterRequest();
         request.setEmail("test-weak@moyuyo.com");

@@ -6,5 +6,6 @@ import lombok.Data;
 public class StockUpdateRequest {
 
   private int stock;
+  private int safeThreshold;
   private String reason;
 }

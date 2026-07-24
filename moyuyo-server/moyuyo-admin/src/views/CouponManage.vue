@@ -8,35 +8,27 @@
     </div>
     <!-- 统计卡片 -->
     <el-row :gutter="16" style="margin-bottom:16px">
-      <el-col :span="6">
+      <el-col :span="8">
+        <el-card shadow="never">
+          <div class="stat-item">
+            <span class="stat-label">优惠券总数</span>
+            <span class="stat-value">{{ stats.totalCoupons || 0 }}</span>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="8">
+        <el-card shadow="never">
+          <div class="stat-item">
+            <span class="stat-label">启用中</span>
+            <span class="stat-value">{{ stats.activeCoupons || 0 }}</span>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="8">
         <el-card shadow="never">
           <div class="stat-item">
             <span class="stat-label">总发放</span>
             <span class="stat-value">{{ stats.totalIssued || 0 }}</span>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="never">
-          <div class="stat-item">
-            <span class="stat-label">已使用</span>
-            <span class="stat-value">{{ stats.totalUsed || 0 }}</span>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="never">
-          <div class="stat-item">
-            <span class="stat-label">使用率</span>
-            <span class="stat-value">{{ stats.usageRate || '0%' }}</span>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="never">
-          <div class="stat-item">
-            <span class="stat-label">优惠总额</span>
-            <span class="stat-value">{{ stats.totalDiscount || 0 }}</span>
           </div>
         </el-card>
       </el-col>
@@ -57,13 +49,13 @@
           </template>
         </el-table-column>
         <el-table-column prop="minAmount" label="最低消费" width="110" />
-        <el-table-column prop="totalStock" label="库存" width="80" />
+        <el-table-column prop="totalCount" label="库存" width="80" />
         <el-table-column prop="usedCount" label="已用" width="80" />
         <el-table-column prop="startTime" label="开始时间" width="160" />
         <el-table-column prop="endTime" label="结束时间" width="160" />
         <el-table-column prop="status" label="状态" width="80">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'active' ? 'success' : 'info'" size="small">{{ row.status === 'active' ? '启用' : '停用' }}</el-tag>
+            <el-tag :type="row.status ? 'success' : 'info'" size="small">{{ row.status ? '启用' : '禁用' }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="160" fixed="right">
@@ -93,13 +85,16 @@
           <el-input-number v-model="form.minAmount" :min="0" :precision="2" />
         </el-form-item>
         <el-form-item label="库存">
-          <el-input-number v-model="form.totalStock" :min="0" />
+          <el-input-number v-model="form.totalCount" :min="0" />
         </el-form-item>
         <el-form-item label="开始时间">
           <el-date-picker v-model="form.startTime" type="datetime" placeholder="选择开始时间" />
         </el-form-item>
         <el-form-item label="结束时间">
           <el-date-picker v-model="form.endTime" type="datetime" placeholder="选择结束时间" />
+        </el-form-item>
+        <el-form-item v-if="isEdit" label="状态">
+          <el-switch v-model="form.active" active-text="启用" inactive-text="禁用" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -126,9 +121,10 @@ const form = reactive({
   type: 'fixed',
   value: 0,
   minAmount: 0,
-  totalStock: 0,
+  totalCount: 0,
   startTime: '',
   endTime: '',
+  active: true,
 })
 
 function resetForm() {
@@ -136,9 +132,10 @@ function resetForm() {
   form.type = 'fixed'
   form.value = 0
   form.minAmount = 0
-  form.totalStock = 0
+  form.totalCount = 0
   form.startTime = ''
   form.endTime = ''
+  form.active = true
 }
 
 async function loadData() {
@@ -173,9 +170,10 @@ function handleEdit(row) {
   form.type = row.type
   form.value = row.value
   form.minAmount = row.minAmount
-  form.totalStock = row.totalStock
+  form.totalCount = row.totalCount
   form.startTime = row.startTime
   form.endTime = row.endTime
+  form.active = row.status === true || row.status === 'active'
   dialogVisible.value = true
 }
 
@@ -186,7 +184,8 @@ async function handleSave() {
   }
   try {
     if (isEdit.value) {
-      await updateCoupon({ id: editId.value, ...form })
+      // 后端 update 读取 status 字段映射到 active
+      await updateCoupon({ id: editId.value, ...form, status: form.active })
       ElMessage.success('编辑成功')
     } else {
       await createCoupon({ ...form })

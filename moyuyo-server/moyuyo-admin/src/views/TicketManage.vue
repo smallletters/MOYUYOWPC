@@ -167,8 +167,11 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { getTicketList, getTicketStats } from '../api/admin'
 import { ElMessage } from 'element-plus'
+
+const router = useRouter()
 
 const activeStatus = ref('all')
 const filterType = ref('')
@@ -248,7 +251,19 @@ async function loadData() {
       ticketStats.value = statsRes
     }
     const list = (listRes && listRes.records) || listRes || []
-    ticketList.value = list
+    ticketList.value = list.map(item => ({
+      id: item.id,
+      ticketNo: item.ticketNo || item.ticketNo || '',
+      type: item.type || '咨询',
+      priority: item.priority || '低',
+      title: item.title || '',
+      user: item.user || '',
+      createTime: item.createTimeFormatted || item.createTime || '',
+      status: ({'PENDING':'待处理','PROCESSING':'进行中','CLOSED':'已关闭'})[item.status] || item.status || '待处理',
+      agent: item.agent || '待分配',
+      responseTime: item.responseTime || '-',
+      timeout: item.timeout || false
+    }))
   } catch (e) {
     console.error('加载工单数据失败:', e)
   }
@@ -281,7 +296,8 @@ function userAvatarClass(user) {
 }
 
 function handleView(item) {
-  ElMessage.info(`查看工单：${item.ticketNo}`)
+  // 打开工单详情弹窗或跳转
+  router.push({ path: '/ticket', query: { id: item.id, action: 'view' } })
 }
 
 onMounted(() => { loadData() })

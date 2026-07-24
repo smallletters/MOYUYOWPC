@@ -36,6 +36,15 @@ public class AdminPointsController {
         return Result.success(result);
     }
 
+    @Operation(summary = "删除积分活动（按类型删除该类型下的所有积分流水）")
+    @DeleteMapping("/activities/{type}")
+    public Result<Map<String, Object>> deleteActivity(@PathVariable String type) {
+        adminPointsService.deleteActivity(type);
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("message", "删除成功");
+        return Result.success(result);
+    }
+
     @Operation(summary = "积分流水")
     @GetMapping("/logs")
     public Result<Map<String, Object>> logs(

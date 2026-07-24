@@ -3,7 +3,7 @@
     <div class="page-header">
       <h2>{{ pageTitle }}</h2>
       <div class="header-actions">
-        <el-button type="primary" @click="handleAdd">新建明细</el-button>
+        <el-button @click="router.back()">返回</el-button>
       </div>
     </div>
     <!-- 结算单摘要 -->
@@ -57,9 +57,9 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getSettlementDetail } from '../api/admin'
+import { useRoute, useRouter } from 'vue-router'
 
 const pageTitle = '结算详情'
-const filters = reactive({ keyword: '' })
 const tableData = ref([])
 const currentPage = ref(1)
 const pageSize = ref(15)
@@ -77,26 +77,40 @@ const summary = reactive({
   actualSettlement: 0
 })
 
+const route = useRoute()
+const router = useRouter()
+
 // 从API加载结算详情数据
 async function loadData() {
   try {
-    const res = await getSettlementDetail()
+    const settlementId = route.query.id
+    if (!settlementId) {
+      ElMessage.warning('缺少结算单ID')
+      return
+    }
+    const res = await getSettlementDetail(settlementId)
     const data = res || {}
     // 填充摘要信息
     if (data.summary) {
       Object.assign(summary, data.summary)
     }
     // 填充明细列表
-    const list = data.records || data.items || []
-    tableData.value = list
-    total.value = list.length
+    const list = data.records || data.items || data.orders || []
+    tableData.value = Array.isArray(list) ? list : []
+    total.value = tableData.value.length
   } catch (e) {
     console.error('加载结算详情失败:', e)
     ElMessage.error('加载结算详情失败')
   }
 }
-function handleAdd() { ElMessage.warning('新增功能开发中') }
-function handleDetail(row) { ElMessage.info('查看订单 ' + row.orderNo + ' 详情') }
+function handleDetail(row) {
+  // 跳转到订单详情页
+  if (row.orderId || row.id) {
+    router.push({ path: `/orders/${row.orderId || row.id}` })
+  } else {
+    ElMessage.info('暂无关联订单信息')
+  }
+}
 onMounted(() => loadData())
 </script>
 

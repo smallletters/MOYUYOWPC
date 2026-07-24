@@ -76,7 +76,23 @@ public class AdminBatchImportServiceImpl implements AdminBatchImportService {
     if (entity == null) {
       return new ArrayList<>();
     }
-    return new ArrayList<>();
+    // 从实体状态推断错误信息
+    List<Map<String, Object>> errors = new ArrayList<>();
+    String status = entity.getStatus();
+    if ("导入失败".equals(status) || "部分失败".equals(status)) {
+      Map<String, Object> error = new LinkedHashMap<>();
+      error.put("row", 0);
+      error.put("message", "导入处理过程中出现错误，请检查导入文件格式和数据有效性");
+      error.put("type", "SYSTEM");
+      errors.add(error);
+    } else if ("导入中".equals(status)) {
+      Map<String, Object> error = new LinkedHashMap<>();
+      error.put("row", 0);
+      error.put("message", "导入仍在处理中，请稍后查看结果");
+      error.put("type", "INFO");
+      errors.add(error);
+    }
+    return errors;
   }
 
   @Override

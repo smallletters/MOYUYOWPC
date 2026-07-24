@@ -124,7 +124,7 @@
                 <p class="exception-desc">{{ exc.description }}</p>
                 <div class="exception-amount">{{ exc.amount }}</div>
               </div>
-              <button class="btn btn-primary exception-btn">处理</button>
+              <button class="btn btn-primary exception-btn" @click="handleException(exc)">处理</button>
             </div>
           </div>
         </div>
@@ -138,7 +138,7 @@
           <span class="section-title-icon">📋</span>
           结算明细
         </h2>
-        <button class="link-btn">查看全部 →</button>
+        <button class="link-btn" @click="handleViewAllSettlements">查看全部 →</button>
       </div>
       <div class="table-wrapper">
         <table class="data-table">
@@ -174,8 +174,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getFinanceOverview, getSettlements, getFinanceRecords } from '../api/admin'
+import api from '../api/index'
 
 // 财务概览KPI数据
 const overviewData = ref({
@@ -197,6 +199,8 @@ const settlementData = ref([])
 
 // 加载状态
 const loading = ref(false)
+
+const router = useRouter()
 
 // 获取所有财务数据
 async function fetchData() {
@@ -238,12 +242,39 @@ function statusClass(status) {
   return map[status] || 'status-tag'
 }
 
-function handleSettle() {
-  ElMessage.success('结算请求已提交')
+async function handleSettle() {
+  try {
+    const { createSettlement } = await import('../api/admin')
+    await createSettlement({ amount: overviewData.value.pendingSettlement, status: 'SETTLING', period: new Date().toISOString().slice(0, 10) })
+    ElMessage.success('结算请求已提交')
+    fetchData()
+  } catch (err) {
+    ElMessage.error('提交结算失败')
+  }
 }
 
-function handleExport() {
-  ElMessage.success('报表导出任务已提交，请稍后在下载中心查看')
+async function handleExport() {
+  try {
+    // 调用后端导出API，生成财务报表
+    const res = await api.get('/finance/records', { params: { export: 'excel' } })
+    if (res && res.url) {
+      window.open(res.url, '_blank')
+      ElMessage.success('报表导出成功')
+    } else {
+      ElMessage.success('报表导出任务已提交，请稍后在下载中心查看')
+    }
+  } catch (err) {
+    ElMessage.error('导出失败: ' + (err.response?.data?.message || err.message))
+  }
+}
+
+function handleException(exc) {
+  // 跳转到结算详情处理异常，传递结算ID
+  router.push({ path: '/settlement-detail', query: { id: exc.id || exc.settlementId } })
+}
+
+function handleViewAllSettlements() {
+  router.push('/settlement')
 }
 
 onMounted(() => {

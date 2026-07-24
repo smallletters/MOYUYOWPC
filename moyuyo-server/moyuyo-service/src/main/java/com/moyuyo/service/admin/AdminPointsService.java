@@ -24,6 +24,11 @@ public interface AdminPointsService {
   Map<String, Object> listLogs(int page, int size, Long userId);
 
   /**
+   * 删除积分活动（按类型删除对应的积分流水记录）
+   */
+  void deleteActivity(String type);
+
+  /**
    * 积分统计
    */
   Map<String, Object> getStats();

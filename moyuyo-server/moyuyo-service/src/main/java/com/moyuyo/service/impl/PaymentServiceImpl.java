@@ -9,6 +9,8 @@ import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.PaymentMapper;
 import com.moyuyo.service.OrderService;
 import com.moyuyo.service.PaymentService;
+import static com.moyuyo.common.enums.OrderStatusEnum.*;
+import static com.moyuyo.common.enums.PaymentStatusEnum.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -73,7 +75,7 @@ public class PaymentServiceImpl implements PaymentService {
         if (order == null) {
             throw new IllegalArgumentException("订单不存在: " + request.getOrderNo());
         }
-        if (!"PENDING_PAY".equals(order.getStatus())) {
+        if (!PENDING_PAY.name().equals(order.getStatus())) {
             throw new IllegalStateException("订单状态不允许支付: " + order.getStatus());
         }
 
@@ -356,7 +358,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setTransactionId(transactionId);
         payment.setAmount(amount);
         payment.setCurrency("USD");
-        payment.setStatus("PENDING");
+        payment.setStatus(PENDING.name());
         payment.setPaidAt(null);
         paymentMapper.insert(payment);
     }

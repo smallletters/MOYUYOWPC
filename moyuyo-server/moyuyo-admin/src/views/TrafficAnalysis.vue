@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <div class="page-wrapper">
     <div class="page-header">
       <h2>流量分析</h2>
       <div class="header-actions">
-        <el-button @click="handleExport">导出数据</el-button>
+        <el-button disabled @click="handleExport">导出数据</el-button>
       </div>
     </div>
     <!-- KPI 卡片 -->
@@ -76,9 +76,19 @@ async function loadData() {
         todayVisitors: res.todayVisitors ?? '—',
         todayPageViews: res.todayPageViews ?? '—',
         bounceRate: res.bounceRate ?? '—',
-        avgDuration: res.avgDuration ?? '—'
+        avgDuration: res.avgStayDuration ?? '—'
       }
-      tableData.value = res.list || []
+      // 后端返回 channels，映射为前端期望的字段名
+      const channels = res.channels || []
+      const totalVisits = channels.reduce((sum, c) => sum + (c.visits || 0), 0)
+      tableData.value = channels.map((c, i) => ({
+        id: i + 1,
+        channel: c.channel,
+        visitors: c.visits || 0,
+        pageViews: c.pv || 0,
+        percentage: totalVisits > 0 ? Math.round((c.visits || 0) / totalVisits * 100) : 0,
+        bounceRate: 0
+      }))
     }
   } catch (err) {
     console.error('获取流量数据失败', err)

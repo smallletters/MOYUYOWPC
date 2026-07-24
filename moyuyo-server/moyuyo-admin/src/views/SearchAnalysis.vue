@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-wrapper">
     <div class="page-header">
       <h2>搜索分析</h2>
@@ -76,9 +76,18 @@ async function loadData() {
         totalSearches: res.totalSearches ?? '—',
         searchUsers: res.searchUsers ?? '—',
         noResultRate: res.noResultRate ?? '—',
-        avgSearches: res.avgSearches ?? '—'
+        avgSearches: res.avgSearchesPerUser ?? '—'
       }
-      tableData.value = res.list || []
+      // 后端返回 hotKeywords，字段名映射
+      const keywords = res.hotKeywords || []
+      tableData.value = keywords.map((k, i) => ({
+        id: i + 1,
+        keyword: k.keyword,
+        searchCount: k.count || 0,
+        resultCount: "—",
+        userCount: "—",
+        conversionRate: "—"
+      }))
     }
   } catch (err) {
     console.error('获取搜索分析数据失败', err)

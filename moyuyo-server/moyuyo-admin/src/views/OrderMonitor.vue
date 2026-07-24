@@ -76,11 +76,12 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getOrderOpsStats, getOrderOpsExport } from '../api/admin'
+import { getMonitorData, getAbnormalOrders } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const currentTab = ref('')
 
 const kpiData = reactive({
   todayOrders: 0,
@@ -96,8 +97,8 @@ async function loadData() {
   try {
     // 同时获取统计数据和订单列表
     const [statsRes, listRes] = await Promise.all([
-      getOrderOpsStats(),
-      getOrderOpsExport()
+      getMonitorData(),
+      getAbnormalOrders({ abnormalType: currentTab.value, page: currentPage.value, size: pageSize.value })
     ])
     // 填充KPI数据
     const stats = statsRes.data || statsRes || {}
@@ -106,11 +107,10 @@ async function loadData() {
     kpiData.abnormalOrders = stats.abnormalOrders || 0
     kpiData.intercepting = stats.intercepting || 0
 
-    // 填充列表数据
-    const list = listRes.data || listRes || []
-    total.value = list.length
-    const start = (currentPage.value - 1) * pageSize.value
-    tableData.value = list.slice(start, start + pageSize.value)
+    // 填充列表数据（服务端分页）
+    const listData = listRes.data || listRes || {}
+    tableData.value = listData.records || listData.list || []
+    total.value = listData.total || 0
   } catch (error) {
     console.error('获取订单监控数据失败:', error)
     ElMessage.error('获取订单监控数据失败')

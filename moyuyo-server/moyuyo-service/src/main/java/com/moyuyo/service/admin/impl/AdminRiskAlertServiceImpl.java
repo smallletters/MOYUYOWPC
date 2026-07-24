@@ -1,101 +1,110 @@
 package com.moyuyo.service.admin.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyuyo.dao.admin.entity.RiskAlertConfigEntity;
+import com.moyuyo.dao.admin.entity.RiskEventEntity;
+import com.moyuyo.dao.admin.mapper.RiskAlertConfigMapper;
+import com.moyuyo.dao.admin.mapper.RiskEventMapper;
 import com.moyuyo.service.admin.AdminRiskAlertService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
- * 风险告警服务实现（模拟数据）
+ * 风险告警服务实现
  */
 @Service
+@RequiredArgsConstructor
 public class AdminRiskAlertServiceImpl implements AdminRiskAlertService {
 
-  private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+  private final RiskAlertConfigMapper riskAlertConfigMapper;
+  private final RiskEventMapper riskEventMapper;
 
   @Override
   public List<Map<String, Object>> listConfigs() {
+    List<RiskAlertConfigEntity> configs = riskAlertConfigMapper.selectList(
+        new LambdaQueryWrapper<RiskAlertConfigEntity>()
+            .orderByDesc(RiskAlertConfigEntity::getCreateTime)
+    );
     List<Map<String, Object>> list = new ArrayList<>();
-
-    Map<String, Object> r1 = new LinkedHashMap<>();
-    r1.put("id", 1L);
-    r1.put("name", "登录异常检测");
-    r1.put("type", "LOGIN");
-    r1.put("threshold", 5);
-    r1.put("enabled", true);
-    r1.put("action", "VERIFY");
-    r1.put("createTime", LocalDateTime.now().minusDays(7).format(FMT));
-    list.add(r1);
-
-    Map<String, Object> r2 = new LinkedHashMap<>();
-    r2.put("id", 2L);
-    r2.put("name", "大额订单风控");
-    r2.put("type", "ORDER");
-    r2.put("threshold", 10000);
-    r2.put("enabled", true);
-    r2.put("action", "REVIEW");
-    r2.put("createTime", LocalDateTime.now().minusDays(3).format(FMT));
-    list.add(r2);
-
-    Map<String, Object> r3 = new LinkedHashMap<>();
-    r3.put("id", 3L);
-    r3.put("name", "支付失败监控");
-    r3.put("type", "PAYMENT");
-    r3.put("threshold", 3);
-    r3.put("enabled", false);
-    r3.put("action", "LOG");
-    r3.put("createTime", LocalDateTime.now().minusDays(1).format(FMT));
-    list.add(r3);
-
+    for (RiskAlertConfigEntity config : configs) {
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("id", config.getId());
+      item.put("name", config.getAlertName());
+      item.put("type", config.getAlertType());
+      item.put("threshold", config.getThreshold());
+      item.put("notifyChannels", config.getNotifyChannels());
+      item.put("notifyUsers", config.getNotifyUsers());
+      item.put("enabled", "ENABLED".equals(config.getStatus()));
+      item.put("createTime", config.getCreateTime());
+      list.add(item);
+    }
     return list;
   }
 
   @Override
   public void createConfig(Map<String, Object> data) {
-    // 模拟创建成功
+    RiskAlertConfigEntity entity = new RiskAlertConfigEntity();
+    if (data.get("name") != null) entity.setAlertName((String) data.get("name"));
+    if (data.get("type") != null) entity.setAlertType((String) data.get("type"));
+    if (data.get("threshold") != null) entity.setThreshold(Integer.valueOf(data.get("threshold").toString()));
+    if (data.get("notifyChannels") != null) entity.setNotifyChannels((String) data.get("notifyChannels"));
+    if (data.get("notifyUsers") != null) entity.setNotifyUsers((String) data.get("notifyUsers"));
+    entity.setStatus("ENABLED");
+    riskAlertConfigMapper.insert(entity);
   }
 
   @Override
   public void updateConfig(Map<String, Object> data) {
-    // 模拟更新成功
+    if (data.get("id") == null) return;
+    RiskAlertConfigEntity entity = riskAlertConfigMapper.selectById(Long.valueOf(data.get("id").toString()));
+    if (entity == null) return;
+    if (data.get("name") != null) entity.setAlertName((String) data.get("name"));
+    if (data.get("type") != null) entity.setAlertType((String) data.get("type"));
+    if (data.get("threshold") != null) entity.setThreshold(Integer.valueOf(data.get("threshold").toString()));
+    if (data.get("notifyChannels") != null) entity.setNotifyChannels((String) data.get("notifyChannels"));
+    if (data.get("notifyUsers") != null) entity.setNotifyUsers((String) data.get("notifyUsers"));
+    if (data.get("enabled") != null) {
+      entity.setStatus(Boolean.TRUE.equals(data.get("enabled")) ? "ENABLED" : "DISABLED");
+    }
+    riskAlertConfigMapper.updateById(entity);
   }
 
   @Override
   public void deleteConfig(Long id) {
-    // 模拟删除成功
+    riskAlertConfigMapper.deleteById(id);
   }
 
   @Override
   public Map<String, Object> listHistory(int page, int size) {
+    LambdaQueryWrapper<RiskEventEntity> wrapper = new LambdaQueryWrapper<>();
+    wrapper.orderByDesc(RiskEventEntity::getCreateTime);
+
+    Page<RiskEventEntity> pageObj = riskEventMapper.selectPage(new Page<>(page, size), wrapper);
+
     List<Map<String, Object>> list = new ArrayList<>();
-
-    Map<String, Object> e1 = new LinkedHashMap<>();
-    e1.put("id", 101L);
-    e1.put("ruleId", 1L);
-    e1.put("type", "LOGIN");
-    e1.put("level", "HIGH");
-    e1.put("message", "用户异常登录，连续失败5次");
-    e1.put("handled", false);
-    e1.put("createTime", LocalDateTime.now().minusHours(2).format(FMT));
-    list.add(e1);
-
-    Map<String, Object> e2 = new LinkedHashMap<>();
-    e2.put("id", 102L);
-    e2.put("ruleId", 2L);
-    e2.put("type", "ORDER");
-    e2.put("level", "MEDIUM");
-    e2.put("message", "单笔订单金额超过¥10,000");
-    e2.put("handled", true);
-    e2.put("createTime", LocalDateTime.now().minusHours(5).format(FMT));
-    list.add(e2);
+    for (RiskEventEntity event : pageObj.getRecords()) {
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("id", event.getId());
+      item.put("ruleId", event.getRuleId());
+      item.put("type", event.getEventType());
+      item.put("level", event.getRiskLevel());
+      item.put("message", event.getDetailJson());
+      item.put("handled", "RESOLVED".equals(event.getStatus()));
+      item.put("createTime", event.getCreateTime());
+      list.add(item);
+    }
 
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("list", list);
-    result.put("total", list.size());
-    result.put("page", page);
-    result.put("size", size);
+    result.put("total", pageObj.getTotal());
+    result.put("page", pageObj.getCurrent());
+    result.put("size", pageObj.getSize());
     return result;
   }
 }

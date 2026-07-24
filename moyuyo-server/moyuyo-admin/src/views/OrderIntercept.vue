@@ -60,7 +60,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getOrderOpsExport, batchShip } from '../api/admin'
+import { getInterceptList, createIntercept, releaseIntercept } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -81,18 +81,9 @@ function interceptTag(status) {
 // 加载拦截订单列表
 async function loadData() {
   try {
-    const res = await getOrderOpsExport()
-    let list = res || []
-    const kw = filters.keyword.toLowerCase()
-    if (kw) {
-      list = list.filter(d => (d.orderNo || '').toLowerCase().includes(kw))
-    }
-    if (filters.interceptStatus) {
-      list = list.filter(d => d.interceptStatus === filters.interceptStatus)
-    }
-    total.value = list.length
-    const start = (currentPage.value - 1) * pageSize.value
-    tableData.value = list.slice(start, start + pageSize.value)
+    const { list, total: totalCount } = await getInterceptList({ page: currentPage.value, size: pageSize.value })
+    tableData.value = list || []
+    total.value = totalCount || 0
   } catch (error) {
     console.error('获取拦截订单数据失败:', error)
     ElMessage.error('获取拦截订单数据失败')
@@ -106,7 +97,7 @@ function handleReset() { filters.keyword = ''; filters.interceptStatus = ''; han
 async function handleIntercept(row) {
   try {
     await ElMessageBox.confirm('确认拦截订单 ' + row.orderNo + ' 吗？', '提示', { type: 'warning' })
-    await batchShip({ orderIds: [row.id], action: 'intercept' })
+    await createIntercept({ orderId: row.id, interceptType: 'MANUAL', reason: '', reasonTemplate: '' })
     ElMessage.success('已成功拦截')
     loadData()
   } catch (error) {
@@ -121,7 +112,7 @@ async function handleIntercept(row) {
 async function handleRelease(row) {
   try {
     await ElMessageBox.confirm('确认放行订单 ' + row.orderNo + ' 吗？', '提示', { type: 'info' })
-    await batchShip({ orderIds: [row.id], action: 'release' })
+    await releaseIntercept(row.id, { releaseReason: '', releaseOperator: '' })
     ElMessage.success('已放行')
     loadData()
   } catch (error) {

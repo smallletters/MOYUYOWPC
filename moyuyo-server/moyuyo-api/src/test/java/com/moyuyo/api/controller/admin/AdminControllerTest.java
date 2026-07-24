@@ -53,7 +53,7 @@ class AdminControllerTest extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.token").isNotEmpty());
     }
 
@@ -76,7 +76,7 @@ class AdminControllerTest extends BaseIntegrationTest {
         mockMvc.perform(get("/api/admin/dashboard/stats")
                         .header("Authorization", adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.todayGmv").isNumber());
     }
 
@@ -85,7 +85,7 @@ class AdminControllerTest extends BaseIntegrationTest {
         mockMvc.perform(get("/api/admin/dashboard/recent-orders")
                         .header("Authorization", adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data").isArray());
     }
 }

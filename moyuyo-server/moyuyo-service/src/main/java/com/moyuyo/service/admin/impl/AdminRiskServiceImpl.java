@@ -9,6 +9,7 @@ import com.moyuyo.dao.admin.mapper.RiskRuleMapper;
 import com.moyuyo.service.admin.AdminRiskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -51,21 +52,25 @@ public class AdminRiskServiceImpl implements AdminRiskService {
   }
 
   @Override
+  @Transactional
   public void createRule(RiskRuleEntity entity) {
     riskRuleMapper.insert(entity);
   }
 
   @Override
+  @Transactional
   public void updateRule(RiskRuleEntity entity) {
     riskRuleMapper.updateById(entity);
   }
 
   @Override
+  @Transactional
   public void deleteRule(Long id) {
     riskRuleMapper.deleteById(id);
   }
 
   @Override
+  @Transactional
   public void toggleRule(Long id, Boolean enabled) {
     RiskRuleEntity entity = riskRuleMapper.selectById(id);
     if (entity != null) {

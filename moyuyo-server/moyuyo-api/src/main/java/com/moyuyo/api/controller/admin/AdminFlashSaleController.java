@@ -60,11 +60,23 @@ public class AdminFlashSaleController {
 
   @Operation(summary = "修改秒杀活动状态")
   @PutMapping("/{id}/status")
-  public Result<Map<String, Object>> updateStatus(@PathVariable Long id, @RequestParam Boolean active) {
-    adminFlashSaleService.updateStatus(id, active != null ? active.toString() : "false");
+  public Result<Map<String, Object>> updateStatus(@PathVariable Long id,
+                                                  @RequestParam(required = false) Boolean active,
+                                                  @RequestBody(required = false) Map<String, Object> body) {
+    // 支持从 RequestParam 或 RequestBody 中获取 active 值
+    Boolean activeValue = active;
+    if (activeValue == null && body != null && body.containsKey("active")) {
+      Object activeObj = body.get("active");
+      if (activeObj instanceof Boolean) {
+        activeValue = (Boolean) activeObj;
+      } else if (activeObj instanceof String) {
+        activeValue = Boolean.parseBoolean((String) activeObj);
+      }
+    }
+    adminFlashSaleService.updateStatus(id, activeValue != null ? activeValue.toString() : "false");
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("id", id);
-    result.put("active", active);
+    result.put("active", activeValue);
     result.put("message", "状态更新成功");
     return Result.success(result);
   }

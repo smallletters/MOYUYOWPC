@@ -5,6 +5,7 @@ import com.moyuyo.dao.admin.entity.SystemConfigEntity;
 import com.moyuyo.dao.admin.mapper.SystemConfigMapper;
 import com.moyuyo.service.admin.SystemConfigService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,6 +35,7 @@ public class SystemConfigServiceImpl implements SystemConfigService {
   }
 
   @Override
+  @Transactional
   public void saveConfig(String group, Map<String, Object> config) {
     // 遍历参数 map，使用 insert/update 保存到 mo_system_config 表
     for (Map.Entry<String, Object> entry : config.entrySet()) {
@@ -60,6 +62,7 @@ public class SystemConfigServiceImpl implements SystemConfigService {
   }
 
   @Override
+  @Transactional
   public void saveConfig(Map<String, String> config) {
     // 遍历参数 map，使用 insert/update 保存到 mo_system_config 表
     for (Map.Entry<String, String> entry : config.entrySet()) {

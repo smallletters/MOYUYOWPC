@@ -42,7 +42,7 @@
       </el-table>
       <div style="display:flex;justify-content:flex-end;padding:16px 0 0">
         <el-pagination
-          v-model:current-page="currentPage"
+          v-model:current-page="page"
           v-model:page-size="pageSize"
           :total="total"
           layout="total, sizes, prev, pager, next"
@@ -56,10 +56,11 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getOrderOpsExport, batchShip } from '../api/admin'
+import { getPrintList, recordPrint } from '../api/admin'
 
-const currentPage = ref(1)
+const page = ref(1)
 const pageSize = ref(10)
+const printType = ref('order')
 const total = ref(0)
 
 const filters = reactive({
@@ -72,32 +73,34 @@ const tableData = ref([])
 // 加载打印列表数据
 async function loadData() {
   try {
-    const res = await getOrderOpsExport()
-    let list = res || []
+    const res = await getPrintList({ printType: printType.value, page: page.value, size: pageSize.value })
+    // 响应结构：{ list: [], total: number }
+    const list = (res && res.list) ? res.list : (Array.isArray(res) ? res : [])
+    // 客户端关键字过滤
     const kw = filters.keyword.toLowerCase()
+    let filtered = list
     if (kw) {
-      list = list.filter(d => (d.orderNo || '').toLowerCase().includes(kw))
+      filtered = filtered.filter(d => (d.orderNo || '').toLowerCase().includes(kw))
     }
     if (filters.printStatus) {
-      list = list.filter(d => d.printStatus === filters.printStatus)
+      filtered = filtered.filter(d => d.printStatus === filters.printStatus)
     }
-    total.value = list.length
-    const start = (currentPage.value - 1) * pageSize.value
-    tableData.value = list.slice(start, start + pageSize.value)
+    total.value = res && res.total != null ? res.total : filtered.length
+    tableData.value = filtered
   } catch (error) {
     console.error('获取打印数据失败:', error)
     ElMessage.error('获取打印数据失败')
   }
 }
 
-function handleSearch() { currentPage.value = 1; loadData() }
+function handleSearch() { page.value = 1; loadData() }
 
 function handleReset() { filters.keyword = ''; filters.printStatus = ''; handleSearch() }
 
-// 提交打印任务
+// 记录打印操作
 async function handlePrint(row) {
   try {
-    await batchShip({ orderIds: [row.id], action: 'print' })
+    await recordPrint({ orderId: row.id, printType: printType.value, templateName: '默认模板', paperSize: 'A4' })
     ElMessage.success('打印任务已提交，订单：' + row.orderNo)
     loadData()
   } catch (error) {

@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.mapper.OrderMapper;
+import com.moyuyo.common.enums.OrderStatusEnum;
+import static com.moyuyo.common.enums.GeneralStatusEnum.*;
 import com.moyuyo.service.admin.SettlementService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,8 +30,13 @@ public class SettlementServiceImpl implements SettlementService {
 
   private final OrderMapper orderMapper;
 
+  /** 佣金率 */
+  private static final BigDecimal COMMISSION_RATE = new BigDecimal("0.05");
+
   /** 已支付状态的订单列表，用于结算聚合 */
-  private static final List<String> PAID_STATUSES = List.of("PAID", "SHIPPED", "COMPLETED", "RECEIVED");
+  private static final List<String> PAID_STATUSES = List.of(
+      OrderStatusEnum.PAID.name(), OrderStatusEnum.SHIPPED.name(),
+      OrderStatusEnum.COMPLETED.name(), OrderStatusEnum.RECEIVED.name());
 
   @Override
   public List<Map<String, Object>> listAll(String status) {
@@ -69,7 +76,7 @@ public class SettlementServiceImpl implements SettlementService {
       item.put("date", date.format(dateFormatter));
       item.put("amount", totalAmount);
       item.put("orderCount", dayOrders.size());
-      item.put("status", "PENDING");
+      item.put("status", PENDING.name());
       list.add(item);
     }
 
@@ -88,7 +95,7 @@ public class SettlementServiceImpl implements SettlementService {
         .map(o -> o.getPayAmount() != null ? o.getPayAmount() : BigDecimal.ZERO)
         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-    BigDecimal commission = totalAmount.multiply(new BigDecimal("0.05"))
+    BigDecimal commission = totalAmount.multiply(COMMISSION_RATE)
         .setScale(2, RoundingMode.HALF_UP);
     BigDecimal actualAmount = totalAmount.subtract(commission);
 
@@ -99,24 +106,41 @@ public class SettlementServiceImpl implements SettlementService {
     detail.put("commission", commission);
     detail.put("actualAmount", actualAmount);
     detail.put("orderCount", orders.size());
-    detail.put("status", "PENDING");
+    detail.put("status", PENDING.name());
     detail.put("completedAt", LocalDateTime.now());
     return detail;
   }
 
   @Override
   public void settle(Long id) {
-    // 查询所有已支付的订单，更新状态为已结算
+    // 按指定结算记录对应的订单进行结算（如果id不为空则筛选单个）
     UpdateWrapper<OrderEntity> wrapper = new UpdateWrapper<>();
     wrapper.in("status", PAID_STATUSES);
+    if (id != null && id > 0) {
+      wrapper.eq("id", id);
+    }
     wrapper.set("status", "SETTLED");
-    orderMapper.update(null, wrapper);
-    log.info("结算完成，更新订单状态为 SETTLED");
+    int updated = orderMapper.update(null, wrapper);
+    log.info("结算完成，共更新 {} 条订单状态为 SETTLED", updated);
   }
 
   @Override
   public void confirm(Long id) {
-    // 确认结算状态
-    log.info("结算已确认，id={}", id);
+    // 确认结算：将指定结算记录包含的订单标记为已确认
+    if (id != null && id > 0) {
+      UpdateWrapper<OrderEntity> wrapper = new UpdateWrapper<>();
+      wrapper.in("status", List.of("SETTLED"));
+      wrapper.set("status", "CONFIRMED");
+      wrapper.eq("id", id);
+      int updated = orderMapper.update(null, wrapper);
+      log.info("结算已确认，id={}，更新订单数={}", id, updated);
+    } else {
+      // 无指定ID时，将所有已结算订单确认
+      UpdateWrapper<OrderEntity> wrapper = new UpdateWrapper<>();
+      wrapper.in("status", List.of("SETTLED"));
+      wrapper.set("status", "CONFIRMED");
+      int updated = orderMapper.update(null, wrapper);
+      log.info("批量结算确认完成，共更新 {} 条订单", updated);
+    }
   }
 }

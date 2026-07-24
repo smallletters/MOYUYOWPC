@@ -43,4 +43,10 @@ public class AdminGdprController {
     adminGdprService.processRequest(id, result, note);
     return Result.success(Map.of("id", id, "status", result, "message", "数据请求已处理"));
   }
+
+  @Operation(summary = "获取隐私政策")
+  @GetMapping("/policy")
+  public Result<Map<String, Object>> policy() {
+    return Result.success(adminGdprService.getActivePolicy());
+  }
 }

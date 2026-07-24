@@ -1,9 +1,9 @@
 package com.moyuyo.api.controller.admin;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
 import com.moyuyo.common.dto.admin.PageResponse;
-import com.moyuyo.common.dto.admin.finance.FinanceOverviewResponse;
 import com.moyuyo.common.dto.admin.finance.SettlementDetailResponse;
 import com.moyuyo.common.dto.admin.finance.SettlementRequest;
 import com.moyuyo.dao.admin.entity.FinanceRecordEntity;
@@ -15,7 +15,7 @@ import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.service.admin.FinanceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -29,38 +29,34 @@ import java.util.*;
 
 @Tag(name = "管理后台 - 财务管理")
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/admin/finance")
 public class AdminFinanceController {
 
   private final FinanceService financeService;
-
   private final OrderMapper orderMapper;
-
-  // 新DAO模块maven安装失败时允许为null，避免ClassNotFoundException
-  @Autowired(required = false)
-  private SettlementMapper settlementMapper;
-
-  @Autowired(required = false)
-  private FinanceRecordMapper financeRecordMapper;
-
-  // 手动构造器注入必需的依赖
-  public AdminFinanceController(FinanceService financeService,
-                                 OrderMapper orderMapper) {
-    this.financeService = financeService;
-    this.orderMapper = orderMapper;
-  }
+  private final SettlementMapper settlementMapper;
+  private final FinanceRecordMapper financeRecordMapper;
 
   @Operation(summary = "财务概览")
   @GetMapping("/overview")
-  public Result<FinanceOverviewResponse> overview() {
+  public Result<Map<String, Object>> overview() {
     try {
       Map<String, Object> svcResult = financeService.getFinanceOverview();
-      FinanceOverviewResponse resp = new FinanceOverviewResponse();
-      resp.setTotalRevenue((BigDecimal) svcResult.get("totalRevenue"));
-      resp.setPendingSettlement((BigDecimal) svcResult.get("pendingSettlement"));
-      resp.setCompletedSettlements((int) svcResult.get("completedSettlements"));
-      resp.setPendingCount((int) svcResult.get("pendingCount"));
-      return Result.success(resp);
+      // 将Service返回的key映射为前端期望的字段
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("totalRevenue", svcResult.getOrDefault("monthGmv", BigDecimal.ZERO));
+      result.put("actualIncome", svcResult.getOrDefault("actualIncome", BigDecimal.ZERO));
+      result.put("pendingSettlement", svcResult.getOrDefault("pendingSettlement", BigDecimal.ZERO));
+      // 从数据库查询已完成的结算数量
+      Long completedCount = settlementMapper.selectCount(
+        new LambdaQueryWrapper<SettlementEntity>()
+          .eq(SettlementEntity::getStatus, "COMPLETED"));
+      result.put("completedSettlements", completedCount != null ? completedCount.intValue() : 0);
+      result.put("pendingCount", svcResult.getOrDefault("pendingIssues", 0));
+      result.put("refundAmount", svcResult.getOrDefault("refundAmount", BigDecimal.ZERO));
+      result.put("channelDistribution", svcResult.getOrDefault("channelDistribution", Collections.emptyList()));
+      return Result.success(result);
     } catch (Exception e) {
       return Result.error("查询财务概览失败: " + e.getMessage());
     }
@@ -68,11 +64,34 @@ public class AdminFinanceController {
 
   @Operation(summary = "结算明细列表")
   @GetMapping("/settlements")
-  public Result<List<Map<String, Object>>> settlements(
+  public Result<Map<String, Object>> settlements(
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "15") int size) {
     try {
-      return Result.success(financeService.getSettlementList());
+      // 分页查询结算记录
+      Page<SettlementEntity> pageResult = settlementMapper.selectPage(
+        new Page<>(page, size),
+        new LambdaQueryWrapper<SettlementEntity>()
+          .orderByDesc(SettlementEntity::getCreateTime));
+      
+      List<Map<String, Object>> list = new ArrayList<>();
+      for (SettlementEntity settlement : pageResult.getRecords()) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", settlement.getId());
+        item.put("settlementNo", settlement.getSettlementNo());
+        item.put("period", settlement.getPeriod());
+        item.put("amount", settlement.getAmount());
+        item.put("status", settlement.getStatus());
+        item.put("settleTime", settlement.getSettleTime());
+        list.add(item);
+      }
+      
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("records", list);
+      result.put("total", pageResult.getTotal());
+      result.put("page", pageResult.getCurrent());
+      result.put("size", pageResult.getSize());
+      return Result.success(result);
     } catch (Exception e) {
       return Result.error("查询结算列表失败: " + e.getMessage());
     }
@@ -82,12 +101,8 @@ public class AdminFinanceController {
   @GetMapping("/settlements/{id}")
   public Result<Map<String, Object>> settlementDetail(@PathVariable Long id) {
     try {
-      // 新Mapper可能因maven安装失败为null，返回空数据
-      if (settlementMapper == null) {
-        return Result.error("结算服务暂不可用");
-      }
       // 从数据库查询结算记录
-      SettlementEntity settlement = ((SettlementMapper) settlementMapper).selectById(id);
+      SettlementEntity settlement = settlementMapper.selectById(id);
       if (settlement == null) {
         return Result.error("结算记录不存在");
       }
@@ -143,8 +158,40 @@ public class AdminFinanceController {
             orders.add(orderItem);
           }
         } catch (DateTimeParseException e) {
-          // 周期格式不标准，使用空列表
-          // TODO: 可根据实际结算周期格式调整解析逻辑
+          // 尝试解析周期范围格式（如 "2026-06-01~2026-06-15" 或 "2026-06-01 to 2026-06-15"）
+          try {
+            String periodStr = settlement.getPeriod();
+            String[] parts = null;
+            if (periodStr.contains("~")) {
+              parts = periodStr.split("~");
+            } else if (periodStr.toLowerCase().contains(" to ")) {
+              parts = periodStr.split("(?i) to ");
+            }
+            if (parts != null && parts.length == 2) {
+              LocalDate startDate = LocalDate.parse(parts[0].trim());
+              LocalDate endDate = LocalDate.parse(parts[1].trim());
+              LocalDateTime rangeStart = LocalDateTime.of(startDate, LocalTime.MIN);
+              LocalDateTime rangeEnd = LocalDateTime.of(endDate, LocalTime.MAX);
+              List<OrderEntity> rangedOrders = orderMapper.selectList(
+                new LambdaQueryWrapper<OrderEntity>()
+                  .ge(OrderEntity::getCreateTime, rangeStart)
+                  .le(OrderEntity::getCreateTime, rangeEnd)
+                  .orderByDesc(OrderEntity::getCreateTime));
+              for (OrderEntity ord : rangedOrders) {
+                Map<String, Object> ordItem = new LinkedHashMap<>();
+                ordItem.put("orderNo", ord.getOrderNo());
+                ordItem.put("amount", ord.getPayAmount() != null ? ord.getPayAmount() : BigDecimal.ZERO);
+                BigDecimal ordFee = ord.getPayAmount() != null
+                  ? ord.getPayAmount().multiply(BigDecimal.valueOf(0.01)).setScale(2, RoundingMode.HALF_UP)
+                  : BigDecimal.ZERO;
+                ordItem.put("fee", ordFee);
+                ordItem.put("payTime", ord.getPaidAt() != null ? ord.getPaidAt() : ord.getCreateTime());
+                orders.add(ordItem);
+              }
+            }
+          } catch (Exception ex) {
+            // 所有格式都无法解析，使用空列表
+          }
         }
       }
 
@@ -160,10 +207,6 @@ public class AdminFinanceController {
   @PostMapping("/settlements")
   public Result<Map<String, Object>> createSettlement(@RequestBody Map<String, Object> body) {
     try {
-      // 新Mapper可能因maven安装失败为null
-      if (settlementMapper == null) {
-        return Result.error("结算服务暂不可用");
-      }
       SettlementEntity entity = new SettlementEntity();
       // 生成结算单号: SET-年月日格式
       String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
@@ -178,7 +221,7 @@ public class AdminFinanceController {
         entity.setPayChannel((String) body.get("payChannel"));
       }
 
-      ((SettlementMapper) settlementMapper).insert(entity);
+      settlementMapper.insert(entity);
 
       Map<String, Object> result = new LinkedHashMap<>();
       result.put("id", entity.getId());
@@ -194,11 +237,7 @@ public class AdminFinanceController {
   @PutMapping("/settlements/{id}")
   public Result<Map<String, Object>> updateSettlement(@PathVariable Long id, @RequestBody Map<String, Object> body) {
     try {
-      // 新Mapper可能因maven安装失败为null
-      if (settlementMapper == null) {
-        return Result.error("结算服务暂不可用");
-      }
-      SettlementEntity entity = ((SettlementMapper) settlementMapper).selectById(id);
+      SettlementEntity entity = settlementMapper.selectById(id);
       if (entity == null) {
         return Result.error("结算记录不存在");
       }
@@ -209,7 +248,7 @@ public class AdminFinanceController {
       if (body.get("remark") != null) entity.setRemark((String) body.get("remark"));
       if (body.get("payChannel") != null) entity.setPayChannel((String) body.get("payChannel"));
 
-      ((SettlementMapper) settlementMapper).updateById(entity);
+      settlementMapper.updateById(entity);
 
       Map<String, Object> result = new LinkedHashMap<>();
       result.put("id", id);
@@ -224,11 +263,7 @@ public class AdminFinanceController {
   @DeleteMapping("/settlements/{id}")
   public Result<Map<String, Object>> deleteSettlement(@PathVariable Long id) {
     try {
-      // 新Mapper可能因maven安装失败为null
-      if (settlementMapper == null) {
-        return Result.error("结算服务暂不可用");
-      }
-      ((SettlementMapper) settlementMapper).deleteById(id);
+      settlementMapper.deleteById(id);
       Map<String, Object> result = new LinkedHashMap<>();
       result.put("id", id);
       result.put("message", "结算记录删除成功");
@@ -244,12 +279,8 @@ public class AdminFinanceController {
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "15") int size) {
     List<Map<String, Object>> list = new ArrayList<>();
-    // 新Mapper可能因maven安装失败为null，返回空列表
-    if (financeRecordMapper == null) {
-      return Result.success(list);
-    }
     // 从 mo_finance_record 表查询真实交易记录，按 createTime 降序排列
-    List<FinanceRecordEntity> recordList = ((FinanceRecordMapper) financeRecordMapper).selectList(
+    List<FinanceRecordEntity> recordList = financeRecordMapper.selectList(
       new LambdaQueryWrapper<FinanceRecordEntity>()
         .orderByDesc(FinanceRecordEntity::getCreateTime));
     for (FinanceRecordEntity record : recordList) {

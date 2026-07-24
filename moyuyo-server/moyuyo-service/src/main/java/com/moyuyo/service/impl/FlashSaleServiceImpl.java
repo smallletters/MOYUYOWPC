@@ -1,6 +1,7 @@
 package com.moyuyo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.dao.entity.FlashSaleEntity;
 import com.moyuyo.dao.entity.FlashSaleOrderEntity;
@@ -51,9 +52,6 @@ public class FlashSaleServiceImpl implements FlashSaleService {
         if (now.isBefore(flash.getStartTime())) throw new IllegalStateException("活动尚未开始");
         if (now.isAfter(flash.getEndTime())) throw new IllegalStateException("活动已结束");
 
-        int remain = flash.getTotalStock() - flash.getSoldStock();
-        if (remain < quantity) throw new IllegalStateException("库存不足，仅剩 " + remain + " 件");
-
         if (flash.getLimitPerUser() != null && flash.getLimitPerUser() > 0) {
             long userBought = flashSaleOrderMapper.selectCount(
                     new LambdaQueryWrapper<FlashSaleOrderEntity>()
@@ -64,14 +62,21 @@ public class FlashSaleServiceImpl implements FlashSaleService {
             }
         }
 
+        // 使用原子更新防止并发超卖：WHERE sold_stock + quantity <= total_stock
+        LambdaUpdateWrapper<FlashSaleEntity> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(FlashSaleEntity::getId, flashSaleId)
+                .setSql("sold_stock = COALESCE(sold_stock, 0) + " + quantity)
+                .apply("COALESCE(sold_stock, 0) + {0} <= total_stock", quantity);
+        int rows = flashSaleMapper.update(null, updateWrapper);
+        if (rows == 0) {
+            throw new IllegalStateException("库存不足，抢购失败");
+        }
+
         FlashSaleOrderEntity order = new FlashSaleOrderEntity();
         order.setFlashSaleId(flashSaleId);
         order.setUserId(userId);
         order.setQuantity(quantity);
         flashSaleOrderMapper.insert(order);
-
-        flash.setSoldStock(flash.getSoldStock() == null ? quantity : flash.getSoldStock() + quantity);
-        flashSaleMapper.updateById(flash);
 
         log.info("Flash order placed: flashSaleId={}, userId={}, qty={}", flashSaleId, userId, quantity);
     }

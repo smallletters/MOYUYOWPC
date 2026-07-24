@@ -62,10 +62,13 @@ public class AdminReviewServiceImpl implements AdminReviewService {
 
   @Override
   public void reply(Long id, String content) {
-    // ProductReviewEntity 没有 replyContent 字段，这里通过更新 status 来标记已回复
+    // 直接更新状态为已回复，并在评价内容末尾追加回复标记
     ProductReviewEntity entity = productReviewMapper.selectById(id);
     if (entity != null) {
-      entity.setTags("已回复:" + content);
+      entity.setStatus("REPLIED");
+      // 没有 replyContent 字段，在 content 字段末尾追加回复内容
+      String originalContent = entity.getContent() != null ? entity.getContent() : "";
+      entity.setContent(originalContent + "\n[客服回复]: " + content);
       productReviewMapper.updateById(entity);
     }
   }

@@ -5,6 +5,7 @@ import com.moyuyo.dao.admin.mapper.CmsContentMapper;
 import com.moyuyo.service.admin.CmsContentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -30,16 +31,19 @@ public class CmsContentServiceImpl implements CmsContentService {
   }
 
   @Override
+  @Transactional
   public void create(CmsContentEntity entity) {
     cmsContentMapper.insert(entity);
   }
 
   @Override
+  @Transactional
   public void update(CmsContentEntity entity) {
     cmsContentMapper.updateById(entity);
   }
 
   @Override
+  @Transactional
   public void delete(Long id) {
     cmsContentMapper.deleteById(id);
   }
@@ -50,6 +54,7 @@ public class CmsContentServiceImpl implements CmsContentService {
   }
 
   @Override
+  @Transactional
   public void updateStatus(Long id, String status) {
     CmsContentEntity entity = new CmsContentEntity();
     entity.setId(id);

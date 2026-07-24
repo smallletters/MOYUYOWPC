@@ -21,6 +21,15 @@ public class DataExportRequestEntity {
     /** 导出标识 */
     private String exportId;
 
+    /** 任务名称 */
+    private String taskName;
+
+    /** 订单范围 */
+    private String orderScope;
+
+    /** 导出格式：Excel/CSV */
+    private String format;
+
     /** 状态：PENDING/PROCESSING/COMPLETED/FAILED */
     private String status;
 
@@ -29,6 +38,9 @@ public class DataExportRequestEntity {
 
     /** 请求类型/导入类型 */
     private String requestType;
+
+    /** 备注 */
+    private String remark;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;

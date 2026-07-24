@@ -1,6 +1,7 @@
 package com.moyuyo.dao.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.moyuyo.common.enums.OrderStatusEnum;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -96,4 +97,48 @@ public class OrderEntity {
 
   @TableField(exist = false)
   private List<OrderItemEntity> items;
+
+  // ===== 领域方法 =====
+
+  /** 获取订单状态枚举 */
+  public OrderStatusEnum getStatusEnum() {
+    return OrderStatusEnum.fromValue(status);
+  }
+
+  /** 是否已支付 */
+  public boolean isPaid() {
+    OrderStatusEnum s = getStatusEnum();
+    return s != null && (s == OrderStatusEnum.PAID || s == OrderStatusEnum.PENDING_SHIP
+      || s == OrderStatusEnum.SHIPPED || s == OrderStatusEnum.RECEIVED
+      || s == OrderStatusEnum.COMPLETED);
+  }
+
+  /** 是否可以取消（仅待支付和已支付状态可取消） */
+  public boolean canCancel() {
+    OrderStatusEnum s = getStatusEnum();
+    return s == OrderStatusEnum.PENDING_PAY || s == OrderStatusEnum.PAID;
+  }
+
+  /** 是否可以申请退款（已发货/已收货/已完成可申请） */
+  public boolean canRefund() {
+    OrderStatusEnum s = getStatusEnum();
+    return s == OrderStatusEnum.SHIPPED || s == OrderStatusEnum.RECEIVED
+      || s == OrderStatusEnum.COMPLETED;
+  }
+
+  /** 是否可以发货（已支付且待发货） */
+  public boolean canShip() {
+    return getStatusEnum() == OrderStatusEnum.PENDING_SHIP;
+  }
+
+  /** 确认收货 */
+  public void confirmReceive() {
+    this.status = OrderStatusEnum.RECEIVED.name();
+    this.receivedTime = LocalDateTime.now();
+  }
+
+  /** 标记为已完成 */
+  public void complete() {
+    this.status = OrderStatusEnum.COMPLETED.name();
+  }
 }

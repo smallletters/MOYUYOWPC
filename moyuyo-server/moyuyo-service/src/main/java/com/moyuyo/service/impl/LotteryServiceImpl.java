@@ -57,8 +57,7 @@ public class LotteryServiceImpl implements LotteryService {
     record.setLotteryId(lotteryId);
     record.setUsedFreeSpin(usedFree);
     record.setPointsSpent(usedFree ? 0 : lottery.getPointsCost());
-    Random random = new Random();
-    boolean won = random.nextDouble() < lottery.getProbability().doubleValue();
+    boolean won = lottery.draw(new Random());
     record.setWon(won);
     record.setPrizeName(won ? lottery.getPrizeName() : "未中奖");
     lotteryRecordMapper.insert(record);

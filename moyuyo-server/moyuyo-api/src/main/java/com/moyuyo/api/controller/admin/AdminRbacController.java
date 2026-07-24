@@ -1,7 +1,12 @@
 package com.moyuyo.api.controller.admin;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.moyuyo.common.Result;
+import com.moyuyo.dao.admin.entity.AdminPermissionEntity;
 import com.moyuyo.dao.admin.entity.AdminRoleEntity;
+import com.moyuyo.dao.admin.entity.AdminUserEntity;
+import com.moyuyo.dao.admin.mapper.AdminPermissionMapper;
+import com.moyuyo.dao.admin.mapper.AdminUserMapper;
 import com.moyuyo.service.admin.AdminRoleService;
 import com.moyuyo.service.admin.AdminStaffService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Tag(name = "管理后台 - 权限管理")
 @RestController
@@ -19,6 +25,35 @@ public class AdminRbacController {
 
   private final AdminRoleService adminRoleService;
   private final AdminStaffService adminStaffService;
+  private final AdminUserMapper adminUserMapper;
+  private final AdminPermissionMapper adminPermissionMapper;
+
+  /** 资源名中文映射 */
+  private static final Map<String, String> RESOURCE_NAME_MAP = Map.ofEntries(
+      Map.entry("products", "商品管理"),
+      Map.entry("orders", "订单管理"),
+      Map.entry("users", "用户管理"),
+      Map.entry("marketing", "营销管理"),
+      Map.entry("analytics", "数据统计"),
+      Map.entry("system", "系统设置"),
+      Map.entry("finance", "财务管理"),
+      Map.entry("cms", "内容管理"),
+      Map.entry("cs", "客服管理"),
+      Map.entry("logistics", "物流管理"),
+      Map.entry("inventory", "库存管理"),
+      Map.entry("rbac", "权限管理"),
+      Map.entry("push", "推送管理"),
+      Map.entry("ticket", "工单管理"),
+      Map.entry("settings", "设置管理")
+  );
+
+  /** 操作类型中文映射 */
+  private static final Map<String, String> ACTION_NAME_MAP = Map.of(
+      "view", "查看",
+      "create", "创建",
+      "edit", "编辑",
+      "delete", "删除"
+  );
 
   @Operation(summary = "角色列表")
   @GetMapping("/roles")
@@ -32,6 +67,31 @@ public class AdminRbacController {
       item.put("description", e.getDescription());
       item.put("status", e.getStatus());
       item.put("createTime", e.getCreateTime());
+
+      // 统计该角色下的管理员用户数量
+      Long userCount = adminUserMapper.selectCount(
+          new LambdaQueryWrapper<AdminUserEntity>()
+              .eq(AdminUserEntity::getRole, e.getName())
+      );
+      item.put("userCount", userCount != null ? userCount.intValue() : 0);
+
+      // 是否系统预设角色
+      item.put("isPreset", e.getIsPreset() != null ? e.getIsPreset() : false);
+
+      // 该角色拥有的权限名称列表，如 ["商品管理-查看", "订单管理-编辑"]
+      List<AdminPermissionEntity> perms = adminPermissionMapper.selectList(
+          new LambdaQueryWrapper<AdminPermissionEntity>()
+              .eq(AdminPermissionEntity::getRoleId, e.getId())
+      );
+      List<String> permNames = perms.stream()
+          .map(p -> {
+            String resourceName = RESOURCE_NAME_MAP.getOrDefault(p.getResource(), p.getResource());
+            String actionName = ACTION_NAME_MAP.getOrDefault(p.getAction(), p.getAction());
+            return resourceName + "-" + actionName;
+          })
+          .collect(Collectors.toList());
+      item.put("permissions", permNames);
+
       list.add(item);
     }
     return Result.success(list);
@@ -89,7 +149,11 @@ public class AdminRbacController {
   @Operation(summary = "更新角色权限")
   @PutMapping("/roles/{id}/permissions")
   public Result<Map<String, Object>> updatePermissions(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-    List<Long> permissionIds = (List<Long>) body.get("permissionIds");
+    @SuppressWarnings("unchecked")
+    List<Integer> rawIds = (List<Integer>) body.get("permissionIds");
+    List<Long> permissionIds = rawIds != null
+        ? rawIds.stream().map(Long::valueOf).toList()
+        : List.of();
     adminRoleService.updatePermissions(id, permissionIds);
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("roleId", id);
@@ -100,9 +164,13 @@ public class AdminRbacController {
   @Operation(summary = "管理员列表")
   @GetMapping("/users")
   public Result<List<Map<String, Object>>> users() {
-    // 从 mo_admin_user 表查询真实的管理员列表
-    List<Map<String, Object>> list = adminStaffService.listUsers();
-    return Result.success(list);
+    try {
+      // 从 mo_admin_user 表查询真实的管理员列表
+      List<Map<String, Object>> list = adminStaffService.listUsers();
+      return Result.success(list);
+    } catch (Exception e) {
+      return Result.success(Collections.emptyList());
+    }
   }
 
   @Operation(summary = "新建管理员")
@@ -119,5 +187,24 @@ public class AdminRbacController {
     // 通过服务层更新管理员用户
     Map<String, Object> result = adminStaffService.updateUser(id, body);
     return Result.success(result);
+  }
+
+  @Operation(summary = "获取所有权限列表（用于系统设置页）")
+  @GetMapping("/permissions")
+  public Result<List<Map<String, Object>>> permissions() {
+    // 返回所有可用的权限资源及其操作列表
+    List<Map<String, Object>> permissionList = new ArrayList<>();
+    for (Map.Entry<String, String> entry : RESOURCE_NAME_MAP.entrySet()) {
+      for (Map.Entry<String, String> actionEntry : ACTION_NAME_MAP.entrySet()) {
+        Map<String, Object> perm = new LinkedHashMap<>();
+        perm.put("resource", entry.getKey());
+        perm.put("resourceName", entry.getValue());
+        perm.put("action", actionEntry.getKey());
+        perm.put("actionName", actionEntry.getValue());
+        perm.put("name", entry.getValue() + "-" + actionEntry.getValue());
+        permissionList.add(perm);
+      }
+    }
+    return Result.success(permissionList);
   }
 }

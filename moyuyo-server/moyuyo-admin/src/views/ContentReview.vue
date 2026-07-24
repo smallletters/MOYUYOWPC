@@ -104,7 +104,8 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getReviewList, approveReview } from '../api/admin'
+import { getContentReviewList, approveContentReview, rejectContentReview } from '../api/admin'
+import api from '../api/index'
 
 const activeMode = ref('auto_manual')
 const activeTab = ref('all')
@@ -140,18 +141,18 @@ const trendData = reactive([
 // 加载待审核内容列表
 async function loadReviewItems() {
   try {
-    const res = await getReviewList()
-    const records = res.records || res || []
+    const res = await getContentReviewList()
+    const records = res.records || res.list || res || []
       // 映射为前端需要的格式
-      reviewItems.value = records.map((item, index) => ({
+      reviewItems.value = (Array.isArray(records) ? records : []).map((item, index) => ({
         id: item.id,
         thumb: item.contentType === '视频' ? '🎬' : item.contentType === '图片' ? '📷' : '📝',
         contentType: item.contentType || (item.rating ? '评论' : '图文'),
         contentTypeClass: item.contentType === '视频' ? 'tag-orange' : item.contentType === '图片' ? 'tag-blue' : 'tag-green',
-        autoResult: item.auditStatus || '待审核',
-        description: item.content || item.title || '',
-        publisher: item.userName || item.submitter || '用户',
-        submitTime: item.submitTime || item.createTime || ''
+        autoResult: item.status || '待审核',
+        description: item.contentExcerpt || '',
+        publisher: '用户' + (item.userId || ''),
+        submitTime: item.reviewTime || item.createTime || ''
       }))
   } catch (e) {
     ElMessage.error('获取审核内容失败')
@@ -167,12 +168,18 @@ async function handleReview(id, action) {
   }
   try {
     if (action === 'approve') {
-      await approveReview(id)
+      await approveContentReview(id)
+    } else if (action === 'hide') {
+      await api.put(`/content-review/${id}/hide`)
+    } else if (action === 'delete') {
+      await api.delete(`/content-review/${id}`)
+    } else if (action === 'ban') {
+      await api.put(`/content-review/${id}/ban`)
     }
     ElMessage.success(`内容 #${id} ${actionLabels[action]}`)
     await loadReviewItems()
   } catch (e) {
-    ElMessage.error('操作失败')
+    ElMessage.error('操作失败: ' + (e.message || '未知错误'))
   }
 }
 

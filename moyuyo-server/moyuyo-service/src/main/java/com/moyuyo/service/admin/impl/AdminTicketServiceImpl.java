@@ -46,12 +46,23 @@ public class AdminTicketServiceImpl implements AdminTicketService {
     List<Map<String, Object>> records = new ArrayList<>();
     for (TicketEntity t : entityList) {
       Map<String, Object> item = new LinkedHashMap<>();
+      item.put("id", t.getId());
       item.put("ticketNo", t.getTicketNo());
+      item.put("no", t.getTicketNo());           // 前端期望 no 字段
       item.put("type", t.getType());
+      item.put("typeKey", t.getType());           // 前端期望 typeKey
+      item.put("typeLabel", getTypeLabel(t.getType()));   // 中文标签
+      item.put("typeClass", getTypeClass(t.getType()));   // CSS 类名
       item.put("priority", t.getPriority());
+      item.put("priorityKey", t.getPriority());           // 前端期望 priorityKey
+      item.put("priorityLabel", getPriorityLabel(t.getPriority())); // 中文标签
+      item.put("priorityClass", getPriorityClass(t.getPriority())); // CSS 类名
       item.put("title", t.getTitle());
       item.put("user", t.getUserName() != null ? t.getUserName() : "");
       item.put("status", t.getStatus());
+      item.put("statusKey", t.getStatus());               // 前端期望 statusKey
+      item.put("statusLabel", getStatusLabel(t.getStatus()));     // 中文标签
+      item.put("statusDot", getStatusDotClass(t.getStatus()));    // CSS 状态点
       item.put("createTime", t.getCreateTime());
       records.add(item);
     }
@@ -111,6 +122,76 @@ public class AdminTicketServiceImpl implements AdminTicketService {
     if (entity != null) {
       entity.setAgentName(agent);
       ticketMapper.updateById(entity);
+    }
+  }
+
+  // ==================== 标签映射辅助方法 ====================
+
+  /** 工单类型转中文标签 */
+  private String getTypeLabel(String type) {
+    if (type == null) return "未知";
+    switch (type) {
+      case "售后": return "售后问题";
+      case "咨询": return "售前咨询";
+      case "投诉": return "用户投诉";
+      default: return type;
+    }
+  }
+
+  /** 工单类型转 CSS 类名 */
+  private String getTypeClass(String type) {
+    if (type == null) return "";
+    switch (type) {
+      case "售后": return "type-aftersale";
+      case "咨询": return "type-consult";
+      case "投诉": return "type-complaint";
+      default: return "";
+    }
+  }
+
+  /** 优先级转中文标签 */
+  private String getPriorityLabel(String priority) {
+    if (priority == null) return "未知";
+    switch (priority.toUpperCase()) {
+      case "HIGH": return "高";
+      case "MEDIUM": return "中";
+      case "LOW": return "低";
+      default: return priority;
+    }
+  }
+
+  /** 优先级转 CSS 类名 */
+  private String getPriorityClass(String priority) {
+    if (priority == null) return "";
+    switch (priority.toUpperCase()) {
+      case "HIGH": return "priority-high";
+      case "MEDIUM": return "priority-medium";
+      case "LOW": return "priority-low";
+      default: return "";
+    }
+  }
+
+  /** 状态转中文标签 */
+  private String getStatusLabel(String status) {
+    if (status == null) return "未知";
+    switch (status.toUpperCase()) {
+      case "PENDING": return "待处理";
+      case "PROCESSING": return "处理中";
+      case "CLOSED": return "已关闭";
+      case "RESOLVED": return "已完结";
+      default: return status;
+    }
+  }
+
+  /** 状态转 CSS 状态点类名 */
+  private String getStatusDotClass(String status) {
+    if (status == null) return "dot-default";
+    switch (status.toUpperCase()) {
+      case "PENDING": return "dot-warning";
+      case "PROCESSING": return "dot-info";
+      case "CLOSED": return "dot-success";
+      case "RESOLVED": return "dot-success";
+      default: return "dot-default";
     }
   }
 }

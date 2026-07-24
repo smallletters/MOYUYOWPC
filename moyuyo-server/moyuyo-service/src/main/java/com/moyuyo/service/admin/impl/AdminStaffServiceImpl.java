@@ -48,18 +48,26 @@ public class AdminStaffServiceImpl implements AdminStaffService {
   @Override
   @Transactional
   public Map<String, Object> createUser(Map<String, Object> body) {
+    // 必填字段非空校验
+    String username = (String) body.get("username");
+    String name = (String) body.get("name");
+    String email = (String) body.get("email");
+    String password = (String) body.get("password");
+    if (isBlank(username) || isBlank(name) || isBlank(email) || isBlank(password)) {
+      Map<String, Object> error = new LinkedHashMap<>();
+      error.put("message", "用户名、姓名、邮箱和密码不能为空");
+      return error;
+    }
+
     AdminUserEntity entity = new AdminUserEntity();
-    entity.setUsername((String) body.get("username"));
-    entity.setName((String) body.get("name"));
-    entity.setEmail((String) body.get("email"));
+    entity.setUsername(username);
+    entity.setName(name);
+    entity.setEmail(email);
     entity.setRole((String) body.get("role"));
 
     // 密码使用 BCrypt 加密存储
-    String password = (String) body.get("password");
-    if (password != null && !password.isEmpty()) {
-      BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-      entity.setPassword(encoder.encode(password));
-    }
+    BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+    entity.setPassword(encoder.encode(password));
 
     entity.setStatus("ACTIVE");
     adminUserMapper.insert(entity);
@@ -79,12 +87,24 @@ public class AdminStaffServiceImpl implements AdminStaffService {
       throw new IllegalArgumentException("管理员不存在");
     }
 
-    // 更新字段
+    // 更新字段，非空校验（密码可为空，表示不修改）
     if (body.containsKey("name")) {
-      entity.setName((String) body.get("name"));
+      String name = (String) body.get("name");
+      if (isBlank(name)) {
+        Map<String, Object> error = new LinkedHashMap<>();
+        error.put("message", "姓名不能为空");
+        return error;
+      }
+      entity.setName(name);
     }
     if (body.containsKey("email")) {
-      entity.setEmail((String) body.get("email"));
+      String email = (String) body.get("email");
+      if (isBlank(email)) {
+        Map<String, Object> error = new LinkedHashMap<>();
+        error.put("message", "邮箱不能为空");
+        return error;
+      }
+      entity.setEmail(email);
     }
     if (body.containsKey("role")) {
       entity.setRole((String) body.get("role"));
@@ -94,6 +114,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     }
     if (body.containsKey("password")) {
       String password = (String) body.get("password");
+      // 密码可以为空，表示不修改密码
       if (password != null && !password.isEmpty()) {
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         entity.setPassword(encoder.encode(password));
@@ -107,5 +128,12 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     result.put("name", entity.getName());
     result.put("message", "管理员更新成功");
     return result;
+  }
+
+  /**
+   * 判断字符串是否为空或空白
+   */
+  private boolean isBlank(String str) {
+    return str == null || str.trim().isEmpty();
   }
 }

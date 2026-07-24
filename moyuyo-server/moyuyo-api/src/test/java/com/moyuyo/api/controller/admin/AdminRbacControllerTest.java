@@ -41,7 +41,7 @@ class AdminRbacControllerTest extends BaseIntegrationTest {
         mockMvc.perform(get("/api/admin/rbac/roles")
                         .header("Authorization", adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data").isArray());
     }
 
@@ -57,7 +57,7 @@ class AdminRbacControllerTest extends BaseIntegrationTest {
                         .header("Authorization", adminToken)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.id").isNumber())
                 .andExpect(jsonPath("$.data.name").value("测试角色"));
     }

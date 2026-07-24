@@ -2,8 +2,9 @@ package com.moyuyo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.common.dto.community.CommunityPostVO;
+import com.moyuyo.common.utils.JsonUtils;
+import com.moyuyo.common.utils.PageUtils;
 import com.moyuyo.dao.entity.*;
 import com.moyuyo.dao.mapper.*;
 import com.moyuyo.service.CommunityService;
@@ -26,7 +27,6 @@ public class CommunityServiceImpl implements CommunityService {
     private final CommunityCommentMapper commentMapper;
     private final CommunityLikeMapper likeMapper;
     private final UserMapper userMapper;
-    private final ObjectMapper objectMapper;
 
     @Override
     public Page<CommunityPostVO> listPosts(String topic, int page, int size) {
@@ -57,7 +57,7 @@ public class CommunityServiceImpl implements CommunityService {
         CommunityPostEntity entity = new CommunityPostEntity();
         entity.setUserId(userId);
         entity.setContent(content);
-        entity.setImages(toJsonArray(images));
+        entity.setImages(JsonUtils.toJsonArray(images));
         entity.setTopic(topic);
         entity.setLikes(0);
         entity.setComments(0);
@@ -130,19 +130,22 @@ public class CommunityServiceImpl implements CommunityService {
     }
 
     private Page<CommunityPostVO> toVOPage(Page<CommunityPostEntity> entityPage) {
-        List<CommunityPostEntity> records = entityPage.getRecords();
-        Page<CommunityPostVO> voPage = new Page<>(entityPage.getCurrent(), entityPage.getSize());
-        voPage.setTotal(entityPage.getTotal());
-        if (records.isEmpty()) {
+        // 避免 NPE
+        if (entityPage.getRecords() == null || entityPage.getRecords().isEmpty()) {
+            Page<CommunityPostVO> voPage = new Page<>(entityPage.getCurrent(), entityPage.getSize());
+            voPage.setTotal(entityPage.getTotal());
             voPage.setRecords(Collections.emptyList());
             return voPage;
         }
 
-        List<Long> userIds = records.stream().map(CommunityPostEntity::getUserId).distinct().collect(Collectors.toList());
+        // 批量查询用户信息
+        List<Long> userIds = entityPage.getRecords().stream()
+            .map(CommunityPostEntity::getUserId).distinct().collect(Collectors.toList());
         Map<Long, UserEntity> userMap = userIds.isEmpty() ? Collections.emptyMap() :
-                userMapper.selectBatchIds(userIds).stream().collect(Collectors.toMap(UserEntity::getId, u -> u));
+            userMapper.selectBatchIds(userIds).stream().collect(Collectors.toMap(UserEntity::getId, u -> u));
 
-        List<CommunityPostVO> voList = records.stream().map(entity -> {
+        // 分页转换 + 富化用户信息
+        return (Page<CommunityPostVO>) PageUtils.convertPage(entityPage, entity -> {
             CommunityPostVO vo = toVO(entity);
             UserEntity user = userMap.get(entity.getUserId());
             if (user != null) {
@@ -150,9 +153,7 @@ public class CommunityServiceImpl implements CommunityService {
                 vo.setAvatar(user.getAvatar());
             }
             return vo;
-        }).collect(Collectors.toList());
-        voPage.setRecords(voList);
-        return voPage;
+        });
     }
 
     private CommunityPostVO toVO(CommunityPostEntity entity) {
@@ -160,7 +161,7 @@ public class CommunityServiceImpl implements CommunityService {
         vo.setId(entity.getId());
         vo.setUserId(entity.getUserId());
         vo.setContent(entity.getContent());
-        vo.setImages(parseJsonArray(entity.getImages()));
+        vo.setImages(JsonUtils.parseStringArray(entity.getImages()));
         vo.setTopic(entity.getTopic());
         vo.setLikes(entity.getLikes());
         vo.setComments(entity.getComments());
@@ -200,13 +201,4 @@ public class CommunityServiceImpl implements CommunityService {
         }).collect(Collectors.toList());
     }
 
-    private String toJsonArray(List<String> list) {
-        if (list == null || list.isEmpty()) return "[]";
-        try { return objectMapper.writeValueAsString(list); } catch (Exception e) { return "[]"; }
-    }
-
-    private List<String> parseJsonArray(String json) {
-        if (json == null || json.isBlank()) return Collections.emptyList();
-        try { return objectMapper.readValue(json, objectMapper.getTypeFactory().constructCollectionType(List.class, String.class)); } catch (Exception e) { return Collections.emptyList(); }
-    }
 }

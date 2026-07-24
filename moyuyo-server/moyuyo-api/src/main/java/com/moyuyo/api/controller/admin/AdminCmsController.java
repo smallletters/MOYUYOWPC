@@ -6,7 +6,7 @@ import com.moyuyo.dao.admin.mapper.CmsContentMapper;
 import com.moyuyo.service.admin.CmsContentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -14,18 +14,12 @@ import java.util.*;
 
 @Tag(name = "管理后台 - CMS内容管理")
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/admin/cms")
 public class AdminCmsController {
 
     private final CmsContentService cmsContentService;
-
-    @Autowired(required = false)
-  private CmsContentMapper cmsContentMapper;
-
-    // 手动构造器注入必需的依赖
-    public AdminCmsController(CmsContentService cmsContentService) {
-        this.cmsContentService = cmsContentService;
-    }
+    private final CmsContentMapper cmsContentMapper;
 
     @Operation(summary = "CMS内容列表")
     @GetMapping("/list")
@@ -38,8 +32,14 @@ public class AdminCmsController {
             item.put("title", e.getTitle());
             item.put("type", e.getType());
             item.put("cover", e.getImageUrl());
+            item.put("link", e.getLinkUrl());
+            item.put("description", e.getContent());
             item.put("sortOrder", e.getSortOrder());
             item.put("status", e.getStatus());
+            item.put("startTime", e.getStartTime());
+            item.put("endTime", e.getEndTime());
+            item.put("ctr", e.getCtr());
+            item.put("location", e.getLocation());
             item.put("createTime", e.getCreateTime());
             list.add(item);
         }
@@ -121,7 +121,8 @@ public class AdminCmsController {
 
     @Operation(summary = "更新内容状态")
     @PutMapping("/{id}/status")
-    public Result<Map<String, Object>> updateStatus(@PathVariable Long id, @RequestParam String status) {
+    public Result<Map<String, Object>> updateStatus(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        String status = (String) body.get("status");
         cmsContentService.updateStatus(id, status);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", id);
@@ -133,15 +134,14 @@ public class AdminCmsController {
     @Operation(summary = "拖拽排序")
     @PutMapping("/reorder")
     public Result<Map<String, Object>> reorder(@RequestBody List<Map<String, Object>> orders) {
-        // 更新 mo_cms_content 表中各内容的 sort 字段（新Mapper可能为null）
-        if (cmsContentMapper != null && orders != null) {
+        if (orders != null) {
             for (Map<String, Object> item : orders) {
                 Long id = Long.valueOf(item.get("id").toString());
                 Integer sort = Integer.valueOf(item.get("sort").toString());
-                CmsContentEntity entity = ((CmsContentMapper) cmsContentMapper).selectById(id);
+                CmsContentEntity entity = cmsContentMapper.selectById(id);
                 if (entity != null) {
                     entity.setSortOrder(sort);
-                    ((CmsContentMapper) cmsContentMapper).updateById(entity);
+                    cmsContentMapper.updateById(entity);
                 }
             }
         }

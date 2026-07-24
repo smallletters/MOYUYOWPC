@@ -34,7 +34,7 @@ public class AdminTicketController {
 
   @Operation(summary = "工单列表")
   @GetMapping("/list")
-  public Result<PageResponse<TicketResponse>> list(
+  public Result<Map<String, Object>> list(
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "15") int size,
       @RequestParam(required = false) String status,
@@ -42,29 +42,45 @@ public class AdminTicketController {
       @RequestParam(required = false) String priority,
       @RequestParam(required = false) String keyword) {
     List<Map<String, Object>> svcResult = ticketService.listAll(status, type, priority, keyword);
-    List<TicketResponse> records = new ArrayList<>();
+
+    // 字段映射：服务层返回的键 -> 前端期望的键
+    List<Map<String, Object>> records = new ArrayList<>();
     for (Map<String, Object> item : svcResult) {
-      TicketResponse resp = new TicketResponse();
-      resp.setId((Long) item.get("id"));
-      resp.setTitle((String) item.get("title"));
-      resp.setType((String) item.get("type"));
-      resp.setStatus((String) item.get("status"));
-      resp.setPriority((String) item.get("priority"));
-      resp.setAssignee((String) item.get("assignee"));
-      resp.setCreatedAt((String) item.get("createdAt"));
-      records.add(resp);
+      Map<String, Object> mapped = new LinkedHashMap<>();
+      mapped.put("id", item.get("id"));
+      mapped.put("ticketNo", item.get("ticketNo"));
+      mapped.put("title", item.get("title"));
+      mapped.put("type", item.get("type"));
+      mapped.put("status", item.get("status"));
+      mapped.put("priority", item.get("priority"));
+      mapped.put("user", item.get("user"));
+      mapped.put("createTime", item.get("createTime"));
+      // 新增前端需要的字段
+      mapped.put("assignee", item.getOrDefault("assignee", ""));
+      mapped.put("agent", item.getOrDefault("agentName", "待分配"));
+      mapped.put("responseTime", item.getOrDefault("responseTime", ""));
+      mapped.put("timeout", item.getOrDefault("timeout", false));
+      mapped.put("createTimeFormatted", item.get("createTime") != null ? item.get("createTime").toString() : "");
+      records.add(mapped);
     }
-    PageResponse<TicketResponse> pageResp = new PageResponse<>();
-    pageResp.setRecords(records);
-    pageResp.setTotal(records.size());
-    pageResp.setPage(page);
-    pageResp.setSize(size);
-    return Result.success(pageResp);
+
+    // 分页
+    int total = records.size();
+    int fromIndex = (page - 1) * size;
+    int toIndex = Math.min(fromIndex + size, total);
+    List<Map<String, Object>> pageList = fromIndex < total ? records.subList(fromIndex, toIndex) : new ArrayList<>();
+
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("records", pageList);
+    result.put("total", total);
+    result.put("page", page);
+    result.put("size", size);
+    return Result.success(result);
   }
 
   @Operation(summary = "工单统计")
   @GetMapping("/stats")
-  public Result<TicketStatsResponse> stats() {
+  public Result<Map<String, Object>> stats() {
     // 从 mo_ticket 表统计工单数据
     LocalDateTime todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
 
@@ -89,13 +105,14 @@ public class AdminTicketController {
       new LambdaQueryWrapper<TicketEntity>()
         .ge(TicketEntity::getCreateTime, todayStart));
 
-    TicketStatsResponse resp = new TicketStatsResponse();
-    resp.setTotal(totalToday.intValue());
-    resp.setOpen(pendingCount.intValue());
-    resp.setProcessing(processingCount.intValue());
-    resp.setResolved(0);
-    resp.setClosed(closedToday.intValue());
-    return Result.success(resp);
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("pending", pendingCount.intValue());
+    result.put("inProgress", processingCount.intValue());
+    result.put("processing", processingCount.intValue()); // 前端也期望 processing
+    result.put("closed", closedToday.intValue());
+    result.put("closedToday", closedToday.intValue());    // 前端也期望 closedToday
+    result.put("slaRate", 0); // SLA默认值
+    return Result.success(result);
   }
 
   @Operation(summary = "工单详情")
@@ -172,8 +189,21 @@ public class AdminTicketController {
       return Result.error("工单不存在");
     }
 
-    // 当前无独立回复表，将回复内容存入工单的 responseTime 字段（作为备注/处理记录）
-    entity.setResponseTime(body.getContent());
+    // responseTime 字段存储回复内容（数据库字段语义为"回复内容"，String类型）
+    // 追加新回复到已有回复记录
+    String existingReply = entity.getResponseTime();
+    String timestamp = LocalDateTime.now().toString().replace("T", " ");
+    String replyRecord = "[" + timestamp + "] " + body.getContent();
+    entity.setResponseTime(
+        existingReply == null || existingReply.isEmpty()
+            ? replyRecord
+            : existingReply + "\n" + replyRecord);
+
+    // 将工单状态更新为"处理中"（如果当前是"待处理"）
+    if ("PENDING".equals(entity.getStatus())) {
+      entity.setStatus("PROCESSING");
+    }
+
     ticketMapper.updateById(entity);
 
     Map<String, Object> result = new LinkedHashMap<>();

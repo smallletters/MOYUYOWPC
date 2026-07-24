@@ -5,9 +5,11 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.dao.entity.FeedbackEntity;
 import com.moyuyo.dao.mapper.FeedbackMapper;
 import com.moyuyo.service.admin.AdminComplaintService;
+import static com.moyuyo.common.enums.GeneralStatusEnum.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -40,9 +42,9 @@ public class AdminComplaintServiceImpl implements AdminComplaintService {
     // 投诉统计：按类型分组统计
     Long total = feedbackMapper.selectCount(new LambdaQueryWrapper<>());
     Long pending = feedbackMapper.selectCount(
-        new LambdaQueryWrapper<FeedbackEntity>().eq(FeedbackEntity::getStatus, "PENDING"));
+        new LambdaQueryWrapper<FeedbackEntity>().eq(FeedbackEntity::getStatus, PENDING.name()));
     Long processing = feedbackMapper.selectCount(
-        new LambdaQueryWrapper<FeedbackEntity>().eq(FeedbackEntity::getStatus, "PROCESSING"));
+        new LambdaQueryWrapper<FeedbackEntity>().eq(FeedbackEntity::getStatus, PROCESSING.name()));
     Long closed = feedbackMapper.selectCount(
         new LambdaQueryWrapper<FeedbackEntity>().eq(FeedbackEntity::getStatus, "CLOSED"));
 
@@ -55,6 +57,7 @@ public class AdminComplaintServiceImpl implements AdminComplaintService {
   }
 
   @Override
+  @Transactional
   public void handle(Long id, String result, String note) {
     FeedbackEntity entity = feedbackMapper.selectById(id);
     if (entity != null) {

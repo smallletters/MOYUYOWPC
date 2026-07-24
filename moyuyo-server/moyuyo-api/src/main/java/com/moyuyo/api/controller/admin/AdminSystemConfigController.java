@@ -56,35 +56,34 @@ public class AdminSystemConfigController {
     }
 
     @Operation(summary = "操作/运营日志")
-    @GetMapping("/logs")
-    public Result<List<Map<String, Object>>> logs(
-            @RequestParam(defaultValue = "operation") String type,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        List<Map<String, Object>> list = new ArrayList<>();
-        // 从 mo_audit_log 表查询真实日志数据，按 createTime 降序排列
-        List<AuditLogEntity> logList = auditLogMapper.selectList(
-          new LambdaQueryWrapper<AuditLogEntity>()
-            .orderByDesc(AuditLogEntity::getCreateTime));
-        for (AuditLogEntity log : logList) {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", log.getId());
-            item.put("operator", log.getOperatorName());
-            item.put("action", log.getAction());
-            item.put("detail", log.getDetail());
-            item.put("ip", log.getIp());
-            item.put("createTime", log.getCreateTime());
-            list.add(item);
-        }
-        return Result.success(list);
+  @GetMapping("/logs")
+  public Result<Map<String, Object>> logs(
+          @RequestParam(defaultValue = "1") int page,
+          @RequestParam(defaultValue = "20") int size) {
+    // 分页查询 mo_audit_log 表，按 createTime 降序排列
+    com.baomidou.mybatisplus.extension.plugins.pagination.Page<AuditLogEntity> pageResult =
+      auditLogMapper.selectPage(
+        new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size),
+        new LambdaQueryWrapper<AuditLogEntity>()
+          .orderByDesc(AuditLogEntity::getCreateTime));
+    
+    List<Map<String, Object>> list = new ArrayList<>();
+    for (AuditLogEntity log : pageResult.getRecords()) {
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("id", log.getId());
+      item.put("operator", log.getOperatorName());
+      item.put("action", log.getAction());
+      item.put("detail", log.getDetail());
+      item.put("ip", log.getIp());
+      item.put("createTime", log.getCreateTime());
+      list.add(item);
     }
-
-    private Map<String, Object> createConfigItem(String key, String value, String type, String label) {
-        Map<String, Object> item = new LinkedHashMap<>();
-        item.put("key", key);
-        item.put("value", value);
-        item.put("type", type);
-        item.put("label", label);
-        return item;
-    }
+    
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("records", list);
+    result.put("total", pageResult.getTotal());
+    result.put("page", pageResult.getCurrent());
+    result.put("size", pageResult.getSize());
+    return Result.success(result);
+  }
 }

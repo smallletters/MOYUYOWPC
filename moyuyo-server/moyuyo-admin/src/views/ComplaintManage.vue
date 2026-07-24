@@ -110,7 +110,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getComplaintList, getComplaintDetail, startComplaintProcess, closeComplaint } from '../api/admin'
+import { getComplaintList, createComplaint, startComplaintProcess, closeComplaint } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -148,22 +148,34 @@ function statusTag(status) {
 async function loadData() {
   try {
     const res = await getComplaintList()
-    const list = res || []
+    // 后端返回 {list: [...], total, page, size} 格式
+    const rawList = (res && res.list) || []
+    // 转换为前端表格期望的格式
+    let list = rawList.map(item => ({
+      id: item.id,
+      complaintNo: 'CP' + item.id,
+      complainant: item.userId ? '用户' + item.userId : '',
+      defendant: item.type || '',
+      type: item.type || '',
+      content: item.content || '',
+      status: ({'PENDING':'待处理','PROCESSING':'处理中','CLOSED':'已完结','RESOLVED':'已完结'})[item.status] || item.status || '待处理',
+      submitTime: item.createTime || '',
+      remark: item.remark || ''
+    }))
     // 根据筛选条件过滤
-    let filtered = list
     if (filters.keyword) {
       const kw = filters.keyword.toLowerCase()
-      filtered = filtered.filter(d => d.complaintNo.toLowerCase().includes(kw) || d.complainant.includes(kw))
+      list = list.filter(d => (d.complaintNo && d.complaintNo.toLowerCase().includes(kw)) || (d.complainant && d.complainant.includes(kw)))
     }
     if (filters.type) {
-      filtered = filtered.filter(d => d.type === filters.type)
+      list = list.filter(d => d.type === filters.type)
     }
     if (filters.status) {
-      filtered = filtered.filter(d => d.status === filters.status)
+      list = list.filter(d => d.status === filters.status)
     }
-    total.value = filtered.length
+    total.value = list.length
     const start = (currentPage.value - 1) * pageSize.value
-    tableData.value = filtered.slice(start, start + pageSize.value)
+    tableData.value = list.slice(start, start + pageSize.value)
   } catch (e) {
     console.error('加载投诉列表失败:', e)
     ElMessage.error('加载投诉列表失败')
@@ -219,12 +231,11 @@ async function handleSave() {
       }
       ElMessage.success('保存成功')
     } else {
-      // 新建投诉，使用API
-      await startComplaintProcess({
-        complainant: editForm.complainant,
-        defendant: editForm.defendant,
+      // 新建投诉，调用 CREATE 端点
+      await createComplaint({
         type: editForm.type,
-        content: editForm.content
+        content: editForm.content,
+        userId: editForm.complainant
       })
       ElMessage.success('新增成功')
     }

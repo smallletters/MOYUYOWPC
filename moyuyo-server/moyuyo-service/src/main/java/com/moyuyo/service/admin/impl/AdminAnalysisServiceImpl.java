@@ -14,6 +14,7 @@ import com.moyuyo.dao.mapper.CartMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.UserMapper;
+import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.service.admin.AdminAnalysisService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -44,8 +45,8 @@ public class AdminAnalysisServiceImpl implements AdminAnalysisService {
     long browseUsers = countDistinctUsers("浏览商品", null, null);
     long cartUsers = countDistinctCartUsers();
     long orderUsers = countDistinctOrderUsers(null);
-    long paidUsers = countDistinctOrderUsers("PAID");
-    long completedUsers = countDistinctOrderUsers("COMPLETED");
+    long paidUsers = countDistinctOrderUsers(OrderStatusEnum.PAID.name());
+    long completedUsers = countDistinctOrderUsers(OrderStatusEnum.COMPLETED.name());
 
     long[] stages = {browseUsers, cartUsers, orderUsers, paidUsers, completedUsers};
     String[] stageNames = {"浏览商品", "加入购物车", "提交订单", "支付成功", "完成交易"};
@@ -274,9 +275,9 @@ public class AdminAnalysisServiceImpl implements AdminAnalysisService {
   private long countDistinctOrderUsers(String stage) {
     QueryWrapper<OrderEntity> wrapper = new QueryWrapper<>();
     wrapper.select("COUNT(DISTINCT user_id)");
-    if ("PAID".equals(stage)) {
+    if (OrderStatusEnum.PAID.name().equals(stage)) {
       wrapper.isNotNull("paid_at");
-    } else if ("COMPLETED".equals(stage)) {
+    } else if (OrderStatusEnum.COMPLETED.name().equals(stage)) {
       wrapper.isNotNull("received_time");
     }
     List<Object> result = orderMapper.selectObjs(wrapper);

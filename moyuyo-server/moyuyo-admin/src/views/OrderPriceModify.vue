@@ -35,7 +35,7 @@
         </el-table-column>
         <el-table-column prop="reason" label="改价原因" min-width="160" show-overflow-tooltip />
         <el-table-column prop="operator" label="操作人" width="110" />
-        <el-table-column prop="modifyTime" label="改价时间" width="170" />
+        <el-table-column prop="createTime" label="改价时间" width="170" />
       </el-table>
       <div style="display:flex;justify-content:flex-end;padding:16px 0 0">
         <el-pagination
@@ -47,7 +47,7 @@
         />
       </div>
     </el-card>
-    <el-dialog v-model="dialogVisible" title="新增改价" width="600px">
+    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑改价' : '新增改价'" width="600px">
       <el-form :model="editForm" label-width="100px">
         <el-form-item label="订单编号" required>
           <el-input v-model="editForm.orderNo" placeholder="请输入订单编号" />
@@ -76,13 +76,14 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getOrderOpsExport, updateOrderRemark } from '../api/admin'
+import { getPriceModifyList, createPriceModify } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
+const submitting = ref(false)
 
 const filters = reactive({
   keyword: ''
@@ -104,15 +105,11 @@ const tableData = ref([])
 // 加载改价记录列表
 async function loadData() {
   try {
-    const res = await getOrderOpsExport()
-    let list = res || []
-    const kw = filters.keyword.toLowerCase()
-    if (kw) {
-      list = list.filter(d => (d.orderNo || '').toLowerCase().includes(kw))
-    }
-    total.value = list.length
-    const start = (currentPage.value - 1) * pageSize.value
-    tableData.value = list.slice(start, start + pageSize.value)
+    const params = { page: currentPage.value, size: pageSize.value }
+    if (filters.keyword) params.keyword = filters.keyword
+    const res = await getPriceModifyList(params)
+    tableData.value = res.records || res.list || []
+    total.value = res.total || 0
   } catch (error) {
     console.error('获取改价数据失败:', error)
     ElMessage.error('获取改价数据失败')
@@ -139,20 +136,23 @@ async function handleSave() {
     ElMessage.warning('请填写必要信息')
     return
   }
+  submitting.value = true
   try {
-    await updateOrderRemark(editForm.id, {
-      orderNo: editForm.orderNo,
+    await createPriceModify({
+      orderId: editForm.orderNo,
       originalAmount: editForm.originalAmount,
       adjustAmount: editForm.adjustAmount,
-      finalAmount: editForm.originalAmount + editForm.adjustAmount,
-      reason: editForm.reason
+      reason: editForm.reason,
+      reasonType: 'MANUAL'
     })
+    ElMessage.success('改价成功')
     dialogVisible.value = false
     loadData()
-    ElMessage.success('改价成功')
   } catch (error) {
     console.error('改价失败:', error)
     ElMessage.error('改价失败')
+  } finally {
+    submitting.value = false
   }
 }
 

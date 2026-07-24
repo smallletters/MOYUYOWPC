@@ -17,6 +17,7 @@ import com.moyuyo.dao.mapper.PaymentMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.OrderService;
+import static com.moyuyo.common.enums.OrderStatusEnum.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -48,10 +49,34 @@ public class OrderServiceImpl implements OrderService {
     String snowId = String.valueOf(IdWorker.getId());
     String orderNo = "ORD" + datePart + snowId.substring(snowId.length() - 8);
 
-    // 计算商品总金额
-    BigDecimal goodsAmount = items.stream()
-        .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
-        .reduce(BigDecimal.ZERO, BigDecimal::add);
+    // 校验库存并计算商品总金额
+    BigDecimal goodsAmount = BigDecimal.ZERO;
+    for (OrderItemEntity item : items) {
+      // 校验商品是否存在且在上架状态
+      ProductEntity product = productMapper.selectById(item.getProductId());
+      if (product == null) {
+        throw new IllegalArgumentException("商品不存在: " + item.getProductId());
+      }
+      if (product.getOnSale() == null || !product.getOnSale()) {
+        throw new IllegalArgumentException("商品已下架: " + product.getName());
+      }
+      // 校验 SKU 是否存在且库存充足
+      if (item.getSkuId() != null) {
+        ProductSkuEntity sku = productSkuMapper.selectById(item.getSkuId());
+        if (sku == null) {
+          throw new IllegalArgumentException("SKU不存在: " + item.getSkuId());
+        }
+        if (sku.getStock() != null && sku.getStock() < item.getQuantity()) {
+          throw new IllegalArgumentException("商品库存不足: " + product.getName() + "，当前库存: " + sku.getStock());
+        }
+        // 扣减 SKU 库存
+        sku.setStock(sku.getStock() - item.getQuantity());
+        productSkuMapper.updateById(sku);
+      } else if (product.getStock() != null && product.getStock() < item.getQuantity()) {
+        throw new IllegalArgumentException("商品库存不足: " + product.getName() + "，当前库存: " + product.getStock());
+      }
+      goodsAmount = goodsAmount.add(item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+    }
 
     // 构建订单
     OrderEntity order = new OrderEntity();
@@ -60,7 +85,7 @@ public class OrderServiceImpl implements OrderService {
     order.setGoodsAmount(goodsAmount);
     order.setFreight(BigDecimal.ZERO);
     order.setPayAmount(goodsAmount);
-    order.setStatus("PENDING_PAY");
+    order.setStatus(PENDING_PAY.name());
     order.setAddressId(addressId);
     order.setRemark(remark);
     order.setCouponId(couponId);
@@ -141,10 +166,10 @@ public class OrderServiceImpl implements OrderService {
   @Transactional
   public void cancelOrder(Long orderId, Long userId, String reason) {
     OrderEntity order = getOrderDetail(orderId, userId);
-    if (!"PENDING_PAY".equals(order.getStatus())) {
+    if (!PENDING_PAY.name().equals(order.getStatus())) {
       throw new IllegalStateException("当前订单状态不允许取消");
     }
-    order.setStatus("CANCELLED");
+    order.setStatus(CANCELLED.name());
     order.setCancelTime(LocalDateTime.now());
     order.setCancelReason(reason);
     orderMapper.updateById(order);
@@ -161,13 +186,13 @@ public class OrderServiceImpl implements OrderService {
       log.error("支付回调订单不存在: orderNo={}", orderNo);
       throw new IllegalArgumentException("订单不存在");
     }
-    if (!"PENDING_PAY".equals(order.getStatus())) {
+    if (!PENDING_PAY.name().equals(order.getStatus())) {
       log.warn("支付回调重复处理: orderNo={}, status={}", orderNo, order.getStatus());
       return;
     }
 
     // 更新订单状态
-    order.setStatus("PAID");
+    order.setStatus(PAID.name());
     order.setPaidAt(LocalDateTime.now());
     order.setPayChannel(payChannel);
     order.setPayTransactionId(transactionId);
@@ -190,10 +215,10 @@ public class OrderServiceImpl implements OrderService {
   @Transactional
   public void confirmReceived(Long orderId, Long userId) {
     OrderEntity order = getOrderDetail(orderId, userId);
-    if (!"PAID".equals(order.getStatus())) {
+    if (!PAID.name().equals(order.getStatus())) {
       throw new IllegalStateException("当前订单状态不允许确认收货");
     }
-    order.setStatus("RECEIVED");
+    order.setStatus(RECEIVED.name());
     order.setReceivedTime(LocalDateTime.now());
     orderMapper.updateById(order);
   }

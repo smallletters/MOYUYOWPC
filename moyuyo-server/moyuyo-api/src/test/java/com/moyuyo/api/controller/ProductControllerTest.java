@@ -29,7 +29,7 @@ class ProductControllerTest extends BaseIntegrationTest {
                         .param("page", "1")
                         .param("size", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.records").isArray());
     }
 
@@ -39,7 +39,7 @@ class ProductControllerTest extends BaseIntegrationTest {
                         .param("page", "1")
                         .param("size", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.records").isArray());
     }
 

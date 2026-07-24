@@ -26,10 +26,10 @@
           <label>会员等级</label>
           <select v-model="filters.level" class="form-input">
             <option value="">全部等级</option>
-            <option value="普通会员">普通会员</option>
-            <option value="银卡会员">银卡会员</option>
-            <option value="金卡会员">金卡会员</option>
-            <option value="钻石会员">钻石会员</option>
+            <option value="NORMAL">普通会员</option>
+            <option value="SILVER">银卡会员</option>
+            <option value="GOLD">金卡会员</option>
+            <option value="DIAMOND">钻石会员</option>
           </select>
         </div>
         <div class="form-group">
@@ -120,7 +120,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import api from '../api/index'
 import { ElMessage } from 'element-plus'
 
@@ -172,8 +172,11 @@ async function fetchUsers() {
   try {
     const params = {
       page: currentPage.value,
-      pageSize: pageSize,
-      ...filters
+      size: pageSize,
+      search: filters.search,
+      level: filters.level,
+      channel: filters.channel,
+      status: filters.status
     }
     Object.keys(params).forEach(k => {
       if (!params[k]) delete params[k]
@@ -233,13 +236,33 @@ function handleReset() {
   fetchUsers()
 }
 
-function handleDetail(user) {
-  ElMessage.info(`用户详情：${user.name}`)
+async function handleDetail(user) {
+  try {
+    const res = await api.get(`/users/${user.id}`)
+    if (res) {
+      ElMessage.info(`用户: ${res.nickname || user.name}, 邮箱: ${res.email}, 等级: ${res.level}, 状态: ${res.status === 'ACTIVE' ? '正常' : '禁用'}`)
+    }
+  } catch (err) {
+    ElMessage.error('获取用户详情失败')
+  }
 }
 
-function handleBan(user) {
-  ElMessage.info(`封禁/解封操作：${user.name}`)
+async function handleBan(user) {
+  try {
+    const newStatus = user.statusClass === 'active' ? 'INACTIVE' : 'ACTIVE'
+    await api.put(`/users/${user.id}/status`, { status: newStatus })
+    ElMessage.success(`${user.name} 已${newStatus === 'ACTIVE' ? '解封' : '封禁'}`)
+    fetchUsers()
+  } catch (err) {
+    console.error('更新用户状态失败:', err)
+    ElMessage.error('操作失败')
+  }
 }
+
+// 监听页码变化，重新加载数据
+watch(currentPage, () => {
+  fetchUsers()
+})
 
 onMounted(() => {
   fetchStats()

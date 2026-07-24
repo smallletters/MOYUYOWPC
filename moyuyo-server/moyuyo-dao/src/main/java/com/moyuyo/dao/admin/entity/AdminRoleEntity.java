@@ -24,6 +24,9 @@ public class AdminRoleEntity {
     /** 状态：ACTIVE / DISABLED */
     private String status;
 
+    /** 是否系统预设角色，默认 false */
+    private Boolean isPreset = false;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

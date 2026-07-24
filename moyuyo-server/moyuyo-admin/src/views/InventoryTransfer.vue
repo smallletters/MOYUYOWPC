@@ -22,7 +22,7 @@
         <el-table-column prop="reason" label="原因" min-width="160" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="statusTag(row.status)" size="small">{{ statusMap(row.status) }}</el-tag>
+            <el-tag :type="getStatusType(row.status)" size="small">{{ getStatusText(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="提交时间" width="170" />
@@ -65,6 +65,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useStatusTag } from '../composables/useStatusTag'
 import { getInventoryTransferList, createInventoryTransfer, approveInventoryTransfer, rejectInventoryTransfer, completeInventoryTransfer } from '../api/admin'
 
 const tableData = ref([])
@@ -79,20 +80,10 @@ const form = reactive({
   reason: '',
 })
 
-function statusTag(status) {
-  if (status === 'approved') return 'success'
-  if (status === 'completed') return 'primary'
-  if (status === 'rejected') return 'danger'
-  return 'warning'
-}
-
-function statusMap(status) {
-  if (status === 'pending') return '待审核'
-  if (status === 'approved') return '已通过'
-  if (status === 'completed') return '已完成'
-  if (status === 'rejected') return '已驳回'
-  return status
-}
+const { getStatusText, getStatusType } = useStatusTag(
+  { pending: '待审核', approved: '已通过', completed: '已完成', rejected: '已驳回' },
+  { approved: 'success', completed: 'primary', rejected: 'danger', pending: 'warning' }
+)
 
 function resetForm() {
   form.productId = null

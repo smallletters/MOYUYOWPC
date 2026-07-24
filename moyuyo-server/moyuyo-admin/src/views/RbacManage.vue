@@ -248,8 +248,8 @@ import {
 
 // ---- 角色列表（从API获取） ----
 const roles = ref([])
-// 当前选中角色的权限数据
-const currentPerms = ref({})
+// 当前选中角色的权限ID列表（扁平格式）
+const currentPermIds = ref([])
 
 // ---- 权限模块（静态UI配置） ----
 const permModules = [
@@ -262,6 +262,18 @@ const permModules = [
   { key: 'finance', name: '财务管理' },
   { key: 'review', name: '内容审核' }
 ]
+
+// 权限映射表：moduleKey_action -> permissionId
+const PERM_MAP = {
+  product_view: 1, product_create: 2, product_edit: 3, product_delete: 4,
+  order_view: 5, order_create: 6, order_edit: 7, order_delete: 8,
+  user_view: 9, user_create: 10, user_edit: 11, user_delete: 12,
+  marketing_view: 13, marketing_create: 14, marketing_edit: 15, marketing_delete: 16,
+  stats_view: 17, stats_create: 18, stats_edit: 19, stats_delete: 20,
+  system_view: 21, system_create: 22, system_edit: 23, system_delete: 24,
+  finance_view: 25, finance_create: 26, finance_edit: 27, finance_delete: 28,
+  review_view: 29, review_create: 30, review_edit: 31, review_delete: 32
+}
 
 // ---- 选中角色 ----
 const selectedRole = ref(null)
@@ -297,11 +309,11 @@ async function loadRoles() {
 // 加载指定角色的权限矩阵
 async function loadPermissions(roleId) {
   try {
-    const perms = await getRolePermissions(roleId)
-    currentPerms.value = perms || {}
+    const data = await getRolePermissions(roleId)
+    currentPermIds.value = data?.permissionIds || []
   } catch (e) {
     console.error('获取权限数据失败', e)
-    currentPerms.value = {}
+    currentPermIds.value = []
   }
 }
 
@@ -314,22 +326,27 @@ async function selectRole(role) {
 // ---- 权限读取/切换 ----
 function getPerm(moduleKey, action) {
   if (!selectedRole.value) return false
-  return currentPerms.value[moduleKey]?.[action] ?? false
+  const permId = PERM_MAP[`${moduleKey}_${action}`]
+  return permId ? currentPermIds.value.includes(permId) : false
 }
 
 function togglePerm(moduleKey, action) {
   if (!selectedRole.value || selectedRole.value.isPreset) return
-  if (!currentPerms.value[moduleKey]) {
-    currentPerms.value[moduleKey] = { view: false, create: false, edit: false, delete: false }
+  const permId = PERM_MAP[`${moduleKey}_${action}`]
+  if (!permId) return
+  const idx = currentPermIds.value.indexOf(permId)
+  if (idx === -1) {
+    currentPermIds.value.push(permId)
+  } else {
+    currentPermIds.value.splice(idx, 1)
   }
-  currentPerms.value[moduleKey][action] = !currentPerms.value[moduleKey][action]
 }
 
 // ---- 保存权限 ----
 async function handleSavePerms() {
   if (!selectedRole.value) return
   try {
-    await updateRolePermissions(selectedRole.value.id, currentPerms.value)
+    await updateRolePermissions(selectedRole.value.id, { permissionIds: currentPermIds.value })
     ElMessage.success(`「${selectedRole.value.name}」权限配置已更新`)
   } catch (e) {
     ElMessage.error('保存权限失败')

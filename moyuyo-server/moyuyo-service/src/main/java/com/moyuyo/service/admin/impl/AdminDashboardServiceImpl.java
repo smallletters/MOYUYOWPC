@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.moyuyo.dao.entity.*;
 import com.moyuyo.dao.mapper.*;
 import com.moyuyo.service.admin.AdminDashboardService;
+import static com.moyuyo.common.enums.OrderStatusEnum.*;
+import static com.moyuyo.common.enums.GeneralStatusEnum.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -36,7 +38,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         new QueryWrapper<OrderEntity>()
             .select("COALESCE(SUM(pay_amount), 0)")
             .ge("paid_at", today)
-            .in("status", "COMPLETED", "PENDING_SHIP")
+            .in("status", COMPLETED.name(), PENDING_SHIP.name(), SHIPPED.name())
     );
     BigDecimal todayGmv = gmvResult == null || gmvResult.isEmpty() || gmvResult.get(0) == null
         ? BigDecimal.ZERO
@@ -65,19 +67,19 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     // 5. 待发货订单
     Long pendingShip = orderMapper.selectCount(
         new QueryWrapper<OrderEntity>()
-            .eq("status", "PENDING_SHIP")
+            .eq("status", PENDING_SHIP.name())
     );
 
     // 6. 待审核评价
     Long pendingReview = productReviewMapper.selectCount(
         new QueryWrapper<ProductReviewEntity>()
-            .eq("status", "PENDING")
+            .eq("status", PENDING.name())
     );
 
     // 7. 待处理退款
     Long pendingRefund = refundMapper.selectCount(
         new QueryWrapper<RefundEntity>()
-            .in("status", "PENDING", "REFUNDING")
+            .in("status", PENDING.name(), REFUNDING.name())
     );
 
     // 8. 计算趋势数据（对比昨天）
@@ -87,7 +89,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
             .select("COALESCE(SUM(pay_amount), 0)")
             .ge("paid_at", yesterday)
             .lt("paid_at", today)
-            .in("status", "COMPLETED", "PENDING_SHIP")
+            .in("status", COMPLETED.name(), PENDING_SHIP.name(), SHIPPED.name())
     );
     BigDecimal yesterdayGmv = yesterdayGmvResult == null || yesterdayGmvResult.isEmpty() || yesterdayGmvResult.get(0) == null
         ? BigDecimal.ZERO
@@ -112,33 +114,10 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
             .doubleValue()
         : 0.0;
 
-    double gmvTrend = yesterdayGmv.compareTo(BigDecimal.ZERO) > 0
-        ? BigDecimal.valueOf(todayGmv.subtract(yesterdayGmv).doubleValue())
-            .multiply(BigDecimal.valueOf(100))
-            .divide(yesterdayGmv, 1, RoundingMode.HALF_UP)
-            .doubleValue()
-        : 0.0;
-
-    double ordersTrend = yesterdayOrders > 0
-        ? BigDecimal.valueOf(todayOrders - yesterdayOrders)
-            .multiply(BigDecimal.valueOf(100))
-            .divide(BigDecimal.valueOf(yesterdayOrders), 1, RoundingMode.HALF_UP)
-            .doubleValue()
-        : 0.0;
-
-    double usersTrend = yesterdayUsers > 0
-        ? BigDecimal.valueOf(activeUsers - yesterdayUsers)
-            .multiply(BigDecimal.valueOf(100))
-            .divide(BigDecimal.valueOf(yesterdayUsers), 1, RoundingMode.HALF_UP)
-            .doubleValue()
-        : 0.0;
-
-    double rateTrend = yesterdayRate > 0
-        ? BigDecimal.valueOf(conversionRate - yesterdayRate)
-            .multiply(BigDecimal.valueOf(100))
-            .divide(BigDecimal.valueOf(yesterdayRate), 1, RoundingMode.HALF_UP)
-            .doubleValue()
-        : 0.0;
+    double gmvTrend = calculateTrendPercentage(todayGmv, yesterdayGmv);
+    double ordersTrend = calculateTrendPercentage(BigDecimal.valueOf(todayOrders), BigDecimal.valueOf(yesterdayOrders));
+    double usersTrend = calculateTrendPercentage(BigDecimal.valueOf(activeUsers), BigDecimal.valueOf(yesterdayUsers));
+    double rateTrend = calculateTrendPercentage(BigDecimal.valueOf(conversionRate), BigDecimal.valueOf(yesterdayRate));
 
     Map<String, Object> data = new LinkedHashMap<>();
     data.put("todayGmv", todayGmv);
@@ -185,6 +164,8 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
       item.put("productName", productName);
       item.put("amount", order.getPayAmount());
       item.put("status", order.getStatus());
+      item.put("time", order.getCreateTime());
+      item.put("userName", "用户" + order.getUserId());
       list.add(item);
     }
     return list;
@@ -204,7 +185,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
               .select("COALESCE(SUM(pay_amount), 0)")
               .ge("paid_at", date)
               .lt("paid_at", nextDay)
-              .in("status", "COMPLETED", "PENDING_SHIP")
+              .in("status", COMPLETED.name(), PENDING_SHIP.name(), SHIPPED.name())
       );
       BigDecimal value = result == null || result.isEmpty() || result.get(0) == null
           ? BigDecimal.ZERO
@@ -216,5 +197,19 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
       list.add(item);
     }
     return list;
+  }
+
+  /**
+   * 计算趋势百分比：(today - yesterday) / yesterday * 100
+   * 昨日为0时返回0.0，避免除零异常
+   */
+  private double calculateTrendPercentage(BigDecimal today, BigDecimal yesterday) {
+    if (yesterday.compareTo(BigDecimal.ZERO) <= 0) {
+      return 0.0;
+    }
+    return today.subtract(yesterday)
+        .multiply(BigDecimal.valueOf(100))
+        .divide(yesterday, 1, RoundingMode.HALF_UP)
+        .doubleValue();
   }
 }

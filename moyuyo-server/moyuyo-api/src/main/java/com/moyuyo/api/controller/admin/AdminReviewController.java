@@ -1,7 +1,11 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductReviewEntity;
+import com.moyuyo.dao.entity.UserEntity;
+import com.moyuyo.dao.mapper.ProductMapper;
+import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.admin.AdminReviewService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,6 +21,8 @@ import java.util.*;
 public class AdminReviewController {
 
   private final AdminReviewService adminReviewService;
+  private final ProductMapper productMapper;
+  private final UserMapper userMapper;
 
   @Operation(summary = "评价列表")
   @GetMapping("/list")
@@ -32,6 +38,20 @@ public class AdminReviewController {
       item.put("id", review.getId());
       item.put("productId", review.getProductId());
       item.put("userId", review.getUserId());
+      // 查询商品名称
+      if (review.getProductId() != null) {
+        ProductEntity product = productMapper.selectById(review.getProductId());
+        item.put("productName", product != null ? product.getName() : "未知商品");
+      } else {
+        item.put("productName", "未知商品");
+      }
+      // 查询用户名称
+      if (review.getUserId() != null) {
+        UserEntity user = userMapper.selectById(review.getUserId());
+        item.put("userName", user != null ? user.getNickname() : "匿名用户");
+      } else {
+        item.put("userName", "匿名用户");
+      }
       item.put("rating", review.getRating());
       item.put("content", review.getContent());
       item.put("status", review.getStatus());

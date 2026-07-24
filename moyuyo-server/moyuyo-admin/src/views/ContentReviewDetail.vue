@@ -10,9 +10,9 @@
         </el-form-item>
         <el-form-item label="审核状态">
           <el-select v-model="filters.status" placeholder="请选择" clearable style="width:130px">
-            <el-option label="待审核" value="待审核" />
-            <el-option label="已通过" value="已通过" />
-            <el-option label="已驳回" value="已驳回" />
+            <el-option label="待审核" value="PENDING" />
+            <el-option label="已通过" value="APPROVED" />
+            <el-option label="已驳回" value="REJECTED" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -24,23 +24,31 @@
     <el-card shadow="never">
       <el-table :data="tableData" stripe>
         <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="title" label="内容标题" width="200" show-overflow-tooltip />
+        <el-table-column label="内容标题" width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.contentExcerpt || row.title }}
+          </template>
+        </el-table-column>
         <el-table-column label="内容类型" width="100">
           <template #default="{ row }">
             <el-tag :type="row.contentType === '评论' ? 'info' : row.contentType === '视频' ? 'warning' : 'primary'">{{ row.contentType }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="submitter" label="提交人" width="100" />
+        <el-table-column prop="submitter" label="提交人" width="100">
+          <template #default="{ row }">
+            {{ row.submitter || '用户' + row.userId }}
+          </template>
+        </el-table-column>
         <el-table-column label="审核状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.reviewStatus === '已通过' ? 'success' : row.reviewStatus === '已驳回' ? 'danger' : 'warning'">{{ row.reviewStatus }}</el-tag>
+            <el-tag :type="row.reviewStatus === 'APPROVED' ? 'success' : row.reviewStatus === 'REJECTED' ? 'danger' : 'warning'">{{ row.reviewStatus === 'APPROVED' ? '已通过' : row.reviewStatus === 'REJECTED' ? '已驳回' : '待审核' }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="submitTime" label="提交时间" width="160" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button type="success" link size="small" :disabled="row.reviewStatus !== '待审核'" @click="handleApprove(row)">通过</el-button>
-            <el-button type="danger" link size="small" :disabled="row.reviewStatus !== '待审核'" @click="handleReject(row)">驳回</el-button>
+            <el-button type="success" link size="small" :disabled="row.reviewStatus !== 'PENDING'" @click="handleApprove(row)">通过</el-button>
+            <el-button type="danger" link size="small" :disabled="row.reviewStatus !== 'PENDING'" @click="handleReject(row)">驳回</el-button>
             <el-button type="primary" link size="small" @click="handleDetail(row)">详情</el-button>
           </template>
         </el-table-column>
@@ -60,8 +68,8 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { getReviewList, approveReview, rejectReview } from '../api/admin'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getContentReviewList, approveContentReview, rejectContentReview } from '../api/admin'
 
 const pageTitle = '内容审核详情'
 const filters = reactive({ reviewer: '', status: '' })
@@ -73,16 +81,18 @@ const total = ref(0)
 // 获取审核详情列表
 async function loadData() {
   try {
-    const res = await getReviewList()
-    const records = res.records || res || []
-      // 映射为前端需要的格式
-      let mapped = records.map(item => ({
+    const res = await getContentReviewList()
+    const records = res.records || res.list || res || []
+      // 映射为前端需要的格式（状态值直接使用后端的 PENDING/APPROVED/REJECTED）
+      let mapped = (Array.isArray(records) ? records : []).map(item => ({
         id: item.id,
-        title: item.title || item.content || item.productName || '',
+        title: item.contentExcerpt || item.content || item.productName || '',
+        contentExcerpt: item.contentExcerpt || '',
         contentType: item.contentType || (item.rating ? '评论' : '图文'),
-        submitter: item.userName || item.submitter || item.operator || '',
-        reviewStatus: item.auditStatus || item.status || '待审核',
-        submitTime: item.submitTime || item.createTime || ''
+        submitter: '用户' + (item.userId || ''),
+        userId: item.userId,
+        reviewStatus: item.status || 'PENDING',
+        submitTime: item.reviewTime || item.createTime || ''
       }))
       // 客户端筛选
       if (filters.reviewer) {
@@ -101,7 +111,7 @@ function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.reviewer = ''; filters.status = ''; handleSearch() }
 async function handleApprove(row) {
   try {
-    await approveReview(row.id)
+    await approveContentReview(row.id)
     ElMessage.success('已通过：' + row.title)
     await loadData()
   } catch (e) {
@@ -110,11 +120,20 @@ async function handleApprove(row) {
 }
 async function handleReject(row) {
   try {
-    await rejectReview(row.id)
+    const { value: reason } = await ElMessageBox.prompt('请输入驳回原因', '驳回', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputType: 'textarea',
+      inputPlaceholder: '请输入驳回原因...'
+    })
+    if (!reason) return
+    await rejectContentReview(row.id, { reason })
     ElMessage.warning('已驳回：' + row.title)
     await loadData()
   } catch (e) {
-    ElMessage.error('操作失败')
+    if (e !== 'cancel') {
+      ElMessage.error('操作失败')
+    }
   }
 }
 function handleDetail(row) { ElMessage.info('查看内容详情 ID: ' + row.id) }

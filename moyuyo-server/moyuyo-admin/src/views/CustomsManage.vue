@@ -104,17 +104,25 @@ async function loadData() {
 }
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.keyword = ''; handleSearch() }
-// 同步海关数据
+// 同步海关数据（逐条同步）
 async function handleSync() {
-  try {
-    ElMessage.success('数据同步中，请稍候...')
-    await syncCustoms()
-    ElMessage.success('海关数据同步完成')
-    loadData()
-  } catch (error) {
-    console.error('同步海关数据失败:', error)
-    ElMessage.error('同步海关数据失败')
+  if (tableData.value.length === 0) {
+    ElMessage.info('没有可同步的数据')
+    return
   }
+  ElMessage.info('正在同步海关数据...')
+  let successCount = 0
+  let failCount = 0
+  for (const item of tableData.value) {
+    try {
+      await syncCustoms(item.id)
+      successCount++
+    } catch (e) {
+      failCount++
+    }
+  }
+  ElMessage.success(`同步完成：成功 ${successCount} 条，失败 ${failCount} 条`)
+  loadData()
 }
 function handleEdit(row) { dialogTitle.value = '编辑海关编码'; Object.assign(editForm, row); dialogVisible.value = true }
 async function handleDelete(row) {

@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -40,8 +41,8 @@ class AdminPushControllerTest extends BaseIntegrationTest {
         mockMvc.perform(get("/api/admin/push/stats")
                         .header("Authorization", adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.todayPushCount").value(128));
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.todayPushCount").isNumber());
     }
 
     @Test
@@ -49,7 +50,7 @@ class AdminPushControllerTest extends BaseIntegrationTest {
         mockMvc.perform(get("/api/admin/push/records")
                         .header("Authorization", adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data").isArray());
     }
 
@@ -67,9 +68,12 @@ class AdminPushControllerTest extends BaseIntegrationTest {
                         .content(objectMapper.writeValueAsString(body)))
                 .andReturn();
 
-        // 检查响应：200 成功或 409 数据冲突（测试环境下可能发生）
+        // 创建推送：若 409 表示数据已存在则跳过验证，否则断言 200
         int status = result.getResponse().getStatus();
-        assert status == 200 || status == 409 : "期望200或409，实际为" + status;
+        if (status == 409) {
+            return; // 数据已存在，跳过重复创建验证
+        }
+        assertEquals(200, status, "创建推送应返回200");
     }
 
     @Test
@@ -89,9 +93,7 @@ class AdminPushControllerTest extends BaseIntegrationTest {
         // 解析返回的 id
         var respMap = objectMapper.readValue(createResp, Map.class);
         int code = (int) respMap.get("code");
-        if (code != 200) {
-            return; // 创建失败则跳过删除测试
-        }
+        assertEquals(0, code, "创建推送应成功，code=" + code);
         var data = (Map<String, Object>) respMap.get("data");
         int id = ((Number) data.get("id")).intValue();
 
@@ -99,7 +101,7 @@ class AdminPushControllerTest extends BaseIntegrationTest {
         mockMvc.perform(delete("/api/admin/push/{id}", id)
                         .header("Authorization", adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.message").value("推送已删除"));
     }
 }

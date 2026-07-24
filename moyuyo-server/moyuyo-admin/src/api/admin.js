@@ -167,8 +167,8 @@ export function deletePush(id) {
 }
 
 // ==================== 工单 ====================
-export function getTicketList() {
-  return api.get('/ticket/list')
+export function getTicketList(params) {
+  return api.get('/ticket/list', { params })
 }
 
 export function getTicketStats() {
@@ -180,7 +180,9 @@ export function getTicketDetail(id) {
 }
 
 export function assignTicket(id, data) {
-  return api.put(`/ticket/${id}/assign`, data)
+  // 后端 DTO 期望 assigneeId，前端传 assignee 时自动映射
+  const payload = { assigneeId: data.assignee || data.assigneeId }
+  return api.put(`/ticket/${id}/assign`, payload)
 }
 
 export function updateTicketStatus(id, data) {
@@ -220,6 +222,10 @@ export function createAbTest(data) {
   return api.post('/marketing/ab-tests', data)
 }
 
+export function updateAbTest(id, data) {
+  return api.put('/marketing/ab-tests/' + id, data)
+}
+
 export function getMarketingEffects() {
   return api.get('/marketing/effects')
 }
@@ -227,6 +233,10 @@ export function getMarketingEffects() {
 // ==================== 投诉管理 ====================
 export function getComplaintList() {
   return api.get('/complaint/list')
+}
+
+export function createComplaint(data) {
+  return api.post('/complaint/create', data)
 }
 
 export function getComplaintDetail(id) {
@@ -262,6 +272,31 @@ export function replyReview(id, data) {
   return api.post(`/review/${id}/reply`, data)
 }
 
+// ==================== 商品管理 ====================
+export function getProductList(params) {
+  return api.get('/products/list', { params })
+}
+
+export function getProductDetail(id) {
+  return api.get(`/products/${id}`)
+}
+
+export function createProduct(data) {
+  return api.post('/products/create', data)
+}
+
+export function updateProduct(id, data) {
+  return api.put(`/products/${id}`, data)
+}
+
+export function toggleProductStatus(id) {
+  return api.put(`/products/${id}/status`)
+}
+
+export function batchProductAction(data) {
+  return api.post('/products/batch', data)
+}
+
 // ==================== 产品分析 ====================
 export function getProductAnalysisKpi() {
   return api.get('/product-analysis/kpi')
@@ -292,6 +327,10 @@ export function deletePrice(id) {
   return api.delete(`/price/${id}`)
 }
 
+export function getPriceHistory(params) {
+  return api.get('/price/history', { params })
+}
+
 export function togglePrice(id) {
   return api.put(`/price/${id}/toggle`)
 }
@@ -301,8 +340,16 @@ export function getOrderOpsStats() {
   return api.get('/order-ops/stats')
 }
 
-export function getOrderOpsExport() {
-  return api.get('/order-ops/export')
+export function getOrderOpsExport(params) {
+  return api.get('/order-ops/export', { params })
+}
+
+export function createOrderExport(data) {
+  return api.post('/order-ops/export/create', data)
+}
+
+export function downloadExportFile(exportId) {
+  return api.get(`/order-ops/export/download/${exportId}`)
 }
 
 export function batchShip(data) {
@@ -313,18 +360,59 @@ export function updateOrderRemark(id, data) {
   return api.put(`/order-ops/${id}/remark`, data)
 }
 
+// ==================== 订单打印 ====================
+export function getPrintList(params) {
+  return api.get('/order-ops/print/list', { params })
+}
+
+export function recordPrint(data) {
+  return api.post('/order-ops/print/record', data)
+}
+
+// ==================== 订单改价 ====================
+export function getPriceModifyList(params) {
+  return api.get('/order-ops/price-modify/list', { params })
+}
+
+export function createPriceModify(data) {
+  return api.post('/order-ops/price-modify/create', data)
+}
+
+// ==================== 订单拦截 ====================
+export function getInterceptList(params) {
+  return api.get('/order-ops/intercept/list', { params })
+}
+
+export function createIntercept(data) {
+  return api.post('/order-ops/intercept/create', data)
+}
+
+export function releaseIntercept(id, data) {
+  return api.post(`/order-ops/intercept/release/${id}`, data)
+}
+
+// ==================== 订单监控 ====================
+export function getMonitorData() {
+  return api.get('/order-ops/monitor/data')
+}
+
+export function getAbnormalOrders(params) {
+  return api.get('/order-ops/monitor/list', { params })
+}
+
 // ==================== 物流 ====================
+// 物流CRUD工厂 — 统一生成 create/update/delete 函数
+const logisticsCrud = (entity) => ({
+  create: (data) => api.post(`/logistics/${entity}`, data),
+  update: (id, data) => api.put(`/logistics/${entity}/${id}`, data),
+  delete: (id) => api.delete(`/logistics/${entity}/${id}`)
+})
+
 export function getWarehouses() {
   return api.get('/logistics/warehouses')
 }
 
-export function createWarehouse(data) {
-  return api.post('/logistics/warehouses', data)
-}
-
-export function updateWarehouse(id, data) {
-  return api.put(`/logistics/warehouses/${id}`, data)
-}
+export const { create: createWarehouse, update: updateWarehouse, delete: deleteWarehouse } = logisticsCrud('warehouses')
 
 export function getOverseasWarehouse() {
   return api.get('/logistics/overseas')
@@ -354,89 +442,20 @@ export function getShippingStrategies() {
   return api.get('/logistics/shipping-strategies')
 }
 
-export function createCarrier(data) {
-  return api.post('/logistics/carriers', data)
-}
-
-export function updateCarrier(id, data) {
-  return api.put(`/logistics/carriers/${id}`, data)
-}
-
-export function deleteCarrier(id) {
-  return api.delete(`/logistics/carriers/${id}`)
-}
-
-export function createClearance(data) {
-  return api.post('/logistics/clearance', data)
-}
-
-export function updateClearance(id, data) {
-  return api.put(`/logistics/clearance/${id}`, data)
-}
-
-export function deleteClearance(id) {
-  return api.delete(`/logistics/clearance/${id}`)
-}
-
-export function createCustoms(data) {
-  return api.post('/logistics/customs', data)
-}
-
-export function updateCustoms(id, data) {
-  return api.put(`/logistics/customs/${id}`, data)
-}
-
-export function deleteCustoms(id) {
-  return api.delete(`/logistics/customs/${id}`)
-}
-
-export function createMergePackage(data) {
-  return api.post('/logistics/merge-packages', data)
-}
-
-export function updateMergePackage(id, data) {
-  return api.put(`/logistics/merge-packages/${id}`, data)
-}
-
-export function deleteMergePackage(id) {
-  return api.delete(`/logistics/merge-packages/${id}`)
-}
-
-export function createOverseasWarehouse(data) {
-  return api.post('/logistics/overseas', data)
-}
-
-export function updateOverseasWarehouse(id, data) {
-  return api.put(`/logistics/overseas/${id}`, data)
-}
-
-export function deleteOverseasWarehouse(id) {
-  return api.delete(`/logistics/overseas/${id}`)
-}
-
-export function createShippingStrategy(data) {
-  return api.post('/logistics/shipping-strategies', data)
-}
-
-export function updateShippingStrategy(id, data) {
-  return api.put(`/logistics/shipping-strategies/${id}`, data)
-}
-
-export function deleteShippingStrategy(id) {
-  return api.delete(`/logistics/shipping-strategies/${id}`)
-}
-
-export function createSplitPackage(data) {
-  return api.post('/logistics/split-packages', data)
-}
-
-export function updateSplitPackage(id, data) {
-  return api.put(`/logistics/split-packages/${id}`, data)
-}
-
-export function deleteSplitPackage(id) {
-  return api.delete(`/logistics/split-packages/${id}`)
-}
+// 物流商
+export const { create: createCarrier, update: updateCarrier, delete: deleteCarrier } = logisticsCrud('carriers')
+// 清关
+export const { create: createClearance, update: updateClearance, delete: deleteClearance } = logisticsCrud('clearance')
+// 海关
+export const { create: createCustoms, update: updateCustoms, delete: deleteCustoms } = logisticsCrud('customs')
+// 合并包裹
+export const { create: createMergePackage, update: updateMergePackage, delete: deleteMergePackage } = logisticsCrud('merge-packages')
+// 海外仓
+export const { create: createOverseasWarehouse, update: updateOverseasWarehouse, delete: deleteOverseasWarehouse } = logisticsCrud('overseas')
+// 配送策略
+export const { create: createShippingStrategy, update: updateShippingStrategy, delete: deleteShippingStrategy } = logisticsCrud('shipping-strategies')
+// 拆包
+export const { create: createSplitPackage, update: updateSplitPackage, delete: deleteSplitPackage } = logisticsCrud('split-packages')
 
 export function syncCustoms(id) {
   return api.post(`/logistics/${id}/customs/sync`)
@@ -449,6 +468,10 @@ export function getSmsStats() {
 
 export function getSmsRecords() {
   return api.get('/sms/records')
+}
+
+export function sendSms(data) {
+  return api.post('/sms/send', data)
 }
 
 // ==================== 敏感词 ====================
@@ -593,22 +616,19 @@ export function getSystemLogs() {
 
 // ==================== 系统设置（角色/权限/管理员信息等）====================
 // getRbacRoles 是主入口，位于上方 RBAC 区域
-// 此注释保留以标识系统设置区域
+
+// 权限管理（获取权限列表）
 export function getPermissions() {
-  // 后端无独立权限端点，通过 getRbacRoles() 获取角色列表后提取权限
-  return getRbacRoles()
+  return api.get('/rbac/permissions')
 }
 
-export function getAdminInfo() {
-  return api.get('/auth/me')
-}
-
+// 注意：getAdminInfo 定义在 auth.js 中，从此模块导入时请从 auth.js 引入
 export function getSecurityConfig() {
-  return api.get('/system/security-config')
+  return api.get('/system-info/security-config')
 }
 
 export function getSystemInfo() {
-  return api.get('/system/info')
+  return api.get('/system-info/info')
 }
 
 export function getPaymentMethods() {
@@ -682,11 +702,6 @@ export function deleteKnowledge(id) {
   return api.delete(`/knowledge-base/${id}`)
 }
 
-// ==================== A/B 测试 ====================
-export function updateAbTest(id, data) {
-  return api.put(`/marketing/ab-tests/${id}`, data)
-}
-
 // ==================== 用户画像 ====================
 export function getUserProfile(userId) {
   return api.get(`/user-profile/${userId}`)
@@ -721,11 +736,6 @@ export function getRealtimeTopProducts() {
   return api.get('/crm/realtime/top-products')
 }
 
-// ==================== 物流-CRUD ====================
-export function deleteWarehouse(id) {
-  return api.delete(`/logistics/warehouses/${id}`)
-}
-
 // ==================== 商品审核 ====================
 export function getProductApprovalList(params) { return api.get('/product-approval/list', { params }) }
 export function getProductApprovalDetail(id) { return api.get(`/product-approval/${id}`) }
@@ -756,6 +766,7 @@ export function updateFlashSaleStatus(id, data) { return api.put(`/flash-sales/$
 // ==================== 积分管理 ====================
 export function getPointsActivities() { return api.get('/points/activities') }
 export function createPointsActivity(data) { return api.post('/points/activities/create', data) }
+export function deletePointsActivity(type) { return api.delete(`/points/activities/${encodeURIComponent(type)}`) }
 export function getPointsLogs(params) { return api.get('/points/logs', { params }) }
 export function getPointsStats() { return api.get('/points/stats') }
 

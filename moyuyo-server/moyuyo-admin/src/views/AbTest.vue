@@ -3,7 +3,7 @@
     <div class="page-header">
       <h2>A/B 测试</h2>
       <div class="header-actions">
-        <el-button type="primary" @click="handleAdd">新建实验</el-button>
+        <el-button type="primary" disabled @click="handleAdd">新建实验</el-button>
       </div>
     </div>
     <!-- 表格 -->
@@ -29,7 +29,7 @@
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.status === '运行中'" type="success" link size="small" @click="handleStop(row)">结束</el-button>
-            <el-button type="primary" link size="small" @click="handleView(row)">详情</el-button>
+            <el-button type="primary" link size="small" disabled @click="handleView(row)">详情</el-button>
           </template>
         </el-table-column>
       </el-table>

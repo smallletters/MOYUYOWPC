@@ -92,7 +92,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api/index'
 import { getOrderOpsStats } from '../api/admin'
@@ -140,8 +140,11 @@ async function fetchOrders() {
   try {
     const params = {
       page: currentPage.value,
-      pageSize: pageSize,
-      ...filters
+      size: pageSize,
+      status: filters.status,
+      keyword: filters.search,
+      startDate: filters.dateStart,
+      endDate: filters.dateEnd
     }
     Object.keys(params).forEach(k => {
       if (!params[k]) delete params[k]
@@ -188,22 +191,39 @@ function handleReset() {
   fetchOrders()
 }
 
-// 确认发货：跳转到订单详情页
-function handleConfirmShip(order) {
-  ElMessage.info(`确认发货：${order.no}`)
-  router.push(`/orders/${order.id}`)
+// 确认发货
+async function handleConfirmShip(order) {
+  try {
+    await api.put(`/orders/${order.id}/ship`)
+    ElMessage.success(`订单 ${order.no} 已确认发货`)
+    fetchOrders()
+  } catch (err) {
+    console.error('确认发货失败:', err)
+    ElMessage.error('确认发货失败')
+  }
 }
 
-// 查看物流：跳转物流管理页
-function handleLogistics(order) {
-  ElMessage.info(`查看物流：${order.no}`)
-  router.push('/logistics')
+// 查看物流
+async function handleLogistics(order) {
+  try {
+    const res = await api.get(`/orders/${order.id}`)
+    if (res) {
+      ElMessage.info(`订单 ${order.no}: ${res.status || '暂无物流信息'}`)
+    }
+  } catch (err) {
+    ElMessage.error('查询物流信息失败')
+  }
 }
 
 // 查看订单详情
 function handleDetail(order) {
   router.push(`/orders/${order.id}`)
 }
+
+// 监听页码变化，重新加载数据
+watch(currentPage, () => {
+  fetchOrders()
+})
 
 onMounted(() => {
   fetchStats()

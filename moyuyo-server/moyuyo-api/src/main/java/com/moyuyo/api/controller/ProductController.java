@@ -28,7 +28,7 @@ public class ProductController {
       @Parameter(description = "排序顺序(asc/desc)") @RequestParam(required = false) String sortOrder,
       @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword,
       @Parameter(description = "品牌IP ID") @RequestParam(required = false) Long brandIpId) {
-    return Result.success(productService.listProducts(page, size, categoryId, sortBy, sortOrder, keyword, brandIpId));
+    return Result.success(productService.listProducts(page, size, categoryId, sortBy, sortOrder, keyword, null, null, brandIpId));
   }
 
   @Operation(summary = "商品详情（含 SKU 和图片）")

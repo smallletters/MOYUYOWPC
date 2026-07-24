@@ -63,7 +63,7 @@
             <el-checkbox v-model="form.remember" size="default" />
             <span>记住我</span>
           </label>
-          <a href="#" class="forgot-link" @click.prevent>忘记密码？</a>
+          <a href="#" class="forgot-link" @click.prevent="handleForgotPassword">忘记密码？</a>
         </div>
 
         <!-- 登录按钮 -->
@@ -132,8 +132,12 @@ async function handleLogin() {
   }
 }
 
+function handleForgotPassword() {
+  ElMessage.info('请联系超级管理员重置密码')
+}
+
 function handleSSO() {
-  ElMessage.info('SSO 登录功能开发中')
+  ElMessage.info('SSO 登录功能开发中，请使用邮箱密码登录')
 }
 </script>
 

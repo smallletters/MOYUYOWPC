@@ -15,7 +15,7 @@
           <el-select v-model="filters.auditStatus" placeholder="全部" clearable style="width:140px">
             <el-option label="全部" value="" />
             <el-option label="待审核" value="待审核" />
-            <el-option label="已通过" value="已通过" />
+            <el-option label="已审核" value="已审核" />
             <el-option label="已驳回" value="已驳回" />
           </el-select>
         </el-form-item>
@@ -37,16 +37,16 @@
           </template>
         </el-table-column>
         <el-table-column prop="content" label="评价内容" min-width="220" show-overflow-tooltip />
-        <el-table-column prop="auditStatus" label="审核状态" width="110">
+        <el-table-column prop="status" label="审核状态" width="110">
           <template #default="{ row }">
-            <el-tag :type="auditTag(row.auditStatus)" size="small">{{ row.auditStatus }}</el-tag>
+            <el-tag :type="auditTag(row.status)" size="small">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="submitTime" label="提交时间" width="170" />
+        <el-table-column prop="createTime" label="提交时间" width="170" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" type="success" @click="handlePass(row)" :disabled="row.auditStatus !== '待审核'">通过</el-button>
-            <el-button size="small" type="danger" @click="handleReject(row)" :disabled="row.auditStatus !== '待审核'">驳回</el-button>
+            <el-button size="small" type="success" @click="handlePass(row)" :disabled="row.status !== '待审核'">通过</el-button>
+            <el-button size="small" type="danger" @click="handleReject(row)" :disabled="row.status !== '待审核'">驳回</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -81,15 +81,17 @@ const filters = reactive({
 const tableData = ref([])
 
 function auditTag(status) {
-  const map = { '待审核': 'warning', '已通过': 'success', '已驳回': 'danger' }
+  const map = { '待审核': 'warning', '已审核': 'success', '已驳回': 'danger' }
   return map[status] || ''
 }
 
-// 加载商品评价列表
+// 加载商品评价列表 - 后端返回 {list: [...], total, page, size}
 async function loadData() {
   try {
     const res = await getReviewList()
-    const records = res.records || res || []
+    // 后端返回结构：res.data 或 res 包含 list, total 等字段
+    const data = res && res.data ? res.data : res
+    const records = (data && data.list) || []
       // 客户端筛选
       let list = [...records]
       const kw = filters.keyword.toLowerCase()
@@ -100,7 +102,7 @@ async function loadData() {
         )
       }
       if (filters.auditStatus) {
-        list = list.filter(d => d.auditStatus === filters.auditStatus)
+        list = list.filter(d => d.status === filters.auditStatus)
       }
       total.value = list.length
       const start = (currentPage.value - 1) * pageSize.value

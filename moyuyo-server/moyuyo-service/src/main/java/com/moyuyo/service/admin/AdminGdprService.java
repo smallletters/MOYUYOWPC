@@ -1,6 +1,7 @@
 package com.moyuyo.service.admin;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import java.util.Map;
 
 import java.util.Map;
 
@@ -23,4 +24,9 @@ public interface AdminGdprService {
    * 处理数据请求
    */
   void processRequest(Long id, String result, String note);
+
+    /**
+     * 获取当前生效的隐私政策
+     */
+    Map<String, Object> getActivePolicy();
 }

@@ -79,7 +79,7 @@
 </template>
 
 <script setup>
-import { reactive, onMounted } from 'vue'
+import { reactive, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../api/index'
 import { ElMessage } from 'element-plus'
@@ -97,7 +97,7 @@ const form = reactive({
   status: true
 })
 
-const productId = computed(() => route.query.id)
+const productId = computed(() => route.params.id)
 
 // 获取商品详情
 async function fetchProduct() {
@@ -106,12 +106,26 @@ async function fetchProduct() {
   try {
     const res = await api.get(`/products/${id}`)
     if (res) {
-      Object.assign(form, res)
+      // 后端字段 → 前端字段映射
+      form.name = res.name || ''
+      form.category = convertCategoryIdToName(res.categoryId) || ''
+      form.sku = res.spuCode || res.sku || ''
+      form.price = res.price || 0
+      form.stock = res.stock || 0
+      form.description = res.detail || res.description || ''
+      form.status = res.onSale !== undefined ? res.onSale : (res.status !== undefined ? res.status : true)
     }
   } catch (err) {
     console.error('获取商品详情失败:', err)
     ElMessage.error('获取商品详情失败')
   }
+}
+
+// 分类ID → 名称映射
+function convertCategoryIdToName(categoryId) {
+  if (!categoryId) return ''
+  const map = { 1: 'health', 2: 'food', 3: 'beauty', 4: 'daily' }
+  return map[categoryId] || String(categoryId)
 }
 
 async function handleSave() {

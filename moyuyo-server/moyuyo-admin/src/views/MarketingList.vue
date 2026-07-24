@@ -21,7 +21,7 @@
     <div class="card">
       <div class="card-header">
         <h3>进行中的活动</h3>
-        <button class="btn btn-sm btn-primary">创建活动</button>
+        <button class="btn btn-sm btn-primary" @click="handleQuickAction('campaign')">创建活动</button>
       </div>
       <div class="card-body">
         <div class="campaign-list">
@@ -50,7 +50,7 @@
               </div>
               <div class="campaign-footer">
                 <span class="campaign-date">{{ cp.dateRange }}</span>
-                <button class="btn btn-sm btn-outline">查看详情</button>
+                <button class="btn btn-sm btn-outline" @click="router.push('/campaign')">查看详情</button>
               </div>
             </div>
           </div>
@@ -69,8 +69,19 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { getCampaigns } from '../api/admin'
 import { ElMessage } from 'element-plus'
+
+const router = useRouter()
+
+// 模块路由映射
+const moduleRoutes = {
+  '优惠券管理': '/coupon-manage',
+  '秒杀活动': '/flash-sale-manage',
+  '积分活动': '/points-manage',
+  '分销管理': '/marketing'
+}
 
 const modules = ref([
   { title: '优惠券管理', icon: '🎫', iconBg: '#ebf5ff', metrics: [{ value: '-', label: '活跃券' }, { value: '-', label: '即将过期' }, { value: '-', label: '总计' }] },
@@ -99,12 +110,13 @@ async function fetchModules() {
 }
 
 function handleModuleClick(mod) {
-  ElMessage.info(`进入 ${mod.title}`)
+  const route = moduleRoutes[mod.title] || '/marketing'
+  router.push(route)
 }
 
 function handleQuickAction(action) {
-  const labels = { coupon: '创建优惠券', campaign: '创建活动', notification: '推送通知' }
-  ElMessage.info(labels[action])
+  const actionRoutes = { coupon: '/coupon-manage', campaign: '/campaign', notification: '/push-manage' }
+  router.push(actionRoutes[action] || '/marketing')
 }
 
 onMounted(() => {

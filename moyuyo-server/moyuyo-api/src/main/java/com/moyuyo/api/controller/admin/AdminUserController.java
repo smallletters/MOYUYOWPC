@@ -38,4 +38,23 @@ public class AdminUserController {
     Map<String, Object> data = adminUserManageService.listUsers(page, size, search, level, status);
     return Result.success(data);
   }
+
+  @Operation(summary = "用户详情")
+  @GetMapping("/{id}")
+  public Result<Map<String, Object>> detail(@PathVariable Long id) {
+    Map<String, Object> detail = adminUserManageService.getUserDetail(id);
+    return Result.success(detail);
+  }
+
+  @Operation(summary = "更新用户状态")
+  @PutMapping("/{id}/status")
+  public Result<Map<String, Object>> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    String status = body.get("status");
+    adminUserManageService.updateUserStatus(id, status);
+    Map<String, Object> result = new java.util.LinkedHashMap<>();
+    result.put("id", id);
+    result.put("status", status);
+    result.put("message", "用户状态更新成功");
+    return Result.success(result);
+  }
 }

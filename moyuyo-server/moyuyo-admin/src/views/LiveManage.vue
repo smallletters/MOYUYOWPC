@@ -20,14 +20,14 @@
     <el-card shadow="never">
       <el-table :data="tableData" stripe>
         <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="title" label="直播标题" width="200" show-overflow-tooltip />
-        <el-table-column prop="anchor" label="主播" width="100" />
+        <el-table-column prop="name" label="直播标题" width="200" show-overflow-tooltip />
+        <el-table-column prop="hostName" label="主播" width="100" />
         <el-table-column label="直播状态" width="110">
           <template #default="{ row }">
             <el-tag :type="row.status === '直播中' ? 'danger' : row.status === '预告中' ? 'warning' : 'info'">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="viewCount" label="观看人数" width="100" />
+        <el-table-column prop="viewerCount" label="观看人数" width="100" />
         <el-table-column prop="productCount" label="商品数" width="80" />
         <el-table-column prop="startTime" label="开始时间" width="160" />
         <el-table-column label="操作" width="180" fixed="right">
@@ -50,10 +50,10 @@
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="700px">
       <el-form :model="editForm" label-width="100px">
         <el-form-item label="直播标题">
-          <el-input v-model="editForm.title" placeholder="请输入直播标题" />
+          <el-input v-model="editForm.name" placeholder="请输入直播标题" />
         </el-form-item>
         <el-form-item label="主播">
-          <el-input v-model="editForm.anchor" placeholder="请输入主播名称" />
+          <el-input v-model="editForm.hostName" placeholder="请输入主播名称" />
         </el-form-item>
         <el-form-item label="直播状态">
           <el-select v-model="editForm.status">
@@ -91,8 +91,8 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const editForm = reactive({
-  title: '',
-  anchor: '',
+  name: '',
+  hostName: '',
   status: '预告中',
   productCount: 0,
   startTime: ''
@@ -107,10 +107,10 @@ async function loadRooms() {
     const data = await getLiveRooms()
     allRooms.value = (data || []).map(item => ({
       id: item.id,
-      title: item.title || '',
-      anchor: item.anchor || '',
+      name: item.name || '',
+      hostName: item.hostName || '',
       status: item.status || '预告中',
-      viewCount: item.viewCount ?? 0,
+      viewerCount: item.viewerCount ?? 0,
       productCount: item.productCount ?? 0,
       startTime: item.startTime || ''
     }))
@@ -125,7 +125,7 @@ function applyFilters() {
   let filtered = [...allRooms.value]
   if (filters.keyword) {
     filtered = filtered.filter(item =>
-      item.title.includes(filters.keyword) || item.anchor.includes(filters.keyword)
+      item.name.includes(filters.keyword) || item.hostName.includes(filters.keyword)
     )
   }
   tableData.value = filtered
@@ -141,8 +141,8 @@ function handleReset() { filters.keyword = ''; handleSearch() }
 
 function handleAdd() {
   dialogTitle.value = '新建直播'
-  editForm.title = ''
-  editForm.anchor = ''
+  editForm.name = ''
+  editForm.hostName = ''
   editForm.status = '预告中'
   editForm.productCount = 0
   editForm.startTime = ''
@@ -172,16 +172,16 @@ async function handleSave() {
   try {
     if (editForm.id) {
       await updateLiveRoom(editForm.id, {
-        title: editForm.title,
-        anchor: editForm.anchor,
+        name: editForm.name,
+        hostName: editForm.hostName,
         status: editForm.status,
         productCount: editForm.productCount,
         startTime: editForm.startTime
       })
     } else {
       await createLiveRoom({
-        title: editForm.title,
-        anchor: editForm.anchor,
+        name: editForm.name,
+        hostName: editForm.hostName,
         status: editForm.status,
         productCount: editForm.productCount,
         startTime: editForm.startTime

@@ -57,7 +57,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { getPriceList } from '../api/admin'
+import { getPriceHistory } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -70,20 +70,15 @@ const filters = reactive({
 
 const tableData = ref([])
 
-// 从API加载价格历史数据（复用价格列表API）
+// 从API加载价格历史数据
 async function loadData() {
   try {
-    const res = await getPriceList()
+    const params = { page: currentPage.value, size: pageSize.value }
+    if (filters.keyword) params.keyword = filters.keyword
+    const res = await getPriceHistory(params)
     const list = (res && res.records) || res || []
-    // 根据关键词过滤
-    let filtered = list.filter(d => {
-      const kw = filters.keyword.toLowerCase()
-      if (kw && !d.productName.toLowerCase().includes(kw)) return false
-      return true
-    })
-    total.value = filtered.length
-    const start = (currentPage.value - 1) * pageSize.value
-    tableData.value = filtered.slice(start, start + pageSize.value)
+    tableData.value = list
+    total.value = res.total || list.length
   } catch (e) {
     console.error('加载价格历史失败:', e)
   }

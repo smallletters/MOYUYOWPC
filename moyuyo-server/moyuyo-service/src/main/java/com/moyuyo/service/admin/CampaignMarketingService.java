@@ -44,6 +44,11 @@ public interface CampaignMarketingService {
   Map<String, Object> createAbTest(Map<String, Object> data);
 
   /**
+   * 更新A/B测试
+   */
+  Map<String, Object> updateAbTest(Long id, Map<String, Object> data);
+
+  /**
    * 营销效果统计
    */
   Map<String, Object> getMarketingEffects(int days);

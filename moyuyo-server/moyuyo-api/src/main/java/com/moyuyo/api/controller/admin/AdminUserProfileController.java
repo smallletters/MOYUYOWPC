@@ -11,55 +11,50 @@ import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.service.admin.AdminUserProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
 @Tag(name = "管理后台 - 用户画像")
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/admin/user-profile")
 public class AdminUserProfileController {
 
   private final AdminUserProfileService adminUserProfileService;
   private final OrderMapper orderMapper;
-
-  // 新DAO模块maven安装失败时允许为null，避免ClassNotFoundException
-  @Autowired(required = false)
-  private UserBehaviorMapper userBehaviorMapper;
-
-  // 手动构造器注入必需的依赖
-  public AdminUserProfileController(AdminUserProfileService adminUserProfileService,
-                                     OrderMapper orderMapper) {
-    this.adminUserProfileService = adminUserProfileService;
-    this.orderMapper = orderMapper;
-  }
+  private final UserBehaviorMapper userBehaviorMapper;
 
   @Operation(summary = "用户画像信息")
   @GetMapping("/{userId}")
   public Result<UserProfileResponse> profile(@PathVariable Long userId) {
-    Map<String, Object> svcResult = adminUserProfileService.getDetail(userId);
-    UserProfileResponse resp = new UserProfileResponse();
-    resp.setUserId((Long) svcResult.get("userId"));
-    resp.setNickname((String) svcResult.get("nickname"));
-    resp.setAvatar((String) svcResult.get("avatar"));
-    resp.setEmail((String) svcResult.get("email"));
-    resp.setPhone((String) svcResult.get("phone"));
-    resp.setOrderCount((Integer) svcResult.get("orderCount"));
-    resp.setRegisterTime((String) svcResult.get("registerTime"));
-    resp.setTotalSpent((Integer) svcResult.get("totalSpent"));
-    return Result.success(resp);
+    try {
+      Map<String, Object> svcResult = adminUserProfileService.getDetail(userId);
+      if (svcResult == null || svcResult.isEmpty()) {
+        return Result.error("用户不存在");
+      }
+      UserProfileResponse resp = new UserProfileResponse();
+      resp.setUserId((Long) svcResult.get("userId"));
+      resp.setNickname((String) svcResult.get("nickname"));
+      resp.setAvatar((String) svcResult.getOrDefault("avatar", null));
+      resp.setEmail((String) svcResult.get("email"));
+      resp.setPhone((String) svcResult.get("phone"));
+      resp.setOrderCount(((Number) svcResult.getOrDefault("orderCount", 0)).intValue());
+      resp.setRegisterTime((String) svcResult.get("registerTime"));
+      Object totalSpentVal = svcResult.get("totalSpent");
+      resp.setTotalSpent(totalSpentVal != null ? ((Number) totalSpentVal).intValue() : 0);
+      return Result.success(resp);
+    } catch (Exception e) {
+      return Result.error("查询用户画像失败: " + e.getMessage());
+    }
   }
 
   @Operation(summary = "用户行为数据")
   @GetMapping("/{userId}/behaviors")
   public Result<List<UserBehaviorResponse>> behaviors(@PathVariable Long userId) {
-    // 新Mapper可能因maven安装失败为null，返回空列表
-    if (userBehaviorMapper == null) {
-      return Result.success(Collections.emptyList());
-    }
     // 从 mo_user_behavior 表查询该用户的行为数据
-    List<UserBehaviorEntity> behaviorList = ((UserBehaviorMapper) userBehaviorMapper).selectList(
+    List<UserBehaviorEntity> behaviorList = userBehaviorMapper.selectList(
       new LambdaQueryWrapper<UserBehaviorEntity>()
         .eq(UserBehaviorEntity::getUserId, userId));
 
@@ -68,7 +63,7 @@ public class AdminUserProfileController {
       UserBehaviorResponse item = new UserBehaviorResponse();
       item.setBehaviorType(entity.getBehaviorType());
       item.setCount(entity.getCount());
-      item.setLastTime(entity.getLastTime());
+      item.setLastTime(entity.getLastTime() != null ? entity.getLastTime().toString() : null);
       list.add(item);
     }
     return Result.success(list);

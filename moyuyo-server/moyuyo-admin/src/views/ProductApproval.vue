@@ -22,7 +22,7 @@
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="statusTag(row.status)" size="small">{{ statusMap(row.status) }}</el-tag>
+            <el-tag :type="getStatusType(row.status)" size="small">{{ getStatusText(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="submitTime" label="提交时间" width="170" />
@@ -49,6 +49,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useStatusTag } from '../composables/useStatusTag'
 import { getProductApprovalList, approveProductApproval, rejectProductApproval, setProductApprovalUrgent } from '../api/admin'
 
 const tableData = ref([])
@@ -57,17 +58,10 @@ const rejectDialogVisible = ref(false)
 const rejectReason = ref('')
 const currentRejectId = ref(null)
 
-function statusTag(status) {
-  if (status === 'approved') return 'success'
-  if (status === 'rejected') return 'danger'
-  return 'warning'
-}
-
-function statusMap(status) {
-  if (status === 'approved') return '已通过'
-  if (status === 'rejected') return '已驳回'
-  return '待审核'
-}
+const { getStatusText, getStatusType } = useStatusTag(
+  { approved: '已通过', rejected: '已驳回', pending: '待审核' },
+  { approved: 'success', rejected: 'danger', pending: 'warning' }
+)
 
 async function loadData() {
   try {

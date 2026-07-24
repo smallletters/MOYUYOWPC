@@ -32,4 +32,12 @@ public class AdminSmsController {
       @RequestParam(defaultValue = "15") int size) {
     return Result.success(adminSmsService.listAll(phone, status, page, size));
   }
+
+  @Operation(summary = "发送短信")
+  @PostMapping("/send")
+  public Result<Map<String, Object>> send(@RequestBody Map<String, Object> body) {
+    String phone = (String) body.get("phone");
+    String content = (String) body.get("content");
+    return Result.success(adminSmsService.send(phone, content));
+  }
 }

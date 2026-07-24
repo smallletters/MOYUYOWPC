@@ -59,7 +59,7 @@
           <input v-model="searchText" placeholder="工单编号 / 用户" />
         </div>
         <div class="form-actions">
-          <button class="btn btn-primary btn-sm">查询</button>
+          <button class="btn btn-primary btn-sm" @click="fetchTickets">查询</button>
           <button class="btn btn-outline btn-sm" @click="resetFilter">重置</button>
         </div>
       </div>
@@ -94,20 +94,20 @@
             <td>{{ ticket.assignee }}</td>
             <td>{{ ticket.responseTime }}</td>
             <td class="cell-actions">
-              <span class="table-link">处理</span>
-              <span class="table-link">转交</span>
+              <span class="table-link" @click="handleTicket(ticket.id)">处理</span>
+              <span class="table-link" @click="handleTransfer(ticket.id)">转交</span>
             </td>
           </tr>
         </tbody>
       </table>
       <div class="pagination">
-        <div class="pagination-info">共 {{ tickets.length }} 条</div>
+        <div class="pagination-info">共 {{ total }} 条</div>
         <div class="pagination-btns">
-          <button class="pagination-btn">上一页</button>
+          <button class="pagination-btn" :disabled="currentPage <= 1" @click="prevPage">上一页</button>
           <button class="pagination-btn active">1</button>
-          <button class="pagination-btn">2</button>
-          <button class="pagination-btn">3</button>
-          <button class="pagination-btn">下一页</button>
+          <button class="pagination-btn" :disabled="currentPage >= pageCount" @click="goToPage(2)">2</button>
+          <button class="pagination-btn" :disabled="currentPage >= pageCount" @click="goToPage(3)">3</button>
+          <button class="pagination-btn" :disabled="currentPage >= pageCount" @click="nextPage">下一页</button>
         </div>
       </div>
     </div>
@@ -115,15 +115,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { getTicketList, getTicketStats } from '../api/admin'
-import { ElMessage } from 'element-plus'
+import { ref, onMounted, watch, computed } from 'vue'
+import { getTicketList, getTicketStats, assignTicket } from '../api/admin'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const activeTab = ref('all')
 const typeFilter = ref('')
 const priorityFilter = ref('')
 const searchText = ref('')
 const loading = ref(false)
+const currentPage = ref(1)
+const pageSize = 10
+const total = ref(0)
 
 const statusTabs = [
   { key: 'all', label: '全部' },
@@ -142,6 +148,9 @@ const kpiData = ref({
 })
 
 const tickets = ref([])
+
+// 计算总页数
+const pageCount = computed(() => Math.ceil(total.value / pageSize) || 1)
 
 // 获取工单统计数据
 async function fetchStats() {
@@ -168,9 +177,10 @@ async function fetchTickets() {
     Object.keys(params).forEach(k => {
       if (!params[k]) delete params[k]
     })
-    const res = await getTicketList()
+    const res = await getTicketList(params)
     if (res) {
       const list = res.records || res.list || res
+      total.value = res.total || (Array.isArray(list) ? list.length : 0)
       // 如果有筛选参数，在前端过滤（简化处理）
       if (activeTab.value !== 'all' || typeFilter.value || priorityFilter.value || searchText.value) {
         tickets.value = Array.isArray(list) ? list.filter(t => {
@@ -197,6 +207,34 @@ function resetFilter() {
   typeFilter.value = ''
   priorityFilter.value = ''
   searchText.value = ''
+  currentPage.value = 1
+  fetchTickets()
+}
+
+// Tab 切换时重新加载数据
+watch(activeTab, () => {
+  currentPage.value = 1
+  fetchTickets()
+})
+
+// 分页处理
+function prevPage() {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    fetchTickets()
+  }
+}
+
+function nextPage() {
+  const maxPage = Math.ceil(total.value / pageSize) || 1
+  if (currentPage.value < maxPage) {
+    currentPage.value++
+    fetchTickets()
+  }
+}
+
+function goToPage(page) {
+  currentPage.value = page
   fetchTickets()
 }
 
@@ -204,6 +242,33 @@ onMounted(() => {
   fetchStats()
   fetchTickets()
 })
+
+// 处理工单
+function handleTicket(id) {
+  // 导航到工单管理页并传递工单ID和操作类型
+  router.push({ path: '/ticket', query: { id, action: 'process' } })
+}
+
+// 转交工单
+async function handleTransfer(id) {
+  // 弹出转交确认框，选择转交人
+  try {
+    const { value: assignee } = await ElMessageBox.prompt('请输入转交人ID（客服ID）', '转交工单', {
+      confirmButtonText: '确认转交',
+      cancelButtonText: '取消',
+      inputPlaceholder: '请输入客服ID'
+    })
+    if (assignee) {
+      await assignTicket(id, { assignee })
+      ElMessage.success('工单已转交')
+      fetchTickets()
+    }
+  } catch (err) {
+    if (err !== 'cancel') {
+      ElMessage.error('转交失败: ' + (err.response?.data?.message || err.message))
+    }
+  }
+}
 </script>
 
 <style scoped lang="css">

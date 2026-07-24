@@ -33,7 +33,7 @@ public class AddressServiceImpl implements AddressService {
   public AddressEntity getById(Long id, Long userId) {
     AddressEntity entity = addressMapper.selectById(id);
     if (entity == null || !entity.getUserId().equals(userId)) {
-      return null;
+      throw new IllegalArgumentException("地址不存在或无权访问");
     }
     return entity;
   }
@@ -105,21 +105,21 @@ public class AddressServiceImpl implements AddressService {
 
   @Override
   public AddressValidateResponse validateAddress(Long addressId, Long userId) {
-    AddressEntity address = getById(addressId, userId);
-    if (address == null) {
+    try {
+      AddressEntity address = getById(addressId, userId);
+      String country = address.getCountry();
+      if (country == null || country.isBlank()) {
+        return new AddressValidateResponse(false, "Country is required");
+      }
+
+      String code = country.trim().toUpperCase();
+      if (SHIPPABLE_COUNTRIES.contains(code)) {
+        return new AddressValidateResponse(true, "We ship to " + code);
+      }
+
+      return new AddressValidateResponse(false, "We currently do not ship to " + code);
+    } catch (IllegalArgumentException e) {
       return new AddressValidateResponse(false, "Address not found");
     }
-
-    String country = address.getCountry();
-    if (country == null || country.isBlank()) {
-      return new AddressValidateResponse(false, "Country is required");
-    }
-
-    String code = country.trim().toUpperCase();
-    if (SHIPPABLE_COUNTRIES.contains(code)) {
-      return new AddressValidateResponse(true, "We ship to " + code);
-    }
-
-    return new AddressValidateResponse(false, "We currently do not ship to " + code);
   }
 }

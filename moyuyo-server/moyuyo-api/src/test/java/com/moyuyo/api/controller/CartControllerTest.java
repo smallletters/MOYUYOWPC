@@ -34,7 +34,7 @@ class CartControllerTest extends BaseIntegrationTest {
     void health_ShouldReturnOk() throws Exception {
         mockMvc.perform(get("/api/health"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data").value("OK"));
     }
 }

@@ -30,11 +30,12 @@ public class AddressController {
   @Operation(summary = "获取地址详情")
   @GetMapping("/{id}")
   public Result<AddressEntity> getById(@PathVariable Long id) {
-    AddressEntity entity = addressService.getById(id, UserContextHolder.getUserId());
-    if (entity == null) {
+    try {
+      AddressEntity entity = addressService.getById(id, UserContextHolder.getUserId());
+      return Result.success(entity);
+    } catch (IllegalArgumentException e) {
       return Result.error(404, "地址不存在");
     }
-    return Result.success(entity);
   }
 
   @Operation(summary = "创建地址")

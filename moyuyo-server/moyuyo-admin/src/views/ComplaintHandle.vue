@@ -103,18 +103,30 @@ const editForm = reactive({
   status: '待处理'
 })
 
+// 类型标签映射
+const typeLabelMap = { '售后': '售后问题', '咨询': '售前咨询', '投诉': '用户投诉' }
+
 // 从API加载投诉列表数据
 async function loadData() {
   try {
     const res = await getComplaintList()
-    const list = res || []
-    // 根据关键词筛选
-    let filtered = [...list]
+    const rawList = (res && res.list) || []
+    let list = rawList.map(item => ({
+      id: item.id,
+      complaintNo: 'CP' + item.id,
+      complainant: item.userId ? '用户' + item.userId : '',
+      target: item.type || '',
+      defendant: typeLabelMap[item.type] || item.type || '',
+      reason: item.content || '',
+      handler: item.operator || '',
+      status: ({'PENDING':'待处理','PROCESSING':'处理中','CLOSED':'已完结','RESOLVED':'已完结'})[item.status] || item.status || '待处理',
+      handleTime: item.updateTime || item.createTime || ''
+    }))
     if (filters.keyword) {
-      filtered = filtered.filter(item => item.complaintNo.includes(filters.keyword) || item.complainant.includes(filters.keyword))
+      list = list.filter(item => item.complaintNo.includes(filters.keyword) || item.complainant.includes(filters.keyword))
     }
-    tableData.value = filtered
-    total.value = filtered.length
+    tableData.value = list
+    total.value = list.length
   } catch (e) {
     console.error('加载投诉列表失败:', e)
     ElMessage.error('加载投诉列表失败')
@@ -148,9 +160,8 @@ async function handleDelete(row) {
 // 保存投诉处理（调用API分配处理人）
 async function handleSave() {
   try {
-    await assignComplaint({
-      id: editForm.id,
-      handler: editForm.handler,
+    await assignComplaint(editForm.id, {
+      assignee: editForm.handler,
       status: editForm.status
     })
     ElMessage.success('投诉处理已保存')

@@ -9,8 +9,10 @@ import com.moyuyo.service.InviteService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -22,6 +24,7 @@ public class InviteServiceImpl implements InviteService {
   private final InviteMapper inviteMapper;
 
   @Override
+  @Transactional
   public String getInviteCode(Long userId) {
     InviteEntity existing = inviteMapper.selectOne(
         new LambdaQueryWrapper<InviteEntity>()
@@ -45,22 +48,22 @@ public class InviteServiceImpl implements InviteService {
 
   @Override
   public Map<String, Object> getInviteStats(Long userId) {
-    long invitedCount = inviteMapper.selectCount(
+    // 一次查询所有邀请记录，在内存中计算各项统计
+    List<InviteEntity> records = inviteMapper.selectList(
         new LambdaQueryWrapper<InviteEntity>()
-            .eq(InviteEntity::getUserId, userId)
-            .isNotNull(InviteEntity::getInvitedUserId));
+            .eq(InviteEntity::getUserId, userId));
 
-    int earnedPoints = inviteMapper.selectList(
-        new LambdaQueryWrapper<InviteEntity>()
-            .eq(InviteEntity::getUserId, userId))
-        .stream()
-        .mapToInt(i -> i.getPointsAwarded() != null ? i.getPointsAwarded() : 0)
+    long invitedCount = records.stream()
+        .filter(r -> r.getInvitedUserId() != null)
+        .count();
+
+    int earnedPoints = records.stream()
+        .mapToInt(r -> r.getPointsAwarded() != null ? r.getPointsAwarded() : 0)
         .sum();
 
-    long completedOrders = inviteMapper.selectCount(
-        new LambdaQueryWrapper<InviteEntity>()
-            .eq(InviteEntity::getUserId, userId)
-            .eq(InviteEntity::getStatus, "ORDERED"));
+    long completedOrders = records.stream()
+        .filter(r -> "ORDERED".equals(r.getStatus()))
+        .count();
 
     Map<String, Object> stats = new HashMap<>();
     stats.put("invitedCount", invitedCount);

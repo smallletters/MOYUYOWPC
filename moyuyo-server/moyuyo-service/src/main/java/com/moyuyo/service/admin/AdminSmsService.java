@@ -18,4 +18,9 @@ public interface AdminSmsService {
    * 短信统计（今日发送数/成功率）
    */
   Map<String, Object> stats();
+
+  /**
+   * 发送短信
+   */
+  Map<String, Object> send(String phone, String content);
 }

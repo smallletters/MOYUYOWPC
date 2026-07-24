@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-wrapper">
     <div class="page-header">
       <h2>漏斗分析</h2>
@@ -28,7 +28,14 @@ const funnelData = ref([])
 async function loadData() {
   try {
     const res = await getFunnelAnalysis()
-    funnelData.value = res && res.steps ? res.steps : []
+    // Backend returns flat array: stage, userCount, conversionRate
+    const list = Array.isArray(res) ? res : []
+    funnelData.value = list.map(item => ({
+      name: item.stage,
+      count: item.userCount,
+      rate: item.conversionRate,
+      percent: item.conversionRate
+    }))
   } catch (err) {
     console.error('获取漏斗数据失败', err)
   }

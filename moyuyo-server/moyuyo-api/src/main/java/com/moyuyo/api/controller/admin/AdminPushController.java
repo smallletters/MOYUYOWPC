@@ -31,8 +31,14 @@ public class AdminPushController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "15") int size) {
         List<PushRecordEntity> entities = pushManageService.listRecords(null, null);
+        // 手动分页
+        int start = (page - 1) * size;
+        int end = Math.min(start + size, entities.size());
+        List<PushRecordEntity> pagedEntities = start < entities.size()
+            ? entities.subList(start, end)
+            : new ArrayList<>();
         List<Map<String, Object>> list = new ArrayList<>();
-        for (PushRecordEntity e : entities) {
+        for (PushRecordEntity e : pagedEntities) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("id", e.getId());
             item.put("title", e.getTitle());
@@ -115,7 +121,12 @@ public class AdminPushController {
         PushRecordEntity entity = new PushRecordEntity();
         entity.setTitle((String) body.get("title"));
         entity.setContent((String) body.get("content"));
-        entity.setType((String) body.get("type"));
+        // 前端可能传 channel 字段，映射到 type 字段
+        String type = (String) body.get("type");
+        if (type == null && body.containsKey("channel")) {
+          type = (String) body.get("channel");
+        }
+        entity.setType(type);
         if (body.get("scheduledTime") != null) {
             entity.setScheduledTime(LocalDateTime.parse((String) body.get("scheduledTime")));
         }

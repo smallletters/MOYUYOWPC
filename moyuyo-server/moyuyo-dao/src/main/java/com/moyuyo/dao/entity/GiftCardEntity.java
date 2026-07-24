@@ -26,6 +26,8 @@ public class GiftCardEntity {
 
   private BigDecimal totalAmount;
 
+  private String pin;
+
   private String status;
 
   private LocalDate expiryDate;

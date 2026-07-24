@@ -16,6 +16,7 @@ import com.moyuyo.dao.mapper.PaymentMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.impl.OrderServiceImpl;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -63,6 +64,7 @@ class OrderServiceTest {
   // ==================== createOrder ====================
 
   @Test
+  @DisplayName("有效请求创建订单应返回订单")
   void createOrder_validRequest_shouldReturnOrder() {
     // 准备：订单项数据
     Long userId = 1L;
@@ -115,6 +117,7 @@ class OrderServiceTest {
   }
 
   @Test
+  @DisplayName("空商品列表应创建零金额订单")
   void createOrder_emptyItems_shouldCreateOrderWithZeroAmount() {
     // 准备：空订单项列表
     doAnswer(invocation -> {
@@ -138,6 +141,7 @@ class OrderServiceTest {
   // ==================== createOrderFromRequest ====================
 
   @Test
+  @DisplayName("有效请求对象创建订单应返回订单")
   void createOrderFromRequest_validRequest_shouldReturnOrder() {
     // 准备：请求对象
     OrderItemRequest itemReq = new OrderItemRequest();
@@ -196,6 +200,7 @@ class OrderServiceTest {
   }
 
   @Test
+  @DisplayName("SKU不存在应抛出异常")
   void createOrderFromRequest_skuNotExist_shouldThrowIllegalArgumentException() {
     // 准备：SKU 不存在
     OrderItemRequest itemReq = new OrderItemRequest();
@@ -218,6 +223,7 @@ class OrderServiceTest {
   }
 
   @Test
+  @DisplayName("商品不存在应抛出异常")
   void createOrderFromRequest_productNotExist_shouldThrowIllegalArgumentException() {
     // 准备：商品不存在
     OrderItemRequest itemReq = new OrderItemRequest();
@@ -248,6 +254,7 @@ class OrderServiceTest {
 
   @SuppressWarnings("unchecked")
   @Test
+  @DisplayName("按状态筛选应返回分页订单")
   void listOrders_withStatusFilter_shouldReturnPagedOrders() {
     // 准备：分页数据
     Page<OrderEntity> mockPage = new Page<>(1, 10);
@@ -275,6 +282,7 @@ class OrderServiceTest {
 
   @SuppressWarnings("unchecked")
   @Test
+  @DisplayName("管理员查询不应按用户过滤")
   void listOrders_withNullUserId_shouldNotFilterByUserId() {
     // 准备：管理员查询
     Page<OrderEntity> mockPage = new Page<>(1, 20);
@@ -292,6 +300,7 @@ class OrderServiceTest {
   // ==================== getOrderDetail ====================
 
   @Test
+  @DisplayName("订单存在应返回订单详情")
   void getOrderDetail_orderExists_shouldReturnOrder() {
     // 准备：订单存在
     OrderEntity order = new OrderEntity();
@@ -311,6 +320,7 @@ class OrderServiceTest {
   }
 
   @Test
+  @DisplayName("订单不存在应抛出异常")
   void getOrderDetail_orderNotExist_shouldThrowIllegalArgumentException() {
     // 准备：订单不存在
     when(orderMapper.selectById(999L)).thenReturn(null);
@@ -322,6 +332,7 @@ class OrderServiceTest {
   }
 
   @Test
+  @DisplayName("管理员查询应跳过权限校验")
   void getOrderDetail_nullUserId_shouldSkipPermissionCheck() {
     // 准备：userId 为 null（管理员查询）
     OrderEntity order = new OrderEntity();
@@ -342,6 +353,7 @@ class OrderServiceTest {
   // ==================== cancelOrder ====================
 
   @Test
+  @DisplayName("待支付状态取消应成功")
   void cancelOrder_pendingPayStatus_shouldCancelSuccessfully() {
     // 准备：PENDING_PAY 状态的订单
     OrderEntity order = new OrderEntity();
@@ -363,6 +375,7 @@ class OrderServiceTest {
   }
 
   @Test
+  @DisplayName("已支付状态取消应抛出异常")
   void cancelOrder_paidStatus_shouldThrowIllegalStateException() {
     // 准备：PAID 状态的订单（不允许取消）
     OrderEntity order = new OrderEntity();
@@ -384,6 +397,7 @@ class OrderServiceTest {
   // ==================== payCallback ====================
 
   @Test
+  @DisplayName("有效支付回调应更新订单并创建流水")
   void payCallback_validRequest_shouldUpdateOrderAndCreatePayment() {
     // 准备：PENDING_PAY 状态的订单
     OrderEntity order = new OrderEntity();
@@ -411,6 +425,7 @@ class OrderServiceTest {
   }
 
   @Test
+  @DisplayName("重复支付回调不应抛出异常")
   void payCallback_duplicateCallback_shouldNotThrowException() {
     // 准备：已支付订单（重复回调）
     OrderEntity order = new OrderEntity();
@@ -431,6 +446,7 @@ class OrderServiceTest {
   // ==================== confirmReceived ====================
 
   @Test
+  @DisplayName("已支付状态确认收货应成功")
   void confirmReceived_paidStatus_shouldUpdateToReceived() {
     // 准备：PAID 状态的订单
     OrderEntity order = new OrderEntity();
@@ -451,6 +467,7 @@ class OrderServiceTest {
   }
 
   @Test
+  @DisplayName("错误状态确认收货应抛出异常")
   void confirmReceived_wrongStatus_shouldThrowIllegalStateException() {
     // 准备：PENDING_PAY 状态的订单（不允许确认收货）
     OrderEntity order = new OrderEntity();
@@ -471,6 +488,7 @@ class OrderServiceTest {
   // ==================== deleteOrder ====================
 
   @Test
+  @DisplayName("有效请求删除订单应软删除")
   void deleteOrder_validRequest_shouldSetDeleteStatusToOne() {
     // 准备：正常订单
     OrderEntity order = new OrderEntity();

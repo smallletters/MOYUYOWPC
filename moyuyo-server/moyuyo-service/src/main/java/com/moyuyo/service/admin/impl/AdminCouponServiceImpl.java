@@ -8,6 +8,7 @@ import com.moyuyo.dao.mapper.UserCouponMapper;
 import com.moyuyo.service.admin.AdminCouponService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -44,6 +45,7 @@ public class AdminCouponServiceImpl implements AdminCouponService {
   }
 
   @Override
+  @Transactional
   public void create(Map<String, Object> data) {
     CouponEntity entity = new CouponEntity();
     if (data.get("name") != null) entity.setName((String) data.get("name"));
@@ -56,6 +58,7 @@ public class AdminCouponServiceImpl implements AdminCouponService {
   }
 
   @Override
+  @Transactional
   public void update(Map<String, Object> data) {
     if (data.get("id") == null) return;
     CouponEntity entity = couponMapper.selectById(Long.valueOf(data.get("id").toString()));
@@ -68,6 +71,7 @@ public class AdminCouponServiceImpl implements AdminCouponService {
   }
 
   @Override
+  @Transactional
   public void delete(Long id) {
     couponMapper.deleteById(id);
   }

@@ -102,6 +102,7 @@
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const route = useRoute()
@@ -134,7 +135,8 @@ const navGroups = [
       { path: '/price-manage', label: '价格管理' },
       { path: '/price-history', label: '价格历史' },
       { path: '/review-manage', label: '评价管理' },
-      { path: '/product-review', label: '评价审核' }
+      { path: '/product-review', label: '评价审核' },
+      { path: '/product-approval', label: '商品审核' }
     ]
   },
   {
@@ -145,7 +147,8 @@ const navGroups = [
       { path: '/order-intercept', label: '订单拦截' },
       { path: '/order-monitor', label: '订单监控' },
       { path: '/order-price-modify', label: '订单改价' },
-      { path: '/order-print', label: '订单打印' }
+      { path: '/order-print', label: '订单打印' },
+      { path: '/order-tags', label: '订单标签' }
     ]
   },
   {
@@ -153,6 +156,9 @@ const navGroups = [
     label: '营销运营',
     children: [
       { path: '/campaign', label: '活动创建' },
+      { path: '/coupon-manage', label: '优惠券管理' },
+      { path: '/flash-sale-manage', label: '秒杀管理' },
+      { path: '/points-manage', label: '积分管理' },
       { path: '/marketing-effect', label: '营销效果' },
       { path: '/ab-test', label: 'A/B测试' }
     ]
@@ -168,13 +174,16 @@ const navGroups = [
       { path: '/carrier-compare', label: '承运商对比' },
       { path: '/shipping-strategy', label: '发货策略' },
       { path: '/clearance', label: '清关管理' },
-      { path: '/customs', label: '海关管理' }
+      { path: '/customs', label: '海关管理' },
+      { path: '/tariff', label: '关税管理' },
+      { path: '/inventory-transfer', label: '库存调拨' }
     ]
   },
   {
     icon: '⚙️',
     label: '系统管理',
     children: [
+      { path: '/settings', label: '系统设置' },
       { path: '/cms', label: 'CMS管理' },
       { path: '/rbac', label: '权限管理' },
       { path: '/system-config', label: '系统配置' },
@@ -189,7 +198,9 @@ const navGroups = [
     children: [
       { path: '/gdpr', label: 'GDPR合规' },
       { path: '/risk-control', label: '风控管理' },
-      { path: '/risk-rule-engine', label: '风控规则引擎' }
+      { path: '/risk-rule-engine', label: '风控规则引擎' },
+      { path: '/risk-alert', label: '风控告警' },
+      { path: '/blacklist', label: '黑名单管理' }
     ]
   },
   {
@@ -217,7 +228,8 @@ const navGroups = [
       { path: '/satisfaction', label: '满意度管理' },
       { path: '/app-version', label: '版本管理' },
       { path: '/complaint', label: '投诉管理' },
-      { path: '/complaint-handle', label: '投诉处理' }
+      { path: '/complaint-handle', label: '投诉处理' },
+      { path: '/cs-sessions', label: '客服会话' }
     ]
   },
   {
@@ -246,11 +258,12 @@ const currentPage = computed(() => {
 })
 
 function handleLogout() {
+  localStorage.removeItem('admin_token')
   router.push('/login')
 }
 
 function handleNotif() {
-  console.log('notifications')
+  ElMessage.info('暂无新通知')
 }
 </script>
 

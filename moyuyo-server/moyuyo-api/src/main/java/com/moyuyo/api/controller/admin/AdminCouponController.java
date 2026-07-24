@@ -20,10 +20,14 @@ public class AdminCouponController {
     @Operation(summary = "优惠券列表")
     @GetMapping("/list")
     public Result<Map<String, Object>> list() {
-        Map<String, Object> result = new java.util.LinkedHashMap<>();
-        result.put("total", (long) adminCouponService.listAll().size());
-        result.put("records", adminCouponService.listAll());
-        return Result.success(result);
+        try {
+            Map<String, Object> result = new java.util.LinkedHashMap<>();
+            result.put("total", (long) adminCouponService.listAll().size());
+            result.put("records", adminCouponService.listAll());
+            return Result.success(result);
+        } catch (Exception e) {
+            return Result.error("查询优惠券列表失败: " + e.getMessage());
+        }
     }
 
     @Operation(summary = "创建优惠券")
@@ -59,6 +63,10 @@ public class AdminCouponController {
     @Operation(summary = "优惠券统计")
     @GetMapping("/stats")
     public Result<Map<String, Object>> stats() {
-        return Result.success(adminCouponService.getStats());
+        try {
+            return Result.success(adminCouponService.getStats());
+        } catch (Exception e) {
+            return Result.error("查询优惠券统计失败: " + e.getMessage());
+        }
     }
 }

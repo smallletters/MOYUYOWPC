@@ -2,10 +2,10 @@ package com.moyuyo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.common.dto.review.CreateReviewRequest;
 import com.moyuyo.common.dto.review.ReviewVO;
+import com.moyuyo.common.utils.JsonUtils;
+import com.moyuyo.common.utils.PageUtils;
 import com.moyuyo.dao.entity.ProductReviewEntity;
 import com.moyuyo.dao.entity.UserEntity;
 import com.moyuyo.dao.mapper.ProductReviewMapper;
@@ -16,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -28,7 +27,6 @@ public class ReviewServiceImpl implements ReviewService {
 
     private final ProductReviewMapper productReviewMapper;
     private final UserMapper userMapper;
-    private final ObjectMapper objectMapper;
 
     @Override
     public Page<ReviewVO> getProductReviews(Long productId, int page, int size) {
@@ -52,8 +50,8 @@ public class ReviewServiceImpl implements ReviewService {
         entity.setOrderItemId(request.getOrderItemId());
         entity.setRating(request.getRating());
         entity.setContent(request.getContent());
-        entity.setTags(toJsonString(request.getTags()));
-        entity.setImages(toJsonString(request.getImages()));
+        entity.setTags(JsonUtils.toJsonArray(request.getTags()));
+        entity.setImages(JsonUtils.toJsonArray(request.getImages()));
         entity.setStatus("PENDING");
 
         productReviewMapper.insert(entity);
@@ -103,37 +101,25 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     private Page<ReviewVO> toReviewVOPage(Page<ProductReviewEntity> entityPage) {
-        List<ProductReviewEntity> records = entityPage.getRecords();
-        if (records.isEmpty()) {
+        // 避免 NPE
+        if (entityPage.getRecords() == null || entityPage.getRecords().isEmpty()) {
             Page<ReviewVO> emptyPage = new Page<>(entityPage.getCurrent(), entityPage.getSize());
             emptyPage.setTotal(entityPage.getTotal());
             return emptyPage;
         }
 
-        List<Long> userIds = records.stream()
-            .map(ProductReviewEntity::getUserId)
-            .distinct()
-            .collect(Collectors.toList());
+        // 批量查询用户昵称
+        List<Long> userIds = entityPage.getRecords().stream()
+            .map(ProductReviewEntity::getUserId).distinct().collect(Collectors.toList());
+        Map<Long, String> nicknameMap = userMapper.selectBatchIds(userIds).stream()
+            .collect(Collectors.toMap(UserEntity::getId, UserEntity::getNickname, (a, b) -> a));
 
-        Map<Long, String> nicknameMap;
-        if (userIds.isEmpty()) {
-            nicknameMap = Collections.emptyMap();
-        } else {
-            nicknameMap = userMapper.selectBatchIds(userIds).stream()
-                .collect(Collectors.toMap(UserEntity::getId, UserEntity::getNickname,
-                    (a, b) -> a));
-        }
-
-        List<ReviewVO> voList = records.stream().map(entity -> {
+        // 分页转换 + 富化用户昵称
+        return (Page<ReviewVO>) PageUtils.convertPage(entityPage, entity -> {
             ReviewVO vo = toReviewVO(entity);
             vo.setReviewerName(nicknameMap.get(entity.getUserId()));
             return vo;
-        }).collect(Collectors.toList());
-
-        Page<ReviewVO> voPage = new Page<>(entityPage.getCurrent(), entityPage.getSize());
-        voPage.setTotal(entityPage.getTotal());
-        voPage.setRecords(voList);
-        return voPage;
+        });
     }
 
     private ReviewVO toReviewVO(ProductReviewEntity entity) {
@@ -143,35 +129,11 @@ public class ReviewServiceImpl implements ReviewService {
         vo.setUserId(entity.getUserId());
         vo.setRating(entity.getRating());
         vo.setContent(entity.getContent());
-        vo.setTags(parseJsonArray(entity.getTags()));
-        vo.setImages(parseJsonArray(entity.getImages()));
+        vo.setTags(JsonUtils.parseStringArray(entity.getTags()));
+        vo.setImages(JsonUtils.parseStringArray(entity.getImages()));
         vo.setStatus(entity.getStatus());
         vo.setCreateTime(entity.getCreateTime());
         return vo;
     }
 
-    private String toJsonString(List<String> list) {
-        if (list == null || list.isEmpty()) {
-            return "[]";
-        }
-        try {
-            return objectMapper.writeValueAsString(list);
-        } catch (JsonProcessingException e) {
-            log.error("JSON 序列化失败", e);
-            return "[]";
-        }
-    }
-
-    private List<String> parseJsonArray(String json) {
-        if (json == null || json.isBlank()) {
-            return Collections.emptyList();
-        }
-        try {
-            return objectMapper.readValue(json, objectMapper.getTypeFactory()
-                .constructCollectionType(List.class, String.class));
-        } catch (JsonProcessingException e) {
-            log.error("JSON 解析失败: {}", json, e);
-            return Collections.emptyList();
-        }
-    }
 }

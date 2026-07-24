@@ -44,6 +44,10 @@ public class GiftCardServiceImpl implements GiftCardService {
     if (!"ACTIVE".equals(card.getStatus())) {
       throw new IllegalArgumentException("礼品卡已使用或已过期");
     }
+    // 验证 PIN 码
+    if (pin != null && !pin.isEmpty() && !pin.equals(card.getPin())) {
+      throw new IllegalArgumentException("PIN码不正确");
+    }
     card.setUserId(userId);
     card.setStatus("USED");
     giftCardMapper.updateById(card);

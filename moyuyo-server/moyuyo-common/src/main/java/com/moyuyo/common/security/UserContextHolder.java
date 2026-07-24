@@ -22,7 +22,15 @@ public class UserContextHolder {
     }
 
     public static void clear() {
-        USER_ID_HOLDER.remove();
-        TOKEN_HOLDER.remove();
-    }
+    USER_ID_HOLDER.remove();
+    TOKEN_HOLDER.remove();
+  }
+
+  /**
+   * 获取当前操作者标识（优先用户名，回退到用户ID）
+   */
+  public static String getOperator() {
+    Long userId = USER_ID_HOLDER.get();
+    return userId != null ? String.valueOf(userId) : "系统";
+  }
 }

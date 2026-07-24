@@ -244,7 +244,7 @@ const addressForm = reactive({
 
 // 获取订单详情
 async function fetchOrderDetail() {
-  const id = route.query.id
+  const id = route.params.id
   if (!id) return
   loading.value = true
   try {
@@ -273,15 +273,15 @@ async function fetchOrderDetail() {
       })
 
       Object.assign(shippingInfo, {
-        name: data.shippingName || '',
-        phone: data.shippingPhone || '',
-        address: data.shippingAddress || ''
+        name: data.receiverName || data.shippingName || '',
+        phone: data.receiverPhone || data.shippingPhone || '',
+        address: data.receiverAddress || data.shippingAddress || ''
       })
 
       Object.assign(addressForm, {
-        name: data.shippingName || '',
-        phone: data.shippingPhone || '',
-        address: data.shippingAddress || ''
+        name: data.receiverName || data.shippingName || '',
+        phone: data.receiverPhone || data.shippingPhone || '',
+        address: data.receiverAddress || data.shippingAddress || ''
       })
     }
   } catch (err) {
@@ -292,8 +292,16 @@ async function fetchOrderDetail() {
   }
 }
 
-function handleShip() {
-  ElMessage.success('确认发货操作')
+async function handleShip() {
+  const id = route.params.id
+  if (!id) return
+  try {
+    await api.put(`/orders/${id}/ship`)
+    ElMessage.success('订单已确认发货')
+    await fetchOrderDetail()
+  } catch (err) {
+    ElMessage.error('确认发货失败: ' + (err.response?.data?.message || err.message))
+  }
 }
 
 function copyAddress() {
@@ -301,14 +309,33 @@ function copyAddress() {
   ElMessage.success('地址已复制')
 }
 
-function confirmAddress() {
-  showAddressModal.value = false
-  ElMessage.success('地址已修改')
+async function confirmAddress() {
+  const id = route.params.id
+  if (!id) return
+  try {
+    await api.put(`/orders/${id}/address`, {
+      shippingName: addressForm.name,
+      shippingPhone: addressForm.phone,
+      shippingAddress: addressForm.address
+    })
+    Object.assign(shippingInfo, addressForm)
+    showAddressModal.value = false
+    ElMessage.success('地址已修改')
+  } catch (err) {
+    ElMessage.error('修改地址失败: ' + (err.response?.data?.message || err.message))
+  }
 }
 
-function confirmNote() {
-  showNoteModal.value = false
-  ElMessage.success('备注已保存')
+async function confirmNote() {
+  const id = route.params.id
+  if (!id) return
+  try {
+    await api.put(`/orders/${id}/remark`, { remark: noteContent.value })
+    showNoteModal.value = false
+    ElMessage.success('备注已保存')
+  } catch (err) {
+    ElMessage.error('保存备注失败: ' + (err.response?.data?.message || err.message))
+  }
 }
 
 onMounted(() => {

@@ -41,7 +41,7 @@
         <div class="refund-top">
           <div class="refund-info">
             <span class="refund-no table-link">{{ item.refundNo }}</span>
-            <span class="refund-order">订单 {{ item.orderNo }}</span>
+            <span class="refund-order">订单 {{ item.orderId }}</span>
           </div>
           <div class="refund-sla" :class="item.slaClass">
             <span class="sla-icon">{{ item.slaIcon }}</span>
@@ -66,7 +66,7 @@
         <div class="refund-actions" v-if="item.statusLabel === '待处理'">
           <button class="btn btn-sm btn-primary" @click="handleApprove(item.id)">同意</button>
           <button class="btn btn-sm btn-outline" @click="handleReject(item.id)">拒绝</button>
-          <button class="btn btn-sm btn-outline">详情</button>
+          <button class="btn btn-sm btn-outline" @click="handleDetail(item)">详情</button>
         </div>
       </div>
     </div>
@@ -104,7 +104,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import api from '../api/index'
 import { ElMessage } from 'element-plus'
 
@@ -138,7 +138,12 @@ async function fetchStats() {
   try {
     const res = await api.get('/refunds/stats')
     if (res) {
-      kpiData.value = res
+      kpiData.value = {
+        pending: res.pendingCount || 0,
+        todayAmount: res.totalAmount ? '¥' + res.totalAmount : '¥0',
+        refundRate: '0%',
+        avgProcessTime: '0h'
+      }
     }
   } catch (err) {
     console.error('获取退款统计数据失败:', err)
@@ -149,10 +154,28 @@ async function fetchStats() {
 async function fetchRefunds() {
   loading.value = true
   try {
-    const params = { type: activeType.value }
+    const params = {
+      page: 1,
+      size: 20,
+      status: activeType.value
+    }
     const res = await api.get('/refunds/list', { params })
     if (res) {
-      refunds.value = res.records || res.list || res
+      const list = res.records || res.list || res
+      refunds.value = (Array.isArray(list) ? list : []).map(item => ({
+        id: item.id,
+        refundNo: item.refundNo || 'REF' + item.id,
+        orderId: item.orderId || '',
+        reasonLabel: item.reason || '其他',
+        reasonClass: 'tag-orange',
+        amount: item.amount || 0,
+        statusLabel: item.status === 'PENDING' ? '待处理' : item.status === 'APPROVED' ? '已批准' : item.status === 'REJECTED' ? '已拒绝' : item.status === 'COMPLETED' ? '已完成' : item.status || '其他',
+        statusClass: item.status === 'PENDING' ? 'tag-orange' : item.status === 'APPROVED' ? 'tag-blue' : item.status === 'REJECTED' ? 'tag-red' : item.status === 'COMPLETED' ? 'tag-green' : '',
+        slaLabel: item.status === 'PENDING' ? '待处理' : '已完成',
+        slaClass: item.status === 'PENDING' ? 'urgent' : 'done',
+        slaIcon: item.status === 'PENDING' ? '⚠️' : '✅',
+        thumb: '📦'
+      }))
     }
   } catch (err) {
     console.error('获取退款列表失败:', err)
@@ -166,8 +189,14 @@ async function fetchRefunds() {
 async function fetchReasonDist() {
   try {
     const res = await api.get('/refunds/reason-distribution')
-    if (res) {
-      reasonDist.value = res
+    if (Array.isArray(res) && res.length > 0) {
+      const total = res.reduce((sum, r) => sum + (r.count || 0), 0)
+      const colors = ['#e74c3c', '#f39c12', '#2ecc71', '#3498db', '#9b59b6', '#1abc9c']
+      reasonDist.value = res.map((r, i) => ({
+        label: r.reason || '其他',
+        percent: total > 0 ? Math.round((r.count / total) * 100) : 0,
+        color: colors[i % colors.length]
+      }))
     }
   } catch (err) {
     console.error('获取退款原因分布失败:', err)
@@ -184,17 +213,51 @@ function toggleSelectAll() {
   }
 }
 
-function handleApprove(id) {
-  ElMessage.success(`退款 #${id} 已批准`)
+async function handleApprove(id) {
+  try {
+    await api.put(`/refunds/${id}/approve`)
+    ElMessage.success(`退款 #${id} 已批准`)
+    fetchRefunds()
+    fetchStats()
+  } catch (err) {
+    ElMessage.error('批准退款失败')
+  }
 }
 
-function handleReject(id) {
-  ElMessage.success(`退款 #${id} 已拒绝`)
+async function handleReject(id) {
+  try {
+    await api.put(`/refunds/${id}/reject`)
+    ElMessage.success(`退款 #${id} 已拒绝`)
+    fetchRefunds()
+    fetchStats()
+  } catch (err) {
+    ElMessage.error('拒绝退款失败')
+  }
 }
 
-function batchApprove() {
-  ElMessage.success(`批量同意 ${selectedCount.value} 项退款`)
+async function batchApprove() {
+  const ids = Array.from(selectedItems.value)
+  if (ids.length === 0) return
+  try {
+    await api.put('/refunds/batch-approve', { ids })
+    ElMessage.success(`批量同意 ${ids.length} 项退款`)
+    selectedItems.value.clear()
+    selectAll.value = false
+    fetchRefunds()
+    fetchStats()
+  } catch (err) {
+    ElMessage.error('批量同意失败')
+  }
 }
+
+function handleDetail(item) {
+  ElMessage.info(`退款单: ${item.refundNo || item.id}, 金额: ¥${item.amount}`)
+}
+
+// 监听退款类型切换，重新加载数据
+watch(activeType, () => {
+  fetchRefunds()
+})
 
 onMounted(() => {
   fetchStats()

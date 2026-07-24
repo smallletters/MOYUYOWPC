@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.service.admin.AdminProductApprovalService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,7 +36,8 @@ public class AdminProductApprovalController {
     @Operation(summary = "通过审核")
     @PutMapping("/{id}/approve")
     public Result<Void> approve(@PathVariable Long id) {
-        adminProductApprovalService.approve(id, null);
+        // 使用当前登录用户ID作为审核人，避免审计日志为null
+        adminProductApprovalService.approve(id, UserContextHolder.getUserId());
         return Result.success();
     }
 
@@ -43,7 +45,7 @@ public class AdminProductApprovalController {
     @PutMapping("/{id}/reject")
     public Result<Void> reject(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         String reason = (String) body.getOrDefault("reason", "");
-        adminProductApprovalService.reject(id, null, reason);
+        adminProductApprovalService.reject(id, UserContextHolder.getUserId(), reason);
         return Result.success();
     }
 

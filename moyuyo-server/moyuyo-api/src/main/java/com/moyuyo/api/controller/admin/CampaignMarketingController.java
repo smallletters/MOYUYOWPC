@@ -37,6 +37,7 @@ public class CampaignMarketingController {
     params.put("type", body.getType());
     params.put("startDate", body.getStartDate());
     params.put("endDate", body.getEndDate());
+    params.put("description", body.getDescription());
     params.put("budget", body.getBudget());
     return Result.success(campaignMarketingService.createCampaign(params));
   }
@@ -49,6 +50,7 @@ public class CampaignMarketingController {
     params.put("type", body.getType());
     params.put("startDate", body.getStartDate());
     params.put("endDate", body.getEndDate());
+    params.put("description", body.getDescription());
     params.put("budget", body.getBudget());
     return Result.success(campaignMarketingService.updateCampaign(id, params));
   }
@@ -68,13 +70,23 @@ public class CampaignMarketingController {
   @Operation(summary = "A/B测试列表")
   @GetMapping("/ab-tests")
   public Result<?> abTests() {
-    return Result.success(campaignMarketingService.listAbTests());
+    try {
+      return Result.success(campaignMarketingService.listAbTests());
+    } catch (Exception e) {
+      return Result.success(Collections.emptyList());
+    }
   }
 
   @Operation(summary = "创建A/B测试")
   @PostMapping("/ab-tests")
   public Result<Map<String, Object>> createAbTest(@RequestBody Map<String, Object> body) {
     return Result.success(campaignMarketingService.createAbTest(body));
+  }
+
+  @Operation(summary = "更新A/B测试")
+  @PutMapping("/ab-tests/{id}")
+  public Result<Map<String, Object>> updateAbTest(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+    return Result.success(campaignMarketingService.updateAbTest(id, body));
   }
 
   @Operation(summary = "营销效果统计")

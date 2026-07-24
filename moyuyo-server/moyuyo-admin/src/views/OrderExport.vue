@@ -93,7 +93,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getOrderOpsExport } from '../api/admin'
+import { getOrderOpsExport, createOrderExport, downloadExportFile } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -115,26 +115,25 @@ const editForm = reactive({
 const tableData = ref([])
 
 function statusTag(status) {
-  const map = { '进行中': 'warning', '已完成': 'success', '失败': 'danger' }
+  const map = { '进行中': 'warning', '已完成': 'success', '失败': 'danger', '待处理': 'info' }
   return map[status] || ''
 }
 
-// 加载导出任务列表
+// 加载导出任务列表（服务端分页）
 async function loadData() {
   try {
-    const res = await getOrderOpsExport()
-    let list = res || []
-    // 前端过滤
+    const params = { page: currentPage.value, size: pageSize.value }
+    if (filters.exportStatus) params.status = filters.exportStatus
+    const res = await getOrderOpsExport(params)
+    // 响应格式: { records: [...], total: N }
+    let list = res.records || res || []
+    // 前端关键词过滤
     const kw = filters.keyword.toLowerCase()
     if (kw) {
-      list = list.filter(d => (d.taskName || d.orderNo || '').toLowerCase().includes(kw))
+      list = list.filter(d => (d.taskName || '').toLowerCase().includes(kw))
     }
-    if (filters.exportStatus) {
-      list = list.filter(d => d.exportStatus === filters.exportStatus)
-    }
-    total.value = list.length
-    const start = (currentPage.value - 1) * pageSize.value
-    tableData.value = list.slice(start, start + pageSize.value)
+    total.value = res.total || list.length
+    tableData.value = list
   } catch (error) {
     console.error('获取导出任务数据失败:', error)
     ElMessage.error('获取导出任务数据失败')
@@ -158,8 +157,11 @@ async function handleSave() {
     return
   }
   try {
-    // 通过订单运营API创建导出任务
-    await getOrderOpsExport()
+    await createOrderExport({
+      taskName: editForm.taskName,
+      orderScope: editForm.orderScope,
+      format: editForm.format
+    })
     dialogVisible.value = false
     loadData()
     ElMessage.success('导出任务已创建')
@@ -169,8 +171,13 @@ async function handleSave() {
   }
 }
 
-function handleDownload(row) {
-  ElMessage.success('文件下载中：' + row.taskName)
+async function handleDownload(row) {
+  try {
+    await downloadExportFile(row.downloadUrl ? row.downloadUrl.split('/').pop() : row.id)
+    ElMessage.success('文件下载中：' + row.taskName)
+  } catch (error) {
+    ElMessage.error('下载失败')
+  }
 }
 
 onMounted(() => { loadData() })

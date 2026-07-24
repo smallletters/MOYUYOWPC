@@ -11,5 +11,6 @@ public class CampaignRequest {
   private String type;
   private String startDate;
   private String endDate;
+  private String description;
   private BigDecimal budget;
 }

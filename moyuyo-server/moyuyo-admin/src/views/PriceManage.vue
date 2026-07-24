@@ -88,7 +88,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getPriceList, createPrice, updatePrice, deletePrice } from '../api/admin'
+import { getPriceList, createPrice, updatePrice } from '../api/admin'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -117,22 +117,21 @@ const editForm = reactive({
 
 const tableData = ref([])
 
-// 从API加载价格列表数据
+// 从API加载价格列表数据（服务端分页）
 async function loadData() {
   try {
-    const res = await getPriceList()
-    const list = (res && res.records) || res || []
-    // 根据筛选条件过滤
+    const params = { page: currentPage.value, size: pageSize.value }
+    if (filters.keyword) params.keyword = filters.keyword
+    const res = await getPriceList(params)
+    let list = (res && res.records) || res || []
+    // 价格区间筛选仍在前端处理
     let filtered = list.filter(d => {
-      const kw = filters.keyword.toLowerCase()
-      if (kw && !d.productName.toLowerCase().includes(kw)) return false
       if (filters.priceMin !== null && d.sellingPrice < filters.priceMin) return false
       if (filters.priceMax !== null && d.sellingPrice > filters.priceMax) return false
       return true
     })
-    total.value = filtered.length
-    const start = (currentPage.value - 1) * pageSize.value
-    tableData.value = filtered.slice(start, start + pageSize.value)
+    tableData.value = filtered
+    total.value = res.total || filtered.length
   } catch (e) {
     console.error('加载价格列表失败:', e)
     ElMessage.error('加载价格列表失败')
