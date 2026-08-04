@@ -1,0 +1,166 @@
+[
+ {
+  "route": "/dashboard",
+  "design": "admin-dashboard.html",
+  "impl_metrics": {
+   "bodyFont": "16px",
+   "bodyColor": "rgb(29, 29, 31)",
+   "primaryBtn": "rgba(255, 255, 255, 0.08)",
+   "cardCount": 6,
+   "cardRadius": "12px",
+   "cardShadow": "rgba(0, 0, 0, 0.04) 0px 1px 2px 0px",
+   "cardBg": "rgb(255, 255, 255)",
+   "titleFont": "22px",
+   "pageWidth": 1440,
+   "maxWidth": "none",
+   "padding": "0px",
+   "bg": "rgb(255, 255, 255)"
+  }
+ },
+ {
+  "route": "/orders",
+  "design": "admin-orders.html",
+  "impl_metrics": {
+   "bodyFont": "16px",
+   "bodyColor": "rgb(29, 29, 31)",
+   "primaryBtn": "rgb(0, 122, 255)",
+   "cardCount": 0,
+   "cardRadius": "N/A",
+   "cardShadow": "N/A",
+   "cardBg": "N/A",
+   "titleFont": "22px",
+   "pageWidth": 1440,
+   "maxWidth": "none",
+   "padding": "0px",
+   "bg": "rgb(255, 255, 255)"
+  },
+  "design_metrics": {
+   "bodyFont": "16px",
+   "bodyColor": "rgb(0, 0, 0)",
+   "primaryBtn": "rgb(0, 122, 255)",
+   "cardCount": 0,
+   "cardRadius": "N/A",
+   "cardShadow": "N/A",
+   "cardBg": "N/A",
+   "titleFont": "22px",
+   "pageWidth": 1440,
+   "maxWidth": "none",
+   "padding": "0px",
+   "bg": "rgba(0, 0, 0, 0)"
+  }
+ },
+ {
+  "route": "/products",
+  "design": "admin-products.html",
+  "impl_metrics": {
+   "bodyFont": "16px",
+   "bodyColor": "rgb(29, 29, 31)",
+   "primaryBtn": "rgb(0, 122, 255)",
+   "cardCount": 0,
+   "cardRadius": "N/A",
+   "cardShadow": "N/A",
+   "cardBg": "N/A",
+   "titleFont": "22px",
+   "pageWidth": 1440,
+   "maxWidth": "none",
+   "padding": "0px",
+   "bg": "rgb(255, 255, 255)"
+  },
+  "design_metrics": {
+   "bodyFont": "16px",
+   "bodyColor": "rgb(0, 0, 0)",
+   "primaryBtn": "rgb(0, 122, 255)",
+   "cardCount": 0,
+   "cardRadius": "N/A",
+   "cardShadow": "N/A",
+   "cardBg": "N/A",
+   "titleFont": "22px",
+   "pageWidth": 1440,
+   "maxWidth": "none",
+   "padding": "0px",
+   "bg": "rgba(0, 0, 0, 0)"
+  }
+ },
+ {
+  "route": "/users",
+  "design": "admin-users.html",
+  "impl_metrics": {
+   "bodyFont": "16px",
+   "bodyColor": "rgb(29, 29, 31)",
+   "primaryBtn": "rgb(0, 122, 255)",
+   "cardCount": 4,
+   "cardRadius": "12px",
+   "cardShadow": "rgba(0, 0, 0, 0.06) 0px 1px 3px 0px",
+   "cardBg": "rgb(255, 255, 255)",
+   "titleFont": "22px",
+   "pageWidth": 1440,
+   "maxWidth": "none",
+   "padding": "0px",
+   "bg": "rgb(255, 255, 255)"
+  },
+  "design_metrics": {
+   "bodyFont": "16px",
+   "bodyColor": "rgb(0, 0, 0)",
+   "primaryBtn": "rgb(0, 122, 255)",
+   "cardCount": 0,
+   "cardRadius": "N/A",
+   "cardShadow": "N/A",
+   "cardBg": "N/A",
+   "titleFont": "22px",
+   "pageWidth": 1440,
+   "maxWidth": "none",
+   "padding": "0px",
+   "bg": "rgba(0, 0, 0, 0)"
+  }
+ },
+ {
+  "route": "/marketing",
+  "design": "admin-marketing.html",
+  "impl_metrics": {
+   "bodyFont": "16px",
+   "bodyColor": "rgb(29, 29, 31)",
+   "primaryBtn": "rgb(0, 122, 255)",
+   "cardCount": 0,
+   "cardRadius": "N/A",
+   "cardShadow": "N/A",
+   "cardBg": "N/A",
+   "titleFont": "22px",
+   "pageWidth": 1440,
+   "maxWidth": "none",
+   "padding": "0px",
+   "bg": "rgb(255, 255, 255)"
+  },
+  "design_metrics": {
+   "bodyFont": "16px",
+   "bodyColor": "rgb(0, 0, 0)",
+   "primaryBtn": "rgb(0, 122, 255)",
+   "cardCount": 0,
+   "cardRadius": "N/A",
+   "cardShadow": "N/A",
+   "cardBg": "N/A",
+   "titleFont": "22px",
+   "pageWidth": 1440,
+   "maxWidth": "none",
+   "padding": "0px",
+   "bg": "rgba(0, 0, 0, 0)"
+  }
+ },
+ {
+  "route": "/refund",
+  "design": "admin-refund-manage.html",
+  "impl_metrics": {
+   "bodyFont": "16px",
+   "bodyColor": "rgb(29, 29, 31)",
+   "primaryBtn": "rgb(0, 122, 255)",
+   "cardCount": 4,
+   "cardRadius": "12px",
+   "cardShadow": "rgba(0, 0, 0, 0.04) 0px 1px 2px 0px",
+   "cardBg": "rgb(255, 255, 255)",
+   "titleFont": "22px",
+   "pageWidth": 1440,
+   "maxWidth": "none",
+   "padding": "0px",
+   "bg": "rgb(255, 255, 255)"
+  }
+ }
+]

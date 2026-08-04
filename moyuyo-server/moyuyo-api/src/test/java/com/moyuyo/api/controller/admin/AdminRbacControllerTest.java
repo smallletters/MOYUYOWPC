@@ -33,7 +33,7 @@ class AdminRbacControllerTest extends BaseIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        adminToken = "Bearer " + jwtUtil.generate(1L, "admin@moyuyo.com");
+        adminToken = "Bearer " + jwtUtil.generate(1L, "admin@moyuyo.com", "SUPER_ADMIN");
     }
 
     @Test
@@ -58,7 +58,8 @@ class AdminRbacControllerTest extends BaseIntegrationTest {
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.id").isNumber())
+                // id 为雪花 ID，经全局 Jackson 配置序列化为字符串
+                .andExpect(jsonPath("$.data.id").isString())
                 .andExpect(jsonPath("$.data.name").value("测试角色"));
     }
 }

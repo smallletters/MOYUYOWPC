@@ -79,6 +79,8 @@ public class AdminSmsServiceImpl implements AdminSmsService {
     SmsRecordEntity record = new SmsRecordEntity();
     record.setPhone(phone);
     record.setContent(content);
+    // 兜底：template_code 是 NOT NULL 必填字段，无模板编码时使用默认占位
+    record.setTemplateCode("DEFAULT");
     record.setChannel("ALIYUN");
     record.setStatus("SENT");
     record.setSendTime(LocalDateTime.now());

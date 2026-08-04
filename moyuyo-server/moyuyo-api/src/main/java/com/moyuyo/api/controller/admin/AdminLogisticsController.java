@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
 import com.moyuyo.dao.admin.entity.*;
 import com.moyuyo.dao.admin.mapper.*;
@@ -102,14 +103,11 @@ public class AdminLogisticsController {
     }
     wrapper.orderByDesc(LogisticsEntity::getShippedAt);
 
-    List<LogisticsEntity> allRecords = logisticsMapper.selectList(wrapper);
-    int total = allRecords.size();
-    int fromIndex = (page - 1) * size;
-    int toIndex = Math.min(fromIndex + size, total);
+    // 使用 MyBatis-Plus Page 进行数据库分页查询
+    Page<LogisticsEntity> pageResult = logisticsMapper.selectPage(new Page<>(page, size), wrapper);
 
     List<Map<String, Object>> list = new ArrayList<>();
-    for (int i = fromIndex; i < toIndex; i++) {
-      LogisticsEntity logi = allRecords.get(i);
+    for (LogisticsEntity logi : pageResult.getRecords()) {
       OrderEntity order = orderMapper.selectById(logi.getOrderId());
 
       String statusStr;
@@ -145,9 +143,9 @@ public class AdminLogisticsController {
 
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("records", list);
-    result.put("total", total);
-    result.put("page", page);
-    result.put("size", size);
+    result.put("total", pageResult.getTotal());
+    result.put("page", pageResult.getCurrent());
+    result.put("size", pageResult.getSize());
     return Result.success(result);
   }
 
@@ -175,22 +173,33 @@ public class AdminLogisticsController {
 
   @Operation(summary = "仓库列表")
   @GetMapping("/warehouses")
-  public Result<List<Map<String, Object>>> warehouses() {
-    List<WarehouseEntity> records = warehouseMapper.selectList(
-        new LambdaQueryWrapper<WarehouseEntity>().orderByAsc(WarehouseEntity::getId));
-    List<Map<String, Object>> list = new ArrayList<>();
-    for (WarehouseEntity w : records) {
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("id", w.getId());
-      item.put("name", w.getName());
-      item.put("type", w.getType());
-      item.put("city", w.getCity());
-      item.put("area", w.getArea());
-      item.put("manager", w.getManager());
-      item.put("status", w.getStatus());
-      list.add(item);
+  public Result<List<Map<String, Object>>> warehouses(
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(defaultValue = "15") int size) {
+    try {
+      List<WarehouseEntity> records = warehouseMapper.selectList(
+          new LambdaQueryWrapper<WarehouseEntity>().orderByDesc(WarehouseEntity::getId));
+      List<Map<String, Object>> list = new ArrayList<>();
+      for (WarehouseEntity w : records) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", w.getId());
+        item.put("name", w.getName());
+        item.put("type", w.getType());
+        item.put("city", w.getCity());
+        item.put("area", w.getArea());
+        item.put("manager", w.getManager());
+        item.put("phone", w.getPhone());
+        item.put("status", w.getStatus());
+        list.add(item);
+      }
+      // 手动分页
+      int start = (page - 1) * size;
+      int end = Math.min(start + size, list.size());
+      List<Map<String, Object>> pageList = start < list.size() ? list.subList(start, end) : new ArrayList<>();
+      return Result.success(pageList);
+    } catch (Exception e) {
+      return Result.error("仓库列表查询失败: " + e.getMessage());
     }
-    return Result.success(list);
   }
 
   @Operation(summary = "新增仓库")
@@ -244,143 +253,218 @@ public class AdminLogisticsController {
 
   @Operation(summary = "海外仓列表")
   @GetMapping("/overseas")
-  public Result<List<Map<String, Object>>> overseasWarehouses() {
-    List<WarehouseEntity> records = warehouseMapper.selectList(
-        new LambdaQueryWrapper<WarehouseEntity>()
-            .eq(WarehouseEntity::getType, "OVERSEAS")
-            .orderByAsc(WarehouseEntity::getId));
-    List<Map<String, Object>> list = new ArrayList<>();
-    for (WarehouseEntity w : records) {
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("id", w.getId());
-      item.put("name", w.getName());
-      item.put("country", w.getCountry());
-      item.put("skuCount", w.getSkuCount());
-      item.put("totalStock", w.getTotalStock());
-      item.put("usageRate", w.getUsageRate());
-      item.put("status", w.getStatus());
-      list.add(item);
+  public Result<List<Map<String, Object>>> overseasWarehouses(
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(defaultValue = "15") int size) {
+    try {
+      List<WarehouseEntity> records = warehouseMapper.selectList(
+          new LambdaQueryWrapper<WarehouseEntity>()
+              .eq(WarehouseEntity::getType, "OVERSEAS")
+              .orderByAsc(WarehouseEntity::getId));
+      List<Map<String, Object>> list = new ArrayList<>();
+      for (WarehouseEntity w : records) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", w.getId());
+        item.put("name", w.getName());
+        item.put("country", w.getCountry());
+        item.put("skuCount", w.getSkuCount());
+        item.put("totalStock", w.getTotalStock());
+        item.put("usageRate", w.getUsageRate());
+        item.put("status", w.getStatus());
+        list.add(item);
+      }
+      // 手动分页
+      int start = (page - 1) * size;
+      int end = Math.min(start + size, list.size());
+      List<Map<String, Object>> pageList = start < list.size() ? list.subList(start, end) : new ArrayList<>();
+      return Result.success(pageList);
+    } catch (Exception e) {
+      return Result.error("海外仓列表查询失败: " + e.getMessage());
     }
-    return Result.success(list);
   }
 
   @Operation(summary = "合包管理列表")
   @GetMapping("/merge-packages")
-  public Result<List<Map<String, Object>>> mergePackages() {
-    List<MergePackageEntity> records = mergePackageMapper.selectList(
-        new LambdaQueryWrapper<MergePackageEntity>().orderByDesc(MergePackageEntity::getCreateTime));
-    List<Map<String, Object>> list = new ArrayList<>();
-    for (MergePackageEntity m : records) {
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("id", m.getId());
-      item.put("mergeNo", m.getMergeNo());
-      item.put("orderCount", m.getOrderCount());
-      item.put("packageCount", m.getPackageCount());
-      item.put("totalWeight", m.getTotalWeight());
-      item.put("status", m.getStatus());
-      item.put("createTime", m.getCreateTime());
-      list.add(item);
+  public Result<List<Map<String, Object>>> mergePackages(
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(defaultValue = "15") int size) {
+    try {
+      List<MergePackageEntity> records = mergePackageMapper.selectList(
+          new LambdaQueryWrapper<MergePackageEntity>().orderByDesc(MergePackageEntity::getCreateTime));
+      List<Map<String, Object>> list = new ArrayList<>();
+      for (MergePackageEntity m : records) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", m.getId());
+        item.put("mergeNo", m.getMergeNo());
+        item.put("orderCount", m.getOrderCount());
+        item.put("packageCount", m.getPackageCount());
+        item.put("totalWeight", m.getTotalWeight());
+        item.put("status", m.getStatus());
+        item.put("createTime", m.getCreateTime());
+        list.add(item);
+      }
+      // 手动分页
+      int start = (page - 1) * size;
+      int end = Math.min(start + size, list.size());
+      List<Map<String, Object>> pageList = start < list.size() ? list.subList(start, end) : new ArrayList<>();
+      return Result.success(pageList);
+    } catch (Exception e) {
+      return Result.error("合包列表查询失败: " + e.getMessage());
     }
-    return Result.success(list);
   }
 
   @Operation(summary = "分包裹列表")
   @GetMapping("/split-packages")
-  public Result<List<Map<String, Object>>> splitPackages() {
-    List<SplitPackageEntity> records = splitPackageMapper.selectList(
-        new LambdaQueryWrapper<SplitPackageEntity>().orderByDesc(SplitPackageEntity::getCreateTime));
-    List<Map<String, Object>> list = new ArrayList<>();
-    for (SplitPackageEntity s : records) {
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("id", s.getId());
-      item.put("orderNo", s.getOrderNo());
-      item.put("productCount", s.getProductCount());
-      item.put("splitCount", s.getSplitCount());
-      item.put("totalWeight", s.getTotalWeight());
-      item.put("status", s.getStatus());
-      item.put("createTime", s.getCreateTime());
-      list.add(item);
+  public Result<List<Map<String, Object>>> splitPackages(
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(defaultValue = "15") int size) {
+    try {
+      List<SplitPackageEntity> records = splitPackageMapper.selectList(
+          new LambdaQueryWrapper<SplitPackageEntity>().orderByDesc(SplitPackageEntity::getCreateTime));
+      List<Map<String, Object>> list = new ArrayList<>();
+      for (SplitPackageEntity s : records) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", s.getId());
+        item.put("orderNo", s.getOrderNo());
+        item.put("productCount", s.getProductCount());
+        item.put("splitCount", s.getSplitCount());
+        item.put("totalWeight", s.getTotalWeight());
+        item.put("status", s.getStatus());
+        item.put("createTime", s.getCreateTime());
+        list.add(item);
+      }
+      // 手动分页
+      int start = (page - 1) * size;
+      int end = Math.min(start + size, list.size());
+      List<Map<String, Object>> pageList = start < list.size() ? list.subList(start, end) : new ArrayList<>();
+      return Result.success(pageList);
+    } catch (Exception e) {
+      return Result.error("分包裹列表查询失败: " + e.getMessage());
     }
-    return Result.success(list);
   }
 
   @Operation(summary = "承运商对比列表")
   @GetMapping("/carriers")
-  public Result<List<Map<String, Object>>> carriers() {
-    List<CarrierEntity> records = carrierMapper.selectList(
-        new LambdaQueryWrapper<CarrierEntity>().orderByAsc(CarrierEntity::getId));
-    List<Map<String, Object>> list = new ArrayList<>();
-    for (CarrierEntity c : records) {
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("id", c.getId());
-      item.put("name", c.getName());
-      item.put("transportMode", c.getTransportMode());
-      item.put("avgDeliveryDays", c.getAvgDeliveryDays());
-      item.put("firstWeightPrice", c.getFirstWeightPrice());
-      item.put("renewWeightPrice", c.getRenewWeightPrice());
-      item.put("praiseRate", c.getPraiseRate());
-      list.add(item);
+  public Result<List<Map<String, Object>>> carriers(
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(defaultValue = "15") int size) {
+    try {
+      List<CarrierEntity> records = carrierMapper.selectList(
+          new LambdaQueryWrapper<CarrierEntity>().orderByAsc(CarrierEntity::getId));
+      List<Map<String, Object>> list = new ArrayList<>();
+      for (CarrierEntity c : records) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", c.getId());
+        item.put("name", c.getName());
+        item.put("transportMode", c.getTransportMode());
+        item.put("avgDeliveryDays", c.getAvgDeliveryDays());
+        item.put("firstWeightPrice", c.getFirstWeightPrice());
+        item.put("renewWeightPrice", c.getRenewWeightPrice());
+        item.put("praiseRate", c.getPraiseRate());
+        list.add(item);
+      }
+      // 手动分页
+      int start = (page - 1) * size;
+      int end = Math.min(start + size, list.size());
+      List<Map<String, Object>> pageList = start < list.size() ? list.subList(start, end) : new ArrayList<>();
+      return Result.success(pageList);
+    } catch (Exception e) {
+      return Result.error("承运商列表查询失败: " + e.getMessage());
     }
-    return Result.success(list);
   }
 
   @Operation(summary = "清关管理列表")
   @GetMapping("/clearance")
-  public Result<List<Map<String, Object>>> clearance() {
-    List<ClearanceEntity> records = clearanceMapper.selectList(
-        new LambdaQueryWrapper<ClearanceEntity>().orderByDesc(ClearanceEntity::getDeclareTime));
-    List<Map<String, Object>> list = new ArrayList<>();
-    for (ClearanceEntity c : records) {
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("id", c.getId());
-      item.put("declarationNo", c.getDeclarationNo());
-      item.put("orderNo", c.getOrderNo());
-      item.put("productName", c.getProductName());
-      item.put("status", c.getStatus());
-      item.put("declareTime", c.getDeclareTime());
-      list.add(item);
+  public Result<List<Map<String, Object>>> clearance(
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(defaultValue = "15") int size) {
+    try {
+      List<ClearanceEntity> records = clearanceMapper.selectList(
+          new LambdaQueryWrapper<ClearanceEntity>().orderByDesc(ClearanceEntity::getDeclareTime));
+      List<Map<String, Object>> list = new ArrayList<>();
+      for (ClearanceEntity c : records) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", c.getId());
+        item.put("declarationNo", c.getDeclarationNo());
+        item.put("orderNo", c.getOrderNo());
+        item.put("productName", c.getProductName());
+        item.put("status", c.getStatus());
+        item.put("declareTime", c.getDeclareTime());
+        list.add(item);
+      }
+      // 手动分页
+      int start = (page - 1) * size;
+      int end = Math.min(start + size, list.size());
+      List<Map<String, Object>> pageList = start < list.size() ? list.subList(start, end) : new ArrayList<>();
+      return Result.success(pageList);
+    } catch (Exception e) {
+      return Result.error("清关列表查询失败: " + e.getMessage());
     }
-    return Result.success(list);
   }
 
   @Operation(summary = "海关管理列表")
   @GetMapping("/customs")
-  public Result<List<Map<String, Object>>> customs() {
-    List<ClearanceEntity> records = clearanceMapper.selectList(
-        new LambdaQueryWrapper<ClearanceEntity>()
-            .isNotNull(ClearanceEntity::getHsCode)
-            .ne(ClearanceEntity::getHsCode, "")
-            .orderByAsc(ClearanceEntity::getId));
-    List<Map<String, Object>> list = new ArrayList<>();
-    for (ClearanceEntity c : records) {
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("id", c.getId());
-      item.put("hsCode", c.getHsCode());
-      item.put("productName", c.getProductName());
-      item.put("taxRate", c.getTaxRate());
-      item.put("supervisionConditions", "");
-      list.add(item);
+  public Result<List<Map<String, Object>>> customs(
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(defaultValue = "15") int size) {
+    try {
+      List<ClearanceEntity> records = clearanceMapper.selectList(
+          new LambdaQueryWrapper<ClearanceEntity>()
+              .isNotNull(ClearanceEntity::getHsCode)
+              .ne(ClearanceEntity::getHsCode, "")
+              .orderByAsc(ClearanceEntity::getId));
+      List<Map<String, Object>> list = new ArrayList<>();
+      for (ClearanceEntity c : records) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", c.getId());
+        item.put("hsCode", c.getHsCode());
+        item.put("productName", c.getProductName());
+        item.put("taxRate", c.getTaxRate());
+        item.put("supervisionConditions", "");
+        list.add(item);
+      }
+      // 手动分页
+      int start = (page - 1) * size;
+      int end = Math.min(start + size, list.size());
+      List<Map<String, Object>> pageList = start < list.size() ? list.subList(start, end) : new ArrayList<>();
+      return Result.success(pageList);
+    } catch (Exception e) {
+      return Result.error("海关列表查询失败: " + e.getMessage());
     }
-    return Result.success(list);
   }
 
   @Operation(summary = "发货策略列表")
   @GetMapping("/shipping-strategies")
-  public Result<List<Map<String, Object>>> shippingStrategies() {
-    List<ShippingStrategyEntity> records = shippingStrategyMapper.selectList(
-        new LambdaQueryWrapper<ShippingStrategyEntity>().orderByAsc(ShippingStrategyEntity::getId));
-    List<Map<String, Object>> list = new ArrayList<>();
-    for (ShippingStrategyEntity s : records) {
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("id", s.getId());
-      item.put("name", s.getName());
-      item.put("region", s.getRegion());
-      item.put("method", s.getMethod());
-      item.put("rule", s.getRuleDesc());
-      item.put("status", s.getStatus());
-      list.add(item);
+  public Result<List<Map<String, Object>>> shippingStrategies(
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(defaultValue = "15") int size) {
+    try {
+      List<ShippingStrategyEntity> records = shippingStrategyMapper.selectList(
+          new LambdaQueryWrapper<ShippingStrategyEntity>().orderByAsc(ShippingStrategyEntity::getId));
+      List<Map<String, Object>> list = new ArrayList<>();
+      for (ShippingStrategyEntity s : records) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", s.getId());
+        // 兼容字段：前端使用 strategyName/shippingMethod/feeRule，旧调用方使用 name/method/rule
+        item.put("name", s.getName());
+        item.put("strategyName", s.getName());
+        item.put("region", s.getRegion());
+        item.put("method", s.getMethod());
+        item.put("shippingMethod", s.getMethod());
+        item.put("rule", s.getRuleDesc());
+        item.put("feeRule", s.getRuleDesc());
+        item.put("priority", s.getPriority());
+        item.put("status", displayStrategyStatus(s.getStatus()));
+        list.add(item);
+      }
+      // 手动分页
+      int start = (page - 1) * size;
+      int end = Math.min(start + size, list.size());
+      List<Map<String, Object>> pageList = start < list.size() ? list.subList(start, end) : new ArrayList<>();
+      return Result.success(pageList);
+    } catch (Exception e) {
+      return Result.error("发货策略列表查询失败: " + e.getMessage());
     }
-    return Result.success(list);
   }
 
   @Operation(summary = "同步海关数据")
@@ -710,12 +794,13 @@ public class AdminLogisticsController {
   @PostMapping("/shipping-strategies")
   public Result<Map<String, Object>> createShippingStrategy(@RequestBody Map<String, Object> body) {
     ShippingStrategyEntity entity = new ShippingStrategyEntity();
-    entity.setName((String) body.get("name"));
-    entity.setRegion((String) body.get("region"));
-    entity.setMethod((String) body.get("method"));
-    entity.setRuleDesc((String) body.get("ruleDesc"));
+    // 兼容前端字段名（strategyName/shippingMethod/feeRule）与旧字段名（name/method/ruleDesc）
+    entity.setName(strValue(body, "name", "strategyName"));
+    entity.setRegion(strValue(body, "region"));
+    entity.setMethod(strValue(body, "method", "shippingMethod"));
+    entity.setRuleDesc(strValue(body, "ruleDesc", "feeRule"));
     if (body.get("priority") != null) entity.setPriority(Integer.valueOf(body.get("priority").toString()));
-    entity.setStatus((String) body.get("status"));
+    entity.setStatus(normalizeStrategyStatus(strValue(body, "status")));
     shippingStrategyMapper.insert(entity);
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("id", entity.getId());
@@ -730,17 +815,42 @@ public class AdminLogisticsController {
     if (entity == null) {
       return Result.error("发货策略不存在");
     }
-    if (body.get("name") != null) entity.setName((String) body.get("name"));
-    if (body.get("region") != null) entity.setRegion((String) body.get("region"));
-    if (body.get("method") != null) entity.setMethod((String) body.get("method"));
-    if (body.get("ruleDesc") != null) entity.setRuleDesc((String) body.get("ruleDesc"));
+    if (strValue(body, "name", "strategyName") != null) entity.setName(strValue(body, "name", "strategyName"));
+    if (body.get("region") != null) entity.setRegion(strValue(body, "region"));
+    if (strValue(body, "method", "shippingMethod") != null) entity.setMethod(strValue(body, "method", "shippingMethod"));
+    if (strValue(body, "ruleDesc", "feeRule") != null) entity.setRuleDesc(strValue(body, "ruleDesc", "feeRule"));
     if (body.get("priority") != null) entity.setPriority(Integer.valueOf(body.get("priority").toString()));
-    if (body.get("status") != null) entity.setStatus((String) body.get("status"));
+    if (strValue(body, "status") != null) entity.setStatus(normalizeStrategyStatus(strValue(body, "status")));
     shippingStrategyMapper.updateById(entity);
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("id", id);
     result.put("message", "发货策略更新成功");
     return Result.success(result);
+  }
+
+  /** 取 Map 中第一个非空字段值（用于字段名兼容） */
+  private String strValue(Map<String, Object> data, String... keys) {
+    for (String k : keys) {
+      Object v = data.get(k);
+      if (v != null) return v.toString();
+    }
+    return null;
+  }
+
+  /** 中文状态 → 存储状态（ACTIVE/INACTIVE），兼容直接传英文 */
+  private String normalizeStrategyStatus(String status) {
+    if (status == null || status.isEmpty()) return "ACTIVE";
+    if ("启用".equals(status)) return "ACTIVE";
+    if ("停用".equals(status)) return "INACTIVE";
+    return status;
+  }
+
+  /** 存储状态 → 展示状态（前端表格期望中文） */
+  private String displayStrategyStatus(String status) {
+    if (status == null) return "启用";
+    if ("ACTIVE".equals(status)) return "启用";
+    if ("INACTIVE".equals(status)) return "停用";
+    return status;
   }
 
   @Operation(summary = "删除发货策略")

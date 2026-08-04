@@ -170,6 +170,7 @@
 import { ref, onMounted } from 'vue'
 import { getPointsActivities, createPointsActivity, deletePointsActivity, getPointsLogs, getPointsStats } from '../api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { toArray } from '../utils/safeArray'
 
 // 统计数据
 const stats = ref({
@@ -213,7 +214,7 @@ async function fetchActivities() {
   try {
     const res = await getPointsActivities()
     if (res) {
-      activities.value = res.records || res.list || res
+      activities.value = toArray(res)
     }
   } catch (err) {
     console.error('获取积分活动失败:', err)
@@ -229,7 +230,7 @@ async function fetchLogs() {
     }
     const res = await getPointsLogs(params)
     if (res) {
-      logs.value = res.records || res.list || res
+      logs.value = toArray(res)
     }
   } catch (err) {
     console.error('获取积分流水失败:', err)
@@ -290,52 +291,52 @@ onMounted(() => {
 <style scoped>
 .page-wrapper { padding: 24px; }
 .page-title-section { margin-bottom: 24px; }
-.page-title { font-size: 20px; font-weight: 700; color: var(--text-800); margin: 0 0 4px; }
+.page-title { font-size: 22px; font-weight: 700; color: var(--text-800); margin: 0 0 4px; }
 .page-desc { color: var(--text-500); font-size: 14px; margin: 0; }
 
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-.kpi-card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow-xs); }
 .kpi-header { margin-bottom: 8px; }
 .kpi-label { font-size: 13px; color: var(--text-500); }
 .kpi-value { font-size: 28px; font-weight: 700; color: var(--text-800); }
 
-.section-block { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.section-block { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; box-shadow: var(--shadow-xs); }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .section-title { font-size: 16px; font-weight: 600; color: var(--text-800); margin: 0; }
 .section-filter { display: flex; gap: 8px; align-items: center; }
 
-.input-sm { padding: 6px 12px; border: 1px solid var(--border-color, #d9d9d9); border-radius: 4px; font-size: 13px; width: 160px; }
+.input-sm { padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; width: 160px; }
 
 .data-table-wrapper { overflow-x: auto; }
 .data-table { width: 100%; border-collapse: collapse; }
-.data-table th { text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 600; color: var(--text-500); background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
-.data-table td { padding: 12px; font-size: 13px; color: var(--text-700); border-bottom: 1px solid #f3f4f6; }
+.data-table th { text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 600; color: var(--text-500); background: var(--background-200); border-bottom: 1px solid var(--border); }
+.data-table td { padding: 12px; font-size: 13px; color: var(--text-700); border-bottom: 1px solid var(--background-100); }
 .td-empty { text-align: center; color: var(--text-400); padding: 32px !important; }
 
-.status-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
-.status-active { background: #ecfdf5; color: #059669; }
-.status-inactive { background: #fef2f2; color: #dc2626; }
+.status-tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; }
+.status-active { background: var(--state-success-surface); color: var(--state-success); }
+.status-inactive { background: var(--state-error-surface); color: var(--state-error); }
 
-.text-green { color: #059669; }
-.text-red { color: #dc2626; }
+.text-green { color: var(--state-success); }
+.text-red { color: var(--state-error); }
 
-.action-link-btn { background: none; border: none; color: var(--primary, #3b82f6); cursor: pointer; font-size: 13px; padding: 0; }
+.action-link-btn { background: none; border: none; color: var(--primary); cursor: pointer; font-size: 13px; padding: 0; }
 .action-link-btn:hover { text-decoration: underline; }
 
 .btn { padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; border: none; }
-.btn-primary { background: var(--primary, #3b82f6); color: #fff; }
-.btn-outline { background: #fff; color: var(--text-700); border: 1px solid #d9d9d9; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-outline { background: var(--card); color: var(--text-700); border: 1px solid var(--border); }
 .btn-sm { padding: 6px 12px; font-size: 12px; }
 
 /* 弹窗样式 */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.modal-content { background: #fff; border-radius: 8px; width: 480px; max-height: 80vh; overflow-y: auto; }
-.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #e5e7eb; }
+.modal-content { background: var(--card); border-radius: var(--radius); width: 480px; max-height: 80vh; overflow-y: auto; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
 .modal-header h3 { margin: 0; font-size: 16px; font-weight: 600; }
 .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-400); }
 .modal-body { padding: 20px; }
-.modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 20px; border-top: 1px solid #e5e7eb; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 20px; border-top: 1px solid var(--border); }
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: var(--text-700); }
-.input { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 6px; font-size: 13px; box-sizing: border-box; }
+.input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; box-sizing: border-box; }
 </style>

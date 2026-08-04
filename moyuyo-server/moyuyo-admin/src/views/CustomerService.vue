@@ -104,9 +104,13 @@
         <div class="pagination-info">共 {{ total }} 条</div>
         <div class="pagination-btns">
           <button class="pagination-btn" :disabled="currentPage <= 1" @click="prevPage">上一页</button>
-          <button class="pagination-btn active">1</button>
-          <button class="pagination-btn" :disabled="currentPage >= pageCount" @click="goToPage(2)">2</button>
-          <button class="pagination-btn" :disabled="currentPage >= pageCount" @click="goToPage(3)">3</button>
+          <button
+            v-for="p in displayPages"
+            :key="p"
+            class="pagination-btn"
+            :class="{ active: p === currentPage }"
+            @click="goToPage(p)"
+          >{{ p }}</button>
           <button class="pagination-btn" :disabled="currentPage >= pageCount" @click="nextPage">下一页</button>
         </div>
       </div>
@@ -119,6 +123,7 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { getTicketList, getTicketStats, assignTicket } from '../api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
+import { toArray } from '../utils/safeArray'
 
 const router = useRouter()
 
@@ -147,10 +152,58 @@ const kpiData = ref({
   slaRate: '0%'
 })
 
-const tickets = ref([])
+// 后端返回的字段名与 TicketManage.vue 保持一致：status, type, priority
+// 前端模板使用 statusLabel/typeLabel/priorityLabel 等显示字段，此处统一做映射
+function mapStatus(status) {
+  const s = String(status || '').toUpperCase()
+  const map = {
+    'PENDING': { label: '待处理', dot: 'dot-warning', class: 'tag-yellow' },
+    'PROCESSING': { label: '进行中', dot: 'dot-success', class: 'tag-blue' },
+    'CLOSED': { label: '已关闭', dot: 'dot-gray', class: 'tag-gray' },
+    'RESOLVED': { label: '已解决', dot: 'dot-gray', class: 'tag-green' }
+  }
+  return map[s] || { label: s || '未知', dot: 'dot-gray', class: 'tag-gray' }
+}
 
-// 计算总页数
+function mapType(type) {
+  const t = String(type || '').toUpperCase()
+  const map = {
+    'REFUND': { label: '退款', class: 'tag-red' },
+    'COMPLAINT': { label: '投诉', class: 'tag-orange' },
+    'CONSULT': { label: '咨询', class: 'tag-blue' },
+    'OTHER': { label: '其他', class: 'tag-gray' }
+  }
+  return map[t] || { label: type || '其他', class: 'tag-gray' }
+}
+
+function mapPriority(priority) {
+  const p = String(priority || '').toUpperCase()
+  const map = {
+    'HIGH': { label: '高', class: 'tag-red' },
+    'MEDIUM': { label: '中', class: 'tag-yellow' },
+    'LOW': { label: '低', class: 'tag-blue' }
+  }
+  return map[p] || { label: priority || '中', class: 'tag-yellow' }
+}
+
+const tickets = ref([])
 const pageCount = computed(() => Math.ceil(total.value / pageSize) || 1)
+
+// 动态计算显示页码（最多显示5页）
+const displayPages = computed(() => {
+  const pages = []
+  const pCount = pageCount.value
+  const current = currentPage.value
+  let start = Math.max(1, current - 2)
+  let end = Math.min(pCount, start + 4)
+  if (end - start < 4) {
+    start = Math.max(1, end - 4)
+  }
+  for (let i = start; i <= end; i++) {
+    pages.push(i)
+  }
+  return pages
+})
 
 // 获取工单统计数据
 async function fetchStats() {
@@ -161,6 +214,7 @@ async function fetchStats() {
     }
   } catch (err) {
     console.error('获取工单统计数据失败:', err)
+    ElMessage.warning('工单统计数据加载失败')
   }
 }
 
@@ -179,20 +233,46 @@ async function fetchTickets() {
     })
     const res = await getTicketList(params)
     if (res) {
-      const list = res.records || res.list || res
-      total.value = res.total || (Array.isArray(list) ? list.length : 0)
-      // 如果有筛选参数，在前端过滤（简化处理）
-      if (activeTab.value !== 'all' || typeFilter.value || priorityFilter.value || searchText.value) {
-        tickets.value = Array.isArray(list) ? list.filter(t => {
+      const list = toArray(res)
+      total.value = res.total || list.length
+      // 后端返回的字段与 TicketManage.vue 一致，需要映射为模板使用的显示字段
+      const mappedList = list.map(t => {
+        const statusInfo = mapStatus(t.status || t.statusKey)
+        const typeInfo = mapType(t.type || t.typeKey)
+        const priorityInfo = mapPriority(t.priority || t.priorityKey)
+        return {
+          ...t,
+          no: t.ticketNo || t.no || t.id,
+          user: t.user || t.userName || '',
+          assignee: t.agent || t.assignee || t.agentName || '',
+          createTime: t.createTime || t.createdAt || '',
+          responseTime: t.responseTime || t.respondedAt || '',
+          statusLabel: statusInfo.label,
+          statusDot: statusInfo.dot,
+          statusClass: statusInfo.class,
+          typeLabel: typeInfo.label,
+          typeClass: typeInfo.class,
+          priorityLabel: priorityInfo.label,
+          priorityClass: priorityInfo.class,
+          // 保留原始字段用于过滤
+          _status: String(t.status || t.statusKey || '').toUpperCase(),
+          _type: String(t.type || t.typeKey || '').toUpperCase(),
+          _priority: String(t.priority || t.priorityKey || '').toUpperCase()
+        }
+      })
+      // 根据筛选条件决定是否在前端过滤
+      const needFilter = activeTab.value !== 'all' || typeFilter.value || priorityFilter.value || searchText.value
+      if (needFilter) {
+        tickets.value = mappedList.filter(t => {
           let match = true
-          if (activeTab.value !== 'all' && t.statusKey !== activeTab.value) match = false
-          if (typeFilter.value && t.typeKey !== typeFilter.value) match = false
-          if (priorityFilter.value && t.priorityKey !== priorityFilter.value) match = false
-          if (searchText.value && !t.no?.includes(searchText.value) && !t.user?.includes(searchText.value)) match = false
+          if (activeTab.value !== 'all' && t._status !== activeTab.value.toUpperCase()) match = false
+          if (typeFilter.value && t._type !== typeFilter.value.toUpperCase()) match = false
+          if (priorityFilter.value && t._priority !== priorityFilter.value.toUpperCase()) match = false
+          if (searchText.value && !String(t.no).includes(searchText.value) && !String(t.user).includes(searchText.value)) match = false
           return match
-        }) : list
+        })
       } else {
-        tickets.value = list
+        tickets.value = mappedList
       }
     }
   } catch (err) {
@@ -273,7 +353,7 @@ async function handleTransfer(id) {
 
 <style scoped lang="css">
 .page-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-800);
   margin: 0 0 20px;

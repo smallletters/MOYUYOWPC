@@ -1,0 +1,632 @@
+[
+  {
+    "path": "/dashboard",
+    "name": "仪表盘",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/orders",
+    "name": "订单管理",
+    "status": "OK",
+    "resp": "列表刷新",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/products",
+    "name": "商品管理",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/users",
+    "name": "用户管理",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/marketing",
+    "name": "营销管理",
+    "status": "OK",
+    "resp": "路由跳转",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/reviews",
+    "name": "内容审核",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/cs",
+    "name": "客服管理",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/analytics",
+    "name": "数据分析",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/logistics",
+    "name": "物流管理",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/settings",
+    "name": "系统设置",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/refund",
+    "name": "退款管理",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/cms",
+    "name": "CMS内容管理",
+    "status": "OK",
+    "resp": "弹窗打开: 新建 Banner",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/rbac",
+    "name": "RBAC权限管理",
+    "status": "OK",
+    "resp": "折叠表单展开",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/finance",
+    "name": "财务概览",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/inventory",
+    "name": "库存管理",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/push-manage",
+    "name": "推送管理",
+    "status": "OK",
+    "resp": "弹窗打开: 新建推送",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/ticket",
+    "name": "工单管理",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/campaign",
+    "name": "活动创建",
+    "status": "OK",
+    "resp": "弹窗打开: 新建活动",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/complaint",
+    "name": "投诉管理",
+    "status": "OK",
+    "resp": "弹窗打开: 新增投诉记录",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/review-manage",
+    "name": "评价管理",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/product-analysis",
+    "name": "商品分析",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/product-report",
+    "name": "商品报表",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/product-review",
+    "name": "商品评价审核",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/price-manage",
+    "name": "价格管理",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/price-history",
+    "name": "价格历史",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/order-export",
+    "name": "订单导出",
+    "status": "OK",
+    "resp": "弹窗打开: 新建导出任务",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/order-intercept",
+    "name": "订单拦截",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/order-monitor",
+    "name": "订单监控",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/order-price-modify",
+    "name": "订单改价",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/order-print",
+    "name": "订单打印",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/sms",
+    "name": "短信管理",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/sensitive-words",
+    "name": "敏感词管理",
+    "status": "OK",
+    "resp": "折叠表单展开",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/funnel",
+    "name": "漏斗分析",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/rfm",
+    "name": "RFM分析",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/risk-control",
+    "name": "风控管理",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/risk-rule-engine",
+    "name": "风控规则引擎",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/realtime-screen",
+    "name": "实时大屏",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/user-profile",
+    "name": "用户画像",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/ab-test",
+    "name": "A/B测试",
+    "status": "OK",
+    "resp": "弹窗打开: 新建实验",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/app-version",
+    "name": "应用版本管理",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/batch-import",
+    "name": "批量导入",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/knowledge-base",
+    "name": "知识库",
+    "status": "OK",
+    "resp": "弹窗打开: 新建文章",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/search-analysis",
+    "name": "搜索分析",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/traffic-analysis",
+    "name": "流量分析",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/satisfaction",
+    "name": "满意度管理",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/gdpr",
+    "name": "GDPR合规",
+    "status": "OK",
+    "resp": "弹窗打开: 新建隐私政策",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/audit-log",
+    "name": "审计日志",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/product-approval",
+    "name": "商品审核",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/coupon-manage",
+    "name": "优惠券管理",
+    "status": "OK",
+    "resp": "弹窗打开: 新建优惠券",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/flash-sale-manage",
+    "name": "秒杀管理",
+    "status": "OK",
+    "resp": "弹窗打开: 新建秒杀",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/points-manage",
+    "name": "积分管理",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/blacklist",
+    "name": "黑名单管理",
+    "status": "OK",
+    "resp": "弹窗打开: 新建",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/tariff",
+    "name": "关税管理",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/risk-alert",
+    "name": "风控告警",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/cs-sessions",
+    "name": "客服会话",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/order-tags",
+    "name": "订单标签",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/inventory-transfer",
+    "name": "库存调拨",
+    "status": "OK",
+    "resp": "弹窗打开: 新建调拨",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/merge-package",
+    "name": "合包管理",
+    "status": "OK",
+    "resp": "弹窗打开: 新建",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/split-package",
+    "name": "分包裹",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/carrier-compare",
+    "name": "承运商对比",
+    "status": "OK",
+    "resp": "弹窗打开: 新建",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/overseas-warehouse",
+    "name": "海外仓管理",
+    "status": "OK",
+    "resp": "弹窗打开: 新建",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/warehouse-manage",
+    "name": "仓库管理",
+    "status": "OK",
+    "resp": "弹窗打开: 新建",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/clearance",
+    "name": "清关管理",
+    "status": "OK",
+    "resp": "弹窗打开: 新建",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/customs",
+    "name": "海关管理",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/settlement",
+    "name": "结算管理",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/system-config",
+    "name": "系统配置",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/operation-log",
+    "name": "运营日志",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/live-manage",
+    "name": "直播管理",
+    "status": "OK",
+    "resp": "弹窗打开: 新建直播",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/marketing-effect",
+    "name": "营销效果",
+    "status": "OK",
+    "resp": "弹窗打开: 新建活动",
+    "issues": [],
+    "console": [],
+    "http": []
+  },
+  {
+    "path": "/shipping-strategy",
+    "name": "发货策略",
+    "status": "OK",
+    "resp": "（无主操作按钮）",
+    "issues": [],
+    "console": [],
+    "http": []
+  }
+]

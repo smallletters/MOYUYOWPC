@@ -7,12 +7,15 @@ services:
     container_name: moyuyo-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-root}
-      MYSQL_DATABASE: moyuyo_dev
+      # 必填，未设置时 compose 会报错中止，避免弱默认密码上线
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
+      # 与 application-prod.yml 连接的生产库名保持一致
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-moyuyo_prod}
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
       MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
     ports:
-      - "3306:3306"
+      # 仅绑定本机回环，避免数据库端口暴露公网（应用通过容器网络访问）
+      - "127.0.0.1:3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
@@ -26,15 +29,99 @@ services:
     image: redis:7-alpine
     container_name: moyuyo-redis
     restart: unless-stopped
+    # 生产环境必须设置 Redis 密码，未设置时 compose 会报错中止
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}"]
     ports:
-      - "6379:6379"
+      # 仅绑定本机回环，避免 Redis 暴露公网
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # Elasticsearch（生产环境启用 x-pack security + HTTPS）
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: moyuyo-elasticsearch
+    restart: unless-stopped
+    environment:
+      # 单节点 dev 模式（生产环境集群应改为 discovery.seed_hosts 配置）
+      discovery.type: single-node
+      xpack.security.enabled: "true"
+      # ES 内置用户密码（与 ELASTICSEARCH_PASSWORD 保持一致）
+      ELASTIC_PASSWORD: ${ELASTICSEARCH_PASSWORD:?ELASTICSEARCH_PASSWORD must be set}
+      # 启用 HTTPS + 生成证书
+      xpack.security.http.ssl.enabled: "true"
+      xpack.security.http.ssl.keystore.path: /usr/share/elasticsearch/config/certs/elasticsearch.p12
+      xpack.security.transport.ssl.enabled: "true"
+      xpack.security.transport.ssl.verification_mode: certificate
+      xpack.security.transport.ssl.keystore.path: /usr/share/elasticsearch/config/certs/elasticsearch.p12
+      xpack.security.transport.ssl.truststore.path: /usr/share/elasticsearch/config/certs/elasticsearch.p12
+      ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+      # 内存锁定 + 禁用 swap
+      bootstrap.memory_lock: "true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      # 持久化数据 + 自动生成的证书
+      - es-data:/usr/share/elasticsearch/data
+      - es-certs:/usr/share/elasticsearch/config/certs
+    ports:
+      # 仅绑定本机回环，避免 ES 暴露公网
+      - "127.0.0.1:9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -kfs -u elastic:${ELASTICSEARCH_PASSWORD} https://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # RocketMQ Name Server（生产环境必需：用于订单超时取消等异步消息）
+  rocketmq-namesrv:
+    image: apache/rocketmq:5.3.0
+    container_name: moyuyo-rocketmq-namesrv
+    restart: unless-stopped
+    command: ["sh", "mqnamesrv"]
+    ports:
+      # 仅绑定本机回环，避免 namesrv 端口暴露公网
+      - "127.0.0.1:9876:9876"
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'namesrv is running' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # RocketMQ Broker
+  rocketmq-broker:
+    image: apache/rocketmq:5.3.0
+    container_name: moyuyo-rocketmq-broker
+    restart: unless-stopped
+    depends_on:
+      rocketmq-namesrv:
+        condition: service_started
+    command: >
+      sh mqbroker
+        -n rocketmq-namesrv:9876
+        --enable-proxy false
+        -c /opt/rocketmq/conf/broker.conf
+    ports:
+      # 仅绑定本机回环
+      - "127.0.0.1:10909:10909"
+      - "127.0.0.1:10911:10911"
+    volumes:
+      - rocketmq-data:/root/store
+      - rocketmq-logs:/root/logs
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'broker is running' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   # 后端服务
   app:
@@ -42,7 +129,12 @@ services:
     container_name: moyuyo-server
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      # 仅绑定本机回环，由前置 Nginx/反向代理转发，避免直接暴露公网
+      # Prometheus 端点通过 /actuator/prometheus 暴露（与主应用共用 8080），由前置 Nginx 控制外网访问
+      - "127.0.0.1:8080:8080"
+    volumes:
+      # 共享 ES 证书，使 app 容器能验证 ES 自签证书
+      - es-certs:/opt/es-certs:ro
     environment:
       SPRING_PROFILES_ACTIVE: prod
       # 数据库
@@ -53,7 +145,7 @@ services:
       # Redis
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
       # JWT
       JWT_SECRET: ${JWT_SECRET}
       # API 签名
@@ -66,8 +158,20 @@ services:
       PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID}
       PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET}
       PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID}
-      # Elasticsearch
-      ELASTICSEARCH_URIS: ${ELASTICSEARCH_URIS:-http://elasticsearch:9200}
+      # Elasticsearch（生产环境使用 HTTPS + x-pack 安全）
+      ELASTICSEARCH_URIS: ${ELASTICSEARCH_URIS:-https://elasticsearch:9200}
+      ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
+      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD}
+      ELASTICSEARCH_SSL_ENABLED: ${ELASTICSEARCH_SSL_ENABLED:-true}
+      ELASTICSEARCH_SSL_CERT_VALIDATION: ${ELASTICSEARCH_SSL_CERT_VALIDATION:-true}
+      # 将共享的 ES 证书作为 JVM truststore，使 app 容器能验证 ES 自签证书
+      # -Djavax.net.ssl.trustStore 指定 p12 文件，-Djavax.net.ssl.trustStorePassword 解锁
+      # 同时将证书路径暴露给 Spring 配置，配合 application-prod.yml 中的 elasticsearch.ssl.bundle 使用
+      ELASTICSEARCH_SSL_BUNDLE: ${ELASTICSEARCH_SSL_BUNDLE:-/opt/es-certs/elasticsearch.p12}
+      JAVA_TOOL_OPTIONS: >-
+        -Djavax.net.ssl.trustStore=/opt/es-certs/elasticsearch.p12
+        -Djavax.net.ssl.trustStorePassword=${ELASTICSEARCH_TRUSTSTORE_PASSWORD}
+        -Djavax.net.ssl.trustStoreType=pkcs12
       # RocketMQ
       ROCKETMQ_NAMESRV_ADDR: ${ROCKETMQ_NAMESRV_ADDR:-rocketmq:9876}
       # WooCommerce
@@ -82,7 +186,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      rocketmq-namesrv:
+        condition: service_started
 
 volumes:
   mysql-data:
   redis-data:
+  es-data:
+  es-certs:
+  rocketmq-data:
+  rocketmq-logs:

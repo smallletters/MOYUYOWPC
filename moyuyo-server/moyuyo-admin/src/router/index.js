@@ -374,6 +374,12 @@ const routes = [
         meta: { title: '客服会话' }
       },
       {
+        path: 'cs-performance',
+        name: 'CsPerformance',
+        component: () => import('../views/CsPerformance.vue'),
+        meta: { title: '客服绩效看板' }
+      },
+      {
         path: 'order-tags',
         name: 'OrderTags',
         component: () => import('../views/OrderTags.vue'),

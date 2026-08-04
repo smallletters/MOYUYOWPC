@@ -6,6 +6,7 @@ import com.moyuyo.common.dto.review.CreateReviewRequest;
 import com.moyuyo.common.dto.review.ReviewVO;
 import com.moyuyo.common.utils.JsonUtils;
 import com.moyuyo.common.utils.PageUtils;
+import com.moyuyo.common.utils.XssSanitizer;
 import com.moyuyo.dao.entity.ProductReviewEntity;
 import com.moyuyo.dao.entity.UserEntity;
 import com.moyuyo.dao.mapper.ProductReviewMapper;
@@ -49,7 +50,8 @@ public class ReviewServiceImpl implements ReviewService {
         entity.setOrderId(request.getOrderId());
         entity.setOrderItemId(request.getOrderItemId());
         entity.setRating(request.getRating());
-        entity.setContent(request.getContent());
+        // 净化评价内容，防止存储型 XSS
+        entity.setContent(XssSanitizer.sanitizeRichText(request.getContent()));
         entity.setTags(JsonUtils.toJsonArray(request.getTags()));
         entity.setImages(JsonUtils.toJsonArray(request.getImages()));
         entity.setStatus("PENDING");

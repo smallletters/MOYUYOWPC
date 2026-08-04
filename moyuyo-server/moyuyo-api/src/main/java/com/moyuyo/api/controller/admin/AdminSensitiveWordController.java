@@ -65,9 +65,24 @@ public class AdminSensitiveWordController {
     @Operation(summary = "更新敏感词")
     @PutMapping("/update")
     public Result<Map<String, Object>> update(@RequestBody Map<String, Object> body) {
+        // 校验 id 必填
+        if (body == null || body.get("id") == null) {
+            return Result.error(400, "参数错误：id 不能为空");
+        }
+        Long id;
+        try {
+            id = Long.valueOf(body.get("id").toString());
+        } catch (NumberFormatException e) {
+            return Result.error(400, "参数错误：id 必须为数字");
+        }
+        // 校验 word 必填
+        Object wordObj = body.get("word");
+        if (wordObj == null || wordObj.toString().isEmpty()) {
+            return Result.error(400, "参数错误：word 不能为空");
+        }
         SensitiveWordEntity entity = new SensitiveWordEntity();
-        entity.setId(Long.valueOf(body.get("id").toString()));
-        entity.setWord((String) body.get("word"));
+        entity.setId(id);
+        entity.setWord(wordObj.toString());
         entity.setCategory((String) body.get("category"));
         entity.setStatus((String) body.get("status"));
         sensitiveWordService.update(entity);

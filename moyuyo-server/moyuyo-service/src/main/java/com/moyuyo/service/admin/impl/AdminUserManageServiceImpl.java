@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -177,6 +178,84 @@ public class AdminUserManageServiceImpl implements AdminUserManageService {
       throw new IllegalArgumentException("用户不存在");
     }
     user.setStatus(ACTIVE.name().equals(status) ? 1 : 0);
+    userMapper.updateById(user);
+  }
+
+  @Override
+  @Transactional
+  public Map<String, Object> createUser(Map<String, Object> body) {
+    String email = (String) body.get("email");
+    String nickname = (String) body.getOrDefault("nickname", "");
+    String password = (String) body.getOrDefault("password", "123456");
+
+    if (email == null || email.isEmpty()) {
+      throw new IllegalArgumentException("邮箱不能为空");
+    }
+
+    // 检查邮箱是否已存在
+    UserEntity existing = userMapper.selectOne(
+        new LambdaQueryWrapper<UserEntity>().eq(UserEntity::getEmail, email));
+    if (existing != null) {
+      throw new IllegalArgumentException("该邮箱已被注册");
+    }
+
+    UserEntity user = new UserEntity();
+    user.setEmail(email);
+    user.setNickname(nickname.isEmpty() ? email.split("@")[0] : nickname);
+    user.setPasswordHash(password); // 实际项目应对密码进行加密处理
+    user.setStatus(1); // 默认启用
+    user.setCreatedAt(LocalDateTime.now());
+    userMapper.insert(user);
+
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("id", user.getId());
+    result.put("message", "用户创建成功");
+    return result;
+  }
+
+  @Override
+  @Transactional
+  public void updateUser(Long id, Map<String, Object> body) {
+    UserEntity user = userMapper.selectById(id);
+    if (user == null) {
+      throw new IllegalArgumentException("用户不存在");
+    }
+    if (body.containsKey("nickname")) {
+      user.setNickname((String) body.get("nickname"));
+    }
+    if (body.containsKey("email")) {
+      user.setEmail((String) body.get("email"));
+    }
+    if (body.containsKey("phone")) {
+      user.setPhone((String) body.get("phone"));
+    }
+    userMapper.updateById(user);
+  }
+
+  @Override
+  @Transactional
+  public void deleteUser(Long id) {
+    UserEntity user = userMapper.selectById(id);
+    if (user == null) {
+      throw new IllegalArgumentException("用户不存在");
+    }
+    userMapper.deleteById(id);
+    // 同时删除关联的会员记录
+    memberMapper.delete(new LambdaQueryWrapper<MemberEntity>().eq(MemberEntity::getUserId, id));
+  }
+
+  @Override
+  @Transactional
+  public void resetPassword(Long id, String newPassword) {
+    if (newPassword == null || newPassword.isEmpty()) {
+      throw new IllegalArgumentException("新密码不能为空");
+    }
+    UserEntity user = userMapper.selectById(id);
+    if (user == null) {
+      throw new IllegalArgumentException("用户不存在");
+    }
+    // 实际项目应对密码进行加密处理
+    user.setPasswordHash(newPassword);
     userMapper.updateById(user);
   }
 }

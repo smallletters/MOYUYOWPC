@@ -9,7 +9,7 @@
         :key="mode.key"
         class="mode-chip"
         :class="{ active: activeMode === mode.key }"
-        @click="activeMode = mode.key"
+        @click="switchMode(mode.key)"
       >
         {{ mode.label }}
       </button>
@@ -18,15 +18,15 @@
     <!-- 统计卡片 -->
     <div class="stats-row">
       <div class="stat-card pending">
-        <div class="stat-value">23</div>
+        <div class="stat-value">{{ reviewStats.pending }}</div>
         <div class="stat-label">待审核</div>
       </div>
       <div class="stat-card sla">
-        <div class="stat-value">4h</div>
+        <div class="stat-value">{{ reviewStats.slaRemaining }}</div>
         <div class="stat-label">SLA剩余</div>
       </div>
       <div class="stat-card done">
-        <div class="stat-value">156</div>
+        <div class="stat-value">{{ reviewStats.todayReviewed }}</div>
         <div class="stat-label">今日已审</div>
       </div>
     </div>
@@ -38,7 +38,7 @@
         :key="tab.key"
         class="tab-switcher-item"
         :class="{ active: activeTab === tab.key }"
-        @click="activeTab = tab.key"
+        @click="switchTab(tab.key)"
       >
         {{ tab.label }}
       </button>
@@ -72,6 +72,7 @@
             <button class="btn btn-sm btn-outline" @click="handleReview(item.id, 'hide')">隐藏</button>
             <button class="btn btn-sm btn-outline" @click="handleReview(item.id, 'delete')">删除</button>
             <button class="btn btn-sm btn-danger" @click="handleReview(item.id, 'ban')">封禁</button>
+            <button class="btn btn-sm btn-outline" @click="goDetail(item.id)">详情</button>
           </div>
         </div>
       </div>
@@ -103,12 +104,22 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getContentReviewList, approveContentReview, rejectContentReview } from '../api/admin'
-import api from '../api/index'
+import { getContentReviewList, approveContentReview, getContentReviewDetail, getContentReviewStats, getContentReviewTrend, hideContentReview, deleteContentReview, banContentReview } from '../api/admin'
+import { toArray } from '../utils/safeArray'
+
+const router = useRouter()
 
 const activeMode = ref('auto_manual')
 const activeTab = ref('all')
+
+// 审核统计数据
+const reviewStats = ref({
+  pending: 0,
+  slaRemaining: '0h',
+  todayReviewed: 0
+})
 
 const reviewModes = [
   { key: 'auto', label: '机审自动通过' },
@@ -129,22 +140,73 @@ const violationTabs = [
 const reviewItems = ref([])
 
 const trendData = reactive([
-  { label: '07/10', pass: 80, reject: 20 },
-  { label: '07/11', pass: 75, reject: 25 },
-  { label: '07/12', pass: 90, reject: 10 },
-  { label: '07/13', pass: 70, reject: 30 },
-  { label: '07/14', pass: 85, reject: 15 },
-  { label: '07/15', pass: 78, reject: 22 },
-  { label: '07/16', pass: 82, reject: 18 }
+  { label: '...', pass: 0, reject: 0 },
+  { label: '...', pass: 0, reject: 0 },
+  { label: '...', pass: 0, reject: 0 },
+  { label: '...', pass: 0, reject: 0 },
+  { label: '...', pass: 0, reject: 0 },
+  { label: '...', pass: 0, reject: 0 },
+  { label: '...', pass: 0, reject: 0 }
 ])
+
+// 切换审核模式
+function switchMode(mode) {
+  activeMode.value = mode
+  loadReviewItems()
+}
+
+// 切换违规类型标签
+function switchTab(tab) {
+  activeTab.value = tab
+  loadReviewItems()
+}
+
+// 加载审核统计
+async function loadReviewStats() {
+  try {
+    const res = await getContentReviewStats()
+    if (res) {
+      reviewStats.value = {
+        pending: res.pending || 0,
+        slaRemaining: res.slaRemaining || '0h',
+        todayReviewed: res.todayReviewed || 0
+      }
+    }
+  } catch (e) {
+    console.error('获取审核统计失败', e)
+  }
+}
+
+// 加载审核趋势
+async function loadReviewTrend() {
+  try {
+    const res = await getContentReviewTrend({ days: 7 })
+    const trendList = toArray(res)
+    if (trendList.length > 0) {
+      trendData.length = 0
+      trendData.push(...trendList.map(d => ({
+        label: d.label || d.date || '...',
+        pass: d.pass || d.approve || 0,
+        reject: d.reject || d.violation || 0
+      })))
+    }
+  } catch (e) {
+    console.error('获取审核趋势失败', e)
+  }
+}
 
 // 加载待审核内容列表
 async function loadReviewItems() {
   try {
-    const res = await getContentReviewList()
-    const records = res.records || res.list || res || []
+    const params = {}
+    // 传递审核模式参数
+    if (activeMode.value) params.mode = activeMode.value
+    // 传递违规类型参数
+    if (activeTab.value !== 'all') params.contentType = activeTab.value
+    const res = await getContentReviewList(params)
+    const records = toArray(res)
       // 映射为前端需要的格式
-      reviewItems.value = (Array.isArray(records) ? records : []).map((item, index) => ({
+      reviewItems.value = records.map((item, index) => ({
         id: item.id,
         thumb: item.contentType === '视频' ? '🎬' : item.contentType === '图片' ? '📷' : '📝',
         contentType: item.contentType || (item.rating ? '评论' : '图文'),
@@ -170,11 +232,11 @@ async function handleReview(id, action) {
     if (action === 'approve') {
       await approveContentReview(id)
     } else if (action === 'hide') {
-      await api.put(`/content-review/${id}/hide`)
+      await hideContentReview(id)
     } else if (action === 'delete') {
-      await api.delete(`/content-review/${id}`)
+      await deleteContentReview(id)
     } else if (action === 'ban') {
-      await api.put(`/content-review/${id}/ban`)
+      await banContentReview(id)
     }
     ElMessage.success(`内容 #${id} ${actionLabels[action]}`)
     await loadReviewItems()
@@ -183,12 +245,21 @@ async function handleReview(id, action) {
   }
 }
 
-onMounted(() => { loadReviewItems() })
+// 跳转到审核详情页
+function goDetail(id) {
+  router.push(`/content-review-detail/${id}`)
+}
+
+onMounted(() => {
+  loadReviewStats()
+  loadReviewTrend()
+  loadReviewItems()
+})
 </script>
 
 <style scoped lang="css">
 .page-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-800);
   margin: 0 0 20px;

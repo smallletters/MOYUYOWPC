@@ -1,0 +1,10 @@
+﻿{
+    "code":  0,
+    "message":  "success",
+    "data":  {
+                 "role":  "SUPER_ADMIN",
+                 "name":  "Admin",
+                 "token":  "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxOTUwMDAwMDEiLCJlbWFpbCI6ImFkbWluQG1veXV5by5jb20iLCJpYXQiOjE3ODUzMDM0MzcsImV4cCI6MTc4NTMxMDYzN30.vAYlcumXfs8oBs4ITxTKuPrHJVAkdCpDSojO2ek0ePA"
+             },
+    "traceId":  "7ca82d6ac3df4d09"
+}

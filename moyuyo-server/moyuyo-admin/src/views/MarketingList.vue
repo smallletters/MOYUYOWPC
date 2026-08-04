@@ -1,6 +1,12 @@
 <template>
   <div class="marketing-list">
-    <h2 class="page-title">营销管理</h2>
+    <div class="page-header">
+      <h2 class="page-title">营销管理</h2>
+      <button class="btn btn-primary" @click="router.push('/campaign')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        创建活动
+      </button>
+    </div>
 
     <!-- 模块入口卡片 -->
     <div class="module-grid">
@@ -70,8 +76,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getCampaigns } from '../api/admin'
+import { getCampaigns, getCouponStats, getFlashSaleStats, getPointsStats } from '../api/admin'
 import { ElMessage } from 'element-plus'
+import { toArray } from '../utils/safeArray'
 
 const router = useRouter()
 
@@ -92,21 +99,85 @@ const modules = ref([
 
 const campaigns = ref([])
 
+// 活动状态映射：后端状态 -> 卡片标签与样式
+const CAMPAIGN_STATUS_MAP = {
+  ACTIVE: { label: '进行中', cls: 'tag-success' },
+  PENDING: { label: '即将开始', cls: 'tag-warning' },
+  PAUSED: { label: '已暂停', cls: 'tag-info' },
+  ENDED: { label: '已结束', cls: 'tag-info' }
+}
+
+// 将后端活动字段映射为卡片展示结构
+function mapCampaign(raw) {
+  const st = CAMPAIGN_STATUS_MAP[raw.status] || { label: raw.status || '未知', cls: 'tag-info' }
+  const gmv = Number(raw.gmv ?? raw.revenue ?? 0)
+  const roi = raw.effects?.roi ?? raw.roi
+  return {
+    ...raw,
+    // 横幅使用类型首字作为占位图标，配合柔和底色
+    icon: (raw.type || raw.name || '活').toString().charAt(0),
+    bg: 'linear-gradient(135deg, #ebf5ff 0%, #f0fdf4 100%)',
+    statusLabel: st.label,
+    statusClass: st.cls,
+    participants: raw.participants ?? 0,
+    revenue: `$${gmv.toLocaleString('en-US', { minimumFractionDigits: 0 })}`,
+    roi: roi != null ? String(roi) : '-',
+    dateRange: raw.startDate && raw.endDate ? `${raw.startDate} ~ ${raw.endDate}` : ''
+  }
+}
+
 // 获取活动列表
 async function fetchCampaigns() {
   try {
     const res = await getCampaigns()
-    if (res) {
-      campaigns.value = res.records || res.list || res
-    }
+    campaigns.value = toArray(res).map(mapCampaign)
   } catch (err) {
     console.error('获取活动列表失败:', err)
   }
 }
 
-// 获取模块数据（后端暂无独立模块端点，使用本地默认数据）
+// 从各子模块 API 获取模块指标数据
 async function fetchModules() {
-  // 预留：后端接入时替换为 api.get('/marketing/modules')
+  try {
+    // 并行请求三个模块的统计数据
+    const [couponRes, flashSaleRes, pointsRes] = await Promise.allSettled([
+      getCouponStats(),
+      getFlashSaleStats(),
+      getPointsStats()
+    ])
+
+    // 更新优惠券管理指标
+    if (couponRes.status === 'fulfilled' && couponRes.value) {
+      const data = couponRes.value
+      modules.value[0].metrics = [
+        { value: String(data.activeCount || data.active || '-'), label: '活跃券' },
+        { value: String(data.expiringCount || data.expiring || '-'), label: '即将过期' },
+        { value: String(data.totalCount || data.total || '-'), label: '总计' }
+      ]
+    }
+
+    // 更新秒杀活动指标
+    if (flashSaleRes.status === 'fulfilled' && flashSaleRes.value) {
+      const data = flashSaleRes.value
+      modules.value[1].metrics = [
+        { value: String(data.activeCount || data.active || '-'), label: '进行中' },
+        { value: String(data.participants || data.joinCount || '-'), label: '参与' },
+        { value: String(data.conversionRate != null ? data.conversionRate + '%' : '-'), label: '转化率' }
+      ]
+    }
+
+    // 更新积分活动指标
+    if (pointsRes.status === 'fulfilled' && pointsRes.value) {
+      const data = pointsRes.value
+      modules.value[2].metrics = [
+        { value: String(data.activeCount || data.active || '-'), label: '进行中' },
+        { value: String(data.exchangedCount || data.exchanged || '-'), label: '已兑换' },
+        { value: String(data.pointValue || data.value || '-'), label: '积分价值' }
+      ]
+    }
+  } catch (err) {
+    console.error('获取模块指标数据失败:', err)
+  }
 }
 
 function handleModuleClick(mod) {
@@ -127,11 +198,36 @@ onMounted(() => {
 
 <style scoped lang="css">
 .page-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-800);
-  margin: 0 0 20px;
+  margin: 0;
 }
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: calc(var(--radius) * 0.7);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+.btn-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.btn-primary:hover { filter: brightness(0.92); }
 
 /* 模块入口 */
 .module-grid {

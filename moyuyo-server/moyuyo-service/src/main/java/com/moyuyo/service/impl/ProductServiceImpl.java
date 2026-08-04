@@ -10,10 +10,13 @@ import com.moyuyo.dao.mapper.ProductImageMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.ProductService;
+import com.moyuyo.service.WooCommerceSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.Map;
@@ -26,6 +29,8 @@ public class ProductServiceImpl implements ProductService {
   private final ProductMapper productMapper;
   private final ProductSkuMapper productSkuMapper;
   private final ProductImageMapper productImageMapper;
+  // 注入 WooCommerce 同步服务：商品变更后自动推送到 WooCommerce
+  private final WooCommerceSyncService wooCommerceSyncService;
 
   @Override
   public Page<ProductEntity> listProducts(int page, int size, Long categoryId, String sortBy, String sortOrder, String keyword, String status, String stockStatus, Long brandIpId) {
@@ -130,8 +135,50 @@ public class ProductServiceImpl implements ProductService {
     // 支持 sku(前端) 和 spuCode(后端) 两种格式
     String spuCode = (String) body.get("sku");
     if (spuCode == null) spuCode = (String) body.get("spuCode");
-    if (spuCode != null && !spuCode.isEmpty()) {
-      entity.setSpuCode(spuCode);
+    if (spuCode == null || spuCode.isEmpty()) {
+      // 前端未传时自动生成基于时间戳的 SPU 编码，避免 NOT NULL 字段写入失败
+      spuCode = "SPU" + System.currentTimeMillis();
+    }
+    entity.setSpuCode(spuCode);
+
+    // === WooCommerce 对齐新增字段 ===
+    // 简短描述：支持 shortDetail/short_detail 两种 key
+    String shortDesc = (String) body.get("shortDetail");
+    if (shortDesc == null) shortDesc = (String) body.get("short_detail");
+    entity.setShortDetail(shortDesc);
+
+    // 标签：支持 tags 字符串
+    entity.setTags((String) body.get("tags"));
+
+    // attributes JSON：存储 dimensions 等扩展字段
+    Object attrsObj = body.get("attributes");
+    if (attrsObj != null) {
+      entity.setAttributes(attrsObj.toString());
+    }
+
+    // 产品类型：支持 productType/product_type，默认 simple
+    String pType = (String) body.get("productType");
+    if (pType == null) pType = (String) body.get("product_type");
+    entity.setProductType(pType != null ? pType : "simple");
+
+    // 库存管理：支持 manageStock/manage_stock
+    Object ms = body.get("manageStock");
+    if (ms == null) ms = body.get("manage_stock");
+    if (ms instanceof Boolean) entity.setManageStock((Boolean) ms);
+    else if (ms != null) entity.setManageStock(Boolean.valueOf(ms.toString()));
+
+    // 库存状态：支持 stockStatus/stock_status
+    String ss = (String) body.get("stockStatus");
+    if (ss == null) ss = (String) body.get("stock_status");
+    entity.setStockStatus(ss != null ? ss : "IN_STOCK");
+
+    // 重量：支持 weight
+    if (body.get("weight") != null) {
+      try {
+        entity.setWeight(new java.math.BigDecimal(body.get("weight").toString()));
+      } catch (NumberFormatException e) {
+        log.warn("Invalid weight value from frontend: {}", body.get("weight"));
+      }
     }
 
     // SPU编码唯一性校验
@@ -147,6 +194,9 @@ public class ProductServiceImpl implements ProductService {
     entity.setCreateTime(java.time.LocalDateTime.now());
     entity.setUpdateTime(java.time.LocalDateTime.now());
     productMapper.insert(entity);
+
+    // 事务提交后异步推送到 WooCommerce（避免阻塞主流程与事务回滚）
+    registerWooCommercePush(entity, "create");
     return entity;
   }
 
@@ -190,8 +240,84 @@ public class ProductServiceImpl implements ProductService {
       entity.setSpuCode(spuCode);
     }
 
+    // === WooCommerce 对齐新增字段 ===
+    // 简短描述
+    String shortDesc = (String) body.get("shortDetail");
+    if (shortDesc == null) shortDesc = (String) body.get("short_detail");
+    if (shortDesc != null) entity.setShortDetail(shortDesc);
+
+    // 标签
+    if (body.containsKey("tags")) entity.setTags((String) body.get("tags"));
+
+    // attributes JSON
+    if (body.containsKey("attributes")) entity.setAttributes(body.get("attributes").toString());
+
+    // 产品类型
+    if (body.containsKey("productType")) entity.setProductType((String) body.get("productType"));
+    else if (body.containsKey("product_type")) entity.setProductType((String) body.get("product_type"));
+
+    // 库存管理
+    Object ms = body.get("manageStock");
+    if (ms == null) ms = body.get("manage_stock");
+    if (ms instanceof Boolean) entity.setManageStock((Boolean) ms);
+    else if (ms != null) entity.setManageStock(Boolean.valueOf(ms.toString()));
+
+    // 库存状态
+    if (body.containsKey("stockStatus")) entity.setStockStatus((String) body.get("stockStatus"));
+    else if (body.containsKey("stock_status")) entity.setStockStatus((String) body.get("stock_status"));
+
+    // 重量
+    if (body.get("weight") != null) {
+      try {
+        entity.setWeight(new java.math.BigDecimal(body.get("weight").toString()));
+      } catch (NumberFormatException e) {
+        log.warn("Invalid weight value from frontend: {}", body.get("weight"));
+      }
+    }
+
     productMapper.updateById(entity);
+
+    // 事务提交后异步推送到 WooCommerce（避免阻塞主流程与事务回滚）
+    registerWooCommercePush(entity, "update");
     return entity;
+  }
+
+  /**
+   * 注册事务提交后的 WooCommerce 异步推送。
+   * - 仅在当前线程已开启事务时才注册（保证 afterCommit 在 commit 后才执行）
+   * - 通过新线程执行，避免 WooCommerce API 限流/超时阻塞调用方
+   * - 推送失败只记录日志，不影响主流程
+   */
+  private void registerWooCommercePush(ProductEntity entity, String op) {
+    if (entity == null) {
+      return;
+    }
+    // 仅在有 wooProductId 时才走更新路径；首次创建交给 push 路径
+    if (TransactionSynchronizationManager.isSynchronizationActive()) {
+      final Long productId = entity.getId();
+      final boolean alreadySynced = entity.getWooProductId() != null;
+      TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+        @Override
+        public void afterCommit() {
+          new Thread(() -> {
+            try {
+              if (alreadySynced) {
+                boolean ok = wooCommerceSyncService.updateProductOnWooCommerce(entity);
+                log.info("商品更新后推送到 WooCommerce: productId={}, op={}, success={}",
+                    productId, op, ok);
+              } else {
+                Long wooId = wooCommerceSyncService.pushProductToWooCommerce(entity);
+                log.info("商品创建后推送到 WooCommerce: productId={}, op={}, wooProductId={}",
+                    productId, op, wooId);
+              }
+            } catch (Exception e) {
+              log.error("商品{}后推送到 WooCommerce 失败: productId={}, reason={}",
+                  op, productId, e.getMessage());
+            }
+          }, "woo-product-sync-" + productId).start();
+        }
+      });
+    }
   }
 
   /**
@@ -246,6 +372,11 @@ public class ProductServiceImpl implements ProductService {
           productMapper.updateById(entity);
           count++;
         } else if ("delete".equals(action)) {
+          // 先删除关联的 SKU 和图片，避免外键约束失败
+          productSkuMapper.delete(new LambdaQueryWrapper<ProductSkuEntity>()
+              .eq(ProductSkuEntity::getProductId, id));
+          productImageMapper.delete(new LambdaQueryWrapper<ProductImageEntity>()
+              .eq(ProductImageEntity::getProductId, id));
           productMapper.deleteById(id);
           count++;
         }

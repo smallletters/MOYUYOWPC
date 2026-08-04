@@ -31,11 +31,8 @@ public class LiveRoomServiceImpl implements LiveRoomService {
 
   @Override
   public LiveRoomEntity getDetail(Long id) {
-    LiveRoomEntity entity = liveRoomMapper.selectById(id);
-    if (entity == null) {
-      throw new IllegalArgumentException("直播间不存在");
-    }
-    return entity;
+    // 返回 null 而非抛异常，由 controller 决定如何处理
+    return liveRoomMapper.selectById(id);
   }
 
   @Override

@@ -12,36 +12,39 @@ import java.time.LocalDateTime;
 @TableName("mo_inventory_transfer")
 public class InventoryTransferEntity {
 
-    @TableId(type = IdType.ASSIGN_ID)
-    private Long id;
+  @TableId(type = IdType.ASSIGN_ID)
+  private Long id;
 
-    /** 调拨单号 */
-    private String transferNo;
+  /** SKU ID */
+  private Long skuId;
 
-    /** 调出仓库ID */
-    private Long fromWarehouseId;
+  /** 调出仓库ID */
+  private Long fromWarehouseId;
 
-    /** 调入仓库ID */
-    private Long toWarehouseId;
+  /** 调入仓库ID */
+  private Long toWarehouseId;
 
-    /** 商品ID */
-    private Long productId;
+  /** 调拨数量 */
+  private Integer quantity;
 
-    /** SKU ID */
-    private Long skuId;
+  /** 调拨状态：PENDING/IN_TRANSIT/COMPLETED/REJECTED */
+  private String status;
 
-    /** 调拨数量 */
-    private Integer quantity;
+  /** 操作人ID */
+  private Long operatorId;
 
-    /** 调拨状态：PENDING/PROCESSING/COMPLETED/CANCELLED */
-    private String status;
+  /** 审批人ID */
+  private Long approverId;
 
-    /** 操作人ID */
-    private Long operatorId;
+  /** 调拨原因 */
+  private String reason;
 
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createTime;
+  @TableField(fill = FieldFill.INSERT)
+  private LocalDateTime createTime;
 
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updateTime;
+  @TableField(fill = FieldFill.INSERT_UPDATE)
+  private LocalDateTime updateTime;
+
+  /** 完成时间 */
+  private LocalDateTime completeTime;
 }

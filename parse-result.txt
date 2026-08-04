@@ -1,0 +1,31 @@
+﻿Pages: 71
+Total buttons: 142
+Tested: 142
+Skipped: 0
+Failed: 0
+
+=== Pages with failures ===
+
+=== Top failures ===
+
+=== Page summary (first 20) ===
+  仪表盘: btns=2 tested=2 skip=0 fail=0
+  订单管理: btns=2 tested=2 skip=0 fail=0
+  商品管理: btns=2 tested=2 skip=0 fail=0
+  退款管理: btns=2 tested=2 skip=0 fail=0
+  用户管理: btns=2 tested=2 skip=0 fail=0
+  营销管理: btns=2 tested=2 skip=0 fail=0
+  内容审核: btns=2 tested=2 skip=0 fail=0
+  客服管理: btns=2 tested=2 skip=0 fail=0
+  数据分析: btns=2 tested=2 skip=0 fail=0
+  物流管理: btns=2 tested=2 skip=0 fail=0
+  财务概览: btns=2 tested=2 skip=0 fail=0
+  库存管理: btns=2 tested=2 skip=0 fail=0
+  工单管理: btns=2 tested=2 skip=0 fail=0
+  CMS内容管理: btns=2 tested=2 skip=0 fail=0
+  RBAC权限管理: btns=2 tested=2 skip=0 fail=0
+  推送管理: btns=2 tested=2 skip=0 fail=0
+  活动创建: btns=2 tested=2 skip=0 fail=0
+  投诉管理: btns=2 tested=2 skip=0 fail=0
+  评价管理: btns=2 tested=2 skip=0 fail=0
+  商品分析: btns=2 tested=2 skip=0 fail=0

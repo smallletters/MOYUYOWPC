@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
 import com.moyuyo.common.dto.admin.PageResponse;
 import com.moyuyo.common.dto.admin.ticket.TicketAssignRequest;
@@ -41,40 +42,49 @@ public class AdminTicketController {
       @RequestParam(required = false) String type,
       @RequestParam(required = false) String priority,
       @RequestParam(required = false) String keyword) {
-    List<Map<String, Object>> svcResult = ticketService.listAll(status, type, priority, keyword);
+    // 构建查询条件
+    LambdaQueryWrapper<TicketEntity> wrapper = new LambdaQueryWrapper<>();
+    if (status != null && !status.isEmpty()) {
+      wrapper.eq(TicketEntity::getStatus, status);
+    }
+    if (type != null && !type.isEmpty()) {
+      wrapper.eq(TicketEntity::getType, type);
+    }
+    if (priority != null && !priority.isEmpty()) {
+      wrapper.eq(TicketEntity::getPriority, priority);
+    }
+    if (keyword != null && !keyword.isEmpty()) {
+      wrapper.like(TicketEntity::getTitle, keyword);
+    }
+    wrapper.orderByDesc(TicketEntity::getCreateTime);
 
-    // 字段映射：服务层返回的键 -> 前端期望的键
+    // 使用 MyBatis-Plus Page 进行数据库分页查询
+    Page<TicketEntity> pageResult = ticketMapper.selectPage(new Page<>(page, size), wrapper);
+
     List<Map<String, Object>> records = new ArrayList<>();
-    for (Map<String, Object> item : svcResult) {
+    for (TicketEntity t : pageResult.getRecords()) {
       Map<String, Object> mapped = new LinkedHashMap<>();
-      mapped.put("id", item.get("id"));
-      mapped.put("ticketNo", item.get("ticketNo"));
-      mapped.put("title", item.get("title"));
-      mapped.put("type", item.get("type"));
-      mapped.put("status", item.get("status"));
-      mapped.put("priority", item.get("priority"));
-      mapped.put("user", item.get("user"));
-      mapped.put("createTime", item.get("createTime"));
-      // 新增前端需要的字段
-      mapped.put("assignee", item.getOrDefault("assignee", ""));
-      mapped.put("agent", item.getOrDefault("agentName", "待分配"));
-      mapped.put("responseTime", item.getOrDefault("responseTime", ""));
-      mapped.put("timeout", item.getOrDefault("timeout", false));
-      mapped.put("createTimeFormatted", item.get("createTime") != null ? item.get("createTime").toString() : "");
+      mapped.put("id", t.getId());
+      mapped.put("ticketNo", t.getTicketNo());
+      mapped.put("title", t.getTitle());
+      mapped.put("type", t.getType());
+      mapped.put("status", t.getStatus());
+      mapped.put("priority", t.getPriority());
+      mapped.put("user", t.getUserName() != null ? t.getUserName() : "");
+      mapped.put("createTime", t.getCreateTime());
+      mapped.put("assignee", t.getAgentName() != null ? t.getAgentName() : "");
+      mapped.put("agent", t.getAgentName() != null ? t.getAgentName() : "待分配");
+      mapped.put("responseTime", t.getResponseTime() != null ? t.getResponseTime() : "");
+      mapped.put("timeout", false);
+      mapped.put("createTimeFormatted", t.getCreateTime() != null ? t.getCreateTime().toString() : "");
       records.add(mapped);
     }
 
-    // 分页
-    int total = records.size();
-    int fromIndex = (page - 1) * size;
-    int toIndex = Math.min(fromIndex + size, total);
-    List<Map<String, Object>> pageList = fromIndex < total ? records.subList(fromIndex, toIndex) : new ArrayList<>();
-
     Map<String, Object> result = new LinkedHashMap<>();
-    result.put("records", pageList);
-    result.put("total", total);
-    result.put("page", page);
-    result.put("size", size);
+    result.put("records", records);
+    result.put("total", pageResult.getTotal());
+    result.put("page", pageResult.getCurrent());
+    result.put("size", pageResult.getSize());
     return Result.success(result);
   }
 

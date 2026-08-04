@@ -176,8 +176,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getFinanceOverview, getSettlements, getFinanceRecords } from '../api/admin'
-import api from '../api/index'
+import { getFinanceOverview, getSettlements, getFinanceRecords, createSettlement } from '../api/admin'
 
 // 财务概览KPI数据
 const overviewData = ref({
@@ -244,7 +243,6 @@ function statusClass(status) {
 
 async function handleSettle() {
   try {
-    const { createSettlement } = await import('../api/admin')
     await createSettlement({ amount: overviewData.value.pendingSettlement, status: 'SETTLING', period: new Date().toISOString().slice(0, 10) })
     ElMessage.success('结算请求已提交')
     fetchData()
@@ -256,7 +254,7 @@ async function handleSettle() {
 async function handleExport() {
   try {
     // 调用后端导出API，生成财务报表
-    const res = await api.get('/finance/records', { params: { export: 'excel' } })
+    const res = await getFinanceRecords({ export: 'excel' })
     if (res && res.url) {
       window.open(res.url, '_blank')
       ElMessage.success('报表导出成功')

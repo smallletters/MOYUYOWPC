@@ -22,4 +22,14 @@ public interface AdminDashboardService {
    * 获取7天销售趋势
    */
   List<Map<String, Object>> getSalesTrend();
+
+  /**
+   * 商品分类销售分布
+   */
+  List<Map<String, Object>> getCategoryDistribution();
+
+  /**
+   * 热销商品 Top N
+   */
+  List<Map<String, Object>> getTopProducts(int limit);
 }

@@ -1,1 +1,2 @@
 com.moyuyo.api.config.RestTemplateBootstrapConfig
+com.moyuyo.api.config.ProdConfigValidator

@@ -19,4 +19,14 @@ public interface AdminSatisfactionService {
    * 满意度统计（平均分/分布统计）
    */
   Map<String, Object> stats();
+
+  /**
+   * 新建满意度调查记录
+   */
+  Map<String, Object> createSurvey(Map<String, Object> body);
+
+  /**
+   * 回复评价（回复内容追加到评价记录）
+   */
+  void replySurvey(Long id, String reply);
 }

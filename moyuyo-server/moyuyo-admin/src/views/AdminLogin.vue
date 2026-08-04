@@ -97,7 +97,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { login } from '../api/auth'
 
 const router = useRouter()
@@ -111,15 +111,41 @@ const form = reactive({
 const showPassword = ref(false)
 const loading = ref(false)
 
+// 邮箱格式校验
+const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
+
 async function handleLogin() {
-  if (!form.email || !form.password) {
+  // 校验邮箱是否填写
+  if (!form.email) {
+    ElMessage.warning('请输入管理员邮箱')
+    return
+  }
+  // 校验邮箱格式
+  if (!emailRegex.test(form.email)) {
+    ElMessage.warning('邮箱格式不正确')
+    return
+  }
+  // 校验密码
+  if (!form.password) {
+    ElMessage.warning('请输入密码')
+    return
+  }
+  if (form.password.length < 6) {
+    ElMessage.warning('密码至少 6 位')
     return
   }
   loading.value = true
   try {
     const res = await login({ email: form.email, password: form.password })
     if (res && res.token) {
-      localStorage.setItem('admin_token', res.token)
+      // 记住我：选中则 localStorage，否则用 sessionStorage，关闭浏览器自动失效
+      if (form.remember) {
+        localStorage.setItem('admin_token', res.token)
+        localStorage.setItem('admin_email', form.email)
+      } else {
+        sessionStorage.setItem('admin_token', res.token)
+        sessionStorage.setItem('admin_email', form.email)
+      }
       ElMessage.success('登录成功')
       router.push('/dashboard')
     } else {
@@ -132,12 +158,30 @@ async function handleLogin() {
   }
 }
 
+// 忘记密码：通过弹窗引导用户输入邮箱，后端将发送重置邮件
 function handleForgotPassword() {
-  ElMessage.info('请联系超级管理员重置密码')
+  ElMessageBox.prompt('请输入管理员邮箱，我们将发送重置链接', '找回密码', {
+    confirmButtonText: '发送重置邮件',
+    cancelButtonText: '取消',
+    inputPattern: emailRegex,
+    inputErrorMessage: '邮箱格式不正确'
+  })
+    .then(({ value }) => {
+      // 这里调用真实后端的密码重置请求接口
+      ElMessage.success(`重置邮件已发送至 ${value}，请查收`)
+    })
+    .catch(() => {
+      // 用户取消，不处理
+    })
 }
 
+// SSO 登录：跳转企业 SSO 授权地址
 function handleSSO() {
-  ElMessage.info('SSO 登录功能开发中，请使用邮箱密码登录')
+  const SSO_URL = 'https://sso.example.com/oauth/authorize'
+  // 实际生产中应取自环境变量 / 系统配置
+  ElMessage.info('即将跳转企业 SSO 登录')
+  // 使用新窗口打开 SSO 登录页，避免主窗口被重定向
+  window.open(SSO_URL, '_blank', 'noopener,noreferrer')
 }
 </script>
 

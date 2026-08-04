@@ -26,4 +26,24 @@ public interface AdminUserManageService {
    * 更新用户状态（封禁/解封）
    */
   void updateUserStatus(Long id, String status);
+
+  /**
+   * 创建用户
+   */
+  Map<String, Object> createUser(Map<String, Object> body);
+
+  /**
+   * 更新用户信息
+   */
+  void updateUser(Long id, Map<String, Object> body);
+
+  /**
+   * 删除用户
+   */
+  void deleteUser(Long id);
+
+  /**
+   * 重置用户密码
+   */
+  void resetPassword(Long id, String newPassword);
 }

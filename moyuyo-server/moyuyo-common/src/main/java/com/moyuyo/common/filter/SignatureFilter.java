@@ -30,6 +30,7 @@ public class SignatureFilter implements Filter {
             "/api/admin/auth/login",
             "/api/v1/auth/register",
             "/api/v1/auth/login",
+            "/api/v1/payments/",
             "/api/health",
             "/actuator/"
     );

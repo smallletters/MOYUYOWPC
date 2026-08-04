@@ -1,0 +1,649 @@
+{
+  "total_pages": 71,
+  "total_buttons": 142,
+  "tested_buttons": 142,
+  "skipped_buttons": 0,
+  "failed_interactions": 0,
+  "page_results": [
+    {
+      "path": "/dashboard",
+      "name": "仪表盘",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/orders",
+      "name": "订单管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/products",
+      "name": "商品管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/refund",
+      "name": "退款管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/users",
+      "name": "用户管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/marketing",
+      "name": "营销管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/reviews",
+      "name": "内容审核",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/cs",
+      "name": "客服管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/analytics",
+      "name": "数据分析",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/logistics",
+      "name": "物流管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/finance",
+      "name": "财务概览",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/inventory",
+      "name": "库存管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/ticket",
+      "name": "工单管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/cms",
+      "name": "CMS内容管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/rbac",
+      "name": "RBAC权限管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/push-manage",
+      "name": "推送管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/campaign",
+      "name": "活动创建",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/complaint",
+      "name": "投诉管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/review-manage",
+      "name": "评价管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/product-analysis",
+      "name": "商品分析",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/product-report",
+      "name": "商品报表",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/product-review",
+      "name": "商品评价审核",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/price-manage",
+      "name": "价格管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/price-history",
+      "name": "价格历史",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/order-export",
+      "name": "订单导出",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/order-intercept",
+      "name": "订单拦截",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/order-monitor",
+      "name": "订单监控",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/order-price-modify",
+      "name": "订单改价",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/order-print",
+      "name": "订单打印",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/sms",
+      "name": "短信管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/sensitive-words",
+      "name": "敏感词管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/funnel",
+      "name": "漏斗分析",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/rfm",
+      "name": "RFM分析",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/risk-control",
+      "name": "风控管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/risk-rule-engine",
+      "name": "风控规则引擎",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/realtime-screen",
+      "name": "实时大屏",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/user-profile",
+      "name": "用户画像",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/ab-test",
+      "name": "A/B测试",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/app-version",
+      "name": "应用版本管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/batch-import",
+      "name": "批量导入",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/knowledge-base",
+      "name": "知识库",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/search-analysis",
+      "name": "搜索分析",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/traffic-analysis",
+      "name": "流量分析",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/satisfaction",
+      "name": "满意度管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/gdpr",
+      "name": "GDPR合规",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/audit-log",
+      "name": "审计日志",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/product-approval",
+      "name": "商品审核",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/coupon-manage",
+      "name": "优惠券管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/flash-sale-manage",
+      "name": "秒杀管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/points-manage",
+      "name": "积分管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/blacklist",
+      "name": "黑名单管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/tariff",
+      "name": "关税管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/risk-alert",
+      "name": "风控告警",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/cs-sessions",
+      "name": "客服会话",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/order-tags",
+      "name": "订单标签",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/inventory-transfer",
+      "name": "库存调拨",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/merge-package",
+      "name": "合包管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/split-package",
+      "name": "分包裹",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/carrier-compare",
+      "name": "承运商对比",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/overseas-warehouse",
+      "name": "海外仓管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/warehouse-manage",
+      "name": "仓库管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/clearance",
+      "name": "清关管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/customs",
+      "name": "海关管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/settlement",
+      "name": "结算管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/system-config",
+      "name": "系统配置",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/operation-log",
+      "name": "运营日志",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/live-manage",
+      "name": "直播管理",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/marketing-effect",
+      "name": "营销效果",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/shipping-strategy",
+      "name": "发货策略",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/settings",
+      "name": "系统设置",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    },
+    {
+      "path": "/products/add",
+      "name": "新增商品",
+      "total_buttons": 2,
+      "tested": 2,
+      "skipped": 0,
+      "failed": 0,
+      "failures": []
+    }
+  ],
+  "all_failures": []
+}

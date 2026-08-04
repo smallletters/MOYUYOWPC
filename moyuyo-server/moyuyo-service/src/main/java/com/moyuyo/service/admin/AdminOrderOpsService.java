@@ -27,6 +27,11 @@ public interface AdminOrderOpsService {
   Map<String, Object> createExportTask(Map<String, Object> body);
 
   /**
+   * 构建导出文件内容（CSV 字节）
+   */
+  byte[] buildExportFile(String exportId);
+
+  /**
    * 批量发货
    */
   void batchShip(List<Long> ids, String carrier, String trackingNo);

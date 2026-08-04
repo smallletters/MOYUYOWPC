@@ -38,3 +38,30 @@ payment:
     client-secret: mock_client_secret
     webhook-id: mock_webhook_id
     mode: sandbox
+    allowed-origins: https://moyuyo.com
+
+# RocketMQ 测试环境：关闭，避免 OrderTimeoutConsumer 启动失败阻塞 Spring 上下文
+rocketmq:
+  enabled: false
+
+# 测试环境限流器配置：设置极高阈值，避免集成测试触发限流降级
+# 降级方法返回 Result.error(429, ...) 时 HTTP 状态码仍为 200，会干扰测试断言
+resilience4j:
+  ratelimiter:
+    instances:
+      authLogin:
+        limit-refresh-period: 1m
+        limit-for-period: 100000
+        timeout-duration: 0
+      orderCreate:
+        limit-refresh-period: 1m
+        limit-for-period: 100000
+        timeout-duration: 0
+      paymentApi:
+        limit-refresh-period: 1m
+        limit-for-period: 100000
+        timeout-duration: 0
+      seckillApi:
+        limit-refresh-period: 1m
+        limit-for-period: 100000
+        timeout-duration: 0

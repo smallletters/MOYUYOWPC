@@ -134,9 +134,24 @@ public class AdminContentReviewServiceImpl implements AdminContentReviewService 
         .between(ContentReviewEntity::getReviewTime, todayStart, todayEnd);
     long todayReviewed = contentReviewMapper.selectCount(todayWrapper);
 
+    // 计算 SLA 剩余时间：基于最早一条待审核记录的提交时间，默认 SLA 为 4 小时
+    String slaRemaining = "4h";
+    if (pendingCount > 0) {
+      LambdaQueryWrapper<ContentReviewEntity> oldestWrapper = new LambdaQueryWrapper<>();
+      oldestWrapper.eq(ContentReviewEntity::getStatus, "PENDING")
+          .orderByAsc(ContentReviewEntity::getCreateTime)
+          .last("LIMIT 1");
+      ContentReviewEntity oldest = contentReviewMapper.selectOne(oldestWrapper);
+      if (oldest != null && oldest.getCreateTime() != null) {
+        long remainingMinutes = 240 - java.time.Duration.between(oldest.getCreateTime(), LocalDateTime.now()).toMinutes();
+        if (remainingMinutes < 0) remainingMinutes = 0;
+        slaRemaining = remainingMinutes + "min";
+      }
+    }
+
     stats.put("pendingCount", pendingCount);
     stats.put("todayReviewed", todayReviewed);
-    stats.put("slaRemaining", "4h");
+    stats.put("slaRemaining", slaRemaining);
     stats.put("reviewMode", "机审+人审");
     return stats;
   }

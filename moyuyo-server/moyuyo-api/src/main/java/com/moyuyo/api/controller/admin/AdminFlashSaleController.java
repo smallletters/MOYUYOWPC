@@ -21,11 +21,14 @@ public class AdminFlashSaleController {
 
   @Operation(summary = "秒杀活动列表")
   @GetMapping("/list")
-  public Result<Map<String, Object>> list() {
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("total", (long) adminFlashSaleService.listAll().size());
-    result.put("records", adminFlashSaleService.listAll());
-    return Result.success(result);
+  public Result<Map<String, Object>> list(
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(defaultValue = "15") int size) {
+    try {
+      return Result.success(adminFlashSaleService.listPage(page, size));
+    } catch (Exception e) {
+      return Result.error("查询秒杀活动列表失败: " + e.getMessage());
+    }
   }
 
   @Operation(summary = "创建秒杀活动")
@@ -58,14 +61,37 @@ public class AdminFlashSaleController {
     return Result.success(result);
   }
 
+  @Operation(summary = "秒杀活动详情")
+  @GetMapping("/{id}")
+  public Result<Map<String, Object>> detail(@PathVariable Long id) {
+    try {
+      Map<String, Object> data = adminFlashSaleService.getDetail(id);
+      if (data == null) {
+        return Result.error(404, "秒杀活动不存在");
+      }
+      return Result.success(data);
+    } catch (Exception e) {
+      return Result.error("查询秒杀详情失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "秒杀活动统计")
+  @GetMapping("/stats")
+  public Result<Map<String, Object>> stats() {
+    try {
+      return Result.success(adminFlashSaleService.getStats());
+    } catch (Exception e) {
+      return Result.error("查询秒杀统计失败: " + e.getMessage());
+    }
+  }
+
   @Operation(summary = "修改秒杀活动状态")
   @PutMapping("/{id}/status")
   public Result<Map<String, Object>> updateStatus(@PathVariable Long id,
-                                                  @RequestParam(required = false) Boolean active,
-                                                  @RequestBody(required = false) Map<String, Object> body) {
-    // 支持从 RequestParam 或 RequestBody 中获取 active 值
-    Boolean activeValue = active;
-    if (activeValue == null && body != null && body.containsKey("active")) {
+                                                  @RequestBody Map<String, Object> body) {
+    // 从 RequestBody 中获取 active 值
+    Boolean activeValue = null;
+    if (body != null && body.containsKey("active")) {
       Object activeObj = body.get("active");
       if (activeObj instanceof Boolean) {
         activeValue = (Boolean) activeObj;
@@ -73,7 +99,11 @@ public class AdminFlashSaleController {
         activeValue = Boolean.parseBoolean((String) activeObj);
       }
     }
-    adminFlashSaleService.updateStatus(id, activeValue != null ? activeValue.toString() : "false");
+    if (activeValue == null) {
+      return Result.error("缺少 active 参数");
+    }
+    // 服务层期望 "ACTIVE"/"UPCOMING" 才设置为启用
+    adminFlashSaleService.updateStatus(id, Boolean.TRUE.equals(activeValue) ? "ACTIVE" : "INACTIVE");
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("id", id);
     result.put("active", activeValue);

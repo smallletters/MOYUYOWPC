@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -27,6 +28,9 @@ public class LotteryServiceImpl implements LotteryService {
 
   private final LotteryMapper lotteryMapper;
   private final LotteryRecordMapper lotteryRecordMapper;
+
+  // 使用密码学安全的随机数生成器，避免 Random 的可预测性
+  private static final Random SECURE_RANDOM = new SecureRandom();
 
   @Override
   public List<LotteryEntity> list() {
@@ -57,7 +61,7 @@ public class LotteryServiceImpl implements LotteryService {
     record.setLotteryId(lotteryId);
     record.setUsedFreeSpin(usedFree);
     record.setPointsSpent(usedFree ? 0 : lottery.getPointsCost());
-    boolean won = lottery.draw(new Random());
+    boolean won = lottery.draw(SECURE_RANDOM);
     record.setWon(won);
     record.setPrizeName(won ? lottery.getPrizeName() : "未中奖");
     lotteryRecordMapper.insert(record);

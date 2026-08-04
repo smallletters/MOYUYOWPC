@@ -85,6 +85,25 @@ public class AdminPointsServiceImpl implements AdminPointsService {
   }
 
   @Override
+  public void updateActivity(String id, Map<String, Object> data) {
+    // 按活动type(id)查找所有关联记录并更新备注等信息
+    List<PointsLogEntity> logs = pointsLogMapper.selectList(
+        new LambdaQueryWrapper<PointsLogEntity>()
+            .eq(PointsLogEntity::getType, id));
+    if (logs.isEmpty()) {
+      return;
+    }
+    String newName = (String) data.get("name");
+    String newRemark = newName != null ? newName : "";
+    if (data.get("startTime") != null) newRemark += " | " + data.get("startTime");
+    if (data.get("endTime") != null) newRemark += " ~ " + data.get("endTime");
+    for (PointsLogEntity log : logs) {
+      log.setRemark(newRemark);
+      pointsLogMapper.updateById(log);
+    }
+  }
+
+  @Override
   public void deleteActivity(String type) {
     // 按类型删除对应的积分流水记录
     LambdaQueryWrapper<PointsLogEntity> wrapper = new LambdaQueryWrapper<PointsLogEntity>()
@@ -156,5 +175,48 @@ public class AdminPointsServiceImpl implements AdminPointsService {
     stats.put("totalSpent", totalSpent);
     stats.put("balance", totalEarned - totalSpent);
     return stats;
+  }
+
+  @Override
+  public Map<String, Object> getUserPoints(Long userId) {
+    // 查询用户所有积分流水
+    List<PointsLogEntity> logs = pointsLogMapper.selectList(
+        new LambdaQueryWrapper<PointsLogEntity>()
+            .eq(PointsLogEntity::getUserId, userId)
+            .orderByDesc(PointsLogEntity::getCreatedAt));
+
+    // 计算余额：所有 changeValue 相加
+    int balance = logs.stream()
+        .mapToInt(log -> log.getChangeValue() != null ? log.getChangeValue() : 0)
+        .sum();
+
+    // 构建历史记录列表
+    List<Map<String, Object>> records = new ArrayList<>();
+    for (PointsLogEntity log : logs) {
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("id", log.getId());
+      item.put("userId", log.getUserId());
+      item.put("changeValue", log.getChangeValue());
+      item.put("type", log.getType());
+      item.put("remark", log.getRemark());
+      item.put("createdAt", log.getCreatedAt());
+      records.add(item);
+    }
+
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("userId", userId);
+    result.put("balance", balance);
+    result.put("records", records);
+    return result;
+  }
+
+  @Override
+  public void adjustPoints(Long userId, int amount, String reason) {
+    PointsLogEntity log = new PointsLogEntity();
+    log.setUserId(userId);
+    log.setChangeValue(amount);
+    log.setType("ADJUST");
+    log.setRemark(reason);
+    pointsLogMapper.insert(log);
   }
 }

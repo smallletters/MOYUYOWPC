@@ -15,6 +15,9 @@
       </div>
       <div class="page-header-actions">
         <button class="btn btn-primary" @click="handleShip">确认发货</button>
+        <button class="btn btn-outline" :disabled="syncingWoo" @click="handleSyncToWoo">
+          {{ syncingWoo ? '同步中…' : '同步WC' }}
+        </button>
         <button class="btn btn-outline" @click="showAddressModal = true">修改地址</button>
         <button class="btn btn-outline" @click="showNoteModal = true">备注</button>
       </div>
@@ -58,21 +61,21 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="item in orderItems" :key="item.sku">
-                  <td>
-                    <div class="product-cell">
-                      <div class="product-thumb">{{ item.name.charAt(0) }}</div>
-                      <div>
-                        <div class="product-name">{{ item.name }}</div>
-                      </div>
+              <tr v-for="item in orderItems" :key="item.id">
+                <td>
+                  <div class="product-cell">
+                    <div class="product-thumb">{{ thumbChar(item) }}</div>
+                    <div>
+                      <div class="product-name">{{ item.name || item.productName || '商品' }}</div>
                     </div>
-                  </td>
-                  <td>{{ item.sku }}</td>
-                  <td><span class="money">¥{{ item.price }}</span></td>
-                  <td>{{ item.qty }}</td>
-                  <td><span class="money">¥{{ item.subtotal }}</span></td>
-                </tr>
-              </tbody>
+                  </div>
+                </td>
+                <td>{{ item.sku || item.skuSpec || '-' }}</td>
+                <td><span class="money">¥{{ formatMoney(item.price) }}</span></td>
+                <td>{{ item.qty ?? item.quantity ?? 0 }}</td>
+                <td><span class="money">¥{{ formatMoney(item.subtotal) }}</span></td>
+              </tr>
+            </tbody>
             </table>
           </div>
         </div>
@@ -117,6 +120,7 @@
             <div class="info-row"><span class="info-label">支付时间</span><span class="info-value">{{ orderInfo.payTime }}</span></div>
             <div class="info-row"><span class="info-label">支付方式</span><span class="info-value">{{ orderInfo.payMethod }}</span></div>
             <div class="info-row"><span class="info-label">订单来源</span><span class="info-value">{{ orderInfo.source }}</span></div>
+            <div class="info-row"><span class="info-label">WC同步</span><span class="info-value">{{ wooOrderLabel }}</span></div>
             <div class="info-row"><span class="info-label">订单状态</span><span class="tag" :class="orderInfo.statusClass">{{ orderInfo.status }}</span></div>
           </div>
         </div>
@@ -190,10 +194,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import api from '../api/index'
 import { ElMessage } from 'element-plus'
+import { getOrderDetail, shipOrder, updateOrderAddress, updateOrderRemark, syncOrderToWoo } from '../api/admin'
 
 const router = useRouter()
 const route = useRoute()
@@ -236,11 +240,109 @@ const showAddressModal = ref(false)
 const showNoteModal = ref(false)
 const noteContent = ref('')
 
+// WC 同步状态
+const syncingWoo = ref(false)
+const wooOrderId = ref(null)
+const syncStatus = ref(null)
+
+// WC 同步展示文本：未同步 / 同步失败 / 已同步#id
+const wooOrderLabel = computed(() => {
+  if (wooOrderId.value) return `已同步 #${wooOrderId.value}`
+  if (syncStatus.value === -1) return '同步失败'
+  return '未同步'
+})
+
 const addressForm = reactive({
   name: '',
   phone: '',
   address: ''
 })
+
+// 商品名首字符（带容错：空值/非字符串时返回 ?）
+function thumbChar(item) {
+  const name = item?.name || item?.productName || item?.skuSpec || item?.sku
+  if (!name) return '?'
+  const s = String(name)
+  return s.charAt ? s.charAt(0) : '?'
+}
+
+// 根据订单状态生成进度步骤
+function buildProgressSteps(data) {
+  const status = String(data.status || '').toUpperCase()
+  // 定义所有可能的步骤
+  const allSteps = [
+    { key: 'created', label: '已下单', date: data.createTime || '' },
+    { key: 'paid', label: '已支付', date: data.paidAt || data.payTime || '' },
+    { key: 'shipped', label: '已发货', date: data.shippedAt || data.shipTime || '' },
+    { key: 'completed', label: '已完成', date: data.completedAt || data.doneTime || '' }
+  ]
+  // 根据状态确定当前步骤索引
+  const statusStepMap = {
+    'PENDING_PAY': 0, 'PAID': 1, 'PENDING_SHIP': 1,
+    'SHIPPED': 2, 'IN_TRANSIT': 2,
+    'DELIVERED': 3, 'RECEIVED': 3, 'COMPLETED': 3,
+    'CANCELLED': -1, 'REFUNDING': -1, 'REFUNDED': -1
+  }
+  const stepIndex = statusStepMap[status]
+  if (stepIndex === undefined || stepIndex < 0) {
+    return { steps: allSteps, current: 0 }
+  }
+  return { steps: allSteps, current: stepIndex }
+}
+
+// 根据状态映射 statusClass
+function mapStatusClass(status) {
+  const s = String(status || '').toUpperCase()
+  const map = {
+    'PENDING_PAY': 'tag tag-yellow', 'PAID': 'tag tag-blue',
+    'PENDING_SHIP': 'tag tag-blue', 'SHIPPED': 'tag tag-blue',
+    'IN_TRANSIT': 'tag tag-blue', 'COMPLETED': 'tag tag-green',
+    'DELIVERED': 'tag tag-green', 'RECEIVED': 'tag tag-green',
+    'CANCELLED': 'tag tag-gray', 'REFUNDING': 'tag tag-orange',
+    'REFUNDED': 'tag tag-gray'
+  }
+  return map[s] || 'tag tag-gray'
+}
+
+// 状态英文码 → 中文标签（与 mapStatusClass 保持一致）
+function statusLabel(status) {
+  const s = String(status || '').toUpperCase()
+  const map = {
+    'PENDING_PAY': '待支付', 'PAID': '已支付', 'PENDING_SHIP': '待发货',
+    'SHIPPED': '已发货', 'IN_TRANSIT': '运输中', 'COMPLETED': '已完成',
+    'DELIVERED': '已送达', 'RECEIVED': '已收货', 'CANCELLED': '已取消',
+    'REFUNDING': '退款中', 'REFUNDED': '已退款'
+  }
+  return map[s] || status || '-'
+}
+
+// 生成基本操作日志（基于已有数据时间字段）
+function buildOperationLogs(data) {
+  const logs = []
+  if (data.createTime) {
+    logs.push({ action: '订单创建', operator: '系统', time: data.createTime, status: 'done' })
+  }
+  if (data.paidAt || data.payTime) {
+    logs.push({ action: '支付完成', operator: '系统', time: data.paidAt || data.payTime, status: 'done' })
+  }
+  if (data.shippedAt || data.shipTime) {
+    logs.push({ action: '订单发货', operator: '管理员', time: data.shippedAt || data.shipTime, status: 'done' })
+  }
+  if (data.completedAt || data.doneTime) {
+    logs.push({ action: '订单完成', operator: '系统', time: data.completedAt || data.doneTime, status: 'done' })
+  }
+  // 如果状态为售后相关
+  const status = String(data.status || '').toUpperCase()
+  if (status === 'REFUNDING' || status === 'REFUNDED') {
+    logs.push({ action: '发起退款', operator: '系统', time: data.updatedAt || data.refundTime || '', status: 'current' })
+  }
+  return logs
+}
+function formatMoney(v) {
+  const n = Number(v)
+  if (isNaN(n)) return '0.00'
+  return n.toFixed(2)
+}
 
 // 获取订单详情
 async function fetchOrderDetail() {
@@ -248,28 +350,36 @@ async function fetchOrderDetail() {
   if (!id) return
   loading.value = true
   try {
-    const res = await api.get(`/orders/${id}`)
+    const res = await getOrderDetail(id)
     if (res) {
       const data = res
       orderNo.value = data.orderNo || data.no || ''
-      currentStep.value = data.currentStep || 0
-      progressSteps.value = data.progressSteps || []
+      // 使用辅助函数生成进度步骤
+      const progress = buildProgressSteps(data)
+      currentStep.value = progress.current
+      progressSteps.value = progress.steps
       orderItems.value = data.items || []
-      operationLogs.value = data.operationLogs || []
+      // 使用辅助函数生成操作日志（优先使用后端返回的日志）
+      operationLogs.value = data.operationLogs && data.operationLogs.length > 0
+        ? data.operationLogs
+        : buildOperationLogs(data)
 
       priceSummary.goodsAmount = data.goodsAmount || '0.00'
       priceSummary.freight = data.freight || '0.00'
-      priceSummary.discount = data.discount || '0.00'
-      priceSummary.total = data.total || '0.00'
+      // 后端返回的字段：couponDiscount + pointsDiscount
+      const discount = Number(data.couponDiscount || 0) + Number(data.pointsDiscount || 0)
+      priceSummary.discount = discount > 0 ? discount.toFixed(2) : (data.discount || '0.00')
+      // 实付金额优先用 payAmount
+      priceSummary.total = data.payAmount || data.total || '0.00'
 
       Object.assign(orderInfo, {
         orderNo: data.orderNo || data.no || '',
         createTime: data.createTime || '',
-        payTime: data.payTime || '',
-        payMethod: data.payMethod || '',
+        payTime: data.paidAt || data.payTime || '',
+        payMethod: data.payChannel || data.payMethod || '',
         source: data.source || '',
-        status: data.status || '',
-        statusClass: data.statusClass || ''
+        status: statusLabel(data.status),
+        statusClass: mapStatusClass(data.status)
       })
 
       Object.assign(shippingInfo, {
@@ -283,6 +393,10 @@ async function fetchOrderDetail() {
         phone: data.receiverPhone || data.shippingPhone || '',
         address: data.receiverAddress || data.shippingAddress || ''
       })
+
+      // WC 同步状态字段
+      wooOrderId.value = data.wooOrderId || null
+      syncStatus.value = typeof data.syncStatus === 'number' ? data.syncStatus : null
     }
   } catch (err) {
     console.error('获取订单详情失败:', err)
@@ -292,11 +406,35 @@ async function fetchOrderDetail() {
   }
 }
 
+// 手动重推当前订单到 WooCommerce
+async function handleSyncToWoo() {
+  const id = route.params.id
+  if (!id || syncingWoo.value) return
+  syncingWoo.value = true
+  try {
+    const res = await syncOrderToWoo(id)
+    const data = res?.data || res
+    if (data?.wooOrderId) {
+      ElMessage.success(`订单已同步到 WC，wooOrderId=${data.wooOrderId}`)
+      wooOrderId.value = data.wooOrderId
+      syncStatus.value = data.syncStatus ?? 0
+    } else {
+      ElMessage.warning(`同步失败：${data?.message || '未知原因'}`)
+      syncStatus.value = -1
+    }
+  } catch (err) {
+    console.error('同步订单到 WC 失败:', err)
+    ElMessage.error('同步订单到 WC 失败：' + (err?.message || ''))
+  } finally {
+    syncingWoo.value = false
+  }
+}
+
 async function handleShip() {
   const id = route.params.id
   if (!id) return
   try {
-    await api.put(`/orders/${id}/ship`)
+    await shipOrder(id)
     ElMessage.success('订单已确认发货')
     await fetchOrderDetail()
   } catch (err) {
@@ -313,7 +451,7 @@ async function confirmAddress() {
   const id = route.params.id
   if (!id) return
   try {
-    await api.put(`/orders/${id}/address`, {
+    await updateOrderAddress(id, {
       shippingName: addressForm.name,
       shippingPhone: addressForm.phone,
       shippingAddress: addressForm.address
@@ -330,7 +468,7 @@ async function confirmNote() {
   const id = route.params.id
   if (!id) return
   try {
-    await api.put(`/orders/${id}/remark`, { remark: noteContent.value })
+    await updateOrderRemark(id, { remark: noteContent.value })
     showNoteModal.value = false
     ElMessage.success('备注已保存')
   } catch (err) {
@@ -362,7 +500,7 @@ onMounted(() => {
 }
 
 .page-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-800);
   margin: 0;

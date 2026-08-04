@@ -24,9 +24,9 @@
         <el-table-column prop="reason" label="原因" min-width="200" show-overflow-tooltip />
         <el-table-column prop="createdBy" label="操作人" width="120" />
         <el-table-column prop="createdAt" label="创建时间" width="170" />
-        <el-table-column prop="expireAt" label="过期时间" width="170">
+        <el-table-column prop="expireTime" label="过期时间" width="170">
           <template #default="{ row }">
-            {{ row.expireAt || '永久' }}
+            {{ row.expireTime || '永久' }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="160" fixed="right">
@@ -55,7 +55,7 @@
           <el-input v-model="form.reason" type="textarea" :rows="3" placeholder="请输入拉黑原因" />
         </el-form-item>
         <el-form-item label="过期时间">
-          <el-date-picker v-model="form.expireAt" type="datetime" placeholder="留空为永久" />
+          <el-date-picker v-model="form.expireTime" type="datetime" placeholder="留空为永久" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -70,6 +70,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getBlacklistList, createBlacklist, updateBlacklist, deleteBlacklist } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 const tableData = ref([])
 const typeFilter = ref('')
@@ -81,7 +82,7 @@ const form = reactive({
   type: 'user',
   value: '',
   reason: '',
-  expireAt: null,
+  expireTime: null,
 })
 
 const valuePlaceholder = computed(() => {
@@ -103,7 +104,7 @@ function resetForm() {
   form.type = 'user'
   form.value = ''
   form.reason = ''
-  form.expireAt = null
+  form.expireTime = null
 }
 
 async function loadData() {
@@ -111,7 +112,7 @@ async function loadData() {
     const params = {}
     if (typeFilter.value) params.type = typeFilter.value
     const res = await getBlacklistList(params)
-    tableData.value = res.records || res || []
+    tableData.value = toArray(res)
   } catch (e) {
     ElMessage.error('获取黑名单列表失败')
   }
@@ -130,7 +131,7 @@ function handleEdit(row) {
   form.type = row.type
   form.value = row.value
   form.reason = row.reason
-  form.expireAt = row.expireAt
+  form.expireTime = row.expireTime
   dialogVisible.value = true
 }
 
@@ -161,7 +162,10 @@ async function handleDelete(row) {
     ElMessage.success('已删除')
     await loadData()
   } catch (e) {
-    // 用户取消不处理
+    // 用户取消或关闭对话框时不提示，接口失败才提示
+    if (e !== 'cancel' && e !== 'close') {
+      ElMessage.error('删除失败')
+    }
   }
 }
 

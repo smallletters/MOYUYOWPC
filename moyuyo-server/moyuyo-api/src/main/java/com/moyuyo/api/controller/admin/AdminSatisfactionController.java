@@ -32,4 +32,17 @@ public class AdminSatisfactionController {
       @RequestParam(defaultValue = "15") int size) {
     return Result.success(adminSatisfactionService.listAll(score, category, page, size));
   }
+
+  @Operation(summary = "新建满意度调查")
+  @PostMapping("/surveys")
+  public Result<Map<String, Object>> createSurvey(@RequestBody Map<String, Object> body) {
+    return Result.success(adminSatisfactionService.createSurvey(body));
+  }
+
+  @Operation(summary = "回复评价")
+  @PutMapping("/{id}/reply")
+  public Result<Map<String, Object>> reply(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+    adminSatisfactionService.replySurvey(id, (String) body.getOrDefault("reply", ""));
+    return Result.success(Map.of("id", id, "message", "回复成功"));
+  }
 }

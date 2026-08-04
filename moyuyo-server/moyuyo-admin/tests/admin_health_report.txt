@@ -1,0 +1,378 @@
+扫描时间: 2026-07-27 10:01:51
+通过: 0 失败: 125 总计: 125
+
+[401] /api/admin/analysis/funnel  (AdminAnalysisController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/analysis/rfm  (AdminAnalysisController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/analysis/search  (AdminAnalysisController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/analysis/traffic  (AdminAnalysisController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/app-version/list  (AdminAppVersionController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/audit-log/list  (AdminAuditLogController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/audit-log/stats  (AdminAuditLogController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/auth/me  (AdminAuthController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/batch-import/1/errors  (AdminBatchImportController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/batch-import/records  (AdminBatchImportController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/batch-import/template/1  (AdminBatchImportController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/blacklist/list  (AdminBlacklistController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/cms/1  (AdminCmsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/cms/list  (AdminCmsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/complaint/1  (AdminComplaintController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/complaint/list  (AdminComplaintController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/content-review/1  (AdminContentReviewController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/content-review/list  (AdminContentReviewController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/content-review/stats  (AdminContentReviewController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/content-review/trend  (AdminContentReviewController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/coupons/list  (AdminCouponController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/coupons/stats  (AdminCouponController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/crm/1/cs-detail  (AdminCrmController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/crm/cs-performance  (AdminCrmController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/crm/realtime  (AdminCrmController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/crm/realtime-order-flow  (AdminCrmController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/crm/realtime/top-products  (AdminCrmController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/cs-sessions/1  (AdminCsSessionController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/cs-sessions/list  (AdminCsSessionController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/cs-sessions/stats  (AdminCsSessionController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/dashboard/recent-orders  (AdminDashboardController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/dashboard/sales-trend  (AdminDashboardController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/dashboard/stats  (AdminDashboardController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/finance/overview  (AdminFinanceController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/finance/records  (AdminFinanceController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/finance/settlements  (AdminFinanceController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/finance/settlements/1  (AdminFinanceController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/flash-sales/list  (AdminFlashSaleController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/gdpr/consent-records  (AdminGdprController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/gdpr/data-requests  (AdminGdprController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/gdpr/policy  (AdminGdprController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/inventory-transfer/list  (AdminInventoryTransferController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/inventory/alerts  (AdminInventoryController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/inventory/list  (AdminInventoryController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/inventory/overview  (AdminInventoryController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/knowledge-base/1  (AdminKnowledgeBaseController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/knowledge-base/list  (AdminKnowledgeBaseController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/live/rooms  (AdminLiveController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/live/rooms/1  (AdminLiveController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/logistics/carriers  (AdminLogisticsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/logistics/clearance  (AdminLogisticsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/logistics/customs  (AdminLogisticsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/logistics/kpi  (AdminLogisticsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/logistics/merge-packages  (AdminLogisticsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/logistics/overseas  (AdminLogisticsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/logistics/packages  (AdminLogisticsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/logistics/shipping-strategies  (AdminLogisticsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/logistics/split-packages  (AdminLogisticsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/logistics/warehouses  (AdminLogisticsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/marketing/ab-tests  (CampaignMarketingController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/marketing/campaigns  (CampaignMarketingController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/marketing/campaigns/1  (CampaignMarketingController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/marketing/effects  (CampaignMarketingController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/order-ops/export  (AdminOrderOpsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/order-ops/export/download/1  (AdminOrderOpsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/order-ops/intercept/list  (AdminOrderOpsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/order-ops/monitor/data  (AdminOrderOpsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/order-ops/monitor/list  (AdminOrderOpsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/order-ops/price-modify/list  (AdminOrderOpsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/order-ops/print/list  (AdminOrderOpsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/order-ops/stats  (AdminOrderOpsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/order-tags/1/tags  (AdminOrderTagController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/order-tags/list  (AdminOrderTagController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/orders/1  (AdminOrderController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/orders/list  (AdminOrderController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/points/activities  (AdminPointsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/points/logs  (AdminPointsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/points/stats  (AdminPointsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/price/history  (AdminPriceController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/price/list  (AdminPriceController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/product-analysis/kpi  (AdminProductAnalysisController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/product-analysis/list  (AdminProductAnalysisController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/product-analysis/report  (AdminProductAnalysisController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/product-approval/1  (AdminProductApprovalController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/product-approval/list  (AdminProductApprovalController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/products/1  (AdminProductController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/products/list  (AdminProductController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/push/records  (AdminPushController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/push/scheduled  (AdminPushController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/push/stats  (AdminPushController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/rbac/permissions  (AdminRbacController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/rbac/roles  (AdminRbacController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/rbac/roles/1/permissions  (AdminRbacController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/rbac/users  (AdminRbacController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/refunds/list  (AdminRefundController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/refunds/reason-distribution  (AdminRefundController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/refunds/stats  (AdminRefundController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/review/list  (AdminReviewController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/risk-alert/configs  (AdminRiskAlertController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/risk-alert/history  (AdminRiskAlertController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/risk/event-stats  (AdminRiskController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/risk/events  (AdminRiskController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/risk/rules  (AdminRiskController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/satisfaction/list  (AdminSatisfactionController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/satisfaction/stats  (AdminSatisfactionController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/sensitive/categories  (AdminSensitiveWordController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/sensitive/list  (AdminSensitiveWordController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/settings/payment-methods  (AdminSettingsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/sms/records  (AdminSmsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/sms/stats  (AdminSmsController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/system-info/info  (AdminSystemController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/system-info/security-config  (AdminSystemController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/system/config  (AdminSystemConfigController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/system/logs  (AdminSystemConfigController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/tariff/calculate  (AdminTariffController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/tariff/configs  (AdminTariffController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/ticket/1  (AdminTicketController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/ticket/list  (AdminTicketController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/ticket/stats  (AdminTicketController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/user-profile/1  (AdminUserProfileController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/user-profile/1/behaviors  (AdminUserProfileController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/user-profile/1/orders  (AdminUserProfileController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/users/1  (AdminUserController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/users/list  (AdminUserController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+
+[401] /api/admin/users/stats  (AdminUserController)
+  {"code":401,"message":"Missing signature headers (X-Sign, X-Timestamp, X-Nonce)","data":null,"traceId":null}
+

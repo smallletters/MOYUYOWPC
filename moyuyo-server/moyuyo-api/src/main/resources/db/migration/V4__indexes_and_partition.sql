@@ -1,20 +1,10 @@
 -- ============================================================
 -- V4__indexes_and_partition.sql
--- 性能优化：补充索引 + 订单表按时间分区（可选）
+-- 性能优化：补充索引
+-- 订单表按月分区已迁移到 V20260804_02（生产环境必备）
 -- ============================================================
-
--- 1. 订单按月分区（生产环境建议启用，单表 > 1000 万行时考虑）
--- 注意：分区前需确认表已存在且无外键引用
--- ALTER TABLE mo_order PARTITION BY RANGE (TO_DAYS(create_time)) (
---   PARTITION p202606 VALUES LESS THAN (TO_DAYS('2026-07-01')),
---   PARTITION p202607 VALUES LESS THAN (TO_DAYS('2026-08-01')),
---   PARTITION p202608 VALUES LESS THAN (TO_DAYS('2026-09-01')),
---   PARTITION p202609 VALUES LESS THAN (TO_DAYS('2026-10-01')),
---   PARTITION p202610 VALUES LESS THAN (TO_DAYS('2026-11-01')),
---   PARTITION p202611 VALUES LESS THAN (TO_DAYS('2026-12-01')),
---   PARTITION p202612 VALUES LESS THAN (TO_DAYS('2027-01-01')),
---   PARTITION p_max    VALUES LESS THAN MAXVALUE
--- );
+-- ⚠️ 订单表分区已移至 V20260804_02，本迁移仅保留补充索引。
+-- 部署生产前务必评估是否启用分区，单表超过 1000 万行时强烈建议。
 
 -- 2. 复合索引补充
 CREATE INDEX idx_product_on_sale_category ON mo_product(on_sale, category_id);

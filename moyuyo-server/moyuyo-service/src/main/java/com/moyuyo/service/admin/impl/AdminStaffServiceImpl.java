@@ -1,10 +1,12 @@
 package com.moyuyo.service.admin.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.dao.admin.entity.AdminUserEntity;
 import com.moyuyo.dao.admin.mapper.AdminUserMapper;
 import com.moyuyo.service.admin.AdminStaffService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,9 +19,14 @@ import java.util.Map;
 /**
  * 管理后台管理员用户服务实现
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminStaffServiceImpl implements AdminStaffService {
+
+  /** 系统允许的合法角色编码白名单（与 Flyway 种子数据保持一致） */
+  private static final java.util.Set<String> ALLOWED_ROLES = java.util.Set.of(
+      "SUPER_ADMIN", "OPERATOR", "CUSTOMER_SVC", "FINANCE", "VIEWER");
 
   private final AdminUserMapper adminUserMapper;
 
@@ -33,16 +40,20 @@ public class AdminStaffServiceImpl implements AdminStaffService {
 
     List<Map<String, Object>> list = new ArrayList<>();
     for (AdminUserEntity user : entities) {
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("id", user.getId());
-      item.put("name", user.getName());
-      item.put("email", user.getEmail());
-      item.put("role", user.getRole());
-      item.put("status", user.getStatus());
-      item.put("lastLogin", user.getLastLoginTime());
-      list.add(item);
+      list.add(toItem(user));
     }
     return list;
+  }
+
+  @Override
+  public Map<String, Object> listUsersPage(int page, int size) {
+    Page<AdminUserEntity> pageObj = new Page<>(page, size);
+    Page<AdminUserEntity> result = adminUserMapper.selectPage(pageObj,
+        new LambdaQueryWrapper<AdminUserEntity>().orderByDesc(AdminUserEntity::getCreateTime));
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("total", result.getTotal());
+    data.put("records", result.getRecords().stream().map(this::toItem).collect(java.util.stream.Collectors.toList()));
+    return data;
   }
 
   @Override
@@ -53,20 +64,32 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     String name = (String) body.get("name");
     String email = (String) body.get("email");
     String password = (String) body.get("password");
+    String targetRole = (String) body.get("role");
     if (isBlank(username) || isBlank(name) || isBlank(email) || isBlank(password)) {
       Map<String, Object> error = new LinkedHashMap<>();
       error.put("message", "用户名、姓名、邮箱和密码不能为空");
       return error;
     }
 
+    // 1. 角色白名单校验：防止注入任意角色编码
+    if (targetRole == null || targetRole.isBlank() || !ALLOWED_ROLES.contains(targetRole)) {
+      throw new IllegalArgumentException("无效的角色编码，可选值：" + ALLOWED_ROLES);
+    }
+    // 2. 权限提升防护：非 SUPER_ADMIN 操作者禁止创建 SUPER_ADMIN 账号（最小权限原则）
+    String operatorRole = com.moyuyo.common.security.UserContextHolder.getRole();
+    if ("SUPER_ADMIN".equals(targetRole) && !"SUPER_ADMIN".equals(operatorRole)) {
+      log.warn("非超级管理员 [{}] 尝试创建 SUPER_ADMIN 账号 [{}]，已拒绝", operatorRole, username);
+      throw new org.springframework.security.access.AccessDeniedException("无权创建超级管理员账号");
+    }
+
     AdminUserEntity entity = new AdminUserEntity();
     entity.setUsername(username);
     entity.setName(name);
     entity.setEmail(email);
-    entity.setRole((String) body.get("role"));
+    entity.setRole(targetRole);
 
-    // 密码使用 BCrypt 加密存储
-    BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+    // 密码使用 BCrypt 加密存储，强度设为 12（生产推荐值）
+    BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
     entity.setPassword(encoder.encode(password));
 
     entity.setStatus("ACTIVE");
@@ -107,7 +130,26 @@ public class AdminStaffServiceImpl implements AdminStaffService {
       entity.setEmail(email);
     }
     if (body.containsKey("role")) {
-      entity.setRole((String) body.get("role"));
+      String newRole = (String) body.get("role");
+      // 1. 角色白名单校验
+      if (newRole == null || newRole.isBlank() || !ALLOWED_ROLES.contains(newRole)) {
+        throw new IllegalArgumentException("无效的角色编码，可选值：" + ALLOWED_ROLES);
+      }
+      // 2. 权限提升防护：非 SUPER_ADMIN 操作者不得将任何人角色变更为 SUPER_ADMIN
+      String operatorRole = com.moyuyo.common.security.UserContextHolder.getRole();
+      boolean upgradingToSuper = "SUPER_ADMIN".equals(newRole) && !"SUPER_ADMIN".equals(entity.getRole());
+      if (upgradingToSuper && !"SUPER_ADMIN".equals(operatorRole)) {
+        log.warn("非超级管理员 [{}] 尝试将管理员 [{}] 角色从 [{}] 提升为 SUPER_ADMIN，已拒绝",
+            operatorRole, entity.getUsername(), entity.getRole());
+        throw new org.springframework.security.access.AccessDeniedException("无权提升为超级管理员角色");
+      }
+      // 3. 降级防护：非 SUPER_ADMIN 操作者不得修改 SUPER_ADMIN 的角色（防止移除权限后重建提权）
+      if ("SUPER_ADMIN".equals(entity.getRole()) && !"SUPER_ADMIN".equals(operatorRole)) {
+        log.warn("非超级管理员 [{}] 尝试修改 SUPER_ADMIN [{}] 的角色为 [{}]，已拒绝",
+            operatorRole, entity.getUsername(), newRole);
+        throw new org.springframework.security.access.AccessDeniedException("无权修改超级管理员的角色");
+      }
+      entity.setRole(newRole);
     }
     if (body.containsKey("status")) {
       entity.setStatus((String) body.get("status"));
@@ -116,7 +158,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
       String password = (String) body.get("password");
       // 密码可以为空，表示不修改密码
       if (password != null && !password.isEmpty()) {
-        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
         entity.setPassword(encoder.encode(password));
       }
     }
@@ -135,5 +177,54 @@ public class AdminStaffServiceImpl implements AdminStaffService {
    */
   private boolean isBlank(String str) {
     return str == null || str.trim().isEmpty();
+  }
+
+  /** 将管理员实体转为前端展示用Map */
+  private Map<String, Object> toItem(AdminUserEntity user) {
+    Map<String, Object> item = new LinkedHashMap<>();
+    item.put("id", user.getId());
+    item.put("name", user.getName());
+    item.put("email", user.getEmail());
+    item.put("role", user.getRole());
+    item.put("status", user.getStatus());
+    item.put("lastLogin", user.getLastLoginTime());
+    return item;
+  }
+
+  @Override
+  @Transactional
+  public void deleteUser(Long id) {
+    AdminUserEntity entity = adminUserMapper.selectById(id);
+    if (entity == null) {
+      throw new IllegalArgumentException("管理员不存在");
+    }
+    // 删除超级管理员仅允许 SUPER_ADMIN 操作
+    String operatorRole = com.moyuyo.common.security.UserContextHolder.getRole();
+    if ("SUPER_ADMIN".equals(entity.getRole()) && !"SUPER_ADMIN".equals(operatorRole)) {
+      log.warn("非超级管理员 [{}] 尝试删除 SUPER_ADMIN [{}]，已拒绝", operatorRole, entity.getUsername());
+      throw new org.springframework.security.access.AccessDeniedException("无权删除超级管理员");
+    }
+    adminUserMapper.deleteById(id);
+  }
+
+  @Override
+  @Transactional
+  public void resetPassword(Long id, String newPassword) {
+    if (newPassword == null || newPassword.trim().isEmpty()) {
+      throw new IllegalArgumentException("新密码不能为空");
+    }
+    AdminUserEntity entity = adminUserMapper.selectById(id);
+    if (entity == null) {
+      throw new IllegalArgumentException("管理员不存在");
+    }
+    // 重置超级管理员密码仅允许 SUPER_ADMIN 操作
+    String operatorRole = com.moyuyo.common.security.UserContextHolder.getRole();
+    if ("SUPER_ADMIN".equals(entity.getRole()) && !"SUPER_ADMIN".equals(operatorRole)) {
+      log.warn("非超级管理员 [{}] 尝试重置 SUPER_ADMIN [{}] 的密码，已拒绝", operatorRole, entity.getUsername());
+      throw new org.springframework.security.access.AccessDeniedException("无权重置超级管理员的密码");
+    }
+    BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
+    entity.setPassword(encoder.encode(newPassword));
+    adminUserMapper.updateById(entity);
   }
 }

@@ -1,0 +1,1023 @@
+{
+  "summary": {
+    "total": 69,
+    "passed": 69,
+    "failed": 0,
+    "warnings": 43
+  },
+  "results": [
+    {
+      "path": "/dashboard",
+      "name": "仪表盘",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/orders",
+      "name": "订单管理",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索",
+        "重置"
+      ],
+      "missing_buttons": [
+        "导出"
+      ],
+      "clicked_buttons": [
+        "搜索",
+        "重置"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/products",
+      "name": "商品管理",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索",
+        "重置",
+        "新增"
+      ],
+      "missing_buttons": [
+        "导出"
+      ],
+      "clicked_buttons": [
+        "搜索",
+        "重置"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/users",
+      "name": "用户管理",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索",
+        "重置"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索",
+        "重置"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/marketing",
+      "name": "营销管理",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/reviews",
+      "name": "内容审核",
+      "status": "PASS",
+      "found_buttons": [
+        "通过"
+      ],
+      "missing_buttons": [
+        "搜索",
+        "拒绝"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/cs",
+      "name": "客服管理",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/analytics",
+      "name": "数据分析",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/logistics",
+      "name": "物流管理",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/finance",
+      "name": "财务概览",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/inventory",
+      "name": "库存管理",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索",
+        "新增"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/ticket",
+      "name": "工单管理",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/cms",
+      "name": "CMS内容管理",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索",
+        "新增"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/rbac",
+      "name": "RBAC权限管理",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索",
+        "新增"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/push-manage",
+      "name": "推送管理",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索",
+        "新增"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/campaign",
+      "name": "活动创建",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "保存",
+        "取消"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/complaint",
+      "name": "投诉管理",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/review-manage",
+      "name": "评价管理",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/product-analysis",
+      "name": "商品分析",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/product-report",
+      "name": "商品报表",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索",
+        "重置",
+        "导出报表"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索",
+        "重置"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/product-review",
+      "name": "商品评价审核",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/price-manage",
+      "name": "价格管理",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [
+        "新增"
+      ],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/price-history",
+      "name": "价格历史",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/order-export",
+      "name": "订单导出",
+      "status": "PASS",
+      "found_buttons": [
+        "导出",
+        "搜索"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/order-intercept",
+      "name": "订单拦截",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/order-monitor",
+      "name": "订单监控",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/order-price-modify",
+      "name": "订单改价",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/order-print",
+      "name": "订单打印",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索",
+        "打印"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/sms",
+      "name": "短信管理",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索",
+        "发送"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/sensitive-words",
+      "name": "敏感词管理",
+      "status": "PASS",
+      "found_buttons": [
+        "新增"
+      ],
+      "missing_buttons": [
+        "搜索"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/funnel",
+      "name": "漏斗分析",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/rfm",
+      "name": "RFM分析",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/risk-control",
+      "name": "风控管理",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/risk-rule-engine",
+      "name": "风控规则引擎",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索",
+        "新增"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/realtime-screen",
+      "name": "实时大屏",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/user-profile",
+      "name": "用户画像",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/ab-test",
+      "name": "A/B测试",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索",
+        "新增"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/app-version",
+      "name": "应用版本管理",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索",
+        "新增"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/batch-import",
+      "name": "批量导入",
+      "status": "PASS",
+      "found_buttons": [
+        "导入",
+        "下载模板"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/knowledge-base",
+      "name": "知识库",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [
+        "新增"
+      ],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/search-analysis",
+      "name": "搜索分析",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/traffic-analysis",
+      "name": "流量分析",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/satisfaction",
+      "name": "满意度管理",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/gdpr",
+      "name": "GDPR合规",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索",
+        "导出"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/audit-log",
+      "name": "审计日志",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索",
+        "重置"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索",
+        "重置"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/product-approval",
+      "name": "商品审核",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索",
+        "通过",
+        "拒绝"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/coupon-manage",
+      "name": "优惠券管理",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索",
+        "新增"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/flash-sale-manage",
+      "name": "秒杀管理",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索",
+        "新增"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/points-manage",
+      "name": "积分管理",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/blacklist",
+      "name": "黑名单管理",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索",
+        "新增"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/tariff",
+      "name": "关税管理",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索",
+        "新增"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/risk-alert",
+      "name": "风控告警",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/cs-sessions",
+      "name": "客服会话",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/order-tags",
+      "name": "订单标签",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索",
+        "新增"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/inventory-transfer",
+      "name": "库存调拨",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索",
+        "新增"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/merge-package",
+      "name": "合包管理",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [
+        "新增"
+      ],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/split-package",
+      "name": "分包裹",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [
+        "新增"
+      ],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/carrier-compare",
+      "name": "承运商对比",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/overseas-warehouse",
+      "name": "海外仓管理",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [
+        "新增"
+      ],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/warehouse-manage",
+      "name": "仓库管理",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [
+        "新增"
+      ],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/clearance",
+      "name": "清关管理",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/customs",
+      "name": "海关管理",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/settlement",
+      "name": "结算管理",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/system-config",
+      "name": "系统配置",
+      "status": "PASS",
+      "found_buttons": [
+        "保存"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/operation-log",
+      "name": "运营日志",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/live-manage",
+      "name": "直播管理",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [
+        "新增"
+      ],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/marketing-effect",
+      "name": "营销效果",
+      "status": "PASS",
+      "found_buttons": [],
+      "missing_buttons": [
+        "搜索"
+      ],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/shipping-strategy",
+      "name": "发货策略",
+      "status": "PASS",
+      "found_buttons": [
+        "搜索"
+      ],
+      "missing_buttons": [
+        "新增"
+      ],
+      "clicked_buttons": [
+        "搜索"
+      ],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    },
+    {
+      "path": "/settings",
+      "name": "系统设置",
+      "status": "PASS",
+      "found_buttons": [
+        "保存"
+      ],
+      "missing_buttons": [],
+      "clicked_buttons": [],
+      "click_errors": [],
+      "page_errors": [],
+      "console_errors": []
+    }
+  ]
+}

@@ -1,0 +1,524 @@
+{
+  "timestamp": "2026-07-29 15:48:23",
+  "endpoints_stats": [
+    {
+      "controller": "AdminAnalysisController",
+      "GET": 4,
+      "POST": 0,
+      "PUT": 0,
+      "DELETE": 0,
+      "total": 4
+    },
+    {
+      "controller": "AdminAppVersionController",
+      "GET": 1,
+      "POST": 3,
+      "PUT": 1,
+      "DELETE": 1,
+      "total": 6
+    },
+    {
+      "controller": "AdminAuditLogController",
+      "GET": 2,
+      "POST": 0,
+      "PUT": 0,
+      "DELETE": 0,
+      "total": 2
+    },
+    {
+      "controller": "AdminAuthController",
+      "GET": 1,
+      "POST": 2,
+      "PUT": 0,
+      "DELETE": 0,
+      "total": 3
+    },
+    {
+      "controller": "AdminBatchImportController",
+      "GET": 3,
+      "POST": 1,
+      "PUT": 0,
+      "DELETE": 1,
+      "total": 5
+    },
+    {
+      "controller": "AdminBlacklistController",
+      "GET": 1,
+      "POST": 2,
+      "PUT": 1,
+      "DELETE": 1,
+      "total": 5
+    },
+    {
+      "controller": "AdminCmsController",
+      "GET": 2,
+      "POST": 1,
+      "PUT": 3,
+      "DELETE": 1,
+      "total": 7
+    },
+    {
+      "controller": "AdminComplaintController",
+      "GET": 2,
+      "POST": 3,
+      "PUT": 1,
+      "DELETE": 0,
+      "total": 6
+    },
+    {
+      "controller": "AdminContentReviewController",
+      "GET": 4,
+      "POST": 0,
+      "PUT": 4,
+      "DELETE": 1,
+      "total": 9
+    },
+    {
+      "controller": "AdminCouponController",
+      "GET": 3,
+      "POST": 1,
+      "PUT": 1,
+      "DELETE": 1,
+      "total": 6
+    },
+    {
+      "controller": "AdminCrmController",
+      "GET": 5,
+      "POST": 0,
+      "PUT": 0,
+      "DELETE": 0,
+      "total": 5
+    },
+    {
+      "controller": "AdminCsSessionController",
+      "GET": 3,
+      "POST": 0,
+      "PUT": 0,
+      "DELETE": 0,
+      "total": 3
+    },
+    {
+      "controller": "AdminDashboardController",
+      "GET": 5,
+      "POST": 0,
+      "PUT": 0,
+      "DELETE": 0,
+      "total": 5
+    },
+    {
+      "controller": "AdminFinanceController",
+      "GET": 4,
+      "POST": 1,
+      "PUT": 1,
+      "DELETE": 1,
+      "total": 7
+    },
+    {
+      "controller": "AdminFlashSaleController",
+      "GET": 3,
+      "POST": 1,
+      "PUT": 2,
+      "DELETE": 1,
+      "total": 7
+    },
+    {
+      "controller": "AdminGdprController",
+      "GET": 3,
+      "POST": 0,
+      "PUT": 1,
+      "DELETE": 0,
+      "total": 4
+    },
+    {
+      "controller": "AdminInventoryController",
+      "GET": 5,
+      "POST": 1,
+      "PUT": 1,
+      "DELETE": 0,
+      "total": 7
+    },
+    {
+      "controller": "AdminInventoryTransferController",
+      "GET": 1,
+      "POST": 1,
+      "PUT": 3,
+      "DELETE": 0,
+      "total": 5
+    },
+    {
+      "controller": "AdminKnowledgeBaseController",
+      "GET": 2,
+      "POST": 1,
+      "PUT": 1,
+      "DELETE": 1,
+      "total": 5
+    },
+    {
+      "controller": "AdminLiveController",
+      "GET": 2,
+      "POST": 1,
+      "PUT": 2,
+      "DELETE": 1,
+      "total": 6
+    },
+    {
+      "controller": "AdminLogisticsController",
+      "GET": 10,
+      "POST": 9,
+      "PUT": 8,
+      "DELETE": 8,
+      "total": 35
+    },
+    {
+      "controller": "AdminOrderController",
+      "GET": 4,
+      "POST": 0,
+      "PUT": 3,
+      "DELETE": 1,
+      "total": 8
+    },
+    {
+      "controller": "AdminOrderOpsController",
+      "GET": 8,
+      "POST": 6,
+      "PUT": 1,
+      "DELETE": 0,
+      "total": 15
+    },
+    {
+      "controller": "AdminOrderTagController",
+      "GET": 2,
+      "POST": 2,
+      "PUT": 1,
+      "DELETE": 1,
+      "total": 6
+    },
+    {
+      "controller": "AdminPointsController",
+      "GET": 5,
+      "POST": 2,
+      "PUT": 1,
+      "DELETE": 1,
+      "total": 9
+    },
+    {
+      "controller": "AdminPriceController",
+      "GET": 2,
+      "POST": 1,
+      "PUT": 2,
+      "DELETE": 1,
+      "total": 6
+    },
+    {
+      "controller": "AdminProductAnalysisController",
+      "GET": 3,
+      "POST": 0,
+      "PUT": 0,
+      "DELETE": 0,
+      "total": 3
+    },
+    {
+      "controller": "AdminProductApprovalController",
+      "GET": 2,
+      "POST": 0,
+      "PUT": 3,
+      "DELETE": 0,
+      "total": 5
+    },
+    {
+      "controller": "AdminProductController",
+      "GET": 4,
+      "POST": 2,
+      "PUT": 2,
+      "DELETE": 1,
+      "total": 9
+    },
+    {
+      "controller": "AdminPushController",
+      "GET": 4,
+      "POST": 5,
+      "PUT": 1,
+      "DELETE": 1,
+      "total": 11
+    },
+    {
+      "controller": "AdminRbacController",
+      "GET": 5,
+      "POST": 3,
+      "PUT": 3,
+      "DELETE": 2,
+      "total": 13
+    },
+    {
+      "controller": "AdminRefundController",
+      "GET": 4,
+      "POST": 0,
+      "PUT": 3,
+      "DELETE": 0,
+      "total": 7
+    },
+    {
+      "controller": "AdminReviewController",
+      "GET": 3,
+      "POST": 2,
+      "PUT": 2,
+      "DELETE": 1,
+      "total": 8
+    },
+    {
+      "controller": "AdminRiskAlertController",
+      "GET": 2,
+      "POST": 1,
+      "PUT": 1,
+      "DELETE": 1,
+      "total": 5
+    },
+    {
+      "controller": "AdminRiskController",
+      "GET": 3,
+      "POST": 1,
+      "PUT": 2,
+      "DELETE": 1,
+      "total": 7
+    },
+    {
+      "controller": "AdminSatisfactionController",
+      "GET": 2,
+      "POST": 0,
+      "PUT": 0,
+      "DELETE": 0,
+      "total": 2
+    },
+    {
+      "controller": "AdminSensitiveWordController",
+      "GET": 2,
+      "POST": 2,
+      "PUT": 1,
+      "DELETE": 1,
+      "total": 6
+    },
+    {
+      "controller": "AdminSettingsController",
+      "GET": 1,
+      "POST": 0,
+      "PUT": 0,
+      "DELETE": 0,
+      "total": 1
+    },
+    {
+      "controller": "AdminSmsController",
+      "GET": 2,
+      "POST": 1,
+      "PUT": 0,
+      "DELETE": 0,
+      "total": 3
+    },
+    {
+      "controller": "AdminSpaController",
+      "GET": 5,
+      "POST": 0,
+      "PUT": 0,
+      "DELETE": 0,
+      "total": 5
+    },
+    {
+      "controller": "AdminSystemConfigController",
+      "GET": 2,
+      "POST": 0,
+      "PUT": 1,
+      "DELETE": 0,
+      "total": 3
+    },
+    {
+      "controller": "AdminSystemController",
+      "GET": 3,
+      "POST": 1,
+      "PUT": 2,
+      "DELETE": 0,
+      "total": 6
+    },
+    {
+      "controller": "AdminTariffController",
+      "GET": 2,
+      "POST": 2,
+      "PUT": 1,
+      "DELETE": 1,
+      "total": 6
+    },
+    {
+      "controller": "AdminTicketController",
+      "GET": 3,
+      "POST": 1,
+      "PUT": 2,
+      "DELETE": 0,
+      "total": 6
+    },
+    {
+      "controller": "AdminUserController",
+      "GET": 3,
+      "POST": 2,
+      "PUT": 2,
+      "DELETE": 1,
+      "total": 8
+    },
+    {
+      "controller": "AdminUserProfileController",
+      "GET": 3,
+      "POST": 0,
+      "PUT": 0,
+      "DELETE": 0,
+      "total": 3
+    },
+    {
+      "controller": "CampaignMarketingController",
+      "GET": 4,
+      "POST": 2,
+      "PUT": 2,
+      "DELETE": 1,
+      "total": 9
+    },
+    {
+      "controller": "合计",
+      "GET": 149,
+      "POST": 64,
+      "PUT": 66,
+      "DELETE": 33,
+      "total": 312
+    }
+  ],
+  "migrations": {
+    "count": 40,
+    "files": [
+      "V0__init_base.sql",
+      "V1__init_user_and_oauth.sql",
+      "V20260716_01__new_modules_tables.sql",
+      "V20260717_01__admin_new_tables.sql",
+      "V20260717_02__demo_seed_data.sql",
+      "V20260718_01__admin_logistics_tables.sql",
+      "V20260718_02__admin_logistics_seed.sql",
+      "V20260718_03__marketing_tables.sql",
+      "V20260718_04__marketing_seed.sql",
+      "V20260718_05__search_visit_tables.sql",
+      "V20260718_06__search_visit_seed.sql",
+      "V20260718_07__system_tables.sql",
+      "V20260718_08__system_seed.sql",
+      "V20260720_01__admin_missing_modules.sql",
+      "V20260720_02__fix_admin_rbac_tables.sql",
+      "V20260721_03__fix_order_columns.sql",
+      "V20260721_04__add_more_order_columns.sql",
+      "V20260722_01__fix_table_conflicts.sql",
+      "V20260722_02__create_cms_content.sql",
+      "V20260722_03__create_ticket_table.sql",
+      "V20260722_05__fix_missing_tables_v2.sql",
+      "V20260723_01__add_update_time_columns.sql",
+      "V20260723_02__order_operations.sql",
+      "V20260723_03__export_task_fields.sql",
+      "V20260723_04__add_campaign_type.sql",
+      "V20260727_01__fix_unknown_columns.sql",
+      "V20260727_02__fix_more_unknown_columns.sql",
+      "V20260727_03__fix_cs_session_columns.sql",
+      "V20260729_01__add_coupon_code.sql",
+      "V20260729_02__create_flash_sale_order.sql",
+      "V20260729_03__sync_mo_coupon_columns.sql",
+      "V20260729_04__add_min_order_amount.sql",
+      "V20260729_05__sync_order_tag_and_inventory.sql",
+      "V2__init_business_tables.sql",
+      "V3__seed_data.sql",
+      "V4__indexes_and_partition.sql",
+      "V5__init_brand_and_ip.sql",
+      "V6__init_pet_hub.sql",
+      "V7__init_extra_tables.sql",
+      "V8__init_product_review.sql"
+    ]
+  },
+  "admin_views": {
+    "count": 79,
+    "names": [
+      "AbTest",
+      "AdminLayout",
+      "AdminLogin",
+      "Analytics",
+      "AppVersion",
+      "AuditLog",
+      "BatchImport",
+      "BlacklistManage",
+      "CampaignCreate",
+      "CarrierCompare",
+      "ClearanceManage",
+      "CmsManage",
+      "ComplaintHandle",
+      "ComplaintManage",
+      "ContentReview",
+      "ContentReviewDetail",
+      "CouponManage",
+      "CsSessions",
+      "CustomerService",
+      "CustomsManage",
+      "Dashboard",
+      "FinanceManage",
+      "FlashSaleManage",
+      "FunnelAnalysis",
+      "GdprManage",
+      "InventoryManage",
+      "InventoryTransfer",
+      "KnowledgeBase",
+      "LiveManage",
+      "LogisticsList",
+      "MarketingEffect",
+      "MarketingList",
+      "MergePackage",
+      "NotFound",
+      "OperationLog",
+      "OrderDetail",
+      "OrderExport",
+      "OrderIntercept",
+      "OrderList",
+      "OrderMonitor",
+      "OrderPriceModify",
+      "OrderPrint",
+      "OrderTags",
+      "OverseasWarehouse",
+      "PointsManage",
+      "PriceHistory",
+      "PriceManage",
+      "ProductAnalysis",
+      "ProductApproval",
+      "ProductEdit",
+      "ProductList",
+      "ProductReport",
+      "ProductReviewManage",
+      "PushDetail",
+      "PushManage",
+      "RbacManage",
+      "RealtimeScreen",
+      "RefundManage",
+      "ReviewManage",
+      "RfmAnalysis",
+      "RiskAlert",
+      "RiskControl",
+      "RiskRuleEngine",
+      "SatisfactionManage",
+      "SearchAnalysis",
+      "SensitiveWords",
+      "SettlementDetail",
+      "SettlementManage",
+      "ShippingStrategy",
+      "SmsManage",
+      "SplitPackage",
+      "SystemConfig",
+      "SystemSettings",
+      "TariffManage",
+      "TicketManage",
+      "TrafficAnalysis",
+      "UserList",
+      "UserProfile",
+      "WarehouseManage"
+    ]
+  },
+  "health": {
+    "passed": 307,
+    "failed": 0,
+    "total": 307,
+    "failures": []
+  }
+}

@@ -80,11 +80,12 @@ class OrderFlowTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("查询不存在订单应返回404")
+    @DisplayName("查询不存在订单应返回业务错误码400")
     void orderFlow_GetOrderDetail_NotFound() throws Exception {
+        // 项目统一风格：业务错误 HTTP 200 + body code 区分
         mockMvc.perform(get("/api/v1/orders/{id}", 999999L)
                         .header("Authorization", validToken))
-                .andExpect(status().is4xxClientError())
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(400));
     }
 

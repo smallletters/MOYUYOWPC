@@ -54,6 +54,16 @@ public class AdminAppVersionServiceImpl implements AdminAppVersionService {
   @Override
   public void create(AppVersionEntity entity) {
     entity.setStatus("DRAFT");
+    // 兜底：app_type/version_code/version_name 是 NOT NULL 必填字段
+    if (entity.getAppType() == null || entity.getAppType().isEmpty()) {
+      entity.setAppType("ANDROID");
+    }
+    if (entity.getVersionCode() == null) {
+      entity.setVersionCode(1);
+    }
+    if (entity.getVersionName() == null || entity.getVersionName().isEmpty()) {
+      entity.setVersionName("1.0.0");
+    }
     appVersionMapper.insert(entity);
   }
 

@@ -115,6 +115,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useStatusTag } from '../composables/useStatusTag'
 import { getCsSessionList, getCsSessionDetail, getCsSessionStats } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 const tableData = ref([])
 const stats = ref({})
@@ -139,7 +140,7 @@ async function loadData() {
     if (searchForm.userId) params.userId = searchForm.userId
     if (searchForm.status) params.status = searchForm.status
     const res = await getCsSessionList(params)
-    tableData.value = res.records || res || []
+    tableData.value = toArray(res)
   } catch (e) {
     ElMessage.error('获取会话列表失败')
   }
@@ -180,6 +181,6 @@ onMounted(() => { loadData(); loadStats() })
 .page-header h2 { font-size: 20px; font-weight: 700; color: var(--text-800); margin: 0; }
 .header-actions { display: flex; gap: 8px; }
 .stat-item { display: flex; flex-direction: column; align-items: center; }
-.stat-label { font-size: 13px; color: #909399; margin-bottom: 4px; }
+.stat-label { font-size: 13px; color: var(--text-400); margin-bottom: 4px; }
 .stat-value { font-size: 24px; font-weight: 700; color: var(--text-800); }
 </style>

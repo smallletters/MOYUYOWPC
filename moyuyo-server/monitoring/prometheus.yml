@@ -1,0 +1,35 @@
+# Prometheus 抓取配置示例（仅供参考，由运维根据实际部署调整）
+# 使用方法：
+#   prometheus --config.file=prometheus.yml
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# 告警规则加载
+rule_files:
+  - "alerts/*.yml"
+
+# 告警发送目标（按需启用 Alertmanager）
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+
+scrape_configs:
+  # MOYUYO 后端 JVM / HTTP / HikariCP / RocketMQ 等指标
+  - job_name: 'moyuyo-server'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      # 同主机抓取，仅本机回环
+      - targets: ['localhost:8080']
+        labels:
+          service: 'moyuyo-server'
+          env: 'prod'
+
+  # Prometheus 自身指标
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

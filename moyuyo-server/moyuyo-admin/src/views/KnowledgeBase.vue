@@ -110,6 +110,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getKnowledgeList, createKnowledge, updateKnowledge, deleteKnowledge } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 // ---- 数据 ----
 const allData = ref([]) // 原始全量数据
@@ -151,7 +152,7 @@ const categoryOptions = ['常见问题', '操作指南', '政策法规']
 async function loadData() {
   try {
     const res = await getKnowledgeList()
-    const list = (res && res.records) || res || []
+    const list = toArray(res)
     allData.value = list
   } catch (err) {
     console.error('获取知识库数据失败', err)

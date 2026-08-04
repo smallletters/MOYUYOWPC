@@ -1,0 +1,21 @@
+扫描时间: 2026-07-29 11:53:54
+通过: 129 失败: 6 总计: 135
+
+[500] /api/admin/coupons/1  (AdminCouponController)
+  {"code":500,"message":"服务器内部错误","data":null,"traceId":null}
+
+[500] /api/admin/coupons/list  (AdminCouponController)
+  {"code":500,"message":"服务器内部错误","data":null,"traceId":null}
+
+[500] /api/admin/flash-sales/list  (AdminFlashSaleController)
+  {"code":500,"message":"服务器内部错误","data":null,"traceId":null}
+
+[405] /api/admin/flash-sales/stats  (AdminFlashSaleController)
+  {"code":405,"message":"不支持的请求方法: GET","data":null,"traceId":null}
+
+[500] /api/admin/points/users/1/points  (AdminPointsController)
+  {"code":500,"message":"服务器内部错误","data":null,"traceId":null}
+
+[500] /api/admin/rbac/users  (AdminRbacController)
+  {"code":500,"message":"服务器内部错误","data":null,"traceId":null}
+

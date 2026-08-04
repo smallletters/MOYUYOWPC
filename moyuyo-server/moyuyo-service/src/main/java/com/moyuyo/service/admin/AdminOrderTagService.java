@@ -1,7 +1,10 @@
 package com.moyuyo.service.admin;
 
+import com.moyuyo.common.dto.admin.ordertag.OrderTagCreateRequest;
+import com.moyuyo.common.dto.admin.ordertag.OrderTagUpdateRequest;
+import com.moyuyo.common.dto.admin.ordertag.OrderTagVO;
+
 import java.util.List;
-import java.util.Map;
 
 /**
  * 管理后台订单标签服务
@@ -11,17 +14,17 @@ public interface AdminOrderTagService {
   /**
    * 标签列表
    */
-  List<Map<String, Object>> listAll();
+  List<OrderTagVO> listAll();
 
   /**
    * 创建标签
    */
-  void create(Map<String, Object> data);
+  void create(OrderTagCreateRequest request);
 
   /**
    * 更新标签
    */
-  void update(Map<String, Object> data);
+  void update(OrderTagUpdateRequest request);
 
   /**
    * 删除标签
@@ -36,5 +39,5 @@ public interface AdminOrderTagService {
   /**
    * 获取订单标签
    */
-  List<Map<String, Object>> getOrderTags(Long orderId);
+  List<OrderTagVO> getOrderTags(Long orderId);
 }

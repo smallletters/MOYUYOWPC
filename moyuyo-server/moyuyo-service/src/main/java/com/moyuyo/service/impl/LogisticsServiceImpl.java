@@ -31,7 +31,11 @@ public class LogisticsServiceImpl implements LogisticsService {
     public LogisticsEntity shipOrder(Long orderId, String carrier, String trackingNumber) {
         OrderEntity order = orderMapper.selectById(orderId);
         if (order == null) throw new IllegalArgumentException("订单不存在");
-        if (!OrderStatusEnum.PAID.name().equals(order.getStatus())) throw new IllegalStateException("订单未支付，不能发货");
+        // 已支付（PAID）或待发货（PENDING_SHIP）状态均可发货
+        String status = order.getStatus();
+        if (!OrderStatusEnum.PAID.name().equals(status) && !OrderStatusEnum.PENDING_SHIP.name().equals(status)) {
+            throw new IllegalStateException("订单未支付或不在待发货状态，不能发货");
+        }
 
         LogisticsEntity existing = logisticsMapper.selectOne(
                 new LambdaQueryWrapper<LogisticsEntity>()
@@ -76,21 +80,29 @@ public class LogisticsServiceImpl implements LogisticsService {
     @Override
     @Transactional
     public void confirmReceived(Long orderId) {
-        LogisticsEntity logistics = logisticsMapper.selectOne(
-                new LambdaQueryWrapper<LogisticsEntity>()
-                        .eq(LogisticsEntity::getOrderId, orderId));
-        if (logistics != null) {
-            logistics.setReceivedAt(LocalDateTime.now());
-            logisticsMapper.updateById(logistics);
-        }
+        LocalDateTime now = LocalDateTime.now();
 
-        OrderEntity order = orderMapper.selectById(orderId);
-        if (order != null) {
-            order.setStatus(OrderStatusEnum.RECEIVED.name());
-            order.setReceivedTime(LocalDateTime.now());
-            orderMapper.updateById(order);
+        // 使用条件更新避免 TOCTOU 竞态条件：仅在未收货时才更新 receivedAt
+        int logisticsUpdated = logisticsMapper.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<LogisticsEntity>()
+                        .eq(LogisticsEntity::getOrderId, orderId)
+                        .isNull(LogisticsEntity::getReceivedAt)
+                        .set(LogisticsEntity::getReceivedAt, now));
+
+        // 使用条件更新：仅在已发货状态时才变更为已收货，防止状态错乱
+        int orderUpdated = orderMapper.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<OrderEntity>()
+                        .eq(OrderEntity::getId, orderId)
+                        .eq(OrderEntity::getStatus, OrderStatusEnum.SHIPPED.name())
+                        .set(OrderEntity::getStatus, OrderStatusEnum.RECEIVED.name())
+                        .set(OrderEntity::getReceivedTime, now));
+
+        // 只要任一表有更新就记录日志，重复调用不抛出异常（幂等）
+        if (logisticsUpdated > 0 || orderUpdated > 0) {
+            log.info("Delivery confirmed: orderId={}", orderId);
+        } else {
+            log.warn("Delivery confirm skipped (already received or not shipped): orderId={}", orderId);
         }
-        log.info("Delivery confirmed: orderId={}", orderId);
     }
 
     private String toTracesJson(String event, String carrier, String tracking) {

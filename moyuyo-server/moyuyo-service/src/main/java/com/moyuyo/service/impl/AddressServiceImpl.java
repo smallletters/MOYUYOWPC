@@ -32,8 +32,12 @@ public class AddressServiceImpl implements AddressService {
   @Override
   public AddressEntity getById(Long id, Long userId) {
     AddressEntity entity = addressMapper.selectById(id);
-    if (entity == null || !entity.getUserId().equals(userId)) {
-      throw new IllegalArgumentException("地址不存在或无权访问");
+    if (entity == null) {
+      throw new IllegalArgumentException("地址不存在");
+    }
+    // 地址存在但不属于当前用户：抛 403，避免通过响应区分 ID 是否存在（更严格可也抛 404）
+    if (!entity.getUserId().equals(userId)) {
+      throw new org.springframework.security.access.AccessDeniedException("无权访问该地址");
     }
     return entity;
   }
@@ -62,8 +66,11 @@ public class AddressServiceImpl implements AddressService {
   @Transactional
   public AddressEntity update(Long userId, AddressEntity address) {
     AddressEntity existing = addressMapper.selectById(address.getId());
-    if (existing == null || !existing.getUserId().equals(userId)) {
-      throw new IllegalArgumentException("地址不存在或无权操作");
+    if (existing == null) {
+      throw new IllegalArgumentException("地址不存在");
+    }
+    if (!existing.getUserId().equals(userId)) {
+      throw new org.springframework.security.access.AccessDeniedException("无权操作该地址");
     }
 
     address.setUserId(userId);
@@ -75,8 +82,11 @@ public class AddressServiceImpl implements AddressService {
   @Transactional
   public void delete(Long id, Long userId) {
     AddressEntity existing = addressMapper.selectById(id);
-    if (existing == null || !existing.getUserId().equals(userId)) {
-      throw new IllegalArgumentException("地址不存在或无权操作");
+    if (existing == null) {
+      throw new IllegalArgumentException("地址不存在");
+    }
+    if (!existing.getUserId().equals(userId)) {
+      throw new org.springframework.security.access.AccessDeniedException("无权删除该地址");
     }
     addressMapper.deleteById(id);
   }
@@ -85,8 +95,11 @@ public class AddressServiceImpl implements AddressService {
   @Transactional
   public void setDefault(Long id, Long userId) {
     AddressEntity existing = addressMapper.selectById(id);
-    if (existing == null || !existing.getUserId().equals(userId)) {
-      throw new IllegalArgumentException("地址不存在或无权操作");
+    if (existing == null) {
+      throw new IllegalArgumentException("地址不存在");
+    }
+    if (!existing.getUserId().equals(userId)) {
+      throw new org.springframework.security.access.AccessDeniedException("无权修改该地址");
     }
 
     addressMapper.update(

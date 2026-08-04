@@ -43,15 +43,21 @@ public class AdminBlacklistServiceImpl implements AdminBlacklistService {
 
   @Override
   @Transactional
-  public void create(Map<String, Object> data) {
+  public BlacklistEntity create(Map<String, Object> data) {
     BlacklistEntity entity = new BlacklistEntity();
     if (data.get("type") != null) entity.setType((String) data.get("type"));
-    if (data.get("value") != null) entity.setValue((String) data.get("value"));
+    // 兼容前端传 target/value 两种字段名
+    if (data.get("value") != null) {
+      entity.setValue((String) data.get("value"));
+    } else if (data.get("target") != null) {
+      entity.setValue((String) data.get("target"));
+    }
     if (data.get("reason") != null) entity.setReason((String) data.get("reason"));
     if (data.get("operatorId") != null) entity.setOperatorId(Long.valueOf(data.get("operatorId").toString()));
     if (data.get("expireTime") != null) entity.setExpireTime(LocalDateTime.parse(data.get("expireTime").toString()));
     entity.setStatus("ENABLED");
     blacklistMapper.insert(entity);
+    return entity;
   }
 
   @Override

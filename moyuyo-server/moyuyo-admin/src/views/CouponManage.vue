@@ -109,6 +109,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCouponList, createCoupon, updateCoupon, deleteCoupon, getCouponStats } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 const tableData = ref([])
 const stats = ref({})
@@ -141,7 +142,7 @@ function resetForm() {
 async function loadData() {
   try {
     const res = await getCouponList()
-    tableData.value = res.records || res || []
+    tableData.value = toArray(res)
   } catch (e) {
     ElMessage.error('获取优惠券列表失败')
   }
@@ -152,7 +153,8 @@ async function loadStats() {
     const res = await getCouponStats()
     stats.value = res || {}
   } catch (e) {
-    // 统计加载失败不阻塞
+    console.error('加载优惠券统计失败:', e)
+    ElMessage.warning('优惠券统计数据加载失败')
   }
 }
 
@@ -205,7 +207,10 @@ async function handleDelete(row) {
     ElMessage.success('已删除')
     await loadData()
   } catch (e) {
-    // 用户取消不处理
+    if (e !== 'cancel' && e !== 'close') {
+      console.error('删除优惠券失败:', e)
+      ElMessage.error('删除失败: ' + (e?.message || '未知错误'))
+    }
   }
 }
 
@@ -213,11 +218,11 @@ onMounted(() => { loadData(); loadStats() })
 </script>
 
 <style scoped>
-.page-wrapper { padding: 20px; }
+.page-wrapper { }
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .page-header h2 { font-size: 20px; font-weight: 700; color: var(--text-800); margin: 0; }
 .header-actions { display: flex; gap: 8px; }
 .stat-item { display: flex; flex-direction: column; align-items: center; }
-.stat-label { font-size: 13px; color: #909399; margin-bottom: 4px; }
+.stat-label { font-size: 13px; color: var(--text-400); margin-bottom: 4px; }
 .stat-value { font-size: 24px; font-weight: 700; color: var(--text-800); }
 </style>

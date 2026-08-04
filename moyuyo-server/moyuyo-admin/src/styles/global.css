@@ -56,6 +56,14 @@
 
   --state-warning: #ff9500;
   --state-warning-surface: #fff4e5;
+  --state-warning-foreground: #ffffff;
+
+  /* ===== 图表色板（与设计稿 admin-*.html 对齐） ===== */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
 
   /* ===== 语义角色 ===== */
   --background: var(--background-50);
@@ -381,6 +389,11 @@ input, select, textarea {
   font-weight: 700;
   color: var(--text-800);
   margin: 0 0 6px;
+}
+
+/* 页面主标题统一 22px（与设计稿 page-title-area / page-header-left h1 一致，覆盖各页面 scoped 20px） */
+.page-header h2 {
+  font-size: 22px !important;
 }
 
 .page-desc {

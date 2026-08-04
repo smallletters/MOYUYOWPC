@@ -2,21 +2,25 @@ DROP TABLE IF EXISTS mo_user;
 CREATE TABLE mo_user (
     id BIGINT PRIMARY KEY,
     email VARCHAR(255) NOT NULL,
-    password VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    phone VARCHAR(50),
     nickname VARCHAR(100),
     avatar VARCHAR(500),
-    phone VARCHAR(50),
     birthday DATE,
+    country VARCHAR(64),
+    locale VARCHAR(32),
+    timezone VARCHAR(64),
     points INT DEFAULT 0,
-    email_verified BIT DEFAULT 0,
-    status VARCHAR(20) DEFAULT 'ACTIVE',
-    magic_link_token VARCHAR(500),
-    magic_link_expire DATETIME,
-    two_factor_secret VARCHAR(255),
     two_factor_enabled BIT DEFAULT 0,
+    email_verified BIT DEFAULT 0,
+    marketing_opt_in BIT DEFAULT 0,
+    status INT DEFAULT 1,
     last_login_time DATETIME,
-    create_time DATETIME NOT NULL,
-    update_time DATETIME
+    delete_scheduled_at DATETIME,
+    oauth_provider VARCHAR(32),
+    oauth_uid VARCHAR(128),
+    created_at DATETIME,
+    updated_at DATETIME
 );
 
 DROP TABLE IF EXISTS mo_member;
@@ -341,16 +345,19 @@ CREATE TABLE mo_admin_user (
     role VARCHAR(50) DEFAULT 'OPERATOR',
     status VARCHAR(20) DEFAULT 'ACTIVE',
     last_login_time DATETIME,
-    created_at DATETIME,
-    updated_at DATETIME
+    create_time DATETIME,
+    update_time DATETIME
 );
 
 DROP TABLE IF EXISTS mo_admin_role;
 CREATE TABLE mo_admin_role (
     id BIGINT PRIMARY KEY,
     name VARCHAR(64) NOT NULL,
+    code VARCHAR(64),
     description VARCHAR(255),
     status VARCHAR(20) DEFAULT 'ACTIVE',
+    sort_order INT,
+    is_preset BIT DEFAULT 0,
     create_time DATETIME,
     update_time DATETIME
 );

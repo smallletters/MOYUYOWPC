@@ -2,9 +2,27 @@
 
 spring:
   elasticsearch:
+    # ES 集群地址（多个用逗号分隔，生产环境必须使用 HTTPS）
     uris: ${ELASTICSEARCH_URIS}
+    # ES 认证：生产环境必须启用 x-pack security
+    username: ${ELASTICSEARCH_USERNAME:}
+    password: ${ELASTICSEARCH_PASSWORD:}
+    # 生产环境必须启用 HTTPS + 证书校验（启用 xpack.security.http.ssl.enabled 后生效）
+    ssl:
+      enabled: ${ELASTICSEARCH_SSL_ENABLED:true}
+      # 证书校验：生产环境强烈建议开启（确保证书链完整）
+      certificate-validation: ${ELASTICSEARCH_SSL_CERT_VALIDATION:true}
+      # CA 证书路径（可选，未指定时使用 JVM truststore）
+      bundle: ${ELASTICSEARCH_SSL_BUNDLE:}
+    # 连接 / 套接字超时
     connection-timeout: 5s
     socket-timeout: 60s
+
+  # 生产环境只执行表结构迁移，不加载 db/seed 演示数据；禁止自动 repair
+  flyway:
+    locations: classpath:db/migration
+    repair-on-migrate: false
+    validate-on-migrate: true
 
   datasource:
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/moyuyo_prod?useSSL=true&requireSSL=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8mb4
@@ -31,6 +49,8 @@ springdoc:
 
 # RocketMQ
 rocketmq:
+  # 总开关：dev 环境默认 true（本地无 MQ 时业务层自动降级），prod 必须为 true
+  enabled: ${ROCKETMQ_ENABLED:true}
   name-server: ${ROCKETMQ_NAMESRV_ADDR:rocketmq-namesrv:9876}
   producer:
     group: moyuyo-producer-group
@@ -47,8 +67,13 @@ payment:
     client-secret: ${PAYPAL_CLIENT_SECRET}
     webhook-id: ${PAYPAL_WEBHOOK_ID}
     mode: live
+    # 生产环境必须显式配置允许的前端域名，避免开放重定向
+    allowed-origins: ${PAYPAL_ALLOWED_ORIGINS}
 
 admin:
+  # P0-5 修复：必须显式提供 ADMIN_USERNAME，禁止使用弱默认用户名
+  # AdminInitializer 会拒绝 admin/root/administrator 等弱用户名
+  username: ${ADMIN_USERNAME:moyuyo_admin}
   email: ${ADMIN_EMAIL:}
   password: ${ADMIN_PASSWORD:}
 
@@ -56,18 +81,37 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # prometheus 端点供 Prometheus 服务器抓取（仅暴露在 127.0.0.1，由前置 Nginx 控制外网访问）
+        include: health,info,prometheus,metrics
       base-path: /actuator
   endpoint:
     health:
-      show-details: always
+      # 不对外暴露组件细节，避免泄露内部依赖信息
+      show-details: never
       probes:
         enabled: true
+    prometheus:
+      access: read_only
   health:
     db:
       enabled: true
     redis:
       enabled: true
+    # 生产环境使用 ES 做商品搜索，必须纳入健康检查
+    # 未配置 ES 时启动仍能成功（自动配置按 spring.elasticsearch.uris 判断），但 health 探针会报 DOWN
+    # 建议配合 Kubernetes liveness probe 容忍短时间 ES 抖动
+    elasticsearch:
+      enabled: true
+  metrics:
+    tags:
+      # 让 Prometheus 抓取到的指标自动带上应用名标签，便于多服务聚合
+      application: ${spring.application.name}
+    distribution:
+      # HTTP 请求耗时直方图：分桶粒度（生产环境按需要可调更细）
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 100ms,500ms,1s,3s
 
 # Resilience4j 生产环境限流覆盖（比开发环境更严格）
 resilience4j:
@@ -81,6 +125,19 @@ resilience4j:
         limit-for-period: 300
       seckillApi:
         limit-for-period: 1000
+      # 高价值写接口（生产环境严格收紧）
+      refundBatch:
+        limit-for-period: 20
+      inventoryUpdate:
+        limit-for-period: 50
+      configUpdate:
+        limit-for-period: 10
+      batchImport:
+        limit-for-period: 5
+      pushAction:
+        limit-for-period: 30
+      riskRuleUpdate:
+        limit-for-period: 10
 
 logging:
   level:

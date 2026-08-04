@@ -1,0 +1,2340 @@
+{
+ "designs": [
+  {
+   "file": "admin-ab-test.html",
+   "title": "A/B 实验 - MOYUYO 管理后台",
+   "heads": [
+    "A/B 实验",
+    "实验效果总览",
+    "首页推荐算法 V2",
+    "商品详情页 UI 改版",
+    "商品标题文案优化",
+    "会员定价策略实验",
+    "购物车满减提示功能",
+    "新建 A/B 实验"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 16,
+    "tabs": 0,
+    "chart": 1
+   }
+  },
+  {
+   "file": "admin-analytics.html",
+   "title": "数据报表 - MOYUYO 管理后台",
+   "heads": [
+    "数据概览",
+    "转化漏斗",
+    "用户分布",
+    "销售趋势",
+    "商品排行 TOP5"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 2,
+    "tabs": 0,
+    "chart": 14
+   }
+  },
+  {
+   "file": "admin-app-version.html",
+   "title": "版本管理 - MOYUYO 管理后台",
+   "heads": [
+    "版本管理"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 12,
+    "tabs": 0,
+    "chart": 1
+   }
+  },
+  {
+   "file": "admin-audit-log.html",
+   "title": "MOYUYO 审计日志 - 管理后台",
+   "heads": [
+    "审计日志",
+    "审计范围说明",
+    "审计记录",
+    "合规导出"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 21,
+    "tabs": 0,
+    "chart": 7
+   }
+  },
+  {
+   "file": "admin-batch-import.html",
+   "title": "MOYUYO 批量操作",
+   "heads": [
+    "批量操作"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 14,
+    "tabs": 0,
+    "chart": 7
+   }
+  },
+  {
+   "file": "admin-campaign-create.html",
+   "title": "创建活动 - MOYUYO 管理后台",
+   "heads": [
+    "创建营销活动"
+   ],
+   "blocks": [
+    "",
+    "",
+    "",
+    "",
+    ""
+   ],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 22,
+    "tabs": 0,
+    "chart": 13
+   }
+  },
+  {
+   "file": "admin-carrier-compare.html",
+   "title": "承运商对比优选 - MOYUYO 管理后台",
+   "heads": [
+    "承运商对比与优选",
+    "承运商绩效统计"
+   ],
+   "blocks": [
+    "",
+    "",
+    "",
+    ""
+   ],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 6,
+    "tabs": 0,
+    "chart": 12
+   }
+  },
+  {
+   "file": "admin-clearance.html",
+   "title": "MOYUYO 清关管理",
+   "heads": [
+    "异常告警",
+    "清关订单列表",
+    "单据管理",
+    "清关时效统计"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 4,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 32,
+    "tabs": 0,
+    "chart": 14
+   }
+  },
+  {
+   "file": "admin-cms.html",
+   "title": "CMS 管理 - MOYUYO 管理后台",
+   "heads": [
+    "CMS 管理",
+    "春季新品上市活动",
+    "会员专享优惠",
+    "宠物节大促",
+    "年货节特惠",
+    "春季护理指南",
+    "品牌故事",
+    "新手养宠攻略"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 24,
+    "tabs": 0,
+    "chart": 13
+   }
+  },
+  {
+   "file": "admin-complaint-handle.html",
+   "title": "MOYUYO 投诉处理 - 管理后台",
+   "heads": [
+    "投诉处理",
+    "投诉分类分布",
+    "投诉列表"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 18,
+    "tabs": 0,
+    "chart": 14
+   }
+  },
+  {
+   "file": "admin-complaint.html",
+   "title": "MOYUYO 投诉管理 - 管理后台",
+   "heads": [
+    "投诉管理",
+    "猫粮配送延误导致宠物断粮",
+    "客服态度冷漠拒绝对话",
+    "宠物保健品质量问题致健康受损",
+    "退款争议未到账，多次投诉无果",
+    "售后服务推诿，退货流程异常复杂"
+   ],
+   "blocks": [
+    "升级链路",
+    "投诉趋势（近7天）"
+   ],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 19,
+    "tabs": 3,
+    "chart": 11
+   }
+  },
+  {
+   "file": "admin-content-review-detail.html",
+   "title": "MOYUYO 管理后台 - 内容审核详情",
+   "heads": [
+    "内容审核详情",
+    "我的柯基 Milo 夏日穿搭分享"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 9,
+    "tabs": 0,
+    "chart": 12
+   }
+  },
+  {
+   "file": "admin-content-review.html",
+   "title": "内容审核 - MOYUYO 管理后台",
+   "heads": [
+    "内容审核"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 32,
+    "tabs": 0,
+    "chart": 51
+   }
+  },
+  {
+   "file": "admin-cs-performance.html",
+   "title": "MOYUYO 客服绩效看板",
+   "heads": [],
+   "blocks": [
+    "团队整体 KPI",
+    "客服排名",
+    "绩效趋势",
+    "低分预警"
+   ],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 6,
+    "tabs": 0,
+    "chart": 12
+   }
+  },
+  {
+   "file": "admin-customs.html",
+   "title": "MOYUYO 清关管理",
+   "heads": [
+    "清关管理",
+    "清关进度跟踪",
+    "清关异常",
+    "清关时效统计",
+    "各目的国平均时效对比（天）"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 5,
+    "tabs": 0,
+    "chart": 16
+   }
+  },
+  {
+   "file": "admin-dashboard.html",
+   "title": "MOYUYO 管理工作台",
+   "heads": [
+    "管理工作台",
+    "今日数据概览",
+    "快捷入口",
+    "最近订单",
+    "销售趋势"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 9,
+    "tabs": 0,
+    "chart": 17
+   }
+  },
+  {
+   "file": "admin-finance.html",
+   "title": "财务概览 - MOYUYO 管理后台",
+   "heads": [
+    "财务概览",
+    "支付渠道分布",
+    "待处理异常",
+    "结算明细"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 7,
+    "tabs": 0,
+    "chart": 19
+   }
+  },
+  {
+   "file": "admin-funnel.html",
+   "title": "转化漏斗 - MOYUYO 管理后台",
+   "heads": [
+    "转化漏斗",
+    "核心转化漏斗",
+    "流失节点分析",
+    "最大流失节点",
+    "流失原因推测",
+    "流失用户画像",
+    "渠道漏斗对比"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 6,
+    "tabs": 0,
+    "chart": 12
+   }
+  },
+  {
+   "file": "admin-gdpr.html",
+   "title": "数据合规管理 - MOYUYO 后台",
+   "heads": [
+    "数据合规管理",
+    "快速操作",
+    "未成年人保护"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 17,
+    "tabs": 0,
+    "chart": 6
+   }
+  },
+  {
+   "file": "admin-inventory.html",
+   "title": "MOYUYO 库存管理",
+   "heads": [
+    "库存管理",
+    "预警看板",
+    "批次管理",
+    "调拨管理"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 8,
+    "tabs": 0,
+    "chart": 29
+   }
+  },
+  {
+   "file": "admin-knowledge-base.html",
+   "title": "MOYUYO 客服知识库 - 管理后台",
+   "heads": [
+    "客服知识库",
+    "如何修改已提交的订单信息",
+    "订单取消政策与退款时效说明",
+    "跨境订单关税计算规则",
+    "预售订单发货时间与预计送达",
+    "订单状态查询与物流追踪指南"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 13,
+    "tabs": 0,
+    "chart": 17
+   }
+  },
+  {
+   "file": "admin-live-manage.html",
+   "title": "MOYUYO 直播管理",
+   "heads": [
+    "直播管理",
+    "春季新品专场 限时秒杀",
+    "猫咪营养品专场",
+    "狗狗口粮测评专场",
+    "违规商品推广",
+    "合规监控"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 19,
+    "tabs": 0,
+    "chart": 0
+   }
+  },
+  {
+   "file": "admin-login.html",
+   "title": "MOYUYO 管理端登录",
+   "heads": [
+    "管理后台"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 1,
+    "button": 6,
+    "tabs": 0,
+    "chart": 13
+   }
+  },
+  {
+   "file": "admin-logistics.html",
+   "title": "MOYUYO 物流管理",
+   "heads": [
+    "物流管理",
+    "在途包裹",
+    "库存预警",
+    "配送渠道分布"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 4,
+    "tabs": 0,
+    "chart": 15
+   }
+  },
+  {
+   "file": "admin-marketing-effect.html",
+   "title": "营销效果分析 - MOYUYO 管理后台",
+   "heads": [
+    "营销效果分析",
+    "优惠券效果明细",
+    "用户画像",
+    "活动 GMV 对比",
+    "投入 vs 增量收益",
+    "秒杀商品明细",
+    "渠道 GMV 占比",
+    "Top 分销员排行"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 6,
+    "tabs": 0,
+    "chart": 18
+   }
+  },
+  {
+   "file": "admin-marketing.html",
+   "title": "营销管理 - MOYUYO 管理后台",
+   "heads": [
+    "营销管理",
+    "进行中的活动",
+    "快捷操作"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 10,
+    "tabs": 0,
+    "chart": 12
+   }
+  },
+  {
+   "file": "admin-merge-package.html",
+   "title": "MOYUYO 管理后台 - 合包发货管理",
+   "heads": [
+    "合包发货管理"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 2,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 14,
+    "tabs": 0,
+    "chart": 14
+   }
+  },
+  {
+   "file": "admin-operation-log.html",
+   "title": "MOYUYO 操作日志 - 管理后台",
+   "heads": [],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 16,
+    "tabs": 0,
+    "chart": 13
+   }
+  },
+  {
+   "file": "admin-order-detail.html",
+   "title": "订单详情 - MOYUYO 管理后台",
+   "heads": [
+    "订单详情"
+   ],
+   "blocks": [
+    "订单进度",
+    "商品明细",
+    "操作日志",
+    "订单信息",
+    "收货人信息"
+   ],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 6,
+    "tabs": 0,
+    "chart": 14
+   }
+  },
+  {
+   "file": "admin-order-export.html",
+   "title": "订单导出 - MOYUYO 管理后台",
+   "heads": [
+    "订单导出打印",
+    "导出格式",
+    "预估导出信息",
+    "筛选条件",
+    "导出字段",
+    "导出记录",
+    "打印模板",
+    "打印设置",
+    "已选订单",
+    "运单号导入",
+    "承运商",
+    "导入结果"
+   ],
+   "blocks": [
+    "导出格式",
+    "预估导出信息",
+    "筛选条件",
+    "打印模板",
+    "打印设置",
+    "已选订单",
+    "运单号导入",
+    "承运商"
+   ],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 21,
+    "tabs": 0,
+    "chart": 7
+   }
+  },
+  {
+   "file": "admin-order-intercept.html",
+   "title": "订单拦截 - MOYUYO 管理后台",
+   "heads": [
+    "MOYUYO",
+    "订单拦截管理",
+    "解除拦截"
+   ],
+   "blocks": [
+    "主要功能",
+    "运营支持",
+    "系统"
+   ],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 27,
+    "tabs": 0,
+    "chart": 14
+   }
+  },
+  {
+   "file": "admin-order-monitor.html",
+   "title": "MOYUYO 异常订单监控",
+   "heads": [
+    "异常订单监控",
+    "异常订单",
+    "自动处理规则"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 21,
+    "tabs": 0,
+    "chart": 22
+   }
+  },
+  {
+   "file": "admin-order-price-modify.html",
+   "title": "订单改价 - MOYUYO 管理后台",
+   "heads": [
+    "订单改价",
+    "改价操作"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 2,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 18,
+    "tabs": 0,
+    "chart": 12
+   }
+  },
+  {
+   "file": "admin-order-print.html",
+   "title": "MOYUYO 管理后台 - 订单打印",
+   "heads": [
+    "订单打印",
+    "打印模板",
+    "待打印订单",
+    "打印设置"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 15,
+    "tabs": 0,
+    "chart": 12
+   }
+  },
+  {
+   "file": "admin-orders.html",
+   "title": "订单管理 - MOYUYO 管理后台",
+   "heads": [
+    "订单列表"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 22,
+    "tabs": 0,
+    "chart": 12
+   }
+  },
+  {
+   "file": "admin-overseas-warehouse.html",
+   "title": "MOYUYO 海外仓管理",
+   "heads": [
+    "海外仓管理",
+    "仓间调拨",
+    "智能分配建议",
+    "本地发货统计"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 16,
+    "tabs": 0,
+    "chart": 12
+   }
+  },
+  {
+   "file": "admin-price-history.html",
+   "title": "MOYUYO 管理后台 - 调价记录",
+   "heads": [
+    "调价记录",
+    "调价记录列表"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 17,
+    "tabs": 0,
+    "chart": 6
+   }
+  },
+  {
+   "file": "admin-price-manage.html",
+   "title": "MOYUYO 价格管理",
+   "heads": [
+    "价格管理",
+    "价格优先级",
+    "营销活动互斥矩阵",
+    "会员价配置",
+    "调价审批队列"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 2,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 10,
+    "tabs": 0,
+    "chart": 20
+   }
+  },
+  {
+   "file": "admin-product-analysis.html",
+   "title": "MOYUYO 商品分析",
+   "heads": [
+    "商品分析",
+    "Top 10 商品排行",
+    "新品表现追踪",
+    "滞销商品预警",
+    "流转率概览",
+    "热门搜索词 Top 10",
+    "评价分析概览",
+    "高频评价关键词",
+    "库存健康度概览",
+    "库存周转天数排行",
+    "选择时间范围"
+   ],
+   "blocks": [
+    "Top 10 商品排行",
+    "新品表现追踪",
+    "流转率概览",
+    "热门搜索词 Top 10",
+    "评价分析概览",
+    "高频评价关键词",
+    "库存健康度概览",
+    "库存周转天数排行"
+   ],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 29,
+    "tabs": 0,
+    "chart": 6
+   }
+  },
+  {
+   "file": "admin-product-edit.html",
+   "title": "MOYUYO 编辑商品",
+   "heads": [
+    "编辑商品"
+   ],
+   "blocks": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 8,
+    "tabs": 0,
+    "chart": 14
+   }
+  },
+  {
+   "file": "admin-product-report.html",
+   "title": "MOYUYO 商品举报管理",
+   "heads": [],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 18,
+    "tabs": 0,
+    "chart": 0
+   }
+  },
+  {
+   "file": "admin-product-review.html",
+   "title": "MOYUYO 商品审核 - 管理后台",
+   "heads": [
+    "商品审核",
+    "审核队列"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 21,
+    "tabs": 0,
+    "chart": 15
+   }
+  },
+  {
+   "file": "admin-products.html",
+   "title": "MOYUYO 商品管理",
+   "heads": [
+    "商品列表"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 31,
+    "tabs": 0,
+    "chart": 12
+   }
+  },
+  {
+   "file": "admin-push-detail.html",
+   "title": "创建推送 - MOYUYO 管理后台",
+   "heads": [
+    "创建推送通知",
+    "推送内容",
+    "发送设置",
+    "最近发送记录"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 6,
+    "tabs": 0,
+    "chart": 1
+   }
+  },
+  {
+   "file": "admin-push.html",
+   "title": "Push推送 - MOYUYO 管理后台",
+   "heads": [
+    "Push推送管理"
+   ],
+   "blocks": [
+    "推送记录",
+    "快速新建"
+   ],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 19,
+    "tabs": 0,
+    "chart": 7
+   }
+  },
+  {
+   "file": "admin-rbac.html",
+   "title": "MOYUYO 权限管理",
+   "heads": [
+    "权限管理",
+    "角色列表",
+    "管理员账号",
+    "权限矩阵"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 19,
+    "tabs": 0,
+    "chart": 16
+   }
+  },
+  {
+   "file": "admin-realtime-screen.html",
+   "title": "MOYUYO 实时大屏",
+   "heads": [
+    "实时大屏",
+    "GMV 趋势",
+    "实时订单",
+    "实时在线",
+    "今日发货"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 2,
+    "tabs": 0,
+    "chart": 16
+   }
+  },
+  {
+   "file": "admin-refund-manage.html",
+   "title": "MOYUYO 退款管理",
+   "heads": [
+    "退款管理"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 17,
+    "tabs": 0,
+    "chart": 43
+   }
+  },
+  {
+   "file": "admin-review.html",
+   "title": "MOYUYO 评价管理 - 管理后台",
+   "heads": [
+    "评价管理",
+    "今日审核统计"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 19,
+    "tabs": 0,
+    "chart": 14
+   }
+  },
+  {
+   "file": "admin-rfm-analysis.html",
+   "title": "RFM 用户分析 - MOYUYO 管理后台",
+   "heads": [
+    "RFM 用户分析",
+    "用户群组矩阵",
+    "群组用户详情",
+    "LTV 预测"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 5,
+    "tabs": 0,
+    "chart": 12
+   }
+  },
+  {
+   "file": "admin-risk-control.html",
+   "title": "风控管理 - MOYUYO 管理后台",
+   "heads": [
+    "风控总览"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 18,
+    "tabs": 0,
+    "chart": 27
+   }
+  },
+  {
+   "file": "admin-risk-rule-engine.html",
+   "title": "MOYUYO 管理工作台 - 风控规则引擎",
+   "heads": [
+    "风控规则引擎"
+   ],
+   "blocks": [
+    "新账号首单限额",
+    "同IP高频下单",
+    "秒杀频率限制",
+    "设备指纹异常"
+   ],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 20,
+    "tabs": 0,
+    "chart": 18
+   }
+  },
+  {
+   "file": "admin-satisfaction.html",
+   "title": "满意度管理 - MOYUYO 管理后台",
+   "heads": [
+    "调研概览",
+    "调研触发规则",
+    "问卷模板",
+    "近 30 天满意度趋势",
+    "最新低分反馈"
+   ],
+   "blocks": [
+    "",
+    "",
+    "",
+    "",
+    ""
+   ],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 17,
+    "tabs": 0,
+    "chart": 23
+   }
+  },
+  {
+   "file": "admin-search-analysis.html",
+   "title": "搜索词分析 - MOYUYO 管理后台",
+   "heads": [
+    "搜索词分析"
+   ],
+   "blocks": [
+    "热门搜索词排行",
+    "零结果搜索词",
+    "搜索词云"
+   ],
+   "comps": {
+    "table": 2,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 16,
+    "tabs": 0,
+    "chart": 14
+   }
+  },
+  {
+   "file": "admin-sensitive-words.html",
+   "title": "敏感词库 - MOYUYO 管理后台",
+   "heads": [
+    "敏感词库"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 34,
+    "tabs": 0,
+    "chart": 9
+   }
+  },
+  {
+   "file": "admin-settings.html",
+   "title": "MOYUYO 系统设置",
+   "heads": [
+    "系统设置",
+    "角色管理",
+    "操作日志",
+    "权限配置",
+    "安全设置",
+    "系统信息"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 1,
+    "tabs": 0,
+    "chart": 12
+   }
+  },
+  {
+   "file": "admin-settlement-detail.html",
+   "title": "结算单明细 - MOYUYO 管理后台",
+   "heads": [
+    "结算单明细"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 5,
+    "tabs": 0,
+    "chart": 12
+   }
+  },
+  {
+   "file": "admin-settlement.html",
+   "title": "MOYUYO 管理后台 - 财务结算",
+   "heads": [
+    "财务结算",
+    "最近 Payout 汇总",
+    "对账记录",
+    "最近 Payout 汇总",
+    "对账记录",
+    "税务报表",
+    "对账异常告警"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 17,
+    "tabs": 0,
+    "chart": 11
+   }
+  },
+  {
+   "file": "admin-shipping-strategy.html",
+   "title": "运费模板 - MOYUYO 管理后台",
+   "heads": [
+    "物流策略管理"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 30,
+    "tabs": 0,
+    "chart": 12
+   }
+  },
+  {
+   "file": "admin-sms-manage.html",
+   "title": "短信管理 - MOYUYO 管理后台",
+   "heads": [],
+   "blocks": [
+    "用量统计",
+    "短信模板",
+    "发送记录"
+   ],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 20,
+    "tabs": 0,
+    "chart": 13
+   }
+  },
+  {
+   "file": "admin-split-package.html",
+   "title": "MOYUYO 拆包策略配置",
+   "heads": [
+    "拆包策略配置",
+    "拆包规则列表",
+    "最近拆包日志"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 2,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 32,
+    "tabs": 0,
+    "chart": 14
+   }
+  },
+  {
+   "file": "admin-system-config.html",
+   "title": "MOYUYO 系统配置",
+   "heads": [
+    "系统配置"
+   ],
+   "blocks": [
+    "站点信息",
+    "语言与地区",
+    "订单规则",
+    "Stripe",
+    "PayPal",
+    "支付方式",
+    "承运商与包装",
+    "运费计算规则"
+   ],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 13,
+    "tabs": 0,
+    "chart": 11
+   }
+  },
+  {
+   "file": "admin-tickets.html",
+   "title": "工单管理 - MOYUYO 管理后台",
+   "heads": [
+    "工单管理"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 18,
+    "tabs": 0,
+    "chart": 12
+   }
+  },
+  {
+   "file": "admin-traffic.html",
+   "title": "流量分析 - MOYUYO 管理后台",
+   "heads": [
+    "流量分析"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 5,
+    "tabs": 0,
+    "chart": 12
+   }
+  },
+  {
+   "file": "admin-user-profile.html",
+   "title": "用户画像 - MOYUYO 管理后台",
+   "heads": [
+    "用户画像"
+   ],
+   "blocks": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 1,
+    "tabs": 0,
+    "chart": 42
+   }
+  },
+  {
+   "file": "admin-users.html",
+   "title": "用户管理 - MOYUYO 管理后台",
+   "heads": [
+    "用户管理"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 1,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 37,
+    "tabs": 0,
+    "chart": 12
+   }
+  },
+  {
+   "file": "admin-warehouse.html",
+   "title": "仓库管理 - MOYUYO 管理后台",
+   "heads": [
+    "海外仓管理",
+    "仓库概览",
+    "美西仓库存分布",
+    "智能分配建议",
+    "仓间调拨单",
+    "智能选品建议"
+   ],
+   "blocks": [],
+   "comps": {
+    "table": 0,
+    "dialog/modal": 0,
+    "form": 0,
+    "button": 14,
+    "tabs": 0,
+    "chart": 51
+   }
+  }
+ ],
+ "views": [
+  {
+   "file": "AbTest.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 9,
+    "dialog": 2,
+    "form": 8,
+    "button": 8,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "AdminLayout.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 0,
+    "dialog": 0,
+    "form": 0,
+    "button": 2,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "AdminLogin.vue",
+   "title": "管理后台",
+   "subtitle": "",
+   "comps": {
+    "table": 0,
+    "dialog": 0,
+    "form": 3,
+    "button": 2,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "Analytics.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 0,
+    "dialog": 0,
+    "form": 0,
+    "button": 2,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "AppVersion.vue",
+   "title": "应用版本管理",
+   "subtitle": "管理 APP 版本发布、强制更新策略与版本历史",
+   "comps": {
+    "table": 3,
+    "dialog": 1,
+    "form": 9,
+    "button": 8,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "AuditLog.vue",
+   "title": "审计日志",
+   "subtitle": "追踪管理后台操作记录，保障操作可追溯、可审计",
+   "comps": {
+    "table": 3,
+    "dialog": 0,
+    "form": 0,
+    "button": 5,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "BatchImport.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 15,
+    "dialog": 2,
+    "form": 0,
+    "button": 4,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "BlacklistManage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 9,
+    "dialog": 1,
+    "form": 5,
+    "button": 5,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "CampaignCreate.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 8,
+    "dialog": 1,
+    "form": 11,
+    "button": 7,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "CarrierCompare.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 9,
+    "dialog": 1,
+    "form": 10,
+    "button": 7,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "ClearanceManage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 8,
+    "dialog": 1,
+    "form": 8,
+    "button": 7,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "CmsManage.vue",
+   "title": "CMS管理",
+   "subtitle": "",
+   "comps": {
+    "table": 0,
+    "dialog": 1,
+    "form": 9,
+    "button": 17,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "ComplaintHandle.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 10,
+    "dialog": 1,
+    "form": 10,
+    "button": 7,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "ComplaintManage.vue",
+   "title": "投诉管理",
+   "subtitle": "跟踪用户投诉的处理进度，保障服务质量与售后体验",
+   "comps": {
+    "table": 3,
+    "dialog": 1,
+    "form": 8,
+    "button": 9,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "ContentReview.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 0,
+    "dialog": 0,
+    "form": 0,
+    "button": 6,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "ContentReviewDetail.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 8,
+    "dialog": 0,
+    "form": 4,
+    "button": 5,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "CouponManage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 12,
+    "dialog": 1,
+    "form": 9,
+    "button": 5,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "CsSessions.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 10,
+    "dialog": 1,
+    "form": 5,
+    "button": 4,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "CustomerService.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 3,
+    "dialog": 0,
+    "form": 0,
+    "button": 6,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "CustomsManage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 7,
+    "dialog": 1,
+    "form": 8,
+    "button": 7,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "Dashboard.vue",
+   "title": "管理工作台",
+   "subtitle": "今日运营数据概览",
+   "comps": {
+    "table": 5,
+    "dialog": 0,
+    "form": 0,
+    "button": 0,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "FinanceManage.vue",
+   "title": "财务概览",
+   "subtitle": "",
+   "comps": {
+    "table": 2,
+    "dialog": 0,
+    "form": 0,
+    "button": 4,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "FlashSaleManage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 10,
+    "dialog": 1,
+    "form": 8,
+    "button": 6,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "FunnelAnalysis.vue",
+   "title": "漏斗分析",
+   "subtitle": "追踪用户从浏览到完成的转化链路，定位流失关键节点",
+   "comps": {
+    "table": 0,
+    "dialog": 0,
+    "form": 0,
+    "button": 0,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "GdprManage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 7,
+    "dialog": 4,
+    "form": 10,
+    "button": 9,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "InventoryManage.vue",
+   "title": "库存管理",
+   "subtitle": "",
+   "comps": {
+    "table": 4,
+    "dialog": 1,
+    "form": 5,
+    "button": 4,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "InventoryTransfer.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 10,
+    "dialog": 1,
+    "form": 6,
+    "button": 6,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "KnowledgeBase.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 8,
+    "dialog": 1,
+    "form": 10,
+    "button": 8,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "LiveManage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 9,
+    "dialog": 1,
+    "form": 9,
+    "button": 7,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "LogisticsList.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 3,
+    "dialog": 0,
+    "form": 0,
+    "button": 4,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "MarketingEffect.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 11,
+    "dialog": 1,
+    "form": 7,
+    "button": 5,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "MarketingList.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 0,
+    "dialog": 0,
+    "form": 0,
+    "button": 6,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "MergePackage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 9,
+    "dialog": 1,
+    "form": 9,
+    "button": 7,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "NotFound.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 0,
+    "dialog": 0,
+    "form": 0,
+    "button": 0,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "OperationLog.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 7,
+    "dialog": 0,
+    "form": 5,
+    "button": 2,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "OrderDetail.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 2,
+    "dialog": 0,
+    "form": 0,
+    "button": 11,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "OrderExport.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 8,
+    "dialog": 1,
+    "form": 9,
+    "button": 6,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "OrderIntercept.vue",
+   "title": "订单拦截",
+   "subtitle": "拦截风险订单，人工复核后放行，保障交易安全",
+   "comps": {
+    "table": 3,
+    "dialog": 0,
+    "form": 0,
+    "button": 6,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "OrderList.vue",
+   "title": "订单列表",
+   "subtitle": "查看与管理所有订单，处理发货、售后与 WooCommerce 同步",
+   "comps": {
+    "table": 3,
+    "dialog": 0,
+    "form": 0,
+    "button": 8,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "OrderMonitor.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 9,
+    "dialog": 0,
+    "form": 0,
+    "button": 1,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "OrderPriceModify.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 10,
+    "dialog": 1,
+    "form": 9,
+    "button": 5,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "OrderPrint.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 9,
+    "dialog": 0,
+    "form": 4,
+    "button": 3,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "OrderTags.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 8,
+    "dialog": 1,
+    "form": 4,
+    "button": 5,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "OverseasWarehouse.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 9,
+    "dialog": 1,
+    "form": 10,
+    "button": 7,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "PointsManage.vue",
+   "title": "积分管理",
+   "subtitle": "",
+   "comps": {
+    "table": 10,
+    "dialog": 0,
+    "form": 0,
+    "button": 6,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "PriceHistory.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 9,
+    "dialog": 0,
+    "form": 4,
+    "button": 2,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "PriceManage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 10,
+    "dialog": 1,
+    "form": 11,
+    "button": 6,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "ProductAnalysis.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 9,
+    "dialog": 0,
+    "form": 3,
+    "button": 3,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "ProductApproval.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 8,
+    "dialog": 1,
+    "form": 0,
+    "button": 5,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "ProductEdit.vue",
+   "title": "isNew?'新增商品':'编辑商品'",
+   "subtitle": "{{ isNew ? '创建新商品，可后续同步到 WooCommerce' : '编辑商品信息，字段对齐 WooCommerce 商品编辑页' }}",
+   "comps": {
+    "table": 0,
+    "dialog": 0,
+    "form": 0,
+    "button": 5,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "ProductList.vue",
+   "title": "商品列表",
+   "subtitle": "管理商品信息，维护库存与价格，并支持与 WooCommerce 双向同步",
+   "comps": {
+    "table": 4,
+    "dialog": 0,
+    "form": 0,
+    "button": 16,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "ProductReport.vue",
+   "title": "商品报表",
+   "subtitle": "按商品维度查看销量、销售额与利润表现，支持导出",
+   "comps": {
+    "table": 3,
+    "dialog": 0,
+    "form": 0,
+    "button": 6,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "ProductReviewManage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 10,
+    "dialog": 0,
+    "form": 4,
+    "button": 5,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "PushDetail.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 9,
+    "dialog": 1,
+    "form": 8,
+    "button": 7,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "PushManage.vue",
+   "title": "推送管理",
+   "subtitle": "",
+   "comps": {
+    "table": 0,
+    "dialog": 1,
+    "form": 5,
+    "button": 14,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "RbacManage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 1,
+    "dialog": 0,
+    "form": 0,
+    "button": 6,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "RealtimeScreen.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 6,
+    "dialog": 0,
+    "form": 0,
+    "button": 0,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "RefundManage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 0,
+    "dialog": 0,
+    "form": 0,
+    "button": 5,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "ReviewManage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 9,
+    "dialog": 1,
+    "form": 12,
+    "button": 7,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "RfmAnalysis.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 8,
+    "dialog": 1,
+    "form": 0,
+    "button": 1,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "RiskAlert.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 15,
+    "dialog": 1,
+    "form": 7,
+    "button": 6,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "RiskControl.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 8,
+    "dialog": 1,
+    "form": 13,
+    "button": 8,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "RiskRuleEngine.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 8,
+    "dialog": 1,
+    "form": 6,
+    "button": 6,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "SatisfactionManage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 7,
+    "dialog": 3,
+    "form": 8,
+    "button": 7,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "SearchAnalysis.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 8,
+    "dialog": 0,
+    "form": 0,
+    "button": 1,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "SensitiveWords.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 0,
+    "dialog": 0,
+    "form": 0,
+    "button": 7,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "SettlementDetail.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 9,
+    "dialog": 0,
+    "form": 0,
+    "button": 2,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "SettlementManage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 8,
+    "dialog": 1,
+    "form": 9,
+    "button": 7,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "ShippingStrategy.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 9,
+    "dialog": 1,
+    "form": 10,
+    "button": 7,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "SmsManage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 7,
+    "dialog": 1,
+    "form": 7,
+    "button": 6,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "SplitPackage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 8,
+    "dialog": 1,
+    "form": 8,
+    "button": 7,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "SystemConfig.vue",
+   "title": "系统配置",
+   "subtitle": "",
+   "comps": {
+    "table": 0,
+    "dialog": 0,
+    "form": 0,
+    "button": 3,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "SystemSettings.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 0,
+    "dialog": 0,
+    "form": 0,
+    "button": 2,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "TariffManage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 9,
+    "dialog": 2,
+    "form": 10,
+    "button": 8,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "TicketManage.vue",
+   "title": "工单管理",
+   "subtitle": "",
+   "comps": {
+    "table": 1,
+    "dialog": 0,
+    "form": 0,
+    "button": 5,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "TrafficAnalysis.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 7,
+    "dialog": 0,
+    "form": 0,
+    "button": 1,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "UserList.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 6,
+    "dialog": 0,
+    "form": 0,
+    "button": 6,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "UserProfile.vue",
+   "title": "用户画像",
+   "subtitle": "输入用户 ID 或用户名，查看用户基本信息、标签与行为数据",
+   "comps": {
+    "table": 3,
+    "dialog": 0,
+    "form": 0,
+    "button": 2,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  },
+  {
+   "file": "WarehouseManage.vue",
+   "title": "",
+   "subtitle": "",
+   "comps": {
+    "table": 10,
+    "dialog": 1,
+    "form": 11,
+    "button": 7,
+    "tabs": 0,
+    "api_calls": 0
+   }
+  }
+ ]
+}

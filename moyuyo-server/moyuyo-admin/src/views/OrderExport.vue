@@ -93,7 +93,9 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getOrderOpsExport, createOrderExport, downloadExportFile } from '../api/admin'
+import { getOrderOpsExport, createOrderExport } from '../api/admin'
+import { toArray } from '../utils/safeArray'
+import api from '../api'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -126,7 +128,7 @@ async function loadData() {
     if (filters.exportStatus) params.status = filters.exportStatus
     const res = await getOrderOpsExport(params)
     // 响应格式: { records: [...], total: N }
-    let list = res.records || res || []
+    let list = toArray(res)
     // 前端关键词过滤
     const kw = filters.keyword.toLowerCase()
     if (kw) {
@@ -171,12 +173,25 @@ async function handleSave() {
   }
 }
 
+// 触发真实文件下载：先取下载地址，再以二进制流方式拉取并保存
 async function handleDownload(row) {
   try {
-    await downloadExportFile(row.downloadUrl ? row.downloadUrl.split('/').pop() : row.id)
-    ElMessage.success('文件下载中：' + row.taskName)
+    const exportId = row.downloadUrl ? row.downloadUrl.split('/').pop() : row.id
+    // 获取文件流（responseType: blob 避免被 JSON 拦截器解析）
+    const blob = await api.get(`/order-ops/export/file/${exportId}`, { responseType: 'blob' })
+    // 创建下载链接并触发浏览器保存
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${row.taskName || '订单导出'}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    ElMessage.success('文件下载完成：' + row.taskName)
   } catch (error) {
-    ElMessage.error('下载失败')
+    console.error('下载失败:', error)
+    ElMessage.error('下载失败，请重试')
   }
 }
 

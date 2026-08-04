@@ -30,9 +30,21 @@ public class AdminBlacklistController {
     @Operation(summary = "添加黑名单")
     @PostMapping("/create")
     public Result<Map<String, Object>> create(@RequestBody Map<String, Object> body) {
-        adminBlacklistService.create(body);
+        // 前置参数校验：type/value 为 NOT NULL 字段，空 body 时直接返回友好错误而非数据库异常
+        Object typeObj = body.get("type");
+        if (typeObj == null || typeObj.toString().trim().isEmpty()) {
+            return Result.error(400, "黑名单类型不能为空");
+        }
+        Object valueObj = body.get("value");
+        if (valueObj == null) {
+            valueObj = body.get("target");
+        }
+        if (valueObj == null || valueObj.toString().trim().isEmpty()) {
+            return Result.error(400, "黑名单值不能为空");
+        }
+        var entity = adminBlacklistService.create(body);
         Map<String, Object> result = new java.util.LinkedHashMap<>();
-        result.put("id", body.get("id"));
+        result.put("id", entity.getId());
         result.put("message", "添加成功");
         return Result.success(result);
     }
@@ -40,9 +52,24 @@ public class AdminBlacklistController {
     @Operation(summary = "批量添加黑名单")
     @PostMapping("/batch-create")
     public Result<Map<String, Object>> batchCreate(@RequestBody List<Map<String, Object>> items) {
+        if (items == null || items.isEmpty()) {
+            return Result.error(400, "批量添加列表不能为空");
+        }
+        for (int i = 0; i < items.size(); i++) {
+            Map<String, Object> item = items.get(i);
+            Object t = item.get("type");
+            if (t == null || t.toString().trim().isEmpty()) {
+                return Result.error(400, "第" + (i + 1) + "条记录：类型不能为空");
+            }
+            Object v = item.get("value");
+            if (v == null) v = item.get("target");
+            if (v == null || v.toString().trim().isEmpty()) {
+                return Result.error(400, "第" + (i + 1) + "条记录：值不能为空");
+            }
+        }
         adminBlacklistService.batchCreate(items);
         Map<String, Object> result = new java.util.LinkedHashMap<>();
-        result.put("count", items != null ? items.size() : 0);
+        result.put("count", items.size());
         result.put("message", "批量添加成功");
         return Result.success(result);
     }

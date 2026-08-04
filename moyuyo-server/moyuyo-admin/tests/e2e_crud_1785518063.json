@@ -1,0 +1,34 @@
+[
+ {
+  "route": "/sensitive-words",
+  "status": "NO_DIALOG",
+  "steps": [
+   "未找到新增按钮/弹窗未打开"
+  ],
+  "errors": []
+ },
+ {
+  "route": "/knowledge-base",
+  "status": "NO_DIALOG",
+  "steps": [
+   "未找到新增按钮/弹窗未打开"
+  ],
+  "errors": []
+ },
+ {
+  "route": "/blacklist",
+  "status": "NO_DIALOG",
+  "steps": [
+   "未找到新增按钮/弹窗未打开"
+  ],
+  "errors": []
+ },
+ {
+  "route": "/order-tags",
+  "status": "NO_DIALOG",
+  "steps": [
+   "未找到新增按钮/弹窗未打开"
+  ],
+  "errors": []
+ }
+]

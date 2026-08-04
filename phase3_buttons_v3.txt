@@ -1,0 +1,82 @@
+﻿[LOGIN] OK
+
+✓ 仪表盘                btns=  2 tested=  1 skip=  1 fail=  0
+✓ 订单管理               btns= 36 tested= 33 skip=  3 fail=  0
+✓ 商品管理               btns= 28 tested= 24 skip=  4 fail=  0
+✓ 退款管理               btns=  7 tested=  5 skip=  2 fail=  0
+✓ 用户管理               btns= 26 tested= 13 skip= 13 fail=  0
+✓ 营销管理               btns= 20 tested= 19 skip=  1 fail=  0
+✓ 内容审核               btns= 12 tested= 11 skip=  1 fail=  0
+✓ 客服管理               btns= 12 tested=  9 skip=  3 fail=  0
+✓ 数据分析               btns=  6 tested=  5 skip=  1 fail=  0
+✓ 物流管理               btns= 20 tested= 17 skip=  3 fail=  0
+✓ 财务概览               btns=  5 tested=  4 skip=  1 fail=  0
+✓ 库存管理               btns= 16 tested= 15 skip=  1 fail=  0
+✓ 工单管理               btns= 15 tested= 12 skip=  3 fail=  0
+✓ CMS内容管理            btns= 26 tested= 22 skip=  4 fail=  0
+✓ RBAC权限管理           btns= 18 tested= 17 skip=  1 fail=  0
+✓ 推送管理               btns= 45 tested= 31 skip= 14 fail=  0
+✓ 活动创建               btns= 27 tested= 15 skip= 12 fail=  0
+✓ 投诉管理               btns= 27 tested= 25 skip=  2 fail=  0
+✓ 评价管理               btns= 19 tested= 10 skip=  9 fail=  0
+✓ 商品分析               btns= 19 tested= 16 skip=  3 fail=  0
+✓ 商品报表               btns= 23 tested= 20 skip=  3 fail=  0
+✓ 商品评价审核             btns= 19 tested=  3 skip= 16 fail=  0
+✓ 价格管理               btns= 15 tested= 12 skip=  3 fail=  0
+✓ 价格历史               btns= 10 tested=  7 skip=  3 fail=  0
+✓ 订单导出               btns= 21 tested= 19 skip=  2 fail=  0
+✓ 订单拦截               btns=  6 tested=  3 skip=  3 fail=  0
+✓ 订单监控               btns=  6 tested=  3 skip=  3 fail=  0
+✓ 订单改价               btns=  7 tested=  4 skip=  3 fail=  0
+✓ 订单打印               btns=  8 tested=  5 skip=  3 fail=  0
+✓ 短信管理               btns= 14 tested= 11 skip=  3 fail=  0
+✓ 敏感词管理              btns= 35 tested= 33 skip=  2 fail=  0
+✓ 漏斗分析               btns=  2 tested=  1 skip=  1 fail=  0
+✓ RFM分析              btns=  6 tested=  5 skip=  1 fail=  0
+✓ 风控管理               btns= 35 tested= 14 skip= 21 fail=  0
+✓ 风控规则引擎             btns= 33 tested= 22 skip= 11 fail=  0
+✓ 实时大屏               btns=  2 tested=  1 skip=  1 fail=  0
+✓ 用户画像               btns=  4 tested=  3 skip=  1 fail=  0
+✓ A/B测试              btns= 45 tested= 22 skip= 23 fail=  0
+✓ 应用版本管理             btns= 33 tested= 17 skip= 16 fail=  0
+✓ 批量导入               btns= 47 tested= 46 skip=  1 fail=  0
+✓ 知识库                btns= 27 tested= 15 skip= 12 fail=  0
+✓ 搜索分析               btns= 13 tested= 12 skip=  1 fail=  0
+✓ 流量分析               btns=  3 tested=  1 skip=  2 fail=  0
+✓ 满意度管理              btns=  3 tested=  1 skip=  2 fail=  0
+✓ GDPR合规             btns=  4 tested=  1 skip=  3 fail=  0
+✓ 审计日志               btns=  9 tested=  7 skip=  2 fail=  0
+✓ 商品审核               btns=  2 tested=  1 skip=  1 fail=  0
+✓ 优惠券管理              btns= 33 tested= 17 skip= 16 fail=  0
+✓ 秒杀管理               btns= 24 tested= 16 skip=  8 fail=  0
+✓ 积分管理               btns=  6 tested=  3 skip=  3 fail=  0
+✓ 黑名单管理              btns= 23 tested= 12 skip= 11 fail=  0
+✓ 关税管理               btns= 22 tested= 12 skip= 10 fail=  0
+✓ 风控告警               btns= 12 tested=  7 skip=  5 fail=  0
+✓ 客服会话               btns=  4 tested=  3 skip=  1 fail=  0
+✓ 订单标签               btns= 23 tested= 12 skip= 11 fail=  0
+✓ 库存调拨               btns= 19 tested= 18 skip=  1 fail=  0
+✓ 合包管理               btns= 17 tested=  9 skip=  8 fail=  0
+✓ 分包裹                btns= 17 tested=  9 skip=  8 fail=  0
+✓ 承运商对比              btns= 37 tested= 19 skip= 18 fail=  0
+✓ 海外仓管理              btns= 33 tested= 17 skip= 16 fail=  0
+✓ 仓库管理               btns= 37 tested= 19 skip= 18 fail=  0
+✓ 清关管理               btns= 17 tested=  9 skip=  8 fail=  0
+✓ 海关管理               btns= 17 tested=  9 skip=  8 fail=  0
+✓ 结算管理               btns= 37 tested= 19 skip= 18 fail=  0
+✓ 系统配置               btns= 10 tested=  9 skip=  1 fail=  0
+✓ 运营日志               btns= 10 tested=  7 skip=  3 fail=  0
+✓ 直播管理               btns= 11 tested=  6 skip=  5 fail=  0
+✓ 营销效果               btns= 33 tested= 16 skip= 17 fail=  0
+✓ 发货策略               btns= 33 tested= 17 skip= 16 fail=  0
+✓ 系统设置               btns=  4 tested=  3 skip=  1 fail=  0
+✓ 新增商品               btns=  4 tested=  3 skip=  1 fail=  0
+
+========== 汇总 ==========
+总页面:   71
+总按钮数: 1301
+测试按钮: 864
+跳过按钮: 437
+失败交互: 0
+
+详细结果已保存: D:\MOYUYOWPC\moyuyo-server\moyuyo-admin\tests\button_audit_v3.json

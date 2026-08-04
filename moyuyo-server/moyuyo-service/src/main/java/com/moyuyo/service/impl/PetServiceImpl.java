@@ -7,14 +7,22 @@ import com.moyuyo.common.dto.pet.PetSceneVO;
 import com.moyuyo.common.dto.pet.PetVO;
 import com.moyuyo.dao.entity.GrowthRecordEntity;
 import com.moyuyo.dao.entity.PetAchievementEntity;
+import com.moyuyo.dao.entity.PetAlbumEntity;
+import com.moyuyo.dao.entity.PetDiaryEntity;
 import com.moyuyo.dao.entity.PetEntity;
+import com.moyuyo.dao.entity.PetOutfitEntity;
 import com.moyuyo.dao.entity.PetReminderEntity;
 import com.moyuyo.dao.entity.PetSceneEntity;
+import com.moyuyo.dao.entity.PetWeightEntity;
 import com.moyuyo.dao.mapper.GrowthRecordMapper;
 import com.moyuyo.dao.mapper.PetAchievementMapper;
+import com.moyuyo.dao.mapper.PetAlbumMapper;
+import com.moyuyo.dao.mapper.PetDiaryMapper;
 import com.moyuyo.dao.mapper.PetMapper;
+import com.moyuyo.dao.mapper.PetOutfitMapper;
 import com.moyuyo.dao.mapper.PetReminderMapper;
 import com.moyuyo.dao.mapper.PetSceneMapper;
+import com.moyuyo.dao.mapper.PetWeightMapper;
 import com.moyuyo.service.PetService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +44,10 @@ public class PetServiceImpl implements PetService {
   private final PetSceneMapper petSceneMapper;
   private final GrowthRecordMapper growthRecordMapper;
   private final PetReminderMapper petReminderMapper;
+  private final PetWeightMapper petWeightMapper;
+  private final PetAlbumMapper petAlbumMapper;
+  private final PetDiaryMapper petDiaryMapper;
+  private final PetOutfitMapper petOutfitMapper;
 
   @Override
   public List<PetVO> listByUserId(Long userId) {
@@ -87,6 +99,23 @@ public class PetServiceImpl implements PetService {
     if (existing == null || !existing.getUserId().equals(userId)) {
       throw new IllegalArgumentException("宠物不存在或无权操作");
     }
+    // 级联删除所有关联子表数据，避免孤儿记录和外键约束
+    petWeightMapper.delete(new LambdaQueryWrapper<PetWeightEntity>()
+        .eq(PetWeightEntity::getPetId, petId));
+    petAlbumMapper.delete(new LambdaQueryWrapper<PetAlbumEntity>()
+        .eq(PetAlbumEntity::getPetId, petId));
+    petDiaryMapper.delete(new LambdaQueryWrapper<PetDiaryEntity>()
+        .eq(PetDiaryEntity::getPetId, petId));
+    petOutfitMapper.delete(new LambdaQueryWrapper<PetOutfitEntity>()
+        .eq(PetOutfitEntity::getPetId, petId));
+    petReminderMapper.delete(new LambdaQueryWrapper<PetReminderEntity>()
+        .eq(PetReminderEntity::getPetId, petId));
+    petSceneMapper.delete(new LambdaQueryWrapper<PetSceneEntity>()
+        .eq(PetSceneEntity::getPetId, petId));
+    petAchievementMapper.delete(new LambdaQueryWrapper<PetAchievementEntity>()
+        .eq(PetAchievementEntity::getPetId, petId));
+    growthRecordMapper.delete(new LambdaQueryWrapper<GrowthRecordEntity>()
+        .eq(GrowthRecordEntity::getPetId, petId));
     petMapper.deleteById(petId);
     log.info("Pet deleted: petId={}, userId={}", petId, userId);
   }

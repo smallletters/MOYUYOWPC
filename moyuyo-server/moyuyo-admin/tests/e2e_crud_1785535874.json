@@ -1,0 +1,141 @@
+[
+ {
+  "route": "/sensitive-words",
+  "status": "PASS",
+  "steps": [
+   "表单打开(内嵌)",
+   "填写字段数:2",
+   "点击提交(添加敏感词)",
+   "成功提示: 添加成功",
+   "回显验证: 找到(搜e2e_1785535604)"
+  ],
+  "console": [],
+  "http": []
+ },
+ {
+  "route": "/knowledge-base",
+  "status": "PASS",
+  "steps": [
+   "表单打开(弹窗)",
+   "填写字段数:2",
+   "点击提交(创建文章)",
+   "成功提示: 文章已创建",
+   "回显验证: 找到(搜e2e_1785535604)"
+  ],
+  "console": [],
+  "http": []
+ },
+ {
+  "route": "/blacklist",
+  "status": "PASS",
+  "steps": [
+   "表单打开(弹窗)",
+   "填写字段数:3",
+   "点击提交(保存)",
+   "成功提示: 创建成功",
+   "回显验证: 找到(搜e2e_1785535604)"
+  ],
+  "console": [],
+  "http": []
+ },
+ {
+  "route": "/order-tags",
+  "status": "PASS",
+  "steps": [
+   "表单打开(弹窗)",
+   "填写字段数:2",
+   "点击提交(保存)",
+   "成功提示: 创建成功",
+   "回显验证: 找到(搜e2e_1785535604)"
+  ],
+  "console": [],
+  "http": []
+ },
+ {
+  "route": "/coupon-manage",
+  "status": "PASS",
+  "steps": [
+   "表单打开(弹窗)",
+   "填写字段数:3",
+   "点击提交(保存)",
+   "成功提示: 创建成功",
+   "回显验证: 找到(搜e2e_1785535604)"
+  ],
+  "console": [],
+  "http": []
+ },
+ {
+  "route": "/flash-sale-manage",
+  "status": "NO_ECHO",
+  "steps": [
+   "表单打开(弹窗)",
+   "填写字段数:3",
+   "点击提交(保存)",
+   "回显验证: 未找到(搜e2e_1785535604)"
+  ],
+  "console": [],
+  "http": []
+ },
+ {
+  "route": "/tariff",
+  "status": "HTTP_ERR",
+  "steps": [
+   "表单打开(弹窗)",
+   "填写字段数:3",
+   "点击提交(保存)",
+   "回显验证: 未找到(搜e2e_1785535604)"
+  ],
+  "console": [
+   "Failed to load resource: the server responded with a status of 409 (Conflict)",
+   "Failed to load resource: the server responded with a status of 409 (Conflict)"
+  ],
+  "http": [
+   "409 http://localhost:5173/api/admin/tariff/configs/create",
+   "409 http://localhost:5173/api/admin/tariff/configs/create"
+  ]
+ },
+ {
+  "route": "/risk-alert",
+  "status": "HTTP_ERR",
+  "steps": [
+   "表单打开(弹窗)",
+   "填写字段数:4",
+   "点击提交(保存)",
+   "回显验证: 未找到(搜e2e_1785535604)"
+  ],
+  "console": [
+   "Failed to load resource: the server responded with a status of 409 (Conflict)",
+   "Failed to load resource: the server responded with a status of 409 (Conflict)"
+  ],
+  "http": [
+   "409 http://localhost:5173/api/admin/risk-alert/configs/create",
+   "409 http://localhost:5173/api/admin/risk-alert/configs/create"
+  ]
+ },
+ {
+  "route": "/shipping-strategy",
+  "status": "PASS",
+  "steps": [
+   "表单打开(弹窗)",
+   "填写字段数:3",
+   "点击提交(保存)",
+   "成功提示: 保存成功",
+   "回显验证: 找到(搜e2e_1785535604)"
+  ],
+  "console": [],
+  "http": []
+ },
+ {
+  "route": "/warehouse-manage",
+  "status": "NO_ECHO",
+  "steps": [
+   "表单打开(弹窗)",
+   "填写字段数:4",
+   "点击提交(保存)",
+   "成功提示: 保存成功",
+   "回显验证: 未找到(搜e2e_1785535604)"
+  ],
+  "console": [],
+  "http": []
+ }
+]

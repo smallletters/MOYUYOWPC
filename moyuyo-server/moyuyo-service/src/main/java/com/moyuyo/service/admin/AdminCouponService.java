@@ -9,9 +9,19 @@ import java.util.Map;
 public interface AdminCouponService {
 
   /**
-   * 优惠券列表
+   * 优惠券列表（全部）
    */
   List<Map<String, Object>> listAll();
+
+  /**
+   * 优惠券分页列表
+   */
+  Map<String, Object> listPage(int page, int size);
+
+  /**
+   * 根据ID查询优惠券详情
+   */
+  Map<String, Object> getById(Long id);
 
   /**
    * 创建优惠券

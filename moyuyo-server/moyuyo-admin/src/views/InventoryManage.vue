@@ -165,6 +165,60 @@
       </div>
     </section>
 
+    <!-- 批次管理 -->
+    <section aria-label="批次管理" class="section-block">
+      <div class="section-header">
+        <h2 class="section-title">批次管理</h2>
+        <!-- 出库策略筛选 -->
+        <div class="filter-tabs">
+          <button class="filter-tab" :class="{ active: batchFilter === 'all' }" @click="batchFilter = 'all'">全部</button>
+          <button class="filter-tab" :class="{ active: batchFilter === 'FIFO' }" @click="batchFilter = 'FIFO'">FIFO</button>
+          <button class="filter-tab" :class="{ active: batchFilter === 'FEFO' }" @click="batchFilter = 'FEFO'">FEFO</button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="th-left">批次编号</th>
+              <th class="th-left">商品名称</th>
+              <th class="th-left">SKU</th>
+              <th class="th-left">入库日期</th>
+              <th class="th-left">有效期至</th>
+              <th class="th-right">库存数量</th>
+              <th class="th-center">出库策略</th>
+              <th class="th-center">状态</th>
+              <th class="th-center">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              class="data-row"
+              :class="{ 'batch-expiring-row': isBatchExpiring(item) }"
+              v-for="item in filteredBatches"
+              :key="item.id"
+            >
+              <td class="td-bold batch-no">{{ item.batchNo }}</td>
+              <td class="td-bold">{{ item.name }}</td>
+              <td class="td-muted">{{ item.sku }}</td>
+              <td class="td-muted">{{ item.inDate }}</td>
+              <td class="td-muted" :class="{ 'td-expire-warning': isBatchExpiring(item) }">{{ item.expireDate }}</td>
+              <td class="td-amount" :class="{ 'td-stock-low': isBatchExpiring(item) }">{{ item.quantity }}</td>
+              <td class="td-center">
+                <span :class="strategyClass(item.strategy)">{{ item.strategy }}</span>
+              </td>
+              <td class="td-center">
+                <span :class="batchStatusClass(item)">{{ batchStatusText(item) }}</span>
+              </td>
+              <td class="td-center">
+                <button class="action-link-btn" @click="handleBatchDetail(item)">详情</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- 库存编辑弹窗 -->
     <el-dialog
       v-model="showEditModal"
@@ -192,11 +246,66 @@
         <el-button type="primary" :loading="editSubmitting" @click="handleStockSave">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 批次详情弹窗 -->
+    <el-dialog
+      v-model="showBatchModal"
+      title="批次详情"
+      width="520px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <div v-if="batchDetail" class="batch-detail-grid">
+        <div class="batch-detail-item">
+          <span class="batch-detail-label">批次编号</span>
+          <span class="batch-detail-value batch-no">{{ batchDetail.batchNo }}</span>
+        </div>
+        <div class="batch-detail-item">
+          <span class="batch-detail-label">商品名称</span>
+          <span class="batch-detail-value">{{ batchDetail.name }}</span>
+        </div>
+        <div class="batch-detail-item">
+          <span class="batch-detail-label">SKU</span>
+          <span class="batch-detail-value">{{ batchDetail.sku }}</span>
+        </div>
+        <div class="batch-detail-item">
+          <span class="batch-detail-label">入库日期</span>
+          <span class="batch-detail-value">{{ batchDetail.inDate }}</span>
+        </div>
+        <div class="batch-detail-item">
+          <span class="batch-detail-label">有效期至</span>
+          <span class="batch-detail-value" :class="{ 'td-expire-warning': isBatchExpiring(batchDetail) }">{{ batchDetail.expireDate }}</span>
+        </div>
+        <div class="batch-detail-item">
+          <span class="batch-detail-label">库存数量</span>
+          <span class="batch-detail-value">{{ batchDetail.quantity }}</span>
+        </div>
+        <div class="batch-detail-item">
+          <span class="batch-detail-label">出库策略</span>
+          <span class="batch-detail-value">
+            <span :class="strategyClass(batchDetail.strategy)">{{ batchDetail.strategy }}</span>
+          </span>
+        </div>
+        <div class="batch-detail-item">
+          <span class="batch-detail-label">剩余有效期</span>
+          <span class="batch-detail-value" :class="{ 'td-expire-warning': isBatchExpiring(batchDetail) }">{{ batchRemainingDays(batchDetail) }} 天</span>
+        </div>
+        <div class="batch-detail-item">
+          <span class="batch-detail-label">状态</span>
+          <span class="batch-detail-value">
+            <span :class="batchStatusClass(batchDetail)">{{ batchStatusText(batchDetail) }}</span>
+          </span>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showBatchModal = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getInventoryOverview, getInventoryAlerts, getInventoryList, updateStock } from '../api/admin'
@@ -305,11 +414,93 @@ async function handleStockSave() {
   }
 }
 
+// ==================== 批次管理 ====================
+// 生成相对今天偏移 offsetDays 天的日期字符串（示例数据使用，保证演示效果稳定）
+function dateOffset(offsetDays) {
+  const d = new Date()
+  d.setDate(d.getDate() + offsetDays)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+// 批次列表（示例数据：暂无真实批次 API，字段含批次号/商品/SKU/入库日期/有效期/数量/出库策略）
+const batchData = ref([
+  { id: 1, batchNo: 'B20260615-001', name: '皇家猫粮室内成猫 2kg', sku: 'RCL-IND-2K', inDate: dateOffset(-45), expireDate: dateOffset(12), quantity: '5 袋', strategy: 'FEFO' },
+  { id: 2, batchNo: 'B20260701-012', name: '渴望六种鱼猫粮 5.4kg', sku: 'ORJ-CAT-54', inDate: dateOffset(-30), expireDate: dateOffset(340), quantity: '12 袋', strategy: 'FIFO' },
+  { id: 3, batchNo: 'B20260520-003', name: '宠物益生菌调理粉 120g', sku: 'PBT-PRO-120', inDate: dateOffset(-70), expireDate: dateOffset(24), quantity: '18 瓶', strategy: 'FEFO' },
+  { id: 4, batchNo: 'B20260705-018', name: '豆腐猫砂 6L 经典款', sku: 'TDL-CLS-6L', inDate: dateOffset(-25), expireDate: dateOffset(300), quantity: '40 包', strategy: 'FEFO' },
+  { id: 5, batchNo: 'B20260410-005', name: '全价冻干双拼粮 1.8kg', sku: 'FZD-SP-18', inDate: dateOffset(-110), expireDate: dateOffset(-3), quantity: '0 袋', strategy: 'FIFO' }
+])
+
+// 批次筛选：all / FIFO / FEFO
+const batchFilter = ref('all')
+
+// 批次详情弹窗
+const showBatchModal = ref(false)
+const batchDetail = ref(null)
+
+// 根据筛选条件返回批次列表
+const filteredBatches = computed(() => {
+  if (batchFilter.value === 'all') return batchData.value
+  return batchData.value.filter((b) => b.strategy === batchFilter.value)
+})
+
+// 计算批次剩余有效期天数（基于当前日期）
+function batchRemainingDays(item) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const expire = new Date(item.expireDate)
+  expire.setHours(0, 0, 0, 0)
+  return Math.round((expire - today) / 86400000)
+}
+
+// 批次状态判断（有效期警示：剩余 30 天内为临期，已过期为过期）
+function batchStatus(item) {
+  const days = batchRemainingDays(item)
+  if (days < 0) return 'expired'
+  if (days <= 30) return 'expiring'
+  return 'normal'
+}
+
+// 是否临期/过期（用于行高亮与有效期警示标红）
+function isBatchExpiring(item) {
+  return batchStatus(item) !== 'normal'
+}
+
+// 批次状态标签样式
+function batchStatusClass(item) {
+  const status = batchStatus(item)
+  if (status === 'expired') return 'batch-tag batch-tag-expired'
+  if (status === 'expiring') return 'batch-tag batch-tag-expiring'
+  return 'batch-tag batch-tag-normal'
+}
+
+// 批次状态文案
+function batchStatusText(item) {
+  const status = batchStatus(item)
+  if (status === 'expired') return '已过期'
+  if (status === 'expiring') return '⚠ 临期'
+  return '正常'
+}
+
+// 出库策略标签样式
+function strategyClass(strategy) {
+  return strategy === 'FIFO' ? 'strategy-tag strategy-fifo' : 'strategy-tag strategy-fefo'
+}
+
+// 打开批次详情弹窗
+function handleBatchDetail(item) {
+  batchDetail.value = item
+  showBatchModal.value = true
+}
+
 onMounted(() => { loadData() })
 </script>
 
 <style scoped>
-.page-wrapper { padding: 20px; }
+.page-wrapper { }
 .page-title-section { margin-bottom: 24px; }
 .page-title { font-size: 22px; font-weight: 700; color: var(--text-800); margin: 0 0 6px; }
 .page-desc { font-size: 13px; color: var(--text-400); margin: 0; }
@@ -606,5 +797,120 @@ onMounted(() => { loadData() })
 }
 .action-link-btn:hover {
   background: var(--accent);
+}
+
+/* ===== 批次管理 ===== */
+/* 出库策略筛选标签页 */
+.filter-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--background-200);
+  border-radius: 10px;
+  width: fit-content;
+}
+.filter-tab {
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-500);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+  background: transparent;
+  font-family: var(--font-sans);
+}
+.filter-tab:hover {
+  color: var(--text-700);
+}
+.filter-tab.active {
+  background: var(--card);
+  color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 批次编号等宽字体 */
+.batch-no {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+/* 临期/过期批次行高亮（有效期警示） */
+.batch-expiring-row {
+  background: var(--state-error-surface);
+}
+.data-row.batch-expiring-row:hover {
+  background: var(--state-error-surface);
+}
+
+/* 有效期警示标红 */
+.td-expire-warning {
+  color: var(--state-error);
+  font-weight: 700;
+}
+
+/* 批次状态标签 */
+.batch-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.batch-tag-normal {
+  background: var(--state-success-surface);
+  color: var(--state-success);
+}
+.batch-tag-expiring {
+  background: var(--state-error);
+  color: #fff;
+}
+.batch-tag-expired {
+  background: var(--text-600);
+  color: #fff;
+}
+
+/* 出库策略标签 */
+.strategy-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.strategy-fifo {
+  background: var(--brand-50);
+  color: var(--brand-600);
+}
+.strategy-fefo {
+  background: #f0e6ff;
+  color: #5856d6;
+}
+
+/* 批次详情弹窗布局 */
+.batch-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 20px;
+}
+.batch-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.batch-detail-label {
+  font-size: 12px;
+  color: var(--text-400);
+}
+.batch-detail-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-800);
 }
 </style>

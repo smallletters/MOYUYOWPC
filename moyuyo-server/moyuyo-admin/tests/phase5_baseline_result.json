@@ -1,0 +1,628 @@
+[
+  {
+    "path": "/dashboard",
+    "name": "仪表盘",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 785
+  },
+  {
+    "path": "/orders",
+    "name": "订单管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1393
+  },
+  {
+    "path": "/orders/1",
+    "name": "订单详情(样例)",
+    "status": "CONSOLE_ERR",
+    "console": [
+      "获取订单详情失败: Error: 订单不存在\n    at api.interceptors.response.use.config (http://localhost:5173/admin/src/api/index.js?t=1785510827565:41:30)\n    at async Axios$1.request (http://localhost:5173/admin/node_modules/.vite/deps/axios.js?v=778fc4f4:3020:11)\n    at async fetchOrderDetail (http://localhost:5173/admin/src/views/OrderDetail.vue?t=1785510827565:163:17)",
+      "获取订单详情失败: Error: 订单不存在\n    at api.interceptors.response.use.config (http://localhost:5173/admin/src/api/index.js?t=1785510827565:41:30)\n    at async Axios$1.request (http://localhost:5173/admin/node_modules/.vite/deps/axios.js?v=778fc4f4:3020:11)\n    at async fetchOrderDetail (http://localhost:5173/admin/src/views/OrderDetail.vue?t=1785510827565:163:17)",
+      "获取订单详情失败: Error: 订单不存在\n    at api.interceptors.response.use.config (http://localhost:5173/admin/src/api/index.js?t=1785510827565:41:30)\n    at async Axios$1.request (http://localhost:5173/admin/node_modules/.vite/deps/axios.js?v=778fc4f4:3020:11)\n    at async fetchOrderDetail (http://localhost:5173/admin/src/views/OrderDetail.vue?t=1785510827565:163:17)"
+    ],
+    "api": [],
+    "body_len": 504
+  },
+  {
+    "path": "/products",
+    "name": "商品管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 762
+  },
+  {
+    "path": "/products/edit/1",
+    "name": "编辑商品(样例)",
+    "status": "CONSOLE_ERR",
+    "console": [
+      "获取商品详情失败: Error: 商品不存在\n    at api.interceptors.response.use.config (http://localhost:5173/admin/src/api/index.js?t=1785510827565:41:30)\n    at async Axios$1.request (http://localhost:5173/admin/node_modules/.vite/deps/axios.js?v=778fc4f4:3020:11)\n    at async fetchProduct (http://localhost:5173/admin/src/views/ProductEdit.vue?t=1785510827565:79:17)\n    at async Promise.all (index 1)",
+      "获取商品详情失败: Error: 商品不存在\n    at api.interceptors.response.use.config (http://localhost:5173/admin/src/api/index.js?t=1785510827565:41:30)\n    at async Axios$1.request (http://localhost:5173/admin/node_modules/.vite/deps/axios.js?v=778fc4f4:3020:11)\n    at async fetchProduct (http://localhost:5173/admin/src/views/ProductEdit.vue?t=1785510827565:79:17)\n    at async Promise.all (index 1)",
+      "获取商品详情失败: Error: 商品不存在\n    at api.interceptors.response.use.config (http://localhost:5173/admin/src/api/index.js?t=1785510827565:41:30)\n    at async Axios$1.request (http://localhost:5173/admin/node_modules/.vite/deps/axios.js?v=778fc4f4:3020:11)\n    at async fetchProduct (http://localhost:5173/admin/src/views/ProductEdit.vue?t=1785510827565:79:17)\n    at async Promise.all (index 1)",
+      "获取商品详情失败: Error: 商品不存在\n    at api.interceptors.response.use.config (http://localhost:5173/admin/src/api/index.js?t=1785510827565:41:30)\n    at async Axios$1.request (http://localhost:5173/admin/node_modules/.vite/deps/axios.js?v=778fc4f4:3020:11)\n    at async fetchProduct (http://localhost:5173/admin/src/views/ProductEdit.vue?t=1785510827565:79:17)\n    at async Promise.all (index 1)",
+      "获取商品详情失败: Error: 商品不存在\n    at api.interceptors.response.use.config (http://localhost:5173/admin/src/api/index.js?t=1785510827565:41:30)\n    at async Axios$1.request (http://localhost:5173/admin/node_modules/.vite/deps/axios.js?v=778fc4f4:3020:11)\n    at async fetchProduct (http://localhost:5173/admin/src/views/ProductEdit.vue?t=1785510827565:79:17)\n    at async Promise.all (index 1)"
+    ],
+    "api": [],
+    "body_len": 1539
+  },
+  {
+    "path": "/products/add",
+    "name": "新增商品",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1524
+  },
+  {
+    "path": "/users",
+    "name": "用户管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1316
+  },
+  {
+    "path": "/marketing",
+    "name": "营销管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 949
+  },
+  {
+    "path": "/reviews",
+    "name": "内容审核",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 470
+  },
+  {
+    "path": "/cs",
+    "name": "客服管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 453
+  },
+  {
+    "path": "/analytics",
+    "name": "数据分析",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 491
+  },
+  {
+    "path": "/logistics",
+    "name": "物流管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1038
+  },
+  {
+    "path": "/settings",
+    "name": "系统设置",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1185
+  },
+  {
+    "path": "/refund",
+    "name": "退款管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 417
+  },
+  {
+    "path": "/cms",
+    "name": "CMS内容管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1059
+  },
+  {
+    "path": "/rbac",
+    "name": "RBAC权限管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1953
+  },
+  {
+    "path": "/finance",
+    "name": "财务概览",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 502
+  },
+  {
+    "path": "/inventory",
+    "name": "库存管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 640
+  },
+  {
+    "path": "/push-manage",
+    "name": "推送管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1019
+  },
+  {
+    "path": "/ticket",
+    "name": "工单管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 921
+  },
+  {
+    "path": "/campaign",
+    "name": "活动创建",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1300
+  },
+  {
+    "path": "/complaint",
+    "name": "投诉管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1450
+  },
+  {
+    "path": "/review-manage",
+    "name": "评价管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 808
+  },
+  {
+    "path": "/product-analysis",
+    "name": "商品分析",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 484
+  },
+  {
+    "path": "/product-report",
+    "name": "商品报表",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 475
+  },
+  {
+    "path": "/product-review",
+    "name": "商品评价审核",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1131
+  },
+  {
+    "path": "/price-manage",
+    "name": "价格管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 499
+  },
+  {
+    "path": "/price-history",
+    "name": "价格历史",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 560
+  },
+  {
+    "path": "/order-export",
+    "name": "订单导出",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1159
+  },
+  {
+    "path": "/order-intercept",
+    "name": "订单拦截",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 383
+  },
+  {
+    "path": "/order-monitor",
+    "name": "订单监控",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 492
+  },
+  {
+    "path": "/order-price-modify",
+    "name": "订单改价",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 643
+  },
+  {
+    "path": "/order-print",
+    "name": "订单打印",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 572
+  },
+  {
+    "path": "/sms",
+    "name": "短信管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1138
+  },
+  {
+    "path": "/sensitive-words",
+    "name": "敏感词管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 2285
+  },
+  {
+    "path": "/funnel",
+    "name": "漏斗分析",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 364
+  },
+  {
+    "path": "/rfm",
+    "name": "RFM分析",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 597
+  },
+  {
+    "path": "/risk-control",
+    "name": "风控管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1565
+  },
+  {
+    "path": "/risk-rule-engine",
+    "name": "风控规则引擎",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1231
+  },
+  {
+    "path": "/realtime-screen",
+    "name": "实时大屏",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 813
+  },
+  {
+    "path": "/user-profile",
+    "name": "用户画像",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 424
+  },
+  {
+    "path": "/ab-test",
+    "name": "A/B测试",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 884
+  },
+  {
+    "path": "/app-version",
+    "name": "应用版本管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1116
+  },
+  {
+    "path": "/batch-import",
+    "name": "批量导入",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 11715
+  },
+  {
+    "path": "/knowledge-base",
+    "name": "知识库",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 379
+  },
+  {
+    "path": "/search-analysis",
+    "name": "搜索分析",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 718
+  },
+  {
+    "path": "/traffic-analysis",
+    "name": "流量分析",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 533
+  },
+  {
+    "path": "/satisfaction",
+    "name": "满意度管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 430
+  },
+  {
+    "path": "/gdpr",
+    "name": "GDPR合规",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 530
+  },
+  {
+    "path": "/audit-log",
+    "name": "审计日志",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 393
+  },
+  {
+    "path": "/product-approval",
+    "name": "商品审核",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 362
+  },
+  {
+    "path": "/coupon-manage",
+    "name": "优惠券管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1694
+  },
+  {
+    "path": "/flash-sale-manage",
+    "name": "秒杀管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1985
+  },
+  {
+    "path": "/points-manage",
+    "name": "积分管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1707
+  },
+  {
+    "path": "/blacklist",
+    "name": "黑名单管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 932
+  },
+  {
+    "path": "/tariff",
+    "name": "关税管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 3912
+  },
+  {
+    "path": "/risk-alert",
+    "name": "风控告警",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 4767
+  },
+  {
+    "path": "/cs-sessions",
+    "name": "客服会话",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 428
+  },
+  {
+    "path": "/order-tags",
+    "name": "订单标签",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 5728
+  },
+  {
+    "path": "/inventory-transfer",
+    "name": "库存调拨",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1246
+  },
+  {
+    "path": "/merge-package",
+    "name": "合包管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 806
+  },
+  {
+    "path": "/split-package",
+    "name": "分包裹",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 764
+  },
+  {
+    "path": "/carrier-compare",
+    "name": "承运商对比",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1216
+  },
+  {
+    "path": "/overseas-warehouse",
+    "name": "海外仓管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1215
+  },
+  {
+    "path": "/warehouse-manage",
+    "name": "仓库管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1423
+  },
+  {
+    "path": "/clearance",
+    "name": "清关管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 736
+  },
+  {
+    "path": "/customs",
+    "name": "海关管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 554
+  },
+  {
+    "path": "/settlement",
+    "name": "结算管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1183
+  },
+  {
+    "path": "/settlement-detail/1",
+    "name": "结算详情(样例)",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 343
+  },
+  {
+    "path": "/system-config",
+    "name": "系统配置",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 413
+  },
+  {
+    "path": "/operation-log",
+    "name": "运营日志",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 392
+  },
+  {
+    "path": "/live-manage",
+    "name": "直播管理",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 532
+  },
+  {
+    "path": "/marketing-effect",
+    "name": "营销效果",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 1899
+  },
+  {
+    "path": "/shipping-strategy",
+    "name": "发货策略",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 998
+  },
+  {
+    "path": "/content-review-detail/1",
+    "name": "内容审核详情(样例)",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 343
+  },
+  {
+    "path": "/push-detail/1",
+    "name": "推送详情(样例)",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 343
+  },
+  {
+    "path": "/complaint-handle/1",
+    "name": "投诉处理详情(样例)",
+    "status": "OK",
+    "console": [],
+    "api": [],
+    "body_len": 343
+  }
+]

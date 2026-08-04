@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.dto.community.CommunityPostVO;
 import com.moyuyo.common.utils.JsonUtils;
 import com.moyuyo.common.utils.PageUtils;
+import com.moyuyo.common.utils.XssSanitizer;
 import com.moyuyo.dao.entity.*;
 import com.moyuyo.dao.mapper.*;
 import com.moyuyo.service.CommunityService;
@@ -56,9 +57,10 @@ public class CommunityServiceImpl implements CommunityService {
     public CommunityPostVO createPost(Long userId, String content, List<String> images, String topic) {
         CommunityPostEntity entity = new CommunityPostEntity();
         entity.setUserId(userId);
-        entity.setContent(content);
+        // 净化富文本，防止存储型 XSS
+        entity.setContent(XssSanitizer.sanitizeRichText(content));
         entity.setImages(JsonUtils.toJsonArray(images));
-        entity.setTopic(topic);
+        entity.setTopic(XssSanitizer.sanitizePlainText(topic));
         entity.setLikes(0);
         entity.setComments(0);
         entity.setStatus("PUBLISHED");
@@ -110,7 +112,8 @@ public class CommunityServiceImpl implements CommunityService {
         comment.setPostId(postId);
         comment.setUserId(userId);
         comment.setParentId(parentId);
-        comment.setContent(content);
+        // 净化评论内容，防止存储型 XSS
+        comment.setContent(XssSanitizer.sanitizeRichText(content));
         commentMapper.insert(comment);
 
         CommunityPostEntity post = postMapper.selectById(postId);

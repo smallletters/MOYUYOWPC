@@ -1,0 +1,153 @@
+{
+  "scan_time": "2026-07-31 12:18:03",
+  "total": 29,
+  "pass": 29,
+  "fail": 0,
+  "results": [
+    {
+      "name": "push/create",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "push/send",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "push/cancel",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "push/delete",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "app-version/create",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "app-version/update",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "marketing/campaigns.create",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "marketing/campaigns.update",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "marketing/campaigns.delete",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "coupons/create",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "rbac/roles.create",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "rbac/roles.update",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "rbac/roles.delete",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "cms/create",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "cms/update",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "cms/delete",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "sensitive/create",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "sensitive/delete",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "warehouses/create",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "warehouses/update",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "warehouses/delete",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "carriers/create",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "carriers/delete",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "blacklist/create",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "blacklist/delete",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "risk/rules.create",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "risk/rules.delete",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "refunds/list",
+      "code": 200,
+      "ok": true
+    },
+    {
+      "name": "refunds/detail",
+      "code": 200,
+      "ok": true
+    }
+  ]
+}

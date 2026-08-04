@@ -30,6 +30,30 @@ jobs:
       contents: read
       packages: write
 
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test
+          MYSQL_DATABASE: moyuyo_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -41,10 +65,13 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: Build JAR
-        run: mvn clean package -DskipTests -B
+      - name: Build JAR (with tests)
+        run: mvn clean package -B
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          MYSQL_PASSWORD: test
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

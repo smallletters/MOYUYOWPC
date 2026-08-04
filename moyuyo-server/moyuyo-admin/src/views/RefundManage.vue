@@ -105,8 +105,9 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import api from '../api/index'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getRefundStats, getRefundList, getRefundDetail, getRefundReasonDistribution, approveRefund, rejectRefund, batchApproveRefund } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 const activeType = ref('all')
 const selectAll = ref(false)
@@ -136,7 +137,7 @@ const reasonDist = ref([])
 // 获取退款统计数据
 async function fetchStats() {
   try {
-    const res = await api.get('/refunds/stats')
+    const res = await getRefundStats()
     if (res) {
       kpiData.value = {
         pending: res.pendingCount || 0,
@@ -159,10 +160,10 @@ async function fetchRefunds() {
       size: 20,
       status: activeType.value
     }
-    const res = await api.get('/refunds/list', { params })
+    const res = await getRefundList(params)
     if (res) {
-      const list = res.records || res.list || res
-      refunds.value = (Array.isArray(list) ? list : []).map(item => ({
+      const list = toArray(res)
+      refunds.value = list.map(item => ({
         id: item.id,
         refundNo: item.refundNo || 'REF' + item.id,
         orderId: item.orderId || '',
@@ -188,11 +189,12 @@ async function fetchRefunds() {
 // 获取退款原因分布
 async function fetchReasonDist() {
   try {
-    const res = await api.get('/refunds/reason-distribution')
-    if (Array.isArray(res) && res.length > 0) {
-      const total = res.reduce((sum, r) => sum + (r.count || 0), 0)
+    const res = await getRefundReasonDistribution()
+    const distList = toArray(res)
+    if (distList.length > 0) {
+      const total = distList.reduce((sum, r) => sum + (r.count || 0), 0)
       const colors = ['#e74c3c', '#f39c12', '#2ecc71', '#3498db', '#9b59b6', '#1abc9c']
-      reasonDist.value = res.map((r, i) => ({
+      reasonDist.value = distList.map((r, i) => ({
         label: r.reason || '其他',
         percent: total > 0 ? Math.round((r.count / total) * 100) : 0,
         color: colors[i % colors.length]
@@ -215,23 +217,37 @@ function toggleSelectAll() {
 
 async function handleApprove(id) {
   try {
-    await api.put(`/refunds/${id}/approve`)
+    await ElMessageBox.confirm(
+      '确定批准该退款申请吗？此操作将触发退款流程。',
+      '批准退款确认',
+      { type: 'warning', confirmButtonText: '确认批准', cancelButtonText: '取消' }
+    )
+    await approveRefund(id)
     ElMessage.success(`退款 #${id} 已批准`)
     fetchRefunds()
     fetchStats()
   } catch (err) {
-    ElMessage.error('批准退款失败')
+    if (err !== 'cancel' && err !== 'close') {
+      ElMessage.error('批准退款失败: ' + (err?.message || '未知错误'))
+    }
   }
 }
 
 async function handleReject(id) {
   try {
-    await api.put(`/refunds/${id}/reject`)
+    await ElMessageBox.confirm(
+      '确定拒绝该退款申请吗？请谨慎操作。',
+      '拒绝退款确认',
+      { type: 'warning', confirmButtonText: '确认拒绝', cancelButtonText: '取消' }
+    )
+    await rejectRefund(id)
     ElMessage.success(`退款 #${id} 已拒绝`)
     fetchRefunds()
     fetchStats()
   } catch (err) {
-    ElMessage.error('拒绝退款失败')
+    if (err !== 'cancel' && err !== 'close') {
+      ElMessage.error('拒绝退款失败: ' + (err?.message || '未知错误'))
+    }
   }
 }
 
@@ -239,7 +255,7 @@ async function batchApprove() {
   const ids = Array.from(selectedItems.value)
   if (ids.length === 0) return
   try {
-    await api.put('/refunds/batch-approve', { ids })
+    await batchApproveRefund({ ids })
     ElMessage.success(`批量同意 ${ids.length} 项退款`)
     selectedItems.value.clear()
     selectAll.value = false
@@ -250,8 +266,18 @@ async function batchApprove() {
   }
 }
 
-function handleDetail(item) {
-  ElMessage.info(`退款单: ${item.refundNo || item.id}, 金额: ¥${item.amount}`)
+async function handleDetail(item) {
+  try {
+    const detail = await getRefundDetail(item.id)
+    if (detail) {
+      ElMessage.info({
+        message: `退款单: ${detail.refundNo || item.id}\n订单: ${detail.orderId || '-'}\n金额: ¥${detail.amount || item.amount}\n原因: ${detail.reason || '-'}\n状态: ${detail.status || '-'}`,
+        duration: 5000
+      })
+    }
+  } catch (err) {
+    ElMessage.info(`退款单: ${item.refundNo || item.id}, 金额: ¥${item.amount}`)
+  }
 }
 
 // 监听退款类型切换，重新加载数据
@@ -268,7 +294,7 @@ onMounted(() => {
 
 <style scoped lang="css">
 .page-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-800);
   margin: 0 0 20px;

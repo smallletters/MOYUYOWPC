@@ -17,37 +17,56 @@
         </el-form-item>
       </el-form>
     </el-card>
-    <el-card shadow="never">
-      <el-table :data="tableData" stripe>
-        <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="complaintNo" label="投诉编号" width="150" />
-        <el-table-column prop="complainant" label="投诉人" width="100" />
-        <el-table-column prop="target" label="投诉对象" width="120" />
-        <el-table-column prop="reason" label="投诉原因" width="180" show-overflow-tooltip />
-        <el-table-column prop="handler" label="处理人" width="100" />
-        <el-table-column label="处理状态" width="110">
-          <template #default="{ row }">
-            <el-tag :type="row.status === '已完结' ? 'success' : row.status === '处理中' ? 'warning' : 'danger'">{{ row.status }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="handleTime" label="处理时间" width="160" />
-        <el-table-column label="操作" width="180" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleEdit(row)">处理</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <div style="display:flex;justify-content:flex-end;padding:16px 0 0">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :total="total"
-          layout="total, sizes, prev, pager, next"
-          @change="loadData"
-        />
-      </div>
-    </el-card>
+    <!-- 两栏布局：左侧投诉分类分布 + 右侧投诉列表 -->
+    <div class="content-grid">
+      <!-- 投诉分类分布（纯 CSS 条形图，对齐设计稿） -->
+      <el-card shadow="never" class="category-card">
+        <h3 class="card-title">投诉分类分布</h3>
+        <!-- 遍历分类数据渲染条形图 -->
+        <div class="category-bar-item" v-for="item in categoryData" :key="item.name">
+          <span class="category-bar-label">{{ item.name }}</span>
+          <div class="category-bar-track">
+            <div class="category-bar-fill" :style="{ width: item.percent + '%', background: item.color }">
+              <span>{{ item.percent }}%</span>
+            </div>
+          </div>
+        </div>
+        <!-- 数据来源说明 -->
+        <p class="category-source">数据来源：近30天投诉分类统计</p>
+      </el-card>
+      <!-- 右侧：投诉列表（原表格） -->
+      <el-card shadow="never" class="table-card">
+        <el-table :data="tableData" stripe>
+          <el-table-column prop="id" label="ID" width="60" />
+          <el-table-column prop="complaintNo" label="投诉编号" width="150" />
+          <el-table-column prop="complainant" label="投诉人" width="100" />
+          <el-table-column prop="target" label="投诉对象" width="120" />
+          <el-table-column prop="reason" label="投诉原因" width="180" show-overflow-tooltip />
+          <el-table-column prop="handler" label="处理人" width="100" />
+          <el-table-column label="处理状态" width="110">
+            <template #default="{ row }">
+              <el-tag :type="row.status === '已完结' ? 'success' : row.status === '处理中' ? 'warning' : 'danger'">{{ row.status }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="handleTime" label="处理时间" width="160" />
+          <el-table-column label="操作" width="180" fixed="right">
+            <template #default="{ row }">
+              <el-button type="primary" link size="small" @click="handleEdit(row)">处理</el-button>
+              <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div class="pagination-wrap">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :total="total"
+            layout="total, sizes, prev, pager, next"
+            @change="loadData"
+          />
+        </div>
+      </el-card>
+    </div>
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="700px">
       <el-form :model="editForm" label-width="100px">
         <el-form-item label="投诉编号">
@@ -105,6 +124,16 @@ const editForm = reactive({
 
 // 类型标签映射
 const typeLabelMap = { '售后': '售后问题', '咨询': '售前咨询', '投诉': '用户投诉' }
+
+// 投诉分类分布示例数据（无真实统计 API，先用结构化示例数据展示图表形态）
+// 颜色沿用设计稿：产品质量-红 / 物流配送-蓝 / 服务态度-橙 / 价格问题-紫 / 其他-灰
+const categoryData = [
+  { name: '产品质量', percent: 35, color: 'var(--state-error)' },
+  { name: '物流配送', percent: 28, color: 'var(--brand-500)' },
+  { name: '服务态度', percent: 15, color: '#ff9500' },
+  { name: '价格问题', percent: 12, color: '#5856d6' },
+  { name: '其他', percent: 10, color: 'var(--text-400)' }
+]
 
 // 从API加载投诉列表数据
 async function loadData() {
@@ -181,4 +210,73 @@ onMounted(() => loadData())
 .page-header h2 { font-size: 20px; font-weight: 700; color: var(--text-800); margin: 0; }
 .filter-card { margin-bottom: 16px; }
 .header-actions { display: flex; gap: 8px; }
+
+/* 两栏布局：左侧分类分布 + 右侧投诉列表（对齐设计稿 340px + 1fr） */
+.content-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+/* 投诉分类分布卡片 */
+.category-card { align-self: stretch; }
+.category-card :deep(.el-card__body) { padding: 20px; }
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-800);
+  margin: 0 0 20px 0;
+}
+
+/* 投诉分类条形图（对齐设计稿样式） */
+.category-bar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.category-bar-item:last-child {
+  margin-bottom: 0;
+}
+.category-bar-label {
+  width: 72px;
+  font-size: 13px;
+  color: var(--text-600);
+  text-align: right;
+  flex-shrink: 0;
+}
+.category-bar-track {
+  flex: 1;
+  height: 28px;
+  background: var(--background-200);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+.category-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.4s ease;
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+}
+.category-bar-fill span {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* 数据来源说明 */
+.category-source {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  margin-top: 20px;
+  margin-bottom: 0;
+}
+
+/* 右侧表格卡片 */
+.table-card { min-width: 0; }
+.pagination-wrap { display: flex; justify-content: flex-end; padding: 16px 0 0; }
 </style>

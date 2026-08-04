@@ -32,7 +32,7 @@ public class AdminUserProfileController {
     try {
       Map<String, Object> svcResult = adminUserProfileService.getDetail(userId);
       if (svcResult == null || svcResult.isEmpty()) {
-        return Result.error("用户不存在");
+        return Result.error(404, "用户不存在");
       }
       UserProfileResponse resp = new UserProfileResponse();
       resp.setUserId((Long) svcResult.get("userId"));
@@ -45,6 +45,8 @@ public class AdminUserProfileController {
       Object totalSpentVal = svcResult.get("totalSpent");
       resp.setTotalSpent(totalSpentVal != null ? ((Number) totalSpentVal).intValue() : 0);
       return Result.success(resp);
+    } catch (IllegalArgumentException e) {
+      return Result.error(404, e.getMessage());
     } catch (Exception e) {
       return Result.error("查询用户画像失败: " + e.getMessage());
     }

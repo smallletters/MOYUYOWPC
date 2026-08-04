@@ -37,6 +37,10 @@ public class AdminAppVersionController {
   @Operation(summary = "更新版本")
   @PutMapping("/update")
   public Result<Map<String, Object>> update(@RequestBody AppVersionEntity body) {
+    // 校验 id 必填
+    if (body == null || body.getId() == null) {
+      return Result.error(400, "参数错误：id 不能为空");
+    }
     adminAppVersionService.update(body);
     return Result.success(Map.of("id", body.getId(), "message", "版本更新成功"));
   }

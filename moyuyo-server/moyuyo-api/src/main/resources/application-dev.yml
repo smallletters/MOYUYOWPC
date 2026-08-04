@@ -1,0 +1,182 @@
+# ===== 开发环境配置 =====
+# 仅在 SPRING_PROFILES_ACTIVE=dev 时激活
+# 此处允许"测试用"默认值（弱密码、本地连接），绝对不能用于生产
+
+spring:
+  # 数据库
+  datasource:
+    url: jdbc:mysql://localhost:3306/moyuyo_dev?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
+    username: root
+    # ⚠️ 弱默认值，仅本地开发
+    password: ${MYSQL_PASSWORD:dev123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+
+  # Redis
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 3000
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 4
+
+  # Elasticsearch（dev 可选）
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
+    connection-timeout: 5s
+    socket-timeout: 60s
+
+  # Flyway dev 配置：可 repair，加载 seed
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed
+    repair-on-migrate: true
+
+# JWT 开发密钥
+jwt:
+  secret: ${JWT_SECRET:DevJwtSecretKeyForLocalTestingOnlyNotForProd}
+  expire-hours: 8
+
+# CORS 开发开放
+moyuyo:
+  cors:
+    allowed-origins: ${MOYUYO_CORS_ORIGINS:http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173}
+
+# API 签名（dev 默认空）
+api:
+  signature:
+    secret: ${API_SIGN_SECRET:}
+
+# 管理员默认账号（dev 友好）
+admin:
+  # ⚠️ 使用合法的非弱用户名（admin 是 OWASP 黑名单，禁止作为默认值）
+  username: ${ADMIN_USERNAME:moyuyo_admin}
+  email: ${ADMIN_EMAIL:admin@moyuyo.com}
+  password: ${ADMIN_PASSWORD:moyuyo12345678}
+
+# MyBatis-Plus SQL 日志：dev 用 stdout
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# RocketMQ
+rocketmq:
+  name-server: ${ROCKETMQ_NAMESRV_ADDR:localhost:9876}
+  producer:
+    group: moyuyo-producer-group
+    send-message-timeout: 3000
+    retry-times-when-send-failed: 2
+
+# 支付渠道（dev 使用 sandbox 占位）
+payment:
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY:sk_test_placeholder}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_placeholder}
+    currency: usd
+  paypal:
+    client-id: ${PAYPAL_CLIENT_ID:placeholder}
+    client-secret: ${PAYPAL_CLIENT_SECRET:placeholder}
+    webhook-id: ${PAYPAL_WEBHOOK_ID:placeholder}
+    mode: sandbox
+    allowed-origins: ${PAYPAL_ALLOWED_ORIGINS:https://moyuyo.com}
+
+# WooCommerce
+woocommerce:
+  url: ${WOOCOMMERCE_URL:https://your-woocommerce-store.com}
+  consumer-key: ${WOOCOMMERCE_CONSUMER_KEY:}
+  consumer-secret: ${WOOCOMMERCE_CONSUMER_SECRET:}
+  connect-timeout: 10000
+  read-timeout: 30000
+  stock-sync:
+    auto-enabled: ${WC_STOCK_SYNC_ENABLED:false}
+    cron: ${WC_STOCK_SYNC_CRON:0 */5 * * * *}
+
+# Resilience4j 限流（dev 宽松）
+resilience4j:
+  ratelimiter:
+    instances:
+      authLogin:
+        limit-refresh-period: 1m
+        limit-for-period: 600
+        timeout-duration: 500ms
+      orderCreate:
+        limit-refresh-period: 1m
+        limit-for-period: 300
+        timeout-duration: 500ms
+      paymentApi:
+        limit-refresh-period: 1m
+        limit-for-period: 500
+        timeout-duration: 500ms
+      seckillApi:
+        limit-refresh-period: 1m
+        limit-for-period: 2000
+        timeout-duration: 1s
+      # P1 修复：为高价值写接口补充限流
+      refundBatch:
+        limit-refresh-period: 1m
+        limit-for-period: 50
+        timeout-duration: 500ms
+      inventoryUpdate:
+        limit-refresh-period: 1m
+        limit-for-period: 100
+        timeout-duration: 500ms
+      configUpdate:
+        limit-refresh-period: 1m
+        limit-for-period: 30
+        timeout-duration: 500ms
+      batchImport:
+        limit-refresh-period: 1m
+        limit-for-period: 20
+        timeout-duration: 1s
+      pushAction:
+        limit-refresh-period: 1m
+        limit-for-period: 60
+        timeout-duration: 500ms
+      riskRuleUpdate:
+        limit-refresh-period: 1m
+        limit-for-period: 30
+        timeout-duration: 500ms
+  circuitbreaker:
+    instances:
+      paymentGateway:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 30
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+      dbWrite:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 15s
+        permitted-number-of-calls-in-half-open-state: 3
+      woocommerceApi:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+  retry:
+    instances:
+      paymentCallback:
+        max-attempts: 3
+        wait-duration: 500ms
+        retry-exceptions:
+          - org.springframework.dao.DataAccessException
+      woocommerceSync:
+        max-attempts: 3
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        exponential-max-wait-duration: 10s
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - java.net.SocketTimeoutException
+          - java.io.IOException

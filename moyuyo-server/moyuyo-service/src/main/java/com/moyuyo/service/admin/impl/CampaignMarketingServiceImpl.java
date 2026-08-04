@@ -3,6 +3,9 @@ package com.moyuyo.service.admin.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyuyo.common.dto.admin.OperationResult;
+import com.moyuyo.common.dto.admin.PageResponse;
+import com.moyuyo.common.dto.admin.campaign.*;
 import com.moyuyo.dao.admin.entity.AbTestEntity;
 import com.moyuyo.dao.admin.entity.MarketingCampaignEntity;
 import com.moyuyo.dao.admin.mapper.AbTestMapper;
@@ -18,10 +21,11 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.moyuyo.common.enums.OrderStatusEnum.*;
+import static com.moyuyo.common.enums.OrderStatusEnum.COMPLETED;
 
 /**
  * 营销活动服务实现
@@ -34,88 +38,83 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
   private final AbTestMapper abTestMapper;
   private final OrderMapper orderMapper;
 
+  /** 日期格式化器(yyyy-MM-dd) */
+  private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
   @Override
-  public Map<String, Object> listCampaigns(int page, int size) {
+  public PageResponse<CampaignResponse> listCampaigns(int page, int size) {
     IPage<MarketingCampaignEntity> pageResult = marketingCampaignMapper.selectPage(
         new Page<>(page, size),
         new LambdaQueryWrapper<MarketingCampaignEntity>()
             .orderByDesc(MarketingCampaignEntity::getCreateTime));
 
-    List<Map<String, Object>> list = pageResult.getRecords().stream().map(c -> {
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("id", c.getId());
-      item.put("name", c.getName());
-      item.put("type", c.getType());
-      item.put("status", c.getStatus());
-      item.put("description", c.getDescription());
-      item.put("startDate", c.getStartDate() != null
-          ? c.getStartDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : null);
-      item.put("endDate", c.getEndDate() != null
-          ? c.getEndDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : null);
-      item.put("participants", c.getParticipants());
-      item.put("gmv", c.getGmv());
-      item.put("budget", c.getBudget());
-      return item;
-    }).collect(Collectors.toList());
+    List<CampaignResponse> records = pageResult.getRecords().stream()
+        .map(this::toResponse)
+        .collect(Collectors.toList());
 
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("list", list);
-    result.put("total", pageResult.getTotal());
-    result.put("page", pageResult.getCurrent());
-    result.put("size", pageResult.getSize());
+    PageResponse<CampaignResponse> result = new PageResponse<>();
+    result.setRecords(records);
+    result.setTotal(pageResult.getTotal());
+    result.setPage((int) pageResult.getCurrent());
+    result.setSize((int) pageResult.getSize());
     return result;
   }
 
+  /** Entity → Response VO */
+  private CampaignResponse toResponse(MarketingCampaignEntity c) {
+    CampaignResponse vo = new CampaignResponse();
+    vo.setId(c.getId());
+    vo.setName(c.getName());
+    vo.setType(c.getType());
+    vo.setStatus(c.getStatus());
+    vo.setDescription(c.getDescription());
+    vo.setStartDate(c.getStartDate() != null ? c.getStartDate().format(DATE_FMT) : null);
+    vo.setEndDate(c.getEndDate() != null ? c.getEndDate().format(DATE_FMT) : null);
+    vo.setParticipants(c.getParticipants());
+    vo.setGmv(c.getGmv());
+    vo.setBudget(c.getBudget());
+    vo.setCost(c.getCost());
+    vo.setCreateTime(c.getCreateTime());
+    return vo;
+  }
+
   @Override
-  public Map<String, Object> createCampaign(Map<String, Object> data) {
+  public OperationResult createCampaign(CampaignRequest request) {
     MarketingCampaignEntity entity = new MarketingCampaignEntity();
-    entity.setName((String) data.get("name"));
-    entity.setType((String) data.get("type"));
-    entity.setDescription((String) data.get("description"));
-    if (data.get("startDate") != null) {
-      entity.setStartDate(parseDateTime(data.get("startDate")));
-    }
-    if (data.get("endDate") != null) {
-      entity.setEndDate(parseDateTime(data.get("endDate")));
-    }
-    if (data.get("budget") != null) {
-      entity.setBudget(new BigDecimal(data.get("budget").toString()));
-    }
-    // 根据时间自动计算状态
+    entity.setName(request.getName() != null && !request.getName().isEmpty()
+        ? request.getName() : "营销活动_" + System.currentTimeMillis());
+    entity.setType(request.getType() != null && !request.getType().isEmpty()
+        ? request.getType() : "DISCOUNT");
+    entity.setDescription(request.getDescription());
+
+    // 解析开始/结束时间,空值兜底为现在/30天后
+    entity.setStartDate(request.getStartDate() != null
+        ? parseDateTime(request.getStartDate()) : LocalDateTime.now());
+    entity.setEndDate(request.getEndDate() != null
+        ? parseDateTime(request.getEndDate()) : LocalDateTime.now().plusDays(30));
+
+    entity.setBudget(request.getBudget() != null ? request.getBudget() : BigDecimal.ZERO);
+    // 新建活动根据时间自动计算状态
     entity.setStatus(calculateStatus(entity.getStartDate(), entity.getEndDate()));
     marketingCampaignMapper.insert(entity);
 
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", entity.getId());
-    result.put("name", entity.getName());
-    result.put("message", "活动创建成功");
+    OperationResult result = new OperationResult();
+    result.setId(entity.getId());
+    result.setMessage("活动创建成功");
     return result;
   }
 
   @Override
-  public Map<String, Object> getCampaignDetail(Long id) {
+  public CampaignDetailResponse getCampaignDetail(Long id) {
     MarketingCampaignEntity entity = marketingCampaignMapper.selectById(id);
     if (entity == null) {
-      Map<String, Object> error = new LinkedHashMap<>();
-      error.put("message", "活动不存在");
-      return error;
+      return null;
     }
 
-    Map<String, Object> data = new LinkedHashMap<>();
-    data.put("id", entity.getId());
-    data.put("name", entity.getName());
-    data.put("status", entity.getStatus());
-    data.put("description", entity.getDescription());
-    data.put("startDate", entity.getStartDate() != null
-        ? entity.getStartDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : null);
-    data.put("endDate", entity.getEndDate() != null
-        ? entity.getEndDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : null);
-    data.put("participants", entity.getParticipants());
-    data.put("gmv", entity.getGmv());
-    data.put("budget", entity.getBudget());
-    data.put("cost", entity.getCost());
+    CampaignDetailResponse resp = new CampaignDetailResponse();
+    resp.setCampaign(toResponse(entity));
 
-    // 查询已完成订单统计
+    // 查询已完成订单统计(用于计算客单价)
     LambdaQueryWrapper<OrderEntity> orderWrapper = new LambdaQueryWrapper<OrderEntity>()
         .eq(OrderEntity::getStatus, COMPLETED.name());
     Long totalOrders = orderMapper.selectCount(orderWrapper);
@@ -126,143 +125,130 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
         ? totalPayAmount.divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP)
         : BigDecimal.ZERO;
 
-    Map<String, Object> effects = new LinkedHashMap<>();
-    effects.put("orderIncrease", 0);
-    effects.put("conversionIncrease", 0);
-    effects.put("avgOrderValue", avgOrderValue);
-    effects.put("roi", entity.getGmv() != null && entity.getBudget() != null
-        && entity.getBudget().compareTo(BigDecimal.ZERO) > 0
-        ? entity.getGmv().divide(entity.getBudget(), 2, RoundingMode.HALF_UP)
-        : 0);
-    data.put("effects", effects);
-    return data;
+    CampaignDetailResponse.Effects effects = new CampaignDetailResponse.Effects();
+    effects.setOrderIncrease(0);
+    effects.setConversionIncrease(0);
+    effects.setAvgOrderValue(avgOrderValue);
+    // ROI = gmv / budget,budget 为 0 时返回 0
+    if (entity.getGmv() != null && entity.getBudget() != null
+        && entity.getBudget().compareTo(BigDecimal.ZERO) > 0) {
+      effects.setRoi(entity.getGmv().divide(entity.getBudget(), 2, RoundingMode.HALF_UP));
+    } else {
+      effects.setRoi(0);
+    }
+    resp.setEffects(effects);
+    return resp;
   }
 
   @Override
-  public Map<String, Object> updateCampaign(Long id, Map<String, Object> data) {
+  public OperationResult updateCampaign(Long id, CampaignRequest request) {
     MarketingCampaignEntity entity = marketingCampaignMapper.selectById(id);
     if (entity == null) {
-      Map<String, Object> error = new LinkedHashMap<>();
-      error.put("message", "活动不存在");
-      return error;
+      OperationResult result = new OperationResult();
+      result.setMessage("活动不存在");
+      return result;
     }
-    if (data.get("name") != null) entity.setName((String) data.get("name"));
-    if (data.get("type") != null) entity.setType((String) data.get("type"));
-    if (data.get("status") != null) entity.setStatus((String) data.get("status"));
-    if (data.get("description") != null) entity.setDescription((String) data.get("description"));
-    if (data.get("startDate") != null) {
-      entity.setStartDate(parseDateTime(data.get("startDate")));
-    }
-    if (data.get("endDate") != null) {
-      entity.setEndDate(parseDateTime(data.get("endDate")));
-    }
-    if (data.get("budget") != null) {
-      entity.setBudget(new BigDecimal(data.get("budget").toString()));
-    }
+
+    // 仅更新非空字段(与原 Map 逻辑保持一致)
+    if (request.getName() != null) entity.setName(request.getName());
+    if (request.getType() != null) entity.setType(request.getType());
+    if (request.getStatus() != null) entity.setStatus(request.getStatus());
+    if (request.getDescription() != null) entity.setDescription(request.getDescription());
+    if (request.getStartDate() != null) entity.setStartDate(parseDateTime(request.getStartDate()));
+    if (request.getEndDate() != null) entity.setEndDate(parseDateTime(request.getEndDate()));
+    if (request.getBudget() != null) entity.setBudget(request.getBudget());
     marketingCampaignMapper.updateById(entity);
 
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", id);
-    result.put("name", entity.getName());
-    result.put("message", "活动更新成功");
+    OperationResult result = new OperationResult();
+    result.setId(id);
+    result.setMessage("活动更新成功");
     return result;
   }
 
   @Override
-  public Map<String, Object> deleteCampaign(Long id) {
+  public OperationResult deleteCampaign(Long id) {
     MarketingCampaignEntity entity = marketingCampaignMapper.selectById(id);
-    Map<String, Object> result = new LinkedHashMap<>();
     if (entity == null) {
-      result.put("message", "活动不存在");
+      OperationResult result = new OperationResult();
+      result.setMessage("活动不存在");
       return result;
     }
     marketingCampaignMapper.deleteById(id);
-    result.put("id", id);
-    result.put("message", "活动删除成功");
+    OperationResult result = new OperationResult();
+    result.setId(id);
+    result.setMessage("活动删除成功");
     return result;
   }
 
   @Override
-  public List<Map<String, Object>> listAbTests() {
+  public List<AbTestResponse> listAbTests() {
     List<AbTestEntity> records = abTestMapper.selectList(
         new LambdaQueryWrapper<AbTestEntity>().orderByDesc(AbTestEntity::getCreateTime));
-    return records.stream().map(t -> {
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("id", t.getId());
-      item.put("name", t.getName());
-      item.put("status", t.getStatus());
-      item.put("description", t.getDescription());
-      item.put("groupAVisitors", t.getGroupAVisitors());
-      item.put("groupBVisitors", t.getGroupBVisitors());
-      item.put("groupAConvRate", t.getGroupAConvRate());
-      item.put("groupBConvRate", t.getGroupBConvRate());
-      item.put("startTime", t.getStartTime());
-      return item;
-    }).collect(Collectors.toList());
+    return records.stream().map(this::toAbTestResponse).collect(Collectors.toList());
+  }
+
+  /** AbTestEntity → AbTestResponse VO */
+  private AbTestResponse toAbTestResponse(AbTestEntity t) {
+    AbTestResponse vo = new AbTestResponse();
+    vo.setId(t.getId());
+    vo.setName(t.getName());
+    vo.setStatus(t.getStatus());
+    vo.setDescription(t.getDescription());
+    vo.setGroupAVisitors(t.getGroupAVisitors());
+    vo.setGroupBVisitors(t.getGroupBVisitors());
+    vo.setGroupAConvRate(t.getGroupAConvRate());
+    vo.setGroupBConvRate(t.getGroupBConvRate());
+    vo.setStartTime(t.getStartTime());
+    return vo;
   }
 
   @Override
-  public Map<String, Object> createAbTest(Map<String, Object> data) {
+  public OperationResult createAbTest(AbTestRequest request) {
     AbTestEntity entity = new AbTestEntity();
-    entity.setName((String) data.get("name"));
-    entity.setStatus((String) data.get("status"));
-    entity.setDescription((String) data.get("description"));
-    if (data.get("groupAVisitors") != null) {
-      entity.setGroupAVisitors(Integer.valueOf(data.get("groupAVisitors").toString()));
-    }
-    if (data.get("groupBVisitors") != null) {
-      entity.setGroupBVisitors(Integer.valueOf(data.get("groupBVisitors").toString()));
-    }
-    if (data.get("groupAConvRate") != null) {
-      entity.setGroupAConvRate(new BigDecimal(data.get("groupAConvRate").toString()));
-    }
-    if (data.get("groupBConvRate") != null) {
-      entity.setGroupBConvRate(new BigDecimal(data.get("groupBConvRate").toString()));
-    }
+    entity.setName(request.getName());
+    entity.setStatus(request.getStatus());
+    entity.setDescription(request.getDescription());
+    entity.setGroupAVisitors(request.getGroupAVisitors());
+    entity.setGroupBVisitors(request.getGroupBVisitors());
+    entity.setGroupAConvRate(request.getGroupAConvRate());
+    entity.setGroupBConvRate(request.getGroupBConvRate());
     entity.setStartTime(LocalDateTime.now());
     abTestMapper.insert(entity);
 
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", entity.getId());
-    result.put("name", entity.getName());
-    result.put("message", "A/B测试创建成功");
+    OperationResult result = new OperationResult();
+    result.setId(entity.getId());
+    result.setMessage("A/B测试创建成功");
     return result;
   }
 
   @Override
-  public Map<String, Object> updateAbTest(Long id, Map<String, Object> data) {
+  public OperationResult updateAbTest(Long id, AbTestRequest request) {
     AbTestEntity entity = abTestMapper.selectById(id);
     if (entity == null) {
-      Map<String, Object> error = new LinkedHashMap<>();
-      error.put("message", "A/B测试不存在");
-      return error;
+      OperationResult result = new OperationResult();
+      result.setMessage("A/B测试不存在");
+      return result;
     }
-    if (data.get("name") != null) entity.setName((String) data.get("name"));
-    if (data.get("status") != null) entity.setStatus((String) data.get("status"));
-    if (data.get("description") != null) entity.setDescription((String) data.get("description"));
-    if (data.get("groupAVisitors") != null) {
-      entity.setGroupAVisitors(Integer.valueOf(data.get("groupAVisitors").toString()));
-    }
-    if (data.get("groupBVisitors") != null) {
-      entity.setGroupBVisitors(Integer.valueOf(data.get("groupBVisitors").toString()));
-    }
-    if (data.get("groupAConvRate") != null) {
-      entity.setGroupAConvRate(new BigDecimal(data.get("groupAConvRate").toString()));
-    }
-    if (data.get("groupBConvRate") != null) {
-      entity.setGroupBConvRate(new BigDecimal(data.get("groupBConvRate").toString()));
-    }
+
+    // 仅更新非空字段
+    if (request.getName() != null) entity.setName(request.getName());
+    if (request.getStatus() != null) entity.setStatus(request.getStatus());
+    if (request.getDescription() != null) entity.setDescription(request.getDescription());
+    if (request.getGroupAVisitors() != null) entity.setGroupAVisitors(request.getGroupAVisitors());
+    if (request.getGroupBVisitors() != null) entity.setGroupBVisitors(request.getGroupBVisitors());
+    if (request.getGroupAConvRate() != null) entity.setGroupAConvRate(request.getGroupAConvRate());
+    if (request.getGroupBConvRate() != null) entity.setGroupBConvRate(request.getGroupBConvRate());
     abTestMapper.updateById(entity);
 
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", id);
-    result.put("name", entity.getName());
-    result.put("message", "A/B测试更新成功");
+    OperationResult result = new OperationResult();
+    result.setId(id);
+    result.setMessage("A/B测试更新成功");
     return result;
   }
 
   @Override
-  public Map<String, Object> getMarketingEffects(int days) {
+  public EffectResponse getMarketingEffects(int days) {
+    // 查询全部已完成订单
     LambdaQueryWrapper<OrderEntity> totalWrapper = new LambdaQueryWrapper<OrderEntity>()
         .eq(OrderEntity::getStatus, COMPLETED.name());
     List<OrderEntity> allOrders = orderMapper.selectList(totalWrapper);
@@ -271,6 +257,7 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
         .reduce(BigDecimal.ZERO, BigDecimal::add);
     int totalOrders = allOrders.size();
 
+    // 查询最近 days 天的已完成订单
     LocalDateTime since = LocalDateTime.now().minusDays(days);
     LambdaQueryWrapper<OrderEntity> recentWrapper = new LambdaQueryWrapper<OrderEntity>()
         .eq(OrderEntity::getStatus, COMPLETED.name())
@@ -281,18 +268,18 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
         .reduce(BigDecimal.ZERO, BigDecimal::add);
     int recentOrderCount = recentOrders.size();
 
-    Map<String, Object> data = new LinkedHashMap<>();
-    data.put("totalGmv", totalGmv);
-    data.put("campaignGmv", recentGmv);
-    data.put("campaignRatio", totalGmv.compareTo(BigDecimal.ZERO) > 0
+    EffectResponse resp = new EffectResponse();
+    resp.setTotalGmv(totalGmv);
+    resp.setCampaignGmv(recentGmv);
+    resp.setCampaignRatio(totalGmv.compareTo(BigDecimal.ZERO) > 0
         ? recentGmv.multiply(BigDecimal.valueOf(100)).divide(totalGmv, 1, RoundingMode.HALF_UP)
-        : 0);
-    data.put("totalOrders", totalOrders);
-    data.put("campaignOrders", recentOrderCount);
-    data.put("avgDiscount", 0);
+        : BigDecimal.ZERO);
+    resp.setTotalOrders(totalOrders);
+    resp.setCampaignOrders(recentOrderCount);
+    resp.setAvgDiscount(0);
 
     // 按天聚合趋势
-    List<Map<String, Object>> trend = new ArrayList<>();
+    List<EffectTrendItem> trend = new ArrayList<>();
     for (int i = days; i >= 0; i--) {
       LocalDate day = LocalDate.now().minusDays(i);
       LocalDateTime dayStart = day.atStartOfDay();
@@ -310,14 +297,14 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
               && o.getCreateTime().isBefore(dayEnd))
           .count();
 
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("date", day.format(DateTimeFormatter.ofPattern("MM-dd")));
-      item.put("gmv", dayGmv);
-      item.put("orders", (int) dayOrders);
+      EffectTrendItem item = new EffectTrendItem();
+      item.setDate(day.format(DateTimeFormatter.ofPattern("MM-dd")));
+      item.setGmv(dayGmv);
+      item.setOrders((int) dayOrders);
       trend.add(item);
     }
-    data.put("trend", trend);
-    return data;
+    resp.setTrend(trend);
+    return resp;
   }
 
   /**
@@ -332,16 +319,16 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
   }
 
   /**
-   * 解析日期字符串，兼容 yyyy-MM-dd 和 ISO 格式
+   * 解析日期字符串,兼容 yyyy-MM-dd 和 ISO 格式
    */
-  private LocalDateTime parseDateTime(Object dateObj) {
-    if (dateObj == null) return null;
-    String dateStr = dateObj.toString().trim();
-    if (dateStr.isEmpty()) return null;
-    if (dateStr.length() <= 10) {
-      return LocalDateTime.parse(dateStr + " 00:00:00",
+  private LocalDateTime parseDateTime(String dateStr) {
+    if (dateStr == null) return null;
+    String s = dateStr.trim();
+    if (s.isEmpty()) return null;
+    if (s.length() <= 10) {
+      return LocalDateTime.parse(s + " 00:00:00",
           DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
-    return LocalDateTime.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+    return LocalDateTime.parse(s, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
   }
 }

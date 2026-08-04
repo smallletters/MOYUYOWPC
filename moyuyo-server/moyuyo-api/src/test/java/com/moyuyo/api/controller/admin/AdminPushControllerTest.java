@@ -33,7 +33,7 @@ class AdminPushControllerTest extends BaseIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        adminToken = "Bearer " + jwtUtil.generate(1L, "admin@moyuyo.com");
+        adminToken = "Bearer " + jwtUtil.generate(1L, "admin@moyuyo.com", "SUPER_ADMIN");
     }
 
     @Test
@@ -42,7 +42,8 @@ class AdminPushControllerTest extends BaseIntegrationTest {
                         .header("Authorization", adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.todayPushCount").isNumber());
+                // Long 类型经全局 Jackson 配置序列化为字符串，防止前端精度丢失
+                .andExpect(jsonPath("$.data.todayPushCount").isString());
     }
 
     @Test
@@ -51,7 +52,8 @@ class AdminPushControllerTest extends BaseIntegrationTest {
                         .header("Authorization", adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data").isArray());
+                // 分页结构：data.records 为记录数组
+                .andExpect(jsonPath("$.data.records").isArray());
     }
 
     @Test
@@ -95,7 +97,8 @@ class AdminPushControllerTest extends BaseIntegrationTest {
         int code = (int) respMap.get("code");
         assertEquals(0, code, "创建推送应成功，code=" + code);
         var data = (Map<String, Object>) respMap.get("data");
-        int id = ((Number) data.get("id")).intValue();
+        // id 为雪花 ID，经全局 Jackson 配置序列化为字符串
+        long id = Long.parseLong(data.get("id").toString());
 
         // 删除该记录
         mockMvc.perform(delete("/api/admin/push/{id}", id)

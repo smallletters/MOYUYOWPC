@@ -1,0 +1,73 @@
+# MOYUYO 后端 Prometheus 告警规则
+# 关键指标告警阈值，可按需调整
+
+groups:
+  - name: moyuyo-server-critical
+    interval: 30s
+    rules:
+      # 应用不可用：1 分钟内 health 探针连续失败
+      - alert: MoyuyoAppDown
+        expr: up{job="moyuyo-server"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MOYUYO 后端不可达"
+          description: "moyuyo-server 已宕机超过 1 分钟，请立即排查"
+
+      # JVM Heap 使用率超过 85%
+      - alert: MoyuyoJvmHeapHigh
+        expr: |
+          (sum(jvm_memory_used_bytes{area="heap",job="moyuyo-server"}) by (instance)
+           / sum(jvm_memory_max_bytes{area="heap",job="moyuyo-server"}) by (instance)) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MOYUYO JVM Heap 使用率过高"
+          description: "实例 {{ $labels.instance }} JVM Heap 使用率 {{ $value | humanizePercentage }}"
+
+      # HTTP 5xx 错误率超过 1%
+      - alert: MoyuyoHttp5xxHigh
+        expr: |
+          (sum(rate(http_server_requests_seconds_count{job="moyuyo-server",status=~"5.."}[5m])) by (instance)
+           / sum(rate(http_server_requests_seconds_count{job="moyuyo-server"}[5m])) by (instance)) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MOYUYO HTTP 5xx 错误率超 1%"
+          description: "实例 {{ $labels.instance }} 5xx 比例 {{ $value | humanizePercentage }}"
+
+      # 数据库连接池使用率超过 90%
+      - alert: MoyuyoHikariPoolHigh
+        expr: |
+          hikaricp_connections_active{job="moyuyo-server"}
+          / hikaricp_connections_max{job="moyuyo-server"} > 0.9
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MOYUYO 数据库连接池即将耗尽"
+          description: "实例 {{ $labels.instance }} 连接池使用率 {{ $value | humanizePercentage }}"
+
+      # Webhook 签名失败率突增（探测攻击信号）
+      - alert: MoyuyoWebhookSignatureFailures
+        expr: |
+          sum(rate(logback_events_total{job="moyuyo-server",level="warn",message=~".*Webhook 签名校验失败.*"}[5m])) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MOYUYO Webhook 签名失败率突增"
+          description: "5 分钟内平均每秒 {{ $value }} 次签名校验失败，可能是有人在探测 webhook secret"
+
+      # ES 集群健康状态不是 green
+      - alert: MoyuyoEsNotGreen
+        expr: elasticsearch_cluster_health_status{job="moyuyo-server",color="red"} == 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MOYUYO Elasticsearch 集群 red"
+          description: "ES 集群状态 red，需要立即排查节点/磁盘"

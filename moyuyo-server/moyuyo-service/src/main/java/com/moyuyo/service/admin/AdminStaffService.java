@@ -14,6 +14,11 @@ public interface AdminStaffService {
   List<Map<String, Object>> listUsers();
 
   /**
+   * 管理员分页列表
+   */
+  Map<String, Object> listUsersPage(int page, int size);
+
+  /**
    * 创建管理员用户
    */
   Map<String, Object> createUser(Map<String, Object> body);
@@ -22,4 +27,14 @@ public interface AdminStaffService {
    * 更新管理员用户
    */
   Map<String, Object> updateUser(Long id, Map<String, Object> body);
+
+  /**
+   * 删除管理员用户
+   */
+  void deleteUser(Long id);
+
+  /**
+   * 重置管理员密码
+   */
+  void resetPassword(Long id, String newPassword);
 }

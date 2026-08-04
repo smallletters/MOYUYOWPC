@@ -1,52 +1,209 @@
 <template>
   <div class="page-wrapper">
+    <!-- 页面标题 -->
     <div class="page-header">
-      <h2>{{ pageTitle }}</h2>
+      <div class="page-header-left">
+        <h2>清关管理</h2>
+        <p>实时跟踪清关进度，管理异常工单，监控清关时效</p>
+      </div>
       <div class="header-actions">
-        <el-button type="primary" @click="handleSync">同步数据</el-button>
+        <el-button v-if="activeTab === 'tariff'" type="primary" @click="handleSync">同步数据</el-button>
       </div>
     </div>
-    <el-card shadow="never" class="filter-card">
-      <el-form :model="filters" inline>
-        <el-form-item label="关键词">
-          <el-input v-model="filters.keyword" placeholder="请输入海关编码/商品名称" clearable />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
-          <el-button @click="handleReset">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-    <el-card shadow="never">
-      <el-table :data="tableData" stripe>
-        <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="customsCode" label="海关编码" width="130" />
-        <el-table-column prop="productName" label="商品名称" width="180" />
-        <el-table-column label="税率" width="100">
-          <template #default="{ row }">{{ row.taxRate }}%</template>
-        </el-table-column>
-        <el-table-column prop="regulatoryConditions" label="监管条件" width="200" />
-        <el-table-column label="操作" width="180" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <div style="display:flex;justify-content:flex-end;padding:16px 0 0">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :total="total"
-          layout="total, sizes, prev, pager, next"
-          @change="loadData"
-        />
+
+    <!-- Tab 切换：清关管理 / 税率管理 -->
+    <div class="tab-switcher">
+      <button class="tab-switcher-item" :class="{ active: activeTab === 'clearance' }" @click="switchTab('clearance')">清关管理</button>
+      <button class="tab-switcher-item" :class="{ active: activeTab === 'tariff' }" @click="switchTab('tariff')">税率管理</button>
+    </div>
+
+    <!-- ==================== 清关管理 Tab ==================== -->
+    <template v-if="activeTab === 'clearance'">
+      <!-- 清关状态概览（6 状态卡片） -->
+      <div class="overview-grid">
+        <div class="overview-card" :class="'type-' + item.type" v-for="item in clearanceOverview" :key="item.label">
+          <div class="overview-icon">
+            <el-icon :size="20"><component :is="item.icon" /></el-icon>
+          </div>
+          <div>
+            <div class="overview-value">{{ item.value }}</div>
+            <div class="overview-label">{{ item.label }}</div>
+          </div>
+        </div>
       </div>
-    </el-card>
+
+      <!-- 清关进度跟踪 -->
+      <div class="section-block">
+        <div class="section-title">
+          <el-icon class="section-icon" :size="18"><Van /></el-icon>
+          <span>清关进度跟踪</span>
+        </div>
+        <div class="order-list">
+          <div class="order-card" :class="{ 'order-card-error': order.status === 'abnormal' }" v-for="order in clearanceOrders" :key="order.orderNo">
+            <div class="order-head">
+              <div class="order-meta">
+                <span class="order-no">{{ order.orderNo }}</span>
+                <span class="country-tag">{{ order.country }}</span>
+                <span class="order-agent">代理: {{ order.agent }}</span>
+              </div>
+              <span class="order-status-tag" :class="order.status === 'abnormal' ? 'tag-red' : 'tag-blue'">{{ order.status === 'abnormal' ? '异常' : '正常' }}</span>
+            </div>
+            <!-- 进度条：申报 → 审核 → 缴税 → 查验 → 放行 -->
+            <div class="customs-progress">
+              <template v-for="(step, idx) in order.steps" :key="step.name">
+                <div class="customs-progress-node" :class="'node-' + step.state">
+                  <div class="customs-progress-dot"></div>
+                  <span class="customs-progress-label">{{ step.name }}</span>
+                </div>
+                <div v-if="idx < order.steps.length - 1" class="customs-progress-line"></div>
+              </template>
+            </div>
+            <!-- 异常提示 -->
+            <div v-if="order.abnormalReason" class="order-alert">
+              <el-icon class="order-alert-icon" :size="16"><WarningFilled /></el-icon>
+              <span>{{ order.abnormalReason }}</span>
+            </div>
+            <div class="order-footer" :class="{ 'released': order.releasedAt }">
+              {{ order.releasedAt ? '已于 ' + order.releasedAt + ' 放行' : '预计放行: ' + order.expectedRelease }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 清关异常 + 清关时效统计（两栏） -->
+      <div class="two-col-area">
+        <!-- 清关异常 -->
+        <div class="section-block">
+          <div class="section-title-row">
+            <div class="section-title">
+              <el-icon class="section-icon" :size="18" style="color: var(--state-error)"><WarningFilled /></el-icon>
+              <span>清关异常</span>
+            </div>
+            <span class="count-tag">{{ clearanceExceptions.length }} 条</span>
+          </div>
+          <div class="exception-list">
+            <div class="exception-card" v-for="item in clearanceExceptions" :key="item.ticketNo">
+              <div class="exception-head">
+                <div class="exception-type">
+                  <el-icon class="exception-type-icon" :class="'icon-' + item.statusType" :size="16">
+                    <component :is="item.statusType === 'solved' ? CircleCheck : WarningFilled" />
+                  </el-icon>
+                  <span class="exception-type-name">{{ item.type }}</span>
+                </div>
+                <span class="exception-status" :class="'status-' + item.statusType">{{ item.status }}</span>
+              </div>
+              <div class="exception-meta">
+                <span>工单号: {{ item.ticketNo }}</span>
+                <span>订单号: {{ item.orderNo }}</span>
+              </div>
+              <p class="exception-desc">{{ item.description }}</p>
+              <div class="exception-foot">
+                <span class="exception-handler">处理人: {{ item.handler }}</span>
+                <el-button size="small" round @click="handleViewException(item)">查看详情</el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 清关时效统计 -->
+        <div class="section-block">
+          <div class="section-title">
+            <el-icon class="section-icon" :size="18"><Clock /></el-icon>
+            <span>清关时效统计</span>
+          </div>
+          <div class="timing-card">
+            <!-- KPI：平均清关时长 + 时效达成率 -->
+            <div class="timing-kpi">
+              <div class="timing-kpi-item kpi-brand">
+                <p class="kpi-value">{{ timingKpi.avgDays }}</p>
+                <p class="kpi-label">平均清关时长(天)</p>
+              </div>
+              <div class="timing-kpi-item kpi-success">
+                <p class="kpi-value">{{ timingKpi.achievementRate }}</p>
+                <p class="kpi-label">时效达成率</p>
+              </div>
+            </div>
+
+            <!-- 近 7 天清关时效（CSS 柱状图） -->
+            <h3 class="timing-sub-title">近 7 天清关时效（天）</h3>
+            <div class="week-bars">
+              <div class="week-bar-group" v-for="item in weekTrend" :key="item.label">
+                <div class="week-bar-track">
+                  <div class="week-bar-fill" :style="{ height: barHeight(item.value) + '%' }" :title="item.label + ' ' + item.value + ' 天'"></div>
+                </div>
+                <span class="week-bar-value">{{ item.value }}</span>
+                <span class="week-bar-label">{{ item.label }}</span>
+              </div>
+            </div>
+
+            <!-- 各目的国平均时效对比（水平条形图） -->
+            <h3 class="timing-sub-title">各目的国平均时效对比（天）</h3>
+            <div class="hbar-list">
+              <div class="hbar-item" v-for="item in countryTiming" :key="item.country">
+                <div class="hbar-head">
+                  <span class="hbar-name">{{ item.country }}</span>
+                  <span class="hbar-count">{{ item.days }} 天</span>
+                </div>
+                <div class="hbar-track">
+                  <div class="hbar-fill" :style="{ width: hbarWidth(item.days) + '%', background: item.color }"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- ==================== 税率管理 Tab ==================== -->
+    <template v-else>
+      <el-card shadow="never" class="filter-card">
+        <el-form :model="filters" inline>
+          <el-form-item label="关键词">
+            <el-input v-model="filters.keyword" placeholder="请输入海关编码/商品名称" clearable />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">搜索</el-button>
+            <el-button @click="handleReset">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
+      <el-card shadow="never">
+        <el-table :data="tableData" stripe>
+          <el-table-column prop="id" label="ID" width="60" />
+          <el-table-column prop="hsCode" label="海关编码" width="130" />
+          <el-table-column prop="productName" label="商品名称" width="180" />
+          <el-table-column label="税率" width="100">
+            <template #default="{ row }">{{ row.taxRate }}%</template>
+          </el-table-column>
+          <el-table-column label="状态" width="120">
+            <template #default="{ row }">
+              <el-tag :type="statusTagType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="180" fixed="right">
+            <template #default="{ row }">
+              <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
+              <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div style="display:flex;justify-content:flex-end;padding:16px 0 0">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :total="total"
+            layout="total, sizes, prev, pager, next"
+            @change="loadData"
+          />
+        </div>
+      </el-card>
+    </template>
+
+    <!-- 编辑弹窗（税率管理） -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="700px">
       <el-form :model="editForm" label-width="110px">
         <el-form-item label="海关编码">
-          <el-input v-model="editForm.customsCode" placeholder="请输入海关编码" />
+          <el-input v-model="editForm.hsCode" placeholder="请输入海关编码" />
         </el-form-item>
         <el-form-item label="商品名称">
           <el-input v-model="editForm.productName" placeholder="请输入商品名称" />
@@ -54,8 +211,13 @@
         <el-form-item label="税率(%)">
           <el-input-number v-model="editForm.taxRate" :min="0" :max="100" :step="0.1" />
         </el-form-item>
-        <el-form-item label="监管条件">
-          <el-input v-model="editForm.regulatoryConditions" placeholder="请输入监管条件" />
+        <el-form-item label="状态">
+          <el-select v-model="editForm.status" style="width:100%">
+            <el-option label="待申报" value="PENDING" />
+            <el-option label="查验中" value="INSPECTING" />
+            <el-option label="已放行" value="CLEARED" />
+            <el-option label="已拒绝" value="REJECTED" />
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -67,11 +229,171 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Document, QuestionFilled, PriceTag, WarningFilled, CircleCheck, CircleClose, Van, Clock } from '@element-plus/icons-vue'
 import { getCustoms, syncCustoms, createCustoms, updateCustoms, deleteCustoms } from '../api/admin'
 
-const pageTitle = '海关管理'
+// ==================== 清关管理 Tab（示例数据，无真实 API，仅供界面展示） ====================
+
+// 清关状态概览（示例数据）
+const clearanceOverview = ref([
+  { label: '申报中', value: 8, type: 'brand', icon: Document },
+  { label: '审核中', value: 5, type: 'warning', icon: QuestionFilled },
+  { label: '缴税中', value: 3, type: 'brand', icon: PriceTag },
+  { label: '查验中', value: 2, type: 'warning', icon: WarningFilled },
+  { label: '已放行', value: 42, type: 'success', icon: CircleCheck },
+  { label: '已扣留', value: 1, type: 'error', icon: CircleClose }
+])
+
+// 清关进度跟踪（示例数据）：steps 状态 completed 已完成 / active 当前 / pending 待处理 / error 异常
+const clearanceOrders = ref([
+  {
+    orderNo: 'MOYU-INT20260801001',
+    country: '日本',
+    agent: 'ABC清关行',
+    status: 'normal',
+    abnormalReason: '',
+    expectedRelease: '2026-08-05',
+    releasedAt: '',
+    steps: [
+      { name: '申报', state: 'completed' },
+      { name: '审核', state: 'active' },
+      { name: '缴税', state: 'pending' },
+      { name: '查验', state: 'pending' },
+      { name: '放行', state: 'pending' }
+    ]
+  },
+  {
+    orderNo: 'MOYU-INT20260731015',
+    country: '韩国',
+    agent: '韩亚清关',
+    status: 'normal',
+    abnormalReason: '',
+    expectedRelease: '2026-08-03',
+    releasedAt: '',
+    steps: [
+      { name: '申报', state: 'completed' },
+      { name: '审核', state: 'completed' },
+      { name: '缴税', state: 'active' },
+      { name: '查验', state: 'pending' },
+      { name: '放行', state: 'pending' }
+    ]
+  },
+  {
+    orderNo: 'MOYU-INT20260729032',
+    country: '英国',
+    agent: 'EuroClear Ltd',
+    status: 'abnormal',
+    abnormalReason: '商品归类存疑，海关要求补充认证材料',
+    expectedRelease: '待定',
+    releasedAt: '',
+    steps: [
+      { name: '申报', state: 'completed' },
+      { name: '审核', state: 'completed' },
+      { name: '缴税', state: 'completed' },
+      { name: '查验', state: 'error' },
+      { name: '放行', state: 'pending' }
+    ]
+  },
+  {
+    orderNo: 'MOYU-INT20260725018',
+    country: '美国',
+    agent: 'US-Clear Co.',
+    status: 'normal',
+    abnormalReason: '',
+    expectedRelease: '',
+    releasedAt: '2026-07-30',
+    steps: [
+      { name: '申报', state: 'completed' },
+      { name: '审核', state: 'completed' },
+      { name: '缴税', state: 'completed' },
+      { name: '查验', state: 'completed' },
+      { name: '放行', state: 'completed' }
+    ]
+  }
+])
+
+// 清关异常（示例数据）：statusType pending 待处理 / processing 处理中 / solved 已解决
+const clearanceExceptions = ref([
+  {
+    type: '商品归类错误',
+    status: '待处理',
+    statusType: 'pending',
+    ticketNo: 'EXC-20260801-001',
+    orderNo: 'MOYU-INT20260801001',
+    handler: '张三',
+    description: '宠物智能项圈被归类为电子设备，应归类为宠物配件，需重新提交HS编码。'
+  },
+  {
+    type: '申报价值不符',
+    status: '处理中',
+    statusType: 'processing',
+    ticketNo: 'EXC-20260730-003',
+    orderNo: 'MOYU-INT20260729032',
+    handler: '李四',
+    description: '申报价值与实际成交价偏差超过20%，需补充交易凭证。'
+  },
+  {
+    type: '缺少认证',
+    status: '已解决',
+    statusType: 'solved',
+    ticketNo: 'EXC-20260728-002',
+    orderNo: 'MOYU-INT20260727006',
+    handler: '王五',
+    description: '宠物食品进口缺少FDA认证文件，已于7月29日补充提交并通过审核。'
+  }
+])
+
+// 清关时效统计（示例数据）
+const timingKpi = ref({
+  avgDays: 4.2,
+  achievementRate: '92%'
+})
+
+// 近 7 天清关时效（示例数据，单位：天）
+const weekTrend = ref([
+  { label: '7/26', value: 3.8 },
+  { label: '7/27', value: 4.5 },
+  { label: '7/28', value: 3.9 },
+  { label: '7/29', value: 5.2 },
+  { label: '7/30', value: 4.1 },
+  { label: '7/31', value: 4.8 },
+  { label: '8/1', value: 4.2 }
+])
+
+// 各目的国平均时效对比（示例数据，单位：天）
+const countryTiming = ref([
+  { country: '美国', days: 3.5, color: 'var(--brand-500)' },
+  { country: '日本', days: 3.8, color: 'var(--state-success)' },
+  { country: '韩国', days: 4.5, color: 'var(--chart-4)' },
+  { country: '英国', days: 5.2, color: 'var(--state-warning)' },
+  { country: '澳大利亚', days: 5.8, color: 'var(--chart-5)' },
+  { country: '欧盟', days: 6.5, color: 'var(--state-error)' }
+])
+
+// 近 7 天时效最大值，用于柱状图高度归一化
+const maxWeek = computed(() => Math.max(...weekTrend.value.map(item => item.value)))
+function barHeight(value) {
+  return Math.round((value / maxWeek.value) * 100)
+}
+// 目的国横向条形图宽度（按 8 天满格换算）
+function hbarWidth(days) {
+  return Math.round((days / 8) * 100)
+}
+
+// 异常工单查看详情（示例数据暂以提示代替跳转）
+function handleViewException(item) {
+  ElMessage.info(`工单 ${item.ticketNo}（${item.type}）：${item.description}`)
+}
+
+// ==================== Tab 切换 ====================
+const activeTab = ref('clearance')
+function switchTab(tab) {
+  activeTab.value = tab
+}
+
+// ==================== 税率管理 Tab：原海关编码税率 CRUD ====================
 const filters = reactive({ keyword: '' })
 const tableData = ref([])
 const currentPage = ref(1)
@@ -80,11 +402,22 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const editForm = reactive({
-  customsCode: '',
+  hsCode: '',
   productName: '',
   taxRate: 0,
-  regulatoryConditions: ''
+  status: 'PENDING'
 })
+
+// 海关状态映射
+function statusLabel(s) {
+  return { PENDING: '待申报', INSPECTING: '查验中', CLEARED: '已放行', REJECTED: '已拒绝' }[s] || s || '-'
+}
+function statusTagType(s) {
+  if (s === 'CLEARED') return 'success'
+  if (s === 'REJECTED') return 'danger'
+  if (s === 'INSPECTING') return 'warning'
+  return 'info'
+}
 
 // 加载海关数据
 async function loadData() {
@@ -93,7 +426,7 @@ async function loadData() {
     const list = res || []
     let filtered = [...list]
     if (filters.keyword) {
-      filtered = filtered.filter(item => item.customsCode.includes(filters.keyword) || item.productName.includes(filters.keyword))
+      filtered = filtered.filter(item => (item.hsCode || '').includes(filters.keyword) || (item.productName || '').includes(filters.keyword))
     }
     tableData.value = filtered
     total.value = filtered.length
@@ -139,20 +472,16 @@ async function handleDelete(row) {
 }
 async function handleSave() {
   try {
+    const payload = {
+      hsCode: editForm.hsCode,
+      productName: editForm.productName,
+      taxRate: editForm.taxRate,
+      status: editForm.status
+    }
     if (editForm.id) {
-      await updateCustoms(editForm.id, {
-        customsCode: editForm.customsCode,
-        productName: editForm.productName,
-        taxRate: editForm.taxRate,
-        regulatoryConditions: editForm.regulatoryConditions
-      })
+      await updateCustoms(editForm.id, payload)
     } else {
-      await createCustoms({
-        customsCode: editForm.customsCode,
-        productName: editForm.productName,
-        taxRate: editForm.taxRate,
-        regulatoryConditions: editForm.regulatoryConditions
-      })
+      await createCustoms(payload)
     }
     ElMessage.success('保存成功')
     dialogVisible.value = false
@@ -167,7 +496,338 @@ onMounted(() => loadData())
 <style scoped>
 .page-wrapper { padding: 20px; }
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.page-header h2 { font-size: 20px; font-weight: 700; color: var(--text-800); margin: 0; }
-.filter-card { margin-bottom: 16px; }
+.page-header-left h2 { font-size: 22px; font-weight: 700; color: var(--text-800); margin: 0 0 4px; }
+.page-header-left p { font-size: 13px; color: var(--text-400); margin: 0; }
 .header-actions { display: flex; gap: 8px; }
+.filter-card { margin-bottom: 16px; }
+.tab-switcher { margin-bottom: 20px; }
+
+/* ===== 清关状态概览（6 列卡片） ===== */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.overview-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.overview-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+.overview-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.overview-card.type-brand .overview-icon { background: var(--brand-50); color: var(--brand-500); }
+.overview-card.type-warning .overview-icon { background: var(--state-warning-surface); color: var(--state-warning); }
+.overview-card.type-success .overview-icon { background: var(--state-success-surface); color: var(--state-success); }
+.overview-card.type-error .overview-icon { background: var(--state-error-surface); color: var(--state-error); }
+.overview-value { font-size: 24px; font-weight: 700; line-height: 1.1; }
+.overview-card.type-brand .overview-value { color: var(--brand-500); }
+.overview-card.type-warning .overview-value { color: var(--state-warning); }
+.overview-card.type-success .overview-value { color: var(--state-success); }
+.overview-card.type-error .overview-value { color: var(--state-error); }
+.overview-label { font-size: 13px; color: var(--text-500); margin-top: 2px; }
+
+/* ===== 区块通用 ===== */
+.section-block {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-xs);
+  margin-bottom: 24px;
+}
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-800);
+  margin-bottom: 16px;
+}
+.section-icon { color: var(--primary); }
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.section-title-row .section-title { margin-bottom: 0; }
+.count-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--state-error-surface);
+  color: var(--state-error);
+}
+.two-col-area {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 24px;
+  align-items: start;
+}
+
+/* ===== 清关进度跟踪 ===== */
+.order-list { display: flex; flex-direction: column; gap: 12px; }
+.order-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-xs);
+  transition: border-color 0.2s ease;
+}
+.order-card:hover { border-color: var(--primary); }
+.order-card-error { background: var(--state-error-surface); border-color: var(--state-error); }
+.order-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.order-meta { display: flex; align-items: center; gap: 12px; }
+.order-no { font-size: 14px; font-weight: 600; color: var(--text-800); }
+.country-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--brand-50);
+  color: var(--brand-500);
+}
+.order-agent { font-size: 12px; color: var(--text-400); }
+.order-status-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.order-status-tag.tag-blue { background: var(--brand-50); color: var(--brand-500); }
+.order-status-tag.tag-red { background: var(--state-error); color: var(--state-error-foreground); }
+.order-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  background: var(--state-error-surface);
+  font-size: 12px;
+  color: var(--state-error);
+}
+.order-alert-icon { flex-shrink: 0; }
+.order-footer { margin-top: 8px; font-size: 12px; color: var(--text-400); }
+.order-footer.released { color: var(--state-success); }
+
+/* ===== 清关进度条（时间线） ===== */
+.customs-progress {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+.customs-progress-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+.customs-progress-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--background-300);
+  background: var(--background-200);
+  transition: all 0.2s ease;
+}
+.customs-progress-label {
+  font-size: 10px;
+  margin-top: 4px;
+  color: var(--text-400);
+  white-space: nowrap;
+}
+.customs-progress-line {
+  flex: 1;
+  height: 2px;
+  background: var(--background-300);
+  margin: 0 -2px;
+  position: relative;
+  top: -7px;
+}
+/* 前一个节点已完成 → 连接线变绿 */
+.customs-progress-node.node-completed + .customs-progress-line { background: var(--state-success); }
+.node-completed .customs-progress-dot { background: var(--state-success); border-color: var(--state-success); }
+.node-completed .customs-progress-label { color: var(--state-success); font-weight: 600; }
+.node-active .customs-progress-dot { background: var(--brand-500); border-color: var(--brand-500); box-shadow: 0 0 0 3px var(--brand-50); }
+.node-active .customs-progress-label { color: var(--brand-500); font-weight: 600; }
+.node-error .customs-progress-dot { background: var(--state-error); border-color: var(--state-error); box-shadow: 0 0 0 3px var(--state-error-surface); }
+.node-error .customs-progress-label { color: var(--state-error); font-weight: 600; }
+.node-pending .customs-progress-dot { background: var(--background-200); border-color: var(--background-300); }
+.node-pending .customs-progress-label { color: var(--text-400); }
+
+/* ===== 清关异常 ===== */
+.exception-list { display: flex; flex-direction: column; gap: 12px; }
+.exception-card {
+  background: var(--card);
+  border: 1px solid var(--state-error);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-xs);
+}
+.exception-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.exception-type { display: flex; align-items: center; gap: 8px; }
+.exception-type-icon { flex-shrink: 0; color: var(--state-error); }
+.exception-type-icon.icon-success { color: var(--state-success); }
+.exception-type-name { font-size: 14px; font-weight: 600; color: var(--text-800); }
+.exception-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.exception-status.status-pending { background: var(--state-error); color: var(--state-error-foreground); }
+.exception-status.status-processing { background: var(--state-warning); color: var(--state-warning-foreground); }
+.exception-status.status-solved { background: var(--state-success); color: var(--state-success-foreground); }
+.exception-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 8px;
+  color: var(--text-500);
+}
+.exception-desc {
+  font-size: 12px;
+  margin: 0 0 12px;
+  color: var(--text-600);
+  line-height: 1.6;
+}
+.exception-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.exception-handler { font-size: 12px; color: var(--text-400); }
+
+/* ===== 清关时效统计 ===== */
+.timing-card { background: var(--card); }
+.timing-kpi {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.timing-kpi-item {
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+}
+.kpi-brand { background: var(--brand-50); }
+.kpi-success { background: var(--state-success-surface); }
+.kpi-value {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.1;
+}
+.kpi-brand .kpi-value { color: var(--brand-500); }
+.kpi-success .kpi-value { color: var(--state-success); }
+.kpi-label {
+  font-size: 12px;
+  margin: 4px 0 0;
+  color: var(--text-500);
+}
+.timing-sub-title {
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 14px;
+  color: var(--text-600);
+}
+
+/* 近 7 天时效柱状图 */
+.week-bars {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  height: 110px;
+  margin-bottom: 4px;
+}
+.week-bar-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.week-bar-track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.week-bar-fill {
+  width: 18px;
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, var(--brand-400), var(--brand-500));
+  transition: height 0.3s ease;
+}
+.week-bar-value { font-size: 10px; font-weight: 600; color: var(--text-500); }
+.week-bar-label { font-size: 10px; color: var(--text-400); }
+
+/* 各目的国平均时效对比（水平条形图） */
+.hbar-list { display: flex; flex-direction: column; gap: 12px; }
+.hbar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.hbar-name { font-size: 12px; font-weight: 500; color: var(--text-600); }
+.hbar-count { font-size: 12px; font-weight: 700; color: var(--text-800); }
+.hbar-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--background-200);
+}
+.hbar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
 </style>

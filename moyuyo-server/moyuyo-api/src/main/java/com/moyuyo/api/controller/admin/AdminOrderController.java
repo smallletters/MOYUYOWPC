@@ -3,8 +3,17 @@ package com.moyuyo.api.controller.admin;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
+import com.moyuyo.common.dto.admin.OperationResult;
+import com.moyuyo.common.dto.admin.order.OrderAddressUpdateRequest;
+import com.moyuyo.common.dto.admin.order.OrderShipRequest;
+import com.moyuyo.common.dto.order.CancelOrderRequest;
+import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.dao.entity.OrderEntity;
+import com.moyuyo.dao.entity.OrderItemEntity;
+import com.moyuyo.dao.entity.UserEntity;
+import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
+import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.LogisticsService;
 import com.moyuyo.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,6 +25,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Tag(name = "管理后台 - 订单管理")
 @RestController
@@ -25,7 +35,53 @@ public class AdminOrderController {
 
   private final OrderService orderService;
   private final OrderMapper orderMapper;
+  private final OrderItemMapper orderItemMapper;
+  private final UserMapper userMapper;
   private final LogisticsService logisticsService;
+  // 注入 WooCommerce 同步服务：手动重推订单到 WooCommerce
+  private final com.moyuyo.service.WooCommerceSyncService wooCommerceSyncService;
+
+  @Operation(summary = "订单统计数据")
+  @GetMapping("/stats")
+  public Result<Map<String, Object>> stats() {
+    try {
+      Map<String, Object> result = new LinkedHashMap<>();
+      // 按状态分组统计
+      List<Map<String, Object>> statusCounts = orderMapper.selectMaps(
+          new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<OrderEntity>()
+              .select("status", "COUNT(*) AS cnt")
+              .groupBy("status"));
+      Map<String, Long> statusMap = new HashMap<>();
+      long total = 0L;
+      for (Map<String, Object> row : statusCounts) {
+        String s = (String) row.get("status");
+        Number cnt = (Number) row.get("cnt");
+        if (s != null && cnt != null) {
+          statusMap.put(s, cnt.longValue());
+          total += cnt.longValue();
+        }
+      }
+      result.put("total", total);
+      result.put("byStatus", statusMap);
+      return Result.success(result);
+    } catch (Exception e) {
+      return Result.error("查询订单统计失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "最近订单")
+  @GetMapping("/recent")
+  public Result<List<OrderEntity>> recent(@RequestParam(defaultValue = "10") int limit) {
+    try {
+      List<OrderEntity> list = orderMapper.selectList(
+          new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<OrderEntity>()
+              .orderByDesc("create_time")
+              .last("LIMIT " + Math.max(1, Math.min(limit, 100))));
+      return Result.success(list);
+    } catch (Exception e) {
+      return Result.error("查询最近订单失败: " + e.getMessage());
+    }
+  }
 
   @Operation(summary = "订单列表")
   @GetMapping("/list")
@@ -36,30 +92,58 @@ public class AdminOrderController {
       @RequestParam(required = false) String keyword,
       @RequestParam(required = false) String startDate,
       @RequestParam(required = false) String endDate) {
-    try {
-      // 管理后台查看所有订单，支持关键字搜索和日期范围筛选
-      LambdaQueryWrapper<OrderEntity> wrapper = new LambdaQueryWrapper<OrderEntity>()
-          .eq(status != null && !status.isEmpty(), OrderEntity::getStatus, status)
-          .and(keyword != null && !keyword.isEmpty(), kw ->
-              kw.like(OrderEntity::getOrderNo, keyword))
-          .ge(startDate != null && !startDate.isEmpty(), OrderEntity::getCreateTime, LocalDate.parse(startDate).atStartOfDay())
-          .le(endDate != null && !endDate.isEmpty(), OrderEntity::getCreateTime, LocalDate.parse(endDate).atTime(LocalTime.MAX))
-          .orderByDesc(OrderEntity::getCreateTime);
-      Page<OrderEntity> pageResult = orderMapper.selectPage(new Page<>(page, size), wrapper);
-      Map<String, Object> result = new LinkedHashMap<>();
-      result.put("list", pageResult.getRecords());
-      result.put("total", pageResult.getTotal());
-      result.put("page", pageResult.getCurrent());
-      result.put("size", pageResult.getSize());
-      return Result.success(result);
-    } catch (Exception e) {
-      Map<String, Object> result = new LinkedHashMap<>();
-      result.put("list", Collections.emptyList());
-      result.put("total", 0);
-      result.put("page", page);
-      result.put("size", size);
-      return Result.success(result);
+    // 校验日期格式，非法日期直接返回友好错误，避免静默吞掉异常
+    LocalDateTime startDateTime = null;
+    LocalDateTime endDateTime = null;
+    if (startDate != null && !startDate.isEmpty()) {
+      try {
+        startDateTime = LocalDate.parse(startDate).atStartOfDay();
+      } catch (Exception e) {
+        return Result.error(400, "开始日期格式无效: " + startDate);
+      }
     }
+    if (endDate != null && !endDate.isEmpty()) {
+      try {
+        endDateTime = LocalDate.parse(endDate).atTime(LocalTime.MAX);
+      } catch (Exception e) {
+        return Result.error(400, "结束日期格式无效: " + endDate);
+      }
+    }
+
+    // 管理后台查看所有订单，支持关键字搜索和日期范围筛选
+    LambdaQueryWrapper<OrderEntity> wrapper = new LambdaQueryWrapper<OrderEntity>()
+        .eq(status != null && !status.isEmpty(), OrderEntity::getStatus, status)
+        .and(keyword != null && !keyword.isEmpty(), kw ->
+            kw.like(OrderEntity::getOrderNo, keyword))
+        .ge(startDateTime != null, OrderEntity::getCreateTime, startDateTime)
+        .le(endDateTime != null, OrderEntity::getCreateTime, endDateTime)
+        .orderByDesc(OrderEntity::getCreateTime);
+    Page<OrderEntity> pageResult = orderMapper.selectPage(new Page<>(page, size), wrapper);
+    List<OrderEntity> records = pageResult.getRecords();
+    if (!records.isEmpty()) {
+      // 批量补充用户昵称，避免 N+1 查询；列表页展示头像与用户名
+      List<Long> userIds = records.stream().map(OrderEntity::getUserId)
+          .filter(Objects::nonNull).distinct().collect(Collectors.toList());
+      Map<Long, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap()
+          : userMapper.selectBatchIds(userIds).stream().collect(Collectors.toMap(
+              UserEntity::getId, u -> u.getNickname() == null ? "" : u.getNickname(), (a, b) -> a));
+      // 批量补充订单商品明细，列表页展示商品概要
+      List<Long> orderIds = records.stream().map(OrderEntity::getId)
+          .filter(Objects::nonNull).collect(Collectors.toList());
+      Map<Long, List<OrderItemEntity>> itemMap = orderItemMapper.selectList(
+              new LambdaQueryWrapper<OrderItemEntity>().in(OrderItemEntity::getOrderId, orderIds))
+          .stream().collect(Collectors.groupingBy(OrderItemEntity::getOrderId));
+      for (OrderEntity order : records) {
+        order.setUserName(userNameMap.get(order.getUserId()));
+        order.setItems(itemMap.getOrDefault(order.getId(), Collections.emptyList()));
+      }
+    }
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("list", records);
+    result.put("total", pageResult.getTotal());
+    result.put("page", pageResult.getCurrent());
+    result.put("size", pageResult.getSize());
+    return Result.success(result);
   }
 
   @Operation(summary = "订单详情")
@@ -68,7 +152,7 @@ public class AdminOrderController {
     // 管理后台按订单ID查询详情，userId 传 null
     OrderEntity order = orderService.getOrderDetail(id, null);
     if (order == null) {
-      return Result.error("订单不存在");
+      return Result.error(404, "订单不存在");
     }
     order.setItems(orderService.getOrderItems(id));
     return Result.success(order);
@@ -76,25 +160,32 @@ public class AdminOrderController {
 
   @Operation(summary = "修改收货地址")
   @PutMapping("/{id}/address")
-  public Result<Map<String, Object>> updateAddress(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+  public Result<OperationResult> updateAddress(@PathVariable Long id, @RequestBody OrderAddressUpdateRequest request) {
     try {
       OrderEntity order = orderService.getOrderDetail(id, null);
       if (order == null) {
-        return Result.error("订单不存在");
+        return Result.error(404, "订单不存在");
       }
-      if (body.get("shippingName") != null) {
-        order.setReceiverName((String) body.get("shippingName"));
+      // 已发货订单不允许修改地址，避免物流信息不一致
+      if (order.getStatusEnum() == OrderStatusEnum.SHIPPED
+          || order.getStatusEnum() == OrderStatusEnum.RECEIVED
+          || order.getStatusEnum() == OrderStatusEnum.COMPLETED) {
+        return Result.error(400, "已发货/已完成订单不可修改收货地址");
       }
-      if (body.get("shippingPhone") != null) {
-        order.setReceiverPhone((String) body.get("shippingPhone"));
+      // 仅在请求显式传值时覆盖原值,与原 Map 逻辑保持一致
+      if (request.getShippingName() != null) {
+        order.setReceiverName(request.getShippingName());
       }
-      if (body.get("shippingAddress") != null) {
-        order.setReceiverAddress((String) body.get("shippingAddress"));
+      if (request.getShippingPhone() != null) {
+        order.setReceiverPhone(request.getShippingPhone());
+      }
+      if (request.getShippingAddress() != null) {
+        order.setReceiverAddress(request.getShippingAddress());
       }
       orderMapper.updateById(order);
-      Map<String, Object> result = new LinkedHashMap<>();
-      result.put("id", id);
-      result.put("message", "地址修改成功");
+      OperationResult result = new OperationResult();
+      result.setId(id);
+      result.setMessage("地址修改成功");
       return Result.success(result);
     } catch (Exception e) {
       return Result.error("修改地址失败: " + e.getMessage());
@@ -103,29 +194,118 @@ public class AdminOrderController {
 
   @Operation(summary = "确认发货")
   @PutMapping("/{id}/ship")
-  public Result<Map<String, Object>> ship(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
+  public Result<OperationResult> ship(@PathVariable Long id, @RequestBody(required = false) OrderShipRequest request) {
     try {
       // 验证订单是否存在
       OrderEntity order = orderService.getOrderDetail(id, null);
       if (order == null) {
-        return Result.error("订单不存在");
+        return Result.error(404, "订单不存在");
+      }
+      // 仅允许已支付/待发货的订单发货
+      if (!order.isPaid() || order.getStatusEnum() == OrderStatusEnum.CANCELLED) {
+        return Result.error(400, "订单未支付或已取消，无法发货");
+      }
+      if (order.getStatusEnum() == OrderStatusEnum.SHIPPED
+          || order.getStatusEnum() == OrderStatusEnum.RECEIVED
+          || order.getStatusEnum() == OrderStatusEnum.COMPLETED) {
+        return Result.error(400, "订单已发货或已完成，请勿重复发货");
       }
 
-      // 提取物流信息
-      String carrier = body != null && body.get("carrier") != null
-        ? (String) body.get("carrier") : "默认承运商";
-      String trackingNo = body != null && body.get("trackingNo") != null
-        ? (String) body.get("trackingNo") : "";
+      // 提取物流信息,未传值时使用默认值(与原 Map 逻辑保持一致)
+      String carrier = request != null && request.getCarrier() != null
+        ? request.getCarrier() : "默认承运商";
+      String trackingNo = request != null && request.getTrackingNo() != null
+        ? request.getTrackingNo() : "";
 
       // 通过LogisticsService处理发货，会创建物流记录、更新订单状态
       logisticsService.shipOrder(id, carrier, trackingNo);
 
-      Map<String, Object> result = new LinkedHashMap<>();
-      result.put("id", id);
-      result.put("message", "发货成功");
+      OperationResult result = new OperationResult();
+      result.setId(id);
+      result.setMessage("发货成功");
       return Result.success(result);
     } catch (Exception e) {
       return Result.error("确认发货失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "取消订单（管理后台）")
+  @PutMapping("/{id}/cancel")
+  public Result<OperationResult> cancel(@PathVariable Long id, @RequestBody(required = false) CancelOrderRequest request) {
+    try {
+      OrderEntity order = orderService.getOrderDetail(id, null);
+      if (order == null) {
+        return Result.error(404, "订单不存在");
+      }
+      // 已发货/已完成的订单不允许取消
+      if (order.getStatusEnum() == OrderStatusEnum.SHIPPED
+          || order.getStatusEnum() == OrderStatusEnum.RECEIVED
+          || order.getStatusEnum() == OrderStatusEnum.COMPLETED) {
+        return Result.error(400, "已发货/已完成订单不支持取消");
+      }
+      String reason = request != null && request.getReason() != null
+        ? request.getReason() : "管理员操作";
+      // 管理后台取消不校验userId，传null
+      orderService.cancelOrder(id, null, reason);
+      OperationResult result = new OperationResult();
+      result.setId(id);
+      result.setMessage("订单已取消");
+      return Result.success(result);
+    } catch (Exception e) {
+      return Result.error("取消订单失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "删除/作废订单（管理后台）")
+  @DeleteMapping("/{id}")
+  public Result<Map<String, Object>> delete(@PathVariable Long id) {
+    try {
+      OrderEntity order = orderService.getOrderDetail(id, null);
+      if (order == null) {
+        return Result.error(404, "订单不存在");
+      }
+      // 仅允许删除已取消的订单
+      if (order.getStatusEnum() != OrderStatusEnum.CANCELLED) {
+        return Result.error(400, "仅支持删除已取消的订单，请先取消订单再删除");
+      }
+      orderService.deleteOrder(id, null);
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("id", id);
+      result.put("message", "订单已删除");
+      return Result.success(result);
+    } catch (Exception e) {
+      return Result.error("删除订单失败: " + e.getMessage());
+    }
+  }
+
+  /**
+   * 手动重推订单到 WooCommerce。
+   * 用于 payCallback 同步失败或 WooCommerce 端缺失订单数据时人工补偿。
+   * 仅同步已支付订单；其他状态返回 400。
+   */
+  @Operation(summary = "手动重推订单到 WooCommerce")
+  @PostMapping("/{id}/sync-to-woo")
+  public Result<Map<String, Object>> syncToWoo(@PathVariable Long id) {
+    try {
+      OrderEntity order = orderService.getOrderDetail(id, null);
+      if (order == null) {
+        return Result.error(404, "订单不存在");
+      }
+      if (!order.isPaid()) {
+        return Result.error(400, "仅已支付订单支持手动重推，当前状态: " + order.getStatus());
+      }
+      // 调用同步服务：内部会判断 wooOrderId 是否已存在，存在则跳过推送
+      wooCommerceSyncService.syncOrderToWooCommerce(order);
+      // 同步完成后重读实体，把最新的 wooOrderId / syncStatus 回传给前端
+      OrderEntity fresh = orderService.getOrderDetail(id, null);
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("id", id);
+      result.put("wooOrderId", fresh != null ? fresh.getWooOrderId() : null);
+      result.put("syncStatus", fresh != null ? fresh.getSyncStatus() : null);
+      result.put("message", "订单重推任务已执行，请查看 syncStatus 与 wooOrderId");
+      return Result.success(result);
+    } catch (Exception e) {
+      return Result.error("重推订单到 WooCommerce 失败: " + e.getMessage());
     }
   }
 }

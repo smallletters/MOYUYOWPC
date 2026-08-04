@@ -49,4 +49,10 @@ public class AdminGdprController {
   public Result<Map<String, Object>> policy() {
     return Result.success(adminGdprService.getActivePolicy());
   }
+
+  @Operation(summary = "新建隐私政策")
+  @PostMapping("/policy")
+  public Result<Map<String, Object>> createPolicy(@RequestBody Map<String, Object> body) {
+    return Result.success(adminGdprService.createPolicy(body));
+  }
 }

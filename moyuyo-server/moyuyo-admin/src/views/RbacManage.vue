@@ -249,31 +249,57 @@ import {
 // ---- 角色列表（从API获取） ----
 const roles = ref([])
 // 当前选中角色的权限ID列表（扁平格式）
-const currentPermIds = ref([])
+const currentPermKeys = ref([])
 
 // ---- 权限模块（静态UI配置） ----
 const permModules = [
-  { key: 'product', name: '商品管理' },
-  { key: 'order', name: '订单管理' },
-  { key: 'user', name: '用户管理' },
+  { key: 'dashboard', name: '仪表盘' },
+  { key: 'analysis', name: '数据分析' },
+  { key: 'products', name: '商品管理' },
+  { key: 'product-approval', name: '商品审批' },
+  { key: 'product-analysis', name: '商品分析' },
+  { key: 'orders', name: '订单管理' },
+  { key: 'order-ops', name: '订单操作' },
+  { key: 'order-tags', name: '订单标签' },
+  { key: 'users', name: '用户管理' },
+  { key: 'user-profile', name: '用户画像' },
+  { key: 'blacklist', name: '黑名单' },
+  { key: 'crm', name: '客户管理' },
   { key: 'marketing', name: '营销管理' },
-  { key: 'stats', name: '数据统计' },
-  { key: 'system', name: '系统设置' },
+  { key: 'coupons', name: '优惠券' },
+  { key: 'flash-sales', name: '秒杀活动' },
+  { key: 'live', name: '直播管理' },
+  { key: 'push', name: '推送管理' },
+  { key: 'sms', name: '短信管理' },
   { key: 'finance', name: '财务管理' },
-  { key: 'review', name: '内容审核' }
+  { key: 'settlement', name: '结算管理' },
+  { key: 'refunds', name: '退款管理' },
+  { key: 'review', name: '评价管理' },
+  { key: 'content-review', name: '内容审核' },
+  { key: 'cms', name: '内容管理' },
+  { key: 'knowledge-base', name: '知识库' },
+  { key: 'cs-sessions', name: '客服会话' },
+  { key: 'ticket', name: '工单管理' },
+  { key: 'complaint', name: '投诉管理' },
+  { key: 'satisfaction', name: '满意度' },
+  { key: 'logistics', name: '物流管理' },
+  { key: 'inventory', name: '库存管理' },
+  { key: 'inventory-transfer', name: '库存调拨' },
+  { key: 'price', name: '价格管理' },
+  { key: 'tariff', name: '关税管理' },
+  { key: 'points', name: '积分管理' },
+  { key: 'risk', name: '风控管理' },
+  { key: 'risk-alert', name: '风控预警' },
+  { key: 'gdpr', name: 'GDPR合规' },
+  { key: 'sensitive', name: '敏感词' },
+  { key: 'rbac', name: '权限管理' },
+  { key: 'system', name: '系统管理' },
+  { key: 'system-info', name: '系统信息' },
+  { key: 'settings', name: '系统设置' },
+  { key: 'app-version', name: '版本管理' },
+  { key: 'batch-import', name: '批量导入' },
+  { key: 'audit-log', name: '审计日志' }
 ]
-
-// 权限映射表：moduleKey_action -> permissionId
-const PERM_MAP = {
-  product_view: 1, product_create: 2, product_edit: 3, product_delete: 4,
-  order_view: 5, order_create: 6, order_edit: 7, order_delete: 8,
-  user_view: 9, user_create: 10, user_edit: 11, user_delete: 12,
-  marketing_view: 13, marketing_create: 14, marketing_edit: 15, marketing_delete: 16,
-  stats_view: 17, stats_create: 18, stats_edit: 19, stats_delete: 20,
-  system_view: 21, system_create: 22, system_edit: 23, system_delete: 24,
-  finance_view: 25, finance_create: 26, finance_edit: 27, finance_delete: 28,
-  review_view: 29, review_create: 30, review_edit: 31, review_delete: 32
-}
 
 // ---- 选中角色 ----
 const selectedRole = ref(null)
@@ -310,10 +336,10 @@ async function loadRoles() {
 async function loadPermissions(roleId) {
   try {
     const data = await getRolePermissions(roleId)
-    currentPermIds.value = data?.permissionIds || []
+    currentPermKeys.value = data?.permKeys || []
   } catch (e) {
     console.error('获取权限数据失败', e)
-    currentPermIds.value = []
+    currentPermKeys.value = []
   }
 }
 
@@ -323,22 +349,20 @@ async function selectRole(role) {
   await loadPermissions(role.id)
 }
 
-// ---- 权限读取/切换 ----
+// ---- 权限读取/切换（权限键格式：resource:action，如 products:view） ----
 function getPerm(moduleKey, action) {
   if (!selectedRole.value) return false
-  const permId = PERM_MAP[`${moduleKey}_${action}`]
-  return permId ? currentPermIds.value.includes(permId) : false
+  return currentPermKeys.value.includes(`${moduleKey}:${action}`)
 }
 
 function togglePerm(moduleKey, action) {
   if (!selectedRole.value || selectedRole.value.isPreset) return
-  const permId = PERM_MAP[`${moduleKey}_${action}`]
-  if (!permId) return
-  const idx = currentPermIds.value.indexOf(permId)
+  const permKey = `${moduleKey}:${action}`
+  const idx = currentPermKeys.value.indexOf(permKey)
   if (idx === -1) {
-    currentPermIds.value.push(permId)
+    currentPermKeys.value.push(permKey)
   } else {
-    currentPermIds.value.splice(idx, 1)
+    currentPermKeys.value.splice(idx, 1)
   }
 }
 
@@ -346,7 +370,7 @@ function togglePerm(moduleKey, action) {
 async function handleSavePerms() {
   if (!selectedRole.value) return
   try {
-    await updateRolePermissions(selectedRole.value.id, { permissionIds: currentPermIds.value })
+    await updateRolePermissions(selectedRole.value.id, { permKeys: currentPermKeys.value })
     ElMessage.success(`「${selectedRole.value.name}」权限配置已更新`)
   } catch (e) {
     ElMessage.error('保存权限失败')
@@ -409,7 +433,6 @@ onMounted(() => {
 <style scoped>
 /* ---- 页面容器 ---- */
 .rbac-page {
-  padding: 24px 28px;
 }
 
 /* ---- 页面标题 ---- */

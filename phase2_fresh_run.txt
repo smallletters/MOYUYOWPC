@@ -1,0 +1,173 @@
+﻿================================================================================
+【阶段2-改进：基于 admin.js 真实端点的 API 测试（带最小有效 body）】
+================================================================================
+
+[健康] GET /api/health -> status=200
+[登录成功]
+
+[扫描] 共发现 154 个端点（去重前）
+[去重] 共 154 个唯一端点
+
+[OK  ] GET    /dashboard/stats                                   http=200 biz=0 success
+[OK  ] GET    /dashboard/recent-orders                           http=200 biz=0 success
+[OK  ] GET    /dashboard/sales-trend                             http=200 biz=0 success
+[OK  ] GET    /rbac/roles                                        http=200 biz=0 success
+[OK  ] POST   /rbac/roles                                        http=200 biz=500 创建角色失败: 
+
+### Error updating database.  
+[OK  ] GET    /rbac/users                                        http=200 biz=0 success
+[OK  ] POST   /rbac/users                                        http=200 biz=0 success
+[OK  ] GET    /cms/list                                          http=200 biz=0 success
+[OK  ] POST   /cms/create                                        http=200 biz=0 success
+[OK  ] PUT    /cms/update                                        http=200 biz=500 内容ID不能为空
+[OK  ] PUT    /cms/reorder                                       http=400 biz=400 请求体格式错误
+[OK  ] GET    /finance/overview                                  http=200 biz=0 success
+[OK  ] GET    /finance/settlements                               http=200 biz=0 success
+[OK  ] POST   /finance/settlements                               http=200 biz=0 success
+[OK  ] GET    /finance/records                                   http=200 biz=0 success
+[OK  ] GET    /refunds/stats                                     http=200 biz=0 success
+[OK  ] GET    /refunds/list                                      http=200 biz=0 success
+[OK  ] GET    /refunds/reason-distribution                       http=200 biz=0 success
+[OK  ] PUT    /refunds/batch-approve                             http=200 biz=0 success
+[OK  ] GET    /inventory/overview                                http=200 biz=0 success
+[OK  ] GET    /inventory/alerts                                  http=200 biz=0 success
+[OK  ] GET    /inventory/list                                    http=200 biz=0 success
+[OK  ] POST   /inventory/check                                   http=200 biz=0 success
+[OK  ] GET    /push/stats                                        http=200 biz=0 success
+[OK  ] GET    /push/records                                      http=200 biz=0 success
+[OK  ] GET    /push/scheduled                                    http=200 biz=0 success
+[OK  ] POST   /push/create                                       http=200 biz=0 success
+[OK  ] GET    /ticket/list                                       http=200 biz=0 success
+[OK  ] GET    /ticket/stats                                      http=200 biz=0 success
+[OK  ] GET    /marketing/campaigns                               http=200 biz=0 success
+[OK  ] POST   /marketing/campaigns                               http=200 biz=0 success
+[OK  ] GET    /marketing/ab-tests                                http=200 biz=0 success
+[OK  ] POST   /marketing/ab-tests                                http=200 biz=0 success
+[OK  ] PUT    /marketing/ab-tests/                               http=200 biz=0 success
+[OK  ] GET    /marketing/effects                                 http=200 biz=0 success
+[OK  ] GET    /complaint/list                                    http=200 biz=0 success
+[OK  ] POST   /complaint/create                                  http=200 biz=0 success
+[OK  ] GET    /review/list                                       http=200 biz=0 success
+[OK  ] GET    /products/list                                     http=200 biz=0 success
+[OK  ] POST   /products/create                                   http=200 biz=500 商品名称不能为空
+[OK  ] POST   /products/batch                                    http=200 biz=500 请选择要操作的商品
+[OK  ] GET    /product-analysis/kpi                              http=200 biz=0 success
+[OK  ] GET    /product-analysis/list                             http=200 biz=0 success
+[OK  ] GET    /product-analysis/report                           http=200 biz=0 success
+[OK  ] GET    /price/list                                        http=200 biz=0 success
+[OK  ] POST   /price/create                                      http=200 biz=500 未找到对应商品
+[OK  ] PUT    /price/update                                      http=200 biz=500 商品不存在: 1
+[OK  ] GET    /price/history                                     http=200 biz=0 success
+[OK  ] GET    /order-ops/stats                                   http=200 biz=0 success
+[OK  ] GET    /order-ops/export                                  http=200 biz=0 success
+[OK  ] POST   /order-ops/export/create                           http=200 biz=0 success
+[OK  ] POST   /order-ops/batch-ship                              http=200 biz=0 success
+[OK  ] GET    /order-ops/print/list                              http=200 biz=0 success
+[OK  ] POST   /order-ops/print/record                            http=200 biz=500 参数错误：orderId 不能为空
+[OK  ] GET    /order-ops/price-modify/list                       http=200 biz=0 success
+[OK  ] POST   /order-ops/price-modify/create                     http=200 biz=500 参数错误：orderId 或 orderNo 不能为空
+[OK  ] GET    /order-ops/intercept/list                          http=200 biz=0 success
+[OK  ] POST   /order-ops/intercept/create                        http=200 biz=500 参数错误：orderId 不能为空
+[OK  ] GET    /order-ops/monitor/data                            http=200 biz=0 success
+[OK  ] GET    /order-ops/monitor/list                            http=200 biz=0 success
+[OK  ] GET    /logistics/warehouses                              http=200 biz=0 success
+[OK  ] GET    /logistics/overseas                                http=200 biz=0 success
+[OK  ] GET    /logistics/merge-packages                          http=200 biz=0 success
+[OK  ] GET    /logistics/split-packages                          http=200 biz=0 success
+[OK  ] GET    /logistics/carriers                                http=200 biz=0 success
+[OK  ] GET    /logistics/clearance                               http=200 biz=0 success
+[OK  ] GET    /logistics/customs                                 http=200 biz=0 success
+[OK  ] GET    /logistics/shipping-strategies                     http=200 biz=0 success
+[OK  ] GET    /logistics/kpi                                     http=200 biz=0 success
+[OK  ] GET    /logistics/packages                                http=200 biz=0 success
+[OK  ] GET    /sms/stats                                         http=200 biz=0 success
+[OK  ] GET    /sms/records                                       http=200 biz=0 success
+[OK  ] POST   /sms/send                                          http=200 biz=0 success
+[OK  ] GET    /sensitive/list                                    http=200 biz=0 success
+[OK  ] GET    /sensitive/categories                              http=200 biz=0 success
+[OK  ] POST   /sensitive/create                                  http=200 biz=0 success
+[OK  ] PUT    /sensitive/update                                  http=200 biz=0 success
+[OK  ] POST   /sensitive/batch-delete                            http=400 biz=400 请求体格式错误
+[OK  ] GET    /risk/rules                                        http=200 biz=0 success
+[OK  ] POST   /risk/rules                                        http=200 biz=0 success
+[OK  ] GET    /risk/events                                       http=200 biz=0 success
+[OK  ] GET    /risk/event-stats                                  http=200 biz=0 success
+[OK  ] GET    /satisfaction/stats                                http=200 biz=0 success
+[OK  ] GET    /satisfaction/list                                 http=200 biz=0 success
+[OK  ] GET    /gdpr/consent-records                              http=200 biz=0 success
+[OK  ] GET    /gdpr/data-requests                                http=200 biz=0 success
+[OK  ] GET    /audit-log/list                                    http=200 biz=0 success
+[OK  ] GET    /audit-log/stats                                   http=200 biz=0 success
+[OK  ] GET    /analysis/funnel                                   http=200 biz=0 success
+[OK  ] GET    /analysis/rfm                                      http=200 biz=0 success
+[OK  ] GET    /analysis/search                                   http=200 biz=0 success
+[OK  ] GET    /analysis/traffic                                  http=200 biz=0 success
+[OK  ] GET    /app-version/list                                  http=200 biz=0 success
+[OK  ] POST   /app-version/create                                http=200 biz=0 success
+[OK  ] PUT    /app-version/update                                http=200 biz=400 参数错误：id 不能为空
+[OK  ] GET    /system/config                                     http=200 biz=0 success
+[OK  ] PUT    /system/config                                     http=400 biz=400 请求体格式错误
+[OK  ] GET    /system/logs                                       http=200 biz=0 success
+[OK  ] GET    /rbac/permissions                                  http=200 biz=0 success
+[OK  ] GET    /system-info/security-config                       http=200 biz=0 success
+[OK  ] GET    /system-info/info                                  http=200 biz=0 success
+[OK  ] GET    /settings/payment-methods                          http=200 biz=0 success
+[OK  ] GET    /gdpr/policy                                       http=200 biz=0 success
+[OK  ] GET    /batch-import/records                              http=200 biz=0 success
+[OK  ] POST   /batch-import/import                               http=200 biz=0 success
+[OK  ] GET    /live/rooms                                        http=200 biz=0 success
+[OK  ] POST   /live/rooms                                        http=200 biz=0 success
+[OK  ] GET    /knowledge-base/list                               http=200 biz=0 success
+[OK  ] POST   /knowledge-base/create                             http=200 biz=0 success
+[OK  ] PUT    /knowledge-base/update                             http=200 biz=400 参数错误：id 不能为空
+[OK  ] GET    /crm/cs-performance                                http=200 biz=0 success
+[OK  ] GET    /crm/realtime                                      http=200 biz=0 success
+[OK  ] GET    /crm/realtime-order-flow                           http=200 biz=0 success
+[OK  ] GET    /crm/realtime/top-products                         http=200 biz=0 success
+[OK  ] GET    /product-approval/list                             http=200 biz=0 success
+[OK  ] GET    /content-review/list                               http=200 biz=0 success
+[OK  ] GET    /content-review/stats                              http=200 biz=0 success
+[OK  ] GET    /content-review/trend                              http=200 biz=0 success
+[OK  ] GET    /coupons/list                                      http=200 biz=0 success
+[OK  ] POST   /coupons/create                                    http=200 biz=0 success
+[OK  ] PUT    /coupons/update                                    http=200 biz=0 success
+[OK  ] GET    /coupons/stats                                     http=200 biz=0 success
+[OK  ] GET    /flash-sales/list                                  http=200 biz=0 success
+[OK  ] POST   /flash-sales/create                                http=200 biz=0 success
+[OK  ] PUT    /flash-sales/update                                http=200 biz=0 success
+[OK  ] GET    /flash-sales/stats                                 http=200 biz=0 success
+[OK  ] GET    /points/activities                                 http=200 biz=0 success
+[OK  ] POST   /points/activities/create                          http=200 biz=0 success
+[OK  ] GET    /points/logs                                       http=200 biz=0 success
+[OK  ] GET    /points/stats                                      http=200 biz=0 success
+[OK  ] GET    /blacklist/list                                    http=200 biz=0 success
+[OK  ] POST   /blacklist/create                                  http=200 biz=0 success
+[OK  ] POST   /blacklist/batch-create                            http=200 biz=0 success
+[OK  ] GET    /tariff/configs                                    http=200 biz=0 success
+[OK  ] POST   /tariff/configs/create                             http=200 biz=0 success
+[OK  ] PUT    /tariff/configs/update                             http=200 biz=0 success
+[OK  ] POST   /tariff/calculate                                  http=200 biz=0 success
+[OK  ] GET    /cs-sessions/list                                  http=200 biz=0 success
+[OK  ] GET    /cs-sessions/stats                                 http=200 biz=0 success
+[OK  ] GET    /risk-alert/configs                                http=200 biz=0 success
+[OK  ] POST   /risk-alert/configs/create                         http=200 biz=0 success
+[OK  ] PUT    /risk-alert/configs/update                         http=200 biz=0 success
+[OK  ] GET    /risk-alert/history                                http=200 biz=0 success
+[OK  ] GET    /order-tags/list                                   http=200 biz=0 success
+[OK  ] POST   /order-tags/create                                 http=200 biz=0 success
+[OK  ] PUT    /order-tags/update                                 http=200 biz=0 success
+[OK  ] GET    /inventory-transfer/list                           http=200 biz=0 success
+[OK  ] POST   /inventory-transfer/create                         http=200 biz=0 success
+[OK  ] GET    /users/stats                                       http=200 biz=0 success
+[OK  ] GET    /users/list                                        http=200 biz=0 success
+[OK  ] GET    /orders/list                                       http=200 biz=0 success
+[OK  ] POST   /auth/login                                        http=200 biz=400 邮箱和密码不能为空
+[OK  ] POST   /auth/logout                                       http=200 biz=0 success
+[OK  ] GET    /auth/me                                           http=200 biz=0 success
+
+=== 阶段2-改进 总结: 154 PASS / 0 FAIL / 154 TOTAL ===
+
+=== 各方法统计 ===
+  GET: 103 OK / 0 FAIL
+  POST: 37 OK / 0 FAIL
+  PUT: 14 OK / 0 FAIL

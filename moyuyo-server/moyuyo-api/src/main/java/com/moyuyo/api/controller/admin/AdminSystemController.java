@@ -1,42 +1,76 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.service.admin.SystemConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.RedisCallback;
+import org.springframework.data.redis.core.ScanOptions;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 管理后台 — 系统管理相关接口
- * 原 AdminController 拆分而来，负责系统安全配置和系统信息
+ * 负责系统安全配置、系统信息、缓存管理等
  */
 @Tag(name = "管理后台 - 系统管理")
 @RestController
 @RequestMapping("/api/admin/system-info")
+@RequiredArgsConstructor
 public class AdminSystemController {
+
+    private final SystemConfigService systemConfigService;
+    private final StringRedisTemplate redisTemplate;
 
     @Operation(summary = "获取系统安全配置")
     @GetMapping("/security-config")
     public Result<List<Map<String, Object>>> securityConfig() {
-        List<Map<String, Object>> configs = Arrays.asList(
-            Map.of("key", "password_policy", "value", "medium", "description", "密码策略"),
-            Map.of("key", "session_timeout", "value", "30", "description", "会话超时时间(分钟)"),
-            Map.of("key", "max_login_attempts", "value", "5", "description", "最大登录尝试次数")
-        );
+        // 从数据库获取安全配置，若不存在则返回默认值
+        Map<String, Object> config = systemConfigService.getConfig("security");
+
+        List<Map<String, Object>> configs = new ArrayList<>();
+        configs.add(Map.of(
+            "key", "password_policy",
+            "value", config.getOrDefault("password_policy", "medium").toString(),
+            "description", "密码策略"
+        ));
+        configs.add(Map.of(
+            "key", "session_timeout",
+            "value", config.getOrDefault("session_timeout", "30").toString(),
+            "description", "会话超时时间(分钟)"
+        ));
+        configs.add(Map.of(
+            "key", "max_login_attempts",
+            "value", config.getOrDefault("max_login_attempts", "5").toString(),
+            "description", "最大登录尝试次数"
+        ));
         return Result.success(configs);
+    }
+
+    @Operation(summary = "保存系统安全配置")
+    @PutMapping("/security-config")
+    public Result<Map<String, Object>> saveSecurityConfig(@RequestBody List<Map<String, Object>> configs) {
+        Map<String, Object> configMap = new LinkedHashMap<>();
+        for (Map<String, Object> item : configs) {
+            configMap.put((String) item.get("key"), item.get("value"));
+        }
+        systemConfigService.saveConfig("security", configMap);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("updated", configs.size());
+        result.put("message", "安全配置保存成功");
+        return Result.success(result);
     }
 
     @Operation(summary = "获取系统信息")
     @GetMapping("/info")
     public Result<Map<String, Object>> systemInfo() {
         Map<String, Object> info = new LinkedHashMap<>();
-        // 从应用上下文获取真实系统信息
         info.put("version", "1.0.0");
         info.put("javaVersion", System.getProperty("java.version"));
         info.put("osName", System.getProperty("os.name"));
@@ -51,4 +85,63 @@ public class AdminSystemController {
         return Result.success(info);
     }
 
+    @Operation(summary = "获取系统参数（站点名称、Logo、公告等）")
+    @GetMapping("/parameters")
+    public Result<Map<String, Object>> parameters() {
+        Map<String, Object> params = systemConfigService.getConfig("basic");
+        return Result.success(params);
+    }
+
+    @Operation(summary = "保存系统参数")
+    @PutMapping("/parameters")
+    public Result<Map<String, Object>> saveParameters(@RequestBody Map<String, Object> body) {
+        systemConfigService.saveConfig("basic", body);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("updated", body.size());
+        result.put("message", "系统参数保存成功");
+        return Result.success(result);
+    }
+
+    @Operation(summary = "清除缓存")
+    @PostMapping("/clear-cache")
+    public Result<Map<String, Object>> clearCache() {
+        try {
+            // 使用 SCAN 替代 KEYS，避免在大 Key 空间下阻塞 Redis
+            Set<String> configKeys = scanKeys("config:*");
+            Set<String> cacheKeys = scanKeys("cache:*");
+            int cleared = 0;
+            if (!configKeys.isEmpty()) {
+                redisTemplate.delete(configKeys);
+                cleared += configKeys.size();
+            }
+            if (!cacheKeys.isEmpty()) {
+                redisTemplate.delete(cacheKeys);
+                cleared += cacheKeys.size();
+            }
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("message", "缓存清除成功");
+            result.put("cleared", cleared);
+            return Result.success(result);
+        } catch (Exception e) {
+            // 异常详情仅记录日志，不向客户端泄露内部信息
+            return Result.error("清除缓存失败，请稍后重试");
+        }
+    }
+
+    /**
+     * 使用 SCAN 游标式扫描匹配 pattern 的 Key，避免 KEYS 命令阻塞 Redis。
+     * 每批扫描 100 个 Key，循环至游标归零。
+     */
+    private Set<String> scanKeys(String pattern) {
+        return redisTemplate.execute((RedisCallback<Set<String>>) connection -> {
+            Set<String> keys = new HashSet<>();
+            ScanOptions options = ScanOptions.scanOptions().match(pattern).count(100).build();
+            try (Cursor<byte[]> cursor = connection.keyCommands().scan(options)) {
+                while (cursor.hasNext()) {
+                    keys.add(new String(cursor.next()));
+                }
+            }
+            return keys;
+        });
+    }
 }

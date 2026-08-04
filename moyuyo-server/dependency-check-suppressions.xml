@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  OWASP Dependency-Check 漏洞抑制清单
+  用于标记已知误报或已评估为不影响本项目的漏洞
+  添加新条目时请填写：
+    - 漏洞 ID
+    - 漏洞描述
+    - 影响原因（误报 / 不影响 / 已升级等）
+    - 审查人 + 日期
+-->
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!--
+      示例：
+      <suppress>
+          <cve>CVE-XXXX-XXXXX</cve>
+          <notes>此漏洞在 Tomcat 嵌入式中不可利用（未使用受影响功能）</notes>
+      </suppress>
+    -->
+</suppressions>

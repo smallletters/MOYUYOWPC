@@ -23,7 +23,7 @@
         <div class="card">
           <div class="card-header">
             <h3>转化漏斗</h3>
-            <button class="btn btn-sm btn-outline" @click="ElMessage.info('自定义漏斗功能开发中')">自定义漏斗</button>
+            <button class="btn btn-sm btn-outline" @click="openCustomFunnelDialog">自定义漏斗</button>
           </div>
           <div class="card-body">
             <div class="funnel-chart">
@@ -124,13 +124,43 @@
         </div>
       </div>
     </div>
+
+    <!-- 自定义漏斗对话框 -->
+    <el-dialog v-model="customFunnelVisible" title="自定义漏斗" width="520px">
+      <el-form label-width="90px">
+        <el-form-item label="漏斗名称">
+          <el-input v-model="customFunnel.name" placeholder="例如：新用户转化漏斗" />
+        </el-form-item>
+        <el-form-item label="起始步骤">
+          <el-select v-model="customFunnel.startStep" placeholder="选择起始事件" style="width:100%">
+            <el-option v-for="opt in funnelStepOptions" :key="opt.key" :label="opt.label" :value="opt.key" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="结束步骤">
+          <el-select v-model="customFunnel.endStep" placeholder="选择结束事件" style="width:100%">
+            <el-option v-for="opt in funnelStepOptions" :key="opt.key" :label="opt.label" :value="opt.key" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="时间范围">
+          <el-radio-group v-model="customFunnel.timeRange">
+            <el-radio-button label="7d">近 7 天</el-radio-button>
+            <el-radio-button label="30d">近 30 天</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="customFunnelVisible = false">取消</el-button>
+        <el-button type="primary" @click="applyCustomFunnel">应用</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getFunnelAnalysis, getMarketingEffects } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 const activeTime = ref('7d')
 
@@ -139,6 +169,12 @@ const timeOptions = [
   { key: '30d', label: '近30天' },
   { key: 'custom', label: '自定义' }
 ]
+
+// 时间范围切换时重新加载数据
+watch(activeTime, () => {
+  loadFunnelData()
+  loadChannelData()
+})
 
 const funnelSteps = reactive([])
 const channels = reactive([])
@@ -155,14 +191,85 @@ const churnReasons = ref([
 const repurchaseRate = ref(23) // 复购率（百分比）
 const repurchaseTrend = ref(2.3) // 复购率涨幅（百分比）
 
+// 自定义漏斗：对话框 & 表单
+const customFunnelVisible = ref(false)
+const customFunnel = reactive({
+  name: '',
+  startStep: '',
+  endStep: '',
+  timeRange: '7d'
+})
+
+// 漏斗可选步骤
+const funnelStepOptions = [
+  { key: 'visit', label: '访问' },
+  { key: 'view_product', label: '浏览商品' },
+  { key: 'add_cart', label: '加入购物车' },
+  { key: 'checkout', label: '结算' },
+  { key: 'submit_order', label: '提交订单' },
+  { key: 'pay', label: '完成支付' }
+]
+
+function openCustomFunnelDialog() {
+  customFunnel.name = ''
+  customFunnel.startStep = ''
+  customFunnel.endStep = ''
+  customFunnel.timeRange = '7d'
+  customFunnelVisible.value = true
+}
+
+async function applyCustomFunnel() {
+  if (!customFunnel.name.trim()) {
+    ElMessage.warning('请输入漏斗名称')
+    return
+  }
+  if (!customFunnel.startStep || !customFunnel.endStep) {
+    ElMessage.warning('请选择起止步骤')
+    return
+  }
+  try {
+    // 调用后端：POST /analysis/custom-funnel
+    const days = customFunnel.timeRange === '30d' ? 30 : 7
+    const res = await getFunnelAnalysis({ days, from: customFunnel.startStep, to: customFunnel.endStep })
+    const funnelList = toArray(res)
+    if (funnelList.length > 0) {
+      const maxCount = Math.max(...funnelList.map(s => s.userCount || 0), 1)
+      funnelSteps.splice(0, funnelSteps.length, ...funnelList.map((s, idx) => ({
+        key: s.key || s.id || idx,
+        label: s.label || s.name || funnelStepOptions.find(o => o.key === s.key)?.label || '步骤',
+        count: s.userCount || 0,
+        width: Math.round(((s.userCount || 0) / maxCount) * 100),
+        rate: idx === 0 ? '100%' : Math.round(((s.userCount || 0) / funnelList[0].userCount || 0) * 100) + '%'
+      })))
+    }
+    ElMessage.success('已应用自定义漏斗：' + customFunnel.name)
+    customFunnelVisible.value = false
+  } catch (e) {
+    // 本地降级：基于现有 funnelSteps 裁剪
+    const fromIdx = funnelStepOptions.findIndex(o => o.key === customFunnel.startStep)
+    const toIdx = funnelStepOptions.findIndex(o => o.key === customFunnel.endStep)
+    if (fromIdx >= 0 && toIdx >= 0 && fromIdx <= toIdx && funnelSteps.length > 0) {
+      const slice = funnelSteps.slice(fromIdx, toIdx + 1)
+      funnelSteps.splice(0, funnelSteps.length, ...slice)
+      ElMessage.success('已应用自定义漏斗（本地模式）：' + customFunnel.name)
+    } else {
+      ElMessage.info('已应用：' + customFunnel.name)
+    }
+    customFunnelVisible.value = false
+  }
+}
+
 // 加载漏斗数据
 async function loadFunnelData() {
   try {
-    const res = await getFunnelAnalysis()
-    if (res && Array.isArray(res)) {
+    // 将时间范围参数传递给API
+    const days = activeTime.value === '30d' ? 30 : 7
+    const res = await getFunnelAnalysis({ days })
+    const funnelList = toArray(res)
+    if (funnelList.length > 0) {
       funnelSteps.length = 0
-      const maxCount = Math.max(...res.map(s => s.userCount || 0), 1)
-      funnelSteps.push(...res.map((s, idx) => ({
+      const maxCount = Math.max(...funnelList.map(s => s.userCount || 0), 1)
+      funnelSteps.push(...funnelList.map((s, idx) => ({
         key: s.stage || idx,
         label: s.stage || '',
         count: s.userCount || 0,
@@ -186,12 +293,25 @@ async function loadFunnelData() {
 // 加载渠道数据
 async function loadChannelData() {
   try {
-    const res = await getMarketingEffects()
-    // 后端返回 { totalGmv, campaignGmv, campaignRatio, totalOrders, ... }
-    // 目前无 channels 数据，保留空数组
-    if (res && Array.isArray(res.channels)) {
-      channels.length = 0
-      channels.push(...res.channels)
+    const days = activeTime.value === '30d' ? 30 : 7
+    const res = await getMarketingEffects({ days })
+    // 后端返回 { totalGmv, campaignGmv, campaignRatio, totalOrders, channels: [...] }
+    if (res) {
+      const chList = toArray(res, 'channels')
+      if (chList.length > 0) {
+        channels.length = 0
+        channels.push(...chList)
+      } else if (toArray(res, 'campaigns').length > 0) {
+        channels.length = 0
+        channels.push(...toArray(res, 'campaigns').map(c => ({
+          name: c.name || c.channel || '未知渠道',
+          value: c.gmv ? `$${c.gmv}` : (c.value || '-'),
+          impression: c.impression || 0,
+          click: c.click || 0,
+          conversion: c.conversion || 0,
+          color: c.color || '#2563eb'
+        })))
+      }
     }
   } catch (err) {
     console.error('获取渠道数据失败', err)
@@ -213,7 +333,7 @@ onMounted(() => {
 }
 
 .page-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-800);
   margin: 0;

@@ -153,9 +153,11 @@ public class AdminCrmController {
     LocalDateTime todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
     LocalDateTime todayEnd = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
 
-    // 查询今日所有订单项
+    // 查询今日所有订单项（修复：添加时间范围过滤）
     List<OrderItemEntity> todayItems = orderItemMapper.selectList(
         new LambdaQueryWrapper<OrderItemEntity>()
+          .ge(OrderItemEntity::getCreateTime, todayStart)
+          .le(OrderItemEntity::getCreateTime, todayEnd)
           .orderByDesc(OrderItemEntity::getQuantity));
 
     if (todayItems.isEmpty()) {

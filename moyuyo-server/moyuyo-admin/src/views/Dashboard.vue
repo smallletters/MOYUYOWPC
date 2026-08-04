@@ -1,27 +1,42 @@
 <template>
   <div class="dashboard-page">
-    <h2 class="page-title">管理工作台</h2>
+    <!-- 页面标题区域（设计系统标准化） -->
+    <div class="page-title-area">
+      <h1>管理工作台</h1>
+      <p>今日运营数据概览</p>
+    </div>
 
-    <!-- KPI 卡片 -->
+    <!-- KPI 卡片网格（使用设计系统 kpi-card 类） -->
     <div class="kpi-grid">
       <div class="kpi-card" v-for="kpi in kpiList" :key="kpi.label">
-        <div class="kpi-label">{{ kpi.label }}</div>
-        <div class="kpi-value">{{ kpi.value }}</div>
-        <div class="kpi-change" :class="kpi.trend === 'up' ? 'kpi-change--up' : 'kpi-change--down'">
+        <div class="kpi-card-header">
+          <div class="kpi-card-icon-box" :style="{ background: kpi.iconBg }">
+            <span style="font-size:16px">{{ kpi.icon }}</span>
+          </div>
+          <span class="kpi-card-label">{{ kpi.label }}</span>
+        </div>
+        <div class="kpi-card-value">{{ kpi.value }}</div>
+        <div :class="kpi.trend === 'up' ? 'kpi-trend-up' : 'kpi-trend-down'" style="font-size:13px;font-weight:500">
           {{ kpi.change }}
-          <span class="kpi-arrow">{{ kpi.trend === 'up' ? '↑' : '↓' }}</span>
+          <span>{{ kpi.trend === 'up' ? '↑' : '↓' }}</span>
         </div>
       </div>
     </div>
 
-    <!-- 提示栏 -->
+    <!-- 待办提示栏 -->
     <div class="alert-bar">
       <span class="alert-icon">📢</span>
-      <span>{{ dashboardData.pendingShip || 0 }}笔待发货 {{ dashboardData.pendingReview || 0 }}条待审核 {{ dashboardData.pendingRefund || 0 }}笔退款申请</span>
+      <span>
+        <strong>{{ dashboardData.pendingShip || 0 }}</strong> 笔待发货
+        &nbsp;·&nbsp;
+        <strong>{{ dashboardData.pendingReview || 0 }}</strong> 条待审核
+        &nbsp;·&nbsp;
+        <strong>{{ dashboardData.pendingRefund || 0 }}</strong> 笔退款申请
+      </span>
     </div>
 
     <!-- 快捷操作 -->
-    <div class="section-title">快捷操作</div>
+    <h3 style="font-size:15px;font-weight:600;color:var(--text-800);margin:0 0 14px">快捷操作</h3>
     <div class="quick-grid">
       <div
         class="quick-card"
@@ -42,7 +57,7 @@
           <span class="panel-title">最近订单</span>
           <router-link to="/orders" class="panel-more">查看全部 →</router-link>
         </div>
-        <table class="data-table">
+        <table class="data-table" v-if="recentOrders.length > 0">
           <thead>
             <tr>
               <th>订单号</th>
@@ -54,14 +69,15 @@
           </thead>
           <tbody>
             <tr v-for="order in recentOrders" :key="order.id">
-              <td>{{ order.no }}</td>
+              <td class="cell-mono">{{ order.no }}</td>
               <td>{{ order.user }}</td>
-              <td>¥{{ order.amount }}</td>
-              <td><span :class="'tag-' + order.statusClass">{{ order.status }}</span></td>
-              <td>{{ order.time }}</td>
+              <td class="cell-mono">${{ order.amount }}</td>
+              <td><span :class="'tag tag-' + order.statusClass">{{ order.status }}</span></td>
+              <td class="cell-mono">{{ order.time }}</td>
             </tr>
           </tbody>
         </table>
+        <div v-else class="empty-state">暂无订单数据</div>
       </div>
 
       <!-- 近7日销售额 -->
@@ -69,18 +85,18 @@
         <div class="panel-header">
           <span class="panel-title">近7日销售额</span>
         </div>
-        <div class="chart-bar">
-          <div class="bar-item" v-for="item in salesData" :key="item.day">
-            <div class="bar-track">
-              <div
-                class="bar-fill"
-                :style="{ height: item.percent + '%' }"
-              ></div>
+        <div class="chart-area" v-if="salesData.length > 0">
+          <div class="chart-bar">
+            <div class="bar-item" v-for="item in salesData" :key="item.day">
+              <span class="bar-value-text">{{ item.value }}</span>
+              <div class="bar-track-v">
+                <div class="bar-fill-v" :style="{ height: item.percent + '%' }"></div>
+              </div>
+              <span class="bar-label">{{ item.day }}</span>
             </div>
-            <span class="bar-label">{{ item.day }}</span>
-            <span class="bar-value">{{ item.value }}</span>
           </div>
         </div>
+        <div v-else class="empty-state">暂无销售数据</div>
       </div>
     </div>
   </div>
@@ -91,6 +107,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getDashboardStats, getRecentOrders, getSalesTrend } from '../api/admin'
+
+const TOKEN_KEY = 'admin_token'
 
 const router = useRouter()
 
@@ -116,10 +134,10 @@ async function loadDashboardData() {
     const stats = await getDashboardStats()
     dashboardData.value = stats
     kpiList.value = [
-      { label: 'GMV', value: '¥' + (stats.todayGmv || 0), change: (stats.gmvTrend != null ? stats.gmvTrend + '%' : '0%'), trend: stats.gmvTrend >= 0 ? 'up' : 'down' },
-      { label: '订单数', value: String(stats.todayOrders ?? 0), change: (stats.ordersTrend != null ? stats.ordersTrend + '%' : '0%'), trend: stats.ordersTrend >= 0 ? 'up' : 'down' },
-      { label: '用户数', value: String(stats.activeUsers ?? 0), change: (stats.usersTrend != null ? stats.usersTrend + '%' : '0%'), trend: stats.usersTrend >= 0 ? 'up' : 'down' },
-      { label: '转化率', value: (stats.conversionRate != null ? stats.conversionRate + '%' : '0%'), change: (stats.rateTrend != null ? stats.rateTrend + '%' : '0%'), trend: stats.rateTrend >= 0 ? 'up' : 'down' }
+      { label: '今日 GMV', value: '$' + (stats.todayGmv || 0).toFixed(2), change: (stats.gmvTrend != null ? stats.gmvTrend + '%' : '0%'), trend: stats.gmvTrend >= 0 ? 'up' : 'down', icon: '💰', iconBg: 'rgba(16,185,129,0.12)' },
+      { label: '订单数', value: String(stats.todayOrders ?? 0), change: (stats.ordersTrend != null ? stats.ordersTrend + '%' : '0%'), trend: stats.ordersTrend >= 0 ? 'up' : 'down', icon: '🛒', iconBg: 'rgba(37,99,235,0.12)' },
+      { label: '活跃用户', value: String(stats.activeUsers ?? 0), change: (stats.usersTrend != null ? stats.usersTrend + '%' : '0%'), trend: stats.usersTrend >= 0 ? 'up' : 'down', icon: '👤', iconBg: 'rgba(139,92,246,0.12)' },
+      { label: '转化率', value: (stats.conversionRate != null ? stats.conversionRate + '%' : '0%'), change: (stats.rateTrend != null ? stats.rateTrend + '%' : '0%'), trend: stats.rateTrend >= 0 ? 'up' : 'down', icon: '📊', iconBg: 'rgba(245,158,11,0.12)' }
     ]
   } catch (e) {
     console.error('获取仪表盘统计失败', e)
@@ -132,23 +150,30 @@ async function loadRecentOrders() {
   try {
     const orders = await getRecentOrders()
     recentOrders.value = (orders || []).map(order => {
-      // 根据订单状态映射CSS class
       const statusClassMap = {
         'PENDING_PAY': 'gray',
         'PENDING_SHIP': 'blue',
-        'SHIPPED': 'orange',
+        'SHIPPED': 'warning',
         'COMPLETED': 'green',
         'CANCELLED': 'red',
         'REFUNDED': 'red'
+      }
+      const statusMap = {
+        'PENDING_PAY': '待支付',
+        'PENDING_SHIP': '待发货',
+        'SHIPPED': '已发货',
+        'COMPLETED': '已完成',
+        'CANCELLED': '已取消',
+        'REFUNDED': '已退款'
       }
       return {
         id: order.orderNo || '',
         no: order.orderNo || '',
         user: order.userName || order.productName || '',
-        amount: order.amount != null ? String(order.amount) : '0.00',
-        status: order.status || '未知',
+        amount: order.payAmount != null ? String(order.payAmount) : (order.amount != null ? String(order.amount) : '0.00'),
+        status: statusMap[order.status] || order.status || '未知',
         statusClass: statusClassMap[order.status] || 'gray',
-        time: ''
+        time: order.createTime ? order.createTime.substring(0, 10) : (order.paidAt ? order.paidAt.substring(0, 10) : '')
       }
     })
   } catch (e) {
@@ -165,7 +190,7 @@ async function loadSalesTrend() {
     const maxValue = Math.max(...items.map(i => Number(i.value || 0)), 1)
     salesData.value = items.map(item => ({
       day: item.day || '',
-      value: '¥' + (item.value || 0),
+      value: '$' + (item.value || 0),
       percent: Number(item.value || 0) / maxValue * 100
     }))
   } catch (e) {
@@ -178,21 +203,18 @@ function handleQuickAction(action) {
   router.push(action.path)
 }
 
-onMounted(async () => {
-  await Promise.all([loadDashboardData(), loadRecentOrders(), loadSalesTrend()])
+onMounted(() => {
+  if (!localStorage.getItem(TOKEN_KEY)) {
+    router.push('/login')
+    return
+  }
+  Promise.all([loadDashboardData(), loadRecentOrders(), loadSalesTrend()])
 })
 </script>
 
-<style scoped lang="css">
+<style scoped>
 .dashboard-page {
   max-width: 1200px;
-}
-
-.page-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #1d1d1f;
-  margin: 0 0 24px 0;
 }
 
 /* KPI 卡片网格 */
@@ -203,69 +225,21 @@ onMounted(async () => {
   margin-bottom: 20px;
 }
 
-.kpi-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-}
-
-.kpi-label {
-  font-size: 13px;
-  color: #8e8e93;
-  margin-bottom: 6px;
-}
-
-.kpi-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1d1d1f;
-  margin-bottom: 4px;
-}
-
-.kpi-change {
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.kpi-change--up {
-  color: #10b981;
-}
-
-.kpi-change--down {
-  color: #ef4444;
-}
-
-.kpi-arrow {
-  margin-left: 2px;
-}
-
 /* 提示栏 */
 .alert-bar {
-  background: #fff;
-  border-radius: 10px;
+  background: var(--card);
+  border-radius: var(--radius);
   padding: 14px 20px;
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: 14px;
-  color: #1d1d1f;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  color: var(--text-700);
+  box-shadow: var(--shadow-xs);
   margin-bottom: 24px;
-  border-left: 4px solid #f59e0b;
+  border-left: 4px solid var(--state-warning);
 }
-
-.alert-icon {
-  font-size: 18px;
-}
-
-/* 分区标题 */
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1d1d1f;
-  margin-bottom: 14px;
-}
+.alert-icon { font-size: 18px; }
 
 /* 快捷操作 */
 .quick-grid {
@@ -274,10 +248,9 @@ onMounted(async () => {
   gap: 12px;
   margin-bottom: 28px;
 }
-
 .quick-card {
-  background: #fff;
-  border-radius: 10px;
+  background: var(--card);
+  border-radius: var(--radius);
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -285,23 +258,16 @@ onMounted(async () => {
   gap: 10px;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-xs);
+  border: 1px solid var(--border);
 }
-
 .quick-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
+  border-color: var(--brand-200);
 }
-
-.quick-icon {
-  font-size: 28px;
-}
-
-.quick-label {
-  font-size: 13px;
-  color: #333;
-  font-weight: 500;
-}
+.quick-icon { font-size: 28px; }
+.quick-label { font-size: 13px; color: var(--text-600); font-weight: 500; }
 
 /* 底部区域 */
 .bottom-grid {
@@ -309,68 +275,51 @@ onMounted(async () => {
   grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
-
 .bottom-panel {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--card);
+  border-radius: var(--radius);
   padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-xs);
+  border: 1px solid var(--border);
 }
-
 .panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
 }
+.panel-title { font-size: 15px; font-weight: 600; color: var(--text-800); }
+.panel-more { font-size: 13px; color: var(--primary); text-decoration: none; }
+.panel-more:hover { text-decoration: underline; }
 
-.panel-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1d1d1f;
-}
-
-.panel-more {
-  font-size: 13px;
-  color: #2563eb;
-  text-decoration: none;
-}
-
-.panel-more:hover {
-  text-decoration: underline;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
+/* 表格 */
+.data-table { width: 100%; border-collapse: collapse; }
 .data-table th {
   text-align: left;
   font-size: 12px;
   font-weight: 600;
-  color: #8e8e93;
+  color: var(--text-400);
   padding: 8px 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border);
 }
-
 .data-table td {
   padding: 10px 12px;
   font-size: 13px;
-  color: #333;
-  border-bottom: 1px solid #f5f5f7;
+  color: var(--text-600);
+  border-bottom: 1px solid var(--background-200);
 }
+.cell-mono { font-family: 'SF Mono', 'Menlo', monospace; font-variant-numeric: tabular-nums; }
+.empty-state { text-align: center; padding: 40px 0; color: var(--text-400); font-size: 14px; }
 
 /* 柱状图 */
+.chart-area { padding-top: 20px; }
 .chart-bar {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 8px;
   height: 200px;
-  padding-top: 20px;
 }
-
 .bar-item {
   flex: 1;
   display: flex;
@@ -380,33 +329,23 @@ onMounted(async () => {
   height: 100%;
   justify-content: flex-end;
 }
-
-.bar-track {
+.bar-track-v {
   width: 100%;
   max-width: 40px;
   height: 140px;
-  background: #f0f0f0;
+  background: var(--background-200);
   border-radius: 6px 6px 0 0;
   position: relative;
   display: flex;
   align-items: flex-end;
 }
-
-.bar-fill {
+.bar-fill-v {
   width: 100%;
-  background: linear-gradient(180deg, #2563eb, #60a5fa);
+  background: linear-gradient(180deg, var(--brand-500), var(--brand-300));
   border-radius: 6px 6px 0 0;
   transition: height 0.3s;
   min-height: 4px;
 }
-
-.bar-label {
-  font-size: 11px;
-  color: #8e8e93;
-}
-
-.bar-value {
-  font-size: 10px;
-  color: #8e8e93;
-}
+.bar-label { font-size: 11px; color: var(--text-400); }
+.bar-value-text { font-size: 10px; color: var(--text-400); font-variant-numeric: tabular-nums; }
 </style>

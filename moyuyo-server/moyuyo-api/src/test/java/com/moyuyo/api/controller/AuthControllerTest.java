@@ -36,8 +36,10 @@ class AuthControllerTest extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.email").value("test@moyuyo.com"));
+                // 项目统一约定 code=0 表示成功
+                .andExpect(jsonPath("$.code").value(0))
+                // 注册成功返回 TokenResponse（accessToken/refreshToken/tokenType/expiresIn）
+                .andExpect(jsonPath("$.data.accessToken").isNotEmpty());
     }
 
     @Test

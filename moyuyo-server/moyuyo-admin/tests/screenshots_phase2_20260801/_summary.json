@@ -1,0 +1,168 @@
+{
+  "pages": [
+    {
+      "route": "/order-export",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/content-review-detail/1",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/product-report",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/marketing-effect",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/product-analysis",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/user-profile",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/funnel",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/settlement",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/satisfaction",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/search-analysis",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/overseas-warehouse",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/risk-control",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/price-manage",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/system-config",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/sms",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/order-monitor",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/order-print",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/push-detail",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/complaint",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/clearance",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/customs",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/carrier-compare",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/inventory",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/split-package",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/warehouse-manage",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/realtime-screen",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/gdpr",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/rfm",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/review-manage",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/live-manage",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/complaint-handle",
+      "status": "OK",
+      "overflow": false
+    },
+    {
+      "route": "/campaign",
+      "status": "OK",
+      "overflow": false
+    }
+  ],
+  "console_errors": {
+    "SyntaxError: The requested module '/admin/node_modules/.vite/deps/@element-plus_": 2
+  },
+  "total_console_errors": 2
+}

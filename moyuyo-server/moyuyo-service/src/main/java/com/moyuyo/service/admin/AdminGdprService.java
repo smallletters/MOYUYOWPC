@@ -29,4 +29,9 @@ public interface AdminGdprService {
      * 获取当前生效的隐私政策
      */
     Map<String, Object> getActivePolicy();
+
+    /**
+     * 新建隐私政策版本
+     */
+    Map<String, Object> createPolicy(Map<String, Object> body);
 }

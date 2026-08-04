@@ -12,6 +12,11 @@ public interface ProductService {
 
   Page<ProductEntity> listProducts(int page, int size, Long categoryId, String sortBy, String sortOrder, String keyword, String status, String stockStatus, Long brandIpId);
 
+  // 重载方法，兼容旧调用（不提供状态筛选时使用）
+  default Page<ProductEntity> listProducts(int page, int size, Long categoryId, String sortBy, String sortOrder, String keyword) {
+    return listProducts(page, size, categoryId, sortBy, sortOrder, keyword, null, null, null);
+  }
+
   ProductEntity getProductDetail(Long productId);
 
   List<ProductSkuEntity> getSkusByProductId(Long productId);

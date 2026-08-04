@@ -27,7 +27,7 @@
         </el-table-column>
         <el-table-column prop="adjustAmount" label="调整金额" width="100">
           <template #default="{ row }">
-            <span :style="{ color: row.adjustAmount < 0 ? '#67c23a' : '#f56c6c' }">{{ row.adjustAmount > 0 ? '+' : '' }}{{ row.adjustAmount }}</span>
+            <span :style="{ color: row.adjustAmount < 0 ? 'var(--state-success)' : 'var(--state-error)' }">{{ row.adjustAmount > 0 ? '+' : '' }}{{ row.adjustAmount }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="finalAmount" label="最终金额" width="100">
@@ -77,6 +77,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPriceModifyList, createPriceModify } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -108,7 +109,7 @@ async function loadData() {
     const params = { page: currentPage.value, size: pageSize.value }
     if (filters.keyword) params.keyword = filters.keyword
     const res = await getPriceModifyList(params)
-    tableData.value = res.records || res.list || []
+    tableData.value = toArray(res)
     total.value = res.total || 0
   } catch (error) {
     console.error('获取改价数据失败:', error)

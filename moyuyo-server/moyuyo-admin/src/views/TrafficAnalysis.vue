@@ -1,9 +1,9 @@
-﻿<template>
+<template>
   <div class="page-wrapper">
     <div class="page-header">
       <h2>流量分析</h2>
       <div class="header-actions">
-        <el-button disabled @click="handleExport">导出数据</el-button>
+        <el-button @click="handleExport">导出数据</el-button>
       </div>
     </div>
     <!-- KPI 卡片 -->
@@ -64,6 +64,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getTrafficAnalysis } from '../api/admin'
+import { exportCsv } from '../utils/exportCsv'
 
 const kpi = ref({ todayVisitors: '—', todayPageViews: '—', bounceRate: '—', avgDuration: '—' })
 const tableData = ref([])
@@ -95,8 +96,24 @@ async function loadData() {
   }
 }
 
+// 导出渠道分析数据到 CSV
 function handleExport() {
-  ElMessage.success('正在导出流量数据...')
+  const rows = [
+    { channel: '今日访客', visits: kpi.value.todayVisitors },
+    { channel: '今日浏览量', visits: kpi.value.todayPageViews },
+    { channel: '跳出率', visits: kpi.value.bounceRate },
+    { channel: '平均停留时长', visits: kpi.value.avgDuration },
+    ...tableData.value.map(row => ({ channel: row.channel, visits: row.visitors }))
+  ]
+  const ok = exportCsv(rows, [
+    { key: 'channel', label: '指标/渠道' },
+    { key: 'visits', label: '数值' }
+  ], `流量分析_${new Date().toISOString().slice(0, 10)}.csv`)
+  if (ok) {
+    ElMessage.success('流量数据已导出')
+  } else {
+    ElMessage.warning('暂无可导出的数据')
+  }
 }
 
 onMounted(() => loadData())

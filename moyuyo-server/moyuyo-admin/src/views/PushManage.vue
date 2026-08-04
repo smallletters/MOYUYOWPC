@@ -6,6 +6,12 @@
         <h1 class="page-title">推送管理</h1>
         <p class="page-desc">管理 App Push、短信和邮件推送任务，追踪送达与转化数据</p>
       </div>
+      <div class="header-actions">
+        <button class="btn btn-primary" @click="openCreateDialog()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          新建推送
+        </button>
+      </div>
     </div>
 
     <!-- 统计卡片 -->
@@ -44,27 +50,27 @@
       </div>
     </section>
 
-    <!-- 快速新建入口 -->
+    <!-- 推送类型 Tab + 快速新建入口 -->
     <section class="quick-entry-card">
       <div class="section-header">
         <span class="section-title">快速新建</span>
       </div>
       <div class="quick-entry-grid">
-        <button class="quick-entry-item" @click="handleQuickCreate('app')">
+        <button class="quick-entry-item" @click="openCreateDialog('APP')">
           <div class="quick-entry-icon quick-entry-blue">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
           </div>
           <span class="quick-entry-label">App 推送</span>
           <span class="quick-entry-desc">发送手机应用通知</span>
         </button>
-        <button class="quick-entry-item" @click="handleQuickCreate('sms')">
+        <button class="quick-entry-item" @click="openCreateDialog('SMS')">
           <div class="quick-entry-icon quick-entry-green">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           </div>
           <span class="quick-entry-label">短信推送</span>
           <span class="quick-entry-desc">发送手机短信通知</span>
         </button>
-        <button class="quick-entry-item" @click="handleQuickCreate('email')">
+        <button class="quick-entry-item" @click="openCreateDialog('EMAIL')">
           <div class="quick-entry-icon quick-entry-orange">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           </div>
@@ -74,24 +80,34 @@
       </div>
     </section>
 
-    <!-- 推送记录列表 -->
+    <!-- 推送记录 -->
     <div class="section-header" style="margin: 24px 0 16px;">
       <span class="section-title">推送记录</span>
     </div>
+    <div class="push-tabs">
+      <button
+        v-for="tab in typeTabs"
+        :key="tab.value"
+        class="push-tab"
+        :class="{ active: typeFilter === tab.value }"
+        @click="typeFilter = tab.value"
+      >{{ tab.label }}</button>
+    </div>
     <div class="push-list">
-      <div v-for="item in pushList" :key="item.id" class="push-record">
+      <div v-if="filteredList.length === 0" class="empty-state">暂无推送记录</div>
+      <div v-for="item in filteredList" :key="item.id" class="push-record">
         <div class="push-record-header">
           <div class="push-record-title-area">
             <div class="push-record-title">{{ item.title }}</div>
-            <div class="push-record-summary">{{ item.summary }}</div>
+            <div class="push-record-summary">{{ item.content }}</div>
           </div>
           <span :class="['push-type-tag', item.typeClass]">{{ item.typeLabel }}</span>
         </div>
         <!-- 元信息 -->
         <div class="push-meta">
           <span :class="['push-status-tag', item.statusClass]">
-            <span v-if="item.status === 'sent'" class="status-dot" style="background: var(--state-success)"></span>
-            <span v-else-if="item.status === 'pending'" class="status-dot" style="background: var(--state-warning)"></span>
+            <span v-if="item.status === 'SENT' || item.status === 'sent'" class="status-dot" style="background: var(--state-success)"></span>
+            <span v-else-if="item.status === 'PENDING' || item.status === 'pending'" class="status-dot" style="background: var(--state-warning)"></span>
             <span v-else class="status-dot" style="background: var(--text-400)"></span>
             {{ item.statusLabel }}
           </span>
@@ -101,35 +117,47 @@
           </span>
           <span class="push-meta-item">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            {{ item.targetLabel }}
+            全部用户
           </span>
         </div>
         <!-- 数据指标 -->
-        <div v-if="item.status === 'sent'" class="push-data-row">
-          <div v-for="(data, di) in item.data" :key="di" class="push-data-item">
-            <span class="push-data-value">{{ data.value }}</span>
-            <span class="push-data-label">{{ data.label }}</span>
+        <div v-if="item.status === 'SENT' || item.status === 'sent'" class="push-data-row">
+          <div class="push-data-item">
+            <span class="push-data-value">{{ item.sentCount }}</span>
+            <span class="push-data-label">送达</span>
+          </div>
+          <div class="push-data-item">
+            <span class="push-data-value">{{ item.openCount }}</span>
+            <span class="push-data-label">打开</span>
+          </div>
+          <div class="push-data-item">
+            <span class="push-data-value">{{ item.clickCount }}</span>
+            <span class="push-data-label">点击</span>
           </div>
         </div>
         <!-- 操作按钮 -->
         <div class="push-actions">
-          <button class="push-action-btn push-action-primary" @click="handleView(item)">
+          <button class="push-action-btn" @click="goDetail(item)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+            详情
+          </button>
+          <button class="push-action-btn push-action-primary" @click="openEditDialog(item)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             编辑
           </button>
-          <button v-if="item.status === 'pending'" class="push-action-btn push-action-primary" @click="handleSend(item)">
+          <button v-if="item.status === 'PENDING' || item.status === 'pending'" class="push-action-btn push-action-primary" @click="handleSend(item)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             发送
           </button>
-          <button v-if="item.status === 'pending'" class="push-action-btn push-action-danger" @click="handleCancel(item)">
+          <button v-if="item.status === 'PENDING' || item.status === 'pending'" class="push-action-btn push-action-danger" @click="handleCancel(item)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
             取消
           </button>
-          <button class="push-action-btn" @click="handleCopy(item)">
+          <button class="push-action-btn" @click="openCopyDialog(item)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             复制
           </button>
-          <button v-if="item.status !== 'sent'" class="push-action-btn push-action-danger" @click="handleDelete(item)">
+          <button v-if="item.status !== 'SENT' && item.status !== 'sent'" class="push-action-btn push-action-danger" @click="handleDelete(item)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             删除
           </button>
@@ -147,26 +175,55 @@
         <svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       <div class="collapsible-content" :class="{ show: scheduledExpanded }">
-        <div v-for="(item, idx) in scheduledList" :key="idx" class="scheduled-item">
-          <div :class="['scheduled-icon', item.iconClass]">
+        <div v-if="scheduledList.length === 0" class="scheduled-empty">暂无定时推送任务</div>
+        <div v-for="item in scheduledList" :key="item.id" class="scheduled-item">
+          <div class="scheduled-icon scheduled-blue">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           </div>
           <div class="scheduled-info">
             <div class="scheduled-title">{{ item.title }}</div>
-            <div class="scheduled-time">{{ item.time }}</div>
+            <div class="scheduled-time">{{ item.scheduledTime }}</div>
           </div>
-          <span class="scheduled-countdown">{{ item.countdown }}</span>
+          <button class="scheduled-cancel" @click="handleCancelScheduled(item)">取消</button>
         </div>
       </div>
     </div>
+
+    <!-- 新建/编辑推送弹窗 -->
+    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑推送' : '新建推送'" width="560px">
+      <el-form :model="pushForm" label-width="90px">
+        <el-form-item label="推送渠道" required>
+          <el-select v-model="pushForm.channel" style="width: 100%">
+            <el-option label="App 推送" value="APP" />
+            <el-option label="短信推送" value="SMS" />
+            <el-option label="邮件推送" value="EMAIL" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="推送标题" required>
+          <el-input v-model="pushForm.title" maxlength="50" show-word-limit placeholder="输入推送标题" />
+        </el-form-item>
+        <el-form-item label="推送内容" required>
+          <el-input v-model="pushForm.content" type="textarea" :rows="4" maxlength="200" show-word-limit placeholder="输入推送内容" />
+        </el-form-item>
+        <el-form-item label="定时发送">
+          <el-date-picker v-model="pushForm.scheduledTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="留空表示立即创建" style="width: 100%" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="submitPush">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getPushStats, getPushRecords, getPushScheduled, createPush, sendPush, cancelPush, deletePush } from '../api/admin'
+import { getPushStats, getPushRecords, getPushScheduled, createPush, updatePush, sendPush, cancelPush, deletePush } from '../api/admin'
 
+const router = useRouter()
 const scheduledExpanded = ref(false)
 
 // 推送统计KPI数据
@@ -187,6 +244,82 @@ const pushList = ref([])
 // 定时推送列表
 const scheduledList = ref([])
 
+// 类型筛选
+const typeFilter = ref('ALL')
+const typeTabs = [
+  { label: '全部', value: 'ALL' },
+  { label: 'App Push', value: 'APP' },
+  { label: '短信', value: 'SMS' },
+  { label: '邮件', value: 'EMAIL' }
+]
+
+// 新建/编辑弹窗
+const dialogVisible = ref(false)
+const editingId = ref(null)
+const saving = ref(false)
+const pushForm = reactive({ channel: 'APP', title: '', content: '', scheduledTime: '' })
+
+// 渠道映射（兼容后端各种 type 值）
+function channelOf(raw) {
+  const v = String(raw || '').toUpperCase()
+  if (v.includes('SMS')) return 'SMS'
+  if (v.includes('EMAIL') || v.includes('MAIL')) return 'EMAIL'
+  return 'APP'
+}
+
+function typeLabelOf(raw) {
+  const map = { SMS: '短信推送', EMAIL: '邮件推送', APP: 'App 推送' }
+  return map[channelOf(raw)] || '通知'
+}
+
+function typeClassOf(raw) {
+  const map = { SMS: 'sms', EMAIL: 'email', APP: 'app-push' }
+  return map[channelOf(raw)] || 'app-push'
+}
+
+function statusLabelOf(status) {
+  const map = { SENT: '已发送', PENDING: '待发送', CANCELLED: '已取消', CANCELED: '已取消', DRAFT: '草稿' }
+  return map[String(status || '').toUpperCase()] || (status || '未知')
+}
+
+function statusClassOf(status) {
+  const s = String(status || '').toUpperCase()
+  if (s === 'SENT') return 'sent'
+  if (s === 'PENDING') return 'pending'
+  return 'cancelled'
+}
+
+// 记录映射：补齐展示字段
+function mapRecord(r) {
+  const status = String(r.status || '').toUpperCase()
+  return {
+    id: r.id,
+    title: r.title,
+    content: r.content,
+    channel: r.channel || r.type,
+    status,
+    sentCount: r.sentCount ?? 0,
+    openCount: r.openCount ?? 0,
+    clickCount: r.clickCount ?? 0,
+    time: formatTime(r.sendTime || r.createTime),
+    typeLabel: typeLabelOf(r.channel || r.type),
+    typeClass: typeClassOf(r.channel || r.type),
+    statusLabel: statusLabelOf(status),
+    statusClass: statusClassOf(status)
+  }
+}
+
+const filteredList = computed(() => {
+  if (typeFilter.value === 'ALL') return pushList.value
+  return pushList.value.filter(item => channelOf(item.channel) === typeFilter.value)
+})
+
+// 时间格式化
+function formatTime(t) {
+  if (!t) return '-'
+  return String(t).replace('T', ' ').slice(0, 16)
+}
+
 // 从API加载推送数据
 async function loadData() {
   try {
@@ -201,22 +334,81 @@ async function loadData() {
     }
     // 填充推送记录列表
     const records = (recordsRes && recordsRes.records) || recordsRes || []
-    pushList.value = records
+    pushList.value = (Array.isArray(records) ? records : []).map(mapRecord)
     // 填充定时推送列表
     const scheduled = (scheduledRes && scheduledRes.records) || scheduledRes || []
-    scheduledList.value = scheduled
+    scheduledList.value = Array.isArray(scheduled) ? scheduled : []
   } catch (e) {
     console.error('加载推送数据失败:', e)
     ElMessage.error('加载推送数据失败')
   }
 }
 
-function handleQuickCreate(type) {
-  ElMessage.info(`快速新建: ${type}`)
+// ---- 新建 / 编辑 / 复制 ----
+function openCreateDialog(channel) {
+  editingId.value = null
+  pushForm.channel = channel || 'APP'
+  pushForm.title = ''
+  pushForm.content = ''
+  pushForm.scheduledTime = ''
+  dialogVisible.value = true
 }
 
-async function handleView(item) {
-  ElMessage.info(`查看推送：${item.title}`)
+function openEditDialog(item) {
+  editingId.value = item.id
+  pushForm.channel = channelOf(item.channel)
+  pushForm.title = item.title
+  pushForm.content = item.content
+  pushForm.scheduledTime = ''
+  dialogVisible.value = true
+}
+
+// 跳转到推送详情页
+function goDetail(item) {
+  router.push('/push-detail')
+}
+
+function openCopyDialog(item) {
+  editingId.value = null
+  pushForm.channel = channelOf(item.channel)
+  pushForm.title = item.title + '（副本）'
+  pushForm.content = item.content
+  pushForm.scheduledTime = ''
+  dialogVisible.value = true
+}
+
+async function submitPush() {
+  if (!pushForm.title.trim()) {
+    ElMessage.warning('请输入推送标题')
+    return
+  }
+  if (!pushForm.content.trim()) {
+    ElMessage.warning('请输入推送内容')
+    return
+  }
+  saving.value = true
+  try {
+    const payload = {
+      title: pushForm.title.trim(),
+      content: pushForm.content.trim(),
+      channel: pushForm.channel
+    }
+    if (pushForm.scheduledTime) payload.scheduledTime = pushForm.scheduledTime
+    if (editingId.value) {
+      await updatePush(editingId.value, payload)
+      ElMessage.success('推送已更新')
+    } else {
+      await createPush(payload)
+      ElMessage.success('推送创建成功')
+    }
+    dialogVisible.value = false
+    loadData()
+  } catch (err) {
+    console.error('保存推送失败:', err)
+    ElMessage.error('保存失败：' + (err?.message || '未知错误'))
+  } finally {
+    saving.value = false
+  }
 }
 
 // 发送推送（调用API）
@@ -243,20 +435,30 @@ async function handleCancel(item) {
   }
 }
 
-function handleCopy(item) {
-  ElMessage.success('推送已复制')
+// 取消定时推送
+async function handleCancelScheduled(item) {
+  try {
+    await cancelPush(item.id)
+    ElMessage.success('定时推送已取消')
+    loadData()
+  } catch (e) {
+    console.error('取消定时推送失败:', e)
+    ElMessage.error('取消失败')
+  }
 }
 
 // 删除推送（调用API）
 async function handleDelete(item) {
   try {
-    ElMessageBox.confirm('确定删除该推送？', '提示', { type: 'warning' }).then(async () => {
-      await deletePush(item.id)
-      ElMessage.success('删除成功')
-      loadData()
-    }).catch(() => {})
+    await ElMessageBox.confirm('确定删除该推送？删除后不可恢复。', '警告', { type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消' })
+    await deletePush(item.id)
+    ElMessage.success('删除成功')
+    loadData()
   } catch (e) {
-    console.error('删除推送失败:', e)
+    if (e !== 'cancel' && e !== 'close') {
+      console.error('删除推送失败:', e)
+      ElMessage.error('删除失败: ' + (e?.message || '未知错误'))
+    }
   }
 }
 
@@ -269,6 +471,9 @@ onMounted(() => { loadData() })
 }
 .page-header {
   margin-bottom: 24px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
 }
 .page-title {
   font-size: 22px;
@@ -281,6 +486,29 @@ onMounted(() => { loadData() })
   color: var(--text-400);
   margin: 0;
 }
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: calc(var(--radius) * 0.7);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+.btn-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.btn-primary:hover { filter: brightness(0.92); }
 
 /* ===== 统计卡片 ===== */
 .stats-grid {
@@ -394,12 +622,41 @@ onMounted(() => { loadData() })
   text-align: center;
 }
 
+/* ===== 类型 Tab ===== */
+.push-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.push-tab {
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-500);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.push-tab:hover { border-color: var(--primary); color: var(--primary); }
+.push-tab.active { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+
 /* ===== 推送记录列表 ===== */
 .push-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin-bottom: 24px;
+}
+.empty-state {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--text-400);
+  font-size: 13px;
 }
 .push-record {
   background: var(--card);
@@ -529,6 +786,7 @@ onMounted(() => { loadData() })
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
+  flex-wrap: wrap;
 }
 .push-action-btn {
   display: inline-flex;
@@ -630,6 +888,12 @@ onMounted(() => { loadData() })
 .collapsible-content.show {
   display: block;
 }
+.scheduled-empty {
+  padding: 20px 0;
+  text-align: center;
+  color: var(--text-400);
+  font-size: 13px;
+}
 
 /* 定时推送项 */
 .scheduled-item {
@@ -675,18 +939,21 @@ onMounted(() => { loadData() })
   color: var(--text-500);
   margin-top: 2px;
 }
-.scheduled-countdown {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
+.scheduled-cancel {
+  height: 28px;
+  padding: 0 12px;
   border-radius: 999px;
-  background: #fff4e5;
-  color: var(--state-warning);
-  font-size: 13px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  border: 1px solid var(--state-error);
+  background: var(--card);
+  color: var(--state-error);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
   flex-shrink: 0;
+}
+.scheduled-cancel:hover {
+  background: var(--state-error);
+  color: var(--state-error-foreground);
 }
 </style>

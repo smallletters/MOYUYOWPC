@@ -189,6 +189,7 @@ public class AdminInventoryController {
     // 写入 mo_inventory_check 表
     InventoryCheckEntity entity = new InventoryCheckEntity();
     entity.setCheckNo("CK" + System.currentTimeMillis());
+    // 使用 productId 时映射到 skuId（mo_inventory_check 表使用 skuId 维度盘点）
     if (body.getProductId() != null) entity.setSkuId(body.getProductId());
     if (body.getNote() != null) entity.setRemark(body.getNote());
     entity.setActualQuantity(body.getActualStock());
@@ -199,5 +200,57 @@ public class AdminInventoryController {
     resp.setId(entity.getId());
     resp.setMessage("盘点任务创建成功");
     return Result.success(resp);
+  }
+
+  @Operation(summary = "盘点记录列表")
+  @GetMapping("/checks")
+  public Result<Map<String, Object>> checks(
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(defaultValue = "10") int size) {
+    try {
+      Page<InventoryCheckEntity> pg = inventoryCheckMapper.selectPage(
+          new Page<>(page, size),
+          new LambdaQueryWrapper<InventoryCheckEntity>().orderByDesc(InventoryCheckEntity::getId));
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("records", pg.getRecords());
+      result.put("total", pg.getTotal());
+      result.put("page", pg.getCurrent());
+      result.put("size", pg.getSize());
+      return Result.success(result);
+    } catch (Exception e) {
+      return Result.error("查询盘点记录失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "库存流水列表（基于库存变动）")
+  @GetMapping("/transactions")
+  public Result<Map<String, Object>> transactions(
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(defaultValue = "10") int size) {
+    try {
+      // 直接拉取 SKU 列表作为流水记录（无独立流水表时用最近库存变动替代）
+      Page<ProductSkuEntity> pg = productSkuMapper.selectPage(
+          new Page<>(page, size),
+          new LambdaQueryWrapper<ProductSkuEntity>().orderByDesc(ProductSkuEntity::getId));
+      List<Map<String, Object>> list = new ArrayList<>();
+      for (ProductSkuEntity sku : pg.getRecords()) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", sku.getId());
+        item.put("sku", sku.getSkuCode());
+        item.put("type", "STOCK_ADJUST");
+        item.put("changeQty", sku.getStock());
+        item.put("afterStock", sku.getStock());
+        item.put("remark", "库存当前值");
+        list.add(item);
+      }
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("records", list);
+      result.put("total", pg.getTotal());
+      result.put("page", pg.getCurrent());
+      result.put("size", pg.getSize());
+      return Result.success(result);
+    } catch (Exception e) {
+      return Result.error("查询库存流水失败: " + e.getMessage());
+    }
   }
 }

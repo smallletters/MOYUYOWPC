@@ -9,9 +9,14 @@ import java.util.Map;
 public interface AdminFlashSaleService {
 
   /**
-   * 抢购活动列表
+   * 抢购活动列表（全部）
    */
   List<Map<String, Object>> listAll();
+
+  /**
+   * 抢购活动分页列表
+   */
+  Map<String, Object> listPage(int page, int size);
 
   /**
    * 创建抢购活动
@@ -32,4 +37,14 @@ public interface AdminFlashSaleService {
    * 更新活动状态
    */
   void updateStatus(Long id, String status);
+
+  /**
+   * 秒杀活动统计数据
+   */
+  Map<String, Object> getStats();
+
+  /**
+   * 获取单个秒杀活动详情
+   */
+  Map<String, Object> getDetail(Long id);
 }

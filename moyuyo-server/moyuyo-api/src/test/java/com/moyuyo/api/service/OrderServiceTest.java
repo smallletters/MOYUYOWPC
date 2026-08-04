@@ -1,6 +1,7 @@
 package com.moyuyo.api.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.dto.order.CreateOrderRequest;
@@ -73,10 +74,18 @@ class OrderServiceTest {
     int quantity = 2;
 
     OrderItemEntity item = new OrderItemEntity();
+    item.setProductId(20L);
     item.setPrice(price);
     item.setQuantity(quantity);
 
     List<OrderItemEntity> items = List.of(item);
+
+    // 模拟商品存在且已上架（服务层会校验商品状态）
+    ProductEntity product = new ProductEntity();
+    product.setId(20L);
+    product.setName("测试商品");
+    product.setOnSale(true);
+    when(productMapper.selectById(20L)).thenReturn(product);
 
     // 模拟 orderMapper.insert 设置 ID
     doAnswer(invocation -> {
@@ -117,25 +126,15 @@ class OrderServiceTest {
   }
 
   @Test
-  @DisplayName("空商品列表应创建零金额订单")
-  void createOrder_emptyItems_shouldCreateOrderWithZeroAmount() {
-    // 准备：空订单项列表
-    doAnswer(invocation -> {
-      OrderEntity order = invocation.getArgument(0);
-      order.setId(200L);
-      return 1;
-    }).when(orderMapper).insert(any(OrderEntity.class));
+  @DisplayName("空商品列表应抛出异常（禁止零金额订单）")
+  void createOrder_emptyItems_shouldThrowIllegalArgumentException() {
+    // 执行 & 验证：空订单项直接拒绝，防止创建零金额订单
+    IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        () -> orderService.createOrder(1L, Collections.emptyList(), null, null, null));
+    assertTrue(ex.getMessage().contains("订单商品不能为空"));
 
-    // 执行
-    OrderEntity result = orderService.createOrder(1L, Collections.emptyList(), null, null, null);
-
-    // 验证：空订单项不会抛异常，金额为 0
-    assertNotNull(result);
-    assertEquals(BigDecimal.ZERO, result.getGoodsAmount());
-    assertEquals(BigDecimal.ZERO, result.getPayAmount());
-
-    // 验证 orderItemMapper.insert 没有被调用（无订单项）
-    verify(orderItemMapper, never()).insert(any(OrderItemEntity.class));
+    // 验证不会落库
+    verify(orderMapper, never()).insert(any(OrderEntity.class));
   }
 
   // ==================== createOrderFromRequest ====================
@@ -162,12 +161,16 @@ class OrderServiceTest {
     sku.setPrice(new BigDecimal("199.00"));
     when(productSkuMapper.selectById(10L)).thenReturn(sku);
 
-    // 模拟商品存在
+    // 模拟商品存在且已上架（服务层会校验商品状态）
     ProductEntity product = new ProductEntity();
     product.setId(20L);
     product.setName("测试商品");
     product.setMainImage("http://example.com/img.jpg");
+    product.setOnSale(true);
     when(productMapper.selectById(20L)).thenReturn(product);
+
+    // 模拟 SKU 库存原子扣减成功
+    when(productSkuMapper.update(any(), any(LambdaUpdateWrapper.class))).thenReturn(1);
 
     // 模拟 orderMapper.insert
     doAnswer(invocation -> {
@@ -184,9 +187,9 @@ class OrderServiceTest {
     assertEquals("PENDING_PAY", result.getStatus());
     assertEquals(new BigDecimal("199.00"), result.getGoodsAmount());
 
-    // 验证 SKU 和商品查询
-    verify(productSkuMapper).selectById(10L);
-    verify(productMapper).selectById(20L);
+    // 验证 SKU 和商品查询（createOrderFromRequest 转换时查询一次，createOrder 校验时再查一次）
+    verify(productSkuMapper, times(2)).selectById(10L);
+    verify(productMapper, times(2)).selectById(20L);
 
     // 验证订单项中的商品信息
     verify(orderItemMapper).insert(orderItemCaptor.capture());
@@ -320,15 +323,13 @@ class OrderServiceTest {
   }
 
   @Test
-  @DisplayName("订单不存在应抛出异常")
-  void getOrderDetail_orderNotExist_shouldThrowIllegalArgumentException() {
+  @DisplayName("订单不存在应返回 null（由 controller 决定响应方式）")
+  void getOrderDetail_orderNotExist_shouldReturnNull() {
     // 准备：订单不存在
     when(orderMapper.selectById(999L)).thenReturn(null);
 
-    // 执行 & 验证
-    IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-        () -> orderService.getOrderDetail(999L, 1L));
-    assertEquals("订单不存在", ex.getMessage());
+    // 执行 & 验证：服务层按设计返回 null 而非抛异常
+    assertNull(orderService.getOrderDetail(999L, 1L));
   }
 
   @Test
@@ -446,13 +447,13 @@ class OrderServiceTest {
   // ==================== confirmReceived ====================
 
   @Test
-  @DisplayName("已支付状态确认收货应成功")
-  void confirmReceived_paidStatus_shouldUpdateToReceived() {
-    // 准备：PAID 状态的订单
+  @DisplayName("已发货状态确认收货应成功")
+  void confirmReceived_shippedStatus_shouldUpdateToReceived() {
+    // 准备：SHIPPED 状态的订单（确认收货只能从已发货状态流转）
     OrderEntity order = new OrderEntity();
     order.setId(1L);
     order.setUserId(1L);
-    order.setStatus("PAID");
+    order.setStatus("SHIPPED");
 
     when(orderMapper.selectById(1L)).thenReturn(order);
 

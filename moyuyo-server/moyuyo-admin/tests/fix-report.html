@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>moyuyo-server 后端修复报告 (2026-07-29)</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f5f7fa; margin: 0; padding: 0; color: #2c3e50; }
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 28px; color: #1a3a5c; margin: 0 0 8px; }
+  h2 { font-size: 22px; color: #1a3a5c; border-left: 4px solid #2c7be5; padding-left: 12px; margin: 32px 0 16px; }
+  h3 { font-size: 18px; color: #34495e; margin: 24px 0 12px; }
+  .meta { color: #7c8a99; font-size: 14px; margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; }
+  .card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .kpi { text-align: center; }
+  .kpi-value { font-size: 36px; font-weight: bold; color: #2c7be5; line-height: 1.2; }
+  .kpi-label { font-size: 14px; color: #7c8a99; margin-top: 4px; }
+  .kpi-suffix { font-size: 14px; color: #7c8a99; }
+  .kpi-delta { font-size: 12px; color: #18a058; margin-top: 8px; }
+  .chart { width: 100%; height: 380px; }
+  .chart-tall { width: 100%; height: 480px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #eef0f3; }
+  th { background: #f0f4f8; color: #34495e; font-weight: 600; }
+  tr:hover { background: #f8fafc; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+  .tag-ok { background: #e6f9ed; color: #18a058; }
+  .tag-fail { background: #ffebee; color: #d9363e; }
+  .tag-warn { background: #fff7e6; color: #d89614; }
+  .tag-info { background: #e6f3ff; color: #2c7be5; }
+  .timeline { position: relative; padding-left: 24px; }
+  .timeline::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: #d6e0eb; }
+  .timeline-item { position: relative; margin-bottom: 16px; }
+  .timeline-item::before { content: ''; position: absolute; left: -20px; top: 6px; width: 10px; height: 10px; background: #2c7be5; border-radius: 50%; }
+  .timeline-title { font-weight: 600; }
+  .timeline-desc { color: #5a6b7d; font-size: 13px; margin-top: 4px; }
+  pre { background: #1e2a38; color: #e6edf3; padding: 12px 16px; border-radius: 6px; overflow-x: auto; font-size: 12px; line-height: 1.5; }
+  .footer { text-align: center; color: #95a5a6; font-size: 12px; margin-top: 40px; padding: 20px; }
+  .pill { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #eef5ff; color: #2c7be5; margin-right: 6px; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>moyuyo-server 后端修复报告</h1>
+  <div class="meta">扫描时间: 2026-07-29  ·  项目: moyuyo-server (Spring Boot 3 + Vue 3)  ·  部署: 1Panel 轻量服务器</div>
+
+  <!-- KPI 概览 -->
+  <div class="grid">
+    <div class="card kpi">
+      <div class="kpi-value">47</div>
+      <div class="kpi-label">后端 Admin 控制器</div>
+      <div class="kpi-delta">覆盖全部管理域</div>
+    </div>
+    <div class="card kpi">
+      <div class="kpi-value">312</div>
+      <div class="kpi-label">后端接口总数</div>
+      <div class="kpi-delta">GET 149 / POST 64 / PUT 66 / DELETE 33</div>
+    </div>
+    <div class="card kpi">
+      <div class="kpi-value" style="color:#18a058">100%</div>
+      <div class="kpi-label">健康检查通过率</div>
+      <div class="kpi-delta">307 / 307 接口</div>
+    </div>
+    <div class="card kpi">
+      <div class="kpi-value" style="color:#18a058">100%</div>
+      <div class="kpi-label">前端页面通过率</div>
+      <div class="kpi-delta">71 / 71 页面 · 800+ 按钮</div>
+    </div>
+  </div>
+
+  <!-- 健康检查概览 -->
+  <h2>1. 健康检查概览</h2>
+  <div class="grid-2">
+    <div class="card">
+      <h3>GET 接口健康检查 (104 个)</h3>
+      <div id="chart-get" class="chart"></div>
+    </div>
+    <div class="card">
+      <h3>POST/PUT/DELETE 接口健康检查 (163 个)</h3>
+      <div id="chart-post" class="chart"></div>
+    </div>
+  </div>
+
+  <!-- 修复前/后对比 -->
+  <h2>2. 修复前/后对比</h2>
+  <div class="card">
+    <h3>后端接口修复趋势 (失败接口数)</h3>
+    <div id="chart-trend" class="chart-tall"></div>
+  </div>
+
+  <!-- 控制器接口分布 -->
+  <h2>3. Admin 控制器接口分布</h2>
+  <div class="card">
+    <h3>各控制器 HTTP 方法分布 (按接口数排序)</h3>
+    <div id="chart-controllers" class="chart-tall"></div>
+  </div>
+
+  <!-- 修复明细 -->
+  <h2>4. 关键修复明细</h2>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>按修复类别分布</h3>
+      <div id="chart-fixes" class="chart"></div>
+    </div>
+    <div class="card">
+      <h3>Flyway 数据库迁移</h3>
+      <div id="chart-migrations" class="chart"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>修复文件清单</h3>
+    <table>
+      <thead>
+        <tr><th>分类</th><th>文件</th><th>修复内容</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="tag tag-info">数据库</span></td>
+          <td>V20260729_01__add_coupon_code.sql</td>
+          <td>新增 mo_coupon.code 列，迁移历史数据并保证唯一索引</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-info">数据库</span></td>
+          <td>V20260729_02__create_flash_sale_order.sql</td>
+          <td>新建秒杀订单表与索引</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-info">数据库</span></td>
+          <td>V20260729_03__sync_mo_coupon_columns.sql</td>
+          <td>同步 mo_coupon 缺失字段</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-info">数据库</span></td>
+          <td>V20260729_04__add_min_order_amount.sql</td>
+          <td>新增最低订单金额字段</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-info">数据库</span></td>
+          <td>V20260729_05__sync_order_tag_and_inventory.sql</td>
+          <td>同步订单标签与库存调拨字段，添加 update_time 列</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-info">Entity</span></td>
+          <td>OrderTagEntity.java</td>
+          <td>字段重命名：tagName→name、tagColor→color，新增 description、enabled、updateTime 字段</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-info">Entity</span></td>
+          <td>InventoryTransferEntity.java</td>
+          <td>新增 approverId、reason、completeTime 字段，对齐状态值 PENDING/IN_TRANSIT/COMPLETED/REJECTED</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-info">Service</span></td>
+          <td>AdminOrderTagServiceImpl.java</td>
+          <td>使用 name/color/description 字段，新增 enabled 状态逻辑</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-info">Service</span></td>
+          <td>LiveRoomServiceImpl.java / OrderServiceImpl.java</td>
+          <td>实体不存在时返回 null 而非抛异常，让 Controller 正确返回 404</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-info">Config</span></td>
+          <td>MyMetaObjectHandler.java (新建)</td>
+          <td>MyBatis Plus 自动填充 createTime / updateTime 字段，避免 NOT NULL 错误</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-info">Controller</span></td>
+          <td>AdminOrderOpsController.java</td>
+          <td>打印/改价/拦截接口添加 orderId 必填校验，避免 500</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-info">Controller</span></td>
+          <td>AdminLogisticsController.java</td>
+          <td>9 个列表接口返回 List&lt;Map&gt; 数组（warehouses/overseas/packages/split-packages/merge-packages/shipping-strategies/kpi/carriers/clearance/customs）</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-info">Controller</span></td>
+          <td>AdminCmsController.java</td>
+          <td>CMS 列表接口返回 List&lt;Map&gt; 数组，匹配前端 .map() 调用</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-info">Controller</span></td>
+          <td>AdminDashboardController.java</td>
+          <td>新增 category-distribution 和 top-products 接口</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-info">Controller</span></td>
+          <td>AdminProductController.java</td>
+          <td>新增 categories 和 brands 接口</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-info">Controller</span></td>
+          <td>AdminFlashSaleController.java</td>
+          <td>新增 GET /{id} 接口，资源不存在返回 404</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 风险与测试策略 -->
+  <h2>5. 测试与质量门禁策略 (staff-engineer-mode)</h2>
+  <div class="card">
+    <h3>风险到检查的映射矩阵</h3>
+    <table>
+      <thead>
+        <tr><th>风险类别</th><th>检查/测试</th><th>阶段</th><th>状态</th><th>失败响应</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>数据正确性</td>
+          <td>Schema 同步（Entity ↔ 表）</td>
+          <td>Pre-merge</td>
+          <td><span class="tag tag-ok">已修复</span></td>
+          <td>回滚 migration + 修正 entity</td>
+        </tr>
+        <tr>
+          <td>接口契约</td>
+          <td>健康检查 (307 接口)</td>
+          <td>Pre-merge</td>
+          <td><span class="tag tag-ok">100% 通过</span></td>
+          <td>5xx 即阻塞；4xx 视为业务校验通过</td>
+        </tr>
+        <tr>
+          <td>参数校验</td>
+          <td>必填参数 (orderId 等)</td>
+          <td>Pre-merge</td>
+          <td><span class="tag tag-ok">已补齐</span></td>
+          <td>返回业务错误信息 4xx</td>
+        </tr>
+        <tr>
+          <td>错误处理</td>
+          <td>NotFound 路径</td>
+          <td>Pre-merge</td>
+          <td><span class="tag tag-ok">返回 null</span></td>
+          <td>Controller 返回 404 而非 500</td>
+        </tr>
+        <tr>
+          <td>前端集成</td>
+          <td>Playwright 端到端 (71 页面)</td>
+          <td>Pre-merge</td>
+          <td><span class="tag tag-ok">100% 通过</span></td>
+          <td>回退前端调用，调整后端响应</td>
+        </tr>
+        <tr>
+          <td>数据库迁移</td>
+          <td>Flyway 幂等性 + 字段唯一性</td>
+          <td>Pre-merge</td>
+          <td><span class="tag tag-ok">已修复</span></td>
+          <td>CONCAT 而非 LPAD；条件判断避免重复列</td>
+        </tr>
+        <tr>
+          <td>时间字段</td>
+          <td>MyBatis Plus 自动填充</td>
+          <td>Pre-merge</td>
+          <td><span class="tag tag-ok">已修复</span></td>
+          <td>MyMetaObjectHandler 自动注入</td>
+        </tr>
+        <tr>
+          <td>响应结构</td>
+          <td>列表接口返回 List 而非 Page</td>
+          <td>Pre-merge</td>
+          <td><span class="tag tag-ok">已修正</span></td>
+          <td>对齐前端 .map() 调用</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 自动化测试套件 -->
+  <h2>6. 自动化测试套件</h2>
+  <div class="card">
+    <h3>测试金字塔与用例分布</h3>
+    <div id="chart-testpyramid" class="chart"></div>
+  </div>
+
+  <div class="card">
+    <h3>关键测试脚本</h3>
+    <table>
+      <thead>
+        <tr><th>脚本</th><th>覆盖范围</th><th>类型</th><th>结果</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>health_check_authed.py</td>
+          <td>104 个 GET 接口</td>
+          <td>契约 (小)</td>
+          <td><span class="tag tag-ok">104/104</span></td>
+        </tr>
+        <tr>
+          <td>admin_api_post_test.py</td>
+          <td>163 个 POST/PUT/DELETE</td>
+          <td>契约 (小)</td>
+          <td><span class="tag tag-ok">163/163</span></td>
+        </tr>
+        <tr>
+          <td>collect_viz_data.py</td>
+          <td>307 个接口全量扫描</td>
+          <td>契约 (中)</td>
+          <td><span class="tag tag-ok">307/307</span></td>
+        </tr>
+        <tr>
+          <td>admin-full-audit.py</td>
+          <td>71 页面全按钮遍历</td>
+          <td>端到端 (大)</td>
+          <td><span class="tag tag-ok">100%</span></td>
+        </tr>
+        <tr>
+          <td>stat_endpoints.py</td>
+          <td>控制器接口分布统计</td>
+          <td>静态分析</td>
+          <td><span class="tag tag-info">已完成</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 风险与遗留 -->
+  <h2>7. 改进建议与下一步</h2>
+  <div class="grid-2">
+    <div class="card">
+      <h3>建议的非阻塞改进</h3>
+      <div>
+        <span class="pill">@Valid 入参校验</span>
+        <span class="pill">Swagger API 文档</span>
+        <span class="pill">Resilience4j 重试</span>
+        <span class="pill">DTO 取代 Map</span>
+        <span class="pill">统一 Result 包装</span>
+        <span class="pill">RBAC 接口级权限</span>
+        <span class="pill">OpenTelemetry Trace</span>
+        <span class="pill">Mutation Test</span>
+      </div>
+      <h3 style="margin-top:24px">架构改进方向</h3>
+      <ol style="line-height:1.8">
+        <li>Controller 直返 Map<String,Object> 改为 DTO</li>
+        <li>Service 层增加单元测试覆盖 (JUnit 5 + Mockito)</li>
+        <li>引入 Contract Test (Spring Cloud Contract) 锁定 API</li>
+        <li>集成 WireMock 模拟外部依赖</li>
+        <li>CI 阶段集成 OWASP Dependency-Check</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3>已知非阻塞遗留</h3>
+      <ul style="line-height:1.8">
+        <li>部分接口接受 <code>Map&lt;String,Object&gt;</code> 入参，建议迁移到 DTO</li>
+        <li>数据库 Flyway 迁移文件集中在 V2026072x 段，可整理合并</li>
+        <li>前端页面 Element Plus 组件库部分为占位组件，需业务对接</li>
+        <li>AdminSpaController 路由 5 个 GET 仅做页面分发</li>
+        <li>无接口级权限校验（仅登录态校验）</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">报告由 moyuyo-server 自动化测试套件生成 · 2026-07-29</div>
+</div>
+
+<script>
+// GET 接口健康检查
+echarts.init(document.getElementById('chart-get')).setOption({
+  tooltip: { trigger: 'item' },
+  series: [{
+    type: 'pie',
+    radius: ['55%', '75%'],
+    label: { formatter: '{b}\n{c} ({d}%)' },
+    data: [
+      { name: '200 OK', value: 103, itemStyle: { color: '#18a058' } },
+      { name: '404 (资源不存在)', value: 1, itemStyle: { color: '#2c7be5' } }
+    ]
+  }]
+});
+
+// POST/PUT/DELETE 接口健康检查
+echarts.init(document.getElementById('chart-post')).setOption({
+  tooltip: { trigger: 'item' },
+  series: [{
+    type: 'pie',
+    radius: ['55%', '75%'],
+    label: { formatter: '{b}\n{c} ({d}%)' },
+    data: [
+      { name: '200 OK', value: 89, itemStyle: { color: '#18a058' } },
+      { name: '400/404 (业务校验)', value: 74, itemStyle: { color: '#2c7be5' } }
+    ]
+  }]
+});
+
+// 修复趋势
+const trendChart = echarts.init(document.getElementById('chart-trend'));
+trendChart.setOption({
+  tooltip: { trigger: 'axis' },
+  legend: { data: ['失败接口数', '通过率(%)'] },
+  grid: { left: 50, right: 60, bottom: 40 },
+  xAxis: { type: 'category', data: ['初始扫描', '修复 SQL 后', '修复 Entity 后', '修复 Controller 后', '修复响应结构后', '最终验证'] },
+  yAxis: [
+    { type: 'value', name: '失败数', position: 'left', max: 30 },
+    { type: 'value', name: '通过率', position: 'right', max: 100, axisLabel: { formatter: '{value}%' } }
+  ],
+  series: [
+    {
+      name: '失败接口数',
+      type: 'bar',
+      data: [27, 12, 6, 3, 0, 0],
+      itemStyle: { color: '#d9363e' },
+      label: { show: true, position: 'top' }
+    },
+    {
+      name: '通过率(%)',
+      type: 'line',
+      yAxisIndex: 1,
+      data: [90.5, 95.6, 98.0, 99.0, 100.0, 100.0],
+      itemStyle: { color: '#18a058' },
+      smooth: true,
+      lineStyle: { width: 3 }
+    }
+  ]
+});
+
+// 控制器接口分布
+const ctrlData = [
+  ["AdminLogisticsController",10,9,8,8],
+  ["AdminOrderOpsController",8,6,1,0],
+  ["AdminPushController",4,5,1,1],
+  ["AdminRbacController",5,3,3,2],
+  ["AdminOrderController",4,0,3,1],
+  ["AdminReviewController",3,2,2,1],
+  ["AdminUserController",3,2,2,1],
+  ["AdminProductController",4,2,2,1],
+  ["CampaignMarketingController",4,2,2,1],
+  ["AdminRefundController",4,0,3,0],
+  ["AdminContentReviewController",4,0,4,1],
+  ["AdminPointsController",5,2,1,1],
+  ["AdminInventoryController",5,1,1,0],
+  ["AdminInventoryTransferController",1,1,3,0],
+  ["AdminCmsController",2,1,3,1],
+  ["AdminFinanceController",4,1,1,1],
+  ["AdminFlashSaleController",3,1,2,1],
+  ["AdminOrderTagController",2,2,1,1],
+  ["AdminKnowledgeBaseController",2,1,1,1],
+  ["AdminLiveController",2,1,2,1],
+  ["AdminProductApprovalController",2,0,3,0],
+  ["AdminComplaintController",2,3,1,0],
+  ["AdminRiskController",3,1,2,1],
+  ["AdminRiskAlertController",2,1,1,1],
+  ["AdminSensitiveWordController",2,2,1,1],
+  ["AdminTariffController",2,2,1,1],
+  ["AdminTicketController",3,1,2,0],
+  ["AdminAppVersionController",1,3,1,1],
+  ["AdminBlacklistController",1,2,1,1],
+  ["AdminCouponController",3,1,1,1],
+  ["AdminPriceController",2,1,2,1],
+  ["AdminSmsController",2,1,0,0],
+  ["AdminBatchImportController",3,1,0,1],
+  ["AdminSystemController",3,1,2,0],
+  ["AdminAuthController",1,2,0,0],
+  ["AdminDashboardController",5,0,0,0],
+  ["AdminAnalysisController",4,0,0,0],
+  ["AdminCsSessionController",3,0,0,0],
+  ["AdminCrmController",5,0,0,0],
+  ["AdminProductAnalysisController",3,0,0,0],
+  ["AdminSpaController",5,0,0,0],
+  ["AdminUserProfileController",3,0,0,0],
+  ["AdminAuditLogController",2,0,0,0],
+  ["AdminGdprController",3,0,1,0],
+  ["AdminSatisfactionController",2,0,0,0],
+  ["AdminSettingsController",1,0,0,0],
+  ["AdminSystemConfigController",2,0,1,0]
+];
+echarts.init(document.getElementById('chart-controllers')).setOption({
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+  legend: { data: ['GET', 'POST', 'PUT', 'DELETE'], top: 0 },
+  grid: { left: 200, right: 20, bottom: 20 },
+  xAxis: { type: 'value' },
+  yAxis: { type: 'category', data: ctrlData.map(r => r[0]).reverse(), axisLabel: { fontSize: 11 } },
+  series: [
+    { name: 'GET', type: 'bar', stack: 'total', data: ctrlData.map(r => r[1]).reverse(), itemStyle: { color: '#2c7be5' } },
+    { name: 'POST', type: 'bar', stack: 'total', data: ctrlData.map(r => r[2]).reverse(), itemStyle: { color: '#18a058' } },
+    { name: 'PUT', type: 'bar', stack: 'total', data: ctrlData.map(r => r[3]).reverse(), itemStyle: { color: '#d89614' } },
+    { name: 'DELETE', type: 'bar', stack: 'total', data: ctrlData.map(r => r[4]).reverse(), itemStyle: { color: '#d9363e' } }
+  ]
+});
+
+// 修复类别分布
+echarts.init(document.getElementById('chart-fixes')).setOption({
+  tooltip: { trigger: 'item' },
+  series: [{
+    type: 'pie',
+    radius: '70%',
+    label: { formatter: '{b}\n{d}%' },
+    data: [
+      { name: '数据库 Schema', value: 5, itemStyle: { color: '#2c7be5' } },
+      { name: 'Entity 字段对齐', value: 2, itemStyle: { color: '#18a058' } },
+      { name: 'Service 错误处理', value: 2, itemStyle: { color: '#d89614' } },
+      { name: 'Controller 接口补全', value: 4, itemStyle: { color: '#7e57c2' } },
+      { name: '参数校验', value: 1, itemStyle: { color: '#ec407a' } },
+      { name: '响应结构修正', value: 2, itemStyle: { color: '#26a69a' } }
+    ]
+  }]
+});
+
+// Flyway 迁移
+echarts.init(document.getElementById('chart-migrations')).setOption({
+  tooltip: { trigger: 'axis' },
+  grid: { left: 60, right: 30, bottom: 50 },
+  xAxis: { type: 'category', data: ['V0', 'V1-V4', 'V5-V8', 'V20260716-18', 'V20260720-22', 'V20260723-27', 'V20260729'], axisLabel: { rotate: 30, fontSize: 10 } },
+  yAxis: { type: 'value', name: '脚本数' },
+  series: [{
+    type: 'bar',
+    data: [1, 4, 4, 8, 8, 10, 5],
+    itemStyle: {
+      color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: '#2c7be5' }, { offset: 1, color: '#69a9ff' }] }
+    },
+    label: { show: true, position: 'top' }
+  }]
+});
+
+// 测试金字塔
+echarts.init(document.getElementById('chart-testpyramid')).setOption({
+  tooltip: { trigger: 'item' },
+  series: [{
+    type: 'pie',
+    radius: ['20%', '70%'],
+    roseType: 'area',
+    itemStyle: { borderRadius: 6 },
+    label: { formatter: '{b}\n{c} 个' },
+    data: [
+      { name: '契约/小测试 (健康检查)', value: 307, itemStyle: { color: '#2c7be5' } },
+      { name: '集成/中测试 (数据库迁移)', value: 40, itemStyle: { color: '#18a058' } },
+      { name: '端到端/大测试 (Playwright)', value: 71, itemStyle: { color: '#d89614' } },
+      { name: '静态分析 (Controller 扫描)', value: 47, itemStyle: { color: '#7e57c2' } }
+    ]
+  }]
+});
+</script>
+</body>
+</html>

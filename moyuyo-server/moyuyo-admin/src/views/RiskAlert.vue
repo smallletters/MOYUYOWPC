@@ -81,6 +81,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getRiskAlertConfigs, createRiskAlertConfig, updateRiskAlertConfig, deleteRiskAlertConfig, getRiskAlertHistory } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 const configData = ref([])
 const historyData = ref([])
@@ -116,7 +117,7 @@ function resetForm() {
 async function loadData() {
   try {
     const res = await getRiskAlertConfigs()
-    configData.value = res.records || res || []
+    configData.value = toArray(res)
   } catch (e) {
     ElMessage.error('获取告警配置失败')
   }
@@ -125,7 +126,7 @@ async function loadData() {
 async function loadHistory() {
   try {
     const res = await getRiskAlertHistory()
-    historyData.value = res.list || res || []
+    historyData.value = toArray(res, 'list')
   } catch (e) {
     ElMessage.error('获取告警历史失败')
   }
@@ -179,11 +180,15 @@ async function handleSave() {
 async function handleDelete(row) {
   try {
     await ElMessageBox.confirm('确定删除告警配置「' + row.name + '」吗？', '提示')
+  } catch (e) {
+    return // 用户取消或关闭
+  }
+  try {
     await deleteRiskAlertConfig(row.id)
     ElMessage.success('已删除')
     await loadData()
   } catch (e) {
-    // 用户取消不处理
+    ElMessage.error('删除失败')
   }
 }
 

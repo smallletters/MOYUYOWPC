@@ -1,0 +1,57 @@
+﻿Token 获取成功，长度: 172
+
+[1] 推送模块: 创建->发送->取消->删除
+
+[2] App版本: 创建->更新
+
+[3] 营销活动: 创建->更新->删除
+
+[4] 优惠券: 创建
+
+[5] RBAC: 角色创建
+
+[6] CMS: 内容创建->更新->删除
+
+[7] 敏感词: 创建->删除
+
+[8] 仓库: 创建->更新->删除
+
+[9] 承运商: 创建->删除
+
+[10] 黑名单: 创建->删除
+
+[11] 风控规则: 创建->删除
+
+[12] 退款: 列表+详情
+
+======================================================================
+按钮级测试结果
+======================================================================
+  [PASS] push/create                         200
+  [PASS] push/send                           200
+  [PASS] push/cancel                         200
+  [PASS] push/delete                         200
+  [PASS] app-version/create                  200
+  [PASS] app-version/update                  200
+  [PASS] marketing/campaigns.create          200
+  [PASS] marketing/campaigns.update          200
+  [PASS] marketing/campaigns.delete          200
+  [PASS] coupons/create                      200
+  [FAIL] rbac/roles.create                   200
+  [PASS] cms/create                          200
+  [PASS] cms/update                          200
+  [PASS] cms/delete                          200
+  [PASS] sensitive/create                    200
+  [PASS] sensitive/delete                    200
+  [PASS] warehouses/create                   200
+  [PASS] warehouses/update                   200
+  [PASS] warehouses/delete                   200
+  [PASS] carriers/create                     200
+  [PASS] carriers/delete                     200
+  [FAIL] blacklist/create                    409
+  [FAIL] risk/rules.create                   409
+  [PASS] refunds/list                        200
+  [PASS] refunds/detail                      200
+
+总计: 25, 通过: 22, 失败: 3
+报告: D:\MOYUYOWPC\button-deep-result.json

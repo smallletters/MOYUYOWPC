@@ -12,86 +12,52 @@ spring:
   main:
     allow-bean-definition-overriding: true
   autoconfigure:
+    # 不再排除 RocketMQ 自动配置：
+    # 项目使用 OrderMessageProducer / OrderTimeoutConsumer 实现订单超时取消等异步能力，
+    # 若排除 RocketMQ 自动配置，消费者永远无法启动，订单超时等业务不可用。
+    # 兜底：当 ROCKETMQ_NAMESRV_ADDR 未配置时，由 RocketMQConfig 跳过 Bean 注册，避免阻塞启动。
     exclude:
-      - org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchDataAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchRepositoriesAutoConfiguration
-      - org.apache.rocketmq.spring.autoconfigure.RocketMQAutoConfiguration
+      # ⚠️ 不再排除 ES 自动配置：项目使用 Spring Data Elasticsearch 做商品搜索
+      # Spring Boot 3.x 的 ES auto-config 在 spring.elasticsearch.uris 为空时不会创建 Client/Template/Repository Bean，
+      # 业务侧通过 @Autowired(required = false) 软依赖实现优雅降级（见 ProductSearchService）
 
-  # 数据库配置
-  datasource:
-    url: jdbc:mysql://localhost:3306/moyuyo_dev?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
-    username: root
-    # ⚠️ 警告：生产环境（application-prod.yml）无默认值，必须通过环境变量 MYSQL_PASSWORD 设置
-    password: ${MYSQL_PASSWORD:}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      idle-timeout: 300000
-      connection-timeout: 20000
-
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      timeout: 3000
-      lettuce:
-        pool:
-          max-active: 16
-          max-idle: 8
-          min-idle: 4
-
-  # Elasticsearch 配置
-  elasticsearch:
-    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
-    connection-timeout: 5s
-    socket-timeout: 60s
+  # MySQL / Redis / JWT / 支付等敏感配置不在此处保留默认值
+  # 必须由 application-dev.yml（开发）或 application-prod.yml（生产）显式提供
+  # Spring 默认会按 profile 加载 application-{profile}.yml，并叠加 application.yml 的非冲突项
 
   flyway:
     enabled: true
-    locations: classpath:db/migration
+    # db/migration 为表结构迁移；db/seed 为演示数据（仅开发环境加载，prod 不扫描该目录）
+    locations: classpath:db/migration,classpath:db/seed
     baseline-on-migrate: true
     validate-on-migrate: false
     out-of-order: false
     placeholder-replacement: false
     table: schema_history
-    repair-on-migrate: true
+    # 默认关闭 repair，由 FlywayConfig 在 dev profile 下显式开启
+    repair-on-migrate: false
 
-  # Resilience4j 限流熔断默认启用，具体规则见 resilience4j 配置块
+  # Elasticsearch 通用配置（与 profile 无关的部分）
+  # uris / username / password / ssl 需在 application-dev.yml 或 application-prod.yml 中覆盖
+  elasticsearch:
+    connection-timeout: 5s
+    socket-timeout: 60s
 
-# MyBatis-Plus
+# MyBatis-Plus（与 profile 无关的通用配置）
 mybatis-plus:
-  mapper-locations: classpath:mapper/*.xml
+  mapper-locations: classpath*:mapper/**/*.xml
   type-aliases-package: com.moyuyo.dao.entity,com.moyuyo.dao.admin.entity
   global-config:
     db-config:
       id-type: ASSIGN_ID
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
-
-# JWT
-# ⚠️ 警告：生产环境必须通过环境变量 JWT_SECRET 设置一个足够复杂的密钥
-jwt:
-  secret: ${JWT_SECRET:DevJwtSecretKeyForLocalTestingOnlyNotForProd}
-  expire-hours: 2
-
-# CORS 允许的来源（逗号分隔），生产环境应设为具体的前端域名
-# 示例：moyuyo.cors.allowed-origins=https://admin.moyuyo.com,https://www.moyuyo.com
-moyuyo:
-  cors:
-    allowed-origins: ${MOYUYO_CORS_ORIGINS:*}
-
-# API 签名验证
-api:
-  signature:
-    secret: ${API_SIGN_SECRET:}
-
-# 管理员账号（开发环境默认值）
-admin:
-  email: ${ADMIN_EMAIL:admin@moyuyo.com}
-  password: ${ADMIN_PASSWORD:moyuyo123}
+    # 不在 base yml 中固定日志实现，由 dev/prod 各自覆盖
+    # dev: StdOutImpl（控制台 SQL 打印）
+    # prod: Slf4jImpl（统一走 Logback）
 
 # SpringDoc
 springdoc:
@@ -100,76 +66,36 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
-# RocketMQ
-rocketmq:
-  name-server: ${ROCKETMQ_NAMESRV_ADDR:localhost:9876}
-  producer:
-    group: moyuyo-producer-group
-    send-message-timeout: 3000
-    retry-times-when-send-failed: 2
+# 管理员账号（占位，实际值必须由 profile 提供）
+# dev: application-dev.yml 提供测试默认值
+# prod: 强制要求 ADMIN_USERNAME / ADMIN_EMAIL / ADMIN_PASSWORD 环境变量
+admin:
+  username: ${ADMIN_USERNAME:}
+  email: ${ADMIN_EMAIL:}
+  password: ${ADMIN_PASSWORD:}
 
-# 支付渠道
-payment:
-  stripe:
-    secret-key: ${STRIPE_SECRET_KEY:sk_test_placeholder}
-    webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_placeholder}
-    currency: usd
-  paypal:
-    client-id: ${PAYPAL_CLIENT_ID:placeholder}
-    client-secret: ${PAYPAL_CLIENT_SECRET:placeholder}
-    webhook-id: ${PAYPAL_WEBHOOK_ID:placeholder}
-    mode: sandbox
+# Actuator 健康检查配置（收紧暴露端点）
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  health:
+    elasticsearch:
+      enabled: false
 
-# WooCommerce
-woocommerce:
-  url: ${WOOCOMMERCE_URL:https://your-woocommerce-store.com}
-  consumer-key: ${WOOCOMMERCE_CONSUMER_KEY:}
-  consumer-secret: ${WOOCOMMERCE_CONSUMER_SECRET:}
-  connect-timeout: 10000
-  read-timeout: 30000
-
-# Resilience4j 限流熔断规则
+# Resilience4j 限流实例由 profile 各自配置，base 仅给出非敏感默认值
 resilience4j:
   ratelimiter:
     instances:
-      authLogin:
+      # 通用兜底实例（防止未配置 profile 时启动失败）
+      default:
         limit-refresh-period: 1m
-        limit-for-period: 600
+        limit-for-period: 100
         timeout-duration: 500ms
-      orderCreate:
-        limit-refresh-period: 1m
-        limit-for-period: 300
-        timeout-duration: 500ms
-      paymentApi:
-        limit-refresh-period: 1m
-        limit-for-period: 500
-        timeout-duration: 500ms
-      seckillApi:
-        limit-refresh-period: 1m
-        limit-for-period: 2000
-        timeout-duration: 1s
-  circuitbreaker:
-    instances:
-      paymentGateway:
-        sliding-window-size: 10
-        minimum-number-of-calls: 5
-        failure-rate-threshold: 30
-        wait-duration-in-open-state: 30s
-        permitted-number-of-calls-in-half-open-state: 3
-      dbWrite:
-        sliding-window-size: 10
-        minimum-number-of-calls: 5
-        failure-rate-threshold: 50
-        wait-duration-in-open-state: 15s
-        permitted-number-of-calls-in-half-open-state: 3
-  retry:
-    instances:
-      paymentCallback:
-        max-attempts: 3
-        wait-duration: 500ms
-        retry-exceptions:
-          - org.springframework.dao.DataAccessException
-      woocommerceSync:
-        max-attempts: 3
-        wait-duration: 1s
 

@@ -48,6 +48,55 @@
       </div>
     </div>
 
+    <!-- ====== 语言与地区 ====== -->
+    <div v-show="activeTab === 'locale'" class="tab-content">
+      <div class="section-title">语言与地区</div>
+      <div class="config-card">
+        <div class="config-section">
+          <div class="config-label">默认语言</div>
+          <div class="config-desc">新用户的默认显示语言</div>
+          <div class="radio-group">
+            <button
+              v-for="opt in languageOptions"
+              :key="opt.value"
+              :class="['radio-option', { selected: form.defaultLanguage === opt.value }]"
+              @click="form.defaultLanguage = opt.value"
+            >{{ opt.label }}</button>
+          </div>
+        </div>
+        <div class="config-section">
+          <div class="config-label">支持语言</div>
+          <div class="config-desc">商城前台可切换的语言列表（多选）</div>
+          <div class="checkbox-group">
+            <label v-for="opt in languageOptions" :key="opt.value" class="checkbox-option">
+              <input type="checkbox" :value="opt.value" v-model="form.supportedLanguages">
+              <span>{{ opt.label }}</span>
+            </label>
+          </div>
+        </div>
+        <div class="config-section">
+          <div class="config-row">
+            <div>
+              <div class="config-label">币种</div>
+              <div class="config-desc">商品价格显示币种</div>
+            </div>
+            <select v-model="form.currency" class="config-select">
+              <option v-for="opt in currencyOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </select>
+          </div>
+          <div class="config-row">
+            <div>
+              <div class="config-label">时区</div>
+              <div class="config-desc">影响订单时间、定时任务等</div>
+            </div>
+            <select v-model="form.timezone" class="config-select">
+              <option v-for="opt in timezoneOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ====== 订单设置 ====== -->
     <div v-show="activeTab === 'order'" class="tab-content">
       <div class="section-title">订单规则</div>
@@ -115,6 +164,119 @@
       </div>
     </div>
 
+    <!-- ====== 物流配置 ====== -->
+    <div v-show="activeTab === 'shipping'" class="tab-content">
+      <!-- 承运商与包装 -->
+      <div class="section-title">承运商与包装</div>
+      <div class="config-card">
+        <div class="config-section">
+          <div class="config-label">承运商列表</div>
+          <div class="config-desc">可启用的物流承运商（示例数据）</div>
+          <div class="carrier-list">
+            <div v-for="carrier in carriers" :key="carrier.key" class="carrier-item">
+              <div class="carrier-left">
+                <div>
+                  <div class="config-label">{{ carrier.name }}</div>
+                  <div class="config-desc">{{ carrier.desc }}</div>
+                </div>
+              </div>
+              <div
+                class="toggle-track"
+                role="switch"
+                :aria-checked="String(carrier.enabled)"
+                tabindex="0"
+                @click="carrier.enabled = !carrier.enabled"
+                @keydown.enter.prevent="carrier.enabled = !carrier.enabled"
+                @keydown.space.prevent="carrier.enabled = !carrier.enabled"
+              >
+                <div class="toggle-thumb"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="config-section">
+          <div class="config-row">
+            <div>
+              <div class="config-label">默认承运商</div>
+              <div class="config-desc">创建发货单时的默认物流商</div>
+            </div>
+            <select v-model="form.defaultCarrier" class="config-select">
+              <option v-for="c in carriers" :key="c.key" :value="c.key">{{ c.name }}</option>
+            </select>
+          </div>
+          <div class="config-row">
+            <div>
+              <div class="config-label">默认包装类型</div>
+              <div class="config-desc">用于自动计算运费体积重</div>
+            </div>
+            <select v-model="form.packageType" class="config-select">
+              <option v-for="opt in packageTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </select>
+          </div>
+          <div class="config-row">
+            <div>
+              <div class="config-label">单件最大重量</div>
+              <div class="config-desc">单件包裹重量上限，超出将被拆分或拒收</div>
+            </div>
+            <div class="number-input-wrap">
+              <input v-model="form.maxWeight" type="number" class="config-input" style="max-width: 100px;" min="0">
+              <span class="input-suffix">kg</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 运费计算规则 -->
+      <div class="section-title">运费计算规则</div>
+      <div class="config-card">
+        <div class="config-section">
+          <div class="config-label">计算方式</div>
+          <div class="config-desc">根据以下方式自动计算运费</div>
+          <div class="radio-group">
+            <button
+              v-for="opt in shippingMethodOptions"
+              :key="opt.value"
+              :class="['radio-option', { selected: form.shippingMethod === opt.value }]"
+              @click="form.shippingMethod = opt.value"
+            >{{ opt.label }}</button>
+          </div>
+        </div>
+        <div class="config-section">
+          <div class="config-label">基础运费</div>
+          <div class="config-desc">首重 / 首件 / 订单基础运费价格（示例数据）</div>
+          <div class="number-input-wrap">
+            <span class="input-prefix">¥</span>
+            <input v-model="form.baseFee" type="number" class="config-input" style="max-width: 100px;" min="0">
+          </div>
+        </div>
+        <div class="config-section">
+          <div class="config-label">阶梯价格表</div>
+          <div class="config-desc">按区间设置运费（示例数据）</div>
+          <table class="tier-table">
+            <thead>
+              <tr>
+                <th>区间下限</th>
+                <th>区间上限</th>
+                <th>运费（¥）</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(tier, idx) in shippingTiers" :key="idx">
+                <td><input v-model="tier.min" type="number" class="tier-input" min="0"></td>
+                <td><input v-model="tier.max" type="number" class="tier-input" min="0"></td>
+                <td><input v-model="tier.price" type="number" class="tier-input" min="0"></td>
+                <td class="tier-actions">
+                  <button class="tier-remove" @click="removeTier(idx)">删除</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <button class="add-tier-btn" @click="addTier">+ 添加阶梯</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ====== 通知设置 ====== -->
     <div v-show="activeTab === 'notification'" class="tab-content">
       <div class="section-title">通知渠道</div>
@@ -172,8 +334,10 @@ const activeTab = ref('basic')
 
 const tabs = [
   { key: 'basic', label: '基本设置' },
+  { key: 'locale', label: '语言与地区' },
   { key: 'order', label: '订单设置' },
   { key: 'payment', label: '支付设置' },
+  { key: 'shipping', label: '物流配置' },
   { key: 'notification', label: '通知设置' }
 ]
 
@@ -183,13 +347,78 @@ const cancelOptions = [
   { label: '2 小时', value: 120 }
 ]
 
+// 语言选项（示例数据）
+const languageOptions = [
+  { label: '简体中文', value: 'zh-CN' },
+  { label: 'English', value: 'en-US' },
+  { label: '日本語', value: 'ja-JP' },
+  { label: '한국어', value: 'ko-KR' }
+]
+
+// 币种选项（示例数据）
+const currencyOptions = [
+  { label: 'CNY (¥)', value: 'CNY' },
+  { label: 'USD ($)', value: 'USD' },
+  { label: 'EUR (€)', value: 'EUR' },
+  { label: 'JPY (¥)', value: 'JPY' }
+]
+
+// 时区选项（示例数据）
+const timezoneOptions = [
+  { label: 'UTC+8（中国标准时间）', value: 'UTC+8' },
+  { label: 'UTC+9（日本标准时间）', value: 'UTC+9' },
+  { label: 'UTC+0（格林尼治标准时间）', value: 'UTC+0' },
+  { label: 'UTC-5（美东时间）', value: 'UTC-5' }
+]
+
+// 包装类型选项（示例数据）
+const packageTypeOptions = [
+  { label: '小号包裹（30×20×15cm）', value: 'S' },
+  { label: '中号包裹（40×30×20cm）', value: 'M' },
+  { label: '大号包裹（60×40×35cm）', value: 'L' }
+]
+
+// 运费计算方式选项（示例数据）
+const shippingMethodOptions = [
+  { label: '按重量', value: 'weight' },
+  { label: '按件数', value: 'count' },
+  { label: '按金额', value: 'amount' }
+]
+
+// 承运商列表（示例数据，无真实 API 时使用）
+const carriers = ref([
+  { key: 'sf', name: '顺丰速运', desc: '时效快，支持上门取件', enabled: true },
+  { key: 'zto', name: '中通快递', desc: '经济型快递，覆盖范围广', enabled: true },
+  { key: 'yto', name: '圆通速递', desc: '性价比快递，大件支持好', enabled: false },
+  { key: 'ems', name: 'EMS 邮政', desc: '偏远地区可送达', enabled: false }
+])
+
+// 运费阶梯价格表（示例数据，无真实 API 时使用）
+const shippingTiers = ref([
+  { min: 1, max: 2, price: 12 },
+  { min: 2, max: 5, price: 18 },
+  { min: 5, max: 10, price: 30 }
+])
+
 const form = reactive({
   siteName: 'MOYUYO',
   icpNumber: '京ICP备2025XXXXXX号',
   autoCancel: 30,
   autoConfirm: true,
   emailNotify: true,
-  smsNotify: false
+  smsNotify: false,
+  // 语言与地区（示例数据）
+  defaultLanguage: 'zh-CN',
+  supportedLanguages: ['zh-CN', 'en-US', 'ja-JP'],
+  currency: 'CNY',
+  timezone: 'UTC+8',
+  // 承运商与包装（示例数据）
+  defaultCarrier: 'sf',
+  packageType: 'M',
+  maxWeight: 20,
+  // 运费计算规则（示例数据）
+  shippingMethod: 'weight',
+  baseFee: 12
 })
 
 const paymentMethods = ref([
@@ -211,6 +440,41 @@ async function loadConfig() {
         if (item.key === 'autoConfirm') form.autoConfirm = item.value === 'true' || item.value === true
         if (item.key === 'emailNotify') form.emailNotify = item.value === 'true' || item.value === true
         if (item.key === 'smsNotify') form.smsNotify = item.value === 'true' || item.value === true
+        // 语言与地区
+        if (item.key === 'defaultLanguage') form.defaultLanguage = item.value || form.defaultLanguage
+        if (item.key === 'currency') form.currency = item.value || form.currency
+        if (item.key === 'timezone') form.timezone = item.value || form.timezone
+        if (item.key === 'supportedLanguages') {
+          try {
+            const list = JSON.parse(item.value)
+            if (Array.isArray(list) && list.length > 0) form.supportedLanguages = list
+          } catch (e) { /* 忽略解析失败，保留默认值 */ }
+        }
+        // 承运商与包装
+        if (item.key === 'defaultCarrier') form.defaultCarrier = item.value || form.defaultCarrier
+        if (item.key === 'packageType') form.packageType = item.value || form.packageType
+        if (item.key === 'maxWeight') form.maxWeight = Number(item.value) || form.maxWeight
+        if (item.key === 'carriers') {
+          try {
+            const list = JSON.parse(item.value)
+            if (Array.isArray(list) && list.length > 0) {
+              // 合并后端返回的启用状态到示例数据列表
+              list.forEach(c => {
+                const existing = carriers.value.find(item2 => item2.key === c.key)
+                if (existing) existing.enabled = c.enabled === true || c.enabled === 'true'
+              })
+            }
+          } catch (e) { /* 忽略解析失败，保留默认值 */ }
+        }
+        // 运费计算规则
+        if (item.key === 'shippingMethod') form.shippingMethod = item.value || form.shippingMethod
+        if (item.key === 'baseFee') form.baseFee = Number(item.value) || form.baseFee
+        if (item.key === 'shippingTiers') {
+          try {
+            const list = JSON.parse(item.value)
+            if (Array.isArray(list) && list.length > 0) shippingTiers.value = list
+          } catch (e) { /* 忽略解析失败，保留默认值 */ }
+        }
         // 从配置中恢复支付方式状态
         if (item.key && item.key.startsWith('payment_')) {
           const payKey = item.key.replace('payment_', '')
@@ -274,6 +538,20 @@ async function handleSave() {
       { key: 'autoConfirm', value: String(form.autoConfirm), type: 'text', label: '自动确认收货' },
       { key: 'emailNotify', value: String(form.emailNotify), type: 'text', label: '邮件通知' },
       { key: 'smsNotify', value: String(form.smsNotify), type: 'text', label: '短信通知' },
+      // 语言与地区
+      { key: 'defaultLanguage', value: form.defaultLanguage, type: 'text', label: '默认语言' },
+      { key: 'supportedLanguages', value: JSON.stringify(form.supportedLanguages), type: 'json', label: '支持语言' },
+      { key: 'currency', value: form.currency, type: 'text', label: '币种' },
+      { key: 'timezone', value: form.timezone, type: 'text', label: '时区' },
+      // 承运商与包装
+      { key: 'defaultCarrier', value: form.defaultCarrier, type: 'text', label: '默认承运商' },
+      { key: 'packageType', value: form.packageType, type: 'text', label: '默认包装类型' },
+      { key: 'maxWeight', value: String(form.maxWeight), type: 'text', label: '单件最大重量' },
+      { key: 'carriers', value: JSON.stringify(carriers.value), type: 'json', label: '承运商列表' },
+      // 运费计算规则
+      { key: 'shippingMethod', value: form.shippingMethod, type: 'text', label: '运费计算方式' },
+      { key: 'baseFee', value: String(form.baseFee), type: 'text', label: '基础运费' },
+      { key: 'shippingTiers', value: JSON.stringify(shippingTiers.value), type: 'json', label: '运费阶梯价格表' }
     ]
     // 将支付方式状态也加入配置保存
     paymentMethods.value.forEach(method => {
@@ -289,6 +567,16 @@ async function handleSave() {
   } catch (e) {
     ElMessage.error('保存配置失败')
   }
+}
+
+// 添加一行阶梯价格（示例数据）
+function addTier() {
+  shippingTiers.value.push({ min: 0, max: 0, price: 0 })
+}
+
+// 删除一行阶梯价格
+function removeTier(idx) {
+  shippingTiers.value.splice(idx, 1)
 }
 
 onMounted(() => { loadConfig() })
@@ -408,6 +696,169 @@ onMounted(() => { loadConfig() })
 .config-input:focus {
   border-color: var(--ring);
   box-shadow: 0 0 0 1px var(--ring);
+}
+
+/* 下拉选择框 */
+.config-select {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--input);
+  border-radius: 10px;
+  background: var(--background);
+  color: var(--text-800);
+  font-size: 14px;
+  font-family: var(--font-sans);
+  outline: none;
+  cursor: pointer;
+  max-width: 240px;
+}
+.config-select:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 1px var(--ring);
+}
+
+/* 多选语言（Checkbox 组） */
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.checkbox-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  border: 1px solid var(--input);
+  background: var(--background);
+  color: var(--text-500);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.checkbox-option input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.checkbox-option:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--brand-50);
+  color: var(--primary);
+}
+
+/* 承运商列表 */
+.carrier-list {
+  margin-top: 10px;
+}
+.carrier-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+}
+.carrier-item + .carrier-item {
+  border-top: 1px solid var(--background-200);
+}
+.carrier-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 数字输入（带前后缀） */
+.number-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.input-prefix {
+  font-size: 14px;
+  color: var(--text-500);
+  flex-shrink: 0;
+}
+.input-suffix {
+  font-size: 13px;
+  color: var(--text-400);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* 阶梯价格表 */
+.tier-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+.tier-table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-400);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--background-200);
+}
+.tier-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--background-200);
+}
+.tier-input {
+  width: 100px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--input);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--text-800);
+  font-size: 14px;
+  font-family: var(--font-sans);
+  outline: none;
+}
+.tier-input:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 1px var(--ring);
+}
+.tier-actions {
+  text-align: right;
+}
+.tier-remove {
+  border: none;
+  background: transparent;
+  color: var(--text-400);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+.tier-remove:hover {
+  color: #ff3b30;
+  background: rgba(255, 59, 48, 0.08);
+}
+.add-tier-btn {
+  margin-top: 12px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 18px;
+  border: 1px dashed var(--input);
+  background: var(--background);
+  color: var(--text-500);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.add-tier-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--brand-50);
 }
 
 /* Logo 上传区 */

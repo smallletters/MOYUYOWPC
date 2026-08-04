@@ -69,4 +69,45 @@ public class AdminSatisfactionServiceImpl implements AdminSatisfactionService {
     result.put("totalCount", all.size());
     return result;
   }
+
+  @Override
+  public Map<String, Object> createSurvey(Map<String, Object> body) {
+    // 新建满意度调查记录，userId 必填，评分默认 5
+    Object userIdObj = body.get("userId");
+    if (userIdObj == null) {
+      throw new IllegalArgumentException("用户ID不能为空");
+    }
+    SatisfactionSurveyEntity entity = new SatisfactionSurveyEntity();
+    entity.setUserId(Long.valueOf(userIdObj.toString()));
+    Object score = body.get("score");
+    entity.setScore(score != null ? Integer.valueOf(score.toString()) : 5);
+    entity.setCategory((String) body.get("category"));
+    entity.setComment((String) body.get("comment"));
+    if (body.get("ticketId") != null) {
+      entity.setTicketId(Long.valueOf(body.get("ticketId").toString()));
+    }
+    if (body.get("orderId") != null) {
+      entity.setOrderId(Long.valueOf(body.get("orderId").toString()));
+    }
+    satisfactionSurveyMapper.insert(entity);
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("id", entity.getId());
+    result.put("userId", entity.getUserId());
+    result.put("score", entity.getScore());
+    result.put("message", "满意度调查创建成功");
+    return result;
+  }
+
+  @Override
+  public void replySurvey(Long id, String reply) {
+    SatisfactionSurveyEntity entity = satisfactionSurveyMapper.selectById(id);
+    if (entity == null) {
+      throw new IllegalArgumentException("评价记录不存在");
+    }
+    // 追加客服回复到评价内容，避免新增字段
+    String old = entity.getComment();
+    String prefix = old == null || old.isEmpty() ? "" : old + "\n";
+    entity.setComment(prefix + "【客服回复】" + (reply == null ? "" : reply));
+    satisfactionSurveyMapper.updateById(entity);
+  }
 }

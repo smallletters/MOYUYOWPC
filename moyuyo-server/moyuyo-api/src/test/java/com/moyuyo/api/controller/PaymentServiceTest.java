@@ -10,6 +10,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 class PaymentServiceTest extends BaseIntegrationTest {
@@ -25,9 +26,9 @@ class PaymentServiceTest extends BaseIntegrationTest {
 
         CreatePaymentResponse mockRes = new CreatePaymentResponse(
                 "pi_test_123", "secret_test", null, "STRIPE");
-        when(paymentService.createPayment(any())).thenReturn(mockRes);
+        when(paymentService.createPayment(anyLong(), any())).thenReturn(mockRes);
 
-        CreatePaymentResponse result = paymentService.createPayment(req);
+        CreatePaymentResponse result = paymentService.createPayment(1L, req);
         assertNotNull(result);
         assertEquals("pi_test_123", result.getPaymentId());
         assertEquals("STRIPE", result.getPayChannel());

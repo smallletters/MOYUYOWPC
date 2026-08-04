@@ -16,10 +16,12 @@ import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.common.enums.OrderStatusEnum;
+import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.service.admin.AdminOrderOpsService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -113,13 +115,63 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
   }
 
   @Override
+  public byte[] buildExportFile(String exportId) {
+    // 根据导出标识查找任务，生成真实 CSV 内容
+    DataExportRequestEntity task = exportRequestMapper.selectOne(
+        new LambdaQueryWrapper<DataExportRequestEntity>()
+            .eq(DataExportRequestEntity::getExportId, exportId)
+            .last("LIMIT 1"));
+    // 任务不存在时，导出空表头（保证下载不报错）
+    StringBuilder sb = new StringBuilder();
+    sb.append('\uFEFF'); // UTF-8 BOM，Excel 打开中文不乱码
+    sb.append("订单号,状态,实付金额,币种,收货人,联系电话,收货地址,支付渠道,创建时间\n");
+    if (task != null) {
+      // 查询订单数据（按任务范围过滤：全部订单 / 本月订单 / 上周订单 / 自定义）
+      LambdaQueryWrapper<OrderEntity> ow = new LambdaQueryWrapper<>();
+      String scope = task.getOrderScope() == null ? "" : task.getOrderScope();
+      if ("本月订单".equals(scope)) {
+        ow.ge(OrderEntity::getCreateTime, java.time.LocalDate.now().withDayOfMonth(1).atStartOfDay());
+      } else if ("上周订单".equals(scope)) {
+        ow.between(OrderEntity::getCreateTime,
+            java.time.LocalDate.now().minusWeeks(1).with(java.time.DayOfWeek.MONDAY).atStartOfDay(),
+            java.time.LocalDate.now().minusWeeks(0).with(java.time.DayOfWeek.MONDAY).atStartOfDay());
+      }
+      ow.orderByDesc(OrderEntity::getCreateTime).last("LIMIT 500");
+      List<OrderEntity> orders = orderMapper.selectList(ow);
+      for (OrderEntity o : orders) {
+        sb.append(escapeCsv(o.getOrderNo())).append(',')
+            .append(escapeCsv(o.getStatus())).append(',')
+            .append(o.getPayAmount() == null ? "" : o.getPayAmount().toPlainString()).append(',')
+            .append(escapeCsv(o.getCurrency())).append(',')
+            .append(escapeCsv(o.getReceiverName())).append(',')
+            .append(escapeCsv(o.getReceiverPhone())).append(',')
+            .append(escapeCsv(o.getReceiverAddress())).append(',')
+            .append(escapeCsv(o.getPayChannel())).append(',')
+            .append(o.getCreateTime() == null ? "" : o.getCreateTime().toString()).append('\n');
+      }
+    }
+    return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+  }
+
+  /** CSV 字段转义：包含逗号/引号/换行时加引号包裹 */
+  private String escapeCsv(String value) {
+    if (value == null) return "";
+    if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+      return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+    return value;
+  }
+
+  @Override
   @Transactional
   public void batchShip(java.util.List<Long> ids, String carrier, String trackingNo) {
     ids.forEach(id -> {
       OrderEntity entity = orderMapper.selectById(id);
       if (entity != null) {
-        if (!OrderStatusEnum.PENDING_SHIP.name().equals(entity.getStatus())) {
-          log.warn("订单 {} 状态为 {}，非待发货状态，跳过发货", id, entity.getStatus());
+        // 已支付和待发货状态的订单均可批量发货，与单条发货逻辑保持一致
+        if (!OrderStatusEnum.PENDING_SHIP.name().equals(entity.getStatus())
+            && !OrderStatusEnum.PAID.name().equals(entity.getStatus())) {
+          log.warn("订单 {} 状态为 {}，非可发货状态，跳过发货", id, entity.getStatus());
           return;
         }
         entity.setShippingCarrier(carrier);
@@ -138,7 +190,9 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
     String format = (String) body.getOrDefault("format", "Excel");
 
     DataExportRequestEntity entity = new DataExportRequestEntity();
-    entity.setUserId(0L); // 系统用户
+    // 从当前登录用户上下文获取操作人ID，未获取到则使用系统用户ID
+    Long currentUserId = UserContextHolder.getUserId();
+    entity.setUserId(currentUserId != null ? currentUserId : 0L);
     entity.setExportId("EXPORT-" + System.currentTimeMillis());
     entity.setTaskName(taskName);
     entity.setOrderScope(orderScope);
@@ -158,9 +212,10 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
   }
 
   /**
-   * 生成导出文件（模拟导出流程）
+   * 生成导出文件（异步执行，避免阻塞主线程）
    */
-  private void generateExportFile(DataExportRequestEntity entity) {
+  @Async
+  public void generateExportFile(DataExportRequestEntity entity) {
     try {
       // 模拟导出处理：等待一小段时间后标记完成
       Thread.sleep(500);
@@ -172,9 +227,10 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
       entity.setCompleteTime(LocalDateTime.now());
       exportRequestMapper.updateById(entity);
     } catch (Exception e) {
+      // 异常详情仅记录日志，不对外暴露，防止敏感信息泄露
       log.error("导出任务执行失败: {}", entity.getExportId(), e);
       entity.setStatus("FAILED");
-      entity.setRemark("导出失败：" + e.getMessage());
+      entity.setRemark("导出失败，请联系管理员查看日志");
       exportRequestMapper.updateById(entity);
     }
   }

@@ -51,6 +51,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useStatusTag } from '../composables/useStatusTag'
 import { getProductApprovalList, approveProductApproval, rejectProductApproval, setProductApprovalUrgent } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 const tableData = ref([])
 const statusFilter = ref('')
@@ -68,7 +69,7 @@ async function loadData() {
     const params = {}
     if (statusFilter.value) params.status = statusFilter.value
     const res = await getProductApprovalList(params)
-    tableData.value = res.records || res || []
+    tableData.value = toArray(res)
   } catch (e) {
     ElMessage.error('获取审核列表失败')
   }

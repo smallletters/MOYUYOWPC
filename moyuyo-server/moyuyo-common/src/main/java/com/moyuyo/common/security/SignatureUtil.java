@@ -6,6 +6,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
@@ -29,6 +30,9 @@ public class SignatureUtil {
 
     public static boolean verify(String payload, String secret, String expectedSignature) {
         String actual = generate(payload, secret);
-        return actual.equals(expectedSignature);
+        // 使用常量时间比较，防止时序攻击
+        return MessageDigest.isEqual(
+                actual.getBytes(StandardCharsets.UTF_8),
+                expectedSignature.getBytes(StandardCharsets.UTF_8));
     }
 }

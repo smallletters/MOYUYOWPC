@@ -1,0 +1,576 @@
+{
+  "total_pages": 71,
+  "passed": 71,
+  "failed": 0,
+  "errors": [],
+  "page_details": [
+    {
+      "path": "/dashboard",
+      "name": "仪表盘",
+      "status": "PASS",
+      "buttons": 2,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/orders",
+      "name": "订单管理",
+      "status": "PASS",
+      "buttons": 36,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/products",
+      "name": "商品管理",
+      "status": "PASS",
+      "buttons": 28,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/refund",
+      "name": "退款管理",
+      "status": "PASS",
+      "buttons": 7,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/users",
+      "name": "用户管理",
+      "status": "PASS",
+      "buttons": 26,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/marketing",
+      "name": "营销管理",
+      "status": "PASS",
+      "buttons": 11,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/reviews",
+      "name": "内容审核",
+      "status": "PASS",
+      "buttons": 12,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/cs",
+      "name": "客服管理",
+      "status": "PASS",
+      "buttons": 14,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/analytics",
+      "name": "数据分析",
+      "status": "PASS",
+      "buttons": 6,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/logistics",
+      "name": "物流管理",
+      "status": "PASS",
+      "buttons": 20,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/finance",
+      "name": "财务概览",
+      "status": "PASS",
+      "buttons": 5,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/inventory",
+      "name": "库存管理",
+      "status": "PASS",
+      "buttons": 16,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/ticket",
+      "name": "工单管理",
+      "status": "PASS",
+      "buttons": 15,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/cms",
+      "name": "CMS内容管理",
+      "status": "PASS",
+      "buttons": 11,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/rbac",
+      "name": "RBAC权限管理",
+      "status": "PASS",
+      "buttons": 14,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/push-manage",
+      "name": "推送管理",
+      "status": "PASS",
+      "buttons": 6,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/campaign",
+      "name": "活动创建",
+      "status": "PASS",
+      "buttons": 17,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/complaint",
+      "name": "投诉管理",
+      "status": "PASS",
+      "buttons": 19,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/review-manage",
+      "name": "评价管理",
+      "status": "PASS",
+      "buttons": 19,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/product-analysis",
+      "name": "商品分析",
+      "status": "PASS",
+      "buttons": 19,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/product-report",
+      "name": "商品报表",
+      "status": "PASS",
+      "buttons": 23,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/product-review",
+      "name": "商品评价审核",
+      "status": "PASS",
+      "buttons": 19,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/price-manage",
+      "name": "价格管理",
+      "status": "PASS",
+      "buttons": 15,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/price-history",
+      "name": "价格历史",
+      "status": "PASS",
+      "buttons": 10,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/order-export",
+      "name": "订单导出",
+      "status": "PASS",
+      "buttons": 21,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/order-intercept",
+      "name": "订单拦截",
+      "status": "PASS",
+      "buttons": 6,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/order-monitor",
+      "name": "订单监控",
+      "status": "PASS",
+      "buttons": 6,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/order-price-modify",
+      "name": "订单改价",
+      "status": "PASS",
+      "buttons": 7,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/order-print",
+      "name": "订单打印",
+      "status": "PASS",
+      "buttons": 6,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/sms",
+      "name": "短信管理",
+      "status": "PASS",
+      "buttons": 7,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/sensitive-words",
+      "name": "敏感词管理",
+      "status": "PASS",
+      "buttons": 12,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/funnel",
+      "name": "漏斗分析",
+      "status": "PASS",
+      "buttons": 2,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/rfm",
+      "name": "RFM分析",
+      "status": "PASS",
+      "buttons": 6,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/risk-control",
+      "name": "风控管理",
+      "status": "PASS",
+      "buttons": 5,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/risk-rule-engine",
+      "name": "风控规则引擎",
+      "status": "PASS",
+      "buttons": 3,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/realtime-screen",
+      "name": "实时大屏",
+      "status": "PASS",
+      "buttons": 2,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/user-profile",
+      "name": "用户画像",
+      "status": "PASS",
+      "buttons": 4,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/ab-test",
+      "name": "A/B测试",
+      "status": "PASS",
+      "buttons": 19,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/app-version",
+      "name": "应用版本管理",
+      "status": "PASS",
+      "buttons": 3,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/batch-import",
+      "name": "批量导入",
+      "status": "PASS",
+      "buttons": 22,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/knowledge-base",
+      "name": "知识库",
+      "status": "PASS",
+      "buttons": 5,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/search-analysis",
+      "name": "搜索分析",
+      "status": "PASS",
+      "buttons": 13,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/traffic-analysis",
+      "name": "流量分析",
+      "status": "PASS",
+      "buttons": 3,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/satisfaction",
+      "name": "满意度管理",
+      "status": "PASS",
+      "buttons": 3,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/gdpr",
+      "name": "GDPR合规",
+      "status": "PASS",
+      "buttons": 4,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/audit-log",
+      "name": "审计日志",
+      "status": "PASS",
+      "buttons": 9,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/product-approval",
+      "name": "商品审核",
+      "status": "PASS",
+      "buttons": 2,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/coupon-manage",
+      "name": "优惠券管理",
+      "status": "PASS",
+      "buttons": 7,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/flash-sale-manage",
+      "name": "秒杀管理",
+      "status": "PASS",
+      "buttons": 3,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/points-manage",
+      "name": "积分管理",
+      "status": "PASS",
+      "buttons": 6,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/blacklist",
+      "name": "黑名单管理",
+      "status": "PASS",
+      "buttons": 5,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/tariff",
+      "name": "关税管理",
+      "status": "PASS",
+      "buttons": 8,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/risk-alert",
+      "name": "风控告警",
+      "status": "PASS",
+      "buttons": 4,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/cs-sessions",
+      "name": "客服会话",
+      "status": "PASS",
+      "buttons": 4,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/order-tags",
+      "name": "订单标签",
+      "status": "PASS",
+      "buttons": 7,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/inventory-transfer",
+      "name": "库存调拨",
+      "status": "PASS",
+      "buttons": 3,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/merge-package",
+      "name": "合包管理",
+      "status": "PASS",
+      "buttons": 17,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/split-package",
+      "name": "分包裹",
+      "status": "PASS",
+      "buttons": 17,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/carrier-compare",
+      "name": "承运商对比",
+      "status": "PASS",
+      "buttons": 33,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/overseas-warehouse",
+      "name": "海外仓管理",
+      "status": "PASS",
+      "buttons": 27,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/warehouse-manage",
+      "name": "仓库管理",
+      "status": "PASS",
+      "buttons": 37,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/clearance",
+      "name": "清关管理",
+      "status": "PASS",
+      "buttons": 17,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/customs",
+      "name": "海关管理",
+      "status": "PASS",
+      "buttons": 17,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/settlement",
+      "name": "结算管理",
+      "status": "PASS",
+      "buttons": 27,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/system-config",
+      "name": "系统配置",
+      "status": "PASS",
+      "buttons": 10,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/operation-log",
+      "name": "运营日志",
+      "status": "PASS",
+      "buttons": 10,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/live-manage",
+      "name": "直播管理",
+      "status": "PASS",
+      "buttons": 11,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/marketing-effect",
+      "name": "营销效果",
+      "status": "PASS",
+      "buttons": 15,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/shipping-strategy",
+      "name": "发货策略",
+      "status": "PASS",
+      "buttons": 27,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/settings",
+      "name": "系统设置",
+      "status": "PASS",
+      "buttons": 4,
+      "issues": [],
+      "error_text": ""
+    },
+    {
+      "path": "/products/add",
+      "name": "新增商品",
+      "status": "PASS",
+      "buttons": 4,
+      "issues": [],
+      "error_text": ""
+    }
+  ]
+}

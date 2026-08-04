@@ -98,6 +98,10 @@ public class OrderEntity {
   @TableField(exist = false)
   private List<OrderItemEntity> items;
 
+  /** 用户昵称（非表字段，管理后台列表展示用） */
+  @TableField(exist = false)
+  private String userName;
+
   // ===== 领域方法 =====
 
   /** 获取订单状态枚举 */

@@ -65,20 +65,24 @@
                 <td>{{ pkg.shipTime }}</td>
                 <td>{{ pkg.eta }}</td>
                 <td class="cell-actions">
-                  <span class="table-link">追踪</span>
-                  <span class="table-link">详情</span>
+                  <span class="table-link" @click="handleTracking(pkg)">追踪</span>
+                  <span class="table-link" @click="handleDetail(pkg)">详情</span>
                 </td>
               </tr>
             </tbody>
           </table>
           <div class="pagination">
-            <div class="pagination-info">共 {{ packages.length }} 条</div>
+            <div class="pagination-info">共 {{ totalPackages }} 条</div>
             <div class="pagination-btns">
-              <button class="pagination-btn">上一页</button>
-              <button class="pagination-btn active">1</button>
-              <button class="pagination-btn">2</button>
-              <button class="pagination-btn">3</button>
-              <button class="pagination-btn">下一页</button>
+              <button class="pagination-btn" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">上一页</button>
+              <button
+                v-for="page in displayedPages"
+                :key="page"
+                class="pagination-btn"
+                :class="{ active: currentPage === page }"
+                @click="goToPage(page)"
+              >{{ page }}</button>
+              <button class="pagination-btn" :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">下一页</button>
             </div>
           </div>
         </div>
@@ -128,22 +132,54 @@
         </div>
       </div>
     </div>
+
+    <!-- 包裹详情弹窗 -->
+    <el-dialog v-model="packageDetailDialogVisible" title="包裹详情" width="480px">
+      <el-descriptions v-if="detailPackage" :column="1" border>
+        <el-descriptions-item label="包裹号">{{ detailPackage.trackingNo || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="承运商">{{ detailPackage.carrier || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="状态">{{ detailPackage.status || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="发出时间">{{ detailPackage.shippedAt || detailPackage.createTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="重量">{{ detailPackage.weight || '-' }}</el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
-import api from '../api/index'
-import { getWarehouses, getInventoryAlerts, getCarriers } from '../api/admin'
-import { ElMessage } from 'element-plus'
+import { ref, watch, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getWarehouses, getInventoryAlerts, getCarriers, getLogisticsKpi, getLogisticsPackages } from '../api/admin'
+import { toArray } from '../utils/safeArray'
+
+const router = useRouter()
 
 const activeWarehouse = ref('')
 const loading = ref(false)
+const currentPage = ref(1)
+const pageSize = 10
+const totalPackages = ref(0)
 
 const warehouses = ref([])
 const packages = ref([])
 const inventoryAlerts = ref([])
 const carrierDist = ref([])
+
+// 计算总页数
+const totalPages = computed(() => Math.ceil(totalPackages.value / pageSize) || 1)
+
+// 显示页码（最多显示5个）
+const displayedPages = computed(() => {
+  const total = totalPages.value
+  const current = currentPage.value
+  if (total <= 5) {
+    return Array.from({ length: total }, (_, i) => i + 1)
+  }
+  if (current <= 3) return [1, 2, 3, 4, 5]
+  if (current >= total - 2) return [total - 4, total - 3, total - 2, total - 1, total]
+  return [current - 2, current - 1, current, current + 1, current + 2]
+})
 
 // KPI数据
 const kpiData = ref({
@@ -156,7 +192,7 @@ const kpiData = ref({
 // 获取物流KPI数据
 async function fetchKpi() {
   try {
-    const res = await api.get('/logistics/kpi')
+    const res = await getLogisticsKpi()
     if (res) {
       kpiData.value = {
         pendingShip: res.pendingPick || 0,
@@ -175,7 +211,7 @@ async function fetchWarehouses() {
   try {
     const res = await getWarehouses()
     if (res) {
-      warehouses.value = (Array.isArray(res) ? res : []).map(w => ({
+      warehouses.value = toArray(res).map(w => ({
         key: String(w.id),
         label: w.name,
         ...w
@@ -189,16 +225,19 @@ async function fetchWarehouses() {
   }
 }
 
-// 获取包裹列表
+// 获取包裹列表（分页）
 async function fetchPackages() {
   loading.value = true
   try {
-    const params = {}
+    const params = {
+      page: currentPage.value,
+      size: pageSize
+    }
     if (activeWarehouse.value) params.warehouse = activeWarehouse.value
-    const res = await api.get('/logistics/packages', { params })
+    const res = await getLogisticsPackages(params)
     if (res) {
-      const list = res.records || res.list || res
-      packages.value = (Array.isArray(list) ? list : []).map(p => ({
+      const list = toArray(res)
+      packages.value = list.map(p => ({
         ...p,
         trackingNo: p.trackingNo || p.trackingNumber || '',
         route: [p.origin, p.destination].filter(Boolean).join(' → ') || '',
@@ -208,6 +247,7 @@ async function fetchPackages() {
         shipTime: p.estimatedDelivery ? new Date(p.estimatedDelivery).toLocaleDateString() : '',
         eta: p.estimatedDelivery ? new Date(p.estimatedDelivery).toLocaleDateString() : ''
       }))
+      totalPackages.value = res.total || 0
     }
   } catch (err) {
     console.error('获取包裹列表失败:', err)
@@ -217,13 +257,75 @@ async function fetchPackages() {
   }
 }
 
+// 页码切换
+function goToPage(page) {
+  if (page < 1 || page > totalPages.value) return
+  currentPage.value = page
+  fetchPackages()
+}
+
+// 追踪物流：根据不同的承运商跳转到对应查询页
+const carrierTrackUrls = {
+  ups: 'https://www.ups.com/track?tracknum=',
+  fedex: 'https://www.fedex.com/fedextrack/?trknbr=',
+  usps: 'https://tools.usps.com/go/TrackConfirmAction?tLabels=',
+  dhl: 'https://www.dhl.com/en/express/tracking.html?AWB=',
+  yto: 'https://www.yto.net.cn/', // 圆通
+  sto: 'https://www.sto.cn/', // 申通
+  zto: 'https://www.zto.com/', // 中通
+  yunda: 'https://www.yundaex.com/' // 韵达
+}
+
+function detectCarrier(carrier) {
+  if (!carrier) return null
+  const c = String(carrier).toLowerCase()
+  for (const key in carrierTrackUrls) {
+    if (c.includes(key)) return key
+  }
+  return null
+}
+
+function handleTracking(pkg) {
+  if (!pkg.trackingNo) {
+    ElMessage.warning('该包裹暂无运单号')
+    return
+  }
+  const carrierKey = detectCarrier(pkg.carrier) || detectCarrier(pkg.carrierCode)
+  if (carrierKey && carrierTrackUrls[carrierKey]) {
+    // 拼接 URL 跳转查询
+    const baseUrl = carrierTrackUrls[carrierKey]
+    const url = baseUrl.includes('?') ? baseUrl + pkg.trackingNo : baseUrl + pkg.trackingNo
+    window.open(url, '_blank', 'noopener,noreferrer')
+    ElMessage.success('已打开物流追踪')
+  } else {
+    // 识别不到承运商时弹出对话框显示运单信息
+    ElMessageBox.alert(
+      '运单号：' + pkg.trackingNo + '\n承运商：' + (pkg.carrier || '未知') + '\n请到对应承运商官网查询',
+      '物流追踪',
+      { confirmButtonText: '我知道了' }
+    )
+  }
+}
+
+const packageDetailDialogVisible = ref(false)
+const detailPackage = ref(null)
+function handleDetail(pkg) {
+  if (pkg.orderId) {
+    router.push(`/orders/${pkg.orderId}`)
+    return
+  }
+  // 无 orderId 时弹窗显示包裹信息
+  detailPackage.value = pkg
+  packageDetailDialogVisible.value = true
+}
+
 // 获取库存预警
 async function fetchInventoryAlerts() {
   try {
     const res = await getInventoryAlerts()
     if (res) {
-      const list = res.records || res.list || res
-      inventoryAlerts.value = (Array.isArray(list) ? list : []).map(a => ({
+      const list = toArray(res)
+      inventoryAlerts.value = list.map(a => ({
         sku: a.sku || a.productCode || '',
         name: a.name || a.productName || '',
         stock: a.stock || a.currentStock || 0
@@ -273,7 +375,7 @@ onMounted(() => {
 }
 
 .page-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-800);
   margin: 0 0 20px;

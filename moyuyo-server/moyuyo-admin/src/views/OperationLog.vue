@@ -63,6 +63,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getSystemLogs } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 const pageTitle = '运营日志'
 const filters = reactive({ operator: '', operationType: '', dateRange: null })
@@ -75,7 +76,7 @@ const total = ref(0)
 async function loadData() {
   try {
     const res = await getSystemLogs()
-    const logs = res.records || res || []
+    const logs = toArray(res)
       // 客户端筛选
       let filtered = [...logs]
       if (filters.operator) {

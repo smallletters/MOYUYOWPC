@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -40,5 +41,18 @@ public class AdminDashboardController {
     @GetMapping("/sales-trend")
     public Result<List<Map<String, Object>>> salesTrend() {
         return Result.success(dashboardService.getSalesTrend());
+    }
+
+    @Operation(summary = "商品分类销售分布")
+    @GetMapping("/category-distribution")
+    public Result<List<Map<String, Object>>> categoryDistribution() {
+        return Result.success(dashboardService.getCategoryDistribution());
+    }
+
+    @Operation(summary = "热销商品 Top N")
+    @GetMapping("/top-products")
+    public Result<List<Map<String, Object>>> topProducts(
+            @RequestParam(defaultValue = "5") int limit) {
+        return Result.success(dashboardService.getTopProducts(limit));
     }
 }

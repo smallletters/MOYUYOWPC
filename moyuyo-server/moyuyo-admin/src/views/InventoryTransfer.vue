@@ -67,6 +67,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useStatusTag } from '../composables/useStatusTag'
 import { getInventoryTransferList, createInventoryTransfer, approveInventoryTransfer, rejectInventoryTransfer, completeInventoryTransfer } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 const tableData = ref([])
 const statusFilter = ref('')
@@ -98,7 +99,7 @@ async function loadData() {
     const params = {}
     if (statusFilter.value) params.status = statusFilter.value
     const res = await getInventoryTransferList(params)
-    tableData.value = res.records || res || []
+    tableData.value = toArray(res)
   } catch (e) {
     ElMessage.error('获取调拨列表失败')
   }
@@ -115,7 +116,9 @@ async function handleSave() {
     return
   }
   try {
-    await createInventoryTransfer({ ...form })
+    // 后端 createInventoryTransfer 不读取 reason 字段，提交时剔除（表单备注输入框保留展示）
+    const { reason, ...payload } = form
+    await createInventoryTransfer(payload)
     ElMessage.success('调拨申请已提交')
     dialogVisible.value = false
     await loadData()

@@ -1,0 +1,79 @@
+﻿[LOGIN] OK: http://localhost:8080/admin/dashboard
+✓ 仪表盘                  btn=  2 issues=0
+✓ 订单管理                 btn= 36 issues=0
+✓ 商品管理                 btn= 28 issues=0
+✓ 退款管理                 btn=  7 issues=0
+✓ 用户管理                 btn= 26 issues=0
+✓ 营销管理                 btn= 11 issues=0
+✓ 内容审核                 btn= 12 issues=0
+✓ 客服管理                 btn= 14 issues=0
+✓ 数据分析                 btn=  6 issues=0
+✓ 物流管理                 btn= 15 issues=0
+✓ 财务概览                 btn=  5 issues=0
+✓ 库存管理                 btn= 16 issues=0
+✓ 工单管理                 btn= 15 issues=0
+✓ CMS内容管理              btn= 16 issues=0
+✓ RBAC权限管理             btn= 16 issues=0
+✓ 推送管理                 btn= 21 issues=0
+✓ 活动创建                 btn= 17 issues=0
+✓ 投诉管理                 btn= 19 issues=0
+✓ 评价管理                 btn= 19 issues=0
+✓ 商品分析                 btn= 19 issues=0
+✓ 商品报表                 btn= 23 issues=0
+✓ 商品评价审核               btn= 19 issues=0
+✓ 价格管理                 btn= 15 issues=0
+✓ 价格历史                 btn= 10 issues=0
+✓ 订单导出                 btn= 14 issues=0
+✓ 订单拦截                 btn=  6 issues=0
+✓ 订单监控                 btn=  6 issues=0
+✓ 订单改价                 btn=  7 issues=0
+✓ 订单打印                 btn=  6 issues=0
+✓ 短信管理                 btn=  7 issues=0
+✓ 敏感词管理                btn= 15 issues=0
+✓ 漏斗分析                 btn=  2 issues=0
+✓ RFM分析                btn=  6 issues=0
+✓ 风控管理                 btn=  5 issues=0
+✓ 风控规则引擎               btn=  3 issues=0
+✓ 实时大屏                 btn=  2 issues=0
+✓ 用户画像                 btn=  4 issues=0
+✓ A/B测试                btn=  9 issues=0
+✓ 应用版本管理               btn=  3 issues=0
+✓ 批量导入                 btn= 14 issues=0
+✓ 知识库                  btn=  5 issues=0
+✓ 搜索分析                 btn= 13 issues=0
+✓ 流量分析                 btn=  3 issues=0
+✓ 满意度管理                btn=  3 issues=0
+✓ GDPR合规               btn=  4 issues=0
+✓ 审计日志                 btn=  9 issues=0
+✓ 商品审核                 btn=  2 issues=0
+✓ 优惠券管理                btn=  9 issues=0
+✓ 秒杀管理                 btn=  3 issues=0
+✓ 积分管理                 btn=  6 issues=0
+✓ 黑名单管理                btn=  7 issues=0
+✓ 关税管理                 btn= 10 issues=0
+✓ 风控告警                 btn=  4 issues=0
+✓ 客服会话                 btn=  4 issues=0
+✓ 订单标签                 btn=  3 issues=0
+✓ 库存调拨                 btn=  3 issues=0
+✓ 合包管理                 btn= 17 issues=0
+✓ 分包裹                  btn= 17 issues=0
+✓ 承运商对比                btn= 23 issues=0
+✓ 海外仓管理                btn= 17 issues=0
+✓ 仓库管理                 btn= 27 issues=0
+✓ 清关管理                 btn= 17 issues=0
+✓ 海关管理                 btn= 17 issues=0
+✓ 结算管理                 btn= 13 issues=0
+✓ 系统配置                 btn= 10 issues=0
+✓ 运营日志                 btn= 10 issues=0
+✓ 直播管理                 btn= 11 issues=0
+✓ 营销效果                 btn= 15 issues=0
+✓ 发货策略                 btn= 17 issues=0
+✓ 系统设置                 btn=  4 issues=0
+✓ 新增商品                 btn=  4 issues=0
+
+========== 汇总 ==========
+总页面: 71
+通过:   71
+失败:   0
+
+详细结果已保存: D:\MOYUYOWPC\moyuyo-server\moyuyo-admin\tests\full_audit.json

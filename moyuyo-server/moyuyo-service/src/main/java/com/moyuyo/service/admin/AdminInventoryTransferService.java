@@ -1,6 +1,8 @@
 package com.moyuyo.service.admin;
 
-import java.util.Map;
+import com.moyuyo.common.dto.admin.PageResponse;
+import com.moyuyo.common.dto.admin.inventory.InventoryTransferCreateRequest;
+import com.moyuyo.common.dto.admin.inventory.InventoryTransferVO;
 
 /**
  * 管理后台库存调拨服务
@@ -8,14 +10,18 @@ import java.util.Map;
 public interface AdminInventoryTransferService {
 
   /**
-   * 调拨单列表（分页）
+   * 调拨单列表(分页)
+   *
+   * @param page   页码(从 1 开始)
+   * @param size   每页条数
+   * @param status 前端状态值:pending/approved/completed/rejected,为空时查全部
    */
-  Map<String, Object> listAll(int page, int size, String status);
+  PageResponse<InventoryTransferVO> listAll(int page, int size, String status);
 
   /**
    * 创建调拨单
    */
-  void create(Map<String, Object> data);
+  void create(InventoryTransferCreateRequest request);
 
   /**
    * 审批通过
@@ -24,6 +30,9 @@ public interface AdminInventoryTransferService {
 
   /**
    * 审批驳回
+   *
+   * @param id     调拨单ID
+   * @param reason 驳回原因(可为空)
    */
   void reject(Long id, String reason);
 

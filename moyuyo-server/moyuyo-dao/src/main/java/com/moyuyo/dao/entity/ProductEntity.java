@@ -42,6 +42,16 @@ public class ProductEntity {
 
     private String detail;
 
+    private String shortDetail;
+
+    private java.math.BigDecimal weight;
+
+    private String tags;
+
+    private String productType;
+
+    private Boolean manageStock;
+
     private Boolean onSale;
 
     private LocalDateTime wooModified;

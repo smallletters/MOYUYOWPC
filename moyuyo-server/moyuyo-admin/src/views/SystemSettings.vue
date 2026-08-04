@@ -120,6 +120,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getSystemLogs, getRbacRoles, getPermissions, getSecurityConfig, getSystemInfo, saveSystemConfig } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 import { getAdminInfo } from '../api/auth'
 
 const router = useRouter()
@@ -231,7 +232,7 @@ async function loadSystemInfo() {
   async function loadRecentLogs() {
   try {
     const res = await getSystemLogs()
-    const logs = res.records || res || []
+    const logs = toArray(res)
     recentLogs.value = logs.slice(0, 5).map(item => ({
       action: item.action || item.content || '执行了操作',
       operator: item.operator || item.operatorName || '系统',
@@ -249,7 +250,7 @@ onMounted(() => {
 
 <style scoped lang="css">
 .page-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-800);
   margin: 0 0 20px;

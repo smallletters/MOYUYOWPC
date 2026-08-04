@@ -212,4 +212,39 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         .divide(yesterday, 1, RoundingMode.HALF_UP)
         .doubleValue();
   }
+
+  @Override
+  public List<Map<String, Object>> getCategoryDistribution() {
+    // 按订单商品汇总销售数量和销售额（OrderItem 表中不含 category_id，
+    // 因此仅做总体汇总，前端可按此绘制整体趋势饼图）
+    List<Map<String, Object>> rows = orderItemMapper.selectMaps(
+        new QueryWrapper<OrderItemEntity>()
+            .select("COUNT(*) AS cnt", "COALESCE(SUM(subtotal), 0) AS amount"));
+    List<Map<String, Object>> result = new ArrayList<>();
+    if (rows != null && !rows.isEmpty()) {
+      Map<String, Object> r = rows.get(0);
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("categoryId", 0);
+      item.put("categoryName", "全部分类");
+      item.put("amount", r.get("amount"));
+      item.put("count", r.get("cnt"));
+      item.put("percent", 100.0);
+      result.add(item);
+    }
+    return result;
+  }
+
+  @Override
+  public List<Map<String, Object>> getTopProducts(int limit) {
+    if (limit <= 0) limit = 5;
+    if (limit > 50) limit = 50;
+    List<Map<String, Object>> rows = orderItemMapper.selectMaps(
+        new QueryWrapper<OrderItemEntity>()
+            .select("product_id AS productId", "product_name AS productName",
+                "SUM(quantity) AS totalQty", "SUM(subtotal) AS totalAmount")
+            .groupBy("product_id", "product_name")
+            .orderByDesc("totalAmount")
+            .last("LIMIT " + limit));
+    return rows == null ? Collections.emptyList() : rows;
+  }
 }

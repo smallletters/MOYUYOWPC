@@ -1,0 +1,2 @@
+try { $r = Invoke-WebRequest -Uri 'http://localhost:8080/actuator/health' -UseBasicParsing -TimeoutSec 5; Write-Host ("actuator/health=" + $r.StatusCode + " body=" + $r.Content) } catch { Write-Host ("actuator/health error: " + $_.Exception.Message) }
+try { $r2 = Invoke-WebRequest -Uri 'http://localhost:8080/api-docs' -UseBasicParsing -TimeoutSec 5; Write-Host ("api-docs=" + $r2.StatusCode + " length=" + $r2.Content.Length) } catch { Write-Host ("api-docs error: " + $_.Exception.Message) }

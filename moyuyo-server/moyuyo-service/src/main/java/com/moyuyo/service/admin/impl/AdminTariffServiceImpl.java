@@ -56,15 +56,48 @@ public class AdminTariffServiceImpl implements AdminTariffService {
   @Transactional
   public void createConfig(Map<String, Object> data) {
     TariffConfigEntity entity = new TariffConfigEntity();
-    if (data.get("countryCode") != null) entity.setCountryCode((String) data.get("countryCode"));
-    if (data.get("productCategory") != null) entity.setProductCategory((String) data.get("productCategory"));
-    if (data.get("rate") != null) entity.setRate(new BigDecimal(data.get("rate").toString()));
-    if (data.get("currency") != null) entity.setCurrency((String) data.get("currency"));
-    if (data.get("minThreshold") != null) entity.setMinThreshold(new BigDecimal(data.get("minThreshold").toString()));
-    if (data.get("maxThreshold") != null) entity.setMaxThreshold(new BigDecimal(data.get("maxThreshold").toString()));
+    // 兼容 snake_case 字段命名
+    String countryCode = strVal(data, "countryCode", "country_code");
+    String productCategory = strVal(data, "productCategory", "product_category");
+    if (countryCode != null) entity.setCountryCode(countryCode);
+    if (productCategory != null) entity.setProductCategory(productCategory);
+
+    Object rateVal = firstVal(data, "rate");
+    if (rateVal != null) entity.setRate(new BigDecimal(rateVal.toString()));
+
+    String currency = strVal(data, "currency", null);
+    if (currency != null) entity.setCurrency(currency);
+    else entity.setCurrency("USD");
+
+    Object minVal = firstVal(data, "minThreshold", "min_threshold");
+    if (minVal != null) entity.setMinThreshold(new BigDecimal(minVal.toString()));
+    Object maxVal = firstVal(data, "maxThreshold", "max_threshold");
+    if (maxVal != null) entity.setMaxThreshold(new BigDecimal(maxVal.toString()));
+
     if (data.get("status") != null) entity.setStatus((String) data.get("status"));
+    // 兜底：country_code/rate 是 NOT NULL 必填字段
+    if (entity.getCountryCode() == null || entity.getCountryCode().isEmpty()) {
+      entity.setCountryCode("US");
+    }
+    if (entity.getRate() == null) {
+      entity.setRate(BigDecimal.ZERO);
+    }
     entity.setStatus("ENABLED");
     tariffConfigMapper.insert(entity);
+  }
+
+  private String strVal(Map<String, Object> data, String camelKey, String snakeKey) {
+    Object v = data.get(camelKey);
+    if (v == null && snakeKey != null) v = data.get(snakeKey);
+    return v == null ? null : v.toString();
+  }
+
+  private Object firstVal(Map<String, Object> data, String... keys) {
+    for (String k : keys) {
+      Object v = data.get(k);
+      if (v != null) return v;
+    }
+    return null;
   }
 
   @Override

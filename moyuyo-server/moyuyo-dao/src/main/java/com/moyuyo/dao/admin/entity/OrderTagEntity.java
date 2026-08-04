@@ -12,21 +12,27 @@ import java.time.LocalDateTime;
 @TableName("mo_order_tag")
 public class OrderTagEntity {
 
-    @TableId(type = IdType.ASSIGN_ID)
-    private Long id;
+  @TableId(type = IdType.ASSIGN_ID)
+  private Long id;
 
-    /** 标签名称 */
-    private String tagName;
+  /** 标签名称 */
+  private String name;
 
-    /** 标签颜色 */
-    private String tagColor;
+  /** 标签颜色 */
+  private String color;
 
-    /** 排序号 */
-    private Integer sortOrder;
+  /** 标签描述 */
+  private String description;
 
-    /** 状态：ENABLED/DISABLED */
-    private String status;
+  /** 排序号 */
+  private Integer sortOrder;
 
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createTime;
+  /** 是否启用：1启用 0禁用 */
+  private Integer enabled;
+
+  @TableField(fill = FieldFill.INSERT)
+  private LocalDateTime createTime;
+
+  @TableField(fill = FieldFill.INSERT_UPDATE)
+  private LocalDateTime updateTime;
 }

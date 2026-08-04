@@ -78,9 +78,22 @@
         <h2 class="section-title">推荐位管理</h2>
         <button class="btn btn-sm btn-primary" @click="handleAddRecommend">新建推荐位</button>
       </div>
-      <div class="empty-panel">
+      <div v-if="recommendData.length === 0" class="empty-panel">
         <p>暂无推荐位数据</p>
         <button class="btn btn-outline" style="margin-top:12px" @click="handleAddRecommend">添加第一个推荐位</button>
+      </div>
+      <div v-else class="cms-list">
+        <div v-for="item in recommendData" :key="item.id" class="cms-list-item">
+          <div class="cms-list-info">
+            <span class="cms-list-title">{{ item.title }}</span>
+            <span :class="statusTagClass(item.status)">{{ item.status }}</span>
+          </div>
+          <span class="cms-list-date">{{ item.dateRange || '未设置日期' }}</span>
+          <div class="cms-list-actions">
+            <button class="action-btn action-btn-primary" @click="handleEdit(item)">编辑</button>
+            <button class="action-btn action-btn-danger" @click="handleDelete(item)">删除</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -90,9 +103,22 @@
         <h2 class="section-title">专题页管理</h2>
         <button class="btn btn-sm btn-primary" @click="handleAddTopic">新建专题页</button>
       </div>
-      <div class="empty-panel">
+      <div v-if="topicData.length === 0" class="empty-panel">
         <p>暂无专题页数据</p>
         <button class="btn btn-outline" style="margin-top:12px" @click="handleAddTopic">添加第一个专题页</button>
+      </div>
+      <div v-else class="cms-list">
+        <div v-for="item in topicData" :key="item.id" class="cms-list-item">
+          <div class="cms-list-info">
+            <span class="cms-list-title">{{ item.title }}</span>
+            <span :class="statusTagClass(item.status)">{{ item.status }}</span>
+          </div>
+          <span class="cms-list-date">{{ item.dateRange || '未设置日期' }}</span>
+          <div class="cms-list-actions">
+            <button class="action-btn action-btn-primary" @click="handleEdit(item)">编辑</button>
+            <button class="action-btn action-btn-danger" @click="handleDelete(item)">删除</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -152,8 +178,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { getCmsList, createCms, updateCms, updateCmsStatus, reorderCms } from '../api/admin'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getCmsList, createCms, updateCms, deleteCms, updateCmsStatus, reorderCms } from '../api/admin'
 
 const router = useRouter()
 
@@ -171,8 +197,28 @@ const tabList = [
 
 // Banner 列表（通过API获取）
 const bannerData = ref([])
+// 推荐位 / 专题页列表（通过API获取）
+const recommendData = ref([])
+const topicData = ref([])
 
-// 格式化日期范围
+// 列表项字段映射（后端 → 前端展示）
+function mapItem(item) {
+  return {
+    id: item.id,
+    title: item.title || '',
+    type: item.type || 'BANNER',
+    imageUrl: item.cover || item.imageUrl || '',
+    linkUrl: item.link || item.linkUrl || '',
+    content: item.description || item.content || '',
+    sortOrder: item.sortOrder ?? 0,
+    locations: item.location ? [item.location] : [],
+    status: item.status || '已暂停',
+    dateRange: formatDateRange(item.startTime, item.endTime),
+    ctr: item.ctr != null ? (Number(item.ctr) * 100).toFixed(1) + '%' : '0%'
+  }
+}
+
+// 格式化日期范围（后端 → 前端显示）
 function formatDateRange(startTime, endTime) {
   if (!startTime && !endTime) return ''
   const fmt = (val) => {
@@ -185,23 +231,30 @@ function formatDateRange(startTime, endTime) {
   return fmt(startTime) + ' - ' + fmt(endTime)
 }
 
-// 加载Banner列表
+// 解析日期范围字符串（前端显示 → 后端字段）
+function parseDateRange(dateRangeStr) {
+  if (!dateRangeStr) return [null, null]
+  const parts = dateRangeStr.split('-').map(s => s.trim())
+  if (parts.length !== 2) return [null, null]
+  // 未携带年份，补足为当前年份
+  const currentYear = new Date().getFullYear()
+  const parseOne = (mmdd) => {
+    if (!mmdd || mmdd === 'undefined') return null
+    const [m, d] = mmdd.split('/').map(n => parseInt(n, 10))
+    if (!m || !d) return null
+    return new Date(currentYear, m - 1, d).toISOString()
+  }
+  return [parseOne(parts[0]), parseOne(parts[1])]
+}
+
+// 加载CMS列表（Banner / 推荐位 / 专题页）
 async function loadBannerData() {
   try {
     const list = await getCmsList()
-    bannerData.value = (list || []).map(item => ({
-      id: item.id,
-      title: item.title || '',
-      type: item.type || 'BANNER',
-      imageUrl: item.cover || item.imageUrl || '',
-      linkUrl: item.link || item.linkUrl || '',
-      content: item.description || item.content || '',
-      sortOrder: item.sortOrder ?? 0,
-      locations: item.location ? [item.location] : [],
-      status: item.status || '已暂停',
-      dateRange: formatDateRange(item.startTime, item.endTime),
-      ctr: item.ctr != null ? (Number(item.ctr) * 100).toFixed(1) + '%' : '0%'
-    }))
+    const items = list || []
+    bannerData.value = items.filter(i => !i.type || i.type === 'BANNER').map(mapItem)
+    recommendData.value = items.filter(i => i.type === 'RECOMMEND').map(mapItem)
+    topicData.value = items.filter(i => i.type === 'TOPIC').map(mapItem)
   } catch (e) {
     console.error('获取CMS列表失败', e)
   }
@@ -281,7 +334,7 @@ async function handleToggleStatus(item) {
 // 保存Banner编辑/新建
 async function handleSave() {
   try {
-    // 将前端字段映射为后端期望的字段名
+    // 后端不读取 startTime/endTime，不随 payload 提交（表单 dateRange 仅作展示）
     const payload = {
       title: editForm.value.title,
       type: editForm.value.type,
@@ -289,8 +342,7 @@ async function handleSave() {
       link: editForm.value.linkUrl,
       description: editForm.value.content,
       sortOrder: editForm.value.sortOrder,
-      status: editForm.value.status,
-      dateRange: editForm.value.dateRange
+      status: editForm.value.status
     }
     if (editForm.value.id) {
       // 编辑：带上id调用更新接口
@@ -311,21 +363,44 @@ async function handleSave() {
 // 删除 Banner
 async function handleDelete(item) {
   try {
+    await ElMessageBox.confirm(
+      `确定删除 "${item.title}" 吗？删除后不可恢复。`,
+      '删除确认',
+      { type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消' }
+    )
     await deleteCms(item.id)
     ElMessage.success(`已删除 "${item.title}"`)
     await loadBannerData()
   } catch (e) {
-    ElMessage.error('删除失败')
+    if (e !== 'cancel' && e !== 'close') {
+      console.error('删除Banner失败:', e)
+      ElMessage.error('删除失败: ' + (e?.message || '未知错误'))
+    }
   }
 }
 
-// 推荐位和专题页新增操作
+// 推荐位和专题页新增操作：复用新建弹窗并预设类型
+function openAddDialog(type, title, statusDefault) {
+  dialogTitle.value = title
+  editForm.value = {
+    title: '',
+    type,
+    imageUrl: '',
+    linkUrl: '',
+    content: '',
+    sortOrder: 0,
+    dateRange: '',
+    status: statusDefault || '已暂停'
+  }
+  dialogVisible.value = true
+}
+
 function handleAddRecommend() {
-  ElMessage.info('推荐位创建功能开发中，请联系管理员')
+  openAddDialog('RECOMMEND', '新建推荐位')
 }
 
 function handleAddTopic() {
-  ElMessage.info('专题页创建功能开发中，请联系管理员')
+  openAddDialog('TOPIC', '新建专题页')
 }
 
 onMounted(() => {
@@ -334,10 +409,45 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-wrapper { padding: 20px; }
+.page-wrapper { }
 .page-title-section { margin-bottom: 20px; }
 .page-title { font-size: 22px; font-weight: 700; color: var(--text-800); margin: 0 0 6px; }
 .page-desc { font-size: 13px; color: var(--text-400); margin: 0; }
+
+/* 推荐位/专题页列表 */
+.cms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cms-list-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  transition: box-shadow 0.15s ease;
+}
+.cms-list-item:hover { box-shadow: var(--shadow-sm); }
+.cms-list-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.cms-list-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cms-list-date { font-size: 12px; color: var(--text-400); white-space: nowrap; }
+.cms-list-actions { display: flex; gap: 8px; }
 
 /* Tab 栏 */
 .custom-tab-bar {

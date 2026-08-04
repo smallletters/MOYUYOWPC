@@ -12,7 +12,7 @@
         <el-card shadow="never">
           <div class="kpi-card">
             <div class="kpi-label">今日发送</div>
-            <div class="kpi-value" style="color:#409eff">{{ kpiData.todaySent }}</div>
+            <div class="kpi-value" style="color:var(--brand-500)">{{ kpiData.todaySent }}</div>
           </div>
         </el-card>
       </el-col>
@@ -20,7 +20,7 @@
         <el-card shadow="never">
           <div class="kpi-card">
             <div class="kpi-label">本月发送</div>
-            <div class="kpi-value" style="color:#e6a23c">{{ kpiData.monthlySent }}</div>
+            <div class="kpi-value" style="color:var(--state-warning)">{{ kpiData.monthlySent }}</div>
           </div>
         </el-card>
       </el-col>
@@ -28,7 +28,7 @@
         <el-card shadow="never">
           <div class="kpi-card">
             <div class="kpi-label">剩余条数</div>
-            <div class="kpi-value" style="color:#67c23a">{{ kpiData.remaining }}</div>
+            <div class="kpi-value" style="color:var(--state-success)">{{ kpiData.remaining }}</div>
           </div>
         </el-card>
       </el-col>
@@ -36,11 +36,59 @@
         <el-card shadow="never">
           <div class="kpi-card">
             <div class="kpi-label">成功率</div>
-            <div class="kpi-value" style="color:#909399">{{ kpiData.successRate }}%</div>
+            <div class="kpi-value" style="color:var(--text-400)">{{ kpiData.successRate }}%</div>
           </div>
         </el-card>
       </el-col>
     </el-row>
+    <!-- 短信模板管理（示例数据，后端暂无模板管理 API） -->
+    <el-card shadow="never" class="template-card">
+      <div class="template-header">
+        <span class="template-title">短信模板</span>
+        <el-button type="primary" size="small" @click="handleAddTemplate">新建模板</el-button>
+      </div>
+      <div class="template-list">
+        <div
+          v-for="tpl in templateList"
+          :key="tpl.id"
+          class="template-item"
+          :class="{ 'is-disabled': !tpl.enabled }"
+        >
+          <div class="template-top">
+            <div class="template-name-wrap">
+              <span class="template-name">{{ tpl.name }}</span>
+              <el-tag size="small" :type="templateTypeTag(tpl.type)">{{ tpl.type }}</el-tag>
+            </div>
+            <el-tag size="small" :type="templateStatusTag(tpl.status)">{{ tpl.status }}</el-tag>
+          </div>
+          <div class="template-id">{{ tpl.templateId }}</div>
+          <div class="template-content line-clamp-2">{{ tpl.content }}</div>
+          <div v-if="tpl.rejectReason" class="template-reject">拒绝原因：{{ tpl.rejectReason }}</div>
+          <div class="template-vars">
+            <span class="var-label">变量：</span>
+            <template v-if="tpl.vars && tpl.vars.length">
+              <el-tag
+                v-for="v in tpl.vars"
+                :key="v"
+                size="small"
+                type="info"
+                effect="plain"
+              >{{ v }}</el-tag>
+            </template>
+            <span v-else class="var-empty">无变量</span>
+          </div>
+          <div class="template-actions">
+            <el-button size="small" @click="handleEditTemplate(tpl)">编辑</el-button>
+            <el-button
+              size="small"
+              :type="tpl.enabled ? 'danger' : 'primary'"
+              plain
+              @click="handleToggleTemplate(tpl)"
+            >{{ tpl.enabled ? '禁用' : '启用' }}</el-button>
+          </div>
+        </div>
+      </div>
+    </el-card>
     <el-card shadow="never" class="filter-card">
       <el-form :model="filters" inline>
         <el-form-item label="关键词">
@@ -101,13 +149,57 @@
         <el-button type="primary" :loading="submitting" @click="handleSave">发送</el-button>
       </template>
     </el-dialog>
+    <!-- 新建/编辑短信模板弹窗 -->
+    <el-dialog v-model="templateDialogVisible" :title="templateForm.id ? '编辑模板' : '新建模板'" width="560px">
+      <el-form :model="templateForm" label-width="90px">
+        <el-form-item label="模板名称" required>
+          <el-input v-model="templateForm.name" placeholder="请输入模板名称" maxlength="30" />
+        </el-form-item>
+        <el-form-item label="模板类型" required>
+          <el-select v-model="templateForm.type" placeholder="请选择类型" style="width:100%">
+            <el-option label="验证码" value="验证码" />
+            <el-option label="通知" value="通知" />
+            <el-option label="营销" value="营销" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="模板内容" required>
+          <el-input
+            v-model="templateForm.content"
+            type="textarea"
+            :rows="4"
+            placeholder="变量请使用 ${变量名} 占位，如：您的验证码为 ${code}，5分钟内有效"
+            maxlength="300"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-form-item label="变量预览">
+          <div class="var-preview">
+            <template v-if="templateFormVars.length">
+              <el-tag
+                v-for="v in templateFormVars"
+                :key="v"
+                size="small"
+                type="info"
+                effect="plain"
+              >{{ v }}</el-tag>
+            </template>
+            <span v-else style="color:var(--text-400);font-size:12px;">未检测到变量</span>
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="templateDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="templateSubmitting" @click="handleSaveTemplate">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getSmsStats, getSmsRecords, sendSms } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -152,7 +244,7 @@ async function loadData() {
       Object.assign(kpiData, statsRes)
     }
     // 填充短信记录
-    const list = (recordsRes && recordsRes.records) || recordsRes || []
+    const list = toArray(recordsRes, 'records')
     const filtered = list.filter(d => {
       const kw = filters.keyword.toLowerCase()
       if (kw && !d.phone.includes(kw)) return false
@@ -201,11 +293,117 @@ function handleDetail(row) {
   ElMessage.info('短信内容：' + row.content)
 }
 
+// ==================== 短信模板（示例数据，后端暂无模板管理 API） ====================
+const templateDialogVisible = ref(false)
+const templateSubmitting = ref(false)
+
+// 模板编辑表单（新建与编辑共用）
+const templateForm = reactive({
+  id: 0,
+  name: '',
+  type: '',
+  content: ''
+})
+
+// 从模板内容中解析 ${xxx} 形式的变量
+function parseVars(content) {
+  const vars = []
+  const re = /\$\{([^}]+)\}/g
+  let m
+  while ((m = re.exec(content))) {
+    if (!vars.includes(m[1])) vars.push(m[1])
+  }
+  return vars
+}
+
+// 示例数据：短信模板列表
+const templateList = ref([
+  { id: 1, name: '登录验证码', type: '验证码', templateId: 'SMS_20240101', content: '您的验证码为 ${code}，有效期5分钟，请勿泄露给他人。', status: '已通过', rejectReason: '', enabled: true },
+  { id: 2, name: '发货通知', type: '通知', templateId: 'SMS_20240102', content: '您的订单 ${orderNo} 已发货，快递单号 ${trackingNo}，请注意查收。', status: '已通过', rejectReason: '', enabled: true },
+  { id: 3, name: '促销活动推送', type: '营销', templateId: 'SMS_20240103', content: '亲爱的会员，MOYUYO 限时特惠来袭！${productName} 低至 ${discount} 折，快来抢购。', status: '审核中', rejectReason: '', enabled: true },
+  { id: 4, name: '退款通知', type: '通知', templateId: 'SMS_20240104', content: '您的退款 ${amount} 元已处理，预计 1-3 个工作日到账。', status: '已拒绝', rejectReason: '模板内容包含敏感词汇，请修改后重新提交', enabled: true }
+])
+
+// 为示例数据预解析变量列表
+templateList.value.forEach(tpl => { tpl.vars = parseVars(tpl.content) })
+
+// 弹窗中根据当前内容实时解析变量
+const templateFormVars = computed(() => parseVars(templateForm.content))
+
+// 模板类型对应的标签样式
+function templateTypeTag(type) {
+  const map = { '验证码': 'primary', '通知': 'info', '营销': 'warning' }
+  return map[type] || 'info'
+}
+
+// 模板审核状态对应的标签样式
+function templateStatusTag(status) {
+  const map = { '已通过': 'success', '审核中': 'warning', '已拒绝': 'danger' }
+  return map[status] || 'info'
+}
+
+// 打开新建模板弹窗
+function handleAddTemplate() {
+  Object.assign(templateForm, { id: 0, name: '', type: '', content: '' })
+  templateDialogVisible.value = true
+}
+
+// 打开编辑模板弹窗
+function handleEditTemplate(tpl) {
+  Object.assign(templateForm, { id: tpl.id, name: tpl.name, type: tpl.type, content: tpl.content })
+  templateDialogVisible.value = true
+}
+
+// 保存模板（示例数据：本地新增/更新，无后端 API）
+async function handleSaveTemplate() {
+  if (!templateForm.name || !templateForm.type || !templateForm.content) {
+    ElMessage.warning('请填写完整的模板信息')
+    return
+  }
+  templateSubmitting.value = true
+  try {
+    if (templateForm.id) {
+      // 编辑：更新已有模板并重新解析变量
+      const tpl = templateList.value.find(t => t.id === templateForm.id)
+      if (tpl) {
+        tpl.name = templateForm.name
+        tpl.type = templateForm.type
+        tpl.content = templateForm.content
+        tpl.vars = parseVars(templateForm.content)
+      }
+      ElMessage.success('模板更新成功')
+    } else {
+      // 新建：追加到本地示例列表，状态默认为审核中
+      templateList.value.unshift({
+        id: Date.now(),
+        name: templateForm.name,
+        type: templateForm.type,
+        templateId: 'SMS_' + Date.now().toString().slice(-8),
+        content: templateForm.content,
+        status: '审核中',
+        rejectReason: '',
+        enabled: true,
+        vars: parseVars(templateForm.content)
+      })
+      ElMessage.success('模板创建成功，等待审核')
+    }
+    templateDialogVisible.value = false
+  } finally {
+    templateSubmitting.value = false
+  }
+}
+
+// 启用/禁用模板（示例数据：本地切换，无后端 API）
+function handleToggleTemplate(tpl) {
+  tpl.enabled = !tpl.enabled
+  ElMessage.success(tpl.enabled ? `模板「${tpl.name}」已启用` : `模板「${tpl.name}」已禁用`)
+}
+
 onMounted(() => { loadData() })
 </script>
 
 <style scoped>
-.page-wrapper { padding: 20px; }
+.page-wrapper { }
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .page-header h2 { font-size: 20px; font-weight: 700; color: var(--text-800); margin: 0; }
 .kpi-row { margin-bottom: 16px; }
@@ -214,4 +412,23 @@ onMounted(() => { loadData() })
 .kpi-value { font-size: 28px; font-weight: 700; color: var(--text-800); }
 .filter-card { margin-bottom: 16px; }
 .header-actions { display: flex; gap: 8px; }
+/* 短信模板区块样式 */
+.template-card { margin-bottom: 16px; }
+.template-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.template-title { font-size: 16px; font-weight: 700; color: var(--text-800); }
+.template-list { display: flex; flex-direction: column; gap: 12px; }
+.template-item { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; background: var(--background-50); transition: opacity .2s; }
+.template-item.is-disabled { opacity: .55; }
+.template-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+.template-name-wrap { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.template-name { font-size: 14px; font-weight: 600; color: var(--text-800); }
+.template-id { font-size: 12px; color: var(--text-400); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin-bottom: 8px; }
+.template-content { font-size: 13px; color: var(--text-500); line-height: 1.5; margin-bottom: 8px; }
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.template-reject { font-size: 12px; color: var(--state-error); margin-bottom: 8px; }
+.template-vars { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.var-label { font-size: 12px; color: var(--text-400); }
+.var-empty { font-size: 12px; color: var(--text-400); }
+.var-preview { display: flex; flex-wrap: wrap; gap: 6px; min-height: 24px; }
+.template-actions { display: flex; gap: 8px; }
 </style>

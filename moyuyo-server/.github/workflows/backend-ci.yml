@@ -62,10 +62,30 @@ jobs:
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          restore-keys: ${{ runner.os }}-m2-
 
       - name: Checkstyle validation
         run: mvn validate -B
+
+      - name: Flyway 迁移校验（完整跑一遍 db/migration + db/seed）
+        # 关键：CI 中真实执行 Flyway 迁移，可提前发现 DDL 错误（如 V20260804_02 分区变更）
+        # 注意：mo_order 分区 DDL 需要 MySQL 8.0+，CI 已用 8.0
+        run: |
+          mvn -pl moyuyo-api flyway:migrate \
+            -Dflyway.url=jdbc:mysql://localhost:3306/moyuyo_test \
+            -Dflyway.user=root \
+            -Dflyway.password=test \
+            -Dflyway.locations=classpath:db/migration,classpath:db/seed \
+            -Dflyway.baselineOnMigrate=true -B
+        env:
+          MYSQL_PASSWORD: test
+
+      - name: Flyway info 验证（确认所有迁移脚本 applied）
+        run: |
+          mvn -pl moyuyo-api flyway:info \
+            -Dflyway.url=jdbc:mysql://localhost:3306/moyuyo_test \
+            -Dflyway.user=root \
+            -Dflyway.password=test -B
 
       - name: Run tests with coverage
         run: mvn verify -B
@@ -74,6 +94,21 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           JWT_SECRET: ci-test-jwt-secret-key-at-least-32-chars!!
+
+      - name: OWASP 依赖漏洞扫描（首次需下载 NVD 数据集，可能 5-10 分钟）
+        # 仅在 PR 和 main 分支跑，避免每次 push 消耗时间
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        run: |
+          mvn -pl moyuyo-api org.owasp:dependency-check-maven:check -B
+        continue-on-error: false
+
+      - name: 上传 OWASP 扫描报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report
+          path: moyuyo-api/target/dependency-check-report.html
+          retention-days: 30
 
       - name: Upload JaCoCo coverage report
         if: always()

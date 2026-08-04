@@ -1,5 +1,6 @@
 package com.moyuyo.service.admin;
 
+import com.moyuyo.dao.admin.entity.BlacklistEntity;
 import java.util.List;
 import java.util.Map;
 
@@ -14,9 +15,9 @@ public interface AdminBlacklistService {
   Map<String, Object> listAll(String type, int page, int size);
 
   /**
-   * 添加黑名单
+   * 添加黑名单，返回插入的实体（含自动生成的 id）
    */
-  void create(Map<String, Object> data);
+  BlacklistEntity create(Map<String, Object> data);
 
   /**
    * 批量添加黑名单

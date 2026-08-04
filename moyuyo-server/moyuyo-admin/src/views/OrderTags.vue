@@ -51,6 +51,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getOrderTagList, createOrderTag, updateOrderTag, deleteOrderTag } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 const tableData = ref([])
 const dialogVisible = ref(false)
@@ -59,20 +60,20 @@ const editId = ref(null)
 
 const form = reactive({
   name: '',
-  color: '#409EFF',
+  color: '#007aff',
   description: '',
 })
 
 function resetForm() {
   form.name = ''
-  form.color = '#409EFF'
+  form.color = '#007aff'
   form.description = ''
 }
 
 async function loadData() {
   try {
     const res = await getOrderTagList()
-    tableData.value = res.records || res || []
+    tableData.value = toArray(res)
   } catch (e) {
     ElMessage.error('获取标签列表失败')
   }
@@ -89,7 +90,7 @@ function handleEdit(row) {
   isEdit.value = true
   editId.value = row.id
   form.name = row.name
-  form.color = row.color || '#409EFF'
+  form.color = row.color || '#007aff'
   form.description = row.description || ''
   dialogVisible.value = true
 }
@@ -117,11 +118,15 @@ async function handleSave() {
 async function handleDelete(row) {
   try {
     await ElMessageBox.confirm('确定删除标签「' + row.name + '」吗？', '提示')
+  } catch (e) {
+    return // 用户取消或关闭
+  }
+  try {
     await deleteOrderTag(row.id)
     ElMessage.success('已删除')
     await loadData()
   } catch (e) {
-    // 用户取消不处理
+    ElMessage.error('删除失败')
   }
 }
 

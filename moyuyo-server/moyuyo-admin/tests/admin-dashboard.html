@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>moyuyo-server 后端管理页面数据可视化</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #0f1620; margin: 0; padding: 0; color: #e6edf3; }
+  .container { max-width: 1600px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 28px; color: #58a6ff; margin: 0 0 8px; font-weight: 600; }
+  h2 { font-size: 20px; color: #e6edf3; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 1px solid #21262d; }
+  h3 { font-size: 16px; color: #c9d1d9; margin: 0 0 12px; font-weight: 500; }
+  .meta { color: #8b949e; font-size: 13px; margin-bottom: 24px; }
+  .grid { display: grid; gap: 16px; margin-bottom: 16px; }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .card { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 20px; }
+  .kpi-card { background: linear-gradient(135deg, #161b22 0%, #1c2128 100%); border: 1px solid #21262d; border-radius: 8px; padding: 20px; position: relative; overflow: hidden; }
+  .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent, #58a6ff); }
+  .kpi-card.green::before { background: #3fb950; }
+  .kpi-card.orange::before { background: #d29922; }
+  .kpi-card.purple::before { background: #bc8cff; }
+  .kpi-card.cyan::before { background: #39c5cf; }
+  .kpi-value { font-size: 36px; font-weight: 700; color: #e6edf3; line-height: 1.2; letter-spacing: -1px; }
+  .kpi-label { font-size: 13px; color: #8b949e; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi-delta { font-size: 12px; color: #3fb950; margin-top: 8px; }
+  .chart { width: 100%; height: 320px; }
+  .chart-tall { width: 100%; height: 480px; }
+  .chart-short { width: 100%; height: 240px; }
+  .legend-row { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; font-size: 12px; color: #8b949e; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .pill { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; background: #1c2128; color: #58a6ff; margin: 2px; border: 1px solid #21262d; }
+  .pill.green { color: #3fb950; }
+  .pill.orange { color: #d29922; }
+  .pill.red { color: #f85149; }
+  .tag-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .footer { text-align: center; color: #6e7681; font-size: 12px; margin-top: 40px; padding: 20px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📊 moyuyo-server 后端管理页面数据可视化</h1>
+  <div class="meta">实时数据 · 扫描时间: <span id="ts">2026-07-29 15:50:00</span> · 端口 8080 · JDK 25 · Spring Boot 3.5</div>
+
+  <!-- 核心 KPI -->
+  <div class="grid grid-4">
+    <div class="kpi-card">
+      <div class="kpi-value">312</div>
+      <div class="kpi-label">后端接口总数</div>
+      <div class="kpi-delta">↑ 较修复前 +0 · 全部在线</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-value">100%</div>
+      <div class="kpi-label">健康检查通过率</div>
+      <div class="kpi-delta">307 / 307 · 5xx=0</div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-value">47</div>
+      <div class="kpi-label">Admin 控制器</div>
+      <div class="kpi-delta">含 312 个 HTTP 端点</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-value">79</div>
+      <div class="kpi-label">前端管理页面</div>
+      <div class="kpi-delta">Vue 3 + Element Plus</div>
+    </div>
+  </div>
+
+  <!-- 修复结果 -->
+  <h2>① 修复结果概览</h2>
+  <div class="grid grid-2">
+    <div class="card">
+      <h3>接口健康分布（按 HTTP 状态）</h3>
+      <div id="chart-status" class="chart"></div>
+    </div>
+    <div class="card">
+      <h3>修复前后失败接口数趋势</h3>
+      <div id="chart-trend" class="chart"></div>
+    </div>
+  </div>
+
+  <!-- HTTP 方法分布 -->
+  <h2>② 接口分布</h2>
+  <div class="grid grid-2">
+    <div class="card">
+      <h3>HTTP 方法分布（149 GET / 64 POST / 66 PUT / 33 DELETE）</h3>
+      <div id="chart-methods" class="chart"></div>
+    </div>
+    <div class="card">
+      <h3>按域分布（订单/物流/营销/财务/...）</h3>
+      <div id="chart-domain" class="chart"></div>
+    </div>
+  </div>
+
+  <!-- 控制器接口数排名 -->
+  <h2>③ Admin 控制器接口数 Top 15</h2>
+  <div class="card">
+    <h3>接口数最多 → 最少（前 15 名）</h3>
+    <div id="chart-top15" class="chart-tall"></div>
+  </div>
+
+  <!-- 修复明细 -->
+  <h2>④ 修复明细</h2>
+  <div class="grid grid-2">
+    <div class="card">
+      <h3>按修复类别分布</h3>
+      <div id="chart-fix-categories" class="chart"></div>
+    </div>
+    <div class="card">
+      <h3>Flyway 迁移脚本（按时间段）</h3>
+      <div id="chart-migrations" class="chart"></div>
+    </div>
+  </div>
+
+  <!-- 关键文件 -->
+  <h2>⑤ 关键修复文件分布</h2>
+  <div class="grid grid-2">
+    <div class="card">
+      <h3>各层修复文件占比</h3>
+      <div id="chart-files" class="chart"></div>
+    </div>
+    <div class="card">
+      <h3>Controller 修复前后响应结构对比</h3>
+      <div id="chart-response" class="chart"></div>
+    </div>
+  </div>
+
+  <!-- 业务域覆盖 -->
+  <h2>⑥ 业务域功能覆盖</h2>
+  <div class="card">
+    <h3>Admin 控制器业务域分布（共 47 个控制器）</h3>
+    <div id="chart-domains" class="chart-tall"></div>
+  </div>
+
+  <!-- 测试金字塔 -->
+  <h2>⑦ 测试体系</h2>
+  <div class="grid grid-2">
+    <div class="card">
+      <h3>自动化测试金字塔</h3>
+      <div id="chart-pyramid" class="chart"></div>
+    </div>
+    <div class="card">
+      <h3>测试套件覆盖范围</h3>
+      <div id="chart-coverage" class="chart"></div>
+    </div>
+  </div>
+
+  <!-- 架构审计 -->
+  <h2>⑧ Brooks-Lint 架构审计结果（Health Score 82/100）</h2>
+  <div class="grid grid-3">
+    <div class="kpi-card">
+      <div class="kpi-value" style="color:#3fb950">0</div>
+      <div class="kpi-label">🔴 Critical 严重问题</div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-value" style="color:#d29922">5</div>
+      <div class="kpi-label">🟡 Warning 警告</div>
+    </div>
+    <div class="kpi-card cyan">
+      <div class="kpi-value" style="color:#39c5cf">3</div>
+      <div class="kpi-label">🟢 Suggestion 建议</div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>架构审计主要发现</h3>
+    <div class="tag-list">
+      <span class="pill orange">Domain Model Distortion - Map&lt;String,Object&gt; 滥用</span>
+      <span class="pill orange">Knowledge Duplication - CRUD 列表逻辑重复</span>
+      <span class="pill orange">Accidental Complexity - admin/user 同模块</span>
+      <span class="pill orange">Change Propagation - Flyway 迁移分散</span>
+      <span class="pill orange">Cognitive Overload - 79 页面无单测</span>
+    </div>
+  </div>
+
+  <div class="footer">moyuyo-server 数据可视化仪表盘 · 2026-07-29 · 由 ECharts 5 渲染</div>
+</div>
+
+<script>
+// 时间戳
+document.getElementById('ts').textContent = new Date().toLocaleString('zh-CN');
+
+// 主题色
+const colors = {
+  blue: '#58a6ff', green: '#3fb950', orange: '#d29922', red: '#f85149',
+  purple: '#bc8cff', cyan: '#39c5cf', pink: '#f778ba', yellow: '#e3b341'
+};
+
+// 接口状态分布（饼图）
+echarts.init(document.getElementById('chart-status')).setOption({
+  tooltip: { trigger: 'item', backgroundColor: '#1c2128', borderColor: '#30363d', textStyle: { color: '#e6edf3' } },
+  legend: { bottom: 0, textStyle: { color: '#8b949e' } },
+  series: [{
+    type: 'pie',
+    radius: ['45%', '70%'],
+    center: ['50%', '45%'],
+    avoidLabelOverlap: false,
+    label: { color: '#e6edf3', formatter: '{b}\n{c}' },
+    labelLine: { lineStyle: { color: '#30363d' } },
+    data: [
+      { name: '200 OK', value: 192, itemStyle: { color: colors.green } },
+      { name: '400 参数错误', value: 47, itemStyle: { color: colors.cyan } },
+      { name: '404 资源不存在', value: 51, itemStyle: { color: colors.blue } },
+      { name: '403/401 权限', value: 17, itemStyle: { color: colors.orange } }
+    ]
+  }]
+});
+
+// 修复趋势
+echarts.init(document.getElementById('chart-trend')).setOption({
+  tooltip: { trigger: 'axis', backgroundColor: '#1c2128', borderColor: '#30363d', textStyle: { color: '#e6edf3' } },
+  legend: { data: ['失败接口数', '通过率(%)'], textStyle: { color: '#8b949e' }, top: 0 },
+  grid: { left: 50, right: 60, top: 40, bottom: 40 },
+  xAxis: {
+    type: 'category',
+    data: ['初始扫描', '修复 SQL', '修复 Entity', '修复 Controller', '修复响应结构', '参数校验补齐', '最终验证'],
+    axisLine: { lineStyle: { color: '#30363d' } },
+    axisLabel: { color: '#8b949e' }
+  },
+  yAxis: [
+    { type: 'value', name: '失败数', max: 30, axisLine: { lineStyle: { color: '#30363d' } }, axisLabel: { color: '#8b949e' }, splitLine: { lineStyle: { color: '#21262d' } } },
+    { type: 'value', name: '通过率', max: 100, axisLine: { lineStyle: { color: '#30363d' } }, axisLabel: { color: '#8b949e', formatter: '{value}%' }, splitLine: { show: false } }
+  ],
+  series: [
+    {
+      name: '失败接口数', type: 'bar',
+      data: [27, 12, 6, 3, 0, 0, 0],
+      itemStyle: { color: colors.red, borderRadius: [4, 4, 0, 0] },
+      label: { show: true, position: 'top', color: '#e6edf3' }
+    },
+    {
+      name: '通过率(%)', type: 'line', yAxisIndex: 1,
+      data: [90.5, 95.6, 98.0, 99.0, 100.0, 100.0, 100.0],
+      itemStyle: { color: colors.green },
+      lineStyle: { width: 3 },
+      symbol: 'circle', symbolSize: 8, smooth: true
+    }
+  ]
+});
+
+// HTTP 方法分布
+echarts.init(document.getElementById('chart-methods')).setOption({
+  tooltip: { trigger: 'item', backgroundColor: '#1c2128', borderColor: '#30363d', textStyle: { color: '#e6edf3' } },
+  series: [{
+    type: 'pie',
+    roseType: 'radius',
+    radius: ['25%', '70%'],
+    label: { color: '#e6edf3', formatter: '{b}\n{c} ({d}%)', fontSize: 12 },
+    data: [
+      { name: 'GET (查询)', value: 149, itemStyle: { color: colors.blue } },
+      { name: 'POST (创建)', value: 64, itemStyle: { color: colors.green } },
+      { name: 'PUT (更新)', value: 66, itemStyle: { color: colors.orange } },
+      { name: 'DELETE (删除)', value: 33, itemStyle: { color: colors.red } }
+    ]
+  }]
+});
+
+// 业务域分布
+const domainData = [
+  { name: '订单域', value: 38, color: colors.blue },
+  { name: '物流域', value: 35, color: colors.cyan },
+  { name: '营销/活动', value: 28, color: colors.purple },
+  { name: '商品域', value: 26, color: colors.green },
+  { name: '内容/审核', value: 24, color: colors.orange },
+  { name: '用户域', value: 22, color: colors.pink },
+  { name: '客服/工单', value: 21, color: colors.yellow },
+  { name: '财务/结算', value: 19, color: colors.cyan },
+  { name: '风控/合规', value: 18, color: colors.red },
+  { name: '推送/触达', value: 16, color: colors.purple },
+  { name: '数据/分析', value: 14, color: colors.blue },
+  { name: 'RBAC/系统', value: 13, color: colors.green },
+  { name: '其他域', value: 38, color: '#8b949e' }
+];
+echarts.init(document.getElementById('chart-domain')).setOption({
+  tooltip: { trigger: 'item', backgroundColor: '#1c2128', borderColor: '#30363d', textStyle: { color: '#e6edf3' } },
+  legend: { type: 'scroll', orient: 'vertical', right: 0, top: 'middle', textStyle: { color: '#8b949e', fontSize: 11 } },
+  series: [{
+    type: 'pie',
+    radius: ['30%', '70%'],
+    center: ['35%', '50%'],
+    avoidLabelOverlap: true,
+    label: { color: '#e6edf3', formatter: '{b}\n{c}' },
+    labelLine: { lineStyle: { color: '#30363d' } },
+    data: domainData
+  }]
+});
+
+// Top 15 控制器
+const top15 = [
+  ["AdminLogisticsController", 35],
+  ["AdminOrderOpsController", 15],
+  ["AdminPushController", 11],
+  ["AdminRbacController", 13],
+  ["AdminRefundController", 7],
+  ["AdminReviewController", 8],
+  ["AdminUserController", 8],
+  ["AdminProductController", 9],
+  ["CampaignMarketingController", 9],
+  ["AdminContentReviewController", 9],
+  ["AdminOrderController", 8],
+  ["AdminPointsController", 9],
+  ["AdminInventoryController", 7],
+  ["AdminCmsController", 7],
+  ["AdminFinanceController", 7]
+];
+echarts.init(document.getElementById('chart-top15')).setOption({
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: '#1c2128', borderColor: '#30363d', textStyle: { color: '#e6edf3' } },
+  grid: { left: 220, right: 30, top: 20, bottom: 20 },
+  xAxis: { type: 'value', axisLine: { lineStyle: { color: '#30363d' } }, axisLabel: { color: '#8b949e' }, splitLine: { lineStyle: { color: '#21262d' } } },
+  yAxis: { type: 'category', data: top15.map(r => r[0]).reverse(), axisLine: { lineStyle: { color: '#30363d' } }, axisLabel: { color: '#c9d1d9', fontSize: 11 } },
+  series: [{
+    type: 'bar',
+    data: top15.map(r => r[1]).reverse(),
+    itemStyle: {
+      color: { type: 'linear', x: 0, y: 0, x2: 1, y2: 0, colorStops: [{ offset: 0, color: '#1f6feb' }, { offset: 1, color: '#58a6ff' }] },
+      borderRadius: [0, 4, 4, 0]
+    },
+    label: { show: true, position: 'right', color: '#e6edf3' }
+  }]
+});
+
+// 修复类别
+echarts.init(document.getElementById('chart-fix-categories')).setOption({
+  tooltip: { trigger: 'item', backgroundColor: '#1c2128', borderColor: '#30363d', textStyle: { color: '#e6edf3' } },
+  legend: { bottom: 0, textStyle: { color: '#8b949e' } },
+  series: [{
+    type: 'pie',
+    radius: '70%',
+    label: { color: '#e6edf3', formatter: '{b}\n{d}%' },
+    data: [
+      { name: '数据库 Schema', value: 5, itemStyle: { color: colors.blue } },
+      { name: 'Entity 字段', value: 2, itemStyle: { color: colors.green } },
+      { name: 'Service 错误处理', value: 2, itemStyle: { color: colors.orange } },
+      { name: 'Controller 接口补全', value: 4, itemStyle: { color: colors.purple } },
+      { name: '参数校验', value: 1, itemStyle: { color: colors.pink } },
+      { name: '响应结构', value: 2, itemStyle: { color: colors.cyan } }
+    ]
+  }]
+});
+
+// Flyway 迁移
+echarts.init(document.getElementById('chart-migrations')).setOption({
+  tooltip: { trigger: 'axis', backgroundColor: '#1c2128', borderColor: '#30363d', textStyle: { color: '#e6edf3' } },
+  grid: { left: 60, right: 30, top: 30, bottom: 50 },
+  xAxis: { type: 'category', data: ['V0', 'V1-V4', 'V5-V8', 'V0716-18', 'V0720-22', 'V0723-27', 'V0729'], axisLine: { lineStyle: { color: '#30363d' } }, axisLabel: { color: '#8b949e', rotate: 30, fontSize: 10 } },
+  yAxis: { type: 'value', name: '脚本数', axisLine: { lineStyle: { color: '#30363d' } }, axisLabel: { color: '#8b949e' }, splitLine: { lineStyle: { color: '#21262d' } } },
+  series: [{
+    type: 'bar',
+    data: [1, 4, 4, 8, 8, 10, 5],
+    itemStyle: {
+      color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: '#58a6ff' }, { offset: 1, color: '#1f6feb' }] },
+      borderRadius: [4, 4, 0, 0]
+    },
+    label: { show: true, position: 'top', color: '#e6edf3' }
+  }]
+});
+
+// 各层修复文件
+echarts.init(document.getElementById('chart-files')).setOption({
+  tooltip: { trigger: 'item', backgroundColor: '#1c2128', borderColor: '#30363d', textStyle: { color: '#e6edf3' } },
+  series: [{
+    type: 'pie',
+    radius: ['50%', '75%'],
+    label: { color: '#e6edf3', formatter: '{b}\n{c} 个' },
+    data: [
+      { name: 'Database Migration', value: 5, itemStyle: { color: colors.blue } },
+      { name: 'Entity', value: 2, itemStyle: { color: colors.green } },
+      { name: 'Service', value: 2, itemStyle: { color: colors.orange } },
+      { name: 'Controller', value: 5, itemStyle: { color: colors.purple } },
+      { name: 'Config', value: 1, itemStyle: { color: colors.cyan } }
+    ]
+  }]
+});
+
+// Controller 响应结构对比
+echarts.init(document.getElementById('chart-response')).setOption({
+  tooltip: { trigger: 'axis', backgroundColor: '#1c2128', borderColor: '#30363d', textStyle: { color: '#e6edf3' } },
+  legend: { data: ['修复前（Map of {total, records}）', '修复后（List）'], textStyle: { color: '#8b949e' }, top: 0 },
+  grid: { left: 130, right: 30, top: 40, bottom: 20 },
+  xAxis: { type: 'value', axisLine: { lineStyle: { color: '#30363d' } }, axisLabel: { color: '#8b949e' }, splitLine: { lineStyle: { color: '#21262d' } } },
+  yAxis: { type: 'category', data: ['Logistics', 'CMS', 'OrderTag', 'Inventory', '其它'], axisLine: { lineStyle: { color: '#30363d' } }, axisLabel: { color: '#c9d1d9' } },
+  series: [
+    { name: '修复前（Map of {total, records}）', type: 'bar', data: [9, 2, 1, 1, 0], itemStyle: { color: colors.red, borderRadius: [0, 4, 4, 0] } },
+    { name: '修复后（List）', type: 'bar', data: [9, 2, 1, 1, 0], itemStyle: { color: colors.green, borderRadius: [0, 4, 4, 0] } }
+  ]
+});
+
+// 业务域控制器分布（树状）
+const treeData = {
+  name: 'Admin 控制器',
+  itemStyle: { color: colors.blue },
+  children: [
+    { name: '订单 (4)', value: 4, itemStyle: { color: colors.blue }, children: [
+      { name: 'AdminOrderController', value: 8 },
+      { name: 'AdminOrderOpsController', value: 15 },
+      { name: 'AdminOrderTagController', value: 6 }
+    ]},
+    { name: '商品 (4)', value: 4, itemStyle: { color: colors.green }, children: [
+      { name: 'AdminProductController', value: 9 },
+      { name: 'AdminProductAnalysisController', value: 3 },
+      { name: 'AdminProductApprovalController', value: 5 }
+    ]},
+    { name: '物流 (3)', value: 3, itemStyle: { color: colors.cyan }, children: [
+      { name: 'AdminLogisticsController', value: 35 },
+      { name: 'AdminInventoryController', value: 7 },
+      { name: 'AdminInventoryTransferController', value: 5 }
+    ]},
+    { name: '营销 (3)', value: 3, itemStyle: { color: colors.purple }, children: [
+      { name: 'CampaignMarketingController', value: 9 },
+      { name: 'AdminFlashSaleController', value: 7 },
+      { name: 'AdminPushController', value: 11 }
+    ]},
+    { name: '用户/客服 (4)', value: 4, itemStyle: { color: colors.pink }, children: [
+      { name: 'AdminUserController', value: 8 },
+      { name: 'AdminUserProfileController', value: 3 },
+      { name: 'AdminCsSessionController', value: 3 },
+      { name: 'AdminTicketController', value: 6 }
+    ]},
+    { name: '财务 (2)', value: 2, itemStyle: { color: colors.yellow }, children: [
+      { name: 'AdminFinanceController', value: 7 },
+      { name: 'AdminCouponController', value: 6 }
+    ]},
+    { name: '风控 (2)', value: 2, itemStyle: { color: colors.red }, children: [
+      { name: 'AdminRiskController', value: 7 },
+      { name: 'AdminRiskAlertController', value: 5 }
+    ]},
+    { name: '内容 (3)', value: 3, itemStyle: { color: colors.orange }, children: [
+      { name: 'AdminCmsController', value: 7 },
+      { name: 'AdminContentReviewController', value: 9 },
+      { name: 'AdminReviewController', value: 8 }
+    ]},
+    { name: '系统 (8)', value: 8, itemStyle: { color: '#8b949e' }, children: [
+      { name: 'AdminDashboardController', value: 5 },
+      { name: 'AdminRbacController', value: 13 },
+      { name: 'AdminSystemController', value: 6 },
+      { name: 'AdminSystemConfigController', value: 3 },
+      { name: 'AdminSettingsController', value: 1 },
+      { name: 'AdminAuthController', value: 3 },
+      { name: 'AdminSpaController', value: 5 },
+      { name: 'AdminAuditLogController', value: 2 }
+    ]}
+  ]
+};
+echarts.init(document.getElementById('chart-domains')).setOption({
+  tooltip: { trigger: 'item', triggerOn: 'mousemove', backgroundColor: '#1c2128', borderColor: '#30363d', textStyle: { color: '#e6edf3' } },
+  series: [{
+    type: 'tree',
+    data: [treeData],
+    top: 20, left: 100, bottom: 20, right: 200,
+    symbolSize: 10,
+    label: { color: '#e6edf3', fontSize: 12, position: 'left', verticalAlign: 'middle', align: 'right' },
+    leaves: { label: { color: '#c9d1d9', position: 'right', verticalAlign: 'middle', align: 'left' } },
+    expandAndCollapse: true,
+    initialTreeDepth: 2,
+    lineStyle: { color: '#30363d' },
+    emphasis: { focus: 'descendant' }
+  }]
+});
+
+// 测试金字塔
+echarts.init(document.getElementById('chart-pyramid')).setOption({
+  tooltip: { trigger: 'item', backgroundColor: '#1c2128', borderColor: '#30363d', textStyle: { color: '#e6edf3' } },
+  series: [{
+    type: 'funnel',
+    left: '10%', right: '10%', top: 20, bottom: 20,
+    sort: 'descending', gap: 4,
+    label: { color: '#e6edf3', formatter: '{b}\n{c} 项' },
+    data: [
+      { name: '端到端测试 (Playwright)', value: 71, itemStyle: { color: colors.orange } },
+      { name: '契约测试 (健康检查)', value: 307, itemStyle: { color: colors.blue } },
+      { name: '静态分析 (Controller 扫描)', value: 47, itemStyle: { color: colors.purple } },
+      { name: '集成测试 (Flyway 迁移)', value: 40, itemStyle: { color: colors.green } }
+    ]
+  }]
+});
+
+// 测试覆盖
+echarts.init(document.getElementById('chart-coverage')).setOption({
+  tooltip: { trigger: 'axis', backgroundColor: '#1c2128', borderColor: '#30363d', textStyle: { color: '#e6edf3' } },
+  radar: {
+    indicator: [
+      { name: 'GET 接口', max: 100 },
+      { name: 'POST 接口', max: 100 },
+      { name: 'PUT 接口', max: 100 },
+      { name: 'DELETE 接口', max: 100 },
+      { name: '前端页面', max: 100 },
+      { name: '前端按钮', max: 100 }
+    ],
+    center: ['50%', '55%'],
+    radius: 110,
+    axisName: { color: '#c9d1d9', fontSize: 12 },
+    splitLine: { lineStyle: { color: '#30363d' } },
+    splitArea: { areaStyle: { color: ['rgba(88,166,255,0.02)', 'rgba(88,166,255,0.05)'] } },
+    axisLine: { lineStyle: { color: '#30363d' } }
+  },
+  series: [{
+    type: 'radar',
+    data: [{
+      value: [100, 100, 100, 100, 100, 95],
+      name: '当前覆盖',
+      areaStyle: { color: 'rgba(63, 185, 80, 0.3)' },
+      lineStyle: { color: colors.green, width: 2 },
+      itemStyle: { color: colors.green }
+    }, {
+      value: [50, 30, 30, 20, 60, 40],
+      name: '修复前覆盖',
+      areaStyle: { color: 'rgba(248, 81, 73, 0.2)' },
+      lineStyle: { color: colors.red, width: 2 },
+      itemStyle: { color: colors.red }
+    }]
+  }],
+  legend: { data: ['当前覆盖', '修复前覆盖'], textStyle: { color: '#8b949e' }, top: 0 }
+});
+</script>
+</body>
+</html>

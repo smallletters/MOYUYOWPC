@@ -31,24 +31,26 @@
     <el-card shadow="never" style="margin-top:16px">
       <template #header><span>规则优先级配置</span></template>
       <el-table :data="tableData" stripe style="width: 100%">
-        <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="name" label="规则名称" />
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="ruleName" label="规则名称" min-width="140" show-overflow-tooltip />
         <el-table-column prop="priority" label="优先级" width="90">
           <template #default="{ row }">
             <el-tag :type="row.priority <= 1 ? 'danger' : row.priority <= 3 ? 'warning' : 'info'" size="small">P{{ row.priority }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="condition" label="条件" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="action" label="动作" width="140" />
-        <el-table-column prop="status" label="状态" width="90">
+        <el-table-column prop="conditionJson" label="条件" min-width="200" show-overflow-tooltip />
+        <el-table-column label="动作" width="120">
+          <template #default="{ row }">{{ actionLabel(row.action) }}</template>
+        </el-table-column>
+        <el-table-column label="状态" width="90">
           <template #default="{ row }">
-            <el-tag :type="row.status === '启用' ? 'success' : 'info'" size="small">{{ row.status }}</el-tag>
+            <el-tag :type="row.enabled !== false ? 'success' : 'info'" size="small">{{ row.enabled !== false ? '启用' : '禁用' }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="primary" link size="small" @click="handleToggle(row)">{{ row.status === '启用' ? '禁用' : '启用' }}</el-button>
+            <el-button type="primary" link size="small" @click="handleToggle(row)">{{ row.enabled !== false ? '禁用' : '启用' }}</el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -65,7 +67,7 @@
     >
       <el-form :model="formData" label-width="80px" label-position="top">
         <el-form-item label="规则名称" required>
-          <el-input v-model="formData.name" placeholder="输入规则名称" maxlength="50" show-word-limit />
+          <el-input v-model="formData.ruleName" placeholder="输入规则名称" maxlength="50" show-word-limit />
         </el-form-item>
         <el-row :gutter="16">
           <el-col :span="12">
@@ -76,14 +78,14 @@
           <el-col :span="12">
             <el-form-item label="处置动作">
               <el-select v-model="formData.action" style="width:100%">
-                <el-option v-for="act in actionOptions" :key="act" :label="act" :value="act" />
+                <el-option v-for="act in actionOptions" :key="act.value" :label="act.label" :value="act.value" />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
         <el-form-item label="匹配条件" required>
           <el-input
-            v-model="formData.condition"
+            v-model="formData.conditionJson"
             type="textarea"
             :rows="3"
             placeholder="输入匹配条件，如：单日下单次数 > 10 AND 设备指纹异常"
@@ -91,9 +93,7 @@
         </el-form-item>
         <el-form-item label="启用状态">
           <el-switch
-            v-model="formData.status"
-            active-value="启用"
-            inactive-value="禁用"
+            v-model="formData.enabled"
             active-text="启用"
             inactive-text="禁用"
           />
@@ -113,6 +113,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getRiskRules, createRiskRule, updateRiskRule, toggleRiskRule, deleteRiskRule } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 const tableData = ref([])
 
@@ -124,21 +125,32 @@ const submitting = ref(false)
 
 // ---- 表单数据 ----
 const formData = reactive({
-  name: '',
+  ruleName: '',
   priority: 1,
-  condition: '',
-  action: '审核',
-  status: '启用'
+  conditionJson: '',
+  action: 'REVIEW',
+  enabled: true,
 })
 
-// ---- 优先级选项 ----
-const actionOptions = ['阻断', '审核', '预警', '放行']
+// ---- 处置动作选项（与后端枚举一致）----
+const actionOptions = [
+  { value: 'BLOCK', label: '阻断' },
+  { value: 'REVIEW', label: '审核' },
+  { value: 'VERIFY', label: '预警' },
+  { value: 'LOG', label: '放行' },
+]
+
+// 动作枚举转中文标签
+function actionLabel(action) {
+  const hit = actionOptions.find(a => a.value === action)
+  return hit ? hit.label : action
+}
 
 // 加载风控规则列表
 async function loadData() {
   try {
     const res = await getRiskRules()
-    tableData.value = res.records || res || []
+    tableData.value = toArray(res)
   } catch (e) {
     ElMessage.error('获取规则列表失败')
   }
@@ -148,11 +160,11 @@ async function loadData() {
 function handleAdd() {
   isEditing.value = false
   editingId.value = null
-  formData.name = ''
+  formData.ruleName = ''
   formData.priority = 1
-  formData.condition = ''
-  formData.action = '审核'
-  formData.status = '启用'
+  formData.conditionJson = ''
+  formData.action = 'REVIEW'
+  formData.enabled = true
   dialogVisible.value = true
 }
 
@@ -160,31 +172,40 @@ function handleAdd() {
 function handleEdit(row) {
   isEditing.value = true
   editingId.value = row.id
-  formData.name = row.name
-  formData.priority = row.priority
-  formData.condition = row.condition
-  formData.action = row.action
-  formData.status = row.status
+  formData.ruleName = row.ruleName || ''
+  formData.priority = row.priority ?? 1
+  formData.conditionJson = row.conditionJson || ''
+  formData.action = row.action || 'REVIEW'
+  formData.enabled = row.enabled !== false
   dialogVisible.value = true
 }
 
 // 保存规则（新建或编辑）
 async function handleSave() {
-  if (!formData.name.trim()) {
+  if (!formData.ruleName.trim()) {
     ElMessage.warning('请输入规则名称')
     return
   }
-  if (!formData.condition.trim()) {
+  if (!formData.conditionJson.trim()) {
     ElMessage.warning('请输入匹配条件')
     return
   }
   submitting.value = true
+  // 组装与后端实体一致的字段
+  const payload = {
+    ruleName: formData.ruleName.trim(),
+    priority: formData.priority,
+    conditionJson: formData.conditionJson,
+    action: formData.action,
+    enabled: formData.enabled,
+    ruleType: 'LOGIN',
+  }
   try {
     if (isEditing.value) {
-      await updateRiskRule(editingId.value, { ...formData })
+      await updateRiskRule(editingId.value, payload)
       ElMessage.success('规则已更新')
     } else {
-      await createRiskRule({ ...formData })
+      await createRiskRule(payload)
       ElMessage.success('规则已创建')
     }
     dialogVisible.value = false
@@ -199,9 +220,9 @@ async function handleSave() {
 // 启用/禁用规则
 async function handleToggle(row) {
   try {
-    const newStatus = row.status === '启用' ? '禁用' : '启用'
-    await toggleRiskRule(row.id, { enabled: newStatus === '启用' })
-    ElMessage.success('规则已' + newStatus)
+    const newEnabled = row.enabled === false
+    await toggleRiskRule(row.id, { enabled: newEnabled })
+    ElMessage.success('规则已' + (newEnabled ? '启用' : '禁用'))
     await loadData()
   } catch (e) {
     ElMessage.error('操作失败')

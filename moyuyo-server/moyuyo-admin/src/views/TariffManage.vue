@@ -9,17 +9,27 @@
     </div>
     <el-card shadow="never">
       <el-table :data="tableData" stripe style="width: 100%">
-        <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="category" label="商品类别" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="country" label="国家/地区" width="130" />
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="productCategory" label="商品类别" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="countryCode" label="国家/地区" width="110" />
         <el-table-column prop="rate" label="税率" width="100">
           <template #default="{ row }">{{ row.rate }}%</template>
         </el-table-column>
-        <el-table-column prop="threshold" label="免税阈值" width="120">
-          <template #default="{ row }">¥{{ row.threshold }}</template>
+        <el-table-column label="免税阈值" width="160">
+          <template #default="{ row }">
+            <span>¥{{ row.minThreshold ?? '-' }}</span>
+            <template v-if="row.maxThreshold != null"> ~ ¥{{ row.maxThreshold }}</template>
+          </template>
         </el-table-column>
-        <el-table-column prop="description" label="说明" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="updatedAt" label="更新时间" width="170" />
+        <el-table-column prop="currency" label="币种" width="90" />
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">
+            <span :class="['tag', row.status === 'ENABLED' ? 'tag-green' : 'tag-gray']">
+              {{ row.status === 'ENABLED' ? '生效' : '停用' }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="createTime" label="创建时间" width="170" />
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
@@ -32,19 +42,25 @@
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑税率' : '新建税率'" width="500px">
       <el-form :model="form" label-width="110px">
         <el-form-item label="商品类别" required>
-          <el-input v-model="form.category" placeholder="如：电子产品、服装" />
+          <el-input v-model="form.productCategory" placeholder="如：电子产品、服装" />
         </el-form-item>
-        <el-form-item label="国家/地区" required>
-          <el-input v-model="form.country" placeholder="如：日本、韩国" />
+        <el-form-item label="国家代码" required>
+          <el-input v-model="form.countryCode" placeholder="如：JP、KR、US" />
         </el-form-item>
         <el-form-item label="税率(%)" required>
           <el-input-number v-model="form.rate" :min="0" :max="100" :precision="2" />
         </el-form-item>
-        <el-form-item label="免税阈值(¥)">
-          <el-input-number v-model="form.threshold" :min="0" :precision="2" />
+        <el-form-item label="免税阈值下限(¥)">
+          <el-input-number v-model="form.minThreshold" :min="0" :precision="2" />
         </el-form-item>
-        <el-form-item label="说明">
-          <el-input v-model="form.description" type="textarea" :rows="3" placeholder="配置说明" />
+        <el-form-item label="免税阈值上限(¥)">
+          <el-input-number v-model="form.maxThreshold" :min="0" :precision="2" />
+        </el-form-item>
+        <el-form-item label="币种">
+          <el-input v-model="form.currency" placeholder="如：USD、CNY" />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-switch v-model="form.statusEnabled" active-text="生效" inactive-text="停用" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -58,16 +74,17 @@
         <el-form-item label="商品类别" required>
           <el-input v-model="calcForm.category" placeholder="如：电子产品" />
         </el-form-item>
-        <el-form-item label="国家/地区" required>
-          <el-input v-model="calcForm.country" placeholder="如：日本" />
+        <el-form-item label="国家代码" required>
+          <el-input v-model="calcForm.countryCode" placeholder="如：JP" />
         </el-form-item>
         <el-form-item label="商品价格(¥)" required>
           <el-input-number v-model="calcForm.amount" :min="0" :precision="2" />
         </el-form-item>
       </el-form>
-      <div v-if="calcResult !== null" class="calc-result">
+      <div v-if="calcResult" class="calc-result">
         <el-divider />
-        <p>应缴关税：<strong style="color:#e6a23c;font-size:18px">¥{{ calcResult }}</strong></p>
+        <p>应缴关税：<strong style="color:var(--state-warning);font-size:18px">¥{{ calcResult.tariff ?? calcResult }}</strong></p>
+        <p v-if="calcResult.tariff != null" style="color:var(--text-500);font-size:13px">含税总额：¥{{ calcResult.total }}</p>
       </div>
       <template #footer>
         <el-button @click="calcDialogVisible = false">关闭</el-button>
@@ -81,6 +98,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTariffConfigs, createTariffConfig, updateTariffConfig, deleteTariffConfig, calculateTariff } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 const tableData = ref([])
 const dialogVisible = ref(false)
@@ -88,33 +106,37 @@ const isEdit = ref(false)
 const editId = ref(null)
 
 const form = reactive({
-  category: '',
-  country: '',
+  productCategory: '',
+  countryCode: '',
   rate: 0,
-  threshold: 0,
-  description: '',
+  minThreshold: 0,
+  maxThreshold: 0,
+  currency: 'USD',
+  statusEnabled: true,
 })
 
 const calcDialogVisible = ref(false)
 const calcResult = ref(null)
 const calcForm = reactive({
   category: '',
-  country: '',
+  countryCode: '',
   amount: 0,
 })
 
 function resetForm() {
-  form.category = ''
-  form.country = ''
+  form.productCategory = ''
+  form.countryCode = ''
   form.rate = 0
-  form.threshold = 0
-  form.description = ''
+  form.minThreshold = 0
+  form.maxThreshold = 0
+  form.currency = 'USD'
+  form.statusEnabled = true
 }
 
 async function loadData() {
   try {
     const res = await getTariffConfigs()
-    tableData.value = res.records || res || []
+    tableData.value = toArray(res)
   } catch (e) {
     ElMessage.error('获取关税配置失败')
   }
@@ -130,25 +152,37 @@ function handleAdd() {
 function handleEdit(row) {
   isEdit.value = true
   editId.value = row.id
-  form.category = row.category
-  form.country = row.country
-  form.rate = row.rate
-  form.threshold = row.threshold
-  form.description = row.description
+  form.productCategory = row.productCategory || ''
+  form.countryCode = row.countryCode || ''
+  form.rate = row.rate != null ? Number(row.rate) : 0
+  form.minThreshold = row.minThreshold != null ? Number(row.minThreshold) : 0
+  form.maxThreshold = row.maxThreshold != null ? Number(row.maxThreshold) : 0
+  form.currency = row.currency || 'USD'
+  form.statusEnabled = row.status !== 'DISABLED'
   dialogVisible.value = true
 }
 
 async function handleSave() {
-  if (!form.category || !form.country) {
+  if (!form.productCategory || !form.countryCode) {
     ElMessage.warning('请填写完整信息')
     return
   }
+  // 组装与后端字段一致的数据
+  const payload = {
+    productCategory: form.productCategory,
+    countryCode: form.countryCode,
+    rate: form.rate,
+    minThreshold: form.minThreshold,
+    maxThreshold: form.maxThreshold,
+    currency: form.currency,
+    status: form.statusEnabled ? 'ENABLED' : 'DISABLED',
+  }
   try {
     if (isEdit.value) {
-      await updateTariffConfig({ id: editId.value, ...form })
+      await updateTariffConfig({ id: editId.value, ...payload })
       ElMessage.success('编辑成功')
     } else {
-      await createTariffConfig({ ...form })
+      await createTariffConfig({ ...payload })
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false
@@ -161,30 +195,39 @@ async function handleSave() {
 async function handleDelete(row) {
   try {
     await ElMessageBox.confirm('确定删除该关税配置吗？', '提示')
+  } catch (e) {
+    return // 用户取消或关闭
+  }
+  try {
     await deleteTariffConfig(row.id)
     ElMessage.success('已删除')
     await loadData()
   } catch (e) {
-    // 用户取消不处理
+    ElMessage.error('删除失败')
   }
 }
 
 function handleCalculate() {
   calcForm.category = ''
-  calcForm.country = ''
+  calcForm.countryCode = ''
   calcForm.amount = 0
   calcResult.value = null
   calcDialogVisible.value = true
 }
 
 async function confirmCalculate() {
-  if (!calcForm.category || !calcForm.country || !calcForm.amount) {
+  if (!calcForm.category || !calcForm.countryCode || !calcForm.amount) {
     ElMessage.warning('请填写完整信息')
     return
   }
   try {
-    const res = await calculateTariff({ ...calcForm })
-    calcResult.value = res.tariff ?? res
+    // 后端读取 countryCode / category / amount
+    const res = await calculateTariff({
+      countryCode: calcForm.countryCode,
+      category: calcForm.category,
+      amount: calcForm.amount,
+    })
+    calcResult.value = res && typeof res === 'object' ? res : { tariff: res }
   } catch (e) {
     ElMessage.error('计算失败')
   }

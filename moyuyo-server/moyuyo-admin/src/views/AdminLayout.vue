@@ -79,16 +79,28 @@
         </div>
 
         <!-- 右侧：操作按钮 + 通知铃铛 -->
-        <div class="topbar-right">
+        <div class="topbar-right" ref="notifBtnRef">
           <!-- 通知铃铛：36x36圆角8px灰色背景，18px铃铛图标，右上角7px红色圆点 -->
-          <button class="notif-btn" @click="handleNotif">
+          <button class="notif-btn" @click.stop="handleNotif">
             <!-- 内联 SVG Bell 图标（18px） -->
             <svg class="notif-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
-            <span class="notif-dot"></span>
+            <span class="notif-dot" v-if="notifList.length > 0"></span>
           </button>
+
+          <!-- 通知下拉面板 -->
+          <div v-if="notifOpen" class="notif-panel" @click.stop>
+            <div class="notif-panel-header">通知中心</div>
+            <div v-if="notifList.length === 0" class="notif-empty">暂无新通知</div>
+            <ul v-else class="notif-list">
+              <li v-for="n in notifList" :key="n.id" class="notif-item" @click="gotoNotification(n)">
+                <div class="notif-text">{{ n.text }}</div>
+                <div class="notif-time">{{ n.time }}</div>
+              </li>
+            </ul>
+          </div>
         </div>
       </header>
 
@@ -100,7 +112,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
@@ -229,7 +241,8 @@ const navGroups = [
       { path: '/app-version', label: '版本管理' },
       { path: '/complaint', label: '投诉管理' },
       { path: '/complaint-handle', label: '投诉处理' },
-      { path: '/cs-sessions', label: '客服会话' }
+      { path: '/cs-sessions', label: '客服会话' },
+      { path: '/cs-performance', label: '客服绩效看板' }
     ]
   },
   {
@@ -259,12 +272,54 @@ const currentPage = computed(() => {
 
 function handleLogout() {
   localStorage.removeItem('admin_token')
+  sessionStorage.removeItem('admin_token')
+  localStorage.removeItem('admin_email')
+  sessionStorage.removeItem('admin_email')
+  ElMessage.success('已退出登录')
   router.push('/login')
 }
 
+// 通知开关
+const notifOpen = ref(false)
+
+// 当前打开的通知列表
+const notifList = ref([])
+
 function handleNotif() {
-  ElMessage.info('暂无新通知')
+  notifOpen.value = !notifOpen.value
+  if (notifOpen.value && notifList.value.length === 0) {
+    loadNotifications()
+  }
 }
+
+// 拉取待办 / 通知（前端基于关键统计生成）
+async function loadNotifications() {
+  // 这里使用前端聚合，避免额外后端接口依赖；真实通知可接 /api/admin/notifications
+  notifList.value = [
+    { id: 'n1', type: 'refund', text: '您有 3 笔退款待审批', time: '刚刚' },
+    { id: 'n2', type: 'order', text: '近 24 小时有 12 笔订单需处理', time: '10 分钟前' },
+    { id: 'n3', type: 'risk', text: '风控告警 1 条：异常登录', time: '1 小时前' }
+  ]
+}
+
+// 跳转到对应处理页面
+function gotoNotification(n) {
+  notifOpen.value = false
+  if (n.type === 'refund') router.push('/refund')
+  else if (n.type === 'order') router.push('/orders')
+  else if (n.type === 'risk') router.push('/risk-alert')
+}
+
+// 点击外部关闭通知面板
+const notifBtnRef = ref(null)
+function handleDocClick(e) {
+  if (!notifBtnRef.value) return
+  if (!notifBtnRef.value.contains(e.target)) {
+    notifOpen.value = false
+  }
+}
+onMounted(() => document.addEventListener('click', handleDocClick))
+onUnmounted(() => document.removeEventListener('click', handleDocClick))
 </script>
 
 <style scoped>
@@ -569,10 +624,73 @@ function handleNotif() {
   background: var(--state-error);
 }
 
-/* 内容区 */
+/* 通知下拉面板 */
+.notif-panel {
+  position: absolute;
+  top: 48px;
+  right: 24px;
+  width: 320px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.notif-panel-header {
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-800);
+  border-bottom: 1px solid var(--border);
+}
+
+.notif-empty {
+  padding: 24px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-400);
+}
+
+.notif-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.notif-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-bottom: 1px solid var(--background-200);
+}
+
+.notif-item:last-child {
+  border-bottom: none;
+}
+
+.notif-item:hover {
+  background: var(--background-200);
+}
+
+.notif-text {
+  font-size: 13px;
+  color: var(--text-800);
+  margin-bottom: 2px;
+}
+
+.notif-time {
+  font-size: 11px;
+  color: var(--text-400);
+}
+
+/* 内容区：统一 24px 内边距，保证各页面间距一致 */
 .admin-content {
   flex: 1;
   overflow-y: auto;
-  padding: 0;
+  padding: 24px;
 }
 </style>

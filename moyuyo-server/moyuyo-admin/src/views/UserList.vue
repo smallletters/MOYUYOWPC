@@ -121,7 +121,8 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import api from '../api/index'
+import { getUserStats, getUserList, getUserDetail, updateUserStatus } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 import { ElMessage } from 'element-plus'
 
 const selectAll = ref(false)
@@ -150,7 +151,7 @@ const userList = ref([])
 // 获取用户统计数据
 async function fetchStats() {
   try {
-    const res = await api.get('/users/stats')
+    const res = await getUserStats()
     if (res) {
       // 后端返回 { totalUsers, newToday, activeToday, totalMembers, newMembersToday }
       // 转换为前端模板需要的 [{ label, value, change, trend }] 格式
@@ -163,6 +164,7 @@ async function fetchStats() {
     }
   } catch (err) {
     console.error('获取用户统计数据失败:', err)
+    ElMessage.warning('用户统计数据加载失败')
   }
 }
 
@@ -181,11 +183,11 @@ async function fetchUsers() {
     Object.keys(params).forEach(k => {
       if (!params[k]) delete params[k]
     })
-    const res = await api.get('/users/list', { params })
+    const res = await getUserList(params)
     if (res) {
-      const rawList = res.list || res.records || res || []
+      const rawList = toArray(res, 'list')
       // 后端返回字段转换为前端模板所需格式
-      userList.value = (Array.isArray(rawList) ? rawList : []).map(u => ({
+      userList.value = rawList.map(u => ({
         id: u.id,
         name: u.nickname || u.name || '-',
         email: u.email || '',
@@ -196,7 +198,7 @@ async function fetchUsers() {
         spent: u.spent ?? '0',
         status: u.status === 'ACTIVE' ? '正常' : '禁用',
         statusClass: u.status === 'ACTIVE' ? 'active' : 'inactive',
-        avatarColor: '#409eff'  // 默认头像颜色
+        avatarColor: 'var(--brand-500)'  // 默认头像颜色（设计系统主色）
       }))
       total.value = res.total || 0
     }
@@ -238,7 +240,7 @@ function handleReset() {
 
 async function handleDetail(user) {
   try {
-    const res = await api.get(`/users/${user.id}`)
+    const res = await getUserDetail(user.id)
     if (res) {
       ElMessage.info(`用户: ${res.nickname || user.name}, 邮箱: ${res.email}, 等级: ${res.level}, 状态: ${res.status === 'ACTIVE' ? '正常' : '禁用'}`)
     }
@@ -250,7 +252,7 @@ async function handleDetail(user) {
 async function handleBan(user) {
   try {
     const newStatus = user.statusClass === 'active' ? 'INACTIVE' : 'ACTIVE'
-    await api.put(`/users/${user.id}/status`, { status: newStatus })
+    await updateUserStatus(user.id, { status: newStatus })
     ElMessage.success(`${user.name} 已${newStatus === 'ACTIVE' ? '解封' : '封禁'}`)
     fetchUsers()
   } catch (err) {

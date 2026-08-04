@@ -58,6 +58,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getSettlementDetail } from '../api/admin'
 import { useRoute, useRouter } from 'vue-router'
+import { toArray } from '../utils/safeArray'
 
 const pageTitle = '结算详情'
 const tableData = ref([])
@@ -94,9 +95,9 @@ async function loadData() {
     if (data.summary) {
       Object.assign(summary, data.summary)
     }
-    // 填充明细列表
-    const list = data.records || data.items || data.orders || []
-    tableData.value = Array.isArray(list) ? list : []
+    // 填充明细列表（使用后端返回的数组字段，toArray会自动查找 records/list/data/items）
+    const list = toArray(data, 'records')
+    tableData.value = list
     total.value = tableData.value.length
   } catch (e) {
     console.error('加载结算详情失败:', e)

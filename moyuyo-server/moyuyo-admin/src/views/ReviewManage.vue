@@ -6,6 +6,27 @@
         <el-button type="primary" @click="handleAdd">回复评价</el-button>
       </div>
     </div>
+    <!-- ====== 今日审核统计 ====== -->
+    <section class="today-stats">
+      <div class="stats-title">
+        <el-icon :size="18" color="var(--primary)"><DataAnalysis /></el-icon>
+        <h3>今日审核统计</h3>
+      </div>
+      <div class="stats-grid">
+        <div v-for="item in todayStatCards" :key="item.label" class="stat-card">
+          <div class="stat-card-header">
+            <span class="stat-card-label">{{ item.label }}</span>
+            <span class="stat-card-icon" :class="item.iconClass">
+              <el-icon :size="14"><component :is="item.icon" /></el-icon>
+            </span>
+          </div>
+          <div class="stat-card-value" :class="item.valueClass">{{ item.value }}</div>
+          <div class="stat-card-sub">
+            <span :class="item.trendClass">{{ item.trend }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
     <el-card shadow="never" class="filter-card">
       <el-form :model="filters" inline>
         <el-form-item label="商品名称">
@@ -103,7 +124,18 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Clock, CircleCheck, CircleClose, TrendCharts, DataAnalysis } from '@element-plus/icons-vue'
 import { getReviewList, approveReview, replyReview, rejectReview } from '../api/admin'
+import { toArray } from '../utils/safeArray'
+
+// 今日审核统计（示例数据：暂无真实统计 API，接入后端后替换为接口返回数据）
+// 通过率 = 已通过 / (已通过 + 已驳回) = 28 / 32 ≈ 88%
+const todayStatCards = [
+  { label: '今日待审核', value: 15, icon: Clock, iconClass: 'icon-pending', valueClass: 'value-pending', trend: '较昨日 +3', trendClass: 'trend-up' },
+  { label: '今日已通过', value: 28, icon: CircleCheck, iconClass: 'icon-approved', valueClass: 'value-approved', trend: '较昨日 +5', trendClass: 'trend-up' },
+  { label: '今日已驳回', value: 4, icon: CircleClose, iconClass: 'icon-rejected', valueClass: 'value-rejected', trend: '较昨日 -1', trendClass: 'trend-down' },
+  { label: '今日通过率', value: '88%', icon: TrendCharts, iconClass: 'icon-passrate', valueClass: 'value-passrate', trend: '较昨日 +2%', trendClass: 'trend-up' }
+]
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -135,7 +167,7 @@ const tableData = ref([])
 async function loadData() {
   try {
     const res = await getReviewList()
-    const records = res.records || res || []
+    const records = toArray(res)
       // 客户端筛选
       let list = [...records]
       const kw = filters.keyword.toLowerCase()
@@ -226,4 +258,48 @@ onMounted(() => { loadData() })
 .page-header h2 { font-size: 20px; font-weight: 700; color: var(--text-800); margin: 0; }
 .filter-card { margin-bottom: 16px; }
 .header-actions { display: flex; gap: 8px; }
+
+/* 今日审核统计 */
+.today-stats { margin-bottom: 20px; }
+.stats-title { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.stats-title h3 { font-size: 16px; font-weight: 700; color: var(--text-800); margin: 0; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-xs);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.stat-card:hover { border-color: var(--primary); transform: translateY(-1px); }
+.stat-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.stat-card-label { font-size: 12px; font-weight: 500; color: var(--text-400); }
+.stat-card-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.icon-pending { background: var(--brand-50); color: var(--brand-500); }
+.icon-approved { background: var(--state-success-surface); color: var(--state-success); }
+.icon-rejected { background: var(--state-error-surface); color: var(--state-error); }
+.icon-passrate { background: var(--state-success-surface); color: var(--state-success); }
+.stat-card-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-800);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.value-pending { color: var(--brand-500); }
+.value-approved { color: var(--state-success); }
+.value-rejected { color: var(--state-error); }
+.value-passrate { color: var(--state-success); }
+.stat-card-sub { font-size: 11px; color: var(--text-400); margin-top: 4px; }
+.stat-card-sub .trend-up { color: var(--state-success); }
+.stat-card-sub .trend-down { color: var(--state-error); }
 </style>

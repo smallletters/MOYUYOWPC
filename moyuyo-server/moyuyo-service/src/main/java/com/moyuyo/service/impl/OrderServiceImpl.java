@@ -1,6 +1,7 @@
 package com.moyuyo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -17,6 +18,7 @@ import com.moyuyo.dao.mapper.PaymentMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.OrderService;
+import com.moyuyo.service.WooCommerceSyncService;
 import static com.moyuyo.common.enums.OrderStatusEnum.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,10 +42,16 @@ public class OrderServiceImpl implements OrderService {
   private final PaymentMapper paymentMapper;
   private final ProductMapper productMapper;
   private final ProductSkuMapper productSkuMapper;
+  // 注入 WooCommerce 同步服务：付款回调完成后自动推送订单到 WooCommerce
+  private final WooCommerceSyncService wooCommerceSyncService;
 
   @Override
   @Transactional
   public OrderEntity createOrder(Long userId, List<OrderItemEntity> items, Long addressId, String remark, String couponId) {
+    // 生产防护：禁止空商品列表创建零金额订单
+    if (items == null || items.isEmpty()) {
+      throw new IllegalArgumentException("订单商品不能为空");
+    }
     // 生成订单号: ORD + yyyyMMdd + 8位雪花ID后缀
     String datePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
     String snowId = String.valueOf(IdWorker.getId());
@@ -60,18 +68,21 @@ public class OrderServiceImpl implements OrderService {
       if (product.getOnSale() == null || !product.getOnSale()) {
         throw new IllegalArgumentException("商品已下架: " + product.getName());
       }
-      // 校验 SKU 是否存在且库存充足
+      // 校验 SKU 是否存在且库存充足，使用原子更新防止并发超卖
       if (item.getSkuId() != null) {
         ProductSkuEntity sku = productSkuMapper.selectById(item.getSkuId());
         if (sku == null) {
           throw new IllegalArgumentException("SKU不存在: " + item.getSkuId());
         }
-        if (sku.getStock() != null && sku.getStock() < item.getQuantity()) {
-          throw new IllegalArgumentException("商品库存不足: " + product.getName() + "，当前库存: " + sku.getStock());
+        // 原子扣减库存：UPDATE mo_product_sku SET stock = stock - qty WHERE id = ? AND stock >= qty
+        LambdaUpdateWrapper<ProductSkuEntity> stockWrapper = new LambdaUpdateWrapper<>();
+        stockWrapper.eq(ProductSkuEntity::getId, item.getSkuId())
+            .setSql("stock = stock - " + item.getQuantity())
+            .apply("stock >= {0}", item.getQuantity());
+        int affected = productSkuMapper.update(null, stockWrapper);
+        if (affected == 0) {
+          throw new IllegalStateException("商品库存不足: " + product.getName());
         }
-        // 扣减 SKU 库存
-        sku.setStock(sku.getStock() - item.getQuantity());
-        productSkuMapper.updateById(sku);
       } else if (product.getStock() != null && product.getStock() < item.getQuantity()) {
         throw new IllegalArgumentException("商品库存不足: " + product.getName() + "，当前库存: " + product.getStock());
       }
@@ -153,7 +164,8 @@ public class OrderServiceImpl implements OrderService {
   public OrderEntity getOrderDetail(Long orderId, Long userId) {
     OrderEntity order = orderMapper.selectById(orderId);
     if (order == null) {
-      throw new IllegalArgumentException("订单不存在");
+      // 返回 null 而非抛异常，由 controller 决定如何处理
+      return null;
     }
     // 管理员(userId=null)跳过权限校验
     if (userId != null && !Objects.equals(order.getUserId(), userId)) {
@@ -166,6 +178,9 @@ public class OrderServiceImpl implements OrderService {
   @Transactional
   public void cancelOrder(Long orderId, Long userId, String reason) {
     OrderEntity order = getOrderDetail(orderId, userId);
+    if (order == null) {
+      throw new IllegalArgumentException("订单不存在: " + orderId);
+    }
     if (!PENDING_PAY.name().equals(order.getStatus())) {
       throw new IllegalStateException("当前订单状态不允许取消");
     }
@@ -209,13 +224,27 @@ public class OrderServiceImpl implements OrderService {
     paymentMapper.insert(payment);
 
     log.info("支付回调处理成功: orderNo={}, transactionId={}", orderNo, transactionId);
+
+    // 付款确认后实时同步到 WooCommerce
+    // syncOrderToWooCommerce 内部已有 try-catch，失败时仅记录 syncStatus=-1，不影响主流程
+    try {
+      wooCommerceSyncService.syncOrderToWooCommerce(order);
+    } catch (Exception e) {
+      // 兜底：即便 syncOrderToWooCommerce 内部异常也吞掉，不让支付流程回滚
+      log.error("触发 WooCommerce 订单同步时异常: orderNo={}, reason={}",
+              orderNo, e.getMessage());
+    }
   }
 
   @Override
   @Transactional
   public void confirmReceived(Long orderId, Long userId) {
     OrderEntity order = getOrderDetail(orderId, userId);
-    if (!PAID.name().equals(order.getStatus())) {
+    if (order == null) {
+      throw new IllegalArgumentException("订单不存在: " + orderId);
+    }
+    // 确认收货只能从"已发货"状态流转
+    if (!SHIPPED.name().equals(order.getStatus())) {
       throw new IllegalStateException("当前订单状态不允许确认收货");
     }
     order.setStatus(RECEIVED.name());
@@ -227,6 +256,9 @@ public class OrderServiceImpl implements OrderService {
   @Transactional
   public void deleteOrder(Long orderId, Long userId) {
     OrderEntity order = getOrderDetail(orderId, userId);
+    if (order == null) {
+      throw new IllegalArgumentException("订单不存在: " + orderId);
+    }
     order.setDeleteStatus(1);
     orderMapper.updateById(order);
   }

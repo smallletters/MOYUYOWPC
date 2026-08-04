@@ -38,8 +38,8 @@ class AdminControllerTest extends BaseIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        // 生成有效 JWT token 用于认证
-        adminToken = "Bearer " + jwtUtil.generate(1L, "admin@moyuyo.com");
+        // 生成有效 JWT token 用于认证（管理端需携带角色，否则被过滤器拦截 403）
+        adminToken = "Bearer " + jwtUtil.generate(1L, "admin@moyuyo.com", "SUPER_ADMIN");
     }
 
     @Test

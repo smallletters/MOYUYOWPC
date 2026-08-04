@@ -67,6 +67,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getReviewList, approveReview, rejectReview } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -85,15 +86,13 @@ function auditTag(status) {
   return map[status] || ''
 }
 
-// 加载商品评价列表 - 后端返回 {list: [...], total, page, size}
+// 加载商品评价列表
 async function loadData() {
   try {
     const res = await getReviewList()
-    // 后端返回结构：res.data 或 res 包含 list, total 等字段
-    const data = res && res.data ? res.data : res
-    const records = (data && data.list) || []
-      // 客户端筛选
-      let list = [...records]
+    const records = toArray(res)
+    // 客户端筛选
+    let list = [...records]
       const kw = filters.keyword.toLowerCase()
       if (kw) {
         list = list.filter(d =>

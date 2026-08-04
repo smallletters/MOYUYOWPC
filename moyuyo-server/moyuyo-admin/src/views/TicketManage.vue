@@ -113,7 +113,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in filteredList" :key="item.id">
+          <tr v-for="item in filteredList" :key="item.id" :class="{ 'row-highlight': String(item.id) === String(focusTicketId) || String(item.ticketNo) === String(focusTicketId) }">
             <td><span class="ticket-no">{{ item.ticketNo }}</span></td>
             <td><span :class="['tag', typeTagClass(item.type)]">{{ item.type }}</span></td>
             <td><span :class="['tag', priorityTagClass(item.priority)]">{{ item.priority }}</span></td>
@@ -167,11 +167,15 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { getTicketList, getTicketStats } from '../api/admin'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const route = useRoute()
+
+// 跨页跳转定位的工单ID（如客服管理"处理"跳转携带的 id 参数）
+const focusTicketId = ref(null)
 
 const activeStatus = ref('all')
 const filterType = ref('')
@@ -264,8 +268,22 @@ async function loadData() {
       responseTime: item.responseTime || '-',
       timeout: item.timeout || false
     }))
+    // 消费跨页跳转参数：定位目标工单并给出提示
+    const qId = route.query?.id
+    const qAction = route.query?.action
+    if (qId) {
+      focusTicketId.value = String(qId)
+      const target = ticketList.value.find(t => String(t.id) === String(qId) || String(t.ticketNo) === String(qId))
+      const actionText = qAction === 'process' ? '处理' : '查看'
+      if (target) {
+        ElMessage.info(`正在${actionText}工单 ${target.ticketNo || qId}`)
+      } else {
+        ElMessage.warning(`未找到工单 ${qId}`)
+      }
+    }
   } catch (e) {
     console.error('加载工单数据失败:', e)
+    ElMessage.error('工单数据加载失败')
   }
 }
 
@@ -515,6 +533,10 @@ onMounted(() => { loadData() })
 }
 .ticket-table tbody tr:hover {
   background: var(--accent);
+}
+.ticket-table tbody tr.row-highlight {
+  background: var(--brand-50);
+  box-shadow: inset 3px 0 0 var(--primary);
 }
 .ticket-no {
   font-family: var(--font-mono);

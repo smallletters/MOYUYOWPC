@@ -4,6 +4,8 @@ import com.moyuyo.common.Result;
 import com.moyuyo.common.dto.auth.*;
 import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.service.AuthService;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -26,8 +28,15 @@ public class AuthController {
 
     @Operation(summary = "用户登录")
     @PostMapping("/login")
+    @RateLimiter(name = "authLogin", fallbackMethod = "loginRateLimitFallback")
     public Result<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
         return Result.success(authService.login(request));
+    }
+
+    /** 登录限流降级方法：仅限流拒绝时触发，业务异常正常传播给全局异常处理器 */
+    @SuppressWarnings("unused")
+    private Result<TokenResponse> loginRateLimitFallback(LoginRequest request, RequestNotPermitted e) {
+        return Result.error(429, "请求过于频繁，请稍后再试");
     }
 
     @Operation(summary = "刷新 Token")
@@ -46,6 +55,7 @@ public class AuthController {
 
     @Operation(summary = "发送邮箱验证码")
     @PostMapping("/email/verify")
+    @RateLimiter(name = "authLogin", fallbackMethod = "rateLimitFallback")
     public Result<Void> sendEmailVerification(@Valid @RequestBody EmailVerifyRequest request) {
         authService.sendEmailVerification(request);
         return Result.success();
@@ -60,6 +70,7 @@ public class AuthController {
 
     @Operation(summary = "发送密码重置邮件")
     @PostMapping("/password/forgot")
+    @RateLimiter(name = "authLogin", fallbackMethod = "rateLimitFallback")
     public Result<Void> forgotPassword(@Valid @RequestBody EmailVerifyRequest request) {
         authService.sendPasswordReset(request);
         return Result.success();
@@ -81,6 +92,7 @@ public class AuthController {
 
     @Operation(summary = "发送 Magic Link 邮件")
     @PostMapping("/magic-link/send")
+    @RateLimiter(name = "authLogin", fallbackMethod = "rateLimitFallback")
     public Result<Void> sendMagicLink(@Valid @RequestBody EmailVerifyRequest request) {
         authService.sendMagicLink(request);
         return Result.success();
@@ -104,5 +116,11 @@ public class AuthController {
     public Result<Void> verifyTwoFactorCode(@Valid @RequestBody TwoFactorRequest request) {
         authService.verifyTwoFactorCode(UserContextHolder.getUserId(), request.getCode());
         return Result.success();
+    }
+
+    /** 通用限流降级方法：仅限流拒绝时触发，业务异常正常传播给全局异常处理器 */
+    @SuppressWarnings("unused")
+    private Result<Void> rateLimitFallback(EmailVerifyRequest request, RequestNotPermitted e) {
+        return Result.error(429, "请求过于频繁，请稍后再试");
     }
 }

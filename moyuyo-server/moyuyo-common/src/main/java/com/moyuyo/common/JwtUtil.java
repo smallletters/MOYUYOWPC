@@ -27,16 +27,25 @@ public class JwtUtil {
     }
 
     /**
-     * 生成 Token
+     * 生成 Token（C 端用户，无角色）
      */
     public String generate(Long userId, String email) {
-        return Jwts.builder()
+        return generate(userId, email, null);
+    }
+
+    /**
+     * 生成 Token，可携带角色（管理端传入管理员角色，用于接口鉴权）
+     */
+    public String generate(Long userId, String email, String role) {
+        var builder = Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("email", email)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expireMs))
-                .signWith(secretKey)
-                .compact();
+                .expiration(new Date(System.currentTimeMillis() + expireMs));
+        if (role != null && !role.isBlank()) {
+            builder.claim("role", role);
+        }
+        return builder.signWith(secretKey).compact();
     }
 
     /**
@@ -67,5 +76,12 @@ public class JwtUtil {
      */
     public Long getUserId(String token) {
         return Long.parseLong(parse(token).getSubject());
+    }
+
+    /**
+     * 从 Token 提取角色（无角色时返回 null）
+     */
+    public String getRole(String token) {
+        return parse(token).get("role", String.class);
     }
 }

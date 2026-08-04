@@ -1,0 +1,93 @@
+﻿================================================================================
+【阶段3：Playwright 全量管理页面测试】
+================================================================================
+
+[扫描] 共发现 79 个路由
+
+[登录成功] URL=http://localhost:8080/admin/dashboard
+
+[OK  ]   1/79 /login                                   btn=2
+[OK  ]   2/79 /                                        btn=2
+[OK  ]   3/79 dashboard                                btn=2
+[OK  ]   4/79 orders                                   btn=36
+[OK  ]   5/79 orders/:id                               btn=6
+[OK  ]   6/79 products                                 btn=28
+[OK  ]   7/79 products/edit/:id                        btn=4
+[OK  ]   8/79 users                                    btn=26
+[OK  ]   9/79 marketing                                btn=20
+[OK  ]  10/79 reviews                                  btn=12
+[OK  ]  11/79 cs                                       btn=12
+[OK  ]  12/79 analytics                                btn=6
+[OK  ]  13/79 logistics                                btn=20
+[OK  ]  14/79 settings                                 btn=4
+[OK  ]  15/79 refund                                   btn=7
+[OK  ]  16/79 products/add                             btn=4
+[OK  ]  17/79 cms                                      btn=22
+[OK  ]  18/79 rbac                                     btn=18
+[OK  ]  19/79 finance                                  btn=5
+[OK  ]  20/79 inventory                                btn=16
+[OK  ]  21/79 push-manage                              btn=45
+[OK  ]  22/79 ticket                                   btn=15
+[OK  ]  23/79 campaign                                 btn=27
+[OK  ]  24/79 complaint                                btn=27
+[OK  ]  25/79 review-manage                            btn=19
+[OK  ]  26/79 product-analysis                         btn=19
+[OK  ]  27/79 product-report                           btn=19
+[OK  ]  28/79 product-review                           btn=19
+[OK  ]  29/79 price-manage                             btn=15
+[OK  ]  30/79 price-history                            btn=6
+[OK  ]  31/79 order-export                             btn=17
+[OK  ]  32/79 order-intercept                          btn=6
+[OK  ]  33/79 order-monitor                            btn=6
+[OK  ]  34/79 order-price-modify                       btn=7
+[OK  ]  35/79 order-print                              btn=8
+[OK  ]  36/79 sms                                      btn=14
+[OK  ]  37/79 sensitive-words                          btn=35
+[OK  ]  38/79 funnel                                   btn=2
+[OK  ]  39/79 rfm                                      btn=6
+[OK  ]  40/79 risk-control                             btn=35
+[OK  ]  41/79 risk-rule-engine                         btn=33
+[OK  ]  42/79 realtime-screen                          btn=2
+[OK  ]  43/79 user-profile                             btn=4
+[OK  ]  44/79 ab-test                                  btn=45
+[OK  ]  45/79 app-version                              btn=33
+[OK  ]  46/79 batch-import                             btn=47
+[OK  ]  47/79 knowledge-base                           btn=27
+[OK  ]  48/79 search-analysis                          btn=13
+[OK  ]  49/79 traffic-analysis                         btn=3
+[OK  ]  50/79 satisfaction                             btn=3
+[OK  ]  51/79 gdpr                                     btn=4
+[OK  ]  52/79 audit-log                                btn=5
+[OK  ]  53/79 product-approval                         btn=2
+[OK  ]  54/79 coupon-manage                            btn=33
+[OK  ]  55/79 flash-sale-manage                        btn=24
+[OK  ]  56/79 points-manage                            btn=6
+[OK  ]  57/79 blacklist                                btn=23
+[OK  ]  58/79 tariff                                   btn=22
+[OK  ]  59/79 risk-alert                               btn=12
+[OK  ]  60/79 cs-sessions                              btn=4
+[OK  ]  61/79 order-tags                               btn=23
+[OK  ]  62/79 inventory-transfer                       btn=19
+[OK  ]  63/79 merge-package                            btn=17
+[OK  ]  64/79 split-package                            btn=17
+[OK  ]  65/79 carrier-compare                          btn=37
+[OK  ]  66/79 overseas-warehouse                       btn=33
+[OK  ]  67/79 warehouse-manage                         btn=37
+[OK  ]  68/79 clearance                                btn=17
+[OK  ]  69/79 customs                                  btn=17
+[OK  ]  70/79 settlement                               btn=37
+[OK  ]  71/79 settlement-detail                        btn=5
+[OK  ]  72/79 system-config                            btn=7
+[OK  ]  73/79 operation-log                            btn=6
+[OK  ]  74/79 live-manage                              btn=11
+[OK  ]  75/79 marketing-effect                         btn=33
+[OK  ]  76/79 shipping-strategy                        btn=33
+[OK  ]  77/79 content-review-detail                    btn=6
+[OK  ]  78/79 push-detail                              btn=33
+[OK  ]  79/79 complaint-handle                         btn=37
+
+================================================================================
+【阶段3 总结】 79 OK / 0 WARN / 0 ERR / 79 TOTAL
+================================================================================
+
+[详细报告] d:\MOYUYOWPC\moyuyo-server\moyuyo-admin\tests\phase3_output.json

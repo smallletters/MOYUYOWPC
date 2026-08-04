@@ -22,6 +22,8 @@ public class NotificationEntity {
 
   private Long relatedId;
 
+  // read 是 MariaDB 保留字，用反引号转义列名
+  @TableField("`read`")
   private Integer read;
 
   @TableField(fill = FieldFill.INSERT)

@@ -8,6 +8,7 @@ import com.moyuyo.dao.entity.AddressEntity;
 import com.moyuyo.service.AddressService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,14 +41,14 @@ public class AddressController {
 
   @Operation(summary = "创建地址")
   @PostMapping
-  public Result<AddressEntity> create(@RequestBody AddressRequest request) {
+  public Result<AddressEntity> create(@Valid @RequestBody AddressRequest request) {
     AddressEntity entity = buildEntity(request);
     return Result.success(addressService.create(UserContextHolder.getUserId(), entity));
   }
 
   @Operation(summary = "更新地址")
   @PutMapping("/{id}")
-  public Result<AddressEntity> update(@PathVariable Long id, @RequestBody AddressRequest request) {
+  public Result<AddressEntity> update(@PathVariable Long id, @Valid @RequestBody AddressRequest request) {
     AddressEntity entity = buildEntity(request);
     entity.setId(id);
     return Result.success(addressService.update(UserContextHolder.getUserId(), entity));

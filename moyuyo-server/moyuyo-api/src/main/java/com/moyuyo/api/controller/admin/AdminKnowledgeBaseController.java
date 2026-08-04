@@ -44,6 +44,10 @@ public class AdminKnowledgeBaseController {
   @Operation(summary = "更新文章")
   @PutMapping("/update")
   public Result<Map<String, Object>> update(@RequestBody KnowledgeBaseEntity body) {
+    // 校验 id 必填
+    if (body == null || body.getId() == null) {
+      return Result.error(400, "参数错误：id 不能为空");
+    }
     adminKnowledgeBaseService.update(body);
     return Result.success(Map.of("id", body.getId(), "message", "文章更新成功"));
   }

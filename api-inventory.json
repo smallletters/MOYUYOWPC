@@ -1,0 +1,2562 @@
+[
+  {
+    "class": "AdminAnalysisController",
+    "method": "GET",
+    "path": "/api/admin/analysis/funnel",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminAnalysisController",
+    "method": "GET",
+    "path": "/api/admin/analysis/rfm",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminAnalysisController",
+    "method": "GET",
+    "path": "/api/admin/analysis/search",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminAnalysisController",
+    "method": "GET",
+    "path": "/api/admin/analysis/traffic",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminAppVersionController",
+    "method": "GET",
+    "path": "/api/admin/app-version/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminAppVersionController",
+    "method": "POST",
+    "path": "/api/admin/app-version/create",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminAppVersionController",
+    "method": "PUT",
+    "path": "/api/admin/app-version/update",
+    "http": 200,
+    "biz": 400,
+    "ok": true
+  },
+  {
+    "class": "AdminAppVersionController",
+    "method": "POST",
+    "path": "/api/admin/app-version/{id}/publish",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminAppVersionController",
+    "method": "POST",
+    "path": "/api/admin/app-version/{id}/rollback",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminAppVersionController",
+    "method": "DELETE",
+    "path": "/api/admin/app-version/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminAuditLogController",
+    "method": "GET",
+    "path": "/api/admin/audit-log/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminAuditLogController",
+    "method": "GET",
+    "path": "/api/admin/audit-log/stats",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminAuthController",
+    "method": "POST",
+    "path": "/api/admin/auth/login",
+    "http": 200,
+    "biz": 400,
+    "ok": true
+  },
+  {
+    "class": "AdminAuthController",
+    "method": "POST",
+    "path": "/api/admin/auth/logout",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminAuthController",
+    "method": "GET",
+    "path": "/api/admin/auth/me",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminBatchImportController",
+    "method": "GET",
+    "path": "/api/admin/batch-import/records",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminBatchImportController",
+    "method": "POST",
+    "path": "/api/admin/batch-import/import",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminBatchImportController",
+    "method": "GET",
+    "path": "/api/admin/batch-import/template/{type}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminBatchImportController",
+    "method": "GET",
+    "path": "/api/admin/batch-import/{id}/errors",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminBatchImportController",
+    "method": "DELETE",
+    "path": "/api/admin/batch-import/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminBlacklistController",
+    "method": "GET",
+    "path": "/api/admin/blacklist/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminBlacklistController",
+    "method": "POST",
+    "path": "/api/admin/blacklist/create",
+    "http": 200,
+    "biz": 400,
+    "ok": true
+  },
+  {
+    "class": "AdminBlacklistController",
+    "method": "POST",
+    "path": "/api/admin/blacklist/batch-create",
+    "http": 400,
+    "biz": 400,
+    "ok": false
+  },
+  {
+    "class": "AdminBlacklistController",
+    "method": "DELETE",
+    "path": "/api/admin/blacklist/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminBlacklistController",
+    "method": "PUT",
+    "path": "/api/admin/blacklist/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminCmsController",
+    "method": "GET",
+    "path": "/api/admin/cms/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminCmsController",
+    "method": "GET",
+    "path": "/api/admin/cms/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminCmsController",
+    "method": "POST",
+    "path": "/api/admin/cms/create",
+    "http": 200,
+    "biz": 500,
+    "ok": true
+  },
+  {
+    "class": "AdminCmsController",
+    "method": "PUT",
+    "path": "/api/admin/cms/update",
+    "http": 200,
+    "biz": 500,
+    "ok": true
+  },
+  {
+    "class": "AdminCmsController",
+    "method": "DELETE",
+    "path": "/api/admin/cms/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminCmsController",
+    "method": "PUT",
+    "path": "/api/admin/cms/{id}/status",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminCmsController",
+    "method": "PUT",
+    "path": "/api/admin/cms/reorder",
+    "http": 400,
+    "biz": 400,
+    "ok": false
+  },
+  {
+    "class": "AdminComplaintController",
+    "method": "POST",
+    "path": "/api/admin/complaint/create",
+    "http": 409,
+    "biz": 409,
+    "ok": false
+  },
+  {
+    "class": "AdminComplaintController",
+    "method": "GET",
+    "path": "/api/admin/complaint/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminComplaintController",
+    "method": "GET",
+    "path": "/api/admin/complaint/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminComplaintController",
+    "method": "POST",
+    "path": "/api/admin/complaint/{id}/start-process",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminComplaintController",
+    "method": "POST",
+    "path": "/api/admin/complaint/{id}/close",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminComplaintController",
+    "method": "PUT",
+    "path": "/api/admin/complaint/{id}/assign",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminContentReviewController",
+    "method": "GET",
+    "path": "/api/admin/content-review/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminContentReviewController",
+    "method": "GET",
+    "path": "/api/admin/content-review/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminContentReviewController",
+    "method": "PUT",
+    "path": "/api/admin/content-review/{id}/approve",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminContentReviewController",
+    "method": "PUT",
+    "path": "/api/admin/content-review/{id}/reject",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminContentReviewController",
+    "method": "PUT",
+    "path": "/api/admin/content-review/{id}/hide",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminContentReviewController",
+    "method": "DELETE",
+    "path": "/api/admin/content-review/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminContentReviewController",
+    "method": "PUT",
+    "path": "/api/admin/content-review/{id}/ban",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminContentReviewController",
+    "method": "GET",
+    "path": "/api/admin/content-review/stats",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminContentReviewController",
+    "method": "GET",
+    "path": "/api/admin/content-review/trend",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminCouponController",
+    "method": "GET",
+    "path": "/api/admin/coupons/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminCouponController",
+    "method": "GET",
+    "path": "/api/admin/coupons/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminCouponController",
+    "method": "POST",
+    "path": "/api/admin/coupons/create",
+    "http": 200,
+    "biz": 500,
+    "ok": true
+  },
+  {
+    "class": "AdminCouponController",
+    "method": "PUT",
+    "path": "/api/admin/coupons/update",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminCouponController",
+    "method": "DELETE",
+    "path": "/api/admin/coupons/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminCouponController",
+    "method": "GET",
+    "path": "/api/admin/coupons/stats",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminCrmController",
+    "method": "GET",
+    "path": "/api/admin/crm/cs-performance",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminCrmController",
+    "method": "GET",
+    "path": "/api/admin/crm/{agentId}/cs-detail",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminCrmController",
+    "method": "GET",
+    "path": "/api/admin/crm/realtime",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminCrmController",
+    "method": "GET",
+    "path": "/api/admin/crm/realtime-order-flow",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminCrmController",
+    "method": "GET",
+    "path": "/api/admin/crm/realtime/top-products",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminCsSessionController",
+    "method": "GET",
+    "path": "/api/admin/cs-sessions/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminCsSessionController",
+    "method": "GET",
+    "path": "/api/admin/cs-sessions/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminCsSessionController",
+    "method": "GET",
+    "path": "/api/admin/cs-sessions/stats",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminDashboardController",
+    "method": "GET",
+    "path": "/api/admin/dashboard/stats",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminDashboardController",
+    "method": "GET",
+    "path": "/api/admin/dashboard/recent-orders",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminDashboardController",
+    "method": "GET",
+    "path": "/api/admin/dashboard/sales-trend",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminDashboardController",
+    "method": "GET",
+    "path": "/api/admin/dashboard/category-distribution",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminDashboardController",
+    "method": "GET",
+    "path": "/api/admin/dashboard/top-products",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminFinanceController",
+    "method": "GET",
+    "path": "/api/admin/finance/overview",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminFinanceController",
+    "method": "GET",
+    "path": "/api/admin/finance/settlements",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminFinanceController",
+    "method": "GET",
+    "path": "/api/admin/finance/settlements/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminFinanceController",
+    "method": "POST",
+    "path": "/api/admin/finance/settlements",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminFinanceController",
+    "method": "PUT",
+    "path": "/api/admin/finance/settlements/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminFinanceController",
+    "method": "DELETE",
+    "path": "/api/admin/finance/settlements/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminFinanceController",
+    "method": "GET",
+    "path": "/api/admin/finance/records",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminFlashSaleController",
+    "method": "GET",
+    "path": "/api/admin/flash-sales/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminFlashSaleController",
+    "method": "POST",
+    "path": "/api/admin/flash-sales/create",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminFlashSaleController",
+    "method": "PUT",
+    "path": "/api/admin/flash-sales/update",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminFlashSaleController",
+    "method": "DELETE",
+    "path": "/api/admin/flash-sales/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminFlashSaleController",
+    "method": "GET",
+    "path": "/api/admin/flash-sales/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminFlashSaleController",
+    "method": "GET",
+    "path": "/api/admin/flash-sales/stats",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminFlashSaleController",
+    "method": "PUT",
+    "path": "/api/admin/flash-sales/{id}/status",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminGdprController",
+    "method": "GET",
+    "path": "/api/admin/gdpr/consent-records",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminGdprController",
+    "method": "GET",
+    "path": "/api/admin/gdpr/data-requests",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminGdprController",
+    "method": "PUT",
+    "path": "/api/admin/gdpr/{id}/process",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminGdprController",
+    "method": "GET",
+    "path": "/api/admin/gdpr/policy",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminInventoryController",
+    "method": "GET",
+    "path": "/api/admin/inventory/overview",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminInventoryController",
+    "method": "GET",
+    "path": "/api/admin/inventory/alerts",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminInventoryController",
+    "method": "GET",
+    "path": "/api/admin/inventory/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminInventoryController",
+    "method": "PUT",
+    "path": "/api/admin/inventory/{id}/stock",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminInventoryController",
+    "method": "POST",
+    "path": "/api/admin/inventory/check",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminInventoryController",
+    "method": "GET",
+    "path": "/api/admin/inventory/checks",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminInventoryController",
+    "method": "GET",
+    "path": "/api/admin/inventory/transactions",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminInventoryTransferController",
+    "method": "GET",
+    "path": "/api/admin/inventory-transfer/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminInventoryTransferController",
+    "method": "POST",
+    "path": "/api/admin/inventory-transfer/create",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminInventoryTransferController",
+    "method": "PUT",
+    "path": "/api/admin/inventory-transfer/{id}/approve",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminInventoryTransferController",
+    "method": "PUT",
+    "path": "/api/admin/inventory-transfer/{id}/reject",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminInventoryTransferController",
+    "method": "PUT",
+    "path": "/api/admin/inventory-transfer/{id}/complete",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminKnowledgeBaseController",
+    "method": "GET",
+    "path": "/api/admin/knowledge-base/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminKnowledgeBaseController",
+    "method": "GET",
+    "path": "/api/admin/knowledge-base/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminKnowledgeBaseController",
+    "method": "POST",
+    "path": "/api/admin/knowledge-base/create",
+    "http": 409,
+    "biz": 409,
+    "ok": false
+  },
+  {
+    "class": "AdminKnowledgeBaseController",
+    "method": "PUT",
+    "path": "/api/admin/knowledge-base/update",
+    "http": 200,
+    "biz": 400,
+    "ok": true
+  },
+  {
+    "class": "AdminKnowledgeBaseController",
+    "method": "DELETE",
+    "path": "/api/admin/knowledge-base/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLiveController",
+    "method": "GET",
+    "path": "/api/admin/live/rooms",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminLiveController",
+    "method": "POST",
+    "path": "/api/admin/live/rooms",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminLiveController",
+    "method": "PUT",
+    "path": "/api/admin/live/rooms/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLiveController",
+    "method": "PUT",
+    "path": "/api/admin/live/rooms/{id}/status",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLiveController",
+    "method": "GET",
+    "path": "/api/admin/live/rooms/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLiveController",
+    "method": "DELETE",
+    "path": "/api/admin/live/rooms/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "GET",
+    "path": "/api/admin/logistics/kpi",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "GET",
+    "path": "/api/admin/logistics/packages",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "GET",
+    "path": "/api/admin/logistics/warehouses",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "POST",
+    "path": "/api/admin/logistics/warehouses",
+    "http": 409,
+    "biz": 409,
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "DELETE",
+    "path": "/api/admin/logistics/warehouses/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "PUT",
+    "path": "/api/admin/logistics/warehouses/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "GET",
+    "path": "/api/admin/logistics/overseas",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "GET",
+    "path": "/api/admin/logistics/merge-packages",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "GET",
+    "path": "/api/admin/logistics/split-packages",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "GET",
+    "path": "/api/admin/logistics/carriers",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "GET",
+    "path": "/api/admin/logistics/clearance",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "GET",
+    "path": "/api/admin/logistics/customs",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "GET",
+    "path": "/api/admin/logistics/shipping-strategies",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "POST",
+    "path": "/api/admin/logistics/{id}/customs/sync",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "POST",
+    "path": "/api/admin/logistics/overseas",
+    "http": 409,
+    "biz": 409,
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "PUT",
+    "path": "/api/admin/logistics/overseas/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "DELETE",
+    "path": "/api/admin/logistics/overseas/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "POST",
+    "path": "/api/admin/logistics/merge-packages",
+    "http": 409,
+    "biz": 409,
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "PUT",
+    "path": "/api/admin/logistics/merge-packages/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "DELETE",
+    "path": "/api/admin/logistics/merge-packages/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "POST",
+    "path": "/api/admin/logistics/split-packages",
+    "http": 409,
+    "biz": 409,
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "PUT",
+    "path": "/api/admin/logistics/split-packages/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "DELETE",
+    "path": "/api/admin/logistics/split-packages/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "POST",
+    "path": "/api/admin/logistics/carriers",
+    "http": 409,
+    "biz": 409,
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "PUT",
+    "path": "/api/admin/logistics/carriers/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "DELETE",
+    "path": "/api/admin/logistics/carriers/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "POST",
+    "path": "/api/admin/logistics/clearance",
+    "http": 409,
+    "biz": 409,
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "PUT",
+    "path": "/api/admin/logistics/clearance/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "DELETE",
+    "path": "/api/admin/logistics/clearance/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "POST",
+    "path": "/api/admin/logistics/customs",
+    "http": 409,
+    "biz": 409,
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "PUT",
+    "path": "/api/admin/logistics/customs/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "DELETE",
+    "path": "/api/admin/logistics/customs/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "POST",
+    "path": "/api/admin/logistics/shipping-strategies",
+    "http": 409,
+    "biz": 409,
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "PUT",
+    "path": "/api/admin/logistics/shipping-strategies/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminLogisticsController",
+    "method": "DELETE",
+    "path": "/api/admin/logistics/shipping-strategies/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminOrderController",
+    "method": "GET",
+    "path": "/api/admin/orders/stats",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderController",
+    "method": "GET",
+    "path": "/api/admin/orders/recent",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderController",
+    "method": "GET",
+    "path": "/api/admin/orders/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderController",
+    "method": "GET",
+    "path": "/api/admin/orders/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminOrderController",
+    "method": "PUT",
+    "path": "/api/admin/orders/{id}/address",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminOrderController",
+    "method": "PUT",
+    "path": "/api/admin/orders/{id}/ship",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminOrderController",
+    "method": "PUT",
+    "path": "/api/admin/orders/{id}/cancel",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminOrderController",
+    "method": "DELETE",
+    "path": "/api/admin/orders/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminOrderController",
+    "method": "POST",
+    "path": "/api/admin/orders/{id}/sync-to-woo",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminOrderOpsController",
+    "method": "GET",
+    "path": "/api/admin/order-ops/export",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderOpsController",
+    "method": "GET",
+    "path": "/api/admin/order-ops/stats",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderOpsController",
+    "method": "POST",
+    "path": "/api/admin/order-ops/export/create",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderOpsController",
+    "method": "GET",
+    "path": "/api/admin/order-ops/export/download/{exportId}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminOrderOpsController",
+    "method": "POST",
+    "path": "/api/admin/order-ops/batch-ship",
+    "http": 200,
+    "biz": 400,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderOpsController",
+    "method": "PUT",
+    "path": "/api/admin/order-ops/{id}/remark",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminOrderOpsController",
+    "method": "GET",
+    "path": "/api/admin/order-ops/print/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderOpsController",
+    "method": "POST",
+    "path": "/api/admin/order-ops/print/record",
+    "http": 200,
+    "biz": 400,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderOpsController",
+    "method": "GET",
+    "path": "/api/admin/order-ops/price-modify/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderOpsController",
+    "method": "POST",
+    "path": "/api/admin/order-ops/price-modify/create",
+    "http": 200,
+    "biz": 400,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderOpsController",
+    "method": "GET",
+    "path": "/api/admin/order-ops/intercept/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderOpsController",
+    "method": "POST",
+    "path": "/api/admin/order-ops/intercept/create",
+    "http": 200,
+    "biz": 400,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderOpsController",
+    "method": "POST",
+    "path": "/api/admin/order-ops/intercept/release/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminOrderOpsController",
+    "method": "GET",
+    "path": "/api/admin/order-ops/monitor/data",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderOpsController",
+    "method": "GET",
+    "path": "/api/admin/order-ops/monitor/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderTagController",
+    "method": "GET",
+    "path": "/api/admin/order-tags/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderTagController",
+    "method": "POST",
+    "path": "/api/admin/order-tags/create",
+    "http": 200,
+    "biz": 400,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderTagController",
+    "method": "PUT",
+    "path": "/api/admin/order-tags/update",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminOrderTagController",
+    "method": "DELETE",
+    "path": "/api/admin/order-tags/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminOrderTagController",
+    "method": "POST",
+    "path": "/api/admin/order-tags/{orderId}/tags",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminOrderTagController",
+    "method": "GET",
+    "path": "/api/admin/order-tags/{orderId}/tags",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminPointsController",
+    "method": "GET",
+    "path": "/api/admin/points/activities",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminPointsController",
+    "method": "GET",
+    "path": "/api/admin/points/activities/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminPointsController",
+    "method": "POST",
+    "path": "/api/admin/points/activities/create",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminPointsController",
+    "method": "PUT",
+    "path": "/api/admin/points/activities/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminPointsController",
+    "method": "DELETE",
+    "path": "/api/admin/points/activities/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminPointsController",
+    "method": "GET",
+    "path": "/api/admin/points/logs",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminPointsController",
+    "method": "GET",
+    "path": "/api/admin/points/stats",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminPointsController",
+    "method": "GET",
+    "path": "/api/admin/points/users/{userId}/points",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminPointsController",
+    "method": "POST",
+    "path": "/api/admin/points/users/{userId}/adjust",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminPriceController",
+    "method": "GET",
+    "path": "/api/admin/price/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminPriceController",
+    "method": "POST",
+    "path": "/api/admin/price/create",
+    "http": 200,
+    "biz": 404,
+    "ok": true
+  },
+  {
+    "class": "AdminPriceController",
+    "method": "PUT",
+    "path": "/api/admin/price/update",
+    "http": 200,
+    "biz": 400,
+    "ok": true
+  },
+  {
+    "class": "AdminPriceController",
+    "method": "DELETE",
+    "path": "/api/admin/price/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminPriceController",
+    "method": "PUT",
+    "path": "/api/admin/price/{id}/toggle",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminPriceController",
+    "method": "GET",
+    "path": "/api/admin/price/history",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminProductAnalysisController",
+    "method": "GET",
+    "path": "/api/admin/product-analysis/kpi",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminProductAnalysisController",
+    "method": "GET",
+    "path": "/api/admin/product-analysis/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminProductAnalysisController",
+    "method": "GET",
+    "path": "/api/admin/product-analysis/report",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminProductApprovalController",
+    "method": "GET",
+    "path": "/api/admin/product-approval/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminProductApprovalController",
+    "method": "GET",
+    "path": "/api/admin/product-approval/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminProductApprovalController",
+    "method": "PUT",
+    "path": "/api/admin/product-approval/{id}/approve",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminProductApprovalController",
+    "method": "PUT",
+    "path": "/api/admin/product-approval/{id}/reject",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminProductApprovalController",
+    "method": "PUT",
+    "path": "/api/admin/product-approval/{id}/urgent",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminProductController",
+    "method": "GET",
+    "path": "/api/admin/products/categories",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminProductController",
+    "method": "GET",
+    "path": "/api/admin/products/brands",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminProductController",
+    "method": "GET",
+    "path": "/api/admin/products/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminProductController",
+    "method": "GET",
+    "path": "/api/admin/products/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminProductController",
+    "method": "POST",
+    "path": "/api/admin/products/create",
+    "http": 200,
+    "biz": 400,
+    "ok": true
+  },
+  {
+    "class": "AdminProductController",
+    "method": "PUT",
+    "path": "/api/admin/products/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminProductController",
+    "method": "PUT",
+    "path": "/api/admin/products/{id}/status",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminProductController",
+    "method": "DELETE",
+    "path": "/api/admin/products/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminProductController",
+    "method": "POST",
+    "path": "/api/admin/products/batch",
+    "http": 200,
+    "biz": 500,
+    "ok": true
+  },
+  {
+    "class": "AdminProductController",
+    "method": "POST",
+    "path": "/api/admin/products/sync-from-woo",
+    "http": 200,
+    "biz": 503,
+    "ok": true
+  },
+  {
+    "class": "AdminProductController",
+    "method": "POST",
+    "path": "/api/admin/products/{id}/push-to-woo",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminProductController",
+    "method": "POST",
+    "path": "/api/admin/products/push-all-to-woo",
+    "http": 200,
+    "biz": 503,
+    "ok": true
+  },
+  {
+    "class": "AdminProductController",
+    "method": "POST",
+    "path": "/api/admin/products/{id}/pull-from-woo",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminProductController",
+    "method": "POST",
+    "path": "/api/admin/products/sync-stock-from-woo",
+    "http": 200,
+    "biz": 503,
+    "ok": true
+  },
+  {
+    "class": "AdminProductController",
+    "method": "POST",
+    "path": "/api/admin/products/{id}/sync-stock",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminPushController",
+    "method": "GET",
+    "path": "/api/admin/push/stats",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminPushController",
+    "method": "GET",
+    "path": "/api/admin/push/records",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminPushController",
+    "method": "POST",
+    "path": "/api/admin/push/create",
+    "http": 200,
+    "biz": 400,
+    "ok": true
+  },
+  {
+    "class": "AdminPushController",
+    "method": "POST",
+    "path": "/api/admin/push/{id}/send",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminPushController",
+    "method": "GET",
+    "path": "/api/admin/push/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminPushController",
+    "method": "PUT",
+    "path": "/api/admin/push/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminPushController",
+    "method": "POST",
+    "path": "/api/admin/push/{id}/cancel",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminPushController",
+    "method": "POST",
+    "path": "/api/admin/push/scheduled/{id}/cancel",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminPushController",
+    "method": "DELETE",
+    "path": "/api/admin/push/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminPushController",
+    "method": "GET",
+    "path": "/api/admin/push/scheduled",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminPushController",
+    "method": "POST",
+    "path": "/api/admin/push/schedule",
+    "http": 409,
+    "biz": 409,
+    "ok": false
+  },
+  {
+    "class": "AdminRbacController",
+    "method": "GET",
+    "path": "/api/admin/rbac/roles",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminRbacController",
+    "method": "POST",
+    "path": "/api/admin/rbac/roles",
+    "http": 200,
+    "biz": 500,
+    "ok": true
+  },
+  {
+    "class": "AdminRbacController",
+    "method": "PUT",
+    "path": "/api/admin/rbac/roles/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminRbacController",
+    "method": "DELETE",
+    "path": "/api/admin/rbac/roles/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminRbacController",
+    "method": "GET",
+    "path": "/api/admin/rbac/roles/{id}/permissions",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminRbacController",
+    "method": "PUT",
+    "path": "/api/admin/rbac/roles/{id}/permissions",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminRbacController",
+    "method": "GET",
+    "path": "/api/admin/rbac/users",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminRbacController",
+    "method": "GET",
+    "path": "/api/admin/rbac/users/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminRbacController",
+    "method": "POST",
+    "path": "/api/admin/rbac/users",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminRbacController",
+    "method": "PUT",
+    "path": "/api/admin/rbac/users/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminRbacController",
+    "method": "DELETE",
+    "path": "/api/admin/rbac/users/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminRbacController",
+    "method": "POST",
+    "path": "/api/admin/rbac/users/{id}/reset-password",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminRbacController",
+    "method": "GET",
+    "path": "/api/admin/rbac/permissions",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminRefundController",
+    "method": "GET",
+    "path": "/api/admin/refunds/stats",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminRefundController",
+    "method": "GET",
+    "path": "/api/admin/refunds/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminRefundController",
+    "method": "GET",
+    "path": "/api/admin/refunds/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminRefundController",
+    "method": "GET",
+    "path": "/api/admin/refunds/reason-distribution",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminRefundController",
+    "method": "PUT",
+    "path": "/api/admin/refunds/{id}/approve",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminRefundController",
+    "method": "PUT",
+    "path": "/api/admin/refunds/{id}/reject",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminRefundController",
+    "method": "PUT",
+    "path": "/api/admin/refunds/batch-approve",
+    "http": 200,
+    "biz": 500,
+    "ok": true
+  },
+  {
+    "class": "AdminReviewController",
+    "method": "GET",
+    "path": "/api/admin/review/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminReviewController",
+    "method": "PUT",
+    "path": "/api/admin/review/{id}/approve",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminReviewController",
+    "method": "PUT",
+    "path": "/api/admin/review/{id}/reject",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminReviewController",
+    "method": "POST",
+    "path": "/api/admin/review/{id}/reply",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminReviewController",
+    "method": "GET",
+    "path": "/api/admin/review/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminReviewController",
+    "method": "DELETE",
+    "path": "/api/admin/review/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminReviewController",
+    "method": "POST",
+    "path": "/api/admin/review/batch-delete",
+    "http": 200,
+    "biz": 500,
+    "ok": true
+  },
+  {
+    "class": "AdminReviewController",
+    "method": "GET",
+    "path": "/api/admin/review/stats",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminRiskAlertController",
+    "method": "GET",
+    "path": "/api/admin/risk-alert/configs",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminRiskAlertController",
+    "method": "POST",
+    "path": "/api/admin/risk-alert/configs/create",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminRiskAlertController",
+    "method": "PUT",
+    "path": "/api/admin/risk-alert/configs/update",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminRiskAlertController",
+    "method": "DELETE",
+    "path": "/api/admin/risk-alert/configs/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminRiskAlertController",
+    "method": "GET",
+    "path": "/api/admin/risk-alert/history",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminRiskController",
+    "method": "GET",
+    "path": "/api/admin/risk/rules",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminRiskController",
+    "method": "POST",
+    "path": "/api/admin/risk/rules",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminRiskController",
+    "method": "PUT",
+    "path": "/api/admin/risk/rules/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminRiskController",
+    "method": "PUT",
+    "path": "/api/admin/risk/rules/{id}/status",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminRiskController",
+    "method": "DELETE",
+    "path": "/api/admin/risk/rules/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminRiskController",
+    "method": "GET",
+    "path": "/api/admin/risk/events",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminRiskController",
+    "method": "GET",
+    "path": "/api/admin/risk/event-stats",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminSatisfactionController",
+    "method": "GET",
+    "path": "/api/admin/satisfaction/stats",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminSatisfactionController",
+    "method": "GET",
+    "path": "/api/admin/satisfaction/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminSensitiveWordController",
+    "method": "GET",
+    "path": "/api/admin/sensitive/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminSensitiveWordController",
+    "method": "GET",
+    "path": "/api/admin/sensitive/categories",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminSensitiveWordController",
+    "method": "POST",
+    "path": "/api/admin/sensitive/create",
+    "http": 409,
+    "biz": 409,
+    "ok": false
+  },
+  {
+    "class": "AdminSensitiveWordController",
+    "method": "PUT",
+    "path": "/api/admin/sensitive/update",
+    "http": 200,
+    "biz": 400,
+    "ok": true
+  },
+  {
+    "class": "AdminSensitiveWordController",
+    "method": "DELETE",
+    "path": "/api/admin/sensitive/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminSensitiveWordController",
+    "method": "POST",
+    "path": "/api/admin/sensitive/batch-delete",
+    "http": 400,
+    "biz": 400,
+    "ok": false
+  },
+  {
+    "class": "AdminSettingsController",
+    "method": "GET",
+    "path": "/api/admin/settings/payment-methods",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminSmsController",
+    "method": "GET",
+    "path": "/api/admin/sms/stats",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminSmsController",
+    "method": "GET",
+    "path": "/api/admin/sms/records",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminSmsController",
+    "method": "POST",
+    "path": "/api/admin/sms/send",
+    "http": 409,
+    "biz": 409,
+    "ok": false
+  },
+  {
+    "class": "AdminSpaController",
+    "method": "GET",
+    "path": "/",
+    "http": 404,
+    "biz": 404,
+    "ok": false
+  },
+  {
+    "class": "AdminSpaController",
+    "method": "GET",
+    "path": "/admin/assets/{filename:.+}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminSpaController",
+    "method": "GET",
+    "path": "/admin/assets/{dir}/{filename:.+}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminSpaController",
+    "method": "GET",
+    "path": "/admin/{path}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminSpaController",
+    "method": "GET",
+    "path": "/admin/{path}/{subpath}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminSpaController",
+    "method": "GET",
+    "path": "/admin/**",
+    "http": 404,
+    "biz": 404,
+    "ok": false
+  },
+  {
+    "class": "AdminSystemConfigController",
+    "method": "GET",
+    "path": "/api/admin/system/config",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminSystemConfigController",
+    "method": "PUT",
+    "path": "/api/admin/system/config",
+    "http": 400,
+    "biz": 400,
+    "ok": false
+  },
+  {
+    "class": "AdminSystemConfigController",
+    "method": "GET",
+    "path": "/api/admin/system/logs",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminSystemController",
+    "method": "GET",
+    "path": "/api/admin/system-info/security-config",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminSystemController",
+    "method": "PUT",
+    "path": "/api/admin/system-info/security-config",
+    "http": 400,
+    "biz": 400,
+    "ok": false
+  },
+  {
+    "class": "AdminSystemController",
+    "method": "GET",
+    "path": "/api/admin/system-info/info",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminSystemController",
+    "method": "GET",
+    "path": "/api/admin/system-info/parameters",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminSystemController",
+    "method": "PUT",
+    "path": "/api/admin/system-info/parameters",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminSystemController",
+    "method": "POST",
+    "path": "/api/admin/system-info/clear-cache",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminTariffController",
+    "method": "GET",
+    "path": "/api/admin/tariff/configs",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminTariffController",
+    "method": "POST",
+    "path": "/api/admin/tariff/configs/create",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminTariffController",
+    "method": "PUT",
+    "path": "/api/admin/tariff/configs/update",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminTariffController",
+    "method": "DELETE",
+    "path": "/api/admin/tariff/configs/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminTariffController",
+    "method": "GET",
+    "path": "/api/admin/tariff/calculate",
+    "http": 400,
+    "biz": 400,
+    "ok": false
+  },
+  {
+    "class": "AdminTariffController",
+    "method": "POST",
+    "path": "/api/admin/tariff/calculate",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminTicketController",
+    "method": "GET",
+    "path": "/api/admin/ticket/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminTicketController",
+    "method": "GET",
+    "path": "/api/admin/ticket/stats",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminTicketController",
+    "method": "GET",
+    "path": "/api/admin/ticket/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminTicketController",
+    "method": "PUT",
+    "path": "/api/admin/ticket/{id}/assign",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminTicketController",
+    "method": "PUT",
+    "path": "/api/admin/ticket/{id}/status",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminTicketController",
+    "method": "POST",
+    "path": "/api/admin/ticket/{id}/reply",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminUserController",
+    "method": "GET",
+    "path": "/api/admin/users/stats",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminUserController",
+    "method": "GET",
+    "path": "/api/admin/users/list",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "AdminUserController",
+    "method": "GET",
+    "path": "/api/admin/users/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminUserController",
+    "method": "PUT",
+    "path": "/api/admin/users/{id}/status",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminUserController",
+    "method": "POST",
+    "path": "/api/admin/users/create",
+    "http": 200,
+    "biz": 400,
+    "ok": true
+  },
+  {
+    "class": "AdminUserController",
+    "method": "PUT",
+    "path": "/api/admin/users/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminUserController",
+    "method": "DELETE",
+    "path": "/api/admin/users/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminUserController",
+    "method": "POST",
+    "path": "/api/admin/users/{id}/reset-password",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminUserProfileController",
+    "method": "GET",
+    "path": "/api/admin/user-profile/{userId}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminUserProfileController",
+    "method": "GET",
+    "path": "/api/admin/user-profile/{userId}/behaviors",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "AdminUserProfileController",
+    "method": "GET",
+    "path": "/api/admin/user-profile/{userId}/orders",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "CampaignMarketingController",
+    "method": "GET",
+    "path": "/api/admin/marketing/campaigns",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "CampaignMarketingController",
+    "method": "POST",
+    "path": "/api/admin/marketing/campaigns",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "CampaignMarketingController",
+    "method": "PUT",
+    "path": "/api/admin/marketing/campaigns/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "CampaignMarketingController",
+    "method": "GET",
+    "path": "/api/admin/marketing/campaigns/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "CampaignMarketingController",
+    "method": "DELETE",
+    "path": "/api/admin/marketing/campaigns/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "CampaignMarketingController",
+    "method": "GET",
+    "path": "/api/admin/marketing/ab-tests",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  },
+  {
+    "class": "CampaignMarketingController",
+    "method": "POST",
+    "path": "/api/admin/marketing/ab-tests",
+    "http": 409,
+    "biz": 409,
+    "ok": false
+  },
+  {
+    "class": "CampaignMarketingController",
+    "method": "PUT",
+    "path": "/api/admin/marketing/ab-tests/{id}",
+    "http": 400,
+    "biz": "n/a",
+    "ok": false
+  },
+  {
+    "class": "CampaignMarketingController",
+    "method": "GET",
+    "path": "/api/admin/marketing/effects",
+    "http": 200,
+    "biz": 0,
+    "ok": true
+  }
+]

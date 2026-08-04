@@ -69,3 +69,114 @@
 .el-tag {
   border: none;
 }
+
+/* ===== UI 精修：滚动条、表格、间距统一 ===== */
+
+/* 全局细滚动条（暗色侧边栏 + 内容区统一） */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.16);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.28);
+}
+
+/* 暗色侧边栏滚动条 */
+.admin-sidebar::-webkit-scrollbar-thumb,
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+}
+.admin-sidebar::-webkit-scrollbar-thumb:hover,
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 表格斑马纹 + 行悬停强化（Element Plus 表格） */
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: var(--background-100);
+}
+.el-table .el-table__body tr:hover > td.el-table__cell {
+  background-color: var(--brand-50);
+}
+.el-table td.el-table__cell,
+.el-table th.el-table__cell {
+  padding: 11px 12px;
+}
+.el-table .cell {
+  line-height: 1.5;
+}
+
+/* 自定义 HTML 表格斑马纹与悬停 */
+.data-table tbody tr:nth-child(even) {
+  background: var(--background-50);
+}
+.data-table tbody tr:nth-child(odd) {
+  background: #fbfbfd;
+}
+.data-table tbody tr:hover {
+  background: var(--brand-50);
+  transition: background 0.15s ease;
+}
+
+/* 分页统一样式 */
+.el-pagination {
+  --el-pagination-button-bg-color: transparent;
+  --el-pagination-hover-color: var(--primary);
+  font-weight: 500;
+}
+.el-pagination .el-pager li,
+.el-pagination button {
+  border-radius: 6px;
+}
+.el-pagination .el-pager li.is-active {
+  background: var(--primary);
+  color: #fff;
+  border-radius: 6px;
+}
+
+/* 弹窗圆角与内边距统一 */
+.el-dialog {
+  border-radius: var(--radius);
+}
+.el-dialog__header {
+  padding: 20px 24px 12px;
+  margin-right: 0;
+}
+.el-dialog__body {
+  padding: 16px 24px;
+}
+.el-dialog__footer {
+  padding: 12px 24px 20px;
+}
+
+/* 抽屉细节 */
+.el-drawer__header {
+  margin-bottom: 0;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-800);
+  font-weight: 600;
+}
+
+/* 消息提示圆角 */
+.el-message {
+  border-radius: var(--radius-sm);
+}
+
+/* 表单控件统一切换 */
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner {
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px var(--ring) inset;
+}

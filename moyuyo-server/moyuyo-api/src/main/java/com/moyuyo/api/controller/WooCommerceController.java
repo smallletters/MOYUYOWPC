@@ -55,6 +55,9 @@ public class WooCommerceController {
     public Result<List<Map<String, Object>>> getProducts(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int perPage) {
+        if (!client.isConfigured()) {
+            return Result.error(503, "WooCommerce 未配置，请先设置 URL 与认证信息");
+        }
         List<Map<String, Object>> products = client.getProducts(page, perPage);
         return Result.success(products);
     }
@@ -62,6 +65,9 @@ public class WooCommerceController {
     @Operation(summary = "获取分类列表（来自 WooCommerce）")
     @GetMapping("/categories")
     public Result<List<Map<String, Object>>> getCategories() {
+        if (!client.isConfigured()) {
+            return Result.error(503, "WooCommerce 未配置，请先设置 URL 与认证信息");
+        }
         List<Map<String, Object>> categories = client.getCategories();
         return Result.success(categories);
     }
@@ -71,6 +77,9 @@ public class WooCommerceController {
     public Result<List<Map<String, Object>>> getOrders(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int perPage) {
+        if (!client.isConfigured()) {
+            return Result.error(503, "WooCommerce 未配置，请先设置 URL 与认证信息");
+        }
         List<Map<String, Object>> orders = client.getOrders(page, perPage);
         return Result.success(orders);
     }

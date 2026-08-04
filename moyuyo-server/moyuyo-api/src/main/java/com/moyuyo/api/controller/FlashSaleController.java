@@ -5,6 +5,8 @@ import com.moyuyo.common.Result;
 import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.dao.entity.FlashSaleEntity;
 import com.moyuyo.service.FlashSaleService;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -34,8 +36,15 @@ public class FlashSaleController {
 
     @Operation(summary = "抢购")
     @PostMapping("/{id}/buy")
+    @RateLimiter(name = "seckillApi", fallbackMethod = "buyRateLimitFallback")
     public Result<Void> buy(@PathVariable Long id, @RequestParam(defaultValue = "1") Integer quantity) {
         flashSaleService.placeFlashOrder(UserContextHolder.getUserId(), id, quantity);
         return Result.success();
+    }
+
+    /** 秒杀限流降级方法 */
+    @SuppressWarnings("unused")
+    private Result<Void> buyRateLimitFallback(Long id, Integer quantity, RequestNotPermitted e) {
+        return Result.error(429, "当前抢购人数过多，请稍后再试");
     }
 }

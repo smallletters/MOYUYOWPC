@@ -1,0 +1,24 @@
+﻿正在登录...
+获得 token: eyJhbGciOiJIUzI1NiJ9...
+
+扫描 163 个非 GET 接口...
+
+[500] POST /api/admin/order-ops/intercept/create  (AdminOrderOpsController)
+    {"code":500,"message":"服务器内部错误","data":null,"traceId":null}
+[500] POST /api/admin/order-ops/price-modify/create  (AdminOrderOpsController)
+    {"code":500,"message":"服务器内部错误","data":null,"traceId":null}
+[500] POST /api/admin/order-ops/print/record  (AdminOrderOpsController)
+    {"code":500,"message":"服务器内部错误","data":null,"traceId":null}
+[500] POST /api/admin/order-tags/create  (AdminOrderTagController)
+    {"code":500,"message":"服务器内部错误","data":null,"traceId":null}
+[500] PUT /api/admin/inventory-transfer/1/approve  (AdminInventoryTransferController)
+    {"code":500,"message":"服务器内部错误","data":null,"traceId":null}
+[500] PUT /api/admin/inventory-transfer/1/complete  (AdminInventoryTransferController)
+    {"code":500,"message":"服务器内部错误","data":null,"traceId":null}
+[500] PUT /api/admin/inventory-transfer/1/reject  (AdminInventoryTransferController)
+    {"code":500,"message":"服务器内部错误","data":null,"traceId":null}
+[500] PUT /api/admin/order-tags/update  (AdminOrderTagController)
+    {"code":500,"message":"服务器内部错误","data":null,"traceId":null}
+
+=== 结果：155 通过 / 8 失败 / 163 总计 ===
+详细报告已保存: post_put_delete_failures.txt

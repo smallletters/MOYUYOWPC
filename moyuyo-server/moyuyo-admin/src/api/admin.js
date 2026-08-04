@@ -108,8 +108,37 @@ export function deleteSettlement(id) {
   return api.delete(`/finance/settlements/${id}`)
 }
 
-export function getFinanceRecords() {
-  return api.get('/finance/records')
+export function getFinanceRecords(params) {
+  return api.get('/finance/records', { params })
+}
+
+// ==================== 退款管理 ====================
+export function getRefundStats() {
+  return api.get('/refunds/stats')
+}
+
+export function getRefundList(params) {
+  return api.get('/refunds/list', { params })
+}
+
+export function getRefundReasonDistribution() {
+  return api.get('/refunds/reason-distribution')
+}
+
+export function approveRefund(id) {
+  return api.put(`/refunds/${id}/approve`)
+}
+
+export function rejectRefund(id) {
+  return api.put(`/refunds/${id}/reject`)
+}
+
+export function getRefundDetail(id) {
+  return api.get(`/refunds/${id}`)
+}
+
+export function batchApproveRefund(data) {
+  return api.put('/refunds/batch-approve', data)
 }
 
 // ==================== 库存 ====================
@@ -160,6 +189,18 @@ export function cancelPush(id) {
 
 export function schedulePush(id, data) {
   return api.post(`/push/schedule`, { ...data, id })
+}
+
+export function getPushDetail(id) {
+  return api.get(`/push/${id}`)
+}
+
+export function updatePush(id, data) {
+  return api.put(`/push/${id}`, data)
+}
+
+export function cancelScheduledPush(id) {
+  return api.post(`/push/scheduled/${id}/cancel`)
 }
 
 export function deletePush(id) {
@@ -226,8 +267,8 @@ export function updateAbTest(id, data) {
   return api.put('/marketing/ab-tests/' + id, data)
 }
 
-export function getMarketingEffects() {
-  return api.get('/marketing/effects')
+export function getMarketingEffects(params) {
+  return api.get('/marketing/effects', { params })
 }
 
 // ==================== 投诉管理 ====================
@@ -297,6 +338,39 @@ export function batchProductAction(data) {
   return api.post('/products/batch', data)
 }
 
+export function deleteProduct(id) {
+  return api.delete(`/products/${id}`)
+}
+
+// 商品 WooCommerce 双向同步：从 WC 拉取 / 推送到 WC / 批量推送
+export function syncProductFromWoo() {
+  return api.post('/products/sync-from-woo')
+}
+
+export function pushProductToWoo(id) {
+  return api.post(`/products/${id}/push-to-woo`)
+}
+
+export function pushAllProductsToWoo() {
+  return api.post('/products/push-all-to-woo')
+}
+
+export function pullProductFromWoo(id) {
+  return api.post(`/products/${id}/pull-from-woo`)
+}
+
+export function syncProductStock(id) {
+  return api.post(`/products/${id}/sync-stock`)
+}
+
+export function syncAllStocksFromWoo() {
+  return api.post('/products/sync-stock-from-woo')
+}
+
+export function getCategoryList() {
+  return api.get('/products/categories')
+}
+
 // ==================== 产品分析 ====================
 export function getProductAnalysisKpi() {
   return api.get('/product-analysis/kpi')
@@ -311,8 +385,8 @@ export function getProductAnalysisReport() {
 }
 
 // ==================== 价格管理 ====================
-export function getPriceList() {
-  return api.get('/price/list')
+export function getPriceList(params) {
+  return api.get('/price/list', { params })
 }
 
 export function createPrice(data) {
@@ -442,6 +516,14 @@ export function getShippingStrategies() {
   return api.get('/logistics/shipping-strategies')
 }
 
+export function getLogisticsKpi() {
+  return api.get('/logistics/kpi')
+}
+
+export function getLogisticsPackages(params) {
+  return api.get('/logistics/packages', { params })
+}
+
 // 物流商
 export const { create: createCarrier, update: updateCarrier, delete: deleteCarrier } = logisticsCrud('carriers')
 // 清关
@@ -537,6 +619,14 @@ export function getSatisfactionList() {
   return api.get('/satisfaction/list')
 }
 
+export function createSatisfactionSurvey(data) {
+  return api.post('/satisfaction/surveys', data)
+}
+
+export function replySatisfactionSurvey(id, data) {
+  return api.put(`/satisfaction/${id}/reply`, data)
+}
+
 // ==================== GDPR ====================
 export function getGdprConsentRecords() {
   return api.get('/gdpr/consent-records')
@@ -546,8 +636,12 @@ export function getGdprDataRequests() {
   return api.get('/gdpr/data-requests')
 }
 
-export function processGdprRequest(id) {
-  return api.put(`/gdpr/${id}/process`)
+export function processGdprRequest(id, data) {
+  return api.put(`/gdpr/${id}/process`, data)
+}
+
+export function createGdprPolicy(data) {
+  return api.post('/gdpr/policy', data)
 }
 
 // ==================== 审计日志 ====================
@@ -560,8 +654,8 @@ export function getAuditLogStats() {
 }
 
 // ==================== 分析 ====================
-export function getFunnelAnalysis() {
-  return api.get('/analysis/funnel')
+export function getFunnelAnalysis(params) {
+  return api.get('/analysis/funnel', { params })
 }
 
 export function getRfmAnalysis() {
@@ -748,6 +842,11 @@ export function getContentReviewList(params) { return api.get('/content-review/l
 export function getContentReviewDetail(id) { return api.get(`/content-review/${id}`) }
 export function approveContentReview(id) { return api.put(`/content-review/${id}/approve`) }
 export function rejectContentReview(id, data) { return api.put(`/content-review/${id}/reject`, data) }
+export function hideContentReview(id) { return api.put(`/content-review/${id}/hide`) }
+export function deleteContentReview(id) { return api.delete(`/content-review/${id}`) }
+export function banContentReview(id) { return api.put(`/content-review/${id}/ban`) }
+export function getContentReviewStats() { return api.get('/content-review/stats') }
+export function getContentReviewTrend(params) { return api.get('/content-review/trend', { params }) }
 
 // ==================== 优惠券管理 ====================
 export function getCouponList() { return api.get('/coupons/list') }
@@ -762,11 +861,14 @@ export function createFlashSale(data) { return api.post('/flash-sales/create', d
 export function updateFlashSale(data) { return api.put('/flash-sales/update', data) }
 export function deleteFlashSale(id) { return api.delete(`/flash-sales/${id}`) }
 export function updateFlashSaleStatus(id, data) { return api.put(`/flash-sales/${id}/status`, data) }
+export function getFlashSaleStats() { return api.get('/flash-sales/stats') }
 
 // ==================== 积分管理 ====================
 export function getPointsActivities() { return api.get('/points/activities') }
 export function createPointsActivity(data) { return api.post('/points/activities/create', data) }
-export function deletePointsActivity(type) { return api.delete(`/points/activities/${encodeURIComponent(type)}`) }
+export function deletePointsActivity(id) {
+  return api.delete(`/points/activities/${encodeURIComponent(id)}`)
+}
 export function getPointsLogs(params) { return api.get('/points/logs', { params }) }
 export function getPointsStats() { return api.get('/points/stats') }
 
@@ -811,5 +913,30 @@ export function approveInventoryTransfer(id) { return api.put(`/inventory-transf
 export function rejectInventoryTransfer(id, data) { return api.put(`/inventory-transfer/${id}/reject`, data) }
 export function completeInventoryTransfer(id) { return api.put(`/inventory-transfer/${id}/complete`) }
 
+// ==================== 用户管理 ====================
+export function getUserStats() { return api.get('/users/stats') }
+export function getUserList(params) { return api.get('/users/list', { params }) }
+export function getUserDetail(id) { return api.get(`/users/${id}`) }
+export function updateUserStatus(id, data) { return api.put(`/users/${id}/status`, data) }
+
+// ==================== 订单管理（基础CRUD） ====================
+export function getOrderList(params) { return api.get('/orders/list', { params }) }
+export function getOrderDetail(id) { return api.get(`/orders/${id}`) }
+export function updateOrderAddress(id, data) { return api.put(`/orders/${id}/address`, data) }
+export function shipOrder(id, data) { return api.put(`/orders/${id}/ship`, data) }
+
+// 订单 WooCommerce 手动重推
+export function syncOrderToWoo(id) { return api.post(`/orders/${id}/sync-to-woo`) }
+
+// ==================== 订单监控规则 ====================
+const monitorCrud = (base) => ({
+  list: (params) => api.get(`${base}/rules`, { params }),
+  create: (data) => api.post(`${base}/rules`, data),
+  update: (id, data) => api.put(`${base}/rules/${id}`, data),
+  toggle: (id, data) => api.put(`${base}/rules/${id}/status`, data),
+  remove: (id) => api.delete(`${base}/rules/${id}`)
+})
+
+export const orderMonitorRuleApi = monitorCrud('/order-ops/monitor')
 
 

@@ -93,7 +93,7 @@ public class AdminPriceController {
           new LambdaQueryWrapper<ProductEntity>().eq(ProductEntity::getName, productName));
     }
     if (product == null) {
-      return Result.error("未找到对应商品");
+      return Result.error(404, "未找到对应商品");
     }
 
     // 保存旧价格（用于记录历史）
@@ -129,12 +129,12 @@ public class AdminPriceController {
     String reason = (String) body.getOrDefault("reason", "");
 
     if (id == null) {
-      return Result.error("参数错误：id 不能为空");
+      return Result.error(400, "参数错误：id 不能为空");
     }
 
     ProductEntity product = productMapper.selectById(id);
     if (product == null) {
-      return Result.error("商品不存在: " + id);
+      return Result.error(404, "商品不存在: " + id);
     }
 
     BigDecimal oldPrice = product.getPrice();

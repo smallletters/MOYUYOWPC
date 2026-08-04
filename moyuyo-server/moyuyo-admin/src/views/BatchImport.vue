@@ -65,6 +65,32 @@
         </el-table-column>
       </el-table>
     </el-card>
+
+    <!-- 导入失败详情弹窗 -->
+    <el-dialog v-model="errorDialogVisible" :title="`导入失败详情 - ${currentRecord?.fileName || ''}`" width="640px">
+      <div v-loading="loadingErrors">
+        <div v-if="errorRows.length === 0 && !loadingErrors" class="empty-tip">该任务无失败记录</div>
+        <el-table v-else :data="errorRows" stripe max-height="400" size="small">
+          <el-table-column prop="row" label="行号" width="70" />
+          <el-table-column prop="field" label="字段" width="120" />
+          <el-table-column prop="value" label="值" min-width="140" show-overflow-tooltip />
+          <el-table-column prop="reason" label="失败原因" min-width="180" show-overflow-tooltip />
+        </el-table>
+      </div>
+    </el-dialog>
+
+    <!-- 导入详情弹窗 -->
+    <el-dialog v-model="detailDialogVisible" title="导入详情" width="520px">
+      <el-descriptions v-if="currentRecord" :column="1" border>
+        <el-descriptions-item label="文件名">{{ currentRecord.fileName }}</el-descriptions-item>
+        <el-descriptions-item label="导入类型">{{ currentRecord.importType }}</el-descriptions-item>
+        <el-descriptions-item label="导入条数">{{ currentRecord.totalCount }}</el-descriptions-item>
+        <el-descriptions-item label="成功条数">{{ currentRecord.successCount }}</el-descriptions-item>
+        <el-descriptions-item label="失败条数">{{ currentRecord.failCount }}</el-descriptions-item>
+        <el-descriptions-item label="状态">{{ currentRecord.status }}</el-descriptions-item>
+        <el-descriptions-item label="导入时间">{{ currentRecord.importTime }}</el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
   </div>
 </template>
 
@@ -72,12 +98,19 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
-import { getImportRecords, getImportTemplate, submitImport } from '../api/admin'
+import { getImportRecords, getImportTemplate, submitImport, getImportErrors } from '../api/admin'
 
 const importType = ref('商品')
 const currentFile = ref(null)
 
 const tableData = ref([])
+
+// 错误/详情弹窗状态
+const errorDialogVisible = ref(false)
+const loadingErrors = ref(false)
+const errorRows = ref([])
+const detailDialogVisible = ref(false)
+const currentRecord = ref(null)
 
 async function loadData() {
   try {
@@ -103,11 +136,8 @@ function handleImport() {
     ElMessage.warning('请选择文件')
     return
   }
-  // 使用 FormData 上传文件，以 multipart/form-data 格式发送
-  const formData = new FormData()
-  formData.append('file', currentFile.value.raw || currentFile.value)
-  formData.append('type', importType.value)
-  submitImport(formData)
+  // 后端 /batch-import/import 接收 JSON（仅记录导入任务，不解析文件内容）
+  submitImport({ type: importType.value, fileName: currentFile.value.name || '' })
     .then(res => {
       ElMessage.success('导入任务已提交')
       loadData()
@@ -134,8 +164,28 @@ function handleDownloadTemplate() {
     })
 }
 
-function handleViewFail(row) { ElMessage.info('查看失败详情：' + row.fileName) }
-function handleViewDetail(row) { ElMessage.info('查看导入详情：' + row.fileName) }
+// 查看失败详情：拉取该导入任务的错误列表
+async function handleViewFail(row) {
+  loadingErrors.value = true
+  errorDialogVisible.value = true
+  errorRows.value = []
+  currentRecord.value = row
+  try {
+    const errors = await getImportErrors(row.id)
+    errorRows.value = Array.isArray(errors) ? errors : []
+  } catch (err) {
+    console.error('获取导入错误失败', err)
+    ElMessage.error('获取导入错误失败：' + (err?.message || '未知错误'))
+  } finally {
+    loadingErrors.value = false
+  }
+}
+
+// 查看导入详情
+function handleViewDetail(row) {
+  currentRecord.value = row
+  detailDialogVisible.value = true
+}
 
 onMounted(() => loadData())
 </script>
@@ -146,4 +196,5 @@ onMounted(() => loadData())
 .page-header h2 { font-size: 20px; font-weight: 700; color: var(--text-800); margin: 0; }
 .filter-card { margin-bottom: 16px; }
 .header-actions { display: flex; gap: 8px; }
+.empty-tip { padding: 24px 0; text-align: center; color: var(--text-400); font-size: 13px; }
 </style>

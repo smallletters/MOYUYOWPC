@@ -30,12 +30,12 @@ public interface AdminRoleService {
   void delete(Long id);
 
   /**
-   * 根据角色ID获取权限列表
+   * 根据角色ID获取权限键列表（格式：resource:action，如 products:view）
    */
-  List<Long> getPermissionsByRole(Long roleId);
+  List<String> getPermissionsByRole(Long roleId);
 
   /**
-   * 更新角色权限
+   * 更新角色权限（permKeys 格式：resource:action，如 products:view）
    */
-  void updatePermissions(Long roleId, List<Long> permissionIds);
+  void updatePermissions(Long roleId, List<String> permKeys);
 }

@@ -57,4 +57,66 @@ public class AdminUserController {
     result.put("message", "用户状态更新成功");
     return Result.success(result);
   }
+
+  @Operation(summary = "创建用户")
+  @PostMapping("/create")
+  public Result<Map<String, Object>> create(@RequestBody Map<String, Object> body) {
+    try {
+      Map<String, Object> result = adminUserManageService.createUser(body);
+      return Result.success(result);
+    } catch (IllegalArgumentException e) {
+      return Result.error(400, e.getMessage());
+    } catch (Exception e) {
+      return Result.error("创建用户失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "更新用户信息")
+  @PutMapping("/{id}")
+  public Result<Map<String, Object>> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+    try {
+      adminUserManageService.updateUser(id, body);
+      Map<String, Object> result = new java.util.LinkedHashMap<>();
+      result.put("id", id);
+      result.put("message", "用户信息更新成功");
+      return Result.success(result);
+    } catch (IllegalArgumentException e) {
+      return Result.error(400, e.getMessage());
+    } catch (Exception e) {
+      return Result.error("更新用户失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "删除用户")
+  @DeleteMapping("/{id}")
+  public Result<Map<String, Object>> delete(@PathVariable Long id) {
+    try {
+      adminUserManageService.deleteUser(id);
+      Map<String, Object> result = new java.util.LinkedHashMap<>();
+      result.put("id", id);
+      result.put("message", "用户已删除");
+      return Result.success(result);
+    } catch (IllegalArgumentException e) {
+      return Result.error(400, e.getMessage());
+    } catch (Exception e) {
+      return Result.error("删除用户失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "重置用户密码")
+  @PostMapping("/{id}/reset-password")
+  public Result<Map<String, Object>> resetPassword(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    try {
+      String newPassword = body.getOrDefault("password", "123456");
+      adminUserManageService.resetPassword(id, newPassword);
+      Map<String, Object> result = new java.util.LinkedHashMap<>();
+      result.put("id", id);
+      result.put("message", "密码已重置");
+      return Result.success(result);
+    } catch (IllegalArgumentException e) {
+      return Result.error(400, e.getMessage());
+    } catch (Exception e) {
+      return Result.error("重置密码失败: " + e.getMessage());
+    }
+  }
 }

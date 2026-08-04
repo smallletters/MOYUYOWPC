@@ -180,6 +180,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getSensitiveList, getSensitiveCategories, createSensitive, updateSensitive, deleteSensitive, batchDeleteSensitive } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 // ---- 搜索 ----
 const searchKeyword = ref('')
@@ -199,7 +200,8 @@ const showForm = ref(false)
 const isEditing = ref(false)
 const editingId = ref(null)
 
-const formTitle = computed(() => isEditing.value ? '编辑敏感词' : '新增敏感词')
+// 折叠面板标题：与工具栏「新增敏感词」按钮区分文案，避免 DOM 文本重复导致自动化定位歧义
+const formTitle = computed(() => isEditing.value ? '编辑敏感词' : '填写敏感词信息')
 
 const formData = reactive({
   word: '',
@@ -220,7 +222,7 @@ function filterWords() {
   // 关键词搜索
   if (searchKeyword.value.trim()) {
     const kw = searchKeyword.value.trim().toLowerCase()
-    list = list.filter(w => w.word.toLowerCase().includes(kw) || w.replacement.toLowerCase().includes(kw))
+    list = list.filter(w => w.word.toLowerCase().includes(kw) || (w.replacement || '').toLowerCase().includes(kw))
   }
   filteredWords.value = list
 }
@@ -237,7 +239,7 @@ async function loadData() {
       getSensitiveList(),
       getSensitiveCategories()
     ])
-    const wordList = (listRes && listRes.records) || listRes || []
+    const wordList = toArray(listRes, 'records')
     words.value = wordList
     // 填充分类数据
     if (catRes) {
@@ -286,22 +288,20 @@ async function handleSubmit() {
 
   try {
     if (isEditing.value && editingId.value !== null) {
-      // 编辑保存
+      // 编辑保存：后端只读取 word/category/status，replacement/matchMode 不提交
       await updateSensitive({
         id: editingId.value,
         word: formData.word,
-        replacement: formData.replacement,
-        matchMode: formData.matchMode,
-        category: formData.category
+        category: formData.category,
+        status: 'ENABLED'
       })
       ElMessage.success('修改成功')
     } else {
-      // 新增
+      // 新增：后端只读取 word/category/status，replacement/matchMode 不提交
       await createSensitive({
         word: formData.word,
-        replacement: formData.replacement,
-        matchMode: formData.matchMode,
-        category: formData.category
+        category: formData.category,
+        status: 'ENABLED'
       })
       ElMessage.success('添加成功')
     }

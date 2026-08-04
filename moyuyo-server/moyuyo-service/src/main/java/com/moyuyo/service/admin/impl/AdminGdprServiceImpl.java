@@ -13,6 +13,7 @@ import static com.moyuyo.common.enums.GeneralStatusEnum.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -108,6 +109,31 @@ public class AdminGdprServiceImpl implements AdminGdprService {
     result.put("content", policy.getContent());
     result.put("effectiveDate", policy.getEffectiveDate());
     result.put("createTime", policy.getCreateTime());
+    return result;
+  }
+
+  @Override
+  public Map<String, Object> createPolicy(Map<String, Object> body) {
+    // 新建隐私政策版本，默认置为 ACTIVE 生效
+    GdprPolicyEntity policy = new GdprPolicyEntity();
+    policy.setVersion((String) body.getOrDefault("version", "1.0.0"));
+    policy.setTitle((String) body.getOrDefault("title", "隐私政策"));
+    policy.setContent((String) body.getOrDefault("content", ""));
+    policy.setStatus((String) body.getOrDefault("status", "ACTIVE"));
+    Object effectiveDate = body.get("effectiveDate");
+    if (effectiveDate != null && !effectiveDate.toString().isEmpty()) {
+      policy.setEffectiveDate(LocalDate.parse(effectiveDate.toString()));
+    } else {
+      policy.setEffectiveDate(LocalDate.now());
+    }
+    gdprPolicyMapper.insert(policy);
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("id", policy.getId());
+    result.put("version", policy.getVersion());
+    result.put("title", policy.getTitle());
+    result.put("content", policy.getContent());
+    result.put("status", policy.getStatus());
+    result.put("effectiveDate", policy.getEffectiveDate());
     return result;
   }
 }

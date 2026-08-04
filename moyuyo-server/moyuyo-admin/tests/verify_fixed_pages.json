@@ -1,0 +1,74 @@
+[
+  {
+    "path": "/gdpr",
+    "status": "OK",
+    "overflow": false,
+    "console": []
+  },
+  {
+    "path": "/push-manage",
+    "status": "OK",
+    "overflow": false,
+    "console": []
+  },
+  {
+    "path": "/audit-log",
+    "status": "OK",
+    "overflow": false,
+    "console": []
+  },
+  {
+    "path": "/traffic-analysis",
+    "status": "OK",
+    "overflow": false,
+    "console": []
+  },
+  {
+    "path": "/satisfaction",
+    "status": "OK",
+    "overflow": false,
+    "console": []
+  },
+  {
+    "path": "/risk-control",
+    "status": "OK",
+    "overflow": false,
+    "console": []
+  },
+  {
+    "path": "/batch-import",
+    "status": "OK",
+    "overflow": false,
+    "console": []
+  },
+  {
+    "path": "/marketing",
+    "status": "OK",
+    "overflow": false,
+    "console": []
+  },
+  {
+    "path": "/rfm",
+    "status": "OK",
+    "overflow": false,
+    "console": []
+  },
+  {
+    "path": "/cms",
+    "status": "OK",
+    "overflow": false,
+    "console": []
+  },
+  {
+    "path": "/orders",
+    "status": "OK",
+    "overflow": false,
+    "console": []
+  },
+  {
+    "path": "/rbac",
+    "status": "OK",
+    "overflow": false,
+    "console": []
+  }
+]

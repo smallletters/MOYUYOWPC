@@ -1,5 +1,9 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import router from '../router'
+
+// 防止多个并发 401 请求触发多次登录跳转
+let isRedirectingToLogin = false
 
 const api = axios.create({
   baseURL: '/api/admin',
@@ -26,13 +30,16 @@ api.interceptors.request.use(config => {
 
 // 响应拦截器：统一解包 + 错误处理 + 自动重试
 api.interceptors.response.use(
-  // 成功响应：自动解包 { code: 200, data: ... } 格式
+  // 成功响应：自动解包 { code, data, message } 格式
   response => {
     const body = response.data
-    // 后端统一返回 { code, data, message } 格式，解出 data
     if (body && body.code === 0) {
       return body.data
     }
+    // 后端返回了业务错误码（如 code=500），reject 让调用方处理
+     if (body && body.code !== undefined && body.code !== 0) {
+       return Promise.reject(new Error(body.message || '操作失败'))
+     }
     // 非标准格式原样返回
     return body
   },
@@ -41,10 +48,16 @@ api.interceptors.response.use(
   async error => {
     const config = error.config
 
-    // 401 未登录：跳转登录页
+    // 401 未登录：清理 Token 并跳转登录页（避免重复跳转和页面刷新的 ERR_ABORTED）
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('admin_token')
-      window.location.href = '/admin/login'
+      const currentPath = router.currentRoute.value.path
+      if (!isRedirectingToLogin && !currentPath.startsWith('/login')) {
+        isRedirectingToLogin = true
+        router.push('/login').finally(() => {
+          isRedirectingToLogin = false
+        })
+      }
       return Promise.reject(error)
     }
 

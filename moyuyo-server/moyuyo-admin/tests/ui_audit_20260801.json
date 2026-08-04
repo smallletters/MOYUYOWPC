@@ -1,0 +1,200 @@
+[
+ {
+  "route": "/tariff",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 2214,
+  "dialogOpened": true,
+  "consoleErrors": []
+ },
+ {
+  "route": "/risk-rule-engine",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 721,
+  "dialogOpened": true,
+  "consoleErrors": []
+ },
+ {
+  "route": "/settlement",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 977,
+  "dialogOpened": false,
+  "consoleErrors": []
+ },
+ {
+  "route": "/customs",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 597,
+  "dialogOpened": false,
+  "consoleErrors": []
+ },
+ {
+  "route": "/ab-test",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 470,
+  "dialogOpened": true,
+  "consoleErrors": []
+ },
+ {
+  "route": "/risk-alert",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 1557,
+  "dialogOpened": true,
+  "consoleErrors": []
+ },
+ {
+  "route": "/order-tags",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 1459,
+  "dialogOpened": true,
+  "consoleErrors": []
+ },
+ {
+  "route": "/batch-import",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 3083,
+  "dialogOpened": false,
+  "consoleErrors": []
+ },
+ {
+  "route": "/carrier-compare",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 1230,
+  "dialogOpened": true,
+  "consoleErrors": []
+ },
+ {
+  "route": "/blacklist",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 590,
+  "dialogOpened": true,
+  "consoleErrors": []
+ },
+ {
+  "route": "/sensitive-words",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 2000,
+  "dialogOpened": false,
+  "consoleErrors": []
+ },
+ {
+  "route": "/push-manage",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 928,
+  "dialogOpened": true,
+  "consoleErrors": []
+ },
+ {
+  "route": "/cms",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 668,
+  "dialogOpened": true,
+  "consoleErrors": []
+ },
+ {
+  "route": "/product-report",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 662,
+  "dialogOpened": false,
+  "consoleErrors": []
+ },
+ {
+  "route": "/order-print",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 660,
+  "dialogOpened": true,
+  "consoleErrors": []
+ },
+ {
+  "route": "/inventory-transfer",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 615,
+  "dialogOpened": true,
+  "consoleErrors": []
+ },
+ {
+  "route": "/dashboard",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 418,
+  "dialogOpened": false,
+  "consoleErrors": []
+ },
+ {
+  "route": "/orders",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 588,
+  "dialogOpened": false,
+  "consoleErrors": []
+ },
+ {
+  "route": "/products",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 370,
+  "dialogOpened": false,
+  "consoleErrors": []
+ },
+ {
+  "route": "/users",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 507,
+  "dialogOpened": false,
+  "consoleErrors": []
+ },
+ {
+  "route": "/marketing",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 622,
+  "dialogOpened": false,
+  "consoleErrors": []
+ },
+ {
+  "route": "/refund",
+  "status": "OK",
+  "issues": [],
+  "overflow": false,
+  "hardColorEls": 309,
+  "dialogOpened": false,
+  "consoleErrors": []
+ }
+]

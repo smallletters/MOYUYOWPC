@@ -1,0 +1,110 @@
+[
+  {
+    "route": "/dashboard",
+    "design": "admin-dashboard.html",
+    "impl": {
+      "bodyFont": "16px",
+      "bodyColor": "rgb(29, 29, 31)",
+      "titleFont": "22px",
+      "titleWeight": "700",
+      "cardRadius": "12px",
+      "cardBg": "rgb(255, 255, 255)",
+      "cardShadow": "rgba(0, 0, 0, 0.04) 0px 1px 2px 0px",
+      "btnBg": null,
+      "btnRadius": null,
+      "cardCount": 28,
+      "btnCount": 0,
+      "overflow": false
+    }
+  },
+  {
+    "route": "/orders",
+    "design": "admin-orders.html",
+    "impl": {
+      "bodyFont": "16px",
+      "bodyColor": "rgb(29, 29, 31)",
+      "titleFont": "22px",
+      "titleWeight": "700",
+      "cardRadius": "12px",
+      "cardBg": "rgb(255, 255, 255)",
+      "cardShadow": "rgba(0, 0, 0, 0.04) 0px 1px 2px 0px",
+      "btnBg": "rgb(0, 122, 255)",
+      "btnRadius": "8px",
+      "cardCount": 4,
+      "btnCount": 42,
+      "overflow": false
+    }
+  },
+  {
+    "route": "/products",
+    "design": "admin-products.html",
+    "impl": {
+      "bodyFont": "16px",
+      "bodyColor": "rgb(29, 29, 31)",
+      "titleFont": "22px",
+      "titleWeight": "700",
+      "cardRadius": null,
+      "cardBg": null,
+      "cardShadow": null,
+      "btnBg": "rgb(255, 255, 255)",
+      "btnRadius": "8px",
+      "cardCount": 0,
+      "btnCount": 9,
+      "overflow": false
+    }
+  },
+  {
+    "route": "/users",
+    "design": "admin-users.html",
+    "impl": {
+      "bodyFont": "16px",
+      "bodyColor": "rgb(29, 29, 31)",
+      "titleFont": "22px",
+      "titleWeight": "700",
+      "cardRadius": "12px",
+      "cardBg": "rgb(255, 255, 255)",
+      "cardShadow": "rgba(0, 0, 0, 0.06) 0px 1px 3px 0px",
+      "btnBg": "rgb(0, 122, 255)",
+      "btnRadius": "8px",
+      "cardCount": 4,
+      "btnCount": 24,
+      "overflow": false
+    }
+  },
+  {
+    "route": "/marketing",
+    "design": "admin-marketing.html",
+    "impl": {
+      "bodyFont": "16px",
+      "bodyColor": "rgb(29, 29, 31)",
+      "titleFont": "22px",
+      "titleWeight": "700",
+      "cardRadius": "12px",
+      "cardBg": "rgb(255, 255, 255)",
+      "cardShadow": "rgba(0, 0, 0, 0.04) 0px 1px 2px 0px",
+      "btnBg": "rgb(0, 122, 255)",
+      "btnRadius": "8.4px",
+      "cardCount": 22,
+      "btnCount": 20,
+      "overflow": false
+    }
+  },
+  {
+    "route": "/refund",
+    "design": "admin-refund-manage.html",
+    "impl": {
+      "bodyFont": "16px",
+      "bodyColor": "rgb(29, 29, 31)",
+      "titleFont": "20px",
+      "titleWeight": "700",
+      "cardRadius": "12px",
+      "cardBg": "rgb(255, 255, 255)",
+      "cardShadow": "rgba(0, 0, 0, 0.04) 0px 1px 2px 0px",
+      "btnBg": "rgb(0, 122, 255)",
+      "btnRadius": "8px",
+      "cardCount": 7,
+      "btnCount": 1,
+      "overflow": false
+    }
+  }
+]

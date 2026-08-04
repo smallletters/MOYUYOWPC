@@ -1,0 +1,183 @@
+{
+  "scan_time": "2026-07-31 15:33:52",
+  "results": [
+    {
+      "page": "CmsManage",
+      "route": "cms",
+      "url": "http://127.0.0.1:5173/admin/cms",
+      "console_errors": [],
+      "modals": [
+        {
+          "button": "新建",
+          "opened": true,
+          "dialog_info": "新建 Banner 标题 类型 BANNER 封面图片URL 链接URL 内容描述 排序值 日期范围 状态 已暂停 取消 保存",
+          "closed": true,
+          "click": "OK"
+        },
+        {
+          "button": "新建",
+          "click": "点击失败: Locator.scroll_into_view_if_needed: Timeout 1991ms exceeded.\nCall log:\n  - attempting scroll into vi"
+        }
+      ],
+      "todo_placeholders": [],
+      "result": "OK",
+      "delete_confirm": {
+        "opened": true,
+        "closed": true
+      }
+    },
+    {
+      "page": "OrderList",
+      "route": "orders",
+      "url": "http://127.0.0.1:5173/admin/orders",
+      "console_errors": [],
+      "modals": [
+        {
+          "button": "重置",
+          "opened": false,
+          "dialog_info": "",
+          "closed": false,
+          "click": "OK"
+        }
+      ],
+      "todo_placeholders": [],
+      "result": "OK"
+    },
+    {
+      "page": "ProductList",
+      "route": "products",
+      "url": "http://127.0.0.1:5173/admin/products",
+      "console_errors": [],
+      "modals": [
+        {
+          "button": "新增",
+          "opened": false,
+          "dialog_info": "",
+          "closed": false,
+          "click": "OK"
+        }
+      ],
+      "todo_placeholders": [],
+      "result": "OK"
+    },
+    {
+      "page": "UserList",
+      "route": "users",
+      "url": "http://127.0.0.1:5173/admin/users",
+      "console_errors": [],
+      "modals": [],
+      "todo_placeholders": [],
+      "result": "OK"
+    },
+    {
+      "page": "MarketingList",
+      "route": "marketing",
+      "url": "http://127.0.0.1:5173/admin/marketing",
+      "console_errors": [],
+      "modals": [
+        {
+          "button": "创建",
+          "opened": false,
+          "dialog_info": "",
+          "closed": false,
+          "click": "OK"
+        },
+        {
+          "button": "创建",
+          "click": "点击失败: Locator.scroll_into_view_if_needed: Timeout 2000ms exceeded.\nCall log:\n  - waiting for locator(\"butt"
+        }
+      ],
+      "todo_placeholders": [],
+      "result": "OK",
+      "delete_confirm": {
+        "opened": true,
+        "closed": true
+      }
+    },
+    {
+      "page": "CustomerService",
+      "route": "cs",
+      "url": "http://127.0.0.1:5173/admin/cs",
+      "console_errors": [],
+      "modals": [],
+      "todo_placeholders": [],
+      "result": "OK"
+    },
+    {
+      "page": "RbacManage",
+      "route": "rbac",
+      "url": "http://127.0.0.1:5173/admin/rbac",
+      "console_errors": [],
+      "modals": [
+        {
+          "button": "新建",
+          "opened": false,
+          "dialog_info": "",
+          "closed": false,
+          "click": "OK"
+        }
+      ],
+      "todo_placeholders": [],
+      "result": "OK"
+    },
+    {
+      "page": "CouponManage",
+      "route": "coupon-manage",
+      "url": "http://127.0.0.1:5173/admin/coupon-manage",
+      "console_errors": [],
+      "modals": [
+        {
+          "button": "新建",
+          "opened": true,
+          "dialog_info": "新建优惠券 名称 类型 满减 折扣 面值 最低消费 库存 开始时间 结束时间 取消 保存",
+          "closed": true,
+          "click": "OK"
+        }
+      ],
+      "todo_placeholders": [],
+      "result": "OK",
+      "delete_confirm": {
+        "opened": true,
+        "closed": true
+      }
+    },
+    {
+      "page": "SmsManage",
+      "route": "sms",
+      "url": "http://127.0.0.1:5173/admin/sms",
+      "console_errors": [],
+      "modals": [
+        {
+          "button": "发送",
+          "opened": true,
+          "dialog_info": "发送短信 接收号码 短信内容 0 / 500 取消 发送",
+          "closed": true,
+          "click": "OK"
+        }
+      ],
+      "todo_placeholders": [],
+      "result": "OK"
+    },
+    {
+      "page": "RiskControl",
+      "route": "risk-control",
+      "url": "http://127.0.0.1:5173/admin/risk-control",
+      "console_errors": [],
+      "modals": [
+        {
+          "button": "新建",
+          "opened": false,
+          "dialog_info": "",
+          "closed": false,
+          "click": "OK"
+        }
+      ],
+      "todo_placeholders": [],
+      "result": "OK",
+      "delete_confirm": {
+        "opened": true,
+        "closed": true
+      }
+    }
+  ]
+}

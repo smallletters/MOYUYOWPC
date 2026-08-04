@@ -52,7 +52,9 @@ public class AdminBatchImportServiceImpl implements AdminBatchImportService {
     DataExportRequestEntity entity = new DataExportRequestEntity();
     entity.setRequestType((String) data.getOrDefault("type", "商品"));
     entity.setExportId("导入_" + System.currentTimeMillis());
-    entity.setStatus("导入中");
+    entity.setStatus("PROCESSING");
+    // 兜底：user_id 是 NOT NULL 必填字段，未传时默认为 0（系统导入）
+    entity.setUserId(0L);
     dataExportRequestMapper.insert(entity);
 
     Map<String, Object> result = new HashMap<>();

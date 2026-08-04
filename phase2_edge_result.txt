@@ -1,0 +1,38 @@
+﻿Login: OK
+
+== 1. 认证相关 ==
+== 2. 必填参数校验 ==
+== 3. 越权/重复操作 ==
+== 4. 必填参数 list/分页 ==
+== 5. SQL 注入/特殊字符 ==
+== 6. 错误路径 ==
+
+=== 边界测试结果 ===
+OK   login/empty-body                         http=200 biz=400 msg=邮箱和密码不能为空
+OK   login/wrong-password                     http=200 biz=401 msg=邮箱或密码错误
+FAIL me/no-token                              http=401 biz=401 msg=Missing or invalid Authorization header
+FAIL me/bad-token                             http=401 biz=401 msg=Invalid or expired token
+OK   products/create/empty-name               http=200 biz=500 msg=商品名称不能为空
+OK   products/create/empty-body               http=200 biz=500 msg=商品名称不能为空
+OK   orders/9999999999                        http=200 biz=500 msg=订单不存在
+OK   orders/list/baseline                     http=200 biz=0 success
+OK   products/9999999999/status               http=200 biz=500 msg=商品不存在: 9999999999
+OK   products/9999999999/delete               http=200 biz=500 msg=商品不存在或已删除
+OK   orders/9999999999/cancel                 http=200 biz=500 msg=订单不存在
+OK   orders/9999999999/ship                   http=200 biz=500 msg=订单不存在
+OK   orders/list/size=1000                    http=200 biz=0 success
+OK   orders/list/page=-1                      http=200 biz=0 success
+OK   orders/list/bad-date                     http=200 biz=400 msg=开始日期格式无效: not-a-date
+FAIL orders/list/sqli-keyword                 http=0
+FAIL orders/list/xss-keyword                  http=400
+OK   orders/list/long-keyword                 http=200 biz=0 success
+OK   404-path                                 http=404 biz=404 msg=请求的资源不存在
+OK   dashboard/wrong-method                   http=405 biz=405 msg=不支持的请求方法: DELETE
+
+=== 汇总: 16/20 PASS ===
+
+=== 失败项详情 ===
+  me/no-token: http=401 biz=401 msg=Missing or invalid Authorization header
+  me/bad-token: http=401 biz=401 msg=Invalid or expired token
+  orders/list/sqli-keyword: http=0
+  orders/list/xss-keyword: http=400

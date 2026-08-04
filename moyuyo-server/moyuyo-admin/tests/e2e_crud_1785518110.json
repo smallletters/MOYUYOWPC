@@ -1,0 +1,40 @@
+[
+ {
+  "route": "/sensitive-words",
+  "status": "CONSOLE_ERR",
+  "steps": [
+   "表单打开(内嵌)",
+   "填写字段数:3",
+   "未找到提交按钮",
+   "回显验证: 未找到(搜e2e_1785518098)"
+  ],
+  "console": [
+   "PAGEERROR: Cannot read properties of undefined (reading 'toLowerCase')"
+  ],
+  "http": []
+ },
+ {
+  "route": "/knowledge-base",
+  "status": "NO_DIALOG",
+  "steps": [
+   "未找到新增按钮/表单未打开"
+  ],
+  "errors": []
+ },
+ {
+  "route": "/blacklist",
+  "status": "NO_DIALOG",
+  "steps": [
+   "未找到新增按钮/表单未打开"
+  ],
+  "errors": []
+ },
+ {
+  "route": "/order-tags",
+  "status": "NO_DIALOG",
+  "steps": [
+   "未找到新增按钮/表单未打开"
+  ],
+  "errors": []
+ }
+]

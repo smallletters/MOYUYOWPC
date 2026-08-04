@@ -54,6 +54,25 @@ public class AdminRiskServiceImpl implements AdminRiskService {
   @Override
   @Transactional
   public void createRule(RiskRuleEntity entity) {
+    // 兜底：所有 NOT NULL 必填字段，未传时填入占位值
+    if (entity.getRuleCode() == null || entity.getRuleCode().isEmpty()) {
+      entity.setRuleCode("R_" + System.currentTimeMillis());
+    }
+    if (entity.getRuleName() == null || entity.getRuleName().isEmpty()) {
+      entity.setRuleName("未命名规则");
+    }
+    if (entity.getRuleType() == null || entity.getRuleType().isEmpty()) {
+      entity.setRuleType("LOGIN");
+    }
+    if (entity.getConditionJson() == null || entity.getConditionJson().isEmpty()) {
+      entity.setConditionJson("{}");
+    }
+    if (entity.getAction() == null || entity.getAction().isEmpty()) {
+      entity.setAction("LOG");
+    }
+    if (entity.getPriority() == null) {
+      entity.setPriority(0);
+    }
     riskRuleMapper.insert(entity);
   }
 

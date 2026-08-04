@@ -27,14 +27,27 @@ public class RiskAlertConfigEntity {
     /** 告警阈值 */
     private Integer threshold;
 
+    /** 监控指标 */
+    private String metric;
+
+    /**
+     * 触发条件：GREATER_THAN/LESS_THAN/EQUAL
+     * 注意：`condition` 是 MySQL/MariaDB 保留字，必须用反引号包裹
+     */
+    @TableField("`condition`")
+    private String condition;
+
     /** 通知渠道（多个以逗号分隔） */
     private String notifyChannels;
 
     /** 通知用户（多个以逗号分隔） */
     private String notifyUsers;
 
-    /** 状态：ENABLED/DISABLED */
-    private String status;
+    /**
+     * 状态：1=启用 0=禁用
+     * 注意：V20260727 迁移将字段从 VARCHAR 改为 TINYINT(1)
+     */
+    private Integer status;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;

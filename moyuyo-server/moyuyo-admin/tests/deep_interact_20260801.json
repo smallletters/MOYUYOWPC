@@ -1,0 +1,434 @@
+[
+ {
+  "route": "/dashboard",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/orders",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/products",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/products/add",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/users",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/marketing",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/reviews",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/cs",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/analytics",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/logistics",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/settings",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/refund",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/cms",
+  "status": "OK",
+  "dialogs_opened": 12,
+  "errors": []
+ },
+ {
+  "route": "/rbac",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/finance",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/inventory",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/push-manage",
+  "status": "OK",
+  "dialogs_opened": 16,
+  "errors": []
+ },
+ {
+  "route": "/ticket",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/campaign",
+  "status": "OK",
+  "dialogs_opened": 11,
+  "errors": []
+ },
+ {
+  "route": "/complaint",
+  "status": "OK",
+  "dialogs_opened": 1,
+  "errors": []
+ },
+ {
+  "route": "/review-manage",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/product-analysis",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/product-report",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/product-review",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/price-manage",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/price-history",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/order-export",
+  "status": "OK",
+  "dialogs_opened": 1,
+  "errors": []
+ },
+ {
+  "route": "/order-intercept",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/order-monitor",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/order-price-modify",
+  "status": "OK",
+  "dialogs_opened": 1,
+  "errors": []
+ },
+ {
+  "route": "/order-print",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/sms",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/sensitive-words",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/funnel",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/rfm",
+  "status": "OK",
+  "dialogs_opened": 4,
+  "errors": []
+ },
+ {
+  "route": "/risk-control",
+  "status": "OK",
+  "dialogs_opened": 16,
+  "errors": []
+ },
+ {
+  "route": "/risk-rule-engine",
+  "status": "OK",
+  "dialogs_opened": 16,
+  "errors": []
+ },
+ {
+  "route": "/realtime-screen",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/user-profile",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/ab-test",
+  "status": "OK",
+  "dialogs_opened": 2,
+  "errors": []
+ },
+ {
+  "route": "/app-version",
+  "status": "OK",
+  "dialogs_opened": 8,
+  "errors": []
+ },
+ {
+  "route": "/batch-import",
+  "status": "OK",
+  "dialogs_opened": 56,
+  "errors": []
+ },
+ {
+  "route": "/knowledge-base",
+  "status": "OK",
+  "dialogs_opened": 1,
+  "errors": []
+ },
+ {
+  "route": "/search-analysis",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/traffic-analysis",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/satisfaction",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/gdpr",
+  "status": "OK",
+  "dialogs_opened": 2,
+  "errors": []
+ },
+ {
+  "route": "/audit-log",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/product-approval",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/coupon-manage",
+  "status": "OK",
+  "dialogs_opened": 16,
+  "errors": []
+ },
+ {
+  "route": "/flash-sale-manage",
+  "status": "OK",
+  "dialogs_opened": 16,
+  "errors": []
+ },
+ {
+  "route": "/points-manage",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/blacklist",
+  "status": "OK",
+  "dialogs_opened": 11,
+  "errors": []
+ },
+ {
+  "route": "/tariff",
+  "status": "OK",
+  "dialogs_opened": 29,
+  "errors": []
+ },
+ {
+  "route": "/risk-alert",
+  "status": "OK",
+  "dialogs_opened": 29,
+  "errors": []
+ },
+ {
+  "route": "/cs-sessions",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/order-tags",
+  "status": "OK",
+  "dialogs_opened": 30,
+  "errors": []
+ },
+ {
+  "route": "/inventory-transfer",
+  "status": "OK",
+  "dialogs_opened": 1,
+  "errors": []
+ },
+ {
+  "route": "/merge-package",
+  "status": "OK",
+  "dialogs_opened": 6,
+  "errors": []
+ },
+ {
+  "route": "/split-package",
+  "status": "OK",
+  "dialogs_opened": 6,
+  "errors": []
+ },
+ {
+  "route": "/carrier-compare",
+  "status": "OK",
+  "dialogs_opened": 16,
+  "errors": []
+ },
+ {
+  "route": "/overseas-warehouse",
+  "status": "OK",
+  "dialogs_opened": 14,
+  "errors": []
+ },
+ {
+  "route": "/warehouse-manage",
+  "status": "OK",
+  "dialogs_opened": 16,
+  "errors": []
+ },
+ {
+  "route": "/clearance",
+  "status": "OK",
+  "dialogs_opened": 6,
+  "errors": []
+ },
+ {
+  "route": "/customs",
+  "status": "OK",
+  "dialogs_opened": 5,
+  "errors": []
+ },
+ {
+  "route": "/settlement",
+  "status": "OK",
+  "dialogs_opened": 16,
+  "errors": []
+ },
+ {
+  "route": "/settlement-detail",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/system-config",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/operation-log",
+  "status": "OK",
+  "dialogs_opened": 0,
+  "errors": []
+ },
+ {
+  "route": "/live-manage",
+  "status": "OK",
+  "dialogs_opened": 3,
+  "errors": []
+ },
+ {
+  "route": "/marketing-effect",
+  "status": "OK",
+  "dialogs_opened": 16,
+  "errors": []
+ },
+ {
+  "route": "/shipping-strategy",
+  "status": "OK",
+  "dialogs_opened": 14,
+  "errors": []
+ }
+]

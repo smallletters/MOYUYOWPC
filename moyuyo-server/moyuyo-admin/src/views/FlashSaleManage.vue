@@ -75,6 +75,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useStatusTag } from '../composables/useStatusTag'
 import { getFlashSaleList, createFlashSale, updateFlashSale, deleteFlashSale, updateFlashSaleStatus } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 const tableData = ref([])
 const dialogVisible = ref(false)
@@ -109,7 +110,7 @@ function resetForm() {
 async function loadData() {
   try {
     const res = await getFlashSaleList()
-    tableData.value = res.records || res || []
+    tableData.value = toArray(res)
   } catch (e) {
     ElMessage.error('获取秒杀列表失败')
   }
@@ -173,7 +174,10 @@ async function handleToggleStatus(row) {
     ElMessage.success(`已${label}`)
     await loadData()
   } catch (e) {
-    // 用户取消不处理
+    if (e !== 'cancel' && e !== 'close') {
+      console.error('更新秒杀状态失败:', e)
+      ElMessage.error('状态更新失败: ' + (e?.message || '未知错误'))
+    }
   }
 }
 
@@ -184,7 +188,10 @@ async function handleDelete(row) {
     ElMessage.success('已删除')
     await loadData()
   } catch (e) {
-    // 用户取消不处理
+    if (e !== 'cancel' && e !== 'close') {
+      console.error('删除秒杀失败:', e)
+      ElMessage.error('删除失败: ' + (e?.message || '未知错误'))
+    }
   }
 }
 

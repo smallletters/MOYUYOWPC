@@ -18,11 +18,17 @@ public class AdminRoleEntity {
     /** 角色名称 */
     private String name;
 
+    /** 角色编码（唯一） */
+    private String code;
+
     /** 角色描述 */
     private String description;
 
     /** 状态：ACTIVE / DISABLED */
     private String status;
+
+    /** 排序号 */
+    private Integer sortOrder;
 
     /** 是否系统预设角色，默认 false */
     private Boolean isPreset = false;
