@@ -1,0 +1,61 @@
+# ============================================================
+# Docker 构建上下文过滤
+# 防止敏感文件、构建产物、临时文件意外进入镜像
+# ============================================================
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# 环境变量与密钥（绝对禁止进入镜像）
+.env
+.env.*
+!.env.example
+
+# 构建产物（仅放行 API 可执行 JAR）
+/target/
+build/
+dist/
+.vite/
+node_modules/
+
+# 日志与临时
+*.log
+logs/
+tmp/
+.cache/
+
+# IDE 配置
+.idea/
+.vscode/
+*.iml
+*.swp
+
+# 文档（不进入运行时镜像）
+README.md
+docs/
+*.md
+
+# 测试代码与其他模块构建产物不进入镜像；仅放行 API 可执行 JAR
+moyuyo-admin/tests/
+moyuyo-api/target/*
+!moyuyo-api/target/*.jar
+moyuyo-common/target/
+moyuyo-dao/target/
+moyuyo-service/target/
+
+# 备份文件
+*.bak
+*.fix_backup.bak
+*.rollout_backup.bak
+*.list_backup.bak
+*.campaign_backup.bak
+dump*.sql
+
+# 管理后台测试残留（防止调试用 PNG / HTML / JSON / Python 脚本进入运行时镜像）
+moyuyo-admin/tests/
+# 仅排除 health/smoke 报告，避免 .html 通配误伤未来可能加入的资源文件
+moyuyo-admin/admin_health_*.txt
+moyuyo-admin/smoke_*.json
+moyuyo-admin/coverage/

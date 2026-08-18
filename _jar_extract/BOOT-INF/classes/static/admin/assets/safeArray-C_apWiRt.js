@@ -1,0 +1,1 @@
+function r(r,t){if(Array.isArray(r))return r;if(!r||"object"!=typeof r)return[];const e=t?[t]:["records","list","data","items"];for(const o of e)if(Array.isArray(r[o]))return r[o];return[]}export{r as t};

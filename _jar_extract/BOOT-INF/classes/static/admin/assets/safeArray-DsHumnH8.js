@@ -1,0 +1,1 @@
+function e(e,t){if(Array.isArray(e))return e;if(!e||typeof e!=`object`)return[];let n=t?[t]:[`records`,`list`,`data`,`items`];for(let t of n)if(Array.isArray(e[t]))return e[t];return[]}export{e as t};

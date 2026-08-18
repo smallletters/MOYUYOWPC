@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moyuyo.dao.admin.mapper.UserBehaviorEventMapper">
+
+  <!-- 按 event_type 聚合某用户的事件次数（白名单 types 防止注入） -->
+  <select id="aggregateEventCountByType" resultType="java.util.Map">
+    SELECT event_type AS eventType, COUNT(*) AS count
+    FROM mo_user_behavior_event
+    WHERE user_id = #{userId}
+      AND event_type IN
+      <foreach collection="types" item="t" open="(" separator="," close=")">
+        #{t}
+      </foreach>
+    GROUP BY event_type
+  </select>
+
+  <!--
+    旧接口：保留以兼容已有调用方，但已在 mapper 接口标记 @Deprecated。
+    新代码必须改用 aggregateEventCountByFieldSafe（基于 @SelectProvider，Provider 入口硬校验白名单）。
+    注意：${field} 直接拼接到 SQL 标识符位置，禁止在未调用 validateAggregateField 时直接使用本方法。
+    保留本方法仅作为兼容层，新接入代码严禁调用；后续清理时同步删除。
+  -->
+  <select id="aggregateEventCountByField" resultType="java.util.Map">
+    SELECT `${field}` AS bucket, COUNT(*) AS count
+    FROM mo_user_behavior_event
+    WHERE user_id = #{userId}
+      AND `${field}` IS NOT NULL
+    GROUP BY `${field}`
+  </select>
+
+  <!--
+    aggregateEventCountByFieldSafe 不在此处声明，已通过 @SelectProvider 在 mapper 接口绑定。
+    SQL 由 UserBehaviorEventSqlProvider#aggregateEventCountByFieldSql 动态构建，
+    Provider 入口对 field 做白名单硬校验（详见对应 Java 类）。
+  -->
+
+</mapper>

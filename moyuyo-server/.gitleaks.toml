@@ -1,0 +1,51 @@
+# gitleaks 自定义规则
+# 用于在 CI 中检测 commit 与代码中的 secret、API key、密码等
+# 官方规则：https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
+
+title = "MOYUYO gitleaks config"
+
+# 允许误报的文件（CI 配置文件中的示例密钥等）
+[allowlist]
+paths = [
+  '''dependency-check-suppressions.xml''',
+  '''README.md''',
+  '''docs/RUNBOOK.md''',
+]
+
+# 项目自定义规则
+[[rules]]
+id = "moyuyo-jwt-secret"
+description = "JWT 密钥"
+regex = '''(?i)(jwt[_-]?secret|jwt[_-]?key)\s*[:=]\s*['"][a-zA-Z0-9_\-]{16,}['"]'''
+tags = ["secret", "jwt"]
+
+[[rules]]
+id = "moyuyo-mysql-password"
+description = "MySQL 密码（明文）"
+regex = '''(?i)(MYSQL_PASSWORD|DB_PASSWORD)\s*=\s*['"]?[a-zA-Z0-9_!@#$%^&*]{6,}['"]?'''
+tags = ["secret", "database"]
+# 仅在 prod 文件中告警；dev/test 用 mock 密码不告警
+[allowlist]
+regexTarget = "file"
+regexes = [
+  '''application-dev\.yml''',
+  '''application-test\.yml''',
+]
+
+[[rules]]
+id = "moyuyo-stripe-secret"
+description = "Stripe 密钥"
+regex = '''(?i)(sk|pk)_(test|live)_[a-zA-Z0-9]{20,}'''
+tags = ["secret", "payment"]
+
+[[rules]]
+id = "moyuyo-paypal-client-secret"
+description = "PayPal 客户端密钥"
+regex = '''(?i)PAYPAL_CLIENT_SECRET\s*=\s*[A-Za-z0-9_\-]{20,}'''
+tags = ["secret", "payment"]
+
+[[rules]]
+id = "moyuyo-webhook-secret"
+description = "Webhook 签名密钥"
+regex = '''(?i)(WEBHOOK_SECRET|STRIPE_WEBHOOK_SECRET)\s*=\s*whsec_[a-zA-Z0-9]{16,}'''
+tags = ["secret", "webhook"]

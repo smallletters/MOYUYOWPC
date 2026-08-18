@@ -1,0 +1,35 @@
+# ============================================================
+# Git 属性配置（统一 LF 行尾 + 防止误生成 CRLF）
+# ============================================================
+
+# 默认所有文本文件用 LF（避免 Windows 提交后 git diff 报 ^M）
+* text=auto eol=lf
+
+# 显式声明常见文件类型
+*.java text eol=lf
+*.xml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.sh text eol=lf
+*.ps1 text eol=lf
+*.properties text eol=lf
+*.sql text eol=lf
+
+# 二进制文件标记
+*.jar binary
+*.war binary
+*.gz binary
+*.zip binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+
+# Windows 脚本保留 CRLF（PowerShell 在 Linux 也能跑，但 Windows 默认 CRLF）
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf

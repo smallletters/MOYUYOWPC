@@ -1,0 +1,55 @@
+-- ============================================================
+-- V20260806_02__hotpath_index_optimization.sql
+-- 补强高频业务路径的复合索引
+--
+-- 覆盖场景：
+--   1) 订单列表按状态+时间排序（管理后台订单监控/导出）
+--   2) 商品 SKU 按商品 ID + 启用状态筛选（详情页装配）
+--   3) 退款订单按用户 + 创建时间（用户中心退款列表）
+--   4) 用户优惠券按用户 + 状态（领券中心"我的优惠券"）
+--   5) 支付记录按订单 ID（订单详情页组装支付历史）
+--   6) 评价按商品 ID + 创建时间倒序（商品详情页评价列表）
+--   7) 库存商品按 SKU ID + 仓库 ID（库存扣减/查询）
+--   8) 操作日志按 IP + 时间（风控侧"按 IP 聚合操作"）
+-- ============================================================
+
+-- MySQL 8.0.29+ 支持 IF NOT EXISTS；更早版本会抛错 1061（Duplicate key name），
+-- 此时可用 procedure 做兼容；本项目 CI 已是 8.0，所以直接使用
+
+-- 2026-08-13：补全 mo_order.pay_status / pay_time 列（V2 schema 缺失），
+-- 否则下方 idx_order_pay_status 索引会因 "Key column 'pay_status' doesn't exist" 失败。
+-- 用 information_schema 守护，幂等可重复执行：
+SET @db := DATABASE();
+SET @exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = @db AND TABLE_NAME = 'mo_order' AND COLUMN_NAME = 'pay_status');
+SET @sql := IF(@exists = 0,
+               'ALTER TABLE `mo_order` ADD COLUMN `pay_status` VARCHAR(16) NULL COMMENT ''支付状态 UNPAID/PENDING/PAID/REFUNDED/FAILED'' AFTER `pay_transaction_id`',
+               'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = @db AND TABLE_NAME = 'mo_order' AND COLUMN_NAME = 'pay_time');
+SET @sql := IF(@exists = 0,
+               'ALTER TABLE `mo_order` ADD COLUMN `pay_time` DATETIME NULL COMMENT ''支付完成时间（支付通道维度）'' AFTER `pay_status`',
+               'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+ALTER TABLE `mo_order` ADD INDEX IF NOT EXISTS `idx_order_status_update` (`status`, `update_time`);
+ALTER TABLE `mo_order` ADD INDEX IF NOT EXISTS `idx_order_pay_status` (`pay_status`, `pay_time`);
+ALTER TABLE `mo_order` ADD INDEX IF NOT EXISTS `idx_order_warehouse_status` (`warehouse_id`, `status`, `create_time`);
+
+ALTER TABLE `mo_product_sku` ADD INDEX IF NOT EXISTS `idx_sku_product_enabled` (`product_id`, `enabled`);
+
+ALTER TABLE `mo_refund` ADD INDEX IF NOT EXISTS `idx_refund_user_time` (`user_id`, `create_time`);
+
+ALTER TABLE `mo_user_coupon` ADD INDEX IF NOT EXISTS `idx_user_coupon_status_time` (`user_id`, `status`, `create_time`);
+
+ALTER TABLE `mo_payment` ADD INDEX IF NOT EXISTS `idx_payment_order` (`order_id`);
+
+ALTER TABLE `mo_product_review` ADD INDEX IF NOT EXISTS `idx_review_product_time` (`product_id`, `create_time`);
+ALTER TABLE `mo_product_review` ADD INDEX IF NOT EXISTS `idx_review_user_time` (`user_id`, `create_time`);
+
+ALTER TABLE `mo_inventory` ADD INDEX IF NOT EXISTS `idx_inventory_sku_warehouse` (`sku_id`, `warehouse_id`);
+
+-- 公告/通知中心：用户维度的"我的未读通知"是首页关键查询路径
+ALTER TABLE `mo_notification` ADD INDEX IF NOT EXISTS `idx_notification_user_read_time` (`user_id`, `is_read`, `create_time`);

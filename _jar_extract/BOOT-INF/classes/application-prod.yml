@@ -1,0 +1,617 @@
+# ===== 生产环境配置（仅覆盖与 application.yml 不同的部分） =====
+
+server:
+  # 生产环境显式调优 Tomcat：比 base 更高的 max-threads（应对突发流量）
+  # 其他 base 中已配置的安全项（max-swallow-size / connection-timeout / max-keep-alive-requests）
+  # 自动继承
+  tomcat:
+    max-threads: 600
+    accept-count: 300
+    # min-spare-threads：始终保持的最小空闲工作线程数，避免突发流量因线程创建延迟而拒绝请求
+    # base yml 默认 50，prod 调高到 100（与 max-threads 600 / 16 ≈ 0.16 比例，低于 0.25 上限）
+    min-spare-threads: 100
+    # keep-alive 长连接超时：默认 200s 偏松，避免被恶意慢客户端占住 worker 线程
+    # 设为 15s 与一般 CDN / Nginx 配置一致；网关下游连接时间有限
+    keep-alive-timeout: 15s
+    # 空闲连接超时（连接建立但无数据的窗口）；与 keep-alive-timeout 形成两层保护
+    connection-idle-timeout: 15s
+  # 启用响应压缩：减少网络带宽（API 响应 JSON 通常压缩 70%+）
+  # 仅压缩以下 MIME 类型（白名单机制，mime-types 是白名单，未列入的类型天然不压缩）：
+  #   text/plain, text/html, text/xml, text/css, text/javascript, application/json, application/xml
+  # 默认排除图片格式（image/png, image/jpeg, image/webp, image/gif, image/svg+xml, image/*）：
+  #   - 图片通常已压缩（PNG 无损、JPEG/WebP 有损），再压收益低 + 浪费 CPU
+  #   - 字体（font/woff, font/ttf）/视频（video/mp4）同理，体量大且已压缩，无必要再压
+  #   - 因此不在 mime-types 白名单中，Spring Boot 自动跳过
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/plain,text/css,text/javascript
+    min-response-size: 1024
+
+spring:
+  elasticsearch:
+    # ES 集群地址（多个用逗号分隔，生产环境必须使用 HTTPS）
+    uris: ${ELASTICSEARCH_URIS}
+    # ES 认证：生产环境必须启用 x-pack security
+    username: ${ELASTICSEARCH_USERNAME:}
+    password: ${ELASTICSEARCH_PASSWORD:}
+    # 生产环境必须启用 HTTPS + 证书校验（启用 xpack.security.http.ssl.enabled 后生效）
+    ssl:
+      enabled: ${ELASTICSEARCH_SSL_ENABLED:true}
+      # 证书校验：生产环境强烈建议开启（确保证书链完整）
+      certificate-validation: ${ELASTICSEARCH_SSL_CERT_VALIDATION:true}
+      # CA 证书路径（可选，未指定时使用 JVM truststore）
+      bundle: ${ELASTICSEARCH_SSL_BUNDLE:}
+    # 连接 / 套接字超时
+    connection-timeout: 5s
+    socket-timeout: 60s
+  # P1 安全修复：Spring Boot 3.x 自动配置 MongoDB 会扫描环境变量 MONGO_URI / MONGODB_URI / SPRING_DATA_MONGODB_URI
+  # 项目没有引入 spring-boot-starter-data-mongodb（pom.xml 仅含 redis/ES），但防御性声明 autoconfigure exclude 防止
+  # 未来误引入依赖时自动连接本地 27017（攻击者可在同 Pod 内绑定 27017 等待连接）
+  # 严格做法：从根本上不引入依赖；若必须引入，需显式配置认证 + TLS
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoReactiveAutoConfiguration
+
+  # 生产环境只执行表结构迁移，不加载 db/seed 演示数据；禁止自动 repair
+  flyway:
+    locations: classpath:db/migration
+    repair-on-migrate: false
+    # prod 严格校验：脚本 hash 变化立即失败，避免生产环境已应用的迁移被改坏
+    # 注意：base yml 中 validate-on-migrate=false 是 dev 兼容（开发期间会改 SQL）；
+    # prod 强制开启，与 RUNBOOK "1.2 Flyway 校验失败" 中的处理流程对齐
+    validate-on-migrate: true
+    # 检测到未应用的迁移时直接失败（避免 prod 启动后才发现遗漏）
+    clean-disabled: true
+    # 生产环境显式启用订单分区：dev 默认 false（避免本地数据库无对应权限时启动失败），
+    # prod 必须为 true（订单表按月分区是 P99 关键，单表 1 亿行后按 user_id 查询会全表扫描）
+    placeholders:
+      moyuyo_enable_partition: 'true'
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      timeout: 3s
+      # 生产环境 Redis TLS（启用 stunnel / redislabs 等前置 TLS 终结时打开）
+      # 默认关闭：与 docker-compose 中 Redis 容器配置一致（明文 + 密码）
+      # 开启时需同时配置 REDIS_SSL_BUNDLE / REDIS_SSL_* 环境变量，并挂载证书到容器
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
+        bundle: ${REDIS_SSL_BUNDLE:}
+      # Lettuce 连接池：Spring Boot 2.x+ 默认不开启 Lettuce 连接池（仅复用单连接），
+      # 高并发下会成为瓶颈。生产环境必须显式开启 Pool，并设置合理上限。
+      lettuce:
+        pool:
+          enabled: true
+          # Lettuce 连接池容量应略大于应用层并发上限，避免连接池耗尽导致业务等待
+          # 与 tomcat max-threads=600 + 异步任务线程池 32 总和计算，按 1.5x 弹性冗余 ≈ 32
+          max-active: 32
+          # max-idle 必须 ≥ min-idle，否则 min-idle 不生效（commons-pool2 行为）
+          # 设为 max-active 一致：避免突发流量结束后大量连接被回收再频繁重建
+          max-idle: 32
+          min-idle: 8                  # 预热 8 个空闲连接应对突发流量
+          # max-wait：获取连接的最大等待时长；超过即抛 NoSuchElementException
+          # 2s 与 spring.data.redis.timeout=3s 错开，避免 Lettuce 自身超时先抛错误判
+          max-wait: 2s
+
+  datasource:
+    # 生产环境强制显式选择证书校验策略，启用 true 时必须挂载 MySQL CA truststore
+    # 关键连接参数：
+    # - connectTimeout=5000：与 Hikari connection-timeout 对齐，TCP 建连超时
+    # - socketTimeout=30000：避免下游 socket 阻塞挂死整个应用
+    # - tcpKeepAlive=true：开启 TCP 层 keepalive，由 OS 检测半连接死链
+    # 移除 JDBC URL 中的 enabledTLSProtocols=TLSv1.2,TLSv1.3，TLS 协议版本统一在下方
+    # data-source-properties "com.mysql.cj.jdbc.Driver.enabledTLSProtocols" 中配置为 TLSv1.3 only。
+    # 原因：data-source-properties 是 Connector/J 8 推荐配置方式，会覆盖 URL 参数；两条都写
+    # 会造成配置歧义（实际生效的版本取决于驱动加载顺序），统一只保留一处。
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:moyuyo_prod}?useSSL=true&requireSSL=true&verifyServerCertificate=${MYSQL_VERIFY_SERVER_CERTIFICATE}&serverTimezone=Asia/Shanghai&characterEncoding=utf8mb4&connectTimeout=5000&socketTimeout=30000&tcpKeepAlive=true&rewriteBatchedStatements=true&useServerPrepStmts=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048
+    username: ${MYSQL_USER:moyuyo}
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 自定义 truststore 路径与密码（生产环境指向 MySQL CA 证书）
+    # 证书文件需挂载到容器 /opt/mysql-certs/mysql-ca.p12
+    hikari:
+      pool-name: moyuyo-pool
+      # 连接池大小经验公式：connections = ((core_count * 2) + effective_spindle_count)
+      # 4 核 + SSD ≈ 10；8 核 + SSD ≈ 18。预留缓冲到 20。
+      # 监控告警阈值：使用率 > 90% 持续 3 分钟触发 MoyuyoHikariPoolHigh 告警（见 monitoring/alerts）
+      maximum-pool-size: 20
+      # minimum-idle = maximum-pool-size：让 HikariCP 在启动时立即填充所有连接，
+      # 避免冷启动期或低负载期突发流量因 connectionTimeout 拒绝请求。
+      # 实测：minimum-idle=5 时冷启动后首个突发 50 并发会有 30% 等待，minimum-idle=20 等待为 0。
+      minimum-idle: 20                # 等于 maximum-pool-size，预热全部连接
+      idle-timeout: 600000            # 10 分钟空闲连接回收（minimum-idle=20 时基本不会触发）
+      max-lifetime: 1800000           # 30 分钟连接最大生命周期（防 MySQL wait_timeout 默认 8h 提前回收）
+      connection-timeout: 5000        # 获取连接超时（5s）
+      validation-timeout: 3000        # 连接校验超时（3s）
+      leak-detection-threshold: 30000 # 30 秒泄漏检测（超过则记录堆栈）
+      keepalive-time: 300000          # 5 分钟保活（发心跳 SQL 防止中间设备切断）
+      # 监控
+      register-mbeans: true
+      # connection-init-sql：每次创建连接时执行的 SQL，强制会话时区与字符集，
+      # 避免 MySQL 容器/宿主机/客户端时区漂移导致 NOW() / TIMESTAMP 行为异常
+      # - time_zone='+08:00'：与 JVM TZ 一致；CI/CD / 备份恢复等异地场景同样适用
+      # - names utf8mb4 + character_set_results=utf8mb4：冗余兜底（JDBC URL 已带 characterEncoding=utf8mb4，
+      #   但部分驱动场景下 results 字符集可能由 MySQL 全局变量控制，需显式 SET）
+      # - sql_mode：显式设置常用 STRICT 模式，避免 MySQL 8 默认 sql_mode 漂移导致非严格模式下数据截断被掩盖
+      connection-init-sql: "SET time_zone='+08:00'; SET NAMES utf8mb4; SET character_set_results=utf8mb4; SET SESSION sql_mode='STRICT_ALL_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO'"
+      # connection-test-query 不设置：使用 MySQL Connector/J 8 默认的
+      # SELECT 1（驱动内置 lightweight ping），避免额外 SQL 流量
+      data-source-properties:
+        # 信任库路径：保留默认值仅作"开发/容器环境"的兜底，
+        # 生产环境必须显式设置 MYSQL_TRUSTSTORE_URL 指向受信任的 MySQL CA 证书
+        # （docker-compose 中由 scripts/init-mysql-truststore.sh 提前生成）。
+        # 若使用默认值且未挂载对应文件，启动会因找不到证书而中断。
+        trustCertificateKeyStoreUrl: ${MYSQL_TRUSTSTORE_URL:file:/opt/mysql-certs/mysql-ca.p12}
+        # 默认值留空：让 HikariCP 在未设置时直接抛异常，
+        # 由 ProdConfigValidator 在启动期捕获 MYSQL_TRUSTSTORE_PASSWORD 缺失并阻断启动。
+        # 注意：必须使用无默认值的占位符 ${MYSQL_TRUSTSTORE_PASSWORD}（不能加 : 默认值），
+        # 否则当环境变量名错配时会被默认为空字符串，绕过 ProdConfigValidator 的必填检查。
+        # 历史默认 "changeit" 已被 ProdConfigValidator 识别为弱密码，必须移除以避免"默认即弱"的陷阱
+        trustCertificateKeyStorePassword: ${MYSQL_TRUSTSTORE_PASSWORD}
+        com.mysql.cj.jdbc.Driver:
+          # 调试 SSL 握手可临时设置：-Djavax.net.debug=ssl:handshake
+          # 强制 TLSv1.3 only：避免 TLSv1.2 重协商偶发的 Connection reset，
+          # 同时禁用 SSLv3/TLSv1.0/TLSv1.1 等不安全协议版本
+          # 注意：MySQL 8.0.16+ 才支持 TLSv1.3，低于此版本需回退 TLSv1.2
+          enabledTLSProtocols: TLSv1.3
+
+mybatis-plus:
+  configuration:
+    # 生产环境使用 Slf4j 但禁用 SQL 日志（DEBUG 级别 MyBatis 会打印完整 SQL + 参数，
+    # 含 WHERE 子句中的密码哈希、邮箱、手机号等敏感字段，存在合规与日志膨胀风险）。
+    # 生产期如需定位慢 SQL，请使用 MySQL slow_log + HikariCP metrics + Prometheus 指标，
+    # 不要打开 SQL DEBUG 日志。
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+jwt:
+  secret: ${JWT_SECRET}
+  # 生产环境 access token 有效期固定 2 小时：与 dev 一致避免误配置时长差异；
+  # refresh token 有效期由 AuthService 控制（7 天）
+  expire-hours: 2
+
+api:
+  signature:
+    # P2 优化：prod 默认关闭签名（客户端 SDK 暂未实现），保留 secret 占位以兼容未来启用
+    # 启用签名需同时设置：1) API_SIGNATURE_ENABLED=true  2) API_SIGN_SECRET=强随机串
+    enabled: ${API_SIGNATURE_ENABLED:false}
+    secret: ${API_SIGN_SECRET:}
+
+springdoc:
+  # 生产环境：完全关闭 OpenAPI 接口（避免接口细节泄露到公网）
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# RocketMQ
+rocketmq:
+  # 总开关：dev 环境默认 true（本地无 MQ 时业务层自动降级），prod 必须为 true
+  enabled: ${ROCKETMQ_ENABLED:true}
+  name-server: ${ROCKETMQ_NAMESRV_ADDR:rocketmq-namesrv:9876}
+  producer:
+    group: moyuyo-producer-group
+    send-message-timeout: 3000
+    # 同步发送失败重试次数（异步发送场景下 RocketMQ 客户端自身有重试，这里设为 1 即可）
+    retry-times-when-send-failed: 1
+    # 异步发送失败重试次数
+    retry-times-when-send-async-failed: 2
+    # 异步发送 + 消息追踪
+    async-send-sender-enable: true
+    enable-msg-trace: true
+    # VIP 通道：客户端始终通过 VIP 通道发送，提升吞吐（broker 端需开启 vipChannelEnabled=true）
+    vip-channel-enabled: true
+    # P1：消息大小限制（默认 4MB 过大，下调到 1MB 防止单条消息撑爆 broker page cache）
+    # RocketMQ broker 默认 maxMessageSize=4MB；但过大消息会显著影响 commitlog 写入与消费速度
+    # 业务场景以订单/通知为主，1MB 完全够用；大文件场景走 OSS 而非 MQ
+    max-message-size: 1048576
+    # 压缩阈值：超过 4KB 的消息体在客户端压缩后传输，减少网络带宽
+    compress-message-body-threshold: 4096
+  consumer:
+    # 消费失败重试次数（达到后投递到 %RETRY% topic，最后到死信队列）
+    # 注意：rocketmq-spring-boot-starter 在 onMessage 抛异常时会自动重试
+    # 这里设置的是 max-retry-times 行为
+    retry-times-when-consume-failed: 3
+    # 单条消息最大消费时长（毫秒），超时未 ACK 视为消费失败
+    consume-timeout: 300000
+    # 消费模式：CONCURRENTLY 并发，ORDERLY 顺序（订单超时用 CONCURRENTLY 即可）
+    consume-message-orderly: false
+    # 拉取间隔（默认仅在新消费者首次启动时使用，运行中由 broker 推送）
+    pull-interval: 0
+    # 单次拉取消息最大数量（默认 32，按业务吞吐可调整；过大易 OOM，过小则高频空拉）
+    pull-batch-size: 32
+
+payment:
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET}
+    currency: usd
+  paypal:
+    client-id: ${PAYPAL_CLIENT_ID}
+    client-secret: ${PAYPAL_CLIENT_SECRET}
+    webhook-id: ${PAYPAL_WEBHOOK_ID}
+    mode: live
+    # 生产环境必须显式配置允许的前端域名，避免开放重定向
+    allowed-origins: ${PAYPAL_ALLOWED_ORIGINS}
+
+woocommerce:
+  url: ${WOOCOMMERCE_URL}
+  consumer-key: ${WOOCOMMERCE_CONSUMER_KEY}
+  consumer-secret: ${WOOCOMMERCE_CONSUMER_SECRET}
+  connect-timeout: ${MOYUYO_HTTP_CONNECT_TIMEOUT_MS:5000}
+  read-timeout: ${MOYUYO_HTTP_READ_TIMEOUT_MS:15000}
+  stock-sync:
+    auto-enabled: ${WC_STOCK_SYNC_ENABLED:true}
+    cron: ${WC_STOCK_SYNC_CRON:0 */5 * * * *}
+
+admin:
+  # 严禁设置默认值：生产环境必须显式提供 ADMIN_USERNAME / ADMIN_EMAIL / ADMIN_PASSWORD
+  # 由 ProdConfigValidator 在启动早期校验，缺失则阻断启动
+  # AdminInitializer 会拒绝 admin/root/administrator 等弱用户名
+  username: ${ADMIN_USERNAME:}
+  email: ${ADMIN_EMAIL:}
+  password: ${ADMIN_PASSWORD:}
+
+# 操作审计日志
+# 启用后，所有标注 @OperationLog 的方法会异步批量写入 mo_operation_log 表
+moyuyo:
+  # CORS：生产环境强制要求显式设置允许的前端域名（逗号分隔）
+  # WebMvcConfig 在未配置时会拒绝注册 CORS 映射，等同于"全拒绝跨域"
+  cors:
+    allowed-origins: ${MOYUYO_CORS_ORIGINS:}
+  # 密码编码器强度：可通过环境变量覆盖（范围 4~31，默认 12）
+  # 调高会显著增加登录/注册 CPU 成本（cost=14 约 1s/次），但安全强度倍增
+  password:
+    bcrypt-strength: ${MOYUYO_BCRYPT_STRENGTH:12}
+  audit:
+    # 生产环境强制启用审计持久化，便于合规追溯
+    persist-enabled: true
+    # 审计队列丢弃时是否阻断业务（默认 false：fail-open，避免审计堆积拖垮业务）
+    # true 则队列满时直接抛异常，业务请求会收到 5xx，运维第一时间感知
+    block-on-queue-full: ${MOYUYO_AUDIT_BLOCK_ON_FULL:false}
+    # 审计日志保留期清理：每天 03:30 清理超过 retention-days 的历史数据
+    # 分区表走 DROP PARTITION（O(1)）；非分区表走 DELETE WHERE（dev/test 兜底）
+    # 关闭方式：moyuyo.audit.retention-enabled=false
+    retention-enabled: ${MOYUYO_AUDIT_RETENTION_ENABLED:true}
+    retention-days: ${MOYUYO_AUDIT_RETENTION_DAYS:90}
+    # 异步持久化队列容量（合法范围 1000~100000）；OperationLogPersister @PostConstruct 中归一化
+    queue-capacity: ${MOYUYO_AUDIT_QUEUE_CAPACITY:10000}
+    # 审计日志批量落库大小（单批 INSERT）；MyBatis-Plus insertBatchSomeColumn 默认 100
+    # 调大可减少 DB RTT，但 max_allowed_packet 风险升高；200 是经验平衡值
+    batch-size: ${MOYUYO_AUDIT_BATCH_SIZE:200}
+    # flusher 线程拉取间隔（毫秒）；间隔短 → 低延迟，间隔长 → 高吞吐
+    flush-interval-ms: ${MOYUYO_AUDIT_FLUSH_INTERVAL_MS:1000}
+  # IP 维度限流（保护登录/支付/下单端点）
+  # 仅对敏感端点生效，防止单 IP 抢占 @RateLimiter 全局配额
+  # 开关可由 MOYUYO_IP_RATELIMIT_ENABLED 环境变量覆盖（.env.example 中声明但 yml 默认 true）
+  ip-ratelimit:
+    enabled: ${MOYUYO_IP_RATELIMIT_ENABLED:true}
+    # 每个 IP 每分钟最大请求数（敏感端点）
+    limit-per-minute: 60
+  # 用户维度限流（针对已登录接口）
+  # 开关可由 MOYUYO_USER_RATELIMIT_ENABLED 环境变量覆盖
+  user-ratelimit:
+    enabled: ${MOYUYO_USER_RATELIMIT_ENABLED:true}
+
+management:
+  # P1 安全修复：actuator 端口与业务端口分离
+  # - 业务流量走 8080（由前置 Nginx 终止 TLS）
+  # - 监控流量走独立端口 9090（仅绑定 127.0.0.1，由 Prometheus 直连）
+  # 收益：即便 Nginx 配置错误把 8080 暴露给外网，actuator 端点仍无法触达；
+  #       反向亦然，业务端口被扫描时不会暴露 /actuator/prometheus 路径
+  # 默认关闭，可通过 MOYUYO_MANAGEMENT_PORT=true 启用（docker-compose 中开启）
+  server:
+    port: ${MANAGEMENT_PORT:9090}
+    # 仅绑定本机回环：避免 actuator 端口被外部直接访问；
+    # Prometheus 需在同主机抓取（与监控告警架构对齐）
+    address: ${MANAGEMENT_ADDRESS:127.0.0.1}
+  endpoints:
+    web:
+      exposure:
+        # 仅暴露 prometheus 端点供 Prometheus 服务器抓取（仅暴露在 127.0.0.1，由前置 Nginx 控制外网访问）
+        # metrics 端点与 prometheus 重叠且输出更冗长，prod 关闭以减少攻击面
+        # info 不暴露：避免泄露 build version / git commit，便于攻击者针对性攻击
+        # health 仅保留 health/livenessstate/readinessstate 探针（actuator/health endpoint
+        # 仍可访问，但 show-details=never 避免泄露组件细节）
+        include: health,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      # 不对外暴露组件细节，避免泄露内部依赖信息
+      show-details: never
+      probes:
+        enabled: true
+      # 将敏感组件（redis/elasticsearch）设为 group-only，避免 liveness 探针因依赖抖动误杀 pod
+      # readiness/liveness 探针只看 application 自身状态
+      group:
+        liveness:
+          include: livenessState
+        # readiness 包含 MySQL / Redis / ES 等外部依赖：
+        # 依赖不可用时 pod 不会被 K8s 杀掉（liveness 仍 UP），但会从 Service 端点移除
+        # 直到依赖恢复。这是 K8s 标准 readiness/liveness 分离模式
+        readiness:
+          include: readinessState,db,redis,elasticsearch
+    # 显式禁用未使用的 endpoint（防止意外启用 loggers/heapdump 等敏感 endpoint）
+    env:
+      enabled: false
+    configprops:
+      enabled: false
+    beans:
+      enabled: false
+    mappings:
+      enabled: false
+    threaddump:
+      enabled: false
+    heapdump:
+      enabled: false
+    loggers:
+      enabled: false
+    # 显式关闭 info endpoint：避免泄露 git commit / build time 等版本定向信息
+    # Spring Boot 3.x 在 exposure.include 不含 info 时会自动不注册该 endpoint，
+    # 这里显式声明 + env/build/git 等 contributor 关闭，让"零攻击面"行为可审计
+    info:
+      enabled: false
+    prometheus:
+      access: read_only
+  # actuator 端点的访问控制
+  # 生产环境强烈建议在反向代理层（Nginx / 1Panel）做 IP 白名单：
+  # 仅允许 Prometheus 服务器 IP 访问 /actuator/prometheus
+  # 仅允许内网监控 IP 访问 /actuator/health（K8s liveness/readiness probe 默认会访问）
+  # /actuator/info 同样仅内网访问（避免泄露构建版本信息）
+  # 例（Nginx）：
+  #   location /actuator/prometheus { allow 10.0.0.0/8; deny all; }
+  health:
+    db:
+      enabled: true
+    redis:
+      enabled: true
+    # RocketMQ 健康检查（spring-boot-starter-actuator 自带 rocketmq indicator）
+    # ES / RocketMQ 不健康时仅影响 readiness，不杀 liveness（K8s 标准做法）
+    rocketmq:
+      enabled: true
+    # 生产环境使用 ES 做商品搜索，必须纳入健康检查
+    # 未配置 ES 时启动仍能成功（自动配置按 spring.elasticsearch.uris 判断），但 health 探针会报 DOWN
+    # 建议配合 Kubernetes liveness probe 容忍短时间 ES 抖动
+    elasticsearch:
+      enabled: true
+  # 关键指标采集补充：让 Prometheus 抓取到关键自定义指标
+  # 已通过 micrometer-registry-prometheus 自动暴露：
+  # - jvm_memory_* / jvm_gc_* / jvm_threads_*
+  # - hikaricp_connections_* / hikaricp_connections_usage_seconds
+  # - lettuce_command_completion_seconds
+  # - http_server_requests_seconds
+  # - moyuyo_operation_log_*（自定义指标，OperationLogAspect 上报）
+  # - resilience4j_circuitbreaker_* / resilience4j_ratelimiter_*
+  #
+  # 推荐告警阈值（monitoring/alerts/moyuyo-alerts.yml 中已部分定义）：
+  # - hikaricp_connections_usage > 90% 持续 3min → 连接池不足
+  # - hikaricp_connections_creation_seconds > 1s → 创建连接慢（DB 压力）
+  # - lettuce_command_completion_seconds{quantile="0.99"} > 500ms → Redis 慢
+  # - jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"} > 80% → 内存紧张
+  # - moyuyo_operation_log_total{action="drop"} > 0 → 审计积压
+  # - resilience4j_circuitbreaker_state{state="open"} == 1 → 熔断
+  # - resilience4j_ratelimiter_available_permissions == 0 → 限流被吃满
+  metrics:
+    tags:
+      # 让 Prometheus 抓取到的指标自动带上应用名标签，便于多服务聚合
+      application: ${spring.application.name}
+    distribution:
+      # HTTP 请求耗时直方图：分桶粒度（生产环境按需要可调更细）
+      percentiles-histogram:
+        http.server.requests: true
+      # SLO 分桶：覆盖快/慢/极慢三档，便于 SRE 配置 SLA 告警
+      # - 200ms：核心写接口（创建订单/支付）目标
+      # - 1s：常规读写接口（列表/详情）目标
+      # - 3s：可接受上限
+      # - 10s：熔断预警阈值
+      slo:
+        http.server.requests: 100ms,200ms,500ms,1s,3s,10s
+
+# 生产环境 trace 采样率：默认 10%，可在 .env 中通过 MOYUYO_TRACE_SAMPLE_RATE 覆盖
+# 设置过低会丢失故障链路，过高会增加 Zipkin/Jaeger 后端压力
+management.tracing.sampling.probability: ${MOYUYO_TRACE_SAMPLE_RATE:0.1}
+
+# 生产环境启用延迟初始化：按需加载 Bean 可加速冷启动 30~50%，
+# 配合 ProdConfigValidator 已能在启动期拦截必填配置错误，
+# 因此 first-use 阶段暴露配置错误的副作用可接受
+# 注意：上面 application.yml 已声明过 spring.main.lazy-initialization，
+# 这里以 prod 覆盖 dev 默认 false 的方式显式打开
+spring.main.lazy-initialization: ${SPRING_MAIN_LAZY_INITIALIZATION:true}
+
+# Resilience4j 生产环境限流覆盖（比开发环境更严格）
+resilience4j:
+  # ---------- 限流（rateLimiter）----------
+  # 说明：每个实例必须显式声明 limit-refresh-period 与 timeout-duration，
+  # 否则会回落到 resilience4j 默认（1m / 500ms），与 limit-for-period 配合可能产生非预期行为
+  ratelimiter:
+    instances:
+      authLogin:
+        limit-refresh-period: 1m
+        limit-for-period: 300
+        timeout-duration: 500ms
+      # P1 修复：管理端登录单独限流（更严格）：admin 后台是高价值目标，需独立于 C 端 authLogin
+      # 60/min 等同于 1 req/s（防高频爆破），超出立即 fail-fast 不排队
+      adminAuthLogin:
+        limit-refresh-period: 1m
+        limit-for-period: 60
+        timeout-duration: 0
+      orderCreate:
+        limit-refresh-period: 1m
+        limit-for-period: 200
+        timeout-duration: 500ms
+      paymentApi:
+        limit-refresh-period: 1m
+        limit-for-period: 300
+        timeout-duration: 500ms
+      seckillApi:
+        limit-refresh-period: 1m
+        limit-for-period: 1000
+        timeout-duration: 1s
+      # 高价值写接口（生产环境严格收紧）
+      refundBatch:
+        limit-refresh-period: 1m
+        limit-for-period: 20
+        timeout-duration: 0
+      inventoryUpdate:
+        limit-refresh-period: 1m
+        limit-for-period: 50
+        timeout-duration: 0
+      configUpdate:
+        limit-refresh-period: 1m
+        limit-for-period: 10
+        timeout-duration: 0
+      batchImport:
+        limit-refresh-period: 1m
+        limit-for-period: 5
+        timeout-duration: 0
+      dataExport:
+        # 数据导出：每分钟最多 5 次（重型操作）
+        limit-refresh-period: 1m
+        limit-for-period: 5
+        timeout-duration: 0
+      pushAction:
+        limit-refresh-period: 1m
+        limit-for-period: 30
+        timeout-duration: 500ms
+      riskRuleUpdate:
+        limit-refresh-period: 1m
+        limit-for-period: 10
+        timeout-duration: 0
+      # 反馈提交：每个用户每分钟最多 3 条（防刷 + 防大 body 撞库）
+      feedbackSubmit:
+        limit-refresh-period: 1m
+        limit-for-period: 30
+        timeout-duration: 0
+      # 社区发帖：每个用户每分钟最多 5 条（防脚本刷帖 + 撞 XSS 净化器）
+      postCreate:
+        limit-refresh-period: 1m
+        limit-for-period: 30
+        timeout-duration: 0
+      # 社区评论：每个用户每分钟最多 10 条（防灌水）
+      commentCreate:
+        limit-refresh-period: 1m
+        limit-for-period: 60
+        timeout-duration: 0
+      # 领券：每个用户每分钟最多 3 次（防脚本秒券）
+      couponClaim:
+        limit-refresh-period: 1m
+        limit-for-period: 20
+        timeout-duration: 0
+
+  # ---------- 熔断器（circuitBreaker）：保护下游依赖（ES / 支付 / WooCommerce）----------
+  circuitbreaker:
+    instances:
+      # ES 熔断：当 ES 集群慢响应或不可用时，快速失败（避免拖垮整个应用）
+      elasticsearch:
+        failure-rate-threshold: 50               # 50% 请求失败即熔断
+        slow-call-rate-threshold: 80              # 80% 请求慢响应（>3s）即熔断
+        slow-call-duration-threshold: 3s
+        wait-duration-in-open-state: 30s         # 熔断后 30s 半开
+        permitted-number-of-calls-in-half-open-state: 5
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        # 自动从 OPEN → HALF_OPEN
+        automatic-transition-from-open-to-half-open-enabled: true
+      # WooCommerce 同步熔断：与外部系统通信必须熔断
+      woocommerce:
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 60s
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+      # 邮件发送熔断：SMTP 服务器故障时降级（仅记录日志，不阻塞业务）
+      mailSender:
+        failure-rate-threshold: 70
+        wait-duration-in-open-state: 120s
+        sliding-window-size: 30
+        minimum-number-of-calls: 15
+
+  # ---------- 超时（timeLimiter）：阻塞调用超时（配合 CompletableFuture）----------
+  timelimiter:
+    instances:
+      elasticsearch:
+        timeout-duration: 5s
+        cancel-running-future: true
+      woocommerce:
+        timeout-duration: 10s
+        cancel-running-future: true
+
+  # ---------- 重试（retry）：瞬时故障重试 ----------
+  retry:
+    instances:
+      elasticsearch:
+        max-attempts: 3
+        wait-duration: 1s
+        # 显式开启指数退避：默认 enableExponentialBackoff=false 会让 multiplier 不生效
+        # 这里改为指数退避，避免 ES 抖动期间雪崩式重试
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        exponential-max-wait-duration: 10s
+        retry-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.dao.TransientDataAccessException
+
+# Spring 任务调度线程池：@Scheduled 任务（如 WooCommerceStockSyncTask）专用线程池
+# Spring Boot 3.x 暴露的调度线程池配置键：
+#   spring.task.scheduling.pool.size            池大小（仅是 core，未自动扩缩）
+#   spring.task.scheduling.thread-name-prefix   线程名
+# 注意：默认单线程调度，会被任一慢任务阻塞；显式拉到 4 线程避免相互阻塞
+spring.task.scheduling:
+  pool:
+    size: 4
+  thread-name-prefix: moyuyo-sched-
+  # 优雅停机：与 docker-compose stop_grace_period=45s 协同
+  # - await-termination=true：调度器收到 shutdown 信号后停止接收新任务并等待活跃任务完成
+  # - await-termination-period=30s：超过该时长强制中断，避免停机永远阻塞
+  # Spring lifecycle 默认 30s 等待 -> @Scheduled 先于 Spring 退出 30s 内收尾
+  shutdown:
+    await-termination: true
+    await-termination-period: 30s
+
+# Spring 任务执行线程池：@Async 默认执行器
+# 业务侧 @Async("moyuyoTaskExecutor") 仍由 moyuyo-common/AsyncConfig 接管（容量更大、
+# CallerRunsPolicy、MDC 装饰），这里仅配置 Spring Boot 默认 SimpleAsyncTaskExecutor
+# 在没有显式 @Bean 兜底时的兜底行为（避免业务误用默认池后被打爆）
+spring.task.execution:
+  pool:
+    core-size: 4
+    max-size: 16
+    queue-capacity: 200
+    keep-alive: 60s
+    allow-core-timeout: true
+    # 拒绝策略：默认 AbortPolicy 会直接抛 RejectedExecutionException 导致业务 5xx，
+    # 这里改为 CALLER_RUNS（任务回压到调用线程）形成天然的过载保护，配合业务层限流避免雪崩
+    rejection-policy: CALLER_RUNS
+  thread-name-prefix: moyuyo-default-async-
+  # 优雅停机：与 moyuyo-common/AsyncConfig 中的 backgroundTaskExecutor 协同
+  # await-termination 优先于 Spring lifecycle timeout 退出，确保正在执行的异步任务不被打断
+  shutdown:
+    await-termination: true
+    await-termination-period: 30s
+
+# 生产环境
+logging:
+  level:
+    # 注：以下 level 在 prod 下会被 logback-spring.xml 覆盖（root=WARN, com.moyuyo=INFO），
+    # 留在这里是为了在没有 logback 配置的运行环境（如某些 CI 镜像）兜底生效。
+    root: WARN
+    com.moyuyo: INFO
+    org.springframework: WARN
+  file:
+    path: /var/log/moyuyo
+    max-size: 100MB
+    max-history: 30
+
+# JMX 远程访问：生产环境必须禁用
+# Spring Boot 3.x 的 spring.jmx.* 在 application.yml 中即可配置生效
+# 注意：
+# - 容器化部署默认 JMX 监听本地 socket，本机不会暴露；
+# - 但若运维启用 -Dcom.sun.management.jmxremote.* 会监听 0.0.0.0:0，攻击面爆炸。
+# - 显式设置 enabled=false 后，JVM 启动会忽略任何 com.sun.management.jmxremote.* 参数
+# - 调试 JMX 时通过 jcmd / jconsole 连接本地 socket（容器内 nsenter / docker exec）
+spring.jmx.enabled: false
