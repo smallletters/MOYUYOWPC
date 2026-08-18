@@ -45,10 +45,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
+        <!-- 注意：项目显式 exclude 了 Spring Security 自动配置（MoyuyoApplication），
+             鉴权走自实现的 JwtAuthFilter + AdminPermissionFilter。
+             仅保留 spring-security-crypto（BCryptPasswordEncoder），
+             不引入 starter-security，避免引入一堆无用的过滤器链导致启动期内存浪费 -->
+        <!-- （spring-security-crypto 见下方声明）-->
         <dependency>
             <groupId>io.github.resilience4j</groupId>
             <artifactId>resilience4j-spring-boot3</artifactId>

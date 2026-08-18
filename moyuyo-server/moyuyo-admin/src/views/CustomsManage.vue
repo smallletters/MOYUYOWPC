@@ -232,165 +232,172 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Document, QuestionFilled, PriceTag, WarningFilled, CircleCheck, CircleClose, Van, Clock } from '@element-plus/icons-vue'
-import { getCustoms, syncCustoms, createCustoms, updateCustoms, deleteCustoms } from '../api/admin'
+import {
+  getCustoms, syncCustoms, createCustoms, updateCustoms, deleteCustoms,
+  getClearanceOverview, getClearanceExceptions, getClearanceDocs,
+  getClearanceDailyDays, getClearanceCountryCompare
+} from '../api/admin'
 
-// ==================== 清关管理 Tab（示例数据，无真实 API，仅供界面展示） ====================
+// ==================== 清关管理 Tab（真实后端：清关模块同源数据） ====================
 
-// 清关状态概览（示例数据）
-const clearanceOverview = ref([
-  { label: '申报中', value: 8, type: 'brand', icon: Document },
-  { label: '审核中', value: 5, type: 'warning', icon: QuestionFilled },
-  { label: '缴税中', value: 3, type: 'brand', icon: PriceTag },
-  { label: '查验中', value: 2, type: 'warning', icon: WarningFilled },
-  { label: '已放行', value: 42, type: 'success', icon: CircleCheck },
-  { label: '已扣留', value: 1, type: 'error', icon: CircleClose }
-])
+// 清关状态概览（真实后端）— 状态分布用 overview 接口聚合
+const clearanceOverview = ref([])
+const clearanceOverviewIconMap = {
+  PENDING: Document,
+  INSPECTING: QuestionFilled,
+  CLEARED: CircleCheck,
+  REJECTED: CircleClose,
+  TAXING: PriceTag,
+  INSPECT: WarningFilled
+}
+const clearanceOverviewLabelMap = {
+  PENDING: '待申报',
+  INSPECTING: '查验中',
+  CLEARED: '已放行',
+  REJECTED: '已扣留',
+  TAXING: '缴税中',
+  INSPECT: '查验中'
+}
 
-// 清关进度跟踪（示例数据）：steps 状态 completed 已完成 / active 当前 / pending 待处理 / error 异常
-const clearanceOrders = ref([
-  {
-    orderNo: 'MOYU-INT20260801001',
-    country: '日本',
-    agent: 'ABC清关行',
-    status: 'normal',
-    abnormalReason: '',
-    expectedRelease: '2026-08-05',
-    releasedAt: '',
-    steps: [
-      { name: '申报', state: 'completed' },
-      { name: '审核', state: 'active' },
-      { name: '缴税', state: 'pending' },
-      { name: '查验', state: 'pending' },
-      { name: '放行', state: 'pending' }
-    ]
-  },
-  {
-    orderNo: 'MOYU-INT20260731015',
-    country: '韩国',
-    agent: '韩亚清关',
-    status: 'normal',
-    abnormalReason: '',
-    expectedRelease: '2026-08-03',
-    releasedAt: '',
-    steps: [
-      { name: '申报', state: 'completed' },
-      { name: '审核', state: 'completed' },
-      { name: '缴税', state: 'active' },
-      { name: '查验', state: 'pending' },
-      { name: '放行', state: 'pending' }
-    ]
-  },
-  {
-    orderNo: 'MOYU-INT20260729032',
-    country: '英国',
-    agent: 'EuroClear Ltd',
-    status: 'abnormal',
-    abnormalReason: '商品归类存疑，海关要求补充认证材料',
-    expectedRelease: '待定',
-    releasedAt: '',
-    steps: [
-      { name: '申报', state: 'completed' },
-      { name: '审核', state: 'completed' },
-      { name: '缴税', state: 'completed' },
-      { name: '查验', state: 'error' },
-      { name: '放行', state: 'pending' }
-    ]
-  },
-  {
-    orderNo: 'MOYU-INT20260725018',
-    country: '美国',
-    agent: 'US-Clear Co.',
-    status: 'normal',
-    abnormalReason: '',
-    expectedRelease: '',
-    releasedAt: '2026-07-30',
-    steps: [
-      { name: '申报', state: 'completed' },
-      { name: '审核', state: 'completed' },
-      { name: '缴税', state: 'completed' },
-      { name: '查验', state: 'completed' },
-      { name: '放行', state: 'completed' }
-    ]
-  }
-])
+// 清关进度跟踪（真实后端：取最近 5 条 clearance 数据）
+const clearanceOrders = ref([])
 
-// 清关异常（示例数据）：statusType pending 待处理 / processing 处理中 / solved 已解决
-const clearanceExceptions = ref([
-  {
-    type: '商品归类错误',
-    status: '待处理',
-    statusType: 'pending',
-    ticketNo: 'EXC-20260801-001',
-    orderNo: 'MOYU-INT20260801001',
-    handler: '张三',
-    description: '宠物智能项圈被归类为电子设备，应归类为宠物配件，需重新提交HS编码。'
-  },
-  {
-    type: '申报价值不符',
-    status: '处理中',
-    statusType: 'processing',
-    ticketNo: 'EXC-20260730-003',
-    orderNo: 'MOYU-INT20260729032',
-    handler: '李四',
-    description: '申报价值与实际成交价偏差超过20%，需补充交易凭证。'
-  },
-  {
-    type: '缺少认证',
-    status: '已解决',
-    statusType: 'solved',
-    ticketNo: 'EXC-20260728-002',
-    orderNo: 'MOYU-INT20260727006',
-    handler: '王五',
-    description: '宠物食品进口缺少FDA认证文件，已于7月29日补充提交并通过审核。'
-  }
-])
+// 清关异常（真实后端：复用 /clearance/exceptions）
+const clearanceExceptions = ref([])
 
-// 清关时效统计（示例数据）
-const timingKpi = ref({
-  avgDays: 4.2,
-  achievementRate: '92%'
-})
+// 清关时效统计（真实后端）
+const timingKpi = reactive({ avgDays: 0, achievementRate: '0%' })
+const weekTrend = ref([])
+const countryTiming = ref([])
 
-// 近 7 天清关时效（示例数据，单位：天）
-const weekTrend = ref([
-  { label: '7/26', value: 3.8 },
-  { label: '7/27', value: 4.5 },
-  { label: '7/28', value: 3.9 },
-  { label: '7/29', value: 5.2 },
-  { label: '7/30', value: 4.1 },
-  { label: '7/31', value: 4.8 },
-  { label: '8/1', value: 4.2 }
-])
-
-// 各目的国平均时效对比（示例数据，单位：天）
-const countryTiming = ref([
-  { country: '美国', days: 3.5, color: 'var(--brand-500)' },
-  { country: '日本', days: 3.8, color: 'var(--state-success)' },
-  { country: '韩国', days: 4.5, color: 'var(--chart-4)' },
-  { country: '英国', days: 5.2, color: 'var(--state-warning)' },
-  { country: '澳大利亚', days: 5.8, color: 'var(--chart-5)' },
-  { country: '欧盟', days: 6.5, color: 'var(--state-error)' }
-])
-
-// 近 7 天时效最大值，用于柱状图高度归一化
-const maxWeek = computed(() => Math.max(...weekTrend.value.map(item => item.value)))
+const maxWeek = computed(() => Math.max(1, ...weekTrend.value.map(item => item.value)))
 function barHeight(value) {
   return Math.round((value / maxWeek.value) * 100)
 }
-// 目的国横向条形图宽度（按 8 天满格换算）
 function hbarWidth(days) {
   return Math.round((days / 8) * 100)
 }
 
-// 异常工单查看详情（示例数据暂以提示代替跳转）
+// 异常工单查看详情（真实后端：弹窗展示）
 function handleViewException(item) {
-  ElMessage.info(`工单 ${item.ticketNo}（${item.type}）：${item.description}`)
+  ElMessage.success(`工单 ${item.ticketNo}（${item.type}）：${item.description || item.reason || '-'}（订单 ${item.orderNo}）`)
+}
+
+// 把后端 clearance 状态映射为前端步骤状态
+function buildSteps(status) {
+  // 简易映射：PENDING 申报；INSPECTING 查验；CLEARED 全部完成；REJECTED 查验异常
+  const states = ['pending', 'pending', 'pending', 'pending', 'pending']
+  if (status === 'PENDING') states[0] = 'completed'
+  else if (status === 'INSPECTING') { states[0] = 'completed'; states[3] = 'active' }
+  else if (status === 'CLEARED') states.fill('completed')
+  else if (status === 'REJECTED') { states[0] = 'completed'; states[3] = 'error' }
+  return [
+    { name: '申报', state: states[0] },
+    { name: '审核', state: states[1] },
+    { name: '缴税', state: states[2] },
+    { name: '查验', state: states[3] },
+    { name: '放行', state: states[4] }
+  ]
+}
+
+async function loadClearanceOverview() {
+  try {
+    const res = await getClearanceOverview()
+    const items = [
+      { key: 'PENDING', value: res?.pending || 0, type: 'brand' },
+      { key: 'INSPECTING', value: res?.inspecting || 0, type: 'warning' },
+      { key: 'CLEARED', value: res?.cleared || 0, type: 'success' },
+      { key: 'REJECTED', value: res?.rejected || 0, type: 'error' },
+      { key: 'avgDays', value: res?.avgDays || 0, type: 'brand', isAvg: true, label: '平均时效(天)' },
+      { key: 'passRate', value: (res?.passRate || 0) + '%', type: 'success', isRate: true, label: '放行率' }
+    ]
+    clearanceOverview.value = items.map(it => ({
+      label: it.isAvg || it.isRate ? it.label : (clearanceOverviewLabelMap[it.key] || it.key),
+      value: it.value,
+      type: it.type,
+      icon: clearanceOverviewIconMap[it.key] || Document
+    }))
+  } catch (e) {
+    console.error('获取清关概览失败:', e)
+    clearanceOverview.value = []
+  }
+}
+
+async function loadClearanceOrders() {
+  try {
+    const res = await getClearanceDocs({ page: 1, size: 5 })
+    const list = res?.records || []
+    clearanceOrders.value = list.map(c => ({
+      orderNo: c.orderNo || c.declarationNo,
+      country: c.country || '-',
+      agent: c.handler || '系统',
+      status: c.status === 'CLEARED' ? 'normal' : (c.status === 'REJECTED' ? 'abnormal' : 'normal'),
+      abnormalReason: c.status === 'REJECTED' ? (c.exceptionReason || '清关被退回') : '',
+      expectedRelease: c.clearanceTime ? String(c.clearanceTime).slice(0, 10) : (c.declareTime ? String(c.declareTime).slice(0, 10) : ''),
+      releasedAt: c.status === 'CLEARED' && c.clearanceTime ? String(c.clearanceTime).slice(0, 10) : '',
+      steps: buildSteps(c.status)
+    }))
+  } catch (e) {
+    console.error('获取清关进度失败:', e)
+    clearanceOrders.value = []
+  }
+}
+
+async function loadClearanceExceptions() {
+  try {
+    const list = await getClearanceExceptions(20)
+    clearanceExceptions.value = (list || []).map((item, idx) => ({
+      ticketNo: 'EXC-' + String(item.id).padStart(8, '0'),
+      orderNo: item.orderNo,
+      type: item.status === 'REJECTED' ? '商品归类错误' : '查验异常',
+      status: item.status === 'REJECTED' ? '已拒绝' : '查验中',
+      statusType: item.status === 'REJECTED' ? 'pending' : 'processing',
+      handler: item.handler || '系统',
+      description: item.reason || (item.status === 'REJECTED' ? '清关被退回，请补充资料' : '清关查验中')
+    }))
+  } catch (e) {
+    console.error('获取清关异常失败:', e)
+    clearanceExceptions.value = []
+  }
+}
+
+async function loadTimingStats() {
+  try {
+    const [overview, daily, country] = await Promise.all([
+      getClearanceOverview(),
+      getClearanceDailyDays(7),
+      getClearanceCountryCompare()
+    ])
+    timingKpi.avgDays = overview?.avgDays ?? 0
+    timingKpi.achievementRate = (overview?.passRate ?? 0) + '%'
+    weekTrend.value = (daily || []).map(d => ({
+      label: d.date ? String(d.date).slice(5) : '',
+      value: d.avgDays || 0
+    }))
+    const palette = ['var(--brand-500)', 'var(--state-success)', 'var(--chart-4)', 'var(--state-warning)', 'var(--chart-5)', 'var(--state-error)']
+    countryTiming.value = (country || []).map((c, i) => ({
+      country: c.country,
+      days: c.avgDays,
+      color: palette[i % palette.length]
+    }))
+  } catch (e) {
+    console.error('获取清关时效统计失败:', e)
+  }
 }
 
 // ==================== Tab 切换 ====================
 const activeTab = ref('clearance')
 function switchTab(tab) {
   activeTab.value = tab
+  if (tab === 'clearance') {
+    // 重新加载清关相关真实数据
+    loadClearanceOverview()
+    loadClearanceOrders()
+    loadClearanceExceptions()
+    loadTimingStats()
+  } else {
+    loadData()
+  }
 }
 
 // ==================== 税率管理 Tab：原海关编码税率 CRUD ====================
@@ -422,14 +429,14 @@ function statusTagType(s) {
 // 加载海关数据
 async function loadData() {
   try {
-    const res = await getCustoms()
-    const list = res || []
+    const res = await getCustoms({ page: currentPage.value, size: pageSize.value })
+    const list = Array.isArray(res) ? res : (res?.records || [])
     let filtered = [...list]
     if (filters.keyword) {
       filtered = filtered.filter(item => (item.hsCode || '').includes(filters.keyword) || (item.productName || '').includes(filters.keyword))
     }
     tableData.value = filtered
-    total.value = filtered.length
+    total.value = res?.total ?? filtered.length
   } catch (error) {
     console.error('获取海关数据失败:', error)
     ElMessage.error('获取海关数据失败')
@@ -490,7 +497,13 @@ async function handleSave() {
     ElMessage.error('保存失败: ' + (e.message || '未知错误'))
   }
 }
-onMounted(() => loadData())
+onMounted(() => {
+  // 默认进入清关管理 Tab，加载全部清关相关真实数据
+  loadClearanceOverview()
+  loadClearanceOrders()
+  loadClearanceExceptions()
+  loadTimingStats()
+})
 </script>
 
 <style scoped>

@@ -6,6 +6,7 @@ import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 
 import java.util.List;
+import java.util.Map;
 
 public interface OrderService {
 
@@ -29,6 +30,14 @@ public interface OrderService {
   void deleteOrder(Long orderId, Long userId);
 
   List<OrderItemEntity> getOrderItems(Long orderId);
+
+  /**
+   * 批量获取订单项（消除 N+1 查询）
+   *
+   * @param orderIds 订单 ID 列表
+   * @return Map<orderId, List<OrderItemEntity>>，订单无项时 Map 中无该 key
+   */
+  Map<Long, List<OrderItemEntity>> getOrderItemsByOrderIds(List<Long> orderIds);
 
   OrderEntity getOrderByOrderNo(String orderNo);
 }

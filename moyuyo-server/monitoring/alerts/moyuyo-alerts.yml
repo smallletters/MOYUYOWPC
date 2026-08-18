@@ -1,5 +1,17 @@
 # MOYUYO 后端 Prometheus 告警规则
 # 关键指标告警阈值，可按需调整
+#
+# 告警分级（与 PagerDuty / Alertmanager 对应）：
+# - critical：业务不可用（P0，立即响应）
+# - warning：性能下降或潜在风险（P1，30 分钟内响应）
+# - info：仅记录，无需响应
+#
+# 告警路由建议（alertmanager.yml）：
+#   routes:
+#     - match: { severity: critical }
+#       receiver: pagerduty-oncall
+#     - match: { severity: warning }
+#       receiver: slack-ops
 
 groups:
   - name: moyuyo-server-critical
@@ -11,9 +23,12 @@ groups:
         for: 1m
         labels:
           severity: critical
+          team: backend
+          runbook: https://runbooks.moyuyo.example.com/app-down
         annotations:
           summary: "MOYUYO 后端不可达"
           description: "moyuyo-server 已宕机超过 1 分钟，请立即排查"
+          dashboard: https://grafana.moyuyo.example.com/d/moyuyo-server
 
       # JVM Heap 使用率超过 85%
       - alert: MoyuyoJvmHeapHigh
@@ -23,9 +38,22 @@ groups:
         for: 5m
         labels:
           severity: warning
+          team: backend
         annotations:
           summary: "MOYUYO JVM Heap 使用率过高"
           description: "实例 {{ $labels.instance }} JVM Heap 使用率 {{ $value | humanizePercentage }}"
+
+      # GC 暂停过长
+      - alert: MoyuyoGcPauseTooLong
+        expr: |
+          rate(jvm_gc_pause_seconds_max{job="moyuyo-server"}[5m]) > 0.1
+        for: 3m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "MOYUYO GC 暂停过长（>100ms）"
+          description: "实例 {{ $labels.instance }} 平均 GC 暂停 {{ $value }} 秒"
 
       # HTTP 5xx 错误率超过 1%
       - alert: MoyuyoHttp5xxHigh
@@ -35,6 +63,7 @@ groups:
         for: 5m
         labels:
           severity: warning
+          team: backend
         annotations:
           summary: "MOYUYO HTTP 5xx 错误率超 1%"
           description: "实例 {{ $labels.instance }} 5xx 比例 {{ $value | humanizePercentage }}"
@@ -47,9 +76,22 @@ groups:
         for: 3m
         labels:
           severity: warning
+          team: backend
         annotations:
           summary: "MOYUYO 数据库连接池即将耗尽"
           description: "实例 {{ $labels.instance }} 连接池使用率 {{ $value | humanizePercentage }}"
+
+      # 数据库连接泄漏
+      - alert: MoyuyoHikariLeak
+        expr: |
+          increase(hikaricp_connections_leak_detection_count{job="moyuyo-server"}[10m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "MOYUYO 数据库连接泄漏"
+          description: "实例 {{ $labels.instance }} 检测到 {{ $value }} 个连接泄漏（可能未正确关闭）"
 
       # Webhook 签名失败率突增（探测攻击信号）
       - alert: MoyuyoWebhookSignatureFailures
@@ -58,6 +100,7 @@ groups:
         for: 5m
         labels:
           severity: warning
+          team: security
         annotations:
           summary: "MOYUYO Webhook 签名失败率突增"
           description: "5 分钟内平均每秒 {{ $value }} 次签名校验失败，可能是有人在探测 webhook secret"
@@ -68,6 +111,511 @@ groups:
         for: 5m
         labels:
           severity: critical
+          team: backend
         annotations:
           summary: "MOYUYO Elasticsearch 集群 red"
           description: "ES 集群状态 red，需要立即排查节点/磁盘"
+
+      # Redis 不可用
+      - alert: MoyuyoRedisUnavailable
+        expr: |
+          redis_connected_clients{job="moyuyo-redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "MOYUYO Redis 不可用"
+          description: "Redis 无任何连接，缓存/分布式锁失效"
+
+      # 慢 SQL 数量超过阈值
+      # P1 修复：原表达式依赖 logback_events_total{...message=~".*SLOW_SQL.*"} 匹配应用 WARN 日志，
+      # 但 moyuyo-api 在 prod 环境使用 NoLoggingImpl（关闭 SQL 日志），慢 SQL 监控实际上从未输出到 logback。
+      # 改为基于 MySQL slow_query_log + mysqld_exporter 暴露的指标（生产环境 MySQL 容器已开启 slow_query_log），
+      # 真实采集执行时间 > long_query_time(默认 1s) 的 SQL。
+      - alert: MoyuyoSlowSqlSpike
+        expr: |
+          rate(mysql_global_status_slow_queries{job="moyuyo-mysql"}[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: dba
+        annotations:
+          summary: "MOYUYO 慢 SQL 数量突增"
+          description: "5 分钟内平均每秒 {{ $value }} 条慢 SQL（基于 MySQL slow_query_log），需排查慢查询"
+
+  - name: moyuyo-business
+    interval: 60s
+    rules:
+      # IP 限流 fail-open 触发（Redis 不可用期间放行，限流能力失效）
+      - alert: MoyuyoIpRateLimitFailOpen
+        expr: |
+          sum(rate(logback_events_total{job="moyuyo-server",level="error",message=~".*限流.*Redis 不可用.*"}[5m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "IP 限流 fail-open 触发（Redis 不可用）"
+          description: "Redis 不可用期间 IP 限流已放行请求，限流防护暂时失效，{{ $value }} 次/秒"
+
+      # 用户限流 fail-open 触发
+      - alert: MoyuyoUserRateLimitFailOpen
+        expr: |
+          sum(rate(logback_events_total{job="moyuyo-server",level="error",message=~".*用户维度限流.*Redis 不可用.*"}[5m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "用户限流 fail-open 触发（Redis 不可用）"
+          description: "Redis 不可用期间用户维度限流已放行请求，限流防护暂时失效"
+
+      # 审计日志队列满（持久化停摆）
+      - alert: MoyuyoAuditLogQueueOverflow
+        expr: |
+          increase(logback_events_total{job="moyuyo-server",level="error",message=~".*OperationLog 队列已满.*"}[5m]) > 0
+        # 5 分钟持续增长才告警，避免 DB 短暂卡顿（如备份窗口、批量任务）误报
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "审计日志队列溢出"
+          description: "OperationLog 队列满丢弃记录持续 5 分钟以上，审计持久化可能已停摆，需立即排查"
+
+      # 审计日志持久化持续失败
+      - alert: MoyuyoAuditLogPersistFailure
+        expr: |
+          sum(rate(logback_events_total{job="moyuyo-server",level="error",message=~".*OperationLog flush 异常.*"}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "审计日志持久化持续失败"
+          description: "OperationLog 落库异常率 > 0.1/秒，可能是 DB 写入慢或 mo_operation_log 不可用"
+
+      # 审计日志队列水位预警（提前发现水位上升，区别于 MoyuyoAuditLogQueueOverflow 的"已丢弃"）
+      # 队列容量 10000，使用率 > 70% 持续 5min 触发；给运维 5~10min 排障窗口，避免升级为满队列丢失
+      - alert: MoyuyoAuditLogQueueHighWatermark
+        expr: |
+          moyuyo_operation_log_queue_size / 10000 > 0.7
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "审计日志队列水位超过 70%"
+          description: "OperationLog 队列当前 {{ printf \"%.0f\" (moyuyo_operation_log_queue_size) }} 条（容量 10000），持续 5 分钟，可能下游 DB 写入慢或批量任务堆积，请尽快排查"
+
+      # 订单超时取消率突增
+      - alert: MoyuyoOrderTimeoutRateHigh
+        expr: |
+          (sum(rate(order_status_changes_total{from="PENDING_PAY",to="CANCELLED"}[10m]))
+           / sum(rate(order_created_total[10m]))) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          team: product
+        annotations:
+          summary: "订单超时取消率超过 50%"
+          description: "可能是支付网关异常，请检查支付渠道可用性"
+
+      # 分布式锁争用率高
+      - alert: MoyuyoLockContentionHigh
+        expr: |
+          sum(rate(redis_lock_acquire_failures_total[5m])) by (lock_key) > 0.1
+        for: 5m
+        labels:
+          severity: info
+          team: backend
+        annotations:
+          summary: "分布式锁争用率高"
+          description: "锁 {{ $labels.lock_key }} 5 分钟内每秒 {{ $value }} 次获取失败"
+
+      # API 签名验证失败（疑似攻击）
+      - alert: MoyuyoSignatureVerificationFailures
+        expr: |
+          sum(rate(logback_events_total{job="moyuyo-server",level="warn",message=~".*签名校验失败.*"}[5m])) > 1
+        for: 2m
+        labels:
+          severity: critical
+          team: security
+        annotations:
+          summary: "API 签名验证失败突增（疑似攻击）"
+          description: "5 分钟内每秒 {{ $value }} 次签名校验失败，可能有人在伪造请求"
+
+      # 验证码爆破尝试
+      - alert: MoyuyoBruteForceSuspected
+        expr: |
+          sum(rate(logback_events_total{job="moyuyo-server",level="warn",message=~".*验证码.*失败.*"}[5m])) > 5
+        for: 2m
+        labels:
+          severity: critical
+          team: security
+        annotations:
+          summary: "验证码爆破尝试"
+          description: "5 分钟内每秒 {{ $value }} 次验证码错误，可能有人在枚举验证码"
+
+      # 数据库连接池等待超时（业务请求争抢连接失败）
+      - alert: MoyuyoHikariConnectionTimeout
+        expr: |
+          sum(rate(hikaricp_connections_acquire_seconds_count{job="moyuyo-server"}[5m])) > 0
+          and
+          sum(rate(hikaricp_connections_pending{job="moyuyo-server"}[5m])) > 0.1
+        for: 3m
+        labels:
+          severity: warning
+          team: dba
+        annotations:
+          summary: "数据库连接获取等待中"
+          description: "实例 {{ $labels.instance }} 出现连接获取等待且 pending 持续 > 0.1/s，连接池可能不足"
+
+      # CPU 使用率持续高（高于 85% 持续 5 分钟）
+      - alert: MoyuyoProcessCpuHigh
+        expr: |
+          sum(rate(process_cpu_usage{job="moyuyo-server"}[5m])) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "MOYUYO 应用进程 CPU 使用率过高"
+          description: "实例 {{ $labels.instance }} CPU 使用率持续高于 85%，建议查看线程 dump 与热点方法"
+
+      # JVM 线程数过高（> 800 持续 5 分钟，可能是线程泄漏）
+      - alert: MoyuyoJvmThreadsHigh
+        expr: |
+          jvm_threads_live_threads{job="moyuyo-server"} > 800
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "MOYUYO JVM 线程数过高"
+          description: "实例 {{ $labels.instance }} 活跃线程数 {{ $value }}，疑似线程泄漏；建议 jstack 抓取线程 dump"
+
+      # 容器被 OOMKilled（重启次数持续上升）
+      # 需要 Prometheus 集成 cAdvisor / kube-state-metrics，job=kubernetes-pods
+      - alert: MoyuyoPodOOMKilled
+        expr: |
+          increase(kube_pod_container_status_last_terminated_reason{reason="OOMKilled",namespace=~"moyuyo.*"}[1h]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "MOYUYO 容器被 OOMKilled"
+          description: "Pod {{ $labels.pod }} 在过去 1 小时内因 OOM 被终止，需立即扩容 JVM_XMX 或排查内存泄漏"
+
+      # MySQL 长事务（InnoDB trx 超过 60 秒）
+      # 需要 mysqld_exporter 抓取，job=moyuyo-mysql
+      - alert: MoyuyoMysqlLongTransaction
+        expr: |
+          mysql_info_schema_innodb_trx_trx_started_seconds{job="moyuyo-mysql"} > 60
+        for: 1m
+        labels:
+          severity: warning
+          team: dba
+        annotations:
+          summary: "MOYUYO MySQL 存在长事务（>60s）"
+          description: "trx_id {{ $labels.trx_id }} 已运行 {{ $value }} 秒，会阻塞 purge 与复制延迟"
+
+      # Redis 连接数接近上限（> 8000 持续 5 分钟，可能连接泄漏）
+      - alert: MoyuyoRedisConnectionsHigh
+        expr: |
+          redis_connected_clients{job="moyuyo-redis"} > 8000
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "MOYUYO Redis 连接数过高"
+          description: "Redis 已连接客户端 {{ $value }}，接近 maxclients 10000 上限，可能是应用连接泄漏"
+
+      # ========== 容器 / 主机层告警 ==========
+      # 容器磁盘使用率超过 85%（日志或 heapdump 占用过快）
+      - alert: MoyuyoContainerDiskHigh
+        expr: |
+          (sum(container_fs_usage_bytes{container_name=~"moyuyo-.*"}) by (container_name, namespace)
+           / sum(container_fs_limit_bytes{container_name=~"moyuyo-.*"}) by (container_name, namespace)) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "MOYUYO 容器磁盘使用率过高"
+          description: "容器 {{ $labels.container_name }} 磁盘使用率 {{ $value | humanizePercentage }}，可能是日志/heapdump 未清理"
+
+      # 主机磁盘使用率超过 90%（影响 Docker / DB 写入）
+      - alert: MoyuyoHostDiskHigh
+        expr: |
+          (sum(node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"}) by (instance)
+           / sum(node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"}) by (instance)) < 0.10
+        for: 10m
+        labels:
+          severity: critical
+          team: ops
+        annotations:
+          summary: "MOYUYO 宿主机磁盘空间不足（<10%）"
+          description: "实例 {{ $labels.instance }} 根分区剩余 {{ $value | humanizePercentage }}，需立即清理或扩容"
+
+      # JVM Stop-The-World GC（ZGC 不应触发 STW；G1/Shenandoah STW > 1s 视为异常）
+      # jvm_gc_pause_seconds_max 包含所有 GC 暂停，包括 ZGC 的 safepoint 暂停
+      - alert: MoyuyoJvmStopTheWorld
+        expr: |
+          increase(jvm_gc_pause_seconds_max{job="moyuyo-server",cause=~".*G1 pause.*|.*Full GC.*"}[5m]) > 1
+        for: 0m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "MOYUYO JVM 触发长时间 STW 暂停（>1s）"
+          description: "实例 {{ $labels.instance }} GC 暂停 {{ $value }} 秒，建议 jcmd 分析 heap dump 或降低 -XMX"
+
+      # 应用启动时间过长（> 60s 仍未就绪；Spring 冷启动超 30s 视为异常）
+      - alert: MoyuyoStartupTooLong
+        expr: |
+          time() - process_start_time_seconds{job="moyuyo-server"} > 600
+        for: 0m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "MOYUYO 应用启动时间过长"
+          description: "实例 {{ $labels.instance }} 已启动 {{ $value }} 秒未就绪，可能是 Flyway 慢 / Bean 循环依赖 / JVM JIT 编译延迟"
+
+      # MySQL 数据库死锁率突增
+      - alert: MoyuyoMysqlDeadlockSpike
+        expr: |
+          rate(mysql_global_status_innodb_row_lock_time_seconds{job="moyuyo-mysql"}[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          team: dba
+        annotations:
+          summary: "MySQL 行锁等待时间激增"
+          description: "实例 {{ $labels.instance }} 5 分钟内平均行锁等待 {{ $value }} 秒/秒，可能是大事务/索引缺失"
+
+      # MySQL InnoDB Buffer Pool 命中率 < 95%（频繁磁盘 I/O）
+      - alert: MoyuyoMysqlBufferPoolLowHit
+        expr: |
+          (sum(rate(mysql_global_status_innodb_buffer_pool_read_requests{job="moyuyo-mysql"}[5m]))
+           - sum(rate(mysql_global_status_innodb_buffer_pool_reads{job="moyuyo-mysql"}[5m])))
+           / sum(rate(mysql_global_status_innodb_buffer_pool_read_requests{job="moyuyo-mysql"}[5m])) < 0.95
+        for: 10m
+        labels:
+          severity: warning
+          team: dba
+        annotations:
+          summary: "MySQL Buffer Pool 命中率过低"
+          description: "实例 {{ $labels.instance }} Buffer Pool 命中率 {{ $value | humanizePercentage }} < 95%，需扩容 innodb_buffer_pool_size"
+
+      # Elasticsearch JVM Heap 使用率超过 80%
+      - alert: MoyuyoEsJvmHeapHigh
+        expr: |
+          (sum(elasticsearch_jvm_memory_used_bytes{job="moyuyo-es"}) by (instance)
+           / sum(elasticsearch_jvm_memory_max_bytes{job="moyuyo-es"}) by (instance)) > 0.80
+        for: 10m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Elasticsearch JVM Heap 使用率过高"
+          description: "ES 实例 {{ $labels.instance }} Heap 使用率 {{ $value | humanizePercentage }}，建议清理 indices 或扩容"
+
+      # Elasticsearch 未分配分片（写入失败风险）
+      - alert: MoyuyoEsUnassignedShards
+        expr: |
+          elasticsearch_cluster_health_unassigned_shards{job="moyuyo-es"} > 0
+        for: 15m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Elasticsearch 存在未分配分片"
+          description: "集群未分配分片数 {{ $value }}，持续 15 分钟可能导致写入失败"
+
+      # RocketMQ 消费积压（consumer offset 与 broker commit offset 差距）
+      - alert: MoyuyoRocketMqConsumerLag
+        expr: |
+          rocketmq_consumer_lag_bytes > 104857600
+        for: 10m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "RocketMQ 消费积压 >100MB"
+          description: "topic={{ $labels.topic }} group={{ $labels.group }} 积压 {{ $value | humanize1024 }}B，可能消费者故障或慢消费"
+
+      # ============================================================
+      # 安全 / 业务侧告警（合并到 moyuyo-business group，保持 60s 采样间隔）
+      # ============================================================
+      # 监控账号 / 应用账号尝试连接 MySQL 失败（爆破探测）
+      - alert: MoyuyoMysqlAuthFailures
+        expr: |
+          increase(mysql_global_status_connection_errors_auth{job="moyuyo-mysql"}[10m]) > 10
+        for: 0m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "MySQL 认证失败激增"
+          description: "10 分钟内认证失败 {{ $value }} 次，可能有人在尝试枚举数据库密码"
+
+      # 应用访问 404 风暴（> 100 QPS 持续 5 分钟，疑似扫描攻击）
+      - alert: MoyuyoHttp404Spike
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="moyuyo-server",status="404"}[5m])) > 100
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "应用 404 错误风暴"
+          description: "5 分钟内 404 错误率 {{ $value | humanize }} QPS，可能是扫描器探测敏感路径（/actuator、/.env、/admin）
+
+      # ============================================================
+      # 备份完整性告警（基于 Pushgateway 上报的 cron job metric）
+      # ============================================================
+      # MySQL 备份任务未在 26 小时内执行（每日 3 点备份，告警阈值设为 26h 留余量）
+      - alert: MoyuyoMysqlBackupMissed
+        expr: |
+          (time() - mysql_backup_last_success_timestamp) > 93600
+        for: 0m
+        labels:
+          severity: critical
+          team: ops
+        annotations:
+          summary: "MySQL 备份任务连续失败"
+          description: "上次成功备份距今 {{ $value }} 秒，备份任务可能已停止"
+
+      # ES 索引快照未在 7 天内执行
+      - alert: MoyuyoEsSnapshotMissed
+        expr: |
+          (time() - elasticsearch_snapshot_last_success_timestamp) > 604800
+        for: 0m
+        labels:
+          severity: warning
+          team: ops
+        annotations:
+          summary: "ES 索引快照连续 7 天未成功"
+          description: "上次成功快照距今 {{ $value }} 秒"
+
+      # 容器存活但应用已僵死（K8s liveness probe 失效率上升）
+      # 适用：当应用因线程死锁 / Native Memory 泄漏 等问题导致
+      # livenessState probe 持续返回 DOWN 但容器本身未被 kill
+      - alert: MoyuyoLivenessProbeFailing
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="moyuyo-server"}[5m])) == 0
+          and
+          up{job="moyuyo-server"} == 1
+        for: 3m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "MOYUYO liveness 探针持续失败"
+          description: "实例 {{ $labels.instance }} 存活但 5 分钟内无任何请求响应，可能处于线程死锁或 STW 状态"
+
+      # 应用磁盘 inode 耗尽（容器内日志/heapdump 累积）
+      - alert: MoyuyoContainerInodesHigh
+        expr: |
+          (1 - (node_filesystem_files_free{fstype!~"tmpfs|overlay"} / node_filesystem_files{fstype!~"tmpfs|overlay"})) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          team: ops
+        annotations:
+          summary: "MOYUYO 容器 inode 使用率过高"
+          description: "实例 {{ $labels.instance }} 文件系统 inode 使用率 {{ $value | humanizePercentage }}，可能是日志/heapdump 未清理"
+
+      # 数据库慢查询持续
+      - alert: MoyuyoMysqlSlowQueriesSpike
+        expr: |
+          rate(mysql_global_status_slow_queries{job="moyuyo-mysql"}[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: dba
+        annotations:
+          summary: "MySQL 慢查询持续增长"
+          description: "实例 {{ $labels.instance }} 5 分钟内平均每秒 {{ $value }} 条慢查询，建议立即排查索引"
+
+      # Elasticsearch JVM GC 暂停过长
+      - alert: MoyuyoEsGcPauseLong
+        expr: |
+          rate(elasticsearch_jvm_gc_duration_seconds_sum{job="moyuyo-es"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Elasticsearch GC 暂停 >50ms/s"
+          description: "实例 {{ $labels.instance }} GC 暂停累积 {{ $value }} 秒/秒，建议减少 shard 或扩容堆"
+
+      # Prometheus 自身抓取失败（监控系统失明 = 业务失明）
+      - alert: MoyuyoPrometheusScrapeFailed
+        expr: |
+          up{job="moyuyo-server"} == 0
+          and
+          (time() - prometheus_last_evaluation_timestamp) < 60
+        for: 5m
+        labels:
+          severity: critical
+          team: ops
+        annotations:
+          summary: "Prometheus 抓取 MOYUYO 指标失败"
+          description: "Prometheus 在 5 分钟内未成功抓取 moyuyo-server 指标，可能是网络隔离或端口错误"
+
+      # 应用 License / 证书即将过期（90 天预警窗口）
+      - alert: MoyuyoCertificateExpiringSoon
+        expr: |
+          (ssl_cert_not_after - time()) < 7776000
+          and
+          (ssl_cert_not_after - time()) > 0
+        for: 24h
+        labels:
+          severity: warning
+          team: ops
+        annotations:
+          summary: "TLS 证书将在 90 天内过期"
+          description: "证书 {{ $labels.hostname }} 剩余有效期 {{ $value | humanizeDuration }}，请提前续签"
+
+      # Kafka/RocketMQ broker 离线（rocketmq broker 心跳消失）
+      - alert: MoyuyoRocketMqBrokerDown
+        expr: |
+          rocketmq_broker_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "RocketMQ broker 不可达"
+          description: "broker={{ $labels.broker }} 已失联 2 分钟，订单超时/异步通知链路中断"
+
+      # API 签名 nonce 防重放降级（Redis 不可用期间放行，5 分钟窗口容差兜底）
+      - alert: MoyuyoSignatureNonceDegraded
+        expr: |
+          sum(rate(moyuyo_signature_nonce_degraded_total[5m])) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "API 签名 nonce 防重放已降级放行"
+          description: "Redis 不可用期间 API 签名过滤器已降级放行请求（reason={{ $labels.reason }}），5 分钟时间戳窗口仍兜底防重放，但建议立即恢复 Redis"
+
+      # 异步任务被拒绝（队列满或线程池关闭）
+      # moyuyo_async_task_rejected_total 累计值持续增长意味着 moyuyoTaskExecutor 容量不足或下游 DB 抖动阻塞
+      - alert: MoyuyoAsyncTaskRejected
+        expr: |
+          increase(moyuyo_async_task_rejected_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "异步任务被线程池拒绝"
+          description: "{{ $value }} 次异步任务在 5 分钟内被拒绝（队列满或线程池关闭），需扩容 moyuyoTaskExecutor 或排查慢任务"

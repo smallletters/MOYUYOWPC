@@ -7,7 +7,7 @@ import com.moyuyo.dao.admin.mapper.AdminUserMapper;
 import com.moyuyo.service.admin.AdminStaffService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +29,8 @@ public class AdminStaffServiceImpl implements AdminStaffService {
       "SUPER_ADMIN", "OPERATOR", "CUSTOMER_SVC", "FINANCE", "VIEWER");
 
   private final AdminUserMapper adminUserMapper;
+  /** 统一密码编码器 Bean，强度由 moyuyo.password.bcrypt-strength 控制（默认 12） */
+  private final PasswordEncoder passwordEncoder;
 
   @Override
   public List<Map<String, Object>> listUsers() {
@@ -88,9 +90,8 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     entity.setEmail(email);
     entity.setRole(targetRole);
 
-    // 密码使用 BCrypt 加密存储，强度设为 12（生产推荐值）
-    BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
-    entity.setPassword(encoder.encode(password));
+    // 密码使用 BCrypt 加密存储，强度由 moyuyo.password.bcrypt-strength 控制（默认 12）
+    entity.setPassword(passwordEncoder.encode(password));
 
     entity.setStatus("ACTIVE");
     adminUserMapper.insert(entity);
@@ -158,8 +159,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
       String password = (String) body.get("password");
       // 密码可以为空，表示不修改密码
       if (password != null && !password.isEmpty()) {
-        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
-        entity.setPassword(encoder.encode(password));
+        entity.setPassword(passwordEncoder.encode(password));
       }
     }
 
@@ -223,8 +223,8 @@ public class AdminStaffServiceImpl implements AdminStaffService {
       log.warn("非超级管理员 [{}] 尝试重置 SUPER_ADMIN [{}] 的密码，已拒绝", operatorRole, entity.getUsername());
       throw new org.springframework.security.access.AccessDeniedException("无权重置超级管理员的密码");
     }
-    BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
-    entity.setPassword(encoder.encode(newPassword));
+    // 重置密码使用统一密码编码器，强度由 moyuyo.password.bcrypt-strength 控制
+    entity.setPassword(passwordEncoder.encode(newPassword));
     adminUserMapper.updateById(entity);
   }
 }

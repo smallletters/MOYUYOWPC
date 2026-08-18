@@ -5,6 +5,7 @@ import com.moyuyo.common.Result;
 import com.moyuyo.common.dto.refund.RefundApplyRequest;
 import com.moyuyo.common.dto.refund.RefundVO;
 import com.moyuyo.common.security.UserContextHolder;
+import com.moyuyo.common.utils.PageParamGuard;
 import com.moyuyo.service.RefundService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,7 +38,9 @@ public class RefundController {
     public Result<IPage<RefundVO>> myRefunds(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return Result.success(refundService.listUserRefunds(UserContextHolder.getUserId(), page, size));
+        // 分页参数统一守卫
+        int[] pageParams = PageParamGuard.normalize(page, size, 10);
+        return Result.success(refundService.listUserRefunds(UserContextHolder.getUserId(), pageParams[0], pageParams[1]));
     }
 
     @Operation(summary = "审核退款（运营）")
@@ -67,6 +70,8 @@ public class RefundController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String status) {
-        return Result.success(refundService.listAllRefunds(page, size, status));
+        // 分页参数统一守卫
+        int[] pageParams = PageParamGuard.normalize(page, size, 20);
+        return Result.success(refundService.listAllRefunds(pageParams[0], pageParams[1], status));
     }
 }

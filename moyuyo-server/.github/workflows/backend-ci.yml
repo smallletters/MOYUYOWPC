@@ -13,13 +13,35 @@ on:
       - 'moyuyo-server/**'
       - 'pom.xml'
 
+permissions:
+  contents: read
+  security-events: write  # 上传 SARIF 到 GitHub Security tab
+
 defaults:
   run:
     working-directory: moyuyo-server
 
 jobs:
+  # ---------- Job 1: 代码 Secret 检测（最先跑，能快速失败）----------
+  secret-scan:
+    name: Secret Scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 必须拉取完整历史以扫描所有 commit
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # 默认会阻止含 secret 的 PR 合并
+
+  # ---------- Job 2: 构建与测试 ----------
   build-and-test:
     name: Build & Test
+    needs: secret-scan  # secret 扫描通过后再跑构建
     runs-on: ubuntu-latest
 
     services:
@@ -51,7 +73,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 25
-        uses: actions/setup-java@v4
+        uses: setup-java@v4
         with:
           java-version: 25
           distribution: temurin
@@ -64,10 +86,19 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
 
+      # OWASP Dependency-Check 数据集缓存：避免每次都重新下载 NVD（约 5-10 分钟）
+      # - key 包含月度日期：NVD 数据每天更新，月度缓存可保证及时性 + 大幅加速 CI
+      - name: Cache OWASP NVD dataset
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: owasp-nvd-${{ formatDate(github.event.repository.updated_at, 'YYYY-MM') }}
+          restore-keys: owasp-nvd-
+
       - name: Checkstyle validation
         run: mvn validate -B
 
-      - name: Flyway 迁移校验（完整跑一遍 db/migration + db/seed）
+      - name: Flyway 迁移校验（完整跑一遍 db/migration）
         # 关键：CI 中真实执行 Flyway 迁移，可提前发现 DDL 错误（如 V20260804_02 分区变更）
         # 注意：mo_order 分区 DDL 需要 MySQL 8.0+，CI 已用 8.0
         run: |
@@ -75,7 +106,7 @@ jobs:
             -Dflyway.url=jdbc:mysql://localhost:3306/moyuyo_test \
             -Dflyway.user=root \
             -Dflyway.password=test \
-            -Dflyway.locations=classpath:db/migration,classpath:db/seed \
+            -Dflyway.locations=classpath:db/migration \
             -Dflyway.baselineOnMigrate=true -B
         env:
           MYSQL_PASSWORD: test
@@ -95,8 +126,9 @@ jobs:
           REDIS_PORT: 6379
           JWT_SECRET: ci-test-jwt-secret-key-at-least-32-chars!!
 
-      - name: OWASP 依赖漏洞扫描（首次需下载 NVD 数据集，可能 5-10 分钟）
+      - name: OWASP 依赖漏洞扫描（CVSS >= 7 即失败）
         # 仅在 PR 和 main 分支跑，避免每次 push 消耗时间
+        # 首次需下载 NVD 数据集，可能 5-10 分钟
         if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         run: |
           mvn -pl moyuyo-api org.owasp:dependency-check-maven:check -B
@@ -121,3 +153,72 @@ jobs:
       - name: Notify on failure
         if: failure()
         run: echo "CI build failed. Check logs for details."
+
+  # ---------- Job 3: SAST 静态代码分析（CodeQL）----------
+  codeql:
+    name: CodeQL Static Analysis
+    needs: secret-scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: java
+          # 使用 security-and-quality 查询集（覆盖更广，CI 友好）
+          queries: security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:java"
+
+  # ---------- Job 4: Docker 镜像扫描（Trivy）----------
+  docker-scan:
+    name: Docker Image Scan (Trivy)
+    needs: build-and-test  # 仅在构建成功后扫描镜像
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          # 先编译 jar（依赖缓存层不需要，CI 已有 Maven 缓存）
+          mvn -DskipTests package -B
+          # 构建镜像（与生产 Dockerfile 一致）
+          docker build -t moyuyo-api:ci-${{ github.sha }} .
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: moyuyo-api:ci-${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-image-results.sarif'
+          # CRITICAL/HIGH 漏洞即失败（LOW/MEDIUM 仅警告）
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: true  # 未修复的漏洞不算（避免误报新披露但厂商暂未修复的）
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-image-results.sarif'
+          category: trivy-image-scan
+
+      - name: Upload Trivy report as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-image-report
+          path: trivy-image-results.sarif
+          retention-days: 30

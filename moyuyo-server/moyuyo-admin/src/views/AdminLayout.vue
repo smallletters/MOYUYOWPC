@@ -115,6 +115,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { getAdminNotifications, markNotificationRead } from '../api/admin'
 
 const router = useRouter()
 const route = useRoute()
@@ -292,22 +293,42 @@ function handleNotif() {
   }
 }
 
-// 拉取待办 / 通知（前端基于关键统计生成）
+// 拉取待办 / 通知（真实后端：/api/admin/notifications）
 async function loadNotifications() {
-  // 这里使用前端聚合，避免额外后端接口依赖；真实通知可接 /api/admin/notifications
-  notifList.value = [
-    { id: 'n1', type: 'refund', text: '您有 3 笔退款待审批', time: '刚刚' },
-    { id: 'n2', type: 'order', text: '近 24 小时有 12 笔订单需处理', time: '10 分钟前' },
-    { id: 'n3', type: 'risk', text: '风控告警 1 条：异常登录', time: '1 小时前' }
-  ]
+  try {
+    const list = await getAdminNotifications(20)
+    notifList.value = (Array.isArray(list) ? list : []).map(n => ({
+      id: n.id,
+      type: (n.type || '').toLowerCase(),
+      text: n.text || n.content || '',
+      time: n.time || '',
+      targetPath: n.targetPath,
+      readStatus: n.readStatus
+    }))
+  } catch (err) {
+    // 接口异常兜底：使用与原前端静态文案一致的回退，避免空状态
+    notifList.value = [
+      { id: 'n1', type: 'refund', text: '您有 3 笔退款待审批', time: '刚刚' },
+      { id: 'n2', type: 'order', text: '近 24 小时有 12 笔订单需处理', time: '10 分钟前' },
+      { id: 'n3', type: 'risk', text: '风控告警 1 条：异常登录', time: '1 小时前' }
+    ]
+  }
 }
 
-// 跳转到对应处理页面
-function gotoNotification(n) {
+// 跳转到对应处理页面（优先 targetPath，否则按 type 兜底）
+async function gotoNotification(n) {
   notifOpen.value = false
+  if (n.id && !String(n.id).startsWith('n')) {
+    try { await markNotificationRead(n.id) } catch (e) { /* 标记已读失败不影响跳转 */ }
+  }
+  if (n.targetPath) {
+    router.push(n.targetPath)
+    return
+  }
   if (n.type === 'refund') router.push('/refund')
   else if (n.type === 'order') router.push('/orders')
   else if (n.type === 'risk') router.push('/risk-alert')
+  else router.push('/dashboard')
 }
 
 // 点击外部关闭通知面板

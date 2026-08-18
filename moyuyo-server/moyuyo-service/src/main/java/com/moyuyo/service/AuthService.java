@@ -25,7 +25,7 @@ public interface AuthService {
 
     UserEntity getCurrentUser(Long userId);
 
-    UserEntity updateCurrentUser(Long userId, UserEntity update);
+    UserEntity updateCurrentUser(Long userId, ProfileUpdateRequest update);
 
     void sendMagicLink(EmailVerifyRequest request);
 

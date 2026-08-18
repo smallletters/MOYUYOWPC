@@ -8,6 +8,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -27,19 +30,25 @@ import static org.mockito.Mockito.when;
  *   6. 合法配置时创建管理员
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class AdminInitializerTest {
 
     @Mock
     private AdminUserMapper adminUserMapper;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     private AdminInitializer initializer;
 
     @BeforeEach
     void setUp() {
-        initializer = new AdminInitializer(adminUserMapper);
+        initializer = new AdminInitializer(adminUserMapper, passwordEncoder);
         ReflectionTestUtils.setField(initializer, "adminUsername", "");
         ReflectionTestUtils.setField(initializer, "adminEmail", "");
         ReflectionTestUtils.setField(initializer, "adminPassword", "");
+        // passwordEncoder.encode 返回原值即可，测试不关注 hash 算法
+        when(passwordEncoder.encode(any())).thenAnswer(inv -> "ENCODED:" + inv.getArgument(0));
     }
 
     @Test

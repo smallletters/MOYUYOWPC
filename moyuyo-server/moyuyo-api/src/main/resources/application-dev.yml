@@ -2,6 +2,28 @@
 # 仅在 SPRING_PROFILES_ACTIVE=dev 时激活
 # 此处允许"测试用"默认值（弱密码、本地连接），绝对不能用于生产
 
+# SpringDoc dev 环境显式开启（便于本地联调查看 API）
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+# Actuator info dev 开启，便于本地调试查看构建版本
+management:
+  info:
+    env:
+      enabled: true
+    git:
+      mode: simple
+      enabled: true
+    build:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true
+
 spring:
   # 数据库
   datasource:
@@ -10,11 +32,19 @@ spring:
     # ⚠️ 弱默认值，仅本地开发
     password: ${MYSQL_PASSWORD:dev123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    # dev 环境显式置空 truststore（application.yml 默认值 file:/opt/mysql-certs/mysql-ca.p12 在本地不存在时会启动失败）
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
       idle-timeout: 300000
       connection-timeout: 20000
+      data-source-properties:
+        trustCertificateKeyStoreUrl:
+        trustCertificateKeyStorePassword:
+
+  main:
+    # dev 启用 banner 输出到 console，便于本地确认 Spring 启动成功
+    banner-mode: console
 
   # Redis
   data:
@@ -29,26 +59,56 @@ spring:
           max-idle: 8
           min-idle: 4
 
-  # Elasticsearch（dev 可选）
+  # Elasticsearch（dev 可选；显式关闭 SSL 以匹配本地 elasticsearch.yml 默认配置）
   elasticsearch:
     uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
     connection-timeout: 5s
     socket-timeout: 60s
+    # dev 默认关闭 SSL：本地通常无证书；prod 强制开启并校验证书
+    ssl:
+      enabled: false
+      certificate-validation: false
 
   # Flyway dev 配置：可 repair，加载 seed
   flyway:
     locations: classpath:db/migration,classpath:db/seed
     repair-on-migrate: true
+    # dev 默认关闭破坏性分区迁移（V20260804_02），避免与 mo_order.uk_order_no 唯一索引冲突
+    # 切换生产或需要 dev 验证分区时，传入 -Dspring.flyway.placeholders.moyuyo_enable_partition=true
+    placeholders:
+      moyuyo_enable_partition: 'false'
 
 # JWT 开发密钥
 jwt:
-  secret: ${JWT_SECRET:DevJwtSecretKeyForLocalTestingOnlyNotForProd}
+  secret: ${JWT_SECRET:DevOnlyJWT_Secret#2026_KeyForLocalTesting!}
   expire-hours: 8
 
 # CORS 开发开放
 moyuyo:
   cors:
     allowed-origins: ${MOYUYO_CORS_ORIGINS:http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173}
+  # dev 环境降低密码哈希强度（避免注册/登录阻塞开发体验）；
+  # 平时建议不动；如做性能测试可调高（受 Moyuyo 范围 4~31 约束）
+  password:
+    bcrypt-strength: ${MOYUYO_BCRYPT_STRENGTH:10}
+  # dev 默认禁用审计日志保留期清理任务（避免本地开发被定时清理影响联调）
+  # 生产环境由 application-prod.yml 强制开启
+  audit:
+    retention-enabled: false
+    # dev 默认较小队列 + 较快 flush，便于本地调试观察落库行为
+    queue-capacity: 1000
+    batch-size: 50
+    flush-interval-ms: 500
+  # dev 环境 OpenAPI 文档元数据：便于本地联调查看，无需走 env 注入
+  openapi:
+    contact-email: ${OPENAPI_CONTACT_EMAIL:dev@moyuyo.local}
+    # dev 环境默认 1.0.0；CI/CD 可通过 OPENAPI_VERSION 覆盖
+    version: ${OPENAPI_VERSION:1.0.0}
+    # dev 环境显式列出本地 + 局域网服务器，便于切换调试
+    # 生产环境 springdoc.api-docs.enabled=false 时这些配置不会生效
+    servers: ${OPENAPI_SERVERS:http://localhost:8080|本地开发,http://192.168.1.100:8080|局域网联调}
+    # dev 默认不附加 License URL（避免本地调试时显示生产 URL 误导）；生产环境由 OPENAPI_LICENSE_URL 控制
+    license-url: ${OPENAPI_LICENSE_URL:}
 
 # API 签名（dev 默认空）
 api:
@@ -60,7 +120,7 @@ admin:
   # ⚠️ 使用合法的非弱用户名（admin 是 OWASP 黑名单，禁止作为默认值）
   username: ${ADMIN_USERNAME:moyuyo_admin}
   email: ${ADMIN_EMAIL:admin@moyuyo.com}
-  password: ${ADMIN_PASSWORD:moyuyo12345678}
+  password: ${ADMIN_PASSWORD:moyuyo_Dev#2026!}
 
 # MyBatis-Plus SQL 日志：dev 用 stdout
 mybatis-plus:
@@ -69,6 +129,8 @@ mybatis-plus:
 
 # RocketMQ
 rocketmq:
+  # dev 默认禁用：本机通常没有 RocketMQ，避免启动时连接 null 阻塞
+  enabled: ${ROCKETMQ_ENABLED:false}
   name-server: ${ROCKETMQ_NAMESRV_ADDR:localhost:9876}
   producer:
     group: moyuyo-producer-group
@@ -93,8 +155,8 @@ woocommerce:
   url: ${WOOCOMMERCE_URL:https://your-woocommerce-store.com}
   consumer-key: ${WOOCOMMERCE_CONSUMER_KEY:}
   consumer-secret: ${WOOCOMMERCE_CONSUMER_SECRET:}
-  connect-timeout: 10000
-  read-timeout: 30000
+  connect-timeout: ${MOYUYO_HTTP_CONNECT_TIMEOUT_MS:10000}
+  read-timeout: ${MOYUYO_HTTP_READ_TIMEOUT_MS:30000}
   stock-sync:
     auto-enabled: ${WC_STOCK_SYNC_ENABLED:false}
     cron: ${WC_STOCK_SYNC_CRON:0 */5 * * * *}
@@ -132,10 +194,16 @@ resilience4j:
         limit-refresh-period: 1m
         limit-for-period: 30
         timeout-duration: 500ms
+      # dev 环境放宽到 1000/min，远高于 prod 但仍保留限流语义：
+      # 避免本地调试时每次操作都被拦截；保留上限便于排查无意识的脚本调用风暴
       batchImport:
         limit-refresh-period: 1m
-        limit-for-period: 20
-        timeout-duration: 1s
+        limit-for-period: 1000
+        timeout-duration: 0
+      dataExport:
+        limit-refresh-period: 1m
+        limit-for-period: 1000
+        timeout-duration: 0
       pushAction:
         limit-refresh-period: 1m
         limit-for-period: 60
@@ -143,6 +211,25 @@ resilience4j:
       riskRuleUpdate:
         limit-refresh-period: 1m
         limit-for-period: 30
+        timeout-duration: 500ms
+      feedbackSubmit:
+        limit-refresh-period: 1m
+        limit-for-period: 200
+        timeout-duration: 500ms
+      # 社区发帖：dev 放宽便于本地调试，但保留上限避免脚本刷屏
+      postCreate:
+        limit-refresh-period: 1m
+        limit-for-period: 120
+        timeout-duration: 500ms
+      # 社区评论：dev 放宽
+      commentCreate:
+        limit-refresh-period: 1m
+        limit-for-period: 200
+        timeout-duration: 500ms
+      # 领券：dev 放宽
+      couponClaim:
+        limit-refresh-period: 1m
+        limit-for-period: 100
         timeout-duration: 500ms
   circuitbreaker:
     instances:

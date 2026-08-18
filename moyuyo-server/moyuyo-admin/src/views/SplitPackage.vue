@@ -270,7 +270,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getSplitPackages, createSplitPackage, updateSplitPackage, deleteSplitPackage } from '../api/admin'
+import { getSplitPackages, createSplitPackage, updateSplitPackage, deleteSplitPackage, getSplitPackageVersions, getSplitPackageRules } from '../api/admin'
 import api from '../api'
 
 const pageTitle = '拆包策略配置'
@@ -278,23 +278,12 @@ const activeTab = ref('strategy')
 
 // ===== 策略配置 Tab：示例数据（无真实 API，接口就绪后替换为真实调用） =====
 
-// 示例数据：拆包规则列表
-const splitRules = ref([
-  { id: 1, name: '超重拆包-30kg限制', condition: '单件 > 30kg', method: '按重量均分', country: '全部', priority: 'P1', enabled: true },
-  { id: 2, name: '禁运品拆包-锂电池', condition: '含锂电池商品', method: '禁运品单独包裹', country: '全部', priority: 'P1', enabled: true },
-  { id: 3, name: '关税优化-EU 22欧元免税', condition: '订单 > EUR 22 到 EU', method: '按免税额度拆分', country: 'EU 国家', priority: 'P2', enabled: true },
-  { id: 4, name: '关税优化-UK 135英镑免税', condition: '订单 > GBP 135 到 UK', method: '按免税额度拆分', country: 'UK', priority: 'P2', enabled: true },
-  { id: 5, name: '液体禁运拆包', condition: '含液体 > 100ml', method: '液体单独包裹', country: '全部', priority: 'P3', enabled: false }
-])
-
-// 示例数据：最近拆包日志
-const splitLogs = ref([
-  { id: 1, time: '2026-07-09 14:23', orderNo: 'MOYU-20260709001', rule: '超重拆包', ruleType: 'overweight', result: '1 个包裹 → 3 个包裹，节省 $45.00' },
-  { id: 2, time: '2026-07-09 13:15', orderNo: 'MOYU-20260709002', rule: '禁运品拆包', ruleType: 'banned', result: '1 个包裹 → 2 个包裹，节省 $18.50' },
-  { id: 3, time: '2026-07-08 18:40', orderNo: 'MOYU-20260708034', rule: '关税优化', ruleType: 'tariff', result: '1 个包裹 → 2 个包裹，节省 EUR 22.00' },
-  { id: 4, time: '2026-07-08 11:05', orderNo: 'MOYU-20260708012', rule: '超重拆包', ruleType: 'overweight', result: '1 个包裹 → 2 个包裹，节省 $32.00' },
-  { id: 5, time: '2026-07-07 16:30', orderNo: 'MOYU-20260707089', rule: '关税优化', ruleType: 'tariff', result: '1 个包裹 → 3 个包裹，节省 GBP 135.00' }
-])
+// 真实后端：拆包规则列表（来自 mo_split_package_rule + mo_split_package_rule_version）
+const splitRules = ref([])
+// 真实后端：最近拆包日志（无独立日志表，保留为空并使用真实分包裹记录替代）
+const splitLogs = ref([])
+// 真实后端：策略版本
+const strategyVersion = ref({ id: null, versionCode: '', description: '' })
 
 // 示例数据：策略配置表单
 const strategyForm = reactive({
@@ -464,7 +453,42 @@ async function handleSave() {
     ElMessage.error('保存失败: ' + (e.message || '未知错误'))
   }
 }
-onMounted(() => loadData())
+onMounted(() => {
+  loadData()
+  loadStrategyVersion()
+  loadSplitRules()
+})
+
+async function loadStrategyVersion() {
+  try {
+    const list = await getSplitPackageVersions()
+    if (list && list.length > 0) {
+      const first = list[0]
+      strategyVersion.value = { id: first.id, versionCode: first.versionCode, description: first.description }
+    }
+  } catch (e) {
+    console.error('获取拆包裹策略版本失败:', e)
+  }
+}
+
+async function loadSplitRules() {
+  try {
+    const vid = strategyVersion.value.id
+    const list = await getSplitPackageRules(vid)
+    splitRules.value = (list || []).map(r => ({
+      id: r.id,
+      name: r.ruleName,
+      condition: r.triggerType + (r.triggerValue ? ' ' + r.triggerValue : ''),
+      method: r.action,
+      country: '全部',
+      priority: 'P' + Math.min(5, Math.ceil(r.priority / 20)),
+      enabled: r.enabled === 1
+    }))
+  } catch (e) {
+    console.error('获取拆包裹规则失败:', e)
+    splitRules.value = []
+  }
+}
 </script>
 
 <style scoped>

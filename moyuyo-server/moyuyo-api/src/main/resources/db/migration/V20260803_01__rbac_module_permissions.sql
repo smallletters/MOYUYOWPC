@@ -11,6 +11,37 @@ UPDATE `mo_admin_role` SET `code` = 'CUSTOMER_SVC' WHERE `code` = 'CS_STAFF';
 -- 2. 清空旧模型权限数据（旧模型的 id/name/code/type 行与新模型不兼容）
 DELETE FROM `mo_admin_permission`;
 
+-- 2.1 兼容旧 schema：补齐新模型用到的列
+-- 旧 mo_admin_permission 表 schema (V20260720_02) 没有 role_id/resource/action 字段，
+-- name/code 为 NOT NULL。新模型仅使用 id/role_id/resource/action，缺字段会导致 INSERT 失败。
+-- 此处幂等地添加缺失列并放宽 name/code 的 NOT NULL，避免全新库与已有库两条路径都能继续。
+SET @col_role_id := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'mo_admin_permission' AND COLUMN_NAME = 'role_id');
+SET @ddl := IF(@col_role_id = 0,
+    'ALTER TABLE `mo_admin_permission` ADD COLUMN `role_id` BIGINT NOT NULL DEFAULT 0 COMMENT ''角色ID'' AFTER `id`',
+    'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_resource := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'mo_admin_permission' AND COLUMN_NAME = 'resource');
+SET @ddl := IF(@col_resource = 0,
+    'ALTER TABLE `mo_admin_permission` ADD COLUMN `resource` VARCHAR(64) NOT NULL DEFAULT '''' COMMENT ''资源编码'' AFTER `role_id`',
+    'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_action := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'mo_admin_permission' AND COLUMN_NAME = 'action');
+SET @ddl := IF(@col_action = 0,
+    'ALTER TABLE `mo_admin_permission` ADD COLUMN `action` VARCHAR(32) NOT NULL DEFAULT '''' COMMENT ''操作类型'' AFTER `resource`',
+    'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- 放宽 name/code 的 NOT NULL 约束，让新模型 INSERT 不再因缺值失败
+ALTER TABLE `mo_admin_permission` MODIFY COLUMN `name` VARCHAR(100) NULL DEFAULT NULL COMMENT '权限名称';
+ALTER TABLE `mo_admin_permission` MODIFY COLUMN `code` VARCHAR(100) NULL DEFAULT NULL COMMENT '权限编码';
+-- 兼容旧表：放宽 type 默认值，避免 INSERT 时未指定 type 触发严格模式
+ALTER TABLE `mo_admin_permission` MODIFY COLUMN `type` VARCHAR(16) NOT NULL DEFAULT 'API' COMMENT 'MENU/BUTTON/API';
+
 -- 3. 默认角色权限矩阵
 SET @role_operator := (SELECT id FROM mo_admin_role WHERE code = 'OPERATOR');
 SET @role_cs := (SELECT id FROM mo_admin_role WHERE code = 'CUSTOMER_SVC');

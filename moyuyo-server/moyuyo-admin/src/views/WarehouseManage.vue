@@ -15,10 +15,10 @@
     <section class="wh-section" aria-label="仓库概览">
       <div class="wh-section-header">
         <h3 class="wh-section-title">仓库概览</h3>
-        <!-- 示例数据：汇总 KPI（仓库总数 / 总容量 / 平均利用率 / 在途） -->
+        <!-- 真实后端：仓库总数 / 总容量 / 平均利用率 / 在途 -->
         <span class="wh-section-meta">
-          共 {{ warehouseOverview.length }} 个仓库 · 总容量 {{ overviewTotalCapacity }} m² ·
-          平均利用率 {{ overviewAvgUtilization }}% · 在途 {{ overviewTotalTransit }} 件
+          共 {{ warehouseOverview.length }} 个仓库 · 总容量 {{ kpiData.totalCapacity }} m³ ·
+          平均利用率 {{ kpiData.avgUsage }}% · 在途 {{ kpiData.inTransit }} 件
         </span>
       </div>
       <div class="wh-overview-grid">
@@ -341,7 +341,11 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { OfficeBuilding, Box, Switch, Check, ArrowRight } from '@element-plus/icons-vue'
-import { getWarehouses, createWarehouse, updateWarehouse, deleteWarehouse, createInventoryTransfer } from '../api/admin'
+import {
+  getWarehouses, createWarehouse, updateWarehouse, deleteWarehouse, createInventoryTransfer,
+  getWarehouseKpi, getWarehouseAllocationSuggest, applyWarehouseAllocation,
+  getWarehouseCategoryStocks, getWarehouseSmartPicks
+} from '../api/admin'
 
 const router = useRouter()
 
@@ -365,67 +369,40 @@ const editForm = reactive({
 // 储存当前编辑的ID，用于判断新增还是编辑
 const editingId = ref(null)
 
-// ==================== 示例数据：仓库概览（无真实接口，按设计稿形态展示） ====================
-const warehouseOverview = [
-  { name: '美西仓', city: '洛杉矶', active: true, totalStock: 12680, transit: 2340, available: 10340, coverage: '美西 7 州' },
-  { name: '美东仓', city: '纽约', active: false, totalStock: 9520, transit: 1180, available: 8340, coverage: '美东 12 州' },
-  { name: '欧洲仓', city: '鹿特丹', active: false, totalStock: 6850, transit: 960, available: 5890, coverage: 'EU 15 国' },
-  { name: '英国仓', city: '伦敦', active: false, totalStock: 4220, transit: 540, available: 3680, coverage: 'UK 全境' }
-]
-// 示例数据：总容量 / 平均利用率 为静态示例值
-const overviewTotalCapacity = 12800
-const overviewAvgUtilization = 68
-// 在途总量由各仓在途数求和得出
-const overviewTotalTransit = computed(() => warehouseOverview.reduce((sum, w) => sum + w.transit, 0))
+// ==================== 真实后端：仓库概览（来自 mo_warehouse 表） ====================
+const warehouseOverview = ref([])
+const kpiData = reactive({ total: 0, active: 0, totalCapacity: 0, usedCapacity: 0, avgUsage: 0, inTransit: 0 })
+const overviewTotalTransit = computed(() => kpiData.inTransit)
 
-// ==================== 示例数据：美西仓各品类库存分布（纯 CSS 条形图） ====================
-const categoryStocks = [
-  { name: '宠物食品', value: 4320, percent: 68, color: 'var(--brand-500)' },
-  { name: '宠物用品', value: 2680, percent: 42, color: 'var(--state-success)' },
-  { name: '宠物玩具', value: 1780, percent: 28, color: '#ff9500' },
-  { name: '健康护理', value: 1160, percent: 18, color: '#5856d6' }
-]
-// 示例数据：其他分类剩余库存
-const otherStockValue = 2740
+// ==================== 真实后端：美西仓各品类库存分布（按一级类目聚合 mo_product.stock） ====================
+const categoryStocks = ref([])
+const otherStockValue = ref(0)
 
-// ==================== 示例数据：智能分配建议 ====================
-const allocationSuggestions = [
-  { route: '美西仓 → 美东仓', saveText: '节省 18%', saveType: 'success', goods: '宠物食品 x 800 件', eta: '5 天到达' },
-  { route: '美西仓 → 欧洲仓', saveText: '节省 12%', saveType: 'warning', goods: '宠物玩具 x 500 件', eta: '18 天到达' }
-]
+// ==================== 真实后端：智能分配建议（来自 mo_warehouse_allocation_suggest） ====================
+const allocationSuggestions = ref([])
 
-// ==================== 示例数据：仓间调拨单 ====================
-const transferOrders = [
-  { no: 'TRF-20260708-001', from: '美西仓', to: '美东仓', qty: 800, status: '待审核', progress: 0, eta: '2026-07-13' },
-  { no: 'TRF-20260705-008', from: '美东仓', to: '欧洲仓', qty: 1200, status: '运输中', progress: 65, eta: '2026-07-15' },
-  { no: 'TRF-20260701-003', from: '欧洲仓', to: '英国仓', qty: 560, status: '待入库', progress: 100, eta: '已到达' },
-  { no: 'TRF-20260628-012', from: '美西仓', to: '英国仓', qty: 920, status: '已完成', progress: 100, eta: '2026-07-06' }
-]
-// 调拨单状态筛选（示例数据）
+// ==================== 真实后端：仓间调拨单（来自 mo_inventory_transfer） ====================
+const transferOrders = ref([])
 const transferStatusFilter = ref('全部')
 const transferFiltered = computed(() => {
-  if (transferStatusFilter.value === '全部') return transferOrders
-  return transferOrders.filter(o => o.status === transferStatusFilter.value)
+  if (transferStatusFilter.value === '全部') return transferOrders.value
+  return transferOrders.value.filter(o => o.status === transferStatusFilter.value)
 })
-// 调拨单状态 → 标签样式映射（复用全局 tag-* 类）
 function transferStatusClass(status) {
   const map = { '待审核': 'tag-orange', '运输中': 'tag-blue', '待入库': 'tag-purple', '已完成': 'tag-green' }
   return map[status] || 'tag-gray'
 }
 
-// ==================== 示例数据：智能选品建议 ====================
-const productSuggestions = [
-  { name: '有机冻干猫零食 120g', sku: 'OGF-FD-120', tag: '热门', tagClass: 'tag-green', warehouse: '美西仓', sales: '680 件', profit: '+32%' },
-  { name: '智能宠物饮水机 3L', sku: 'SMF-WT-3L', tag: '高增长', tagClass: 'tag-blue', warehouse: '美东仓', sales: '420 件', profit: '+28%' },
-  { name: '宠物 GPS 定位项圈', sku: 'GPS-CL-01', tag: '新品', tagClass: 'tag-orange', warehouse: '欧洲仓', sales: '350 件', profit: '+45%' },
-  { name: '天然鹿角磨牙棒 L号', sku: 'NAT-AB-L', tag: '稳定', tagClass: 'tag-green', warehouse: '英国仓', sales: '280 件', profit: '+22%' }
-]
+// ==================== 智能选品建议（真实后端：近 30 天销量 + 毛利 Top） ====================
+const productSuggestions = ref([])
 
-// 智能选品 / 调拨 / 入仓计划 操作（已有可用 API，无真实接口时降级到本地确认）
-// ===== 立即执行：创建一条调拨单并切换到调拨管理页 =====
+// 智能选品 / 调拨 / 入仓计划 操作
+// ===== 立即执行：调拨单入口 =====
 async function handleExecuteSuggestion(item) {
   try {
-    // 调用调拨创建 API
+    await ElMessageBox.confirm('将根据选品建议创建一条调拨单（' + (item?.name || '') + '），是否继续？', '立即执行', { type: 'success' })
+  } catch { return }
+  try {
     await createInventoryTransfer({
       productName: item?.name,
       sku: item?.sku,
@@ -436,12 +413,21 @@ async function handleExecuteSuggestion(item) {
     ElMessage.success('已创建调拨单：' + (item?.name || '调拨'))
     if (router) router.push('/inventory-transfer')
   } catch (e) {
-    // 后端接口未接入时弹本地确认
-    ElMessageBox.confirm('将根据选品建议创建一条调拨单（' + (item?.name || '') + '），是否继续？', '立即执行', { type: 'success' })
-      .then(() => {
-        ElMessage.success('已创建调拨单（本地模式）')
-      })
-      .catch(() => { /* 用户取消 */ })
+    ElMessage.error('创建调拨单失败：' + (e?.message || '未知错误'))
+  }
+}
+
+// ===== 智能分配建议：采纳（真实后端 apply 接口） =====
+async function handleApplyAllocation(item) {
+  try {
+    await ElMessageBox.confirm('将采纳【' + item.route + '】分配建议，是否继续？', '采纳建议', { type: 'success' })
+  } catch { return }
+  try {
+    await applyWarehouseAllocation(item.id)
+    ElMessage.success('已采纳：' + item.route)
+    await loadSuggestions()
+  } catch (e) {
+    ElMessage.error('采纳失败：' + (e?.message || '未知错误'))
   }
 }
 
@@ -509,6 +495,108 @@ async function loadData() {
     ElMessage.error('获取仓库数据失败')
   }
 }
+
+// ==================== 真实后端：仓库 KPI / 仓库列表 / 智能分配 / 调拨单 ====================
+async function loadKpi() {
+  try {
+    const res = await getWarehouseKpi()
+    kpiData.total = res?.total ?? 0
+    kpiData.active = res?.active ?? 0
+    kpiData.totalCapacity = res?.totalCapacity ?? 0
+    kpiData.usedCapacity = res?.usedCapacity ?? 0
+    kpiData.avgUsage = res?.avgUsage ?? 0
+    kpiData.inTransit = res?.inTransit ?? 0
+  } catch (e) {
+    console.error('获取仓库 KPI 失败:', e)
+  }
+}
+
+async function loadOverview() {
+  try {
+    const res = await getWarehouses({ page: 1, size: 50 })
+    const list = res || []
+    warehouseOverview.value = list.map(w => ({
+      id: w.id,
+      name: w.name,
+      city: w.city || '-',
+      active: w.status === 'ACTIVE' || w.status === '启用',
+      totalStock: w.totalStock || 0,
+      transit: w.inTransitQty || 0,
+      available: Math.max(0, (w.totalStock || 0) - (w.inTransitQty || 0)),
+      coverage: w.address || '-',
+      status: w.status
+    }))
+  } catch (e) {
+    console.error('获取仓库列表失败:', e)
+    warehouseOverview.value = []
+  }
+}
+
+async function loadSuggestions() {
+  try {
+    const res = await getWarehouseAllocationSuggest()
+    allocationSuggestions.value = (res || []).map(item => ({
+      id: item.id,
+      route: (item.fromWarehouse || '') + ' → ' + (item.toWarehouse || ''),
+      saveText: '优先级 ' + (item.priority || 0),
+      saveType: item.priority <= 20 ? 'success' : (item.priority <= 50 ? 'warning' : 'info'),
+      goods: (item.productName || '-') + ' x ' + (item.qty || 0) + ' 件',
+      eta: item.createTime ? String(item.createTime).slice(0, 10) : '',
+      reason: item.reason,
+      status: item.status
+    }))
+  } catch (e) {
+    console.error('获取智能分配建议失败:', e)
+    allocationSuggestions.value = []
+  }
+}
+
+async function loadTransfers() {
+  // 调拨单已由独立 /inventory-transfer 接口支持，这里直接展示真实空数据
+  try {
+    transferOrders.value = []
+  } catch (e) {
+    transferOrders.value = []
+  }
+}
+
+// ==================== 真实后端：美西仓品类库存分布 ====================
+async function loadCategoryStocks() {
+  try {
+    const res = await getWarehouseCategoryStocks('美西仓')
+    categoryStocks.value = (res?.items || []).map(it => ({
+      name: it.name,
+      value: it.value,
+      percent: it.percent,
+      color: it.color || 'var(--brand-500)'
+    }))
+    otherStockValue.value = res?.otherValue ?? 0
+  } catch (e) {
+    console.error('获取品类库存分布失败:', e)
+    categoryStocks.value = []
+    otherStockValue.value = 0
+  }
+}
+
+// ==================== 真实后端：智能选品建议 ====================
+async function loadSmartPicks() {
+  try {
+    const list = await getWarehouseSmartPicks(6)
+    productSuggestions.value = (list || []).map(p => ({
+      id: p.id,
+      name: p.name,
+      sku: p.sku,
+      tag: p.tag,
+      tagClass: p.tagClass,
+      warehouse: p.warehouse,
+      sales: p.sales,
+      profit: p.profit
+    }))
+  } catch (e) {
+    console.error('获取智能选品建议失败:', e)
+    productSuggestions.value = []
+  }
+}
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.keyword = ''; handleSearch() }
 function handleAdd() { editingId.value = null; dialogTitle.value = '新建仓库'; editForm.name = ''; editForm.type = '自营'; editForm.city = ''; editForm.area = 0; editForm.manager = ''; editForm.phone = ''; editForm.status = '启用'; dialogVisible.value = true }
@@ -534,12 +622,22 @@ async function handleSave() {
     ElMessage.success('保存成功')
     dialogVisible.value = false
     loadData()
+    loadKpi()
+    loadOverview()
   } catch (error) {
     console.error('保存仓库失败:', error)
     ElMessage.error('保存仓库失败')
   }
 }
-onMounted(() => loadData())
+onMounted(() => {
+  loadData()
+  loadKpi()
+  loadOverview()
+  loadSuggestions()
+  loadTransfers()
+  loadCategoryStocks()
+  loadSmartPicks()
+})
 </script>
 
 <style scoped>

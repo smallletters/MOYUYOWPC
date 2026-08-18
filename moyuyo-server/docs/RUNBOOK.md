@@ -244,6 +244,115 @@ docker compose up -d app
 
 ---
 
+## 9. Actuator 端口不可达
+
+**症状**：Prometheus 抓取失败（`connection refused`），但 `curl 127.0.0.1:8080/actuator/health` 正常。
+
+**原因**：actuator 端口独立绑定在 `127.0.0.1:9090`（与业务 8080 隔离）。可能原因：
+
+1. Prometheus 部署在远程机器，无法访问本机 9090。
+2. `MANAGEMENT_ADDRESS` 被显式改为 `0.0.0.0` 后被攻击者扫到。
+3. 容器重启顺序问题，actuator 端口尚未绑定 Prometheus 就开始抓取。
+
+**处置**：
+
+```bash
+# 确认容器内 actuator 端口监听状态
+docker exec moyuyo-server ss -lntp | grep -E '8080|9090'
+
+# 本机直连验证 Prometheus 端点
+curl -s http://127.0.0.1:9090/actuator/prometheus | head -5
+
+# 远程 Prometheus 场景：通过 ssh 隧道或 socat 把 9090 暴露给监控网段
+# 推荐：通过 K8s/1Panel 内网 LB 或 sidecar 把 127.0.0.1:9090 映射到内网 VIP
+```
+
+---
+
+## 10. ES 集群 red 应急
+
+**症状**：`elasticsearch_cluster_health_status{color="red"} == 1` 持续 5 分钟。
+
+**排查**：
+
+```bash
+# 1. 看哪些分片未分配
+curl -kfs -u elastic:$ELASTICSEARCH_PASSWORD https://localhost:9200/_cat/shards?h=index,shard,prirep,state,unassigned.reason | grep UNASSIGNED
+
+# 2. 看磁盘水位（> 85% 会触发 ES 自动禁写）
+curl -kfs -u elastic:$ELASTICSEARCH_PASSWORD https://localhost:9200/_cat/allocation?v
+```
+
+**应急**：
+
+1. 单节点挂掉：等容器自动重启。
+2. 磁盘满：扩容 ES 数据卷或调小 `cluster.routing.allocation.disk.threshold_enabled`。
+3. 索引损坏（`corrupted`）：备份后 `POST /index/_delete` + 重建（接受丢数据）。
+4. 全部分片 unassigned：`POST /_cluster/reroute?retry_failed=true` 触发重新分配。
+
+---
+
+## 11. RocketMQ consumer 堆积
+
+**症状**：`moyuyo_order_timeout_consumer_lag` 持续增长，`OrderTimeoutConsumer` 跟不上生产速度。
+
+**排查**：
+
+```bash
+# 查看消费者堆积（broker 内）
+docker exec moyuyo-rocketmq-broker sh mqadmin consumerProgress -g moyuyo-producer-group
+
+# 查看 broker 重平衡历史
+docker exec moyuyo-rocketmq-broker sh mqadmin consumerConnection -g moyuyo-producer-group
+```
+
+**应急**：
+
+1. **优先横向扩容**：多加 1 个 app 实例，消费者自动 rebalance。
+2. 临时关闭消费者后重启，强制走单线程避免并发问题。
+3. 若业务可接受消息丢失：`POST /topic/DELETE` 后重新建 topic（仅极端情况下）。
+4. 长期方案：拆分 topic + 单独消费者组，避免热点 key。
+
+---
+
+## 12. 限流 fail-open 触发
+
+**症状**：`MoyuyoIpRateLimitFailOpen` / `MoyuyoUserRateLimitFailOpen` 告警。
+
+**含义**：Redis 不可用期间，IP / 用户限流被自动放行（fail-open），限流防护暂时失效。
+
+**处置**：
+
+```bash
+# 1. 检查 Redis 健康
+docker exec moyuyo-redis redis-cli -a "$REDIS_PASSWORD" ping
+
+# 2. 检查应用日志中的 Redis 异常堆栈
+docker logs moyuyo-server 2>&1 | grep -i 'redis' | tail -20
+
+# 3. Redis 恢复后 fail-open 计数器自然停止增长
+#    （无需重启 app，Lettuce 客户端会自动重连）
+```
+
+**注意**：fail-open 是有意为之（业务可用性 > 限流精度），但若 Redis 长时间不可达，
+应临时关闭写敏感接口（参考 `application-prod.yml` 中 `moyuyo.ip-ratelimit.enabled=false`）。
+
+---
+
+## 13. 审计日志队列溢出
+
+**症状**：`MoyuyoAuditLogQueueOverflow` 告警，ERROR 日志中频繁出现 "OperationLog 队列已满"。
+
+**含义**：`OperationLogAspect.QUEUE`（LinkedBlockingQueue）被写满，触发丢弃策略。
+
+**处置**：
+
+1. 立即检查 DB 写入是否阻塞（`SHOW PROCESSLIST` 看是否有长事务）。
+2. 若是 DB 慢导致落库跟不上，调大 `moyuyo.audit.block-on-queue-full=true` 让业务感知（fail-closed）。
+3. 长期方案：把审计写入走异步消息（RocketMQ）+ 单独 worker，避免与主业务争抢 DB 连接。
+
+---
+
 ## 监控接入（建议）
 
 生产环境应接入：

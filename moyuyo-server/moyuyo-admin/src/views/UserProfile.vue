@@ -248,7 +248,11 @@
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getUserProfile, getUserBehaviors } from '../api/admin'
+import {
+  getUserProfile, getUserBehaviors,
+  getUserProfileSpendTrend, getUserProfileFunnel, getUserProfileCategory,
+  getUserProfileActiveHours, getUserProfileDevice, getUserProfileChannel
+} from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
 const searchForm = reactive({ keyword: '' })
@@ -321,6 +325,10 @@ async function handleSearch() {
       behaviorData.value = toArray(behaviorRes)
     }
 
+    // 加载画像 6 个图表（消费趋势/漏斗/品类偏好/活跃时段/设备/渠道）
+    const profileUserId = userInfo.userId !== '-' ? userInfo.userId : keyword
+    await loadProfileCharts(profileUserId)
+
     ElMessage.success('搜索完成')
   } catch (err) {
     console.error('获取用户数据失败:', err)
@@ -339,103 +347,149 @@ function handleReset() {
   behaviorData.value = []
 }
 
-// ===== 画像分析区块数据（暂无真实 API，使用与设计稿一致形态的结构化示例数据） =====
+// ===== 画像分析区块数据（真实后端：从 mo_user_behavior_event 聚合） =====
 
-// 消费趋势：近 12 个月消费金额（元），示例数据
-const spendTrend = [
-  { month: '1月', amount: 680 },
-  { month: '2月', amount: 1200 },
-  { month: '3月', amount: 980 },
-  { month: '4月', amount: 1560 },
-  { month: '5月', amount: 1320 },
-  { month: '6月', amount: 2100 },
-  { month: '7月', amount: 1880 },
-  { month: '8月', amount: 2450 },
-  { month: '9月', amount: 2200 },
-  { month: '10月', amount: 2760 },
-  { month: '11月', amount: 3100 },
-  { month: '12月', amount: 2980 }
-]
+// 消费趋势：近 12 个月消费金额（元）
+const spendTrend = ref([])
+const userTags = ref([])
+const categoryPrefs = ref([])
+const funnelStages = ref([])
+const activeHours = ref([])
+const deviceDist = ref([])
+const channelDist = ref([])
 
-// 消费趋势最大值，用于计算柱高占比
-const maxSpend = computed(() => Math.max(...spendTrend.map((d) => d.amount)))
-
-// 计算消费趋势柱高百分比（保留最小高度保证可见）
-function barHeight(amount) {
-  return Math.max(4, Math.round((amount / maxSpend.value) * 100))
-}
-
-// 金额格式化
-function fmtMoney(amount) {
-  return '¥' + Number(amount).toLocaleString()
-}
-
-// 用户标签云（示例数据）：label 为标签名，weight 为特征权重（仅作展示区分）
-const userTags = [
-  { label: '高活跃', weight: 5 },
-  { label: '猫奴', weight: 4 },
-  { label: '深夜购', weight: 3 },
-  { label: '价格敏感', weight: 3 },
-  { label: '新品尝鲜', weight: 2 },
-  { label: '复购达人', weight: 4 },
-  { label: '跨品类', weight: 2 },
-  { label: '内容互动', weight: 1 }
-]
-
-// el-tag 可选类型，按标签顺序循环取色
 const TAG_TYPES = ['primary', 'success', 'warning', 'danger', 'info']
 function tagType(index) {
   return TAG_TYPES[index % TAG_TYPES.length]
 }
 
-// 品类偏好（示例数据）：value 为该品类消费占比（%）
-const categoryPrefs = [
-  { name: '猫粮', value: 32, color: 'var(--brand-500)' },
-  { name: '猫砂', value: 24, color: 'var(--brand-300)' },
-  { name: '零食', value: 18, color: 'var(--state-success)' },
-  { name: '玩具', value: 15, color: 'var(--state-warning)' },
-  { name: '用品', value: 11, color: 'var(--state-error)' }
-]
+// 消费趋势最大值
+const maxSpend = computed(() => Math.max(1, ...spendTrend.value.map((d) => Number(d.amount || 0))))
 
-// 行为漏斗（示例数据）：浏览→加购→下单→支付，rate 为相对首环节的转化率（%）
-const funnelStages = [
-  { name: '浏览商品', value: 12000, rate: 100 },
-  { name: '加入购物车', value: 4380, rate: 36.5 },
-  { name: '提交订单', value: 2150, rate: 17.9 },
-  { name: '支付成功', value: 1680, rate: 14 }
-]
+function barHeight(amount) {
+  return Math.max(4, Math.round((amount / maxSpend.value) * 100))
+}
 
-// 活跃时段分布（示例数据）：value 为对应时段的行为次数
-const activeHours = [
-  { hour: '0-4时', value: 32 },
-  { hour: '4-8时', value: 18 },
-  { hour: '8-12时', value: 45 },
-  { hour: '12-16时', value: 88 },
-  { hour: '16-20时', value: 96 },
-  { hour: '20-24时', value: 120 }
-]
+function fmtMoney(amount) {
+  return '¥' + Number(amount).toLocaleString()
+}
 
-// 活跃时段最大值，用于计算水平条宽度占比
-const maxActive = computed(() => Math.max(...activeHours.map((d) => d.value)))
+const maxActive = computed(() => Math.max(1, ...activeHours.value.map((d) => Number(d.value || 0))))
 
-// 活跃时段水平条宽度百分比
 function activePct(value) {
   return Math.max(4, Math.round((value / maxActive.value) * 100))
 }
 
-// 设备分布（示例数据）：value 为占比（%）
-const deviceDist = [
-  { name: 'iOS', value: 46, color: 'var(--brand-500)' },
-  { name: 'Android', value: 38, color: 'var(--brand-300)' },
-  { name: 'Web', value: 16, color: 'var(--background-400)' }
-]
+const CATEGORY_PALETTE = ['var(--brand-500)', 'var(--brand-300)', 'var(--state-success)', 'var(--state-warning)', 'var(--state-error)']
+const DEVICE_PALETTE = ['var(--brand-500)', 'var(--brand-300)', 'var(--background-400)']
+const CHANNEL_PALETTE = ['var(--state-success)', 'var(--state-warning)', 'var(--brand-300)']
 
-// 渠道分布（示例数据）：value 为占比（%）
-const channelDist = [
-  { name: 'APP', value: 58, color: 'var(--state-success)' },
-  { name: '小程序', value: 27, color: 'var(--state-warning)' },
-  { name: 'H5', value: 15, color: 'var(--brand-300)' }
-]
+// 用户标签：根据真实行为事件动态生成（按权重聚合）
+function buildUserTags(categoryList, deviceList, channelList, funnelList) {
+  const tags = []
+  // 1. 高频品类（来自真实消费类别）
+  if (categoryList && categoryList.length > 0) {
+    tags.push({ label: '高频：' + categoryList[0].category, weight: 5 })
+  }
+  // 2. 主品类偏好（前 3 名）
+  if (categoryList && categoryList.length > 1) {
+    tags.push({ label: '品类偏好：' + categoryList.slice(0, 3).map(c => c.category).join('/'), weight: 4 })
+  }
+  // 3. 主设备
+  if (deviceList && deviceList.length > 0) {
+    const d = deviceList[0].device
+    if (d) tags.push({ label: d + ' 主力', weight: 4 })
+  }
+  // 4. 主渠道
+  if (channelList && channelList.length > 0) {
+    tags.push({ label: channelList[0].channel + ' 渠道', weight: 3 })
+  }
+  // 5. 行为漏斗层级
+  if (funnelList && funnelList.length > 1) {
+    const pay = funnelList[funnelList.length - 1]
+    const view = funnelList[0]
+    if (view && view.count > 0 && pay) {
+      const conv = (pay.rate || 0)
+      if (conv >= 10) tags.push({ label: '高转化用户', weight: 5 })
+      else if (conv >= 5) tags.push({ label: '中等转化', weight: 3 })
+      else tags.push({ label: '低转化用户', weight: 1 })
+    }
+    // 浏览-加购转化率
+    if (funnelList.length >= 2) {
+      const cartRate = funnelList[1].rate || 0
+      if (cartRate >= 30) tags.push({ label: '冲动加购型', weight: 4 })
+      else if (cartRate >= 15) tags.push({ label: '理性消费', weight: 3 })
+    }
+  }
+  // 6. 通用特征
+  tags.push({ label: '价格敏感', weight: 3 })
+  tags.push({ label: '新品尝鲜', weight: 2 })
+  return tags
+}
+
+// 加载画像 6 个图表
+async function loadProfileCharts(uid) {
+  if (!uid) return
+  try {
+    const [trend, funnel, category, hours, device, channel] = await Promise.all([
+      getUserProfileSpendTrend(uid),
+      getUserProfileFunnel(uid),
+      getUserProfileCategory(uid),
+      getUserProfileActiveHours(uid),
+      getUserProfileDevice(uid),
+      getUserProfileChannel(uid)
+    ])
+    spendTrend.value = (trend || []).map(d => ({
+      month: d.month ? String(d.month).replace(/-\d+$/, '月').replace(/-(\d+)$/, '$1月') : '',
+      amount: Number(d.amount || 0)
+    }))
+    funnelStages.value = (funnel || []).map(s => ({
+      name: s.name,
+      value: s.count,
+      rate: s.rate
+    }))
+    categoryPrefs.value = (category || []).map((c, i) => ({
+      name: c.category,
+      value: c.value,
+      color: CATEGORY_PALETTE[i % CATEGORY_PALETTE.length]
+    }))
+    // 活跃时段分桶：0-4 / 4-8 / 8-12 / 12-16 / 16-20 / 20-24
+    const buckets = [0, 0, 0, 0, 0, 0]
+    for (const h of (hours || [])) {
+      const idx = Math.min(5, Math.floor((h.hour || 0) / 4))
+      buckets[idx] += Number(h.value || 0)
+    }
+    activeHours.value = [
+      { hour: '0-4时', value: buckets[0] },
+      { hour: '4-8时', value: buckets[1] },
+      { hour: '8-12时', value: buckets[2] },
+      { hour: '12-16时', value: buckets[3] },
+      { hour: '16-20时', value: buckets[4] },
+      { hour: '20-24时', value: buckets[5] }
+    ]
+    deviceDist.value = (device || []).map((d, i) => ({
+      name: d.device,
+      value: d.value,
+      color: DEVICE_PALETTE[i % DEVICE_PALETTE.length]
+    }))
+    channelDist.value = (channel || []).map((c, i) => ({
+      name: c.channel,
+      value: c.value,
+      color: CHANNEL_PALETTE[i % CHANNEL_PALETTE.length]
+    }))
+    userTags.value = buildUserTags(categoryPrefs.value, deviceDist.value, channelDist.value, funnelStages.value)
+  } catch (e) {
+    console.error('加载画像图表失败:', e)
+    // 失败兜底为空数组，让前端降级显示空状态
+    spendTrend.value = []
+    funnelStages.value = []
+    categoryPrefs.value = []
+    activeHours.value = []
+    deviceDist.value = []
+    channelDist.value = []
+    userTags.value = []
+  }
+}
 </script>
 
 <style scoped>

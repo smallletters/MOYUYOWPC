@@ -15,6 +15,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.HashMap;
@@ -51,6 +53,9 @@ class AdminAuthControllerTest {
     @Mock
     private ValueOperations<String, String> valueOps;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     @InjectMocks
     private AdminAuthController controller;
 
@@ -66,9 +71,17 @@ class AdminAuthControllerTest {
         activeAdmin.setUsername("admin_user");
         activeAdmin.setName("Admin");
         activeAdmin.setRole("SUPER_ADMIN");
-        activeAdmin.setPassword(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder(12)
-                .encode("password123"));
+        // 测试中 PasswordEncoder 是 Mock，直接 stub encode/matches 行为
+        BCryptPasswordEncoder realEncoder = new BCryptPasswordEncoder(12);
+        activeAdmin.setPassword(realEncoder.encode("password123"));
         activeAdmin.setStatus("ACTIVE");
+        // Mock 的 passwordEncoder 走与 setUp 中相同的真实算法，避免 happy-path 误判
+        lenient().when(passwordEncoder.matches(anyString(), anyString())).thenAnswer(inv -> {
+            String raw = inv.getArgument(0);
+            String hash = inv.getArgument(1);
+            return realEncoder.matches(raw, hash);
+        });
+        lenient().when(passwordEncoder.encode(anyString())).thenAnswer(inv -> realEncoder.encode(inv.getArgument(0)));
 
         // 默认：Redis 没有锁定 / 失败计数
         lenient().when(redisTemplate.hasKey(anyString())).thenReturn(false);

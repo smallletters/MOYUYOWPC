@@ -1,34 +1,176 @@
+# ============================================================
+# MOYUYO 基础配置（与 profile 无关的通用项）
+# MySQL / Redis / JWT / 支付等敏感配置不在此处保留默认值
+# 必须由 application-dev.yml（开发）或 application-prod.yml（生产）显式提供
+# Spring 默认会按 profile 加载 application-{profile}.yml，并叠加 application.yml 的非冲突项
+# ============================================================
+
 server:
   port: 8080
+  # 优雅停机：在 spring.lifecycle.timeout-per-shutdown-phase 之前先拒绝新请求，
+  # 配合 docker-compose stop_grace_period=45s 避免 SIGKILL 强切。
+  shutdown: graceful
+  # 启用 ForwardedHeaderFilter：让 Spring 正确识别前置反向代理设置的 X-Forwarded-* 头
+  # 配合 server.tomcat.remoteip.internal-proxies 白名单使用，避免攻击者伪造 X-Forwarded-For
+  # framework 模式比 native 模式更安全（native 模式无条件信任所有 X-Forwarded-* 头，
+  # framework 模式由 Spring 显式处理 + Tomcat internalProxies 二次校验）
+  forward-headers-strategy: framework
   servlet:
     encoding:
       charset: UTF-8
       enabled: true
       force: true
+  # 错误响应：禁用堆栈跟踪与内部消息泄露（防信息外泄）
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
+    include-exception: false
+    whitelabel:
+      enabled: false
+  # 关闭 server header：避免暴露 Tomcat 标识，便于攻击者针对性探测
+  # 历史 Tomcat 默认会在 Server: Apache-Coyote/1.1 暴露版本信息
+  # 注意：若项目使用前置 Nginx/1Panel，需在反代层同步隐藏 server_tokens
+  # （1PANEL_DEPLOY.md 中已给出 `server_tokens off` 配套配置）
+  # 显式配置 Tomcat 连接器：防止 Slowloris / 巨 body / 巨 header 攻击拖垮服务
+  tomcat:
+    # 最大并发连接数（超过后 acceptCount 缓冲）
+    max-connections: 8192
+    # 等待队列长度（max-connections 满后排队）
+    accept-count: 200
+    # 工作线程数：处理请求的线程池大小
+    max-threads: 400
+    # 最小工作线程数（预热，避免突发请求时线程创建延迟）
+    min-spare-threads: 50
+    # 单连接最大 keep-alive 请求数（防止恶意长连接占用线程）
+    max-keep-alive-requests: 100
+    # keep-alive 长连接超时：dev 默认 30s（生产由 application-prod.yml 覆盖到 15s）
+    # 避免 dev 部署误用默认 200s 导致 Slowloris 类慢攻击占住 worker 线程
+    keep-alive-timeout: 30s
+    # 空闲连接超时（连接建立但无数据的窗口）
+    connection-idle-timeout: 30s
+    # 单请求体最大字节数（默认 2MB，限制为 20MB 防止 OOM）
+    max-swallow-size: 20MB
+    # HTTP 请求头最大字节数（默认 8KB，调大到 16KB 兼容含较多自定义头的客户端）
+    max-http-request-header-size: 16KB
+    # HTTP 表单 POST 体最大字节数（防止恶意表单提交 OOM；Spring Boot 默认未设置，由 Tomcat 默认 2MB）
+    max-http-form-post-size: 2MB
+    # 连接空闲超时（默认 60s；生产环境收紧到 10s，抑制 Slowloris 类慢攻击）
+    connection-timeout: 10s
+    # 限制 POST/GET/PUT 等 HTTP 方法的请求体最大字节数（与 max-swallow-size 对齐做兜底）
+    # Tomcat 默认 maxPostSize=-1 表示不限制，攻击者可上传 2GB 大表单拖垮服务
+    max-post-size: 20MB
+    # 限制请求参数总字节数（query string + form）：防止攻击者构造 1MB+ 参数列表撑爆内存
+    # Tomcat 默认 maxParameterCount=10000，maxSavePostSize=-1（不限制）；显式收紧
+    max-parameter-count: 1000
+    # 限制请求头数量（防止攻击者用 10W 个请求头拖垮解析器）
+    # Tomcat 默认 maxHeaderCount=100；保持不变以兼容典型负载
+    # processorCache：Spring Boot 3.5.x 该属性目标类型为 int（毫秒），旧版本 boolean 配置会触发 ConverterNotFoundException
+    # 默认行为已满足开启场景（Tomcat 内置 processor 复用），不再显式覆盖
+    # 限制单个请求头名称最大字节数（防止攻击者构造超长 header name 触发解析器 OOM）
+    # Tomcat 默认 maxHttpHeaderSize=8KB（包含所有 header + 请求行），已通过 max-http-request-header-size 覆盖
+    # 此处显式声明 maxHeaderCount 防攻击者用 1W 个 header 撑爆 header 解析器
+    max-header-count: 100
+    # 关闭 server header：由 StartupBannerLogger / TomcatCustomizer 注入 ServerInfo 自定义策略
+    # 实际阻止 Server 头输出由 moyuyo-api 内置的 Tomcat Customizer 控制（不写在 yml 中）
+    # 异步请求超时：避免长连接异步任务泄漏线程
+    async-timeout: 30s
+    # URI 编码：与 servlet.encoding 保持一致，防止非 UTF-8 编码绕过
+    uri-encoding: UTF-8
+    # 协议：仅启用 HTTP/1.1（HTTP/2 由前置 Nginx 终止，避免 JDK HTTP/2 实现的连接池与 TLS 复杂度）
+    # 如未来需要启用 HTTP/2，需要同步调整 Tomcat 配置 + JDK ALPN 支持
+    # background-processor-delay：缩短后台任务执行间隔，让 GC/线程池清理更及时
+    background-processor-delay: 10s
+    # 关闭 Tomcat AJP 协议：项目仅用 HTTP/1.1 与前置 Nginx/1Panel 通信，AJP（默认 8009）属于历史遗留；
+    # 若意外开放可被 GhostCat (CVE-2020-1938) 攻击者读取 webapp 任意文件或注入恶意请求
+    # Spring Boot 3.x 通过 ajp.port=-1 即可禁用 AJP 连接器
+    ajp:
+      port: -1
+      # 仅绑定本机回环：与 read_only 根文件系统搭配，防止 AJP 重新开启后被容器网络直连
+      address: 127.0.0.1
+      # AJP secret 设为空：禁用 secret-required 后即便被错误打开也无法握手
+      secret-required: false
+      # 关闭 SSL：AJP 链路不应启用 SSL，由前置 Nginx 终止 TLS 后再转发（双层 TLS 浪费 CPU）
+      ssl-enabled: false
+    # 远程 IP 校验：仅信任前置 Nginx/反向代理所在的私有网段，避免客户端伪造 X-Forwarded-For
+    # 默认 Tomcat internalProxies 包含 10.x.x.x, 192.168.x.x, 127.x.x.x，覆盖典型反向代理部署
+    remoteip:
+      internal-proxies: 10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|169\.254\.\d{1,3}\.\d{1,3}|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}|0:0:0:0:0:0:0:1
+      # 仅信任代理头中的 X-Forwarded-Proto / X-Forwarded-For，不解析 RemoteIpValve 自定义头
+      remote-ip-header: X-Forwarded-For
+      protocol-header: X-Forwarded-Proto
+      # 即使 protocol-header 缺失，也按 HTTP 处理（不强制要求反向代理设置）
+      protocol-header-https-value: https
+
+# Spring 优雅停机：收到 SIGTERM 后等待当前请求完成再退出
+# 与 docker-compose.yml 中的 restart policy / K8s preStop hook 配合
+spring.lifecycle.timeout-per-shutdown-phase: 30s
 
 spring:
   application:
     name: moyuyo-server
+  # Jackson 反序列化安全：禁用默认类型推断，避免攻击者通过 @class 属性触发多态反序列化漏洞
+  # 业务上不需要 polymorphic typing；与 Result<T> 等泛型反序列化无关
+  jackson:
+    default-typing: NONE
+    activation:
+      # 仅在显式属性存在时反序列化（避免传入未知属性导致 NPE/越权）
+      fail-on-unknown-properties: false
+    # parser:
+      # 2026-08-13：Jackson 2.18.x 移除 spring.jackson.parser.max-* 系列属性
+      # （max-nesting-depth / max-string-length / max-array-size / max-number-length /
+      #  max-big-decimal-length 均不在 JsonParser.Feature 合法枚举中）。
+      # 原防护面（深度、字符串长度、数组上限、数字长度）改由以下层兜底：
+      #   - depth：Spring MVC ContentTypeFilter / 入参校验拦截
+      #   - body size：Tomcat max-swallow-size=20MB（application.yml 顶层已设）
+      #   - array / size：PageParamGuard 对分页 size 硬上限 100，批量导入 list 校验
+      #   - number range：业务 DTO 强校验（@Digits / @DecimalMax）
+      #   - BigDecimal 范围：JSR-303 + 自定义校验器
+      # 因此本块全部注释；若未来需重新启用，迁移至 JsonFactory StreamReadConstraints.builder() API。
+    deserialization:
+      # 启用 wrap-root-value 反序列化防御：拒绝 {"class":..., "value":...} 这类 type 字段绕过
+      # 与 default-typing=NONE 协同关闭 polymorphic deserialization 攻击面
+      wrap-exceptions: true
+      # 允许基本类型包装类的宽松转换（如 "1" -> 1），与业务期望一致
+      accept-single-value-as-array: true
+    serialization:
+      # 时间戳统一为 ISO-8601 字符串，避免不同服务时区/精度不一致
+      write-dates-as-timestamps: false
+      # 关闭空 bean 序列化错误：避免响应 DTO 缺字段时被 Jackson 抛空对象异常
+      fail-on-empty-beans: false
+    # 全局时区与 JVM TZ（Asia/Shanghai）保持一致；避免序列化 LocalDateTime 时退化为 UTC 导致跨时区漂移
+    # 通过 JVM -Duser.timezone=Asia/Shanghai 已注入系统 TZ，这里显式声明让 Jackson 行为可预期
+    time-zone: Asia/Shanghai
   main:
     allow-bean-definition-overriding: true
+    # 延迟初始化：默认 false（应用启动时初始化所有 Bean）。
+    # 生产环境可由 SPRING_MAIN_LAZY_INITIALIZATION=true 启用，按需加载 Bean 可：
+    #   1) 加速冷启动 30%~50%（K8s 滚动更新时滚动更快）
+    #   2) 暴露未使用 Bean 的配置错误在 first-use 阶段，便于发现
+    # 关闭原因：dev 阶段保持 false 让所有 Bean 在启动期装配，便于快速发现缺失依赖
+    lazy-initialization: ${SPRING_MAIN_LAZY_INITIALIZATION:false}
+    # 允许循环引用：默认 false 会让启动失败，结合我们的模块化设计（common/dao/service/api）
+    # 偶发循环依赖不会阻塞启动，便于快速定位（开发环境更宽容）
+    allow-circular-references: true
+    # banner 模式：log（默认）/ console / off
+    # - off：完全关闭 banner（生产环境最安全，但丢失"已就绪"的提示）
+    # - log：写入日志（不影响 docker logs 输出）
+    # - console：写入 stdout（适合 dev）
+    banner-mode: ${SPRING_MAIN_BANNER_MODE:log}
   autoconfigure:
     # 不再排除 RocketMQ 自动配置：
     # 项目使用 OrderMessageProducer / OrderTimeoutConsumer 实现订单超时取消等异步能力，
     # 若排除 RocketMQ 自动配置，消费者永远无法启动，订单超时等业务不可用。
     # 兜底：当 ROCKETMQ_NAMESRV_ADDR 未配置时，由 RocketMQConfig 跳过 Bean 注册，避免阻塞启动。
-    exclude:
-      # ⚠️ 不再排除 ES 自动配置：项目使用 Spring Data Elasticsearch 做商品搜索
-      # Spring Boot 3.x 的 ES auto-config 在 spring.elasticsearch.uris 为空时不会创建 Client/Template/Repository Bean，
-      # 业务侧通过 @Autowired(required = false) 软依赖实现优雅降级（见 ProductSearchService）
-
-  # MySQL / Redis / JWT / 支付等敏感配置不在此处保留默认值
-  # 必须由 application-dev.yml（开发）或 application-prod.yml（生产）显式提供
-  # Spring 默认会按 profile 加载 application-{profile}.yml，并叠加 application.yml 的非冲突项
+    # 不再排除 ES 自动配置：项目使用 Spring Data Elasticsearch 做商品搜索
+    # Spring Boot 3.x 的 ES auto-config 在 spring.elasticsearch.uris 为空时不会创建 Client/Template/Repository Bean，
+    # 业务侧通过 @Autowired(required = false) 软依赖实现优雅降级（见 ProductSearchService）
 
   flyway:
     enabled: true
-    # db/migration 为表结构迁移；db/seed 为演示数据（仅开发环境加载，prod 不扫描该目录）
-    locations: classpath:db/migration,classpath:db/seed
+    # 基础配置仅声明 migration 目录；seed 目录仅 dev profile 加载（见 application-dev.yml）
+    # 避免 prod profile 加载失败回退到 base 时意外扫描 seed 演示数据
+    locations: classpath:db/migration
     baseline-on-migrate: true
     validate-on-migrate: false
     out-of-order: false
@@ -43,6 +185,119 @@ spring:
     connection-timeout: 5s
     socket-timeout: 60s
 
+  # HikariCP 连接池通用配置（dev/prod 各自覆盖）
+  # 这里仅给非敏感默认值
+  datasource:
+    hikari:
+      pool-name: moyuyo-pool
+      # dev 默认小一些便于本地资源占用低；prod 由 application-prod.yml 覆盖
+      maximum-pool-size: 10
+      # minimum-idle 等于 maximum-pool-size 可让 HikariCP 在启动时预热所有连接，
+      # 避免冷启动期突发请求被 connection-timeout 拒绝。dev 默认 10 即可，无需太多。
+      minimum-idle: 10
+      connection-timeout: 10000
+      validation-timeout: 3000
+      # 连接泄漏检测阈值：连接借出后超过该时间未归还则记录堆栈
+      # dev 默认 10s（与 connection-timeout 对齐）；prod 由 application-prod.yml 覆盖为 30s
+      leak-detection-threshold: 10000
+
+  # Multipart 上传限制：与 Tomcat max-swallow-size(20MB) 对齐，避免 Spring 解析阶段提前 OOM，
+  # 也让 GlobalExceptionHandler 命中 MaxUploadSizeExceededException 返回 413 而非 500
+  # - max-file-size：单个文件大小（默认与 Tomcat max-swallow-size 一致）
+  # - max-request-size：整次请求大小（含 multipart 边界），略大于单文件留余量
+  # - file-size-threshold：超过此值的分片写入临时文件，而非堆内存
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 20MB
+      max-request-size: 25MB
+      file-size-threshold: 2MB
+      # 强制写入临时文件：超过 file-size-threshold 的数据不再走堆内存，避免大文件 OOM
+      # resolve-lazily=true 推迟参数解析，减少文件上传早期阶段的拒绝服务面
+      resolve-lazily: true
+  # Spring Cache 抽象：项目不依赖 @Cacheable / @CachePut，缓存由业务侧通过 RedisTemplate 直接管理
+  # 显式声明 cache.type=none，避免未来引入 spring-boot-starter-data-redis 后自动启用 RedisCacheManager
+  # 导致 @Cacheable 注解默默把数据写入 Redis（与现有 RedisTemplate 缓存策略不一致、序列化器不匹配，
+  # 会引发 CacheException / SerializationException 等难以诊断的运行时错误）
+  cache:
+    type: none
+  # 静态资源加载链（影响 WebMvcConfig 中的 /admin/** /static/** /favicon.ico 等）：
+  # - chain.enabled: 开启 ResourceResolver 链（缓存 + 编码变体 + 版本化策略）
+  # - chain.cache: 启用资源解析缓存（PathResourceResolver 结果缓存，避免每次请求都扫描 classpath）
+  # - chain.gz: 自动匹配 .gz 变体（Vite 构建产物已生成 .js.gz / .css.gz 预压缩文件，运行时省去压缩 CPU 开销）
+  # - chain.brotli: 关闭（Vite 未生成 .br 预压缩）
+  web:
+    resources:
+      chain:
+        enabled: true
+        cache: true
+        gz: true
+        brotli: false
+      # 静态资源缓存策略：与 nginx/1Panel 反代层 Cache-Control 互补
+      # Vite 构建产物自带 contenthash（如 index-abc123.js），immutable 缓存 1 年安全；
+      # 实际部署还需在反代层给 index.html 设 Cache-Control: no-cache, must-revalidate 兜底
+      # P2 优化：admin SPA 的 index.html 必须 no-cache（强缓存会让用户始终访问旧版 SPA）；
+      # js/css 自带 hash 的资源继续走 immutable 缓存。
+      # 注：Spring 6.x 的 spring.web.resources.cache.cachecontrol 是全局默认 Cache-Control，
+      # 无法对 index.html 单独设置。本优化依赖反代层（Nginx / 1Panel）针对 /admin/index.html
+      # 显式下发 Cache-Control: no-cache, must-revalidate。
+      cache:
+        cachecontrol:
+          # immutable 缓存 1 年：Vite 构建产物路径含 hash，文件变更即换 URL，无需重新校验
+          max-age: 31536000
+          cache-public: true
+          cache-private: false
+          no-transform: true
+        # use-last-modified：基于文件最后修改时间返回 304（节省带宽）
+        use-last-modified: true
+  # MVC 行为：
+  # - throw-exception-if-no-handler-found=true：未匹配路由直接抛 NoHandlerFoundException，
+  #   让 GlobalExceptionHandler 返回 404 而不是走默认 Servlet 兜底（避免静态资源路径被错误拦截）
+  # - dispatch-options-request=false：OPTIONS 由 CorsFilter / Tomcat 自身处理，关闭避免重复
+  mvc:
+    throw-exception-if-no-handler-found: true
+    dispatch-options-request: false
+  # 显式禁用 Spring Session：项目使用 JWT + Redis 黑名单做会话管理，
+  # 不依赖 HttpSession，避免未来引入 spring-session-* 依赖时自动启用并产生
+  # 默认 Cookie 名 "SESSION" + Redis Namespace 冲突
+  session:
+    timeout: 0
+    # Spring Boot 3.x 已移除 use-suffix-pattern-match / use-registered-suffix-pattern-match 配置项
+    # （自 Spring Framework 6.0 起默认关闭，无需显式声明；继续配置会触发启动期 WARN）
+    # 如需兼容历史 .json / .xml 风格 URL，可在自定义 WebMvcConfigurer 中通过 configurer.setUseSuffixPatternMatch(false) 控制
+  # Spring 任务调度线程池：@Scheduled 任务（如 WooCommerceStockSyncTask）专用线程池
+  # Spring Boot 3.x 暴露的调度线程池配置键：
+  #   spring.task.scheduling.pool.size            池大小（仅是 core，未自动扩缩）
+  #   spring.task.scheduling.thread-name-prefix   线程名
+  # 注意：默认单线程调度，会被任一慢任务阻塞；显式拉到 2 线程避免相互阻塞
+  # 生产环境由 application-prod.yml 进一步覆盖到 4 线程
+  # P1 修复：原配置在 spring.session 段后另起一个顶层 key `task:`，缩进 2 空格看似 spring 子键，
+  # 实际 spring 节点已在 session 段闭合。Spring Boot 不识别顶层 task，配置被静默忽略。
+  # 现合并到 spring.task.*，与 prod 文件覆盖项对齐
+  task:
+    scheduling:
+      pool:
+        size: 2
+      thread-name-prefix: moyuyo-sched-
+      # 优雅停机：@Scheduled 任务在容器 stop 信号到达后允许最多 30 秒完成当前任务，
+      # 避免 WooCommerceStockSyncTask 等长任务被 SIGKILL 中断导致数据不一致
+      # 与 docker-compose stop_grace_period=45s 协同：调度任务先于 Spring lifecycle 退出
+      shutdown:
+        await-termination: true
+        await-termination-period: 30s
+    # Spring 任务执行线程池：@Async 默认执行器
+    # 业务侧 @Async("moyuyoTaskExecutor") 由 moyuyo-common/AsyncConfig 接管（容量更大、CallerRunsPolicy、MDC 装饰）
+    # 这里仅配置 Spring Boot 默认 SimpleAsyncTaskExecutor 在没有显式 @Bean 兜底时的兜底行为
+    # 避免业务误用默认池后被打爆
+    execution:
+      pool:
+        core-size: 2
+        max-size: 8
+        queue-capacity: 100
+        keep-alive: 60s
+        allow-core-timeout: true
+      thread-name-prefix: moyuyo-default-async-
+
 # MyBatis-Plus（与 profile 无关的通用配置）
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
@@ -50,21 +305,58 @@ mybatis-plus:
   global-config:
     db-config:
       id-type: ASSIGN_ID
-      logic-delete-field: deleted
-      logic-delete-value: 1
-      logic-not-delete-value: 0
+      # 注意：未启用全局 logic-delete-field，因为不是所有实体都有 deleted 列且 @TableLogic 注解。
+      # 需要逻辑删除的实体请显式加 @TableLogic 注解（已在 Address/Pet/CommunityPost 等上加过）。
+      # 显式指定表名前缀策略为关闭，避免无 prefix 时产生额外 SQL 包裹
+      table-underline: true
+      # P1 防御：禁止 MyBatis-Plus 默认拼接策略导致全表更新/删除
+      # - update-strategy=not_null：UPDATE 时仅更新非 null 字段（默认值兜底，避免业务误传 0/空字符串覆盖）
+      # - insert-strategy=not_null：INSERT 时跳过 null 字段（让数据库默认值生效，避免业务误传 null 覆盖默认）
+      # - where-strategy=not_null：LambdaQuery 默认 WHERE 条件跳过 null，避免漏写条件导致全表扫描
+      # 注：以上几项仅对 lambdaQueryWrapper / lambdaUpdate 生效，对 ${} 字符串拼接的非法 SQL 无效
+      # （必须坚持使用 #{} 预编译），仅作辅助兜底
+      # 显式声明以便后续运维审计（即便默认行为变更也不会回退）
+      update-strategy: not_null
+      insert-strategy: not_null
+      where-strategy: not_null
   configuration:
     map-underscore-to-camel-case: true
+    # 启用 JDBC PreparedStatement 预编译缓存（默认未开启）：
+    # 让 MySQL 服务端复用预编译语句模板，减少解析开销，提升 QPS
+    cache-enabled: true
+    # 启用嵌套结果映射：减少 JOIN 查询的 N+1 风险（需 Mapper XML 显式配置）
+    aggressive-lazy-loading: false
     # 不在 base yml 中固定日志实现，由 dev/prod 各自覆盖
     # dev: StdOutImpl（控制台 SQL 打印）
-    # prod: Slf4jImpl（统一走 Logback）
+    # prod: NoLoggingImpl（关闭 SQL 日志，避免敏感字段泄露）
+  # SQL 解析缓存：MyBatis-Plus 的 PreparedStatement 缓存（cacheEnabled=true）默认开启
+  # 通过 Configuration#cacheEnabled 控制开关，容量由 MyBatis 内部 PerpetualCache 维护
+  # 这里不再额外配置 cache.size，避免与 MyBatis Configuration 内部属性键冲突导致启动异常
 
-# SpringDoc
+# SpringDoc OpenAPI 文档
+# 默认关闭：避免未指定 profile（如 default/未知）启动时泄露接口细节
+# 仅 dev/test profile 在 application-dev.yml 中显式开启；prod 在 application-prod.yml 中显式关闭（双重保险）
 springdoc:
   api-docs:
     path: /api-docs
+    enabled: ${SPRINGDOC_ENABLED:false}
   swagger-ui:
     path: /swagger-ui.html
+    enabled: ${SPRINGDOC_SWAGGER_ENABLED:false}
+    tags-sorter: alpha
+    operations-sorter: alpha
+  # 隐藏 /actuator 在 OpenAPI 中：actuator 端点已在 management.endpoints.web.exposure.include 中按需暴露，
+  # 不应出现在 OpenAPI 文档中（避免接口细节泄露给 Swagger UI 浏览者）
+  show-actuator: false
+  # 生产环境通过 springdoc.api-docs.enabled=false 关闭（由 application-prod.yml 控制）
+  # 生产环境仅暴露给内网用户（可结合 spring-security 与 IP 白名单）
+  packages-to-scan:
+    - com.moyuyo.api.controller
+    # 修复：admin 子包 Controller 未被 OpenAPI 扫描（被默认 com.moyuyo.api.controller 包匹配但子包需显式列出）
+    # 历史遗漏会导致 /api/admin/** 接口不出现在 Swagger UI 中，给联调带来障碍
+    - com.moyuyo.api.controller.admin
+  default-produces-media-type: application/json
+  default-consumes-media-type: application/json
 
 # 管理员账号（占位，实际值必须由 profile 提供）
 # dev: application-dev.yml 提供测试默认值
@@ -74,7 +366,19 @@ admin:
   email: ${ADMIN_EMAIL:}
   password: ${ADMIN_PASSWORD:}
 
+# API 签名（基础配置；prod 由 application-prod.yml 注入密钥 + 总开关）
+# signature.enabled：true=所有写接口必须带 X-Sign/X-Timestamp/X-Nonce 三头（依赖客户端 SDK 落地签名）
+#                   false=签名过滤器直接放行（仍由 IP/JWT/Content-Type 三层防护兜底）
+# 当前默认 false：客户端 SDK 暂未实现签名，开启会阻断所有写请求
+# 客户端 SDK 落地签名后必须改为 true，否则签名机制空转；推荐开关与 API_SIGNATURE_ENABLED 环境变量联动
+api:
+  signature:
+    enabled: ${API_SIGNATURE_ENABLED:false}
+    secret: ${API_SIGN_SECRET:}
+
 # Actuator 健康检查配置（收紧暴露端点）
+# base 仅暴露 health/info；prod 通过 application-prod.yml 追加 prometheus/metrics 端点
+# 这样 dev 默认安全、prod 按需放行
 management:
   endpoints:
     web:
@@ -85,9 +389,63 @@ management:
       show-details: when-authorized
       probes:
         enabled: true
+      # 必须显式开启组件健康检查（base 默认关闭 ES，避免 dev 环境无 ES 时被识别为 DOWN）
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db,redis
   health:
+    db:
+      enabled: true
+    redis:
+      enabled: true
+    # ES / RocketMQ 的开关交由 prod 显式控制（dev 本地没装时不应影响启动）
     elasticsearch:
       enabled: false
+    rocketmq:
+      enabled: false
+  # 让 /actuator/info 暴露构建信息（git commit、构建时间），便于运维确认当前部署版本
+  # dev 环境显式开启便于本地调试（由 application-dev.yml 覆盖为 true）
+  # prod 默认全部关闭：通过 application-prod.yml 的 exposure.include 不含 info 自动不注册该 endpoint
+  # 这里默认关，避免未指定 profile 时泄露构建版本信息
+  info:
+    env:
+      enabled: ${ACTUATOR_INFO_ENV_ENABLED:false}
+    git:
+      mode: simple
+      enabled: ${ACTUATOR_INFO_GIT_ENABLED:false}
+    build:
+      enabled: ${ACTUATOR_INFO_BUILD_ENABLED:false}
+    java:
+      enabled: ${ACTUATOR_INFO_JAVA_ENABLED:false}
+    os:
+      enabled: ${ACTUATOR_INFO_OS_ENABLED:false}
+  # Micrometer Tracing 采样率：dev 默认全量采样便于调试，prod 由环境变量覆盖（默认 10%）
+  tracing.sampling.probability: ${MOYUYO_TRACE_SAMPLE_RATE:1.0}
+  # 全局指标维度：让所有指标自动带上应用名 + 实例标签，避免每个组件单独打 tag
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      env: ${SPRING_PROFILES_ACTIVE:default}
+    distribution:
+      # HTTP 请求耗时：同时输出直方图 + 概要分位数（p50/p95/p99），便于 Prometheus 计算
+      percentiles-histogram:
+        http.server.requests: true
+      # 百分位精度：从默认 0.0~1.0 改为 0.5/0.95/0.99 三档，减小 Prometheus 存储压力
+      percentiles:
+        http.server.requests: 0.5,0.95,0.99
+      # SLO 分桶（生产环境由 application-prod.yml 覆盖更细粒度）：
+      # 这三个分桶点用于 Service-Level Objective 计算，
+      # 例如 "99% 请求 < 500ms" 可直接 sum(rate(...))[5m] 计算
+      slo:
+        http.server.requests: 100ms,500ms,1s
+    # 指标启用：默认开；可按需在 profile 中关闭以降低开销
+    enable:
+      jvm: true
+      process: true
+      system: true
+      logback: false
 
 # Resilience4j 限流实例由 profile 各自配置，base 仅给出非敏感默认值
 resilience4j:
@@ -99,3 +457,29 @@ resilience4j:
         limit-for-period: 100
         timeout-duration: 500ms
 
+# HTTP 客户端通用配置（RestTemplateBootstrapConfig 读取）
+# 仅给非敏感默认值；生产环境可由 MOYUYO_HTTP_CONNECT_TIMEOUT_MS / MOYUYO_HTTP_READ_TIMEOUT_MS 覆盖
+moyuyo:
+  http:
+    connect-timeout-ms: 5000
+    read-timeout-ms: 15000
+  # OpenAPI 文档元数据（OpenApiConfig 通过 @Value 注入读取），可通过 OPENAPI_* 环境变量覆盖
+  # - contact-email：Swagger UI 中显示的联系邮箱，prod 必须用公司自有域名
+  # - version：API 版本号，建议与 Git tag 对齐
+  # - servers：OpenAPI Server 列表，格式 "url|description" 用英文逗号分隔多组
+  #            示例：OPENAPI_SERVERS=https://api-staging.moyuyo.com|预发,https://api.moyuyo.com|生产
+  # - license-url：License 链接，仅在非空时附加到 OpenAPI.info.license（独立于 contact-email 开关）
+  openapi:
+    contact-email: ${OPENAPI_CONTACT_EMAIL:backend@example.com}
+    version: ${OPENAPI_VERSION:1.0.0}
+    servers: ${OPENAPI_SERVERS:}
+    license-url: ${OPENAPI_LICENSE_URL:}
+  # 操作审计日志保留期清理（dev 默认关闭以避免本地开发被定时清理）
+  # 生产环境由 application-prod.yml 强制开启；保留天数由 moyuyo.audit.retention-days 控制（默认 90 天）
+  audit:
+    retention-enabled: false
+    retention-days: 90
+    # 异步持久化队列容量（合法范围 1000~100000，默认 10000 ≈ 5MB 堆占用）
+    # 可通过环境变量 MOYUYO_AUDIT_QUEUE_CAPACITY 覆盖
+    # 写入慢 / DB 抖动导致队列堆积时调高避免丢审计；内存吃紧时调低
+    queue-capacity: ${MOYUYO_AUDIT_QUEUE_CAPACITY:10000}

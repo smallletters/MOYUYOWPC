@@ -29,6 +29,16 @@ jobs:
           --health-timeout=5s
           --health-retries=5
 
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -53,11 +63,12 @@ jobs:
         run: mvn checkstyle:check -q -f moyuyo-server/pom.xml
 
       - name: Run unit & integration tests
-        run: mvn test -f moyuyo-server/pom.xml
+        run: mvn verify -B -f moyuyo-server/pom.xml
         env:
           MYSQL_PASSWORD: test
           REDIS_HOST: localhost
           REDIS_PORT: 6379
+          JWT_SECRET: ci-test-jwt-secret-key-at-least-32-chars!!
 
       - name: Package JAR
         run: mvn package -DskipTests -f moyuyo-server/pom.xml

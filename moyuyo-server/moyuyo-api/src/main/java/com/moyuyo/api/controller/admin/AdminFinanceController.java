@@ -8,6 +8,7 @@ import com.moyuyo.common.dto.admin.PageResponse;
 import com.moyuyo.common.dto.admin.finance.FinanceOverviewResponse;
 import com.moyuyo.common.dto.admin.finance.SettlementDetailResponse;
 import com.moyuyo.common.dto.admin.finance.SettlementRequest;
+import com.moyuyo.common.utils.PageParamGuard;
 import com.moyuyo.dao.admin.entity.FinanceRecordEntity;
 import com.moyuyo.dao.admin.entity.SettlementEntity;
 import com.moyuyo.dao.admin.mapper.FinanceRecordMapper;
@@ -90,9 +91,11 @@ public class AdminFinanceController {
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "15") int size) {
     try {
+      // 分页参数统一守卫：避免 size=100000 触发 OOM / 全表扫描
+      int[] pageParams = PageParamGuard.normalize(page, size, 15);
       // 分页查询结算记录
       Page<SettlementEntity> pageResult = settlementMapper.selectPage(
-        new Page<>(page, size),
+        new Page<>(pageParams[0], pageParams[1]),
         new LambdaQueryWrapper<SettlementEntity>()
           .orderByDesc(SettlementEntity::getCreateTime));
       

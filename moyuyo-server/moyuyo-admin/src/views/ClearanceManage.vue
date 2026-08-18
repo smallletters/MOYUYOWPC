@@ -122,16 +122,16 @@
             <span class="kpi-card-icon">⏱</span>
             <span class="kpi-card-label">平均清关时效</span>
           </div>
-          <div class="kpi-card-value">3.2<span class="kpi-unit">天</span></div>
-          <div class="kpi-card-trend kpi-trend-down">↓ -0.3天 <span class="kpi-trend-text">较上月</span></div>
+          <div class="kpi-card-value">{{ kpiOverview.avgDays }}<span class="kpi-unit">天</span></div>
+          <div class="kpi-trend-text" style="font-size:12px;margin-top:6px;">基于近 30 天已放行数据</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-card-header">
             <span class="kpi-card-icon">🎯</span>
-            <span class="kpi-card-label">达标率</span>
+            <span class="kpi-card-label">放行率</span>
           </div>
-          <div class="kpi-card-value" style="color: var(--state-success);">92<span class="kpi-unit">%</span></div>
-          <div class="kpi-card-trend kpi-trend-up">↑ +2.1% <span class="kpi-trend-text">较上月</span></div>
+          <div class="kpi-card-value" style="color: var(--state-success);">{{ kpiOverview.passRate }}<span class="kpi-unit">%</span></div>
+          <div class="kpi-trend-text" style="font-size:12px;margin-top:6px;">已放行 / 全部</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-card-header">
@@ -222,7 +222,11 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getClearance, createClearance, updateClearance, deleteClearance } from '../api/admin'
+import {
+  getClearance, createClearance, updateClearance, deleteClearance,
+  getClearanceOverview, getClearanceExceptions, getClearanceDailyDays,
+  getClearanceCountryCompare
+} from '../api/admin'
 
 const pageTitle = '清关管理'
 const filters = reactive({ keyword: '' })
@@ -239,86 +243,114 @@ const editForm = reactive({
   status: '待申报'
 })
 
-function clearanceTagType(status) {
-  const map = { '待申报': 'info', '申报中': 'warning', '已放行': 'success', '被查验': 'danger' }
-  return map[status] || 'info'
+// 状态映射：后端 PENDING/INSPECTING/CLEARED/REJECTED → 中文
+const statusLabelMap = {
+  PENDING: '待申报',
+  INSPECTING: '申报中',
+  CLEARED: '已放行',
+  REJECTED: '已退回'
 }
 
-// ===== 异常告警（示例数据：无真实 API，仅用于界面展示） =====
-const alertList = [
-  { orderNo: '#MOYU20260701', type: '扣留', level: 'high', desc: '缺少品牌授权书，需尽快补充相关文件', time: '2小时前' },
-  { orderNo: '#MOYU20260703', type: '审核超时', level: 'mid', desc: '已超过 5 个工作日，建议联系清关代理跟进', time: '5小时前' },
-  { orderNo: '#MOYU20260705', type: '申报价值不符', level: 'high', desc: '申报 $50，实际 $120，需修正申报信息', time: '1天前' }
-]
+function clearanceTagType(status) {
+  const map = { '待申报': 'info', '申报中': 'warning', '已放行': 'success', '被查验': 'danger', '已退回': 'danger' }
+  return map[statusLabelMap[status] || status] || 'info'
+}
 
-// 处理告警：创建清关处理任务（调用清关接口，无真实接口时本地处理）
+// ===== 异常告警（真实后端 /clearance/exceptions） =====
+const alertList = ref([])
+
+// ===== KPI / 时效（真实后端） =====
+const kpiOverview = reactive({ avgDays: 0, passRate: 0 })
+const weekData = ref([])
+const weekMax = computed(() => Math.max(1, ...weekData.value.map(d => d.hours)))
+const stageData = computed(() => {
+  // 用国家对比数据简化映射为环节（最多 5 个）
+  return getClearanceCountryCompareCached.value.slice(0, 5).map((c, i) => ({
+    name: c.country,
+    hours: c.avgDays,
+    color: ['#2e8dff', '#ff9500', '#5856d6', '#ff3b30', '#34c759'][i] || '#2e8dff'
+  }))
+})
+const stageMax = computed(() => Math.max(1, ...stageData.value.map(s => s.hours || 1)))
+const getClearanceCountryCompareCached = ref([])
+
+// 处理告警：根据真实数据 row.id 调 updateClearance（标记为 INSPECTING 视为处理中）
 async function handleAlert(row) {
   try {
-    // 调用清关创建接口：POST /logistics/clearance
-    await createClearance({
-      orderNo: row.orderNo,
-      alertType: row.type,
-      alertLevel: row.level,
-      remark: row.desc,
-      action: 'PROCESS'
-    })
+    await ElMessageBox.confirm(
+      '将根据告警【' + (row.reason || row.status) + '】为订单 ' + row.orderNo + ' 发起处理流程，是否继续？',
+      '处理告警',
+      { type: 'warning' }
+    )
+  } catch {
+    return
+  }
+  try {
+    await updateClearance(row.id, { status: 'INSPECTING' })
     ElMessage.success('已发起处理：' + row.orderNo)
+    await loadAll()
   } catch (e) {
-    // 后端接口未接入时本地确认
-    try {
-      await ElMessageBox.confirm(
-        '将根据告警【' + row.type + '】为订单 ' + row.orderNo + ' 发起处理流程，是否继续？',
-        '处理告警',
-        { type: 'warning' }
-      )
-      ElMessage.success('已发起处理：' + row.orderNo + '（本地模式）')
-    } catch (err) {
-      // 用户取消
-    }
+    ElMessage.error('处理失败：' + (e?.message || '未知错误'))
   }
 }
 
-// ===== 单据管理（示例数据：无真实 API，仅用于界面展示） =====
+// ===== 单据管理（基于清关真实数据派生，三 Tab 共用） =====
 const docTabs = [
   { key: 'invoice', label: '商业发票' },
   { key: 'packing', label: '装箱单' },
   { key: 'declaration', label: '报关单' }
 ]
 const activeDocTab = ref('invoice')
-const docDataMap = {
-  invoice: [
-    { docNo: 'INV-20260701-001', orderNo: '#MOYU20260701', amount: '$85.00', status: '待补充', time: '2026-07-01 14:35', actionText: '重新上传' },
-    { docNo: 'INV-20260703-002', orderNo: '#MOYU20260703', amount: '$120.00', status: '已通过', time: '2026-07-03 09:20', actionText: '查看' },
-    { docNo: 'INV-20260705-003', orderNo: '#MOYU20260705', amount: '$45.00', status: '审核中', time: '2026-07-05 16:50', actionText: '查看' }
-  ],
-  packing: [
-    { docNo: 'PK-20260701-001', orderNo: '#MOYU20260701', pieces: 2, weight: '1.2 kg', status: '已确认', time: '', actionText: '查看' },
-    { docNo: 'PK-20260703-002', orderNo: '#MOYU20260703', pieces: 1, weight: '0.8 kg', status: '待确认', time: '', actionText: '查看' }
-  ],
-  declaration: [
-    { docNo: 'DEC-20260701-001', orderNo: '#MOYU20260701', hsCode: '4201.00.30', status: '已退回', time: '2026-07-01 15:00', actionText: '重新提交' },
-    { docNo: 'DEC-20260703-002', orderNo: '#MOYU20260703', hsCode: '4202.92.10', status: '审核中', time: '2026-07-03 09:30', actionText: '查看' }
-  ]
-}
+const docDataMap = computed(() => {
+  const map = { invoice: [], packing: [], declaration: [] }
+  for (const c of tableData.value) {
+    const status = statusLabelMap[c.status] || c.status
+    map.invoice.push({
+      docNo: 'INV-' + (c.declarationNo || c.id),
+      orderNo: c.orderNo,
+      amount: c.taxRate ? c.taxRate + '%' : '-',
+      status,
+      time: c.declareTime ? String(c.declareTime).slice(0, 16).replace('T', ' ') : '',
+      actionText: status === '已退回' ? '重新提交' : '查看'
+    })
+    map.packing.push({
+      docNo: 'PK-' + (c.declarationNo || c.id),
+      orderNo: c.orderNo,
+      pieces: '-',
+      weight: '-',
+      status,
+      time: '',
+      actionText: '查看'
+    })
+    map.declaration.push({
+      docNo: c.declarationNo,
+      orderNo: c.orderNo,
+      hsCode: c.hsCode || '-',
+      status,
+      time: c.declareTime ? String(c.declareTime).slice(0, 16).replace('T', ' ') : '',
+      actionText: status === '已退回' ? '重新提交' : '查看'
+    })
+  }
+  return map
+})
 // 当前 Tab 对应的单据列表
-const activeDocList = computed(() => docDataMap[activeDocTab.value] || [])
+const activeDocList = computed(() => docDataMap.value[activeDocTab.value] || [])
 // 单号列与时间列标题随 Tab 变化
 const docNoLabel = computed(() => ({ invoice: '发票编号', packing: '装箱单编号', declaration: '报关单号' }[activeDocTab.value]))
 const docTimeLabel = computed(() => ({ invoice: '上传时间', declaration: '提交时间' }[activeDocTab.value]))
 
 function docStatusTagType(status) {
-  const map = { '待补充': 'warning', '审核中': 'warning', '已通过': 'success', '已确认': 'success', '待确认': 'warning', '已退回': 'danger' }
+  const map = { '待补充': 'warning', '审核中': 'warning', '已通过': 'success', '已确认': 'success', '待确认': 'warning', '已退回': 'danger', '待申报': 'info', '申报中': 'warning', '已放行': 'success', '被查验': 'danger' }
   return map[status] || 'info'
 }
 
-// 单据操作（统一处理：查看 / 重新上传 / 重新提交）
+// 单据操作
 const docActionDialogVisible = ref(false)
-const docActionMode = ref('view') // view / upload / resubmit
+const docActionMode = ref('view')
 const currentDoc = ref(null)
 
 function handleDocAction(row) {
   currentDoc.value = row
-  // 根据 actionText 选择动作类型
   if (row.actionText === '重新上传') docActionMode.value = 'upload'
   else if (row.actionText === '重新提交') docActionMode.value = 'resubmit'
   else docActionMode.value = 'view'
@@ -330,62 +362,101 @@ const uploadForm = reactive({ fileName: '', remark: '' })
 async function confirmDocAction() {
   if (!currentDoc.value) return
   try {
-    if (docActionMode.value === 'upload') {
-      // 调用重新上传接口
-      await updateClearance(currentDoc.value.docNo, { status: '待审核', fileName: uploadForm.fileName || currentDoc.value.docNo + '.pdf' })
-      ElMessage.success('已重新上传：' + currentDoc.value.docNo)
-    } else if (docActionMode.value === 'resubmit') {
-      await updateClearance(currentDoc.value.docNo, { status: '审核中', remark: uploadForm.remark })
-      ElMessage.success('已重新提交：' + currentDoc.value.docNo)
+    if (docActionMode.value === 'upload' || docActionMode.value === 'resubmit') {
+      // 把对应清关记录状态置为 INSPECTING（处理中）
+      const matched = tableData.value.find(c => c.declarationNo === currentDoc.value.docNo.replace(/^INV-|^PK-/, ''))
+      if (matched) {
+        await updateClearance(matched.id, { status: 'INSPECTING' })
+      }
+      ElMessage.success('已' + (docActionMode.value === 'upload' ? '重新上传' : '重新提交') + '：' + currentDoc.value.docNo)
+      await loadData()
     } else {
       ElMessage.info('已查看：' + currentDoc.value.docNo)
     }
     docActionDialogVisible.value = false
   } catch (e) {
-    // 后端接口未接入时本地提示
-    ElMessage.success('已' + (docActionMode.value === 'upload' ? '重新上传' : docActionMode.value === 'resubmit' ? '重新提交' : '查看') + '：' + currentDoc.value.docNo + '（本地模式）')
-    docActionDialogVisible.value = false
+    ElMessage.error('操作失败：' + (e?.message || '未知错误'))
   }
 }
-
-// ===== 清关时效统计（示例数据：无真实 API，纯 CSS 图表） =====
-const weekData = [
-  { day: '07-26', hours: 86 },
-  { day: '07-27', hours: 72 },
-  { day: '07-28', hours: 78 },
-  { day: '07-29', hours: 64 },
-  { day: '07-30', hours: 70 },
-  { day: '07-31', hours: 58 },
-  { day: '08-01', hours: 55 }
-]
-// 近 7 天最大值（用于柱状图高度归一化）
-const weekMax = Math.max(...weekData.map(d => d.hours))
-const stageData = [
-  { name: '申报提交', hours: 6, color: '#2e8dff' },
-  { name: '海关审核', hours: 32, color: '#ff9500' },
-  { name: '税费缴纳', hours: 12, color: '#5856d6' },
-  { name: '查验', hours: 18, color: '#ff3b30' },
-  { name: '放行', hours: 8, color: '#34c759' }
-]
-// 各环节最大值（用于横向条形图宽度归一化）
-const stageMax = Math.max(...stageData.map(s => s.hours))
 
 // 加载报关数据
 async function loadData() {
   try {
-    const res = await getClearance()
-    const list = res || []
+    const res = await getClearance({ page: currentPage.value, size: pageSize.value })
+    const list = Array.isArray(res) ? res : (res?.records || [])
     let filtered = [...list]
     if (filters.keyword) {
-      filtered = filtered.filter(item => item.declarationNo.includes(filters.keyword) || item.orderNo.includes(filters.keyword))
+      const kw = filters.keyword
+      filtered = filtered.filter(item => (item.declarationNo || '').includes(kw) || (item.orderNo || '').includes(kw))
     }
-    tableData.value = filtered
-    total.value = filtered.length
+    // 翻译状态为中文以兼容前端的 tag 映射
+    tableData.value = filtered.map(item => ({ ...item, status: statusLabelMap[item.status] || item.status }))
+    total.value = res?.total ?? filtered.length
   } catch (error) {
     console.error('获取报关数据失败:', error)
     ElMessage.error('获取报关数据失败')
   }
 }
+
+// 加载异常告警
+async function loadAlerts() {
+  try {
+    const list = await getClearanceExceptions(20)
+    alertList.value = (list || []).map(item => ({
+      id: item.id,
+      orderNo: item.declarationNo || item.orderNo,
+      type: item.statusType === 'error' ? '扣留' : item.statusType === 'warning' ? '查验中' : '审核',
+      level: item.statusType === 'error' ? 'high' : 'mid',
+      desc: item.reason || (item.status === 'REJECTED' ? '清关被退回，请尽快补充资料' : '清关查验中'),
+      time: item.declareTime ? String(item.declareTime).slice(0, 16).replace('T', ' ') : '',
+      ...item
+    }))
+  } catch (e) {
+    console.error('获取清关异常失败:', e)
+    alertList.value = []
+  }
+}
+
+// 加载 KPI 概览
+async function loadOverview() {
+  try {
+    const res = await getClearanceOverview()
+    kpiOverview.avgDays = res?.avgDays ?? 0
+    kpiOverview.passRate = res?.passRate ?? 0
+  } catch (e) {
+    console.error('获取清关概览失败:', e)
+  }
+}
+
+// 加载近 7 天时效
+async function loadDailyDays() {
+  try {
+    const list = await getClearanceDailyDays(7)
+    weekData.value = (list || []).map(d => ({
+      day: d.date ? String(d.date).slice(5) : '',
+      hours: Math.round((d.avgDays || 0) * 24)
+    }))
+  } catch (e) {
+    console.error('获取清关时效失败:', e)
+    weekData.value = []
+  }
+}
+
+// 加载国家对比
+async function loadCountryCompare() {
+  try {
+    const list = await getClearanceCountryCompare()
+    getClearanceCountryCompareCached.value = list || []
+  } catch (e) {
+    console.error('获取国家清关时效失败:', e)
+    getClearanceCountryCompareCached.value = []
+  }
+}
+
+async function loadAll() {
+  await Promise.all([loadData(), loadAlerts(), loadOverview(), loadDailyDays(), loadCountryCompare()])
+}
+
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.keyword = ''; handleSearch() }
 function handleAdd() { dialogTitle.value = '新建清关申报'; editForm.declarationNo = ''; editForm.orderNo = ''; editForm.productName = ''; editForm.status = '待申报'; dialogVisible.value = true }
@@ -395,7 +466,7 @@ async function handleDelete(row) {
     await ElMessageBox.confirm('确定删除？', '提示')
     await deleteClearance(row.id)
     ElMessage.success('删除成功')
-    await loadData()
+    await loadAll()
   } catch (e) {
     if (e !== 'cancel') {
       ElMessage.error('删除失败: ' + (e.message || '未知错误'))
@@ -404,29 +475,27 @@ async function handleDelete(row) {
 }
 async function handleSave() {
   try {
+    // 中文 → 英文
+    const statusMap = { '待申报': 'PENDING', '申报中': 'INSPECTING', '已放行': 'CLEARED', '被查验': 'INSPECTING' }
+    const payload = {
+      declarationNo: editForm.declarationNo,
+      orderNo: editForm.orderNo,
+      productName: editForm.productName,
+      status: statusMap[editForm.status] || 'PENDING'
+    }
     if (editForm.id) {
-      await updateClearance(editForm.id, {
-        declarationNo: editForm.declarationNo,
-        orderNo: editForm.orderNo,
-        productName: editForm.productName,
-        status: editForm.status
-      })
+      await updateClearance(editForm.id, payload)
     } else {
-      await createClearance({
-        declarationNo: editForm.declarationNo,
-        orderNo: editForm.orderNo,
-        productName: editForm.productName,
-        status: editForm.status
-      })
+      await createClearance(payload)
     }
     ElMessage.success('保存成功')
     dialogVisible.value = false
-    await loadData()
+    await loadAll()
   } catch (e) {
     ElMessage.error('保存失败: ' + (e.message || '未知错误'))
   }
 }
-onMounted(() => loadData())
+onMounted(() => loadAll())
 </script>
 
 <style scoped>

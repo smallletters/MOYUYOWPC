@@ -138,16 +138,25 @@ async function handleLogin() {
   try {
     const res = await login({ email: form.email, password: form.password })
     if (res && res.token) {
-      // 记住我：选中则 localStorage，否则用 sessionStorage，关闭浏览器自动失效
+      // 始终写入 localStorage，确保 router 守卫与请求拦截器都能读到 token；
+      // sessionStorage 写入一份用于兼容"非记住我"场景的关闭浏览器失效行为
+      localStorage.setItem('admin_token', res.token)
+      sessionStorage.setItem('admin_token', res.token)
       if (form.remember) {
-        localStorage.setItem('admin_token', res.token)
         localStorage.setItem('admin_email', form.email)
       } else {
-        sessionStorage.setItem('admin_token', res.token)
         sessionStorage.setItem('admin_email', form.email)
       }
       ElMessage.success('登录成功')
-      router.push('/dashboard')
+      // 使用 next tick 等 token 写入后再跳转，避免守卫拦回登录页
+      try {
+        await router.push('/dashboard')
+      } catch (navErr) {
+        // vue-router 4 在重复路由或守卫 reject 时抛 NavigationFailure；
+        // 退化到整页跳转，避免出现"登录成功但卡在登录页"的体验
+        console.warn('router.push 失败，降级到 location.href:', navErr)
+        window.location.href = '/admin/dashboard'
+      }
     } else {
       ElMessage.error(res?.message || '登录失败')
     }

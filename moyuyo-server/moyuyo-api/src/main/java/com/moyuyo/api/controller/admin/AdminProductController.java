@@ -27,6 +27,25 @@ public class AdminProductController {
   // 注入 WooCommerce 客户端：用于配置检查
   private final com.moyuyo.service.impl.WooCommerceClient wooCommerceClient;
 
+  /**
+   * 幂等守卫：标记 WooCommerce 商品拉取任务是否正在进行。
+   * <p>
+   * P1 修复背景：原实现每次请求都 new Thread().start()，并发触发会创建大量原生线程，触发器可能瞬间拉起 100+ 个同步任务，
+   * 既重复消费 WooCommerce API 配额，又会拖垮 MySQL 连接池。本守卫保证同一时刻只有一个拉取任务在跑。
+   */
+  private static final java.util.concurrent.atomic.AtomicBoolean WOO_PRODUCT_PULL_RUNNING = new java.util.concurrent.atomic.AtomicBoolean(false);
+
+  /**
+   * WooCommerce 拉取任务专用线程池：固定大小 1，仅承载本任务，避免每次 new Thread() 的资源浪费。
+   * 使用守护线程（daemon=true），JVM 退出时自动清理。
+   */
+  private static final java.util.concurrent.ExecutorService WOO_PRODUCT_PULL_EXECUTOR =
+      java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "woo-product-pull");
+        t.setDaemon(true);
+        return t;
+      });
+
   @Operation(summary = "商品分类列表")
   @GetMapping("/categories")
   public Result<?> categories() {
@@ -206,7 +225,13 @@ public class AdminProductController {
 
   /**
    * 从 WooCommerce 拉取全量商品到本地。
-   * 异步执行，立即返回 taskId 给前端轮询。
+   * 异步执行，立即返回给前端。
+   * <p>
+   * P1 资源修复：原实现使用 new Thread() 创建原生线程，无线程池管控 / 异常传递 / 任务追踪 / 取消能力，
+   * 高并发触发时会无限堆积。改用：
+   * 1) 静态单线程 ExecutorService 复用线程，避免每次新建
+   * 2) AtomicBoolean 幂等守卫，并发点击只接受第一个，其余返回"任务进行中"
+   * 3) finally 块释放守卫，避免线程崩溃后守卫永远卡住
    */
   @Operation(summary = "从 WooCommerce 拉取商品")
   @PostMapping("/sync-from-woo")
@@ -217,22 +242,32 @@ public class AdminProductController {
       err.put("message", check.getMessage());
       return Result.error(503, (String) err.get("message"));
     }
+    // 幂等守卫：若已有任务在跑，直接返回
+    if (!WOO_PRODUCT_PULL_RUNNING.compareAndSet(false, true)) {
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("message", "已有 WooCommerce 商品拉取任务在进行中，请稍后再试");
+      result.put("running", true);
+      return Result.success(result);
+    }
     try {
-      // 拉取 + 入库通常耗时较久，放到独立线程避免阻塞 HTTP
-      Thread t = new Thread(() -> {
+      WOO_PRODUCT_PULL_EXECUTOR.submit(() -> {
         try {
           wooCommerceSyncService.syncProductsFromWooCommerce();
         } catch (Exception ex) {
           org.slf4j.LoggerFactory.getLogger(AdminProductController.class)
-              .error("从 WooCommerce 拉取商品失败: {}", ex.getMessage());
+              .error("从 WooCommerce 拉取商品失败: {}", ex.getMessage(), ex);
+        } finally {
+          // 无论成功失败都要释放守卫，否则后续请求全部被拒
+          WOO_PRODUCT_PULL_RUNNING.set(false);
         }
-      }, "woo-product-pull-all");
-      t.setDaemon(true);
-      t.start();
+      });
       Map<String, Object> result = new LinkedHashMap<>();
       result.put("message", "WooCommerce 商品拉取任务已启动");
+      result.put("running", true);
       return Result.success(result);
     } catch (Exception e) {
+      // 提交任务本身失败也要释放守卫
+      WOO_PRODUCT_PULL_RUNNING.set(false);
       return Result.error("启动 WooCommerce 拉取任务失败: " + e.getMessage());
     }
   }

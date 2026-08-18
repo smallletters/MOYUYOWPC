@@ -52,8 +52,8 @@ public class AdminOrderOpsController {
   @Operation(summary = "创建导出任务")
   @PostMapping("/export/create")
   public Result<Map<String, Object>> createExport(@RequestBody OrderExportCreateRequest request) {
-    // 调用服务层创建实际的导出任务，返回任务ID和状态
-    // 注意:Service 层暂仍接收 Map,此处仅做入参 DTO 化,后续 Service 改造时再消除 Map
+    // TODO: 跨模块 service 接口签名迁移（moyuyo-service 模块）。当前 AdminOrderOpsService.createExportTask 仍接收 Map<String, Object>，
+    // 待 service 层切换为 OrderExportCreateRequest 后删除此处 Map 转换，避免类型漂移。
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("taskName", request.getTaskName());
     body.put("orderScope", request.getOrderScope());

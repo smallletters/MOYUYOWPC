@@ -40,9 +40,28 @@ payment:
     mode: sandbox
     allowed-origins: https://moyuyo.com
 
+# 测试环境：完全禁用 WooCommerce 集成（避免 @NotBlank 校验失败阻塞测试上下文）
+# 必须设置完整的 4 个字段（url/consumer-key/consumer-secret/connect-timeout/read-timeout）
+# 因为 WooCommerceProperties 标注了 @Validated，所有字段缺失都会触发 ConfigurationPropertiesBindException
+woocommerce:
+  url: https://mock.woocommerce.test
+  consumer-key: mock_consumer_key
+  consumer-secret: mock_consumer_secret
+  connect-timeout: 5000
+  read-timeout: 15000
+  stock-sync:
+    auto-enabled: false
+    cron: "0 */5 * * * *"
+
 # RocketMQ 测试环境：关闭，避免 OrderTimeoutConsumer 启动失败阻塞 Spring 上下文
 rocketmq:
   enabled: false
+
+# 测试环境 admin 账号：AdminInitializer 在 H2 空库下启动时强制要求 admin 环境变量，
+# 不设置会导致 Spring 上下文启动失败。这里通过 MOYUYO_SKIP_ADMIN_INIT=true 跳过初始化，
+# 集成测试通过 Mock / 直接插表方式注入 admin 账号
+moyuyo:
+  skip-admin-init: true
 
 # 测试环境限流器配置：设置极高阈值，避免集成测试触发限流降级
 # 降级方法返回 Result.error(429, ...) 时 HTTP 状态码仍为 200，会干扰测试断言

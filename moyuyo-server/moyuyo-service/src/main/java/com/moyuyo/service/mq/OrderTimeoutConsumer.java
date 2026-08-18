@@ -1,6 +1,7 @@
 package com.moyuyo.service.mq;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.common.mq.TopicConstant;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.service.OrderService;
@@ -55,7 +56,9 @@ public class OrderTimeoutConsumer implements RocketMQListener<String> {
             }
 
             // 检查订单状态，仅自动取消未支付的订单
-            if ("PENDING".equals(order.getStatus()) || "UNPAID".equals(order.getStatus())) {
+            // P1 修复：原实现硬编码 "PENDING"/"UNPAID" 字符串，但 OrderStatusEnum 实际状态名为 PENDING_PAY，
+            // 导致超时订单永远不会被自动取消。改用枚举 name() 避免字符串漂移
+            if (OrderStatusEnum.PENDING_PAY.name().equals(order.getStatus())) {
                 log.info("订单 {} 超时未支付，自动取消", orderId);
                 orderService.cancelOrder(orderId, null, "订单超时自动取消");
             } else {

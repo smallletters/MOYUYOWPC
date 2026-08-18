@@ -1,9 +1,13 @@
 package com.moyuyo.common;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Path;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -11,7 +15,11 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.util.Set;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * GlobalExceptionHandler 单元测试
@@ -94,11 +102,42 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("兜底 Exception -> 500（不泄露内部信息）")
     void exception_returns500() {
-        Result<Void> r = handler.handleException(new RuntimeException("数据库连接失败，含密码 root/123456"));
+        // handleException 现在返回 ResponseEntity<Result<Void>>（支持按异常类型选择 500/503）
+        ResponseEntity<Result<Void>> resp = handler.handleException(
+                new RuntimeException("数据库连接失败，含密码 root/123456"));
+        assertThat(resp.getStatusCode().value()).isEqualTo(500);
+        Result<Void> r = resp.getBody();
+        assertThat(r).isNotNull();
         assertThat(r.getCode()).isEqualTo(500);
         // 关键安全断言：内部异常信息绝对不能泄露给客户端
         assertThat(r.getMessage()).doesNotContain("root");
         assertThat(r.getMessage()).doesNotContain("123456");
         assertThat(r.getMessage()).doesNotContain("数据库连接失败");
+    }
+
+    /**
+     * 方法级校验异常（@PathVariable / @RequestParam 上的 @Positive 等注解触发），
+     * 由 @Validated 启用后 ConstraintViolationException 抛出，
+     * 应被 handleConstraintViolation 拦截返回 400 而非 500。
+     * 关键安全路径：与 AddressController / PetController / BrowsingHistoryController 等加固点配合。
+     */
+    @Test
+    @DisplayName("ConstraintViolationException（@Validated 方法级校验）-> 400 包含字段路径")
+    void constraintViolation_returns400() {
+        // 构造一个简单的 ConstraintViolation 模拟对象
+        // 使用 mockito（spring-boot-starter-test 自带 mockito-core），
+        // 避免在测试中实现 ConstraintViolation 接口的十几个方法
+        @SuppressWarnings("unchecked")
+        ConstraintViolation<Object> violation = mock(ConstraintViolation.class);
+        Path path = mock(Path.class);
+        when(path.toString()).thenReturn("address.id");
+        when(violation.getPropertyPath()).thenReturn(path);
+        when(violation.getMessage()).thenReturn("地址 ID 必须为正整数");
+        Set<ConstraintViolation<?>> violations = Set.of((ConstraintViolation<?>) violation);
+
+        Result<Void> r = handler.handleConstraintViolation(new ConstraintViolationException(violations));
+        assertThat(r.getCode()).isEqualTo(400);
+        assertThat(r.getMessage()).contains("address.id");
+        assertThat(r.getMessage()).contains("地址 ID 必须为正整数");
     }
 }

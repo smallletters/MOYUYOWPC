@@ -1,1 +1,38 @@
-[{"date": "2026-07-29", "mode": "Architecture Audit", "score": 82, "findings": {"critical": 0, "warning": 5, "suggestion": 3}, "scope": "moyuyo-server/"}]
+[
+  {
+    "date": "2026-07-29",
+    "mode": "Architecture Audit",
+    "score": 82,
+    "findings": {
+      "critical": 0,
+      "warning": 5,
+      "suggestion": 3
+    },
+    "scope": "moyuyo-server/"
+  },
+  {
+    "date": "2026-08-06",
+    "mode": "Production Readiness Optimization",
+    "score": 90,
+    "findings": {
+      "critical": 0,
+      "warning": 1,
+      "suggestion": 3
+    },
+    "scope": "moyuyo-server/",
+    "optimizations": [
+      "actuator 端口独立化（8080 业务 / 9090 监控），与业务彻底解耦",
+      "Prometheus 告警规则新增 JVM 线程数、Pod OOMKilled、MySQL 长事务、Redis 连接数四项",
+      "Prometheus 抓取配置新增 mysqld-exporter 与 redis-exporter",
+      "docker-compose 追加 mysqld-exporter 与 redis-exporter 服务",
+      "ProdConfigValidator admin.email 增加域名自身拼写校验（拦截 typo-only 域名）",
+      "Redis 资源限制从 1G 调整到 1.28G，避免 fork COW 高峰被宿主机 OOM-kill",
+      "MySQL max_connections 从 300 下调到 200，减少每连接 5MB 内存浪费",
+      "RocketMQ producer 增加 max-message-size=1MB 与 compress 阈值 4KB",
+      ".env.example 增加 MYSQL_EXPORTER_PASSWORD 配置说明"
+    ],
+    "resolved_warnings": [
+      "[Domain Model Distortion] — 仍为长期债，需按域分批迁移 DTO/VO；本次未触动（架构性变更）"
+    ]
+  }
+]

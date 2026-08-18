@@ -190,10 +190,9 @@
         <el-icon :size="14"><ArrowRight /></el-icon>
       </div>
 
-      <!-- 年龄验证状态列表（示例数据） -->
+      <!-- 年龄验证状态列表 -->
       <div class="minor-table-title">
         <span>年龄验证状态</span>
-        <el-tag size="small" type="info" effect="plain">示例数据</el-tag>
       </div>
       <el-table :data="minorList" stripe style="width: 100%">
         <el-table-column prop="userId" label="用户ID" width="130" />
@@ -302,7 +301,9 @@ import {
 } from '@element-plus/icons-vue'
 import {
   getGdprConsentRecords, getGdprDataRequests, getActivePolicy,
-  processGdprRequest, createGdprPolicy
+  processGdprRequest, createGdprPolicy,
+  getGdprMinorStats, getGdprMinorList, reverifyGdprMinor,
+  getGdprArchiveOverview, triggerGdprQuickAction
 } from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
@@ -370,17 +371,10 @@ const quickActions = [
   }
 ]
 
-// ---- 未成年人保护（示例数据：以下统计与列表为演示数据） ----
-const minorStats = { under13: 3, under16: 7 }
-
-const minorList = [
-  { userId: 'U100238', verifyStatus: 'VERIFIED', guardianConsent: '已取得', riskLevel: '低', lastCheck: '2026-07-21 14:32' },
-  { userId: 'U100415', verifyStatus: 'PENDING', guardianConsent: '未取得', riskLevel: '高', lastCheck: '2026-07-19 09:10' },
-  { userId: 'U100667', verifyStatus: 'VERIFIED', guardianConsent: '已取得', riskLevel: '低', lastCheck: '2026-07-16 16:45' },
-  { userId: 'U100892', verifyStatus: 'FAILED', guardianConsent: '未取得', riskLevel: '高', lastCheck: '2026-07-12 11:03' },
-  { userId: 'U101024', verifyStatus: 'PENDING', guardianConsent: '豁免', riskLevel: '中', lastCheck: '2026-07-08 10:27' },
-  { userId: 'U101188', verifyStatus: 'VERIFIED', guardianConsent: '已取得', riskLevel: '低', lastCheck: '2026-07-02 15:51' }
-]
+// ---- 未成年人保护（真实后端驱动） ----
+const minorStats = reactive({ under13: 0, under16: 0 })
+const minorList = ref([])
+const archiveOverview = reactive({ total: 0, active: 0, recent: [] })
 
 // ---- 弹窗状态 ----
 const createDialogVisible = ref(false)
@@ -450,7 +444,24 @@ async function loadData() {
       tableData.value = toArray(consentRes)
     }
   } catch (err) {
-    console.error('获取GDPR数据失败', err)
+      console.error('获取GDPR数据失败', err)
+    }
+    // 未成年人保护数据独立加载（不阻塞主流程）
+    loadMinor()
+}
+
+// ---- 未成年人数据加载 ----
+async function loadMinor() {
+  try {
+    const [stats, list] = await Promise.all([
+      getGdprMinorStats(),
+      getGdprMinorList(20)
+    ])
+    minorStats.under13 = stats?.under13 ?? 0
+    minorStats.under16 = stats?.under16 ?? 0
+    minorList.value = Array.isArray(list) ? list : []
+  } catch (err) {
+    console.error('获取未成年人保护数据失败', err)
   }
 }
 
@@ -491,7 +502,7 @@ function detailSummary(json) {
   }
 }
 
-// ---- 快速操作处理（示例演示，点击确认后仅提示） ----
+// ---- 快速操作处理（真实后端：写入 GDPR 快速操作流水） ----
 async function handleQuickAction(action) {
   try {
     await ElMessageBox.confirm(action.confirm, action.title, {
@@ -499,9 +510,29 @@ async function handleQuickAction(action) {
       confirmButtonText: '确认',
       cancelButtonText: '取消'
     })
-    ElMessage.success(`「${action.title}」操作已受理（示例演示，未调用真实接口）`)
   } catch {
-    // 用户取消，不做处理
+    return
+  }
+  try {
+    const res = await triggerGdprQuickAction({
+      actionType: action.key === 'export' ? 'EXPORT'
+        : action.key === 'delete' ? 'DELETE'
+        : action.key === 'consent' ? 'CONSENT_EXPORT'
+        : action.key === 'revoke' ? 'REVOKE'
+        : 'COMPLAINT',
+      format: action.key === 'export' ? 'JSON' : undefined
+    })
+    const id = res?.id ? `#${res.id}` : ''
+    if (res?.downloadUrl) {
+      ElMessage.success(`「${action.title}」已受理 ${id}，下载链接：${res.downloadUrl}`)
+    } else if (res?.gracePeriodEnd) {
+      ElMessage.success(`「${action.title}」已受理 ${id}，宽限期至 ${res.gracePeriodEnd}`)
+    } else {
+      ElMessage.success(`「${action.title}」已受理 ${id}`)
+    }
+    await loadData()
+  } catch (err) {
+    ElMessage.error('操作失败：' + (err?.message || '未知错误'))
   }
 }
 
@@ -529,25 +560,55 @@ function riskTag(level) {
   return 'danger'
 }
 
-// 家长同意凭证存档入口（示例演示）
-function handleArchiveConsent() {
-  ElMessage.info('家长同意凭证存档（示例演示，请接入真实凭证库）')
+// 家长同意凭证存档入口（真实后端：拉取凭证聚合 + 最近凭证列表）
+async function handleArchiveConsent() {
+  try {
+    const res = await getGdprArchiveOverview()
+    archiveOverview.total = res?.total ?? 0
+    archiveOverview.active = res?.active ?? 0
+    archiveOverview.recent = res?.recent ?? []
+    const recent = (res?.recent || []).map(r => `U${r.userId}/${r.relationship || '监护人'}`).join('、')
+    ElMessage.success(`已加载家长凭证存档：共 ${res?.total ?? 0} 份（活跃 ${res?.active ?? 0}），最近：${recent || '暂无'}`)
+  } catch (err) {
+    ElMessage.error('加载家长凭证存档失败：' + (err?.message || '未知错误'))
+  }
 }
 
-// 查看年龄验证详情（示例数据）
-function viewMinor(row) {
-  ElMessage.info(`查看用户 ${row.userId} 的年龄验证详情（示例数据）`)
+// 查看年龄验证详情（真实后端：拉取该用户的凭证列表）
+async function viewMinor(row) {
+  const userId = String(row.userId || '').replace(/^U/, '')
+  try {
+    const list = await getGdprConsentProofs(userId ? Number(userId) : null)
+    const summary = (list || []).map(p => `${p.guardianName || '监护人'}（${p.relationship || '-'}，${p.status || '-'}）`).join('；')
+    ElMessage.success(`用户 ${row.userId} 已存档 ${list?.length || 0} 份凭证：${summary || '暂无'}`)
+  } catch (err) {
+    ElMessage.error('查看凭证失败：' + (err?.message || '未知错误'))
+  }
 }
 
-// 重新发起年龄验证（示例演示）
-function reVerifyMinor(row) {
-  ElMessageBox.confirm(`将重新发起用户 ${row.userId} 的年龄验证流程，是否继续？`, '重新验证', {
-    type: 'warning',
-    confirmButtonText: '确认',
-    cancelButtonText: '取消'
-  })
-    .then(() => ElMessage.success(`用户 ${row.userId} 已发起重新验证（示例演示）`))
-    .catch(() => {})
+// 重新发起年龄验证（真实后端：刷新 verified_time / next_check_time）
+async function reVerifyMinor(row) {
+  const userId = String(row.userId || '').replace(/^U/, '')
+  if (!userId) {
+    ElMessage.warning('用户ID无效')
+    return
+  }
+  try {
+    await ElMessageBox.confirm(`将重新发起用户 ${row.userId} 的年龄验证流程，是否继续？`, '重新验证', {
+      type: 'warning',
+      confirmButtonText: '确认',
+      cancelButtonText: '取消'
+    })
+  } catch {
+    return
+  }
+  try {
+    await reverifyGdprMinor(Number(userId))
+    ElMessage.success(`用户 ${row.userId} 已发起重新验证`)
+    await loadMinor()
+  } catch (err) {
+    ElMessage.error('重新验证失败：' + (err?.message || '未知错误'))
+  }
 }
 
 // ---- 新建隐私政策 ----

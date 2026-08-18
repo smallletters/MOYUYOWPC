@@ -9,7 +9,9 @@ import com.moyuyo.service.AddressService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +20,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/addresses")
 @RequiredArgsConstructor
+// 方法级校验：@PathVariable 上的 @Positive 才能生效（类级 @Validated 是方法级校验的开关）
+@Validated
 public class AddressController {
 
   private final AddressService addressService;
@@ -30,7 +34,7 @@ public class AddressController {
 
   @Operation(summary = "获取地址详情")
   @GetMapping("/{id}")
-  public Result<AddressEntity> getById(@PathVariable Long id) {
+  public Result<AddressEntity> getById(@PathVariable @Positive(message = "地址 ID 必须为正整数") Long id) {
     try {
       AddressEntity entity = addressService.getById(id, UserContextHolder.getUserId());
       return Result.success(entity);
@@ -48,7 +52,7 @@ public class AddressController {
 
   @Operation(summary = "更新地址")
   @PutMapping("/{id}")
-  public Result<AddressEntity> update(@PathVariable Long id, @Valid @RequestBody AddressRequest request) {
+  public Result<AddressEntity> update(@PathVariable @Positive(message = "地址 ID 必须为正整数") Long id, @Valid @RequestBody AddressRequest request) {
     AddressEntity entity = buildEntity(request);
     entity.setId(id);
     return Result.success(addressService.update(UserContextHolder.getUserId(), entity));
@@ -56,21 +60,21 @@ public class AddressController {
 
   @Operation(summary = "删除地址")
   @DeleteMapping("/{id}")
-  public Result<Void> delete(@PathVariable Long id) {
+  public Result<Void> delete(@PathVariable @Positive(message = "地址 ID 必须为正整数") Long id) {
     addressService.delete(id, UserContextHolder.getUserId());
     return Result.success();
   }
 
   @Operation(summary = "设为默认地址")
   @PutMapping("/{id}/default")
-  public Result<Void> setDefault(@PathVariable Long id) {
+  public Result<Void> setDefault(@PathVariable @Positive(message = "地址 ID 必须为正整数") Long id) {
     addressService.setDefault(id, UserContextHolder.getUserId());
     return Result.success();
   }
 
   @Operation(summary = "验证地址可配送")
   @GetMapping("/{id}/validate")
-  public Result<AddressValidateResponse> validateAddress(@PathVariable Long id) {
+  public Result<AddressValidateResponse> validateAddress(@PathVariable @Positive(message = "地址 ID 必须为正整数") Long id) {
     return Result.success(addressService.validateAddress(id, UserContextHolder.getUserId()));
   }
 

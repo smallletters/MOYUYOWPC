@@ -1,13 +1,12 @@
 package com.moyuyo.api.config;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.moyuyo.dao.admin.entity.AdminUserEntity;
 import com.moyuyo.dao.admin.mapper.AdminUserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -41,6 +40,9 @@ public class AdminInitializer implements CommandLineRunner {
 
     private final AdminUserMapper adminUserMapper;
 
+    /** 统一从 PasswordEncoderConfig 注入，强度由 moyuyo.password.bcrypt-strength 控制 */
+    private final PasswordEncoder passwordEncoder;
+
     /** 显式用户名：生产环境必须通过环境变量显式设置，禁止使用弱默认值 */
     @Value("${admin.username:}")
     private String adminUsername;
@@ -53,10 +55,15 @@ public class AdminInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        // 已存在管理员账号时直接跳过，绝不重置已有账号的密码
-        Long count = adminUserMapper.selectCount(null);
+        // 仅查 ACTIVE 状态的管理员账号，避免 selectCount(null) 在生产大表上做全表扫描
+        // 软删除的账号不计入（status=DELETED 等由业务侧更新）
+        // 索引：mo_admin_user.status 已有普通索引（详见 V20260717_01__admin_new_tables.sql）
+        Long count = adminUserMapper.selectCount(
+            new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<AdminUserEntity>()
+                .eq("status", "ACTIVE")
+        );
         if (count != null && count > 0) {
-            log.info("已存在管理员账号，跳过初始化");
+            log.info("已存在 ACTIVE 管理员账号，跳过初始化");
             return;
         }
 
@@ -84,14 +91,13 @@ public class AdminInitializer implements CommandLineRunner {
             return;
         }
 
-        // 创建超级管理员，BCrypt 强度设为 12
-        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
+        // 创建超级管理员，BCrypt 强度由 moyuyo.password.bcrypt-strength 控制（默认 12）
         AdminUserEntity newAdmin = new AdminUserEntity();
         newAdmin.setUsername(adminUsername.trim());
         newAdmin.setEmail(adminEmail.trim());
         newAdmin.setName("Admin");
         newAdmin.setRole("SUPER_ADMIN");
-        newAdmin.setPassword(encoder.encode(adminPassword));
+        newAdmin.setPassword(passwordEncoder.encode(adminPassword));
         newAdmin.setStatus("ACTIVE");
         newAdmin.setCreateTime(LocalDateTime.now());
         adminUserMapper.insert(newAdmin);

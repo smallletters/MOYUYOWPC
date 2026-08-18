@@ -33,26 +33,47 @@ public class AdminRefundController {
   @GetMapping("/stats")
   public Result<Map<String, Object>> stats() {
     try {
-      // 查询总退款数
-      Long totalRefunds = refundMapper.selectCount(new LambdaQueryWrapper<>());
+      // P1 性能修复：原实现 selectList(全表) + in-memory grouping，10 万行退款会导致 50MB Java 堆分配 + OOM
+      // 改为 MySQL 端 GROUP BY + SUM 一次查询，让数据库做聚合，避免拉全表到 JVM
+      List<Map<String, Object>> aggRows = refundMapper.selectMaps(
+          new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<RefundEntity>()
+              .select("status", "COUNT(*) AS cnt", "COALESCE(SUM(amount), 0) AS amt")
+              .groupBy("status"));
 
-      // 按状态分组查询各状态数量（一次性查询避免重复全表扫描）
-      List<RefundEntity> allRefunds = refundMapper.selectList(new LambdaQueryWrapper<>());
-      Map<String, Long> statusCounts = allRefunds.stream()
-        .collect(Collectors.groupingBy(RefundEntity::getStatus, Collectors.counting()));
-
-      // 计算退款总金额（仅已完成退款）
-      BigDecimal totalAmount = allRefunds.stream()
-        .filter(r -> "COMPLETED".equals(r.getStatus()))
-        .map(r -> r.getAmount() != null ? r.getAmount() : BigDecimal.ZERO)
-        .reduce(BigDecimal.ZERO, BigDecimal::add);
+      long totalRefunds = 0L;
+      long pendingCount = 0L;
+      long approvedCount = 0L;
+      long rejectedCount = 0L;
+      long completedCount = 0L;
+      BigDecimal totalAmount = BigDecimal.ZERO;
+      for (Map<String, Object> row : aggRows) {
+        Object statusObj = row.get("status");
+        Object cntObj = row.get("cnt");
+        Object amtObj = row.get("amt");
+        if (statusObj == null || cntObj == null) continue;
+        long cnt = ((Number) cntObj).longValue();
+        totalRefunds += cnt;
+        String status = statusObj.toString();
+        switch (status) {
+          case "PENDING" -> pendingCount = cnt;
+          case "APPROVED" -> approvedCount = cnt;
+          case "REJECTED" -> rejectedCount = cnt;
+          case "COMPLETED" -> {
+            completedCount = cnt;
+            if (amtObj != null) {
+              totalAmount = new BigDecimal(amtObj.toString());
+            }
+          }
+          default -> { /* 其他状态仅计入 totalRefunds，不细分 */ }
+        }
+      }
 
       Map<String, Object> result = new LinkedHashMap<>();
       result.put("totalRefunds", totalRefunds);
-      result.put("pendingCount", statusCounts.getOrDefault("PENDING", 0L));
-      result.put("approvedCount", statusCounts.getOrDefault("APPROVED", 0L));
-      result.put("rejectedCount", statusCounts.getOrDefault("REJECTED", 0L));
-      result.put("completedCount", statusCounts.getOrDefault("COMPLETED", 0L));
+      result.put("pendingCount", pendingCount);
+      result.put("approvedCount", approvedCount);
+      result.put("rejectedCount", rejectedCount);
+      result.put("completedCount", completedCount);
       result.put("totalAmount", totalAmount.setScale(2, BigDecimal.ROUND_HALF_UP).toString());
       return Result.success(result);
     } catch (Exception e) {

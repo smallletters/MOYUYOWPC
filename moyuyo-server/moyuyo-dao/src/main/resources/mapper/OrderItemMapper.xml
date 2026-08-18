@@ -1,12 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.moyuyo.dao.mapper.OrderItemMapper">
 
   <select id="selectByOrderId" resultType="com.moyuyo.dao.entity.OrderItemEntity">
     SELECT * FROM mo_order_item
     WHERE order_id = #{orderId}
     ORDER BY id ASC
+  </select>
+
+  <!-- 批量按订单ID列表查询订单行，避免列表接口 N+1 -->
+  <select id="selectByOrderIds" resultType="com.moyuyo.dao.entity.OrderItemEntity">
+    SELECT * FROM mo_order_item
+    WHERE order_id IN
+    <foreach collection="orderIds" item="orderId" open="(" separator="," close=")">
+      #{orderId}
+    </foreach>
+    ORDER BY order_id ASC, id ASC
+  </select>
+
+  <!-- 按 productId 聚合近 N 天内的销量与营收（用于智能选品） -->
+  <select id="aggregateByProductSince" resultType="java.util.Map">
+    SELECT
+      product_id    AS productId,
+      COALESCE(SUM(quantity), 0)   AS qty,
+      COALESCE(SUM(subtotal), 0)   AS revenue
+    FROM mo_order_item
+    WHERE create_time &gt;= #{since}
+    GROUP BY product_id
   </select>
 
 </mapper>

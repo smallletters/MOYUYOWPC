@@ -5,7 +5,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -27,9 +26,15 @@ public class RequestLoggingFilter implements Filter {
     HttpServletRequest request = (HttpServletRequest) servletRequest;
     HttpServletResponse response = (HttpServletResponse) servletResponse;
 
-    // 生成追踪 ID 并放入 MDC（日志上下文），JwtAuthFilter 内也可通过 MDC 获取
-    String traceId = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
-    MDC.put(TRACE_ID_KEY, traceId);
+    // 关键修复：不要重复生成 traceId 覆盖 TraceIdFilter 写入 MDC 的值
+    // 历史 Bug：此处 UUID.randomUUID 会在 TraceIdFilter 之后执行（order=1 vs TraceIdFilter=0），
+    // 覆盖 TraceIdFilter 写入的合法 traceId（客户端传入合法值时丢失），并导致同请求日志 traceId 不一致
+    String traceId = MDC.get(TRACE_ID_KEY);
+    if (traceId == null || traceId.isEmpty()) {
+        // TraceIdFilter 未生效场景（如单元测试直接 new RequestLoggingFilter）兜底
+        traceId = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        MDC.put(TRACE_ID_KEY, traceId);
+    }
     MDC.put(REQUEST_START_KEY, String.valueOf(System.currentTimeMillis()));
 
     String method = request.getMethod();

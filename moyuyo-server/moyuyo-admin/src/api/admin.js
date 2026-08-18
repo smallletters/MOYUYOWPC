@@ -2,7 +2,22 @@
  * 管理后台 API 模块
  * 映射所有后端 Admin Controller 端点
  */
-import api from './index'
+import api, { API_BASE_URL } from './index'
+
+/**
+ * 共享 API 根地址重导出（定义见 ./index，避免循环依赖与多处定义）。
+ * 供 el-upload 等不走 axios 的场景拼接完整 URL，避免被前端 base='/admin/' 干扰。
+ */
+export { API_BASE_URL }
+
+/**
+ * 函数式 API：返回后端 API 根地址。
+ * <p>
+ * 与常量 API_BASE_URL 等价；保留函数形式便于将来按需切换。
+ */
+export function getApiBaseUrl() {
+  return API_BASE_URL
+}
 
 // ==================== 仪表盘 ====================
 export function getDashboardStats() {
@@ -131,6 +146,10 @@ export function approveRefund(id) {
 
 export function rejectRefund(id) {
   return api.put(`/refunds/${id}/reject`)
+}
+
+export function completeRefund(id, transactionId) {
+  return api.put(`/refunds/${id}/complete`, null, { params: { transactionId } })
 }
 
 export function getRefundDetail(id) {
@@ -371,6 +390,51 @@ export function getCategoryList() {
   return api.get('/products/categories')
 }
 
+// 关联商品弹窗使用：按关键字搜索轻量商品列表（仅返回 id/name/sku/price/mainImage）
+export function searchProductsLite(params) {
+  return api.get('/products/lite', { params })
+}
+
+// ==================== 文件上传 ====================
+// 单张图片上传：返回 { url, filename, originalName, size, contentType }
+export function uploadImage(file) {
+  const fd = new FormData()
+  fd.append('file', file)
+  return api.post('/upload/image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+}
+
+// 批量图片上传：files 为 File[]
+export function uploadImages(files) {
+  const fd = new FormData()
+  for (const f of files || []) fd.append('files', f)
+  return api.post('/upload/images', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+}
+
+// 删除已上传图片：url 为后端返回的相对路径（如 /uploads/2026/08/18/abc.png）
+export function deleteImage(url) {
+  return api.delete('/upload/image', { params: { url } })
+}
+
+/**
+ * 通过 axios 上传图片（绕过 el-upload 的 action 机制，避免 Vite base 干扰）。
+ * <p>
+ * 使用场景：组件需要自定义上传逻辑（如多文件、拖拽、粘贴），不适合用 el-upload action。
+ */
+export function uploadImagesViaAxios(files) {
+  const fd = new FormData()
+  for (const f of files) fd.append('files', f)
+  return api.post('/upload/images', fd)
+}
+
+/**
+ * 通过 axios 上传单张图片（用于富文本编辑器图片插入等场景）。
+ */
+export function uploadImageViaAxios(file) {
+  const fd = new FormData()
+  fd.append('file', file)
+  return api.post('/upload/image', fd)
+}
+
 // ==================== 产品分析 ====================
 export function getProductAnalysisKpi() {
   return api.get('/product-analysis/kpi')
@@ -504,8 +568,8 @@ export function getCarriers() {
   return api.get('/logistics/carriers')
 }
 
-export function getClearance() {
-  return api.get('/logistics/clearance')
+export function getClearance(params = {}) {
+  return api.get('/logistics/clearance/docs', { params })
 }
 
 export function getCustoms() {
@@ -642,6 +706,140 @@ export function processGdprRequest(id, data) {
 
 export function createGdprPolicy(data) {
   return api.post('/gdpr/policy', data)
+}
+
+// 未成年人保护 - 真实后端
+export function getGdprMinorStats() {
+  return api.get('/gdpr/minor/stats')
+}
+
+export function getGdprMinorList(limit = 50) {
+  return api.get('/gdpr/minor/list', { params: { limit } })
+}
+
+export function reverifyGdprMinor(userId) {
+  return api.post(`/gdpr/minor/${userId}/reverify`)
+}
+
+export function getGdprConsentProofs(userId) {
+  return api.get('/gdpr/minor/consent-proofs', { params: { userId } })
+}
+
+export function getGdprArchiveOverview() {
+  return api.get('/gdpr/minor/archive-overview')
+}
+
+export function triggerGdprQuickAction(data) {
+  return api.post('/gdpr/quick-action', data)
+}
+
+// 通知中心 - 真实后端
+export function getAdminNotifications(limit = 20) {
+  return api.get('/notifications', { params: { limit } })
+}
+
+export function getAdminUnreadCount() {
+  return api.get('/notifications/unread-count')
+}
+
+export function markNotificationRead(id) {
+  return api.post(`/notifications/${id}/read`)
+}
+
+export function markAllNotificationsRead() {
+  return api.post('/notifications/read-all')
+}
+
+// 清关 / 仓库 KPI / 智能分配 / 拆包裹策略 - 真实后端
+export function getClearanceOverview() {
+  return api.get('/logistics/clearance/overview')
+}
+
+export function getClearanceExceptions(limit = 20) {
+  return api.get('/logistics/clearance/exceptions', { params: { limit } })
+}
+
+export function getClearanceDocs(params = {}) {
+  return api.get('/logistics/clearance/docs', { params })
+}
+
+export function getClearanceDailyDays(days = 7) {
+  return api.get('/logistics/clearance/daily-days', { params: { days } })
+}
+
+export function getClearanceCountryCompare() {
+  return api.get('/logistics/clearance/country-compare')
+}
+
+export function getWarehouseKpi() {
+  return api.get('/logistics/warehouse/kpi')
+}
+
+export function getWarehouseAllocationSuggest() {
+  return api.get('/logistics/warehouse/allocation-suggest')
+}
+
+export function applyWarehouseAllocation(id) {
+  return api.post(`/logistics/warehouse/allocation-suggest/${id}/apply`)
+}
+
+export function getWarehouseCategoryStocks(warehouse) {
+  return api.get('/logistics/warehouse/category-stocks', { params: { warehouse } })
+}
+
+export function getWarehouseSmartPicks(limit = 6) {
+  return api.get('/logistics/warehouse/smart-picks', { params: { limit } })
+}
+
+export function getSplitPackageVersions() {
+  return api.get('/logistics/split-package/versions')
+}
+
+export function getSplitPackageRules(versionId) {
+  return api.get('/logistics/split-package/rules', { params: { versionId } })
+}
+
+// 直播监控规则 / 违规告警 - 真实后端
+export function getLiveMonitorRules() {
+  return api.get('/live/monitor-rules')
+}
+
+export function getLiveViolationAlerts(limit = 20) {
+  return api.get('/live/violation-alerts', { params: { limit } })
+}
+
+export function handleLiveAlert(id) {
+  return api.post(`/live/violation-alerts/${id}/handle`)
+}
+
+// 活动草稿 - 真实后端
+export function saveCampaignDraft(data) {
+  return api.post('/marketing/campaigns/draft', data)
+}
+
+// 用户画像 6 图表 - 真实后端
+export function getUserProfileSpendTrend(userId) {
+  return api.get(`/user-profile/${userId}/charts/spend-trend`)
+}
+
+export function getUserProfileFunnel(userId) {
+  return api.get(`/user-profile/${userId}/charts/funnel`)
+}
+
+export function getUserProfileCategory(userId) {
+  return api.get(`/user-profile/${userId}/charts/category`)
+}
+
+export function getUserProfileActiveHours(userId) {
+  return api.get(`/user-profile/${userId}/charts/active-hours`)
+}
+
+export function getUserProfileDevice(userId) {
+  return api.get(`/user-profile/${userId}/charts/device`)
+}
+
+export function getUserProfileChannel(userId) {
+  return api.get(`/user-profile/${userId}/charts/channel`)
 }
 
 // ==================== 审计日志 ====================

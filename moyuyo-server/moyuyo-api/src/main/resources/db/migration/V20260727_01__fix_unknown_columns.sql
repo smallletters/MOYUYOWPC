@@ -26,7 +26,7 @@ ALTER TABLE `mo_order_item`
     ADD COLUMN `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间' AFTER `subtotal`;
 
 -- 索引补齐（如果不存在则添加）
-CREATE INDEX IF NOT EXISTS `idx_points_log_deleted` ON `mo_points_log` (`deleted`);
-CREATE INDEX IF NOT EXISTS `idx_risk_alert_status` ON `mo_risk_alert_config` (`status`);
-CREATE INDEX IF NOT EXISTS `idx_admin_role_preset` ON `mo_admin_role` (`is_preset`);
-CREATE INDEX IF NOT EXISTS `idx_order_item_create_time` ON `mo_order_item` (`create_time`);
+CREATE INDEX `idx_points_log_deleted` ON `mo_points_log` (`deleted`);
+CREATE INDEX `idx_risk_alert_status` ON `mo_risk_alert_config` (`status`);
+CREATE INDEX `idx_admin_role_preset` ON `mo_admin_role` (`is_preset`);
+CREATE INDEX `idx_order_item_create_time` ON `mo_order_item` (`create_time`);

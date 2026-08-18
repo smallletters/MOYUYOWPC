@@ -195,6 +195,9 @@ public class ProductServiceImpl implements ProductService {
     entity.setUpdateTime(java.time.LocalDateTime.now());
     productMapper.insert(entity);
 
+    // 保存商品图库到 mo_product_image（对齐 WC images[]）
+    saveImages(entity.getId(), body);
+
     // 事务提交后异步推送到 WooCommerce（避免阻塞主流程与事务回滚）
     registerWooCommercePush(entity, "create");
     return entity;
@@ -277,9 +280,77 @@ public class ProductServiceImpl implements ProductService {
 
     productMapper.updateById(entity);
 
+    // 商品图库更新（如果 body 中含 images 则覆盖，否则保留旧图）
+    if (body.containsKey("images")) {
+      saveImages(id, body);
+    }
+
     // 事务提交后异步推送到 WooCommerce（避免阻塞主流程与事务回滚）
     registerWooCommercePush(entity, "update");
     return entity;
+  }
+
+  /**
+   * 保存商品图库到 mo_product_image 表。
+   * <p>
+   * 输入格式（与前端 ImageUploader 输出一致）：
+   *   body.images = [{ url: "...", name: "..." }, ...] 或纯字符串数组
+   * <p>
+   * 行为：
+   *   1) 删除该商品所有旧图
+   *   2) 按数组下标设置 sort（首张 sort=0 = 封面，对齐 WC images[0]）
+   *   3) 同步更新 products.mainImage 为 images[0].url
+   */
+  private void saveImages(Long productId, Map<String, Object> body) {
+    Object raw = body.get("images");
+    if (raw == null) return;
+
+    // 清空旧图
+    productImageMapper.delete(
+        new LambdaQueryWrapper<ProductImageEntity>().eq(ProductImageEntity::getProductId, productId));
+
+    List<ProductImageEntity> newImages = new java.util.ArrayList<>();
+    if (raw instanceof List<?> list) {
+      int sort = 0;
+      for (Object item : list) {
+        String url = null;
+        String name = null;
+        if (item instanceof Map<?, ?> m) {
+          url = (String) m.get("url");
+          name = (String) m.get("name");
+        } else if (item instanceof String s) {
+          url = s;
+        }
+        if (url == null || url.isBlank()) continue;
+        ProductImageEntity ie = new ProductImageEntity();
+        ie.setProductId(productId);
+        ie.setUrl(url);
+        ie.setSort(sort++);
+        newImages.add(ie);
+        if (sort == 1) name = name; // 保留原始名供后续拓展
+      }
+    }
+
+    if (newImages.isEmpty()) {
+      // 没有图片时同步清空 mainImage
+      ProductEntity e = productMapper.selectById(productId);
+      if (e != null) {
+        e.setMainImage(null);
+        productMapper.updateById(e);
+      }
+      return;
+    }
+
+    for (ProductImageEntity ie : newImages) {
+      productImageMapper.insert(ie);
+    }
+
+    // 同步 mainImage 为 images[0]
+    ProductEntity e = productMapper.selectById(productId);
+    if (e != null) {
+      e.setMainImage(newImages.get(0).getUrl());
+      productMapper.updateById(e);
+    }
   }
 
   /**

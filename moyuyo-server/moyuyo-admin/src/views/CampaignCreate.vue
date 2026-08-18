@@ -263,7 +263,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getCampaigns, createCampaign, updateCampaign, deleteCampaign } from '../api/admin'
+import { getCampaigns, createCampaign, updateCampaign, deleteCampaign, saveCampaignDraft } from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
 // ===== Tab 状态 =====
@@ -354,9 +354,22 @@ async function submitCampaign() {
   }
 }
 
-// 保存草稿（示例：仅提示，不落库）
-function saveDraft() {
-  ElMessage.success('草稿已保存（示例演示）')
+// 保存草稿（真实后端：写入 marketing_campaign 表，状态 DRAFT）
+async function saveDraft() {
+  if (!basicForm.name) { ElMessage.warning('请输入活动名称'); return }
+  try {
+    const res = await saveCampaignDraft({
+      name: basicForm.name,
+      type: basicForm.type,
+      description: basicForm.description,
+      startDate: basicForm.dateRange && basicForm.dateRange[0] || undefined,
+      endDate: basicForm.dateRange && basicForm.dateRange[1] || undefined,
+      budget: basicForm.budget
+    })
+    ElMessage.success('草稿已保存：' + (res?.id ? '#' + res.id : basicForm.name))
+  } catch (e) {
+    ElMessage.error('草稿保存失败：' + (e?.message || '未知错误'))
+  }
 }
 
 // 重置创建表单

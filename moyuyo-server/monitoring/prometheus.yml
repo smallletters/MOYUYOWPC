@@ -11,6 +11,8 @@ rule_files:
   - "alerts/*.yml"
 
 # 告警发送目标（按需启用 Alertmanager）
+# 启用方法：部署 alertmanager 容器后取消下行注释，并按实际地址修改 target。
+# 告警分组/抑制/路由规则在 alertmanager.yml 单独维护。
 # alerting:
 #   alertmanagers:
 #     - static_configs:
@@ -18,18 +20,57 @@ rule_files:
 
 scrape_configs:
   # MOYUYO 后端 JVM / HTTP / HikariCP / RocketMQ 等指标
+  # P1：actuator 已切到独立 9090 端口，仅绑定 127.0.0.1
   - job_name: 'moyuyo-server'
     metrics_path: '/actuator/prometheus'
     scrape_interval: 15s
     scrape_timeout: 10s
     static_configs:
-      # 同主机抓取，仅本机回环
-      - targets: ['localhost:8080']
+      # 同主机抓取 actuator 独立端口；9090 仅绑定 127.0.0.1，由本机 Prometheus 直连
+      - targets: ['localhost:9090']
         labels:
           service: 'moyuyo-server'
+          env: 'prod'
+
+  # MySQL 监控：依赖 mysqld_exporter 容器（同主机）
+  # 用于监控连接数、长事务、慢查询等关键指标
+  # 启用方法：docker compose up -d mysqld-exporter（参考 docker-compose.yml 注释）
+  - job_name: 'moyuyo-mysql'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ['localhost:9104']
+        labels:
+          service: 'moyuyo-mysql'
+          env: 'prod'
+
+  # Redis 监控：依赖 redis_exporter 容器
+  - job_name: 'moyuyo-redis'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ['localhost:9121']
+        labels:
+          service: 'moyuyo-redis'
           env: 'prod'
 
   # Prometheus 自身指标
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
+
+  # RocketMQ 自身指标（broker 暴露 5557 端口输出 prometheus 文本协议）。
+  # 启用方法：
+  #   1) 在 rocketmq-broker 启动命令追加 "-Drocketmq.metrics.prometheusExporterPath=/metrics"
+  #      并发布端口 127.0.0.1:5557；
+  #   2) 取消下方 job 注释，根据实际部署修改 targets。
+  # 关键指标：rocketmq_producer_offset / rocketmq_consumer_offset / rocketmq_message_accumulation。
+  # - job_name: 'moyuyo-rocketmq'
+  #   metrics_path: '/metrics'
+  #   scrape_interval: 30s
+  #   scrape_timeout: 10s
+  #   static_configs:
+  #     - targets: ['localhost:5557']
+  #       labels:
+  #         service: 'moyuyo-rocketmq'
+  #         env: 'prod'

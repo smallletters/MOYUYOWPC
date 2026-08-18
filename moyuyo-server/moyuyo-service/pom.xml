@@ -23,10 +23,24 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- BCrypt 密码编码器：AuthServiceImpl / AdminStaffServiceImpl 等使用统一 PasswordEncoder Bean
+             不再各自 new BCryptPasswordEncoder(12)，强度由 moyuyo.password.bcrypt-strength 控制 -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
         <!-- Elasticsearch -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+        </dependency>
+
+        <!-- 测试依赖（JUnit 5 + AssertJ） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

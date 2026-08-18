@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.utils.PageParamGuard;
 import com.moyuyo.service.admin.AdminUserManageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,8 +35,10 @@ public class AdminUserController {
       @RequestParam(required = false) String level,
       @RequestParam(required = false) String channel,
       @RequestParam(required = false) String status) {
+    // 分页参数统一守卫：避免 size=100000 触发 OOM / 全表扫描
+    int[] pageParams = PageParamGuard.normalize(page, size, 15);
     // 从数据库分页查询用户列表（含会员等级信息）
-    Map<String, Object> data = adminUserManageService.listUsers(page, size, search, level, status);
+    Map<String, Object> data = adminUserManageService.listUsers(pageParams[0], pageParams[1], search, level, status);
     return Result.success(data);
   }
 
@@ -107,7 +110,15 @@ public class AdminUserController {
   @PostMapping("/{id}/reset-password")
   public Result<Map<String, Object>> resetPassword(@PathVariable Long id, @RequestBody Map<String, String> body) {
     try {
-      String newPassword = body.getOrDefault("password", "123456");
+      // P0 安全修复：拒绝缺省弱密码兜底，避免 body 缺 password 字段时被设置为 "123456"
+      // 强校验由 adminUserManageService.resetPassword 内部抛 IllegalArgumentException
+      String newPassword = body.get("password");
+      if (newPassword == null || newPassword.isBlank()) {
+        return Result.error(400, "新密码不能为空");
+      }
+      if (newPassword.length() < 12) {
+        return Result.error(400, "新密码至少 12 位");
+      }
       adminUserManageService.resetPassword(id, newPassword);
       Map<String, Object> result = new java.util.LinkedHashMap<>();
       result.put("id", id);

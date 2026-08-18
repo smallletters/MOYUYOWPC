@@ -13,6 +13,14 @@ target/
 node_modules/
 dist/
 .vite/
+# Java 单文件编译临时产物（javac 调试时残留，避免被误纳入生产镜像）
+.tmp-out/
+*.class
+# CP dump 调试文件（javac -d 调试时输出）
+cp.txt
+/cp.txt
+**/cp.txt
+**/moyuyo-common/cp.txt
 
 # ---- 备份与调试残留 ----
 *.bak
@@ -25,10 +33,37 @@ dist/
 dump*.sql
 
 # ---- 测试临时产物 ----
+# 大量调试测试脚本（Python 探针/PowerShell 验证/HTML 报告）：不在生产中使用
+# 全量屏蔽避免误提交
+moyuyo-admin/tests/
 moyuyo-admin/tests/screenshots*/
 moyuyo-admin/tests/ui_compare*/
 moyuyo-admin/tests/*.png
 moyuyo-admin/tests/*.html
+# 调试与回归测试中产生的 Python/JSON/文本残留（避免被误纳入生产镜像）
+moyuyo-admin/tests/_*.py
+moyuyo-admin/tests/_*.txt
+moyuyo-admin/tests/_*.json
+moyuyo-admin/tests/*.json
+moyuyo-admin/tests/*.txt
+moyuyo-admin/tests/admin_health_*.txt
+moyuyo-admin/admin_health_report.txt
+moyuyo-admin/smoke_*.json
+moyuyo-api/logs/
+moyuyo-service/logs/
+moyuyo-dao/logs/
+# 仓库根目录遗留的 PowerShell 探针与启动脚本（历史调试用，发布前应迁移到 scripts/）
+/test_*.ps1
+/build.log
+/server*.log
+/api.log*
+/app.log
+/server_err.log
+/server-error.log
+/server-output.log
+/server-new.log
+/server.err
+/.env
 
 # ---- IDE ----
 .idea/

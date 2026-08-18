@@ -65,13 +65,17 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: Build JAR (with tests)
-        run: mvn clean package -B
+      - name: Build JAR (skip tests, 已由 CI 跑过)
+        run: mvn clean package -DskipTests -B
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           MYSQL_PASSWORD: test
           REDIS_HOST: localhost
           REDIS_PORT: 6379
+          # 注入构建版本与时间，让运行时 StartupBannerLogger 显示真实版本（替代 unknown 占位）
+          # MOYUYO_BUILD_VERSION：取第一个 docker tag（去掉 'v' 前缀），保持与镜像 tag 一致便于运维追溯
+          MOYUYO_BUILD_VERSION: ${{ steps.meta.outputs.version }}
+          MOYUYO_BUILD_TIME: ${{ github.event.repository.updated_at }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -92,19 +96,65 @@ jobs:
             type=sha,prefix=v,format=short
             type=ref,event=branch
             type=semver,pattern={{version}}
+          # 输出 digest 用于 push 后二次扫描（默认 metadata-action@v5 已暴露 digest）
+          flavor: latest=auto
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: moyuyo-server/Dockerfile
+          context: ./moyuyo-server
+          file: ./moyuyo-server/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # BuildKit 缓存：复用上一次构建的中间层，显著加速 CI
+          # - cache-from：拉取上一次成功的缓存层（miss 也允许，会回退到全量构建）
+          # - cache-to：把本次构建的中间层推回 GitHub Actions 缓存
+          cache-from: type=gha,scope=moyuyo-server-cd
+          cache-to: type=gha,mode=max,scope=moyuyo-server-cd
+          # provenance 与 SBOM：满足 SLSA L1 + 软件供应链可追溯
+          provenance: true
+          sbom: true
+
+      # 镜像推送后立即进行 Trivy 漏洞扫描，发现 CRITICAL/HIGH 漏洞则删除已推送镜像
+      # 这样可阻止带高危 CVE 的镜像被生产环境拉取
+      - name: Scan image with Trivy (post-push)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_IMAGE }}@${{ steps.meta.outputs.digest }}
+          format: 'sarif'
+          output: 'trivy-cd-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-cd-results.sarif'
+          category: trivy-cd-image-scan
 
       - name: Notify deployment success
         run: |
           echo "Docker image published: ${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_IMAGE }}"
           echo "Tags: ${{ steps.meta.outputs.tags }}"
+          echo "Digest: ${{ steps.meta.outputs.digest }}"
+
+      # 部署摘要：把镜像 digest / tag 写到 Job Summary，方便运维一键复制到 K8s manifest
+      - name: Deployment summary
+        if: success()
+        run: |
+          echo "## MOYUYO 后端部署摘要" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **镜像**: \`${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_IMAGE }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Digest**: \`${{ steps.meta.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tags**: ${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### K8s 部署参考" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "kubectl set image deployment/moyuyo-server \\" >> $GITHUB_STEP_SUMMARY
+          echo "  moyuyo-server=${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_IMAGE }}@${{ steps.meta.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

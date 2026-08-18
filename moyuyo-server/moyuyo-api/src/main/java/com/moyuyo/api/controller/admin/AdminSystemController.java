@@ -2,11 +2,11 @@ package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
 import com.moyuyo.service.admin.SystemConfigService;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataAccessException;
-import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.ScanOptions;
@@ -70,18 +70,19 @@ public class AdminSystemController {
     @Operation(summary = "获取系统信息")
     @GetMapping("/info")
     public Result<Map<String, Object>> systemInfo() {
+        // 仅暴露 JVM / OS 基础元信息，避免泄露具体内存容量（运维通过 Prometheus / actuator 抓取更详细指标）
         Map<String, Object> info = new LinkedHashMap<>();
         info.put("version", "1.0.0");
         info.put("javaVersion", System.getProperty("java.version"));
         info.put("osName", System.getProperty("os.name"));
         info.put("availableProcessors", Runtime.getRuntime().availableProcessors());
+        // 仅返回使用率与可分配上限，不暴露 free/total 等具体数值（攻击者可借此评估 OOM 触发时机）
         long maxMemory = Runtime.getRuntime().maxMemory() / (1024 * 1024);
         long totalMemory = Runtime.getRuntime().totalMemory() / (1024 * 1024);
-        long freeMemory = Runtime.getRuntime().freeMemory() / (1024 * 1024);
-        info.put("maxMemory", maxMemory + "MB");
-        info.put("totalMemory", totalMemory + "MB");
-        info.put("freeMemory", freeMemory + "MB");
-        info.put("uptime", System.currentTimeMillis());
+        long usedMemory = totalMemory - Runtime.getRuntime().freeMemory() / (1024 * 1024);
+        int usagePercent = maxMemory > 0 ? (int) ((usedMemory * 100) / maxMemory) : 0;
+        info.put("heapUsagePercent", usagePercent);
+        info.put("heapMaxMB", maxMemory);
         return Result.success(info);
     }
 
@@ -102,30 +103,33 @@ public class AdminSystemController {
         return Result.success(result);
     }
 
-    @Operation(summary = "清除缓存")
+    @Operation(summary = "清除缓存（重型操作，限流保护防止滥用）")
     @PostMapping("/clear-cache")
+    @RateLimiter(name = "configUpdate", fallbackMethod = "clearCacheRateLimitFallback")
     public Result<Map<String, Object>> clearCache() {
-        try {
-            // 使用 SCAN 替代 KEYS，避免在大 Key 空间下阻塞 Redis
-            Set<String> configKeys = scanKeys("config:*");
-            Set<String> cacheKeys = scanKeys("cache:*");
-            int cleared = 0;
-            if (!configKeys.isEmpty()) {
-                redisTemplate.delete(configKeys);
-                cleared += configKeys.size();
-            }
-            if (!cacheKeys.isEmpty()) {
-                redisTemplate.delete(cacheKeys);
-                cleared += cacheKeys.size();
-            }
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("message", "缓存清除成功");
-            result.put("cleared", cleared);
-            return Result.success(result);
-        } catch (Exception e) {
-            // 异常详情仅记录日志，不向客户端泄露内部信息
-            return Result.error("清除缓存失败，请稍后重试");
+        // 使用 SCAN 替代 KEYS，避免在大 Key 空间下阻塞 Redis
+        Set<String> configKeys = scanKeys("config:*");
+        Set<String> cacheKeys = scanKeys("cache:*");
+        int cleared = 0;
+        if (!configKeys.isEmpty()) {
+            redisTemplate.delete(configKeys);
+            cleared += configKeys.size();
         }
+        if (!cacheKeys.isEmpty()) {
+            redisTemplate.delete(cacheKeys);
+            cleared += cacheKeys.size();
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("message", "缓存清除成功");
+        result.put("cleared", cleared);
+        return Result.success(result);
+    }
+
+    /**
+     * 清除缓存限流降级方法
+     */
+    private Result<Map<String, Object>> clearCacheRateLimitFallback(RequestNotPermitted e) {
+        return Result.error(429, "操作过于频繁，请稍后再试");
     }
 
     /**

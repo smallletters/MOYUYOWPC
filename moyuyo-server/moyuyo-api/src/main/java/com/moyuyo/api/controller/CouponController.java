@@ -3,6 +3,7 @@ package com.moyuyo.api.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
 import com.moyuyo.common.security.UserContextHolder;
+import com.moyuyo.common.utils.PageParamGuard;
 import com.moyuyo.dao.entity.CouponEntity;
 import com.moyuyo.service.CouponService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,7 +26,9 @@ public class CouponController {
     public Result<Page<CouponEntity>> listAvailable(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return Result.success(couponService.listAvailable(page, size));
+        // 分页参数统一守卫
+        int[] pageParams = PageParamGuard.normalize(page, size, 20);
+        return Result.success(couponService.listAvailable(pageParams[0], pageParams[1]));
     }
 
     @Operation(summary = "领取优惠券")

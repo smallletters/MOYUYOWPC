@@ -5,8 +5,12 @@ import router from '../router'
 // 防止多个并发 401 请求触发多次登录跳转
 let isRedirectingToLogin = false
 
+// 后端 API 根地址：dev 默认 '/api'（Vite 代理），prod 由 VITE_API_BASE_URL 注入完整后端地址
+// 注意：axios 与组件（el-upload 等）共用此值，避免出现"axios 用 /api 但 el-upload 用了别的"的不一致
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+
 const api = axios.create({
-  baseURL: '/api/admin',
+  baseURL: `${API_BASE_URL}/admin`,
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json'
@@ -17,8 +21,16 @@ const api = axios.create({
 const MAX_RETRIES = 2
 const RETRY_DELAY = 1000 // 毫秒
 
-// 请求拦截器：添加 Token
+// 请求拦截器：添加 Token + 处理 FormData（multipart）请求
 api.interceptors.request.use(config => {
+  // FormData / File 上传：删除默认 Content-Type，让浏览器自动加 multipart/form-data; boundary=...
+  // 否则 axios 的 application/json 默认头会覆盖，导致后端 multipart 解析失败
+  if (config.data instanceof FormData) {
+    if (config.headers) {
+      delete config.headers['Content-Type']
+      delete config.headers['content-type']
+    }
+  }
   const token = localStorage.getItem('admin_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
@@ -61,40 +73,64 @@ api.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    // 非 401 错误：自动重试（最多 MAX_RETRIES 次）
+    // 网络异常（非业务响应，如 ECONNRESET / ETIMEDOUT / ENOTFOUND）才重试
+    // 业务 HTTP 错误（4xx/5xx）由服务端兜底，重试只会重复触发同样的错误，且
+    // POST/PUT/PATCH/DELETE 等非幂等接口重试会造成重复扣款/重复发货等严重事故
+    const isNetworkError = !error.response
+    if (!isNetworkError) {
+      // 业务错误：直接走错误提示路径，不重试
+      return showErrorAndReject(error)
+    }
+
+    // 网络错误：自动重试（最多 MAX_RETRIES 次），且仅重试幂等方法
+    // GET/HEAD 天然幂等；POST 等非幂等方法在网络层抖动时由服务端幂等性兜底（参见后端 @OperationLog + 业务幂等键）
+    const method = (config?.method || 'get').toLowerCase()
+    const isIdempotent = method === 'get' || method === 'head'
+    if (!isIdempotent) {
+      // 非幂等方法的网络错误：避免重复提交，直接提示用户重试
+      return showErrorAndReject(error)
+    }
     if (config && !config._retryCount) {
       config._retryCount = 0
     }
     if (config && config._retryCount < MAX_RETRIES) {
       config._retryCount++
-      // 延迟后重试
+      // 指数退避：1s, 2s, 4s...避免对已恢复的下游雪崩式重试
       await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * config._retryCount))
       return api(config)
     }
 
     // 重试耗尽后显示错误提示
-    const status = error.response?.status
-    const statusMessages = {
-      400: '请求参数有误',
-      403: '没有访问权限',
-      404: '请求的资源不存在',
-      408: '请求超时',
-      429: '请求过于频繁，请稍后再试',
-      500: '服务器内部错误',
-      502: '网关错误',
-      503: '服务暂时不可用'
-    }
-
-    const message = statusMessages[status] || error.message || '网络异常，请检查网络连接'
-    ElMessage.error(message)
-
-    // 若后端返回了具体错误信息，优先使用
-    if (error.response?.data?.message) {
-      console.warn('API Error Detail:', error.response.data.message)
-    }
-
-    return Promise.reject(error)
+    return showErrorAndReject(error)
   }
 )
+
+/**
+ * 统一错误提示 + reject：业务错误与非幂等方法网络错误走这条路径
+ * 避免重复书写 ElMessage + statusMessages 表
+ */
+function showErrorAndReject(error) {
+  const status = error.response?.status
+  const statusMessages = {
+    400: '请求参数有误',
+    403: '没有访问权限',
+    404: '请求的资源不存在',
+    408: '请求超时',
+    429: '请求过于频繁，请稍后再试',
+    500: '服务器内部错误',
+    502: '网关错误',
+    503: '服务暂时不可用'
+  }
+
+  const message = statusMessages[status] || error.message || '网络异常，请检查网络连接'
+  ElMessage.error(message)
+
+  // 若后端返回了具体错误信息，优先使用
+  if (error.response?.data?.message) {
+    console.warn('API Error Detail:', error.response.data.message)
+  }
+
+  return Promise.reject(error)
+}
 
 export default api

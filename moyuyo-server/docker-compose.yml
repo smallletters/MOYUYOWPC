@@ -1,186 +1,281 @@
-version: "3.8"
+# Docker Compose V2 已弃用顶层 version 字段（自 2020 年 Docker Compose 1.28+），
+# 写入会触发 `WARN: the attribute 'version' is obsolete` 告警，且不影响部署行为。
+# 现已移除以保持仓库干净。
 
 services:
   # MySQL 数据库
   mysql:
-    image: mysql:8.0
+    image: mysql:8.0.36
     container_name: moyuyo-mysql
     restart: unless-stopped
+    # 资源限制：避免 MySQL OOM 时拖垮宿主机
+    # mem_limit: 硬上限（容器 OOM 后被 kill，但其他容器不受影响）
+    # cpus: 限制 CPU 使用，避免慢查询占用全部 CPU
+    # 注意：deploy.resources 仅在 swarm 模式生效，单机用 cpus / mem_limit 直接约束（需 Docker >= 19.03）
+    cpus: '2.0'
+    mem_limit: 2G
+    mem_reservation: 1G
+    # 限制文件描述符 / 进程数：防止异常连接耗尽 fd
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+      nproc:
+        soft: 8192
+        hard: 8192
     environment:
-      # 必填，未设置时 compose 会报错中止，避免弱默认密码上线
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
-      # 与 application-prod.yml 连接的生产库名保持一致
+      # root 密码与应用账号分离，避免业务连接使用 root
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-moyuyo_prod}
+      MYSQL_USER: ${MYSQL_USER:-moyuyo}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
       MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+      # 显式声明容器内时区，避免容器时区与宿主机/JVM 不一致导致 NOW()/TIMESTAMP 漂移
+      TZ: Asia/Shanghai
+      # 慢查询阈值（秒）：超过即记录到慢日志，便于排查与索引优化
+      # 设为 1s（覆盖大多数业务 SQL），高于该阈值的查询会被记录到 slow_query_log 便于排查
+      # 注意：必须同时开启 slow_query_log=ON（默认 OFF），通过 MYSQL_SLOW_QUERY_LOG 控制
+      MYSQL_LONG_QUERY_TIME: '1'
+      # 开启慢查询日志：默认 OFF，生产环境必须 ON 才能采集到慢 SQL
+      # 由监控侧的 mysqld-exporter + pt-query-digest 分析定位索引缺失
+      MYSQL_SLOW_QUERY_LOG: 'ON'
+      # log_slow_extra：开启扩展字段（锁时间、扫描行数等），便于深度分析（MySQL 8.0+）
+      MYSQL_LOG_SLOW_EXTRA: 'ON'
+      # 最大连接数：与 HikariCP maximum-pool-size * 实例数 + 预留 buffer 对齐
+      # P1 优化：默认 151 在低规格服务器下偏高，按需调整
+      # 多实例部署场景：max_connections >= N 实例 × 20 pool-size + DBA / Flyway / exporter 共用连接 ≈ 100
+      # 设置过大会导致每个连接占用 ~5MB（sort_buffer + tmp_table + binlog cache），300 连接 ≈ 1.5GB 内存浪费
+      MYSQL_MAX_CONNECTIONS: '200'
+      # InnoDB buffer pool：约占 mem_limit 的 50-70%，留余量给连接/排序
+      MYSQL_INNODB_BUFFER_POOL_SIZE: '1G'
+      # InnoDB 日志文件大小：与 innodb_log_files_in_group 配合（默认 2 组共 96MB 偏小）
+      MYSQL_INNODB_LOG_FILE_SIZE: '256M'
+      # wait_timeout：MySQL 服务端空闲连接超时（默认 8h 即 28800s）
+      # 必须大于 HikariCP max-lifetime=1800s，否则服务端先于客户端关闭连接，
+      # 触发 "Communications link failure" 异常。设置为 7200s（2h）保留充足冗余。
+      MYSQL_WAIT_TIMEOUT: '7200'
+      # interactive_timeout：同上，作用于交互式连接（部分客户端会用交互模式）
+      MYSQL_INTERACTIVE_TIMEOUT: '7200'
+      # InnoDB 行锁等待超时：默认 50s 偏长，高并发下排队请求会阻塞 HikariCP 连接池
+      # 收紧到 10s 让业务侧更快感知锁竞争（Fail-Fast 优于无限等待）
+      # 由应用层 Connection.isValid() 捕获后走 GlobalExceptionHandler 统一返回 503
+      MYSQL_INNODB_LOCK_WAIT_TIMEOUT: '10'
+      # 死锁检测：MySQL 8 默认开启（innodb_deadlock_detect=ON），仅作显式声明便于审计
+      MYSQL_INNODB_DEADLOCK_DETECT: 'ON'
     ports:
-      # 仅绑定本机回环，避免数据库端口暴露公网（应用通过容器网络访问）
+      # 仅绑定本机回环，避免数据库端口暴露公网
       - "127.0.0.1:3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
+      # 慢日志与错误日志挂载到命名卷，便于运维 tail / grep
+      - moyuyo-mysql-logs:/var/log/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      # 注意：在 docker-compose 中，"$$" 是字面 "$" 的转义，shell 中最终看到 "${MYSQL_ROOT_PASSWORD}"。
+      # 这样密码值里的 $ 不会被 docker-compose 字符串替换器吞掉。
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$${MYSQL_ROOT_PASSWORD}\" >/dev/null"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
 
   # Redis 缓存
   redis:
-    image: redis:7-alpine
+    image: redis:7.2-alpine
     container_name: moyuyo-redis
     restart: unless-stopped
-    # 生产环境必须设置 Redis 密码，未设置时 compose 会报错中止
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}"]
+    # 资源限制：Redis 单进程
+    # P1 优化：mem_limit 必须 >= --maxmemory + Redis 自身开销（fork COW、AOF rewrite 等）
+    # 原配置 mem_limit=1G 但 maxmemory=800m，剩余 200M 在 fork/rewrite 高峰时被宿主机 OOM-killer 杀掉
+    # 调整后 mem_limit=1.2G 留出 25% buffer，与生产级 Redis 部署规范一致
+    cpus: '1.0'
+    mem_limit: 1280M
+    mem_reservation: 512M
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    command:
+      - "redis-server"
+      - "--requirepass"
+      - "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}"
+      # 限制最大客户端连接数：避免异常连接耗尽 fd
+      - "--maxclients"
+      - "10000"
+      # 限制最大内存：超限后按 maxmemory-policy 淘汰，避免 OOM
+      - "--maxmemory"
+      - "800mb"
+      # LRU 近似淘汰：相比 allkeys-lru 对冷数据更友好
+      - "--maxmemory-policy"
+      - "allkeys-lru"
+      # 开启 lazy free：避免大 key 删除时阻塞主线程
+      - "--lazyfree-lazy-eviction"
+      - "yes"
+    environment:
+      # 容器时区与 JVM/宿主机一致，避免 EXPIRE 类 TTL 误差
+      TZ: Asia/Shanghai
     ports:
-      # 仅绑定本机回环，避免 Redis 暴露公网
+      # 仅绑定本机回环，避免 Redis 端口暴露公网
       - "127.0.0.1:6379:6379"
     volumes:
       - redis-data:/data
+      # 持久化 AOF + RDB：即使容器重启也能恢复热点 key
+      - moyuyo-redis-logs:/var/log/redis
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      # 在 docker-compose 中 "$$" 是字面 "$" 的转义，shell 中最终看到 "${REDIS_PASSWORD}"，
+      # 这样密码值里的 $、!、空格等不会被 docker-compose 字符串替换器吞掉。
+      # --no-auth-warning 抑制每次执行时 redis-cli 的 AUTH warning（避免日志噪声）。
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" --no-auth-warning ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
+
+  # Elasticsearch 证书初始化，仅首次启动时生成共享 PKCS12 证书
+  es-certs-init:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: moyuyo-es-certs-init
+    user: "0"
+    command: >-
+      bash -c 'if [ ! -f /usr/share/elasticsearch/config/certs/elasticsearch.p12 ]; then
+      elasticsearch-certutil cert --silent --name elasticsearch
+      --dns elasticsearch,localhost --out /usr/share/elasticsearch/config/certs/elasticsearch.p12
+      --pass "${ELASTICSEARCH_TRUSTSTORE_PASSWORD}";
+      fi;
+      chown 1000:0 /usr/share/elasticsearch/config/certs/elasticsearch.p12;
+      chmod 640 /usr/share/elasticsearch/config/certs/elasticsearch.p12'
+    environment:
+      ELASTICSEARCH_TRUSTSTORE_PASSWORD: ${ELASTICSEARCH_TRUSTSTORE_PASSWORD:?ELASTICSEARCH_TRUSTSTORE_PASSWORD must be set}
+    volumes:
+      - es-certs:/usr/share/elasticsearch/config/certs
 
   # Elasticsearch（生产环境启用 x-pack security + HTTPS）
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
     container_name: moyuyo-elasticsearch
     restart: unless-stopped
+    depends_on:
+      es-certs-init:
+        condition: service_completed_successfully
     environment:
-      # 单节点 dev 模式（生产环境集群应改为 discovery.seed_hosts 配置）
+      TZ: Asia/Shanghai
       discovery.type: single-node
       xpack.security.enabled: "true"
-      # ES 内置用户密码（与 ELASTICSEARCH_PASSWORD 保持一致）
       ELASTIC_PASSWORD: ${ELASTICSEARCH_PASSWORD:?ELASTICSEARCH_PASSWORD must be set}
-      # 启用 HTTPS + 生成证书
       xpack.security.http.ssl.enabled: "true"
       xpack.security.http.ssl.keystore.path: /usr/share/elasticsearch/config/certs/elasticsearch.p12
+      xpack.security.http.ssl.keystore.password: ${ELASTICSEARCH_TRUSTSTORE_PASSWORD:?ELASTICSEARCH_TRUSTSTORE_PASSWORD must be set}
       xpack.security.transport.ssl.enabled: "true"
       xpack.security.transport.ssl.verification_mode: certificate
       xpack.security.transport.ssl.keystore.path: /usr/share/elasticsearch/config/certs/elasticsearch.p12
+      xpack.security.transport.ssl.keystore.password: ${ELASTICSEARCH_TRUSTSTORE_PASSWORD:?ELASTICSEARCH_TRUSTSTORE_PASSWORD must be set}
       xpack.security.transport.ssl.truststore.path: /usr/share/elasticsearch/config/certs/elasticsearch.p12
+      xpack.security.transport.ssl.truststore.password: ${ELASTICSEARCH_TRUSTSTORE_PASSWORD:?ELASTICSEARCH_TRUSTSTORE_PASSWORD must be set}
       ES_JAVA_OPTS: "-Xms1g -Xmx1g"
-      # 内存锁定 + 禁用 swap
       bootstrap.memory_lock: "true"
+    # 资源限制：ES JVM 堆已固定 1g，加上 index buffer / file system cache / segment merging，
+    # 实际进程常驻 ~2g；显式设 mem_limit=2g 给 OS 留 0.5g 余量，避免容器被宿主机 OOM-killer 杀掉
+    # （Elasticsearch 默认 host 级别无上限，单次大查询即可撑爆 32g 内存）
+    # cpus 限制 1.5：避免 ES 在 reload/merge 期间吃满宿主 CPU 拖慢 MySQL/Redis
+    cpus: '1.5'
+    mem_limit: 2G
+    mem_reservation: 1G
     ulimits:
       memlock:
         soft: -1
         hard: -1
     volumes:
-      # 持久化数据 + 自动生成的证书
       - es-data:/usr/share/elasticsearch/data
       - es-certs:/usr/share/elasticsearch/config/certs
     ports:
       # 仅绑定本机回环，避免 ES 暴露公网
       - "127.0.0.1:9200:9200"
     healthcheck:
-      test: ["CMD-SHELL", "curl -kfs -u elastic:${ELASTICSEARCH_PASSWORD} https://localhost:9200/_cluster/health || exit 1"]
+      # 注意：在 docker-compose 中，"$$" 是字面 "$" 的转义，shell 中最终看到 "${ELASTICSEARCH_PASSWORD}"。
+      # 这样密码值里的 $ 不会被 docker-compose 字符串替换器吞掉。
+      test: ["CMD-SHELL", "curl -kfs -u elastic:\"$${ELASTICSEARCH_PASSWORD}\" https://localhost:9200/_cluster/health >/dev/null"]
       interval: 15s
       timeout: 10s
       retries: 10
       start_period: 60s
 
-  # RocketMQ Name Server（生产环境必需：用于订单超时取消等异步消息）
+  # RocketMQ Name Server
   rocketmq-namesrv:
-    image: apache/rocketmq:5.3.0
+    image: apache/rocketmq:5.3.2
     container_name: moyuyo-rocketmq-namesrv
     restart: unless-stopped
+    # Name Server 本身内存占用很低（< 256MB），但仍显式限制防止异常路径
+    cpus: '0.5'
+    mem_limit: 512M
+    mem_reservation: 128M
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     command: ["sh", "mqnamesrv"]
+    environment:
+      TZ: Asia/Shanghai
     ports:
-      # 仅绑定本机回环，避免 namesrv 端口暴露公网
       - "127.0.0.1:9876:9876"
     healthcheck:
-      test: ["CMD-SHELL", "echo 'namesrv is running' || exit 1"]
+      test: ["CMD-SHELL", "sh mqadmin clusterList -n localhost:9876 >/dev/null 2>&1"]
       interval: 15s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 20s
 
   # RocketMQ Broker
   rocketmq-broker:
-    image: apache/rocketmq:5.3.0
+    image: apache/rocketmq:5.3.2
     container_name: moyuyo-rocketmq-broker
     restart: unless-stopped
     depends_on:
       rocketmq-namesrv:
-        condition: service_started
+        condition: service_healthy
+    # 资源限制：RocketMQ broker 主要吃 PageCache（CommitLog 预分配），commitLog 默认 1G
+    # 加 JVM + index + consume queue，进程常驻 ~2G；显式限制避免 broker 内存抖动拖垮宿主
+    cpus: '1.5'
+    mem_limit: 3G
+    mem_reservation: 1G
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    environment:
+      TZ: Asia/Shanghai
     command: >
       sh mqbroker
         -n rocketmq-namesrv:9876
         --enable-proxy false
         -c /opt/rocketmq/conf/broker.conf
     ports:
-      # 仅绑定本机回环
       - "127.0.0.1:10909:10909"
       - "127.0.0.1:10911:10911"
     volumes:
       - rocketmq-data:/root/store
       - rocketmq-logs:/root/logs
     healthcheck:
-      test: ["CMD-SHELL", "echo 'broker is running' || exit 1"]
+      # 通过 broker 10911 端口连通性确认 broker 已真正就绪（而非仅进程存在）
+      # 端口连通比进程检查更可靠：进程在但监听未就绪时也能被发现
+      test: ["CMD-SHELL", "sh -c 'echo > /dev/tcp/127.0.0.1/10911 || exit 1'"]
       interval: 15s
       timeout: 5s
       retries: 10
       start_period: 30s
 
-  # 后端服务
+  # 后端服务（多阶段构建：编译阶段使用 JDK 25，运行时仅保留 JRE）
   app:
-    build: .
+    build:
+      context: .
+      # 启用 BuildKit 缓存挂载（需 docker buildx 或 DOCKER_BUILDKIT=1）
+      # - maven:~/.m2 挂载为缓存：避免每次构建都全量下载依赖（CI 加速显著）
+      # - 仅在构建阶段有效，不进入运行时镜像
+      cache_from:
+        - moyuyo-api:cache
+      args:
+        BUILDKIT_INLINE_CACHE: "1"
     container_name: moyuyo-server
     restart: unless-stopped
-    ports:
-      # 仅绑定本机回环，由前置 Nginx/反向代理转发，避免直接暴露公网
-      # Prometheus 端点通过 /actuator/prometheus 暴露（与主应用共用 8080），由前置 Nginx 控制外网访问
-      - "127.0.0.1:8080:8080"
-    volumes:
-      # 共享 ES 证书，使 app 容器能验证 ES 自签证书
-      - es-certs:/opt/es-certs:ro
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      # 数据库
-      MYSQL_HOST: mysql
-      MYSQL_PORT: 3306
-      MYSQL_USER: ${MYSQL_USER:-moyuyo}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      # Redis
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      # JWT
-      JWT_SECRET: ${JWT_SECRET}
-      # API 签名
-      API_SIGN_SECRET: ${API_SIGN_SECRET:-}
-      # CORS
-      MOYUYO_CORS_ORIGINS: ${MOYUYO_CORS_ORIGINS}
-      # 支付
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
-      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID}
-      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET}
-      PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID}
-      # Elasticsearch（生产环境使用 HTTPS + x-pack 安全）
-      ELASTICSEARCH_URIS: ${ELASTICSEARCH_URIS:-https://elasticsearch:9200}
-      ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
-      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD}
-      ELASTICSEARCH_SSL_ENABLED: ${ELASTICSEARCH_SSL_ENABLED:-true}
-      ELASTICSEARCH_SSL_CERT_VALIDATION: ${ELASTICSEARCH_SSL_CERT_VALIDATION:-true}
-      # 将共享的 ES 证书作为 JVM truststore，使 app 容器能验证 ES 自签证书
-      # -Djavax.net.ssl.trustStore 指定 p12 文件，-Djavax.net.ssl.trustStorePassword 解锁
-      # 同时将证书路径暴露给 Spring 配置，配合 application-prod.yml 中的 elasticsearch.ssl.bundle 使用
-      ELASTICSEARCH_SSL_BUNDLE: ${ELASTICSEARCH_SSL_BUNDLE:-/opt/es-certs/elasticsearch.p12}
-      JAVA_TOOL_OPTIONS: >-
-        -Djavax.net.ssl.trustStore=/opt/es-certs/elasticsearch.p12
-        -Djavax.net.ssl.trustStorePassword=${ELASTICSEARCH_TRUSTSTORE_PASSWORD}
-        -Djavax.net.ssl.trustStoreType=pkcs12
-      # RocketMQ
-      ROCKETMQ_NAMESRV_ADDR: ${ROCKETMQ_NAMESRV_ADDR:-rocketmq:9876}
-      # WooCommerce
-      WOOCOMMERCE_URL: ${WOOCOMMERCE_URL}
-      WOOCOMMERCE_CONSUMER_KEY: ${WOOCOMMERCE_CONSUMER_KEY}
-      WOOCOMMERCE_CONSUMER_SECRET: ${WOOCOMMERCE_CONSUMER_SECRET}
-      # 管理员账号
-      ADMIN_EMAIL: ${ADMIN_EMAIL}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     depends_on:
       mysql:
         condition: service_healthy
@@ -188,13 +283,227 @@ services:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
+      rocketmq-broker:
+        condition: service_healthy
+    ports:
+      # 仅绑定本机回环，由前置 Nginx/反向代理转发
+      - "127.0.0.1:8080:8080"
+      # P1 安全：actuator 端口独立绑定到 127.0.0.1:9090
+      # 仅允许 Prometheus 与同主机监控进程访问，外部攻击面彻底关闭
+      - "127.0.0.1:9090:9090"
+    volumes:
+      # 共享 ES 证书，使应用能验证 ES 自签证书
+      - es-certs:/opt/es-certs:ro
+      # 挂载运维侧提供的 MySQL CA 信任库，容器启动前必须存在
+      - ${MYSQL_TRUSTSTORE_PATH:?MYSQL_TRUSTSTORE_PATH must be set}:/opt/mysql-certs/mysql-ca.p12:ro
+      # 持久化应用日志，避免容器重建后丢失
+      # Dockerfile 中 GC 日志 (-Xlog:gc*) 落到 /var/log/moyuyo/gc.log，
+      # JFR 录制 (JFR_RECORDING=true 时) 落到 /var/log/moyuyo/jfr/，均覆盖在 moyuyo-logs 卷下
+      - moyuyo-logs:/var/log/moyuyo
+      # 持久化 OOM 堆转储文件：容器重建后仍可保留，便于事后根因分析
+      - moyuyo-heapdump:/app/heapdump
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-moyuyo_prod}
+      MYSQL_USER: ${MYSQL_USER:-moyuyo}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
+      MYSQL_VERIFY_SERVER_CERTIFICATE: ${MYSQL_VERIFY_SERVER_CERTIFICATE:?MYSQL_VERIFY_SERVER_CERTIFICATE must be set}
+      MYSQL_TRUSTSTORE_URL: file:/opt/mysql-certs/mysql-ca.p12
+      MYSQL_TRUSTSTORE_PASSWORD: ${MYSQL_TRUSTSTORE_PASSWORD:?MYSQL_TRUSTSTORE_PASSWORD must be set}
+      # 显式声明缺省值时拒绝启动，禁止 truststore 使用弱口令
+      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:?ELASTICSEARCH_PASSWORD must be set}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      API_SIGN_SECRET: ${API_SIGN_SECRET:?API_SIGN_SECRET must be set}
+      MOYUYO_CORS_ORIGINS: ${MOYUYO_CORS_ORIGINS:?MOYUYO_CORS_ORIGINS must be set}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?STRIPE_SECRET_KEY must be set}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:?STRIPE_WEBHOOK_SECRET must be set}
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:?PAYPAL_CLIENT_ID must be set}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:?PAYPAL_CLIENT_SECRET must be set}
+      PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID:?PAYPAL_WEBHOOK_ID must be set}
+      PAYPAL_ALLOWED_ORIGINS: ${PAYPAL_ALLOWED_ORIGINS:?PAYPAL_ALLOWED_ORIGINS must be set}
+      ELASTICSEARCH_URIS: ${ELASTICSEARCH_URIS:?ELASTICSEARCH_URIS must be set}
+      ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
+      ELASTICSEARCH_SSL_ENABLED: ${ELASTICSEARCH_SSL_ENABLED:-true}
+      ELASTICSEARCH_SSL_CERT_VALIDATION: ${ELASTICSEARCH_SSL_CERT_VALIDATION:-true}
+      ELASTICSEARCH_SSL_BUNDLE: ${ELASTICSEARCH_SSL_BUNDLE:-/opt/es-certs/elasticsearch.p12}
+      ELASTICSEARCH_TRUSTSTORE_PASSWORD: ${ELASTICSEARCH_TRUSTSTORE_PASSWORD:?ELASTICSEARCH_TRUSTSTORE_PASSWORD must be set}
+      JAVA_TOOL_OPTIONS: >-
+        -Djavax.net.ssl.trustStore=/opt/es-certs/elasticsearch.p12
+        -Djavax.net.ssl.trustStorePassword=${ELASTICSEARCH_TRUSTSTORE_PASSWORD}
+        -Djavax.net.ssl.trustStoreType=pkcs12
+      ROCKETMQ_NAMESRV_ADDR: ${ROCKETMQ_NAMESRV_ADDR:-rocketmq-namesrv:9876}
+      # 显式注入 HOSTNAME：logback JSON 日志依赖 ${HOSTNAME} 作为日志 host 维度标签，
+      # 部分编排器（Nomad / 非 K8s Docker host）默认不会注入容器 hostname。
+      # 容器名 moyuyo-server 已固定，运维可直接 grep 该字段定位日志来源节点
+      HOSTNAME: ${HOSTNAME:-moyuyo-server}
+      WOOCOMMERCE_URL: ${WOOCOMMERCE_URL:?WOOCOMMERCE_URL must be set}
+      WOOCOMMERCE_CONSUMER_KEY: ${WOOCOMMERCE_CONSUMER_KEY:?WOOCOMMERCE_CONSUMER_KEY must be set}
+      WOOCOMMERCE_CONSUMER_SECRET: ${WOOCOMMERCE_CONSUMER_SECRET:?WOOCOMMERCE_CONSUMER_SECRET must be set}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?ADMIN_USERNAME must be set}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL must be set}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set}
+      MOYUYO_HTTP_CONNECT_TIMEOUT_MS: ${MOYUYO_HTTP_CONNECT_TIMEOUT_MS:-5000}
+      MOYUYO_HTTP_READ_TIMEOUT_MS: ${MOYUYO_HTTP_READ_TIMEOUT_MS:-15000}
+      JVM_XMS: ${JVM_XMS:-1g}
+      JVM_XMX: ${JVM_XMX:-2g}
+    # 给 Spring 优雅停机 + 容器退出留出余量：Spring lifecycle 默认 30s，加 15s 容器退出 buffer
+    # 避免长事务或 RocketMQ 回调未完成时被 SIGKILL
+    stop_grace_period: 45s
+    # 资源限制：避免单个容器拖垮宿主（按需调整；当前为单机示例）
+    # 注意：docker-compose v3 deploy.resources 仅在 swarm 模式生效；
+    # 单机部署可用 cpus / memory 直接约束（需 docker engine >= 19.03）
+    cpus: '2.0'
+    mem_limit: 4G
+    mem_reservation: 1G
+    # ulimit：限制 JVM 可创建线程数，避免 fork 炸弹或恶意流量打爆文件描述符
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+      nproc:
+        soft: 8192
+        hard: 8192
+    # 进程总数限制：默认无上限，攻击者可触发 fork bomb 让容器耗尽 PID 后无法启动新进程
+    # Tomcat max-threads=600 + @Async 池 max=16 + @Scheduled=4 + RocketMQ 消费者 ≈ 700 进程
+    # 显式设 4096 给监控探针、临时 shell、容器内调试留 5x 余量
+    pids_limit: 4096
+    # 容器标签：便于 prometheus / 1Panel 面板自动发现
+    labels:
+      org.opencontainers.image.source: "https://github.com/your-org/moyuyo-server"
+      org.opencontainers.image.licenses: "Proprietary"
+      app: "moyuyo-server"
+    # 容器安全加固：read-only 根文件系统 + tmpfs 兜底虚拟写临时目录
+    # 防止容器内恶意进程（被 RCE 入侵后）篡改系统文件或注入二进制
+    # - /tmp：Tomcat / JVM 临时文件输出（与 -Djava.io.tmpdir 默认一致）
+    # - /run：Spring Boot 启动期部分 native lib 抽取（少量）
+    # - 注意：/app/heapdump 与 /var/log/moyuyo 已通过 named volume 挂载并具备写权限（read_only 不会影响 named volume）
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+      - /run:size=16m,mode=755
+    # 禁用容器新权限：避免容器内进程通过 setuid 提权
+    # 需 docker engine >= 19.03
+    security_opt:
+      - no-new-privileges:true
+    # seccomp 配置文件：使用 docker 默认（apparmor / selinux 在 Linux 主机生效）
+    # 本环境 docker.io 默认开启 seccomp，不显式指定
+    healthcheck:
+      # 与 Dockerfile 内 HEALTHCHECK 一致，docker compose up 可基于此等待健康
+      # 关键防御：健康检查绕过限流 / 鉴权过滤器（否则 IP 限流过滤器会把 actuator 调用
+      # 当成未鉴权流量拦截）。Spring 默认 health 端点路径不受 @PreAuthorize 保护，
+      # 但 /api/* 路径的 TraceId / IpRateLimit / JwtAuth 等过滤器仍会触发。
+      # actuator 走 management.server.port=9090（独立端口 + 127.0.0.1 绑定），
+      # 完全绕过 /api/* 的过滤器链，仅命中 SecurityHeadersFilter（order=MIN_VALUE）
+      # 该过滤器对 /actuator/** 仅 setHeader 不拦截业务，保证健康检查零阻塞
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:9090/actuator/health/liveness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+
+  # MySQL 监控导出器（mysqld_exporter）
+  # 抓取连接数、长事务、慢查询等指标，供 Prometheus 抓取
+  # 仅绑定本机回环，由 Prometheus 直连
+  mysqld-exporter:
+    image: prom/mysqld-exporter:v0.15.1
+    container_name: moyuyo-mysqld-exporter
+    restart: unless-stopped
+    # 必须以 root 连接 MySQL 才能采集 information_schema / performance_schema
+    # 安全：由 docker-compose 内部网络访问，外网不可达
+    environment:
+      DATA_SOURCE_NAME: "exporter:${MYSQL_EXPORTER_PASSWORD:?MYSQL_EXPORTER_PASSWORD must be set}@(mysql:3306)/"
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:9104:9104"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    # 资源限制：mysqld-exporter 是单进程 Go 应用，常驻内存约 30MB；
+    # 设置 mem_limit=128M 给 metrics 解析 + buffer 留余量，避免被宿主机 OOM-killer 杀掉
+    cpus: '0.2'
+    mem_limit: 128M
+    mem_reservation: 32M
+    # 健康检查：避免 exporter 进程异常但端口仍可达时被 Prometheus 抓取到陈旧指标
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9104/metrics >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    # 无需挂卷，无状态
+
+  # Redis 监控导出器（redis_exporter）
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.58.0
+    container_name: moyuyo-redis-exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+      # 强制使用独立的 redis_exporter 监控密码（不允许与 REDIS_PASSWORD 复用），
+      # ProdConfigValidator 在应用启动期校验；如复用会让 exporter 被入侵后获得完整 Redis 权限
+      REDIS_PASSWORD: ${REDIS_EXPORTER_PASSWORD:?REDIS_EXPORTER_PASSWORD must be set}
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:9121:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+    # 资源限制：redis_exporter 是单进程 Go 应用，常驻内存约 30MB；
+    # 设置 mem_limit=128M 给 metrics 解析 + buffer 留余量
+    cpus: '0.2'
+    mem_limit: 128M
+    mem_reservation: 32M
+    # 健康检查：避免 exporter 进程崩溃但端口仍可达时被 Prometheus 抓取到空指标
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9121/metrics >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # RocketMQ 监控导出器（rocketmq-exporter）
+  # 抓取 RocketMQ broker / consumer / topic 指标（消息堆积、broker 延迟、生产消费比）
+  # 由 Prometheus 抓取，仅绑定本机回环
+  rocketmq-exporter:
+    image: apache/rocketmq-exporter:0.0.3
+    container_name: moyuyo-rocketmq-exporter
+    restart: unless-stopped
+    command:
+      - "--rocketmq.config.namesrvAddr=rocketmq-namesrv:9876"
+    ports:
+      - "127.0.0.1:5557:5557"
+    depends_on:
       rocketmq-namesrv:
-        condition: service_started
+        condition: service_healthy
+      rocketmq-broker:
+        condition: service_healthy
+    # 资源限制：rocketmq-exporter 是 Java 进程，常驻内存约 200MB；
+    # 设置 mem_limit=512M 给 JVM 堆 + buffer 留余量
+    cpus: '0.5'
+    mem_limit: 512M
+    mem_reservation: 128M
+    # 健康检查：避免 exporter 异常但端口仍可达时被 Prometheus 抓取到陈旧指标
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5557/metrics >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
 volumes:
   mysql-data:
   redis-data:
   es-data:
   es-certs:
+  moyuyo-logs:
+  moyuyo-heapdump:
   rocketmq-data:
   rocketmq-logs:
+  # MySQL / Redis 日志命名卷：与 moyuyo-logs 分开，避免日志滚转互相影响
+  moyuyo-mysql-logs:
+  moyuyo-redis-logs:

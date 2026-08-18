@@ -13,7 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
@@ -35,6 +35,8 @@ public class AdminAuthController {
     private final JwtUtil jwtUtil;
     private final AdminUserMapper adminUserMapper;
     private final StringRedisTemplate redisTemplate;
+    /** 统一密码编码器 Bean，强度由 moyuyo.password.bcrypt-strength 控制 */
+    private final PasswordEncoder passwordEncoder;
 
     // 与 JwtAuthFilter 中一致的 Token 黑名单前缀
     private static final String REDIS_KEY_BLACKLIST = "auth:blacklist:";
@@ -51,23 +53,32 @@ public class AdminAuthController {
 
     @Operation(summary = "管理员登录（支持邮箱或用户名）")
     @PostMapping("/login")
-    @RateLimiter(name = "authLogin", fallbackMethod = "loginRateLimitFallback")
+    @RateLimiter(name = "adminAuthLogin", fallbackMethod = "loginRateLimitFallback")
     public Result<Map<String, Object>> login(@RequestBody Map<String, String> body) {
         String email = body.get("email");
         String password = body.get("password");
         if (email == null || email.isBlank() || password == null || password.isBlank()) {
             return Result.error(400, "邮箱和密码不能为空");
         }
+        // 入参长度硬上限：避免攻击者用 1MB+ email/password 触发 BCrypt 高 CPU 验签 DoS
+        if (email.length() > 254 || password.length() > 64) {
+            return Result.error(400, "邮箱或密码长度超限");
+        }
 
         // 规范化账号标识：邮箱或用户名统一去空格转小写（邮箱按邮箱规范，用户名也统一小写避免大小写不一致
         String accountKey = email.trim().toLowerCase();
 
-        // 1. 检查管理员账号是否已锁定
+        // 1. 检查管理员账号是否已锁定（Redis 不可用时 fail-open 放行，避免业务全瘫）
         String lockKey = REDIS_KEY_ADMIN_LOCK + accountKey;
-        if (Boolean.TRUE.equals(redisTemplate.hasKey(lockKey))) {
-            Long remainSeconds = redisTemplate.getExpire(lockKey, java.util.concurrent.TimeUnit.SECONDS);
-            log.warn("Admin login rejected: account locked, account={}, remainSeconds={}", accountKey, remainSeconds);
-            return Result.error(423, "登录失败次数过多，请 " + (remainSeconds != null ? remainSeconds / 60 : 30) + " 分钟后再试");
+        try {
+            if (Boolean.TRUE.equals(redisTemplate.hasKey(lockKey))) {
+                Long remainSeconds = redisTemplate.getExpire(lockKey, java.util.concurrent.TimeUnit.SECONDS);
+                log.warn("Admin login rejected: account locked, account={}, remainSeconds={}", accountKey, remainSeconds);
+                return Result.error(423, "登录失败次数过多，请 " + (remainSeconds != null ? remainSeconds / 60 : 30) + " 分钟后再试");
+            }
+        } catch (Exception e) {
+            // Redis 不可用：记录 ERROR 日志但放行（fail-open），让 IP 限流 + BCrypt 验签作为兜底
+            log.error("Admin login: Redis 不可用，跳过账号锁定检查（fail-open），account={}", accountKey, e);
         }
 
         // 优先按邮箱查找，再按用户名查找
@@ -90,21 +101,30 @@ public class AdminAuthController {
             return Result.error(401, "邮箱或密码错误");
         }
 
-        // 使用 BCrypt 验证密码，强度需与加密时保持一致（12）
-        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
-        if (!encoder.matches(password, adminUser.getPassword())) {
+        // 使用 BCrypt 验证密码，强度由 moyuyo.password.bcrypt-strength 控制（与 AdminInitializer 一致）
+        if (!passwordEncoder.matches(password, adminUser.getPassword())) {
             recordAdminLoginFailure(accountKey, "wrong_password");
             String failKey = REDIS_KEY_ADMIN_LOGIN_FAIL + accountKey;
-            String failCountStr = redisTemplate.opsForValue().get(failKey);
-            int failCount = failCountStr == null ? 0 : Integer.parseInt(failCountStr);
-            if (failCount >= MAX_ADMIN_LOGIN_FAILS) {
-                return Result.error(423, "登录失败次数过多，请 30 分钟后再试");
+            try {
+                String failCountStr = redisTemplate.opsForValue().get(failKey);
+                int failCount = failCountStr == null ? 0 : Integer.parseInt(failCountStr);
+                if (failCount >= MAX_ADMIN_LOGIN_FAILS) {
+                    return Result.error(423, "登录失败次数过多，请 30 分钟后再试");
+                }
+            } catch (Exception e) {
+                // Redis 不可用时仅记录错误，跳过失败次数检查（fail-open）
+                log.error("Admin login: Redis 不可用，跳过失败次数检查（fail-open），account={}", accountKey, e);
             }
             return Result.error(401, "邮箱或密码错误");
         }
 
         // 2. 登录成功，清除失败记录
-        clearAdminLoginFailureRecords(accountKey);
+        try {
+            clearAdminLoginFailureRecords(accountKey);
+        } catch (Exception e) {
+            // Redis 不可用：跳过失败记录清理（fail-open），下次登录自然覆盖
+            log.error("Admin login: Redis 不可用，跳过失败记录清理（fail-open），account={}", accountKey, e);
+        }
 
         // 更新最后登录时间
         adminUser.setLastLoginTime(java.time.LocalDateTime.now());
@@ -121,17 +141,23 @@ public class AdminAuthController {
     /** 记录管理员登录失败次数，达到阈值时锁定账号 */
     private void recordAdminLoginFailure(String accountKey, String reason) {
         String failKey = REDIS_KEY_ADMIN_LOGIN_FAIL + accountKey;
-        Long failCount = redisTemplate.opsForValue().increment(failKey);
-        // 每次失败重置窗口过期时间（滑动窗口
-        redisTemplate.expire(failKey, ADMIN_FAIL_WINDOW_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
+        try {
+            Long failCount = redisTemplate.opsForValue().increment(failKey);
+            // 每次失败重置窗口过期时间（滑动窗口
+            redisTemplate.expire(failKey, ADMIN_FAIL_WINDOW_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
 
-        log.warn("Admin login failed: account={}, reason={}, failCount={}", accountKey, reason, failCount);
+            log.warn("Admin login failed: account={}, reason={}, failCount={}", accountKey, reason, failCount);
 
-        if (failCount != null && failCount >= MAX_ADMIN_LOGIN_FAILS) {
-            String lockKey = REDIS_KEY_ADMIN_LOCK + accountKey;
-            redisTemplate.opsForValue().set(lockKey, String.valueOf(failCount), ADMIN_LOCK_DURATION_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
-            redisTemplate.delete(failKey);
-            log.warn("Admin account LOCKED due to too many failures: account={}", accountKey);
+            if (failCount != null && failCount >= MAX_ADMIN_LOGIN_FAILS) {
+                String lockKey = REDIS_KEY_ADMIN_LOCK + accountKey;
+                redisTemplate.opsForValue().set(lockKey, String.valueOf(failCount), ADMIN_LOCK_DURATION_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
+                redisTemplate.delete(failKey);
+                log.warn("Admin account LOCKED due to too many failures: account={}", accountKey);
+            }
+        } catch (Exception e) {
+            // Redis 不可用：仅记录错误日志，跳过失败计数（fail-open）
+            // 安全性由 IP 限流 + BCrypt 验签共同保证；Redis 抖动期间接受弱爆破风险换取业务可用性
+            log.error("Admin login: Redis 不可用，跳过失败计数（fail-open），account={}, reason={}", accountKey, reason, e);
         }
     }
 

@@ -29,8 +29,11 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -184,6 +187,32 @@ public class OrderServiceImpl implements OrderService {
     if (!PENDING_PAY.name().equals(order.getStatus())) {
       throw new IllegalStateException("当前订单状态不允许取消");
     }
+
+    // P1 修复：取消订单时恢复已扣减的库存，避免 SKU 库存永久减少
+    // 原实现仅更新订单状态，createOrder 中扣减的 stock 不会被回滚，
+    // 导致用户取消订单后该 SKU 库存"看起来永久减少"（实际库存已经被买走了，但订单未付款）
+    // 注：这里采用"加法恢复"而非乐观锁校验，避免与订单超时取消任务（OrderTimeoutConsumer）产生死锁竞争
+    List<OrderItemEntity> items = orderItemMapper.selectList(
+        new LambdaQueryWrapper<OrderItemEntity>()
+            .eq(OrderItemEntity::getOrderId, orderId));
+    if (items != null) {
+      for (OrderItemEntity item : items) {
+        if (item.getSkuId() != null && item.getQuantity() != null && item.getQuantity() > 0) {
+          // 原子累加：UPDATE mo_product_sku SET stock = stock + qty WHERE id = ?
+          // 不带 WHERE 库存上下限约束：允许临时超过上限（与创建订单并发场景下，安全优先）
+          LambdaUpdateWrapper<ProductSkuEntity> restoreWrapper = new LambdaUpdateWrapper<>();
+          restoreWrapper.eq(ProductSkuEntity::getId, item.getSkuId())
+              .setSql("stock = stock + " + item.getQuantity());
+          int affected = productSkuMapper.update(null, restoreWrapper);
+          if (affected == 0) {
+            // 极端情况：SKU 已被删除
+            log.warn("取消订单恢复库存失败：SKU不存在或已删除，skuId={}, orderId={}",
+                    item.getSkuId(), orderId);
+          }
+        }
+      }
+    }
+
     order.setStatus(CANCELLED.name());
     order.setCancelTime(LocalDateTime.now());
     order.setCancelReason(reason);
@@ -268,6 +297,20 @@ public class OrderServiceImpl implements OrderService {
     return orderItemMapper.selectList(
         new LambdaQueryWrapper<OrderItemEntity>()
             .eq(OrderItemEntity::getOrderId, orderId));
+  }
+
+  @Override
+  public Map<Long, List<OrderItemEntity>> getOrderItemsByOrderIds(List<Long> orderIds) {
+    if (orderIds == null || orderIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    // 单次批量 IN 查询：替代 N+1 调用 getOrderItems(orderId)
+    List<OrderItemEntity> items = orderItemMapper.selectList(
+        new LambdaQueryWrapper<OrderItemEntity>().in(OrderItemEntity::getOrderId, orderIds));
+    if (items == null || items.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    return items.stream().collect(Collectors.groupingBy(OrderItemEntity::getOrderId));
   }
 
   @Override

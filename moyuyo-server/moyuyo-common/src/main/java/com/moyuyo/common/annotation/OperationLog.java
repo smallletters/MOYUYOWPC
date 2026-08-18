@@ -5,7 +5,7 @@ import java.lang.annotation.*;
 /**
  * 关键业务操作日志注解
  * <p>
- * 标注在 Controller 或 Service 方法上，由 {@link com.moyuyo.common.aspect.OperationLogAspect}
+ * 标注在 Controller 或 Service 方法上，由 {@link com.moyuyo.service.audit.OperationLogAspect}
  * 自动记录操作日志，包括操作人、操作类型、入参和耗时。
  * <p>
  * 使用示例：

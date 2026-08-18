@@ -20,7 +20,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -319,7 +322,10 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
   }
 
   /**
-   * 解析日期字符串,兼容 yyyy-MM-dd 和 ISO 格式
+   * 解析日期字符串,兼容 yyyy-MM-dd、ISO_LOCAL_DATE_TIME 与带时区的 ISO-8601（如 2026-08-17T16:00:00.000Z）。
+   * <p>
+   * 历史 Bug：直接使用 ISO_LOCAL_DATE_TIME 解析时，前端返回的 UTC 时间字符串（带 Z 后缀）会在 index 23 处
+   * 抛 DateTimeParseException，导致活动创建接口 500。这里先尝试按带时区格式解析，统一转换为本地时区。
    */
   private LocalDateTime parseDateTime(String dateStr) {
     if (dateStr == null) return null;
@@ -329,6 +335,14 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
       return LocalDateTime.parse(s + " 00:00:00",
           DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
-    return LocalDateTime.parse(s, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+    try {
+      // 优先按带时区的 ISO-8601 解析（前端 el-date-picker 默认输出格式可能为 UTC 字符串）
+      return OffsetDateTime.parse(s, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+          .atZoneSameInstant(ZoneId.systemDefault())
+          .toLocalDateTime();
+    } catch (DateTimeParseException ignore) {
+      // 回退：按无时区 ISO_LOCAL_DATE_TIME 解析（如 "2026-08-17T16:00:00"）
+      return LocalDateTime.parse(s, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+    }
   }
 }

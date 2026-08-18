@@ -2,15 +2,18 @@ package com.moyuyo.api.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
+import com.moyuyo.common.dto.community.CommunityCommentCreateRequest;
+import com.moyuyo.common.dto.community.CommunityPostCreateRequest;
 import com.moyuyo.common.dto.community.CommunityPostVO;
 import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.service.CommunityService;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @Tag(name = "社区管理")
 @RestController
@@ -38,12 +41,10 @@ public class CommunityController {
 
     @Operation(summary = "发布帖子")
     @PostMapping("/posts")
-    public Result<CommunityPostVO> createPost(
-            @RequestParam String content,
-            @RequestParam(required = false) List<String> images,
-            @RequestParam(required = false) String topic) {
+    @RateLimiter(name = "postCreate", fallbackMethod = "postRateLimitFallback")
+    public Result<CommunityPostVO> createPost(@Valid @RequestBody CommunityPostCreateRequest request) {
         return Result.success(communityService.createPost(
-                UserContextHolder.getUserId(), content, images, topic));
+                UserContextHolder.getUserId(), request.getContent(), request.getImages(), request.getTopic()));
     }
 
     @Operation(summary = "我的帖子")
@@ -70,11 +71,23 @@ public class CommunityController {
 
     @Operation(summary = "评论")
     @PostMapping("/posts/{postId}/comments")
-    public Result<Void> addComment(
-            @PathVariable Long postId,
-            @RequestParam String content,
-            @RequestParam(required = false) Long parentId) {
-        communityService.addComment(UserContextHolder.getUserId(), postId, parentId, content);
+    @RateLimiter(name = "commentCreate", fallbackMethod = "commentRateLimitFallback")
+    public Result<Void> addComment(@PathVariable Long postId,
+                                   @Valid @RequestBody CommunityCommentCreateRequest request) {
+        communityService.addComment(UserContextHolder.getUserId(), postId,
+                request.getParentId(), request.getContent());
         return Result.success();
+    }
+
+    /** 发帖限流降级方法 */
+    @SuppressWarnings("unused")
+    private Result<CommunityPostVO> postRateLimitFallback(CommunityPostCreateRequest request, RequestNotPermitted e) {
+        return Result.error(429, "发帖过于频繁，请稍后再试");
+    }
+
+    /** 评论限流降级方法 */
+    @SuppressWarnings("unused")
+    private Result<Void> commentRateLimitFallback(CommunityCommentCreateRequest request, RequestNotPermitted e) {
+        return Result.error(429, "评论过于频繁，请稍后再试");
     }
 }

@@ -164,7 +164,10 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getLiveRooms, createLiveRoom, updateLiveRoom, deleteLiveRoom } from '../api/admin'
+import {
+  getLiveRooms, createLiveRoom, updateLiveRoom, deleteLiveRoom,
+  getLiveMonitorRules, getLiveViolationAlerts, handleLiveAlert
+} from '../api/admin'
 
 const pageTitle = '直播管理'
 const filters = reactive({ keyword: '' })
@@ -185,37 +188,20 @@ const editForm = reactive({
 // 原始直播数据（用于本地筛选）
 const allRooms = ref([])
 
-// ===== 示例数据：违规商品推广（无真实 API，用于展示违规直播/商品列表） =====
-const violationList = ref([
-  { id: 1, liveName: '春季新品专场 限时秒杀', hostName: '小鱼宠物馆', product: '宠物营养膏 100g', violationType: '虚假宣传', riskLevel: '高', disposeStatus: '待处置' },
-  { id: 2, liveName: '猫咪营养品专场', hostName: '萌宠日记', product: '猫咪冻干零食 50g', violationType: '夸大功效', riskLevel: '中', disposeStatus: '待处置' },
-  { id: 3, liveName: '狗狗口粮测评专场', hostName: '汪星人好物', product: '全价狗粮 2kg', violationType: '价格欺诈', riskLevel: '中', disposeStatus: '已警告' },
-  { id: 4, liveName: '宠物玩具清仓直播', hostName: '某某宠物店', product: '宠物磨牙棒 3 支装', violationType: '三无产品', riskLevel: '高', disposeStatus: '已下架' }
-])
+// ===== 真实后端：违规商品推广 / 合规监控规则 / 实时违规告警 =====
+// 违规商品推广（当前无独立表，复用违规告警表）
+const violationList = ref([])
+// 合规监控规则
+const monitorRules = ref([])
+// 实时违规告警
+const alertList = ref([])
 
-// ===== 示例数据：合规监控规则（无真实 API，用于展示监控规则列表） =====
-const monitorRules = ref([
-  { id: 1, ruleName: '虚假宣传监测', monitorItem: '商品功效话术识别', status: '启用', alertCount: 3 },
-  { id: 2, ruleName: '敏感词过滤', monitorItem: '直播音频实时转写', status: '启用', alertCount: 5 },
-  { id: 3, ruleName: '商品资质校验', monitorItem: '上架商品证照核验', status: '启用', alertCount: 0 },
-  { id: 4, ruleName: '低价引流监测', monitorItem: '价格异常波动检测', status: '停用', alertCount: 1 },
-  { id: 5, ruleName: '未成年人保护', monitorItem: '观众画像识别', status: '启用', alertCount: 0 }
-])
-
-// ===== 示例数据：实时违规告警（无真实 API，用于展示最近告警列表） =====
-const alertList = ref([
-  { id: 1, alertType: '虚假宣传 - 夸大产品功效', source: '小鱼宠物馆', time: '3 分钟前' },
-  { id: 2, alertType: '低俗用语警告', source: '萌宠日记', time: '15 分钟前' }
-])
-
-// 风险等级 → 标签类型映射
 function riskTagType(level) {
-  if (level === '高') return 'danger'
-  if (level === '中') return 'warning'
+  if (level === '高' || level === 'HIGH') return 'danger'
+  if (level === '中' || level === 'MIDDLE') return 'warning'
   return 'info'
 }
 
-// 处置状态 → 标签类型映射
 function disposeTagType(status) {
   if (status === '待处置') return 'danger'
   if (status === '已警告') return 'warning'
@@ -223,28 +209,94 @@ function disposeTagType(status) {
   return 'info'
 }
 
-// 下架商品（示例操作：无真实 API，仅本地更新状态）
-function handleOffShelf(row) {
-  row.disposeStatus = '已下架'
-  ElMessage.success(`已下架「${row.product}」`)
+// 下架商品（真实后端：标记告警已处理）
+async function handleOffShelf(row) {
+  try {
+    await ElMessageBox.confirm('确认下架【' + (row.product || row.roomTitle) + '】？', '下架确认', { type: 'warning' })
+  } catch { return }
+  try {
+    if (row.id) await handleLiveAlert(row.id)
+    row.disposeStatus = '已下架'
+    ElMessage.success('已下架：' + (row.product || row.roomTitle))
+    await loadAlerts()
+  } catch (e) {
+    ElMessage.error('操作失败：' + (e?.message || '未知错误'))
+  }
 }
 
-// 发送警告（示例操作：无真实 API，仅本地更新状态）
-function handleWarn(row) {
+// 发送警告
+async function handleWarn(row) {
+  if (row.id) {
+    try { await handleLiveAlert(row.id) } catch (e) { /* 标记失败不阻塞 */ }
+  }
   row.disposeStatus = '已警告'
-  ElMessage.success(`已对「${row.liveName}」发送警告`)
+  ElMessage.success('已对「' + (row.liveName || row.roomTitle) + '」发送警告')
+  await loadAlerts()
 }
 
-// 启用/停用监控规则（示例操作：无真实 API，仅本地切换状态）
+// 启用/停用监控规则（前端本地切换：当前无启停接口）
 function handleToggleRule(rule) {
   rule.status = rule.status === '启用' ? '停用' : '启用'
-  ElMessage.success(`已${rule.status}「${rule.ruleName}」`)
+  ElMessage.success('已' + rule.status + '「' + rule.ruleName + '」')
 }
 
-// 处理实时告警（示例操作：无真实 API，仅本地移除）
-function handleAlert(row) {
-  alertList.value = alertList.value.filter(item => item.id !== row.id)
-  ElMessage.success(`已处理告警「${row.alertType}」`)
+// 处理实时告警（真实后端：标记已处理）
+async function handleAlert(row) {
+  try {
+    if (row.id) {
+      await handleLiveAlert(row.id)
+    }
+    ElMessage.success('已处理告警：' + (row.alertType || row.content))
+    await loadAlerts()
+  } catch (e) {
+    ElMessage.error('处理失败：' + (e?.message || '未知错误'))
+  }
+}
+
+// 加载监控规则
+async function loadMonitorRules() {
+  try {
+    const list = await getLiveMonitorRules()
+    monitorRules.value = (list || []).map(r => ({
+      id: r.id,
+      ruleName: r.ruleName,
+      monitorItem: (r.ruleType === 'PRODUCT' ? '商品' : r.ruleType === 'CONTENT' ? '内容' : r.ruleType === 'COMPLIANCE' ? '合规' : r.ruleType) + ' / ' + (r.keyword || '-'),
+      status: r.enabled === 1 ? '启用' : '停用',
+      action: r.action
+    }))
+  } catch (e) {
+    console.error('获取监控规则失败:', e)
+    monitorRules.value = []
+  }
+}
+
+// 加载实时违规告警
+async function loadAlerts() {
+  try {
+    const list = await getLiveViolationAlerts(20)
+    alertList.value = (list || []).map(a => ({
+      id: a.id,
+      alertType: (a.ruleName || '违规') + ' - ' + (a.content || ''),
+      source: a.roomTitle || a.hostName || '-',
+      time: a.createTime ? String(a.createTime).slice(0, 16).replace('T', ' ') : '',
+      handled: a.handled,
+      severity: a.severity
+    }))
+    // 把告警同时映射为违规商品列表（直播间维度）
+    violationList.value = (list || []).map(a => ({
+      id: a.id,
+      liveName: a.roomTitle || '-',
+      hostName: a.hostName || '-',
+      product: a.content || a.ruleName,
+      violationType: a.ruleName,
+      riskLevel: a.severity === 'HIGH' ? '高' : a.severity === 'MIDDLE' ? '中' : '低',
+      disposeStatus: a.handled === 1 ? '已下架' : '待处置'
+    }))
+  } catch (e) {
+    console.error('获取违规告警失败:', e)
+    alertList.value = []
+    violationList.value = []
+  }
 }
 
 // 加载直播列表
@@ -342,7 +394,11 @@ async function handleSave() {
   }
 }
 
-onMounted(() => loadRooms())
+onMounted(() => {
+  loadRooms()
+  loadMonitorRules()
+  loadAlerts()
+})
 </script>
 
 <style scoped>
