@@ -41,8 +41,9 @@
           <select v-model="typeFilter">
             <option value="">全部</option>
             <option value="refund">退款</option>
-            <option value="complaint">投诉</option>
+            <option value="logistics">物流</option>
             <option value="consult">咨询</option>
+            <option value="complaint">投诉</option>
           </select>
         </div>
         <div class="form-group">
@@ -222,15 +223,39 @@ async function fetchStats() {
 async function fetchTickets() {
   loading.value = true
   try {
-    const params = {
-      status: activeTab.value,
-      type: typeFilter.value,
-      priority: priorityFilter.value,
-      search: searchText.value
+    // 后端 mo_ticket 表存储约定：
+    //   status   = PENDING / PROCESSING / CLOSED （英文枚举）
+    //   type     = 退款 / 物流 / 咨询 / 投诉      （中文）
+    //   priority = 高 / 中 / 低                  （中文）
+    // 前端 type/priority 下拉选项是英文枚举，所以需要在这里把英文映射成后端真实值
+    // 'all' / 'overdue' 不传 status，前端二次过滤
+    const typeMap = {
+      REFUND: '退款',
+      LOGISTICS: '物流',
+      CONSULT: '咨询',
+      COMPLAINT: '投诉',
+      OTHER: '其他'
     }
-    Object.keys(params).forEach(k => {
-      if (!params[k]) delete params[k]
-    })
+    const priorityMap = {
+      HIGH: '高',
+      MEDIUM: '中',
+      LOW: '低'
+    }
+
+    const params = {}
+    // 状态：仅当是具体状态（非 all / overdue）时直接把英文传给后端
+    if (activeTab.value && activeTab.value !== 'all' && activeTab.value !== 'overdue') {
+      params.status = activeTab.value.toUpperCase()
+    }
+    if (typeFilter.value) {
+      params.type = typeMap[typeFilter.value.toUpperCase()] || typeFilter.value
+    }
+    if (priorityFilter.value) {
+      params.priority = priorityMap[priorityFilter.value.toUpperCase()] || priorityFilter.value
+    }
+    if (searchText.value) {
+      params.keyword = searchText.value
+    }
     const res = await getTicketList(params)
     if (res) {
       const list = toArray(res)
@@ -260,20 +285,24 @@ async function fetchTickets() {
           _priority: String(t.priority || t.priorityKey || '').toUpperCase()
         }
       })
-      // 根据筛选条件决定是否在前端过滤
-      const needFilter = activeTab.value !== 'all' || typeFilter.value || priorityFilter.value || searchText.value
-      if (needFilter) {
-        tickets.value = mappedList.filter(t => {
-          let match = true
-          if (activeTab.value !== 'all' && t._status !== activeTab.value.toUpperCase()) match = false
-          if (typeFilter.value && t._type !== typeFilter.value.toUpperCase()) match = false
-          if (priorityFilter.value && t._priority !== priorityFilter.value.toUpperCase()) match = false
-          if (searchText.value && !String(t.no).includes(searchText.value) && !String(t.user).includes(searchText.value)) match = false
-          return match
-        })
-      } else {
-        tickets.value = mappedList
-      }
+      // 前端兜底过滤
+      // 后端已经按 status/type/priority/keyword 精确过滤，这里只需要处理两类特殊场景：
+      // 1. overdue（超时）：不是数据库状态字段，而是 firstResponseMinutes > 30 计算出来的
+      // 2. searchText 在工单号 / 用户名 / 标题上做模糊匹配（后端 keyword 仅匹配 title）
+      tickets.value = mappedList.filter(t => {
+        // 超时 tab：用后端返回的 timeout 字段判定（firstResponseMinutes > 30 分钟）
+        if (activeTab.value === 'overdue') {
+          const isTimeout = t.timeout === true || (typeof t.firstResponseMinutes === 'number' && t.firstResponseMinutes > 30)
+          if (!isTimeout) return false
+        }
+        // 关键词兜底：除 title 外再匹配 ticketNo / userName（后端 keyword 只查 title）
+        if (searchText.value) {
+          const kw = String(searchText.value).toLowerCase()
+          const haystack = `${t.no || ''} ${t.user || ''} ${t.title || ''}`.toLowerCase()
+          if (!haystack.includes(kw)) return false
+        }
+        return true
+      })
     }
   } catch (err) {
     console.error('获取工单列表失败:', err)
