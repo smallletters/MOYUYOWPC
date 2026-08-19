@@ -9,7 +9,11 @@ import com.moyuyo.dao.admin.entity.AbTestEntity;
 import com.moyuyo.dao.admin.entity.MarketingCampaignEntity;
 import com.moyuyo.dao.admin.mapper.AbTestMapper;
 import com.moyuyo.dao.admin.mapper.MarketingCampaignMapper;
+import com.moyuyo.dao.entity.CouponEntity;
+import com.moyuyo.dao.entity.FlashSaleEntity;
 import com.moyuyo.dao.entity.OrderEntity;
+import com.moyuyo.dao.mapper.CouponMapper;
+import com.moyuyo.dao.mapper.FlashSaleMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.service.admin.impl.CampaignMarketingServiceImpl;
 import org.junit.jupiter.api.Test;
@@ -43,6 +47,12 @@ class CampaignMarketingServiceImplTest {
 
   @Mock
   private OrderMapper orderMapper;
+
+  @Mock
+  private CouponMapper couponMapper;
+
+  @Mock
+  private FlashSaleMapper flashSaleMapper;
 
   @InjectMocks
   private CampaignMarketingServiceImpl service;
@@ -401,5 +411,114 @@ class CampaignMarketingServiceImplTest {
     o.setStatus(OrderStatusEnum.COMPLETED.name());
     o.setPayAmount(payAmount);
     return o;
+  }
+
+  // ============ saveDraft ============
+
+  @Test
+  void saveDraft_有效请求_状态强制为DRAFT() {
+    // given
+    CampaignRequest request = new CampaignRequest();
+    request.setName("草稿测试");
+    request.setType("DISCOUNT");
+
+    // when
+    OperationResult result = service.saveDraft(request);
+
+    // then
+    ArgumentCaptor<MarketingCampaignEntity> captor = ArgumentCaptor.forClass(MarketingCampaignEntity.class);
+    verify(marketingCampaignMapper).insert(captor.capture());
+    assertEquals("草稿测试", captor.getValue().getName());
+    assertEquals("DRAFT", captor.getValue().getStatus(), "草稿必须落 DRAFT 而非 calculateStatus");
+    assertEquals("草稿保存成功", result.getMessage());
+  }
+
+  @Test
+  void saveDraft_name为空_使用兜底名称() {
+    // given
+    CampaignRequest request = new CampaignRequest();
+    request.setStartDate("2026-08-04");
+    request.setEndDate("2026-08-10");
+
+    // when
+    service.saveDraft(request);
+
+    // then
+    ArgumentCaptor<MarketingCampaignEntity> captor = ArgumentCaptor.forClass(MarketingCampaignEntity.class);
+    verify(marketingCampaignMapper).insert(captor.capture());
+    assertTrue(captor.getValue().getName().startsWith("未命名草稿_"));
+    assertEquals("DRAFT", captor.getValue().getStatus());
+  }
+
+  // ============ getCouponEffects ============
+
+  @Test
+  void getCouponEffects_无券数据_指标全为0不抛异常() {
+    when(couponMapper.selectList(any())).thenReturn(List.of());
+    when(orderMapper.selectList(any())).thenReturn(List.of());
+
+    CouponEffectResponse result = service.getCouponEffects(7);
+
+    assertEquals(0, result.getTotalIssued());
+    assertEquals(BigDecimal.ZERO, result.getUsageRate(), "无券时核销率应为 0 而非 NaN");
+    assertTrue(result.getItems().isEmpty());
+  }
+
+  @Test
+  void getCouponEffects_有券无订单_核销率0且GMV0() {
+    CouponEntity c = new CouponEntity();
+    c.setId(1L);
+    c.setName("测试券");
+    c.setDiscountValue(new BigDecimal("20"));
+    c.setClaimedCount(100);
+    c.setUsedCount(50);
+    when(couponMapper.selectList(any())).thenReturn(List.of(c));
+    when(orderMapper.selectList(any())).thenReturn(List.of());
+
+    CouponEffectResponse result = service.getCouponEffects(7);
+
+    assertEquals(100, result.getTotalIssued());
+    assertEquals(50, result.getTotalUsed());
+    assertEquals(new BigDecimal("50.0"), result.getUsageRate());
+    assertEquals(BigDecimal.ZERO, result.getGmv());
+    assertEquals(1, result.getItems().size());
+    assertEquals("测试券", result.getItems().get(0).getName());
+    assertEquals(50, result.getItems().get(0).getIssued());
+    assertEquals(50, result.getItems().get(0).getUsed());
+  }
+
+  // ============ getFlashEffects ============
+
+  @Test
+  void getFlashEffects_无秒杀_所有指标为0() {
+    when(flashSaleMapper.selectList(any())).thenReturn(List.of());
+
+    FlashEffectResponse result = service.getFlashEffects(7);
+
+    assertEquals(BigDecimal.ZERO, result.getParticipationRate());
+    assertEquals(BigDecimal.ZERO, result.getConversionRate());
+    assertEquals(BigDecimal.ZERO, result.getAvgSelloutMinutes());
+    assertEquals(BigDecimal.ZERO, result.getGmv());
+    assertTrue(result.getItems().isEmpty());
+  }
+
+  @Test
+  void getFlashEffects_已售罄场次_售罄率为100() {
+    FlashSaleEntity f = new FlashSaleEntity();
+    f.setId(1L);
+    f.setName("秒杀A");
+    f.setTotalStock(100);
+    f.setSoldStock(100);
+    f.setStartTime(LocalDateTime.now().minusHours(1));
+    f.setEndTime(LocalDateTime.now().plusHours(1));
+    when(flashSaleMapper.selectList(any())).thenReturn(List.of(f));
+    when(orderMapper.selectList(any())).thenReturn(List.of());
+    when(orderMapper.selectCount(any())).thenReturn(0L);
+
+    FlashEffectResponse result = service.getFlashEffects(7);
+
+    assertEquals(100, result.getItems().get(0).getSelloutRate());
+    assertEquals("已售罄", result.getItems().get(0).getStatus());
+    assertEquals(new BigDecimal("100.0"), result.getParticipationRate(), "1/1 场售罄 = 100%");
   }
 }

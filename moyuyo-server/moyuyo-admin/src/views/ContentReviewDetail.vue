@@ -1,453 +1,512 @@
 <template>
   <div class="page-wrapper">
-    <!-- 页面标题行 -->
-    <div class="page-header">
-      <div>
-        <h2>内容审核详情</h2>
-        <p class="page-desc">
-          审核ID: {{ detail.id ?? '-' }}
-          <template v-if="detail.createTime"> | 提交时间: {{ detail.createTime }}</template>
-        </p>
+    <!-- 页面标题 -->
+    <div class="page-title-area">
+      <h1>内容审核详情</h1>
+      <p>查看待审核内容的完整信息、原内容预览与机审评分</p>
+    </div>
+
+    <!-- 加载失败 -->
+    <div v-if="loadError" class="error-banner">
+      <div class="error-banner-inner">
+        <span class="error-banner-icon">⚠️</span>
+        <div>
+          <strong class="error-banner-title">内容加载失败：</strong>
+          <span class="error-banner-msg">{{ loadError }}</span>
+        </div>
       </div>
-      <div class="header-actions">
-        <el-button @click="goBack">返回列表</el-button>
+      <div class="error-banner-tip">
+        可能原因：内容已被删除 / ID 无效 / 权限不足。
+        <button class="btn btn-outline btn-sm" style="margin-left:12px" @click="handleBack">← 返回审核列表</button>
       </div>
     </div>
 
-    <!-- 加载中 / 无数据 -->
-    <el-empty v-if="!loading && !detail.id" description="未找到该审核内容" :image-size="80">
-      <el-button type="primary" @click="goBack">返回列表</el-button>
-    </el-empty>
+    <!-- 加载中 -->
+    <div v-else-if="loading && !hasData" class="loading-state">
+      <div class="loading-spinner"></div>
+      <div>正在加载内容详情...</div>
+    </div>
 
-    <template v-if="detail.id">
-      <!-- 左右两栏布局 -->
-      <div class="detail-layout">
-        <!-- 左栏 - 内容预览 -->
-        <div class="content-panel">
-          <el-card shadow="never">
-            <!-- 发布者信息行 -->
-            <div class="publisher-row">
-              <div class="user-avatar">{{ publisherInitial }}</div>
-              <div class="publisher-meta">
-                <div class="publisher-name">
-                  {{ publisherName }}
-                  <el-tag size="small" type="primary" effect="plain">{{ contentTypeLabel }}</el-tag>
-                </div>
-                <div class="publisher-sub">
-                  UID: {{ detail.userId ?? '-' }}
-                </div>
-              </div>
-              <div class="publish-time">{{ detail.createTime }}</div>
+    <!-- 详情内容 -->
+    <div v-else-if="hasData">
+      <!-- 顶部横幅：内容类型 + 状态 + 返回按钮 -->
+      <div class="detail-banner">
+        <div class="detail-banner-left">
+          <div class="detail-icon">{{ contentTypeIcon }}</div>
+          <div class="detail-info">
+            <div class="detail-meta-row">
+              <el-tag :type="statusTagType(detail.status)" size="default" effect="dark">
+                {{ statusLabel(detail.status) }}
+              </el-tag>
+              <span class="content-type-tag">{{ contentTypeLabel(detail.contentType) }}</span>
+              <span v-if="detail.autoFlag === 1" class="auto-flag">⚠️ 机审标记</span>
             </div>
-
-            <!-- 内容标题 -->
-            <h3 class="content-title">{{ detail.contentExcerpt || '（无内容摘要）' }}</h3>
-
-            <!-- 内容类型标识 -->
-            <div class="content-meta">
-              <el-tag v-if="detail.contentId" size="small">内容ID: {{ detail.contentId }}</el-tag>
-              <el-tag v-if="detail.autoFlag" size="small" type="warning" effect="plain">机审标记</el-tag>
-            </div>
-
-            <!-- 图片预览区 -->
-            <div v-if="imageList.length" class="image-grid">
-              <div v-for="(img, idx) in imageList" :key="idx" class="preview-img">
-                <img v-if="isHttpUrl(img)" :src="img" alt="内容图片" />
-                <span v-else>{{ img }}</span>
-              </div>
-            </div>
-            <el-empty v-else description="暂无图片" :image-size="60" />
-
-            <!-- 互动数据（占位，与设计稿一致） -->
-            <div class="stat-row">
-              <span class="stat-item">❤️ <b>{{ detail.likeCount ?? 0 }}</b> 点赞</span>
-              <span class="stat-item">💬 <b>{{ detail.commentCount ?? 0 }}</b> 评论</span>
-              <span class="stat-item">🔖 <b>{{ detail.favoriteCount ?? 0 }}</b> 收藏</span>
-            </div>
-          </el-card>
+            <h2 class="detail-title">内容 ID: {{ detail.contentId }}</h2>
+            <div class="detail-subtitle">审核记录 ID: {{ detail.id }} · 创建于 {{ formatTime(detail.createTime) }}</div>
+          </div>
         </div>
-
-        <!-- 右栏 - 审核操作面板 -->
-        <div class="action-panel">
-          <!-- 审核状态卡片 -->
-          <el-card shadow="never">
-            <div class="panel-title">审核信息</div>
-            <div class="status-line">
-              <span class="status-label">当前状态</span>
-              <el-tag :type="statusTagType" size="large">{{ statusLabel }}</el-tag>
-            </div>
-            <div class="info-line" v-if="detail.reviewTime">
-              <span>审核时间</span><b>{{ detail.reviewTime }}</b>
-            </div>
-            <div class="info-line" v-if="detail.reviewComment">
-              <span>审核备注</span><b>{{ detail.reviewComment }}</b>
-            </div>
-            <div class="info-line" v-if="detail.reason">
-              <span>驳回原因</span><b>{{ detail.reason }}</b>
-            </div>
-            <div class="info-line" v-if="detail.autoScore">
-              <span>AI 预审评分</span><b>{{ detail.autoScore }} / 100</b>
-            </div>
-          </el-card>
-
-          <!-- 审核操作按钮组 -->
-          <el-card shadow="never">
-            <div class="panel-title">审核操作</div>
-            <div class="action-btns">
-              <el-button type="success" size="large" :disabled="!canOperate" @click="handleApprove">通过</el-button>
-              <el-button type="warning" size="large" :disabled="!canOperate" @click="handleReject">驳回</el-button>
-              <el-button size="large" :disabled="!canOperate" @click="handleHide">隐藏</el-button>
-              <el-button type="danger" size="large" @click="handleDelete">删除</el-button>
-              <el-button type="danger" plain size="large" :disabled="!canOperate" @click="handleBan">封禁</el-button>
-            </div>
-          </el-card>
-
-          <!-- 驳回原因表单（仅驳回时展示） -->
-          <el-card v-if="showRejectForm" shadow="never" class="reject-card">
-            <div class="panel-title" style="color: #e67e22">驳回原因</div>
-            <el-form label-position="top">
-              <el-form-item label="违规类型" required>
-                <el-select v-model="rejectReason" placeholder="请选择违规类型" style="width:100%">
-                  <el-option label="广告营销" value="广告营销" />
-                  <el-option label="不实信息" value="不实信息" />
-                  <el-option label="低质内容" value="低质内容" />
-                  <el-option label="侵权内容" value="侵权内容" />
-                  <el-option label="其他" value="其他" />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="驳回说明">
-                <el-input
-                  v-model="rejectComment"
-                  type="textarea"
-                  :rows="3"
-                  placeholder="请输入驳回原因说明..."
-                />
-              </el-form-item>
-              <div class="reject-actions">
-                <el-button type="warning" @click="confirmReject">确认驳回</el-button>
-                <el-button @click="showRejectForm = false">取消</el-button>
-              </div>
-            </el-form>
-          </el-card>
+        <div class="detail-banner-right">
+          <button class="btn btn-outline" @click="handleBack">← 返回</button>
         </div>
       </div>
-    </template>
+
+      <!-- KPI 4 列 -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <span class="kpi-card-icon">🆔</span>
+            <span class="kpi-card-label">内容 ID</span>
+          </div>
+          <div class="kpi-card-value">#{{ detail.contentId }}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <span class="kpi-card-icon">👤</span>
+            <span class="kpi-card-label">发布用户</span>
+          </div>
+          <div class="kpi-card-value">#{{ detail.userId }}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <span class="kpi-card-icon">🤖</span>
+            <span class="kpi-card-label">机审评分</span>
+          </div>
+          <div class="kpi-card-value">
+            {{ detail.autoScore != null ? detail.autoScore : '-' }}
+          </div>
+          <div class="kpi-card-trend" v-if="detail.autoFlag === 1">
+            <span class="kpi-trend-text">机审标记异常</span>
+          </div>
+          <div class="kpi-card-trend" v-else>
+            <span class="kpi-trend-text">机审标记正常</span>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <span class="kpi-card-icon">📝</span>
+            <span class="kpi-card-label">违规类型</span>
+          </div>
+          <div class="kpi-card-value" style="font-size:16px">
+            {{ detail.reason || '暂无标记' }}
+          </div>
+        </div>
+      </div>
+
+      <!-- 内容预览卡片 -->
+      <div class="detail-panel">
+        <div class="detail-panel-header">
+          <h3 class="detail-panel-title">内容预览</h3>
+        </div>
+        <div class="detail-panel-body">
+          <div class="content-preview">
+            {{ detail.contentExcerpt || '（无内容摘要）' }}
+          </div>
+        </div>
+      </div>
+
+      <!-- 审核操作卡片 -->
+      <div class="detail-panel">
+        <div class="detail-panel-header">
+          <h3 class="detail-panel-title">审核操作</h3>
+        </div>
+        <div class="detail-panel-body">
+          <div class="review-actions">
+            <button class="btn btn-primary btn-lg" :disabled="busy" @click="handleAction('approve')">
+              ✓ 通过
+            </button>
+            <button class="btn btn-outline btn-lg" :disabled="busy" @click="handleAction('hide')">
+              👁 隐藏
+            </button>
+            <button class="btn btn-outline btn-lg" :disabled="busy" @click="handleAction('delete')">
+              🗑 删除
+            </button>
+            <button class="btn btn-danger btn-lg" :disabled="busy" @click="handleAction('ban')">
+              🚫 封禁
+            </button>
+          </div>
+          <div class="review-tip">
+            操作执行后会自动刷新当前审核状态。
+          </div>
+        </div>
+      </div>
+
+      <!-- 审核记录 -->
+      <div v-if="detail.reviewTime || detail.reviewerId" class="detail-panel">
+        <div class="detail-panel-header">
+          <h3 class="detail-panel-title">审核记录</h3>
+        </div>
+        <div class="detail-panel-body">
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="审核人">#{{ detail.reviewerId || '—' }}</el-descriptions-item>
+            <el-descriptions-item label="审核时间">{{ formatTime(detail.reviewTime) }}</el-descriptions-item>
+            <el-descriptions-item v-if="detail.reviewComment" label="审核意见" :span="2">
+              {{ detail.reviewComment }}
+            </el-descriptions-item>
+          </el-descriptions>
+        </div>
+      </div>
+    </div>
+
+    <!-- 未加载到任何数据 -->
+    <div v-else class="empty-state">
+      <div class="empty-state-icon">📭</div>
+      <div class="empty-state-text">内容 ID: {{ contentId }}</div>
+      <button class="btn btn-outline" style="margin-top:12px" @click="handleBack">返回列表</button>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getContentReviewDetail,
   approveContentReview,
-  rejectContentReview,
   hideContentReview,
   deleteContentReview,
   banContentReview
 } from '../api/admin'
 
 const route = useRoute()
-const router = useRouter()
 
-const detail = ref({})
-const loading = ref(true)
-const showRejectForm = ref(false)
-const rejectReason = ref('')
-const rejectComment = ref('')
-
-// 审核状态映射
-const STATUS_MAP = {
-  PENDING: { label: '待审核', type: 'warning' },
-  APPROVED: { label: '已通过', type: 'success' },
-  REJECTED: { label: '已驳回', type: 'danger' },
-  HIDDEN: { label: '已隐藏', type: 'info' },
-  BANNED: { label: '已封禁', type: 'danger' }
-}
-
-const statusLabel = computed(() => STATUS_MAP[detail.value.status]?.label || detail.value.status || '待审核')
-const statusTagType = computed(() => STATUS_MAP[detail.value.status]?.type || 'warning')
-const canOperate = computed(() => detail.value.status === 'PENDING')
-const contentTypeLabel = computed(() => detail.value.contentType || '图文')
-const publisherName = computed(() => '用户' + (detail.value.userId ?? ''))
-const publisherInitial = computed(() => publisherName.value.slice(-1) || 'U')
-
-// 图片列表：兼容字符串/JSON数组/逗号分隔
-const imageList = computed(() => {
-  const raw = detail.value.images
-  if (!raw) return []
-  if (Array.isArray(raw)) return raw
-  try {
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : [raw]
-  } catch (e) {
-    return String(raw).split(',').map(s => s.trim()).filter(Boolean)
-  }
+// 内容详情数据
+const detail = reactive({
+  id: '',
+  contentType: '',
+  contentId: '',
+  userId: '',
+  contentExcerpt: '',
+  images: '',
+  reason: '',
+  status: '',
+  reviewerId: '',
+  reviewComment: '',
+  reviewTime: '',
+  autoFlag: 0,
+  autoScore: null,
+  createTime: ''
 })
 
-function isHttpUrl(str) {
-  return typeof str === 'string' && /^https?:\/\//i.test(str)
+const loading = ref(false)
+const busy = ref(false) // 任意操作进行中（防重复点击）
+const loadError = ref('')
+
+const contentId = computed(() => route.query.id || route.params.id || '')
+const hasData = computed(() => !!detail.id)
+
+const contentTypeIcon = computed(() => {
+  const map = { POST: '📝', COMMENT: '💬', IMAGE: '🖼', VIDEO: '🎬' }
+  return map[detail.contentType] || '📄'
+})
+
+// 状态 -> el-tag type
+function statusTagType(status) {
+  const map = {
+    PENDING: 'warning',
+    APPROVED: 'success',
+    REJECTED: 'danger',
+    HIDDEN: 'info',
+    BANNED: 'danger',
+    DELETED: 'info'
+  }
+  return map[status] || 'info'
 }
 
-// 加载审核详情
+// 状态 -> 中文标签
+function statusLabel(status) {
+  const map = {
+    PENDING: '待审核',
+    APPROVED: '已通过',
+    REJECTED: '已驳回',
+    HIDDEN: '已隐藏',
+    BANNED: '已封禁',
+    DELETED: '已删除'
+  }
+  return map[status] || status || '未知'
+}
+
+// 内容类型 -> 中文
+function contentTypeLabel(type) {
+  const map = { POST: '社区帖子', COMMENT: '评论', IMAGE: '图片', VIDEO: '视频' }
+  return map[type] || type || '其他'
+}
+
+// 时间格式化
+function formatTime(value) {
+  if (!value) return '—'
+  return String(value).replace('T', ' ').replace(/\..*$/, '') || '—'
+}
+
+// 加载内容详情
 async function loadDetail() {
+  const id = contentId.value
+  if (!id) {
+    loadError.value = '缺少内容 ID'
+    return
+  }
   loading.value = true
+  loadError.value = ''
   try {
-    const id = route.params.id
-    // 无 id 时不做请求，直接展示空状态
-    if (!id) {
-      detail.value = {}
-      ElMessage.warning('缺少审核记录 ID')
-      return
-    }
     const res = await getContentReviewDetail(id)
-    detail.value = res || {}
-    if (!detail.value.id) {
-      ElMessage.warning('未找到该审核记录')
+    if (res && res.id) {
+      Object.assign(detail, {
+        id: res.id || '',
+        contentType: res.contentType || '',
+        contentId: res.contentId || '',
+        userId: res.userId || '',
+        contentExcerpt: res.contentExcerpt || '',
+        images: res.images || '',
+        reason: res.reason || '',
+        status: res.status || '',
+        reviewerId: res.reviewerId || '',
+        reviewComment: res.reviewComment || '',
+        reviewTime: res.reviewTime || '',
+        autoFlag: res.autoFlag ?? 0,
+        autoScore: res.autoScore ?? null,
+        createTime: res.createTime || ''
+      })
+    } else {
+      loadError.value = `内容「${id}」不存在或已被删除`
     }
-  } catch (e) {
-    console.error('获取审核详情失败:', e)
-    ElMessage.error('获取审核详情失败')
+  } catch (err) {
+    console.error('加载内容详情失败:', err)
+    const serverMsg = err?.response?.data?.message || err?.message || '未知错误'
+    loadError.value = `${serverMsg}（ID: ${id}）`
   } finally {
     loading.value = false
   }
 }
 
-function goBack() {
-  router.push('/reviews')
-}
-
-async function handleApprove() {
-  try {
-    await approveContentReview(detail.value.id)
-    ElMessage.success('已通过')
-    await loadDetail()
-  } catch (e) {
-    ElMessage.error('操作失败')
+// 单个审核操作（通过 / 隐藏 / 删除 / 封禁）
+async function handleAction(action) {
+  if (busy.value) return
+  const labels = {
+    approve: { title: '通过审核', text: '确认通过此内容？' },
+    hide: { title: '隐藏内容', text: '确认隐藏此内容？（内容对普通用户不可见，但管理员可见）' },
+    delete: { title: '删除内容', text: '确认删除此内容？此操作不可恢复！', danger: true },
+    ban: { title: '封禁内容', text: '确认封禁此内容？（作者将被一并封禁）', danger: true }
   }
-}
-
-function handleReject() {
-  showRejectForm.value = true
-}
-
-async function confirmReject() {
-  if (!rejectReason.value) {
-    ElMessage.warning('请选择违规类型')
-    return
-  }
+  const cfg = labels[action]
+  if (!cfg) return
   try {
-    await rejectContentReview(detail.value.id, {
-      reason: rejectReason.value,
-      comment: rejectComment.value
-    })
-    ElMessage.warning('已驳回')
-    showRejectForm.value = false
-    await loadDetail()
-  } catch (e) {
-    ElMessage.error('操作失败')
-  }
-}
-
-async function handleHide() {
-  try {
-    await hideContentReview(detail.value.id)
-    ElMessage.success('已隐藏')
-    await loadDetail()
-  } catch (e) {
-    ElMessage.error('操作失败')
-  }
-}
-
-async function handleDelete() {
-  try {
-    await ElMessageBox.confirm('确定删除该内容吗？删除后不可恢复。', '删除确认', {
-      confirmButtonText: '确定删除',
+    await ElMessageBox.confirm(cfg.text, cfg.title, {
+      type: cfg.danger ? 'error' : 'warning',
+      confirmButtonText: '确认',
       cancelButtonText: '取消',
-      type: 'warning'
+      dangerouslyUseHTMLString: false
     })
-    await deleteContentReview(detail.value.id)
-    ElMessage.success('已删除')
-    goBack()
-  } catch (e) {
-    if (e !== 'cancel') ElMessage.error('操作失败')
+  } catch {
+    return // 用户取消
   }
-}
-
-async function handleBan() {
+  busy.value = true
   try {
-    await ElMessageBox.confirm('确定封禁该内容吗？', '封禁确认', {
-      confirmButtonText: '确定封禁',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    await banContentReview(detail.value.id)
-    ElMessage.success('已封禁')
-    await loadDetail()
-  } catch (e) {
-    if (e !== 'cancel') ElMessage.error('操作失败')
+    if (action === 'approve') await approveContentReview(detail.id)
+    else if (action === 'hide') await hideContentReview(detail.id)
+    else if (action === 'delete') await deleteContentReview(detail.id)
+    else if (action === 'ban') await banContentReview(detail.id)
+    ElMessage.success(`${cfg.title}成功`)
+    await loadDetail() // 重新加载详情，更新状态
+  } catch (err) {
+    console.error('审核操作失败:', err)
+    const serverMsg = err?.response?.data?.message || err?.message || '未知错误'
+    ElMessage.error(`操作失败：${serverMsg}`)
+  } finally {
+    busy.value = false
   }
 }
 
-onMounted(loadDetail)
+// 返回内容审核列表（整页跳转，避免 SPA chunk 缓存导致组件未加载）
+function handleBack() {
+  window.location.href = '/admin/content-review'
+}
+
+// 路由 id 变化时重新加载
+watch(
+  () => route.query.id,
+  (newId) => {
+    if (newId && newId !== detail.id) loadDetail()
+  }
+)
+
+onMounted(() => {
+  if (contentId.value) loadDetail()
+})
 </script>
 
 <style scoped>
 .page-wrapper { padding: 20px; }
-.page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-.page-header h2 { font-size: 22px; font-weight: 700; color: var(--text-800); margin: 0 0 4px; }
-.page-desc { font-size: 13px; color: var(--text-400); margin: 0; }
-.header-actions { display: flex; gap: 8px; }
 
-/* 左右两栏布局 */
-.detail-layout {
+/* 错误横幅 */
+.error-banner {
+  background: var(--state-error-surface);
+  border: 1px solid rgba(255, 59, 48, 0.18);
+  border-radius: var(--radius);
+  padding: 18px 24px;
+  margin-bottom: 20px;
+}
+.error-banner-inner {
   display: flex;
-  gap: 20px;
-  align-items: flex-start;
+  align-items: center;
+  gap: 10px;
 }
-.content-panel {
-  flex: 1;
-  min-width: 0;
+.error-banner-icon { font-size: 18px; }
+.error-banner-title { color: var(--state-error); margin-right: 6px; }
+.error-banner-msg { color: var(--text-700); }
+.error-banner-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-400);
 }
-.action-panel {
-  width: 380px;
-  flex-shrink: 0;
+
+/* 加载状态 */
+.loading-state {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  color: var(--text-400);
+  font-size: 14px;
   gap: 16px;
 }
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--background-200);
+  border-top-color: var(--brand-500);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
-/* 发布者信息 */
-.publisher-row {
+/* 顶部横幅 */
+.detail-banner {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.publisher-meta {
-  flex: 1;
-  min-width: 0;
-}
-.publisher-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-800);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.publisher-sub {
-  font-size: 12px;
-  color: var(--text-400);
-  margin-top: 2px;
-}
-.publish-time {
-  font-size: 12px;
-  color: var(--text-400);
-  flex-shrink: 0;
-}
-
-/* 内容标题 */
-.content-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-800);
-  margin: 0 0 8px;
-}
-.content-meta {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-/* 图片预览 */
-.image-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.preview-img {
-  aspect-ratio: 2/3;
-  border-radius: 8px;
-  overflow: hidden;
-  background: linear-gradient(135deg, var(--background-200), var(--background-300));
+  justify-content: space-between;
+  padding: 24px;
+  border-radius: var(--radius);
+  margin-bottom: 20px;
   border: 1px solid var(--border);
+  background: linear-gradient(135deg, #fff4e5 0%, #f0fdf4 100%);
+}
+.detail-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.detail-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: var(--card);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
-  color: var(--text-400);
-  padding: 8px;
+  font-size: 24px;
+  box-shadow: var(--shadow-xs);
 }
-.preview-img img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* 互动数据 */
-.stat-row {
+.detail-meta-row {
   display: flex;
-  gap: 24px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.content-type-tag {
   font-size: 13px;
   color: var(--text-500);
+  padding: 2px 8px;
+  background: var(--background-200);
+  border-radius: 4px;
 }
-.stat-item b {
-  color: var(--text-700);
+.auto-flag {
+  font-size: 13px;
+  color: var(--state-warning);
+  padding: 2px 8px;
+  background: var(--state-warning-surface);
+  border-radius: 4px;
+}
+.detail-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-800);
+  margin: 0 0 4px;
+}
+.detail-subtitle {
+  font-size: 12px;
+  color: var(--text-400);
 }
 
-/* 右侧面板 */
-.panel-title {
+/* KPI 4 列 */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+@media (max-width: 1100px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* 详情面板 */
+.detail-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.detail-panel-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--background-50);
+}
+.detail-panel-title {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-800);
-  margin-bottom: 14px;
+  margin: 0;
 }
-.status-line {
+.detail-panel-body {
+  padding: 18px;
+}
+
+/* 内容预览 */
+.content-preview {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-700);
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 16px;
+  background: var(--background-50);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+/* 审核操作按钮组 */
+.review-actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-.status-label {
-  font-size: 13px;
-  color: var(--text-500);
-}
-.info-line {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
   gap: 12px;
+  flex-wrap: wrap;
 }
-.info-line span { color: var(--text-400); white-space: nowrap; }
-.info-line b { color: var(--text-600); font-weight: 500; text-align: right; word-break: break-all; }
-
-/* 操作按钮 */
-.action-btns {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.action-btns .el-button {
-  width: 100%;
-  margin-left: 0;
+.review-tip {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-400);
 }
 
-/* 驳回表单 */
-.reject-card { border-color: #e67e22; }
-.reject-actions {
-  display: flex;
-  gap: 10px;
+/* 空态 */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-400);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
-.reject-actions .el-button {
-  flex: 1;
-  margin-left: 0;
-}
+.empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+.empty-state-text { font-size: 14px; }
 </style>

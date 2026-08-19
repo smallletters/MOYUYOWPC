@@ -54,9 +54,8 @@
           <div class="review-top">
             <div class="review-tags">
               <span class="tag" :class="item.contentTypeClass">{{ item.contentType }}</span>
-              <span class="tag tag-red" v-if="item.autoResult === '违规'">{{ item.autoResult }}</span>
-              <span class="tag tag-green" v-else-if="item.autoResult === '通过'">{{ item.autoResult }}</span>
-              <span class="tag tag-gray" v-else>{{ item.autoResult }}</span>
+              <!-- 状态标签：已删除用红色突出，其余已处理状态统一灰色 -->
+              <span class="tag" :class="item.statusTagClass">{{ item.autoResult }}</span>
             </div>
             <span class="review-time">{{ item.submitTime }}</span>
           </div>
@@ -68,10 +67,11 @@
             </div>
           </div>
           <div class="review-actions">
-            <button class="btn btn-sm btn-primary" @click="handleReview(item.id, 'approve')">通过</button>
-            <button class="btn btn-sm btn-outline" @click="handleReview(item.id, 'hide')">隐藏</button>
-            <button class="btn btn-sm btn-outline" @click="handleReview(item.id, 'delete')">删除</button>
-            <button class="btn btn-sm btn-danger" @click="handleReview(item.id, 'ban')">封禁</button>
+            <!-- DELETED 状态的记录 4 个审核按钮全部禁用，仅保留"详情" -->
+            <button class="btn btn-sm btn-primary" :disabled="item.processed" @click="handleReview(item.id, 'approve')">通过</button>
+            <button class="btn btn-sm btn-outline" :disabled="item.processed" @click="handleReview(item.id, 'hide')">隐藏</button>
+            <button class="btn btn-sm btn-outline" :disabled="item.processed" @click="handleReview(item.id, 'delete')">删除</button>
+            <button class="btn btn-sm btn-danger" :disabled="item.processed" @click="handleReview(item.id, 'ban')">封禁</button>
             <button class="btn btn-sm btn-outline" @click="goDetail(item.id)">详情</button>
           </div>
         </div>
@@ -195,6 +195,24 @@ async function loadReviewTrend() {
   }
 }
 
+// 审核状态枚举 -> 中文标签 / 标签颜色 / 是否已处理（DELETED 时禁用审核按钮）
+const STATUS_LABEL_MAP = {
+  PENDING: '待审核',
+  APPROVED: '已通过',
+  REJECTED: '已驳回',
+  HIDDEN: '已隐藏',
+  BANNED: '已封禁',
+  DELETED: '已删除'
+}
+const STATUS_TAG_CLASS_MAP = {
+  DELETED: 'tag-red',
+  BANNED: 'tag-red',
+  REJECTED: 'tag-red',
+  APPROVED: 'tag-green',
+  HIDDEN: 'tag-gray',
+  PENDING: 'tag-gray'
+}
+
 // 加载待审核内容列表
 async function loadReviewItems() {
   try {
@@ -206,16 +224,25 @@ async function loadReviewItems() {
     const res = await getContentReviewList(params)
     const records = toArray(res)
       // 映射为前端需要的格式
-      reviewItems.value = records.map((item, index) => ({
-        id: item.id,
-        thumb: item.contentType === '视频' ? '🎬' : item.contentType === '图片' ? '📷' : '📝',
-        contentType: item.contentType || (item.rating ? '评论' : '图文'),
-        contentTypeClass: item.contentType === '视频' ? 'tag-orange' : item.contentType === '图片' ? 'tag-blue' : 'tag-green',
-        autoResult: item.status || '待审核',
-        description: item.contentExcerpt || '',
-        publisher: '用户' + (item.userId || ''),
-        submitTime: item.reviewTime || item.createTime || ''
-      }))
+      reviewItems.value = records.map((item, index) => {
+        // 后端返回英文状态枚举（PENDING/APPROVED/REJECTED/HIDDEN/BANNED/DELETED），
+        // 统一翻译成中文标签用于列表展示；并把"已处理"状态（包括 DELETED）的
+        // 通过/隐藏/删除/封禁按钮置灰，避免重复操作造成状态机漂移
+        const rawStatus = item.status || 'PENDING'
+        return {
+          id: item.id,
+          thumb: item.contentType === '视频' ? '🎬' : item.contentType === '图片' ? '📷' : '📝',
+          contentType: item.contentType || (item.rating ? '评论' : '图文'),
+          contentTypeClass: item.contentType === '视频' ? 'tag-orange' : item.contentType === '图片' ? 'tag-blue' : 'tag-green',
+          autoResult: STATUS_LABEL_MAP[rawStatus] || rawStatus || '待审核',
+          statusTagClass: STATUS_TAG_CLASS_MAP[rawStatus] || 'tag-gray',
+          // DELETED 状态的记录视为"已处理"，4 个审核按钮全部禁用（仅保留"详情"）
+          processed: rawStatus === 'DELETED',
+          description: item.contentExcerpt || '',
+          publisher: '用户' + (item.userId || ''),
+          submitTime: item.reviewTime || item.createTime || ''
+        }
+      })
   } catch (e) {
     ElMessage.error('获取审核内容失败')
   }
@@ -245,9 +272,9 @@ async function handleReview(id, action) {
   }
 }
 
-// 跳转到审核详情页
+// 跳转到审核详情页：使用 window.location.href 强制整页跳转，避免 SPA chunk 缓存
 function goDetail(id) {
-  router.push(`/content-review-detail/${id}`)
+  window.location.href = `/admin/content-review-detail?id=${id}`
 }
 
 onMounted(() => {

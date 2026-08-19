@@ -397,8 +397,8 @@ function handleEdit(row) {
 }
 
 function handleDetail(row) {
-  // 跳转到投诉处理详情页（数据由详情页自行加载）
-  router.push('/complaint-handle')
+  // 跳转到投诉处理详情页，并携带工单 ID，详情页可基于此 ID 拉取详细数据
+  router.push({ path: '/complaint-handle', query: { id: row.id } })
 }
 
 // 保存投诉（调用API）

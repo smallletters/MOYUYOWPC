@@ -24,6 +24,15 @@ public interface WooCommerceSyncService {
      */
     void syncAllPendingOrders();
 
+    /**
+     * 从 WooCommerce 拉取订单最新承运商/运单号，并回写到本地订单。
+     * <p>
+     * 适用于：管理员在 WC 后台补录运单号 → 在管理后台订单详情里看到最新值。
+     * @param orderId 本地订单 ID（需已关联 wooOrderId）
+     * @return 更新后的本地订单；订单不存在 / 未推 WC / 拉取失败均返回本地值（不抛异常）
+     */
+    com.moyuyo.dao.entity.OrderEntity syncOrderTrackingFromWooCommerce(Long orderId);
+
     // ===== 商品拉取 =====
 
     /**

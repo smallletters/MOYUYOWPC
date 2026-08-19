@@ -140,14 +140,19 @@ async function loadData() {
   try {
     const res = await getComplaintList()
     const rawList = (res && res.list) || []
+    // 字段映射：与 AdminComplaintController#list 返回结构对齐
     let list = rawList.map(item => ({
       id: item.id,
       complaintNo: 'CP' + item.id,
       complainant: item.userId ? '用户' + item.userId : '',
+      // 被投诉对象：mo_feedback.type 即投诉类型
       target: item.type || '',
       defendant: typeLabelMap[item.type] || item.type || '',
+      // 投诉原因/内容
       reason: item.content || '',
-      handler: item.operator || '',
+      // 客服处理备注
+      handlerReply: item.replyContent || '',
+      contact: item.contact || '',
       status: ({'PENDING':'待处理','PROCESSING':'处理中','CLOSED':'已完结','RESOLVED':'已完结'})[item.status] || item.status || '待处理',
       handleTime: item.updateTime || item.createTime || ''
     }))
@@ -159,6 +164,7 @@ async function loadData() {
   } catch (e) {
     console.error('加载投诉列表失败:', e)
     ElMessage.error('加载投诉列表失败')
+    tableData.value = []
   }
 }
 function handleSearch() { currentPage.value = 1; loadData() }
@@ -172,16 +178,18 @@ async function handleEdit(row) {
   dialogVisible.value = true
 }
 
-// 删除投诉
+// 删除/关闭投诉
 async function handleDelete(row) {
   try {
-    await ElMessageBox.confirm('确定删除？','提示')
+    await ElMessageBox.confirm(`确定关闭投诉 ${row.complaintNo}？该操作不可撤销。`, '关闭投诉', { type: 'warning' })
+    // closeComplaint 为真实的"完结投诉"接口（POST /api/admin/complaint/{id}/close）
     await closeComplaint(row.id)
     ElMessage.success('投诉已关闭')
     loadData()
   } catch (e) {
-    if (e !== 'cancel') {
+    if (e !== 'cancel' && e !== 'close') {
       console.error('关闭投诉失败:', e)
+      ElMessage.error('关闭失败：' + (e?.response?.data?.message || e?.message || '未知错误'))
     }
   }
 }
@@ -189,8 +197,11 @@ async function handleDelete(row) {
 // 保存投诉处理（调用API分配处理人）
 async function handleSave() {
   try {
+    // 后端 /complaint/{id}/assign 接收 { assignee, remark, status }
+    // assignee=handler, remark=handlerReply, status=当前状态
     await assignComplaint(editForm.id, {
       assignee: editForm.handler,
+      remark: editForm.handlerReply || editForm.reason || '',
       status: editForm.status
     })
     ElMessage.success('投诉处理已保存')
@@ -198,7 +209,7 @@ async function handleSave() {
     loadData()
   } catch (e) {
     console.error('保存投诉处理失败:', e)
-    ElMessage.error('保存失败')
+    ElMessage.error('保存失败：' + (e?.response?.data?.message || e?.message || '未知错误'))
   }
 }
 onMounted(() => loadData())

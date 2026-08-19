@@ -35,6 +35,13 @@ public class CampaignMarketingController {
     return Result.success(campaignMarketingService.createCampaign(request));
   }
 
+  @Operation(summary = "保存活动草稿")
+  @PostMapping("/campaigns/draft")
+  public Result<OperationResult> saveDraft(@RequestBody CampaignRequest request) {
+    // 草稿不强制 @Valid,name 为空由 Service 层兜底,避免空校验阻断"先存后补"的工作流
+    return Result.success(campaignMarketingService.saveDraft(request));
+  }
+
   @Operation(summary = "更新活动")
   @PutMapping("/campaigns/{id}")
   public Result<OperationResult> updateCampaign(@PathVariable Long id, @Valid @RequestBody CampaignRequest request) {
@@ -79,5 +86,23 @@ public class CampaignMarketingController {
   @GetMapping("/effects")
   public Result<EffectResponse> effects(@RequestParam(defaultValue = "7") int days) {
     return Result.success(campaignMarketingService.getMarketingEffects(days));
+  }
+
+  @Operation(summary = "优惠券维度效果")
+  @GetMapping("/effects/coupon")
+  public Result<CouponEffectResponse> couponEffects(@RequestParam(defaultValue = "7") int days) {
+    return Result.success(campaignMarketingService.getCouponEffects(days));
+  }
+
+  @Operation(summary = "秒杀维度效果")
+  @GetMapping("/effects/flash")
+  public Result<FlashEffectResponse> flashEffects(@RequestParam(defaultValue = "7") int days) {
+    return Result.success(campaignMarketingService.getFlashEffects(days));
+  }
+
+  @Operation(summary = "分销维度效果")
+  @GetMapping("/effects/distribution")
+  public Result<DistributionEffectResponse> distributionEffects(@RequestParam(defaultValue = "7") int days) {
+    return Result.success(campaignMarketingService.getDistributionEffects(days));
   }
 }

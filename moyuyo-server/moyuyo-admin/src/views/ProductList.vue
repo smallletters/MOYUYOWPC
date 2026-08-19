@@ -111,8 +111,9 @@
             <td class="checkbox-cell"><input type="checkbox" v-model="selectedIds" :value="product.id" /></td>
             <td>
               <div class="product-cell">
-                <div class="thumb" :style="{ backgroundColor: product.color }">
-                  <span v-if="!product.color" class="thumb-placeholder">📦</span>
+                <div class="thumb" :style="product.color && !product.coverImage ? { backgroundColor: product.color } : {}">
+                  <img v-if="product.coverImage" :src="product.coverImage" :alt="product.name" @error="onImgError" />
+                  <span v-else-if="!product.color" class="thumb-placeholder">📦</span>
                 </div>
                 <div>
                   <div class="product-name">{{ product.name }}</div>
@@ -265,7 +266,9 @@ async function fetchProducts() {
         return {
           ...p,
           status: isOnSale ? '在售' : '已下架',
-          statusClass: isOnSale ? 'green' : 'gray'
+          statusClass: isOnSale ? 'green' : 'gray',
+          // 商品封面图：优先取 mainImage（已同步自 images[0]），回退到 images 数组第一张
+          coverImage: p.mainImage || (Array.isArray(p.images) && p.images.length ? (p.images[0]?.url || p.images[0]) : null)
         }
       })
       total.value = res.total || 0
@@ -296,6 +299,13 @@ function getStockClass(stock) {
   if (n === 0) return 'tag tag-red'
   if (n < 20) return 'tag tag-yellow'
   return 'tag tag-gray'
+}
+
+// 图片加载失败：退回色块占位符（避免裂图）
+function onImgError(e) {
+  const img = e.target
+  img.style.display = 'none'
+  img.parentElement.classList.add('thumb-fallback')
 }
 
 function toggleSelectAll() {
@@ -573,5 +583,15 @@ onMounted(() => {
   background: #eafaf1;
   border-color: #176b3a;
   color: #176b3a;
+}
+
+/* 图片加载失败时的色块占位（避免裂图） */
+.thumb-fallback {
+  background: var(--background-200);
+}
+.thumb-fallback::before {
+  content: "📦";
+  font-size: 18px;
+  color: var(--text-300);
 }
 </style>

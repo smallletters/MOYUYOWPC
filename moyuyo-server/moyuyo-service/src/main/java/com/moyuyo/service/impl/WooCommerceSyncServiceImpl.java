@@ -33,6 +33,78 @@ public class WooCommerceSyncServiceImpl implements WooCommerceSyncService {
     private final WooCommerceClient client;
     private final ObjectMapper objectMapper;
 
+    // ============ 订单运单同步（WC → 本地） ============
+
+    /**
+     * 从 WooCommerce 拉取订单最新承运商/运单号，并回写到本地订单。
+     * <p>
+     * WC REST API 中运单号存储位置（按优先级解析）：
+     *   1) meta_data 中 _tracking_number + _tracking_provider（woocommerce-shipment-tracking 插件）
+     *   2) meta_data 中 shipment_tracking_*（Advanced Shipment Tracking 等插件）
+     *   3) meta_data 中 ast_tracking_number / ast_carrier
+     * <p>
+     * 仅当 WC 返回了运单号且与本地不一致时才更新，避免无效写库。
+     * 同步失败抛 WooCommerceSyncException，由 controller 决定是否降级（返回本地缓存值）。
+     */
+    public OrderEntity syncOrderTrackingFromWooCommerce(Long orderId) {
+        OrderEntity order = orderMapper.selectById(orderId);
+        if (order == null) return null;
+        Long wooOrderId = order.getWooOrderId();
+        if (wooOrderId == null) {
+            // 本地订单未推送到 WC，无运单可言
+            return order;
+        }
+        Map<String, Object> wcOrder;
+        try {
+            wcOrder = client.getOrder(wooOrderId.intValue());
+        } catch (Exception e) {
+            log.warn("[woo-tracking] 拉取 WC 订单失败：orderId={}, wooOrderId={}, reason={}",
+                    orderId, wooOrderId, e.getMessage());
+            return order;
+        }
+        if (wcOrder == null || wcOrder.isEmpty()) return order;
+
+        String wcTracking = extractMetaString(wcOrder, "_tracking_number", "shipment_tracking_number", "ast_tracking_number");
+        String wcCarrier = extractMetaString(wcOrder, "_tracking_provider", "shipment_tracking_provider", "ast_carrier", "_tracking_company");
+
+        boolean changed = false;
+        if (wcTracking != null && !wcTracking.isBlank() && !wcTracking.equals(order.getTrackingNumber())) {
+            order.setTrackingNumber(wcTracking);
+            changed = true;
+        }
+        if (wcCarrier != null && !wcCarrier.isBlank() && !wcCarrier.equals(order.getShippingCarrier())) {
+            order.setShippingCarrier(wcCarrier);
+            changed = true;
+        }
+        if (changed) {
+            orderMapper.updateById(order);
+            log.info("[woo-tracking] 同步运单成功：orderId={}, wooOrderId={}, carrier={}, tracking={}",
+                    orderId, wooOrderId, order.getShippingCarrier(), order.getTrackingNumber());
+        }
+        return order;
+    }
+
+    /** 从 WC 订单 meta_data 数组中按多个候选 key 提取首个非空字符串值 */
+    @SuppressWarnings("unchecked")
+    private String extractMetaString(Map<String, Object> wcOrder, String... keys) {
+        Object metaObj = wcOrder.get("meta_data");
+        if (!(metaObj instanceof List) || keys == null) return null;
+        for (Object entry : (List<Object>) metaObj) {
+            if (!(entry instanceof Map)) continue;
+            Map<String, Object> m = (Map<String, Object>) entry;
+            Object key = m.get("key");
+            if (key == null) continue;
+            String keyStr = key.toString();
+            for (String k : keys) {
+                if (k.equals(keyStr)) {
+                    Object v = m.get("value");
+                    if (v != null && !v.toString().isBlank()) return v.toString();
+                }
+            }
+        }
+        return null;
+    }
+
     // ============ 订单同步 ============
 
     @Override

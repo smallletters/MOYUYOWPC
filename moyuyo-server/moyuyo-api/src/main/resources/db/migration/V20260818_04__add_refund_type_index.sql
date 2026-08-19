@@ -1,0 +1,11 @@
+-- 退款工作台「按 type 维度精确状态计数」性能索引
+-- 背景：AdminRefundController#statusCount 调用 refundService.countRefundsByStatus(type)，
+--       SQL 形如：SELECT status, COUNT(*) FROM mo_refund WHERE type=? GROUP BY status
+--       type 字段现有 5 个枚举值（FULL/PARTIAL/REFUND_ONLY/REFUND_RETURN/EXCHANGE），
+--       单 type 下的状态数最多 5 行；走 type 索引后 GROUP BY 可在内存中完成，
+--       避免百万行退款数据全表扫描。
+-- 索引选择 (type, status) 复合索引：
+--   - 等值过滤 type 后 GROUP BY status 可直接走索引，无需 filesort
+--   - 反向顺序 (status, type) 已被 idx_refund_status_create / idx_refund_status_update 部分覆盖，
+--     但这两条索引都包含额外列（create_time / complete_time），且 type 非首列，对本查询无效
+ALTER TABLE `mo_refund` ADD INDEX IF NOT EXISTS `idx_refund_type_status` (`type`, `status`);

@@ -74,12 +74,8 @@ public class AdminPermissionFilter implements Filter {
         m.put("gift-card", "marketing");
         m.put("member", "user");
         m.put("user-profile", "user");
-        m.put("cs-sessions", "customer-service");
-        m.put("cs-performance", "customer-service");
-        m.put("knowledge-base", "customer-service");
-        m.put("ticket", "customer-service");
-        m.put("complaint", "customer-service");
-        m.put("satisfaction", "customer-service");
+        // 客服域子模块：直接使用路径首段作为资源键，与 V20260803 RBAC 矩阵对齐
+        // 之前归一到 "customer-service" 会导致 CUSTOMER_SVC/OPERATOR 等所有非超管角色 403
         m.put("risk-alert", "risk");
         m.put("risk-rule-engine", "risk");
         m.put("blacklist", "risk");
@@ -94,6 +90,7 @@ public class AdminPermissionFilter implements Filter {
         m.put("settlement", "finance");
         m.put("invoice", "finance");
         m.put("refund", "finance");
+        m.put("exchange", "order");
         m.put("gdpr", "compliance");
         m.put("ab-test", "analytics");
         m.put("funnel-analysis", "analytics");

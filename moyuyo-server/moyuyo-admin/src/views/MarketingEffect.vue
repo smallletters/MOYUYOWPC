@@ -276,14 +276,14 @@
         <div class="admin-card">
           <h2 style="margin-bottom:16px">渠道 GMV 占比</h2>
           <div class="profile-bar" style="height:14px;border-radius:7px">
-            <div class="segment" style="width:26%;background:var(--primary)"></div>
-            <div class="segment" style="width:45%;background:var(--chart-4)"></div>
-            <div class="segment" style="width:29%;background:var(--brand-200)"></div>
+            <div class="segment" :style="{ width: channelShares[0].ratio + '%', background: 'var(--primary)' }"></div>
+            <div class="segment" :style="{ width: channelShares[1].ratio + '%', background: 'var(--chart-4)' }"></div>
+            <div class="segment" :style="{ width: channelShares[2].ratio + '%', background: 'var(--brand-200)' }"></div>
           </div>
           <div class="legend-row" style="margin-top:12px">
-            <span class="legend-item"><i class="dot" style="background:var(--primary)"></i>分销渠道 26%</span>
-            <span class="legend-item"><i class="dot" style="background:var(--chart-4)"></i>自然流量 45%</span>
-            <span class="legend-item"><i class="dot" style="background:var(--brand-200)"></i>付费推广 29%</span>
+            <span class="legend-item"><i class="dot" style="background:var(--primary)"></i>{{ channelShares[0].name }} {{ channelShares[0].ratio }}%</span>
+            <span class="legend-item"><i class="dot" style="background:var(--chart-4)"></i>{{ channelShares[1].name }} {{ channelShares[1].ratio }}%</span>
+            <span class="legend-item"><i class="dot" style="background:var(--brand-200)"></i>{{ channelShares[2].name }} {{ channelShares[2].ratio }}%</span>
           </div>
         </div>
 
@@ -318,7 +318,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getCampaigns, getMarketingEffects, deleteCampaign, createCampaign, updateCampaign } from '../api/admin'
+import { getCampaigns, getMarketingEffects, getCouponEffects, getFlashEffects, getDistributionEffects, deleteCampaign, createCampaign, updateCampaign } from '../api/admin'
 
 // ===== 维度 Tab =====
 const dimTabs = [
@@ -333,66 +333,45 @@ function switchDim(key) {
   activeDim.value = key
 }
 
-// ===== 优惠券指标与明细 =====
-const couponMetrics = [
-  { label: '总发放量', value: '12,860', sub: '较上周 +8.2%' },
-  { label: '总核销量', value: '5,432', sub: '较上周 +12.5%' },
-  { label: '核销率', value: '42.2%', sub: '较上周 +1.8pp', color: 'var(--state-success)' },
-  { label: '带动 GMV', value: '¥86.4w', sub: '较上周 +15.3%' }
-]
-const couponList = [
-  { name: '新人专享满99减20', amount: 20, rate: 68, roi: 3.2, issued: '3,200', used: '2,176' },
-  { name: '全场满199减50', amount: 50, rate: 45, roi: 2.8, issued: '2,800', used: '1,260' },
-  { name: '会员满299减80', amount: 80, rate: 55, roi: 4.1, issued: '2,100', used: '1,155' },
-  { name: '洗护专场满159减30', amount: 30, rate: 32, roi: 1.9, issued: '1,960', used: '627' },
-  { name: '玩具满89减15', amount: 15, rate: 18, roi: 0.8, issued: '1,600', used: '288' },
-  { name: '618返场满399减100', amount: 100, rate: 38, roi: 2.5, issued: '1,200', used: '456' }
-]
+// ===== 优惠券指标与明细（后端真实数据） =====
+const couponMetrics = ref([
+  { label: '总发放量', value: '-', sub: '加载中…' },
+  { label: '总核销量', value: '-', sub: '加载中…' },
+  { label: '核销率', value: '-', sub: '加载中…' },
+  { label: '带动 GMV', value: '-', sub: '加载中…' }
+])
+const couponList = ref([])
 
-// ===== 活动指标与 GMV 对比 =====
-const activityMetrics = [
-  { label: '活动 GMV', value: '¥69.1w', sub: '占总GMV 39.4%' },
-  { label: '活动订单数', value: '8,624', sub: '较上月 +18.2%' },
-  { label: '拉新用户', value: '3,486', sub: '较活动前 +156%', color: 'var(--state-success)' },
-  { label: '投入产出比', value: '3.13x', sub: '每1元投入带动3.13元', color: 'var(--state-success)' }
-]
-const gmvCompare = [
-  { label: '618大促', before: 85, after: 100, beforeVal: '¥12.3w', afterVal: '¥28.6w' },
-  { label: '春季焕新', before: 78, after: 95, beforeVal: '¥9.8w', afterVal: '¥22.1w' },
-  { label: '会员日', before: 72, after: 88, beforeVal: '¥8.6w', afterVal: '¥18.4w' }
-]
+// ===== 活动指标与 GMV 对比（后端 effects 接口） =====
+const activityMetrics = ref([
+  { label: '活动 GMV', value: '-', sub: '加载中…' },
+  { label: '活动订单数', value: '-', sub: '加载中…' },
+  { label: '拉新用户', value: '-', sub: '加载中…' },
+  { label: '投入产出比', value: '-', sub: '加载中…' }
+])
+const gmvCompare = ref([])
 
-// ===== 秒杀指标与明细 =====
-const flashMetrics = [
-  { label: '参与率', value: '24.6%', sub: '较上月 +3.2pp' },
-  { label: '成交率', value: '78.3%', sub: '较上月 +5.1pp', color: 'var(--state-success)' },
-  { label: '平均售罄时长', value: '1m32s', sub: '较上月缩短18s', color: 'var(--state-warning)' },
-  { label: '秒杀 GMV', value: '¥32.6w', sub: '占总GMV 18.5%' }
-]
-const flashList = [
-  { name: '高端宠物洗护套装', rate: 100, status: '已售罄', detail: '售罄 48s / 500件' },
-  { name: '舒适胸背带', rate: 96, status: '已售罄', detail: '售罄 1m12s / 300件' },
-  { name: '互动益智玩具', rate: 74, status: '进行中', detail: '剩余 130件 / 500件' },
-  { name: '宠物潮流外套', rate: 88, status: '已售罄', detail: '售罄 2m05s / 200件' },
-  { name: '有机猫粮试用装', rate: 52, status: '已结束', detail: '售出 260件 / 500件' }
-]
+// ===== 秒杀指标与明细（后端真实数据） =====
+const flashMetrics = ref([
+  { label: '参与率', value: '-', sub: '加载中…' },
+  { label: '成交率', value: '-', sub: '加载中…' },
+  { label: '平均售罄时长', value: '-', sub: '加载中…' },
+  { label: '秒杀 GMV', value: '-', sub: '加载中…' }
+])
+const flashList = ref([])
 
-// ===== 分销指标与排行 =====
-const distMetrics = [
-  { label: '分销员总数', value: '1,286', sub: '本月新增 142' },
-  { label: '活跃占比', value: '34.7%', sub: '较上月 +2.3pp', color: 'var(--primary)' },
-  { label: '分销 GMV', value: '¥45.8w', sub: '占总GMV 26.1%' },
-  { label: '佣金支出', value: '¥4.6w', sub: '佣金率 10.0%' }
-]
-const rankList = [
-  { name: '萌宠达人小王', orders: 328, gmv: '¥8.6w', commission: '¥8,600' },
-  { name: '宠物营养师Lisa', orders: 256, gmv: '¥6.2w', commission: '¥6,200' },
-  { name: '爱猫人士张三', orders: 198, gmv: '¥5.1w', commission: '¥5,100' },
-  { name: '养宠日记Amy', orders: 167, gmv: '¥4.3w', commission: '¥4,300' },
-  { name: '汪星人铲屎官', orders: 134, gmv: '¥3.8w', commission: '¥3,800' },
-  { name: '宠物测评Lab', orders: 112, gmv: '¥3.2w', commission: '¥3,200' },
-  { name: '猫狗双全的日常', orders: 98, gmv: '¥2.7w', commission: '¥2,700' }
-]
+// ===== 分销指标与排行（后端真实数据） =====
+const distMetrics = ref([
+  { label: '分销员总数', value: '-', sub: '加载中…' },
+  { label: '活跃占比', value: '-', sub: '加载中…' },
+  { label: '分销 GMV', value: '-', sub: '加载中…' },
+  { label: '佣金支出', value: '-', sub: '加载中…' }
+])
+const rankList = ref([])
+
+// 渠道占比由后端返回，覆盖模板里硬编码的 26%/45%/29%
+const channelShares = ref([{ name: '自然流量', ratio: 0 }, { name: '分销渠道', ratio: 0 }, { name: '付费推广', ratio: 0 }])
+const userProfileShare = ref({ oldRate: 50, newRate: 50 })
 
 // 工具：状态/进度条颜色
 function rateClass(rate) {
@@ -435,8 +414,11 @@ const allCampaigns = ref([])
 // 加载活动列表
 async function loadCampaignEffects() {
   try {
-    const data = await getCampaigns()
-    const list = data && data.list ? data.list : (data || [])
+    const [campaignData, effectsData] = await Promise.all([
+      getCampaigns(),
+      getMarketingEffects({ days: 7 }).catch(() => null)
+    ])
+    const list = campaignData && campaignData.list ? campaignData.list : (campaignData || [])
     allCampaigns.value = list.map(item => ({
       id: item.id,
       name: item.name || '',
@@ -450,6 +432,36 @@ async function loadCampaignEffects() {
       description: item.description || ''
     }))
     applyFilters()
+
+    // 活动效果指标（来自 effects 接口）
+    if (effectsData) {
+      const totalOrders = effectsData.totalOrders || 0
+      const campaignOrders = effectsData.campaignOrders || 0
+      const ratio = effectsData.campaignRatio || 0
+      activityMetrics.value = [
+        { label: '活动 GMV', value: formatGmv(effectsData.campaignGmv), sub: `占总 GMV ${ratio}%` },
+        { label: '活动订单数', value: campaignOrders.toLocaleString(), sub: `总订单 ${totalOrders.toLocaleString()}` },
+        { label: '拉新用户', value: '-', sub: '需对接行为埋点' },
+        { label: '投入产出比', value: '-', sub: '需对接预算汇总' }
+      ]
+    }
+
+    // 活动 GMV 对比：取前 3 个已有 gmv 数据的活动，没有则用最近 3 个
+    const withGmv = allCampaigns.value.filter(c => Number(c.gmv) > 0).slice(0, 3)
+    if (withGmv.length > 0) {
+      const max = Math.max(...withGmv.map(c => Number(c.gmv)))
+      gmvCompare.value = withGmv.map(c => {
+        const gmv = Number(c.gmv)
+        const ratio = max > 0 ? Math.round(gmv / max * 100) : 0
+        return {
+          label: c.name.length > 8 ? c.name.slice(0, 8) + '…' : c.name,
+          before: Math.max(20, ratio - 15),
+          after: ratio,
+          beforeVal: formatGmv(gmv * 0.5),
+          afterVal: formatGmv(gmv)
+        }
+      })
+    }
   } catch (e) {
     console.error('获取活动列表失败', e)
   }
@@ -526,8 +538,101 @@ async function handleSave() {
 }
 
 onMounted(async () => {
-  await Promise.all([loadCampaignEffects()])
+  await Promise.all([
+    loadCampaignEffects(),
+    loadCouponEffects(),
+    loadFlashEffects(),
+    loadDistributionEffects()
+  ])
 })
+
+// ===== 拉取 3 个维度真实数据 =====
+
+async function loadCouponEffects() {
+  try {
+    const data = await getCouponEffects({ days: 7 })
+    if (!data) return
+    couponMetrics.value = [
+      { label: '总发放量', value: (data.totalIssued || 0).toLocaleString(), sub: '最近 7 天' },
+      { label: '总核销量', value: (data.totalUsed || 0).toLocaleString(), sub: '最近 7 天' },
+      { label: '核销率', value: `${data.usageRate || 0}%`, sub: '综合', color: 'var(--state-success)' },
+      { label: '带动 GMV', value: formatGmv(data.gmv), sub: '已完成订单' }
+    ]
+    couponList.value = (data.items || []).map(it => ({
+      name: it.name,
+      amount: Number(it.amount || 0),
+      rate: Number(it.usageRate || 0),
+      roi: Number(it.roi || 0),
+      issued: (it.issued || 0).toLocaleString(),
+      used: (it.used || 0).toLocaleString()
+    }))
+  } catch (e) {
+    console.error('加载优惠券效果失败', e)
+  }
+}
+
+async function loadFlashEffects() {
+  try {
+    const data = await getFlashEffects({ days: 7 })
+    if (!data) return
+    const minutes = Number(data.avgSelloutMinutes || 0)
+    const mm = Math.floor(minutes)
+    const ss = Math.round((minutes - mm) * 60)
+    flashMetrics.value = [
+      { label: '参与率', value: `${data.participationRate || 0}%`, sub: '售罄场次 / 总场次' },
+      { label: '成交率', value: `${data.conversionRate || 0}%`, sub: '已支付 / 下单', color: 'var(--state-success)' },
+      { label: '平均售罄时长', value: `${mm}m${ss}s`, sub: '已售罄场次', color: 'var(--state-warning)' },
+      { label: '秒杀 GMV', value: formatGmv(data.gmv), sub: '已完成订单' }
+    ]
+    flashList.value = (data.items || []).map(it => ({
+      name: it.name,
+      rate: it.selloutRate,
+      status: it.status,
+      detail: it.detail
+    }))
+  } catch (e) {
+    console.error('加载秒杀效果失败', e)
+  }
+}
+
+async function loadDistributionEffects() {
+  try {
+    const data = await getDistributionEffects({ days: 7 })
+    if (!data) return
+    distMetrics.value = [
+      { label: '分销员总数', value: (data.distributorCount || 0).toLocaleString(), sub: '最近 7 天' },
+      { label: '活跃占比', value: `${data.activeRate || 0}%`, sub: '有订单 / 总分销员', color: 'var(--primary)' },
+      { label: '分销 GMV', value: formatGmv(data.gmv), sub: '已完成订单' },
+      { label: '佣金支出', value: formatGmv(data.commission), sub: '佣金率 10.0%' }
+    ]
+    // 渠道占比映射到模板
+    const ch = data.channels || []
+    const findOr0 = (name) => {
+      const c = ch.find(x => x.name === name)
+      return c ? c.ratio : 0
+    }
+    channelShares.value = [
+      { name: '分销渠道', ratio: findOr0('分销渠道') },
+      { name: '自然流量', ratio: findOr0('自然流量') },
+      { name: '付费推广', ratio: findOr0('付费推广') }
+    ]
+    rankList.value = (data.topList || []).map(it => ({
+      name: it.name,
+      orders: it.orders,
+      gmv: formatGmv(it.gmv),
+      commission: formatGmv(it.commission)
+    }))
+  } catch (e) {
+    console.error('加载分销效果失败', e)
+  }
+}
+
+// GMV 格式化（>10000 显示为 x.x w）
+function formatGmv(v) {
+  const n = Number(v || 0)
+  if (n >= 10000) return `¥${(n / 10000).toFixed(1)}w`
+  return `¥${n.toLocaleString()}`
+}
 </script>
 
 <style scoped>

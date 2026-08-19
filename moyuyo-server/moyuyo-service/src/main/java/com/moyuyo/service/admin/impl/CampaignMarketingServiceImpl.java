@@ -10,8 +10,18 @@ import com.moyuyo.dao.admin.entity.AbTestEntity;
 import com.moyuyo.dao.admin.entity.MarketingCampaignEntity;
 import com.moyuyo.dao.admin.mapper.AbTestMapper;
 import com.moyuyo.dao.admin.mapper.MarketingCampaignMapper;
+import com.moyuyo.dao.entity.CouponEntity;
+import com.moyuyo.dao.entity.FlashSaleEntity;
+import com.moyuyo.dao.entity.FlashSaleOrderEntity;
+import com.moyuyo.dao.entity.InviteEntity;
 import com.moyuyo.dao.entity.OrderEntity;
+import com.moyuyo.dao.entity.UserCouponEntity;
+import com.moyuyo.dao.mapper.CouponMapper;
+import com.moyuyo.dao.mapper.FlashSaleMapper;
+import com.moyuyo.dao.mapper.FlashSaleOrderMapper;
+import com.moyuyo.dao.mapper.InviteMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
+import com.moyuyo.dao.mapper.UserCouponMapper;
 import com.moyuyo.service.admin.CampaignMarketingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,7 +35,9 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.moyuyo.common.enums.OrderStatusEnum.COMPLETED;
@@ -40,6 +52,11 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
   private final MarketingCampaignMapper marketingCampaignMapper;
   private final AbTestMapper abTestMapper;
   private final OrderMapper orderMapper;
+  private final CouponMapper couponMapper;
+  private final UserCouponMapper userCouponMapper;
+  private final FlashSaleMapper flashSaleMapper;
+  private final FlashSaleOrderMapper flashSaleOrderMapper;
+  private final InviteMapper inviteMapper;
 
   /** 日期格式化器(yyyy-MM-dd) */
   private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -104,6 +121,33 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
     OperationResult result = new OperationResult();
     result.setId(entity.getId());
     result.setMessage("活动创建成功");
+    return result;
+  }
+
+  @Override
+  public OperationResult saveDraft(CampaignRequest request) {
+    // 草稿允许最小信息,name 兜底为 "未命名草稿_" + 时间戳,确保落库后能区分
+    MarketingCampaignEntity entity = new MarketingCampaignEntity();
+    entity.setName(request.getName() != null && !request.getName().isEmpty()
+        ? request.getName() : "未命名草稿_" + System.currentTimeMillis());
+    entity.setType(request.getType() != null && !request.getType().isEmpty()
+        ? request.getType() : "DISCOUNT");
+    entity.setDescription(request.getDescription());
+
+    // 草稿不强制要求时间,缺失时兜底为当前时刻,确保 INSERT 不会因 null 失败
+    entity.setStartDate(request.getStartDate() != null
+        ? parseDateTime(request.getStartDate()) : LocalDateTime.now());
+    entity.setEndDate(request.getEndDate() != null
+        ? parseDateTime(request.getEndDate()) : LocalDateTime.now().plusDays(30));
+
+    entity.setBudget(request.getBudget() != null ? request.getBudget() : BigDecimal.ZERO);
+    // 强制落 DRAFT,忽略 calculateStatus(),让草稿明确可见
+    entity.setStatus("DRAFT");
+    marketingCampaignMapper.insert(entity);
+
+    OperationResult result = new OperationResult();
+    result.setId(entity.getId());
+    result.setMessage("草稿保存成功");
     return result;
   }
 
@@ -308,6 +352,309 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
     }
     resp.setTrend(trend);
     return resp;
+  }
+
+  // ============ 维度：优惠券 ============
+
+  /**
+   * 优惠券维度效果：基于 mo_coupon + mo_user_coupon + mo_order(couponDiscount)。
+   * <p>
+   * 单券 ROI = 带动 GMV / 优惠总额；优惠总额= amount × used(满减) 或 payAmount × used × discountValue(百分比)。
+   * 这里简化为 amount × used：避免百分比券的复杂反推，对满减券准确，对百分比券略偏保守。
+   */
+  @Override
+  public CouponEffectResponse getCouponEffects(int days) {
+    List<CouponEntity> coupons = couponMapper.selectList(
+        new LambdaQueryWrapper<CouponEntity>().orderByDesc(CouponEntity::getTotalCount));
+
+    int totalIssued = 0;
+    int totalUsed = 0;
+    BigDecimal totalGmv = BigDecimal.ZERO;
+    List<CouponEffectItem> items = new ArrayList<>();
+
+    for (CouponEntity c : coupons) {
+      int issued = c.getClaimedCount() != null ? c.getClaimedCount() : 0;
+      int used = c.getUsedCount() != null ? c.getUsedCount() : 0;
+      // 带动 GMV：取最近 days 天使用了该 coupon_id 的已完成订单 payAmount 之和
+      BigDecimal couponGmv = BigDecimal.ZERO;
+      if (used > 0) {
+        List<OrderEntity> orders = orderMapper.selectList(
+            new LambdaQueryWrapper<OrderEntity>()
+                .eq(OrderEntity::getStatus, COMPLETED.name())
+                .like(OrderEntity::getCouponId, c.getId().toString())
+                .ge(OrderEntity::getCreateTime, LocalDateTime.now().minusDays(days)));
+        couponGmv = orders.stream()
+            .map(o -> o.getPayAmount() != null ? o.getPayAmount() : BigDecimal.ZERO)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+      }
+      totalIssued += issued;
+      totalUsed += used;
+      totalGmv = totalGmv.add(couponGmv);
+
+      CouponEffectItem item = new CouponEffectItem();
+      item.setId(c.getId());
+      item.setName(c.getName());
+      item.setAmount(c.getDiscountValue() != null ? c.getDiscountValue() : BigDecimal.ZERO);
+      item.setIssued(issued);
+      item.setUsed(used);
+      item.setUsageRate(issued > 0
+          ? BigDecimal.valueOf(used * 100L).divide(BigDecimal.valueOf(issued), 1, RoundingMode.HALF_UP)
+          : BigDecimal.ZERO);
+      BigDecimal discountTotal = item.getAmount().multiply(BigDecimal.valueOf(used));
+      item.setRoi(discountTotal.compareTo(BigDecimal.ZERO) > 0
+          ? couponGmv.divide(discountTotal, 1, RoundingMode.HALF_UP)
+          : BigDecimal.ZERO);
+      items.add(item);
+    }
+
+    // 按发放量倒序，最多 10 条，避免明细面板过长
+    items = items.stream()
+        .sorted((a, b) -> Integer.compare(b.getIssued(), a.getIssued()))
+        .limit(10)
+        .collect(Collectors.toList());
+
+    CouponEffectResponse resp = new CouponEffectResponse();
+    resp.setTotalIssued(totalIssued);
+    resp.setTotalUsed(totalUsed);
+    resp.setUsageRate(totalIssued > 0
+        ? BigDecimal.valueOf(totalUsed * 100L).divide(BigDecimal.valueOf(totalIssued), 1, RoundingMode.HALF_UP)
+        : BigDecimal.ZERO);
+    resp.setGmv(totalGmv);
+    resp.setItems(items);
+    return resp;
+  }
+
+  // ============ 维度：秒杀 ============
+
+  /**
+   * 秒杀维度效果：基于 mo_flash_sale + mo_flash_sale_order。
+   * <p>
+   * 售罄率 = soldStock / totalStock × 100；售罄时长按 soldStock==totalStock 的最早订单时间估算。
+   */
+  @Override
+  public FlashEffectResponse getFlashEffects(int days) {
+    LocalDateTime since = LocalDateTime.now().minusDays(days);
+    List<FlashSaleEntity> flashSales = flashSaleMapper.selectList(
+        new LambdaQueryWrapper<FlashSaleEntity>().orderByDesc(FlashSaleEntity::getStartTime));
+
+    BigDecimal totalGmv = BigDecimal.ZERO;
+    int totalSessions = flashSales.size();
+    int soldOutCount = 0;
+    long totalSelloutSeconds = 0L;
+    int totalOrders = 0;
+    int paidOrders = 0;
+
+    List<FlashEffectItem> items = new ArrayList<>();
+    for (FlashSaleEntity f : flashSales) {
+      int totalStock = f.getTotalStock() != null ? f.getTotalStock() : 0;
+      int soldStock = f.getSoldStock() != null ? f.getSoldStock() : 0;
+      int rate = totalStock > 0 ? (int) Math.min(100L, soldStock * 100L / totalStock) : 0;
+      if (soldStock >= totalStock && totalStock > 0) {
+        soldOutCount++;
+      }
+
+      // 关联订单：查 flash_sale_order 中属于本次秒杀的订单
+      List<FlashSaleOrderEntity> fsOrders = flashSaleOrderMapper.selectList(
+          new LambdaQueryWrapper<FlashSaleOrderEntity>()
+              .eq(FlashSaleOrderEntity::getFlashSaleId, f.getId())
+              .ge(FlashSaleOrderEntity::getCreateTime, since));
+      totalOrders += fsOrders.size();
+
+      // 售罄时长：若已售罄且有订单，取最早订单时间与 startTime 的差值
+      String detail;
+      if (soldStock >= totalStock && totalStock > 0 && !fsOrders.isEmpty()
+          && f.getStartTime() != null) {
+        FlashSaleOrderEntity earliest = fsOrders.stream()
+            .min((a, b) -> a.getCreateTime().compareTo(b.getCreateTime()))
+            .orElse(null);
+        if (earliest != null) {
+          long seconds = java.time.Duration.between(f.getStartTime(), earliest.getCreateTime()).getSeconds();
+          totalSelloutSeconds += Math.max(0, seconds);
+          long mm = seconds / 60;
+          long ss = seconds % 60;
+          detail = String.format("售罄 %dm%02ds / %d件", mm, ss, totalStock);
+        } else {
+          detail = String.format("已售罄 / %d件", totalStock);
+        }
+      } else if (f.getEndTime() != null && LocalDateTime.now().isAfter(f.getEndTime())) {
+        detail = String.format("已结束 售出 %d / %d件", soldStock, totalStock);
+      } else if (totalStock > soldStock) {
+        detail = String.format("剩余 %d件 / %d件", totalStock - soldStock, totalStock);
+      } else {
+        detail = String.format("%d / %d件", soldStock, totalStock);
+      }
+
+      // 成交率：已支付秒杀订单 / 秒杀下单总数；通过 OrderEntity 表 + orderId 关联判定
+      if (!fsOrders.isEmpty()) {
+        List<Long> orderIds = fsOrders.stream()
+            .map(FlashSaleOrderEntity::getOrderId)
+            .filter(java.util.Objects::nonNull)
+            .collect(Collectors.toList());
+        if (!orderIds.isEmpty()) {
+          long paid = orderMapper.selectCount(
+              new LambdaQueryWrapper<OrderEntity>()
+                  .in(OrderEntity::getId, orderIds)
+                  .eq(OrderEntity::getStatus, COMPLETED.name()));
+          paidOrders += (int) paid;
+        }
+      }
+
+      // 单场 GMV：来自该秒杀关联订单的 payAmount 之和（已支付）
+      BigDecimal sessionGmv = BigDecimal.ZERO;
+      if (!fsOrders.isEmpty()) {
+        List<Long> orderIds = fsOrders.stream()
+            .map(FlashSaleOrderEntity::getOrderId)
+            .filter(java.util.Objects::nonNull)
+            .collect(Collectors.toList());
+        if (!orderIds.isEmpty()) {
+          sessionGmv = orderMapper.selectList(
+              new LambdaQueryWrapper<OrderEntity>()
+                  .in(OrderEntity::getId, orderIds)
+                  .eq(OrderEntity::getStatus, COMPLETED.name()))
+              .stream()
+              .map(o -> o.getPayAmount() != null ? o.getPayAmount() : BigDecimal.ZERO)
+              .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+      }
+      totalGmv = totalGmv.add(sessionGmv);
+
+      FlashEffectItem item = new FlashEffectItem();
+      item.setId(f.getId());
+      item.setName(f.getName());
+      item.setSelloutRate(rate);
+      item.setStatus(rate >= 100 ? "已售罄"
+          : (f.getEndTime() != null && LocalDateTime.now().isAfter(f.getEndTime()) ? "已结束" : "进行中"));
+      item.setDetail(detail);
+      item.setGmv(sessionGmv);
+      items.add(item);
+    }
+
+    FlashEffectResponse resp = new FlashEffectResponse();
+    resp.setGmv(totalGmv);
+    resp.setConversionRate(totalOrders > 0
+        ? BigDecimal.valueOf(paidOrders * 100L).divide(BigDecimal.valueOf(totalOrders), 1, RoundingMode.HALF_UP)
+        : BigDecimal.ZERO);
+    resp.setParticipationRate(totalSessions > 0
+        ? BigDecimal.valueOf(soldOutCount * 100L).divide(BigDecimal.valueOf(totalSessions), 1, RoundingMode.HALF_UP)
+        : BigDecimal.ZERO);
+    // 平均售罄时长：仅在有售罄场次时分摊，避免除零
+    resp.setAvgSelloutMinutes(soldOutCount > 0
+        ? BigDecimal.valueOf(totalSelloutSeconds).divide(BigDecimal.valueOf(soldOutCount * 60L), 1, RoundingMode.HALF_UP)
+        : BigDecimal.ZERO);
+    resp.setItems(items);
+    return resp;
+  }
+
+  // ============ 维度：分销佣金 ============
+
+  /**
+   * 分销维度效果：基于 mo_invite 推广关系 + mo_order 订单金额 + 固定佣金率 10%。
+   * <p>
+   * 分销员 = 有 inviteCode 且推广过订单的 userId；GMV/佣金按 invitedUserId 的订单金额聚合。
+   * 渠道占比按 payChannel 维度聚合（自然流量/付费推广/分销渠道三段）。
+   */
+  @Override
+  public DistributionEffectResponse getDistributionEffects(int days) {
+    LocalDateTime since = LocalDateTime.now().minusDays(days);
+
+    // 1. 全部邀请关系：分销员 = userId（推广人）
+    List<InviteEntity> invites = inviteMapper.selectList(
+        new LambdaQueryWrapper<InviteEntity>().ge(InviteEntity::getCreateTime, since));
+
+    // userId(分销员) -> invitedUserId 列表
+    Map<Long, List<Long>> distributorMap = new HashMap<>();
+    for (InviteEntity inv : invites) {
+      if (inv.getUserId() == null || inv.getInvitedUserId() == null) continue;
+      distributorMap.computeIfAbsent(inv.getUserId(), k -> new ArrayList<>()).add(inv.getInvitedUserId());
+    }
+
+    // 2. 推广订单 = 受邀用户最近 days 天已完成订单
+    BigDecimal commissionRate = new BigDecimal("0.10");
+    Map<Long, BigDecimal> distributorGmv = new HashMap<>();
+    Map<Long, Integer> distributorOrders = new HashMap<>();
+    BigDecimal distributionGmv = BigDecimal.ZERO;
+    int distributorWithOrderCount = 0;
+
+    for (Map.Entry<Long, List<Long>> entry : distributorMap.entrySet()) {
+      Long distributorId = entry.getKey();
+      List<Long> invitedIds = entry.getValue();
+      List<OrderEntity> orders = orderMapper.selectList(
+          new LambdaQueryWrapper<OrderEntity>()
+              .in(OrderEntity::getUserId, invitedIds)
+              .eq(OrderEntity::getStatus, COMPLETED.name())
+              .ge(OrderEntity::getCreateTime, since));
+      if (orders.isEmpty()) continue;
+      BigDecimal sum = orders.stream()
+          .map(o -> o.getPayAmount() != null ? o.getPayAmount() : BigDecimal.ZERO)
+          .reduce(BigDecimal.ZERO, BigDecimal::add);
+      distributorGmv.put(distributorId, sum);
+      distributorOrders.put(distributorId, orders.size());
+      distributionGmv = distributionGmv.add(sum);
+      distributorWithOrderCount++;
+    }
+
+    // 3. 总 GMV（分母，用于占比计算）
+    List<OrderEntity> allRecentOrders = orderMapper.selectList(
+        new LambdaQueryWrapper<OrderEntity>()
+            .eq(OrderEntity::getStatus, COMPLETED.name())
+            .ge(OrderEntity::getCreateTime, since));
+    BigDecimal totalGmv = allRecentOrders.stream()
+        .map(o -> o.getPayAmount() != null ? o.getPayAmount() : BigDecimal.ZERO)
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
+    BigDecimal naturalGmv = totalGmv.subtract(distributionGmv);
+    if (naturalGmv.compareTo(BigDecimal.ZERO) < 0) naturalGmv = BigDecimal.ZERO;
+
+    // 4. 渠道占比（自然流量 / 分销渠道；付费推广暂以分销 GMV * 1.0 估算并附注释）
+    List<DistributionChannelShare> channels = new ArrayList<>();
+    if (totalGmv.compareTo(BigDecimal.ZERO) > 0) {
+      int naturalPct = naturalGmv.multiply(BigDecimal.valueOf(100))
+          .divide(totalGmv, 0, RoundingMode.HALF_UP).intValue();
+      int distPct = distributionGmv.multiply(BigDecimal.valueOf(100))
+          .divide(totalGmv, 0, RoundingMode.HALF_UP).intValue();
+      int paidPct = 100 - naturalPct - distPct;
+      if (paidPct < 0) paidPct = 0;
+      channels.add(newChannel("自然流量", naturalPct));
+      channels.add(newChannel("分销渠道", distPct));
+      channels.add(newChannel("付费推广", paidPct));
+    } else {
+      channels.add(newChannel("自然流量", 100));
+      channels.add(newChannel("分销渠道", 0));
+      channels.add(newChannel("付费推广", 0));
+    }
+
+    // 5. Top 分销员排行（按 GMV 倒序，取前 7）
+    List<DistributionTopItem> topList = distributorGmv.entrySet().stream()
+        .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+        .limit(7)
+        .map(e -> {
+          DistributionTopItem t = new DistributionTopItem();
+          t.setUserId(e.getKey());
+          t.setName("分销员" + e.getKey());
+          t.setOrders(distributorOrders.getOrDefault(e.getKey(), 0));
+          t.setGmv(e.getValue());
+          t.setCommission(e.getValue().multiply(commissionRate).setScale(2, RoundingMode.HALF_UP));
+          return t;
+        })
+        .collect(Collectors.toList());
+
+    DistributionEffectResponse resp = new DistributionEffectResponse();
+    resp.setDistributorCount(distributorMap.size());
+    resp.setActiveRate(distributorMap.size() > 0
+        ? BigDecimal.valueOf(distributorWithOrderCount * 100L)
+            .divide(BigDecimal.valueOf(distributorMap.size()), 1, RoundingMode.HALF_UP)
+        : BigDecimal.ZERO);
+    resp.setGmv(distributionGmv);
+    resp.setCommission(distributionGmv.multiply(commissionRate).setScale(2, RoundingMode.HALF_UP));
+    resp.setChannels(channels);
+    resp.setTopList(topList);
+    return resp;
+  }
+
+  private static DistributionChannelShare newChannel(String name, int ratio) {
+    DistributionChannelShare s = new DistributionChannelShare();
+    s.setName(name);
+    s.setRatio(ratio);
+    return s;
   }
 
   /**

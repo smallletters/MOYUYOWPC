@@ -6,6 +6,10 @@ import com.moyuyo.common.dto.community.CommunityPostVO;
 import com.moyuyo.common.utils.JsonUtils;
 import com.moyuyo.common.utils.PageUtils;
 import com.moyuyo.common.utils.XssSanitizer;
+import com.moyuyo.dao.admin.entity.ContentReviewEntity;
+import com.moyuyo.dao.admin.entity.SensitiveWordEntity;
+import com.moyuyo.dao.admin.mapper.ContentReviewMapper;
+import com.moyuyo.dao.admin.mapper.SensitiveWordMapper;
 import com.moyuyo.dao.entity.*;
 import com.moyuyo.dao.mapper.*;
 import com.moyuyo.service.CommunityService;
@@ -28,6 +32,8 @@ public class CommunityServiceImpl implements CommunityService {
     private final CommunityCommentMapper commentMapper;
     private final CommunityLikeMapper likeMapper;
     private final UserMapper userMapper;
+    private final ContentReviewMapper contentReviewMapper;
+    private final SensitiveWordMapper sensitiveWordMapper;
 
     @Override
     public Page<CommunityPostVO> listPosts(String topic, int page, int size) {
@@ -55,16 +61,19 @@ public class CommunityServiceImpl implements CommunityService {
     @Override
     @Transactional
     public CommunityPostVO createPost(Long userId, String content, List<String> images, String topic) {
+        String cleanContent = XssSanitizer.sanitizeRichText(content);
+        rejectSensitiveContent(cleanContent);
+
         CommunityPostEntity entity = new CommunityPostEntity();
         entity.setUserId(userId);
-        // 净化富文本，防止存储型 XSS
-        entity.setContent(XssSanitizer.sanitizeRichText(content));
+        entity.setContent(cleanContent);
         entity.setImages(JsonUtils.toJsonArray(images));
         entity.setTopic(XssSanitizer.sanitizePlainText(topic));
         entity.setLikes(0);
         entity.setComments(0);
         entity.setStatus("PUBLISHED");
         postMapper.insert(entity);
+        createReview("POST", entity.getId(), userId, cleanContent, entity.getImages());
         log.info("Post created: postId={}, userId={}", entity.getId(), userId);
         return toVO(entity);
     }
@@ -108,13 +117,16 @@ public class CommunityServiceImpl implements CommunityService {
     @Override
     @Transactional
     public void addComment(Long userId, Long postId, Long parentId, String content) {
+        String cleanContent = XssSanitizer.sanitizeRichText(content);
+        rejectSensitiveContent(cleanContent);
+
         CommunityCommentEntity comment = new CommunityCommentEntity();
         comment.setPostId(postId);
         comment.setUserId(userId);
         comment.setParentId(parentId);
-        // 净化评论内容，防止存储型 XSS
-        comment.setContent(XssSanitizer.sanitizeRichText(content));
+        comment.setContent(cleanContent);
         commentMapper.insert(comment);
+        createReview("COMMENT", comment.getId(), userId, cleanContent, null);
 
         CommunityPostEntity post = postMapper.selectById(postId);
         if (post != null) {
@@ -132,8 +144,28 @@ public class CommunityServiceImpl implements CommunityService {
         return toVOPage(entityPage);
     }
 
+    private void rejectSensitiveContent(String content) {
+        List<SensitiveWordEntity> words = sensitiveWordMapper.selectList(
+                new LambdaQueryWrapper<SensitiveWordEntity>()
+                        .eq(SensitiveWordEntity::getStatus, "ENABLED"));
+        if (new SensitiveWordFilter(words).contains(content)) {
+            throw new IllegalArgumentException("内容包含敏感词，无法发布");
+        }
+    }
+
+    private void createReview(String contentType, Long contentId, Long userId, String content, String images) {
+        ContentReviewEntity review = new ContentReviewEntity();
+        review.setContentType(contentType);
+        review.setContentId(contentId);
+        review.setUserId(userId);
+        review.setContentExcerpt(content == null ? null : content.substring(0, Math.min(content.length(), 500)));
+        review.setImages(images);
+        review.setStatus("PENDING");
+        review.setAutoFlag(0);
+        contentReviewMapper.insert(review);
+    }
+
     private Page<CommunityPostVO> toVOPage(Page<CommunityPostEntity> entityPage) {
-        // 避免 NPE
         if (entityPage.getRecords() == null || entityPage.getRecords().isEmpty()) {
             Page<CommunityPostVO> voPage = new Page<>(entityPage.getCurrent(), entityPage.getSize());
             voPage.setTotal(entityPage.getTotal());
@@ -141,13 +173,11 @@ public class CommunityServiceImpl implements CommunityService {
             return voPage;
         }
 
-        // 批量查询用户信息
         List<Long> userIds = entityPage.getRecords().stream()
             .map(CommunityPostEntity::getUserId).distinct().collect(Collectors.toList());
         Map<Long, UserEntity> userMap = userIds.isEmpty() ? Collections.emptyMap() :
             userMapper.selectBatchIds(userIds).stream().collect(Collectors.toMap(UserEntity::getId, u -> u));
 
-        // 分页转换 + 富化用户信息
         return (Page<CommunityPostVO>) PageUtils.convertPage(entityPage, entity -> {
             CommunityPostVO vo = toVO(entity);
             UserEntity user = userMap.get(entity.getUserId());
@@ -187,21 +217,14 @@ public class CommunityServiceImpl implements CommunityService {
                         .eq(CommunityCommentEntity::getPostId, postId)
                         .orderByAsc(CommunityCommentEntity::getCreateTime));
         if (comments.isEmpty()) return Collections.emptyList();
-
-        List<Long> userIds = comments.stream().map(CommunityCommentEntity::getUserId).distinct().collect(Collectors.toList());
-        Map<Long, String> nameMap = userIds.isEmpty() ? Collections.emptyMap() :
-                userMapper.selectBatchIds(userIds).stream().collect(Collectors.toMap(UserEntity::getId, UserEntity::getNickname));
-
-        return comments.stream().map(c -> {
-            CommunityPostVO.CommentVO cv = new CommunityPostVO.CommentVO();
-            cv.setId(c.getId());
-            cv.setUserId(c.getUserId());
-            cv.setUsername(nameMap.getOrDefault(c.getUserId(), "User"));
-            cv.setContent(c.getContent());
-            cv.setParentId(c.getParentId());
-            cv.setCreateTime(c.getCreateTime());
-            return cv;
+        return comments.stream().map(comment -> {
+            CommunityPostVO.CommentVO vo = new CommunityPostVO.CommentVO();
+            vo.setId(comment.getId());
+            vo.setUserId(comment.getUserId());
+            vo.setContent(comment.getContent());
+            vo.setParentId(comment.getParentId());
+            vo.setCreateTime(comment.getCreateTime());
+            return vo;
         }).collect(Collectors.toList());
     }
-
 }

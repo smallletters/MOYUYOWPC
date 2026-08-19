@@ -159,7 +159,7 @@
 <script setup>
 import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getFunnelAnalysis, getMarketingEffects } from '../api/admin'
+import { getFunnelAnalysis, getMarketingEffects, getChurnAnalysis, getRepurchaseAnalysis } from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
 const activeTime = ref('7d')
@@ -174,22 +174,20 @@ const timeOptions = [
 watch(activeTime, () => {
   loadFunnelData()
   loadChannelData()
+  loadChurnData()
+  loadRepurchaseData()
 })
 
 const funnelSteps = reactive([])
 const channels = reactive([])
 
 // 流失分析数据
-const churnRate = ref(42) // 流失率（百分比）
-const churnStep = ref('结算 → 提交订单') // 流失步骤
-const churnReasons = ref([
-  '运费过高导致用户放弃',
-  '支付方式不够丰富',
-  '登录流程繁琐'
-]) // 流失原因列表
+const churnRate = ref(0) // 流失率（百分比），加载后回填
+const churnStep = ref('加载中...') // 流失步骤，加载后回填
+const churnReasons = ref([]) // 流失原因列表，加载后回填
 // 复购率数据
-const repurchaseRate = ref(23) // 复购率（百分比）
-const repurchaseTrend = ref(2.3) // 复购率涨幅（百分比）
+const repurchaseRate = ref(0) // 复购率（百分比），加载后回填
+const repurchaseTrend = ref(0) // 复购率涨幅（百分比），加载后回填
 
 // 自定义漏斗：对话框 & 表单
 const customFunnelVisible = ref(false)
@@ -318,9 +316,52 @@ async function loadChannelData() {
   }
 }
 
+// 加载流失分析数据
+async function loadChurnData() {
+  try {
+    const days = activeTime.value === '30d' ? 30 : 7
+    const res = await getChurnAnalysis({ days })
+    if (res && typeof res === 'object') {
+      // 后端返回的 churnRate 是 BigDecimal；安全取数
+      if (res.churnRate != null) {
+        churnRate.value = Number(res.churnRate) || 0
+      }
+      if (res.churnStep) {
+        churnStep.value = String(res.churnStep)
+      }
+      if (Array.isArray(res.churnReasons) && res.churnReasons.length > 0) {
+        churnReasons.value = res.churnReasons.map(r => String(r))
+      }
+    }
+  } catch (err) {
+    console.error('获取流失分析数据失败', err)
+  }
+}
+
+// 加载复购率数据
+async function loadRepurchaseData() {
+  try {
+    const days = activeTime.value === '30d' ? 30 : 7
+    const res = await getRepurchaseAnalysis({ days })
+    if (res && typeof res === 'object') {
+      if (res.repurchaseRate != null) {
+        repurchaseRate.value = Number(res.repurchaseRate) || 0
+      }
+      if (res.trend != null) {
+        // 后端返回的是与上一周期对比的百分点（可为负）
+        repurchaseTrend.value = Number(res.trend) || 0
+      }
+    }
+  } catch (err) {
+    console.error('获取复购率数据失败', err)
+  }
+}
+
 onMounted(() => {
   loadFunnelData()
   loadChannelData()
+  loadChurnData()
+  loadRepurchaseData()
 })
 </script>
 

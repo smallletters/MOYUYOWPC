@@ -59,6 +59,8 @@ public class AdminComplaintController {
       item.put("type", feedback.getType());
       item.put("content", feedback.getContent());
       item.put("status", feedback.getStatus());
+      item.put("replyContent", feedback.getReplyContent());
+      item.put("contact", feedback.getContact());
       item.put("createTime", feedback.getCreateTime());
       list.add(item);
     }
@@ -136,17 +138,23 @@ public class AdminComplaintController {
   @Operation(summary = "分配处理人")
   @PutMapping("/{id}/assign")
   public Result<Map<String, Object>> assign(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-    // 创建处理记录并持久化
+    String assignee = body.get("assignee") != null ? body.get("assignee").toString() : "";
+    String remark = body.get("remark") != null ? body.get("remark").toString() : "";
+
+    // 1) 同步更新 mo_feedback 主表：状态升为 PROCESSING，备注写入 reply_content
+    adminComplaintService.assignHandler(id, assignee, remark);
+
+    // 2) 保留投诉处理流水记录（用于升级链路时间线展示）
     ComplaintProcessEntity process = new ComplaintProcessEntity();
     process.setComplaintId(id);
     process.setAction("分配处理人");
-    process.setOperator(body.get("assignee") != null ? body.get("assignee").toString() : "");
-    process.setRemark("已分配给 " + process.getOperator() + " 处理");
+    process.setOperator(assignee);
+    process.setRemark("已分配给 " + assignee + " 处理");
     complaintProcessMapper.insert(process);
 
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("id", id);
-    result.put("assignee", body.get("assignee"));
+    result.put("assignee", assignee);
     result.put("operator", "当前用户");
     result.put("assignTime", LocalDateTime.now());
     result.put("message", "处理人已分配");

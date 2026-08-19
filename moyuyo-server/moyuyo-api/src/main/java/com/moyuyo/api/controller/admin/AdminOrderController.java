@@ -158,6 +158,15 @@ public class AdminOrderController {
       return Result.error(404, "订单不存在");
     }
     order.setItems(orderService.getOrderItems(id));
+    // 若订单已推送到 WooCommerce，主动从 WC 拉取最新承运商/运单号回写本地，
+    // 避免管理后台看到的运单信息落后于 WC 后台（管理员在 WC 后台补录运单号的场景）
+    if (order.getWooOrderId() != null) {
+      try {
+        order = wooCommerceSyncService.syncOrderTrackingFromWooCommerce(id);
+      } catch (Exception e) {
+        // WC 拉取失败不影响主流程：仍返回本地数据
+      }
+    }
     return Result.success(order);
   }
 

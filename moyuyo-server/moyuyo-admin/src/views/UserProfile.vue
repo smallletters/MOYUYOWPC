@@ -20,6 +20,18 @@
       </div>
     </div>
 
+    <!-- 加载失败 / 用户不存在：明确提示，避免误导为"没有页面" -->
+    <div v-if="loadError" class="error-state" style="background:var(--state-error-surface);border:1px solid rgba(255,59,48,0.18);border-radius:var(--radius);padding:18px 24px;margin-bottom:20px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:18px;">⚠️</span>
+        <strong style="color:var(--state-error);">用户加载失败：</strong>
+        <span style="color:var(--text-700);">{{ loadError }}</span>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:var(--text-400);">
+        可能原因：用户已被删除 / 数据库无此 ID / 权限不足。请用上方搜索框重新输入有效用户 ID。
+      </div>
+    </div>
+
     <!-- 用户画像卡 -->
     <div class="profile-card" v-if="hasData">
       <div class="profile-head">
@@ -246,7 +258,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   getUserProfile, getUserBehaviors,
@@ -276,6 +289,9 @@ const behaviorData = ref([])
 
 const loading = ref(false)
 
+// 加载错误信息（用户不存在 / 接口失败），用于显示明确的错误状态
+const loadError = ref('')
+
 const hasData = computed(() => userInfo.userId !== '-')
 
 // 头像首字母
@@ -302,9 +318,10 @@ async function handleSearch() {
     return
   }
   loading.value = true
+  loadError.value = '' // 重置错误状态
   try {
     const res = await getUserProfile(keyword)
-    if (res) {
+    if (res && res.userId) {
       Object.assign(userInfo, {
         userId: res.userId || res.id || '-',
         username: res.username || '-',
@@ -317,6 +334,11 @@ async function handleSearch() {
         totalSpent: res.totalSpent || '-',
         tags: res.tags || []
       })
+    } else {
+      // 接口返回成功但 data 为空（用户不存在）
+      loadError.value = '未找到用户「' + keyword + '」（可能已被删除）'
+      handleReset()
+      return
     }
 
     // 获取行为数据
@@ -332,7 +354,10 @@ async function handleSearch() {
     ElMessage.success('搜索完成')
   } catch (err) {
     console.error('获取用户数据失败:', err)
-    ElMessage.error('未找到该用户或查询失败')
+    // 提取后端真实错误消息（axios 拦截器已解包到 err.response.data）
+    const serverMsg = err?.response?.data?.message || err?.message || '未知错误'
+    loadError.value = serverMsg + '（ID: ' + keyword + '）'
+    handleReset() // 清空残留数据，避免显示上一个用户的画像
   } finally {
     loading.value = false
   }
@@ -428,68 +453,82 @@ function buildUserTags(categoryList, deviceList, channelList, funnelList) {
 }
 
 // 加载画像 6 个图表
+// 注意：后端目前未实现 /charts/* 这 6 个端点（AdminUserProfileController 上只有 /{userId}, /behaviors, /orders）。
+// 直接调用会触发 404 + axios 拦截器 toast「请求的资源不存在」，造成用户误以为详情页加载失败。
+// 修复：跳过网络请求，所有图表数据置为空数组，前端展示空态（不再调用错误接口）。
+// 待后端补全这 6 个端点时，恢复下方注释掉的真实调用即可。
 async function loadProfileCharts(uid) {
   if (!uid) return
-  try {
-    const [trend, funnel, category, hours, device, channel] = await Promise.all([
-      getUserProfileSpendTrend(uid),
-      getUserProfileFunnel(uid),
-      getUserProfileCategory(uid),
-      getUserProfileActiveHours(uid),
-      getUserProfileDevice(uid),
-      getUserProfileChannel(uid)
-    ])
-    spendTrend.value = (trend || []).map(d => ({
-      month: d.month ? String(d.month).replace(/-\d+$/, '月').replace(/-(\d+)$/, '$1月') : '',
-      amount: Number(d.amount || 0)
-    }))
-    funnelStages.value = (funnel || []).map(s => ({
-      name: s.name,
-      value: s.count,
-      rate: s.rate
-    }))
-    categoryPrefs.value = (category || []).map((c, i) => ({
-      name: c.category,
-      value: c.value,
-      color: CATEGORY_PALETTE[i % CATEGORY_PALETTE.length]
-    }))
-    // 活跃时段分桶：0-4 / 4-8 / 8-12 / 12-16 / 16-20 / 20-24
-    const buckets = [0, 0, 0, 0, 0, 0]
-    for (const h of (hours || [])) {
-      const idx = Math.min(5, Math.floor((h.hour || 0) / 4))
-      buckets[idx] += Number(h.value || 0)
-    }
-    activeHours.value = [
-      { hour: '0-4时', value: buckets[0] },
-      { hour: '4-8时', value: buckets[1] },
-      { hour: '8-12时', value: buckets[2] },
-      { hour: '12-16时', value: buckets[3] },
-      { hour: '16-20时', value: buckets[4] },
-      { hour: '20-24时', value: buckets[5] }
-    ]
-    deviceDist.value = (device || []).map((d, i) => ({
-      name: d.device,
-      value: d.value,
-      color: DEVICE_PALETTE[i % DEVICE_PALETTE.length]
-    }))
-    channelDist.value = (channel || []).map((c, i) => ({
-      name: c.channel,
-      value: c.value,
-      color: CHANNEL_PALETTE[i % CHANNEL_PALETTE.length]
-    }))
-    userTags.value = buildUserTags(categoryPrefs.value, deviceDist.value, channelDist.value, funnelStages.value)
-  } catch (e) {
-    console.error('加载画像图表失败:', e)
-    // 失败兜底为空数组，让前端降级显示空状态
-    spendTrend.value = []
-    funnelStages.value = []
-    categoryPrefs.value = []
-    activeHours.value = []
-    deviceDist.value = []
-    channelDist.value = []
-    userTags.value = []
-  }
+  // 真实实现（后端补全端点后启用）：
+  // try {
+  //   const [trend, funnel, category, hours, device, channel] = await Promise.all([
+  //     getUserProfileSpendTrend(uid),
+  //     getUserProfileFunnel(uid),
+  //     getUserProfileCategory(uid),
+  //     getUserProfileActiveHours(uid),
+  //     getUserProfileDevice(uid),
+  //     getUserProfileChannel(uid)
+  //   ])
+  //   spendTrend.value = (trend || []).map(d => ({
+  //     month: d.month ? String(d.month).replace(/-\d+$/, '月').replace(/-(\d+)$/, '$1月') : '',
+  //     amount: Number(d.amount || 0)
+  //   }))
+  //   funnelStages.value = (funnel || []).map(s => ({ name: s.name, value: s.count, rate: s.rate }))
+  //   categoryPrefs.value = (category || []).map((c, i) => ({
+  //     name: c.category, value: c.value, color: CATEGORY_PALETTE[i % CATEGORY_PALETTE.length]
+  //   }))
+  //   const buckets = [0, 0, 0, 0, 0, 0]
+  //   for (const h of (hours || [])) {
+  //     const idx = Math.min(5, Math.floor((h.hour || 0) / 4))
+  //     buckets[idx] += Number(h.value || 0)
+  //   }
+  //   activeHours.value = [
+  //     { hour: '0-4时', value: buckets[0] }, { hour: '4-8时', value: buckets[1] },
+  //     { hour: '8-12时', value: buckets[2] }, { hour: '12-16时', value: buckets[3] },
+  //     { hour: '16-20时', value: buckets[4] }, { hour: '20-24时', value: buckets[5] }
+  //   ]
+  //   deviceDist.value = (device || []).map((d, i) => ({
+  //     name: d.device, value: d.value, color: DEVICE_PALETTE[i % DEVICE_PALETTE.length]
+  //   }))
+  //   channelDist.value = (channel || []).map((c, i) => ({
+  //     name: c.channel, value: c.value, color: CHANNEL_PALETTE[i % CHANNEL_PALETTE.length]
+  //   }))
+  //   userTags.value = buildUserTags(categoryPrefs.value, deviceDist.value, channelDist.value, funnelStages.value)
+  // } catch (e) {
+  //   console.error('加载画像图表失败:', e)
+  // }
+
+  // 当前行为：跳过网络请求，所有图表数据置空 → 模板走空态占位符
+  spendTrend.value = []
+  funnelStages.value = []
+  categoryPrefs.value = []
+  activeHours.value = []
+  deviceDist.value = []
+  channelDist.value = []
+  userTags.value = []
 }
+
+// 支持从 query 参数 ?id= 自动加载用户画像（用户列表页跳转过来时无需手动搜索）
+const route = useRoute()
+onMounted(() => {
+  const idFromQuery = route.query.id
+  if (idFromQuery) {
+    searchForm.keyword = String(idFromQuery)
+    handleSearch()
+  }
+})
+
+// 监听路由 id 变化：在用户详情页内切换其他用户时自动重新加载
+// 修复：从一个用户详情直接路由到另一个用户时，onMounted 不会重新触发，会卡在旧数据
+watch(
+  () => route.query.id,
+  (newId) => {
+    if (newId && String(newId) !== searchForm.keyword) {
+      searchForm.keyword = String(newId)
+      handleSearch()
+    }
+  }
+)
 </script>
 
 <style scoped>

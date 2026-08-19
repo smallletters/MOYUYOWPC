@@ -24,4 +24,9 @@ public interface AdminComplaintService {
    * 处理投诉
    */
   void handle(Long id, String result, String note);
+
+  /**
+   * 分配处理人：同步更新 mo_feedback.status=PROCESSING 与 reply_content
+   */
+  void assignHandler(Long id, String assignee, String remark);
 }

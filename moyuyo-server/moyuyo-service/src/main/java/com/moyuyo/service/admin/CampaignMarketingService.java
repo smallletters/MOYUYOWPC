@@ -24,6 +24,13 @@ public interface CampaignMarketingService {
   OperationResult createCampaign(CampaignRequest request);
 
   /**
+   * 保存营销活动草稿（落库为 DRAFT 状态，不强制校验时间/预算）
+   *
+   * @return 包含 id 和 message 的操作结果
+   */
+  OperationResult saveDraft(CampaignRequest request);
+
+  /**
    * 活动详情(含效果统计)
    *
    * @return 详情响应,活动不存在时返回 null
@@ -65,4 +72,19 @@ public interface CampaignMarketingService {
    * 营销效果统计(最近 days 天)
    */
   EffectResponse getMarketingEffects(int days);
+
+  /**
+   * 优惠券维度效果统计
+   */
+  CouponEffectResponse getCouponEffects(int days);
+
+  /**
+   * 秒杀维度效果统计
+   */
+  FlashEffectResponse getFlashEffects(int days);
+
+  /**
+   * 分销佣金维度效果统计
+   */
+  DistributionEffectResponse getDistributionEffects(int days);
 }

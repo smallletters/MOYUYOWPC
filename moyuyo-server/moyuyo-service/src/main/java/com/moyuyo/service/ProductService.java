@@ -23,6 +23,9 @@ public interface ProductService {
 
   List<ProductImageEntity> getImagesByProductId(Long productId);
 
+  /** 批量获取多个商品的图片列表（用于列表接口填充封面图，避免 N+1 查询） */
+  Map<Long, List<ProductImageEntity>> getImagesByProductIds(List<Long> productIds);
+
   ProductEntity getProductWithDetails(Long productId);
 
   /** 创建商品，含SPU编码唯一性校验 */

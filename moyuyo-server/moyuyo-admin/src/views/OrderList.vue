@@ -82,6 +82,7 @@
             <th>商品</th>
             <th>金额</th>
             <th>状态</th>
+            <th>承运商 / 运单号</th>
             <th>WC 同步</th>
             <th>下单时间</th>
             <th style="min-width: 240px">操作</th>
@@ -110,6 +111,25 @@
                 <span :class="getStatusDotClass(order.statusEnum || order.status)"></span>
                 {{ statusLabel(order.statusEnum || order.status) }}
               </span>
+            </td>
+            <td>
+              <div class="shipping-cell">
+                <div v-if="order.shippingCarrier || order.trackingNumber" class="shipping-info">
+                  <div class="shipping-carrier">
+                    <span class="shipping-icon">🚚</span>
+                    {{ order.shippingCarrier || '—' }}
+                  </div>
+                  <div class="shipping-tracking">
+                    {{ order.trackingNumber || '—' }}
+                  </div>
+                </div>
+                <div v-else class="shipping-empty">
+                  <span v-if="order.wooOrderId" class="shipping-hint" @click="handleLogistics(order)">
+                    点击查看物流
+                  </span>
+                  <span v-else>—</span>
+                </div>
+              </div>
             </td>
             <td>
               <span :class="wooOrderClass(order)">
@@ -379,19 +399,35 @@ async function handleConfirmShip(order) {
   }
 }
 
-// 查看物流
+// 查看物流（从订单详情取真实字段；后端 detail 已自动从 WooCommerce 拉取最新运单号）
 async function handleLogistics(order) {
   try {
-    // 先获取订单详情，从中提取物流信息
     const res = await getOrderDetail(order.id)
-    if (res) {
-      const trackingNo = res.trackingNo || res.trackingNumber || ''
-      const carrier = res.carrier || 'N/A'
-      const status = ({'PENDING':'待发货','IN_TRANSIT':'运输中','DELIVERED':'已签收'})[res.shippingStatus] || res.shippingStatus || '暂无'
-      ElMessage.info(`订单 ${order.no}: 承运商 ${carrier} | 状态: ${status} | 运单号: ${trackingNo || '暂无'}`)
+    if (!res) {
+      ElMessage.warning('订单不存在')
+      return
+    }
+    const trackingNo = res.trackingNumber || res.trackingNo || ''
+    const carrier = res.shippingCarrier || res.carrier || 'N/A'
+    const status = ({'PENDING':'待发货','IN_TRANSIT':'运输中','DELIVERED':'已签收'})[res.shippingStatus] || res.shippingStatus || res.status || '暂无'
+    const wooTip = res.wooOrderId ? `（已从 WooCommerce #${res.wooOrderId} 同步）` : '（本地数据）'
+    ElMessage.info(
+      `订单 ${order.orderNo || order.no} ${wooTip}\n` +
+      `承运商: ${carrier}\n` +
+      `运单号: ${trackingNo || '暂无'}\n` +
+      `状态: ${status}`
+    )
+    // 同步刷新本地订单的运单信息，让表格列立即更新
+    const idx = orderList.value.findIndex(o => o.id === order.id)
+    if (idx >= 0) {
+      orderList.value[idx] = {
+        ...orderList.value[idx],
+        trackingNumber: res.trackingNumber,
+        shippingCarrier: res.shippingCarrier
+      }
     }
   } catch (err) {
-    ElMessage.error('查询物流信息失败')
+    ElMessage.error('查询物流信息失败: ' + (err?.message || '未知错误'))
   }
 }
 
@@ -541,6 +577,40 @@ onMounted(() => {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+
+/* 承运商 / 运单号 */
+.shipping-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 130px;
+}
+.shipping-info { display: flex; flex-direction: column; gap: 2px; }
+.shipping-carrier {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-800);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.shipping-icon { font-size: 12px; }
+.shipping-tracking {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-500);
+}
+.shipping-empty {
+  font-size: 12px;
+  color: var(--text-400);
+}
+.shipping-hint {
+  cursor: pointer;
+  color: var(--brand-600);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.shipping-hint:hover { color: var(--brand-700); }
 
 /* 商品概要 */
 .order-items-cell {

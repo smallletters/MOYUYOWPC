@@ -35,6 +35,14 @@ api.interceptors.request.use(config => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  // 修复：PUT / DELETE 请求无 body 时，axios 默认不发送 Content-Type 头，
+  // Spring MVC 会返回 415 Unsupported Media Type。
+  // 显式设置 application/json + 空 body {}，保证后端能正确解析。
+  const method = String(config.method || '').toUpperCase()
+  if ((method === 'PUT' || method === 'POST') && !config.data && !(config.data instanceof FormData)) {
+    config.headers['Content-Type'] = 'application/json'
+    config.data = {}
+  }
   return config
 }, error => {
   return Promise.reject(error)
@@ -116,18 +124,25 @@ function showErrorAndReject(error) {
     403: '没有访问权限',
     404: '请求的资源不存在',
     408: '请求超时',
+    409: '操作冲突，请刷新后重试',
     429: '请求过于频繁，请稍后再试',
     500: '服务器内部错误',
     502: '网关错误',
     503: '服务暂时不可用'
   }
 
-  const message = statusMessages[status] || error.message || '网络异常，请检查网络连接'
+  // 优先使用后端返回的业务 message（如 "审核记录已处理"），
+  // 否则按 HTTP 状态码映射，最后兜底 axios 自身错误信息
+  const backendMsg = error.response?.data?.message
+  const message = (backendMsg && String(backendMsg).trim())
+    || statusMessages[status]
+    || error.message
+    || '网络异常，请检查网络连接'
   ElMessage.error(message)
 
-  // 若后端返回了具体错误信息，优先使用
-  if (error.response?.data?.message) {
-    console.warn('API Error Detail:', error.response.data.message)
+  // 若后端返回了具体错误信息，记录到控制台便于排查
+  if (backendMsg) {
+    console.warn('API Error Detail:', backendMsg)
   }
 
   return Promise.reject(error)

@@ -9,6 +9,8 @@ import com.moyuyo.service.admin.AdminTicketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.*;
 
 /**
@@ -18,12 +20,14 @@ import java.util.*;
 @RequiredArgsConstructor
 public class AdminTicketServiceImpl implements AdminTicketService {
 
+  /** SLA 阈值：首响超过此分钟数视为超时 */
+  private static final int SLA_MINUTES = 30;
+
   private final TicketMapper ticketMapper;
   private final UserMapper userMapper;
 
   @Override
   public List<Map<String, Object>> listAll(String status, String type, String priority, String keyword) {
-    // 从 mo_ticket 表查询工单数据，支持筛选条件
     LambdaQueryWrapper<TicketEntity> wrapper = new LambdaQueryWrapper<>();
     if (status != null && !status.isEmpty()) {
       wrapper.eq(TicketEntity::getStatus, status);
@@ -37,36 +41,47 @@ public class AdminTicketServiceImpl implements AdminTicketService {
     if (keyword != null && !keyword.isEmpty()) {
       wrapper.like(TicketEntity::getTitle, keyword);
     }
-    // 按创建时间倒序排列
     wrapper.orderByDesc(TicketEntity::getCreateTime);
 
     List<TicketEntity> entityList = ticketMapper.selectList(wrapper);
 
-    // 转换为前端需要的 Map 格式
     List<Map<String, Object>> records = new ArrayList<>();
     for (TicketEntity t : entityList) {
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("id", t.getId());
-      item.put("ticketNo", t.getTicketNo());
-      item.put("no", t.getTicketNo());           // 前端期望 no 字段
-      item.put("type", t.getType());
-      item.put("typeKey", t.getType());           // 前端期望 typeKey
-      item.put("typeLabel", getTypeLabel(t.getType()));   // 中文标签
-      item.put("typeClass", getTypeClass(t.getType()));   // CSS 类名
-      item.put("priority", t.getPriority());
-      item.put("priorityKey", t.getPriority());           // 前端期望 priorityKey
-      item.put("priorityLabel", getPriorityLabel(t.getPriority())); // 中文标签
-      item.put("priorityClass", getPriorityClass(t.getPriority())); // CSS 类名
-      item.put("title", t.getTitle());
-      item.put("user", t.getUserName() != null ? t.getUserName() : "");
-      item.put("status", t.getStatus());
-      item.put("statusKey", t.getStatus());               // 前端期望 statusKey
-      item.put("statusLabel", getStatusLabel(t.getStatus()));     // 中文标签
-      item.put("statusDot", getStatusDotClass(t.getStatus()));    // CSS 状态点
-      item.put("createTime", t.getCreateTime());
-      records.add(item);
+      records.add(toVoMap(t));
     }
     return records;
+  }
+
+  /** 工单实体 -> 前端展示 Map（统一字段命名与派生计算） */
+  private Map<String, Object> toVoMap(TicketEntity t) {
+    Map<String, Object> item = new LinkedHashMap<>();
+    item.put("id", t.getId());
+    item.put("ticketNo", t.getTicketNo());
+    item.put("no", t.getTicketNo());
+    item.put("type", t.getType());
+    item.put("typeKey", t.getType());
+    item.put("typeLabel", getTypeLabel(t.getType()));
+    item.put("typeClass", getTypeClass(t.getType()));
+    item.put("priority", t.getPriority());
+    item.put("priorityKey", t.getPriority());
+    item.put("priorityLabel", getPriorityLabel(t.getPriority()));
+    item.put("priorityClass", getPriorityClass(t.getPriority()));
+    item.put("title", t.getTitle());
+    item.put("user", t.getUserName() != null ? t.getUserName() : "");
+    item.put("status", t.getStatus());
+    item.put("statusKey", t.getStatus());
+    item.put("statusLabel", getStatusLabel(t.getStatus()));
+    item.put("statusDot", getStatusDotClass(t.getStatus()));
+    item.put("createTime", t.getCreateTime());
+    // 字段语义修正：首响耗时是数值（分钟），回复内容是文本
+    item.put("firstResponseMinutes", t.getFirstResponseMinutes());
+    item.put("replyContent", t.getReplyContent() != null ? t.getReplyContent() : "");
+    // 是否超时基于 SLA 阈值计算（数据库字段保持兼容）
+    boolean timeout = t.getFirstResponseMinutes() != null && t.getFirstResponseMinutes() > SLA_MINUTES;
+    item.put("timeout", timeout);
+    // 给前端同时返回格式化文本（用于列表展示，单位：分钟）
+    item.put("responseTime", t.getFirstResponseMinutes() != null ? (t.getFirstResponseMinutes() + "分钟") : "-");
+    return item;
   }
 
   @Override
@@ -76,7 +91,6 @@ public class AdminTicketServiceImpl implements AdminTicketService {
 
   @Override
   public Map<String, Object> getTicketDetail(Long id) {
-    // 查询工单基础信息
     TicketEntity ticket = ticketMapper.selectById(id);
     if (ticket == null) {
       throw new IllegalArgumentException("工单不存在");
@@ -92,22 +106,26 @@ public class AdminTicketServiceImpl implements AdminTicketService {
     detail.put("userName", ticket.getUserName() != null ? ticket.getUserName() : "");
     detail.put("assignee", ticket.getAgentName() != null ? ticket.getAgentName() : "");
     detail.put("createTime", ticket.getCreateTime());
+    detail.put("replyContent", ticket.getReplyContent() != null ? ticket.getReplyContent() : "");
+    detail.put("firstResponseMinutes", ticket.getFirstResponseMinutes());
 
-    // 查询关联用户信息
     if (ticket.getUserId() != null) {
       UserEntity user = userMapper.selectById(ticket.getUserId());
-      if (user != null) {
-        detail.put("userContact", user.getEmail() != null ? user.getEmail() : "");
-      } else {
-        detail.put("userContact", "");
-      }
+      detail.put("userContact", user != null && user.getEmail() != null ? user.getEmail() : "");
     } else {
       detail.put("userContact", "");
     }
 
-    // 回复列表（当前无独立回复表，返回空列表）
-    detail.put("replies", new ArrayList<>());
-
+    // 回复历史：当前 reply_content 是合并文本，按行拆成列表供前端时间线展示
+    List<String> replies = new ArrayList<>();
+    if (ticket.getReplyContent() != null && !ticket.getReplyContent().isEmpty()) {
+      for (String line : ticket.getReplyContent().split("\n")) {
+        if (!line.isEmpty()) {
+          replies.add(line);
+        }
+      }
+    }
+    detail.put("replies", replies);
     return detail;
   }
 
@@ -125,9 +143,33 @@ public class AdminTicketServiceImpl implements AdminTicketService {
     }
   }
 
+  @Override
+  public void appendReply(Long id, String content, LocalDateTime replyAt) {
+    TicketEntity entity = ticketMapper.selectById(id);
+    if (entity == null) {
+      throw new IllegalArgumentException("工单不存在");
+    }
+    String existing = entity.getReplyContent();
+    String timestamp = replyAt.toString().replace("T", " ");
+    String replyRecord = "[" + timestamp + "] " + content;
+    entity.setReplyContent(
+        existing == null || existing.isEmpty() ? replyRecord : existing + "\n" + replyRecord);
+
+    // 首响耗时：首条客服回复 - 工单创建时间（分钟，向下取整）
+    if (entity.getFirstResponseMinutes() == null && entity.getCreateTime() != null) {
+      long minutes = Duration.between(entity.getCreateTime(), replyAt).toMinutes();
+      entity.setFirstResponseMinutes((int) Math.max(minutes, 0));
+    }
+
+    // 自动从待处理升级为处理中
+    if ("PENDING".equals(entity.getStatus())) {
+      entity.setStatus("PROCESSING");
+    }
+    ticketMapper.updateById(entity);
+  }
+
   // ==================== 标签映射辅助方法 ====================
 
-  /** 工单类型转中文标签 */
   private String getTypeLabel(String type) {
     if (type == null) return "未知";
     switch (type) {
@@ -138,7 +180,6 @@ public class AdminTicketServiceImpl implements AdminTicketService {
     }
   }
 
-  /** 工单类型转 CSS 类名 */
   private String getTypeClass(String type) {
     if (type == null) return "";
     switch (type) {
@@ -149,7 +190,6 @@ public class AdminTicketServiceImpl implements AdminTicketService {
     }
   }
 
-  /** 优先级转中文标签 */
   private String getPriorityLabel(String priority) {
     if (priority == null) return "未知";
     switch (priority.toUpperCase()) {
@@ -160,7 +200,6 @@ public class AdminTicketServiceImpl implements AdminTicketService {
     }
   }
 
-  /** 优先级转 CSS 类名 */
   private String getPriorityClass(String priority) {
     if (priority == null) return "";
     switch (priority.toUpperCase()) {
@@ -171,7 +210,6 @@ public class AdminTicketServiceImpl implements AdminTicketService {
     }
   }
 
-  /** 状态转中文标签 */
   private String getStatusLabel(String status) {
     if (status == null) return "未知";
     switch (status.toUpperCase()) {
@@ -183,7 +221,6 @@ public class AdminTicketServiceImpl implements AdminTicketService {
     }
   }
 
-  /** 状态转 CSS 状态点类名 */
   private String getStatusDotClass(String status) {
     if (status == null) return "dot-default";
     switch (status.toUpperCase()) {

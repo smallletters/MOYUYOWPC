@@ -37,9 +37,44 @@ public class AdminUserController {
       @RequestParam(required = false) String status) {
     // 分页参数统一守卫：避免 size=100000 触发 OOM / 全表扫描
     int[] pageParams = PageParamGuard.normalize(page, size, 15);
+    // 会员等级与注册渠道校验：仅允许已知枚举值，避免任意 SQL 片段注入
+    String normalizedLevel = normalizeEnum(level, java.util.Set.of("NORMAL", "SILVER", "GOLD", "DIAMOND"));
+    String normalizedChannel = normalizeEnum(channel, java.util.Set.of("web", "app", "wechat"));
+    // 状态值映射：前端传 active/banned/inactive -> 后端 ACTIVE/INACTIVE
+    String normalizedStatus = mapStatus(status);
     // 从数据库分页查询用户列表（含会员等级信息）
-    Map<String, Object> data = adminUserManageService.listUsers(pageParams[0], pageParams[1], search, level, status);
+    Map<String, Object> data = adminUserManageService.listUsers(
+        pageParams[0], pageParams[1], search, normalizedLevel, normalizedChannel, normalizedStatus);
     return Result.success(data);
+  }
+
+  /**
+   * 枚举值白名单过滤：仅保留白名单内的合法值，避免任意 SQL 片段注入
+   */
+  private String normalizeEnum(String value, java.util.Set<String> whitelist) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    return whitelist.contains(value) ? value : null;
+  }
+
+  /**
+   * 状态值映射：前端筛选器用 active/banned/inactive，后端存储用 ACTIVE/INACTIVE
+   * 未识别值视为不过滤
+   */
+  private String mapStatus(String status) {
+    if (status == null || status.isBlank()) {
+      return null;
+    }
+    switch (status) {
+      case "active":
+        return "ACTIVE";
+      case "banned":
+      case "inactive":
+        return "INACTIVE";
+      default:
+        return null;
+    }
   }
 
   @Operation(summary = "用户详情")

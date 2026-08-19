@@ -2,6 +2,7 @@ package com.moyuyo.service.admin.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyuyo.common.annotation.OperationLog;
 import com.moyuyo.dao.admin.entity.ContentReviewEntity;
 import com.moyuyo.dao.admin.mapper.ContentReviewMapper;
 import com.moyuyo.service.admin.AdminContentReviewService;
@@ -43,6 +44,7 @@ public class AdminContentReviewServiceImpl implements AdminContentReviewService 
     result.put("total", pageObj.getTotal());
     result.put("page", pageObj.getCurrent());
     result.put("size", pageObj.getSize());
+    result.put("mode", "manual");
     return result;
   }
 
@@ -70,51 +72,74 @@ public class AdminContentReviewServiceImpl implements AdminContentReviewService 
     return result;
   }
 
+  private void validateReviewState(ContentReviewEntity entity) {
+    if (entity == null) {
+      throw new IllegalArgumentException("审核记录不存在");
+    }
+    if (!"PENDING".equals(entity.getStatus())) {
+      throw new IllegalStateException("审核记录已处理");
+    }
+  }
+
   @Override
+  @OperationLog(type = "内容审核-通过", detail = "#id", logParams = false)
   public void approve(Long id, Long reviewerId) {
     ContentReviewEntity entity = contentReviewMapper.selectById(id);
-    if (entity != null) {
-      entity.setStatus("APPROVED");
-      entity.setReviewerId(reviewerId);
-      entity.setReviewTime(LocalDateTime.now());
-      contentReviewMapper.updateById(entity);
-    }
+    validateReviewState(entity);
+    entity.setStatus("APPROVED");
+    entity.setReviewerId(reviewerId);
+    entity.setReviewTime(LocalDateTime.now());
+    contentReviewMapper.updateById(entity);
   }
 
   @Override
+  @OperationLog(type = "内容审核-驳回", detail = "#id", logParams = false)
   public void reject(Long id, Long reviewerId, String reason, String comment) {
-    ContentReviewEntity entity = contentReviewMapper.selectById(id);
-    if (entity != null) {
-      entity.setStatus("REJECTED");
-      entity.setReviewerId(reviewerId);
-      entity.setReason(reason);
-      entity.setReviewComment(comment);
-      entity.setReviewTime(LocalDateTime.now());
-      contentReviewMapper.updateById(entity);
+    if (reason == null || reason.isBlank()) {
+      throw new IllegalArgumentException("驳回原因不能为空");
     }
+    ContentReviewEntity entity = contentReviewMapper.selectById(id);
+    validateReviewState(entity);
+    entity.setStatus("REJECTED");
+    entity.setReviewerId(reviewerId);
+    entity.setReason(reason);
+    entity.setReviewComment(comment);
+    entity.setReviewTime(LocalDateTime.now());
+    contentReviewMapper.updateById(entity);
   }
 
   @Override
+  @OperationLog(type = "内容审核-隐藏", detail = "#id", logParams = false)
   public void hide(Long id) {
     ContentReviewEntity entity = contentReviewMapper.selectById(id);
-    if (entity != null) {
-      entity.setStatus("HIDDEN");
-      contentReviewMapper.updateById(entity);
-    }
+    validateReviewState(entity);
+    entity.setStatus("HIDDEN");
+    entity.setReviewTime(LocalDateTime.now());
+    contentReviewMapper.updateById(entity);
   }
 
   @Override
+  @OperationLog(type = "内容审核-删除", detail = "#id", logParams = false)
   public void deleteContent(Long id) {
-    contentReviewMapper.deleteById(id);
+    // 删除动作允许在任意状态下执行：已通过/已驳回/已隐藏/已封禁的评论都可被管理员再次删除
+    // 仅校验记录存在，避免 PENDING 校验拦截正常管理操作
+    ContentReviewEntity entity = contentReviewMapper.selectById(id);
+    if (entity == null) {
+      throw new IllegalArgumentException("审核记录不存在");
+    }
+    entity.setStatus("DELETED");
+    entity.setReviewTime(LocalDateTime.now());
+    contentReviewMapper.updateById(entity);
   }
 
   @Override
+  @OperationLog(type = "内容审核-封禁", detail = "#id", logParams = false)
   public void ban(Long id) {
     ContentReviewEntity entity = contentReviewMapper.selectById(id);
-    if (entity != null) {
-      entity.setStatus("BANNED");
-      contentReviewMapper.updateById(entity);
-    }
+    validateReviewState(entity);
+    entity.setStatus("BANNED");
+    entity.setReviewTime(LocalDateTime.now());
+    contentReviewMapper.updateById(entity);
   }
 
   @Override

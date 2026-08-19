@@ -8,9 +8,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.constraints.Size;
+import org.springframework.validation.annotation.Validated;
 import java.util.*;
 
 @Tag(name = "管理后台 - 敏感词管理")
+@Validated
 @RestController
 @RequestMapping("/api/admin/sensitive")
 @RequiredArgsConstructor
@@ -29,6 +32,8 @@ public class AdminSensitiveWordController {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("id", e.getId());
             item.put("word", e.getWord());
+            item.put("replacement", e.getReplacement());
+            item.put("matchMode", e.getMatchMode());
             item.put("category", e.getCategory());
             item.put("status", e.getStatus());
             item.put("hitCount", e.getHitCount());
@@ -50,8 +55,13 @@ public class AdminSensitiveWordController {
     @Operation(summary = "新增敏感词")
     @PostMapping("/create")
     public Result<Map<String, Object>> create(@RequestBody Map<String, Object> body) {
+        if (body == null || body.get("word") == null || body.get("word").toString().isBlank()) {
+            return Result.error(400, "参数错误：word 不能为空");
+        }
         SensitiveWordEntity entity = new SensitiveWordEntity();
         entity.setWord((String) body.get("word"));
+        entity.setReplacement((String) body.get("replacement"));
+        entity.setMatchMode((String) body.getOrDefault("matchMode", "EXACT"));
         entity.setCategory((String) body.get("category"));
         entity.setStatus((String) body.get("status"));
         sensitiveWordService.create(entity);
@@ -83,6 +93,8 @@ public class AdminSensitiveWordController {
         SensitiveWordEntity entity = new SensitiveWordEntity();
         entity.setId(id);
         entity.setWord(wordObj.toString());
+        entity.setReplacement((String) body.get("replacement"));
+        entity.setMatchMode((String) body.getOrDefault("matchMode", "EXACT"));
         entity.setCategory((String) body.get("category"));
         entity.setStatus((String) body.get("status"));
         sensitiveWordService.update(entity);
@@ -105,7 +117,7 @@ public class AdminSensitiveWordController {
 
     @Operation(summary = "批量删除敏感词")
     @PostMapping("/batch-delete")
-    public Result<Map<String, Object>> batchDelete(@RequestBody List<Long> ids) {
+    public Result<Map<String, Object>> batchDelete(@RequestBody @Size(max = 500) List<Long> ids) {
         sensitiveWordService.batchDelete(ids);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("deletedCount", ids.size());

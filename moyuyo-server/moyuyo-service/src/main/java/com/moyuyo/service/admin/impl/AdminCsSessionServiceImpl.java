@@ -8,6 +8,7 @@ import com.moyuyo.service.admin.AdminCsSessionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -41,7 +42,6 @@ public class AdminCsSessionServiceImpl implements AdminCsSessionService {
 
     Page<CsSessionEntity> pageObj = csSessionMapper.selectPage(new Page<>(page, size), wrapper);
 
-    // 转换为前端需要的格式，添加计算字段
     List<Map<String, Object>> mappedList = pageObj.getRecords().stream().map(entity -> {
       Map<String, Object> item = new LinkedHashMap<>();
       item.put("id", entity.getId());
@@ -52,11 +52,12 @@ public class AdminCsSessionServiceImpl implements AdminCsSessionService {
       item.put("channel", entity.getChannel());
       item.put("createTime", entity.getCreateTime());
       item.put("updateTime", entity.getUpdateTime());
-      // 计算字段
-      item.put("userName", "用户" + (entity.getUserId() != null ? entity.getUserId() : ""));
-      item.put("agentName", "客服" + (entity.getCsStaffId() != null ? entity.getCsStaffId() : ""));
+      // 计算字段：基于 update_time - create_time 推算会话持续时长
+      item.put("duration", computeDuration(entity.getCreateTime(), entity.getUpdateTime()));
+      // TODO: 接入 IM 中间件后，从消息表汇总实际消息条数替换该占位值
       item.put("messageCount", 0);
-      item.put("duration", "0分钟");
+      item.put("userName", entity.getUserId() != null ? "用户" + entity.getUserId() : "");
+      item.put("agentName", entity.getCsStaffId() != null ? "客服" + entity.getCsStaffId() : "");
       item.put("createdAt", entity.getCreateTime());
       return item;
     }).collect(Collectors.toList());
@@ -84,12 +85,14 @@ public class AdminCsSessionServiceImpl implements AdminCsSessionService {
     result.put("channel", entity.getChannel());
     result.put("createTime", entity.getCreateTime());
     result.put("updateTime", entity.getUpdateTime());
+    result.put("duration", computeDuration(entity.getCreateTime(), entity.getUpdateTime()));
+    result.put("messageCount", 0);
+    result.put("lastMessage", "（暂无消息记录，待 IM 中间件接入）");
     return result;
   }
 
   @Override
   public Map<String, Object> getStats() {
-    // 查询各状态会话数量
     Long totalSessions = csSessionMapper.selectCount(new LambdaQueryWrapper<>());
     Long pendingSessions = csSessionMapper.selectCount(
         new LambdaQueryWrapper<CsSessionEntity>().eq(CsSessionEntity::getStatus, "WAITING"));
@@ -98,7 +101,6 @@ public class AdminCsSessionServiceImpl implements AdminCsSessionService {
     Long closedSessions = csSessionMapper.selectCount(
         new LambdaQueryWrapper<CsSessionEntity>().eq(CsSessionEntity::getStatus, "CLOSED"));
 
-    // 今日新会话数
     LocalDateTime todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
     Long todayNew = csSessionMapper.selectCount(
         new LambdaQueryWrapper<CsSessionEntity>().ge(CsSessionEntity::getCreateTime, todayStart));
@@ -109,7 +111,22 @@ public class AdminCsSessionServiceImpl implements AdminCsSessionService {
     stats.put("activeSessions", activeSessions);
     stats.put("closedSessions", closedSessions);
     stats.put("todayNew", todayNew);
-    stats.put("avgResponseTime", "N/A");
+    // 平均响应时间：IM 中间件接入后由实时消息计算
+    stats.put("avgResponseTime", 0);
     return stats;
+  }
+
+  /** 会话持续时长：将差值格式化为 "X小时Y分" 或 "Y分钟" */
+  private String computeDuration(LocalDateTime start, LocalDateTime end) {
+    if (start == null || end == null) {
+      return "-";
+    }
+    long minutes = Duration.between(start, end).toMinutes();
+    if (minutes <= 0) {
+      return "0分钟";
+    }
+    long hours = minutes / 60;
+    long mins = minutes % 60;
+    return hours > 0 ? (hours + "小时" + mins + "分") : (mins + "分钟");
   }
 }

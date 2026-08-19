@@ -71,7 +71,7 @@ public class AdminUserManageServiceImpl implements AdminUserManageService {
   }
 
   @Override
-  public Map<String, Object> listUsers(int page, int size, String search, String level, String status) {
+  public Map<String, Object> listUsers(int page, int size, String search, String level, String channel, String status) {
     // 构建查询条件
     LambdaQueryWrapper<UserEntity> wrapper = new LambdaQueryWrapper<>();
 
@@ -87,6 +87,19 @@ public class AdminUserManageServiceImpl implements AdminUserManageService {
     // 按状态筛选
     if (status != null && !status.isEmpty()) {
       wrapper.eq(UserEntity::getStatus, ACTIVE.name().equals(status) ? 1 : 0);
+    }
+
+    // 按会员等级筛选（修复：之前未生效，level 参数是死参数）
+    // mo_member.level 是用户的会员等级，需要 EXISTS 子查询在分页阶段完成过滤
+    // 否则 total 计数会与过滤后数据不一致
+    if (level != null && !level.isEmpty()) {
+      wrapper.exists("SELECT 1 FROM mo_member WHERE mo_member.user_id = mo_user.id AND mo_member.level = {0}", level);
+    }
+
+    // 按注册渠道筛选（修复：之前未生效，channel 参数是死参数）
+    // V20260819_02 迁移新增 mo_user.registration_channel 字段
+    if (channel != null && !channel.isEmpty()) {
+      wrapper.eq(UserEntity::getRegistrationChannel, channel);
     }
 
     // 按创建时间倒序

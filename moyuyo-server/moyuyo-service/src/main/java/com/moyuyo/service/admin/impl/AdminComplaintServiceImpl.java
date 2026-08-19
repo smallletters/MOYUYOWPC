@@ -66,4 +66,23 @@ public class AdminComplaintServiceImpl implements AdminComplaintService {
       feedbackMapper.updateById(entity);
     }
   }
+
+  @Override
+  @Transactional
+  public void assignHandler(Long id, String assignee, String remark) {
+    FeedbackEntity entity = feedbackMapper.selectById(id);
+    if (entity == null) {
+      throw new IllegalArgumentException("投诉不存在");
+    }
+    // 同步更新主表：状态由 PENDING 升为 PROCESSING；备注写入 reply_content
+    String oldReply = entity.getReplyContent();
+    String newReply = (remark == null || remark.isEmpty())
+        ? "【已分配给 " + assignee + "】"
+        : "【已分配给 " + assignee + "】" + remark;
+    entity.setReplyContent(oldReply == null || oldReply.isEmpty() ? newReply : oldReply + "\n" + newReply);
+    if ("PENDING".equals(entity.getStatus())) {
+      entity.setStatus("PROCESSING");
+    }
+    feedbackMapper.updateById(entity);
+  }
 }

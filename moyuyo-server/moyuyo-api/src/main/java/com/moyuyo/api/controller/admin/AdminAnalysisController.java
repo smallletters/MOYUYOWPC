@@ -40,4 +40,16 @@ public class AdminAnalysisController {
   public Result<Map<String, Object>> traffic() {
     return Result.success(adminAnalysisService.trafficStats());
   }
+
+  @Operation(summary = "流失分析（最近 days 天，可选 7/30）")
+  @GetMapping("/churn")
+  public Result<Map<String, Object>> churn(@RequestParam(defaultValue = "7") int days) {
+    return Result.success(adminAnalysisService.churn(days));
+  }
+
+  @Operation(summary = "复购率分析（最近 days 天，可选 7/30）")
+  @GetMapping("/repurchase")
+  public Result<Map<String, Object>> repurchase(@RequestParam(defaultValue = "30") int days) {
+    return Result.success(adminAnalysisService.repurchase(days));
+  }
 }

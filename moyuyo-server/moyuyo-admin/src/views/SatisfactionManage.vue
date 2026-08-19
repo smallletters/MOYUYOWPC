@@ -467,10 +467,17 @@ async function loadStats() {
 
 async function loadList() {
   try {
-    const res = await getSatisfactionList()
-    tableData.value = toArray(res)
+    // 后端返回 Page<Map>：{records, total, current, size}
+    const res = await getSatisfactionList({ page: 1, size: 50 })
+    if (res && Array.isArray(res.records)) {
+      tableData.value = res.records
+    } else {
+      tableData.value = toArray(res)
+    }
   } catch (err) {
     console.error('获取满意度列表失败', err)
+    ElMessage.error('评价列表加载失败')
+    tableData.value = []
   }
 }
 

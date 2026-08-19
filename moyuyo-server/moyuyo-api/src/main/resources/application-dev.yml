@@ -149,6 +149,24 @@ payment:
     webhook-id: ${PAYPAL_WEBHOOK_ID:placeholder}
     mode: sandbox
     allowed-origins: ${PAYPAL_ALLOWED_ORIGINS:https://moyuyo.com}
+  wechat:
+    app-id: ${WECHAT_APP_ID:}
+    mch-id: ${WECHAT_MCH_ID:}
+    api-key: ${WECHAT_API_KEY:}
+    cert-path: ${WECHAT_CERT_PATH:}
+    notify-url: ${WECHAT_REFUND_NOTIFY_URL:https://api.moyuyo.com/api/v1/webhook/wechat-refund}
+  alipay:
+    app-id: ${ALIPAY_APP_ID:}
+    private-key: ${ALIPAY_PRIVATE_KEY:}
+    public-key: ${ALIPAY_PUBLIC_KEY:}
+    gateway: ${ALIPAY_GATEWAY:https://openapi.alipay.com/gateway.do}
+    notify-url: ${ALIPAY_REFUND_NOTIFY_URL:https://api.moyuyo.com/api/v1/webhook/alipay-refund}
+  unionpay:
+    merchant-id: ${UNIONPAY_MERCHANT_ID:}
+    cert-path: ${UNIONPAY_CERT_PATH:}
+    cert-password: ${UNIONPAY_CERT_PASSWORD:}
+    gateway: ${UNIONPAY_GATEWAY:https://gateway.95516.com/gateway/api/frontTransReq.do}
+    notify-url: ${UNIONPAY_REFUND_NOTIFY_URL:https://api.moyuyo.com/api/v1/webhook/unionpay-refund}
 
 # WooCommerce
 woocommerce:

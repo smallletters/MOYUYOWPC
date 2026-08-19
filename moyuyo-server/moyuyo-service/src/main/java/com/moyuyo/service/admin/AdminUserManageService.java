@@ -13,9 +13,9 @@ public interface AdminUserManageService {
   Map<String, Object> getStats();
 
   /**
-   * 分页查询用户列表（含会员等级信息）
+   * 分页查询用户列表（含会员等级与注册渠道过滤）
    */
-  Map<String, Object> listUsers(int page, int size, String search, String level, String status);
+  Map<String, Object> listUsers(int page, int size, String search, String level, String channel, String status);
 
   /**
    * 获取用户详情

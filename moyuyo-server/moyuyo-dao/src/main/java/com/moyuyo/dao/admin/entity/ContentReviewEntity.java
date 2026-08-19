@@ -33,7 +33,7 @@ public class ContentReviewEntity {
     /** 审核原因 */
     private String reason;
 
-    /** 审核状态：PENDING/APPROVED/REJECTED */
+    /** 审核状态：PENDING/APPROVED/REJECTED/HIDDEN/BANNED/DELETED */
     private String status;
 
     /** 审核人ID */

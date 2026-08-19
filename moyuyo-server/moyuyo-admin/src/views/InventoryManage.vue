@@ -155,7 +155,7 @@
               <td class="td-center">
                 <span :class="stockStatusClass(item)">{{ stockStatusText(item) }}</span>
               </td>
-              <td class="td-muted">{{ item.updateTime }}</td>
+              <td class="td-muted">{{ formatUpdateTime(item.updateTime) }}</td>
               <td class="td-center">
                 <button class="action-link-btn" @click="handleEdit(item)">编辑</button>
               </td>
@@ -203,7 +203,7 @@
               <td class="td-muted">{{ item.sku }}</td>
               <td class="td-muted">{{ item.inDate }}</td>
               <td class="td-muted" :class="{ 'td-expire-warning': isBatchExpiring(item) }">{{ item.expireDate }}</td>
-              <td class="td-amount" :class="{ 'td-stock-low': isBatchExpiring(item) }">{{ item.quantity }}</td>
+              <td class="td-amount" :class="{ 'td-stock-low': isBatchExpiring(item) }">{{ item.quantity ?? 0 }}</td>
               <td class="td-center">
                 <span :class="strategyClass(item.strategy)">{{ item.strategy }}</span>
               </td>
@@ -278,7 +278,7 @@
         </div>
         <div class="batch-detail-item">
           <span class="batch-detail-label">库存数量</span>
-          <span class="batch-detail-value">{{ batchDetail.quantity }}</span>
+          <span class="batch-detail-value">{{ batchDetail.quantity ?? 0 }}</span>
         </div>
         <div class="batch-detail-item">
           <span class="batch-detail-label">出库策略</span>
@@ -305,10 +305,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getInventoryOverview, getInventoryAlerts, getInventoryList, updateStock } from '../api/admin'
+import { getInventoryOverview, getInventoryAlerts, getInventoryList, getInventoryBatches, updateStock } from '../api/admin'
 
 const router = useRouter()
 
@@ -385,6 +385,15 @@ function stockStatusText(item) {
   return '正常'
 }
 
+// 商品库存表格的"最后更新时间"列：将后端 ISO 时间格式化为 yyyy-MM-dd HH:mm
+function formatUpdateTime(value) {
+  if (!value) return '—'
+  const d = new Date(String(value).replace('T', ' ').replace(/\..*$/, ''))
+  if (Number.isNaN(d.getTime())) return String(value)
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 function handleEdit(item) {
   // 打开库存编辑弹窗，传递商品信息
   stockForm.id = item.id
@@ -415,27 +424,36 @@ async function handleStockSave() {
 }
 
 // ==================== 批次管理 ====================
-// 生成相对今天偏移 offsetDays 天的日期字符串（示例数据使用，保证演示效果稳定）
-function dateOffset(offsetDays) {
-  const d = new Date()
-  d.setDate(d.getDate() + offsetDays)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
 
-// 批次列表（示例数据：暂无真实批次 API，字段含批次号/商品/SKU/入库日期/有效期/数量/出库策略）
-const batchData = ref([
-  { id: 1, batchNo: 'B20260615-001', name: '皇家猫粮室内成猫 2kg', sku: 'RCL-IND-2K', inDate: dateOffset(-45), expireDate: dateOffset(12), quantity: '5 袋', strategy: 'FEFO' },
-  { id: 2, batchNo: 'B20260701-012', name: '渴望六种鱼猫粮 5.4kg', sku: 'ORJ-CAT-54', inDate: dateOffset(-30), expireDate: dateOffset(340), quantity: '12 袋', strategy: 'FIFO' },
-  { id: 3, batchNo: 'B20260520-003', name: '宠物益生菌调理粉 120g', sku: 'PBT-PRO-120', inDate: dateOffset(-70), expireDate: dateOffset(24), quantity: '18 瓶', strategy: 'FEFO' },
-  { id: 4, batchNo: 'B20260705-018', name: '豆腐猫砂 6L 经典款', sku: 'TDL-CLS-6L', inDate: dateOffset(-25), expireDate: dateOffset(300), quantity: '40 包', strategy: 'FEFO' },
-  { id: 5, batchNo: 'B20260410-005', name: '全价冻干双拼粮 1.8kg', sku: 'FZD-SP-18', inDate: dateOffset(-110), expireDate: dateOffset(-3), quantity: '0 袋', strategy: 'FIFO' }
-])
+// 批次列表（真实数据，来自 /api/admin/inventory/batches）
+const batchData = ref([])
 
 // 批次筛选：all / FIFO / FEFO
 const batchFilter = ref('all')
+
+// 加载批次数据
+async function fetchBatches() {
+  try {
+    const params = batchFilter.value === 'all' ? {} : { strategy: batchFilter.value }
+    const res = await getInventoryBatches(params)
+    const records = (res && (res.records || res.list || res.data)) || []
+    // 后端返回的 quantity 是数字；前端表格通过 toLocaleDateString 处理日期；单位描述由 quantityUnit 渲染
+    batchData.value = (Array.isArray(records) ? records : []).map(b => ({
+      ...b,
+      // 时间字段转 yyyy-MM-dd 字符串（与原 mock 渲染格式一致）
+      inDate: b.inDate ? new Date(b.inDate).toISOString().slice(0, 10) : '',
+      expireDate: b.expireDate ? new Date(b.expireDate).toISOString().slice(0, 10) : ''
+    }))
+  } catch (e) {
+    console.error('加载批次数据失败:', e)
+    ElMessage.error('加载批次数据失败')
+    batchData.value = []
+  }
+}
+
+watch(batchFilter, () => {
+  fetchBatches()
+})
 
 // 批次详情弹窗
 const showBatchModal = ref(false)
@@ -456,8 +474,14 @@ function batchRemainingDays(item) {
   return Math.round((expire - today) / 86400000)
 }
 
-// 批次状态判断（有效期警示：剩余 30 天内为临期，已过期为过期）
+// 批次状态判断：优先使用后端返回的 status（NORMAL/EXPIRING/EXPIRED），
+// 缺失时按有效期日期兜底计算
 function batchStatus(item) {
+  if (item.status) {
+    if (item.status === 'EXPIRED') return 'expired'
+    if (item.status === 'EXPIRING') return 'expiring'
+    if (item.status === 'NORMAL') return 'normal'
+  }
   const days = batchRemainingDays(item)
   if (days < 0) return 'expired'
   if (days <= 30) return 'expiring'
@@ -496,7 +520,10 @@ function handleBatchDetail(item) {
   showBatchModal.value = true
 }
 
-onMounted(() => { loadData() })
+onMounted(() => {
+  loadData()
+  fetchBatches()
+})
 </script>
 
 <style scoped>

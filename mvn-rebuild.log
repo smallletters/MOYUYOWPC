@@ -1,0 +1,166 @@
+﻿[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] MOYUYO Server                                                      [pom]
+[INFO] MOYUYO Common                                                      [jar]
+[INFO] MOYUYO DAO                                                         [jar]
+[INFO] MOYUYO Service                                                     [jar]
+[INFO] MOYUYO API                                                         [jar]
+[INFO] 
+[INFO] ----------------------< com.moyuyo:moyuyo-server >----------------------
+[INFO] Building MOYUYO Server 1.0.0                                       [1/5]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] ----------------------< com.moyuyo:moyuyo-common >----------------------
+[INFO] Building MOYUYO Common 1.0.0                                       [2/5]
+[INFO]   from moyuyo-common\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[WARNING] Parameter 'inputEncoding' is unknown for plugin 'maven-compiler-plugin:3.14.1:compile (default-compile)'
+[WARNING] Parameter 'inputEncoding' is unknown for plugin 'maven-compiler-plugin:3.14.1:testCompile (default-testCompile)'
+[WARNING] 1 problem was encountered while building the effective model for org.javassist:javassist:jar:3.21.0-GA during dependency collection step for project (use -X to see details)
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ moyuyo-common ---
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ moyuyo-common ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ moyuyo-common ---
+[INFO] skip non existing resourceDirectory D:\MOYUYOWPC\moyuyo-server\moyuyo-common\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ moyuyo-common ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ moyuyo-common ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.4.2:jar (default-jar) @ moyuyo-common ---
+[INFO] 
+[INFO] -----------------------< com.moyuyo:moyuyo-dao >------------------------
+[INFO] Building MOYUYO DAO 1.0.0                                          [3/5]
+[INFO]   from moyuyo-dao\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[WARNING] Parameter 'inputEncoding' is unknown for plugin 'maven-compiler-plugin:3.14.1:compile (default-compile)'
+[WARNING] Parameter 'inputEncoding' is unknown for plugin 'maven-compiler-plugin:3.14.1:testCompile (default-testCompile)'
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ moyuyo-dao ---
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] Copying 4 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ moyuyo-dao ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ moyuyo-dao ---
+[INFO] skip non existing resourceDirectory D:\MOYUYOWPC\moyuyo-server\moyuyo-dao\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ moyuyo-dao ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ moyuyo-dao ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.4.2:jar (default-jar) @ moyuyo-dao ---
+[INFO] 
+[INFO] ---------------------< com.moyuyo:moyuyo-service >----------------------
+[INFO] Building MOYUYO Service 1.0.0                                      [4/5]
+[INFO]   from moyuyo-service\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[WARNING] Parameter 'inputEncoding' is unknown for plugin 'maven-compiler-plugin:3.14.1:compile (default-compile)'
+[WARNING] Parameter 'inputEncoding' is unknown for plugin 'maven-compiler-plugin:3.14.1:testCompile (default-testCompile)'
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ moyuyo-service ---
+[INFO] skip non existing resourceDirectory D:\MOYUYOWPC\moyuyo-server\moyuyo-service\src\main\resources
+[INFO] skip non existing resourceDirectory D:\MOYUYOWPC\moyuyo-server\moyuyo-service\src\main\resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ moyuyo-service ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ moyuyo-service ---
+[INFO] skip non existing resourceDirectory D:\MOYUYOWPC\moyuyo-server\moyuyo-service\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ moyuyo-service ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ moyuyo-service ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.4.2:jar (default-jar) @ moyuyo-service ---
+[INFO] Building jar: D:\MOYUYOWPC\moyuyo-server\moyuyo-service\target\moyuyo-service-1.0.0.jar
+[INFO] 
+[INFO] -----------------------< com.moyuyo:moyuyo-api >------------------------
+[INFO] Building MOYUYO API 1.0.0                                          [5/5]
+[INFO]   from moyuyo-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[WARNING] Parameter 'inputEncoding' is unknown for plugin 'maven-compiler-plugin:3.14.1:compile (default-compile)'
+[WARNING] Parameter 'inputEncoding' is unknown for plugin 'maven-compiler-plugin:3.14.1:testCompile (default-testCompile)'
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ moyuyo-api ---
+[INFO] Copying 3 resources from src\main\resources to target\classes
+[INFO] Copying 509 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ moyuyo-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 103 source files with javac [forked debug parameters release 25] to target\classes
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ moyuyo-api ---
+[INFO] Copying 2 resources from src\test\resources to target\test-classes
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ moyuyo-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 32 source files with javac [forked debug parameters release 25] to target\test-classes
+[WARNING] WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe:objectFieldOffset has been called by lombok.permit.Permit
+WARNING: Please consider reporting this to the maintainers of class lombok.permit.Permit
+WARNING: sun.misc.Unsafe:objectFieldOffset will be removed in a future release
+D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\BaseIntegrationTest.java:[33,3] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\BaseIntegrationTest.java:[33,3] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\BaseIntegrationTest.java:[33,3] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\BaseIntegrationTest.java:[33,3] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\BaseIntegrationTest.java:[33,3] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\BaseIntegrationTest.java:[36,3] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\BaseIntegrationTest.java:[36,3] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\BaseIntegrationTest.java:[36,3] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\BaseIntegrationTest.java:[36,3] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\BaseIntegrationTest.java:[36,3] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\BaseIntegrationTest.java:[39,3] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\BaseIntegrationTest.java:[39,3] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\BaseIntegrationTest.java:[39,3] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\BaseIntegrationTest.java:[39,3] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\BaseIntegrationTest.java:[39,3] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\api\controller\PaymentServiceTest.java:[18,5] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\api\controller\PaymentServiceTest.java:[18,5] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\api\controller\PaymentServiceTest.java:[18,5] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\api\controller\PaymentServiceTest.java:[18,5] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\api\controller\PaymentServiceTest.java:[18,5] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\api\controller\WebhookIdempotencyTest.java:[29,5] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\api\controller\WebhookIdempotencyTest.java:[29,5] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\api\controller\WebhookIdempotencyTest.java:[29,5] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\api\controller\WebhookIdempotencyTest.java:[29,5] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[WARNING] D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\test\java\com\moyuyo\api\controller\WebhookIdempotencyTest.java:[29,5] ????: [removal] org.springframework.boot.test.mock.mockito ?��? MockBean ????, ??????????
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ moyuyo-api ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.4.2:jar (default-jar) @ moyuyo-api ---
+[INFO] Building jar: D:\MOYUYOWPC\moyuyo-server\moyuyo-api\target\moyuyo-api-1.0.0.jar
+[INFO] 
+[INFO] --- spring-boot:3.5.16:repackage (repackage) @ moyuyo-api ---
+[INFO] Replacing main artifact D:\MOYUYOWPC\moyuyo-server\moyuyo-api\target\moyuyo-api-1.0.0.jar with repackaged archive, adding nested dependencies in BOOT-INF/.
+[INFO] The original artifact has been renamed to D:\MOYUYOWPC\moyuyo-server\moyuyo-api\target\moyuyo-api-1.0.0.jar.original
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for MOYUYO Server 1.0.0:
+[INFO] 
+[INFO] MOYUYO Server ...................................... SUCCESS [  0.001 s]
+[INFO] MOYUYO Common ...................................... SUCCESS [  1.436 s]
+[INFO] MOYUYO DAO ......................................... SUCCESS [  0.220 s]
+[INFO] MOYUYO Service ..................................... SUCCESS [  0.378 s]
+[INFO] MOYUYO API ......................................... SUCCESS [  9.476 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  11.749 s
+[INFO] Finished at: 2026-08-18T20:19:15+08:00
+[INFO] ------------------------------------------------------------------------

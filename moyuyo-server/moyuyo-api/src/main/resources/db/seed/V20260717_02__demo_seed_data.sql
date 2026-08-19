@@ -128,10 +128,12 @@ INSERT INTO mo_logistics (id, order_id, carrier, tracking_number, shipped_at, re
 (189000008, 186000010, 'USPS', 'USPS9400100000000003', '2026-07-17 10:00:00', NULL);
 
 -- 11. 退款
+-- 退款状态：与 mo_refund 表迁移文件 V20260716_01__new_modules_tables.sql 注释对齐
+-- 状态机：PENDING / APPROVED / REJECTED / COMPLETED
 INSERT INTO mo_refund (id, order_id, refund_no, type, amount, reason, status, create_time, complete_time) VALUES
-(190000001, 186000005, 'RF20260706001', 'REFUND_ONLY', 12.99, '商品破损',            'REFUNDED',  '2026-07-07 10:00:00', '2026-07-08 14:00:00'),
-(190000002, 186000002, 'RF20260710002', 'REFUND_RETURN',89.99,'商品与描述不符',       'REFUNDING', '2026-07-10 16:00:00', NULL),
-(190000003, 186000003, 'RF20260712003', 'REFUND_ONLY', 18.97, '重复下单',            'REFUNDED',  '2026-07-12 09:00:00', '2026-07-13 11:00:00');
+(190000001, 186000005, 'RF20260706001', 'REFUND_ONLY', 12.99, '商品破损',            'COMPLETED', '2026-07-07 10:00:00', '2026-07-08 14:00:00'),
+(190000002, 186000002, 'RF20260710002', 'REFUND_RETURN',89.99,'商品与描述不符',       'APPROVED',  '2026-07-10 16:00:00', NULL),
+(190000003, 186000003, 'RF20260712003', 'REFUND_ONLY', 18.97, '重复下单',            'COMPLETED', '2026-07-12 09:00:00', '2026-07-13 11:00:00');
 
 -- 12. 积分流水
 INSERT INTO mo_points_log (id, user_id, change_value, type, biz_no, remark, create_time) VALUES

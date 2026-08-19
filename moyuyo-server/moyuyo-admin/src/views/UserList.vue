@@ -20,7 +20,7 @@
       <div class="form-row">
         <div class="form-group">
           <label>搜索</label>
-          <input v-model="filters.search" type="text" class="form-input" placeholder="用户名/邮箱/ID" />
+          <input v-model="filters.search" type="text" class="form-input" placeholder="用户名/邮箱/ID" @keyup.enter="handleSearch" />
         </div>
         <div class="form-group">
           <label>会员等级</label>
@@ -60,6 +60,15 @@
 
     <!-- 数据表格 -->
     <div class="table-wrapper">
+      <div class="table-toolbar">
+        <div class="table-toolbar__info">已选 {{ selectedIds.length }} 项</div>
+        <div class="table-toolbar__actions">
+          <button class="btn btn-sm" :disabled="selectedIds.length === 0" @click="handleBatchUpdateStatus('INACTIVE')">批量封禁</button>
+          <button class="btn btn-sm" :disabled="selectedIds.length === 0" @click="handleBatchUpdateStatus('ACTIVE')">批量解封</button>
+          <button class="btn btn-sm" @click="handleExportCsv">导出 CSV</button>
+          <button class="btn btn-sm btn-primary" @click="handleCreate">新建用户</button>
+        </div>
+      </div>
       <table class="data-table">
         <thead>
           <tr>
@@ -76,7 +85,13 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="user in filteredUsers" :key="user.id">
+          <tr v-if="loading">
+            <td colspan="10" class="empty-cell">加载中…</td>
+          </tr>
+          <tr v-else-if="userList.length === 0">
+            <td colspan="10" class="empty-cell">暂无数据</td>
+          </tr>
+          <tr v-for="user in userList" v-else :key="user.id">
             <td><input type="checkbox" v-model="selectedIds" :value="user.id" /></td>
             <td class="user-id">{{ user.id }}</td>
             <td class="user-info-cell">
@@ -98,13 +113,13 @@
             </td>
             <td class="action-cell">
               <button class="btn btn-sm" @click="handleDetail(user)">详情</button>
+              <button class="btn btn-sm" @click="handleEdit(user)">编辑</button>
+              <button class="btn btn-sm" @click="handleResetPwd(user)">重置密码</button>
               <button class="btn btn-sm" @click="handleBan(user)">
                 {{ user.statusClass === 'active' ? '封禁' : '解封' }}
               </button>
+              <button class="btn btn-sm btn-danger" @click="handleDelete(user)">删除</button>
             </td>
-          </tr>
-          <tr v-if="filteredUsers.length === 0">
-            <td colspan="10" class="empty-cell">暂无数据</td>
           </tr>
         </tbody>
       </table>
@@ -113,17 +128,84 @@
     <!-- 分页 -->
     <div class="pagination">
       <button class="btn btn-sm" :disabled="currentPage <= 1" @click="currentPage--">上一页</button>
-      <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 页</span>
+      <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 页（共 {{ total }} 条）</span>
       <button class="btn btn-sm" :disabled="currentPage >= totalPages" @click="currentPage++">下一页</button>
     </div>
+
+    <!-- 新建/编辑用户弹窗 -->
+    <el-dialog
+      v-model="formDialog.visible"
+      :title="formDialog.isEdit ? '编辑用户' : '新建用户'"
+      width="520px"
+      :close-on-click-modal="false"
+      @closed="resetFormDialog"
+    >
+      <el-form ref="formRef" :model="formDialog.form" :rules="formDialog.rules" label-width="90px">
+        <el-form-item label="昵称" prop="nickname">
+          <el-input v-model="formDialog.form.nickname" placeholder="请输入昵称" maxlength="32" show-word-limit />
+        </el-form-item>
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="formDialog.form.email" placeholder="请输入邮箱" />
+        </el-form-item>
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="formDialog.form.phone" placeholder="请输入手机号" maxlength="11" />
+        </el-form-item>
+        <el-form-item label="会员等级" prop="level">
+          <el-select v-model="formDialog.form.level" placeholder="请选择" style="width:100%">
+            <el-option label="普通会员" value="NORMAL" />
+            <el-option label="银卡会员" value="SILVER" />
+            <el-option label="金卡会员" value="GOLD" />
+            <el-option label="钻石会员" value="DIAMOND" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-radio-group v-model="formDialog.form.status">
+            <el-radio value="ACTIVE">正常</el-radio>
+            <el-radio value="INACTIVE">禁用</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="!formDialog.isEdit" label="初始密码" prop="password">
+          <el-input v-model="formDialog.form.password" type="password" placeholder="至少 12 位，含大小写+数字+特殊字符" show-password />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="formDialog.visible = false">取消</el-button>
+        <el-button type="primary" :loading="formDialog.submitting" @click="handleFormSubmit">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 重置密码弹窗 -->
+    <el-dialog v-model="pwdDialog.visible" title="重置密码" width="420px" :close-on-click-modal="false">
+      <el-form ref="pwdFormRef" :model="pwdDialog.form" :rules="pwdDialog.rules" label-width="80px">
+        <el-form-item label="新密码" prop="password">
+          <el-input v-model="pwdDialog.form.password" type="password" placeholder="至少 12 位" show-password />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="pwdDialog.visible = false">取消</el-button>
+        <el-button type="primary" :loading="pwdDialog.submitting" @click="handlePwdSubmit">确定重置</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { getUserStats, getUserList, getUserDetail, updateUserStatus } from '../api/admin'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  getUserStats,
+  getUserList,
+  updateUserStatus,
+  createUser,
+  updateUser,
+  deleteUser,
+  resetUserPassword
+} from '../api/admin'
 import { toArray } from '../utils/safeArray'
-import { ElMessage } from 'element-plus'
+import { exportCsv } from '../utils/exportCsv'
+
+const router = useRouter()
 
 const selectAll = ref(false)
 const selectedIds = ref([])
@@ -132,11 +214,18 @@ const pageSize = 10
 const loading = ref(false)
 const total = ref(0)
 
+// 头像颜色池：用用户 ID 哈希取色，让不同用户头像颜色有差异
+const AVATAR_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+function pickAvatarColor(id) {
+  const n = Number(id) || 0
+  return AVATAR_COLORS[n % AVATAR_COLORS.length]
+}
+
 const statsList = ref([
   { label: '总用户数', value: '-' },
   { label: '今日新增', value: '-', change: '', trend: 'up' },
   { label: '活跃用户', value: '-', change: '', trend: 'up' },
-  { label: 'GDPR 待处理', value: '-', change: '', trend: 'down' }
+  { label: '会员总数', value: '-', change: '', trend: 'down' }
 ])
 
 const filters = reactive({
@@ -153,8 +242,6 @@ async function fetchStats() {
   try {
     const res = await getUserStats()
     if (res) {
-      // 后端返回 { totalUsers, newToday, activeToday, totalMembers, newMembersToday }
-      // 转换为前端模板需要的 [{ label, value, change, trend }] 格式
       statsList.value = [
         { label: '总用户数', value: res.totalUsers ?? '-', change: '', trend: 'up' },
         { label: '今日新增', value: res.newToday ?? '-', change: '', trend: 'up' },
@@ -186,7 +273,6 @@ async function fetchUsers() {
     const res = await getUserList(params)
     if (res) {
       const rawList = toArray(res, 'list')
-      // 后端返回字段转换为前端模板所需格式
       userList.value = rawList.map(u => ({
         id: u.id,
         name: u.nickname || u.name || '-',
@@ -198,9 +284,12 @@ async function fetchUsers() {
         spent: u.spent ?? '0',
         status: u.status === 'ACTIVE' ? '正常' : '禁用',
         statusClass: u.status === 'ACTIVE' ? 'active' : 'inactive',
-        avatarColor: 'var(--brand-500)'  // 默认头像颜色（设计系统主色）
+        avatarColor: pickAvatarColor(u.id)
       }))
       total.value = res.total || 0
+      // 翻页后清空选中，避免误操作跨页用户
+      selectedIds.value = []
+      selectAll.value = false
     }
   } catch (err) {
     console.error('获取用户列表失败:', err)
@@ -210,19 +299,25 @@ async function fetchUsers() {
   }
 }
 
-const filteredUsers = computed(() => {
-  return userList.value
-})
-
 const totalPages = computed(() => Math.ceil(total.value / pageSize) || 1)
 
+// 全选切换：仅作用于当前页可见用户
 function toggleSelectAll() {
   if (selectAll.value) {
-    selectedIds.value = filteredUsers.value.map(u => u.id)
+    selectedIds.value = userList.value.map(u => u.id)
   } else {
     selectedIds.value = []
   }
 }
+
+// 单项选择变化时，自动同步 selectAll 状态
+watch(selectedIds, (val) => {
+  if (userList.value.length === 0) {
+    selectAll.value = false
+    return
+  }
+  selectAll.value = val.length === userList.value.length
+}, { deep: true })
 
 function handleSearch() {
   currentPage.value = 1
@@ -238,26 +333,259 @@ function handleReset() {
   fetchUsers()
 }
 
-async function handleDetail(user) {
-  try {
-    const res = await getUserDetail(user.id)
-    if (res) {
-      ElMessage.info(`用户: ${res.nickname || user.name}, 邮箱: ${res.email}, 等级: ${res.level}, 状态: ${res.status === 'ACTIVE' ? '正常' : '禁用'}`)
-    }
-  } catch (err) {
-    ElMessage.error('获取用户详情失败')
-  }
+// 详情：跳转到用户画像页（带 id 参数，由画像页自动加载）
+// 使用 window.location.href 强制整页跳转，避免 SPA chunk 缓存导致组件渲染失败
+function handleDetail(user) {
+  window.location.href = `/admin/user-profile?id=${user.id}`
 }
 
+// 单项封禁/解封
 async function handleBan(user) {
+  const newStatus = user.statusClass === 'active' ? 'INACTIVE' : 'ACTIVE'
+  const actionText = newStatus === 'ACTIVE' ? '解封' : '封禁'
   try {
-    const newStatus = user.statusClass === 'active' ? 'INACTIVE' : 'ACTIVE'
+    await ElMessageBox.confirm(
+      `确认${actionText}用户「${user.name}」？`,
+      '操作确认',
+      { type: 'warning', confirmButtonText: '确定', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  try {
     await updateUserStatus(user.id, { status: newStatus })
-    ElMessage.success(`${user.name} 已${newStatus === 'ACTIVE' ? '解封' : '封禁'}`)
+    ElMessage.success(`${user.name} 已${actionText}`)
     fetchUsers()
   } catch (err) {
     console.error('更新用户状态失败:', err)
     ElMessage.error('操作失败')
+  }
+}
+
+// 批量封禁/解封：复用 updateUserStatus 逐个调用，简单可靠；并发请求避免阻塞
+async function handleBatchUpdateStatus(targetStatus) {
+  const actionText = targetStatus === 'ACTIVE' ? '解封' : '封禁'
+  const ids = [...selectedIds.value]
+  if (ids.length === 0) return
+  try {
+    await ElMessageBox.confirm(
+      `确认批量${actionText}所选 ${ids.length} 位用户？`,
+      '批量操作确认',
+      { type: 'warning', confirmButtonText: '确定', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  const results = await Promise.allSettled(
+    ids.map(id => updateUserStatus(id, { status: targetStatus }))
+  )
+  const success = results.filter(r => r.status === 'fulfilled').length
+  const failed = results.length - success
+  if (failed === 0) {
+    ElMessage.success(`批量${actionText}成功，共 ${success} 位`)
+  } else {
+    ElMessage.warning(`批量${actionText}完成：成功 ${success}，失败 ${failed}`)
+  }
+  fetchUsers()
+}
+
+// 导出 CSV：导出当前筛选结果的全量数据
+async function handleExportCsv() {
+  try {
+    // 拉取全量当前筛选条件的用户（最大 5000 条，防止 OOM）
+    const res = await getUserList({ page: 1, size: 5000, ...filters })
+    const list = toArray(res, 'list')
+    if (list.length === 0) {
+      ElMessage.warning('当前筛选条件下没有可导出的数据')
+      return
+    }
+    const rows = list.map(u => ({
+      id: u.id,
+      nickname: u.nickname || u.name || '-',
+      email: u.email || '',
+      registerTime: u.registerTime || '-',
+      level: u.level || '-',
+      orders: u.orders ?? 0,
+      spent: u.spent ?? 0,
+      status: u.status === 'ACTIVE' ? '正常' : '禁用'
+    }))
+    const ok = exportCsv(
+      rows,
+      [
+        { key: 'id', label: 'ID' },
+        { key: 'nickname', label: '昵称' },
+        { key: 'email', label: '邮箱' },
+        { key: 'registerTime', label: '注册时间' },
+        { key: 'level', label: '会员等级' },
+        { key: 'orders', label: '订单数' },
+        { key: 'spent', label: '消费额' },
+        { key: 'status', label: '状态' }
+      ],
+      `users-${new Date().toISOString().slice(0, 10)}.csv`
+    )
+    if (ok) ElMessage.success(`已导出 ${list.length} 条用户数据`)
+  } catch (err) {
+    console.error('导出失败:', err)
+    ElMessage.error('导出失败')
+  }
+}
+
+// ============== 新建/编辑用户 ==============
+const formRef = ref(null)
+const formDialog = reactive({
+  visible: false,
+  isEdit: false,
+  editingId: null,
+  submitting: false,
+  form: {
+    nickname: '',
+    email: '',
+    phone: '',
+    level: 'NORMAL',
+    status: 'ACTIVE',
+    password: ''
+  },
+  rules: {
+    nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }],
+    email: [
+      { required: true, message: '请输入邮箱', trigger: 'blur' },
+      { type: 'email', message: '邮箱格式不正确', trigger: 'blur' }
+    ],
+    phone: [
+      { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' }
+    ],
+    level: [{ required: true, message: '请选择会员等级', trigger: 'change' }],
+    status: [{ required: true, message: '请选择状态', trigger: 'change' }],
+    password: [
+      { required: true, message: '请输入初始密码', trigger: 'blur' },
+      { min: 12, message: '密码至少 12 位', trigger: 'blur' }
+    ]
+  }
+})
+
+function resetFormDialog() {
+  formDialog.isEdit = false
+  formDialog.editingId = null
+  formDialog.form.nickname = ''
+  formDialog.form.email = ''
+  formDialog.form.phone = ''
+  formDialog.form.level = 'NORMAL'
+  formDialog.form.status = 'ACTIVE'
+  formDialog.form.password = ''
+  if (formRef.value) formRef.value.clearValidate()
+}
+
+function handleCreate() {
+  resetFormDialog()
+  formDialog.isEdit = false
+  formDialog.visible = true
+}
+
+function handleEdit(user) {
+  resetFormDialog()
+  formDialog.isEdit = true
+  formDialog.editingId = user.id
+  formDialog.form.nickname = user.name === '-' ? '' : user.name
+  formDialog.form.email = user.email
+  formDialog.form.phone = user.phone || ''
+  formDialog.form.level = user.level
+  formDialog.form.status = user.statusClass === 'active' ? 'ACTIVE' : 'INACTIVE'
+  // 编辑时不展示密码字段，但保留 password 字段为空不会提交
+  formDialog.visible = true
+}
+
+async function handleFormSubmit() {
+  try {
+    await formRef.value.validate()
+  } catch {
+    return
+  }
+  formDialog.submitting = true
+  try {
+    if (formDialog.isEdit) {
+      const payload = {
+        nickname: formDialog.form.nickname,
+        email: formDialog.form.email,
+        phone: formDialog.form.phone,
+        level: formDialog.form.level,
+        status: formDialog.form.status
+      }
+      await updateUser(formDialog.editingId, payload)
+      ElMessage.success('用户信息已更新')
+    } else {
+      await createUser({ ...formDialog.form })
+      ElMessage.success('用户创建成功')
+    }
+    formDialog.visible = false
+    fetchUsers()
+    fetchStats()
+  } catch (err) {
+    console.error('保存用户失败:', err)
+    ElMessage.error(err.message || '保存失败')
+  } finally {
+    formDialog.submitting = false
+  }
+}
+
+// ============== 重置密码 ==============
+const pwdFormRef = ref(null)
+const pwdDialog = reactive({
+  visible: false,
+  submitting: false,
+  targetUser: null,
+  form: { password: '' },
+  rules: {
+    password: [
+      { required: true, message: '请输入新密码', trigger: 'blur' },
+      { min: 12, message: '密码至少 12 位', trigger: 'blur' }
+    ]
+  }
+})
+
+function handleResetPwd(user) {
+  pwdDialog.targetUser = user
+  pwdDialog.form.password = ''
+  pwdDialog.visible = true
+}
+
+async function handlePwdSubmit() {
+  try {
+    await pwdFormRef.value.validate()
+  } catch {
+    return
+  }
+  pwdDialog.submitting = true
+  try {
+    await resetUserPassword(pwdDialog.targetUser.id, { password: pwdDialog.form.password })
+    ElMessage.success(`已重置 ${pwdDialog.targetUser.name} 的密码`)
+    pwdDialog.visible = false
+  } catch (err) {
+    console.error('重置密码失败:', err)
+    ElMessage.error(err.message || '重置失败')
+  } finally {
+    pwdDialog.submitting = false
+  }
+}
+
+// ============== 删除用户 ==============
+async function handleDelete(user) {
+  try {
+    await ElMessageBox.confirm(
+      `确认删除用户「${user.name}」？该操作不可恢复。`,
+      '删除确认',
+      { type: 'error', confirmButtonText: '删除', cancelButtonText: '取消', confirmButtonClass: 'el-button--danger' }
+    )
+  } catch {
+    return
+  }
+  try {
+    await deleteUser(user.id)
+    ElMessage.success('用户已删除')
+    fetchUsers()
+    fetchStats()
+  } catch (err) {
+    console.error('删除失败:', err)
+    ElMessage.error(err.message || '删除失败')
   }
 }
 
@@ -389,6 +717,25 @@ onMounted(() => {
   overflow: hidden;
 }
 
+.table-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+.table-toolbar__info {
+  font-size: 13px;
+  color: #555;
+}
+
+.table-toolbar__actions {
+  display: flex;
+  gap: 8px;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -507,6 +854,7 @@ onMounted(() => {
   display: flex;
   gap: 6px;
   white-space: nowrap;
+  flex-wrap: wrap;
 }
 
 .btn-sm {
@@ -520,9 +868,40 @@ onMounted(() => {
   transition: all 0.2s;
 }
 
-.btn-sm:hover {
+.btn-sm:hover:not(:disabled) {
   border-color: #2563eb;
   color: #2563eb;
+}
+
+.btn-sm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-danger:hover:not(:disabled) {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: 1px solid #e5e5ea;
+  background: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #555;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
 }
 
 .empty-cell {

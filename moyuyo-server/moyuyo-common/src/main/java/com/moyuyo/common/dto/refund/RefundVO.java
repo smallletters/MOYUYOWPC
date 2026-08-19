@@ -20,6 +20,8 @@ public class RefundVO {
     private String reason;
     private String description;
     private String images;
+    /** 拆单退款明细（JSON 字符串，前端按需解析） */
+    private String items;
     private String status;
     private LocalDateTime createTime;
     private LocalDateTime completeTime;

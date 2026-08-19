@@ -29,4 +29,46 @@
     LIMIT 50
   </select>
 
+  <!-- 漏斗分析：最近 N 天内的下单与支付独立用户数 -->
+  <select id="selectFunnelCounts" resultType="java.util.LinkedHashMap">
+    SELECT
+      COUNT(DISTINCT CASE WHEN status IN ('PENDING_PAY','PAID','PENDING_SHIP','SHIPPED','RECEIVED','COMPLETED') THEN user_id END) AS orderUsers,
+      COUNT(DISTINCT CASE WHEN status IN ('PAID','PENDING_SHIP','SHIPPED','RECEIVED','COMPLETED') THEN user_id END) AS paidUsers
+    FROM mo_order
+    WHERE delete_status = 0
+      AND create_time &gt;= #{since}
+  </select>
+
+  <!-- 流失分析：按取消原因分组统计（仅非空原因），按订单数倒序取前 N 条 -->
+  <select id="selectChurnReasons" resultType="java.util.LinkedHashMap">
+    SELECT
+      cancel_reason AS reason,
+      COUNT(*) AS orderCount,
+      COALESCE(SUM(pay_amount), 0) AS lostAmount
+    FROM mo_order
+    WHERE delete_status = 0
+      AND status = 'CANCELLED'
+      AND cancel_reason IS NOT NULL
+      AND cancel_reason &lt;&gt; ''
+      AND create_time &gt;= #{since}
+    GROUP BY cancel_reason
+    ORDER BY orderCount DESC
+    LIMIT 5
+  </select>
+
+  <!-- 复购率：时间窗口内下过单的用户中，复购用户数（订单数≥2） -->
+  <select id="selectRepurchaseCounts" resultType="java.util.LinkedHashMap">
+    SELECT
+      COUNT(*) AS payUsers,
+      SUM(CASE WHEN order_count &gt;= 2 THEN 1 ELSE 0 END) AS repurchaseUsers
+    FROM (
+      SELECT user_id, COUNT(*) AS order_count
+      FROM mo_order
+      WHERE delete_status = 0
+        AND status IN ('PAID','PENDING_SHIP','SHIPPED','RECEIVED','COMPLETED')
+        AND create_time &gt;= #{since}
+      GROUP BY user_id
+    ) t
+  </select>
+
 </mapper>

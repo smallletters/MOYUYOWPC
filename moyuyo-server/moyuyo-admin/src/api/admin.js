@@ -140,6 +140,12 @@ export function getRefundReasonDistribution() {
   return api.get('/refunds/reason-distribution')
 }
 
+// 按 type 维度查询各状态的精确计数（用于管理后台 chip 角标）
+// type 为可选参数，传 null/空表示统计所有类型
+export function getRefundStatusCount(params) {
+  return api.get('/refunds/status-count', { params })
+}
+
 export function approveRefund(id) {
   return api.put(`/refunds/${id}/approve`)
 }
@@ -171,6 +177,10 @@ export function getInventoryAlerts() {
 
 export function getInventoryList(params) {
   return api.get('/inventory/list', { params })
+}
+
+export function getInventoryBatches(params) {
+  return api.get('/inventory/batches', { params })
 }
 
 export function updateStock(id, data) {
@@ -288,6 +298,21 @@ export function updateAbTest(id, data) {
 
 export function getMarketingEffects(params) {
   return api.get('/marketing/effects', { params })
+}
+
+// 营销效果 - 优惠券维度
+export function getCouponEffects(params) {
+  return api.get('/marketing/effects/coupon', { params })
+}
+
+// 营销效果 - 秒杀维度
+export function getFlashEffects(params) {
+  return api.get('/marketing/effects/flash', { params })
+}
+
+// 营销效果 - 分销维度
+export function getDistributionEffects(params) {
+  return api.get('/marketing/effects/distribution', { params })
 }
 
 // ==================== 投诉管理 ====================
@@ -856,6 +881,14 @@ export function getFunnelAnalysis(params) {
   return api.get('/analysis/funnel', { params })
 }
 
+export function getChurnAnalysis(params) {
+  return api.get('/analysis/churn', { params })
+}
+
+export function getRepurchaseAnalysis(params) {
+  return api.get('/analysis/repurchase', { params })
+}
+
 export function getRfmAnalysis() {
   return api.get('/analysis/rfm')
 }
@@ -1116,6 +1149,10 @@ export function getUserStats() { return api.get('/users/stats') }
 export function getUserList(params) { return api.get('/users/list', { params }) }
 export function getUserDetail(id) { return api.get(`/users/${id}`) }
 export function updateUserStatus(id, data) { return api.put(`/users/${id}/status`, data) }
+export function createUser(data) { return api.post('/users/create', data) }
+export function updateUser(id, data) { return api.put(`/users/${id}`, data) }
+export function deleteUser(id) { return api.delete(`/users/${id}`) }
+export function resetUserPassword(id, data) { return api.post(`/users/${id}/reset-password`, data) }
 
 // ==================== 订单管理（基础CRUD） ====================
 export function getOrderList(params) { return api.get('/orders/list', { params }) }

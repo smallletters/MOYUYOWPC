@@ -177,6 +177,17 @@ public class GlobalExceptionHandler {
         return Result.error(400, sanitizeErrorMessage(e.getMessage()));
     }
 
+    /**
+     * 业务状态冲突（如"审核记录已处理"等 IllegalStateException）。
+     * 原实现未覆盖，导致该异常落到兜底 Exception handler 返回 500，
+     * 前端误以为服务端故障；改为 409 + 业务可读 message，便于前端精准提示。
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Result<Void> handleIllegalState(IllegalStateException e) {
+        return Result.error(409, sanitizeErrorMessage(e.getMessage()));
+    }
+
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
     public Result<Void> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
@@ -408,9 +419,14 @@ public class GlobalExceptionHandler {
                     .body(Result.error(503, "缓存服务异常，请稍后重试"));
         }
         log.error("未预期异常: {}", sanitizeErrorMessage(e.getMessage()), e);
+        // 返回脱敏后的 message，便于前端精准提示用户；不再固定写死「服务器内部错误」
+        String msg = sanitizeErrorMessage(e.getMessage());
+        if (msg == null || msg.isBlank()) {
+            msg = "服务器内部错误";
+        }
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Result.error("服务器内部错误"));
+                .body(Result.error(500, msg));
     }
 
     // ========== 错误消息脱敏工具方法 ==========

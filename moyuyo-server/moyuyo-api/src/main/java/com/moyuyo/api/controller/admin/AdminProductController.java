@@ -98,7 +98,19 @@ public class AdminProductController {
         catIdLong = resolveCategoryId(catParam);
       }
     }
-    return Result.success(productService.listProducts(page, size, catIdLong, sortBy, sortOrder, keyword, status, stockStatus, null));
+    // 列表接口补齐 images[]（每商品的商品图库），便于前端列表展示封面图
+    com.baomidou.mybatisplus.extension.plugins.pagination.Page<com.moyuyo.dao.entity.ProductEntity> productPage =
+        productService.listProducts(page, size, catIdLong, sortBy, sortOrder, keyword, status, stockStatus, null);
+    if (productPage != null && productPage.getRecords() != null && !productPage.getRecords().isEmpty()) {
+      java.util.List<Long> ids = new java.util.ArrayList<>();
+      for (com.moyuyo.dao.entity.ProductEntity p : productPage.getRecords()) ids.add(p.getId());
+      java.util.Map<Long, java.util.List<com.moyuyo.dao.entity.ProductImageEntity>> imgsMap =
+          productService.getImagesByProductIds(ids);
+      for (com.moyuyo.dao.entity.ProductEntity p : productPage.getRecords()) {
+        p.setImages(imgsMap.getOrDefault(p.getId(), java.util.Collections.emptyList()));
+      }
+    }
+    return Result.success(productPage);
   }
 
   @Operation(summary = "商品详情")

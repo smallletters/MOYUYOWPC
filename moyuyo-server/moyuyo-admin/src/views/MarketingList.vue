@@ -56,7 +56,7 @@
               </div>
               <div class="campaign-footer">
                 <span class="campaign-date">{{ cp.dateRange }}</span>
-                <button class="btn btn-sm btn-outline" @click="router.push('/campaign')">查看详情</button>
+                <button class="btn btn-sm btn-outline" @click="handleDetail(cp)">查看详情</button>
               </div>
             </div>
           </div>
@@ -83,11 +83,12 @@ import { toArray } from '../utils/safeArray'
 const router = useRouter()
 
 // 模块路由映射
+// 分销管理暂未独立成页，统一跳转到营销效果分析页的分销维度 Tab
 const moduleRoutes = {
   '优惠券管理': '/coupon-manage',
   '秒杀活动': '/flash-sale-manage',
   '积分活动': '/points-manage',
-  '分销管理': '/marketing'
+  '分销管理': '/marketing-effect'
 }
 
 const modules = ref([
@@ -183,6 +184,15 @@ async function fetchModules() {
 function handleModuleClick(mod) {
   const route = moduleRoutes[mod.title] || '/marketing'
   router.push(route)
+}
+
+// 活动详情：使用 window.location.href 强制整页跳转，避免 SPA chunk 缓存导致详情页组件未加载
+function handleDetail(campaign) {
+  if (!campaign || !campaign.id) {
+    ElMessage.warning('活动数据异常，缺少 ID')
+    return
+  }
+  window.location.href = `/admin/campaign-detail?id=${campaign.id}`
 }
 
 function handleQuickAction(action) {

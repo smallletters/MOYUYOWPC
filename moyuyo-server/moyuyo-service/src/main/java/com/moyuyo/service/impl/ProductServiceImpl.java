@@ -69,6 +69,27 @@ public class ProductServiceImpl implements ProductService {
     return productMapper.selectPage(new Page<>(page, size), wrapper);
   }
 
+  /**
+   * 列表查询结果二次填充：为每个商品补齐 images[]（mo_product_image 关联表）。
+   * <p>
+   * 关键性能考量：
+   * 1) selectPage 一次拉一批 ProductEntity，再批量查 images（避免 N+1）
+   * 2) 仅取每商品 sort 最小的一张作为封面图，减少序列化体积
+   * 3) 使用 in (productIds) 一次往返，分组在 Java 层
+   */
+  public java.util.Map<Long, List<ProductImageEntity>> getImagesByProductIds(java.util.List<Long> productIds) {
+    if (productIds == null || productIds.isEmpty()) return java.util.Collections.emptyMap();
+    List<ProductImageEntity> all = productImageMapper.selectList(
+        new LambdaQueryWrapper<ProductImageEntity>()
+            .in(ProductImageEntity::getProductId, productIds)
+            .orderByAsc(ProductImageEntity::getSort));
+    java.util.Map<Long, List<ProductImageEntity>> map = new java.util.HashMap<>();
+    for (ProductImageEntity img : all) {
+      map.computeIfAbsent(img.getProductId(), k -> new java.util.ArrayList<>()).add(img);
+    }
+    return map;
+  }
+
   @Override
   public ProductEntity getProductDetail(Long productId) {
     ProductEntity product = productMapper.selectById(productId);

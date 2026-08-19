@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -312,5 +313,151 @@ public class AdminAnalysisServiceImpl implements AdminAnalysisService {
     if (total >= 6) return "一般发展";
     if (rScore <= 2) return "流失";
     return "一般挽留";
+  }
+
+  // ==================== 流失分析 ====================
+
+  @Override
+  public Map<String, Object> churn(int days) {
+    int safeDays = days <= 0 ? 7 : days;
+    LocalDateTime since = LocalDateTime.now().minusDays(safeDays);
+
+    Map<String, Object> result = new LinkedHashMap<>();
+
+    // 漏斗底层数据：下单/支付独立用户数
+    Map<String, Object> funnel = orderMapper.selectFunnelCounts(since);
+    long orderUsers = toLong(funnel == null ? null : funnel.get("orderUsers"));
+    long paidUsers = toLong(funnel == null ? null : funnel.get("paidUsers"));
+
+    // 全量漏斗统一为浏览 → 加购 → 下单 → 支付 → 完成
+    long browseUsers = countDistinctUsersSince(since);
+    long cartUsers = countDistinctCartUsersSince(since);
+
+    long[] stages = {browseUsers, cartUsers, orderUsers, paidUsers};
+    String[] stageNames = {"浏览商品", "加入购物车", "提交订单", "支付成功"};
+
+    // 计算相邻阶段的流失率，找出"最大流失"环节
+    int maxIdx = 0;
+    double maxDrop = 0d;
+    String maxStep = "-";
+    for (int i = 1; i < stages.length; i++) {
+      long prev = stages[i - 1];
+      long curr = stages[i];
+      if (prev <= 0) continue;
+      double drop = (prev - curr) * 1.0 / prev * 100d;
+      if (drop > maxDrop) {
+        maxDrop = drop;
+        maxIdx = i;
+        maxStep = stageNames[i - 1] + " → " + stageNames[i];
+      }
+    }
+
+    // 顶部流失率：展示"最大流失环节"的流失百分比
+    BigDecimal churnRate = BigDecimal.valueOf(Math.max(0d, maxDrop))
+        .setScale(1, RoundingMode.HALF_UP);
+    result.put("churnRate", churnRate);
+
+    // 流失步骤名称（侧栏大字号展示）
+    result.put("churnStep", maxStep);
+    result.put("churnStepFrom", maxIdx > 0 ? stageNames[maxIdx - 1] : null);
+    result.put("churnStepTo", maxIdx > 0 ? stageNames[maxIdx] : null);
+
+    // 流失原因：从 mo_order.cancel_reason 聚合（最近 N 天）
+    List<Map<String, Object>> reasonsRaw = orderMapper.selectChurnReasons(since);
+    List<String> reasons = new ArrayList<>();
+    if (reasonsRaw != null) {
+      for (Map<String, Object> row : reasonsRaw) {
+        Object r = row.get("reason");
+        Object c = row.get("orderCount");
+        if (r == null) continue;
+        long cnt = toLong(c);
+        if (cnt <= 0) continue;
+        // 简洁文案：直接展示原因；数量信息保留在 lostAmount 字段供前端选用
+        reasons.add(String.valueOf(r));
+      }
+    }
+    // 兜底：当没有可用的取消原因时，给出运营常用的提示项，避免 UI 空白
+    if (reasons.isEmpty()) {
+      reasons.add("暂无明确取消原因数据，请检查 cancel_reason 字段埋点");
+    }
+    result.put("churnReasons", reasons);
+
+    // 附带明细供前端按需展示
+    result.put("churnReasonsDetail", reasonsRaw == null ? Collections.emptyList() : reasonsRaw);
+    return result;
+  }
+
+  // ==================== 复购率 ====================
+
+  @Override
+  public Map<String, Object> repurchase(int days) {
+    int safeDays = days <= 0 ? 30 : days;
+    LocalDateTime since = LocalDateTime.now().minusDays(safeDays);
+    LocalDateTime prevSince = LocalDateTime.now().minusDays(safeDays * 2L);
+
+    Map<String, Object> result = new LinkedHashMap<>();
+
+    // 当前周期：窗口内下过单的用户中，复购（≥2 单）占比
+    Map<String, Object> cur = orderMapper.selectRepurchaseCounts(since);
+    long payUsers = toLong(cur == null ? null : cur.get("payUsers"));
+    long repurchaseUsers = toLong(cur == null ? null : cur.get("repurchaseUsers"));
+    BigDecimal rate = payUsers > 0
+        ? BigDecimal.valueOf(repurchaseUsers * 100L).divide(BigDecimal.valueOf(payUsers), 1, RoundingMode.HALF_UP)
+        : BigDecimal.ZERO;
+    result.put("repurchaseRate", rate);
+    result.put("payUsers", payUsers);
+    result.put("repurchaseUsers", repurchaseUsers);
+
+    // 对比上一周期，计算百分点变化（trend）
+    Map<String, Object> prev = orderMapper.selectRepurchaseCounts(prevSince);
+    long prevPay = toLong(prev == null ? null : prev.get("payUsers"));
+    long prevRe = toLong(prev == null ? null : prev.get("repurchaseUsers"));
+    BigDecimal prevRate = prevPay > 0
+        ? BigDecimal.valueOf(prevRe * 100L).divide(BigDecimal.valueOf(prevPay), 1, RoundingMode.HALF_UP)
+        : BigDecimal.ZERO;
+    BigDecimal trend = rate.subtract(prevRate).setScale(1, RoundingMode.HALF_UP);
+    result.put("trend", trend);
+    result.put("prevRate", prevRate);
+    result.put("windowDays", safeDays);
+    return result;
+  }
+
+  // ==================== 私有辅助方法 ====================
+
+  /**
+   * 时间窗口内的独立浏览用户数
+   */
+  private long countDistinctUsersSince(LocalDateTime since) {
+    QueryWrapper<BrowsingHistoryEntity> wrapper = new QueryWrapper<>();
+    wrapper.select("COUNT(DISTINCT user_id)");
+    if (since != null) {
+      wrapper.apply("create_time >= {0}", since);
+    }
+    List<Object> list = browsingHistoryMapper.selectObjs(wrapper);
+    return list.isEmpty() || list.get(0) == null ? 0L : ((Number) list.get(0)).longValue();
+  }
+
+  /**
+   * 时间窗口内的独立加购用户数
+   */
+  private long countDistinctCartUsersSince(LocalDateTime since) {
+    QueryWrapper<CartEntity> wrapper = new QueryWrapper<>();
+    wrapper.select("COUNT(DISTINCT user_id)");
+    if (since != null) {
+      wrapper.apply("create_time >= {0}", since);
+    }
+    List<Object> list = cartMapper.selectObjs(wrapper);
+    return list.isEmpty() || list.get(0) == null ? 0L : ((Number) list.get(0)).longValue();
+  }
+
+  /** 安全转换为 long（兼容 Integer/Long/BigDecimal 等） */
+  private long toLong(Object o) {
+    if (o == null) return 0L;
+    if (o instanceof Number) return ((Number) o).longValue();
+    try {
+      return Long.parseLong(o.toString());
+    } catch (Exception ignore) {
+      return 0L;
+    }
   }
 }

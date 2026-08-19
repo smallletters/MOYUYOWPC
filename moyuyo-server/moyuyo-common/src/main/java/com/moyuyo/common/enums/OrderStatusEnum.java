@@ -12,7 +12,9 @@ public enum OrderStatusEnum {
   CANCELLED("已取消"),
   REFUNDING("退款中"),
   REFUNDED("已退款"),
-  COMPLETED("已完成");
+  COMPLETED("已完成"),
+  EXCHANGING("换货中"),
+  EXCHANGED("已换货");
 
   private final String displayName;
 

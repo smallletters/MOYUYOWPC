@@ -229,4 +229,59 @@ class CampaignMarketingControllerTest {
     verify(campaignMarketingService).getMarketingEffects(7);
     assertEquals(0, result.getCode());
   }
+
+  // ============ saveDraft ============
+
+  @Test
+  void saveDraft_有效请求_委托Service并返回操作结果() {
+    CampaignRequest request = new CampaignRequest();
+    request.setName("草稿测试");
+    OperationResult op = new OperationResult();
+    op.setId(1L);
+    op.setMessage("草稿保存成功");
+    when(campaignMarketingService.saveDraft(any())).thenReturn(op);
+
+    Result<OperationResult> result = controller.saveDraft(request);
+
+    verify(campaignMarketingService).saveDraft(request);
+    assertEquals(0, result.getCode());
+    assertEquals(1L, result.getData().getId());
+    assertEquals("草稿保存成功", result.getData().getMessage());
+  }
+
+  // ============ couponEffects ============
+
+  @Test
+  void couponEffects_默认7天_委托Service() {
+    when(campaignMarketingService.getCouponEffects(7)).thenReturn(new com.moyuyo.common.dto.admin.campaign.CouponEffectResponse());
+
+    Result<com.moyuyo.common.dto.admin.campaign.CouponEffectResponse> result = controller.couponEffects(7);
+
+    verify(campaignMarketingService).getCouponEffects(7);
+    assertEquals(0, result.getCode());
+  }
+
+  // ============ flashEffects ============
+
+  @Test
+  void flashEffects_默认7天_委托Service() {
+    when(campaignMarketingService.getFlashEffects(7)).thenReturn(new com.moyuyo.common.dto.admin.campaign.FlashEffectResponse());
+
+    Result<com.moyuyo.common.dto.admin.campaign.FlashEffectResponse> result = controller.flashEffects(7);
+
+    verify(campaignMarketingService).getFlashEffects(7);
+    assertEquals(0, result.getCode());
+  }
+
+  // ============ distributionEffects ============
+
+  @Test
+  void distributionEffects_默认7天_委托Service() {
+    when(campaignMarketingService.getDistributionEffects(7)).thenReturn(new com.moyuyo.common.dto.admin.campaign.DistributionEffectResponse());
+
+    Result<com.moyuyo.common.dto.admin.campaign.DistributionEffectResponse> result = controller.distributionEffects(7);
+
+    verify(campaignMarketingService).getDistributionEffects(7);
+    assertEquals(0, result.getCode());
+  }
 }

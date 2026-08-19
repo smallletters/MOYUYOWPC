@@ -27,4 +27,16 @@ public interface AdminAnalysisService {
    * 流量统计
    */
   Map<String, Object> trafficStats();
+
+  /**
+   * 流失分析（最近 days 天）
+   * 返回 map：{ churnRate, churnStep, churnReasons:[{reason, orderCount, lostAmount}, ...] }
+   */
+  Map<String, Object> churn(int days);
+
+  /**
+   * 复购率分析（最近 days 天，复购定义：在窗口内订单数≥2）
+   * 返回 map：{ repurchaseRate, trend:与上一周期对比的百分点变化 }
+   */
+  Map<String, Object> repurchase(int days);
 }

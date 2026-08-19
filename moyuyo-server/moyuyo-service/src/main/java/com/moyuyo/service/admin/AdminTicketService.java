@@ -2,6 +2,7 @@ package com.moyuyo.service.admin;
 
 import com.moyuyo.dao.admin.entity.TicketEntity;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -34,4 +35,9 @@ public interface AdminTicketService {
    * 分配客服
    */
   void assignAgent(Long id, String agent);
+
+  /**
+   * 追加客服回复并自动计算首响耗时
+   */
+  void appendReply(Long id, String content, LocalDateTime replyAt);
 }

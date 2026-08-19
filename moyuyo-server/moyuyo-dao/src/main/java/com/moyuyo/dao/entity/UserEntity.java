@@ -27,6 +27,9 @@ public class UserEntity {
 
     private String country;
 
+    // 注册渠道（web/app/wechat），由 V20260819_02 迁移新增字段
+    private String registrationChannel;
+
     private String locale;
 
     private String timezone;

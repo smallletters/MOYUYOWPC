@@ -52,9 +52,11 @@ public class AdminFinanceController {
       result.setActualIncome(toBigDecimal(svcResult.get("actualIncome")));
       result.setPendingSettlement(toBigDecimal(svcResult.get("pendingSettlement")));
       // 从数据库查询已完成的结算数量
+      // 修正：mo_settlement 状态机为 PENDING/SETTLING/SETTLED/ABNORMAL，没有 COMPLETED
+      // seed 数据与代码应统一使用 SETTLED（与 SettlementEntity 注释一致）
       Long completedCount = settlementMapper.selectCount(
         new LambdaQueryWrapper<SettlementEntity>()
-          .eq(SettlementEntity::getStatus, "COMPLETED"));
+          .eq(SettlementEntity::getStatus, "SETTLED"));
       result.setCompletedSettlements(completedCount != null ? completedCount.intValue() : 0);
       Object pendingIssues = svcResult.get("pendingIssues");
       result.setPendingCount(pendingIssues instanceof Number ? ((Number) pendingIssues).intValue() : 0);

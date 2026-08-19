@@ -7,7 +7,9 @@ import com.moyuyo.common.dto.admin.inventory.InventoryCheckRequest;
 import com.moyuyo.common.dto.admin.inventory.InventoryCheckResponse;
 import com.moyuyo.common.dto.admin.inventory.InventoryItemResponse;
 import com.moyuyo.common.dto.admin.inventory.StockUpdateRequest;
+import com.moyuyo.dao.admin.entity.InventoryBatchEntity;
 import com.moyuyo.dao.admin.entity.InventoryCheckEntity;
+import com.moyuyo.dao.admin.mapper.InventoryBatchMapper;
 import com.moyuyo.dao.admin.mapper.InventoryCheckMapper;
 import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductSkuEntity;
@@ -34,21 +36,22 @@ public class AdminInventoryController {
   private final ProductSkuMapper productSkuMapper;
   private final ProductMapper productMapper;
   private final InventoryCheckMapper inventoryCheckMapper;
+  private final InventoryBatchMapper inventoryBatchMapper;
 
   @Operation(summary = "库存概览")
   @GetMapping("/overview")
   public Result<Map<String, Object>> overview() {
     try {
       Map<String, Object> svcResult = inventoryService.getInventoryOverview();
-      // 返回前端期望的字段名
+      // 返回前端期望的字段名（4 个 0 字段已接入真实聚合：weeklyIncrease/urgentReplenish/expiringBatches/inTransit）
       Map<String, Object> result = new LinkedHashMap<>();
       result.put("totalSku", svcResult.getOrDefault("totalSku",
           productSkuMapper.selectCount(new LambdaQueryWrapper<>())));
-      result.put("weeklyIncrease", 0); // 暂无周增长数据
+      result.put("weeklyIncrease", svcResult.getOrDefault("weeklyIncrease", 0));
       result.put("lowStockAlerts", svcResult.getOrDefault("lowStockCount", 0));
-      result.put("urgentReplenish", 0); // 暂无紧急补货数据
-      result.put("expiringBatches", 0); // 暂无临期批次数据
-      result.put("inTransit", 0); // 暂无在途调拨数据
+      result.put("urgentReplenish", svcResult.getOrDefault("urgentReplenish", 0));
+      result.put("expiringBatches", svcResult.getOrDefault("expiringBatches", 0));
+      result.put("inTransit", svcResult.getOrDefault("inTransit", 0));
       return Result.success(result);
     } catch (Exception e) {
       return Result.error("查询库存概览失败: " + e.getMessage());
@@ -145,7 +148,8 @@ public class AdminInventoryController {
         BigDecimal stockBd = new BigDecimal(sku.getStock() != null ? sku.getStock() : 0);
         item.put("safeThreshold", stockBd.multiply(new BigDecimal("0.1")).setScale(0, RoundingMode.HALF_UP).intValue());
         item.put("price", sku.getPrice() != null ? sku.getPrice() : BigDecimal.ZERO);
-        item.put("updateTime", null); // SKU表暂无updateTime字段
+        // 真实返回 updateTime（V20260819_03 迁移新增 update_time 列）
+        item.put("updateTime", sku.getUpdateTime());
         list.add(item);
       }
 
@@ -180,6 +184,47 @@ public class AdminInventoryController {
       return Result.success(result);
     } catch (Exception e) {
       return Result.error("更新库存失败: " + e.getMessage());
+    }
+  }
+
+  /**
+   * 批次列表（驱动"库存管理 > 批次管理"页面）。
+   * 按 strategy 过滤，全部返回时按 create_time 倒序。
+   */
+  @Operation(summary = "批次列表")
+  @GetMapping("/batches")
+  public Result<Map<String, Object>> batches(
+      @RequestParam(required = false) String strategy) {
+    try {
+      LambdaQueryWrapper<InventoryBatchEntity> wrapper = new LambdaQueryWrapper<>();
+      if (strategy != null && !strategy.isEmpty() && !"all".equalsIgnoreCase(strategy)) {
+        wrapper.eq(InventoryBatchEntity::getStrategy, strategy);
+      }
+      // 按 id 倒序（seed 数据无 create_time，依赖 id 顺序保证稳定）
+      wrapper.orderByDesc(InventoryBatchEntity::getId);
+
+      List<InventoryBatchEntity> rows = inventoryBatchMapper.selectList(wrapper);
+      List<Map<String, Object>> list = new ArrayList<>();
+      for (InventoryBatchEntity b : rows) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", b.getId());
+        item.put("batchNo", b.getBatchNo());
+        item.put("skuId", b.getSkuId());
+        item.put("name", b.getProductName());
+        item.put("sku", b.getSkuId() != null ? String.valueOf(b.getSkuId()) : ""); // 前端展示期望字段名 sku
+        item.put("inDate", b.getInDate());
+        item.put("expireDate", b.getExpireDate());
+        item.put("quantity", b.getQuantity());
+        item.put("strategy", b.getStrategy());
+        item.put("status", b.getStatus());
+        list.add(item);
+      }
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("records", list);
+      result.put("total", list.size());
+      return Result.success(result);
+    } catch (Exception e) {
+      return Result.error("查询批次列表失败: " + e.getMessage());
     }
   }
 

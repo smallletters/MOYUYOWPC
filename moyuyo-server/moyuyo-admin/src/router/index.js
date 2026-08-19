@@ -148,6 +148,13 @@ const routes = [
         meta: { title: '活动创建' }
       },
       {
+        // 活动详情：id 通过 query 传入（?id=xxx），MarketingList.vue的「查看详情」按钮跳转此路由
+        path: 'campaign-detail',
+        name: 'CampaignDetail',
+        component: () => import('../views/CampaignDetail.vue'),
+        meta: { title: '活动详情' }
+      },
+      {
         path: 'complaint',
         name: 'ComplaintManage',
         component: () => import('../views/ComplaintManage.vue'),

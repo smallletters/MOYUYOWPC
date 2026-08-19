@@ -39,10 +39,13 @@ public class TicketEntity {
     /** 状态：PENDING / PROCESSING / CLOSED */
     private String status;
 
-    /** 回复内容 */
-    private String responseTime;
+    /** 回复内容（原 response_time 字段重命名，避免与首响耗时语义混淆） */
+    private String replyContent;
 
-    /** 是否超时 */
+    /** 首响耗时（分钟），由首条客服回复与创建时间之差计算 */
+    private Integer firstResponseMinutes;
+
+    /** 是否超时（首响耗时 > SLA 阈值时为 true） */
     private Boolean timeout;
 
     /** 创建时间 */

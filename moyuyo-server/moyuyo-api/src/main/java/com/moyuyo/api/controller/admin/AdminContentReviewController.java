@@ -25,7 +25,15 @@ public class AdminContentReviewController {
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "10") int size,
         @RequestParam(required = false) String contentType,
-        @RequestParam(required = false) String status) {
+        @RequestParam(required = false) String status,
+        @RequestParam(required = false) String mode) {
+        if (page < 1 || size < 1 || size > 100) {
+            return Result.error(400, "分页参数无效");
+        }
+        if (mode != null && !mode.isBlank()
+                && !List.of("auto", "auto_manual", "manual").contains(mode)) {
+            return Result.error(400, "审核模式无效");
+        }
         return Result.success(adminContentReviewService.listAll(page, size, contentType, status));
     }
 
@@ -47,8 +55,11 @@ public class AdminContentReviewController {
     @Operation(summary = "审核驳回")
     @PutMapping("/{id}/reject")
     public Result<Void> reject(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        String reason = (String) body.getOrDefault("reason", "");
-        String comment = (String) body.getOrDefault("comment", "");
+        if (body == null || body.get("reason") == null || body.get("reason").toString().isBlank()) {
+            return Result.error(400, "驳回原因不能为空");
+        }
+        String reason = body.get("reason").toString();
+        String comment = body.get("comment") == null ? "" : body.get("comment").toString();
         Long reviewerId = UserContextHolder.getUserId();
         adminContentReviewService.reject(id, reviewerId, reason, comment);
         return Result.success();
