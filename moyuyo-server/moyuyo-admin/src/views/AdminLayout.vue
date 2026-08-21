@@ -127,6 +127,7 @@ const topNavItems = [
   { path: '/products', icon: '📦', label: '商品管理' },
   { path: '/refund', icon: '💰', label: '退款管理' },
   { path: '/users', icon: '👥', label: '用户管理' },
+  { path: '/cs-sessions', icon: '💬', label: '客服会话' },
   { path: '/marketing', icon: '📢', label: '营销管理' },
   { path: '/reviews', icon: '📝', label: '内容审核' },
   { path: '/cs', icon: '🎧', label: '客服管理' },

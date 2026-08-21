@@ -162,13 +162,96 @@
         </button>
       </div>
     </div>
+
+    <!-- 工单详情抽屉 -->
+    <el-drawer
+      v-model="detailVisible"
+      :title="detailTitle"
+      size="780px"
+      direction="rtl"
+      :close-on-click-modal="false"
+      @closed="onDetailClosed"
+    >
+      <div class="ticket-detail" v-if="detail">
+        <!-- 元信息 -->
+        <section class="detail-section">
+          <el-descriptions :column="2" border size="small">
+            <el-descriptions-item label="工单号">{{ detail.ticketNo || detail.id }}</el-descriptions-item>
+            <el-descriptions-item label="状态">
+              <el-tag :type="statusPillType(detail.status)" size="small">{{ detail.statusText || detail.status || '-' }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="类型">{{ detail.type }}</el-descriptions-item>
+            <el-descriptions-item label="优先级">
+              <span :class="['priority-pill', priorityPillClass(detail.priority)]">{{ detail.priority }}</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="用户">{{ detail.userName }}<span v-if="detail.userId">（ID: {{ detail.userId }}）</span></el-descriptions-item>
+              <el-descriptions-item label="分配客服">{{ detail.agentName || '待分配' }}</el-descriptions-item>
+            <el-descriptions-item label="创建时间">{{ formatDate(detail.createTime) }}</el-descriptions-item>
+            <el-descriptions-item label="首响耗时">
+              {{ detail.firstResponseMinutes != null ? `${detail.firstResponseMinutes} 分钟` : '-' }}
+              <el-tag v-if="detail.timeout" type="danger" size="small" style="margin-left:6px">超时</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="标题" :span="2">{{ detail.title }}</el-descriptions-item>
+          </el-descriptions>
+          <!-- 用户原始诉求（工单 content 字段） -->
+          <div v-if="detail.content" class="original-content">
+            <h5 class="content-title">用户原始诉求</h5>
+            <div class="content-body">{{ detail.content }}</div>
+          </div>
+        </section>
+
+        <!-- 对话历史 -->
+        <section class="detail-section">
+          <h4 class="section-title">对话记录（{{ messages.length }}）</h4>
+          <div ref="msgScroll" class="msg-scroll">
+            <div v-if="messagesLoading" class="msg-loading">加载中…</div>
+            <div v-else-if="messages.length === 0" class="msg-empty">暂无对话记录</div>
+            <div
+              v-for="(m, idx) in messages"
+              :key="m.id || idx"
+              class="msg-row"
+              :class="msgClassOf(m)"
+            >
+              <div class="msg-meta">
+                <span class="msg-name">{{ m.senderName || senderTextOf(m) }}</span>
+                <span class="msg-time">{{ formatDateTime(m.createTime) }}</span>
+              </div>
+              <div class="msg-bubble">{{ m.content }}</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 回复输入区 -->
+        <section class="detail-section reply-box">
+          <h4 class="section-title">客服回复</h4>
+          <el-input
+            v-model="replyDraft"
+            type="textarea"
+            :rows="4"
+            :disabled="detail && detail.status === '已关闭' || replying"
+            :placeholder="detail && detail.status === '已关闭' ? '工单已关闭，无法回复' : '输入回复内容，回车发送，Shift+Enter 换行'"
+            @keydown.enter.exact.prevent="handleReply"
+          />
+          <div class="reply-actions">
+            <el-button
+              type="primary"
+              :loading="replying"
+              :disabled="!replyDraft.trim() || (detail && detail.status === '已关闭')"
+              @click="handleReply"
+            >
+              发送回复
+            </el-button>
+          </div>
+        </section>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getTicketList, getTicketStats } from '../api/admin'
+import { getTicketList, getTicketStats, getTicketDetail, getTicketMessages, replyTicket } from '../api/admin'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
@@ -314,8 +397,166 @@ function userAvatarClass(user) {
 }
 
 function handleView(item) {
-  // 打开工单详情弹窗或跳转
-  router.push({ path: '/ticket', query: { id: item.id, action: 'view' } })
+  // 打开工单详情抽屉（取代之前"跳转自身路由"的做法）
+  openDetail(item)
+}
+
+// ============ 工单详情抽屉 ============
+const detailVisible = ref(false)
+const detail = ref(null)        // 当前工单详情（来自 /ticket/{id}）
+const messages = ref([])         // 当前工单消息历史
+const messagesLoading = ref(false)
+const replyDraft = ref('')
+const replying = ref(false)
+const msgScroll = ref(null)
+
+const detailTitle = computed(() => {
+  if (!detail.value) return '工单详情'
+  return `工单详情 · ${detail.value.ticketNo || detail.value.id}`
+})
+
+// 从后端 /ticket/{id} 接口拉详情；同时复用列表行数据补全 type/priority/userName 等
+async function openDetail(item) {
+  detail.value = null
+  messages.value = []
+  replyDraft.value = ''
+  detailVisible.value = true
+  try {
+    const res = await getTicketDetail(item.id)
+    // 后端 detail 接口只返回固定字段：id/ticketNo/title/status/assignee/replyContent/firstResponseMinutes/createdAt/replies
+    // 其它字段（type/priority/userName/userId/agentName/content）需要用列表行 item 补
+    const baseRow = item || {}
+    detail.value = normalizeDetail(res || {}, baseRow)
+  } catch (e) {
+    // fallback 使用行数据
+    detail.value = normalizeDetail({}, item)
+  }
+  await loadMessages(item.id)
+  scrollMsgToBottom()
+}
+
+function normalizeDetail(apiResp, row) {
+  const statusMap = { 'PENDING': '待处理', 'PROCESSING': '进行中', 'CLOSED': '已关闭' }
+  // 后端 getTicketDetail 的状态是 code（PENDING 等），列表行的 status 已经是中文
+  const statusText = statusMap[apiResp.status] || row.status || '待处理'
+  return {
+    id: apiResp.id ?? row.id,
+    ticketNo: apiResp.ticketNo ?? row.ticketNo,
+    title: apiResp.title ?? row.title,
+    // 列表行才有这些字段
+    type: row.type,
+    priority: row.priority,
+    status: statusText,
+    statusCode: apiResp.status,
+    userId: row.userId,
+    userName: row.userName,
+    agentName: apiResp.assignee || row.agentName,
+    createTime: apiResp.createdAt || row.createTime,
+    firstResponseMinutes: apiResp.firstResponseMinutes,
+    timeout: row.timeout,
+    content: row.content
+  }
+}
+
+async function loadMessages(ticketId) {
+  messagesLoading.value = true
+  try {
+    const list = await getTicketMessages(ticketId)
+    messages.value = (list || [])
+  } catch (e) {
+    ElMessage.error('加载对话记录失败')
+  } finally {
+    messagesLoading.value = false
+  }
+}
+
+function senderTextOf(m) {
+  if (m.senderType === 'SYSTEM') return '系统'
+  if (m.senderType === 'AGENT') return '客服'
+  return '用户'
+}
+
+function msgClassOf(m) {
+  if (m.senderType === 'AGENT') return 'msg-row--agent'
+  if (m.senderType === 'SYSTEM') return 'msg-row--system'
+  return 'msg-row--user'
+}
+
+function statusPillType(statusText) {
+  return { '待处理': 'warning', '进行中': 'success', '已关闭': 'info' }[statusText] || 'info'
+}
+
+function priorityPillClass(p) {
+  return { '高': 'priority-high', '中': 'priority-mid', '低': 'priority-low' }[p] || ''
+}
+
+function formatDate(d) {
+  if (!d) return '-'
+  try {
+    const dt = new Date(d)
+    if (isNaN(dt.getTime())) return String(d)
+    const pad = n => String(n).padStart(2, '0')
+    return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`
+  } catch (e) {
+    return String(d)
+  }
+}
+
+function formatDateTime(d) {
+  if (!d) return ''
+  try {
+    const dt = new Date(d)
+    if (isNaN(dt.getTime())) return String(d)
+    const pad = n => String(n).padStart(2, '0')
+    return `${pad(dt.getMonth() + 1)}-${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`
+  } catch (e) {
+    return String(d)
+  }
+}
+
+function scrollMsgToBottom() {
+  nextTick(() => {
+    const el = msgScroll.value
+    if (el) el.scrollTop = el.scrollHeight
+  })
+}
+
+async function handleReply() {
+  const content = (replyDraft.value || '').trim()
+  if (!content) return
+  if (!detail.value) return
+  if (detail.value.status === '已关闭') {
+    ElMessage.warning('工单已关闭，无法回复')
+    return
+  }
+  replying.value = true
+  try {
+    await replyTicket(detail.value.id, { content })
+    // 乐观更新：直接把消息追加到列表
+    messages.value.push({
+      senderType: 'AGENT',
+      senderName: '客服',
+      content,
+      createTime: new Date().toISOString()
+    })
+    replyDraft.value = ''
+    ElMessage.success('回复成功')
+    // 同步拉一次历史，确保与服务端一致
+    await loadMessages(detail.value.id)
+    scrollMsgToBottom()
+    // 顺带刷新列表的 status（已从 PENDING → PROCESSING）
+    loadData()
+  } catch (e) {
+    ElMessage.error((e && e.message) || '回复失败')
+  } finally {
+    replying.value = false
+  }
+}
+
+function onDetailClosed() {
+  detail.value = null
+  messages.value = []
+  replyDraft.value = ''
 }
 
 onMounted(() => { loadData() })
@@ -640,6 +881,80 @@ onMounted(() => { loadData() })
 .action-btn:hover {
   border-color: var(--primary);
   color: var(--primary);
+}
+
+/* ===== 工单详情抽屉 ===== */
+.ticket-detail { display: flex; flex-direction: column; gap: 16px; padding: 0 4px; }
+.detail-section { padding: 4px 0; }
+.section-title {
+  font-size: 13px; font-weight: 600; color: var(--text-700);
+  margin: 0 0 10px; padding-left: 6px; border-left: 3px solid var(--primary);
+}
+.priority-pill {
+  display: inline-flex; align-items: center;
+  padding: 2px 10px; border-radius: 999px;
+  font-size: 11px; font-weight: 600;
+}
+.priority-high { background: var(--state-error-surface); color: var(--state-error); }
+.priority-mid  { background: #fff3cd; color: #b8860b; }
+.priority-low  { background: var(--background-200); color: var(--text-500); }
+
+.msg-scroll {
+  max-height: 340px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 6px 4px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.msg-loading, .msg-empty {
+  text-align: center; color: var(--text-400); font-size: 13px;
+  padding: 24px 0;
+}
+.msg-row {
+  display: flex; flex-direction: column;
+  max-width: 80%; padding: 0;
+}
+.msg-row--user { align-self: flex-start; }
+.msg-row--agent { align-self: flex-end; align-items: flex-end; }
+.msg-row--system { align-self: center; }
+.msg-meta {
+  font-size: 11px; color: var(--text-400); margin-bottom: 4px;
+  display: flex; gap: 8px;
+}
+.msg-row--agent .msg-meta { flex-direction: row-reverse; }
+.msg-bubble {
+  padding: 9px 13px; border-radius: 12px;
+  background: #fff; border: 1px solid var(--border);
+  font-size: 13px; line-height: 1.6;
+  white-space: pre-wrap; word-break: break-word;
+  color: var(--text-800);
+}
+.msg-row--agent .msg-bubble {
+  background: #2563eb; color: #fff; border-color: #2563eb;
+}
+.msg-row--system .msg-bubble {
+  background: transparent; border-style: dashed; color: var(--text-400); font-style: italic;
+}
+
+.original-content {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--brand-50);
+  border-left: 3px solid var(--primary);
+  border-radius: 6px;
+}
+.content-title {
+  font-size: 12px; font-weight: 600; color: var(--brand-700);
+  margin: 0 0 6px;
+}
+.content-body {
+  font-size: 13px; line-height: 1.6; color: var(--text-700);
+  white-space: pre-wrap; word-break: break-word;
+}
+.reply-box :deep(.el-textarea__inner) { resize: none; }
+.reply-actions {
+  display: flex; justify-content: flex-end;
+  padding-top: 10px;
 }
 
 /* ===== 分页 ===== */

@@ -1,0 +1,1152 @@
+Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+==========================================================
+  MOYUYO API Server
+  (c) MOYUYO Backend Team
+==========================================================
+
+2026-08-21 11:03:16.980 [background-preinit] INFO  o.h.validator.internal.util.Version [no-trace] - HV000001: Hibernate Validator 8.0.3.Final
+2026-08-21 11:03:17.059 [main] INFO  com.moyuyo.api.MoyuyoApplication [no-trace] - Starting MoyuyoApplication v1.0.0 using Java 25.0.3 with PID 6864 (D:\MOYUYOWPC\moyuyo-server\moyuyo-api\target\moyuyo-api-1.0.0.jar started by Administrator in D:\MOYUYOWPC)
+2026-08-21 11:03:17.060 [main] INFO  com.moyuyo.api.MoyuyoApplication [no-trace] - The following 1 profile is active: "dev"
+2026-08-21 11:03:18.718 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate [no-trace] - Multiple Spring Data modules found, entering strict repository configuration mode
+2026-08-21 11:03:18.719 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate [no-trace] - Bootstrapping Spring Data Elasticsearch repositories in DEFAULT mode.
+2026-08-21 11:03:18.740 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate [no-trace] - Finished Spring Data repository scanning in 13 ms. Found 0 Elasticsearch repository interfaces.
+2026-08-21 11:03:18.746 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate [no-trace] - Multiple Spring Data modules found, entering strict repository configuration mode
+2026-08-21 11:03:18.747 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate [no-trace] - Bootstrapping Spring Data Reactive Elasticsearch repositories in DEFAULT mode.
+2026-08-21 11:03:18.750 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate [no-trace] - Finished Spring Data repository scanning in 1 ms. Found 0 Reactive Elasticsearch repository interfaces.
+2026-08-21 11:03:18.759 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate [no-trace] - Multiple Spring Data modules found, entering strict repository configuration mode
+2026-08-21 11:03:18.761 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate [no-trace] - Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-08-21 11:03:18.778 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate [no-trace] - Finished Spring Data repository scanning in 1 ms. Found 0 Redis repository interfaces.
+2026-08-21 11:03:19.536 [main] WARN  o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker [no-trace] - Bean 'org.apache.rocketmq.spring.autoconfigure.ListenerContainerConfiguration' of type [org.apache.rocketmq.spring.autoconfigure.ListenerContainerConfiguration$$SpringCGLIB$$0] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected/applied to a currently created BeanPostProcessor [org.apache.rocketmq.spring.annotation.RocketMQMessageListenerBeanPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies/advisors. If this bean does not have to be post-processed, declare it with ROLE_INFRASTRUCTURE.
+2026-08-21 11:03:19.541 [main] WARN  o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker [no-trace] - Bean 'org.apache.rocketmq.spring.autoconfigure.MessageConverterConfiguration' of type [org.apache.rocketmq.spring.autoconfigure.MessageConverterConfiguration$$SpringCGLIB$$0] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected/applied to a currently created BeanPostProcessor [org.apache.rocketmq.spring.annotation.RocketMQMessageListenerBeanPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies/advisors. If this bean does not have to be post-processed, declare it with ROLE_INFRASTRUCTURE.
+2026-08-21 11:03:19.605 [main] WARN  o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker [no-trace] - Bean 'createRocketMQMessageConverter' of type [org.apache.rocketmq.spring.support.RocketMQMessageConverter] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected/applied to a currently created BeanPostProcessor [org.apache.rocketmq.spring.annotation.RocketMQMessageListenerBeanPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies/advisors. If this bean does not have to be post-processed, declare it with ROLE_INFRASTRUCTURE.
+2026-08-21 11:03:19.621 [main] WARN  o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker [no-trace] - Bean 'stringOrNumberMigrationVersionConverter' of type [org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration$StringOrNumberToMigrationVersionConverter] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected/applied to a currently created BeanPostProcessor [org.apache.rocketmq.spring.annotation.RocketMQMessageListenerBeanPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies/advisors. If this bean does not have to be post-processed, declare it with ROLE_INFRASTRUCTURE.
+2026-08-21 11:03:19.643 [main] WARN  o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker [no-trace] - Bean 'rocketmq-org.apache.rocketmq.spring.autoconfigure.RocketMQProperties' of type [org.apache.rocketmq.spring.autoconfigure.RocketMQProperties] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected/applied to a currently created BeanPostProcessor [org.apache.rocketmq.spring.annotation.RocketMQMessageListenerBeanPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies/advisors. If this bean does not have to be post-processed, declare it with ROLE_INFRASTRUCTURE.
+2026-08-21 11:03:19.663 [main] WARN  o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker [no-trace] - Bean 'rocketMQMessageListenerContainerRegistrar' of type [org.apache.rocketmq.spring.support.RocketMQMessageListenerContainerRegistrar] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected/applied to a currently created BeanPostProcessor [org.apache.rocketmq.spring.annotation.RocketMQMessageListenerBeanPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies/advisors. If this bean does not have to be post-processed, declare it with ROLE_INFRASTRUCTURE.
+2026-08-21 11:03:20.103 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer [no-trace] - Tomcat initialized with port 8080 (http)
+2026-08-21 11:03:20.117 [main] INFO  o.a.coyote.http11.Http11NioProtocol [no-trace] - Initializing ProtocolHandler ["http-nio-8080"]
+2026-08-21 11:03:20.119 [main] INFO  o.a.catalina.core.StandardService [no-trace] - Starting service [Tomcat]
+2026-08-21 11:03:20.119 [main] INFO  o.a.catalina.core.StandardEngine [no-trace] - Starting Servlet engine: [Apache Tomcat/10.1.55]
+2026-08-21 11:03:20.156 [main] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] [no-trace] - Initializing Spring embedded WebApplicationContext
+2026-08-21 11:03:20.157 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext [no-trace] - Root WebApplicationContext: initialization completed in 3040 ms
+Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+Logging initialized using 'class org.apache.ibatis.logging.stdout.StdOutImpl' adapter.
+Get /172.21.192.1 network interface 
+Get network interface info: name:ethernet_32777 (Hyper-V Virtual Ethernet Adapter #2)
+Initialization Sequence datacenterId:0 workerId:16
+ _ _   |_  _ _|_. ___ _ |    _ 
+| | |\/|_)(_| | |_\  |_)||_|_\ 
+     /               |         
+                        3.5.14 
+2026-08-21 11:03:20.778 [main] WARN  com.moyuyo.api.config.FlywayConfig [no-trace] - [dev] ÊâßË°å flyway.repair()Ôºå‰ªÖÈôêÊú¨Âú∞ÂºÄÂèë‰ΩøÁî®ÔºåÁîü‰∫ßÁéØÂ¢ÉÁ¶ÅÁî®
+2026-08-21 11:03:20.792 [main] INFO  com.zaxxer.hikari.HikariDataSource [no-trace] - moyuyo-pool - Starting...
+2026-08-21 11:03:20.985 [main] INFO  com.zaxxer.hikari.pool.HikariPool [no-trace] - moyuyo-pool - Added connection com.mysql.cj.jdbc.ConnectionImpl@2c9430c6
+2026-08-21 11:03:20.987 [main] INFO  com.zaxxer.hikari.HikariDataSource [no-trace] - moyuyo-pool - Start completed.
+2026-08-21 11:03:21.047 [main] INFO  org.flywaydb.core.FlywayExecutor [no-trace] - Database: jdbc:mysql://localhost:3306/moyuyo_dev?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=UTF-8 (MySQL 5.5)
+2026-08-21 11:03:21.094 [main] INFO  o.f.c.i.s.JdbcTableSchemaHistory [no-trace] - Repair of failed migration in Schema History table `moyuyo_dev`.`schema_history` not necessary. No failed migration detected.
+2026-08-21 11:03:21.124 [main] INFO  o.f.core.internal.command.DbRepair [no-trace] - Successfully repaired schema history table `moyuyo_dev`.`schema_history` (execution time 00:00.054s).
+2026-08-21 11:03:21.166 [main] INFO  o.f.core.internal.command.DbMigrate [no-trace] - Current version of schema `moyuyo_dev`: 20260820.03
+2026-08-21 11:03:21.170 [main] INFO  o.f.core.internal.command.DbMigrate [no-trace] - Schema `moyuyo_dev` is up to date. No migration necessary.
+2026-08-21 11:03:22.439 [main] INFO  c.m.api.config.PasswordEncoderConfig [no-trace] - [security] PasswordEncoder ÂàùÂßãÂåñÂÆåÊàêÔºåBCrypt Âº∫Â∫¶=10ÔºàÂéüÂßãÈÖçÁΩÆ=10Ôºâ
+2026-08-21 11:03:24.763 [main] INFO  c.m.a.c.admin.AdminUploadController [no-trace] - [upload] Êú¨Âú∞‰∏ä‰º†ÁõÆÂΩïÂ∑≤Â∞±Áª™ÔºöD:\tmp\moyuyo-uploads
+2026-08-21 11:03:24.835 [main] INFO  c.m.s.audit.OperationLogPersister [no-trace] - [audit] OperationLogPersister ÂêØÂä®ÔºöqueueCapacity=1000, batchSize=50, flushInterval=500ms, blockOnQueueFull=false
+2026-08-21 11:03:25.299 [main] INFO  o.a.r.s.a.RocketMQAutoConfiguration [no-trace] - a producer (moyuyo-producer-group) init on namesrv localhost:9876
+2026-08-21 11:03:26.061 [main] INFO  c.b.m.e.s.MybatisPlusApplicationContextAware [no-trace] - Register ApplicationContext instances org.springframework.boot.web.servlet.context.AnnotationConfigServletWebServerApplicationContext@18151a14
+2026-08-21 11:03:27.114 [main] INFO  o.s.b.a.e.web.EndpointLinksResolver [no-trace] - Exposing 2 endpoints beneath base path '/actuator'
+2026-08-21 11:03:27.249 [main] INFO  o.a.coyote.http11.Http11NioProtocol [no-trace] - Starting ProtocolHandler ["http-nio-8080"]
+2026-08-21 11:03:27.257 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer [no-trace] - Tomcat started on port 8080 (http) with context path '/'
+2026-08-21 11:03:27.276 [main] INFO  com.moyuyo.api.MoyuyoApplication [no-trace] - Started MoyuyoApplication in 10.878 seconds (process running for 11.38)
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@67ce092d] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@918297123 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_admin_user WHERE (status = ?)
+==> Parameters: ACTIVE(String)
+<==    Columns: total
+<==        Row: 5
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@67ce092d]
+2026-08-21 11:03:27.426 [main] INFO  c.moyuyo.api.config.AdminInitializer [no-trace] - Â∑≤Â≠òÂú® ACTIVE ÁÆ°ÁêÜÂëòË¥¶Âè∑ÔºåË∑≥ËøáÂàùÂßãÂåñ
+2026-08-21 11:05:14.290 [http-nio-8080-exec-1] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] [no-trace] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-08-21 11:05:14.290 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet [no-trace] - Initializing Servlet 'dispatcherServlet'
+2026-08-21 11:05:14.292 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet [no-trace] - Completed initialization in 1 ms
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@18d2dcf] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1124429716 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,name,code,description,status,sort_order,is_preset,create_time,update_time FROM mo_admin_role
+==> Parameters: 
+<==    Columns: id, name, code, description, status, sort_order, is_preset, create_time, update_time
+<==        Row: 1, ≥¨º∂π‹¿Ì‘±, SUPER_ADMIN, ”µ”–À˘”–»®œﬁ£®“—–ﬁ∏ƒ£©, ACTIVE, 1, 1, 2026-08-18 09:12:56, 2026-08-20 17:11:02
+<==        Row: 2, ‘À”™π‹¿Ì‘±, OPERATOR, ∂©µ•/…Ã∆∑/”√ªßπ‹¿Ì»®œﬁ, ACTIVE, 2, 1, 2026-08-18 09:12:56, 2026-08-20 14:12:17
+<==        Row: 3, øÕ∑˛»À‘±, CUSTOMER_SVC, øÕ∑˛ª·ª∞∫Õπ§µ•»®œﬁ, ACTIVE, 3, 1, 2026-08-18 09:12:56, 2026-08-20 14:19:39
+<==        Row: 4, ≤∆ŒÒ»À‘±, FINANCE, ≤∆ŒÒœ‡πÿ»®œﬁ, ACTIVE, 4, 1, 2026-08-18 09:12:56, 2026-08-20 14:12:17
+<==        Row: 5,  ˝æ›≤Èø¥‘±, VIEWER, Ωˆ≤Èø¥ ˝æ›»®œﬁ, ACTIVE, 5, 1, 2026-08-18 09:12:56, 2026-08-20 14:12:17
+<==      Total: 5
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@18d2dcf]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@3e4fe851] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1233663297 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_admin_user WHERE (role = ?)
+==> Parameters: SUPER_ADMIN(String)
+<==    Columns: total
+<==        Row: 1
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@3e4fe851]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1642fe5d] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@843788647 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 1(Long)
+<==      Total: 0
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1642fe5d]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@146380d4] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@905483918 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_admin_user WHERE (role = ?)
+==> Parameters: OPERATOR(String)
+<==    Columns: total
+<==        Row: 1
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@146380d4]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@721ec3e4] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1400554825 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 2(Long)
+<==    Columns: id, role_id, resource, action, create_time
+<==        Row: 1, 2, dashboard, view, 2026-08-18 09:13:18
+<==        Row: 2, 2, analysis, view, 2026-08-18 09:13:18
+<==        Row: 3, 2, users, view, 2026-08-18 09:13:18
+<==        Row: 4, 2, users, edit, 2026-08-18 09:13:18
+<==        Row: 5, 2, products, view, 2026-08-18 09:13:18
+<==        Row: 6, 2, products, create, 2026-08-18 09:13:18
+<==        Row: 7, 2, products, edit, 2026-08-18 09:13:18
+<==        Row: 8, 2, products, delete, 2026-08-18 09:13:18
+<==        Row: 9, 2, product-approval, view, 2026-08-18 09:13:18
+<==        Row: 10, 2, product-approval, create, 2026-08-18 09:13:18
+<==        Row: 11, 2, product-approval, edit, 2026-08-18 09:13:18
+<==        Row: 12, 2, product-approval, delete, 2026-08-18 09:13:18
+<==        Row: 13, 2, product-analysis, view, 2026-08-18 09:13:18
+<==        Row: 14, 2, product-analysis, create, 2026-08-18 09:13:18
+<==        Row: 15, 2, product-analysis, edit, 2026-08-18 09:13:18
+<==        Row: 16, 2, product-analysis, delete, 2026-08-18 09:13:18
+<==        Row: 17, 2, orders, view, 2026-08-18 09:13:18
+<==        Row: 18, 2, orders, create, 2026-08-18 09:13:18
+<==        Row: 19, 2, orders, edit, 2026-08-18 09:13:18
+<==        Row: 20, 2, orders, delete, 2026-08-18 09:13:18
+<==        Row: 21, 2, order-ops, view, 2026-08-18 09:13:18
+<==        Row: 22, 2, order-ops, create, 2026-08-18 09:13:18
+<==        Row: 23, 2, order-ops, edit, 2026-08-18 09:13:18
+<==        Row: 24, 2, order-ops, delete, 2026-08-18 09:13:18
+<==        Row: 25, 2, order-tags, view, 2026-08-18 09:13:18
+<==        Row: 26, 2, order-tags, create, 2026-08-18 09:13:18
+<==        Row: 27, 2, order-tags, edit, 2026-08-18 09:13:18
+<==        Row: 28, 2, order-tags, delete, 2026-08-18 09:13:18
+<==        Row: 29, 2, user-profile, view, 2026-08-18 09:13:18
+<==        Row: 30, 2, user-profile, create, 2026-08-18 09:13:18
+<==        Row: 31, 2, user-profile, edit, 2026-08-18 09:13:18
+<==        Row: 32, 2, user-profile, delete, 2026-08-18 09:13:18
+<==        Row: 33, 2, blacklist, view, 2026-08-18 09:13:18
+<==        Row: 34, 2, blacklist, create, 2026-08-18 09:13:18
+<==        Row: 35, 2, blacklist, edit, 2026-08-18 09:13:18
+<==        Row: 36, 2, blacklist, delete, 2026-08-18 09:13:18
+<==        Row: 37, 2, crm, view, 2026-08-18 09:13:18
+<==        Row: 38, 2, crm, create, 2026-08-18 09:13:18
+<==        Row: 39, 2, crm, edit, 2026-08-18 09:13:18
+<==        Row: 40, 2, crm, delete, 2026-08-18 09:13:18
+<==        Row: 41, 2, marketing, view, 2026-08-18 09:13:18
+<==        Row: 42, 2, marketing, create, 2026-08-18 09:13:18
+<==        Row: 43, 2, marketing, edit, 2026-08-18 09:13:18
+<==        Row: 44, 2, marketing, delete, 2026-08-18 09:13:18
+<==        Row: 45, 2, coupons, view, 2026-08-18 09:13:18
+<==        Row: 46, 2, coupons, create, 2026-08-18 09:13:18
+<==        Row: 47, 2, coupons, edit, 2026-08-18 09:13:18
+<==        Row: 48, 2, coupons, delete, 2026-08-18 09:13:18
+<==        Row: 49, 2, flash-sales, view, 2026-08-18 09:13:18
+<==        Row: 50, 2, flash-sales, create, 2026-08-18 09:13:18
+<==        Row: 51, 2, flash-sales, edit, 2026-08-18 09:13:18
+<==        Row: 52, 2, flash-sales, delete, 2026-08-18 09:13:18
+<==        Row: 53, 2, live, view, 2026-08-18 09:13:18
+<==        Row: 54, 2, live, create, 2026-08-18 09:13:18
+<==        Row: 55, 2, live, edit, 2026-08-18 09:13:18
+<==        Row: 56, 2, live, delete, 2026-08-18 09:13:18
+<==        Row: 57, 2, push, view, 2026-08-18 09:13:18
+<==        Row: 58, 2, push, create, 2026-08-18 09:13:18
+<==        Row: 59, 2, push, edit, 2026-08-18 09:13:18
+<==        Row: 60, 2, push, delete, 2026-08-18 09:13:18
+<==        Row: 61, 2, sms, view, 2026-08-18 09:13:18
+<==        Row: 62, 2, sms, create, 2026-08-18 09:13:18
+<==        Row: 63, 2, sms, edit, 2026-08-18 09:13:18
+<==        Row: 64, 2, sms, delete, 2026-08-18 09:13:18
+<==        Row: 65, 2, review, view, 2026-08-18 09:13:18
+<==        Row: 66, 2, review, create, 2026-08-18 09:13:18
+<==        Row: 67, 2, review, edit, 2026-08-18 09:13:18
+<==        Row: 68, 2, review, delete, 2026-08-18 09:13:18
+<==        Row: 69, 2, content-review, view, 2026-08-18 09:13:18
+<==        Row: 70, 2, content-review, create, 2026-08-18 09:13:18
+<==        Row: 71, 2, content-review, edit, 2026-08-18 09:13:18
+<==        Row: 72, 2, content-review, delete, 2026-08-18 09:13:18
+<==        Row: 73, 2, cms, view, 2026-08-18 09:13:18
+<==        Row: 74, 2, cms, create, 2026-08-18 09:13:18
+<==        Row: 75, 2, cms, edit, 2026-08-18 09:13:18
+<==        Row: 76, 2, cms, delete, 2026-08-18 09:13:18
+<==        Row: 77, 2, knowledge-base, view, 2026-08-18 09:13:18
+<==        Row: 78, 2, knowledge-base, create, 2026-08-18 09:13:18
+<==        Row: 79, 2, knowledge-base, edit, 2026-08-18 09:13:18
+<==        Row: 80, 2, knowledge-base, delete, 2026-08-18 09:13:18
+<==        Row: 81, 2, cs-sessions, view, 2026-08-18 09:13:18
+<==        Row: 82, 2, cs-sessions, create, 2026-08-18 09:13:18
+<==        Row: 83, 2, cs-sessions, edit, 2026-08-18 09:13:18
+<==        Row: 84, 2, cs-sessions, delete, 2026-08-18 09:13:18
+<==        Row: 85, 2, ticket, view, 2026-08-18 09:13:18
+<==        Row: 86, 2, ticket, create, 2026-08-18 09:13:18
+<==        Row: 87, 2, ticket, edit, 2026-08-18 09:13:18
+<==        Row: 88, 2, ticket, delete, 2026-08-18 09:13:18
+<==        Row: 89, 2, complaint, view, 2026-08-18 09:13:18
+<==        Row: 90, 2, complaint, create, 2026-08-18 09:13:18
+<==        Row: 91, 2, complaint, edit, 2026-08-18 09:13:18
+<==        Row: 92, 2, complaint, delete, 2026-08-18 09:13:18
+<==        Row: 93, 2, satisfaction, view, 2026-08-18 09:13:18
+<==        Row: 94, 2, satisfaction, create, 2026-08-18 09:13:18
+<==        Row: 95, 2, satisfaction, edit, 2026-08-18 09:13:18
+<==        Row: 96, 2, satisfaction, delete, 2026-08-18 09:13:18
+<==        Row: 97, 2, logistics, view, 2026-08-18 09:13:18
+<==        Row: 98, 2, logistics, create, 2026-08-18 09:13:18
+<==        Row: 99, 2, logistics, edit, 2026-08-18 09:13:18
+<==        Row: 100, 2, logistics, delete, 2026-08-18 09:13:18
+<==        Row: 101, 2, inventory, view, 2026-08-18 09:13:18
+<==        Row: 102, 2, inventory, create, 2026-08-18 09:13:18
+<==        Row: 103, 2, inventory, edit, 2026-08-18 09:13:18
+<==        Row: 104, 2, inventory, delete, 2026-08-18 09:13:18
+<==        Row: 105, 2, inventory-transfer, view, 2026-08-18 09:13:18
+<==        Row: 106, 2, inventory-transfer, create, 2026-08-18 09:13:18
+<==        Row: 107, 2, inventory-transfer, edit, 2026-08-18 09:13:18
+<==        Row: 108, 2, inventory-transfer, delete, 2026-08-18 09:13:18
+<==        Row: 109, 2, price, view, 2026-08-18 09:13:18
+<==        Row: 110, 2, price, create, 2026-08-18 09:13:18
+<==        Row: 111, 2, price, edit, 2026-08-18 09:13:18
+<==        Row: 112, 2, price, delete, 2026-08-18 09:13:18
+<==        Row: 113, 2, tariff, view, 2026-08-18 09:13:18
+<==        Row: 114, 2, tariff, create, 2026-08-18 09:13:18
+<==        Row: 115, 2, tariff, edit, 2026-08-18 09:13:18
+<==        Row: 116, 2, tariff, delete, 2026-08-18 09:13:18
+<==        Row: 117, 2, points, view, 2026-08-18 09:13:18
+<==        Row: 118, 2, points, create, 2026-08-18 09:13:18
+<==        Row: 119, 2, points, edit, 2026-08-18 09:13:18
+<==        Row: 120, 2, points, delete, 2026-08-18 09:13:18
+<==      Total: 120
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@721ec3e4]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@5774098a] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1032825337 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_admin_user WHERE (role = ?)
+==> Parameters: CUSTOMER_SVC(String)
+<==    Columns: total
+<==        Row: 1
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@5774098a]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@429ca243] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1232521593 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 3(Long)
+<==    Columns: id, role_id, resource, action, create_time
+<==        Row: 121, 3, dashboard, view, 2026-08-18 09:13:18
+<==        Row: 122, 3, orders, view, 2026-08-18 09:13:18
+<==        Row: 123, 3, users, view, 2026-08-18 09:13:18
+<==        Row: 124, 3, user-profile, view, 2026-08-18 09:13:18
+<==        Row: 125, 3, logistics, view, 2026-08-18 09:13:18
+<==        Row: 126, 3, review, view, 2026-08-18 09:13:18
+<==        Row: 127, 3, cs-sessions, view, 2026-08-18 09:13:18
+<==        Row: 128, 3, cs-sessions, create, 2026-08-18 09:13:18
+<==        Row: 129, 3, cs-sessions, edit, 2026-08-18 09:13:18
+<==        Row: 130, 3, cs-sessions, delete, 2026-08-18 09:13:18
+<==        Row: 131, 3, ticket, view, 2026-08-18 09:13:18
+<==        Row: 132, 3, ticket, create, 2026-08-18 09:13:18
+<==        Row: 133, 3, ticket, edit, 2026-08-18 09:13:18
+<==        Row: 134, 3, ticket, delete, 2026-08-18 09:13:18
+<==        Row: 135, 3, complaint, view, 2026-08-18 09:13:18
+<==        Row: 136, 3, complaint, create, 2026-08-18 09:13:18
+<==        Row: 137, 3, complaint, edit, 2026-08-18 09:13:18
+<==        Row: 138, 3, complaint, delete, 2026-08-18 09:13:18
+<==        Row: 139, 3, satisfaction, view, 2026-08-18 09:13:18
+<==        Row: 140, 3, satisfaction, create, 2026-08-18 09:13:18
+<==        Row: 141, 3, satisfaction, edit, 2026-08-18 09:13:18
+<==        Row: 142, 3, satisfaction, delete, 2026-08-18 09:13:18
+<==        Row: 143, 3, knowledge-base, view, 2026-08-18 09:13:18
+<==        Row: 144, 3, knowledge-base, create, 2026-08-18 09:13:18
+<==        Row: 145, 3, knowledge-base, edit, 2026-08-18 09:13:18
+<==        Row: 146, 3, knowledge-base, delete, 2026-08-18 09:13:18
+<==      Total: 26
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@429ca243]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@26289793] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@2047222399 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_admin_user WHERE (role = ?)
+==> Parameters: FINANCE(String)
+<==    Columns: total
+<==        Row: 2
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@26289793]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@780f7e1d] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@692905366 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 4(Long)
+<==    Columns: id, role_id, resource, action, create_time
+<==        Row: 147, 4, dashboard, view, 2026-08-18 09:13:18
+<==        Row: 148, 4, analysis, view, 2026-08-18 09:13:18
+<==        Row: 149, 4, orders, view, 2026-08-18 09:13:18
+<==        Row: 150, 4, finance, view, 2026-08-18 09:13:18
+<==        Row: 151, 4, finance, create, 2026-08-18 09:13:18
+<==        Row: 152, 4, finance, edit, 2026-08-18 09:13:18
+<==        Row: 153, 4, finance, delete, 2026-08-18 09:13:18
+<==        Row: 154, 4, settlement, view, 2026-08-18 09:13:18
+<==        Row: 155, 4, settlement, create, 2026-08-18 09:13:18
+<==        Row: 156, 4, settlement, edit, 2026-08-18 09:13:18
+<==        Row: 157, 4, settlement, delete, 2026-08-18 09:13:18
+<==        Row: 158, 4, refunds, view, 2026-08-18 09:13:18
+<==        Row: 159, 4, refunds, create, 2026-08-18 09:13:18
+<==        Row: 160, 4, refunds, edit, 2026-08-18 09:13:18
+<==        Row: 161, 4, refunds, delete, 2026-08-18 09:13:18
+<==      Total: 15
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@780f7e1d]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@32b30ec7] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@2010359608 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_admin_user WHERE (role = ?)
+==> Parameters: VIEWER(String)
+<==    Columns: total
+<==        Row: 0
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@32b30ec7]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@57934352] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1362001757 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 5(Long)
+<==    Columns: id, role_id, resource, action, create_time
+<==        Row: 162, 5, dashboard, view, 2026-08-18 09:13:18
+<==        Row: 163, 5, analysis, view, 2026-08-18 09:13:18
+<==        Row: 164, 5, products, view, 2026-08-18 09:13:18
+<==        Row: 165, 5, orders, view, 2026-08-18 09:13:18
+<==        Row: 166, 5, users, view, 2026-08-18 09:13:18
+<==      Total: 5
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@57934352]
+2026-08-21 11:05:15.054 [http-nio-8080-exec-2] INFO  c.m.c.security.RequestLoggingFilter [27fa4a451fe54c09995cdb7915a10b21] - ‚Üê [GET] /api/admin/rbac/roles ‚Üí 200 (589ms) traceId=27fa4a451fe54c09995cdb7915a10b21
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@15d81b52] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@175983930 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 1(Long)
+<==      Total: 0
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@15d81b52]
+2026-08-21 11:05:15.105 [http-nio-8080-exec-3] INFO  c.m.c.security.RequestLoggingFilter [1b6b257a0a5741ff982808e1537d3f05] - ‚Üê [GET] /api/admin/rbac/roles/1/permissions ‚Üí 200 (17ms) traceId=1b6b257a0a5741ff982808e1537d3f05
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@52b53b87] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@710255515 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_ticket WHERE (status = ?)
+==> Parameters: PENDING(String)
+<==    Columns: total
+<==        Row: 1
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@52b53b87]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@24886d32] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1499448557 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_ticket WHERE (status = ?)
+==> Parameters: PROCESSING(String)
+<==    Columns: total
+Creating a new SqlSession
+<==        Row: 1
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1e9b1440] was not registered for synchronization because synchronization is not active
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@24886d32]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@a98808f] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1177339638 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_ticket WHERE (status = ? AND create_time >= ?)
+==> Parameters: CLOSED(String), 2026-08-21T00:00(LocalDateTime)
+<==    Columns: total
+<==        Row: 0
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@a98808f]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@166cb6b1] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@682735321 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_ticket WHERE (first_response_minutes IS NOT NULL)
+==> Parameters: 
+<==    Columns: total
+<==        Row: 2
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@166cb6b1]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@4739dd63] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1579854942 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_ticket WHERE (first_response_minutes IS NOT NULL AND first_response_minutes <= ?)
+==> Parameters: 30(Integer)
+<==    Columns: total
+<==        Row: 0
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@4739dd63]
+2026-08-21 11:05:18.496 [http-nio-8080-exec-9] INFO  c.m.c.security.RequestLoggingFilter [35e3f8a3bf9f40dda84debb90de0545d] - ‚Üê [GET] /api/admin/ticket/stats ‚Üí 200 (38ms) traceId=35e3f8a3bf9f40dda84debb90de0545d
+JDBC Connection [HikariProxyConnection@1966351064 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT(*) AS total FROM mo_ticket
+==> Parameters: 
+<==    Columns: total
+<==        Row: 5
+<==      Total: 1
+==>  Preparing: SELECT id,ticket_no,type,priority,title,user_id,user_name,agent_name,status,reply_content,first_response_minutes,timeout,create_time,update_time FROM mo_ticket ORDER BY create_time DESC LIMIT ?
+==> Parameters: 15(Long)
+<==    Columns: id, ticket_no, type, priority, title, user_id, user_name, agent_name, status, reply_content, first_response_minutes, timeout, create_time, update_time
+<==        Row: 4, TKT20260703001, Õ∂Àﬂ, ∏ﬂ, øÕ∑˛Ã¨∂»∂Ò¡”, 1, ’≈»˝, null, CLOSED, <<BLOB>>, null, 0, 2026-07-03 16:00:00, 2026-08-18 09:13:00
+<==        Row: 5, TKT20260703002, ÕÀøÓ, ÷–, ÷ÿ∏¥÷ß∏∂«Î«ÛÕÀøÓ, 4, ’‘¡˘, øÕ∑˛999999, PROCESSING, <<BLOB>>, null, 0, 2026-07-03 11:20:00, 2026-08-18 09:13:00
+<==        Row: 3, TKT20260702001, ◊…—Ø, µÕ, …Ã∆∑ π”√“…Œ , 3, ÕıŒÂ, null, CLOSED, <<BLOB>>, null, 0, 2026-07-02 09:15:00, 2026-08-18 09:13:00
+<==        Row: 2, TKT20260701002, ŒÔ¡˜, ÷–, ŒÔ¡˜–≈œ¢Œ¥∏¸–¬, 2, ¿ÓÀƒ, –°¿Ó, CLOSED, <<BLOB>>, 72098, 0, 2026-07-01 14:30:00, 2026-08-18 09:13:00
+<==        Row: 1, TKT20260701001, ÕÀøÓ, ∏ﬂ, ∂©µ•ÕÀøÓ…Í«Î, 1, ’≈»˝, null, PENDING, <<BLOB>>, 72386, 0, 2026-07-01 10:00:00, 2026-08-18 09:13:00
+<==      Total: 5
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1e9b1440]
+2026-08-21 11:05:18.551 [http-nio-8080-exec-10] INFO  c.m.c.security.RequestLoggingFilter [847d1697b07d492c9aecce90099efd79] - ‚Üê [GET] /api/admin/ticket/list ‚Üí 200 (93ms) traceId=847d1697b07d492c9aecce90099efd79
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@69feb889] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@295314284 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,username,password,name,email,role,status,last_login_time,create_time,update_time FROM mo_admin_user WHERE (role = ?) ORDER BY id DESC
+==> Parameters: CUSTOMER_SVC(String)
+<==    Columns: id, username, password, name, email, role, status, last_login_time, create_time, update_time
+<==        Row: 195000003, li, $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy, –°¿Ó, li@moyuyo.com, CUSTOMER_SVC, ACTIVE, 2026-07-16 14:00:00, 2026-03-01 00:00:00, null
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@69feb889]
+2026-08-21 11:05:21.439 [http-nio-8080-exec-8] INFO  c.m.c.security.RequestLoggingFilter [9fd3f003d28344c38e5124c28fe35746] - ‚Üê [GET] /api/admin/crm/cs-staff ‚Üí 200 (17ms) traceId=9fd3f003d28344c38e5124c28fe35746
+Creating a new SqlSession
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@df2242a] was not registered for synchronization because synchronization is not active
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@11c32b81] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1366677587 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_ticket WHERE (status = ?)
+==> Parameters: PENDING(String)
+<==    Columns: total
+<==        Row: 1
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@df2242a]
+Creating a new SqlSession
+JDBC Connection [HikariProxyConnection@766300443 wrapping com.mysql.cj.jdbc.ConnectionImpl@253b691e] will not be managed by Spring
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@51605c29] was not registered for synchronization because synchronization is not active
+==>  Preparing: SELECT COUNT(*) AS total FROM mo_ticket
+JDBC Connection [HikariProxyConnection@1686559337 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==> Parameters: 
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_ticket WHERE (status = ?)
+==> Parameters: PROCESSING(String)
+<==    Columns: total
+<==        Row: 5
+<==    Columns: total
+<==        Row: 1
+<==      Total: 1
+<==      Total: 1
+==>  Preparing: SELECT id,ticket_no,type,priority,title,user_id,user_name,agent_name,status,reply_content,first_response_minutes,timeout,create_time,update_time FROM mo_ticket ORDER BY create_time DESC LIMIT ?
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@51605c29]
+==> Parameters: 15(Long)
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@5ad68c92] was not registered for synchronization because synchronization is not active
+<==    Columns: id, ticket_no, type, priority, title, user_id, user_name, agent_name, status, reply_content, first_response_minutes, timeout, create_time, update_time
+<==        Row: 4, TKT20260703001, Õ∂Àﬂ, ∏ﬂ, øÕ∑˛Ã¨∂»∂Ò¡”, 1, ’≈»˝, null, CLOSED, <<BLOB>>, null, 0, 2026-07-03 16:00:00, 2026-08-18 09:13:00
+JDBC Connection [HikariProxyConnection@1353956106 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+<==        Row: 5, TKT20260703002, ÕÀøÓ, ÷–, ÷ÿ∏¥÷ß∏∂«Î«ÛÕÀøÓ, 4, ’‘¡˘, øÕ∑˛999999, PROCESSING, <<BLOB>>, null, 0, 2026-07-03 11:20:00, 2026-08-18 09:13:00
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_ticket WHERE (status = ? AND create_time >= ?)
+<==        Row: 3, TKT20260702001, ◊…—Ø, µÕ, …Ã∆∑ π”√“…Œ , 3, ÕıŒÂ, null, CLOSED, <<BLOB>>, null, 0, 2026-07-02 09:15:00, 2026-08-18 09:13:00
+==> Parameters: CLOSED(String), 2026-08-21T00:00(LocalDateTime)
+<==        Row: 2, TKT20260701002, ŒÔ¡˜, ÷–, ŒÔ¡˜–≈œ¢Œ¥∏¸–¬, 2, ¿ÓÀƒ, –°¿Ó, CLOSED, <<BLOB>>, 72098, 0, 2026-07-01 14:30:00, 2026-08-18 09:13:00
+<==        Row: 1, TKT20260701001, ÕÀøÓ, ∏ﬂ, ∂©µ•ÕÀøÓ…Í«Î, 1, ’≈»˝, null, PENDING, <<BLOB>>, 72386, 0, 2026-07-01 10:00:00, 2026-08-18 09:13:00
+<==    Columns: total
+<==        Row: 0
+<==      Total: 5
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@11c32b81]
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@5ad68c92]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@34ae56a9] was not registered for synchronization because synchronization is not active
+2026-08-21 11:05:30.846 [http-nio-8080-exec-3] INFO  c.m.c.security.RequestLoggingFilter [a6185e4247704850b952888e21d2c87c] - ‚Üê [GET] /api/admin/ticket/list ‚Üí 200 (27ms) traceId=a6185e4247704850b952888e21d2c87c
+JDBC Connection [HikariProxyConnection@7781293 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_ticket WHERE (first_response_minutes IS NOT NULL)
+==> Parameters: 
+<==    Columns: total
+<==        Row: 2
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@34ae56a9]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@78016b5e] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1043094975 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_ticket WHERE (first_response_minutes IS NOT NULL AND first_response_minutes <= ?)
+==> Parameters: 30(Integer)
+<==    Columns: total
+<==        Row: 0
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@78016b5e]
+2026-08-21 11:05:30.854 [http-nio-8080-exec-2] INFO  c.m.c.security.RequestLoggingFilter [b6cfa1470b8a418c896d4214e06a717d] - ‚Üê [GET] /api/admin/ticket/stats ‚Üí 200 (35ms) traceId=b6cfa1470b8a418c896d4214e06a717d
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@5323e833] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1656389603 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,name,code,description,status,sort_order,is_preset,create_time,update_time FROM mo_admin_role
+==> Parameters: 
+<==    Columns: id, name, code, description, status, sort_order, is_preset, create_time, update_time
+<==        Row: 1, ≥¨º∂π‹¿Ì‘±, SUPER_ADMIN, ”µ”–À˘”–»®œﬁ£®“—–ﬁ∏ƒ£©, ACTIVE, 1, 1, 2026-08-18 09:12:56, 2026-08-20 17:11:02
+<==        Row: 2, ‘À”™π‹¿Ì‘±, OPERATOR, ∂©µ•/…Ã∆∑/”√ªßπ‹¿Ì»®œﬁ, ACTIVE, 2, 1, 2026-08-18 09:12:56, 2026-08-20 14:12:17
+<==        Row: 3, øÕ∑˛»À‘±, CUSTOMER_SVC, øÕ∑˛ª·ª∞∫Õπ§µ•»®œﬁ, ACTIVE, 3, 1, 2026-08-18 09:12:56, 2026-08-20 14:19:39
+<==        Row: 4, ≤∆ŒÒ»À‘±, FINANCE, ≤∆ŒÒœ‡πÿ»®œﬁ, ACTIVE, 4, 1, 2026-08-18 09:12:56, 2026-08-20 14:12:17
+<==        Row: 5,  ˝æ›≤Èø¥‘±, VIEWER, Ωˆ≤Èø¥ ˝æ›»®œﬁ, ACTIVE, 5, 1, 2026-08-18 09:12:56, 2026-08-20 14:12:17
+<==      Total: 5
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@5323e833]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@b3d2338] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1688605910 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_admin_user WHERE (role = ?)
+==> Parameters: SUPER_ADMIN(String)
+<==    Columns: total
+<==        Row: 1
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@b3d2338]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@73dc610b] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1451060153 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 1(Long)
+<==      Total: 0
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@73dc610b]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@2f4d7385] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1080144824 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_admin_user WHERE (role = ?)
+==> Parameters: OPERATOR(String)
+<==    Columns: total
+<==        Row: 1
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@2f4d7385]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@7eddf86b] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1265312211 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 2(Long)
+<==    Columns: id, role_id, resource, action, create_time
+<==        Row: 1, 2, dashboard, view, 2026-08-18 09:13:18
+<==        Row: 2, 2, analysis, view, 2026-08-18 09:13:18
+<==        Row: 3, 2, users, view, 2026-08-18 09:13:18
+<==        Row: 4, 2, users, edit, 2026-08-18 09:13:18
+<==        Row: 5, 2, products, view, 2026-08-18 09:13:18
+<==        Row: 6, 2, products, create, 2026-08-18 09:13:18
+<==        Row: 7, 2, products, edit, 2026-08-18 09:13:18
+<==        Row: 8, 2, products, delete, 2026-08-18 09:13:18
+<==        Row: 9, 2, product-approval, view, 2026-08-18 09:13:18
+<==        Row: 10, 2, product-approval, create, 2026-08-18 09:13:18
+<==        Row: 11, 2, product-approval, edit, 2026-08-18 09:13:18
+<==        Row: 12, 2, product-approval, delete, 2026-08-18 09:13:18
+<==        Row: 13, 2, product-analysis, view, 2026-08-18 09:13:18
+<==        Row: 14, 2, product-analysis, create, 2026-08-18 09:13:18
+<==        Row: 15, 2, product-analysis, edit, 2026-08-18 09:13:18
+<==        Row: 16, 2, product-analysis, delete, 2026-08-18 09:13:18
+<==        Row: 17, 2, orders, view, 2026-08-18 09:13:18
+<==        Row: 18, 2, orders, create, 2026-08-18 09:13:18
+<==        Row: 19, 2, orders, edit, 2026-08-18 09:13:18
+<==        Row: 20, 2, orders, delete, 2026-08-18 09:13:18
+<==        Row: 21, 2, order-ops, view, 2026-08-18 09:13:18
+<==        Row: 22, 2, order-ops, create, 2026-08-18 09:13:18
+<==        Row: 23, 2, order-ops, edit, 2026-08-18 09:13:18
+<==        Row: 24, 2, order-ops, delete, 2026-08-18 09:13:18
+<==        Row: 25, 2, order-tags, view, 2026-08-18 09:13:18
+<==        Row: 26, 2, order-tags, create, 2026-08-18 09:13:18
+<==        Row: 27, 2, order-tags, edit, 2026-08-18 09:13:18
+<==        Row: 28, 2, order-tags, delete, 2026-08-18 09:13:18
+<==        Row: 29, 2, user-profile, view, 2026-08-18 09:13:18
+<==        Row: 30, 2, user-profile, create, 2026-08-18 09:13:18
+<==        Row: 31, 2, user-profile, edit, 2026-08-18 09:13:18
+<==        Row: 32, 2, user-profile, delete, 2026-08-18 09:13:18
+<==        Row: 33, 2, blacklist, view, 2026-08-18 09:13:18
+<==        Row: 34, 2, blacklist, create, 2026-08-18 09:13:18
+<==        Row: 35, 2, blacklist, edit, 2026-08-18 09:13:18
+<==        Row: 36, 2, blacklist, delete, 2026-08-18 09:13:18
+<==        Row: 37, 2, crm, view, 2026-08-18 09:13:18
+<==        Row: 38, 2, crm, create, 2026-08-18 09:13:18
+<==        Row: 39, 2, crm, edit, 2026-08-18 09:13:18
+<==        Row: 40, 2, crm, delete, 2026-08-18 09:13:18
+<==        Row: 41, 2, marketing, view, 2026-08-18 09:13:18
+<==        Row: 42, 2, marketing, create, 2026-08-18 09:13:18
+<==        Row: 43, 2, marketing, edit, 2026-08-18 09:13:18
+<==        Row: 44, 2, marketing, delete, 2026-08-18 09:13:18
+<==        Row: 45, 2, coupons, view, 2026-08-18 09:13:18
+<==        Row: 46, 2, coupons, create, 2026-08-18 09:13:18
+<==        Row: 47, 2, coupons, edit, 2026-08-18 09:13:18
+<==        Row: 48, 2, coupons, delete, 2026-08-18 09:13:18
+<==        Row: 49, 2, flash-sales, view, 2026-08-18 09:13:18
+<==        Row: 50, 2, flash-sales, create, 2026-08-18 09:13:18
+<==        Row: 51, 2, flash-sales, edit, 2026-08-18 09:13:18
+<==        Row: 52, 2, flash-sales, delete, 2026-08-18 09:13:18
+<==        Row: 53, 2, live, view, 2026-08-18 09:13:18
+<==        Row: 54, 2, live, create, 2026-08-18 09:13:18
+<==        Row: 55, 2, live, edit, 2026-08-18 09:13:18
+<==        Row: 56, 2, live, delete, 2026-08-18 09:13:18
+<==        Row: 57, 2, push, view, 2026-08-18 09:13:18
+<==        Row: 58, 2, push, create, 2026-08-18 09:13:18
+<==        Row: 59, 2, push, edit, 2026-08-18 09:13:18
+<==        Row: 60, 2, push, delete, 2026-08-18 09:13:18
+<==        Row: 61, 2, sms, view, 2026-08-18 09:13:18
+<==        Row: 62, 2, sms, create, 2026-08-18 09:13:18
+<==        Row: 63, 2, sms, edit, 2026-08-18 09:13:18
+<==        Row: 64, 2, sms, delete, 2026-08-18 09:13:18
+<==        Row: 65, 2, review, view, 2026-08-18 09:13:18
+<==        Row: 66, 2, review, create, 2026-08-18 09:13:18
+<==        Row: 67, 2, review, edit, 2026-08-18 09:13:18
+<==        Row: 68, 2, review, delete, 2026-08-18 09:13:18
+<==        Row: 69, 2, content-review, view, 2026-08-18 09:13:18
+<==        Row: 70, 2, content-review, create, 2026-08-18 09:13:18
+<==        Row: 71, 2, content-review, edit, 2026-08-18 09:13:18
+<==        Row: 72, 2, content-review, delete, 2026-08-18 09:13:18
+<==        Row: 73, 2, cms, view, 2026-08-18 09:13:18
+<==        Row: 74, 2, cms, create, 2026-08-18 09:13:18
+<==        Row: 75, 2, cms, edit, 2026-08-18 09:13:18
+<==        Row: 76, 2, cms, delete, 2026-08-18 09:13:18
+<==        Row: 77, 2, knowledge-base, view, 2026-08-18 09:13:18
+<==        Row: 78, 2, knowledge-base, create, 2026-08-18 09:13:18
+<==        Row: 79, 2, knowledge-base, edit, 2026-08-18 09:13:18
+<==        Row: 80, 2, knowledge-base, delete, 2026-08-18 09:13:18
+<==        Row: 81, 2, cs-sessions, view, 2026-08-18 09:13:18
+<==        Row: 82, 2, cs-sessions, create, 2026-08-18 09:13:18
+<==        Row: 83, 2, cs-sessions, edit, 2026-08-18 09:13:18
+<==        Row: 84, 2, cs-sessions, delete, 2026-08-18 09:13:18
+<==        Row: 85, 2, ticket, view, 2026-08-18 09:13:18
+<==        Row: 86, 2, ticket, create, 2026-08-18 09:13:18
+<==        Row: 87, 2, ticket, edit, 2026-08-18 09:13:18
+<==        Row: 88, 2, ticket, delete, 2026-08-18 09:13:18
+<==        Row: 89, 2, complaint, view, 2026-08-18 09:13:18
+<==        Row: 90, 2, complaint, create, 2026-08-18 09:13:18
+<==        Row: 91, 2, complaint, edit, 2026-08-18 09:13:18
+<==        Row: 92, 2, complaint, delete, 2026-08-18 09:13:18
+<==        Row: 93, 2, satisfaction, view, 2026-08-18 09:13:18
+<==        Row: 94, 2, satisfaction, create, 2026-08-18 09:13:18
+<==        Row: 95, 2, satisfaction, edit, 2026-08-18 09:13:18
+<==        Row: 96, 2, satisfaction, delete, 2026-08-18 09:13:18
+<==        Row: 97, 2, logistics, view, 2026-08-18 09:13:18
+<==        Row: 98, 2, logistics, create, 2026-08-18 09:13:18
+<==        Row: 99, 2, logistics, edit, 2026-08-18 09:13:18
+<==        Row: 100, 2, logistics, delete, 2026-08-18 09:13:18
+<==        Row: 101, 2, inventory, view, 2026-08-18 09:13:18
+<==        Row: 102, 2, inventory, create, 2026-08-18 09:13:18
+<==        Row: 103, 2, inventory, edit, 2026-08-18 09:13:18
+<==        Row: 104, 2, inventory, delete, 2026-08-18 09:13:18
+<==        Row: 105, 2, inventory-transfer, view, 2026-08-18 09:13:18
+<==        Row: 106, 2, inventory-transfer, create, 2026-08-18 09:13:18
+<==        Row: 107, 2, inventory-transfer, edit, 2026-08-18 09:13:18
+<==        Row: 108, 2, inventory-transfer, delete, 2026-08-18 09:13:18
+<==        Row: 109, 2, price, view, 2026-08-18 09:13:18
+<==        Row: 110, 2, price, create, 2026-08-18 09:13:18
+<==        Row: 111, 2, price, edit, 2026-08-18 09:13:18
+<==        Row: 112, 2, price, delete, 2026-08-18 09:13:18
+<==        Row: 113, 2, tariff, view, 2026-08-18 09:13:18
+<==        Row: 114, 2, tariff, create, 2026-08-18 09:13:18
+<==        Row: 115, 2, tariff, edit, 2026-08-18 09:13:18
+<==        Row: 116, 2, tariff, delete, 2026-08-18 09:13:18
+<==        Row: 117, 2, points, view, 2026-08-18 09:13:18
+<==        Row: 118, 2, points, create, 2026-08-18 09:13:18
+<==        Row: 119, 2, points, edit, 2026-08-18 09:13:18
+<==        Row: 120, 2, points, delete, 2026-08-18 09:13:18
+<==      Total: 120
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@7eddf86b]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@20cffee3] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@2093807230 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_admin_user WHERE (role = ?)
+==> Parameters: CUSTOMER_SVC(String)
+<==    Columns: total
+<==        Row: 1
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@20cffee3]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@54f9d17b] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@183249885 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 3(Long)
+<==    Columns: id, role_id, resource, action, create_time
+<==        Row: 121, 3, dashboard, view, 2026-08-18 09:13:18
+<==        Row: 122, 3, orders, view, 2026-08-18 09:13:18
+<==        Row: 123, 3, users, view, 2026-08-18 09:13:18
+<==        Row: 124, 3, user-profile, view, 2026-08-18 09:13:18
+<==        Row: 125, 3, logistics, view, 2026-08-18 09:13:18
+<==        Row: 126, 3, review, view, 2026-08-18 09:13:18
+<==        Row: 127, 3, cs-sessions, view, 2026-08-18 09:13:18
+<==        Row: 128, 3, cs-sessions, create, 2026-08-18 09:13:18
+<==        Row: 129, 3, cs-sessions, edit, 2026-08-18 09:13:18
+<==        Row: 130, 3, cs-sessions, delete, 2026-08-18 09:13:18
+<==        Row: 131, 3, ticket, view, 2026-08-18 09:13:18
+<==        Row: 132, 3, ticket, create, 2026-08-18 09:13:18
+<==        Row: 133, 3, ticket, edit, 2026-08-18 09:13:18
+<==        Row: 134, 3, ticket, delete, 2026-08-18 09:13:18
+<==        Row: 135, 3, complaint, view, 2026-08-18 09:13:18
+<==        Row: 136, 3, complaint, create, 2026-08-18 09:13:18
+<==        Row: 137, 3, complaint, edit, 2026-08-18 09:13:18
+<==        Row: 138, 3, complaint, delete, 2026-08-18 09:13:18
+<==        Row: 139, 3, satisfaction, view, 2026-08-18 09:13:18
+<==        Row: 140, 3, satisfaction, create, 2026-08-18 09:13:18
+<==        Row: 141, 3, satisfaction, edit, 2026-08-18 09:13:18
+<==        Row: 142, 3, satisfaction, delete, 2026-08-18 09:13:18
+<==        Row: 143, 3, knowledge-base, view, 2026-08-18 09:13:18
+<==        Row: 144, 3, knowledge-base, create, 2026-08-18 09:13:18
+<==        Row: 145, 3, knowledge-base, edit, 2026-08-18 09:13:18
+<==        Row: 146, 3, knowledge-base, delete, 2026-08-18 09:13:18
+<==      Total: 26
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@54f9d17b]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1abb2110] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@126497850 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_admin_user WHERE (role = ?)
+==> Parameters: FINANCE(String)
+<==    Columns: total
+<==        Row: 2
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1abb2110]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@4b064018] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@744768301 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 4(Long)
+<==    Columns: id, role_id, resource, action, create_time
+<==        Row: 147, 4, dashboard, view, 2026-08-18 09:13:18
+<==        Row: 148, 4, analysis, view, 2026-08-18 09:13:18
+<==        Row: 149, 4, orders, view, 2026-08-18 09:13:18
+<==        Row: 150, 4, finance, view, 2026-08-18 09:13:18
+<==        Row: 151, 4, finance, create, 2026-08-18 09:13:18
+<==        Row: 152, 4, finance, edit, 2026-08-18 09:13:18
+<==        Row: 153, 4, finance, delete, 2026-08-18 09:13:18
+<==        Row: 154, 4, settlement, view, 2026-08-18 09:13:18
+<==        Row: 155, 4, settlement, create, 2026-08-18 09:13:18
+<==        Row: 156, 4, settlement, edit, 2026-08-18 09:13:18
+<==        Row: 157, 4, settlement, delete, 2026-08-18 09:13:18
+<==        Row: 158, 4, refunds, view, 2026-08-18 09:13:18
+<==        Row: 159, 4, refunds, create, 2026-08-18 09:13:18
+<==        Row: 160, 4, refunds, edit, 2026-08-18 09:13:18
+<==        Row: 161, 4, refunds, delete, 2026-08-18 09:13:18
+<==      Total: 15
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@4b064018]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@18103eb1] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@462499670 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_admin_user WHERE (role = ?)
+==> Parameters: VIEWER(String)
+<==    Columns: total
+<==        Row: 0
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@18103eb1]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@15357d0c] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1821330702 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 5(Long)
+<==    Columns: id, role_id, resource, action, create_time
+<==        Row: 162, 5, dashboard, view, 2026-08-18 09:13:18
+<==        Row: 163, 5, analysis, view, 2026-08-18 09:13:18
+<==        Row: 164, 5, products, view, 2026-08-18 09:13:18
+<==        Row: 165, 5, orders, view, 2026-08-18 09:13:18
+<==        Row: 166, 5, users, view, 2026-08-18 09:13:18
+<==      Total: 5
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@15357d0c]
+2026-08-21 11:05:35.214 [http-nio-8080-exec-5] INFO  c.m.c.security.RequestLoggingFilter [51de27671a4248c9b8a13ecb7079eba0] - ‚Üê [GET] /api/admin/rbac/roles ‚Üí 200 (100ms) traceId=51de27671a4248c9b8a13ecb7079eba0
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@66587fa7] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@600471907 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 1(Long)
+<==      Total: 0
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@66587fa7]
+2026-08-21 11:05:35.234 [http-nio-8080-exec-4] INFO  c.m.c.security.RequestLoggingFilter [c0e912c6342b494486293714ca2043ed] - ‚Üê [GET] /api/admin/rbac/roles/1/permissions ‚Üí 200 (12ms) traceId=c0e912c6342b494486293714ca2043ed
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@41905bb] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@894920638 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,name,code,description,status,sort_order,is_preset,create_time,update_time FROM mo_admin_role WHERE id=?
+==> Parameters: 3(Long)
+<==    Columns: id, name, code, description, status, sort_order, is_preset, create_time, update_time
+<==        Row: 3, øÕ∑˛»À‘±, CUSTOMER_SVC, øÕ∑˛ª·ª∞∫Õπ§µ•»®œﬁ, ACTIVE, 3, 1, 2026-08-18 09:12:56, 2026-08-20 14:19:39
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@41905bb]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@654d69cf] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1236908924 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,username,password,name,email,role,status,last_login_time,create_time,update_time FROM mo_admin_user WHERE (role = ? AND status = ?) ORDER BY create_time DESC
+==> Parameters: CUSTOMER_SVC(String), ACTIVE(String)
+<==    Columns: id, username, password, name, email, role, status, last_login_time, create_time, update_time
+<==        Row: 195000003, li, $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy, –°¿Ó, li@moyuyo.com, CUSTOMER_SVC, ACTIVE, 2026-07-16 14:00:00, 2026-03-01 00:00:00, null
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@654d69cf]
+2026-08-21 11:05:38.372 [http-nio-8080-exec-6] INFO  c.m.c.security.RequestLoggingFilter [7afc0332f754479b8bedf65ebee716cb] - ‚Üê [GET] /api/admin/rbac/roles/3/members ‚Üí 200 (27ms) traceId=7afc0332f754479b8bedf65ebee716cb
+Creating a new SqlSession
+Registering transaction synchronization for SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@3a5faf53]
+JDBC Connection [HikariProxyConnection@1907910111 wrapping com.mysql.cj.jdbc.ConnectionImpl@253b691e] will be managed by Spring
+==>  Preparing: INSERT INTO mo_admin_user ( id, username, password, name, email, role, status, create_time, update_time ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ? )
+==> Parameters: 2090636573224796162(Long), –°Õı(String), $2a$10$Few/9GMZrRYgKAwtw2rNHu9grBOaL/C43ymhPyhhG4LEr7wPGmJby(String), –°Õı(String), wan@moyuyo.com(String), CUSTOMER_SVC(String), ACTIVE(String), 2026-08-21T11:06:15.864277300(LocalDateTime), 2026-08-21T11:06:15.864277300(LocalDateTime)
+<==    Updates: 1
+Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@3a5faf53]
+Transaction synchronization committing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@3a5faf53]
+Transaction synchronization deregistering SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@3a5faf53]
+Transaction synchronization closing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@3a5faf53]
+2026-08-21 11:06:15.940 [http-nio-8080-exec-3] INFO  c.m.c.security.RequestLoggingFilter [4ded42e796cc4b07841527a1bd316f0d] - ‚Üê [POST] /api/admin/rbac/users ‚Üí 200 (168ms) traceId=4ded42e796cc4b07841527a1bd316f0d
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@3fcc63c3] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@2014881424 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,name,code,description,status,sort_order,is_preset,create_time,update_time FROM mo_admin_role WHERE id=?
+==> Parameters: 3(Long)
+<==    Columns: id, name, code, description, status, sort_order, is_preset, create_time, update_time
+<==        Row: 3, øÕ∑˛»À‘±, CUSTOMER_SVC, øÕ∑˛ª·ª∞∫Õπ§µ•»®œﬁ, ACTIVE, 3, 1, 2026-08-18 09:12:56, 2026-08-20 14:19:39
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@3fcc63c3]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@701bdf1a] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@515584260 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,username,password,name,email,role,status,last_login_time,create_time,update_time FROM mo_admin_user WHERE (role = ? AND status = ?) ORDER BY create_time DESC
+==> Parameters: CUSTOMER_SVC(String), ACTIVE(String)
+<==    Columns: id, username, password, name, email, role, status, last_login_time, create_time, update_time
+<==        Row: 2090636573224796162, –°Õı, $2a$10$Few/9GMZrRYgKAwtw2rNHu9grBOaL/C43ymhPyhhG4LEr7wPGmJby, –°Õı, wan@moyuyo.com, CUSTOMER_SVC, ACTIVE, null, 2026-08-21 11:06:15, 2026-08-21 11:06:15
+<==        Row: 195000003, li, $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy, –°¿Ó, li@moyuyo.com, CUSTOMER_SVC, ACTIVE, 2026-07-16 14:00:00, 2026-03-01 00:00:00, null
+<==      Total: 2
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@701bdf1a]
+2026-08-21 11:06:15.983 [http-nio-8080-exec-2] INFO  c.m.c.security.RequestLoggingFilter [83dc8d1447224ae6af41a16d8b522abe] - ‚Üê [GET] /api/admin/rbac/roles/3/members ‚Üí 200 (30ms) traceId=83dc8d1447224ae6af41a16d8b522abe
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@3f1c6175] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@731283139 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,name,code,description,status,sort_order,is_preset,create_time,update_time FROM mo_admin_role
+==> Parameters: 
+<==    Columns: id, name, code, description, status, sort_order, is_preset, create_time, update_time
+<==        Row: 1, ≥¨º∂π‹¿Ì‘±, SUPER_ADMIN, ”µ”–À˘”–»®œﬁ£®“—–ﬁ∏ƒ£©, ACTIVE, 1, 1, 2026-08-18 09:12:56, 2026-08-20 17:11:02
+<==        Row: 2, ‘À”™π‹¿Ì‘±, OPERATOR, ∂©µ•/…Ã∆∑/”√ªßπ‹¿Ì»®œﬁ, ACTIVE, 2, 1, 2026-08-18 09:12:56, 2026-08-20 14:12:17
+<==        Row: 3, øÕ∑˛»À‘±, CUSTOMER_SVC, øÕ∑˛ª·ª∞∫Õπ§µ•»®œﬁ, ACTIVE, 3, 1, 2026-08-18 09:12:56, 2026-08-20 14:19:39
+<==        Row: 4, ≤∆ŒÒ»À‘±, FINANCE, ≤∆ŒÒœ‡πÿ»®œﬁ, ACTIVE, 4, 1, 2026-08-18 09:12:56, 2026-08-20 14:12:17
+<==        Row: 5,  ˝æ›≤Èø¥‘±, VIEWER, Ωˆ≤Èø¥ ˝æ›»®œﬁ, ACTIVE, 5, 1, 2026-08-18 09:12:56, 2026-08-20 14:12:17
+<==      Total: 5
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@3f1c6175]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@4ff10760] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1170959317 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_admin_user WHERE (role = ?)
+==> Parameters: SUPER_ADMIN(String)
+<==    Columns: total
+<==        Row: 1
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@4ff10760]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1e7a2141] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1478328644 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 1(Long)
+<==      Total: 0
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1e7a2141]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@a09c7ea] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1515846845 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_admin_user WHERE (role = ?)
+==> Parameters: OPERATOR(String)
+<==    Columns: total
+<==        Row: 1
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@a09c7ea]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@3e3274b2] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@2056286916 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 2(Long)
+<==    Columns: id, role_id, resource, action, create_time
+<==        Row: 1, 2, dashboard, view, 2026-08-18 09:13:18
+<==        Row: 2, 2, analysis, view, 2026-08-18 09:13:18
+<==        Row: 3, 2, users, view, 2026-08-18 09:13:18
+<==        Row: 4, 2, users, edit, 2026-08-18 09:13:18
+<==        Row: 5, 2, products, view, 2026-08-18 09:13:18
+<==        Row: 6, 2, products, create, 2026-08-18 09:13:18
+<==        Row: 7, 2, products, edit, 2026-08-18 09:13:18
+<==        Row: 8, 2, products, delete, 2026-08-18 09:13:18
+<==        Row: 9, 2, product-approval, view, 2026-08-18 09:13:18
+<==        Row: 10, 2, product-approval, create, 2026-08-18 09:13:18
+<==        Row: 11, 2, product-approval, edit, 2026-08-18 09:13:18
+<==        Row: 12, 2, product-approval, delete, 2026-08-18 09:13:18
+<==        Row: 13, 2, product-analysis, view, 2026-08-18 09:13:18
+<==        Row: 14, 2, product-analysis, create, 2026-08-18 09:13:18
+<==        Row: 15, 2, product-analysis, edit, 2026-08-18 09:13:18
+<==        Row: 16, 2, product-analysis, delete, 2026-08-18 09:13:18
+<==        Row: 17, 2, orders, view, 2026-08-18 09:13:18
+<==        Row: 18, 2, orders, create, 2026-08-18 09:13:18
+<==        Row: 19, 2, orders, edit, 2026-08-18 09:13:18
+<==        Row: 20, 2, orders, delete, 2026-08-18 09:13:18
+<==        Row: 21, 2, order-ops, view, 2026-08-18 09:13:18
+<==        Row: 22, 2, order-ops, create, 2026-08-18 09:13:18
+<==        Row: 23, 2, order-ops, edit, 2026-08-18 09:13:18
+<==        Row: 24, 2, order-ops, delete, 2026-08-18 09:13:18
+<==        Row: 25, 2, order-tags, view, 2026-08-18 09:13:18
+<==        Row: 26, 2, order-tags, create, 2026-08-18 09:13:18
+<==        Row: 27, 2, order-tags, edit, 2026-08-18 09:13:18
+<==        Row: 28, 2, order-tags, delete, 2026-08-18 09:13:18
+<==        Row: 29, 2, user-profile, view, 2026-08-18 09:13:18
+<==        Row: 30, 2, user-profile, create, 2026-08-18 09:13:18
+<==        Row: 31, 2, user-profile, edit, 2026-08-18 09:13:18
+<==        Row: 32, 2, user-profile, delete, 2026-08-18 09:13:18
+<==        Row: 33, 2, blacklist, view, 2026-08-18 09:13:18
+<==        Row: 34, 2, blacklist, create, 2026-08-18 09:13:18
+<==        Row: 35, 2, blacklist, edit, 2026-08-18 09:13:18
+<==        Row: 36, 2, blacklist, delete, 2026-08-18 09:13:18
+<==        Row: 37, 2, crm, view, 2026-08-18 09:13:18
+<==        Row: 38, 2, crm, create, 2026-08-18 09:13:18
+<==        Row: 39, 2, crm, edit, 2026-08-18 09:13:18
+<==        Row: 40, 2, crm, delete, 2026-08-18 09:13:18
+<==        Row: 41, 2, marketing, view, 2026-08-18 09:13:18
+<==        Row: 42, 2, marketing, create, 2026-08-18 09:13:18
+<==        Row: 43, 2, marketing, edit, 2026-08-18 09:13:18
+<==        Row: 44, 2, marketing, delete, 2026-08-18 09:13:18
+<==        Row: 45, 2, coupons, view, 2026-08-18 09:13:18
+<==        Row: 46, 2, coupons, create, 2026-08-18 09:13:18
+<==        Row: 47, 2, coupons, edit, 2026-08-18 09:13:18
+<==        Row: 48, 2, coupons, delete, 2026-08-18 09:13:18
+<==        Row: 49, 2, flash-sales, view, 2026-08-18 09:13:18
+<==        Row: 50, 2, flash-sales, create, 2026-08-18 09:13:18
+<==        Row: 51, 2, flash-sales, edit, 2026-08-18 09:13:18
+<==        Row: 52, 2, flash-sales, delete, 2026-08-18 09:13:18
+<==        Row: 53, 2, live, view, 2026-08-18 09:13:18
+<==        Row: 54, 2, live, create, 2026-08-18 09:13:18
+<==        Row: 55, 2, live, edit, 2026-08-18 09:13:18
+<==        Row: 56, 2, live, delete, 2026-08-18 09:13:18
+<==        Row: 57, 2, push, view, 2026-08-18 09:13:18
+<==        Row: 58, 2, push, create, 2026-08-18 09:13:18
+<==        Row: 59, 2, push, edit, 2026-08-18 09:13:18
+<==        Row: 60, 2, push, delete, 2026-08-18 09:13:18
+<==        Row: 61, 2, sms, view, 2026-08-18 09:13:18
+<==        Row: 62, 2, sms, create, 2026-08-18 09:13:18
+<==        Row: 63, 2, sms, edit, 2026-08-18 09:13:18
+<==        Row: 64, 2, sms, delete, 2026-08-18 09:13:18
+<==        Row: 65, 2, review, view, 2026-08-18 09:13:18
+<==        Row: 66, 2, review, create, 2026-08-18 09:13:18
+<==        Row: 67, 2, review, edit, 2026-08-18 09:13:18
+<==        Row: 68, 2, review, delete, 2026-08-18 09:13:18
+<==        Row: 69, 2, content-review, view, 2026-08-18 09:13:18
+<==        Row: 70, 2, content-review, create, 2026-08-18 09:13:18
+<==        Row: 71, 2, content-review, edit, 2026-08-18 09:13:18
+<==        Row: 72, 2, content-review, delete, 2026-08-18 09:13:18
+<==        Row: 73, 2, cms, view, 2026-08-18 09:13:18
+<==        Row: 74, 2, cms, create, 2026-08-18 09:13:18
+<==        Row: 75, 2, cms, edit, 2026-08-18 09:13:18
+<==        Row: 76, 2, cms, delete, 2026-08-18 09:13:18
+<==        Row: 77, 2, knowledge-base, view, 2026-08-18 09:13:18
+<==        Row: 78, 2, knowledge-base, create, 2026-08-18 09:13:18
+<==        Row: 79, 2, knowledge-base, edit, 2026-08-18 09:13:18
+<==        Row: 80, 2, knowledge-base, delete, 2026-08-18 09:13:18
+<==        Row: 81, 2, cs-sessions, view, 2026-08-18 09:13:18
+<==        Row: 82, 2, cs-sessions, create, 2026-08-18 09:13:18
+<==        Row: 83, 2, cs-sessions, edit, 2026-08-18 09:13:18
+<==        Row: 84, 2, cs-sessions, delete, 2026-08-18 09:13:18
+<==        Row: 85, 2, ticket, view, 2026-08-18 09:13:18
+<==        Row: 86, 2, ticket, create, 2026-08-18 09:13:18
+<==        Row: 87, 2, ticket, edit, 2026-08-18 09:13:18
+<==        Row: 88, 2, ticket, delete, 2026-08-18 09:13:18
+<==        Row: 89, 2, complaint, view, 2026-08-18 09:13:18
+<==        Row: 90, 2, complaint, create, 2026-08-18 09:13:18
+<==        Row: 91, 2, complaint, edit, 2026-08-18 09:13:18
+<==        Row: 92, 2, complaint, delete, 2026-08-18 09:13:18
+<==        Row: 93, 2, satisfaction, view, 2026-08-18 09:13:18
+<==        Row: 94, 2, satisfaction, create, 2026-08-18 09:13:18
+<==        Row: 95, 2, satisfaction, edit, 2026-08-18 09:13:18
+<==        Row: 96, 2, satisfaction, delete, 2026-08-18 09:13:18
+<==        Row: 97, 2, logistics, view, 2026-08-18 09:13:18
+<==        Row: 98, 2, logistics, create, 2026-08-18 09:13:18
+<==        Row: 99, 2, logistics, edit, 2026-08-18 09:13:18
+<==        Row: 100, 2, logistics, delete, 2026-08-18 09:13:18
+<==        Row: 101, 2, inventory, view, 2026-08-18 09:13:18
+<==        Row: 102, 2, inventory, create, 2026-08-18 09:13:18
+<==        Row: 103, 2, inventory, edit, 2026-08-18 09:13:18
+<==        Row: 104, 2, inventory, delete, 2026-08-18 09:13:18
+<==        Row: 105, 2, inventory-transfer, view, 2026-08-18 09:13:18
+<==        Row: 106, 2, inventory-transfer, create, 2026-08-18 09:13:18
+<==        Row: 107, 2, inventory-transfer, edit, 2026-08-18 09:13:18
+<==        Row: 108, 2, inventory-transfer, delete, 2026-08-18 09:13:18
+<==        Row: 109, 2, price, view, 2026-08-18 09:13:18
+<==        Row: 110, 2, price, create, 2026-08-18 09:13:18
+<==        Row: 111, 2, price, edit, 2026-08-18 09:13:18
+<==        Row: 112, 2, price, delete, 2026-08-18 09:13:18
+<==        Row: 113, 2, tariff, view, 2026-08-18 09:13:18
+<==        Row: 114, 2, tariff, create, 2026-08-18 09:13:18
+<==        Row: 115, 2, tariff, edit, 2026-08-18 09:13:18
+<==        Row: 116, 2, tariff, delete, 2026-08-18 09:13:18
+<==        Row: 117, 2, points, view, 2026-08-18 09:13:18
+<==        Row: 118, 2, points, create, 2026-08-18 09:13:18
+<==        Row: 119, 2, points, edit, 2026-08-18 09:13:18
+<==        Row: 120, 2, points, delete, 2026-08-18 09:13:18
+<==      Total: 120
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@3e3274b2]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@7f127e13] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@545127903 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_admin_user WHERE (role = ?)
+==> Parameters: CUSTOMER_SVC(String)
+<==    Columns: total
+<==        Row: 2
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@7f127e13]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1ccc2901] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1050954838 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 3(Long)
+<==    Columns: id, role_id, resource, action, create_time
+<==        Row: 121, 3, dashboard, view, 2026-08-18 09:13:18
+<==        Row: 122, 3, orders, view, 2026-08-18 09:13:18
+<==        Row: 123, 3, users, view, 2026-08-18 09:13:18
+<==        Row: 124, 3, user-profile, view, 2026-08-18 09:13:18
+<==        Row: 125, 3, logistics, view, 2026-08-18 09:13:18
+<==        Row: 126, 3, review, view, 2026-08-18 09:13:18
+<==        Row: 127, 3, cs-sessions, view, 2026-08-18 09:13:18
+<==        Row: 128, 3, cs-sessions, create, 2026-08-18 09:13:18
+<==        Row: 129, 3, cs-sessions, edit, 2026-08-18 09:13:18
+<==        Row: 130, 3, cs-sessions, delete, 2026-08-18 09:13:18
+<==        Row: 131, 3, ticket, view, 2026-08-18 09:13:18
+<==        Row: 132, 3, ticket, create, 2026-08-18 09:13:18
+<==        Row: 133, 3, ticket, edit, 2026-08-18 09:13:18
+<==        Row: 134, 3, ticket, delete, 2026-08-18 09:13:18
+<==        Row: 135, 3, complaint, view, 2026-08-18 09:13:18
+<==        Row: 136, 3, complaint, create, 2026-08-18 09:13:18
+<==        Row: 137, 3, complaint, edit, 2026-08-18 09:13:18
+<==        Row: 138, 3, complaint, delete, 2026-08-18 09:13:18
+<==        Row: 139, 3, satisfaction, view, 2026-08-18 09:13:18
+<==        Row: 140, 3, satisfaction, create, 2026-08-18 09:13:18
+<==        Row: 141, 3, satisfaction, edit, 2026-08-18 09:13:18
+<==        Row: 142, 3, satisfaction, delete, 2026-08-18 09:13:18
+<==        Row: 143, 3, knowledge-base, view, 2026-08-18 09:13:18
+<==        Row: 144, 3, knowledge-base, create, 2026-08-18 09:13:18
+<==        Row: 145, 3, knowledge-base, edit, 2026-08-18 09:13:18
+<==        Row: 146, 3, knowledge-base, delete, 2026-08-18 09:13:18
+<==      Total: 26
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1ccc2901]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@37fe86a6] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@21552838 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_admin_user WHERE (role = ?)
+==> Parameters: FINANCE(String)
+<==    Columns: total
+<==        Row: 2
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@37fe86a6]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@358f1dc9] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1939699379 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 4(Long)
+<==    Columns: id, role_id, resource, action, create_time
+<==        Row: 147, 4, dashboard, view, 2026-08-18 09:13:18
+<==        Row: 148, 4, analysis, view, 2026-08-18 09:13:18
+<==        Row: 149, 4, orders, view, 2026-08-18 09:13:18
+<==        Row: 150, 4, finance, view, 2026-08-18 09:13:18
+<==        Row: 151, 4, finance, create, 2026-08-18 09:13:18
+<==        Row: 152, 4, finance, edit, 2026-08-18 09:13:18
+<==        Row: 153, 4, finance, delete, 2026-08-18 09:13:18
+<==        Row: 154, 4, settlement, view, 2026-08-18 09:13:18
+<==        Row: 155, 4, settlement, create, 2026-08-18 09:13:18
+<==        Row: 156, 4, settlement, edit, 2026-08-18 09:13:18
+<==        Row: 157, 4, settlement, delete, 2026-08-18 09:13:18
+<==        Row: 158, 4, refunds, view, 2026-08-18 09:13:18
+<==        Row: 159, 4, refunds, create, 2026-08-18 09:13:18
+<==        Row: 160, 4, refunds, edit, 2026-08-18 09:13:18
+<==        Row: 161, 4, refunds, delete, 2026-08-18 09:13:18
+<==      Total: 15
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@358f1dc9]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@26d0c7e4] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@787238380 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_admin_user WHERE (role = ?)
+==> Parameters: VIEWER(String)
+<==    Columns: total
+<==        Row: 0
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@26d0c7e4]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6e3b8487] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1619501033 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 5(Long)
+<==    Columns: id, role_id, resource, action, create_time
+<==        Row: 162, 5, dashboard, view, 2026-08-18 09:13:18
+<==        Row: 163, 5, analysis, view, 2026-08-18 09:13:18
+<==        Row: 164, 5, products, view, 2026-08-18 09:13:18
+<==        Row: 165, 5, orders, view, 2026-08-18 09:13:18
+<==        Row: 166, 5, users, view, 2026-08-18 09:13:18
+<==      Total: 5
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6e3b8487]
+2026-08-21 11:06:16.089 [http-nio-8080-exec-5] INFO  c.m.c.security.RequestLoggingFilter [9a4d7adcae3c4421ade86433219365f6] - ‚Üê [GET] /api/admin/rbac/roles ‚Üí 200 (102ms) traceId=9a4d7adcae3c4421ade86433219365f6
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@4b24b928] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1688299232 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,role_id,resource,action,create_time FROM mo_admin_permission WHERE (role_id = ?)
+==> Parameters: 1(Long)
+<==      Total: 0
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@4b24b928]
+2026-08-21 11:06:16.104 [http-nio-8080-exec-4] INFO  c.m.c.security.RequestLoggingFilter [442f8a5576c648e4bab25877757dc935] - ‚Üê [GET] /api/admin/rbac/roles/1/permissions ‚Üí 200 (11ms) traceId=442f8a5576c648e4bab25877757dc935
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@7284056f] was not registered for synchronization because synchronization is not active
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@4aeefa60] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@351719582 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_ticket WHERE (status = ?)
+==> Parameters: PENDING(String)
+<==    Columns: total
+<==        Row: 1
+JDBC Connection [HikariProxyConnection@663335312 wrapping com.mysql.cj.jdbc.ConnectionImpl@253b691e] will not be managed by Spring
+<==      Total: 1
+==>  Preparing: SELECT COUNT(*) AS total FROM mo_ticket
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@7284056f]
+==> Parameters: 
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@795f4051] was not registered for synchronization because synchronization is not active
+<==    Columns: total
+<==        Row: 5
+JDBC Connection [HikariProxyConnection@1313617085 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+<==      Total: 1
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_ticket WHERE (status = ?)
+==>  Preparing: SELECT id,ticket_no,type,priority,title,user_id,user_name,agent_name,status,reply_content,first_response_minutes,timeout,create_time,update_time FROM mo_ticket ORDER BY create_time DESC LIMIT ?
+==> Parameters: PROCESSING(String)
+==> Parameters: 15(Long)
+<==    Columns: total
+<==        Row: 1
+<==    Columns: id, ticket_no, type, priority, title, user_id, user_name, agent_name, status, reply_content, first_response_minutes, timeout, create_time, update_time
+<==      Total: 1
+<==        Row: 4, TKT20260703001, Õ∂Àﬂ, ∏ﬂ, øÕ∑˛Ã¨∂»∂Ò¡”, 1, ’≈»˝, null, CLOSED, <<BLOB>>, null, 0, 2026-07-03 16:00:00, 2026-08-18 09:13:00
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@795f4051]
+<==        Row: 5, TKT20260703002, ÕÀøÓ, ÷–, ÷ÿ∏¥÷ß∏∂«Î«ÛÕÀøÓ, 4, ’‘¡˘, øÕ∑˛999999, PROCESSING, <<BLOB>>, null, 0, 2026-07-03 11:20:00, 2026-08-18 09:13:00
+Creating a new SqlSession
+<==        Row: 3, TKT20260702001, ◊…—Ø, µÕ, …Ã∆∑ π”√“…Œ , 3, ÕıŒÂ, null, CLOSED, <<BLOB>>, null, 0, 2026-07-02 09:15:00, 2026-08-18 09:13:00
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@4a21ee05] was not registered for synchronization because synchronization is not active
+<==        Row: 2, TKT20260701002, ŒÔ¡˜, ÷–, ŒÔ¡˜–≈œ¢Œ¥∏¸–¬, 2, ¿ÓÀƒ, –°¿Ó, CLOSED, <<BLOB>>, 72098, 0, 2026-07-01 14:30:00, 2026-08-18 09:13:00
+<==        Row: 1, TKT20260701001, ÕÀøÓ, ∏ﬂ, ∂©µ•ÕÀøÓ…Í«Î, 1, ’≈»˝, null, PENDING, <<BLOB>>, 72386, 0, 2026-07-01 10:00:00, 2026-08-18 09:13:00
+<==      Total: 5
+JDBC Connection [HikariProxyConnection@1142190263 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@4aeefa60]
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_ticket WHERE (status = ? AND create_time >= ?)
+==> Parameters: CLOSED(String), 2026-08-21T00:00(LocalDateTime)
+2026-08-21 11:06:21.551 [http-nio-8080-exec-10] INFO  c.m.c.security.RequestLoggingFilter [d59a7705942b411787e9a76a71ece61b] - ‚Üê [GET] /api/admin/ticket/list ‚Üí 200 (25ms) traceId=d59a7705942b411787e9a76a71ece61b
+<==    Columns: total
+<==        Row: 0
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@4a21ee05]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@11155e92] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1400689886 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_ticket WHERE (first_response_minutes IS NOT NULL)
+==> Parameters: 
+<==    Columns: total
+<==        Row: 2
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@11155e92]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@3c3173b0] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1678227294 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT COUNT( * ) AS total FROM mo_ticket WHERE (first_response_minutes IS NOT NULL AND first_response_minutes <= ?)
+==> Parameters: 30(Integer)
+<==    Columns: total
+<==        Row: 0
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@3c3173b0]
+2026-08-21 11:06:21.560 [http-nio-8080-exec-6] INFO  c.m.c.security.RequestLoggingFilter [f9f6bc56d37c42c1b33ce0bb2d191e43] - ‚Üê [GET] /api/admin/ticket/stats ‚Üí 200 (34ms) traceId=f9f6bc56d37c42c1b33ce0bb2d191e43
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@5af9ff1b] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1821723655 wrapping com.mysql.cj.jdbc.ConnectionImpl@2c9430c6] will not be managed by Spring
+==>  Preparing: SELECT id,username,password,name,email,role,status,last_login_time,create_time,update_time FROM mo_admin_user WHERE (role = ?) ORDER BY id DESC
+==> Parameters: CUSTOMER_SVC(String)
+<==    Columns: id, username, password, name, email, role, status, last_login_time, create_time, update_time
+<==        Row: 2090636573224796162, –°Õı, $2a$10$Few/9GMZrRYgKAwtw2rNHu9grBOaL/C43ymhPyhhG4LEr7wPGmJby, –°Õı, wan@moyuyo.com, CUSTOMER_SVC, ACTIVE, null, 2026-08-21 11:06:15, 2026-08-21 11:06:15
+<==        Row: 195000003, li, $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy, –°¿Ó, li@moyuyo.com, CUSTOMER_SVC, ACTIVE, 2026-07-16 14:00:00, 2026-03-01 00:00:00, null
+<==      Total: 2
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@5af9ff1b]
+2026-08-21 11:06:23.498 [http-nio-8080-exec-9] INFO  c.m.c.security.RequestLoggingFilter [e5b4c7099edb4536bb1cb6d07f8d9157] - ‚Üê [GET] /api/admin/crm/cs-staff ‚Üí 200 (12ms) traceId=e5b4c7099edb4536bb1cb6d07f8d9157

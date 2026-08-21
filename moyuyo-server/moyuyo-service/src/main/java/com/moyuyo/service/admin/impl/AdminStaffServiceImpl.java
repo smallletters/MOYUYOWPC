@@ -28,6 +28,20 @@ public class AdminStaffServiceImpl implements AdminStaffService {
   private static final java.util.Set<String> ALLOWED_ROLES = java.util.Set.of(
       "SUPER_ADMIN", "OPERATOR", "CUSTOMER_SVC", "FINANCE", "VIEWER");
 
+  /**
+   * 校验角色编码是否在白名单内（RBAC 与 admin_user.role 字段一致性约束）
+   * 任何新增/修改管理员都必须传入合法的角色编码；否则拒绝
+   */
+  private static void validateRoleOrThrow(String role) {
+    if (role == null || role.isBlank()) {
+      throw new IllegalArgumentException("角色不能为空");
+    }
+    if (!ALLOWED_ROLES.contains(role)) {
+      throw new IllegalArgumentException(
+        "无效的角色编码: " + role + "；可选值：" + ALLOWED_ROLES);
+    }
+  }
+
   private final AdminUserMapper adminUserMapper;
   /** 统一密码编码器 Bean，强度由 moyuyo.password.bcrypt-strength 控制（默认 12） */
   private final PasswordEncoder passwordEncoder;
@@ -73,10 +87,8 @@ public class AdminStaffServiceImpl implements AdminStaffService {
       return error;
     }
 
-    // 1. 角色白名单校验：防止注入任意角色编码
-    if (targetRole == null || targetRole.isBlank() || !ALLOWED_ROLES.contains(targetRole)) {
-      throw new IllegalArgumentException("无效的角色编码，可选值：" + ALLOWED_ROLES);
-    }
+    // 1. 角色白名单校验（在 body 校验前先做，全局统一一处）
+    validateRoleOrThrow(targetRole);
     // 2. 权限提升防护：非 SUPER_ADMIN 操作者禁止创建 SUPER_ADMIN 账号（最小权限原则）
     String operatorRole = com.moyuyo.common.security.UserContextHolder.getRole();
     if ("SUPER_ADMIN".equals(targetRole) && !"SUPER_ADMIN".equals(operatorRole)) {
@@ -133,9 +145,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     if (body.containsKey("role")) {
       String newRole = (String) body.get("role");
       // 1. 角色白名单校验
-      if (newRole == null || newRole.isBlank() || !ALLOWED_ROLES.contains(newRole)) {
-        throw new IllegalArgumentException("无效的角色编码，可选值：" + ALLOWED_ROLES);
-      }
+      validateRoleOrThrow(newRole);
       // 2. 权限提升防护：非 SUPER_ADMIN 操作者不得将任何人角色变更为 SUPER_ADMIN
       String operatorRole = com.moyuyo.common.security.UserContextHolder.getRole();
       boolean upgradingToSuper = "SUPER_ADMIN".equals(newRole) && !"SUPER_ADMIN".equals(entity.getRole());
@@ -203,6 +213,15 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     if ("SUPER_ADMIN".equals(entity.getRole()) && !"SUPER_ADMIN".equals(operatorRole)) {
       log.warn("非超级管理员 [{}] 尝试删除 SUPER_ADMIN [{}]，已拒绝", operatorRole, entity.getUsername());
       throw new org.springframework.security.access.AccessDeniedException("无权删除超级管理员");
+    }
+    // 保护系统唯一超级管理员：剩余 SUPER_ADMIN 数量 ≤1 时禁止删除，避免系统失去最高权限账号
+    if ("SUPER_ADMIN".equals(entity.getRole())) {
+      Long superAdminCount = adminUserMapper.selectCount(
+          new LambdaQueryWrapper<AdminUserEntity>().eq(AdminUserEntity::getRole, "SUPER_ADMIN"));
+      if (superAdminCount != null && superAdminCount <= 1) {
+        log.warn("尝试删除最后一个 SUPER_ADMIN [{}]，已拒绝（系统必须保留至少 1 个超级管理员）", entity.getUsername());
+        throw new IllegalArgumentException("系统必须保留至少 1 名超级管理员，无法删除最后一个");
+      }
     }
     adminUserMapper.deleteById(id);
   }

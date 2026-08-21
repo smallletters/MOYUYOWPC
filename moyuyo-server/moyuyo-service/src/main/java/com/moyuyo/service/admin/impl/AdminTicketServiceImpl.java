@@ -1,13 +1,19 @@
 package com.moyuyo.service.admin.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.moyuyo.common.security.UserContextHolder;
+import com.moyuyo.dao.admin.entity.AdminUserEntity;
 import com.moyuyo.dao.admin.entity.TicketEntity;
+import com.moyuyo.dao.admin.entity.TicketMessageEntity;
+import com.moyuyo.dao.admin.mapper.AdminUserMapper;
 import com.moyuyo.dao.admin.mapper.TicketMapper;
+import com.moyuyo.dao.admin.mapper.TicketMessageMapper;
 import com.moyuyo.dao.entity.UserEntity;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.admin.AdminTicketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -24,7 +30,9 @@ public class AdminTicketServiceImpl implements AdminTicketService {
   private static final int SLA_MINUTES = 30;
 
   private final TicketMapper ticketMapper;
+  private final TicketMessageMapper ticketMessageMapper;
   private final UserMapper userMapper;
+  private final AdminUserMapper adminUserMapper;
 
   @Override
   public List<Map<String, Object>> listAll(String status, String type, String priority, String keyword) {
@@ -68,6 +76,9 @@ public class AdminTicketServiceImpl implements AdminTicketService {
     item.put("priorityClass", getPriorityClass(t.getPriority()));
     item.put("title", t.getTitle());
     item.put("user", t.getUserName() != null ? t.getUserName() : "");
+    item.put("userId", t.getUserId());
+    item.put("userName", t.getUserName());
+    item.put("agentName", t.getAgentName());
     item.put("status", t.getStatus());
     item.put("statusKey", t.getStatus());
     item.put("statusLabel", getStatusLabel(t.getStatus()));
@@ -134,20 +145,76 @@ public class AdminTicketServiceImpl implements AdminTicketService {
     ticketMapper.updateById(entity);
   }
 
-  @Override
-  public void assignAgent(Long id, String agent) {
-    TicketEntity entity = ticketMapper.selectById(id);
-    if (entity != null) {
-      entity.setAgentName(agent);
-      ticketMapper.updateById(entity);
+  /**
+   * 工单状态机校验：
+   *   PENDING → PROCESSING → CLOSED（单向，不可逆向）
+   *  任何跨级跳转或回退都抛 IllegalStateException
+   */
+  private void ensureStatusTransitionAllowed(String from, String to) {
+    if (from == null || to == null) {
+      throw new IllegalStateException("状态不能为空");
+    }
+    if (from.equals(to)) return;
+    boolean ok = switch (from) {
+      case "PENDING"   -> "PROCESSING".equals(to);
+      case "PROCESSING" -> "CLOSED".equals(to);
+      case "CLOSED"   -> false;
+      default -> false;
+    };
+    if (!ok) {
+      throw new IllegalStateException(
+        "工单状态不允许从 [" + from + "] 变更为 [" + to + "]；仅允许 PENDING → PROCESSING → CLOSED 单向流转");
     }
   }
 
   @Override
+  public void assignAgent(Long id, String agent) {
+    TicketEntity entity = ticketMapper.selectById(id);
+    if (entity == null) {
+      throw new IllegalArgumentException("工单不存在: " + id);
+    }
+    // 已关闭工单不能再分配客服
+    if ("CLOSED".equals(entity.getStatus())) {
+      throw new IllegalStateException("工单已关闭，无法分配客服");
+    }
+    entity.setAgentName(agent);
+    ticketMapper.updateById(entity);
+  }
+
+  @Override
+  public void assignToOperator(Long id, Long operatorId) {
+    if (operatorId == null) {
+      throw new IllegalArgumentException("客服ID不能为空");
+    }
+    TicketEntity entity = ticketMapper.selectById(id);
+    if (entity == null) {
+      throw new IllegalArgumentException("工单不存在: " + id);
+    }
+    if ("CLOSED".equals(entity.getStatus())) {
+      throw new IllegalStateException("工单已关闭，无法分配客服");
+    }
+    // 通过 admin_user 校验 operatorId 真实存在（避免分配不存在的客服）
+    com.moyuyo.dao.admin.entity.AdminUserEntity admin = adminUserMapper.selectById(operatorId);
+    if (admin == null) {
+      throw new IllegalArgumentException("客服账号不存在: " + operatorId);
+    }
+    if (admin.getStatus() != null && !"ACTIVE".equalsIgnoreCase(admin.getStatus())) {
+      throw new IllegalStateException("客服账号已禁用，无法分配");
+    }
+    entity.setAgentName(admin.getName() != null ? admin.getName() : ("客服" + operatorId));
+    ticketMapper.updateById(entity);
+  }
+
+  @Override
+  @Transactional
   public void appendReply(Long id, String content, LocalDateTime replyAt) {
     TicketEntity entity = ticketMapper.selectById(id);
     if (entity == null) {
       throw new IllegalArgumentException("工单不存在");
+    }
+    // 已关闭工单不能再追加回复（业务规则：客服关闭后即结束）
+    if ("CLOSED".equals(entity.getStatus())) {
+      throw new IllegalStateException("工单已关闭，无法继续回复");
     }
     String existing = entity.getReplyContent();
     String timestamp = replyAt.toString().replace("T", " ");
@@ -161,11 +228,33 @@ public class AdminTicketServiceImpl implements AdminTicketService {
       entity.setFirstResponseMinutes((int) Math.max(minutes, 0));
     }
 
-    // 自动从待处理升级为处理中
+    // 自动从待处理升级为处理中（不写死状态机，但遵循 PENDING→PROCESSING 单向）
     if ("PENDING".equals(entity.getStatus())) {
       entity.setStatus("PROCESSING");
     }
     ticketMapper.updateById(entity);
+
+    // 同步落库 mo_ticket_message，作为可独立渲染的工单对话历史
+    TicketMessageEntity msg = new TicketMessageEntity();
+    msg.setTicketId(id);
+    msg.setSenderType("AGENT");
+    Long operatorId = UserContextHolder.getUserId();
+    msg.setSenderId(operatorId);
+    msg.setSenderName("客服" + (operatorId == null ? "" : operatorId));
+    msg.setContent(content);
+    msg.setContentType("TEXT");
+    msg.setCreateTime(replyAt);
+    ticketMessageMapper.insert(msg);
+  }
+
+  @Override
+  public List<TicketMessageEntity> listMessages(Long ticketId) {
+    if (ticketId == null) return List.of();
+    return ticketMessageMapper.selectList(
+        new LambdaQueryWrapper<TicketMessageEntity>()
+            .eq(TicketMessageEntity::getTicketId, ticketId)
+            .orderByAsc(TicketMessageEntity::getCreateTime)
+    );
   }
 
   // ==================== 标签映射辅助方法 ====================

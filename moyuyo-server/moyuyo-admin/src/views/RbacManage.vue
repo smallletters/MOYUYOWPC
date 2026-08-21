@@ -6,12 +6,12 @@
         <h2>RBAC 权限管理</h2>
         <p class="rbac-subtitle">管理角色与权限分配，确保系统安全</p>
       </div>
-      <button class="rbac-btn rbac-btn-primary" @click="handleCreateRole">
+      <button class="rbac-btn rbac-btn-primary" @click="openCreateDialog">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="12" y1="5" x2="12" y2="19"/>
           <line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
-        新建角色
+        新建
       </button>
     </div>
 
@@ -41,7 +41,7 @@
                 </svg>
                 系统预设
               </span>
-            </div>
+              </div>
             <!-- 角色描述 -->
             <p class="rbac-role-desc">{{ role.description }}</p>
             <!-- 关联人员 -->
@@ -64,29 +64,48 @@
             </div>
             <!-- 操作按钮 -->
             <div class="rbac-role-actions" @click.stop>
+              <!-- 权限分配：选中后右侧矩阵即可编辑/查看权限（包括预设角色，只读） -->
               <button
-                class="rbac-btn-sm"
-                :class="role.isPreset ? 'rbac-btn-disabled' : 'rbac-btn-blue'"
-                :disabled="role.isPreset"
-                title="编辑权限"
+                class="rbac-btn-sm rbac-btn-blue"
+                title="权限分配"
                 @click="selectRole(role)"
               >
-                <svg v-if="role.isPreset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                 </svg>
-                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                权限分配
+              </button>
+              <!-- 编辑角色名称/描述 -->
+              <button class="rbac-btn-sm rbac-btn-gray" title="编辑角色" @click="openEditDialog(role)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                 </svg>
-                {{ role.isPreset ? '不可编辑' : '编辑权限' }}
+                编辑
               </button>
-              <button class="rbac-btn-sm rbac-btn-gray" title="查看成员" @click="handleViewMembers(role)">
+              <button class="rbac-btn-sm rbac-btn-gray" title="查看成员" @click="openMembersDialog(role)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                   <circle cx="9" cy="7" r="4"/>
                 </svg>
                 查看成员
+              </button>
+              <!-- 删除角色：系统预设角色（isPreset=true）不允许删除，由系统统一维护 -->
+              <button
+                v-if="!role.isPreset"
+                class="rbac-btn-sm rbac-btn-danger"
+                title="删除角色"
+                :disabled="deletingId === role.id"
+                @click="handleDeleteRole(role)"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                  <path d="M10 11v6"/>
+                  <path d="M14 11v6"/>
+                  <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+                </svg>
+                {{ deletingId === role.id ? '删除中...' : '删除角色' }}
               </button>
             </div>
           </div>
@@ -199,51 +218,289 @@
       </div>
     </div>
 
-    <!-- 新建角色折叠表单 -->
-    <div class="rbac-collapsible" :class="{ open: showCreateForm }">
-      <div class="rbac-collapsible-header" @click="showCreateForm = !showCreateForm">
-        <div class="rbac-collapsible-header-left">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <line x1="19" y1="8" x2="19" y2="14"/>
-            <line x1="22" y1="11" x2="16" y2="11"/>
-          </svg>
-          <span>新建角色</span>
+    <!-- 新建角色 / 新建管理员账号 合并弹窗 -->
+    <el-dialog
+      v-model="createDialogVisible"
+      :title="createDialogMode === 'role' ? '新建角色' : '新建管理员账号'"
+      width="500px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="true"
+      destroy-on-close
+      @closed="onCreateDialogClosed"
+    >
+      <el-tabs v-model="createDialogMode" class="rbac-create-tabs">
+        <!-- Tab 1: 创建角色 -->
+        <el-tab-pane label="创建角色" name="role">
+          <div class="rbac-form">
+            <div class="rbac-form-row">
+              <div class="rbac-form-group">
+                <label class="rbac-form-label">角色名称 <span class="rbac-required">*</span></label>
+                <input
+                  v-model="newRole.name"
+                  type="text"
+                  class="rbac-form-input"
+                  placeholder="例如：内容审核员"
+                  maxlength="32"
+                  @keyup.enter="handleCreateSubmit"
+                />
+              </div>
+            </div>
+            <div class="rbac-form-row">
+              <div class="rbac-form-group">
+                <label class="rbac-form-label">角色描述</label>
+                <input
+                  v-model="newRole.description"
+                  type="text"
+                  class="rbac-form-input"
+                  placeholder="简要说明该角色的职责"
+                  maxlength="120"
+                  @keyup.enter="handleCreateSubmit"
+                />
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+        <!-- Tab 2: 新建管理员账号 -->
+        <el-tab-pane label="新建管理员账号" name="user">
+          <div class="rbac-form">
+            <div class="rbac-form-row">
+              <div class="rbac-form-group">
+                <label class="rbac-form-label">用户名 <span class="rbac-required">*</span></label>
+                <input v-model="newUser.username" type="text" class="rbac-form-input"
+                  placeholder="字母或数字，唯一" maxlength="32" @keyup.enter="handleCreateUserSubmit" />
+              </div>
+            </div>
+            <div class="rbac-form-row">
+              <div class="rbac-form-group">
+                <label class="rbac-form-label">角色 <span class="rbac-required">*</span></label>
+                <select v-model="newUser.roleCode" class="rbac-form-input rbac-form-select">
+                  <option value="">请选择角色</option>
+                  <option v-for="r in roles" :key="r.id" :value="r.code">
+                    {{ r.name }}（{{ r.code }}）
+                  </option>
+                </select>
+              </div>
+            </div>
+            <div class="rbac-form-row">
+              <div class="rbac-form-group">
+                <label class="rbac-form-label">姓名 <span class="rbac-required">*</span></label>
+                <input v-model="newUser.name" type="text" class="rbac-form-input"
+                  placeholder="管理员显示名" maxlength="32" @keyup.enter="handleCreateUserSubmit" />
+              </div>
+            </div>
+            <div class="rbac-form-row">
+              <div class="rbac-form-group">
+                <label class="rbac-form-label">邮箱 <span class="rbac-required">*</span></label>
+                <input v-model="newUser.email" type="text" class="rbac-form-input"
+                  placeholder="例如：manager@moyuyo.com" @keyup.enter="handleCreateUserSubmit" />
+              </div>
+            </div>
+            <div class="rbac-form-row">
+              <div class="rbac-form-group">
+                <label class="rbac-form-label">初始密码 <span class="rbac-required">*</span></label>
+                <input v-model="newUser.password" type="password" class="rbac-form-input"
+                  placeholder="至少 12 位" @keyup.enter="handleCreateUserSubmit" />
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
+      <!-- 弹窗底部操作栏：根据当前 Tab 动态切换文案与提交方法 -->
+      <template #footer>
+        <div class="rbac-dialog-footer">
+          <button class="rbac-btn rbac-btn-text" @click="createDialogVisible = false">取消</button>
+          <button
+            v-if="createDialogMode === 'role'"
+            class="rbac-btn rbac-btn-primary"
+            :disabled="creating"
+            @click="handleCreateSubmit"
+          >
+            {{ creating ? '创建中...' : '创建角色' }}
+          </button>
+          <button
+            v-else
+            class="rbac-btn rbac-btn-primary"
+            :disabled="creatingUser"
+            @click="handleCreateUserSubmit"
+          >
+            {{ creatingUser ? '创建中...' : '创建账号' }}
+          </button>
         </div>
-        <svg class="rbac-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 12 15 18 9"/>
+      </template>
+     </el-dialog>
+
+    <!-- 编辑角色（名称/描述）弹窗 -->
+    <el-dialog
+      v-model="editDialogVisible"
+      title="编辑角色"
+      width="480px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <div class="rbac-form">
+        <div class="rbac-form-row">
+          <div class="rbac-form-group">
+            <label class="rbac-form-label">
+              角色名称 <span class="rbac-required">*</span>
+              <span v-if="editTarget && editTarget.isPreset" class="rbac-preset-hint">系统预设</span>
+            </label>
+            <input
+              v-model="editForm.name"
+              type="text"
+              class="rbac-form-input"
+              placeholder="例如：内容审核员"
+              maxlength="32"
+              :disabled="editTarget && editTarget.isPreset"
+              @keyup.enter="handleEditSubmit"
+            />
+            <p v-if="editTarget && editTarget.isPreset" class="rbac-form-help">
+              预设角色名称由系统维护，仅可调整描述。
+            </p>
+          </div>
+        </div>
+        <div class="rbac-form-row">
+          <div class="rbac-form-group">
+            <label class="rbac-form-label">角色描述</label>
+            <input
+              v-model="editForm.description"
+              type="text"
+              class="rbac-form-input"
+              placeholder="简要说明该角色的职责"
+              maxlength="120"
+              @keyup.enter="handleEditSubmit"
+            />
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <div class="rbac-dialog-footer">
+          <button class="rbac-btn rbac-btn-text" @click="editDialogVisible = false">取消</button>
+          <button class="rbac-btn rbac-btn-primary" :disabled="editing" @click="handleEditSubmit">
+            {{ editing ? '保存中...' : '保存修改' }}
+          </button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 查看角色下的成员 -->
+    <el-dialog
+      v-model="membersDialogVisible"
+      :title="membersTitle"
+      width="560px"
+      destroy-on-close
+    >
+      <div v-if="membersLoading" class="rbac-members-loading">加载成员中…</div>
+      <div v-else-if="membersList.length === 0" class="rbac-members-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
         </svg>
+        <p>该角色下还没有关联管理员</p>
       </div>
-      <div class="rbac-collapsible-body" :class="{ open: showCreateForm }">
-        <div class="rbac-form">
-          <div class="rbac-form-row">
-            <div class="rbac-form-group">
-              <label class="rbac-form-label">角色名称</label>
-              <input v-model="newRole.name" type="text" class="rbac-form-input" placeholder="输入角色名称" />
+      <div v-else class="rbac-members-list">
+        <div v-for="m in membersList" :key="m.id" class="rbac-member-item">
+          <div class="rbac-member-avatar">{{ avatarChar(m.name || m.username) }}</div>
+          <div class="rbac-member-info">
+            <div class="rbac-member-name">
+              {{ m.name || m.username }}
+              <span class="rbac-member-status" :class="'status-' + (m.status || '').toLowerCase()">{{ m.status }}</span>
             </div>
+            <div class="rbac-member-meta">{{ m.email || m.username }} · 创建于 {{ formatDate(m.createTime) }}</div>
           </div>
-          <div class="rbac-form-row">
-            <div class="rbac-form-group">
-              <label class="rbac-form-label">角色描述</label>
-              <input v-model="newRole.description" type="text" class="rbac-form-input" placeholder="输入角色描述" />
-            </div>
-          </div>
-          <div class="rbac-form-actions">
-            <button class="rbac-btn rbac-btn-text" @click="cancelCreate">取消</button>
-            <button class="rbac-btn rbac-btn-primary" @click="handleCreateSubmit">创建角色</button>
+          <!-- 单个成员的操作按钮组：重置密码 + 删除人员 -->
+          <div class="rbac-member-actions">
+            <button
+              class="rbac-btn-sm rbac-btn-gray"
+              :disabled="resettingPwdUserId === m.id || deletingUserId === m.id"
+              title="重置密码"
+              @click="openResetPwdDialog(m)"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              {{ resettingPwdUserId === m.id ? '重置中...' : '重置密码' }}
+            </button>
+            <!-- 单个成员的删除按钮：二次确认后调用后端 DELETE /rbac/users/{id} -->
+            <!-- 系统唯一 SUPER_ADMIN 不允许删除，由后端兜底；前端同时禁用 + 提示 -->
+            <button
+              class="rbac-btn-sm rbac-btn-danger"
+              :disabled="deletingUserId === m.id || m.role === 'SUPER_ADMIN'"
+              :title="m.role === 'SUPER_ADMIN' ? '系统超级管理员不允许删除' : '删除人员'"
+              @click="handleDeleteMember(m)"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6"/>
+                <path d="M14 11v6"/>
+                <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+              </svg>
+              {{ deletingUserId === m.id ? '删除中...' : '删除人员' }}
+            </button>
           </div>
         </div>
       </div>
-    </div>
+      <template #footer>
+        <div class="rbac-dialog-footer">
+          <button class="rbac-btn rbac-btn-text" @click="membersDialogVisible = false">关闭</button>
+          <!-- 新建管理员账号入口已迁移到"新建角色"合并弹窗的 Tab -->
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 新建管理员账号 已合并到创建角色弹窗 Tab -->
+
+
+    <!-- 重置成员密码 -->
+    <el-dialog
+      v-model="resetPwdDialogVisible"
+      :title="resetPwdDialogTitle"
+      width="440px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <div class="rbac-form">
+        <div class="rbac-form-row">
+          <div class="rbac-form-group">
+            <label class="rbac-form-label">账号</label>
+            <input
+              class="rbac-form-input"
+              :value="resetPwdTarget ? (resetPwdTarget.name || resetPwdTarget.username) : ''"
+              disabled
+            />
+          </div>
+        </div>
+        <div class="rbac-form-row">
+          <div class="rbac-form-group">
+            <label class="rbac-form-label">新密码 <span class="rbac-required">*</span></label>
+            <input
+              v-model="resetPwdNew"
+              type="password"
+              class="rbac-form-input"
+              placeholder="至少 12 位，建议包含大小写+数字+符号"
+              @keyup.enter="handleResetPwdSubmit"
+            />
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <div class="rbac-dialog-footer">
+          <button class="rbac-btn rbac-btn-text" @click="resetPwdDialogVisible = false">取消</button>
+          <button class="rbac-btn rbac-btn-primary" :disabled="resettingPwd" @click="handleResetPwdSubmit">
+            {{ resettingPwd ? '重置中...' : '确认重置' }}
+          </button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  getRbacRoles, createRbacRole, getRolePermissions, updateRolePermissions
+  getRbacRoles, createRbacRole, updateRbacRole, deleteRbacRole, getRbacRoleMembers, createRbacUser, resetRbacUserPassword, deleteRbacUser, getRolePermissions, updateRolePermissions
 } from '../api/admin'
 
 // ---- 角色列表（从API获取） ----
@@ -303,7 +560,51 @@ const permModules = [
 
 // ---- 选中角色 ----
 const selectedRole = ref(null)
-const showCreateForm = ref(false)
+// 弹窗可见性
+const createDialogVisible = ref(false)
+// 提交中的 loading 状态
+const creating = ref(false)
+// 当前正在删除的角色 id（用于按钮 disabled 与文案切换）
+const deletingId = ref(null)
+
+// ---- 编辑角色弹窗状态 ----
+const editDialogVisible = ref(false)
+const editing = ref(false)
+const editTarget = ref(null)
+const editForm = reactive({ name: '', description: '' })
+
+// ---- 查看成员弹窗状态 ----
+const membersDialogVisible = ref(false)
+const membersLoading = ref(false)
+const membersList = ref([])
+const membersTitle = computed(() => {
+  return editTarget.value && membersDialogVisible.value
+    ? `角色成员：${editTarget.value.name}`
+    : '角色成员'
+})
+
+// ---- 新建管理员账号弹窗 ----
+const createUserDialogVisible = ref(false)
+const creatingUser = ref(false)
+const newUser = reactive({ username: '', name: '', email: '', password: '', roleCode: '' })
+const createUserDialogTitle = computed(() => {
+  return editTarget.value
+    ? `新建管理员账号（绑定到「${editTarget.value.name}」）`
+    : '新建管理员账号'
+})
+
+// ---- 重置成员密码弹窗 ----
+const resetPwdDialogVisible = ref(false)
+const resettingPwd = ref(false)
+const resettingPwdUserId = ref(null)
+// 当前正在删除的成员 id（用于按钮 disabled 与文案切换）
+const deletingUserId = ref(null)
+const resetPwdTarget = ref(null)
+const resetPwdNew = ref('')
+const resetPwdDialogTitle = computed(() => {
+  const t = resetPwdTarget.value
+  return t ? `重置密码：${t.name || t.username}` : '重置密码'
+})
 
 const newRole = reactive({
   name: '',
@@ -316,6 +617,7 @@ async function loadRoles() {
     const data = await getRbacRoles()
     roles.value = (data || []).map(role => ({
       id: role.id,
+      code: role.code, // 保留角色编码：新建管理员账号弹窗 <option :value="r.code"> 需要它
       name: role.name,
       description: role.description || '暂无描述',
       userCount: role.userCount ?? 0,
@@ -378,34 +680,295 @@ async function handleSavePerms() {
 }
 
 // ---- 查看成员 ----
-function handleViewMembers(role) {
-  ElMessage.info(`「${role.name}」共有 ${role.userCount} 名成员`)
+// ---- 编辑角色：打开弹窗 ----
+function openEditDialog(role) {
+  editTarget.value = role
+  editForm.name = role.name || ''
+  editForm.description = role.description || ''
+  editDialogVisible.value = true
+  // 弹窗打开后聚焦到第一个输入框
+  nextTick(() => {
+    const input = document.querySelector('.el-dialog__body .rbac-form-input')
+    if (input && !input.disabled) input.focus()
+  })
 }
 
-// ---- 新建角色 ----
-function handleCreateRole() {
-  showCreateForm.value = !showCreateForm.value
-  if (!showCreateForm.value) {
-    newRole.name = ''
-    newRole.description = ''
+async function handleEditSubmit() {
+  if (editing.value) return
+  if (!editTarget.value) return
+  const name = (editForm.name || '').trim()
+  if (!name) {
+    ElMessage.warning('请输入角色名称')
+    return
+  }
+  editing.value = true
+  try {
+    const updated = await updateRbacRole(editTarget.value.id, {
+      name,
+      description: (editForm.description || '').trim() || '暂无描述'
+    })
+    // 同步更新本地列表中的该角色
+    const idx = roles.value.findIndex(r => r.id === editTarget.value.id)
+    if (idx > -1) {
+      roles.value[idx].name = updated.name || name
+      roles.value[idx].description = (editForm.description || '').trim() || '暂无描述'
+    }
+    // 若被编辑的是当前选中角色，同步刷新右侧 header
+    if (selectedRole.value && selectedRole.value.id === editTarget.value.id) {
+      selectedRole.value = { ...selectedRole.value, name: roles.value[idx]?.name || name }
+    }
+    ElMessage.success(`角色「${name}」修改成功`)
+    editDialogVisible.value = false
+  } catch (e) {
+    const msg = (e && e.message) || ''
+    // 后端校验类错误（400/409）会进入 message，提取更具体的提示
+    ElMessage.error(msg.includes('更新角色失败') ? msg : '修改角色失败')
+  } finally {
+    editing.value = false
   }
 }
 
+// ---- 查看成员：弹窗加载该角色关联的管理员 ----
+async function openMembersDialog(role) {
+  editTarget.value = role
+  membersList.value = []
+  membersDialogVisible.value = true
+  membersLoading.value = true
+  try {
+    const list = await getRbacRoleMembers(role.id)
+    membersList.value = (list || []).map(u => ({
+      ...u,
+      createTime: u.createTime || u.lastLoginTime || null
+    }))
+  } catch (e) {
+    ElMessage.error('获取成员失败')
+  } finally {
+    membersLoading.value = false
+  }
+}
+
+// 取首字符作为头像文案，兼容中文与英文
+function avatarChar(s) {
+  if (!s) return '?'
+  const str = String(s).trim()
+  return str.charAt(0).toUpperCase() || '?'
+}
+
+// 简单格式化日期：YYYY-MM-DD HH:mm
+function formatDate(d) {
+  if (!d) return '-'
+  try {
+    const dt = new Date(d)
+    if (isNaN(dt.getTime())) return '-'
+    const pad = n => String(n).padStart(2, '0')
+    return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`
+  } catch (e) {
+    return '-'
+  }
+}
+
+// ---- 新建管理员账号：弹窗提交，调用 createRbacUser ----
+// 此入口已迁移到"创建角色"合并弹窗内的 Tab "新建管理员账号"。
+// 保留 openCreateUserDialog 函数供其他地方复用，默认行为：打开合并弹窗并切到 user tab。
+const createDialogMode = ref('role') // 'role' | 'user'
+
+function openCreateUserDialog() {
+  // 不再独立打开弹窗：统一进入合并弹窗并切换到"新建管理员账号"Tab
+  createDialogMode.value = 'user'
+  newUser.username = ''
+  newUser.name = ''
+  newUser.email = ''
+  newUser.password = ''
+  // 默认绑定当前选中的角色（如果有）；避免用户每次都要重新选择
+  newUser.roleCode = editTarget.value ? editTarget.value.code : ''
+  createDialogVisible.value = true
+  nextTick(() => {
+    const input = document.querySelector('.el-dialog__body .rbac-form-input')
+    if (input) input.focus()
+  })
+}
+
+function onCreateDialogClosed() {
+  // 关闭后重置 Tab 状态，避免下次打开时还是停留在 user
+  createDialogMode.value = 'role'
+}
+
+// 判断角色是否超级管理员（code === 'SUPER_ADMIN'）
+// 用于：隐藏删除按钮、显示"不可删除"徽章
+function isSuperAdminRole(role) {
+  return role && (role.code === 'SUPER_ADMIN' || role.id === 1)
+}
+
+async function handleCreateUserSubmit() {
+  if (creatingUser.value) return
+  // 基础校验
+  const username = (newUser.username || '').trim()
+  const name = (newUser.name || '').trim()
+  const email = (newUser.email || '').trim()
+  const password = (newUser.password || '').trim()
+  if (!username) {
+    ElMessage.warning('请输入用户名')
+    return
+  }
+  if (!name) {
+    ElMessage.warning('请输入姓名')
+    return
+  }
+  // 简单邮箱格式校验，避免让后端兜底
+  if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) {
+    ElMessage.warning('邮箱格式不正确')
+    return
+  }
+  if (password.length < 12) {
+    ElMessage.warning('初始密码至少 12 位')
+    return
+  }
+  // 角色 code：优先用表单上的 roleCode（独立弹窗场景），否则用当前选中角色
+  let roleCode = (newUser.roleCode || '').trim()
+  if (!roleCode && editTarget.value) roleCode = editTarget.value.code
+  if (!roleCode) {
+    ElMessage.warning('请选择角色')
+    return
+  }
+  creatingUser.value = true
+  try {
+    // 后端 createUser 接收 Map<String, Object>；admin_user.role 字段必须为 RBAC 角色 code（如 SUPER_ADMIN）
+    // 不能传 role.name（中文），否则后端会拒绝（无效的角色编码）
+    await createRbacUser({
+      username,
+      name,
+      email,
+      password,
+      role: roleCode,
+      status: 'ACTIVE'
+    })
+    ElMessage.success(`管理员账号「${name}」创建成功`)
+    // 关闭合并弹窗
+    createDialogVisible.value = false
+    // 如果是当前查看成员列表的弹窗场景，刷新成员列表
+    if (editTarget.value) {
+      await openMembersDialog(editTarget.value)
+    }
+    // 同步刷新左侧角色列表的 userCount
+    await loadRoles()
+  } catch (e) {
+    const msg = (e && e.message) || ''
+    ElMessage.error(msg.includes('创建管理员') || msg.includes('新建管理员') ? msg : '创建管理员账号失败')
+  } finally {
+    creatingUser.value = false
+  }
+}
+
+// ---- 重置成员密码 ----
+function openResetPwdDialog(member) {
+  resetPwdTarget.value = member
+  resetPwdNew.value = ''
+  resetPwdDialogVisible.value = true
+  nextTick(() => {
+    const input = document.querySelectorAll('.el-dialog__body .rbac-form-input')[1]
+    if (input) input.focus()
+  })
+}
+
+async function handleResetPwdSubmit() {
+  if (resettingPwd.value) return
+  if (!resetPwdTarget.value) return
+  const newPwd = (resetPwdNew.value || '').trim()
+  if (newPwd.length < 12) {
+    ElMessage.warning('新密码至少 12 位')
+    return
+  }
+  resettingPwd.value = true
+  resettingPwdUserId.value = resetPwdTarget.value.id
+  try {
+    await resetRbacUserPassword(resetPwdTarget.value.id, { password: newPwd })
+    ElMessage.success(`已重置「${resetPwdTarget.value.name || resetPwdTarget.value.username}」的密码`)
+    resetPwdDialogVisible.value = false
+    resetPwdTarget.value = null
+    resetPwdNew.value = ''
+  } catch (e) {
+    const msg = (e && e.message) || ''
+    ElMessage.error(msg.includes('重置') ? msg : '重置密码失败')
+  } finally {
+    resettingPwd.value = false
+    resettingPwdUserId.value = null
+  }
+}
+
+// ---- 删除单个成员：二次确认 + 调后端接口 ----
+async function handleDeleteMember(member) {
+  if (deletingUserId.value) return
+  if (!member || !member.id) return
+  // 系统唯一 SUPER_ADMIN 不允许删除：后端会兜底，但前端也阻止避免误操作
+  if (member.role === 'SUPER_ADMIN') {
+    ElMessage.warning('系统超级管理员不允许删除')
+    return
+  }
+  const displayName = member.name || member.username
+  try {
+    await ElMessageBox.confirm(
+      `确定删除管理员「${displayName}」吗？该账号将被永久移除，无法恢复。`,
+      '删除人员确认',
+      {
+        type: 'warning',
+        confirmButtonText: '确认删除',
+        cancelButtonText: '取消',
+        confirmButtonClass: 'rbac-danger-confirm',
+        dangerouslyUseHTMLString: false
+      }
+    )
+  } catch (e) {
+    // 用户取消
+    return
+  }
+  deletingUserId.value = member.id
+  try {
+    await deleteRbacUser(member.id)
+    ElMessage.success(`已删除「${displayName}」`)
+    // 刷新当前角色成员列表与左侧角色 userCount
+    if (editTarget.value) {
+      await openMembersDialog(editTarget.value)
+    }
+    await loadRoles()
+  } catch (e) {
+    const msg = (e && e.message) || ''
+    ElMessage.error(msg.includes('删除管理员') || msg.includes('无权删除') ? msg : '删除成员失败')
+  } finally {
+    deletingUserId.value = null
+  }
+}
+
+// ---- 新建角色：打开弹窗 ----
+function openCreateDialog() {
+  // 重置表单
+  newRole.name = ''
+  newRole.description = ''
+  createDialogVisible.value = true
+  // 弹窗打开后自动聚焦到名称输入框
+  nextTick(() => {
+    const input = document.querySelector('.rbac-form-input')
+    if (input) input.focus()
+  })
+}
+
 function cancelCreate() {
-  showCreateForm.value = false
+  createDialogVisible.value = false
   newRole.name = ''
   newRole.description = ''
 }
 
 async function handleCreateSubmit() {
-  if (!newRole.name.trim()) {
+  if (creating.value) return
+  const name = (newRole.name || '').trim()
+  if (!name) {
     ElMessage.warning('请输入角色名称')
     return
   }
+  creating.value = true
   try {
     const created = await createRbacRole({
-      name: newRole.name,
-      description: newRole.description || '暂无描述'
+      name,
+      description: (newRole.description || '').trim() || '暂无描述'
     })
     // 将新角色加入到本地列表
     roles.value.push({
@@ -416,12 +979,64 @@ async function handleCreateSubmit() {
       isPreset: created.isPreset ?? false,
       permissions: created.permissions || []
     })
-    ElMessage.success(`角色「${newRole.name}」创建成功`)
+    ElMessage.success(`角色「${name}」创建成功`)
     newRole.name = ''
     newRole.description = ''
-    showCreateForm.value = false
+    createDialogVisible.value = false
   } catch (e) {
     ElMessage.error('创建角色失败')
+  } finally {
+    creating.value = false
+  }
+}
+
+// ---- 删除角色：二次确认防止误操作 ----
+async function handleDeleteRole(role) {
+  // 系统预设角色不允许删除（前端兜底 + 后端再校验）
+  if (role.isPreset) {
+    ElMessage.warning('系统预设角色不可删除')
+    return
+  }
+  // 若该角色下还有用户，提示先解绑
+  const userCount = role.userCount ?? 0
+  let confirmText
+  if (userCount > 0) {
+    confirmText = `「${role.name}」当前已关联 ${userCount} 名管理员，删除后这些管理员将失去该角色及其所有权限。是否继续？`
+  } else {
+    confirmText = `确定删除角色「${role.name}」吗？删除后不可恢复。`
+  }
+  try {
+    await ElMessageBox.confirm(confirmText, '删除角色确认', {
+      type: 'warning',
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消',
+      confirmButtonClass: 'rbac-danger-confirm',
+      dangerouslyUseHTMLString: false
+    })
+  } catch (e) {
+    // 用户取消
+    return
+  }
+  deletingId.value = role.id
+  try {
+    await deleteRbacRole(role.id)
+    // 从本地列表移除
+    const idx = roles.value.findIndex(r => r.id === role.id)
+    if (idx > -1) {
+      roles.value.splice(idx, 1)
+    }
+    // 若被删除的是当前选中角色，清空右侧面板
+    if (selectedRole.value && selectedRole.value.id === role.id) {
+      selectedRole.value = null
+      currentPermKeys.value = []
+    }
+    ElMessage.success(`角色「${role.name}」删除成功`)
+  } catch (e) {
+    // 后端在校验失败时会返回"删除角色失败: xxx"，提取 msg 给用户
+    const msg = (e && e.message) || ''
+    ElMessage.error(msg.includes('删除角色失败') ? msg : '删除角色失败')
+  } finally {
+    deletingId.value = null
   }
 }
 
@@ -595,6 +1210,24 @@ onMounted(() => {
   height: 12px;
 }
 
+/* 超级管理员"不可删除"徽章已移除 */
+
+/* "创建角色"弹窗的 Tab 样式 */
+.rbac-create-tabs {
+  margin: -10px 0 12px;
+}
+.rbac-create-tabs :deep(.el-tabs__header) {
+  margin-bottom: 4px;
+}
+.rbac-form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238e8e93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
 .rbac-role-desc {
   font-size: 12px;
   color: var(--text-500);
@@ -691,6 +1324,22 @@ onMounted(() => {
   color: var(--text-400);
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+/* ---- 危险按钮（删除） ---- */
+.rbac-btn-danger {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.rbac-btn-danger:hover {
+  background: #fecaca;
+}
+
+.rbac-btn-danger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #fee2e2;
 }
 
 /* ---- 右列 ---- */
@@ -860,87 +1509,53 @@ onMounted(() => {
   opacity: 0.7;
 }
 
-/* ---- 新建角色折叠表单 ---- */
-.rbac-collapsible {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--card);
-  box-shadow: var(--shadow-sm);
-  margin-top: 24px;
-  overflow: hidden;
-}
-
-.rbac-collapsible-header {
+/* ---- 新建角色弹窗 ---- */
+.rbac-dialog-footer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  cursor: pointer;
-  user-select: none;
-  transition: background-color 0.15s ease;
-}
-
-.rbac-collapsible-header:hover {
-  background: var(--background-100);
-}
-
-.rbac-collapsible-header svg {
-  width: 20px;
-  height: 20px;
-  color: var(--primary);
-}
-
-.rbac-collapsible-header-left {
-  display: flex;
-  align-items: center;
+  justify-content: flex-end;
   gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-800);
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.rbac-chevron {
-  width: 18px;
-  height: 18px;
-  color: var(--text-400);
-  transition: transform 0.25s ease;
+/* 兜底：确保 el-dialog 内部的 footer 插槽始终可见、不会被裁剪或被 el-tabs 撑开的 body 顶出可视区 */
+:deep(.el-dialog .el-dialog__footer) {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--background-50);
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
 }
 
-.rbac-collapsible.open .rbac-chevron {
-  transform: rotate(180deg);
-}
-
-.rbac-collapsible-body {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease;
-}
-
-.rbac-collapsible-body.open {
-  max-height: 300px;
-}
-
-/* ---- 表单 ---- */
+/* ---- 表单（弹窗内部） ---- */
 .rbac-form {
-  padding: 0 18px 18px;
+  padding: 4px 2px 0;
 }
 
 .rbac-form-row {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.rbac-form-row:last-child {
+  margin-bottom: 0;
 }
 
 .rbac-form-group {
-  flex: 1;
+  width: 100%;
 }
 
 .rbac-form-label {
   display: block;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text-500);
-  margin-bottom: 6px;
+  color: var(--text-700);
+  margin-bottom: 8px;
+}
+
+.rbac-required {
+  color: #ef4444;
+  margin-left: 2px;
 }
 
 .rbac-form-input {
@@ -960,17 +1575,145 @@ onMounted(() => {
 
 .rbac-form-input:focus {
   border-color: var(--ring);
-  box-shadow: 0 0 0 1px var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 25%, transparent);
 }
 
 .rbac-form-input::placeholder {
   color: var(--text-400);
 }
 
-.rbac-form-actions {
+.rbac-form-input:disabled {
+  background: var(--background-100);
+  color: var(--text-400);
+  cursor: not-allowed;
+}
+
+.rbac-preset-hint {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--brand-600);
+  background: var(--brand-50);
+  border-radius: 999px;
+  padding: 1px 8px;
+  margin-left: 8px;
+}
+
+.rbac-form-help {
+  font-size: 12px;
+  color: var(--text-400);
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+/* ---- 查看成员弹窗 ---- */
+.rbac-members-loading,
+.rbac-members-empty {
+  padding: 32px 0;
+  text-align: center;
+  color: var(--text-400);
+  font-size: 13px;
+}
+
+.rbac-members-empty svg {
+  width: 48px;
+  height: 48px;
+  opacity: 0.35;
+  margin-bottom: 8px;
+  color: var(--text-400);
+}
+
+.rbac-members-empty p {
+  margin: 0;
+}
+
+.rbac-members-list {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.rbac-member-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--background);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rbac-member-item > .rbac-btn-sm {
+  flex-shrink: 0;
+}
+
+.rbac-member-item > .rbac-member-actions {
+  margin-left: auto;
+  display: inline-flex;
   gap: 8px;
-  margin-top: 8px;
+  flex-shrink: 0;
+}
+
+.rbac-member-item:hover {
+  border-color: var(--brand-200);
+  box-shadow: var(--shadow-xs);
+}
+
+.rbac-member-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--brand-500), var(--primary));
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rbac-member-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rbac-member-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-800);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rbac-member-status {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--background-200);
+  color: var(--text-500);
+}
+
+.rbac-member-status.status-active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.rbac-member-status.status-disabled {
+  background: var(--background-200);
+  color: var(--text-400);
+}
+
+.rbac-member-meta {
+  font-size: 12px;
+  color: var(--text-400);
+  margin-top: 4px;
 }
 </style>

@@ -1,6 +1,7 @@
 package com.moyuyo.service.admin;
 
 import com.moyuyo.dao.admin.entity.TicketEntity;
+import com.moyuyo.dao.admin.entity.TicketMessageEntity;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,7 +38,17 @@ public interface AdminTicketService {
   void assignAgent(Long id, String agent);
 
   /**
-   * 追加客服回复并自动计算首响耗时
+   * 分配客服（基于 admin_user.id，会校验该用户存在 + 角色属于客服/管理员）
+   */
+  void assignToOperator(Long id, Long operatorId);
+
+  /**
+   * 追加客服回复并自动计算首响耗时（同时把回复写入 mo_ticket_message 表形成历史）
    */
   void appendReply(Long id, String content, LocalDateTime replyAt);
+
+  /**
+   * 获取工单的历史消息列表（按时间升序）
+   */
+  List<TicketMessageEntity> listMessages(Long ticketId);
 }

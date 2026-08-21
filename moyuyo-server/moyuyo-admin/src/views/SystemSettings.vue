@@ -32,7 +32,8 @@
               <div class="role-item" v-for="role in roles" :key="role.name">
                 <div class="role-info">
                   <span class="role-name">{{ role.name }}</span>
-                  <span class="role-count">{{ role.count }} 人</span>
+                  <!-- 后端 /api/admin/rbac/roles 返回 userCount 字段，与右侧 RBAC 页面保持一致 -->
+                  <span class="role-count">{{ (role.userCount ?? 0) }} 人</span>
                 </div>
               </div>
             </div>
@@ -82,15 +83,39 @@
         <div class="card">
           <div class="card-header">
             <h3>安全设置</h3>
+            <button class="btn btn-sm btn-primary" :disabled="savingSecurity" @click="handleSaveSecurity">
+              {{ savingSecurity ? '保存中...' : '保存设置' }}
+            </button>
           </div>
           <div class="card-body">
-            <div class="security-list">
-              <div class="security-item" v-for="item in securityConfig" :key="item.label">
+            <div v-if="securityLoading" class="security-loading">加载中…</div>
+            <div v-else class="security-list">
+              <div class="security-item" v-for="item in securityConfig" :key="item.key">
                 <div class="security-info">
                   <div class="security-label">{{ item.label }}</div>
                   <div class="security-desc">{{ item.desc }}</div>
                 </div>
-                <span :class="'tag tag-' + (item.statusType || 'gray')">{{ item.status }}</span>
+                <div class="security-control">
+                  <template v-if="item.type === 'select' && item.options">
+                    <select class="security-select" v-model="item.value">
+                      <option v-for="opt in item.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                    </select>
+                  </template>
+                  <template v-else-if="item.type === 'number'">
+                    <input
+                      class="security-input"
+                      type="number"
+                      v-model.number="item.value"
+                      :min="item.min"
+                      :max="item.max"
+                      :step="item.step || 1"
+                    />
+                    <span class="security-unit" v-if="item.unit">{{ item.unit }}</span>
+                  </template>
+                  <template v-else>
+                    <input class="security-input" type="text" v-model="item.value" />
+                  </template>
+                </div>
               </div>
             </div>
           </div>
@@ -119,7 +144,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getSystemLogs, getRbacRoles, getPermissions, getSecurityConfig, getSystemInfo, saveSystemConfig } from '../api/admin'
+import { getSystemLogs, getRbacRoles, getPermissions, getSecurityConfig, saveSecurityConfig, getSystemInfo, saveSystemConfig } from '../api/admin'
 import { toArray } from '../utils/safeArray'
 import { getAdminInfo } from '../api/auth'
 
@@ -130,8 +155,43 @@ const recentLogs = ref([])
 const permissions = ref([])
 const adminInfo = ref({ name: '', email: '', role: '' })
 const securityConfig = ref([])
+const securityLoading = ref(false)
+const savingSecurity = ref(false)
 const systemInfo = ref({ version: '', dbStatus: '', cacheStatus: '', lastBackup: '' })
 const savingPermissions = ref(false)
+
+// 安全设置字段 UI 元数据：与后端 /system-info/security-config 返回的 key 对应
+// type=select -> 下拉；type=number -> 数字输入；其他 -> 文本输入
+const SECURITY_FIELD_META = {
+  password_policy: {
+    label: '密码策略',
+    type: 'select',
+    description: '新管理员/重置密码时使用的复杂度规则',
+    options: [
+      { value: 'low', label: '低（≥6 位）' },
+      { value: 'medium', label: '中（≥8 位，含字母+数字）' },
+      { value: 'strong', label: '高（≥12 位，含大小写+数字+符号）' }
+    ]
+  },
+  session_timeout: {
+    label: '会话超时时间',
+    type: 'number',
+    description: '超过该时长（分钟）未操作则强制退出登录',
+    unit: '分钟',
+    min: 5,
+    max: 1440,
+    step: 5
+  },
+  max_login_attempts: {
+    label: '最大登录尝试次数',
+    type: 'number',
+    description: '连续失败达到上限后锁定账号 30 分钟',
+    unit: '次',
+    min: 1,
+    max: 20,
+    step: 1
+  }
+}
 
 // 加载角色列表
 async function loadRoles() {
@@ -165,27 +225,57 @@ async function loadAdminInfo() {
 
 // 加载安全设置
 async function loadSecurityConfig() {
+  securityLoading.value = true
   try {
     const res = await getSecurityConfig()
-    // 将后端返回的数据映射为前端期望的 { label, desc, status, statusType } 格式
-    if (Array.isArray(res)) {
-      securityConfig.value = res.map(item => ({
-        label: item.label || item.key || item.name || '',
-        desc: item.desc || item.description || '',
-        status: item.status === true || item.status === 'true' || item.enabled ? '已启用' : '已禁用',
-        statusType: item.status === true || item.status === 'true' || item.enabled ? 'green' : 'gray'
-      }))
-    } else if (res && typeof res === 'object') {
-      // 尝试从对象中提取安全设置
-      securityConfig.value = Object.entries(res).map(([key, value]) => ({
-        label: key,
-        desc: typeof value === 'object' ? (value.description || '') : '',
-        status: typeof value === 'object' ? (value.enabled ? '已启用' : '已禁用') : '已启用',
-        statusType: typeof value === 'object' ? (value.enabled ? 'green' : 'gray') : 'green'
-      }))
-    }
+    // 后端返回 List<{key, value, description}>，与 SECURITY_FIELD_META 合并得到完整 UI 字段
+    const list = Array.isArray(res) ? res : []
+    securityConfig.value = list
+      .filter(item => item && item.key)
+      .map(item => {
+        const meta = SECURITY_FIELD_META[item.key] || {}
+        // 后端返回的是字符串，比如 "medium" / "30"；number 类型字段需要 Number()
+        let value = item.value
+        if (meta.type === 'number') {
+          const num = Number(value)
+          value = isNaN(num) ? (meta.min ?? 0) : num
+        }
+        return {
+          key: item.key,
+          label: meta.label || item.key,
+          type: meta.type || 'text',
+          desc: meta.description || item.description || '',
+          value,
+          options: meta.options,
+          min: meta.min,
+          max: meta.max,
+          step: meta.step,
+          unit: meta.unit
+        }
+      })
   } catch (e) {
     ElMessage.error('获取安全设置失败')
+  } finally {
+    securityLoading.value = false
+  }
+}
+
+// 保存安全设置：把当前表单值按 [{key, value, description}] 格式回传
+async function handleSaveSecurity() {
+  if (savingSecurity.value) return
+  savingSecurity.value = true
+  try {
+    const payload = securityConfig.value.map(item => ({
+      key: item.key,
+      value: String(item.value ?? ''),
+      description: item.desc || ''
+    }))
+    await saveSecurityConfig(payload)
+    ElMessage.success('安全设置已保存')
+  } catch (e) {
+    ElMessage.error('保存安全设置失败: ' + (e.message || '未知错误'))
+  } finally {
+    savingSecurity.value = false
   }
 }
 
@@ -431,12 +521,50 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--background-100);
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.security-item:last-child { border-bottom: none; }
+
+.security-loading {
+  padding: 20px 0;
+  text-align: center;
+  color: var(--text-400);
+  font-size: 13px;
 }
 
-.security-item:last-child {
-  border-bottom: none;
+.security-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.security-input,
+.security-select {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-sm);
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 13px;
+  font-family: inherit;
+  width: 140px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.security-input:focus,
+.security-select:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 25%, transparent);
+}
+
+.security-unit {
+  font-size: 12px;
+  color: var(--text-400);
 }
 
 .security-label {

@@ -6,6 +6,7 @@ import com.moyuyo.dao.admin.entity.AdminPermissionEntity;
 import com.moyuyo.dao.admin.entity.AdminRoleEntity;
 import com.moyuyo.dao.admin.entity.AdminUserEntity;
 import com.moyuyo.dao.admin.mapper.AdminPermissionMapper;
+import com.moyuyo.dao.admin.mapper.AdminRoleMapper;
 import com.moyuyo.dao.admin.mapper.AdminUserMapper;
 import com.moyuyo.service.admin.AdminRoleService;
 import com.moyuyo.service.admin.AdminStaffService;
@@ -27,6 +28,7 @@ public class AdminRbacController {
   private final AdminStaffService adminStaffService;
   private final AdminUserMapper adminUserMapper;
   private final AdminPermissionMapper adminPermissionMapper;
+  private final AdminRoleMapper adminRoleMapper;
 
   /** 资源名中文映射（key 为 URL 模块段，即权限 resource） */
   private static final Map<String, String> RESOURCE_NAME_MAP = Map.ofEntries(
@@ -148,15 +150,38 @@ public class AdminRbacController {
   @PutMapping("/roles/{id}")
   public Result<Map<String, Object>> updateRole(@PathVariable Long id, @RequestBody Map<String, Object> body) {
     try {
+      AdminRoleEntity old = adminRoleMapper.selectById(id);
+      if (old == null) {
+        return Result.error(404, "角色不存在: " + id);
+      }
+      // 预设角色禁止改名/修改（前端 UI 也限制，但后端兜底）
+      if (Boolean.TRUE.equals(old.getIsPreset())) {
+        // 仅允许修改描述，不允许动 name/code
+        String desc = (String) body.get("description");
+        if (desc != null) {
+          AdminRoleEntity entity = new AdminRoleEntity();
+          entity.setId(id);
+          entity.setName(old.getName());
+          entity.setCode(old.getCode());
+          entity.setDescription(desc);
+          adminRoleService.update(entity);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", id);
+        result.put("name", old.getName());
+        result.put("message", "预设角色仅描述可修改");
+        return Result.success(result);
+      }
       AdminRoleEntity entity = new AdminRoleEntity();
       entity.setId(id);
       entity.setName((String) body.get("name"));
-      // code 也需写入，避免被 NULL 覆盖
+      // code 仅在显式传入时覆盖；前端不传则保持原值，避免误改数据库 code
       String code = (String) body.get("code");
-      if (code == null || code.isEmpty()) {
-        code = entity.getName();
+      if (code != null && !code.isEmpty()) {
+        entity.setCode(code);
+      } else {
+        entity.setCode(old.getCode());
       }
-      entity.setCode(code);
       entity.setDescription((String) body.get("description"));
       Object statusVal = body.get("status");
       if (statusVal != null) {
@@ -169,11 +194,41 @@ public class AdminRbacController {
       adminRoleService.update(entity);
       Map<String, Object> result = new LinkedHashMap<>();
       result.put("id", id);
-      result.put("name", body.get("name"));
+      result.put("name", entity.getName());
       result.put("message", "角色更新成功");
       return Result.success(result);
+    } catch (IllegalArgumentException e) {
+      return Result.error(400, e.getMessage());
     } catch (Exception e) {
       return Result.error("更新角色失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "获取角色下的成员（按角色 name 匹配 admin_user.role）")
+  @GetMapping("/roles/{id}/members")
+  public Result<List<Map<String, Object>>> roleMembers(@PathVariable Long id) {
+    try {
+      AdminRoleEntity role = adminRoleMapper.selectById(id);
+      if (role == null) {
+        return Result.error(404, "角色不存在: " + id);
+      }
+      List<AdminUserEntity> admins = adminRoleService.listAdminsByRoleName(role.getCode());
+      List<Map<String, Object>> list = new ArrayList<>();
+      for (AdminUserEntity u : admins) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", u.getId());
+        item.put("username", u.getUsername());
+        item.put("name", u.getName());
+        item.put("email", u.getEmail());
+        item.put("role", u.getRole()); // 返回角色编码，便于前端识别 SUPER_ADMIN 并禁用其删除按钮
+        item.put("status", u.getStatus());
+        item.put("lastLoginTime", u.getLastLoginTime());
+        item.put("createTime", u.getCreateTime());
+        list.add(item);
+      }
+      return Result.success(list);
+    } catch (Exception e) {
+      return Result.error("查询成员失败: " + e.getMessage());
     }
   }
 
@@ -186,6 +241,9 @@ public class AdminRbacController {
       result.put("id", id);
       result.put("message", "角色删除成功");
       return Result.success(result);
+    } catch (IllegalArgumentException e) {
+      // 预设角色不可删 / 角色不存在 等业务校验，统一返 400
+      return Result.error(400, e.getMessage());
     } catch (Exception e) {
       return Result.error("删除角色失败: " + e.getMessage());
     }
@@ -274,6 +332,11 @@ public class AdminRbacController {
     try {
       Map<String, Object> result = adminStaffService.createUser(body);
       return Result.success(result);
+    } catch (IllegalArgumentException e) {
+      // 业务校验失败（角色非法、姓名/邮箱为空等）：用 400 业务错误
+      return Result.error(400, e.getMessage());
+    } catch (org.springframework.security.access.AccessDeniedException e) {
+      return Result.error(403, e.getMessage());
     } catch (Exception e) {
       return Result.error("创建管理员失败: " + e.getMessage());
     }
@@ -354,14 +417,15 @@ public class AdminRbacController {
     Map<String, Object> item = new LinkedHashMap<>();
     item.put("id", e.getId());
     item.put("name", e.getName());
+    item.put("code", e.getCode());  // 前端用于判断是否是 SUPER_ADMIN
     item.put("description", e.getDescription());
     item.put("status", e.getStatus());
     item.put("createTime", e.getCreateTime());
 
-    // 统计该角色下的管理员用户数量
+    // 统计该角色下的管理员用户数量（按角色 code 匹配，与 admin_user.role 字段语义一致）
     Long userCount = adminUserMapper.selectCount(
         new LambdaQueryWrapper<AdminUserEntity>()
-            .eq(AdminUserEntity::getRole, e.getName())
+            .eq(AdminUserEntity::getRole, e.getCode())
     );
     item.put("userCount", userCount != null ? userCount.intValue() : 0);
 

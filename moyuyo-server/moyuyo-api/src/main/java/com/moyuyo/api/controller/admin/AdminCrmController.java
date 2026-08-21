@@ -3,7 +3,9 @@ package com.moyuyo.api.controller.admin;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
+import com.moyuyo.dao.admin.entity.AdminUserEntity;
 import com.moyuyo.dao.admin.entity.CsPerformanceEntity;
+import com.moyuyo.dao.admin.mapper.AdminUserMapper;
 import com.moyuyo.dao.admin.mapper.CsPerformanceMapper;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
@@ -33,6 +35,7 @@ public class AdminCrmController {
   private final UserMapper userMapper;
   private final OrderItemMapper orderItemMapper;
   private final CsPerformanceMapper csPerformanceMapper;
+  private final AdminUserMapper adminUserMapper;
 
   @Operation(summary = "客服绩效列表")
   @GetMapping("/cs-performance")
@@ -53,6 +56,28 @@ public class AdminCrmController {
       item.put("avgResponseTime", entity.getAvgResponseTime());
       item.put("satisfactionScore", entity.getSatisfactionScore());
       item.put("todayOnlineDuration", entity.getTodayOnlineDuration());
+      list.add(item);
+    }
+    return Result.success(list);
+  }
+
+  /**
+   * 客服列表（不分页）：用于工单转交下拉选择
+   * 从 admin_user 表里查 role = CUSTOMER_SVC（即 RBAC 客服主管 / 客服人员），避免与 cs_performance 绩效表耦合
+   */
+  @Operation(summary = "客服列表（不分页，用于转交下拉）")
+  @GetMapping("/cs-staff")
+  public Result<List<Map<String, Object>>> csStaff() {
+    // 直接复用 admin_user mapper，按角色 code 过滤
+    LambdaQueryWrapper<AdminUserEntity> qw = new LambdaQueryWrapper<AdminUserEntity>()
+        .eq(AdminUserEntity::getRole, "CUSTOMER_SVC")
+        .orderByDesc(AdminUserEntity::getId);
+    List<AdminUserEntity> users = adminUserMapper.selectList(qw);
+    List<Map<String, Object>> list = new ArrayList<>();
+    for (AdminUserEntity u : users) {
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("agentId", u.getId());
+      item.put("agentName", u.getName() != null && !u.getName().isEmpty() ? u.getName() : u.getUsername());
       list.add(item);
     }
     return Result.success(list);

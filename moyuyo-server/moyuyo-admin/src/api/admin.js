@@ -49,6 +49,10 @@ export function deleteRbacRole(id) {
   return api.delete(`/rbac/roles/${id}`)
 }
 
+export function getRbacRoleMembers(id) {
+  return api.get(`/rbac/roles/${id}/members`)
+}
+
 export function getRolePermissions(id) {
   return api.get(`/rbac/roles/${id}/permissions`)
 }
@@ -63,6 +67,15 @@ export function getRbacUsers() {
 
 export function createRbacUser(data) {
   return api.post('/rbac/users', data)
+}
+
+export function resetRbacUserPassword(id, data) {
+  return api.post(`/rbac/users/${id}/reset-password`, data)
+}
+
+// 删除管理员账号（仅删除本人当前操作可访问的角色下的成员；后端会校验是否 SUPER_ADMIN）
+export function deleteRbacUser(id) {
+  return api.delete(`/rbac/users/${id}`)
 }
 
 export function updateRbacUser(id, data) {
@@ -261,6 +274,10 @@ export function updateTicketStatus(id, data) {
 
 export function replyTicket(id, data) {
   return api.post(`/ticket/${id}/reply`, data)
+}
+
+export function getTicketMessages(id) {
+  return api.get(`/ticket/${id}/messages`)
 }
 
 // ==================== 营销 ====================
@@ -952,6 +969,10 @@ export function getSecurityConfig() {
   return api.get('/system-info/security-config')
 }
 
+export function saveSecurityConfig(data) {
+  return api.put('/system-info/security-config', data)
+}
+
 export function getSystemInfo() {
   return api.get('/system-info/info')
 }
@@ -1045,6 +1066,11 @@ export function getCsPerformance() {
   return api.get('/crm/cs-performance')
 }
 
+// 客服列表（不分页）：用于工单转交下拉选择
+export function getCsStaff() {
+  return api.get('/crm/cs-staff')
+}
+
 export function getCsDetail(agentId) {
   return api.get(`/crm/${agentId}/cs-detail`)
 }
@@ -1121,6 +1147,24 @@ export function calculateTariff(data) { return api.post('/tariff/calculate', dat
 export function getCsSessionList(params) { return api.get('/cs-sessions/list', { params }) }
 export function getCsSessionDetail(id) { return api.get(`/cs-sessions/${id}`) }
 export function getCsSessionStats() { return api.get('/cs-sessions/stats') }
+
+// ===== 客服在线聊天 =====
+export function getCsSessionMessages(id) { return api.get(`/cs-sessions/${id}/messages`) }
+export function pollCsSessionMessages(id, since) {
+  return api.get(`/cs-sessions/${id}/messages/poll`, { params: since ? { since } : {} })
+}
+export function sendCsSessionMessage(id, payload) {
+  return api.post(`/cs-sessions/${id}/messages`, payload)
+}
+export function markCsSessionRead(id) {
+  return api.post(`/cs-sessions/${id}/messages/read`)
+}
+export function closeCsSession(id) {
+  return api.post(`/cs-sessions/${id}/close`)
+}
+export function transferCsSession(id, payload) {
+  return api.post(`/cs-sessions/${id}/transfer`, payload)
+}
 
 // ==================== 风控告警 ====================
 export function getRiskAlertConfigs() { return api.get('/risk-alert/configs') }

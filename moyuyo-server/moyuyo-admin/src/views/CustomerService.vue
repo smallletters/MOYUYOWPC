@@ -116,12 +116,45 @@
         </div>
       </div>
     </div>
+
+    <!-- 转交工单弹窗：选择客服下拉 -->
+    <el-dialog
+      v-model="transferDialogVisible"
+      title="转交工单"
+      width="420px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <div class="form-row">
+        <div class="form-group">
+          <label>请选择客服</label>
+          <select v-model="transferAssignee" :disabled="csStaffLoading">
+            <option value="" disabled>请选择客服</option>
+            <option v-for="s in csStaffList" :key="s.agentId" :value="s.agentId">
+              {{ s.agentName }}（{{ s.agentId }}）
+            </option>
+          </select>
+        </div>
+      </div>
+      <template #footer>
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button class="btn btn-outline btn-sm" @click="transferDialogVisible = false">取消</button>
+          <button
+            class="btn btn-primary btn-sm"
+            :disabled="!transferAssignee || transferSubmitting"
+            @click="confirmTransfer"
+          >
+            {{ transferSubmitting ? '转交中...' : '确认转交' }}
+          </button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
-import { getTicketList, getTicketStats, assignTicket } from '../api/admin'
+import { getTicketList, getTicketStats, assignTicket, getCsStaff } from '../api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { toArray } from '../utils/safeArray'
@@ -358,24 +391,51 @@ function handleTicket(id) {
   router.push({ path: '/ticket', query: { id, action: 'process' } })
 }
 
-// 转交工单
-async function handleTransfer(id) {
-  // 弹出转交确认框，选择转交人
+// 转交工单：弹窗下拉选择客服（不再让用户手填 ID）
+const transferDialogVisible = ref(false)
+const transferTicketId = ref(null)
+const transferAssignee = ref('')
+const transferSubmitting = ref(false)
+const csStaffList = ref([])
+const csStaffLoading = ref(false)
+
+async function fetchCsStaff() {
+  csStaffLoading.value = true
   try {
-    const { value: assignee } = await ElMessageBox.prompt('请输入转交人ID（客服ID）', '转交工单', {
-      confirmButtonText: '确认转交',
-      cancelButtonText: '取消',
-      inputPlaceholder: '请输入客服ID'
-    })
-    if (assignee) {
-      await assignTicket(id, { assignee })
-      ElMessage.success('工单已转交')
-      fetchTickets()
-    }
+    const res = await getCsStaff()
+    csStaffList.value = Array.isArray(res) ? res : []
   } catch (err) {
-    if (err !== 'cancel') {
-      ElMessage.error('转交失败: ' + (err.response?.data?.message || err.message))
-    }
+    console.error('获取客服列表失败:', err)
+    csStaffList.value = []
+    ElMessage.warning('客服列表加载失败')
+  } finally {
+    csStaffLoading.value = false
+  }
+}
+
+async function handleTransfer(id) {
+  transferTicketId.value = id
+  transferAssignee.value = ''
+  transferDialogVisible.value = true
+  // 每次打开都重新拉一次客服列表，保持最新可分配人员
+  await fetchCsStaff()
+}
+
+async function confirmTransfer() {
+  if (!transferTicketId.value || !transferAssignee.value) {
+    ElMessage.warning('请选择客服')
+    return
+  }
+  transferSubmitting.value = true
+  try {
+    await assignTicket(transferTicketId.value, { assignee: transferAssignee.value })
+    ElMessage.success('工单已转交')
+    transferDialogVisible.value = false
+    fetchTickets()
+  } catch (err) {
+    ElMessage.error('转交失败: ' + (err.response?.data?.message || err.message))
+  } finally {
+    transferSubmitting.value = false
   }
 }
 </script>
