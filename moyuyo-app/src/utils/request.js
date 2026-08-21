@@ -82,7 +82,8 @@ export function request(options) {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           if (skipResultUnwrap) {
             resolve(res.data)
-          } else if (res.data && res.data.code === 200) {
+            // 与后端 Result.CODE_SUCCESS 对齐：业务成功码为 0（非 HTTP 200）
+          } else if (res.data && res.data.code === 0) {
             resolve(res.data.data)
           } else {
             const msg = res.data?.message || 'Request failed'

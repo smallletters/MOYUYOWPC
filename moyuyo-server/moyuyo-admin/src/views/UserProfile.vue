@@ -52,6 +52,8 @@
         <div class="info-item"><span class="info-label">用户名</span><span class="info-value">{{ userInfo.username }}</span></div>
         <div class="info-item"><span class="info-label">手机号</span><span class="info-value">{{ userInfo.phone }}</span></div>
         <div class="info-item"><span class="info-label">邮箱</span><span class="info-value">{{ userInfo.email }}</span></div>
+        <div class="info-item"><span class="info-label">性别</span><span class="info-value">{{ genderLabel(userInfo.gender) }}</span></div>
+        <div class="info-item"><span class="info-label">年龄</span><span class="info-value">{{ userInfo.age != null ? userInfo.age + ' 岁' : '未填写' }}</span></div>
         <div class="info-item">
           <span class="info-label">用户标签</span>
           <span class="info-value">
@@ -281,8 +283,24 @@ const userInfo = reactive({
   level: '-',
   levelTag: '',
   totalSpent: '-',
+  // 性别：MALE/FEMALE/OTHER/UNDISCLOSED；空表示未填写
+  gender: '',
+  // 年龄：基于 birthday 计算得到的周岁；null 表示未填写
+  age: null,
   tags: []
 })
+
+// 性别枚举映射（与后端 UserEntity.gender + 迁移 V20260821_01 注释对齐）
+const GENDER_LABELS = {
+  MALE: '男',
+  FEMALE: '女',
+  OTHER: '中性',
+  UNDISCLOSED: '不透露'
+}
+function genderLabel(code) {
+  if (!code) return '未填写'
+  return GENDER_LABELS[code] || code
+}
 
 // 用户行为数据
 const behaviorData = ref([])
@@ -332,6 +350,8 @@ async function handleSearch() {
         level: res.level || '-',
         levelTag: res.levelTag || '',
         totalSpent: res.totalSpent || '-',
+        gender: res.gender || '',
+        age: typeof res.age === 'number' ? res.age : null,
         tags: res.tags || []
       })
     } else {
@@ -367,7 +387,8 @@ function handleReset() {
   searchForm.keyword = ''
   Object.assign(userInfo, {
     userId: '-', username: '-', nickname: '-', phone: '-', email: '-',
-    registerTime: '-', level: '-', levelTag: '', totalSpent: '-', tags: []
+    registerTime: '-', level: '-', levelTag: '', totalSpent: '-',
+    gender: '', age: null, tags: []
   })
   behaviorData.value = []
 }

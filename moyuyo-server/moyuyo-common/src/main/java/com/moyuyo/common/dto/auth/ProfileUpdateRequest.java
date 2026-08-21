@@ -2,6 +2,7 @@ package com.moyuyo.common.dto.auth;
 
 import com.moyuyo.common.utils.XssSanitizer;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -20,7 +21,7 @@ import java.time.LocalDate;
  * <ol>
  *   <li>仅暴露白名单字段（昵称/头像/性别/生日/国家/语言/时区/营销订阅 8 项）</li>
  *   <li>头像 URL 强制 https?:// 协议（拒绝 javascript:/data:/vbscript: 等危险协议）</li>
- *   <li>性别字段限定枚举值（MALE/FEMALE/OTHER），避免任意文本入库污染管理后台筛选</li>
+ *   <li>性别字段限定枚举值（MALE/FEMALE/OTHER/UNDISCLOSED），避免任意文本入库污染管理后台筛选</li>
  *   <li>字符串字段统一经 {@link XssSanitizer#sanitizePlainText} 净化</li>
  *   <li>Service 层在 Bean Validation 之上做二次校验（{@link #isAvatarValid()} 兜底）</li>
  * </ol>
@@ -41,12 +42,13 @@ public class ProfileUpdateRequest {
     private String avatar;
 
     /** 性别：枚举值，避免任意文本入库 */
-    @Pattern(regexp = "^(MALE|FEMALE|OTHER)?$", message = "性别必须为 MALE/FEMALE/OTHER 之一")
-    @Schema(description = "性别：MALE/FEMALE/OTHER", example = "MALE")
+    @Pattern(regexp = "^(MALE|FEMALE|OTHER|UNDISCLOSED)?$", message = "性别必须为 MALE/FEMALE/OTHER/UNDISCLOSED 之一")
+    @Schema(description = "性别：MALE(男)/FEMALE(女)/OTHER(中性)/UNDISCLOSED(不透露)", example = "MALE")
     private String gender;
 
-    /** 生日：可选；不限制范围由业务层校验（年龄 0~150 岁的合理性） */
-    @Schema(description = "生日（ISO-8601）", example = "1990-01-01")
+    /** 生日：必须为过去日期，避免用户输入未来日期产生负数年龄 */
+    @Past(message = "生日必须为过去日期")
+    @Schema(description = "生日（ISO-8601，过去日期）", example = "1990-01-01")
     private LocalDate birthday;
 
     /** 国家：ISO 3166-1 二字/三字代码 */

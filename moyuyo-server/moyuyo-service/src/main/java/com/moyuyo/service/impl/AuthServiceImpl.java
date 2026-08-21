@@ -507,6 +507,10 @@ public class AuthServiceImpl implements AuthService {
         if (update.getAvatar() != null) {
             user.setAvatar(update.getAvatar());
         }
+        // 性别：白名单已由 DTO Pattern 保证；空串（用户取消选择）置 null，与"未填写"语义一致
+        if (update.getGender() != null) {
+            user.setGender(update.getGender().isEmpty() ? null : update.getGender());
+        }
         if (update.getBirthday() != null) {
             user.setBirthday(update.getBirthday());
         }

@@ -25,6 +25,9 @@ public class UserEntity {
 
     private LocalDate birthday;
 
+    // 用户性别（MALE/FEMALE/OTHER/UNDISCLOSED），由 V20260821_01 迁移新增字段
+    private String gender;
+
     private String country;
 
     // 注册渠道（web/app/wechat），由 V20260819_02 迁移新增字段

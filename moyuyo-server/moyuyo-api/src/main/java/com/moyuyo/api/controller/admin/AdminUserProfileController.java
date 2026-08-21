@@ -44,6 +44,10 @@ public class AdminUserProfileController {
       resp.setRegisterTime((String) svcResult.get("registerTime"));
       Object totalSpentVal = svcResult.get("totalSpent");
       resp.setTotalSpent(totalSpentVal != null ? ((Number) totalSpentVal).intValue() : 0);
+      // 性别 / 年龄：直接透传 Service 计算结果（null 表示用户未填写，保持前端体验一致）
+      resp.setGender((String) svcResult.get("gender"));
+      Object ageVal = svcResult.get("age");
+      resp.setAge(ageVal != null ? ((Number) ageVal).intValue() : null);
       return Result.success(resp);
     } catch (IllegalArgumentException e) {
       return Result.error(404, e.getMessage());

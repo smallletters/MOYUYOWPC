@@ -6,149 +6,243 @@
         <text class="back-icon">‹</text>
       </view>
       <text class="header-title">编辑资料</text>
-      <view class="save-link" @click="onSave">
-        <text class="save-text">保存</text>
+      <view class="save-link" :class="{ disabled: saving }" @click="onSave">
+        <text class="save-text">{{ saving ? '保存中...' : '保存' }}</text>
       </view>
     </view>
 
     <view class="content">
-      <!-- 头像区域 -->
-      <view class="avatar-section">
-        <view class="avatar">
-          <text class="avatar-text">🐕</text>
-        </view>
-        <view class="change-avatar-btn" @click="onChangeAvatar">
-          <text class="change-avatar-text">更换头像</text>
-        </view>
-      </view>
-
       <!-- 基本信息 -->
       <view class="form-group">
         <text class="group-label">基本信息</text>
         <view class="form-card">
           <!-- 昵称 -->
-          <view class="form-item" @click="onEditField('nickname')">
+          <view class="form-item" @click="onEditNickname">
             <text class="item-label">昵称</text>
             <view class="item-right">
-              <text class="item-value">{{ profile.nickname }}</text>
+              <text class="item-value">{{ profile.nickname || '未设置' }}</text>
               <text class="chevron">›</text>
             </view>
           </view>
           <view class="divider indent" />
           <!-- 性别 -->
-          <view class="form-item" @click="onEditField('gender')">
+          <view class="form-item" @click="onPickGender">
             <text class="item-label">性别</text>
             <view class="item-right">
-              <view class="gender-group">
-                <text class="gender-option" :class="{ active: profile.gender === 'male' }">男</text>
-                <text class="gender-option" :class="{ active: profile.gender === 'female' }">
-                  女
-                </text>
-                <text class="gender-option" :class="{ active: profile.gender === 'unset' }">
-                  保密
-                </text>
-              </view>
+              <text class="item-value">{{ genderLabel(profile.gender) }}</text>
               <text class="chevron">›</text>
             </view>
           </view>
           <view class="divider indent" />
           <!-- 生日 -->
-          <view class="form-item" @click="onEditField('birthday')">
+          <view class="form-item" @click="onPickBirthday">
             <text class="item-label">生日</text>
             <view class="item-right">
-              <text class="item-value">{{ profile.birthday }}</text>
-              <text class="chevron">›</text>
-            </view>
-          </view>
-          <view class="divider indent" />
-          <!-- 个人简介 -->
-          <view class="form-item" @click="onEditField('bio')">
-            <text class="item-label">个人简介</text>
-            <view class="item-right">
-              <text class="item-value truncate">{{ profile.bio }}</text>
+              <text class="item-value">{{ profile.birthday || '未设置' }}</text>
               <text class="chevron">›</text>
             </view>
           </view>
         </view>
       </view>
 
-      <!-- 联系方式 -->
+      <!-- 联系方式（仅展示，不在本页编辑） -->
       <view class="form-group">
         <text class="group-label">联系方式</text>
         <view class="form-card">
-          <!-- 邮箱 -->
           <view class="form-item">
             <text class="item-label">邮箱</text>
             <view class="item-right">
-              <text class="item-value">{{ profile.email }}</text>
-              <view class="verified-badge">
-                <text class="verified-icon">✅</text>
-                <text class="verified-text">已验证</text>
-              </view>
+              <text class="item-value">{{ profile.email || '未绑定' }}</text>
             </view>
           </view>
           <view class="divider indent" />
-          <!-- 手机号 -->
-          <view class="form-item" @click="onEditField('phone')">
+          <view class="form-item">
             <text class="item-label">手机号</text>
             <view class="item-right">
-              <text class="item-value">{{ profile.phone }}</text>
-              <text class="chevron">›</text>
-            </view>
-          </view>
-        </view>
-      </view>
-
-      <!-- 偏好设置 -->
-      <view class="form-group">
-        <text class="group-label">偏好设置</text>
-        <view class="form-card">
-          <!-- 宠物偏好 -->
-          <view class="form-item" @click="onEditField('petPreference')">
-            <text class="item-label">宠物偏好</text>
-            <view class="item-right">
-              <view class="preference-tags">
-                <view v-for="tag in profile.petPreferences" :key="tag" class="pref-tag active">
-                  <text class="pref-tag-text">{{ tag }}</text>
-                </view>
-                <view v-for="tag in inactivePreferences" :key="tag" class="pref-tag inactive">
-                  <text class="pref-tag-text">{{ tag }}</text>
-                </view>
-              </view>
-              <text class="chevron">›</text>
+              <text class="item-value">{{ profile.phone || '未绑定' }}</text>
             </view>
           </view>
         </view>
       </view>
     </view>
+
+    <!-- 性别选择 Picker（4 选 1） -->
+    <uni-popup ref="genderPopup" type="bottom">
+      <view class="picker-sheet">
+        <view class="picker-sheet__head">
+          <text class="picker-sheet__title">选择性别</text>
+          <text class="picker-sheet__close" @click="closeGenderPopup">取消</text>
+        </view>
+        <view class="picker-sheet__list">
+          <view
+            v-for="opt in genderOptions"
+            :key="opt.value"
+            class="picker-sheet__item"
+            :class="{ active: profile.gender === opt.value }"
+            @click="confirmGender(opt.value)"
+          >
+            <text>{{ opt.label }}</text>
+            <text v-if="profile.gender === opt.value" class="picker-sheet__check">✓</text>
+          </view>
+        </view>
+      </view>
+    </uni-popup>
   </view>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, reactive } from 'vue'
+import { getUserInfo, updateUser as updateUserApi } from '@/api/user'
+
+// ===== 性别枚举（与后端 ProfileUpdateRequest 对齐） =====
+// MALE 男 / FEMALE 女 / OTHER 中性 / UNDISCLOSED 不透露
+const genderOptions = [
+  { value: 'MALE', label: '男' },
+  { value: 'FEMALE', label: '女' },
+  { value: 'OTHER', label: '中性' },
+  { value: 'UNDISCLOSED', label: '不透露' },
+]
+
+// 性别值 -> 展示文案
+function genderLabel(code) {
+  if (!code) return '未设置'
+  const hit = genderOptions.find((o) => o.value === code)
+  return hit ? hit.label : code
+}
+
+// ===== 表单状态（与服务端字段对齐） =====
+const profile = reactive({
+  nickname: '',
+  // MALE/FEMALE/OTHER/UNDISCLOSED；空表示未设置
+  gender: '',
+  // ISO-8601 日期字符串：1990-01-01；空表示未设置
+  birthday: '',
+  email: '',
+  phone: '',
+})
+
+const saving = ref(false)
+const genderPopup = ref(null)
+
+// ===== 加载当前用户信息 =====
+async function loadProfile() {
+  try {
+    const res = await getUserInfo()
+    profile.nickname = res?.nickname || ''
+    profile.gender = res?.gender || ''
+    // 后端 birthday 为 LocalDate，Jackson 默认序列化为 "yyyy-MM-dd" 字符串
+    profile.birthday = res?.birthday || ''
+    profile.email = res?.email || ''
+    profile.phone = res?.phone || ''
+  } catch (err) {
+    uni.showToast({ title: '加载资料失败', icon: 'none' })
+  }
+}
 
 const goBack = () => uni.navigateBack()
 
-// 用户资料 mock 数据
-const profile = ref({
-  nickname: '宠物爱好者',
-  gender: 'unset',
-  birthday: '1995-06-15',
-  bio: '热爱生活的铲屎官',
-  email: 'm***@gmail.com',
-  phone: '+1 ***-***-5678',
-  petPreferences: ['猫', '狗'],
-})
+// ===== 昵称：弹系统输入框 =====
+function onEditNickname() {
+  uni.showModal({
+    title: '修改昵称',
+    editable: true,
+    placeholderText: '请输入新昵称（最多 64 字符）',
+    content: profile.nickname,
+    success: ({ confirm, content }) => {
+      if (!confirm) return
+      const trimmed = (content || '').trim().slice(0, 64)
+      if (!trimmed) {
+        uni.showToast({ title: '昵称不能为空', icon: 'none' })
+        return
+      }
+      profile.nickname = trimmed
+    },
+  })
+}
 
-const inactivePreferences = computed(() => {
-  const all = ['猫', '狗', '其他']
-  return all.filter((t) => !profile.value.petPreferences.includes(t))
-})
+// ===== 性别 Picker =====
+function onPickGender() {
+  genderPopup.value?.open?.()
+}
+function closeGenderPopup() {
+  genderPopup.value?.close?.()
+}
+function confirmGender(value) {
+  profile.gender = value
+  closeGenderPopup()
+}
 
-// 操作
-const onChangeAvatar = () => uni.showToast({ title: '更换头像', icon: 'none' })
-const onSave = () => uni.showToast({ title: '资料已保存', icon: 'success' })
-const onEditField = (field) => uni.showToast({ title: '编辑 ' + field, icon: 'none' })
+// ===== 生日 Picker =====
+// uni-app 各端原生日期选择器 API 不一致（H5 / 小程序 / APP 行为差异大），
+// 这里用 actionSheet 给出"设置 / 清除"二选一，跨端一致体验。
+function onPickBirthday() {
+  const actions = ['设置生日']
+  if (profile.birthday) actions.push('清除生日')
+  uni.showActionSheet({
+    itemList: actions,
+    success: ({ tapIndex }) => {
+      if (tapIndex === 0) {
+        promptBirthday()
+      } else if (tapIndex === 1) {
+        profile.birthday = ''
+      }
+    },
+  })
+}
+
+// 弹输入框让用户填写 YYYY-MM-DD，做基本格式 + 不晚于今天的校验
+function promptBirthday() {
+  uni.showModal({
+    title: '设置生日',
+    editable: true,
+    placeholderText: '1990-01-01',
+    content: profile.birthday,
+    success: ({ confirm, content }) => {
+      if (!confirm) return
+      const trimmed = (content || '').trim()
+      // 格式校验：YYYY-MM-DD；防止用户输入 1990-1-1 / 1990.01.01 等不规范形式
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        uni.showToast({ title: '格式错误，应为 YYYY-MM-DD', icon: 'none' })
+        return
+      }
+      const d = new Date(trimmed)
+      if (Number.isNaN(d.getTime())) {
+        uni.showToast({ title: '日期不合法', icon: 'none' })
+        return
+      }
+      if (d > new Date()) {
+        uni.showToast({ title: '生日不能晚于今天', icon: 'none' })
+        return
+      }
+      profile.birthday = trimmed
+    },
+  })
+}
+
+// ===== 保存：仅提交变更字段（白名单由后端 DTO 控制） =====
+async function onSave() {
+  if (saving.value) return
+  saving.value = true
+  try {
+    // 仅提交页面真实可编辑的 3 个字段；后端只更新传入的非空字段
+    const payload = {
+      nickname: profile.nickname,
+      gender: profile.gender || null,
+      birthday: profile.birthday || null,
+    }
+    await updateUserApi(payload)
+    uni.showToast({ title: '保存成功', icon: 'success' })
+    setTimeout(() => uni.navigateBack(), 800)
+  } catch (err) {
+    const msg = err?.message || '保存失败'
+    uni.showToast({ title: msg, icon: 'none' })
+  } finally {
+    saving.value = false
+  }
+}
+
+// 进入页面时拉取真实数据
+loadProfile()
 </script>
 
 <style lang="scss" scoped>
@@ -170,7 +264,6 @@ const onEditField = (field) => uni.showToast({ title: '编辑 ' + field, icon: '
   background: var(--color-card);
   border-bottom: 1rpx solid var(--color-border);
 }
-
 .back-btn {
   width: 72rpx;
   height: 72rpx;
@@ -179,7 +272,6 @@ const onEditField = (field) => uni.showToast({ title: '编辑 ' + field, icon: '
   justify-content: center;
   border-radius: 16rpx;
 }
-
 .back-icon {
   font-size: 48rpx;
   color: var(--color-primary);
@@ -192,6 +284,9 @@ const onEditField = (field) => uni.showToast({ title: '编辑 ' + field, icon: '
 }
 .save-link {
   padding: 8rpx;
+}
+.save-link.disabled {
+  opacity: 0.5;
 }
 .save-text {
   font-size: 28rpx;
@@ -207,37 +302,6 @@ const onEditField = (field) => uni.showToast({ title: '编辑 ' + field, icon: '
   gap: 40rpx;
 }
 
-/* 头像区域 */
-.avatar-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20rpx;
-}
-.avatar {
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 50%;
-  border: 6rpx solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 72rpx;
-  overflow: hidden;
-}
-
-.avatar-text {
-  font-size: 72rpx;
-}
-.change-avatar-btn {
-  padding: 8rpx 16rpx;
-}
-.change-avatar-text {
-  font-size: 28rpx;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-primary);
-}
-
 /* 表单分组 */
 .form-group {
   display: flex;
@@ -250,7 +314,6 @@ const onEditField = (field) => uni.showToast({ title: '编辑 ' + field, icon: '
   letter-spacing: 2rpx;
   padding: 0 8rpx 16rpx;
 }
-
 .form-card {
   background: var(--color-card);
   border-radius: 20rpx;
@@ -265,7 +328,6 @@ const onEditField = (field) => uni.showToast({ title: '编辑 ' + field, icon: '
   padding: 0 32rpx;
   height: 104rpx;
 }
-
 .item-label {
   font-size: 28rpx;
   font-weight: var(--font-weight-medium);
@@ -279,12 +341,6 @@ const onEditField = (field) => uni.showToast({ title: '编辑 ' + field, icon: '
 .item-value {
   font-size: 28rpx;
   color: var(--color-text-secondary);
-}
-.item-value.truncate {
-  max-width: 280rpx;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .chevron {
   font-size: 36rpx;
@@ -301,63 +357,45 @@ const onEditField = (field) => uni.showToast({ title: '编辑 ' + field, icon: '
   margin-left: 64rpx;
 }
 
-/* 性别选项 */
-.gender-group {
+/* 底部 Picker 弹层 */
+.picker-sheet {
+  background: var(--color-card);
+  border-radius: 24rpx 24rpx 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.picker-sheet__head {
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  justify-content: space-between;
+  padding: 24rpx 32rpx;
+  border-bottom: 1rpx solid var(--color-border);
 }
-.gender-option {
-  font-size: 28rpx;
-  color: #8e8e93;
-}
-.gender-option.active {
-  color: var(--color-primary);
-  font-weight: var(--font-weight-medium);
-}
-
-/* 已验证标签 */
-.verified-badge {
-  display: flex;
-  align-items: center;
-  gap: 4rpx;
-}
-.verified-icon {
-  font-size: 24rpx;
-}
-.verified-text {
-  font-size: 20rpx;
+.picker-sheet__title {
+  font-size: 30rpx;
   font-weight: var(--font-weight-semibold);
-  color: var(--color-success);
+  color: var(--color-text);
 }
-
-/* 宠物偏好标签 */
-.preference-tags {
+.picker-sheet__close {
+  font-size: 28rpx;
+  color: var(--color-text-secondary);
+}
+.picker-sheet__list {
+  padding: 8rpx 0 24rpx;
+}
+.picker-sheet__item {
   display: flex;
   align-items: center;
-  gap: 12rpx;
+  justify-content: space-between;
+  padding: 24rpx 32rpx;
+  font-size: 30rpx;
+  color: var(--color-text);
 }
-.pref-tag {
-  padding: 8rpx 20rpx;
-  border-radius: 999rpx;
+.picker-sheet__item.active {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
 }
-
-.pref-tag.active {
-  background: var(--color-primary);
-}
-.pref-tag.active .pref-tag-text {
-  color: #fff;
-  font-size: 24rpx;
-  font-weight: var(--font-weight-medium);
-}
-
-.pref-tag.inactive {
-  background: var(--color-border);
-  border: 1rpx solid var(--color-border);
-}
-.pref-tag.inactive .pref-tag-text {
-  color: var(--color-text-secondary);
-  font-size: 24rpx;
-  font-weight: var(--font-weight-medium);
+.picker-sheet__check {
+  font-size: 32rpx;
+  color: var(--color-primary);
 }
 </style>

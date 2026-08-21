@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -88,7 +90,27 @@ public class AdminUserProfileServiceImpl implements AdminUserProfileService {
     result.put("registerTime", user.getCreatedAt() != null ? user.getCreatedAt().toString() : null);
     result.put("orderCount", orderCount);
     result.put("totalSpent", totalConsumption);
+    // 性别：直接透传用户填写的枚举（MALE/FEMALE/OTHER/UNDISCLOSED），null 表示用户从未填写
+    result.put("gender", user.getGender());
+    // 年龄：基于 birthday 计算周岁，未填写时为 null
+    result.put("age", calculateAge(user.getBirthday()));
     return result;
+  }
+
+  /**
+   * 根据生日计算周岁年龄
+   * <p>
+   * birthday 为空或晚于当前日期时返回 null（避免返回负数年龄误导运营）
+   */
+  private static Integer calculateAge(LocalDate birthday) {
+    if (birthday == null) {
+      return null;
+    }
+    LocalDate today = LocalDate.now();
+    if (birthday.isAfter(today)) {
+      return null;
+    }
+    return Period.between(birthday, today).getYears();
   }
 
   @Override
