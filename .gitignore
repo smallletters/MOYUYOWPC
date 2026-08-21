@@ -61,7 +61,14 @@ moyuyo-server/server.err
 server.log
 server_err.log
 server_out.log
+server-out.log
+
+# Edge 浏览器调试目录
+.edge-debug-profile/
 
 # 本地测试脚本
 test_*.ps1
 test_*.sh
+add_*.sql
+cleanup_*.sql
+check_*.mjs

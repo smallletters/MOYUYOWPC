@@ -389,6 +389,14 @@
       width="560px"
       destroy-on-close
     >
+      <!-- 最后一名 SUPER_ADMIN 保护提示：让用户明确知道为何删除按钮被禁用 -->
+      <div v-if="viewingSuperAdminRole && !membersLoading" class="rbac-members-notice">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <span v-if="isLastSuperAdmin">系统必须保留至少 1 名超级管理员，所有删除按钮已禁用</span>
+        <span v-else>当前有 {{ membersList.length }} 名超级管理员，可删除多余成员</span>
+      </div>
       <div v-if="membersLoading" class="rbac-members-loading">加载成员中…</div>
       <div v-else-if="membersList.length === 0" class="rbac-members-empty">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -422,11 +430,12 @@
               {{ resettingPwdUserId === m.id ? '重置中...' : '重置密码' }}
             </button>
             <!-- 单个成员的删除按钮：二次确认后调用后端 DELETE /rbac/users/{id} -->
-            <!-- 系统唯一 SUPER_ADMIN 不允许删除，由后端兜底；前端同时禁用 + 提示 -->
+            <!-- 超级管理员角色（SUPER_ADMIN）：成员数 < 2 时禁用，避免出现"零超级管理员"无法恢复 -->
+            <!-- 非超级管理员角色：直接允许删除 -->
             <button
               class="rbac-btn-sm rbac-btn-danger"
-              :disabled="deletingUserId === m.id || m.role === 'SUPER_ADMIN'"
-              :title="m.role === 'SUPER_ADMIN' ? '系统超级管理员不允许删除' : '删除人员'"
+              :disabled="deletingUserId === m.id || isLastSuperAdmin"
+              :title="isLastSuperAdmin ? '超级管理员至少保留 1 个成员' : '删除人员'"
               @click="handleDeleteMember(m)"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -577,6 +586,10 @@ const editForm = reactive({ name: '', description: '' })
 const membersDialogVisible = ref(false)
 const membersLoading = ref(false)
 const membersList = ref([])
+// 当前查看的角色是否为超级管理员（code=SUPER_ADMIN 或 id=1）
+const viewingSuperAdminRole = computed(() => isSuperAdminRole(editTarget.value))
+// 当前超级管理员角色下"成员数 < 2" 即处于"最后一名"保护态
+const isLastSuperAdmin = computed(() => viewingSuperAdminRole.value && membersList.value.length < 2)
 const membersTitle = computed(() => {
   return editTarget.value && membersDialogVisible.value
     ? `角色成员：${editTarget.value.name}`
@@ -899,9 +912,9 @@ async function handleResetPwdSubmit() {
 async function handleDeleteMember(member) {
   if (deletingUserId.value) return
   if (!member || !member.id) return
-  // 系统唯一 SUPER_ADMIN 不允许删除：后端会兜底，但前端也阻止避免误操作
-  if (member.role === 'SUPER_ADMIN') {
-    ElMessage.warning('系统超级管理员不允许删除')
+  // 超级管理员角色（SUPER_ADMIN）：成员数 < 2 时禁止删除，避免出现"零超级管理员"无法恢复
+  if (isLastSuperAdmin.value) {
+    ElMessage.warning('超级管理员至少保留 1 个成员')
     return
   }
   const displayName = member.name || member.username
@@ -1607,6 +1620,25 @@ onMounted(() => {
 }
 
 /* ---- 查看成员弹窗 ---- */
+.rbac-members-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: calc(var(--radius) * 0.6);
+  background: var(--brand-50);
+  color: var(--brand-700);
+  font-size: 13px;
+  line-height: 1.5;
+  border: 1px solid var(--brand-200, transparent);
+}
+.rbac-members-notice svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--brand-500);
+}
 .rbac-members-loading,
 .rbac-members-empty {
   padding: 32px 0;

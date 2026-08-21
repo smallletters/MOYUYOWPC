@@ -160,6 +160,18 @@ public class AdminStaffServiceImpl implements AdminStaffService {
             operatorRole, entity.getUsername(), newRole);
         throw new org.springframework.security.access.AccessDeniedException("无权修改超级管理员的角色");
       }
+      // 4. 最后一名 SUPER_ADMIN 禁止降级：把 SUPER_ADMIN 改成其他角色时，必须保证剩余 SUPER_ADMIN ≥ 1
+      // 防止误操作导致系统失去最高权限账号；与 deleteUser 中的校验保持一致
+      boolean demotingFromSuper = "SUPER_ADMIN".equals(entity.getRole()) && !"SUPER_ADMIN".equals(newRole);
+      if (demotingFromSuper) {
+        Long superAdminCount = adminUserMapper.selectCount(
+            new LambdaQueryWrapper<AdminUserEntity>().eq(AdminUserEntity::getRole, "SUPER_ADMIN"));
+        if (superAdminCount != null && superAdminCount <= 1) {
+          log.warn("尝试将最后一个 SUPER_ADMIN [{}] 降级为 [{}]，已拒绝（系统必须保留至少 1 个超级管理员）",
+              entity.getUsername(), newRole);
+          throw new IllegalArgumentException("系统必须保留至少 1 名超级管理员，无法降级最后一个");
+        }
+      }
       entity.setRole(newRole);
     }
     if (body.containsKey("status")) {
@@ -222,6 +234,9 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         log.warn("尝试删除最后一个 SUPER_ADMIN [{}]，已拒绝（系统必须保留至少 1 个超级管理员）", entity.getUsername());
         throw new IllegalArgumentException("系统必须保留至少 1 名超级管理员，无法删除最后一个");
       }
+      // 注：selectCount + deleteById 存在理论上的并发竞态（两个并发请求都看到 count=2 都能通过校验）。
+      // 管理后台删除超管的并发概率极低，且 AdminPermissionFilter 仍兜底鉴权，未引入行锁避免架构改动。
+      // 若未来启用多管理员并发操作超管，需在此处改为 SELECT ... FOR UPDATE 行锁。
     }
     adminUserMapper.deleteById(id);
   }
