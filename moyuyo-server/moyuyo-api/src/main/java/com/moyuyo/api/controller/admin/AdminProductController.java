@@ -75,6 +75,37 @@ public class AdminProductController {
     }
   }
 
+  @Operation(summary = "关联商品轻量搜索（用于 Upsell / Cross-sell 选择弹窗）")
+  @GetMapping("/lite")
+  public Result<?> searchLite(
+      @RequestParam(required = false) String keyword,
+      @RequestParam(defaultValue = "50") int size,
+      @RequestParam(required = false) Long excludeId) {
+    try {
+      // 限制 size 上限，避免单次返回过多
+      int limit = Math.max(1, Math.min(size, 100));
+      com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.moyuyo.dao.entity.ProductEntity> qw =
+          new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.moyuyo.dao.entity.ProductEntity>()
+              .select("id", "name", "spu_code AS spuCode", "price", "main_image AS mainImage", "on_sale AS onSale")
+              // 仅返回正常商品（下架的也可以选，便于上架后启用）
+              .eq("deleted", 0)
+              .orderByDesc("on_sale")
+              .orderByDesc("update_time")
+              .last("LIMIT " + limit);
+      if (keyword != null && !keyword.isBlank()) {
+        // 关键字命中：商品名称 OR SPU 编码（按 WC 搜索行为对齐）
+        qw.and(w -> w.like("name", keyword).or().like("spu_code", keyword));
+      }
+      if (excludeId != null) {
+        qw.ne("id", excludeId);
+      }
+      java.util.List<java.util.Map<String, Object>> rows = productMapper.selectMaps(qw);
+      return Result.success(rows);
+    } catch (Exception e) {
+      return Result.error("搜索关联商品失败: " + e.getMessage());
+    }
+  }
+
   @Operation(summary = "商品列表")
   @GetMapping("/list")
   public Result<?> list(
