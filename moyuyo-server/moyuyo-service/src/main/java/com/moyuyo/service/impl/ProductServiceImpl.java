@@ -90,6 +90,25 @@ public class ProductServiceImpl implements ProductService {
     return map;
   }
 
+  /**
+   * 批量获取多个商品的 SKU 列表（用于商品列表接口填充 SKU 列，避免 N+1）。
+   * <p>
+   * 排序：按 id ASC 保证多个 SKU 时返回顺序稳定，前端取第一条作为"主 SKU"展示。
+   */
+  @Override
+  public java.util.Map<Long, List<ProductSkuEntity>> getSkusByProductIds(java.util.List<Long> productIds) {
+    if (productIds == null || productIds.isEmpty()) return java.util.Collections.emptyMap();
+    List<ProductSkuEntity> all = productSkuMapper.selectList(
+        new LambdaQueryWrapper<ProductSkuEntity>()
+            .in(ProductSkuEntity::getProductId, productIds)
+            .orderByAsc(ProductSkuEntity::getId));
+    java.util.Map<Long, List<ProductSkuEntity>> map = new java.util.HashMap<>();
+    for (ProductSkuEntity sku : all) {
+      map.computeIfAbsent(sku.getProductId(), k -> new java.util.ArrayList<>()).add(sku);
+    }
+    return map;
+  }
+
   @Override
   public ProductEntity getProductDetail(Long productId) {
     ProductEntity product = productMapper.selectById(productId);

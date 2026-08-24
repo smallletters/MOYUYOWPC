@@ -106,8 +106,15 @@ public class AdminProductController {
       for (com.moyuyo.dao.entity.ProductEntity p : productPage.getRecords()) ids.add(p.getId());
       java.util.Map<Long, java.util.List<com.moyuyo.dao.entity.ProductImageEntity>> imgsMap =
           productService.getImagesByProductIds(ids);
+      // 同时批量取 SKU 子表：用于列表 SKU 列展示，避免前端表格空白
+      // SKU 子表是 mo_product_sku（与 SPU 表 1:N），单 SKU 商品展示主 SKU_code，多 SKU 商品展示"主SKU +N"
+      java.util.Map<Long, java.util.List<com.moyuyo.dao.entity.ProductSkuEntity>> skusMap =
+          productService.getSkusByProductIds(ids);
       for (com.moyuyo.dao.entity.ProductEntity p : productPage.getRecords()) {
         p.setImages(imgsMap.getOrDefault(p.getId(), java.util.Collections.emptyList()));
+        java.util.List<com.moyuyo.dao.entity.ProductSkuEntity> skus =
+            skusMap.getOrDefault(p.getId(), java.util.Collections.emptyList());
+        p.setSkus(skus);
       }
     }
     return Result.success(productPage);
