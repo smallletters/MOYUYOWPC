@@ -37,6 +37,29 @@
               <button class="btn btn-primary btn-block" @click="applyBulk('stockQuantity')">应用到所有变体</button>
             </div>
           </el-popover>
+          <el-popover placement="bottom" :width="240" trigger="click">
+            <template #reference>
+              <button class="btn btn-outline">批量设置 SKU ▾</button>
+            </template>
+            <div class="popover-form">
+              <label>批量设置 SKU</label>
+              <input v-model="bulkSkuPrefix" placeholder="前缀，例如 SKU-" />
+              <input v-model="bulkSkuStartNum" type="number" min="0" placeholder="起始编号（默认 1）" />
+              <span class="popover-hint">留空前缀则仅按编号生成；编号可作为变体序号后缀</span>
+              <button class="btn btn-primary btn-block" @click="applyBulkSku">应用到所有变体</button>
+            </div>
+          </el-popover>
+          <el-popover placement="bottom" :width="240" trigger="click">
+            <template #reference>
+              <button class="btn btn-outline">批量设置销售价 ▾</button>
+            </template>
+            <div class="popover-form">
+              <label>批量设置销售价</label>
+              <input v-model="bulkSalePrice" type="number" step="0.01" placeholder="例如 79.00" />
+              <span class="popover-hint">设为空可清空所有销售价，恢复按原价销售</span>
+              <button class="btn btn-primary btn-block" @click="applyBulk('salePrice')">应用到所有变体</button>
+            </div>
+          </el-popover>
         </div>
       </div>
 
@@ -45,6 +68,7 @@
         <div class="vtable-header">
           <span class="col-toggle">▾</span>
           <span class="col-name">变体（属性组合）</span>
+          <span class="col-image">图片</span>
           <span class="col-sku">SKU</span>
           <span class="col-price">价格</span>
           <span class="col-stock">库存</span>
@@ -59,6 +83,10 @@
                 <span v-if="i > 0" class="attr-sep"> / </span>
                 <strong>{{ a.name }}:</strong> {{ a.value }}
               </span>
+            </span>
+            <span class="col-image">
+              <img v-if="v.image && v.image.src" :src="v.image.src" :alt="v.image.alt || ''" class="vrow-thumb" />
+              <span v-else class="muted">—</span>
             </span>
             <span class="col-sku">{{ v.sku || '—' }}</span>
             <span class="col-price">{{ v.regularPrice || '—' }}</span>
@@ -135,6 +163,52 @@
                 <input v-model="v.dimensions.height" type="number" step="0.01" />
               </div>
             </div>
+
+            <!-- 变体图片（WC: image { id, src, name, alt }） -->
+            <div class="form-row">
+              <div class="form-group full">
+                <label>变体图片 (image)</label>
+                <div class="vimage-row">
+                  <div class="vimage-preview-wrap">
+                    <img v-if="v.image && v.image.src" :src="absImageUrl(v.image.src)" :alt="v.image.alt" class="vimage-preview" />
+                    <div v-else class="vimage-empty">未设置</div>
+                  </div>
+                  <div class="vimage-fields">
+                    <!-- 上传组件：点击 / 拖拽 / 粘贴 触发 -->
+                    <el-upload
+                      :show-file-list="false"
+                      :before-upload="(file) => beforeVariationUpload(v, file)"
+                      :http-request="(opts) => customVariationUpload(v, opts)"
+                      accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                      drag
+                      class="vimage-uploader"
+                    >
+                      <div class="vimage-uploader-inner">
+                        <span class="vimage-uploader-icon">⤴</span>
+                        <span>点击 / 拖拽 / 粘贴上传变体图片</span>
+                      </div>
+                    </el-upload>
+                    <!-- URL 输入回退：兼容外链 / 已有路径 -->
+                    <input
+                      :value="v.image?.src || ''"
+                      placeholder="图片 URL（粘贴地址或 /uploads/xxx 路径）"
+                      @input="onVariationImageUrl(v, $event.target.value)"
+                    />
+                    <input
+                      :value="v.image?.alt || ''"
+                      placeholder="替代文本（alt，便于 SEO/无障碍）"
+                      @input="onVariationImageAlt(v, $event.target.value)"
+                    />
+                    <div class="vimage-actions">
+                      <button class="btn-mini" type="button" @click="fillVariationImageFromMain(v)">使用商品主图</button>
+                      <button v-if="v.image?.src" class="btn-mini btn-mini-danger" type="button" @click="clearVariationImage(v)">清除</button>
+                      <span v-if="v._imageUploading" class="vimage-uploading">上传中...</span>
+                    </div>
+                  </div>
+                </div>
+                <span class="field-hint">每个变体可独立设置一张图片（WC: variations[].image）</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -144,13 +218,19 @@
 
 <script setup>
 import { ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import { uploadImageViaAxios, API_BASE_URL } from '../../api/admin'
 
 const props = defineProps({
   form: { type: Object, required: true }
 })
+const emit = defineEmits(['open-upsell', 'remove-variation'])
 
 const bulkPrice = ref('')
 const bulkStock = ref('')
+const bulkSalePrice = ref('')
+const bulkSkuPrefix = ref('')
+const bulkSkuStartNum = ref('')
 
 function addVariationManually() {
   props.form.variations.push({
@@ -165,12 +245,89 @@ function addVariationManually() {
     weight: '',
     dimensions: { length: '', width: '', height: '' },
     enabled: true,
-    expanded: true
+    expanded: true,
+    image: { id: null, src: '', alt: '' }
   })
 }
 
+// 变体图片辅助方法（WC: image { id, src, name, alt }）
+function ensureImage(v) {
+  if (!v.image) v.image = { id: null, src: '', alt: '' }
+  return v.image
+}
+function onVariationImageUrl(v, url) {
+  const img = ensureImage(v)
+  img.src = url || ''
+  // alt 默认取属性组合名，方便无障碍
+  if (!img.alt) img.alt = (v.attributes || []).map(a => a.value).join(' ')
+}
+function onVariationImageAlt(v, alt) {
+  ensureImage(v).alt = alt || ''
+}
+function fillVariationImageFromMain(v) {
+  const main = props.form.images?.[0]?.url || props.form.mainImage || ''
+  const img = ensureImage(v)
+  img.src = main
+  if (!img.alt) img.alt = (v.attributes || []).map(a => a.value).join(' ')
+}
+function clearVariationImage(v) {
+  v.image = { id: null, src: '', alt: '' }
+}
+
+// 拼接图片绝对 URL：相对路径走当前 origin（避开 Vite /api 前缀干扰），
+// 外链直接返回
+function absImageUrl(src) {
+  if (!src) return ''
+  if (/^https?:\/\//i.test(src)) return src
+  if (src.startsWith('//')) return window.location.protocol + src
+  // 相对路径：用当前 origin 作为基础
+  // dev: http://localhost:5173/uploads/... → Vite 不代理 /uploads/，需要指到 8080
+  // prod: 当前 origin (8080) + /uploads/... → 直连后端静态资源
+  const origin = window.location.origin
+  // dev 环境特判：5173 端口走的是 Vite，/uploads/ 需要绕到 8080
+  if (origin.includes(':5173') || import.meta.env.DEV) {
+    const apiBase = (API_BASE_URL && API_BASE_URL.startsWith('http')) ? API_BASE_URL : 'http://localhost:8080'
+    return apiBase.replace(/\/$/, '') + (src.startsWith('/') ? src : '/' + src)
+  }
+  return origin + (src.startsWith('/') ? src : '/' + src)
+}
+
+// el-upload 钩子：拦截选择，校验类型/大小，返回 false 阻止默认 action
+// EP 2.x 的 before-upload 回调直接拿到原始 File 对象（不是包装）
+function beforeVariationUpload(v, file) {
+  // 简单校验：仅允许图片类型；大小限制由后端 multipart.max-file-size 控制
+  const isImage = /^image\//.test(file.type || '')
+  if (!isImage) {
+    ElMessage.error('仅支持图片文件')
+    return false
+  }
+  v._imageUploading = true
+  return true
+}
+
+// 自定义上传：调用 /api/admin/upload/image，成功后回填 v.image
+// http-request 钩子的 opts.file 是原始 File 对象
+async function customVariationUpload(v, opts) {
+  try {
+    const res = await uploadImageViaAxios(opts.file)
+    if (res && res.url) {
+      const img = ensureImage(v)
+      img.src = res.url
+      img.alt = img.alt || (v.attributes || []).map(a => a.value).join(' ')
+      ElMessage.success('变体图片上传成功')
+    } else {
+      ElMessage.error('上传失败：返回数据格式异常')
+    }
+  } catch (e) {
+    // axios 响应拦截器已统一 toast；此处仅记录日志
+    console.error('[variation-image] upload failed:', e)
+  } finally {
+    v._imageUploading = false
+  }
+}
+
 function removeVariation(idx) {
-  props.form.variations.splice(idx, 1)
+  emit('remove-variation', idx)
 }
 
 function toggleEnabled(v) {
@@ -193,7 +350,24 @@ function applyBulk(field) {
       v.stockQuantity = Number(bulkStock.value)
     })
     bulkStock.value = ''
+  } else if (field === 'salePrice') {
+    // 销售价允许清空：留空字符串就置空字符串
+    props.form.variations.forEach(v => { v.salePrice = bulkSalePrice.value })
+    bulkSalePrice.value = ''
   }
+}
+
+// 批量设置 SKU：支持「前缀 + 序号」拼接，也可只填前缀或只填编号
+function applyBulkSku() {
+  const prefix = (bulkSkuPrefix.value || '').trim()
+  const startNum = bulkSkuStartNum.value === '' ? 1 : Math.max(0, Number(bulkSkuStartNum.value))
+  if (!prefix && bulkSkuStartNum.value === '') return
+  props.form.variations.forEach((v, i) => {
+    const num = startNum + i
+    v.sku = prefix ? `${prefix}${num}` : String(num)
+  })
+  bulkSkuPrefix.value = ''
+  bulkSkuStartNum.value = ''
 }
 </script>
 
@@ -234,6 +408,11 @@ function applyBulk(field) {
   border-radius: 6px;
   font-size: 13px;
 }
+.popover-hint {
+  font-size: 11px;
+  color: var(--text-400);
+  line-height: 1.4;
+}
 
 .variation-table {
   border: 1px solid var(--border);
@@ -244,7 +423,7 @@ function applyBulk(field) {
 .vtable-header,
 .vrow-summary {
   display: grid;
-  grid-template-columns: 30px 1.5fr 100px 80px 80px 80px 130px;
+  grid-template-columns: 30px 1.5fr 56px 100px 80px 80px 80px 130px;
   gap: 8px;
   padding: 8px 12px;
   align-items: center;
@@ -344,4 +523,78 @@ function applyBulk(field) {
 .btn-mini:hover { background: var(--background-100); }
 .btn-mini-danger { color: var(--state-error); border-color: var(--state-error-surface, #fecaca); }
 .btn-mini-danger:hover { background: var(--state-error-surface); }
+
+/* 变体图片 */
+.vrow-thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--background-100);
+}
+.col-image { display: flex; align-items: center; }
+.vimage-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.vimage-preview {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--background-100);
+  flex-shrink: 0;
+}
+.vimage-preview-wrap { flex-shrink: 0; }
+.vimage-empty {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  color: var(--text-400);
+  font-size: 11px;
+  flex-shrink: 0;
+  background: var(--background-100);
+}
+.vimage-fields { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.vimage-fields input {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--card);
+  font-family: inherit;
+}
+.vimage-actions { display: flex; gap: 6px; align-items: center; }
+.vimage-uploading {
+  font-size: 11px;
+  color: var(--primary);
+  margin-left: 4px;
+}
+/* el-upload 拖拽区样式覆盖：缩小内边距与字体 */
+.vimage-uploader {
+  display: block;
+}
+.vimage-uploader :deep(.el-upload) { width: 100%; }
+.vimage-uploader :deep(.el-upload-dragger) {
+  padding: 10px 14px;
+  border-radius: 6px;
+}
+.vimage-uploader-inner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-500);
+}
+.vimage-uploader-icon {
+  font-size: 14px;
+  color: var(--primary);
+}
 </style>

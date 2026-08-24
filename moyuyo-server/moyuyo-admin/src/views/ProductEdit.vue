@@ -67,13 +67,14 @@
           />
         </div>
         <div v-show="activeTab === 'attributes'" class="tab-pane">
-          <TabAttributes :form="form" @regenerate-variations="regenerateVariations" />
+          <TabAttributes :form="form" @regenerate-variations="regenerateVariations" @switch-to-variations="activeTab = 'variations'" />
         </div>
         <div v-show="activeTab === 'variations'" class="tab-pane">
           <TabVariations
             :form="form"
             :categories="categories"
             @open-upsell="openProductPicker('upsell')"
+            @remove-variation="removeVariationWithConfirm"
           />
         </div>
         <div v-show="activeTab === 'advanced'" class="tab-pane">
@@ -190,7 +191,7 @@
 <script setup>
 import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getProductDetail, createProduct, updateProduct,
   getCategoryList, pushProductToWoo, pullProductFromWoo,
@@ -545,25 +546,44 @@ function serializeAllAttributes() {
   return JSON.stringify(attrs)
 }
 
+// 把 el-select allow-create 产生的项归一化为纯字符串（兼容 EP 2.x 的对象形态）
+function normalizeOption(opt) {
+  if (opt == null) return ''
+  if (typeof opt === 'string') return opt
+  if (typeof opt === 'object') {
+    return opt.value || opt.__value || opt.label || opt.__text || String(opt)
+  }
+  return String(opt)
+}
+
 // 变体生成（笛卡尔积）
 function regenerateVariations() {
+  // 商品类型必须为 variable 才会显示 Variations Tab；提前校验避免生成后看不到
+  if (form.productType !== 'variable') {
+    ElMessage.warning('请先将商品类型切换为「Variable 可变商品」')
+    return
+  }
   const variationAttrs = (form.customAttributes || []).filter(a => a && a.variation && a.options && a.options.length)
   if (!variationAttrs.length) {
     form.variations = []
+    ElMessage.warning('请先勾选「用于变体」并为该属性添加至少一个值')
     return
   }
   // 笛卡尔积
   const cartesian = (arrs) => arrs.reduce((a, b) => a.flatMap(x => b.map(y => [...x, y])), [[]])
-  const attrValues = variationAttrs.map(a => a.options.map(o => ({ name: a.name, value: o })))
+  const attrValues = variationAttrs.map(a => a.options.map(o => ({ name: a.name, value: normalizeOption(o) })))
   const combos = cartesian(attrValues)
 
   // 保留已有变体的可编辑字段（按 attributes 签名匹配）
   const existing = form.variations || []
   const sigOf = (v) => JSON.stringify((v.attributes || []).slice().sort((a, b) => a.name.localeCompare(b.name)))
 
-  form.variations = combos.map(combo => {
+  form.variations = combos.map((combo, idx) => {
     const sig = JSON.stringify(combo.slice().sort((a, b) => a.name.localeCompare(b.name)))
     const found = existing.find(v => sigOf(v) === sig)
+    // 保留已有变体的展开状态与图片；新生成的变体默认收起，仅首个展开
+    const defaultExpanded = found ? found.expanded : (idx === 0)
+    const image = (found && found.image) || { id: null, src: '', alt: '' }
     return found || {
       id: 'tmp_' + Math.random().toString(36).slice(2, 10),
       attributes: combo,
@@ -575,9 +595,31 @@ function regenerateVariations() {
       stockStatus: 'instock',
       weight: '',
       dimensions: { length: '', width: '', height: '' },
-      enabled: true
+      enabled: true,
+      expanded: defaultExpanded,
+      image
     }
   })
+  // 生成完成后自动切到变体 Tab 并提示
+  activeTab.value = 'variations'
+  ElMessage.success(`已基于 ${variationAttrs.length} 个属性生成 ${combos.length} 个变体`)
+}
+
+// 删除变体（带确认）
+async function removeVariationWithConfirm(idx) {
+  const v = form.variations[idx]
+  if (!v) return
+  const label = (v.attributes || []).map(a => `${a.name}:${a.value}`).join(' / ') || '该变体'
+  try {
+    await ElMessageBox.confirm(
+      `确认删除变体「${label}」？此操作不可撤销。`,
+      '删除变体',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+    )
+    form.variations.splice(idx, 1)
+  } catch (e) {
+    // 用户取消
+  }
 }
 
 // 关联商品选择

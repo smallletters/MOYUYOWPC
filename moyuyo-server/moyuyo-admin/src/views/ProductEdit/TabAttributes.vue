@@ -21,7 +21,7 @@
         <div class="attr-header" @click="attr.expanded = !attr.expanded">
           <span class="attr-toggle">{{ attr.expanded ? '▼' : '▶' }}</span>
           <strong class="attr-name">{{ attr.name || '(未命名属性)' }}</strong>
-          <span class="attr-values-preview">{{ attr.options.join(', ') || '(无值)' }}</span>
+          <span class="attr-values-preview">{{ (attr.options || []).map(toOptString).join(', ') || '(无值)' }}</span>
           <button class="btn-delete" @click.stop="removeAttribute(idx)">删除</button>
         </div>
 
@@ -32,7 +32,7 @@
               <input v-model="attr.name" placeholder="例如：颜色 / Size / Material" />
             </div>
             <div class="form-group">
-              <label>值（多个用 | 分隔，或回车添加）</label>
+              <label>值（输入后回车添加；删除请点标签右侧的 ×）</label>
               <el-select
                 v-model="attr.options"
                 multiple
@@ -41,7 +41,7 @@
                 default-first-option
                 placeholder="输入值后回车添加"
                 style="width:100%"
-              />
+              ></el-select>
               <span class="field-hint">WC: options[]</span>
             </div>
           </div>
@@ -80,6 +80,15 @@ const emit = defineEmits(['regenerate-variations'])
 
 let _uid = 0
 function nextUid() { return 'attr_' + (++_uid) + '_' + Math.random().toString(36).slice(2, 6) }
+
+// el-select allow-create 在 EP 2.x 会产生 {__text, __value} 对象，3.x 为字符串。
+// 这里把单个选项归一化为字符串，避免 join/展示出现 [object Object]。
+function toOptString(opt) {
+  if (opt == null) return ''
+  if (typeof opt === 'string') return opt
+  if (typeof opt === 'object') return opt.value || opt.__value || opt.label || opt.__text || String(opt)
+  return String(opt)
+}
 
 function addAttribute() {
   props.form.customAttributes.push({
