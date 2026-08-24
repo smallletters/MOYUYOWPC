@@ -3,7 +3,6 @@
     <div class="page-header">
       <h2>{{ pageTitle }}</h2>
       <div class="header-actions">
-        <!-- 导出报表（示例功能） -->
         <el-button @click="handleExport">导出报表</el-button>
         <el-button type="primary" @click="handleAdd">新建</el-button>
       </div>
@@ -11,7 +10,7 @@
     <el-card shadow="never" class="filter-card">
       <el-form :model="filters" inline>
         <el-form-item label="关键词">
-          <el-input v-model="filters.keyword" placeholder="请输入结算单号/商家" clearable />
+          <el-input v-model="filters.keyword" placeholder="请输入结算单号/周期" clearable />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">搜索</el-button>
@@ -20,7 +19,7 @@
       </el-form>
     </el-card>
 
-    <!-- ===== 结算概览 KPI 卡片 ===== -->
+    <!-- ===== 结算概览 KPI 卡片（全部由真实接口驱动） ===== -->
     <div class="kpi-grid">
       <div v-for="kpi in kpiCards" :key="kpi.label" class="kpi-card">
         <div class="kpi-top">
@@ -39,15 +38,18 @@
     <!-- ===== 财务分析区块（两列布局） ===== -->
     <div class="analytics-grid">
       <div class="analytics-col">
-        <!-- 最近 Payout 汇总 -->
+        <!-- 最近 Payout 汇总（真实数据：mo_settlement 按 payChannel 聚合） -->
         <el-card shadow="never" class="block-card">
           <div class="card-head">
             <h3>最近 Payout 汇总</h3>
-            <span class="card-sub">自动对账 T+3</span>
+            <span class="card-sub">按支付渠道聚合</span>
+          </div>
+          <div v-if="payoutChannels.length === 0" class="empty-tip">
+            <el-empty description="暂无已结算渠道数据" :image-size="60" />
           </div>
           <div v-for="p in payoutChannels" :key="p.channel" class="payout-item">
             <div class="payout-left">
-              <p class="payout-channel">{{ p.channel }}</p>
+              <p class="payout-channel">{{ channelLabel(p.channel) }}</p>
               <p class="payout-count">{{ p.count }} 笔 Payout · {{ p.note }}</p>
             </div>
             <div class="payout-right">
@@ -57,15 +59,15 @@
           </div>
         </el-card>
 
-        <!-- 对账记录 -->
+        <!-- 对账记录（真实数据：最近 10 条 settlement） -->
         <el-card shadow="never" class="block-card">
           <div class="card-head">
             <h3>对账记录</h3>
-            <span class="card-sub">本月</span>
+            <span class="card-sub">最近 10 条结算</span>
           </div>
           <el-table :data="reconRecords" size="small">
             <el-table-column prop="no" label="对账单号" min-width="140" />
-            <el-table-column prop="time" label="时间" min-width="120" />
+            <el-table-column prop="time" label="时间" min-width="160" />
             <el-table-column label="金额" width="110" align="right">
               <template #default="{ row }">
                 <span :class="['recon-amount', { 'recon-diff': row.status === '差异' }]">￥{{ formatMoney(row.amount) }}</span>
@@ -77,43 +79,60 @@
               </template>
             </el-table-column>
           </el-table>
+          <div v-if="reconRecords.length === 0" class="empty-tip">
+            <el-empty description="暂无对账记录" :image-size="60" />
+          </div>
         </el-card>
       </div>
 
       <div class="analytics-col">
-        <!-- 税务报表 -->
+        <!-- 退款概况（真实数据：mo_refund 聚合） -->
         <el-card shadow="never" class="block-card">
           <div class="card-head">
-            <h3>税务报表</h3>
-            <span class="card-sub">{{ taxMonth }}</span>
+            <h3>退款概况</h3>
+            <span class="card-sub">全部退款统计</span>
           </div>
           <div class="tax-total-row">
-            <span>当月税额汇总</span>
-            <span class="tax-total-amount">￥{{ formatMoney(taxTotal) }}</span>
+            <span>退款总额</span>
+            <span class="tax-total-amount">￥{{ formatMoney(refundKpi.totalAmount) }}</span>
           </div>
-          <div v-for="t in taxReports" :key="t.name" class="tax-row">
-            <div class="tax-info">
-              <p class="tax-name">{{ t.name }}</p>
-              <p class="tax-desc">{{ t.desc }}</p>
+          <div class="refund-kpi-row">
+            <div class="refund-kpi-item">
+              <span class="refund-kpi-label">退款笔数</span>
+              <span class="refund-kpi-value">{{ refundKpi.totalCount }}</span>
             </div>
-            <div class="tax-actions">
-              <span class="tax-amount">￥{{ formatMoney(t.amount) }}</span>
-              <button class="tax-btn" @click="handleExportTax(t.name)">
-                <el-icon :size="14"><Download /></el-icon>
-                导出
-              </button>
+            <div class="refund-kpi-item">
+              <span class="refund-kpi-label">待处理</span>
+              <span class="refund-kpi-value refund-kpi-warn">{{ refundKpi.pendingCount }}</span>
             </div>
+            <div class="refund-kpi-item">
+              <span class="refund-kpi-label">已完成</span>
+              <span class="refund-kpi-value refund-kpi-ok">{{ refundKpi.completedCount }}</span>
+            </div>
+          </div>
+          <div class="refund-link-row">
+            <button class="tax-btn" @click="goRefund">
+              <el-icon :size="14"><ArrowRight /></el-icon>
+              前往退款管理
+            </button>
           </div>
         </el-card>
 
-        <!-- 对账异常告警 -->
+        <!-- 对账异常告警（真实数据：settlement ABNORMAL + refund PENDING） -->
         <el-card shadow="never" class="block-card">
           <div class="card-head">
             <div class="alert-title">
-              <el-icon :size="16" color="var(--state-error)"><WarningFilled /></el-icon>
+              <el-icon :size="16" :color="alerts.filter(a=>a.status==='待处理').length > 0 ? 'var(--state-error)' : 'var(--state-success)'">
+                <component :is="alerts.filter(a=>a.status==='待处理').length > 0 ? WarningFilled : CircleCheck" />
+              </el-icon>
               <h3>对账异常告警</h3>
-              <span class="alert-badge">{{ alerts.length }}</span>
+              <span class="alert-badge" :class="{ 'alert-badge-zero': alerts.filter(a=>a.status==='待处理').length === 0 }">
+                {{ alerts.filter(a => a.status === '待处理').length }}
+              </span>
             </div>
+          </div>
+          <div v-if="alerts.length === 0" class="empty-tip">
+            <el-empty description="暂无告警，资金对账健康" :image-size="60" />
           </div>
           <div v-for="(a, i) in alerts" :key="i" class="alert-item" :class="{ resolved: a.status === '已处理' }">
             <div class="alert-top">
@@ -126,10 +145,6 @@
               <span :class="['alert-status', a.status === '待处理' ? 'alert-pending' : 'alert-resolved']">{{ a.status }}</span>
             </div>
             <p class="alert-desc">{{ a.desc }}</p>
-            <div class="alert-actions">
-              <button class="action-link" @click="handleAlertDetail(a)">查看详情</button>
-              <button v-if="a.status === '待处理'" class="action-link" @click="handleResolveAlert(a)">手动核销</button>
-            </div>
           </div>
         </el-card>
       </div>
@@ -140,14 +155,22 @@
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="settlementNo" label="结算单号" width="160" />
         <el-table-column prop="period" label="周期" width="120" />
+        <el-table-column prop="payChannel" label="支付渠道" width="120">
+          <template #default="{ row }">
+            <span class="channel-pill">{{ channelLabel(row.payChannel) }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="remark" label="备注" min-width="140" show-overflow-tooltip />
         <el-table-column label="结算金额" width="120">
           <template #default="{ row }">￥{{ Number(row.amount || 0).toFixed(2) }}</template>
         </el-table-column>
         <el-table-column label="状态" width="120">
           <template #default="{ row }">
-            <el-tag :type="row.status === '已结算' ? 'success' : row.status === '已确认' ? 'primary' : 'warning'">{{ row.status }}</el-tag>
+            <el-tag :type="settlementTagType(row.status)" size="small" effect="light">{{ settlementLabel(row.status) }}</el-tag>
           </template>
+        </el-table-column>
+        <el-table-column label="结算时间" width="160">
+          <template #default="{ row }">{{ formatTime(row.settleTime) }}</template>
         </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
@@ -174,6 +197,15 @@
         <el-form-item label="周期">
           <el-input v-model="editForm.period" placeholder="如 2026-07上" />
         </el-form-item>
+        <el-form-item label="支付渠道">
+          <el-select v-model="editForm.payChannel" placeholder="请选择">
+            <el-option label="Stripe 信用卡" value="STRIPE" />
+            <el-option label="PayPal" value="PAYPAL" />
+            <el-option label="微信支付" value="WECHAT" />
+            <el-option label="支付宝" value="ALIPAY" />
+            <el-option label="Apple Pay" value="APPLE_PAY" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="editForm.remark" placeholder="请输入备注" />
         </el-form-item>
@@ -182,9 +214,10 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="editForm.status">
-            <el-option label="待确认" value="待确认" />
-            <el-option label="已确认" value="已确认" />
-            <el-option label="已结算" value="已结算" />
+            <el-option label="待结算" value="PENDING" />
+            <el-option label="结算中" value="SETTLING" />
+            <el-option label="已结算" value="SETTLED" />
+            <el-option label="异常" value="ABNORMAL" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -206,35 +239,21 @@
         <el-button type="primary" @click="confirmExport">导出</el-button>
       </template>
     </el-dialog>
-
-    <!-- 告警详情 / 核销 -->
-    <el-dialog
-      v-model="alertDialogVisible"
-      :title="alertDialogMode === 'detail' ? '告警详情' : '手动核销告警'"
-      width="480px"
-    >
-      <el-descriptions v-if="currentAlert" :column="1" border>
-        <el-descriptions-item label="告警类型">{{ currentAlert.type }}</el-descriptions-item>
-        <el-descriptions-item label="等级">{{ currentAlert.level }}</el-descriptions-item>
-        <el-descriptions-item label="状态">{{ currentAlert.status }}</el-descriptions-item>
-        <el-descriptions-item label="描述">{{ currentAlert.desc }}</el-descriptions-item>
-      </el-descriptions>
-      <template #footer>
-        <el-button @click="alertDialogVisible = false">关闭</el-button>
-        <el-button v-if="alertDialogMode === 'resolve' && currentAlert?.status === '待处理'" type="primary" @click="confirmResolveAlert">确认核销</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Wallet, CircleCheck, WarningFilled, Money, Download } from '@element-plus/icons-vue'
-import { getSettlements, createSettlement, updateSettlement, deleteSettlement } from '../api/admin'
-import api from '../api'
+import { Wallet, CircleCheck, WarningFilled, Money, Download, ArrowRight } from '@element-plus/icons-vue'
+import {
+  getSettlements, createSettlement, updateSettlement, deleteSettlement,
+  getPayoutChannels, getReconcileAlerts, getRefundKpi
+} from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
+const router = useRouter()
 const pageTitle = '结算管理'
 const filters = reactive({ keyword: '' })
 const tableData = ref([])
@@ -244,25 +263,98 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const editForm = reactive({
+  id: null,
   settlementNo: '',
   period: '',
+  payChannel: '',
   remark: '',
   amount: 0,
-  status: '待确认'
+  status: 'PENDING'
 })
+
+// 真实数据：Payout 渠道汇总
+const payoutChannels = ref([])
+// 真实数据：对账异常告警
+const alerts = ref([])
+// 真实数据：退款 KPI
+const refundKpi = ref({ totalAmount: 0, totalCount: 0, pendingCount: 0, completedCount: 0 })
 
 // ===== 金额格式化：千分位 + 保留两位小数 =====
 function formatMoney(n) {
   return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-// ===== 结算概览 KPI（待结算/已结算由列表数据驱动，异常数/退款为示例数据） =====
-const settledAmount = computed(() => tableData.value.filter(i => i.status === '已结算').reduce((s, i) => s + (Number(i.amount) || 0), 0))
-const settledCount = computed(() => tableData.value.filter(i => i.status === '已结算').length)
-const pendingAmount = computed(() => tableData.value.filter(i => i.status !== '已结算').reduce((s, i) => s + (Number(i.amount) || 0), 0))
-const pendingCount = computed(() => tableData.value.filter(i => i.status !== '已结算').length)
+// ===== 时间格式化：后端 LocalDateTime 序列化为 "yyyy-MM-dd HH:mm:ss" =====
+function formatTime(value) {
+  if (!value) return '—'
+  const str = String(value).replace('T', ' ').replace(/\..*$/, '')
+  return str || '—'
+}
+
+// ===== 渠道枚举 -> 中文标签（与财务概览保持一致） =====
+function channelLabel(channel) {
+  const map = {
+    STRIPE: 'Stripe 信用卡',
+    PAYPAL: 'PayPal',
+    WECHAT: '微信支付',
+    ALIPAY: '支付宝',
+    APPLE_PAY: 'Apple Pay',
+    UNIONPAY: '银联',
+    WALLET: '余额支付'
+  }
+  return map[channel] || channel || '—'
+}
+
+// ===== 结算状态 -> 标签类型（与 SettlementEntity 状态机对齐） =====
+function settlementTagType(status) {
+  const map = {
+    SETTLED: 'success',
+    COMPLETED: 'success',
+    SETTLING: 'warning',
+    PENDING: 'info',
+    ABNORMAL: 'danger',
+    FAILED: 'danger'
+  }
+  return map[status] || 'info'
+}
+
+// ===== 结算状态 -> 中文标签 =====
+function settlementLabel(status) {
+  const map = {
+    SETTLED: '已结算',
+    COMPLETED: '已结算',
+    SETTLING: '结算中',
+    PENDING: '待结算',
+    ABNORMAL: '异常',
+    FAILED: '失败'
+  }
+  return map[status] || status || '未知'
+}
+
+// ===== 对账记录状态映射（与状态机一致） =====
+function reconStatus(s) {
+  const map = {
+    SETTLED: '已对账',
+    COMPLETED: '已对账',
+    SETTLING: '待对账',
+    PENDING: '待对账',
+    ABNORMAL: '差异',
+    FAILED: '差异'
+  }
+  return map[s] || '待对账'
+}
+
+// ===== KPI 卡片（全部由真实数据派生） =====
+const pendingAmount = computed(() => tableData.value
+  .filter(i => ['PENDING', 'SETTLING'].includes(i.status))
+  .reduce((s, i) => s + (Number(i.amount) || 0), 0))
+const pendingCount = computed(() => tableData.value.filter(i => ['PENDING', 'SETTLING'].includes(i.status)).length)
+const settledAmount = computed(() => tableData.value
+  .filter(i => ['SETTLED', 'COMPLETED'].includes(i.status))
+  .reduce((s, i) => s + (Number(i.amount) || 0), 0))
+const settledCount = computed(() => tableData.value.filter(i => ['SETTLED', 'COMPLETED'].includes(i.status)).length)
 const pendingAlertCount = computed(() => alerts.value.filter(a => a.status === '待处理').length)
-const resolvedAlertCount = computed(() => alerts.value.filter(a => a.status === '已处理').length)
+
 const kpiCards = computed(() => [
   {
     label: '待结算金额',
@@ -287,7 +379,7 @@ const kpiCards = computed(() => [
   {
     label: '对账异常数',
     value: String(alerts.value.length),
-    sub: pendingAlertCount.value + ' 待处理 / ' + resolvedAlertCount.value + ' 已处理',
+    sub: pendingAlertCount.value + ' 待处理',
     icon: WarningFilled,
     iconBg: 'var(--state-error-surface)',
     iconColor: 'var(--state-error)',
@@ -295,10 +387,9 @@ const kpiCards = computed(() => [
     subColor: 'var(--text-400)'
   },
   {
-    // 示例数据：退款总额（无真实 API，展示设计稿形态）
     label: '退款总额',
-    value: '￥3,420.00',
-    sub: '本月退款率 2.7%',
+    value: '￥' + formatMoney(refundKpi.value.totalAmount),
+    sub: refundKpi.value.totalCount + ' 笔退款 · ' + refundKpi.value.pendingCount + ' 待处理',
     icon: Money,
     iconBg: 'var(--state-success-surface)',
     iconColor: 'var(--state-success)',
@@ -307,149 +398,72 @@ const kpiCards = computed(() => [
   }
 ])
 
-// ===== 示例数据：各渠道最近 Payout 汇总（无真实 API） =====
-const payoutChannels = [
-  { channel: 'Stripe', count: 24, amount: 105379.5, status: '已到账', note: '自动对账 T+3' },
-  { channel: 'PayPal', count: 8, amount: 18460.2, status: '已到账', note: '自动对账 T+3' }
-]
+// ===== 对账记录派生：取最近 10 条 settlement，按状态映射文案 =====
+const reconRecords = computed(() => tableData.value.slice(0, 10).map(s => ({
+  no: s.settlementNo || String(s.id),
+  time: formatTime(s.settleTime || s.createTime),
+  amount: Number(s.amount || 0),
+  status: reconStatus(s.status)
+})))
 
-// ===== 示例数据：对账记录（无真实 API） =====
-const reconRecords = [
-  { no: 'PO_20260705_001', time: '2026-07-05 10:32', amount: 12580, status: '已对账' },
-  { no: 'PO_20260702_003', time: '2026-07-02 14:18', amount: 8920.5, status: '已对账' },
-  { no: 'PO_20260628_007', time: '2026-06-28 09:45', amount: 3150, status: '差异', diff: -45.8 },
-  { no: 'PO_20260707_002', time: '2026-07-07 预计 07-10', amount: 15320, status: '待对账' },
-  { no: 'PO_20260625_012', time: '2026-06-25 16:50', amount: 22780, status: '已对账' }
-]
-
-// ===== 示例数据：税务报表（无真实 API） =====
-const taxMonth = '2026年7月'
-const taxTotal = 8962.3
-const taxReports = [
-  { name: 'EU VAT', desc: '欧盟增值税', amount: 4120 },
-  { name: 'US Sales Tax', desc: '美国销售税', amount: 2850.5 },
-  { name: 'UK VAT', desc: '英国增值税', amount: 1991.8 }
-]
-
-// ===== 示例数据：对账异常告警（无真实 API） =====
-const alerts = ref([
-  { type: '金额差异', level: 'warning', status: '待处理', desc: 'Payout PO_20260628_007 与系统订单合计差额 ￥-45.80，涉及 3 笔订单。' },
-  { type: '订单缺失', level: 'error', status: '待处理', desc: 'Stripe Payout PO_20260702_003 中包含 1 笔系统未匹配的订单 (#ORD-98012)，金额 ￥189.00。' },
-  { type: '退款不一致', level: 'success', status: '已处理', desc: 'PayPal 订单 #ORD-97856 退款金额 ￥68.00 与渠道记录 ￥65.50 不一致，已手动核销。' },
-  { type: '金额差异', level: 'success', status: '已处理', desc: 'Stripe Payout PO_20260625_012 汇率换算差异 ￥12.30，确认为汇率浮动导致，已核销。' },
-  { type: '订单缺失', level: 'success', status: '已处理', desc: '测试订单 #ORD-TEST-001 未同步至结算系统，已补录并核销。' }
-])
-
-// ===== 对账状态 → 状态标签样式类 =====
+// ===== 对账状态 -> 状态标签样式类 =====
 function statusClass(s) {
   if (s === '已对账') return 'reconciled'
   if (s === '差异') return 'discrepancy'
   return 'pending'
 }
 
-// ===== 告警级别 → 颜色令牌 =====
+// ===== 告警级别 -> 颜色令牌 =====
 function levelColor(level) {
   if (level === 'error') return 'var(--state-error)'
   if (level === 'success') return 'var(--state-success)'
   return 'var(--state-warning)'
 }
 
-// ===== 报表导出 / 告警处理（已有可用 API，未接入则导出 Excel） =====
-// 报表导出对话框
+// ===== 报表导出 =====
 const exportDialogVisible = ref(false)
 const exportName = ref('')
 
 function handleExport() {
-  exportName.value = '汇总报表-' + new Date().toISOString().slice(0, 10)
+  exportName.value = '结算报表-' + new Date().toISOString().slice(0, 10)
   exportDialogVisible.value = true
 }
 
-async function confirmExport() {
-  try {
-    // 调用导出 API：POST /finance/settlements/export
-    const res = await api.post('/finance/settlements/export', { name: exportName.value })
-    if (res && res.url) {
-      window.open(res.url, '_blank')
-      ElMessage.success('报表已生成：' + exportName.value)
-    } else {
-      // 无 URL 时降级为前端生成 CSV
-      exportTableToCSV(settlements.value, exportName.value)
-      ElMessage.success('已导出本地 CSV 文件')
-    }
-  } catch (e) {
-    // 接口未接入时使用前端 CSV 导出
-    exportTableToCSV(settlements.value, exportName.value)
-    ElMessage.success('已导出本地 CSV 文件')
-  } finally {
-    exportDialogVisible.value = false
-  }
+function confirmExport() {
+  // 基于当前真实数据生成 CSV
+  const rows = tableData.value.map(s => ({
+    col0: s.settlementNo || s.id,
+    col1: s.period || '—',
+    col2: channelLabel(s.payChannel),
+    col3: '￥' + formatMoney(s.amount),
+    col4: settlementLabel(s.status),
+    col5: formatTime(s.settleTime)
+  }))
+  exportTableToCSV(rows, exportName.value, [
+    { key: 'col0', label: '结算单号' },
+    { key: 'col1', label: '周期' },
+    { key: 'col2', label: '支付渠道' },
+    { key: 'col3', label: '金额' },
+    { key: 'col4', label: '状态' },
+    { key: 'col5', label: '结算时间' }
+  ])
+  ElMessage.success('已导出 ' + exportName.value + '（含 ' + rows.length + ' 条记录）')
+  exportDialogVisible.value = false
 }
 
-// 单项报表导出（同样降级到 CSV）
-function handleExportTax(name) {
-  try {
-    const rows = filteredSettlements.value
-    exportTableToCSV(rows, name + '-' + new Date().toISOString().slice(0, 10))
-    ElMessage.success('已导出 ' + name + ' 报表')
-  } catch (e) {
-    ElMessage.error('导出失败：' + (e?.message || '未知错误'))
-  }
-}
-
-// 告警详情 / 手动核销
-const alertDialogVisible = ref(false)
-const alertDialogMode = ref('detail') // detail / resolve
-const currentAlert = ref(null)
-
-function handleAlertDetail(alert) {
-  currentAlert.value = alert
-  alertDialogMode.value = 'detail'
-  alertDialogVisible.value = true
-}
-
-function handleResolveAlert(alert) {
-  currentAlert.value = alert
-  alertDialogMode.value = 'resolve'
-  alertDialogVisible.value = true
-}
-
-async function confirmResolveAlert() {
-  if (!currentAlert.value) return
-  try {
-    // 调用核销 API：POST /finance/settlements/alerts/{id}/resolve
-    await api.post(`/finance/settlements/alerts/${currentAlert.value.id}/resolve`)
-    // 更新本地状态
-    const idx = alerts.value.findIndex(a => a === currentAlert.value)
-    if (idx >= 0) {
-      alerts.value[idx].status = '已处理'
-      alerts.value[idx].level = 'success'
-    }
-    ElMessage.success('已核销告警：' + currentAlert.value.type)
-    alertDialogVisible.value = false
-  } catch (e) {
-    // 接口未接入时本地修改
-    const idx = alerts.value.findIndex(a => a === currentAlert.value)
-    if (idx >= 0) {
-      alerts.value[idx].status = '已处理'
-      alerts.value[idx].level = 'success'
-    }
-    ElMessage.success('已核销告警（本地模式）')
-    alertDialogVisible.value = false
-  }
-}
-
-// 简易 CSV 导出工具
-function exportTableToCSV(rows, filename) {
+// 通用 CSV 导出
+function exportTableToCSV(rows, filename, columns) {
   if (!rows || rows.length === 0) {
     ElMessage.warning('暂无可导出数据')
     return
   }
-  const headers = Object.keys(rows[0])
-  const csv = [
-    headers.join(','),
-    ...rows.map(r => headers.map(h => JSON.stringify(r[h] ?? '')).join(','))
-  ].join('\n')
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })
+  const headers = columns.map(c => c.label).join(',')
+  const body = rows.map(r => columns.map(c => {
+    const v = r[c.key] ?? ''
+    const s = String(v).replace(/"/g, '""')
+    return /[",\n]/.test(s) ? `"${s}"` : s
+  }).join(',')).join('\n')
+  const blob = new Blob(['\ufeff' + headers + '\n' + body], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -458,34 +472,86 @@ function exportTableToCSV(rows, filename) {
   URL.revokeObjectURL(url)
 }
 
-// ===== 结算单 CRUD（保留原有逻辑） =====
-// 从API加载结算列表数据
+// 跳转退款管理
+function goRefund() {
+  router.push('/refund')
+}
+
+// ===== 结算单 CRUD =====
 async function loadData() {
   try {
-    const res = await getSettlements()
-    const list = toArray(res)
+    const res = await getSettlements({ page: currentPage.value, size: pageSize.value })
+    const list = toArray(res?.records != null ? res.records : res)
     // 根据关键词过滤
     let filtered = [...list]
     if (filters.keyword) {
-      filtered = filtered.filter(item => (item.settlementNo || '').includes(filters.keyword) || (item.period || '').includes(filters.keyword))
+      const kw = filters.keyword.toLowerCase()
+      filtered = filtered.filter(item =>
+        (item.settlementNo || '').toLowerCase().includes(kw)
+        || (item.period || '').toLowerCase().includes(kw))
     }
     tableData.value = filtered
-    total.value = filtered.length
+    total.value = res?.total != null ? Number(res.total) : filtered.length
   } catch (e) {
     console.error('加载结算列表失败:', e)
     ElMessage.error('加载结算列表失败')
   }
 }
+
+// 加载 Payout 渠道汇总
+async function loadPayoutChannels() {
+  try {
+    payoutChannels.value = await getPayoutChannels() || []
+  } catch (e) {
+    console.error('加载 Payout 渠道汇总失败:', e)
+    payoutChannels.value = []
+  }
+}
+
+// 加载对账异常告警
+async function loadAlerts() {
+  try {
+    alerts.value = await getReconcileAlerts() || []
+  } catch (e) {
+    console.error('加载对账告警失败:', e)
+    alerts.value = []
+  }
+}
+
+// 加载退款 KPI
+async function loadRefundKpi() {
+  try {
+    refundKpi.value = await getRefundKpi() || { totalAmount: 0, totalCount: 0, pendingCount: 0, completedCount: 0 }
+  } catch (e) {
+    console.error('加载退款 KPI 失败:', e)
+    refundKpi.value = { totalAmount: 0, totalCount: 0, pendingCount: 0, completedCount: 0 }
+  }
+}
+
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.keyword = ''; handleSearch() }
-function handleAdd() { dialogTitle.value = '新建结算单'; editForm.id = null; editForm.settlementNo = ''; editForm.period = ''; editForm.remark = ''; editForm.amount = 0; editForm.status = '待确认'; dialogVisible.value = true }
-function handleEdit(row) { dialogTitle.value = '编辑结算单'; Object.assign(editForm, row); dialogVisible.value = true }
+function handleAdd() {
+  dialogTitle.value = '新建结算单'
+  editForm.id = null
+  editForm.settlementNo = ''
+  editForm.period = ''
+  editForm.payChannel = ''
+  editForm.remark = ''
+  editForm.amount = 0
+  editForm.status = 'PENDING'
+  dialogVisible.value = true
+}
+function handleEdit(row) {
+  dialogTitle.value = '编辑结算单'
+  Object.assign(editForm, row)
+  dialogVisible.value = true
+}
 async function handleDelete(row) {
   try {
     await ElMessageBox.confirm('确定删除？', '提示')
     await deleteSettlement(row.id)
     ElMessage.success('删除成功')
-    await loadData()
+    await Promise.all([loadData(), loadPayoutChannels(), loadAlerts(), loadRefundKpi()])
   } catch (e) {
     if (e !== 'cancel') {
       ElMessage.error('删除失败: ' + (e.message || '未知错误'))
@@ -496,6 +562,7 @@ async function handleSave() {
   try {
     const payload = {
       period: editForm.period,
+      payChannel: editForm.payChannel,
       remark: editForm.remark,
       amount: editForm.amount,
       status: editForm.status
@@ -507,12 +574,14 @@ async function handleSave() {
     }
     ElMessage.success('保存成功')
     dialogVisible.value = false
-    await loadData()
+    await Promise.all([loadData(), loadPayoutChannels(), loadAlerts(), loadRefundKpi()])
   } catch (e) {
     ElMessage.error('保存失败: ' + (e.message || '未知错误'))
   }
 }
-onMounted(() => loadData())
+onMounted(() => {
+  Promise.all([loadData(), loadPayoutChannels(), loadAlerts(), loadRefundKpi()])
+})
 </script>
 
 <style scoped>
@@ -521,6 +590,7 @@ onMounted(() => loadData())
 .page-header h2 { font-size: 22px; font-weight: 700; color: var(--text-800); margin: 0; }
 .filter-card { margin-bottom: 16px; }
 .header-actions { display: flex; gap: 8px; }
+.empty-tip { padding: 16px 0; }
 
 /* ===== 结算概览 KPI 卡片 ===== */
 .kpi-grid {
@@ -589,7 +659,6 @@ onMounted(() => loadData())
 .payout-channel { font-size: 14px; font-weight: 600; color: var(--text-800); margin: 0 0 2px; }
 .payout-count { font-size: 12px; color: var(--text-400); margin: 0; }
 .payout-right { display: flex; align-items: center; gap: 10px; }
-/* 金额高亮：品牌色 */
 .payout-amount {
   font-size: 16px;
   font-weight: 700;
@@ -611,11 +680,10 @@ onMounted(() => loadData())
 .status-badge.reconciled { background: var(--state-success-surface); color: var(--state-success); }
 .status-badge.discrepancy { background: var(--state-error-surface); color: var(--state-error); }
 .status-badge.pending { background: var(--background-200); color: var(--text-500); }
-/* 对账记录金额 */
 .recon-amount { font-weight: 600; color: var(--text-800); font-variant-numeric: tabular-nums; }
 .recon-amount.recon-diff { color: var(--state-error); }
 
-/* ===== 税务报表 ===== */
+/* ===== 退款概况（原"税务报表"位替换） ===== */
 .tax-total-row {
   display: flex;
   align-items: center;
@@ -623,35 +691,41 @@ onMounted(() => loadData())
   padding: 12px 0;
   border-bottom: 1px solid var(--background-200);
 }
-.tax-total-row span:first-child { font-size: 12px; color: var(--text-500); }
+.tax-total-row span:first-child { font-size: 13px; color: var(--text-500); }
 .tax-total-amount {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text-800);
   font-variant-numeric: tabular-nums;
 }
-.tax-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 0;
+.refund-kpi-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  padding: 14px 0;
   border-bottom: 1px solid var(--background-200);
 }
-.tax-row:last-child { border-bottom: none; }
-.tax-name { font-size: 14px; font-weight: 500; color: var(--text-800); margin: 0 0 2px; }
-.tax-desc { font-size: 12px; color: var(--text-400); margin: 0; }
-.tax-actions { display: flex; align-items: center; gap: 10px; }
-.tax-amount {
-  font-size: 14px;
-  font-weight: 600;
+.refund-kpi-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.refund-kpi-label { font-size: 12px; color: var(--text-400); }
+.refund-kpi-value {
+  font-size: 18px;
+  font-weight: 700;
   color: var(--text-800);
   font-variant-numeric: tabular-nums;
 }
+.refund-kpi-warn { color: var(--state-warning); }
+.refund-kpi-ok { color: var(--state-success); }
+.refund-link-row { padding-top: 12px; }
 .tax-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 8px 14px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--background-50);
@@ -670,22 +744,23 @@ onMounted(() => loadData())
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
+  min-width: 20px;
   height: 20px;
-  border-radius: 50%;
+  padding: 0 6px;
+  border-radius: 10px;
   background: var(--state-error);
   color: var(--state-error-foreground);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
 }
-/* 告警条：红色左边框，已处理转绿色 */
+.alert-badge-zero { background: var(--background-200); color: var(--text-500); }
 .alert-item {
   padding: 12px;
   border-bottom: 1px solid var(--background-200);
   border-left: 3px solid var(--state-warning);
 }
 .alert-item:last-child { border-bottom: none; }
-.alert-item.resolved { border-left-color: var(--state-success); opacity: 0.7; }
+.alert-item.resolved { border-left-color: var(--state-success); opacity: 0.75; }
 .alert-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .alert-type { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; }
 .alert-status {
@@ -696,15 +771,16 @@ onMounted(() => loadData())
 }
 .alert-pending { background: var(--background-200); color: var(--text-500); }
 .alert-resolved { background: var(--state-success-surface); color: var(--state-success); }
-.alert-desc { font-size: 12px; line-height: 1.6; color: var(--text-600); margin: 0 0 8px; }
-.alert-actions { display: flex; gap: 16px; }
-.action-link {
-  color: var(--primary);
+.alert-desc { font-size: 12px; line-height: 1.6; color: var(--text-600); margin: 0; }
+
+/* ===== 渠道徽标 ===== */
+.channel-pill {
+  display: inline-block;
+  padding: 2px 8px;
   font-size: 12px;
-  font-weight: 600;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
+  font-weight: 500;
+  border-radius: 6px;
+  background: var(--background-100);
+  color: var(--text-700);
 }
 </style>

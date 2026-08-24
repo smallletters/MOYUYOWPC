@@ -322,4 +322,34 @@ public class AdminFinanceController {
     result.put("size", pageResult.getSize());
     return Result.success(result);
   }
+
+  @Operation(summary = "Payout 渠道汇总 - 用于结算管理页面")
+  @GetMapping("/payout-channels")
+  public Result<List<Map<String, Object>>> payoutChannels() {
+    try {
+      return Result.success(financeService.getPayoutChannels());
+    } catch (Exception e) {
+      return Result.error("查询 Payout 渠道汇总失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "对账异常告警 - 用于结算管理页面")
+  @GetMapping("/reconcile-alerts")
+  public Result<List<Map<String, Object>>> reconcileAlerts() {
+    try {
+      return Result.success(financeService.getReconcileAlerts());
+    } catch (Exception e) {
+      return Result.error("查询对账告警失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "退款 KPI - 用于结算管理页面")
+  @GetMapping("/refund-kpi")
+  public Result<Map<String, Object>> refundKpi() {
+    try {
+      return Result.success(financeService.getRefundKpi());
+    } catch (Exception e) {
+      return Result.error("查询退款 KPI 失败: " + e.getMessage());
+    }
+  }
 }

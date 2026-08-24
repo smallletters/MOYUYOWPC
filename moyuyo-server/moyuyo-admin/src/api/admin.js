@@ -140,6 +140,21 @@ export function getFinanceRecords(params) {
   return api.get('/finance/records', { params })
 }
 
+// 结算管理页面专用：按渠道汇总最近 Payout
+export function getPayoutChannels() {
+  return api.get('/finance/payout-channels')
+}
+
+// 结算管理页面专用：对账异常告警
+export function getReconcileAlerts() {
+  return api.get('/finance/reconcile-alerts')
+}
+
+// 结算管理页面专用：退款 KPI（总额/笔数/待处理/已完成）
+export function getRefundKpi() {
+  return api.get('/finance/refund-kpi')
+}
+
 // ==================== 退款管理 ====================
 export function getRefundStats() {
   return api.get('/refunds/stats')
