@@ -57,9 +57,13 @@ api.interceptors.response.use(
       return body.data
     }
     // 后端返回了业务错误码（如 code=500），reject 让调用方处理
-     if (body && body.code !== undefined && body.code !== 0) {
-       return Promise.reject(new Error(body.message || '操作失败'))
-     }
+    // 携带 code 字段，便于登录页等场景区分"账号被锁(code=423)" / "密码错(code=401)"
+    if (body && body.code !== undefined && body.code !== 0) {
+      const bizErr = new Error(body.message || '操作失败')
+      bizErr.code = body.code
+      bizErr.business = true
+      return Promise.reject(bizErr)
+    }
     // 非标准格式原样返回
     return body
   },

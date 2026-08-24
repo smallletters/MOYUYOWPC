@@ -72,10 +72,15 @@
           native-type="submit"
           class="login-btn"
           :loading="loading"
-          :disabled="loading"
+          :disabled="loading || lockRemaining > 0"
         >
-          {{ loading ? '登录中...' : '登录' }}
+          {{ loading ? '登录中...' : (lockRemaining > 0 ? `账号已锁定，请等待 ${lockRemaining}s` : '登录') }}
         </el-button>
+
+        <!-- 被锁提示横幅，423 时显示 -->
+        <div v-if="lockRemaining > 0" class="lock-banner">
+          登录失败次数过多，账号已临时锁定
+        </div>
 
         <!-- 分隔线 -->
         <div class="divider">
@@ -110,6 +115,9 @@ const form = reactive({
 
 const showPassword = ref(false)
 const loading = ref(false)
+// 账号被锁倒计时（秒）。由后端 423 响应触发；为 0 表示未锁定
+const lockRemaining = ref(0)
+let lockTimer = null
 
 // 邮箱格式校验
 const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
@@ -161,10 +169,41 @@ async function handleLogin() {
       ElMessage.error(res?.message || '登录失败')
     }
   } catch (e) {
-    ElMessage.error('网络错误，请检查后端服务是否正常运行')
+    // 业务错误（账号不存在/密码错/账号被锁等）：后端 message 已经带了原因，原样透传
+    // 网络错误才兜底为"请检查后端服务"
+    const msg = (e && e.message) || ''
+    if (msg && !/Network Error/i.test(msg) && !/timeout/i.test(msg)) {
+      // 423 账号被锁：解析后端 "请 N 分钟后再试" 启动倒计时
+      if (e.code === 423 || /登录失败次数过多/.test(msg)) {
+        const m = msg.match(/(\d+)\s*分钟/)
+        const seconds = m ? Number(m[1]) * 60 : 30 * 60
+        startLockCountdown(seconds)
+        // 锁定时同时清空密码框，避免用户以为"回车一次就能解锁"
+        form.password = ''
+      }
+      ElMessage.error(msg)
+    } else {
+      ElMessage.error('网络错误，请检查后端服务是否正常运行')
+    }
   } finally {
     loading.value = false
   }
+}
+
+// 启动账号锁定倒计时；倒计时结束自动清零，登录按钮恢复
+function startLockCountdown(seconds) {
+  lockRemaining.value = seconds
+  if (lockTimer) clearInterval(lockTimer)
+  lockTimer = setInterval(() => {
+    if (lockRemaining.value <= 1) {
+      lockRemaining.value = 0
+      clearInterval(lockTimer)
+      lockTimer = null
+      ElMessage.info('账号已解锁，请重新登录')
+    } else {
+      lockRemaining.value -= 1
+    }
+  }, 1000)
 }
 
 // 忘记密码：通过弹窗引导用户输入邮箱，后端将发送重置邮件
@@ -336,6 +375,18 @@ function handleSSO() {
 
 .login-btn :deep(.el-button__inner) {
   letter-spacing: 0.02em;
+}
+
+/* 账号被锁横幅 */
+.lock-banner {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: rgba(245, 108, 108, 0.08);
+  color: #c45656;
+  font-size: 13px;
+  text-align: center;
+  border: 1px solid rgba(245, 108, 108, 0.25);
 }
 
 /* 分隔线 */

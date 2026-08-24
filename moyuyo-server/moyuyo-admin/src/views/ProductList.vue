@@ -121,7 +121,19 @@
                 </div>
               </div>
             </td>
-            <td class="sku-cell">{{ product.sku }}</td>
+            <td class="sku-cell">
+              <!--
+                SKU 展示策略：单 SKU 显示 sku_code；多 SKU 显示"主 SKU +N"。
+                降级链：skus[0].skuCode → spuCode（SPU 编码作为兜底）→ 空占位
+                后端已在 list 接口批量填充 product.skus，避免 N+1 查询
+              -->
+              <template v-if="product.skus && product.skus.length > 0">
+                <span class="sku-code">{{ product.skus[0].skuCode }}</span>
+                <span v-if="product.skus.length > 1" class="sku-extra"> +{{ product.skus.length - 1 }}</span>
+              </template>
+              <span v-else-if="product.spuCode" class="sku-code">{{ product.spuCode }}</span>
+              <span v-else class="sku-empty">—</span>
+            </td>
             <td class="money">¥{{ product.price }}</td>
             <td>
               <span :class="getStockClass(product.stock)">{{ product.stock }}</span>
@@ -560,6 +572,23 @@ onMounted(() => {
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text-500);
+}
+.sku-cell .sku-code {
+  color: var(--text-800);
+  font-weight: 500;
+}
+.sku-cell .sku-extra {
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--brand-100, #e6f0ff);
+  color: var(--brand-600, #1a6dff);
+  font-size: 11px;
+  font-family: var(--font-sans, inherit);
+  font-weight: 600;
+}
+.sku-cell .sku-empty {
+  color: var(--text-300, #c0c4cc);
 }
 
 /* 表内空状态 */
