@@ -32,4 +32,10 @@ public class FinanceOverviewResponse {
 
   /** 渠道分布,每项包含 channel/amount 等键 */
   private List<Map<String, Object>> channelDistribution;
+
+  /** 退款原因分布（前 5 名），每项包含 reason/count 键，用于概览辅助展示 */
+  private List<Map<String, Object>> refundReasonDistribution;
+
+  /** 最近 6 个月 GMV/退款/净额趋势，每项包含 month/gmv/refund/net 键 */
+  private List<Map<String, Object>> monthlyTrend;
 }

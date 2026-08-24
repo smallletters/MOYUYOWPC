@@ -20,6 +20,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -177,6 +178,86 @@ public class FinanceServiceImpl implements FinanceService {
         list.add(item);
       }
       return list;
+    } catch (Exception e) {
+      return Collections.emptyList();
+    }
+  }
+
+  /**
+   * 退款原因分布：按 reason 聚合统计数量，取前 5
+   * reason 在 mo_refund 表中可能为 null（兼容历史数据），归类为 "未填写"
+   */
+  @Override
+  public List<Map<String, Object>> getRefundReasonDistribution() {
+    try {
+      List<RefundEntity> refunds = refundMapper.selectList(
+        new LambdaQueryWrapper<RefundEntity>()
+          .orderByDesc(RefundEntity::getCreateTime));
+      Map<String, Long> reasonCount = refunds.stream()
+        .collect(Collectors.groupingBy(
+          r -> (r.getReason() == null || r.getReason().isEmpty()) ? "未填写" : r.getReason(),
+          LinkedHashMap::new,
+          Collectors.counting()));
+      List<Map<String, Object>> list = new ArrayList<>();
+      reasonCount.entrySet().stream()
+        .sorted((a, b) -> Long.compare(b.getValue(), a.getValue()))
+        .limit(5)
+        .forEach(e -> {
+          Map<String, Object> item = new LinkedHashMap<>();
+          item.put("reason", e.getKey());
+          item.put("count", e.getValue());
+          list.add(item);
+        });
+      return list;
+    } catch (Exception e) {
+      return Collections.emptyList();
+    }
+  }
+
+  /**
+   * 最近 6 个月（包含本月）的 GMV 与退款额趋势。
+   * 通过遍历近 6 个月的 1 号零点到下月 1 号零点的范围逐月累加。
+   */
+  @Override
+  public List<Map<String, Object>> getMonthlyTrend() {
+    try {
+      List<Map<String, Object>> result = new ArrayList<>();
+      LocalDate today = LocalDate.now();
+      DateTimeFormatter ymFmt = DateTimeFormatter.ofPattern("yyyy-MM");
+
+      for (int i = 5; i >= 0; i--) {
+        LocalDate monthAnchor = today.minusMonths(i).withDayOfMonth(1);
+        LocalDateTime start = LocalDateTime.of(monthAnchor, LocalTime.MIN);
+        LocalDateTime end = LocalDateTime.of(monthAnchor.plusMonths(1).minusDays(1), LocalTime.MAX);
+
+        // 本月已支付订单 GMV
+        List<String> paidStatuses = Arrays.asList(PAID.name(), PENDING_SHIP.name(), SHIPPED.name(),
+          "PENDING_RECEIVE", RECEIVED.name(), REFUNDING.name(), REFUNDED.name(), COMPLETED.name());
+        BigDecimal gmv = orderMapper.selectList(
+          new LambdaQueryWrapper<OrderEntity>()
+            .in(OrderEntity::getStatus, paidStatuses)
+            .ge(OrderEntity::getCreateTime, start)
+            .le(OrderEntity::getCreateTime, end)).stream()
+          .map(o -> o.getPayAmount() != null ? o.getPayAmount() : BigDecimal.ZERO)
+          .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // 本月已完成退款总额
+        BigDecimal refund = refundMapper.selectList(
+          new LambdaQueryWrapper<RefundEntity>()
+            .eq(RefundEntity::getStatus, "COMPLETED")
+            .ge(RefundEntity::getCreateTime, start)
+            .le(RefundEntity::getCreateTime, end)).stream()
+          .map(r -> r.getAmount() != null ? r.getAmount() : BigDecimal.ZERO)
+          .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("month", monthAnchor.format(ymFmt));
+        item.put("gmv", gmv);
+        item.put("refund", refund);
+        item.put("net", gmv.subtract(refund));
+        result.add(item);
+      }
+      return result;
     } catch (Exception e) {
       return Collections.emptyList();
     }
