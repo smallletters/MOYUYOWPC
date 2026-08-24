@@ -93,7 +93,15 @@ const dragOverIdx = ref(-1)
 function absUrl(url) {
   if (!url) return ''
   if (/^https?:\/\//.test(url)) return url
-  return props.baseUrl + url
+  if (url.startsWith('//')) return window.location.protocol + url
+  // 父组件显式传入 baseUrl 时优先使用（保留原契约）
+  if (props.baseUrl) return props.baseUrl + url
+  // 智能拼接：dev 模式 5173 走 Vite，不代理 /uploads/，需绕到 8080；prod 同 origin
+  const origin = window.location.origin
+  if (origin.includes(':5173') || import.meta.env.DEV) {
+    return 'http://localhost:8080' + (url.startsWith('/') ? url : '/' + url)
+  }
+  return origin + (url.startsWith('/') ? url : '/' + url)
 }
 
 function triggerFileInput() {
