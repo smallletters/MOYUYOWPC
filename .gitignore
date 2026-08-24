@@ -72,3 +72,12 @@ test_*.sh
 add_*.sql
 cleanup_*.sql
 check_*.mjs
+
+# moyuyo-app 前端调试日志（含 token / 调试输出，禁止提交）
+moyuyo-app/*.log
+moyuyo-app/**/*.log
+
+# 本地调试 / 探针 / 抓包产物
+probe*.ps1
+probe*.sh
+*_oneline.txt
