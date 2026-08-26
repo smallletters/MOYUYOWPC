@@ -3,11 +3,11 @@
     <!-- 顶部导航栏 -->
     <view class="nav-bar">
       <view class="nav-back" @tap="goBack">
-        <text class="back-icon">‹</text>
+        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
       </view>
       <text class="nav-title">售后政策</text>
       <view class="nav-share" @tap="sharePolicy">
-        <text class="share-icon">↗</text>
+        <text class="share-icon luc luc-external-link"></text>
       </view>
     </view>
 
@@ -15,7 +15,7 @@
     <scroll-view class="policy-body" scroll-y>
       <!-- 更新时间提示 -->
       <view class="update-hint">
-        <text class="hint-icon">📄</text>
+        <text class="hint-icon"><text class="luc luc-file-text"></text></text>
         <text class="hint-text">政策更新于 2026-07-01</text>
       </view>
 
@@ -24,7 +24,7 @@
         <view v-for="(section, index) in sections" :key="index" class="faq-item">
           <view class="faq-header" @tap="toggleSection(index)">
             <text class="faq-title">{{ section.title }}</text>
-            <text class="faq-chevron" :class="{ rotated: section.open }">‹</text>
+            <text class="faq-chevron" :class="{ rotated: section.open }"><text class="luc luc-arrow-left"></text></text>
           </view>
           <view class="faq-body" :class="{ collapsed: !section.open }">
             <view class="faq-content">
@@ -48,9 +48,7 @@
                 <!-- 列表内容 -->
                 <view v-if="block.items" class="block-list">
                   <view v-for="(item, iIndex) in block.items" :key="iIndex" class="block-list-item">
-                    <text class="list-icon">
-                      {{ block.isError ? '⚠️' : block.isMinus ? '➖' : '✅' }}
-                    </text>
+                    <text class="list-icon luc" :class="$luc(block.isError  ?  'alert-triangle'  :  block.isMinus ? 'minus' : 'check-circle')"></text>
                     <text class="list-text">{{ item }}</text>
                   </view>
                 </view>
@@ -77,7 +75,7 @@
     <!-- 底部联系客服按钮 -->
     <view class="bottom-bar">
       <view class="contact-btn" @tap="contactService">
-        <text class="contact-icon">🎧</text>
+        <text class="contact-icon"><text class="luc luc-headphones"></text></text>
         <text class="contact-text">联系客服</text>
       </view>
     </view>

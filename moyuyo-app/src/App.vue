@@ -31,4 +31,7 @@ export default {
 
 /* uView Plus 全局样式 */
 @import 'uview-plus/index.scss';
+
+/* Lucide 图标字体 */
+@import '@/styles/lucide.scss';
 </style>

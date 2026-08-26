@@ -18,7 +18,7 @@
         <view v-else class="address-empty">
           <text>+ Add Shipping Address</text>
         </view>
-        <text class="arrow">›</text>
+        <text class="arrow"><text class="luc luc-chevron-right"></text></text>
       </view>
 
       <!-- 商品列表 -->
@@ -48,7 +48,7 @@
             -${{ cartStore.selectedCoupon.amount }}
           </text>
           <text v-else class="row-placeholder">Select</text>
-          <text class="arrow">›</text>
+          <text class="arrow"><text class="luc luc-chevron-right"></text></text>
         </view>
       </view>
 
@@ -94,7 +94,7 @@
             :class="{ active: selectedPayment === p.id }"
             @click="selectedPayment = p.id"
           >
-            <text class="payment-icon">{{ p.icon }}</text>
+            <text class="payment-icon luc" :class="$luc(p.icon)"></text>
             <text class="payment-name">{{ p.name }}</text>
           </view>
         </scroll-view>
@@ -108,7 +108,7 @@
             -${{ cartStore.selectedCoupon.amount }}
           </text>
           <text v-else class="row-placeholder">Select coupon</text>
-          <text class="arrow">›</text>
+          <text class="arrow"><text class="luc luc-chevron-right"></text></text>
         </view>
       </view>
 
@@ -160,9 +160,7 @@
       <view class="btn btn-primary submit-btn" @click="onSubmit">Place Order</view>
     </view>
   </view>
-</template>
-
-<script>
+</template><script>
 import { orderApi, pointsApi } from '@/api'
 import { addressApi } from '@/api'
 import { useCartStore } from '@/store'
@@ -196,10 +194,10 @@ export default {
         },
       ],
       paymentMethods: [
-        { id: 'stripe', name: 'Card', icon: '💳' },
-        { id: 'paypal', name: 'PayPal', icon: '🅿' },
-        { id: 'applepay', name: 'Apple Pay', icon: '' },
-        { id: 'alipay', name: 'Alipay', icon: '💰' },
+        { id: 'stripe', name: 'Card', icon: 'credit-card' },
+        { id: 'paypal', name: 'PayPal', icon: 'wallet' },
+        { id: 'applepay', name: 'Apple Pay', icon: 'apple' },
+        { id: 'alipay', name: 'Alipay', icon: 'banknote' },
       ],
     }
   },

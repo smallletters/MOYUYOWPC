@@ -2,7 +2,7 @@
   <view class="try-before-buy">
     <view class="nav-header">
       <view class="nav-back" @click="goBack">
-        <text class="back-icon">‹</text>
+        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
       </view>
       <text class="nav-title">先试后买</text>
       <view class="nav-placeholder" />
@@ -13,16 +13,16 @@
         <view class="banner-deco" />
         <view class="banner-content">
           <view class="banner-title-row">
-            <text class="banner-icon">✨</text>
+            <text class="banner-icon"><text class="luc luc-sparkles"></text></text>
             <text class="banner-title">先试后买 0 风险试穿</text>
           </view>
           <text class="banner-desc">
             下单时仅预授权 $1，商品寄到家后试穿。7 天试用期，到期前选择留下或寄回。
           </text>
           <view class="banner-tags">
-            <text class="banner-tag">🔒 预授权 $1</text>
-            <text class="banner-tag">⏱ 7 天试用期</text>
-            <text class="banner-tag">↩️ 免费寄回</text>
+            <text class="banner-tag"><text class="luc luc-lock"></text> 预授权 $1</text>
+            <text class="banner-tag"><text class="luc luc-clock"></text> 7 天试用期</text>
+            <text class="banner-tag"><text class="luc luc-undo"></text> 免费寄回</text>
           </view>
         </view>
       </view>
@@ -49,13 +49,13 @@
           <text class="timer-count">{{ product.timeLeft }}</text>
         </view>
         <view class="trial-actions">
-          <view class="trial-btn primary" @click="onKeep(product)">✓ 确认留下</view>
-          <view class="trial-btn secondary" @click="onReturn(product)">📦 预约寄回</view>
+          <view class="trial-btn primary" @click="onKeep(product)"><text class="luc luc-check"></text> 确认留下</view>
+          <view class="trial-btn secondary" @click="onReturn(product)"><text class="luc luc-package"></text> 预约寄回</view>
         </view>
       </view>
 
       <view class="info-bar">
-        <text class="info-icon">ℹ️</text>
+        <text class="info-icon">ℹ</text>
         <text class="info-text">
           当前可试
           <text class="info-highlight">1/3</text>
@@ -66,7 +66,7 @@
 
       <view class="rules-section">
         <view class="rules-header" @click="showRules = !showRules">
-          <text class="rules-title">📜 试用规则说明</text>
+          <text class="rules-title"><text class="luc luc-scroll-text"></text> 试用规则说明</text>
           <text class="rules-arrow" :class="{ open: showRules }">▼</text>
         </view>
         <view v-if="showRules" class="rules-content">
@@ -94,7 +94,7 @@
       </view>
 
       <view class="browse-btn" @click="onBrowse">
-        <text>浏览可试用商品 →</text>
+        <text>浏览可试用商品 <text class="luc luc-arrow-right"></text></text>
       </view>
     </scroll-view>
   </view>

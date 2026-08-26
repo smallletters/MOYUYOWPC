@@ -3,11 +3,11 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="header-btn" @tap="goBack">
-        <text class="back-icon">‹</text>
+        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
       </view>
       <text class="header-title">分享商品</text>
       <view class="header-btn" @tap="handleClose">
-        <text class="close-icon">✕</text>
+        <text class="close-icon"><text class="luc luc-x"></text></text>
       </view>
     </view>
 
@@ -40,7 +40,7 @@
                 <text class="qr-label">扫码查看详情</text>
                 <view class="qr-recommender">
                   <view class="recommender-avatar">
-                    <text>👤</text>
+                    <text><text class="luc luc-user"></text></text>
                   </view>
                   <text class="recommender-name">推荐人：{{ recommender }}</text>
                 </view>
@@ -62,7 +62,8 @@
             @tap="handleShare(channel)"
           >
             <view class="channel-icon" :style="{ background: channel.bg }">
-              <text class="channel-emoji">{{ channel.icon }}</text>
+              <text v-if="channel.brand" class="channel-emoji channel-brand">{{ channel.brand }}</text>
+              <text v-else class="channel-emoji luc" :class="$luc(channel.icon)"></text>
             </view>
             <text class="channel-name">{{ channel.name }}</text>
           </view>
@@ -109,15 +110,13 @@
 
       <!-- 生成分享图片按钮 -->
       <view class="generate-btn" @tap="handleGenerateImage">
-        <text>⬆ 生成分享图片</text>
+        <text><text class="luc luc-arrow-up"></text> 生成分享图片</text>
       </view>
 
       <view class="bottom-spacer" />
     </scroll-view>
   </view>
-</template>
-
-<script>
+</template><script>
 export default {
   data() {
     return {
@@ -130,12 +129,12 @@ export default {
         originalPrice: 259,
       },
       channels: [
-        { id: 'email', name: 'Email', icon: '✉', bg: 'var(--background-200)' },
-        { id: 'messages', name: 'Messages', icon: '💬', bg: 'var(--state-success-surface)' },
-        { id: 'whatsapp', name: 'WhatsApp', icon: '📤', bg: 'var(--state-success-surface)' },
-        { id: 'twitter', name: 'X', icon: '𝕏', bg: 'var(--background-200)' },
-        { id: 'copy', name: '复制链接', icon: '🔗', bg: 'var(--brand-50)' },
-        { id: 'facebook', name: 'Facebook', icon: 'f', bg: 'var(--background-200)' },
+        { id: 'email', name: 'Email', icon: 'mail', bg: 'var(--background-200)' },
+        { id: 'messages', name: 'Messages', icon: 'message-circle', bg: 'var(--state-success-surface)' },
+        { id: 'whatsapp', name: 'WhatsApp', icon: 'upload', bg: 'var(--state-success-surface)' },
+        { id: 'twitter', name: 'X', icon: 'twitter', brand: '𝕏', bg: 'var(--background-200)' },
+        { id: 'copy', name: '复制链接', icon: 'link', bg: 'var(--brand-50)' },
+        { id: 'facebook', name: 'Facebook', icon: 'facebook', brand: 'f', bg: 'var(--background-200)' },
       ],
       shareSettings: [
         { id: 'caption', label: '添加分享文案', value: false },
@@ -381,6 +380,11 @@ export default {
 }
 .channel-emoji {
   font-size: 48rpx;
+}
+.channel-brand {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: var(--text-900);
 }
 .channel-name {
   font-size: 22rpx;

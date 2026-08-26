@@ -14,10 +14,10 @@
       <text class="top-title">社区</text>
       <view class="top-actions">
         <view class="icon-btn" @tap="goSearch" aria-label="搜索">
-          <text class="icon">🔍</text>
+          <text class="icon"><text class="luc luc-search"></text></text>
         </view>
         <view class="icon-btn relative" @tap="goNotifications" aria-label="通知">
-          <text class="icon">🔔</text>
+          <text class="icon"><text class="luc luc-bell"></text></text>
           <view class="badge-dot" />
         </view>
       </view>
@@ -40,7 +40,7 @@
     <!-- 搜索条（仅在「推荐」Tab 显示） -->
     <view v-if="activeTab === 'recommend'" class="search-bar">
       <view class="search-field" @tap="goSearchPage">
-        <text class="search-icon">⌕</text>
+        <text class="search-icon luc luc-search"></text>
         <text class="search-placeholder">搜索帖子、用户、话题…</text>
       </view>
     </view>
@@ -122,15 +122,15 @@
             :class="{ liked: p.liked }"
             @tap.stop="onLike(p)"
           >
-            <text class="action-icon">{{ p.liked ? '❤' : '♡' }}</text>
+            <text class="action-icon luc" :class="$luc(p.liked  ?  'heart'  :  'heart')"></text>
             <text class="action-count">{{ p.likes || 0 }}</text>
           </view>
           <view class="action" @tap.stop="goDetail(p.id, true)">
-            <text class="action-icon">💬</text>
+            <text class="action-icon"><text class="luc luc-message-circle"></text></text>
             <text class="action-count">{{ p.comments || 0 }}</text>
           </view>
           <view class="action" @tap.stop="onShare(p)">
-            <text class="action-icon">↗</text>
+            <text class="action-icon luc luc-external-link"></text>
           </view>
         </view>
       </view>
@@ -145,7 +145,7 @@
 
     <!-- 浮动发布按钮 -->
     <view class="fab" @tap="goCreate" aria-label="发布帖子">
-      <text class="fab-icon">📷</text>
+      <text class="fab-icon"><text class="luc luc-camera"></text></text>
     </view>
   </view>
 </template>

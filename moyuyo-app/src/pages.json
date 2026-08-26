@@ -52,7 +52,8 @@
     {
       "path": "pages/goods/detail",
       "style": {
-        "navigationBarTitleText": "商品详情"
+        "navigationBarTitleText": "商品详情",
+        "navigationStyle": "custom"
       }
     },
     {

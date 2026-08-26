@@ -4,12 +4,12 @@
     <view class="header">
       <view class="header-left">
         <view class="back-btn" @click="goBack">
-          <text class="back-icon">‹</text>
+          <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
         </view>
         <text class="header-title">Pet Hub 3D</text>
       </view>
       <view class="header-right">
-        <view class="icon-btn" @click="onShare">📤</view>
+        <view class="icon-btn" @click="onShare"><text class="luc luc-upload"></text></view>
         <view class="icon-btn" @click="onMore">⋯</view>
       </view>
     </view>
@@ -36,18 +36,18 @@
         </view>
         <!-- 3D 标签 -->
         <view class="viewport-badge">
-          <text class="badge-icon">📦</text>
+          <text class="badge-icon"><text class="luc luc-package"></text></text>
           <text class="badge-text">3D 预览</text>
         </view>
         <!-- 旋转/缩放控制 -->
         <view class="viewport-controls">
-          <view class="ctrl-btn" @click="onRotate">🔄</view>
-          <view class="ctrl-btn" @click="onZoomIn">🔍+</view>
-          <view class="ctrl-btn" @click="onZoomOut">🔍-</view>
+          <view class="ctrl-btn" @click="onRotate"><text class="luc luc-refresh-cw"></text></view>
+          <view class="ctrl-btn" @click="onZoomIn"><text class="luc luc-search"></text>+</view>
+          <view class="ctrl-btn" @click="onZoomOut"><text class="luc luc-search"></text>-</view>
         </view>
         <!-- AR 模式切换 -->
         <view class="ar-btn" :class="{ active: arActive }" @click="toggleAr">
-          <text class="ar-text">{{ arActive ? '✅ AR' : '📱 AR' }}</text>
+          <text class="ar-text"><text class="luc" :class="arActive ? 'luc-check' : 'luc-smartphone'"></text> AR</text>
         </view>
         <!-- 底部宠物信息 -->
         <view class="viewport-info">
@@ -56,7 +56,7 @@
             <text class="pet-desc">{{ currentPet.breed }} · {{ currentPet.age }}</text>
           </view>
           <view class="info-right">
-            <text class="scene-icon">📍</text>
+            <text class="scene-icon"><text class="luc luc-map-pin"></text></text>
             <text class="scene-name">{{ sceneLabels[currentScene] }}</text>
           </view>
         </view>
@@ -87,7 +87,7 @@
         <view class="section-header">
           <text class="section-title">我的宠物</text>
           <view class="add-pet-btn" @click="onAddPet">
-            <text class="add-icon">➕</text>
+            <text class="add-icon"><text class="luc luc-plus"></text></text>
             <text class="add-text">添加</text>
           </view>
         </view>
@@ -136,10 +136,10 @@
             <text>▶ 互动玩耍</text>
           </view>
           <view class="action-btn action-secondary" @click="onFeed">
-            <text>🍽 喂食</text>
+            <text><text class="luc luc-utensils"></text> 喂食</text>
           </view>
           <view class="action-btn action-secondary" @click="onGroom">
-            <text>✂️ 护理</text>
+            <text><text class="luc luc-scissors"></text> 护理</text>
           </view>
         </view>
       </view>
@@ -150,7 +150,7 @@
         <view class="activity-list">
           <view v-for="item in activities" :key="item.id" class="activity-item">
             <view class="activity-icon" :style="{ background: item.iconBg }">
-              <text>{{ item.icon }}</text>
+              <text class="luc" :class="$luc(item.icon)"></text>
             </view>
             <view class="activity-info">
               <text class="activity-title">{{ item.title }}</text>
@@ -162,9 +162,7 @@
       </view>
     </view>
   </view>
-</template>
-
-<script setup>
+</template><script setup>
 import { ref, computed } from 'vue'
 
 // 返回上一页
@@ -245,17 +243,17 @@ const switchPet = (id) => {
 
 // 属性数据
 const stats = [
-  { label: '活跃度', icon: '⚡', current: 85, color: 'linear-gradient(90deg, #2e8dff, #007aff)' },
-  { label: '亲密度', icon: '❤️', current: 72, color: 'linear-gradient(90deg, #34c759, #30d158)' },
-  { label: '智力', icon: '🧠', current: 68, color: 'linear-gradient(90deg, #5856d6, #5e5ce6)' },
-  { label: '社交', icon: '👥', current: 90, color: 'linear-gradient(90deg, #ff9500, #ff9f0a)' },
+  { label: '活跃度', icon: 'zap', current: 85, color: 'linear-gradient(90deg, #2e8dff, #007aff)' },
+  { label: '亲密度', icon: 'heart', current: 72, color: 'linear-gradient(90deg, #34c759, #30d158)' },
+  { label: '智力', icon: 'brain', current: 68, color: 'linear-gradient(90deg, #5856d6, #5e5ce6)' },
+  { label: '社交', icon: 'users', current: 90, color: 'linear-gradient(90deg, #ff9500, #ff9f0a)' },
 ]
 
 // 互动记录
 const activities = [
   {
     id: 1,
-    icon: '🎾',
+    icon: 'paw-print',
     iconBg: '#e8f2ff',
     title: '玩了丢球游戏',
     time: '10 分钟前',
@@ -264,7 +262,7 @@ const activities = [
   },
   {
     id: 2,
-    icon: '🍗',
+    icon: 'utensils',
     iconBg: '#e9f9ee',
     title: '吃了鸡胸肉',
     time: '1 小时前',
@@ -273,7 +271,7 @@ const activities = [
   },
   {
     id: 3,
-    icon: '✂️',
+    icon: 'scissors',
     iconBg: '#e8f2ff',
     title: '梳毛护理',
     time: '3 小时前',

@@ -4,7 +4,7 @@
     <view class="header">
       <view class="header-inner">
         <view class="header-btn" @click="onBack">
-          <text class="header-btn-icon">←</text>
+          <text class="header-btn-icon"><text class="luc luc-arrow-left"></text></text>
         </view>
         <text class="header-title">体重记录</text>
         <view class="header-btn header-btn-primary" @click="onAddWeight">
@@ -20,7 +20,7 @@
         <text class="current-weight-number">28.5</text>
         <text class="current-weight-unit">kg</text>
         <view class="current-weight-trend current-weight-trend-down">
-          <text class="trend-icon">↓</text>
+          <text class="trend-icon luc luc-arrow-down"></text>
           <text class="trend-value">0.3</text>
         </view>
       </view>
@@ -100,7 +100,7 @@
             class="record-icon-wrap"
             :class="record.trend === 'up' ? 'record-icon-up' : 'record-icon-down'"
           >
-            <text class="record-icon">{{ record.trend === 'up' ? '↑' : '↓' }}</text>
+            <text class="record-icon luc" :class="$luc(record.trend === 'up'  ?  'arrow-up'  :  'arrow-down')"></text>
           </view>
           <view class="record-info">
             <text class="record-weight">{{ record.weight }} kg</text>
@@ -142,7 +142,7 @@
             <picker mode="date" :value="weightForm.date" @change="onWeightDateChange">
               <view class="form-picker">
                 <text class="form-picker-text">{{ weightForm.date || '请选择日期' }}</text>
-                <text class="form-picker-arrow">›</text>
+                <text class="form-picker-arrow"><text class="luc luc-chevron-right"></text></text>
               </view>
             </picker>
           </view>

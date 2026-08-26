@@ -12,17 +12,19 @@ function buildUrl(path) {
   return ABSOLUTE_BASE ? `${ABSOLUTE_BASE}${path}` : path
 }
 
-function uniGet(path, params = {}) {
+function uniGet(path, params = {}, options = {}) {
   return new Promise((resolve, reject) => {
     const query = Object.keys(params)
       .filter((k) => params[k] !== undefined && params[k] !== null && params[k] !== '')
       .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
       .join('&')
     const url = query ? `${path}${path.includes('?') ? '&' : '?'}${query}` : path
+    // 详情页加载/查询图片较多的商品需要更长超时,默认 30s
+    const timeout = options.timeout || 30000
     uni.request({
       url: buildUrl(url),
       method: 'GET',
-      timeout: 15000,
+      timeout,
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300 && res.data && res.data.code === 0) {
           resolve(res.data.data)
@@ -69,8 +71,9 @@ function mapSortBy(orderby, sortBy) {
   return m[orderby] || 'createdAt'
 }
 
-export function getProductDetail(id) {
-  return uniGet(`/api/v1/products/${id}`)
+export function getProductDetail(id, options = {}) {
+  // 商品详情接口包含图集/SKU/评价聚合,接口较重,给足 60s
+  return uniGet(`/api/v1/products/${id}`, {}, { timeout: options.timeout || 60000 })
 }
 
 export function getCategoryList() {

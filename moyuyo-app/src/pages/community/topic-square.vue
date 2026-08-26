@@ -1,7 +1,7 @@
 <template>
   <view class="topic-square">
     <view class="page-header">
-      <view class="back" @click="goBack" aria-label="返回">‹</view>
+      <view class="back" @click="goBack" aria-label="返回"><text class="luc luc-arrow-left"></text></view>
       <text class="title">话题广场</text>
       <view class="post-btn" @click="onCreate">+ 发布</view>
     </view>
@@ -9,7 +9,7 @@
     <scroll-view scroll-y class="content">
       <!-- 热门话题 -->
       <view class="section">
-        <text class="section-title">🔥 热门话题</text>
+        <text class="section-title"><text class="luc luc-flame"></text> 热门话题</text>
         <view class="topic-grid">
           <view v-for="t in hotTopics" :key="t.id" class="topic-card" @click="onTopicClick(t)">
             <text class="topic-name">#{{ t.name }}</text>
@@ -46,9 +46,9 @@
             <image :src="p.image" class="post-image" />
           </view>
           <view class="post-actions">
-            <text>♥ {{ p.likes }}</text>
-            <text>💬 {{ p.comments }}</text>
-            <text>↗ 分享</text>
+            <text><text class="luc luc-heart"></text> {{ p.likes }}</text>
+            <text><text class="luc luc-message-circle"></text> {{ p.comments }}</text>
+            <text><text class="luc luc-share-2"></text> 分享</text>
           </view>
         </view>
       </view>

@@ -1,0 +1,451 @@
+===== EMOJI =====
+EMOJI:✓  x37
+    pages\cart\index.vue  >>">                 <text v-if="item.checked">✓</text>               </view>             </v
+    pages\cart\index.vue  >>         <text v-if="cartStore.isAllChecked">✓</text>           </view>           <text cla
+    pages\common\empty-state.vue  >>">                 <text class="toast-emoji">✓</text>               </view>               <
+EMOJI:🎁  x9
+    pages\common\splash-popup.vue  >>on">               <text class="action-icon">🎁</text>               <text class="action-pri
+    pages\order\payment-success.vue  >>ints-badge">         <text class="gift-icon">🎁</text>         <text>已获得 50 积分</text>       
+    pages\user\gift-card-manage.vue  >>ace)">             <text class="quick-emoji">🎁</text>           </view>           <text cla
+EMOJI:✕  x8
+    pages\cart\index.vue  >>">           <text class="banner-close-icon">✕</text>         </view>       </view>        
+    pages\common\empty-state.vue  >>">                 <text class="toast-emoji">✕</text>               </view>               <
+    pages\common\empty-state.vue  >>.15)">             <text class="state-emoji">✕</text>           </view>           <text cla
+EMOJI:💬  x8
+    pages\community\detail.vue  >>{{ post.likes || 0 }}</text>           <text>💬 {{ post.comments || 0 }}</text>         </vi
+    pages\community\topic-square.vue  >>ext>♥ {{ p.likes }}</text>             <text>💬 {{ p.comments }}</text>             <text>↗ 
+    pages\goods\detail.vue  >>"onService">         <text class="bar-emoji">💬</text>         <text class="bar-label">Servi
+EMOJI:★  x7
+    pages\goods\detail.vue  >>ext>             <text class="review-rating">★ {{ r.rating }}</text>           </view>     
+    pages\goods\product-compare.vue  >>-rating">                 <text class="star">★</text>                 <text class="rating-n
+    pages\order\cs-rating.vue  >>lass="{ 'star-active': star <= dim.rating }">★</text>               </view>             </v
+EMOJI:🔍  x7
+    pages\goods\product-subscribe-list.vue  >>put-wrap">         <text class="search-icon">🔍</text>         <input           class="searc
+    pages\goods\qa.vue  >>ch-field">         <text class="search-icon">🔍</text>         <input           v-model="sea
+    pages\goods\qa.vue  >>empty-state">       <text class="empty-icon">🔍</text>       <text class="empty-title">没有找到相
+EMOJI:📦  x7
+    pages\goods\product-subscribe-list.vue  >>pty-state">         <text class="empty-icon">📦</text>         <text class="empty-text">暂无匹配
+    pages\goods\shipping-calculator.vue  >>title">           <text class="section-icon">📦</text>           <text>包裹信息</text>         <
+    pages\goods\try-before-buy.vue  >>al-btn secondary" @click="onReturn(product)">📦 预约寄回</view>         </view>       </view>   
+EMOJI:🔔  x5
+    pages\goods\flash-sale.vue  >>leNotify">         <text class="notify-icon">🔔</text>       </view>     </view>      <!-- 秒
+    pages\pet\allergy-profile.vue  >>-wrap">           <text class="warning-icon">🔔</text>         </view>         <view class="
+    pages\tabbar\community.vue  >>ria-label="通知">           <text class="icon">🔔</text>           <view class="badge-dot" /> 
+EMOJI:🏆  x5
+    pages\user\achievement-wall.vue  >>        <view class="ach-icon">{{ a.icon || '🏆' }}</view>           <text class="ach-name">
+    pages\user\invite.vue  >>er">       <view class="ranking-banner-icon">🏆</view>       <view class="ranking-banner-inf
+    pages\user\lottery.vue  >> <text class="history-icon">{{ record.won ? '🏆' : '🎟' }}</text>             </view>        
+EMOJI:🔗  x5
+    pages\user\gift-card-manage.vue  >>ace)">             <text class="quick-emoji">🔗</text>           </view>           <text cla
+    pages\user\gift-card-manage.vue  >>ft">             <text class="collapse-icon">🔗</text>             <text class="collapse-lab
+    pages\user\gift-cards.vue  >>ndCard">           <text class="action-icon">🔗</text>           <text>绑定新卡</text>         <
+EMOJI:📱  x4
+    pages\goods\ar-try-on.vue  >>cle">               <text class="guide-icon">📱</text>             </view>             <text
+    pages\pet\pet-hub-3d.vue  >>text class="ar-text">{{ arActive ? '✅ AR' : '📱 AR' }}</text>         </view>         <!-- 底
+    pages\user\device-manager.vue  >>e-card">           <text class="device-icon">📱</text>           <view class="device-info"> 
+EMOJI:⚡  x4
+    pages\goods\ar-try-on.vue  >>     <text class="action-icon">{{ flashOn ? '⚡' : '🔦' }}</text>           <text class="acti
+    pages\goods\flash-sale-detail.vue  >>sh-banner">         <text class="flash-icon">⚡</text>         <text class="flash-label">{{ 
+    pages\user\coupon-center.vue  >>-left">         <text class="countdown-icon">⚡</text>         <text class="countdown-label"
+EMOJI:👤  x4
+    pages\goods\qa.vue  >>vatar">             <text class="asker-icon">👤</text>           </view>           <text cla
+    pages\goods\share-product.vue  >>commender-avatar">                     <text>👤</text>                   </view>            
+    pages\user\invite.vue  >>d">             <text class="step-icon-text">👤</text>           </view>           <text cla
+EMOJI:📍  x4
+    pages\goods\shipping-calculator.vue  >>title">           <text class="section-icon">📍</text>           <text>收货地址</text>         <
+    pages\pet\pet-hub-3d.vue  >>right">             <text class="scene-icon">📍</text>             <text class="scene-name">
+    pages\user\subscribe-plan.vue  >>">               <text class="delivery-icon">📍</text>               <text class="delivery-l
+EMOJI:🕐  x4
+    pages\goods\shipping-calculator.vue  >>title">           <text class="section-icon">🕐</text>           <text>最近查询</text>         <
+    pages\user\lottery.vue  >>ow">             <text class="history-title">🕐 抽奖记录</text>             <text class="history
+    pages\user\scan.vue  >>tn-circle">           <text class="btn-icon">🕐</text>         </view>         <text class="
+EMOJI:🔒  x4
+    pages\goods\try-before-buy.vue  >>-tags">             <text class="banner-tag">🔒 预授权 $1</text>             <text class="banne
+    pages\user\mission-center.vue  >>t class="badge-emoji">{{ ach.earned ? '🏆' : '🔒' }}</text>             </view>             <
+    pages\user\security.vue  >>"row-left">           <text class="row-icon">🔒</text>           <text class="row-text">修改密码
+EMOJI:📷  x4
+    pages\pet\profile.vue  >>atar" />           <view class="avatar-edit">📷</view>         </view>         <text class="
+    pages\tabbar\community.vue  >>a-label="发布帖子">       <text class="fab-icon">📷</text>     </view>   </view> </template>  
+    pages\user\avatar-settings.vue  >>heet">             <text class="camera-icon">📷</text>           </view>         </view>    
+EMOJI:👁  x4
+    pages\user\balance-manage.vue  >>示/隐藏余额">             {{ showBalance ? '🙈' : '👁' }}           </view>         </view>       
+    pages\user\browsing-history.vue  >>ty-box">             <view class="empty-eye">👁</view>           </view>           <view cla
+    pages\user\wallet.vue  >> <text class="eye-icon">{{ balanceVisible ? '👁' : '👁‍🗨' }}</text>             </view>      
+EMOJI:♥  x3
+    pages\community\detail.vue  >>        <view class="stats">           <text>♥ {{ post.likes || 0 }}</text>           <text
+    pages\community\topic-square.vue  >>view class="post-actions">             <text>♥ {{ p.likes }}</text>             <text>💬 {{ 
+    pages\user\favorites.vue  >>-icon" :class="{ 'fav-active': item.isFav }">♥</text>           </view>         </view>    
+EMOJI:🔥  x3
+    pages\community\topic-square.vue  >>ection">         <text class="section-title">🔥 热门话题</text>         <view class="topic-grid"
+    pages\goods\qa.vue  >>if="tag === hotTags[0]" class="hot-tag-icon">🔥</text>         <text>{{ tag }}</text>       
+    pages\user\mission-center.vue  >>row">               <text class="flame-icon">🔥</text>               <text class="streak-tex
+EMOJI:🔄  x3
+    pages\goods\ar-try-on.vue  >>Camera">           <text class="action-icon">🔄</text>           <text class="action-label">
+    pages\pet\pet-hub-3d.vue  >>    <view class="ctrl-btn" @click="onRotate">🔄</view>           <view class="ctrl-btn" @cli
+    pages\user\subscribe-manage-detail.vue  >>rgba(255, 149, 0, 0.1)">               <text>🔄</text>             </view>             <text
+EMOJI:🐕  x3
+    pages\goods\fit-finder.vue  >>     >           <text class="pet-type-icon">🐕</text>           <text class="pet-type-name"
+    pages\tabbar\pet.vue  >>ivePet">{{ activePet.type === 'CAT' ? '🐈' : '🐕' }}</text>           </view>           <text
+    pages\tabbar\pet.vue  >>s="pet-emoji">{{ pet.type === 'CAT' ? '🐈' : '🐕' }}</text>           <text class="pet-name">
+EMOJI:✨  x3
+    pages\goods\fit-finder.vue  >>="next-btn flex-2" @click="goStep(3)">获取尺码推荐 ✨</view>       </view>     </view>      <!-- S
+    pages\goods\product-subscribe.vue  >>g">             <text class="sub-save-emoji">✨</text>             <text class="sub-save-tex
+    pages\goods\try-before-buy.vue  >>-row">             <text class="banner-icon">✨</text>             <text class="banner-title
+EMOJI:✏️  x3
+    pages\goods\qa.vue  >>nOpenAskModal">       <text class="fab-icon">✏️</text>     </view>      <!-- 提问弹窗 -->     <v
+    pages\user\avatar-settings.vue  >>            <text class="edit-nickname-icon">✏️</text>               <text class="edit-nickn
+    pages\user\subscribe-manage-detail.vue  >> </view>             <text class="info-edit">✏️</text>           </view>            <!-- 下次配
+EMOJI:✅  x3
+    pages\order\after-sales-policy.vue  >>lock.isError ? '⚠️' : block.isMinus ? '➖' : '✅' }}                     </text>             
+    pages\pet\pet-hub-3d.vue  >>        <text class="ar-text">{{ arActive ? '✅ AR' : '📱 AR' }}</text>         </view>      
+    pages\user\avatar-settings.vue  >>ow">                 <text class="hint-icon">✅</text>                 <text class="hint-tex
+EMOJI:📭  x3
+    pages\order\recycle-bin.vue  >>ss="empty">         <text class="empty-icon">📭</text>         <text class="empty-text">回收站空
+    pages\user\gift-cards.vue  >>pty-state">         <text class="empty-icon">📭</text>         <text class="empty-title">{{ 
+    pages\user\my-reviews.vue  >>pty-state">         <text class="empty-icon">📭</text>         <text class="empty-title">暂无{
+EMOJI:🎟  x3
+    pages\user\coupons.vue  >>ss="empty">         <text class="empty-icon">🎟</text>         <text class="empty-text">暂无优惠
+    pages\user\lottery.vue  >> class="history-icon">{{ record.won ? '🏆' : '🎟' }}</text>             </view>             <
+    pages\user\lottery.vue  >>>{{ spinResult && spinResult.won ? ?'🏆'? : ?'🎟'? }}</text>         </view>         <text cl
+EMOJI:🛡  x3
+    pages\user\device-manager.vue  >>="banner">         <text class="banner-icon">🛡</text>         <view class="banner-info">   
+    pages\user\privacy.vue  >>w-icon">           <text class="shield-icon">🛡</text>         </view>         <view class="
+    pages\user\security.vue  >>tus-icon">         <text class="icon-shield">🛡</text>       </view>       <view class="stat
+EMOJI:❓  x3
+    pages\user\help.vue  >>laceholder">         <text class="hero-icon">❓</text>         <text class="hero-text">有什么可以
+    pages\user\settings.vue  >>m-left">             <text class="item-icon">❓</text>             <text class="item-label">
+    pages\user\subscription-manage.vue  >>ss="tip-box">         <text class="tip-icon">❓</text>         <text class="tip-text">      
+EMOJI:🛒  x2
+    pages\cart\index.vue  >>ass="empty">       <text class="empty-emoji">🛒</text>       <text class="empty-text">购物车是空的
+    pages\goods\detail.vue  >>ck="goCart">         <text class="bar-emoji">🛒</text>         <text class="bar-label">Cart<
+EMOJI:🎫  x2
+    pages\common\splash-popup.vue  >>              <text class="coupon-mark-icon">🎫</text>             </view>           </view>
+    pages\user\coupon-center.vue  >>summary">         <text class="summary-icon">🎫</text>         <text class="summary-text">  
+EMOJI:📤  x2
+    pages\goods\ar-try-on.vue  >>s="nav-btn">         <text class="nav-share">📤</text>       </view>     </view>      <!-- 主
+    pages\pet\pet-hub-3d.vue  >>     <view class="icon-btn" @click="onShare">📤</view>         <view class="icon-btn" @click
+EMOJI:🛍️  x2
+    pages\goods\ar-try-on.vue  >>Cart">           <text class="add-cart-text">🛍️ 加入购物车 · {{ currentProduct.price }}</text>   
+    pages\user\gift-cards.vue  >>uyCard">           <text class="action-icon">🛍️</text>           <text>购买礼品卡</text>         
+EMOJI:🐱  x2
+    pages\goods\fit-finder.vue  >>     >           <text class="pet-type-icon">🐱</text>           <text class="pet-type-name"
+    pages\user\membership.vue  >>rap">             <text class="avatar-emoji">🐱</text>           </view>           <text cla
+EMOJI:👍  x2
+    pages\goods\qa.vue  >>" @click="onToggleLike(item)">               👍               <text class="like-text">有帮助</t
+    pages\user\help-center.vue  >>lass="helpful-btn" @tap.stop="vote(f, true)">👍 有帮助</view>               <view class="helpfu
+EMOJI:🚚  x2
+    pages\goods\shipping-calculator.vue  >>title">           <text class="section-icon">🚚</text>           <text>可选配送方式</text>        
+    pages\order\logistics-tracking.vue  >>tus-card">         <view class="status-icon">🚚</view>         <view class="status-info">   
+EMOJI:📄  x2
+    pages\order\after-sales-policy.vue  >>pdate-hint">         <text class="hint-icon">📄</text>         <text class="hint-text">政策更新于
+    pages\user\security.vue  >>"row-left">           <text class="row-icon">📄</text>           <text class="row-text">账号锁定
+EMOJI:⚠️  x2
+    pages\order\after-sales-policy.vue  >>">                       {{ block.isError ? '⚠️' : block.isMinus ? '➖' : '✅' }}             
+    pages\user\subscribe-manage-detail.vue  >>ba(171, 185, 173, 0.2)">               <text>⚠️</text>             </view>             <text
+EMOJI:➖  x2
+    pages\order\after-sales-policy.vue  >>  {{ block.isError ? '⚠️' : block.isMinus ? '➖' : '✅' }}                     </text>       
+    pages\user\subscription-manage.vue  >>>                   <text class="cycle-icon">➖</text>                   <text class="cycle-
+EMOJI:🛡️  x2
+    pages\order\tariff-detail.vue  >>p">                 <text class="mode-emoji">🛡️</text>               </view>               <
+    pages\pet\allergy-profile.vue  >>ge">                 <text class="safe-icon">🛡️</text>                 <text class="safe-tex
+EMOJI:🧾  x2
+    pages\order\tariff-detail.vue  >>-header">           <text class="card-emoji">🧾</text>           <text class="card-title">关税
+    pages\user\invoice-manage.vue  >>ss="empty">         <text class="empty-icon">🧾</text>         <text class="empty-text">暂无发票
+EMOJI:📈  x2
+    pages\order\tariff-detail.vue  >>">           <text class="deposit-note-icon">📈</text>           <text class="deposit-note-t
+    pages\user\lottery.vue  >>s="prize-icon-wrap"><text class="prize-icon">📈</text></view>             <text class="prize
+EMOJI:➕  x2
+    pages\pet\allergy-profile.vue  >>dRecord">       <text class="float-btn-text">➕ 添加过敏记录</text>     </view>   </view> </templa
+    pages\pet\pet-hub-3d.vue  >>nAddPet">             <text class="add-icon">➕</text>             <text class="add-text">添加
+EMOJI:⚠  x2
+    pages\pet\pet-hub.vue  >>">                 <view class="remind-icon">⚠</view>                 <text class="remind-d
+    pages\user\service-booking.vue  >>olicy-hint">         <text class="hint-icon">⚠</text>         <text class="hint-text">     
+EMOJI:🐈  x2
+    pages\tabbar\pet.vue  >>f="activePet">{{ activePet.type === 'CAT' ? '🐈' : '🐕' }}</text>           </view>          
+    pages\tabbar\pet.vue  >>t class="pet-emoji">{{ pet.type === 'CAT' ? '🐈' : '🐕' }}</text>           <text class="pet-
+EMOJI:🛍  x2
+    pages\user\gift-card-manage.vue  >>-50)">             <text class="quick-emoji">🛍</text>           </view>           <text cla
+    pages\user\gift-card-manage.vue  >>kground: var(--brand-50)">             <text>🛍</text>           </view>           <view>   
+EMOJI:📋  x2
+    pages\user\gift-card-manage.vue  >>ft">             <text class="collapse-icon">📋</text>             <text class="collapse-lab
+    pages\user\invite.vue  >>pyCode">             <text class="copy-icon">📋</text>             <text class="copy-text">复
+EMOJI:✉️  x2
+    pages\user\invite.vue  >>             <text class="channel-icon-text">✉️</text>           </view>           <text cla
+    pages\user\magic-link.vue  >>"sent-info">         <text class="sent-icon">✉️</text>         <text class="sent-text">We se
+EMOJI:🎟️  x2
+    pages\user\lottery.vue  >>icon">             <text class="ticket-icon">🎟️</text>           </view>           <view cla
+    pages\user\lottery.vue  >>s="prize-icon-wrap"><text class="prize-icon">🎟️</text></view>             <text class="prize
+EMOJI:📅  x2
+    pages\user\lottery.vue  >>s="prize-icon-wrap"><text class="prize-icon">📅</text></view>             <text class="prize
+    pages\user\subscribe-manage-detail.vue  >>d: rgba(0, 0, 0, 0.04)">               <text>📅</text>             </view>             <text
+EMOJI:🖼  x2
+    pages\user\scan.vue  >>ickAlbum">         <text class="header-icon">🖼</text>       </view>     </view>      <view 
+    pages\user\scan.vue  >>tn-circle">           <text class="btn-icon">🖼</text>         </view>         <text class="
+EMOJI:🏷  x1
+    pages\cart\index.vue  >>s="banner">         <text class="banner-tag">🏷</text>         <text class="banner-text">2件商
+EMOJI:🏠  x1
+    pages\common\splash-popup.vue  >>placeholder">       <text class="home-emoji">🏠</text>       <text class="home-text">MOYUYO 
+EMOJI:🧴  x1
+    pages\community\dm-chat.vue  >>">               <text class="product-emoji">🧴</text>             </view>             <view
+EMOJI:➤  x1
+    pages\community\dm-chat.vue  >>dMessage">           <text class="send-icon">➤</text>         </view>       </view>     </v
+EMOJI:🔦  x1
+    pages\goods\ar-try-on.vue  >>text class="action-icon">{{ flashOn ? '⚡' : '🔦' }}</text>           <text class="action-lab
+EMOJI:✦  x1
+    pages\goods\bundle-deal.vue  >>>           <text class="custom-banner-icon">✦</text>           <text class="custom-banner-
+EMOJI:👥  x1
+    pages\goods\crowdfunding-list.vue  >>>               <text class="supporter-icon">👥</text>               <text class="supporter-
+EMOJI:❤️  x1
+    pages\goods\detail.vue  >>    <text class="bar-emoji">{{ wishlisted ? '❤️' : '🤍' }}</text>         <text class="bar-la
+EMOJI:🤍  x1
+    pages\goods\detail.vue  >>xt class="bar-emoji">{{ wishlisted ? '❤️' : '🤍' }}</text>         <text class="bar-label">W
+EMOJI:✗  x1
+    pages\goods\product-compare.vue  >>               {{ product[spec.key] ? '✓' : '✗' }}             </text>             <text   
+EMOJI:💡  x1
+    pages\goods\product-subscribe-list.vue  >>ss="tip-box">         <text class="tip-icon">💡</text>         <text class="tip-text">更多商品正在
+EMOJI:📜  x1
+    pages\goods\try-before-buy.vue  >>wRules">           <text class="rules-title">📜 试用规则说明</text>           <text class="rules-a
+EMOJI:🎧  x1
+    pages\order\after-sales-policy.vue  >>Service">         <text class="contact-icon">🎧</text>         <text class="contact-text">联系
+EMOJI:👩  x1
+    pages\order\cs-rating.vue  >>cs-avatar">           <text class="cs-emoji">👩</text>         </view>         <view class="
+EMOJI:🏷️  x1
+    pages\order\cs-rating.vue  >>ard-hint">         <text class="reward-icon">🏷️</text>         <text class="reward-text">完成评
+EMOJI:♻  x1
+    pages\order\recycle-bin.vue  >>="banner">         <text class="banner-icon">♻</text>         <view class="banner-info">   
+EMOJI:💰  x1
+    pages\order\tariff-detail.vue  >>u">                 <text class="mode-emoji">💰</text>               </view>               <
+EMOJI:📊  x1
+    pages\order\tariff-detail.vue  >>-header">           <text class="card-emoji">📊</text>           <text class="card-title">模式
+EMOJI:📖  x1
+    pages\order\tariff-detail.vue  >>-left">             <text class="card-emoji">📖</text>             <text class="collapse-tit
+EMOJI:🏦  x1
+    pages\order\tariff-detail.vue  >>-header">           <text class="card-emoji">🏦</text>           <text class="card-title">关税
+EMOJI:⚖️  x1
+    pages\order\tariff-detail.vue  >>-header">           <text class="card-emoji">⚖️</text>           <text class="card-title">多退
+EMOJI:📔  x1
+    pages\pet\diary.vue  >>ss="empty">         <text class="empty-icon">📔</text>         <text class="empty-text">还没有日
+EMOJI:🍽  x1
+    pages\pet\pet-hub-3d.vue  >>econdary" @click="onFeed">             <text>🍽 喂食</text>           </view>           <view 
+EMOJI:✂️  x1
+    pages\pet\pet-hub-3d.vue  >>condary" @click="onGroom">             <text>✂️ 护理</text>           </view>         </view> 
+EMOJI:⚙  x1
+    pages\pet\pet-hub.vue  >>er-icon" @click="goSettings" aria-label="设置">⚙</view>     </view>      <scroll-view scroll-
+EMOJI:🛁  x1
+    pages\pet\pet-hub.vue  >>">                 <view class="remind-icon">🛁</view>                 <text class="remind-d
+EMOJI:🦷  x1
+    pages\pet\pet-hub.vue  >>">                 <view class="remind-icon">🦷</view>                 <text class="remind-d
+EMOJI:❤  x1
+    pages\tabbar\community.vue  >>     <text class="action-icon">{{ p.liked ? '❤' : '♡' }}</text>             <text class="ac
+EMOJI:♡  x1
+    pages\tabbar\community.vue  >>text class="action-icon">{{ p.liked ? '❤' : '♡' }}</text>             <text class="action-c
+EMOJI:🖼️  x1
+    pages\user\avatar-settings.vue  >>allery">           <text class="action-icon">🖼️</text>           <text class="action-text">从
+EMOJI:🙈  x1
+    pages\user\balance-manage.vue  >>bel="显示/隐藏余额">             {{ showBalance ? '🙈' : '👁' }}           </view>         </view> 
+EMOJI:🎉  x1
+    pages\user\festival-event.vue  >>      <view class="fest-cover">{{ f.icon || '🎉' }}</view>         <view class="fest-info"> 
+EMOJI:👎  x1
+    pages\user\help-center.vue  >>="helpful-btn no" @tap.stop="vote(f, false)">👎 没解决</view>             </view>           </v
+EMOJI:📘  x1
+    pages\user\help.vue  >>   <text class="category-icon">{{ c.icon || '📘' }}</text>         <view class="category-inf
+EMOJI:📞  x1
+    pages\user\invite.vue  >>             <text class="channel-icon-text">📞</text>           </view>           <text cla
+EMOJI:☆  x1
+    pages\user\messages.vue  >>="star-icon" :class="{ starred: isStarred }">☆</text>       </view>     </view>      <!-- 消
+EMOJI:🔑  x1
+    pages\user\security.vue  >>"row-left">           <text class="row-icon">🔑</text>           <text class="row-text">验证方式
+EMOJI:💻  x1
+    pages\user\security.vue  >>"row-left">           <text class="row-icon">💻</text>           <text class="row-text">登录设备
+EMOJI:🔀  x1
+    pages\user\security.vue  >>"row-left">           <text class="row-icon">🔀</text>           <text class="row-text">账号合并
+EMOJI:🌙  x1
+    pages\user\settings.vue  >>m-left">             <text class="item-icon">🌙</text>             <text class="item-label">
+EMOJI:🌐  x1
+    pages\user\settings.vue  >>m-left">             <text class="item-icon">🌐</text>             <text class="item-label">
+EMOJI:👑  x1
+    pages\user\subscribe-manage-detail.vue  >>adge">             <text class="badge-emoji">👑</text>           </view>         </view>    
+EMOJI:🗨  x1
+    pages\user\wallet.vue  >>lass="eye-icon">{{ balanceVisible ? '👁' : '👁‍🗨' }}</text>             </view>           </v
+===== GLYPHS =====
+GLYPH:‹  x92
+    pages\cart\index.vue  >>回">           <text class="header-back-icon">‹</text>         </view>         <text class="
+    pages\common\empty-state.vue  >>ap="goBack">         <text class="back-icon">‹</text>       </view>       <text class="nav-
+    pages\community\chat-history.vue  >>ap="goBack">         <text class="back-icon">‹</text>       </view>       <text class="nav-
+GLYPH:›  x66
+    pages\cart\checkout.vue  >>         </view>         <text class="arrow">›</text>       </view>        <!-- 商品列表 -->   
+    pages\cart\checkout.vue  >>>Select</text>           <text class="arrow">›</text>         </view>       </view>        
+    pages\cart\checkout.vue  >> coupon</text>           <text class="arrow">›</text>         </view>       </view>        
+GLYPH:✓  x37
+    pages\cart\index.vue  >>">                 <text v-if="item.checked">✓</text>               </view>             </v
+    pages\cart\index.vue  >>         <text v-if="cartStore.isAllChecked">✓</text>           </view>           <text cla
+    pages\common\empty-state.vue  >>">                 <text class="toast-emoji">✓</text>               </view>               <
+GLYPH:️  x24
+    pages\goods\ar-try-on.vue  >>art">           <text class="add-cart-text">🛍️ 加入购物车 · {{ currentProduct.price }}</text>   
+    pages\goods\detail.vue  >>   <text class="bar-emoji">{{ wishlisted ? '❤️' : '🤍' }}</text>         <text class="bar-la
+    pages\goods\qa.vue  >>OpenAskModal">       <text class="fab-icon">✏️</text>     </view>      <!-- 提问弹窗 -->     <v
+GLYPH:×  x12
+    pages\common\splash-popup.vue  >>pup('')">           <text class="close-icon">×</text>         </view>          <!-- 顶部营销图片区
+    pages\community\post-create.vue  >>"upload-remove" @click="images.splice(i, 1)">×</view>           </view>           <view v-i
+    pages\goods\product-compare.vue  >>idx)">             <text class="remove-icon">×</text>           </view>         </view>    
+GLYPH:✕  x8
+    pages\cart\index.vue  >>">           <text class="banner-close-icon">✕</text>         </view>       </view>        
+    pages\common\empty-state.vue  >>">                 <text class="toast-emoji">✕</text>               </view>               <
+    pages\common\empty-state.vue  >>.15)">             <text class="state-emoji">✕</text>           </view>           <text cla
+GLYPH:★  x7
+    pages\goods\detail.vue  >>ext>             <text class="review-rating">★ {{ r.rating }}</text>           </view>     
+    pages\goods\product-compare.vue  >>-rating">                 <text class="star">★</text>                 <text class="rating-n
+    pages\order\cs-rating.vue  >>lass="{ 'star-active': star <= dim.rating }">★</text>               </view>             </v
+GLYPH:←  x6
+    pages\goods\fit-finder.vue  >>   <view class="prev-btn" @click="goStep(1)">← 上一步</view>         <view class="next-btn fle
+    pages\goods\fit-finder.vue  >>   <view class="prev-btn" @click="goStep(2)">← 修改数据</view>         <view class="next-btn fl
+    pages\order\tariff-detail.vue  >>Back">           <text class="back-btn-icon">←</text>           <text class="back-btn-text"
+GLYPH:♥  x3
+    pages\community\detail.vue  >>        <view class="stats">           <text>♥ {{ post.likes || 0 }}</text>           <text
+    pages\community\topic-square.vue  >>view class="post-actions">             <text>♥ {{ p.likes }}</text>             <text>💬 {{ 
+    pages\user\favorites.vue  >>-icon" :class="{ 'fav-active': item.isFav }">♥</text>           </view>         </view>    
+GLYPH:⭐  x3
+    pages\user\check-in.vue  >>header">           <text class="streak-star">⭐</text>           <text class="streak-title">
+    pages\user\check-in.vue  >>else-if="reward.current" class="reward-star">⭐</text>               <text v-else class="rew
+    pages\user\subscription-manage.vue  >>ew-icon">           <text class="icon-emoji">⭐</text>         </view>       </view>        
+GLYPH:❤  x2
+    pages\goods\detail.vue  >>    <text class="bar-emoji">{{ wishlisted ? '❤️' : '🤍' }}</text>         <text class="bar-l
+    pages\tabbar\community.vue  >>     <text class="action-icon">{{ p.liked ? '❤' : '♡' }}</text>             <text class="ac
+GLYPH:→  x2
+    pages\goods\fit-finder.vue  >>@click="goStep(2)">         <text>下一步：填写测量数据 →</text>       </view>     </view>      <!-- S
+    pages\goods\try-before-buy.vue  >>tn" @click="onBrowse">         <text>浏览可试用商品 →</text>       </view>     </scroll-view>   </
+GLYPH:✦  x1
+    pages\goods\bundle-deal.vue  >>>           <text class="custom-banner-icon">✦</text>           <text class="custom-banner-
+GLYPH:♡  x1
+    pages\tabbar\community.vue  >>text class="action-icon">{{ p.liked ? '❤' : '♡' }}</text>             <text class="action-c
+GLYPH:☆  x1
+    pages\user\messages.vue  >>="star-icon" :class="{ starred: isStarred }">☆</text>       </view>     </view>      <!-- 消
+===== ICONFONT CLASSES =====
+arrow-left  x6
+    pages\goods\bargain.vue  >>av-back" @tap="goBack">         <text class="iconfont icon-arrow-left" />       </view>       <text class="nav-tit
+    pages\goods\charity-donation.vue  >>av-back" @tap="goBack">         <text class="iconfont icon-arrow-left" />       </view>       <text class="nav-tit
+    pages\goods\crowdfunding.vue  >>av-back" @tap="goBack">         <text class="iconfont icon-arrow-left" />       </view>       <text class="nav-tit
+clock  x5
+    pages\goods\bargain.vue  >>s="countdown-header">           <text class="iconfont icon-clock" />           <text class="countdown-label">
+    pages\goods\crowdfunding.vue  >> class="stat-item">             <text class="iconfont icon-clock stat-clock" />             <text>剩余 18天 06:3
+    pages\goods\frequent-purchase.vue  >>('recent')"         >           <text class="iconfont icon-clock" />           <text>最近购买</text>         </vi
+share  x5
+    pages\goods\bargain.vue  >>p="showShare = true">           <text class="iconfont icon-share" />           <text>邀请好友帮砍</text>         </
+    pages\goods\crowdfunding.vue  >>re" @tap="handleShare">         <text class="iconfont icon-share" />       </view>       <view class="bar-sup
+    pages\goods\group-buy.vue  >>tap="handleInvite">             <text class="iconfont icon-share" />             <text>邀请好友加速成团</text>       
+heart  x4
+    pages\goods\charity-donation.vue  >>lass="banner-icon">             <text class="iconfont icon-heart" />           </view>           <text class=
+    pages\goods\charity-donation.vue  >>" @tap="handleConfirm">         <text class="iconfont icon-heart" />         <text>确认捐赠并继续结算</text>       </v
+    pages\goods\live-room.vue  >>view class="info-stat">         <text class="iconfont icon-heart stat-heart" />         <text>1.8w</text>    
+info  x3
+    pages\goods\bargain.vue  >>class="rules-left">             <text class="iconfont icon-info" />             <text class="rules-label">砍价
+    pages\goods\charity-donation.vue  >>view class="info-card">         <text class="iconfont icon-info info-icon" />         <text class="info-text
+    pages\goods\group-buy.vue  >>class="rules-left">             <text class="iconfont icon-info" />             <text class="rules-label">拼团
+chevron-down  x3
+    pages\goods\bargain.vue  >>xt>           </view>           <text class="iconfont icon-chevron-down" :class="{ rotated: rulesOpen }" />         
+    pages\goods\crowdfunding.vue  >>xt>           </view>           <text class="iconfont icon-chevron-down" :class="{ rotated: riskOpen }" />         <
+    pages\goods\group-buy.vue  >>xt>           </view>           <text class="iconfont icon-chevron-down" :class="{ rotated: rulesOpen }" />         
+bag  x3
+    pages\goods\bargain.vue  >>p="handleBuyCurrent">           <text class="iconfont icon-bag" />           <text>以当前价格 $72 购买</text>     
+    pages\goods\charity-donation.vue  >> class="order-label">           <text class="iconfont icon-bag" />           <text>当前订单</text>         </vi
+    pages\goods\live-room.vue  >>btn" @tap="handleCart">         <text class="iconfont icon-bag" />         <text class="cart-badge">3</text
+users  x3
+    pages\goods\crowdfunding.vue  >> class="stat-item">             <text class="iconfont icon-users" />             <text>156 人已支持</text>       
+    pages\goods\group-buy.vue  >> class="group-tag">             <text class="iconfont icon-users" />             <text>3人拼团</text>           
+    pages\goods\group-buy.vue  >>ss="rec-count">                 <text class="iconfont icon-users" />                 <text>{{ item.count }}</
+battery  x2
+    pages\goods\crowdfunding.vue  >>lass="feature-tag">             <text class="iconfont icon-battery" />             <text>14天续航</text>          
+    pages\goods\frequent-purchase.vue  >>nfont icon-wifi" />             <text class="iconfont icon-battery" />           </view>         </view>       
+shield  x2
+    pages\goods\crowdfunding.vue  >> class="tech-item">             <text class="iconfont icon-shield" />             <text>IP68 级防水，游泳、洗澡全程无忧</te
+    pages\goods\group-buy.vue  >>rule-icon limit">               <text class="iconfont icon-shield" />             </view>             <view cl
+plus  x2
+    pages\goods\frequent-purchase.vue  >>ap="toggleSelect(i)">           <text class="iconfont icon-plus" />         </view>       </view>     </scro
+    pages\goods\group-buy.vue  >>er-avatar empty">               <text class="iconfont icon-plus" />             </view>             <text cl
+rotate  x2
+    pages\goods\group-buy.vue  >>ule-icon refund">               <text class="iconfont icon-rotate" />             </view>             <view cl
+    pages\user\invoice.vue  >>ap="handleRetry">               <text class="iconfont icon-rotate" />               <text>重新申请</text>         
+chevron-right  x2
+    pages\goods\group-buy.vue  >>  <text>查看全部</text>             <text class="iconfont icon-chevron-right" />           </view>         </view>       
+    pages\user\invoice.vue  >>            </view>             <text class="iconfont icon-chevron-right" />           </view>           <view class=
+instagram  x1
+    pages\goods\bargain.vue  >>on bg-instagram">               <text class="iconfont icon-instagram" />             </view>             <text cl
+facebook  x1
+    pages\goods\bargain.vue  >>con bg-facebook">               <text class="iconfont icon-facebook" />             </view>             <text cl
+twitter  x1
+    pages\goods\bargain.vue  >>icon bg-twitter">               <text class="iconfont icon-twitter" />             </view>             <text cl
+link  x1
+    pages\goods\bargain.vue  >>el-icon bg-link">               <text class="iconfont icon-link" />             </view>             <text cl
+arrow-up  x1
+    pages\goods\charity-donation.vue  >>on bg-roundup">                 <text class="iconfont icon-arrow-up" />               </view>               <vie
+coins  x1
+    pages\goods\charity-donation.vue  >>icon bg-fixed">                 <text class="iconfont icon-coins" />               </view>               <tex
+pencil  x1
+    pages\goods\charity-donation.vue  >>con bg-custom">                 <text class="iconfont icon-pencil" />               </view>               <tex
+repeat  x1
+    pages\goods\charity-donation.vue  >> class="toggle-left">           <text class="iconfont icon-repeat" />           <view>             <text class
+external-link  x1
+    pages\goods\charity-donation.vue  >>xt>           </view>           <text class="iconfont icon-external-link" />         </view>       </view>        <!-
+award  x1
+    pages\goods\charity-donation.vue  >>w class="impact-top">           <text class="iconfont icon-award" />           <text class="impact-label">您的爱
+flame  x1
+    pages\goods\crowdfunding.vue  >>w class="banner-tag">           <text class="iconfont icon-flame" />           <text>众筹进行中</text>         </v
+droplet  x1
+    pages\goods\crowdfunding.vue  >>lass="feature-tag">             <text class="iconfont icon-droplet" />             <text>IP68 防水</text>        
+brain  x1
+    pages\goods\crowdfunding.vue  >>lass="feature-tag">             <text class="iconfont icon-brain" />             <text>AI 健康</text>          
+zap  x1
+    pages\goods\crowdfunding.vue  >> class="tier-icon">             <text class="iconfont icon-zap" />           </view>           <view>      
+package  x1
+    pages\goods\crowdfunding.vue  >> class="tier-icon">             <text class="iconfont icon-package" />           </view>           <view>      
+crown  x1
+    pages\goods\crowdfunding.vue  >>s="tier-icon gold">             <text class="iconfont icon-crown" />           </view>           <view>      
+cpu  x1
+    pages\goods\crowdfunding.vue  >> class="tech-item">             <text class="iconfont icon-cpu" />             <text>超低功耗芯片，待机功耗低于 0.5mA，一次
+chart  x1
+    pages\goods\crowdfunding.vue  >> class="tech-item">             <text class="iconfont icon-chart" />             <text>App 实时查看健康数据，AI 生成周报 /
+phone  x1
+    pages\goods\crowdfunding.vue  >> class="tech-item">             <text class="iconfont icon-phone" />             <text>兼容 iOS / Android，支持蓝牙 
+alert  x1
+    pages\goods\crowdfunding.vue  >> class="risk-left">             <text class="iconfont icon-alert" />             <text class="risk-label">风险说
+signal  x1
+    pages\goods\frequent-purchase.vue  >>ass="status-icons">             <text class="iconfont icon-signal" />             <text class="iconfont icon-w
+wifi  x1
+    pages\goods\frequent-purchase.vue  >>ont icon-signal" />             <text class="iconfont icon-wifi" />             <text class="iconfont icon-b
+trending  x1
+    pages\goods\frequent-purchase.vue  >>="switchTab('freq')">           <text class="iconfont icon-trending" />           <text>购买频次</text>         </vi
+cart  x1
+    pages\goods\frequent-purchase.vue  >> @tap="handleAddAll">           <text class="iconfont icon-cart" />           <text>一键加入购物车</text>         <
+check  x1
+    pages\goods\group-buy.vue  >>rule-icon check">               <text class="iconfont icon-check" />             </view>             <view cl
+close  x1
+    pages\goods\live-room.vue  >>n-btn" @tap="goBack">           <text class="iconfont icon-close" />         </view>       </view>       <!--
+tag  x1
+    pages\goods\live-room.vue  >>s="product-tag-live">           <text class="iconfont icon-tag" />           <text>正在讲解：高端宠物洗护套装</text>    
+user  x1
+    pages\goods\live-room.vue  >>view class="info-stat">         <text class="iconfont icon-user stat-user" />         <text>5.6w 粉丝</text>  
+send  x1
+    pages\goods\live-room.vue  >>btn" @tap="handleSend">         <text class="iconfont icon-send" />       </view>       <view class="interac
+building  x1
+    pages\user\invoice.vue  >>ader-type company">             <text class="iconfont icon-building" />             <text>增值税专用发票</text>        
+edit  x1
+    pages\user\invoice.vue  >>oiceForm = true">               <text class="iconfont icon-edit" />               <text>编辑</text>           
+file  x1
+    pages\user\invoice.vue  >>-btn selected">                 <text class="iconfont icon-file" />                 <text>电子发票</text>       
+mail  x1
+    pages\user\invoice.vue  >>ass="type-btn">                 <text class="iconfont icon-mail" />                 <text>纸质发票</text>       
+eye  x1
+    pages\user\invoice.vue  >>ViewDetail(inv)">               <text class="iconfont icon-eye" />               <text>查看详情</text>         
+download  x1
+    pages\user\invoice.vue  >>leDownload(inv)">               <text class="iconfont icon-download" />               <text>下载 PDF</text>       
+close-circle  x1
+    pages\user\invoice.vue  >>="failed-reason">               <text class="iconfont icon-close-circle" />               <text>抬头信息不完整</text>      
+headphones  x1
+    pages\user\invoice.vue  >>="handleContact">               <text class="iconfont icon-headphones" />               <text>联系客服</text>         
+===== U-ICON =====
+u-icon name=search x3
+u-icon name=close x1
+u-icon name=close-circle-fill x1
+u-icon name=trash x1
+u-icon name=camera-fill x1
+u-icon name=bell-fill x1

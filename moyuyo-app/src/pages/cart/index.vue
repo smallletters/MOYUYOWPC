@@ -2,7 +2,7 @@
   <view class="cart">
     <!-- 空状态 -->
     <view v-if="cartItems.length === 0 && expiredItems.length === 0" class="empty">
-      <text class="empty-emoji">🛒</text>
+      <text class="empty-emoji"><text class="luc luc-shopping-cart"></text></text>
       <text class="empty-text">购物车是空的</text>
       <view class="btn btn-primary" @click="goShopping">去逛逛</view>
     </view>
@@ -11,7 +11,7 @@
       <!-- 顶部导航栏 -->
       <view class="header">
         <view class="header-back" @click="goBack" aria-label="返回">
-          <text class="header-back-icon">‹</text>
+          <text class="header-back-icon"><text class="luc luc-arrow-left"></text></text>
         </view>
         <text class="header-title">购物车</text>
         <view class="header-edit" @click="onToggleEdit">
@@ -21,10 +21,10 @@
 
       <!-- 降价提醒横幅 -->
       <view v-if="showBanner" class="banner">
-        <text class="banner-tag">🏷</text>
+        <text class="banner-tag"><text class="luc luc-tag"></text></text>
         <text class="banner-text">2件商品降价啦，已为您节省¥18.00</text>
         <view class="banner-close" @click="showBanner = false" aria-label="关闭提醒">
-          <text class="banner-close-icon">✕</text>
+          <text class="banner-close-icon"><text class="luc luc-x"></text></text>
         </view>
       </view>
 
@@ -40,7 +40,7 @@
           >
             <view class="item-check" @click="onCheck(item)">
               <view class="checkbox" :class="{ checked: item.checked }">
-                <text v-if="item.checked">✓</text>
+                <text v-if="item.checked"><text class="luc luc-check"></text></text>
               </view>
             </view>
             <image :src="item.image" class="item-image" mode="aspectFill" />
@@ -70,7 +70,7 @@
         <view v-if="expiredItems.length > 0" class="expired-section">
           <view class="expired-header" @click="expandedExpired = !expandedExpired">
             <text class="expired-header-text">失效商品 ({{ expiredItems.length }})</text>
-            <text class="expired-header-arrow" :class="{ rotated: expandedExpired }">›</text>
+            <text class="expired-header-arrow" :class="{ rotated: expandedExpired }"><text class="luc luc-chevron-right"></text></text>
           </view>
           <view v-show="expandedExpired" class="expired-list">
             <view v-for="item in expiredItems" :key="item.id" class="expired-item">
@@ -137,7 +137,7 @@
       <view class="bottom-bar safe-area-bottom">
         <view class="check-all" @click="onCheckAll">
           <view class="checkbox" :class="{ checked: cartStore.isAllChecked }">
-            <text v-if="cartStore.isAllChecked">✓</text>
+            <text v-if="cartStore.isAllChecked"><text class="luc luc-check"></text></text>
           </view>
           <text class="check-all-text">全选</text>
         </view>
@@ -272,7 +272,7 @@ export default {
 .cart {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
   background: var(--color-background);
 }
 
@@ -404,26 +404,40 @@ export default {
 .item-check {
   display: flex;
   align-items: center;
-  padding-top: 4rpx;
+  justify-content: center;
+  /* 让勾选圈与商品图片视觉上垂直居中 */
+  min-height: 96rpx;
+  padding-top: 0;
 }
 
 .checkbox {
-  width: 36rpx;
-  height: 36rpx;
+  width: 40rpx;
+  height: 40rpx;
   border: 2rpx solid var(--color-divider);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  font-size: 22rpx;
+  color: transparent;
+  font-size: 24rpx;
+  line-height: 1;
   flex-shrink: 0;
+  background-color: var(--color-surface);
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+  box-sizing: border-box;
 }
 
 .checkbox.checked {
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: var(--color-text);
+  /* 选中态轻微缩放,提升反馈感 */
+  transform: scale(1.05);
+  box-shadow: 0 2rpx 8rpx rgba(219, 201, 138, 0.45);
 }
 
 .item-image {
@@ -757,11 +771,18 @@ export default {
 
 /* ===== 底部留白 ===== */
 .bottom-spacer {
-  height: 140rpx;
+  /* 固定栏高度(100rpx)+ 余量(40rpx)+ 预留 iPhone 安全区 */
+  height: calc(140rpx + env(safe-area-inset-bottom));
 }
 
 /* ===== 底部结算栏 ===== */
 .bottom-bar {
+  /* 固定在视口底部,不被 scroll-view 滚动带走 */
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -769,7 +790,8 @@ export default {
   padding: 0 var(--space-md);
   background: var(--color-surface);
   border-top: 1rpx solid var(--color-divider);
-  flex-shrink: 0;
+  /* safe-area-bottom 兼容 iPhone 刘海/底部指示条 */
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .check-all {
@@ -779,8 +801,9 @@ export default {
 }
 
 .check-all-text {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
 }
 
 .bottom-right {

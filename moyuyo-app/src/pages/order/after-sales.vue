@@ -2,7 +2,7 @@
   <view class="after-sales">
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="back-icon">‹</text>
+        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
       </view>
       <text class="header-title">售后记录</text>
       <view class="header-btn right" @click="onApply">
@@ -34,7 +34,7 @@
             </view>
           </view>
           <view class="empty-search">
-            <text class="search-icon">⌕</text>
+            <text class="search-icon luc luc-search"></text>
           </view>
         </view>
         <text class="empty-title">暂无售后记录</text>
@@ -52,7 +52,7 @@
             <text class="tag-status" :class="`tag-${item.status}`">{{ item.statusLabel }}</text>
             <text class="tag-type">{{ item.typeLabel }}</text>
           </view>
-          <text class="card-arrow">›</text>
+          <text class="card-arrow"><text class="luc luc-chevron-right"></text></text>
         </view>
 
         <view class="card-body">

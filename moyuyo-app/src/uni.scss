@@ -1,6 +1,13 @@
 /* MOYUYO 品牌主题 - 覆盖 uview-plus 默认主题色 */
 /* 参考：docs/MOYUYO_BrandSystem.md §2 品牌色板 */
 
+/* 注入 uview-plus 公共 mixin 到所有 SFC 的 <style> 作用域
+   uview-plus 内部的 flex.scss/components.scss 等都依赖 mixin.scss 里的 @mixin
+   但自身并未 @use 它;新版 sass 不再链式 inline @import,所以这里必须显式 @use
+   让 @include flex / @include hairline 等在子组件 style 中都能解析
+   必须在条件编译之外,uni-app 会把这个文件作为 SCSS 全局前置注入 */
+@use 'uview-plus/libs/css/mixin.scss' as *;
+
 /* #ifndef APP-NVUE */
 $u-main-color: #2e2b29;
 $u-content-color: #6e6962;

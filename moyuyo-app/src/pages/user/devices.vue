@@ -1,7 +1,7 @@
 <template>
   <view class="devices">
     <view class="nav-bar">
-      <view class="nav-back" @tap="goBack"><text class="back-icon">‹</text></view>
+      <view class="nav-back" @tap="goBack"><text class="back-icon"><text class="luc luc-arrow-left"></text></text></view>
       <text class="nav-title">登录设备</text>
       <view class="nav-placeholder" />
     </view>
@@ -13,7 +13,7 @@
     <view v-else>
       <view v-for="d in devices" :key="d.id" class="card device-card">
         <view class="device-info">
-          <text class="device-icon">{{ deviceIcon(d.deviceType) }}</text>
+          <text class="device-icon luc" :class="$luc(deviceIcon(d.deviceType))"></text>
           <view class="device-meta">
             <text class="device-name">
               {{ d.deviceName || d.model || '未知设备' }}
@@ -29,9 +29,7 @@
       </view>
     </view>
   </view>
-</template>
-
-<script setup>
+</template><script setup>
 import { ref, onMounted } from 'vue'
 import { deviceApi } from '@/api'
 
@@ -51,11 +49,11 @@ async function load() {
 }
 
 function deviceIcon(t) {
-  if (!t) return '📱'
-  if (/ios|iphone|ipad/i.test(t)) return '📱'
-  if (/android/i.test(t)) return '🤖'
-  if (/mac|windows|linux|desktop/i.test(t)) return '💻'
-  return '📱'
+  if (!t) return 'smartphone'
+  if (/ios|iphone|ipad/i.test(t)) return 'smartphone'
+  if (/android/i.test(t)) return 'cpu'
+  if (/mac|windows|linux|desktop/i.test(t)) return 'laptop'
+  return 'smartphone'
 }
 
 function formatTime(t) {

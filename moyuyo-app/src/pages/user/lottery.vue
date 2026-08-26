@@ -2,7 +2,7 @@
   <view class="lottery">
     <view class="nav-header dark">
       <view class="nav-back" @click="goBack">
-        <text class="back-icon light">‹</text>
+        <text class="back-icon light"><text class="luc luc-arrow-left"></text></text>
       </view>
       <text class="nav-title light">幸运抽奖</text>
       <view class="nav-placeholder" />
@@ -26,7 +26,7 @@
       <view class="chances-card">
         <view class="chances-left">
           <view class="chances-icon">
-            <text class="ticket-icon">🎟️</text>
+            <text class="ticket-icon"><text class="luc luc-ticket"></text></text>
           </view>
           <view class="chances-info">
             <text class="chances-num">
@@ -39,7 +39,7 @@
             </text>
           </view>
         </view>
-        <text class="chances-arrow">›</text>
+        <text class="chances-arrow"><text class="luc luc-chevron-right"></text></text>
       </view>
 
       <view class="wheel-section">
@@ -70,22 +70,22 @@
 
       <!-- 奖品列表 -->
       <view class="prize-list-section">
-        <text class="section-title">🎁 本次活动奖品</text>
+        <text class="section-title"><text class="luc luc-gift"></text> 本次活动奖品</text>
         <view class="prize-grid">
           <view class="prize-item">
-            <view class="prize-icon-wrap"><text class="prize-icon">🎁</text></view>
+            <view class="prize-icon-wrap"><text class="prize-icon"><text class="luc luc-gift"></text></text></view>
             <text class="prize-name">{{ currentLottery ? currentLottery.prizeName : '—' }}</text>
           </view>
           <view class="prize-item">
-            <view class="prize-icon-wrap"><text class="prize-icon">🎟️</text></view>
+            <view class="prize-icon-wrap"><text class="prize-icon"><text class="luc luc-ticket"></text></text></view>
             <text class="prize-name">免费 {{ currentLottery ? currentLottery.dailyFree : 0 }} 次/天</text>
           </view>
           <view class="prize-item">
-            <view class="prize-icon-wrap"><text class="prize-icon">📅</text></view>
+            <view class="prize-icon-wrap"><text class="prize-icon"><text class="luc luc-calendar"></text></text></view>
             <text class="prize-name">{{ currentLottery ? formatTime(currentLottery.endTime) : '长期' }}</text>
           </view>
           <view class="prize-item">
-            <view class="prize-icon-wrap"><text class="prize-icon">📈</text></view>
+            <view class="prize-icon-wrap"><text class="prize-icon"><text class="luc luc-trending-up"></text></text></view>
             <text class="prize-name">概率 {{ currentLottery ? formatProb(currentLottery.probability) : '—' }}</text>
           </view>
         </view>
@@ -94,7 +94,7 @@
       <view class="history-section">
         <view class="history-header" @click="showHistory = !showHistory">
           <view class="history-title-row">
-            <text class="history-title">🕐 抽奖记录</text>
+            <text class="history-title"><text class="luc luc-clock"></text> 抽奖记录</text>
             <text class="history-count">{{ spinHistory.length }}</text>
           </view>
           <text class="history-arrow" :class="{ open: showHistory }">▼</text>
@@ -102,7 +102,7 @@
         <view v-if="showHistory" class="history-list">
           <view v-for="(record, idx) in spinHistory" :key="record.id || idx" class="history-item">
             <view class="history-icon-wrap" :style="{ background: record.won ? '#d9b4b0' : '#e5e5ea' }">
-              <text class="history-icon">{{ record.won ? '🏆' : '🎟' }}</text>
+              <text class="history-icon luc" :class="$luc(record.won  ?  'trophy'  :  'ticket')"></text>
             </view>
             <view class="history-info">
               <text class="history-name">{{ record.prizeName || '未中奖' }}</text>
@@ -119,8 +119,8 @@
     <!-- 中奖弹窗 -->
     <view v-if="showPrizeModal" class="modal-overlay" @click="showPrizeModal = false">
       <view class="modal-content" @click.stop>
-        <view class="modal-icon-wrap" :style="{ background: spinResult && spinResult.won ? ?'#dbc98a'? : ?'#e5e5ea'? }">
-          <text class="modal-icon">{{ spinResult && spinResult.won ? ?'🏆'? : ?'🎟'? }}</text>
+        <view class="modal-icon-wrap" :style="{ background: spinResult && spinResult.won ? '#dbc98a' : '#e5e5ea' }">
+          <text class="modal-icon luc" :class="$luc(spinResult && spinResult.won ? 'trophy' : 'ticket')"></text>
         </view>
         <text class="modal-title">
           {{ spinResult && spinResult.won ? '恭喜中奖' : '差一点就中了' }}

@@ -83,7 +83,6 @@ export default defineConfig({
       '/api/v1/newuser': { target: 'http://localhost:8080', changeOrigin: true },
       '/api/v1/achievements': { target: 'http://localhost:8080', changeOrigin: true },
       '/api/v1/reports': { target: 'http://localhost:8080', changeOrigin: true },
-      '/api/v1/community': { target: 'http://localhost:8080', changeOrigin: true },
     },
   },
 })

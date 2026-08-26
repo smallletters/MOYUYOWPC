@@ -1,21 +1,21 @@
 <template>
   <view class="help-center">
     <view class="header">
-      <view class="header-btn" @click="goBack"><text class="back-icon">‹</text></view>
+      <view class="header-btn" @click="goBack"><text class="back-icon"><text class="luc luc-arrow-left"></text></text></view>
       <text class="header-title">帮助中心</text>
       <view class="header-btn" />
     </view>
 
     <view class="hero-section">
       <view class="hero-placeholder">
-        <text class="hero-icon">❓</text>
+        <text class="hero-icon"><text class="luc luc-help-circle"></text></text>
         <text class="hero-text">有什么可以帮助你的？</text>
       </view>
     </view>
 
     <view class="search-bar">
       <view class="search-field">
-        <text class="search-icon">⌕</text>
+        <text class="search-icon luc luc-search"></text>
         <input class="search-input" type="text" placeholder="搜索常见问题" v-model="keyword" />
       </view>
     </view>
@@ -23,12 +23,12 @@
     <view v-if="loading" class="loading"><text class="loading-text">加载中…</text></view>
     <view v-else class="category-list">
       <view v-for="c in filteredCategories" :key="c.id" class="category-card" @tap="openCategory(c)">
-        <text class="category-icon">{{ c.icon || '📘' }}</text>
+        <text class="category-icon luc" :class="$luc(c.icon) || 'luc luc-book'"></text>
         <view class="category-info">
           <text class="category-name">{{ c.name }}</text>
           <text class="category-count">{{ c.count || 0 }} 个问题</text>
         </view>
-        <text class="category-arrow">›</text>
+        <text class="category-arrow"><text class="luc luc-chevron-right"></text></text>
       </view>
       <view v-if="!filteredCategories.length" class="empty">
         <text class="empty-text">暂无相关问题</text>

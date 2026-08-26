@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="nav-header">
       <view class="nav-back" @tap="goBack">
-        <text class="iconfont icon-arrow-left" />
+        <text class="luc luc-arrow-left" />
       </view>
       <text class="nav-title">为流浪动物献爱心</text>
       <view class="nav-placeholder" />
@@ -14,7 +14,7 @@
       <view class="charity-banner">
         <view class="banner-top">
           <view class="banner-icon">
-            <text class="iconfont icon-heart" />
+            <text class="luc luc-heart" />
           </view>
           <text class="banner-title">每一份爱，都不算少</text>
         </view>
@@ -27,7 +27,7 @@
       <!-- 当前订单信息 -->
       <view class="order-card">
         <view class="order-label">
-          <text class="iconfont icon-bag" />
+          <text class="luc luc-shopping-bag" />
           <text>当前订单</text>
         </view>
         <view class="order-row">
@@ -49,7 +49,7 @@
           <view class="donation-top">
             <view class="donation-left">
               <view class="donation-icon bg-roundup">
-                <text class="iconfont icon-arrow-up" />
+                <text class="luc luc-arrow-up" />
               </view>
               <view>
                 <view class="donation-name-row">
@@ -75,7 +75,7 @@
           <view class="donation-top">
             <view class="donation-left">
               <view class="donation-icon bg-fixed">
-                <text class="iconfont icon-coins" />
+                <text class="luc luc-coins" />
               </view>
               <text class="donation-name">固定金额</text>
             </view>
@@ -102,7 +102,7 @@
           <view class="donation-top">
             <view class="donation-left">
               <view class="donation-icon bg-custom">
-                <text class="iconfont icon-pencil" />
+                <text class="luc luc-pencil" />
               </view>
               <text class="donation-name">自定义金额</text>
             </view>
@@ -124,7 +124,7 @@
       <!-- 每次自动凑整捐赠开关 -->
       <view class="auto-toggle-card">
         <view class="toggle-left">
-          <text class="iconfont icon-repeat" />
+          <text class="luc luc-repeat" />
           <view>
             <text class="toggle-title">每次自动凑整捐赠</text>
             <text class="toggle-desc">开启后后续下单自动凑整</text>
@@ -138,20 +138,20 @@
         <text class="section-title">合作救助机构</text>
         <view v-for="(org, i) in orgList" :key="i" class="org-card">
           <view class="org-icon" :class="org.iconClass">
-            <text class="iconfont" :class="org.icon" />
+            <text class="luc" :class="$luc(org.icon)" />
           </view>
           <view class="org-info">
             <text class="org-name">{{ org.name }}</text>
             <text class="org-desc">{{ org.desc }}</text>
           </view>
-          <text class="iconfont icon-external-link" />
+          <text class="luc luc-external-link" />
         </view>
       </view>
 
       <!-- 累计捐赠信息 -->
       <view class="impact-card">
         <view class="impact-top">
-          <text class="iconfont icon-award" />
+          <text class="luc luc-award" />
           <text class="impact-label">您的爱心记录</text>
         </view>
         <text class="impact-text">
@@ -183,7 +183,7 @@
         <text class="bar-total">${{ totalAmount }}</text>
       </view>
       <view class="confirm-btn" @tap="handleConfirm">
-        <text class="iconfont icon-heart" />
+        <text class="luc luc-heart" />
         <text>确认捐赠并继续结算</text>
       </view>
     </view>
@@ -207,19 +207,19 @@ export default {
         {
           name: 'ASPCA',
           desc: '美国防止虐待动物协会',
-          icon: 'icon-shield',
+          icon: 'shield',
           iconClass: 'org-ascpa',
         },
         {
           name: 'RSPCA',
           desc: '英国皇家防止虐待动物协会',
-          icon: 'icon-heart-handshake',
+          icon: 'handshake',
           iconClass: 'org-rspca',
         },
         {
           name: '当地动物救助组织',
           desc: '支持您所在社区的救助站',
-          icon: 'icon-map-pin',
+          icon: 'map-pin',
           iconClass: 'org-local',
         },
       ],
