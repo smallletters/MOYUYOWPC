@@ -1,0 +1,40 @@
+	... 105 common frames omitted
+2026-08-26 09:13:25.776 [http-nio-8080-exec-5] ERROR c.m.c.security.RequestLoggingFilter [18f795fe060e42ba9a2b1d86a9cd58c4] - ← [GET] /api/v1/community/posts/1 → 500 (98ms) [服务端错误] traceId=18f795fe060e42ba9a2b1d86a9cd58c4
+2026-08-26 09:13:25.918 [http-nio-8080-exec-8] INFO  c.m.c.security.RequestLoggingFilter [94dd564f2698409b83708006ff467268] - ← [DELETE] /api/v1/community/posts/1/like → 200 (137ms) traceId=94dd564f2698409b83708006ff467268
+2026-08-26 09:13:25.941 [http-nio-8080-exec-9] ERROR c.m.common.GlobalExceptionHandler [67304d9fa1a54ad9a9146fbbcd112b37] - 数据库访问异常:
+### Error querying database.  Cause: java.sql.SQLSyntaxErrorException: Unknown column 'deleted' in 'field list'
+### The error may exist in com/moyuyo/dao/mapper/CommunityCommentMapper.java (best guess)
+### The error may involve defaultParameterMap
+### The error occurred while setting parameters
+### SQL: SELECT  id,post_id,user_id,parent_id,content,deleted,create_time  FROM mo_community_comment  WHERE deleted=0     AND (post_id = ?) ORDER BY create_time ASC
+### Cause: java.sql.SQLSyntaxErrorException: ...[TRUNCATED]
+org.springframework.jdbc.BadSqlGrammarException:
+### Error querying database.  Cause: java.sql.SQLSyntaxErrorException: Unknown column 'deleted' in 'field list'
+### The error may exist in com/moyuyo/dao/mapper/CommunityCommentMapper.java (best guess)
+### The error may involve defaultParameterMap
+### The error occurred while setting parameters
+### SQL: SELECT  id,post_id,user_id,parent_id,content,deleted,create_time  FROM mo_community_comment  WHERE deleted=0     AND (post_id = ?) ORDER BY create_time ASC
+### Cause: java.sql.SQLSyntaxErrorException: Unknown column 'deleted' in 'field list'
+---
+### The error occurred while setting parameters
+### SQL: [SQL-FILTERED]us,  create_time, update_time )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ...[TRUNCATED]
+2026-08-26 09:14:37.120 [http-nio-8080-exec-7] WARN  c.m.c.security.RequestLoggingFilter [b45452f19aa24d6d84a1840481134732] - ← [POST] /api/v1/community/posts → 409 (13ms) [客户端错误] traceId=b45452f19aa24d6d84a1840481134732
+2026-08-26 09:14:37.190 [http-nio-8080-exec-10] INFO  c.m.c.security.RequestLoggingFilter [7220fd8c2107461a8c76cc5e1dc6dca0] - ← [POST] /api/v1/community/posts/1/comments → 200 (66ms) traceId=7220fd8c2107461a8c76cc5e1dc6dca0
+2026-08-26 09:14:37.257 [http-nio-8080-exec-2] INFO  c.m.c.security.RequestLoggingFilter [08821c114eb24a5498ace40eb6e6f817] - ← [POST] /api/v1/follows → 200 (62ms) traceId=08821c114eb24a5498ace40eb6e6f817
+2026-08-26 09:14:37.267 [http-nio-8080-exec-4] INFO  c.m.c.security.RequestLoggingFilter [20dcbbdb59094953bcc66ac4a7088698] - ← [GET] /api/v1/follows/180000002/status → 200 (7ms) traceId=20dcbbdb59094953bcc66ac4a7088698
+2026-08-26 09:14:37.278 [http-nio-8080-exec-6] INFO  c.m.c.security.RequestLoggingFilter [34f588f24e004fc2b04e2b60bd5869bb] - ← [GET] /api/v1/follows/following → 200 (5ms) traceId=34f588f24e004fc2b04e2b60bd5869bb
+2026-08-26 09:14:37.323 [http-nio-8080-exec-7] INFO  c.m.c.security.RequestLoggingFilter [176bd95cc994459b90b75dd93d93cd41] - ← [DELETE] /api/v1/follows/180000002 → 200 (42ms) traceId=176bd95cc994459b90b75dd93d93cd41
+2026-08-26 09:14:37.420 [http-nio-8080-exec-10] INFO  c.m.c.security.RequestLoggingFilter [b240733056bb441fb0648c4608c919f9] - ← [GET] /api/v1/community/posts?keyword=%E7%8C%AB → 200 (93ms) traceId=b240733056bb441fb0648c4608c919f9
+2026-08-26 09:14:37.429 [http-nio-8080-exec-2] WARN  c.m.c.security.RequestLoggingFilter [35b72969acc942db850a4e38411fb7af] - ← [GET] /api/v1/community/search?q=%E7%8C%AB → 404 (6ms) [客户端错误] traceId=35b72969acc942db850a4e38411fb7af
+2026-08-26 09:14:37.440 [http-nio-8080-exec-4] WARN  c.m.c.security.RequestLoggingFilter [629f449ad0d748a0afccce86e26febe1] - ← [GET] /api/v1/search/community?q=%E7%8C%AB → 404 (7ms) [客户端错误] traceId=629f449ad0d748a0afccce86e26febe1
+2026-08-26 09:14:37.447 [http-nio-8080-exec-6] WARN  c.m.c.security.RequestLoggingFilter [d14c525a9cd44f75b2cf390a7dae0eb5] - ← [GET] /api/v1/community/posts/search?q=%E7%8C%AB → 400 (4ms) [客户端错误] traceId=d14c525a9cd44f75b2cf390a7dae0eb5
+2026-08-26 09:14:37.462 [http-nio-8080-exec-7] INFO  c.m.c.security.RequestLoggingFilter [3ce4667d895c41a7a7c712d4d4ffee8f] - ← [GET] /api/v1/community/posts/mine → 200 (12ms) traceId=3ce4667d895c41a7a7c712d4d4ffee8f
+2026-08-26 09:14:37.505 [http-nio-8080-exec-8] INFO  c.m.c.security.RequestLoggingFilter [58cc2b3619ba4ad1a23d2369fba7d374] - ← [POST] /api/v1/community/posts/1/collect → 200 (41ms) traceId=58cc2b3619ba4ad1a23d2369fba7d374
+2026-08-26 09:14:37.515 [http-nio-8080-exec-9] INFO  c.m.c.security.RequestLoggingFilter [27f0e45973564c398d49e684dc923964] - ← [GET] /api/v1/community/posts/collected → 200 (7ms) traceId=27f0e45973564c398d49e684dc923964
+2026-08-26 09:14:37.557 [http-nio-8080-exec-1] INFO  c.m.c.security.RequestLoggingFilter [7061a655a83744aba1a342867b53bbc8] - ← [DELETE] /api/v1/community/posts/1/collect → 200 (39ms) traceId=7061a655a83744aba1a342867b53bbc8
+2026-08-26 09:14:37.624 [http-nio-8080-exec-3] INFO  c.m.c.security.RequestLoggingFilter [bc8cf0eaa10e47f995c7a134e3fefd1e] - ← [GET] /api/v1/community/posts/collected → 200 (63ms) traceId=bc8cf0eaa10e47f995c7a134e3fefd1e
+---
+### The error occurred while setting parameters
+### SQL: [SQL-FILTERED]us,  create_time, update_time )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ...[TRUNCATED]
+2026-08-26 09:14:55.062 [http-nio-8080-exec-9] WARN  c.m.c.security.RequestLoggingFilter [8032e088920e451aab2b0398a69c9c8d] - ← [POST] /api/v1/community/posts → 409 (13ms) [客户端错误] traceId=8032e088920e451aab2b0398a69c9c8d
+---

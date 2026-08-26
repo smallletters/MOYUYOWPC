@@ -178,12 +178,34 @@ export default {
         const [codeRes, statsRes, historyRes] = await Promise.all([
           inviteApi.getInviteCode(),
           inviteApi.getInviteStats(),
-          inviteApi.getInviteHistory(),
+          inviteApi.getInviteHistory({ page: 1, size: 20 }),
         ])
-        this.inviteCode = codeRes.data?.code || ''
-        this.stats = statsRes.data || { invited: 0, ordered: 0, points: 0, rank: 0 }
-        this.inviteHistory = historyRes.data || []
-      } catch {
+        // 后端 Result.success 包装：{ code, data, success }
+        // getInviteCode 返回字符串 → data 字段是字符串本身
+        this.inviteCode = (codeRes && codeRes.data) || codeRes || ''
+        const stats = (statsRes && statsRes.data) || statsRes || {}
+        this.stats = {
+          invited: stats.invitedCount || 0,
+          ordered: stats.completedOrders || 0,
+          points: stats.earnedPoints || 0,
+          rank: 0, // 排行暂未接入后端
+        }
+        const page = (historyRes && historyRes.data) || historyRes || {}
+        const records = Array.isArray(page.records) ? page.records : (Array.isArray(page) ? page : [])
+        this.inviteHistory = records.map((it) => {
+          const ordered = it.status === 'ORDERED'
+          return {
+            id: it.id,
+            initial: (it.inviteeUserId || 'U').toString().slice(-1).toUpperCase(),
+            name: ordered ? `好友 ${it.inviteeUserId}` : `待激活 ${it.inviteeUserId || '注册中'}`,
+            time: it.createTime ? new Date(it.createTime).toLocaleDateString('zh-CN') : '',
+            status: ordered ? 'ordered' : 'pending',
+            statusLabel: ordered ? '已完成' : '待完成',
+            reward: it.pointsAwarded || 0,
+          }
+        })
+      } catch (e) {
+        console.warn('[invite] load failed', e)
         this.inviteCode = ''
         this.stats = { invited: 0, ordered: 0, points: 0, rank: 0 }
         this.inviteHistory = []

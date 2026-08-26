@@ -21,6 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -126,6 +128,43 @@ public class MemberServiceImpl implements MemberService {
     vo.setTotalSpent(wallet.getTotalSpent());
     vo.setStatus(wallet.getStatus().name());
     return vo;
+  }
+
+  @Override
+  public List<Map<String, Object>> listLevels() {
+    // 等级档位（按成长值门槛排序）
+    List<Map<String, Object>> levels = new java.util.ArrayList<>();
+    levels.add(level("L1", "Member", "注册即获得", 0, 1.0));
+    levels.add(level("L2", "Silver", "完成首单 + 几次签到", 500, 1.1));
+    levels.add(level("L3", "Gold", "活跃用户", 2000, 1.2));
+    levels.add(level("L4", "Platinum", "高频消费用户", 8000, 1.5));
+    levels.add(level("L5", "Black", "顶级 VIP", 25000, 2.0));
+    return levels;
+  }
+
+  @Override
+  public double getCurrentPointsRate(Long userId) {
+    MemberEntity m = ensureMember(userId);
+    String level = m.getLevel() == null ? "NORMAL" : m.getLevel().name();
+    switch (level) {
+      case "SILVER": return 1.1;
+      case "GOLD": return 1.2;
+      case "PLATINUM": return 1.5;
+      case "DIAMOND": return 2.0;
+      case "NORMAL":
+      default:
+        return 1.0;
+    }
+  }
+
+  private Map<String, Object> level(String code, String name, String desc, int threshold, double rate) {
+    Map<String, Object> m = new java.util.HashMap<>();
+    m.put("code", code);
+    m.put("name", name);
+    m.put("description", desc);
+    m.put("growthThreshold", threshold);
+    m.put("pointsRate", rate);
+    return m;
   }
 
   private MemberEntity ensureMember(Long userId) {

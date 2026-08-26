@@ -16,19 +16,19 @@
           <view class="avatar-wrap">
             <text class="avatar-emoji">🐱</text>
           </view>
-          <text class="user-name">宠物达人小雅</text>
+          <text class="user-name">{{ userInfo.nickname || '会员' }}</text>
           <view class="member-badge">
-            <text class="member-badge-text">金卡会员</text>
+            <text class="member-badge-text">{{ levelLabel }}</text>
           </view>
 
           <!-- 成长进度 -->
           <view class="progress-section">
             <view class="progress-header">
-              <text class="progress-hint">距铂金会员还需 2,200 成长值</text>
-              <text class="progress-percent">56%</text>
+              <text class="progress-hint">{{ progressHint }}</text>
+              <text class="progress-percent">{{ progressPercent }}%</text>
             </view>
             <view class="progress-track">
-              <view class="progress-fill" :style="{ width: '56%' }" />
+              <view class="progress-fill" :style="{ width: progressPercent + '%' }" />
             </view>
           </view>
 
@@ -50,30 +50,56 @@
             <view class="compare-th first">
               <text class="th-text">权益项目</text>
             </view>
-            <view class="compare-th current">
-              <text class="th-text current-text">金卡</text>
-              <text class="th-sub">当前</text>
-            </view>
-            <view class="compare-th">
-              <text class="th-text">铂金</text>
-            </view>
-            <view class="compare-th">
-              <text class="th-text">黑钻</text>
+            <view
+              v-for="lv in levels"
+              :key="lv.code"
+              class="compare-th"
+              :class="{ current: lv.code === currentLevelCode }"
+            >
+              <text class="th-text" :class="{ 'current-text': lv.code === currentLevelCode }">{{ lv.name }}</text>
+              <text v-if="lv.code === currentLevelCode" class="th-sub">当前</text>
             </view>
           </view>
-          <!-- 数据行 -->
-          <view v-for="row in compareData" :key="row.label" class="compare-row">
+          <!-- 数据行：积分倍率 -->
+          <view class="compare-row">
             <view class="compare-cell first">
-              <text class="cell-label">{{ row.label }}</text>
+              <text class="cell-label">积分倍率</text>
             </view>
-            <view class="compare-cell current">
-              <text class="cell-value">{{ row.gold }}</text>
+            <view
+              v-for="lv in levels"
+              :key="`rate-${lv.code}`"
+              class="compare-cell"
+              :class="{ current: lv.code === currentLevelCode }"
+            >
+              <text class="cell-value bold">{{ lv.pointsRate }}x</text>
             </view>
-            <view class="compare-cell">
-              <text class="cell-value">{{ row.platinum }}</text>
+          </view>
+          <!-- 成长值门槛 -->
+          <view class="compare-row">
+            <view class="compare-cell first">
+              <text class="cell-label">成长值门槛</text>
             </view>
-            <view class="compare-cell">
-              <text class="cell-value bold">{{ row.diamond }}</text>
+            <view
+              v-for="lv in levels"
+              :key="`thr-${lv.code}`"
+              class="compare-cell"
+              :class="{ current: lv.code === currentLevelCode }"
+            >
+              <text class="cell-value">{{ lv.growthThreshold }}</text>
+            </view>
+          </view>
+          <!-- 定位 -->
+          <view class="compare-row">
+            <view class="compare-cell first">
+              <text class="cell-label">定位</text>
+            </view>
+            <view
+              v-for="lv in levels"
+              :key="`desc-${lv.code}`"
+              class="compare-cell"
+              :class="{ current: lv.code === currentLevelCode }"
+            >
+              <text class="cell-value" style="font-size:22rpx">{{ lv.description }}</text>
             </view>
           </view>
         </view>
@@ -112,17 +138,47 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted, onActivated } from 'vue'
+import { memberApi } from '@/api'
 
-// 权益对比数据
-const compareData = ref([
-  { label: '积分加速', gold: '1.2x', platinum: '1.5x', diamond: '2x' },
-  { label: '专属折扣', gold: '95折', platinum: '9折', diamond: '85折' },
-  { label: '免费退换货', gold: '2次/年', platinum: '4次/年', diamond: '无限' },
-  { label: '生日礼品', gold: '有', platinum: '有+优先', diamond: '有+定制' },
-  { label: '专属客服', gold: '在线', platinum: '专属', diamond: '1对1' },
-  { label: '每年配送券', gold: '4张', platinum: '8张', diamond: '12张' },
+// 用户会员信息（来自后端 /api/v1/member）
+const userInfo = ref({ nickname: '', level: 'NORMAL', growthValue: 0, points: 0 })
+
+// 等级档位（来自后端 /api/v1/member/levels）
+const levels = ref([
+  { code: 'L1', name: 'Member',   description: '注册即获得',     growthThreshold: 0,     pointsRate: 1.0 },
+  { code: 'L2', name: 'Silver',   description: '完成首单+签到',  growthThreshold: 500,   pointsRate: 1.1 },
+  { code: 'L3', name: 'Gold',     description: '活跃用户',       growthThreshold: 2000,  pointsRate: 1.2 },
+  { code: 'L4', name: 'Platinum', description: '高频消费用户',   growthThreshold: 8000,  pointsRate: 1.5 },
+  { code: 'L5', name: 'Black',    description: '顶级 VIP',        growthThreshold: 25000, pointsRate: 2.0 },
 ])
+
+const currentLevelCode = computed(() => mapLevelCode(userInfo.value.level))
+
+const levelLabel = computed(() => {
+  const lv = levels.value.find((l) => l.code === currentLevelCode.value)
+  return lv ? lv.name : 'Member'
+})
+
+const progressPercent = computed(() => {
+  const idx = levels.value.findIndex((l) => l.code === currentLevelCode.value)
+  if (idx < 0) return 0
+  const cur = levels.value[idx]
+  const next = levels.value[idx + 1]
+  if (!next) return 100
+  const cur_growth = userInfo.value.growthValue || 0
+  const span = next.growthThreshold - cur.growthThreshold
+  if (span <= 0) return 100
+  return Math.min(100, Math.max(0, Math.round(((cur_growth - cur.growthThreshold) / span) * 100)))
+})
+
+const progressHint = computed(() => {
+  const idx = levels.value.findIndex((l) => l.code === currentLevelCode.value)
+  const next = levels.value[idx + 1]
+  if (!next) return `已是顶级会员，当前积分 ${userInfo.value.points || 0}`
+  const need = Math.max(0, next.growthThreshold - (userInfo.value.growthValue || 0))
+  return `距 ${next.name} 还需 ${need} 成长值`
+})
 
 // 专属特权
 const privileges = ref([
@@ -132,25 +188,69 @@ const privileges = ref([
   { icon: '📦', title: '专属IP周边', desc: 'MOYUYO IP限定周边' },
 ])
 
-// 返回
-const goBack = () => {
+function mapLevelCode(apiLevel) {
+  // 后端 mo_member.level 枚举：NORMAL/SILVER/GOLD/PLATINUM/DIAMOND
+  // 前端映射为 L1~L5
+  switch ((apiLevel || 'NORMAL').toUpperCase()) {
+    case 'SILVER': return 'L2'
+    case 'GOLD': return 'L3'
+    case 'PLATINUM': return 'L4'
+    case 'DIAMOND': return 'L5'
+    case 'NORMAL':
+    default:
+      return 'L1'
+  }
+}
+
+async function loadMemberInfo() {
+  try {
+    const res = await memberApi.getMemberInfo()
+    const data = res?.data || res || {}
+    userInfo.value = {
+      nickname: data.nickname || '会员',
+      level: data.level || 'NORMAL',
+      growthValue: data.growthValue || 0,
+      points: data.points || 0,
+    }
+  } catch (e) {
+    console.warn('[membership] load failed', e)
+  }
+}
+
+async function loadLevels() {
+  try {
+    const res = await memberApi.getMemberLevels()
+    const arr = res?.data || res || []
+    if (Array.isArray(arr) && arr.length) levels.value = arr
+  } catch (e) {
+    console.warn('[membership] load levels failed', e)
+  }
+}
+
+function goBack() {
   uni.navigateBack()
 }
 
-// 升级
-const onUpgrade = () => {
+function onUpgrade() {
   uni.navigateTo({ url: '/pages/user/prime-page' })
 }
 
-// 会员规则
-const goRules = () => {
+function goRules() {
   uni.showToast({ title: '会员规则页面开发中', icon: 'none' })
 }
 
-// 积分明细
-const goPoints = () => {
+function goPoints() {
   uni.navigateTo({ url: '/pages/user/points-shop' })
 }
+
+// 页面加载时拉取真实数据
+onMounted(() => {
+  loadMemberInfo()
+  loadLevels()
+})
+onActivated(() => {
+  loadMemberInfo()
+})
 </script>
 
 <style lang="scss" scoped>

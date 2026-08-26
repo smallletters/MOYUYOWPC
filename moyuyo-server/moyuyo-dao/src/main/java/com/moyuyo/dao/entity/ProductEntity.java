@@ -67,4 +67,12 @@ public class ProductEntity {
 
     @TableField(exist = false)
     private List<ProductImageEntity> images;
+
+    /** 平均评分（仅 Controller 层动态注入，无对应数据库列） */
+    @TableField(exist = false)
+    private Double rating;
+
+    /** 有效评论数（仅 Controller 层动态注入） */
+    @TableField(exist = false)
+    private Integer reviewCount;
 }

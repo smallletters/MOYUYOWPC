@@ -115,60 +115,51 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, onMounted } from 'vue'
 
-// 目标用户信息
+// 目标用户信息：从 URL query 取（name/avatar/userId）
 const targetUser = ref({
-  name: 'PetLover_Kate',
-  avatar: 'K',
+  id: null,
+  name: '宠物好友',
+  avatar: 'P',
 })
 
-// 信息卡片折叠状态
 const profileCollapsed = ref(false)
-
-// 输入框内容
 const inputText = ref('')
-
-// 滚动定位
 const scrollToId = ref('')
+const messages = ref([])
+const STORAGE_KEY = 'moyuyo_dm_chat'
 
-// 消息列表 mock 数据
-const messages = ref([
-  { isSelf: false, type: 'text', content: 'Hi! 你的猫咪好可爱！是什么品种呀？' },
-  { isSelf: true, type: 'text', content: '谢谢！她是一只英短金渐层，叫 Luna' },
-  { isSelf: false, type: 'text', content: '我家也有一只金渐层！你平时用什么猫粮？' },
-  { isSelf: true, type: 'text', content: '我最近在用 MOYUYO 的温和沐浴露，很不错' },
-  { isSelf: false, type: 'text', content: '真的吗？我正好想给猫咪换沐浴露，链接发我看看' },
-  { isSelf: true, type: 'text', content: '好的，稍等我找一下' },
-  {
-    isSelf: true,
-    type: 'product',
-    product: {
-      name: 'MOYUYO 温和宠物沐浴露',
-      desc: '植物配方 温和不刺激 500ml',
-      price: '¥89',
-    },
-  },
-  { isSelf: false, type: 'text', content: '看起来不错！有折扣吗？' },
-])
-
-// 切换信息卡片折叠
-const toggleProfile = () => {
-  profileCollapsed.value = !profileCollapsed.value
+function loadMessages(targetId) {
+  try {
+    const all = uni.getStorageSync(STORAGE_KEY) || {}
+    const key = targetId ? `u_${targetId}` : 'u_default'
+    messages.value = all[key] || []
+  } catch (e) {
+    messages.value = []
+  }
 }
 
-// 查看用户主页
-const viewProfile = () => {
-  uni.navigateTo({ url: '/pages/community/detail' })
+function saveMessages(targetId) {
+  try {
+    const all = uni.getStorageSync(STORAGE_KEY) || {}
+    const key = targetId ? `u_${targetId}` : 'u_default'
+    all[key] = messages.value
+    uni.setStorageSync(STORAGE_KEY, all)
+  } catch (e) { /* ignore */ }
 }
 
-// 返回上一页
-const goBack = () => {
-  uni.navigateBack()
+function toggleProfile() { profileCollapsed.value = !profileCollapsed.value }
+
+function viewProfile() {
+  const id = targetUser.value.id
+  if (id) uni.navigateTo({ url: `/pages/user/user-profile-page?id=${id}` })
+  else uni.navigateTo({ url: '/pages/community/detail' })
 }
 
-// 显示更多选项
-const showMoreOptions = () => {
+function goBack() { uni.navigateBack() }
+
+function showMoreOptions() {
   uni.showActionSheet({
     itemList: ['查看主页', '屏蔽用户', '举报'],
     success: (res) => {
@@ -177,22 +168,18 @@ const showMoreOptions = () => {
   })
 }
 
-// 发送消息
-const sendMessage = () => {
+function sendMessage() {
   const text = inputText.value.trim()
   if (!text) return
-
   messages.value.push({ isSelf: true, type: 'text', content: text })
   inputText.value = ''
-
-  // 滚动到底部
+  saveMessages(targetUser.value.id)
   nextTick(() => {
     scrollToId.value = `msg-${messages.value.length - 1}`
   })
 }
 
-// 添加附件
-const addAttachment = () => {
+function addAttachment() {
   uni.chooseImage({
     count: 1,
     success: () => {
@@ -200,6 +187,22 @@ const addAttachment = () => {
     },
   })
 }
+
+onMounted(() => {
+  // 读取 URL query 中的目标用户信息
+  try {
+    const pages = getCurrentPages()
+    const cur = pages[pages.length - 1]
+    const q = cur?.options || {}
+    if (q.id) targetUser.value.id = q.id
+    if (q.name) targetUser.value.name = q.name
+    if (q.avatar) targetUser.value.avatar = q.avatar
+  } catch (e) { /* ignore */ }
+  loadMessages(targetUser.value.id)
+  if (messages.value.length === 0) {
+    messages.value.push({ isSelf: false, type: 'text', content: '你好，开始聊天吧～' })
+  }
+})
 </script>
 
 <style lang="scss" scoped>

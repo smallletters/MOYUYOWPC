@@ -1,0 +1,131 @@
+	at org.mybatis.spring.SqlSessionTemplate$SqlSessionInterceptor.invoke(SqlSessionTemplate.java:333)
+	... 105 common frames omitted
+2026-08-26 09:13:25.776 [http-nio-8080-exec-5] ERROR c.m.c.security.RequestLoggingFilter [18f795fe060e42ba9a2b1d86a9cd58c4] - ← [GET] /api/v1/community/posts/1 → 500 (98ms) [服务端错误] traceId=18f795fe060e42ba9a2b1d86a9cd58c4
+2026-08-26 09:13:25.918 [http-nio-8080-exec-8] INFO  c.m.c.security.RequestLoggingFilter [94dd564f2698409b83708006ff467268] - ← [DELETE] /api/v1/community/posts/1/like → 200 (137ms) traceId=94dd564f2698409b83708006ff467268
+2026-08-26 09:13:25.941 [http-nio-8080-exec-9] ERROR c.m.common.GlobalExceptionHandler [67304d9fa1a54ad9a9146fbbcd112b37] - 数据库访问异常:
+### Error querying database.  Cause: java.sql.SQLSyntaxErrorException: Unknown column 'deleted' in 'field list'
+### The error may exist in com/moyuyo/dao/mapper/CommunityCommentMapper.java (best guess)
+### The error may involve defaultParameterMap
+### The error occurred while setting parameters
+### SQL: SELECT  id,post_id,user_id,parent_id,content,deleted,create_time  FROM mo_community_comment  WHERE deleted=0     AND (post_id = ?) ORDER BY create_time ASC
+### Cause: java.sql.SQLSyntaxErrorException: ...[TRUNCATED]
+org.springframework.jdbc.BadSqlGrammarException:
+### Error querying database.  Cause: java.sql.SQLSyntaxErrorException: Unknown column 'deleted' in 'field list'
+### The error may exist in com/moyuyo/dao/mapper/CommunityCommentMapper.java (best guess)
+### The error may involve defaultParameterMap
+### The error occurred while setting parameters
+### SQL: SELECT  id,post_id,user_id,parent_id,content,deleted,create_time  FROM mo_community_comment  WHERE deleted=0     AND (post_id = ?) ORDER BY create_time ASC
+---
+	at org.mybatis.spring.SqlSessionTemplate$SqlSessionInterceptor.invoke(SqlSessionTemplate.java:333)
+	... 105 common frames omitted
+2026-08-26 09:13:25.943 [http-nio-8080-exec-9] ERROR c.m.c.security.RequestLoggingFilter [67304d9fa1a54ad9a9146fbbcd112b37] - ← [GET] /api/v1/community/posts/1 → 500 (19ms) [服务端错误] traceId=67304d9fa1a54ad9a9146fbbcd112b37
+2026-08-26 09:13:25.991 [http-nio-8080-exec-1] ERROR c.m.common.GlobalExceptionHandler [fecbb72b5e584378a33b002f079e8b55] - 数据库访问异常:
+### Error querying database.  Cause: java.sql.SQLSyntaxErrorException: Unknown column 'last_hit_time' in 'field list'
+### The error may exist in com/moyuyo/dao/admin/mapper/SensitiveWordMapper.java (best guess)
+### The error may involve defaultParameterMap
+### The error occurred while setting parameters
+### SQL: SELECT  id,word,replacement,match_mode,category,hit_count,last_hit_time,status,create_time,update_time  FROM mo_sensitive_word      WHERE  (status = ?)
+### Cause: java.sql.SQLSyntaxErrorExcep ...[TRUNCATED]
+org.springframework.jdbc.BadSqlGrammarException:
+### Error querying database.  Cause: java.sql.SQLSyntaxErrorException: Unknown column 'last_hit_time' in 'field list'
+### The error may exist in com/moyuyo/dao/admin/mapper/SensitiveWordMapper.java (best guess)
+### The error may involve defaultParameterMap
+### The error occurred while setting parameters
+### SQL: SELECT  id,word,replacement,match_mode,category,hit_count,last_hit_time,status,create_time,update_time  FROM mo_sensitive_word      WHERE  (status = ?)
+### Cause: java.sql.SQLSyntaxErrorException: Unknown column 'last_hit_time' in 'field list'
+---
+	at org.mybatis.spring.SqlSessionTemplate$SqlSessionInterceptor.invoke(SqlSessionTemplate.java:333)
+	... 126 common frames omitted
+2026-08-26 09:13:25.992 [http-nio-8080-exec-1] ERROR c.m.c.security.RequestLoggingFilter [fecbb72b5e584378a33b002f079e8b55] - ← [POST] /api/v1/community/posts → 500 (44ms) [服务端错误] traceId=fecbb72b5e584378a33b002f079e8b55
+2026-08-26 09:13:26.014 [http-nio-8080-exec-2] ERROR c.m.common.GlobalExceptionHandler [0fd68e01dd6b41f596c5ed98f42c3038] - 数据库访问异常:
+### Error querying database.  Cause: java.sql.SQLSyntaxErrorException: Unknown column 'last_hit_time' in 'field list'
+### The error may exist in com/moyuyo/dao/admin/mapper/SensitiveWordMapper.java (best guess)
+### The error may involve defaultParameterMap
+### The error occurred while setting parameters
+### SQL: SELECT  id,word,replacement,match_mode,category,hit_count,last_hit_time,status,create_time,update_time  FROM mo_sensitive_word      WHERE  (status = ?)
+### Cause: java.sql.SQLSyntaxErrorExcep ...[TRUNCATED]
+org.springframework.jdbc.BadSqlGrammarException:
+### Error querying database.  Cause: java.sql.SQLSyntaxErrorException: Unknown column 'last_hit_time' in 'field list'
+### The error may exist in com/moyuyo/dao/admin/mapper/SensitiveWordMapper.java (best guess)
+### The error may involve defaultParameterMap
+### The error occurred while setting parameters
+### SQL: SELECT  id,word,replacement,match_mode,category,hit_count,last_hit_time,status,create_time,update_time  FROM mo_sensitive_word      WHERE  (status = ?)
+### Cause: java.sql.SQLSyntaxErrorException: Unknown column 'last_hit_time' in 'field list'
+---
+	at org.mybatis.spring.SqlSessionTemplate$SqlSessionInterceptor.invoke(SqlSessionTemplate.java:333)
+	... 126 common frames omitted
+2026-08-26 09:13:26.024 [http-nio-8080-exec-2] ERROR c.m.c.security.RequestLoggingFilter [0fd68e01dd6b41f596c5ed98f42c3038] - ← [POST] /api/v1/community/posts/1/comments → 500 (25ms) [服务端错误] traceId=0fd68e01dd6b41f596c5ed98f42c3038
+2026-08-26 09:13:26.092 [http-nio-8080-exec-4] INFO  c.m.c.security.RequestLoggingFilter [00b9114fa61a47049306898cc5079940] - ← [POST] /api/v1/follows → 200 (63ms) traceId=00b9114fa61a47049306898cc5079940
+2026-08-26 09:13:26.110 [http-nio-8080-exec-3] INFO  c.m.c.security.RequestLoggingFilter [d1865bfb62774b21b19cf99238130b6a] - ← [GET] /api/v1/follows/180000002/status → 200 (12ms) traceId=d1865bfb62774b21b19cf99238130b6a
+2026-08-26 09:13:26.136 [http-nio-8080-exec-5] INFO  c.m.c.security.RequestLoggingFilter [f19d0bd4d49a44039546ccdbbb6174ab] - ← [GET] /api/v1/follows/following → 200 (23ms) traceId=f19d0bd4d49a44039546ccdbbb6174ab
+2026-08-26 09:13:26.183 [http-nio-8080-exec-8] INFO  c.m.c.security.RequestLoggingFilter [7766e26354974a31a4a8d24b04364358] - ← [DELETE] /api/v1/follows/180000002 → 200 (40ms) traceId=7766e26354974a31a4a8d24b04364358
+2026-08-26 09:13:26.256 [http-nio-8080-exec-10] INFO  c.m.c.security.RequestLoggingFilter [0a4777af206443b2995f4ef9c1efe97b] - ← [GET] /api/v1/community/posts?keyword=%E7%8C%AB → 200 (68ms) traceId=0a4777af206443b2995f4ef9c1efe97b
+2026-08-26 09:13:26.270 [http-nio-8080-exec-2] WARN  c.m.c.security.RequestLoggingFilter [71450b0e63da435fab22077f4f9e72e3] - ← [GET] /api/v1/community/search?q=%E7%8C%AB → 404 (12ms) [客户端错误] traceId=71450b0e63da435fab22077f4f9e72e3
+2026-08-26 09:13:26.280 [http-nio-8080-exec-3] WARN  c.m.c.security.RequestLoggingFilter [3a7de797fdb54e4db17bbadfd1e73337] - ← [GET] /api/v1/search/community?q=%E7%8C%AB → 404 (6ms) [客户端错误] traceId=3a7de797fdb54e4db17bbadfd1e73337
+2026-08-26 09:13:26.293 [http-nio-8080-exec-5] WARN  c.m.c.security.RequestLoggingFilter [1143c9fa6ff74770bf216c2048907179] - ← [GET] /api/v1/community/posts/search?q=%E7%8C%AB → 400 (9ms) [客户端错误] traceId=1143c9fa6ff74770bf216c2048907179
+2026-08-26 09:13:26.314 [http-nio-8080-exec-8] INFO  c.m.c.security.RequestLoggingFilter [6a55106d85ba4d4e8af43d9f06c7b19b] - ← [GET] /api/v1/community/posts/mine → 200 (17ms) traceId=6a55106d85ba4d4e8af43d9f06c7b19b
+2026-08-26 09:13:26.359 [http-nio-8080-exec-9] INFO  c.m.c.security.RequestLoggingFilter [474a7f8c8c0b4b51806f10af6111d853] - ← [POST] /api/v1/community/posts/1/collect → 200 (42ms) traceId=474a7f8c8c0b4b51806f10af6111d853
+2026-08-26 09:13:26.374 [http-nio-8080-exec-1] INFO  c.m.c.security.RequestLoggingFilter [f9734ab6689a450ba1fd2410767ba761] - ← [GET] /api/v1/community/posts/collected → 200 (11ms) traceId=f9734ab6689a450ba1fd2410767ba761
+2026-08-26 09:13:26.416 [http-nio-8080-exec-4] INFO  c.m.c.security.RequestLoggingFilter [ac9d08543c2546258bcdbb3303ee0814] - ← [DELETE] /api/v1/community/posts/1/collect → 200 (38ms) traceId=ac9d08543c2546258bcdbb3303ee0814
+2026-08-26 09:13:26.801 [http-nio-8080-exec-6] INFO  c.m.c.security.RequestLoggingFilter [9e774886939d47b78b9a4662984f83a6] - ← [GET] /api/v1/community/posts/collected → 200 (381ms) traceId=9e774886939d47b78b9a4662984f83a6
+2026-08-26 09:13:26.815 [http-nio-8080-exec-7] INFO  c.m.c.security.RequestLoggingFilter [eaf7d67f7d7d44a783680690a47c4349] - ← [GET] /api/v1/community/topics → 200 (10ms) traceId=eaf7d67f7d7d44a783680690a47c4349
+---
+	at org.mybatis.spring.SqlSessionTemplate$SqlSessionInterceptor.invoke(SqlSessionTemplate.java:333)
+	... 105 common frames omitted
+2026-08-26 09:13:43.534 [http-nio-8080-exec-1] ERROR c.m.c.security.RequestLoggingFilter [c3a7ee4c7a774768865f9646da5bff67] - ← [GET] /api/v1/community/posts/1 → 500 (10ms) [服务端错误] traceId=c3a7ee4c7a774768865f9646da5bff67
+2026-08-26 09:13:43.546 [http-nio-8080-exec-4] ERROR c.m.common.GlobalExceptionHandler [c24737ca69cd433ab31c3552909af6ec] - 数据库访问异常:
+### Error querying database.  Cause: java.sql.SQLSyntaxErrorException: Unknown column 'last_hit_time' in 'field list'
+### The error may exist in com/moyuyo/dao/admin/mapper/SensitiveWordMapper.java (best guess)
+### The error may involve defaultParameterMap
+### The error occurred while setting parameters
+### SQL: SELECT  id,word,replacement,match_mode,category,hit_count,last_hit_time,status,create_time,update_time  FROM mo_sensitive_word      WHERE  (status = ?)
+### Cause: java.sql.SQLSyntaxErrorExcep ...[TRUNCATED]
+org.springframework.jdbc.BadSqlGrammarException:
+### Error querying database.  Cause: java.sql.SQLSyntaxErrorException: Unknown column 'last_hit_time' in 'field list'
+### The error may exist in com/moyuyo/dao/admin/mapper/SensitiveWordMapper.java (best guess)
+### The error may involve defaultParameterMap
+### The error occurred while setting parameters
+### SQL: SELECT  id,word,replacement,match_mode,category,hit_count,last_hit_time,status,create_time,update_time  FROM mo_sensitive_word      WHERE  (status = ?)
+### Cause: java.sql.SQLSyntaxErrorException: Unknown column 'last_hit_time' in 'field list'
+---
+	at org.mybatis.spring.SqlSessionTemplate$SqlSessionInterceptor.invoke(SqlSessionTemplate.java:333)
+	... 126 common frames omitted
+2026-08-26 09:13:43.561 [http-nio-8080-exec-4] ERROR c.m.c.security.RequestLoggingFilter [c24737ca69cd433ab31c3552909af6ec] - ← [POST] /api/v1/community/posts → 500 (24ms) [服务端错误] traceId=c24737ca69cd433ab31c3552909af6ec
+2026-08-26 09:13:43.581 [http-nio-8080-exec-3] ERROR c.m.common.GlobalExceptionHandler [372bba3b8b4f49c38d18cb66121dfc40] - 数据库访问异常:
+### Error querying database.  Cause: java.sql.SQLSyntaxErrorException: Unknown column 'last_hit_time' in 'field list'
+### The error may exist in com/moyuyo/dao/admin/mapper/SensitiveWordMapper.java (best guess)
+### The error may involve defaultParameterMap
+### The error occurred while setting parameters
+### SQL: SELECT  id,word,replacement,match_mode,category,hit_count,last_hit_time,status,create_time,update_time  FROM mo_sensitive_word      WHERE  (status = ?)
+### Cause: java.sql.SQLSyntaxErrorExcep ...[TRUNCATED]
+org.springframework.jdbc.BadSqlGrammarException:
+### Error querying database.  Cause: java.sql.SQLSyntaxErrorException: Unknown column 'last_hit_time' in 'field list'
+### The error may exist in com/moyuyo/dao/admin/mapper/SensitiveWordMapper.java (best guess)
+### The error may involve defaultParameterMap
+### The error occurred while setting parameters
+### SQL: SELECT  id,word,replacement,match_mode,category,hit_count,last_hit_time,status,create_time,update_time  FROM mo_sensitive_word      WHERE  (status = ?)
+### Cause: java.sql.SQLSyntaxErrorException: Unknown column 'last_hit_time' in 'field list'
+---
+	at org.mybatis.spring.SqlSessionTemplate$SqlSessionInterceptor.invoke(SqlSessionTemplate.java:333)
+	... 126 common frames omitted
+2026-08-26 09:13:43.616 [http-nio-8080-exec-3] ERROR c.m.c.security.RequestLoggingFilter [372bba3b8b4f49c38d18cb66121dfc40] - ← [POST] /api/v1/community/posts/1/comments → 500 (48ms) [服务端错误] traceId=372bba3b8b4f49c38d18cb66121dfc40
+2026-08-26 09:13:46.691 [http-nio-8080-exec-6] WARN  c.m.c.security.RequestLoggingFilter [5bb205d6fca64f318c95796f05aade02] - ← [GET] /api/v1/users/me → 404 (12ms) [客户端错误] traceId=5bb205d6fca64f318c95796f05aade02
+2026-08-26 09:13:46.714 [http-nio-8080-exec-5] INFO  c.m.c.security.RequestLoggingFilter [12f156bd16d447fea9eac76374c46878] - ← [GET] /api/v1/community/topics → 200 (11ms) traceId=12f156bd16d447fea9eac76374c46878
+2026-08-26 09:13:46.719 [http-nio-8080-exec-7] INFO  c.m.c.security.RequestLoggingFilter [ad963d75e2854177a1bb5a09fe995e33] - ← [GET] /api/v1/community/posts?page=1&size=20 → 200 (16ms) traceId=ad963d75e2854177a1bb5a09fe995e33
+2026-08-26 09:13:53.724 [http-nio-8080-exec-2] ERROR c.m.common.GlobalExceptionHandler [e1b592cef9d3408eb55ff233fa8b1342] - 数据库访问异常:
+### Error querying database.  Cause: java.sql.SQLSyntaxErrorException: Unknown column 'deleted' in 'field list'
+### The error may exist in com/moyuyo/dao/mapper/CommunityCommentMapper.java (best guess)
+### The error may involve defaultParameterMap
+### The error occurred while setting parameters
+### SQL: SELECT  id,post_id,user_id,parent_id,content,deleted,create_time  FROM mo_community_comment  WHERE deleted=0     AND (post_id = ?) ORDER BY create_time ASC
+### Cause: java.sql.SQLSyntaxErrorException: ...[TRUNCATED]
+org.springframework.jdbc.BadSqlGrammarException:
+### Error querying database.  Cause: java.sql.SQLSyntaxErrorException: Unknown column 'deleted' in 'field list'
+### The error may exist in com/moyuyo/dao/mapper/CommunityCommentMapper.java (best guess)
+### The error may involve defaultParameterMap
+---
+	at org.mybatis.spring.SqlSessionTemplate$SqlSessionInterceptor.invoke(SqlSessionTemplate.java:333)
+	... 105 common frames omitted
+2026-08-26 09:13:53.726 [http-nio-8080-exec-2] ERROR c.m.c.security.RequestLoggingFilter [e1b592cef9d3408eb55ff233fa8b1342] - ← [GET] /api/v1/community/posts/2 → 500 (13ms) [服务端错误] traceId=e1b592cef9d3408eb55ff233fa8b1342
+2026-08-26 09:14:06.071 [http-nio-8080-exec-1] INFO  c.m.c.security.RequestLoggingFilter [6fc53b741df94c1189c9a372e3cbcaba] - ← [GET] /api/v1/community/posts?page=1&size=20 → 200 (14ms) traceId=6fc53b741df94c1189c9a372e3cbcaba
+---

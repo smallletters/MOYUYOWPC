@@ -38,12 +38,28 @@ public class CommunityServiceImpl implements CommunityService {
     @Override
     public Page<CommunityPostVO> listPosts(String topic, int page, int size) {
         LambdaQueryWrapper<CommunityPostEntity> wrapper = new LambdaQueryWrapper<CommunityPostEntity>()
-                .eq(CommunityPostEntity::getStatus, "PUBLISHED")
+                .eq(CommunityPostEntity::getStatus, 1)
                 .orderByDesc(CommunityPostEntity::getCreateTime);
         if (topic != null && !topic.isEmpty()) {
             wrapper.eq(CommunityPostEntity::getTopic, topic);
         }
 
+        Page<CommunityPostEntity> entityPage = postMapper.selectPage(new Page<>(page, size), wrapper);
+        return toVOPage(entityPage);
+    }
+
+    @Override
+    public Page<CommunityPostVO> searchPosts(String keyword, String topic, int page, int size) {
+        // 用 LIKE 模糊匹配 content。已发布(status=1) 才参与搜索。
+        // 注意：避免通配符注入，对 MySQL LIKE 元字符 % _ \ 做转义。
+        String safe = keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+        LambdaQueryWrapper<CommunityPostEntity> wrapper = new LambdaQueryWrapper<CommunityPostEntity>()
+                .eq(CommunityPostEntity::getStatus, 1)
+                .like(CommunityPostEntity::getContent, "%" + safe + "%")
+                .orderByDesc(CommunityPostEntity::getCreateTime);
+        if (topic != null && !topic.isEmpty()) {
+            wrapper.eq(CommunityPostEntity::getTopic, topic);
+        }
         Page<CommunityPostEntity> entityPage = postMapper.selectPage(new Page<>(page, size), wrapper);
         return toVOPage(entityPage);
     }
@@ -71,7 +87,8 @@ public class CommunityServiceImpl implements CommunityService {
         entity.setTopic(XssSanitizer.sanitizePlainText(topic));
         entity.setLikes(0);
         entity.setComments(0);
-        entity.setStatus("PUBLISHED");
+        // 表 mo_community_post.status 为 tinyint(1)，1=已发布 0=隐藏。历史已存值 1（PUBLISHED 简写）。
+        entity.setStatus(1);
         postMapper.insert(entity);
         createReview("POST", entity.getId(), userId, cleanContent, entity.getImages());
         log.info("Post created: postId={}, userId={}", entity.getId(), userId);

@@ -347,6 +347,11 @@ public class WooCommerceSyncServiceImpl implements WooCommerceSyncService {
     @Transactional
     public Long pushProductToWooCommerce(ProductEntity product) {
         if (product == null) return null;
+        // dev默认未配置 WooCommerce（url为占位符/consumer-key为空），跳过推送避免刷错误日志
+        if (client == null || !client.isConfigured()) {
+            log.debug("WooCommerce 未配置或 client 未初始化，跳过推送 productId={}", product.getId());
+            return null;
+        }
         if (product.getWooProductId() != null) {
             // 已同步过，转用更新
             boolean ok = updateProductOnWooCommerce(product);
@@ -380,6 +385,11 @@ public class WooCommerceSyncServiceImpl implements WooCommerceSyncService {
     public boolean updateProductOnWooCommerce(ProductEntity product) {
         if (product == null || product.getWooProductId() == null) {
             log.warn("updateProductOnWooCommerce: product or wooProductId is null");
+            return false;
+        }
+        // dev默认未配置 WooCommerce 时直接跳过
+        if (client == null || !client.isConfigured()) {
+            log.debug("WooCommerce 未配置，跳过更新 productId={}", product.getId());
             return false;
         }
         try {

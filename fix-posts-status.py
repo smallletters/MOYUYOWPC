@@ -1,0 +1,10 @@
+import pymysql
+conn = pymysql.connect(host='127.0.0.1', port=3306, user='root', password='dev123456', database='moyuyo_dev')
+cur = conn.cursor()
+# 把之前 status=0 的老测试帖子改为 1（已发布）
+cur.execute("UPDATE mo_community_post SET status=1 WHERE status != 1 OR status IS NULL")
+print("Updated posts to status=1:", cur.rowcount)
+conn.commit()
+cur.execute("SELECT id, status FROM mo_community_post ORDER BY id")
+for r in cur.fetchall(): print(r)
+conn.close()

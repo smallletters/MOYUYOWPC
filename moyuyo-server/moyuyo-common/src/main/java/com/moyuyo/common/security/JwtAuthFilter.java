@@ -78,7 +78,10 @@ public class JwtAuthFilter implements Filter {
             new WhiteListEntry("/api/v1/products", true),
             new WhiteListEntry("/api/v1/products/", true),
             new WhiteListEntry("/api/v1/categories", true),
-            new WhiteListEntry("/api/v1/categories/", true)
+            new WhiteListEntry("/api/v1/categories/", true),
+            // APP 首页 CMS Banner 公开拉取（仅 GET）
+            new WhiteListEntry("/api/v1/cms/banners", true),
+            new WhiteListEntry("/api/v1/cms/banners/", true)
     );
 
     @Override

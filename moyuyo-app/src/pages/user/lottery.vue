@@ -9,14 +9,34 @@
     </view>
 
     <scroll-view class="scroll" scroll-y>
+      <!-- 抽奖活动列表 -->
+      <view v-if="lotteries.length > 1" class="lottery-tabs">
+        <view
+          v-for="lt in lotteries"
+          :key="lt.id"
+          class="lottery-tab"
+          :class="{ active: currentLottery && currentLottery.id === lt.id }"
+          @click="onSelectLottery(lt)"
+        >
+          <text class="lottery-tab-name">{{ lt.name }}</text>
+          <text v-if="lt.pointsCost > 0" class="lottery-tab-cost">{{ lt.pointsCost }}/次</text>
+        </view>
+      </view>
+
       <view class="chances-card">
         <view class="chances-left">
           <view class="chances-icon">
             <text class="ticket-icon">🎟️</text>
           </view>
           <view class="chances-info">
-            <text class="chances-num">剩余 {{ remainingSpins }} 次抽奖机会</text>
-            <text class="chances-hint">消费满 $50 再获得 1 次</text>
+            <text class="chances-num">
+              今日已用 {{ statsTodayUsed }} / {{ currentLottery ? currentLottery.dailyFree : 0 }} 次免费
+            </text>
+            <text class="chances-hint">
+              {{ currentLottery && currentLottery.pointsCost > 0
+                ? `免费用完后每次扣 ${currentLottery.pointsCost} 积分`
+                : '今日免费' }}
+            </text>
           </view>
         </view>
         <text class="chances-arrow">›</text>
@@ -33,11 +53,11 @@
                 :key="idx"
                 class="wheel-label"
                 :style="{
-                  transform: 'rotate(' + (idx * 45 + 22.5) + 'deg)',
+                  transform: 'rotate(' + (idx * (360 / Math.max(prizes.length, 1)) + (360 / Math.max(prizes.length, 1) / 2)) + 'deg)',
                   transformOrigin: '0% 50%',
                 }"
               >
-                {{ prize.name }}
+                {{ prize }}
               </text>
             </view>
           </view>
@@ -48,14 +68,25 @@
         <text class="wheel-tip">点击「开始」按钮进行抽奖</text>
       </view>
 
+      <!-- 奖品列表 -->
       <view class="prize-list-section">
-        <text class="section-title">🎁 奖品列表</text>
+        <text class="section-title">🎁 本次活动奖品</text>
         <view class="prize-grid">
-          <view v-for="prize in prizes" :key="prize.name" class="prize-item">
-            <view class="prize-icon-wrap" :style="{ background: prize.bg }">
-              <text class="prize-icon">{{ prize.icon }}</text>
-            </view>
-            <text class="prize-name">{{ prize.name }}</text>
+          <view class="prize-item">
+            <view class="prize-icon-wrap"><text class="prize-icon">🎁</text></view>
+            <text class="prize-name">{{ currentLottery ? currentLottery.prizeName : '—' }}</text>
+          </view>
+          <view class="prize-item">
+            <view class="prize-icon-wrap"><text class="prize-icon">🎟️</text></view>
+            <text class="prize-name">免费 {{ currentLottery ? currentLottery.dailyFree : 0 }} 次/天</text>
+          </view>
+          <view class="prize-item">
+            <view class="prize-icon-wrap"><text class="prize-icon">📅</text></view>
+            <text class="prize-name">{{ currentLottery ? formatTime(currentLottery.endTime) : '长期' }}</text>
+          </view>
+          <view class="prize-item">
+            <view class="prize-icon-wrap"><text class="prize-icon">📈</text></view>
+            <text class="prize-name">概率 {{ currentLottery ? formatProb(currentLottery.probability) : '—' }}</text>
           </view>
         </view>
       </view>
@@ -69,26 +100,37 @@
           <text class="history-arrow" :class="{ open: showHistory }">▼</text>
         </view>
         <view v-if="showHistory" class="history-list">
-          <view v-for="(record, idx) in spinHistory" :key="idx" class="history-item">
-            <view class="history-icon-wrap" :style="{ background: record.bg }">
-              <text class="history-icon">{{ record.icon }}</text>
+          <view v-for="(record, idx) in spinHistory" :key="record.id || idx" class="history-item">
+            <view class="history-icon-wrap" :style="{ background: record.won ? '#d9b4b0' : '#e5e5ea' }">
+              <text class="history-icon">{{ record.won ? '🏆' : '🎟' }}</text>
             </view>
-            <text class="history-name">{{ record.name }}</text>
-            <text class="history-time">{{ record.time }}</text>
+            <view class="history-info">
+              <text class="history-name">{{ record.prizeName || '未中奖' }}</text>
+              <text class="history-meta">
+                {{ record.usedFreeSpin ? '免费' : `扣 ${record.pointsSpent} 积分` }}
+                · {{ formatDate(record.createTime) }}
+              </text>
+            </view>
           </view>
         </view>
       </view>
     </scroll-view>
 
+    <!-- 中奖弹窗 -->
     <view v-if="showPrizeModal" class="modal-overlay" @click="showPrizeModal = false">
       <view class="modal-content" @click.stop>
-        <view class="modal-icon-wrap" :style="{ background: currentPrize.bg }">
-          <text class="modal-icon">{{ currentPrize.icon }}</text>
+        <view class="modal-icon-wrap" :style="{ background: spinResult && spinResult.won ? ?'#dbc98a'? : ?'#e5e5ea'? }">
+          <text class="modal-icon">{{ spinResult && spinResult.won ? ?'🏆'? : ?'🎟'? }}</text>
         </view>
         <text class="modal-title">
-          {{ currentPrize.name === '谢谢参与' ? '差一点就中了' : '恭喜中奖' }}
+          {{ spinResult && spinResult.won ? '恭喜中奖' : '差一点就中了' }}
         </text>
-        <text class="modal-desc">{{ currentPrize.desc }}</text>
+        <text class="modal-desc">
+          {{ spinResult ? spinResult.prizeName : '' }}
+          <block v-if="spinResult && !spinResult.usedFreeSpin && spinResult.pointsSpent > 0">
+            （消耗 {{ spinResult.pointsSpent }} 积分）
+          </block>
+        </text>
         <view class="modal-btn" @click="showPrizeModal = false">收下奖品</view>
       </view>
     </view>
@@ -101,20 +143,23 @@ import { lotteryApi } from '@/api'
 export default {
   data() {
     return {
+      // 后端抽奖活动列表（每次抽奖对应一个活动）
+      lotteries: [],
+      currentLottery: null,
       prizes: [],
       rotation: 0,
       isSpinning: false,
-      remainingSpins: 0,
+      statsTodayUsed: 0,
       showHistory: false,
       showPrizeModal: false,
-      currentPrize: null,
+      spinResult: null,
       spinHistory: [],
     }
   },
 
-  onLoad() {
+  onShow() {
     this.loadLotteries()
-    this.loadLotteryStats()
+    this.loadHistory()
   },
 
   methods: {
@@ -125,63 +170,103 @@ export default {
     async loadLotteries() {
       try {
         const res = await lotteryApi.getLotteries()
-        this.prizes = res.data || []
-        this.currentPrize = this.prizes[0] || null
+        const list = (res && res.data) || []
+        this.lotteries = list
+        this.currentLottery = list[0] || null
+        // 凑 8 个转盘槽位让转盘好看
+        this.prizes = this.currentLottery
+          ? this.makePrizes(this.currentLottery.prizeName)
+          : []
       } catch (err) {
-        uni.showToast({ title: '加载奖品信息失败', icon: 'none' })
+        console.warn('[lottery] load failed', err)
       }
     },
 
-    async loadLotteryStats() {
+    /**
+     * 转盘槽位：1 个主奖 + N-1 个"未中奖"占位（凑足 8 段）
+     */
+    makePrizes(mainPrizeName) {
+      const slotCount = 8
+      const result = []
+      for (let i = 0; i < slotCount; i++) {
+        result.push(i === 0 ? (mainPrizeName || '神秘奖品') : '谢谢参与')
+      }
+      return result
+    },
+
+    onSelectLottery(lt) {
+      this.currentLottery = lt
+      this.prizes = this.makePrizes(lt.prizeName)
+    },
+
+    async loadHistory() {
       try {
-        const res = await lotteryApi.getLotteryStats()
-        this.remainingSpins = res.data.remainingSpins || 0
-        this.spinHistory = res.data.history || []
+        const res = await lotteryApi.getLotteryHistory()
+        const records = (res && res.data) || []
+        this.spinHistory = records
+        const today = new Date().toDateString()
+        this.statsTodayUsed = records.filter((r) => {
+          if (!r.createTime || !r.usedFreeSpin) return false
+          return new Date(r.createTime).toDateString() === today
+        }).length
       } catch (err) {
-        console.error('加载抽奖统计失败', err)
+        console.warn('[lottery] load history failed', err)
       }
     },
 
     async onSpin() {
       if (this.isSpinning) return
-      if (this.remainingSpins <= 0) {
-        uni.showToast({ title: '抽奖次数已用完', icon: 'none' })
+      if (!this.currentLottery) {
+        uni.showToast({ title: '当前没有可用的抽奖活动', icon: 'none' })
         return
       }
-
       this.isSpinning = true
 
       try {
-        const res = await lotteryApi.spin()
-        const prize = res.data
+        // 后端返回 LotteryRecordEntity { id, usedFreeSpin, pointsSpent, won, prizeName, createTime }
+        const res = await lotteryApi.spinLottery(this.currentLottery.id)
+        const record = (res && res.data) || {}
 
-        const sectorAngle = 360 / this.prizes.length
-        const prizeIndex = this.prizes.findIndex((p) => p.name === prize.name)
-        const targetIdx = prizeIndex >= 0 ? prizeIndex : 0
-        const targetAngle = 360 * 5 + (360 - (targetIdx * sectorAngle + sectorAngle / 2))
-        this.rotation += targetAngle
+        // 中奖槽位计算：won=true → 转到主奖品(prizes[0])，否则转到"谢谢参与"
+        const targetIdx = record.won ? 0 : 3
+        const slotAngle = 360 / Math.max(this.prizes.length, 1)
+        const targetAngle = 360 * 5 + (360 - (targetIdx * slotAngle + slotAngle / 2))
+        this.rotation = this.rotation + targetAngle
 
         setTimeout(() => {
           this.isSpinning = false
-          this.remainingSpins--
-          this.currentPrize = prize
+          this.spinResult = record
           this.showPrizeModal = true
-          this.spinHistory.unshift({
-            name: prize.name,
-            icon: prize.icon,
-            bg: prize.bg,
-            time: new Date().toLocaleString('zh-CN', {
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-            }),
-          })
+          this.loadHistory() // 刷新今日免费次数
         }, 4200)
       } catch (err) {
         this.isSpinning = false
-        uni.showToast({ title: err.message || '抽奖失败', icon: 'none' })
+        uni.showToast({
+          title: (err && err.message) || '抽奖失败',
+          icon: 'none',
+        })
       }
+    },
+
+    formatProb(p) {
+      if (p == null) return '—'
+      const n = Number(p)
+      if (isNaN(n)) return '—'
+      return (n * 100).toFixed(1) + '%'
+    },
+
+    formatTime(t) {
+      if (!t) return '长期'
+      const d = new Date(t)
+      if (isNaN(d.getTime())) return '长期'
+      return `${d.getMonth() + 1}/${d.getDate()}`
+    },
+
+    formatDate(t) {
+      if (!t) return ''
+      const d = new Date(t)
+      if (isNaN(d.getTime())) return ''
+      return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
     },
   },
 }
@@ -244,6 +329,42 @@ export default {
 .scroll {
   height: calc(100vh - 88rpx);
   padding-bottom: 48rpx;
+}
+
+.lottery-tabs {
+  display: flex;
+  gap: 12rpx;
+  padding: 16rpx 24rpx;
+  overflow-x: auto;
+  background: var(--color-background);
+}
+
+.lottery-tab {
+  flex-shrink: 0;
+  padding: 16rpx 24rpx;
+  background: var(--color-surface);
+  border: 1rpx solid var(--color-divider);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  min-width: 200rpx;
+}
+
+.lottery-tab.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.lottery-tab-name {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+}
+
+.lottery-tab-cost {
+  font-size: var(--font-size-xs);
+  opacity: 0.8;
 }
 
 .chances-card {
@@ -530,6 +651,18 @@ export default {
 }
 
 .history-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.history-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.history-meta {
   font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
 }

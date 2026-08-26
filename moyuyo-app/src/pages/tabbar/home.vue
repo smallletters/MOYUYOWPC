@@ -4,7 +4,7 @@
     <view class="navbar">
       <view class="navbar-search" @click="goSearch">
         <u-icon name="search" color="#9A948C" size="18" />
-        <text class="navbar-search-placeholder">Search for products, brands...</text>
+        <text class="navbar-search-placeholder">搜索宠物好物、品牌、攻略</text>
       </view>
       <view class="navbar-icon" @click="onScan">
         <u-icon name="camera-fill" color="#2E2B29" size="22" />
@@ -24,20 +24,7 @@
       @refresherrefresh="onRefresh"
       @scrolltolower="onLoadMore"
     >
-      <!-- ① Banner 轮播 -->
-      <view v-if="banners.length" class="banner">
-        <u-swiper
-          :list="banners"
-          key-name="image"
-          :autoplay="true"
-          interval="3000"
-          indicator
-          circular
-          @click="onBannerClick"
-        />
-      </view>
-
-      <!-- ② 金刚区：4 大产品线 + 4 个运营入口 -->
+      <!-- ① 金刚区：4 大产品线 + 4 个运营入口 -->
       <view class="kingkong">
         <view
           v-for="item in kingkongList"
@@ -52,79 +39,118 @@
         </view>
       </view>
 
-      <!-- ③ 限时特惠 / 营销活动 -->
-      <view class="promo" @click="goPromo">
-        <view class="promo-tag">LIMITED</view>
-        <text class="promo-title">Festive Picks · Holiday Edit</text>
-        <text class="promo-subtitle">Up to 30% off selected care & gear</text>
-        <view class="promo-arrow">→</view>
+      <!-- ② CMS Banner 轮播（从 /api/v1/cms/banners 拉取，支持管理后台配置图片） -->
+      <view v-if="banners.length" class="banner">
+        <swiper
+          :autoplay="true"
+          :interval="3000"
+          :duration="500"
+          :circular="true"
+          :indicator-dots="true"
+          indicator-active-color="#2E2B29"
+          indicator-color="rgba(46,43,41,0.3)"
+          @click="onBannerClick"
+        >
+          <swiper-item v-for="(b, idx) in banners" :key="b.id || idx">
+            <view class="banner-item">
+              <image :src="b.image" class="banner-img" mode="aspectFill" />
+              <view v-if="b.title" class="banner-title-overlay">
+                <text v-if="b.tag" class="banner-tag">{{ b.tag }}</text>
+                <text class="banner-title-text">{{ b.title }}</text>
+              </view>
+            </view>
+          </swiper-item>
+        </swiper>
       </view>
 
-      <!-- ④ 推荐流 / 猜你喜欢 -->
-      <view class="section">
-        <view class="section-header">
-          <text class="section-title">For Your Companion</text>
-          <text class="section-more" @click="goCategory">View All</text>
+      <!-- ③ 推荐流 / 猜你喜欢 + 今日爆款 + 口碑好评（3-tab 切换） -->
+      <view class="recommend">
+        <view class="recommend-tabs">
+          <view
+            v-for="tab in recommendTabs"
+            :key="tab.key"
+            class="recommend-tab"
+            :class="{ 'recommend-tab-active': activeTab === tab.key }"
+            @click="switchTab(tab.key)"
+          >
+            <text class="recommend-tab-label">{{ tab.label }}</text>
+            <view v-if="activeTab === tab.key" class="recommend-tab-indicator"></view>
+          </view>
         </view>
-        <view class="product-grid">
+
+        <view v-if="recommendLoading && recommend.length === 0" class="recommend-empty">加载中...</view>
+        <view v-else-if="recommend.length === 0" class="recommend-empty">暂无商品</view>
+        <view v-else class="recommend-grid">
           <view
             v-for="p in recommend"
             :key="p.id"
-            class="product-card"
-            @click="goDetail(p.id)">
-            <image :src="p.image" class="product-image" mode="aspectFill" />
-            <view v-if="p.ip" class="product-ip" :class="`tag-${p.ip.toLowerCase()}`">
-              {{ p.ip }}
-            </view>
-            <text class="product-name text-ellipsis-2">{{ p.name }}</text>
-            <view class="product-price-row">
-              <text class="price">${{ p.price }}</text>
-              <text v-if="p.regularPrice && p.regularPrice > p.price" class="price-original">
-                ${{ p.regularPrice }}
-              </text>
+            class="recommend-card"
+            @click="goDetail(p.id)"
+          >
+            <image :src="resolveImage(p)" class="recommend-image" mode="aspectFill" />
+            <view class="recommend-body">
+              <text class="recommend-name">{{ p.name }}</text>
+              <text class="recommend-desc">{{ truncate(p.shortDetail || p.detail || '', 30) }}</text>
+              <view class="recommend-price-row">
+                <text class="recommend-price">¥{{ p.price }}</text>
+                <text v-if="p.originalPrice && Number(p.originalPrice) > Number(p.price)" class="recommend-original">
+                  ¥{{ p.originalPrice }}
+                </text>
+              </view>
+              <view v-if="p.rating && p.rating > 0" class="recommend-rating">
+                <text class="recommend-star">★</text>
+                <text class="recommend-rating-num">{{ p.rating.toFixed(1) }}</text>
+                <text class="recommend-rating-sep">·</text>
+                <text class="recommend-rating-count">{{ formatCount(p.reviewCount) }} 好评</text>
+              </view>
             </view>
           </view>
         </view>
-        <view v-if="loadingMore" class="loading-more">Loading...</view>
-        <view v-else-if="noMore" class="loading-more">— No more —</view>
       </view>
     </scroll-view>
   </view>
 </template>
 
 <script>
-import { productApi } from '@/api'
-import { useProductStore } from '@/store'
+import { cmsApi } from '@/api'
 
 export default {
   data() {
     return {
       refreshing: false,
-      loadingMore: false,
-      noMore: false,
-      page: 1,
       unreadCount: 0,
+      // 从 CMS Banner 接口拉取（管理后台「CMS管理 → Banner 管理」配置的图片）。
+      // 兜底数据用于接口失败时降级显示，避免页面空白。
       banners: [
-        // 示例 Banner（实际应由 WP 后台或 CPT 提供）
         { image: 'https://picsum.photos/750/360?random=1', title: 'MILO 探险家' },
         { image: 'https://picsum.photos/750/360?random=2', title: 'LUNA 策展家' },
       ],
       kingkongList: [
-        { id: 'care', label: 'CARE 洗护', icon: '🧴', bg: 'rgba(219,201,138,0.15)' },
-        { id: 'gear', label: 'GEAR 出行', icon: '🎒', bg: 'rgba(171,185,173,0.15)' },
-        { id: 'play', label: 'PLAY 玩具', icon: '🎾', bg: 'rgba(179,138,90,0.15)' },
-        { id: 'home', label: 'HOME 家居', icon: '🏡', bg: 'rgba(217,180,176,0.15)' },
-        { id: 'subscribe', label: '订阅中心', icon: '🔁', bg: 'rgba(219,201,138,0.15)' },
-        { id: 'vip', label: '会员俱乐部', icon: '👑', bg: 'rgba(179,138,90,0.15)' },
-        { id: 'coupon', label: '领券中心', icon: '🎟️', bg: 'rgba(171,185,173,0.15)' },
-        { id: 'flash', label: '限时特惠', icon: '⚡', bg: 'rgba(217,180,176,0.15)' },
+        { id: 'care', label: '洗护', icon: '🧴', bg: 'var(--background-200)' },
+        { id: 'gear', label: '装备', icon: '🎒', bg: 'var(--background-200)' },
+        { id: 'health', label: '护理', icon: '❤️', bg: 'var(--background-200)' },
+        { id: 'play', label: '玩具', icon: '⭐', bg: 'var(--background-200)' },
+        { id: 'home', label: '家居', icon: '🏠', bg: 'var(--background-200)' },
+        { id: 'subscribe', label: '订阅', icon: '✉️', bg: 'var(--background-200)' },
+        { id: 'vip', label: '会员', icon: '⭐', bg: 'var(--background-200)' },
+        { id: 'coupon', label: '领券', icon: '🏷️', bg: 'var(--background-200)' },
+        { id: 'flash', label: '限时', icon: '⚡', bg: 'var(--background-200)' },
       ],
+      // 推荐区 3-tab 数据
+      recommendTabs: [
+        { key: 'guess', label: '猜你喜欢' },
+        { key: 'hot', label: '今日爆款' },
+        { key: 'rating', label: '口碑好评' },
+      ],
+      activeTab: 'guess',
       recommend: [],
+      recommendLoading: false,
     }
   },
 
   onLoad() {
-    this.loadRecommend(true)
+    this.loadBanners()
+    this.loadRecommend()
   },
 
   onShow() {
@@ -132,68 +158,95 @@ export default {
   },
 
   methods: {
-    async loadRecommend(reset = false) {
-      if (reset) {
-        this.page = 1
-        this.noMore = false
-        this.recommend = []
-      }
+    async loadBanners() {
       try {
-        const res = await productApi.getProductList({
-          page: this.page,
-          size: 20,
-          sortBy: 'sales',
-          sortOrder: 'desc',
-        })
-        const list = res.records || res || []
-        const mapped = list.map((p) => ({
-          id: p.id,
-          name: p.name,
-          image: p.mainImage || p.images?.[0]?.src || '',
-          price: p.price,
-          regularPrice: p.regularPrice || p.regular_price,
-          ip: p.brandIpId ? this.resolveIpName(p.brandIpId) : null,
-        }))
-        this.recommend.push(...mapped)
-        this.noMore = list.length < 20
-        this.page += 1
+        const list = await cmsApi.getBannerList()
+        if (Array.isArray(list) && list.length > 0) {
+          // 映射后端字段 → u-swiper 期望的 image/title
+          this.banners = list.map((b) => ({
+            id: b.id,
+            image: b.imageUrl,
+            title: b.title,
+            link: b.linkUrl,
+            tag: b.tag,
+            description: b.description,
+          }))
+        }
       } catch (e) {
-        console.error('[home] load error', e)
+        console.warn('[home] load banners failed, fallback to default', e)
       }
     },
 
-    resolveIpName(brandIpId) {
-      const map = { 1: 'MILO', 2: 'LUNA', 3: 'ATLAS', 4: 'OLIVE' }
-      return map[brandIpId] || null
+    async loadRecommend() {
+      this.recommendLoading = true
+      try {
+        const list = await cmsApi.getRecommendProducts(this.activeTab, 10)
+        this.recommend = Array.isArray(list) ? list : []
+      } catch (e) {
+        console.warn('[home] load recommend failed', e)
+        this.recommend = []
+      } finally {
+        this.recommendLoading = false
+      }
+    },
+
+    async switchTab(key) {
+      if (this.activeTab === key) return
+      this.activeTab = key
+      await this.loadRecommend()
+    },
+
+    /**
+     * 解析商品主图：优先 mainImage，没有则取 images[0].src，否则空字符串
+     * 若是 /uploads/ 相对路径则拼接后端 base（Vite proxy 会代理同源 /uploads）
+     */
+    resolveImage(p) {
+      if (!p) return ''
+      const raw = p.mainImage || (Array.isArray(p.images) && p.images[0] && p.images[0].src) || ''
+      if (!raw) return ''
+      if (raw.startsWith('http')) return raw
+      return raw // /uploads/... 走同源相对路径，由 Vite proxy 转发
+    },
+
+    truncate(s, n) {
+      if (!s) return ''
+      return s.length > n ? s.slice(0, n) + '…' : s
+    },
+
+    formatCount(n) {
+      if (!n || n < 0) return '0'
+      if (n >= 1000) {
+        return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k+'
+      }
+      return String(n)
     },
 
     async onRefresh() {
       this.refreshing = true
       try {
-        await this.loadRecommend(true)
+        await Promise.all([this.loadBanners(), this.loadRecommend()])
       } finally {
         this.refreshing = false
       }
     },
 
-    async onLoadMore() {
-      if (this.loadingMore || this.noMore) return
-      this.loadingMore = true
-      try {
-        await this.loadRecommend(false)
-      } finally {
-        this.loadingMore = false
-      }
-    },
+    // 占位：原 onLoadMore 在单页设计中不需要，保留空方法避免删除模板引用
+    onLoadMore() {},
 
     onKingkongClick(item) {
       // 根据金刚区类型跳转
-      if (['care', 'gear', 'play', 'home'].includes(item.id)) {
+      if (['care', 'gear', 'health', 'play', 'home'].includes(item.id)) {
         uni.switchTab({ url: '/pages/tabbar/category' })
         // 通过 globalData 传递选中分类
         getApp().globalData.categoryTab = item.id
       } else if (item.id === 'coupon') {
         uni.navigateTo({ url: '/pages/user/coupons' })
+      } else if (item.id === 'vip') {
+        uni.navigateTo({ url: '/pages/user/membership' })
+      } else if (item.id === 'subscribe') {
+        uni.navigateTo({ url: '/pages/user/subscribe' })
+      } else if (item.id === 'flash') {
+        uni.navigateTo({ url: '/pages/goods/flash-sale' })
       } else {
         uni.showToast({ title: '敬请期待', icon: 'none' })
       }
@@ -217,10 +270,6 @@ export default {
 
     goCategory() {
       uni.switchTab({ url: '/pages/tabbar/category' })
-    },
-
-    goPromo() {
-      uni.navigateTo({ url: '/pages/goods/list?promo=1' })
     },
 
     onScan() {
@@ -257,8 +306,12 @@ export default {
   display: flex;
   align-items: center;
   padding: 16rpx 24rpx;
+  /* 状态栏安全区：uni-app 编译后 --status-bar-height 是真机状态栏高度（如 44px），env 是 iOS safe area */
+  /* H5 调试下两个值都是 0，真机/PWA/WebView 嵌入时自动撑开 */
+  padding-top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  min-height: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px) + 44px);
   background: var(--color-surface);
-  padding-top: env(safe-area-inset-top);
+  box-sizing: border-box;
 }
 
 .navbar-search {
@@ -301,17 +354,60 @@ export default {
 }
 
 .banner {
-  padding: 16rpx 24rpx;
-
-  :deep(u-swiper) {
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-  }
+  margin: 24rpx 32rpx 0;
+  border-radius: 24rpx;
+  overflow: hidden;
+  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.04);
+}
+.banner >>> .uni-swiper-wrapper,
+.banner swiper {
+  width: 100%;
+  height: 320rpx;
+}
+.banner swiper-item,
+.banner >>> .uni-swiper-item {
+  width: 100%;
+  height: 320rpx;
+}
+.banner-item {
+  position: relative;
+  width: 100%;
+  height: 320rpx;
+}
+.banner-img {
+  width: 100%;
+  height: 320rpx;
+  display: block;
+}
+.banner-title-overlay {
+  position: absolute;
+  left: 24rpx;
+  bottom: 24rpx;
+  right: 24rpx;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 12rpx 16rpx;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.banner-tag {
+  background: var(--color-primary);
+  color: #2E2B29;
+  font-size: 20rpx;
+  font-weight: 700;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+}
+.banner-title-text {
+  color: #fff;
+  font-size: 26rpx;
+  font-weight: 600;
 }
 
 .kingkong {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 16rpx;
   padding: 24rpx;
   background: var(--color-surface);
@@ -344,121 +440,145 @@ export default {
   color: var(--color-text-secondary);
 }
 
-.promo {
+/* 推荐区（猜你喜欢 / 今日爆款 / 口碑好评） */
+.recommend {
+  padding: 16rpx 24rpx 32rpx;
+  background: var(--color-background);
+}
+
+.recommend-tabs {
+  display: flex;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  margin: 24rpx;
-  padding: 32rpx;
-  background: linear-gradient(135deg, #2e2b29 0%, #4a4540 100%);
-  color: #f6f2ee;
-  border-radius: var(--radius-lg);
+  border-bottom: 1rpx solid var(--color-divider);
+  margin-bottom: 20rpx;
 }
 
-.promo-tag {
-  display: inline-block;
-  width: fit-content;
-  padding: 4rpx 12rpx;
-  background: var(--color-primary);
-  color: #2e2b29;
-  font-size: 20rpx;
-  font-weight: bold;
-  border-radius: var(--radius-sm);
-  margin-bottom: 16rpx;
+.recommend-tab {
+  flex: 1;
+  position: relative;
+  text-align: center;
+  padding: 24rpx 0 16rpx;
 }
 
-.promo-title {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
-  margin-bottom: 8rpx;
-}
-
-.promo-subtitle {
-  font-size: var(--font-size-sm);
-  opacity: 0.7;
-}
-
-.promo-arrow {
-  position: absolute;
-  right: 32rpx;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 48rpx;
-  opacity: 0.5;
-}
-
-.section {
-  padding: 24rpx;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 24rpx;
-}
-
-.section-title {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
-}
-
-.section-more {
-  font-size: var(--font-size-sm);
+.recommend-tab-label {
+  font-size: var(--font-size-base);
   color: var(--color-text-tertiary);
+  font-weight: var(--font-weight-medium);
 }
 
-.product-grid {
+.recommend-tab-active .recommend-tab-label {
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+}
+
+.recommend-tab-indicator {
+  position: absolute;
+  bottom: -1rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 64rpx;
+  height: 4rpx;
+  background: var(--color-primary);
+  border-radius: 2rpx;
+}
+
+.recommend-empty {
+  text-align: center;
+  padding: 48rpx 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+}
+
+.recommend-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 16rpx;
 }
 
-.product-card {
-  position: relative;
+.recommend-card {
   background: var(--color-surface);
   border-radius: var(--radius-md);
-  padding: 16rpx;
   overflow: hidden;
+  border: 1rpx solid var(--color-divider);
 }
 
-.product-image {
+.recommend-image {
   width: 100%;
   aspect-ratio: 1;
-  border-radius: var(--radius-sm);
   background: var(--color-background);
+  display: block;
 }
 
-.product-ip {
-  position: absolute;
-  top: 24rpx;
-  right: 24rpx;
-  padding: 4rpx 10rpx;
-  font-size: 20rpx;
-  border-radius: var(--radius-pill);
-  font-weight: var(--font-weight-medium);
+.recommend-body {
+  padding: 16rpx;
 }
 
-.product-name {
+.recommend-name {
   display: block;
   font-size: var(--font-size-sm);
   color: var(--color-text);
-  margin: 16rpx 0 8rpx;
+  font-weight: var(--font-weight-medium);
   line-height: 1.4;
-  height: 72rpx;
+  /* 单行省略 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.product-price-row {
+.recommend-desc {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  margin: 6rpx 0 12rpx;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recommend-price-row {
   display: flex;
   align-items: baseline;
-  gap: 4rpx;
+  gap: 8rpx;
+  margin-bottom: 6rpx;
 }
 
-.loading-more {
-  text-align: center;
-  padding: 32rpx 0;
+.recommend-price {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+}
+
+.recommend-original {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-300);
+  text-decoration: line-through;
+}
+
+.recommend-rating {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
+}
+
+.recommend-star {
+  color: var(--color-warning, #f6a609);
   font-size: var(--font-size-sm);
+}
+
+.recommend-rating-num {
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+}
+
+.recommend-rating-sep {
+  color: var(--color-divider);
+  margin: 0 2rpx;
+}
+
+.recommend-rating-count {
+  color: var(--color-text-tertiary);
 }
 </style>

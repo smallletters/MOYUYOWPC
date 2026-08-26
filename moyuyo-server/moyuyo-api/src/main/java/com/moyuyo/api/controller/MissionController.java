@@ -27,6 +27,16 @@ public class MissionController {
     return Result.success(missionService.listAllMissions());
   }
 
+  /**
+   * 前端期望结构 {daily: [...], weekly: [...], achievements: [...]}。
+   * 同时首次调用会为用户初始化 user_mission 记录。
+   */
+  @Operation(summary = "分组获取任务列表")
+  @GetMapping("/grouped")
+  public Result<Map<String, Object>> grouped() {
+    return Result.success(missionService.listGroupedMissions(UserContextHolder.getUserId()));
+  }
+
   @Operation(summary = "领取任务奖励")
   @PostMapping("/{id}/claim")
   public Result<Void> claimReward(@PathVariable Long id) {

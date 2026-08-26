@@ -58,7 +58,7 @@
         </view>
 
         <view v-show="activeTab === 'daily'" class="tab-panel">
-          <view v-for="(mission, idx) in dailyMissions" :key="idx" class="mission-item">
+          <view v-for="(mission, idx) in dailyMissions" :key="mission.id || idx" class="mission-item">
             <view class="mission-icon" :style="{ background: mission.bgColor }">
               <text class="mission-emoji">{{ mission.icon }}</text>
             </view>
@@ -67,32 +67,32 @@
                 <text class="mission-name">{{ mission.name }}</text>
                 <text class="mission-points">+{{ mission.points }}</text>
               </view>
-              <view v-if="mission.total" class="mission-progress-row">
+              <view v-if="mission.total > 1" class="mission-progress-row">
                 <view class="progress-track">
                   <view
                     class="progress-fill"
                     :class="{ complete: mission.done >= mission.total }"
-                    :style="{ width: (mission.done / mission.total) * 100 + '%' }"
+                    :style="{ width: Math.min(100, (mission.done / mission.total) * 100) + '%' }"
                   />
                 </view>
                 <text class="progress-text">{{ mission.done }}/{{ mission.total }}</text>
               </view>
-              <text v-else class="mission-status" :class="{ done: mission.completed }">
-                {{ mission.completed ? '已完成' : '未完成' }}
+              <text v-else class="mission-status" :class="{ done: mission.completed || mission.claimed }">
+                {{ mission.claimed ? '已领取' : (mission.completed ? '可领取' : (mission.done > 0 ? '进行中' : '未完成')) }}
               </text>
             </view>
             <view
               class="mission-btn"
-              :class="mission.completed ? 'btn-done' : 'btn-go'"
+              :class="mission.claimed ? 'btn-done' : (mission.completed ? 'btn-claim' : 'btn-go')"
               @click="onMissionAction(mission)"
             >
-              {{ mission.completed ? '已完成' : '去完成' }}
+              {{ mission.claimed ? '已领取' : (mission.completed ? '领取' : '去完成') }}
             </view>
           </view>
         </view>
 
         <view v-show="activeTab === 'weekly'" class="tab-panel">
-          <view v-for="(mission, idx) in weeklyMissions" :key="idx" class="mission-item">
+          <view v-for="(mission, idx) in weeklyMissions" :key="mission.id || idx" class="mission-item">
             <view class="mission-icon" :style="{ background: mission.bgColor }">
               <text class="mission-emoji">{{ mission.icon }}</text>
             </view>
@@ -101,60 +101,62 @@
                 <text class="mission-name">{{ mission.name }}</text>
                 <text class="mission-points">+{{ mission.points }}</text>
               </view>
-              <view v-if="mission.total" class="mission-progress-row">
+              <view v-if="mission.total > 1" class="mission-progress-row">
                 <view class="progress-track">
                   <view
                     class="progress-fill"
                     :class="{ complete: mission.done >= mission.total }"
-                    :style="{ width: (mission.done / mission.total) * 100 + '%' }"
+                    :style="{ width: Math.min(100, (mission.done / mission.total) * 100) + '%' }"
                   />
                 </view>
                 <text class="progress-text">{{ mission.done }}/{{ mission.total }}</text>
               </view>
-              <text v-else class="mission-status" :class="{ done: mission.completed }">
-                {{ mission.completed ? '已完成' : '未完成' }}
+              <text v-else class="mission-status" :class="{ done: mission.completed || mission.claimed }">
+                {{ mission.claimed ? '已领取' : (mission.completed ? '可领取' : (mission.done > 0 ? '进行中' : '未完成')) }}
               </text>
             </view>
             <view
               class="mission-btn"
-              :class="mission.completed ? 'btn-done' : 'btn-go'"
+              :class="mission.claimed ? 'btn-done' : (mission.completed ? 'btn-claim' : 'btn-go')"
               @click="onMissionAction(mission)"
             >
-              {{ mission.completed ? '已完成' : '去完成' }}
+              {{ mission.claimed ? '已领取' : (mission.completed ? '领取' : '去完成') }}
             </view>
           </view>
         </view>
 
         <view v-show="activeTab === 'achievement'" class="tab-panel">
-          <view v-for="(ach, idx) in achievements" :key="idx" class="mission-item">
+          <view v-for="(ach, idx) in achievements" :key="ach.id || idx" class="mission-item">
             <view class="badge-icon" :class="{ earned: ach.earned }">
               <text class="badge-emoji">{{ ach.earned ? '🏆' : '🔒' }}</text>
             </view>
             <view class="mission-info">
               <view class="mission-title-row">
                 <text class="mission-name">{{ ach.name }}</text>
+                <text class="mission-points" v-if="ach.points">+{{ ach.points }}</text>
               </view>
-              <view v-if="ach.total" class="mission-progress-row">
+              <view v-if="ach.total > 1" class="mission-progress-row">
                 <view class="progress-track">
                   <view
                     class="progress-fill"
                     :class="{ complete: ach.done >= ach.total }"
-                    :style="{ width: (ach.done / ach.total) * 100 + '%' }"
+                    :style="{ width: Math.min(100, (ach.done / ach.total) * 100) + '%' }"
                   />
                 </view>
-                <text class="progress-text">{{ ach.display }}</text>
+                <text class="progress-text">{{ ach.done }}/{{ ach.total }}</text>
               </view>
               <view v-else class="mission-status">
-                <text v-if="ach.earned" class="earned-text">已获得「{{ ach.badge }}」</text>
+                <text v-if="ach.claimed" class="earned-text">已获得</text>
+                <text v-else-if="ach.completed" class="earned-text">可领取</text>
                 <text v-else class="locked-text">未达成</text>
               </view>
             </view>
             <view
               class="mission-btn"
-              :class="ach.earned ? 'btn-done' : 'btn-go'"
-              @click="onAchievementAction(ach)"
+              :class="ach.claimed ? 'btn-done' : (ach.completed ? 'btn-claim' : 'btn-go')"
+              @click="onMissionAction(ach)"
             >
-              {{ ach.earned ? '已获得' : '去完成' }}
+              {{ ach.claimed ? '已获得' : (ach.completed ? '领取' : '去完成') }}
             </view>
           </view>
         </view>
@@ -211,12 +213,14 @@ export default {
 
     async loadMissions() {
       try {
-        const res = await missionApi.getMissions()
-        const data = res.data || {}
-        this.dailyMissions = data.daily || []
-        this.weeklyMissions = data.weekly || []
-        this.achievements = data.achievements || []
-      } catch {
+        // 后端返回 { code, data: { daily, weekly, achievements }, success }
+        const res = await missionApi.getGroupedMissions()
+        const data = res?.data || res || {}
+        this.dailyMissions = Array.isArray(data.daily) ? data.daily : []
+        this.weeklyMissions = Array.isArray(data.weekly) ? data.weekly : []
+        this.achievements = Array.isArray(data.achievements) ? data.achievements : []
+      } catch (e) {
+        console.warn('[mission-center] load failed', e)
         this.dailyMissions = []
         this.weeklyMissions = []
         this.achievements = []
@@ -237,13 +241,25 @@ export default {
     },
 
     async onMissionAction(mission) {
-      if (mission.completed) return
+      // 已完成但未领取 → 调领取接口
+      if (mission.completed && !mission.claimed && mission.id) {
+        try {
+          await missionApi.claimMission(mission.id)
+          uni.showToast({ title: `已领取 +${mission.points} 积分`, icon: 'success' })
+          this.loadMissions()
+          this.loadStats()
+        } catch (e) {
+          uni.showToast({ title: (e && e.message) || '领取失败', icon: 'none' })
+        }
+        return
+      }
+      // 已领取 → 提示
+      if (mission.claimed) {
+        uni.showToast({ title: '已领取', icon: 'none' })
+        return
+      }
+      // 未完成 → 提示用户前往对应页面
       uni.showToast({ title: `前往: ${mission.name}`, icon: 'none' })
-    },
-
-    async onAchievementAction(ach) {
-      if (ach.earned) return
-      uni.showToast({ title: `前往: ${ach.name}`, icon: 'none' })
     },
   },
 }
@@ -567,6 +583,11 @@ export default {
 
 .btn-go {
   background: var(--color-primary, #007aff);
+  color: #ffffff;
+}
+
+.btn-claim {
+  background: var(--color-success, #34c759);
   color: #ffffff;
 }
 

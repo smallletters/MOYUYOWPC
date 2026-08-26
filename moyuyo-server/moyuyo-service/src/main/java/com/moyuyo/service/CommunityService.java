@@ -9,6 +9,12 @@ public interface CommunityService {
 
     Page<CommunityPostVO> listPosts(String topic, int page, int size);
 
+    /**
+     * 按关键字搜索帖子（基于 content LIKE %keyword%）。
+     * topic 可选，不传则搜全部主题。
+     */
+    Page<CommunityPostVO> searchPosts(String keyword, String topic, int page, int size);
+
     CommunityPostVO getPostDetail(Long postId, Long currentUserId);
 
     CommunityPostVO createPost(Long userId, String content, List<String> images, String topic);

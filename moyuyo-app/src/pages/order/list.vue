@@ -56,11 +56,11 @@ export default {
     return {
       activeTab: 'all',
       tabs: [
-        { value: 'all', label: 'All' },
-        { value: 'PENDING_PAY', label: 'To Pay' },
-        { value: 'PENDING_SHIP', label: 'To Ship' },
-        { value: 'PENDING_RECEIVE', label: 'To Receive' },
-        { value: 'COMPLETED', label: 'To Review' },
+        { value: 'all', label: '全部' },
+        { value: 'PENDING_PAY', label: '待付款' },
+        { value: 'PENDING_SHIP', label: '待发货' },
+        { value: 'PENDING_RECEIVE', label: '待收货' },
+        { value: 'COMPLETED', label: '待评价' },
       ],
       orders: [],
       loading: false,

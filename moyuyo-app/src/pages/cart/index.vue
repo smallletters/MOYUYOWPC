@@ -10,7 +10,7 @@
     <template v-else>
       <!-- 顶部导航栏 -->
       <view class="header">
-        <view class="header-back" @click="goBack">
+        <view class="header-back" @click="goBack" aria-label="返回">
           <text class="header-back-icon">‹</text>
         </view>
         <text class="header-title">购物车</text>
@@ -23,7 +23,7 @@
       <view v-if="showBanner" class="banner">
         <text class="banner-tag">🏷</text>
         <text class="banner-text">2件商品降价啦，已为您节省¥18.00</text>
-        <view class="banner-close" @click="showBanner = false">
+        <view class="banner-close" @click="showBanner = false" aria-label="关闭提醒">
           <text class="banner-close-icon">✕</text>
         </view>
       </view>
@@ -54,9 +54,9 @@
               <view class="item-bottom">
                 <text class="item-price">¥{{ item.price.toFixed(2) }}</text>
                 <view v-if="!editing" class="quantity-control">
-                  <view class="qty-btn" @click.stop="onQtyChange(item, -1)">-</view>
+                  <view class="qty-btn" aria-label="减少数量" @click.stop="onQtyChange(item, -1)">-</view>
                   <text class="qty-value">{{ item.quantity }}</text>
-                  <view class="qty-btn" @click.stop="onQtyChange(item, 1)">+</view>
+                  <view class="qty-btn" aria-label="增加数量" @click.stop="onQtyChange(item, 1)">+</view>
                 </view>
                 <view v-else class="item-delete" @click.stop="onDelete(item)">
                   <text class="item-delete-text">删除</text>
@@ -163,52 +163,19 @@
 import { useCartStore } from '@/store'
 
 export default {
+  onLoad() {
+    // 已登录则从服务端同步购物车
+    if (this.cartStore && this.cartStore.syncFromServer) {
+      this.cartStore.syncFromServer()
+    }
+  },
   data() {
     return {
       showBanner: true,
       editing: false,
       expandedExpired: false,
-      expiredItems: [
-        {
-          id: 'expired-1',
-          name: '有机鸡肉训练零食',
-          image: 'https://via.placeholder.com/128/EAE5DD/9A948C?text=宠物零食',
-          price: 35.0,
-          statusText: '已下架',
-        },
-      ],
-      upsellItems: [
-        {
-          id: 'upsell-1',
-          name: '天然磨牙洁齿骨',
-          image: 'https://via.placeholder.com/112/EAE5DD/9A948C?text=洁齿骨',
-          price: 29.9,
-        },
-        {
-          id: 'upsell-2',
-          name: '宠物护毛精油喷雾',
-          image: 'https://via.placeholder.com/112/EAE5DD/9A948C?text=护毛喷雾',
-          price: 58.0,
-        },
-        {
-          id: 'upsell-3',
-          name: '智能自动喂食器',
-          image: 'https://via.placeholder.com/112/EAE5DD/9A948C?text=喂食器',
-          price: 199.0,
-        },
-        {
-          id: 'upsell-4',
-          name: '猫抓板瓦楞纸',
-          image: 'https://via.placeholder.com/112/EAE5DD/9A948C?text=猫抓板',
-          price: 19.9,
-        },
-        {
-          id: 'upsell-5',
-          name: '宠物出行便携水杯',
-          image: 'https://via.placeholder.com/112/EAE5DD/9A948C?text=水杯',
-          price: 45.0,
-        },
-      ],
+      expiredItems: [],
+      upsellItems: [],
     }
   },
 

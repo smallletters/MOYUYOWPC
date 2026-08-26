@@ -39,4 +39,18 @@ public class InviteController {
       @RequestParam(defaultValue = "10") int size) {
     return Result.success(inviteService.getInviteHistory(UserContextHolder.getUserId(), page, size));
   }
+
+  /** 当前用户绑定邀请码（注册场景） */
+  @Operation(summary = "绑定被邀请人")
+  @PostMapping("/bind")
+  public Result<InviteEntity> bind(@RequestParam("code") String code) {
+    return Result.success(inviteService.bindInvitee(code, UserContextHolder.getUserId()));
+  }
+
+  /** 标记首单完成（订单完成回调） */
+  @Operation(summary = "标记邀请完成（首单）")
+  @PostMapping("/mark-ordered")
+  public Result<InviteEntity> markOrdered(@RequestParam("code") String code) {
+    return Result.success(inviteService.markOrdered(code, UserContextHolder.getUserId()));
+  }
 }

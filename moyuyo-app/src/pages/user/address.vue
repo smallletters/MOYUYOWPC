@@ -1,8 +1,9 @@
 <template>
   <view class="address">
     <view v-if="!fromCheckout" class="header-bar">
-      <text class="title">Shipping Address</text>
-      <view class="btn btn-primary" @click="goEdit(null)">+ Add</view>
+      <view class="header-back" @click="goBack" aria-label="返回">‹</view>
+      <text class="title">收货地址</text>
+      <view class="btn btn-primary" @click="goEdit(null)">+ 新增收货地址</view>
     </view>
 
     <scroll-view scroll-y class="list">
@@ -17,17 +18,17 @@
           <view class="name-row">
             <text class="name">{{ addr.receiver }}</text>
             <text class="phone">{{ addr.phone }}</text>
-            <view v-if="addr.isDefault" class="default-tag">Default</view>
+            <view v-if="addr.isDefault" class="default-tag">默认</view>
           </view>
           <text class="detail">
             {{ addr.country }} {{ addr.province }} {{ addr.city }} {{ addr.detail }}
           </text>
-          <text v-if="addr.zipCode" class="zip">Post: {{ addr.zipCode }}</text>
+          <text v-if="addr.zipCode" class="zip">邮编: {{ addr.zipCode }}</text>
         </view>
         <view v-if="!fromCheckout" class="actions">
-          <text v-if="!addr.isDefault" @click.stop="onSetDefault(addr)">Set Default</text>
-          <text @click.stop="goEdit(addr)">Edit</text>
-          <text class="delete" @click.stop="onDelete(addr)">Delete</text>
+          <text v-if="!addr.isDefault" @click.stop="onSetDefault(addr)">设为默认</text>
+          <text @click.stop="goEdit(addr)">编辑</text>
+          <text class="delete" @click.stop="onDelete(addr)">删除</text>
         </view>
       </view>
 

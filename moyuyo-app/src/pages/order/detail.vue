@@ -1,5 +1,9 @@
 <template>
   <view v-if="order" class="order-detail">
+    <view class="page-header">
+      <view class="header-back" @click="goBack" aria-label="返回">‹</view>
+      <text class="header-title">订单详情</text>
+    </view>
     <view class="status-banner" :class="`status-${order.status}`">
       <text class="status-title">{{ statusTitle }}</text>
       <text class="status-desc">{{ statusDesc }}</text>
@@ -106,33 +110,33 @@
     <view class="action-bar safe-area-bottom">
       <view class="btn btn-text" @click="onCS">
         <text class="cs-icon">💬</text>
-        <text>Contact CS</text>
+        <text>联系客服</text>
       </view>
       <view v-if="order.status === 'PENDING_PAY'" class="btn btn-outline" @click="onCancel">
-        Cancel Order
+        取消订单
       </view>
       <view v-if="order.status === 'PENDING_PAY'" class="btn btn-primary" @click="onPay">
-        Pay Now
+        去支付
       </view>
       <view
         v-if="order.status === 'PENDING_SHIP' || order.status === 'PENDING_RECEIVE'"
         class="btn btn-primary"
         @click="onTrack"
       >
-        Track Order
+        查看物流
       </view>
       <view v-if="order.status === 'PENDING_RECEIVE'" class="btn btn-outline" @click="onConfirm">
-        Confirm Received
+        确认收货
       </view>
       <view v-if="order.status === 'COMPLETED'" class="btn btn-primary" @click="onReview">
-        Write Review
+        立即评价
       </view>
       <view
         v-if="order.status === 'PAID' || order.status === 'RECEIVED'"
         class="btn btn-outline"
         @click="onRefund"
       >
-        Refund
+        申请退款
       </view>
     </view>
   </view>
@@ -213,6 +217,10 @@ export default {
       return new Date(dateStr).toLocaleString()
     },
 
+    goBack() {
+      uni.navigateBack()
+    },
+
     onPay() {
       uni.navigateTo({
         url: `/pages/order/pay?orderId=${this.orderId}&amount=${this.order.payAmount}`,
@@ -275,6 +283,34 @@ export default {
   min-height: 100vh;
   background: var(--color-background);
   padding-bottom: 120rpx;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  height: 88rpx;
+  padding: 0 24rpx;
+  background: var(--color-surface);
+  border-bottom: 1rpx solid var(--color-divider);
+}
+
+.header-back {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 44rpx;
+  color: var(--color-text);
+}
+
+.header-title {
+  flex: 1;
+  text-align: center;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin-right: 60rpx;
 }
 
 .status-banner {

@@ -69,6 +69,27 @@ public class ProductServiceImpl implements ProductService {
     return productMapper.selectPage(new Page<>(page, size), wrapper);
   }
 
+  @Override
+  public Page<ProductEntity> listProductsByCategoryIds(int page, int size, List<Long> categoryIds, String sortBy, String sortOrder, String keyword, Long brandIpId) {
+    LambdaQueryWrapper<ProductEntity> wrapper = new LambdaQueryWrapper<ProductEntity>()
+        .in(categoryIds != null && !categoryIds.isEmpty(), ProductEntity::getCategoryId, categoryIds)
+        .eq(brandIpId != null, ProductEntity::getBrandIpId, brandIpId)
+        .like(StringUtils.isNotBlank(keyword), ProductEntity::getName, keyword);
+    if (StringUtils.isNotBlank(sortBy)) {
+      boolean asc = !"desc".equalsIgnoreCase(sortOrder);
+      if ("price".equalsIgnoreCase(sortBy)) {
+        wrapper.orderBy(true, asc, ProductEntity::getPrice);
+      } else if ("createTime".equalsIgnoreCase(sortBy) || "create_time".equalsIgnoreCase(sortBy)) {
+        wrapper.orderBy(true, asc, ProductEntity::getCreateTime);
+      } else if ("sales".equalsIgnoreCase(sortBy)) {
+        wrapper.orderBy(true, asc, ProductEntity::getSales);
+      }
+    } else {
+      wrapper.orderByDesc(ProductEntity::getCreateTime);
+    }
+    return productMapper.selectPage(new Page<>(page, size), wrapper);
+  }
+
   /**
    * 列表查询结果二次填充：为每个商品补齐 images[]（mo_product_image 关联表）。
    * <p>

@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @TableName("mo_community_post")
 public class CommunityPostEntity {
 
-    @TableId(type = IdType.ASSIGN_ID)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
     private Long userId;
@@ -24,7 +24,8 @@ public class CommunityPostEntity {
 
     private Integer comments;
 
-    private String status;
+    /** 状态：1=已发布，0=隐藏（数据库列 tinyint） */
+    private Integer status;
 
     @TableLogic
     private Integer deleted;

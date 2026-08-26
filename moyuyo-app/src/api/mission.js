@@ -1,5 +1,13 @@
 import { get, post } from '@/utils/request'
 
+/**
+ * 按类型分组的任务列表（后端 /missions/grouped）：
+ * { daily: [], weekly: [], achievements: [] }
+ */
+export function getGroupedMissions() {
+  return get('/api/v1/missions/grouped')
+}
+
 export function getMissions(params = {}) {
   return get('/api/v1/missions', params)
 }
@@ -13,6 +21,7 @@ export function getMissionStats() {
 }
 
 export default {
+  getGroupedMissions,
   getMissions,
   claimMission,
   getMissionStats,

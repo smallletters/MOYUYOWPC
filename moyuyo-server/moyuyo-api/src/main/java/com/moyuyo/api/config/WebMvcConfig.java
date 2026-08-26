@@ -9,6 +9,8 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -19,6 +21,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+@Slf4j
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
@@ -132,9 +135,22 @@ public class WebMvcConfig implements WebMvcConfigurer {
         // 使用 toAbsolutePath() 把相对路径 / Linux / Windows 路径都规范化为绝对路径，再加 file: 前缀
         // 关键修复：原代码硬编码 "file:/tmp/moyuyo-uploads/"，但 Windows dev 环境默认上传到 D:\tmp\moyuyo-uploads\，
         // 两者不一致导致 500（"URL cannot be resolved in the file system"）
+        //
+        // 2026-08-26 修复：Windows 上 file:D:\path 会被 Spring 当成相对路径解析，访问 /uploads/* 时
+        // 报 "URL cannot be resolved" 404。需要 file:///D:/path/ 三斜杠形式。
         Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+        String location;
+        if (uploadPath.toString().contains(":") && uploadPath.toString().length() > 2
+                && Character.isLetter(uploadPath.toString().charAt(0))) {
+            // Windows: D:\tmp\moyuyo-uploads -> file:///D:/tmp/moyuyo-uploads/
+            location = "file:///" + uploadPath.toString().replace('\\', '/') + "/";
+        } else {
+            // Linux/Mac: /tmp/moyuyo-uploads -> file:/tmp/moyuyo-uploads/
+            location = "file:" + uploadPath.toString() + "/";
+        }
+        log.info("[uploads] mapped static resource location: {}", location);
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:" + uploadPath.toString() + "/")
+                .addResourceLocations(location)
                 .resourceChain(true);
     }
 

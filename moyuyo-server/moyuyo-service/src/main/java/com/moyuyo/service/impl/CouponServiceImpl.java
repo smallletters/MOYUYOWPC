@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -26,19 +25,16 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     public Page<CouponEntity> listAvailable(int page, int size) {
-        return couponMapper.selectPage(new Page<>(page, size),
-                new LambdaQueryWrapper<CouponEntity>()
-                        .eq(CouponEntity::getActive, true)
-                        .le(CouponEntity::getStartTime, LocalDateTime.now())
-                        .ge(CouponEntity::getEndTime, LocalDateTime.now())
-                        .orderByDesc(CouponEntity::getCreateTime));
+        LambdaQueryWrapper<CouponEntity> q = new LambdaQueryWrapper<>();
+        q.eq(CouponEntity::getActive, true);
+        q.and(w -> w.isNull(CouponEntity::getEndTime).or().ge(CouponEntity::getEndTime, LocalDateTime.now()));
+        q.orderByDesc(CouponEntity::getCreateTime);
+        return couponMapper.selectPage(Page.of(page, size), q);
     }
 
     @Override
     public CouponEntity getCouponDetail(Long id) {
-        CouponEntity entity = couponMapper.selectById(id);
-        if (entity == null) throw new IllegalArgumentException("优惠券不存在");
-        return entity;
+        return couponMapper.selectById(id);
     }
 
     @Override
@@ -46,66 +42,66 @@ public class CouponServiceImpl implements CouponService {
     public void claimCoupon(Long userId, Long couponId) {
         CouponEntity coupon = couponMapper.selectById(couponId);
         if (coupon == null) throw new IllegalArgumentException("优惠券不存在");
-        if (!coupon.getActive()) throw new IllegalStateException("优惠券已失效");
-        if (coupon.getEndTime().isBefore(LocalDateTime.now())) throw new IllegalStateException("优惠券已过期");
+        if (!Boolean.TRUE.equals(coupon.getActive())) throw new IllegalArgumentException("该优惠券不可领取");
+        if (coupon.getEndTime() != null && coupon.getEndTime().isBefore(LocalDateTime.now()))
+            throw new IllegalArgumentException("该优惠券已过期");
 
-        long claimed = userCouponMapper.selectCount(
-                new LambdaQueryWrapper<UserCouponEntity>()
-                        .eq(UserCouponEntity::getUserId, userId)
-                        .eq(UserCouponEntity::getCouponId, couponId));
-        if (claimed > 0) throw new IllegalStateException("已领取过该优惠券");
+        // 防止重复领取
+        LambdaQueryWrapper<UserCouponEntity> q = new LambdaQueryWrapper<>();
+        q.eq(UserCouponEntity::getUserId, userId).eq(UserCouponEntity::getCouponId, couponId);
+        if (userCouponMapper.selectCount(q) > 0) throw new IllegalArgumentException("您已领取过该优惠券");
 
+        // 库存校验
         if (coupon.getTotalCount() != null && coupon.getClaimedCount() != null
-                && coupon.getClaimedCount() >= coupon.getTotalCount()) {
-            throw new IllegalStateException("优惠券已被领完");
-        }
+                && coupon.getClaimedCount() >= coupon.getTotalCount())
+            throw new IllegalArgumentException("优惠券已领完");
 
-        UserCouponEntity userCoupon = new UserCouponEntity();
-        userCoupon.setUserId(userId);
-        userCoupon.setCouponId(couponId);
-        userCoupon.setStatus("UNUSED");
-        userCouponMapper.insert(userCoupon);
+        UserCouponEntity uc = new UserCouponEntity();
+        uc.setUserId(userId);
+        uc.setCouponId(couponId);
+        uc.setStatus("UNUSED");
+        userCouponMapper.insert(uc);
 
-        coupon.setClaimedCount(coupon.getClaimedCount() == null ? 1 : coupon.getClaimedCount() + 1);
+        // 增加领取数
+        coupon.setClaimedCount((coupon.getClaimedCount() == null ? 0 : coupon.getClaimedCount()) + 1);
         couponMapper.updateById(coupon);
-
-        log.info("Coupon claimed: userId={}, couponId={}", userId, couponId);
     }
 
     @Override
     public List<CouponEntity> listUserCoupons(Long userId, String status) {
-        LambdaQueryWrapper<UserCouponEntity> uw = new LambdaQueryWrapper<UserCouponEntity>()
-                .eq(UserCouponEntity::getUserId, userId);
-        if (status != null && !status.isEmpty()) {
-            uw.eq(UserCouponEntity::getStatus, status);
-        }
-
-        List<UserCouponEntity> userCoupons = userCouponMapper.selectList(uw);
-        if (userCoupons.isEmpty()) return java.util.Collections.emptyList();
-
-        List<Long> couponIds = userCoupons.stream()
-                .map(UserCouponEntity::getCouponId).collect(Collectors.toList());
-        return couponMapper.selectBatchIds(couponIds);
+        LambdaQueryWrapper<UserCouponEntity> q = new LambdaQueryWrapper<>();
+        q.eq(UserCouponEntity::getUserId, userId);
+        if (status != null && !status.isEmpty()) q.eq(UserCouponEntity::getStatus, status);
+        q.orderByDesc(UserCouponEntity::getCreateTime);
+        List<UserCouponEntity> ucs = userCouponMapper.selectList(q);
+        return ucs.stream().map(uc -> couponMapper.selectById(uc.getCouponId())).toList();
     }
 
     @Override
     @Transactional
     public void useCoupon(Long userId, Long userCouponId, Long orderId) {
-        UserCouponEntity userCoupon = userCouponMapper.selectById(userCouponId);
-        if (userCoupon == null) throw new IllegalArgumentException("优惠券记录不存在");
-        if (!userCoupon.getUserId().equals(userId)) throw new IllegalArgumentException("无权操作此优惠券");
-        if (!"UNUSED".equals(userCoupon.getStatus())) throw new IllegalStateException("优惠券已使用或已过期");
+        UserCouponEntity uc = userCouponMapper.selectById(userCouponId);
+        if (uc == null) throw new IllegalArgumentException("用户优惠券不存在");
+        if (!uc.getUserId().equals(userId)) throw new IllegalArgumentException("无权使用他人优惠券");
+        if (!"UNUSED".equals(uc.getStatus())) throw new IllegalArgumentException("该优惠券不可使用");
+        uc.setStatus("USED");
+        uc.setUsedTime(LocalDateTime.now());
+        uc.setUsedOrderId(orderId);
+        userCouponMapper.updateById(uc);
+    }
 
-        userCoupon.setStatus("USED");
-        userCoupon.setUsedTime(LocalDateTime.now());
-        userCoupon.setUsedOrderId(orderId);
-        userCouponMapper.updateById(userCoupon);
-
-        CouponEntity coupon = couponMapper.selectById(userCoupon.getCouponId());
-        if (coupon != null) {
-            coupon.setUsedCount(coupon.getUsedCount() == null ? 1 : coupon.getUsedCount() + 1);
-            couponMapper.updateById(coupon);
+    @Override
+    @Transactional
+    public void transferCoupon(Long fromUserId, Long userCouponId, Long toUserId) {
+        if (fromUserId.equals(toUserId)) {
+            throw new IllegalArgumentException("不能转赠给自己");
         }
-        log.info("Coupon used: userCouponId={}, orderId={}", userCouponId, orderId);
+        UserCouponEntity uc = userCouponMapper.selectById(userCouponId);
+        if (uc == null) throw new IllegalArgumentException("用户优惠券不存在");
+        if (!uc.getUserId().equals(fromUserId)) throw new IllegalArgumentException("无权转赠他人优惠券");
+        if (!"UNUSED".equals(uc.getStatus())) throw new IllegalArgumentException("仅可转赠未使用优惠券");
+        uc.setUserId(toUserId);
+        userCouponMapper.updateById(uc);
+        log.info("Coupon transferred: from={} to={} userCouponId={}", fromUserId, toUserId, userCouponId);
     }
 }

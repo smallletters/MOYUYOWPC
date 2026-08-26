@@ -6,6 +6,8 @@ import com.moyuyo.common.dto.member.WalletVO;
 import com.moyuyo.dao.entity.PointsLogEntity;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 
 public interface MemberService {
 
@@ -22,4 +24,10 @@ public interface MemberService {
   WalletVO getWallet(Long userId);
 
   WalletVO recharge(Long userId, BigDecimal amount, String channel);
+
+  /** 等级列表 + 倍率（前端会员页对比表） */
+  List<Map<String, Object>> listLevels();
+
+  /** 当前用户的积分倍率 */
+  double getCurrentPointsRate(Long userId);
 }

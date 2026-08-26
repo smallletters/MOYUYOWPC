@@ -36,6 +36,26 @@ function handleUnauthorized() {
   }
 }
 
+/**
+ * 解析请求 base URL：
+ * 1. 绝对路径直接用
+ * 2. /api/v1/* 走 Vite dev proxy（dev）/ 同源相对路径（prod nginx 反代）
+ * 3. 其它路径（向后兼容）拼接 config.apiBase（WordPress 默认）
+ * 4. 显式注入 VITE_ADMIN_API_BASE 时，所有路径拼到该 base（移动端离线包场景）
+ */
+function resolveBaseUrl(url) {
+  if (url.startsWith('http')) return url
+  const absBase = (typeof process !== 'undefined' && process.env && process.env.VITE_ADMIN_API_BASE)
+    || (typeof window !== 'undefined' && window.__MOYUYO_CONFIG__ && window.__MOYUYO_CONFIG__.VITE_ADMIN_API_BASE)
+  if (absBase) return `${absBase}${url}`
+  // dev 环境由 Vite proxy 转发 /api/v1/* 与 /uploads/*，用相对路径更稳
+  // prod 环境通常 nginx 反代 /api/* 与 /uploads/*，同源相对路径同样有效
+  if (url.startsWith('/api/v1/') || url.startsWith('/api/v1') || url.startsWith('/uploads')) {
+    return url
+  }
+  return `${config.apiBase}${url}`
+}
+
 export function request(options) {
   const {
     url,
@@ -48,7 +68,7 @@ export function request(options) {
     skipResultUnwrap = false,
   } = options
 
-  const fullUrl = url.startsWith('http') ? url : `${config.apiBase}${url}`
+  const fullUrl = resolveBaseUrl(url)
 
   const reqHeader = {
     'Content-Type': 'application/json',
@@ -82,7 +102,6 @@ export function request(options) {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           if (skipResultUnwrap) {
             resolve(res.data)
-            // 与后端 Result.CODE_SUCCESS 对齐：业务成功码为 0（非 HTTP 200）
           } else if (res.data && res.data.code === 0) {
             resolve(res.data.data)
           } else {

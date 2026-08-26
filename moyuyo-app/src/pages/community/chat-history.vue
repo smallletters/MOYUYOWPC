@@ -1,6 +1,5 @@
 <template>
   <view class="chat-history-page">
-    <!-- 顶部导航栏 -->
     <view class="nav-bar">
       <view class="nav-back" @tap="goBack">
         <text class="back-icon">‹</text>
@@ -9,7 +8,6 @@
       <view class="nav-placeholder" />
     </view>
 
-    <!-- 筛选 Tab 栏 -->
     <view class="tab-bar">
       <view
         v-for="(tab, index) in tabs"
@@ -22,367 +20,113 @@
       </view>
     </view>
 
-    <!-- 会话列表 -->
     <scroll-view class="chat-list" scroll-y>
-      <view
-        v-for="(chat, index) in filteredChats"
-        :key="index"
-        class="chat-item"
-        @tap="openChat(chat)"
-      >
-        <!-- 客服头像 -->
-        <view class="chat-avatar-wrap">
-          <view class="chat-avatar">
-            <text class="avatar-emoji">{{ chat.isAI ? '🤖' : '👩' }}</text>
-          </view>
-          <!-- 未读红点 -->
-          <view v-if="chat.unread" class="unread-dot" />
-        </view>
-
-        <!-- 会话信息 -->
-        <view class="chat-info">
-          <view class="chat-info-top">
-            <text class="chat-name">{{ chat.name }}</text>
-            <view class="chat-type-tag" :class="chat.isAI ? 'tag-ai' : 'tag-human'">
-              <text class="tag-text" :class="chat.isAI ? 'tag-text-ai' : 'tag-text-human'">
-                {{ chat.type }}
-              </text>
-            </view>
-          </view>
-          <view class="chat-info-bottom">
-            <text class="chat-preview">{{ chat.preview }}</text>
-            <text class="chat-time">{{ chat.time }}</text>
-          </view>
-        </view>
-
-        <!-- 状态标签 -->
-        <view
-          class="chat-status-tag"
-          :class="chat.status === '进行中' ? 'status-active' : 'status-ended'"
-        >
-          <text
-            class="status-text"
-            :class="chat.status === '进行中' ? 'status-text-active' : 'status-text-ended'"
-          >
-            {{ chat.status }}
-          </text>
-        </view>
+      <view v-if="loading" class="loading">
+        <text class="loading-text">加载中…</text>
       </view>
-
-      <!-- 底部提示 -->
-      <view class="list-footer">
-        <text class="footer-text">会话记录保留 180 天</text>
+      <view v-else-if="filteredChats.length === 0" class="empty">
+        <text class="empty-text">暂无会话记录</text>
+      </view>
+      <view
+        v-for="chat in filteredChats"
+        :key="chat.id"
+        class="chat-item"
+        @tap="enterChat(chat)"
+      >
+        <view class="chat-avatar">{{ statusLabel(chat.status).charAt(0) }}</view>
+        <view class="chat-info">
+          <view class="chat-row1">
+            <text class="chat-title">会话 {{ chat.sessionId || chat.id }}</text>
+            <text class="chat-time">{{ formatTime(chat.lastMessageAt || chat.createTime) }}</text>
+          </view>
+          <view class="chat-row2">
+            <text class="chat-status" :class="'status-' + (chat.status || 'WAITING')">{{ statusLabel(chat.status) }}</text>
+            <text class="chat-count">{{ chat.messageCount || 0 }} 条消息</text>
+          </view>
+        </view>
       </view>
     </scroll-view>
   </view>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { csApi } from '@/api'
 
-// Tab 选项
-const tabs = ['全部', '进行中', '已结束']
+const tabs = ['全部', '进行中', '已关闭']
 const activeTab = ref(0)
+const sessions = ref([])
+const loading = ref(false)
 
-// 会话列表 mock 数据
-const chats = ref([
-  {
-    id: 1,
-    name: '客服小美',
-    type: '人工客服',
-    isAI: false,
-    preview: '您好，您的包裹目前正在转运中，预计明天送达',
-    time: '14:30',
-    status: '进行中',
-    unread: true,
-  },
-  {
-    id: 2,
-    name: 'MOYUYO智能助手',
-    type: '智能客服',
-    isAI: true,
-    preview: '优惠券可在下单时自动抵扣，每笔订单限用一张',
-    time: '昨天',
-    status: '已结束',
-    unread: false,
-  },
-  {
-    id: 3,
-    name: '客服小杰',
-    type: '人工客服',
-    isAI: false,
-    preview: '退换货申请已处理完成，退款将在3个工作日内到账',
-    time: '3天前',
-    status: '已结束',
-    unread: false,
-  },
-  {
-    id: 4,
-    name: 'MOYUYO智能助手',
-    type: '智能客服',
-    isAI: true,
-    preview: '已为您找到3笔近期订单，请问需要查看哪一笔',
-    time: '10:15',
-    status: '进行中',
-    unread: false,
-  },
-])
-
-// 根据 Tab 筛选会话
 const filteredChats = computed(() => {
-  if (activeTab.value === 0) return chats.value
-  const status = activeTab.value === 1 ? '进行中' : '已结束'
-  return chats.value.filter((c) => c.status === status)
+  if (activeTab.value === 1) return sessions.value.filter((s) => s.status !== 'CLOSED')
+  if (activeTab.value === 2) return sessions.value.filter((s) => s.status === 'CLOSED')
+  return sessions.value
 })
 
-// 切换 Tab
-const switchTab = (index) => {
-  activeTab.value = index
+function switchTab(i) { activeTab.value = i }
+
+function statusLabel(s) {
+  if (s === 'PROCESSING') return '进行中'
+  if (s === 'CLOSED') return '已关闭'
+  return '待响应'
 }
 
-// 打开会话
-const openChat = (chat) => {
-  uni.navigateTo({
-    url: `/pages/user/customer-service?id=${chat.id}`,
-  })
+function formatTime(t) {
+  if (!t) return ''
+  try {
+    const d = new Date(t)
+    return `${d.getMonth() + 1}-${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  } catch { return '' }
 }
 
-// 返回
-const goBack = () => {
-  uni.navigateBack()
+async function loadSessions() {
+  loading.value = true
+  try {
+    const res = await csApi.listSessions({ page: 1, size: 50 })
+    sessions.value = res?.records || res || []
+  } catch (e) {
+    console.warn('[chat-history] load failed', e)
+  } finally {
+    loading.value = false
+  }
 }
+
+function enterChat(chat) {
+  // 复用 customer-service 页面（新建/续接会话时使用其 sessionId）
+  uni.navigateTo({ url: '/pages/user/customer-service' })
+}
+
+function goBack() { uni.navigateBack() }
+
+onMounted(() => { loadSessions() })
 </script>
 
 <style lang="scss" scoped>
-.chat-history-page {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background: var(--color-background);
-}
-
-/* 导航栏 */
-.nav-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 88rpx;
-  padding: 0 32rpx;
-  background: var(--color-background);
-  border-bottom: 1rpx solid var(--color-border);
-}
-
-.nav-back {
-  width: 64rpx;
-  height: 64rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.back-icon {
-  font-size: 44rpx;
-  color: var(--color-primary);
-}
-
-.nav-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.nav-placeholder {
-  width: 64rpx;
-  height: 64rpx;
-}
-
-/* Tab 栏 */
-.tab-bar {
-  display: flex;
-  border-bottom: 1rpx solid var(--color-border);
-  background: var(--color-background);
-}
-
-.tab-item {
-  flex: 1;
-  padding: 20rpx 0;
-  text-align: center;
-  position: relative;
-}
-
-.tab-text {
-  font-size: 28rpx;
-  color: var(--color-text-secondary);
-}
-
-.tab-text-active {
-  font-weight: 600;
-  color: var(--color-primary);
-}
-
-.tab-active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 64rpx;
-  height: 4rpx;
-  border-radius: 2rpx;
-  background: var(--color-primary);
-}
-
-/* 会话列表 */
-.chat-list {
-  flex: 1;
-  background: #f2f2f7;
-}
-
-.chat-item {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  padding: 24rpx 32rpx;
-  background: var(--color-card);
-  border-bottom: 1rpx solid var(--color-border);
-}
-
-.chat-avatar-wrap {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.chat-avatar {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 50%;
-  background: #f2f2f7;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1rpx solid var(--color-border);
-}
-
-.avatar-emoji {
-  font-size: 36rpx;
-}
-
-.unread-dot {
-  position: absolute;
-  top: -4rpx;
-  right: -4rpx;
-  width: 20rpx;
-  height: 20rpx;
-  border-radius: 50%;
-  background: var(--color-error);
-  border: 3rpx solid var(--color-card);
-}
-
-.chat-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.chat-info-top {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.chat-name {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.chat-type-tag {
-  padding: 4rpx 12rpx;
-  border-radius: 8rpx;
-}
-
-.tag-human {
-  background: rgba(219, 201, 138, 0.15);
-}
-
-.tag-ai {
-  background: #f2f2f7;
-}
-
-.tag-text {
-  font-size: 22rpx;
-  font-weight: 500;
-}
-
-.tag-text-human {
-  color: var(--color-primary);
-}
-
-.tag-text-ai {
-  color: var(--color-text-secondary);
-}
-
-.chat-info-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 8rpx;
-}
-
-.chat-preview {
-  font-size: 26rpx;
-  color: var(--color-text-secondary);
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding-right: 16rpx;
-}
-
-.chat-time {
-  font-size: 24rpx;
-  color: var(--color-text-secondary);
-  flex-shrink: 0;
-}
-
-.chat-status-tag {
-  flex-shrink: 0;
-  padding: 6rpx 16rpx;
-  border-radius: 20rpx;
-  align-self: flex-start;
-  margin-top: 4rpx;
-}
-
-.status-active {
-  background: rgba(219, 201, 138, 0.15);
-}
-
-.status-ended {
-  background: #f2f2f7;
-}
-
-.status-text {
-  font-size: 22rpx;
-  font-weight: 500;
-}
-
-.status-text-active {
-  color: var(--color-primary);
-}
-
-.status-text-ended {
-  color: var(--color-text-secondary);
-}
-
-/* 底部提示 */
-.list-footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 48rpx 0;
-}
-
-.footer-text {
-  font-size: 24rpx;
-  color: var(--color-text-secondary);
-}
+.chat-history-page { min-height: 100vh; background: var(--color-background); }
+.nav-bar { display: flex; align-items: center; height: 88rpx; padding: 0 24rpx; background: var(--color-surface); border-bottom: 1rpx solid var(--color-divider); }
+.nav-back { width: 60rpx; }
+.back-icon { font-size: 44rpx; color: var(--color-primary); }
+.nav-title { flex: 1; text-align: center; font-size: 32rpx; font-weight: 600; }
+.nav-placeholder { width: 60rpx; }
+.tab-bar { display: flex; gap: 24rpx; padding: 16rpx 24rpx; background: var(--color-surface); border-bottom: 1rpx solid var(--color-divider); }
+.tab-item { padding: 6rpx 16rpx; border-radius: 999rpx; }
+.tab-active { background: var(--color-primary); }
+.tab-text { font-size: 26rpx; color: var(--color-text-secondary); }
+.tab-text-active { color: #fff; font-weight: 600; }
+.chat-list { height: calc(100vh - 160rpx); }
+.chat-item { display: flex; gap: 16rpx; padding: 24rpx; background: var(--color-surface); border-bottom: 1rpx solid var(--color-divider); }
+.chat-avatar { width: 72rpx; height: 72rpx; border-radius: 50%; background: var(--color-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 32rpx; flex-shrink: 0; }
+.chat-info { flex: 1; display: flex; flex-direction: column; gap: 8rpx; }
+.chat-row1 { display: flex; justify-content: space-between; }
+.chat-title { font-size: 28rpx; font-weight: 600; }
+.chat-time { font-size: 22rpx; color: var(--color-text-tertiary); }
+.chat-row2 { display: flex; gap: 12rpx; align-items: center; }
+.chat-status { padding: 2rpx 10rpx; border-radius: 999rpx; font-size: 20rpx; }
+.status-WAITING { background: #fff7e6; color: #b8860b; }
+.status-PROCESSING { background: #e6f7ff; color: #007aff; }
+.status-CLOSED { background: #f0f0f0; color: #999; }
+.chat-count { font-size: 22rpx; color: var(--color-text-tertiary); }
+.loading, .empty { padding: 60rpx 24rpx; text-align: center; }
+.loading-text, .empty-text { font-size: 26rpx; color: var(--color-text-tertiary); }
 </style>

@@ -1,146 +1,358 @@
 <template>
   <view class="pet-profile">
-    <view class="header">
-      <view class="avatar-section">
-        <view class="avatar">{{ pet.type === 'CAT' ? '🐈' : '🐕' }}</view>
-        <text class="name">{{ pet.name }}</text>
-        <text class="species">{{ typeLabel }} · {{ pet.breed || '-' }}</text>
-      </view>
+    <view class="page-header">
+      <view class="back" @click="goBack" aria-label="返回">‹</view>
+      <text class="title">{{ isEdit ? '编辑宠物' : '新增宠物' }}</text>
+      <view class="save-btn" @click="onSave">保存</view>
     </view>
 
-    <view class="info-card card">
-      <view class="info-row">
-        <text class="label">Birthday</text>
-        <text class="value">{{ pet.birthday || 'Unknown' }}</text>
+    <scroll-view scroll-y class="content">
+      <!-- 头像 -->
+      <view class="avatar-card">
+        <view class="avatar-wrap" @click="onChangeAvatar">
+          <image :src="form.avatar || defaultAvatar" class="avatar" />
+          <view class="avatar-edit">📷</view>
+        </view>
+        <text class="avatar-tip">点击更换头像</text>
       </view>
-      <view class="info-row">
-        <text class="label">Weight</text>
-        <text class="value">{{ pet.weightKg || '-' }} kg</text>
-      </view>
-      <view class="info-row">
-        <text class="label">Gender</text>
-        <text class="value">{{ pet.gender === 1 ? 'Male' : pet.gender === 2 ? 'Female' : '-' }}</text>
-      </view>
-    </view>
 
-    <view class="card weight-card">
-      <text class="card-title">Growth Timeline</text>
-      <view v-for="t in growthRecords" :key="t.id" class="timeline-row">
-        <text class="timeline-date">{{ t.recordTime }}</text>
-        <text class="timeline-event">{{ t.title }}</text>
+      <!-- 基本信息 -->
+      <view class="form-card">
+        <view class="form-item">
+          <text class="form-label">宠物名字</text>
+          <input v-model="form.name" class="form-input" placeholder="请输入宠物名字" />
+        </view>
+        <view class="form-item">
+          <text class="form-label">种类</text>
+          <picker mode="selector" :range="speciesOptions" @change="onSpeciesChange">
+            <view class="form-picker">{{ form.species || '请选择' }} ›</view>
+          </picker>
+        </view>
+        <view class="form-item">
+          <text class="form-label">品种</text>
+          <input v-model="form.breed" class="form-input" placeholder="如金毛寻回犬" />
+        </view>
+        <view class="form-item">
+          <text class="form-label">性别</text>
+          <view class="gender-row">
+            <view
+              v-for="g in genderOptions"
+              :key="g.value"
+              class="gender-chip"
+              :class="{ selected: form.gender === g.value }"
+              @click="form.gender = g.value"
+            >
+              {{ g.label }}
+            </view>
+          </view>
+        </view>
+        <view class="form-item">
+          <text class="form-label">生日</text>
+          <picker mode="date" :value="form.birthday" @change="onBirthdayChange">
+            <view class="form-picker">{{ form.birthday || '请选择' }} ›</view>
+          </picker>
+        </view>
+        <view class="form-item">
+          <text class="form-label">体重</text>
+          <input v-model="form.weight" type="digit" class="form-input" placeholder="kg" />
+        </view>
       </view>
-      <view v-if="growthRecords.length === 0" class="empty-timeline">No records yet</view>
-    </view>
 
-    <view class="bottom-bar safe-area-bottom">
-      <view class="btn btn-outline" @click="onEdit">Edit</view>
-      <view class="btn btn-primary" @click="onAddRecord">+ Add Record</view>
-    </view>
+      <!-- 标签 -->
+      <view class="form-card">
+        <text class="card-title">性格标签</text>
+        <view class="tag-list">
+          <view
+            v-for="tag in allTags"
+            :key="tag"
+            class="tag-chip"
+            :class="{ selected: form.tags.includes(tag) }"
+            @click="onTagToggle(tag)"
+          >
+            {{ tag }}
+          </view>
+        </view>
+      </view>
+
+      <view class="bottom-spacer" />
+    </scroll-view>
   </view>
 </template>
 
 <script>
 import { petApi } from '@/api'
 
-const TYPE_LABELS = { DOG: 'Dog', CAT: 'Cat', OTHER: 'Other' }
-
 export default {
   data() {
     return {
-      pet: {},
-      growthRecords: [],
+      isEdit: false,
+      defaultAvatar: 'https://picsum.photos/200/200?random=50',
+      form: {
+        id: null,
+        name: '',
+        species: '',
+        breed: '',
+        gender: '',
+        birthday: '',
+        weight: '',
+        avatar: '',
+        tags: [],
+      },
+      speciesOptions: ['狗狗', '猫咪', '兔子', '鸟类', '其他'],
+      genderOptions: [
+        { value: 'male', label: '♂ 公' },
+        { value: 'female', label: '♀ 母' },
+      ],
+      allTags: ['粘人', '活泼', '安静', '聪明', '贪吃', '爱玩', '胆大', '怕生'],
     }
   },
 
-  computed: {
-    typeLabel() {
-      return TYPE_LABELS[this.pet.type] || this.pet.type || ''
-    },
-  },
-
   onLoad(query) {
-    this.loadPet(query.id || null)
+    if (query.id) {
+      this.isEdit = true
+      this.loadPet(query.id)
+    }
   },
 
   methods: {
-    async loadPet(petId) {
-      if (!petId) {
-        try {
-          const pets = await petApi.getPets()
-          if (pets.length > 0) {
-            this.pet = pets[0]
-            this.loadRecords(this.pet.id)
-          }
-        } catch (e) {
-          console.warn('[pet-profile] load failed', e)
-        }
-        return
-      }
+    async loadPet(id) {
       try {
-        this.pet = await petApi.getPetDetail(petId)
-        this.loadRecords(petId)
+        const pet = await petApi.getPetDetail(id)
+        this.form = { ...this.form, ...pet }
       } catch (e) {
-        console.warn('[pet-profile] load pet failed', e)
+        console.warn('[pet-profile] load failed', e)
       }
     },
 
-    async loadRecords(petId) {
-      try {
-        this.growthRecords = await petApi.getGrowthRecords(petId)
-      } catch (e) {
-        this.growthRecords = []
-      }
+    goBack() {
+      uni.navigateBack()
     },
 
-    onEdit() {
-      uni.showToast({ title: 'Edit coming soon', icon: 'none' })
-    },
-
-    onAddRecord() {
-      if (!this.pet?.id) return
-      uni.showModal({
-        title: 'New Record',
-        content: 'Title:',
-        editable: true,
-        success: async (res) => {
-          if (res.confirm && res.content) {
-            try {
-              await petApi.createGrowthRecord(this.pet.id, {
-                petId: this.pet.id,
-                type: 'EXAM',
-                title: res.content,
-                recordTime: new Date().toISOString().split('T')[0],
-              })
-              this.loadRecords(this.pet.id)
-              uni.showToast({ title: 'Added', icon: 'success' })
-            } catch (e) {
-              uni.showToast({ title: 'Failed', icon: 'none' })
-            }
-          }
+    onChangeAvatar() {
+      uni.chooseImage({
+        count: 1,
+        success: (res) => {
+          this.form.avatar = res.tempFilePaths[0]
         },
       })
+    },
+
+    onSpeciesChange(e) {
+      this.form.species = this.speciesOptions[e.detail.value]
+    },
+
+    onBirthdayChange(e) {
+      this.form.birthday = e.detail.value
+    },
+
+    onTagToggle(tag) {
+      const idx = this.form.tags.indexOf(tag)
+      if (idx >= 0) {
+        this.form.tags.splice(idx, 1)
+      } else {
+        this.form.tags.push(tag)
+      }
+    },
+
+    onSave() {
+      if (!this.form.name) {
+        uni.showToast({ title: '请输入宠物名字', icon: 'none' })
+        return
+      }
+      uni.showLoading({ title: '保存中...' })
+      setTimeout(() => {
+        uni.hideLoading()
+        uni.showToast({ title: '已保存', icon: 'success' })
+        setTimeout(() => uni.navigateBack(), 800)
+      }, 800)
     },
   },
 }
 </script>
 
 <style lang="scss" scoped>
-.pet-profile { min-height: 100vh; background: var(--color-background); padding-bottom: 120rpx; }
-.header { background: var(--color-surface); padding: 48rpx 24rpx; padding-top: calc(48rpx + env(safe-area-inset-top)); text-align: center; }
-.avatar { font-size: 120rpx; display: block; margin-bottom: 16rpx; }
-.name { font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); display: block; }
-.species { font-size: var(--font-size-sm); color: var(--color-text-tertiary); margin-top: 4rpx; display: block; }
-.card { margin: 16rpx; padding: 24rpx; background: var(--color-surface); border-radius: var(--radius-md); }
-.info-row { display: flex; justify-content: space-between; padding: 12rpx 0; border-bottom: 1rpx solid var(--color-divider); }
-.info-row:last-child { border-bottom: none; }
-.label { font-size: var(--font-size-sm); color: var(--color-text-tertiary); }
-.value { font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); }
-.card-title { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); margin-bottom: 16rpx; display: block; }
-.timeline-row { display: flex; gap: 16rpx; padding: 10rpx 0; border-bottom: 1rpx solid var(--color-divider); }
-.timeline-row:last-child { border-bottom: none; }
-.timeline-date { font-size: var(--font-size-xs); color: var(--color-text-tertiary); min-width: 160rpx; }
-.timeline-event { font-size: var(--font-size-sm); }
-.empty-timeline { text-align: center; padding: 24rpx; color: var(--color-text-tertiary); font-size: var(--font-size-sm); }
-.bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; gap: 16rpx; padding: 16rpx 24rpx; padding-bottom: calc(16rpx + env(safe-area-inset-bottom)); background: var(--color-surface); border-top: 1rpx solid var(--color-divider); }
-.bottom-bar .btn { flex: 1; text-align: center; padding: 20rpx 0; }
+.pet-profile {
+  min-height: 100vh;
+  background: var(--color-background);
+  padding-bottom: 80rpx;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  height: 88rpx;
+  padding: 0 24rpx;
+  background: var(--color-surface);
+  border-bottom: 1rpx solid var(--color-divider);
+}
+
+.back {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 44rpx;
+  color: var(--color-text);
+}
+
+.title {
+  flex: 1;
+  text-align: center;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.save-btn {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.content {
+  padding: 24rpx;
+}
+
+.avatar-card {
+  padding: 32rpx 24rpx;
+  background: var(--color-surface);
+  border: 1rpx solid var(--color-divider);
+  border-radius: var(--radius-md);
+  text-align: center;
+  margin-bottom: 24rpx;
+}
+
+.avatar-wrap {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 12rpx;
+}
+
+.avatar {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 50%;
+  background: var(--color-background);
+}
+
+.avatar-edit {
+  position: absolute;
+  right: -8rpx;
+  bottom: -8rpx;
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary);
+  color: var(--color-text);
+  border-radius: 50%;
+  font-size: 24rpx;
+  border: 4rpx solid var(--color-surface);
+}
+
+.avatar-tip {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.form-card {
+  background: var(--color-surface);
+  border: 1rpx solid var(--color-divider);
+  border-radius: var(--radius-md);
+  margin-bottom: 24rpx;
+}
+
+.card-title {
+  display: block;
+  padding: 24rpx 24rpx 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin-bottom: 12rpx;
+}
+
+.form-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 24rpx;
+  border-bottom: 1rpx solid var(--color-divider);
+}
+
+.form-item:last-child {
+  border-bottom: none;
+}
+
+.form-label {
+  width: 160rpx;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.form-input {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.form-picker {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.gender-row {
+  flex: 1;
+  display: flex;
+  gap: 12rpx;
+}
+
+.gender-chip {
+  flex: 1;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-background);
+  border: 1rpx solid var(--color-divider);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.gender-chip.selected {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  padding: 0 24rpx 24rpx;
+}
+
+.tag-chip {
+  padding: 8rpx 20rpx;
+  background: var(--color-background);
+  border: 1rpx solid var(--color-divider);
+  border-radius: 999rpx;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.tag-chip.selected {
+  background: var(--color-primary);
+  color: var(--color-text);
+  border-color: var(--color-primary);
+}
+
+.bottom-spacer {
+  height: 80rpx;
+}
 </style>

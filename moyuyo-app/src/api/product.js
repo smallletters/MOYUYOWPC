@@ -1,23 +1,88 @@
-import { get } from '@/utils/request'
+/**
+ * 商品接口（直接走 Vite dev proxy → Spring Boot 8080）
+ * 避免与 config.apiBase（WordPress）混用。
+ * dev 模式代理前缀：/api/v1/*
+ * 生产由 nginx 反代统一对外。
+ */
+const ABSOLUTE_BASE = (typeof process !== 'undefined' && process.env && process.env.VITE_ADMIN_API_BASE)
+  || (typeof window !== 'undefined' && window.__MOYUYO_CONFIG__ && window.__MOYUYO_CONFIG__.VITE_ADMIN_API_BASE)
+  || ''
 
+function buildUrl(path) {
+  return ABSOLUTE_BASE ? `${ABSOLUTE_BASE}${path}` : path
+}
+
+function uniGet(path, params = {}) {
+  return new Promise((resolve, reject) => {
+    const query = Object.keys(params)
+      .filter((k) => params[k] !== undefined && params[k] !== null && params[k] !== '')
+      .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
+      .join('&')
+    const url = query ? `${path}${path.includes('?') ? '&' : '?'}${query}` : path
+    uni.request({
+      url: buildUrl(url),
+      method: 'GET',
+      timeout: 15000,
+      success: (res) => {
+        if (res.statusCode >= 200 && res.statusCode < 300 && res.data && res.data.code === 0) {
+          resolve(res.data.data)
+        } else {
+          reject(new Error(res.data?.message || `Request failed (${res.statusCode})`))
+        }
+      },
+      fail: (err) => reject(new Error(err.errMsg || 'Network error')),
+    })
+  })
+}
+
+/** 列表分页（返回 Page<实体>，含 records/total） */
 export function getProductList(params = {}) {
-  return get('/api/v1/products', params)
+  // 将 category 参数名映射为后端 categoryId，并归一排序字段
+  const mapped = {
+    page: params.page || 1,
+    size: params.per_page || params.size || 20,
+    sortBy: mapSortBy(params.orderby, params.sortBy),
+    sortOrder: params.order || params.sortOrder || 'asc',
+  }
+  if (params.categoryId) mapped.categoryId = params.categoryId
+  else if (params.category) {
+    // 数字则直接传，否则按名称解析（由后端 controller 处理）
+    mapped.categoryId = params.category
+  }
+  if (params.keyword) mapped.keyword = params.keyword
+  if (params.brandIpId) mapped.brandIpId = params.brandIpId
+  return uniGet('/api/v1/products', mapped)
+}
+
+function mapSortBy(orderby, sortBy) {
+  // 兼容 WooCommerce 风格与新风格
+  if (sortBy) return sortBy
+  const m = {
+    menu_order: 'createdAt',
+    popularity: 'sales',
+    price: 'price',
+    date: 'createdAt',
+    rating: 'sales',
+    modified: 'updatedAt',
+    id: 'id',
+  }
+  return m[orderby] || 'createdAt'
 }
 
 export function getProductDetail(id) {
-  return get(`/api/v1/products/${id}`)
+  return uniGet(`/api/v1/products/${id}`)
 }
 
 export function getCategoryList() {
-  return get('/api/v1/categories')
+  return uniGet('/api/v1/categories')
 }
 
 export function searchProducts(keyword, params = {}) {
-  return get('/api/v1/products', { keyword, ...params })
+  return uniGet('/api/v1/products', { keyword, ...params })
 }
 
 export function getCategoryChildren(parentId) {
-  return get(`/api/v1/categories/${parentId}/children`)
+  return uniGet(`/api/v1/categories/${parentId}/children`)
 }
 
 export default {

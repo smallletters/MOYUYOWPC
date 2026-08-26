@@ -77,12 +77,25 @@ export default {
 
     async onCheckin() {
       try {
-        await pointsApi.checkin()
+        const res = await pointsApi.checkin()
+        const payload = res?.data || res || {}
+        const result = payload.data || payload
         this.checkedIn = true
-        this.points += 5
-        uni.showToast({ title: '+5 points!', icon: 'success' })
+        this.points += result.points || 5
+        // 重新拉取流水与余额，确保展示与服务端一致
+        this.loadData()
+        uni.showToast({
+          title: `签到成功 +${result.points || 5} 积分${result.doubleReward ? ' (x2)' : ''}`,
+          icon: 'success',
+        })
       } catch (e) {
-        uni.showToast({ title: 'Already checked in', icon: 'none' })
+        const msg = (e && e.message) || ''
+        if (msg.includes('今日已签到')) {
+          this.checkedIn = true
+          uni.showToast({ title: '今日已签到', icon: 'none' })
+        } else {
+          uni.showToast({ title: msg || '签到失败', icon: 'none' })
+        }
       }
     },
 

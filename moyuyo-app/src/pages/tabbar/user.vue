@@ -15,10 +15,10 @@
       <view v-else class="login-prompt" @click="goLogin">
         <image :src="defaultAvatar" class="avatar" />
         <view class="login-text">
-          <text class="name">Sign In</text>
-          <text class="email">Login to enjoy more benefits</text>
+          <text class="name">登录 / 注册</text>
+          <text class="email">登录后享受更多会员权益</text>
         </view>
-        <view class="login-btn">Login</view>
+        <view class="login-btn">登录</view>
       </view>
     </view>
 
@@ -54,11 +54,33 @@
       </view>
     </view>
 
+    <!-- 关注 / 粉丝 入口（与 wallet 风格一致） -->
+    <view class="card social-area">
+      <view class="social-grid">
+        <view class="social-item" @click="goFollowing">
+          <text class="social-num">{{ followingCount }}</text>
+          <text class="social-label">关注</text>
+        </view>
+        <view class="social-item" @click="goFollowers">
+          <text class="social-num">{{ followerCount }}</text>
+          <text class="social-label">粉丝</text>
+        </view>
+        <view class="social-item" @click="goCollection">
+          <text class="social-num">{{ collectCount }}</text>
+          <text class="social-label">收藏</text>
+        </view>
+        <view class="social-item" @click="goHistory">
+          <text class="social-num">{{ historyCount }}</text>
+          <text class="social-label">足迹</text>
+        </view>
+      </view>
+    </view>
+
     <!-- 订单宫格 -->
     <view class="card order-card">
       <view class="card-header">
-        <text class="card-title">My Orders</text>
-        <text class="card-more" @click="goOrders">All ›</text>
+        <text class="card-title">我的订单</text>
+        <text class="card-more" @click="goOrders">全部 ›</text>
       </view>
       <view class="order-grid">
         <view
@@ -97,6 +119,8 @@
 <script>
 import { useUserStore } from '@/store'
 import { memberApi } from '@/api'
+import followApi from '@/api/follow'
+import browseApi from '@/api/browsingHistory'
 
 export default {
   data() {
@@ -104,13 +128,21 @@ export default {
       defaultAvatar: 'https://i.pravatar.cc/100?img=20',
       memberInfo: null,
       points: 0,
+      followingCount: 0,
+      followerCount: 0,
+      collectCount: 0,
+      historyCount: 0,
       orderTypes: [
-        { value: 'PENDING_PAY', label: 'To Pay', icon: '💳', badge: 0 },
-        { value: 'PENDING_SHIP', label: 'To Ship', icon: '📦', badge: 0 },
-        { value: 'PENDING_RECEIVE', label: 'Shipped', icon: '🚚', badge: 0 },
-        { value: 'COMPLETED', label: 'To Review', icon: '⭐', badge: 0 },
+        { value: 'PENDING_PAY', label: '待付款', icon: '💳', badge: 0 },
+        { value: 'PENDING_SHIP', label: '待发货', icon: '📦', badge: 0 },
+        { value: 'PENDING_RECEIVE', label: '待收货', icon: '🚚', badge: 0 },
+        { value: 'COMPLETED', label: '待评价', icon: '⭐', badge: 0 },
       ],
       features: [
+        { id: 'checkin', label: '每日签到', icon: '📅' },
+        { id: 'missions', label: '任务中心', icon: '🎯' },
+        { id: 'invite', label: '邀请好友', icon: '🤝' },
+        { id: 'membership', label: '会员中心', icon: '👑' },
         { id: 'address', label: '收货地址', icon: '📍' },
         { id: 'pets', label: '宠物档案', icon: '🐾' },
         { id: 'favorites', label: '我的收藏', icon: '❤️' },
@@ -147,6 +179,7 @@ export default {
   onShow() {
     if (this.userStore.isLoggedIn) {
       this.loadMemberInfo()
+      this.loadSocialCounts()
     }
   },
 
@@ -162,6 +195,24 @@ export default {
       }
     },
 
+    async loadSocialCounts() {
+      if (!this.userStore.isLoggedIn) return
+      try {
+        // 并行拉取关注 / 粉丝 / 收藏 / 足迹的总数
+        const tasks = [
+          followApi.listFollowing({ page: 1, size: 1 }).then(r => Array.isArray(r) ? r.length : 0).catch(() => 0),
+          followApi.listFollowers({ page: 1, size: 1 }).then(r => Array.isArray(r) ? r.length : 0).catch(() => 0),
+          browseApi.getHistory({ page: 1, size: 1 }).then(r => r?.total || 0).catch(() => 0),
+        ]
+        const [f1, f2, hist] = await Promise.all(tasks)
+        this.followingCount = f1
+        this.followerCount = f2
+        this.historyCount = hist
+      } catch (e) {
+        console.warn('[user] load social counts failed', e)
+      }
+    },
+
     goLogin() {
       uni.navigateTo({ url: '/pages/user/login' })
     },
@@ -174,8 +225,30 @@ export default {
       uni.navigateTo({ url: `/pages/order/list?type=${type || 'all'}` })
     },
 
+    goFollowing() {
+      if (!this.userStore.isLoggedIn) return uni.navigateTo({ url: '/pages/user/login' })
+      uni.navigateTo({ url: '/pages/user/follow-list?mode=following' })
+    },
+
+    goFollowers() {
+      if (!this.userStore.isLoggedIn) return uni.navigateTo({ url: '/pages/user/login' })
+      uni.navigateTo({ url: '/pages/user/follow-list?mode=followers' })
+    },
+
+    goCollection() {
+      uni.navigateTo({ url: '/pages/user/post-collection' })
+    },
+
+    goHistory() {
+      uni.navigateTo({ url: '/pages/user/browsing-history' })
+    },
+
     onFeatureClick(f) {
       const map = {
+        checkin: '/pages/user/check-in',
+        missions: '/pages/user/mission-center',
+        invite: '/pages/user/invite',
+        membership: '/pages/user/membership',
         address: '/pages/user/address',
         pets: '/pages/pet/profile',
         favorites: '/pages/user/favorites',
@@ -204,6 +277,26 @@ export default {
 
     goGiftCards() {
       uni.showToast({ title: 'Gift cards coming soon', icon: 'none' })
+    },
+
+    /** 跳到每日签到 */
+    goCheckin() {
+      uni.navigateTo({ url: '/pages/user/check-in' })
+    },
+
+    /** 跳到任务中心 */
+    goMissions() {
+      uni.navigateTo({ url: '/pages/user/mission-center' })
+    },
+
+    /** 跳到邀请好友 */
+    goInvite() {
+      uni.navigateTo({ url: '/pages/user/invite' })
+    },
+
+    /** 跳到会员中心 */
+    goMembership() {
+      uni.navigateTo({ url: '/pages/user/membership' })
     },
   },
 }

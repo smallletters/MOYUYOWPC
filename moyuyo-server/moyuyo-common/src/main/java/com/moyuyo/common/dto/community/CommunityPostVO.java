@@ -20,7 +20,7 @@ public class CommunityPostVO {
     private Integer likes;
     private Integer comments;
     private Boolean liked;
-    private String status;
+    private Integer status;
     private LocalDateTime createTime;
     private List<CommentVO> commentList;
 

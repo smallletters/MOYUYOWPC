@@ -168,12 +168,14 @@ export default {
 
     async loadCheckinStatus() {
       try {
-        const res = await pointsApi.getPointsLog({ pageSize: 31 })
-        const logs = res.data?.list || []
+        // 后端返回 Page<PointsLogEntity>：{ records, total, current, size }
+        const res = await pointsApi.getPointsLog({ page: 1, size: 50 })
+        const page = res?.data || res || {}
+        const logs = page.records || page.list || []
         const checkedDays = []
         const today = new Date()
         for (const log of logs) {
-          if (log.type === 'checkin') {
+          if (log.type === 'CHECKIN' || log.type === 'checkin') {
             const d = new Date(log.createdAt)
             if (d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth()) {
               checkedDays.push(d.getDate())
@@ -193,7 +195,7 @@ export default {
 
     calculateStreak(logs, today) {
       const checkinDates = logs
-        .filter((l) => l.type === 'checkin')
+        .filter((l) => (l.type === 'CHECKIN' || l.type === 'checkin'))
         .map((l) => {
           const d = new Date(l.createdAt)
           return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
@@ -236,21 +238,34 @@ export default {
 
       try {
         const res = await pointsApi.checkin()
-        const result = res.data || {}
+        // 后端 Result.success(...) 解包后是 { code, data: { points, consecutiveDays, doubleReward }, success }
+        const payload = res?.data || res || {}
+        const result = payload.data || payload
         this.isCheckedIn = true
         this.showSuccess = true
-        this.earnedPoints = result.points || 10
-        this.earnedX2 = !!result.x2
+        this.earnedPoints = result.points || 5
+        this.earnedX2 = !!result.doubleReward
+        if (typeof result.consecutiveDays === 'number') {
+          this.streak = result.consecutiveDays
+        } else {
+          this.streak += 1
+        }
 
         const today = new Date()
         if (!this.checkedDays.includes(today.getDate())) {
           this.checkedDays.push(today.getDate())
         }
-        this.streak += 1
 
         uni.showToast({ title: `签到成功 +${this.earnedPoints} 积分`, icon: 'success' })
-      } catch {
-        uni.showToast({ title: '签到失败，请重试', icon: 'none' })
+      } catch (e) {
+        // 后端返回 IllegalStateException 时前端显示具体文案
+        const msg = (e && e.message) || ''
+        if (msg.includes('今日已签到')) {
+          this.isCheckedIn = true
+          uni.showToast({ title: '今日已签到', icon: 'none' })
+        } else {
+          uni.showToast({ title: '签到失败，请重试', icon: 'none' })
+        }
       }
     },
   },

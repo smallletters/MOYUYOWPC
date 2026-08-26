@@ -52,9 +52,11 @@
         </view>
       </view>
 
-      <!-- 积分 -->
+      <!-- 章节 3.1：积分抵现（100 积分 = $1，最高抵订单金额 30%） -->
       <view class="card row-card" @click="onUsePoints">
-        <text class="row-label">Use Points (1,280 available)</text>
+        <text class="row-label">
+          Use Points（{{ pointsBalance }} available, {{ maxPointsUsable }} 可用）
+        </text>
         <switch :checked="usePoints" color="#DBC98A" @change="usePoints = $event.detail.value" />
       </view>
 
@@ -161,7 +163,7 @@
 </template>
 
 <script>
-import { orderApi } from '@/api'
+import { orderApi, pointsApi } from '@/api'
 import { addressApi } from '@/api'
 import { useCartStore } from '@/store'
 import { useUserStore } from '@/store'
@@ -172,6 +174,8 @@ export default {
       selectedAddress: null,
       addressList: [],
       usePoints: false,
+      pointsBalance: 0,
+      pointsToUse: 0,
       orderRemark: '',
       selectedShipping: 'standard',
       selectedPayment: 'stripe',
@@ -218,8 +222,15 @@ export default {
       return this.cartStore.selectedCoupon ? parseFloat(this.cartStore.selectedCoupon.amount) : 0
     },
     pointsDiscount() {
-      // 100 积分 = $1
-      return this.usePoints ? Math.min(12.8, this.subtotal * 0.1) : 0
+      // 章节 3.1：100 积分 = $1，最高抵扣订单金额 30%
+      if (!this.usePoints) return 0
+      const maxByRate = this.subtotal * 0.3
+      const maxByBalance = this.pointsBalance / 100
+      return Math.min(maxByRate, maxByBalance)
+    },
+    maxPointsUsable() {
+      // 最多可使用的积分 = MIN(余额, 订单金额30% × 100)
+      return Math.floor(Math.min(this.pointsBalance, this.subtotal * 0.3 * 100))
     },
     total() {
       return Math.max(
@@ -231,6 +242,7 @@ export default {
 
   onLoad() {
     this.loadAddress()
+    this.loadPoints()
   },
 
   methods: {
@@ -262,6 +274,16 @@ export default {
       // toggle 由 switch 处理
     },
 
+    /** 章节 3.1：查询可用积分余额 */
+    async loadPoints() {
+      try {
+        const bal = await pointsApi.getPointsBalance()
+        this.pointsBalance = Number(bal) || 0
+      } catch (e) {
+        console.warn('[checkout] load points failed', e)
+      }
+    },
+
     /**
      * 提交订单
      */
@@ -274,6 +296,9 @@ export default {
       uni.showLoading({ title: 'Submitting order...', mask: true })
       try {
         const items = this.cartStore.selectedItems
+        const usedPoints = this.usePoints
+          ? Math.floor(this.pointsDiscount * 100) // 折算回积分数
+          : 0
         const orderData = {
           items: items.map((it) => ({
             skuId: it.skuId || null,
@@ -285,6 +310,9 @@ export default {
           couponId: this.cartStore.selectedCoupon?.code || null,
           paymentMethod: this.selectedPayment,
           shippingMethod: this.selectedShipping,
+          // 章节 3.1：积分抵现字段（后端对应 points_used / points_discount）
+          pointsUsed: usedPoints,
+          pointsDiscount: this.usePoints ? this.pointsDiscount : 0,
         }
         const order = await orderApi.createOrder(orderData)
         uni.hideLoading()

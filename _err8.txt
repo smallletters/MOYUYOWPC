@@ -1,0 +1,57 @@
+### The error occurred while setting parameters
+### SQL: [SQL-FILTERED]us,  create_time, update_time )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ...[TRUNCATED]
+2026-08-26 09:26:10.782 [http-nio-8080-exec-8] WARN  c.m.c.security.RequestLoggingFilter [b12af737788348aa9a623eea3323d960] - ← [POST] /api/v1/community/posts → 409 (158ms) [客户端错误] traceId=b12af737788348aa9a623eea3323d960
+2026-08-26 09:26:11.002 [http-nio-8080-exec-1] INFO  c.m.c.security.RequestLoggingFilter [bf4dab705334457f8641535cfc0dde78] - ← [POST] /api/v1/community/posts/1/comments → 200 (216ms) traceId=bf4dab705334457f8641535cfc0dde78
+2026-08-26 09:26:11.054 [http-nio-8080-exec-5] INFO  c.m.c.security.RequestLoggingFilter [e0b4ab7fcfa44ef18ef2a3f548407a73] - ← [POST] /api/v1/follows → 200 (47ms) traceId=e0b4ab7fcfa44ef18ef2a3f548407a73
+2026-08-26 09:26:11.067 [http-nio-8080-exec-6] INFO  c.m.c.security.RequestLoggingFilter [9c6ea492bf4c423d8307b8cbf89ef020] - ← [GET] /api/v1/follows/180000002/status → 200 (9ms) traceId=9c6ea492bf4c423d8307b8cbf89ef020
+2026-08-26 09:26:11.080 [http-nio-8080-exec-9] INFO  c.m.c.security.RequestLoggingFilter [a640af51565046ecb64d07b60fef8555] - ← [GET] /api/v1/follows/following → 200 (10ms) traceId=a640af51565046ecb64d07b60fef8555
+2026-08-26 09:26:11.127 [http-nio-8080-exec-8] INFO  c.m.c.security.RequestLoggingFilter [f6a7fb1fc040411bac871783ae4915b7] - ← [DELETE] /api/v1/follows/180000002 → 200 (43ms) traceId=f6a7fb1fc040411bac871783ae4915b7
+2026-08-26 09:26:11.200 [http-nio-8080-exec-1] INFO  c.m.c.security.RequestLoggingFilter [9cbd83b792fa458d89a3667f1de47c11] - ← [GET] /api/v1/community/posts?keyword=%E7%8C%AB → 200 (69ms) traceId=9cbd83b792fa458d89a3667f1de47c11
+2026-08-26 09:26:11.220 [http-nio-8080-exec-5] WARN  c.m.c.security.RequestLoggingFilter [32d20acdee494c6aaba57c47852a15de] - ← [GET] /api/v1/community/search?q=%E7%8C%AB → 404 (16ms) [客户端错误] traceId=32d20acdee494c6aaba57c47852a15de
+2026-08-26 09:26:11.238 [http-nio-8080-exec-6] WARN  c.m.c.security.RequestLoggingFilter [2be39361d1724faeb9c830ef54919a7c] - ← [GET] /api/v1/search/community?q=%E7%8C%AB → 404 (14ms) [客户端错误] traceId=2be39361d1724faeb9c830ef54919a7c
+2026-08-26 09:26:11.251 [http-nio-8080-exec-9] WARN  c.m.c.security.RequestLoggingFilter [992cee3a08bd44aba18f1f726e8fc27a] - ← [GET] /api/v1/community/posts/search?q=%E7%8C%AB → 400 (9ms) [客户端错误] traceId=992cee3a08bd44aba18f1f726e8fc27a
+2026-08-26 09:26:11.287 [http-nio-8080-exec-8] INFO  c.m.c.security.RequestLoggingFilter [f04d31daa0194080a1cf19d25a51cdfb] - ← [GET] /api/v1/community/posts/mine → 200 (31ms) traceId=f04d31daa0194080a1cf19d25a51cdfb
+2026-08-26 09:26:11.336 [http-nio-8080-exec-3] INFO  c.m.c.security.RequestLoggingFilter [8596290708474f6b9d9e5b6e8d68c6f5] - ← [POST] /api/v1/community/posts/1/collect → 200 (45ms) traceId=8596290708474f6b9d9e5b6e8d68c6f5
+2026-08-26 09:26:11.351 [http-nio-8080-exec-10] INFO  c.m.c.security.RequestLoggingFilter [76de08fbd5c849e696a7177dfacfdda9] - ← [GET] /api/v1/community/posts/collected → 200 (10ms) traceId=76de08fbd5c849e696a7177dfacfdda9
+2026-08-26 09:26:11.420 [http-nio-8080-exec-4] INFO  c.m.c.security.RequestLoggingFilter [0d6e5cb57f814829b0bc5465169e88da] - ← [DELETE] /api/v1/community/posts/1/collect → 200 (63ms) traceId=0d6e5cb57f814829b0bc5465169e88da
+2026-08-26 09:26:11.486 [http-nio-8080-exec-2] INFO  c.m.c.security.RequestLoggingFilter [ccaaa4666eb641aaa95d9ffa76239f58] - ← [GET] /api/v1/community/posts/collected → 200 (62ms) traceId=ccaaa4666eb641aaa95d9ffa76239f58
+2026-08-26 09:26:11.501 [http-nio-8080-exec-7] INFO  c.m.c.security.RequestLoggingFilter [2b3067561b564110bb957c5c270932c5] - ← [GET] /api/v1/community/topics → 200 (11ms) traceId=2b3067561b564110bb957c5c270932c5
+2026-08-26 09:26:23.587 [http-nio-8080-exec-1] INFO  c.m.c.security.RequestLoggingFilter [a692225a9eb54168ab6801d71447276f] - ← [GET] /api/v1/categories → 200 (10ms) traceId=a692225a9eb54168ab6801d71447276f
+2026-08-26 09:26:23.884 [http-nio-8080-exec-10] INFO  c.m.c.security.RequestLoggingFilter [ce26c2b1c833429395ee99d0c467196d] - ← [GET] /api/v1/products?page=1&size=20&sortBy=createdAt&sortOrder=desc → 200 (11ms) traceId=ce26c2b1c833429395ee99d0c467196d
+2026-08-26 09:26:25.584 [http-nio-8080-exec-5] INFO  c.m.service.impl.AuthServiceImpl [21c9eaa11711401fbe1491f4323151ab] - User logged in: id=200000001, email=test@moyuyo.com
+2026-08-26 09:26:25.587 [http-nio-8080-exec-5] INFO  c.m.c.security.RequestLoggingFilter [21c9eaa11711401fbe1491f4323151ab] - ← [POST] /api/v1/auth/login → 200 (109ms) traceId=21c9eaa11711401fbe1491f4323151ab
+---
+2026-08-26 09:26:25.584 [http-nio-8080-exec-5] INFO  c.m.service.impl.AuthServiceImpl [21c9eaa11711401fbe1491f4323151ab] - User logged in: id=200000001, email=test@moyuyo.com
+2026-08-26 09:26:25.587 [http-nio-8080-exec-5] INFO  c.m.c.security.RequestLoggingFilter [21c9eaa11711401fbe1491f4323151ab] - ← [POST] /api/v1/auth/login → 200 (109ms) traceId=21c9eaa11711401fbe1491f4323151ab
+2026-08-26 09:26:25.621 [http-nio-8080-exec-4] WARN  c.m.common.GlobalExceptionHandler [798e1ae318b441fab3a4e7dec273fd17] - 数据库约束违反:
+### Error updating database.  Cause: com.mysql.cj.jdbc.exceptions.MysqlDataTruncation: Data truncation: Incorrect integer value: 'PUBLISHED' for column `moyuyo_dev`.`mo_community_post`.`status` at row 1
+### The error may exist in com/moyuyo/dao/mapper/CommunityPostMapper.java (best guess)
+### The error may involve com.moyuyo.dao.mapper.CommunityPostMapper.insert-Inline
+### The error occurred while setting parameters
+### SQL: [SQL-FILTERED]us,  create_time, update_time )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ...[TRUNCATED]
+2026-08-26 09:26:25.621 [http-nio-8080-exec-4] WARN  c.m.c.security.RequestLoggingFilter [798e1ae318b441fab3a4e7dec273fd17] - ← [POST] /api/v1/community/posts → 409 (32ms) [客户端错误] traceId=798e1ae318b441fab3a4e7dec273fd17
+2026-08-26 09:26:28.656 [http-nio-8080-exec-1] INFO  c.m.c.security.RequestLoggingFilter [f657b2eb349d4c52933749c6067a394c] - ← [GET] /api/v1/pets → 200 (41ms) traceId=f657b2eb349d4c52933749c6067a394c
+2026-08-26 09:26:30.289 [http-nio-8080-exec-10] INFO  c.m.c.security.RequestLoggingFilter [8667e4a6f1284f5b95f5bcbb58035804] - ← [GET] /api/v1/community/topics → 200 (7ms) traceId=8667e4a6f1284f5b95f5bcbb58035804
+2026-08-26 09:26:30.600 [http-nio-8080-exec-5] INFO  c.m.c.security.RequestLoggingFilter [4362ea9e372d489085c7fef9963fc500] - ← [GET] /api/v1/community/posts?page=1&size=20 → 200 (21ms) traceId=4362ea9e372d489085c7fef9963fc500
+2026-08-26 09:26:32.064 [http-nio-8080-exec-7] INFO  c.m.c.security.RequestLoggingFilter [5c3fa3deb04442e5a569916817ce1316] - ← [GET] /api/v1/member → 200 (9ms) traceId=5c3fa3deb04442e5a569916817ce1316
+2026-08-26 09:26:33.360 [http-nio-8080-exec-3] INFO  c.m.c.security.RequestLoggingFilter [a25b15d9ebf642a1a39a40000b1a98c0] - ← [GET] /api/v1/pets → 200 (10ms) traceId=a25b15d9ebf642a1a39a40000b1a98c0
+2026-08-26 09:26:35.880 [http-nio-8080-exec-8] INFO  c.m.c.security.RequestLoggingFilter [2ed3fb10968b417087f04a2098834515] - ← [GET] /api/v1/pets → 200 (10ms) traceId=2ed3fb10968b417087f04a2098834515
+2026-08-26 09:26:38.946 [http-nio-8080-exec-9] INFO  c.m.c.security.RequestLoggingFilter [6baf8e389eae4470aadacef7a51ebce6] - ← [GET] /api/v1/member → 200 (18ms) traceId=6baf8e389eae4470aadacef7a51ebce6
+2026-08-26 09:26:40.367 [http-nio-8080-exec-1] INFO  c.m.c.security.RequestLoggingFilter [cd8c5a1bbb8942808a3d501df08c904e] - ← [GET] /api/v1/pets → 200 (12ms) traceId=cd8c5a1bbb8942808a3d501df08c904e
+2026-08-26 09:26:41.636 [http-nio-8080-exec-10] INFO  c.m.c.security.RequestLoggingFilter [0e98f6ddbf524014a64d624510741ad3] - ← [GET] /api/v1/member → 200 (14ms) traceId=0e98f6ddbf524014a64d624510741ad3
+2026-08-26 09:26:43.779 [http-nio-8080-exec-5] INFO  c.m.c.security.RequestLoggingFilter [1240db1889a943dda585ff24c5069fdd] - ← [GET] /api/v1/member → 200 (18ms) traceId=1240db1889a943dda585ff24c5069fdd
+---
+### The error occurred while setting parameters
+### SQL: [SQL-FILTERED]us,  create_time, update_time )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ...[TRUNCATED]
+2026-08-26 09:26:25.621 [http-nio-8080-exec-4] WARN  c.m.c.security.RequestLoggingFilter [798e1ae318b441fab3a4e7dec273fd17] - ← [POST] /api/v1/community/posts → 409 (32ms) [客户端错误] traceId=798e1ae318b441fab3a4e7dec273fd17
+2026-08-26 09:26:28.656 [http-nio-8080-exec-1] INFO  c.m.c.security.RequestLoggingFilter [f657b2eb349d4c52933749c6067a394c] - ← [GET] /api/v1/pets → 200 (41ms) traceId=f657b2eb349d4c52933749c6067a394c
+2026-08-26 09:26:30.289 [http-nio-8080-exec-10] INFO  c.m.c.security.RequestLoggingFilter [8667e4a6f1284f5b95f5bcbb58035804] - ← [GET] /api/v1/community/topics → 200 (7ms) traceId=8667e4a6f1284f5b95f5bcbb58035804
+2026-08-26 09:26:30.600 [http-nio-8080-exec-5] INFO  c.m.c.security.RequestLoggingFilter [4362ea9e372d489085c7fef9963fc500] - ← [GET] /api/v1/community/posts?page=1&size=20 → 200 (21ms) traceId=4362ea9e372d489085c7fef9963fc500
+2026-08-26 09:26:32.064 [http-nio-8080-exec-7] INFO  c.m.c.security.RequestLoggingFilter [5c3fa3deb04442e5a569916817ce1316] - ← [GET] /api/v1/member → 200 (9ms) traceId=5c3fa3deb04442e5a569916817ce1316
+2026-08-26 09:26:33.360 [http-nio-8080-exec-3] INFO  c.m.c.security.RequestLoggingFilter [a25b15d9ebf642a1a39a40000b1a98c0] - ← [GET] /api/v1/pets → 200 (10ms) traceId=a25b15d9ebf642a1a39a40000b1a98c0
+2026-08-26 09:26:35.880 [http-nio-8080-exec-8] INFO  c.m.c.security.RequestLoggingFilter [2ed3fb10968b417087f04a2098834515] - ← [GET] /api/v1/pets → 200 (10ms) traceId=2ed3fb10968b417087f04a2098834515
+2026-08-26 09:26:38.946 [http-nio-8080-exec-9] INFO  c.m.c.security.RequestLoggingFilter [6baf8e389eae4470aadacef7a51ebce6] - ← [GET] /api/v1/member → 200 (18ms) traceId=6baf8e389eae4470aadacef7a51ebce6
+2026-08-26 09:26:40.367 [http-nio-8080-exec-1] INFO  c.m.c.security.RequestLoggingFilter [cd8c5a1bbb8942808a3d501df08c904e] - ← [GET] /api/v1/pets → 200 (12ms) traceId=cd8c5a1bbb8942808a3d501df08c904e
+2026-08-26 09:26:41.636 [http-nio-8080-exec-10] INFO  c.m.c.security.RequestLoggingFilter [0e98f6ddbf524014a64d624510741ad3] - ← [GET] /api/v1/member → 200 (14ms) traceId=0e98f6ddbf524014a64d624510741ad3
+2026-08-26 09:26:43.779 [http-nio-8080-exec-5] INFO  c.m.c.security.RequestLoggingFilter [1240db1889a943dda585ff24c5069fdd] - ← [GET] /api/v1/member → 200 (18ms) traceId=1240db1889a943dda585ff24c5069fdd
+---

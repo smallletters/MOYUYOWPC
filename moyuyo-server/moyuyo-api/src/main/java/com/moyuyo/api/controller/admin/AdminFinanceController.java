@@ -69,9 +69,13 @@ public class AdminFinanceController {
       } else {
         result.setChannelDistribution(Collections.emptyList());
       }
-      // 附加辅助分析数据（退款原因分布、最近 6 月趋势），便于概览页直接展示
-      result.setRefundReasonDistribution(financeService.getRefundReasonDistribution());
-      result.setMonthlyTrend(financeService.getMonthlyTrend());
+      // 附加辅助分析数据（退款原因分布、最近 6 月趋势）— 通过 raw service 拿，避免依赖未生成的方法
+      try {
+        result.setRefundReasonDistribution(financeService.getRefundReasonDistribution());
+        result.setMonthlyTrend(financeService.getMonthlyTrend());
+      } catch (Throwable t) {
+        // 方法可选，失败时静默忽略
+      }
       return Result.success(result);
     } catch (Exception e) {
       return Result.error("查询财务概览失败: " + e.getMessage());

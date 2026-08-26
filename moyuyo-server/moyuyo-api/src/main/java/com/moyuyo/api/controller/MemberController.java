@@ -11,6 +11,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 @Tag(name = "会员管理")
 @RestController
 @RequestMapping("/api/v1/member")
@@ -37,5 +40,17 @@ public class MemberController {
   @GetMapping("/wallet")
   public Result<WalletVO> getWallet() {
     return Result.success(memberService.getWallet(UserContextHolder.getUserId()));
+  }
+
+  @Operation(summary = "会员等级档位（含积分倍率）")
+  @GetMapping("/levels")
+  public Result<List<Map<String, Object>>> listLevels() {
+    return Result.success(memberService.listLevels());
+  }
+
+  @Operation(summary = "当前用户积分倍率")
+  @GetMapping("/points-rate")
+  public Result<Double> currentPointsRate() {
+    return Result.success(memberService.getCurrentPointsRate(UserContextHolder.getUserId()));
   }
 }

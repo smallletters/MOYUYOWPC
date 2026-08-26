@@ -1,235 +1,88 @@
 <template>
   <view class="recycle-bin">
-    <!-- 顶部导航栏 -->
-    <view class="header">
-      <view class="header-btn" @click="goBack">
-        <text class="back-icon">‹</text>
-      </view>
-      <text class="header-title">订单回收站</text>
-      <view class="header-btn" @click="onToggleManage">
-        <text class="manage-text">{{ isManage ? '完成' : '管理' }}</text>
-      </view>
+    <view class="page-header">
+      <view class="back" @click="goBack" aria-label="返回">‹</view>
+      <text class="title">订单回收站</text>
     </view>
 
-    <!-- 说明卡片 -->
-    <view class="info-card">
-      <view class="info-card-header">
-        <text class="info-icon">ℹ️</text>
-        <text class="info-text">
-          删除的订单将在回收站保留
-          <text class="info-highlight">30 天</text>
-          ，超期后将被彻底清除且无法恢复。
-        </text>
-      </view>
-      <view class="stats-row">
-        <view class="stats-item">
-          <text class="stats-label">回收订单</text>
-          <text class="stats-value">
-            {{ orderList.length }}
-            <text class="stats-unit">个</text>
-          </text>
-        </view>
-        <view class="stats-divider" />
-        <view class="stats-item">
-          <text class="stats-label">最近可恢复</text>
-          <text class="stats-value stats-value--warn">
-            12
-            <text class="stats-unit">天</text>
-          </text>
-        </view>
-        <view class="stats-divider" />
-        <view class="stats-item">
-          <text class="stats-label">即将过期</text>
-          <text class="stats-value stats-value--error">
-            {{ expiringCount }}
-            <text class="stats-unit">个</text>
-          </text>
+    <scroll-view scroll-y class="content">
+      <view class="banner">
+        <text class="banner-icon">♻</text>
+        <view class="banner-info">
+          <text class="banner-title">回收站规则</text>
+          <text class="banner-desc">已删除的订单会保留 30 天，过期将自动清理</text>
         </view>
       </view>
-    </view>
 
-    <!-- 订单列表 -->
-    <view v-if="orderList.length > 0" class="order-list">
-      <view
-        v-for="order in orderList"
-        :key="order.id"
-        class="order-card"
-        :class="{ selected: manageSelected.includes(order.id) }"
-        :style="{ opacity: order.grayed ? 0.85 : 1 }"
-      >
-        <view class="order-header">
-          <view
-            v-if="isManage"
-            class="order-checkbox"
-            :class="{ checked: manageSelected.includes(order.id) }"
-            @click="onToggleSelect(order.id)"
-          />
-          <view class="order-meta">
-            <text class="order-no">{{ order.orderNo }}</text>
-            <text class="order-delete-time">删除于 {{ order.deleteTime }}</text>
-          </view>
-          <view class="countdown-badge" :class="{ urgent: order.daysLeft <= 3 }">
-            <text class="countdown-icon">⏰</text>
-            <text>剩余 {{ order.daysLeft }} 天</text>
-          </view>
-        </view>
+      <view v-if="orders.length === 0" class="empty">
+        <text class="empty-icon">📭</text>
+        <text class="empty-text">回收站空空如也</text>
+      </view>
 
-        <view class="order-body">
-          <view class="order-products">
-            <view class="product-thumb-list">
-              <view
-                v-for="(product, idx) in order.products.slice(0, 3)"
-                :key="idx"
-                class="product-thumb"
-              >
-                <text class="thumb-placeholder">{{ product.icon }}</text>
-              </view>
-              <view v-if="order.products.length > 3" class="product-thumb product-thumb-more">
-                <text>+{{ order.products.length - 3 }}</text>
-              </view>
-            </view>
-            <view class="product-info">
-              <text class="product-name">
-                {{ order.products[0].name }}{{ order.products.length > 1 ? ' 等' : '' }}
-              </text>
-              <text class="product-count">共 {{ order.products.length }} 件商品</text>
-            </view>
+      <view v-else class="order-list">
+        <view v-for="o in orders" :key="o.id" class="order-card">
+          <view class="order-header">
+            <text class="order-no">#{{ o.orderNo }}</text>
+            <text class="order-removed">删除于 {{ formatDate(o.removedAt) }}</text>
           </view>
-
-          <view class="order-footer">
-            <text class="order-total">¥{{ order.total }}</text>
-            <text class="order-status" :class="'status-' + order.status">
-              {{ order.statusLabel }}
-            </text>
+          <view class="order-items">
+            <text class="items-count">{{ o.itemCount || 0 }} 件商品</text>
+            <text class="order-amount">¥{{ o.payAmount }}</text>
           </view>
-
-          <view v-if="!isManage" class="order-actions">
-            <view class="action-btn action-btn--restore" @click="onRestore(order.id)">
-              <text class="action-icon">↩️</text>
-              <text>恢复订单</text>
-            </view>
-            <view class="action-btn action-btn--delete" @click="onPermanentDelete(order.id)">
-              <text class="action-icon">🗑️</text>
-              <text>永久删除</text>
-            </view>
+          <view class="order-actions">
+            <view class="btn outline" @click="onRestore(o)">恢复订单</view>
+            <view class="btn danger" @click="onDeleteForever(o)">永久删除</view>
           </view>
         </view>
       </view>
-    </view>
-
-    <!-- 空状态 -->
-    <view v-else class="empty-state">
-      <view class="empty-icon-circle">
-        <text class="empty-icon-text">🗑️</text>
-      </view>
-      <text class="empty-title">回收站为空</text>
-      <text class="empty-desc">删除的订单会在这里保留 30 天，期间可随时恢复。</text>
-      <view class="empty-action" @click="goOrderList">
-        <text class="empty-action-icon">📦</text>
-        <text>查看我的订单</text>
-      </view>
-    </view>
-
-    <!-- 批量操作栏 -->
-    <view v-if="isManage" class="batch-bar">
-      <view class="batch-bar-content">
-        <view
-          class="order-checkbox"
-          :class="{ checked: manageSelected.length === orderList.length && orderList.length > 0 }"
-          @click="onToggleSelectAll"
-        />
-        <text class="batch-selected">已选 {{ manageSelected.length }} 个</text>
-        <view class="batch-actions">
-          <view class="batch-btn batch-btn--restore" @click="onBatchRestore">
-            <text class="action-icon">↩️</text>
-            <text>批量恢复</text>
-          </view>
-          <view class="batch-btn batch-btn--delete" @click="onBatchDelete">
-            <text class="action-icon">🗑️</text>
-            <text>批量删除</text>
-          </view>
-        </view>
-      </view>
-    </view>
+    </scroll-view>
   </view>
 </template>
 
 <script>
-import { recycleBinApi } from '@/api'
+import { orderApi } from '@/api'
 
 export default {
   data() {
     return {
-      isManage: false,
-      manageSelected: [],
-      orderList: [],
+      orders: [],
     }
   },
 
-  computed: {
-    expiringCount() {
-      return this.orderList.filter((o) => o.daysLeft <= 3).length
-    },
-  },
-
-  onLoad() {
-    this.loadRecycleBinOrders()
+  onShow() {
+    this.loadRecycleBin()
   },
 
   methods: {
+    async loadRecycleBin() {
+      try {
+        const list = await orderApi.getRecycleBin()
+        this.orders = Array.isArray(list) ? list : []
+      } catch (e) {
+        console.warn('[recycle-bin] load failed', e)
+      }
+    },
+
+    formatDate(s) {
+      if (!s) return ''
+      return new Date(s).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+    },
+
     goBack() {
       uni.navigateBack()
     },
 
-    goOrderList() {
-      uni.navigateTo({ url: '/pages/order/list' })
-    },
-
-    async loadRecycleBinOrders() {
-      try {
-        const res = await recycleBinApi.getRecycleBinOrders()
-        this.orderList = res.data || []
-      } catch (err) {
-        uni.showToast({ title: '加载回收站订单失败', icon: 'none' })
-      }
-    },
-
-    onToggleManage() {
-      this.isManage = !this.isManage
-      if (!this.isManage) {
-        this.manageSelected = []
-      }
-    },
-
-    onToggleSelect(orderId) {
-      const idx = this.manageSelected.indexOf(orderId)
-      if (idx > -1) {
-        this.manageSelected.splice(idx, 1)
-      } else {
-        this.manageSelected.push(orderId)
-      }
-    },
-
-    onToggleSelectAll() {
-      if (this.manageSelected.length === this.orderList.length) {
-        this.manageSelected = []
-      } else {
-        this.manageSelected = this.orderList.map((o) => o.id)
-      }
-    },
-
-    onRestore(orderId) {
-      const order = this.orderList.find((o) => o.id === orderId)
+    onRestore(order) {
       uni.showModal({
-        title: '恢复订单',
-        content: `确定恢复订单 ${order.orderNo} 吗？`,
+        title: '恢复订单？',
+        content: `订单 #${order.orderNo} 将回到我的订单列表`,
         success: async (res) => {
           if (res.confirm) {
             try {
-              await recycleBinApi.restoreOrder(orderId)
-              this.orderList = this.orderList.filter((o) => o.id !== orderId)
+              await orderApi.restoreOrder(order.id)
+              this.loadRecycleBin()
               uni.showToast({ title: '已恢复', icon: 'success' })
-            } catch (err) {
+            } catch (e) {
               uni.showToast({ title: '恢复失败', icon: 'none' })
             }
           }
@@ -237,65 +90,18 @@ export default {
       })
     },
 
-    onPermanentDelete(orderId) {
-      const order = this.orderList.find((o) => o.id === orderId)
+    onDeleteForever(order) {
       uni.showModal({
-        title: '永久删除',
-        content: `确定永久删除订单 ${order.orderNo}？此操作不可撤销。`,
+        title: '永久删除？',
+        content: '此操作不可撤销，订单将彻底删除',
         success: async (res) => {
           if (res.confirm) {
             try {
-              await recycleBinApi.deleteOrderPermanently(orderId)
-              this.orderList = this.orderList.filter((o) => o.id !== orderId)
-              uni.showToast({ title: '已永久删除', icon: 'success' })
-            } catch (err) {
+              await orderApi.permanentDeleteOrder(order.id)
+              this.loadRecycleBin()
+              uni.showToast({ title: '已删除', icon: 'success' })
+            } catch (e) {
               uni.showToast({ title: '删除失败', icon: 'none' })
-            }
-          }
-        },
-      })
-    },
-
-    onBatchRestore() {
-      if (this.manageSelected.length === 0) {
-        uni.showToast({ title: '请选择订单', icon: 'none' })
-        return
-      }
-      uni.showModal({
-        title: '批量恢复',
-        content: `确定恢复选中的 ${this.manageSelected.length} 个订单吗？`,
-        success: async (res) => {
-          if (res.confirm) {
-            try {
-              await recycleBinApi.batchRestoreOrders(this.manageSelected)
-              this.orderList = this.orderList.filter((o) => !this.manageSelected.includes(o.id))
-              this.manageSelected = []
-              uni.showToast({ title: '已批量恢复', icon: 'success' })
-            } catch (err) {
-              uni.showToast({ title: '批量恢复失败', icon: 'none' })
-            }
-          }
-        },
-      })
-    },
-
-    onBatchDelete() {
-      if (this.manageSelected.length === 0) {
-        uni.showToast({ title: '请选择订单', icon: 'none' })
-        return
-      }
-      uni.showModal({
-        title: '批量删除',
-        content: `确定永久删除选中的 ${this.manageSelected.length} 个订单？此操作不可撤销。`,
-        success: async (res) => {
-          if (res.confirm) {
-            try {
-              await recycleBinApi.batchDeleteOrders(this.manageSelected)
-              this.orderList = this.orderList.filter((o) => !this.manageSelected.includes(o.id))
-              this.manageSelected = []
-              uni.showToast({ title: '已批量删除', icon: 'success' })
-            } catch (err) {
-              uni.showToast({ title: '批量删除失败', icon: 'none' })
             }
           }
         },
@@ -308,479 +114,163 @@ export default {
 <style lang="scss" scoped>
 .recycle-bin {
   min-height: 100vh;
-  background: var(--background-200);
-  padding-bottom: 140rpx;
+  background: var(--color-background);
 }
 
-.header {
+.page-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   height: 88rpx;
-  padding: 0 30rpx;
-  background: rgba(255, 255, 255, 0.88);
-  border-bottom: 1rpx solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 30;
+  padding: 0 24rpx;
+  background: var(--color-surface);
+  border-bottom: 1rpx solid var(--color-divider);
 }
 
-.header-btn {
-  width: 72rpx;
-  height: 72rpx;
+.back {
+  width: 60rpx;
+  height: 60rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.back-icon {
   font-size: 44rpx;
-  color: var(--icon-700);
-  line-height: 1;
+  color: var(--color-text);
 }
 
-.header-title {
-  font-size: 34rpx;
-  font-weight: 600;
-  color: var(--foreground);
+.title {
+  flex: 1;
+  text-align: center;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin-right: 60rpx;
 }
 
-.manage-text {
-  font-size: 26rpx;
-  font-weight: 500;
-  color: var(--text-500);
-  white-space: nowrap;
+.content {
+  padding: 24rpx;
 }
 
-/* ===== 说明卡片 ===== */
-.info-card {
-  margin: 24rpx 30rpx 0;
-  border-radius: var(--radius);
-  background: var(--card);
-  overflow: hidden;
-  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.08);
-}
-
-.info-card-header {
+.banner {
   display: flex;
-  align-items: center;
   gap: 16rpx;
-  padding: 28rpx;
-  background: linear-gradient(135deg, var(--brand-50), var(--background-100));
-  border-bottom: 1rpx solid var(--border);
+  padding: 24rpx;
+  background: var(--color-primary-light);
+  border-radius: var(--radius-md);
+  margin-bottom: 24rpx;
 }
 
-.info-icon {
-  font-size: 32rpx;
-  flex-shrink: 0;
+.banner-icon {
+  font-size: 48rpx;
 }
 
-.info-text {
-  font-size: 24rpx;
-  color: var(--text-600);
-  line-height: 1.5;
-}
-
-.info-highlight {
-  color: var(--brand-500);
-  font-weight: 600;
-}
-
-.stats-row {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  padding: 24rpx 28rpx;
-}
-
-.stats-item {
+.banner-info {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4rpx;
 }
 
-.stats-divider {
-  width: 2rpx;
-  height: 56rpx;
-  background: var(--border);
-  flex-shrink: 0;
+.banner-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
 }
 
-.stats-label {
-  font-size: 20rpx;
-  font-weight: 500;
-  color: var(--text-400);
+.banner-desc {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
 }
 
-.stats-value {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: var(--foreground);
-  line-height: 1.2;
-}
-
-.stats-value--warn {
-  color: var(--state-warning);
-}
-
-.stats-value--error {
-  color: var(--state-error);
-}
-
-.stats-unit {
-  font-size: 24rpx;
-  font-weight: 400;
-  color: var(--text-400);
-}
-
-/* ===== 订单列表 ===== */
-.order-list {
-  margin: 24rpx 30rpx 0;
+.empty {
+  padding: 96rpx 0;
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.empty-icon {
+  font-size: 120rpx;
+  opacity: 0.4;
+}
+
+.empty-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}
+
+.order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
 }
 
 .order-card {
-  border-radius: var(--radius);
-  background: var(--card);
-  overflow: hidden;
-  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.08);
-}
-
-.order-card.selected {
-  outline: 4rpx solid var(--primary);
-  outline-offset: -4rpx;
+  background: var(--color-surface);
+  border: 1rpx solid var(--color-divider);
+  border-radius: var(--radius-md);
+  padding: 24rpx;
 }
 
 .order-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 16rpx;
-  padding: 24rpx 28rpx 0;
-}
-
-.order-checkbox {
-  width: 36rpx;
-  height: 36rpx;
-  border-radius: 50%;
-  border: 4rpx solid var(--background-400);
-  background: transparent;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.order-checkbox.checked {
-  background: var(--primary);
-  border-color: var(--primary);
-}
-
-.order-checkbox.checked::after {
-  content: '';
-  display: block;
-  width: 12rpx;
-  height: 20rpx;
-  border: 4rpx solid var(--background-50);
-  border-top: 0;
-  border-left: 0;
-  transform: rotate(45deg) translateY(-2rpx);
-}
-
-.order-meta {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid var(--color-divider);
 }
 
 .order-no {
-  font-size: 24rpx;
-  font-weight: 500;
-  color: var(--foreground);
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
 }
 
-.order-delete-time {
-  font-size: 20rpx;
-  color: var(--text-400);
-  display: block;
+.order-removed {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
 }
 
-.countdown-badge {
+.order-items {
   display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 8rpx 16rpx;
-  border-radius: 12rpx;
-  font-size: 22rpx;
-  font-weight: 600;
-  background: var(--background-200);
-  color: var(--state-warning);
-  flex-shrink: 0;
-}
-
-.countdown-badge.urgent {
-  background: var(--state-error-surface);
-  color: var(--state-error);
-}
-
-.countdown-icon {
-  font-size: 24rpx;
-}
-
-.order-body {
-  padding: 16rpx 28rpx 24rpx;
-}
-
-.order-products {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  margin-top: 16rpx;
-}
-
-.product-thumb-list {
-  display: flex;
-  flex-shrink: 0;
-}
-
-.product-thumb {
-  width: 100rpx;
-  height: 100rpx;
-  border-radius: 16rpx;
-  background: linear-gradient(135deg, var(--secondary), var(--accent));
-  border: 1rpx solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  font-size: 40rpx;
-}
-
-.product-thumb + .product-thumb {
-  margin-left: -16rpx;
-}
-
-.product-thumb-more {
-  background: var(--background-200);
-  color: var(--text-500);
-  font-size: 22rpx;
-  font-weight: 600;
-  border: 2rpx dashed var(--background-400);
-}
-
-.product-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.product-name {
-  font-size: 26rpx;
-  font-weight: 500;
-  color: var(--foreground);
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.product-count {
-  font-size: 20rpx;
-  color: var(--text-400);
-  display: block;
-  margin-top: 4rpx;
-}
-
-.order-footer {
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  margin-top: 16rpx;
-}
-
-.order-total {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: var(--foreground);
-}
-
-.order-status {
-  display: inline-flex;
   align-items: center;
-  gap: 8rpx;
-  padding: 6rpx 16rpx;
-  border-radius: 999rpx;
-  font-size: 20rpx;
-  font-weight: 600;
+  padding: 16rpx 0;
 }
 
-.status-completed {
-  background: var(--state-success-surface);
-  color: var(--state-success);
+.items-count {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
 }
 
-.status-cancelled {
-  background: var(--background-200);
-  color: var(--text-500);
-}
-
-.status-refunded {
-  background: var(--state-error-surface);
-  color: var(--state-error);
+.order-amount {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
 }
 
 .order-actions {
   display: flex;
   gap: 16rpx;
-  margin-top: 20rpx;
 }
 
-.action-btn {
+.btn {
   flex: 1;
+  height: 60rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10rpx;
-  height: 64rpx;
-  border-radius: 16rpx;
-  font-size: 24rpx;
-  font-weight: 600;
-  border: none;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+  border: 1rpx solid var(--color-divider);
+  color: var(--color-text);
 }
 
-.action-btn--restore {
-  background: var(--primary);
-  color: var(--primary-foreground);
+.btn.outline {
+  background: var(--color-surface);
 }
 
-.action-btn--delete {
-  background: var(--background-200);
-  color: var(--state-error);
-}
-
-.action-icon {
-  font-size: 24rpx;
-}
-
-/* ===== 空状态 ===== */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 200rpx 60rpx 100rpx;
-}
-
-.empty-icon-circle {
-  width: 200rpx;
-  height: 200rpx;
-  border-radius: 50%;
-  background: var(--background-200);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 40rpx;
-}
-
-.empty-icon-text {
-  font-size: 80rpx;
-}
-
-.empty-title {
-  font-size: 34rpx;
-  font-weight: 700;
-  color: var(--text-800);
-  margin-bottom: 16rpx;
-}
-
-.empty-desc {
-  font-size: 26rpx;
-  color: var(--text-500);
-  text-align: center;
-  line-height: 1.5;
-  max-width: 440rpx;
-}
-
-.empty-action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12rpx;
-  margin-top: 48rpx;
-  height: 80rpx;
-  padding: 0 56rpx;
-  border-radius: 999rpx;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  font-size: 28rpx;
-  font-weight: 600;
-}
-
-.empty-action-icon {
-  font-size: 28rpx;
-}
-
-/* ===== 批量操作栏 ===== */
-.batch-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 40;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(20px);
-  border-top: 1rpx solid var(--border);
-  padding: 20rpx 30rpx;
-  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
-}
-
-.batch-bar-content {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.batch-selected {
-  font-size: 24rpx;
-  font-weight: 500;
-  color: var(--foreground);
-  white-space: nowrap;
-}
-
-.batch-actions {
-  display: flex;
-  gap: 16rpx;
-  margin-left: auto;
-}
-
-.batch-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8rpx;
-  height: 64rpx;
-  padding: 0 28rpx;
-  border-radius: 16rpx;
-  font-size: 24rpx;
-  font-weight: 600;
-  border: none;
-}
-
-.batch-btn--restore {
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
-
-.batch-btn--delete {
-  background: var(--state-error-surface);
-  color: var(--state-error);
+.btn.danger {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
 }
 </style>
