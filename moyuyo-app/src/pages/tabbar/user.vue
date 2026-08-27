@@ -10,7 +10,7 @@
           <text class="email">{{ userStore.userInfo?.email }}</text>
           <text class="member-level">{{ memberLevel }}</text>
         </view>
-        <text class="arrow"><text class="luc luc-chevron-right"></text></text>
+        <text class="arrow"><text class="luc luc-chevron-right" /></text>
       </view>
       <view v-else class="login-prompt" @click="goLogin">
         <image :src="defaultAvatar" class="avatar" />
@@ -80,7 +80,10 @@
     <view class="card order-card">
       <view class="card-header">
         <text class="card-title">我的订单</text>
-        <text class="card-more" @click="goOrders">全部 <text class="luc luc-chevron-right"></text></text>
+        <text class="card-more" @click="goOrders">
+          全部
+          <text class="luc luc-chevron-right" />
+        </text>
       </view>
       <view class="order-grid">
         <view
@@ -89,7 +92,7 @@
           class="order-item"
           @click="goOrders(item.value)"
         >
-          <text class="order-icon luc" :class="$luc(item.icon)"></text>
+          <text class="order-icon luc" :class="$luc(item.icon)" />
           <text class="order-label">{{ item.label }}</text>
           <view v-if="item.badge > 0" class="order-badge">{{ item.badge }}</view>
         </view>
@@ -103,9 +106,9 @@
         :key="i"
         class="feature-item"
         @click="onFeatureClick(f)">
-        <text class="feature-icon luc" :class="$luc(f.icon)"></text>
+        <text class="feature-icon luc" :class="$luc(f.icon)" />
         <text class="feature-label">{{ f.label }}</text>
-        <text class="feature-arrow"><text class="luc luc-chevron-right"></text></text>
+        <text class="feature-arrow"><text class="luc luc-chevron-right" /></text>
       </view>
     </view>
 
@@ -118,7 +121,7 @@
 
 <script>
 import { useUserStore } from '@/store'
-import { memberApi } from '@/api'
+import { memberApi, couponApi, giftCardApi, orderApi } from '@/api'
 import followApi from '@/api/follow'
 import browseApi from '@/api/browsingHistory'
 
@@ -128,6 +131,9 @@ export default {
       defaultAvatar: 'https://i.pravatar.cc/100?img=20',
       memberInfo: null,
       points: 0,
+      walletBalance: 0,
+      couponCount: 0,
+      giftCardCount: 0,
       followingCount: 0,
       followerCount: 0,
       collectCount: 0,
@@ -179,7 +185,9 @@ export default {
   onShow() {
     if (this.userStore.isLoggedIn) {
       this.loadMemberInfo()
+      this.loadWalletExtras()
       this.loadSocialCounts()
+      this.loadOrderBadges()
     }
   },
 
@@ -200,9 +208,18 @@ export default {
       try {
         // 并行拉取关注 / 粉丝 / 收藏 / 足迹的总数
         const tasks = [
-          followApi.listFollowing({ page: 1, size: 1 }).then(r => Array.isArray(r) ? r.length : 0).catch(() => 0),
-          followApi.listFollowers({ page: 1, size: 1 }).then(r => Array.isArray(r) ? r.length : 0).catch(() => 0),
-          browseApi.getHistory({ page: 1, size: 1 }).then(r => r?.total || 0).catch(() => 0),
+          followApi
+            .listFollowing({ page: 1, size: 1 })
+            .then((r) => (Array.isArray(r) ? r.length : 0))
+            .catch(() => 0),
+          followApi
+            .listFollowers({ page: 1, size: 1 })
+            .then((r) => (Array.isArray(r) ? r.length : 0))
+            .catch(() => 0),
+          browseApi
+            .getBrowsingHistory({ page: 1, size: 1 })
+            .then((r) => r?.total || 0)
+            .catch(() => 0),
         ]
         const [f1, f2, hist] = await Promise.all(tasks)
         this.followingCount = f1
@@ -210,6 +227,49 @@ export default {
         this.historyCount = hist
       } catch (e) {
         console.warn('[user] load social counts failed', e)
+      }
+    },
+
+    /** 加载钱包附加数据：优惠券 / 礼品卡数量 */
+    async loadWalletExtras() {
+      try {
+        const tasks = [
+          couponApi
+            .getMyCoupons('UNUSED')
+            .then((r) => {
+              // 后端返回 IPage,total 即未使用张数；老版本可能直接返回数组
+              if (r && typeof r === 'object' && 'total' in r) return r.total || 0
+              return Array.isArray(r) ? r.length : 0
+            })
+            .catch(() => 0),
+          giftCardApi
+            .getGiftCards({ page: 1, size: 1 })
+            .then((r) => r?.total || 0)
+            .catch(() => 0),
+        ]
+        const [couponCnt, giftCnt] = await Promise.all(tasks)
+        this.couponCount = couponCnt
+        this.giftCardCount = giftCnt
+      } catch (e) {
+        console.warn('[user] load wallet extras failed', e)
+      }
+    },
+
+    /** 加载订单宫格各状态角标数量 */
+    async loadOrderBadges() {
+      const statuses = this.orderTypes.map((t) => t.value)
+      try {
+        const results = await Promise.all(
+          statuses.map((s) =>
+            orderApi
+              .getOrderList({ status: s, page: 1, size: 1 })
+              .then((r) => r?.total || 0)
+              .catch(() => 0),
+          ),
+        )
+        this.orderTypes = this.orderTypes.map((t, i) => ({ ...t, badge: results[i] || 0 }))
+      } catch (e) {
+        console.warn('[user] load order badges failed', e)
       }
     },
 
@@ -252,7 +312,7 @@ export default {
         address: '/pages/user/address',
         pets: '/pages/pet/profile',
         favorites: '/pages/user/favorites',
-        history: '/pages/user/history',
+        history: '/pages/user/browsing-history',
         help: '/pages/user/help',
         about: '/pages/user/about',
       }
@@ -379,12 +439,13 @@ export default {
   border-radius: var(--radius-lg);
   overflow: hidden;
   height: 200rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 122, 255, 0.3);
 }
 
 .vip-bg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #2e2b29 0%, #4a4540 100%);
+  background: linear-gradient(135deg, var(--color-primary, #007aff) 0%, #004fad 100%);
 }
 
 .vip-content {
@@ -442,9 +503,10 @@ export default {
 
 .card {
   background: var(--color-surface);
-  border-radius: var(--radius-md);
+  border-radius: 24rpx;
   margin: 0 24rpx 16rpx;
   padding: 24rpx;
+  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.08);
 }
 
 .card-header {

@@ -20,7 +20,7 @@
     <view v-if="status === 'pending'" class="pay-methods">
       <view class="card method-card" @click="payChannel = 'STRIPE'">
         <view class="radio" :class="{ checked: payChannel === 'STRIPE' }">
-          <text v-if="payChannel === 'STRIPE'"><text class="luc luc-check"></text></text>
+          <text v-if="payChannel === 'STRIPE'"><text class="luc luc-check" /></text>
         </view>
         <view class="method-info">
           <text class="method-name">Credit / Debit Card</text>
@@ -30,7 +30,7 @@
 
       <view class="card method-card" @click="payChannel = 'PAYPAL'">
         <view class="radio" :class="{ checked: payChannel === 'PAYPAL' }">
-          <text v-if="payChannel === 'PAYPAL'"><text class="luc luc-check"></text></text>
+          <text v-if="payChannel === 'PAYPAL'"><text class="luc luc-check" /></text>
         </view>
         <view class="method-info">
           <text class="method-name">PayPal</text>
@@ -68,6 +68,17 @@ export default {
   onLoad(query) {
     this.orderId = query.id
     this.loadOrder()
+    // H2 修复：进入支付页时尝试读取 localStorage 兜底（兼容 H5 跳转场景）
+    this.readPayResultFromStorage()
+  },
+
+  onShow() {
+    // H4 修复：从 web-view 切回 APP 时主动拉一次订单详情，避免轮询停摆后丢失回调
+    // 同时检查 localStorage 兜底（H5 浏览器支付后通过 storage 回传）
+    this.readPayResultFromStorage()
+    if (this.orderId) {
+      this.pollOrderOnce()
+    }
   },
 
   onUnload() {
@@ -86,19 +97,28 @@ export default {
     async onPay() {
       uni.showLoading({ title: 'Processing...', mask: true })
       try {
+        // H2 修复：透传 returnUrl 给后端，让 Stripe/PayPal 支付完成后跳回 moyuyo.com 上的中转页
+        // 中转页（moyuyo-server/moyuyo-api/src/main/resources/static/payment/return.html）
+        // 通过 window.parent.postMessage 把结果回传给 web-view
+        const returnUrl = this.buildReturnUrl()
         const res = await orderApi.createPayment({
           orderNo: this.order.orderNo,
           payChannel: this.payChannel,
+          returnUrl,
         })
         uni.hideLoading()
 
-        if (this.payChannel === 'STRIPE' && res.approvalUrl) {
-          this.payUrl = res.approvalUrl
+        // H1 修复：优先使用 sessionUrl（Stripe Checkout Session 标准 URL），前端 web-view 直接打开
+        // 兜底仅支持旧版 PaymentIntent + clientSecret 的场景
+        if (res.sessionUrl) {
+          this.payUrl = res.sessionUrl
           this.startPolling()
         } else if (this.payChannel === 'STRIPE' && res.clientSecret) {
-          this.payUrl = `https://checkout.stripe.com/pay/${res.clientSecret}`
+          // 兜底：用 Stripe Payment Intent 直接跳 Stripe 托管支付页
+          this.payUrl = `https://checkout.stripe.com/c/pay/${res.clientSecret}`
           this.startPolling()
-        } else if (this.payChannel === 'PAYPAL' && res.approvalUrl) {
+        } else if (res.approvalUrl) {
+          // PayPal approvalUrl
           this.payUrl = res.approvalUrl
           this.startPolling()
         } else {
@@ -111,6 +131,18 @@ export default {
         this.status = 'failed'
         this.statusText = e.message || 'Payment failed'
       }
+    },
+
+    /**
+     * 构造 returnUrl：指向后端 static/payment/return.html 静态中转页，
+     * 该页面通过 window.parent.postMessage 把支付结果回传给 web-view。
+     */
+    buildReturnUrl() {
+      // H1 修复：使用专门的支付回跳域名（避免与 WordPress wpBase 混淆）
+      // dev 环境 payReturnBase 为空时回落到 window.location.origin 走同源 Vite proxy
+      const base =
+        this.$config?.payReturnBase || (typeof window !== 'undefined' ? window.location.origin : '')
+      return `${base}/payment/return.html`
     },
 
     startPolling() {
@@ -146,15 +178,66 @@ export default {
     onWebviewMessage(e) {
       const data = e.detail?.data?.[0]
       if (data?.type === 'pay_result') {
-        if (data.status === 'success') {
-          this.status = 'success'
-          this.statusText = 'Payment successful!'
-        } else {
-          this.status = 'failed'
-          this.statusText = data.message || 'Payment failed'
-        }
-        this.stopPolling()
+        this.handlePayResult(data.status, data.message)
       }
+    },
+
+    /**
+     * H4 修复：从 localStorage 读取中转页回传结果（兜底，兼容 web-view 不传 message 的场景）
+     */
+    readPayResultFromStorage() {
+      try {
+        const raw = uni.getStorageSync('moyuyo_pay_result')
+        if (!raw || typeof raw !== 'string') return
+        const data = JSON.parse(raw)
+        if (data?.type !== 'pay_result') return
+        // 仅消费与当前订单匹配的结果，避免历史脏数据误判
+        if (data.orderNo && this.order?.orderNo && data.orderNo !== this.order.orderNo) return
+        // 已处理过则跳过（避免重复跳转）
+        if (uni.getStorageSync('moyuyo_pay_result_handled') === data.timestamp || raw._handled)
+          return
+        // 标记已消费 + 立即清空，防止下次进入再触发
+        uni.setStorageSync('moyuyo_pay_result_handled', Date.now())
+        this.handlePayResult(data.status, data.message)
+      } catch (e) {
+        // ignore
+      }
+    },
+
+    /**
+     * H4 修复：拉一次订单状态判断是否已支付成功（onShow 用）
+     */
+    async pollOrderOnce() {
+      try {
+        const order = await orderApi.getOrderDetail(this.orderId)
+        if (order.status === 'PAID') {
+          this.handlePayResult('success', '')
+        } else if (order.status === 'CANCELLED') {
+          this.handlePayResult('cancelled', '订单已取消')
+        }
+      } catch (e) {
+        // ignore
+      }
+    },
+
+    /**
+     * 统一处理支付结果：更新状态文案、关闭 web-view、跳订单详情。
+     */
+    handlePayResult(status, message) {
+      this.stopPolling()
+      if (status === 'success') {
+        this.status = 'success'
+        this.statusText = 'Payment successful!'
+        setTimeout(() => this.goDetail(), 800)
+      } else if (status === 'cancelled' || status === 'cancel') {
+        this.status = 'failed'
+        this.statusText = 'Payment cancelled'
+      } else {
+        this.status = 'failed'
+        this.statusText = message || 'Payment failed'
+      }
+      // 关闭 web-view
+      this.payUrl = ''
     },
 
     statusLabel(status) {

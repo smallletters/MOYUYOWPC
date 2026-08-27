@@ -36,6 +36,12 @@
             <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
         </dependency>
 
+        <!-- Stripe Java SDK：H1 修复，改用 Stripe.checkout.Session 替代手写 PaymentIntent HTTP 调用 -->
+        <dependency>
+            <groupId>com.stripe</groupId>
+            <artifactId>stripe-java</artifactId>
+        </dependency>
+
         <!-- 测试依赖（JUnit 5 + AssertJ） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

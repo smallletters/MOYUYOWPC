@@ -1,7 +1,9 @@
 <template>
   <view class="pet-profile">
     <view class="page-header">
-      <view class="back" @click="goBack" aria-label="返回"><text class="luc luc-arrow-left"></text></view>
+      <view class="back" aria-label="返回" @click="goBack">
+        <text class="luc luc-arrow-left" />
+      </view>
       <text class="title">{{ isEdit ? '编辑宠物' : '新增宠物' }}</text>
       <view class="save-btn" @click="onSave">保存</view>
     </view>
@@ -11,7 +13,7 @@
       <view class="avatar-card">
         <view class="avatar-wrap" @click="onChangeAvatar">
           <image :src="form.avatar || defaultAvatar" class="avatar" />
-          <view class="avatar-edit"><text class="luc luc-camera"></text></view>
+          <view class="avatar-edit"><text class="luc luc-camera" /></view>
         </view>
         <text class="avatar-tip">点击更换头像</text>
       </view>
@@ -20,17 +22,20 @@
       <view class="form-card">
         <view class="form-item">
           <text class="form-label">宠物名字</text>
-          <input v-model="form.name" class="form-input" placeholder="请输入宠物名字" />
+          <input v-model="form.name" class="form-input" placeholder="请输入宠物名字">
         </view>
         <view class="form-item">
           <text class="form-label">种类</text>
           <picker mode="selector" :range="speciesOptions" @change="onSpeciesChange">
-            <view class="form-picker">{{ form.species || '请选择' }} <text class="luc luc-chevron-right"></text></view>
+            <view class="form-picker">
+              {{ form.species || '请选择' }}
+              <text class="luc luc-chevron-right" />
+            </view>
           </picker>
         </view>
         <view class="form-item">
           <text class="form-label">品种</text>
-          <input v-model="form.breed" class="form-input" placeholder="如金毛寻回犬" />
+          <input v-model="form.breed" class="form-input" placeholder="如金毛寻回犬">
         </view>
         <view class="form-item">
           <text class="form-label">性别</text>
@@ -49,12 +54,19 @@
         <view class="form-item">
           <text class="form-label">生日</text>
           <picker mode="date" :value="form.birthday" @change="onBirthdayChange">
-            <view class="form-picker">{{ form.birthday || '请选择' }} <text class="luc luc-chevron-right"></text></view>
+            <view class="form-picker">
+              {{ form.birthday || '请选择' }}
+              <text class="luc luc-chevron-right" />
+            </view>
           </picker>
         </view>
         <view class="form-item">
           <text class="form-label">体重</text>
-          <input v-model="form.weight" type="digit" class="form-input" placeholder="kg" />
+          <input
+            v-model="form.weight"
+            type="digit"
+            class="form-input"
+            placeholder="kg">
         </view>
       </view>
 
@@ -154,17 +166,26 @@ export default {
       }
     },
 
-    onSave() {
+    async onSave() {
       if (!this.form.name) {
         uni.showToast({ title: '请输入宠物名字', icon: 'none' })
         return
       }
       uni.showLoading({ title: '保存中...' })
-      setTimeout(() => {
+      try {
+        // 编辑模式调用 updatePet,新增模式调用 createPet
+        if (this.isEdit && this.form.id) {
+          await petApi.updatePet(this.form.id, this.form)
+        } else {
+          await petApi.createPet(this.form)
+        }
         uni.hideLoading()
         uni.showToast({ title: '已保存', icon: 'success' })
         setTimeout(() => uni.navigateBack(), 800)
-      }, 800)
+      } catch (e) {
+        uni.hideLoading()
+        uni.showToast({ title: e?.message || '保存失败', icon: 'none' })
+      }
     },
   },
 }

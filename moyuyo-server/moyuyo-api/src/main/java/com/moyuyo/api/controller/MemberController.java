@@ -53,4 +53,10 @@ public class MemberController {
   public Result<Double> currentPointsRate() {
     return Result.success(memberService.getCurrentPointsRate(UserContextHolder.getUserId()));
   }
+
+  @Operation(summary = "会员专属特权列表（按等级过滤）")
+  @GetMapping("/privileges")
+  public Result<List<Map<String, Object>>> listPrivileges() {
+    return Result.success(memberService.listPrivileges(UserContextHolder.getUserId()));
+  }
 }

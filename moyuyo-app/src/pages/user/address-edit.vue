@@ -1,60 +1,138 @@
 <template>
   <view class="address-edit">
+    <view class="header-bar">
+      <view class="header-back" aria-label="返回" @click="goBack">
+        <text class="luc luc-arrow-left" />
+      </view>
+      <text class="title">{{ form.id ? '编辑地址' : '新增地址' }}</text>
+      <view class="header-spacer" />
+    </view>
+
     <scroll-view scroll-y class="form">
       <view class="input-group">
-        <text class="input-label">Full Name *</text>
-        <input v-model="form.receiver" class="input" placeholder="John Doe">
+        <text class="input-label">
+          收件人
+          <text class="required">*</text>
+        </text>
+        <input
+          v-model="form.receiver"
+          class="input"
+          placeholder="请输入收件人姓名"
+          maxlength="40"
+        >
       </view>
+
       <view class="input-group">
-        <text class="input-label">Phone *</text>
+        <text class="input-label">
+          手机号码
+          <text class="required">*</text>
+        </text>
         <input
           v-model="form.phone"
           class="input"
           type="number"
-          placeholder="+1 555 1234">
+          placeholder="请输入手机号码"
+          maxlength="20"
+        >
       </view>
+
       <view class="input-group">
-        <text class="input-label">Country *</text>
-        <picker mode="selector" :range="countries" @change="onCountryChange">
-          <view class="input picker">{{ form.country || 'Select' }}</view>
+        <text class="input-label">
+          国家 / 地区
+          <text class="required">*</text>
+        </text>
+        <picker
+          mode="selector"
+          :range="countries"
+          :value="countryIndex"
+          @change="onCountryChange">
+          <view class="input picker">
+            <text>{{ form.country || '请选择' }}</text>
+            <text class="luc luc-chevron-down picker-arrow" />
+          </view>
         </picker>
       </view>
-      <view class="input-group">
-        <text class="input-label">Province / State</text>
-        <input v-model="form.province" class="input" placeholder="California">
+
+      <view class="row-group">
+        <view class="input-group half">
+          <text class="input-label">省 / 州</text>
+          <input
+            v-model="form.province"
+            class="input"
+            placeholder="如 California"
+            maxlength="40">
+        </view>
+        <view class="input-group half">
+          <text class="input-label">
+            城市
+            <text class="required">*</text>
+          </text>
+          <input
+            v-model="form.city"
+            class="input"
+            placeholder="请输入城市"
+            maxlength="40">
+        </view>
       </view>
+
       <view class="input-group">
-        <text class="input-label">City *</text>
-        <input v-model="form.city" class="input">
+        <text class="input-label">区 / 县</text>
+        <input
+          v-model="form.district"
+          class="input"
+          placeholder="选填"
+          maxlength="40">
       </view>
+
       <view class="input-group">
-        <text class="input-label">District</text>
-        <input v-model="form.district" class="input">
+        <text class="input-label">
+          详细地址
+          <text class="required">*</text>
+        </text>
+        <input
+          v-model="form.detail"
+          class="input"
+          placeholder="街道、楼号、门牌号等"
+          maxlength="120"
+        >
       </view>
+
       <view class="input-group">
-        <text class="input-label">Address *</text>
-        <input v-model="form.detail" class="input" placeholder="Street, building, apt">
+        <text class="input-label">邮编</text>
+        <input
+          v-model="form.zipCode"
+          class="input"
+          placeholder="选填"
+          maxlength="20">
       </view>
+
       <view class="input-group">
-        <text class="input-label">Postal Code</text>
-        <input v-model="form.zipCode" class="input">
+        <text class="input-label">标签</text>
+        <view class="tag-options">
+          <view
+            v-for="t in tags"
+            :key="t.value"
+            class="tag-option"
+            :class="{ active: form.tag === t.value }"
+            @click="form.tag = form.tag === t.value ? '' : t.value"
+          >
+            <text class="luc" :class="t.icon" />
+            <text>{{ t.label }}</text>
+          </view>
+        </view>
       </view>
-      <view class="input-group">
-        <text class="input-label">Tag</text>
-        <picker mode="selector" :range="tags" @change="onTagChange">
-          <view class="input picker">{{ form.tag || 'Select (optional)' }}</view>
-        </picker>
-      </view>
+
       <view class="default-row" @click="form.isDefault = !form.isDefault">
         <view class="checkbox" :class="{ checked: form.isDefault }">
-          <text v-if="form.isDefault"><text class="luc luc-check"></text></text>
+          <text v-if="form.isDefault" class="luc luc-check" />
         </view>
-        <text>Set as default address</text>
+        <text>设为默认地址</text>
       </view>
     </scroll-view>
 
     <view class="bottom-bar safe-area-bottom">
-      <view class="btn btn-primary save-btn" @click="onSave">Save</view>
+      <view class="btn btn-secondary cancel-btn" @click="goBack">取消</view>
+      <view class="btn btn-primary save-btn" @click="onSave">保存</view>
     </view>
   </view>
 </template>
@@ -78,50 +156,101 @@ export default {
         tag: '',
         isDefault: false,
       },
-      countries: ['US', 'CA', 'GB', 'DE', 'FR', 'ES', 'IT', 'NL', 'AU', 'JP'],
-      tags: ['HOME', 'COMPANY', 'OTHER'],
+      countries: [
+        'US',
+        'CA',
+        'GB',
+        'DE',
+        'FR',
+        'ES',
+        'IT',
+        'NL',
+        'AU',
+        'JP',
+        'CN',
+        'HK',
+        'TW',
+        'SG',
+        'MY',
+      ],
+      tags: [
+        { value: 'HOME', label: '家', icon: 'luc-home' },
+        { value: 'COMPANY', label: '公司', icon: 'luc-briefcase' },
+        { value: 'OTHER', label: '其他', icon: 'luc-map-pin' },
+      ],
     }
+  },
+
+  computed: {
+    countryIndex() {
+      const idx = this.countries.indexOf(this.form.country)
+      return idx >= 0 ? idx : 0
+    },
   },
 
   async onLoad(query) {
     if (query.id) {
       try {
         const addr = await addressApi.getAddressDetail(query.id)
-        if (addr) this.form = { ...addr }
+        if (addr) {
+          this.form = { ...this.form, ...addr }
+          // 兼容后端可能不返回 tag 的情况
+          if (typeof this.form.tag !== 'string') this.form.tag = ''
+        }
       } catch (e) {
         console.warn('[address-edit] load failed', e)
+        uni.showToast({ title: '加载失败', icon: 'none' })
       }
     }
   },
 
   methods: {
     onCountryChange(e) {
-      this.form.country = this.countries[e.detail.value]
-    },
-
-    onTagChange(e) {
-      this.form.tag = this.tags[e.detail.value]
+      const idx = Number(e.detail.value)
+      if (this.countries[idx]) this.form.country = this.countries[idx]
     },
 
     async onSave() {
-      const required = ['receiver', 'phone', 'detail', 'city']
-      for (const key of required) {
-        if (!this.form[key]) {
-          uni.showToast({ title: 'Please fill required fields', icon: 'none' })
+      // 必填校验
+      const required = [
+        { key: 'receiver', label: '收件人' },
+        { key: 'phone', label: '手机号码' },
+        { key: 'detail', label: '详细地址' },
+        { key: 'city', label: '城市' },
+      ]
+      for (const r of required) {
+        if (!this.form[r.key] || !String(this.form[r.key]).trim()) {
+          uni.showToast({ title: `请填写${r.label}`, icon: 'none' })
           return
         }
       }
+      // 手机号简单格式校验（最少 6 位数字即可，海外号码格式差异大）
+      if (!/^\d{6,20}$/.test(String(this.form.phone).replace(/\s+/g, ''))) {
+        uni.showToast({ title: '手机号格式不正确', icon: 'none' })
+        return
+      }
+
       try {
+        uni.showLoading({ title: '保存中…' })
         if (this.form.id) {
           await addressApi.updateAddress(this.form.id, this.form)
         } else {
           await addressApi.createAddress(this.form)
         }
-        uni.showToast({ title: 'Saved', icon: 'success' })
-        setTimeout(() => uni.navigateBack(), 800)
+        uni.hideLoading()
+        uni.showToast({ title: '保存成功', icon: 'success' })
+        setTimeout(() => uni.navigateBack(), 600)
       } catch (e) {
-        uni.showToast({ title: 'Save failed', icon: 'none' })
+        uni.hideLoading()
+        console.warn('[address-edit] save failed', e)
+        uni.showToast({ title: '保存失败', icon: 'none' })
       }
+    },
+
+    goBack() {
+      const pages = getCurrentPages()
+      if (pages.length > 1) uni.navigateBack({ delta: 1 })
+      else uni.switchTab({ url: '/pages/tabbar/user' })
     },
   },
 }
@@ -131,76 +260,174 @@ export default {
 .address-edit {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
   background: var(--color-background);
 }
 
+/* ============ 顶部 ============ */
+.header-bar {
+  display: flex;
+  align-items: center;
+  height: 88rpx;
+  padding: 0 24rpx;
+  background: var(--color-surface);
+  border-bottom: 1rpx solid var(--color-divider);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.header-back {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  color: var(--color-text);
+}
+.title {
+  flex: 1;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+.header-spacer {
+  width: 64rpx;
+  height: 64rpx;
+}
+
+/* ============ 表单 ============ */
 .form {
   flex: 1;
   padding: 16rpx;
   display: flex;
   flex-direction: column;
   gap: 12rpx;
+  padding-bottom: 32rpx;
 }
 
 .input-group {
   background: var(--color-surface);
-  border-radius: var(--radius-md);
-  padding: 16rpx 24rpx;
+  border-radius: var(--radius-lg, 20rpx);
+  padding: 20rpx 24rpx;
 }
-
 .input-label {
   display: block;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
-  margin-bottom: 4rpx;
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+  margin-bottom: 8rpx;
 }
-
+.required {
+  color: var(--color-danger);
+  margin-left: 2rpx;
+}
 .input {
-  display: block;
   width: 100%;
-  font-size: var(--font-size-base);
+  font-size: 28rpx;
+  color: var(--color-text);
+  line-height: 1.5;
 }
-
 .picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   min-height: 44rpx;
+  font-size: 28rpx;
+  color: var(--color-text);
+}
+.picker-arrow {
+  font-size: 28rpx;
+  color: var(--color-text-tertiary);
 }
 
+/* 双列（省 / 市） */
+.row-group {
+  display: flex;
+  gap: 12rpx;
+}
+.half {
+  flex: 1;
+}
+
+/* 标签选择 */
+.tag-options {
+  display: flex;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+.tag-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 12rpx 20rpx;
+  border-radius: 999px;
+  background: var(--color-background);
+  color: var(--color-text-secondary);
+  font-size: 24rpx;
+  border: 1rpx solid transparent;
+}
+.tag-option.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+/* 设为默认 */
 .default-row {
   display: flex;
   align-items: center;
   gap: 12rpx;
-  padding: 16rpx 24rpx;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
+  padding: 24rpx;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg, 20rpx);
+  font-size: 28rpx;
+  color: var(--color-text);
 }
-
 .checkbox {
-  width: 32rpx;
-  height: 32rpx;
+  width: 36rpx;
+  height: 36rpx;
   border: 2rpx solid var(--color-divider);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 20rpx;
+  font-size: 22rpx;
+  background: var(--color-surface);
+  flex-shrink: 0;
 }
-
 .checkbox.checked {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: var(--color-text);
 }
 
+/* ============ 底部 ============ */
 .bottom-bar {
+  display: flex;
+  gap: 16rpx;
   padding: 16rpx 24rpx;
   background: var(--color-surface);
   border-top: 1rpx solid var(--color-divider);
 }
-
+.btn {
+  flex: 1;
+  height: 88rpx;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 28rpx;
+  font-weight: var(--font-weight-medium);
+  border: 1rpx solid transparent;
+}
+.cancel-btn {
+  background: var(--color-background);
+  color: var(--color-text);
+}
 .save-btn {
-  padding: 24rpx 0;
-  font-size: var(--font-size-md);
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
 }
 </style>

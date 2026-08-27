@@ -54,6 +54,16 @@ public class OrderServiceImpl implements OrderService {
   @Override
   @Transactional
   public OrderEntity createOrder(Long userId, List<OrderItemEntity> items, Long addressId, String remark, String couponId) {
+    // 兼容旧签名：默认无折扣、无积分抵扣、无运费
+    return createOrder(userId, items, addressId, remark, couponId,
+            BigDecimal.ZERO, 0, BigDecimal.ZERO, "standard", BigDecimal.ZERO);
+  }
+
+  @Override
+  @Transactional
+  public OrderEntity createOrder(Long userId, List<OrderItemEntity> items, Long addressId, String remark,
+                                 String couponId, BigDecimal couponDiscount, Integer pointsUsed,
+                                 BigDecimal pointsDiscount, String shippingMethod, BigDecimal freight) {
     // 生产防护：禁止空商品列表创建零金额订单
     if (items == null || items.isEmpty()) {
       throw new IllegalArgumentException("订单商品不能为空");
@@ -63,7 +73,7 @@ public class OrderServiceImpl implements OrderService {
     String snowId = String.valueOf(IdWorker.getId());
     String orderNo = "ORD" + datePart + snowId.substring(snowId.length() - 8);
 
-    // 校验库存并计算商品总金额
+    // 校验库存并计算商品总金额；M2 修复：非 SKU 商品也走原子 UPDATE 扣减 stock，防止并发超卖
     BigDecimal goodsAmount = BigDecimal.ZERO;
     for (OrderItemEntity item : items) {
       // 校验商品是否存在且在上架状态
@@ -74,13 +84,13 @@ public class OrderServiceImpl implements OrderService {
       if (product.getOnSale() == null || !product.getOnSale()) {
         throw new IllegalArgumentException("商品已下架: " + product.getName());
       }
-      // 校验 SKU 是否存在且库存充足，使用原子更新防止并发超卖
       if (item.getSkuId() != null) {
+        // 走 SKU 原子扣减
         ProductSkuEntity sku = productSkuMapper.selectById(item.getSkuId());
         if (sku == null) {
           throw new IllegalArgumentException("SKU不存在: " + item.getSkuId());
         }
-        // 原子扣减库存：UPDATE mo_product_sku SET stock = stock - qty WHERE id = ? AND stock >= qty
+        // 原子扣减：UPDATE mo_product_sku SET stock = stock - qty WHERE id = ? AND stock >= qty
         LambdaUpdateWrapper<ProductSkuEntity> stockWrapper = new LambdaUpdateWrapper<>();
         stockWrapper.eq(ProductSkuEntity::getId, item.getSkuId())
             .setSql("stock = stock - " + item.getQuantity())
@@ -89,10 +99,35 @@ public class OrderServiceImpl implements OrderService {
         if (affected == 0) {
           throw new IllegalStateException("商品库存不足: " + product.getName());
         }
-      } else if (product.getStock() != null && product.getStock() < item.getQuantity()) {
-        throw new IllegalArgumentException("商品库存不足: " + product.getName() + "，当前库存: " + product.getStock());
+      } else {
+        // 非 SKU 商品：M2 修复，同样走原子扣减 product.stock（防超卖）
+        // 原实现只比较 product.getStock() 但不真扣减，多人并发会同时通过校验导致超卖
+        LambdaUpdateWrapper<ProductEntity> productStockWrapper = new LambdaUpdateWrapper<>();
+        productStockWrapper.eq(ProductEntity::getId, item.getProductId())
+            .setSql("stock = stock - " + item.getQuantity())
+            .apply("stock >= {0}", item.getQuantity());
+        int affected = productMapper.update(null, productStockWrapper);
+        if (affected == 0) {
+          throw new IllegalStateException("商品库存不足: " + product.getName());
+        }
       }
       goodsAmount = goodsAmount.add(item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+    }
+
+    // 金额兜底：null 转 0，避免 NPE 与下游 BigDecimal 计算异常
+    BigDecimal safeCouponDiscount = couponDiscount == null ? BigDecimal.ZERO : couponDiscount;
+    BigDecimal safePointsDiscount = pointsDiscount == null ? BigDecimal.ZERO : pointsDiscount;
+    BigDecimal safeFreight = freight == null ? BigDecimal.ZERO : freight;
+    int safePointsUsed = pointsUsed == null ? 0 : Math.max(pointsUsed, 0);
+
+    // M1 修复：payAmount = 商品总金额 + 运费 - 优惠券减免 - 积分抵扣，下限 0
+    // 原实现直接 payAmount = goodsAmount，导致前端展示的优惠金额与实际扣款金额不一致
+    BigDecimal payAmount = goodsAmount
+            .add(safeFreight)
+            .subtract(safeCouponDiscount)
+            .subtract(safePointsDiscount);
+    if (payAmount.compareTo(BigDecimal.ZERO) < 0) {
+      payAmount = BigDecimal.ZERO;
     }
 
     // 构建订单
@@ -100,12 +135,16 @@ public class OrderServiceImpl implements OrderService {
     order.setOrderNo(orderNo);
     order.setUserId(userId);
     order.setGoodsAmount(goodsAmount);
-    order.setFreight(BigDecimal.ZERO);
-    order.setPayAmount(goodsAmount);
+    order.setFreight(safeFreight);
+    order.setCouponDiscount(safeCouponDiscount);
+    order.setPointsDiscount(safePointsDiscount);
+    order.setPointsUsed(safePointsUsed);
+    order.setPayAmount(payAmount);
     order.setStatus(PENDING_PAY.name());
     order.setAddressId(addressId);
     order.setRemark(remark);
     order.setCouponId(couponId);
+    order.setShippingMethod(shippingMethod == null ? "standard" : shippingMethod);
     order.setDeleteStatus(0);
     orderMapper.insert(order);
 
@@ -123,7 +162,7 @@ public class OrderServiceImpl implements OrderService {
   @Transactional
   public OrderEntity createOrderFromRequest(Long userId, CreateOrderRequest request) {
     // 将请求中的商品信息转换为订单项实体（含 SKU/商品校验）
-    List<OrderItemEntity> items = new ArrayList<>();
+    List<OrderItemEntity> items = new ArrayList();
     for (OrderItemRequest itemReq : request.getItems()) {
       ProductSkuEntity sku = productSkuMapper.selectById(itemReq.getSkuId());
       if (sku == null) {
@@ -144,7 +183,11 @@ public class OrderServiceImpl implements OrderService {
       items.add(item);
     }
 
-    return createOrder(userId, items, request.getAddressId(), request.getRemark(), request.getCouponId());
+    // M1：把优惠券/积分/运费/配送方式透传给 createOrder 落库 + 折算 payAmount
+    return createOrder(userId, items, request.getAddressId(), request.getRemark(),
+            request.getCouponId(), request.getCouponDiscount(),
+            request.getPointsUsed(), request.getPointsDiscount(),
+            request.getShippingMethod(), request.getFreight());
   }
 
   @Override
@@ -194,13 +237,16 @@ public class OrderServiceImpl implements OrderService {
     // P1 修复：取消订单时恢复已扣减的库存，避免 SKU 库存永久减少
     // 原实现仅更新订单状态，createOrder 中扣减的 stock 不会被回滚，
     // 导致用户取消订单后该 SKU 库存"看起来永久减少"（实际库存已经被买走了，但订单未付款）
-    // 注：这里采用"加法恢复"而非乐观锁校验，避免与订单超时取消任务（OrderTimeoutConsumer）产生死锁竞争
+    // 注：这里采用"加法恢复"而非乐观锁校验，避免与订单超时取消任务（OrderTimeoutCancelJob）产生死锁竞争
     List<OrderItemEntity> items = orderItemMapper.selectList(
         new LambdaQueryWrapper<OrderItemEntity>()
             .eq(OrderItemEntity::getOrderId, orderId));
     if (items != null) {
       for (OrderItemEntity item : items) {
-        if (item.getSkuId() != null && item.getQuantity() != null && item.getQuantity() > 0) {
+        if (item.getQuantity() == null || item.getQuantity() <= 0) {
+          continue;
+        }
+        if (item.getSkuId() != null) {
           // 原子累加：UPDATE mo_product_sku SET stock = stock + qty WHERE id = ?
           // 不带 WHERE 库存上下限约束：允许临时超过上限（与创建订单并发场景下，安全优先）
           LambdaUpdateWrapper<ProductSkuEntity> restoreWrapper = new LambdaUpdateWrapper<>();
@@ -211,6 +257,16 @@ public class OrderServiceImpl implements OrderService {
             // 极端情况：SKU 已被删除
             log.warn("取消订单恢复库存失败：SKU不存在或已删除，skuId={}, orderId={}",
                     item.getSkuId(), orderId);
+          }
+        } else if (item.getProductId() != null) {
+          // M2 修复：非 SKU 商品同步恢复 product.stock（与 createOrder 中的扣减对称）
+          LambdaUpdateWrapper<ProductEntity> restoreWrapper = new LambdaUpdateWrapper<>();
+          restoreWrapper.eq(ProductEntity::getId, item.getProductId())
+              .setSql("stock = stock + " + item.getQuantity());
+          int affected = productMapper.update(null, restoreWrapper);
+          if (affected == 0) {
+            log.warn("取消订单恢复库存失败：商品不存在或已删除，productId={}, orderId={}",
+                    item.getProductId(), orderId);
           }
         }
       }

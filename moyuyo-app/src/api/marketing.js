@@ -6,6 +6,21 @@ export function listPrimePlans() {
   return get('/api/v1/prime/plans')
 }
 
+/** 当前用户的 Prime 订阅状态（已开通/未开通） */
+export function getPrimeStatus() {
+  return get('/api/v1/prime/status')
+}
+
+/** 订阅 Prime（dev/mock 直接落库 ACTIVE） */
+export function subscribePrime(planCode, payChannel = 'STRIPE') {
+  return post('/api/v1/prime/subscribe', { planCode, payChannel })
+}
+
+/** 取消 Prime 订阅 */
+export function cancelPrime() {
+  return post('/api/v1/prime/cancel', {})
+}
+
 // 分销中心
 export function getAffiliateAccount() {
   return get('/api/v1/affiliate/account')
@@ -59,10 +74,17 @@ export function annualReport() {
 
 export default {
   listPrimePlans,
-  getAffiliateAccount, listCommissions,
+  getAffiliateAccount,
+  listCommissions,
   listAchievements,
-  listNewuserGifts, claimGift, myGifts,
-  listActiveFestivals, festivalDetail,
-  listBookings, bookingDetail, createBooking, cancelBooking,
+  listNewuserGifts,
+  claimGift,
+  myGifts,
+  listActiveFestivals,
+  festivalDetail,
+  listBookings,
+  bookingDetail,
+  createBooking,
+  cancelBooking,
   annualReport,
 }

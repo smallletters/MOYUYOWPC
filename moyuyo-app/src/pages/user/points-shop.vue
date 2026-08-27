@@ -3,7 +3,10 @@
     <view class="balance-card card">
       <text class="balance-label">Your Points</text>
       <text class="balance-value">{{ points }}</text>
-      <view v-if="checkedIn" class="checked-in"><text class="luc luc-check"></text> Today checked in</view>
+      <view v-if="checkedIn" class="checked-in">
+        <text class="luc luc-check" />
+        Today checked in
+      </view>
       <view v-else class="btn btn-sm btn-outline" @click="onCheckin">Check in +5</view>
     </view>
 
@@ -49,11 +52,7 @@ export default {
       points: 0,
       checkedIn: false,
       logs: [],
-      rewards: [
-        { id: 1, name: 'MOYUYO Tote Bag', description: 'Limited edition canvas tote', points: 500, image: 'https://picsum.photos/200/200?random=21' },
-        { id: 2, name: '$5 Off Coupon', description: 'Valid on orders over $30', points: 1000, image: 'https://picsum.photos/200/200?random=22' },
-        { id: 3, name: 'Free Shipping', description: 'One-time free shipping', points: 800, image: 'https://picsum.photos/200/200?random=23' },
-      ],
+      rewards: [],
     }
   },
 
@@ -64,12 +63,17 @@ export default {
   methods: {
     async loadData() {
       try {
-        const [balance, logRes] = await Promise.all([
+        const [balance, logRes, goodsRes] = await Promise.all([
           pointsApi.getPointsBalance(),
           pointsApi.getPointsLog({ page: 1, size: 20 }),
+          // 拉取真实积分商品列表,失败也不影响余额/流水展示
+          pointsApi.getPointsGoods({ page: 1, size: 50 }).catch(() => null),
         ])
         this.points = balance || 0
         this.logs = logRes?.records || logRes || []
+        // 后端返回 IPage 时取 records,直接数组时取自身
+        const list = (goodsRes && (goodsRes.records || goodsRes)) || []
+        this.rewards = Array.isArray(list) ? list : []
       } catch (e) {
         console.error('[points] load error', e)
       }
@@ -107,16 +111,31 @@ export default {
       uni.showModal({
         title: 'Redeem ' + item.name,
         content: 'This will cost ' + item.points + ' points. Continue?',
-        success: (res) => {
-          if (res.confirm) {
-            uni.showToast({ title: 'Redeemed! (demo)', icon: 'success' })
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            uni.showLoading({ title: '兑换中...', mask: true })
+            await pointsApi.exchangePointsGoods(item.id)
+            uni.hideLoading()
+            uni.showToast({ title: '兑换成功', icon: 'success' })
+            // 重新拉取积分余额，保证与服务端一致
+            this.loadData()
+          } catch (e) {
+            uni.hideLoading()
+            uni.showToast({ title: e?.message || '兑换失败', icon: 'none' })
           }
         },
       })
     },
 
     logLabel(type) {
-      const map = { CHECKIN: 'Check-in', SPEND: 'Spent', EARN: 'Earned', ORDER: 'Purchase', SIGNUP: 'Welcome' }
+      const map = {
+        CHECKIN: 'Check-in',
+        SPEND: 'Spent',
+        EARN: 'Earned',
+        ORDER: 'Purchase',
+        SIGNUP: 'Welcome',
+      }
       return map[type] || type
     },
 
@@ -129,27 +148,113 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.points-shop { min-height: 100vh; background: var(--color-background); padding: 16rpx; }
-.card { background: var(--color-surface); border-radius: var(--radius-md); padding: 24rpx; margin-bottom: 16rpx; }
-.balance-card { text-align: center; padding: 40rpx 24rpx; }
-.balance-label { font-size: var(--font-size-sm); color: var(--color-text-tertiary); display: block; }
-.balance-value { font-size: 72rpx; font-weight: var(--font-weight-bold); color: var(--color-primary); display: block; margin: 16rpx 0; }
-.checked-in { font-size: var(--font-size-sm); color: var(--color-primary); }
-.section { margin-bottom: 24rpx; }
-.section-title { font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); display: block; margin-bottom: 16rpx; padding-left: 8rpx; }
-.reward-card { display: flex; gap: 16rpx; padding: 20rpx; }
-.reward-image { width: 160rpx; height: 160rpx; border-radius: var(--radius-sm); flex-shrink: 0; }
-.reward-info { flex: 1; display: flex; flex-direction: column; gap: 8rpx; }
-.reward-name { font-size: var(--font-size-base); font-weight: var(--font-weight-medium); }
-.reward-desc { font-size: var(--font-size-xs); color: var(--color-text-tertiary); }
-.reward-points { font-size: var(--font-size-sm); color: var(--color-primary); font-weight: var(--font-weight-semibold); }
-.log-item { display: flex; justify-content: space-between; align-items: center; padding: 16rpx 24rpx; background: var(--color-surface); border-bottom: 1rpx solid var(--color-divider); }
-.log-type { font-size: var(--font-size-sm); }
-.log-amount { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
-.log-amount.positive { color: var(--color-primary); }
-.log-amount.negative { color: #e74c3c; }
-.log-time { font-size: var(--font-size-xs); color: var(--color-text-tertiary); }
-.empty { text-align: center; padding: 32rpx; color: var(--color-text-tertiary); }
-.btn-sm { padding: 12rpx 24rpx; font-size: var(--font-size-xs); display: inline-flex; }
-.btn-sm.disabled { opacity: 0.5; }
+.points-shop {
+  min-height: 100vh;
+  background: var(--color-background);
+  padding: 16rpx;
+}
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+}
+.balance-card {
+  text-align: center;
+  padding: 40rpx 24rpx;
+}
+.balance-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+  display: block;
+}
+.balance-value {
+  font-size: 72rpx;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  display: block;
+  margin: 16rpx 0;
+}
+.checked-in {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+}
+.section {
+  margin-bottom: 24rpx;
+}
+.section-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  display: block;
+  margin-bottom: 16rpx;
+  padding-left: 8rpx;
+}
+.reward-card {
+  display: flex;
+  gap: 16rpx;
+  padding: 20rpx;
+}
+.reward-image {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+.reward-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+.reward-name {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+}
+.reward-desc {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+.reward-points {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+.log-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16rpx 24rpx;
+  background: var(--color-surface);
+  border-bottom: 1rpx solid var(--color-divider);
+}
+.log-type {
+  font-size: var(--font-size-sm);
+}
+.log-amount {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+.log-amount.positive {
+  color: var(--color-primary);
+}
+.log-amount.negative {
+  color: #e74c3c;
+}
+.log-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+.empty {
+  text-align: center;
+  padding: 32rpx;
+  color: var(--color-text-tertiary);
+}
+.btn-sm {
+  padding: 12rpx 24rpx;
+  font-size: var(--font-size-xs);
+  display: inline-flex;
+}
+.btn-sm.disabled {
+  opacity: 0.5;
+}
 </style>

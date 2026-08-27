@@ -16,4 +16,7 @@ public class MemberVO {
   private Integer points;
 
   private BigDecimal balance;
+
+  /** 会员卡号（基于 userId 确定性生成，对用户稳定） */
+  private String memberNo;
 }

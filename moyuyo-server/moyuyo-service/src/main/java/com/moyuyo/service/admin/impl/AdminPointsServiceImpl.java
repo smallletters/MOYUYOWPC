@@ -3,10 +3,14 @@ package com.moyuyo.service.admin.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.dao.entity.PointsLogEntity;
+import com.moyuyo.dao.entity.UserEntity;
 import com.moyuyo.dao.mapper.PointsLogMapper;
+import com.moyuyo.dao.mapper.UserMapper;
+import com.moyuyo.service.MemberService;
 import com.moyuyo.service.admin.AdminPointsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
@@ -18,6 +22,8 @@ import java.util.*;
 public class AdminPointsServiceImpl implements AdminPointsService {
 
   private final PointsLogMapper pointsLogMapper;
+  private final UserMapper userMapper;
+  private final MemberService memberService;
 
   @Override
   public List<Map<String, Object>> listActivities() {
@@ -211,12 +217,30 @@ public class AdminPointsServiceImpl implements AdminPointsService {
   }
 
   @Override
+  @Transactional
   public void adjustPoints(Long userId, int amount, String reason) {
+    // 1. 同步更新 mo_user.points（管理员手动调整后必须即时生效，否则 C 端积分展示与管理后台不一致）
+    UserEntity user = userMapper.selectById(userId);
+    if (user == null) {
+      throw new IllegalArgumentException("用户不存在");
+    }
+    int current = user.getPoints() != null ? user.getPoints() : 0;
+    int newPoints = current + amount;
+    if (newPoints < 0) {
+      throw new IllegalArgumentException("调整后积分不能小于 0（当前 " + current + "，调整 " + amount + "）");
+    }
+    user.setPoints(newPoints);
+    userMapper.updateById(user);
+
+    // 2. 写一条 ADJUST 类型流水，供后续对账与审计
     PointsLogEntity log = new PointsLogEntity();
     log.setUserId(userId);
     log.setChangeValue(amount);
     log.setType("ADJUST");
     log.setRemark(reason);
     pointsLogMapper.insert(log);
+
+    // 3. 重算会员等级（手动调高积分后必须自动升级，否则 mo_member.level 永远停留在 NORMAL）
+    memberService.recalculateLevel(userId);
   }
 }

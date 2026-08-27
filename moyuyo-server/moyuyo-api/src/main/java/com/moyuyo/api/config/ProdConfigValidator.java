@@ -195,6 +195,7 @@ public class ProdConfigValidator implements ApplicationListener<ApplicationEnvir
     /** 必须显式设置的密钥项 (envKey, 用户提示) */
     private static final List<String[]> REQUIRED = List.of(
             new String[] { "payment.stripe.secret-key", "STRIPE_SECRET_KEY" },
+            new String[] { "payment.stripe.publishable-key", "STRIPE_PUBLISHABLE_KEY" },
             new String[] { "payment.stripe.webhook-secret", "STRIPE_WEBHOOK_SECRET" },
             new String[] { "payment.paypal.client-id", "PAYPAL_CLIENT_ID" },
             new String[] { "payment.paypal.client-secret", "PAYPAL_CLIENT_SECRET" },

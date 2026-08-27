@@ -10,8 +10,16 @@ import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.PaymentMapper;
 import com.moyuyo.service.OrderService;
 import com.moyuyo.service.PaymentService;
+import com.stripe.Stripe;
+import com.stripe.exception.SignatureVerificationException;
+import com.stripe.exception.StripeException;
+import com.stripe.model.Event;
+import com.stripe.model.checkout.Session;
+import com.stripe.net.Webhook;
+import com.stripe.param.checkout.SessionCreateParams;
 import static com.moyuyo.common.enums.OrderStatusEnum.*;
 import static com.moyuyo.common.enums.PaymentStatusEnum.*;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,28 +29,23 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 
 @Slf4j
 @Service
 public class PaymentServiceImpl implements PaymentService {
 
     private static final String IDEMPOTENT_KEY_PREFIX = "idempotent:webhook:";
-
-    /** Stripe webhook 签名时间戳允许偏差（秒），避免时钟漂移导致的合法请求被拒 */
-    private static final long STRIPE_SIGNATURE_TOLERANCE = 300;
 
     private final OrderService orderService;
     private final PaymentMapper paymentMapper;
@@ -67,6 +70,9 @@ public class PaymentServiceImpl implements PaymentService {
     @Value("${payment.stripe.secret-key}")
     private String stripeSecretKey;
 
+    @Value("${payment.stripe.publishable-key:}")
+    private String stripePublishableKey;
+
     @Value("${payment.stripe.webhook-secret}")
     private String stripeWebhookSecret;
 
@@ -87,6 +93,20 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Value("${payment.paypal.allowed-origins:https://moyuyo.com}")
     private String paypalAllowedOrigins;
+
+    /**
+     * H1 修复：Bean 初始化时设置 Stripe SDK 全局 API key，避免每次调用重新设置。
+     * 注意：Stripe.apiKey 是静态变量，多实例部署时所有实例共享同一 key（按设计如此）。
+     */
+    @PostConstruct
+    public void initStripe() {
+        if (stripeSecretKey != null && !stripeSecretKey.isBlank()) {
+            Stripe.apiKey = stripeSecretKey;
+            log.info("[payment] Stripe SDK initialized, currency={}", stripeCurrency);
+        } else {
+            log.warn("[payment] Stripe secret key is empty, Stripe payments will fail");
+        }
+    }
 
     @Override
     @Transactional
@@ -116,45 +136,94 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private CreatePaymentResponse createStripePayment(OrderEntity order, CreatePaymentRequest request) {
-        String amountCents = order.getPayAmount().multiply(java.math.BigDecimal.valueOf(100))
-                .setScale(0, java.math.RoundingMode.HALF_UP).toString();
+        // H1 修复：使用 Stripe.checkout.Session 替代手写 PaymentIntent。
+        // Checkout Session 由 Stripe 托管支付页，自动支持 Card / Apple Pay / Google Pay，
+        // 前端 web-view 直接打开 session.url 即可（无需前端拼 URL）。
+        // amount 单位为最小货币单位（USD = cents）
+        long amountCents = order.getPayAmount().multiply(BigDecimal.valueOf(100))
+                .setScale(0, java.math.RoundingMode.HALF_UP).longValueExact();
+        if (amountCents <= 0) {
+            throw new IllegalArgumentException("订单金额必须大于 0");
+        }
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        headers.setBasicAuth(stripeSecretKey, "");
-
-        String description = URLEncoder.encode("MOYUYO Order " + order.getOrderNo(), StandardCharsets.UTF_8);
-        String body = "amount=" + amountCents
-                + "&currency=" + stripeCurrency
-                + "&description=" + description
-                + "&metadata[order_no]=" + order.getOrderNo();
-
-        HttpEntity<String> entity = new HttpEntity<>(body, headers);
+        // successUrl / cancelUrl 走中转页，由中转页通过 postMessage 回传给 APP
+        String baseUrl = buildPublicBaseUrl(request.getReturnUrl());
+        String successUrl = baseUrl + "/payment/return.html?status=success&orderNo="
+                + URLEncoder.encode(order.getOrderNo(), StandardCharsets.UTF_8);
+        String cancelUrl = baseUrl + "/payment/return.html?status=cancel&orderNo="
+                + URLEncoder.encode(order.getOrderNo(), StandardCharsets.UTF_8);
 
         try {
-            ResponseEntity<Map> response = restTemplate.postForEntity(
-                    "https://api.stripe.com/v1/payment_intents",
-                    entity,
-                    Map.class);
+            // 构建 Checkout Session 参数（不可变 builder）
+            // 注意：Stripe SDK 28.x 的 PaymentIntentData 接受 builder().build() 而非 lambda；
+            // PaymentIntentData.Builder 没有 setMetadata(Map)，需逐个 putMetadata
+            SessionCreateParams.PaymentIntentData paymentIntentData = SessionCreateParams.PaymentIntentData.builder()
+                    .putMetadata("order_no", order.getOrderNo())
+                    .build();
+            SessionCreateParams params = SessionCreateParams.builder()
+                    .setMode(SessionCreateParams.Mode.PAYMENT)
+                    .setSuccessUrl(successUrl)
+                    .setCancelUrl(cancelUrl)
+                    .setClientReferenceId(order.getOrderNo())
+                    .putMetadata("order_no", order.getOrderNo())
+                    .putMetadata("user_id", String.valueOf(order.getUserId()))
+                    .setPaymentIntentData(paymentIntentData)
+                    .addLineItem(SessionCreateParams.LineItem.builder()
+                            .setQuantity(1L)
+                            .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
+                                    .setCurrency(stripeCurrency)
+                                    .setUnitAmount(amountCents)
+                                    .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                            .setName("MOYUYO Order " + order.getOrderNo())
+                                            .setDescription("MOYUYO Order #" + order.getOrderNo())
+                                            .build())
+                                    .build())
+                            .build())
+                    .build();
 
-            Map<String, Object> result = response.getBody();
-            if (result == null || result.containsKey("error")) {
-                log.error("Stripe payment intent creation failed: {}", result);
-                throw new RuntimeException("Stripe payment creation failed");
-            }
+            Session session = Session.create(params);
 
-            String paymentIntentId = (String) result.get("id");
-            String clientSecret = (String) result.get("client_secret");
+            // 落库 PaymentEntity（transactionId 存 session.id）
+            savePaymentRecord(order.getId(), "STRIPE", session.getId(), order.getPayAmount());
 
-            savePaymentRecord(order.getId(), "STRIPE", paymentIntentId, order.getPayAmount());
+            log.info("Stripe checkout session created: sessionId={}, url={}, orderNo={}",
+                    session.getId(), session.getUrl(), order.getOrderNo());
 
-            log.info("Stripe payment created: paymentIntentId={}, orderNo={}", paymentIntentId, order.getOrderNo());
-            return new CreatePaymentResponse(paymentIntentId, clientSecret, null, "STRIPE");
+            return new CreatePaymentResponse(
+                    session.getId(),
+                    null, // clientSecret 不再需要，Checkout 模式由 Stripe 托管
+                    session.getUrl(),
+                    stripePublishableKey,
+                    null, // approvalUrl 仅 PayPal 用
+                    "STRIPE"
+            );
+        } catch (StripeException e) {
+            log.error("Stripe Checkout Session creation failed: code={}, message={}",
+                    e.getCode(), e.getMessage(), e);
+            throw new RuntimeException("Stripe payment service unavailable");
         } catch (Exception e) {
-            log.error("Stripe API call failed", e);
-            // 不向调用方暴露底层异常细节，防止信息泄露
+            log.error("Stripe payment creation failed unexpectedly", e);
             throw new RuntimeException("Stripe payment service unavailable");
         }
+    }
+
+    /**
+     * 推算中转页基础域名：优先用入参 returnUrl 的 host（与 PayPal returnUrl 白名单共用同一校验路径），
+     * 否则回落到默认 https://域名。
+     */
+    private String buildPublicBaseUrl(String returnUrl) {
+        if (returnUrl != null && !returnUrl.isBlank()) {
+            try {
+                URI uri = URI.create(returnUrl);
+                String scheme = uri.getScheme();
+                String host = uri.getHost();
+                if ("https".equalsIgnoreCase(scheme) && host != null) {
+                    return scheme + "://" + host;
+                }
+            } catch (Exception ignore) {
+            }
+        }
+        return "https://moyuyo.com";
     }
 
     private CreatePaymentResponse createPayPalPayment(OrderEntity order, CreatePaymentRequest request) {
@@ -169,8 +238,12 @@ public class PaymentServiceImpl implements PaymentService {
                 : "https://api-m.paypal.com";
 
         // returnUrl 白名单校验：防止开放重定向钓鱼
-        String successUrl = validateAndBuildReturnUrl(request.getReturnUrl(), "success");
-        String cancelUrl = validateAndBuildReturnUrl(request.getReturnUrl(), "cancel");
+        // 与 Stripe 一致：把 orderNo 拼到 success/cancel URL 的 query，
+        // 让 PayPal 跳转回 moyuyo.com 中转页时携带 orderNo，postMessage 转发到 APP
+        String successUrl = validateAndBuildReturnUrl(
+                request.getReturnUrl(), "success", order.getOrderNo());
+        String cancelUrl = validateAndBuildReturnUrl(
+                request.getReturnUrl(), "cancel", order.getOrderNo());
 
         String orderJson = String.format("""
                 {
@@ -226,7 +299,14 @@ public class PaymentServiceImpl implements PaymentService {
             savePaymentRecord(order.getId(), "PAYPAL", paypalOrderId, order.getPayAmount());
 
             log.info("PayPal order created: paypalOrderId={}, orderNo={}", paypalOrderId, order.getOrderNo());
-            return new CreatePaymentResponse(paypalOrderId, null, approvalUrl, "PAYPAL");
+            return new CreatePaymentResponse(
+                    paypalOrderId,
+                    null, // clientSecret Stripe 专用
+                    null, // sessionUrl Stripe 专用
+                    null, // publishableKey Stripe 专用
+                    approvalUrl,
+                    "PAYPAL"
+            );
         } catch (Exception e) {
             log.error("PayPal API call failed", e);
             // 不向调用方暴露底层异常细节，防止信息泄露
@@ -268,6 +348,7 @@ public class PaymentServiceImpl implements PaymentService {
         // 验签：支付回调必须校验来源，防止伪造
         boolean signatureValid;
         if ("STRIPE".equalsIgnoreCase(payChannel)) {
+            // H1 修复：用 Stripe SDK 的 Webhook.constructEvent 验签（包含时间戳容差校验）
             signatureValid = verifyStripeSignature(payload, headers.get("stripe-signature"));
         } else if ("PAYPAL".equalsIgnoreCase(payChannel)) {
             signatureValid = verifyPayPalSignature(payload, headers);
@@ -304,52 +385,27 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     /**
-     * Stripe webhook 验签
-     * Stripe-Signature 头格式：t=timestamp,v1=signature
-     * 签名算法：HMAC-SHA256(timestamp + "." + payload, webhook_secret) 转 hex
+     * H1 修复：用 Stripe SDK 官方 Webhook.constructEvent 验签，
+     * 自动处理 Stripe-Signature 头解析、时间戳容差、HMAC-SHA256 验签。
      */
     private boolean verifyStripeSignature(String payload, String signatureHeader) {
         if (signatureHeader == null || signatureHeader.isBlank()) {
             return false;
         }
-        String timestamp = null;
-        List<String> v1Signatures = new ArrayList<>();
-        for (String part : signatureHeader.split(",")) {
-            String[] kv = part.split("=", 2);
-            if (kv.length != 2) continue;
-            String key = kv[0].trim();
-            String value = kv[1].trim();
-            if ("t".equals(key)) {
-                timestamp = value;
-            } else if ("v1".equals(key)) {
-                v1Signatures.add(value);
-            }
-        }
-        if (timestamp == null || v1Signatures.isEmpty()) {
+        if (stripeWebhookSecret == null || stripeWebhookSecret.isBlank()) {
+            log.error("Stripe webhook secret is empty, cannot verify signature");
             return false;
         }
-        // 防止重放攻击：拒绝超过 5 分钟的旧事件
         try {
-            long ts = Long.parseLong(timestamp);
-            long now = System.currentTimeMillis() / 1000;
-            if (Math.abs(now - ts) > STRIPE_SIGNATURE_TOLERANCE) {
-                log.warn("Stripe webhook 时间戳漂移超限: ts={}, now={}", ts, now);
-                return false;
-            }
-        } catch (NumberFormatException e) {
+            Event event = Webhook.constructEvent(payload, signatureHeader, stripeWebhookSecret);
+            return event != null;
+        } catch (SignatureVerificationException e) {
+            log.warn("Stripe webhook signature verification failed: {}", e.getMessage());
+            return false;
+        } catch (Exception e) {
+            log.error("Stripe webhook verify unexpected error", e);
             return false;
         }
-        String signedPayload = timestamp + "." + payload;
-        String computed = hmacSha256Hex(signedPayload, stripeWebhookSecret);
-        // 常量时间比较，防止时序攻击
-        for (String expected : v1Signatures) {
-            if (MessageDigest.isEqual(
-                    computed.getBytes(StandardCharsets.UTF_8),
-                    expected.getBytes(StandardCharsets.UTF_8))) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
@@ -411,30 +467,16 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
-    private String hmacSha256Hex(String data, String secret) {
-        try {
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-            StringBuilder hex = new StringBuilder();
-            for (byte b : hash) {
-                hex.append(String.format("%02x", b));
-            }
-            return hex.toString();
-        } catch (Exception e) {
-            throw new RuntimeException("HMAC-SHA256 计算失败", e);
-        }
-    }
-
     /**
      * 校验 returnUrl 是否在白名单域名内，并拼接最终回调 URL
      * 防止开放重定向钓鱼攻击
      * <p>
      * 安全要点：使用 URI.getHost() 与白名单逐项比较，避免字符串包含匹配（如 moyuyo.com.attacker.com 不会被误判）。
      */
-    private String validateAndBuildReturnUrl(String returnUrl, String suffix) {
-        // 默认回调地址
-        String defaultUrl = "https://moyuyo.com/order/" + suffix;
+    private String validateAndBuildReturnUrl(String returnUrl, String suffix, String orderNo) {
+        // 默认回调地址：与中转页路径一致，拼接 orderNo 让 APP 能识别当前订单
+        String defaultUrl = "https://moyuyo.com/payment/return.html?status=" + suffix
+                + "&orderNo=" + URLEncoder.encode(orderNo, StandardCharsets.UTF_8);
         if (returnUrl == null || returnUrl.isBlank()) {
             return defaultUrl;
         }
@@ -458,7 +500,15 @@ public class PaymentServiceImpl implements PaymentService {
                         .toLowerCase();
                 // 精确匹配，避免子域名绕过（如 attacker.moyuyo.com 与 moyuyo.com 必须区分）
                 if (normalizedHost.equals(allowedHost)) {
-                    return returnUrl;
+                    // 白名单域名通过：去掉原 returnUrl 上的 query（PayPal 会自己加 ?token=xxx），
+                    // 改成 /payment/return.html + 自定义 status/orderNo 标识
+                    String path = uri.getPath();
+                    if (path == null || path.isEmpty()) {
+                        path = "/payment/return.html";
+                    }
+                    return uri.getScheme() + "://" + host + path
+                            + "?status=" + suffix
+                            + "&orderNo=" + URLEncoder.encode(orderNo, StandardCharsets.UTF_8);
                 }
             }
             log.warn("PayPal returnUrl 不在白名单内，使用默认地址: host={}", host);
@@ -488,40 +538,148 @@ public class PaymentServiceImpl implements PaymentService {
             Map<String, Object> event = objectMapper.readValue(payload, Map.class);
             String type = (String) event.get("type");
 
-            if (!"payment_intent.succeeded".equals(type)) {
-                log.debug("Ignoring Stripe webhook event: {}", type);
+            // H1 修复：优先处理 Checkout Session 事件，与 createStripePayment 中 Stripe.checkout.Session 一致
+            if ("checkout.session.completed".equals(type)) {
+                Map<String, Object> data = (Map<String, Object>) event.get("data");
+                Map<String, Object> object = (Map<String, Object>) (data != null ? data.get("object") : null);
+                if (object == null) return;
+                String sessionId = (String) object.get("id");
+                Object metadataObj = object.get("metadata");
+                Map<String, String> metadata = metadataObj instanceof Map
+                        ? (Map<String, String>) metadataObj : null;
+                String orderNo = metadata != null ? metadata.get("order_no") : null;
+                // 兜底：取 client_reference_id（创建 session 时设置的 orderNo）
+                if (orderNo == null) {
+                    orderNo = (String) object.get("client_reference_id");
+                }
+                if (orderNo == null) {
+                    log.warn("Stripe checkout.session.completed missing orderNo, sessionId={}", sessionId);
+                    return;
+                }
+                orderService.payCallback(orderNo, "STRIPE", sessionId);
+                log.info("Stripe checkout.session.completed: orderNo={}, sessionId={}", orderNo, sessionId);
                 return;
             }
 
-            Map<String, Object> data = (Map<String, Object>) event.get("data");
-            Map<String, Object> object = (Map<String, Object>) (data != null ? data.get("object") : null);
-            if (object == null) return;
+            if ("checkout.session.expired".equals(type)) {
+                Map<String, Object> data = (Map<String, Object>) event.get("data");
+                Map<String, Object> object = (Map<String, Object>) (data != null ? data.get("object") : null);
+                if (object == null) return;
+                String sessionId = (String) object.get("id");
+                markPaymentFailedByTransactionId(sessionId, "checkout_session_expired");
+                log.info("Stripe checkout.session.expired: sessionId={}", sessionId);
+                return;
+            }
 
-            String paymentIntentId = (String) object.get("id");
-            Map<String, String> metadata = (Map<String, String>) object.get("metadata");
-            String orderNo = metadata != null ? metadata.get("order_no") : null;
-
-            if (orderNo == null) {
-                PaymentEntity payment = paymentMapper.selectOne(
-                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<PaymentEntity>()
-                                .eq(PaymentEntity::getTransactionId, paymentIntentId));
-                if (payment != null) {
-                    OrderEntity order = orderMapper.selectById(payment.getOrderId());
-                    if (order != null) {
-                        orderNo = order.getOrderNo();
-                    }
+            // 兼容老链路：直接用 PaymentIntent API 也能走通
+            if ("payment_intent.succeeded".equals(type)) {
+                Map<String, Object> data = (Map<String, Object>) event.get("data");
+                Map<String, Object> object = (Map<String, Object>) (data != null ? data.get("object") : null);
+                if (object == null) return;
+                String paymentIntentId = (String) object.get("id");
+                Object metadataObj = object.get("metadata");
+                Map<String, String> metadata = metadataObj instanceof Map
+                        ? (Map<String, String>) metadataObj : null;
+                String orderNo = resolveOrderNoByTransactionId(paymentIntentId,
+                        metadata != null ? metadata.get("order_no") : null);
+                if (orderNo != null) {
+                    orderService.payCallback(orderNo, "STRIPE", paymentIntentId);
+                    log.info("Stripe webhook processed: orderNo={}, paymentIntentId={}", orderNo, paymentIntentId);
+                } else {
+                    log.warn("Stripe webhook 找不到订单: paymentIntentId={}", paymentIntentId);
                 }
+                return;
             }
 
-            if (orderNo != null) {
-                orderService.payCallback(orderNo, "STRIPE", paymentIntentId);
-                log.info("Stripe webhook processed: orderNo={}, paymentIntentId={}", orderNo, paymentIntentId);
-            } else {
-                log.warn("Stripe webhook 找不到订单: paymentIntentId={}", paymentIntentId);
+            if ("payment_intent.payment_failed".equals(type)) {
+                Map<String, Object> data = (Map<String, Object>) event.get("data");
+                Map<String, Object> object = (Map<String, Object>) (data != null ? data.get("object") : null);
+                if (object == null) return;
+                String paymentIntentId = (String) object.get("id");
+                String lastError = extractStripeErrorMessage(object);
+                markPaymentFailedByTransactionId(paymentIntentId, lastError);
+                log.warn("Stripe payment failed: paymentIntentId={}, reason={}", paymentIntentId, lastError);
+                return;
             }
+
+            if ("payment_intent.canceled".equals(type)) {
+                Map<String, Object> data = (Map<String, Object>) event.get("data");
+                Map<String, Object> object = (Map<String, Object>) (data != null ? data.get("object") : null);
+                if (object == null) return;
+                String paymentIntentId = (String) object.get("id");
+                markPaymentFailedByTransactionId(paymentIntentId, "canceled_by_stripe");
+                log.info("Stripe payment canceled: paymentIntentId={}", paymentIntentId);
+                return;
+            }
+
+            log.debug("Ignoring Stripe webhook event: {}", type);
         } catch (Exception e) {
-            // webhook 处理异常不能向上抛（已签名通过，应由重试机制保证最终一致）
+            // webhook 处理异常不能向上抛（已签名通过，应由重试机制验证最终一致）
             log.error("Failed to process Stripe webhook", e);
+        }
+    }
+
+    /**
+     * 按 transactionId 解析订单号：优先取 metadata.order_no，其次按 transactionId 反查 PaymentEntity。
+     */
+    private String resolveOrderNoByTransactionId(String transactionId, String metadataOrderNo) {
+        if (metadataOrderNo != null) {
+            return metadataOrderNo;
+        }
+        return resolveOrderNoByTransactionId(transactionId);
+    }
+
+    /**
+     * 仅按 transactionId 反查 PaymentEntity 找订单号（用于 Stripe Session 场景）。
+     */
+    private String resolveOrderNoByTransactionId(String transactionId) {
+        if (transactionId == null) {
+            return null;
+        }
+        PaymentEntity payment = paymentMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<PaymentEntity>()
+                        .eq(PaymentEntity::getTransactionId, transactionId));
+        if (payment != null) {
+            OrderEntity order = orderMapper.selectById(payment.getOrderId());
+            if (order != null) {
+                return order.getOrderNo();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 提取 Stripe payment_failed 事件中的错误描述，便于审计追溯。
+     */
+    private String extractStripeErrorMessage(Map<String, Object> object) {
+        Object lastErr = object.get("last_payment_error");
+        if (lastErr instanceof Map) {
+            Object msg = ((Map<String, Object>) lastErr).get("message");
+            if (msg != null) {
+                return msg.toString();
+            }
+        }
+        return "payment_failed";
+    }
+
+    /**
+     * 把对应 PaymentEntity 标记为 FAILED；如果还没创建 PaymentEntity（用户未走到 createPayment）则忽略。
+     * 不强行取消订单：让用户在前端看到 PENDING_PAY 时可重新发起支付，由 OrderTimeoutCancelJob 兜底取消。
+     */
+    private void markPaymentFailedByTransactionId(String transactionId, String reason) {
+        if (transactionId == null) {
+            return;
+        }
+        PaymentEntity payment = paymentMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<PaymentEntity>()
+                        .eq(PaymentEntity::getTransactionId, transactionId));
+        if (payment == null) {
+            return;
+        }
+        // 仅当 PaymentEntity 当前不是 SUCCESS 时才标记为 FAILED，避免覆盖已成功的支付
+        if (!"SUCCESS".equalsIgnoreCase(payment.getStatus())) {
+            payment.setStatus("FAILED");
+            paymentMapper.updateById(payment);
         }
     }
 

@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.moyuyo.common.Result;
 import com.moyuyo.common.dto.admin.userprofile.UserBehaviorResponse;
 import com.moyuyo.common.dto.admin.userprofile.UserProfileResponse;
+import com.moyuyo.common.dto.admin.userprofile.UserVisitedPageResponse;
+import com.moyuyo.common.dto.admin.userprofile.UserVisitedProductResponse;
 import com.moyuyo.dao.admin.entity.UserBehaviorEntity;
 import com.moyuyo.dao.admin.mapper.UserBehaviorMapper;
 import com.moyuyo.dao.entity.OrderEntity;
@@ -35,19 +37,26 @@ public class AdminUserProfileController {
         return Result.error(404, "用户不存在");
       }
       UserProfileResponse resp = new UserProfileResponse();
-      resp.setUserId((Long) svcResult.get("userId"));
+      resp.setUserId(asLong(svcResult.get("userId")));
       resp.setNickname((String) svcResult.get("nickname"));
       resp.setAvatar((String) svcResult.getOrDefault("avatar", null));
       resp.setEmail((String) svcResult.get("email"));
       resp.setPhone((String) svcResult.get("phone"));
-      resp.setOrderCount(((Number) svcResult.getOrDefault("orderCount", 0)).intValue());
+      resp.setOrderCount(asInt(svcResult.get("orderCount")));
       resp.setRegisterTime((String) svcResult.get("registerTime"));
       Object totalSpentVal = svcResult.get("totalSpent");
-      resp.setTotalSpent(totalSpentVal != null ? ((Number) totalSpentVal).intValue() : 0);
+      resp.setTotalSpent(totalSpentVal != null ? asInt(totalSpentVal) : 0);
       // 性别 / 年龄：直接透传 Service 计算结果（null 表示用户未填写，保持前端体验一致）
       resp.setGender((String) svcResult.get("gender"));
       Object ageVal = svcResult.get("age");
-      resp.setAge(ageVal != null ? ((Number) ageVal).intValue() : null);
+      resp.setAge(ageVal != null ? asInt(ageVal) : null);
+      // ===== 用户画像新增字段透传 =====
+      resp.setPoints(asInt(svcResult.get("points")));
+      resp.setStatus(asInt(svcResult.get("status")));
+      resp.setMemberLevel((String) svcResult.get("memberLevel"));
+      resp.setGrowthValue(asInt(svcResult.get("growthValue")));
+      resp.setMemberNo((String) svcResult.get("memberNo"));
+      resp.setLastLoginTime((String) svcResult.get("lastLoginTime"));
       return Result.success(resp);
     } catch (IllegalArgumentException e) {
       return Result.error(404, e.getMessage());
@@ -94,5 +103,38 @@ public class AdminUserProfileController {
       list.add(item);
     }
     return Result.success(list);
+  }
+
+  @Operation(summary = "用户访问过的商品列表")
+  @GetMapping("/{userId}/visited-products")
+  public Result<List<UserVisitedProductResponse>> visitedProducts(
+      @PathVariable Long userId,
+      @RequestParam(defaultValue = "50") int size) {
+    try {
+      return Result.success(adminUserProfileService.listVisitedProducts(userId, size));
+    } catch (Exception e) {
+      return Result.error("查询用户访问商品失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "用户访问过的页面列表")
+  @GetMapping("/{userId}/visited-pages")
+  public Result<List<UserVisitedPageResponse>> visitedPages(
+      @PathVariable Long userId,
+      @RequestParam(defaultValue = "50") int size) {
+    try {
+      return Result.success(adminUserProfileService.listVisitedPages(userId, size));
+    } catch (Exception e) {
+      return Result.error("查询用户访问页面失败: " + e.getMessage());
+    }
+  }
+
+  // 辅助：把 Number 安全转为 Long/Int（处理后端 Service 返回的 Integer/Long 任意数字类型）
+  private static Long asLong(Object o) {
+    return o == null ? null : ((Number) o).longValue();
+  }
+
+  private static Integer asInt(Object o) {
+    return o == null ? null : ((Number) o).intValue();
   }
 }

@@ -30,4 +30,13 @@ public interface MemberService {
 
   /** 当前用户的积分倍率 */
   double getCurrentPointsRate(Long userId);
+
+  /** 会员专属特权列表（按等级过滤后返回） */
+  List<Map<String, Object>> listPrivileges(Long userId);
+
+  /**
+   * 根据用户当前总积分重算并同步 mo_member.level / mo_member.growth_value
+   * 用于：管理员手动调整积分后、C 端签到/订单返积分后、后台一键修复历史数据
+   */
+  void recalculateLevel(Long userId);
 }

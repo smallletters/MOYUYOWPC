@@ -201,6 +201,12 @@
       }
     },
     {
+      "path": "pages/user/follow-list",
+      "style": {
+        "navigationBarTitleText": "关注列表"
+      }
+    },
+    {
       "path": "pages/user/wallet",
       "style": {
         "navigationBarTitleText": "我的钱包"
@@ -555,6 +561,18 @@
       "path": "pages/user/membership",
       "style": {
         "navigationBarTitleText": "会员等级"
+      }
+    },
+    {
+      "path": "pages/user/membership-rule",
+      "style": {
+        "navigationBarTitleText": "会员规则"
+      }
+    },
+    {
+      "path": "pages/user/points-detail",
+      "style": {
+        "navigationBarTitleText": "积分明细"
       }
     },
     {

@@ -22,6 +22,9 @@ export const config = {
   apiBase: getEnv('VITE_API_BASE', 'https://your-wp-site.com/wp-json'),
   // WordPress 站点根地址（用于支付 WebView 跳转）
   wpBase: getEnv('VITE_WP_BASE', 'https://your-wp-site.com'),
+  // MOYUYO 后端 API 域名（H1 修复：用于支付成功/取消回跳的绝对 URL，避免与 WP 域名混淆）
+  // dev 默认留空，使用 Vite proxy 同源；prod 必须填 https://api.moyuyo.com
+  payReturnBase: getEnv('VITE_PAY_RETURN_BASE', ''),
   // WooCommerce REST API 凭证
   consumerKey: getEnv('VITE_CONSUMER_KEY', ''),
   consumerSecret: getEnv('VITE_CONSUMER_SECRET', ''),

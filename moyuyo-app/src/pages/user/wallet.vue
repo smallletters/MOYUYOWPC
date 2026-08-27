@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">我的钱包</text>
       <view class="header-btn" />
@@ -18,7 +18,7 @@
           <view class="balance-label-row">
             <text class="balance-label">账户余额</text>
             <view class="eye-btn" @click="toggleBalanceVisible">
-              <text class="eye-icon luc" :class="$luc(balanceVisible  ?  'eye'  :  'eye-off')"></text>
+              <text class="eye-icon luc" :class="$luc(balanceVisible ? 'eye' : 'eye-off')" />
             </view>
           </view>
           <!-- 金额 -->
@@ -44,28 +44,28 @@
             <text class="feature-label">积分</text>
             <text class="feature-value">{{ walletData.points.toLocaleString() }}</text>
           </view>
-          <text class="feature-arrow"><text class="luc luc-chevron-right"></text></text>
+          <text class="feature-arrow"><text class="luc luc-chevron-right" /></text>
         </view>
         <view class="feature-item" @click="goCoupons">
           <view class="feature-info">
             <text class="feature-label">优惠券</text>
             <text class="feature-value">{{ walletData.coupons }}张</text>
           </view>
-          <text class="feature-arrow"><text class="luc luc-chevron-right"></text></text>
+          <text class="feature-arrow"><text class="luc luc-chevron-right" /></text>
         </view>
         <view class="feature-item" @click="goGiftCards">
           <view class="feature-info">
             <text class="feature-label">礼品卡</text>
             <text class="feature-value">{{ walletData.giftCards }}张</text>
           </view>
-          <text class="feature-arrow"><text class="luc luc-chevron-right"></text></text>
+          <text class="feature-arrow"><text class="luc luc-chevron-right" /></text>
         </view>
         <view class="feature-item" @click="goYuEBao">
           <view class="feature-info">
             <text class="feature-label">余额宝</text>
             <text class="feature-value">¥{{ walletData.yuEBao.toFixed(2) }}</text>
           </view>
-          <text class="feature-arrow"><text class="luc luc-chevron-right"></text></text>
+          <text class="feature-arrow"><text class="luc luc-chevron-right" /></text>
         </view>
       </view>
 
@@ -99,20 +99,16 @@ export default {
     return {
       balanceVisible: true,
       currentBalance: 0,
+      loading: false,
+      loadError: '',
       walletData: {
-        balance: 326.5,
-        points: 1280,
-        coupons: 3,
-        giftCards: 1,
-        yuEBao: 0.0,
+        balance: 0,
+        points: 0,
+        coupons: 0,
+        giftCards: 0,
+        yuEBao: 0,
       },
-      transactions: [
-        { id: 1, title: '订单支付', date: '07-15', amount: -128.0 },
-        { id: 2, title: '订单退款', date: '07-10', amount: 89.0 },
-        { id: 3, title: '积分兑换', date: '07-05', amount: -200.0 },
-        { id: 4, title: '充值', date: '07-01', amount: 500.0 },
-        { id: 5, title: '订单支付', date: '06-28', amount: -167.0 },
-      ],
+      transactions: [],
     }
   },
 
@@ -128,9 +124,11 @@ export default {
 
   methods: {
     async loadWalletData() {
+      this.loading = true
+      this.loadError = ''
       try {
         const res = await memberApi.getWallet()
-        const data = res.data || res
+        const data = res?.data || res
         if (data) {
           this.currentBalance = data.balance || 0
           this.walletData = {
@@ -140,12 +138,17 @@ export default {
             giftCards: data.giftCards || 0,
             yuEBao: data.yuEBao || 0,
           }
-          if (data.transactions) {
-            this.transactions = data.transactions
-          }
+          this.transactions = Array.isArray(data.transactions) ? data.transactions : []
         }
       } catch (e) {
-        this.currentBalance = this.walletData.balance
+        // 失败时不回退硬编码假数据,展示空状态,避免误导用户
+        this.loadError = e?.message || '钱包数据加载失败'
+        this.currentBalance = 0
+        this.walletData = { balance: 0, points: 0, coupons: 0, giftCards: 0, yuEBao: 0 }
+        this.transactions = []
+        uni.showToast({ title: this.loadError, icon: 'none' })
+      } finally {
+        this.loading = false
       }
     },
 

@@ -5,12 +5,31 @@ import com.moyuyo.common.dto.order.CreateOrderRequest;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
 public interface OrderService {
 
   OrderEntity createOrder(Long userId, List<OrderItemEntity> items, Long addressId, String remark, String couponId);
+
+  /**
+   * 创建订单（含运费、优惠券、积分抵扣）
+   *
+   * @param userId         用户 ID
+   * @param items          订单商品列表
+   * @param addressId      收货地址 ID
+   * @param remark         订单备注
+   * @param couponId       优惠券 ID（可空）
+   * @param couponDiscount 优惠券减免金额（BigDecimal.ZERO 表示无）
+   * @param pointsUsed     使用的积分数
+   * @param pointsDiscount 积分抵扣金额
+   * @param shippingMethod 配送方式 standard/express
+   * @param freight        运费
+   */
+  OrderEntity createOrder(Long userId, List<OrderItemEntity> items, Long addressId, String remark,
+                          String couponId, BigDecimal couponDiscount, Integer pointsUsed,
+                          BigDecimal pointsDiscount, String shippingMethod, BigDecimal freight);
 
   /**
    * 从请求对象创建订单，内部处理 SKU/商品校验和订单项组装

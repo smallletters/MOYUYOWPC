@@ -1076,6 +1076,21 @@ export function getUserOrderHistory(userId) {
   return api.get(`/user-profile/${userId}/orders`)
 }
 
+// 用户访问过的商品列表
+export function getUserVisitedProducts(userId, size = 50) {
+  return api.get(`/user-profile/${userId}/visited-products`, { params: { size } })
+}
+
+// 用户访问过的页面列表
+export function getUserVisitedPages(userId, size = 50) {
+  return api.get(`/user-profile/${userId}/visited-pages`, { params: { size } })
+}
+
+// 管理员手动调整用户积分
+export function adjustUserPoints(userId, amount, reason) {
+  return api.post(`/points/users/${userId}/adjust`, { amount, reason })
+}
+
 // ==================== 客服 ====================
 export function getCsPerformance() {
   return api.get('/crm/cs-performance')

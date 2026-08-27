@@ -37,6 +37,8 @@
         <owasp-dependency-check.version>11.1.0</owasp-dependency-check.version>
         <caffeine.version>3.1.8</caffeine.version>
         <logstash-logback.version>8.0</logstash-logback.version>
+        <!-- Stripe 官方 Java SDK，封装 Checkout Session / Webhook 验签 / PaymentIntent 等 API -->
+        <stripe.version>28.1.0</stripe.version>
         <!-- RocketMQ：starter 与 client 版本必须严格对齐。starter 2.x 自带 client 5.x 依赖，
              这里显式声明 client 版本是为了让 IDE 与 CI 看清楚运行时依赖 -->
         <rocketmq.version>2.3.1</rocketmq.version>
@@ -198,6 +200,13 @@
                 <artifactId>dependency-check-maven</artifactId>
                 <version>${owasp-dependency-check.version}</version>
                 <type>maven-plugin</type>
+            </dependency>
+
+            <!-- Stripe Java SDK（H1 修复：改用 Stripe.checkout.Session 替代手写 PaymentIntent） -->
+            <dependency>
+                <groupId>com.stripe</groupId>
+                <artifactId>stripe-java</artifactId>
+                <version>${stripe.version}</version>
             </dependency>
 
         </dependencies>

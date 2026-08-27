@@ -64,6 +64,15 @@ server_out.log
 server-out.log
 server-start.log
 start-backend.ps1
+backend.log
+ports.log
+
+# Spring Boot 内嵌打包产物（应通过 mvn package 重新生成）
+**/BOOT-INF/
+
+# 本地调试响应 / Token 抓包
+admin-token.json
+*-token.json
 
 # Edge 浏览器调试目录
 .edge-debug-profile/

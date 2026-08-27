@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Status</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f6f2ee;
+            color: #2e2b29;
+            margin: 0;
+            padding: 40px 24px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 32px 24px;
+            max-width: 360px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        }
+        .icon {
+            font-size: 64px;
+            line-height: 1;
+            margin-bottom: 16px;
+        }
+        .success { color: #067d62; }
+        .failed { color: #c0116e; }
+        h2 { margin: 0 0 8px; font-size: 22px; }
+        p { margin: 0; color: #6e6e73; font-size: 14px; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="icon" id="icon">⏳</div>
+    <h2 id="title">Processing your payment...</h2>
+    <p id="hint">Please return to the app to view the result.</p>
+</div>
+
+<script>
+    // 解析 URL query：?status=success|fail&orderNo=xxx&message=xxx
+    // Stripe Checkout Session 会在 successUrl 后追加 &session_id={CHECKOUT_SESSION_ID}，一并透传给 APP
+    (function () {
+        var params = new URLSearchParams(window.location.search);
+        var status = (params.get('status') || '').toLowerCase();
+        var message = params.get('message') || '';
+        var iconEl = document.getElementById('icon');
+        var titleEl = document.getElementById('title');
+        var hintEl = document.getElementById('hint');
+
+        if (status === 'success') {
+            iconEl.textContent = '✓';
+            iconEl.className = 'icon success';
+            titleEl.textContent = 'Payment successful';
+            hintEl.textContent = 'You can return to the app now.';
+        } else if (status === 'cancel' || status === 'failed') {
+            iconEl.textContent = '✕';
+            iconEl.className = 'icon failed';
+            titleEl.textContent = 'Payment cancelled';
+            hintEl.textContent = message || 'You have cancelled the payment.';
+        }
+
+        // H2/H4 修复：向父 WebView 通过 postMessage 通知支付结果
+        // 父页面（uni-app pay.vue）监听 @message 事件接收 pay_result 数据
+        var payload = {
+            type: 'pay_result',
+            status: status || 'unknown',
+            message: message,
+            orderNo: params.get('orderNo') || '',
+            // H1 修复：透传 Stripe session_id，方便 APP 校验与对账
+            sessionId: params.get('session_id') || '',
+            // 时间戳：APP 用于防重复消费
+            timestamp: Date.now()
+        };
+
+        // uni-app web-view 实现：parent 是 web-view 容器
+        try {
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage(payload, '*');
+            }
+        } catch (e) {
+            // ignore
+        }
+
+        // 部分平台（H5 / 浏览器跳转）通过 localStorage 兜底：APP 启动时读取
+        try {
+            localStorage.setItem('moyuyo_pay_result', JSON.stringify(payload));
+        } catch (e) {
+            // ignore
+        }
+    })();
+</script>
+</body>
+</html>

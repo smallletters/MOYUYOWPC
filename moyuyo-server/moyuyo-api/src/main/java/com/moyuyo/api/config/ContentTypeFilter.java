@@ -55,7 +55,11 @@ public class ContentTypeFilter {
             "/api/v1/cs/upload",
             "/api/admin/batch-import/",
             // 管理后台文件上传（图片库 / 富文本编辑器）：multipart/form-data
-            "/api/admin/upload/"
+            "/api/admin/upload/",
+            // 支付渠道 webhook：Stripe / PayPal 用 application/json 但 Content-Length 可能很大或未带标准头，
+            // 不强校验 Content-Type 防止 Stripe / PayPal 偶发改 Content-Type 时误拒
+            "/api/v1/payments/stripe/webhook",
+            "/api/v1/payments/paypal/webhook"
     );
 
     @Bean

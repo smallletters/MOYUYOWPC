@@ -1,4 +1,4 @@
-import { get, post, put, del } from '@/utils/request'
+import { get, post } from '@/utils/request'
 
 export function getMemberInfo() {
   return get('/api/v1/member')
@@ -24,6 +24,11 @@ export function getPointsRate() {
   return get('/api/v1/member/points-rate')
 }
 
+// 会员专属特权列表（按等级过滤）
+export function getMemberPrivileges() {
+  return get('/api/v1/member/privileges')
+}
+
 export default {
   getMemberInfo,
   getPointsLog,
@@ -31,4 +36,5 @@ export default {
   recharge,
   getMemberLevels,
   getPointsRate,
+  getMemberPrivileges,
 }
