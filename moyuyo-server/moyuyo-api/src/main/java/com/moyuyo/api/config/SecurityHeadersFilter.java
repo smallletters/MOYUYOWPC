@@ -101,9 +101,10 @@ public class SecurityHeadersFilter implements Filter {
         // 配合 Cross-Origin-Resource-Policy=same-site 防止跨源资源被滥用
         // 注意：COEP=require-corp 会强制所有子资源声明 CORP/CORS，配置错误会导致页面空白
         // 默认 same-origin 已能阻挡跨源读取（COOP 攻击），根据业务需要再考虑升级到 require-corp
-        response.setHeader("Cross-Origin-Opener-Policy", "same-origin");
-        response.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
-        response.setHeader("Cross-Origin-Resource-Policy", "same-site");
+        // COOP 仅 HTTPS 下发；COEP/Resource-Policy 一律不下发以免阻断 ESM
+        if (isHttps(request)) {
+            response.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+        }
 
         // Server 头兜底清理：避免响应经过中间件 wrapper 时重新出现 Tomcat 标识
         response.setHeader("Server", "");
@@ -130,6 +131,8 @@ public class SecurityHeadersFilter implements Filter {
                 "frame-ancestors 'none'; " +
                 "base-uri 'self'; " +
                 "form-action 'self' https:; " +
+                // 允许 Element Plus el-message 等使用的 data:/blob: URL Worker（setTimeout shim）
+                "worker-src 'self' blob: data:; " +
                 "object-src 'none'";
     }
 

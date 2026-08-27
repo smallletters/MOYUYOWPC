@@ -190,7 +190,28 @@ export default {
         setTimeout(() => uni.switchTab({ url: '/pages/tabbar/home' }), 800)
       } catch (e) {
         uni.hideLoading()
-        uni.showToast({ title: e.message || 'Login failed', icon: 'none' })
+        // 修复:把后端真实错误消息完整透出(避免 "Request failed (403)" 这种掩盖问题)
+        const msg = e?.message || 'Login failed'
+        uni.showToast({ title: msg, icon: 'none', duration: 3000 })
+        // 调试日志:console 可见原始错误对象,便于排查 403/400
+        console.error('[login] error:', e)
+      }
+    },
+
+    /** 临时:注册一个测试账号(仅 dev 期间) */
+    async onRegisterTest() {
+      uni.showLoading({ title: '注册测试账号...', mask: true })
+      try {
+        const res = await this.$api?.userApi?.register?.({
+          email: 'usertest@moyuyo.com',
+          password: 'AaBb1234',
+          nickname: 'TestUser',
+        })
+        uni.hideLoading()
+        uni.showToast({ title: '注册成功,请登录', icon: 'success' })
+      } catch (e) {
+        uni.hideLoading()
+        uni.showToast({ title: e?.message || '注册失败', icon: 'none', duration: 3000 })
       }
     },
 

@@ -4,7 +4,7 @@
     <view class="dm-header">
       <view class="nav-bar">
         <view class="nav-back" @tap="goBack">
-          <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+          <text class="back-icon"><text class="luc luc-arrow-left" /></text>
           <text class="back-text">社区</text>
         </view>
         <text class="nav-title">{{ targetUser.name }}</text>
@@ -35,7 +35,9 @@
               </view>
             </view>
           </view>
-          <text class="chevron" :class="{ rotated: profileCollapsed }"><text class="luc luc-arrow-left"></text></text>
+          <text class="chevron" :class="{ rotated: profileCollapsed }">
+            <text class="luc luc-arrow-left" />
+          </text>
         </view>
         <!-- 可折叠内容 -->
         <view class="profile-card-body" :class="{ collapsed: profileCollapsed }">
@@ -68,7 +70,7 @@
           <!-- 商品卡片消息 -->
           <view v-if="msg.type === 'product'" class="product-card">
             <view class="product-image">
-              <text class="product-emoji"><text class="luc luc-spray-can"></text></text>
+              <text class="product-emoji"><text class="luc luc-spray-can" /></text>
             </view>
             <view class="product-info">
               <text class="product-name">{{ msg.product.name }}</text>
@@ -107,7 +109,7 @@
           >
         </view>
         <view class="send-btn" @tap="sendMessage">
-          <text class="send-icon"><text class="luc luc-send"></text></text>
+          <text class="send-icon"><text class="luc luc-send" /></text>
         </view>
       </view>
     </view>
@@ -146,10 +148,14 @@ function saveMessages(targetId) {
     const key = targetId ? `u_${targetId}` : 'u_default'
     all[key] = messages.value
     uni.setStorageSync(STORAGE_KEY, all)
-  } catch (e) { /* ignore */ }
+  } catch (e) {
+    /* ignore */
+  }
 }
 
-function toggleProfile() { profileCollapsed.value = !profileCollapsed.value }
+function toggleProfile() {
+  profileCollapsed.value = !profileCollapsed.value
+}
 
 function viewProfile() {
   const id = targetUser.value.id
@@ -157,7 +163,9 @@ function viewProfile() {
   else uni.navigateTo({ url: '/pages/community/detail' })
 }
 
-function goBack() { uni.navigateBack() }
+function goBack() {
+  uni.navigateBack()
+}
 
 function showMoreOptions() {
   uni.showActionSheet({
@@ -197,7 +205,9 @@ onMounted(() => {
     if (q.id) targetUser.value.id = q.id
     if (q.name) targetUser.value.name = q.name
     if (q.avatar) targetUser.value.avatar = q.avatar
-  } catch (e) { /* ignore */ }
+  } catch (e) {
+    /* ignore */
+  }
   loadMessages(targetUser.value.id)
   if (messages.value.length === 0) {
     messages.value.push({ isSelf: false, type: 'text', content: '你好，开始聊天吧～' })
@@ -271,6 +281,8 @@ onMounted(() => {
   flex: 1;
   background: #f2f2f7;
   padding: 24rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* 信息卡片 */

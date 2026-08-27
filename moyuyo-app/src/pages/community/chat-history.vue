@@ -2,7 +2,7 @@
   <view class="chat-history-page">
     <view class="nav-bar">
       <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="nav-title">客服会话</text>
       <view class="nav-placeholder" />
@@ -31,8 +31,7 @@
         v-for="chat in filteredChats"
         :key="chat.id"
         class="chat-item"
-        @tap="enterChat(chat)"
-      >
+        @tap="enterChat(chat)">
         <view class="chat-avatar">{{ statusLabel(chat.status).charAt(0) }}</view>
         <view class="chat-info">
           <view class="chat-row1">
@@ -40,7 +39,9 @@
             <text class="chat-time">{{ formatTime(chat.lastMessageAt || chat.createTime) }}</text>
           </view>
           <view class="chat-row2">
-            <text class="chat-status" :class="'status-' + (chat.status || 'WAITING')">{{ statusLabel(chat.status) }}</text>
+            <text class="chat-status" :class="'status-' + (chat.status || 'WAITING')">
+              {{ statusLabel(chat.status) }}
+            </text>
             <text class="chat-count">{{ chat.messageCount || 0 }} 条消息</text>
           </view>
         </view>
@@ -64,7 +65,9 @@ const filteredChats = computed(() => {
   return sessions.value
 })
 
-function switchTab(i) { activeTab.value = i }
+function switchTab(i) {
+  activeTab.value = i
+}
 
 function statusLabel(s) {
   if (s === 'PROCESSING') return '进行中'
@@ -77,7 +80,9 @@ function formatTime(t) {
   try {
     const d = new Date(t)
     return `${d.getMonth() + 1}-${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-  } catch { return '' }
+  } catch {
+    return ''
+  }
 }
 
 async function loadSessions() {
@@ -97,36 +102,143 @@ function enterChat(chat) {
   uni.navigateTo({ url: '/pages/user/customer-service' })
 }
 
-function goBack() { uni.navigateBack() }
+function goBack() {
+  uni.navigateBack()
+}
 
-onMounted(() => { loadSessions() })
+onMounted(() => {
+  loadSessions()
+})
 </script>
 
 <style lang="scss" scoped>
-.chat-history-page { min-height: 100vh; background: var(--color-background); }
-.nav-bar { display: flex; align-items: center; height: 88rpx; padding: 0 24rpx; background: var(--color-surface); border-bottom: 1rpx solid var(--color-divider); }
-.nav-back { width: 60rpx; }
-.back-icon { font-size: 44rpx; color: var(--color-primary); }
-.nav-title { flex: 1; text-align: center; font-size: 32rpx; font-weight: 600; }
-.nav-placeholder { width: 60rpx; }
-.tab-bar { display: flex; gap: 24rpx; padding: 16rpx 24rpx; background: var(--color-surface); border-bottom: 1rpx solid var(--color-divider); }
-.tab-item { padding: 6rpx 16rpx; border-radius: 999rpx; }
-.tab-active { background: var(--color-primary); }
-.tab-text { font-size: 26rpx; color: var(--color-text-secondary); }
-.tab-text-active { color: #fff; font-weight: 600; }
-.chat-list { height: calc(100vh - 160rpx); }
-.chat-item { display: flex; gap: 16rpx; padding: 24rpx; background: var(--color-surface); border-bottom: 1rpx solid var(--color-divider); }
-.chat-avatar { width: 72rpx; height: 72rpx; border-radius: 50%; background: var(--color-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 32rpx; flex-shrink: 0; }
-.chat-info { flex: 1; display: flex; flex-direction: column; gap: 8rpx; }
-.chat-row1 { display: flex; justify-content: space-between; }
-.chat-title { font-size: 28rpx; font-weight: 600; }
-.chat-time { font-size: 22rpx; color: var(--color-text-tertiary); }
-.chat-row2 { display: flex; gap: 12rpx; align-items: center; }
-.chat-status { padding: 2rpx 10rpx; border-radius: 999rpx; font-size: 20rpx; }
-.status-WAITING { background: #fff7e6; color: #b8860b; }
-.status-PROCESSING { background: #e6f7ff; color: #007aff; }
-.status-CLOSED { background: #f0f0f0; color: #999; }
-.chat-count { font-size: 22rpx; color: var(--color-text-tertiary); }
-.loading, .empty { padding: 60rpx 24rpx; text-align: center; }
-.loading-text, .empty-text { font-size: 26rpx; color: var(--color-text-tertiary); }
+.chat-history-page {
+  min-height: 100vh;
+  background: var(--color-background);
+}
+.nav-bar {
+  display: flex;
+  align-items: center;
+  height: 88rpx;
+  padding: 0 24rpx;
+  background: var(--color-surface);
+  border-bottom: 1rpx solid var(--color-divider);
+}
+.nav-back {
+  width: 60rpx;
+}
+.back-icon {
+  font-size: 44rpx;
+  color: var(--color-primary);
+}
+.nav-title {
+  flex: 1;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+.nav-placeholder {
+  width: 60rpx;
+}
+.tab-bar {
+  display: flex;
+  gap: 24rpx;
+  padding: 16rpx 24rpx;
+  background: var(--color-surface);
+  border-bottom: 1rpx solid var(--color-divider);
+}
+.tab-item {
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+}
+.tab-active {
+  background: var(--color-primary);
+}
+.tab-text {
+  font-size: 26rpx;
+  color: var(--color-text-secondary);
+}
+.tab-text-active {
+  color: #fff;
+  font-weight: 600;
+}
+.chat-list {
+  /* 显式宽度让 scroll-view 跟随屏幕宽度 */
+  width: 100%;
+  height: calc(100vh - 160rpx);
+  box-sizing: border-box;
+}
+.chat-item {
+  display: flex;
+  gap: 16rpx;
+  padding: 24rpx;
+  background: var(--color-surface);
+  border-bottom: 1rpx solid var(--color-divider);
+}
+.chat-avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  flex-shrink: 0;
+}
+.chat-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+.chat-row1 {
+  display: flex;
+  justify-content: space-between;
+}
+.chat-title {
+  font-size: 28rpx;
+  font-weight: 600;
+}
+.chat-time {
+  font-size: 22rpx;
+  color: var(--color-text-tertiary);
+}
+.chat-row2 {
+  display: flex;
+  gap: 12rpx;
+  align-items: center;
+}
+.chat-status {
+  padding: 2rpx 10rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+}
+.status-WAITING {
+  background: #fff7e6;
+  color: #b8860b;
+}
+.status-PROCESSING {
+  background: #e6f7ff;
+  color: #007aff;
+}
+.status-CLOSED {
+  background: #f0f0f0;
+  color: #999;
+}
+.chat-count {
+  font-size: 22rpx;
+  color: var(--color-text-tertiary);
+}
+.loading,
+.empty {
+  padding: 60rpx 24rpx;
+  text-align: center;
+}
+.loading-text,
+.empty-text {
+  font-size: 26rpx;
+  color: var(--color-text-tertiary);
+}
 </style>

@@ -10,6 +10,9 @@ import { get, post, del } from '@/utils/request'
  *  - POST   /api/v1/community/posts/{id}/like
  *  - DELETE /api/v1/community/posts/{id}/like
  *  - POST   /api/v1/community/posts/{postId}/comments
+ *  - GET    /api/v1/community/topics           话题列表（用于发布页选择话题）
+ *  - POST   /api/v1/community/posts/{id}/collect  收藏帖子
+ *  - DELETE /api/v1/community/posts/{id}/collect 取消收藏
  */
 
 export function getCommunityPosts(params = {}) {
@@ -59,6 +62,25 @@ export function addComment(postId, content, parentId) {
   return post(`/api/v1/community/posts/${postId}/comments`, params)
 }
 
+/**
+ * 收藏/取消收藏帖子：用于帖子详情页心形按钮。
+ */
+export function collectPost(id) {
+  return post(`/api/v1/community/posts/${id}/collect`)
+}
+
+export function uncollectPost(id) {
+  return del(`/api/v1/community/posts/${id}/collect`)
+}
+
+/**
+ * 话题列表（社区广场）：按热度降序+排序权重升序，返回活跃话题。
+ * 用于发布页"话题"cell 弹层选项。
+ */
+export function getCommunityTopics() {
+  return get('/api/v1/community/topics')
+}
+
 export default {
   getCommunityPosts,
   getPostDetail,
@@ -67,4 +89,7 @@ export default {
   likePost,
   unlikePost,
   addComment,
+  collectPost,
+  uncollectPost,
+  getCommunityTopics,
 }

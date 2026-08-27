@@ -92,17 +92,48 @@
         </div>
       </div>
 
-      <!-- 内容预览卡片 -->
+      <!-- 内容预览卡片：完整内容 + 多图九宫格 -->
       <div class="detail-panel">
         <div class="detail-panel-header">
           <h3 class="detail-panel-title">内容预览</h3>
+          <span class="content-stats" v-if="detail.imageList.length">
+            共 {{ detail.imageList.length }} 张图片
+          </span>
         </div>
         <div class="detail-panel-body">
+          <!-- 多图预览：1张大图 / 2列 / 3列 -->
+          <div
+            v-if="detail.imageList.length"
+            class="detail-image-grid"
+            :class="getDetailImageGridClass(detail.imageList.length)"
+          >
+            <div
+              v-for="(url, idx) in detail.imageList"
+              :key="idx"
+              class="detail-image-cell"
+              @click="openImagePreview(url)"
+            >
+              <img :src="url" class="detail-image-img" @error="onDetailImageError(idx)" />
+            </div>
+          </div>
+
+          <!-- 完整内容：优先用后端 content，缺失则用 excerpt -->
           <div class="content-preview">
-            {{ detail.contentExcerpt || '（无内容摘要）' }}
+            {{ detail.content || detail.contentExcerpt || '（无内容）' }}
           </div>
         </div>
       </div>
+
+      <!-- 图片大图预览弹层 -->
+      <el-dialog
+        v-model="previewVisible"
+        :show-close="true"
+        width="90%"
+        center
+        @close="previewVisible = false"
+      >
+        <img :src="previewUrl" class="preview-fullscreen" />
+      </el-dialog>
 
       <!-- 审核操作卡片 -->
       <div class="detail-panel">
@@ -177,7 +208,9 @@ const detail = reactive({
   contentId: '',
   userId: '',
   contentExcerpt: '',
-  images: '',
+  content: '',   // 后端返回的完整内容（contentType=POST 时来自原帖）
+  images: '',    // 后端 images 原始字段（String 或 Array）
+  imageList: [], // 解析后的图片 URL 列表（用于多图预览）
   reason: '',
   status: '',
   reviewerId: '',
@@ -187,6 +220,35 @@ const detail = reactive({
   autoScore: null,
   createTime: ''
 })
+
+// 图片大图预览弹层
+const previewVisible = ref(false)
+const previewUrl = ref('')
+
+/** 打开图片大图预览 */
+function openImagePreview(url) {
+  previewUrl.value = url
+  previewVisible.value = true
+}
+
+/** 单张图加载失败：从 imageList 中移除 */
+function onDetailImageError(idx) {
+  if (Array.isArray(detail.imageList)) {
+    detail.imageList.splice(idx, 1)
+  }
+}
+
+/**
+ * 多图网格列数（与列表页/APP 端统一）
+ *  - 1 张：大图（单列）
+ *  - 2-3 张：2 列
+ *  - 4+ 张：3 列
+ */
+function getDetailImageGridClass(count) {
+  if (count <= 1) return 'grid-single'
+  if (count <= 3) return 'grid-col-2'
+  return 'grid-col-3'
+}
 
 const loading = ref(false)
 const busy = ref(false) // 任意操作进行中（防重复点击）
@@ -250,13 +312,31 @@ async function loadDetail() {
   try {
     const res = await getContentReviewDetail(id)
     if (res && res.id) {
+      // 解析后端 images 字段：可能是 String(JSON) 或 Array
+      let imgList = []
+      const rawImages = res.images ?? ''
+      if (Array.isArray(rawImages)) {
+        imgList = rawImages
+      } else if (typeof rawImages === 'string' && rawImages.trim()) {
+        try {
+          const parsed = JSON.parse(rawImages)
+          if (Array.isArray(parsed)) imgList = parsed
+        } catch (e) { /* 忽略解析错误，留空数组 */ }
+      }
+      // 仅保留合法 URL（http(s):// 与 /uploads/ 相对路径）
+      imgList = imgList
+        .map(u => (u && (u.startsWith('http://') || u.startsWith('https://') || u.startsWith('/uploads/')) ? u : ''))
+        .filter(Boolean)
+
       Object.assign(detail, {
         id: res.id || '',
         contentType: res.contentType || '',
         contentId: res.contentId || '',
         userId: res.userId || '',
         contentExcerpt: res.contentExcerpt || '',
-        images: res.images || '',
+        content: res.content || '',
+        images: rawImages,
+        imageList: imgList,
         reason: res.reason || '',
         status: res.status || '',
         reviewerId: res.reviewerId || '',
@@ -304,7 +384,7 @@ async function handleAction(action) {
     if (action === 'approve') await approveContentReview(detail.id)
     else if (action === 'hide') await hideContentReview(detail.id)
     else if (action === 'delete') await deleteContentReview(detail.id)
-    else if (action === 'ban') await banContentReview(detail.id)
+    else if (action === 'ban') await banContentReview(detail.id, { banType: '其他违规', comment: '详情页快速封禁' })
     ElMessage.success(`${cfg.title}成功`)
     await loadDetail() // 重新加载详情，更新状态
   } catch (err) {
@@ -484,6 +564,60 @@ onMounted(() => {
   background: var(--background-50);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
+}
+
+/* 详情页：多图九宫格预览（审核员查看完整内容） */
+.detail-image-grid {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.detail-image-grid.grid-single {
+  grid-template-columns: 1fr;
+}
+.detail-image-grid.grid-single .detail-image-cell {
+  height: 320px;
+  border-radius: 8px;
+}
+.detail-image-grid.grid-col-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+.detail-image-grid.grid-col-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.detail-image-grid.grid-col-2 .detail-image-cell,
+.detail-image-grid.grid-col-3 .detail-image-cell {
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+}
+.detail-image-cell {
+  position: relative;
+  background: var(--background-200);
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--border);
+}
+.detail-image-cell .detail-image-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.2s ease;
+}
+.detail-image-cell:hover .detail-image-img {
+  transform: scale(1.03);
+}
+.content-stats {
+  font-size: 12px;
+  color: var(--text-500);
+  margin-left: auto;
+}
+.preview-fullscreen {
+  width: 100%;
+  height: auto;
+  max-height: 80vh;
+  object-fit: contain;
+  display: block;
 }
 
 /* 审核操作按钮组 */

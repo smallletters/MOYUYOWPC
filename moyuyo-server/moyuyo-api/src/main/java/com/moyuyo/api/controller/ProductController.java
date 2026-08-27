@@ -3,24 +3,30 @@ package com.moyuyo.api.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
+import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductReviewEntity;
 import com.moyuyo.dao.mapper.ProductReviewMapper;
 import com.moyuyo.dao.entity.CategoryEntity;
 import com.moyuyo.dao.mapper.CategoryMapper;
+import com.moyuyo.service.MissionService;
 import com.moyuyo.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Tag(name = "商品管理")
 @RestController
 @RequestMapping("/api/v1/products")
@@ -30,6 +36,8 @@ public class ProductController {
   private final ProductService productService;
   private final ProductReviewMapper productReviewMapper;
   private final CategoryMapper categoryMapper;
+  private final MissionService missionService;
+  private final StringRedisTemplate redisTemplate;
 
   @Operation(summary = "商品列表（分页+筛选+排序+搜索）")
   @GetMapping
@@ -90,6 +98,33 @@ public class ProductController {
   @Operation(summary = "商品详情（含 SKU 和图片）")
   @GetMapping("/{id}")
   public Result<ProductEntity> getProductDetail(@PathVariable Long id) {
-    return Result.success(productService.getProductWithDetails(id));
+    ProductEntity product = productService.getProductWithDetails(id);
+    // 浏览商品触发"浏览 5 个商品"任务进度（同一商品 5 分钟内不重复计数，避免刷新刷分）
+    triggerViewMission(id);
+    return Result.success(product);
+  }
+
+  /** 浏览商品任务进度触发：用 Redis 短期去重（同 userId+productId 5 分钟内只算 1 次）。 */
+  private void triggerViewMission(Long productId) {
+    try {
+      Long userId = UserContextHolder.getUserId();
+      if (userId == null) return;
+      String dedupKey = "mission:view:dedup:" + userId + ":" + productId;
+      Boolean firstTime = redisTemplate.opsForValue().setIfAbsent(
+          dedupKey, "1", Duration.ofMinutes(5));
+      if (Boolean.FALSE.equals(firstTime)) {
+        return; // 5 分钟内重复浏览，不计
+      }
+      // 查找"浏览"任务（按 name 包含"浏览"匹配，兼容后续多类浏览任务）
+      missionService.listAllMissions().stream()
+          .filter(m -> "DAILY".equalsIgnoreCase(m.getType())
+              && m.getActive() != null && m.getActive() == 1
+              && m.getName() != null && m.getName().contains("浏览"))
+          .findFirst()
+          .ifPresent(m -> missionService.incrementProgress(userId, m.getId(), 1));
+    } catch (Exception e) {
+      // 任务进度失败不应影响商品详情主流程
+      log.warn("[product] trigger view mission failed: productId={}", productId, e);
+    }
   }
 }

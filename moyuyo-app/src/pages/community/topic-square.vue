@@ -1,7 +1,9 @@
 <template>
   <view class="topic-square">
     <view class="page-header">
-      <view class="back" @click="goBack" aria-label="返回"><text class="luc luc-arrow-left"></text></view>
+      <view class="back" aria-label="返回" @click="goBack">
+        <text class="luc luc-arrow-left" />
+      </view>
       <text class="title">话题广场</text>
       <view class="post-btn" @click="onCreate">+ 发布</view>
     </view>
@@ -9,9 +11,16 @@
     <scroll-view scroll-y class="content">
       <!-- 热门话题 -->
       <view class="section">
-        <text class="section-title"><text class="luc luc-flame"></text> 热门话题</text>
+        <text class="section-title">
+          <text class="luc luc-flame" />
+          热门话题
+        </text>
         <view class="topic-grid">
-          <view v-for="t in hotTopics" :key="t.id" class="topic-card" @click="onTopicClick(t)">
+          <view
+            v-for="t in hotTopics"
+            :key="t.id"
+            class="topic-card"
+            @click="onTopicClick(t)">
             <text class="topic-name">#{{ t.name }}</text>
             <text class="topic-meta">{{ t.posts }} 帖子 · {{ t.views }} 浏览</text>
           </view>
@@ -46,9 +55,18 @@
             <image :src="p.image" class="post-image" />
           </view>
           <view class="post-actions">
-            <text><text class="luc luc-heart"></text> {{ p.likes }}</text>
-            <text><text class="luc luc-message-circle"></text> {{ p.comments }}</text>
-            <text><text class="luc luc-share-2"></text> 分享</text>
+            <text>
+              <text class="luc luc-heart" />
+              {{ p.likes }}
+            </text>
+            <text>
+              <text class="luc luc-message-circle" />
+              {{ p.comments }}
+            </text>
+            <text>
+              <text class="luc luc-share-2" />
+              分享
+            </text>
           </view>
         </view>
       </view>
@@ -127,6 +145,9 @@ export default {
 .topic-square {
   min-height: 100vh;
   background: var(--color-background);
+  /* 显式宽度,确保 uni-scroll-view 内部 .uni-scroll-view-content 跟随屏幕 */
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .page-header {
@@ -162,7 +183,10 @@ export default {
 }
 
 .content {
+  /* 显式宽度让 scroll-view 跟随屏幕宽度 */
+  width: 100%;
   padding: 24rpx;
+  box-sizing: border-box;
 }
 
 .section-title {

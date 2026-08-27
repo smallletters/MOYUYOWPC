@@ -1116,9 +1116,14 @@ export function approveContentReview(id) { return api.put(`/content-review/${id}
 export function rejectContentReview(id, data) { return api.put(`/content-review/${id}/reject`, data) }
 export function hideContentReview(id) { return api.put(`/content-review/${id}/hide`) }
 export function deleteContentReview(id) { return api.delete(`/content-review/${id}`) }
-export function banContentReview(id) { return api.put(`/content-review/${id}/ban`) }
+export function banContentReview(id, data) { return api.put(`/content-review/${id}/ban`, data) }
 export function getContentReviewStats() { return api.get('/content-review/stats') }
 export function getContentReviewTrend(params) { return api.get('/content-review/trend', { params }) }
+
+/**
+ * 灌入审核测试数据(用于演示违规类型筛选)。仅 dev 环境使用。
+ */
+export function seedContentReview() { return api.post('/content-review/seed') }
 
 // ==================== 优惠券管理 ====================
 export function getCouponList() { return api.get('/coupons/list') }

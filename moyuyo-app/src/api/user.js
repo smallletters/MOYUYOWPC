@@ -5,7 +5,8 @@ export function register(data) {
 }
 
 export function login(username, password) {
-  return post('/api/v1/auth/login', { email: username, password })
+  // showError:false 让 onLogin 自己处理 toast,避免重复弹窗且能看到后端真实 message
+  return post('/api/v1/auth/login', { email: username, password }, { showError: false })
 }
 
 export function refreshToken(refreshToken) {

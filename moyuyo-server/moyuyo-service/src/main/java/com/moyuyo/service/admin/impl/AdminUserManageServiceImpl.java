@@ -10,6 +10,7 @@ import com.moyuyo.service.admin.AdminUserManageService;
 import static com.moyuyo.common.enums.GeneralStatusEnum.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,7 @@ public class AdminUserManageServiceImpl implements AdminUserManageService {
 
   private final UserMapper userMapper;
   private final MemberMapper memberMapper;
+  private final PasswordEncoder passwordEncoder;
 
   @Override
   public Map<String, Object> getStats() {
@@ -267,8 +269,11 @@ public class AdminUserManageServiceImpl implements AdminUserManageService {
     if (user == null) {
       throw new IllegalArgumentException("用户不存在");
     }
-    // 实际项目应对密码进行加密处理
-    user.setPasswordHash(newPassword);
-    userMapper.updateById(user);
+    // P0 安全修复:必须用 BCrypt 加密后存储,否则明文密码会导致登录验证失败
+    // (BCryptPasswordEncoder.matches() 永远不匹配明文)
+    String hashed = passwordEncoder.encode(newPassword);
+    user.setPasswordHash(hashed);
+    int updated = userMapper.updateById(user);
+    log.info("[admin-user] resetPassword: userId={}, updatedRows={}", id, updated);
   }
 }

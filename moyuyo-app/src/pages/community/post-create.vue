@@ -1,57 +1,76 @@
 <template>
   <view class="post-create">
-    <view class="page-header">
-      <view class="cancel" @click="goBack">取消</view>
-      <text class="title">发布</text>
-      <view class="publish-btn" @click="onPublish">发布</view>
-    </view>
+    <!-- 顶部导航(u-navbar 自带回退按钮,统一标题栏样式) -->
+    <u-navbar
+      title="发布"
+      :auto-back="true"
+      :background="themeColorBg"
+      :border-bottom="true">
+      <template #right>
+        <view class="nav-right-slot">
+          <!-- 使用 uview-plus 标准按钮:type="primary" 自动应用品牌主题色,
+            plain 镂空样式与 navbar 协调;loading 内置显示 -->
+          <u-button
+            type="primary"
+            plain
+            size="small"
+            shape="circle"
+            :disabled="!canPublish"
+            :loading="submitting"
+            @click="onPublish"
+          >
+            发布
+          </u-button>
+        </view>
+      </template>
+    </u-navbar>
 
     <scroll-view scroll-y class="content">
-      <textarea
+      <!-- 内容编辑区:用 u-textarea 统一风格 -->
+      <u--textarea
         v-model="content"
         class="content-input"
         placeholder="说点什么吧..."
-        maxlength="500"
+        :maxlength="500"
+        :count="true"
+        :auto-height="true"
+        :height="240"
+        border="none"
       />
 
-      <!-- 上传图片 -->
+      <!-- 上传图片:用 u-upload 替换手写上传 UI -->
       <view class="upload-section">
-        <view class="upload-list">
-          <view v-for="(img, i) in images" :key="i" class="upload-item">
-            <image :src="img" class="upload-image" />
-            <view class="upload-remove" @click="images.splice(i, 1)"><text class="luc luc-x"></text></view>
-          </view>
-          <view v-if="images.length < 9" class="upload-add" @click="onAddImage">
-            <text class="upload-add-icon">+</text>
-            <text class="upload-add-text">添加图片</text>
-          </view>
-        </view>
+        <u-upload
+          :file-list="imageFileList"
+          :max-count="9"
+          :max-size="10 * 1024 * 1024"
+          :deletable="true"
+          accept="image"
+          multiple
+          :auto-upload="false"
+          @after-read="onAfterRead"
+          @delete="onDeleteImage"
+        />
       </view>
 
-      <!-- 选项 -->
-      <view class="option-list">
-        <view class="option-item">
-          <text>话题</text>
-          <view class="option-right">
-            <text class="option-text">{{ topic || '选择话题' }}</text>
-            <text class="arrow"><text class="luc luc-chevron-right"></text></text>
-          </view>
-        </view>
-        <view class="option-item">
-          <text>位置</text>
-          <view class="option-right">
-            <text class="option-text">{{ location || '不显示位置' }}</text>
-            <text class="arrow"><text class="luc luc-chevron-right"></text></text>
-          </view>
-        </view>
-        <view class="option-item">
-          <text>谁可以看</text>
-          <view class="option-right">
-            <text class="option-text">公开</text>
-            <text class="arrow"><text class="luc luc-chevron-right"></text></text>
-          </view>
-        </view>
-      </view>
+      <!-- 发布选项:用 u-cell-group + u-cell 标准 cell 风格(value-style 由组件库默认控制) -->
+      <u-cell-group :border="false" class="option-group">
+        <u-cell
+          title="话题"
+          :value="topic || '选择话题'"
+          is-link
+          @click="onPickTopic" />
+        <u-cell
+          title="位置"
+          :value="location || '不显示位置'"
+          is-link
+          @click="onPickLocation" />
+        <u-cell
+          title="谁可以看"
+          value="公开"
+          is-link
+          @click="onPickVisibility" />
+      </u-cell-group>
     </scroll-view>
   </view>
 </template>
@@ -64,9 +83,11 @@ export default {
   data() {
     return {
       content: '',
-      images: [],
+      // u-upload 需要 {url, ...} 结构
+      imageFileList: [],
       topic: '',
       location: '',
+      visibility: 'public',
       submitting: false,
     }
   },
@@ -74,6 +95,14 @@ export default {
   computed: {
     userStore() {
       return useUserStore()
+    },
+    /** 是否可发布:有内容或图片,且未提交中 */
+    canPublish() {
+      return !this.submitting && (!!this.content.trim() || this.imageFileList.length > 0)
+    },
+    /** 兼容旧字段 */
+    images() {
+      return this.imageFileList.map((f) => f.url || f.thumb)
     },
   },
 
@@ -89,11 +118,66 @@ export default {
       uni.navigateBack()
     },
 
-    onAddImage() {
-      uni.chooseImage({
-        count: 9 - this.images.length,
+    /**
+     * u-upload 读取图片后的回调:
+     * - 当 auto-upload=false 时,after-read 触发,文件对象已 push 到 file-list
+     * - 兼容 uni.chooseImage 返回的 {path, ...} 结构
+     */
+    onAfterRead(event) {
+      // event.file 可能为单个或数组(多选模式)
+      const list = Array.isArray(event.file) ? event.file : [event.file]
+      list.forEach((file) => {
+        // 仅展示本地路径,不实际上传
+        this.imageFileList.push({
+          url: file.url || file.path || file.thumb,
+          status: 'success',
+          message: '',
+        })
+      })
+    },
+
+    /** 删除某张图片(u-upload @delete) */
+    onDeleteImage(event) {
+      const index = event.index
+      if (index >= 0 && index < this.imageFileList.length) {
+        this.imageFileList.splice(index, 1)
+      }
+    },
+
+    /** 选择话题(占位,实际项目中应跳转到话题选择页) */
+    onPickTopic() {
+      uni.showToast({ title: '话题选择功能开发中', icon: 'none' })
+    },
+
+    /** 选择位置(预留位置权限流程) */
+    onPickLocation() {
+      uni.authorize({
+        scope: 'scope.userLocation',
+        success: () => {
+          uni.getLocation({
+            type: 'wgs84',
+            success: (res) => {
+              this.location = `${res.latitude.toFixed(4)}, ${res.longitude.toFixed(4)}`
+              uni.showToast({ title: '位置已填入', icon: 'success' })
+            },
+            fail: () => uni.showToast({ title: '获取位置失败', icon: 'none' }),
+          })
+        },
+        fail: () => uni.showToast({ title: '请授予定位权限', icon: 'none' }),
+      })
+    },
+
+    /** 选择可见性(预留) */
+    onPickVisibility() {
+      uni.showActionSheet({
+        itemList: ['公开', '仅好友', '仅自己'],
         success: (res) => {
-          this.images.push(...res.tempFilePaths)
+          const map = ['public', 'friends', 'private']
+          this.visibility = map[res.tapIndex]
+          uni.showToast({
+            title: ['公开', '仅好友', '仅自己'][res.tapIndex],
+            icon: 'none',
+          })
         },
       })
     },
@@ -103,7 +187,7 @@ export default {
         uni.showToast({ title: '请先登录', icon: 'none' })
         return
       }
-      if (!this.content && this.images.length === 0) {
+      if (!this.canPublish) {
         uni.showToast({ title: '请输入内容或上传图片', icon: 'none' })
         return
       }
@@ -111,16 +195,11 @@ export default {
       this.submitting = true
       uni.showLoading({ title: '发布中...' })
       try {
-        // 后端接口 /api/v1/community/posts（POST）
-        const result = await communityApi.createPost(
-          this.content,
-          this.images,
-          this.topic || null,
-        )
+        // 后端接口 /api/v1/community/posts(POST)
+        await communityApi.createPost(this.content, this.images, this.topic || null)
         uni.hideLoading()
         uni.showToast({ title: '发布成功', icon: 'success' })
         setTimeout(() => uni.navigateBack(), 800)
-        // result 是 CommunityPostVO，发帖成功可携带 id
       } catch (e) {
         uni.hideLoading()
         uni.showToast({ title: e.message || '发布失败', icon: 'none' })
@@ -135,143 +214,46 @@ export default {
 <style lang="scss" scoped>
 .post-create {
   min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
   background: var(--color-background);
 }
 
-.page-header {
+.nav-right-slot {
   display: flex;
   align-items: center;
   height: 88rpx;
-  padding: 0 24rpx;
-  background: var(--color-surface);
-  border-bottom: 1rpx solid var(--color-divider);
-}
-
-.cancel {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.title {
-  flex: 1;
-  text-align: center;
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
-}
-
-.publish-btn {
-  font-size: var(--font-size-sm);
-  color: var(--color-primary);
-  font-weight: var(--font-weight-semibold);
+  padding-right: 8rpx;
 }
 
 .content {
+  width: 100%;
   padding: 24rpx;
+  box-sizing: border-box;
 }
 
+/* 内容编辑区:去掉默认边框,适配设计稿 */
 .content-input {
   width: 100%;
-  min-height: 240rpx;
-  font-size: var(--font-size-base);
-  color: var(--color-text);
-  line-height: 1.6;
   background: transparent;
 }
 
+.content-input ::v-deep .u-textarea {
+  background: transparent !important;
+}
+
+/* 上传图片区与输入区分隔 */
 .upload-section {
-  padding: 24rpx 0;
-  border-top: 1rpx solid var(--color-divider);
+  margin: 24rpx 0;
 }
 
-.upload-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-}
-
-.upload-item {
-  position: relative;
-  width: 200rpx;
-  height: 200rpx;
-  border-radius: var(--radius-sm);
+/* 选项 cell 组:加圆角,与设计稿一致 */
+.option-group {
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
-.upload-image {
-  width: 100%;
-  height: 100%;
-}
-
-.upload-remove {
-  position: absolute;
-  top: -10rpx;
-  right: -10rpx;
-  width: 40rpx;
-  height: 40rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-text);
-  color: #fff;
-  border-radius: 50%;
-  font-size: 24rpx;
-}
-
-.upload-add {
-  width: 200rpx;
-  height: 200rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8rpx;
-  background: var(--color-surface);
-  border: 1rpx dashed var(--color-divider);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-tertiary);
-}
-
-.upload-add-icon {
-  font-size: 56rpx;
-}
-
-.upload-add-text {
-  font-size: var(--font-size-xs);
-}
-
-.option-list {
-  margin-top: 24rpx;
-  background: var(--color-surface);
-  border: 1rpx solid var(--color-divider);
-  border-radius: var(--radius-md);
-}
-
-.option-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 24rpx;
-  border-bottom: 1rpx solid var(--color-divider);
-}
-
-.option-item:last-child {
-  border-bottom: none;
-}
-
-.option-right {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-}
-
-.option-text {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.arrow {
+.option-group ::v-deep .u-cell {
   font-size: 28rpx;
-  color: var(--color-text-tertiary);
 }
 </style>

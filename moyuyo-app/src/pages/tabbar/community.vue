@@ -13,11 +13,11 @@
     <view class="top-bar">
       <text class="top-title">社区</text>
       <view class="top-actions">
-        <view class="icon-btn" @tap="goSearch" aria-label="搜索">
-          <text class="icon"><text class="luc luc-search"></text></text>
+        <view class="icon-btn" aria-label="搜索" @tap="goSearch">
+          <text class="icon"><text class="luc luc-search" /></text>
         </view>
-        <view class="icon-btn relative" @tap="goNotifications" aria-label="通知">
-          <text class="icon"><text class="luc luc-bell"></text></text>
+        <view class="icon-btn relative" aria-label="通知" @tap="goNotifications">
+          <text class="icon"><text class="luc luc-bell" /></text>
           <view class="badge-dot" />
         </view>
       </view>
@@ -32,7 +32,9 @@
         :class="{ active: activeTab === t.value }"
         @tap="onTabChange(t.value)"
       >
-        <text class="tab-text" :class="{ 'tab-text-active': activeTab === t.value }">{{ t.label }}</text>
+        <text class="tab-text" :class="{ 'tab-text-active': activeTab === t.value }">
+          {{ t.label }}
+        </text>
         <view v-if="activeTab === t.value" class="tab-indicator" />
       </view>
     </view>
@@ -40,7 +42,7 @@
     <!-- 搜索条（仅在「推荐」Tab 显示） -->
     <view v-if="activeTab === 'recommend'" class="search-bar">
       <view class="search-field" @tap="goSearchPage">
-        <text class="search-icon luc luc-search"></text>
+        <text class="search-icon luc luc-search" />
         <text class="search-placeholder">搜索帖子、用户、话题…</text>
       </view>
     </view>
@@ -56,8 +58,7 @@
         v-for="t in topicTags"
         :key="t.id"
         class="topic-tag"
-        @tap="onTopicClick(t)"
-      >
+        @tap="onTopicClick(t)">
         #{{ t.name }}
       </view>
     </scroll-view>
@@ -76,15 +77,15 @@
         v-for="p in posts"
         :key="p.id"
         class="post-card"
-        @tap="goDetail(p.id)"
-      >
+        @tap="goDetail(p.id)">
         <!-- 用户信息行 -->
         <view class="post-header">
           <image
             v-if="p.avatar"
-            :src="p.avatar"
+            :src="resolveImageUrl(p.avatar)"
             class="post-avatar"
             mode="aspectFill"
+            @error="onImageError"
           />
           <view v-else class="post-avatar post-avatar-fallback">
             {{ avatarChar(p.username) }}
@@ -98,15 +99,22 @@
           </view>
         </view>
 
-        <!-- 帖子图片 -->
-        <view v-if="p.images && p.images.length" class="post-image-wrap">
+        <!-- 帖子图片:1张大图 / 2-9张九宫格(参考小红书) -->
+        <view
+          v-if="p.images && p.images.length"
+          class="post-image-wrap"
+          :class="['grid-' + getImageGridClass(p.images.length)]"
+        >
           <image
-            :src="p.images[0]"
+            v-for="(img, idx) in p.images"
+            :key="idx"
+            :src="resolveImageUrl(img)"
             class="post-image"
             mode="aspectFill"
             lazy-load
             :show-menu-by-longpress="false"
             @error="onImageError"
+            @tap="goDetail(p.id)"
           />
         </view>
 
@@ -117,20 +125,16 @@
 
         <!-- 互动行：点赞 / 评论 / 分享 -->
         <view class="post-actions">
-          <view
-            class="action"
-            :class="{ liked: p.liked }"
-            @tap.stop="onLike(p)"
-          >
-            <text class="action-icon luc" :class="$luc(p.liked  ?  'heart'  :  'heart')"></text>
+          <view class="action" :class="{ liked: p.liked }" @tap.stop="onLike(p)">
+            <text class="action-icon luc" :class="$luc(p.liked ? 'heart' : 'heart')" />
             <text class="action-count">{{ p.likes || 0 }}</text>
           </view>
           <view class="action" @tap.stop="goDetail(p.id, true)">
-            <text class="action-icon"><text class="luc luc-message-circle"></text></text>
+            <text class="action-icon"><text class="luc luc-message-circle" /></text>
             <text class="action-count">{{ p.comments || 0 }}</text>
           </view>
           <view class="action" @tap.stop="onShare(p)">
-            <text class="action-icon luc luc-external-link"></text>
+            <text class="action-icon luc luc-external-link" />
           </view>
         </view>
       </view>
@@ -144,8 +148,8 @@
     </scroll-view>
 
     <!-- 浮动发布按钮 -->
-    <view class="fab" @tap="goCreate" aria-label="发布帖子">
-      <text class="fab-icon"><text class="luc luc-camera"></text></text>
+    <view class="fab" aria-label="发布帖子" @tap="goCreate">
+      <text class="fab-icon"><text class="luc luc-camera" /></text>
     </view>
   </view>
 </template>
@@ -218,7 +222,9 @@ function onTabChange(value) {
 }
 
 function onTopicClick(t) {
-  uni.navigateTo({ url: `/pages/user/community-topic?id=${t.id}&name=${encodeURIComponent(t.name)}` })
+  uni.navigateTo({
+    url: `/pages/user/community-topic?id=${t.id}&name=${encodeURIComponent(t.name)}`,
+  })
 }
 
 function onLoadMore() {
@@ -261,14 +267,58 @@ function avatarChar(name) {
 }
 
 /**
+ * 根据图片数量决定九宫格样式类:
+ *  - 1 张:单列大图
+ *  - 2-3 张:2 列
+ *  - 4-9 张:3 列(标准九宫格,4 张时为 2x2,9 张时为 3x3)
+ *  - 超过 9 张:截断 9 张后按 3 列展示
+ */
+function getImageGridClass(count) {
+  if (count <= 1) return 'single'
+  if (count <= 3) return 'col-2'
+  return 'col-3'
+}
+
+/**
  * 帖子图片加载失败回退：替换为占位图占住卡片高度，避免布局抖动。
  * 真实生产中应上传到 CDN（file:// 路径在浏览器/小程序中会失败）。
  */
 function onImageError(e) {
   const target = e?.target
   if (target && target.src && !target.src.includes('data:')) {
-    target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 3"><rect width="4" height="3" fill="%23f2f2f7"/></svg>'
+    target.src =
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 3"><rect width="4" height="3" fill="%23f2f2f7"/></svg>'
   }
+}
+
+/**
+ * 解析帖子图片 URL：
+ *  - http(s):// 开头直接返回
+ *  - 设备本地路径（blob:、wxfile://、wxlocalfile://、file://、http://tmp/）返回占位图,
+ *    因为发布时前端只传本地路径,后端原样存进数据库,再次读取浏览器无法加载
+ *  - /uploads/... 等相对路径走 dev proxy / 同源(prod nginx) → 直接返回相对路径即可
+ *  - 兜底:返回占位图
+ */
+const PLACEHOLDER_IMG =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 3"><rect width="4" height="3" fill="%23eaeef2"/><text x="2" y="1.7" font-size="0.4" text-anchor="middle" fill="%23888" font-family="sans-serif">图片</text></svg>'
+
+function resolveImageUrl(url) {
+  if (!url) return PLACEHOLDER_IMG
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  // 设备本地路径(发布时上传但未真实上传到服务器的情况)用占位图
+  if (
+    url.startsWith('blob:') ||
+    url.startsWith('wxfile://') ||
+    url.startsWith('wxlocalfile://') ||
+    url.startsWith('file://') ||
+    url.startsWith('data:') ||
+    url.startsWith('http://tmp/')
+  ) {
+    return PLACEHOLDER_IMG
+  }
+  // 相对路径(/uploads/...) dev 用 vite proxy / prod nginx 同源 → 直接返回
+  if (url.startsWith('/')) return url
+  return PLACEHOLDER_IMG
 }
 
 function formatTime(time) {
@@ -332,6 +382,9 @@ onMounted(() => {
   min-height: 100vh;
   background: var(--color-background);
   padding-bottom: calc(120rpx + env(safe-area-inset-bottom, 0));
+  /* 显式宽度跟随屏幕,确保内部 scroll-view 跟随 */
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* 状态栏 */
@@ -346,9 +399,18 @@ onMounted(() => {
   color: var(--color-text);
   font-weight: 600;
 }
-.status-time { font-size: 26rpx; font-weight: 600; }
-.status-icons { display: flex; align-items: center; gap: 6rpx; }
-.status-icon { font-size: 22rpx; }
+.status-time {
+  font-size: 26rpx;
+  font-weight: 600;
+}
+.status-icons {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+}
+.status-icon {
+  font-size: 22rpx;
+}
 .battery {
   width: 48rpx;
   height: 20rpx;
@@ -370,7 +432,11 @@ onMounted(() => {
   font-weight: 700;
   color: var(--color-text);
 }
-.top-actions { display: flex; gap: 12rpx; align-items: center; }
+.top-actions {
+  display: flex;
+  gap: 12rpx;
+  align-items: center;
+}
 .icon-btn {
   width: 60rpx;
   height: 60rpx;
@@ -380,7 +446,10 @@ onMounted(() => {
   border-radius: 16rpx;
   position: relative;
 }
-.icon { font-size: 36rpx; color: var(--color-text-secondary); }
+.icon {
+  font-size: 36rpx;
+  color: var(--color-text-secondary);
+}
 .badge-dot {
   position: absolute;
   top: 12rpx;
@@ -439,14 +508,22 @@ onMounted(() => {
   border-radius: 36rpx;
   color: var(--color-text-tertiary);
 }
-.search-icon { font-size: 30rpx; }
-.search-placeholder { font-size: 26rpx; color: var(--color-text-tertiary); }
+.search-icon {
+  font-size: 30rpx;
+}
+.search-placeholder {
+  font-size: 26rpx;
+  color: var(--color-text-tertiary);
+}
 
 /* 话题标签 */
 .topic-bar {
   white-space: nowrap;
   padding: 16rpx 16rpx;
   background: var(--color-background);
+  /* 横向 scroll-view 显式宽度 + box-sizing */
+  width: 100%;
+  box-sizing: border-box;
 }
 .topic-tag {
   display: inline-flex;
@@ -465,6 +542,9 @@ onMounted(() => {
 .feed {
   flex: 1;
   padding: 0 16rpx;
+  /* 显式宽度,确保 scroll-view 内部跟随屏幕 */
+  width: 100%;
+  box-sizing: border-box;
 }
 .status {
   text-align: center;
@@ -472,7 +552,10 @@ onMounted(() => {
   color: var(--color-text-tertiary);
   font-size: 26rpx;
 }
-.status-text { font-size: 26rpx; color: var(--color-text-tertiary); }
+.status-text {
+  font-size: 26rpx;
+  color: var(--color-text-tertiary);
+}
 
 /* 帖子卡片 */
 .post-card {
@@ -481,7 +564,7 @@ onMounted(() => {
   border: 1rpx solid var(--color-divider);
   margin-top: 16rpx;
   overflow: hidden;
-  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
 }
 
 /* 用户信息行 */
@@ -506,7 +589,13 @@ onMounted(() => {
   font-size: 32rpx;
   font-weight: 600;
 }
-.post-user { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
+.post-user {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
 .post-username {
   font-size: 28rpx;
   font-weight: 600;
@@ -530,15 +619,54 @@ onMounted(() => {
   letter-spacing: -2rpx;
 }
 
-/* 帖子图片 */
+/* 帖子图片:九宫格布局(1张大图 / 2列 / 3列,宽高全部1:1一致)
+   关键技巧——用 vw 直接算 cell 边长,绕开 uni-image 自带尺寸与 aspect-ratio 在 grid 中失效的问题 */
 .post-image-wrap {
   padding: 0 20rpx 12rpx;
-}
-.post-image {
+  display: grid;
+  gap: 8rpx;
   width: 100%;
-  aspect-ratio: 4/3;
+  box-sizing: border-box;
+}
+.post-image-wrap.grid-single {
+  grid-template-columns: 1fr;
+}
+.post-image-wrap.grid-single .post-image {
+  width: 100%;
+  height: 480rpx;
   border-radius: 20rpx;
   background: var(--color-background);
+}
+/* 列宽计算:(屏宽 vw - 左右 40rpx padding - 间隙) / 列数
+   2 列间隙 1 个,3 列间隙 2 个 */
+.post-image-wrap.grid-col-2 {
+  grid-template-columns: repeat(2, 1fr);
+  /* 显式行高 = 列宽,确保 1:1 方形(uni-image 在 grid 中不响应 aspect-ratio) */
+  grid-auto-rows: calc((100vw - 40rpx - 8rpx) / 2);
+}
+.post-image-wrap.grid-col-3 {
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: calc((100vw - 40rpx - 16rpx) / 3);
+}
+/* 2-3 列时图片固定为 grid 行高(等于列宽),保持视觉统一 */
+.post-image-wrap.grid-col-2 .post-image,
+.post-image-wrap.grid-col-3 .post-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 12rpx;
+  background: var(--color-background);
+  overflow: hidden;
+  position: relative;
+  display: block;
+}
+/* 强制 uni-image 内层 div + img 填满父容器,避免被原图比例拉伸 */
+.post-image-wrap.grid-col-2 .post-image ::v-deep div,
+.post-image-wrap.grid-col-3 .post-image ::v-deep div,
+.post-image-wrap.grid-col-2 .post-image ::v-deep img,
+.post-image-wrap.grid-col-3 .post-image ::v-deep img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
 }
 
 /* 帖子正文 */
@@ -565,9 +693,16 @@ onMounted(() => {
   gap: 12rpx;
   color: var(--color-text-secondary);
 }
-.action.liked { color: var(--color-danger); }
-.action-icon { font-size: 30rpx; }
-.action-count { font-size: 24rpx; font-weight: 500; }
+.action.liked {
+  color: var(--color-danger);
+}
+.action-icon {
+  font-size: 30rpx;
+}
+.action-count {
+  font-size: 24rpx;
+  font-weight: 500;
+}
 
 /* 浮动发布按钮 */
 .fab {
@@ -582,8 +717,10 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8rpx 24rpx rgba(0,122,255,0.35);
+  box-shadow: 0 8rpx 24rpx rgba(0, 122, 255, 0.35);
   z-index: 50;
 }
-.fab-icon { font-size: 48rpx; }
+.fab-icon {
+  font-size: 48rpx;
+}
 </style>

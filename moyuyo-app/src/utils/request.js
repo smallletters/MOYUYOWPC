@@ -45,8 +45,11 @@ function handleUnauthorized() {
  */
 function resolveBaseUrl(url) {
   if (url.startsWith('http')) return url
-  const absBase = (typeof process !== 'undefined' && process.env && process.env.VITE_ADMIN_API_BASE)
-    || (typeof window !== 'undefined' && window.__MOYUYO_CONFIG__ && window.__MOYUYO_CONFIG__.VITE_ADMIN_API_BASE)
+  const absBase =
+    (typeof process !== 'undefined' && process.env && process.env.VITE_ADMIN_API_BASE) ||
+    (typeof window !== 'undefined' &&
+      window.__MOYUYO_CONFIG__ &&
+      window.__MOYUYO_CONFIG__.VITE_ADMIN_API_BASE)
   if (absBase) return `${absBase}${url}`
   // dev 环境由 Vite proxy 转发 /api/v1/* 与 /uploads/*，用相对路径更稳
   // prod 环境通常 nginx 反代 /api/* 与 /uploads/*，同源相对路径同样有效
@@ -105,14 +108,25 @@ export function request(options) {
           } else if (res.data && res.data.code === 0) {
             resolve(res.data.data)
           } else {
-            const msg = res.data?.message || 'Request failed'
-            if (showError) uni.showToast({ title: msg, icon: 'none' })
+            // 后端 Result.error:code !== 0 但 HTTP 200,直接用 message
+            const msg = res.data?.message || `请求失败(${res.statusCode})`
+            console.warn('[request] biz error:', fullUrl, res.statusCode, res.data)
+            if (showError) uni.showToast({ title: msg, icon: 'none', duration: 3000 })
             reject(new Error(msg))
           }
         } else {
-          const msg = res.data?.message || `Request failed (${res.statusCode})`
-          if (showError) uni.showToast({ title: msg, icon: 'none' })
-          reject(new Error(msg))
+          // HTTP 4xx/5xx:后端通常也返回 Result.error JSON(code+message)
+          const backendMsg = res.data?.message
+          const status = res.statusCode
+          const msg = (backendMsg && String(backendMsg).trim()) || `Request failed (${status})`
+          console.error('[request] http error:', fullUrl, status, res.data)
+          // 把 HTTP 状态码附加到 Error 对象,便于登录页区分 401/403/400 等
+          const err = new Error(msg)
+          err.statusCode = status
+          err.body = res.data
+          err.url = fullUrl
+          if (showError) uni.showToast({ title: msg, icon: 'none', duration: 3000 })
+          reject(err)
         }
       },
       fail: (err) => {

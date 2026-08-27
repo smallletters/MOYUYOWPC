@@ -26,7 +26,10 @@ public class AdminContentReviewController {
         @RequestParam(defaultValue = "10") int size,
         @RequestParam(required = false) String contentType,
         @RequestParam(required = false) String status,
-        @RequestParam(required = false) String mode) {
+        @RequestParam(required = false) String mode,
+        // 违规类型筛选(对应前端 tab:色情/暴力/仇恨言论/侵权/虚假信息/虐待动物),
+        // 在 service 层用 reason LIKE '%xxx%' 匹配
+        @RequestParam(required = false) String reasonLike) {
         if (page < 1 || size < 1 || size > 100) {
             return Result.error(400, "分页参数无效");
         }
@@ -34,7 +37,7 @@ public class AdminContentReviewController {
                 && !List.of("auto", "auto_manual", "manual").contains(mode)) {
             return Result.error(400, "审核模式无效");
         }
-        return Result.success(adminContentReviewService.listAll(page, size, contentType, status));
+        return Result.success(adminContentReviewService.listAll(page, size, contentType, status, reasonLike));
     }
 
     @Operation(summary = "审核详情")
@@ -81,8 +84,16 @@ public class AdminContentReviewController {
 
     @Operation(summary = "封禁内容")
     @PutMapping("/{id}/ban")
-    public Result<Void> ban(@PathVariable Long id) {
-        adminContentReviewService.ban(id);
+    public Result<Void> ban(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
+        // 必填违规类型(前端下拉:色情/暴力/仇恨言论/侵权/虚假信息/虐待动物),
+        // 备注可选。封禁原因会同步到 content_review.reason 便于审计追溯。
+        String banType = body == null ? null : (String) body.get("banType");
+        String comment = body == null ? "" : (String) body.getOrDefault("comment", "");
+        if (banType == null || banType.isBlank()) {
+            return Result.badRequest("请选择违规类型");
+        }
+        Long reviewerId = UserContextHolder.getUserId();
+        adminContentReviewService.ban(id, reviewerId, banType, comment);
         return Result.success();
     }
 
@@ -96,5 +107,16 @@ public class AdminContentReviewController {
     @GetMapping("/trend")
     public Result<List<Map<String, Object>>> trend(@RequestParam(defaultValue = "7") int days) {
         return Result.success(adminContentReviewService.getTrend(days));
+    }
+
+    /**
+     * 灌入测试数据：用于演示/调试违规类型筛选。
+     * 真实生产环境应删除或用 AdminInitializer 替代。
+     */
+    @Operation(summary = "灌入审核测试数据(仅 dev)")
+    @PostMapping("/seed")
+    public Result<Integer> seed() {
+        int count = adminContentReviewService.seedTestData();
+        return Result.success(count);
     }
 }

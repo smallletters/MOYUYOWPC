@@ -4,12 +4,23 @@
  * dev 模式代理前缀：/api/v1/*
  * 生产由 nginx 反代统一对外。
  */
-const ABSOLUTE_BASE = (typeof process !== 'undefined' && process.env && process.env.VITE_ADMIN_API_BASE)
-  || (typeof window !== 'undefined' && window.__MOYUYO_CONFIG__ && window.__MOYUYO_CONFIG__.VITE_ADMIN_API_BASE)
-  || ''
+import { getStorage, STORAGE_KEYS } from '@/utils/storage'
+
+const ABSOLUTE_BASE =
+  (typeof process !== 'undefined' && process.env && process.env.VITE_ADMIN_API_BASE) ||
+  (typeof window !== 'undefined' &&
+    window.__MOYUYO_CONFIG__ &&
+    window.__MOYUYO_CONFIG__.VITE_ADMIN_API_BASE) ||
+  ''
 
 function buildUrl(path) {
   return ABSOLUTE_BASE ? `${ABSOLUTE_BASE}${path}` : path
+}
+
+/** 构造请求头：登录后自动带上 JWT，便于后端获取 userId（任务进度等场景） */
+function buildAuthHeader() {
+  const token = getStorage(STORAGE_KEYS.TOKEN)
+  return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
 function uniGet(path, params = {}, options = {}) {
@@ -25,6 +36,7 @@ function uniGet(path, params = {}, options = {}) {
       url: buildUrl(url),
       method: 'GET',
       timeout,
+      header: buildAuthHeader(),
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300 && res.data && res.data.code === 0) {
           resolve(res.data.data)
