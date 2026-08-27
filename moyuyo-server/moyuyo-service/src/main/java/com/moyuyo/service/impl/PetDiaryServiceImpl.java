@@ -3,6 +3,7 @@ package com.moyuyo.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.moyuyo.dao.entity.PetDiaryEntity;
 import com.moyuyo.dao.mapper.PetDiaryMapper;
+import com.moyuyo.service.MissionService;
 import com.moyuyo.service.PetDiaryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,8 @@ import java.util.List;
 public class PetDiaryServiceImpl implements PetDiaryService {
 
   private final PetDiaryMapper petDiaryMapper;
+  // 任务中心埋点：写宠物日记视为"Pet Hub 互动"
+  private final MissionService missionService;
 
   @Override
   public List<PetDiaryEntity> listByPetId(Long petId, Long userId) {
@@ -42,6 +45,13 @@ public class PetDiaryServiceImpl implements PetDiaryService {
     entity.setPetId(petId);
     petDiaryMapper.insert(entity);
     log.info("PetDiary created: petId={}, diaryId={}", petId, entity.getId());
+
+    // 任务中心埋点：写宠物日记代表一次 Pet Hub 互动
+    try {
+      missionService.incrementByKeyword(userId, "DAILY", "Pet Hub", 1);
+    } catch (Exception e) {
+      log.warn("[pet-diary] trigger mission failed: petId={}, reason={}", petId, e.getMessage());
+    }
     return entity;
   }
 

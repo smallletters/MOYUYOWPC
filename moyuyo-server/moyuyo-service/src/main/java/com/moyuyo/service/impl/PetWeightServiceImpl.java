@@ -3,6 +3,7 @@ package com.moyuyo.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.moyuyo.dao.entity.PetWeightEntity;
 import com.moyuyo.dao.mapper.PetWeightMapper;
+import com.moyuyo.service.MissionService;
 import com.moyuyo.service.PetWeightService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,8 @@ import java.util.List;
 public class PetWeightServiceImpl implements PetWeightService {
 
   private final PetWeightMapper petWeightMapper;
+  // 任务中心埋点：记录宠物体重也代表一次 Pet Hub 互动
+  private final MissionService missionService;
 
   @Override
   public List<PetWeightEntity> listByPetId(Long petId, Long userId) {
@@ -36,6 +39,13 @@ public class PetWeightServiceImpl implements PetWeightService {
     }
     petWeightMapper.insert(entity);
     log.info("PetWeight created: petId={}, weightId={}", petId, entity.getId());
+
+    // 任务中心埋点：记录体重视为一次 Pet Hub 互动
+    try {
+      missionService.incrementByKeyword(userId, "DAILY", "Pet Hub", 1);
+    } catch (Exception e) {
+      log.warn("[pet-weight] trigger mission failed: petId={}, reason={}", petId, e.getMessage());
+    }
     return entity;
   }
 

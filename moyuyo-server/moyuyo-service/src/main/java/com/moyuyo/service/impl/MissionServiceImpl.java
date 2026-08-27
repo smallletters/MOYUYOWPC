@@ -120,6 +120,36 @@ public class MissionServiceImpl implements MissionService {
     log.info("Mission progress inc: userId={}, missionId={}, delta={}", userId, missionId, delta);
   }
 
+  /**
+   * 按 type + 关键字匹配第一个任务并累加进度。
+   * type 必须非空（DAILY/WEEKLY/ACHIEVEMENT），keyword 非空，用于精确定位。
+   */
+  @Override
+  @Transactional
+  public void incrementByKeyword(Long userId, String type, String keyword, int delta) {
+    if (userId == null || type == null || keyword == null) return;
+    MissionEntity mission = missionMapper.selectOne(
+        new LambdaQueryWrapper<MissionEntity>()
+            .eq(MissionEntity::getActive, 1)
+            .eq(MissionEntity::getType, type.toUpperCase())
+            .like(MissionEntity::getName, keyword)
+            .last("LIMIT 1"));
+    if (mission == null) {
+      log.debug("[mission] no active mission matched type={}, keyword={}", type, keyword);
+      return;
+    }
+    incrementProgress(userId, mission.getId(), delta);
+  }
+
+  /**
+   * 累加金额型任务进度（不重置，仅累加；适合"累计消费 $500"）。
+   */
+  @Override
+  @Transactional
+  public void accumulateByKeyword(Long userId, String type, String keyword, int delta) {
+    incrementByKeyword(userId, type, keyword, delta);
+  }
+
   @Override
   @Transactional
   public void claimReward(Long userId, Long missionId) {
@@ -157,15 +187,17 @@ public class MissionServiceImpl implements MissionService {
   public Map<String, Object> getMissionStats(Long userId) {
     List<UserMissionEntity> userMissions = listUserMissions(userId);
 
-    int todayPoints = userMissions.stream()
-        .filter(um -> um.getCompleted() != null && um.getCompleted() == 1
-            && um.getClaimed() != null && um.getClaimed() == 1
-            && um.getCreateTime() != null
-            && um.getCreateTime().toLocalDate().equals(LocalDate.now()))
-        .mapToInt(um -> {
-          MissionEntity me = missionMapper.selectById(um.getMissionId());
-          return me != null && me.getPoints() != null ? me.getPoints() : 0;
-        }).sum();
+    // 今日已获积分：直接从 points_log 正向流水聚合，与签到页 / 任务奖励发放共用同一数据源
+    LocalDate today = LocalDate.now();
+    Integer todayPointsBoxed = pointsLogMapper.selectList(
+        new LambdaQueryWrapper<PointsLogEntity>()
+            .eq(PointsLogEntity::getUserId, userId)
+            .gt(PointsLogEntity::getChangeValue, 0)
+            .ge(PointsLogEntity::getCreatedAt, today.atStartOfDay()))
+        .stream()
+        .mapToInt(PointsLogEntity::getChangeValue)
+        .sum();
+    int todayPoints = todayPointsBoxed == null ? 0 : todayPointsBoxed;
 
     long dailyDone = userMissions.stream()
         .filter(um -> um.getCompleted() != null && um.getCompleted() == 1)
@@ -179,7 +211,8 @@ public class MissionServiceImpl implements MissionService {
             .eq(MissionEntity::getType, "DAILY"));
     long dailyTotal = allDaily.size();
 
-    int streak = 0;
+    // 连续签到天数：从 points_log(CHECKIN) 倒推，与签到页 calculateStreak 保持一致
+    int streak = calculateCheckinStreak(userId, today);
 
     Map<String, Object> stats = new HashMap<>();
     stats.put("todayPoints", todayPoints);
@@ -187,6 +220,34 @@ public class MissionServiceImpl implements MissionService {
     stats.put("dailyTotal", dailyTotal);
     stats.put("streak", streak);
     return stats;
+  }
+
+  /**
+   * 从今天往前数连续 CHECKIN 流水天数（包含今天如果已签）。
+   * 与 check-in.vue calculateStreak 算法一致。
+   */
+  private int calculateCheckinStreak(Long userId, LocalDate today) {
+    List<PointsLogEntity> logs = pointsLogMapper.selectList(
+        new LambdaQueryWrapper<PointsLogEntity>()
+            .eq(PointsLogEntity::getUserId, userId)
+            .eq(PointsLogEntity::getType, "CHECKIN"));
+    if (logs.isEmpty()) {
+      return 0;
+    }
+    // 仅保留日期不重复的 CHECKIN 日（一天多次只算 1 次）
+    java.util.Set<String> dateSet = new java.util.HashSet<>();
+    for (PointsLogEntity l : logs) {
+      if (l.getCreatedAt() == null) continue;
+      LocalDate d = l.getCreatedAt().toLocalDate();
+      dateSet.add(d.toString());
+    }
+    int streak = 0;
+    LocalDate cursor = today;
+    while (dateSet.contains(cursor.toString())) {
+      streak++;
+      cursor = cursor.minusDays(1);
+    }
+    return streak;
   }
 
   /**

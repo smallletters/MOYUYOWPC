@@ -3,7 +3,7 @@
     <!-- 安全状态概览卡片 -->
     <view class="status-card">
       <view class="status-icon">
-        <text class="icon-shield"><text class="luc luc-shield"></text></text>
+        <text class="icon-shield"><text class="luc luc-shield" /></text>
       </view>
       <view class="status-info">
         <view class="status-row">
@@ -20,12 +20,12 @@
       <text class="section-label">登录密码</text>
       <view class="row" @click="onChangePassword">
         <view class="row-left">
-          <text class="row-icon"><text class="luc luc-lock"></text></text>
+          <text class="row-icon"><text class="luc luc-lock" /></text>
           <text class="row-text">修改密码</text>
         </view>
         <view class="row-right">
           <view class="badge-safe">已设置</view>
-          <text class="row-arrow"><text class="luc luc-chevron-right"></text></text>
+          <text class="row-arrow"><text class="luc luc-chevron-right" /></text>
         </view>
       </view>
     </view>
@@ -35,7 +35,7 @@
       <text class="section-label">两步验证</text>
       <view class="row">
         <view class="row-left">
-          <text class="row-icon"><text class="luc luc-smartphone"></text></text>
+          <text class="row-icon"><text class="luc luc-smartphone" /></text>
           <text class="row-text">开启两步验证</text>
         </view>
         <view class="toggle" :class="{ active: tfaEnabled }" @click="tfaEnabled = !tfaEnabled">
@@ -45,12 +45,12 @@
       <view class="divider" />
       <view class="row" @click="goTwoFactor">
         <view class="row-left">
-          <text class="row-icon"><text class="luc luc-key"></text></text>
+          <text class="row-icon"><text class="luc luc-key" /></text>
           <text class="row-text">验证方式</text>
         </view>
         <view class="row-right">
           <text class="row-value">TOTP</text>
-          <text class="row-arrow"><text class="luc luc-chevron-right"></text></text>
+          <text class="row-arrow"><text class="luc luc-chevron-right" /></text>
         </view>
       </view>
     </view>
@@ -60,12 +60,12 @@
       <text class="section-label">设备管理</text>
       <view class="row" @click="goDevices">
         <view class="row-left">
-          <text class="row-icon"><text class="luc luc-laptop"></text></text>
+          <text class="row-icon"><text class="luc luc-laptop" /></text>
           <text class="row-text">登录设备管理</text>
         </view>
         <view class="row-right">
           <text class="row-value">{{ deviceCount }}/3</text>
-          <text class="row-arrow"><text class="luc luc-chevron-right"></text></text>
+          <text class="row-arrow"><text class="luc luc-chevron-right" /></text>
         </view>
       </view>
     </view>
@@ -73,10 +73,10 @@
     <!-- 第三方账号 -->
     <view class="section">
       <text class="section-label">第三方账号</text>
-      <view v-for="(acc, i) in socialAccounts" :key="acc.id">
+      <view v-for="acc in socialAccounts" :key="acc.id">
         <view class="row">
           <view class="row-left">
-            <text class="row-icon luc" :class="$luc(acc.icon)"></text>
+            <text class="row-icon luc" :class="$luc(acc.icon)" />
             <text class="row-text">{{ acc.name }}</text>
           </view>
           <view class="row-right">
@@ -84,7 +84,15 @@
             <template v-else>
               <text class="badge-unlinked">未绑定</text>
               <view class="btn-bind" @click="onLink(acc)">绑定</view>
-            </template><script>
+            </template>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script>
 import { useUserStore } from '@/store'
 
 export default {

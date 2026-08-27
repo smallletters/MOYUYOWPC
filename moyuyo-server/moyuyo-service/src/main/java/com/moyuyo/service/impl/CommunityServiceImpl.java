@@ -13,6 +13,7 @@ import com.moyuyo.dao.admin.mapper.SensitiveWordMapper;
 import com.moyuyo.dao.entity.*;
 import com.moyuyo.dao.mapper.*;
 import com.moyuyo.service.CommunityService;
+import com.moyuyo.service.MissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,8 @@ public class CommunityServiceImpl implements CommunityService {
     private final UserMapper userMapper;
     private final ContentReviewMapper contentReviewMapper;
     private final SensitiveWordMapper sensitiveWordMapper;
+    // 任务中心埋点：发布帖子触发"发布 1 条社区笔记 / 累计发布 10 条笔记"
+    private final MissionService missionService;
 
     @Override
     public Page<CommunityPostVO> listPosts(String topic, int page, int size) {
@@ -92,6 +95,15 @@ public class CommunityServiceImpl implements CommunityService {
         postMapper.insert(entity);
         createReview("POST", entity.getId(), userId, cleanContent, entity.getImages());
         log.info("Post created: postId={}, userId={}", entity.getId(), userId);
+
+        // 任务中心埋点：发布成功后触发"发布 1 条社区笔记"和累计成就进度
+        try {
+            missionService.incrementByKeyword(userId, "WEEKLY", "发布 1 条社区笔记", 1);
+            missionService.incrementByKeyword(userId, "ACHIEVEMENT", "发布 10 条笔记", 1);
+        } catch (Exception e) {
+            log.warn("[community] trigger mission failed: postId={}, reason={}", entity.getId(), e.getMessage());
+        }
+
         return toVO(entity);
     }
 

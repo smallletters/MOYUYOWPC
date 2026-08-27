@@ -7,8 +7,8 @@ export default defineConfig({
   // 路径别名
   resolve: {
     alias: {
-      '@': '/src'
-    }
+      '@': '/src',
+    },
   },
   // dev 代理：所有 /api/v1/* 透明转发到 Spring Boot 8080，避免 5174 跨源访问 8080 的 CORS / 端口差异问题
   server: {
@@ -42,11 +42,13 @@ export default defineConfig({
       '/api/v1/payments': { target: 'http://localhost:8080', changeOrigin: true },
       '/api/v1/refunds': { target: 'http://localhost:8080', changeOrigin: true },
       '/api/v1/after-sales': { target: 'http://localhost:8080', changeOrigin: true },
+      '/api/v1/shares': { target: 'http://localhost:8080', changeOrigin: true },
       '/api/v1/recycle-bin': { target: 'http://localhost:8080', changeOrigin: true },
 
       // ===== 商品活动域 =====
       '/api/v1/cart': { target: 'http://localhost:8080', changeOrigin: true },
       '/api/v1/orders': { target: 'http://localhost:8080', changeOrigin: true },
+      '/api/v1/file': { target: 'http://localhost:8080', changeOrigin: true },
       '/api/v1/lotteries': { target: 'http://localhost:8080', changeOrigin: true },
       '/api/v1/flash-sales': { target: 'http://localhost:8080', changeOrigin: true },
       '/api/v1/subscriptions': { target: 'http://localhost:8080', changeOrigin: true },

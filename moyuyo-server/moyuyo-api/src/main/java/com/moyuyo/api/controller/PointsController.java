@@ -86,11 +86,12 @@ public class PointsController {
         : "每日签到 +" + finalPoints + "（连续 " + consecutiveDays + " 天）";
     memberService.addPoints(userId, finalPoints, "CHECKIN", null, remark);
 
-    missionService.listAllMissions().stream()
-        .filter(m -> "DAILY".equalsIgnoreCase(m.getType())
-            && (m.getName() == null ? false : m.getName().contains("签到")))
-        .findFirst()
-        .ifPresent(m -> missionService.incrementProgress(userId, m.getId(), 1));
+    // 触发任务进度：每日签到 +1；周累计签到/连续签到成就在签到周期内累计
+    missionService.incrementByKeyword(userId, "DAILY", "签到", 1);
+    // 本周累计签到（含今天）
+    missionService.incrementByKeyword(userId, "WEEKLY", "累计签到", 1);
+    // 连续签到 30 天成就：按 +1 累加，连续天数另由 stats 接口统计显示
+    missionService.incrementByKeyword(userId, "ACHIEVEMENT", "连续签到 30", 1);
 
     Map<String, Object> result = new java.util.HashMap<>();
     result.put("points", finalPoints);

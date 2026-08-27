@@ -17,6 +17,7 @@ import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.PaymentMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
+import com.moyuyo.service.MissionService;
 import com.moyuyo.service.OrderService;
 import com.moyuyo.service.WooCommerceSyncService;
 import static com.moyuyo.common.enums.OrderStatusEnum.*;
@@ -47,6 +48,8 @@ public class OrderServiceImpl implements OrderService {
   private final ProductSkuMapper productSkuMapper;
   // 注入 WooCommerce 同步服务：付款回调完成后自动推送订单到 WooCommerce
   private final WooCommerceSyncService wooCommerceSyncService;
+  // 任务中心埋点：付款回调后触发"完成 1 单购物 / 首单完成 / 累计消费满 500"
+  private final MissionService missionService;
 
   @Override
   @Transactional
@@ -253,6 +256,22 @@ public class OrderServiceImpl implements OrderService {
     paymentMapper.insert(payment);
 
     log.info("支付回调处理成功: orderNo={}, transactionId={}", orderNo, transactionId);
+
+    // 任务中心埋点：付款成功即视为完成一单；首单触发"首单完成"；按订单实付金额累加"累计消费"
+    try {
+      missionService.incrementByKeyword(order.getUserId(), "WEEKLY", "完成 1 单购物", 1);
+      missionService.incrementByKeyword(order.getUserId(), "ACHIEVEMENT", "首单完成", 1);
+      if (order.getPayAmount() != null) {
+        // payAmount 已是美元金额（PayController.createPay 已统一汇率换算），直接按整数累加
+        int amountInt = order.getPayAmount().intValue();
+        if (amountInt > 0) {
+          missionService.accumulateByKeyword(order.getUserId(), "ACHIEVEMENT", "累计消费", amountInt);
+        }
+      }
+    } catch (Exception e) {
+      // 任务进度失败不应影响支付主流程
+      log.warn("[order] trigger mission failed: orderNo={}, reason={}", orderNo, e.getMessage());
+    }
 
     // 付款确认后实时同步到 WooCommerce
     // syncOrderToWooCommerce 内部已有 try-catch，失败时仅记录 syncStatus=-1，不影响主流程

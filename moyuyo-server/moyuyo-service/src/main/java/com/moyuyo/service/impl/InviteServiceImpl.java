@@ -10,6 +10,7 @@ import com.moyuyo.dao.mapper.InviteMapper;
 import com.moyuyo.dao.mapper.PointsLogMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.InviteService;
+import com.moyuyo.service.MissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,8 @@ public class InviteServiceImpl implements InviteService {
   private final InviteMapper inviteMapper;
   private final UserMapper userMapper;
   private final PointsLogMapper pointsLogMapper;
+  // 任务中心埋点：邀请注册成功触发"邀请 1 位好友 / 累计邀请 10 位好友"
+  private final MissionService missionService;
 
   /** 邀请完成（首单）后双方各得的积分数（与设计稿一致：双方各得 200） */
   private static final int INVITE_REWARD_POINTS = 200;
@@ -108,6 +111,15 @@ public class InviteServiceImpl implements InviteService {
     invite.setStatus("REGISTERED");
     inviteMapper.updateById(invite);
     log.info("Invite bind: inviteCode={} inviteeUserId={}", inviteCode, inviteeUserId);
+
+    // 任务中心埋点：邀请人累计邀请数和成就进度
+    try {
+      missionService.incrementByKeyword(invite.getUserId(), "WEEKLY", "邀请 1 位好友", 1);
+      missionService.incrementByKeyword(invite.getUserId(), "ACHIEVEMENT", "邀请 10 位好友", 1);
+    } catch (Exception e) {
+      log.warn("[invite] trigger mission failed: inviteCode={}, reason={}", inviteCode, e.getMessage());
+    }
+
     return invite;
   }
 

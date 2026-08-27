@@ -2,7 +2,7 @@
   <view class="mission-center">
     <view class="nav-header">
       <view class="nav-back" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="nav-title">任务中心</text>
       <view class="nav-placeholder" />
@@ -12,7 +12,7 @@
       <view class="progress-card">
         <view class="ring-wrapper">
           <view class="ring-progress">
-            <svg width="240" height="240" viewBox="0 0 120 120">
+            <svg viewBox="0 0 120 120">
               <circle
                 class="ring-track"
                 cx="60"
@@ -37,7 +37,7 @@
             <text class="ring-side-label">今日已获积分</text>
             <text class="ring-side-points">+{{ todayPoints }}</text>
             <view class="streak-row">
-              <text class="flame-icon"><text class="luc luc-flame"></text></text>
+              <text class="flame-icon"><text class="luc luc-flame" /></text>
               <text class="streak-text">连续签到 {{ streak }} 天</text>
             </view>
           </view>
@@ -58,9 +58,13 @@
         </view>
 
         <view v-show="activeTab === 'daily'" class="tab-panel">
-          <view v-for="(mission, idx) in dailyMissions" :key="mission.id || idx" class="mission-item">
+          <view
+            v-for="(mission, idx) in dailyMissions"
+            :key="mission.id || idx"
+            class="mission-item"
+          >
             <view class="mission-icon" :style="{ background: mission.bgColor }">
-              <text class="mission-emoji luc" :class="$luc(mission.icon)"></text>
+              <text class="mission-emoji luc" :class="$luc(mission.icon)" />
             </view>
             <view class="mission-info">
               <view class="mission-title-row">
@@ -77,24 +81,40 @@
                 </view>
                 <text class="progress-text">{{ mission.done }}/{{ mission.total }}</text>
               </view>
-              <text v-else class="mission-status" :class="{ done: mission.completed || mission.claimed }">
-                {{ mission.claimed ? '已领取' : (mission.completed ? '可领取' : (mission.done > 0 ? '进行中' : '未完成')) }}
+              <text
+                v-else
+                class="mission-status"
+                :class="{ done: mission.completed || mission.claimed }"
+              >
+                {{
+                  mission.claimed
+                    ? '已领取'
+                    : mission.completed
+                      ? '可领取'
+                      : mission.done > 0
+                        ? '进行中'
+                        : '未完成'
+                }}
               </text>
             </view>
             <view
               class="mission-btn"
-              :class="mission.claimed ? 'btn-done' : (mission.completed ? 'btn-claim' : 'btn-go')"
+              :class="mission.claimed ? 'btn-done' : mission.completed ? 'btn-claim' : 'btn-go'"
               @click="onMissionAction(mission)"
             >
-              {{ mission.claimed ? '已领取' : (mission.completed ? '领取' : '去完成') }}
+              {{ mission.claimed ? '已领取' : mission.completed ? '领取' : '去完成' }}
             </view>
           </view>
         </view>
 
         <view v-show="activeTab === 'weekly'" class="tab-panel">
-          <view v-for="(mission, idx) in weeklyMissions" :key="mission.id || idx" class="mission-item">
+          <view
+            v-for="(mission, idx) in weeklyMissions"
+            :key="mission.id || idx"
+            class="mission-item"
+          >
             <view class="mission-icon" :style="{ background: mission.bgColor }">
-              <text class="mission-emoji luc" :class="$luc(mission.icon)"></text>
+              <text class="mission-emoji luc" :class="$luc(mission.icon)" />
             </view>
             <view class="mission-info">
               <view class="mission-title-row">
@@ -111,16 +131,28 @@
                 </view>
                 <text class="progress-text">{{ mission.done }}/{{ mission.total }}</text>
               </view>
-              <text v-else class="mission-status" :class="{ done: mission.completed || mission.claimed }">
-                {{ mission.claimed ? '已领取' : (mission.completed ? '可领取' : (mission.done > 0 ? '进行中' : '未完成')) }}
+              <text
+                v-else
+                class="mission-status"
+                :class="{ done: mission.completed || mission.claimed }"
+              >
+                {{
+                  mission.claimed
+                    ? '已领取'
+                    : mission.completed
+                      ? '可领取'
+                      : mission.done > 0
+                        ? '进行中'
+                        : '未完成'
+                }}
               </text>
             </view>
             <view
               class="mission-btn"
-              :class="mission.claimed ? 'btn-done' : (mission.completed ? 'btn-claim' : 'btn-go')"
+              :class="mission.claimed ? 'btn-done' : mission.completed ? 'btn-claim' : 'btn-go'"
               @click="onMissionAction(mission)"
             >
-              {{ mission.claimed ? '已领取' : (mission.completed ? '领取' : '去完成') }}
+              {{ mission.claimed ? '已领取' : mission.completed ? '领取' : '去完成' }}
             </view>
           </view>
         </view>
@@ -128,12 +160,12 @@
         <view v-show="activeTab === 'achievement'" class="tab-panel">
           <view v-for="(ach, idx) in achievements" :key="ach.id || idx" class="mission-item">
             <view class="badge-icon" :class="{ earned: ach.earned }">
-              <text class="badge-emoji luc" :class="$luc(ach.earned  ?  'trophy'  :  'lock')"></text>
+              <text class="badge-emoji luc" :class="$luc(ach.earned ? 'trophy' : 'lock')" />
             </view>
             <view class="mission-info">
               <view class="mission-title-row">
                 <text class="mission-name">{{ ach.name }}</text>
-                <text class="mission-points" v-if="ach.points">+{{ ach.points }}</text>
+                <text v-if="ach.points" class="mission-points">+{{ ach.points }}</text>
               </view>
               <view v-if="ach.total > 1" class="mission-progress-row">
                 <view class="progress-track">
@@ -153,10 +185,10 @@
             </view>
             <view
               class="mission-btn"
-              :class="ach.claimed ? 'btn-done' : (ach.completed ? 'btn-claim' : 'btn-go')"
+              :class="ach.claimed ? 'btn-done' : ach.completed ? 'btn-claim' : 'btn-go'"
               @click="onMissionAction(ach)"
             >
-              {{ ach.claimed ? '已获得' : (ach.completed ? '领取' : '去完成') }}
+              {{ ach.claimed ? '已获得' : ach.completed ? '领取' : '去完成' }}
             </view>
           </view>
         </view>
@@ -202,6 +234,12 @@ export default {
     this.loadStats()
   },
 
+  // 每次页面显示（包含从商品详情返回）都刷新任务进度
+  onShow() {
+    this.loadMissions()
+    this.loadStats()
+  },
+
   methods: {
     goBack() {
       uni.navigateBack()
@@ -213,9 +251,8 @@ export default {
 
     async loadMissions() {
       try {
-        // 后端返回 { code, data: { daily, weekly, achievements }, success }
-        const res = await missionApi.getGroupedMissions()
-        const data = res?.data || res || {}
+        // request.js 已解包，res 直接是后端 data:{daily,weekly,achievements}
+        const data = (await missionApi.getGroupedMissions()) || {}
         this.dailyMissions = Array.isArray(data.daily) ? data.daily : []
         this.weeklyMissions = Array.isArray(data.weekly) ? data.weekly : []
         this.achievements = Array.isArray(data.achievements) ? data.achievements : []
@@ -229,8 +266,8 @@ export default {
 
     async loadStats() {
       try {
-        const res = await missionApi.getMissionStats()
-        const stats = res.data || {}
+        // request.js 已解包，res 直接是后端 data:{todayPoints,dailyDone,dailyTotal,streak}
+        const stats = (await missionApi.getMissionStats()) || {}
         this.dailyDone = stats.dailyDone || 0
         this.dailyTotal = stats.dailyTotal || 0
         this.todayPoints = stats.todayPoints || 0
@@ -258,7 +295,45 @@ export default {
         uni.showToast({ title: '已领取', icon: 'none' })
         return
       }
-      // 未完成 → 提示用户前往对应页面
+      // 未完成 → 按关键字匹配后跳到对应真实页面，便于用户完成
+      const name = (mission.name || '').toLowerCase()
+      // 浏览任务：直接跳到首页，用户在首页浏览商品详情即可触发浏览埋点
+      if (name.includes('浏览')) {
+        uni.switchTab({ url: '/pages/tabbar/home' })
+        uni.showToast({ title: '请浏览 5 件不同商品', icon: 'none' })
+        return
+      }
+      // 签到任务：跳到每日签到页面
+      if (name.includes('签到')) {
+        uni.navigateTo({ url: '/pages/user/check-in' })
+        return
+      }
+      // 分享任务：跳到分享海报页，用户选择分享渠道后会触发后端埋点
+      if (name.includes('分享')) {
+        uni.navigateTo({ url: '/pages/goods/share-product' })
+        return
+      }
+      // Pet Hub 互动任务：跳到宠物 Tab 下的 Pet Hub
+      if (name.includes('pet hub') || name.includes('pet hub 互动')) {
+        uni.switchTab({ url: '/pages/tabbar/pet' })
+        return
+      }
+      // 购物 / 订单任务：跳到首页，用户正常完成下单即可触发埋点
+      if (name.includes('购物') || name.includes('单')) {
+        uni.switchTab({ url: '/pages/tabbar/home' })
+        return
+      }
+      // 社区笔记任务：跳到社区首页
+      if (name.includes('笔记') || name.includes('社区')) {
+        uni.switchTab({ url: '/pages/tabbar/community' })
+        return
+      }
+      // 邀请任务：跳到邀请好友页
+      if (name.includes('邀请')) {
+        uni.navigateTo({ url: '/pages/user/invite-friends' })
+        return
+      }
+      // 兜底：原类型 tab 的首页
       uni.showToast({ title: `前往: ${mission.name}`, icon: 'none' })
     },
   },
@@ -341,6 +416,9 @@ export default {
 }
 
 .ring-progress svg {
+  width: 100%;
+  height: 100%;
+  display: block;
   transform: rotate(-90deg);
 }
 
