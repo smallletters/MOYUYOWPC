@@ -27,4 +27,8 @@ public class PointsLogEntity {
 
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createdAt;
+
+  // 过期时间：写入时由 MemberServiceImpl.addPoints 设置为 createdAt + 12 月
+  // 已清零流水仍保留记录用于审计，但不再计入可用余额
+  private LocalDateTime expireTime;
 }

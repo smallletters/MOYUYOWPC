@@ -40,6 +40,40 @@ export const config = {
   currency: getEnv('VITE_CURRENCY', 'USD'),
   // 主题
   themeMode: getEnv('VITE_THEME_MODE', 'system'),
+  // 法定协议链接(未配置时 about 页跳转到内置兜底页)
+  termsUrl: getEnv('VITE_TERMS_URL', ''),
+  privacyUrl: getEnv('VITE_PRIVACY_URL', ''),
+  qualificationUrl: getEnv('VITE_QUALIFICATION_URL', ''),
+  licenseUrl: getEnv('VITE_LICENSE_URL', ''),
+  // 客服联系方式(about 页)
+  // 上线前必须改为真实号码/邮箱/官网
+  contactWebsite: getEnv('VITE_CONTACT_WEBSITE', 'www.moyuyo.com'),
+  contactEmail: getEnv('VITE_CONTACT_EMAIL', 'support@moyuyo.com'),
+  contactPhone: getEnv('VITE_CONTACT_PHONE', '400-888-MOYU'),
+  // 社会化登录开关：登录页 Google / Apple 按钮是否展示
+  // - googleEnabled: 设为 'true' 后显示 Google 按钮(VITE_SOCIAL_GOOGLE_URL 必填)
+  // - appleEnabled:  设为 'true' 后显示 Apple 按钮
+  // 未启用时按钮隐藏,避免上线后用户看到 "coming soon" 占位
+  socialGoogleEnabled: getEnv('VITE_SOCIAL_GOOGLE_ENABLED', 'false') === 'true',
+  socialAppleEnabled: getEnv('VITE_SOCIAL_APPLE_ENABLED', 'false') === 'true',
+  socialGoogleUrl: getEnv('VITE_SOCIAL_GOOGLE_URL', ''),
+  // WebView 安全白名单：仅允许在白名单中的 host 打开外部 web-view
+  // 多 host 用英文逗号分隔,如 "moyuyo.com,www.moyuyo.com,your-wp-site.com"
+  // 默认包含自身官网域名(根据上面 contactWebsite 自动派生)
+  // 注意:此处不使用 IIFE 直接计算默认值(避免 Vite 在某些情况下把 IIFE 标记为副作用并错误求值)
+  webviewAllowedHosts: (() => {
+    const explicit = getEnv('VITE_WEBVIEW_ALLOWED_HOSTS', '')
+    if (explicit)
+      return explicit
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    // 自动派生
+    const w = getEnv('VITE_CONTACT_WEBSITE', 'www.moyuyo.com')
+    const stripped = w.replace(/^https?:\/\//, '').replace(/^www\./, '')
+    const withWww = w.startsWith('www.') ? w : `www.${w}`
+    return Array.from(new Set([stripped, withWww, 'your-wp-site.com']))
+  })(),
 }
 
 // API 版本号

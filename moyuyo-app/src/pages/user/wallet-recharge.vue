@@ -1,7 +1,9 @@
-<template>
+﻿<template>
   <view class="wallet-recharge">
     <view class="page-header">
-      <view class="back" @click="goBack" aria-label="返回钱包"><text class="luc luc-arrow-left"></text></view>
+      <view class="back" aria-label="返回钱包" @click="goBack">
+        <text class="luc luc-arrow-left" />
+      </view>
       <text class="title">充值</text>
     </view>
 
@@ -9,7 +11,7 @@
       <!-- 余额信息 -->
       <view class="balance-card" aria-label="余额信息">
         <text class="balance-label">当前余额</text>
-        <text class="balance-value">¥{{ balance }}</text>
+        <text class="balance-value">${{ balance }}</text>
       </view>
 
       <!-- 充值金额 -->
@@ -24,8 +26,8 @@
             :aria-label="opt.label"
             @click="onAmountSelect(opt)"
           >
-            <text class="amount-num">¥{{ opt.value }}</text>
-            <text v-if="opt.bonus" class="amount-bonus">送 ¥{{ opt.bonus }}</text>
+            <text class="amount-num">${{ opt.value }}</text>
+            <text v-if="opt.bonus" class="amount-bonus">送 ${{ opt.bonus }}</text>
           </view>
           <view
             class="amount-option"
@@ -43,7 +45,7 @@
           type="number"
           placeholder="输入金额"
           aria-label="自定义充值金额"
-        />
+        >
       </view>
 
       <!-- 支付方式 -->
@@ -57,21 +59,22 @@
             :class="{ selected: selectedPay === p.id }"
             @click="selectedPay = p.id"
           >
-            <text class="pay-icon luc" :class="$luc(p.icon)"></text>
+            <text class="pay-icon luc" :class="$luc(p.icon)" />
             <text class="pay-name">{{ p.name }}</text>
-            <view class="pay-radio" :class="{ checked: selectedPay === p.id }"></view>
+            <view class="pay-radio" :class="{ checked: selectedPay === p.id }" />
           </view>
         </view>
       </view>
 
       <view class="bottom-bar safe-area-bottom">
-        <view class="btn-primary" @click="onRecharge" aria-label="确认充值">
-          确认充值 ¥{{ finalAmount }}
+        <view class="btn-primary" aria-label="确认充值" @click="onRecharge">
+          确认充值 ${{ finalAmount }}
         </view>
       </view>
     </scroll-view>
   </view>
-</template><script>
+</template>
+<script>
 import { walletApi } from '@/api'
 
 export default {
@@ -79,11 +82,11 @@ export default {
     return {
       balance: 0,
       amountOptions: [
-        { value: 10, label: '充值 ¥10', bonus: 0 },
-        { value: 20, label: '充值 ¥20', bonus: 0 },
-        { value: 50, label: '充值 ¥50', bonus: 5 },
-        { value: 100, label: '充值 ¥100', bonus: 12 },
-        { value: 200, label: '充值 ¥200', bonus: 30 },
+        { value: 10, label: '充值 $10', bonus: 0 },
+        { value: 20, label: '充值 $20', bonus: 0 },
+        { value: 50, label: '充值 $50', bonus: 5 },
+        { value: 100, label: '充值 $100', bonus: 12 },
+        { value: 200, label: '充值 $200', bonus: 30 },
       ],
       selectedAmount: 50,
       customAmount: '',

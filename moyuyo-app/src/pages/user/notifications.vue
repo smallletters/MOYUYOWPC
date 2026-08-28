@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">通知</text>
       <view class="header-action" @click="markAllRead">
@@ -44,7 +44,7 @@
 
           <!-- 图标 -->
           <view class="notif-icon" :style="{ background: item.iconBg }">
-            <text class="notif-icon-text luc" :class="$luc(item.icon)"></text>
+            <text class="notif-icon-text luc" :class="$luc(item.icon)" />
           </view>
 
           <!-- 内容 -->
@@ -58,7 +58,7 @@
 
       <!-- 空状态 -->
       <view v-else class="empty-state">
-        <text class="empty-icon"><text class="luc luc-bell"></text></text>
+        <text class="empty-icon"><text class="luc luc-bell" /></text>
         <text class="empty-text">暂无通知</text>
       </view>
     </scroll-view>
@@ -67,22 +67,29 @@
 
 <script>
 import { notificationApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   data() {
     return {
       currentTab: 'all',
-      tabs: [
-        { key: 'all', label: '全部' },
-        { key: 'order', label: '订单' },
-        { key: 'activity', label: '活动' },
-        { key: 'system', label: '系统' },
-      ],
+      // tabs 改为 computed
       notifications: [],
+      localeVersion: 0,
     }
   },
 
   computed: {
+    tabs() {
+      void this.localeVersion
+      return [
+        { key: 'all', label: i18n.t('notifications.tabs.all') },
+        { key: 'order', label: i18n.t('notifications.tabs.order') },
+        { key: 'activity', label: i18n.t('notifications.tabs.activity') },
+        { key: 'system', label: i18n.t('notifications.tabs.system') },
+      ]
+    },
+    // 根据当前 tab 过滤后的通知列表
     filteredList() {
       if (this.currentTab === 'all') {
         return this.notifications
@@ -92,7 +99,15 @@ export default {
   },
 
   onLoad() {
+    // 订阅语言切换，触发 tabs 重新计算
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
     this.loadNotifications()
+  },
+
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
   },
 
   methods: {
@@ -119,9 +134,9 @@ export default {
         this.notifications.forEach((item) => {
           item.unread = false
         })
-        uni.showToast({ title: '已全部标记为已读', icon: 'none' })
+        uni.showToast({ title: i18n.t('notifications.markedAllRead'), icon: 'none' })
       } catch {
-        uni.showToast({ title: '操作失败，请重试', icon: 'none' })
+        uni.showToast({ title: 'Failed, please retry', icon: 'none' })
       }
     },
 

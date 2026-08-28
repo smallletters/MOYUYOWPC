@@ -90,6 +90,10 @@ export function clearBadge() {
  * 设置/获取推送通知开关状态
  * @param {Boolean} [enabled] 传入则设置，不传则查询
  * @returns {Promise<Boolean>}
+ *
+ * H5 端语义:
+ * - 设置时调用浏览器 Notification API;granted 返回 true,denied/default 返回 false
+ * - 查询时按 Notification.permission 反映
  */
 export function togglePushNotification(enabled) {
   // #ifdef APP-PLUS
@@ -102,7 +106,32 @@ export function togglePushNotification(enabled) {
     }
   })
   // #endif
+
+  // #ifdef H5
+  if (typeof window === 'undefined' || typeof Notification === 'undefined') {
+    // 当前环境无 Notification API(如非 https / 旧浏览器),视为失败
+    return Promise.resolve(false)
+  }
+  if (enabled === undefined) {
+    return Promise.resolve(Notification.permission === 'granted')
+  }
+  if (!enabled) {
+    // H5 端不支持"代码关闭",只能由用户在浏览器设置里撤销
+    return Promise.resolve(true)
+  }
+  if (Notification.permission === 'granted') return Promise.resolve(true)
+  if (Notification.permission === 'denied') return Promise.resolve(false)
+  // default: 主动请求权限
+  return Notification.requestPermission().then(
+    (perm) => perm === 'granted',
+    () => false,
+  )
+  // #endif
+
+  // #ifdef MP-WEIXIN
+  // 小程序端订阅消息需独立授权流程,这里统一返回 false 让上层走友好提示
   return Promise.resolve(false)
+  // #endif
 }
 
 export default {

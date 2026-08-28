@@ -3,9 +3,9 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
-      <text class="header-title">设置</text>
+      <text class="header-title">{{ $t('common.settings') }}</text>
     </view>
 
     <view class="content">
@@ -13,27 +13,28 @@
       <view class="section">
         <navigator url="/pages/user/security" class="section-header" hover-class="item-hover">
           <view class="item-left">
-            <text class="item-icon"><text class="luc luc-lock"></text></text>
-            <text class="item-label">账号与安全</text>
+            <text class="item-icon"><text class="luc luc-lock" /></text>
+            <text class="item-label">{{ $t('settings.security.title') }}</text>
           </view>
-          <text class="chevron"><text class="luc luc-chevron-right"></text></text>
+          <text class="chevron"><text class="luc luc-chevron-right" /></text>
         </navigator>
         <view class="divider indent" />
         <navigator url="/pages/user/profile" class="item" hover-class="item-hover">
           <view class="item-left">
-            <text class="item-icon"><text class="luc luc-user"></text></text>
-            <text class="item-label">个人信息</text>
+            <text class="item-icon"><text class="luc luc-user" /></text>
+            <text class="item-label">{{ $t('settings.profile.title') }}</text>
           </view>
-          <text class="chevron"><text class="luc luc-chevron-right"></text></text>
+          <text class="chevron"><text class="luc luc-chevron-right" /></text>
         </navigator>
         <view class="divider indent" />
         <navigator url="/pages/user/change-password" class="item" hover-class="item-hover">
           <view class="item-left">
-            <text class="item-label">手机号</text>
+            <text class="item-icon"><text class="luc luc-phone" /></text>
+            <text class="item-label">{{ $t('settings.phone.title') }}</text>
           </view>
           <view class="item-right">
-            <text class="item-value">138****8888</text>
-            <text class="chevron"><text class="luc luc-chevron-right"></text></text>
+            <text class="item-value">{{ maskedPhone || $t('settings.phoneNotBound') }}</text>
+            <text class="chevron"><text class="luc luc-chevron-right" /></text>
           </view>
         </navigator>
       </view>
@@ -42,8 +43,8 @@
       <view class="section">
         <view class="item">
           <view class="item-left">
-            <text class="item-icon"><text class="luc luc-bell"></text></text>
-            <text class="item-label">通知设置</text>
+            <text class="item-icon"><text class="luc luc-bell" /></text>
+            <text class="item-label">{{ $t('settings.notifications') }}</text>
           </view>
           <switch
             class="toggle"
@@ -55,8 +56,8 @@
         <view class="divider indent" />
         <view class="item">
           <view class="item-left">
-            <text class="item-icon"><text class="luc luc-moon"></text></text>
-            <text class="item-label">深色模式</text>
+            <text class="item-icon"><text class="luc luc-moon" /></text>
+            <text class="item-label">{{ $t('settings.darkMode') }}</text>
           </view>
           <switch
             class="toggle"
@@ -66,48 +67,52 @@
           />
         </view>
         <view class="divider indent" />
-        <navigator url="/pages/user/language" class="item" hover-class="item-hover">
+        <!--
+          语言入口:点击弹出内嵌选择器(uni.showActionSheet)
+          右侧展示当前 locale 的语言名(自动随 locale 切换刷新)
+        -->
+        <view class="item" @click="showLanguagePicker">
           <view class="item-left">
-            <text class="item-icon"><text class="luc luc-globe"></text></text>
-            <text class="item-label">语言</text>
+            <text class="item-icon"><text class="luc luc-globe" /></text>
+            <text class="item-label">{{ $t('settings.language.title') }}</text>
           </view>
           <view class="item-right">
-            <text class="item-value">简体中文</text>
-            <text class="chevron"><text class="luc luc-chevron-right"></text></text>
+            <text class="item-value">{{ currentLanguageName }}</text>
+            <text class="chevron"><text class="luc luc-chevron-right" /></text>
           </view>
-        </navigator>
+        </view>
       </view>
 
       <!-- 支持区域 -->
       <view class="section">
         <navigator url="/pages/user/help" class="item" hover-class="item-hover">
           <view class="item-left">
-            <text class="item-icon"><text class="luc luc-help-circle"></text></text>
-            <text class="item-label">帮助中心</text>
+            <text class="item-icon"><text class="luc luc-help-circle" /></text>
+            <text class="item-label">{{ $t('settings.help') }}</text>
           </view>
-          <text class="chevron"><text class="luc luc-chevron-right"></text></text>
+          <text class="chevron"><text class="luc luc-chevron-right" /></text>
         </navigator>
         <view class="divider indent" />
         <navigator url="/pages/user/feedback" class="item" hover-class="item-hover">
           <view class="item-left">
-            <text class="item-icon"><text class="luc luc-message-circle"></text></text>
-            <text class="item-label">意见反馈</text>
+            <text class="item-icon"><text class="luc luc-message-circle" /></text>
+            <text class="item-label">{{ $t('settings.feedback') }}</text>
           </view>
-          <text class="chevron"><text class="luc luc-chevron-right"></text></text>
+          <text class="chevron"><text class="luc luc-chevron-right" /></text>
         </navigator>
         <view class="divider indent" />
         <navigator url="/pages/user/about" class="item" hover-class="item-hover">
           <view class="item-left">
-            <text class="item-icon">ℹ</text>
-            <text class="item-label">关于我们</text>
+            <text class="item-icon"><text class="luc luc-info" /></text>
+            <text class="item-label">{{ $t('settings.about') }}</text>
           </view>
-          <text class="chevron"><text class="luc luc-chevron-right"></text></text>
+          <text class="chevron"><text class="luc luc-chevron-right" /></text>
         </navigator>
       </view>
 
       <!-- 退出登录按钮 -->
       <view class="logout-btn" @click="onLogout">
-        <text class="logout-text">退出登录</text>
+        <text class="logout-text">{{ $t('settings.logout') }}</text>
       </view>
 
       <!-- 版本信息 -->
@@ -119,18 +124,72 @@
 <script>
 import { useUserStore } from '@/store'
 import { useThemeStore } from '@/store'
+import { i18n, getSupportedLanguages } from '@/i18n'
+import { getStorage, setStorage, STORAGE_KEYS } from '@/utils/storage'
+import { togglePushNotification } from '@/plugins/push'
 
 export default {
   data() {
     return {
-      notificationEnabled: true,
+      // 本地通知开关,默认 true;从 STORAGE_KEYS.NOTIFICATION_ENABLED 读取
+      notificationEnabled: getStorage(STORAGE_KEYS.NOTIFICATION_ENABLED, true) !== false,
+      // 深色模式开关,初始化为 false,由 onLoad 中按 theme store 真值覆盖
       darkModeEnabled: false,
+      // locale 版本号:locale 切换时自增,触发 computed 重算
+      localeVersion: 0,
+      // 当前可选语言列表(从 i18n 字典动态生成)
+      supportedLanguages: [],
     }
+  },
+
+  computed: {
+    /**
+     * 当前 locale 的"自身显示名"
+     * 例:locale=zh-CN 时返回 '简体中文';locale=en-US 时返回 'English'
+     * localeVersion 让 computed 响应 locale 变化
+     */
+    currentLanguageName() {
+      void this.localeVersion
+      return i18n.currentLanguageName
+    },
+
+    userStore() {
+      return useUserStore()
+    },
+
+    /**
+     * 脱敏手机号:138****8888
+     * 优先用 userStore.userInfo.phone,登录后才有值
+     * 海外号码格式不固定,统一取后 4 位前缀脱敏
+     */
+    maskedPhone() {
+      const raw = this.userStore?.userInfo?.phone
+      if (!raw) return ''
+      const s = String(raw).replace(/\s+/g, '')
+      if (s.length < 7) return s
+      return `${s.slice(0, 3)}****${s.slice(-4)}`
+    },
   },
 
   onLoad() {
     const themeStore = useThemeStore()
-    this.darkModeEnabled = themeStore.darkMode || false
+    // 从 store 取真实 darkMode 状态作为开关初始值
+    this.darkModeEnabled = !!themeStore.darkMode
+    // 初始化可选语言列表
+    this.supportedLanguages = getSupportedLanguages()
+    // 订阅 locale 变化:让 currentLanguageName 跟着刷新
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
+  },
+
+  onShow() {
+    // 从「我的」等页面返回时刷新一次脱敏手机号
+    this.darkModeEnabled = !!useThemeStore().darkMode
+  },
+
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
   },
 
   methods: {
@@ -138,28 +197,76 @@ export default {
       uni.navigateBack()
     },
 
-    onNotificationChange(e) {
-      this.notificationEnabled = e.detail.value
+    async onNotificationChange(e) {
+      const next = !!e.detail.value
+      this.notificationEnabled = next
+      // 1. 立即持久化,避免重启 / 返回后状态丢失
+      setStorage(STORAGE_KEYS.NOTIFICATION_ENABLED, next)
+      // 2. 同步到原生推送通道(APP 端);失败时给出友好提示
+      try {
+        const ok = await togglePushNotification(next)
+        // H5 端 togglePushNotification 永远 resolve false,这里只在 APP 端当真结果用
+        if (next && ok === false) {
+          uni.showToast({ title: i18n.t('settings.notifPermissionDenied'), icon: 'none' })
+          return
+        }
+      } catch (err) {
+        console.warn('[settings] togglePushNotification failed', err)
+        if (next) {
+          uni.showToast({ title: i18n.t('settings.notifPermissionDenied'), icon: 'none' })
+          return
+        }
+      }
       uni.showToast({
-        title: this.notificationEnabled ? '通知已开启' : '通知已关闭',
+        title: next ? i18n.t('settings.notifOn') : i18n.t('settings.notifOff'),
         icon: 'none',
       })
     },
 
     onDarkModeChange(e) {
-      this.darkModeEnabled = e.detail.value
+      const next = !!e.detail.value
+      this.darkModeEnabled = next
       const themeStore = useThemeStore()
-      themeStore.setDarkMode(this.darkModeEnabled)
+      themeStore.setDarkMode(next)
+      uni.showToast({
+        title: next ? i18n.t('settings.darkModeOn') : i18n.t('settings.darkModeOff'),
+        icon: 'none',
+      })
+    },
+
+    /**
+     * 显示语言选择器
+     * 用 uni.showActionSheet 在 iOS/Android/H5 都原生支持,无需自实现弹窗
+     */
+    showLanguagePicker() {
+      const itemList = this.supportedLanguages.map((l) => l.name)
+      uni.showActionSheet({
+        itemList,
+        success: (res) => {
+          const picked = this.supportedLanguages[res.tapIndex]
+          if (picked && picked.code !== i18n.locale) {
+            // 切换语言:i18n 内部已自动持久化到 STORAGE_KEYS.LOCALE
+            i18n.locale = picked.code
+            // 提示用户已切换
+            uni.showToast({
+              title: i18n.t('settings.langChanged', { name: picked.name }),
+              icon: 'success',
+              duration: 1500,
+            })
+            // 强制本页立即刷新(其他页面会通过 localeVersion 自动响应)
+            this.localeVersion += 1
+          }
+        },
+      })
     },
 
     onLogout() {
       uni.showModal({
-        title: '提示',
-        content: '确定要退出登录吗？',
+        title: i18n.t('settings.logoutTitle'),
+        content: i18n.t('settings.logoutConfirm'),
         success: async (res) => {
           if (res.confirm) {
-            const userStore = useUserStore()
-            await userStore.logout()
+            await this.userStore.logout()
             uni.reLaunch({ url: '/pages/tabbar/user' })
           }
         },

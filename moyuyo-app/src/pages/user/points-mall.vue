@@ -1,7 +1,9 @@
-<template>
+﻿<template>
   <view class="points-mall">
     <view class="page-header">
-      <view class="back" @click="goBack" aria-label="返回"><text class="luc luc-arrow-left"></text></view>
+      <view class="back" aria-label="返回" @click="goBack">
+        <text class="luc luc-arrow-left" />
+      </view>
       <text class="title">积分商城</text>
     </view>
 

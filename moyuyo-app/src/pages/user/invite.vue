@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <view class="invite">
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">邀请好友</text>
       <view class="header-btn" />
@@ -21,7 +21,7 @@
           <text class="invite-code-label">邀请码</text>
           <text class="invite-code-value">{{ inviteCode }}</text>
           <view class="invite-code-copy" @click="onCopyCode">
-            <text class="copy-icon"><text class="luc luc-clipboard-list"></text></text>
+            <text class="copy-icon"><text class="luc luc-clipboard-list" /></text>
             <text class="copy-text">复制</text>
           </view>
         </view>
@@ -34,21 +34,21 @@
       <view class="reward-steps">
         <view class="reward-step">
           <view class="step-icon step-icon--brand">
-            <text class="step-icon-text"><text class="luc luc-link"></text></text>
+            <text class="step-icon-text"><text class="luc luc-link" /></text>
           </view>
           <text class="step-title">分享邀请链接</text>
           <text class="step-desc">发送给好友</text>
         </view>
         <view class="reward-step">
           <view class="step-icon step-icon--brand">
-            <text class="step-icon-text"><text class="luc luc-user"></text></text>
+            <text class="step-icon-text"><text class="luc luc-user" /></text>
           </view>
           <text class="step-title">好友注册下单</text>
           <text class="step-desc">完成首单购买</text>
         </view>
         <view class="reward-step">
           <view class="step-icon step-icon--success">
-            <text class="step-icon-text"><text class="luc luc-gift"></text></text>
+            <text class="step-icon-text"><text class="luc luc-gift" /></text>
           </view>
           <text class="step-title">双方获得积分</text>
           <text class="step-desc">积分即时到账</text>
@@ -62,25 +62,25 @@
       <view class="share-channels">
         <view class="share-channel" @click="onShareWeChat">
           <view class="channel-icon channel-icon--green">
-            <text class="channel-icon-text"><text class="luc luc-message-circle"></text></text>
+            <text class="channel-icon-text"><text class="luc luc-message-circle" /></text>
           </view>
           <text class="channel-label">微信</text>
         </view>
         <view class="share-channel" @click="onShareWhatsApp">
           <view class="channel-icon channel-icon--brand">
-            <text class="channel-icon-text"><text class="luc luc-phone"></text></text>
+            <text class="channel-icon-text"><text class="luc luc-phone" /></text>
           </view>
           <text class="channel-label">WhatsApp</text>
         </view>
         <view class="share-channel" @click="onShareSMS">
           <view class="channel-icon channel-icon--blue">
-            <text class="channel-icon-text"><text class="luc luc-mail"></text></text>
+            <text class="channel-icon-text"><text class="luc luc-mail" /></text>
           </view>
           <text class="channel-label">短信</text>
         </view>
         <view class="share-channel" @click="onCopyLink">
           <view class="channel-icon">
-            <text class="channel-icon-text"><text class="luc luc-link"></text></text>
+            <text class="channel-icon-text"><text class="luc luc-link" /></text>
           </view>
           <text class="channel-label">复制链接</text>
         </view>
@@ -133,7 +133,7 @@
 
     <!-- 月度排行提醒 -->
     <view class="ranking-banner">
-      <view class="ranking-banner-icon"><text class="luc luc-trophy"></text></view>
+      <view class="ranking-banner-icon"><text class="luc luc-trophy" /></view>
       <view class="ranking-banner-info">
         <text class="ranking-banner-title">月度 TOP 10 额外奖励</text>
         <text class="ranking-banner-desc">本月排名靠前可获额外积分奖励</text>
@@ -175,23 +175,25 @@ export default {
 
     async loadInviteData() {
       try {
-        const [codeRes, statsRes, historyRes] = await Promise.all([
+        // request.js 已解包外层 envelope,直接拿 payload
+        const [code, stats, historyPage] = await Promise.all([
           inviteApi.getInviteCode(),
           inviteApi.getInviteStats(),
           inviteApi.getInviteHistory({ page: 1, size: 20 }),
         ])
-        // 后端 Result.success 包装：{ code, data, success }
-        // getInviteCode 返回字符串 → data 字段是字符串本身
-        this.inviteCode = (codeRes && codeRes.data) || codeRes || ''
-        const stats = (statsRes && statsRes.data) || statsRes || {}
+        // getInviteCode 直接返回字符串;为兼容可能包对象的写法,做宽松判定
+        this.inviteCode = typeof code === 'string' ? code : code?.code || ''
         this.stats = {
           invited: stats.invitedCount || 0,
           ordered: stats.completedOrders || 0,
           points: stats.earnedPoints || 0,
           rank: 0, // 排行暂未接入后端
         }
-        const page = (historyRes && historyRes.data) || historyRes || {}
-        const records = Array.isArray(page.records) ? page.records : (Array.isArray(page) ? page : [])
+        const records = Array.isArray(historyPage?.records)
+          ? historyPage.records
+          : Array.isArray(historyPage)
+            ? historyPage
+            : []
         this.inviteHistory = records.map((it) => {
           const ordered = it.status === 'ORDERED'
           return {
@@ -223,15 +225,55 @@ export default {
     },
 
     onShareWeChat() {
-      uni.showToast({ title: '分享到微信', icon: 'none' })
+      // 微信内唤起走 navigator://(微信内 JSAPI),其他环境直接复制兜底
+      if (typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent || '')) {
+        uni.setClipboardData({
+          data: 'https://moyuyo.com/invite/' + this.inviteCode,
+          success: () => uni.showToast({ title: '请前往微信粘贴分享', icon: 'none' }),
+        })
+        return
+      }
+      // 非微信环境:复制邀请链接,提示用户手动打开微信
+      uni.setClipboardData({
+        data: 'https://moyuyo.com/invite/' + this.inviteCode,
+        success: () => uni.showToast({ title: '链接已复制,请在微信中粘贴', icon: 'none' }),
+      })
     },
 
     onShareWhatsApp() {
-      uni.showToast({ title: '分享到 WhatsApp', icon: 'none' })
+      // H5/通用浏览器可通过 wa.me 唤起 WhatsApp;原生端若无插件,复制链接兜底
+      const url = 'https://moyuyo.com/invite/' + this.inviteCode
+      const waUrl =
+        'https://wa.me/?text=' + encodeURIComponent(`Join MOYUYO with my invite: ${url}`)
+      // 优先通过系统浏览器跳 wa.me
+      // #ifdef H5
+      if (typeof window !== 'undefined') {
+        window.open(waUrl, '_blank')
+        return
+      }
+      // #endif
+      // 原生端无插件时回退为复制
+      uni.setClipboardData({
+        data: url,
+        success: () => uni.showToast({ title: '链接已复制,请在 WhatsApp 内粘贴', icon: 'none' }),
+      })
     },
 
     onShareSMS() {
-      uni.showToast({ title: '分享到短信', icon: 'none' })
+      // 原生端可直接打开短信;H5 走 sms: 协议唤起系统短信 App
+      const url = 'https://moyuyo.com/invite/' + this.inviteCode
+      const body = `Join MOYUYO with my invite: ${url}`
+      // #ifdef H5
+      if (typeof window !== 'undefined') {
+        window.location.href = `sms:?body=${encodeURIComponent(body)}`
+        return
+      }
+      // #endif
+      // 原生端:复制链接兜底
+      uni.setClipboardData({
+        data: url,
+        success: () => uni.showToast({ title: '链接已复制', icon: 'none' }),
+      })
     },
 
     onCopyLink() {

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="security">
     <!-- 安全状态概览卡片 -->
     <view class="status-card">

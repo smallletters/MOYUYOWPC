@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="address">
     <!-- 顶部导航栏：标题 + 新增收货地址（始终可见） -->
     <view class="header-bar">
@@ -16,10 +16,10 @@
         @click="goBack">
         <text class="luc luc-x" />
       </view>
-      <text class="title">收货地址</text>
+      <text class="title">{{ $t('address.title') }}</text>
       <view class="header-btn" @click="goEdit(null)">
         <text class="luc luc-plus" />
-        <text class="header-btn-text">新增</text>
+        <text class="header-btn-text">{{ $t('address.new') }}</text>
       </view>
     </view>
 
@@ -27,15 +27,17 @@
     <scroll-view scroll-y class="list">
       <!-- 加载中 -->
       <view v-if="loading && addressList.length === 0" class="state-state">
-        <text class="state-text">加载中…</text>
+        <text class="state-text">{{ $t('address.loading') }}</text>
       </view>
 
       <!-- 空态 -->
       <view v-else-if="addressList.length === 0" class="empty">
         <text class="luc luc-map-pin empty-icon" />
-        <text class="empty-title">还没有收货地址</text>
-        <text class="empty-desc">添加地址后即可下单</text>
-        <view class="btn btn-primary empty-btn" @click="goEdit(null)">+ 新增收货地址</view>
+        <text class="empty-title">{{ $t('address.emptyTitle') }}</text>
+        <text class="empty-desc">{{ $t('address.emptyDesc') }}</text>
+        <view class="btn btn-primary empty-btn" @click="goEdit(null)">
+          {{ $t('address.addButton') }}
+        </view>
       </view>
 
       <!-- 地址卡 -->
@@ -56,7 +58,7 @@
           <view class="name-row">
             <text class="name">{{ addr.receiver }}</text>
             <text class="phone">{{ formatPhone(addr.phone) }}</text>
-            <view v-if="addr.isDefault" class="default-tag">默认</view>
+            <view v-if="addr.isDefault" class="default-tag">{{ $t('address.isDefault') }}</view>
             <view v-if="addr.tag" class="tag" :class="`tag-${(addr.tag || '').toLowerCase()}`">
               {{ addr.tag }}
             </view>
@@ -64,22 +66,26 @@
           <text class="detail">
             {{ formatRegion(addr.country, addr.province, addr.city) }} {{ addr.detail }}
           </text>
-          <text v-if="addr.zipCode" class="zip">邮编 {{ addr.zipCode }}</text>
+          <text v-if="addr.zipCode" class="zip">
+            {{ $t('address.zip', { code: addr.zipCode }) }}
+          </text>
 
           <!-- 操作行：编辑 / 删除 / 设为默认 始终可见（满足增改删需求） -->
           <view class="actions">
             <text v-if="!addr.isDefault" class="action-btn" @click.stop="onSetDefault(addr)">
-              设为默认
+              {{ $t('address.setDefault') }}
             </text>
-            <text class="action-btn" @click.stop="goEdit(addr)">编辑</text>
-            <text class="action-btn danger" @click.stop="onDelete(addr)">删除</text>
+            <text class="action-btn" @click.stop="goEdit(addr)">{{ $t('address.edit') }}</text>
+            <text class="action-btn danger" @click.stop="onDelete(addr)">
+              {{ $t('address.delete') }}
+            </text>
           </view>
         </view>
 
         <!-- 结算场景：右上角"使用此地址"按钮（点整张卡也会触发） -->
         <view v-if="fromCheckout" class="use-btn" @click.stop="onUseAddress(addr)">
           <text class="luc luc-check" />
-          <text>使用</text>
+          <text>{{ $t('address.use') }}</text>
         </view>
       </view>
     </scroll-view>
@@ -88,7 +94,7 @@
     <view v-if="fromCheckout" class="footer-bar safe-area-bottom">
       <view class="btn btn-secondary footer-btn" @click="goEdit(null)">
         <text class="luc luc-plus footer-btn-icon" />
-        <text>新增收货地址</text>
+        <text>{{ $t('address.add') }}</text>
       </view>
     </view>
   </view>
@@ -96,10 +102,12 @@
 
 <script>
 import { addressApi } from '@/api'
+import i18n from '@/i18n'
 
 export default {
   data() {
     return {
+      localeVersion: 0,
       addressList: [],
       selectedId: '',
       fromCheckout: false,
@@ -118,7 +126,14 @@ export default {
         // ignore
       }
     }
+    // 订阅语言切换（当前页面文案均在模板里直读 $t,这里订阅是为了扩展一致性）
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
     this.loadAddresses()
+  },
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
   },
 
   methods: {
@@ -158,10 +173,10 @@ export default {
       try {
         await addressApi.setDefaultAddress(addr.id)
         this.addressList = this.addressList.map((a) => ({ ...a, isDefault: a.id === addr.id }))
-        uni.showToast({ title: '已设为默认', icon: 'success' })
+        uni.showToast({ title: i18n.t('address.setDefaultSuccess'), icon: 'success' })
       } catch (e) {
         console.warn('[address] set default failed', e)
-        uni.showToast({ title: '操作失败', icon: 'none' })
+        uni.showToast({ title: i18n.t('address.setDefaultFailed'), icon: 'none' })
       }
     },
 
@@ -174,9 +189,9 @@ export default {
     /** 删除地址 */
     onDelete(addr) {
       uni.showModal({
-        title: '删除地址',
-        content: `确认删除「${addr.receiver}」的收货地址？删除后不可恢复。`,
-        confirmText: '删除',
+        title: i18n.t('address.deleteModalTitle'),
+        content: i18n.t('address.deleteModalContent', { name: addr.receiver }),
+        confirmText: i18n.t('address.deleteConfirm'),
         confirmColor: '#ff3b30',
         success: async (res) => {
           if (!res.confirm) return
@@ -184,10 +199,10 @@ export default {
             await addressApi.deleteAddress(addr.id)
             this.addressList = this.addressList.filter((a) => a.id !== addr.id)
             if (this.selectedId === addr.id) this.selectedId = ''
-            uni.showToast({ title: '已删除', icon: 'success' })
+            uni.showToast({ title: i18n.t('address.deleted'), icon: 'success' })
           } catch (e) {
             console.warn('[address] delete failed', e)
-            uni.showToast({ title: '删除失败', icon: 'none' })
+            uni.showToast({ title: i18n.t('address.deleteFailed'), icon: 'none' })
           }
         },
       })

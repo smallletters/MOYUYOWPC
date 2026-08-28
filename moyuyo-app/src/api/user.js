@@ -61,6 +61,17 @@ export function verifyTwoFactorCode(code) {
   return post('/api/v1/auth/2fa/verify', { code })
 }
 
+/** 发送手机短信验证码 */
+export function sendPhoneCode(phone, purpose = 'LOGIN') {
+  return post('/api/v1/auth/phone/send-code', { phone, purpose })
+}
+
+/** 手机号 + 验证码登录（后端会在未注册时自动创建账号） */
+export function loginByPhone(phone, code) {
+  // 与 login() 一致：自己处理错误 toast,避免 request.js 默认 showError 重复弹窗
+  return post('/api/v1/auth/phone/login', { phone, code }, { showError: false })
+}
+
 export default {
   register,
   login,
@@ -77,4 +88,6 @@ export default {
   verifyMagicLink,
   sendTwoFactorCode,
   verifyTwoFactorCode,
+  sendPhoneCode,
+  loginByPhone,
 }

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="magic-link">
     <view class="header">
       <text class="title">Magic Link</text>
@@ -30,7 +30,7 @@
 
     <view v-else class="form">
       <view class="sent-info">
-        <text class="sent-icon"><text class="luc luc-mail"></text></text>
+        <text class="sent-icon"><text class="luc luc-mail" /></text>
         <text class="sent-text">We sent a sign-in link to</text>
         <text class="sent-email">{{ email }}</text>
         <text class="sent-hint">

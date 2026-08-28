@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <view class="crowdfunding-page">
     <!-- 导航栏 -->
     <view class="nav-bar">
       <view class="nav-btn" @click="goBack">
-        <text class="nav-back"><text class="luc luc-arrow-left"></text></text>
+        <text class="nav-back"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="nav-title">众筹</text>
       <view class="nav-btn" />
@@ -55,18 +55,18 @@
             </view>
             <view class="progress-stats">
               <text class="progress-percent">{{ project.percent }}%</text>
-              <text class="progress-amount">已筹 ¥{{ project.raised }}</text>
+              <text class="progress-amount">已筹 ${{ project.raised }}</text>
             </view>
           </view>
 
           <!-- 底部信息 -->
           <view class="project-footer">
             <view class="supporter-count">
-              <text class="supporter-icon"><text class="luc luc-users"></text></text>
+              <text class="supporter-icon"><text class="luc luc-users" /></text>
               <text class="supporter-text">{{ project.supporters }}人支持</text>
             </view>
             <view class="min-pledge">
-              <text class="pledge-text">¥{{ project.minPledge }} 起</text>
+              <text class="pledge-text">${{ project.minPledge }} 起</text>
             </view>
           </view>
         </view>

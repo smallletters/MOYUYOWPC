@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="charity-donation">
     <!-- 顶部导航栏 -->
     <view class="nav-header">

@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <view class="subscription-manage">
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">我的订阅</text>
       <view class="header-spacer" />
@@ -20,11 +20,11 @@
           <view class="stat-divider" />
           <view class="stat-item">
             <text class="stat-label">总节省</text>
-            <text class="stat-value stat-success">¥{{ totalSaved }}</text>
+            <text class="stat-value stat-success">${{ totalSaved }}</text>
           </view>
         </view>
         <view class="overview-icon">
-          <text class="icon-emoji"><text class="luc luc-star"></text></text>
+          <text class="icon-emoji"><text class="luc luc-star" /></text>
         </view>
       </view>
 
@@ -44,7 +44,10 @@
             </view>
             <text class="sub-spec">{{ item.spec }}</text>
             <view class="sub-cycle">
-              <text class="cycle-icon luc" :class="$luc(item.status === 'paused'  ?  'pause'  :  'play')"></text>
+              <text
+                class="cycle-icon luc"
+                :class="$luc(item.status === 'paused' ? 'pause' : 'play')"
+              />
               <text class="cycle-text">{{ item.cycleText }}</text>
             </view>
           </view>
@@ -56,12 +59,12 @@
         <!-- 价格与配送信息 -->
         <view class="price-delivery">
           <view class="price-row">
-            <text class="price-current">¥{{ item.price }}</text>
-            <text class="price-original">¥{{ item.originalPrice }}</text>
+            <text class="price-current">${{ item.price }}</text>
+            <text class="price-original">${{ item.originalPrice }}</text>
             <text class="discount-tag">省{{ item.discount }}%</text>
           </view>
           <view class="delivery-row">
-            <text class="delivery-icon"><text class="luc luc-package"></text></text>
+            <text class="delivery-icon"><text class="luc luc-package" /></text>
             <text class="delivery-text">下次 {{ item.nextDate }}</text>
           </view>
         </view>
@@ -118,7 +121,7 @@
                 </view>
                 <text class="sub-spec">{{ item.spec }} / {{ item.cycleText }}</text>
                 <view class="sub-cycle">
-                  <text class="cycle-icon"><text class="luc luc-minus"></text></text>
+                  <text class="cycle-icon"><text class="luc luc-minus" /></text>
                   <text class="cycle-text cycle-text-muted">{{ item.dateRange }}</text>
                 </view>
               </view>
@@ -129,7 +132,7 @@
 
       <!-- 底部提示 -->
       <view class="tip-box">
-        <text class="tip-icon"><text class="luc luc-help-circle"></text></text>
+        <text class="tip-icon"><text class="luc luc-help-circle" /></text>
         <text class="tip-text">
           订阅灵活管理：可随时调整周期、暂停或取消，无额外费用。如有疑问请联系客服。
         </text>

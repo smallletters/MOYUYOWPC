@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <view class="privacy">
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">隐私设置</text>
       <view class="header-btn" />
@@ -11,7 +11,7 @@
     <view class="content">
       <view class="privacy-overview">
         <view class="overview-icon">
-          <text class="shield-icon"><text class="luc luc-shield"></text></text>
+          <text class="shield-icon"><text class="luc luc-shield" /></text>
         </view>
         <view class="overview-info">
           <text class="overview-title">您的隐私保护等级：高</text>
@@ -41,16 +41,16 @@
             </view>
             <view class="action-right">
               <text class="action-hint">PDF/JSON</text>
-              <text class="action-arrow"><text class="luc luc-chevron-right"></text></text>
+              <text class="action-arrow"><text class="luc luc-chevron-right" /></text>
             </view>
           </view>
           <view class="item-divider" />
           <view class="action-item" @click="onDeleteAccount">
             <view class="action-left">
-              <text class="action-icon del"><text class="luc luc-x"></text></text>
+              <text class="action-icon del"><text class="luc luc-x" /></text>
               <text class="action-label del">删除账号</text>
             </view>
-            <text class="action-arrow"><text class="luc luc-chevron-right"></text></text>
+            <text class="action-arrow"><text class="luc luc-chevron-right" /></text>
           </view>
         </view>
       </view>
@@ -60,7 +60,7 @@
         <view class="section-body">
           <view class="action-item" @click="onViewPolicy">
             <text class="action-label">隐私政策</text>
-            <text class="action-arrow"><text class="luc luc-chevron-right"></text></text>
+            <text class="action-arrow"><text class="luc luc-chevron-right" /></text>
           </view>
         </view>
       </view>

@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <view class="cart">
     <!-- 空状态 -->
     <view v-if="cartItems.length === 0 && expiredItems.length === 0" class="empty">
-      <text class="empty-emoji"><text class="luc luc-shopping-cart"></text></text>
+      <text class="empty-emoji"><text class="luc luc-shopping-cart" /></text>
       <text class="empty-text">购物车是空的</text>
       <view class="btn btn-primary" @click="goShopping">去逛逛</view>
     </view>
@@ -10,8 +10,8 @@
     <template v-else>
       <!-- 顶部导航栏 -->
       <view class="header">
-        <view class="header-back" @click="goBack" aria-label="返回">
-          <text class="header-back-icon"><text class="luc luc-arrow-left"></text></text>
+        <view class="header-back" aria-label="返回" @click="goBack">
+          <text class="header-back-icon"><text class="luc luc-arrow-left" /></text>
         </view>
         <text class="header-title">购物车</text>
         <view class="header-edit" @click="onToggleEdit">
@@ -21,10 +21,10 @@
 
       <!-- 降价提醒横幅 -->
       <view v-if="showBanner" class="banner">
-        <text class="banner-tag"><text class="luc luc-tag"></text></text>
-        <text class="banner-text">2件商品降价啦，已为您节省¥18.00</text>
-        <view class="banner-close" @click="showBanner = false" aria-label="关闭提醒">
-          <text class="banner-close-icon"><text class="luc luc-x"></text></text>
+        <text class="banner-tag"><text class="luc luc-tag" /></text>
+        <text class="banner-text">2件商品降价啦，已为您节省$18.00</text>
+        <view class="banner-close" aria-label="关闭提醒" @click="showBanner = false">
+          <text class="banner-close-icon"><text class="luc luc-x" /></text>
         </view>
       </view>
 
@@ -40,7 +40,7 @@
           >
             <view class="item-check" @click="onCheck(item)">
               <view class="checkbox" :class="{ checked: item.checked }">
-                <text v-if="item.checked"><text class="luc luc-check"></text></text>
+                <text v-if="item.checked"><text class="luc luc-check" /></text>
               </view>
             </view>
             <image :src="item.image" class="item-image" mode="aspectFill" />
@@ -52,11 +52,15 @@
                 {{ formatAttrs(item.attrs) }}
               </text>
               <view class="item-bottom">
-                <text class="item-price">¥{{ item.price.toFixed(2) }}</text>
+                <text class="item-price">${{ item.price.toFixed(2) }}</text>
                 <view v-if="!editing" class="quantity-control">
-                  <view class="qty-btn" aria-label="减少数量" @click.stop="onQtyChange(item, -1)">-</view>
+                  <view class="qty-btn" aria-label="减少数量" @click.stop="onQtyChange(item, -1)">
+                    -
+                  </view>
                   <text class="qty-value">{{ item.quantity }}</text>
-                  <view class="qty-btn" aria-label="增加数量" @click.stop="onQtyChange(item, 1)">+</view>
+                  <view class="qty-btn" aria-label="增加数量" @click.stop="onQtyChange(item, 1)">
+                    +
+                  </view>
                 </view>
                 <view v-else class="item-delete" @click.stop="onDelete(item)">
                   <text class="item-delete-text">删除</text>
@@ -70,7 +74,9 @@
         <view v-if="expiredItems.length > 0" class="expired-section">
           <view class="expired-header" @click="expandedExpired = !expandedExpired">
             <text class="expired-header-text">失效商品 ({{ expiredItems.length }})</text>
-            <text class="expired-header-arrow" :class="{ rotated: expandedExpired }"><text class="luc luc-chevron-right"></text></text>
+            <text class="expired-header-arrow" :class="{ rotated: expandedExpired }">
+              <text class="luc luc-chevron-right" />
+            </text>
           </view>
           <view v-show="expandedExpired" class="expired-list">
             <view v-for="item in expiredItems" :key="item.id" class="expired-item">
@@ -78,7 +84,7 @@
               <view class="expired-info">
                 <text class="expired-name">{{ item.name }}</text>
                 <text class="expired-status">{{ item.statusText }}</text>
-                <text class="expired-price">¥{{ item.price.toFixed(2) }}</text>
+                <text class="expired-price">${{ item.price.toFixed(2) }}</text>
               </view>
             </view>
           </view>
@@ -100,7 +106,7 @@
               >
                 <image :src="item.image" class="upsell-card-image" mode="aspectFill" />
                 <text class="upsell-card-name">{{ item.name }}</text>
-                <text class="upsell-card-price">¥{{ item.price.toFixed(2) }}</text>
+                <text class="upsell-card-price">${{ item.price.toFixed(2) }}</text>
               </view>
             </view>
           </scroll-view>
@@ -111,22 +117,22 @@
           <text class="summary-title">订单摘要</text>
           <view class="summary-row">
             <text class="summary-label">商品合计</text>
-            <text class="summary-value">¥{{ subtotal.toFixed(2) }}</text>
+            <text class="summary-value">${{ subtotal.toFixed(2) }}</text>
           </view>
           <view class="summary-row">
             <text class="summary-label">运费</text>
             <view class="summary-value-wrap">
-              <text class="summary-value">¥{{ shipping.toFixed(2) }}</text>
+              <text class="summary-value">${{ shipping.toFixed(2) }}</text>
               <text v-if="shipping === 0" class="summary-badge">免运费</text>
             </view>
           </view>
           <view class="summary-row">
             <text class="summary-label">优惠</text>
-            <text class="summary-value summary-discount">-¥{{ discountAmount.toFixed(2) }}</text>
+            <text class="summary-value summary-discount">-${{ discountAmount.toFixed(2) }}</text>
           </view>
           <view class="summary-total">
             <text class="summary-total-label">应付金额</text>
-            <text class="summary-total-price">¥{{ total.toFixed(2) }}</text>
+            <text class="summary-total-price">${{ total.toFixed(2) }}</text>
           </view>
         </view>
 
@@ -137,14 +143,14 @@
       <view class="bottom-bar safe-area-bottom">
         <view class="check-all" @click="onCheckAll">
           <view class="checkbox" :class="{ checked: cartStore.isAllChecked }">
-            <text v-if="cartStore.isAllChecked"><text class="luc luc-check"></text></text>
+            <text v-if="cartStore.isAllChecked"><text class="luc luc-check" /></text>
           </view>
           <text class="check-all-text">全选</text>
         </view>
         <view class="bottom-right">
           <view class="bottom-total">
             <text class="bottom-total-label">合计:</text>
-            <text class="bottom-total-price">¥{{ total.toFixed(2) }}</text>
+            <text class="bottom-total-price">${{ total.toFixed(2) }}</text>
           </view>
           <view
             class="btn btn-primary checkout-btn"

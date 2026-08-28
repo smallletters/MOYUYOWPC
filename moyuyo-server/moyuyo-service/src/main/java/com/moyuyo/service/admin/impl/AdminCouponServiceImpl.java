@@ -73,7 +73,7 @@ public class AdminCouponServiceImpl implements AdminCouponService {
   public void create(Map<String, Object> data) {
     CouponEntity entity = new CouponEntity();
     if (data.get("name") != null) entity.setName((String) data.get("name"));
-    if (data.get("type") != null) entity.setType((String) data.get("type"));
+    if (data.get("type") != null) entity.setType(normalizeType((String) data.get("type")));
     if (data.get("value") != null) entity.setDiscountValue(new java.math.BigDecimal(data.get("value").toString()));
     if (data.get("minAmount") != null) entity.setMinOrderAmount(new java.math.BigDecimal(data.get("minAmount").toString()));
     if (data.get("maxAmount") != null) entity.setMaxDiscountAmount(new java.math.BigDecimal(data.get("maxAmount").toString()));
@@ -88,14 +88,25 @@ public class AdminCouponServiceImpl implements AdminCouponService {
     data.put("id", entity.getId());
   }
 
-  /** 解析时间字符串，支持 ISO_LOCAL_DATE_TIME 与 yyyy-MM-dd HH:mm:ss */
+  /** 解析时间字符串，支持 ISO_LOCAL_DATE_TIME、带时区 ISO 8601、yyyy-MM-dd HH:mm:ss */
   private java.time.LocalDateTime parseTime(String s) {
     if (s == null || s.isEmpty()) return null;
+    String v = s.trim();
+    // 带时区的 ISO 8601：先按 Instant 解析再转系统时区
+    if (v.endsWith("Z") || v.matches(".*[+-]\\d{2}:?\\d{2}$")) {
+      try {
+        java.time.Instant inst = java.time.Instant.parse(v);
+        return inst.atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+      } catch (Exception ignored) {
+        // 落到下面的本地解析
+      }
+    }
     try {
-      return java.time.LocalDateTime.parse(s);
+      // ISO_LOCAL_DATE_TIME（无时区，如 2026-08-27T16:00:00 或 2026-08-27T16:00:00.000）
+      return java.time.LocalDateTime.parse(v, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     } catch (Exception e) {
       try {
-        return java.time.LocalDateTime.parse(s, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        return java.time.LocalDateTime.parse(v, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
       } catch (Exception ex) {
         return null;
       }
@@ -109,10 +120,35 @@ public class AdminCouponServiceImpl implements AdminCouponService {
     CouponEntity entity = couponMapper.selectById(Long.valueOf(data.get("id").toString()));
     if (entity == null) return;
     if (data.get("name") != null) entity.setName((String) data.get("name"));
-    if (data.get("type") != null) entity.setType((String) data.get("type"));
+    if (data.get("type") != null) entity.setType(normalizeType((String) data.get("type")));
     if (data.get("value") != null) entity.setDiscountValue(new java.math.BigDecimal(data.get("value").toString()));
     if (data.get("status") != null) entity.setActive(Boolean.valueOf(data.get("status").toString()));
     couponMapper.updateById(entity);
+  }
+
+  /**
+   * 类型枚举归一：前端表单 radio 使用 "fixed"/"discount",
+   * 而 CouponEntity 与 C 端 CouponServiceImpl 期望 "AMOUNT"/"PERCENT"。
+   * 历史数据/外部系统可能使用其他写法,统一在这里收敛,避免出现 type 字段不可识别。
+   */
+  private String normalizeType(String raw) {
+    if (raw == null) return null;
+    String s = raw.trim().toUpperCase();
+    if (s.isEmpty()) return null;
+    switch (s) {
+      case "FIXED":
+      case "AMOUNT":
+      case "满减":
+      case "CASH":
+        return "AMOUNT";
+      case "DISCOUNT":
+      case "PERCENT":
+      case "折扣":
+        return "PERCENT";
+      default:
+        // 未知类型原样写入,便于 DBA 排查;但记录日志提醒
+        return s;
+    }
   }
 
   @Override

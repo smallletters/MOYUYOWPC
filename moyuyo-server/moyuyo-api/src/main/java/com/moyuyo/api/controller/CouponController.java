@@ -31,7 +31,9 @@ public class CouponController {
             @RequestParam(defaultValue = "20") int size) {
         // 分页参数统一守卫
         int[] pageParams = PageParamGuard.normalize(page, size, 20);
-        return Result.success(couponService.listAvailable(pageParams[0], pageParams[1]));
+        // 已登录用户带上 userId，用于返回 claimedByMe 标记前端判断按钮态
+        Long userId = UserContextHolder.getUserId();
+        return Result.success(couponService.listAvailable(pageParams[0], pageParams[1], userId));
     }
 
     @Operation(summary = "领取优惠券")

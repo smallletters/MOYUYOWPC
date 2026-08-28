@@ -2,17 +2,17 @@
   <view class="pay-page">
     <view class="status-bar">
       <view class="status-icon" :class="status">⏳</view>
-      <text class="status-text">{{ statusText }}</text>
+      <text class="status-text">{{ statusText || $t('orderLogistics.status.PENDING') }}</text>
     </view>
 
     <view v-if="order" class="card order-summary">
       <text class="card-title">Order #{{ order.orderNo }}</text>
       <view class="summary-row">
-        <text>Amount</text>
-        <text class="amount">${{ order.payAmount }}</text>
+        <text>{{ $t('orderPay.payAmount') }}</text>
+        <text class="amount">{{ currencySymbol }}{{ order.payAmount }}</text>
       </view>
       <view class="summary-row">
-        <text>Status</text>
+        <text>{{ $t('orderDetail.status') }}</text>
         <text>{{ statusLabel(order.status) }}</text>
       </view>
     </view>
@@ -51,6 +51,8 @@
 
 <script>
 import { orderApi } from '@/api'
+import { removePendingOrder } from '@/utils/storage'
+import { i18n } from '@/i18n'
 
 export default {
   data() {
@@ -156,6 +158,8 @@ export default {
             this.status = 'success'
             this.statusText = 'Payment successful!'
             this.stopPolling()
+            // 支付成功:同步移除本地待付款暂存记录
+            removePendingOrder(this.orderId)
             setTimeout(() => this.goDetail(), 1500)
           } else if (order.status === 'CANCELLED') {
             this.status = 'failed'
@@ -224,25 +228,36 @@ export default {
      * 统一处理支付结果：更新状态文案、关闭 web-view、跳订单详情。
      */
     handlePayResult(status, message) {
+      void this.localeVersion
       this.stopPolling()
       if (status === 'success') {
         this.status = 'success'
-        this.statusText = 'Payment successful!'
+        this.statusText = i18n.t('orderPay.paySuccess') + '!'
+        // 支付成功:同步移除本地待付款暂存记录
+        removePendingOrder(this.orderId)
         setTimeout(() => this.goDetail(), 800)
       } else if (status === 'cancelled' || status === 'cancel') {
         this.status = 'failed'
-        this.statusText = 'Payment cancelled'
+        this.statusText = i18n.t('orderPay.payCancelled')
       } else {
         this.status = 'failed'
-        this.statusText = message || 'Payment failed'
+        this.statusText = message || i18n.t('orderPay.payFailed')
       }
       // 关闭 web-view
       this.payUrl = ''
     },
 
     statusLabel(status) {
-      const map = { PENDING_PAY: 'To Pay', PAID: 'Paid', CANCELLED: 'Cancelled' }
-      return map[status] || status
+      void this.localeVersion
+      // 复用 orderStatus 字典,状态码对齐后端
+      const key = `orderStatus.${status}`
+      const v = i18n.t(key)
+      return v === key ? status : v
+    },
+
+    currencySymbol() {
+      void this.localeVersion
+      return i18n.currencySymbol
     },
 
     goDetail() {

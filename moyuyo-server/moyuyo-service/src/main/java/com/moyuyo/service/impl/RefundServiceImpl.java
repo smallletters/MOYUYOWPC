@@ -10,12 +10,15 @@ import com.moyuyo.common.dto.refund.RefundVO;
 import com.moyuyo.common.utils.PageUtils;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
+import com.moyuyo.dao.entity.PointsLogEntity;
 import com.moyuyo.dao.entity.RefundEntity;
 import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
+import com.moyuyo.dao.mapper.PointsLogMapper;
 import com.moyuyo.dao.mapper.RefundMapper;
 import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.common.enums.RefundChannelEnum;
+import com.moyuyo.service.MemberService;
 import com.moyuyo.service.RefundChannelService;
 import com.moyuyo.service.RefundService;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +42,8 @@ public class RefundServiceImpl implements RefundService {
     private final OrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
     private final RefundChannelService refundChannelService;
+    private final MemberService memberService;
+    private final PointsLogMapper pointsLogMapper;
     /** 全局复用的 Jackson 实例 */
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -238,6 +243,15 @@ public class RefundServiceImpl implements RefundService {
         if (order != null) {
             order.setStatus(OrderStatusEnum.REFUNDED.name());
             orderMapper.updateById(order);
+
+            // 退款联动积分：原路返还抵扣积分 + 按比例扣回 REWARD 奖励积分
+            try {
+                reversePointsOnRefund(order, entity.getAmount());
+            } catch (Exception e) {
+                // 积分联动失败不影响退款主流程，但需记录便于对账
+                log.error("[refund] 积分联动失败 refundId={}, orderNo={}, reason={}",
+                        refundId, order.getOrderNo(), e.getMessage(), e);
+            }
         }
         log.info("Refund completed: refundId={}, operatorId={}, transactionId={}",
                 refundId, operatorId, finalTransactionId);
@@ -359,5 +373,62 @@ public class RefundServiceImpl implements RefundService {
 
     private IPage<RefundVO> toRefundVOPage(IPage<RefundEntity> entityPage) {
         return PageUtils.convertPage(entityPage, this::toRefundVO);
+    }
+
+    /**
+     * 退款完成时联动积分：
+     * 1. 已抵扣积分（points_used）按退款比例原路返还：USER 收到 +returnUsed
+     * 2. 该订单已发放的 REWARD 奖励积分按比例扣回：USER 扣减 -clawback
+     * <p>
+     * 任一金额按四舍五入取整；扣回金额 clamp 到用户当前可用余额（防止负数）。
+     */
+    private void reversePointsOnRefund(OrderEntity order, BigDecimal refundAmount) {
+        if (order == null || refundAmount == null || refundAmount.signum() <= 0) {
+            return;
+        }
+        BigDecimal payAmount = order.getPayAmount();
+        if (payAmount == null || payAmount.signum() <= 0) {
+            return;
+        }
+        // 退款比例：refundAmount / payAmount，最大 1.0（避免运营事故导致扣回超过发放）
+        double ratio = Math.min(1.0,
+                refundAmount.doubleValue() / payAmount.doubleValue());
+
+        // 1) 原路返还抵扣积分
+        int used = order.getPointsUsed() == null ? 0 : order.getPointsUsed();
+        int returnUsed = (int) Math.round(used * ratio);
+        if (returnUsed > 0) {
+            memberService.addPoints(
+                    order.getUserId(),
+                    returnUsed,
+                    "REFUND_RETURN",
+                    order.getOrderNo(),
+                    String.format("退款返还抵扣积分：订单 %s 退款比例 %.2f%%，返还 %d 积分",
+                            order.getOrderNo(), ratio * 100, returnUsed));
+            log.info("[refund] 原路返还抵扣积分: userId={}, orderNo={}, return={}",
+                    order.getUserId(), order.getOrderNo(), returnUsed);
+        }
+
+        // 2) 按比例扣回 REWARD 奖励积分（查询该订单历史正向 REWARD 流水总额）
+        List<PointsLogEntity> rewardLogs = pointsLogMapper.selectList(
+                new LambdaQueryWrapper<PointsLogEntity>()
+                        .eq(PointsLogEntity::getUserId, order.getUserId())
+                        .eq(PointsLogEntity::getBizNo, order.getOrderNo())
+                        .eq(PointsLogEntity::getType, "REWARD")
+                        .gt(PointsLogEntity::getChangeValue, 0));
+        int totalRewarded = rewardLogs.stream()
+                .mapToInt(PointsLogEntity::getChangeValue).sum();
+        int clawback = (int) Math.round(totalRewarded * ratio);
+        if (clawback > 0) {
+            memberService.addPoints(
+                    order.getUserId(),
+                    -clawback,
+                    "REFUND_CLAWBACK",
+                    order.getOrderNo(),
+                    String.format("退款扣回奖励积分：订单 %s 退款比例 %.2f%%，扣回 %d 积分（原发放 %d）",
+                            order.getOrderNo(), ratio * 100, clawback, totalRewarded));
+            log.info("[refund] 按比例扣回 REWARD: userId={}, orderNo={}, clawback={}, totalRewarded={}",
+                    order.getUserId(), order.getOrderNo(), clawback, totalRewarded);
+        }
     }
 }

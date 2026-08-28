@@ -2,61 +2,69 @@
   <view class="refund-page">
     <view v-if="order" class="card order-info">
       <text class="card-title">Order #{{ order.orderNo }}</text>
-      <text class="order-amount">Amount: ${{ order.payAmount }}</text>
+      <text class="order-amount">
+        {{ $t('orderRefund.amountLabel') }}: {{ currencySymbol }}{{ order.payAmount }}
+      </text>
     </view>
 
     <view class="card form-card">
       <view class="form-item">
-        <text class="label">Refund Type</text>
+        <text class="label">{{ $t('orderRefund.typeLabel') }}</text>
         <view class="radio-group">
           <view class="radio-row" @click="form.type = 'FULL'">
             <view class="radio" :class="{ checked: form.type === 'FULL' }">
-              <text v-if="form.type === 'FULL'"><text class="luc luc-check"></text></text>
+              <text v-if="form.type === 'FULL'"><text class="luc luc-check" /></text>
             </view>
-            <text>Full Refund</text>
+            <text>{{ $t('orderRefund.fullRefund') }}</text>
           </view>
           <view class="radio-row" @click="form.type = 'PARTIAL'">
             <view class="radio" :class="{ checked: form.type === 'PARTIAL' }">
-              <text v-if="form.type === 'PARTIAL'"><text class="luc luc-check"></text></text>
+              <text v-if="form.type === 'PARTIAL'"><text class="luc luc-check" /></text>
             </view>
-            <text>Partial Refund</text>
+            <text>{{ $t('orderRefund.partialRefund') }}</text>
           </view>
         </view>
       </view>
 
       <view v-if="form.type === 'PARTIAL'" class="form-item">
-        <text class="label">Refund Amount ($)</text>
+        <text class="label">{{ $t('orderRefund.partialAmountLabel') }}</text>
         <input
           v-model="form.amount"
           class="input"
           type="digit"
-          placeholder="0.00">
+          :placeholder="$t('orderRefund.amountPlaceholder')"
+        >
       </view>
 
       <view class="form-item">
-        <text class="label">Reason</text>
+        <text class="label">{{ $t('orderRefund.reasonLabel') }}</text>
         <picker :value="reasonIndex" :range="reasonOptions" @change="onReasonChange">
           <view class="picker">
-            <text>{{ reasonOptions[reasonIndex] || 'Select a reason' }}</text>
-            <text class="arrow"><text class="luc luc-chevron-right"></text></text>
+            <text>{{ reasonOptions[reasonIndex] || $t('orderRefund.reasonPlaceholder') }}</text>
+            <text class="arrow"><text class="luc luc-chevron-right" /></text>
           </view>
         </picker>
       </view>
 
       <view class="form-item">
-        <text class="label">Description (optional)</text>
-        <textarea v-model="form.description" class="textarea" placeholder="Describe the issue..." />
+        <text class="label">{{ $t('orderRefund.descLabel') }}</text>
+        <textarea
+          v-model="form.description"
+          class="textarea"
+          :placeholder="$t('orderRefund.descPlaceholder')"
+        />
       </view>
     </view>
 
     <view class="btn btn-primary submit-btn" :class="{ disabled: !canSubmit }" @click="onSubmit">
-      Submit Refund Request
+      {{ $t('orderRefund.submit') }}
     </view>
   </view>
 </template>
 
 <script>
 import { orderApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   data() {
@@ -70,29 +78,29 @@ export default {
         description: '',
       },
       reasonIndex: -1,
-      reasonOptions: [
-        'Item damaged',
-        'Wrong item received',
-        'Item not as described',
-        'Quality issue',
-        'No longer needed',
-        'Other',
-      ],
+      reasonOptions: [],
+      localeVersion: 0,
     }
   },
 
   computed: {
-    canSubmit() {
-      if (!this.form.reason) return false
-      if (this.form.type === 'PARTIAL' && (!this.form.amount || parseFloat(this.form.amount) <= 0))
-        return false
-      return true
+    currencySymbol() {
+      void this.localeVersion
+      return i18n.currencySymbol
     },
   },
 
   onLoad(query) {
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
+    this.reasonOptions = i18n.t('orderRefund.reasonOptions')
     this.orderId = query.orderId
     this.loadOrder()
+  },
+
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
   },
 
   methods: {
@@ -100,7 +108,7 @@ export default {
       try {
         this.order = await orderApi.getOrderDetail(this.orderId)
       } catch (e) {
-        uni.showToast({ title: 'Failed to load order', icon: 'none' })
+        uni.showToast({ title: i18n.t('orderRefund.loadFailed'), icon: 'none' })
       }
     },
 
@@ -111,7 +119,7 @@ export default {
 
     async onSubmit() {
       if (!this.canSubmit) return
-      uni.showLoading({ title: 'Submitting...', mask: true })
+      uni.showLoading({ title: i18n.t('common.loading'), mask: true })
       try {
         await orderApi.applyRefund({
           orderId: this.orderId,
@@ -121,12 +129,19 @@ export default {
           description: this.form.description,
         })
         uni.hideLoading()
-        uni.showToast({ title: 'Refund submitted!', icon: 'success' })
+        uni.showToast({ title: i18n.t('orderRefund.submitted'), icon: 'success' })
         setTimeout(() => uni.navigateBack(), 1500)
       } catch (e) {
         uni.hideLoading()
-        uni.showToast({ title: e.message || 'Submit failed', icon: 'none' })
+        uni.showToast({ title: e.message || i18n.t('orderRefund.failed'), icon: 'none' })
       }
+    },
+
+    canSubmit() {
+      if (!this.form.reason) return false
+      if (this.form.type === 'PARTIAL' && (!this.form.amount || parseFloat(this.form.amount) <= 0))
+        return false
+      return true
     },
   },
 }

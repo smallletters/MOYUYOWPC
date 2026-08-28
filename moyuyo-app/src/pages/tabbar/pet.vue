@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="pet-hub">
     <view class="header">
       <text class="title">Pet Hub</text>
@@ -9,7 +9,11 @@
       <view class="scene" @click="onSceneClick">
         <view class="scene-placeholder">
           <view class="scene-emoji">
-            <text class="luc" v-if="activePet" :class="$luc(activePet.type === 'CAT'  ?  'paw-print'  :  'paw-print')"></text>
+            <text
+              v-if="activePet"
+              class="luc"
+              :class="$luc(activePet.type === 'CAT' ? 'paw-print' : 'paw-print')"
+            />
           </view>
           <text class="scene-name">{{ activePet?.name || 'No pet' }}</text>
           <text class="scene-tip">Tap to interact</text>
@@ -24,7 +28,10 @@
           :class="{ active: petStore.currentPet?.id === pet.id }"
           @click="switchPet(pet)"
         >
-          <text class="pet-emoji luc" :class="$luc(pet.type === 'CAT'  ?  'paw-print'  :  'paw-print')"></text>
+          <text
+            class="pet-emoji luc"
+            :class="$luc(pet.type === 'CAT' ? 'paw-print' : 'paw-print')"
+          />
           <text class="pet-name">{{ pet.name }}</text>
         </view>
         <view class="pet-chip add" @click="goAddPet">
@@ -40,13 +47,13 @@
           @click="onCareClick(card)"
         >
           <view class="care-icon" :style="{ background: card.bg }">
-            <text class="luc" :class="$luc(card.icon)"></text>
+            <text class="luc" :class="$luc(card.icon)" />
           </view>
           <view class="care-info">
             <text class="care-title">{{ card.title }}</text>
             <text class="care-subtitle">{{ card.subtitle }}</text>
           </view>
-          <text class="care-arrow"><text class="luc luc-chevron-right"></text></text>
+          <text class="care-arrow"><text class="luc luc-chevron-right" /></text>
         </view>
       </view>
 
@@ -58,14 +65,15 @@
             :key="a.id"
             class="action-item"
             @click="onActionClick(a)">
-            <text class="action-icon luc" :class="$luc(a.icon)"></text>
+            <text class="action-icon luc" :class="$luc(a.icon)" />
             <text class="action-label">{{ a.label }}</text>
           </view>
         </view>
       </view>
     </scroll-view>
   </view>
-</template><script>
+</template>
+<script>
 import { usePetStore } from '@/store'
 
 export default {

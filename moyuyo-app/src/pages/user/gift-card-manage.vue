@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <view class="gift-card-manage">
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="header-left" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">礼品卡管理</text>
       <view class="header-right" />
@@ -14,19 +14,19 @@
       <view class="quick-entries">
         <view class="quick-entry" @tap="handleBuyCard">
           <view class="quick-icon" style="background: var(--brand-50)">
-            <text class="quick-emoji"><text class="luc luc-shopping-bag"></text></text>
+            <text class="quick-emoji"><text class="luc luc-shopping-bag" /></text>
           </view>
           <text class="quick-label">购买礼品卡</text>
         </view>
         <view class="quick-entry" @tap="handleBindCard">
           <view class="quick-icon" style="background: var(--state-success-surface)">
-            <text class="quick-emoji"><text class="luc luc-link"></text></text>
+            <text class="quick-emoji"><text class="luc luc-link" /></text>
           </view>
           <text class="quick-label">绑定礼品卡</text>
         </view>
         <view class="quick-entry" @tap="handleSendCard">
           <view class="quick-icon" style="background: var(--state-warning-surface)">
-            <text class="quick-emoji"><text class="luc luc-gift"></text></text>
+            <text class="quick-emoji"><text class="luc luc-gift" /></text>
           </view>
           <text class="quick-label">赠送礼品卡</text>
         </view>
@@ -139,7 +139,7 @@
       <view class="section-card">
         <view class="section-card-header">
           <view class="section-card-icon" style="background: var(--brand-50)">
-            <text><text class="luc luc-shopping-bag"></text></text>
+            <text><text class="luc luc-shopping-bag" /></text>
           </view>
           <view>
             <text class="section-card-title">购买礼品卡</text>
@@ -202,10 +202,12 @@
         <view class="collapse-section">
           <view class="collapse-header" @tap="toggleGiftAfterBuy">
             <view class="collapse-header-left">
-              <text class="collapse-icon"><text class="luc luc-gift"></text></text>
+              <text class="collapse-icon"><text class="luc luc-gift" /></text>
               <text class="collapse-label">购买后直接赠送</text>
             </view>
-            <text class="collapse-arrow" :class="{ open: giftAfterBuyOpen }"><text class="luc luc-chevron-right"></text></text>
+            <text class="collapse-arrow" :class="{ open: giftAfterBuyOpen }">
+              <text class="luc luc-chevron-right" />
+            </text>
           </view>
           <view class="collapse-body" :class="{ open: giftAfterBuyOpen }">
             <view class="collapse-content">
@@ -240,10 +242,12 @@
       <view class="section-card">
         <view class="collapse-header" @tap="toggleBindCard">
           <view class="collapse-header-left">
-            <text class="collapse-icon"><text class="luc luc-link"></text></text>
+            <text class="collapse-icon"><text class="luc luc-link" /></text>
             <text class="collapse-label">绑定礼品卡</text>
           </view>
-          <text class="collapse-arrow" :class="{ open: bindCardOpen }"><text class="luc luc-chevron-right"></text></text>
+          <text class="collapse-arrow" :class="{ open: bindCardOpen }">
+            <text class="luc luc-chevron-right" />
+          </text>
         </view>
         <view class="collapse-body" :class="{ open: bindCardOpen }">
           <view class="collapse-content">
@@ -274,10 +278,12 @@
       <view class="section-card">
         <view class="collapse-header" @tap="toggleUsageLog">
           <view class="collapse-header-left">
-            <text class="collapse-icon"><text class="luc luc-clipboard-list"></text></text>
+            <text class="collapse-icon"><text class="luc luc-clipboard-list" /></text>
             <text class="collapse-label">礼品卡 **** 5678 使用记录</text>
           </view>
-          <text class="collapse-arrow" :class="{ open: usageLogOpen }"><text class="luc luc-chevron-right"></text></text>
+          <text class="collapse-arrow" :class="{ open: usageLogOpen }">
+            <text class="luc luc-chevron-right" />
+          </text>
         </view>
         <view class="collapse-body" :class="{ open: usageLogOpen }">
           <view class="collapse-content">

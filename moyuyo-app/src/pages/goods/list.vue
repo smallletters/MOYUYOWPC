@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="goods-list">
     <!-- 顶部排序栏 -->
     <view class="sort-bar">

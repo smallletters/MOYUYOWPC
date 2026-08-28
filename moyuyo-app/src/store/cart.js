@@ -8,15 +8,20 @@ export const useCartStore = defineStore('cart', {
     items: getStorage(STORAGE_KEYS.CART, []),
     selectedAddressId: '',
     selectedCoupon: null,
+    // 立即购买临时单品(不写入购物车 items,仅用于结算页直接结算)
+    buyNowItem: null,
   }),
 
   getters: {
     totalQuantity: (state) => state.items.reduce((sum, item) => sum + (item.quantity || 0), 0),
-    totalPrice: (state) => state.items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 0), 0),
+    totalPrice: (state) =>
+      state.items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 0), 0),
     selectedQuantity: (state) =>
       state.items.filter((i) => i.checked).reduce((sum, i) => sum + (i.quantity || 0), 0),
     selectedPrice: (state) =>
-      state.items.filter((i) => i.checked).reduce((sum, i) => sum + (i.price || 0) * (i.quantity || 0), 0),
+      state.items
+        .filter((i) => i.checked)
+        .reduce((sum, i) => sum + (i.price || 0) * (i.quantity || 0), 0),
     selectedItems: (state) => state.items.filter((i) => i.checked),
     isAllChecked: (state) => state.items.length > 0 && state.items.every((i) => i.checked),
   },
@@ -92,7 +97,11 @@ export const useCartStore = defineStore('cart', {
       }
       const userStore = useUserStore()
       if (userStore.isLoggedIn && item?.skuId) {
-        try { await cartApi.updateQuantity(item.skuId, item.quantity) } catch (e) { /* ignore */ }
+        try {
+          await cartApi.updateQuantity(item.skuId, item.quantity)
+        } catch (e) {
+          /* ignore */
+        }
       }
     },
 
@@ -102,7 +111,11 @@ export const useCartStore = defineStore('cart', {
       this.persist()
       const userStore = useUserStore()
       if (userStore.isLoggedIn && removed?.skuId) {
-        try { await cartApi.removeItem(removed.skuId) } catch (e) { /* ignore */ }
+        try {
+          await cartApi.removeItem(removed.skuId)
+        } catch (e) {
+          /* ignore */
+        }
       }
     },
 
@@ -125,7 +138,11 @@ export const useCartStore = defineStore('cart', {
       this.persist()
       const userStore = useUserStore()
       if (userStore.isLoggedIn) {
-        try { await cartApi.clearCart() } catch (e) { /* ignore */ }
+        try {
+          await cartApi.clearCart()
+        } catch (e) {
+          /* ignore */
+        }
       }
     },
 
@@ -136,6 +153,28 @@ export const useCartStore = defineStore('cart', {
       this.items = this.items.filter((i) => !i.checked)
       this.persist()
       return order
+    },
+
+    /** 设置立即购买临时单品(不写入购物车 items,不持久化) */
+    setBuyNow(product) {
+      this.buyNowItem = {
+        cartId: null,
+        skuId: product.skuId || null,
+        productId: product.productId,
+        variationId: product.variationId || null,
+        name: product.name,
+        image: product.image,
+        price: product.price,
+        quantity: product.quantity || 1,
+        sku: product.sku || '',
+        attrs: product.attrs || [],
+        checked: true,
+      }
+    },
+
+    /** 清除立即购买临时单品 */
+    clearBuyNow() {
+      this.buyNowItem = null
     },
   },
 })

@@ -18,8 +18,10 @@ import com.moyuyo.dao.mapper.PaymentMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.MissionService;
+import com.moyuyo.service.NotificationService;
 import com.moyuyo.service.OrderService;
 import com.moyuyo.service.WooCommerceSyncService;
+import com.moyuyo.service.mq.NotificationMessageProducer;
 import static com.moyuyo.common.enums.OrderStatusEnum.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +52,10 @@ public class OrderServiceImpl implements OrderService {
   private final WooCommerceSyncService wooCommerceSyncService;
   // 任务中心埋点：付款回调后触发"完成 1 单购物 / 首单完成 / 累计消费满 500"
   private final MissionService missionService;
+  private final NotificationMessageProducer notificationMessageProducer;
+  private final NotificationService notificationService;
+  // 消费返积分：付款回调后按 1 USD = 10 积分发放，首单 2 倍
+  private final PointsRewardServiceImpl pointsRewardService;
 
   @Override
   @Transactional
@@ -165,21 +171,27 @@ public class OrderServiceImpl implements OrderService {
     List<OrderItemEntity> items = new ArrayList();
     for (OrderItemRequest itemReq : request.getItems()) {
       ProductSkuEntity sku = productSkuMapper.selectById(itemReq.getSkuId());
-      if (sku == null) {
-        throw new IllegalArgumentException("SKU不存在: " + itemReq.getSkuId());
-      }
       ProductEntity product = productMapper.selectById(itemReq.getProductId());
       if (product == null) {
         throw new IllegalArgumentException("商品不存在: " + itemReq.getProductId());
       }
 
       OrderItemEntity item = new OrderItemEntity();
-      item.setSkuId(itemReq.getSkuId());
       item.setProductId(itemReq.getProductId());
       item.setProductName(product.getName());
       item.setMainImage(product.getMainImage());
-      item.setPrice(sku.getPrice());
       item.setQuantity(itemReq.getQuantity());
+      // 简单商品(simple)无独立 SKU 记录：前端将商品 id 作为 SKU id 传递，
+      // SKU 查不到且 skuId 恰等于商品 id 时降级为非 SKU 商品，使用商品价格、库存扣减走商品维度
+      if (sku == null && itemReq.getSkuId() != null && itemReq.getSkuId().equals(product.getId())) {
+        item.setSkuId(null);
+        item.setPrice(product.getPrice());
+      } else if (sku == null) {
+        throw new IllegalArgumentException("SKU不存在: " + itemReq.getSkuId());
+      } else {
+        item.setSkuId(itemReq.getSkuId());
+        item.setPrice(sku.getPrice());
+      }
       items.add(item);
     }
 
@@ -337,6 +349,31 @@ public class OrderServiceImpl implements OrderService {
       // 兜底：即便 syncOrderToWooCommerce 内部异常也吞掉，不让支付流程回滚
       log.error("触发 WooCommerce 订单同步时异常: orderNo={}, reason={}",
               orderNo, e.getMessage());
+    }
+
+    // 发送订单支付成功通知（异步 + MQ 不可用时降级为同步落库）
+    try {
+      String orderTitle = "订单支付成功";
+      String orderContent = "您的订单 " + order.getOrderNo() + " 已支付成功，商家将尽快为您发货";
+      try {
+        notificationMessageProducer.send(
+                order.getUserId(), "ORDER", orderTitle, orderContent, order.getId());
+      } catch (Exception mqEx) {
+        // MQ 不可用降级：直接同步落库，保证用户侧能看到通知
+        log.warn("MQ 发送失败，降级同步落库通知: orderNo={}, reason={}",
+                orderNo, mqEx.getMessage());
+        notificationService.saveNotification(
+                order.getUserId(), "ORDER", orderTitle, orderContent, order.getId());
+      }
+    } catch (Exception e) {
+      log.warn("[order] send notification failed: orderNo={}, reason={}", orderNo, e.getMessage());
+    }
+
+    // 消费返积分：1 USD = 10 积分，首单 2 倍；失败仅打日志不影响支付主流程
+    try {
+      pointsRewardService.rewardForOrder(order);
+    } catch (Exception e) {
+      log.warn("[order] grant reward points failed: orderNo={}, reason={}", orderNo, e.getMessage());
     }
   }
 

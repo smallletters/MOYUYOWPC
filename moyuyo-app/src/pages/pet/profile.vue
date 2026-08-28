@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="pet-profile">
     <view class="page-header">
       <view class="back" aria-label="返回" @click="goBack">
@@ -93,12 +93,15 @@
 
 <script>
 import { petApi } from '@/api'
+import { uploadImage } from '@/api/upload'
 
 export default {
   data() {
     return {
       isEdit: false,
       defaultAvatar: 'https://picsum.photos/200/200?random=50',
+      saving: false,
+      avatarUploading: false,
       form: {
         id: null,
         name: '',
@@ -119,6 +122,12 @@ export default {
     }
   },
 
+  computed: {
+    today() {
+      return new Date().toISOString().split('T')[0]
+    },
+  },
+
   onLoad(query) {
     if (query.id) {
       this.isEdit = true
@@ -130,6 +139,14 @@ export default {
     async loadPet(id) {
       try {
         const pet = await petApi.getPetDetail(id)
+        // 兼容后端可能把 tags 写成 JSON 字符串或数组
+        if (typeof pet?.tags === 'string') {
+          pet.tags = pet.tags
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        }
+        if (!Array.isArray(pet?.tags)) pet.tags = []
         this.form = { ...this.form, ...pet }
       } catch (e) {
         console.warn('[pet-profile] load failed', e)
@@ -140,13 +157,32 @@ export default {
       uni.navigateBack()
     },
 
-    onChangeAvatar() {
-      uni.chooseImage({
-        count: 1,
-        success: (res) => {
-          this.form.avatar = res.tempFilePaths[0]
-        },
-      })
+    /**
+     * 头像选择 + 上传闭环:之前只存本地临时路径,后端拿到的是 _tmp 后缀路径无法显示
+     */
+    async onChangeAvatar() {
+      if (this.avatarUploading) return
+      try {
+        const chooseRes = await uni.chooseImage({
+          count: 1,
+          sizeType: ['compressed'],
+          sourceType: ['album', 'camera'],
+        })
+        const filePath = chooseRes.tempFilePaths?.[0]
+        if (!filePath) return
+        this.avatarUploading = true
+        uni.showLoading({ title: '上传头像...', mask: true })
+        const uploadRes = await uploadImage(filePath)
+        const url = uploadRes?.url
+        if (!url) throw new Error('Upload returned no URL')
+        this.form.avatar = url
+        uni.hideLoading()
+      } catch (e) {
+        uni.hideLoading()
+        uni.showToast({ title: e?.message || '头像上传失败', icon: 'none' })
+      } finally {
+        this.avatarUploading = false
+      }
     },
 
     onSpeciesChange(e) {
@@ -154,6 +190,11 @@ export default {
     },
 
     onBirthdayChange(e) {
+      // 防止用户选择未来日期(逻辑校验,保存接口仍以后端为准)
+      if (e.detail.value > this.today) {
+        uni.showToast({ title: '生日不能晚于今天', icon: 'none' })
+        return
+      }
       this.form.birthday = e.detail.value
     },
 
@@ -167,17 +208,34 @@ export default {
     },
 
     async onSave() {
+      if (this.saving) return
       if (!this.form.name) {
         uni.showToast({ title: '请输入宠物名字', icon: 'none' })
         return
       }
-      uni.showLoading({ title: '保存中...' })
+      this.saving = true
+      uni.showLoading({ title: '保存中...', mask: true })
       try {
-        // 编辑模式调用 updatePet,新增模式调用 createPet
+        // 只发送后端 PetEntity 实际字段,过滤掉 VO 里的 achievements/scenes/createdAt/updatedAt 等
+        // 空字符串统一置空,避免后端 LocalDate/Double 反序列化报错或 NULL 触发 409
+        const payload = {
+          name: this.form.name || null,
+          species: this.form.species || null,
+          breed: this.form.breed || null,
+          gender: this.form.gender || null,
+          birthday: this.form.birthday || null,
+          weight:
+            this.form.weight === '' || this.form.weight === undefined || this.form.weight === null
+              ? null
+              : Number(this.form.weight),
+          avatar: this.form.avatar || null,
+          notes: this.form.notes || null,
+          tags: Array.isArray(this.form.tags) ? this.form.tags.join(',') : this.form.tags || null,
+        }
         if (this.isEdit && this.form.id) {
-          await petApi.updatePet(this.form.id, this.form)
+          await petApi.updatePet(this.form.id, payload)
         } else {
-          await petApi.createPet(this.form)
+          await petApi.createPet(payload)
         }
         uni.hideLoading()
         uni.showToast({ title: '已保存', icon: 'success' })
@@ -185,6 +243,8 @@ export default {
       } catch (e) {
         uni.hideLoading()
         uni.showToast({ title: e?.message || '保存失败', icon: 'none' })
+      } finally {
+        this.saving = false
       }
     },
   },

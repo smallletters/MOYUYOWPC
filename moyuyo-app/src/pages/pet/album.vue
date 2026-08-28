@@ -1,29 +1,39 @@
-<template>
+﻿<template>
   <view class="pet-album">
     <view class="page-header">
-      <view class="back" @click="goBack" aria-label="返回"><text class="luc luc-arrow-left"></text></view>
+      <view class="back" aria-label="返回" @click="goBack">
+        <text class="luc luc-arrow-left" />
+      </view>
       <text class="title">{{ currentPet?.name || '宠物' }}的相册</text>
-      <view class="upload-btn" @click="onUpload" aria-label="上传照片">+</view>
+      <view class="upload-btn" aria-label="上传照片" @click="onUpload">+</view>
     </view>
 
     <scroll-view scroll-y class="content">
       <!-- 月份切换 -->
       <view class="month-nav">
-        <view class="month-arrow" @click="prevMonth" aria-label="上个月"><text class="luc luc-arrow-left"></text></view>
+        <view class="month-arrow" aria-label="上个月" @click="prevMonth">
+          <text class="luc luc-arrow-left" />
+        </view>
         <text class="month-title">{{ currentMonth }}</text>
-        <view class="month-arrow" @click="nextMonth" aria-label="下个月"><text class="luc luc-chevron-right"></text></view>
+        <view class="month-arrow" aria-label="下个月" @click="nextMonth">
+          <text class="luc luc-chevron-right" />
+        </view>
       </view>
 
       <!-- 照片网格 -->
       <view class="photo-grid" aria-label="照片网格">
-        <view v-for="(photo, i) in photos" :key="i" class="photo-item" @click="onPhotoClick(i)">
+        <view
+          v-for="(photo, i) in photos"
+          :key="i"
+          class="photo-item"
+          @click="onPhotoClick(i)">
           <image :src="photo" class="photo-image" mode="aspectFill" />
         </view>
         <view v-if="photos.length === 0" class="empty">暂无照片</view>
       </view>
 
       <!-- FAB -->
-      <view class="fab" @click="onUpload" aria-label="添加新照片">+</view>
+      <view class="fab" aria-label="添加新照片" @click="onUpload">+</view>
     </scroll-view>
   </view>
 </template>

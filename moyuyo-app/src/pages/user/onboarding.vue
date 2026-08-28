@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="onboarding">
     <!-- 跳过按钮 -->
     <text class="skip-btn" @click="goToHome">跳过</text>
@@ -45,7 +45,8 @@
       </button>
     </view>
   </view>
-</template><script>
+</template>
+<script>
 export default {
   data() {
     return {

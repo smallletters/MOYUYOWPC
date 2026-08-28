@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="community-page">
     <!-- 顶部导航栏（状态栏 + 标题 + 操作图标） -->
     <view class="status-bar">

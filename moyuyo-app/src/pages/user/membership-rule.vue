@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="rule-page">
     <!-- 顶部摘要卡：当前等级 + 积分 -->
     <view class="hero-card">
@@ -49,11 +49,7 @@
         <view class="rule-list">
           <view v-for="r in earnRules" :key="r.title" class="rule-row">
             <view class="rule-icon-wrap" :style="{ background: r.bg }">
-              <text
-                class="luc"
-                :class="r.icon"
-                :style="{ color: r.color, fontSize: '20px' }"
-              />
+              <text class="luc" :class="r.icon" :style="{ color: r.color, fontSize: '20px' }" />
             </view>
             <view class="rule-body">
               <view class="rule-row-head">
@@ -74,11 +70,7 @@
         <view class="rule-list">
           <view v-for="r in useRules" :key="r.title" class="rule-row">
             <view class="rule-icon-wrap" :style="{ background: r.bg }">
-              <text
-                class="luc"
-                :class="r.icon"
-                :style="{ color: r.color, fontSize: '20px' }"
-              />
+              <text class="luc" :class="r.icon" :style="{ color: r.color, fontSize: '20px' }" />
             </view>
             <view class="rule-body">
               <view class="rule-row-head">

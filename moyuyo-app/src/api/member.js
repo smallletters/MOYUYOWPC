@@ -16,6 +16,16 @@ export function recharge(amount, channel) {
   return post('/api/v1/member/recharge', { amount, channel })
 }
 
+/**
+ * 提现申请
+ * 后端契约:POST /api/v1/member/withdraw
+ * 入参:{ amount: Number, accountId?: String }
+ * 返回:Result<{ withdrawId, status, estimatedArrival }>
+ */
+export function withdraw(amount, accountId) {
+  return post('/api/v1/member/withdraw', { amount, accountId })
+}
+
 export function getMemberLevels() {
   return get('/api/v1/member/levels')
 }
@@ -34,6 +44,7 @@ export default {
   getPointsLog,
   getWallet,
   recharge,
+  withdraw,
   getMemberLevels,
   getPointsRate,
   getMemberPrivileges,

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="bargain">
     <!-- 深色顶部导航栏 -->
     <view class="nav-header">

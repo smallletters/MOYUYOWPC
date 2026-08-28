@@ -5,18 +5,17 @@
     <!-- 顶部导航栏 -->
     <view class="navbar" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="navbar-inner">
-        <view class="nav-btn" @click="goBack" aria-label="返回">
-          <text class="luc" :class="$luc('chevron-left')"></text>
+        <view class="nav-btn" aria-label="返回" @click="goBack">
+          <text class="luc" :class="$luc('chevron-left')" />
         </view>
         <view class="nav-actions">
-          <view class="nav-btn" @click="onShare" aria-label="分享">
-            <text class="luc" :class="$luc('share-2')"></text>
+          <view class="nav-btn" aria-label="分享" @click="onShare">
+            <text class="luc" :class="$luc('share-2')" />
           </view>
-          <view class="nav-btn" @click="onWishToggle" aria-label="收藏">
-            <text
-              class="fav-icon"
-              :class="{ 'is-fav': wishlisted }"
-            >{{ wishlisted ? '❤' : '♡' }}</text>
+          <view class="nav-btn" aria-label="收藏" @click="onWishToggle">
+            <text class="fav-icon" :class="{ 'is-fav': wishlisted }">
+              {{ wishlisted ? '❤' : '♡' }}
+            </text>
           </view>
         </view>
       </view>
@@ -28,24 +27,23 @@
         <swiper
           class="swiper"
           :current="currentImageIndex"
-          @change="onSwiperChange"
           circular
           indicator-dots
           indicator-active-color="var(--brand-500)"
           indicator-color="var(--background-400)"
+          @change="onSwiperChange"
         >
           <swiper-item v-for="(img, i) in galleryImages" :key="img.key || i">
             <image
               :src="img.url"
               class="swiper-image"
               mode="aspectFill"
-              @tap="previewImage(i)"
-            />
+              @tap="previewImage(i)" />
           </swiper-item>
         </swiper>
 
         <!-- 缩略图行 -->
-        <scroll-view scroll-x class="thumbs-row" v-if="galleryImages.length > 1">
+        <scroll-view v-if="galleryImages.length > 1" scroll-x class="thumbs-row">
           <view
             v-for="(img, i) in galleryImages"
             :key="'thumb-' + (img.key || i)"
@@ -63,15 +61,12 @@
         <text class="brand-eyebrow">{{ brandLine }}</text>
         <text class="product-title">{{ product.name }}</text>
         <view class="price-row">
-          <text class="price-current">¥{{ formatPrice(currentPrice) }}</text>
-          <text
-            v-if="originalPriceNum && originalPriceNum > currentPrice"
-            class="price-original"
-          >
-            ¥{{ formatPrice(originalPriceNum) }}
+          <text class="price-current">${{ formatPrice(currentPrice) }}</text>
+          <text v-if="originalPriceNum && originalPriceNum > currentPrice" class="price-original">
+            ${{ formatPrice(originalPriceNum) }}
           </text>
           <view v-if="memberPrice && memberPrice < currentPrice" class="member-tag">
-            会员价 ¥{{ formatPrice(memberPrice) }}
+            会员价 ${{ formatPrice(memberPrice) }}
           </view>
         </view>
         <view v-if="product.shortDetail" class="short-desc">{{ product.shortDetail }}</view>
@@ -79,11 +74,7 @@
 
       <!-- 规格选择区(行内 chip + 选中摘要,点击打开弹窗) -->
       <view v-if="hasVariations" class="variant-section">
-        <view
-          v-for="group in attributeGroups"
-          :key="group.name"
-          class="variant-row"
-        >
+        <view v-for="group in attributeGroups" :key="group.name" class="variant-row">
           <text class="variant-label">{{ group.name }}</text>
           <view class="variant-options">
             <view
@@ -101,7 +92,7 @@
       </view>
 
       <!-- 分隔条 -->
-      <view class="divider-bar"></view>
+      <view class="divider-bar" />
 
       <!-- Tab 导航 -->
       <view class="tabs">
@@ -118,11 +109,7 @@
 
       <!-- 图文详情：仅渲染后端 mo_product.description/detail 字段 -->
       <view v-if="activeTab === 'detail'" class="tab-panel">
-        <rich-text
-          v-if="product.detail"
-          class="rich-content"
-          :nodes="product.detail"
-        />
+        <rich-text v-if="product.detail" class="rich-content" :nodes="product.detail" />
         <view v-else class="empty-detail">暂无详情</view>
       </view>
 
@@ -134,7 +121,7 @@
             <text class="spec-value">{{ row.value }}</text>
           </view>
         </view>
-        <view v-else class="empty-detail">暂无规格参数</view>
+        <view v-else class="empty-detail">{{ $t('goodsDetail.emptySpec') }}</view>
       </view>
 
       <!-- 用户评价 -->
@@ -147,26 +134,14 @@
           <text class="review-count">· {{ reviewTotalCount }} 条评价</text>
         </view>
         <view v-if="reviewTags.length" class="review-tags">
-          <view
-            v-for="tag in reviewTags"
-            :key="tag.label"
-            class="review-tag"
-          >
+          <view v-for="tag in reviewTags" :key="tag.label" class="review-tag">
             {{ tag.label }}({{ tag.count }})
           </view>
         </view>
 
         <view v-if="reviews.length === 0" class="empty-reviews">暂无评价</view>
-        <view
-          v-for="r in displayedReviews"
-          :key="r.id"
-          class="review-card"
-        >
-          <image
-            :src="r.avatar || defaultAvatar"
-            mode="aspectFill"
-            class="review-avatar"
-          />
+        <view v-for="r in displayedReviews" :key="r.id" class="review-card">
+          <image :src="r.avatar || defaultAvatar" mode="aspectFill" class="review-avatar" />
           <view class="review-body">
             <view class="review-head">
               <text class="reviewer">{{ r.reviewerName || '匿名用户' }}</text>
@@ -178,46 +153,43 @@
                 :key="'s-' + r.id + '-' + n"
                 class="luc review-star"
                 :class="n <= (r.rating || 0) ? 'filled' : 'empty'"
-              >★</text>
+              >
+                ★
+              </text>
             </view>
             <text class="review-content">{{ r.content }}</text>
           </view>
         </view>
 
-        <view
-          v-if="reviews.length > 3"
-          class="see-all-btn"
-          @tap="seeAllReviews"
-        >
+        <view v-if="reviews.length > 3" class="see-all-btn" @tap="seeAllReviews">
           查看全部评价 ›
         </view>
       </view>
 
-      <view class="bottom-spacer"></view>
+      <view class="bottom-spacer" />
     </scroll-view>
 
     <!-- 底部固定操作栏 -->
     <view class="bottom-bar safe-area-bottom">
       <view class="bar-icon" @tap="goCart">
-        <text class="luc" :class="$luc('shopping-cart')"></text>
-        <text class="bar-label">购物车</text>
+        <text class="luc" :class="$luc('shopping-cart')" />
+        <text class="bar-label">{{ $t('cart.title') || '购物车' }}</text>
         <view v-if="cartStore.totalQuantity > 0" class="bar-badge">
           {{ cartStore.totalQuantity }}
         </view>
       </view>
       <view class="bar-icon" @tap="onWishToggle">
-        <text
-          class="fav-icon"
-          :class="{ 'is-fav': wishlisted }"
-        >{{ wishlisted ? '❤' : '♡' }}</text>
-        <text class="bar-label">收藏</text>
+        <text class="fav-icon" :class="{ 'is-fav': wishlisted }">{{ wishlisted ? '❤' : '♡' }}</text>
+        <text class="bar-label">
+          {{ wishlisted ? $t('goodsDetail.unfavorite') : $t('goodsDetail.favorite') }}
+        </text>
       </view>
       <view class="bar-icon" @tap="onService">
-        <text class="luc" :class="$luc('message-circle')"></text>
-        <text class="bar-label">客服</text>
+        <text class="luc" :class="$luc('message-circle')" />
+        <text class="bar-label">{{ $t('goodsDetail.service') }}</text>
       </view>
-      <view class="bar-btn cart-btn" @tap="onAddCart">加入购物车</view>
-      <view class="bar-btn buy-btn" @tap="onBuyNow">立即购买</view>
+      <view class="bar-btn cart-btn" @tap="onAddCart">{{ $t('goodsDetail.addCart') }}</view>
+      <view class="bar-btn buy-btn" @tap="onBuyNow">{{ $t('goodsDetail.buyNow') }}</view>
     </view>
   </view>
 
@@ -230,6 +202,8 @@
 <script>
 import { productApi, reviewApi } from '@/api'
 import { useCartStore } from '@/store'
+import browsingHistory from '@/utils/browsingHistory'
+import { i18n } from '@/i18n'
 
 export default {
   data() {
@@ -291,9 +265,10 @@ export default {
       return this.attributeGroups.length > 0
     },
     stockState() {
+      void this.localeVersion
       if (!this.selectedAttrs.length) return ''
-      if (this.stock === 0) return '该规格暂时缺货'
-      if (this.stock <= 5) return `仅剩 ${this.stock} 件`
+      if (this.stock === 0) return i18n.t('goodsDetail.outOfStock')
+      if (this.stock <= 5) return i18n.t('goodsDetail.stockLow', { count: this.stock })
       return ''
     },
     reviewRateText() {
@@ -334,16 +309,12 @@ export default {
         .map((t) => t.trim())
         .filter(Boolean)
       if (tags.length) rows.push({ label: '标签', value: tags.join(' / ') })
-      if (this.product.brandIpId)
-        rows.push({ label: '产品线', value: this.brandLine })
-      if (this.product.weight)
-        rows.push({ label: '重量', value: this.product.weight + ' kg' })
-      if (this.product.spuCode)
-        rows.push({ label: '商品编码', value: this.product.spuCode })
+      if (this.product.brandIpId) rows.push({ label: '产品线', value: this.brandLine })
+      if (this.product.weight) rows.push({ label: '重量', value: this.product.weight + ' kg' })
+      if (this.product.spuCode) rows.push({ label: '商品编码', value: this.product.spuCode })
       if (this.product.productType)
         rows.push({ label: '商品类型', value: this.product.productType })
-      if (this.stock != null)
-        rows.push({ label: '库存', value: String(this.stock) })
+      if (this.stock != null) rows.push({ label: '库存', value: String(this.stock) })
       return rows
     },
   },
@@ -370,6 +341,18 @@ export default {
       try {
         const data = await productApi.getProductDetail(this.productId)
         this.product = data
+        // 记录本次浏览（仅本地存储，不调用后端）；缺字段时按空字符串兜底
+        browsingHistory.recordView({
+          id: data.id ?? this.productId,
+          name: data.name,
+          image:
+            data.mainImage ||
+            data.image ||
+            data.cover ||
+            (Array.isArray(data.images) && data.images[0]?.url) ||
+            '',
+          price: data.price,
+        })
 
         // 1. 组装图集(主图 + images[] + 变体图,去重)
         this.galleryImages = this.buildGallery(data)
@@ -413,9 +396,7 @@ export default {
           const favRes = await cartApi.getFavorites()
           const favList = favRes?.data || favRes?.records || favRes?.items || favRes || []
           const records = Array.isArray(favList) ? favList : []
-          this.wishlisted = records.some(
-            (f) => Number(f.productId) === Number(this.productId)
-          )
+          this.wishlisted = records.some((f) => Number(f.productId) === Number(this.productId))
         } catch (e) {
           // 未登录/未授权时静默失败,保持 wishlisted = false
           console.warn('[detail] favorite status load failed', e)
@@ -513,12 +494,9 @@ export default {
             typeof v.stockQuantity === 'number'
               ? v.stockQuantity
               : typeof v.stock === 'number'
-              ? v.stock
-              : null,
-          price:
-            typeof v.salePrice === 'number' && v.salePrice > 0
-              ? v.salePrice
-              : v.regularPrice,
+                ? v.stock
+                : null,
+          price: typeof v.salePrice === 'number' && v.salePrice > 0 ? v.salePrice : v.regularPrice,
           image: v.image?.src || null,
           enabled: v.enabled !== false,
         })
@@ -532,7 +510,10 @@ export default {
      */
     parseSpecString(spec) {
       if (!spec) return []
-      const parts = String(spec).split(/[\/,\uff0f]/).map((s) => s.trim()).filter(Boolean)
+      const parts = String(spec)
+        .split(/[/,\uff0f]/)
+        .map((s) => s.trim())
+        .filter(Boolean)
       const groups = this.attributeGroups
       if (!groups.length) return parts.map((p) => ({ name: '规格', value: p }))
       return parts.map((p, i) => ({
@@ -631,10 +612,7 @@ export default {
       }
       // 图集 = [变体图] + 后端原图(去重),变体图始终在第一位
       const baseImages = match.image
-        ? [
-            { url: match.image, key: `var:${match.id}` },
-            ...this.defaultImages,
-          ]
+        ? [{ url: match.image, key: `var:${match.id}` }, ...this.defaultImages]
         : [...this.defaultImages]
       this.galleryImages = this.dedupeImages(baseImages)
       this.currentImageIndex = 0
@@ -671,6 +649,10 @@ export default {
       this.loadDetail(0)
     },
 
+    onUnload() {
+      if (this._unsubLocale) this._unsubLocale()
+    },
+
     previewImage(i) {
       if (!this.galleryImages.length) return
       uni.previewImage({
@@ -684,7 +666,13 @@ export default {
     },
 
     onShare() {
-      uni.showToast({ title: '请使用右上角分享', icon: 'none' })
+      // 跳到分享商品页并带上商品 id，便于页面加载真实商品信息与生成对应二维码
+      const productId = this.productId || (this.product && this.product.id)
+      if (!productId) {
+        uni.showToast({ title: '商品信息未就绪', icon: 'none' })
+        return
+      }
+      uni.navigateTo({ url: `/pages/goods/share-product?id=${productId}` })
     },
 
     /**
@@ -748,7 +736,8 @@ export default {
     onBuyNow() {
       if (!this.product) return
       const firstSku = this.product.skus?.[0]
-      this.cartStore.addItem({
+      // 立即购买:设置临时单品直接进入结算,不写入购物车
+      this.cartStore.setBuyNow({
         skuId: firstSku?.id || this.product.id,
         productId: this.product.id,
         name: this.product.name,
@@ -757,7 +746,7 @@ export default {
         quantity: 1,
         attrs: this.selectedAttrs,
       })
-      setTimeout(() => uni.navigateTo({ url: '/pages/cart/index' }), 400)
+      uni.navigateTo({ url: '/pages/cart/checkout' })
     },
 
     seeAllReviews() {
@@ -819,7 +808,9 @@ export default {
   font-size: 36rpx;
   line-height: 1;
   color: var(--text-500, #7a746c);
-  transition: color 0.18s ease, transform 0.18s ease;
+  transition:
+    color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .fav-icon.is-fav {

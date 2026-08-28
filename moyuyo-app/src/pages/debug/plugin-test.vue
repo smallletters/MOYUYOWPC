@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="debug">
     <view class="header">
       <text class="title">原生插件通信测试</text>

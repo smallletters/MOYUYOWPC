@@ -1,8 +1,10 @@
 <template>
   <view class="coupons">
     <view class="page-header">
-      <view class="back" @click="goBack" aria-label="返回"><text class="luc luc-arrow-left"></text></view>
-      <text class="title">我的优惠券</text>
+      <view class="back" :aria-label="$t('common.back')" @click="goBack">
+        <text class="luc luc-arrow-left" />
+      </view>
+      <text class="title">{{ $t('coupons.title') }}</text>
     </view>
 
     <view class="tab-bar">
@@ -19,8 +21,8 @@
 
     <scroll-view scroll-y class="content">
       <view v-if="filteredCoupons.length === 0" class="empty">
-        <text class="empty-icon"><text class="luc luc-ticket"></text></text>
-        <text class="empty-text">暂无优惠券</text>
+        <text class="empty-icon"><text class="luc luc-ticket" /></text>
+        <text class="empty-text">{{ $t('coupons.empty') }}</text>
       </view>
 
       <view v-else class="coupon-list">
@@ -31,7 +33,7 @@
           :class="{ used: c.status === 'used' }"
         >
           <view class="coupon-left">
-            <text class="coupon-amount">¥{{ c.amount }}</text>
+            <text class="coupon-amount">{{ currencySymbol }}{{ c.amount }}</text>
             <text class="coupon-threshold">满{{ c.threshold }}可用</text>
           </view>
           <view class="coupon-right">
@@ -47,17 +49,15 @@
 
 <script>
 import { couponApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   data() {
     return {
       activeTab: 'unused',
-      tabs: [
-        { value: 'unused', label: '未使用' },
-        { value: 'used', label: '已使用' },
-        { value: 'expired', label: '已过期' },
-      ],
+      // tab label 改为 computed 计算(从字典读取,locale 切换时自动更新)
       coupons: [],
+      localeVersion: 0,
     }
   },
 
@@ -65,10 +65,32 @@ export default {
     filteredCoupons() {
       return this.coupons.filter((c) => c.status === this.activeTab)
     },
+    tabs() {
+      void this.localeVersion
+      return [
+        { value: 'unused', label: i18n.t('coupons.tabs.unused') },
+        { value: 'used', label: i18n.t('coupons.tabs.used') },
+        { value: 'expired', label: i18n.t('coupons.tabs.expired') },
+      ]
+    },
+    /**
+     * 当前语言货币符号:locale 切换时通过 localeVersion 触发重算
+     */
+    currencySymbol() {
+      void this.localeVersion
+      return i18n.currencySymbol
+    },
   },
 
   onShow() {
     this.loadCoupons()
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
+  },
+
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
   },
 
   methods: {

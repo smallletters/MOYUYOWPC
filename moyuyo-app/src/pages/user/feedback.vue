@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">意见反馈</text>
       <view class="header-placeholder" />
@@ -45,12 +45,12 @@
 
       <!-- 上传截图 -->
       <view class="section">
-        <text class="section-title">上传截图（选填，最多3张）</text>
+        <text class="section-title">{{ $t('feedback.uploadHint') }}</text>
         <view class="upload-list">
           <view v-for="(img, index) in uploadedImages" :key="index" class="upload-item">
             <image :src="img" class="upload-preview" mode="aspectFill" />
             <view class="upload-remove" @click="removeImage(index)">
-              <text class="remove-icon"><text class="luc luc-x"></text></text>
+              <text class="remove-icon"><text class="luc luc-x" /></text>
             </view>
           </view>
           <view v-if="uploadedImages.length < 3" class="upload-btn" @click="onUploadImage">
@@ -62,7 +62,7 @@
 
       <!-- 联系方式 -->
       <view class="section">
-        <text class="section-title">联系方式</text>
+        <text class="section-title">{{ $t('feedback.contactLabel') }}</text>
         <view class="input-wrapper">
           <input
             v-model="contact"
@@ -76,7 +76,7 @@
       <!-- 提交按钮 -->
       <view class="submit-area">
         <view class="submit-btn" @click="onSubmit">
-          <text class="submit-btn-text">提交反馈</text>
+          <text class="submit-btn-text">{{ $t('feedback.submit') }}</text>
         </view>
       </view>
     </scroll-view>

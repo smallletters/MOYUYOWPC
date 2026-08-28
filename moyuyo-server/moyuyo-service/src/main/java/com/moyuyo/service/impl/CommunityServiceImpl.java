@@ -32,6 +32,7 @@ public class CommunityServiceImpl implements CommunityService {
     private final CommunityPostMapper postMapper;
     private final CommunityCommentMapper commentMapper;
     private final CommunityLikeMapper likeMapper;
+    private final CommunityCollectMapper collectMapper;
     private final UserMapper userMapper;
     private final ContentReviewMapper contentReviewMapper;
     private final SensitiveWordMapper sensitiveWordMapper;
@@ -171,6 +172,36 @@ public class CommunityServiceImpl implements CommunityService {
                         .eq(CommunityPostEntity::getUserId, userId)
                         .orderByDesc(CommunityPostEntity::getCreateTime));
         return toVOPage(entityPage);
+    }
+
+    @Override
+    public Page<CommunityPostVO> listCollectedPosts(Long userId, int page, int size) {
+        // 先分页查收藏关联,按收藏时间倒序
+        Page<CommunityCollectEntity> collectPage = collectMapper.selectPage(new Page<>(page, size),
+                new LambdaQueryWrapper<CommunityCollectEntity>()
+                        .eq(CommunityCollectEntity::getUserId, userId)
+                        .orderByDesc(CommunityCollectEntity::getCreateTime));
+        if (collectPage.getRecords() == null || collectPage.getRecords().isEmpty()) {
+            Page<CommunityPostVO> voPage = new Page<>(page, size, 0);
+            voPage.setRecords(Collections.emptyList());
+            return voPage;
+        }
+        // 按收藏顺序组装 VO（保持收藏顺序，而不是按发布时间）
+        List<Long> postIds = collectPage.getRecords().stream()
+                .map(CommunityCollectEntity::getPostId).collect(Collectors.toList());
+        List<CommunityPostEntity> posts = postMapper.selectBatchIds(postIds);
+        Map<Long, CommunityPostEntity> postMap = posts.stream()
+                .collect(Collectors.toMap(CommunityPostEntity::getId, p -> p));
+        List<CommunityPostEntity> ordered = postIds.stream()
+                .map(postMap::get).filter(java.util.Objects::nonNull).collect(Collectors.toList());
+        Page<CommunityPostEntity> entityPage = new Page<>(page, size, collectPage.getTotal());
+        entityPage.setRecords(ordered);
+        Page<CommunityPostVO> voPage = toVOPage(entityPage);
+        // 当前用户视角：liked 字段标注
+        if (voPage.getRecords() != null) {
+            voPage.getRecords().forEach(v -> v.setLiked(isLiked(userId, v.getId())));
+        }
+        return voPage;
     }
 
     private void rejectSensitiveContent(String content) {

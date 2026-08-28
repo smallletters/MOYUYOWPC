@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <view class="tariff-page">
     <!-- 顶部导航栏 -->
     <view class="nav-bar">
       <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="nav-title">关税明细</text>
     </view>
@@ -21,7 +21,7 @@
           >
             <view class="mode-header">
               <view class="mode-icon mode-icon-ddp">
-                <text class="mode-emoji"><text class="luc luc-shield"></text></text>
+                <text class="mode-emoji"><text class="luc luc-shield" /></text>
               </view>
               <text class="mode-badge">DDP</text>
             </view>
@@ -29,7 +29,7 @@
             <text class="mode-desc">总价含关税，省心无忧</text>
             <view class="mode-indicator">
               <view v-if="selectedMode === 'ddp'" class="indicator-selected">
-                <text class="indicator-check"><text class="luc luc-check"></text></text>
+                <text class="indicator-check"><text class="luc luc-check" /></text>
                 <text class="indicator-text-active">已选择</text>
               </view>
               <view v-else class="indicator-unselected">
@@ -47,7 +47,7 @@
           >
             <view class="mode-header">
               <view class="mode-icon mode-icon-ddu">
-                <text class="mode-emoji"><text class="luc luc-banknote"></text></text>
+                <text class="mode-emoji"><text class="luc luc-banknote" /></text>
               </view>
               <text class="mode-badge mode-badge-ddu">DDU</text>
             </view>
@@ -55,7 +55,7 @@
             <text class="mode-desc">收货时自行缴纳，可能更低</text>
             <view class="mode-indicator">
               <view v-if="selectedMode === 'ddu'" class="indicator-selected">
-                <text class="indicator-check"><text class="luc luc-check"></text></text>
+                <text class="indicator-check"><text class="luc luc-check" /></text>
                 <text class="indicator-text-active">已选择</text>
               </view>
               <view v-else class="indicator-unselected">
@@ -70,7 +70,7 @@
       <!-- 模式价格对比 -->
       <view class="card-block">
         <view class="card-header">
-          <text class="card-emoji"><text class="luc luc-bar-chart"></text></text>
+          <text class="card-emoji"><text class="luc luc-bar-chart" /></text>
           <text class="card-title">模式价格对比</text>
         </view>
         <view class="compare-grid">
@@ -97,7 +97,7 @@
       <!-- 关税明细列表 -->
       <view class="card-block">
         <view class="card-header">
-          <text class="card-emoji"><text class="luc luc-receipt"></text></text>
+          <text class="card-emoji"><text class="luc luc-receipt" /></text>
           <text class="card-title">关税明细</text>
         </view>
         <text class="card-subtitle">基于当前订单商品计算</text>
@@ -143,10 +143,12 @@
       <view class="card-block">
         <view class="collapse-trigger" @tap="toggleTaxDetail">
           <view class="collapse-left">
-            <text class="card-emoji"><text class="luc luc-book"></text></text>
+            <text class="card-emoji"><text class="luc luc-book" /></text>
             <text class="collapse-title">点击查看税率依据</text>
           </view>
-          <text class="collapse-chevron" :class="{ rotated: taxDetailOpen }"><text class="luc luc-arrow-left"></text></text>
+          <text class="collapse-chevron" :class="{ rotated: taxDetailOpen }">
+            <text class="luc luc-arrow-left" />
+          </text>
         </view>
         <view class="collapse-content" :class="{ open: taxDetailOpen }">
           <view class="tax-detail-inner">
@@ -158,10 +160,26 @@
 
             <text class="detail-section-title">计算公式</text>
             <view class="formula-box">
-              <text class="formula-text">关税 = 完税价格 <text class="luc luc-x"></text> 关税税率</text>
-              <text class="formula-text">= $156.00 <text class="luc luc-x"></text> 12% = $18.72</text>
-              <text class="formula-text">增值税 = (完税价格 + 关税) <text class="luc luc-x"></text> 增值税率</text>
-              <text class="formula-text">= ($156.00 + $18.72) <text class="luc luc-x"></text> 13.75% = $21.45</text>
+              <text class="formula-text">
+                关税 = 完税价格
+                <text class="luc luc-x" />
+                关税税率
+              </text>
+              <text class="formula-text">
+                = $156.00
+                <text class="luc luc-x" />
+                12% = $18.72
+              </text>
+              <text class="formula-text">
+                增值税 = (完税价格 + 关税)
+                <text class="luc luc-x" />
+                增值税率
+              </text>
+              <text class="formula-text">
+                = ($156.00 + $18.72)
+                <text class="luc luc-x" />
+                13.75% = $21.45
+              </text>
               <text class="formula-text">关税合计 = 关税 + 增值税 = $40.17</text>
             </view>
 
@@ -178,7 +196,7 @@
       <!-- 保证金信息（DDP 模式下显示） -->
       <view v-if="selectedMode === 'ddp'" class="card-block">
         <view class="card-header">
-          <text class="card-emoji"><text class="luc luc-building-2"></text></text>
+          <text class="card-emoji"><text class="luc luc-building-2" /></text>
           <text class="card-title">关税保证金</text>
           <view class="ddp-tag">
             <text class="ddp-tag-text">DDP 专属</text>
@@ -197,7 +215,7 @@
         </view>
 
         <view class="deposit-note">
-          <text class="deposit-note-icon"><text class="luc luc-trending-up"></text></text>
+          <text class="deposit-note-icon"><text class="luc luc-trending-up" /></text>
           <text class="deposit-note-text">
             保证金含 20% 浮动缓冲，用于覆盖汇率波动及海关核定差异。
           </text>
@@ -207,13 +225,13 @@
       <!-- 多退少补说明 -->
       <view class="card-block">
         <view class="card-header">
-          <text class="card-emoji"><text class="luc luc-scale"></text></text>
+          <text class="card-emoji"><text class="luc luc-scale" /></text>
           <text class="card-title">多退少补说明</text>
         </view>
         <view class="refund-rules">
           <view class="rule-item">
             <view class="rule-icon rule-icon-success">
-              <text class="rule-emoji luc luc-arrow-down-left"></text>
+              <text class="rule-emoji luc luc-arrow-down-left" />
             </view>
             <view class="rule-content">
               <text class="rule-title">多退</text>
@@ -224,7 +242,7 @@
           </view>
           <view class="rule-item">
             <view class="rule-icon rule-icon-error">
-              <text class="rule-emoji luc luc-arrow-up-right"></text>
+              <text class="rule-emoji luc luc-arrow-up-right" />
             </view>
             <view class="rule-content">
               <text class="rule-title">少补</text>
@@ -239,7 +257,7 @@
       <!-- 底部按钮 -->
       <view class="bottom-action">
         <view class="back-checkout-btn" @tap="goBack">
-          <text class="back-btn-icon"><text class="luc luc-arrow-left"></text></text>
+          <text class="back-btn-icon"><text class="luc luc-arrow-left" /></text>
           <text class="back-btn-text">返回结算</text>
         </view>
       </view>

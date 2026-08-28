@@ -81,6 +81,14 @@ export function getCommunityTopics() {
   return get('/api/v1/community/topics')
 }
 
+/**
+ * 当前用户收藏的帖子列表（"我的"页→收藏 入口）。
+ * 后端: GET /api/v1/community/posts/collected
+ */
+export function getCollectedPosts(params = {}) {
+  return get('/api/v1/community/posts/collected', params)
+}
+
 export default {
   getCommunityPosts,
   getPostDetail,
@@ -91,5 +99,6 @@ export default {
   addComment,
   collectPost,
   uncollectPost,
+  getCollectedPosts,
   getCommunityTopics,
 }

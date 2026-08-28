@@ -22,6 +22,10 @@ public class PetEntity {
 
   private String name;
 
+  /** 分类：DOG / CAT / OTHER（与 mo_pet.type 列对齐，供插入 SQL 使用） */
+  private String type;
+
+  /** 中文显示值（前端 picker 直接使用的狗狗/猫咪/...） */
   private String species;
 
   private String breed;

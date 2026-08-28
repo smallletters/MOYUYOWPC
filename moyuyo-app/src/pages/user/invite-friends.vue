@@ -1,33 +1,39 @@
 <template>
   <view class="invite-friends">
     <view class="page-header">
-      <view class="back" @click="goBack" aria-label="返回"><text class="luc luc-arrow-left"></text></view>
-      <text class="title">邀请好友</text>
+      <view class="back" aria-label="返回" @click="goBack">
+        <text class="luc luc-arrow-left" />
+      </view>
+      <text class="title">{{ $t('invite.title') }}</text>
     </view>
 
     <scroll-view scroll-y class="content">
       <!-- 顶部宣传 -->
       <view class="hero">
-        <text class="hero-icon"><text class="luc luc-gift"></text></text>
-        <text class="hero-title">邀请好友各得 ¥20</text>
-        <text class="hero-desc">好友通过您的链接注册，您和好友各获 ¥20 奖励</text>
+        <text class="hero-icon"><text class="luc luc-gift" /></text>
+        <text class="hero-title">{{ $t('invite.heroTitle', { reward: inviteCurrency }) }}</text>
+        <text class="hero-desc">{{ $t('invite.heroDesc', { reward: inviteCurrency }) }}</text>
       </view>
 
       <!-- 邀请链接 -->
       <view class="link-card">
-        <text class="card-label">我的邀请码</text>
+        <text class="card-label">{{ $t('invite.myCode') }}</text>
         <view class="link-row">
           <text class="link-text">{{ inviteCode }}</text>
-          <view class="btn-copy" @click="onCopy">复制</view>
+          <view class="btn-copy" @click="onCopy">{{ $t('invite.copyLink') }}</view>
         </view>
       </view>
 
       <!-- 分享方式 -->
       <view class="share-section">
-        <text class="section-title">分享到</text>
+        <text class="section-title">{{ $t('invite.shareTo') }}</text>
         <view class="share-grid">
-          <view v-for="s in shareMethods" :key="s.id" class="share-item" @click="onShare(s)">
-            <text class="share-icon luc" :class="$luc(s.icon)"></text>
+          <view
+            v-for="s in shareMethods"
+            :key="s.id"
+            class="share-item"
+            @click="onShare(s)">
+            <text class="share-icon luc" :class="$luc(s.icon)" />
             <text class="share-label">{{ s.label }}</text>
           </view>
         </view>
@@ -36,34 +42,66 @@
       <!-- 邀请记录 -->
       <view class="record-section">
         <view class="record-header">
-          <text class="section-title">邀请记录</text>
-          <text class="record-more">已邀请 {{ invitedCount }} 人 <text class="luc luc-chevron-right"></text></text>
+          <text class="section-title">{{ $t('invite.records') }}</text>
+          <text class="record-more">
+            {{ $t('invite.invitedCount', { count: invitedCount }) }}
+            <text class="luc luc-chevron-right" />
+          </text>
         </view>
-        <view v-if="records.length === 0" class="empty">暂无邀请记录</view>
+        <view v-if="records.length === 0" class="empty">{{ $t('invite.empty') }}</view>
         <view v-else class="record-list">
           <view v-for="r in records" :key="r.id" class="record-item">
             <text class="record-name">{{ r.name }}</text>
             <text class="record-time">{{ r.time }}</text>
-            <text class="record-reward">+¥{{ r.reward }}</text>
+            <text class="record-reward">+{{ currencySymbol }}{{ r.reward }}</text>
           </view>
         </view>
       </view>
     </scroll-view>
   </view>
-</template><script>
+</template>
+<script>
+import { i18n } from '@/i18n'
+
 export default {
   data() {
     return {
       inviteCode: 'MOYUYO8888',
       invitedCount: 0,
       records: [],
-      shareMethods: [
-        { id: 'wechat', label: '微信', icon: 'heart' },
-        { id: 'moments', label: '朋友圈', icon: 'users' },
-        { id: 'qq', label: 'QQ', icon: 'paw-print' },
-        { id: 'link', label: '复制链接', icon: 'link' },
-      ],
+      // shareMethods 改为 computed,跟随 locale 切换
+      localeVersion: 0,
     }
+  },
+
+  computed: {
+    shareMethods() {
+      void this.localeVersion
+      return [
+        { id: 'wechat', label: i18n.t('invite.shareWechat'), icon: 'heart' },
+        { id: 'moments', label: i18n.t('invite.shareMoments'), icon: 'users' },
+        { id: 'qq', label: i18n.t('invite.shareQQ'), icon: 'paw-print' },
+        { id: 'link', label: i18n.t('invite.copyLink'), icon: 'link' },
+      ]
+    },
+    inviteCurrency() {
+      void this.localeVersion
+      return i18n.t('invite.reward')
+    },
+    currencySymbol() {
+      void this.localeVersion
+      return i18n.currencySymbol
+    },
+  },
+
+  onLoad() {
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
+  },
+
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
   },
 
   onShow() {
@@ -85,10 +123,11 @@ export default {
 
     onCopy() {
       uni.setClipboardData({ data: `https://moyuyo.com/invite/${this.inviteCode}` })
+      uni.showToast({ title: i18n.t('invite.copied'), icon: 'success' })
     },
 
     onShare(s) {
-      uni.showToast({ title: `分享到${s.label}`, icon: 'none' })
+      uni.showToast({ title: `Share to ${s.label}`, icon: 'none' })
     },
   },
 }

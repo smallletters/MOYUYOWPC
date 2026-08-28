@@ -64,4 +64,19 @@ public class NotificationServiceImpl implements NotificationService {
     NotificationEntity entity = getNotificationDetail(id, userId);
     notificationMapper.deleteById(entity.getId());
   }
+
+  @Override
+  public NotificationEntity saveNotification(Long userId, String type, String title, String content, Long relatedId) {
+    // 构造通知实体，createTime 由 MetaObjectHandler 自动填充
+    NotificationEntity entity = new NotificationEntity();
+    entity.setUserId(userId);
+    entity.setType(type);
+    entity.setTitle(title);
+    entity.setContent(content);
+    entity.setRelatedId(relatedId);
+    entity.setRead(0);
+    notificationMapper.insert(entity);
+    log.info("通知落库成功: userId={}, type={}, title={}", userId, type, title);
+    return entity;
+  }
 }

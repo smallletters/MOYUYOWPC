@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="prime-page">
     <!-- 顶部品牌区（蓝色渐变） -->
     <view class="prime-header">
@@ -42,14 +42,14 @@
               </view>
               <view class="plan-option-row1">
                 <text class="plan-option-name">{{ p.name }}</text>
-                <text v-if="p.code === 'YEARLY'" class="save-badge">省 ¥20.88</text>
+                <text v-if="p.code === 'YEARLY'" class="save-badge">省 $20.88</text>
               </view>
               <view class="plan-option-row2">
-                <text class="plan-price">¥{{ p.price }}</text>
+                <text class="plan-price">${{ p.price }}</text>
                 <text class="plan-unit">/ {{ p.code === 'MONTHLY' ? '月' : '年' }}</text>
               </view>
               <text v-if="p.code === 'YEARLY'" class="plan-monthly-hint">
-                约 ¥{{ (p.price / 12).toFixed(2) }}/月
+                约 ${{ (p.price / 12).toFixed(2) }}/月
               </text>
             </view>
           </view>
@@ -83,11 +83,7 @@
           </view>
           <view v-for="(b, i) in benefitList" :key="i" class="benefit-row">
             <view class="benefit-icon-wrap" :style="{ background: b.iconBg }">
-              <text
-                class="luc"
-                :class="b.icon"
-                :style="{ color: b.iconColor, fontSize: '18px' }"
-              />
+              <text class="luc" :class="b.icon" :style="{ color: b.iconColor, fontSize: '18px' }" />
             </view>
             <view class="benefit-content">
               <text class="benefit-title">{{ b.title }}</text>
@@ -138,7 +134,7 @@
               <view class="stat-icon-wrap" style="background: #e9f9ee">
                 <text class="luc luc-piggy-bank stat-icon" style="color: #34c759" />
               </view>
-              <text class="stat-num">¥86</text>
+              <text class="stat-num">$86</text>
               <text class="stat-label">累计节省</text>
             </view>
             <view class="stat-card">
@@ -301,7 +297,7 @@ async function onActivate() {
   }
   uni.showModal({
     title: '确认开通',
-    content: `开通 ${selected.name} 方案 ¥${selected.price}（dev 环境直接激活）`,
+    content: `开通 ${selected.name} 方案 $${selected.price}（dev 环境直接激活）`,
     success: async (res) => {
       if (!res.confirm) return
       submitting.value = true

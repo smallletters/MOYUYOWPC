@@ -1,10 +1,10 @@
-<template>
+﻿<template>
   <view class="recharge">
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
-      <text class="header-title">充值</text>
+      <text class="header-title">{{ $t('recharge.title') }}</text>
       <view class="header-btn" />
     </view>
 
@@ -12,14 +12,14 @@
       <view class="balance-card">
         <view class="balance-bg" />
         <view class="balance-content">
-          <text class="balance-label">当前余额</text>
-          <text class="balance-amount">${{ balanceAmount.toFixed(2) }}</text>
-          <text class="balance-note">可用余额 + 礼品卡余额</text>
+          <text class="balance-label">{{ $t(`recharge.currentBalance`) }}</text>
+          <text class="balance-amount">{{ currencySymbol }}{{ balanceAmount.toFixed(2) }}</text>
+          <text class="balance-note">{{ $t(`recharge.balanceNote`) }}</text>
         </view>
       </view>
 
       <view class="section">
-        <text class="section-title">选择充值金额</text>
+        <text class="section-title">{{ $t(`recharge.selectAmount`) }}</text>
         <view class="amount-grid">
           <view
             v-for="opt in amountOptions"
@@ -28,19 +28,19 @@
             :class="{ selected: selectedAmount === opt.value, recommended: opt.recommended }"
             @click="onSelectAmount(opt.value)"
           >
-            <text v-if="opt.recommended" class="recommend-badge">推荐</text>
+            <text v-if="opt.recommended" class="recommend-badge">Recommended</text>
             <text class="amount-text">{{ opt.label }}</text>
           </view>
         </view>
 
         <view v-if="showCustomInput" class="custom-input-wrap">
           <view class="custom-input">
-            <text class="currency-sign">$</text>
+            <text class="currency-sign">{{ currencySymbol }}</text>
             <input
               v-model="customValue"
               class="custom-field"
               type="digit"
-              placeholder="输入金额"
+              placeholder="Enter amount"
               @input="onCustomInput"
             >
           </view>
@@ -48,7 +48,7 @@
       </view>
 
       <view class="section">
-        <text class="section-title">支付方式</text>
+        <text class="section-title">{{ $t('recharge.paymentMethods') }}</text>
         <view class="payment-list">
           <view
             v-for="method in paymentMethods"
@@ -58,7 +58,7 @@
           >
             <view class="payment-left">
               <view class="payment-icon">
-                <text class="icon-text luc" :class="$luc(method.icon)"></text>
+                <text class="icon-text luc" :class="$luc(method.icon)" />
               </view>
               <view class="payment-info">
                 <text class="payment-name">{{ method.name }}</text>
@@ -76,9 +76,9 @@
     <view class="bottom-bar">
       <view class="bottom-inner">
         <view class="recharge-btn" @click="onRecharge">
-          <text class="btn-text">充值 {{ displayAmount }}</text>
+          <text class="btn-text">{{ $t('recharge.action', { amount: displayAmount }) }}</text>
         </view>
-        <text class="terms-note">充值金额不可退款，可用于平台消费</text>
+        <text class="terms-note">{{ $t('recharge.termsNote') }}</text>
       </view>
     </view>
   </view>
@@ -86,6 +86,7 @@
 
 <script>
 import { memberApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   data() {
@@ -95,6 +96,7 @@ export default {
       showCustomInput: false,
       selectedPayment: 'applePay',
       balanceAmount: 0,
+      localeVersion: 0,
       amountOptions: [
         { value: 10, label: '$10' },
         { value: 20, label: '$20' },
@@ -116,16 +118,30 @@ export default {
       if (this.selectedAmount === 'custom') {
         const val = parseFloat(this.customValue)
         if (!isNaN(val) && val > 0) {
-          return '$' + val.toFixed(2)
+          return this.currencySymbol + val.toFixed(2)
         }
-        return '$0.00'
+        return this.currencySymbol + '0.00'
       }
-      return '$' + this.selectedAmount.toFixed(2)
+      return this.currencySymbol + this.selectedAmount.toFixed(2)
+    },
+    /**
+     * 当前语言货币符号:locale 切换时通过 localeVersion 触发重算
+     */
+    currencySymbol() {
+      void this.localeVersion
+      return i18n.currencySymbol
     },
   },
 
   onLoad() {
     this.loadBalance()
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
+  },
+
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
   },
 
   methods: {
@@ -166,7 +182,7 @@ export default {
       if (this.selectedAmount === 'custom') {
         amount = parseFloat(this.customValue)
         if (isNaN(amount) || amount <= 0) {
-          uni.showToast({ title: '请输入有效金额', icon: 'none' })
+          uni.showToast({ title: i18n.t('recharge.invalidAmount'), icon: 'none' })
           return
         }
       } else {
@@ -174,10 +190,13 @@ export default {
       }
       try {
         await memberApi.recharge(amount, this.selectedPayment)
-        uni.showToast({ title: `充值 $${amount.toFixed(2)} 成功`, icon: 'success' })
+        uni.showToast({
+          title: `i18n.t("recharge.success", { amount: this.currencySymbol + amount.toFixed(2) })`,
+          icon: 'success',
+        })
         this.loadBalance()
       } catch (e) {
-        uni.showToast({ title: '充值失败，请重试', icon: 'none' })
+        uni.showToast({ title: 'Top-up failed, please retry', icon: 'none' })
       }
     },
   },

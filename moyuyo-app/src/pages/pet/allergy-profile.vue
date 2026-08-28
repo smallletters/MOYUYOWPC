@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <view class="allergy-profile">
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">过敏档案</text>
       <view class="edit-btn" @click="onEdit">
@@ -54,7 +54,7 @@
             @click="removeAllergen(item)"
           >
             <text class="tag-text">{{ item }}</text>
-            <view class="tag-close"><text class="luc luc-x"></text></view>
+            <view class="tag-close"><text class="luc luc-x" /></view>
           </view>
         </view>
 
@@ -129,7 +129,7 @@
             <view class="product-img" :style="{ background: product.imgBg }" />
             <view class="product-info">
               <view class="safe-badge">
-                <text class="safe-icon"><text class="luc luc-shield"></text></text>
+                <text class="safe-icon"><text class="luc luc-shield" /></text>
                 <text class="safe-text">安全</text>
               </view>
               <text class="product-name">{{ product.name }}</text>
@@ -143,7 +143,7 @@
       <!-- 成分预警提示卡片 -->
       <view class="warning-card">
         <view class="warning-icon-wrap">
-          <text class="warning-icon"><text class="luc luc-bell"></text></text>
+          <text class="warning-icon"><text class="luc luc-bell" /></text>
         </view>
         <view class="warning-info">
           <text class="warning-title">成分预警已开启</text>
@@ -156,7 +156,10 @@
 
     <!-- 底部浮动按钮 -->
     <view class="float-btn safe-area-bottom" @click="onAddRecord">
-      <text class="float-btn-text"><text class="luc luc-plus"></text> 添加过敏记录</text>
+      <text class="float-btn-text">
+        <text class="luc luc-plus" />
+        添加过敏记录
+      </text>
     </view>
   </view>
 </template>
@@ -257,21 +260,21 @@ const safeProducts = [
     id: 1,
     name: '无谷三文鱼配方',
     desc: '天然狗粮 2kg',
-    price: '¥38.99',
+    price: '$38.99',
     imgBg: 'linear-gradient(145deg, #e8f2ff, #cfe5ff)',
   },
   {
     id: 2,
     name: '低敏羊奶粉',
     desc: '宠物营养补充 400g',
-    price: '¥24.50',
+    price: '$24.50',
     imgBg: 'linear-gradient(145deg, #e9f9ee, #e8f2ff)',
   },
   {
     id: 3,
     name: '纯肉冻干零食',
     desc: '单一蛋白 100g',
-    price: '¥15.99',
+    price: '$15.99',
     imgBg: 'linear-gradient(145deg, #e8f2ff, #e9f9ee)',
   },
 ]

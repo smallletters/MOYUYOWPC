@@ -2,26 +2,43 @@
   <view class="browsing-history">
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">浏览记录</text>
-      <view class="header-btn right" @click="onToggleEdit">
-        <text class="edit-text">{{ editMode ? '完成' : '清空' }}</text>
+      <view class="header-actions">
+        <view v-if="!editMode" class="header-btn-text" @click="onEnterEdit">
+          <text class="action-text">{{ $t('browsingHistory.manage') }}</text>
+        </view>
+        <view class="header-btn-text" @click="onClearAll">
+          <text class="action-text">{{ $t('browsingHistory.clear') }}</text>
+        </view>
+        <view v-if="editMode" class="header-btn-text" @click="onExitEdit">
+          <text class="action-text">{{ $t('browsingHistory.done') }}</text>
+        </view>
       </view>
     </view>
 
     <scroll-view scroll-y class="scroll">
-      <view v-if="filteredList.length === 0 && !editMode" class="empty-state">
-        <view class="empty-icon">
-          <view class="empty-box">
-            <view class="empty-eye"><text class="luc luc-eye"></text></view>
-          </view>
-          <view class="empty-ring" />
-        </view>
-        <text class="empty-title">暂无浏览记录</text>
-        <text class="empty-desc">去逛逛喜欢的商品吧</text>
-        <view class="empty-btn" @click="goShopping">去购物</view>
-      </view>
+      <!-- 加载错误:用通用 EmptyState 组件渲染(支持重试) -->
+      <empty-state
+        v-if="loadError"
+        type="error"
+        title="加载失败"
+        :desc="loadErrorMsg"
+        icon="signal"
+        :btn-text="$t('common.retry')"
+        @action="loadHistory"
+      />
+      <!-- 空态:去逛逛 -->
+      <empty-state
+        v-else-if="filteredList.length === 0 && !editMode"
+        type="empty"
+        :title="$t('browsingHistory.empty')"
+        desc="去逛逛喜欢的商品吧"
+        icon="eye"
+        :btn-text="$t('favorites.shopNow')"
+        @action="goShopping"
+      />
 
       <template v-if="editMode">
         <view
@@ -31,12 +48,14 @@
           @click="toggleSelect(item)"
         >
           <view class="checkbox" :class="{ checked: selectedIds.includes(item.id) }">
-            <text v-if="selectedIds.includes(item.id)" class="check-mark"><text class="luc luc-check"></text></text>
+            <text v-if="selectedIds.includes(item.id)" class="check-mark">
+              <text class="luc luc-check" />
+            </text>
           </view>
           <image :src="item.image" mode="aspectFill" class="edit-img" />
           <view class="edit-info">
             <text class="edit-name">{{ item.name }}</text>
-            <text class="edit-price">¥{{ item.price }}</text>
+            <text class="edit-price">${{ item.price }}</text>
           </view>
         </view>
         <view v-if="selectedIds.length > 0" class="delete-bar">
@@ -61,7 +80,7 @@
               <image :src="item.image" mode="aspectFill" class="timeline-img" />
               <view class="timeline-info">
                 <text class="timeline-name">{{ item.name }}</text>
-                <text class="timeline-price">¥{{ item.price }}</text>
+                <text class="timeline-price">${{ item.price }}</text>
                 <text class="timeline-time">{{ item.viewTime }}</text>
               </view>
             </view>
@@ -77,7 +96,8 @@
 </template>
 
 <script>
-import { browsingHistoryApi } from '@/api'
+import browsingHistory from '@/utils/browsingHistory'
+import { i18n } from '@/i18n'
 
 export default {
   data() {
@@ -85,6 +105,8 @@ export default {
       editMode: false,
       selectedIds: [],
       records: [],
+      loadError: false,
+      loadErrorMsg: '请稍后重试',
     }
   },
 
@@ -107,6 +129,11 @@ export default {
     },
   },
 
+  onShow() {
+    // 从商品详情页返回后也要刷新（浏览记录可能有新增）
+    this.loadHistory()
+  },
+
   onLoad() {
     this.loadHistory()
   },
@@ -116,23 +143,56 @@ export default {
       uni.navigateBack()
     },
 
-    async loadHistory() {
+    loadHistory() {
+      // 本地存储读取失败的可能性极低（uni.storage 异步/同步都兜底为空），这里直接同步读
       try {
-        const res = await browsingHistoryApi.getBrowsingHistory()
-        this.records = res.data || []
-      } catch {
+        const list = browsingHistory.getAll()
+        // 视图需要的字段（group/dateLabel/viewTime）由本地模块计算后附加，避免模板多次调用
+        this.records = list.map((it) => {
+          const meta = browsingHistory.buildGroup(it.viewTimestamp)
+          return {
+            ...it,
+            viewTime: browsingHistory.formatTime(it.viewTimestamp),
+            group: meta.group,
+            dateLabel: meta.dateLabel,
+          }
+        })
+        this.loadError = false
+      } catch (e) {
         this.records = []
+        this.loadError = true
+        this.loadErrorMsg = '本地存储读取失败'
       }
     },
 
-    onToggleEdit() {
-      if (this.editMode) {
-        this.editMode = false
-        this.selectedIds = []
-      } else {
-        if (this.records.length === 0) return
-        this.editMode = true
+    onEnterEdit() {
+      if (this.records.length === 0) return
+      this.editMode = true
+    },
+
+    onExitEdit() {
+      this.editMode = false
+      this.selectedIds = []
+    },
+
+    onClearAll() {
+      if (this.records.length === 0) {
+        uni.showToast({ title: i18n.t('browsingHistory.empty'), icon: 'none' })
+        return
       }
+      uni.showModal({
+        title: i18n.t('browsingHistory.clearConfirmTitle'),
+        content: i18n.t('browsingHistory.clearConfirmContent'),
+        success: (res) => {
+          if (res.confirm) {
+            browsingHistory.clearAll()
+            this.records = []
+            this.selectedIds = []
+            this.editMode = false
+            uni.showToast({ title: i18n.t('browsingHistory.cleared'), icon: 'success' })
+          }
+        },
+      })
     },
 
     toggleSelect(item) {
@@ -144,25 +204,27 @@ export default {
       }
     },
 
-    async onDeleteSelected() {
+    onDeleteSelected() {
       if (this.selectedIds.length === 0) return
       uni.showModal({
-        title: '确认删除',
-        content: `确定要删除选中的 ${this.selectedIds.length} 条浏览记录吗？`,
-        success: async (res) => {
+        title: i18n.t('browsingHistory.confirmDelete'),
+        content: i18n.t('browsingHistory.confirmDeleteContent', { count: this.selectedIds.length }),
+        success: (res) => {
           if (res.confirm) {
-            try {
-              await Promise.all(
-                this.selectedIds.map((id) => browsingHistoryApi.deleteBrowsingHistory(id)),
-              )
-              this.records = this.records.filter((r) => !this.selectedIds.includes(r.id))
-              this.selectedIds = []
-              uni.showToast({ title: '删除成功', icon: 'success' })
-              if (this.records.length === 0) {
-                this.editMode = false
+            const remaining = browsingHistory.deleteByIds(this.selectedIds)
+            this.records = remaining.map((it) => {
+              const meta = browsingHistory.buildGroup(it.viewTimestamp)
+              return {
+                ...it,
+                viewTime: browsingHistory.formatTime(it.viewTimestamp),
+                group: meta.group,
+                dateLabel: meta.dateLabel,
               }
-            } catch {
-              uni.showToast({ title: '删除失败，请重试', icon: 'none' })
+            })
+            this.selectedIds = []
+            uni.showToast({ title: '删除成功', icon: 'success' })
+            if (this.records.length === 0) {
+              this.editMode = false
             }
           }
         },
@@ -217,6 +279,29 @@ export default {
   width: auto;
 }
 
+/* 右上角操作区：管理 / 清空 / 完成 */
+.header-actions {
+  position: absolute;
+  right: 16rpx;
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.header-btn-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 72rpx;
+  padding: 0 8rpx;
+}
+
+.action-text {
+  font-size: 26rpx;
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
 .back-icon {
   font-size: 48rpx;
   color: var(--color-text);
@@ -247,65 +332,7 @@ export default {
   padding: 160rpx 40rpx 80rpx;
 }
 
-.empty-icon {
-  position: relative;
-  width: 160rpx;
-  height: 160rpx;
-  margin-bottom: 48rpx;
-}
-
-.empty-box {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius-md);
-  background: var(--color-divider);
-  border: 1rpx solid var(--color-divider);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.empty-eye {
-  font-size: 64rpx;
-  line-height: 1;
-}
-
-.empty-ring {
-  position: absolute;
-  bottom: -8rpx;
-  right: -8rpx;
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 50%;
-  background: var(--color-divider);
-  border: 4rpx solid var(--color-surface);
-}
-
-.empty-title {
-  font-size: 28rpx;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text);
-  margin-bottom: 12rpx;
-}
-
-.empty-desc {
-  font-size: 24rpx;
-  color: var(--color-text-tertiary);
-  margin-bottom: 48rpx;
-}
-
-.empty-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 80rpx;
-  padding: 0 64rpx;
-  border-radius: 999rpx;
-  background: var(--color-primary);
-  color: #ffffff;
-  font-size: 28rpx;
-  font-weight: var(--font-weight-semibold);
-}
+/* 空状态/错误态样式已迁移到 components/empty-state/empty-state.vue */
 
 .timeline-group {
   margin-bottom: 32rpx;

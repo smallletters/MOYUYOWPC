@@ -1,7 +1,9 @@
 <template>
   <view v-if="order" class="order-detail">
     <view class="page-header">
-      <view class="header-back" @click="goBack" aria-label="返回"><text class="luc luc-arrow-left"></text></view>
+      <view class="header-back" aria-label="返回" @click="goBack">
+        <text class="luc luc-arrow-left" />
+      </view>
       <text class="header-title">订单详情</text>
     </view>
     <view class="status-banner" :class="`status-${order.status}`">
@@ -109,8 +111,8 @@
 
     <view class="action-bar safe-area-bottom">
       <view class="btn btn-text" @click="onCS">
-        <text class="cs-icon"><text class="luc luc-message-circle"></text></text>
-        <text>联系客服</text>
+        <text class="cs-icon"><text class="luc luc-message-circle" /></text>
+        <text>{{ $t('orderDetail.contactCS') }}</text>
       </view>
       <view v-if="order.status === 'PENDING_PAY'" class="btn btn-outline" @click="onCancel">
         取消订单

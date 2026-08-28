@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="forgot">
     <view class="header">
       <text class="title">Reset Password</text>

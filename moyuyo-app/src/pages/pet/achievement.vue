@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="achievement">
     <view class="header">
       <text class="title">Achievements</text>
@@ -26,14 +26,19 @@
       </view>
     </view>
   </view>
-</template><script>
+</template>
+<script>
 import { petApi } from '@/api'
 
 const ACHIEVEMENT_MAP = {
   CLEAN_BABY: { icon: 'bath', name: 'Clean Baby', desc: 'Keep bath schedule on track' },
   EPIDEMIC_MASTER: { icon: 'syringe', name: 'Epidemic Master', desc: 'Vaccinations up to date' },
   DEWORM_GUARDIAN: { icon: 'pill', name: 'Deworm Guardian', desc: 'Regular deworming completed' },
-  ATTENDANCE_FULL: { icon: 'calendar', name: 'Full Attendance', desc: 'All care reminders checked' },
+  ATTENDANCE_FULL: {
+    icon: 'calendar',
+    name: 'Full Attendance',
+    desc: 'All care reminders checked',
+  },
   EXPLORER_PIONEER: { icon: 'map', name: 'Explorer Pioneer', desc: 'Unlocked all 3D scenes' },
 }
 

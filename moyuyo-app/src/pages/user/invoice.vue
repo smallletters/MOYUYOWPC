@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="invoice-page">
     <!-- 顶部导航栏 -->
     <view class="nav-header">

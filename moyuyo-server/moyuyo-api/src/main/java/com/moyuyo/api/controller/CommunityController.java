@@ -151,14 +151,13 @@ public class CommunityController {
         return Result.success();
     }
 
-    @Operation(summary = "我收藏的帖子")
+    @Operation(summary = "我收藏的帖子（分页 VO）")
     @GetMapping("/posts/collected")
-    public Result<List<Long>> myCollected() {
-        List<CommunityCollectEntity> list = collectMapper.selectList(
-                new LambdaQueryWrapper<CommunityCollectEntity>()
-                        .eq(CommunityCollectEntity::getUserId, UserContextHolder.getUserId())
-                        .orderByDesc(CommunityCollectEntity::getCreateTime));
-        return Result.success(list.stream().map(CommunityCollectEntity::getPostId).toList());
+    public Result<Page<CommunityPostVO>> myCollected(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return Result.success(communityService.listCollectedPosts(
+                UserContextHolder.getUserId(), page, size));
     }
 
     // === 话题广场 ===

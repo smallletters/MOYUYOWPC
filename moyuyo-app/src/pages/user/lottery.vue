@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <view class="lottery">
     <view class="nav-header dark">
       <view class="nav-back" @click="goBack">
-        <text class="back-icon light"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon light"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="nav-title light">幸运抽奖</text>
       <view class="nav-placeholder" />
@@ -26,20 +26,23 @@
       <view class="chances-card">
         <view class="chances-left">
           <view class="chances-icon">
-            <text class="ticket-icon"><text class="luc luc-ticket"></text></text>
+            <text class="ticket-icon"><text class="luc luc-ticket" /></text>
           </view>
           <view class="chances-info">
             <text class="chances-num">
-              今日已用 {{ statsTodayUsed }} / {{ currentLottery ? currentLottery.dailyFree : 0 }} 次免费
+              今日已用 {{ statsTodayUsed }} /
+              {{ currentLottery ? currentLottery.dailyFree : 0 }} 次免费
             </text>
             <text class="chances-hint">
-              {{ currentLottery && currentLottery.pointsCost > 0
-                ? `免费用完后每次扣 ${currentLottery.pointsCost} 积分`
-                : '今日免费' }}
+              {{
+                currentLottery && currentLottery.pointsCost > 0
+                  ? `免费用完后每次扣 ${currentLottery.pointsCost} 积分`
+                  : '今日免费'
+              }}
             </text>
           </view>
         </view>
-        <text class="chances-arrow"><text class="luc luc-chevron-right"></text></text>
+        <text class="chances-arrow"><text class="luc luc-chevron-right" /></text>
       </view>
 
       <view class="wheel-section">
@@ -53,7 +56,11 @@
                 :key="idx"
                 class="wheel-label"
                 :style="{
-                  transform: 'rotate(' + (idx * (360 / Math.max(prizes.length, 1)) + (360 / Math.max(prizes.length, 1) / 2)) + 'deg)',
+                  transform:
+                    'rotate(' +
+                    (idx * (360 / Math.max(prizes.length, 1)) +
+                      360 / Math.max(prizes.length, 1) / 2) +
+                    'deg)',
                   transformOrigin: '0% 50%',
                 }"
               >
@@ -70,23 +77,40 @@
 
       <!-- 奖品列表 -->
       <view class="prize-list-section">
-        <text class="section-title"><text class="luc luc-gift"></text> 本次活动奖品</text>
+        <text class="section-title">
+          <text class="luc luc-gift" />
+          本次活动奖品
+        </text>
         <view class="prize-grid">
           <view class="prize-item">
-            <view class="prize-icon-wrap"><text class="prize-icon"><text class="luc luc-gift"></text></text></view>
+            <view class="prize-icon-wrap">
+              <text class="prize-icon"><text class="luc luc-gift" /></text>
+            </view>
             <text class="prize-name">{{ currentLottery ? currentLottery.prizeName : '—' }}</text>
           </view>
           <view class="prize-item">
-            <view class="prize-icon-wrap"><text class="prize-icon"><text class="luc luc-ticket"></text></text></view>
-            <text class="prize-name">免费 {{ currentLottery ? currentLottery.dailyFree : 0 }} 次/天</text>
+            <view class="prize-icon-wrap">
+              <text class="prize-icon"><text class="luc luc-ticket" /></text>
+            </view>
+            <text class="prize-name">
+              免费 {{ currentLottery ? currentLottery.dailyFree : 0 }} 次/天
+            </text>
           </view>
           <view class="prize-item">
-            <view class="prize-icon-wrap"><text class="prize-icon"><text class="luc luc-calendar"></text></text></view>
-            <text class="prize-name">{{ currentLottery ? formatTime(currentLottery.endTime) : '长期' }}</text>
+            <view class="prize-icon-wrap">
+              <text class="prize-icon"><text class="luc luc-calendar" /></text>
+            </view>
+            <text class="prize-name">
+              {{ currentLottery ? formatTime(currentLottery.endTime) : '长期' }}
+            </text>
           </view>
           <view class="prize-item">
-            <view class="prize-icon-wrap"><text class="prize-icon"><text class="luc luc-trending-up"></text></text></view>
-            <text class="prize-name">概率 {{ currentLottery ? formatProb(currentLottery.probability) : '—' }}</text>
+            <view class="prize-icon-wrap">
+              <text class="prize-icon"><text class="luc luc-trending-up" /></text>
+            </view>
+            <text class="prize-name">
+              概率 {{ currentLottery ? formatProb(currentLottery.probability) : '—' }}
+            </text>
           </view>
         </view>
       </view>
@@ -94,15 +118,21 @@
       <view class="history-section">
         <view class="history-header" @click="showHistory = !showHistory">
           <view class="history-title-row">
-            <text class="history-title"><text class="luc luc-clock"></text> 抽奖记录</text>
+            <text class="history-title">
+              <text class="luc luc-clock" />
+              抽奖记录
+            </text>
             <text class="history-count">{{ spinHistory.length }}</text>
           </view>
           <text class="history-arrow" :class="{ open: showHistory }">▼</text>
         </view>
         <view v-if="showHistory" class="history-list">
           <view v-for="(record, idx) in spinHistory" :key="record.id || idx" class="history-item">
-            <view class="history-icon-wrap" :style="{ background: record.won ? '#d9b4b0' : '#e5e5ea' }">
-              <text class="history-icon luc" :class="$luc(record.won  ?  'trophy'  :  'ticket')"></text>
+            <view
+              class="history-icon-wrap"
+              :style="{ background: record.won ? '#d9b4b0' : '#e5e5ea' }"
+            >
+              <text class="history-icon luc" :class="$luc(record.won ? 'trophy' : 'ticket')" />
             </view>
             <view class="history-info">
               <text class="history-name">{{ record.prizeName || '未中奖' }}</text>
@@ -119,8 +149,14 @@
     <!-- 中奖弹窗 -->
     <view v-if="showPrizeModal" class="modal-overlay" @click="showPrizeModal = false">
       <view class="modal-content" @click.stop>
-        <view class="modal-icon-wrap" :style="{ background: spinResult && spinResult.won ? '#dbc98a' : '#e5e5ea' }">
-          <text class="modal-icon luc" :class="$luc(spinResult && spinResult.won ? 'trophy' : 'ticket')"></text>
+        <view
+          class="modal-icon-wrap"
+          :style="{ background: spinResult && spinResult.won ? '#dbc98a' : '#e5e5ea' }"
+        >
+          <text
+            class="modal-icon luc"
+            :class="$luc(spinResult && spinResult.won ? 'trophy' : 'ticket')"
+          />
         </view>
         <text class="modal-title">
           {{ spinResult && spinResult.won ? '恭喜中奖' : '差一点就中了' }}
@@ -174,9 +210,7 @@ export default {
         this.lotteries = list
         this.currentLottery = list[0] || null
         // 凑 8 个转盘槽位让转盘好看
-        this.prizes = this.currentLottery
-          ? this.makePrizes(this.currentLottery.prizeName)
-          : []
+        this.prizes = this.currentLottery ? this.makePrizes(this.currentLottery.prizeName) : []
       } catch (err) {
         console.warn('[lottery] load failed', err)
       }
@@ -189,7 +223,7 @@ export default {
       const slotCount = 8
       const result = []
       for (let i = 0; i < slotCount; i++) {
-        result.push(i === 0 ? (mainPrizeName || '神秘奖品') : '谢谢参与')
+        result.push(i === 0 ? mainPrizeName || '神秘奖品' : '谢谢参与')
       }
       return result
     },

@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <view class="subscribe-manage-detail">
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">订阅管理</text>
       <view class="header-spacer" />
@@ -23,16 +23,16 @@
           <view class="overview-stat">
             <text class="overview-label">累计节省</text>
             <view class="overview-num-row">
-              <text class="overview-num">¥326</text>
+              <text class="overview-num">$326</text>
             </view>
           </view>
           <view class="overview-badge">
-            <text class="badge-emoji"><text class="luc luc-crown"></text></text>
+            <text class="badge-emoji"><text class="luc luc-crown" /></text>
           </view>
         </view>
         <view class="overview-action" @click="viewAllSubscriptions">
           <text class="overview-action-text">查看全部订阅</text>
-          <text class="overview-action-arrow"><text class="luc luc-chevron-right"></text></text>
+          <text class="overview-action-arrow"><text class="luc luc-chevron-right" /></text>
         </view>
       </view>
 
@@ -42,13 +42,16 @@
           <!-- 商品信息 -->
           <view class="product-row">
             <view class="product-thumb">
-              <text class="thumb-emoji"><text class="luc luc-package"></text></text>
+              <text class="thumb-emoji"><text class="luc luc-package" /></text>
             </view>
             <view class="product-info">
               <text class="product-name">{{ subscription.name }}</text>
               <text class="product-spec">{{ subscription.spec }}</text>
               <view class="product-tags">
-                <text class="status-active"><text class="luc luc-check"></text> 活跃</text>
+                <text class="status-active">
+                  <text class="luc luc-check" />
+                  活跃
+                </text>
                 <text class="sub-id">{{ subscription.subId }}</text>
               </view>
             </view>
@@ -85,7 +88,7 @@
               <text class="info-label">配送频率</text>
               <text class="info-value">{{ subscription.deliveryFreq }}</text>
             </view>
-            <text class="info-edit"><text class="luc luc-pencil"></text></text>
+            <text class="info-edit"><text class="luc luc-pencil" /></text>
           </view>
 
           <!-- 下次配送 + 倒计时 -->
@@ -113,11 +116,11 @@
           <!-- 价格信息 -->
           <view class="price-row">
             <view class="price-left">
-              <text class="price-discount">¥{{ subscription.discountPrice }}</text>
+              <text class="price-discount">${{ subscription.discountPrice }}</text>
               <text class="discount-badge">10% OFF</text>
             </view>
             <view class="price-right">
-              <text class="price-original">¥{{ subscription.originalPrice }}</text>
+              <text class="price-original">${{ subscription.originalPrice }}</text>
               <text class="price-original-label">原价</text>
             </view>
           </view>
@@ -136,19 +139,19 @@
           </view>
           <view class="manage-item" @click="earlyDelivery">
             <view class="manage-icon" style="background: rgba(171, 185, 173, 0.2)">
-              <text><text class="luc luc-alert-triangle"></text></text>
+              <text><text class="luc luc-alert-triangle" /></text>
             </view>
             <text class="manage-label">提前配送</text>
           </view>
           <view class="manage-item" @click="changeProduct">
             <view class="manage-icon" style="background: rgba(255, 149, 0, 0.1)">
-              <text><text class="luc luc-refresh-cw"></text></text>
+              <text><text class="luc luc-refresh-cw" /></text>
             </view>
             <text class="manage-label">更换商品</text>
           </view>
           <view class="manage-item" @click="modifyDate">
             <view class="manage-icon" style="background: rgba(0, 0, 0, 0.04)">
-              <text><text class="luc luc-calendar"></text></text>
+              <text><text class="luc luc-calendar" /></text>
             </view>
             <text class="manage-label">改配送日</text>
           </view>
@@ -159,7 +162,7 @@
       <view class="history-card">
         <view class="history-toggle" @click="toggleHistory">
           <view class="history-toggle-left">
-            <text class="history-toggle-icon"><text class="luc luc-clock"></text></text>
+            <text class="history-toggle-icon"><text class="luc luc-clock" /></text>
             <text class="history-toggle-title">配送历史</text>
             <text class="history-count-badge">{{ deliveryHistory.length }} 次</text>
           </view>
@@ -173,7 +176,7 @@
               <text class="history-item-date">{{ item.date }}</text>
             </view>
             <view class="history-item-right">
-              <text class="history-item-price">¥{{ item.price }}</text>
+              <text class="history-item-price">${{ item.price }}</text>
               <text class="history-item-status" :class="'status-' + item.status">
                 {{ item.statusText }}
               </text>
@@ -195,7 +198,7 @@
           </view>
         </view>
         <view class="cancel-btn" @click="cancelSubscription">
-          <text class="cancel-icon"><text class="luc luc-x"></text></text>
+          <text class="cancel-icon"><text class="luc luc-x" /></text>
           <text class="cancel-text">取消订阅</text>
         </view>
       </view>

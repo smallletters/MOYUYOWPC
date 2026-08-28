@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="change-pwd">
     <view class="header">
       <text class="title">Change Password</text>

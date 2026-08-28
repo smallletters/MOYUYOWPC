@@ -1,7 +1,9 @@
-<template>
+﻿<template>
   <view class="page">
     <view class="nav-bar">
-      <view class="nav-back" @tap="goBack"><text class="back-icon"><text class="luc luc-arrow-left"></text></text></view>
+      <view class="nav-back" @tap="goBack">
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+      </view>
       <text class="nav-title">我的收藏</text>
       <view class="nav-placeholder" />
     </view>
@@ -9,12 +11,26 @@
     <view v-if="loading" class="loading"><text class="loading-text">加载中…</text></view>
     <view v-else-if="!collected.length" class="empty">
       <text class="empty-text">还没有收藏任何帖子</text>
-      <view class="empty-btn" @tap="goCommunity"><text class="empty-btn-text">去社区逛逛</text></view>
+      <view class="empty-btn" @tap="goCommunity">
+        <text class="empty-btn-text">去社区逛逛</text>
+      </view>
     </view>
     <view v-else class="post-list">
-      <view v-for="post in collected" :key="post.id" class="post-card" @tap="openPost(post)">
-        <text class="post-title">帖子 #{{ post.id }}</text>
-        <text class="post-meta">收藏于 {{ formatTime(post.createTime) }}</text>
+      <view
+        v-for="post in collected"
+        :key="post.id"
+        class="post-card"
+        @tap="openPost(post)">
+        <view v-if="post.images && post.images.length" class="post-cover">
+          <image :src="post.images[0]" mode="aspectFill" class="post-cover-img" />
+        </view>
+        <view class="post-content">
+          <text class="post-title">{{ post.title || post.content || `帖子 #${post.id}` }}</text>
+          <text v-if="post.content && post.title" class="post-excerpt">
+            {{ truncate(post.content, 60) }}
+          </text>
+          <text class="post-meta">收藏于 {{ formatTime(post.createTime) }}</text>
+        </view>
       </view>
     </view>
   </view>
@@ -31,20 +47,10 @@ const loading = ref(false)
 async function loadCollected() {
   loading.value = true
   try {
-    // 直接拉取收藏的帖子 id 列表
-    const ids = await get('/api/v1/community/posts/collected')
-    if (Array.isArray(ids) && ids.length) {
-      const posts = []
-      for (const id of ids) {
-        try {
-          const p = await communityApi.getPostDetail(id)
-          posts.push(p)
-        } catch (e) { /* ignore */ }
-      }
-      collected.value = posts
-    } else {
-      collected.value = []
-    }
+    // 后端: GET /api/v1/community/posts/collected
+    const page = await communityApi.getCollectedPosts({ page: 1, size: 50 })
+    const records = Array.isArray(page?.records) ? page.records : []
+    collected.value = records
   } catch (e) {
     console.warn('[post-collection] load failed', e)
     collected.value = []
@@ -55,32 +61,141 @@ async function loadCollected() {
 
 function formatTime(t) {
   if (!t) return ''
-  try { const d = new Date(t); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}` } catch { return '' }
+  try {
+    const d = new Date(t)
+    return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+  } catch {
+    return ''
+  }
+}
+
+function truncate(s, n) {
+  if (!s) return ''
+  return s.length > n ? s.slice(0, n) + '...' : s
 }
 
 function openPost(post) {
   uni.navigateTo({ url: `/pages/community/detail?id=${post.id}` })
 }
 
-function goCommunity() { uni.switchTab({ url: '/pages/tabbar/community' }) }
-function goBack() { uni.navigateBack() }
+function goCommunity() {
+  uni.switchTab({ url: '/pages/tabbar/community' })
+}
+function goBack() {
+  uni.navigateBack()
+}
 
-onMounted(() => { loadCollected() })
+onMounted(() => {
+  loadCollected()
+})
 </script>
 
 <style lang="scss" scoped>
-.page { min-height: 100vh; background: var(--color-background); }
-.nav-bar { display: flex; align-items: center; height: 88rpx; padding: 0 24rpx; background: var(--color-surface); border-bottom: 1rpx solid var(--color-divider); }
-.nav-back { width: 60rpx; }
-.back-icon { font-size: 44rpx; color: var(--color-primary); }
-.nav-title { flex: 1; text-align: center; font-size: 32rpx; font-weight: 600; }
-.nav-placeholder { width: 60rpx; }
-.loading, .empty { padding: 80rpx 24rpx; text-align: center; }
-.loading-text, .empty-text { font-size: 28rpx; color: var(--color-text-tertiary); }
-.empty-btn { margin-top: 24rpx; display: inline-flex; align-items: center; padding: 16rpx 32rpx; background: var(--color-primary); border-radius: 999rpx; }
-.empty-btn-text { color: #fff; font-size: 26rpx; }
-.post-list { padding: 16rpx; display: flex; flex-direction: column; gap: 16rpx; }
-.post-card { background: var(--color-surface); padding: 20rpx; border-radius: 16rpx; }
-.post-title { display: block; font-size: 28rpx; font-weight: 600; color: var(--color-text); }
-.post-meta { display: block; margin-top: 8rpx; font-size: 22rpx; color: var(--color-text-tertiary); }
+.page {
+  min-height: 100vh;
+  background: var(--color-background);
+}
+.nav-bar {
+  display: flex;
+  align-items: center;
+  height: 88rpx;
+  padding: 0 24rpx;
+  background: var(--color-surface);
+  border-bottom: 1rpx solid var(--color-divider);
+}
+.nav-back {
+  width: 60rpx;
+}
+.back-icon {
+  font-size: 44rpx;
+  color: var(--color-primary);
+}
+.nav-title {
+  flex: 1;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+.nav-placeholder {
+  width: 60rpx;
+}
+.loading,
+.empty {
+  padding: 80rpx 24rpx;
+  text-align: center;
+}
+.loading-text,
+.empty-text {
+  font-size: 28rpx;
+  color: var(--color-text-tertiary);
+}
+.empty-btn {
+  margin-top: 24rpx;
+  display: inline-flex;
+  align-items: center;
+  padding: 16rpx 32rpx;
+  background: var(--color-primary);
+  border-radius: 999rpx;
+}
+.empty-btn-text {
+  color: #fff;
+  font-size: 26rpx;
+}
+.post-list {
+  padding: 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+.post-card {
+  display: flex;
+  gap: 20rpx;
+  background: var(--color-surface);
+  padding: 20rpx;
+  border-radius: 16rpx;
+}
+.post-cover {
+  width: 160rpx;
+  height: 160rpx;
+  flex-shrink: 0;
+  border-radius: 12rpx;
+  overflow: hidden;
+  background: var(--color-divider);
+}
+.post-cover-img {
+  width: 100%;
+  height: 100%;
+}
+.post-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+.post-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.post-excerpt {
+  display: block;
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.post-meta {
+  display: block;
+  margin-top: auto;
+  font-size: 22rpx;
+  color: var(--color-text-tertiary);
+}
 </style>

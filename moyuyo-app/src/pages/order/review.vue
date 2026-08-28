@@ -17,7 +17,7 @@
               :class="{ filled: (item.rating || 0) >= i }"
               @click="item.rating = i"
             >
-              <text class="luc luc-star"></text>
+              <text class="luc luc-star" />
             </text>
           </view>
         </view>
@@ -44,7 +44,9 @@
         <view class="images">
           <view v-for="(img, idx) in item.images || []" :key="idx" class="image-preview">
             <image :src="img" mode="aspectFill" />
-            <view class="image-remove" @click="removeImage(item, idx)"><text class="luc luc-x"></text></view>
+            <view class="image-remove" @click="removeImage(item, idx)">
+              <text class="luc luc-x" />
+            </view>
           </view>
           <view v-if="(item.images || []).length < 9" class="image-add" @click="addImage(item)">
             +
@@ -54,24 +56,42 @@
     </scroll-view>
 
     <view class="bottom-bar safe-area-bottom">
-      <view class="btn btn-primary submit-btn" @click="onSubmit">Submit Reviews</view>
+      <view class="btn btn-primary submit-btn" @click="onSubmit">
+        {{ $t('orderReview.submit') }}
+      </view>
     </view>
   </view>
 </template>
 
 <script>
 import { orderApi, reviewApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   data() {
     return {
       orderId: null,
       orderItems: [],
-      presetTags: ['Great Quality', 'Smells Good', 'Pet Loves It', 'True to Size', 'Fast Delivery'],
+      // presetTags 在 computed 中读取,跟随 locale 切换
+      localeVersion: 0,
     }
   },
 
+  computed: {
+    presetTags() {
+      void this.localeVersion
+      return i18n.t('orderReview.presetTags')
+    },
+  },
+
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
+  },
+
   async onLoad(query) {
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
     this.orderId = query.orderId
     try {
       const order = await orderApi.getOrderDetail(this.orderId)
@@ -114,11 +134,14 @@ export default {
     async onSubmit() {
       for (const item of this.orderItems) {
         if (!item.rating) {
-          uni.showToast({ title: 'Please rate each item', icon: 'none' })
+          uni.showToast({
+            title: i18n.t('orderReview.ratingRequired', { name: item.name }),
+            icon: 'none',
+          })
           return
         }
       }
-      uni.showLoading({ title: 'Submitting...' })
+      uni.showLoading({ title: i18n.t('common.loading') })
       try {
         for (const item of this.orderItems) {
           await reviewApi.createReview({
@@ -132,11 +155,11 @@ export default {
           })
         }
         uni.hideLoading()
-        uni.showToast({ title: 'Reviews submitted', icon: 'success' })
+        uni.showToast({ title: i18n.t('orderReview.submitted'), icon: 'success' })
         setTimeout(() => uni.navigateBack(), 1000)
       } catch (e) {
         uni.hideLoading()
-        uni.showToast({ title: 'Submit failed', icon: 'none' })
+        uni.showToast({ title: e?.message || i18n.t('orderReview.failed'), icon: 'none' })
       }
     },
   },

@@ -1,56 +1,72 @@
-<template>
+﻿<template>
   <view class="profile">
     <view class="avatar-section">
       <image :src="userStore.userInfo?.avatar || defaultAvatar" class="avatar" />
       <text class="name">{{ userStore.userInfo?.nickname || 'User' }}</text>
       <text class="email">{{ userStore.userInfo?.email }}</text>
-      <view class="btn btn-outline change-avatar">Change Avatar</view>
+      <view
+        class="btn btn-outline change-avatar"
+        :class="{ disabled: avatarUploading }"
+        @click="onChangeAvatar"
+      >
+        {{ avatarUploading ? $t('profile.uploading') : $t('profile.changeAvatarBtn') }}
+      </view>
     </view>
 
     <view class="card">
       <view class="form-row">
-        <text class="label">Nickname</text>
+        <text class="label">{{ $t('profile.nickname') }}</text>
         <input v-model="form.nickname" class="input">
       </view>
       <view class="form-row">
-        <text class="label">Email</text>
+        <text class="label">{{ $t('profile.email') }}</text>
         <text class="readonly">{{ userStore.userInfo?.email }}</text>
       </view>
       <view class="form-row">
-        <text class="label">Phone</text>
+        <text class="label">{{ $t('profile.phone') }}</text>
         <input v-model="form.phone" class="input" type="number">
       </view>
       <view class="form-row">
-        <text class="label">Birthday</text>
+        <text class="label">{{ $t('profile.birthday') }}</text>
         <picker
           mode="date"
           :value="form.birthday"
           :end="today"
           @change="form.birthday = $event.detail.value"
         >
-          <view class="input picker">{{ form.birthday || 'Select' }}</view>
+          <view class="input picker">{{ form.birthday || $t('profile.select') }}</view>
         </picker>
       </view>
     </view>
 
-    <view class="btn btn-primary save-btn" @click="onSave">Save Changes</view>
+    <view class="btn btn-primary save-btn" :class="{ disabled: saving }" @click="onSave">
+      {{ saving ? $t('profile.saving') : $t('profile.save') }}
+    </view>
 
-    <view class="btn btn-outline logout-btn" @click="onLogout">Sign Out</view>
+    <view class="btn btn-outline logout-btn" @click="onLogout">{{ $t('settings.logout') }}</view>
   </view>
 </template>
 
 <script>
 import { useUserStore } from '@/store'
+import { uploadImage } from '@/api/upload'
+import { i18n } from '@/i18n'
 
 export default {
   data() {
     return {
       defaultAvatar: 'https://i.pravatar.cc/200?img=20',
+      // 保存中标记:防止双击重复提交
+      saving: false,
+      // 头像上传中标记:和 saving 独立,允许分别显示状态
+      avatarUploading: false,
       form: {
         nickname: '',
         phone: '',
         birthday: '',
       },
+      // locale 版本号:locale 切换时自增,触发模板重渲染
+      localeVersion: 0,
     }
   },
 
@@ -69,21 +85,66 @@ export default {
       this.form.phone = this.userStore.userInfo.phone || ''
       this.form.birthday = this.userStore.userInfo.birthday || ''
     }
+    // 订阅 locale 变化
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
+  },
+
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
   },
 
   methods: {
     async onSave() {
+      if (this.saving) return
+      this.saving = true
+      uni.showLoading({ title: i18n.t('profile.saving'), mask: true })
       try {
         await this.userStore.updateProfile(this.form)
-        uni.showToast({ title: 'Saved', icon: 'success' })
+        uni.hideLoading()
+        uni.showToast({ title: i18n.t('profile.saved'), icon: 'success' })
       } catch (e) {
-        uni.showToast({ title: 'Save failed', icon: 'none' })
+        uni.hideLoading()
+        uni.showToast({ title: e?.message || i18n.t('profile.saveFailed'), icon: 'none' })
+      } finally {
+        this.saving = false
+      }
+    },
+
+    /**
+     * 头像上传闭环:选择 -> 上传到 file/upload -> 把返回 URL 一并提交到 updateProfile
+     * 修复前仅展示选择提示,头像未真正保存到后端
+     */
+    async onChangeAvatar() {
+      if (this.avatarUploading) return
+      try {
+        const chooseRes = await uni.chooseImage({
+          count: 1,
+          sizeType: ['compressed'],
+          sourceType: ['album', 'camera'],
+        })
+        const filePath = chooseRes.tempFilePaths?.[0]
+        if (!filePath) return
+        this.avatarUploading = true
+        uni.showLoading({ title: i18n.t('profile.uploading'), mask: true })
+        const uploadRes = await uploadImage(filePath)
+        const avatarUrl = uploadRes?.url
+        if (!avatarUrl) throw new Error('Upload returned no URL')
+        await this.userStore.updateProfile({ avatar: avatarUrl })
+        uni.hideLoading()
+        uni.showToast({ title: i18n.t('profile.avatarUpdated'), icon: 'success' })
+      } catch (e) {
+        uni.hideLoading()
+        uni.showToast({ title: e?.message || i18n.t('profile.avatarUploadFailed'), icon: 'none' })
+      } finally {
+        this.avatarUploading = false
       }
     },
 
     onLogout() {
       uni.showModal({
-        title: 'Sign out?',
+        title: i18n.t('settings.logoutConfirm'),
         success: async (res) => {
           if (res.confirm) {
             await this.userStore.logout()
@@ -182,10 +243,48 @@ export default {
   margin: 16rpx 24rpx;
   padding: 24rpx 0;
   font-size: var(--font-size-md);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 999rpx;
+  transition: all 0.2s ease;
 }
 
+/* 主操作按钮:品牌主色渐变 + 阴影抬起 + 按压反馈 */
+.save-btn {
+  /* 改用页面品牌主色 Sand Gold 渐变,与全站一致 */
+  background: linear-gradient(135deg, #e8ddb5 0%, #dbc98a 50%);
+  color: #2e2b29;
+  border: none;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+  box-shadow:
+    0 8rpx 20rpx rgba(219, 201, 138, 0.45),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.5);
+}
+
+.save-btn:active:not(.disabled) {
+  transform: scale(0.98);
+  box-shadow:
+    0 4rpx 10rpx rgba(219, 201, 138, 0.3),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.4);
+}
+
+.save-btn.disabled {
+  opacity: 0.45;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* 退出按钮:危险操作使用浅红底 + 红字,比整圈红描边更柔和 */
 .logout-btn {
+  background: rgba(255, 59, 48, 0.08);
   color: var(--color-danger);
-  border-color: var(--color-danger);
+  border: 2rpx solid rgba(255, 59, 48, 0.2);
+}
+
+.logout-btn:active {
+  background: rgba(255, 59, 48, 0.15);
+  transform: scale(0.98);
 }
 </style>

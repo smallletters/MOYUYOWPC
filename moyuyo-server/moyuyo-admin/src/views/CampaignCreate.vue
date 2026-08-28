@@ -343,8 +343,8 @@ async function submitCampaign() {
       type: basicForm.type,
       description: basicForm.description,
       budget: discountForm.budget,
-      startDate: basicForm.dateRange ? basicForm.dateRange[0].toISOString() : '',
-      endDate: basicForm.dateRange ? basicForm.dateRange[1].toISOString() : ''
+      startDate: basicForm.dateRange ? formatDate(basicForm.dateRange[0]) : '',
+      endDate: basicForm.dateRange ? formatDate(basicForm.dateRange[1]) : ''
     })
     ElMessage.success('活动已创建并提交审批')
     resetForm()
@@ -370,6 +370,19 @@ async function saveDraft() {
   } catch (e) {
     ElMessage.error('草稿保存失败：' + (e?.message || '未知错误'))
   }
+}
+
+/**
+ * 将 el-date-picker 返回的 Date 格式化为后端可解析的 "yyyy-MM-dd"
+ * 后端 CampaignEntity.startDate/endDate 是 LocalDate 类型,
+ * Spring 默认 ISO.DATE 解析仅接受 yyyy-MM-dd，不支持 ISO 8601 带时区的字符串
+ */
+function formatDate(val) {
+  if (val == null || val === '') return ''
+  const d = val instanceof Date ? val : new Date(val)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 // 重置创建表单
@@ -513,8 +526,8 @@ async function handleSave() {
         type: editForm.type,
         description: editForm.description,
         budget: editForm.budget,
-        startDate: dateRange.value ? dateRange.value[0].toISOString() : '',
-        endDate: dateRange.value ? dateRange.value[1].toISOString() : ''
+        startDate: dateRange.value ? formatDate(dateRange.value[0]) : '',
+        endDate: dateRange.value ? formatDate(dateRange.value[1]) : ''
       })
       ElMessage.success('编辑成功')
     } else {
@@ -523,8 +536,8 @@ async function handleSave() {
         type: editForm.type,
         description: editForm.description,
         budget: editForm.budget,
-        startDate: dateRange.value ? dateRange.value[0].toISOString() : '',
-        endDate: dateRange.value ? dateRange.value[1].toISOString() : ''
+        startDate: dateRange.value ? formatDate(dateRange.value[0]) : '',
+        endDate: dateRange.value ? formatDate(dateRange.value[1]) : ''
       })
       ElMessage.success('创建成功')
     }

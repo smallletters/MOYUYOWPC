@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <view class="product-compare">
     <view class="nav-header">
       <view class="nav-back" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="nav-title">商品对比（{{ products.length }}/4）</text>
       <view class="nav-action" @click="showAddPicker = true">
@@ -19,7 +19,7 @@
           </view>
           <text class="thumb-label">{{ product.name }}</text>
           <view class="thumb-remove" @click.stop="removeProduct(idx)">
-            <text class="remove-icon"><text class="luc luc-x"></text></text>
+            <text class="remove-icon"><text class="luc luc-x" /></text>
           </view>
         </view>
         <view
@@ -46,7 +46,7 @@
               <text class="product-name">{{ product.name }}</text>
               <text class="product-price">${{ product.price }}</text>
               <view class="product-rating">
-                <text class="star"><text class="luc luc-star"></text></text>
+                <text class="star"><text class="luc luc-star" /></text>
                 <text class="rating-num">{{ product.rating }}</text>
               </view>
             </view>
@@ -65,12 +65,15 @@
               v-if="spec.key === 'freeShipping'"
               class="check-icon luc"
               :class="[product[spec.key] ? 'luc-check' : 'luc-x', { checked: product[spec.key] }]"
-            ></text>
+            />
             <text
               v-else-if="spec.key === 'subscribe'"
               class="check-icon luc"
-              :class="[product[spec.key] ? 'luc-check' : 'luc-minus', { checked: product[spec.key] }]"
-            ></text>
+              :class="[
+                product[spec.key] ? 'luc-check' : 'luc-minus',
+                { checked: product[spec.key] },
+              ]"
+            />
             <text
               v-else
               class="cell-text"

@@ -8,7 +8,14 @@ import java.util.List;
 
 public interface CouponService {
 
-    Page<CouponEntity> listAvailable(int page, int size);
+    /**
+     * 可领取优惠券分页列表。
+     *
+     * @param page   页码（从 1 开始）
+     * @param size   每页大小
+     * @param userId 当前登录用户 ID（可为 null，表示未登录；此时不会填充 claimedByMe）
+     */
+    Page<CouponEntity> listAvailable(int page, int size, Long userId);
 
     CouponEntity getCouponDetail(Long id);
 

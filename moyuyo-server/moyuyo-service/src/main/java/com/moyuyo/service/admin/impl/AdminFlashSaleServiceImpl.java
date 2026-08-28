@@ -199,15 +199,31 @@ public class AdminFlashSaleServiceImpl implements AdminFlashSaleService {
   }
 
   /**
-   * 安全解析时间字符串，兼容 ISO 格式
+   * 安全解析时间字符串，兼容多种格式：
+   * 1. ISO 8601 带时区（前端 el-date-picker.toISOString() 形如 2026-08-27T16:00:00.000Z）
+   *    → 转为本地时区后再丢给 LocalDateTime
+   * 2. ISO_LOCAL_DATE_TIME（2026-08-27T16:00:00 或 2026-08-27T16:00:00.000）
+   * 3. yyyy-MM-dd HH:mm:ss（推荐格式，前端已统一）
    */
   private LocalDateTime parseTime(String timeStr) {
     if (timeStr == null || timeStr.isEmpty()) return null;
-    try {
-      return LocalDateTime.parse(timeStr, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-    } catch (Exception e) {
-      // 尝试 yyyy-MM-dd HH:mm:ss 格式
-      return LocalDateTime.parse(timeStr, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+    String s = timeStr.trim();
+    // 1) 带 Z 或 +hh:mm 时区的 ISO 8601：用 Instant + 系统时区
+    if (s.endsWith("Z") || s.matches(".*[+-]\\d{2}:?\\d{2}$")) {
+      try {
+        java.time.Instant inst = java.time.Instant.parse(s);
+        return inst.atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+      } catch (Exception ignored) {
+        // 落到下面的本地解析
+      }
     }
+    // 2) 纯 ISO_LOCAL_DATE_TIME（无时区）
+    try {
+      return LocalDateTime.parse(s, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+    } catch (Exception ignored) {
+      // 落到下面
+    }
+    // 3) 空格分隔的常见格式
+    return LocalDateTime.parse(s, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
   }
 }

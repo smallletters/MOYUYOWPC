@@ -3,16 +3,16 @@
     <!-- 深色顶部导航栏 -->
     <view class="nav-bar">
       <view class="nav-btn" @click="goBack">
-        <text class="nav-back"><text class="luc luc-arrow-left"></text></text>
+        <text class="nav-back"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="nav-title">领券中心</text>
       <view class="nav-btn" />
     </view>
 
     <!-- 限时抢券倒计时横幅 -->
-    <view class="countdown-banner">
+    <view v-if="totalSeconds > 0" class="countdown-banner">
       <view class="countdown-left">
-        <text class="countdown-icon"><text class="luc luc-zap"></text></text>
+        <text class="countdown-icon"><text class="luc luc-zap" /></text>
         <text class="countdown-label">限时领券</text>
       </view>
       <view class="countdown-right">
@@ -40,71 +40,40 @@
       </view>
     </scroll-view>
 
-    <!-- 优惠券列表 -->
+    <!-- 优惠券列表（使用 uview-plus u-coupon 组件） -->
     <view class="coupon-list">
-      <view
+      <u-coupon
         v-for="coupon in filteredCoupons"
         :key="coupon.id"
-        class="coupon-card"
-        :class="{ claimed: coupon.claimed }"
-      >
-        <!-- 左侧面额区域 -->
-        <view class="coupon-amount-area">
-          <text class="coupon-type-label">{{ coupon.typeLabel }}</text>
-          <view class="coupon-amount-row">
-            <text v-if="coupon.currency" class="coupon-currency">{{ coupon.currency }}</text>
-            <text class="coupon-amount" :class="coupon.claimed ? 'amount-claimed' : ''">
-              {{ coupon.amount }}
-            </text>
-            <text v-if="coupon.unit" class="coupon-unit">{{ coupon.unit }}</text>
-          </view>
-        </view>
-        <!-- 中间详情区域 -->
-        <view class="coupon-info">
-          <view class="coupon-name-row">
-            <text class="coupon-name" :class="coupon.claimed ? 'name-claimed' : ''">
-              {{ coupon.name }}
-            </text>
-            <text
-              v-if="coupon.badge"
-              class="coupon-badge"
-              :style="{ background: coupon.badgeBg, color: coupon.badgeColor }"
-            >
-              {{ coupon.badge }}
-            </text>
-          </view>
-          <text class="coupon-condition" :class="coupon.claimed ? 'text-claimed' : ''">
-            {{ coupon.condition }}
-          </text>
-          <text class="coupon-validity" :class="coupon.claimed ? 'text-claimed' : ''">
-            {{ coupon.validity }}
-          </text>
-        </view>
-        <!-- 右侧按钮 -->
-        <view class="coupon-action">
-          <view
-            class="claim-btn"
-            :class="coupon.claimed ? 'btn-claimed' : 'btn-active'"
-            @click="onClaim(coupon)"
-          >
-            <text>{{ coupon.claimed ? '已领取' : '领取' }}</text>
-          </view>
-        </view>
+        :amount="coupon.amount"
+        :unit="coupon.unit"
+        :title="coupon.name"
+        :desc="coupon.typeLabel"
+        :limit="coupon.condition"
+        :time="coupon.validity"
+        :type="coupon.themeType"
+        shape="round"
+        :disabled="coupon.claimed"
+        :action-text="coupon.claimed ? coupon.claimedText : coupon.actionText"
+        @click="onClaim(coupon)"
+      />
+
+      <!-- 空状态 -->
+      <view v-if="filteredCoupons.length === 0" class="empty-tip">
+        <text>暂无可领取的优惠券</text>
       </view>
     </view>
 
     <!-- 底部汇总栏 -->
     <view class="bottom-bar">
       <view class="bottom-summary">
-        <text class="summary-icon"><text class="luc luc-ticket"></text></text>
+        <text class="summary-icon"><text class="luc luc-ticket" /></text>
         <text class="summary-text">
-          已领取
-          <text class="summary-count">{{ claimedCount }}</text>
-          张优惠券
+          {{ $t('couponCenter.summary', { count: claimedCount }) }}
         </text>
       </view>
       <view class="use-btn" @click="onUse">
-        <text>去使用</text>
+        <text>{{ $t('couponCenter.useNow') }}</text>
       </view>
     </view>
   </view>
@@ -112,24 +81,35 @@
 
 <script>
 import { couponApi } from '@/api'
+import { i18n } from '@/i18n'
+
+// category -> uview-plus up-coupon type 映射
+const CATEGORY_TO_THEME = {
+  discount: 'primary', // 满减券
+  cash: 'error', // 现金券
+  shipping: 'info', // 运费券
+  gift: 'warning', // 礼品券
+  flash: 'error', // 限时
+  new: 'success', // 新人
+  member: 'warning', // 会员
+}
+
+// 显式注册 uview-plus Coupon 组件
+// easycom "^u-(.*)" 匹配 <u-xxx> -> 找 uview-plus/components/u-xxx/u-xxx.vue
+// 官方组件名是 <up-coupon> 但实际文件路径是 u-coupon/u-coupon.vue（easycom 命名约定），
+// 这里直接 import 实际路径,绕开 easycom 解析歧义。
+import uCoupon from 'uview-plus/components/u-coupon/u-coupon.vue'
 
 export default {
+  components: { uCoupon },
   data() {
     return {
       activeTab: 'all',
-      totalSeconds: 2 * 3600 + 15 * 60 + 30,
+      // 倒计时初始为 0,首屏不显示,等接口返回 endTime 后再启动
+      totalSeconds: 0,
       timerId: null,
-
-      tabs: [
-        { label: '全部', value: 'all' },
-        { label: '新人券', value: 'new' },
-        { label: '品类券', value: 'category' },
-        { label: '满减券', value: 'discount' },
-        { label: '限时券', value: 'flash' },
-        { label: '会员专属', value: 'member' },
-      ],
-
       coupons: [],
+      localeVersion: 0,
     }
   },
 
@@ -153,14 +133,44 @@ export default {
         s: String(s).padStart(2, '0'),
       }
     },
+
+    // 货币符号：从全局配置取值,CNY→¥,USD→$
+    currencySymbol() {
+      // process.env.VITE_CURRENCY 在编译时注入;运行期取不到时回退到 CNY
+      // H5 端 window.__MOYUYO_CONFIG__ 在 index.html 注入
+      const env = (typeof process !== 'undefined' && process.env && process.env.VITE_CURRENCY) || ''
+      const win =
+        (typeof window !== 'undefined' &&
+          window.__MOYUYO_CONFIG__ &&
+          window.__MOYUYO_CONFIG__.VITE_CURRENCY) ||
+        ''
+      const cur = env || win || 'CNY'
+      return cur === 'USD' ? '$' : '¥'
+    },
+
+    tabs() {
+      void this.localeVersion
+      return [
+        { label: i18n.t('couponCenter.tabs.all'), value: 'all' },
+        { label: i18n.t('couponCenter.tabs.new'), value: 'new' },
+        { label: i18n.t('couponCenter.tabs.category'), value: 'category' },
+        { label: i18n.t('couponCenter.tabs.discount'), value: 'discount' },
+        { label: i18n.t('couponCenter.tabs.flash'), value: 'flash' },
+        { label: i18n.t('couponCenter.tabs.member'), value: 'member' },
+      ]
+    },
   },
 
-  async onLoad() {
+  onLoad() {
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
     this.startCountdown()
-    await this.loadCoupons()
+    this.loadCoupons()
   },
 
   onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
     if (this.timerId) {
       clearInterval(this.timerId)
       this.timerId = null
@@ -170,26 +180,128 @@ export default {
   methods: {
     async loadCoupons() {
       try {
-        const res = await couponApi.getAvailableCoupons()
-        const list = res.data || res
-        this.coupons = (list.items || list).map((c) => ({
-          id: c.id,
-          category: c.category || 'all',
-          typeLabel: c.typeLabel || '',
-          currency: c.currency || '¥',
-          amount: c.amount || '',
-          unit: c.unit || '',
-          name: c.name || '',
-          condition: c.condition || '',
-          validity: c.validity || '',
-          badge: c.badge || '',
-          badgeBg: c.badgeBg || '',
-          badgeColor: c.badgeColor || '',
-          claimed: c.claimed || false,
-        }))
+        // 后端返回 Page<CouponEntity> { records, total, size, current }
+        // 字段：id / name / description / type(AMOUNT|PERCENT) /
+        //      discountValue / minOrderAmount / maxDiscountAmount /
+        //      totalCount / claimedCount / startTime / endTime / active / claimedByMe
+        console.log('[coupon-center] loadCoupons start')
+        const page = await couponApi.getAvailableCoupons()
+        console.log('[coupon-center] raw response:', JSON.stringify(page).slice(0, 500))
+        const list = Array.isArray(page?.records)
+          ? page.records
+          : Array.isArray(page?.items)
+            ? page.items
+            : []
+        console.log('[coupon-center] parsed list.length:', list.length)
+        // 用最近的 endTime 作为倒计时基准(若无则不启用倒计时)
+        const farthestEnd = list
+          .map((c) => c.endTime)
+          .filter(Boolean)
+          .sort()
+          .pop()
+        this.applyCountdownFromServer(farthestEnd)
+        const normalized = list.map((c) => this.normalizeCoupon(c))
+        console.log('[coupon-center] normalized count:', normalized.length)
+        this.coupons = normalized
       } catch (e) {
+        // 接口失败时清空列表,展示空状态
+        console.error('[coupon-center] loadCoupons failed:', e)
         this.coupons = []
       }
+    },
+
+    /**
+     * 将后端 CouponEntity 归一为页面展示模型
+     * - AMOUNT 券：amount=discountValue, unit=¥/$（取当前货币符号）
+     * - PERCENT 券：amount=discountValue(去掉小数), unit=折（兼容 up-coupon 展示）
+     *   PERCENT 若希望显示"8.5折"则需后端预格式化；这里采用 up-coupon 默认折扣样式时
+     *   传入 amount=8.5 unit="折"（前端本地格式化）
+     * - condition 由 minOrderAmount 拼装
+     * - validity 由 startTime + endTime 拼装
+     * - claimed 由 claimedByMe 决定（需后端在 list 接口 join 当前用户的 user_coupon）
+     */
+    normalizeCoupon(c) {
+      const isPercent = (c.type || '').toUpperCase() === 'PERCENT'
+      const rawValue = Number(c.discountValue || 0)
+      // AMOUNT 取纯数字交给 up-coupon 渲染主金额;
+      // PERCENT 用 10 - value/10 得到"几折"语义(8.5折 = 打85折)
+      let amount
+      let unit
+      if (isPercent) {
+        amount = String(rawValue).replace(/\.0+$/, '')
+        unit = '折'
+      } else {
+        amount = String(rawValue).replace(/[^\d.]/g, '')
+        unit = this.currencySymbol
+      }
+      // typeLabel 给 up-coupon 的 desc 区域作为副标题,优先 description 字段
+      const typeLabel = c.description || (isPercent ? '折扣券' : '满减券')
+      // condition 拼装
+      const minAmt = Number(c.minOrderAmount || 0)
+      const condition = minAmt > 0 ? `满${this.formatMoney(minAmt)}可用` : '无门槛'
+      // validity 拼装:优先显示结束日期;若 startTime 存在则一并显示
+      const validity = this.formatValidity(c.startTime, c.endTime)
+      const category = this.inferCategory(c, typeLabel)
+      return {
+        id: c.id,
+        category,
+        typeLabel,
+        amount,
+        unit,
+        name: c.name || '',
+        condition,
+        validity,
+        claimed: Boolean(c.claimedByMe || c.claimed),
+        themeType: CATEGORY_TO_THEME[category] || 'primary',
+        actionText: i18n.t('couponCenter.goClaim') || '立即领取',
+        claimedText: i18n.t('couponCenter.claimed') || '已领取',
+      }
+    },
+
+    // 货币符号已移到 computed,这里只保留金额/日期格式化辅助方法
+    formatMoney(v) {
+      return `${this.currencySymbol}${Number(v).toFixed(2)}`
+    },
+
+    formatValidity(start, end) {
+      const fmt = (t) => {
+        if (!t) return ''
+        // 后端返 LocalDateTime 形如 "2026-12-31T23:59:59" 或 "2026-12-31 23:59:59"
+        const d = new Date(t.replace(' ', 'T'))
+        if (Number.isNaN(d.getTime())) return ''
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      }
+      const s = fmt(start)
+      const e = fmt(end)
+      if (s && e) return `${s} 至 ${e}`
+      if (e) return `至 ${e} 前使用`
+      if (s) return `${s} 起使用`
+      return '长期有效'
+    },
+
+    // 历史数据兜底:从 description / typeLabel 文本中识别分类
+    inferCategory(c, typeLabel = '') {
+      const t = (typeLabel || '').toLowerCase()
+      if (t.includes('运费')) return 'shipping'
+      if (t.includes('现金')) return 'cash'
+      if (t.includes('礼品') || t.includes('赠')) return 'gift'
+      if (t.includes('限时') || t.includes('秒杀')) return 'flash'
+      if (t.includes('新人')) return 'new'
+      if (t.includes('会员') || t.includes('vip')) return 'member'
+      // 按 type 简单归类
+      if ((c.type || '').toUpperCase() === 'PERCENT') return 'discount'
+      return 'discount'
+    },
+
+    /** 将后端 endTime 转成倒计时秒数,无 endTime 时不启用倒计时 */
+    applyCountdownFromServer(endTime) {
+      if (!endTime) {
+        // 后端无 endTime 时,关闭倒计时避免给用户制造虚假紧迫感
+        this.totalSeconds = 0
+        return
+      }
+      const diff = Math.floor((new Date(endTime).getTime() - Date.now()) / 1000)
+      this.totalSeconds = Math.max(0, diff)
     },
 
     goBack() {
@@ -212,7 +324,8 @@ export default {
     },
 
     onUse() {
-      uni.showToast({ title: '前往使用', icon: 'none' })
+      // 跳到已领取的优惠券页(已注册),而非 toast 占位
+      uni.navigateTo({ url: '/pages/user/coupons' })
     },
 
     startCountdown() {
@@ -231,6 +344,26 @@ export default {
   min-height: 100vh;
   background: var(--color-background);
   padding-bottom: 128rpx;
+}
+
+/* 优惠券卡片:由 uview-plus u-coupon 组件自带样式渲染;此处只保留列表间距 */
+.coupon-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  padding: 0 32rpx 24rpx;
+}
+
+.coupon-list >>> .up-coupon {
+  /* 让卡片在 H5 端有合理内边距 */
+  margin: 0;
+}
+
+.empty-tip {
+  padding: 96rpx 0;
+  text-align: center;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
 }
 
 /* 深色导航栏 */
@@ -383,175 +516,6 @@ export default {
   background: var(--color-primary);
   color: var(--color-text);
   font-weight: var(--font-weight-semibold);
-}
-
-/* 优惠券列表 */
-.coupon-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-  padding: 0 32rpx 24rpx;
-}
-
-.coupon-card {
-  position: relative;
-  display: flex;
-  gap: 16rpx;
-  padding: 28rpx 24rpx;
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-}
-
-.coupon-card::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 6rpx;
-  background: linear-gradient(180deg, var(--color-primary-light), var(--color-primary-dark));
-  border-radius: 3rpx 0 0 3rpx;
-}
-
-.coupon-card.claimed::before {
-  background: var(--color-divider);
-}
-
-.coupon-card.claimed {
-  opacity: 0.55;
-}
-
-/* 左侧面额 */
-.coupon-amount-area {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 120rpx;
-  flex-shrink: 0;
-}
-
-.coupon-type-label {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
-}
-
-.coupon-amount-row {
-  display: flex;
-  align-items: baseline;
-  gap: 2rpx;
-  margin-top: 4rpx;
-}
-
-.coupon-currency {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-primary-dark);
-}
-
-.coupon-amount {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-primary-dark);
-  line-height: 1;
-}
-
-.coupon-amount.amount-claimed {
-  color: var(--color-text-tertiary);
-}
-
-.coupon-unit {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-primary-dark);
-}
-
-/* 中间详情 */
-.coupon-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-width: 0;
-}
-
-.coupon-name-row {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-}
-
-.coupon-name {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.coupon-name.name-claimed {
-  color: var(--color-text-tertiary);
-}
-
-.coupon-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4rpx 12rpx;
-  border-radius: var(--radius-sm);
-  font-size: 20rpx;
-  font-weight: var(--font-weight-bold);
-  flex-shrink: 0;
-}
-
-.coupon-condition {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  margin-top: 8rpx;
-}
-
-.coupon-validity {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
-  margin-top: 4rpx;
-}
-
-.text-claimed {
-  color: var(--color-text-tertiary) !important;
-}
-
-/* 右侧按钮 */
-.coupon-action {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.claim-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12rpx 28rpx;
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  transition: all 0.15s ease;
-}
-
-.claim-btn:active {
-  transform: scale(0.96);
-}
-
-.btn-active {
-  background: var(--color-primary);
-  color: var(--color-text);
-}
-
-.btn-claimed {
-  background: var(--color-divider);
-  color: var(--color-text-tertiary);
 }
 
 /* 底部汇总栏 */

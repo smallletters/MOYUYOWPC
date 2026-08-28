@@ -1,13 +1,13 @@
-<template>
+﻿<template>
   <view class="ar-tryon-page">
     <!-- 导航栏 -->
     <view class="nav-bar">
       <view class="nav-btn" @click="goBack">
-        <text class="nav-back"><text class="luc luc-arrow-left"></text></text>
+        <text class="nav-back"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="nav-title">AR 试穿</text>
       <view class="nav-btn">
-        <text class="nav-share"><text class="luc luc-upload"></text></text>
+        <text class="nav-share"><text class="luc luc-upload" /></text>
       </view>
     </view>
 
@@ -20,7 +20,7 @@
           <!-- 站位引导 -->
           <view v-if="!arActive" class="ar-guide" @click="startAr">
             <view class="guide-circle">
-              <text class="guide-icon"><text class="luc luc-smartphone"></text></text>
+              <text class="guide-icon"><text class="luc luc-smartphone" /></text>
             </view>
             <text class="guide-text">点击开始 AR 试穿</text>
           </view>
@@ -44,7 +44,7 @@
       <!-- 功能按钮行 -->
       <view class="action-row">
         <view class="action-btn" @click="toggleCamera">
-          <text class="action-icon"><text class="luc luc-refresh-cw"></text></text>
+          <text class="action-icon"><text class="luc luc-refresh-cw" /></text>
           <text class="action-label">切换镜头</text>
         </view>
         <view class="action-btn capture-btn" @click="capturePhoto">
@@ -53,7 +53,7 @@
           </view>
         </view>
         <view class="action-btn" @click="toggleFlash">
-          <text class="action-icon luc" :class="$luc(flashOn  ?  'zap'  :  'flashlight')"></text>
+          <text class="action-icon luc" :class="$luc(flashOn ? 'zap' : 'flashlight')" />
           <text class="action-label">{{ flashOn ? '闪光开' : '闪光关' }}</text>
         </view>
       </view>
@@ -65,7 +65,7 @@
       <view class="panel-header">
         <text class="panel-title">选择商品试穿</text>
         <view class="panel-close" @click="goBack">
-          <text class="panel-close-text"><text class="luc luc-x"></text></text>
+          <text class="panel-close-text"><text class="luc luc-x" /></text>
         </view>
       </view>
 
@@ -97,7 +97,7 @@
             <view class="thumb-img" :style="{ background: product.thumbBg }" />
             <text class="thumb-name">{{ product.name }}</text>
             <view v-if="currentProduct.id === product.id" class="thumb-check">
-              <text class="thumb-check-text"><text class="luc luc-check"></text></text>
+              <text class="thumb-check-text"><text class="luc luc-check" /></text>
             </view>
           </view>
         </view>
@@ -116,7 +116,7 @@
             @click="selectedColor = color.name"
           >
             <view v-if="selectedColor === color.name" class="color-check">
-              <text class="color-check-text"><text class="luc luc-check"></text></text>
+              <text class="color-check-text"><text class="luc luc-check" /></text>
             </view>
           </view>
         </view>
@@ -144,7 +144,10 @@
           <text class="try-again-text">重新试穿</text>
         </view>
         <view class="add-to-cart-btn" @click="addToCart">
-          <text class="add-cart-text"><text class="luc luc-shopping-bag"></text> 加入购物车 · {{ currentProduct.price }}</text>
+          <text class="add-cart-text">
+            <text class="luc luc-shopping-bag" />
+            加入购物车 · {{ currentProduct.price }}
+          </text>
         </view>
       </view>
     </view>

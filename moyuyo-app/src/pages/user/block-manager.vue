@@ -1,7 +1,9 @@
-<template>
+﻿<template>
   <view class="page">
     <view class="header">
-      <view class="nav-back" @tap="goBack"><text class="back-icon"><text class="luc luc-arrow-left"></text></text></view>
+      <view class="nav-back" @tap="goBack">
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+      </view>
       <text class="title">黑名单管理</text>
     </view>
 
@@ -41,7 +43,9 @@ async function load() {
     blocks.value = res?.records || res || []
   } catch (e) {
     console.warn('[block] load failed', e)
-  } finally { loading.value = false }
+  } finally {
+    loading.value = false
+  }
 }
 
 function showAddDialog() {
@@ -82,32 +86,131 @@ async function unblock(b) {
 
 function formatTime(t) {
   if (!t) return ''
-  try { const d = new Date(t); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}` } catch { return '' }
+  try {
+    const d = new Date(t)
+    return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+  } catch {
+    return ''
+  }
 }
 
-function goBack() { uni.navigateBack() }
-onMounted(() => { load() })
+function goBack() {
+  uni.navigateBack()
+}
+onMounted(() => {
+  load()
+})
 </script>
 
 <style lang="scss" scoped>
-.page { min-height: 100vh; background: var(--color-background); }
-.header { display: flex; align-items: center; height: 88rpx; padding: 0 24rpx; background: var(--color-surface); border-bottom: 1rpx solid var(--color-divider); }
-.nav-back { width: 60rpx; }
-.back-icon { font-size: 44rpx; color: var(--color-primary); }
-.title { flex: 1; text-align: center; font-size: 32rpx; font-weight: 600; }
-.tip { font-size: 24rpx; color: var(--color-text-tertiary); padding: 16rpx 24rpx; line-height: 1.5; }
-.loading { padding: 60rpx 24rpx; text-align: center; }
-.loading-text { font-size: 26rpx; color: var(--color-text-tertiary); }
-.empty { padding: 80rpx 24rpx; text-align: center; }
-.empty-text { font-size: 26rpx; color: var(--color-text-tertiary); }
-.block-list { padding: 0 16rpx; display: flex; flex-direction: column; gap: 12rpx; }
-.block-card { display: flex; gap: 16rpx; align-items: center; padding: 20rpx; background: var(--color-surface); border-radius: 16rpx; }
-.avatar { width: 64rpx; height: 64rpx; border-radius: 50%; background: #999; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 28rpx; }
-.info { flex: 1; display: flex; flex-direction: column; gap: 4rpx; }
-.name { font-size: 28rpx; font-weight: 600; }
-.reason { font-size: 22rpx; color: var(--color-text-tertiary); }
-.time { font-size: 22rpx; color: var(--color-text-tertiary); }
-.unblock { padding: 8rpx 16rpx; border: 1rpx solid var(--color-primary); color: var(--color-primary); border-radius: 999rpx; font-size: 22rpx; }
-.bottom-bar { padding: 24rpx; }
-.add-btn { height: 88rpx; border-radius: 44rpx; background: var(--color-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 28rpx; }
+.page {
+  min-height: 100vh;
+  background: var(--color-background);
+}
+.header {
+  display: flex;
+  align-items: center;
+  height: 88rpx;
+  padding: 0 24rpx;
+  background: var(--color-surface);
+  border-bottom: 1rpx solid var(--color-divider);
+}
+.nav-back {
+  width: 60rpx;
+}
+.back-icon {
+  font-size: 44rpx;
+  color: var(--color-primary);
+}
+.title {
+  flex: 1;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+.tip {
+  font-size: 24rpx;
+  color: var(--color-text-tertiary);
+  padding: 16rpx 24rpx;
+  line-height: 1.5;
+}
+.loading {
+  padding: 60rpx 24rpx;
+  text-align: center;
+}
+.loading-text {
+  font-size: 26rpx;
+  color: var(--color-text-tertiary);
+}
+.empty {
+  padding: 80rpx 24rpx;
+  text-align: center;
+}
+.empty-text {
+  font-size: 26rpx;
+  color: var(--color-text-tertiary);
+}
+.block-list {
+  padding: 0 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+.block-card {
+  display: flex;
+  gap: 16rpx;
+  align-items: center;
+  padding: 20rpx;
+  background: var(--color-surface);
+  border-radius: 16rpx;
+}
+.avatar {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: #999;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+}
+.info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+.name {
+  font-size: 28rpx;
+  font-weight: 600;
+}
+.reason {
+  font-size: 22rpx;
+  color: var(--color-text-tertiary);
+}
+.time {
+  font-size: 22rpx;
+  color: var(--color-text-tertiary);
+}
+.unblock {
+  padding: 8rpx 16rpx;
+  border: 1rpx solid var(--color-primary);
+  color: var(--color-primary);
+  border-radius: 999rpx;
+  font-size: 22rpx;
+}
+.bottom-bar {
+  padding: 24rpx;
+}
+.add-btn {
+  height: 88rpx;
+  border-radius: 44rpx;
+  background: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+}
 </style>

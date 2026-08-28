@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <view class="shipping-calculator">
     <view class="nav-header">
       <view class="nav-back" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="nav-title">运费计算</text>
       <view class="nav-placeholder" />
@@ -11,7 +11,7 @@
     <scroll-view class="scroll" scroll-y>
       <view class="section-card">
         <view class="section-title">
-          <text class="section-icon"><text class="luc luc-map-pin"></text></text>
+          <text class="section-icon"><text class="luc luc-map-pin" /></text>
           <text>收货地址</text>
         </view>
         <view class="form-row">
@@ -60,7 +60,7 @@
 
       <view class="section-card">
         <view class="section-title">
-          <text class="section-icon"><text class="luc luc-package"></text></text>
+          <text class="section-icon"><text class="luc luc-package" /></text>
           <text>包裹信息</text>
         </view>
         <view class="form-row">
@@ -81,7 +81,7 @@
 
       <view v-if="results.length > 0" class="results-section">
         <view class="section-title">
-          <text class="section-icon"><text class="luc luc-truck"></text></text>
+          <text class="section-icon"><text class="luc luc-truck" /></text>
           <text>可选配送方式</text>
         </view>
         <view
@@ -108,7 +108,7 @@
 
       <view v-if="history.length > 0" class="history-section">
         <view class="section-title">
-          <text class="section-icon"><text class="luc luc-clock"></text></text>
+          <text class="section-icon"><text class="luc luc-clock" /></text>
           <text>最近查询</text>
         </view>
         <view v-for="(item, idx) in history" :key="idx" class="history-item">
@@ -130,7 +130,9 @@
             @click="selectCountry(country)"
           >
             <text class="modal-item-name">{{ country.name }}</text>
-            <text v-if="selectedCountry.code === country.code" class="modal-check"><text class="luc luc-check"></text></text>
+            <text v-if="selectedCountry.code === country.code" class="modal-check">
+              <text class="luc luc-check" />
+            </text>
           </view>
         </scroll-view>
       </view>

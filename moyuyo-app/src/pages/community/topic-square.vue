@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="topic-square">
     <view class="page-header">
       <view class="back" aria-label="返回" @click="goBack">

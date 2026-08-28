@@ -15,6 +15,8 @@ public class PetVO {
 
   private String name;
 
+  private String type;
+
   private String species;
 
   private String breed;

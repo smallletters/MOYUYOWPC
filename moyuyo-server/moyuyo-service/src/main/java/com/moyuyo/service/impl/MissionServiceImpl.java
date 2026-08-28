@@ -292,6 +292,8 @@ public class MissionServiceImpl implements MissionService {
     map.put("completed", completed);
     map.put("claimed", claimed);
     map.put("earned", claimed == 1);
+    // 任务跳转 action 类型（前端不再用 name.includes 软匹配，硬编码 enum 路由）
+    map.put("actionType", resolveActionType(m.getName()));
     // 兼容前端状态文案
     if (claimed == 1) {
       map.put("statusText", "已领取");
@@ -303,6 +305,40 @@ public class MissionServiceImpl implements MissionService {
       map.put("statusText", "未完成");
     }
     return map;
+  }
+
+  /**
+   * 把任务 name 映射成 actionType（前端按 actionType 路由跳转）。
+   * 已知动作类型（与前端 mission-center.vue 中的 ActionMap 对齐）：
+   *   - BROWSE_PRODUCTS 浏览商品 -> 首页
+   *   - CHECKIN_DAILY    每日签到 -> 签到页
+   *   - SHARE_PRODUCT    分享商品 -> 分享页
+   *   - PET_HUB_INTERACT Pet Hub 互动 -> pet tab
+   *   - PURCHASE_ORDER   下单/购物 -> 首页
+   *   - POST_COMMUNITY   发社区笔记 -> 社区 tab
+   *   - INVITE_FRIEND    邀请好友 -> 邀请页
+   * <p>
+   * 匹配顺序：先精确 equals，再按关键词 fallback，避免误匹配。
+   * name 改变不会影响跳转逻辑（前端按 actionType 路由），后端可自由改文案。
+   */
+  private String resolveActionType(String name) {
+    if (name == null) return "UNKNOWN";
+    String n = name.trim();
+    // 精确匹配优先
+    if (n.equals("每日签到") || n.equalsIgnoreCase("CHECKIN")) return "CHECKIN_DAILY";
+    if (n.equals("邀请好友") || n.equalsIgnoreCase("INVITE")) return "INVITE_FRIEND";
+    if (n.equals("分享商品") || n.equalsIgnoreCase("SHARE")) return "SHARE_PRODUCT";
+    if (n.equals("Pet Hub 互动") || n.equalsIgnoreCase("PET_HUB")) return "PET_HUB_INTERACT";
+    if (n.equals("发布社区笔记") || n.equals("发布 1 条社区笔记") || n.equalsIgnoreCase("POST_NOTE")) return "POST_COMMUNITY";
+    // 关键词 fallback（基于历史文案）
+    if (n.contains("签到")) return "CHECKIN_DAILY";
+    if (n.contains("邀请")) return "INVITE_FRIEND";
+    if (n.contains("分享")) return "SHARE_PRODUCT";
+    if (n.toLowerCase().contains("pet hub")) return "PET_HUB_INTERACT";
+    if (n.contains("笔记") || n.contains("社区")) return "POST_COMMUNITY";
+    if (n.contains("浏览")) return "BROWSE_PRODUCTS";
+    if (n.contains("购物") || n.contains("下单") || n.contains("订单")) return "PURCHASE_ORDER";
+    return "UNKNOWN";
   }
 
   /**

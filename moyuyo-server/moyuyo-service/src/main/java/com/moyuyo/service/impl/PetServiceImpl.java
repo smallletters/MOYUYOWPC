@@ -75,6 +75,8 @@ public class PetServiceImpl implements PetService {
   public PetEntity createPet(Long userId, PetEntity pet) {
     pet.setId(null);
     pet.setUserId(userId);
+    // 前端 picker 直接传"狗狗/猫咪/兔子/鸟类/其他"中文，需映射成 type 枚举值再写入 DB
+    pet.setType(deriveType(pet.getSpecies(), pet.getType()));
     petMapper.insert(pet);
     log.info("Pet created: userId={}, petId={}, name={}", userId, pet.getId(), pet.getName());
     return pet;
@@ -88,8 +90,29 @@ public class PetServiceImpl implements PetService {
       throw new IllegalArgumentException("宠物不存在或无权操作");
     }
     pet.setUserId(userId);
+    pet.setType(deriveType(pet.getSpecies(), pet.getType()));
     petMapper.updateById(pet);
     return petMapper.selectById(pet.getId());
+  }
+
+  /**
+   * 把前端传过来的种类归一化为 DB type（DOG / CAT / OTHER）。
+   * 兼容两种输入：
+   *  1. 前端 species 已是英文枚举（DOG/CAT/...）→ 直接复用
+   *  2. 前端 species 是中文（狗狗/猫咪/...）→ 关键词映射
+   * 已为 null直接回退 OTHER。
+   */
+  private String deriveType(String species, String type) {
+    if (type != null && !type.isBlank()) {
+      String u = type.trim().toUpperCase();
+      if (u.equals("DOG") || u.equals("CAT") || u.equals("OTHER")) return u;
+    }
+    if (species == null) return "OTHER";
+    String s = species.trim();
+    if (s.isEmpty()) return "OTHER";
+    if (s.contains("狗") || s.equalsIgnoreCase("DOG")) return "DOG";
+    if (s.contains("猫") || s.equalsIgnoreCase("CAT")) return "CAT";
+    return "OTHER";
   }
 
   @Override

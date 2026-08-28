@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="mission-center">
     <view class="nav-header">
       <view class="nav-back" @click="goBack">
@@ -198,9 +198,24 @@
 </template>
 
 <script>
-import { missionApi } from '@/api'
+import { missionApi, productApi } from '@/api'
 
 const CIRCUMFERENCE = 314.16
+
+/**
+ * 任务 actionType → 路由跳转映射。
+ * 与后端 MissionServiceImpl.resolveActionType 对齐。
+ * type: 'tab' = uni.switchTab  /  'page' = uni.navigateTo
+ */
+const ACTION_ROUTE_MAP = {
+  BROWSE_PRODUCTS: { type: 'tab', url: '/pages/tabbar/home', toast: '请浏览 5 件不同商品' },
+  CHECKIN_DAILY: { type: 'page', url: '/pages/user/check-in' },
+  SHARE_PRODUCT: { type: 'page', url: '/pages/goods/share-product' },
+  PET_HUB_INTERACT: { type: 'tab', url: '/pages/tabbar/pet' },
+  PURCHASE_ORDER: { type: 'tab', url: '/pages/tabbar/home' },
+  POST_COMMUNITY: { type: 'tab', url: '/pages/tabbar/community' },
+  INVITE_FRIEND: { type: 'page', url: '/pages/user/invite' },
+}
 
 export default {
   data() {
@@ -310,7 +325,8 @@ export default {
       }
       // 分享任务：跳到分享海报页，用户选择分享渠道后会触发后端埋点
       if (name.includes('分享')) {
-        uni.navigateTo({ url: '/pages/goods/share-product' })
+        // 取销量前 3 商品之一作为分享目标（异步加载，完成后跳转）
+        this.pickAndOpenShareProduct()
         return
       }
       // Pet Hub 互动任务：跳到宠物 Tab 下的 Pet Hub
@@ -328,13 +344,46 @@ export default {
         uni.switchTab({ url: '/pages/tabbar/community' })
         return
       }
-      // 邀请任务：跳到邀请好友页
+      // 邀请任务：跳到邀请好友页(与 user.vue 入口对齐,使用 pages/user/invite)
       if (name.includes('邀请')) {
-        uni.navigateTo({ url: '/pages/user/invite-friends' })
+        uni.navigateTo({ url: '/pages/user/invite' })
         return
       }
       // 兜底：原类型 tab 的首页
       uni.showToast({ title: `前往: ${mission.name}`, icon: 'none' })
+    },
+
+    /**
+     * 取销量前 3 商品之一（随机）作为分享目标。
+     * 失败兜底：无 id 跳转到 share-product（页面会提示缺少商品 id）。
+     */
+    async pickAndOpenShareProduct() {
+      try {
+        uni.showLoading({ title: '加载中...', mask: true })
+        const data = await productApi.getProductList({
+          page: 1,
+          size: 3,
+          sortBy: 'sales',
+          sortOrder: 'desc',
+        })
+        const list = (data && (data.records || data.list || data)) || []
+        const ids = list
+          .map((it) => it && (it.id || it.productId))
+          .filter((v) => v !== undefined && v !== null && v !== '')
+          .map((v) => String(v))
+        if (ids.length > 0) {
+          // 在前 3 里随机选一个，避免每次都分享同一商品显得机械
+          const pick = ids[Math.floor(Math.random() * ids.length)]
+          uni.navigateTo({ url: `/pages/goods/share-product?id=${pick}` })
+          return
+        }
+      } catch (e) {
+        console.warn('[mission] fetch top products failed', e)
+      } finally {
+        uni.hideLoading()
+      }
+      // 兜底：仍跳 share-product，由页面提示缺少商品 id
+      uni.navigateTo({ url: '/pages/goods/share-product' })
     },
   },
 }
@@ -371,7 +420,8 @@ export default {
 
 .back-icon {
   font-size: 40rpx;
-  color: var(--color-primary, #007aff);
+  /* 改用品牌主色深一档 */
+  color: var(--color-primary-dark, #b8a66b);
   font-weight: 300;
 }
 
@@ -522,7 +572,7 @@ export default {
 
 .tab-btn.active {
   font-weight: 600;
-  color: var(--color-primary, #007aff);
+  color: var(--color-primary-dark, #b8a66b);
 }
 
 .tab-btn.active::after {
@@ -534,7 +584,7 @@ export default {
   width: 64rpx;
   height: 4rpx;
   border-radius: 2rpx;
-  background: var(--color-primary, #007aff);
+  background: var(--color-primary, #dbc98a);
 }
 
 .tab-panel {
@@ -686,7 +736,7 @@ export default {
 }
 
 .badge-icon.earned {
-  background: linear-gradient(135deg, var(--color-primary, #007aff), #0064d6);
+  background: linear-gradient(135deg, #e8ddb5, #dbc98a);
 }
 
 .badge-icon:not(.earned) {

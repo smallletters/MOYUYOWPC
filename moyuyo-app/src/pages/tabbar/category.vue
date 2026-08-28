@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="category">
     <!-- 顶部：一级分类 Tab（来自后端 mo_category.level=1） -->
     <view class="tabs">
@@ -60,13 +60,12 @@
             v-for="p in products"
             :key="p.id"
             class="product-card"
-            @click="goDetail(p.id)"
-          >
+            @click="goDetail(p.id)">
             <image :src="p.image" class="product-image" mode="aspectFill" />
             <view class="product-info">
               <text class="product-name text-ellipsis-2">{{ p.name }}</text>
               <view class="product-bottom">
-                <text class="price">¥{{ p.price }}</text>
+                <text class="price">${{ p.price }}</text>
                 <text v-if="p.ip" class="product-ip" :class="`tag-${p.ip.toLowerCase()}`">
                   {{ p.ip }}
                 </text>
@@ -75,7 +74,13 @@
           </view>
           <view v-if="!loading && products.length === 0" class="empty">暂无商品</view>
           <view v-if="loading" class="loading">加载中…</view>
-          <view v-if="!noMore && !loading && products.length > 0" class="loadmore" @click="onLoadMore">加载更多</view>
+          <view
+            v-if="!noMore && !loading && products.length > 0"
+            class="loadmore"
+            @click="onLoadMore"
+          >
+            加载更多
+          </view>
           <view v-if="noMore && products.length > 0" class="loadmore done">— 没有更多了 —</view>
         </view>
       </scroll-view>
@@ -124,7 +129,9 @@ export default {
       try {
         const list = await productApi.getCategoryList()
         // 后端返回 level=1 + children 树，过滤掉空一级
-        const tops = (Array.isArray(list) ? list : []).filter((c) => Number(c.level) === 1 || !c.parentId || c.parentId === '0' || c.parentId === 0)
+        const tops = (Array.isArray(list) ? list : []).filter(
+          (c) => Number(c.level) === 1 || !c.parentId || c.parentId === '0' || c.parentId === 0,
+        )
         this.topCategories = tops
         if (tops.length) {
           this.activeTopId = tops[0].id
@@ -192,7 +199,12 @@ export default {
           params.parentCategoryId = this.activeTopId
         }
         const pageResult = await productApi.getProductList(params)
-        const list = (pageResult && pageResult.records) ? pageResult.records : (Array.isArray(pageResult) ? pageResult : [])
+        const list =
+          pageResult && pageResult.records
+            ? pageResult.records
+            : Array.isArray(pageResult)
+              ? pageResult
+              : []
         const mapped = list.map((p) => ({
           id: p.id,
           name: p.name,
@@ -219,7 +231,10 @@ export default {
     /** 主图解析：mainImage 优先，images 兜底 */
     resolveImage(p) {
       if (!p) return ''
-      const raw = p.mainImage || (Array.isArray(p.images) && p.images[0] && (p.images[0].src || p.images[0].imageUrl)) || ''
+      const raw =
+        p.mainImage ||
+        (Array.isArray(p.images) && p.images[0] && (p.images[0].src || p.images[0].imageUrl)) ||
+        ''
       if (!raw) return ''
       if (raw.startsWith('http')) return raw
       return raw
@@ -228,7 +243,10 @@ export default {
     /** 去掉 HTML 标签，便于预览描述 */
     stripHtml(s) {
       if (!s) return ''
-      return String(s).replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
+      return String(s)
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .trim()
     },
 
     detectIP(p) {
@@ -246,10 +264,17 @@ export default {
         try {
           const parsed = JSON.parse(raw)
           if (Array.isArray(parsed)) {
-            tags = parsed.map((t) => (typeof t === 'string' ? t : (t && t.name) || '').toString().toUpperCase()).filter(Boolean)
+            tags = parsed
+              .map((t) =>
+                (typeof t === 'string' ? t : (t && t.name) || '').toString().toUpperCase(),
+              )
+              .filter(Boolean)
           }
         } catch (_) {
-          tags = raw.split(/[,;\s]+/).map((s) => s.toUpperCase()).filter(Boolean)
+          tags = raw
+            .split(/[,;\s]+/)
+            .map((s) => s.toUpperCase())
+            .filter(Boolean)
         }
       }
       return ['MILO', 'LUNA', 'ATLAS', 'OLIVE'].find((ip) => tags.includes(ip)) || null
@@ -419,5 +444,8 @@ export default {
   font-size: var(--font-size-sm);
   grid-column: 1 / -1;
 }
-.loadmore.done { color: var(--color-text-tertiary); opacity: 0.7; }
+.loadmore.done {
+  color: var(--color-text-tertiary);
+  opacity: 0.7;
+}
 </style>

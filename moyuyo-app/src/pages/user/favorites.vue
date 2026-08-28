@@ -1,19 +1,15 @@
-<template>
+﻿<template>
   <view class="favorites">
     <!-- 顶部导航栏 -->
     <view class="header">
-      <view class="header-btn" @click="goBack" aria-label="返回">
+      <view class="header-btn" aria-label="返回" @click="goBack">
         <text class="header-btn-icon">
-          <text class="luc luc-arrow-left"></text>
+          <text class="luc luc-arrow-left" />
         </text>
       </view>
       <text class="header-title">我的收藏</text>
       <!-- 右上角:管理模式切换 -->
-      <view
-        class="header-btn header-action"
-        :class="{ active: editing }"
-        @click="onToggleEdit"
-      >
+      <view class="header-btn header-action" :class="{ active: editing }" @click="onToggleEdit">
         <text class="header-btn-text">{{ editing ? '完成' : '管理' }}</text>
       </view>
     </view>
@@ -23,8 +19,7 @@
       v-if="!editing"
       class="filter-bar"
       scroll-x
-      show-scrollbar="false"
-    >
+      show-scrollbar="false">
       <view
         v-for="tab in filterTabs"
         :key="tab.value"
@@ -38,14 +33,11 @@
 
     <!-- 加载态 -->
     <view v-if="loading && products.length === 0" class="empty-tip">
-      <text class="empty-tip-text">加载中...</text>
+      <text class="empty-tip-text">{{ $t('common.loading') }}</text>
     </view>
 
     <!-- 空状态 -->
-    <view
-      v-else-if="!loading && products.length === 0"
-      class="empty-tip"
-    >
+    <view v-else-if="!loading && products.length === 0" class="empty-tip">
       <text class="empty-tip-icon">♡</text>
       <text class="empty-tip-text">还没有收藏的商品</text>
       <view class="empty-tip-btn" @click="goShopping">去逛逛</view>
@@ -65,8 +57,8 @@
           v-if="editing"
           class="select-box"
           :class="{ checked: item.selected }"
-          @click.stop="onSelectItem(item)"
           aria-label="选择"
+          @click.stop="onSelectItem(item)"
         >
           <text v-if="item.selected" class="select-box-tick">✓</text>
         </view>
@@ -75,6 +67,7 @@
           <image
             :src="item.image || defaultImage"
             mode="aspectFill"
+            lazy-load
             class="product-image"
             @error="onImageError(item)"
           />
@@ -83,38 +76,33 @@
             v-for="badge in item.badges"
             :key="badge"
             class="badge"
-            :class="badgeClass(badge)"
-          >
+            :class="badgeClass(badge)">
             {{ badge }}
           </text>
           <!-- 非管理态下显示收藏心形,点击直接取消收藏 -->
           <view
             v-if="!editing"
             class="fav-btn"
-            @click.stop="toggleFav(item)"
             aria-label="取消收藏"
-          >
-            <text
-              class="fav-icon"
-              :class="{ 'fav-active': item.isFav }"
-            >{{ item.isFav ? '❤' : '♡' }}</text>
+            @click.stop="toggleFav(item)">
+            <text class="fav-icon" :class="{ 'fav-active': item.isFav }">
+              {{ item.isFav ? '❤' : '♡' }}
+            </text>
           </view>
         </view>
 
         <view class="product-info">
           <text class="product-name">{{ item.name || '商品已下架' }}</text>
           <view class="product-price-row">
-            <text class="product-price">¥{{ formatPrice(item.price) }}</text>
+            <text class="product-price">${{ formatPrice(item.price) }}</text>
             <text
               v-if="item.originalPrice && item.originalPrice > item.price"
               class="product-original"
             >
-              ¥{{ formatPrice(item.originalPrice) }}
+              ${{ formatPrice(item.originalPrice) }}
             </text>
           </view>
-          <text v-if="item.favoritedAt" class="product-time">
-            收藏于 {{ item.favoritedAt }}
-          </text>
+          <text v-if="item.favoritedAt" class="product-time">收藏于 {{ item.favoritedAt }}</text>
         </view>
       </view>
 
@@ -132,10 +120,7 @@
       <template v-if="editing">
         <!-- 管理态:全选 + 批量删除 -->
         <view class="footer-left" @click="onSelectAll">
-          <view
-            class="select-box"
-            :class="{ checked: isAllSelected, partial: isPartialSelected }"
-          >
+          <view class="select-box" :class="{ checked: isAllSelected, partial: isPartialSelected }">
             <text v-if="isAllSelected" class="select-box-tick">✓</text>
           </view>
           <text class="footer-left-text">全选</text>
@@ -151,7 +136,7 @@
         </view>
       </template>
       <template v-else>
-        <text class="stat-text">共收藏 {{ products.length }} 件商品</text>
+        <text class="stat-text">{{ $t('favorites.totalCount', { count: products.length }) }}</text>
       </template>
     </view>
   </view>
@@ -233,22 +218,21 @@ export default {
     async loadFavorites() {
       this.loading = true
       try {
+        // request.js 已解包外层 envelope,res 直接是后端 payload
         const res = await cartApi.getFavorites()
-        const list = res?.data || res
-        const records = Array.isArray(list)
-          ? list
-          : list?.records || list?.items || []
+        // 后端可能返回数组,也可能返回 IPage { records }
+        const records = Array.isArray(res) ? res : res?.records || res?.items || []
         this.favoriteRecords = records
-        // productId 去重
+        // productId 去重,避免收藏量极大时并发请求阻塞
         const productIds = Array.from(
-          new Set(records.map((r) => r.productId).filter(Boolean))
-        )
+          new Set(records.map((r) => r.productId).filter(Boolean)),
+        ).slice(0, 100)
         if (!productIds.length) {
           this.products = []
           return
         }
         const results = await Promise.allSettled(
-          productIds.map((pid) => productApi.getProductDetail(pid))
+          productIds.map((pid) => productApi.getProductDetail(pid)),
         )
         // 关联收藏时间(用同 productId 第一条记录的 createTime)
         const favTimeMap = new Map()
@@ -270,13 +254,8 @@ export default {
             if (originalPrice > price) badges.push('降价')
             // 上新:上架 30 天内
             if (detail.createTime) {
-              const created = new Date(
-                String(detail.createTime).replace(/-/g, '/')
-              )
-              if (
-                !isNaN(created.getTime()) &&
-                Date.now() - created.getTime() < 30 * 86400000
-              ) {
+              const created = new Date(String(detail.createTime).replace(/-/g, '/'))
+              if (!isNaN(created.getTime()) && Date.now() - created.getTime() < 30 * 86400000) {
                 badges.push('上新')
               }
             }
@@ -287,9 +266,7 @@ export default {
               price,
               originalPrice,
               image:
-                detail.mainImage ||
-                (Array.isArray(detail.images) && detail.images[0]?.url) ||
-                '',
+                detail.mainImage || (Array.isArray(detail.images) && detail.images[0]?.url) || '',
               badges,
               isFav: true,
               selected: false,
@@ -597,7 +574,9 @@ export default {
   border: 2rpx solid transparent;
   border-radius: var(--radius-md);
   overflow: hidden;
-  transition: transform 0.15s ease, border-color 0.18s ease;
+  transition:
+    transform 0.15s ease,
+    border-color 0.18s ease;
 }
 
 .product-card.is-selected {
@@ -679,7 +658,9 @@ export default {
   font-size: 28rpx;
   line-height: 1;
   color: rgba(255, 255, 255, 0.9);
-  transition: color 0.18s ease, transform 0.18s ease;
+  transition:
+    color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .fav-icon.fav-active {

@@ -1,10 +1,10 @@
-<template>
+﻿<template>
   <view class="health-calendar">
     <!-- 顶部导航 -->
     <view class="header">
       <view class="header-inner">
         <view class="header-btn" @click="onBack">
-          <text class="header-btn-icon"><text class="luc luc-arrow-left"></text></text>
+          <text class="header-btn-icon"><text class="luc luc-arrow-left" /></text>
         </view>
         <text class="header-title">健康日历</text>
         <view class="header-btn header-btn-primary" @click="onAddReminder">
@@ -42,11 +42,11 @@
       <!-- 月份切换 -->
       <view class="calendar-header">
         <view class="cal-nav-btn" @click="prevMonth">
-          <text class="cal-nav-arrow"><text class="luc luc-arrow-left"></text></text>
+          <text class="cal-nav-arrow"><text class="luc luc-arrow-left" /></text>
         </view>
         <text class="cal-month-label">{{ currentYear }}年{{ currentMonth + 1 }}月</text>
         <view class="cal-nav-btn" @click="nextMonth">
-          <text class="cal-nav-arrow"><text class="luc luc-chevron-right"></text></text>
+          <text class="cal-nav-arrow"><text class="luc luc-chevron-right" /></text>
         </view>
       </view>
 
@@ -111,7 +111,7 @@
       <view v-if="selectedEvents.length > 0" class="detail-list">
         <view v-for="(evt, eIdx) in selectedEvents" :key="eIdx" class="detail-item">
           <view class="detail-item-icon" :class="'detail-icon-' + evt.type">
-            <text class="detail-icon-emoji luc" :class="$luc(evt.icon)"></text>
+            <text class="detail-icon-emoji luc" :class="$luc(evt.icon)" />
           </view>
           <view class="detail-item-info">
             <view class="detail-item-top">
@@ -145,7 +145,7 @@
           :class="{ 'reminder-overdue': rem.overdue }"
         >
           <view class="reminder-icon-wrap" :class="'reminder-icon-' + rem.type">
-            <text class="reminder-icon-emoji luc" :class="$luc(rem.icon)"></text>
+            <text class="reminder-icon-emoji luc" :class="$luc(rem.icon)" />
           </view>
           <view class="reminder-info">
             <view class="reminder-info-top">
@@ -207,7 +207,7 @@
             <picker mode="date" :value="reminderForm.date" @change="onDateChange">
               <view class="form-picker">
                 <text class="form-picker-text">{{ reminderForm.date || '请选择日期' }}</text>
-                <text class="form-picker-arrow"><text class="luc luc-chevron-right"></text></text>
+                <text class="form-picker-arrow"><text class="luc luc-chevron-right" /></text>
               </view>
             </picker>
           </view>
@@ -223,7 +223,8 @@
       </view>
     </view>
   </view>
-</template><script>
+</template>
+<script>
 import { petApi } from '@/api'
 
 const WEEKDAYS = [

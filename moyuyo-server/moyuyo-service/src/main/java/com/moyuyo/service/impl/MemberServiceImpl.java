@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +29,9 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class MemberServiceImpl implements MemberService {
+
+  /** 积分有效期：12 个月 */
+  private static final int POINTS_VALID_MONTHS = 12;
 
   private final MemberMapper memberMapper;
   private final UserMapper userMapper;
@@ -81,6 +85,11 @@ public class MemberServiceImpl implements MemberService {
     log.setType(type);
     log.setBizNo(bizNo);
     log.setRemark(remark);
+    // 仅正向流水（积分发放）设置 12 月有效期；扣减/退款/兑换等流水不设
+    if (changeValue > 0) {
+      LocalDateTime expireTime = LocalDateTime.now().plusMonths(POINTS_VALID_MONTHS);
+      log.setExpireTime(expireTime);
+    }
     pointsLogMapper.insert(log);
 
     // 积分变动后自动重算会员等级 / 成长值，确保 mo_member.level 与总积分同步

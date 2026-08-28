@@ -57,7 +57,7 @@
 
         <!-- 价格提示（独立于卡片之外，呼吸感更强） -->
         <view class="price-hint">
-          <text class="price-hint-text">年付 ¥99 · 首月仅需 ¥9</text>
+          <text class="price-hint-text">年付 $99 · 首月仅需 $9</text>
         </view>
       </view>
     </view>
@@ -88,17 +88,19 @@
           <view class="ladder-body">
             <view class="ladder-head">
               <text class="ladder-name">{{ lv.name }}</text>
-              <text v-if="lv.code === currentLevelCode" class="ladder-tag">当前</text>
+              <text v-if="lv.code === currentLevelCode" class="ladder-tag">
+                {{ $t('membership.currentTag') }}
+              </text>
             </view>
             <text class="ladder-desc">{{ lv.description }}</text>
             <view class="ladder-meta">
               <view class="meta-item">
-                <text class="meta-label">积分倍率</text>
+                <text class="meta-label">{{ $t('membership.pointsRateLabel') }}</text>
                 <text class="meta-val strong">{{ lv.pointsRate }}x</text>
               </view>
               <view class="meta-divider" />
               <view class="meta-item">
-                <text class="meta-label">成长值门槛</text>
+                <text class="meta-label">{{ $t('membership.growthLabel') }}</text>
                 <text class="meta-val">{{ lv.growthThreshold }}</text>
               </view>
             </view>
@@ -140,7 +142,7 @@
       </view>
       <view class="link-divider" />
       <view class="link-item" @click="goPoints">
-        <text class="link-text">查看积分明细</text>
+        <text class="link-text">{{ $t('membership.pointsLink') }}</text>
         <text class="link-arrow"><text class="luc luc-chevron-right" /></text>
       </view>
     </view>
@@ -190,25 +192,27 @@ const greeting = computed(() => {
 // 会员卡号：直接使用后端返回的 memberNo，未返回时兜底显示
 const cardNo = computed(() => userInfo.value.memberNo || 'MY·00000000·0000')
 
-// 进度条使用用户总积分（与 tabbar/user 中显示的"积分"为同一数值），保持两端一致
+// 进度条使用后端返回的 growthValue(成长值)与等级门槛(growthThreshold)对照计算
+// 修复前用 userInfo.points(积分) 当成长值,导致进度数值无意义
 const progressPercent = computed(() => {
   const idx = levels.value.findIndex((l) => l.code === currentLevelCode.value)
   if (idx < 0) return 0
   const cur = levels.value[idx]
   const next = levels.value[idx + 1]
   if (!next) return 100
-  const curPoints = userInfo.value.points || 0
+  const curGrowth = userInfo.value.growthValue || 0
   const span = next.growthThreshold - cur.growthThreshold
   if (span <= 0) return 100
-  return Math.min(100, Math.max(0, Math.round(((curPoints - cur.growthThreshold) / span) * 100)))
+  return Math.min(100, Math.max(0, Math.round(((curGrowth - cur.growthThreshold) / span) * 100)))
 })
 
 const progressHint = computed(() => {
   const idx = levels.value.findIndex((l) => l.code === currentLevelCode.value)
   const next = levels.value[idx + 1]
-  if (!next) return `已是顶级会员 · 当前积分 ${userInfo.value.points || 0}`
-  const need = Math.max(0, next.growthThreshold - (userInfo.value.points || 0))
-  return `距 ${next.name} 还需 ${need} 积分`
+  if (!next) return `已是顶级会员 · 成长值 ${userInfo.value.growthValue || 0}`
+  const curGrowth = userInfo.value.growthValue || 0
+  const need = Math.max(0, next.growthThreshold - curGrowth)
+  return `距 ${next.name} 还需 ${need} 成长值`
 })
 
 // 专属特权（来自后端 /api/v1/member/privileges，未返回时使用兜底）

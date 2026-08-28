@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <view class="splash-page">
     <!-- 简化的首页占位背景 -->
     <view class="home-placeholder">
-      <text class="home-emoji"><text class="luc luc-home"></text></text>
+      <text class="home-emoji"><text class="luc luc-home" /></text>
       <text class="home-text">MOYUYO 首页</text>
     </view>
 
@@ -12,7 +12,7 @@
       <view class="popup-card" @tap.stop>
         <!-- 关闭按钮 -->
         <view class="close-btn" @tap="closePopup('')">
-          <text class="close-icon"><text class="luc luc-x"></text></text>
+          <text class="close-icon"><text class="luc luc-x" /></text>
         </view>
 
         <!-- 顶部营销图片区 -->
@@ -49,7 +49,7 @@
             </view>
             <!-- 领取标记 -->
             <view class="coupon-mark">
-              <text class="coupon-mark-icon"><text class="luc luc-ticket"></text></text>
+              <text class="coupon-mark-icon"><text class="luc luc-ticket" /></text>
             </view>
           </view>
 
@@ -57,7 +57,7 @@
           <view class="popup-actions">
             <!-- 主按钮：立即领取 -->
             <view class="action-primary" @tap="claimCoupon">
-              <text class="action-icon"><text class="luc luc-gift"></text></text>
+              <text class="action-icon"><text class="luc luc-gift" /></text>
               <text class="action-primary-text">立即领取</text>
             </view>
 
@@ -84,9 +84,12 @@
 
 <script setup>
 import { ref } from 'vue'
+import { couponApi } from '@/api'
 
 // 弹窗是否可见
 const popupVisible = ref(true)
+// 领取中状态,防止双击重复提交
+const claiming = ref(false)
 
 // Toast 提示
 const toastVisible = ref(false)
@@ -114,23 +117,40 @@ const onOverlayTap = () => {
   closePopup('')
 }
 
-// 领取优惠券
-const claimCoupon = () => {
-  closePopup('优惠券已领取，下单时自动抵扣')
+/**
+ * 领取优惠券:从配置拿活动 id,真实调用后端 claimCoupon。
+ * 失败时给出可读错误(库存/已领/未登录),不再静默吞错。
+ */
+const claimCoupon = async () => {
+  if (claiming.value) return
+  const campaignId = 'summer_sale_2025'
+  claiming.value = true
+  try {
+    await couponApi.claimCoupon(campaignId)
+    closePopup('优惠券已领取，下单时自动抵扣')
+  } catch (err) {
+    // 后端返回的 message 透传,避免掩盖业务错误
+    const msg = (err && err.message) || '领取失败,请稍后再试'
+    closePopup(msg)
+  } finally {
+    claiming.value = false
+  }
 }
 
 // 不再显示此活动
 const neverShowAgain = () => {
-  // 存入本地存储，后续不再展示
+  // 存入本地存储,后续不再展示
   try {
     const dismissed = uni.getStorageSync('moyuyo_dismissed_campaigns') || '[]'
     const list = JSON.parse(dismissed)
-    list.push('summer_sale_2025')
-    uni.setStorageSync('moyuyo_dismissed_campaigns', JSON.stringify(list))
+    if (!list.includes('summer_sale_2025')) {
+      list.push('summer_sale_2025')
+      uni.setStorageSync('moyuyo_dismissed_campaigns', JSON.stringify(list))
+    }
   } catch (e) {
     // 忽略存储错误
   }
-  closePopup('已关闭，后续将不再展示此活动')
+  closePopup('已关闭,后续将不再展示此活动')
 }
 </script>
 

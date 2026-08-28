@@ -1,32 +1,14 @@
-<template>
+﻿<template>
   <view class="points-shop">
     <view class="balance-card card">
       <text class="balance-label">Your Points</text>
       <text class="balance-value">{{ points }}</text>
-      <view v-if="checkedIn" class="checked-in">
+      <view v-if="loading" class="loading-line">加载中…</view>
+      <view v-else-if="checkedIn" class="checked-in">
         <text class="luc luc-check" />
         Today checked in
       </view>
       <view v-else class="btn btn-sm btn-outline" @click="onCheckin">Check in +5</view>
-    </view>
-
-    <view class="section">
-      <text class="section-title">Redeem Rewards</text>
-      <view v-for="item in rewards" :key="item.id" class="reward-card card">
-        <image :src="item.image" class="reward-image" mode="aspectFill" />
-        <view class="reward-info">
-          <text class="reward-name">{{ item.name }}</text>
-          <text class="reward-desc">{{ item.description }}</text>
-          <text class="reward-points">{{ item.points }} pts</text>
-          <view
-            class="btn btn-sm btn-primary"
-            :class="{ disabled: points < item.points }"
-            @click="onRedeem(item)"
-          >
-            Redeem
-          </view>
-        </view>
-      </view>
     </view>
 
     <view class="section">
@@ -38,7 +20,7 @@
         </text>
         <text class="log-time">{{ formatTime(log.createdAt) }}</text>
       </view>
-      <view v-if="!logs.length" class="empty">No history</view>
+      <view v-if="!logs.length && !loading" class="empty">No history</view>
     </view>
   </view>
 </template>
@@ -53,6 +35,8 @@ export default {
       checkedIn: false,
       logs: [],
       rewards: [],
+      loading: false,
+      redeemingId: null,
     }
   },
 
@@ -62,7 +46,9 @@ export default {
 
   methods: {
     async loadData() {
+      this.loading = true
       try {
+        // request.js 已解包外层 envelope
         const [balance, logRes, goodsRes] = await Promise.all([
           pointsApi.getPointsBalance(),
           pointsApi.getPointsLog({ page: 1, size: 20 }),
@@ -70,26 +56,27 @@ export default {
           pointsApi.getPointsGoods({ page: 1, size: 50 }).catch(() => null),
         ])
         this.points = balance || 0
-        this.logs = logRes?.records || logRes || []
-        // 后端返回 IPage 时取 records,直接数组时取自身
+        // logRes 已是 IPage,直接取 records;兼容老数组返回
+        this.logs = logRes?.records || (Array.isArray(logRes) ? logRes : [])
         const list = (goodsRes && (goodsRes.records || goodsRes)) || []
         this.rewards = Array.isArray(list) ? list : []
       } catch (e) {
         console.error('[points] load error', e)
+      } finally {
+        this.loading = false
       }
     },
 
     async onCheckin() {
       try {
-        const res = await pointsApi.checkin()
-        const payload = res?.data || res || {}
-        const result = payload.data || payload
+        // request.js 已解包,result 即 payload: { points, consecutiveDays, doubleReward }
+        const result = await pointsApi.checkin()
         this.checkedIn = true
-        this.points += result.points || 5
-        // 重新拉取流水与余额，确保展示与服务端一致
+        this.points += result?.points || 5
+        // 重新拉取流水与余额,确保展示与服务端一致
         this.loadData()
         uni.showToast({
-          title: `签到成功 +${result.points || 5} 积分${result.doubleReward ? ' (x2)' : ''}`,
+          title: `签到成功 +${result?.points || 5} 积分${result?.doubleReward ? ' (x2)' : ''}`,
           icon: 'success',
         })
       } catch (e) {
@@ -108,21 +95,25 @@ export default {
         uni.showToast({ title: 'Not enough points', icon: 'none' })
         return
       }
+      if (this.redeemingId) return
       uni.showModal({
         title: 'Redeem ' + item.name,
         content: 'This will cost ' + item.points + ' points. Continue?',
         success: async (res) => {
           if (!res.confirm) return
           try {
+            this.redeemingId = item.id
             uni.showLoading({ title: '兑换中...', mask: true })
             await pointsApi.exchangePointsGoods(item.id)
             uni.hideLoading()
             uni.showToast({ title: '兑换成功', icon: 'success' })
-            // 重新拉取积分余额，保证与服务端一致
+            // 重新拉取积分余额,保证与服务端一致
             this.loadData()
           } catch (e) {
             uni.hideLoading()
             uni.showToast({ title: e?.message || '兑换失败', icon: 'none' })
+          } finally {
+            this.redeemingId = null
           }
         },
       })
@@ -247,6 +238,18 @@ export default {
 .empty {
   text-align: center;
   padding: 32rpx;
+  color: var(--color-text-tertiary);
+}
+.loading-tip {
+  text-align: center;
+  padding: 32rpx;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+}
+.loading-line {
+  display: block;
+  margin-top: 8rpx;
+  font-size: var(--font-size-sm);
   color: var(--color-text-tertiary);
 }
 .btn-sm {

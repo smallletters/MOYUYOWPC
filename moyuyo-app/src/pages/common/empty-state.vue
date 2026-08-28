@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <view class="empty-state-page">
     <!-- 导航栏 -->
     <view class="nav-bar">
       <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="nav-title">{{ pageTitle }}</text>
     </view>
@@ -14,13 +14,14 @@
         <view v-for="(state, index) in emptyStates" :key="index" class="state-card">
           <text class="state-label">{{ state.label }}</text>
           <view class="state-icon-wrap" :style="{ background: state.iconBg }">
-            <text class="state-emoji luc" :class="$luc(state.icon)"></text>
+            <text class="state-emoji luc" :class="$luc(state.icon)" />
           </view>
           <text class="state-title">{{ state.title }}</text>
           <text class="state-desc">{{ state.desc }}</text>
           <view class="state-btn" :class="state.btnClass" @tap="state.action">
             <text class="state-btn-text" :class="state.btnTextClass">
-              <text v-if="state.btnIcon" class="luc" :class="$luc(state.btnIcon)"></text>{{ state.btnText }}
+              <text v-if="state.btnIcon" class="luc" :class="$luc(state.btnIcon)" />
+              {{ state.btnText }}
             </text>
           </view>
         </view>
@@ -77,13 +78,14 @@
         <view v-for="(state, index) in errorStates" :key="index" class="state-card">
           <text class="state-label">{{ state.label }}</text>
           <view class="state-icon-wrap" :style="{ background: state.iconBg }">
-            <text class="state-emoji luc" :class="$luc(state.icon)"></text>
+            <text class="state-emoji luc" :class="$luc(state.icon)" />
           </view>
           <text class="state-title">{{ state.title }}</text>
           <text class="state-desc">{{ state.desc }}</text>
           <view class="state-btn state-btn-primary" @tap="state.action">
             <text class="state-btn-text state-btn-text-primary">
-              <text v-if="state.btnIcon" class="luc" :class="$luc(state.btnIcon)"></text>{{ state.btnText }}
+              <text v-if="state.btnIcon" class="luc" :class="$luc(state.btnIcon)" />
+              {{ state.btnText }}
             </text>
           </view>
         </view>
@@ -97,7 +99,7 @@
           <view class="toast-list">
             <view class="toast-item">
               <view class="toast-icon toast-icon-success">
-                <text class="toast-emoji"><text class="luc luc-check"></text></text>
+                <text class="toast-emoji"><text class="luc luc-check" /></text>
               </view>
               <view class="toast-content">
                 <text class="toast-title">操作成功</text>
@@ -106,7 +108,7 @@
             </view>
             <view class="toast-item">
               <view class="toast-icon toast-icon-error">
-                <text class="toast-emoji"><text class="luc luc-x"></text></text>
+                <text class="toast-emoji"><text class="luc luc-x" /></text>
               </view>
               <view class="toast-content">
                 <text class="toast-title">操作失败</text>
@@ -129,7 +131,7 @@
         <view class="state-card">
           <text class="state-label">Success</text>
           <view class="state-icon-wrap" style="background: rgba(171, 185, 173, 0.2)">
-            <text class="state-emoji"><text class="luc luc-check"></text></text>
+            <text class="state-emoji"><text class="luc luc-check" /></text>
           </view>
           <text class="state-title">支付成功</text>
           <text class="state-desc">订单 #MOY20260715001 已支付成功</text>
@@ -141,7 +143,7 @@
         <view class="state-card">
           <text class="state-label">Failure</text>
           <view class="state-icon-wrap" style="background: rgba(201, 110, 95, 0.15)">
-            <text class="state-emoji"><text class="luc luc-x"></text></text>
+            <text class="state-emoji"><text class="luc luc-x" /></text>
           </view>
           <text class="state-title">支付失败</text>
           <text class="state-desc">余额不足，请更换支付方式</text>
@@ -169,7 +171,8 @@
       </view>
     </view>
   </view>
-</template><script setup>
+</template>
+<script setup>
 import { ref } from 'vue'
 
 // 页面标题
@@ -253,7 +256,8 @@ const errorStates = ref([
     iconBg: 'rgba(255, 149, 0, 0.15)',
     title: '网络连接异常',
     desc: '请检查你的网络连接，稍后重试',
-    btnIcon: 'refresh-cw', btnText: '重新连接',
+    btnIcon: 'refresh-cw',
+    btnText: '重新连接',
     action: () => uni.showToast({ title: '正在重连...', icon: 'none' }),
   },
   {
@@ -262,7 +266,8 @@ const errorStates = ref([
     iconBg: 'rgba(201, 110, 95, 0.15)',
     title: '服务器开小差了',
     desc: '服务暂时不可用，我们正在紧急修复中',
-    btnIcon: 'refresh-cw', btnText: '刷新重试',
+    btnIcon: 'refresh-cw',
+    btnText: '刷新重试',
     action: () => uni.showToast({ title: '正在刷新...', icon: 'none' }),
   },
   {
@@ -271,7 +276,8 @@ const errorStates = ref([
     iconBg: '#F2F2F7',
     title: '页面不存在',
     desc: '你访问的页面可能已被移除或地址有误',
-    btnIcon: 'home', btnText: '返回首页',
+    btnIcon: 'home',
+    btnText: '返回首页',
     action: () => uni.switchTab({ url: '/pages/tabbar/home' }),
   },
 ])

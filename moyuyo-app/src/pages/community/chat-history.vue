@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="chat-history-page">
     <view class="nav-bar">
       <view class="nav-back" @tap="goBack">

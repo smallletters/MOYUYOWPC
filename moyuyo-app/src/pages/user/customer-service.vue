@@ -2,7 +2,7 @@
   <view class="cs">
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">客服中心</text>
       <view class="header-action" @click="goHistory">会话记录</view>
@@ -24,13 +24,32 @@
           </view>
         </view>
       </view>
-      <view v-for="m in messages" :key="m.id" :id="`msg-${m.id}`" class="msg-row" :class="[m.senderType === 'USER' ? 'msg-user' : 'msg-bot', { 'msg-pending': m.pending, 'msg-failed': m.failed }]">
+      <view
+        v-for="m in messages"
+        :id="`msg-${m.id}`"
+        :key="m.id"
+        class="msg-row"
+        :class="[
+          m.senderType === 'USER' ? 'msg-user' : 'msg-bot',
+          { 'msg-pending': m.pending, 'msg-failed': m.failed },
+        ]"
+      >
         <!-- 机器人消息:头像在左 -->
-        <view v-if="m.senderType !== 'USER'" class="msg-avatar msg-avatar-bot">{{ (m.senderName || 'M')[0] }}</view>
+        <view v-if="m.senderType !== 'USER'" class="msg-avatar msg-avatar-bot">
+          {{ (m.senderName || 'M')[0] }}
+        </view>
         <!-- 消息内容(气泡 + 时间) -->
         <view class="msg-content" :class="{ 'msg-user-content': m.senderType === 'USER' }">
-          <view class="msg-bubble" :class="[m.senderType === 'USER' ? 'msg-user-bubble' : 'msg-bot-bubble', { 'msg-bubble-pending': m.pending, 'msg-bubble-failed': m.failed }]">
-            <text class="msg-text" :class="{ 'msg-user-text': m.senderType === 'USER' }">{{ m.content }}</text>
+          <view
+            class="msg-bubble"
+            :class="[
+              m.senderType === 'USER' ? 'msg-user-bubble' : 'msg-bot-bubble',
+              { 'msg-bubble-pending': m.pending, 'msg-bubble-failed': m.failed },
+            ]"
+          >
+            <text class="msg-text" :class="{ 'msg-user-text': m.senderType === 'USER' }">
+              {{ m.content }}
+            </text>
           </view>
           <text class="msg-time">
             <text v-if="m.pending">发送中…</text>
@@ -39,14 +58,16 @@
           </text>
         </view>
         <!-- 用户消息:头像在右 -->
-        <view v-if="m.senderType === 'USER'" class="msg-avatar msg-avatar-user">{{ (m.senderName || '我')[0] }}</view>
+        <view v-if="m.senderType === 'USER'" class="msg-avatar msg-avatar-user">
+          {{ (m.senderName || '我')[0] }}
+        </view>
       </view>
     </scroll-view>
 
-<!-- 空闲超时提示条:2 分钟无活动时显示,引导用户重新发起 -->
+    <!-- 空闲超时提示条:2 分钟无活动时显示,引导用户重新发起 -->
     <view v-if="isIdleTimeout" class="idle-banner">
       <text class="idle-banner-icon">⏰</text>
-      <text class="idle-banner-text">会话已超过 2 分钟无活动,请重新发起</text>
+      <text class="idle-banner-text">{{ $t('csChat.idleBanner') }}</text>
     </view>
 
     <view class="quick-replies">
@@ -65,8 +86,8 @@
     <view v-if="productName" class="product-context">
       <text class="product-context-label">正在咨询:</text>
       <text class="product-context-name">{{ productName }}</text>
-      <view class="product-context-close" @tap="clearProductContext" aria-label="关闭">
-        <text class="luc luc-x"></text>
+      <view class="product-context-close" aria-label="关闭" @tap="clearProductContext">
+        <text class="luc luc-x" />
       </view>
     </view>
 
@@ -74,19 +95,19 @@
       <template v-if="isIdleTimeout">
         <!-- 超时态:替换为"重新发起"按钮,禁用输入框 -->
         <view class="action-btn action-btn-resume" @click="resetSession">
-          <text class="action-btn-text">重新发起会话</text>
+          <text class="action-btn-text">{{ $t('csChat.reopen') }}</text>
         </view>
       </template>
       <template v-else>
         <input
-          class="input"
           v-model="draft"
-          placeholder="请输入消息…"
+          class="input"
+          :placeholder="$t('csChat.inputPlaceholder')"
           :adjust-position="true"
           @confirm="sendCurrent"
-        />
+        >
         <view class="action-btn" @click="sendCurrent">
-          <text class="action-btn-text">发送</text>
+          <text class="action-btn-text">{{ $t('csChat.send') }}</text>
         </view>
       </template>
     </view>
@@ -97,6 +118,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { csApi } from '@/api'
+import { i18n } from '@/i18n'
 
 const sessionId = ref(null)
 const messages = ref([])
@@ -154,7 +176,9 @@ function formatTime(t) {
     const hh = String(d.getHours()).padStart(2, '0')
     const mm = String(d.getMinutes()).padStart(2, '0')
     return `${hh}:${mm}`
-  } catch { return '' }
+  } catch {
+    return ''
+  }
 }
 
 async function ensureSession() {
@@ -251,8 +275,12 @@ function sendCurrent() {
   sendText(t)
 }
 
-function goBack() { uni.navigateBack() }
-function goHistory() { uni.navigateTo({ url: '/pages/community/chat-history' }) }
+function goBack() {
+  uni.navigateBack()
+}
+function goHistory() {
+  uni.navigateTo({ url: '/pages/community/chat-history' })
+}
 
 /**
  * 标记一次"用户活跃":
@@ -281,7 +309,7 @@ function startIdleCheck() {
         id: `timeout-${Date.now()}`,
         senderType: 'SYSTEM',
         senderName: '系统',
-        content: '会话已超过 2 分钟无活动,请点击下方"重新发起"创建新对话。',
+        content: i18n.t('csChat.timeoutContent'),
         createTime: new Date().toISOString(),
         isTimeout: true,
       })
@@ -305,7 +333,11 @@ function stopIdleCheck() {
 async function resetSession() {
   try {
     if (sessionId.value) {
-      try { await csApi.closeSession(sessionId.value) } catch (e) { /* 忽略 */ }
+      try {
+        await csApi.closeSession(sessionId.value)
+      } catch (e) {
+        /* 忽略 */
+      }
     }
     sessionId.value = null
     messages.value = []
@@ -313,14 +345,12 @@ async function resetSession() {
     lastActiveAt = Date.now()
     lastRenderedId = null
     await ensureSession()
-    lastRenderedId = messages.value.length
-      ? messages.value[messages.value.length - 1].id
-      : null
+    lastRenderedId = messages.value.length ? messages.value[messages.value.length - 1].id : null
     touchActive()
-    uni.showToast({ title: '已开启新会话', icon: 'success' })
+    uni.showToast({ title: i18n.t('csChat.reopenSession'), icon: 'success' })
   } catch (e) {
     console.warn('[cs] resetSession failed', e)
-    uni.showToast({ title: '开启失败,请重试', icon: 'none' })
+    uni.showToast({ title: e?.message || 'Failed to start', icon: 'none' })
   }
 }
 
@@ -387,9 +417,7 @@ onMounted(() => {
   // 等 session 建立后再开始轮询
   setTimeout(() => {
     if (sessionId.value) {
-      lastRenderedId = messages.value.length
-        ? messages.value[messages.value.length - 1].id
-        : null
+      lastRenderedId = messages.value.length ? messages.value[messages.value.length - 1].id : null
       startPolling()
       startIdleCheck()
     } else {
@@ -433,10 +461,23 @@ onShow(() => {
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }
-.back-btn { width: 60rpx; }
-.back-icon { font-size: 44rpx; color: var(--color-primary); }
-.header-title { flex: 1; text-align: center; font-size: 32rpx; font-weight: 600; }
-.header-action { font-size: 26rpx; color: var(--color-primary); }
+.back-btn {
+  width: 60rpx;
+}
+.back-icon {
+  font-size: 44rpx;
+  color: var(--color-primary);
+}
+.header-title {
+  flex: 1;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+.header-action {
+  font-size: 26rpx;
+  color: var(--color-primary);
+}
 .chat-area {
   flex: 1;
   /* 内层 uni-scroll-view-content 不继承 padding,这里给 chat-area 自己 + 内层都加 padding */
@@ -457,7 +498,9 @@ onShow(() => {
   padding-right: 0;
   padding-left: 0;
 }
-.msg-bot { align-self: flex-start; }
+.msg-bot {
+  align-self: flex-start;
+}
 .msg-user {
   flex-direction: row;
   align-items: flex-start;
@@ -470,7 +513,7 @@ onShow(() => {
 /* 用户消息右侧头像:绝对定位钉在屏幕右 5px,布局完全不受 flex 约束 */
 .msg-user .msg-avatar-user {
   position: absolute;
-  right: 10rpx;       /* 距屏右 5px */
+  right: 10rpx; /* 距屏右 5px */
   top: 0;
   width: 64rpx;
   height: 64rpx;
@@ -485,7 +528,9 @@ onShow(() => {
   flex-shrink: 0;
 }
 /* 用户消息:头像紧跟 msg-content 之后,内容 + 头像作为一个整体右贴边 */
-.msg-user .msg-content { margin-left: 0; }
+.msg-user .msg-content {
+  margin-left: 0;
+}
 /* 头像统一样式 */
 .msg-avatar {
   width: 64rpx;
@@ -500,7 +545,9 @@ onShow(() => {
   box-sizing: border-box;
   overflow: hidden;
 }
-.msg-avatar-bot { background: var(--color-primary); }
+.msg-avatar-bot {
+  background: var(--color-primary);
+}
 /* 内容容器:fit-content 让气泡宽度 = 内容宽度,不撑满父容器 */
 .msg-content {
   display: flex;
@@ -515,8 +562,12 @@ onShow(() => {
   overflow: hidden;
   box-sizing: border-box;
 }
-.msg-bot .msg-content { align-items: flex-start; }
-.msg-user-content { align-items: flex-end; }
+.msg-bot .msg-content {
+  align-items: flex-start;
+}
+.msg-user-content {
+  align-items: flex-end;
+}
 .msg-bubble {
   padding: 16rpx 20rpx;
   border-radius: 20rpx;
@@ -536,9 +587,17 @@ onShow(() => {
   word-break: break-word;
   overflow-wrap: anywhere;
 }
-.msg-bot-bubble { background: var(--color-surface); border-top-left-radius: 4rpx; }
-.msg-user-bubble { background: var(--color-primary); border-top-right-radius: 4rpx; }
-.msg-user-text { color: #fff; }
+.msg-bot-bubble {
+  background: var(--color-surface);
+  border-top-left-radius: 4rpx;
+}
+.msg-user-bubble {
+  background: var(--color-primary);
+  border-top-right-radius: 4rpx;
+}
+.msg-user-text {
+  color: #fff;
+}
 
 /* 发送中状态:半透明 */
 .msg-bubble-pending {
@@ -552,10 +611,33 @@ onShow(() => {
 .msg-failed-text {
   color: var(--color-danger, #c96e5f);
 }
-.msg-time { font-size: 20rpx; color: var(--color-text-tertiary); margin-top: 4rpx; }
-.quick-replies { display: flex; gap: 12rpx; padding: 12rpx 24rpx; overflow-x: auto; background: var(--color-surface); border-top: 1rpx solid var(--color-divider); }
-.quick-btn { flex-shrink: 0; padding: 0 20rpx; height: 56rpx; border-radius: 999rpx; border: 1rpx solid var(--color-divider); display: flex; align-items: center; }
-.quick-btn-text { font-size: 24rpx; color: var(--color-text-secondary); white-space: nowrap; }
+.msg-time {
+  font-size: 20rpx;
+  color: var(--color-text-tertiary);
+  margin-top: 4rpx;
+}
+.quick-replies {
+  display: flex;
+  gap: 12rpx;
+  padding: 12rpx 24rpx;
+  overflow-x: auto;
+  background: var(--color-surface);
+  border-top: 1rpx solid var(--color-divider);
+}
+.quick-btn {
+  flex-shrink: 0;
+  padding: 0 20rpx;
+  height: 56rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid var(--color-divider);
+  display: flex;
+  align-items: center;
+}
+.quick-btn-text {
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
 
 /* 商品上下文条 */
 .product-context {
@@ -608,9 +690,28 @@ onShow(() => {
   border-top: 1rpx solid var(--color-divider);
   box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.04);
 }
-.input { flex: 1; height: 72rpx; padding: 0 20rpx; background: var(--color-background); border-radius: 36rpx; font-size: 26rpx; }
-.action-btn { padding: 0 24rpx; height: 72rpx; background: var(--color-primary); color: #fff; border-radius: 36rpx; display: flex; align-items: center; justify-content: center; }
-.action-btn-text { font-size: 26rpx; color: #fff; }
+.input {
+  flex: 1;
+  height: 72rpx;
+  padding: 0 20rpx;
+  background: var(--color-background);
+  border-radius: 36rpx;
+  font-size: 26rpx;
+}
+.action-btn {
+  padding: 0 24rpx;
+  height: 72rpx;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 36rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.action-btn-text {
+  font-size: 26rpx;
+  color: #fff;
+}
 
 /* 聊天区底部留白由 .cs 容器统一处理:padding-bottom: calc(120rpx + env(safe-area-inset-bottom))
    这里不再重复定义 .chat-area,避免覆盖上方用户头像定位关键样式 */

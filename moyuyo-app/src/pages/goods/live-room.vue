@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="live-room">
     <!-- 全屏直播画面占位区 -->
     <view class="live-video-area">
@@ -76,8 +76,8 @@
               </text>
             </view>
             <view class="product-price-row">
-              <text class="product-price">¥{{ item.price }}</text>
-              <text class="product-original">¥{{ item.originalPrice }}</text>
+              <text class="product-price">${{ item.price }}</text>
+              <text class="product-original">${{ item.originalPrice }}</text>
               <text class="product-live-tag">直播专享</text>
             </view>
           </view>

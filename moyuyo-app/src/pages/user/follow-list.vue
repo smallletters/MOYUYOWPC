@@ -1,7 +1,9 @@
-<template>
+﻿<template>
   <view class="page">
     <view class="header">
-      <view class="nav-back" @tap="goBack"><text class="back-icon"><text class="luc luc-arrow-left"></text></text></view>
+      <view class="nav-back" @tap="goBack">
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+      </view>
       <text class="title">{{ mode === 'following' ? '我的关注' : '我的粉丝' }}</text>
       <view class="nav-placeholder" />
     </view>
@@ -31,8 +33,7 @@
         v-for="u in list"
         :key="u.followId"
         class="user-card"
-        @tap="goProfile(u)"
-      >
+        @tap="goProfile(u)">
         <image
           v-if="u.avatar"
           :src="u.avatar"
@@ -44,20 +45,14 @@
         <view v-else class="avatar avatar-fallback">{{ avatarChar(u.nickname) }}</view>
         <view class="user-info">
           <text class="user-name">{{ u.nickname || '匿名用户' }}</text>
-          <text class="user-time">{{ formatTime(u.createdAt) }} {{ mode === 'following' ? '关注' : '关注了你' }}</text>
+          <text class="user-time">
+            {{ formatTime(u.createdAt) }} {{ mode === 'following' ? '关注' : '关注了你' }}
+          </text>
         </view>
-        <view
-          v-if="mode === 'following'"
-          class="btn-unfollow"
-          @tap.stop="onUnfollow(u)"
-        >
+        <view v-if="mode === 'following'" class="btn-unfollow" @tap.stop="onUnfollow(u)">
           <text class="btn-text">已关注</text>
         </view>
-        <view
-          v-else
-          class="btn-follow"
-          @tap.stop="onFollow(u)"
-        >
+        <view v-else class="btn-follow" @tap.stop="onFollow(u)">
           <text class="btn-text-white">回关</text>
         </view>
       </view>
@@ -73,15 +68,19 @@
 import { ref, computed, onMounted } from 'vue'
 import { followApi } from '@/api/follow'
 
-const props = defineProps({
-  initialMode: { type: String, default: 'following' },
-})
-
 const tabs = [
   { value: 'following', label: '关注' },
   { value: 'followers', label: '粉丝' },
 ]
-const mode = ref(props.initialMode === 'followers' ? 'followers' : 'following')
+// 从 query.mode 读取初始 tab(由 user.vue 通过 ?mode=followers 传入)
+function resolveInitialMode() {
+  // uniapp 在 vue3 写法中,onLoad 钩子通过页面级 setup 暴露;这里用 getCurrentPages 兜底读取
+  const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : []
+  const cur = pages[pages.length - 1]
+  const q = cur?.options || {}
+  return q.mode === 'followers' ? 'followers' : 'following'
+}
+const mode = ref(resolveInitialMode())
 const list = ref([])
 const loading = ref(false)
 const noMore = ref(false)
@@ -102,11 +101,18 @@ async function loadList(reset = false) {
   loading.value = true
   try {
     const fn = mode.value === 'following' ? followApi.listFollowing : followApi.listFollowers
+    // request.js 已解包,接口返回 IPage { records, total, ... }
     const res = await fn({ page: page.value, size: pageSize })
-    const rows = Array.isArray(res) ? res : (res?.records || [])
+    const rows = Array.isArray(res?.records) ? res.records : Array.isArray(res) ? res : []
     list.value.push(...rows)
-    noMore.value = rows.length < pageSize
-    page.value += 1
+    // 优先使用后端 total;否则根据单次拉取数量判定
+    const total = Number(res?.total)
+    if (Number.isFinite(total) && total >= 0) {
+      noMore.value = list.value.length >= total
+    } else {
+      noMore.value = rows.length < pageSize
+    }
+    if (rows.length > 0) page.value += 1
   } catch (e) {
     console.warn('[follow-list] load error', e)
   } finally {
@@ -172,13 +178,16 @@ function formatTime(t) {
   try {
     const d = new Date(t)
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  } catch { return '' }
+  } catch {
+    return ''
+  }
 }
 
 function onImgError(e) {
   const target = e?.target
   if (target && !target.src?.startsWith('data:')) {
-    target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1" fill="%23f2f2f7"/></svg>'
+    target.src =
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1" fill="%23f2f2f7"/></svg>'
   }
 }
 
@@ -200,10 +209,23 @@ onMounted(() => loadList(true))
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }
-.nav-back { width: 60rpx; }
-.back-icon { font-size: 44rpx; color: var(--color-primary); }
-.title { flex: 1; text-align: center; font-size: 32rpx; font-weight: 600; color: var(--color-text); }
-.nav-placeholder { width: 60rpx; }
+.nav-back {
+  width: 60rpx;
+}
+.back-icon {
+  font-size: 44rpx;
+  color: var(--color-primary);
+}
+.title {
+  flex: 1;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.nav-placeholder {
+  width: 60rpx;
+}
 
 .tabs {
   display: flex;
@@ -218,8 +240,15 @@ onMounted(() => loadList(true))
   justify-content: center;
   position: relative;
 }
-.tab-text { font-size: 28rpx; color: var(--color-text-tertiary); font-weight: 500; }
-.tab-active-text { color: var(--color-primary); font-weight: 600; }
+.tab-text {
+  font-size: 28rpx;
+  color: var(--color-text-tertiary);
+  font-weight: 500;
+}
+.tab-active-text {
+  color: var(--color-primary);
+  font-weight: 600;
+}
 .tab-indicator {
   position: absolute;
   bottom: 0;
@@ -231,14 +260,20 @@ onMounted(() => loadList(true))
   background: var(--color-primary);
 }
 
-.list { flex: 1; padding: 16rpx; }
+.list {
+  flex: 1;
+  padding: 16rpx;
+}
 .status {
   text-align: center;
   padding: 40rpx;
   color: var(--color-text-tertiary);
   font-size: 26rpx;
 }
-.status-text { font-size: 26rpx; color: var(--color-text-tertiary); }
+.status-text {
+  font-size: 26rpx;
+  color: var(--color-text-tertiary);
+}
 
 .user-card {
   display: flex;
@@ -264,7 +299,13 @@ onMounted(() => loadList(true))
   font-size: 36rpx;
   font-weight: 600;
 }
-.user-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6rpx; }
+.user-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
 .user-name {
   font-size: 30rpx;
   font-weight: 600;
@@ -280,11 +321,17 @@ onMounted(() => loadList(true))
   border-radius: 999rpx;
   background: var(--color-background-200, #f2f2f7);
 }
-.btn-text { font-size: 24rpx; color: var(--color-text-secondary); }
+.btn-text {
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+}
 .btn-follow {
   padding: 12rpx 24rpx;
   border-radius: 999rpx;
   background: var(--color-primary);
 }
-.btn-text-white { font-size: 24rpx; color: #fff; }
+.btn-text-white {
+  font-size: 24rpx;
+  color: #fff;
+}
 </style>

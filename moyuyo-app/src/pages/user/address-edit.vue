@@ -1,53 +1,54 @@
-<template>
+﻿<template>
   <view class="address-edit">
     <view class="header-bar">
       <view class="header-back" aria-label="返回" @click="goBack">
         <text class="luc luc-arrow-left" />
       </view>
-      <text class="title">{{ form.id ? '编辑地址' : '新增地址' }}</text>
+      <text class="title">{{ form.id ? $t('address.editTitle') : $t('address.addTitle') }}</text>
       <view class="header-spacer" />
     </view>
 
     <scroll-view scroll-y class="form">
       <view class="input-group">
         <text class="input-label">
-          收件人
+          {{ $t('address.fieldReceiver') }}
           <text class="required">*</text>
         </text>
         <input
           v-model="form.receiver"
           class="input"
-          placeholder="请输入收件人姓名"
+          :placeholder="$t('address.receiverPlaceholder')"
           maxlength="40"
         >
       </view>
 
       <view class="input-group">
         <text class="input-label">
-          手机号码
+          {{ $t('address.fieldPhone') }}
           <text class="required">*</text>
         </text>
         <input
           v-model="form.phone"
           class="input"
           type="number"
-          placeholder="请输入手机号码"
+          :placeholder="$t('address.phonePlaceholderEdit')"
           maxlength="20"
         >
       </view>
 
       <view class="input-group">
         <text class="input-label">
-          国家 / 地区
+          {{ $t('address.fieldCountry') }}
           <text class="required">*</text>
         </text>
         <picker
           mode="selector"
-          :range="countries"
+          :range="countryLabels"
           :value="countryIndex"
-          @change="onCountryChange">
+          @change="onCountryChange"
+        >
           <view class="input picker">
-            <text>{{ form.country || '请选择' }}</text>
+            <text>{{ countryLabel(form.country) || $t('address.countryPlaceholder') }}</text>
             <text class="luc luc-chevron-down picker-arrow" />
           </view>
         </picker>
@@ -55,59 +56,63 @@
 
       <view class="row-group">
         <view class="input-group half">
-          <text class="input-label">省 / 州</text>
+          <text class="input-label">{{ $t('address.fieldProvince') }}</text>
           <input
             v-model="form.province"
             class="input"
-            placeholder="如 California"
-            maxlength="40">
+            :placeholder="$t('address.provincePlaceholder')"
+            maxlength="40"
+          >
         </view>
         <view class="input-group half">
           <text class="input-label">
-            城市
+            {{ $t('address.fieldCity') }}
             <text class="required">*</text>
           </text>
           <input
             v-model="form.city"
             class="input"
-            placeholder="请输入城市"
-            maxlength="40">
+            :placeholder="$t('address.cityPlaceholder')"
+            maxlength="40"
+          >
         </view>
       </view>
 
       <view class="input-group">
-        <text class="input-label">区 / 县</text>
+        <text class="input-label">{{ $t('address.fieldDistrict') }}</text>
         <input
           v-model="form.district"
           class="input"
-          placeholder="选填"
-          maxlength="40">
+          :placeholder="$t('address.districtPlaceholder')"
+          maxlength="40"
+        >
       </view>
 
       <view class="input-group">
         <text class="input-label">
-          详细地址
+          {{ $t('address.fieldDetail') }}
           <text class="required">*</text>
         </text>
         <input
           v-model="form.detail"
           class="input"
-          placeholder="街道、楼号、门牌号等"
+          :placeholder="$t('address.detailPlaceholder')"
           maxlength="120"
         >
       </view>
 
       <view class="input-group">
-        <text class="input-label">邮编</text>
+        <text class="input-label">{{ $t('address.fieldZip') }}</text>
         <input
           v-model="form.zipCode"
           class="input"
-          placeholder="选填"
-          maxlength="20">
+          :placeholder="$t('address.zipPlaceholder')"
+          maxlength="20"
+        >
       </view>
 
       <view class="input-group">
-        <text class="input-label">标签</text>
+        <text class="input-label">{{ $t('address.fieldTag') }}</text>
         <view class="tag-options">
           <view
             v-for="t in tags"
@@ -126,23 +131,44 @@
         <view class="checkbox" :class="{ checked: form.isDefault }">
           <text v-if="form.isDefault" class="luc luc-check" />
         </view>
-        <text>设为默认地址</text>
+        <text>{{ $t('address.setDefaultLabel') }}</text>
       </view>
     </scroll-view>
 
     <view class="bottom-bar safe-area-bottom">
-      <view class="btn btn-secondary cancel-btn" @click="goBack">取消</view>
-      <view class="btn btn-primary save-btn" @click="onSave">保存</view>
+      <view class="btn btn-secondary cancel-btn" @click="goBack">{{ $t('common.cancel') }}</view>
+      <view class="btn btn-primary save-btn" @click="onSave">{{ $t('address.save') }}</view>
     </view>
   </view>
 </template>
 
 <script>
 import { addressApi } from '@/api'
+import i18n from '@/i18n'
+
+// 国家码（值与英文/本地化文案分离，便于在 picker 中显示本地化文本）
+const COUNTRY_CODES = [
+  'US',
+  'CA',
+  'GB',
+  'DE',
+  'FR',
+  'ES',
+  'IT',
+  'NL',
+  'AU',
+  'JP',
+  'CN',
+  'HK',
+  'TW',
+  'SG',
+  'MY',
+]
 
 export default {
   data() {
     return {
+      localeVersion: 0,
       form: {
         id: null,
         receiver: '',
@@ -156,42 +182,46 @@ export default {
         tag: '',
         isDefault: false,
       },
-      countries: [
-        'US',
-        'CA',
-        'GB',
-        'DE',
-        'FR',
-        'ES',
-        'IT',
-        'NL',
-        'AU',
-        'JP',
-        'CN',
-        'HK',
-        'TW',
-        'SG',
-        'MY',
-      ],
-      tags: [
-        { value: 'HOME', label: '家', icon: 'luc-home' },
-        { value: 'COMPANY', label: '公司', icon: 'luc-briefcase' },
-        { value: 'OTHER', label: '其他', icon: 'luc-map-pin' },
-      ],
     }
   },
 
   computed: {
+    // 依赖 localeVersion,语言切换时 picker 文本会重新渲染
+    countryLabels() {
+      void this.localeVersion
+      return COUNTRY_CODES.map((code) => i18n.t(`address.countryCodes.${code}`))
+    },
+    tags() {
+      void this.localeVersion
+      return [
+        { value: 'HOME', label: i18n.t('address.tagHome'), icon: 'luc-home' },
+        { value: 'COMPANY', label: i18n.t('address.tagCompany'), icon: 'luc-briefcase' },
+        { value: 'OTHER', label: i18n.t('address.tagOther'), icon: 'luc-map-pin' },
+      ]
+    },
     countryIndex() {
-      const idx = this.countries.indexOf(this.form.country)
+      const idx = COUNTRY_CODES.indexOf(this.form.country)
       return idx >= 0 ? idx : 0
     },
   },
 
-  async onLoad(query) {
+  onLoad(query) {
+    // 订阅语言切换
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
     if (query.id) {
+      this.loadDetail(query.id)
+    }
+  },
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
+  },
+
+  methods: {
+    async loadDetail(id) {
       try {
-        const addr = await addressApi.getAddressDetail(query.id)
+        const addr = await addressApi.getAddressDetail(id)
         if (addr) {
           this.form = { ...this.form, ...addr }
           // 兼容后端可能不返回 tag 的情况
@@ -199,51 +229,57 @@ export default {
         }
       } catch (e) {
         console.warn('[address-edit] load failed', e)
-        uni.showToast({ title: '加载失败', icon: 'none' })
+        uni.showToast({ title: i18n.t('address.loadFailed'), icon: 'none' })
       }
-    }
-  },
+    },
 
-  methods: {
+    countryLabel(code) {
+      if (!code) return ''
+      return i18n.t(`address.countryCodes.${code}`)
+    },
+
     onCountryChange(e) {
       const idx = Number(e.detail.value)
-      if (this.countries[idx]) this.form.country = this.countries[idx]
+      if (COUNTRY_CODES[idx]) this.form.country = COUNTRY_CODES[idx]
     },
 
     async onSave() {
       // 必填校验
       const required = [
-        { key: 'receiver', label: '收件人' },
-        { key: 'phone', label: '手机号码' },
-        { key: 'detail', label: '详细地址' },
-        { key: 'city', label: '城市' },
+        { key: 'receiver', field: i18n.t('address.fieldReceiver') },
+        { key: 'phone', field: i18n.t('address.fieldPhone') },
+        { key: 'detail', field: i18n.t('address.fieldDetail') },
+        { key: 'city', field: i18n.t('address.fieldCity') },
       ]
       for (const r of required) {
         if (!this.form[r.key] || !String(this.form[r.key]).trim()) {
-          uni.showToast({ title: `请填写${r.label}`, icon: 'none' })
+          uni.showToast({
+            title: i18n.t('address.requiredField', { field: r.field }),
+            icon: 'none',
+          })
           return
         }
       }
       // 手机号简单格式校验（最少 6 位数字即可，海外号码格式差异大）
       if (!/^\d{6,20}$/.test(String(this.form.phone).replace(/\s+/g, ''))) {
-        uni.showToast({ title: '手机号格式不正确', icon: 'none' })
+        uni.showToast({ title: i18n.t('address.invalidPhone'), icon: 'none' })
         return
       }
 
       try {
-        uni.showLoading({ title: '保存中…' })
+        uni.showLoading({ title: i18n.t('address.saving') })
         if (this.form.id) {
           await addressApi.updateAddress(this.form.id, this.form)
         } else {
           await addressApi.createAddress(this.form)
         }
         uni.hideLoading()
-        uni.showToast({ title: '保存成功', icon: 'success' })
+        uni.showToast({ title: i18n.t('address.saved'), icon: 'success' })
         setTimeout(() => uni.navigateBack(), 600)
       } catch (e) {
         uni.hideLoading()
         console.warn('[address-edit] save failed', e)
-        uni.showToast({ title: '保存失败', icon: 'none' })
+        uni.showToast({ title: i18n.t('address.saveFailed'), icon: 'none' })
       }
     },
 

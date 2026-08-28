@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="post-create">
     <!-- 顶部导航(u-navbar 自带回退按钮,统一标题栏样式) -->
     <u-navbar

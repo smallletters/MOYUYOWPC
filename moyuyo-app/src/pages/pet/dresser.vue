@@ -1,7 +1,9 @@
-<template>
+﻿<template>
   <view class="pet-dresser">
     <view class="page-header">
-      <view class="back" @click="goBack" aria-label="返回"><text class="luc luc-arrow-left"></text></view>
+      <view class="back" aria-label="返回" @click="goBack">
+        <text class="luc luc-arrow-left" />
+      </view>
       <text class="title">宠物装扮</text>
     </view>
 
@@ -28,7 +30,13 @@
 
       <!-- 装扮列表 -->
       <view class="dresser-grid">
-        <view v-for="d in filteredItems" :key="d.id" class="dresser-card" :class="{ equipped: d.equipped }" @click="onEquip(d)">
+        <view
+          v-for="d in filteredItems"
+          :key="d.id"
+          class="dresser-card"
+          :class="{ equipped: d.equipped }"
+          @click="onEquip(d)"
+        >
           <image :src="d.image" class="dresser-image" />
           <text class="dresser-name">{{ d.name }}</text>
           <text v-if="d.equipped" class="equipped-tag">已穿戴</text>
@@ -54,12 +62,43 @@ export default {
         { id: 'toy', label: '玩具' },
       ],
       items: [
-        { id: 1, name: '蝴蝶结', category: 'hat', image: 'https://picsum.photos/200/200?random=40', equipped: true },
-        { id: 2, name: '贝雷帽', category: 'hat', image: 'https://picsum.photos/200/200?random=41' },
-        { id: 3, name: '圣诞帽', category: 'hat', image: 'https://picsum.photos/200/200?random=42' },
-        { id: 4, name: '格子围巾', category: 'scarf', image: 'https://picsum.photos/200/200?random=43' },
-        { id: 5, name: '潮流外套', category: 'clothes', image: 'https://picsum.photos/200/200?random=44' },
-        { id: 6, name: '毛绒球', category: 'toy', image: 'https://picsum.photos/200/200?random=45' },
+        {
+          id: 1,
+          name: '蝴蝶结',
+          category: 'hat',
+          image: 'https://picsum.photos/200/200?random=40',
+          equipped: true,
+        },
+        {
+          id: 2,
+          name: '贝雷帽',
+          category: 'hat',
+          image: 'https://picsum.photos/200/200?random=41',
+        },
+        {
+          id: 3,
+          name: '圣诞帽',
+          category: 'hat',
+          image: 'https://picsum.photos/200/200?random=42',
+        },
+        {
+          id: 4,
+          name: '格子围巾',
+          category: 'scarf',
+          image: 'https://picsum.photos/200/200?random=43',
+        },
+        {
+          id: 5,
+          name: '潮流外套',
+          category: 'clothes',
+          image: 'https://picsum.photos/200/200?random=44',
+        },
+        {
+          id: 6,
+          name: '毛绒球',
+          category: 'toy',
+          image: 'https://picsum.photos/200/200?random=45',
+        },
       ],
     }
   },

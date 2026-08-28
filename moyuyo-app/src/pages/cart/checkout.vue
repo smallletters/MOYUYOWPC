@@ -88,7 +88,7 @@
         <!-- 商品列表 -->
         <view class="block-body items-body">
           <view
-            v-for="item in cartStore.selectedItems"
+            v-for="item in checkoutItems"
             :key="item.variationId || item.productId"
             class="item-row"
           >
@@ -136,12 +136,32 @@
         <view class="block-divider" />
         <view class="block-sub">
           <view class="reward-row" @click="onSelectCoupon">
-            <text class="reward-label">Apply a coupon</text>
-            <view class="reward-right">
-              <text v-if="cartStore.selectedCoupon" class="reward-active">
-                −${{ cartStore.selectedCoupon.amount }}
+            <view class="reward-left">
+              <text class="reward-label">Apply a coupon</text>
+              <text v-if="activeCoupon" class="reward-sub reward-sub-active">
+                {{ activeCoupon.name }}
+                <text
+                  v-if="activeCoupon.id !== cartStore.selectedCoupon?.id"
+                  class="reward-sub-tag"
+                >
+                  Auto
+                </text>
               </text>
+              <text
+                v-else-if="myCouponsLoaded && bestCoupon === null && !couponAutoDismissed"
+                class="reward-sub"
+              >
+                No applicable coupon for this order
+              </text>
+              <text v-else-if="couponAutoDismissed" class="reward-sub">Coupon removed</text>
+            </view>
+            <view class="reward-right">
+              <text v-if="activeCoupon" class="reward-active">−${{ discount.toFixed(2) }}</text>
               <text v-else class="reward-placeholder">None</text>
+              <!-- 用户已选券时显示 Remove 按钮,允许取消自动选择 -->
+              <text v-if="activeCoupon" class="reward-remove" @click.stop="onClearCoupon">
+                Remove
+              </text>
               <text class="chev">›</text>
             </view>
           </view>
@@ -183,7 +203,7 @@
         </view>
         <view class="block-body summary-body">
           <view class="sum-row">
-            <text class="sum-label">Items ({{ cartStore.selectedQuantity }}):</text>
+            <text class="sum-label">Items ({{ checkoutQuantity }}):</text>
             <text class="sum-value">${{ subtotal.toFixed(2) }}</text>
           </view>
           <view class="sum-row">
@@ -192,7 +212,7 @@
               {{ selectedShippingPrice > 0 ? '$' + selectedShippingPrice.toFixed(2) : 'FREE' }}
             </text>
           </view>
-          <view v-if="cartStore.selectedCoupon" class="sum-row">
+          <view v-if="activeCoupon" class="sum-row">
             <text class="sum-label">Coupon discount:</text>
             <text class="sum-value">−${{ discount.toFixed(2) }}</text>
           </view>
@@ -220,12 +240,72 @@
         <text class="place-btn-text">Place your order</text>
       </view>
     </view>
+
+    <!-- 优惠券选择弹窗:点击"Apply a coupon"行时底部弹出用户已领取的优惠券列表 -->
+    <view v-if="showCouponPopup" class="coupon-mask" @click="closeCouponPopup">
+      <view class="coupon-popup" @click.stop>
+        <!-- 弹窗标题 -->
+        <view class="cp-header">
+          <text class="cp-title">Select a coupon</text>
+          <text class="cp-close" @click="closeCouponPopup">✕</text>
+        </view>
+        <!-- 优惠券列表(可用券排前,不可用券排后) -->
+        <scroll-view scroll-y class="cp-list">
+          <view v-if="couponPopupList.length === 0" class="cp-empty">
+            <text class="cp-empty-text">No coupons available</text>
+          </view>
+          <view
+            v-for="c in couponPopupList"
+            :key="c.id"
+            class="cp-item"
+            :class="{
+              'cp-disabled': !isCouponAvailable(c),
+              'cp-selected': isCouponSelected(c),
+            }"
+            @click="onPickCoupon(c)"
+          >
+            <!-- 左侧金额/折扣区 -->
+            <view class="cp-item-left">
+              <text class="cp-amount">{{ formatCouponValue(c) }}</text>
+              <text class="cp-threshold">{{ formatCouponThreshold(c) }}</text>
+            </view>
+            <!-- 中右信息区 -->
+            <view class="cp-item-right">
+              <text class="cp-name">{{ c.name }}</text>
+              <text v-if="formatCouponDesc(c)" class="cp-desc">{{ formatCouponDesc(c) }}</text>
+              <text v-if="c.endTime" class="cp-expire">
+                Valid until {{ formatDate(c.endTime) }}
+              </text>
+            </view>
+            <!-- 选中标记 / 不可用原因 -->
+            <text v-if="isCouponSelected(c)" class="cp-check">✓</text>
+            <text
+              v-else-if="!isCouponAvailable(c) && couponUnavailableReason(c)"
+              class="cp-unavailable"
+            >
+              {{ couponUnavailableReason(c) }}
+            </text>
+          </view>
+        </scroll-view>
+        <!-- 底部:不使用优惠券 -->
+        <view class="cp-footer">
+          <view
+            class="cp-none-btn"
+            :class="{ 'cp-none-active': !activeCoupon }"
+            @click="onDontUseCoupon"
+          >
+            <text>Do not use a coupon</text>
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script>
-import { orderApi, pointsApi, addressApi } from '@/api'
+import { orderApi, pointsApi, addressApi, couponApi } from '@/api'
 import { useCartStore, useUserStore } from '@/store'
+import { savePendingOrder } from '@/utils/storage'
 
 export default {
   data() {
@@ -242,6 +322,13 @@ export default {
       steps: ['Shipping', 'Payment', 'Review', 'Place'],
       currentStep: 4,
       totalSteps: 4,
+      // 已领取的未使用优惠券(由 loadMyCoupons 填充,供 bestCoupon 自动挑选)
+      myCoupons: [],
+      myCouponsLoaded: false,
+      // 自动选券是否已被用户手动取消(用户手动点了"None"后不再自动覆盖)
+      couponAutoDismissed: false,
+      // 优惠券选择弹窗显示状态(底部弹出用户已领取的优惠券列表)
+      showCouponPopup: false,
       shippingMethods: [
         {
           id: 'standard',
@@ -283,11 +370,93 @@ export default {
       const method = this.shippingMethods.find((s) => s.id === this.selectedShipping)
       return method ? method.price : 0
     },
-    subtotal() {
-      return this.cartStore.selectedPrice
+    /** 当前结算商品列表:立即购买临时单品优先,否则取购物车选中项 */
+    checkoutItems() {
+      return this.cartStore.buyNowItem ? [this.cartStore.buyNowItem] : this.cartStore.selectedItems
     },
+    /** 当前结算商品总件数 */
+    checkoutQuantity() {
+      return this.checkoutItems.reduce((sum, i) => sum + (i.quantity || 0), 0)
+    },
+    subtotal() {
+      return this.checkoutItems.reduce((sum, i) => sum + (i.price || 0) * (i.quantity || 0), 0)
+    },
+    /**
+     * 当前订单适用的最优未使用优惠券。
+     * 排序规则:
+     * 1) AMOUNT 券:必须满足 minOrderAmount <= subtotal 才算"可用",按实际抵扣额(discountValue)降序
+     * 2) PERCENT 券:按 抵扣比例(= discountValue) 降序,无门槛限制
+     * 同分情况下选 id 较大的(更"新")
+     * 若用户已手动取消(couponAutoDismissed=true),则返回 null 不再自动选
+     */
+    bestCoupon() {
+      if (this.couponAutoDismissed) return null
+      if (!this.myCouponsLoaded) return this.cartStore.selectedCoupon
+      const subtotal = this.subtotal
+      if (!subtotal || subtotal <= 0) return null
+      const available = this.myCoupons
+        .filter((c) => c.active !== false)
+        .filter((c) => !c.endTime || new Date(c.endTime.replace(' ', 'T')) > new Date())
+        .filter((c) => {
+          // 仅 AMOUNT 券要求门槛;PERCENT 券无门槛
+          if ((c.type || '').toUpperCase() === 'AMOUNT') {
+            return Number(c.minOrderAmount || 0) <= subtotal
+          }
+          return true
+        })
+      if (available.length === 0) return this.cartStore.selectedCoupon
+      // 计算每张券的实际抵扣金额,用于排序
+      const scored = available.map((c) => {
+        const isPercent = (c.type || '').toUpperCase() === 'PERCENT'
+        let actual
+        if (isPercent) {
+          // PERCENT:discountValue 表示折扣百分比(例如 95 = 9.5 折),抵扣 = subtotal * (100 - value) / 100
+          const v = Number(c.discountValue || 0)
+          actual = (subtotal * (100 - v)) / 100
+        } else {
+          actual = Number(c.discountValue || 0)
+        }
+        return { coupon: c, actual }
+      })
+      scored.sort((a, b) => {
+        if (b.actual !== a.actual) return b.actual - a.actual
+        // 同抵扣额时选 id 较大(更"新")
+        return Number(b.coupon.id) - Number(a.coupon.id)
+      })
+      const picked = scored[0].coupon
+      // 维持现有 selectedCoupon 以兼容用户手动从 /pages/user/coupons 选的场景
+      return this.cartStore.selectedCoupon || picked
+    },
+    /**
+     * 当前生效的优惠券(优先 bestCoupon;若用户手动选了别的,保留)
+     */
+    activeCoupon() {
+      return this.bestCoupon || this.cartStore.selectedCoupon
+    },
+    /**
+     * 当前生效优惠券的实际抵扣金额(用于价格明细行展示)
+     */
     discount() {
-      return this.cartStore.selectedCoupon ? parseFloat(this.cartStore.selectedCoupon.amount) : 0
+      const coupon = this.activeCoupon
+      if (!coupon) return 0
+      const isPercent = (coupon.type || '').toUpperCase() === 'PERCENT'
+      if (isPercent) {
+        const v = Number(coupon.discountValue || 0)
+        return (this.subtotal * (100 - v)) / 100
+      }
+      return Number(coupon.discountValue || 0)
+    },
+    /**
+     * 弹窗展示的券列表:可用券排前,不可用券排后
+     * 依赖 subtotal,订单金额变化时自动重算
+     */
+    couponPopupList() {
+      const list = Array.isArray(this.myCoupons) ? this.myCoupons : []
+      return [...list].sort((a, b) => {
+        const aOk = this.isCouponAvailable(a) ? 1 : 0
+        const bOk = this.isCouponAvailable(b) ? 1 : 0
+        return bOk - aOk
+      })
     },
     // 章节 3.1：100 积分 = $1，最高抵扣订单金额 30%
     pointsDiscount() {
@@ -310,6 +479,7 @@ export default {
   onLoad() {
     this.loadAddress()
     this.loadPoints()
+    this.loadMyCoupons()
   },
 
   methods: {
@@ -342,8 +512,134 @@ export default {
       uni.navigateTo({ url: '/pages/user/address?from=checkout' })
     },
 
+    /**
+     * 用户点击"Apply a coupon"行 -> 底部弹出已领取的优惠券列表供选择
+     * 替代原跳转 /pages/user/coupons 的方案,在当前页完成选券
+     */
     onSelectCoupon() {
-      uni.navigateTo({ url: '/pages/user/coupons?from=checkout' })
+      // 若券列表未加载完成,先重新拉取,避免弹窗无内容
+      if (!this.myCouponsLoaded) {
+        this.loadMyCoupons()
+      }
+      this.showCouponPopup = true
+    },
+
+    /**
+     * 用户手动清除已选优惠券(右上角 Remove 或弹窗"不使用")
+     * 设置 couponAutoDismissed=true,后续不再自动选券
+     */
+    onClearCoupon() {
+      this.cartStore.selectedCoupon = null
+      this.couponAutoDismissed = true
+    },
+
+    /** 关闭优惠券选择弹窗 */
+    closeCouponPopup() {
+      this.showCouponPopup = false
+    },
+
+    /**
+     * 在弹窗中选中一张优惠券
+     * 手动选券后重置 couponAutoDismissed,使 activeCoupon 显示用户所选
+     */
+    onPickCoupon(coupon) {
+      if (!this.isCouponAvailable(coupon)) return
+      this.cartStore.selectedCoupon = coupon
+      this.couponAutoDismissed = false
+      this.closeCouponPopup()
+    },
+
+    /** 弹窗底部"不使用优惠券"按钮:等同于清除并关闭弹窗 */
+    onDontUseCoupon() {
+      this.cartStore.selectedCoupon = null
+      this.couponAutoDismissed = true
+      this.closeCouponPopup()
+    },
+
+    /** 判断某张券对当前订单是否可用(active、未过期、门槛满足) */
+    isCouponAvailable(c) {
+      if (c.active === false) return false
+      if (c.endTime && new Date(String(c.endTime).replace(' ', 'T')) <= new Date()) return false
+      if ((c.type || '').toUpperCase() === 'AMOUNT') {
+        return Number(c.minOrderAmount || 0) <= this.subtotal
+      }
+      return true
+    },
+
+    /** 判断某张券是否为当前已选中券 */
+    isCouponSelected(c) {
+      const sel = this.cartStore.selectedCoupon
+      return !!sel && String(sel.id) === String(c.id)
+    },
+
+    /** 单张券对当前订单的实际抵扣金额 */
+    couponActualDiscount(c) {
+      const isPercent = (c.type || '').toUpperCase() === 'PERCENT'
+      if (isPercent) {
+        const v = Number(c.discountValue || 0)
+        return (this.subtotal * (100 - v)) / 100
+      }
+      return Number(c.discountValue || 0)
+    },
+
+    /** 弹窗左侧金额/折扣展示 */
+    formatCouponValue(c) {
+      const isPercent = (c.type || '').toUpperCase() === 'PERCENT'
+      if (isPercent) {
+        const off = 100 - Number(c.discountValue || 0)
+        return off + '% OFF'
+      }
+      return '$' + Number(c.discountValue || 0).toFixed(2)
+    },
+
+    /** 弹窗门槛文案 */
+    formatCouponThreshold(c) {
+      const isPercent = (c.type || '').toUpperCase() === 'PERCENT'
+      if (isPercent) return 'No threshold'
+      const min = Number(c.minOrderAmount || 0)
+      if (min <= 0) return 'No threshold'
+      return 'Min $' + min.toFixed(2)
+    },
+
+    /** 弹窗抵扣描述(可用时显示可省金额) */
+    formatCouponDesc(c) {
+      if (!this.isCouponAvailable(c)) return ''
+      return 'Save $' + this.couponActualDiscount(c).toFixed(2)
+    },
+
+    /** 不可用原因文案 */
+    couponUnavailableReason(c) {
+      if (c.active === false) return 'Unavailable'
+      if (c.endTime && new Date(String(c.endTime).replace(' ', 'T')) <= new Date()) return 'Expired'
+      if ((c.type || '').toUpperCase() === 'AMOUNT') {
+        const min = Number(c.minOrderAmount || 0)
+        if (min > this.subtotal) {
+          return 'Need $' + (min - this.subtotal).toFixed(2) + ' more'
+        }
+      }
+      return ''
+    },
+
+    /** 日期格式化为 YYYY-MM-DD */
+    formatDate(d) {
+      if (!d) return ''
+      return String(d).replace(' ', 'T').slice(0, 10)
+    },
+
+    /**
+     * 拉取当前用户已领取的、未使用优惠券,用于 bestCoupon 自动挑选
+     * 后端 GET /api/v1/coupons/mine?status=UNUSED 返回 List<CouponEntity>
+     */
+    async loadMyCoupons() {
+      try {
+        const list = await couponApi.getMyCoupons('UNUSED')
+        this.myCoupons = Array.isArray(list) ? list : []
+      } catch (e) {
+        console.warn('[checkout] loadMyCoupons failed', e)
+        this.myCoupons = []
+      } finally {
+        this.myCouponsLoaded = true
+      }
     },
 
     onUsePoints() {
@@ -373,7 +669,7 @@ export default {
 
       uni.showLoading({ title: 'Submitting order...', mask: true })
       try {
-        const items = this.cartStore.selectedItems
+        const items = this.checkoutItems
         const usedPoints = this.usePoints ? Math.floor(this.pointsDiscount * 100) : 0
         const orderData = {
           items: items.map((it) => ({
@@ -383,11 +679,10 @@ export default {
           })),
           addressId: this.selectedAddress.id || null,
           remark: this.orderRemark,
-          couponId: this.cartStore.selectedCoupon?.code || null,
-          // M1 修复：按 CreateOrderRequest 实际接收的字段名提交，缺则被 Jackson 默默丢弃
-          couponDiscount: this.cartStore.selectedCoupon
-            ? parseFloat(this.cartStore.selectedCoupon.amount)
-            : 0,
+          // 优先用 auto-selected activeCoupon(支持 AMOUNT/PERCENT 两种)
+          couponId: this.activeCoupon?.code || null,
+          couponUserId: this.activeCoupon?.userCouponId || null,
+          couponDiscount: this.discount,
           pointsUsed: usedPoints,
           pointsDiscount: this.usePoints ? this.pointsDiscount : 0,
           shippingMethod: this.selectedShipping,
@@ -396,11 +691,35 @@ export default {
         const order = await orderApi.createOrder(orderData)
         uni.hideLoading()
 
-        this.cartStore.clear()
+        // 下单成功即写入本地未支付记录,便于待付款列表展示(即使未支付/支付失败也不丢失)
+        const orderId = order?.id || order
+        if (orderId) {
+          savePendingOrder({
+            id: orderId,
+            orderNo: order?.orderNo || String(orderId),
+            status: 'PENDING_PAY',
+            payAmount: this.total,
+            createdAt: Date.now(),
+            items: items.map((it) => ({
+              id: it.productId,
+              productName: it.name,
+              mainImage: it.image,
+              quantity: it.quantity,
+            })),
+          })
+        }
+
+        // 立即购买场景只清临时单品,购物车结算场景清空已购选中项
+        if (this.cartStore.buyNowItem) {
+          this.cartStore.clearBuyNow()
+          this.cartStore.selectedCoupon = null
+        } else {
+          this.cartStore.clear()
+        }
 
         uni.showToast({ title: 'Order placed!', icon: 'success' })
         setTimeout(() => {
-          uni.navigateTo({ url: `/pages/order/pay?id=${order.id || order}` })
+          uni.navigateTo({ url: `/pages/order/pay?id=${order?.id || order}` })
         }, 1500)
       } catch (e) {
         uni.hideLoading()
@@ -992,10 +1311,223 @@ export default {
   color: #8e8e93;
 }
 
+/* 自动选中的副标题与 Auto 标签 */
+.reward-sub-active {
+  color: #2e2b29;
+  font-weight: 500;
+}
+
+.reward-sub-tag {
+  display: inline-block;
+  margin-left: 8rpx;
+  padding: 2rpx 10rpx;
+  background: #f0c14b;
+  color: #2e2b29;
+  font-size: 18rpx;
+  font-weight: 700;
+  border-radius: 6rpx;
+  letter-spacing: 0.5rpx;
+  vertical-align: middle;
+}
+
+/* 移除按钮:小号 Amazon 蓝 */
+.reward-remove {
+  font-size: 22rpx;
+  color: #007185;
+  text-decoration: underline;
+  padding: 0 8rpx;
+  cursor: pointer;
+}
+
 .chev {
   font-size: 32rpx;
   color: #8e8e93;
   line-height: 1;
+}
+
+/* 优惠券选择弹窗 */
+.coupon-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 999;
+  display: flex;
+  align-items: flex-end;
+}
+
+.coupon-popup {
+  width: 100%;
+  max-height: 80vh;
+  background: #fff;
+  border-radius: 24rpx 24rpx 0 0;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.cp-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  border-bottom: 1rpx solid #eee;
+  flex-shrink: 0;
+}
+
+.cp-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #2e2b29;
+}
+
+.cp-close {
+  position: absolute;
+  right: 24rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 32rpx;
+  color: #8e8e93;
+  padding: 8rpx 16rpx;
+}
+
+.cp-list {
+  flex: 1;
+  max-height: 60vh;
+  padding: 16rpx 24rpx;
+  box-sizing: border-box;
+}
+
+.cp-empty {
+  padding: 80rpx 0;
+  text-align: center;
+}
+
+.cp-empty-text {
+  font-size: 26rpx;
+  color: #8e8e93;
+}
+
+.cp-item {
+  display: flex;
+  align-items: stretch;
+  background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+  border: 1rpx solid #f0d0d0;
+  border-radius: 16rpx;
+  margin-bottom: 16rpx;
+  overflow: hidden;
+  position: relative;
+}
+
+.cp-item.cp-disabled {
+  background: #f5f5f5;
+  border-color: #e0e0e0;
+  opacity: 0.6;
+}
+
+.cp-item.cp-selected {
+  border-color: #b12704;
+  box-shadow: 0 0 0 2rpx #b12704 inset;
+}
+
+.cp-item-left {
+  width: 200rpx;
+  padding: 24rpx 16rpx;
+  background: #b12704;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cp-item.cp-disabled .cp-item-left {
+  background: #bbb;
+}
+
+.cp-amount {
+  font-size: 40rpx;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.cp-threshold {
+  font-size: 20rpx;
+  margin-top: 8rpx;
+  opacity: 0.9;
+}
+
+.cp-item-right {
+  flex: 1;
+  padding: 20rpx 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  justify-content: center;
+  min-width: 0;
+}
+
+.cp-name {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #2e2b29;
+}
+
+.cp-desc {
+  font-size: 22rpx;
+  color: #b12704;
+}
+
+.cp-expire {
+  font-size: 20rpx;
+  color: #8e8e93;
+}
+
+.cp-check {
+  position: absolute;
+  right: 24rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 36rpx;
+  color: #b12704;
+  font-weight: 700;
+}
+
+.cp-unavailable {
+  position: absolute;
+  right: 24rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20rpx;
+  color: #8e8e93;
+  max-width: 200rpx;
+  text-align: right;
+}
+
+.cp-footer {
+  padding: 16rpx 24rpx 24rpx;
+  border-top: 1rpx solid #eee;
+  flex-shrink: 0;
+}
+
+.cp-none-btn {
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid #d5d5d5;
+  border-radius: 40rpx;
+  font-size: 26rpx;
+  color: #2e2b29;
+}
+
+.cp-none-btn.cp-none-active {
+  border-color: #b12704;
+  color: #b12704;
 }
 
 /* 备注输入 */

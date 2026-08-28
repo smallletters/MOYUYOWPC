@@ -1,14 +1,16 @@
-<template>
+﻿<template>
   <view class="logistics-tracking">
     <view class="page-header">
-      <view class="back" @click="goBack" aria-label="返回"><text class="luc luc-arrow-left"></text></view>
+      <view class="back" aria-label="返回" @click="goBack">
+        <text class="luc luc-arrow-left" />
+      </view>
       <text class="title">物流跟踪</text>
     </view>
 
     <scroll-view scroll-y class="content">
       <!-- 物流状态 -->
       <view class="status-card">
-        <view class="status-icon"><text class="luc luc-truck"></text></view>
+        <view class="status-icon"><text class="luc luc-truck" /></view>
         <view class="status-info">
           <text class="status-title">{{ logisticsStatus }}</text>
           <text class="status-desc">承运：{{ carrier }}</text>
@@ -26,7 +28,7 @@
             class="timeline-item"
             :class="{ active: i === 0 }"
           >
-            <view class="timeline-dot"></view>
+            <view class="timeline-dot" />
             <view class="timeline-body">
               <text class="timeline-desc">{{ t.desc }}</text>
               <text class="timeline-time">{{ t.time }}</text>

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="crowdfunding">
     <!-- 顶部深色导航栏 -->
     <view class="nav-header">

@@ -2,19 +2,19 @@
   <view class="register">
     <view class="header-bar">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
-      <text class="header-title">注册</text>
+      <text class="header-title">{{ $t('auth.register') }}</text>
       <view class="header-spacer" />
     </view>
 
     <view class="register-card">
-      <text class="title">创建账号</text>
+      <text class="title">{{ $t('auth.createAccount') }}</text>
       <text class="agreement-text">
-        注册即同意
-        <text class="link">用户协议</text>
-        和
-        <text class="link">隐私政策</text>
+        {{ $t('auth.agreeTerms') }}
+        <text class="link">{{ $t('auth.termsAndPolicy') }}</text>
+        {{ $t('common.and') }}
+        <text class="link">{{ $t('auth.privacyPolicy') }}</text>
       </text>
 
       <view class="form">
@@ -23,7 +23,7 @@
             v-model="nickname"
             class="input"
             type="text"
-            placeholder="设置昵称"
+            :placeholder="$t('auth.setNickname')"
             maxlength="20"
           >
         </view>
@@ -52,7 +52,7 @@
               class="input"
               type="number"
               maxlength="11"
-              placeholder="手机号"
+              :placeholder="$t('auth.phonePlaceholder')"
               inputmode="numeric"
             >
           </view>
@@ -62,11 +62,11 @@
               class="input"
               type="number"
               maxlength="6"
-              placeholder="验证码"
+              :placeholder="$t('auth.codePlaceholder')"
             >
             <view class="send-code" :class="{ disabled: codeCountdown > 0 }" @click="onSendCode">
-              <text v-if="codeCountdown === 0">获取验证码</text>
-              <text v-else>{{ codeCountdown }}s</text>
+              <text v-if="codeCountdown === 0">{{ $t('auth.sendCode') }}</text>
+              <text v-else>{{ $t('auth.codeCountdown', { seconds: codeCountdown }) }}</text>
             </view>
           </view>
         </view>
@@ -78,7 +78,8 @@
               v-model="email"
               class="input"
               type="email"
-              placeholder="邮箱地址">
+              :placeholder="$t('auth.emailPlaceholder')"
+            >
           </view>
           <view class="code-row">
             <input
@@ -86,15 +87,15 @@
               class="input"
               type="number"
               maxlength="6"
-              placeholder="验证码"
+              :placeholder="$t('auth.codePlaceholder')"
             >
             <view
               class="send-code"
               :class="{ disabled: emailCodeCountdown > 0 }"
               @click="onSendEmailCode"
             >
-              <text v-if="emailCodeCountdown === 0">获取验证码</text>
-              <text v-else>{{ emailCodeCountdown }}s</text>
+              <text v-if="emailCodeCountdown === 0">{{ $t('auth.sendCode') }}</text>
+              <text v-else>{{ $t('auth.codeCountdown', { seconds: emailCodeCountdown }) }}</text>
             </view>
           </view>
         </view>
@@ -105,10 +106,10 @@
             v-model="password"
             class="input"
             :type="showPassword ? 'text' : 'password'"
-            placeholder="设置密码"
+            :placeholder="$t('auth.setPassword')"
           >
           <text class="toggle-pwd" @click="showPassword = !showPassword">
-            {{ showPassword ? 'Hide' : 'Show' }}
+            {{ showPassword ? $t('common.hide') : $t('common.show') }}
           </text>
         </view>
 
@@ -117,16 +118,16 @@
             v-model="confirmPassword"
             class="input"
             :type="showConfirm ? 'text' : 'password'"
-            placeholder="确认密码"
+            :placeholder="$t('auth.confirmPassword')"
           >
           <text class="toggle-pwd" @click="showConfirm = !showConfirm">
-            {{ showConfirm ? 'Hide' : 'Show' }}
+            {{ showConfirm ? $t('common.hide') : $t('common.show') }}
           </text>
         </view>
 
         <!-- Pet Preference -->
         <view class="pet-preference">
-          <text class="pref-label">选择你的宠物类型</text>
+          <text class="pref-label">{{ $t('auth.petPreference') }}</text>
           <view class="pref-options">
             <view
               v-for="p in petTypes"
@@ -136,7 +137,7 @@
               @click="petType = p.value"
             >
               <text class="pref-emoji">{{ p.emoji }}</text>
-              <text>{{ p.label }}</text>
+              <text>{{ $t(`auth.petTypes.${p.value}`) }}</text>
             </view>
           </view>
         </view>
@@ -146,27 +147,26 @@
           :class="{ disabled: !canSubmit }"
           @click="onRegister"
         >
-          注册
+          {{ $t('auth.register') }}
         </view>
 
         <view class="login-link">
-          已有账号？
-          <text class="link" @click="goLogin">立即登录</text>
+          {{ $t('auth.hasAccount') }}
+          <text class="link" @click="goLogin">{{ $t('auth.goLogin') }}</text>
         </view>
       </view>
     </view>
   </view>
-</template><script>
+</template>
+<script>
 import { useUserStore } from '@/store'
+import i18n from '@/i18n'
 
 export default {
   data() {
     return {
+      localeVersion: 0,
       activeTab: 'phone',
-      tabs: [
-        { value: 'phone', label: '手机号注册' },
-        { value: 'email', label: '邮箱注册' },
-      ],
       nickname: '',
       phone: '',
       email: '',
@@ -182,22 +182,29 @@ export default {
       emailCodeCountdown: 0,
       petType: 'dog',
       petTypes: [
-        { value: 'dog', label: '狗狗', emoji: 'paw-print' },
-        { value: 'cat', label: '猫咪', emoji: 'paw-print' },
-        { value: 'other', label: '其他', emoji: 'paw-print' },
+        { value: 'dog', emoji: 'paw-print' },
+        { value: 'cat', emoji: 'paw-print' },
+        { value: 'other', emoji: 'paw-print' },
       ],
       countries: [
-        { code: 'CN', name: '中国', dial: '+86', flag: '🇨🇳' },
-        { code: 'US', name: 'United States', dial: '+1', flag: '🇺🇸' },
-        { code: 'GB', name: 'United Kingdom', dial: '+44', flag: '🇬🇧' },
-        { code: 'JP', name: '日本', dial: '+81', flag: '🇯🇵' },
-        { code: 'KR', name: 'South Korea', dial: '+82', flag: '🇰🇷' },
-        { code: 'HK', name: '香港', dial: '+852', flag: '🇭🇰' },
+        { code: 'CN', dial: '+86', flag: '🇨🇳' },
+        { code: 'US', dial: '+1', flag: '🇺🇸' },
+        { code: 'GB', dial: '+44', flag: '🇬🇧' },
+        { code: 'JP', dial: '+81', flag: '🇯🇵' },
+        { code: 'KR', dial: '+82', flag: '🇰🇷' },
+        { code: 'HK', dial: '+852', flag: '🇭🇰' },
       ],
     }
   },
 
   computed: {
+    tabs() {
+      void this.localeVersion // 依赖 localeVersion 以便切换语言时刷新
+      return [
+        { value: 'phone', label: i18n.t('auth.phoneRegister') },
+        { value: 'email', label: i18n.t('auth.emailRegister') },
+      ]
+    },
     canSubmit() {
       if (!this.nickname) return false
       if (this.activeTab === 'phone') {
@@ -214,16 +221,26 @@ export default {
     },
   },
 
+  onLoad() {
+    // 订阅语言切换,刷新 tabs/petTypes 等本地化文案
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
+  },
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
+  },
+
   methods: {
     async onRegister() {
       if (!this.canSubmit) {
         if (this.password !== this.confirmPassword) {
-          uni.showToast({ title: '两次密码不一致', icon: 'none' })
+          uni.showToast({ title: i18n.t('auth.passwordMismatch'), icon: 'none' })
           return
         }
         return
       }
-      uni.showLoading({ title: '注册中...', mask: true })
+      uni.showLoading({ title: i18n.t('auth.registering'), mask: true })
       try {
         await this.userStore.register({
           nickname: this.nickname,
@@ -233,18 +250,18 @@ export default {
           petType: this.petType,
         })
         uni.hideLoading()
-        uni.showToast({ title: '注册成功！', icon: 'success' })
+        uni.showToast({ title: i18n.t('auth.registerSuccess'), icon: 'success' })
         setTimeout(() => uni.navigateBack(), 1000)
       } catch (e) {
         uni.hideLoading()
-        uni.showToast({ title: e.message || '注册失败', icon: 'none' })
+        uni.showToast({ title: e.message || i18n.t('auth.registerFailed'), icon: 'none' })
       }
     },
 
     onSendCode() {
       if (this.codeCountdown > 0) return
       if (!this.phone || this.phone.length < 8) {
-        uni.showToast({ title: '请输入手机号', icon: 'none' })
+        uni.showToast({ title: i18n.t('auth.phoneRequired'), icon: 'none' })
         return
       }
       this.codeCountdown = 60
@@ -257,7 +274,7 @@ export default {
     onSendEmailCode() {
       if (this.emailCodeCountdown > 0) return
       if (!this.email?.includes('@')) {
-        uni.showToast({ title: '请输入正确邮箱', icon: 'none' })
+        uni.showToast({ title: i18n.t('auth.invalidEmail'), icon: 'none' })
         return
       }
       this.emailCodeCountdown = 60

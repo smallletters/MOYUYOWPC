@@ -38,26 +38,37 @@
 
 <script>
 import { orderApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   data() {
     return {
       orderId: null,
       logistics: null,
+      localeVersion: 0,
     }
   },
 
   computed: {
     statusLabel() {
+      void this.localeVersion
       if (!this.logistics) return ''
-      const map = { DELIVERED: 'Delivered', IN_TRANSIT: 'In Transit', PENDING: 'Pending Shipment' }
-      return map[this.logistics.currentStatus] || 'In Transit'
+      const key = `orderLogistics.status.${this.logistics.currentStatus}`
+      const v = i18n.t(key)
+      return v === key ? i18n.t('orderLogistics.status.IN_TRANSIT') : v
     },
   },
 
   onLoad(query) {
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
     this.orderId = query.id
     this.loadLogistics()
+  },
+
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
   },
 
   methods: {

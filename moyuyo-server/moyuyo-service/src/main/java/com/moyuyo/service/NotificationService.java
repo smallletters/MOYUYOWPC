@@ -14,4 +14,9 @@ public interface NotificationService {
   void markAllAsRead(Long userId);
 
   void deleteNotification(Long id, Long userId);
+
+  /**
+   * 直接落库一条通知（同步场景使用；异步场景由 MQ 消费者调用）
+   */
+  NotificationEntity saveNotification(Long userId, String type, String title, String content, Long relatedId);
 }

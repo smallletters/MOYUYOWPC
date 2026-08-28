@@ -2,7 +2,7 @@
   <view class="after-sales">
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">售后记录</text>
       <view class="header-btn right" @click="onApply">
@@ -34,7 +34,7 @@
             </view>
           </view>
           <view class="empty-search">
-            <text class="search-icon luc luc-search"></text>
+            <text class="search-icon luc luc-search" />
           </view>
         </view>
         <text class="empty-title">暂无售后记录</text>
@@ -52,7 +52,7 @@
             <text class="tag-status" :class="`tag-${item.status}`">{{ item.statusLabel }}</text>
             <text class="tag-type">{{ item.typeLabel }}</text>
           </view>
-          <text class="card-arrow"><text class="luc luc-chevron-right"></text></text>
+          <text class="card-arrow"><text class="luc luc-chevron-right" /></text>
         </view>
 
         <view class="card-body">
@@ -68,9 +68,9 @@
         <view class="card-footer">
           <view class="card-amount">
             <text class="amount-label">退款金额</text>
-            <text class="amount-value">-¥{{ item.refundAmount }}</text>
+            <text class="amount-value">-${{ item.refundAmount }}</text>
           </view>
-          <text class="card-time">{{ item.applyTime }} 申请</text>
+          <text class="card-time">{{ item.applyTime }} {{ $t('afterSales.applyAction') }}</text>
         </view>
 
         <view class="card-progress">
@@ -95,8 +95,10 @@
         </view>
       </view>
 
-      <view v-if="loading" class="loading">加载中...</view>
-      <view v-else-if="noMore && filteredList.length > 0" class="loading">— 没有更多了 —</view>
+      <view v-if="loading" class="loading">{{ $t('common.loading') }}</view>
+      <view v-else-if="noMore && filteredList.length > 0" class="loading">
+        — {{ $t('afterSales.noMore') }} —
+      </view>
 
       <view class="policy-section">
         <view class="policy-header" @click="showPolicy = !showPolicy">

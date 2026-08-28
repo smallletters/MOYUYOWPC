@@ -1,13 +1,15 @@
-<template>
+﻿<template>
   <view class="messages">
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">消息详情</text>
       <view class="header-star" @click="onToggleStar">
-        <text class="star-icon" :class="{ starred: isStarred }"><text class="luc luc-star"></text></text>
+        <text class="star-icon" :class="{ starred: isStarred }">
+          <text class="luc luc-star" />
+        </text>
       </view>
     </view>
 
@@ -16,7 +18,7 @@
       <!-- 消息类型标签 -->
       <view class="type-row">
         <view class="type-icon">
-          <text class="type-icon-text"><text class="luc luc-package"></text></text>
+          <text class="type-icon-text"><text class="luc luc-package" /></text>
         </view>
         <text
           class="type-badge"
@@ -98,7 +100,7 @@ export default {
           image: 'https://via.placeholder.com/128',
           name: '经典尼龙宠物牵引套装',
           quantity: 1,
-          price: '¥89.00',
+          price: '$89.00',
         },
       },
     }

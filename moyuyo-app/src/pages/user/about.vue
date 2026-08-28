@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">关于我们</text>
     </view>
@@ -43,7 +43,7 @@
         <text class="card-title">联系我们</text>
         <view class="contact-list">
           <view v-for="item in contacts" :key="item.label" class="contact-item">
-            <text class="contact-icon luc" :class="$luc(item.icon)"></text>
+            <text class="contact-icon luc" :class="$luc(item.icon)" />
             <text class="contact-text">{{ item.label }}: {{ item.value }}</text>
           </view>
         </view>
@@ -59,7 +59,7 @@
           @click="onInfoClick(item)"
         >
           <text class="info-label">{{ item.label }}</text>
-          <text class="chevron"><text class="luc luc-chevron-right"></text></text>
+          <text class="chevron"><text class="luc luc-chevron-right" /></text>
         </view>
       </view>
 
@@ -69,7 +69,11 @@
       </view>
     </scroll-view>
   </view>
-</template><script>
+</template>
+<script>
+import { config } from '@/utils/config'
+import { isUrlAllowed } from '@/utils/webview-guard'
+
 export default {
   data() {
     return {
@@ -97,16 +101,18 @@ export default {
           color: 'var(--color-text-secondary)',
         },
       ],
+      // 联系方式从环境变量读取(.env 中 VITE_CONTACT_*),上线前必须替换
       contacts: [
-        { icon: 'globe', label: '官方网站', value: 'www.moyuyo.com' },
-        { icon: 'mail', label: '客服邮箱', value: 'support@moyuyo.com' },
-        { icon: 'phone', label: '客服热线', value: '400-888-MOYU' },
+        { icon: 'globe', label: '官方网站', value: config.contactWebsite },
+        { icon: 'mail', label: '客服邮箱', value: config.contactEmail },
+        { icon: 'phone', label: '客服热线', value: config.contactPhone },
       ],
+      // 协议链接:有 VITE_*_URL 时优先走外链,否则走内置兜底页
       infoLinks: [
-        { label: '用户协议', url: '' },
-        { label: '隐私政策', url: '' },
-        { label: '商户资质', url: '' },
-        { label: '开源许可', url: '' },
+        { label: '用户协议', type: 'terms', url: config.termsUrl },
+        { label: '隐私政策', type: 'privacy', url: config.privacyUrl },
+        { label: '商户资质', type: 'qualification', url: config.qualificationUrl },
+        { label: '开源许可', type: 'license', url: config.licenseUrl },
       ],
     }
   },
@@ -117,9 +123,21 @@ export default {
     },
 
     onInfoClick(item) {
-      uni.showToast({
-        title: '即将跳转至' + item.label,
-        icon: 'none',
+      // 已配置外链:用通用 web-view 容器打开
+      if (item.url) {
+        // 兜底校验:URL 不在白名单则提示,避免引入 XSS/钓鱼面
+        if (!isUrlAllowed(item.url)) {
+          uni.showToast({ title: '外链不在白名单,已拦截', icon: 'none' })
+          return
+        }
+        uni.navigateTo({
+          url: `/pages/webview/document?url=${encodeURIComponent(item.url)}&title=${encodeURIComponent(item.label)}`,
+        })
+        return
+      }
+      // 未配置外链:跳到内置兜底页(terms-document)
+      uni.navigateTo({
+        url: `/pages/user/terms-document?type=${item.type}`,
       })
     },
   },

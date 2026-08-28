@@ -8,7 +8,7 @@
       </button>
     </div>
 
-    <!-- 模块入口卡片 -->
+    <!-- 核心模块入口卡片（含优惠券管理） -->
     <div class="module-grid">
       <div class="module-card" v-for="mod in modules" :key="mod.title" @click="handleModuleClick(mod)">
         <div class="module-icon" :style="{ background: mod.iconBg }">{{ mod.icon }}</div>
@@ -18,6 +18,27 @@
             <span v-for="(metric, idx) in mod.metrics" :key="idx" class="metric-item">
               <strong>{{ metric.value }}</strong>{{ metric.label }}
             </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 营销子模块快捷入口（补全 AdminLayout 侧边栏之外的所有营销模块） -->
+    <div class="card sub-module-card">
+      <div class="card-header">
+        <h3>营销子模块</h3>
+        <span class="card-subtitle">点击进入各模块管理</span>
+      </div>
+      <div class="card-body">
+        <div class="sub-module-grid">
+          <div
+            v-for="sub in subModules"
+            :key="sub.path"
+            class="sub-module-item"
+            @click="router.push(sub.path)"
+          >
+            <span class="sub-module-icon" :style="{ background: sub.bg }">{{ sub.icon }}</span>
+            <span class="sub-module-label">{{ sub.label }}</span>
           </div>
         </div>
       </div>
@@ -97,6 +118,21 @@ const modules = ref([
   { title: '积分活动', icon: '⭐', iconBg: '#f0fdf4', metrics: [{ value: '-', label: '进行中' }, { value: '-', label: '已兑换' }, { value: '-', label: '积分价值' }] },
   { title: '分销管理', icon: '🔗', iconBg: '#fdf2f8', metrics: [{ value: '-', label: '分销商' }, { value: '-', label: '分销额' }, { value: '-', label: '佣金率' }] }
 ])
+
+// 营销子模块快捷入口（覆盖 AdminLayout 侧边栏未收纳的营销域模块）
+// 背景色统一为柔和色块，与模块卡片区分；点击直接路由跳转
+const subModules = [
+  { path: '/coupon-manage', label: '优惠券管理', icon: '🎫', bg: '#ebf5ff' },
+  { path: '/flash-sale-manage', label: '秒杀管理', icon: '⚡', bg: '#fff4e5' },
+  { path: '/points-manage', label: '积分管理', icon: '⭐', bg: '#f0fdf4' },
+  { path: '/campaign', label: '活动创建', icon: '🎯', bg: '#fef3c7' },
+  { path: '/campaign-detail', label: '活动详情', icon: '📋', bg: '#fef3c7' },
+  { path: '/push-manage', label: '推送管理', icon: '📨', bg: '#ede9fe' },
+  { path: '/sms', label: '短信营销', icon: '💬', bg: '#dbeafe' },
+  { path: '/live-manage', label: '直播管理', icon: '🎥', bg: '#fee2e2' },
+  { path: '/marketing-effect', label: '营销效果', icon: '📊', bg: '#f0fdf4' },
+  { path: '/ab-test', label: 'A/B 测试', icon: '🧪', bg: '#fce7f3' }
+]
 
 const campaigns = ref([])
 
@@ -300,6 +336,57 @@ onMounted(() => {
   font-weight: 700;
   color: var(--text-800);
   margin-bottom: 2px;
+}
+
+/* 营销子模块快捷入口 */
+.sub-module-card {
+  margin-bottom: 24px;
+}
+
+.sub-module-card .card-subtitle {
+  font-size: 12px;
+  color: var(--text-400);
+}
+
+.sub-module-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.sub-module-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: var(--card);
+}
+
+.sub-module-item:hover {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.sub-module-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.sub-module-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-700);
 }
 
 /* 活动列表 */

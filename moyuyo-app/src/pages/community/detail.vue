@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="post-detail">
     <view v-if="!post" class="loading">Loading...</view>
     <template v-else>
@@ -11,15 +11,27 @@
           </view>
         </view>
         <text class="content">{{ post.content }}</text>
-        <image
-          v-if="post.images && post.images[0]"
-          :src="post.images[0]"
-          class="post-image"
-          mode="widthFix"
-        />
+        <!-- 多图渲染：按 3 列九宫格展示；超过 9 张仍能滚动看（容器 wrap 即可） -->
+        <view v-if="post.images && post.images.length" class="image-grid" :class="gridClass">
+          <view
+            v-for="(img, idx) in post.images"
+            :key="idx"
+            class="image-cell"
+            @tap="previewImages(idx)"
+          >
+            <image :src="img" class="post-image" mode="aspectFill" />
+          </view>
+        </view>
         <view class="stats">
-          <text><text class="luc luc-heart"></text> {{ post.likes || 0 }}</text>
-          <text><text class="luc luc-message-circle"></text> {{ post.comments || 0 }}</text>
+          <!-- 点赞按钮：liked=true 时高亮 + 心形变红；点击触发 onToggleLike -->
+          <view class="stat-item" :class="{ liked: post.liked }" @tap="onToggleLike">
+            <text class="luc luc-heart" />
+            <text class="stat-num">{{ post.likes || 0 }}</text>
+          </view>
+          <view class="stat-item static">
+            <text class="luc luc-message-circle" />
+            <text class="stat-num">{{ post.comments || 0 }}</text>
+          </view>
         </view>
       </view>
 
@@ -65,7 +77,22 @@ export default {
       post: null,
       commentText: '',
       defaultAvatar: 'https://i.pravatar.cc/100?img=1',
+      // 点赞请求中标记：避免用户连续点击产生重复请求
+      liking: false,
     }
+  },
+
+  computed: {
+    // 图片数量决定网格列数与排布：
+    // - 1 张：单图大图模式
+    // - 2~4 张：两列
+    // - 5~9 张：三列九宫格
+    gridClass() {
+      const n = (this.post?.images || []).length
+      if (n <= 1) return 'grid-single'
+      if (n <= 4) return 'grid-cols-2'
+      return 'grid-cols-3'
+    },
   },
 
   onLoad(query) {
@@ -76,10 +103,60 @@ export default {
   methods: {
     async loadDetail() {
       try {
-        this.post = await communityApi.getPostDetail(this.postId)
+        const data = await communityApi.getPostDetail(this.postId)
+        // 后端 VO 用 List<String> 存图片 URL；缺字段兜底为空数组，保证模板渲染安全
+        this.post = {
+          ...data,
+          images: Array.isArray(data?.images) ? data.images : [],
+        }
       } catch (e) {
         uni.showToast({ title: 'Failed to load post', icon: 'none' })
       }
+    },
+
+    /**
+     * 点赞 / 取消点赞切换。
+     * - 先乐观更新 UI（liked 取反 + likes ±1），再异步调接口；失败时回滚并提示
+     * - liking 标记防止用户连点
+     */
+    async onToggleLike() {
+      if (!this.post || this.liking) return
+      const before = {
+        liked: !!this.post.liked,
+        likes: Number(this.post.likes) || 0,
+      }
+      const next = {
+        liked: !before.liked,
+        likes: before.likes + (before.liked ? -1 : 1),
+      }
+      // 乐观更新
+      this.post.liked = next.liked
+      this.post.likes = Math.max(0, next.likes)
+      this.liking = true
+      try {
+        if (next.liked) {
+          await communityApi.likePost(this.postId)
+        } else {
+          await communityApi.unlikePost(this.postId)
+        }
+      } catch (e) {
+        // 失败回滚
+        this.post.liked = before.liked
+        this.post.likes = before.likes
+        uni.showToast({ title: '操作失败，请重试', icon: 'none' })
+      } finally {
+        this.liking = false
+      }
+    },
+
+    /**
+     * 预览图片：使用 uni.previewImage 全屏查看当前帖子的全部图片，
+     * 点击的索引 idx 作为 current，从该图开始展示。
+     */
+    previewImages(idx) {
+      const urls = this.post?.images || []
+      if (!urls.length) return
+      uni.previewImage({ current: urls[idx], urls })
     },
 
     async onSendComment() {
@@ -151,11 +228,72 @@ export default {
   border-radius: var(--radius-sm);
   margin-bottom: 16rpx;
 }
+
+/* 多图九宫格：根据图片数量自动切换列数；单图占满宽度 */
+.image-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-bottom: 16rpx;
+}
+
+.image-cell {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-background);
+}
+
+/* 三列（5~9 张）：每格约为容器宽度 1/3 减间距 */
+.grid-cols-3 .image-cell {
+  width: calc((100% - 16rpx) / 3);
+  aspect-ratio: 1 / 1;
+}
+
+/* 两列（2~4 张）：每格约为容器宽度 1/2 减间距 */
+.grid-cols-2 .image-cell {
+  width: calc((100% - 8rpx) / 2);
+  aspect-ratio: 1 / 1;
+}
+
+/* 单图：占满宽度，按原图比例展示 */
+.grid-single .image-cell {
+  width: 100%;
+}
+
+.image-cell .post-image {
+  width: 100%;
+  height: 100%;
+  margin-bottom: 0;
+  display: block;
+}
+
 .stats {
   display: flex;
   gap: 24rpx;
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+  align-items: center;
+}
+
+/* stat-item 兼容旧版 <text> 文本节点：保留 inline-flex 让心形+数字水平排列 */
+.stat-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 4rpx 0;
+}
+
+/* 点赞高亮态：心形变红，加粗，让用户明确感知已点赞 */
+.stat-item.liked {
+  color: #ff4d4f;
+}
+
+.stat-item.static {
+  cursor: default;
+}
+
+.stat-num {
+  font-size: var(--font-size-sm);
 }
 .comments-section {
   padding: 0 24rpx;

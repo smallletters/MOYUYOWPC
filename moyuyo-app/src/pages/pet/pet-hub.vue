@@ -1,8 +1,10 @@
-<template>
+﻿<template>
   <view class="pet-hub">
     <view class="page-header">
       <text class="header-title">Pet Hub</text>
-      <view class="header-icon" @click="goSettings" aria-label="设置"><text class="luc luc-settings"></text></view>
+      <view class="header-icon" aria-label="设置" @click="goSettings">
+        <text class="luc luc-settings" />
+      </view>
     </view>
 
     <scroll-view scroll-y class="content">
@@ -42,7 +44,7 @@
           <view class="remind-list">
             <view class="remind-card">
               <view class="remind-top">
-                <view class="remind-icon"><text class="luc luc-alert-triangle"></text></view>
+                <view class="remind-icon"><text class="luc luc-alert-triangle" /></view>
                 <text class="remind-days">12天</text>
               </view>
               <text class="remind-name">驱虫</text>
@@ -50,7 +52,7 @@
             </view>
             <view class="remind-card">
               <view class="remind-top">
-                <view class="remind-icon success"><text class="luc luc-check"></text></view>
+                <view class="remind-icon success"><text class="luc luc-check" /></view>
                 <text class="remind-days">25天</text>
               </view>
               <text class="remind-name">疫苗</text>
@@ -58,7 +60,7 @@
             </view>
             <view class="remind-card">
               <view class="remind-top">
-                <view class="remind-icon"><text class="luc luc-bath"></text></view>
+                <view class="remind-icon"><text class="luc luc-bath" /></view>
                 <text class="remind-days">7天</text>
               </view>
               <text class="remind-name">洗澡</text>
@@ -66,7 +68,7 @@
             </view>
             <view class="remind-card">
               <view class="remind-top">
-                <view class="remind-icon"><text class="luc luc-brush"></text></view>
+                <view class="remind-icon"><text class="luc luc-brush" /></view>
                 <text class="remind-days">15天</text>
               </view>
               <text class="remind-name">口腔</text>
@@ -80,8 +82,12 @@
       <view class="section">
         <text class="section-title">快捷入口</text>
         <view class="quick-grid">
-          <view class="quick-item" v-for="q in quickEntries" :key="q.id" @click="onQuickClick(q)">
-            <text class="quick-icon luc" :class="$luc(q.icon)"></text>
+          <view
+            v-for="q in quickEntries"
+            :key="q.id"
+            class="quick-item"
+            @click="onQuickClick(q)">
+            <text class="quick-icon luc" :class="$luc(q.icon)" />
             <text class="quick-label">{{ q.label }}</text>
           </view>
         </view>
@@ -100,13 +106,14 @@
               <text class="pet-card-name">{{ p.name }}</text>
               <text class="pet-card-breed">{{ p.breed }}</text>
             </view>
-            <text class="pet-card-arrow"><text class="luc luc-chevron-right"></text></text>
+            <text class="pet-card-arrow"><text class="luc luc-chevron-right" /></text>
           </view>
         </view>
       </view>
     </scroll-view>
   </view>
-</template><script>
+</template>
+<script>
 import { petApi } from '@/api'
 
 export default {

@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">订阅计划</text>
       <view class="header-spacer" />
@@ -15,7 +15,7 @@
         <image :src="product.image" class="product-image" mode="aspectFill" />
         <view class="product-info">
           <text class="product-name">{{ product.name }}</text>
-          <text class="product-price">¥{{ product.price }}</text>
+          <text class="product-price">${{ product.price }}</text>
           <text class="product-price-label">单次购买价</text>
         </view>
       </view>
@@ -51,16 +51,16 @@
           <view class="plan-content">
             <view class="plan-name-row">
               <text class="plan-name">{{ plan.name }}</text>
-              <text class="plan-save">省{{ plan.discount }}%</text>
+              <text class="plan-save">{{ $t('subscribe.saveN', { n: plan.discount }) }}</text>
             </view>
             <text class="plan-price">
-              ¥{{ plan.price }}
+              {{ currencySymbol }}{{ plan.price }}
               <text class="plan-period">/{{ plan.periodLabel }}</text>
             </text>
             <!-- 额外权益 -->
             <view v-if="plan.benefits.length" class="plan-benefits">
               <view v-for="(b, i) in plan.benefits" :key="i" class="benefit-item">
-                <text class="benefit-icon"><text class="luc luc-check"></text></text>
+                <text class="benefit-icon"><text class="luc luc-check" /></text>
                 <text class="benefit-text">{{ b }}</text>
               </view>
             </view>
@@ -73,7 +73,7 @@
         <text class="section-title">订阅权益</text>
         <view class="benefits-card">
           <view v-for="(b, i) in subscribeBenefits" :key="i" class="benefit-row">
-            <text class="benefit-check"><text class="luc luc-check"></text></text>
+            <text class="benefit-check"><text class="luc luc-check" /></text>
             <text class="benefit-desc">{{ b }}</text>
           </view>
         </view>
@@ -86,24 +86,24 @@
           <!-- 首次配送日期 -->
           <view class="delivery-row" @click="showDatePicker">
             <view class="delivery-left">
-              <text class="delivery-icon"><text class="luc luc-map-pin"></text></text>
+              <text class="delivery-icon"><text class="luc luc-map-pin" /></text>
               <text class="delivery-label">首次配送日期</text>
             </view>
             <view class="delivery-right">
               <text class="delivery-value">{{ firstDeliveryDate }}</text>
-              <text class="delivery-arrow"><text class="luc luc-chevron-right"></text></text>
+              <text class="delivery-arrow"><text class="luc luc-chevron-right" /></text>
             </view>
           </view>
           <view class="delivery-divider" />
           <!-- 配送地址 -->
           <view class="delivery-row" @click="showAddressPicker">
             <view class="delivery-left">
-              <text class="delivery-icon"><text class="luc luc-map-pin"></text></text>
+              <text class="delivery-icon"><text class="luc luc-map-pin" /></text>
               <text class="delivery-label">配送地址</text>
             </view>
             <view class="delivery-right">
               <text class="delivery-value">{{ deliveryAddress }}</text>
-              <text class="delivery-arrow"><text class="luc luc-chevron-right"></text></text>
+              <text class="delivery-arrow"><text class="luc luc-chevron-right" /></text>
             </view>
           </view>
         </view>
@@ -116,20 +116,23 @@
     <!-- 底部固定 CTA -->
     <view class="bottom-bar">
       <view class="bottom-price-row">
-        <text class="bottom-label">订阅总价</text>
+        <text class="bottom-label">{{ $t('subscribe.totalLabel') }}</text>
         <text class="bottom-price">
-          ¥{{ currentPlanPrice }}
+          {{ currencySymbol }}{{ currentPlanPrice }}
           <text class="bottom-period">/{{ currentPlanPeriod }}</text>
         </text>
       </view>
-      <button class="subscribe-btn" @click="onSubscribe">开始订阅</button>
-      <text class="bottom-note">可随时取消，无额外费用</text>
+      <button class="subscribe-btn" @click="onSubscribe">
+        {{ $t('subscribe.startSubscribe') }}
+      </button>
+      <text class="bottom-note">{{ $t('subscribe.cancelAnytime') }}</text>
     </view>
   </view>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { i18n } from '@/i18n'
 
 // 商品信息 mock
 const product = ref({
@@ -198,33 +201,48 @@ const currentPlanPeriod = computed(() => {
   return plan ? plan.periodLabel : '月'
 })
 
-// 返回上一页
+// 当前语言货币符号
+const currencySymbol = computed(() => i18n.currencySymbol)
+// locale 版本号触发响应式
+const localeVersion = ref(0)
+
 const goBack = () => {
   uni.navigateBack()
 }
 
-// 选择配送日期
 const showDatePicker = () => {
-  uni.showToast({ title: '选择配送日期', icon: 'none' })
+  uni.showToast({ title: i18n.t('subscribe.selectDate'), icon: 'none' })
 }
 
-// 选择配送地址
 const showAddressPicker = () => {
   uni.navigateTo({ url: '/pages/user/address' })
 }
 
-// 开始订阅
 const onSubscribe = () => {
   uni.showModal({
-    title: '确认订阅',
-    content: `将以 ¥${currentPlanPrice.value}/${currentPlanPeriod.value} 开启订阅，可随时取消。`,
+    title: i18n.t('subscribe.confirmTitle'),
+    content: i18n.t('subscribe.confirmContent', {
+      price: `${currencySymbol.value}${currentPlanPrice.value}`,
+      period: currentPlanPeriod.value,
+    }),
     success: (res) => {
       if (res.confirm) {
-        uni.showToast({ title: '订阅成功', icon: 'success' })
+        uni.showToast({ title: i18n.t('subscribe.success'), icon: 'success' })
       }
     },
   })
 }
+
+// 订阅 locale 变化,触发模板重渲染
+let _unsubLocale
+onMounted(() => {
+  _unsubLocale = i18n.subscribe(() => {
+    localeVersion.value += 1
+  })
+})
+onUnmounted(() => {
+  if (_unsubLocale) _unsubLocale()
+})
 </script>
 
 <style lang="scss" scoped>

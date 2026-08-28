@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <view class="rating-page">
     <!-- 导航栏 -->
     <view class="nav-bar">
       <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="nav-title">服务评价</text>
     </view>
@@ -12,7 +12,7 @@
       <!-- 客服信息卡片 -->
       <view class="cs-info-card">
         <view class="cs-avatar">
-          <text class="cs-emoji"><text class="luc luc-user"></text></text>
+          <text class="cs-emoji"><text class="luc luc-user" /></text>
         </view>
         <view class="cs-detail">
           <text class="cs-name">客服小 MO</text>
@@ -36,7 +36,9 @@
                 :key="star"
                 class="star-btn"
                 @tap="setRating(index, star)">
-                <text class="star-icon" :class="{ 'star-active': star <= dim.rating }"><text class="luc luc-star"></text></text>
+                <text class="star-icon" :class="{ 'star-active': star <= dim.rating }">
+                  <text class="luc luc-star" />
+                </text>
               </view>
             </view>
           </view>
@@ -70,7 +72,7 @@
           <view v-for="(img, index) in uploadedImages" :key="index" class="upload-thumb">
             <text class="thumb-emoji">{{ img }}</text>
             <view class="thumb-delete" @tap="removeImage(index)">
-              <text class="delete-icon"><text class="luc luc-x"></text></text>
+              <text class="delete-icon"><text class="luc luc-x" /></text>
             </view>
           </view>
           <!-- 添加按钮 -->
@@ -90,7 +92,7 @@
 
       <!-- 积分提示 -->
       <view class="reward-hint">
-        <text class="reward-icon"><text class="luc luc-tag"></text></text>
+        <text class="reward-icon"><text class="luc luc-tag" /></text>
         <text class="reward-text">完成评价可获得 10 积分奖励</text>
       </view>
 
@@ -101,7 +103,7 @@
       <view class="feedback-entry">
         <text class="feedback-question">对服务不满意？</text>
         <view class="feedback-btn" @tap="goFeedback">
-          <text class="feedback-btn-icon"><text class="luc luc-message-circle"></text></text>
+          <text class="feedback-btn-icon"><text class="luc luc-message-circle" /></text>
           <text class="feedback-btn-text">提交意见反馈</text>
         </view>
       </view>
@@ -109,7 +111,8 @@
       <view class="bottom-space" />
     </scroll-view>
   </view>
-</template><script setup>
+</template>
+<script setup>
 import { ref } from 'vue'
 
 // 评分维度

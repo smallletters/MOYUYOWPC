@@ -33,7 +33,7 @@
           @click="onKingkongClick(item)"
         >
           <view class="kingkong-icon" :style="{ background: item.bg }">
-            <text class="kingkong-emoji luc" :class="$luc(item.icon)"></text>
+            <text class="kingkong-emoji luc" :class="$luc(item.icon)" />
           </view>
           <text class="kingkong-label">{{ item.label }}</text>
         </view>
@@ -74,31 +74,37 @@
             @click="switchTab(tab.key)"
           >
             <text class="recommend-tab-label">{{ tab.label }}</text>
-            <view v-if="activeTab === tab.key" class="recommend-tab-indicator"></view>
+            <view v-if="activeTab === tab.key" class="recommend-tab-indicator" />
           </view>
         </view>
 
-        <view v-if="recommendLoading && recommend.length === 0" class="recommend-empty">加载中...</view>
+        <view v-if="recommendLoading && recommend.length === 0" class="recommend-empty">
+          加载中...
+        </view>
         <view v-else-if="recommend.length === 0" class="recommend-empty">暂无商品</view>
         <view v-else class="recommend-grid">
           <view
             v-for="p in recommend"
             :key="p.id"
             class="recommend-card"
-            @click="goDetail(p.id)"
-          >
+            @click="goDetail(p.id)">
             <image :src="resolveImage(p)" class="recommend-image" mode="aspectFill" />
             <view class="recommend-body">
               <text class="recommend-name">{{ p.name }}</text>
-              <text class="recommend-desc">{{ truncate(p.shortDetail || p.detail || '', 30) }}</text>
+              <text class="recommend-desc">
+                {{ truncate(p.shortDetail || p.detail || '', 30) }}
+              </text>
               <view class="recommend-price-row">
-                <text class="recommend-price">¥{{ p.price }}</text>
-                <text v-if="p.originalPrice && Number(p.originalPrice) > Number(p.price)" class="recommend-original">
-                  ¥{{ p.originalPrice }}
+                <text class="recommend-price">${{ p.price }}</text>
+                <text
+                  v-if="p.originalPrice && Number(p.originalPrice) > Number(p.price)"
+                  class="recommend-original"
+                >
+                  ${{ p.originalPrice }}
                 </text>
               </view>
               <view v-if="p.rating && p.rating > 0" class="recommend-rating">
-                <text class="recommend-star"><text class="luc luc-star"></text></text>
+                <text class="recommend-star"><text class="luc luc-star" /></text>
                 <text class="recommend-rating-num">{{ p.rating.toFixed(1) }}</text>
                 <text class="recommend-rating-sep">·</text>
                 <text class="recommend-rating-count">{{ formatCount(p.reviewCount) }} 好评</text>
@@ -109,7 +115,8 @@
       </view>
     </scroll-view>
   </view>
-</template><script>
+</template>
+<script>
 import { cmsApi } from '@/api'
 
 export default {
@@ -238,7 +245,7 @@ export default {
         // 通过 globalData 传递选中分类
         getApp().globalData.categoryTab = item.id
       } else if (item.id === 'coupon') {
-        uni.navigateTo({ url: '/pages/user/coupons' })
+        uni.navigateTo({ url: '/pages/user/coupon-center' })
       } else if (item.id === 'vip') {
         uni.navigateTo({ url: '/pages/user/membership' })
       } else if (item.id === 'subscribe') {
@@ -391,7 +398,7 @@ export default {
 }
 .banner-tag {
   background: var(--color-primary);
-  color: #2E2B29;
+  color: #2e2b29;
   font-size: 20rpx;
   font-weight: 700;
   padding: 4rpx 12rpx;

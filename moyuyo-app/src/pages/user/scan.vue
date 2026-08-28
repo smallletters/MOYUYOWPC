@@ -1,12 +1,12 @@
-<template>
+﻿<template>
   <view class="scan-page">
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="header-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="header-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">扫一扫</text>
       <view class="header-btn" @click="onPickAlbum">
-        <text class="header-icon"><text class="luc luc-image"></text></text>
+        <text class="header-icon"><text class="luc luc-image" /></text>
       </view>
     </view>
 
@@ -24,19 +24,19 @@
     <view class="bottom-bar">
       <view class="bottom-btn" @click="onToggleFlash">
         <view class="btn-circle">
-          <text class="btn-icon"><text class="luc luc-zap"></text></text>
+          <text class="btn-icon"><text class="luc luc-zap" /></text>
         </view>
         <text class="btn-label">闪光灯</text>
       </view>
       <view class="bottom-btn" @click="onPickAlbum">
         <view class="btn-circle">
-          <text class="btn-icon"><text class="luc luc-image"></text></text>
+          <text class="btn-icon"><text class="luc luc-image" /></text>
         </view>
         <text class="btn-label">相册</text>
       </view>
       <view class="bottom-btn" @click="onViewHistory">
         <view class="btn-circle">
-          <text class="btn-icon"><text class="luc luc-clock"></text></text>
+          <text class="btn-icon"><text class="luc luc-clock" /></text>
         </view>
         <text class="btn-label">记录</text>
       </view>

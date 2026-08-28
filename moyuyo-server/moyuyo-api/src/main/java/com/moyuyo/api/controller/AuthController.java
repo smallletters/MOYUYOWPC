@@ -118,6 +118,35 @@ public class AuthController {
         return Result.success();
     }
 
+    // ============ 手机短信验证码登录 ============
+
+    @Operation(summary = "发送手机验证码")
+    @PostMapping("/phone/send-code")
+    @RateLimiter(name = "authLogin", fallbackMethod = "phoneSendCodeRateLimitFallback")
+    public Result<Void> sendPhoneCode(@Valid @RequestBody PhoneSendCodeRequest request) {
+        authService.sendPhoneCode(request.getPhone(), request.getPurpose() == null ? "LOGIN" : request.getPurpose());
+        return Result.success();
+    }
+
+    /** phone/send-code 限流降级：签名与 sendPhoneCode 一致 */
+    @SuppressWarnings("unused")
+    private Result<Void> phoneSendCodeRateLimitFallback(PhoneSendCodeRequest request, RequestNotPermitted e) {
+        return Result.error(429, "请求过于频繁，请稍后再试");
+    }
+
+    @Operation(summary = "手机号 + 验证码登录（未注册自动创建账号）")
+    @PostMapping("/phone/login")
+    @RateLimiter(name = "authLogin", fallbackMethod = "phoneLoginRateLimitFallback")
+    public Result<TokenResponse> loginByPhone(@Valid @RequestBody PhoneLoginRequest request) {
+        return Result.success(authService.loginByPhone(request.getPhone(), request.getCode()));
+    }
+
+    /** phone/login 限流降级：签名与 loginByPhone 一致 */
+    @SuppressWarnings("unused")
+    private Result<TokenResponse> phoneLoginRateLimitFallback(PhoneLoginRequest request, RequestNotPermitted e) {
+        return Result.error(429, "请求过于频繁，请稍后再试");
+    }
+
     /** 通用限流降级方法：仅限流拒绝时触发，业务异常正常传播给全局异常处理器 */
     @SuppressWarnings("unused")
     private Result<Void> rateLimitFallback(EmailVerifyRequest request, RequestNotPermitted e) {

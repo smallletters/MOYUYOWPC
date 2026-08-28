@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="user">
     <view class="header">
       <view v-if="userStore.isLoggedIn" class="user-info" @click="goProfile">
@@ -22,14 +22,15 @@
       </view>
     </view>
 
-    <!-- 会员卡片 -->
-    <view v-if="userStore.isLoggedIn" class="vip-card">
+    <!-- 会员卡片：点击整张卡片跳转到会员中心 -->
+    <view v-if="userStore.isLoggedIn" class="vip-card" @click="goMembership">
       <view class="vip-bg" />
       <view class="vip-content">
         <text class="vip-title">MOYUYO Member</text>
         <text class="vip-points">Points: {{ points.toLocaleString() }}</text>
         <text class="vip-tip">Earn 5x points on this order</text>
       </view>
+      <text class="vip-arrow"><text class="luc luc-chevron-right" /></text>
     </view>
 
     <!-- 钱包区域 -->
@@ -54,27 +55,8 @@
       </view>
     </view>
 
-    <!-- 关注 / 粉丝 入口（与 wallet 风格一致） -->
-    <view class="card social-area">
-      <view class="social-grid">
-        <view class="social-item" @click="goFollowing">
-          <text class="social-num">{{ followingCount }}</text>
-          <text class="social-label">关注</text>
-        </view>
-        <view class="social-item" @click="goFollowers">
-          <text class="social-num">{{ followerCount }}</text>
-          <text class="social-label">粉丝</text>
-        </view>
-        <view class="social-item" @click="goCollection">
-          <text class="social-num">{{ collectCount }}</text>
-          <text class="social-label">收藏</text>
-        </view>
-        <view class="social-item" @click="goHistory">
-          <text class="social-num">{{ historyCount }}</text>
-          <text class="social-label">足迹</text>
-        </view>
-      </view>
-    </view>
+    <!-- 关注 / 粉丝 / 收藏 / 足迹 入口（封装为 social-grid 组件） -->
+    <social-grid :items="socialItems" @tap="onSocialTap" />
 
     <!-- 订单宫格 -->
     <view class="card order-card">
@@ -145,16 +127,17 @@ export default {
         { value: 'COMPLETED', label: '待评价', icon: '⭐', badge: 0 },
       ],
       features: [
-        { id: 'checkin', label: '每日签到', icon: '📅' },
-        { id: 'missions', label: '任务中心', icon: '🎯' },
-        { id: 'invite', label: '邀请好友', icon: '🤝' },
-        { id: 'membership', label: '会员中心', icon: '👑' },
-        { id: 'address', label: '收货地址', icon: '📍' },
-        { id: 'pets', label: '宠物档案', icon: '🐾' },
-        { id: 'favorites', label: '我的收藏', icon: '❤' },
-        { id: 'history', label: '浏览足迹', icon: '👣' },
-        { id: 'help', label: '帮助中心', icon: '❓' },
-        { id: 'about', label: '关于我们', icon: '✨' },
+        { id: 'checkin', label: '每日签到', icon: 'calendar' },
+        { id: 'missions', label: '任务中心', icon: 'target' },
+        { id: 'invite', label: '邀请好友', icon: 'user-plus' },
+        { id: 'membership', label: '会员中心', icon: 'crown' },
+        { id: 'address', label: '收货地址', icon: 'map-pin' },
+        { id: 'pets', label: '宠物档案', icon: 'paw-print' },
+        { id: 'favorites', label: '我的收藏', icon: 'heart' },
+        { id: 'history', label: '浏览足迹', icon: 'footprints' },
+        { id: 'help', label: '帮助中心', icon: 'help-circle' },
+        { id: 'settings', label: '设置', icon: 'settings' },
+        { id: 'about', label: '关于我们', icon: 'sparkles' },
       ],
     }
   },
@@ -162,6 +145,42 @@ export default {
   computed: {
     userStore() {
       return useUserStore()
+    },
+    /**
+     * 社交宫格数据源：把原来散落的 4 个 @click 入口聚合到一个数组里
+     * icon / bg 用于组件内渲染图标徽章,url 决定点击行为
+     */
+    socialItems() {
+      return [
+        {
+          key: 'following',
+          label: '关注',
+          value: this.followingCount,
+          icon: 'user-plus',
+          url: '/pages/user/follow-list?mode=following',
+        },
+        {
+          key: 'followers',
+          label: '粉丝',
+          value: this.followerCount,
+          icon: 'users',
+          url: '/pages/user/follow-list?mode=followers',
+        },
+        {
+          key: 'collection',
+          label: '收藏',
+          value: this.collectCount,
+          icon: 'bookmark',
+          url: '/pages/user/post-collection',
+        },
+        {
+          key: 'history',
+          label: '足迹',
+          value: this.historyCount,
+          icon: 'footprints',
+          url: '/pages/user/browsing-history',
+        },
+      ]
     },
     memberLevel() {
       if (!this.memberInfo) return ''
@@ -285,6 +304,23 @@ export default {
       uni.navigateTo({ url: `/pages/order/list?type=${type || 'all'}` })
     },
 
+    /**
+     * 社交宫格点击事件:social-grid 子组件 emit('tap', item)
+     * 未登录时,关注/粉丝跳登录,其它直接展示"待上线"提示
+     */
+    onSocialTap(item) {
+      if (!item || !item.url) {
+        uni.showToast({ title: 'Coming soon', icon: 'none' })
+        return
+      }
+      // 关注/粉丝需要登录态;足迹/收藏未登录时本地有数据也能展示,这里不强校验
+      const needLogin = item.key === 'following' || item.key === 'followers'
+      if (needLogin && !this.userStore.isLoggedIn) {
+        return uni.navigateTo({ url: '/pages/user/login' })
+      }
+      uni.navigateTo({ url: item.url })
+    },
+
     goFollowing() {
       if (!this.userStore.isLoggedIn) return uni.navigateTo({ url: '/pages/user/login' })
       uni.navigateTo({ url: '/pages/user/follow-list?mode=following' })
@@ -314,6 +350,7 @@ export default {
         favorites: '/pages/user/favorites',
         history: '/pages/user/browsing-history',
         help: '/pages/user/help',
+        settings: '/pages/user/settings',
         about: '/pages/user/about',
       }
       if (map[f.id]) {
@@ -336,7 +373,8 @@ export default {
     },
 
     goGiftCards() {
-      uni.showToast({ title: 'Gift cards coming soon', icon: 'none' })
+      // 跳到礼品卡管理页(已注册: pages/user/gift-cards.vue)
+      uni.navigateTo({ url: '/pages/user/gift-cards' })
     },
 
     /** 跳到每日签到 */
@@ -455,6 +493,16 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 8rpx;
+}
+
+/* 右上角箭头：放在 vip-bg 之上、vip-content 之外的视觉锚点，提示卡片可点击 */
+.vip-arrow {
+  position: absolute;
+  right: 24rpx;
+  bottom: 32rpx;
+  font-size: 36rpx;
+  color: #f6f2ee;
+  opacity: 0.7;
 }
 
 .vip-title {
@@ -589,7 +637,6 @@ export default {
   color: var(--color-text-tertiary);
   font-size: 32rpx;
 }
-
 .footer {
   text-align: center;
   padding: 48rpx 24rpx;

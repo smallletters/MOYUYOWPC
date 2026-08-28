@@ -2,7 +2,7 @@
   <view class="payment-success">
     <view class="success-icon-wrap">
       <view class="success-icon">
-        <text class="check-mark"><text class="luc luc-check"></text></text>
+        <text class="check-mark"><text class="luc luc-check" /></text>
       </view>
     </view>
 
@@ -12,7 +12,7 @@
 
     <view class="amount-section">
       <text class="amount-label">支付金额</text>
-      <text class="amount-value">¥197.00</text>
+      <text class="amount-value">$197.00</text>
     </view>
 
     <view class="order-summary">
@@ -20,35 +20,47 @@
     </view>
 
     <view class="actions">
-      <view class="btn btn-outline" @click="onViewOrder">查看订单详情</view>
-      <view class="btn btn-primary" @click="onContinueShopping">继续购物</view>
+      <view class="btn btn-outline" @click="onViewOrder">{{ $t('paymentSuccess.viewOrder') }}</view>
+      <view class="btn btn-primary" @click="onContinueShopping">
+        {{ $t('paymentSuccess.continueShopping') }}
+      </view>
     </view>
 
     <view class="footer">
       <view class="share-btn" @click="onShare">
         <text class="share-icon">⤴</text>
-        <text>分享给好友</text>
+        <text>{{ $t('paymentSuccess.shareFriend') }}</text>
       </view>
       <view class="points-badge">
-        <text class="gift-icon"><text class="luc luc-gift"></text></text>
-        <text>已获得 50 积分</text>
+        <text class="gift-icon"><text class="luc luc-gift" /></text>
+        <text>{{ $t('paymentSuccess.earnedPoints', { count: 50 }) }}</text>
       </view>
     </view>
   </view>
 </template>
 
 <script>
+import { i18n } from '@/i18n'
+
 export default {
   data() {
     return {
       orderNo: 'MOY20260715001',
       payAmount: '197.00',
+      localeVersion: 0,
     }
   },
 
   onLoad(query) {
     if (query.orderNo) this.orderNo = query.orderNo
     if (query.amount) this.payAmount = query.amount
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
+  },
+
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
   },
 
   methods: {
@@ -61,7 +73,7 @@ export default {
     },
 
     onShare() {
-      uni.showToast({ title: '分享功能开发中', icon: 'none' })
+      uni.showToast({ title: i18n.t('paymentSuccess.shareDeveloping'), icon: 'none' })
     },
   },
 }

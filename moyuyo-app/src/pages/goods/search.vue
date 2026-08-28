@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="search">
     <view class="search-bar">
       <view class="search-input-wrap">

@@ -148,8 +148,11 @@ async function handleSave() {
       flashPrice: form.flashPrice,
       originalPrice: form.originalPrice,
       stock: form.stock,
-      startTime: form.startTime ? new Date(form.startTime).toISOString() : null,
-      endTime: form.endTime ? new Date(form.endTime).toISOString() : null,
+      // 后端 Spring 用 LocalDateTime.parse 仅支持 "yyyy-MM-ddTHH:mm:ss" 或
+      // "yyyy-MM-dd HH:mm:ss"，不支持带 "Z" 的 UTC ISO 8601（如 2026-08-27T16:00:00.000Z）,
+      // 因此前端本地格式化为 "yyyy-MM-dd HH:mm:ss" 再提交，避免时区/格式双重歧义
+      startTime: formatDateTime(form.startTime),
+      endTime: formatDateTime(form.endTime),
     }
     if (isEdit.value) {
       await updateFlashSale({ id: editId.value, ...payload })
@@ -163,6 +166,20 @@ async function handleSave() {
   } catch (e) {
     ElMessage.error('保存失败')
   }
+}
+
+/**
+ * 将 el-date-picker 返回的 Date 对象或字符串格式化为后端可解析的 "yyyy-MM-dd HH:mm:ss"
+ * - 传入 null/undefined 返回 null
+ * - 传入 Date 直接取本地时区的年月日时分秒
+ * - 传入字符串尝试兼容解析
+ */
+function formatDateTime(val) {
+  if (val == null || val === '') return null
+  const d = val instanceof Date ? val : new Date(val)
+  if (Number.isNaN(d.getTime())) return null
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
 async function handleToggleStatus(row) {

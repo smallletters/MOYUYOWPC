@@ -11,6 +11,8 @@ import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.ProductService;
 import com.moyuyo.service.WooCommerceSyncService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,8 @@ public class ProductServiceImpl implements ProductService {
   private final ProductImageMapper productImageMapper;
   // 注入 WooCommerce 同步服务：商品变更后自动推送到 WooCommerce
   private final WooCommerceSyncService wooCommerceSyncService;
+  // Jackson 解析器：解析 attributes JSON 中的变体数据，用于 SKU 落库
+  private final ObjectMapper objectMapper;
 
   @Override
   public Page<ProductEntity> listProducts(int page, int size, Long categoryId, String sortBy, String sortOrder, String keyword, String status, String stockStatus, Long brandIpId) {
@@ -259,6 +263,9 @@ public class ProductServiceImpl implements ProductService {
     // 保存商品图库到 mo_product_image（对齐 WC images[]）
     saveImages(entity.getId(), body);
 
+    // 变体商品 SKU 落库：把 attributes.variations 拆成 mo_product_sku 行
+    saveSkusForVariations(entity.getId(), entity.getSpuCode(), body);
+
     // 事务提交后异步推送到 WooCommerce（避免阻塞主流程与事务回滚）
     registerWooCommercePush(entity, "create");
     return entity;
@@ -346,6 +353,11 @@ public class ProductServiceImpl implements ProductService {
       saveImages(id, body);
     }
 
+    // 变体商品 SKU 落库：attributes（含变体）变化时全量重建 mo_product_sku
+    if (body.containsKey("attributes")) {
+      saveSkusForVariations(id, entity.getSpuCode(), body);
+    }
+
     // 事务提交后异步推送到 WooCommerce（避免阻塞主流程与事务回滚）
     registerWooCommercePush(entity, "update");
     return entity;
@@ -411,6 +423,181 @@ public class ProductServiceImpl implements ProductService {
     if (e != null) {
       e.setMainImage(newImages.get(0).getUrl());
       productMapper.updateById(e);
+    }
+  }
+
+  /**
+   * 变体商品 SKU 落库：将 attributes JSON 中的 variations 数组拆成 mo_product_sku 行（全量覆盖）。
+   * <p>
+   * 设计说明：
+   *   1) 仅当商品类型为 variable 且提交了 attributes 时才重建；
+   *   2) 采用与 saveImages 一致的"全量覆盖"策略：先删该商品旧 SKU 再按当前变体重插，避免旧变体残留；
+   *   3) 每次保存会重新生成 SKU 主键（存量数据该表为空、变体商品此前无法下单，无历史 id 被引用，故安全）；
+   *   4) 简单商品(simple)不生成 SKU 行，继续沿用商品维度价格/库存/下单，与 OrderServiceImpl 的兜底逻辑对称。
+   */
+  private void saveSkusForVariations(Long productId, String spuCode, Map<String, Object> body) {
+    // 仅变体商品需要 SKU 落库
+    String pType = (String) body.get("productType");
+    if (pType == null) pType = (String) body.get("product_type");
+    boolean isVariable = "variable".equalsIgnoreCase(pType);
+    Object rawAttributes = body.get("attributes");
+
+    // 非变体商品，或未提交 attributes：清空旧 SKU，保证与商品类型一致
+    if (!isVariable || rawAttributes == null) {
+      productSkuMapper.delete(new LambdaQueryWrapper<ProductSkuEntity>()
+          .eq(ProductSkuEntity::getProductId, productId));
+      return;
+    }
+
+    try {
+      JsonNode root = objectMapper.readTree(rawAttributes.toString());
+      JsonNode variations = root.path("variations");
+      if (!variations.isArray() || variations.isEmpty()) {
+        // 变体商品但没有可用的变体：清空旧 SKU
+        productSkuMapper.delete(new LambdaQueryWrapper<ProductSkuEntity>()
+            .eq(ProductSkuEntity::getProductId, productId));
+        return;
+      }
+
+      // 全量覆盖：先删旧，再按当前变体重建
+      productSkuMapper.delete(new LambdaQueryWrapper<ProductSkuEntity>()
+          .eq(ProductSkuEntity::getProductId, productId));
+
+      // 记录本批次已用 SKU 编码，避免同商品内重复（联合唯一键 product_id + sku_code）
+      java.util.Set<String> usedCodes = new java.util.HashSet<>();
+
+      int idx = 0;
+      for (JsonNode v : variations) {
+        if (!v.isObject()) continue;
+        // 禁用的变体不落库
+        if (v.has("enabled") && !v.path("enabled").asBoolean()) continue;
+
+        ProductSkuEntity sku = new ProductSkuEntity();
+        sku.setProductId(productId);
+
+        // SKU 编码：优先取变体手动填写的 sku，为空则用 SPU 编码 + 序号兜底；
+        // 同商品内编码冲突则追加 "-(规格值)" 后缀（避免用户录入重复 SKU 编码被联合唯一键挡住）
+        String code = v.path("sku").asText("");
+        if (code == null || code.isBlank()) {
+          code = spuCode + "-" + (idx + 1);
+        }
+        String finalCode = code;
+        int suffixNum = 1;
+        while (usedCodes.contains(finalCode)) {
+          // 用规格值或变体序号作为后缀，让编码可读
+          String suffix = buildSpecSuffix(v);
+          finalCode = code + "-" + (suffix.isBlank() ? ("dup" + suffixNum++) : suffix);
+        }
+        usedCodes.add(finalCode);
+        sku.setSkuCode(finalCode);
+
+        // WooCommerce 变体 id：仅当为纯数字（真实 id）时落库，忽略前端临时 id（如 tmp_xxx）
+        String varId = v.path("id").asText("");
+        if (varId != null && varId.matches("\\d+")) {
+          sku.setWooVariationId(Long.valueOf(varId));
+        } else if (v.hasNonNull("wooVariationId")) {
+          sku.setWooVariationId(v.path("wooVariationId").asLong());
+        }
+
+        // 规格描述：属性组合，如 "尺寸:S"
+        sku.setSpec(buildSpecText(v));
+
+        // 变体价格：优先促销价 salePrice，其次 regularPrice，回退商品价，最后回退 DB 当前商品价
+        java.math.BigDecimal price = readBigDecimal(v, "salePrice");
+        if (price == null) price = readBigDecimal(v, "regularPrice");
+        if (price == null) price = readBigDecimal(body, "price");
+        if (price == null) {
+          ProductEntity dbProduct = productMapper.selectById(productId);
+          if (dbProduct != null) price = dbProduct.getPrice();
+        }
+        if (price == null) {
+          log.warn("变体 SKU 价格缺失，跳过变体 productId={} idx={}", productId, idx);
+          continue;
+        }
+        sku.setPrice(price);
+
+        // 变体库存：单独管理时用 stockQuantity，否则回退商品级 stock
+        if (v.has("manageStock") && v.path("manageStock").asBoolean()) {
+          sku.setStock(v.path("stockQuantity").asInt(0));
+        } else {
+          sku.setStock(readInt(body, "stock"));
+        }
+        sku.setSales(0);
+        productSkuMapper.insert(sku);
+        idx++;
+      }
+    } catch (Exception e) {
+      // SKU 落库失败不应阻断商品本身保存，仅记录告警
+      log.warn("变体 SKU 落库失败，productId={}, reason={}", productId, e.getMessage());
+    }
+  }
+
+  /**
+   * 从变体 JSON 中提取规格描述："属性名:属性值" 用 / 拼接。
+   */
+  private String buildSpecText(JsonNode variation) {
+    JsonNode attrs = variation.path("attributes");
+    if (!attrs.isArray() || attrs.isEmpty()) {
+      return "";
+    }
+    List<String> parts = new java.util.ArrayList<>();
+    for (JsonNode a : attrs) {
+      parts.add(a.path("name").asText("") + ":" + a.path("value").asText(""));
+    }
+    return String.join(" / ", parts);
+  }
+
+  /**
+   * 为冲突的 SKU 编码提供可读后缀：取最后一个规格值（去掉非法字符），如 "S"、"L"。
+   */
+  private String buildSpecSuffix(JsonNode variation) {
+    JsonNode attrs = variation.path("attributes");
+    if (!attrs.isArray() || attrs.isEmpty()) return "";
+    // 取最后一个规格值作为后缀，便于区分
+    String lastVal = "";
+    for (JsonNode a : attrs) {
+      String v = a.path("value").asText("").trim();
+      if (!v.isBlank()) lastVal = v;
+    }
+    // 去掉特殊字符，只保留字母数字
+    return lastVal.replaceAll("[^A-Za-z0-9]", "");
+  }
+
+  /**
+   * 从 JsonNode 中安全读取指定数值字段为 BigDecimal，缺失或非法返回 null。
+   */
+  private java.math.BigDecimal readBigDecimal(JsonNode node, String field) {
+    if (!node.hasNonNull(field)) return null;
+    try {
+      return new java.math.BigDecimal(node.path(field).asText(""));
+    } catch (NumberFormatException e) {
+      return null;
+    }
+  }
+
+  /**
+   * 从 body Map 中安全读取数值字段为 BigDecimal，缺失或非法返回 null。
+   */
+  private java.math.BigDecimal readBigDecimal(Map<String, Object> body, String field) {
+    Object val = body.get(field);
+    if (val == null) return null;
+    try {
+      return new java.math.BigDecimal(val.toString());
+    } catch (NumberFormatException e) {
+      return null;
+    }
+  }
+
+  /**
+   * 从 body Map 中安全读取整型字段（如 stock）。
+   */
+  private Integer readInt(Map<String, Object> body, String field) {
+    Object val = body.get(field);
+    if (val == null) return 0;
+    try {
+      return Integer.valueOf(val.toString());
+    } catch (NumberFormatException e) {
+      return 0;
     }
   }
 

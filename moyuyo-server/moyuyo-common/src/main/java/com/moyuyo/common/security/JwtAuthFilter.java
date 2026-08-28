@@ -79,9 +79,16 @@ public class JwtAuthFilter implements Filter {
             new WhiteListEntry("/api/v1/products/", true),
             new WhiteListEntry("/api/v1/categories", true),
             new WhiteListEntry("/api/v1/categories/", true),
+            // C 端领券中心公开浏览：列表 GET / 详情 GET 都允许匿名访问
+            // 用户点击"领取"按钮时由 /api/v1/coupons/{id}/claim 强制登录校验
+            new WhiteListEntry("/api/v1/coupons", true),
+            new WhiteListEntry("/api/v1/coupons/", true),
             // APP 首页 CMS Banner 公开拉取（仅 GET）
             new WhiteListEntry("/api/v1/cms/banners", true),
-            new WhiteListEntry("/api/v1/cms/banners/", true)
+            new WhiteListEntry("/api/v1/cms/banners/", true),
+            // 分享链接 QR 公开生成（仅 GET，未登录用户也能扫码看商品）
+            new WhiteListEntry("/api/v1/shares/qr", false),
+            new WhiteListEntry("/api/v1/shares/qr/", true)
     );
 
     @Override
@@ -140,6 +147,9 @@ public class JwtAuthFilter implements Filter {
             }
 
             if (isWhiteListed(path, method)) {
+                // 白名单路径（如商品详情 GET）允许匿名访问，但若携带 Authorization 头仍解析 JWT
+                // 并写入 UserContextHolder，便于浏览商品任务等"可选身份"场景在登录用户上正确累加进度
+                trySetUserIdIfPresent(request);
                 chain.doFilter(request, response);
                 return;
             }
@@ -215,6 +225,33 @@ public class JwtAuthFilter implements Filter {
             jwtBlacklistFailClosedCounter.increment();
             log.error("JWT 黑名单查询失败（fail-closed，拒绝请求），token.length={}", token.length(), e);
             return true;
+        }
+    }
+
+    /**
+     * 白名单路径上的可选身份注入：仅当请求携带合法 Bearer Token 时解析并 setUserId。
+     * 解析失败（格式错/签名错/超长/黑名单）一律静默放行，保证匿名访问不报错。
+     */
+    private void trySetUserIdIfPresent(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return;
+        }
+        String token = authHeader.substring(7);
+        if (token.isEmpty() || token.length() > MAX_TOKEN_LENGTH) {
+            return;
+        }
+        try {
+            Claims claims = jwtUtil.parseClaims(token);
+            if (isBlacklisted(token)) {
+                return;
+            }
+            UserContextHolder.setUserId(jwtUtil.getUserIdFromClaims(claims));
+            UserContextHolder.setToken(token);
+            UserContextHolder.setRole(jwtUtil.getRoleFromClaims(claims));
+        } catch (JwtException | IllegalArgumentException e) {
+            // 解析失败按匿名处理，不阻断业务请求
+            log.debug("whitelist optional jwt parse skipped: {}", e.getMessage());
         }
     }
 

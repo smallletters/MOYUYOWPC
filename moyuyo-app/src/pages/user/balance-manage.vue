@@ -1,7 +1,9 @@
-<template>
+﻿<template>
   <view class="balance-manage">
     <view class="page-header">
-      <view class="back" @click="goBack" aria-label="返回"><text class="luc luc-arrow-left"></text></view>
+      <view class="back" aria-label="返回" @click="goBack">
+        <text class="luc luc-arrow-left" />
+      </view>
       <text class="title">余额管理</text>
     </view>
 
@@ -10,8 +12,13 @@
       <view class="balance-card">
         <text class="balance-label">账户余额</text>
         <view class="balance-value-wrap">
-          <text class="balance-value">¥{{ showBalance ? balance : '****' }}</text>
-          <view class="toggle luc" @click="showBalance = !showBalance" aria-label="显示/隐藏余额" :class="$luc(showBalance  ?  'eye-off'  :  'eye')"></view>
+          <text class="balance-value">${{ showBalance ? balance : '****' }}</text>
+          <view
+            class="toggle luc"
+            aria-label="显示/隐藏余额"
+            :class="$luc(showBalance ? 'eye-off' : 'eye')"
+            @click="showBalance = !showBalance"
+          />
         </view>
         <view class="balance-actions">
           <view class="action-btn primary" @click="onRecharge">充值</view>
@@ -42,7 +49,9 @@
               <text class="tx-name">{{ tx.desc }}</text>
               <text class="tx-time">{{ tx.time }}</text>
             </view>
-            <text class="tx-amount" :class="tx.type">{{ tx.type === 'income' ? '+' : '-' }}¥{{ tx.amount }}</text>
+            <text class="tx-amount" :class="tx.type">
+              {{ tx.type === 'income' ? '+' : '-' }}${{ tx.amount }}
+            </text>
           </view>
         </view>
       </view>

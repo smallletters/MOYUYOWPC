@@ -41,7 +41,14 @@ export function addFavorite(productId, skuId, groupId) {
 }
 
 export function removeFavorite(productId, skuId) {
-  return del('/api/v1/favorites', { productId, skuId })
+  // 走 query 传参,避免 DELETE + body 在部分网关下被丢弃导致服务端拿不到参数
+  const params = {}
+  if (productId !== undefined && productId !== null) params.productId = productId
+  if (skuId !== undefined && skuId !== null) params.skuId = skuId
+  const qs = Object.keys(params)
+    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
+    .join('&')
+  return del(`/api/v1/favorites${qs ? `?${qs}` : ''}`)
 }
 
 export default {

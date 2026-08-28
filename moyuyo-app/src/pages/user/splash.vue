@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="splash">
     <!-- 品牌名 -->
     <text class="brand-name" :style="brandStyle">MOYUYO</text>

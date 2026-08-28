@@ -44,4 +44,11 @@ public class CouponEntity {
 
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
+
+    /**
+     * 当前登录用户是否已领取（非持久化字段，由 Service 层在列表接口按 userId 填充）
+     * 用于 C 端"领券中心"页面判断按钮"立即领取 / 已领取"展示
+     */
+    @TableField(exist = false)
+    private Boolean claimedByMe;
 }

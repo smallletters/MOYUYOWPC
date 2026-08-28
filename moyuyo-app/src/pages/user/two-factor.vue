@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="two-factor">
     <view class="header">
       <text class="title">Two-Factor Authentication</text>

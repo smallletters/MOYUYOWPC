@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="create-post">
     <!-- 顶部导航:左侧返回 + 标题 + 右侧主操作按钮(圆角强调色,符合主流社交 APP 模式) -->
     <view class="navbar">

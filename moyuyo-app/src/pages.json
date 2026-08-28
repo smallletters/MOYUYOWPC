@@ -209,7 +209,9 @@
     {
       "path": "pages/user/wallet",
       "style": {
-        "navigationBarTitleText": "我的钱包"
+        "navigationBarTitleText": "我的钱包",
+        "enablePullDownRefresh": true,
+        "backgroundColor": "#F6F2EE"
       }
     },
     {
@@ -261,6 +263,12 @@
       }
     },
     {
+      "path": "pages/webview/document",
+      "style": {
+        "navigationBarTitleText": "网页"
+      }
+    },
+    {
       "path": "pages/debug/plugin-test",
       "style": {
         "navigationBarTitleText": "插件通信测试"
@@ -270,6 +278,12 @@
       "path": "pages/user/about",
       "style": {
         "navigationBarTitleText": "关于我们"
+      }
+    },
+    {
+      "path": "pages/user/terms-document",
+      "style": {
+        "navigationBarTitleText": "协议详情"
       }
     },
     {
@@ -510,6 +524,18 @@
       "path": "pages/user/balance-recharge",
       "style": {
         "navigationBarTitleText": "充值"
+      }
+    },
+    {
+      "path": "pages/user/balance-withdraw",
+      "style": {
+        "navigationBarTitleText": "提现"
+      }
+    },
+    {
+      "path": "pages/user/wallet-transactions",
+      "style": {
+        "navigationBarTitleText": "交易记录"
       }
     },
     {

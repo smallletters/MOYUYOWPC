@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <view class="service-booking">
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="header-btn" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">服务预约</text>
       <view class="header-btn" />
@@ -52,7 +52,7 @@
             @tap="selectedService = svc.id"
           >
             <view class="service-icon" :style="{ background: svc.iconBg }">
-              <text class="service-icon-text luc" :class="$luc(svc.icon)"></text>
+              <text class="service-icon-text luc" :class="$luc(svc.icon)" />
             </view>
             <text
               class="service-name"
@@ -71,7 +71,10 @@
       <view class="section">
         <view class="section-header">
           <text class="section-title">推荐门店</text>
-          <text class="section-more">查看全部 <text class="luc luc-chevron-right"></text></text>
+          <text class="section-more">
+            查看全部
+            <text class="luc luc-chevron-right" />
+          </text>
         </view>
         <view v-for="store in stores" :key="store.id" class="store-card">
           <view class="store-top">
@@ -82,7 +85,7 @@
               <view class="store-name-row">
                 <text class="store-name">{{ store.name }}</text>
                 <view class="store-rating">
-                  <text class="star"><text class="luc luc-star"></text></text>
+                  <text class="star"><text class="luc luc-star" /></text>
                   <text class="rating-value">{{ store.rating }}</text>
                 </view>
               </view>
@@ -96,7 +99,7 @@
           </view>
           <view class="store-bottom">
             <text class="store-price-label">参考价</text>
-            <text class="store-price">¥{{ store.priceMin }} - ¥{{ store.priceMax }}</text>
+            <text class="store-price">${{ store.priceMin }} - ${{ store.priceMax }}</text>
             <view class="book-btn" @tap="handleQuickBook(store)">立即预约</view>
           </view>
         </view>
@@ -198,7 +201,9 @@
               borderColor: selectedPet === pet.id ? 'var(--primary)' : 'var(--background-400)',
             }"
           >
-            <text v-if="selectedPet === pet.id" class="check-mark"><text class="luc luc-check"></text></text>
+            <text v-if="selectedPet === pet.id" class="check-mark">
+              <text class="luc luc-check" />
+            </text>
           </view>
           <view class="pet-avatar">
             <text>{{ pet.initial }}</text>
@@ -207,7 +212,7 @@
             <text class="pet-name">{{ pet.name }}</text>
             <text class="pet-breed">{{ pet.breed }}</text>
           </view>
-          <text class="pet-arrow"><text class="luc luc-chevron-right"></text></text>
+          <text class="pet-arrow"><text class="luc luc-chevron-right" /></text>
         </view>
       </view>
 
@@ -217,18 +222,18 @@
         <view class="fee-card">
           <view class="fee-row">
             <text class="fee-label">洗澡 + 造型（金毛）</text>
-            <text class="fee-value">¥198.00</text>
+            <text class="fee-value">$198.00</text>
           </view>
           <view class="fee-row">
             <text class="fee-label">在线定金（20%）</text>
-            <text class="fee-value fee-primary">-¥39.60</text>
+            <text class="fee-value fee-primary">-$39.60</text>
           </view>
           <view class="fee-row total">
             <text class="fee-label">合计应付</text>
-            <text class="fee-total">¥39.60</text>
+            <text class="fee-total">$39.60</text>
           </view>
         </view>
-        <text class="fee-note">到店后支付剩余 80% 费用（¥158.40），定金不可退</text>
+        <text class="fee-note">到店后支付剩余 80% 费用（$158.40），定金不可退</text>
       </view>
 
       <view class="bottom-spacer" />
@@ -237,17 +242,18 @@
     <!-- 底部确认预约栏 -->
     <view class="bottom-bar">
       <view class="policy-hint">
-        <text class="hint-icon"><text class="luc luc-alert-triangle"></text></text>
+        <text class="hint-icon"><text class="luc luc-alert-triangle" /></text>
         <text class="hint-text">
           预约成功后如需取消，请提前24小时操作；逾期取消或爽约将扣除全额定金。
         </text>
       </view>
       <view class="confirm-btn" @tap="handleConfirmBooking">
-        <text>确认预约 · ¥39.60</text>
+        <text>确认预约 · $39.60</text>
       </view>
     </view>
   </view>
-</template><script>
+</template>
+<script>
 import { petApi } from '@/api'
 
 export default {

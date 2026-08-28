@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="dm-page">
     <!-- 导航栏 -->
     <view class="dm-header">

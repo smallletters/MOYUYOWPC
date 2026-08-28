@@ -24,7 +24,7 @@
         </view>
         <view class="order-items">
           <view v-for="item in (o.items || []).slice(0, 2)" :key="item.id" class="item-row">
-            <image :src="item.mainImage || ''" class="item-image" />
+            <image :src="item.mainImage || ''" lazy-load class="item-image" />
             <view class="item-info">
               <text class="item-name text-ellipsis-2">{{ item.productName }}</text>
               <text class="item-qty">x {{ item.quantity }}</text>
@@ -33,15 +33,19 @@
           <view v-if="(o.items || []).length > 2" class="more">+{{ o.items.length - 2 }} more</view>
         </view>
         <view class="card-footer">
-          <text class="total">Total: ${{ o.payAmount }}</text>
+          <text class="total">
+            {{ $t('orderList.totalLabel', { amount: `${currencySymbol}${o.payAmount}` }) }}
+          </text>
           <view class="btn btn-primary action-btn" @click.stop="onAction(o)">
             {{ actionText(o.status) }}
           </view>
         </view>
       </view>
 
-      <view v-if="loading" class="loading">Loading...</view>
-      <view v-else-if="noMore && orders.length === 0" class="empty">No orders</view>
+      <view v-if="loading" class="loading">{{ $t('common.loading') }}</view>
+      <view v-else-if="noMore && orders.length === 0" class="empty">
+        {{ $t('orderList.empty') }}
+      </view>
       <view v-else-if="noMore" class="loading">— No more —</view>
     </scroll-view>
   </view>
@@ -50,23 +54,36 @@
 <script>
 import { orderApi } from '@/api'
 import { useUserStore } from '@/store'
+import { i18n } from '@/i18n'
+import { getPendingOrders } from '@/utils/storage'
 
 export default {
   data() {
     return {
       activeTab: 'all',
-      tabs: [
-        { value: 'all', label: '全部' },
-        { value: 'PENDING_PAY', label: '待付款' },
-        { value: 'PENDING_SHIP', label: '待发货' },
-        { value: 'PENDING_RECEIVE', label: '待收货' },
-        { value: 'COMPLETED', label: '待评价' },
-      ],
       orders: [],
       loading: false,
       noMore: false,
       page: 1,
+      localeVersion: 0,
     }
+  },
+
+  computed: {
+    tabs() {
+      void this.localeVersion
+      return [
+        { value: 'all', label: i18n.t('orderList.statusTabs.all') },
+        { value: 'PENDING_PAY', label: i18n.t('orderList.statusTabs.pendingPay') },
+        { value: 'PENDING_SHIP', label: i18n.t('orderList.statusTabs.pendingShip') },
+        { value: 'PENDING_RECEIVE', label: i18n.t('orderList.statusTabs.pendingReceive') },
+        { value: 'COMPLETED', label: i18n.t('orderList.statusTabs.completed') },
+      ]
+    },
+    currencySymbol() {
+      void this.localeVersion
+      return i18n.currencySymbol
+    },
   },
 
   onLoad(query) {
@@ -74,6 +91,13 @@ export default {
       this.activeTab = query.type
     }
     this.loadOrders(true)
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
+  },
+
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
   },
 
   methods: {
@@ -87,12 +111,34 @@ export default {
       try {
         const params = { page: this.page, size: 10 }
         if (this.activeTab !== 'all') params.status = this.activeTab
+        // request.js 已解包外层 envelope,result 即 IPage { records, total, size, current, ... }
         const result = await orderApi.getOrderList(params)
-        // result could be Page wrapper with records, or plain array
-        const list = result?.records || result || []
+        let list = Array.isArray(result?.records)
+          ? result.records
+          : Array.isArray(result)
+            ? result
+            : []
+
+        // 合并本地未支付订单:all 与 待付款 tab 下,把下单未支付/支付失败暂存本地的记录并入列表,按 id 去重
+        if (this.activeTab === 'all' || this.activeTab === 'PENDING_PAY') {
+          const pending = getPendingOrders()
+          if (pending.length > 0) {
+            const seen = new Set(list.map((o) => o.id))
+            const merged = [...pending.filter((o) => !seen.has(o.id)), ...list]
+            list = merged.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+          }
+        }
+
+        list = Array.isArray(list) ? list : []
         this.orders.push(...list)
-        this.noMore = !result?.records ? list.length < 10 : (result.total || 0) <= this.page * 10
-        this.page += 1
+        // 优先使用后端 total;老接口返回数组时,根据当前次拉取数量判定
+        const total = Number(result?.total)
+        if (Number.isFinite(total) && total >= 0) {
+          this.noMore = this.orders.length >= total
+        } else {
+          this.noMore = list.length < 10
+        }
+        if (list.length > 0) this.page += 1
       } catch (e) {
         console.error('[order-list] error', e)
       } finally {
@@ -111,26 +157,23 @@ export default {
     },
 
     statusText(status) {
-      const map = {
-        PENDING_PAY: 'To Pay',
-        PENDING_SHIP: 'To Ship',
-        PENDING_RECEIVE: 'To Receive',
-        COMPLETED: 'Completed',
-        CANCELLED: 'Cancelled',
-        REFUNDING: 'Refunding',
-        REFUNDED: 'Refunded',
-      }
-      return map[status] || status
+      void this.localeVersion
+      // 状态文案统一从字典读:key 与后端状态码对齐
+      const key = `orderStatus.${status}`
+      const v = i18n.t(key)
+      // i18n.t 在 key 缺失时返回原 key,这里回退到 status 本身
+      return v === key ? status : v
     },
 
     actionText(status) {
+      void this.localeVersion
       const map = {
-        PENDING_PAY: 'Pay Now',
-        PENDING_SHIP: 'Track',
-        PENDING_RECEIVE: 'Track',
-        COMPLETED: 'Review',
+        PENDING_PAY: i18n.t('orderDetail.pay'),
+        PENDING_SHIP: i18n.t('orderList.actionTrack'),
+        PENDING_RECEIVE: i18n.t('orderList.actionTrack'),
+        COMPLETED: i18n.t('orderList.actionReview'),
       }
-      return map[status] || 'View'
+      return map[status] || i18n.t('orderList.actionView')
     },
 
     onAction(order) {

@@ -1,13 +1,15 @@
-<template>
+﻿<template>
   <view class="recycle-bin">
     <view class="page-header">
-      <view class="back" @click="goBack" aria-label="返回"><text class="luc luc-arrow-left"></text></view>
+      <view class="back" aria-label="返回" @click="goBack">
+        <text class="luc luc-arrow-left" />
+      </view>
       <text class="title">订单回收站</text>
     </view>
 
     <scroll-view scroll-y class="content">
       <view class="banner">
-        <text class="banner-icon"><text class="luc luc-recycle"></text></text>
+        <text class="banner-icon"><text class="luc luc-recycle" /></text>
         <view class="banner-info">
           <text class="banner-title">回收站规则</text>
           <text class="banner-desc">已删除的订单会保留 30 天，过期将自动清理</text>
@@ -15,7 +17,7 @@
       </view>
 
       <view v-if="orders.length === 0" class="empty">
-        <text class="empty-icon"><text class="luc luc-inbox"></text></text>
+        <text class="empty-icon"><text class="luc luc-inbox" /></text>
         <text class="empty-text">回收站空空如也</text>
       </view>
 
@@ -27,7 +29,7 @@
           </view>
           <view class="order-items">
             <text class="items-count">{{ o.itemCount || 0 }} 件商品</text>
-            <text class="order-amount">¥{{ o.payAmount }}</text>
+            <text class="order-amount">${{ o.payAmount }}</text>
           </view>
           <view class="order-actions">
             <view class="btn outline" @click="onRestore(o)">恢复订单</view>

@@ -1,14 +1,16 @@
-<template>
+﻿<template>
   <view class="invoice-manage">
     <view class="page-header">
-      <view class="back" @click="goBack" aria-label="返回"><text class="luc luc-arrow-left"></text></view>
+      <view class="back" aria-label="返回" @click="goBack">
+        <text class="luc luc-arrow-left" />
+      </view>
       <text class="title">发票管理</text>
       <view class="add-btn" @click="onAdd">+ 新增</view>
     </view>
 
     <scroll-view scroll-y class="content">
       <view v-if="invoices.length === 0" class="empty">
-        <text class="empty-icon"><text class="luc luc-receipt"></text></text>
+        <text class="empty-icon"><text class="luc luc-receipt" /></text>
         <text class="empty-text">暂无发票信息</text>
         <view class="btn-primary" @click="onAdd">添加发票抬头</view>
       </view>
@@ -22,7 +24,9 @@
           <text class="invoice-name">{{ inv.title }}</text>
           <text v-if="inv.taxNo" class="invoice-tax">税号：{{ inv.taxNo }}</text>
           <view class="invoice-actions">
-            <view v-if="!inv.isDefault" class="action-text" @click="onSetDefault(inv)">设为默认</view>
+            <view v-if="!inv.isDefault" class="action-text" @click="onSetDefault(inv)">
+              设为默认
+            </view>
             <view class="action-text" @click="onEdit(inv)">编辑</view>
             <view class="action-text danger" @click="onDelete(inv)">删除</view>
           </view>
@@ -49,7 +53,13 @@ export default {
       // mock
       this.invoices = [
         { id: 1, type: 'personal', title: '张三', isDefault: true },
-        { id: 2, type: 'company', title: '某某科技有限公司', taxNo: '91110000123456789X', isDefault: false },
+        {
+          id: 2,
+          type: 'company',
+          title: '某某科技有限公司',
+          taxNo: '91110000123456789X',
+          isDefault: false,
+        },
       ]
     },
 

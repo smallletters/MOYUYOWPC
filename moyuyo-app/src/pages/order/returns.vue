@@ -1,7 +1,9 @@
-<template>
+﻿<template>
   <view class="returns">
     <view class="page-header">
-      <view class="back" @click="goBack" aria-label="返回"><text class="luc luc-arrow-left"></text></view>
+      <view class="back" aria-label="返回" @click="goBack">
+        <text class="luc luc-arrow-left" />
+      </view>
       <text class="title">申请售后</text>
     </view>
 
@@ -27,7 +29,7 @@
         <view class="goods-info">
           <text class="goods-name">{{ orderItem?.productName || '商品名称' }}</text>
           <text class="goods-spec">{{ orderItem?.skuSpec || '' }}</text>
-          <text class="goods-price">¥{{ orderItem?.price || 0 }}</text>
+          <text class="goods-price">${{ orderItem?.price || 0 }}</text>
         </view>
       </view>
 
@@ -52,10 +54,10 @@
         <text class="section-title">退款金额</text>
         <view class="amount-row">
           <text class="amount-label">申请退款</text>
-          <input v-model.number="refundAmount" type="number" class="amount-input" />
+          <input v-model.number="refundAmount" type="number" class="amount-input">
           <text class="amount-unit">元</text>
         </view>
-        <text class="amount-tip">最多可退 ¥{{ orderItem?.price || 0 }}</text>
+        <text class="amount-tip">最多可退 ${{ orderItem?.price || 0 }}</text>
       </view>
 
       <!-- 退款说明 -->
@@ -73,13 +75,11 @@
       <view class="section">
         <text class="section-title">上传凭证</text>
         <view class="upload-list">
-          <view
-            v-for="(img, i) in uploadImages"
-            :key="i"
-            class="upload-item"
-          >
+          <view v-for="(img, i) in uploadImages" :key="i" class="upload-item">
             <image :src="img" class="upload-image" />
-            <view class="upload-remove" @click="uploadImages.splice(i, 1)"><text class="luc luc-x"></text></view>
+            <view class="upload-remove" @click="uploadImages.splice(i, 1)">
+              <text class="luc luc-x" />
+            </view>
           </view>
           <view v-if="uploadImages.length < 3" class="upload-add" @click="onAddImage">
             <text>+</text>
@@ -89,7 +89,7 @@
       </view>
 
       <view class="bottom-bar safe-area-bottom">
-        <view class="btn-primary" @click="onSubmit" aria-label="提交申请">提交申请</view>
+        <view class="btn-primary" aria-label="提交申请" @click="onSubmit">提交申请</view>
       </view>
     </scroll-view>
   </view>

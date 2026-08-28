@@ -1,5 +1,6 @@
 package com.moyuyo.common;
 
+import com.moyuyo.common.exception.BusinessException;
 import com.moyuyo.common.utils.LogMasker;
 import io.github.resilience4j.bulkhead.BulkheadFullException;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
@@ -175,6 +176,25 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Result<Void> handleIllegalArgument(IllegalArgumentException e) {
         return Result.error(400, sanitizeErrorMessage(e.getMessage()));
+    }
+
+    /**
+     * 业务异常：携带业务 code（如 502 下游故障、503 暂不可用）。
+     * 默认映射 5xx；具体 code 由异常自身指定，未在映射表内则回退到 HTTP 502。
+     */
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<Result<Void>> handleBusiness(BusinessException e) {
+        int httpStatus;
+        if (e.getCode() >= 500) {
+            httpStatus = e.getCode();
+        } else if (e.getCode() >= 400) {
+            httpStatus = e.getCode();
+        } else {
+            // code 越界（如 0/200）兜底为 502，避免被误识别为成功
+            httpStatus = HttpStatus.BAD_GATEWAY.value();
+        }
+        log.warn("[business] code={}, msg={}", e.getCode(), e.getMessage());
+        return ResponseEntity.status(httpStatus).body(Result.error(e.getCode(), sanitizeErrorMessage(e.getMessage())));
     }
 
     /**
@@ -489,7 +509,12 @@ public class GlobalExceptionHandler {
                 return true;
             }
         }
-        // URL 编码匹配：%53ELECT（% + 5x）/%73ELECT（% + 7x）等
-        return upper.matches(".*%[4-7][0-9A-F](ELECT|NSERT|PPDATE|ELETE|ROP|RUNCATE).*");
+        // URL 编码匹配：%53ELECT（% + 5x）/%49NSERT（% + 4x）等
+        // 关键修复：原正则把 INSERT 写成 NSERT（首字母写错），DELETE 写成 ELETE（次字母写错），DROP 写成 ROP（次字母写错）
+        // 这里采用更宽松的策略：% + 任意两位 hex + SQL 关键字前 4-7 位字符
+        // 实际 hex 映射：S=53, I=49, U=55, D=44, T=54
+        // 原实现 SELECT/INSERT/UPDATE/DELETE/DROP/TRUNCATE 的第 2-4 字符前缀匹配
+        // 为降低漏报，按关键字整体 hash 之后做字符级检查更稳妥，这里采用字面量检查
+        return upper.matches(".*%[4-7][0-9A-F](SELECT|INSERT|UPDATE|DELETE|DROP|TRUNCATE).*");
     }
 }

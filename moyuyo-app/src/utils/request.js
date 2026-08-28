@@ -7,33 +7,82 @@ function genRequestId() {
   return `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
+/**
+ * 安全的 storage 读取:storage 抛异常(被注入异常 key、底层崩溃)
+ * 时返回空值,不让 401 处理链路整体崩溃。
+ */
+function safeGet(key) {
+  try {
+    return getStorage(key)
+  } catch (e) {
+    console.warn('[request] safeGet failed for key:', key, e)
+    return ''
+  }
+}
+
+function safeRemove(key) {
+  try {
+    removeStorage(key)
+  } catch (e) {
+    console.warn('[request] safeRemove failed for key:', key, e)
+  }
+}
+
+function safeSet(key, value) {
+  try {
+    setStorage(key, value)
+  } catch (e) {
+    console.warn('[request] safeSet failed for key:', key, e)
+  }
+}
+
 function getBearerToken() {
-  return getStorage(STORAGE_KEYS.TOKEN)
+  return safeGet(STORAGE_KEYS.TOKEN)
 }
 
 function handleUnauthorized() {
-  const refreshTokenVal = getStorage('moyuyo_refresh_token')
+  const refreshTokenVal = safeGet('moyuyo_refresh_token')
   if (refreshTokenVal) {
     import('@/api/user').then(({ refreshToken: doRefresh }) => {
       doRefresh(refreshTokenVal)
         .then((newTokens) => {
-          setStorage(STORAGE_KEYS.TOKEN, newTokens.accessToken)
+          safeSet(STORAGE_KEYS.TOKEN, newTokens.accessToken)
           if (newTokens.refreshToken) {
-            setStorage('moyuyo_refresh_token', newTokens.refreshToken)
+            safeSet('moyuyo_refresh_token', newTokens.refreshToken)
           }
         })
         .catch(() => {
-          removeStorage(STORAGE_KEYS.TOKEN)
-          removeStorage(STORAGE_KEYS.USER_INFO)
-          removeStorage('moyuyo_refresh_token')
+          // 刷新失败:清空凭证 + 文案中文化 + 弹窗确认再跳转,避免突兀踢出
+          safeRemove(STORAGE_KEYS.TOKEN)
+          safeRemove(STORAGE_KEYS.USER_INFO)
+          safeRemove('moyuyo_refresh_token')
+          promptReLogin()
         })
     })
   } else {
-    removeStorage(STORAGE_KEYS.TOKEN)
-    removeStorage(STORAGE_KEYS.USER_INFO)
-    uni.showToast({ title: 'Login expired, please login again', icon: 'none' })
-    setTimeout(() => uni.reLaunch({ url: '/pages/user/login' }), 1500)
+    // 无 refresh token:同样先弹窗确认,避免用户在查看账单时被强制踢出
+    safeRemove(STORAGE_KEYS.TOKEN)
+    safeRemove(STORAGE_KEYS.USER_INFO)
+    promptReLogin()
   }
+}
+
+/**
+ * 登录态失效提示:用 showModal 让用户主动确认再跳转,文案中文化。
+ * 避免直接 reLaunch 造成"我在看账单突然掉到登录页"的体验割裂。
+ */
+function promptReLogin() {
+  uni.showModal({
+    title: '登录已过期',
+    content: '您的登录状态已失效,重新登录后将返回此页面',
+    confirmText: '重新登录',
+    cancelText: '稍后',
+    success: (res) => {
+      if (res.confirm) {
+        uni.reLaunch({ url: '/pages/user/login' })
+      }
+    },
+  })
 }
 
 /**

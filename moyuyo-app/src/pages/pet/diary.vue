@@ -1,14 +1,16 @@
-<template>
+﻿<template>
   <view class="pet-diary">
     <view class="page-header">
-      <view class="back" @click="goBack" aria-label="返回"><text class="luc luc-arrow-left"></text></view>
+      <view class="back" aria-label="返回" @click="goBack">
+        <text class="luc luc-arrow-left" />
+      </view>
       <text class="title">宠物日记</text>
       <view class="add-btn" @click="onAdd">+ 写日记</view>
     </view>
 
     <scroll-view scroll-y class="content">
       <view v-if="entries.length === 0" class="empty">
-        <text class="empty-icon"><text class="luc luc-book"></text></text>
+        <text class="empty-icon"><text class="luc luc-book" /></text>
         <text class="empty-text">还没有日记，写下今天的回忆吧</text>
       </view>
 

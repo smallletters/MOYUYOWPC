@@ -13,7 +13,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -24,12 +28,34 @@ public class CouponServiceImpl implements CouponService {
     private final UserCouponMapper userCouponMapper;
 
     @Override
-    public Page<CouponEntity> listAvailable(int page, int size) {
+    public Page<CouponEntity> listAvailable(int page, int size, Long userId) {
         LambdaQueryWrapper<CouponEntity> q = new LambdaQueryWrapper<>();
         q.eq(CouponEntity::getActive, true);
         q.and(w -> w.isNull(CouponEntity::getEndTime).or().ge(CouponEntity::getEndTime, LocalDateTime.now()));
         q.orderByDesc(CouponEntity::getCreateTime);
-        return couponMapper.selectPage(Page.of(page, size), q);
+        Page<CouponEntity> result = couponMapper.selectPage(Page.of(page, size), q);
+        // 已登录用户：批量查询其已领取的 couponId 集合，标记 claimedByMe
+        if (userId != null && result != null && !result.getRecords().isEmpty()) {
+            fillClaimedByMe(result.getRecords(), userId);
+        }
+        return result;
+    }
+
+    /**
+     * 批量填充当前用户已领取标记，避免 N+1 查询
+     */
+    private void fillClaimedByMe(List<CouponEntity> coupons, Long userId) {
+        List<Long> couponIds = coupons.stream().map(CouponEntity::getId).collect(Collectors.toList());
+        if (couponIds.isEmpty()) return;
+        LambdaQueryWrapper<UserCouponEntity> q = new LambdaQueryWrapper<>();
+        q.eq(UserCouponEntity::getUserId, userId).in(UserCouponEntity::getCouponId, couponIds);
+        List<UserCouponEntity> userCoupons = userCouponMapper.selectList(q);
+        Set<Long> claimedIds = userCoupons == null
+                ? Collections.emptySet()
+                : userCoupons.stream().map(UserCouponEntity::getCouponId).collect(Collectors.toCollection(HashSet::new));
+        for (CouponEntity c : coupons) {
+            c.setClaimedByMe(claimedIds.contains(c.getId()));
+        }
     }
 
     @Override

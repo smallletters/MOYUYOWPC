@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <view class="fit-finder">
     <view class="nav-header">
       <view class="nav-back" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="nav-title">尺码推荐</text>
       <view class="nav-placeholder" />
@@ -10,11 +10,17 @@
 
     <view class="step-indicator">
       <view class="step-dot" :class="{ active: currentStep >= 1, done: currentStep > 1 }">
-        <text class="dot-text"><text v-if="currentStep > 1" class="luc luc-check"></text><text v-else>1</text></text>
+        <text class="dot-text">
+          <text v-if="currentStep > 1" class="luc luc-check" />
+          <text v-else>1</text>
+        </text>
       </view>
       <view class="step-line" :class="{ active: currentStep > 1 }" />
       <view class="step-dot" :class="{ active: currentStep >= 2, done: currentStep > 2 }">
-        <text class="dot-text"><text v-if="currentStep > 2" class="luc luc-check"></text><text v-else>2</text></text>
+        <text class="dot-text">
+          <text v-if="currentStep > 2" class="luc luc-check" />
+          <text v-else>2</text>
+        </text>
       </view>
       <view class="step-line" :class="{ active: currentStep > 2 }" />
       <view class="step-dot" :class="{ active: currentStep >= 3 }">
@@ -31,7 +37,7 @@
           :class="{ selected: petType === 'dog' }"
           @click="petType = 'dog'"
         >
-          <text class="pet-type-icon"><text class="luc luc-paw-print"></text></text>
+          <text class="pet-type-icon"><text class="luc luc-paw-print" /></text>
           <text class="pet-type-name">犬类</text>
         </view>
         <view
@@ -39,7 +45,7 @@
           :class="{ selected: petType === 'cat' }"
           @click="petType = 'cat'"
         >
-          <text class="pet-type-icon"><text class="luc luc-paw-print"></text></text>
+          <text class="pet-type-icon"><text class="luc luc-paw-print" /></text>
           <text class="pet-type-name">猫咪</text>
         </view>
       </view>
@@ -79,7 +85,10 @@
       </view>
 
       <view class="next-btn" @click="goStep(2)">
-        <text>下一步：填写测量数据 <text class="luc luc-arrow-right"></text></text>
+        <text>
+          下一步：填写测量数据
+          <text class="luc luc-arrow-right" />
+        </text>
       </view>
     </view>
 
@@ -133,8 +142,14 @@
       </view>
 
       <view class="step-btn-row">
-        <view class="prev-btn" @click="goStep(1)"><text class="luc luc-arrow-left"></text> 上一步</view>
-        <view class="next-btn flex-2" @click="goStep(3)">获取尺码推荐 <text class="luc luc-sparkles"></text></view>
+        <view class="prev-btn" @click="goStep(1)">
+          <text class="luc luc-arrow-left" />
+          上一步
+        </view>
+        <view class="next-btn flex-2" @click="goStep(3)">
+          获取尺码推荐
+          <text class="luc luc-sparkles" />
+        </view>
       </view>
     </view>
 
@@ -142,7 +157,7 @@
     <view v-if="currentStep === 3" class="step-content">
       <view class="result-card">
         <view class="result-header">
-          <text class="result-icon"><text class="luc luc-check"></text></text>
+          <text class="result-icon"><text class="luc luc-check" /></text>
           <text class="result-title">智能推荐</text>
         </view>
         <view class="result-body">
@@ -188,8 +203,14 @@
       </view>
 
       <view class="step-btn-row">
-        <view class="prev-btn" @click="goStep(2)"><text class="luc luc-arrow-left"></text> 修改数据</view>
-        <view class="next-btn flex-2" @click="applySize">选择 {{ recommendedSize }} 码 <text class="luc luc-check"></text></view>
+        <view class="prev-btn" @click="goStep(2)">
+          <text class="luc luc-arrow-left" />
+          修改数据
+        </view>
+        <view class="next-btn flex-2" @click="applySize">
+          选择 {{ recommendedSize }} 码
+          <text class="luc luc-check" />
+        </view>
       </view>
     </view>
   </view>

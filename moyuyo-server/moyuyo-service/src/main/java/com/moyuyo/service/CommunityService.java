@@ -26,4 +26,10 @@ public interface CommunityService {
     void addComment(Long userId, Long postId, Long parentId, String content);
 
     Page<CommunityPostVO> listMyPosts(Long userId, int page, int size);
+
+    /**
+     * 当前用户收藏的帖子（按收藏时间倒序，含完整 VO）。
+     * 用于"我的"页 → 收藏 入口。
+     */
+    Page<CommunityPostVO> listCollectedPosts(Long userId, int page, int size);
 }

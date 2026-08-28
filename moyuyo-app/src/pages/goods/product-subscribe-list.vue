@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <view class="product-subscribe-list">
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">订阅商品</text>
       <view class="header-spacer" />
@@ -12,7 +12,7 @@
     <!-- 搜索栏 -->
     <view class="search-bar">
       <view class="search-input-wrap">
-        <text class="search-icon"><text class="luc luc-search"></text></text>
+        <text class="search-icon"><text class="luc luc-search" /></text>
         <input
           class="search-input"
           placeholder="搜索可订阅商品"
@@ -71,8 +71,8 @@
             <!-- 价格行 -->
             <view class="price-row">
               <view class="price-left">
-                <text class="price-sub">¥{{ item.subPrice }}</text>
-                <text class="price-original">¥{{ item.price }}</text>
+                <text class="price-sub">${{ item.subPrice }}</text>
+                <text class="price-original">${{ item.price }}</text>
               </view>
               <view class="subscribe-btn-small" @click="goSubscribe(item)">
                 <text class="subscribe-btn-text">订阅</text>
@@ -84,13 +84,13 @@
 
       <!-- 空状态 -->
       <view v-if="filteredProducts.length === 0" class="empty-state">
-        <text class="empty-icon"><text class="luc luc-package"></text></text>
+        <text class="empty-icon"><text class="luc luc-package" /></text>
         <text class="empty-text">暂无匹配的可订阅商品</text>
       </view>
 
       <!-- 底部提示 -->
       <view class="tip-box">
-        <text class="tip-icon"><text class="luc luc-lightbulb"></text></text>
+        <text class="tip-icon"><text class="luc luc-lightbulb" /></text>
         <text class="tip-text">更多商品正在陆续开放订阅，敬请期待！</text>
       </view>
 

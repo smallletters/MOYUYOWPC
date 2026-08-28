@@ -3,12 +3,17 @@ package com.moyuyo.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.moyuyo.common.JwtUtil;
 import com.moyuyo.common.dto.auth.*;
+import com.moyuyo.common.exception.BusinessException;
+import com.moyuyo.dao.entity.SmsCodeEntity;
 import com.moyuyo.dao.entity.UserEntity;
+import com.moyuyo.dao.mapper.SmsCodeMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.AuthService;
+import com.moyuyo.service.SmsService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -31,6 +36,10 @@ import java.util.stream.Collectors;
 public class AuthServiceImpl implements AuthService {
 
     private final UserMapper userMapper;
+    private final SmsCodeMapper smsCodeMapper;
+    // 使用 ObjectProvider 支持可选注入：未配置 SMS Provider 时 SmsService Bean 可能不存在（NoopSmsServiceImpl 在 Spring 6.x 下因
+    // @Service + @ConditionalOnMissingBean 顺序问题不一定会被注册），避免构造器装配失败导致 dev 启动阻塞
+    private final ObjectProvider<SmsService> smsServiceProvider;
     private final JwtUtil jwtUtil;
     private final StringRedisTemplate redisTemplate;
     /** 统一密码编码器 Bean，强度由 moyuyo.password.bcrypt-strength 控制（默认 12） */
@@ -41,11 +50,15 @@ public class AuthServiceImpl implements AuthService {
     // MeterRegistry 与 Counter 通过 @RequiredArgsConstructor 不便注入，改用显式构造注入
     // 这里通过构造注入 MeterRegistry 创建 Prometheus 计数器
     public AuthServiceImpl(UserMapper userMapper,
+                           SmsCodeMapper smsCodeMapper,
+                           ObjectProvider<SmsService> smsServiceProvider,
                            JwtUtil jwtUtil,
                            StringRedisTemplate redisTemplate,
                            PasswordEncoder passwordEncoder,
                            MeterRegistry meterRegistry) {
         this.userMapper = userMapper;
+        this.smsCodeMapper = smsCodeMapper;
+        this.smsServiceProvider = smsServiceProvider;
         this.jwtUtil = jwtUtil;
         this.redisTemplate = redisTemplate;
         this.passwordEncoder = passwordEncoder;
@@ -618,6 +631,146 @@ public class AuthServiceImpl implements AuthService {
         redisTemplate.opsForValue().set(verifiedKey, "1", 7200, TimeUnit.SECONDS);
 
         log.info("2FA verified for user: {}", userId);
+    }
+
+    // ==================== 手机短信验证码登录 ====================
+
+    /** 手机验证码有效期：5 分钟 */
+    private static final long PHONE_CODE_EXPIRE_SECONDS = 300;
+    /** 手机验证码最大失败次数：5 次后失效（防爆破） */
+    private static final int PHONE_CODE_MAX_FAIL = 5;
+    /** 手机号发送频次限制：同号 1 分钟内只能发 1 条 */
+    private static final long PHONE_SEND_INTERVAL_SECONDS = 60;
+    /** 同号 1 小时最多 5 条 */
+    private static final long PHONE_HOURLY_LIMIT = 5;
+    private static final long PHONE_HOURLY_WINDOW_SECONDS = 3600;
+
+    @Override
+    @Transactional
+    public void sendPhoneCode(String phone, String purpose) {
+        // 1. 频次限流（Redis 原子 INCR + EXPIRE）
+        String hourlyKey = "auth:phone-hourly:" + phone;
+        Long count;
+        try {
+            count = redisTemplate.execute(INCR_WITH_EXPIRE_IF_NEW,
+                    Collections.singletonList(hourlyKey),
+                    String.valueOf(PHONE_HOURLY_WINDOW_SECONDS));
+        } catch (DataAccessException e) {
+            // Redis 不可用 fail-open：放行发送，避免验证码系统故障阻断登录
+            log.error("Redis 不可用,phone code 发送限流降级", e);
+            count = 1L;
+        }
+        if (count != null && count > PHONE_HOURLY_LIMIT) {
+            // Lua INCR 从 1 开始计数:count=1 是第 1 次,count=5 是第 5 次,
+            // count=6 才达到上限(PHONE_HOURLY_LIMIT=5),直接拒绝。
+            // 修复:原 IllegalArgumentException 被映射为 400,改用 BusinessException 显式 429
+            throw new BusinessException(429, "发送过于频繁,请 1 小时后再试");
+        }
+
+        // 2. 同号最小间隔限流
+        String intervalKey = "auth:phone-interval:" + phone;
+        try {
+            Boolean canSend = redisTemplate.opsForValue().setIfAbsent(
+                    intervalKey, "1", PHONE_SEND_INTERVAL_SECONDS, TimeUnit.SECONDS);
+            if (Boolean.FALSE.equals(canSend)) {
+                throw new IllegalArgumentException("发送过于频繁,请稍后再试");
+            }
+        } catch (DataAccessException e) {
+            log.error("Redis 不可用,phone interval 限流降级", e);
+        }
+
+        // 3. 生成 6 位随机验证码
+        String code = String.format("%06d", SECURE_RANDOM.nextInt(1000000));
+
+        // 4. 持久化到 mo_sms_code（用于校验 / 审计）
+        SmsCodeEntity entity = new SmsCodeEntity();
+        entity.setPhone(phone);
+        entity.setCode(code);
+        entity.setPurpose(purpose);
+        entity.setUsed(0);
+        entity.setFailCount(0);
+        entity.setExpireAt(LocalDateTime.now().plusSeconds(PHONE_CODE_EXPIRE_SECONDS));
+        smsCodeMapper.insert(entity);
+
+        // 5. 调用 SMS Provider 发送（Aliyun 实现，Noop 实现仅打日志）
+        try {
+            SmsService smsService = smsServiceProvider.getIfAvailable();
+            if (smsService == null) {
+                log.warn("[sms] 未找到 SmsService Bean（moyuyo.sms.provider 未配置），跳过发送。phone={}, purpose={}", phone, purpose);
+                return;
+            }
+            smsService.sendCode(phone, code, purpose);
+        } catch (Exception e) {
+            // 发送失败回滚：删除刚才插入的记录 + 解除 interval 限流 key
+            smsCodeMapper.deleteById(entity.getId());
+            try {
+                redisTemplate.delete(intervalKey);
+            } catch (DataAccessException ignored) {
+            }
+            throw new BusinessException(502, "短信发送失败: " + e.getMessage());
+        }
+        log.info("Phone code sent: phone={}, purpose={}", phone, purpose);
+    }
+
+    @Override
+    @Transactional
+    public TokenResponse loginByPhone(String phone, String code) {
+        // 1. 查询最近一条未使用、未过期、purpose=LOGIN 的验证码记录
+        SmsCodeEntity record = smsCodeMapper.selectOne(
+                new LambdaQueryWrapper<SmsCodeEntity>()
+                        .eq(SmsCodeEntity::getPhone, phone)
+                        .eq(SmsCodeEntity::getPurpose, "LOGIN")
+                        .eq(SmsCodeEntity::getUsed, 0)
+                        .gt(SmsCodeEntity::getExpireAt, LocalDateTime.now())
+                        .orderByDesc(SmsCodeEntity::getId)
+                        .last("LIMIT 1"));
+        if (record == null) {
+            throw new IllegalArgumentException("验证码不存在或已过期");
+        }
+        // 2. 校验失败次数
+        if (record.getFailCount() != null && record.getFailCount() >= PHONE_CODE_MAX_FAIL) {
+            // 标记失效
+            record.setUsed(1);
+            smsCodeMapper.updateById(record);
+            throw new IllegalArgumentException("验证码错误次数过多,请重新获取");
+        }
+        // 3. 验证码匹配
+        if (!code.equals(record.getCode())) {
+            record.setFailCount((record.getFailCount() == null ? 0 : record.getFailCount()) + 1);
+            smsCodeMapper.updateById(record);
+            throw new IllegalArgumentException("验证码错误");
+        }
+        // 4. 标记已使用
+        record.setUsed(1);
+        smsCodeMapper.updateById(record);
+
+        // 5. 查找或自动创建用户
+        UserEntity user = userMapper.selectOne(
+                new LambdaQueryWrapper<UserEntity>().eq(UserEntity::getPhone, phone));
+        if (user == null) {
+            // 手机号首次登录：自动创建账号,邮箱为空,随机密码,默认昵称=手机号后 4 位
+            user = new UserEntity();
+            user.setPhone(phone);
+            // 占位 email: phone+"@phone.moyuyo.local"（避免破坏 email NOT NULL 约束）
+            user.setEmail(phone + "@phone.moyuyo.local");
+            user.setNickname("用户" + phone.substring(Math.max(0, phone.length() - 4)));
+            user.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
+            user.setStatus(1);
+            user.setPoints(0);
+            user.setEmailVerified(false);
+            user.setTwoFactorEnabled(false);
+            user.setMarketingOptIn(false);
+            user.setLastLoginTime(LocalDateTime.now());
+            userMapper.insert(user);
+            log.info("Phone login auto-registered user: id={}, phone={}", user.getId(), phone);
+        } else {
+            if (user.getStatus() == null || user.getStatus() != 1) {
+                throw new IllegalArgumentException("账号已被禁用");
+            }
+            user.setLastLoginTime(LocalDateTime.now());
+            userMapper.updateById(user);
+        }
+        return generateTokenPair(user);
     }
 
     private TokenResponse generateTokenPair(UserEntity user) {

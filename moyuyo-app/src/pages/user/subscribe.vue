@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <view class="subscribe">
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="header-title">订阅服务</text>
       <view class="header-spacer" />
@@ -81,7 +81,9 @@
             >
               {{ item.free ? '✓' : '—' }}
             </text>
-            <text class="feature-cell feature-premium feature-yes"><text class="luc luc-check"></text></text>
+            <text class="feature-cell feature-premium feature-yes">
+              <text class="luc luc-check" />
+            </text>
           </view>
         </view>
       </view>
@@ -230,7 +232,8 @@ export default {
 }
 
 .content {
-  height: calc(100vh - 88rpx);
+  width: 100%;
+  box-sizing: border-box;
   padding: 0 32rpx 48rpx;
 }
 

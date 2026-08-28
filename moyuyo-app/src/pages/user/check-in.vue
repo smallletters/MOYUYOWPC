@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <view class="check-in">
     <view class="nav-header">
       <view class="nav-back" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left"></text></text>
+        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
       </view>
       <text class="nav-title">每日签到</text>
       <view class="nav-placeholder" />
@@ -12,11 +12,11 @@
       <view class="calendar-card">
         <view class="month-header">
           <view class="month-btn" @click="prevMonth">
-            <text class="month-arrow"><text class="luc luc-arrow-left"></text></text>
+            <text class="month-arrow"><text class="luc luc-arrow-left" /></text>
           </view>
           <text class="month-title">{{ currentYear }}年{{ currentMonth }}月</text>
           <view class="month-btn" @click="nextMonth">
-            <text class="month-arrow"><text class="luc luc-chevron-right"></text></text>
+            <text class="month-arrow"><text class="luc luc-chevron-right" /></text>
           </view>
         </view>
 
@@ -35,7 +35,9 @@
                   future: cell.future,
                 }"
               >
-                <text v-if="cell.checked" class="check-icon"><text class="luc luc-check"></text></text>
+                <text v-if="cell.checked" class="check-icon">
+                  <text class="luc luc-check" />
+                </text>
                 <text v-else-if="cell.today" class="today-text">签</text>
                 <text v-else class="day-num">{{ cell.day }}</text>
               </view>
@@ -47,7 +49,7 @@
 
       <view class="streak-card">
         <view class="streak-header">
-          <text class="streak-star"><text class="luc luc-star"></text></text>
+          <text class="streak-star"><text class="luc luc-star" /></text>
           <text class="streak-title">已连续签到 {{ streak }} 天</text>
         </view>
         <text class="streak-hint">连续 7 天签到积分 x2 倍率</text>
@@ -70,8 +72,12 @@
               class="reward-circle"
               :class="{ claimed: reward.claimed, current: reward.current }"
             >
-              <text v-if="reward.claimed" class="reward-check"><text class="luc luc-check"></text></text>
-              <text v-else-if="reward.current" class="reward-star"><text class="luc luc-star"></text></text>
+              <text v-if="reward.claimed" class="reward-check">
+                <text class="luc luc-check" />
+              </text>
+              <text v-else-if="reward.current" class="reward-star">
+                <text class="luc luc-star" />
+              </text>
               <text v-else class="reward-day">{{ '第' + (idx + 1) + '天' }}</text>
             </view>
             <text class="reward-label">第{{ idx + 1 }}天</text>
@@ -90,7 +96,7 @@
       <view v-if="showSuccess" class="success-section">
         <view class="success-icon-wrap">
           <view class="success-icon-anim">
-            <text class="success-check"><text class="luc luc-check"></text></text>
+            <text class="success-check"><text class="luc luc-check" /></text>
           </view>
         </view>
         <text class="success-title">签到成功</text>
@@ -168,10 +174,10 @@ export default {
 
     async loadCheckinStatus() {
       try {
-        // 后端返回 Page<PointsLogEntity>：{ records, total, current, size }
-        const res = await pointsApi.getPointsLog({ page: 1, size: 50 })
-        const page = res?.data || res || {}
-        const logs = page.records || page.list || []
+        // 后端 Page<PointsLogEntity>：{ records, total, current, size }
+        // request.js 已解包,res 即 IPage 本身
+        const page = await pointsApi.getPointsLog({ page: 1, size: 50 })
+        const logs = page?.records || page?.list || []
         const checkedDays = []
         const today = new Date()
         for (const log of logs) {
@@ -195,7 +201,7 @@ export default {
 
     calculateStreak(logs, today) {
       const checkinDates = logs
-        .filter((l) => (l.type === 'CHECKIN' || l.type === 'checkin'))
+        .filter((l) => l.type === 'CHECKIN' || l.type === 'checkin')
         .map((l) => {
           const d = new Date(l.createdAt)
           return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
@@ -237,15 +243,13 @@ export default {
       if (this.isCheckedIn) return
 
       try {
-        const res = await pointsApi.checkin()
-        // 后端 Result.success(...) 解包后是 { code, data: { points, consecutiveDays, doubleReward }, success }
-        const payload = res?.data || res || {}
-        const result = payload.data || payload
+        // request.js 已解包,res 即 payload 本身: { points, consecutiveDays, doubleReward }
+        const result = await pointsApi.checkin()
         this.isCheckedIn = true
         this.showSuccess = true
-        this.earnedPoints = result.points || 5
-        this.earnedX2 = !!result.doubleReward
-        if (typeof result.consecutiveDays === 'number') {
+        this.earnedPoints = result?.points || 5
+        this.earnedX2 = !!result?.doubleReward
+        if (typeof result?.consecutiveDays === 'number') {
           this.streak = result.consecutiveDays
         } else {
           this.streak += 1

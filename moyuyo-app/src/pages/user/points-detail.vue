@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="page">
     <!-- 顶部摘要卡：余额 + 概览统计 -->
     <view class="hero">

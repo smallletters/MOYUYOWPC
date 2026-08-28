@@ -1,10 +1,14 @@
-<template>
+﻿<template>
   <view class="pay-page">
     <!-- 状态展示 -->
     <view class="status-bar">
       <view v-if="status === 'loading'" class="status-icon loading">⏳</view>
-      <view v-else-if="status === 'success'" class="status-icon success"><text class="luc luc-check"></text></view>
-      <view v-else-if="status === 'failed'" class="status-icon failed"><text class="luc luc-x"></text></view>
+      <view v-else-if="status === 'success'" class="status-icon success">
+        <text class="luc luc-check" />
+      </view>
+      <view v-else-if="status === 'failed'" class="status-icon failed">
+        <text class="luc luc-x" />
+      </view>
       <view v-else class="status-icon loading">⏳</view>
       <text class="status-text">{{ statusText }}</text>
     </view>
