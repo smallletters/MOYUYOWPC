@@ -9,11 +9,13 @@ import com.moyuyo.dao.entity.UserEntity;
 import com.moyuyo.dao.mapper.SmsCodeMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.AuthService;
+import com.moyuyo.service.EmailService;
 import com.moyuyo.service.SmsService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -40,18 +42,24 @@ public class AuthServiceImpl implements AuthService {
     // 使用 ObjectProvider 支持可选注入：未配置 SMS Provider 时 SmsService Bean 可能不存在（NoopSmsServiceImpl 在 Spring 6.x 下因
     // @Service + @ConditionalOnMissingBean 顺序问题不一定会被注册），避免构造器装配失败导致 dev 启动阻塞
     private final ObjectProvider<SmsService> smsServiceProvider;
+    /** EmailService 可选注入：未配置 spring.mail.* 时也不阻断启动，发送阶段内部走 log-only 降级 */
+    private final ObjectProvider<EmailService> emailServiceProvider;
     private final JwtUtil jwtUtil;
     private final StringRedisTemplate redisTemplate;
     /** 统一密码编码器 Bean，强度由 moyuyo.password.bcrypt-strength 控制（默认 12） */
     private final PasswordEncoder passwordEncoder;
     /** 登录失败计数 Redis 不可用计数器：便于 Prometheus 告警 */
     private final Counter loginFailureCounter;
+    /** Magic Link 跳转的 H5 基础地址（与 EmailServiceImpl 默认值保持一致） */
+    @Value("${moyuyo.h5-base:http://localhost:5174}")
+    private String h5Base;
 
     // MeterRegistry 与 Counter 通过 @RequiredArgsConstructor 不便注入，改用显式构造注入
     // 这里通过构造注入 MeterRegistry 创建 Prometheus 计数器
     public AuthServiceImpl(UserMapper userMapper,
                            SmsCodeMapper smsCodeMapper,
                            ObjectProvider<SmsService> smsServiceProvider,
+                           ObjectProvider<EmailService> emailServiceProvider,
                            JwtUtil jwtUtil,
                            StringRedisTemplate redisTemplate,
                            PasswordEncoder passwordEncoder,
@@ -59,6 +67,7 @@ public class AuthServiceImpl implements AuthService {
         this.userMapper = userMapper;
         this.smsCodeMapper = smsCodeMapper;
         this.smsServiceProvider = smsServiceProvider;
+        this.emailServiceProvider = emailServiceProvider;
         this.jwtUtil = jwtUtil;
         this.redisTemplate = redisTemplate;
         this.passwordEncoder = passwordEncoder;
@@ -102,6 +111,11 @@ public class AuthServiceImpl implements AuthService {
     private static final String REDIS_KEY_USER_REFRESH = "auth:user-refresh:";
     private static final String REDIS_KEY_BLACKLIST = "auth:blacklist:";
     private static final String REDIS_KEY_VERIFY_CODE = "auth:verify:";
+    // 6 位数字重置验证码（新范式，与前端 forgot.vue 6-digit input 对齐），value 存 email
+    private static final String REDIS_KEY_RESET_CODE = "auth:resetcode:";
+    // 重置验证码失败次数：每错一次 INCR，超过 5 次强制失效（避免 6 位数被暴力穷举）
+    private static final String REDIS_KEY_RESET_FAIL = "auth:resetcode-fail:";
+    @Deprecated(since = "reset-code 范式迁移后保留 1 个版本的兼容读：已不再写入")
     private static final String REDIS_KEY_RESET_TOKEN = "auth:reset:";
     private static final String REDIS_KEY_MAGIC_LINK = "auth:magiclink:";
     private static final String REDIS_KEY_2FA_CODE = "auth:2fa:";
@@ -112,6 +126,8 @@ public class AuthServiceImpl implements AuthService {
     private static final String REDIS_KEY_ACCOUNT_LOCK = "auth:account-lock:";
     // 连续失败 5 次后锁定
     private static final int MAX_LOGIN_FAIL_ATTEMPTS = 5;
+    // 重置验证码最大失败次数：5 次后强制失效（同 GitHub Issue HIGH 漏洞防爆破建议）
+    private static final int MAX_RESET_CODE_FAIL_ATTEMPTS = 5;
     // 失败计数窗口：15 分钟（在此期间内累计失败次数
     private static final long LOGIN_FAIL_WINDOW_SECONDS = 900;
     // 账户锁定时长：15 分钟
@@ -393,7 +409,16 @@ public class AuthServiceImpl implements AuthService {
                 VERIFICATION_CODE_EXPIRE_SECONDS,
                 TimeUnit.SECONDS);
 
-        // 不记录验证码明文，避免日志泄露导致账号接管
+        // 不记录验证码明文，避免日志泄露导致账号接管（真实发送由 EmailService 落地）
+        EmailService emailService = emailServiceProvider.getIfAvailable();
+        if (emailService == null) {
+            log.warn("[email-verify] EmailService Bean 不存在，仅在日志模式下生成验证码：{}", email);
+        } else {
+            emailService.sendEmailVerificationCode(
+                    email,
+                    code,
+                    (int) (VERIFICATION_CODE_EXPIRE_SECONDS / 60));
+        }
         log.info("Verification code sent to {}", email);
     }
 
@@ -430,42 +455,113 @@ public class AuthServiceImpl implements AuthService {
                         .eq(UserEntity::getEmail, email));
 
         if (user == null) {
+            // 防止用户名枚举：对外仍返回 200；仅内部日志记录长度（不记录明文）
+            log.info("Password reset requested for non-existent email, len={}",
+                    email == null ? 0 : email.length());
             return;
         }
 
-        String resetToken = UUID.randomUUID().toString().replace("-", "");
-        redisTemplate.opsForValue().set(
-                REDIS_KEY_RESET_TOKEN + resetToken,
-                email,
-                RESET_TOKEN_EXPIRE_SECONDS,
-                TimeUnit.SECONDS);
+        // 2026/08 架构对齐：与 forgot.vue 表单（6-digit input）一致，生成 6 位数字验证码，
+        // 而不是原实现的 UUID 32 位 token；Redis key 由 code → email，验证阶段直接用用户输入查。
+        String resetCode = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
+        String codeKey = REDIS_KEY_RESET_CODE + resetCode;
+        String failKey = REDIS_KEY_RESET_FAIL + resetCode;
+        // code → email 存 30 分钟（与原 TTL 一致）；失败计数 key 用相同 TTL 便于同步过期
+        redisTemplate.opsForValue().set(codeKey, email, RESET_TOKEN_EXPIRE_SECONDS, TimeUnit.SECONDS);
+        redisTemplate.opsForValue().set(failKey, "0", RESET_TOKEN_EXPIRE_SECONDS, TimeUnit.SECONDS);
 
-        // 不记录 reset token 明文，避免日志泄露
-        log.info("Password reset token generated for {}", email);
+        // 真实发送邮件（失败时 EmailServiceImpl 会抛 502 中断流程，避免用户误以为"已发"）
+        EmailService emailService = emailServiceProvider.getIfAvailable();
+        if (emailService == null) {
+            log.warn("[password-reset] EmailService Bean 不存在，进入 log-only 降级：to={}", email);
+        } else {
+            emailService.sendPasswordResetCode(
+                    email,
+                    resetCode,
+                    (int) (RESET_TOKEN_EXPIRE_SECONDS / 60));
+        }
+
+        // 不记录 reset code 明文，避免日志泄露
+        log.info("Password reset code sent to {}", email);
     }
 
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        String key = REDIS_KEY_RESET_TOKEN + request.getToken();
-        String email = redisTemplate.opsForValue().get(key);
+        // Bean Validation 已保证 request.token 是 "^\\d{6}$"，直接查 code → email
+        String code = request.getToken();
+        String codeKey = REDIS_KEY_RESET_CODE + code;
+        String failKey = REDIS_KEY_RESET_FAIL + code;
+        // 兼容读：旧 UUID token 范式（1 个版本过渡期，之后移除）
+        String legacyKey = REDIS_KEY_RESET_TOKEN + code;
+        boolean usedLegacyToken = false;
 
-        if (email == null) {
-            throw new IllegalArgumentException("Invalid or expired reset token");
+        String email;
+        try {
+            email = redisTemplate.opsForValue().get(codeKey);
+            if (email == null && code != null && code.length() == 32) {
+                email = redisTemplate.opsForValue().get(legacyKey);
+                usedLegacyToken = true;
+            }
+        } catch (DataAccessException e) {
+            loginFailureCounter.increment();
+            log.error("resetPassword 读取 Redis 不可用，code={}", maskCode(code), e);
+            throw new IllegalArgumentException("系统繁忙，请稍后再试");
         }
 
-        redisTemplate.delete(key);
+        if (email == null) {
+            throw new IllegalArgumentException("Invalid or expired reset code");
+        }
+
+        // 6 位 code 防爆破：先查失败次数，≥5 则立刻失效（同 PHONE_CODE_MAX_FAIL）
+        if (!usedLegacyToken) {
+            int failCount = 0;
+            try {
+                String failStr = redisTemplate.opsForValue().get(failKey);
+                if (failStr != null) {
+                    failCount = Integer.parseInt(failStr);
+                }
+            } catch (DataAccessException | NumberFormatException e) {
+                failCount = 0;
+            }
+            if (failCount >= MAX_RESET_CODE_FAIL_ATTEMPTS) {
+                // 失败达上限：主动删除 codeKey + failKey，要求用户重新申请
+                try {
+                    redisTemplate.delete(codeKey);
+                    redisTemplate.delete(failKey);
+                } catch (DataAccessException de) {
+                    loginFailureCounter.increment();
+                    log.error("resetPassword 超限清理 Redis 失败, code={}", maskCode(code), de);
+                }
+                throw new IllegalArgumentException("验证码错误次数过多，请重新获取");
+            }
+        }
 
         UserEntity user = userMapper.selectOne(
                 new LambdaQueryWrapper<UserEntity>()
                         .eq(UserEntity::getEmail, email));
 
         if (user == null) {
-            throw new IllegalArgumentException("User not found");
+            // 不区分「user not found」还是「code invalid」，统一错误防止用户名枚举（OWASP 要求）
+            throw new IllegalArgumentException("Invalid or expired reset code");
         }
 
+        // 密码编码强度已由全局 PasswordEncoder 的 moyuyo.password.bcrypt-strength 控制
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userMapper.updateById(user);
+
+        // 一次性消费：成功后立刻删 Redis，防止同一 code 被重复改密码（会话劫持场景）
+        try {
+            if (usedLegacyToken) {
+                redisTemplate.delete(legacyKey);
+            } else {
+                redisTemplate.delete(codeKey);
+                redisTemplate.delete(failKey);
+            }
+        } catch (DataAccessException e) {
+            loginFailureCounter.increment();
+            log.error("resetPassword 清理 Redis 失败（密码已更新成功），email={}", email, e);
+        }
 
         log.info("Password reset completed for: {}", email);
     }
@@ -554,6 +650,9 @@ public class AuthServiceImpl implements AuthService {
                         .eq(UserEntity::getEmail, email));
 
         if (user == null) {
+            // 防止用户名枚举：静默返回
+            log.info("Magic link requested for non-existent email, len={}",
+                    email == null ? 0 : email.length());
             return;
         }
 
@@ -563,6 +662,18 @@ public class AuthServiceImpl implements AuthService {
                 email,
                 MAGIC_LINK_EXPIRE_SECONDS,
                 TimeUnit.SECONDS);
+
+        // 真实发送邮件：把 token 拼接成 H5 可点击登录链接（非 6 位数字，与忘记密码区分范式）
+        String magicLink = h5Base + "/pages/user/magic-link?token=" + token;
+        EmailService emailService = emailServiceProvider.getIfAvailable();
+        if (emailService == null) {
+            log.warn("[magic-link] EmailService Bean 不存在，进入 log-only 降级：to={}", email);
+        } else {
+            emailService.sendMagicLink(
+                    email,
+                    magicLink,
+                    (int) (MAGIC_LINK_EXPIRE_SECONDS / 60));
+        }
 
         // 不记录 magic link token 明文，避免日志泄露
         log.info("Magic link sent to {}", email);
@@ -806,5 +917,14 @@ public class AuthServiceImpl implements AuthService {
      */
     private String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase();
+    }
+
+    /**
+     * 重置验证码脱敏：仅展示首位 + **** + 末位（6 位数字 → 形如 1****6），
+     * 防止日志里泄露完整明文被暴力利用。
+     */
+    private String maskCode(String code) {
+        if (code == null || code.length() < 2) return "****";
+        return code.charAt(0) + "****" + code.charAt(code.length() - 1);
     }
 }

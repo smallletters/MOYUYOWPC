@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="address">
     <!-- 顶部导航栏：标题 + 新增收货地址（始终可见） -->
     <view class="header-bar">
@@ -102,7 +102,7 @@
 
 <script>
 import { addressApi } from '@/api'
-import i18n from '@/i18n'
+import { i18n } from '@/i18n'
 
 export default {
   data() {

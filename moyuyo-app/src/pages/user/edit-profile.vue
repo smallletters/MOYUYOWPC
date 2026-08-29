@@ -100,7 +100,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { getUserInfo, updateUser as updateUserApi } from '@/api/user'
-import i18n from '@/i18n'
+import { i18n } from '@/i18n'
 
 // 轻量翻译函数（响应 localeVersion 变化，刷新依赖本地化的 computed）
 const localeVersion = ref(0)

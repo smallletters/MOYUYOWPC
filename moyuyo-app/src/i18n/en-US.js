@@ -9,6 +9,7 @@ export default {
   common: {
     retry: 'Reload',
     and: 'and',
+    or: 'OR',
     show: 'Show',
     hide: 'Hide',
     confirm: 'Confirm',
@@ -892,9 +893,9 @@ export default {
     codeSent: 'Code sent',
     codeSendFailed: 'Send failed, please retry',
     pleaseSelectCountry: 'Please select country/region',
-    selectCountry: 'Select Country',
+    selectCountry: 'Select Country / Region',
     otherLoginMethods: 'Other sign-in methods',
-    agreeTerms: 'By signing up, you agree to',
+    agreeTerms: 'By signing up, you agree to our',
     termsAndPolicy: 'Terms of Service',
     privacyPolicy: 'Privacy Policy',
     googleLoginNotConfig: 'Google login not configured',
@@ -913,10 +914,23 @@ export default {
     invalidEmail: 'Please enter a valid email',
     // Register page (/pages/user/register)
     createAccount: 'Create Account',
+    // Hero subtitle - member benefits (US e-commerce pattern)
+    accountBenefit: 'Sign up for member-only pricing, rewards & early access',
+    // Social login buttons - follow Google/Apple brand guidelines
+    signUpWithGoogle: 'Continue with Google',
+    signUpWithApple: 'Continue with Apple',
+    // Field labels & placeholders
     nickname: 'Nickname',
     setNickname: 'Set a nickname',
+    nicknamePlaceholder: 'Enter a nickname',
+    phoneInputHint: 'Enter your phone number',
+    emailInputHint: 'name@example.com',
+    codeInputHint: 'Enter 6-digit code',
+    passwordHint: 'At least 8 characters with letters and numbers',
+    passwordRule: 'At least 8 characters — mix of letters, numbers & symbols recommended',
     setPassword: 'Set a password',
     confirmPassword: 'Confirm password',
+    confirmPasswordHint: 'Re-enter your password',
     petPreference: 'Choose your pet type',
     petTypes: { dog: 'Dog', cat: 'Cat', other: 'Other' },
     selectCountryTitle: 'Select Country / Region',
@@ -924,6 +938,21 @@ export default {
     passwordMismatch: 'Passwords do not match',
     registerSuccess: 'Sign-up successful!',
     registerFailed: 'Sign-up failed',
+    createAccountBtn: 'Create Account',
+    // ========== Login page (/pages/user/login) copy ==========
+    // Hero title + benefit subtitle (Target.com login pattern)
+    welcomeBack: 'Welcome Back',
+    loginBenefit: 'Sign in to shop, track orders & unlock member-only perks',
+    // Social login button labels - per Google/Apple brand guidelines
+    signInWithGoogle: 'Continue with Google',
+    signInWithApple: 'Continue with Apple',
+    // Primary CTA button label
+    signInBtn: 'Sign In',
+    // Terms line below CTA (Amazon/Shein standard: "By continuing you agree to...")
+    agreeLoginTerms: 'By continuing you agree to our',
+    // Trust badges at the bottom of the sign-up form
+    secureInfo: 'Your info is protected with TLS encryption end-to-end',
+    noSpam: 'We never send spam and will never share your info with third parties',
     countryNames: {
       US: 'United States',
       CA: 'Canada',

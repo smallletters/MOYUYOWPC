@@ -22,3 +22,6 @@ export function listFollowers(params = {}) {
 }
 
 export default { follow, unfollow, listFollowing, listFollowers }
+
+// 兼容 follow-list.vue 的命名导入方式（import { followApi } from '@/api/follow'）
+export const followApi = { follow, unfollow, listFollowing, listFollowers }

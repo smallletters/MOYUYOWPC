@@ -1,128 +1,189 @@
 <template>
+  <!-- 美国购物APP登录页(Amazon / Target / Shein风格):
+       1. 纯白背景 + 单列垂直布局,减少视觉噪音
+       2. Topbar:返回键 + 居中品牌(与注册页视觉一致)
+       3. Hero:大号欢迎标题 + 副标题价值主张
+       4. 社交登录在表单上方(Google/Apple优先,降低登录门槛)
+       5. OR分隔线 + 单列表单(label在input上方,Baymard最佳实践)
+       6. Email登录表单右侧"忘记密码"快捷入口(Target标准)
+       7. 全宽实心胶囊CTA按钮,高度≥56dp拇指友好
+       8. 条款/信任徽章 + 底部注册入口 -->
   <view class="login">
-    <view class="bg-overlay" />
-
-    <view class="login-card">
-      <view class="brand">
-        <text class="brand-name">MOYUYO</text>
-        <text class="brand-tagline">给爱宠更美好的生活</text>
+    <!-- 顶部导航栏:与注册页一致的浅色sticky topbar -->
+    <view class="topbar">
+      <view class="topbar-back" @click="goBack">
+        <text class="luc luc-arrow-left topbar-icon" />
       </view>
-
-      <view class="tabs">
-        <view
-          v-for="t in tabs"
-          :key="t.value"
-          class="tab"
-          :class="{ active: activeTab === t.value }"
-          @click="activeTab = t.value"
-        >
-          {{ t.label }}
-        </view>
-      </view>
-
-      <!-- 手机号登录 -->
-      <view v-show="activeTab === 'phone'" class="form">
-        <view class="input-row">
-          <view class="country-code" @click="showCountryPicker = true">
-            <text>{{ countryCode }}</text>
-            <text class="arrow-down">▾</text>
-          </view>
-          <input
-            v-model="phone"
-            class="input phone-input"
-            type="number"
-            maxlength="10"
-            placeholder="手机号"
-            inputmode="numeric"
-          >
-        </view>
-
-        <view class="input-row code-row">
-          <input
-            v-model="smsCode"
-            class="input"
-            type="number"
-            maxlength="6"
-            placeholder="验证码">
-          <view class="send-code" :class="{ disabled: codeCountdown > 0 }" @click="onSendCode">
-            <text v-if="codeCountdown === 0">获取验证码</text>
-            <text v-else>{{ codeCountdown }}s</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- 邮箱登录 -->
-      <view v-show="activeTab === 'email'" class="form">
-        <view class="input-group">
-          <input
-            v-model="email"
-            class="input"
-            type="text"
-            placeholder="邮箱">
-        </view>
-        <view class="input-group">
-          <input
-            v-model="password"
-            class="input"
-            :type="showPassword ? 'text' : 'password'"
-            placeholder="密码"
-          >
-          <text class="toggle-pwd" @click="showPassword = !showPassword">
-            <!-- 使用 Lucide 眼睛/闭眼图标,符合主流 APP 密码框视觉规范 -->
-            <text v-if="showPassword" class="luc luc-eye-off" />
-            <text v-else class="luc luc-eye" />
-          </text>
-        </view>
-      </view>
-
-      <view class="btn btn-primary login-btn" :class="{ disabled: !canSubmit }" @click="onLogin">
-        {{ $t('auth.login') }}
-      </view>
-
-      <view v-if="showSocial" class="divider">
-        <view class="line" />
-        <text class="or">{{ $t('auth.otherLoginMethods') }}</text>
-        <view class="line" />
-      </view>
-
-      <view v-if="showSocial" class="social-buttons">
-        <view v-if="config.socialGoogleEnabled" class="social-btn" @click="onSocial('google')">
-          <image src="/static/icons/google.svg" class="social-icon-img" />
-        </view>
-        <view v-if="config.socialAppleEnabled" class="social-btn" @click="onSocial('apple')">
-          <text class="social-icon-text">Apple</text>
-        </view>
-        <!-- 其余渠道保留占位 -->
-        <view
-          v-if="!config.socialGoogleEnabled && !config.socialAppleEnabled"
-          class="social-btn"
-          @click="onSocialMore"
-        >
-          <text class="social-icon-text">···</text>
-        </view>
-      </view>
-
-      <view class="register-link">
-        还没有账号？
-        <text class="link" @click="goRegister">立即注册</text>
-      </view>
+      <text class="topbar-brand">MOYUYO</text>
+      <view class="topbar-placeholder" />
     </view>
 
-    <view
-      v-if="showCountryPicker"
-      class="country-picker-overlay"
-      @click="showCountryPicker = false"
-    >
-      <view class="country-picker" @click.stop>
-        <text class="picker-title">{{ $t('auth.selectCountry') }}</text>
+    <scroll-view scroll-y class="page-scroll">
+      <view class="page-inner">
+        <!-- Hero标题区:大号欢迎 + 价值主张副标题(Target风格) -->
+        <view class="hero">
+          <text class="hero-title">{{ $t('auth.welcomeBack') }}</text>
+          <text class="hero-subtitle">{{ $t('auth.loginBenefit') }}</text>
+        </view>
+
+        <!-- 社交登录(Google/Apple优先,美国电商标配) -->
+        <view class="social-row">
+          <view class="social-btn google" @click="onSocial('google')">
+            <image src="/static/icons/google.svg" class="social-logo" mode="aspectFit" />
+            <text class="social-label">{{ $t('auth.signInWithGoogle') }}</text>
+          </view>
+          <view class="social-btn apple" @click="onSocial('apple')">
+            <text class="social-icon-apple" />
+            <text class="social-label">{{ $t('auth.signInWithApple') }}</text>
+          </view>
+        </view>
+
+        <!-- OR分隔线(Amazon/Target标配) -->
+        <view class="divider-or">
+          <view class="divider-line" />
+          <text class="divider-text">{{ $t('common.or') }}</text>
+          <view class="divider-line" />
+        </view>
+
+        <view class="form">
+          <!-- 登录方式切换:Segmented Control(iOS 16样式),默认Email -->
+          <view class="segmented">
+            <view
+              v-for="t in tabs"
+              :key="t.value"
+              class="segmented-item"
+              :class="{ active: activeTab === t.value }"
+              @click="activeTab = t.value"
+            >
+              {{ t.label }}
+            </view>
+          </view>
+
+          <!-- Phone 登录区 -->
+          <view v-show="activeTab === 'phone'" class="form-section">
+            <view class="field">
+              <text class="field-label">{{ $t('auth.phonePlaceholder') }}</text>
+              <view class="phone-field">
+                <view class="country-picker" @click="showCountryPicker = true">
+                  <text class="country-flag">{{ countryFlag }}</text>
+                  <text class="country-dial">{{ countryCode }}</text>
+                  <text class="luc luc-chevron-down chevron" />
+                </view>
+                <input
+                  v-model="phone"
+                  class="field-input phone-input"
+                  type="number"
+                  maxlength="11"
+                  inputmode="numeric"
+                  :placeholder="$t('auth.phoneInputHint')"
+                >
+              </view>
+            </view>
+            <view class="field">
+              <text class="field-label">{{ $t('auth.codePlaceholder') }}</text>
+              <view class="code-field">
+                <input
+                  v-model="smsCode"
+                  class="field-input"
+                  type="number"
+                  maxlength="6"
+                  inputmode="numeric"
+                  :placeholder="$t('auth.codeInputHint')"
+                >
+                <view class="code-btn" :class="{ disabled: codeCountdown > 0 }" @click="onSendCode">
+                  <text v-if="codeCountdown === 0">{{ $t('auth.sendCode') }}</text>
+                  <text v-else>{{ codeCountdown }}s</text>
+                </view>
+              </view>
+            </view>
+          </view>
+
+          <!-- Email 登录区 -->
+          <view v-show="activeTab === 'email'" class="form-section">
+            <view class="field">
+              <text class="field-label">{{ $t('auth.emailPlaceholder') }}</text>
+              <input
+                v-model="email"
+                class="field-input"
+                type="email"
+                :placeholder="$t('auth.emailInputHint')"
+              >
+            </view>
+            <view class="field">
+              <view class="pwd-header">
+                <text class="field-label">{{ $t('auth.passwordPlaceholder') }}</text>
+                <text class="forgot-link" @click="onForgot">{{ $t('auth.forgot') }}</text>
+              </view>
+              <view class="pwd-field">
+                <input
+                  v-model="password"
+                  class="field-input pwd-input"
+                  :type="showPassword ? 'text' : 'password'"
+                  :placeholder="$t('auth.passwordHint')"
+                >
+                <text class="toggle-pwd" @click="showPassword = !showPassword">
+                  <text v-if="showPassword" class="luc luc-eye-off" />
+                  <text v-else class="luc luc-eye" />
+                </text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 主CTA:全宽实心胶囊按钮(与注册页同款) -->
+          <view class="cta-btn" :class="{ disabled: !canSubmit }" @click="onLogin">
+            <text class="cta-text">{{ $t('auth.signInBtn') || $t('auth.login') }}</text>
+          </view>
+
+          <!-- 条款:CTA下方小字+弱色,不抢夺注意力(Shein风格) -->
+          <view class="terms">
+            <text class="terms-text">{{ $t('auth.agreeLoginTerms') }}</text>
+            <text class="terms-link">{{ $t('auth.termsAndPolicy') }}</text>
+            <text class="terms-text">{{ $t('common.and') }}</text>
+            <text class="terms-link">{{ $t('auth.privacyPolicy') }}</text>
+          </view>
+
+          <!-- 信任徽章(Amazon结账页模式) -->
+          <view class="trust-row">
+            <view class="trust-item">
+              <text class="luc luc-shield-check trust-icon" />
+              <text class="trust-text">{{ $t('auth.secureInfo') }}</text>
+            </view>
+            <view class="trust-item">
+              <text class="luc luc-lock trust-icon" />
+              <text class="trust-text">{{ $t('auth.noSpam') }}</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 底部注册入口:弱色分隔线+居中文字(Target/Shein标准) -->
+        <view class="bottom-register">
+          <text class="bottom-text">{{ $t('auth.noAccount') }}</text>
+          <text class="bottom-link" @click="goRegister">{{ $t('auth.goRegister') }}</text>
+        </view>
+        <view class="safe-bottom" />
+      </view>
+    </scroll-view>
+
+    <!-- 国家选择弹层(底部sheet,iOS UIActionSheet样式,与注册页一致) -->
+    <view v-if="showCountryPicker" class="country-sheet-mask" @click="showCountryPicker = false">
+      <view class="country-sheet" @click.stop>
+        <view class="sheet-header">
+          <text class="sheet-title">{{ $t('auth.selectCountryTitle') }}</text>
+          <view class="sheet-close" @click="showCountryPicker = false">
+            <text class="luc luc-x" />
+          </view>
+        </view>
         <scroll-view scroll-y class="country-list">
           <view
             v-for="c in countries"
             :key="c.code"
             class="country-item"
-            @click="selectCountry(c)">
-            <text>{{ c.flag }} {{ $t(`auth.countryNames.${c.code}`) }}</text>
-            <text class="country-dial">{{ c.dial }}</text>
+            :class="{ active: c.dial === countryCode }"
+            @click="selectCountry(c)"
+          >
+            <text class="ci-flag">{{ c.flag }}</text>
+            <text class="ci-name">{{ $t(`auth.countryNames.${c.code}`) }}</text>
+            <text class="ci-dial">{{ c.dial }}</text>
           </view>
         </scroll-view>
       </view>
@@ -141,9 +202,7 @@ export default {
     return {
       // 注入配置便于模板使用(避免 computed 多次调用)
       config,
-      // 至少有一个渠道启用时才展示"其他登录方式"区块
-      showSocial: config.socialGoogleEnabled || config.socialAppleEnabled,
-      activeTab: 'phone',
+      activeTab: 'email', // 美国用户首选Email登录(符合Amazon/Target/Shein主流程)
       // tabs 改为 computed,跟随 locale 切换
       phone: '',
       email: '',
@@ -152,10 +211,11 @@ export default {
       showPassword: false,
       codeCountdown: 0,
       codeTimer: null,
-      countryCode: '+1',
+      countryCode: '+1', // 默认美国区号(+1)对齐目标市场
       showCountryPicker: false,
       // countries 仅保留 code + dial + flag,name 改由 $t() 渲染
       countries: [
+        // 美国市场优先排第一个(Target登录页默认美国)
         { code: 'US', dial: '+1', flag: '🇺🇸' },
         { code: 'CA', dial: '+1', flag: '🇨🇦' },
         { code: 'GB', dial: '+44', flag: '🇬🇧' },
@@ -179,14 +239,19 @@ export default {
       }
       return this.email.includes('@') && this.password.length >= 8
     },
+    // 根据当前countryCode查找对应国旗emoji(模板使用)
+    countryFlag() {
+      const found = this.countries.find((c) => c.dial === this.countryCode)
+      return found?.flag || '🇺🇸'
+    },
     userStore() {
       return useUserStore()
     },
     tabs() {
       void this.localeVersion
       return [
-        { value: 'phone', label: i18n.t('auth.tabPhone') },
         { value: 'email', label: i18n.t('auth.tabEmail') },
+        { value: 'phone', label: i18n.t('auth.tabPhone') },
       ]
     },
   },
@@ -326,303 +391,557 @@ export default {
     goRegister() {
       uni.navigateTo({ url: '/pages/user/register' })
     },
+
+    // 顶部返回按钮:兼容从任意入口进入登录页的场景
+    goBack() {
+      const pages = getCurrentPages()
+      if (pages.length > 1) {
+        uni.navigateBack()
+      } else {
+        // 如果登录页是栈底(例如reLaunch进入),返回首页tab
+        uni.switchTab({ url: '/pages/tabbar/home' })
+      }
+    },
   },
 }
 </script>
 
 <style lang="scss" scoped>
+/* 美国购物APP登录页样式(参考Amazon/Target/Shein移动H5):
+   - 纯白页面背景,无渐变(减少视觉噪音),与注册页视觉一致
+   - 单列表单,label在input上方(Baymard最佳实践)
+   - CTA全宽实心,高度≥96rpx,圆角999rpx(拇指区≥56dp)
+   - 密码标题右侧"Forgot?"快捷链接(Target标准)
+   - 辅助文案、条款12-13sp弱灰,与CTA形成层级 */
 .login {
   min-height: 100vh;
-  position: relative;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 顶部导航栏:与注册页一致(Apple HIG风格) */
+.topbar {
+  display: flex;
+  align-items: center;
+  height: 88rpx;
+  padding: 0 24rpx;
+  padding-top: env(safe-area-inset-top);
+  background: #ffffff;
+  border-bottom: 1rpx solid #f0f0f3;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.topbar-back {
+  width: 56rpx;
+  height: 56rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32rpx;
 }
 
-.bg-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  opacity: 0.85;
-}
-
-.login-card {
-  position: relative;
-  width: 100%;
-  max-width: 600rpx;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 32rpx;
-  padding: 48rpx 32rpx;
-  backdrop-filter: blur(20px);
-}
-
-.brand {
-  text-align: center;
-  margin-bottom: 40rpx;
-}
-
-.brand-name {
-  display: block;
-  font-size: 52rpx;
-  font-weight: 800;
-  letter-spacing: 6rpx;
+.topbar-icon {
+  font-size: 40rpx;
   color: #1d1d1f;
-  margin-bottom: 8rpx;
-}
-
-.brand-tagline {
-  display: block;
-  font-size: 24rpx;
-  color: #8e8e93;
-  letter-spacing: 2rpx;
-}
-
-.tabs {
-  display: flex;
-  background: #f2f2f7;
-  border-radius: 20rpx;
-  padding: 4rpx;
-  margin-bottom: 32rpx;
-}
-
-.tab {
-  flex: 1;
-  text-align: center;
-  padding: 16rpx 0;
-  font-size: 28rpx;
-  color: #8e8e93;
-  border-radius: 16rpx;
-  transition: all 0.2s;
-}
-
-.tab.active {
-  background: #ffffff;
-  color: #007aff;
-  font-weight: 600;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
-}
-
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 24rpx;
-}
-
-.input-row {
-  display: flex;
-  gap: 16rpx;
-  align-items: center;
-  background: #f2f2f7;
-  border-radius: 16rpx;
-  padding: 0 20rpx;
-}
-
-.country-code {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 24rpx 0;
-  font-size: 28rpx;
-  font-weight: 500;
-  color: #1d1d1f;
-  border-right: 2rpx solid #d1d1d6;
-  padding-right: 16rpx;
-}
-
-.arrow-down {
-  font-size: 20rpx;
-  color: #8e8e93;
-}
-
-.phone-input {
-  flex: 1;
-}
-
-.input-group {
-  background: #f2f2f7;
-  border-radius: 16rpx;
-  padding: 24rpx 20rpx;
-  position: relative;
-}
-
-.input {
-  width: 100%;
-  font-size: 28rpx;
-  color: #1d1d1f;
-}
-
-.code-row {
-  justify-content: space-between;
-}
-
-.send-code {
-  flex-shrink: 0;
-  padding: 16rpx 24rpx;
-  background: #007aff;
-  border-radius: 12rpx;
-  font-size: 24rpx;
-  color: #fff;
-  font-weight: 500;
-}
-
-.send-code.disabled {
-  background: #aeaeb2;
-}
-
-.toggle-pwd {
-  position: absolute;
-  right: 20rpx;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 24rpx;
-  color: #007aff;
-  /* 调整为图标按钮:加大点击热区,图标更醒目 */
-  padding: 8rpx;
-  font-size: 36rpx;
   line-height: 1;
 }
 
-.login-btn {
-  /* 主流 APP(微信/淘宝/小红书)登录按钮规范:
-     大圆角胶囊 + 品牌渐变 + 微阴影抬起 + 按压缩放反馈 + 顶部高光提亮 */
-  /* 改为块级 + 100% 宽度,铺满登录卡片,符合主流 APP 登录按钮的视觉占比 */
-  display: flex;
-  width: 100%;
-  padding: 28rpx 0;
-  font-size: 32rpx;
-  font-weight: 600;
-  letter-spacing: 2rpx;
-  margin-top: 24rpx;
-  border-radius: 999rpx;
-  /* 改用页面品牌主色 Sand Gold 渐变,与全站一致 */
-  background: linear-gradient(135deg, #e8ddb5 0%, #dbc98a 50%);
-  color: #2e2b29;
-  box-shadow:
-    0 8rpx 20rpx rgba(219, 201, 138, 0.45),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.5);
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.2s ease,
-    opacity 0.2s ease;
-}
-
-.login-btn:active:not(.disabled) {
-  /* 按下时缩小并降低阴影,模拟物理按压感 */
-  transform: scale(0.98);
-  box-shadow:
-    0 4rpx 10rpx rgba(219, 201, 138, 0.3),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.4);
-}
-
-.login-btn.disabled {
-  /* 禁用态:灰化 + 去除阴影 + 不可点击光标 */
-  opacity: 0.45;
-  box-shadow: none;
-  cursor: not-allowed;
-}
-
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  margin: 32rpx 0;
-}
-
-.line {
+.topbar-brand {
   flex: 1;
-  height: 1rpx;
-  background: #d1d1d6;
+  text-align: center;
+  font-size: 28rpx;
+  font-weight: 700;
+  letter-spacing: 4rpx;
+  color: #1d1d1f;
 }
 
-.or {
-  font-size: 24rpx;
-  color: #8e8e93;
-  white-space: nowrap;
+.topbar-placeholder {
+  width: 56rpx;
 }
 
-.social-buttons {
+/* 可滚动区:占满剩余高度,与底部注册入口解耦 */
+.page-scroll {
+  flex: 1;
+  height: 0; /* flex子项高度设0,保证内部scroll-y在uni-app中生效 */
+}
+
+.page-inner {
+  padding: 40rpx 32rpx 0;
+}
+
+/* Hero标题:大号欢迎+价值主张(Target登录页模式) */
+.hero {
+  margin-bottom: 40rpx;
+}
+
+.hero-title {
+  display: block;
+  font-size: 52rpx;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #1d1d1f;
+  margin-bottom: 12rpx;
+  letter-spacing: -0.5rpx;
+}
+
+.hero-subtitle {
+  display: block;
+  font-size: 28rpx;
+  line-height: 1.5;
+  color: #6e6e73;
+}
+
+/* 社交登录按钮:全宽白底描边(Shein/Temu美国站点标准) */
+.social-row {
   display: flex;
-  justify-content: center;
-  gap: 24rpx;
+  flex-direction: column;
+  gap: 16rpx;
   margin-bottom: 32rpx;
 }
 
 .social-btn {
-  width: 88rpx;
-  height: 88rpx;
-  border-radius: 50%;
-  background: #f2f2f7;
+  height: 92rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid #e5e5ea;
+  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2rpx solid #e5e5ea;
+  gap: 14rpx;
+  transition: all 0.15s ease;
 }
 
-.social-icon-img {
-  width: 40rpx;
-  height: 40rpx;
+.social-btn:active {
+  background: #f7f7f9;
+  transform: scale(0.99);
 }
 
-.social-icon-text {
-  font-size: 36rpx;
+.social-btn.google {
   color: #1d1d1f;
 }
 
-.register-link {
-  text-align: center;
-  font-size: 26rpx;
-  color: #8e8e93;
-  /* 与上方社交按钮区拉开距离,整体向下微调 */
-  margin-top: 32rpx;
+.social-btn.apple {
+  background: #000000;
+  border-color: #000000;
+  color: #ffffff;
 }
 
-.link {
-  /* 改用页面品牌主色 */
-  color: var(--color-primary-dark);
+.social-logo {
+  width: 36rpx;
+  height: 36rpx;
+}
+
+.social-icon-apple {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 4rpx;
+  background: currentColor;
+  -webkit-mask: url('/static/icons/apple.svg') no-repeat center / contain;
+  mask: url('/static/icons/apple.svg') no-repeat center / contain;
+}
+
+.social-label {
+  font-size: 28rpx;
   font-weight: 600;
-  margin-left: 4rpx;
 }
 
-.country-picker-overlay {
+/* OR分隔线(Amazon标准) */
+.divider-or {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-bottom: 32rpx;
+}
+
+.divider-line {
+  flex: 1;
+  height: 1rpx;
+  background: #e5e5ea;
+}
+
+.divider-text {
+  font-size: 24rpx;
+  color: #8e8e93;
+  text-transform: uppercase;
+  letter-spacing: 1rpx;
+}
+
+/* 表单:单列+垂直gap,字段之间呼吸感充足 */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 28rpx;
+}
+
+/* 登录方式切换:Segmented Control(iOS 16样式) */
+.segmented {
+  display: flex;
+  background: #f2f2f7;
+  border-radius: 14rpx;
+  padding: 4rpx;
+}
+
+.segmented-item {
+  flex: 1;
+  text-align: center;
+  padding: 18rpx 0;
+  font-size: 26rpx;
+  color: #1d1d1f;
+  border-radius: 10rpx;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.segmented-item.active {
+  background: #ffffff;
+  box-shadow: 0 3rpx 8rpx rgba(0, 0, 0, 0.08);
+  color: #1d1d1f;
+  font-weight: 700;
+}
+
+/* 每个field:label在上,input在下(Baymard Mobile Form研究) */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.field-label {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1d1d1f;
+  line-height: 1.4;
+}
+
+.field-input {
+  height: 92rpx;
+  padding: 0 24rpx;
+  font-size: 30rpx;
+  color: #1d1d1f;
+  background: #ffffff;
+  border: 2rpx solid #d1d1d6;
+  border-radius: 16rpx;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.field-input:focus {
+  border-color: var(--color-primary, #007aff);
+  box-shadow: 0 0 0 4rpx rgba(0, 122, 255, 0.12);
+}
+
+/* 手机号字段:国旗+区号+下拉箭头+号码输入 */
+.phone-field {
+  display: flex;
+  align-items: stretch;
+  height: 92rpx;
+  border: 2rpx solid #d1d1d6;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.phone-field:focus-within {
+  border-color: var(--color-primary, #007aff);
+  box-shadow: 0 0 0 4rpx rgba(0, 122, 255, 0.12);
+}
+
+.country-picker {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 0 16rpx 0 20rpx;
+  border-right: 2rpx solid #e5e5ea;
+  background: #fafafa;
+}
+
+.country-flag {
+  font-size: 32rpx;
+  line-height: 1;
+}
+
+.country-dial {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.chevron {
+  font-size: 18rpx;
+  color: #8e8e93;
+  margin-left: 2rpx;
+}
+
+.phone-input {
+  flex: 1;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  padding: 0 20rpx;
+}
+
+/* 验证码+发送按钮:输入框满宽,按钮贴右 */
+.code-field {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  height: 92rpx;
+}
+
+.code-field .field-input {
+  flex: 1;
+  height: 100%;
+}
+
+.code-btn {
+  flex-shrink: 0;
+  height: 92rpx;
+  padding: 0 28rpx;
+  border-radius: 16rpx;
+  background: var(--color-primary, #007aff);
+  color: #ffffff;
+  font-size: 26rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.code-btn.disabled {
+  background: #c7c7cc;
+}
+
+/* 密码标题行:label居左 + "忘记密码"link居右(Target标准) */
+.pwd-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.forgot-link {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: var(--color-primary, #007aff);
+}
+
+/* 密码显示/隐藏切换:眼睛图标加大热区 */
+.pwd-field {
+  position: relative;
+  height: 92rpx;
+}
+
+.pwd-input {
+  width: 100%;
+  height: 100%;
+  padding-right: 80rpx;
+}
+
+.toggle-pwd {
+  position: absolute;
+  right: 16rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  color: #8e8e93;
+}
+
+/* 主CTA按钮:全宽实心胶囊(Amazon/Target风格),与注册页同款 */
+.cta-btn {
+  margin-top: 8rpx;
+  height: 104rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #e8ddb5 0%, #dbc98a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 10rpx 24rpx rgba(219, 201, 138, 0.42),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.6);
+  transition: all 0.15s ease;
+}
+
+.cta-btn:active:not(.disabled) {
+  transform: scale(0.985);
+  box-shadow: 0 4rpx 14rpx rgba(219, 201, 138, 0.3);
+}
+
+.cta-text {
+  font-size: 32rpx;
+  font-weight: 800;
+  letter-spacing: 2rpx;
+  color: #2e2b29;
+}
+
+.cta-btn.disabled {
+  background: #e5e5ea;
+  box-shadow: none;
+}
+
+.cta-btn.disabled .cta-text {
+  color: #8e8e93;
+}
+
+/* 条款区:CTA下方12sp小字居中,不抢主流程注意力 */
+.terms {
+  margin-top: 24rpx;
+  text-align: center;
+  padding: 0 8rpx;
+}
+
+.terms-text {
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #8e8e93;
+}
+
+.terms-link {
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: var(--color-primary, #007aff);
+  font-weight: 600;
+}
+
+/* 信任徽章行:2列安全提示(Amazon结账页模式) */
+.trust-row {
+  margin-top: 32rpx;
+  padding: 20rpx 24rpx;
+  background: #f7f7f9;
+  border-radius: 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.trust-item {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.trust-icon {
+  font-size: 30rpx;
+  color: #34c759;
+  line-height: 1;
+}
+
+.trust-text {
+  font-size: 24rpx;
+  color: #3c3c43;
+  line-height: 1.4;
+}
+
+/* 底部注册入口:弱色分隔+居中文字(Target/Shein标准) */
+.bottom-register {
+  margin: 56rpx 0 24rpx;
+  padding-top: 28rpx;
+  border-top: 1rpx solid #f0f0f3;
+  text-align: center;
+}
+
+.bottom-text {
+  font-size: 26rpx;
+  color: #6e6e73;
+}
+
+.bottom-link {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: var(--color-primary, #007aff);
+  margin-left: 6rpx;
+}
+
+.safe-bottom {
+  height: calc(32rpx + env(safe-area-inset-bottom));
+}
+
+/* 国家选择弹层:底部sheet(iOS 16 UIActionSheet模式),与注册页一致 */
+.country-sheet-mask {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
-  z-index: 100;
+  z-index: 999;
   display: flex;
   align-items: flex-end;
   justify-content: center;
 }
 
-.country-picker {
+.country-sheet {
   width: 100%;
-  max-height: 60vh;
-  background: #fff;
-  border-radius: 32rpx 32rpx 0 0;
-  padding: 32rpx;
+  max-height: 70vh;
+  background: #ffffff;
+  border-radius: 28rpx 28rpx 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
-.picker-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  display: block;
-  margin-bottom: 24rpx;
+.sheet-header {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 28rpx 20rpx;
+  border-bottom: 1rpx solid #f0f0f3;
+}
+
+.sheet-title {
+  flex: 1;
   text-align: center;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1d1d1f;
+}
+
+.sheet-close {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  color: #8e8e93;
 }
 
 .country-list {
-  max-height: 50vh;
+  flex: 1;
+  max-height: 60vh;
+  padding: 8rpx 0;
 }
 
 .country-item {
   display: flex;
-  justify-content: space-between;
-  padding: 24rpx 0;
-  font-size: 28rpx;
+  align-items: center;
+  padding: 24rpx 28rpx;
   border-bottom: 1rpx solid #f2f2f7;
 }
 
-.country-dial {
-  color: #8e8e93;
+.country-item.active {
+  background: rgba(0, 122, 255, 0.06);
+}
+
+.ci-flag {
+  font-size: 32rpx;
+  width: 52rpx;
+  margin-right: 16rpx;
+}
+
+.ci-name {
+  flex: 1;
+  font-size: 28rpx;
+  color: #1d1d1f;
+  font-weight: 500;
+}
+
+.ci-dial {
+  font-size: 26rpx;
+  color: #6e6e73;
+  font-weight: 600;
 }
 </style>

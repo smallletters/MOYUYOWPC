@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="address-edit">
     <view class="header-bar">
       <view class="header-back" aria-label="返回" @click="goBack">
@@ -144,7 +144,7 @@
 
 <script>
 import { addressApi } from '@/api'
-import i18n from '@/i18n'
+import { i18n } from '@/i18n'
 
 // 国家码（值与英文/本地化文案分离，便于在 picker 中显示本地化文本）
 const COUNTRY_CODES = [

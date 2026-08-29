@@ -20,6 +20,7 @@ export default {
     settings: '设置',
     settingsSaved: '设置已保存',
     and: '和',
+    or: '或者',
     show: '显示',
     hide: '隐藏',
   },
@@ -888,8 +889,8 @@ export default {
     pleaseSelectCountry: '请选择国家/地区',
     selectCountry: '选择国家/地区',
     otherLoginMethods: '其他登录方式',
-    agreeTerms: '注册即同意',
-    termsAndPolicy: '用户协议',
+    agreeTerms: '注册即代表你同意',
+    termsAndPolicy: '服务条款',
     privacyPolicy: '隐私政策',
     googleLoginNotConfig: 'Google 登录未配置',
     appleLoginDeveloping: 'Apple 登录待接入',
@@ -907,10 +908,23 @@ export default {
     invalidEmail: '请输入正确邮箱',
     // 注册页面 (/pages/user/register)
     createAccount: '创建账号',
+    // Hero 副标题:注册可获得的权益(美国电商模式:会员价/积分/免运费等)
+    accountBenefit: '注册享会员专属价、积分返利与新品优先购',
+    // 社交登录按钮文字(Google/Apple 品牌文案参考官方规范)
+    signUpWithGoogle: '使用 Google 注册',
+    signUpWithApple: '使用 Apple 注册',
+    // 字段 Label 与占位符
     nickname: '昵称',
     setNickname: '设置昵称',
+    nicknamePlaceholder: '请输入昵称',
+    phoneInputHint: '请输入手机号码',
+    emailInputHint: 'name@example.com',
+    codeInputHint: '请输入 6 位验证码',
+    passwordHint: '至少 8 位，建议包含字母和数字',
+    passwordRule: '至少 8 位，建议包含字母、数字和特殊符号',
     setPassword: '设置密码',
     confirmPassword: '确认密码',
+    confirmPasswordHint: '请再次输入密码',
     petPreference: '选择你的宠物类型',
     petTypes: { dog: '狗狗', cat: '猫咪', other: '其他' },
     selectCountryTitle: '选择国家/地区',
@@ -918,6 +932,22 @@ export default {
     passwordMismatch: '两次密码不一致',
     registerSuccess: '注册成功！',
     registerFailed: '注册失败',
+    createAccountBtn: '创建账户',
+    // ========== 登录页 (/pages/user/login) 专属文案 ==========
+    // Hero 标题+价值主张副标题(Target风格)
+    welcomeBack: '欢迎回来',
+    loginBenefit: '登录继续购物、查看订单与享受会员专属福利',
+    // 社交登录按钮文字(Google/Apple官方 Sign in With 品牌文案)
+    signInWithGoogle: '使用 Google 登录',
+    signInWithApple: '使用 Apple 登录',
+    // 主CTA按钮文字
+    signInBtn: '登录',
+    // 登录页CTA下方条款(Amazon/Shein标准:By continuing you agree to...)
+    agreeLoginTerms: '继续即代表你同意',
+    // 注册页底部条款(CTA下方弱文案)
+    // 信任徽章:注册页表单底部提示
+    secureInfo: '你的账户信息采用 TLS 加密传输，安全可靠',
+    noSpam: '我们绝不会发送垃圾邮件，也不会把你的信息分享给第三方',
     countryNames: {
       US: '美国',
       CA: '加拿大',

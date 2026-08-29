@@ -45,6 +45,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
+        <!-- Spring Mail：密码重置、邮箱验证、Magic Link 发邮件；生产请通过 SPRING_MAIL_* 配置真实 SMTP -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
         <!-- 注意：项目显式 exclude 了 Spring Security 自动配置（MoyuyoApplication），
              鉴权走自实现的 JwtAuthFilter + AdminPermissionFilter。
              仅保留 spring-security-crypto（BCryptPasswordEncoder），

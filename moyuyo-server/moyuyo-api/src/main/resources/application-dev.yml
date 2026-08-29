@@ -69,6 +69,29 @@ spring:
       enabled: false
       certificate-validation: false
 
+  # Spring Mail：dev 默认对接 MailHog（docker run -p 1025:1025 -p 8025:8025 mailhog/mailhog）
+  # 本地不想起 MailHog 时，留空会触发 EmailServiceImpl 的 log-only 降级（不抛异常、验证码写 WARN 日志）。
+  # 生产请通过以下 env 注入真实 SMTP（例如 SendGrid/SES/Gmail App Password）：
+  #   SPRING_MAIL_HOST / SPRING_MAIL_PORT / SPRING_MAIL_USERNAME / SPRING_MAIL_PASSWORD
+  mail:
+    host: ${SPRING_MAIL_HOST:127.0.0.1}
+    port: ${SPRING_MAIL_PORT:1025}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: ${SPRING_MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${SPRING_MAIL_SMTP_STARTTLS:false}
+          # MailHog 默认不校验 SSL；真实 SMTP（如 SendGrid 587）请设为 true
+          ssl:
+            enable: ${SPRING_MAIL_SMTP_SSL:false}
+          connectiontimeout: 5000
+          timeout: 10000
+          writetimeout: 10000
+
   # Flyway dev 配置：可 repair，加载 seed
   flyway:
     locations: classpath:db/migration,classpath:db/seed
@@ -83,7 +106,7 @@ jwt:
   secret: ${JWT_SECRET:DevOnlyJWT_Secret#2026_KeyForLocalTesting!}
   expire-hours: 8
 
-# CORS 开发开放
+# CORS 开发开放 + 邮件/H5 等 moyuyo.* 扩展（与后面单独追加的块合并，避免重复 key）
 moyuyo:
   cors:
     allowed-origins: ${MOYUYO_CORS_ORIGINS:http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:8080,http://127.0.0.1:8080,http://192.168.6.103:8080,http://192.168.6.103:5173,http://192.168.6.103:5174}
@@ -109,6 +132,13 @@ moyuyo:
     servers: ${OPENAPI_SERVERS:http://localhost:8080|本地开发,http://192.168.1.100:8080|局域网联调}
     # dev 默认不附加 License URL（避免本地调试时显示生产 URL 误导）；生产环境由 OPENAPI_LICENSE_URL 控制
     license-url: ${OPENAPI_LICENSE_URL:}
+  # H5 端基础地址：用于 Magic Link / 重置密码链接等需要在邮件里拼接完整 URL 的场景
+  h5-base: ${MOYUYO_H5_BASE:http://localhost:5174}
+  # 邮件通道总开关：dev 默认 true；若 SMTP 没起也不阻塞（EmailServiceImpl 会自动进入 log-only 降级）
+  mail:
+    enabled: ${MOYUYO_MAIL_ENABLED:true}
+    from: ${MOYUYO_MAIL_FROM:noreply@moyuyo.local}
+    from-name: ${MOYUYO_MAIL_FROM_NAME:MOYUYO Support}
 
 # API 签名（dev 默认空）
 api:

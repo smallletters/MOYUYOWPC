@@ -10,8 +10,10 @@ import lombok.Data;
 @Schema(description = "重置密码请求")
 public class ResetPasswordRequest {
 
-    @NotBlank(message = "重置令牌不能为空")
-    @Schema(description = "重置令牌", example = "abc123...")
+    @NotBlank(message = "重置验证码不能为空")
+    @Size(min = 6, max = 6, message = "重置验证码必须为 6 位数字")
+    @Pattern(regexp = "^\\d{6}$", message = "重置验证码必须为 6 位数字")
+    @Schema(description = "邮件中的 6 位重置验证码", example = "834721")
     private String token;
 
     @NotBlank(message = "新密码不能为空")

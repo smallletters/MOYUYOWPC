@@ -78,9 +78,16 @@ public class AuthController {
 
     @Operation(summary = "重置密码")
     @PostMapping("/password/reset")
+    @RateLimiter(name = "authLogin", fallbackMethod = "resetPasswordRateLimitFallback")
     public Result<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         authService.resetPassword(request);
         return Result.success();
+    }
+
+    /** resetPassword 限流降级：签名与 resetPassword 一致，避免 Resilience4j 找不到 fallback 抛 NoSuchMethodError */
+    @SuppressWarnings("unused")
+    private Result<Void> resetPasswordRateLimitFallback(ResetPasswordRequest request, RequestNotPermitted e) {
+        return Result.error(429, "请求过于频繁，请稍后再试");
     }
 
     @Operation(summary = "修改密码（需要登录）")
