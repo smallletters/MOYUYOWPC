@@ -123,11 +123,20 @@
             </td>
             <td class="sku-cell">
               <!--
-                SKU 展示策略：单 SKU 显示 sku_code；多 SKU 显示"主 SKU +N"。
-                降级链：skus[0].skuCode → spuCode（SPU 编码作为兜底）→ 空占位
+                SKU 展示策略：
+                - 变体商品（productType=variable）：显示 spuCode（库存Tab"基础标识"中的SKU编码）+ N
+                - 简单商品有 sku 子表：显示 skus[0].skuCode
+                - 其他：降级到 spuCode → 空占位
+                降级链：(variable时)spuCode → skus[0].skuCode → spuCode → 空占位
                 后端已在 list 接口批量填充 product.skus，避免 N+1 查询
               -->
-              <template v-if="product.skus && product.skus.length > 0">
+              <template v-if="product.productType === 'variable' && product.spuCode">
+                <!-- 变体商品：显示 SPU 编码（编辑页库存Tab基础标识中的SKU编码） -->
+                <span class="sku-code">{{ product.spuCode }}</span>
+                <span v-if="product.skus && product.skus.length > 1" class="sku-extra"> +{{ product.skus.length - 1 }}</span>
+              </template>
+              <template v-else-if="product.skus && product.skus.length > 0">
+                <!-- 非变体且有 SKU 子表：显示第一个 SKU 编码 -->
                 <span class="sku-code">{{ product.skus[0].skuCode }}</span>
                 <span v-if="product.skus.length > 1" class="sku-extra"> +{{ product.skus.length - 1 }}</span>
               </template>

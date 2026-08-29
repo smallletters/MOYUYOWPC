@@ -494,3 +494,24 @@ moyuyo:
     template-code-login: ${MOYUYO_SMS_TEMPLATE_LOGIN:SMS_LOGIN_DEFAULT}
     template-code-register: ${MOYUYO_SMS_TEMPLATE_REGISTER:SMS_REGISTER_DEFAULT}
     template-code-reset: ${MOYUYO_SMS_TEMPLATE_RESET:SMS_RESET_DEFAULT}
+  # 物流轨迹 API（第三方平台对接，未配置时由 NoopLogisticsTrackProvider 占位，仅人工维护）
+  # provider 取值：
+  #   none       - 默认，本地占位，仅人工维护轨迹（NoopLogisticsTrackProvider）
+  #   mock       - 测试 Mock，按运单号前缀返回不同场景数据（MockLogisticsTrackProvider，仅 DEV/TEST）
+  #                前缀：MOCK-DELIVERED- / MOCK-INTRANSIT- / MOCK-PENDING- / MOCK-EMPTY- / MOCK-ERROR- / MOCK-REJECTED-
+  #   17track    - 17TRACK V1 API（Track17TrackProvider，需配置 api-key）
+  #   kuaidi100  - 快递100 API（Kuaidi100LogisticsTrackProvider，需配置 api-key + customer）
+  #   aftership  - AfterShip API（骨架，需配置 api-key）
+  # 启用任一第三方时必须同时配置 api-key（17TRACK/aftership）或 customer+api-key（快递100）
+  logistics:
+    provider: ${MOYUYO_LOGISTICS_PROVIDER:none}
+    api-key: ${MOYUYO_LOGISTICS_API_KEY:}
+    # 快递100 customer id（仅 provider=kuaidi100 时必填，其他提供商留空）
+    customer: ${MOYUYO_LOGISTICS_CUSTOMER:}
+    # 轨迹拉取间隔（分钟）：定时任务轮询未签收运单的周期
+    poll-interval-minutes: ${MOYUYO_LOGISTICS_POLL_INTERVAL:30}
+    # 单次拉取最大运单数（防止批量调用撑爆第三方配额）
+    poll-batch-size: ${MOYUYO_LOGISTICS_POLL_BATCH_SIZE:100}
+    # 请求超时（毫秒）
+    connect-timeout-ms: ${MOYUYO_LOGISTICS_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${MOYUYO_LOGISTICS_READ_TIMEOUT_MS:15000}

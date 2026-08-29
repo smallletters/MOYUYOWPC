@@ -43,12 +43,17 @@
 </div>
 
 <script>
-    // 解析 URL query：?status=success|fail&orderNo=xxx&message=xxx
+    // 解析 URL query：?status=success|fail&orderNo=xxx&message=xxx&scheme=moyuyo
     // Stripe Checkout Session 会在 successUrl 后追加 &session_id={CHECKOUT_SESSION_ID}，一并透传给 APP
+    // APP 端如果用 HTTP 版 return.html 兜底（没命中 moyuyo:// 直接回跳），
+    // 我们会主动 location.href = moyuyo://pay/return?status=xxx 跳回 APP，
+    // 避免 WebView 卡在支付结果页、用户不知道要返回哪里。
     (function () {
         var params = new URLSearchParams(window.location.search);
         var status = (params.get('status') || '').toLowerCase();
         var message = params.get('message') || '';
+        var orderNo = params.get('orderNo') || '';
+        var schemeBase = params.get('scheme') || 'moyuyo://pay/return';
         var iconEl = document.getElementById('icon');
         var titleEl = document.getElementById('title');
         var hintEl = document.getElementById('hint');
@@ -65,33 +70,52 @@
             hintEl.textContent = message || 'You have cancelled the payment.';
         }
 
-        // H2/H4 修复：向父 WebView 通过 postMessage 通知支付结果
-        // 父页面（uni-app pay.vue）监听 @message 事件接收 pay_result 数据
         var payload = {
             type: 'pay_result',
             status: status || 'unknown',
             message: message,
-            orderNo: params.get('orderNo') || '',
-            // H1 修复：透传 Stripe session_id，方便 APP 校验与对账
+            orderNo: orderNo,
             sessionId: params.get('session_id') || '',
-            // 时间戳：APP 用于防重复消费
             timestamp: Date.now()
         };
 
-        // uni-app web-view 实现：parent 是 web-view 容器
+        // 通道 1：向 uni-app <web-view> 父容器发 postMessage（H5 + APP 内嵌通用）
         try {
             if (window.parent && window.parent !== window) {
                 window.parent.postMessage(payload, '*');
             }
-        } catch (e) {
-            // ignore
-        }
+        } catch (e) {}
 
-        // 部分平台（H5 / 浏览器跳转）通过 localStorage 兜底：APP 启动时读取
+        // 通道 2：localStorage 兜底（浏览器/H5 刷新、新标签打开等场景）
         try {
             localStorage.setItem('moyuyo_pay_result', JSON.stringify(payload));
-        } catch (e) {
-            // ignore
+        } catch (e) {}
+
+        // 通道 3：APP 端兜底跳自定义 scheme
+        // 识别依据：userAgent 里包含 uni-app / Html5Plus / HBuilderX 任一关键字
+        // 或浏览器是 in-app webview 环境（非 http(s) 顶层打开）
+        function isAppWebView() {
+            var ua = (navigator.userAgent || '').toString();
+            if (/Html5Plus|uni-app|HBuilderX|Moyuyo/i.test(ua)) return true;
+            // iOS WKWebView：不出现 Safari 关键字却存在 Mobile/*
+            if (/iPhone|iPad|iPod/.test(ua) && !/Safari/.test(ua)) return true;
+            // Android WebView：出现 wv / _ 且无 Chrome 版本标记（Chrome + Version 关键字）
+            if (/Android/.test(ua) && (/wv\)/.test(ua) || /; wv /.test(ua))) return true;
+            return false;
+        }
+        function jumpScheme() {
+            try {
+                var sep = schemeBase.indexOf('?') === -1 ? '?' : '&';
+                var dest = schemeBase + sep
+                    + 'status=' + encodeURIComponent(status || '')
+                    + '&orderNo=' + encodeURIComponent(orderNo)
+                    + (message ? '&message=' + encodeURIComponent(message) : '');
+                window.location.href = dest;
+            } catch (e) {}
+        }
+        if (isAppWebView()) {
+            // 展示完结果后 200ms 自动回跳 APP
+            setTimeout(jumpScheme, 200);
         }
     })();
 </script>

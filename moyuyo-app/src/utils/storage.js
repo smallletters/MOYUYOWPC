@@ -19,6 +19,8 @@ export const STORAGE_KEYS = {
   PENDING_ORDERS: `${STORAGE_PREFIX}pending_orders`,
   // 设置页通知开关持久化:与系统/原生推送通道分离,本地开关默认开
   NOTIFICATION_ENABLED: `${STORAGE_PREFIX}notification_enabled`,
+  // 立即购买临时单品:商品详情页直达结算用,不写入购物车
+  BUYNOW_ITEM: `${STORAGE_PREFIX}buynow_item`,
 }
 
 export function setStorage(key, value) {

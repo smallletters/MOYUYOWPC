@@ -346,13 +346,9 @@ export default {
         },
       ],
       paymentMethods: [
-        {
-          id: 'stripe',
-          name: 'Credit / Debit Card',
-          desc: 'Visa, Mastercard, Amex',
-          iconText: 'CARD',
-        },
+        { id: 'googlepay', name: 'Google Pay', desc: '快速结账，用已保存的卡', iconText: 'G Pay' },
         { id: 'paypal', name: 'PayPal', desc: 'Use your PayPal account', iconText: 'PP' },
+        { id: 'venmo', name: 'Venmo', desc: 'PayPal 旗下，扫码或快捷支付', iconText: 'V' },
         { id: 'applepay', name: 'Apple Pay', desc: 'Fast checkout with Touch ID', iconText: '' },
         { id: 'alipay', name: 'Alipay', desc: '扫码 / 快捷支付', iconText: '支' },
       ],
@@ -718,8 +714,39 @@ export default {
         }
 
         uni.showToast({ title: 'Order placed!', icon: 'success' })
+        // 将 checkout 选中的支付方式分两部分传：
+        // channel  = 渠道大类（STRIPE / PAYPAL）
+        // method   = 同一渠道下的细分方式（CARD / APPLE_PAY / ALIPAY / GOOGLE_PAY 等）
+        // 后端 PaymentServiceImpl.createStripePayment 会按 method 决定 Stripe Checkout 的 payment_method_types
+        const channelMap = {
+          applepay: { channel: 'STRIPE', method: 'APPLE_PAY' },
+          alipay: { channel: 'STRIPE', method: 'ALIPAY' },
+          googlepay: { channel: 'STRIPE', method: 'GOOGLE_PAY' },
+          cashapp: { channel: 'STRIPE', method: 'CASH_APP' },
+          affirm: { channel: 'STRIPE', method: 'AFFIRM' },
+          afterpay: { channel: 'STRIPE', method: 'AFTERPAY' },
+          venmo: { channel: 'PAYPAL', method: 'VENMO' },
+          paypal: { channel: 'PAYPAL', method: 'PAYPAL' },
+        }
+        const picked = channelMap[this.selectedPayment] || channelMap.googlepay
+        // 客户端类型：APP / H5 / MP。
+        // APP 打 iOS/Android 包时传 APP → 后端 success/cancel URL 用 moyuyo://pay/return 自定义 scheme，
+        // 避免从 Stripe/PayPal/支付宝 等外部 APP 付完款后回不来你的 Moyuyo APP
+        let clientType = 'H5'
+        // //#ifdef APP-PLUS
+        clientType = 'APP'
+        // //#endif
+        // //#ifdef MP
+        clientType = 'MP'
+        // //#endif
+        const qs = new URLSearchParams({
+          id: String(order?.id || order),
+          channel: picked.channel,
+          method: picked.method,
+          clientType,
+        }).toString()
         setTimeout(() => {
-          uni.navigateTo({ url: `/pages/order/pay?id=${order?.id || order}` })
+          uni.navigateTo({ url: `/pages/order/pay?${qs}` })
         }, 1500)
       } catch (e) {
         uni.hideLoading()

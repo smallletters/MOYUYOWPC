@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="user">
     <view class="header">
       <view v-if="userStore.isLoggedIn" class="user-info" @click="goProfile">
@@ -102,7 +102,7 @@
 </template>
 
 <script>
-import { useUserStore } from '@/store'
+import { useUserStore, useCartStore } from '@/store'
 import { memberApi, couponApi, giftCardApi, orderApi } from '@/api'
 import followApi from '@/api/follow'
 import browseApi from '@/api/browsingHistory'
@@ -122,7 +122,7 @@ export default {
       historyCount: 0,
       orderTypes: [
         { value: 'PENDING_PAY', label: '待付款', icon: '💳', badge: 0 },
-        { value: 'PENDING_SHIP', label: '待发货', icon: '📦', badge: 0 },
+        { value: 'CART', label: '购物车', icon: '🛒', badge: 0 },
         { value: 'PENDING_RECEIVE', label: '待收货', icon: '🚚', badge: 0 },
         { value: 'COMPLETED', label: '待评价', icon: '⭐', badge: 0 },
       ],
@@ -274,11 +274,13 @@ export default {
       }
     },
 
-    /** 加载订单宫格各状态角标数量 */
+    /** 加载订单宫格各状态角标数量；购物车角标从 cart store 取 */
     async loadOrderBadges() {
-      const statuses = this.orderTypes.map((t) => t.value)
+      const cartStore = useCartStore()
+      const statuses = this.orderTypes.filter((t) => t.value !== 'CART').map((t) => t.value)
       try {
-        const results = await Promise.all(
+        // 订单状态角标：逐个调订单列表接口
+        const orderResults = await Promise.all(
           statuses.map((s) =>
             orderApi
               .getOrderList({ status: s, page: 1, size: 1 })
@@ -286,7 +288,14 @@ export default {
               .catch(() => 0),
           ),
         )
-        this.orderTypes = this.orderTypes.map((t, i) => ({ ...t, badge: results[i] || 0 }))
+        // 把 CART 插回原位置（用 cart store 的 totalQuantity）
+        let orderIdx = 0
+        this.orderTypes = this.orderTypes.map((t) => {
+          if (t.value === 'CART') {
+            return { ...t, badge: cartStore.totalQuantity || 0 }
+          }
+          return { ...t, badge: orderResults[orderIdx++] || 0 }
+        })
       } catch (e) {
         console.warn('[user] load order badges failed', e)
       }
@@ -301,6 +310,10 @@ export default {
     },
 
     goOrders(type) {
+      if (type === 'CART') {
+        uni.navigateTo({ url: '/pages/cart/index' })
+        return
+      }
       uni.navigateTo({ url: `/pages/order/list?type=${type || 'all'}` })
     },
 

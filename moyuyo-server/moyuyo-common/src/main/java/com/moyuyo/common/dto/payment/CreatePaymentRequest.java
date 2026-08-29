@@ -16,6 +16,15 @@ public class CreatePaymentRequest {
     @Schema(description = "支付渠道: STRIPE / PAYPAL", example = "STRIPE")
     private String payChannel;
 
+    @Schema(description = "支付方式细分（同一渠道下区分钱包APP/Apple Pay/支付宝等）: APPLE_PAY / GOOGLE_PAY / ALIPAY / CASH_APP / VENMO / PAYPAL / LINK / AFFIRM / AFTERPAY", example = "GOOGLE_PAY")
+    private String payMethod;
+
+    @Schema(description = "客户端类型: H5 / APP / MP。APP 端 successUrl 使用自定义 scheme（如 moyuyo://pay/return）", example = "H5")
+    private String clientType;
+
+    @Schema(description = "客户端注册的自定义 scheme 回跳地址（仅 clientType=APP 时生效），示例 moyuyo://pay/return", example = "moyuyo://pay/return")
+    private String schemeBase;
+
     @Schema(description = "成功后的跳转URL", example = "https://moyuyo.com/order/success")
     private String returnUrl;
 }

@@ -25,7 +25,7 @@ class PaymentServiceTest extends BaseIntegrationTest {
         req.setPayChannel("STRIPE");
 
         CreatePaymentResponse mockRes = new CreatePaymentResponse(
-                "pi_test_123", "secret_test", null, "STRIPE");
+                "pi_test_123", "secret_test", null, null, null, "STRIPE");
         when(paymentService.createPayment(anyLong(), any())).thenReturn(mockRes);
 
         CreatePaymentResponse result = paymentService.createPayment(1L, req);

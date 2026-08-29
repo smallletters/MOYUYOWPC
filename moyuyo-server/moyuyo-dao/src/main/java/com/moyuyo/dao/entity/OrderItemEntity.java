@@ -35,6 +35,15 @@ public class OrderItemEntity {
 
   private BigDecimal subtotal;
 
+  /**
+   * 冗余字段：SKU 编码（来自 mo_product_sku.sku_code）
+   * - 变体商品：对应 skuId 行的 sku_code
+   * - 简单商品：对应 productId 行的单条默认 SKU 的 sku_code
+   * 管理后台订单详情页展示用，避免前端 JOIN 不到
+   */
+  @TableField(exist = false)
+  private String skuCode;
+
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createTime;
 }

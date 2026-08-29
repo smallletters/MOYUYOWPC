@@ -102,6 +102,14 @@ public class OrderEntity {
   @TableField(exist = false)
   private String userName;
 
+  /**
+   * 订单支付方式的友好名（非表字段，详情接口填充后返回给前端直接显示）。
+   * 例：PayPal、Apple Pay、Google Pay、Venmo、Alipay、Stripe Card 等
+   * 空值表示未支付（PENDING_PAY），显示"待支付"。
+   */
+  @TableField(exist = false)
+  private String payMethodName;
+
   // ===== 领域方法 =====
 
   /** 获取订单状态枚举 */

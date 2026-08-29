@@ -27,6 +27,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
@@ -135,10 +136,65 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
+    /**
+     * 判断 Stripe/PayPal 密钥是否是占位符或未配置。
+     * 如果未配置，进入 mock 模式返回假的 Checkout URL，便于本地调试和 APP 打包测试 UI 流程。
+     * 命中条件：null / 空白 / 包含 "placeholder" / 以 "sk_test_placeholder" 等占位格式开头。
+     */
+    private boolean isPlaceholderKey(String key) {
+        if (!StringUtils.hasText(key)) return true;
+        String k = key.trim();
+        if (k.toLowerCase().contains("placeholder")) return true;
+        if (k.startsWith("sk_test_placeholder")) return true;
+        if (k.startsWith("pk_test_placeholder")) return true;
+        if (k.startsWith("whsec_placeholder")) return true;
+        return false;
+    }
+
+    /**
+     * 生成 mock 支付页 URL（仅用于密钥未配置时的本地/联调/APP 打包 UI 测试）。
+     * 返回 return.html + status=success 参数，这样 H5 WebView 会显示"支付成功"，
+     * APP 端通过 payAppBridge 拦截 URL 返回成功信号，完整演练"下单→跳转→回跳→订单刷新"全链路。
+     * 金额/订单号保持一致，便于前端比对。
+     */
+    private String buildMockCheckoutUrl(CreatePaymentRequest request, String orderNo, boolean isApp, String schemeBase) {
+        String orderNoEnc = URLEncoder.encode(orderNo, StandardCharsets.UTF_8);
+        if (isApp && schemeBase != null) {
+            return appendQuery(schemeBase, "status=success&orderNo=" + orderNoEnc
+                    + "&_mock=1&method=" + (request.getPayMethod() == null ? "STRIPE" : request.getPayMethod()));
+        }
+        String base = buildPublicBaseUrl(request.getReturnUrl());
+        return base + "/payment/return.html?status=success&orderNo=" + orderNoEnc
+                + "&_mock=1&method=" + (request.getPayMethod() == null ? "STRIPE" : request.getPayMethod());
+    }
+
     private CreatePaymentResponse createStripePayment(OrderEntity order, CreatePaymentRequest request) {
+        // ========== Mock 兜底：密钥是占位符时直接返回假 Checkout URL ==========
+        // 避免本地/联调环境没配真实密钥时前端报 "Stripe payment service unavailable"。
+        // APP 端会用 moyuyo://pay/return?status=success 回跳，H5 端用 return.html?status=success 中转。
+        boolean isApp = "APP".equalsIgnoreCase(request.getClientType());
+        String schemeBase = null;
+        if (isApp) {
+            schemeBase = StringUtils.hasText(request.getSchemeBase())
+                    ? request.getSchemeBase()
+                    : "moyuyo://pay/return";
+        }
+        if (isPlaceholderKey(stripeSecretKey)) {
+            String mockUrl = buildMockCheckoutUrl(request, order.getOrderNo(), isApp, schemeBase);
+            log.warn("[payment] Stripe secret key is placeholder, returning MOCK checkout URL: {}", mockUrl);
+            savePaymentRecord(order.getId(), "STRIPE", "MOCK-" + order.getOrderNo(), order.getPayAmount());
+            // H5/测试密钥场景：返回 mock 跳转地址。
+            // 使用 builder 而非全参构造，避免 CreatePaymentResponse 新增字段后构造函数参数不匹配。
+            return CreatePaymentResponse.builder()
+                    .paymentId("MOCK-" + order.getOrderNo())
+                    .sessionUrl(mockUrl)
+                    .payChannel("STRIPE")
+                    .build();
+        }
+        // ========== 以下为真实 Stripe Checkout Session 逻辑 ==========
         // H1 修复：使用 Stripe.checkout.Session 替代手写 PaymentIntent。
-        // Checkout Session 由 Stripe 托管支付页，自动支持 Card / Apple Pay / Google Pay，
-        // 前端 web-view 直接打开 session.url 即可（无需前端拼 URL）。
+        // Checkout Session 由 Stripe 托管支付页，支持 Card / Apple Pay / Google Pay / Alipay / Cash App。
+        // 根据 payMethod 细分决定 payment_method_types（不传时 Stripe 按 Dashboard 自动开启）。
         // amount 单位为最小货币单位（USD = cents）
         long amountCents = order.getPayAmount().multiply(BigDecimal.valueOf(100))
                 .setScale(0, java.math.RoundingMode.HALF_UP).longValueExact();
@@ -146,28 +202,39 @@ public class PaymentServiceImpl implements PaymentService {
             throw new IllegalArgumentException("订单金额必须大于 0");
         }
 
-        // successUrl / cancelUrl 走中转页，由中转页通过 postMessage 回传给 APP
-        String baseUrl = buildPublicBaseUrl(request.getReturnUrl());
-        String successUrl = baseUrl + "/payment/return.html?status=success&orderNo="
-                + URLEncoder.encode(order.getOrderNo(), StandardCharsets.UTF_8);
-        String cancelUrl = baseUrl + "/payment/return.html?status=cancel&orderNo="
-                + URLEncoder.encode(order.getOrderNo(), StandardCharsets.UTF_8);
+        // APP 端优先走自定义 scheme，避免第三方 APP 付完回不来你的 APP：
+        //   success: moyuyo://pay/return?status=success&orderNo=xxx
+        //   cancel : moyuyo://pay/return?status=cancel&orderNo=xxx
+        // 同时仍然保留 return.html 兜底路径（在 payAppBridge 的子 WebView 里仍能通过 URL 拦截关闭页面）
+        // 【注意】isApp/schemeBase 已在方法开头 Mock 判断处声明并赋值，这里不能重复声明。
+        String orderNoEnc = URLEncoder.encode(order.getOrderNo(), StandardCharsets.UTF_8);
+        String successUrl;
+        String cancelUrl;
+        if (isApp && schemeBase != null) {
+            successUrl = appendQuery(schemeBase, "status=success&orderNo=" + orderNoEnc);
+            cancelUrl = appendQuery(schemeBase, "status=cancel&orderNo=" + orderNoEnc);
+        } else {
+            // H5/小程序：走中转页，由 return.html 通过 postMessage / localStorage 通知宿主
+            String baseUrl = buildPublicBaseUrl(request.getReturnUrl());
+            successUrl = baseUrl + "/payment/return.html?status=success&orderNo=" + orderNoEnc;
+            cancelUrl = baseUrl + "/payment/return.html?status=cancel&orderNo=" + orderNoEnc;
+        }
+
+        // 根据 payMethod 细分映射 payment_method_types（Stripe Checkout SessionCreateParams 枚举）
+        // 参考：https://docs.stripe.com/payments/payment-methods/payment-method-support
+        SessionCreateParams.PaymentMethodType[] methodTypes = resolvePaymentMethodTypes(request.getPayMethod());
 
         try {
-            // 构建 Checkout Session 参数（不可变 builder）
-            // 注意：Stripe SDK 28.x 的 PaymentIntentData 接受 builder().build() 而非 lambda；
-            // PaymentIntentData.Builder 没有 setMetadata(Map)，需逐个 putMetadata
-            SessionCreateParams.PaymentIntentData paymentIntentData = SessionCreateParams.PaymentIntentData.builder()
-                    .putMetadata("order_no", order.getOrderNo())
-                    .build();
-            SessionCreateParams params = SessionCreateParams.builder()
+            SessionCreateParams.Builder paramsBuilder = SessionCreateParams.builder()
                     .setMode(SessionCreateParams.Mode.PAYMENT)
                     .setSuccessUrl(successUrl)
                     .setCancelUrl(cancelUrl)
                     .setClientReferenceId(order.getOrderNo())
                     .putMetadata("order_no", order.getOrderNo())
                     .putMetadata("user_id", String.valueOf(order.getUserId()))
-                    .setPaymentIntentData(paymentIntentData)
+                    .setPaymentIntentData(SessionCreateParams.PaymentIntentData.builder()
+                            .putMetadata("order_no", order.getOrderNo())
+                            .build())
                     .addLineItem(SessionCreateParams.LineItem.builder()
                             .setQuantity(1L)
                             .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
@@ -178,8 +245,15 @@ public class PaymentServiceImpl implements PaymentService {
                                             .setDescription("MOYUYO Order #" + order.getOrderNo())
                                             .build())
                                     .build())
-                            .build())
-                    .build();
+                            .build());
+
+            // 强制指定支付方式（若 payMethod 没传则走 Dashboard 自动启用列表）
+            if (methodTypes != null && methodTypes.length > 0) {
+                for (SessionCreateParams.PaymentMethodType type : methodTypes) {
+                    paramsBuilder.addPaymentMethodType(type);
+                }
+            }
+            SessionCreateParams params = paramsBuilder.build();
 
             Session session = Session.create(params);
 
@@ -189,14 +263,18 @@ public class PaymentServiceImpl implements PaymentService {
             log.info("Stripe checkout session created: sessionId={}, url={}, orderNo={}",
                     session.getId(), session.getUrl(), order.getOrderNo());
 
-            return new CreatePaymentResponse(
-                    session.getId(),
-                    null, // clientSecret 不再需要，Checkout 模式由 Stripe 托管
-                    session.getUrl(),
-                    stripePublishableKey,
-                    null, // approvalUrl 仅 PayPal 用
-                    "STRIPE"
-            );
+            return CreatePaymentResponse.builder()
+                    .paymentId(session.getId())
+                    .sessionUrl(session.getUrl())
+                    .publishableKey(stripePublishableKey)
+                    .payChannel("STRIPE")
+                    .currencyCode(stripeCurrency.toUpperCase())
+                    .countryCode("US")
+                    // Apple Pay Merchant ID：给 iOS 原生插件或 Stripe React Native SDK 用
+                    // 生产环境建议从 Nacos / application-prod.yml 动态注入
+                    .applePayMerchantId(System.getProperty("payment.applepay.merchant-id",
+                            "merchant.com.moyuyo.app"))
+                    .build();
         } catch (StripeException e) {
             log.error("Stripe Checkout Session creation failed: code={}, message={}",
                     e.getCode(), e.getMessage(), e);
@@ -205,6 +283,15 @@ public class PaymentServiceImpl implements PaymentService {
             log.error("Stripe payment creation failed unexpectedly", e);
             throw new RuntimeException("Stripe payment service unavailable");
         }
+    }
+
+    /**
+     * 在任意 URL 后追加 query，保留原 host/scheme（兼容 http(s) 和自定义 scheme，如 moyuyo://pay/return）。
+     */
+    private String appendQuery(String base, String query) {
+        if (base == null || base.isEmpty()) return base;
+        String sep = base.contains("?") ? "&" : "?";
+        return base + sep + query;
     }
 
     /**
@@ -226,7 +313,93 @@ public class PaymentServiceImpl implements PaymentService {
         return "https://moyuyo.com";
     }
 
+    /**
+     * 根据前端传入的 payMethod 细分，映射为 Stripe Checkout 要求的 payment_method_types 数组。
+     *
+     * 对照关系：
+     * APPLE_PAY -> card              （启用 card 后 Stripe 在支持的设备上动态出 Apple Pay 按钮）
+     * GOOGLE_PAY-> card              （同上，动态出 Google Pay 按钮）
+     * ALIPAY    -> alipay
+     * CASH_APP  -> cashapp            美国 Cash App Pay
+     * LINK      -> card + link
+     * AFFIRM    -> affirm             美国 BNPL
+     * AFTERPAY  -> afterpay_clearpay
+     * PAYPAL    -> paypal             Stripe 侧 PayPal 收单
+     * null/空   -> null               不传，Stripe 按 Dashboard 开通列表自动展示
+     */
+    private SessionCreateParams.PaymentMethodType[] resolvePaymentMethodTypes(String payMethod) {
+        if (payMethod == null || payMethod.isBlank()) {
+            return null;
+        }
+        String m = payMethod.toUpperCase().trim();
+        switch (m) {
+            case "APPLE_PAY":
+            case "APPLEPAY":
+            case "GOOGLE_PAY":
+            case "GOOGLEPAY":
+                // 启用 card 后 Stripe 会根据用户浏览器/设备自动出 Apple Pay / Google Pay / Samsung Pay 按钮
+                return new SessionCreateParams.PaymentMethodType[]{
+                        SessionCreateParams.PaymentMethodType.CARD
+                };
+            case "ALIPAY":
+                return new SessionCreateParams.PaymentMethodType[]{
+                        SessionCreateParams.PaymentMethodType.ALIPAY
+                };
+            case "CASH_APP":
+            case "CASHAPP":
+                return new SessionCreateParams.PaymentMethodType[]{
+                        SessionCreateParams.PaymentMethodType.CASHAPP
+                };
+            case "LINK":
+                return new SessionCreateParams.PaymentMethodType[]{
+                        SessionCreateParams.PaymentMethodType.CARD,
+                        SessionCreateParams.PaymentMethodType.LINK
+                };
+            case "AFFIRM":
+                return new SessionCreateParams.PaymentMethodType[]{
+                        SessionCreateParams.PaymentMethodType.AFFIRM
+                };
+            case "AFTERPAY":
+            case "AFTERPAY_CLEARPAY":
+                return new SessionCreateParams.PaymentMethodType[]{
+                        SessionCreateParams.PaymentMethodType.AFTERPAY_CLEARPAY
+                };
+            case "PAYPAL":
+                try {
+                    return new SessionCreateParams.PaymentMethodType[]{
+                            SessionCreateParams.PaymentMethodType.PAYPAL
+                    };
+                } catch (Exception ignore) {
+                    return null;
+                }
+            default:
+                log.warn("Unknown payMethod for Stripe: {}, fallback to dashboard auto", payMethod);
+                return null;
+        }
+    }
+
     private CreatePaymentResponse createPayPalPayment(OrderEntity order, CreatePaymentRequest request) {
+        // ========== Mock 兜底：PayPal 密钥是占位符时直接返回假 approvalUrl ==========
+        boolean isApp = "APP".equalsIgnoreCase(request.getClientType());
+        String schemeBase = null;
+        if (isApp) {
+            schemeBase = StringUtils.hasText(request.getSchemeBase())
+                    ? request.getSchemeBase()
+                    : "moyuyo://pay/return";
+        }
+        if (isPlaceholderKey(paypalClientId) || isPlaceholderKey(paypalClientSecret)) {
+            String mockUrl = buildMockCheckoutUrl(request, order.getOrderNo(), isApp, schemeBase);
+            log.warn("[payment] PayPal clientId/secret is placeholder, returning MOCK approval URL: {}", mockUrl);
+            savePaymentRecord(order.getId(), "PAYPAL", "MOCK-" + order.getOrderNo(), order.getPayAmount());
+            // H5/测试密钥场景：返回 mock 跳转地址。
+            // 使用 builder 而非全参构造，避免 CreatePaymentResponse 新增字段后构造函数参数不匹配。
+            return CreatePaymentResponse.builder()
+                    .paymentId("MOCK-" + order.getOrderNo())
+                    .approvalUrl(mockUrl)
+                    .payChannel("PAYPAL")
+                    .build();
+        }
+        // ========== 以下为真实 PayPal API 调用逻辑 ==========
         String accessToken = getPayPalAccessToken();
 
         HttpHeaders headers = new HttpHeaders();
@@ -237,13 +410,47 @@ public class PaymentServiceImpl implements PaymentService {
                 ? "https://api-m.sandbox.paypal.com"
                 : "https://api-m.paypal.com";
 
-        // returnUrl 白名单校验：防止开放重定向钓鱼
-        // 与 Stripe 一致：把 orderNo 拼到 success/cancel URL 的 query，
-        // 让 PayPal 跳转回 moyuyo.com 中转页时携带 orderNo，postMessage 转发到 APP
-        String successUrl = validateAndBuildReturnUrl(
-                request.getReturnUrl(), "success", order.getOrderNo());
-        String cancelUrl = validateAndBuildReturnUrl(
-                request.getReturnUrl(), "cancel", order.getOrderNo());
+        // APP 端优先走自定义 scheme，避免跳 PayPal/Venmo APP 付款后回不来；
+        // H5 端仍然走中转页（postMessage / localStorage 转发结果）
+        // 【注意】isApp/schemeBase 已在方法开头声明并赋值，此处不能重复声明。
+        String successUrl;
+        String cancelUrl;
+        String orderNoEnc = URLEncoder.encode(order.getOrderNo(), StandardCharsets.UTF_8);
+        if (isApp && schemeBase != null) {
+            successUrl = appendQuery(schemeBase, "status=success&orderNo=" + orderNoEnc);
+            cancelUrl = appendQuery(schemeBase, "status=cancel&orderNo=" + orderNoEnc);
+        } else {
+            successUrl = validateAndBuildReturnUrl(request.getReturnUrl(), "success", order.getOrderNo());
+            cancelUrl = validateAndBuildReturnUrl(request.getReturnUrl(), "cancel", order.getOrderNo());
+        }
+
+        // PAYPAL 旗下两个子方式：PAYPAL（原有）、VENMO（PayPal 旗下 Venmo）
+        // 同一渠道下通过 payMethod 区分 payment_source：
+        //   VENMO -> payment_source.venmo   （美国主流 Venmo APP 支付）
+        //   其他  -> payment_source.paypal  （默认）
+        String payMethod = request.getPayMethod() == null ? "" : request.getPayMethod().toUpperCase().trim();
+        boolean isVenmo = "VENMO".equals(payMethod);
+        String paymentSourceBlock = isVenmo
+                ? String.format("""
+                  "venmo": {
+                    "experience_context": {
+                      "payment_method_preference": "IMMEDIATE_PAYMENT_REQUIRED",
+                      "landing_page": "LOGIN",
+                      "user_action": "PAY_NOW",
+                      "return_url": "%s",
+                      "cancel_url": "%s"
+                    }
+                  }""", successUrl, cancelUrl)
+                : String.format("""
+                  "paypal": {
+                    "experience_context": {
+                      "payment_method_preference": "IMMEDIATE_PAYMENT_REQUIRED",
+                      "landing_page": "LOGIN",
+                      "user_action": "PAY_NOW",
+                      "return_url": "%s",
+                      "cancel_url": "%s"
+                    }
+                  }""", successUrl, cancelUrl);
 
         String orderJson = String.format("""
                 {
@@ -257,18 +464,9 @@ public class PaymentServiceImpl implements PaymentService {
                     }
                   }],
                   "payment_source": {
-                    "paypal": {
-                      "experience_context": {
-                        "payment_method_preference": "IMMEDIATE_PAYMENT_REQUIRED",
-                        "landing_page": "LOGIN",
-                        "user_action": "PAY_NOW",
-                        "return_url": "%s",
-                        "cancel_url": "%s"
-                      }
-                    }
+                    %s
                   }
-                }""", order.getOrderNo(), order.getPayAmount().toPlainString(),
-                successUrl, cancelUrl);
+                }""", order.getOrderNo(), order.getPayAmount().toPlainString(), paymentSourceBlock);
 
         HttpEntity<String> entity = new HttpEntity<>(orderJson, headers);
 
@@ -299,14 +497,18 @@ public class PaymentServiceImpl implements PaymentService {
             savePaymentRecord(order.getId(), "PAYPAL", paypalOrderId, order.getPayAmount());
 
             log.info("PayPal order created: paypalOrderId={}, orderNo={}", paypalOrderId, order.getOrderNo());
-            return new CreatePaymentResponse(
-                    paypalOrderId,
-                    null, // clientSecret Stripe 专用
-                    null, // sessionUrl Stripe 专用
-                    null, // publishableKey Stripe 专用
-                    approvalUrl,
-                    "PAYPAL"
-            );
+            // APP 原生通道：返回 paypalClientId + environment + currency + country，
+            // 让 pay.vue 可以优先走 uni.requestPayment provider=paypal，
+            // 避免 iOS WKWebView 白屏 & Android scheme 拦截丢失回跳。
+            return CreatePaymentResponse.builder()
+                    .paymentId(paypalOrderId)
+                    .approvalUrl(approvalUrl)
+                    .payChannel("PAYPAL")
+                    .paypalClientId(isPlaceholderKey(paypalClientId) ? "" : paypalClientId)
+                    .paypalEnvironment(paypalMode)
+                    .currencyCode("USD")
+                    .countryCode("US")
+                    .build();
         } catch (Exception e) {
             log.error("PayPal API call failed", e);
             // 不向调用方暴露底层异常细节，防止信息泄露

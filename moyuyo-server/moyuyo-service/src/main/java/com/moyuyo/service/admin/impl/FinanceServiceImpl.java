@@ -74,8 +74,10 @@ public class FinanceServiceImpl implements FinanceService {
 
   /** 计算本月GMV（已支付订单金额总和） */
   private BigDecimal computeMonthGmv(LocalDateTime monthStart, LocalDateTime monthEnd) {
+    // 注意：历史上误用字符串 "PENDING_RECEIVE"，但真实枚举已统一为 RECEIVED
+    // 为避免双写漏算，此处仅保留枚举常量，不再包含不存在的 PENDING_RECEIVE 字符串
     List<String> paidStatuses = Arrays.asList(PAID.name(), PENDING_SHIP.name(), SHIPPED.name(),
-      "PENDING_RECEIVE", RECEIVED.name(), REFUNDING.name(), REFUNDED.name(), COMPLETED.name());
+      RECEIVED.name(), REFUNDING.name(), REFUNDED.name(), COMPLETED.name());
     List<OrderEntity> monthOrders = orderMapper.selectList(
       new LambdaQueryWrapper<OrderEntity>()
         .in(OrderEntity::getStatus, paidStatuses)
@@ -100,7 +102,8 @@ public class FinanceServiceImpl implements FinanceService {
 
   /** 计算待结算金额（已支付但未完成收货的订单金额） */
   private BigDecimal computePendingSettlement() {
-    List<String> pendingStatuses = Arrays.asList(PAID.name(), PENDING_SHIP.name(), SHIPPED.name(), "PENDING_RECEIVE");
+    // 待结算：已支付但用户未完成收货（RECEIVED/COMPLETED 已进入结算池，不再纳入待结算）
+    List<String> pendingStatuses = Arrays.asList(PAID.name(), PENDING_SHIP.name(), SHIPPED.name());
     List<OrderEntity> pendingOrders = orderMapper.selectList(
       new LambdaQueryWrapper<OrderEntity>().in(OrderEntity::getStatus, pendingStatuses));
     return pendingOrders.stream()

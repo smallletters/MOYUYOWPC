@@ -530,6 +530,18 @@ resilience4j:
         wait-duration-in-open-state: 120s
         sliding-window-size: 30
         minimum-number-of-calls: 15
+      # 17TRACK 物流轨迹 API 熔断：第三方接口不可用时降级返回空轨迹（物流弹窗回退到人工录入数据）
+      # 不阻塞订单查询主链路；半开后探测 5 次再决定是否恢复
+      track17:
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 80
+        slow-call-duration-threshold: 5s
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 5
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        automatic-transition-from-open-to-half-open-enabled: true
 
   # ---------- 超时（timeLimiter）：阻塞调用超时（配合 CompletableFuture）----------
   timelimiter:
@@ -556,6 +568,19 @@ resilience4j:
           - java.io.IOException
           - java.util.concurrent.TimeoutException
           - org.springframework.dao.TransientDataAccessException
+      # 17TRACK 重试：仅针对网络抖动/超时/5xx 重试，最多 2 次避免限流放大
+      # 不对 HttpClientErrorException 重试（401/403/429 属于配置或限流错误，重试无意义）
+      track17:
+        max-attempts: 2
+        wait-duration: 1s
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        exponential-max-wait-duration: 4s
+        retry-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
 
 # Spring 任务调度线程池：@Scheduled 任务（如 WooCommerceStockSyncTask）专用线程池
 # Spring Boot 3.x 暴露的调度线程池配置键：
@@ -616,3 +641,20 @@ logging:
 # - 显式设置 enabled=false 后，JVM 启动会忽略任何 com.sun.management.jmxremote.* 参数
 # - 调试 JMX 时通过 jcmd / jconsole 连接本地 socket（容器内 nsenter / docker exec）
 spring.jmx.enabled: false
+
+# 物流轨迹 API 生产环境覆盖
+# 强制要求显式声明 provider：生产环境若未设置则回落到 none（本地占位），仅人工维护轨迹
+# 启用第三方时必须填入对应 api-key，缺失会被 LogisticsTrackProperties 启动期校验阻断
+moyuyo:
+  logistics:
+    # 生产环境默认关闭，明确启用时设为 17track / kuaidi100 / aftership
+    provider: ${MOYUYO_LOGISTICS_PROVIDER:none}
+    # API 密钥：17TRACK/aftership 必填；快递100 需配合 customer 使用
+    api-key: ${MOYUYO_LOGISTICS_API_KEY:}
+    # 快递100 customer id（仅 provider=kuaidi100 时必填）
+    customer: ${MOYUYO_LOGISTICS_CUSTOMER:}
+    # 生产环境拉取间隔适当放长，降低对第三方 API 的调用频次
+    poll-interval-minutes: ${MOYUYO_LOGISTICS_POLL_INTERVAL:60}
+    poll-batch-size: ${MOYUYO_LOGISTICS_POLL_BATCH_SIZE:200}
+    connect-timeout-ms: ${MOYUYO_LOGISTICS_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${MOYUYO_LOGISTICS_READ_TIMEOUT_MS:15000}

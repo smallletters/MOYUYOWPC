@@ -41,7 +41,11 @@ public class ProductServiceImpl implements ProductService {
     LambdaQueryWrapper<ProductEntity> wrapper = new LambdaQueryWrapper<ProductEntity>()
         .eq(categoryId != null, ProductEntity::getCategoryId, categoryId)
         .eq(brandIpId != null, ProductEntity::getBrandIpId, brandIpId)
-        .like(StringUtils.isNotBlank(keyword), ProductEntity::getName, keyword);
+        // 关键词搜索：商品名称 OR SPU编码 OR 关联 SKU 的 sku_code（子查询），对齐前端"商品名称 / SKU"搜索框提示
+        .and(StringUtils.isNotBlank(keyword), w -> w
+            .like(ProductEntity::getName, keyword)
+            .or().like(ProductEntity::getSpuCode, keyword)
+            .or().exists("(SELECT 1 FROM mo_product_sku s WHERE s.product_id = mo_product.id AND s.sku_code LIKE CONCAT('%', {0}, '%'))", keyword));
 
     // 状态筛选：active=在售, inactive=已下架, 不传则不过滤
     if (StringUtils.isNotBlank(status)) {
@@ -427,23 +431,42 @@ public class ProductServiceImpl implements ProductService {
   }
 
   /**
-   * 变体商品 SKU 落库：将 attributes JSON 中的 variations 数组拆成 mo_product_sku 行（全量覆盖）。
+   * 商品 SKU 落库：
+   *   - variable 变体商品：把 attributes.variations 拆成多条 mo_product_sku 行（全量覆盖）
+   *   - simple 简单商品：如果有 spuCode，落一条默认 SKU（sku_code=spuCode, price/stock 取商品主值）
    * <p>
-   * 设计说明：
-   *   1) 仅当商品类型为 variable 且提交了 attributes 时才重建；
-   *   2) 采用与 saveImages 一致的"全量覆盖"策略：先删该商品旧 SKU 再按当前变体重插，避免旧变体残留；
-   *   3) 每次保存会重新生成 SKU 主键（存量数据该表为空、变体商品此前无法下单，无历史 id 被引用，故安全）；
-   *   4) 简单商品(simple)不生成 SKU 行，继续沿用商品维度价格/库存/下单，与 OrderServiceImpl 的兜底逻辑对称。
+   * 全量覆盖策略：先删旧 SKU 再重插，避免旧数据残留；主键每次重新生成（存量无历史引用，安全）。
    */
   private void saveSkusForVariations(Long productId, String spuCode, Map<String, Object> body) {
-    // 仅变体商品需要 SKU 落库
     String pType = (String) body.get("productType");
     if (pType == null) pType = (String) body.get("product_type");
     boolean isVariable = "variable".equalsIgnoreCase(pType);
-    Object rawAttributes = body.get("attributes");
 
-    // 非变体商品，或未提交 attributes：清空旧 SKU，保证与商品类型一致
-    if (!isVariable || rawAttributes == null) {
+    // === 简单商品：落一条默认 SKU ===
+    if (!isVariable) {
+      // 先清旧 SKU（商品类型可能从 variable 改成 simple，旧变体要清掉）
+      productSkuMapper.delete(new LambdaQueryWrapper<ProductSkuEntity>()
+          .eq(ProductSkuEntity::getProductId, productId));
+
+      // 没有 spuCode 就不生成（没设 SKU 编码的简单商品保持原样）
+      if (spuCode == null || spuCode.isBlank()) return;
+
+      ProductEntity dbProduct = productMapper.selectById(productId);
+      if (dbProduct == null) return;
+
+      ProductSkuEntity sku = new ProductSkuEntity();
+      sku.setProductId(productId);
+      sku.setSkuCode(spuCode);
+      sku.setPrice(dbProduct.getPrice());
+      sku.setStock(dbProduct.getStock());
+      sku.setSales(0);
+      productSkuMapper.insert(sku);
+      return;
+    }
+
+    // === 变体商品：拆 variations ===
+    Object rawAttributes = body.get("attributes");
+    if (rawAttributes == null) {
       productSkuMapper.delete(new LambdaQueryWrapper<ProductSkuEntity>()
           .eq(ProductSkuEntity::getProductId, productId));
       return;

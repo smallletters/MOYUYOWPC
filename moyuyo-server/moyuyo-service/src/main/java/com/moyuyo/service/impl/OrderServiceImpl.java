@@ -7,11 +7,13 @@ import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.dto.order.CreateOrderRequest;
 import com.moyuyo.common.dto.order.OrderItemRequest;
+import com.moyuyo.dao.entity.AddressEntity;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.PaymentEntity;
 import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductSkuEntity;
+import com.moyuyo.dao.mapper.AddressMapper;
 import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.PaymentMapper;
@@ -32,6 +34,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +51,8 @@ public class OrderServiceImpl implements OrderService {
   private final PaymentMapper paymentMapper;
   private final ProductMapper productMapper;
   private final ProductSkuMapper productSkuMapper;
+  // 地址表 Mapper：用于创建订单时快照地址详情，以及详情接口对历史订单按 addressId 回填
+  private final AddressMapper addressMapper;
   // 注入 WooCommerce 同步服务：付款回调完成后自动推送订单到 WooCommerce
   private final WooCommerceSyncService wooCommerceSyncService;
   // 任务中心埋点：付款回调后触发"完成 1 单购物 / 首单完成 / 累计消费满 500"
@@ -152,6 +157,24 @@ public class OrderServiceImpl implements OrderService {
     order.setCouponId(couponId);
     order.setShippingMethod(shippingMethod == null ? "standard" : shippingMethod);
     order.setDeleteStatus(0);
+
+    // 按 addressId 查询地址并快照收件人/电话/详细地址到订单表，
+    // 防止用户后续修改或删除地址后，订单的历史收货信息丢失。
+    if (addressId != null) {
+      try {
+        AddressEntity address = addressMapper.selectById(addressId);
+        if (address != null) {
+          order.setReceiverName(address.getReceiver());
+          order.setReceiverPhone(address.getPhone());
+          order.setReceiverAddress(formatFullAddress(address));
+          order.setReceiverZip(address.getZipCode());
+        }
+      } catch (Exception e) {
+        // 地址查询失败只记录日志，不阻断下单（避免地址表异常导致整个下单链路不可用）
+        log.warn("[order] 创建订单快照地址失败，addressId={}, orderNo={}", addressId, orderNo, e);
+      }
+    }
+
     orderMapper.insert(order);
 
     // 批量保存订单项
@@ -211,9 +234,19 @@ public class OrderServiceImpl implements OrderService {
         wrapper.eq(OrderEntity::getUserId, userId);
     }
 
-    // 按状态筛选
+    // 按状态筛选:支持单状态 eq 或逗号分隔多状态 in (前端 PENDING_SHIP tab 需查 PAID,PENDING_SHIP)
     if (status != null && !status.isEmpty()) {
-      wrapper.eq(OrderEntity::getStatus, status);
+      if (status.contains(",")) {
+        List<String> statusList = Arrays.stream(status.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .collect(java.util.stream.Collectors.toList());
+        if (!statusList.isEmpty()) {
+          wrapper.in(OrderEntity::getStatus, statusList);
+        }
+      } else {
+        wrapper.eq(OrderEntity::getStatus, status);
+      }
     }
 
     wrapper.orderByDesc(OrderEntity::getCreateTime);
@@ -232,7 +265,66 @@ public class OrderServiceImpl implements OrderService {
     if (userId != null && !Objects.equals(order.getUserId(), userId)) {
       throw new IllegalArgumentException("无权访问该订单");
     }
+    // 兼容历史订单：创建时还没有快照地址（receiverName/receiverPhone/receiverAddress 全空），
+    // 此时按 addressId 回查 mo_address 回填显示值，保证管理后台订单详情/用户订单详情都能看到地址。
+    fillAddressIfAbsent(order);
     return order;
+  }
+
+  /**
+   * 将地址实体格式化为完整地址字符串（与 APP 结算页 addr-detail 显示口径一致）：
+   *   详细地址 + 城市 + 州/省 + 邮编 + 国家
+   * 字段都为 null/空时返回空串，不会拼出多余空格。
+   */
+  private String formatFullAddress(AddressEntity address) {
+    if (address == null) return "";
+    StringBuilder sb = new StringBuilder();
+    appendPart(sb, address.getDetail());
+    appendPart(sb, address.getCity());
+    appendPart(sb, address.getProvince());
+    appendPart(sb, address.getDistrict());
+    appendPart(sb, address.getZipCode());
+    appendPart(sb, address.getCountry());
+    return sb.toString().trim();
+  }
+
+  /** 追加非空片段，前面自动加一个空格分隔 */
+  private void appendPart(StringBuilder sb, String part) {
+    if (part == null || part.isEmpty()) return;
+    if (sb.length() > 0) sb.append(' ');
+    sb.append(part);
+  }
+
+  /**
+   * 若订单的收件人/电话/详细地址三字段都为空，且存在 addressId，
+   * 则回查 mo_address 并把快照字段补齐，便于详情页与列表展示。
+   * 不会回写数据库（避免触发不必要的 update），仅在内存对象上赋值。
+   */
+  private void fillAddressIfAbsent(OrderEntity order) {
+    if (order == null) return;
+    boolean hasSnapshot = isNotBlank(order.getReceiverName())
+        || isNotBlank(order.getReceiverPhone())
+        || isNotBlank(order.getReceiverAddress());
+    if (hasSnapshot) return;
+    if (order.getAddressId() == null) return;
+    try {
+      AddressEntity address = addressMapper.selectById(order.getAddressId());
+      if (address == null) return;
+      order.setReceiverName(address.getReceiver());
+      order.setReceiverPhone(address.getPhone());
+      order.setReceiverAddress(formatFullAddress(address));
+      if (order.getReceiverZip() == null || order.getReceiverZip().isEmpty()) {
+        order.setReceiverZip(address.getZipCode());
+      }
+    } catch (Exception e) {
+      // 回填失败不影响订单详情主流程，只记录告警
+      log.warn("[order] 详情回填地址快照失败，orderId={}, addressId={}",
+          order.getId(), order.getAddressId(), e);
+    }
+  }
+
+  private static boolean isNotBlank(String s) {
+    return s != null && !s.trim().isEmpty();
   }
 
   @Override
@@ -306,8 +398,9 @@ public class OrderServiceImpl implements OrderService {
       return;
     }
 
-    // 更新订单状态
-    order.setStatus(PAID.name());
+    // 更新订单状态：支付成功后直接进入「待发货」，与主流电商一致
+    // 保留 PAID 枚举（发货接口仍接受 PAID/PENDING_SHIP 双态，兼容历史数据）
+    order.setStatus(PENDING_SHIP.name());
     order.setPaidAt(LocalDateTime.now());
     order.setPayChannel(payChannel);
     order.setPayTransactionId(transactionId);

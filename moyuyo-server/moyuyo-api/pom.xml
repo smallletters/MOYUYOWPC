@@ -119,6 +119,10 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- 显式指定主类，避免多模块项目下 mvn spring-boot:run 报找不到 main class -->
+                    <mainClass>com.moyuyo.api.MoyuyoApplication</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>

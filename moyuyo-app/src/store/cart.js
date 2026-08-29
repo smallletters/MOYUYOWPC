@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { setStorage, getStorage, STORAGE_KEYS } from '@/utils/storage'
+import { setStorage, getStorage, removeStorage, STORAGE_KEYS } from '@/utils/storage'
 import { cartApi } from '@/api'
 import { useUserStore } from './user'
 
@@ -8,8 +8,8 @@ export const useCartStore = defineStore('cart', {
     items: getStorage(STORAGE_KEYS.CART, []),
     selectedAddressId: '',
     selectedCoupon: null,
-    // 立即购买临时单品(不写入购物车 items,仅用于结算页直接结算)
-    buyNowItem: null,
+    // 立即购买临时单品(不写入购物车 items,仅用于结算页直接结算;刷新后仍保留)
+    buyNowItem: getStorage(STORAGE_KEYS.BUYNOW_ITEM, null),
   }),
 
   getters: {
@@ -155,9 +155,9 @@ export const useCartStore = defineStore('cart', {
       return order
     },
 
-    /** 设置立即购买临时单品(不写入购物车 items,不持久化) */
+    /** 设置立即购买临时单品(不写入购物车 items,持久化防止刷新丢失) */
     setBuyNow(product) {
-      this.buyNowItem = {
+      const item = {
         cartId: null,
         skuId: product.skuId || null,
         productId: product.productId,
@@ -170,11 +170,14 @@ export const useCartStore = defineStore('cart', {
         attrs: product.attrs || [],
         checked: true,
       }
+      this.buyNowItem = item
+      setStorage(STORAGE_KEYS.BUYNOW_ITEM, item)
     },
 
-    /** 清除立即购买临时单品 */
+    /** 清除立即购买临时单品(同步删除本地存储) */
     clearBuyNow() {
       this.buyNowItem = null
+      removeStorage(STORAGE_KEYS.BUYNOW_ITEM)
     },
   },
 })

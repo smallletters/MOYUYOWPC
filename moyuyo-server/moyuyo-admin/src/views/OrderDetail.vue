@@ -64,16 +64,31 @@
               <tr v-for="item in orderItems" :key="item.id">
                 <td>
                   <div class="product-cell">
-                    <div class="product-thumb">{{ thumbChar(item) }}</div>
+                    <!-- 商品主图：优先用 item.mainImage；没有则回落为首字符占位图 -->
+                    <img
+                      v-if="item.mainImage"
+                      :src="resolveImageUrl(item.mainImage)"
+                      :alt="item.name || item.productName || '商品图'"
+                      class="product-image"
+                      @error="onImageError"
+                    />
+                    <div v-else class="product-thumb">{{ thumbChar(item) }}</div>
                     <div>
                       <div class="product-name">{{ item.name || item.productName || '商品' }}</div>
+                      <!-- 变体商品：skuSpec 已有规格文本（颜色/尺码），放到名称下面再提醒一次 -->
+                      <div v-if="item.skuSpec" class="sku-spec-tag">{{ item.skuSpec }}</div>
                     </div>
                   </div>
                 </td>
-                <td>{{ item.sku || item.skuSpec || '-' }}</td>
-                <td><span class="money">¥{{ formatMoney(item.price) }}</span></td>
+                <!-- SKU 列：优先展示后端填充的 skuCode（mo_product_sku.sku_code），其次兼容旧字段 skuSpec（规格名），再其次才是 sku id -->
+                <td>
+                  <div v-if="item.skuCode" class="sku-code">{{ item.skuCode }}</div>
+                  <div v-else-if="item.skuSpec" class="sku-spec-text">{{ item.skuSpec }}</div>
+                  <span v-else class="dash">-</span>
+                </td>
+                <td><span class="money">{{ formatCurrency(item.price, currencySymbol) }}</span></td>
                 <td>{{ item.qty ?? item.quantity ?? 0 }}</td>
-                <td><span class="money">¥{{ formatMoney(item.subtotal) }}</span></td>
+                <td><span class="money">{{ formatCurrency(item.subtotal, currencySymbol) }}</span></td>
               </tr>
             </tbody>
             </table>
@@ -83,10 +98,10 @@
         <!-- 价格汇总 -->
         <div class="price-summary card">
           <div class="card-body">
-            <div class="price-row"><span>商品金额</span><span class="money">¥{{ priceSummary.goodsAmount }}</span></div>
-            <div class="price-row"><span>运费</span><span class="money">¥{{ priceSummary.freight }}</span></div>
-            <div class="price-row"><span>优惠减免</span><span class="money">-¥{{ priceSummary.discount }}</span></div>
-            <div class="price-row total"><span>实付金额</span><span class="money total-amount">¥{{ priceSummary.total }}</span></div>
+            <div class="price-row"><span>商品金额</span><span class="money">{{ formatCurrency(priceSummary.goodsAmount, currencySymbol) }}</span></div>
+            <div class="price-row"><span>运费</span><span class="money">{{ formatCurrency(priceSummary.freight, currencySymbol) }}</span></div>
+            <div class="price-row"><span>优惠减免</span><span class="money">-{{ formatCurrency(priceSummary.discount, currencySymbol) }}</span></div>
+            <div class="price-row total"><span>实付金额</span><span class="money total-amount">{{ formatCurrency(priceSummary.total, currencySymbol) }}</span></div>
           </div>
         </div>
 
@@ -117,9 +132,18 @@
           <div class="card-body">
             <div class="info-row"><span class="info-label">订单编号</span><span class="info-value">{{ orderInfo.orderNo }}</span></div>
             <div class="info-row"><span class="info-label">下单时间</span><span class="info-value">{{ orderInfo.createTime }}</span></div>
-            <div class="info-row"><span class="info-label">支付时间</span><span class="info-value">{{ orderInfo.payTime }}</span></div>
-            <div class="info-row"><span class="info-label">支付方式</span><span class="info-value">{{ orderInfo.payMethod }}</span></div>
-            <div class="info-row"><span class="info-label">订单来源</span><span class="info-value">{{ orderInfo.source }}</span></div>
+            <div class="info-row"><span class="info-label">支付时间</span><span class="info-value">{{ orderInfo.payTime || '尚未支付' }}</span></div>
+            <div class="info-row">
+              <span class="info-label">支付方式</span>
+              <span class="info-value">
+                <!-- 优先用后端返回的 payMethodName（友好名），没有就用 payChannel 原始值 -->
+                <span v-if="orderInfo.payMethodName" class="pay-method-label">{{ orderInfo.payMethodName }}</span>
+                <span v-else-if="orderInfo.payChannel" class="pay-method-label">{{ orderInfo.payChannel }}</span>
+                <span v-else class="pay-method-label pending">待支付</span>
+              </span>
+            </div>
+            <div class="info-row"><span class="info-label">订单来源</span><span class="info-value">{{ orderInfo.source || '—' }}</span></div>
+            <div class="info-row"><span class="info-label">币种</span><span class="info-value">{{ orderInfo.currency || 'USD' }}</span></div>
             <div class="info-row"><span class="info-label">WC同步</span><span class="info-value">{{ wooOrderLabel }}</span></div>
             <div class="info-row"><span class="info-label">订单状态</span><span class="tag" :class="orderInfo.statusClass">{{ orderInfo.status }}</span></div>
           </div>
@@ -223,11 +247,17 @@ const orderInfo = reactive({
   orderNo: '',
   createTime: '',
   payTime: '',
-  payMethod: '',
+  payMethod: '',    // 原始 payChannel（保留兼容旧引用）
+  payChannel: '',
+  payMethodName: '', // 后端填充的友好名
+  currency: 'USD',
   source: '',
   status: '',
   statusClass: ''
 })
+
+// 当前订单的货币符号（优先用后端返回的 currency，没有则 USD=$）
+const currencySymbol = computed(() => currencyToSymbol(orderInfo.currency || 'USD'))
 
 // 收货信息
 const shippingInfo = reactive({
@@ -344,6 +374,52 @@ function formatMoney(v) {
   return n.toFixed(2)
 }
 
+/**
+ * ISO 4217 货币代码 → 符号映射
+ * 美国市场主要用 USD=$，同时兼容 CNY=¥ 等未来多币种场景
+ */
+function currencyToSymbol(code) {
+  switch ((code || 'USD').toUpperCase()) {
+    case 'USD': case 'AUD': case 'CAD': case 'NZD': case 'HKD': case 'SGD': return '$'
+    case 'CNY': case 'RMB': case 'JPY': return '¥'
+    case 'EUR': return '€'
+    case 'GBP': return '£'
+    case 'KRW': return '₩'
+    default: return code.toUpperCase() + ' '
+  }
+}
+
+/**
+ * 金额格式化（带货币符号，toFixed(2)）
+ * 例： formatCurrency(74, '$') → '$74.00'
+ */
+function formatCurrency(v, symbol) {
+  const n = Number(v)
+  const fixed = isNaN(n) ? '0.00' : n.toFixed(2)
+  const s = symbol || currencyToSymbol(orderInfo.currency)
+  return `${s}${fixed}`
+}
+
+/**
+ * 解析商品图片 URL：
+ * - 已经是 http(s)://  → 直接用
+ * - 以 /uploads/ 开头 → 拼接后端 base 地址（VITE_BASE_URL/api）
+ * - 其他相对路径    → VITE_BASE_URL/api 拼接
+ */
+function resolveImageUrl(path) {
+  if (!path) return ''
+  if (/^https?:\/\//i.test(path)) return path
+  const base = (import.meta.env.VITE_BASE_URL || '/api').replace(/\/$/, '')
+  // Windows 路径不用处理，生产部署统一用 /uploads/xxx
+  if (path.startsWith('/')) return `${base}${path}`
+  return `${base}/${path}`
+}
+
+/** 图片加载失败：静默隐藏，避免红叉图影响后台视觉 */
+function onImageError(e) {
+  if (e?.target) e.target.style.display = 'none'
+}
+
 // 获取订单详情
 async function fetchOrderDetail() {
   const id = route.params.id
@@ -376,7 +452,11 @@ async function fetchOrderDetail() {
         orderNo: data.orderNo || data.no || '',
         createTime: data.createTime || '',
         payTime: data.paidAt || data.payTime || '',
+        // 支付方式同时保留：原始渠道(payChannel) + 后端友好名(payMethodName)
+        payChannel: data.payChannel || '',
         payMethod: data.payChannel || data.payMethod || '',
+        payMethodName: data.payMethodName || '',
+        currency: data.currency || 'USD',
         source: data.source || '',
         status: statusLabel(data.status),
         statusClass: mapStatusClass(data.status)
@@ -640,6 +720,63 @@ onMounted(() => {
   font-size: 16px;
   color: var(--text-400);
   flex-shrink: 0;
+}
+
+/* 商品主图：后台展示 48x48 缩略图，与旧占位图视觉一致 */
+.product-image {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--background-100);
+  border: 1px solid var(--border);
+  display: block;
+}
+
+/* 变体商品规格名（颜色/尺码）：放在商品名下面的灰小字 tag */
+.sku-spec-tag {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-400);
+  line-height: 1.4;
+}
+
+/* SKU 编码：等宽字体，灰色背景胶囊，方便运营复制核对库存 */
+.sku-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-700);
+  background: var(--background-100);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 999px;
+  display: inline-block;
+}
+.sku-spec-text {
+  font-size: 12px;
+  color: var(--text-500);
+}
+.dash {
+  color: var(--text-300);
+}
+
+/* 支付方式标签：不同友好名加颜色区分，后台一眼识别渠道 */
+.pay-method-label {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--background-100);
+  color: var(--text-700);
+}
+.pay-method-label.pending {
+  color: #b45309;
+  background: #fff7ed;
+  border-color: #fdba74;
 }
 
 .item-count {

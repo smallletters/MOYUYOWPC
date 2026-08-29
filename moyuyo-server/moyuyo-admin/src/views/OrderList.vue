@@ -124,10 +124,9 @@
                   </div>
                 </div>
                 <div v-else class="shipping-empty">
-                  <span v-if="order.wooOrderId" class="shipping-hint" @click="handleLogistics(order)">
-                    点击查看物流
+                  <span class="shipping-hint" @click="handleLogistics(order)">
+                    点击设置物流
                   </span>
-                  <span v-else>—</span>
                 </div>
               </div>
             </td>
@@ -170,13 +169,121 @@
         </div>
       </div>
     </div>
+
+    <!-- 物流弹窗：设置承运商 / 运单号 + 展示物流轨迹 -->
+    <div v-if="logisticsDialog.visible" class="dialog-mask" @click.self="closeLogisticsDialog">
+      <div class="logistics-dialog" role="dialog" aria-label="订单物流">
+        <div class="dialog-header">
+          <div>
+            <div class="dialog-title">📦 订单物流管理</div>
+            <div class="dialog-subtitle">
+              {{ logisticsDialog.order?.orderNo || logisticsDialog.order?.no || '订单' }}
+              <span v-if="logisticsDialog.data?.currentStatusLabel" class="status-tag">{{ logisticsDialog.data.currentStatusLabel }}</span>
+            </div>
+          </div>
+          <button class="dialog-close" type="button" aria-label="关闭" @click="closeLogisticsDialog">×</button>
+        </div>
+
+        <!-- 录入区：承运商 + 运单号 + "设置后立即发货"开关 -->
+        <div class="dialog-body">
+          <div class="edit-card">
+            <div class="edit-card-title">手动设置 / 修改 物流信息</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>承运商 <span class="required">*</span></label>
+                <select v-model="logisticsDialog.form.carrier" class="select-wrapper carrier-select">
+                  <option value="">请选择或手动输入承运商</option>
+                  <option v-for="c in carrierOptions" :key="c.id" :value="c.name">
+                    {{ c.name }}<span v-if="c.transportMode"> · {{ c.transportMode }}</span>
+                  </option>
+                </select>
+                <input v-model="logisticsDialog.form.carrier" type="text" class="carrier-custom-input"
+                  placeholder="也可直接输入承运商名称（如 UPS / DHL / 顺丰国际）" maxlength="64" />
+              </div>
+              <div class="form-group">
+                <label>运单号 <span class="required">*</span></label>
+                <input v-model="logisticsDialog.form.trackingNo" type="text" maxlength="64"
+                  placeholder="请输入运单号（最长 64 字符）" />
+              </div>
+              <div class="form-group form-group--checkbox" v-if="canShipOrder(logisticsDialog.order)">
+                <label class="checkbox-label">
+                  <input type="checkbox" v-model="logisticsDialog.form.forceShip" />
+                  设置后立即发货（订单状态：待发货 → 已发货）
+                </label>
+                <p class="hint-text">
+                  仅在订单为「待发货/已支付」时可用；未支付订单无法勾选此项。
+                </p>
+              </div>
+            </div>
+            <div class="edit-actions">
+              <button class="btn btn-outline" @click="closeLogisticsDialog">取消</button>
+              <button class="btn btn-primary" :disabled="logisticsDialog.saving"
+                @click="saveOrderLogistics">
+                {{ logisticsDialog.saving ? '保存中…' : '保存' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- 信息展示：运单号、发货/收货时间 -->
+          <div class="info-summary">
+            <div class="summary-line"><span>承运商：</span><b>{{ logisticsDialog.data?.carrier || logisticsDialog.form.carrier || '—' }}</b></div>
+            <div class="summary-line"><span>运单号：</span>
+              <b v-if="logisticsDialog.data?.trackingNumber" class="mono">{{ logisticsDialog.data.trackingNumber }}</b>
+              <span v-else>—</span>
+              <button v-if="logisticsDialog.data?.trackingNumber" class="btn btn-ghost copy-btn"
+                @click="copyText(logisticsDialog.data.trackingNumber)">复制</button>
+            </div>
+            <div class="summary-line"><span>发货时间：</span>{{ formatTime(logisticsDialog.data?.shippedAt) }}</div>
+            <div class="summary-line"><span>收货时间：</span>{{ formatTime(logisticsDialog.data?.receivedAt) }}</div>
+            <div class="summary-line">
+              <span>状态：</span>
+              <span :class="statusClassMap[logisticsDialog.data?.currentStatus] || 'tag tag-gray'">
+                {{ logisticsDialog.data?.currentStatusLabel || '暂无' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- 物流轨迹时间轴 -->
+          <div class="trace-card">
+            <div class="trace-card-title">
+              <span>物流轨迹</span>
+              <span class="trace-tip">接入快递100/17track/AfterShip 后将展示真实轨迹</span>
+            </div>
+            <ul v-if="logisticsDialog.data?.traces && logisticsDialog.data.traces.length" class="trace-list">
+              <li v-for="(item, idx) in logisticsDialog.data.traces" :key="idx"
+                :class="{ 'trace-item': true, 'is-first': idx === 0 }">
+                <div class="trace-node">
+                  <div :class="['trace-dot', idx === 0 ? 'trace-dot--active' : '']"></div>
+                  <div v-if="idx !== (logisticsDialog.data.traces.length - 1)" class="trace-bar"></div>
+                </div>
+                <div class="trace-body">
+                  <div class="trace-time">{{ formatLogisticsTime(item.time) }}</div>
+                  <div class="trace-desc">{{ item.desc || '暂无描述' }}</div>
+                  <div v-if="item.location" class="trace-location">📍 {{ item.location }}</div>
+                </div>
+              </li>
+            </ul>
+            <div v-else class="trace-empty">
+              <div class="trace-empty-icon">📭</div>
+              <div>当前暂无物流轨迹</div>
+              <p v-if="!logisticsDialog.data?.trackingNumber" class="trace-empty-hint">
+                请先填写承运商和运单号并"保存"，商家交运后可在此查看轨迹。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getOrderOpsStats, getOrderList, getOrderDetail, shipOrder, syncOrderToWoo } from '../api/admin'
+import {
+  getOrderOpsStats, getOrderList, shipOrder, syncOrderToWoo,
+  getOrderLogistics, updateOrderLogistics, getCarriers
+} from '../api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { toArray } from '../utils/safeArray'
 
@@ -206,6 +313,32 @@ const orderList = ref([])
 
 // WooCommerce 同步状态：记录正在同步的订单ID，避免重复点击
 const syncingIds = ref([])
+
+// 承运商选项：弹窗下拉使用（来自 /api/admin/logistics/carriers，mo_carrier 表）
+const carrierOptions = ref([])
+
+// 物流弹窗状态（数据+表单+控制）
+const logisticsDialog = reactive({
+  visible: false,
+  order: null,
+  data: null,
+  saving: false,
+  form: {
+    carrier: '',
+    trackingNo: '',
+    forceShip: false
+  }
+})
+
+// 物流状态英文字段 → 管理后台已有 tag 样式（保持和订单列表 status 风格一致）
+const statusClassMap = {
+  NO_RECORD: 'tag tag-gray',
+  PENDING_PICKUP: 'tag tag-yellow',
+  IN_TRANSIT: 'tag tag-blue',
+  OUT_FOR_DELIVERY: 'tag tag-blue',
+  DELIVERED: 'tag tag-green',
+  EXCEPTION: 'tag tag-red'
+}
 
 // 获取订单统计数据
 async function fetchStats() {
@@ -399,36 +532,139 @@ async function handleConfirmShip(order) {
   }
 }
 
-// 查看物流（从订单详情取真实字段；后端 detail 已自动从 WooCommerce 拉取最新运单号）
+// 查看物流（弹窗：手动设置承运商 / 运单号 + 展示轨迹）
 async function handleLogistics(order) {
   try {
-    const res = await getOrderDetail(order.id)
-    if (!res) {
-      ElMessage.warning('订单不存在')
-      return
-    }
-    const trackingNo = res.trackingNumber || res.trackingNo || ''
-    const carrier = res.shippingCarrier || res.carrier || 'N/A'
-    const status = ({'PENDING':'待发货','IN_TRANSIT':'运输中','DELIVERED':'已签收'})[res.shippingStatus] || res.shippingStatus || res.status || '暂无'
-    const wooTip = res.wooOrderId ? `（已从 WooCommerce #${res.wooOrderId} 同步）` : '（本地数据）'
-    ElMessage.info(
-      `订单 ${order.orderNo || order.no} ${wooTip}\n` +
-      `承运商: ${carrier}\n` +
-      `运单号: ${trackingNo || '暂无'}\n` +
-      `状态: ${status}`
-    )
-    // 同步刷新本地订单的运单信息，让表格列立即更新
-    const idx = orderList.value.findIndex(o => o.id === order.id)
-    if (idx >= 0) {
-      orderList.value[idx] = {
-        ...orderList.value[idx],
-        trackingNumber: res.trackingNumber,
-        shippingCarrier: res.shippingCarrier
-      }
+    logisticsDialog.order = order
+    logisticsDialog.visible = true
+    logisticsDialog.saving = false
+    // 并行：承运商下拉 + 当前订单物流详情
+    const [carriers, data] = await Promise.all([
+      carrierOptions.value.length ? Promise.resolve(carrierOptions.value) : fetchCarrierOptions(),
+      getOrderLogistics(order.id)
+    ])
+    logisticsDialog.data = data || null
+    // 初始化表单默认值：优先显示当前已保存的承运商/运单号
+    logisticsDialog.form = {
+      carrier: (data?.carrier || order?.shippingCarrier || '').toString(),
+      trackingNo: (data?.trackingNumber || order?.trackingNumber || '').toString(),
+      forceShip: false
     }
   } catch (err) {
     ElMessage.error('查询物流信息失败: ' + (err?.message || '未知错误'))
+    logisticsDialog.visible = false
   }
+}
+
+function closeLogisticsDialog() {
+  logisticsDialog.visible = false
+  logisticsDialog.order = null
+  logisticsDialog.data = null
+  logisticsDialog.form = { carrier: '', trackingNo: '', forceShip: false }
+  logisticsDialog.saving = false
+}
+
+// 拉取承运商列表（成功时做全局缓存，弹窗多次打开不重复请求）
+async function fetchCarrierOptions() {
+  try {
+    const res = await getCarriers()
+    const records = Array.isArray(res) ? res : (Array.isArray(res?.records) ? res.records : (Array.isArray(res?.data) ? res.data : []))
+    carrierOptions.value = records
+    return records
+  } catch (e) {
+    // 承运商列表拉取失败不阻断主流程（仍允许用户手动输入）
+    console.warn('承运商列表拉取失败，已降级为手动输入', e)
+    carrierOptions.value = []
+    return []
+  }
+}
+
+// 判断订单是否允许"设置后立即发货"（必须是待发货或已支付状态）
+function canShipOrder(order) {
+  if (!order) return false
+  const status = (order.status || order.statusEnum || '').toUpperCase()
+  if (['SHIPPED', 'RECEIVED', 'COMPLETED', 'CANCELLED', 'CANCELED'].includes(status)) return false
+  return true
+}
+
+// 保存物流信息（写承运商 / 运单号；如果勾选了 forceShip 则顺便发货）
+async function saveOrderLogistics() {
+  if (!logisticsDialog.order?.id) return
+  const carrier = (logisticsDialog.form.carrier || '').trim()
+  const trackingNo = (logisticsDialog.form.trackingNo || '').trim()
+  if (!carrier) {
+    ElMessage.warning('请先填写承运商（可在下拉选择或手动输入）')
+    return
+  }
+  if (!trackingNo) {
+    ElMessage.warning('请先填写运单号')
+    return
+  }
+  if (carrier.length > 64) {
+    ElMessage.warning('承运商名称长度不能超过 64 字符')
+    return
+  }
+  if (trackingNo.length > 64) {
+    ElMessage.warning('运单号长度不能超过 64 字符')
+    return
+  }
+  logisticsDialog.saving = true
+  try {
+    const payload = {
+      carrier,
+      trackingNo,
+      forceShip: !!logisticsDialog.form.forceShip
+    }
+    const res = await updateOrderLogistics(logisticsDialog.order.id, payload)
+    ElMessage.success(res?.message || '保存成功')
+    // 保存成功后：1) 刷新本弹窗的物流详情；2) 刷新订单行，让"承运商/运单号"列和订单状态立即更新
+    const fresh = await getOrderLogistics(logisticsDialog.order.id)
+    logisticsDialog.data = fresh || null
+    await fetchOrders()
+  } catch (err) {
+    ElMessage.error('保存失败: ' + (err?.message || '未知错误'))
+  } finally {
+    logisticsDialog.saving = false
+  }
+}
+
+// 统一的复制文本（封装 navigator.clipboard，降级用 document.execCommand，兼容老浏览器）
+function copyText(text) {
+  if (!text) return
+  const onDone = () => ElMessage.success('已复制运单号')
+  const onFail = () => {
+    // 兜底：浏览器不允许剪贴板时，使用 prompt 让用户手动复制
+    window.prompt('请按 Ctrl+C / Cmd+C 复制：', String(text))
+  }
+  if (navigator?.clipboard?.writeText) {
+    navigator.clipboard.writeText(String(text)).then(onDone, onFail)
+  } else {
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = String(text)
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      const ok = document.execCommand('copy')
+      document.body.removeChild(ta)
+      ok ? onDone() : onFail()
+    } catch {
+      onFail()
+    }
+  }
+}
+
+// 格式化物流轨迹时间（支持 yyyy-MM-ddTHH:mm:ss 或 yyyy-MM-dd HH:mm:ss 等常见格式；解析失败则原样返回）
+function formatLogisticsTime(t) {
+  if (!t) return '—'
+  if (typeof t !== 'string') return String(t)
+  const d = new Date(t.replace(/\s/, 'T'))
+  if (!isNaN(d.getTime())) {
+    const pad = n => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+  return t
 }
 
 // 查看订单详情
@@ -622,5 +858,290 @@ onMounted(() => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* ======== 物流弹窗 ======== */
+.dialog-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 20px;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+  overflow: auto;
+}
+.logistics-dialog {
+  width: 100%;
+  max-width: 720px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+  animation: fadeIn 0.2s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--divider);
+  background: linear-gradient(135deg, #f0f7ff 0%, #eef7f1 100%);
+}
+.dialog-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-900);
+  line-height: 1.3;
+}
+.dialog-subtitle {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-500);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+}
+.dialog-subtitle .status-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  background: #eef2ff;
+  color: #4f46e5;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 11px;
+}
+.dialog-close {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--text-500);
+  transition: all 0.15s;
+}
+.dialog-close:hover { background: var(--bg-100); color: var(--text-800); }
+
+.dialog-body {
+  padding: 20px 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.edit-card,
+.info-summary,
+.trace-card {
+  border: 1px solid var(--divider);
+  border-radius: 12px;
+  padding: 16px 18px;
+  background: #fafbfc;
+}
+.edit-card-title,
+.trace-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-800);
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.trace-card-title .trace-tip {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-400);
+}
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* 顶部筛选面板：所有字段同一行排列 */
+.query-panel .form-row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}
+.query-panel .form-group {
+  flex: 1 1 140px;
+  min-width: 120px;
+}
+.query-panel .form-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.form-group label {
+  font-size: 12px;
+  color: var(--text-600);
+  font-weight: 500;
+}
+.form-group .required { color: #ef4444; }
+.form-group input[type="text"],
+.carrier-select {
+  height: 36px;
+  border: 1px solid var(--divider);
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--text-800);
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.form-group input[type="text"]:focus,
+.carrier-select:focus {
+  border-color: var(--brand-500);
+}
+.carrier-custom-input {
+  margin-top: 4px;
+}
+.form-group--checkbox {
+  gap: 2px;
+  padding: 8px 10px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px dashed var(--divider);
+}
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-700);
+  cursor: pointer;
+  user-select: none;
+}
+.hint-text {
+  margin: 4px 0 0 26px;
+  font-size: 11px;
+  color: var(--text-400);
+  line-height: 1.5;
+}
+.edit-actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.info-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-600);
+}
+.summary-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.8;
+}
+.summary-line span { color: var(--text-500); min-width: 72px; }
+.summary-line b { color: var(--text-800); font-weight: 600; }
+.summary-line .mono { font-family: var(--font-mono); letter-spacing: 0.2px; }
+.copy-btn {
+  padding: 2px 10px;
+  font-size: 11px;
+  margin-left: 6px;
+}
+
+/* 物流轨迹时间轴 */
+.trace-list {
+  list-style: none;
+  padding: 4px 0 0 0;
+  margin: 0;
+  max-height: 360px;
+  overflow: auto;
+}
+.trace-item {
+  display: flex;
+  gap: 12px;
+}
+.trace-node {
+  width: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+.trace-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.trace-dot--active {
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  background: #16a34a;
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.12);
+}
+.trace-bar {
+  flex: 1;
+  width: 2px;
+  min-height: 28px;
+  background: #e2e8f0;
+  margin: 4px 0;
+}
+.trace-body {
+  flex: 1;
+  padding-bottom: 16px;
+}
+.trace-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-500);
+  margin-bottom: 2px;
+}
+.trace-desc {
+  font-size: 13px;
+  color: var(--text-700);
+  line-height: 1.55;
+}
+.is-first .trace-desc {
+  font-weight: 600;
+  color: var(--text-900);
+}
+.trace-location {
+  font-size: 11px;
+  color: var(--text-500);
+  margin-top: 2px;
+}
+
+.trace-empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--text-500);
+  font-size: 13px;
+}
+.trace-empty-icon {
+  font-size: 32px;
+  margin-bottom: 6px;
+}
+.trace-empty-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-400);
 }
 </style>
