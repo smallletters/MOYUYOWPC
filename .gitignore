@@ -67,6 +67,9 @@ start-backend.ps1
 backend.log
 ports.log
 
+# 本地启动脚本输出的实时日志（dev 后端 / dev admin 启动时产生，进程锁住不要提交）
+# （*.log 在前面已经匹配到，这里只是注释说明）
+
 # Spring Boot 内嵌打包产物（应通过 mvn package 重新生成）
 **/BOOT-INF/
 
