@@ -171,8 +171,11 @@ public class EmailServiceImpl implements EmailService {
     /**
      * 组装 From 地址：支持 "显示名称 <邮箱>" 格式，且显示名称做 UTF-8 编码，
      * 避免中文在部分 SMTP 服务商乱码。
+     * <p>
+     * 抛 AddressException 属于 MessagingException 子类，已在 send() 的 catch 中统一兜底；
+     * 抛 UnsupportedEncodingException 同理（不会真的发生，UTF-8 永远被 JVM 支持）。
      */
-    private InternetAddress buildFrom() throws UnsupportedEncodingException {
+    private InternetAddress buildFrom() throws MessagingException, UnsupportedEncodingException {
         if (!StringUtils.hasText(fromPersonal)) {
             return new InternetAddress(fromAddress);
         }

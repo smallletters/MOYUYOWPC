@@ -30,9 +30,10 @@ CREATE TABLE IF NOT EXISTS `mo_inventory_batch` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='库存批次表';
 
 -- 2. mo_product_sku 增加 update_time（幂等列），MyBatis-Plus 自动填充
-ALTER TABLE `mo_product_sku`
-    ADD COLUMN IF NOT EXISTS `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP
-        ON UPDATE CURRENT_TIMESTAMP AFTER `sales`;
+-- MySQL 8 不支持 ADD COLUMN IF NOT EXISTS，用 INFORMATION_SCHEMA 守卫保持幂等
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='mo_product_sku' AND COLUMN_NAME='update_time');
+SET @sql := IF(@col_exists = 0, 'ALTER TABLE `mo_product_sku` ADD COLUMN `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER `sales`', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- 3. seed 数据：每个已知商品至少一条批次，混合 NORMAL/EXPIRING/EXPIRED，
 --    这样后台"批次管理"页面立刻能展示真实数据，避免空表。

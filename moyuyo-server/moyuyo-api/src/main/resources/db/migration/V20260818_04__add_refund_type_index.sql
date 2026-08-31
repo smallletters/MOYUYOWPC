@@ -8,4 +8,7 @@
 --   - 等值过滤 type 后 GROUP BY status 可直接走索引，无需 filesort
 --   - 反向顺序 (status, type) 已被 idx_refund_status_create / idx_refund_status_update 部分覆盖，
 --     但这两条索引都包含额外列（create_time / complete_time），且 type 非首列，对本查询无效
-ALTER TABLE `mo_refund` ADD INDEX IF NOT EXISTS `idx_refund_type_status` (`type`, `status`);
+-- MySQL 8 不支持 ALTER TABLE ADD INDEX IF NOT EXISTS，改用 INFORMATION_SCHEMA 守卫保持幂等
+SET @idx_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='mo_refund' AND INDEX_NAME='idx_refund_type_status');
+SET @sql := IF(@idx_exists = 0, 'ALTER TABLE `mo_refund` ADD INDEX `idx_refund_type_status` (`type`, `status`)', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;

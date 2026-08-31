@@ -50,6 +50,14 @@
             <version>2.0.24</version>
         </dependency>
 
+        <!-- Spring Mail：EmailServiceImpl 使用 JavaMailSender 发送忘记密码 / 邮箱验证 / Magic link 邮件
+             必须放在 service 模块（而不是仅 api），因为 EmailServiceImpl 属于 service 层；
+             spring-boot-starter-mail 自带 jakarta.mail API（InternetAddress / MimeMessage） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <!-- 测试依赖（JUnit 5 + AssertJ） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

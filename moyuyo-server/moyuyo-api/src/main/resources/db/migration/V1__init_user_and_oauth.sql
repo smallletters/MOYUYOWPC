@@ -56,17 +56,22 @@ CREATE TABLE mo_consent_log (
 CREATE TABLE mo_data_export_request (
   id                  BIGINT       NOT NULL                COMMENT '雪花 ID',
   user_id             BIGINT       NOT NULL                COMMENT '用户 ID',
-  export_id           VARCHAR(32)  NOT NULL                COMMENT '业务 ID',
+  export_id           VARCHAR(32)  NOT NULL DEFAULT ''    COMMENT '业务 ID（dev seed 未填，强制默认值兼容 MySQL 8 严格模式）',
   status              VARCHAR(16)  NOT NULL                COMMENT 'PROCESSING/READY/EXPIRED/FAILED',
   download_url        VARCHAR(512) NULL                    COMMENT 'OSS 临时签名 URL',
   download_expire_at  DATETIME     NULL,
   create_time         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   complete_time       DATETIME     NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uk_export_id (export_id),
   KEY idx_user_id (user_id),
   KEY idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT '数据导出请求表';
+
+-- 补 request_type 列：V20260718_01 admin_logistics_tables 同名 CREATE IF NOT EXISTS 跳过导致漏列
+-- 之前 dev 启动报 "Unknown column 'request_type'" 即因此；这里用 SET @exist 守卫幂等
+SET @exist_rt := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='mo_data_export_request' AND COLUMN_NAME='request_type');
+SET @sql_rt := IF(@exist_rt = 0, 'ALTER TABLE `mo_data_export_request` ADD COLUMN `request_type` VARCHAR(32) CHARACTER SET utf8mb4 NOT NULL DEFAULT ''EXPORT'' COMMENT ''导入/导出类型：商品导入/订单导出/用户导入'' AFTER `user_id`', 'SELECT 1');
+PREPARE stmt_rt FROM @sql_rt; EXECUTE stmt_rt; DEALLOCATE PREPARE stmt_rt;
 
 -- 8. 账号注销
 CREATE TABLE mo_account_deletion (
