@@ -11,6 +11,9 @@
 *.log
 api.log.*
 logs/
+# 本地开发启动时由 PowerShell 脚本输出的实时日志（进程锁住，不要提交）
+/admin-dev.log
+/backend-dev-stdout.log
 
 # ---- 构建产物 ----
 target/
