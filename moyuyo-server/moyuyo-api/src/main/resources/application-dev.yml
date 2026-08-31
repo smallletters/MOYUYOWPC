@@ -27,7 +27,7 @@ management:
 spring:
   # 数据库
   datasource:
-    url: jdbc:mysql://localhost:3306/moyuyo_dev?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
+    url: jdbc:mysql://127.0.0.1:3306/moyuyo_dev?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
     username: root
     # ⚠️ 弱默认值，仅本地开发
     password: ${MYSQL_PASSWORD:dev123456}
@@ -149,7 +149,8 @@ api:
 admin:
   # ⚠️ 使用合法的非弱用户名（admin 是 OWASP 黑名单，禁止作为默认值）
   username: ${ADMIN_USERNAME:moyuyo_admin}
-  email: ${ADMIN_EMAIL:admin@moyuyo.com}
+  # 改用腾讯企业邮真实地址，与 SMTP SPRING_MAIL_USERNAME / MOYUYO_MAIL_FROM 对齐，便于忘了密码流程能给真实邮箱发码
+  email: ${ADMIN_EMAIL:moyuyo@moyuyoshop.com}
   password: ${ADMIN_PASSWORD:moyuyo_Dev#2026!}
 
 # MyBatis-Plus SQL 日志：dev 用 stdout
