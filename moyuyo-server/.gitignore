@@ -3,6 +3,10 @@
 .env.*
 !.env.example
 
+# ---- 本地 MariaDB 数据目录（自带实例，绝不入库） ----
+.local-mysql/
+.local-mysql
+
 # ---- 日志 ----
 *.log
 api.log.*
