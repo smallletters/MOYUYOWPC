@@ -27,4 +27,7 @@ INNER JOIN `mo_user_coupon` u2
   AND u1.receive_time > u2.receive_time;
 
 -- 2) 添加唯一索引（防超发，作为 CouponServiceImpl.claimCoupon 的并发兜底）
-ALTER TABLE `mo_user_coupon` ADD UNIQUE INDEX IF NOT EXISTS `uk_user_coupon` (`user_id`, `coupon_id`);
+-- MySQL 8 不支持 ALTER TABLE ADD INDEX IF NOT EXISTS，改用 INFORMATION_SCHEMA 守卫保持幂等
+SET @idx_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='mo_user_coupon' AND INDEX_NAME='uk_user_coupon');
+SET @sql := IF(@idx_exists = 0, 'ALTER TABLE `mo_user_coupon` ADD UNIQUE INDEX `uk_user_coupon` (`user_id`, `coupon_id`)', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
