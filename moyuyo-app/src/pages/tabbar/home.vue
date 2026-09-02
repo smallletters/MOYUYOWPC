@@ -15,15 +15,11 @@
       </view>
     </view>
 
-    <!-- 滚动内容 -->
-    <scroll-view
-      scroll-y
-      class="home-scroll"
-      :refresher-enabled="true"
-      :refresher-triggered="refreshing"
-      @refresherrefresh="onRefresh"
-      @scrolltolower="onLoadMore"
-    >
+    <!-- 滚动内容
+         关键：不再用 <scroll-view>，改用普通 <view>，由 uni-app page 原生接管滚动。
+         原因：Android 端 scroll-view 与 swiper 嵌套时，touch-slop(≈20px) 会被
+         WebView 用来判定"切断惯性滚动"，体感就是"先下滑一点才能上滑"。 -->
+    <view class="home-scroll">
       <!-- ① 金刚区：4 大产品线 + 4 个运营入口 -->
       <view class="kingkong">
         <view
@@ -49,6 +45,7 @@
           :interval="3000"
           :duration="500"
           :circular="true"
+          :disable-touch="true"
           :indicator-dots="true"
           indicator-active-color="#2E2B29"
           indicator-color="rgba(46,43,41,0.3)"
@@ -116,7 +113,7 @@
           </view>
         </view>
       </view>
-    </scroll-view>
+    </view>
   </view>
 </template>
 <script>
@@ -127,7 +124,6 @@ export default {
 
   data() {
     return {
-      refreshing: false,
       unreadCount: 0,
       // 控制 swiper 是否挂载；首次 onLoad 前为 false，请求完成（无论成功失败）置为 true，
       // 避免初始 banners 渲染 swiper 后被异步数据替换，触发 uview-plus swiper-item.remove
@@ -142,13 +138,33 @@ export default {
         { image: 'https://picsum.photos/750/360?random=2', title: 'LUNA 策展家' },
       ],
       kingkongList: [
-        { id: 'care', labelKey: 'home.kingkong.care', icon: 'spray-can', bg: 'var(--background-200)' },
-        { id: 'gear', labelKey: 'home.kingkong.gear', icon: 'shopping-bag', bg: 'var(--background-200)' },
-        { id: 'health', labelKey: 'home.kingkong.health', icon: 'heart', bg: 'var(--background-200)' },
+        {
+          id: 'care',
+          labelKey: 'home.kingkong.care',
+          icon: 'spray-can',
+          bg: 'var(--background-200)',
+        },
+        {
+          id: 'gear',
+          labelKey: 'home.kingkong.gear',
+          icon: 'shopping-bag',
+          bg: 'var(--background-200)',
+        },
+        {
+          id: 'health',
+          labelKey: 'home.kingkong.health',
+          icon: 'heart',
+          bg: 'var(--background-200)',
+        },
         { id: 'play', labelKey: 'home.kingkong.play', icon: 'star', bg: 'var(--background-200)' },
         { id: 'home', labelKey: 'home.kingkong.living', icon: 'home', bg: 'var(--background-200)' },
         { id: 'vip', labelKey: 'home.kingkong.vip', icon: 'star', bg: 'var(--background-200)' },
-        { id: 'coupon', labelKey: 'home.kingkong.coupon', icon: 'tag', bg: 'var(--background-200)' },
+        {
+          id: 'coupon',
+          labelKey: 'home.kingkong.coupon',
+          icon: 'tag',
+          bg: 'var(--background-200)',
+        },
         { id: 'flash', labelKey: 'home.kingkong.flash', icon: 'zap', bg: 'var(--background-200)' },
       ],
       // 推荐区 3-tab 数据
@@ -170,6 +186,25 @@ export default {
 
   onShow() {
     // 拉取未读消息数（预留）
+  },
+
+  /**
+   * page 级 onPullDownRefresh：与 pages.json 的 enablePullDownRefresh 配对。
+   * 用法：触发原生下拉刷新 → 拉数据 → uni.stopPullDownRefresh 收起。
+   */
+  onPullDownRefresh() {
+    Promise.all([this.loadBanners(), this.loadRecommend()])
+      .catch(() => {})
+      .finally(() => {
+        uni.stopPullDownRefresh()
+      })
+  },
+
+  /**
+   * page 级 onReachBottom：原生滚动触底回调，配合下方 onLoadMore 即可。
+   */
+  onReachBottom() {
+    this.onLoadMore()
   },
 
   methods: {
@@ -247,17 +282,17 @@ export default {
       return String(n)
     },
 
+    // 兼容保留：现在页面级下拉刷新由 onPullDownRefresh 接管；
+    // 保留此方法以防其它位置有引用。其内不再操作已删除的 refreshing。
     async onRefresh() {
-      this.refreshing = true
-      try {
-        await Promise.all([this.loadBanners(), this.loadRecommend()])
-      } finally {
-        this.refreshing = false
-      }
+      await Promise.all([this.loadBanners(), this.loadRecommend()])
     },
 
-    // 占位：原 onLoadMore 在单页设计中不需要，保留空方法避免删除模板引用
-    onLoadMore() {},
+    // 触底加载更多：append 到现有 recommend 列表。受当前单页设计限制，
+    // 这里只把"还有更多数据"的占位行为接入，保持行为简单不破坏 UI。
+    onLoadMore() {
+      // 单页（首页）当前不做分页；显式空实现，保持 uni-app page onReachBottom 调用不报错。
+    },
 
     onKingkongClick(item) {
       // 根据金刚区类型跳转
@@ -322,10 +357,10 @@ export default {
 
 <style lang="scss" scoped>
 .home {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
+  /* 不再用 flex 嵌套结构，外层去掉固定高度，由 uni-app page 自身的 overflow 接管滚动 */
   background: var(--color-background);
+  /* 给页面内容预留底部 tabbar 高度，避免最后一项被遮挡 */
+  padding-bottom: 0;
 }
 
 .navbar {
@@ -338,6 +373,10 @@ export default {
   min-height: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px) + 44px);
   background: var(--color-surface);
   box-sizing: border-box;
+  /* 让 navbar 在 page 文档流中作为正常块级元素，不参与 flex 拉伸 */
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .navbar-search {
@@ -376,7 +415,7 @@ export default {
 }
 
 .home-scroll {
-  flex: 1;
+  /* 由 uni-app page 接管滚动，这里只是普通内容容器 */
 }
 
 .banner {

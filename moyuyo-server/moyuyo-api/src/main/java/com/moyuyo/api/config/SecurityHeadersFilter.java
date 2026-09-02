@@ -49,8 +49,9 @@ public class SecurityHeadersFilter implements Filter {
     @Value("${moyuyo.security.csp.connect-src:https://api.stripe.com,https://api-m.paypal.com,https://*.sentry.io}")
     private List<String> cspConnectSrc;
 
-    /** img-src 白名单：默认含 data: 与 https://*.moyuyo.com */
-    @Value("${moyuyo.security.csp.img-src:data:,https://*.moyuyo.com}")
+    /** img-src 白名单：默认含 data:、https://*.moyuyo.com、https://*.moyuyoshop.com、https://*.bloomwitness.com；
+     *  BloomWitness 是 CMS Banner / 推荐位 / 专题页外部图片来源，需放行 */
+    @Value("${moyuyo.security.csp.img-src:data:,https://*.moyuyo.com,https://*.moyuyoshop.com,https://*.bloomwitness.com}")
     private List<String> cspImgSrc;
 
     /** font-src 白名单：默认 data: */
