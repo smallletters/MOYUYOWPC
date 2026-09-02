@@ -21,10 +21,10 @@
         <!-- 底层操作按钮（被卡片覆盖；左滑后露出） -->
         <view class="swipe-actions">
           <view v-if="canDelete(o)" class="swipe-btn btn-delete" @click.stop="handleDelete(o)">
-            删除
+            {{ $t('orderList.swipe.delete') }}
           </view>
           <view v-if="canCancel(o)" class="swipe-btn btn-cancel" @click.stop="handleCancel(o)">
-            取消订单
+            {{ $t('orderList.swipe.cancel') }}
           </view>
         </view>
 
@@ -54,7 +54,7 @@
               </view>
             </view>
             <view v-if="(o.items || []).length > 2" class="more">
-              +{{ o.items.length - 2 }} more
+              {{ $t('orderList.moreItems', { count: o.items.length - 2 }) }}
             </view>
           </view>
           <view class="card-footer">
@@ -72,14 +72,14 @@
       <view v-else-if="noMore && orders.length === 0" class="empty">
         {{ $t('orderList.empty') }}
       </view>
-      <view v-else-if="noMore" class="loading">— No more —</view>
+      <view v-else-if="noMore" class="loading">{{ $t('orderList.noMore') }}</view>
     </scroll-view>
   </view>
 </template>
 
 <script>
 import { orderApi } from '@/api'
-import { i18n } from '@/i18n'
+import { i18n, t } from '@/i18n'
 import { getPendingOrders, removePendingOrder } from '@/utils/storage'
 
 export default {
@@ -240,7 +240,7 @@ export default {
       } else if (s === 'SHIPPED') {
         // 已发货 → 支持"查看物流"和"确认收货"
         uni.showActionSheet({
-          itemList: ['查看物流', '确认收货'],
+          itemList: [t('orderList.sheet.track'), t('orderList.sheet.confirmReceive')],
           success: (res) => {
             if (res.tapIndex === 0) {
               uni.navigateTo({ url: `/pages/order/logistics?id=${order.id}` })
@@ -263,8 +263,8 @@ export default {
     async doConfirmReceive(order) {
       const confirmed = await new Promise((resolve) => {
         uni.showModal({
-          title: '确认收货',
-          content: `确定已收到订单 ${order.orderNo} 吗？`,
+          title: t('orderList.modal.confirmReceiveTitle'),
+          content: t('orderList.modal.confirmReceiveContent', { orderNo: order.orderNo }),
           success: (res) => resolve(res.confirm),
           fail: () => resolve(false),
         })
@@ -275,9 +275,12 @@ export default {
         // 从 SHIPPED tab 移到已收货 tab
         order.status = 'RECEIVED'
         order.swipeOffset = 0
-        uni.showToast({ title: '收货成功', icon: 'success' })
+        uni.showToast({ title: t('orderList.toast.receiveSuccess'), icon: 'success' })
       } catch (e) {
-        uni.showToast({ title: e?.data?.msg || e?.message || '操作失败', icon: 'none' })
+        uni.showToast({
+          title: e?.data?.msg || e?.message || t('orderList.toast.operationFailed'),
+          icon: 'none',
+        })
       }
     },
 
@@ -380,8 +383,8 @@ export default {
     async handleDelete(order) {
       const confirmed = await new Promise((resolve) => {
         uni.showModal({
-          title: '确认删除',
-          content: `确定删除订单 ${order.orderNo} 吗？删除后不可恢复。`,
+          title: t('orderList.modal.deleteTitle'),
+          content: t('orderList.modal.deleteContent', { orderNo: order.orderNo }),
           success: (res) => resolve(res.confirm),
           fail: () => resolve(false),
         })
@@ -400,10 +403,13 @@ export default {
         }
         // 从列表中移除
         this.orders = this.orders.filter((o) => o.id !== order.id)
-        uni.showToast({ title: '已删除', icon: 'success' })
+        uni.showToast({ title: t('orderList.toast.deleted'), icon: 'success' })
       } catch (e) {
         console.error('[order-list] delete fail', e)
-        uni.showToast({ title: e?.data?.msg || e?.message || '删除失败', icon: 'none' })
+        uni.showToast({
+          title: e?.data?.msg || e?.message || t('orderList.toast.deleteFailed'),
+          icon: 'none',
+        })
         this.closeAllSwipe()
       }
     },
@@ -412,8 +418,8 @@ export default {
     async handleCancel(order) {
       const confirmed = await new Promise((resolve) => {
         uni.showModal({
-          title: '取消订单',
-          content: `确定取消订单 ${order.orderNo} 吗？`,
+          title: t('orderList.modal.cancelTitle'),
+          content: t('orderList.modal.cancelContent', { orderNo: order.orderNo }),
           success: (res) => resolve(res.confirm),
           fail: () => resolve(false),
         })
@@ -423,7 +429,7 @@ export default {
         return
       }
       try {
-        await orderApi.cancelOrder(order.id, '用户主动取消')
+        await orderApi.cancelOrder(order.id, t('orderList.cancelReason'))
         // 取消成功后：如果当前 tab 不含 CANCELLED，把该订单从当前列表隐藏
         // 等 tab 不是 ALL / CANCELLED 时隐藏
         if (this.activeTab !== 'all' && this.activeTab !== 'CANCELLED') {
@@ -433,10 +439,13 @@ export default {
           order.status = 'CANCELLED'
           order.swipeOffset = 0
         }
-        uni.showToast({ title: '已取消', icon: 'success' })
+        uni.showToast({ title: t('orderList.toast.cancelled'), icon: 'success' })
       } catch (e) {
         console.error('[order-list] cancel fail', e)
-        uni.showToast({ title: e?.data?.msg || e?.message || '取消失败', icon: 'none' })
+        uni.showToast({
+          title: e?.data?.msg || e?.message || t('orderList.toast.cancelFailed'),
+          icon: 'none',
+        })
         this.closeAllSwipe()
       }
     },

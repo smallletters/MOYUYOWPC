@@ -12,6 +12,8 @@ unpackage/
 .env
 .env.local
 .env.*.local
+# 防止把 .env.development / .env.production 等带环境后缀的本地配置误提交
+.env.*
 
 # 调试日志
 npm-debug.log*

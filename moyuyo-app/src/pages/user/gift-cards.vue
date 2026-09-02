@@ -1,14 +1,5 @@
 <template>
   <view class="gift-cards">
-    <!-- 顶部导航栏 -->
-    <view class="header">
-      <view class="header-btn" @click="goBack">
-        <text class="back-icon luc-arrow-left" />
-      </view>
-      <text class="header-title">{{ $t('giftCards.title') }}</text>
-      <view class="header-btn" />
-    </view>
-
     <view class="content">
       <!-- 顶部汇总卡片 -->
       <view class="summary-card">
@@ -291,10 +282,6 @@ export default {
       this.activeTab = key
     },
 
-    goBack() {
-      uni.navigateBack()
-    },
-
     onBindCard() {
       this.showBindModal = true
     },
@@ -336,42 +323,6 @@ export default {
   min-height: 100vh;
   background: var(--color-background);
   padding-bottom: 200rpx;
-}
-/* 样式省略,与原文件保持一致 */
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 88rpx;
-  background: var(--color-surface);
-  border-bottom: 1rpx solid var(--color-divider);
-}
-.header-btn {
-  position: absolute;
-  width: 72rpx;
-  height: 72rpx;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.header-btn:first-child {
-  left: 16rpx;
-}
-.header-btn:last-child {
-  right: 16rpx;
-}
-.back-icon {
-  font-size: 48rpx;
-  color: var(--color-text);
-  line-height: 1;
-}
-.header-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: var(--color-text);
 }
 .content {
   padding: 24rpx;

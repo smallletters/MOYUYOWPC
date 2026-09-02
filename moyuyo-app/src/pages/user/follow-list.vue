@@ -1,19 +1,5 @@
 <template>
   <view class="page">
-    <!-- 顶部导航：返回 + 标题 + 搜索触发按钮 -->
-    <view class="header">
-      <view class="nav-back" @tap="goBack">
-        <text class="luc luc-arrow-left back-icon" />
-      </view>
-      <view class="title-wrap">
-        <text class="title">{{ mode === 'following' ? '我的关注' : '我的粉丝' }}</text>
-        <text v-if="total > 0" class="subtitle">共 {{ total }} 人</text>
-      </view>
-      <view class="nav-action" @tap="onToggleSearch">
-        <text class="luc" :class="showSearch ? 'luc-x' : 'luc-search'" />
-      </view>
-    </view>
-
     <!-- 搜索栏(默认折叠,点击右上角图标展开) -->
     <view v-if="showSearch" class="search-bar">
       <view class="search-input-wrap">
@@ -45,15 +31,19 @@
         </text>
         <view v-if="mode === t.value" class="tab-indicator" />
       </view>
+      <!-- 搜索触发按钮:与 tab 并列吸顶,展开后变为关闭图标 -->
+      <view class="tab-search" @tap="onToggleSearch">
+        <text class="luc" :class="showSearch ? 'luc-x' : 'luc-search'" />
+      </view>
     </view>
 
     <!-- 列表 -->
     <scroll-view
       scroll-y
       class="list"
-      @scrolltolower="onLoadMore"
       :refresher-enabled="true"
       :refresher-triggered="refreshing"
+      @scrolltolower="onLoadMore"
       @refresherrefresh="onRefresh"
     >
       <!-- 搜索结果摘要(只有关键词时显示) -->
@@ -70,12 +60,12 @@
 
       <!-- 空结果 -->
       <view v-else-if="!filteredList.length && !loading" class="empty">
-        <text class="empty-emoji">{{ isSearching ? '🔍' : (mode === 'following' ? '🐾' : '💌') }}</text>
+        <text class="empty-emoji">
+          {{ isSearching ? '🔍' : mode === 'following' ? '🐾' : '💌' }}
+        </text>
         <text class="empty-title">{{ emptyHint }}</text>
         <!-- 搜索无结果:给一个「清空搜索」按钮 -->
-        <text v-if="isSearching" class="empty-action" @tap="onClearSearchFromEmpty">
-          清空搜索
-        </text>
+        <text v-if="isSearching" class="empty-action" @tap="onClearSearchFromEmpty">清空搜索</text>
         <!-- 非搜索空态(关注/粉丝列表本身为空)时,只有 following 给引导按钮 -->
         <text v-else-if="mode === 'following'" class="empty-action" @tap="goDiscover">
           去发现感兴趣的人
@@ -107,16 +97,16 @@
           </view>
           <text v-if="u.bio" class="user-bio">{{ u.bio }}</text>
           <text v-else class="user-bio user-bio--placeholder">
-            {{ mode === 'following' ? formatRelativeTime(u.createdAt) + ' 关注了TA' : formatRelativeTime(u.createdAt) + ' 关注了你' }}
+            {{
+              mode === 'following'
+                ? formatRelativeTime(u.createdAt) + ' 关注了TA'
+                : formatRelativeTime(u.createdAt) + ' 关注了你'
+            }}
           </text>
         </view>
 
         <!-- 操作按钮 -->
-        <view
-          v-if="mode === 'following'"
-          class="btn btn-unfollow"
-          @tap.stop="onUnfollow(u)"
-        >
+        <view v-if="mode === 'following'" class="btn btn-unfollow" @tap.stop="onUnfollow(u)">
           <text class="btn-text">已关注</text>
         </view>
         <view v-else-if="!u.followed" class="btn btn-follow" @tap.stop="onFollow(u)">
@@ -144,10 +134,7 @@ import { followApi } from '@/api/follow'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.userFollowList')
 
-
 const tabs = [
-
-
   { value: 'following', label: '关注' },
   { value: 'followers', label: '粉丝' },
 ]
@@ -362,9 +349,10 @@ function onChat(u) {
 /** 长按:弹操作菜单(主流 APP 通用模式) */
 function onLongPress(u) {
   uni.showActionSheet({
-    itemList: mode.value === 'following'
-      ? ['取消关注', '设置分组', '推荐给朋友']
-      : ['回关', '拉黑', '推荐给朋友'],
+    itemList:
+      mode.value === 'following'
+        ? ['取消关注', '设置分组', '推荐给朋友']
+        : ['回关', '拉黑', '推荐给朋友'],
     success: async (res) => {
       if (mode.value === 'following') {
         if (res.tapIndex === 0) onUnfollow(u)
@@ -400,15 +388,6 @@ function goProfile(u) {
     uni.navigateTo({ url: `/pages/user/profile?id=${id}&name=${encodeURIComponent(name || '')}` })
   } else if (name) {
     uni.navigateTo({ url: `/pages/community/search?keyword=${encodeURIComponent(name)}` })
-  }
-}
-
-function goBack() {
-  const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : []
-  if (pages.length > 1) {
-    uni.navigateBack()
-  } else {
-    uni.reLaunch({ url: '/pages/tabbar/user' })
   }
 }
 
@@ -457,53 +436,6 @@ function onImgError(e) {
   background: var(--color-background);
   display: flex;
   flex-direction: column;
-}
-
-/* 顶部导航 */
-.header {
-  display: flex;
-  align-items: center;
-  height: 88rpx;
-  padding: 0 24rpx;
-  background: var(--color-surface);
-  border-bottom: 1rpx solid var(--color-divider);
-}
-.nav-back {
-  width: 60rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.back-icon {
-  font-size: 44rpx;
-  color: var(--color-text);
-}
-.title-wrap {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-.title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: var(--color-text);
-  line-height: 1.2;
-}
-.subtitle {
-  font-size: 20rpx;
-  color: var(--color-text-tertiary);
-  margin-top: 2rpx;
-}
-.nav-action {
-  width: 60rpx;
-  height: 60rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 36rpx;
-  color: var(--color-text-secondary);
 }
 
 /* 搜索栏 */
@@ -581,6 +513,16 @@ function onImgError(e) {
   border-radius: 2rpx;
   background: var(--color-primary);
 }
+.tab-search {
+  width: 80rpx;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 36rpx;
+  color: var(--color-text-secondary);
+}
 
 /* 列表 */
 .list {
@@ -639,7 +581,9 @@ function onImgError(e) {
   background: var(--color-surface);
   border-radius: 16rpx;
   margin-bottom: 12rpx;
-  transition: background 0.15s ease, transform 0.15s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
 }
 .user-card:active {
   background: var(--color-background);

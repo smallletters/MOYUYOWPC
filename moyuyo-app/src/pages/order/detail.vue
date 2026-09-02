@@ -4,7 +4,7 @@
       <view class="header-back" aria-label="返回" @click="goBack">
         <text class="luc luc-arrow-left" />
       </view>
-      <text class="header-title">订单详情</text>
+      <text class="header-title">{{ $t('orderDetail.title') }}</text>
     </view>
     <view class="status-banner" :class="`status-${order.status}`">
       <text class="status-title">{{ statusTitle }}</text>
@@ -13,13 +13,13 @@
         v-if="order.status === 'PENDING_SHIP' || order.status === 'PENDING_RECEIVE'"
         class="status-eta"
       >
-        Estimated Delivery: {{ estimatedDelivery }}
+        {{ $t('orderDetail.eta', { date: estimatedDelivery }) }}
       </text>
     </view>
 
     <!-- Logistics Timeline -->
     <view v-if="logisticsTraces.length" class="card logistics-card">
-      <text class="card-title">Logistics</text>
+      <text class="card-title">{{ $t('orderDetail.logistics') }}</text>
       <view class="timeline">
         <view
           v-for="(t, i) in logisticsTraces"
@@ -38,7 +38,7 @@
     </view>
 
     <view class="card address-card">
-      <text class="card-title">Shipping Address</text>
+      <text class="card-title">{{ $t('orderDetail.address') }}</text>
       <text class="address-name">{{ order.receiverName }} · {{ order.receiverPhone }}</text>
       <text class="address-detail">
         {{ order.receiverAddress }}
@@ -47,7 +47,7 @@
     </view>
 
     <view class="card items-card">
-      <text class="card-title">Items</text>
+      <text class="card-title">{{ $t('orderDetail.items') }}</text>
       <view v-for="item in order.items" :key="item.id" class="item-row">
         <image :src="item.mainImage || ''" class="item-image" />
         <view class="item-info">
@@ -61,50 +61,50 @@
 
     <view class="card price-card">
       <view class="price-row">
-        <text>Subtotal</text>
+        <text>{{ $t('orderDetail.price.subtotal') }}</text>
         <text>${{ order.goodsAmount }}</text>
       </view>
       <view class="price-row">
-        <text>Shipping</text>
+        <text>{{ $t('orderDetail.price.shipping') }}</text>
         <text>${{ order.freight }}</text>
       </view>
       <view v-if="order.taxAmount > 0" class="price-row">
-        <text>Tax</text>
+        <text>{{ $t('orderDetail.price.tax') }}</text>
         <text>${{ order.taxAmount }}</text>
       </view>
       <view v-if="order.couponDiscount > 0" class="price-row">
-        <text>Discount</text>
+        <text>{{ $t('orderDetail.price.discount') }}</text>
         <text class="discount">-${{ order.couponDiscount }}</text>
       </view>
       <view v-if="order.pointsDiscount > 0" class="price-row">
-        <text>Points</text>
+        <text>{{ $t('orderDetail.price.points') }}</text>
         <text class="discount">-${{ order.pointsDiscount }}</text>
       </view>
       <view class="price-row total">
-        <text>Total</text>
+        <text>{{ $t('orderDetail.price.total') }}</text>
         <text class="total-amount">${{ order.payAmount }}</text>
       </view>
     </view>
 
     <view class="card info-card">
       <view class="info-row">
-        <text>Order Number</text>
+        <text>{{ $t('orderDetail.info.orderNumber') }}</text>
         <text>#{{ order.orderNo }}</text>
       </view>
       <view class="info-row">
-        <text>Payment Method</text>
+        <text>{{ $t('orderDetail.info.paymentMethod') }}</text>
         <text>{{ order.payChannel || '-' }}</text>
       </view>
       <view class="info-row">
-        <text>Order Time</text>
+        <text>{{ $t('orderDetail.info.orderTime') }}</text>
         <text>{{ formatDate(order.createTime) }}</text>
       </view>
       <view v-if="order.paidAt" class="info-row">
-        <text>Paid At</text>
+        <text>{{ $t('orderDetail.info.paidAt') }}</text>
         <text>{{ formatDate(order.paidAt) }}</text>
       </view>
       <view v-if="order.trackingNumber" class="info-row">
-        <text>Tracking</text>
+        <text>{{ $t('orderDetail.info.tracking') }}</text>
         <text>{{ order.trackingNumber }}</text>
       </view>
     </view>
@@ -115,38 +115,39 @@
         <text>{{ $t('orderDetail.contactCS') }}</text>
       </view>
       <view v-if="order.status === 'PENDING_PAY'" class="btn btn-outline" @click="onCancel">
-        取消订单
+        {{ $t('orderDetail.cancel') }}
       </view>
       <view v-if="order.status === 'PENDING_PAY'" class="btn btn-primary" @click="onPay">
-        去支付
+        {{ $t('orderDetail.pay') }}
       </view>
       <view
         v-if="order.status === 'PENDING_SHIP' || order.status === 'PENDING_RECEIVE'"
         class="btn btn-primary"
         @click="onTrack"
       >
-        查看物流
+        {{ $t('orderDetail.track') }}
       </view>
       <view v-if="order.status === 'PENDING_RECEIVE'" class="btn btn-outline" @click="onConfirm">
-        确认收货
+        {{ $t('orderDetail.confirmReceive') }}
       </view>
       <view v-if="order.status === 'COMPLETED'" class="btn btn-primary" @click="onReview">
-        立即评价
+        {{ $t('orderDetail.review') }}
       </view>
       <view
         v-if="order.status === 'PAID' || order.status === 'RECEIVED'"
         class="btn btn-outline"
         @click="onRefund"
       >
-        申请退款
+        {{ $t('orderDetail.refund') }}
       </view>
     </view>
   </view>
-  <view v-else class="loading">Loading...</view>
+  <view v-else class="loading">{{ $t('common.loading') }}</view>
 </template>
 
 <script>
 import { orderApi } from '@/api'
+import { i18n, t } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.orderDetail',
@@ -161,32 +162,30 @@ export default {
 
   computed: {
     statusTitle() {
-      const map = {
-        PENDING_PAY: 'Awaiting Payment',
-        PENDING_SHIP: 'To Ship',
-        PENDING_RECEIVE: 'To Receive',
-        COMPLETED: 'Completed',
-        CANCELLED: 'Cancelled',
-        REFUNDING: 'Refunding',
-        REFUNDED: 'Refunded',
-      }
-      return map[this.order?.status] || this.order?.status
+      const code = this.order?.status
+      if (!code) return ''
+      // 优先用全局订单状态字典
+      const localized = t(`orderStatus.${code}`)
+      if (localized && localized !== `orderStatus.${code}`) return localized
+      return code
     },
     statusDesc() {
-      const map = {
-        PENDING_PAY: 'Please complete payment before the order expires',
-        PENDING_SHIP: 'Seller is preparing your order',
-        PENDING_RECEIVE: 'Your order is on the way',
-        COMPLETED: 'Thank you for your purchase',
-        CANCELLED: 'This order has been cancelled',
-      }
-      return map[this.order?.status] || ''
+      const code = this.order?.status
+      if (!code) return ''
+      const localized = t(`orderDetail.statusDesc.${code}`)
+      if (localized && localized !== `orderDetail.statusDesc.${code}`) return localized
+      return ''
     },
     estimatedDelivery() {
       if (!this.order?.createTime) return ''
       const d = new Date(this.order.createTime)
       d.setDate(d.getDate() + 5)
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      // 根据当前 locale 选择日期格式
+      const isZh = i18n.locale === 'zh-CN'
+      return d.toLocaleDateString(isZh ? 'zh-CN' : 'en-US', {
+        month: isZh ? 'long' : 'short',
+        day: 'numeric',
+      })
     },
   },
 
@@ -201,7 +200,7 @@ export default {
       try {
         this.order = await orderApi.getOrderDetail(this.orderId)
       } catch (e) {
-        uni.showToast({ title: 'Load failed', icon: 'none' })
+        uni.showToast({ title: t('orderDetail.loadFailed'), icon: 'none' })
       }
     },
 
@@ -218,7 +217,9 @@ export default {
 
     formatDate(dateStr) {
       if (!dateStr) return ''
-      return new Date(dateStr).toLocaleString()
+      const d = new Date(dateStr)
+      // 跟随当前 locale
+      return d.toLocaleString(i18n.locale)
     },
 
     goBack() {
@@ -233,14 +234,14 @@ export default {
 
     onCancel() {
       uni.showModal({
-        title: 'Cancel order?',
+        title: t('orderDetail.cancelConfirmTitle'),
         success: async (res) => {
           if (res.confirm) {
             try {
               await orderApi.cancelOrder(this.orderId, '')
               this.loadOrder()
             } catch (e) {
-              uni.showToast({ title: 'Cancel failed', icon: 'none' })
+              uni.showToast({ title: t('orderDetail.cancelFailed'), icon: 'none' })
             }
           }
         },
@@ -249,14 +250,14 @@ export default {
 
     onConfirm() {
       uni.showModal({
-        title: 'Confirm received?',
+        title: t('orderDetail.confirmReceivedTitle'),
         success: async (res) => {
           if (res.confirm) {
             try {
               await orderApi.confirmReceived(this.orderId)
               this.loadOrder()
             } catch (e) {
-              uni.showToast({ title: 'Failed', icon: 'none' })
+              uni.showToast({ title: t('orderDetail.confirmFailed'), icon: 'none' })
             }
           }
         },
@@ -276,7 +277,7 @@ export default {
     },
 
     onCS() {
-      uni.showToast({ title: 'Customer service coming soon', icon: 'none' })
+      uni.showToast({ title: t('orderDetail.csComingSoon'), icon: 'none' })
     },
   },
 }

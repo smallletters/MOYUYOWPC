@@ -1,14 +1,5 @@
-﻿<template>
+<template>
   <view class="wallet">
-    <!-- 顶部导航栏 -->
-    <view class="header">
-      <view class="header-btn" @click="goBack">
-        <text class="back-icon luc-arrow-left" />
-      </view>
-      <text class="header-title">{{ $t('wallet.title') }}</text>
-      <view class="header-btn" />
-    </view>
-
     <!-- 加载中:首次进入时展示骨架 -->
     <view v-if="loading && !loadedOnce" class="loading-mask">
       <view class="loading-card">
@@ -72,28 +63,28 @@
             <text class="feature-label">{{ $t('wallet.features.points') }}</text>
             <text class="feature-value">{{ walletData.points.toLocaleString() }}</text>
           </view>
-          <text class="feature-arrow luc-chevron-right" />
+          <text class="feature-arrow luc luc-chevron-right" />
         </view>
         <view class="feature-item" @click="goCoupons">
           <view class="feature-info">
             <text class="feature-label">{{ $t('wallet.features.coupons') }}</text>
             <text class="feature-value">{{ walletData.coupons }}</text>
           </view>
-          <text class="feature-arrow luc-chevron-right" />
+          <text class="feature-arrow luc luc-chevron-right" />
         </view>
         <view class="feature-item" @click="goGiftCards">
           <view class="feature-info">
             <text class="feature-label">{{ $t('wallet.features.giftCards') }}</text>
             <text class="feature-value">{{ walletData.giftCards }}</text>
           </view>
-          <text class="feature-arrow luc-chevron-right" />
+          <text class="feature-arrow luc luc-chevron-right" />
         </view>
         <view class="feature-item" @click="viewAllTransactions">
           <view class="feature-info">
             <text class="feature-label">{{ $t('wallet.features.transactions') }}</text>
             <text class="feature-value">{{ $t('wallet.features.viewAll') }}</text>
           </view>
-          <text class="feature-arrow luc-chevron-right" />
+          <text class="feature-arrow luc luc-chevron-right" />
         </view>
       </view>
 
@@ -228,10 +219,6 @@ export default {
       }
     },
 
-    goBack() {
-      uni.navigateBack()
-    },
-
     toggleBalanceVisible() {
       this.balanceVisible = !this.balanceVisible
     },
@@ -301,50 +288,6 @@ export default {
   min-height: 100vh;
   background: var(--color-background);
   padding-bottom: 64rpx;
-}
-
-/* 顶部导航栏 */
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 88rpx;
-  background: var(--color-surface);
-  border-bottom: 1rpx solid var(--color-divider);
-}
-
-.header-btn {
-  position: absolute;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: var(--radius-sm);
-}
-
-.header-btn:first-child {
-  left: 16rpx;
-}
-
-.header-btn:last-child {
-  right: 16rpx;
-}
-
-.back-icon {
-  font-size: 48rpx;
-  color: var(--color-text);
-  line-height: 1;
-}
-
-.header-title {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
-  letter-spacing: -0.02em;
 }
 
 .content {

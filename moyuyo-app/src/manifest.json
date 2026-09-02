@@ -3,7 +3,7 @@
     "appid" : "__UNI__31468B6",
     "description" : "MOYUYO ATELIER - Modern Luxury Pet Lifestyle",
     "versionName" : "1.0.0",
-    "versionCode" : 101,
+    "versionCode" : 103,
     "transformPx" : false,
     "app-plus" : {
         "usingComponents" : true,
