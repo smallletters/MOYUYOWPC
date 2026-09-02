@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="header-left" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">我的评价</text>
       <view class="header-right" />
@@ -105,7 +105,7 @@
 
       <!-- 空状态 -->
       <view v-else class="empty-state">
-        <text class="empty-icon"><text class="luc luc-inbox" /></text>
+        <text class="empty-icon luc-inbox" />
         <text class="empty-title">暂无{{ activeTabLabel }}评价</text>
         <text class="empty-desc">完成订单后即可发表评价，您的反馈对其他宠物主人很有帮助</text>
         <view class="go-shop-btn" @tap="handleGoShop">
@@ -120,6 +120,8 @@
 import { reviewApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.userMyReviews',
+
   data() {
     return {
       activeTab: 'all',

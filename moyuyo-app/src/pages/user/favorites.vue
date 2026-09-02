@@ -146,6 +146,8 @@
 import { cartApi, productApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.userFavorites',
+
   data() {
     return {
       activeTab: 'all',

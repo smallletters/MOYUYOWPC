@@ -200,12 +200,14 @@
 </template>
 
 <script>
-import { productApi, reviewApi } from '@/api'
+import { productApi, reviewApi, cartApi } from '@/api'
 import { useCartStore } from '@/store'
 import browsingHistory from '@/utils/browsingHistory'
 import { i18n } from '@/i18n'
 
 export default {
+  pageTitleKey: 'pageTitle.goodsDetail',
+
   data() {
     return {
       statusBarHeight: 20,
@@ -392,7 +394,6 @@ export default {
 
         // 4. 查询该商品是否已被当前用户收藏(用于初始化心形状态)
         try {
-          const { cartApi } = await import('@/api')
           const favRes = await cartApi.getFavorites()
           const favList = favRes?.data || favRes?.records || favRes?.items || favRes || []
           const records = Array.isArray(favList) ? favList : []
@@ -444,10 +445,19 @@ export default {
     buildGallery(data) {
       const list = []
       const seen = new Set()
+      // 相对路径(/uploads/...) APP 端无 dev server，必须拼上后端 base
+      const base = process.env.VITE_ADMIN_API_BASE
+      const toAbs = (u) => {
+        if (!u) return u
+        if (u.startsWith('http')) return u
+        if (u.startsWith('/') && base) return `${base}${u}`
+        return u
+      }
       const push = (url, key) => {
-        if (!url || seen.has(url)) return
-        seen.add(url)
-        list.push({ url, key: key || url })
+        const abs = toAbs(url)
+        if (!abs || seen.has(abs)) return
+        seen.add(abs)
+        list.push({ url: abs, key: key || abs })
       }
       if (Array.isArray(data.images)) {
         data.images.forEach((img, i) => {
@@ -685,8 +695,6 @@ export default {
       const next = !this.wishlisted
       this.wishlisted = next
       try {
-        // 动态引用避免与现有 import 冲突
-        const { cartApi } = await import('@/api')
         const skuId = this.product.skus?.[0]?.id || null
         if (next) {
           await cartApi.addFavorite(this.product.id, skuId)

@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -34,4 +35,15 @@ public class CommunityPostCreateRequest {
     @Schema(description = "图片 URL 列表（≤9 张）")
     @Size(max = 9, message = "图片数量不能超过 9 张")
     private List<@Size(max = 512, message = "图片 URL 长度不能超过 512 字符") String> images;
+
+    @Schema(description = "视频 URL（≤1 个，与 images 互斥：发布视频帖子时 images 传空）")
+    @Size(max = 512, message = "视频 URL 长度不能超过 512 字符")
+    private String video;
+
+    @Schema(description = "视频封面 URL（仅视频帖需要，前端从视频候选帧中选出后上传）")
+    @Size(max = 512, message = "封面 URL 长度不能超过 512 字符")
+    private String cover;
+
+    @Schema(description = "定时发布时间（可选，null 或过去时间=立即发布；未来时间则进入待发布队列，由定时任务在到点后切换为已发布）")
+    private LocalDateTime scheduledAt;
 }

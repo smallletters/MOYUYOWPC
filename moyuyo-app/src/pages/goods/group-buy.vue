@@ -1,12 +1,8 @@
 ﻿<template>
   <view class="group-buy">
     <!-- 顶部导航栏 -->
-    <view class="nav-header">
-      <view class="nav-back" @tap="goBack">
-        <text class="luc luc-arrow-left" />
-      </view>
-      <text class="nav-title">拼团购买</text>
-    </view>
+
+
 
     <scroll-view scroll-y class="scroll">
       <!-- 主商品展示区 -->
@@ -167,6 +163,8 @@
 import { groupBuyApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.goodsGroupBuy',
+
   data() {
     return {
       groupBuyId: null,
@@ -184,10 +182,6 @@ export default {
   },
 
   methods: {
-    goBack() {
-      uni.navigateBack()
-    },
-
     toggleRules() {
       this.rulesOpen = !this.rulesOpen
     },

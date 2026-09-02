@@ -35,13 +35,16 @@
           <view class="kingkong-icon" :style="{ background: item.bg }">
             <text class="kingkong-emoji luc" :class="$luc(item.icon)" />
           </view>
-          <text class="kingkong-label">{{ item.label }}</text>
+          <text class="kingkong-label">{{ $t(item.labelKey) }}</text>
         </view>
       </view>
 
       <!-- ② CMS Banner 轮播（从 /api/v1/cms/banners 拉取，支持管理后台配置图片） -->
-      <view v-if="banners.length" class="banner">
+      <!-- bannerLoaded 用于在请求未返回前隐藏 swiper，避免初始 swiper 在数据替换时
+           触发 uview-plus 的 getBoundingClientRect null 崩溃 -->
+      <view v-if="bannerLoaded && banners.length" class="banner">
         <swiper
+          :key="bannerVersion"
           :autoplay="true"
           :interval="3000"
           :duration="500"
@@ -73,7 +76,7 @@
             :class="{ 'recommend-tab-active': activeTab === tab.key }"
             @click="switchTab(tab.key)"
           >
-            <text class="recommend-tab-label">{{ tab.label }}</text>
+            <text class="recommend-tab-label">{{ $t(tab.labelKey) }}</text>
             <view v-if="activeTab === tab.key" class="recommend-tab-indicator" />
           </view>
         </view>
@@ -104,7 +107,7 @@
                 </text>
               </view>
               <view v-if="p.rating && p.rating > 0" class="recommend-rating">
-                <text class="recommend-star"><text class="luc luc-star" /></text>
+                <text class="recommend-star luc-star" />
                 <text class="recommend-rating-num">{{ p.rating.toFixed(1) }}</text>
                 <text class="recommend-rating-sep">·</text>
                 <text class="recommend-rating-count">{{ formatCount(p.reviewCount) }} 好评</text>
@@ -120,10 +123,18 @@
 import { cmsApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.tabbarHome',
+
   data() {
     return {
       refreshing: false,
       unreadCount: 0,
+      // 控制 swiper 是否挂载；首次 onLoad 前为 false，请求完成（无论成功失败）置为 true，
+      // 避免初始 banners 渲染 swiper 后被异步数据替换，触发 uview-plus swiper-item.remove
+      // 阶段的 getBoundingClientRect null 崩溃
+      bannerLoaded: false,
+      // swiper 的 :key；数据来源变化时递增，绕开 uview-plus 在 swiper-item 卸载时的 DOM 引用 bug
+      bannerVersion: 0,
       // 从 CMS Banner 接口拉取（管理后台「CMS管理 → Banner 管理」配置的图片）。
       // 兜底数据用于接口失败时降级显示，避免页面空白。
       banners: [
@@ -131,21 +142,20 @@ export default {
         { image: 'https://picsum.photos/750/360?random=2', title: 'LUNA 策展家' },
       ],
       kingkongList: [
-        { id: 'care', label: '洗护', icon: 'spray-can', bg: 'var(--background-200)' },
-        { id: 'gear', label: '装备', icon: 'shopping-bag', bg: 'var(--background-200)' },
-        { id: 'health', label: '护理', icon: 'heart', bg: 'var(--background-200)' },
-        { id: 'play', label: '玩具', icon: 'star', bg: 'var(--background-200)' },
-        { id: 'home', label: '家居', icon: 'home', bg: 'var(--background-200)' },
-        { id: 'subscribe', label: '订阅', icon: 'mail', bg: 'var(--background-200)' },
-        { id: 'vip', label: '会员', icon: 'star', bg: 'var(--background-200)' },
-        { id: 'coupon', label: '领券', icon: 'tag', bg: 'var(--background-200)' },
-        { id: 'flash', label: '限时', icon: 'zap', bg: 'var(--background-200)' },
+        { id: 'care', labelKey: 'home.kingkong.care', icon: 'spray-can', bg: 'var(--background-200)' },
+        { id: 'gear', labelKey: 'home.kingkong.gear', icon: 'shopping-bag', bg: 'var(--background-200)' },
+        { id: 'health', labelKey: 'home.kingkong.health', icon: 'heart', bg: 'var(--background-200)' },
+        { id: 'play', labelKey: 'home.kingkong.play', icon: 'star', bg: 'var(--background-200)' },
+        { id: 'home', labelKey: 'home.kingkong.living', icon: 'home', bg: 'var(--background-200)' },
+        { id: 'vip', labelKey: 'home.kingkong.vip', icon: 'star', bg: 'var(--background-200)' },
+        { id: 'coupon', labelKey: 'home.kingkong.coupon', icon: 'tag', bg: 'var(--background-200)' },
+        { id: 'flash', labelKey: 'home.kingkong.flash', icon: 'zap', bg: 'var(--background-200)' },
       ],
       // 推荐区 3-tab 数据
       recommendTabs: [
-        { key: 'guess', label: '猜你喜欢' },
-        { key: 'hot', label: '今日爆款' },
-        { key: 'rating', label: '口碑好评' },
+        { key: 'guess', labelKey: 'home.recommendTabs.guess' },
+        { key: 'hot', labelKey: 'home.recommendTabs.hot' },
+        { key: 'rating', labelKey: 'home.recommendTabs.rating' },
       ],
       activeTab: 'guess',
       recommend: [],
@@ -179,6 +189,11 @@ export default {
         }
       } catch (e) {
         console.warn('[home] load banners failed, fallback to default', e)
+      } finally {
+        // 无论成功失败都打开 swiper；bannerVersion 自增让 swiper 整体重建，
+        // 彻底绕开 uview-plus swiper-item 卸载阶段的 DOM 引用 null 崩溃
+        this.bannerVersion += 1
+        this.bannerLoaded = true
       }
     },
 
@@ -210,7 +225,13 @@ export default {
       const raw = p.mainImage || (Array.isArray(p.images) && p.images[0] && p.images[0].src) || ''
       if (!raw) return ''
       if (raw.startsWith('http')) return raw
-      return raw // /uploads/... 走同源相对路径，由 Vite proxy 转发
+      // 相对路径(/uploads/...) APP 端没有 dev server，必须拼上后端 base
+      // dev 端 vite proxy 会代理 /uploads/* 同源访问，所以也兼容
+      if (raw.startsWith('/')) {
+        const base = process.env.VITE_ADMIN_API_BASE
+        return base ? `${base}${raw}` : raw
+      }
+      return raw
     },
 
     truncate(s, n) {
@@ -364,13 +385,13 @@ export default {
   overflow: hidden;
   box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.04);
 }
-.banner >>> .uni-swiper-wrapper,
+.banner :deep(.uni-swiper-wrapper),
 .banner swiper {
   width: 100%;
   height: 320rpx;
 }
 .banner swiper-item,
-.banner >>> .uni-swiper-item {
+.banner :deep(.uni-swiper-item) {
   width: 100%;
   height: 320rpx;
 }

@@ -10,7 +10,7 @@
 
     <scroll-view scroll-y class="content">
       <view v-if="entries.length === 0" class="empty">
-        <text class="empty-icon"><text class="luc luc-book" /></text>
+        <text class="empty-icon luc-book" />
         <text class="empty-text">还没有日记，写下今天的回忆吧</text>
       </view>
 
@@ -37,6 +37,8 @@
 import { petApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.petDiary',
+
   data() {
     return {
       entries: [

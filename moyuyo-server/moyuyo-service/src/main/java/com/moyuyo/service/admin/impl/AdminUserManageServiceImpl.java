@@ -217,7 +217,10 @@ public class AdminUserManageServiceImpl implements AdminUserManageService {
     UserEntity user = new UserEntity();
     user.setEmail(email);
     user.setNickname(nickname.isEmpty() ? email.split("@")[0] : nickname);
-    user.setPasswordHash(password); // 实际项目应对密码进行加密处理
+    // P0 安全修复:必须用 BCrypt 加密后存储,否则明文密码会让登录验证失败
+    // (BCryptPasswordEncoder.matches() 永远不匹配明文 hash)
+    // 与 resetPassword() 对齐使用同一个 passwordEncoder
+    user.setPasswordHash(passwordEncoder.encode(password));
     user.setStatus(1); // 默认启用
     user.setCreatedAt(LocalDateTime.now());
     userMapper.insert(user);

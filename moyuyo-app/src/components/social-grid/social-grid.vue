@@ -1,4 +1,4 @@
-﻿<!--
+<!--
   社交数据宫格组件
   用途：用户中心展示"关注 / 粉丝 / 收藏 / 足迹"四宫格
   通过 easycom 自动注册为 <social-grid />,无需手动 import
@@ -48,7 +48,7 @@ export default {
       default: 'rgba(219, 201, 138, 0.18)',
     },
   },
-  emits: ['tap'],
+  emits: ['click'],
   methods: {
     isLastCol(idx) {
       // 仅最右侧不加右边框,避免与卡片右边距重复
@@ -68,7 +68,10 @@ export default {
         uni.showToast({ title: '功能即将上线', icon: 'none' })
         return
       }
-      this.$emit('tap', item)
+      // 父级 user.vue 模板用 @tap="onSocialTap" 监听,
+      // uni-app H5 编译会把 @tap 编译为 onClick 监听器(与 Vue 标准 onClick 同名),
+      // 因此这里必须 emit('click') 才能被父级接住;emit('tap') 事件名不匹配会丢失
+      this.$emit('click', item)
     },
   },
 }

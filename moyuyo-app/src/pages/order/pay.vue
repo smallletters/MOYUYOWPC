@@ -6,7 +6,7 @@
     </view>
 
     <view v-if="order" class="card order-summary">
-      <text class="card-title">Order #{{ order.orderNo }}</text>
+      <text class="card-title">{{ $t('orderPay.orderNoFmt', { no: order.orderNo }) }}</text>
       <view class="summary-row">
         <text>{{ $t('orderPay.payAmount') }}</text>
         <!-- 金额必须做 Number() + toFixed(2)，避免把字符串或非数值对象渲染成 function () { [native code] }74 这种异常 -->
@@ -21,9 +21,9 @@
     </view>
 
     <view v-if="status === 'pending'" class="pay-methods">
-      <!-- 与 checkout.vue 的 5 种支付方式保持一致，id 与 checkout 对齐（googlepay/paypal/venmo/applepay/alipay） -->
+      <!-- 与 checkout.vue 的 4 种支付方式保持一致，id 与 checkout 对齐（googlepay/applepay/paypal/card） -->
       <view
-        v-for="m in paymentMethods"
+        v-for="m in currentPaymentMethods"
         :key="m.id"
         class="card method-card"
         :class="{ disabled: !!payUrl }"
@@ -40,7 +40,7 @@
 
       <view class="btn btn-primary pay-btn" :disabled="!!payUrl" @click="onPay">
         <!-- 按钮文案随所选支付方式动态变化，避免写死 Pay with Card / PayPal -->
-        Pay with {{ currentPaymentLabel }}
+        {{ $t('orderPay.payBtnFmt', { label: currentPaymentLabel }) }}
       </view>
     </view>
 
@@ -54,36 +54,36 @@
 import { orderApi } from '@/api'
 import { removePendingOrder } from '@/utils/storage'
 import { i18n } from '@/i18n'
-// APP 端（iOS/Android 原生打包）用两条路径：
-//   1) 原生优先：PayPal/Venmo → uni.requestPayment provider=paypal；Apple Pay → MOYUYOPayment 原生插件
-//      解决 iOS WKWebView 拦截 302/自定义 scheme 造成白屏 & Android SSL pinning 被三方拦截。
-//   2) WebView 兜底：plus.webview 自建子 WebView + overrideUrlLoading 拦截 alipays/paypal/venmo/gpay 等 scheme
-//      保证 Alipay / Cash App / Google Pay 网页按钮 真的能跳到对方 APP，付完再回来
+// APP 端（iOS/Android 原生打包）走 Stripe Checkout WebView + payAppBridge 拦截 scheme：
+//   - 子 WebView 加载 Stripe sessionUrl/approvalUrl
+//   - overrideUrlLoading 拦截 Apple Pay / Google Pay / PayPal 等 scheme 跳转对应 APP
+//   - 命中 moyuyo://pay/return 时关闭 WebView + 处理结果
+// 美国市场目前支持：Google Pay / Apple Pay / PayPal / Credit Card。
+// 暂不集成第三方 Stripe 原生插件（无开源免费版），靠 Stripe Checkout + scheme 拦截兜底。
 import {
   createPaymentWebView,
-  startPayPalNative,
-  startApplePayNative,
-  isPayPalNativeAvailable,
+  registerMoyuyoScheme,
 } from '@/utils/payAppBridge'
 
 export default {
+  pageTitleKey: 'pageTitle.orderPay',
+
   data() {
     return {
       orderId: null,
       order: null,
-      // 与 checkout.vue 完全一致的支付方式列表：Google Pay / PayPal / Venmo / Apple Pay / Alipay
+      // 与 checkout.vue 完全一致的支付方式 ID 列表：文案走 i18n,通过 currentPaymentMethods 渲染
       paymentMethods: [
-        { id: 'googlepay', name: 'Google Pay', desc: '快速结账，用已保存的卡' },
-        { id: 'paypal', name: 'PayPal', desc: 'Use your PayPal account' },
-        { id: 'venmo', name: 'Venmo', desc: 'PayPal 旗下，扫码或快捷支付' },
-        { id: 'applepay', name: 'Apple Pay', desc: 'Fast checkout with Touch ID' },
-        { id: 'alipay', name: 'Alipay', desc: '扫码 / 快捷支付' },
+        { id: 'googlepay' },
+        { id: 'applepay' },
+        { id: 'paypal' },
+        { id: 'card' },
       ],
-      // 前端 UI 层的选中 ID（googlepay/paypal/venmo/applepay/alipay）
+      // 前端 UI 层的选中 ID（googlepay/applepay/paypal/card）
       selectedMethodId: 'googlepay',
       clientType: 'H5',
       status: 'pending',
-      statusText: 'Select payment method',
+      statusText: '',
       payUrl: '',
       pollTimer: null,
       // checkout 页传 channel/method 时为 true，订单加载完后自动发起支付
@@ -99,14 +99,10 @@ export default {
     /** 把 UI 层的 methodId（googlepay 等）映射为后端需要的 { channel, method } */
     paymentMapping() {
       const map = {
-        applepay: { channel: 'STRIPE', method: 'APPLE_PAY' },
-        alipay: { channel: 'STRIPE', method: 'ALIPAY' },
         googlepay: { channel: 'STRIPE', method: 'GOOGLE_PAY' },
-        cashapp: { channel: 'STRIPE', method: 'CASH_APP' },
-        affirm: { channel: 'STRIPE', method: 'AFFIRM' },
-        afterpay: { channel: 'STRIPE', method: 'AFTERPAY' },
-        venmo: { channel: 'PAYPAL', method: 'VENMO' },
+        applepay: { channel: 'STRIPE', method: 'APPLE_PAY' },
         paypal: { channel: 'PAYPAL', method: 'PAYPAL' },
+        card: { channel: 'STRIPE', method: 'CARD' },
       }
       return map[this.selectedMethodId] || map.googlepay
     },
@@ -121,7 +117,17 @@ export default {
     /** 按钮文案：Google Pay / PayPal / Venmo / Apple Pay / Alipay */
     currentPaymentLabel() {
       const m = this.paymentMethods.find((p) => p.id === this.selectedMethodId)
-      return m ? m.name : 'Google Pay'
+      // 默认落在 googlepay.name,字典里一定存在,无须额外兜底
+      if (!m) return i18n.t('orderPay.methods.googlepay.name')
+      return i18n.t(`orderPay.methods.${m.id}.name`)
+    },
+    /** 用于模板渲染的支付方式列表（注入 i18n 文案） */
+    currentPaymentMethods() {
+      return this.paymentMethods.map((p) => ({
+        id: p.id,
+        name: i18n.t(`orderPay.methods.${p.id}.name`),
+        desc: i18n.t(`orderPay.methods.${p.id}.desc`),
+      }))
     },
     // 兼容原模板里的 statusLabel 等调用（确保 computed 与原结构一致）
     localeVersion() {
@@ -143,14 +149,13 @@ export default {
     if (query.clientType) {
       this.clientType = query.clientType.toUpperCase()
     } else {
-      let c = 'H5'
-      // //#ifdef APP-PLUS
-      c = 'APP'
-      // //#endif
-      // //#ifdef MP
-      c = 'MP'
-      // //#endif
-      this.clientType = c
+      // query 没带时，按当前平台兜底（仅 APP 端是 APP，其他端保持 H5）
+      // #ifdef APP-PLUS
+      this.clientType = 'APP'
+      // #endif
+      // #ifdef MP-WEIXIN
+      this.clientType = 'MP'
+      // #endif
     }
     this.loadOrder()
     this.readPayResultFromStorage()
@@ -159,13 +164,13 @@ export default {
       this.autoPayReady = true
     }
     if (this.clientType === 'APP') {
-      import('@/utils/payAppBridge')
-        .then(({ registerMoyuyoScheme }) => {
-          this.schemeOff = registerMoyuyoScheme((ret) => {
-            this.handlePayResult(ret.status, ret.status === 'success' ? '' : '支付取消')
-          })
+      try {
+        this.schemeOff = registerMoyuyoScheme((ret) => {
+          this.handlePayResult(ret.status, ret.status === 'success' ? '' : i18n.t('orderPay.payCancelled'))
         })
-        .catch(() => {})
+      } catch (e) {
+        /* APP 端运行时报错可忽略 */
+      }
     }
   },
 
@@ -205,8 +210,8 @@ export default {
       const n = Number(v)
       return Number.isFinite(n) ? n.toFixed(2) : '0.00'
     },
-    /** 把后端 payMethod（APPLE_PAY/GOOGLE_PAY/VENMO/PAYPAL/ALIPAY 等大写）
-     *  反查回前端 UI 层的 methodId（applepay/googlepay/venmo/paypal/alipay）。
+    /** 把后端 payMethod（APPLE_PAY/GOOGLE_PAY/PAYPAL/CARD 等大写）
+     *  反查回前端 UI 层的 methodId（applepay/googlepay/paypal/card）。
      *  找不到时默认 googlepay，避免空白选中。 */
     resolveMethodIdFromBackend(backendMethod) {
       const m = (backendMethod || '').toUpperCase().trim()
@@ -215,15 +220,16 @@ export default {
         APPLEPAY: 'applepay',
         GOOGLE_PAY: 'googlepay',
         GOOGLEPAY: 'googlepay',
-        ALIPAY: 'alipay',
-        CASH_APP: 'cashapp',
-        CASHAPP: 'cashapp',
-        AFFIRM: 'affirm',
-        AFTERPAY: 'afterpay',
-        VENMO: 'venmo',
         PAYPAL: 'paypal',
-        CARD: 'googlepay', // 兼容旧版 CARD → 默认用 Google Pay 入口（因为已移除 Credit/Debit Card UI）
-        LINK: 'googlepay',
+        CARD: 'card',
+        // 兼容旧版数据
+        VENMO: 'paypal',
+        ALIPAY: 'card',
+        CASH_APP: 'card',
+        CASHAPP: 'card',
+        AFFIRM: 'card',
+        AFTERPAY: 'card',
+        LINK: 'card',
       }
       return map[m] || 'googlepay'
     },
@@ -242,14 +248,14 @@ export default {
           setTimeout(() => this.onPay(), 300)
         }
       } catch (e) {
-        uni.showToast({ title: 'Failed to load order', icon: 'none' })
+        uni.showToast({ title: i18n.t('orderPay.loadFailed'), icon: 'none' })
       }
     },
 
     async onPay() {
-      uni.showLoading({ title: 'Processing...', mask: true })
+      uni.showLoading({ title: i18n.t('orderPay.processing'), mask: true })
       try {
-        // H2 修复：APP 端传 clientType=APP + schemeBase=moyuyo://pay/return，
+        // APP 端传 clientType=APP + schemeBase=moyuyo://pay/return，
         // 后端会把 Stripe/PayPal 的 success/cancel 回跳地址写成 moyuyo://pay/return?status=...
         // 再由 payAppBridge / App.vue scheme 监听触发回到 Moyuyo APP，显示订单详情
         // H5 仍然走 return.html 中转页（postMessage + localStorage 回传）
@@ -265,30 +271,22 @@ export default {
         })
         uni.hideLoading()
 
-        // ============================================================
-        // 通道 A) 原生优先：仅 APP 端打包生效，H5 不满足条件自动走通道 B) WebView
-        //   - PayPal / Venmo → uni.requestPayment provider=paypal
-        //   - Apple Pay    → MOYUYOPayment 原生插件（未集成则回落）
-        // ============================================================
-        const usedNative = await this.tryNativePayment(res)
-        if (usedNative) {
-          // 原生通道已调起，不需要再打开 WebView，但仍启动轮询等待后端 webhook 更新订单状态
-          this.startPolling()
-          return
-        }
-
-        // H1 修复：优先使用 sessionUrl（Stripe Checkout Session 标准 URL），前端 web-view 直接打开
-        // 兜底仅支持旧版 PaymentIntent + clientSecret 的场景
+        // 美国市场方案（无 Stripe 原生插件）：
+        //   - 直接走 Stripe Checkout WebView（sessionUrl）
+        //   - 子 WebView 的 overrideUrlLoading 拦截 Apple Pay / Google Pay / PayPal scheme
+        //     真正跳到对应 APP 唤起 Face ID / G Pay 界面
+        //   - 付完通过 moyuyo://pay/return 回跳到 APP
         let finalUrl = ''
         if (res.sessionUrl) {
           finalUrl = res.sessionUrl
-        } else if (this.payChannel === 'STRIPE' && res.clientSecret) {
-          finalUrl = `https://checkout.stripe.com/c/pay/${res.clientSecret}`
         } else if (res.approvalUrl) {
           finalUrl = res.approvalUrl
+        } else if (this.payChannel === 'STRIPE' && res.clientSecret) {
+          // 兜底：兼容老版本 PaymentIntent 流程
+          finalUrl = `https://checkout.stripe.com/c/pay/${res.clientSecret}`
         } else {
           this.status = 'success'
-          this.statusText = 'Payment processing'
+          this.statusText = i18n.t('orderPay.statusText.processingInline')
           setTimeout(() => this.goDetail(), 1500)
           return
         }
@@ -298,65 +296,8 @@ export default {
       } catch (e) {
         uni.hideLoading()
         this.status = 'failed'
-        this.statusText = e.message || 'Payment failed'
+        this.statusText = e.message || i18n.t('orderPay.payFailed')
       }
-    },
-
-    /**
-     * 原生支付通道优先尝试。
-     * @param {Object} res — orderApi.createPayment 返回体
-     * @returns {Promise<boolean>} true=原生通道已调起（上层不需要开 WebView）；false=应回落 WebView
-     */
-    async tryNativePayment(res) {
-      if (!res || this.clientType !== 'APP') return false
-      try {
-        // ---- PayPal / Venmo：走 uni-app 官方 PayPal 模块 ----
-        if (this.payChannel === 'PAYPAL' && res.paypalClientId && res.paymentId) {
-          const available = await isPayPalNativeAvailable()
-          if (available) {
-            const result = await startPayPalNative({
-              clientId: res.paypalClientId,
-              orderId: res.paymentId,
-              environment: res.paypalEnvironment || 'sandbox',
-              currency: res.currencyCode || 'USD',
-              userAction: 'paynow',
-            })
-            if (result && result.success) {
-              // 原生通道成功：SDK 会自动通过 returnURL 回到 APP，scheme 监听负责关闭支付流程
-              return true
-            }
-            // 失败：回落 WebView 用 approvalUrl 继续支付，不抛错打扰用户
-            console.warn(
-              '[pay] PayPal 原生通道不可用，回落 WebView:',
-              result?.error?.message || result?.error,
-            )
-          }
-        }
-
-        // ---- Apple Pay（iOS 独占）：调 MOYUYOPayment 原生插件或 Stripe SDK 原生桥 ----
-        if (this.selectedMethodId === 'applepay' && res.clientSecret) {
-          const platform = (uni.getSystemInfoSync && uni.getSystemInfoSync().platform) || ''
-          if (platform === 'ios') {
-            const apResult = await startApplePayNative({
-              clientSecret: res.clientSecret,
-              merchantId: res.applePayMerchantId || 'merchant.com.moyuyo.app',
-              countryCode: res.countryCode || 'US',
-              currencyCode: res.currencyCode || 'USD',
-            })
-            if (apResult && apResult.success) {
-              return true
-            }
-            console.warn(
-              '[pay] Apple Pay 原生通道不可用，回落 Stripe Checkout WebView:',
-              apResult?.error?.message || apResult?.error,
-            )
-          }
-        }
-      } catch (e) {
-        // 原生通道任何异常都静默回落 WebView，避免前端直接崩
-        console.warn('[pay] tryNativePayment exception, fallback to WebView:', e)
-      }
-      return false
     },
 
     /**
@@ -373,7 +314,7 @@ export default {
         createPaymentWebView({
           page: this,
           onReturn: (ret) => {
-            this.handlePayResult(ret.status || '', ret.status === 'success' ? '' : '支付取消')
+            this.handlePayResult(ret.status || '', ret.status === 'success' ? '' : i18n.t('orderPay.payCancelled'))
           },
           onMessage: (e) => {
             const data = e.detail?.data?.[0]
@@ -410,13 +351,14 @@ export default {
      * - 小程序：clientType=MP，走中转页
      */
     buildClientPayload() {
-      let clientType = 'H5'
-      // //#ifdef APP-PLUS
-      clientType = 'APP'
-      // //#endif
-      // //#ifdef MP
-      clientType = 'MP'
-      // //#endif
+      // 优先使用 onLoad 时从 query / 条件编译得到的 clientType，避免被本地条件编译覆盖
+      // APP 端下发 schemeBase=moyuyo://pay/return → 后端把 success/cancel URL 写成自定义 scheme，
+      // 第三方 APP 付完款后用 scheme 唤回 Moyuyo APP
+      let clientType = this.clientType || 'H5'
+      // 兜底：如果 query 没传 clientType 且当前是 APP 端，按 APP 处理
+      // #ifdef APP-PLUS
+      if (!this.clientType) clientType = 'APP'
+      // #endif
       return {
         clientType,
         schemeBase: clientType === 'APP' ? 'moyuyo://pay/return' : '',
@@ -425,21 +367,21 @@ export default {
 
     startPolling() {
       this.status = 'processing'
-      this.statusText = 'Waiting for payment...'
+      this.statusText = i18n.t('orderPay.statusText.waiting')
       this.stopPolling()
       this.pollTimer = setInterval(async () => {
         try {
           const order = await orderApi.getOrderDetail(this.orderId)
           if (order.status === 'PAID') {
             this.status = 'success'
-            this.statusText = 'Payment successful!'
+            this.statusText = i18n.t('orderPay.statusText.success')
             this.stopPolling()
             // 支付成功:同步移除本地待付款暂存记录
             removePendingOrder(this.orderId)
             setTimeout(() => this.goDetail(), 1500)
           } else if (order.status === 'CANCELLED') {
             this.status = 'failed'
-            this.statusText = 'Payment cancelled'
+            this.statusText = i18n.t('orderPay.statusText.cancelled')
             this.stopPolling()
           }
         } catch (e) {
@@ -464,6 +406,8 @@ export default {
 
     /**
      * H4 修复：从 localStorage 读取中转页回传结果（兜底，兼容 web-view 不传 message 的场景）
+     * 美国市场方案：moyuyoshop.com/payment/return.html 三通道 (postMessage / localStorage / scheme) 都到位后，
+     * 此方法主要应对 postMessage 失败（如 iOS 15 Safari 拦截跨域）的情况。
      */
     readPayResultFromStorage() {
       try {
@@ -474,10 +418,12 @@ export default {
         // 仅消费与当前订单匹配的结果，避免历史脏数据误判
         if (data.orderNo && this.order?.orderNo && data.orderNo !== this.order.orderNo) return
         // 已处理过则跳过（避免重复跳转）
-        if (uni.getStorageSync('moyuyo_pay_result_handled') === data.timestamp || raw._handled)
-          return
-        // 标记已消费 + 立即清空，防止下次进入再触发
-        uni.setStorageSync('moyuyo_pay_result_handled', Date.now())
+        const handledTs = uni.getStorageSync('moyuyo_pay_result_handled')
+        if (handledTs && Number(handledTs) === Number(data.timestamp)) return
+        // 标记已消费 + 立即清空 payload 与时间戳，防止下次进入再触发
+        uni.setStorageSync('moyuyo_pay_result_handled', String(data.timestamp))
+        uni.removeStorageSync('moyuyo_pay_result')
+        uni.removeStorageSync('moyuyo_pay_result_timestamp')
         this.handlePayResult(data.status, data.message)
       } catch (e) {
         // ignore
@@ -493,7 +439,7 @@ export default {
         if (order.status === 'PAID') {
           this.handlePayResult('success', '')
         } else if (order.status === 'CANCELLED') {
-          this.handlePayResult('cancelled', '订单已取消')
+          this.handlePayResult('cancelled', i18n.t('orderPay.cancelReason'))
         }
       } catch (e) {
         // ignore

@@ -1,12 +1,6 @@
 ﻿<template>
   <view class="chat-history-page">
-    <view class="nav-bar">
-      <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">客服会话</text>
-      <view class="nav-placeholder" />
-    </view>
+
 
     <view class="tab-bar">
       <view
@@ -53,8 +47,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { csApi } from '@/api'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.communityChatHistory')
+
 
 const tabs = ['全部', '进行中', '已关闭']
+
+
 const activeTab = ref(0)
 const sessions = ref([])
 const loading = ref(false)
@@ -116,29 +115,14 @@ onMounted(() => {
   min-height: 100vh;
   background: var(--color-background);
 }
-.nav-bar {
-  display: flex;
-  align-items: center;
-  height: 88rpx;
-  padding: 0 24rpx;
-  background: var(--color-surface);
-  border-bottom: 1rpx solid var(--color-divider);
-}
 .nav-back {
   width: 60rpx;
-}
-.back-icon {
-  font-size: 44rpx;
-  color: var(--color-primary);
 }
 .nav-title {
   flex: 1;
   text-align: center;
   font-size: 32rpx;
   font-weight: 600;
-}
-.nav-placeholder {
-  width: 60rpx;
 }
 .tab-bar {
   display: flex;

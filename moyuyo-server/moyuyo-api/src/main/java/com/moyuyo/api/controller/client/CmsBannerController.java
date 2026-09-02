@@ -38,7 +38,8 @@ public class CmsBannerController {
             List<CmsContentEntity> all = cmsContentMapper.selectList(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CmsContentEntity>()
                     .eq(CmsContentEntity::getType, "BANNER")
-                    .eq(CmsContentEntity::getStatus, "ACTIVE")
+                    // 兼容历史数据：管理后台曾用中文"投放中"写入，现统一为英文 ACTIVE
+                    .in(CmsContentEntity::getStatus, "ACTIVE", "投放中")
                     .and(w -> w.isNull(CmsContentEntity::getStartTime).or().le(CmsContentEntity::getStartTime, now))
                     .and(w -> w.isNull(CmsContentEntity::getEndTime).or().ge(CmsContentEntity::getEndTime, now))
                     .orderByAsc(CmsContentEntity::getSortOrder)
@@ -53,7 +54,12 @@ public class CmsBannerController {
                 item.put("linkUrl", e.getLinkUrl());
                 item.put("location", e.getLocation());
                 item.put("sortOrder", e.getSortOrder());
-                item.put("tag", extractTag(e.getTitle(), e.getContent()));
+                // 优先使用管理后台手动设置的 tag 字段；未设置时降级到自动提取
+                String tag = e.getTag();
+                if (tag == null || tag.isBlank()) {
+                    tag = extractTag(e.getTitle(), e.getContent());
+                }
+                item.put("tag", tag);
                 result.add(item);
             }
             return Result.success(result);

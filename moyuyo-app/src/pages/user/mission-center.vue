@@ -1,13 +1,5 @@
-﻿<template>
+<template>
   <view class="mission-center">
-    <view class="nav-header">
-      <view class="nav-back" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">任务中心</text>
-      <view class="nav-placeholder" />
-    </view>
-
     <view class="content">
       <view class="progress-card">
         <view class="ring-wrapper">
@@ -37,7 +29,7 @@
             <text class="ring-side-label">今日已获积分</text>
             <text class="ring-side-points">+{{ todayPoints }}</text>
             <view class="streak-row">
-              <text class="flame-icon"><text class="luc luc-flame" /></text>
+              <text class="flame-icon luc-flame" />
               <text class="streak-text">连续签到 {{ streak }} 天</text>
             </view>
           </view>
@@ -218,6 +210,8 @@ const ACTION_ROUTE_MAP = {
 }
 
 export default {
+  pageTitleKey: 'pageTitle.userMissionCenter',
+
   data() {
     return {
       activeTab: 'daily',
@@ -256,10 +250,6 @@ export default {
   },
 
   methods: {
-    goBack() {
-      uni.navigateBack()
-    },
-
     switchTab(key) {
       this.activeTab = key
     },
@@ -395,46 +385,6 @@ export default {
   background: #f2f2f7;
   display: flex;
   flex-direction: column;
-}
-
-.nav-header {
-  display: flex;
-  align-items: center;
-  height: 88rpx;
-  padding: 0 32rpx;
-  background: var(--color-background, #ffffff);
-  border-bottom: 1rpx solid #e5e5ea;
-  position: sticky;
-  top: 0;
-  z-index: 20;
-}
-
-.nav-back {
-  width: 64rpx;
-  height: 64rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-}
-
-.back-icon {
-  font-size: 40rpx;
-  /* 改用品牌主色深一档 */
-  color: var(--color-primary-dark, #b8a66b);
-  font-weight: 300;
-}
-
-.nav-title {
-  flex: 1;
-  text-align: center;
-  font-size: 32rpx;
-  font-weight: 600;
-  color: var(--color-text, #1d1d1f);
-}
-
-.nav-placeholder {
-  width: 64rpx;
 }
 
 .content {

@@ -4,7 +4,7 @@
     <view class="header">
       <view class="header-left">
         <view class="back-btn" @click="goBack">
-          <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+          <text class="back-icon luc-arrow-left" />
         </view>
         <text class="header-title">Pet Hub 3D</text>
       </view>
@@ -36,7 +36,7 @@
         </view>
         <!-- 3D 标签 -->
         <view class="viewport-badge">
-          <text class="badge-icon"><text class="luc luc-package" /></text>
+          <text class="badge-icon luc-package" />
           <text class="badge-text">3D 预览</text>
         </view>
         <!-- 旋转/缩放控制 -->
@@ -65,7 +65,7 @@
             <text class="pet-desc">{{ currentPet.breed }} · {{ currentPet.age }}</text>
           </view>
           <view class="info-right">
-            <text class="scene-icon"><text class="luc luc-map-pin" /></text>
+            <text class="scene-icon luc-map-pin" />
             <text class="scene-name">{{ sceneLabels[currentScene] }}</text>
           </view>
         </view>
@@ -96,7 +96,7 @@
         <view class="section-header">
           <text class="section-title">我的宠物</text>
           <view class="add-pet-btn" @click="onAddPet">
-            <text class="add-icon"><text class="luc luc-plus" /></text>
+            <text class="add-icon luc-plus" />
             <text class="add-text">添加</text>
           </view>
         </view>
@@ -180,8 +180,13 @@
 </template>
 <script setup>
 import { ref, computed } from 'vue'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.petPetHub3d')
+
 
 // 返回上一页
+
+
 const goBack = () => uni.navigateBack()
 
 // AR 模式状态

@@ -8,15 +8,6 @@
        6. 条款/隐私协议放在CTA下方(小字+弱色),不阻挡注册主流程
        7. 底部登录入口,分隔线+弱色文案 -->
   <view class="register">
-    <!-- 顶部导航:浅色背景文字返回,品牌居中 -->
-    <view class="topbar">
-      <view class="topbar-back" @click="goBack">
-        <text class="luc luc-arrow-left topbar-icon" />
-      </view>
-      <text class="topbar-brand">MOYUYO</text>
-      <view class="topbar-placeholder" />
-    </view>
-
     <scroll-view scroll-y class="page-scroll">
       <view class="page-inner">
         <!-- 标题区:明确价值主张(参考Target注册页) -->
@@ -32,7 +23,7 @@
             <text class="social-label">{{ $t('auth.signUpWithGoogle') }}</text>
           </view>
           <view class="social-btn apple" @click="onSocial('apple')">
-            <text class="social-icon-apple" />
+            <image src="/static/icons/apple.svg" class="social-logo social-logo-apple" mode="aspectFit" />
             <text class="social-label">{{ $t('auth.signUpWithApple') }}</text>
           </view>
         </view>
@@ -258,8 +249,11 @@
 <script>
 import { useUserStore } from '@/store'
 import { i18n } from '@/i18n'
+import { sendEmailVerification, confirmEmailVerification, sendPhoneCode } from '@/api/user'
 
 export default {
+  pageTitleKey: 'pageTitle.userRegister',
+
   data() {
     return {
       localeVersion: 0,
@@ -334,6 +328,8 @@ export default {
   },
   onUnload() {
     if (this._unsubLocale) this._unsubLocale()
+    if (this._emailCodeTimer) clearInterval(this._emailCodeTimer)
+    if (this._smsCodeTimer) clearInterval(this._smsCodeTimer)
   },
 
   methods: {
@@ -347,16 +343,23 @@ export default {
       }
       uni.showLoading({ title: i18n.t('auth.registering'), mask: true })
       try {
+        const isPhone = this.activeTab === 'phone'
         await this.userStore.register({
           nickname: this.nickname,
-          email: this.activeTab === 'email' ? this.email : null,
-          phone: this.activeTab === 'phone' ? this.countryCode + this.phone : null,
+          email: isPhone ? null : this.email,
+          phone: isPhone ? this.countryCode + this.phone : null,
+          // 手机号注册必传短信验证码(后端 verifyPhoneCode 校验)
+          smsCode: isPhone ? this.smsCode : null,
           password: this.password,
           petType: this.petType,
         })
         uni.hideLoading()
         uni.showToast({ title: i18n.t('auth.registerSuccess'), icon: 'success' })
-        setTimeout(() => uni.navigateBack(), 1000)
+        // 注册成功:reLaunch到首页 tab,清空注册/登录栈,避免用户按返回又回到登录页
+        // (Amazon/Target/Shein 标准做法)
+        setTimeout(() => {
+          uni.reLaunch({ url: '/pages/tabbar/home' })
+        }, 800)
       } catch (e) {
         uni.hideLoading()
         uni.showToast({ title: e.message || i18n.t('auth.registerFailed'), icon: 'none' })
@@ -369,24 +372,57 @@ export default {
         uni.showToast({ title: i18n.t('auth.phoneRequired'), icon: 'none' })
         return
       }
+      // 启动倒计时(先禁用按钮,防止重复点击)
       this.codeCountdown = 60
       const timer = setInterval(() => {
         this.codeCountdown -= 1
-        if (this.codeCountdown <= 0) clearInterval(timer)
+        if (this.codeCountdown <= 0) {
+          clearInterval(timer)
+          this._smsCodeTimer = null
+        }
       }, 1000)
+      this._smsCodeTimer = timer
+      // 真发短信:调 POST /api/v1/auth/phone/send-code,
+      // purpose=REGISTER 让后端写入 mo_sms_code 时区分用途。
+      // 失败时回滚倒计时,允许用户重试。
+      const fullPhone = this.countryCode + this.phone
+      sendPhoneCode(fullPhone, 'REGISTER')
+        .then(() => {
+          uni.showToast({ title: i18n.t('auth.codeSent'), icon: 'success' })
+        })
+        .catch((e) => {
+          clearInterval(timer)
+          this.codeCountdown = 0
+          uni.showToast({ title: e.message || i18n.t('auth.sendCodeFailed'), icon: 'none' })
+        })
     },
 
-    onSendEmailCode() {
+    async onSendEmailCode() {
       if (this.emailCodeCountdown > 0) return
       if (!this.email?.includes('@')) {
         uni.showToast({ title: i18n.t('auth.invalidEmail'), icon: 'none' })
         return
       }
+      // 启动倒计时(先禁用按钮,防止重复点击)
       this.emailCodeCountdown = 60
       const timer = setInterval(() => {
         this.emailCodeCountdown -= 1
-        if (this.emailCodeCountdown <= 0) clearInterval(timer)
+        if (this.emailCodeCountdown <= 0) {
+          clearInterval(timer)
+          this._emailCodeTimer = null
+        }
       }, 1000)
+      this._emailCodeTimer = timer
+      try {
+        // 调用后端 POST /api/v1/auth/email/verify,真实验证码邮件发送
+        await sendEmailVerification(this.email)
+        uni.showToast({ title: i18n.t('auth.codeSent'), icon: 'success' })
+      } catch (e) {
+        // 失败时重置倒计时,允许用户重试
+        clearInterval(timer)
+        this.emailCodeCountdown = 0
+        uni.showToast({ title: e.message || i18n.t('auth.sendCodeFailed'), icon: 'none' })
+      }
     },
 
     // 选择国家:更新区号(同时模板countryFlag会自动更新)
@@ -417,9 +453,6 @@ export default {
       })
     },
 
-    goBack() {
-      uni.navigateBack()
-    },
     goLogin() {
       // 登录页与注册页互跳使用reLaunch避免栈叠加(美国电商标准做法)
       uni.navigateTo({ url: '/pages/user/login' })
@@ -440,47 +473,6 @@ export default {
   background: #ffffff;
   display: flex;
   flex-direction: column;
-}
-
-/* 顶部导航栏:浅文字返回+品牌字间距排版(Apple HIG风格) */
-.topbar {
-  display: flex;
-  align-items: center;
-  height: 88rpx;
-  padding: 0 24rpx;
-  padding-top: env(safe-area-inset-top);
-  background: #ffffff;
-  border-bottom: 1rpx solid #f0f0f3;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.topbar-back {
-  width: 56rpx;
-  height: 56rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.topbar-icon {
-  font-size: 40rpx;
-  color: #1d1d1f;
-  line-height: 1;
-}
-
-.topbar-brand {
-  flex: 1;
-  text-align: center;
-  font-size: 28rpx;
-  font-weight: 700;
-  letter-spacing: 4rpx;
-  color: #1d1d1f;
-}
-
-.topbar-placeholder {
-  width: 56rpx;
 }
 
 /* 可滚动区:占满剩余高度,与底部登录入口解耦 */
@@ -555,13 +547,11 @@ export default {
   height: 36rpx;
 }
 
-.social-icon-apple {
-  width: 36rpx;
-  height: 36rpx;
-  border-radius: 4rpx;
-  background: currentColor;
-  -webkit-mask: url('/static/icons/apple.svg') no-repeat center / contain;
-  mask: url('/static/icons/apple.svg') no-repeat center / contain;
+/* Apple 图标在黑色按钮上需要显示为白色。
+ * lucide svg 是 stroke="currentColor",用 <image> 加载后 currentColor 不生效,
+ * 改用 filter:invert 把单色 SVG 翻成白色(0=全黑 → invert 后全白). */
+.social-logo-apple {
+  filter: brightness(0) invert(1);
 }
 
 .social-label {

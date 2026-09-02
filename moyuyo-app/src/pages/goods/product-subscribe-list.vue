@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">订阅商品</text>
       <view class="header-spacer" />
@@ -12,7 +12,7 @@
     <!-- 搜索栏 -->
     <view class="search-bar">
       <view class="search-input-wrap">
-        <text class="search-icon"><text class="luc luc-search" /></text>
+        <text class="search-icon luc-search" />
         <input
           class="search-input"
           placeholder="搜索可订阅商品"
@@ -84,13 +84,13 @@
 
       <!-- 空状态 -->
       <view v-if="filteredProducts.length === 0" class="empty-state">
-        <text class="empty-icon"><text class="luc luc-package" /></text>
+        <text class="empty-icon luc-package" />
         <text class="empty-text">暂无匹配的可订阅商品</text>
       </view>
 
       <!-- 底部提示 -->
       <view class="tip-box">
-        <text class="tip-icon"><text class="luc luc-lightbulb" /></text>
+        <text class="tip-icon luc-lightbulb" />
         <text class="tip-text">更多商品正在陆续开放订阅，敬请期待！</text>
       </view>
 
@@ -101,8 +101,13 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.goodsProductSubscribeList')
+
 
 // 搜索关键词
+
+
 const searchKeyword = ref('')
 
 // 选中的分类

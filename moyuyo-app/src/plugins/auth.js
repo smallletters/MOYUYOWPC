@@ -14,6 +14,9 @@ const PLUGIN_NAME = 'MOYUYO-Auth'
 export function loginWithApple() {
   // #ifdef APP-PLUS
   const plugin = uni.requireNativePlugin(PLUGIN_NAME)
+  if (!plugin) {
+    return Promise.reject(new Error('原生登录插件不可用,请使用其他登录方式'))
+  }
   return new Promise((resolve, reject) => {
     plugin.loginWithApple({}, (result) => {
       if (result.success) {
@@ -41,6 +44,9 @@ export function loginWithApple() {
 export function loginWithGoogle() {
   // #ifdef APP-PLUS
   const plugin = uni.requireNativePlugin(PLUGIN_NAME)
+  if (!plugin) {
+    return Promise.reject(new Error('原生登录插件不可用,请使用其他登录方式'))
+  }
   return new Promise((resolve, reject) => {
     plugin.loginWithGoogle({}, (result) => {
       if (result.success) {
@@ -68,6 +74,9 @@ export function loginWithGoogle() {
 export function loginWithFacebook() {
   // #ifdef APP-PLUS
   const plugin = uni.requireNativePlugin(PLUGIN_NAME)
+  if (!plugin) {
+    return Promise.reject(new Error('原生登录插件不可用,请使用其他登录方式'))
+  }
   return new Promise((resolve, reject) => {
     plugin.loginWithFacebook({}, (result) => {
       if (result.success) {
@@ -96,6 +105,7 @@ export function loginWithFacebook() {
 export function isAppInstalled(provider) {
   // #ifdef APP-PLUS
   const plugin = uni.requireNativePlugin(PLUGIN_NAME)
+  if (!plugin) return Promise.resolve(false)
   return new Promise((resolve) => {
     plugin.isAppInstalled({ provider }, (result) => {
       resolve(!!result.installed)
@@ -111,6 +121,7 @@ export function isAppInstalled(provider) {
 export function logoutFromProvider(provider) {
   // #ifdef APP-PLUS
   const plugin = uni.requireNativePlugin(PLUGIN_NAME)
+  if (!plugin) return
   plugin.logout({ provider }, () => {})
   // #endif
 }

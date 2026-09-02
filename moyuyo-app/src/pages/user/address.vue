@@ -1,16 +1,8 @@
 <template>
   <view class="address">
     <!-- 顶部导航栏：标题 + 新增收货地址（始终可见） -->
-    <view class="header-bar">
+    <view class="navbar">
       <view
-        v-if="!fromCheckout"
-        class="header-back"
-        aria-label="返回"
-        @click="goBack">
-        <text class="luc luc-arrow-left" />
-      </view>
-      <view
-        v-else
         class="header-back"
         aria-label="返回"
         @click="goBack">
@@ -105,6 +97,8 @@ import { addressApi } from '@/api'
 import { i18n } from '@/i18n'
 
 export default {
+  pageTitleKey: 'pageTitle.userAddress',
+
   data() {
     return {
       localeVersion: 0,
@@ -242,17 +236,6 @@ export default {
 }
 
 /* ============ 顶部 ============ */
-.header-bar {
-  display: flex;
-  align-items: center;
-  height: 88rpx;
-  padding: 0 24rpx;
-  background: var(--color-surface);
-  border-bottom: 1rpx solid var(--color-divider);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
 .header-back {
   width: 64rpx;
   height: 64rpx;

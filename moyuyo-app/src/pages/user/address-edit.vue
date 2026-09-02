@@ -1,12 +1,6 @@
 <template>
   <view class="address-edit">
-    <view class="header-bar">
-      <view class="header-back" aria-label="返回" @click="goBack">
-        <text class="luc luc-arrow-left" />
-      </view>
-      <text class="title">{{ form.id ? $t('address.editTitle') : $t('address.addTitle') }}</text>
-      <view class="header-spacer" />
-    </view>
+
 
     <scroll-view scroll-y class="form">
       <view class="input-group">
@@ -166,6 +160,8 @@ const COUNTRY_CODES = [
 ]
 
 export default {
+  pageTitleKey: 'pageTitle.userAddressEdit',
+
   data() {
     return {
       localeVersion: 0,
@@ -301,17 +297,6 @@ export default {
 }
 
 /* ============ 顶部 ============ */
-.header-bar {
-  display: flex;
-  align-items: center;
-  height: 88rpx;
-  padding: 0 24rpx;
-  background: var(--color-surface);
-  border-bottom: 1rpx solid var(--color-divider);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
 .header-back {
   width: 64rpx;
   height: 64rpx;

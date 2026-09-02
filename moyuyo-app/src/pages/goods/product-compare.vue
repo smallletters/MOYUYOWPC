@@ -1,15 +1,7 @@
 ﻿<template>
   <view class="product-compare">
-    <view class="nav-header">
-      <view class="nav-back" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">商品对比（{{ products.length }}/4）</text>
-      <view class="nav-action" @click="showAddPicker = true">
-        <text class="action-icon">+</text>
-        <text class="action-text">添加商品</text>
-      </view>
-    </view>
+
+
 
     <scroll-view class="scroll" scroll-y>
       <view class="thumb-row">
@@ -19,7 +11,7 @@
           </view>
           <text class="thumb-label">{{ product.name }}</text>
           <view class="thumb-remove" @click.stop="removeProduct(idx)">
-            <text class="remove-icon"><text class="luc luc-x" /></text>
+            <text class="remove-icon luc-x" />
           </view>
         </view>
         <view
@@ -46,7 +38,7 @@
               <text class="product-name">{{ product.name }}</text>
               <text class="product-price">${{ product.price }}</text>
               <view class="product-rating">
-                <text class="star"><text class="luc luc-star" /></text>
+                <text class="star luc-star" />
                 <text class="rating-num">{{ product.rating }}</text>
               </view>
             </view>
@@ -185,6 +177,8 @@ const SPEC_ROWS = [
 ]
 
 export default {
+  pageTitleKey: 'pageTitle.goodsProductCompare',
+
   data() {
     return {
       products: [...MOCK_PRODUCTS],
@@ -195,10 +189,6 @@ export default {
   },
 
   methods: {
-    goBack() {
-      uni.navigateBack()
-    },
-
     removeProduct(idx) {
       this.products.splice(idx, 1)
     },

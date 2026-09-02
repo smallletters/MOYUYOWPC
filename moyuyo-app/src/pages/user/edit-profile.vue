@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">{{ t('editProfile.title') }}</text>
       <view class="save-link" :class="{ disabled: saving }" @click="onSave">
@@ -23,7 +23,7 @@
             <text class="item-label">{{ t('editProfile.nickname') }}</text>
             <view class="item-right">
               <text class="item-value">{{ profile.nickname || t('editProfile.notSet') }}</text>
-              <text class="chevron"><text class="luc luc-chevron-right" /></text>
+              <text class="chevron luc-chevron-right" />
             </view>
           </view>
           <view class="divider indent" />
@@ -32,7 +32,7 @@
             <text class="item-label">{{ t('editProfile.gender') }}</text>
             <view class="item-right">
               <text class="item-value">{{ genderLabel(profile.gender) }}</text>
-              <text class="chevron"><text class="luc luc-chevron-right" /></text>
+              <text class="chevron luc-chevron-right" />
             </view>
           </view>
           <view class="divider indent" />
@@ -41,7 +41,7 @@
             <text class="item-label">{{ t('editProfile.birthday') }}</text>
             <view class="item-right">
               <text class="item-value">{{ profile.birthday || t('editProfile.notSet') }}</text>
-              <text class="chevron"><text class="luc luc-chevron-right" /></text>
+              <text class="chevron luc-chevron-right" />
             </view>
           </view>
         </view>
@@ -101,8 +101,13 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { getUserInfo, updateUser as updateUserApi } from '@/api/user'
 import { i18n } from '@/i18n'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userEditProfile')
+
 
 // 轻量翻译函数（响应 localeVersion 变化，刷新依赖本地化的 computed）
+
+
 const localeVersion = ref(0)
 let _unsubLocale = null
 function t(key, params) {

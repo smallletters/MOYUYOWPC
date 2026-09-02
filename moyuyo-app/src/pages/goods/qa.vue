@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">商品问答</text>
       <view class="header-btn" @click="onOpenAskModal">
@@ -14,7 +14,7 @@
     <!-- 搜索栏 -->
     <view class="search-bar">
       <view class="search-field">
-        <text class="search-icon"><text class="luc luc-search" /></text>
+        <text class="search-icon luc-search" />
         <input
           v-model="searchText"
           class="search-input"
@@ -62,7 +62,7 @@
         <text class="qa-question">{{ item.question }}</text>
         <view class="qa-asker">
           <view class="asker-avatar">
-            <text class="asker-icon"><text class="luc luc-user" /></text>
+            <text class="asker-icon luc-user" />
           </view>
           <text class="asker-name">{{ item.asker }}</text>
           <text class="asker-time">{{ item.time }}</text>
@@ -100,14 +100,14 @@
 
     <!-- 空搜索状态 -->
     <view v-else-if="searchText" class="empty-state">
-      <text class="empty-icon"><text class="luc luc-search" /></text>
+      <text class="empty-icon luc-search" />
       <text class="empty-title">没有找到相关问题</text>
       <text class="empty-desc">试试换个关键词搜索</text>
     </view>
 
     <!-- 底部 FAB 提问按钮 -->
     <view class="fab-ask" @click="onOpenAskModal">
-      <text class="fab-icon"><text class="luc luc-pencil" /></text>
+      <text class="fab-icon luc-pencil" />
     </view>
 
     <!-- 提问弹窗 -->
@@ -136,6 +136,8 @@
 
 <script>
 export default {
+  pageTitleKey: 'pageTitle.goodsQa',
+
   data() {
     return {
       searchText: '',

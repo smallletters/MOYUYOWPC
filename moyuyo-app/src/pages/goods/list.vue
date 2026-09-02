@@ -123,6 +123,8 @@
 import { productApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.goodsList',
+
   data() {
     return {
       sortBy: 'default',

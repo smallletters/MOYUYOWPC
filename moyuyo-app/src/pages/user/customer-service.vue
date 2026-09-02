@@ -2,10 +2,10 @@
   <view class="cs">
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">客服中心</text>
-      <view class="header-action" @click="goHistory">会话记录</view>
+      <text class="header-title">{{ $t('csChat.title') }}</text>
+      <view class="header-action" @click="goHistory">{{ $t('csChat.history') }}</view>
     </view>
 
     <scroll-view
@@ -20,7 +20,7 @@
         <view class="bot-avatar">M</view>
         <view class="msg-content">
           <view class="msg-bubble msg-bot-bubble">
-            <text class="msg-text">您好！我是 MOYUYO 智能客服小助手，请问需要什么帮助？</text>
+            <text class="msg-text">{{ $t('csChat.welcomeMsg') }}</text>
           </view>
         </view>
       </view>
@@ -52,14 +52,14 @@
             </text>
           </view>
           <text class="msg-time">
-            <text v-if="m.pending">发送中…</text>
-            <text v-else-if="m.failed" class="msg-failed-text">发送失败</text>
+            <text v-if="m.pending">{{ $t('csChat.sending') }}</text>
+            <text v-else-if="m.failed" class="msg-failed-text">{{ $t('csChat.sendFailed') }}</text>
             <text v-else>{{ formatTime(m.createTime) }}</text>
           </text>
         </view>
         <!-- 用户消息:头像在右 -->
         <view v-if="m.senderType === 'USER'" class="msg-avatar msg-avatar-user">
-          {{ (m.senderName || '我')[0] }}
+          {{ (m.senderName || $t('csChat.userFallbackChar'))[0] }}
         </view>
       </view>
     </scroll-view>
@@ -84,9 +84,9 @@
 
     <!-- 商品上下文(从商品详情页跳转过来时携带) -->
     <view v-if="productName" class="product-context">
-      <text class="product-context-label">正在咨询:</text>
+      <text class="product-context-label">{{ $t('csChat.productContextHint') }}{{ $t('csChat.productContextHintSuffix') }}</text>
       <text class="product-context-name">{{ productName }}</text>
-      <view class="product-context-close" aria-label="关闭" @tap="clearProductContext">
+      <view class="product-context-close" :aria-label="$t('csChat.closeAriaLabel')" @tap="clearProductContext">
         <text class="luc luc-x" />
       </view>
     </view>
@@ -119,8 +119,13 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { csApi } from '@/api'
 import { i18n } from '@/i18n'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userCustomerService')
+
 
 const sessionId = ref(null)
+
+
 const messages = ref([])
 const draft = ref('')
 const scrollIntoView = ref('')
@@ -142,22 +147,11 @@ const isIdleTimeout = ref(false)
 // 上一次活跃时间戳(用户发消息 / 收到消息时更新)
 let lastActiveAt = 0
 
-// 根据是否带商品上下文动态切换快捷问题
+// 根据是否带商品上下文动态切换快捷问题(文案从 i18n 字典取)
 const quickReplies = computed(() => {
-  if (productName.value) {
-    return [
-      { text: '商品规格咨询' },
-      { text: '是否有现货' },
-      { text: '价格是否有优惠' },
-      { text: '发货时间' },
-    ]
-  }
-  return [
-    { text: '查询物流' },
-    { text: '申请退款' },
-    { text: '如何开发票' },
-    { text: '优惠券怎么用' },
-  ]
+  const key = productName.value ? 'csChat.quickRepliesProduct' : 'csChat.quickRepliesGeneral'
+  const list = i18n.t(key) || []
+  return list.map((text) => ({ text }))
 })
 
 // 接收路由参数(从商品详情页跳转时携带商品 ID/名称)
@@ -191,7 +185,7 @@ async function ensureSession() {
     messages.value = await fetchMessagesWithRetry(sessionId.value)
     // 若带了商品上下文且会话为空,自动发一条开场白消息
     if (productName.value && messages.value.length === 0) {
-      const intro = `你好,我想咨询商品「${productName.value}」`
+      const intro = i18n.t('csChat.productIntroFmt', { name: productName.value })
       await sendText(intro)
     }
     scrollToBottom()
@@ -308,7 +302,7 @@ function startIdleCheck() {
       messages.value.push({
         id: `timeout-${Date.now()}`,
         senderType: 'SYSTEM',
-        senderName: '系统',
+        senderName: i18n.t('csChat.systemName'),
         content: i18n.t('csChat.timeoutContent'),
         createTime: new Date().toISOString(),
         isTimeout: true,
@@ -350,7 +344,7 @@ async function resetSession() {
     uni.showToast({ title: i18n.t('csChat.reopenSession'), icon: 'success' })
   } catch (e) {
     console.warn('[cs] resetSession failed', e)
-    uni.showToast({ title: e?.message || 'Failed to start', icon: 'none' })
+    uni.showToast({ title: e?.message || i18n.t('csChat.reopenFailedFallback'), icon: 'none' })
   }
 }
 

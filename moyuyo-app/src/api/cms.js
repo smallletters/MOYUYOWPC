@@ -2,11 +2,14 @@
  * CMS Banner 公开接口（无需鉴权）
  * dev 模式由 Vite proxy 转发 /api/v1/cms/* → http://localhost:8080，
  * 生产由 nginx 反代统一对外，避免 CORS。
- * 也可通过 process.env.VITE_ADMIN_API_BASE 注入绝对地址（移动端打包走绝对 URL）。
+ * 也可通过 VITE_ADMIN_API_BASE 注入绝对地址（移动端打包走绝对 URL）。
+ * 注意：vite.config.js 的 define 会把 process.env.VITE_ADMIN_API_BASE 在编译期
+ *      静态替换成字符串字面量。所以这里直接读 process.env.VITE_ADMIN_API_BASE
+ *      即可拿到值（已变成 "http://..." 字面量）。不能 typeof process !== 'undefined'
+ *      守卫——uni-app APP 端 process 未 polyfill 会短路；也不能用 import.meta.env
+ *      ——vite-plugin-uni APP 端 polyfill 会用 new URL/document 导致白屏。
  */
-const ABSOLUTE_BASE = (typeof process !== 'undefined' && process.env && process.env.VITE_ADMIN_API_BASE)
-  || (typeof window !== 'undefined' && window.__MOYUYO_CONFIG__ && window.__MOYUYO_CONFIG__.VITE_ADMIN_API_BASE)
-  || ''
+const ABSOLUTE_BASE = process.env.VITE_ADMIN_API_BASE || ''
 
 function buildUrl(path) {
   return ABSOLUTE_BASE ? `${ABSOLUTE_BASE}${path}` : path

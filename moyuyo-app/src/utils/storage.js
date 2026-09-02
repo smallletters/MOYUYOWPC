@@ -21,6 +21,8 @@ export const STORAGE_KEYS = {
   NOTIFICATION_ENABLED: `${STORAGE_PREFIX}notification_enabled`,
   // 立即购买临时单品:商品详情页直达结算用,不写入购物车
   BUYNOW_ITEM: `${STORAGE_PREFIX}buynow_item`,
+  // 社区帖子草稿列表:支持多份草稿(数组)
+  COMMUNITY_POST_DRAFTS: `${STORAGE_PREFIX}community_post_drafts`,
 }
 
 export function setStorage(key, value) {

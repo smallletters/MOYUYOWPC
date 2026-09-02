@@ -7,7 +7,7 @@
 
     <scroll-view scroll-y class="content">
       <view class="search-bar">
-        <text class="search-icon"><text class="luc luc-search" /></text>
+        <text class="search-icon luc-search" />
         <input v-model="keyword" placeholder="搜索常见问题" class="search-input">
       </view>
 

@@ -41,7 +41,7 @@
         <picker :value="reasonIndex" :range="reasonOptions" @change="onReasonChange">
           <view class="picker">
             <text>{{ reasonOptions[reasonIndex] || $t('orderRefund.reasonPlaceholder') }}</text>
-            <text class="arrow"><text class="luc luc-chevron-right" /></text>
+            <text class="arrow luc-chevron-right" />
           </view>
         </picker>
       </view>
@@ -67,6 +67,8 @@ import { orderApi } from '@/api'
 import { i18n } from '@/i18n'
 
 export default {
+  pageTitleKey: 'pageTitle.orderRefund',
+
   data() {
     return {
       orderId: null,

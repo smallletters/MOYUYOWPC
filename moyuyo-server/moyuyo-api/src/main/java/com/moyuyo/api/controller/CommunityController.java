@@ -7,11 +7,14 @@ import com.moyuyo.common.dto.community.CommunityCommentCreateRequest;
 import com.moyuyo.common.dto.community.CommunityPostCreateRequest;
 import com.moyuyo.common.dto.community.CommunityPostVO;
 import com.moyuyo.common.security.UserContextHolder;
+import com.moyuyo.dao.admin.entity.SensitiveWordEntity;
+import com.moyuyo.dao.admin.mapper.SensitiveWordMapper;
 import com.moyuyo.dao.entity.CommunityCollectEntity;
 import com.moyuyo.dao.entity.CommunityTopicV2Entity;
 import com.moyuyo.dao.mapper.CommunityCollectMapper;
 import com.moyuyo.dao.mapper.CommunityTopicV2Mapper;
 import com.moyuyo.service.CommunityService;
+import com.moyuyo.service.impl.SensitiveWordFilter;
 import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,6 +34,7 @@ public class CommunityController {
     private final CommunityService communityService;
     private final CommunityCollectMapper collectMapper;
     private final CommunityTopicV2Mapper topicMapper;
+    private final SensitiveWordMapper sensitiveWordMapper;
 
     @Operation(summary = "帖子列表（公开）")
     @GetMapping("/posts")
@@ -49,14 +53,19 @@ public class CommunityController {
     @Operation(summary = "搜索帖子（与 listPosts?keyword= 等价，便于前端直链）")
     @GetMapping("/search")
     public Result<Page<CommunityPostVO>> searchPosts(
-            @RequestParam String q,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String q,
             @RequestParam(required = false) String topic,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        if (q == null || q.trim().isEmpty()) {
+        // 兼容两种参数名：前端默认用 keyword，旧调用可能用 q
+        String term = (keyword != null && !keyword.trim().isEmpty())
+                ? keyword.trim()
+                : (q != null ? q.trim() : null);
+        if (term == null || term.isEmpty()) {
             return Result.success(communityService.listPosts(topic, page, size));
         }
-        return Result.success(communityService.searchPosts(q.trim(), topic, page, size));
+        return Result.success(communityService.searchPosts(term, topic, page, size));
     }
 
     @Operation(summary = "帖子详情")
@@ -71,7 +80,8 @@ public class CommunityController {
     @RateLimiter(name = "postCreate", fallbackMethod = "postRateLimitFallback")
     public Result<CommunityPostVO> createPost(@Valid @RequestBody CommunityPostCreateRequest request) {
         return Result.success(communityService.createPost(
-                UserContextHolder.getUserId(), request.getContent(), request.getImages(), request.getTopic()));
+                UserContextHolder.getUserId(), request.getContent(), request.getImages(),
+                request.getVideo(), request.getCover(), request.getTopic(), request.getScheduledAt()));
     }
 
     @Operation(summary = "我的帖子")
@@ -160,15 +170,37 @@ public class CommunityController {
                 UserContextHolder.getUserId(), page, size));
     }
 
+    /**
+     * 实时敏感词检查(用户端):前端发布时调用,不阻断,仅返回命中列表给前端展示。
+     * 注意:这是软提示,真正的拒绝仍然在 createPost/addComment 服务端执行。
+     */
+    @Operation(summary = "实时敏感词检查(不阻断,仅返回命中词)")
+    @GetMapping("/sensitive-check")
+    public Result<java.util.List<String>> sensitiveCheck(@RequestParam String text) {
+        if (text == null || text.isEmpty()) {
+            return Result.success(java.util.List.of());
+        }
+        // 复用 admin mapper 加载启用词
+        java.util.List<SensitiveWordEntity> words = sensitiveWordMapper.selectList(
+                new LambdaQueryWrapper<SensitiveWordEntity>().eq(SensitiveWordEntity::getStatus, "ENABLED"));
+        java.util.List<String> hits = new SensitiveWordFilter(words).findHits(text);
+        return Result.success(hits);
+    }
+
     // === 话题广场 ===
     @Operation(summary = "话题列表（社区广场）")
     @GetMapping("/topics")
-    public Result<List<CommunityTopicV2Entity>> topics() {
-        return Result.success(topicMapper.selectList(
-                new LambdaQueryWrapper<CommunityTopicV2Entity>()
-                        .eq(CommunityTopicV2Entity::getActive, 1)
-                        .orderByDesc(CommunityTopicV2Entity::getHot)
-                        .orderByAsc(CommunityTopicV2Entity::getSortOrder)));
+    public Result<List<CommunityTopicV2Entity>> topics(
+            @RequestParam(required = false) String keyword) {
+        LambdaQueryWrapper<CommunityTopicV2Entity> wrapper = new LambdaQueryWrapper<CommunityTopicV2Entity>()
+                .eq(CommunityTopicV2Entity::getActive, 1);
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String safe = keyword.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+            wrapper.like(CommunityTopicV2Entity::getName, "%" + safe + "%");
+        }
+        wrapper.orderByDesc(CommunityTopicV2Entity::getHot)
+                .orderByAsc(CommunityTopicV2Entity::getSortOrder);
+        return Result.success(topicMapper.selectList(wrapper));
     }
 
     @Operation(summary = "话题详情")

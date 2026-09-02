@@ -1,13 +1,8 @@
 ﻿<template>
   <view class="charity-donation">
     <!-- 顶部导航栏 -->
-    <view class="nav-header">
-      <view class="nav-back" @tap="goBack">
-        <text class="luc luc-arrow-left" />
-      </view>
-      <text class="nav-title">为流浪动物献爱心</text>
-      <view class="nav-placeholder" />
-    </view>
+
+
 
     <scroll-view scroll-y class="scroll">
       <!-- 爱心横幅卡片 -->
@@ -194,6 +189,8 @@
 import { memberApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.goodsCharityDonation',
+
   data() {
     return {
       currentOption: 'roundup',
@@ -231,10 +228,6 @@ export default {
     },
   },
   methods: {
-    goBack() {
-      uni.navigateBack()
-    },
-
     selectOption(option) {
       this.currentOption = option
       this.updateDonation()

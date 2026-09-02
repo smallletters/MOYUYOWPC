@@ -1,0 +1,35 @@
+﻿
+> moyuyo-admin@1.0.0 dev
+> vite
+
+node.exe : [33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cj
+s-node-api-deprecated for more details.[39m
+At line:1 char:1
++ & "C:\smallletters\Program Files\nodejs/node.exe" "C:\smallletters\Pr ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([33mThe CJS bu...e details.[39m:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m3588[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/admin/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m13:48:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/products/categories[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m13:48:46[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/products/list?page=1&size=10[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m13:48:46[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/products/categories[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m13:49:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/cms/list[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m14:08:28[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/CmsManage.vue[22m
+[2m14:08:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/views/CmsManage.vue?vue&type=style&index=0&scoped=05df5cef&lang.css[22m

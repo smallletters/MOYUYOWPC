@@ -49,8 +49,8 @@ server:
     keep-alive-timeout: 30s
     # 空闲连接超时（连接建立但无数据的窗口）
     connection-idle-timeout: 30s
-    # 单请求体最大字节数（默认 2MB，限制为 20MB 防止 OOM）
-    max-swallow-size: 20MB
+    # 单请求体最大字节数（默认 2MB，限制为 200MB 覆盖社区视频上传场景）
+    max-swallow-size: 200MB
     # HTTP 请求头最大字节数（默认 8KB，调大到 16KB 兼容含较多自定义头的客户端）
     max-http-request-header-size: 16KB
     # HTTP 表单 POST 体最大字节数（防止恶意表单提交 OOM；Spring Boot 默认未设置，由 Tomcat 默认 2MB）
@@ -59,7 +59,7 @@ server:
     connection-timeout: 10s
     # 限制 POST/GET/PUT 等 HTTP 方法的请求体最大字节数（与 max-swallow-size 对齐做兜底）
     # Tomcat 默认 maxPostSize=-1 表示不限制，攻击者可上传 2GB 大表单拖垮服务
-    max-post-size: 20MB
+    max-post-size: 200MB
     # 限制请求参数总字节数（query string + form）：防止攻击者构造 1MB+ 参数列表撑爆内存
     # Tomcat 默认 maxParameterCount=10000，maxSavePostSize=-1（不限制）；显式收紧
     max-parameter-count: 1000
@@ -209,8 +209,10 @@ spring:
   servlet:
     multipart:
       enabled: true
-      max-file-size: 20MB
-      max-request-size: 25MB
+      # 单文件 200MB：覆盖社区视频上传场景（30s 内短视频通常 10~80MB）
+      max-file-size: 200MB
+      # 整次请求略大于单文件留余量
+      max-request-size: 210MB
       file-size-threshold: 2MB
       # 强制写入临时文件：超过 file-size-threshold 的数据不再走堆内存，避免大文件 OOM
       # resolve-lazily=true 推迟参数解析，减少文件上传早期阶段的拒绝服务面

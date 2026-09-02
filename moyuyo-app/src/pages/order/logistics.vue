@@ -41,6 +41,8 @@ import { orderApi } from '@/api'
 import { i18n } from '@/i18n'
 
 export default {
+  pageTitleKey: 'pageTitle.orderLogistics',
+
   data() {
     return {
       orderId: null,

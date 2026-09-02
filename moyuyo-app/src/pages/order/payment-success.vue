@@ -2,7 +2,7 @@
   <view class="payment-success">
     <view class="success-icon-wrap">
       <view class="success-icon">
-        <text class="check-mark"><text class="luc luc-check" /></text>
+        <text class="check-mark luc-check" />
       </view>
     </view>
 
@@ -32,7 +32,7 @@
         <text>{{ $t('paymentSuccess.shareFriend') }}</text>
       </view>
       <view class="points-badge">
-        <text class="gift-icon"><text class="luc luc-gift" /></text>
+        <text class="gift-icon luc-gift" />
         <text>{{ $t('paymentSuccess.earnedPoints', { count: 50 }) }}</text>
       </view>
     </view>
@@ -43,6 +43,8 @@
 import { i18n } from '@/i18n'
 
 export default {
+  pageTitleKey: 'pageTitle.orderPaymentSuccess',
+
   data() {
     return {
       orderNo: 'MOY20260715001',

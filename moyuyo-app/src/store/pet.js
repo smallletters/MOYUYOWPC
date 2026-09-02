@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { petApi } from '@/api'
+import { useUserStore } from '@/store/user'
 
 export const usePetStore = defineStore('pet', {
   state: () => ({
@@ -18,6 +19,13 @@ export const usePetStore = defineStore('pet', {
 
   actions: {
     async loadPets() {
+      // 未登录直接返回,避免每个用到 petStore.loadPets 的页面都打 401 噪音
+      const userStore = useUserStore()
+      if (!userStore.isLoggedIn) {
+        this.pets = []
+        this.currentPet = null
+        return
+      }
       this.loading = true
       try {
         this.pets = await petApi.getPets()

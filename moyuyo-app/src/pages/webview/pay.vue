@@ -28,6 +28,8 @@ import { orderApi } from '@/api'
 import { useCartStore } from '@/store'
 
 export default {
+  pageTitleKey: 'pageTitle.webviewPay',
+
   data() {
     return {
       orderId: null,

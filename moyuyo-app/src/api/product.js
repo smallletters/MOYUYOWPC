@@ -6,12 +6,12 @@
  */
 import { getStorage, STORAGE_KEYS } from '@/utils/storage'
 
-const ABSOLUTE_BASE =
-  (typeof process !== 'undefined' && process.env && process.env.VITE_ADMIN_API_BASE) ||
-  (typeof window !== 'undefined' &&
-    window.__MOYUYO_CONFIG__ &&
-    window.__MOYUYO_CONFIG__.VITE_ADMIN_API_BASE) ||
-  ''
+// 后端 API 绝对地址：vite.config.js 的 define 会把 process.env.VITE_ADMIN_API_BASE
+// 在编译期静态替换成字符串字面量。uni-app APP 端 process 由引擎 polyfill，
+// 直接读 process.env.VITE_ADMIN_API_BASE 即可拿到值。
+// 注意：不能用 import.meta.env，vite-plugin-uni 在 APP 端 polyfill import.meta
+// 时会插入 new URL/document，导致 APP 白屏。
+const ABSOLUTE_BASE = process.env.VITE_ADMIN_API_BASE || ''
 
 function buildUrl(path) {
   return ABSOLUTE_BASE ? `${ABSOLUTE_BASE}${path}` : path

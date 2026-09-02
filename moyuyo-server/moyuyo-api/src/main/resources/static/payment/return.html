@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Status</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Payment Status - MOYUYO</title>
     <style>
+        /* 保持与 Moyuyo APP 同款视觉：浅米色底 + Amazon 黄强调 + 圆润卡片 */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background: #f6f2ee;
             color: #2e2b29;
             margin: 0;
@@ -16,106 +17,196 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
         }
         .card {
             background: #fff;
-            border-radius: 12px;
-            padding: 32px 24px;
+            border-radius: 16px;
+            padding: 36px 24px;
             max-width: 360px;
+            width: 100%;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            box-sizing: border-box;
+        }
+        .logo {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            color: #2e2b29;
+            margin-bottom: 20px;
         }
         .icon {
-            font-size: 64px;
+            font-size: 72px;
             line-height: 1;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
+            font-weight: 700;
         }
         .success { color: #067d62; }
         .failed { color: #c0116e; }
-        h2 { margin: 0 0 8px; font-size: 22px; }
-        p { margin: 0; color: #6e6e73; font-size: 14px; }
+        .pending { color: #8e8e93; }
+        h2 { margin: 0 0 8px; font-size: 22px; font-weight: 700; color: #2e2b29; }
+        p { margin: 8px 0 0; color: #6e6e73; font-size: 14px; line-height: 1.5; }
+        .order-no { font-family: monospace; background: #f7f7f7; padding: 4px 8px; border-radius: 4px; font-size: 13px; margin-top: 12px; display: inline-block; }
+        .btn {
+            margin-top: 20px;
+            background: #f0c14b;
+            border: 1px solid #a88734;
+            border-radius: 6px;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #2e2b29;
+            cursor: pointer;
+            display: inline-block;
+            -webkit-appearance: none;
+        }
+        .btn:active { background: #ddb347; }
     </style>
 </head>
 <body>
 <div class="card">
-    <div class="icon" id="icon">⏳</div>
+    <div class="logo">MOYUYO</div>
+    <div class="icon pending" id="icon">⏳</div>
     <h2 id="title">Processing your payment...</h2>
-    <p id="hint">Please return to the app to view the result.</p>
+    <p id="hint">Returning to the app automatically.</p>
+    <div id="orderNoWrap" style="display:none">
+        <span class="order-no" id="orderNoText"></span>
+    </div>
+    <a id="jumpBtn" class="btn" style="display:none" href="#">Return to MOYUYO</a>
 </div>
 
 <script>
-    // 解析 URL query：?status=success|fail&orderNo=xxx&message=xxx&scheme=moyuyo
-    // Stripe Checkout Session 会在 successUrl 后追加 &session_id={CHECKOUT_SESSION_ID}，一并透传给 APP
-    // APP 端如果用 HTTP 版 return.html 兜底（没命中 moyuyo:// 直接回跳），
-    // 我们会主动 location.href = moyuyo://pay/return?status=xxx 跳回 APP，
-    // 避免 WebView 卡在支付结果页、用户不知道要返回哪里。
+    /**
+     * Moyuyo 支付回跳中转页
+     *
+     * 调用方（后端 PaymentServiceImpl）生成的 URL 形如：
+     *   https://moyuyoshop.com/payment/return.html?status=success&orderNo=xxx
+     *   https://moyuyoshop.com/payment/return.html?status=cancel&orderNo=xxx
+     *   Stripe 还可能追加 &session_id=cs_xxx
+     *   PayPal 还可能追加 &token=xxx&PayerID=xxx
+     *
+     * 三通道把结果回传给 APP：
+     *   1) window.parent.postMessage(payload, '*')  → APP 内嵌 <web-view> 收 @message 事件
+     *   2) localStorage.moyuyo_pay_result           → APP onShow 兜底读取（防丢单）
+     *   3) window.location.href = moyuyo://pay/return?...  → APP scheme 监听强制唤回
+     */
     (function () {
-        var params = new URLSearchParams(window.location.search);
-        var status = (params.get('status') || '').toLowerCase();
-        var message = params.get('message') || '';
-        var orderNo = params.get('orderNo') || '';
-        var schemeBase = params.get('scheme') || 'moyuyo://pay/return';
-        var iconEl = document.getElementById('icon');
-        var titleEl = document.getElementById('title');
-        var hintEl = document.getElementById('hint');
-
-        if (status === 'success') {
-            iconEl.textContent = '✓';
-            iconEl.className = 'icon success';
-            titleEl.textContent = 'Payment successful';
-            hintEl.textContent = 'You can return to the app now.';
-        } else if (status === 'cancel' || status === 'failed') {
-            iconEl.textContent = '✕';
-            iconEl.className = 'icon failed';
-            titleEl.textContent = 'Payment cancelled';
-            hintEl.textContent = message || 'You have cancelled the payment.';
-        }
-
-        var payload = {
-            type: 'pay_result',
-            status: status || 'unknown',
-            message: message,
-            orderNo: orderNo,
-            sessionId: params.get('session_id') || '',
-            timestamp: Date.now()
-        };
-
-        // 通道 1：向 uni-app <web-view> 父容器发 postMessage（H5 + APP 内嵌通用）
         try {
-            if (window.parent && window.parent !== window) {
-                window.parent.postMessage(payload, '*');
+            var params = new URLSearchParams(window.location.search);
+            var status = (params.get('status') || '').toLowerCase();
+            var message = params.get('message') || '';
+            var orderNo = params.get('orderNo') || '';
+            // 兼容历史：前端 buildReturnUrl() 可能传 scheme=moyuyo；新方案统一用 moyuyo://pay/return
+            var schemeBase = params.get('scheme') || 'moyuyo://pay/return';
+            // 透传 Stripe session_id / PayPal token / PayerID 便于前端调试
+            var sessionId = params.get('session_id') || '';
+            var paypalToken = params.get('token') || '';
+            var paypalPayerId = params.get('PayerID') || params.get('payerID') || '';
+
+            var iconEl = document.getElementById('icon');
+            var titleEl = document.getElementById('title');
+            var hintEl = document.getElementById('hint');
+            var orderNoWrap = document.getElementById('orderNoWrap');
+            var orderNoText = document.getElementById('orderNoText');
+            var jumpBtn = document.getElementById('jumpBtn');
+
+            // ---- 1) 渲染 UI ----
+            if (status === 'success') {
+                iconEl.textContent = '✓';
+                iconEl.className = 'icon success';
+                titleEl.textContent = 'Payment successful';
+                hintEl.textContent = 'Returning to MOYUYO...';
+            } else if (status === 'cancel' || status === 'cancelled' || status === 'failed') {
+                iconEl.textContent = '✕';
+                iconEl.className = 'icon failed';
+                titleEl.textContent = status === 'failed' ? 'Payment failed' : 'Payment cancelled';
+                hintEl.textContent = message || 'You can return to the app and try again.';
+                jumpBtn.textContent = 'Back to MOYUYO';
+                jumpBtn.style.display = 'inline-block';
+            } else {
+                iconEl.textContent = '⏳';
+                iconEl.className = 'icon pending';
+                titleEl.textContent = 'Processing your payment...';
+                hintEl.textContent = 'Please return to the app to view the result.';
             }
-        } catch (e) {}
 
-        // 通道 2：localStorage 兜底（浏览器/H5 刷新、新标签打开等场景）
-        try {
-            localStorage.setItem('moyuyo_pay_result', JSON.stringify(payload));
-        } catch (e) {}
+            if (orderNo) {
+                orderNoWrap.style.display = 'block';
+                orderNoText.textContent = 'Order #' + orderNo;
+            }
 
-        // 通道 3：APP 端兜底跳自定义 scheme
-        // 识别依据：userAgent 里包含 uni-app / Html5Plus / HBuilderX 任一关键字
-        // 或浏览器是 in-app webview 环境（非 http(s) 顶层打开）
-        function isAppWebView() {
-            var ua = (navigator.userAgent || '').toString();
-            if (/Html5Plus|uni-app|HBuilderX|Moyuyo/i.test(ua)) return true;
-            // iOS WKWebView：不出现 Safari 关键字却存在 Mobile/*
-            if (/iPhone|iPad|iPod/.test(ua) && !/Safari/.test(ua)) return true;
-            // Android WebView：出现 wv / _ 且无 Chrome 版本标记（Chrome + Version 关键字）
-            if (/Android/.test(ua) && (/wv\)/.test(ua) || /; wv /.test(ua))) return true;
-            return false;
-        }
-        function jumpScheme() {
+            // ---- 2) 组装 payload ----
+            var payload = {
+                type: 'pay_result',
+                status: status || 'unknown',
+                message: message,
+                orderNo: orderNo,
+                sessionId: sessionId,
+                paypalToken: paypalToken,
+                paypalPayerId: paypalPayerId,
+                timestamp: Date.now()
+            };
+
+            // ---- 通道 1: postMessage 给 uni-app <web-view> 父容器 ----
             try {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage(payload, '*');
+                }
+            } catch (e) {
+                /* postMessage 失败不影响后续通道 */
+            }
+
+            // ---- 通道 2: localStorage 兜底（H5/浏览器/APP onShow 读取） ----
+            try {
+                localStorage.setItem('moyuyo_pay_result', JSON.stringify(payload));
+                // 标记本次写入的时间戳，APP 端可通过比较 timestamp 避免重复消费
+                localStorage.setItem('moyuyo_pay_result_timestamp', String(payload.timestamp));
+            } catch (e) {
+                /* localStorage 写入失败（隐私模式等）忽略 */
+            }
+
+            // ---- 通道 3: APP 端兜底跳自定义 scheme ----
+            // 识别是否在 APP 内嵌 WebView 打开（uni-app / 5+ / WebView UA 特征）
+            function isAppWebView() {
+                var ua = (navigator.userAgent || '').toString();
+                if (/Html5Plus|uni-app|HBuilderX|Moyuyo/i.test(ua)) return true;
+                // iOS WKWebView（无 Safari 关键字但有 Mobile/*）
+                if (/iPhone|iPad|iPod/.test(ua) && !/Safari/.test(ua)) return true;
+                // Android WebView（含 wv 标记）
+                if (/Android/.test(ua) && (/wv\)/.test(ua) || /; wv /.test(ua))) return true;
+                return false;
+            }
+
+            function buildSchemeUrl() {
                 var sep = schemeBase.indexOf('?') === -1 ? '?' : '&';
-                var dest = schemeBase + sep
+                return schemeBase + sep
                     + 'status=' + encodeURIComponent(status || '')
                     + '&orderNo=' + encodeURIComponent(orderNo)
                     + (message ? '&message=' + encodeURIComponent(message) : '');
-                window.location.href = dest;
-            } catch (e) {}
-        }
-        if (isAppWebView()) {
-            // 展示完结果后 200ms 自动回跳 APP
-            setTimeout(jumpScheme, 200);
+            }
+
+            function jumpScheme() {
+                try {
+                    window.location.href = buildSchemeUrl();
+                } catch (e) {
+                    /* 跳转失败忽略 */
+                }
+            }
+
+            if (isAppWebView()) {
+                // APP 内打开 → 延迟 600ms 让 UI 渲染完再跳
+                setTimeout(jumpScheme, 600);
+            } else {
+                // 浏览器 H5 → 用户手动点按钮回 APP
+                jumpBtn.style.display = 'inline-block';
+                jumpBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    jumpScheme();
+                });
+            }
+        } catch (e) {
+            // 全局兜底：避免中转页本身异常导致用户卡住
+            console.error('[payment/return] init error:', e);
         }
     })();
 </script>

@@ -2,7 +2,7 @@
   <view class="cart">
     <!-- 空状态 -->
     <view v-if="cartItems.length === 0 && expiredItems.length === 0" class="empty">
-      <text class="empty-emoji"><text class="luc luc-shopping-cart" /></text>
+      <text class="empty-emoji luc-shopping-cart" />
       <text class="empty-text">购物车是空的</text>
       <view class="btn btn-primary" @click="goShopping">去逛逛</view>
     </view>
@@ -11,7 +11,7 @@
       <!-- 顶部导航栏 -->
       <view class="header">
         <view class="header-back" aria-label="返回" @click="goBack">
-          <text class="header-back-icon"><text class="luc luc-arrow-left" /></text>
+          <text class="header-back-icon luc-arrow-left" />
         </view>
         <text class="header-title">购物车</text>
         <view class="header-edit" @click="onToggleEdit">
@@ -21,10 +21,10 @@
 
       <!-- 降价提醒横幅 -->
       <view v-if="showBanner" class="banner">
-        <text class="banner-tag"><text class="luc luc-tag" /></text>
+        <text class="banner-tag luc-tag" />
         <text class="banner-text">2件商品降价啦，已为您节省$18.00</text>
         <view class="banner-close" aria-label="关闭提醒" @click="showBanner = false">
-          <text class="banner-close-icon"><text class="luc luc-x" /></text>
+          <text class="banner-close-icon luc-x" />
         </view>
       </view>
 
@@ -169,6 +169,8 @@
 import { useCartStore } from '@/store'
 
 export default {
+  pageTitleKey: 'pageTitle.cartIndex',
+
   onLoad() {
     // 已登录则从服务端同步购物车
     if (this.cartStore && this.cartStore.syncFromServer) {

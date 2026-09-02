@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">{{ $t('wallet.title') }}</text>
       <view class="header-btn" />
@@ -72,28 +72,28 @@
             <text class="feature-label">{{ $t('wallet.features.points') }}</text>
             <text class="feature-value">{{ walletData.points.toLocaleString() }}</text>
           </view>
-          <text class="feature-arrow"><text class="luc luc-chevron-right" /></text>
+          <text class="feature-arrow luc-chevron-right" />
         </view>
         <view class="feature-item" @click="goCoupons">
           <view class="feature-info">
             <text class="feature-label">{{ $t('wallet.features.coupons') }}</text>
             <text class="feature-value">{{ walletData.coupons }}</text>
           </view>
-          <text class="feature-arrow"><text class="luc luc-chevron-right" /></text>
+          <text class="feature-arrow luc-chevron-right" />
         </view>
         <view class="feature-item" @click="goGiftCards">
           <view class="feature-info">
             <text class="feature-label">{{ $t('wallet.features.giftCards') }}</text>
             <text class="feature-value">{{ walletData.giftCards }}</text>
           </view>
-          <text class="feature-arrow"><text class="luc luc-chevron-right" /></text>
+          <text class="feature-arrow luc-chevron-right" />
         </view>
         <view class="feature-item" @click="viewAllTransactions">
           <view class="feature-info">
             <text class="feature-label">{{ $t('wallet.features.transactions') }}</text>
             <text class="feature-value">{{ $t('wallet.features.viewAll') }}</text>
           </view>
-          <text class="feature-arrow"><text class="luc luc-chevron-right" /></text>
+          <text class="feature-arrow luc-chevron-right" />
         </view>
       </view>
 
@@ -135,6 +135,8 @@ import { memberApi } from '@/api'
 import { i18n } from '@/i18n'
 
 export default {
+  pageTitleKey: 'pageTitle.userWallet',
+
   data() {
     return {
       balanceVisible: true,

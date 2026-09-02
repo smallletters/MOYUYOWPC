@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">订阅服务</text>
       <view class="header-spacer" />
@@ -114,6 +114,8 @@
 import { subscribeApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.userSubscribe',
+
   data() {
     return {
       currentPlan: null,

@@ -77,13 +77,19 @@
     {
       "path": "pages/user/login",
       "style": {
-        "navigationBarTitleText": "登录"
+        "navigationBarTitleText": "登录",
+        "navigationBarBackVisible": true,
+        "enablePullDownRefresh": false,
+        "backgroundColorTop": "#ffffff"
       }
     },
     {
       "path": "pages/user/register",
       "style": {
-        "navigationBarTitleText": "注册"
+        "navigationBarTitleText": "注册",
+        "navigationBarBackVisible": true,
+        "enablePullDownRefresh": false,
+        "backgroundColorTop": "#ffffff"
       }
     },
     {
@@ -185,7 +191,20 @@
     {
       "path": "pages/community/create",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "发布帖子"
+      }
+    },
+    {
+      "path": "pages/community/search",
+      "style": {
+        "navigationBarTitleText": "搜索"
+      }
+    },
+    {
+      "path": "pages/community/drafts",
+      "style": {
+        "navigationBarTitleText": "草稿箱"
       }
     },
     {
@@ -223,7 +242,8 @@
     {
       "path": "pages/user/settings",
       "style": {
-        "navigationBarTitleText": "设置"
+        "navigationBarTitleText": "设置",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -753,36 +773,62 @@
     "selectedColor": "#DBC98A",
     "backgroundColor": "#FFFFFF",
     "borderStyle": "black",
+    "iconfontSrc": "static/fonts/lucide.ttf",
     "list": [
       {
         "pagePath": "pages/tabbar/home",
-        "text": "首页",
-        "iconPath": "static/images/tabbar/home.svg",
-        "selectedIconPath": "static/images/tabbar/home-active.svg"
+        "text": "%home%",
+        "iconfont": {
+          "text": "\ue93c",
+          "selectedText": "\ue93c",
+          "fontSize": "20px",
+          "color": "#9A948C",
+          "selectedColor": "#DBC98A"
+        }
       },
       {
         "pagePath": "pages/tabbar/category",
-        "text": "分类",
-        "iconPath": "static/images/tabbar/category.svg",
-        "selectedIconPath": "static/images/tabbar/category-active.svg"
+        "text": "%category%",
+        "iconfont": {
+          "text": "\ue936",
+          "selectedText": "\ue936",
+          "fontSize": "20px",
+          "color": "#9A948C",
+          "selectedColor": "#DBC98A"
+        }
       },
       {
         "pagePath": "pages/tabbar/pet",
-        "text": "Pet",
-        "iconPath": "static/images/tabbar/pet.svg",
-        "selectedIconPath": "static/images/tabbar/pet-active.svg"
+        "text": "%pet%",
+        "iconfont": {
+          "text": "\ue956",
+          "selectedText": "\ue956",
+          "fontSize": "20px",
+          "color": "#9A948C",
+          "selectedColor": "#DBC98A"
+        }
       },
       {
         "pagePath": "pages/tabbar/community",
-        "text": "社区",
-        "iconPath": "static/images/tabbar/community.svg",
-        "selectedIconPath": "static/images/tabbar/community-active.svg"
+        "text": "%community%",
+        "iconfont": {
+          "text": "\ue94c",
+          "selectedText": "\ue94c",
+          "fontSize": "20px",
+          "color": "#9A948C",
+          "selectedColor": "#DBC98A"
+        }
       },
       {
         "pagePath": "pages/tabbar/user",
-        "text": "我的",
-        "iconPath": "static/images/tabbar/user.svg",
-        "selectedIconPath": "static/images/tabbar/user-active.svg"
+        "text": "%user%",
+        "iconfont": {
+          "text": "\ue982",
+          "selectedText": "\ue982",
+          "fontSize": "20px",
+          "color": "#9A948C",
+          "selectedColor": "#DBC98A"
+        }
       }
     ]
   },

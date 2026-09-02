@@ -2,7 +2,7 @@
   <view class="after-sales">
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">售后记录</text>
       <view class="header-btn right" @click="onApply">
@@ -52,7 +52,7 @@
             <text class="tag-status" :class="`tag-${item.status}`">{{ item.statusLabel }}</text>
             <text class="tag-type">{{ item.typeLabel }}</text>
           </view>
-          <text class="card-arrow"><text class="luc luc-chevron-right" /></text>
+          <text class="card-arrow luc-chevron-right" />
         </view>
 
         <view class="card-body">
@@ -125,6 +125,8 @@
 import { afterSalesApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.orderAfterSales',
+
   data() {
     return {
       activeTab: 'all',

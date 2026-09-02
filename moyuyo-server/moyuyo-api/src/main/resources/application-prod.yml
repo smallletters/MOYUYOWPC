@@ -160,6 +160,20 @@ spring:
           # 注意：MySQL 8.0.16+ 才支持 TLSv1.3，低于此版本需回退 TLSv1.2
           enabledTLSProtocols: TLSv1.3
 
+  # 邮件 SMTP：腾讯企业邮箱
+  # - host / port / username / password 由 docker-compose 透传 SPRING_MAIL_* ENV 后,
+  #   Spring Boot relaxed binding 自动绑定到 spring.mail.* 子键
+  # - 这里仅显式声明 properties Map 的额外 SMTP 参数(超时 / 编码),
+  #   以及 properties 子节点使用 dot-notation 会被 Spring 解析为层级 Map 传给 JavaMail Session
+  mail:
+    properties:
+      # 编码 UTF-8,避免中文标题乱码
+      mail.mime.charset: UTF-8
+      # SMTP 连接 / 读写超时(毫秒),避免外部 SMTP 挂起拖死工作线程
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 15000
+      mail.smtp.writetimeout: 15000
+
 mybatis-plus:
   configuration:
     # 生产环境使用 Slf4j 但禁用 SQL 日志（DEBUG 级别 MyBatis 会打印完整 SQL + 参数，

@@ -47,27 +47,30 @@ function isExternalAppScheme(url) {
   const scheme = getScheme(url)
   if (!scheme) return false
   // 已知要跳外 APP 的 scheme（持续收集扩展）
-  const open = [
-    'alipays',
-    'alipay',
-    'weixin',
-    'wechat',
-    'mqq',
-    'mqqapi',
-    'intent',
-    'paypal',
-    'paypalme',
-    'cashme',
-    'cashapp',
-    'venmo',
-    'googlepay',
-    'gpay',
-    'tez',
-    'itms-apps',
-    'itms-services',
-    'itms',
-    'com-apple-payment-pass',
-  ]
+    // 美国市场方案：只保留实际支付链路需要的 scheme
+    // - paypal / paypalme / paypalpay: PayPal 官方 SDK
+    // - googlepay / gpay: Google Pay APP
+    // - intent: Android intent:// URL（Stripe Checkout 跳 G Pay 用）
+    // - applepay / com-apple-payment-pass: iOS Apple Pay PassKit scheme
+    // - itms-*: App Store（用户未安装对应 APP 时可能跳到 App Store 提示下载）
+    const open = [
+      // PayPal 官方 SDK
+      'paypal',
+      'paypalme',
+      'paypalpay',
+      // Google Pay
+      'googlepay',
+      'gpay',
+      // Android intent:// URLs
+      'intent',
+      // iOS Apple Pay
+      'applepay',
+      'com-apple-payment-pass',
+      // App Store 兜底
+      'itms-apps',
+      'itms-services',
+      'itms',
+    ]
   if (open.indexOf(scheme) !== -1) return true
   // Android intent:// URLs
   if (url.indexOf('intent://') === 0) return true
@@ -125,15 +128,20 @@ export function createPaymentWebView(opts) {
         const url = event.url
         if (!url) return
 
+        // 调试日志：方便在真机排查 Stripe Checkout 触发的 scheme 类型
+        console.log('[payAppBridge] intercept url:', url)
+
         // 1) 命中 Moyuyo 自定义 scheme 回跳 → 告诉调用方（关 WebView + 处理结果）
         const ret = parseMoyuyoReturn(url)
         if (ret) {
+          console.log('[payAppBridge] moyuyo return, status=', ret.status, 'orderNo=', ret.orderNo)
           onReturn(ret)
           return
         }
 
         // 2) 支付自定义 scheme → 跳对方 APP
         if (isExternalAppScheme(url)) {
+          console.log('[payAppBridge] external scheme, openURL:', url)
           openExternalApp(url)
           return
         }

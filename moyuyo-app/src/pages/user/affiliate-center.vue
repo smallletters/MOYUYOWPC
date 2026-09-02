@@ -2,7 +2,7 @@
   <view class="page">
     <view class="header">
       <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="title">分销中心</text>
     </view>
@@ -60,8 +60,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { marketingApi } from '@/api'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userAffiliateCenter')
+
 
 const account = ref(null)
+
+
 const commissions = ref([])
 const loading = ref(false)
 

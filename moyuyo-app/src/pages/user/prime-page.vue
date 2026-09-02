@@ -187,8 +187,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { listPrimePlans, getPrimeStatus, subscribePrime, cancelPrime } from '@/api/marketing'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userPrimePage')
+
 
 const plans = ref([])
+
+
 const selectedPlanCode = ref('YEARLY') // 默认选中年付推荐方案
 const primeStatus = ref(null) // 当前用户 Prime 状态；null = 未开通
 const loading = ref(false)

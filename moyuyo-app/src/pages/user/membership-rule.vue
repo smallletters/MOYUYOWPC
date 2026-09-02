@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="rule-page">
     <!-- 顶部摘要卡：当前等级 + 积分 -->
     <view class="hero-card">
@@ -105,6 +105,14 @@
 </template>
 
 <script setup>
+
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userMembershipRule')
+
+
+
+
+
 // 等级阶梯（与后端 listLevels 字段对齐）
 const levels = [
   { code: 'L1', name: 'Member', threshold: 0, desc: '注册即获得，享受基础会员权益', rate: 1.0 },

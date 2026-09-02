@@ -1,13 +1,8 @@
 ﻿<template>
   <view class="crowdfunding">
     <!-- 顶部深色导航栏 -->
-    <view class="nav-header">
-      <view class="nav-back" @tap="goBack">
-        <text class="luc luc-arrow-left" />
-      </view>
-      <text class="nav-title">新品众筹</text>
-      <view class="nav-placeholder" />
-    </view>
+
+
 
     <scroll-view scroll-y class="scroll">
       <!-- 众筹主图区域 -->
@@ -238,15 +233,14 @@
 
 <script>
 export default {
+  pageTitleKey: 'pageTitle.goodsCrowdfunding',
+
   data() {
     return {
       riskOpen: false,
     }
   },
   methods: {
-    goBack() {
-      uni.navigateBack()
-    },
     toggleRisk() {
       this.riskOpen = !this.riskOpen
     },

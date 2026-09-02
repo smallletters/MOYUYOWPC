@@ -1,15 +1,8 @@
 <template>
   <view class="flash-sale">
     <!-- 顶部导航栏 -->
-    <view class="nav-header">
-      <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">限时抢购</text>
-      <view class="nav-back" @tap="toggleNotify">
-        <text class="notify-icon"><text class="luc luc-bell" /></text>
-      </view>
-    </view>
+
+
 
     <!-- 秒杀头部横幅：倒计时基于当前进行中活动最近一条 endTime -->
     <view class="flash-banner">
@@ -139,6 +132,8 @@ const SESSION_LIST = [
 ]
 
 export default {
+  pageTitleKey: 'pageTitle.goodsFlashSale',
+
   data() {
     return {
       activeSession: 'ongoing',
@@ -347,11 +342,6 @@ export default {
       const pad = (n) => String(n).padStart(2, '0')
       return { h: pad(h), m: pad(m), s: pad(s) }
     },
-
-    goBack() {
-      uni.navigateBack()
-    },
-
     toggleNotify() {
       uni.showToast({ title: '已设置开抢提醒', icon: 'success' })
     },

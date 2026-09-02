@@ -2,7 +2,7 @@
   <view class="browsing-history">
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">浏览记录</text>
       <view class="header-actions">
@@ -100,6 +100,8 @@ import browsingHistory from '@/utils/browsingHistory'
 import { i18n } from '@/i18n'
 
 export default {
+  pageTitleKey: 'pageTitle.userBrowsingHistory',
+
   data() {
     return {
       editMode: false,

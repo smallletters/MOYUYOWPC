@@ -4,7 +4,7 @@
     <view class="header">
       <view class="header-inner">
         <view class="header-btn" @click="onBack">
-          <text class="header-btn-icon"><text class="luc luc-arrow-left" /></text>
+          <text class="header-btn-icon luc-arrow-left" />
         </view>
         <text class="header-title">健康日历</text>
         <view class="header-btn header-btn-primary" @click="onAddReminder">
@@ -42,11 +42,11 @@
       <!-- 月份切换 -->
       <view class="calendar-header">
         <view class="cal-nav-btn" @click="prevMonth">
-          <text class="cal-nav-arrow"><text class="luc luc-arrow-left" /></text>
+          <text class="cal-nav-arrow luc-arrow-left" />
         </view>
         <text class="cal-month-label">{{ currentYear }}年{{ currentMonth + 1 }}月</text>
         <view class="cal-nav-btn" @click="nextMonth">
-          <text class="cal-nav-arrow"><text class="luc luc-chevron-right" /></text>
+          <text class="cal-nav-arrow luc-chevron-right" />
         </view>
       </view>
 
@@ -207,7 +207,7 @@
             <picker mode="date" :value="reminderForm.date" @change="onDateChange">
               <view class="form-picker">
                 <text class="form-picker-text">{{ reminderForm.date || '请选择日期' }}</text>
-                <text class="form-picker-arrow"><text class="luc luc-chevron-right" /></text>
+                <text class="form-picker-arrow luc-chevron-right" />
               </view>
             </picker>
           </view>
@@ -254,6 +254,8 @@ const TYPE_ICONS = {
 }
 
 export default {
+  pageTitleKey: 'pageTitle.petHealthCalendar',
+
   data() {
     const now = new Date()
     return {

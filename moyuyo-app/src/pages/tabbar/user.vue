@@ -5,20 +5,20 @@
         <image :src="userStore.userInfo?.avatar || defaultAvatar" class="avatar" />
         <view class="info">
           <text class="name">
-            {{ userStore.userInfo?.nickname || userStore.userInfo?.email || 'User' }}
+            {{ userStore.userInfo?.nickname || userStore.userInfo?.email || $t('userCenter.defaultNickname') }}
           </text>
           <text class="email">{{ userStore.userInfo?.email }}</text>
           <text class="member-level">{{ memberLevel }}</text>
         </view>
-        <text class="arrow"><text class="luc luc-chevron-right" /></text>
+        <text class="arrow luc-chevron-right" />
       </view>
       <view v-else class="login-prompt" @click="goLogin">
         <image :src="defaultAvatar" class="avatar" />
         <view class="login-text">
-          <text class="name">登录 / 注册</text>
-          <text class="email">登录后享受更多会员权益</text>
+          <text class="name">{{ $t('userCenter.loginRegister') }}</text>
+          <text class="email">{{ $t('userCenter.loginSubtitle') }}</text>
         </view>
-        <view class="login-btn">登录</view>
+        <view class="login-btn">{{ $t('userCenter.loginBtn') }}</view>
       </view>
     </view>
 
@@ -26,11 +26,11 @@
     <view v-if="userStore.isLoggedIn" class="vip-card" @click="goMembership">
       <view class="vip-bg" />
       <view class="vip-content">
-        <text class="vip-title">MOYUYO Member</text>
+        <text class="vip-title">{{ $t('userCenter.vipTitle') }}</text>
         <text class="vip-points">Points: {{ points.toLocaleString() }}</text>
-        <text class="vip-tip">Earn 5x points on this order</text>
+        <text class="vip-tip">{{ $t('userCenter.vipTip') }}</text>
       </view>
-      <text class="vip-arrow"><text class="luc luc-chevron-right" /></text>
+      <text class="vip-arrow luc-chevron-right" />
     </view>
 
     <!-- 钱包区域 -->
@@ -38,38 +38,38 @@
       <view class="wallet-grid">
         <view class="wallet-item" @click="goWallet">
           <text class="wallet-num">${{ walletBalance }}</text>
-          <text class="wallet-label">余额</text>
+          <text class="wallet-label">{{ $t('userCenter.walletBalance') }}</text>
         </view>
         <view class="wallet-item" @click="goPoints">
           <text class="wallet-num">{{ points.toLocaleString() }}</text>
-          <text class="wallet-label">积分</text>
+          <text class="wallet-label">{{ $t('userCenter.walletPoints') }}</text>
         </view>
         <view class="wallet-item" @click="goCoupons">
-          <text class="wallet-num">{{ couponCount }}张</text>
-          <text class="wallet-label">优惠券</text>
+          <text class="wallet-num">{{ couponCount }}{{ $t('coupons.unit') }}</text>
+          <text class="wallet-label">{{ $t('userCenter.walletCoupons') }}</text>
         </view>
         <view class="wallet-item" @click="goGiftCards">
-          <text class="wallet-num">{{ giftCardCount }}张</text>
-          <text class="wallet-label">礼品卡</text>
+          <text class="wallet-num">{{ giftCardCount }}{{ $t('coupons.unit') }}</text>
+          <text class="wallet-label">{{ $t('userCenter.walletGiftCards') }}</text>
         </view>
       </view>
     </view>
 
     <!-- 关注 / 粉丝 / 收藏 / 足迹 入口（封装为 social-grid 组件） -->
-    <social-grid :items="socialItems" @tap="onSocialTap" />
+    <social-grid :items="socialItems" @click="onSocialTap" />
 
     <!-- 订单宫格 -->
     <view class="card order-card">
       <view class="card-header">
-        <text class="card-title">我的订单</text>
+        <text class="card-title">{{ $t('userCenter.orderTitle') }}</text>
         <text class="card-more" @click="goOrders">
-          全部
+          {{ $t('userCenter.orderAll') }}
           <text class="luc luc-chevron-right" />
         </text>
       </view>
       <view class="order-grid">
         <view
-          v-for="item in orderTypes"
+          v-for="item in orderTypesLabel"
           :key="item.value"
           class="order-item"
           @click="goOrders(item.value)"
@@ -84,30 +84,38 @@
     <!-- 功能列表 -->
     <view class="card feature-card">
       <view
-        v-for="(f, i) in features"
+        v-for="(f, i) in featuresLabel"
         :key="i"
         class="feature-item"
         @click="onFeatureClick(f)">
         <text class="feature-icon luc" :class="$luc(f.icon)" />
         <text class="feature-label">{{ f.label }}</text>
-        <text class="feature-arrow"><text class="luc luc-chevron-right" /></text>
+        <text class="feature-arrow luc luc-chevron-right" />
       </view>
     </view>
 
     <view class="footer">
-      <text>MOYUYO ATELIER v1.0.0</text>
-      <text>Every Journey Together.</text>
+      <text>{{ $t('userCenter.footerBrand') }}</text>
+      <text>{{ $t('userCenter.footerSlogan') }}</text>
     </view>
   </view>
 </template>
 
 <script>
 import { useUserStore, useCartStore } from '@/store'
-import { memberApi, couponApi, giftCardApi, orderApi } from '@/api'
+import { i18n } from '@/i18n'
+import { memberApi, couponApi, giftCardApi, orderApi, communityApi } from '@/api'
 import followApi from '@/api/follow'
 import browseApi from '@/api/browsingHistory'
+// social-grid 是 src/components 下的自建组件,正常情况下 easycom.autoscan 会自动注册;
+// vite-plugin-uni H5 模式下偶尔会扫不到 kebab-case 引用,这里显式 import 兜底
+import SocialGrid from '@/components/social-grid/social-grid.vue'
 
 export default {
+  pageTitleKey: 'pageTitle.tabbarUser',
+
+  // 显式注册 social-grid 组件,避免 easycom.autoscan 在 vite-plugin-uni H5 模式下偶尔未扫到
+  components: { SocialGrid },
   data() {
     return {
       defaultAvatar: 'https://i.pravatar.cc/100?img=20',
@@ -120,24 +128,29 @@ export default {
       followerCount: 0,
       collectCount: 0,
       historyCount: 0,
+      // i18n locale 版本号:locale 切换时自增,触发依赖 i18n 的 computed 重算
+      localeVersion: 0,
+      // 订单宫格只存结构与图标,badge 由 loadOrderBadges 异步回填
+      // label 通过 orderTypesLabel computed 从 i18n 注入(响应 locale 切换)
       orderTypes: [
-        { value: 'PENDING_PAY', label: '待付款', icon: '💳', badge: 0 },
-        { value: 'CART', label: '购物车', icon: '🛒', badge: 0 },
-        { value: 'PENDING_RECEIVE', label: '待收货', icon: '🚚', badge: 0 },
-        { value: 'COMPLETED', label: '待评价', icon: '⭐', badge: 0 },
+        { value: 'PENDING_PAY', icon: '💳', badge: 0 },
+        { value: 'CART', icon: '🛒', badge: 0 },
+        { value: 'PENDING_RECEIVE', icon: '🚚', badge: 0 },
+        { value: 'COMPLETED', icon: '⭐', badge: 0 },
       ],
+      // 功能入口只存 id 与图标,label 通过 featuresLabel computed 从 i18n 注入
       features: [
-        { id: 'checkin', label: '每日签到', icon: 'calendar' },
-        { id: 'missions', label: '任务中心', icon: 'target' },
-        { id: 'invite', label: '邀请好友', icon: 'user-plus' },
-        { id: 'membership', label: '会员中心', icon: 'crown' },
-        { id: 'address', label: '收货地址', icon: 'map-pin' },
-        { id: 'pets', label: '宠物档案', icon: 'paw-print' },
-        { id: 'favorites', label: '我的收藏', icon: 'heart' },
-        { id: 'history', label: '浏览足迹', icon: 'footprints' },
-        { id: 'help', label: '帮助中心', icon: 'help-circle' },
-        { id: 'settings', label: '设置', icon: 'settings' },
-        { id: 'about', label: '关于我们', icon: 'sparkles' },
+        { id: 'checkin', icon: 'calendar' },
+        { id: 'missions', icon: 'target' },
+        { id: 'invite', icon: 'user-plus' },
+        { id: 'membership', icon: 'crown' },
+        { id: 'address', icon: 'map-pin' },
+        { id: 'pets', icon: 'paw-print' },
+        { id: 'favorites', icon: 'heart' },
+        { id: 'history', icon: 'footprints' },
+        { id: 'help', icon: 'help-circle' },
+        { id: 'settings', icon: 'settings' },
+        { id: 'about', icon: 'sparkles' },
       ],
     }
   },
@@ -147,35 +160,57 @@ export default {
       return useUserStore()
     },
     /**
-     * 社交宫格数据源：把原来散落的 4 个 @click 入口聚合到一个数组里
+     * 订单宫格渲染数据:把 data.orderTypes 拷一份并按 locale 注入 label
+     * (保持 data 中只放非文案字段,locale 变化时 computed 自动重算)
+     */
+    orderTypesLabel() {
+      void this.localeVersion
+      return this.orderTypes.map((t) => ({
+        ...t,
+        label: i18n.t(`userCenter.orderStatus.${t.value}`),
+      }))
+    },
+    /**
+     * 功能入口渲染数据:同 orderTypesLabel 思路,按 id 取 userCenter.featureXxx 文案
+     */
+    featuresLabel() {
+      void this.localeVersion
+      return this.features.map((f) => ({
+        ...f,
+        label: i18n.t(`userCenter.feature${f.id.charAt(0).toUpperCase()}${f.id.slice(1)}`),
+      }))
+    },
+    /**
+     * 社交宫格数据源:把原来散落的 4 个 @click 入口聚合到一个数组里
      * icon / bg 用于组件内渲染图标徽章,url 决定点击行为
      */
     socialItems() {
+      void this.localeVersion
       return [
         {
           key: 'following',
-          label: '关注',
+          label: i18n.t('userCenter.socialFollowing'),
           value: this.followingCount,
           icon: 'user-plus',
           url: '/pages/user/follow-list?mode=following',
         },
         {
           key: 'followers',
-          label: '粉丝',
+          label: i18n.t('userCenter.socialFollowers'),
           value: this.followerCount,
           icon: 'users',
           url: '/pages/user/follow-list?mode=followers',
         },
         {
           key: 'collection',
-          label: '收藏',
+          label: i18n.t('userCenter.socialCollection'),
           value: this.collectCount,
           icon: 'bookmark',
           url: '/pages/user/post-collection',
         },
         {
           key: 'history',
-          label: '足迹',
+          label: i18n.t('userCenter.socialHistory'),
           value: this.historyCount,
           icon: 'footprints',
           url: '/pages/user/browsing-history',
@@ -184,14 +219,8 @@ export default {
     },
     memberLevel() {
       if (!this.memberInfo) return ''
-      const levelMap = {
-        NORMAL: 'Member',
-        SILVER: 'Silver Member',
-        GOLD: 'Gold Member',
-        PLATINUM: 'Platinum Member',
-        DIAMOND: 'Diamond Member',
-      }
-      return levelMap[this.memberInfo.level] || this.memberInfo.level
+      void this.localeVersion
+      return i18n.t(`userCenter.memberLevel.${this.memberInfo.level}`) || this.memberInfo.level
     },
     growthPercent() {
       if (!this.memberInfo) return 0
@@ -202,11 +231,24 @@ export default {
   },
 
   onShow() {
+    // 首次进入时订阅 i18n locale 变化,触发依赖文案的 computed 重算
+    if (!this._unsubLocale) {
+      this._unsubLocale = i18n.subscribe(() => {
+        this.localeVersion += 1
+      })
+    }
     if (this.userStore.isLoggedIn) {
       this.loadMemberInfo()
       this.loadWalletExtras()
       this.loadSocialCounts()
       this.loadOrderBadges()
+    }
+  },
+
+  onUnload() {
+    if (this._unsubLocale) {
+      this._unsubLocale()
+      this._unsubLocale = null
     }
   },
 
@@ -226,24 +268,31 @@ export default {
       if (!this.userStore.isLoggedIn) return
       try {
         // 并行拉取关注 / 粉丝 / 收藏 / 足迹的总数
+        // 关注/粉丝:后端已返回 Page<Map>,从 total 取真实数(避免 size=1 + length=1 误判)
+        // 收藏/足迹:从 IPage.total 取
         const tasks = [
           followApi
             .listFollowing({ page: 1, size: 1 })
-            .then((r) => (Array.isArray(r) ? r.length : 0))
+            .then((r) => Number(r?.total ?? (Array.isArray(r) ? r.length : 0)))
             .catch(() => 0),
           followApi
             .listFollowers({ page: 1, size: 1 })
-            .then((r) => (Array.isArray(r) ? r.length : 0))
+            .then((r) => Number(r?.total ?? (Array.isArray(r) ? r.length : 0)))
+            .catch(() => 0),
+          communityApi
+            .getCollectedPosts({ page: 1, size: 1 })
+            .then((r) => Number(r?.total ?? 0))
             .catch(() => 0),
           browseApi
             .getBrowsingHistory({ page: 1, size: 1 })
-            .then((r) => r?.total || 0)
+            .then((r) => Number(r?.total ?? 0))
             .catch(() => 0),
         ]
-        const [f1, f2, hist] = await Promise.all(tasks)
-        this.followingCount = f1
-        this.followerCount = f2
-        this.historyCount = hist
+        const [following, followers, collect, history] = await Promise.all(tasks)
+        this.followingCount = following
+        this.followerCount = followers
+        this.collectCount = collect
+        this.historyCount = history
       } catch (e) {
         console.warn('[user] load social counts failed', e)
       }
@@ -323,7 +372,7 @@ export default {
      */
     onSocialTap(item) {
       if (!item || !item.url) {
-        uni.showToast({ title: 'Coming soon', icon: 'none' })
+        uni.showToast({ title: i18n.t('userCenter.comingSoon'), icon: 'none' })
         return
       }
       // 关注/粉丝需要登录态;足迹/收藏未登录时本地有数据也能展示,这里不强校验
@@ -369,7 +418,7 @@ export default {
       if (map[f.id]) {
         uni.navigateTo({ url: map[f.id] })
       } else {
-        uni.showToast({ title: 'Coming soon', icon: 'none' })
+        uni.showToast({ title: i18n.t('userCenter.comingSoon'), icon: 'none' })
       }
     },
 
@@ -423,7 +472,8 @@ export default {
 .header {
   background: var(--color-surface);
   padding: 48rpx 24rpx;
-  padding-top: calc(48rpx + env(safe-area-inset-top));
+  /* 状态栏安全区：原公式只覆盖 iOS safe-area，APP 端（Android）需要再加 status-bar-height */
+  padding-top: calc(48rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
 }
 
 .user-info,

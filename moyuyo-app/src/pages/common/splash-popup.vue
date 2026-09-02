@@ -2,7 +2,7 @@
   <view class="splash-page">
     <!-- 简化的首页占位背景 -->
     <view class="home-placeholder">
-      <text class="home-emoji"><text class="luc luc-home" /></text>
+      <text class="home-emoji luc-home" />
       <text class="home-text">MOYUYO 首页</text>
     </view>
 
@@ -12,7 +12,7 @@
       <view class="popup-card" @tap.stop>
         <!-- 关闭按钮 -->
         <view class="close-btn" @tap="closePopup('')">
-          <text class="close-icon"><text class="luc luc-x" /></text>
+          <text class="close-icon luc-x" />
         </view>
 
         <!-- 顶部营销图片区 -->
@@ -49,7 +49,7 @@
             </view>
             <!-- 领取标记 -->
             <view class="coupon-mark">
-              <text class="coupon-mark-icon"><text class="luc luc-ticket" /></text>
+              <text class="coupon-mark-icon luc-ticket" />
             </view>
           </view>
 
@@ -57,7 +57,7 @@
           <view class="popup-actions">
             <!-- 主按钮：立即领取 -->
             <view class="action-primary" @tap="claimCoupon">
-              <text class="action-icon"><text class="luc luc-gift" /></text>
+              <text class="action-icon luc-gift" />
               <text class="action-primary-text">立即领取</text>
             </view>
 
@@ -85,8 +85,13 @@
 <script setup>
 import { ref } from 'vue'
 import { couponApi } from '@/api'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.commonSplashPopup')
+
 
 // 弹窗是否可见
+
+
 const popupVisible = ref(true)
 // 领取中状态,防止双击重复提交
 const claiming = ref(false)

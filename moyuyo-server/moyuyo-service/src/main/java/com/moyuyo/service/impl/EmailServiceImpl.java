@@ -101,6 +101,24 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    public void sendTwoFactorCode(String to, String code, int ttlMinutes) {
+        // 单独 subject,便于用户在邮箱列表中快速识别"安全相关"邮件,
+        // 同时与普通"注册验证"邮件区分,降低误读风险
+        String subject = "Your MOYUYO two-factor authentication code";
+        String html = buildHtml(
+                "Two-factor authentication",
+                "Use this code to confirm enabling two-factor authentication on your MOYUYO account:",
+                "<div style=\"font-size:36px;font-weight:700;letter-spacing:8px;color:#111;margin:16px 0;\">" + code + "</div>",
+                "This code expires in " + ttlMinutes + " minutes. " +
+                "If you didn't request to enable two-factor authentication, please change your account password immediately.",
+                // 额外说明:避免用户对此类邮件产生误判(被钓鱼利用)
+                "Why am I getting this? You (or someone with access to your account) " +
+                "are about to turn on two-factor authentication. We never ask for it by phone."
+        );
+        send(to, subject, html, "sendTwoFactorCode", code);
+    }
+
+    @Override
     public void sendMagicLink(String to, String magicLink, int ttlMinutes) {
         String subject = "Sign in to MOYUYO with one click";
         String html = buildHtml(

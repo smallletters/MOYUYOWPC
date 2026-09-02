@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="search">
     <view class="search-bar">
       <view class="search-input-wrap">
@@ -84,6 +84,8 @@ import { productApi } from '@/api'
 import { setStorage, getStorage, removeStorage, STORAGE_KEYS } from '@/utils/storage'
 
 export default {
+  pageTitleKey: 'pageTitle.goodsSearch',
+
   data() {
     return {
       keyword: '',
@@ -166,7 +168,7 @@ export default {
   gap: 16rpx;
   padding: 16rpx 24rpx;
   background: var(--color-surface);
-  padding-top: calc(16rpx + env(safe-area-inset-top));
+  padding-top: calc(16rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
 }
 
 .search-input-wrap {

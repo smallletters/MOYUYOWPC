@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="achievement">
     <view class="header">
       <text class="title">Achievements</text>
@@ -43,6 +43,8 @@ const ACHIEVEMENT_MAP = {
 }
 
 export default {
+  pageTitleKey: 'pageTitle.petAchievement',
+
   data() {
     return {
       petId: null,
@@ -99,7 +101,7 @@ export default {
   min-height: 100vh;
   background: var(--color-background);
   padding: 32rpx 16rpx;
-  padding-top: calc(32rpx + env(safe-area-inset-top));
+  padding-top: calc(32rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
 }
 .header {
   padding: 0 16rpx 24rpx;

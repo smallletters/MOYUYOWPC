@@ -90,8 +90,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { getPointsLog, getPointsBalance } from '@/api/points'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userPointsDetail')
+
 
 const balance = ref(0)
+
+
 const stats = ref({ income: 0, spent: 0 })
 const list = ref([])
 const page = ref(1)

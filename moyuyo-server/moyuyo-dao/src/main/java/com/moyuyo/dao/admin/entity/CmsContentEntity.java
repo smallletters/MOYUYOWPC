@@ -24,6 +24,9 @@ public class CmsContentEntity {
     /** 内容 */
     private String content;
 
+    /** Banner 标签（如 HOT/NEW/限时等，管理后台手动设置） */
+    private String tag;
+
     /** 图片链接 */
     private String imageUrl;
 

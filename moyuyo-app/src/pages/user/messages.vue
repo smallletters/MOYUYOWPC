@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">消息详情</text>
       <view class="header-star" @click="onToggleStar">
@@ -18,7 +18,7 @@
       <!-- 消息类型标签 -->
       <view class="type-row">
         <view class="type-icon">
-          <text class="type-icon-text"><text class="luc luc-package" /></text>
+          <text class="type-icon-text luc-package" />
         </view>
         <text
           class="type-badge"
@@ -78,6 +78,8 @@
 
 <script>
 export default {
+  pageTitleKey: 'pageTitle.userMessages',
+
   data() {
     return {
       isStarred: false,

@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">编辑资料</text>
       <view class="placeholder" />
@@ -18,7 +18,7 @@
           </view>
           <!-- 相机图标 -->
           <view class="camera-btn" @click="onShowActionSheet">
-            <text class="camera-icon"><text class="luc luc-camera" /></text>
+            <text class="camera-icon luc-camera" />
           </view>
         </view>
         <text class="avatar-hint">点击更换头像</text>
@@ -35,7 +35,7 @@
           <view v-if="!isEditingNickname" class="nickname-display">
             <text class="nickname-value">{{ nickname }}</text>
             <view class="edit-nickname-btn" @click="startEditNickname">
-              <text class="edit-nickname-icon"><text class="luc luc-pencil" /></text>
+              <text class="edit-nickname-icon luc-pencil" />
               <text class="edit-nickname-text">编辑</text>
             </view>
           </view>
@@ -51,7 +51,7 @@
             >
             <view class="nickname-footer">
               <view class="hint-row">
-                <text class="hint-icon"><text class="luc luc-check-circle" /></text>
+                <text class="hint-icon luc-check-circle" />
                 <text class="hint-text" :class="hintType">昵称可用</text>
               </view>
               <text class="char-count">{{ nickname.length }}/20</text>
@@ -104,7 +104,7 @@
           <text class="item-label">生日</text>
           <view class="item-right">
             <text class="item-value">{{ birthday }}</text>
-            <text class="chevron"><text class="luc luc-chevron-right" /></text>
+            <text class="chevron luc-chevron-right" />
           </view>
         </view>
       </view>
@@ -115,7 +115,7 @@
           <text class="item-label">地区</text>
           <view class="item-right">
             <text class="item-value">{{ region }}</text>
-            <text class="chevron"><text class="luc luc-chevron-right" /></text>
+            <text class="chevron luc-chevron-right" />
           </view>
         </view>
       </view>
@@ -158,12 +158,12 @@
     <view v-if="showActionSheet" class="action-sheet-overlay" @click="onCloseActionSheet">
       <view class="action-sheet" @click.stop>
         <view class="action-option" @click="onTakePhoto">
-          <text class="action-icon"><text class="luc luc-camera" /></text>
+          <text class="action-icon luc-camera" />
           <text class="action-text">拍照</text>
         </view>
         <view class="action-divider" />
         <view class="action-option" @click="onFromGallery">
-          <text class="action-icon"><text class="luc luc-image" /></text>
+          <text class="action-icon luc-image" />
           <text class="action-text">从相册选择</text>
         </view>
         <view class="action-gap" />
@@ -177,8 +177,13 @@
 
 <script setup>
 import { ref } from 'vue'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userAvatarSettings')
+
 
 const goBack = () => uni.navigateBack()
+
+
 
 // 昵称
 const nickname = ref('宠物爱好者')

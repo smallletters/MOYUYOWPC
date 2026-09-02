@@ -30,11 +30,17 @@
           v-for="(item, index) in bannerData"
           :key="item.id"
           class="banner-card"
-          :class="{ 'banner-card-expired': item.status === '已过期' }"
+          :class="{ 'banner-card-expired': item.status === 'EXPIRED' }"
         >
           <div class="banner-img-wrap">
-            <div class="banner-img-placeholder" :style="{ opacity: item.status === '已暂停' || item.status === '已过期' ? 0.6 : 1 }">
-              <span class="banner-img-label">{{ item.title }}</span>
+            <div
+              class="banner-img-placeholder"
+              :style="{
+                opacity: item.status === 'PAUSED' || item.status === 'EXPIRED' ? 0.6 : 1,
+                backgroundImage: item.imageUrl ? `url(${item.imageUrl})` : 'none'
+              }"
+            >
+              <span v-if="!item.imageUrl" class="banner-img-label">{{ item.title }}</span>
             </div>
             <div class="banner-order-num">{{ index + 1 }}</div>
           </div>
@@ -46,7 +52,7 @@
                   <span class="location-tag" v-for="loc in item.locations" :key="loc">{{ loc }}</span>
                 </div>
               </div>
-              <span :class="statusTagClass(item.status)">{{ item.status }}</span>
+              <span :class="statusTagClass(item.status)">{{ statusLabel(item.status) }}</span>
             </div>
             <div class="banner-meta">
               <div class="banner-meta-item">
@@ -63,7 +69,7 @@
               <button class="action-btn" @click="handleMove(item, 'up')">↑</button>
               <button class="action-btn" @click="handleMove(item, 'down')">↓</button>
               <button class="action-btn" @click="handleToggleStatus(item)">
-                {{ item.status === '投放中' ? '⏸' : '▶' }}
+                {{ item.status === STATUS_ACTIVE ? '⏸' : '▶' }}
               </button>
               <button class="action-btn action-btn-danger" @click="handleDelete(item)">删除</button>
             </div>
@@ -86,7 +92,7 @@
         <div v-for="item in recommendData" :key="item.id" class="cms-list-item">
           <div class="cms-list-info">
             <span class="cms-list-title">{{ item.title }}</span>
-            <span :class="statusTagClass(item.status)">{{ item.status }}</span>
+            <span :class="statusTagClass(item.status)">{{ statusLabel(item.status) }}</span>
           </div>
           <span class="cms-list-date">{{ item.dateRange || '未设置日期' }}</span>
           <div class="cms-list-actions">
@@ -111,7 +117,7 @@
         <div v-for="item in topicData" :key="item.id" class="cms-list-item">
           <div class="cms-list-info">
             <span class="cms-list-title">{{ item.title }}</span>
-            <span :class="statusTagClass(item.status)">{{ item.status }}</span>
+            <span :class="statusTagClass(item.status)">{{ statusLabel(item.status) }}</span>
           </div>
           <span class="cms-list-date">{{ item.dateRange || '未设置日期' }}</span>
           <div class="cms-list-actions">
@@ -154,6 +160,9 @@
             placeholder="请输入内容描述"
           />
         </el-form-item>
+        <el-form-item label="类型标签">
+          <el-input v-model="editForm.tag" placeholder="如 HOT / NEW / 限时 / 新品上架" />
+        </el-form-item>
         <el-form-item label="排序值">
           <el-input-number v-model="editForm.sortOrder" :min="0" style="width:100%" />
         </el-form-item>
@@ -162,8 +171,8 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="editForm.status" style="width:100%">
-            <el-option label="投放中" value="投放中" />
-            <el-option label="已暂停" value="已暂停" />
+              <el-option label="投放中" value="ACTIVE" />
+              <el-option label="已暂停" value="PAUSED" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -210,9 +219,10 @@ function mapItem(item) {
     imageUrl: item.cover || item.imageUrl || '',
     linkUrl: item.link || item.linkUrl || '',
     content: item.description || item.content || '',
+    tag: item.tag || '',
     sortOrder: item.sortOrder ?? 0,
     locations: item.location ? [item.location] : [],
-    status: item.status || '已暂停',
+    status: item.status || 'PAUSED',
     dateRange: formatDateRange(item.startTime, item.endTime),
     ctr: item.ctr != null ? (Number(item.ctr) * 100).toFixed(1) + '%' : '0%'
   }
@@ -260,11 +270,22 @@ async function loadBannerData() {
   }
 }
 
+// 状态枚举：前端存储/传输统一用英文，显示时转中文
+const STATUS_ACTIVE = 'ACTIVE'
+const STATUS_PAUSED = 'PAUSED'
+const STATUS_EXPIRED = 'EXPIRED'
+
+// 英文枚举 → 中文显示
+function statusLabel(status) {
+  const map = { ACTIVE: '投放中', PAUSED: '已暂停', EXPIRED: '已过期' }
+  return map[status] || status || '未知'
+}
+
 function statusTagClass(status) {
   const map = {
-    '投放中': 'status-tag status-tag-active',
-    '已暂停': 'status-tag status-tag-paused',
-    '已过期': 'status-tag status-tag-expired'
+    ACTIVE: 'status-tag status-tag-active',
+    PAUSED: 'status-tag status-tag-paused',
+    EXPIRED: 'status-tag status-tag-expired'
   }
   return map[status] || 'status-tag'
 }
@@ -284,9 +305,10 @@ function handleAdd() {
     imageUrl: '',
     linkUrl: '',
     content: '',
+    tag: '',
     sortOrder: 0,
     dateRange: '',
-    status: '已暂停'
+    status: 'PAUSED'
   }
   dialogVisible.value = true
 }
@@ -321,11 +343,11 @@ async function handleMove(item, dir) {
 
 // 切换投放/暂停状态
 async function handleToggleStatus(item) {
-  const newStatus = item.status === '投放中' ? '已暂停' : '投放中'
+  const newStatus = item.status === STATUS_ACTIVE ? STATUS_PAUSED : STATUS_ACTIVE
   try {
     await updateCmsStatus(item.id, { status: newStatus })
     item.status = newStatus
-    ElMessage.success(`Banner 已${item.status === '投放中' ? '恢复投放' : '暂停'}`)
+    ElMessage.success(`Banner 已${item.status === STATUS_ACTIVE ? '恢复投放' : '暂停'}`)
   } catch (e) {
     ElMessage.error('状态更新失败')
   }
@@ -341,6 +363,7 @@ async function handleSave() {
       cover: editForm.value.imageUrl,
       link: editForm.value.linkUrl,
       description: editForm.value.content,
+      tag: editForm.value.tag,
       sortOrder: editForm.value.sortOrder,
       status: editForm.value.status
     }
@@ -388,9 +411,10 @@ function openAddDialog(type, title, statusDefault) {
     imageUrl: '',
     linkUrl: '',
     content: '',
+    tag: '',
     sortOrder: 0,
     dateRange: '',
-    status: statusDefault || '已暂停'
+    status: statusDefault || 'PAUSED'
   }
   dialogVisible.value = true
 }
@@ -514,7 +538,11 @@ onMounted(() => {
 .banner-img-placeholder {
   width: 100%;
   aspect-ratio: 16 / 7;
+  /* 优先显示设置的真实图片；未设置时降级到默认渐变占位 */
   background: linear-gradient(135deg, var(--secondary), var(--accent));
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -1,18 +1,12 @@
 <template>
   <view class="flash-sale-page">
     <!-- 导航栏 -->
-    <view class="nav-bar">
-      <view class="nav-btn" @click="goBack">
-        <text class="nav-back"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">限时抢购</text>
-      <view class="nav-btn" />
-    </view>
+
 
     <!-- 限时抢购状态横幅：倒计时由 sale.endTime 驱动,文案随状态切换 -->
     <view class="flash-header">
       <view class="flash-banner">
-        <text class="flash-icon"><text class="luc luc-zap" /></text>
+        <text class="flash-icon luc-zap" />
         <text class="flash-label">{{ bannerLabel }}</text>
         <view v-if="showCountdown" class="countdown">
           <view class="countdown-block">
@@ -105,6 +99,8 @@ function parseDate(val) {
 }
 
 export default {
+  pageTitleKey: 'pageTitle.goodsFlashSaleDetail',
+
   data() {
     return {
       saleId: null,
@@ -227,10 +223,6 @@ export default {
   },
 
   methods: {
-    goBack() {
-      uni.navigateBack()
-    },
-
     pad(n) {
       return String(n).padStart(2, '0')
     },
@@ -351,25 +343,12 @@ export default {
   background: var(--color-background);
   padding-bottom: 140rpx;
 }
-.nav-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 88rpx;
-  padding: 0 32rpx;
-  background: var(--color-surface);
-  border-bottom: 1rpx solid var(--color-divider);
-}
 .nav-btn {
   width: 64rpx;
   height: 64rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-.nav-back {
-  font-size: 44rpx;
-  color: var(--color-text);
 }
 .nav-title {
   font-size: 32rpx;

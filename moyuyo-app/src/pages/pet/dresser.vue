@@ -50,6 +50,8 @@
 import { petApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.petDresser',
+
   data() {
     return {
       currentPet: null,

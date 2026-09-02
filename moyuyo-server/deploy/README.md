@@ -11,7 +11,8 @@ deploy/
 ├── deploy.sh            # 服务器端一键部署主脚本
 ├── init-env.sh          # 自动生成 .env 强随机密钥
 ├── backup.sh            # 每日备份（MySQL + 日志）
-└── update.sh            # 在线升级 + 一键回滚
+├── update.sh            # 在线升级 + 一键回滚
+└── .env.production.template  # 生产 .env 模板(按 <TODO: ...> 填值)
 ```
 
 ## 5 分钟上手流程
@@ -49,10 +50,19 @@ unzip -o moyuyo-server_*.zip -d moyuyo-server
 cd moyuyo-server
 chmod +x deploy/*.sh
 
-# 首次部署：自动生成 .env 强随机密钥
-./deploy/init-env.sh
+# 首次部署：先基于生产模板复制 .env
+cp deploy/.env.production.template .env
+chmod 600 .env
+
+# 自动用 openssl 填充强随机密钥（覆盖 .env 中 <TODO: ...> 占位符以外的全部随机项）
+./deploy/init-env.sh --force
 
 # 编辑 .env 补全第三方密钥（Stripe / PayPal / WooCommerce）和真实域名
+# 关注 <TODO: ...> 占位项:
+#   1) 替换所有 <TODO: ...> 占位为你自己的真实值
+#   2) MOYUYO_CORS_ORIGINS 改为真实生产域名
+#   3) MYSQL_TRUSTSTORE_PASSWORD / ELASTICSEARCH_TRUSTSTORE_PASSWORD 用随机值覆盖
+#   4) ADMIN_PASSWORD 用 16+ 位随机覆盖
 nano .env
 
 # 一键拉起整套服务（MySQL + Redis + ES + RocketMQ + App）

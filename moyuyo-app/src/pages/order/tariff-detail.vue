@@ -1,12 +1,7 @@
 ﻿<template>
   <view class="tariff-page">
     <!-- 顶部导航栏 -->
-    <view class="nav-bar">
-      <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">关税明细</text>
-    </view>
+
 
     <scroll-view class="tariff-body" scroll-y>
       <!-- 模式选择卡片 -->
@@ -21,7 +16,7 @@
           >
             <view class="mode-header">
               <view class="mode-icon mode-icon-ddp">
-                <text class="mode-emoji"><text class="luc luc-shield" /></text>
+                <text class="mode-emoji luc-shield" />
               </view>
               <text class="mode-badge">DDP</text>
             </view>
@@ -29,7 +24,7 @@
             <text class="mode-desc">总价含关税，省心无忧</text>
             <view class="mode-indicator">
               <view v-if="selectedMode === 'ddp'" class="indicator-selected">
-                <text class="indicator-check"><text class="luc luc-check" /></text>
+                <text class="indicator-check luc-check" />
                 <text class="indicator-text-active">已选择</text>
               </view>
               <view v-else class="indicator-unselected">
@@ -47,7 +42,7 @@
           >
             <view class="mode-header">
               <view class="mode-icon mode-icon-ddu">
-                <text class="mode-emoji"><text class="luc luc-banknote" /></text>
+                <text class="mode-emoji luc-banknote" />
               </view>
               <text class="mode-badge mode-badge-ddu">DDU</text>
             </view>
@@ -55,7 +50,7 @@
             <text class="mode-desc">收货时自行缴纳，可能更低</text>
             <view class="mode-indicator">
               <view v-if="selectedMode === 'ddu'" class="indicator-selected">
-                <text class="indicator-check"><text class="luc luc-check" /></text>
+                <text class="indicator-check luc-check" />
                 <text class="indicator-text-active">已选择</text>
               </view>
               <view v-else class="indicator-unselected">
@@ -70,7 +65,7 @@
       <!-- 模式价格对比 -->
       <view class="card-block">
         <view class="card-header">
-          <text class="card-emoji"><text class="luc luc-bar-chart" /></text>
+          <text class="card-emoji luc-bar-chart" />
           <text class="card-title">模式价格对比</text>
         </view>
         <view class="compare-grid">
@@ -97,7 +92,7 @@
       <!-- 关税明细列表 -->
       <view class="card-block">
         <view class="card-header">
-          <text class="card-emoji"><text class="luc luc-receipt" /></text>
+          <text class="card-emoji luc-receipt" />
           <text class="card-title">关税明细</text>
         </view>
         <text class="card-subtitle">基于当前订单商品计算</text>
@@ -143,7 +138,7 @@
       <view class="card-block">
         <view class="collapse-trigger" @tap="toggleTaxDetail">
           <view class="collapse-left">
-            <text class="card-emoji"><text class="luc luc-book" /></text>
+            <text class="card-emoji luc-book" />
             <text class="collapse-title">点击查看税率依据</text>
           </view>
           <text class="collapse-chevron" :class="{ rotated: taxDetailOpen }">
@@ -196,7 +191,7 @@
       <!-- 保证金信息（DDP 模式下显示） -->
       <view v-if="selectedMode === 'ddp'" class="card-block">
         <view class="card-header">
-          <text class="card-emoji"><text class="luc luc-building-2" /></text>
+          <text class="card-emoji luc-building-2" />
           <text class="card-title">关税保证金</text>
           <view class="ddp-tag">
             <text class="ddp-tag-text">DDP 专属</text>
@@ -215,7 +210,7 @@
         </view>
 
         <view class="deposit-note">
-          <text class="deposit-note-icon"><text class="luc luc-trending-up" /></text>
+          <text class="deposit-note-icon luc-trending-up" />
           <text class="deposit-note-text">
             保证金含 20% 浮动缓冲，用于覆盖汇率波动及海关核定差异。
           </text>
@@ -225,7 +220,7 @@
       <!-- 多退少补说明 -->
       <view class="card-block">
         <view class="card-header">
-          <text class="card-emoji"><text class="luc luc-scale" /></text>
+          <text class="card-emoji luc-scale" />
           <text class="card-title">多退少补说明</text>
         </view>
         <view class="refund-rules">
@@ -257,7 +252,7 @@
       <!-- 底部按钮 -->
       <view class="bottom-action">
         <view class="back-checkout-btn" @tap="goBack">
-          <text class="back-btn-icon"><text class="luc luc-arrow-left" /></text>
+          <text class="back-btn-icon luc-arrow-left" />
           <text class="back-btn-text">返回结算</text>
         </view>
       </view>
@@ -267,8 +262,13 @@
 
 <script setup>
 import { ref } from 'vue'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.orderTariffDetail')
+
 
 // 选中的关税模式
+
+
 const selectedMode = ref('ddp')
 
 // 税率依据折叠状态
@@ -299,14 +299,6 @@ const goBack = () => {
 }
 
 /* 导航栏 */
-.nav-bar {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  padding: 0 32rpx 24rpx;
-  background: var(--color-background);
-}
-
 .nav-back {
   width: 72rpx;
   height: 72rpx;
@@ -316,12 +308,6 @@ const goBack = () => {
   border-radius: 50%;
   background: #f2f2f7;
 }
-
-.back-icon {
-  font-size: 40rpx;
-  color: var(--color-text);
-}
-
 .nav-title {
   font-size: 36rpx;
   font-weight: 600;

@@ -2,7 +2,7 @@
   <view class="help-center">
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">帮助中心</text>
       <view class="header-btn" />
@@ -10,7 +10,7 @@
 
     <view class="hero-section">
       <view class="hero-placeholder">
-        <text class="hero-icon"><text class="luc luc-help-circle" /></text>
+        <text class="hero-icon luc-help-circle" />
         <text class="hero-text">有什么可以帮助你的？</text>
       </view>
     </view>
@@ -39,7 +39,7 @@
           <text class="category-name">{{ c.name }}</text>
           <text class="category-count">{{ $t('help.articleCount', { count: c.count || 0 }) }}</text>
         </view>
-        <text class="category-arrow"><text class="luc luc-chevron-right" /></text>
+        <text class="category-arrow luc-chevron-right" />
       </view>
       <view v-if="!filteredCategories.length" class="empty">
         <text class="empty-text">暂无相关问题</text>
@@ -52,8 +52,13 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { i18n } from '@/i18n'
 import { helpApi } from '@/api'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userHelp')
+
 
 const keyword = ref('')
+
+
 const categories = ref([])
 const articles = ref([])
 const loading = ref(false)

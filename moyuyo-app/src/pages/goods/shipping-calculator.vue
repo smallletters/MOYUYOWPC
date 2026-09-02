@@ -1,17 +1,12 @@
 ﻿<template>
   <view class="shipping-calculator">
-    <view class="nav-header">
-      <view class="nav-back" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">运费计算</text>
-      <view class="nav-placeholder" />
-    </view>
+
+
 
     <scroll-view class="scroll" scroll-y>
       <view class="section-card">
         <view class="section-title">
-          <text class="section-icon"><text class="luc luc-map-pin" /></text>
+          <text class="section-icon luc-map-pin" />
           <text>收货地址</text>
         </view>
         <view class="form-row">
@@ -60,7 +55,7 @@
 
       <view class="section-card">
         <view class="section-title">
-          <text class="section-icon"><text class="luc luc-package" /></text>
+          <text class="section-icon luc-package" />
           <text>包裹信息</text>
         </view>
         <view class="form-row">
@@ -81,7 +76,7 @@
 
       <view v-if="results.length > 0" class="results-section">
         <view class="section-title">
-          <text class="section-icon"><text class="luc luc-truck" /></text>
+          <text class="section-icon luc-truck" />
           <text>可选配送方式</text>
         </view>
         <view
@@ -108,7 +103,7 @@
 
       <view v-if="history.length > 0" class="history-section">
         <view class="section-title">
-          <text class="section-icon"><text class="luc luc-clock" /></text>
+          <text class="section-icon luc-clock" />
           <text>最近查询</text>
         </view>
         <view v-for="(item, idx) in history" :key="idx" class="history-item">
@@ -164,6 +159,8 @@ const COUNTRIES = [
 ]
 
 export default {
+  pageTitleKey: 'pageTitle.goodsShippingCalculator',
+
   data() {
     return {
       selectedCountry: COUNTRIES[0],
@@ -180,10 +177,6 @@ export default {
   },
 
   methods: {
-    goBack() {
-      uni.navigateBack()
-    },
-
     onZipInput() {
       const match = ZIP_LOOKUP[this.zipCode]
       if (match) {

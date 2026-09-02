@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="magic-link">
     <view class="header">
       <text class="title">Magic Link</text>
@@ -30,7 +30,7 @@
 
     <view v-else class="form">
       <view class="sent-info">
-        <text class="sent-icon"><text class="luc luc-mail" /></text>
+        <text class="sent-icon luc-mail" />
         <text class="sent-text">We sent a sign-in link to</text>
         <text class="sent-email">{{ email }}</text>
         <text class="sent-hint">
@@ -51,6 +51,8 @@
 import { useUserStore } from '@/store'
 
 export default {
+  pageTitleKey: 'pageTitle.userMagicLink',
+
   data() {
     return {
       step: 1,
@@ -114,7 +116,7 @@ export default {
   min-height: 100vh;
   background: var(--color-background);
   padding: 64rpx 48rpx;
-  padding-top: calc(64rpx + env(safe-area-inset-top));
+  padding-top: calc(64rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
 }
 
 .header {

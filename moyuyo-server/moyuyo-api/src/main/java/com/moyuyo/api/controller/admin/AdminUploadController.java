@@ -83,15 +83,20 @@ public class AdminUploadController {
             return Result.badRequest("文件为空");
         }
 
-        // 校验原始文件名扩展名
         String original = file.getOriginalFilename();
+        String ct = file.getContentType();
+
+        // 扩展名兜底：uni-app H5 / 部分客户端 上传时会把 name 改写成 file-<timestamp> 丢扩展名,
+        // 此时从 Content-Type 推断(与 UserUploadController 保持一致的兜底策略)。
         String ext = extractExt(original);
+        if (ext == null) {
+            ext = extractExtFromContentType(ct);
+        }
         if (ext == null || !ALLOWED_EXT.contains(ext.toLowerCase())) {
             return Result.badRequest("不支持的文件类型，仅允许 PNG/JPG/JPEG/GIF/WebP/SVG");
         }
 
-        // Content-Type 校验：防止扩展名伪造
-        String ct = file.getContentType();
+        // Content-Type 校验：防止扩展名伪造(空值不阻断,已通过扩展名兜底分支)
         if (ct != null && !ct.isBlank() && !ALLOWED_CT.contains(ct.toLowerCase())) {
             return Result.badRequest("文件 Content-Type 不匹配");
         }
@@ -187,10 +192,35 @@ public class AdminUploadController {
         }
     }
 
+    /**
+     * 从原始文件名抽取扩展名(不带点号)
+     * 注意:uni-app H5 / 部分客户端 上传时会把 name 改成 file-<timestamp> 丢失扩展名,
+     * 此时调用方应改用 extractExtFromContentType 兜底。
+     */
     private String extractExt(String name) {
         if (name == null) return null;
         int dot = name.lastIndexOf('.');
         if (dot < 0 || dot == name.length() - 1) return null;
         return name.substring(dot + 1);
+    }
+
+    /**
+     * 从 Content-Type 推断文件扩展名(兜底方案)
+     * 比 UserUploadController 多覆盖 svg(SVG 在 C 端不允许但管理后台允许)。
+     */
+    private String extractExtFromContentType(String contentType) {
+        if (contentType == null) return null;
+        switch (contentType.toLowerCase()) {
+            case "image/png":         return "png";
+            case "image/jpeg":
+            case "image/jpg":         return "jpg";
+            case "image/gif":         return "gif";
+            case "image/webp":        return "webp";
+            case "image/svg+xml":     return "svg";
+            case "video/mp4":         return "mp4";
+            case "video/quicktime":   return "mov";
+            case "video/webm":        return "webm";
+            default:                  return null;
+        }
     }
 }

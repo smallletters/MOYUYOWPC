@@ -1,22 +1,12 @@
-﻿<template>
+<template>
   <view class="frequent-purchase">
     <!-- 顶部导航栏 -->
-    <view class="nav-header">
-      <view class="nav-inner">
-        <view class="status-bar">
-          <text class="status-time">9:41</text>
-          <view class="status-icons">
-            <text class="luc luc-signal" />
-            <text class="luc luc-wifi" />
-            <text class="luc luc-battery-full" />
-          </view>
+    <view class="navbar">
+      <view class="nav-row">
+        <view class="nav-back" @tap="goBack">
+          <text class="luc luc-arrow-left" />
         </view>
-        <view class="nav-row">
-          <view class="nav-back" @tap="goBack">
-            <text class="luc luc-arrow-left" />
-          </view>
-          <text class="nav-title">常购清单</text>
-        </view>
+        <text class="nav-title">常购清单</text>
       </view>
     </view>
 
@@ -75,6 +65,8 @@
 
 <script>
 export default {
+  pageTitleKey: 'pageTitle.goodsFrequentPurchase',
+
   data() {
     return {
       currentTab: 'freq',
@@ -179,9 +171,6 @@ export default {
     },
   },
   methods: {
-    goBack() {
-      uni.navigateBack()
-    },
     switchTab(tab) {
       this.currentTab = tab
     },

@@ -92,7 +92,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Value("${payment.paypal.webhook-id}")
     private String paypalWebhookId;
 
-    @Value("${payment.paypal.allowed-origins:https://moyuyo.com}")
+    @Value("${payment.paypal.allowed-origins:https://moyuyoshop.com,https://www.moyuyoshop.com}")
     private String paypalAllowedOrigins;
 
     /**
@@ -310,7 +310,7 @@ public class PaymentServiceImpl implements PaymentService {
             } catch (Exception ignore) {
             }
         }
-        return "https://moyuyo.com";
+        return "https://moyuyoshop.com";
     }
 
     /**
@@ -677,7 +677,7 @@ public class PaymentServiceImpl implements PaymentService {
      */
     private String validateAndBuildReturnUrl(String returnUrl, String suffix, String orderNo) {
         // 默认回调地址：与中转页路径一致，拼接 orderNo 让 APP 能识别当前订单
-        String defaultUrl = "https://moyuyo.com/payment/return.html?status=" + suffix
+        String defaultUrl = "https://moyuyoshop.com/payment/return.html?status=" + suffix
                 + "&orderNo=" + URLEncoder.encode(orderNo, StandardCharsets.UTF_8);
         if (returnUrl == null || returnUrl.isBlank()) {
             return defaultUrl;

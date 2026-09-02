@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="category">
     <!-- 顶部：一级分类 Tab（来自后端 mo_category.level=1） -->
     <view class="tabs">
@@ -9,7 +9,7 @@
         :class="{ active: activeTopId === cat.id }"
         @click="onTopChange(cat.id)"
       >
-        <text>{{ cat.name }}</text>
+        <text>{{ $tCatName(cat.name) }}</text>
         <view v-if="activeTopId === cat.id" class="tab-indicator" />
       </view>
     </view>
@@ -23,7 +23,7 @@
           :class="{ active: activeSubId === 'ALL' }"
           @click="onSubChange('ALL')"
         >
-          <text>全部</text>
+          <text>{{ $t('category.sidebar.all') }}</text>
         </view>
         <view
           v-for="sub in currentSubs"
@@ -32,10 +32,10 @@
           :class="{ active: activeSubId === sub.id }"
           @click="onSubChange(sub.id)"
         >
-          <text>{{ sub.name }}</text>
+          <text>{{ $tCatName(sub.name, true) }}</text>
         </view>
         <view v-if="!currentSubs.length" class="sidebar-empty">
-          <text>暂无子分类</text>
+          <text>{{ $t('category.empty.sub') }}</text>
         </view>
       </scroll-view>
 
@@ -50,7 +50,7 @@
             :class="{ active: sortBy === opt.value }"
             @click="onSortChange(opt.value)"
           >
-            {{ opt.label }}
+            {{ $t(opt.labelKey) }}
           </view>
         </view>
 
@@ -72,16 +72,16 @@
               </view>
             </view>
           </view>
-          <view v-if="!loading && products.length === 0" class="empty">暂无商品</view>
-          <view v-if="loading" class="loading">加载中…</view>
+          <view v-if="!loading && products.length === 0" class="empty">{{ $t('category.empty.product') }}</view>
+          <view v-if="loading" class="loading">{{ $t('category.loading') }}</view>
           <view
             v-if="!noMore && !loading && products.length > 0"
             class="loadmore"
             @click="onLoadMore"
           >
-            加载更多
+            {{ $t('category.loadMore') }}
           </view>
-          <view v-if="noMore && products.length > 0" class="loadmore done">— 没有更多了 —</view>
+          <view v-if="noMore && products.length > 0" class="loadmore done">{{ $t('category.noMore') }}</view>
         </view>
       </scroll-view>
     </view>
@@ -90,8 +90,11 @@
 
 <script>
 import { productApi } from '@/api'
+import { tCategoryName } from '@/i18n'
 
 export default {
+  pageTitleKey: 'pageTitle.tabbarCategory',
+
   data() {
     return {
       // 一级分类（来自后端）
@@ -102,12 +105,12 @@ export default {
       activeSubId: 'ALL',
       // 排序选项
       sortOptions: [
-        { value: 'default', label: '综合' },
-        { value: 'popularity', label: '销量' },
-        { value: 'price_asc', label: '价格↑' },
-        { value: 'price_desc', label: '价格↓' },
-        { value: 'date', label: '新品' },
-        { value: 'rating', label: '好评' },
+        { value: 'default', labelKey: 'category.sort.default' },
+        { value: 'popularity', labelKey: 'category.sort.popularity' },
+        { value: 'price_asc', labelKey: 'category.sort.priceAsc' },
+        { value: 'price_desc', labelKey: 'category.sort.priceDesc' },
+        { value: 'date', labelKey: 'category.sort.date' },
+        { value: 'rating', labelKey: 'category.sort.rating' },
       ],
       sortBy: 'default',
       // 商品分页
@@ -124,6 +127,16 @@ export default {
   },
 
   methods: {
+    /**
+     * 后端分类名本地化:优先从字典查,查不到回后端原值。
+     * isSub=true 用于二级分类(names -> subNames)。
+     * 暴露为方法以便 template 里 $tCatName(cat.name) 直接调用,
+     * 响应式:i18n.locale 变化时 template 会重渲,自动取最新文本。
+     */
+    $tCatName(name, isSub) {
+      return tCategoryName(name, isSub)
+    },
+
     /** 加载真实分类树 */
     async loadCategories() {
       try {
@@ -137,10 +150,14 @@ export default {
           this.activeTopId = tops[0].id
           this.setCurrentSubs(tops[0])
           this.loadProducts(true)
+        } else {
+          console.warn('[category] no level-1 categories from backend, list=', list)
         }
       } catch (e) {
+        // 临时诊断：打印完整错误对象，包括 message/stack
         console.error('[category] loadCategories error', e)
-        uni.showToast({ title: '分类加载失败', icon: 'none' })
+        console.error('[category] error.message:', e?.message, 'e.stack=', e?.stack)
+        uni.showToast({ title: this.$t('category.loadFailed'), icon: 'none' })
       }
     },
 
@@ -237,6 +254,11 @@ export default {
         ''
       if (!raw) return ''
       if (raw.startsWith('http')) return raw
+      // 相对路径(/uploads/...) APP 端没有 dev server，必须拼上后端 base
+      if (raw.startsWith('/')) {
+        const base = process.env.VITE_ADMIN_API_BASE
+        return base ? `${base}${raw}` : raw
+      }
       return raw
     },
 
@@ -298,6 +320,8 @@ export default {
   display: flex;
   background: var(--color-surface);
   padding: 0 12rpx;
+  /* 状态栏安全区：与 home.vue .navbar 保持一致，避免一级分类 Tab 文字被状态栏遮挡 */
+  padding-top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
   border-bottom: 1rpx solid var(--color-divider);
   overflow-x: auto;
   white-space: nowrap;

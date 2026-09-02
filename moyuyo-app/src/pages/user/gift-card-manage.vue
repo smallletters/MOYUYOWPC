@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="header-left" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">礼品卡管理</text>
       <view class="header-right" />
@@ -14,19 +14,19 @@
       <view class="quick-entries">
         <view class="quick-entry" @tap="handleBuyCard">
           <view class="quick-icon" style="background: var(--brand-50)">
-            <text class="quick-emoji"><text class="luc luc-shopping-bag" /></text>
+            <text class="quick-emoji luc-shopping-bag" />
           </view>
           <text class="quick-label">购买礼品卡</text>
         </view>
         <view class="quick-entry" @tap="handleBindCard">
           <view class="quick-icon" style="background: var(--state-success-surface)">
-            <text class="quick-emoji"><text class="luc luc-link" /></text>
+            <text class="quick-emoji luc-link" />
           </view>
           <text class="quick-label">绑定礼品卡</text>
         </view>
         <view class="quick-entry" @tap="handleSendCard">
           <view class="quick-icon" style="background: var(--state-warning-surface)">
-            <text class="quick-emoji"><text class="luc luc-gift" /></text>
+            <text class="quick-emoji luc-gift" />
           </view>
           <text class="quick-label">赠送礼品卡</text>
         </view>
@@ -202,7 +202,7 @@
         <view class="collapse-section">
           <view class="collapse-header" @tap="toggleGiftAfterBuy">
             <view class="collapse-header-left">
-              <text class="collapse-icon"><text class="luc luc-gift" /></text>
+              <text class="collapse-icon luc-gift" />
               <text class="collapse-label">购买后直接赠送</text>
             </view>
             <text class="collapse-arrow" :class="{ open: giftAfterBuyOpen }">
@@ -242,7 +242,7 @@
       <view class="section-card">
         <view class="collapse-header" @tap="toggleBindCard">
           <view class="collapse-header-left">
-            <text class="collapse-icon"><text class="luc luc-link" /></text>
+            <text class="collapse-icon luc-link" />
             <text class="collapse-label">绑定礼品卡</text>
           </view>
           <text class="collapse-arrow" :class="{ open: bindCardOpen }">
@@ -278,7 +278,7 @@
       <view class="section-card">
         <view class="collapse-header" @tap="toggleUsageLog">
           <view class="collapse-header-left">
-            <text class="collapse-icon"><text class="luc luc-clipboard-list" /></text>
+            <text class="collapse-icon luc-clipboard-list" />
             <text class="collapse-label">礼品卡 **** 5678 使用记录</text>
           </view>
           <text class="collapse-arrow" :class="{ open: usageLogOpen }">
@@ -334,6 +334,8 @@
 import { giftCardApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.userGiftCardManage',
+
   data() {
     return {
       activeCardTab: 'all',

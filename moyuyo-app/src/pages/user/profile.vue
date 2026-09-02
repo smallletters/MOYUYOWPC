@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="profile">
     <view class="avatar-section">
       <image :src="userStore.userInfo?.avatar || defaultAvatar" class="avatar" />
@@ -53,6 +53,8 @@ import { uploadImage } from '@/api/upload'
 import { i18n } from '@/i18n'
 
 export default {
+  pageTitleKey: 'pageTitle.userProfile',
+
   data() {
     return {
       defaultAvatar: 'https://i.pravatar.cc/200?img=20',
@@ -79,7 +81,20 @@ export default {
     },
   },
 
-  onLoad() {
+  onLoad(query) {
+    // 守卫:如果 query.id 与当前登录用户不一致,说明是从 search 等地方点别人头像进来的
+    // 当前 profile.vue 是编辑自己的页面,不支持查看他人;直接弹窗提示后返回
+    const myId = this.userStore.userInfo && this.userStore.userInfo.id
+    if (query && query.id && String(query.id) !== String(myId)) {
+      uni.showModal({
+        title: '暂不支持查看他人主页',
+        content: '可在搜索页的用户 Tab 中查看',
+        showCancel: false,
+        confirmText: '我知道了',
+        success: () => uni.navigateBack(),
+      })
+      return
+    }
     if (this.userStore.userInfo) {
       this.form.nickname = this.userStore.userInfo.nickname || ''
       this.form.phone = this.userStore.userInfo.phone || ''
@@ -115,15 +130,20 @@ export default {
     /**
      * 头像上传闭环:选择 -> 上传到 file/upload -> 把返回 URL 一并提交到 updateProfile
      * 修复前仅展示选择提示,头像未真正保存到后端
+     *
+     * 后端已支持从 Content-Type 兜底推断扩展名(uni-app H5 选出的文件名通常不带后缀)
+     * 因此此处只需用 filePath 走 uni.uploadFile 即可
      */
     async onChangeAvatar() {
       if (this.avatarUploading) return
+      let chose = false
       try {
         const chooseRes = await uni.chooseImage({
           count: 1,
           sizeType: ['compressed'],
           sourceType: ['album', 'camera'],
         })
+        chose = true
         const filePath = chooseRes.tempFilePaths?.[0]
         if (!filePath) return
         this.avatarUploading = true
@@ -136,7 +156,13 @@ export default {
         uni.showToast({ title: i18n.t('profile.avatarUpdated'), icon: 'success' })
       } catch (e) {
         uni.hideLoading()
-        uni.showToast({ title: e?.message || i18n.t('profile.avatarUploadFailed'), icon: 'none' })
+        // 用户在选择器里"取消"时,uni.chooseImage 抛 errMsg 含 "cancel",
+        // 不要弹错误 toast 干扰体验。
+        const msg = String(e?.errMsg || e?.message || '')
+        const canceled = /cancel/i.test(msg)
+        if (!chose || canceled) return
+        // 给用户友好提示:不再透传后端技术文案(例如 "不支持的文件类型,仅允许 PNG/JPG/JPEG/GIF/WebP")
+        uni.showToast({ title: i18n.t('profile.avatarUploadFailed'), icon: 'none' })
       } finally {
         this.avatarUploading = false
       }

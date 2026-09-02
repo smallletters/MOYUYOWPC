@@ -1,16 +1,13 @@
-﻿<template>
+<template>
   <view class="dm-page">
     <!-- 导航栏 -->
     <view class="dm-header">
-      <view class="nav-bar">
-        <view class="nav-back" @tap="goBack">
-          <text class="back-icon"><text class="luc luc-arrow-left" /></text>
-          <text class="back-text">社区</text>
-        </view>
-        <text class="nav-title">{{ targetUser.name }}</text>
-        <view class="nav-more" @tap="showMoreOptions">
-          <text class="more-icon">⋯</text>
-        </view>
+      <view class="nav-back" @tap="goBack">
+        <text class="luc luc-arrow-left" />
+      </view>
+      <text class="nav-title">{{ targetUser.nickname || '私聊' }}</text>
+      <view class="nav-action" @tap="viewProfile">
+        <text class="luc luc-user" />
       </view>
     </view>
 
@@ -70,7 +67,7 @@
           <!-- 商品卡片消息 -->
           <view v-if="msg.type === 'product'" class="product-card">
             <view class="product-image">
-              <text class="product-emoji"><text class="luc luc-spray-can" /></text>
+              <text class="product-emoji luc-spray-can" />
             </view>
             <view class="product-info">
               <text class="product-name">{{ msg.product.name }}</text>
@@ -109,7 +106,7 @@
           >
         </view>
         <view class="send-btn" @tap="sendMessage">
-          <text class="send-icon"><text class="luc luc-send" /></text>
+          <text class="send-icon luc-send" />
         </view>
       </view>
     </view>
@@ -118,8 +115,13 @@
 
 <script setup>
 import { ref, nextTick, onMounted } from 'vue'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.communityDmChat')
+
 
 // 目标用户信息：从 URL query 取（name/avatar/userId）
+
+
 const targetUser = ref({
   id: null,
   name: '宠物好友',
@@ -230,38 +232,15 @@ onMounted(() => {
   background: var(--color-background);
   border-bottom: 1rpx solid var(--color-border);
 }
-
-.nav-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 88rpx;
-  padding: 0 32rpx;
-}
-
 .nav-back {
   display: flex;
   align-items: center;
   gap: 4rpx;
 }
-
-.back-icon {
-  font-size: 40rpx;
-  color: var(--color-primary);
-  line-height: 1;
-}
-
 .back-text {
   font-size: 28rpx;
   color: var(--color-primary);
 }
-
-.nav-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
 .nav-more {
   width: 64rpx;
   height: 64rpx;

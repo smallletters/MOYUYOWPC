@@ -7,7 +7,7 @@
 
     <scroll-view scroll-y class="content">
       <view class="banner">
-        <text class="banner-icon"><text class="luc luc-shield" /></text>
+        <text class="banner-icon luc-shield" />
         <view class="banner-info">
           <text class="banner-title">登录设备管理</text>
           <text class="banner-desc">查看已登录设备，异常设备请及时移除</text>
@@ -18,7 +18,7 @@
       <view v-else-if="!devices.length" class="empty">暂无登录设备</view>
       <view v-else class="device-list">
         <view v-for="d in devices" :key="d.id" class="device-card">
-          <text class="device-icon"><text class="luc luc-smartphone" /></text>
+          <text class="device-icon luc-smartphone" />
           <view class="device-info">
             <text class="device-name">{{ d.deviceName || d.model }}</text>
             <text class="device-meta">{{ d.os }} · {{ d.location }}</text>

@@ -49,6 +49,12 @@ public class UserUploadController {
     private static final Set<String> ALLOWED_CT = new HashSet<>(
             Arrays.asList("image/png", "image/jpg", "image/jpeg", "image/gif", "image/webp"));
 
+    /** 视频白名单：仅允许 mp4/mov/webm，与主流短视频一致；大小上限单独由 spring.servlet.multipart 控制 */
+    private static final Set<String> ALLOWED_VIDEO_EXT = new HashSet<>(
+            Arrays.asList("mp4", "mov", "webm"));
+    private static final Set<String> ALLOWED_VIDEO_CT = new HashSet<>(
+            Arrays.asList("video/mp4", "video/quicktime", "video/webm"));
+
     /** 与 AdminUploadController 共用 moyuyo.upload.dir 默认值 */
     @Value("${moyuyo.upload.dir:/tmp/moyuyo-uploads}")
     private String uploadDir;
@@ -92,15 +98,20 @@ public class UserUploadController {
             return Result.badRequest("文件为空");
         }
 
-        // 校验原始文件名扩展名
         String original = file.getOriginalFilename();
+        String ct = file.getContentType();
+
+        // 扩展名判定：优先从文件名取,uni-app H5 / 部分客户端 会丢扩展名
+        // (filename 被改写成 file-<timestamp>),此时从 Content-Type 兜底推断。
         String ext = extractExt(original);
+        if (ext == null) {
+            ext = extractExtFromContentType(ct);
+        }
         if (ext == null || !ALLOWED_EXT.contains(ext.toLowerCase())) {
             return Result.badRequest("不支持的文件类型，仅允许 PNG/JPG/JPEG/GIF/WebP");
         }
 
-        // Content-Type 校验：防止扩展名伪造
-        String ct = file.getContentType();
+        // Content-Type 校验：防止扩展名伪造（仅在有值时校验,空 Content-Type 不阻断）
         if (ct != null && !ct.isBlank() && !ALLOWED_CT.contains(ct.toLowerCase())) {
             return Result.badRequest("文件 Content-Type 不匹配");
         }
@@ -167,10 +178,110 @@ public class UserUploadController {
         return Result.success(results);
     }
 
+    /**
+     * 从原始文件名抽取扩展名(不带点号)
+     * 注意:uni-app H5 / 部分客户端 上传时会把 name 改成 file-<timestamp> 丢失扩展名,
+     * 此时调用方应改用 extractExtFromContentType 兜底。
+     */
     private String extractExt(String name) {
         if (name == null) return null;
         int dot = name.lastIndexOf('.');
         if (dot < 0 || dot == name.length() - 1) return null;
         return name.substring(dot + 1);
+    }
+
+    /**
+     * 从 Content-Type 推断文件扩展名(兜底方案)
+     * 用于 uni-app H5 / 部分客户端 上传时文件名被改写为 file-<timestamp> 的场景。
+     * 映射不全,只覆盖主流图片/视频类型,未覆盖的返回 null。
+     */
+    private String extractExtFromContentType(String contentType) {
+        if (contentType == null) return null;
+        switch (contentType.toLowerCase()) {
+            // 图片
+            case "image/png":         return "png";
+            case "image/jpeg":
+            case "image/jpg":         return "jpg";
+            case "image/gif":         return "gif";
+            case "image/webp":        return "webp";
+            // 视频
+            case "video/mp4":         return "mp4";
+            case "video/quicktime":   return "mov";
+            case "video/webm":        return "webm";
+            default:                  return null;
+        }
+    }
+
+    /**
+     * 上传视频（社区发帖）。
+     * <p>
+     * POST /api/v1/file/upload/video
+     * multipart/form-data: file=@xxx.mp4
+     * <p>
+     * 校验：
+     * <ul>
+     *   <li>扩展名白名单 mp4 / mov / webm</li>
+     *   <li>Content-Type 二次校验（防伪造）</li>
+     *   <li>文件大小上限由 application.yml spring.servlet.multipart.max-file-size 控制</li>
+     * </ul>
+     * 返回结构与 {@code uploadImage} 一致，方便前端统一处理。
+     */
+    @PostMapping("/video")
+    @Operation(summary = "用户端上传单个视频")
+    public Result<UploadResult> uploadVideo(@RequestParam("file") MultipartFile file) {
+        Long userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.error(401, "请先登录");
+        }
+
+        if (file == null || file.isEmpty()) {
+            return Result.badRequest("文件为空");
+        }
+
+        String original = file.getOriginalFilename();
+        String ct = file.getContentType();
+
+        // 扩展名兜底：uni-app H5 视频上传同样可能丢扩展名,从 Content-Type 推断
+        String ext = extractExt(original);
+        if (ext == null) {
+            ext = extractExtFromContentType(ct);
+        }
+        if (ext == null || !ALLOWED_VIDEO_EXT.contains(ext.toLowerCase())) {
+            return Result.badRequest("不支持的视频格式，仅允许 MP4/MOV/WebM");
+        }
+
+        if (ct != null && !ct.isBlank() && !ALLOWED_VIDEO_CT.contains(ct.toLowerCase())) {
+            return Result.badRequest("视频 Content-Type 不匹配");
+        }
+
+        String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+        String filename = UUID.randomUUID().toString().replace("-", "") + "." + ext.toLowerCase();
+
+        Path target = uploadPath.resolve(datePart).resolve(filename).normalize();
+        if (!target.startsWith(uploadPath)) {
+            return Result.badRequest("非法文件路径");
+        }
+
+        try {
+            Files.createDirectories(target.getParent());
+            try (var in = file.getInputStream()) {
+                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException e) {
+            log.error("[user-upload] 写入视频失败：{}", target, e);
+            return Result.error("视频写入失败");
+        }
+
+        long size = file.getSize();
+        String url = urlPrefix + datePart + "/" + filename;
+
+        UploadResult result = new UploadResult();
+        result.setUrl(url);
+        result.setFilename(filename);
+        result.setOriginalName(original);
+        result.setSize(size);
+        result.setContentType(ct);
+        log.info("[user-upload] userId={} uploaded video {} bytes -> {}", userId, size, url);
+        return Result.success(result);
     }
 }

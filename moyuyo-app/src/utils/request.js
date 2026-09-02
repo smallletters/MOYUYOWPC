@@ -1,5 +1,9 @@
 import { config, REQUEST_TIMEOUT, RESPONSE_CODE } from './config'
 import { getStorage, removeStorage, setStorage, STORAGE_KEYS } from './storage'
+// 静态 import(替代原 import('@/api/user') 动态 import):
+//   HBuilder(uni-app 3.8.12)在编译期看到 dynamic import 会启用 Rollup
+//   代码分割,但其 output.format 默认 iife,二者冲突 → build failed.
+import { refreshToken } from '@/api/user'
 
 const pendingRequests = new Map()
 
@@ -43,22 +47,20 @@ function getBearerToken() {
 function handleUnauthorized() {
   const refreshTokenVal = safeGet('moyuyo_refresh_token')
   if (refreshTokenVal) {
-    import('@/api/user').then(({ refreshToken: doRefresh }) => {
-      doRefresh(refreshTokenVal)
-        .then((newTokens) => {
-          safeSet(STORAGE_KEYS.TOKEN, newTokens.accessToken)
-          if (newTokens.refreshToken) {
-            safeSet('moyuyo_refresh_token', newTokens.refreshToken)
-          }
-        })
-        .catch(() => {
-          // 刷新失败:清空凭证 + 文案中文化 + 弹窗确认再跳转,避免突兀踢出
-          safeRemove(STORAGE_KEYS.TOKEN)
-          safeRemove(STORAGE_KEYS.USER_INFO)
-          safeRemove('moyuyo_refresh_token')
-          promptReLogin()
-        })
-    })
+    refreshToken(refreshTokenVal)
+      .then((newTokens) => {
+        safeSet(STORAGE_KEYS.TOKEN, newTokens.accessToken)
+        if (newTokens.refreshToken) {
+          safeSet('moyuyo_refresh_token', newTokens.refreshToken)
+        }
+      })
+      .catch(() => {
+        // 刷新失败:清空凭证 + 文案中文化 + 弹窗确认再跳转,避免突兀踢出
+        safeRemove(STORAGE_KEYS.TOKEN)
+        safeRemove(STORAGE_KEYS.USER_INFO)
+        safeRemove('moyuyo_refresh_token')
+        promptReLogin()
+      })
   } else {
     // 无 refresh token:同样先弹窗确认,避免用户在查看账单时被强制踢出
     safeRemove(STORAGE_KEYS.TOKEN)
@@ -91,14 +93,15 @@ function promptReLogin() {
  * 2. /api/v1/* 走 Vite dev proxy（dev）/ 同源相对路径（prod nginx 反代）
  * 3. 其它路径（向后兼容）拼接 config.apiBase（WordPress 默认）
  * 4. 显式注入 VITE_ADMIN_API_BASE 时，所有路径拼到该 base（移动端离线包场景）
+ * 注意：vite.config.js 的 define 会把 process.env.VITE_ADMIN_API_BASE 在编译期
+ *      静态替换成字符串字面量；不能用 typeof process !== 'undefined' 守卫
+ *      （uni-app APP 端 process 状态不可靠），也不能用 import.meta.env
+ *      （vite-plugin-uni APP 端 polyfill 会用到 new URL/document 导致白屏）。
+ *      直接读 process.env.VITE_ADMIN_API_BASE 即可。
  */
 function resolveBaseUrl(url) {
   if (url.startsWith('http')) return url
-  const absBase =
-    (typeof process !== 'undefined' && process.env && process.env.VITE_ADMIN_API_BASE) ||
-    (typeof window !== 'undefined' &&
-      window.__MOYUYO_CONFIG__ &&
-      window.__MOYUYO_CONFIG__.VITE_ADMIN_API_BASE)
+  const absBase = process.env.VITE_ADMIN_API_BASE
   if (absBase) return `${absBase}${url}`
   // dev 环境由 Vite proxy 转发 /api/v1/* 与 /uploads/*，用相对路径更稳
   // prod 环境通常 nginx 反代 /api/* 与 /uploads/*，同源相对路径同样有效

@@ -1,18 +1,13 @@
 ﻿<template>
   <view class="rating-page">
     <!-- 导航栏 -->
-    <view class="nav-bar">
-      <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">服务评价</text>
-    </view>
+
 
     <scroll-view class="rating-body" scroll-y>
       <!-- 客服信息卡片 -->
       <view class="cs-info-card">
         <view class="cs-avatar">
-          <text class="cs-emoji"><text class="luc luc-user" /></text>
+          <text class="cs-emoji luc-user" />
         </view>
         <view class="cs-detail">
           <text class="cs-name">客服小 MO</text>
@@ -72,7 +67,7 @@
           <view v-for="(img, index) in uploadedImages" :key="index" class="upload-thumb">
             <text class="thumb-emoji">{{ img }}</text>
             <view class="thumb-delete" @tap="removeImage(index)">
-              <text class="delete-icon"><text class="luc luc-x" /></text>
+              <text class="delete-icon luc-x" />
             </view>
           </view>
           <!-- 添加按钮 -->
@@ -92,7 +87,7 @@
 
       <!-- 积分提示 -->
       <view class="reward-hint">
-        <text class="reward-icon"><text class="luc luc-tag" /></text>
+        <text class="reward-icon luc-tag" />
         <text class="reward-text">完成评价可获得 10 积分奖励</text>
       </view>
 
@@ -103,7 +98,7 @@
       <view class="feedback-entry">
         <text class="feedback-question">对服务不满意？</text>
         <view class="feedback-btn" @tap="goFeedback">
-          <text class="feedback-btn-icon"><text class="luc luc-message-circle" /></text>
+          <text class="feedback-btn-icon luc-message-circle" />
           <text class="feedback-btn-text">提交意见反馈</text>
         </view>
       </view>
@@ -114,8 +109,13 @@
 </template>
 <script setup>
 import { ref } from 'vue'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.orderCsRating')
+
 
 // 评分维度
+
+
 const dimensions = ref([
   { label: '解决问题程度', rating: 5 },
   { label: '响应速度', rating: 5 },
@@ -190,17 +190,6 @@ const goBack = () => {
 }
 
 /* 导航栏 */
-.nav-bar {
-  display: flex;
-  align-items: center;
-  height: 88rpx;
-  padding: 0 32rpx;
-  background: var(--color-background);
-  border-bottom: 1rpx solid var(--color-border);
-  position: relative;
-  justify-content: center;
-}
-
 .nav-back {
   position: absolute;
   left: 32rpx;
@@ -210,12 +199,6 @@ const goBack = () => {
   align-items: center;
   justify-content: center;
 }
-
-.back-icon {
-  font-size: 44rpx;
-  color: var(--color-primary);
-}
-
 .nav-title {
   font-size: 32rpx;
   font-weight: 600;

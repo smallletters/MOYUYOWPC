@@ -2,7 +2,7 @@
   <view class="webview-doc">
     <!-- URL 不在白名单:展示拦截提示,绝不加载 -->
     <view v-if="!allowed" class="block-screen">
-      <text class="block-icon"><text class="luc luc-shield" /></text>
+      <text class="block-icon luc-shield" />
       <text class="block-title">外链不在白名单,已拦截</text>
       <text class="block-desc">为保护账户安全,仅允许打开可信域名。</text>
       <view class="block-btn" @tap="goBack">返回上一页</view>
@@ -20,6 +20,8 @@ import { isUrlAllowed } from '@/utils/webview-guard'
  * 安全：通过 webview-guard 白名单校验 host,避免任意 URL 被加载。
  */
 export default {
+  pageTitleKey: 'pageTitle.webviewDocument',
+
   data() {
     return {
       url: '',

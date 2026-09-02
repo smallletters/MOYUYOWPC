@@ -1,15 +1,8 @@
 ﻿<template>
   <view class="bundle-deal">
     <!-- 顶部导航栏 -->
-    <view class="nav-header">
-      <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">套餐优惠</text>
-      <view class="nav-right">
-        <text class="share-icon luc luc-external-link" />
-      </view>
-    </view>
+
+
 
     <scroll-view scroll-y class="scroll">
       <!-- 套餐类型 Tab -->
@@ -49,7 +42,7 @@
               class="thumb-item"
               :style="{ background: thumb.color }"
             />
-            <text class="thumb-more"><text class="luc luc-chevron-right" /></text>
+            <text class="thumb-more luc-chevron-right" />
           </view>
           <view class="product-list">
             <view v-for="item in bundle.items" :key="item.name" class="product-row">
@@ -144,7 +137,7 @@
               <text class="main-product-name">{{ bundle.mainProduct.name }}</text>
               <text class="main-product-price">${{ bundle.mainProduct.price }}</text>
             </view>
-            <text class="check-icon"><text class="luc luc-check" /></text>
+            <text class="check-icon luc-check" />
           </view>
 
           <view class="accessory-section">
@@ -188,7 +181,7 @@
       <!-- 自定义搭配 Tab -->
       <view v-show="activeTab === 'custom'" class="tab-content">
         <view class="custom-banner">
-          <text class="custom-banner-icon"><text class="luc luc-sparkles" /></text>
+          <text class="custom-banner-icon luc-sparkles" />
           <text class="custom-banner-title">自定义搭配 85 折</text>
           <text class="custom-banner-desc">
             从下方商品池中自选 3 件，即可享受 85 折优惠。已选
@@ -242,6 +235,8 @@
 import { bundleDealApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.goodsBundleDeal',
+
   data() {
     return {
       activeTab: 'recommend',
@@ -283,10 +278,6 @@ export default {
   },
 
   methods: {
-    goBack() {
-      uni.navigateBack()
-    },
-
     onTabChange(key) {
       this.activeTab = key
     },

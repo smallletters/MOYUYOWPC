@@ -106,7 +106,7 @@
               <text class="pet-card-name">{{ p.name }}</text>
               <text class="pet-card-breed">{{ p.breed }}</text>
             </view>
-            <text class="pet-card-arrow"><text class="luc luc-chevron-right" /></text>
+            <text class="pet-card-arrow luc-chevron-right" />
           </view>
         </view>
       </view>

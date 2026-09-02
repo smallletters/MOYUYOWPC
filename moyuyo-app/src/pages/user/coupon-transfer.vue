@@ -1,12 +1,6 @@
 <template>
   <view class="page">
-    <view class="nav-bar">
-      <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">{{ $t('couponTransfer.title') }}</text>
-      <view class="nav-placeholder" />
-    </view>
+
 
     <view v-if="loading" class="loading">
       <text class="loading-text">{{ $t('common.loading') }}</text>
@@ -48,6 +42,8 @@ import { get, post } from '@/utils/request'
 import { i18n } from '@/i18n'
 
 export default {
+  pageTitleKey: 'pageTitle.userCouponTransfer',
+
   data() {
     return {
       detail: null,
@@ -112,11 +108,7 @@ export default {
         },
       })
     },
-
-    goBack() {
-      uni.navigateBack()
     },
-  },
 }
 </script>
 
@@ -125,29 +117,14 @@ export default {
   min-height: 100vh;
   background: var(--color-background);
 }
-.nav-bar {
-  display: flex;
-  align-items: center;
-  height: 88rpx;
-  padding: 0 24rpx;
-  background: var(--color-surface);
-  border-bottom: 1rpx solid var(--color-divider);
-}
 .nav-back {
   width: 60rpx;
-}
-.back-icon {
-  font-size: 44rpx;
-  color: var(--color-primary);
 }
 .nav-title {
   flex: 1;
   text-align: center;
   font-size: 32rpx;
   font-weight: 600;
-}
-.nav-placeholder {
-  width: 60rpx;
 }
 .loading {
   padding: 80rpx 24rpx;

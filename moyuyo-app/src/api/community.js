@@ -37,10 +37,18 @@ export function getPostDetail(id) {
   return get(`/api/v1/community/posts/${id}`)
 }
 
-export function createPost(content, images, topic) {
+export function createPost(content, images, video, cover, topic, scheduledAt) {
   const params = { content }
-  if (images && images.length) params.images = images
+  // 视频与图片互斥：优先视频
+  if (video) {
+    params.video = video
+    if (cover) params.cover = cover
+  } else if (images && images.length) {
+    params.images = images
+  }
   if (topic) params.topic = topic
+  // 定时发布时间:可选,ISO 字符串
+  if (scheduledAt) params.scheduledAt = scheduledAt
   return post('/api/v1/community/posts', params)
 }
 
@@ -76,9 +84,18 @@ export function uncollectPost(id) {
 /**
  * 话题列表（社区广场）：按热度降序+排序权重升序，返回活跃话题。
  * 用于发布页"话题"cell 弹层选项。
+ * 传入 keyword 时按话题名模糊匹配（社区搜索页专用）。
  */
-export function getCommunityTopics() {
-  return get('/api/v1/community/topics')
+export function getCommunityTopics(params = {}) {
+  return get('/api/v1/community/topics', params)
+}
+
+/**
+ * 用户搜索：按昵称模糊匹配，返回公开字段(id/nickname/avatar)。
+ * 用于社区搜索页"用户"Tab。
+ */
+export function searchCommunityUsers(params = {}) {
+  return get('/api/v1/users/search', params)
 }
 
 /**
@@ -89,8 +106,19 @@ export function getCollectedPosts(params = {}) {
   return get('/api/v1/community/posts/collected', params)
 }
 
+/**
+ * 实时敏感词检查:返回命中的敏感词字符串列表(去重保序)。
+ * 用于发帖 / 评论时实时高亮提示,不阻断提交。
+ * 后端: GET /api/v1/community/sensitive-check?text=xxx
+ */
+export function sensitiveCheck(text) {
+  return get('/api/v1/community/sensitive-check', { text })
+}
+
 export default {
   getCommunityPosts,
+  searchCommunityPosts,
+  searchCommunityUsers,
   getPostDetail,
   createPost,
   getMyPosts,

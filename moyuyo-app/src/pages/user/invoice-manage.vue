@@ -10,7 +10,7 @@
 
     <scroll-view scroll-y class="content">
       <view v-if="invoices.length === 0" class="empty">
-        <text class="empty-icon"><text class="luc luc-receipt" /></text>
+        <text class="empty-icon luc-receipt" />
         <text class="empty-text">暂无发票信息</text>
         <view class="btn-primary" @click="onAdd">添加发票抬头</view>
       </view>

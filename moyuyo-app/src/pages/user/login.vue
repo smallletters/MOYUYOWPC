@@ -9,15 +9,6 @@
        7. 全宽实心胶囊CTA按钮,高度≥56dp拇指友好
        8. 条款/信任徽章 + 底部注册入口 -->
   <view class="login">
-    <!-- 顶部导航栏:与注册页一致的浅色sticky topbar -->
-    <view class="topbar">
-      <view class="topbar-back" @click="goBack">
-        <text class="luc luc-arrow-left topbar-icon" />
-      </view>
-      <text class="topbar-brand">MOYUYO</text>
-      <view class="topbar-placeholder" />
-    </view>
-
     <scroll-view scroll-y class="page-scroll">
       <view class="page-inner">
         <!-- Hero标题区:大号欢迎 + 价值主张副标题(Target风格) -->
@@ -33,7 +24,7 @@
             <text class="social-label">{{ $t('auth.signInWithGoogle') }}</text>
           </view>
           <view class="social-btn apple" @click="onSocial('apple')">
-            <text class="social-icon-apple" />
+            <image src="/static/icons/apple.svg" class="social-logo social-logo-apple" mode="aspectFit" />
             <text class="social-label">{{ $t('auth.signInWithApple') }}</text>
           </view>
         </view>
@@ -134,12 +125,23 @@
             <text class="cta-text">{{ $t('auth.signInBtn') || $t('auth.login') }}</text>
           </view>
 
-          <!-- 条款:CTA下方小字+弱色,不抢夺注意力(Shein风格) -->
-          <view class="terms">
-            <text class="terms-text">{{ $t('auth.agreeLoginTerms') }}</text>
-            <text class="terms-link">{{ $t('auth.termsAndPolicy') }}</text>
-            <text class="terms-text">{{ $t('common.and') }}</text>
-            <text class="terms-link">{{ $t('auth.privacyPolicy') }}</text>
+          <!-- 条款:勾选框+超链接(Clickwrap合规,参考Shein/Amazon) -->
+          <view class="terms-check" @click="termsAgreed = !termsAgreed">
+            <view class="checkbox" :class="{ checked: termsAgreed }">
+              <text v-if="termsAgreed" class="check-icon">✓</text>
+            </view>
+            <view class="terms-text-wrap">
+              <text class="terms-text">{{ $t('auth.agreeLoginTerms') }}</text>
+              <text class="terms-link">{{ $t('auth.termsAndPolicy') }}</text>
+              <text class="terms-text">{{ $t('common.and') }}</text>
+              <text class="terms-link">{{ $t('auth.privacyPolicy') }}</text>
+            </view>
+          </view>
+
+          <!-- 注册入口:位于条款下方,弱色居中(Target/Shein标准) -->
+          <view class="bottom-register">
+            <text class="bottom-text">{{ $t('auth.noAccount') }}</text>
+            <text class="bottom-link" @click="goRegister">{{ $t('auth.goRegister') }}</text>
           </view>
 
           <!-- 信任徽章(Amazon结账页模式) -->
@@ -155,11 +157,6 @@
           </view>
         </view>
 
-        <!-- 底部注册入口:弱色分隔线+居中文字(Target/Shein标准) -->
-        <view class="bottom-register">
-          <text class="bottom-text">{{ $t('auth.noAccount') }}</text>
-          <text class="bottom-link" @click="goRegister">{{ $t('auth.goRegister') }}</text>
-        </view>
         <view class="safe-bottom" />
       </view>
     </scroll-view>
@@ -193,11 +190,14 @@
 
 <script>
 import { useUserStore } from '@/store'
-import { sendPhoneCode } from '@/api/user'
+import { sendPhoneCode, loginByPhone } from '@/api/user'
 import { config } from '@/utils/config'
+import { setStorage, STORAGE_KEYS } from '@/utils/storage'
 import { i18n } from '@/i18n'
 
 export default {
+  pageTitleKey: 'pageTitle.userLogin',
+
   data() {
     return {
       // 注入配置便于模板使用(避免 computed 多次调用)
@@ -213,6 +213,7 @@ export default {
       codeTimer: null,
       countryCode: '+1', // 默认美国区号(+1)对齐目标市场
       showCountryPicker: false,
+      termsAgreed: false, // 条款勾选状态(Clickwrap合规,默认不勾选)
       // countries 仅保留 code + dial + flag,name 改由 $t() 渲染
       countries: [
         // 美国市场优先排第一个(Target登录页默认美国)
@@ -234,6 +235,8 @@ export default {
 
   computed: {
     canSubmit() {
+      // Clickwrap合规:必须勾选条款才能提交
+      if (!this.termsAgreed) return false
       if (this.activeTab === 'phone') {
         return this.phone.length >= 8 && this.smsCode.length >= 4
       }
@@ -269,6 +272,11 @@ export default {
 
   methods: {
     async onLogin() {
+      // Clickwrap合规:未勾选条款时提示
+      if (!this.termsAgreed) {
+        uni.showToast({ title: '请先同意服务条款', icon: 'none' })
+        return
+      }
       if (!this.canSubmit) return
       uni.showLoading({ title: '登录中...', mask: true })
       try {
@@ -276,12 +284,10 @@ export default {
           // 手机号 + 验证码登录：直接走 loginByPhone,未注册时后端自动创建账号
           const fullPhone = this.countryCode + this.phone
           // 通过专门的手机登录函数 loginByPhone 调用后端,拿到 accessToken/refreshToken 后注入 store
-          const { loginByPhone } = await import('@/api/user')
           const result = await loginByPhone(fullPhone, this.smsCode)
           // 手动写入 store:模拟 login() 成功路径
           this.userStore.token = result.accessToken
           this.userStore.refreshToken = result.refreshToken
-          const { setStorage, STORAGE_KEYS } = await import('@/utils/storage')
           setStorage(STORAGE_KEYS.TOKEN, result.accessToken)
           setStorage('moyuyo_refresh_token', result.refreshToken)
           await this.userStore.fetchProfile()
@@ -391,17 +397,6 @@ export default {
     goRegister() {
       uni.navigateTo({ url: '/pages/user/register' })
     },
-
-    // 顶部返回按钮:兼容从任意入口进入登录页的场景
-    goBack() {
-      const pages = getCurrentPages()
-      if (pages.length > 1) {
-        uni.navigateBack()
-      } else {
-        // 如果登录页是栈底(例如reLaunch进入),返回首页tab
-        uni.switchTab({ url: '/pages/tabbar/home' })
-      }
-    },
   },
 }
 </script>
@@ -418,47 +413,6 @@ export default {
   background: #ffffff;
   display: flex;
   flex-direction: column;
-}
-
-/* 顶部导航栏:与注册页一致(Apple HIG风格) */
-.topbar {
-  display: flex;
-  align-items: center;
-  height: 88rpx;
-  padding: 0 24rpx;
-  padding-top: env(safe-area-inset-top);
-  background: #ffffff;
-  border-bottom: 1rpx solid #f0f0f3;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.topbar-back {
-  width: 56rpx;
-  height: 56rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.topbar-icon {
-  font-size: 40rpx;
-  color: #1d1d1f;
-  line-height: 1;
-}
-
-.topbar-brand {
-  flex: 1;
-  text-align: center;
-  font-size: 28rpx;
-  font-weight: 700;
-  letter-spacing: 4rpx;
-  color: #1d1d1f;
-}
-
-.topbar-placeholder {
-  width: 56rpx;
 }
 
 /* 可滚动区:占满剩余高度,与底部注册入口解耦 */
@@ -533,13 +487,12 @@ export default {
   height: 36rpx;
 }
 
-.social-icon-apple {
-  width: 36rpx;
-  height: 36rpx;
-  border-radius: 4rpx;
-  background: currentColor;
-  -webkit-mask: url('/static/icons/apple.svg') no-repeat center / contain;
-  mask: url('/static/icons/apple.svg') no-repeat center / contain;
+/* Apple 图标在黑色按钮上需要显示为白色。
+ * lucide svg 是 stroke="currentColor",用 <image> 加载后 currentColor 不生效,
+ * 改用 filter:invert 把单色 SVG 翻成白色(0=全黑 → invert 后全白;实际效果等同 mask:white). */
+.social-logo-apple {
+  /* 100% 反相 + 100% 转灰,可把任何单色 SVG 变白 */
+  filter: brightness(0) invert(1);
 }
 
 .social-label {
@@ -790,10 +743,40 @@ export default {
 }
 
 /* 条款区:CTA下方12sp小字居中,不抢主流程注意力 */
-.terms {
+/* 条款勾选区(Clickwrap合规) */
+.terms-check {
   margin-top: 24rpx;
-  text-align: center;
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
   padding: 0 8rpx;
+}
+
+.checkbox {
+  width: 36rpx;
+  height: 36rpx;
+  border: 3rpx solid #c7c7cc;
+  border-radius: 8rpx;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4rpx;
+}
+
+.checkbox.checked {
+  background: var(--color-primary, #007aff);
+  border-color: var(--color-primary, #007aff);
+}
+
+.check-icon {
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.terms-text-wrap {
+  flex: 1;
 }
 
 .terms-text {

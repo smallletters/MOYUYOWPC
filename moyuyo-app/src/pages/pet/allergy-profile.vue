@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">过敏档案</text>
       <view class="edit-btn" @click="onEdit">
@@ -129,7 +129,7 @@
             <view class="product-img" :style="{ background: product.imgBg }" />
             <view class="product-info">
               <view class="safe-badge">
-                <text class="safe-icon"><text class="luc luc-shield" /></text>
+                <text class="safe-icon luc-shield" />
                 <text class="safe-text">安全</text>
               </view>
               <text class="product-name">{{ product.name }}</text>
@@ -143,7 +143,7 @@
       <!-- 成分预警提示卡片 -->
       <view class="warning-card">
         <view class="warning-icon-wrap">
-          <text class="warning-icon"><text class="luc luc-bell" /></text>
+          <text class="warning-icon luc-bell" />
         </view>
         <view class="warning-info">
           <text class="warning-title">成分预警已开启</text>
@@ -166,8 +166,13 @@
 
 <script setup>
 import { ref } from 'vue'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.petAllergyProfile')
+
 
 const goBack = () => uni.navigateBack()
+
+
 
 // 宠物选择
 const pets = [

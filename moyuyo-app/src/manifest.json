@@ -3,7 +3,7 @@
     "appid" : "__UNI__31468B6",
     "description" : "MOYUYO ATELIER - Modern Luxury Pet Lifestyle",
     "versionName" : "1.0.0",
-    "versionCode" : "100",
+    "versionCode" : 101,
     "transformPx" : false,
     "app-plus" : {
         "usingComponents" : true,
@@ -17,14 +17,17 @@
         },
         "modules" : {
             "Push" : {},
-            // 支付模块：启用 PayPal 官方通道（uni.requestPayment 可直接调起 PayPal/Venmo）
+            // 支付模块：启用 PayPal 官方通道（uni.requestPayment 可直接调起 PayPal）
             // 参考：https://uniapp.dcloud.net.cn/tutorial/app-payment-paypal.html
+            // 美国市场方案：APP 端走 Stripe Checkout WebView + payAppBridge 拦截 Apple Pay/Google Pay/PayPal scheme
+            // 故此 paypal 模块主要作为 PayPal 官方 SDK fallback；returnURL 必须与 PayPal Developer Dashboard App Settings 一致
+            // 线上域名：moyuyoshop.com（PayPal cancel/success 走 moyuyoshop.com/payment/return.html 中转）
             "Payment" : {
                 "paypal" : {
                     // Android returnURL：包名://paypalpay，全小写，需与 PayPal Developer Dashboard 中 App Settings 完全一致
-                    "returnURL_android" : "com.moyuyo.app://paypalpay",
+                    "returnURL_android" : "com.moyuyoshop.app://paypalpay",
                     // iOS returnURL：同上格式，可与 Android 相同
-                    "returnURL_ios" : "com.moyuyo.app://paypalpay"
+                    "returnURL_ios" : "com.moyuyoshop.app://paypalpay"
                 },
                 // Apple Pay（Stripe 渠道下走系统 PassKit，需要 merchantIdentifier 配合）
                 "appleIap" : {}
@@ -49,18 +52,34 @@
                 "intentFilters" : [
                     {
                         "action" : "android.intent.action.VIEW",
-                        "category" : ["android.intent.category.DEFAULT", "android.intent.category.BROWSABLE"],
+                        "category" : [
+                            "android.intent.category.DEFAULT",
+                            "android.intent.category.BROWSABLE"
+                        ],
                         "data" : [
-                            { "scheme" : "moyuyo", "host" : "pay", "pathPrefix" : "/return" },
-                            { "scheme" : "moyuyo", "host" : "order" }
+                            {
+                                "scheme" : "moyuyo",
+                                "host" : "pay",
+                                "pathPrefix" : "/return"
+                            },
+                            {
+                                "scheme" : "moyuyo",
+                                "host" : "order"
+                            }
                         ]
                     },
-                    // PayPal/Venmo 支付回调：com.moyuyo.app://paypalpay（需与 PayPal Developer Dashboard 一致）
+                    // PayPal 支付回调：com.moyuyoshop.app://paypalpay（需与 PayPal Developer Dashboard 一致）
                     {
                         "action" : "android.intent.action.VIEW",
-                        "category" : ["android.intent.category.DEFAULT", "android.intent.category.BROWSABLE"],
+                        "category" : [
+                            "android.intent.category.DEFAULT",
+                            "android.intent.category.BROWSABLE"
+                        ],
                         "data" : [
-                            { "scheme" : "com.moyuyo.app", "host" : "paypalpay" }
+                            {
+                                "scheme" : "com.moyuyoshop.app",
+                                "host" : "paypalpay"
+                            }
                         ]
                     }
                 ],
@@ -75,24 +94,23 @@
                     }
                 ],
                 "queries" : [
-                    "<package android:name=\"com.eg.android.AlipayGphone\"/>",
+                    // Android 11+ Package Visibility：声明需要检测的第三方 APP 包名
+                    // 美国市场精简：只保留 PayPal + Google Pay 必需的包名
+                    // - com.paypal.android.p2pmobile: PayPal APP
+                    // - com.google.android.apps.nbu.paisa.user: Google Pay APP
                     "<package android:name=\"com.paypal.android.p2pmobile\"/>",
-                    "<package android:name=\"com.squareup.cash\"/>",
-                    "<package android:name=\"com.venmo\"/>",
                     "<package android:name=\"com.google.android.apps.nbu.paisa.user\"/>",
-                    "<package android:name=\"com.google.android.apps.walletnfcrel\"/>",
-                    "<intent><action android:name=\"android.intent.action.VIEW\"/><data android:scheme=\"alipays\"/></intent>",
+                    // intent / scheme 检测
                     "<intent><action android:name=\"android.intent.action.VIEW\"/><data android:scheme=\"paypal\"/></intent>",
-                    "<intent><action android:name=\"android.intent.action.VIEW\"/><data android:scheme=\"cashme\"/></intent>",
+                    "<intent><action android:name=\"android.intent.action.VIEW\"/><data android:scheme=\"paypalme\"/></intent>",
+                    "<intent><action android:name=\"android.intent.action.VIEW\"/><data android:scheme=\"paypalpay\"/></intent>",
                     "<intent><action android:name=\"android.intent.action.VIEW\"/><data android:scheme=\"intent\"/></intent>",
-                    "<intent><action android:name=\"android.intent.action.VIEW\"/><data android:scheme=\"venmo\"/></intent>",
                     "<intent><action android:name=\"android.intent.action.VIEW\"/><data android:scheme=\"googlepay\"/></intent>",
-                    "<intent><action android:name=\"android.intent.action.VIEW\"/><data android:scheme=\"gpay\"/></intent>",
-                    "<intent><action android:name=\"android.intent.action.VIEW\"/><data android:scheme=\"tez\"/></intent>"
+                    "<intent><action android:name=\"android.intent.action.VIEW\"/><data android:scheme=\"gpay\"/></intent>"
                 ],
                 "minSdkVersion" : 23,
                 "targetSdkVersion" : 34,
-                "abiFilters" : ["armeabi-v7a", "arm64-v8a"]
+                "abiFilters" : [ "armeabi-v7a", "arm64-v8a" ]
             },
             "ios" : {
                 "privacyDescription" : {
@@ -106,78 +124,67 @@
                 "urlschemes" : [
                     // 自定义回跳 scheme，用于 Stripe/PayPal 付完款回到 Moyuyo APP
                     "moyuyo",
-                    "com.moyuyo.app",
+                    "com.moyuyoshop.app",
                     // PayPal 官方 SDK 要求的 iOS URL Scheme（包名://paypalpay）
                     // 必须与 PayPal Developer Dashboard → App Settings → Return URLs 完全一致
                     // 参考：https://uniapp.dcloud.net.cn/tutorial/app-payment-paypal.html
-                    "com.moyuyo.app.paypalpay",
-                    // Alipay
-                    "alipays",
-                    // Venmo iOS 官方 scheme 回调格式（Venmo Docs 要求 appname://x-callback-url/venmo）
-                    "moyuyo-venmo"
+                    "com.moyuyoshop.app.paypalpay"
                 ],
                 "querySchemes" : [
-                    "alipays",
-                    "alipay",
-                    "weixin",
-                    "wechat",
-                    "mqq",
-                    "mqqapi",
+                    // iOS LSApplicationQueriesSchemes：用于 canOpenURL / URL Scheme 检测
+                    // 美国市场精简：只保留实际支付链路需要的 scheme
+                    // - paypal/paypalpay: PayPal SDK URL 检测
+                    // - googlepay/gpay: Google Pay APP 检测
+                    // - applepay/com-apple-payment-pass: iOS Apple Pay
+                    // - itms-apps: App Store 兜底跳转
+                    // - moyuyo/com.moyuyoshop.app: 自定义回跳（线上域名 moyuyoshop.com）
                     "paypal",
-                    "paypalme",
                     "paypalpay",
-                    "com.paypal.android.p2pmobile",
-                    "cashme",
-                    "cashapp",
-                    "venmo",
-                    "moyuyo-venmo",
                     "googlepay",
                     "gpay",
-                    "tez",
+                    "applepay",
+                    "com-apple-payment-pass",
                     "itms-apps",
+                    "moyuyo",
+                    "com.moyuyoshop.app"
+                ],
+                "urlschemewitelist" : [
+                    // iOS 9+ 必须显式声明才能从 plus.runtime.openURL 跳转到这些 APP
+                    // 美国市场精简：只保留实际支付链路需要的 scheme，减少 App Store 审核质疑
+                    // - paypal / paypalme: Stripe Checkout 唤起 PayPal APP
+                    // - googlepay / gpay:  Stripe Checkout 唤起 Google Pay APP
+                    // - applepay / com-apple-payment-pass: iOS Apple Pay PassKit scheme
+                    // - moyuyo / com.moyuyoshop.app: 第三方 APP 付完款回跳自定义 scheme
+                    "paypal",
+                    "paypalme",
+                    "googlepay",
+                    "gpay",
                     "applepay",
                     "com-apple-payment-pass",
                     "moyuyo",
-                    "com.moyuyo.app"
+                    "com.moyuyoshop.app"
                 ],
                 "dSYMs" : false,
                 "capabilities" : {
                     "entitlements" : {
                         "com.apple.developer.associated-domains" : [
-                            "applinks:moyuyo.com",
-                            "webcredentials:moyuyo.com",
-                            "applinks:www.moyuyo.com",
-                            "activitycontinuation:moyuyo.com"
+                            "applinks:moyuyoshop.com",
+                            "webcredentials:moyuyoshop.com",
+                            "applinks:www.moyuyoshop.com",
+                            "activitycontinuation:moyuyoshop.com"
                         ],
-                        // Apple Pay Merchant ID：请替换为你的真实值
+                        // Apple Pay Merchant ID：与线上域名 moyuyoshop.com 保持一致
                         // 申请地址：Apple Developer → Identifiers → Merchant IDs
                         // 同时需在 Stripe Dashboard → Settings → Apple Pay 绑定同一 merchant ID
                         // 参考：https://docs.stripe.com/apple-pay?platform=ios
-                        "com.apple.developer.in-app-payments" : [
-                            "merchant.com.moyuyo.app",
-                            "merchant.com.moyuyo.atelier"
-                        ],
-                        "com.apple.developer.applesignin" : ["Default"]
+                        "com.apple.developer.in-app-payments" : [ "merchant.com.moyuyoshop.app" ],
+                        "com.apple.developer.applesignin" : [ "Default" ]
                     }
                 },
                 "miniOSVersion" : "13.0"
             },
             "sdkConfigs" : {}
-        },
-        "nativePlugins" : [
-            {
-                "class" : "PetHubModule",
-                "name" : "MOYUYOPetHub"
-            },
-            {
-                "class" : "PaymentModule",
-                "name" : "MOYUYOPayment"
-            },
-            {
-                "class" : "AuthModule",
-                "name" : "MOYUYOAuth"
-            }
-        ]
+        }
     },
     "quickapp" : {},
     "mp-weixin" : {
@@ -197,5 +204,5 @@
     },
     "vueVersion" : "3",
     "locale" : "auto",
-    "fallbackLocale" : "en"
+    "fallbackLocale" : "en-US"
 }

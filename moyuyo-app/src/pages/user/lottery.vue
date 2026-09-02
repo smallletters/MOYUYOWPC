@@ -2,7 +2,7 @@
   <view class="lottery">
     <view class="nav-header dark">
       <view class="nav-back" @click="goBack">
-        <text class="back-icon light"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon light luc-arrow-left" />
       </view>
       <text class="nav-title light">幸运抽奖</text>
       <view class="nav-placeholder" />
@@ -26,7 +26,7 @@
       <view class="chances-card">
         <view class="chances-left">
           <view class="chances-icon">
-            <text class="ticket-icon"><text class="luc luc-ticket" /></text>
+            <text class="ticket-icon luc-ticket" />
           </view>
           <view class="chances-info">
             <text class="chances-num">
@@ -42,7 +42,7 @@
             </text>
           </view>
         </view>
-        <text class="chances-arrow"><text class="luc luc-chevron-right" /></text>
+        <text class="chances-arrow luc-chevron-right" />
       </view>
 
       <view class="wheel-section">
@@ -84,13 +84,13 @@
         <view class="prize-grid">
           <view class="prize-item">
             <view class="prize-icon-wrap">
-              <text class="prize-icon"><text class="luc luc-gift" /></text>
+              <text class="prize-icon luc-gift" />
             </view>
             <text class="prize-name">{{ currentLottery ? currentLottery.prizeName : '—' }}</text>
           </view>
           <view class="prize-item">
             <view class="prize-icon-wrap">
-              <text class="prize-icon"><text class="luc luc-ticket" /></text>
+              <text class="prize-icon luc-ticket" />
             </view>
             <text class="prize-name">
               免费 {{ currentLottery ? currentLottery.dailyFree : 0 }} 次/天
@@ -98,7 +98,7 @@
           </view>
           <view class="prize-item">
             <view class="prize-icon-wrap">
-              <text class="prize-icon"><text class="luc luc-calendar" /></text>
+              <text class="prize-icon luc-calendar" />
             </view>
             <text class="prize-name">
               {{ currentLottery ? formatTime(currentLottery.endTime) : '长期' }}
@@ -106,7 +106,7 @@
           </view>
           <view class="prize-item">
             <view class="prize-icon-wrap">
-              <text class="prize-icon"><text class="luc luc-trending-up" /></text>
+              <text class="prize-icon luc-trending-up" />
             </view>
             <text class="prize-name">
               概率 {{ currentLottery ? formatProb(currentLottery.probability) : '—' }}
@@ -177,6 +177,8 @@
 import { lotteryApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.userLottery',
+
   data() {
     return {
       // 后端抽奖活动列表（每次抽奖对应一个活动）

@@ -136,15 +136,48 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public TokenResponse register(RegisterRequest request) {
-        Long count = userMapper.selectCount(
-                new LambdaQueryWrapper<UserEntity>()
-                        .eq(UserEntity::getEmail, request.getEmail()));
-        if (count > 0) {
-            throw new IllegalArgumentException("Email already registered");
+        boolean hasEmail = request.getEmail() != null && !request.getEmail().isBlank();
+        boolean hasPhone = request.getPhone() != null && !request.getPhone().isBlank();
+        // 业务级校验:email / phone 二选一
+        if (!hasEmail && !hasPhone) {
+            throw new IllegalArgumentException("请填写邮箱或手机号");
+        }
+        // email 路径
+        if (hasEmail) {
+            String email = normalizeEmail(request.getEmail());
+            Long count = userMapper.selectCount(
+                    new LambdaQueryWrapper<UserEntity>()
+                            .eq(UserEntity::getEmail, email));
+            if (count > 0) {
+                throw new IllegalArgumentException("Email already registered");
+            }
+        }
+        // phone 路径:必传 smsCode,且验证码必须有效
+        if (hasPhone && (request.getSmsCode() == null || request.getSmsCode().isBlank())) {
+            throw new IllegalArgumentException("手机号注册需提供短信验证码");
+        }
+        String phone = hasPhone ? normalizePhone(request.getPhone()) : null;
+        if (hasPhone) {
+            Long count = userMapper.selectCount(
+                    new LambdaQueryWrapper<UserEntity>()
+                            .eq(UserEntity::getPhone, phone));
+            if (count > 0) {
+                throw new IllegalArgumentException("Phone already registered");
+            }
+            // 复用 loginByPhone 中的验证码校验逻辑:保持与登录/注册一致
+            verifyPhoneCode(phone, request.getSmsCode(), "REGISTER");
         }
 
         UserEntity user = new UserEntity();
-        user.setEmail(request.getEmail());
+        if (hasEmail) {
+            user.setEmail(normalizeEmail(request.getEmail()));
+        }
+        if (hasPhone) {
+            user.setPhone(phone);
+            // phone-only 用户需要一个非空的占位 email（数据库 NOT NULL 约束）。
+            // 后续可由用户在个人中心补全真实邮箱。
+            user.setEmail(phone + "@phone.moyuyo.local");
+        }
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setNickname(request.getNickname());
         user.setCountry(request.getCountry());
@@ -157,8 +190,50 @@ public class AuthServiceImpl implements AuthService {
 
         userMapper.insert(user);
 
-        log.info("User registered: id={}, email={}", user.getId(), user.getEmail());
+        log.info("User registered: id={}, email={}, phone={}", user.getId(), user.getEmail(), user.getPhone());
         return generateTokenPair(user);
+    }
+
+    /**
+     * 校验手机号验证码:独立方法,register / loginByPhone 共用
+     * @param phone 已 normalize 的手机号(含国家区号)
+     * @param code 用户输入的 6 位验证码
+     * @param purpose 验证码用途(REGISTER / LOGIN 等),必须与发码时一致
+     */
+    private void verifyPhoneCode(String phone, String code, String purpose) {
+        SmsCodeEntity record = smsCodeMapper.selectOne(
+                new LambdaQueryWrapper<SmsCodeEntity>()
+                        .eq(SmsCodeEntity::getPhone, phone)
+                        .eq(SmsCodeEntity::getPurpose, purpose)
+                        .eq(SmsCodeEntity::getUsed, 0)
+                        .gt(SmsCodeEntity::getExpireAt, LocalDateTime.now())
+                        .orderByDesc(SmsCodeEntity::getId)
+                        .last("LIMIT 1"));
+        if (record == null) {
+            throw new IllegalArgumentException("验证码不存在或已过期");
+        }
+        if (record.getFailCount() != null && record.getFailCount() >= PHONE_CODE_MAX_FAIL) {
+            record.setUsed(1);
+            smsCodeMapper.updateById(record);
+            throw new IllegalArgumentException("验证码错误次数过多,请重新获取");
+        }
+        if (!code.equals(record.getCode())) {
+            record.setFailCount((record.getFailCount() == null ? 0 : record.getFailCount()) + 1);
+            smsCodeMapper.updateById(record);
+            throw new IllegalArgumentException("验证码错误");
+        }
+        // 标记已使用
+        record.setUsed(1);
+        smsCodeMapper.updateById(record);
+    }
+
+    /**
+     * 规范化手机号:trim + 小写国家码保留原样,数字部分去空格。
+     * 这里不做严格 E.164 校验,业务级已通过 SMS 渠道可送达即可。
+     */
+    private String normalizePhone(String phone) {
+        if (phone == null) return null;
+        return phone.replaceAll("\\s+", "").trim();
     }
 
     @Override
@@ -390,15 +465,13 @@ public class AuthServiceImpl implements AuthService {
     public void sendEmailVerification(EmailVerifyRequest request) {
         // 规范化邮箱，避免大小写不一致导致缓存 Key 与数据库查询不匹配
         String email = normalizeEmail(request.getEmail());
+
+        // 注册流程必须能发验证码（邮箱尚未入库），所以这里不查 user 表。
+        // 用户已注册且邮箱已验证时仍跳过发送，避免对同一邮箱重复骚扰。
         UserEntity user = userMapper.selectOne(
                 new LambdaQueryWrapper<UserEntity>()
                         .eq(UserEntity::getEmail, email));
-
-        if (user == null) {
-            return;
-        }
-
-        if (Boolean.TRUE.equals(user.getEmailVerified())) {
+        if (user != null && Boolean.TRUE.equals(user.getEmailVerified())) {
             return;
         }
 
@@ -715,6 +788,10 @@ public class AuthServiceImpl implements AuthService {
         if (user == null) {
             throw new IllegalArgumentException("User not found");
         }
+        String email = normalizeEmail(user.getEmail());
+        if (email == null) {
+            throw new IllegalArgumentException("用户未绑定邮箱,无法发送两步验证验证码");
+        }
 
         String code = String.format("%06d", SECURE_RANDOM.nextInt(1000000));
         redisTemplate.opsForValue().set(
@@ -723,8 +800,25 @@ public class AuthServiceImpl implements AuthService {
                 TWO_FACTOR_CODE_EXPIRE_SECONDS,
                 TimeUnit.SECONDS);
 
-        // 不记录 2FA 验证码明文，避免日志泄露
-        log.info("2FA code sent for user: {}", userId);
+        // 真发邮件:与 sendEmailVerificationCode 复用同一 SMTP 通道;
+        // EmailServiceImpl 内部对"无 JavaMailSender Bean"的场景自动降级为 log-only
+        // 并在 dev 模式下把验证码输出到日志便于联调;生产需配置 SPRING_MAIL_*。
+        // EmailService 抛 BusinessException 时(真实发送失败),这里不 catch,
+        // 让 GlobalExceptionHandler 兜底返回 502,前端提示"邮件发送失败"。
+        EmailService emailService = emailServiceProvider.getIfAvailable();
+        if (emailService == null) {
+            // EmailService Bean 不存在是配置问题(例如 dev 未装配邮件模块),
+            // 不能默默写 Redis 却不发邮件——否则用户永远收不到码。
+            // 删除已写入 Redis 的验证码,避免脏数据
+            redisTemplate.delete(REDIS_KEY_2FA_CODE + userId);
+            log.error("[2FA] EmailService Bean 未注册,无法发送验证码(userId={})", userId);
+            throw new IllegalStateException("邮件服务未配置,无法发送两步验证验证码");
+        }
+        emailService.sendTwoFactorCode(email, code, (int) (TWO_FACTOR_CODE_EXPIRE_SECONDS / 60));
+
+        // 不记录 2FA 验证码明文,避免日志泄露;
+        // EmailService 自身已对收件人邮箱做了 mask 脱敏日志
+        log.info("[2FA] code sent for user: {}", userId);
     }
 
     @Override
@@ -742,6 +836,70 @@ public class AuthServiceImpl implements AuthService {
         redisTemplate.opsForValue().set(verifiedKey, "1", 7200, TimeUnit.SECONDS);
 
         log.info("2FA verified for user: {}", userId);
+    }
+
+    /**
+     * 设置两步验证开关。
+     * <ul>
+     *   <li>开启(enabled=true 且当前未开启):必须先通过 {@code verifyTwoFactorCode} 完成二次验证
+     *     (即 Redis 存在 {@code auth:2fa-verified:userId}),否则拒绝;通过校验后会消费(删除)
+     *     该缓存——开启是"一次性身份确认"动作,不留下长期 verified 标记。</li>
+     *   <li>幂等:已是开启态再开启直接返回原实体,不要求二次验证,避免用户开 2FA 后短时间内
+     *     因某种抖动被强制下线。</li>
+     *   <li>关闭:写入 {@code two_factor_enabled = 0},并删除 {@code auth:2fa-verified:userId},
+     *     让所有"已通过二次验证"会话失效,下次敏感操作重新走 2FA 流程。</li>
+     * </ul>
+     */
+    @Override
+    @Transactional
+    public UserEntity setTwoFactorEnabled(Long userId, boolean enabled) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User not logged in");
+        }
+        UserEntity user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new IllegalArgumentException("User not found");
+        }
+        boolean alreadyOn = Boolean.TRUE.equals(user.getTwoFactorEnabled());
+        if (enabled && !alreadyOn) {
+            // 开启时要求用户先通过 verify 接口拿到 verified 缓存,
+            // 这是"开启 2FA 前的二次身份验证"的语义闸门
+            String verifiedKey = REDIS_KEY_2FA_VERIFIED + userId;
+            String verified;
+            try {
+                verified = redisTemplate.opsForValue().get(verifiedKey);
+            } catch (DataAccessException e) {
+                log.error("[2FA] failed to read verified cache for user {}", userId, e);
+                throw new IllegalStateException("无法校验二次身份,请稍后再试");
+            }
+            if (!"1".equals(verified)) {
+                throw new IllegalArgumentException("请先完成二次验证");
+            }
+        }
+        boolean changed = !Boolean.valueOf(enabled).equals(user.getTwoFactorEnabled());
+        user.setTwoFactorEnabled(enabled);
+        userMapper.updateById(user);
+        if (enabled && !alreadyOn) {
+            // 开启成功后立刻消费 verified 缓存:
+            // 开启是单次身份确认动作,不持久保留 verified 标记
+            try {
+                redisTemplate.delete(REDIS_KEY_2FA_VERIFIED + userId);
+            } catch (DataAccessException e) {
+                log.warn("[2FA] failed to consume verified cache after enable for user {}: {}",
+                        userId, e.getMessage());
+            }
+        }
+        if (changed && !enabled) {
+            // 仅在"由开 -> 关"且确实发生状态变更时清理缓存,
+            // 避免误清掉刚 verify 完、未持久化前又被切回的会话
+            try {
+                redisTemplate.delete(REDIS_KEY_2FA_VERIFIED + userId);
+            } catch (DataAccessException e) {
+                log.warn("[2FA] failed to delete verified cache for user {}: {}", userId, e.getMessage());
+            }
+        }
+        log.info("[2FA] toggle: user={} enabled={} changed={}", userId, enabled, changed);
+        return user;
     }
 
     // ==================== 手机短信验证码登录 ====================

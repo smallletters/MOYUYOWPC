@@ -71,4 +71,24 @@ public final class XssSanitizer {
         }
         return PLAIN_TEXT_POLICY.sanitize(input);
     }
+
+    /**
+     * URL 净化：仅允许 http/https/mailto 协议，禁用 javascript:、data: 等危险协议，
+     * 防止攻击者通过 video / img 等 src 属性注入脚本。
+     *
+     * @param input 原始 URL（可能为 null）
+     * @return 安全 URL；不安全或空时返回 null（让上层以 null 表示"未上传"）
+     */
+    public static String sanitizeUrl(String input) {
+        if (input == null) return null;
+        String trimmed = input.trim();
+        if (trimmed.isEmpty()) return null;
+        String lower = trimmed.toLowerCase();
+        // 白名单协议头检测
+        if (lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("/")) {
+            return trimmed;
+        }
+        // 不允许的协议（javascript: / data: / vbscript: / file: ...）一律返回 null
+        return null;
+    }
 }

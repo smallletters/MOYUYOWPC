@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">订阅管理</text>
       <view class="header-spacer" />
@@ -27,12 +27,12 @@
             </view>
           </view>
           <view class="overview-badge">
-            <text class="badge-emoji"><text class="luc luc-crown" /></text>
+            <text class="badge-emoji luc-crown" />
           </view>
         </view>
         <view class="overview-action" @click="viewAllSubscriptions">
           <text class="overview-action-text">查看全部订阅</text>
-          <text class="overview-action-arrow"><text class="luc luc-chevron-right" /></text>
+          <text class="overview-action-arrow luc-chevron-right" />
         </view>
       </view>
 
@@ -42,7 +42,7 @@
           <!-- 商品信息 -->
           <view class="product-row">
             <view class="product-thumb">
-              <text class="thumb-emoji"><text class="luc luc-package" /></text>
+              <text class="thumb-emoji luc-package" />
             </view>
             <view class="product-info">
               <text class="product-name">{{ subscription.name }}</text>
@@ -88,7 +88,7 @@
               <text class="info-label">配送频率</text>
               <text class="info-value">{{ subscription.deliveryFreq }}</text>
             </view>
-            <text class="info-edit"><text class="luc luc-pencil" /></text>
+            <text class="info-edit luc-pencil" />
           </view>
 
           <!-- 下次配送 + 倒计时 -->
@@ -162,7 +162,7 @@
       <view class="history-card">
         <view class="history-toggle" @click="toggleHistory">
           <view class="history-toggle-left">
-            <text class="history-toggle-icon"><text class="luc luc-clock" /></text>
+            <text class="history-toggle-icon luc-clock" />
             <text class="history-toggle-title">配送历史</text>
             <text class="history-count-badge">{{ deliveryHistory.length }} 次</text>
           </view>
@@ -198,7 +198,7 @@
           </view>
         </view>
         <view class="cancel-btn" @click="cancelSubscription">
-          <text class="cancel-icon"><text class="luc luc-x" /></text>
+          <text class="cancel-icon luc-x" />
           <text class="cancel-text">取消订阅</text>
         </view>
       </view>
@@ -210,8 +210,13 @@
 
 <script setup>
 import { ref } from 'vue'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userSubscribeManageDetail')
+
 
 // 订阅详情 mock
+
+
 const subscription = ref({
   name: '高端猫粮 成猫专用',
   spec: '鸡肉配方 / 2kg 装',

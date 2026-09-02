@@ -1,15 +1,7 @@
 ﻿<template>
   <view class="ar-tryon-page">
     <!-- 导航栏 -->
-    <view class="nav-bar">
-      <view class="nav-btn" @click="goBack">
-        <text class="nav-back"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">AR 试穿</text>
-      <view class="nav-btn">
-        <text class="nav-share"><text class="luc luc-upload" /></text>
-      </view>
-    </view>
+
 
     <!-- 主视图区域 -->
     <view class="main-view">
@@ -20,7 +12,7 @@
           <!-- 站位引导 -->
           <view v-if="!arActive" class="ar-guide" @click="startAr">
             <view class="guide-circle">
-              <text class="guide-icon"><text class="luc luc-smartphone" /></text>
+              <text class="guide-icon luc-smartphone" />
             </view>
             <text class="guide-text">点击开始 AR 试穿</text>
           </view>
@@ -44,7 +36,7 @@
       <!-- 功能按钮行 -->
       <view class="action-row">
         <view class="action-btn" @click="toggleCamera">
-          <text class="action-icon"><text class="luc luc-refresh-cw" /></text>
+          <text class="action-icon luc-refresh-cw" />
           <text class="action-label">切换镜头</text>
         </view>
         <view class="action-btn capture-btn" @click="capturePhoto">
@@ -65,7 +57,7 @@
       <view class="panel-header">
         <text class="panel-title">选择商品试穿</text>
         <view class="panel-close" @click="goBack">
-          <text class="panel-close-text"><text class="luc luc-x" /></text>
+          <text class="panel-close-text luc-x" />
         </view>
       </view>
 
@@ -97,7 +89,7 @@
             <view class="thumb-img" :style="{ background: product.thumbBg }" />
             <text class="thumb-name">{{ product.name }}</text>
             <view v-if="currentProduct.id === product.id" class="thumb-check">
-              <text class="thumb-check-text"><text class="luc luc-check" /></text>
+              <text class="thumb-check-text luc-check" />
             </view>
           </view>
         </view>
@@ -116,7 +108,7 @@
             @click="selectedColor = color.name"
           >
             <view v-if="selectedColor === color.name" class="color-check">
-              <text class="color-check-text"><text class="luc luc-check" /></text>
+              <text class="color-check-text luc-check" />
             </view>
           </view>
         </view>
@@ -156,8 +148,13 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.goodsArTryOn')
+
 
 // AR 状态
+
+
 const arActive = ref(false)
 const flashOn = ref(false)
 const selectedColor = ref('奶油白')
@@ -300,28 +297,12 @@ const addToCart = () => {
 }
 
 // 导航栏
-.nav-bar {
-  display: flex;
-  align-items: center;
-  height: 88rpx;
-  padding: 0 32rpx;
-  background: rgba(0, 0, 0, 0.6);
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 30;
-}
 .nav-btn {
   width: 64rpx;
   height: 64rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-.nav-back {
-  font-size: 40rpx;
-  color: #fff;
 }
 .nav-title {
   flex: 1;

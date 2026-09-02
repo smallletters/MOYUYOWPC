@@ -43,6 +43,8 @@
 
 <script>
 export default {
+  pageTitleKey: 'pageTitle.userSplash',
+
   data() {
     return {
       brandStyle: {},

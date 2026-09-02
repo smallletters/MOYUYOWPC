@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">邀请好友</text>
       <view class="header-btn" />
@@ -21,7 +21,7 @@
           <text class="invite-code-label">邀请码</text>
           <text class="invite-code-value">{{ inviteCode }}</text>
           <view class="invite-code-copy" @click="onCopyCode">
-            <text class="copy-icon"><text class="luc luc-clipboard-list" /></text>
+            <text class="copy-icon luc-clipboard-list" />
             <text class="copy-text">复制</text>
           </view>
         </view>
@@ -34,21 +34,21 @@
       <view class="reward-steps">
         <view class="reward-step">
           <view class="step-icon step-icon--brand">
-            <text class="step-icon-text"><text class="luc luc-link" /></text>
+            <text class="step-icon-text luc-link" />
           </view>
           <text class="step-title">分享邀请链接</text>
           <text class="step-desc">发送给好友</text>
         </view>
         <view class="reward-step">
           <view class="step-icon step-icon--brand">
-            <text class="step-icon-text"><text class="luc luc-user" /></text>
+            <text class="step-icon-text luc-user" />
           </view>
           <text class="step-title">好友注册下单</text>
           <text class="step-desc">完成首单购买</text>
         </view>
         <view class="reward-step">
           <view class="step-icon step-icon--success">
-            <text class="step-icon-text"><text class="luc luc-gift" /></text>
+            <text class="step-icon-text luc-gift" />
           </view>
           <text class="step-title">双方获得积分</text>
           <text class="step-desc">积分即时到账</text>
@@ -62,25 +62,25 @@
       <view class="share-channels">
         <view class="share-channel" @click="onShareWeChat">
           <view class="channel-icon channel-icon--green">
-            <text class="channel-icon-text"><text class="luc luc-message-circle" /></text>
+            <text class="channel-icon-text luc-message-circle" />
           </view>
           <text class="channel-label">微信</text>
         </view>
         <view class="share-channel" @click="onShareWhatsApp">
           <view class="channel-icon channel-icon--brand">
-            <text class="channel-icon-text"><text class="luc luc-phone" /></text>
+            <text class="channel-icon-text luc-phone" />
           </view>
           <text class="channel-label">WhatsApp</text>
         </view>
         <view class="share-channel" @click="onShareSMS">
           <view class="channel-icon channel-icon--blue">
-            <text class="channel-icon-text"><text class="luc luc-mail" /></text>
+            <text class="channel-icon-text luc-mail" />
           </view>
           <text class="channel-label">短信</text>
         </view>
         <view class="share-channel" @click="onCopyLink">
           <view class="channel-icon">
-            <text class="channel-icon-text"><text class="luc luc-link" /></text>
+            <text class="channel-icon-text luc-link" />
           </view>
           <text class="channel-label">复制链接</text>
         </view>
@@ -151,6 +151,8 @@
 import { inviteApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.userInvite',
+
   data() {
     return {
       inviteCode: '',

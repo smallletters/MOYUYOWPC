@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">订阅计划</text>
       <view class="header-spacer" />
@@ -60,7 +60,7 @@
             <!-- 额外权益 -->
             <view v-if="plan.benefits.length" class="plan-benefits">
               <view v-for="(b, i) in plan.benefits" :key="i" class="benefit-item">
-                <text class="benefit-icon"><text class="luc luc-check" /></text>
+                <text class="benefit-icon luc-check" />
                 <text class="benefit-text">{{ b }}</text>
               </view>
             </view>
@@ -73,7 +73,7 @@
         <text class="section-title">订阅权益</text>
         <view class="benefits-card">
           <view v-for="(b, i) in subscribeBenefits" :key="i" class="benefit-row">
-            <text class="benefit-check"><text class="luc luc-check" /></text>
+            <text class="benefit-check luc-check" />
             <text class="benefit-desc">{{ b }}</text>
           </view>
         </view>
@@ -86,24 +86,24 @@
           <!-- 首次配送日期 -->
           <view class="delivery-row" @click="showDatePicker">
             <view class="delivery-left">
-              <text class="delivery-icon"><text class="luc luc-map-pin" /></text>
+              <text class="delivery-icon luc-map-pin" />
               <text class="delivery-label">首次配送日期</text>
             </view>
             <view class="delivery-right">
               <text class="delivery-value">{{ firstDeliveryDate }}</text>
-              <text class="delivery-arrow"><text class="luc luc-chevron-right" /></text>
+              <text class="delivery-arrow luc-chevron-right" />
             </view>
           </view>
           <view class="delivery-divider" />
           <!-- 配送地址 -->
           <view class="delivery-row" @click="showAddressPicker">
             <view class="delivery-left">
-              <text class="delivery-icon"><text class="luc luc-map-pin" /></text>
+              <text class="delivery-icon luc-map-pin" />
               <text class="delivery-label">配送地址</text>
             </view>
             <view class="delivery-right">
               <text class="delivery-value">{{ deliveryAddress }}</text>
-              <text class="delivery-arrow"><text class="luc luc-chevron-right" /></text>
+              <text class="delivery-arrow luc-chevron-right" />
             </view>
           </view>
         </view>
@@ -133,8 +133,13 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { i18n } from '@/i18n'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userSubscribePlan')
+
 
 // 商品信息 mock
+
+
 const product = ref({
   name: 'MOYUYO 温和沐浴露 500ml',
   price: '28.00',

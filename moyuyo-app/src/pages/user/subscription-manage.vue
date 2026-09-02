@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">我的订阅</text>
       <view class="header-spacer" />
@@ -24,7 +24,7 @@
           </view>
         </view>
         <view class="overview-icon">
-          <text class="icon-emoji"><text class="luc luc-star" /></text>
+          <text class="icon-emoji luc-star" />
         </view>
       </view>
 
@@ -64,7 +64,7 @@
             <text class="discount-tag">省{{ item.discount }}%</text>
           </view>
           <view class="delivery-row">
-            <text class="delivery-icon"><text class="luc luc-package" /></text>
+            <text class="delivery-icon luc-package" />
             <text class="delivery-text">下次 {{ item.nextDate }}</text>
           </view>
         </view>
@@ -121,7 +121,7 @@
                 </view>
                 <text class="sub-spec">{{ item.spec }} / {{ item.cycleText }}</text>
                 <view class="sub-cycle">
-                  <text class="cycle-icon"><text class="luc luc-minus" /></text>
+                  <text class="cycle-icon luc-minus" />
                   <text class="cycle-text cycle-text-muted">{{ item.dateRange }}</text>
                 </view>
               </view>
@@ -132,7 +132,7 @@
 
       <!-- 底部提示 -->
       <view class="tip-box">
-        <text class="tip-icon"><text class="luc luc-help-circle" /></text>
+        <text class="tip-icon luc-help-circle" />
         <text class="tip-text">
           订阅灵活管理：可随时调整周期、暂停或取消，无额外费用。如有疑问请联系客服。
         </text>
@@ -143,8 +143,13 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userSubscriptionManage')
+
 
 // 历史订阅折叠状态
+
+
 const historyExpanded = ref(false)
 
 // 活跃订阅 mock 数据

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="health">
     <view class="header">
       <text class="title">Health Calendar</text>
@@ -59,6 +59,8 @@ const REMINDER_META = {
 }
 
 export default {
+  pageTitleKey: 'pageTitle.petHealth',
+
   data() {
     const now = new Date()
     return {
@@ -180,7 +182,7 @@ export default {
   min-height: 100vh;
   background: var(--color-background);
   padding: 32rpx 16rpx;
-  padding-top: calc(32rpx + env(safe-area-inset-top));
+  padding-top: calc(32rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
 }
 .header {
   padding: 0 16rpx 24rpx;

@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">关于我们</text>
     </view>
@@ -59,7 +59,7 @@
           @click="onInfoClick(item)"
         >
           <text class="info-label">{{ item.label }}</text>
-          <text class="chevron"><text class="luc luc-chevron-right" /></text>
+          <text class="chevron luc-chevron-right" />
         </view>
       </view>
 
@@ -75,6 +75,8 @@ import { config } from '@/utils/config'
 import { isUrlAllowed } from '@/utils/webview-guard'
 
 export default {
+  pageTitleKey: 'pageTitle.userAbout',
+
   data() {
     return {
       characters: [

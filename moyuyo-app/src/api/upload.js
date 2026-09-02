@@ -64,7 +64,51 @@ export async function uploadImages(filePaths) {
   return urls
 }
 
+/**
+ * 上传单个视频(社区发帖)。
+ * 后端: POST /api/v1/file/upload/video
+ * 大小上限受 application.yml spring.servlet.multipart.max-file-size 控制(当前 200MB)
+ *
+ * @param {string} filePath uni.chooseVideo 返回的本地路径(tempFilePath)
+ * @param {(percent: number) => void} [onProgress] 上传进度回调(0~100)
+ * @returns {Promise<{url: string, filename: string, size: number, ...}>}
+ */
+export function uploadVideo(filePath, onProgress) {
+  return new Promise((resolve, reject) => {
+    const token = getStorage(STORAGE_KEYS.TOKEN)
+    const header = token ? { Authorization: `Bearer ${token}` } : {}
+    const task = uni.uploadFile({
+      url: '/api/v1/file/upload/video',
+      filePath,
+      name: 'file',
+      header,
+      success: (res) => {
+        try {
+          const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
+          if (res.statusCode >= 200 && res.statusCode < 300 && body?.code === 0) {
+            resolve(body.data)
+          } else {
+            reject(new Error(body?.message || `视频上传失败(${res.statusCode})`))
+          }
+        } catch (e) {
+          reject(new Error('视频上传响应解析失败'))
+        }
+      },
+      fail: (err) => {
+        reject(new Error(err.errMsg || '网络错误'))
+      },
+    })
+    // 监听上传进度(uni.uploadFile 在 H5 上不暴露 onProgressUpdate,但部分平台支持)
+    if (task && typeof task.onProgressUpdate === 'function' && typeof onProgress === 'function') {
+      task.onProgressUpdate((e) => {
+        if (typeof e.progress === 'number') onProgress(Math.min(100, Math.max(0, e.progress)))
+      })
+    }
+  })
+}
+
 export default {
   uploadImage,
   uploadImages,
+  uploadVideo,
 }

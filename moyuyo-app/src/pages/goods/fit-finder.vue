@@ -1,12 +1,7 @@
 ﻿<template>
   <view class="fit-finder">
-    <view class="nav-header">
-      <view class="nav-back" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">尺码推荐</text>
-      <view class="nav-placeholder" />
-    </view>
+
+
 
     <view class="step-indicator">
       <view class="step-dot" :class="{ active: currentStep >= 1, done: currentStep > 1 }">
@@ -37,7 +32,7 @@
           :class="{ selected: petType === 'dog' }"
           @click="petType = 'dog'"
         >
-          <text class="pet-type-icon"><text class="luc luc-paw-print" /></text>
+          <text class="pet-type-icon luc-paw-print" />
           <text class="pet-type-name">犬类</text>
         </view>
         <view
@@ -45,7 +40,7 @@
           :class="{ selected: petType === 'cat' }"
           @click="petType = 'cat'"
         >
-          <text class="pet-type-icon"><text class="luc luc-paw-print" /></text>
+          <text class="pet-type-icon luc-paw-print" />
           <text class="pet-type-name">猫咪</text>
         </view>
       </view>
@@ -157,7 +152,7 @@
     <view v-if="currentStep === 3" class="step-content">
       <view class="result-card">
         <view class="result-header">
-          <text class="result-icon"><text class="luc luc-check" /></text>
+          <text class="result-icon luc-check" />
           <text class="result-title">智能推荐</text>
         </view>
         <view class="result-body">
@@ -241,6 +236,8 @@ const CAT_BREEDS = [
 ]
 
 export default {
+  pageTitleKey: 'pageTitle.goodsFitFinder',
+
   data() {
     return {
       currentStep: 1,
@@ -284,10 +281,6 @@ export default {
   },
 
   methods: {
-    goBack() {
-      uni.navigateBack()
-    },
-
     onWeightChange(e) {
       this.weight = e.detail.value
     },

@@ -2,7 +2,7 @@
   <view class="recharge">
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">{{ $t('recharge.title') }}</text>
       <view class="header-btn" />
@@ -89,6 +89,8 @@ import { memberApi } from '@/api'
 import { i18n } from '@/i18n'
 
 export default {
+  pageTitleKey: 'pageTitle.userBalanceRecharge',
+
   data() {
     return {
       selectedAmount: 50,

@@ -1,18 +1,12 @@
 <template>
   <view class="coupon-center">
     <!-- 深色顶部导航栏 -->
-    <view class="nav-bar">
-      <view class="nav-btn" @click="goBack">
-        <text class="nav-back"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">领券中心</text>
-      <view class="nav-btn" />
-    </view>
+
 
     <!-- 限时抢券倒计时横幅 -->
     <view v-if="totalSeconds > 0" class="countdown-banner">
       <view class="countdown-left">
-        <text class="countdown-icon"><text class="luc luc-zap" /></text>
+        <text class="countdown-icon luc-zap" />
         <text class="countdown-label">限时领券</text>
       </view>
       <view class="countdown-right">
@@ -67,7 +61,7 @@
     <!-- 底部汇总栏 -->
     <view class="bottom-bar">
       <view class="bottom-summary">
-        <text class="summary-icon"><text class="luc luc-ticket" /></text>
+        <text class="summary-icon luc-ticket" />
         <text class="summary-text">
           {{ $t('couponCenter.summary', { count: claimedCount }) }}
         </text>
@@ -101,6 +95,8 @@ const CATEGORY_TO_THEME = {
 import uCoupon from 'uview-plus/components/u-coupon/u-coupon.vue'
 
 export default {
+  pageTitleKey: 'pageTitle.userCouponCenter',
+
   components: { uCoupon },
   data() {
     return {
@@ -303,11 +299,6 @@ export default {
       const diff = Math.floor((new Date(endTime).getTime() - Date.now()) / 1000)
       this.totalSeconds = Math.max(0, diff)
     },
-
-    goBack() {
-      uni.navigateBack()
-    },
-
     onTabChange(value) {
       this.activeTab = value
     },
@@ -354,7 +345,7 @@ export default {
   padding: 0 32rpx 24rpx;
 }
 
-.coupon-list >>> .up-coupon {
+.coupon-list :deep(.up-coupon) {
   /* 让卡片在 H5 端有合理内边距 */
   margin: 0;
 }
@@ -367,17 +358,6 @@ export default {
 }
 
 /* 深色导航栏 */
-.nav-bar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 88rpx;
-  background: var(--color-text);
-}
-
 .nav-btn {
   position: absolute;
   display: inline-flex;
@@ -395,12 +375,6 @@ export default {
 .nav-btn:last-child {
   right: 16rpx;
 }
-
-.nav-back {
-  font-size: 48rpx;
-  line-height: 1;
-}
-
 .nav-title {
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);

@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="header-btn" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">服务预约</text>
       <view class="header-btn" />
@@ -85,7 +85,7 @@
               <view class="store-name-row">
                 <text class="store-name">{{ store.name }}</text>
                 <view class="store-rating">
-                  <text class="star"><text class="luc luc-star" /></text>
+                  <text class="star luc-star" />
                   <text class="rating-value">{{ store.rating }}</text>
                 </view>
               </view>
@@ -212,7 +212,7 @@
             <text class="pet-name">{{ pet.name }}</text>
             <text class="pet-breed">{{ pet.breed }}</text>
           </view>
-          <text class="pet-arrow"><text class="luc luc-chevron-right" /></text>
+          <text class="pet-arrow luc-chevron-right" />
         </view>
       </view>
 
@@ -242,7 +242,7 @@
     <!-- 底部确认预约栏 -->
     <view class="bottom-bar">
       <view class="policy-hint">
-        <text class="hint-icon"><text class="luc luc-alert-triangle" /></text>
+        <text class="hint-icon luc-alert-triangle" />
         <text class="hint-text">
           预约成功后如需取消，请提前24小时操作；逾期取消或爽约将扣除全额定金。
         </text>
@@ -257,6 +257,8 @@
 import { petApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.userServiceBooking',
+
   data() {
     return {
       selectedService: 'grooming',

@@ -49,6 +49,8 @@ import { usePaymentPlugin } from '@/plugins/payment'
 import { useAuthPlugin } from '@/plugins/auth'
 
 export default {
+  pageTitleKey: 'pageTitle.debugPluginTest',
+
   data() {
     return { logs: ['[初始化] 调试页面已加载'] }
   },

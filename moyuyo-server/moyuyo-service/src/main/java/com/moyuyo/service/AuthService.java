@@ -36,6 +36,13 @@ public interface AuthService {
     void verifyTwoFactorCode(Long userId, String code);
 
     /**
+     * 设置两步验证开关。
+     * 关闭时同时清掉 {@code auth:2fa-verified:userId} 缓存,
+     * 确保下一次敏感操作(登录 / 大额支付)重新走二次校验。
+     */
+    UserEntity setTwoFactorEnabled(Long userId, boolean enabled);
+
+    /**
      * 发送手机验证码。
      * @param phone 手机号（含国家区号）
      * @param purpose LOGIN / REGISTER / RESET_PASSWORD

@@ -202,6 +202,9 @@ public class AdminProductController {
     } catch (IllegalArgumentException e) {
       return Result.error(e.getMessage());
     } catch (Exception e) {
+      // 打印完整堆栈到日志，便于定位 NPE 真实位置（getMessage 只能给出 "Cannot invoke ... because ... is null"）
+      org.slf4j.LoggerFactory.getLogger(AdminProductController.class)
+          .error("更新商品失败 productId={} body={}", id, body, e);
       return Result.error("更新商品失败: " + e.getMessage());
     }
   }

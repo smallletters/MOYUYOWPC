@@ -180,7 +180,8 @@ payment:
     client-secret: ${PAYPAL_CLIENT_SECRET:placeholder}
     webhook-id: ${PAYPAL_WEBHOOK_ID:placeholder}
     mode: sandbox
-    allowed-origins: ${PAYPAL_ALLOWED_ORIGINS:https://moyuyo.com}
+    # 美国市场默认白名单：线上域名 moyuyoshop.com + 后端 api.moyuyoshop.com
+    allowed-origins: ${PAYPAL_ALLOWED_ORIGINS:https://moyuyoshop.com,https://www.moyuyoshop.com}
   wechat:
     app-id: ${WECHAT_APP_ID:}
     mch-id: ${WECHAT_MCH_ID:}

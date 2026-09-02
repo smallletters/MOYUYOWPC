@@ -26,6 +26,17 @@ public interface EmailService {
     void sendEmailVerificationCode(String to, String code, int ttlMinutes);
 
     /**
+     * 发送"两步验证"邮件。
+     * <p>
+     * 与 {@link #sendEmailVerificationCode} 的区别:此邮件用于"开启 2FA 前的二次身份校验",
+     * 正文中需明确告知"你正在修改账号安全设置",降低被钓鱼利用的风险。
+     * @param to 收件人邮箱（已规范化）
+     * @param code 6 位数字验证码
+     * @param ttlMinutes 验证码有效分钟数（仅用于正文展示）
+     */
+    void sendTwoFactorCode(String to, String code, int ttlMinutes);
+
+    /**
      * 发送"Magic Link 一键登录"邮件。
      * @param to 收件人邮箱（已规范化）
      * @param magicLink 完整可点击登录链接（前端基础地址 + token）

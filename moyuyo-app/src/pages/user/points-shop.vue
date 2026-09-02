@@ -29,6 +29,8 @@
 import { pointsApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.userPointsShop',
+
   data() {
     return {
       points: 0,

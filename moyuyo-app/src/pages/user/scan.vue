@@ -2,11 +2,11 @@
   <view class="scan-page">
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="header-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="header-icon luc-arrow-left" />
       </view>
       <text class="header-title">扫一扫</text>
       <view class="header-btn" @click="onPickAlbum">
-        <text class="header-icon"><text class="luc luc-image" /></text>
+        <text class="header-icon luc-image" />
       </view>
     </view>
 
@@ -24,19 +24,19 @@
     <view class="bottom-bar">
       <view class="bottom-btn" @click="onToggleFlash">
         <view class="btn-circle">
-          <text class="btn-icon"><text class="luc luc-zap" /></text>
+          <text class="btn-icon luc-zap" />
         </view>
         <text class="btn-label">闪光灯</text>
       </view>
       <view class="bottom-btn" @click="onPickAlbum">
         <view class="btn-circle">
-          <text class="btn-icon"><text class="luc luc-image" /></text>
+          <text class="btn-icon luc-image" />
         </view>
         <text class="btn-label">相册</text>
       </view>
       <view class="bottom-btn" @click="onViewHistory">
         <view class="btn-circle">
-          <text class="btn-icon"><text class="luc luc-clock" /></text>
+          <text class="btn-icon luc-clock" />
         </view>
         <text class="btn-label">记录</text>
       </view>
@@ -58,6 +58,8 @@
 
 <script>
 export default {
+  pageTitleKey: 'pageTitle.userScan',
+
   data() {
     return {
       flashOn: false,

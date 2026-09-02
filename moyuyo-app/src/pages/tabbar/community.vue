@@ -1,23 +1,14 @@
-﻿<template>
+<template>
   <view class="community-page">
     <!-- 顶部导航栏（状态栏 + 标题 + 操作图标） -->
-    <view class="status-bar">
-      <text class="status-time">9:41</text>
-      <view class="status-icons">
-        <text class="status-icon">▲</text>
-        <text class="status-icon">▣</text>
-        <view class="battery" />
-      </view>
-    </view>
-
     <view class="top-bar">
-      <text class="top-title">社区</text>
+      <text class="top-title">{{ t('community.title') }}</text>
       <view class="top-actions">
         <view class="icon-btn" aria-label="搜索" @tap="goSearch">
-          <text class="icon"><text class="luc luc-search" /></text>
+          <text class="icon luc-search" />
         </view>
         <view class="icon-btn relative" aria-label="通知" @tap="goNotifications">
-          <text class="icon"><text class="luc luc-bell" /></text>
+          <text class="icon luc-bell" />
           <view class="badge-dot" />
         </view>
       </view>
@@ -43,7 +34,7 @@
     <view v-if="activeTab === 'recommend'" class="search-bar">
       <view class="search-field" @tap="goSearchPage">
         <text class="search-icon luc luc-search" />
-        <text class="search-placeholder">搜索帖子、用户、话题…</text>
+        <text class="search-placeholder">{{ t('community.searchPlaceholder') }}</text>
       </view>
     </view>
 
@@ -59,7 +50,7 @@
         :key="t.id"
         class="topic-tag"
         @tap="onTopicClick(t)">
-        #{{ t.name }}
+        #{{ topicName(t.name) }}
       </view>
     </scroll-view>
 
@@ -130,7 +121,7 @@
             <text class="action-count">{{ p.likes || 0 }}</text>
           </view>
           <view class="action" @tap.stop="goDetail(p.id, true)">
-            <text class="action-icon"><text class="luc luc-message-circle" /></text>
+            <text class="action-icon luc-message-circle" />
             <text class="action-count">{{ p.comments || 0 }}</text>
           </view>
           <view class="action" @tap.stop="onShare(p)">
@@ -149,7 +140,7 @@
 
     <!-- 浮动发布按钮 -->
     <view class="fab" aria-label="发布帖子" @tap="goCreate">
-      <text class="fab-icon"><text class="luc luc-camera" /></text>
+      <text class="fab-icon luc-camera" />
     </view>
   </view>
 </template>
@@ -158,12 +149,50 @@
 import { ref, computed, onMounted } from 'vue'
 import { communityApi } from '@/api'
 import { get } from '@/utils/request'
+import { useUserStore } from '@/store'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+import { i18n } from '@/i18n'
+usePageTitle('pageTitle.tabbarCommunity')
 
-const tabs = [
-  { value: 'recommend', label: '推荐' },
-  { value: 'follow', label: '关注' },
-  { value: 'topic', label: '话题' },
-]
+
+// locale 变化时自增,触发依赖它的 computed 重新求值
+// (i18n.t 内部读取 _localeRef.value,但通过函数间接读取不会自动建立 Vue 响应式依赖)
+const localeVersion = ref(0)
+i18n.subscribe(() => {
+  localeVersion.value += 1
+})
+
+// 模板里使用的 t(key):内部访问 localeVersion.value 建立响应式依赖
+const t = (key) => {
+  void localeVersion.value
+  return i18n.t(key)
+}
+
+/**
+ * 话题 tag 显示名:key 为后端返回的中文 name,value 在字典里查当前 locale 的展示文本。
+ * 查不到时回落原中文名(运营新增话题但前端还没翻译,不会显示空白)。
+ * 同样依赖 localeVersion 以响应 locale 切换。
+ */
+const topicName = (rawName) => {
+  void localeVersion.value
+  const translated = i18n.t(`community.topicTags.${rawName}`)
+  // i18n.t 在 key 不存在时返回原 key 字符串;这里识别 key 是否被原样返回来判定回落
+  if (translated && translated !== `community.topicTags.${rawName}`) {
+    return translated
+  }
+  return rawName
+}
+
+// Tab 文案走 i18n:用 computed 让 locale 切换时 label 跟随刷新
+const tabs = computed(() => {
+  // 显式依赖 localeVersion,确保 locale 变化时重算 label
+  void localeVersion.value
+  return [
+    { value: 'recommend', label: i18n.t('community.tabs.recommend') },
+    { value: 'follow', label: i18n.t('community.tabs.follow') },
+    { value: 'topic', label: i18n.t('community.tabs.topic') },
+  ]
+})
 const activeTab = ref('recommend')
 
 // 话题标签（来自后端 mo_community_topic_v2 表）
@@ -183,11 +212,33 @@ const emptyHint = computed(() => {
   return '还没有帖子，发一个吧～'
 })
 
+/** 未登录用户引导:匿名可浏览,但互动功能(点赞/评论/发布)需登录 */
+const userStore = useUserStore()
+const showLoginHint = ref(false)
+
+function onLikeClickGuard() {
+  if (!userStore.isLoggedIn) {
+    uni.showModal({
+      title: '登录后即可点赞',
+      content: '是否前往登录?',
+      confirmText: '去登录',
+      cancelText: '再看看',
+      success: (res) => {
+        if (res.confirm) {
+          uni.reLaunch({ url: '/pages/user/login' })
+        }
+      },
+    })
+    return false
+  }
+  return true
+}
+
 /**
  * 根据当前 Tab 拉取数据源。
  *  - recommend：GET /community/posts（带可选手 topic）
- *  - follow：    GET /follows/feed（关注的人发布的帖子）
- *  - topic：     默认等价 recommend，等待点击具体话题再过滤
+ *  - follow：    GET /follows/feed（关注的人发布的帖子，未登录返回空）
+ *  - topic：     初次进入等价 recommend（已加白名单可匿名浏览），等用户点具体话题再过滤
  */
 async function loadPosts(reset = false) {
   if (reset) {
@@ -200,6 +251,12 @@ async function loadPosts(reset = false) {
     const params = { page: page.value, size: pageSize }
     let res
     if (activeTab.value === 'follow') {
+      // 关注流需要登录;匿名直接展示空态,避免 401 报错弹窗
+      if (!userStore.isLoggedIn) {
+        posts.value = []
+        noMore.value = true
+        return
+      }
       res = await communityApi.getFollowFeed(params)
     } else {
       res = await communityApi.getCommunityPosts(params)
@@ -232,7 +289,19 @@ function onLoadMore() {
   loadPosts(false)
 }
 
+/**
+ * 下拉刷新:重置列表并拉第一页。
+ * 注意:loading 状态 + stopPullDownRefresh 都要正确处理,否则下拉动画不会消失。
+ */
+function onPullDownRefresh() {
+  loadPosts(true)
+  // 给 loadPosts 一个微任务窗口,loading=true 后再停掉下拉动画
+  setTimeout(() => uni.stopPullDownRefresh(), 300)
+}
+
 async function onLike(p) {
+  // 未登录拦截:弹窗引导去登录,避免 401 报错污染体验
+  if (!onLikeClickGuard()) return
   try {
     if (p.liked) {
       await communityApi.unlikePost(p.id)
@@ -249,7 +318,17 @@ async function onLike(p) {
 }
 
 function onShare(p) {
-  uni.showToast({ title: '分享链接已复制', icon: 'none' })
+  // 真实复制帖子链接到剪贴板;URL 拼接参考详情页路径格式
+  const shareUrl = `/pages/community/detail?id=${p.id}`
+  uni.setClipboardData({
+    data: shareUrl,
+    success: () => {
+      uni.showToast({ title: '链接已复制', icon: 'success' })
+    },
+    fail: () => {
+      uni.showToast({ title: '复制失败,请重试', icon: 'none' })
+    },
+  })
 }
 
 function onMore(p) {
@@ -296,7 +375,9 @@ function onImageError(e) {
  *  - http(s):// 开头直接返回
  *  - 设备本地路径（blob:、wxfile://、wxlocalfile://、file://、http://tmp/）返回占位图,
  *    因为发布时前端只传本地路径,后端原样存进数据库,再次读取浏览器无法加载
- *  - /uploads/... 等相对路径走 dev proxy / 同源(prod nginx) → 直接返回相对路径即可
+ *  - /uploads/... 等相对路径：APP 端无 dev server，必须拼上 VITE_ADMIN_API_BASE；
+ *    dev 端由 vite proxy 同源转发，prod 端由 nginx 反代——这两种场景拼/不拼都兼容，
+ *    APP 端必须拼
  *  - 兜底:返回占位图
  */
 const PLACEHOLDER_IMG =
@@ -316,20 +397,37 @@ function resolveImageUrl(url) {
   ) {
     return PLACEHOLDER_IMG
   }
-  // 相对路径(/uploads/...) dev 用 vite proxy / prod nginx 同源 → 直接返回
-  if (url.startsWith('/')) return url
+  // 相对路径(/uploads/...)：APP 端无 dev server，必须拼上后端 base；
+  // dev/prod 走同源转发（Vite proxy / nginx）时拼不拼都兼容。
+  if (url.startsWith('/')) {
+    const base = process.env.VITE_ADMIN_API_BASE
+    return base ? `${base}${url}` : url
+  }
   return PLACEHOLDER_IMG
 }
 
+/**
+ * 帖子时间格式化:1 分钟内显示"刚刚",< 1 小时显示分钟数,< 1 天显示小时数,
+ * < 7 天显示天数,更早则用绝对日期 yyyy-MM-dd。
+ * 文案走 i18n(community.time.*),locale 切换后自动跟随刷新(显式依赖 localeVersion)。
+ */
 function formatTime(time) {
   if (!time) return ''
+  // 触发响应式:locale 切换时重新调用 i18n.t 拿当前 locale 的文案
+  void localeVersion.value
   const d = new Date(time)
   const now = Date.now()
   const diffMs = now - d.getTime()
-  if (diffMs < 60_000) return '刚刚'
-  if (diffMs < 3_600_000) return Math.floor(diffMs / 60_000) + '分钟前'
-  if (diffMs < 86_400_000) return Math.floor(diffMs / 3_600_000) + '小时前'
-  if (diffMs < 7 * 86_400_000) return Math.floor(diffMs / 86_400_000) + '天前'
+  if (diffMs < 60_000) return i18n.t('community.time.justNow')
+  if (diffMs < 3_600_000) {
+    return i18n.t('community.time.minutesAgo', { n: Math.floor(diffMs / 60_000) })
+  }
+  if (diffMs < 86_400_000) {
+    return i18n.t('community.time.hoursAgo', { n: Math.floor(diffMs / 3_600_000) })
+  }
+  if (diffMs < 7 * 86_400_000) {
+    return i18n.t('community.time.daysAgo', { n: Math.floor(diffMs / 86_400_000) })
+  }
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
@@ -339,15 +437,32 @@ function goDetail(id, scrollToComment = false) {
 }
 
 function goCreate() {
+  // 发布帖子需要登录:未登录引导去登录页(避免进入 create.vue 后再被踢)
+  if (!userStore.isLoggedIn) {
+    uni.showModal({
+      title: '登录后即可发布',
+      content: '是否前往登录?',
+      confirmText: '去登录',
+      cancelText: '再看看',
+      success: (res) => {
+        if (res.confirm) {
+          uni.reLaunch({ url: '/pages/user/login' })
+        }
+      },
+    })
+    return
+  }
   uni.navigateTo({ url: '/pages/community/create' })
 }
 
 function goSearch() {
-  uni.navigateTo({ url: '/pages/goods/search?scope=community' })
+  // 顶部图标按钮:跳到社区搜索页(与点击搜索条一致)
+  uni.navigateTo({ url: '/pages/community/search' })
 }
 
 function goSearchPage() {
-  uni.navigateTo({ url: '/pages/goods/search?scope=community' })
+  // 跳转到社区专用搜索页，支持帖子/用户/话题三类结果
+  uni.navigateTo({ url: '/pages/community/search' })
 }
 
 function goNotifications() {
@@ -425,6 +540,8 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 12rpx 20rpx 16rpx;
+  /* 状态栏安全区：与 home.vue .navbar 保持一致，避免"社区"标题被状态栏遮挡 */
+  padding-top: calc(12rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
   background: var(--color-background);
 }
 .top-title {

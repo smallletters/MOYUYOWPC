@@ -83,6 +83,8 @@ import { i18n } from '@/i18n'
 import { getPendingOrders, removePendingOrder } from '@/utils/storage'
 
 export default {
+  pageTitleKey: 'pageTitle.orderList',
+
   data() {
     return {
       activeTab: 'all',

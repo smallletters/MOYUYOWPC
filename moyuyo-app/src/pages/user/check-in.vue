@@ -1,22 +1,14 @@
-﻿<template>
+<template>
   <view class="check-in">
-    <view class="nav-header">
-      <view class="nav-back" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">每日签到</text>
-      <view class="nav-placeholder" />
-    </view>
-
     <view class="content">
       <view class="calendar-card">
         <view class="month-header">
           <view class="month-btn" @click="prevMonth">
-            <text class="month-arrow"><text class="luc luc-arrow-left" /></text>
+            <text class="month-arrow luc-arrow-left" />
           </view>
           <text class="month-title">{{ currentYear }}年{{ currentMonth }}月</text>
           <view class="month-btn" @click="nextMonth">
-            <text class="month-arrow"><text class="luc luc-chevron-right" /></text>
+            <text class="month-arrow luc-chevron-right" />
           </view>
         </view>
 
@@ -49,7 +41,7 @@
 
       <view class="streak-card">
         <view class="streak-header">
-          <text class="streak-star"><text class="luc luc-star" /></text>
+          <text class="streak-star luc-star" />
           <text class="streak-title">已连续签到 {{ streak }} 天</text>
         </view>
         <text class="streak-hint">连续 7 天签到积分 x2 倍率</text>
@@ -96,7 +88,7 @@
       <view v-if="showSuccess" class="success-section">
         <view class="success-icon-wrap">
           <view class="success-icon-anim">
-            <text class="success-check"><text class="luc luc-check" /></text>
+            <text class="success-check luc-check" />
           </view>
         </view>
         <text class="success-title">签到成功</text>
@@ -114,6 +106,8 @@
 import { pointsApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.userCheckIn',
+
   data() {
     const now = new Date()
     return {
@@ -168,10 +162,6 @@ export default {
   },
 
   methods: {
-    goBack() {
-      uni.navigateBack()
-    },
-
     async loadCheckinStatus() {
       try {
         // 后端 Page<PointsLogEntity>：{ records, total, current, size }
@@ -282,45 +272,6 @@ export default {
   background: var(--color-background, #ffffff);
   display: flex;
   flex-direction: column;
-}
-
-.nav-header {
-  display: flex;
-  align-items: center;
-  height: 88rpx;
-  padding: 0 32rpx;
-  background: var(--color-background, #ffffff);
-  border-bottom: 1rpx solid #e5e5ea;
-  position: sticky;
-  top: 0;
-  z-index: 20;
-}
-
-.nav-back {
-  width: 64rpx;
-  height: 64rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-}
-
-.back-icon {
-  font-size: 40rpx;
-  color: var(--color-primary, #007aff);
-  font-weight: 300;
-}
-
-.nav-title {
-  flex: 1;
-  text-align: center;
-  font-size: 32rpx;
-  font-weight: 600;
-  color: var(--color-text, #1d1d1f);
-}
-
-.nav-placeholder {
-  width: 64rpx;
 }
 
 .content {

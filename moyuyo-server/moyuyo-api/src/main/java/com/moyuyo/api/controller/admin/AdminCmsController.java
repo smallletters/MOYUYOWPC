@@ -37,13 +37,14 @@ public class AdminCmsController {
                 item.put("cover", e.getImageUrl());
                 item.put("link", e.getLinkUrl());
                 item.put("description", e.getContent());
-                item.put("sortOrder", e.getSortOrder());
-                item.put("status", e.getStatus());
-                item.put("startTime", e.getStartTime());
-                item.put("endTime", e.getEndTime());
-                item.put("ctr", e.getCtr());
-                item.put("location", e.getLocation());
-                item.put("createTime", e.getCreateTime());
+            item.put("sortOrder", e.getSortOrder());
+            item.put("status", e.getStatus());
+            item.put("tag", e.getTag());
+            item.put("startTime", e.getStartTime());
+            item.put("endTime", e.getEndTime());
+            item.put("ctr", e.getCtr());
+            item.put("location", e.getLocation());
+            item.put("createTime", e.getCreateTime());
                 list.add(item);
             }
             // 手动分页
@@ -76,6 +77,7 @@ public class AdminCmsController {
             item.put("endTime", e.getEndTime());
             item.put("createTime", e.getCreateTime());
             item.put("description", e.getContent());
+            item.put("tag", e.getTag());
             return Result.success(item);
         } catch (Exception e) {
             return Result.error("获取内容详情失败: " + e.getMessage());
@@ -97,6 +99,7 @@ public class AdminCmsController {
             entity.setImageUrl((String) body.get("cover"));
             entity.setLinkUrl((String) body.get("link"));
             entity.setContent((String) body.get("description"));
+            entity.setTag(body.get("tag") == null ? null : String.valueOf(body.get("tag")));
             entity.setStatus(body.get("status") == null ? null : String.valueOf(body.get("status")));
             if (body.get("sortOrder") != null) {
                 entity.setSortOrder(Integer.valueOf(body.get("sortOrder").toString()));
@@ -125,6 +128,7 @@ public class AdminCmsController {
             entity.setImageUrl((String) body.get("cover"));
             entity.setLinkUrl((String) body.get("link"));
             entity.setContent((String) body.get("description"));
+            entity.setTag(body.get("tag") == null ? null : String.valueOf(body.get("tag")));
             entity.setStatus(body.get("status") == null ? null : String.valueOf(body.get("status")));
             if (body.get("sortOrder") != null) {
                 entity.setSortOrder(Integer.valueOf(body.get("sortOrder").toString()));

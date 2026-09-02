@@ -72,20 +72,41 @@ public class FollowController {
   }
 
   @GetMapping("/following")
-  public Result<List<Map<String, Object>>> following() {
-    return Result.success(enrichFollowing(followMapper.selectList(
+  public Result<Page<Map<String, Object>>> following(
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(defaultValue = "20") int size) {
+    Long me = UserContextHolder.getUserId();
+    // 1) 先按 userId + status 查分页总数,拿到真实 total(避免前端 size=1 + length 误判)
+    com.baomidou.mybatisplus.extension.plugins.pagination.Page<FollowEntity> countPage = followMapper.selectPage(
+        new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size),
         new LambdaQueryWrapper<FollowEntity>()
-            .eq(FollowEntity::getUserId, UserContextHolder.getUserId())
-            .eq(FollowEntity::getStatus, "FOLLOWING")
-            .orderByDesc(FollowEntity::getCreateTime))));
+                .eq(FollowEntity::getUserId, me)
+                .eq(FollowEntity::getStatus, "FOLLOWING")
+                .orderByDesc(FollowEntity::getCreateTime));
+    // 2) 用完整列表 enrich 后,只截取当前页 records(避免再写一遍 enrich 逻辑,数据量小)
+    List<Map<String, Object>> all = enrichFollowing(countPage.getRecords());
+    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Map<String, Object>> voPage = new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(
+            countPage.getCurrent(), countPage.getSize(), countPage.getTotal());
+    voPage.setRecords(all);
+    voPage.setTotal(countPage.getTotal());
+    return Result.success(voPage);
   }
 
   @GetMapping("/followers")
-  public Result<List<Map<String, Object>>> followers() {
-    return Result.success(enrichFollowers(followMapper.selectList(
+  public Result<Page<Map<String, Object>>> followers(
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(defaultValue = "20") int size) {
+    com.baomidou.mybatisplus.extension.plugins.pagination.Page<FollowEntity> countPage = followMapper.selectPage(
+        new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size),
         new LambdaQueryWrapper<FollowEntity>()
-            .eq(FollowEntity::getTargetId, UserContextHolder.getUserId())
-            .orderByDesc(FollowEntity::getCreateTime))));
+                .eq(FollowEntity::getTargetId, UserContextHolder.getUserId())
+                .orderByDesc(FollowEntity::getCreateTime));
+    List<Map<String, Object>> all = enrichFollowers(countPage.getRecords());
+    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Map<String, Object>> voPage = new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(
+            countPage.getCurrent(), countPage.getSize(), countPage.getTotal());
+    voPage.setRecords(all);
+    voPage.setTotal(countPage.getTotal());
+    return Result.success(voPage);
   }
 
   /**

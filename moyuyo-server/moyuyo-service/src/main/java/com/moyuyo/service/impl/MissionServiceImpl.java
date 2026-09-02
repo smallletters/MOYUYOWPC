@@ -89,6 +89,7 @@ public class MissionServiceImpl implements MissionService {
   /**
    * 增加用户某任务的进度（如签到、浏览、分享后调用）。自动判断是否达成完成。
    * progress 字段累加，当 progress >= target 时标记 completed。
+   * 自动按周期重置：DAILY 任务跨天后 progress=0；WEEKLY 任务跨周后 progress=0。
    */
   @Override
   @Transactional
@@ -108,16 +109,42 @@ public class MissionServiceImpl implements MissionService {
       um.setProgress(delta);
       um.setCompleted(m.getTarget() != null && um.getProgress() >= m.getTarget() ? 1 : 0);
       um.setClaimed(0);
+      um.setCycleDate(currentCycleDate(m.getType()));
       userMissionMapper.insert(um);
-    } else if (um.getCompleted() == null || um.getCompleted() != 1) {
-      int newProgress = (um.getProgress() == null ? 0 : um.getProgress()) + delta;
-      um.setProgress(newProgress);
-      if (m.getTarget() != null && newProgress >= m.getTarget()) {
-        um.setCompleted(1);
+    } else {
+      // 周期过期：自动重置进度（DAILY=换日 / WEEKLY=换周）
+      LocalDate todayCycle = currentCycleDate(m.getType());
+      if (um.getCycleDate() == null || !um.getCycleDate().equals(todayCycle)) {
+        um.setCycleDate(todayCycle);
+        um.setProgress(delta);
+        um.setCompleted(m.getTarget() != null && delta >= m.getTarget() ? 1 : 0);
+        um.setClaimed(0); // 新周期重新可领取
+        userMissionMapper.updateById(um);
+        log.info("Mission cycle reset: userId={}, missionId={}, newCycle={}", userId, missionId, todayCycle);
+      } else if (um.getCompleted() == null || um.getCompleted() != 1) {
+        int newProgress = (um.getProgress() == null ? 0 : um.getProgress()) + delta;
+        um.setProgress(newProgress);
+        if (m.getTarget() != null && newProgress >= m.getTarget()) {
+          um.setCompleted(1);
+        }
+        userMissionMapper.updateById(um);
       }
-      userMissionMapper.updateById(um);
     }
     log.info("Mission progress inc: userId={}, missionId={}, delta={}", userId, missionId, delta);
+  }
+
+  /**
+   * 计算任务当前周期基准日期。
+   * DAILY: 今天(0点);WEEKLY: 本周一(0点);ACHIEVEMENT: 1970-01-01(永不过期)。
+   */
+  private LocalDate currentCycleDate(String missionType) {
+    LocalDate today = LocalDate.now();
+    if ("WEEKLY".equalsIgnoreCase(missionType)) {
+      // ISO 周: Monday=1 ... Sunday=7
+      int dayOfWeek = today.getDayOfWeek().getValue();
+      return today.minusDays(dayOfWeek - 1L);
+    }
+    return today;
   }
 
   /**
@@ -200,9 +227,17 @@ public class MissionServiceImpl implements MissionService {
     int todayPoints = todayPointsBoxed == null ? 0 : todayPointsBoxed;
 
     long dailyDone = userMissions.stream()
-        .filter(um -> um.getCompleted() != null && um.getCompleted() == 1)
-        .map(um -> missionMapper.selectById(um.getMissionId()))
-        .filter(m -> m != null && "DAILY".equalsIgnoreCase(m.getType()))
+        .filter(um -> {
+          MissionEntity m = missionMapper.selectById(um.getMissionId());
+          // 今日 DAILY 任务：进度达标 OR 已标记完成
+          if (m == null || !"DAILY".equalsIgnoreCase(m.getType())) return false;
+          LocalDate todayCycle = LocalDate.now();
+          if (um.getCycleDate() != null && um.getCycleDate().equals(todayCycle)) {
+            return (um.getCompleted() != null && um.getCompleted() == 1)
+                || (um.getProgress() != null && m.getTarget() != null && um.getProgress() >= m.getTarget());
+          }
+          return false;
+        })
         .count();
 
     List<MissionEntity> allDaily = missionMapper.selectList(
@@ -283,9 +318,22 @@ public class MissionServiceImpl implements MissionService {
     map.put("icon", m.getIcon());
     map.put("points", m.getPoints() == null ? 0 : m.getPoints());
     map.put("target", m.getTarget() == null ? 1 : m.getTarget());
-    int progress = um == null || um.getProgress() == null ? 0 : um.getProgress();
-    int completed = um == null || um.getCompleted() == null ? 0 : um.getCompleted();
-    int claimed = um == null || um.getClaimed() == null ? 0 : um.getClaimed();
+
+    // 周期判定: 若 um 的 cycle_date 与当前周期不符(过期/历史数据),按"新周期"渲染进度 0
+    boolean cycleExpired = false;
+    if (um != null && um.getCycleDate() != null) {
+      LocalDate nowCycle = currentCycleDate(m.getType());
+      if (!nowCycle.equals(um.getCycleDate())) {
+        cycleExpired = true;
+      }
+    } else if (um != null && um.getCycleDate() == null && um.getProgress() != null && um.getProgress() > 0) {
+      // 历史数据无 cycle_date 但有进度 → 视为上一周期过期,清零显示
+      cycleExpired = true;
+    }
+
+    int progress = (um == null || um.getProgress() == null || cycleExpired) ? 0 : um.getProgress();
+    int completed = (um == null || um.getCompleted() == null || cycleExpired) ? 0 : um.getCompleted();
+    int claimed = um == null || um.getClaimed() == null ? 0 : um.getClaimed(); // 领取记录跨周期保留
     map.put("done", progress);
     map.put("total", m.getTarget() == null ? 1 : m.getTarget());
     map.put("progress", progress);

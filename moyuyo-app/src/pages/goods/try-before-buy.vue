@@ -1,19 +1,14 @@
 ﻿<template>
   <view class="try-before-buy">
-    <view class="nav-header">
-      <view class="nav-back" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">先试后买</text>
-      <view class="nav-placeholder" />
-    </view>
+
+
 
     <scroll-view class="scroll" scroll-y>
       <view class="banner-card">
         <view class="banner-deco" />
         <view class="banner-content">
           <view class="banner-title-row">
-            <text class="banner-icon"><text class="luc luc-sparkles" /></text>
+            <text class="banner-icon luc-sparkles" />
             <text class="banner-title">先试后买 0 风险试穿</text>
           </view>
           <text class="banner-desc">
@@ -123,6 +118,8 @@
 
 <script>
 export default {
+  pageTitleKey: 'pageTitle.goodsTryBeforeBuy',
+
   data() {
     return {
       showRules: false,
@@ -148,10 +145,6 @@ export default {
   },
 
   methods: {
-    goBack() {
-      uni.navigateBack()
-    },
-
     onKeep(product) {
       uni.showToast({ title: `已确认留下 ${product.name}`, icon: 'success' })
     },

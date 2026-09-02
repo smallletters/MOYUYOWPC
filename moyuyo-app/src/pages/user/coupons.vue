@@ -21,7 +21,7 @@
 
     <scroll-view scroll-y class="content">
       <view v-if="filteredCoupons.length === 0" class="empty">
-        <text class="empty-icon"><text class="luc luc-ticket" /></text>
+        <text class="empty-icon luc-ticket" />
         <text class="empty-text">{{ $t('coupons.empty') }}</text>
       </view>
 

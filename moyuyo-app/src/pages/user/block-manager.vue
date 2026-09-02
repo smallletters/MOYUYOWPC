@@ -2,7 +2,7 @@
   <view class="page">
     <view class="header">
       <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="title">黑名单管理</text>
     </view>
@@ -32,8 +32,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { blockApi } from '@/api'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userBlockManager')
+
 
 const blocks = ref([])
+
+
 const loading = ref(false)
 
 async function load() {

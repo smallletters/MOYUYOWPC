@@ -2,7 +2,7 @@
   <view class="withdraw">
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">{{ $t('withdraw.title') }}</text>
       <view class="header-btn" />
@@ -108,6 +108,8 @@ const MIN_AMOUNT = 10
 const MAX_SINGLE_AMOUNT = 5000
 
 export default {
+  pageTitleKey: 'pageTitle.userBalanceWithdraw',
+
   data() {
     return {
       amount: '',

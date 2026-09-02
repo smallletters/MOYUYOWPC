@@ -1,8 +1,8 @@
-﻿<template>
+<template>
   <view class="product-subscribe">
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">订阅此商品</text>
       <view class="header-spacer" />
@@ -21,7 +21,7 @@
             </text>
           </view>
           <view class="sub-save-tag">
-            <text class="sub-save-emoji"><text class="luc luc-sparkles" /></text>
+            <text class="sub-save-emoji luc-sparkles" />
             <text class="sub-save-text">订阅享会员价 8 折起</text>
           </view>
         </view>
@@ -70,6 +70,8 @@
 import { productApi, subscribeApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.goodsProductSubscribe',
+
   data() {
     return {
       productId: null,
@@ -101,6 +103,11 @@ export default {
         ''
       if (!raw) return ''
       if (raw.startsWith('http')) return raw
+      // 相对路径(/uploads/...) APP 端无 dev server，必须拼上后端 base
+      if (raw.startsWith('/')) {
+        const base = process.env.VITE_ADMIN_API_BASE
+        return base ? `${base}${raw}` : raw
+      }
       return raw
     },
     stripHtml(s) {

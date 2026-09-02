@@ -9,7 +9,7 @@
 
     <scroll-view scroll-y class="content">
       <view class="banner">
-        <text class="banner-icon"><text class="luc luc-recycle" /></text>
+        <text class="banner-icon luc-recycle" />
         <view class="banner-info">
           <text class="banner-title">回收站规则</text>
           <text class="banner-desc">已删除的订单会保留 30 天，过期将自动清理</text>
@@ -17,7 +17,7 @@
       </view>
 
       <view v-if="orders.length === 0" class="empty">
-        <text class="empty-icon"><text class="luc luc-inbox" /></text>
+        <text class="empty-icon luc-inbox" />
         <text class="empty-text">回收站空空如也</text>
       </view>
 
@@ -45,6 +45,8 @@
 import { orderApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.orderRecycleBin',
+
   data() {
     return {
       orders: [],

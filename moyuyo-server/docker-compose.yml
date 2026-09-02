@@ -349,6 +349,21 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set}
       MOYUYO_HTTP_CONNECT_TIMEOUT_MS: ${MOYUYO_HTTP_CONNECT_TIMEOUT_MS:-5000}
       MOYUYO_HTTP_READ_TIMEOUT_MS: ${MOYUYO_HTTP_READ_TIMEOUT_MS:-15000}
+      # ---- 邮件 SMTP（腾讯企业邮箱）----
+      # 透传 .env 里的 SPRING_MAIL_* 到容器内,Sprint Boot relaxed binding 自动映射为 spring.mail.host 等
+      # 注意:SPRING_MAIL_PASSWORD 必须是腾讯企业邮箱"客户端专用密码"(16 位),
+      # 而不是网页登录密码,否则会 Authentication failed 抛 502
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-465}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:}
+      SPRING_MAIL_SMTP_AUTH: ${SPRING_MAIL_SMTP_AUTH:-true}
+      SPRING_MAIL_SMTP_STARTTLS: ${SPRING_MAIL_SMTP_STARTTLS:-false}
+      SPRING_MAIL_SMTP_SSL: ${SPRING_MAIL_SMTP_SSL:-true}
+      # moyuyo.mail.* 业务自定义配置:发件人地址 / 显示名 / 邮件开关
+      MOYUYO_MAIL_FROM: ${MOYUYO_MAIL_FROM:}
+      MOYUYO_MAIL_FROM_NAME: ${MOYUYO_MAIL_FROM_NAME:-MOYUYO Support}
+      MOYUYO_MAIL_ENABLED: ${MOYUYO_MAIL_ENABLED:-true}
       JVM_XMS: ${JVM_XMS:-1g}
       JVM_XMX: ${JVM_XMX:-2g}
     # 给 Spring 优雅停机 + 容器退出留出余量：Spring lifecycle 默认 30s，加 15s 容器退出 buffer

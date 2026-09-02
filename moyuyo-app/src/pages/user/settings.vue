@@ -3,47 +3,49 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc luc-arrow-left" />
       </view>
       <text class="header-title">{{ $t('common.settings') }}</text>
     </view>
 
     <view class="content">
-      <!-- 账号与安全区域 -->
+      <!-- 账号与安全区域
+        H5 下 <navigator> 默认渲染为 <a>(inline),其内层 flex 容器在浏览器里失效,
+        改为 <view @click> + uni.navigateTo 替代,样式按 .item/.section-header 预期渲染 -->
       <view class="section">
-        <navigator url="/pages/user/security" class="section-header" hover-class="item-hover">
+        <view class="section-header" hover-class="item-hover" @click="navTo('/pages/user/security')">
           <view class="item-left">
-            <text class="item-icon"><text class="luc luc-lock" /></text>
+            <text class="item-icon luc luc-lock" />
             <text class="item-label">{{ $t('settings.security.title') }}</text>
           </view>
-          <text class="chevron"><text class="luc luc-chevron-right" /></text>
-        </navigator>
+          <text class="chevron luc luc-chevron-right" />
+        </view>
         <view class="divider indent" />
-        <navigator url="/pages/user/profile" class="item" hover-class="item-hover">
+        <view class="item" hover-class="item-hover" @click="navTo('/pages/user/profile')">
           <view class="item-left">
-            <text class="item-icon"><text class="luc luc-user" /></text>
+            <text class="item-icon luc luc-user" />
             <text class="item-label">{{ $t('settings.profile.title') }}</text>
           </view>
-          <text class="chevron"><text class="luc luc-chevron-right" /></text>
-        </navigator>
+          <text class="chevron luc luc-chevron-right" />
+        </view>
         <view class="divider indent" />
-        <navigator url="/pages/user/change-password" class="item" hover-class="item-hover">
+        <view class="item" hover-class="item-hover" @click="navTo('/pages/user/change-password')">
           <view class="item-left">
-            <text class="item-icon"><text class="luc luc-phone" /></text>
+            <text class="item-icon luc luc-phone" />
             <text class="item-label">{{ $t('settings.phone.title') }}</text>
           </view>
           <view class="item-right">
             <text class="item-value">{{ maskedPhone || $t('settings.phoneNotBound') }}</text>
-            <text class="chevron"><text class="luc luc-chevron-right" /></text>
+            <text class="chevron luc luc-chevron-right" />
           </view>
-        </navigator>
+        </view>
       </view>
 
       <!-- 偏好设置区域 -->
       <view class="section">
         <view class="item">
           <view class="item-left">
-            <text class="item-icon"><text class="luc luc-bell" /></text>
+            <text class="item-icon luc luc-bell" />
             <text class="item-label">{{ $t('settings.notifications') }}</text>
           </view>
           <switch
@@ -56,7 +58,7 @@
         <view class="divider indent" />
         <view class="item">
           <view class="item-left">
-            <text class="item-icon"><text class="luc luc-moon" /></text>
+            <text class="item-icon luc luc-moon" />
             <text class="item-label">{{ $t('settings.darkMode') }}</text>
           </view>
           <switch
@@ -73,41 +75,41 @@
         -->
         <view class="item" @click="showLanguagePicker">
           <view class="item-left">
-            <text class="item-icon"><text class="luc luc-globe" /></text>
+            <text class="item-icon luc luc-globe" />
             <text class="item-label">{{ $t('settings.language.title') }}</text>
           </view>
           <view class="item-right">
             <text class="item-value">{{ currentLanguageName }}</text>
-            <text class="chevron"><text class="luc luc-chevron-right" /></text>
+            <text class="chevron luc luc-chevron-right" />
           </view>
         </view>
       </view>
 
       <!-- 支持区域 -->
       <view class="section">
-        <navigator url="/pages/user/help" class="item" hover-class="item-hover">
+        <view class="item" hover-class="item-hover" @click="navTo('/pages/user/help')">
           <view class="item-left">
-            <text class="item-icon"><text class="luc luc-help-circle" /></text>
+            <text class="item-icon luc luc-help-circle" />
             <text class="item-label">{{ $t('settings.help') }}</text>
           </view>
-          <text class="chevron"><text class="luc luc-chevron-right" /></text>
-        </navigator>
+          <text class="chevron luc luc-chevron-right" />
+        </view>
         <view class="divider indent" />
-        <navigator url="/pages/user/feedback" class="item" hover-class="item-hover">
+        <view class="item" hover-class="item-hover" @click="navTo('/pages/user/feedback')">
           <view class="item-left">
-            <text class="item-icon"><text class="luc luc-message-circle" /></text>
+            <text class="item-icon luc luc-message-circle" />
             <text class="item-label">{{ $t('settings.feedback') }}</text>
           </view>
-          <text class="chevron"><text class="luc luc-chevron-right" /></text>
-        </navigator>
+          <text class="chevron luc luc-chevron-right" />
+        </view>
         <view class="divider indent" />
-        <navigator url="/pages/user/about" class="item" hover-class="item-hover">
+        <view class="item" hover-class="item-hover" @click="navTo('/pages/user/about')">
           <view class="item-left">
-            <text class="item-icon"><text class="luc luc-info" /></text>
+            <text class="item-icon luc luc-info" />
             <text class="item-label">{{ $t('settings.about') }}</text>
           </view>
-          <text class="chevron"><text class="luc luc-chevron-right" /></text>
-        </navigator>
+          <text class="chevron luc luc-chevron-right" />
+        </view>
       </view>
 
       <!-- 退出登录按钮 -->
@@ -117,6 +119,38 @@
 
       <!-- 版本信息 -->
       <text class="version">MOYUYO v1.0.0</text>
+    </view>
+
+    <!--
+      语言选择弹窗(自定义实现,替代 uni.showActionSheet)
+      原因:APP 端 uni.showActionSheet 走原生 plus.nativeUI.ActionSheet,
+      取消按钮文本不可改,会显示硬编码的"取消/Cancel"甚至占位符,
+      这里改用 Vue 模板渲染的弹层,按钮文案完全由 i18n 控制。
+    -->
+    <view v-if="langPickerVisible" class="lang-picker-mask" @click="closeLanguagePicker">
+      <view class="lang-picker" @click.stop>
+        <view class="lang-picker-header">
+          <text class="lang-picker-title">{{ $t('settings.language.title') }}</text>
+        </view>
+        <view class="lang-picker-list">
+          <view
+            v-for="(lang, idx) in supportedLanguages"
+            :key="lang.code"
+            class="lang-picker-item"
+            :class="{ active: lang.code === i18nLocale }"
+            hover-class="lang-picker-item-hover"
+            @click="onPickLanguage(idx)"
+          >
+            <text class="lang-picker-item-name">{{ lang.name }}</text>
+            <text v-if="lang.code === i18nLocale" class="lang-picker-check luc luc-check" />
+          </view>
+        </view>
+        <view class="lang-picker-cancel-wrap">
+          <view class="lang-picker-cancel" hover-class="lang-picker-item-hover" @click="closeLanguagePicker">
+            <text class="lang-picker-cancel-text">{{ $t('common.cancel') }}</text>
+          </view>
+        </view>
+      </view>
     </view>
   </view>
 </template>
@@ -129,6 +163,8 @@ import { getStorage, setStorage, STORAGE_KEYS } from '@/utils/storage'
 import { togglePushNotification } from '@/plugins/push'
 
 export default {
+  pageTitleKey: 'pageTitle.userSettings',
+
   data() {
     return {
       // 本地通知开关,默认 true;从 STORAGE_KEYS.NOTIFICATION_ENABLED 读取
@@ -139,6 +175,8 @@ export default {
       localeVersion: 0,
       // 当前可选语言列表(从 i18n 字典动态生成)
       supportedLanguages: [],
+      // 自定义语言选择弹窗的可见性(替代 uni.showActionSheet)
+      langPickerVisible: false,
     }
   },
 
@@ -151,6 +189,14 @@ export default {
     currentLanguageName() {
       void this.localeVersion
       return i18n.currentLanguageName
+    },
+
+    /**
+     * 当前 locale 代码,用于弹窗内高亮当前语言项
+     */
+    i18nLocale() {
+      void this.localeVersion
+      return i18n.locale
     },
 
     userStore() {
@@ -197,6 +243,11 @@ export default {
       uni.navigateBack()
     },
 
+    /** 统一跳转(替代 <navigator>,避免 H5 下 <a> 默认 inline 破坏 flex 布局) */
+    navTo(url) {
+      uni.navigateTo({ url })
+    },
+
     async onNotificationChange(e) {
       const next = !!e.detail.value
       this.notificationEnabled = next
@@ -236,28 +287,36 @@ export default {
 
     /**
      * 显示语言选择器
-     * 用 uni.showActionSheet 在 iOS/Android/H5 都原生支持,无需自实现弹窗
+     * 改用自定义 Vue 弹层(替代 uni.showActionSheet):
+     * APP 端 uni.showActionSheet 走原生 plus.nativeUI.ActionSheet,
+     * 取消按钮文本不可被 i18n 覆盖,会出现"取消"硬编码甚至占位符;
+     * 自实现弹层后所有文案都走 i18n,各端一致。
      */
     showLanguagePicker() {
-      const itemList = this.supportedLanguages.map((l) => l.name)
-      uni.showActionSheet({
-        itemList,
-        success: (res) => {
-          const picked = this.supportedLanguages[res.tapIndex]
-          if (picked && picked.code !== i18n.locale) {
-            // 切换语言:i18n 内部已自动持久化到 STORAGE_KEYS.LOCALE
-            i18n.locale = picked.code
-            // 提示用户已切换
-            uni.showToast({
-              title: i18n.t('settings.langChanged', { name: picked.name }),
-              icon: 'success',
-              duration: 1500,
-            })
-            // 强制本页立即刷新(其他页面会通过 localeVersion 自动响应)
-            this.localeVersion += 1
-          }
-        },
+      this.langPickerVisible = true
+    },
+
+    /** 关闭语言选择弹窗 */
+    closeLanguagePicker() {
+      this.langPickerVisible = false
+    },
+
+    /**
+     * 点击弹窗内某语言项:切换 locale,关闭弹窗,给提示
+     */
+    onPickLanguage(idx) {
+      const picked = this.supportedLanguages[idx]
+      this.langPickerVisible = false
+      if (!picked || picked.code === i18n.locale) return
+      // 切换语言:i18n 内部已自动持久化到 STORAGE_KEYS.LOCALE
+      i18n.locale = picked.code
+      uni.showToast({
+        title: i18n.t('settings.langChanged', { name: picked.name }),
+        icon: 'success',
+        duration: 1500,
       })
+      // 强制本页立即刷新(其他页面会通过 localeVersion 自动响应)
+      this.localeVersion += 1
     },
 
     onLogout() {
@@ -282,7 +341,10 @@ export default {
   background: var(--color-background);
 }
 
-/* 顶部导航栏 */
+/* 顶部导航栏
+   APP 端因为 navigationStyle:custom 自渲染 header,
+   需要为系统状态栏(刘海/灵动岛/胶囊)预留顶部空间,
+   加上 var(--status-bar-height) 与 env(safe-area-inset-top) 兜底 */
 .header {
   position: sticky;
   top: 0;
@@ -290,7 +352,10 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 88rpx;
+  height: calc(88rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  /* 把内容下移避开状态栏,back-btn 仍贴顶 */
+  padding-top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  box-sizing: border-box;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }
@@ -298,6 +363,8 @@ export default {
 .back-btn {
   position: absolute;
   left: 16rpx;
+  /* 跟随 header 的状态栏 padding,保持返回按钮在标题同一水平基线 */
+  top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -334,7 +401,10 @@ export default {
   overflow: hidden;
 }
 
-/* 行项目 */
+/* 行项目
+  - H5 下 <navigator> 编译为 <a>,默认 inline;这里用 display:flex 强制成为 flex 容器,
+    让 .item-left 与 chevron / item-right 在同一行横向排列
+  - .item 与 .section-header 是 flex 容器,justify-content: space-between */
 .item,
 .section-header {
   display: flex;
@@ -342,6 +412,7 @@ export default {
   justify-content: space-between;
   padding: 0 32rpx;
   height: 104rpx;
+  flex-wrap: nowrap;
 }
 
 .item-left {
@@ -378,7 +449,12 @@ export default {
   color: var(--color-text-secondary);
 }
 
+/* 右侧箭头:H5 下 <text> 默认 display:block,会被 flex 容器视为独占整行的 item,导致换行
+  这里显式设为 inline-flex,让其在 .item 的横向布局里与 .item-left 处于同一行 */
 .chevron {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
   font-size: 36rpx;
   color: var(--color-text-tertiary);
   line-height: 1;
@@ -429,5 +505,89 @@ export default {
 .item-hover {
   background: var(--color-divider);
   opacity: 0.6;
+}
+
+/* 语言选择弹窗(自实现,绕开 uni.showActionSheet 在 APP 端无法改取消按钮文案的问题) */
+.lang-picker-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.lang-picker {
+  width: 100%;
+  background: var(--color-surface);
+  border-top-left-radius: 24rpx;
+  border-top-right-radius: 24rpx;
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow: hidden;
+}
+
+.lang-picker-header {
+  padding: 24rpx 32rpx 8rpx;
+  text-align: center;
+}
+
+.lang-picker-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.lang-picker-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.lang-picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32rpx;
+  height: 104rpx;
+  border-top: 1rpx solid var(--color-divider);
+}
+
+.lang-picker-item.active .lang-picker-item-name {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.lang-picker-item-name {
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+}
+
+.lang-picker-check {
+  font-size: 36rpx;
+  color: var(--color-primary);
+  line-height: 1;
+}
+
+.lang-picker-cancel-wrap {
+  padding: 16rpx 16rpx 24rpx;
+}
+
+.lang-picker-cancel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 96rpx;
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+}
+
+.lang-picker-cancel-text {
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+}
+
+.lang-picker-item-hover {
+  background: var(--color-divider);
+  opacity: 0.7;
 }
 </style>

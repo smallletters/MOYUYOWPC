@@ -3,16 +3,22 @@ package com.moyuyo.api.controller;
 import com.moyuyo.common.Result;
 import com.moyuyo.common.dto.auth.*;
 import com.moyuyo.common.security.UserContextHolder;
+import com.moyuyo.dao.entity.UserEntity;
 import com.moyuyo.service.AuthService;
+
+import java.util.HashMap;
+import java.util.Map;
 import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "认证管理")
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
@@ -114,7 +120,20 @@ public class AuthController {
     @Operation(summary = "发送 2FA 验证码")
     @PostMapping("/2fa/send")
     public Result<Void> sendTwoFactorCode() {
-        authService.sendTwoFactorCode(UserContextHolder.getUserId());
+        Long userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.error(401, "未登录");
+        }
+        try {
+            authService.sendTwoFactorCode(userId);
+        } catch (IllegalArgumentException e) {
+            // 邮箱未绑定 / 用户不存在 等用户侧错误,直接 400
+            return Result.badRequest(e.getMessage());
+        } catch (IllegalStateException e) {
+            // 邮件服务未配置 / SMTP 不可用 等服务端问题 → 503
+            log.warn("[2FA] send failed", e);
+            return Result.serviceUnavailable(e.getMessage());
+        }
         return Result.success();
     }
 
@@ -123,6 +142,54 @@ public class AuthController {
     public Result<Void> verifyTwoFactorCode(@Valid @RequestBody TwoFactorRequest request) {
         authService.verifyTwoFactorCode(UserContextHolder.getUserId(), request.getCode());
         return Result.success();
+    }
+
+    /**
+     * 设置两步验证开关。
+     * <p>
+     * 背景：账号与安全页面需要直接切换 2FA 状态,后端此前只暴露发送/验证接口,
+     * 未提供"更新 mo_user.two_factor_enabled"端点,前端只能本地 mock。
+     * <p>
+     * 设计要点：
+     * <ol>
+     *   <li>需要登录态(JwtAuthFilter 已校验 token),无 userId 直接 401</li>
+     *   <li>开启时强制二次身份校验——必须先调用 {@code POST /2fa/send} + {@code POST /2fa/verify},
+     *       让 Redis 中存在 {@code auth:2fa-verified:userId} 才能开启;
+     *       缺少校验返回 403 二阶段校验失败</li>
+     *   <li>关闭不要求二次校验(用户主动关闭是预期行为);关闭后清理 verified 缓存</li>
+     *   <li>返回精简 profile VO,前端只关心 twoFactorEnabled 字段,但保留 id/email/nickname
+     *       便于前端 store 直接覆盖 userInfo 而不丢失其它字段</li>
+     * </ol>
+     */
+    @Operation(summary = "开启/关闭两步验证")
+    @PutMapping("/2fa")
+    public Result<Map<String, Object>> toggleTwoFactor(@Valid @RequestBody TwoFactorToggleRequest request) {
+        Long userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.error(401, "未登录");
+        }
+        UserEntity updated;
+        try {
+            updated = authService.setTwoFactorEnabled(userId, Boolean.TRUE.equals(request.getEnabled()));
+        } catch (IllegalArgumentException e) {
+            // 开启但未通过二阶段验证 → 403 让前端弹"请先输入验证码"
+            String msg = e.getMessage();
+            if (msg != null && msg.contains("二次验证")) {
+                return Result.error(403, msg);
+            }
+            return Result.badRequest(msg);
+        } catch (IllegalStateException e) {
+            // Redis 不可用导致无法校验二次身份 → 503
+            return Result.serviceUnavailable(e.getMessage());
+        }
+        Map<String, Object> p = new HashMap<>();
+        p.put("id", updated.getId());
+        p.put("email", updated.getEmail());
+        p.put("nickname", updated.getNickname());
+        p.put("avatar", updated.getAvatar());
+        p.put("twoFactorEnabled",
+                updated.getTwoFactorEnabled() != null && updated.getTwoFactorEnabled());
+        return Result.success(p);
     }
 
     // ============ 手机短信验证码登录 ============

@@ -3,11 +3,11 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="header-btn" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">分享商品</text>
       <view class="header-btn" @tap="handleClose">
-        <text class="close-icon"><text class="luc luc-x" /></text>
+        <text class="close-icon luc-x" />
       </view>
     </view>
 
@@ -168,6 +168,8 @@ import { shareApi } from '@/api'
 import { getStorage, STORAGE_KEYS } from '@/utils/storage'
 
 export default {
+  pageTitleKey: 'pageTitle.goodsShareProduct',
+
   data() {
     return {
       productId: null,

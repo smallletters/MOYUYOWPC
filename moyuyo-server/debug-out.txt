@@ -1,0 +1,4 @@
+Root=[D:\MOYUYOWPC\moyuyo-server]
+migDir=[D:\MOYUYOWPC\moyuyo-server\moyuyo-api\src\main\resources\db\migration]
+len=69
+TestPath=True

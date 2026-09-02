@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">通知</text>
       <view class="header-action" @click="markAllRead">
@@ -58,7 +58,7 @@
 
       <!-- 空状态 -->
       <view v-else class="empty-state">
-        <text class="empty-icon"><text class="luc luc-bell" /></text>
+        <text class="empty-icon luc-bell" />
         <text class="empty-text">暂无通知</text>
       </view>
     </scroll-view>
@@ -70,6 +70,8 @@ import { notificationApi } from '@/api'
 import { i18n } from '@/i18n'
 
 export default {
+  pageTitleKey: 'pageTitle.userNotifications',
+
   data() {
     return {
       currentTab: 'all',

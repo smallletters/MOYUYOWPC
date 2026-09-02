@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="onboarding">
     <!-- 跳过按钮 -->
     <text class="skip-btn" @click="goToHome">跳过</text>
@@ -48,6 +48,8 @@
 </template>
 <script>
 export default {
+  pageTitleKey: 'pageTitle.userOnboarding',
+
   data() {
     return {
       currentIndex: 0,
@@ -113,7 +115,7 @@ export default {
 
 .skip-btn {
   position: absolute;
-  top: calc(env(safe-area-inset-top) + 16rpx);
+  top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px) + 16rpx);
   right: 32rpx;
   z-index: 10;
   font-size: 30rpx;

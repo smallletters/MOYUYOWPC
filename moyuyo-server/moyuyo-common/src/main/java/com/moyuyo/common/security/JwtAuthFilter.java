@@ -70,6 +70,8 @@ public class JwtAuthFilter implements Filter {
             new WhiteListEntry("/api/v1/auth/email/verify-confirm", false),
             new WhiteListEntry("/api/v1/auth/password/forgot", false),
             new WhiteListEntry("/api/v1/auth/password/reset", false),
+            // 手机号验证码发送:注册 / 登录前都要能调,需公开访问
+            new WhiteListEntry("/api/v1/auth/phone/send-code", false),
             // 支付渠道 Webhook（精确匹配，签名校验在内部完成）
             new WhiteListEntry("/api/v1/payments/stripe/webhook", false),
             new WhiteListEntry("/api/v1/payments/paypal/webhook", false),
@@ -79,6 +81,13 @@ public class JwtAuthFilter implements Filter {
             new WhiteListEntry("/api/v1/products/", true),
             new WhiteListEntry("/api/v1/categories", true),
             new WhiteListEntry("/api/v1/categories/", true),
+            // 社区帖子：匿名可浏览列表/搜索/话题(只读),点赞/评论/发布仍需登录
+            new WhiteListEntry("/api/v1/community/posts", true),
+            new WhiteListEntry("/api/v1/community/posts/", true),
+            new WhiteListEntry("/api/v1/community/search", true),
+            new WhiteListEntry("/api/v1/community/search/", true),
+            new WhiteListEntry("/api/v1/community/topics", true),
+            new WhiteListEntry("/api/v1/community/topics/", true),
             // C 端领券中心公开浏览：列表 GET / 详情 GET 都允许匿名访问
             // 用户点击"领取"按钮时由 /api/v1/coupons/{id}/claim 强制登录校验
             new WhiteListEntry("/api/v1/coupons", true),

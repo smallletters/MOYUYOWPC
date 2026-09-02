@@ -324,8 +324,10 @@ public class ProductServiceImpl implements ProductService {
     // 标签
     if (body.containsKey("tags")) entity.setTags((String) body.get("tags"));
 
-    // attributes JSON
-    if (body.containsKey("attributes")) entity.setAttributes(body.get("attributes").toString());
+    // attributes JSON：防御 NPE — containsKey 为 true 但 value 可能为 null（例如前端传 attributes: null）
+    if (body.containsKey("attributes") && body.get("attributes") != null) {
+      entity.setAttributes(body.get("attributes").toString());
+    }
 
     // 产品类型
     if (body.containsKey("productType")) entity.setProductType((String) body.get("productType"));

@@ -138,12 +138,12 @@
     <view class="bottom-links">
       <view class="link-item" @click="goRules">
         <text class="link-text">了解会员规则</text>
-        <text class="link-arrow"><text class="luc luc-chevron-right" /></text>
+        <text class="link-arrow luc-chevron-right" />
       </view>
       <view class="link-divider" />
       <view class="link-item" @click="goPoints">
         <text class="link-text">{{ $t('membership.pointsLink') }}</text>
-        <text class="link-arrow"><text class="luc luc-chevron-right" /></text>
+        <text class="link-arrow luc-chevron-right" />
       </view>
     </view>
   </view>
@@ -151,8 +151,13 @@
 <script setup>
 import { ref, computed, onMounted, onActivated } from 'vue'
 import { memberApi } from '@/api'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userMembership')
+
 
 // 用户会员信息（来自后端 /api/v1/member）
+
+
 const userInfo = ref({ nickname: '', level: 'NORMAL', growthValue: 0, points: 0, memberNo: '' })
 
 // 等级档位（来自后端 /api/v1/member/levels）

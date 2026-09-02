@@ -1,13 +1,41 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import uni from '@dcloudio/vite-plugin-uni'
 
 // Vite 配置：uni-app 项目入口指向 src/main.js
-export default defineConfig({
-  plugins: [uni()],
-  // 路径别名
-  resolve: {
-    alias: {
-      '@': '/src',
+export default defineConfig(({ mode }) => {
+  // 手动加载当前 mode 下的环境变量（uni-app 默认 mode=production）
+  // 拿到后用于下面的 define，把所有 process.env.VITE_* 在编译期字面量替换进 bundle
+  // 这是因为 APP 端运行时 typeof process 通常是 undefined 或空对象，
+  // 直接读 process.env.VITE_* 拿不到 .env 里写的值，必须靠 define 做静态替换。
+  const env = loadEnv(mode, process.cwd(), 'VITE_')
+  const processEnvDefine = Object.fromEntries(
+    Object.entries(env).map(([k, v]) => [`process.env.${k}`, JSON.stringify(v)]),
+  )
+
+  return {
+    plugins: [uni()],
+    // 路径别名
+    resolve: {
+      alias: {
+        '@': '/src',
+      },
+    },
+    // 把 process.env.VITE_* 静态注入到 bundle；uni-app APP 端没有 dev server，
+    // 运行时读 process.env 拿不到值，必须靠 define 在 build 期替换成字符串字面量
+    define: {
+      ...processEnvDefine,
+    },
+  // 强制 Sass 使用现代 JS API(sass.compile),消除 "legacy-js-api" DEPRECATION 警告
+  // 同时传递 silenceDeprecations 给上游 sass:
+  //   - import:项目里 uview-plus/index.scss 还在用 @import,这条以后会跟着 uview-plus 升级一起消
+  //   - bogus-combinators:同一原因(uniapp 子组件 deep 选择器)
+  // 这两条来自第三方依赖,我们改不动,只能从工具侧抹掉警告噪音
+  css: {
+    preprocessorOptions: {
+      scss: {
+        api: 'modern-compiler',
+        silenceDeprecations: ['legacy-js-api', 'import', 'bogus-combinators'],
+      },
     },
   },
   // dev 代理：所有 /api/v1/* 透明转发到 Spring Boot 8080，避免 5174 跨源访问 8080 的 CORS / 端口差异问题
@@ -87,4 +115,5 @@ export default defineConfig({
       '/api/v1/reports': { target: 'http://localhost:8080', changeOrigin: true },
     },
   },
+  }
 })

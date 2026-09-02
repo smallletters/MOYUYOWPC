@@ -1,13 +1,7 @@
 ﻿<template>
   <view class="crowdfunding-page">
     <!-- 导航栏 -->
-    <view class="nav-bar">
-      <view class="nav-btn" @click="goBack">
-        <text class="nav-back"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">众筹</text>
-      <view class="nav-btn" />
-    </view>
+
 
     <!-- 标签筛选 -->
     <scroll-view scroll-x class="tab-scroll">
@@ -62,7 +56,7 @@
           <!-- 底部信息 -->
           <view class="project-footer">
             <view class="supporter-count">
-              <text class="supporter-icon"><text class="luc luc-users" /></text>
+              <text class="supporter-icon luc-users" />
               <text class="supporter-text">{{ project.supporters }}人支持</text>
             </view>
             <view class="min-pledge">
@@ -82,8 +76,13 @@
 
 <script setup>
 import { ref } from 'vue'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.goodsCrowdfundingList')
+
 
 // 标签
+
+
 const tabs = ref(['全部', '进行中', '即将结束', '即将开始', '已成功'])
 const activeTab = ref('全部')
 
@@ -169,27 +168,12 @@ const loadMore = () => {
 }
 
 // 导航栏
-.nav-bar {
-  display: flex;
-  align-items: center;
-  height: 88rpx;
-  padding: 0 32rpx;
-  background: var(--color-card);
-  border-bottom: 1rpx solid var(--color-border);
-  position: sticky;
-  top: 0;
-  z-index: 30;
-}
 .nav-btn {
   width: 64rpx;
   height: 64rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-.nav-back {
-  font-size: 40rpx;
-  color: var(--color-text);
 }
 .nav-title {
   flex: 1;

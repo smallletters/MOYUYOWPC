@@ -42,6 +42,8 @@
 import { petApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.petAlbum',
+
   data() {
     return {
       currentPet: null,

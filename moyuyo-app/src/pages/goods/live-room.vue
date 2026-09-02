@@ -113,6 +113,8 @@
 import { liveRoomApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.goodsLiveRoom',
+
   data() {
     return {
       roomId: null,

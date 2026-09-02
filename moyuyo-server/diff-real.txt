@@ -1,0 +1,40 @@
+ACTUAL docker database table count = 170
+Entity @TableName count             = 136
+
+=== Entity declares table but NOT in docker DB - 0 tables ===
+  (none - all entity tables exist in DB)
+
+=== Extra tables in docker DB without Entity - 33 tables ===
+  EXTRA mo_account_deletion
+  EXTRA mo_admin_notification
+  EXTRA mo_admin_role_permission
+  EXTRA mo_brand
+  EXTRA mo_brand_ip
+  EXTRA mo_collection
+  EXTRA mo_community_follow
+  EXTRA mo_community_topic
+  EXTRA mo_consent_log
+  EXTRA mo_coupon_product
+  EXTRA mo_device
+  EXTRA mo_gdpr_quick_action
+  EXTRA mo_invite_record
+  EXTRA mo_live_monitor_rule
+  EXTRA mo_live_violation_alert
+  EXTRA mo_login_log
+  EXTRA mo_marketing_activity
+  EXTRA mo_member_wallet
+  EXTRA mo_message
+  EXTRA mo_minor_consent_proof
+  EXTRA mo_minor_verification
+  EXTRA mo_oauth_binding
+  EXTRA mo_order_monitor_rule
+  EXTRA mo_pet_health_calendar
+  EXTRA mo_product_ip
+  EXTRA mo_return_request
+  EXTRA mo_split_package_rule
+  EXTRA mo_split_package_rule_version
+  EXTRA mo_sync_checkpoint
+  EXTRA mo_sync_log
+  EXTRA mo_two_factor
+  EXTRA mo_user_behavior_event
+  EXTRA mo_warehouse_allocation_suggest

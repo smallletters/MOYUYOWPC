@@ -96,6 +96,8 @@ import { petApi } from '@/api'
 import { uploadImage } from '@/api/upload'
 
 export default {
+  pageTitleKey: 'pageTitle.petProfile',
+
   data() {
     return {
       isEdit: false,

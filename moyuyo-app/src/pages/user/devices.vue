@@ -1,12 +1,6 @@
 ﻿<template>
   <view class="devices">
-    <view class="nav-bar">
-      <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">登录设备</text>
-      <view class="nav-placeholder" />
-    </view>
+
 
     <view class="tip">您最多可在 3 台设备上登录。在陌生设备上发现账户活动？立即踢出。</view>
 
@@ -41,8 +35,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { deviceApi } from '@/api'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userDevices')
+
 
 const devices = ref([])
+
+
 const loading = ref(false)
 
 async function load() {
@@ -108,30 +107,14 @@ onMounted(() => {
   background: var(--color-background);
   padding: 16rpx;
 }
-.nav-bar {
-  display: flex;
-  align-items: center;
-  height: 88rpx;
-  padding: 0 24rpx;
-  background: var(--color-surface);
-  border-bottom: 1rpx solid var(--color-divider);
-  margin: -16rpx -16rpx 16rpx;
-}
 .nav-back {
   width: 60rpx;
-}
-.back-icon {
-  font-size: 44rpx;
-  color: var(--color-primary);
 }
 .nav-title {
   flex: 1;
   text-align: center;
   font-size: 32rpx;
   font-weight: 600;
-}
-.nav-placeholder {
-  width: 60rpx;
 }
 .tip {
   font-size: 24rpx;

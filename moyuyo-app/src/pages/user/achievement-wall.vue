@@ -2,7 +2,7 @@
   <view class="page">
     <view class="header">
       <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="title">成就墙</text>
     </view>

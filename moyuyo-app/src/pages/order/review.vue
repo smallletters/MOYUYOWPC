@@ -68,6 +68,8 @@ import { orderApi, reviewApi } from '@/api'
 import { i18n } from '@/i18n'
 
 export default {
+  pageTitleKey: 'pageTitle.orderReview',
+
   data() {
     return {
       orderId: null,

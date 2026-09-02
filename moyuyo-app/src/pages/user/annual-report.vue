@@ -1,8 +1,8 @@
-﻿<template>
+<template>
   <view class="page">
     <view class="header">
       <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="title">{{ year }} 年报</text>
     </view>
@@ -50,8 +50,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { marketingApi } from '@/api'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userAnnualReport')
+
 
 const report = ref(null)
+
+
 const loading = ref(false)
 const year = ref(new Date().getFullYear())
 
@@ -84,8 +89,11 @@ onMounted(() => {
 .header {
   display: flex;
   align-items: center;
-  height: 88rpx;
-  padding: 0 24rpx;
+  /* APP 端因 navigationStyle:custom 自渲染 header,
+     需为系统状态栏预留顶部空间 */
+  height: calc(88rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  padding: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px)) 24rpx 0;
+  box-sizing: border-box;
 }
 .nav-back {
   width: 60rpx;

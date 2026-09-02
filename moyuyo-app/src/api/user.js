@@ -61,6 +61,16 @@ export function verifyTwoFactorCode(code) {
   return post('/api/v1/auth/2fa/verify', { code })
 }
 
+/**
+ * 开启/关闭两步验证。
+ * 后端 PUT /api/v1/auth/2fa,body: { enabled: boolean }
+ * 返回精简 profile VO(id/email/nickname/avatar/twoFactorEnabled),
+ * 调用方负责把 twoFactorEnabled 回写到 store.userInfo。
+ */
+export function setTwoFactorEnabled(enabled) {
+  return put('/api/v1/auth/2fa', { enabled })
+}
+
 /** 发送手机短信验证码 */
 export function sendPhoneCode(phone, purpose = 'LOGIN') {
   return post('/api/v1/auth/phone/send-code', { phone, purpose })
@@ -88,6 +98,7 @@ export default {
   verifyMagicLink,
   sendTwoFactorCode,
   verifyTwoFactorCode,
+  setTwoFactorEnabled,
   sendPhoneCode,
   loginByPhone,
 }

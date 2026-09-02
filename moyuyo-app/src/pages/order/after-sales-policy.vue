@@ -1,21 +1,13 @@
 <template>
   <view class="policy-page">
     <!-- 顶部导航栏 -->
-    <view class="nav-bar">
-      <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">{{ $t('afterSalesPolicy.title') }}</text>
-      <view class="nav-share" @tap="sharePolicy">
-        <text class="share-icon luc luc-external-link" />
-      </view>
-    </view>
+
 
     <!-- 内容区域 -->
     <scroll-view class="policy-body" scroll-y>
       <!-- 更新时间提示 -->
       <view class="update-hint">
-        <text class="hint-icon"><text class="luc luc-file-text" /></text>
+        <text class="hint-icon luc-file-text" />
         <text class="hint-text">政策更新于 2026-07-01</text>
       </view>
 
@@ -88,7 +80,7 @@
     <!-- 底部联系客服按钮 -->
     <view class="bottom-bar">
       <view class="contact-btn" @tap="contactService">
-        <text class="contact-icon"><text class="luc luc-headphones" /></text>
+        <text class="contact-icon luc-headphones" />
         <text class="contact-text">联系客服</text>
       </view>
     </view>
@@ -97,8 +89,13 @@
 
 <script setup>
 import { ref } from 'vue'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.orderAfterSalesPolicy')
+
 
 // FAQ 各分区数据
+
+
 const sections = ref([
   {
     title: '退货政策',
@@ -242,16 +239,6 @@ const contactService = () => {
 }
 
 /* 导航栏 */
-.nav-bar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 88rpx;
-  padding: 0 32rpx;
-  position: relative;
-  background: var(--color-background);
-}
-
 .nav-back {
   position: absolute;
   left: 32rpx;
@@ -263,12 +250,6 @@ const contactService = () => {
   border-radius: 50%;
   background: #f2f2f7;
 }
-
-.back-icon {
-  font-size: 40rpx;
-  color: var(--color-text);
-}
-
 .nav-title {
   font-size: 34rpx;
   font-weight: 600;

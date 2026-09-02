@@ -1,12 +1,8 @@
 ﻿<template>
   <view class="invoice-page">
     <!-- 顶部导航栏 -->
-    <view class="nav-header">
-      <view class="nav-back" @tap="goBack">
-        <text class="luc luc-arrow-left" />
-      </view>
-      <text class="nav-title">发票管理</text>
-    </view>
+
+
 
     <scroll-view scroll-y class="scroll">
       <!-- 发票抬头管理 -->
@@ -314,6 +310,8 @@
 import { invoiceApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.userInvoice',
+
   data() {
     return {
       currentTab: 0,
@@ -362,9 +360,6 @@ export default {
       } catch (e) {
         // 静默失败
       }
-    },
-    goBack() {
-      uni.navigateBack()
     },
     switchTab(i) {
       this.currentTab = i

@@ -111,7 +111,7 @@
 
     <view class="action-bar safe-area-bottom">
       <view class="btn btn-text" @click="onCS">
-        <text class="cs-icon"><text class="luc luc-message-circle" /></text>
+        <text class="cs-icon luc-message-circle" />
         <text>{{ $t('orderDetail.contactCS') }}</text>
       </view>
       <view v-if="order.status === 'PENDING_PAY'" class="btn btn-outline" @click="onCancel">
@@ -149,6 +149,8 @@
 import { orderApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.orderDetail',
+
   data() {
     return {
       orderId: null,

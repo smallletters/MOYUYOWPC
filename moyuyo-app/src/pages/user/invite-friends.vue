@@ -10,7 +10,7 @@
     <scroll-view scroll-y class="content">
       <!-- 顶部宣传 -->
       <view class="hero">
-        <text class="hero-icon"><text class="luc luc-gift" /></text>
+        <text class="hero-icon luc-gift" />
         <text class="hero-title">{{ $t('invite.heroTitle', { reward: inviteCurrency }) }}</text>
         <text class="hero-desc">{{ $t('invite.heroDesc', { reward: inviteCurrency }) }}</text>
       </view>

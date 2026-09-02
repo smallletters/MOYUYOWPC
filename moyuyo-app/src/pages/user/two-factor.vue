@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="two-factor">
     <view class="header">
       <text class="title">Two-Factor Authentication</text>
@@ -40,6 +40,8 @@
 import { useUserStore } from '@/store'
 
 export default {
+  pageTitleKey: 'pageTitle.userTwoFactor',
+
   data() {
     return {
       code: [],
@@ -130,7 +132,7 @@ export default {
   min-height: 100vh;
   background: var(--color-background);
   padding: 64rpx 48rpx;
-  padding-top: calc(64rpx + env(safe-area-inset-top));
+  padding-top: calc(64rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
 }
 
 .header {

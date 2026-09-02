@@ -35,10 +35,18 @@ public class ProfileUpdateRequest {
     @Schema(description = "昵称", example = "小明")
     private String nickname;
 
-    /** 头像 URL：协议白名单（仅 https?://），避免 javascript:/data: 协议 XSS */
+    /**
+     * 头像 URL：协议白名单（http/https 绝对 URL 或 /uploads/ 相对路径），避免 javascript:/data: 协议 XSS
+     * <p>
+     * 兼容两种形态：
+     * <ul>
+     *   <li>绝对 URL：{@code https://cdn.example.com/avatar.png}</li>
+     *   <li>项目内相对路径：{@code /uploads/2026/09/01/uuid.png}（dev 通过 vite proxy,prod 通过 nginx 同源）</li>
+     * </ul>
+     */
     @Size(max = 512, message = "头像 URL 长度不能超过 512 字符")
-    @Pattern(regexp = "^https?://.*$", message = "头像 URL 必须使用 http 或 https 协议")
-    @Schema(description = "头像 URL（必须 https?:// 协议）", example = "https://cdn.example.com/avatar.jpg.png")
+    @Pattern(regexp = "^(https?://|/uploads/).*$", message = "头像 URL 必须为 http(s):// 绝对路径或 /uploads/ 项目内路径")
+    @Schema(description = "头像 URL（https?:// 绝对路径 或 /uploads/ 项目内路径）", example = "/uploads/2026/09/01/uuid.png")
     private String avatar;
 
     /** 性别：枚举值，避免任意文本入库 */
@@ -83,14 +91,16 @@ public class ProfileUpdateRequest {
      */
     public boolean isAvatarValid() {
         if (avatar == null || avatar.isEmpty()) {
-            return true; // 空值视为合法，由 Service 层决定是否更新
+            return true; // 空值视为合法,由 Service 层决定是否更新
         }
         String lower = avatar.trim().toLowerCase();
-        // 显式拒绝危险协议（覆盖大小写、空白、URL 编码后的等价形式）
+        // 显式拒绝危险协议(覆盖大小写、空白、URL 编码后的等价形式)
+        // 注意:/uploads/ 是项目内相对路径,走 vite proxy / nginx 反代,与后端同源,
+        //      无 javascript:/data: 等危险协议风险,这里显式放行(Bean Validation 的 Pattern 已先校验)
         if (lower.startsWith("javascript:") || lower.startsWith("data:") || lower.startsWith("vbscript:")) {
             return false;
         }
-        // 通过 Pattern 校验后已经确保 http/https，但再做一次长度防御
+        // 通过 Pattern 校验后已经确保 http/https 或 /uploads/,但再做一次长度防御
         return avatar.length() <= 512;
     }
 }

@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">意见反馈</text>
       <view class="header-placeholder" />
@@ -50,7 +50,7 @@
           <view v-for="(img, index) in uploadedImages" :key="index" class="upload-item">
             <image :src="img" class="upload-preview" mode="aspectFill" />
             <view class="upload-remove" @click="removeImage(index)">
-              <text class="remove-icon"><text class="luc luc-x" /></text>
+              <text class="remove-icon luc-x" />
             </view>
           </view>
           <view v-if="uploadedImages.length < 3" class="upload-btn" @click="onUploadImage">
@@ -87,6 +87,8 @@
 import { feedbackApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.userFeedback',
+
   data() {
     return {
       feedbackType: '',

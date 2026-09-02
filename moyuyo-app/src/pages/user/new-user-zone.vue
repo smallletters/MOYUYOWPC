@@ -2,7 +2,7 @@
   <view class="page">
     <view class="header">
       <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="title">新人专享</text>
     </view>
@@ -46,8 +46,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { marketingApi } from '@/api'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userNewUserZone')
+
 
 const gifts = ref([])
+
+
 const claimed = ref([])
 const loading = ref(false)
 

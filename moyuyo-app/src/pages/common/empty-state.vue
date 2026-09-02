@@ -1,12 +1,7 @@
 ﻿<template>
   <view class="empty-state-page">
     <!-- 导航栏 -->
-    <view class="nav-bar">
-      <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
-      </view>
-      <text class="nav-title">{{ pageTitle }}</text>
-    </view>
+
 
     <scroll-view class="state-body" scroll-y>
       <!-- 空状态展示区 -->
@@ -99,7 +94,7 @@
           <view class="toast-list">
             <view class="toast-item">
               <view class="toast-icon toast-icon-success">
-                <text class="toast-emoji"><text class="luc luc-check" /></text>
+                <text class="toast-emoji luc-check" />
               </view>
               <view class="toast-content">
                 <text class="toast-title">操作成功</text>
@@ -108,7 +103,7 @@
             </view>
             <view class="toast-item">
               <view class="toast-icon toast-icon-error">
-                <text class="toast-emoji"><text class="luc luc-x" /></text>
+                <text class="toast-emoji luc-x" />
               </view>
               <view class="toast-content">
                 <text class="toast-title">操作失败</text>
@@ -131,7 +126,7 @@
         <view class="state-card">
           <text class="state-label">Success</text>
           <view class="state-icon-wrap" style="background: rgba(171, 185, 173, 0.2)">
-            <text class="state-emoji"><text class="luc luc-check" /></text>
+            <text class="state-emoji luc-check" />
           </view>
           <text class="state-title">支付成功</text>
           <text class="state-desc">订单 #MOY20260715001 已支付成功</text>
@@ -143,7 +138,7 @@
         <view class="state-card">
           <text class="state-label">Failure</text>
           <view class="state-icon-wrap" style="background: rgba(201, 110, 95, 0.15)">
-            <text class="state-emoji"><text class="luc luc-x" /></text>
+            <text class="state-emoji luc-x" />
           </view>
           <text class="state-title">支付失败</text>
           <text class="state-desc">余额不足，请更换支付方式</text>
@@ -174,8 +169,13 @@
 </template>
 <script setup>
 import { ref } from 'vue'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.commonEmptyState')
+
 
 // 页面标题
+
+
 const pageTitle = ref('空状态')
 
 // 当前展示类型
@@ -304,16 +304,6 @@ const goBack = () => {
 }
 
 /* 导航栏 */
-.nav-bar {
-  display: flex;
-  align-items: center;
-  height: 88rpx;
-  padding: 0 32rpx;
-  background: var(--color-background);
-  border-bottom: 1rpx solid var(--color-border);
-  gap: 24rpx;
-}
-
 .nav-back {
   width: 64rpx;
   height: 64rpx;
@@ -321,12 +311,6 @@ const goBack = () => {
   align-items: center;
   justify-content: center;
 }
-
-.back-icon {
-  font-size: 44rpx;
-  color: var(--color-primary);
-}
-
 .nav-title {
   font-size: 32rpx;
   font-weight: 600;

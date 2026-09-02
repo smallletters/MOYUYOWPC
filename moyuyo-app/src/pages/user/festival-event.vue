@@ -2,7 +2,7 @@
   <view class="page">
     <view class="header">
       <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="title">节日活动</text>
     </view>
@@ -33,8 +33,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { marketingApi } from '@/api'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userFestivalEvent')
+
 
 const festivals = ref([])
+
+
 const loading = ref(false)
 
 async function load() {

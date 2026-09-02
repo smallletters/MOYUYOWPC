@@ -1,14 +1,5 @@
 <template>
   <view class="checkout">
-    <!-- 顶部导航栏：左侧返回 + 居中标题 -->
-    <view class="nav-bar">
-      <view class="nav-back" @click="onBack">
-        <text class="back-icon">‹</text>
-      </view>
-      <text class="nav-title">Checkout</text>
-      <view class="nav-step">Step {{ currentStep }} of {{ totalSteps }}</view>
-    </view>
-
     <!-- 顶部进度条 -->
     <view class="progress-bar">
       <view
@@ -29,8 +20,8 @@
       <!-- 1. 收货地址卡片 -->
       <view class="block">
         <view class="block-head">
-          <text class="block-title">1. Shipping address</text>
-          <text class="block-action" @click="onSelectAddress">Change</text>
+          <text class="block-title">{{ $t('checkout.sections.address') }}</text>
+          <text class="block-action" @click="onSelectAddress">{{ $t('checkout.address.change') }}</text>
         </view>
         <view class="block-body">
           <view v-if="selectedAddress" class="addr-line">
@@ -43,11 +34,11 @@
               {{ selectedAddress.zipCode || selectedAddress.postcode || '' }}
             </text>
             <text class="addr-phone">
-              Phone: {{ selectedAddress.receiverPhone || selectedAddress.phone }}
+              {{ $t('checkout.address.phone') }} {{ selectedAddress.receiverPhone || selectedAddress.phone }}
             </text>
           </view>
           <view v-else class="addr-line addr-empty" @click="onSelectAddress">
-            <text class="addr-empty-text">+ Add a new shipping address</text>
+            <text class="addr-empty-text">{{ $t('checkout.address.addNew') }}</text>
           </view>
         </view>
       </view>
@@ -55,21 +46,28 @@
       <!-- 2. 支付方式 -->
       <view class="block">
         <view class="block-head">
-          <text class="block-title">2. Payment method</text>
+          <text class="block-title">{{ $t('checkout.sections.payment') }}</text>
         </view>
         <view class="block-body payment-body">
           <view
-            v-for="p in paymentMethods"
+            v-for="p in i18nPaymentMethods"
             :key="p.id"
             class="pay-row"
             :class="{ active: selectedPayment === p.id }"
-            @click="selectedPayment = p.id"
+            @click="onPickPayment(p.id)"
           >
             <view class="pay-radio">
               <view v-if="selectedPayment === p.id" class="pay-radio-dot" />
             </view>
             <view class="pay-icon-box">
-              <text class="pay-icon-text">{{ p.iconText }}</text>
+              <!-- 优先用对应支付方式的 SVG 图标;缺失时降级显示文字标识 -->
+              <image
+                v-if="p.icon"
+                :src="p.icon"
+                class="pay-icon-img"
+                mode="aspectFit"
+              />
+              <text v-else class="pay-icon-text">{{ p.iconText }}</text>
             </view>
             <view class="pay-info">
               <text class="pay-name">{{ p.name }}</text>
@@ -82,7 +80,7 @@
       <!-- 3. 复核订单 -->
       <view class="block">
         <view class="block-head">
-          <text class="block-title">3. Review items and shipping</text>
+          <text class="block-title">{{ $t('checkout.sections.review') }}</text>
         </view>
 
         <!-- 商品列表 -->
@@ -95,11 +93,11 @@
             <image :src="item.image" class="item-image" mode="aspectFill" />
             <view class="item-info">
               <text class="item-name text-ellipsis-2">{{ item.name }}</text>
-              <text class="item-qty">Qty: {{ item.quantity }}</text>
-              <text v-if="item.seller" class="item-seller">Sold by: {{ item.seller }}</text>
+              <text class="item-qty">{{ $t('checkout.item.qty') }} {{ item.quantity }}</text>
+              <text v-if="item.seller" class="item-seller">{{ $t('checkout.item.soldBy') }} {{ item.seller }}</text>
               <view class="item-stock">
                 <text class="stock-dot" />
-                <text class="stock-text">In stock</text>
+                <text class="stock-text">{{ $t('checkout.item.inStock') }}</text>
               </view>
             </view>
             <view class="item-price-wrap">
@@ -111,9 +109,9 @@
         <!-- 配送方式 -->
         <view class="block-divider" />
         <view class="block-sub">
-          <text class="sub-title">Choose a delivery option:</text>
+          <text class="sub-title">{{ $t('checkout.shipping.choose') }}</text>
           <view
-            v-for="s in shippingMethods"
+            v-for="s in i18nShippingMethods"
             :key="s.id"
             class="ship-row"
             :class="{ active: selectedShipping === s.id }"
@@ -127,7 +125,7 @@
               <text class="ship-time">{{ s.eta }}</text>
             </view>
             <text class="ship-price">
-              {{ s.free ? 'FREE' : '$' + s.price.toFixed(2) }}
+              {{ s.free ? freeShippingLabel : '$' + s.price.toFixed(2) }}
             </text>
           </view>
         </view>
@@ -137,38 +135,38 @@
         <view class="block-sub">
           <view class="reward-row" @click="onSelectCoupon">
             <view class="reward-left">
-              <text class="reward-label">Apply a coupon</text>
+              <text class="reward-label">{{ $t('checkout.coupon.apply') }}</text>
               <text v-if="activeCoupon" class="reward-sub reward-sub-active">
                 {{ activeCoupon.name }}
                 <text
                   v-if="activeCoupon.id !== cartStore.selectedCoupon?.id"
                   class="reward-sub-tag"
                 >
-                  Auto
+                  {{ $t('checkout.coupon.auto') }}
                 </text>
               </text>
               <text
                 v-else-if="myCouponsLoaded && bestCoupon === null && !couponAutoDismissed"
                 class="reward-sub"
               >
-                No applicable coupon for this order
+                {{ $t('checkout.coupon.noApplicable') }}
               </text>
-              <text v-else-if="couponAutoDismissed" class="reward-sub">Coupon removed</text>
+              <text v-else-if="couponAutoDismissed" class="reward-sub">{{ $t('checkout.coupon.removed') }}</text>
             </view>
             <view class="reward-right">
               <text v-if="activeCoupon" class="reward-active">−${{ discount.toFixed(2) }}</text>
-              <text v-else class="reward-placeholder">None</text>
+              <text v-else class="reward-placeholder">{{ $t('checkout.coupon.none') }}</text>
               <!-- 用户已选券时显示 Remove 按钮,允许取消自动选择 -->
               <text v-if="activeCoupon" class="reward-remove" @click.stop="onClearCoupon">
-                Remove
+                {{ $t('checkout.coupon.remove') }}
               </text>
               <text class="chev">›</text>
             </view>
           </view>
           <view class="reward-row">
             <view class="reward-left">
-              <text class="reward-label">Use Points ({{ pointsBalance }} available)</text>
-              <text class="reward-sub">100 points = $1, max 30% off</text>
+              <text class="reward-label">{{ $t('checkout.coupon.points.label', { balance: pointsBalance }) }}</text>
+              <text class="reward-sub">{{ $t('checkout.coupon.points.rule') }}</text>
             </view>
             <switch
               :checked="usePoints"
@@ -178,7 +176,7 @@
             />
             <!-- M4 修复：积分余额未加载完时禁止勾选，避免按 0 抵扣导致前端显示与实际扣款不一致 -->
             <text v-if="!pointsLoaded" class="reward-sub" style="margin-top: 4rpx">
-              Loading points balance...
+              {{ $t('checkout.coupon.points.loading') }}
             </text>
           </view>
         </view>
@@ -186,11 +184,11 @@
         <!-- 订单备注 -->
         <view class="block-divider" />
         <view class="block-sub">
-          <text class="sub-title">Add a gift message or note (optional)</text>
+          <text class="sub-title">{{ $t('checkout.remark.title') }}</text>
           <textarea
             v-model="orderRemark"
             class="remark-input"
-            placeholder="Type your note here..."
+            :placeholder="$t('checkout.remark.placeholder')"
             maxlength="500"
           />
         </view>
@@ -199,29 +197,29 @@
       <!-- 4. 价格明细 -->
       <view class="block">
         <view class="block-head">
-          <text class="block-title">4. Order summary</text>
+          <text class="block-title">{{ $t('checkout.sections.summary') }}</text>
         </view>
         <view class="block-body summary-body">
           <view class="sum-row">
-            <text class="sum-label">Items ({{ checkoutQuantity }}):</text>
+            <text class="sum-label">{{ $t('checkout.summary.items', { count: checkoutQuantity }) }}</text>
             <text class="sum-value">${{ subtotal.toFixed(2) }}</text>
           </view>
           <view class="sum-row">
-            <text class="sum-label">Shipping & handling:</text>
+            <text class="sum-label">{{ $t('checkout.summary.shipping') }}</text>
             <text class="sum-value">
-              {{ selectedShippingPrice > 0 ? '$' + selectedShippingPrice.toFixed(2) : 'FREE' }}
+              {{ selectedShippingPrice > 0 ? '$' + selectedShippingPrice.toFixed(2) : freeShippingLabel }}
             </text>
           </view>
           <view v-if="activeCoupon" class="sum-row">
-            <text class="sum-label">Coupon discount:</text>
+            <text class="sum-label">{{ $t('checkout.summary.couponDiscount') }}</text>
             <text class="sum-value">−${{ discount.toFixed(2) }}</text>
           </view>
           <view v-if="usePoints" class="sum-row">
-            <text class="sum-label">Points discount:</text>
+            <text class="sum-label">{{ $t('checkout.summary.pointsDiscount') }}</text>
             <text class="sum-value">−${{ pointsDiscount.toFixed(2) }}</text>
           </view>
           <view class="sum-row sum-total">
-            <text class="sum-total-label">Order total:</text>
+            <text class="sum-total-label">{{ $t('checkout.summary.total') }}</text>
             <text class="sum-total-value">${{ total.toFixed(2) }}</text>
           </view>
         </view>
@@ -233,11 +231,11 @@
     <!-- 底部固定下单栏 -->
     <view class="bottom-bar safe-area-bottom">
       <view class="bottom-left">
-        <text class="bottom-total-label">Order total:</text>
+        <text class="bottom-total-label">{{ $t('checkout.bottom.totalLabel') }}</text>
         <text class="bottom-total-price">${{ total.toFixed(2) }}</text>
       </view>
       <view class="place-btn" @click="onSubmit">
-        <text class="place-btn-text">Place your order</text>
+        <text class="place-btn-text">{{ $t('checkout.bottom.placeOrder') }}</text>
       </view>
     </view>
 
@@ -246,13 +244,13 @@
       <view class="coupon-popup" @click.stop>
         <!-- 弹窗标题 -->
         <view class="cp-header">
-          <text class="cp-title">Select a coupon</text>
-          <text class="cp-close" @click="closeCouponPopup">✕</text>
+          <text class="cp-title">{{ $t('checkout.popup.title') }}</text>
+          <text class="cp-close" @click="closeCouponPopup">{{ $t('checkout.popup.close') }}</text>
         </view>
         <!-- 优惠券列表(可用券排前,不可用券排后) -->
         <scroll-view scroll-y class="cp-list">
           <view v-if="couponPopupList.length === 0" class="cp-empty">
-            <text class="cp-empty-text">No coupons available</text>
+            <text class="cp-empty-text">{{ $t('checkout.popup.empty') }}</text>
           </view>
           <view
             v-for="c in couponPopupList"
@@ -274,7 +272,7 @@
               <text class="cp-name">{{ c.name }}</text>
               <text v-if="formatCouponDesc(c)" class="cp-desc">{{ formatCouponDesc(c) }}</text>
               <text v-if="c.endTime" class="cp-expire">
-                Valid until {{ formatDate(c.endTime) }}
+                {{ $t('checkout.popup.validUntil') }} {{ formatDate(c.endTime) }}
               </text>
             </view>
             <!-- 选中标记 / 不可用原因 -->
@@ -294,7 +292,7 @@
             :class="{ 'cp-none-active': !activeCoupon }"
             @click="onDontUseCoupon"
           >
-            <text>Do not use a coupon</text>
+            <text>{{ $t('checkout.popup.dontUse') }}</text>
           </view>
         </view>
       </view>
@@ -304,10 +302,13 @@
 
 <script>
 import { orderApi, pointsApi, addressApi, couponApi } from '@/api'
-import { useCartStore, useUserStore } from '@/store'
+import { useCartStore } from '@/store'
 import { savePendingOrder } from '@/utils/storage'
+import { i18n } from '@/i18n'
 
 export default {
+  pageTitleKey: 'pageTitle.cartCheckout',
+
   data() {
     return {
       selectedAddress: null,
@@ -315,13 +316,14 @@ export default {
       usePoints: false,
       pointsBalance: 0,
       pointsLoaded: false,
-      pointsToUse: 0,
       orderRemark: '',
       selectedShipping: 'standard',
-      selectedPayment: 'stripe',
-      steps: ['Shipping', 'Payment', 'Review', 'Place'],
-      currentStep: 4,
+      selectedPayment: 'googlepay',
+      // 步骤指示器：地址 1、支付 2、复核 3、下单 4；按实际状态自动推进
+      currentStep: 1,
       totalSteps: 4,
+      // 提交中标记：onSubmit 期间为 true，把进度条推到第 4 步
+      submitting: false,
       // 已领取的未使用优惠券(由 loadMyCoupons 填充,供 bestCoupon 自动挑选)
       myCoupons: [],
       myCouponsLoaded: false,
@@ -329,38 +331,84 @@ export default {
       couponAutoDismissed: false,
       // 优惠券选择弹窗显示状态(底部弹出用户已领取的优惠券列表)
       showCouponPopup: false,
+      // 配送方式固定数据,文案走 i18n,价格/免费标志保留
       shippingMethods: [
         {
           id: 'standard',
-          name: 'Standard Shipping',
-          eta: 'Arrives in 3-5 business days',
+          nameKey: 'checkout.shipping.standard.name',
+          etaKey: 'checkout.shipping.standard.eta',
           price: 0,
           free: true,
         },
         {
           id: 'express',
-          name: 'Express Shipping',
-          eta: 'Next day delivery',
+          nameKey: 'checkout.shipping.express.name',
+          etaKey: 'checkout.shipping.express.eta',
           price: 12.0,
           free: false,
         },
       ],
+      // 支付方式固定数据,文案走 i18n
       paymentMethods: [
-        { id: 'googlepay', name: 'Google Pay', desc: '快速结账，用已保存的卡', iconText: 'G Pay' },
-        { id: 'paypal', name: 'PayPal', desc: 'Use your PayPal account', iconText: 'PP' },
-        { id: 'venmo', name: 'Venmo', desc: 'PayPal 旗下，扫码或快捷支付', iconText: 'V' },
-        { id: 'applepay', name: 'Apple Pay', desc: 'Fast checkout with Touch ID', iconText: '' },
-        { id: 'alipay', name: 'Alipay', desc: '扫码 / 快捷支付', iconText: '支' },
+        {
+          id: 'googlepay',
+          nameKey: 'orderPay.methods.googlepay.name',
+          descKey: 'orderPay.methods.googlepay.desc',
+          icon: '/static/icons/googlepay.svg',
+          iconText: 'G Pay',
+        },
+        {
+          id: 'applepay',
+          nameKey: 'orderPay.methods.applepay.name',
+          descKey: 'orderPay.methods.applepay.desc',
+          icon: '/static/icons/applepay.svg',
+          iconText: '',
+        },
+        {
+          id: 'paypal',
+          nameKey: 'orderPay.methods.paypal.name',
+          descKey: 'orderPay.methods.paypal.desc',
+          icon: '/static/icons/paypal.svg',
+          iconText: 'PP',
+        },
+        {
+          id: 'card',
+          nameKey: 'orderPay.methods.card.name',
+          descKey: 'orderPay.methods.card.desc',
+          icon: '/static/icons/card.svg',
+          iconText: 'CARD',
+        },
       ],
     }
   },
 
   computed: {
+    /** 当前 locale 的步骤标签（响应式依赖 i18n.locale） */
+    steps() {
+      return i18n.t('checkout.steps')
+    },
+    /** 配送方式注入 i18n 文案 */
+    i18nShippingMethods() {
+      return this.shippingMethods.map((s) => ({
+        ...s,
+        name: i18n.t(s.nameKey),
+        eta: i18n.t(s.etaKey),
+      }))
+    },
+    /** 支付方式注入 i18n 文案 */
+    i18nPaymentMethods() {
+      return this.paymentMethods.map((p) => ({
+        ...p,
+        name: i18n.t(p.nameKey),
+        desc: i18n.t(p.descKey),
+      }))
+    },
+    /** 运费免邮文案 */
+    freeShippingLabel() {
+      return i18n.t('checkout.shipping.free')
+    },
     cartStore() {
       return useCartStore()
-    },
-    userStore() {
-      return useUserStore()
     },
     selectedShippingPrice() {
       const method = this.shippingMethods.find((s) => s.id === this.selectedShipping)
@@ -479,15 +527,6 @@ export default {
   },
 
   methods: {
-    onBack() {
-      const pages = getCurrentPages()
-      if (pages.length > 1) {
-        uni.navigateBack()
-      } else {
-        uni.switchTab({ url: '/pages/cart/index' })
-      }
-    },
-
     loadAddress() {
       addressApi
         .getAddressList()
@@ -495,17 +534,27 @@ export default {
           if (list && list.length > 0) {
             this.addressList = list
             this.selectedAddress = list.find((a) => a.isDefault) || list[0]
+            // 自动选到默认地址，推进到第 2 步（支付方式）
+            this.currentStep = 2
           }
         })
         .catch(() => {
           const saved = uni.getStorageSync('moyuyo_address_list') || []
           this.addressList = saved
           this.selectedAddress = saved.find((a) => a.default) || saved[0]
+          if (this.selectedAddress) this.currentStep = 2
         })
     },
 
     onSelectAddress() {
       uni.navigateTo({ url: '/pages/user/address?from=checkout' })
+    },
+
+    /** 选中支付方式后推进到第 3 步（复核） */
+    onPickPayment(id) {
+      this.selectedPayment = id
+      // 已有地址后选择支付方式，表示用户已进入"复核订单"环节
+      if (this.selectedAddress) this.currentStep = 3
     },
 
     /**
@@ -590,27 +639,30 @@ export default {
 
     /** 弹窗门槛文案 */
     formatCouponThreshold(c) {
+      const noThreshold = i18n.t('checkout.popup.noThreshold')
       const isPercent = (c.type || '').toUpperCase() === 'PERCENT'
-      if (isPercent) return 'No threshold'
+      if (isPercent) return noThreshold
       const min = Number(c.minOrderAmount || 0)
-      if (min <= 0) return 'No threshold'
-      return 'Min $' + min.toFixed(2)
+      if (min <= 0) return noThreshold
+      return i18n.t('checkout.popup.min') + min.toFixed(2)
     },
 
     /** 弹窗抵扣描述(可用时显示可省金额) */
     formatCouponDesc(c) {
       if (!this.isCouponAvailable(c)) return ''
-      return 'Save $' + this.couponActualDiscount(c).toFixed(2)
+      return i18n.t('checkout.popup.save') + this.couponActualDiscount(c).toFixed(2)
     },
 
     /** 不可用原因文案 */
     couponUnavailableReason(c) {
-      if (c.active === false) return 'Unavailable'
-      if (c.endTime && new Date(String(c.endTime).replace(' ', 'T')) <= new Date()) return 'Expired'
+      if (c.active === false) return i18n.t('checkout.popup.unavailable')
+      if (c.endTime && new Date(String(c.endTime).replace(' ', 'T')) <= new Date()) {
+        return i18n.t('checkout.popup.expired')
+      }
       if ((c.type || '').toUpperCase() === 'AMOUNT') {
         const min = Number(c.minOrderAmount || 0)
         if (min > this.subtotal) {
-          return 'Need $' + (min - this.subtotal).toFixed(2) + ' more'
+          return i18n.t('checkout.popup.needMore') + (min - this.subtotal).toFixed(2)
         }
       }
       return ''
@@ -633,13 +685,10 @@ export default {
       } catch (e) {
         console.warn('[checkout] loadMyCoupons failed', e)
         this.myCoupons = []
+        uni.showToast({ title: i18n.t('checkout.toast.loadCouponsFailed'), icon: 'none' })
       } finally {
         this.myCouponsLoaded = true
       }
-    },
-
-    onUsePoints() {
-      // toggle 由 switch 处理
     },
 
     /** 章节 3.1：查询可用积分余额 */
@@ -650,6 +699,7 @@ export default {
       } catch (e) {
         console.warn('[checkout] load points failed', e)
         // 即使失败也标记为已加载（按 0 余额展示），避免按钮永久禁用
+        uni.showToast({ title: i18n.t('checkout.toast.loadPointsFailed'), icon: 'none' })
       } finally {
         // M4 修复：无论成功失败都标记加载完成，确保 switch 不被永久 disable
         this.pointsLoaded = true
@@ -659,11 +709,13 @@ export default {
     /** 提交订单 */
     async onSubmit() {
       if (!this.selectedAddress) {
-        uni.showToast({ title: 'Please select shipping address', icon: 'none' })
+        uni.showToast({ title: i18n.t('checkout.toast.selectAddress'), icon: 'none' })
         return
       }
 
-      uni.showLoading({ title: 'Submitting order...', mask: true })
+      uni.showLoading({ title: i18n.t('checkout.toast.submitLoading'), mask: true })
+      this.submitting = true
+      this.currentStep = 4
       try {
         const items = this.checkoutItems
         const usedPoints = this.usePoints ? Math.floor(this.pointsDiscount * 100) : 0
@@ -713,32 +765,29 @@ export default {
           this.cartStore.clear()
         }
 
-        uni.showToast({ title: 'Order placed!', icon: 'success' })
+        uni.showToast({ title: i18n.t('checkout.toast.orderPlaced'), icon: 'success' })
         // 将 checkout 选中的支付方式分两部分传：
         // channel  = 渠道大类（STRIPE / PAYPAL）
-        // method   = 同一渠道下的细分方式（CARD / APPLE_PAY / ALIPAY / GOOGLE_PAY 等）
+        // method   = 同一渠道下的细分方式（CARD / APPLE_PAY / GOOGLE_PAY / PAYPAL 等）
         // 后端 PaymentServiceImpl.createStripePayment 会按 method 决定 Stripe Checkout 的 payment_method_types
+        // 美国市场只保留四种：Google Pay / Apple Pay / PayPal / Credit Card
         const channelMap = {
-          applepay: { channel: 'STRIPE', method: 'APPLE_PAY' },
-          alipay: { channel: 'STRIPE', method: 'ALIPAY' },
           googlepay: { channel: 'STRIPE', method: 'GOOGLE_PAY' },
-          cashapp: { channel: 'STRIPE', method: 'CASH_APP' },
-          affirm: { channel: 'STRIPE', method: 'AFFIRM' },
-          afterpay: { channel: 'STRIPE', method: 'AFTERPAY' },
-          venmo: { channel: 'PAYPAL', method: 'VENMO' },
+          applepay: { channel: 'STRIPE', method: 'APPLE_PAY' },
           paypal: { channel: 'PAYPAL', method: 'PAYPAL' },
+          card: { channel: 'STRIPE', method: 'CARD' },
         }
         const picked = channelMap[this.selectedPayment] || channelMap.googlepay
         // 客户端类型：APP / H5 / MP。
         // APP 打 iOS/Android 包时传 APP → 后端 success/cancel URL 用 moyuyo://pay/return 自定义 scheme，
-        // 避免从 Stripe/PayPal/支付宝 等外部 APP 付完款后回不来你的 Moyuyo APP
+        // 避免从 Stripe/PayPal/支付宝 等外部 APP 付完款后回不来 Moyuyo APP
         let clientType = 'H5'
-        // //#ifdef APP-PLUS
+        // #ifdef APP-PLUS
         clientType = 'APP'
-        // //#endif
-        // //#ifdef MP
+        // #endif
+        // #ifdef MP-WEIXIN
         clientType = 'MP'
-        // //#endif
+        // #endif
         const qs = new URLSearchParams({
           id: String(order?.id || order),
           channel: picked.channel,
@@ -750,22 +799,12 @@ export default {
         }, 1500)
       } catch (e) {
         uni.hideLoading()
-        uni.showToast({ title: 'Submit failed: ' + e.message, icon: 'none' })
-      }
-    },
-
-    formatAddress(addr) {
-      return {
-        first_name: addr.first_name || 'Customer',
-        last_name: addr.last_name || '',
-        address_1: addr.address_1 || '',
-        address_2: addr.address_2 || '',
-        city: addr.city || '',
-        state: addr.state || '',
-        postcode: addr.postcode || '',
-        country: addr.country || 'US',
-        email: addr.email || this.userStore.userInfo?.email || '',
-        phone: addr.phone || '',
+        this.submitting = false
+        this.currentStep = 3
+        uni.showToast({
+          title: i18n.t('checkout.toast.submitFailed') + e.message,
+          icon: 'none',
+        })
       }
     },
   },
@@ -792,20 +831,6 @@ export default {
 }
 
 /* 顶部导航 —— 全宽 */
-.nav-bar {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  padding: 24rpx 32rpx;
-  background: var(--color-surface, #fff);
-  border-bottom: 1rpx solid #e7e7e7;
-  box-sizing: border-box;
-  gap: 16rpx;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
 .nav-back {
   width: 56rpx;
   height: 56rpx;
@@ -820,14 +845,6 @@ export default {
 .nav-back:active {
   background: #f0f0f0;
 }
-
-.back-icon {
-  font-size: 48rpx;
-  font-weight: 300;
-  color: #2e2b29;
-  line-height: 1;
-}
-
 .nav-title {
   font-size: 32rpx;
   font-weight: 700;
@@ -1097,20 +1114,29 @@ export default {
 }
 
 .pay-icon-box {
-  width: 72rpx;
-  height: 48rpx;
+  width: 80rpx;
+  height: 56rpx;
   border: 1rpx solid #d5d5d5;
-  border-radius: 4rpx;
+  border-radius: 6rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f7f7f7;
+  background: #fff;
   flex-shrink: 0;
+  padding: 4rpx;
+  box-sizing: border-box;
 }
 
 .pay-row.active .pay-icon-box {
   background: #fff;
   border-color: #f0c14b;
+}
+
+/* 真实支付方式图标:填满容器，保持原始比例 */
+.pay-icon-img {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .pay-icon-text {

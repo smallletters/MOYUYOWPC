@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="pet-hub">
     <view class="header">
       <text class="title">Pet Hub</text>
@@ -53,7 +53,7 @@
             <text class="care-title">{{ card.title }}</text>
             <text class="care-subtitle">{{ card.subtitle }}</text>
           </view>
-          <text class="care-arrow"><text class="luc luc-chevron-right" /></text>
+          <text class="care-arrow luc-chevron-right" />
         </view>
       </view>
 
@@ -75,8 +75,11 @@
 </template>
 <script>
 import { usePetStore } from '@/store'
+import { useUserStore } from '@/store'
 
 export default {
+  pageTitleKey: 'pageTitle.tabbarPet',
+
   data() {
     return {
       actions: [
@@ -91,6 +94,9 @@ export default {
   computed: {
     petStore() {
       return usePetStore()
+    },
+    userStore() {
+      return useUserStore()
     },
     activePet() {
       return this.petStore.activePet
@@ -132,6 +138,8 @@ export default {
   },
 
   onShow() {
+    // 未登录不调接口,避免 Pet Tab 每次切回都打 401 噪音日志
+    if (!this.userStore?.isLoggedIn) return
     this.petStore.loadPets()
   },
 
@@ -186,7 +194,8 @@ export default {
 }
 .header {
   padding: 48rpx 24rpx 16rpx;
-  padding-top: calc(48rpx + env(safe-area-inset-top));
+  /* 状态栏安全区：原公式只覆盖 iOS safe-area，APP 端（Android）需要再加 status-bar-height */
+  padding-top: calc(48rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
   background: var(--color-surface);
 }
 .title {

@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="header-btn" @click="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">{{ $t('giftCards.title') }}</text>
       <view class="header-btn" />
@@ -109,18 +109,18 @@
 
       <!-- 空状态 -->
       <view v-else class="empty-state">
-        <text class="empty-icon"><text class="luc luc-inbox" /></text>
+        <text class="empty-icon luc-inbox" />
         <text class="empty-title">{{ emptyText }}</text>
       </view>
 
       <!-- 底部操作按钮 -->
       <view class="bottom-actions">
         <view class="action-btn action-btn--outline" @click="onBindCard">
-          <text class="action-icon"><text class="luc luc-link" /></text>
+          <text class="action-icon luc-link" />
           <text>{{ $t('giftCards.bindNew') }}</text>
         </view>
         <view class="action-btn action-btn--primary" @click="onBuyCard">
-          <text class="action-icon"><text class="luc luc-shopping-bag" /></text>
+          <text class="action-icon luc-shopping-bag" />
           <text>{{ $t('giftCards.buyNew') }}</text>
         </view>
       </view>
@@ -205,6 +205,8 @@
 import { i18n } from '@/i18n'
 
 export default {
+  pageTitleKey: 'pageTitle.userGiftCards',
+
   data() {
     return {
       activeTab: 'available',

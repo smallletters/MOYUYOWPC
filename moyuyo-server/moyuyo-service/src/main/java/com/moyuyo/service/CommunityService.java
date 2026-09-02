@@ -17,7 +17,13 @@ public interface CommunityService {
 
     CommunityPostVO getPostDetail(Long postId, Long currentUserId);
 
-    CommunityPostVO createPost(Long userId, String content, List<String> images, String topic);
+    CommunityPostVO createPost(Long userId, String content, List<String> images, String video, String cover, String topic, java.time.LocalDateTime scheduledAt);
+
+    /**
+     * 定时任务:扫描到点的待发布帖子,切换为已发布。
+     * @return 本次发布的帖子数
+     */
+    int publishScheduledPosts();
 
     void likePost(Long userId, Long postId);
 

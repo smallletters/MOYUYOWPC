@@ -1,0 +1,11 @@
+Entity count = 136
+Migration count = 160
+
+=== MISSING (Entity declared but no migration CREATE) - 7 tables ===
+  MISS mo_community_collect
+  MISS mo_community_comment
+  MISS mo_community_like
+  MISS mo_community_post
+  MISS mo_cs_message
+  MISS mo_pet
+  MISS mo_points_log

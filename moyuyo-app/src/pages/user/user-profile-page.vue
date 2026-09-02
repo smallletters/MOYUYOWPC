@@ -2,7 +2,7 @@
   <view class="page">
     <view class="nav-bar">
       <view class="nav-back" @tap="goBack">
-        <text class="back-icon"><text class="luc luc-arrow-left" /></text>
+        <text class="back-icon luc-arrow-left" />
       </view>
       <text class="nav-title">用户主页</text>
       <view class="nav-placeholder" />

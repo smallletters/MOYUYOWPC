@@ -4,7 +4,7 @@
     <view class="header">
       <view class="header-inner">
         <view class="header-btn" @click="onBack">
-          <text class="header-btn-icon"><text class="luc luc-arrow-left" /></text>
+          <text class="header-btn-icon luc-arrow-left" />
         </view>
         <text class="header-title">体重记录</text>
         <view class="header-btn header-btn-primary" @click="onAddWeight">
@@ -145,7 +145,7 @@
             <picker mode="date" :value="weightForm.date" @change="onWeightDateChange">
               <view class="form-picker">
                 <text class="form-picker-text">{{ weightForm.date || '请选择日期' }}</text>
-                <text class="form-picker-arrow"><text class="luc luc-chevron-right" /></text>
+                <text class="form-picker-arrow luc-chevron-right" />
               </view>
             </picker>
           </view>
@@ -163,6 +163,8 @@
 import { petWeightApi } from '@/api'
 
 export default {
+  pageTitleKey: 'pageTitle.petWeightChart',
+
   data() {
     return {
       petId: null,
