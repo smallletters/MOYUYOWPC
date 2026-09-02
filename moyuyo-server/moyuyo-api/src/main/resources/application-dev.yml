@@ -26,8 +26,10 @@ management:
 
 spring:
   # 数据库
+  # URL 支持通过 MYSQL_HOST / MYSQL_PORT 环境变量覆盖：容器化部署（docker compose）下用容器名 `mysql`
+  # 直连本机进程（dev 不用 docker）则保持默认 127.0.0.1
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/moyuyo_dev?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
+    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:moyuyo_dev}?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
     username: root
     # ⚠️ 弱默认值，仅本地开发
     password: ${MYSQL_PASSWORD:dev123456}

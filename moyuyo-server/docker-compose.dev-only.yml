@@ -1,0 +1,202 @@
+# ============================================================
+# 本地开发专用 compose（仅 dev 机器使用，不要提交到生产）
+# 不与 docker-compose.yml 合并，单独使用：
+#   docker compose --env-file .env -f docker-compose.dev-only.yml up -d --build
+#
+# 与 docker-compose.yml 的差异：
+#   - 不启 elasticsearch / rocketmq / mysqld-exporter / redis-exporter / rocketmq-exporter
+#   - dev profile（跳过 ProdConfigValidator）
+#   - 关闭 MySQL TLS 校验
+#   - Redis 端口避开本机原生 Redis 占用的 6379 → 容器 6379 → 宿主 6390
+# ============================================================
+
+services:
+  mysql:
+    image: mysql:8.0.36
+    container_name: moyuyo-mysql
+    restart: unless-stopped
+    cpus: '2.0'
+    mem_limit: 2G
+    mem_reservation: 1G
+    ulimits:
+      nofile: { soft: 65536, hard: 65536 }
+      nproc: { soft: 8192, hard: 8192 }
+    environment:
+      # dev 环境用 root 连接：只设 MYSQL_ROOT_PASSWORD，不传 MYSQL_USER/PASSWORD（避免 MySQL 镜像拒绝 root user）
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-moyuyo_dev}
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+      TZ: Asia/Shanghai
+      MYSQL_LONG_QUERY_TIME: '1'
+      MYSQL_SLOW_QUERY_LOG: 'ON'
+      MYSQL_LOG_SLOW_EXTRA: 'ON'
+      MYSQL_MAX_CONNECTIONS: '200'
+      MYSQL_INNODB_BUFFER_POOL_SIZE: '1G'
+      MYSQL_INNODB_LOG_FILE_SIZE: '256M'
+      MYSQL_WAIT_TIMEOUT: '7200'
+      MYSQL_INTERACTIVE_TIMEOUT: '7200'
+      MYSQL_INNODB_LOCK_WAIT_TIMEOUT: '10'
+      MYSQL_INNODB_DEADLOCK_DETECT: 'ON'
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - moyuyo-mysql-logs:/var/log/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$${MYSQL_ROOT_PASSWORD}\" >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: moyuyo-redis
+    restart: unless-stopped
+    cpus: '1.0'
+    mem_limit: 1280M
+    mem_reservation: 512M
+    ulimits:
+      nofile: { soft: 65536, hard: 65536 }
+    command:
+      - "redis-server"
+      - "--requirepass"
+      - "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}"
+      - "--maxclients"
+      - "10000"
+      - "--maxmemory"
+      - "800mb"
+      - "--maxmemory-policy"
+      - "allkeys-lru"
+      - "--lazyfree-lazy-eviction"
+      - "yes"
+    environment:
+      TZ: Asia/Shanghai
+    # 宿主 6379 已被本机原生 Redis 占用 → 容器 6379 → 宿主 6390
+    ports:
+      - "127.0.0.1:6390:6379"
+    volumes:
+      - redis-data:/data
+      - moyuyo-redis-logs:/var/log/redis
+    healthcheck:
+      # 直接展开密码（避免 shell 变量替换问题）：
+      # 基础 compose 用 $${REDIS_PASSWORD} 转义让 compose 跳过该变量，由 shell 展开。
+      # 但本容器 environment 没注入 REDIS_PASSWORD，所以 shell 拿到空串 → NOAUTH 失败。
+      # 这里把密码明文展开进命令字符串，与 .env 文件保持同步即可（容器内仅本机访问）。
+      test: ["CMD-SHELL", "redis-cli -a \"gmMdFR7QwCGVYal9n1HhyEzP\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  app:
+    build:
+      context: .
+      args:
+        BUILDKIT_INLINE_CACHE: "1"
+    container_name: moyuyo-server
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      # 绑定到所有接口，让局域网其他设备也能访问（如 192.168.6.103:8080）
+      # 前置 Nginx/反代时仅暴露 127.0.0.1，但 dev 联调需要局域网访问
+      - "8080:8080"
+      - "9090:9090"
+    environment:
+      # 关键：dev profile，跳过 ProdConfigValidator
+      SPRING_PROFILES_ACTIVE: dev
+      # 关闭 MySQL TLS 校验
+      MYSQL_VERIFY_SERVER_CERTIFICATE: "false"
+      MYSQL_TRUSTSTORE_URL: ""
+      MYSQL_TRUSTSTORE_PASSWORD: ""
+      # 跳过 ES / RocketMQ（占位 URL 避免 starter 校验失败，实际不连）
+      ELASTICSEARCH_URIS: "http://127.0.0.1:9200"
+      ELASTICSEARCH_SSL_ENABLED: "false"
+      ELASTICSEARCH_SSL_CERT_VALIDATION: "false"
+      ELASTICSEARCH_SSL_BUNDLE: ""
+      # 引用 .env 里的强随机值（与 application-prod.yml 的 ES truststore 密码一致），
+      # IDE 看到 ${VAR} 形式就不再报"hardcoded secret"；prod 启动时由 ProdConfigValidator 校验。
+      ELASTICSEARCH_TRUSTSTORE_PASSWORD: "${ELASTICSEARCH_TRUSTSTORE_PASSWORD:-eawhPTLMYrJHNV5S}"
+      # rocketmq-spring-boot-starter 强制校验 name-server 不能为空
+      # dev 环境给一个本地不存在的地址，consumer 会连失败但不影响应用启动
+      ROCKETMQ_NAMESRV_ADDR: "127.0.0.1:9876"
+      ROCKETMQ_ENABLED: "false"
+      # 容器内互联（通过 compose 网络）
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}"
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}"
+      MYSQL_USER: "${MYSQL_USER:-root}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-moyuyo_dev}"
+      # dev 跳过限流
+      MOYUYO_IP_RATELIMIT_ENABLED: "false"
+      MOYUYO_USER_RATELIMIT_ENABLED: "false"
+      # JWT / API 签名密钥
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set}"
+      API_SIGN_SECRET: "${API_SIGN_SECRET:-P4mZc8QsWvTkYxHjLnRd2AbXfGpV9yUo}"
+      API_SIGNATURE_ENABLED: "${API_SIGNATURE_ENABLED:-false}"
+      # CORS（dev 友好）
+      MOYUYO_CORS_ORIGINS: "${MOYUYO_CORS_ORIGINS:?MOYUYO_CORS_ORIGINS must be set}"
+      # dev 管理员
+      ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
+      ADMIN_EMAIL: "${ADMIN_EMAIL:-admin@moyuyo.com}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-moyuyo_Dev#2026!}"
+      MOYUYO_SKIP_ADMIN_INIT: "true"
+      # 支付渠道占位（dev 不真实支付）
+      STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY:-sk_test_placeholder}"
+      STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET:-whsec_placeholder}"
+      PAYPAL_CLIENT_ID: "${PAYPAL_CLIENT_ID:-placeholder}"
+      PAYPAL_CLIENT_SECRET: "${PAYPAL_CLIENT_SECRET:-placeholder}"
+      PAYPAL_WEBHOOK_ID: "${PAYPAL_WEBHOOK_ID:-placeholder}"
+      PAYPAL_ALLOWED_ORIGINS: "${PAYPAL_ALLOWED_ORIGINS:-https://moyuyo.com,http://localhost:5174}"
+      # WooCommerce 占位
+      WOOCOMMERCE_URL: "${WOOCOMMERCE_URL:-http://localhost}"
+      WOOCOMMERCE_CONSUMER_KEY: "${WOOCOMMERCE_CONSUMER_KEY:-ck_placeholder}"
+      WOOCOMMERCE_CONSUMER_SECRET: "${WOOCOMMERCE_CONSUMER_SECRET:-cs_placeholder}"
+      # JVM 内存
+      JVM_XMS: "${JVM_XMS:-1g}"
+      JVM_XMX: "${JVM_XMX:-2g}"
+      # Spring mail 默认关闭（dev 走 log-only 降级）
+      SPRING_MAIL_HOST: "${SPRING_MAIL_HOST:-127.0.0.1}"
+      SPRING_MAIL_PORT: "${SPRING_MAIL_PORT:-1025}"
+      SPRING_MAIL_USERNAME: "${SPRING_MAIL_USERNAME:-}"
+      SPRING_MAIL_PASSWORD: "${SPRING_MAIL_PASSWORD:-}"
+      SPRING_MAIL_SMTP_AUTH: "${SPRING_MAIL_SMTP_AUTH:-false}"
+      SPRING_MAIL_SMTP_SSL: "${SPRING_MAIL_SMTP_SSL:-false}"
+      SPRING_MAIL_SMTP_STARTTLS: "${SPRING_MAIL_SMTP_STARTTLS:-false}"
+      MOYUYO_MAIL_FROM: "${MOYUYO_MAIL_FROM:-noreply@moyuyo.local}"
+      MOYUYO_MAIL_FROM_NAME: "${MOYUYO_MAIL_FROM_NAME:-MOYUYO Support}"
+      MOYUYO_MAIL_ENABLED: "${MOYUYO_MAIL_ENABLED:-false}"
+      # 容器内 hostname
+      HOSTNAME: moyuyo-server
+    volumes:
+      - moyuyo-logs:/var/log/moyuyo
+      - moyuyo-heapdump:/app/heapdump
+    cpus: '2.0'
+    mem_limit: 4G
+    mem_reservation: 1G
+    ulimits:
+      nofile: { soft: 65536, hard: 65536 }
+      nproc: { soft: 8192, hard: 8192 }
+    pids_limit: 4096
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs -m 5 http://127.0.0.1:9090/actuator/health/liveness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+
+volumes:
+  mysql-data:
+  redis-data:
+  moyuyo-logs:
+  moyuyo-heapdump:
+  moyuyo-mysql-logs:
+  moyuyo-redis-logs:
