@@ -141,7 +141,13 @@ export default {
         const chooseRes = await uni.chooseImage({
           count: 1,
           sizeType: ['compressed'],
-          sourceType: ['album', 'camera'],
+          // 显式 sourceType=['album']:
+          // 1) 头像从相册选最自然,不需要现场拍照(拍照用相机插件/camera.js)
+          // 2) Android 上 sourceType 同时含 'album'/'camera' 时 uni-app 会先弹系统
+          //    ActionSheet 让用户选,但部分 uni-app 版本会把这个弹层 itemList 渲染成
+          //    "uni.chooseImage.sourceType.camera / .album / .cancel" 字符串(渲染 bug),
+          //    显式 ['album'] 绕过该弹层,直接进入系统相册选择器
+          sourceType: ['album'],
         })
         chose = true
         const filePath = chooseRes.tempFilePaths?.[0]

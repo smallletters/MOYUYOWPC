@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="pet-profile">
     <view class="page-header">
       <view class="back" aria-label="返回" @click="goBack">
@@ -168,7 +168,9 @@ export default {
         const chooseRes = await uni.chooseImage({
           count: 1,
           sizeType: ['compressed'],
-          sourceType: ['album', 'camera'],
+          // 头像从相册选最自然;显式 ['album'] 绕过 Android 上 uni-app
+          // sourceType 弹层文案渲染 bug(显示成 "uni.chooseImage.sourceType.xxx")。
+          sourceType: ['album'],
         })
         const filePath = chooseRes.tempFilePaths?.[0]
         if (!filePath) return

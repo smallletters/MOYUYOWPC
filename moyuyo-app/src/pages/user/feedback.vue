@@ -111,10 +111,12 @@ export default {
     },
 
     onUploadImage() {
+      // 反馈图从相册选;显式 ['album'] 绕过 Android 上 uni-app sourceType
+      // 弹层文案渲染 bug(显示成 "uni.chooseImage.sourceType.xxx")。
       uni.chooseImage({
         count: 3 - this.uploadedImages.length,
         sizeType: ['compressed'],
-        sourceType: ['album', 'camera'],
+        sourceType: ['album'],
         success: (res) => {
           const tempPaths = res.tempFilePaths || []
           this.uploadedImages = [...this.uploadedImages, ...tempPaths].slice(0, 3)

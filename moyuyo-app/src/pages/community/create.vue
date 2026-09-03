@@ -1269,9 +1269,15 @@ export default {
         return
       }
       const res = await new Promise((resolve) => {
+        // 显式 sourceType=['album']:Android 系统不再弹"相册/拍照"系统 ActionSheet,
+        // 直接进入系统相册,避免部分 uni-app 版本把 sourceType 选择弹层渲染成
+        // 原始函数名字面值(如 "uni.chooseImage.cancel")误导用户。
         uni.chooseImage({
           count: remain,
+          sourceType: ['album'],
           success: (r) => resolve(r),
+          // 用户在系统选择器点击"取消"时,errMsg 形如 "chooseImage:fail cancel",
+          // 不要原样弹 toast(避免误导);直接 resolve(null) 走静默路径。
           fail: () => resolve(null),
         })
       })
@@ -1471,8 +1477,10 @@ export default {
       this.hideMentionSuggest()
 
       const res = await new Promise((resolve) => {
+        // 视频从相册选;显式 ['album'] 绕过 Android 上 uni-app
+        // chooseVideo sourceType 弹层的文案渲染 bug。
         uni.chooseVideo({
-          sourceType: ['album', 'camera'],
+          sourceType: ['album'],
           maxDuration: 60, // 60 秒上限
           camera: 'back',
           success: (r) => resolve(r),
