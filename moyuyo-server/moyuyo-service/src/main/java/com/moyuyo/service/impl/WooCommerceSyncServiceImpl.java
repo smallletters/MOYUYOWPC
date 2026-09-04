@@ -5,10 +5,12 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.ProductEntity;
+import com.moyuyo.dao.entity.ProductImageEntity;
 import com.moyuyo.dao.entity.CategoryEntity;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
+import com.moyuyo.dao.mapper.ProductImageMapper;
 import com.moyuyo.dao.mapper.CategoryMapper;
 import com.moyuyo.service.WooCommerceSyncService;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,7 @@ public class WooCommerceSyncServiceImpl implements WooCommerceSyncService {
     private final OrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
     private final ProductMapper productMapper;
+    private final ProductImageMapper productImageMapper;
     private final CategoryMapper categoryMapper;
     private final WooCommerceClient client;
     private final ObjectMapper objectMapper;
@@ -305,6 +308,35 @@ public class WooCommerceSyncServiceImpl implements WooCommerceSyncService {
             productMapper.updateById(product);
         } else {
             productMapper.insert(product);
+        }
+
+        // 同步商品图库到 mo_product_image 子表（仅新建商品时全量覆盖，避免覆盖人工维护的图库）
+        if (existing == null && images != null && !images.isEmpty()) {
+            syncProductImages(product.getId(), images);
+        }
+    }
+
+    /**
+     * 将 WooCommerce images[] 写入 mo_product_image 子表
+     * @param productId 新建后的本地商品 id
+     * @param images    WC 返回的图片数组（每项含 src/name/alt）
+     */
+    private void syncProductImages(Long productId, List<Map<String, Object>> images) {
+        try {
+            int sort = 0;
+            for (Map<String, Object> img : images) {
+                String src = (String) img.get("src");
+                if (src == null || src.isBlank()) continue;
+                ProductImageEntity entity = new ProductImageEntity();
+                entity.setProductId(productId);
+                entity.setUrl(src);
+                entity.setSort(sort++);
+                productImageMapper.insert(entity);
+            }
+            log.info("Synced product images: productId={}, total={}", productId, sort);
+        } catch (Exception e) {
+            // 图库同步失败不影响主商品，只记录日志
+            log.warn("Failed to sync product images: productId={}, reason={}", productId, e.getMessage());
         }
     }
 
@@ -658,7 +690,10 @@ public class WooCommerceSyncServiceImpl implements WooCommerceSyncService {
             }
             data.put("tags", tagList);
         }
-        if (product.getMainImage() != null && !product.getMainImage().isBlank()) {
+        // 图片：WC 服务端需要绝对 URL 才能下载；本地 /uploads 相对路径会被 WC 拒绝（URL 无效）。
+        // dev 阶段先不传图片，商品入库后可手动到 WP 后台上传图，或后续接入"先上传到 WC 再引用 URL"的流程。
+        if (product.getMainImage() != null && !product.getMainImage().isBlank()
+                && (product.getMainImage().startsWith("http://") || product.getMainImage().startsWith("https://"))) {
             Map<String, Object> img = new LinkedHashMap<>();
             img.put("src", product.getMainImage());
             data.put("images", List.of(img));

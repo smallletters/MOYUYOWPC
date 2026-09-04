@@ -97,3 +97,6 @@ moyuyo-app/**/*.log
 probe*.ps1
 probe*.sh
 *_oneline.txt
+
+# 超大 3D 模型（299MB，超出 GitHub 单文件 100MB 限制，改用 LFS / CDN 分发）
+moyuyo-app/src/static/models/modern_apartment.glb

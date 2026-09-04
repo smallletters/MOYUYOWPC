@@ -696,6 +696,13 @@
       }
     },
     {
+      "path": "pages/pet/space-3d",
+      "style": {
+        "navigationBarTitleText": "宠物空间 3D",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/pet/allergy-profile",
       "style": {
         "navigationBarTitleText": "过敏档案"

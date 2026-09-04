@@ -265,7 +265,11 @@ public class ProductServiceImpl implements ProductService {
     productMapper.insert(entity);
 
     // 保存商品图库到 mo_product_image（对齐 WC images[]）
-    saveImages(entity.getId(), body);
+    String syncedMainImage = body.containsKey("images") ? saveImages(entity.getId(), body) : null;
+    if (syncedMainImage != null) {
+      entity.setMainImage(syncedMainImage);
+      productMapper.updateById(entity);
+    }
 
     // 变体商品 SKU 落库：把 attributes.variations 拆成 mo_product_sku 行
     saveSkusForVariations(entity.getId(), entity.getSpuCode(), body);
@@ -293,18 +297,14 @@ public class ProductServiceImpl implements ProductService {
       entity.setCategoryId(getCategoryIdFromName((String) body.get("category")));
     }
     if (body.get("mainImage") != null) entity.setMainImage((String) body.get("mainImage"));
-    // 支持 description(前端) 和 detail(后端) 两种格式
     if (body.get("description") != null) entity.setDetail((String) body.get("description"));
     else if (body.get("detail") != null) entity.setDetail((String) body.get("detail"));
     if (body.get("stock") != null) entity.setStock(Integer.valueOf(body.get("stock").toString()));
-    // 支持 status(前端boolean) 和 onSale(后端Boolean) 两种格式
     if (body.containsKey("status")) entity.setOnSale((Boolean) body.get("status"));
     else if (body.containsKey("onSale")) entity.setOnSale((Boolean) body.get("onSale"));
-    // 支持 sku(前端) 和 spuCode(后端) 两种格式
     String spuCode = (String) body.get("sku");
     if (spuCode == null) spuCode = (String) body.get("spuCode");
     if (spuCode != null && !spuCode.isEmpty()) {
-      // SPU编码唯一性校验（排除自身）
       Long existingCount = productMapper.selectCount(
         new LambdaQueryWrapper<ProductEntity>()
           .eq(ProductEntity::getSpuCode, spuCode)
@@ -314,50 +314,36 @@ public class ProductServiceImpl implements ProductService {
       }
       entity.setSpuCode(spuCode);
     }
-
-    // === WooCommerce 对齐新增字段 ===
-    // 简短描述
     String shortDesc = (String) body.get("shortDetail");
-    if (shortDesc == null) shortDesc = (String) body.get("short_detail");
+    if (shortDesc == null) shortDesc = (String) body.get("short_description");
     if (shortDesc != null) entity.setShortDetail(shortDesc);
-
-    // 标签
     if (body.containsKey("tags")) entity.setTags((String) body.get("tags"));
-
-    // attributes JSON：防御 NPE — containsKey 为 true 但 value 可能为 null（例如前端传 attributes: null）
     if (body.containsKey("attributes") && body.get("attributes") != null) {
       entity.setAttributes(body.get("attributes").toString());
     }
-
-    // 产品类型
     if (body.containsKey("productType")) entity.setProductType((String) body.get("productType"));
     else if (body.containsKey("product_type")) entity.setProductType((String) body.get("product_type"));
-
-    // 库存管理
     Object ms = body.get("manageStock");
     if (ms == null) ms = body.get("manage_stock");
     if (ms instanceof Boolean) entity.setManageStock((Boolean) ms);
     else if (ms != null) entity.setManageStock(Boolean.valueOf(ms.toString()));
-
-    // 库存状态
     if (body.containsKey("stockStatus")) entity.setStockStatus((String) body.get("stockStatus"));
     else if (body.containsKey("stock_status")) entity.setStockStatus((String) body.get("stock_status"));
-
-    // 重量
     if (body.get("weight") != null) {
       try {
         entity.setWeight(new java.math.BigDecimal(body.get("weight").toString()));
-      } catch (NumberFormatException e) {
+      } catch (NumberFormatException we) {
         log.warn("Invalid weight value from frontend: {}", body.get("weight"));
       }
     }
 
-    productMapper.updateById(entity);
-
-    // 商品图库更新（如果 body 中含 images 则覆盖，否则保留旧图）
-    if (body.containsKey("images")) {
-      saveImages(id, body);
+    // 商品图库先更新（如果 body 中含 images 则覆盖），返回值用于同步主图
+    String syncedMainImage = body.containsKey("images") ? saveImages(id, body) : null;
+    if (syncedMainImage != null) {
+      entity.setMainImage(syncedMainImage);
     }
+
+    productMapper.updateById(entity);
 
     // 变体商品 SKU 落库：attributes（含变体）变化时全量重建 mo_product_sku
     if (body.containsKey("attributes")) {
@@ -380,9 +366,9 @@ public class ProductServiceImpl implements ProductService {
    *   2) 按数组下标设置 sort（首张 sort=0 = 封面，对齐 WC images[0]）
    *   3) 同步更新 products.mainImage 为 images[0].url
    */
-  private void saveImages(Long productId, Map<String, Object> body) {
+  private String saveImages(Long productId, Map<String, Object> body) {
     Object raw = body.get("images");
-    if (raw == null) return;
+    if (raw == null) return null;
 
     // 清空旧图
     productImageMapper.delete(
@@ -411,25 +397,16 @@ public class ProductServiceImpl implements ProductService {
     }
 
     if (newImages.isEmpty()) {
-      // 没有图片时同步清空 mainImage
-      ProductEntity e = productMapper.selectById(productId);
-      if (e != null) {
-        e.setMainImage(null);
-        productMapper.updateById(e);
-      }
-      return;
+      // 没有图片时返回 null，调用方会把 mainImage 同步清空
+      return null;
     }
 
     for (ProductImageEntity ie : newImages) {
       productImageMapper.insert(ie);
     }
 
-    // 同步 mainImage 为 images[0]
-    ProductEntity e = productMapper.selectById(productId);
-    if (e != null) {
-      e.setMainImage(newImages.get(0).getUrl());
-      productMapper.updateById(e);
-    }
+    // 返回 images[0].url，由调用方同步到 products.main_image
+    return newImages.get(0).getUrl();
   }
 
   /**

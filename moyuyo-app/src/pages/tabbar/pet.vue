@@ -20,6 +20,18 @@
         </view>
       </view>
 
+      <!-- 空间入口，进入 3D 房间 -->
+      <view class="space-entry" @click="goSpace">
+        <view class="space-entry-icon">
+          <text class="luc luc-box" />
+        </view>
+        <view class="space-entry-info">
+          <text class="space-entry-title">宠物空间 3D</text>
+          <text class="space-entry-sub">房间 3D 漫游预览</text>
+        </view>
+        <text class="space-entry-arrow luc-chevron-right" />
+      </view>
+
       <view class="pet-switcher">
         <view
           v-for="pet in petStore.pets"
@@ -180,6 +192,11 @@ export default {
 
     goAddPet() {
       uni.navigateTo({ url: '/pages/pet/profile' })
+    },
+
+    // 进入 3D 房间
+    goSpace() {
+      uni.navigateTo({ url: '/pages/pet/space-3d' })
     },
   },
 }
@@ -342,5 +359,46 @@ export default {
 .action-label {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
+}
+
+/* 空间入口 */
+.space-entry {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin: 0 24rpx 24rpx;
+  padding: 20rpx;
+  background: linear-gradient(135deg, #2e2b29, #4a4540);
+  border-radius: var(--radius-md);
+  color: #f6f2ee;
+}
+.space-entry-icon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  background: rgba(219, 201, 138, 0.2);
+  color: #dbc98a;
+}
+.space-entry-info {
+  flex: 1;
+}
+.space-entry-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  display: block;
+}
+.space-entry-sub {
+  font-size: var(--font-size-xs);
+  opacity: 0.6;
+  margin-top: 4rpx;
+  display: block;
+}
+.space-entry-arrow {
+  font-size: 36rpx;
+  opacity: 0.5;
 }
 </style>

@@ -72,7 +72,9 @@
               </view>
             </view>
           </view>
-          <view v-if="!loading && products.length === 0" class="empty">{{ $t('category.empty.product') }}</view>
+          <view v-if="!loading && products.length === 0" class="empty">
+            {{ $t('category.empty.product') }}
+          </view>
           <view v-if="loading" class="loading">{{ $t('category.loading') }}</view>
           <view
             v-if="!noMore && !loading && products.length > 0"
@@ -81,7 +83,9 @@
           >
             {{ $t('category.loadMore') }}
           </view>
-          <view v-if="noMore && products.length > 0" class="loadmore done">{{ $t('category.noMore') }}</view>
+          <view v-if="noMore && products.length > 0" class="loadmore done">
+            {{ $t('category.noMore') }}
+          </view>
         </view>
       </scroll-view>
     </view>
@@ -154,9 +158,7 @@ export default {
           console.warn('[category] no level-1 categories from backend, list=', list)
         }
       } catch (e) {
-        // 临时诊断：打印完整错误对象，包括 message/stack
         console.error('[category] loadCategories error', e)
-        console.error('[category] error.message:', e?.message, 'e.stack=', e?.stack)
         uni.showToast({ title: this.$t('category.loadFailed'), icon: 'none' })
       }
     },
