@@ -1,0 +1,261 @@
+{
+  "name": "pet-hub-design-draft",
+  "data": [
+    {
+      "id": "page-pet-hub",
+      "type": "page",
+      "title": "MOYUYO Pet Hub",
+      "version": 1,
+      "createdAt": 1788493840,
+      "canvasData": {
+        "x": 36,
+        "y": 0,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 1004,
+          "viewportWidth": 375,
+          "sourceHash": "fnv1a-3c7b5c4d",
+          "measuredAt": 1788500252320
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/pet-hub.html",
+        "interactions": [
+          {
+            "domId": "pet-luna",
+            "targetPageId": "page-pet-hub",
+            "hideEdge": false
+          },
+          {
+            "domId": "pet-atlas",
+            "targetPageId": "page-pet-hub",
+            "hideEdge": false
+          },
+          {
+            "domId": "add-pet",
+            "targetPageId": "page-pet-hub",
+            "hideEdge": false
+          },
+          {
+            "domId": "open-dresser",
+            "targetPageId": "page-pet-hub",
+            "hideEdge": false
+          },
+          {
+            "domId": "care-bath",
+            "targetPageId": "page-pet-hub",
+            "hideEdge": false
+          },
+          {
+            "domId": "care-vaccine",
+            "targetPageId": "page-pet-hub",
+            "hideEdge": false
+          },
+          {
+            "domId": "care-deworm",
+            "targetPageId": "page-pet-hub",
+            "hideEdge": false
+          },
+          {
+            "domId": "care-settings",
+            "targetPageId": "page-pet-hub",
+            "hideEdge": false
+          },
+          {
+            "domId": "quick-shop",
+            "targetPageId": "page-pet-hub",
+            "hideEdge": false
+          },
+          {
+            "domId": "quick-community",
+            "targetPageId": "page-pet-hub",
+            "hideEdge": false
+          },
+          {
+            "domId": "quick-calendar",
+            "targetPageId": "page-pet-hub",
+            "hideEdge": false
+          },
+          {
+            "domId": "quick-achievements",
+            "targetPageId": "page-pet-hub",
+            "hideEdge": false
+          },
+          {
+            "domId": "quick-booking",
+            "targetPageId": "page-pet-hub",
+            "hideEdge": false
+          },
+          {
+            "domId": "tab-home",
+            "targetPageId": "page-pet-hub",
+            "hideEdge": false
+          },
+          {
+            "domId": "tab-category",
+            "targetPageId": "page-pet-hub",
+            "hideEdge": false
+          },
+          {
+            "domId": "tab-community",
+            "targetPageId": "page-pet-hub",
+            "hideEdge": false
+          },
+          {
+            "domId": "tab-profile",
+            "targetPageId": "page-pet-hub",
+            "hideEdge": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "image-001",
+      "type": "image",
+      "title": "Pet Hub 3D 场景图",
+      "version": 1,
+      "createdAt": 1788493840,
+      "canvasData": {
+        "x": 500,
+        "y": 0,
+        "naturalSize": {
+          "width": 1440,
+          "height": 2560
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/images/pet-hub-scene.jpg"
+      }
+    },
+    {
+      "id": "page-pet-home",
+      "type": "page",
+      "title": "MOYUYO Pet Home",
+      "version": 1,
+      "createdAt": 1788494800,
+      "canvasData": {
+        "x": 0,
+        "y": 1200,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 375,
+          "sourceHash": "fnv1a-37a40e96",
+          "measuredAt": 1788495812978
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/pet-home.html",
+        "interactions": [
+          {
+            "domId": "user-avatar",
+            "targetPageId": "page-pet-home",
+            "hideEdge": false
+          },
+          {
+            "domId": "header-notify",
+            "targetPageId": "page-pet-home",
+            "hideEdge": false
+          },
+          {
+            "domId": "header-add",
+            "targetPageId": "page-pet-home",
+            "hideEdge": false
+          },
+          {
+            "domId": "action-search",
+            "targetPageId": "page-pet-home",
+            "hideEdge": false
+          },
+          {
+            "domId": "action-add",
+            "targetPageId": "page-pet-home",
+            "hideEdge": false
+          },
+          {
+            "domId": "health-hero-card",
+            "targetPageId": "page-pet-home",
+            "hideEdge": false
+          },
+          {
+            "domId": "hero-chat",
+            "targetPageId": "page-pet-home",
+            "hideEdge": false
+          },
+          {
+            "domId": "overview-sheet",
+            "targetPageId": "page-pet-home",
+            "hideEdge": false
+          },
+          {
+            "domId": "metric-weight",
+            "targetPageId": "page-pet-home",
+            "hideEdge": false
+          },
+          {
+            "domId": "metric-health",
+            "targetPageId": "page-pet-home",
+            "hideEdge": false
+          },
+          {
+            "domId": "tab-home",
+            "targetPageId": "page-pet-home",
+            "hideEdge": false
+          },
+          {
+            "domId": "tab-ai",
+            "targetPageId": "page-pet-home",
+            "hideEdge": false
+          },
+          {
+            "domId": "tab-locate",
+            "targetPageId": "page-pet-home",
+            "hideEdge": false
+          },
+          {
+            "domId": "tab-camera",
+            "targetPageId": "page-pet-home",
+            "hideEdge": false
+          },
+          {
+            "domId": "tab-profile",
+            "targetPageId": "page-pet-home",
+            "hideEdge": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "image-002",
+      "type": "image",
+      "title": "Pet Home 宠物主形象",
+      "version": 1,
+      "createdAt": 1788494800,
+      "canvasData": {
+        "x": 500,
+        "y": 1200,
+        "naturalSize": {
+          "width": 1920,
+          "height": 1920
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/images/pet-home-hero.jpg"
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": false,
+    "deviceType": "mobile",
+    "designLibrary": {
+      "name": "Apple",
+      "id": "dl_builtin_apple",
+      "version": 0,
+      "scope": "built-in-global",
+      "path": "c:\\Users\\Administrator\\.trae-cn/design_libraries\\Apple",
+      "versionSource": "metadata.json"
+    }
+  }
+}

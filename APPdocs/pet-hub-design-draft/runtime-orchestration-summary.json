@@ -1,0 +1,250 @@
+{
+  "schemaVersion": "1.0",
+  "skillProvenance": {
+    "name": "solo-design",
+    "version": "2026.08.06.19.15.08",
+    "version_source": "skill-release-manifest.json",
+    "schema_version": "1.0",
+    "release": "prompt-base-cloud-ssot-migration"
+  },
+  "project": {
+    "name": "pet-hub-design-draft",
+    "resolvedLane": "redesign_duplicate_project",
+    "sourceProjectPath": "d:\\MOYUYOWPC\\APPdocs\\pet-hub-design",
+    "deviceType": "mobile",
+    "viewportMode": "app-shell",
+    "createdAt": 1788493840,
+    "redesignAudit": {
+      "primaryIssue": "inconsistent surfaces",
+      "fixPriority": ["surface", "spacing", "typography", "interaction"],
+      "preserve": ["MILO/LUNA/ATLAS pet switcher", "care status cards (bath/vaccine/deworm)", "quick action grid", "bottom tab navigation", "health score hero", "weight/health metric cards", "data-dom-id wiring"],
+      "change": ["add top promotional banner", "restructure quick actions into 金刚区 feature entry", "introduce content feed section", "unify card surfaces and radius", "elevate health metrics visibility"],
+      "risk": "do not break existing domIds; keep all registered interactions valid"
+    },
+    "dispatchPreflightManifest": [
+      {
+        "nodeId": "page-pet-hub",
+        "htmlSrc": "pages/pet-hub.html",
+        "packetType": "RedesignPagePacket",
+        "pageRuntimeGuide": "intent-workflows/intent-project-mutation/redesign-page-runtime.md",
+        "dispatchContract": "intent-workflows/intent-project-mutation/redesign-dispatch-contract.md",
+        "allowedWritePaths": ["pages/pet-hub.html"],
+        "toolPolicy": {
+          "todoWriteAllowed": false,
+          "validationScriptsAllowed": false,
+          "previewAllowed": false,
+          "helperScriptsAllowed": false,
+          "designFileWriteAllowed": false,
+          "imagesGeneratedBySubAgent": false
+        }
+      },
+      {
+        "nodeId": "page-pet-home",
+        "htmlSrc": "pages/pet-home.html",
+        "packetType": "RedesignPagePacket",
+        "pageRuntimeGuide": "intent-workflows/intent-project-mutation/redesign-page-runtime.md",
+        "dispatchContract": "intent-workflows/intent-project-mutation/redesign-dispatch-contract.md",
+        "allowedWritePaths": ["pages/pet-home.html"],
+        "toolPolicy": {
+          "todoWriteAllowed": false,
+          "validationScriptsAllowed": false,
+          "previewAllowed": false,
+          "helperScriptsAllowed": false,
+          "designFileWriteAllowed": false,
+          "imagesGeneratedBySubAgent": false
+        }
+      }
+    ],
+    "expectedDispatches": [
+      {
+        "nodeId": "page-pet-hub",
+        "htmlSrc": "pages/pet-hub.html",
+        "packetType": "RedesignPagePacket",
+        "status": "pending",
+        "changedFiles": [],
+        "toolCallLedger": {
+          "todoWriteCalls": 0,
+          "previewCalls": 0,
+          "validationScriptCalls": 0,
+          "helperScriptWrites": 0
+        }
+      },
+      {
+        "nodeId": "page-pet-home",
+        "htmlSrc": "pages/pet-home.html",
+        "packetType": "RedesignPagePacket",
+        "status": "pending",
+        "changedFiles": [],
+        "toolCallLedger": {
+          "todoWriteCalls": 0,
+          "previewCalls": 0,
+          "validationScriptCalls": 0,
+          "helperScriptWrites": 0
+        }
+      }
+    ],
+    "visualQualityCheckpoints": [
+      {
+        "checkpoint": "visual-anchor",
+        "target": "Top promotional banner + pet switcher establishes app identity; 3D scene remains focal on Pet Hub",
+        "status": "planned"
+      },
+      {
+        "checkpoint": "information-hierarchy",
+        "target": "Banner → 金刚区 feature grid → care/health cards → content feed read top-to-bottom with Apple-like whitespace",
+        "status": "planned"
+      },
+      {
+        "checkpoint": "composition-structure",
+        "target": "Mobile app shell 390×844, status bar 44pt, tab bar 48pt plus safe area, 44×44pt touch targets",
+        "status": "planned"
+      },
+      {
+        "checkpoint": "implementation-strategy",
+        "target": "Static responsive HTML prototype using Apple design tokens, no runtime 3D engine",
+        "status": "planned"
+      }
+    ],
+    "validationRunDiscipline": {
+      "maxFullValidationRuns": 2,
+      "softWarningsTriggerRepair": false,
+      "blockingRepairMode": "targeted-once",
+      "forbiddenRepairTriggers": ["soft-warning-only", "provenance-warning-only", "style-warning-only"]
+    }
+  },
+  "designSource": {
+    "operatingMode": "library_bound",
+    "libraryIdentity": {
+      "name": "Apple",
+      "id": "dl_builtin_apple",
+      "version": 0,
+      "scope": "built-in-global",
+      "path": "c:\\Users\\Administrator\\.trae-cn/design_libraries\\Apple",
+      "versionSource": "metadata.json"
+    },
+    "actualTokenNameReference": [
+      "--apple-background",
+      "--apple-foreground",
+      "--apple-primary",
+      "--apple-primary-foreground",
+      "--apple-secondary",
+      "--apple-secondary-foreground",
+      "--apple-muted",
+      "--apple-muted-foreground",
+      "--apple-accent",
+      "--apple-border",
+      "--apple-card",
+      "--apple-card-foreground",
+      "--apple-destructive",
+      "--apple-success",
+      "--font-sans",
+      "--radius",
+      "--shadow-sm",
+      "--shadow-md",
+      "--shadow-lg"
+    ],
+    "componentPlan": [
+      {
+        "slug": "button",
+        "contractKind": "legacy-json",
+        "previewFile": "c:\\Users\\Administrator\\.trae-cn/design_libraries\\Apple/preview/component-button.html",
+        "contractFile": "c:\\Users\\Administrator\\.trae-cn/design_libraries\\Apple/components/button.json"
+      },
+      {
+        "slug": "card",
+        "contractKind": "legacy-json",
+        "previewFile": "c:\\Users\\Administrator\\.trae-cn/design_libraries\\Apple/preview/component-card.html",
+        "contractFile": "c:\\Users\\Administrator\\.trae-cn/design_libraries\\Apple/components/card.json"
+      },
+      {
+        "slug": "navigation",
+        "contractKind": "legacy-json",
+        "previewFile": "c:\\Users\\Administrator\\.trae-cn/design_libraries\\Apple/preview/component-navigation.html",
+        "contractFile": "c:\\Users\\Administrator\\.trae-cn/design_libraries\\Apple/components/navigation.json"
+      }
+    ],
+    "tokenFidelity": "strict",
+    "uiKitPath": "c:\\Users\\Administrator\\.trae-cn/design_libraries\\Apple/ui_kits/website/index.html",
+    "iconAssets": {
+      "source": "assets/icons",
+      "projectIconDir": "assets/icons/dl-builtin-apple",
+      "libraryKey": "dl-builtin-apple",
+      "renderMethod": "css-mask",
+      "pathTemplate": "../assets/icons/dl-builtin-apple/{name}.svg",
+      "availableNames": [
+        "arrow-down", "arrow-left", "arrow-right", "arrow-up", "box", "check",
+        "chevron-down", "chevron-left", "chevron-right", "chevron-up",
+        "chevrons-down-up", "chevrons-up-down", "circle-alert", "circle-check",
+        "circle-minus", "circle-pause", "circle-play", "circle-plus",
+        "circle-question-mark", "external-link", "file", "folder-open",
+        "folder", "funnel", "grip", "heart", "house", "mail", "map-pin",
+        "message-circle-more", "mouse-pointer-click", "pen-line", "send-horizontal",
+        "star", "tag", "thumbs-down", "thumbs-up", "trash-2", "triangle-alert", "user"
+      ],
+      "totalCount": 40,
+      "coloringRule": "currentColor by default; override with Library token when needed"
+    }
+  },
+  "contextRequirementsLoaded": [
+    {
+      "path": "shared-runtime/runtime-boundaries/lane-runtime-contracts.md",
+      "readStatus": "loaded",
+      "bodyRead": true
+    },
+    {
+      "path": "shared-runtime/agent-dispatch-runtime/lane-dispatch-index.md",
+      "readStatus": "loaded",
+      "bodyRead": true
+    },
+    {
+      "path": "shared-runtime/agent-dispatch-runtime/shared-page-rendering-kernel.md",
+      "readStatus": "loaded",
+      "bodyRead": true
+    },
+    {
+      "path": "delivery-quality/page-rendering-quality-gate.md",
+      "readStatus": "loaded",
+      "bodyRead": true
+    },
+    {
+      "path": "delivery-quality/design-artifact-validation.md",
+      "readStatus": "loaded",
+      "bodyRead": true
+    },
+    {
+      "path": "delivery-quality/delivery-evidence-contract.md",
+      "readStatus": "loaded",
+      "bodyRead": true
+    },
+    {
+      "path": "visual-experience/visual-experience-guidelines.md",
+      "readStatus": "loaded",
+      "bodyRead": true
+    },
+    {
+      "path": "intent-workflows/intent-project-mutation/INTENT_WORKFLOW.md",
+      "readStatus": "loaded",
+      "bodyRead": true
+    },
+    {
+      "path": "intent-workflows/intent-project-mutation/redesign-project-ui.md",
+      "readStatus": "loaded",
+      "bodyRead": true
+    },
+    {
+      "path": "intent-workflows/intent-project-mutation/redesign-dispatch-contract.md",
+      "readStatus": "loaded",
+      "bodyRead": true
+    },
+    {
+      "path": "intent-workflows/intent-project-mutation/redesign-page-runtime.md",
+      "readStatus": "loaded",
+      "bodyRead": true
+    }
+  ],
+  "sourceProjectLaneHeritage": {
+    "sourceLane": "library_bound",
+    "sourceProjectPath": "d:\\MOYUYOWPC\\APPdocs\\pet-hub-design",
+    "retainedConstraints": ["Apple design library tokens", "DM Sans typography", "1.2rem radius", "strict token fidelity", "componentPlan button/card/navigation"]
+  }
+}

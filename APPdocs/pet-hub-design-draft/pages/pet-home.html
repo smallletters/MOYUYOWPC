@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Pet Home</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+  <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ */
+
+:root {
+  --apple-background: var(--background, #ffffff);
+  --apple-foreground: var(--foreground, #0f172a);
+  --apple-card: var(--card, var(--background));
+  --apple-card-foreground: var(--card-foreground, var(--foreground));
+  --apple-popover: var(--popover, var(--card));
+  --apple-popover-foreground: var(--popover-foreground, var(--card-foreground, var(--foreground)));
+  --apple-primary: var(--primary, #111827);
+  --apple-primary-foreground: var(--primary-foreground, #ffffff);
+  --apple-secondary: var(--secondary, var(--muted, var(--card)));
+  --apple-secondary-foreground: var(--secondary-foreground, var(--foreground));
+  --apple-muted: var(--muted, var(--card));
+  --apple-muted-foreground: var(--muted-foreground, var(--foreground));
+  --apple-accent: var(--accent, var(--secondary, var(--muted, var(--card))));
+  --apple-accent-foreground: var(--accent-foreground, var(--foreground));
+  --apple-destructive: var(--destructive, #ef4444);
+  --apple-destructive-foreground: var(--destructive-foreground, #ffffff);
+  --apple-border: var(--border, currentColor);
+  --apple-input: var(--input, var(--border));
+  --apple-ring: var(--ring, var(--primary));
+
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff;
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  --state-success: #34c759;
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  --state-error: #ff3b30;
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+
+  --radius: 1.2rem;
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12);
+}
+  </style>
+  <style type="text/tailwindcss">
+    @theme inline {
+      --color-background: var(--background);
+      --color-foreground: var(--foreground);
+      --color-card: var(--card);
+      --color-card-foreground: var(--card-foreground);
+      --color-popover: var(--popover);
+      --color-popover-foreground: var(--popover-foreground);
+      --color-primary: var(--primary);
+      --color-primary-foreground: var(--primary-foreground);
+      --color-secondary: var(--secondary);
+      --color-secondary-foreground: var(--secondary-foreground);
+      --color-muted: var(--muted);
+      --color-muted-foreground: var(--muted-foreground);
+      --color-accent: var(--accent);
+      --color-accent-foreground: var(--accent-foreground);
+      --color-destructive: var(--destructive);
+      --color-destructive-foreground: var(--destructive-foreground);
+      --color-success: var(--success);
+      --color-success-foreground: var(--success-foreground);
+      --color-border: var(--border);
+      --color-input: var(--input);
+      --color-ring: var(--ring);
+      --radius-sm: calc(var(--radius) - 0.4rem);
+      --radius-md: var(--radius);
+      --radius-lg: calc(var(--radius) + 0.4rem);
+      --radius-xl: calc(var(--radius) + 0.8rem);
+    }
+    @layer base {
+      body { background-color: var(--background); color: var(--foreground); font-family: var(--font-sans); }
+      td, th { word-break: break-all; word-break: auto-phrase; }
+      th { white-space: nowrap; }
+    }
+  </style>
+</head>
+<body class="m-0 p-0 min-h-screen bg-[var(--apple-background)] text-[var(--apple-foreground)]" style="font-family: var(--font-sans);">
+
+  <!-- 移动端应用外壳 -->
+  <div class="relative mx-auto w-full max-w-[430px] min-h-screen bg-[var(--background-100)] overflow-hidden shadow-2xl" style="padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);">
+
+    <!-- 顶部状态栏占位 -->
+    <div class="h-11 w-full shrink-0"></div>
+
+    <!-- 顶部用户信息区 -->
+    <header class="px-5 pt-2 pb-4">
+      <div class="flex items-start justify-between">
+        <!-- 左侧头像与问候 -->
+        <div class="flex items-center gap-3">
+          <button data-dom-id="user-avatar" class="w-12 h-12 rounded-full overflow-hidden border border-[var(--border)] active:scale-95 transition-transform" aria-label="用户头像">
+            <img src="../assets/images/pet-home-hero.jpg" alt="用户头像" class="w-full h-full object-cover">
+          </button>
+          <div class="flex flex-col">
+            <span class="text-sm text-[var(--text-500)]">中午好，</span>
+            <span class="text-xl font-bold text-[var(--foreground)]">Serenaqng</span>
+          </div>
+        </div>
+        <!-- 右侧通知与添加按钮 -->
+        <div class="flex items-center gap-2">
+          <button data-dom-id="header-notify" class="w-11 h-11 rounded-full bg-[var(--background-50)] border border-[var(--border)] flex items-center justify-center active:scale-95 transition-transform shadow-sm" aria-label="通知">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--icon-900)]"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          </button>
+          <button data-dom-id="header-add" class="w-11 h-11 rounded-full bg-[var(--background-50)] border border-[var(--border)] flex items-center justify-center active:scale-95 transition-transform shadow-sm" aria-label="添加">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--icon-900)]"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 搜索与添加按钮行 -->
+      <div class="flex items-center gap-3 mt-4">
+        <button data-dom-id="action-search" class="w-12 h-12 rounded-full bg-[var(--background-50)] border border-[var(--border)] flex items-center justify-center active:scale-95 transition-transform shadow-sm" aria-label="搜索">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--icon-900)]"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </button>
+        <button data-dom-id="action-add" class="w-12 h-12 rounded-full bg-[var(--background-50)] border border-[var(--border)] flex items-center justify-center active:scale-95 transition-transform shadow-sm" aria-label="添加">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--icon-900)]"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- 健康分数主卡片 -->
+    <section class="px-5 mt-2">
+      <div data-dom-id="health-hero-card" class="relative w-full rounded-2xl bg-[var(--background-50)] shadow-lg overflow-visible" style="background: linear-gradient(135deg, #fffefb 0%, #fdfbf7 100%);">
+        <div class="relative z-10 flex items-center justify-between px-5 pt-5 pb-6">
+          <!-- 左侧文案 -->
+          <div class="flex flex-col gap-1">
+            <span class="text-xs font-medium text-[var(--text-500)]">今日健康分</span>
+            <span class="text-4xl font-bold text-[var(--foreground)] tracking-tight">100%</span>
+            <span class="text-xs font-medium text-[var(--state-success)]">正常</span>
+            <button data-dom-id="hero-chat" class="mt-4 px-5 py-2.5 rounded-full bg-[#8b6f4e] text-white text-xs font-semibold active:scale-95 transition-transform shadow-md" aria-label="和我聊聊">
+              和我聊聊
+            </button>
+          </div>
+          <!-- 右侧宠物图片，从卡片底部探出 -->
+          <div class="relative w-[160px] h-[150px] shrink-0">
+            <img src="../assets/images/pet-home-hero.jpg" alt="宠物狗狗" class="absolute bottom-[-24px] right-[-12px] w-[180px] h-auto object-contain" style="max-height: 190px;">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 概览底部面板 -->
+    <section data-dom-id="overview-sheet" class="absolute bottom-[calc(48px+env(safe-area-inset-bottom))] left-0 right-0 bg-[var(--background-50)] rounded-t-[1.5rem] shadow-[0_-4px_24px_rgba(0,0,0,0.06)] px-5 pt-3 pb-5">
+      <!-- 拖拽指示条 -->
+      <div class="flex justify-center mb-3">
+        <div class="w-10 h-1 rounded-full bg-[var(--background-300)]"></div>
+      </div>
+      <!-- 面板标题 -->
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-[var(--foreground)]">概览</h2>
+      </div>
+      <!-- 两个指标卡片 -->
+      <div class="grid grid-cols-2 gap-3">
+        <!-- 今日体重 -->
+        <button data-dom-id="metric-weight" class="flex flex-col items-start p-4 rounded-2xl bg-[var(--background-100)] border border-[var(--border)] active:scale-[0.98] transition-transform text-left" aria-label="今日体重">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-8 h-8 rounded-full bg-[var(--background-50)] border border-[var(--border)] flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--icon-900)]"><text x="6" y="16" font-size="11" font-weight="600" fill="currentColor" stroke="none">kg</text><path d="M6.5 6.5h11"/><path d="M6.5 17.5h11"/></svg>
+            </div>
+            <span class="text-xs font-medium text-[var(--text-500)]">今日体重</span>
+          </div>
+          <span class="text-2xl font-bold text-[var(--foreground)]">--</span>
+        </button>
+        <!-- 今日健康 -->
+        <button data-dom-id="metric-health" class="flex flex-col items-start p-4 rounded-2xl border border-[var(--border)] active:scale-[0.98] transition-transform text-left" style="background: linear-gradient(135deg, #e8dcc8 0%, #ded0ba 100%);" aria-label="今日健康">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-8 h-8 rounded-full bg-[var(--background-50)]/80 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--state-success)]"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+            </div>
+            <span class="text-xs font-medium text-[var(--text-700)]">今日健康</span>
+          </div>
+          <span class="text-2xl font-bold text-[var(--foreground)]">100</span>
+          <span class="text-[10px] text-[var(--text-500)] mt-1">健康状态normal</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 底部导航栏 -->
+    <nav class="absolute bottom-0 left-0 right-0 h-[calc(48px+env(safe-area-inset-bottom))] bg-[var(--background-50)]/90 backdrop-blur-lg border-t border-[var(--border)] flex items-center justify-around px-2 pb-[env(safe-area-inset-bottom)]">
+      <button data-dom-id="tab-home" class="flex flex-col items-center justify-center w-14 h-12 gap-1" aria-label="首页">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--foreground)]"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span class="text-[10px] font-semibold text-[var(--foreground)]">首页</span>
+      </button>
+      <button data-dom-id="tab-ai" class="flex flex-col items-center justify-center w-14 h-12 gap-1" aria-label="AI">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--icon-muted)]"><path d="M12 2a5 5 0 0 1 5 5v1h1a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h1V7a5 5 0 0 1 5-5Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <span class="text-[10px] font-medium text-[var(--muted-foreground)]">AI</span>
+      </button>
+      <button data-dom-id="tab-locate" class="flex flex-col items-center justify-center w-14 h-12 gap-1" aria-label="定位">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--icon-muted)]"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span class="text-[10px] font-medium text-[var(--muted-foreground)]">定位</span>
+      </button>
+      <button data-dom-id="tab-camera" class="flex flex-col items-center justify-center w-14 h-12 gap-1" aria-label="相机">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--icon-muted)]"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+        <span class="text-[10px] font-medium text-[var(--muted-foreground)]">相机</span>
+      </button>
+      <button data-dom-id="tab-profile" class="flex flex-col items-center justify-center w-14 h-12 gap-1" aria-label="我的">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--icon-muted)]"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span class="text-[10px] font-medium text-[var(--muted-foreground)]">我的</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</body>
+</html>

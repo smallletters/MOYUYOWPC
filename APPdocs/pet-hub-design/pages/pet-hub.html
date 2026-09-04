@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>MOYUYO Pet Hub</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+  <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ */
+
+:root {
+  --apple-background: var(--background, #ffffff);
+  --apple-foreground: var(--foreground, #0f172a);
+  --apple-card: var(--card, var(--background));
+  --apple-card-foreground: var(--card-foreground, var(--foreground));
+  --apple-popover: var(--popover, var(--card));
+  --apple-popover-foreground: var(--popover-foreground, var(--card-foreground, var(--foreground)));
+  --apple-primary: var(--primary, #111827);
+  --apple-primary-foreground: var(--primary-foreground, #ffffff);
+  --apple-secondary: var(--secondary, var(--muted, var(--card)));
+  --apple-secondary-foreground: var(--secondary-foreground, var(--foreground));
+  --apple-muted: var(--muted, var(--card));
+  --apple-muted-foreground: var(--muted-foreground, var(--foreground));
+  --apple-accent: var(--accent, var(--secondary, var(--muted, var(--card))));
+  --apple-accent-foreground: var(--accent-foreground, var(--foreground));
+  --apple-destructive: var(--destructive, #ef4444);
+  --apple-destructive-foreground: var(--destructive-foreground, #ffffff);
+  --apple-border: var(--border, currentColor);
+  --apple-input: var(--input, var(--border));
+  --apple-ring: var(--ring, var(--primary));
+
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff;
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  --state-success: #34c759;
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  --state-error: #ff3b30;
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+
+  --radius: 1.2rem;
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12);
+}
+  </style>
+  <style type="text/tailwindcss">
+    @theme inline {
+      --color-background: var(--background);
+      --color-foreground: var(--foreground);
+      --color-card: var(--card);
+      --color-card-foreground: var(--card-foreground);
+      --color-popover: var(--popover);
+      --color-popover-foreground: var(--popover-foreground);
+      --color-primary: var(--primary);
+      --color-primary-foreground: var(--primary-foreground);
+      --color-secondary: var(--secondary);
+      --color-secondary-foreground: var(--secondary-foreground);
+      --color-muted: var(--muted);
+      --color-muted-foreground: var(--muted-foreground);
+      --color-accent: var(--accent);
+      --color-accent-foreground: var(--accent-foreground);
+      --color-destructive: var(--destructive);
+      --color-destructive-foreground: var(--destructive-foreground);
+      --color-success: var(--success);
+      --color-success-foreground: var(--success-foreground);
+      --color-border: var(--border);
+      --color-input: var(--input);
+      --color-ring: var(--ring);
+      --radius-sm: calc(var(--radius) - 0.4rem);
+      --radius-md: var(--radius);
+      --radius-lg: calc(var(--radius) + 0.4rem);
+      --radius-xl: calc(var(--radius) + 0.8rem);
+    }
+    @layer base {
+      body { background-color: var(--background); color: var(--foreground); font-family: var(--font-sans); }
+      td, th { word-break: break-all; word-break: auto-phrase; }
+      th { white-space: nowrap; }
+    }
+  </style>
+</head>
+<body class="m-0 p-0 min-h-screen bg-[var(--apple-background)] text-[var(--apple-foreground)]" style="font-family: var(--font-sans);">
+
+  <!-- 移动端应用外壳 -->
+  <div class="relative mx-auto w-full max-w-[430px] min-h-screen bg-[var(--background-100)] overflow-hidden shadow-2xl" style="padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);">
+
+    <!-- 顶部状态栏占位 -->
+    <div class="h-11 w-full shrink-0"></div>
+
+    <!-- 顶部宠物切换器 -->
+    <header class="flex items-center justify-between px-4 py-3 bg-[var(--background-50)]">
+      <div class="flex items-center gap-3 overflow-x-auto no-scrollbar">
+        <!-- 当前选中的宠物 MILO -->
+        <button data-dom-id="pet-milo" class="relative flex flex-col items-center gap-1 min-w-[64px] group" aria-label="MILO">
+          <div class="w-14 h-14 rounded-full p-[2px] bg-[var(--primary)]">
+            <img src="../assets/images/pet-hub-scene.jpg" alt="MILO" class="w-full h-full rounded-full object-cover border-2 border-[var(--background-50)]">
+          </div>
+          <span class="text-xs font-semibold text-[var(--foreground)]">MILO</span>
+        </button>
+        <!-- 其他宠物 -->
+        <button data-dom-id="pet-luna" class="relative flex flex-col items-center gap-1 min-w-[64px] opacity-70 group" aria-label="LUNA">
+          <div class="w-14 h-14 rounded-full p-[2px] bg-[var(--border)]">
+            <div class="w-full h-full rounded-full bg-[var(--background-200)] flex items-center justify-center border-2 border-[var(--background-50)]">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--icon-muted)]"><path d="M12 5c.67 0 1.35.09 2 .26 1.78-2 5.03-2.84 6.42-2.26 1.4.58-.42 7-.42 7 .57 1.07 1 2.24 1 3.44C21 17.9 16.97 21 12 21s-9-3.1-9-7.56c0-1.25.5-2.4 1-3.44 0 0-1.89-6.42-.5-7 1.39-.58 4.72.23 6.5 2.23A9.04 9.04 0 0 1 12 5Z"/><path d="M8 14v1"/><path d="M16 14v1"/><path d="M12 13v4"/><path d="M12 18a2 2 0 0 0 2-2H10a2 2 0 0 0 2 2Z"/></svg>
+            </div>
+          </div>
+          <span class="text-xs font-medium text-[var(--muted-foreground)]">LUNA</span>
+        </button>
+        <button data-dom-id="pet-atlas" class="relative flex flex-col items-center gap-1 min-w-[64px] opacity-70 group" aria-label="ATLAS">
+          <div class="w-14 h-14 rounded-full p-[2px] bg-[var(--border)]">
+            <div class="w-full h-full rounded-full bg-[var(--background-200)] flex items-center justify-center border-2 border-[var(--background-50)]">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--icon-muted)]"><path d="M10 5.172C10 3.782 8.423 2.679 6.5 3c-2.823.47-4.113 6.006-4 7 .08.703 1.725 1.722 3.656 1 1.261-.472 1.855-1.24 2.344-2.5"/><path d="M14.267 5.172c0-1.39 1.577-2.493 3.5-2.172 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.855-1.24-2.344-2.5"/><path d="M8 14v.5"/><path d="M16 14v.5"/><path d="M11.25 16.25h1.5L12 17l-.75-.75Z"/><path d="M4.42 11.247A13.152 13.152 0 0 0 4 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444c0-1.061-.162-2.2-.493-3.309m-9.243-6.082A8.801 8.801 0 0 1 12 5c.78 0 1.5.108 2.161.306"/></svg>
+            </div>
+          </div>
+          <span class="text-xs font-medium text-[var(--muted-foreground)]">ATLAS</span>
+        </button>
+      </div>
+      <!-- 添加宠物 -->
+      <button data-dom-id="add-pet" class="ml-2 flex items-center justify-center w-11 h-11 rounded-full bg-[var(--background-200)] active:scale-95 transition-transform" aria-label="添加宠物">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--foreground)]"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+      </button>
+    </header>
+
+    <!-- 3D 宠物互动场景 -->
+    <section data-dom-id="scene-area" class="relative w-full" style="height: 50vh; min-height: 360px; max-height: 460px;">
+      <img src="../assets/images/pet-hub-scene.jpg" alt="3D 宠物场景" class="absolute inset-0 w-full h-full object-cover">
+      <div class="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/25"></div>
+
+      <!-- 场景粒子效果 -->
+      <div class="absolute inset-0 pointer-events-none overflow-hidden">
+        <div class="absolute top-1/4 left-1/4 w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse"></div>
+        <div class="absolute top-1/3 right-1/3 w-1 h-1 rounded-full bg-white/50 animate-pulse" style="animation-delay: 0.6s;"></div>
+        <div class="absolute bottom-1/3 left-1/2 w-2 h-2 rounded-full bg-white/40 animate-pulse" style="animation-delay: 1.2s;"></div>
+        <div class="absolute top-2/5 right-1/4 w-1 h-1 rounded-full bg-white/50 animate-pulse" style="animation-delay: 1.8s;"></div>
+      </div>
+
+      <!-- 宠物信息浮层 -->
+      <div class="absolute top-4 left-4 right-4 flex items-start justify-between">
+        <div class="px-3 py-2 rounded-2xl bg-white/20 backdrop-blur-md border border-white/20">
+          <p class="text-xs font-medium text-white/90">探险家 · 灵缇犬</p>
+          <p class="text-sm font-semibold text-white">MILO, 2岁</p>
+        </div>
+        <button data-dom-id="open-dresser" class="flex items-center gap-1.5 px-3 py-2 rounded-full bg-white/20 backdrop-blur-md border border-white/20 active:scale-95 transition-transform" aria-label="装扮">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M20.38 3.4a1.6 1.6 0 0 0-2.26 0l-1.7 1.7a1.6 1.6 0 0 0 0 2.26l.67.67a1.6 1.6 0 0 0 2.26 0l1.7-1.7a1.6 1.6 0 0 0 0-2.26l-.63-.67Z"/><path d="m11.8 8.38 3.82-3.82"/><path d="M14 13l-2.8-2.8"/><path d="m4 20 4.2-4.2"/><path d="M3 21l1.4-1.4"/></svg>
+          <span class="text-xs font-semibold text-white">装扮</span>
+        </button>
+      </div>
+
+      <!-- 互动提示 -->
+      <div class="absolute bottom-20 left-0 right-0 flex justify-center pointer-events-none">
+        <div class="px-4 py-2 rounded-full bg-black/30 backdrop-blur-md">
+          <p class="text-xs text-white/90">拖拽旋转 · 点击互动</p>
+        </div>
+      </div>
+
+      <!-- 场景选择器 -->
+      <div class="absolute bottom-4 left-4 right-4 flex justify-center gap-2">
+        <button data-dom-id="scene-milo" class="px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-[var(--foreground)] shadow-sm active:scale-95 transition-transform" aria-label="草地场景">草地</button>
+        <button data-dom-id="scene-luna" class="px-3 py-1.5 rounded-full text-xs font-semibold bg-black/30 text-white/80 backdrop-blur-md border border-white/20 active:scale-95 transition-transform" aria-label="客厅场景">客厅</button>
+        <button data-dom-id="scene-atlas" class="px-3 py-1.5 rounded-full text-xs font-semibold bg-black/30 text-white/80 backdrop-blur-md border border-white/20 active:scale-95 transition-transform" aria-label="训练场">训练场</button>
+        <button data-dom-id="scene-olive" class="px-3 py-1.5 rounded-full text-xs font-semibold bg-black/30 text-white/80 backdrop-blur-md border border-white/20 active:scale-95 transition-transform" aria-label="工作室">工作室</button>
+      </div>
+    </section>
+
+    <!-- 护理状态卡片 -->
+    <section class="px-4 -mt-4 relative z-10">
+      <div class="grid grid-cols-3 gap-3">
+        <!-- 洗护卡片 -->
+        <button data-dom-id="care-bath" class="flex flex-col items-start p-3 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-sm active:scale-[0.98] transition-transform text-left">
+          <div class="w-8 h-8 rounded-full bg-[var(--state-success-surface)] flex items-center justify-center mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--state-success)]"><path d="M10 10v.2A3 3 0 0 1 8.9 16H5a3 3 0 0 1-1-5.8V10a3 3 0 0 1 6 0Z"/><path d="M7 16v6"/><path d="M13 19v3"/><path d="M12 19h8.3a1 1 0 0 0 .7-1.7L18 14h.3a1 1 0 0 0 .7-1.7L16 9h.2a1 1 0 0 0 .8-1.7L13 3l-1.4 1.5"/></svg>
+          </div>
+          <p class="text-xs font-medium text-[var(--muted-foreground)]">洗护</p>
+          <p class="text-sm font-bold text-[var(--foreground)]">3天前</p>
+          <p class="text-[10px] text-[var(--state-success)] mt-1 font-medium">状态良好</p>
+        </button>
+        <!-- 疫苗卡片 -->
+        <button data-dom-id="care-vaccine" class="flex flex-col items-start p-3 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-sm active:scale-[0.98] transition-transform text-left">
+          <div class="w-8 h-8 rounded-full bg-[var(--state-success-surface)] flex items-center justify-center mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--state-success)]"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+          </div>
+          <p class="text-xs font-medium text-[var(--muted-foreground)]">疫苗</p>
+          <p class="text-sm font-bold text-[var(--foreground)]">12天前</p>
+          <p class="text-[10px] text-[var(--state-success)] mt-1 font-medium">无需担心</p>
+        </button>
+        <!-- 驱虫卡片 -->
+        <button data-dom-id="care-deworm" class="flex flex-col items-start p-3 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-sm active:scale-[0.98] transition-transform text-left">
+          <div class="w-8 h-8 rounded-full bg-[var(--state-error-surface)] flex items-center justify-center mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--state-error)]"><path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.9-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/></svg>
+          </div>
+          <p class="text-xs font-medium text-[var(--muted-foreground)]">驱虫</p>
+          <p class="text-sm font-bold text-[var(--foreground)]">35天前</p>
+          <p class="text-[10px] text-[var(--state-error)] mt-1 font-medium">即将到期</p>
+        </button>
+      </div>
+      <!-- 下次提醒 -->
+      <div class="mt-3 px-4 py-3 rounded-2xl bg-[var(--accent)] flex items-center justify-between">
+        <p class="text-xs text-[var(--muted-foreground)]">距下次洗澡提醒还有 <span class="font-semibold text-[var(--foreground)]">4 天</span></p>
+        <button data-dom-id="care-settings" class="p-1.5 rounded-full hover:bg-[var(--background-200)] active:scale-95 transition-transform" aria-label="提醒设置">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--icon-muted)]"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- 快捷操作区 -->
+    <section class="px-4 mt-4 pb-28">
+      <h2 class="text-sm font-semibold text-[var(--foreground)] mb-3">快捷操作</h2>
+      <div class="grid grid-cols-6 gap-2">
+        <button data-dom-id="quick-shop" class="flex flex-col items-center gap-2 p-2 rounded-2xl bg-[var(--card)] border border-[var(--border)] active:scale-95 transition-transform">
+          <div class="w-10 h-10 rounded-full bg-[var(--background-200)] flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--foreground)]"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+          </div>
+          <span class="text-[10px] font-medium text-[var(--foreground)]">购买</span>
+        </button>
+        <button data-dom-id="quick-community" class="flex flex-col items-center gap-2 p-2 rounded-2xl bg-[var(--card)] border border-[var(--border)] active:scale-95 transition-transform">
+          <div class="w-10 h-10 rounded-full bg-[var(--background-200)] flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--foreground)]"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+          </div>
+          <span class="text-[10px] font-medium text-[var(--foreground)]">晒宠</span>
+        </button>
+        <button data-dom-id="quick-calendar" class="flex flex-col items-center gap-2 p-2 rounded-2xl bg-[var(--card)] border border-[var(--border)] active:scale-95 transition-transform">
+          <div class="w-10 h-10 rounded-full bg-[var(--background-200)] flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--foreground)]"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>
+          </div>
+          <span class="text-[10px] font-medium text-[var(--foreground)]">日历</span>
+        </button>
+        <button data-dom-id="quick-achievements" class="flex flex-col items-center gap-2 p-2 rounded-2xl bg-[var(--card)] border border-[var(--border)] active:scale-95 transition-transform">
+          <div class="w-10 h-10 rounded-full bg-[var(--background-200)] flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--foreground)]"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+          </div>
+          <span class="text-[10px] font-medium text-[var(--foreground)]">成就</span>
+        </button>
+        <button data-dom-id="quick-booking" class="flex flex-col items-center gap-2 p-2 rounded-2xl bg-[var(--card)] border border-[var(--border)] active:scale-95 transition-transform">
+          <div class="w-10 h-10 rounded-full bg-[var(--background-200)] flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--foreground)]"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+          </div>
+          <span class="text-[10px] font-medium text-[var(--foreground)]">预约</span>
+        </button>
+        <button data-dom-id="quick-weight" class="flex flex-col items-center gap-2 p-2 rounded-2xl bg-[var(--card)] border border-[var(--border)] active:scale-95 transition-transform">
+          <div class="w-10 h-10 rounded-full bg-[var(--background-200)] flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--foreground)]"><rect width="16" height="10" x="4" y="10" rx="2"/><path d="M8 10V8a4 4 0 0 1 8 0v2"/><path d="M9.5 13h5"/></svg>
+          </div>
+          <span class="text-[10px] font-medium text-[var(--foreground)]">体重</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 底部导航栏 -->
+    <nav class="absolute bottom-0 left-0 right-0 h-[calc(48px+env(safe-area-inset-bottom))] bg-[var(--background-50)]/90 backdrop-blur-lg border-t border-[var(--border)] flex items-center justify-around px-2 pb-[env(safe-area-inset-bottom)]">
+      <button data-dom-id="tab-home" class="flex flex-col items-center justify-center w-14 h-12 gap-1" aria-label="首页">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--icon-muted)]"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span class="text-[10px] font-medium text-[var(--muted-foreground)]">首页</span>
+      </button>
+      <button data-dom-id="tab-category" class="flex flex-col items-center justify-center w-14 h-12 gap-1" aria-label="分类">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--icon-muted)]"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>
+        <span class="text-[10px] font-medium text-[var(--muted-foreground)]">分类</span>
+      </button>
+      <button data-dom-id="tab-pet" class="flex flex-col items-center justify-center w-14 h-12 gap-1" aria-label="Pet">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--primary)]"><path d="M10 5.172C10 3.782 8.423 2.679 6.5 3c-2.823.47-4.113 6.006-4 7 .08.703 1.725 1.722 3.656 1 1.261-.472 1.855-1.24 2.344-2.5"/><path d="M14.267 5.172c0-1.39 1.577-2.493 3.5-2.172 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.855-1.24-2.344-2.5"/><path d="M8 14v.5"/><path d="M16 14v.5"/><path d="M11.25 16.25h1.5L12 17l-.75-.75Z"/><path d="M4.42 11.247A13.152 13.152 0 0 0 4 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444c0-1.061-.162-2.2-.493-3.309m-9.243-6.082A8.801 8.801 0 0 1 12 5c.78 0 1.5.108 2.161.306"/></svg>
+        <span class="text-[10px] font-semibold text-[var(--foreground)]">Pet</span>
+      </button>
+      <button data-dom-id="tab-community" class="flex flex-col items-center justify-center w-14 h-12 gap-1" aria-label="社区">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--icon-muted)]"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+        <span class="text-[10px] font-medium text-[var(--muted-foreground)]">社区</span>
+      </button>
+      <button data-dom-id="tab-profile" class="flex flex-col items-center justify-center w-14 h-12 gap-1" aria-label="我的">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--icon-muted)]"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span class="text-[10px] font-medium text-[var(--muted-foreground)]">我的</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</body>
+</html>

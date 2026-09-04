@@ -149,6 +149,11 @@ export default {
         const tops = (Array.isArray(list) ? list : []).filter(
           (c) => Number(c.level) === 1 || !c.parentId || c.parentId === '0' || c.parentId === 0,
         )
+        // 让「其他/Uncategorized」一级分类固定排到最右侧，其余保持后端 sort 顺序
+        const isOtherCat = (c) =>
+          c.name === 'Uncategorized' ||
+          this.$tCatName(c.name) === this.$t('category.names.Uncategorized')
+        tops.sort((a, b) => Number(isOtherCat(a)) - Number(isOtherCat(b)))
         this.topCategories = tops
         if (tops.length) {
           this.activeTopId = tops[0].id
