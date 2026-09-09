@@ -19,6 +19,8 @@ import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.PaymentMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
+import com.moyuyo.service.CouponService;
+import com.moyuyo.service.MemberService;
 import com.moyuyo.service.MissionService;
 import com.moyuyo.service.NotificationService;
 import com.moyuyo.service.OrderService;
@@ -61,6 +63,9 @@ public class OrderServiceImpl implements OrderService {
   private final NotificationService notificationService;
   // 消费返积分：付款回调后按 1 USD = 10 积分发放，首单 2 倍
   private final PointsRewardServiceImpl pointsRewardService;
+  // 资金安全：下单优惠金额必须服务端重算（券核验/积分抵扣），不能信任前端传入数值
+  private final CouponService couponService;
+  private final MemberService memberService;
 
   @Override
   @Transactional
@@ -109,6 +114,10 @@ public class OrderServiceImpl implements OrderService {
         int affected = productSkuMapper.update(null, stockWrapper);
         if (affected == 0) {
           throw new IllegalStateException("商品库存不足: " + product.getName());
+        }
+        // 下单时快照规格文本:保证管理后台订单详情能展示变体规格,后续 SKU 被删/重建也不丢失
+        if (item.getSkuSpec() == null || item.getSkuSpec().isBlank()) {
+          item.setSkuSpec(sku.getSpec());
         }
       } else {
         // 非 SKU 商品：M2 修复，同样走原子扣减 product.stock（防超卖）
@@ -218,11 +227,92 @@ public class OrderServiceImpl implements OrderService {
       items.add(item);
     }
 
-    // M1：把优惠券/积分/运费/配送方式透传给 createOrder 落库 + 折算 payAmount
-    return createOrder(userId, items, request.getAddressId(), request.getRemark(),
-            request.getCouponId(), request.getCouponDiscount(),
-            request.getPointsUsed(), request.getPointsDiscount(),
-            request.getShippingMethod(), request.getFreight());
+    // 服务端重算金额项（资金安全：不信任前端传入的减免数值）：
+    // 1) 商品小计 = 服务端价格 × 数量
+    BigDecimal goodsSubtotal = BigDecimal.ZERO;
+    for (OrderItemEntity it : items) {
+      goodsSubtotal = goodsSubtotal.add(
+          it.getPrice().multiply(BigDecimal.valueOf(it.getQuantity())));
+    }
+    // 2) 优惠券：按 userCoupon 记录核验归属/状态/门槛并重算减免
+    BigDecimal serverCouponDiscount = couponService.computeCouponDiscount(
+        userId, request.getCouponUserId(), goodsSubtotal);
+    // 3) 积分抵扣：100 积分 = 1 元，最高抵扣小计 30%（与前端结算页规则一致，防止伪造抵扣）
+    BigDecimal serverPointsDiscount = BigDecimal.ZERO;
+    int serverPointsUsed = 0;
+    boolean wantsPoints = (request.getPointsUsed() != null && request.getPointsUsed() > 0)
+        || (request.getPointsDiscount() != null
+            && request.getPointsDiscount().compareTo(BigDecimal.ZERO) > 0);
+    if (wantsPoints) {
+      int balance = Math.max(memberService.getPointsBalance(userId), 0);
+      BigDecimal maxByRate = goodsSubtotal.multiply(new BigDecimal("0.3"))
+          .setScale(2, java.math.RoundingMode.HALF_UP);
+      BigDecimal maxByBalance = BigDecimal.valueOf(balance)
+          .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.DOWN);
+      serverPointsDiscount = maxByRate.min(maxByBalance);
+      serverPointsUsed = serverPointsDiscount.multiply(BigDecimal.valueOf(100))
+          .setScale(0, java.math.RoundingMode.DOWN).intValue();
+    }
+    BigDecimal serverFreight = request.getFreight() == null ? BigDecimal.ZERO : request.getFreight();
+
+    // 落库（同一事务内）并核销优惠券，避免同一张券被多笔待支付订单同时占用
+    OrderEntity order = createOrder(userId, items, request.getAddressId(), request.getRemark(),
+            request.getCouponId(), serverCouponDiscount,
+            serverPointsUsed, serverPointsDiscount,
+            request.getShippingMethod(), serverFreight);
+
+    if (serverCouponDiscount.compareTo(BigDecimal.ZERO) > 0 && request.getCouponUserId() != null) {
+        // 记录用券明细，便于取消返还与对账
+        order.setUserCouponId(request.getCouponUserId());
+        orderMapper.updateById(order);
+        couponService.useCoupon(userId, request.getCouponUserId(), order.getId());
+        log.info("订单使用优惠券已核销: orderId={}, userCouponId={}", order.getId(), request.getCouponUserId());
+    }
+    return order;
+  }
+
+  /**
+   * 支付回调抢占失败分支：
+   * - 订单已是"已支付"后续状态 → 重复回调/并发已处理，静默幂等返回；
+   * - 订单被取消/拦截等异常态仍收到成功回调 → 落一笔 SUCCESS 支付流水并告警，进入人工对账，
+   *   避免"钱已扣、订单已取消"被静默吞掉。
+   */
+  private void handlePaymentForNonPendingOrder(OrderEntity order, String payChannel, String transactionId) {
+    // 用 FOR UPDATE 当前读拿最新状态（普通 select 可能读到 RR 快照里的过期 PENDING_PAY）
+    OrderEntity latest = orderMapper.selectByIdForUpdate(order.getId());
+    String st = latest != null ? latest.getStatus() : null;
+    if (st == null) {
+      log.error("[payment-reconcile] 支付成功回调但订单已不存在: orderNo={}", order.getOrderNo());
+      return;
+    }
+    // 已支付后续状态集合（重复回调/并发已处理）；DELIVERED 仅是物流轨迹状态，非 mo_order.status，不可混用
+    List<String> paidStates = List.of(PENDING_SHIP.name(), PAID.name(), SHIPPED.name(),
+        RECEIVED.name(), COMPLETED.name());
+    if (paidStates.contains(st)) {
+      log.info("支付回调重复/已处理: orderNo={}, status={}", order.getOrderNo(), st);
+      return;
+    }
+    // 异常态（CANCELLED/HOLD/退款中等）收到成功支付 → 必须人工对账
+    log.error("[payment-reconcile] 支付成功但订单状态异常 {}，订单已被取消/拦截？orderNo={}, transactionId={}, "
+        + "请人工核对渠道到账并处理退款", st, order.getOrderNo(), transactionId);
+    try {
+      Long exists = paymentMapper.selectCount(new LambdaQueryWrapper<PaymentEntity>()
+          .eq(PaymentEntity::getOrderId, order.getId())
+          .eq(PaymentEntity::getTransactionId, transactionId));
+      if (exists != null && exists > 0) {
+        return;
+      }
+      PaymentEntity payment = new PaymentEntity();
+      payment.setOrderId(order.getId());
+      payment.setPayChannel(payChannel);
+      payment.setTransactionId(transactionId);
+      payment.setAmount(latest.getPayAmount());
+      payment.setStatus("SUCCESS");
+      payment.setPaidAt(java.time.LocalDateTime.now());
+      paymentMapper.insert(payment);
+    } catch (Exception e) {
+      log.warn("[payment-reconcile] 落对账流水失败: orderNo={}, reason={}", order.getOrderNo(), e.getMessage());
+    }
   }
 
   @Override
@@ -334,52 +424,82 @@ public class OrderServiceImpl implements OrderService {
     if (order == null) {
       throw new IllegalArgumentException("订单不存在: " + orderId);
     }
-    if (!PENDING_PAY.name().equals(order.getStatus())) {
-      throw new IllegalStateException("当前订单状态不允许取消");
+    // 幂等：已取消的订单直接返回（定时任务/用户/后台可能重复触发同一单）
+    if (CANCELLED.name().equals(order.getStatus())) {
+      log.info("订单已取消，跳过重复取消: orderId={}", orderId);
+      return;
     }
 
-    // P1 修复：取消订单时恢复已扣减的库存，避免 SKU 库存永久减少
-    // 原实现仅更新订单状态，createOrder 中扣减的 stock 不会被回滚，
-    // 导致用户取消订单后该 SKU 库存"看起来永久减少"（实际库存已经被买走了，但订单未付款）
-    // 注：这里采用"加法恢复"而非乐观锁校验，避免与订单超时取消任务（OrderTimeoutCancelJob）产生死锁竞争
+    // 原子抢占取消资格：仅 PENDING_PAY 可置为 CANCELLED。
+    // 与支付回调/超时取消并发时，谁先提交谁生效，另一方不会重复回补库存、不会覆盖支付结果。
+    LocalDateTime cancelTime = LocalDateTime.now();
+    int claimed = orderMapper.update(null,
+        new LambdaUpdateWrapper<OrderEntity>()
+            .eq(OrderEntity::getId, orderId)
+            .eq(OrderEntity::getStatus, PENDING_PAY.name())
+            .set(OrderEntity::getStatus, CANCELLED.name())
+            .set(OrderEntity::getCancelTime, cancelTime)
+            .set(OrderEntity::getCancelReason, reason));
+    if (claimed == 0) {
+      // 竞态失败：订单已被支付/发货/取消，交由各自流程处理（FOR UPDATE 当前读最新状态）
+      OrderEntity latest = orderMapper.selectByIdForUpdate(orderId);
+      String latestStatus = latest != null ? latest.getStatus() : null;
+      if (latestStatus != null && latestStatus.equals(CANCELLED.name())) {
+        return; // 已被并发取消，视为幂等成功
+      }
+      throw new IllegalStateException("当前订单状态不允许取消");
+    }
+    order.setStatus(CANCELLED.name());
+    order.setCancelTime(cancelTime);
+    order.setCancelReason(reason);
+
+    // 仅在成功抢占取消后恢复已扣减的库存，避免并发双倍回补导致超卖
+    restoreStockForOrderItems(orderId);
+
+    // 取消未支付订单：返还本次下单已核销的优惠券，供用户重新使用
+    if (order.getUserCouponId() != null) {
+      try {
+        couponService.releaseCoupon(order.getUserCouponId(), orderId);
+      } catch (Exception e) {
+        log.warn("[order] 取消订单返还优惠券失败: orderId={}, userCouponId={}, reason={}",
+                orderId, order.getUserCouponId(), e.getMessage());
+      }
+    }
+  }
+
+  /** 恢复订单占用的库存（仅允许在取消成功/特定回补场景调用，幂等由调用方保证） */
+  private void restoreStockForOrderItems(Long orderId) {
+    // 恢复已扣减的库存：SKU 走原子累加、无 SKU 的简单商品回补 product.stock
     List<OrderItemEntity> items = orderItemMapper.selectList(
         new LambdaQueryWrapper<OrderItemEntity>()
             .eq(OrderItemEntity::getOrderId, orderId));
-    if (items != null) {
-      for (OrderItemEntity item : items) {
-        if (item.getQuantity() == null || item.getQuantity() <= 0) {
-          continue;
+    if (items == null) {
+      return;
+    }
+    for (OrderItemEntity item : items) {
+      if (item.getQuantity() == null || item.getQuantity() <= 0) {
+        continue;
+      }
+      if (item.getSkuId() != null) {
+        LambdaUpdateWrapper<ProductSkuEntity> restoreWrapper = new LambdaUpdateWrapper<>();
+        restoreWrapper.eq(ProductSkuEntity::getId, item.getSkuId())
+            .setSql("stock = stock + " + item.getQuantity());
+        int affected = productSkuMapper.update(null, restoreWrapper);
+        if (affected == 0) {
+          log.warn("取消订单恢复库存失败：SKU不存在或已删除，skuId={}, orderId={}",
+                  item.getSkuId(), orderId);
         }
-        if (item.getSkuId() != null) {
-          // 原子累加：UPDATE mo_product_sku SET stock = stock + qty WHERE id = ?
-          // 不带 WHERE 库存上下限约束：允许临时超过上限（与创建订单并发场景下，安全优先）
-          LambdaUpdateWrapper<ProductSkuEntity> restoreWrapper = new LambdaUpdateWrapper<>();
-          restoreWrapper.eq(ProductSkuEntity::getId, item.getSkuId())
-              .setSql("stock = stock + " + item.getQuantity());
-          int affected = productSkuMapper.update(null, restoreWrapper);
-          if (affected == 0) {
-            // 极端情况：SKU 已被删除
-            log.warn("取消订单恢复库存失败：SKU不存在或已删除，skuId={}, orderId={}",
-                    item.getSkuId(), orderId);
-          }
-        } else if (item.getProductId() != null) {
-          // M2 修复：非 SKU 商品同步恢复 product.stock（与 createOrder 中的扣减对称）
-          LambdaUpdateWrapper<ProductEntity> restoreWrapper = new LambdaUpdateWrapper<>();
-          restoreWrapper.eq(ProductEntity::getId, item.getProductId())
-              .setSql("stock = stock + " + item.getQuantity());
-          int affected = productMapper.update(null, restoreWrapper);
-          if (affected == 0) {
-            log.warn("取消订单恢复库存失败：商品不存在或已删除，productId={}, orderId={}",
-                    item.getProductId(), orderId);
-          }
+      } else if (item.getProductId() != null) {
+        LambdaUpdateWrapper<ProductEntity> restoreWrapper = new LambdaUpdateWrapper<>();
+        restoreWrapper.eq(ProductEntity::getId, item.getProductId())
+            .setSql("stock = stock + " + item.getQuantity());
+        int affected = productMapper.update(null, restoreWrapper);
+        if (affected == 0) {
+          log.warn("取消订单恢复库存失败：商品不存在或已删除，productId={}, orderId={}",
+                  item.getProductId(), orderId);
         }
       }
     }
-
-    order.setStatus(CANCELLED.name());
-    order.setCancelTime(LocalDateTime.now());
-    order.setCancelReason(reason);
-    orderMapper.updateById(order);
   }
 
   @Override
@@ -393,18 +513,26 @@ public class OrderServiceImpl implements OrderService {
       log.error("支付回调订单不存在: orderNo={}", orderNo);
       throw new IllegalArgumentException("订单不存在");
     }
-    if (!PENDING_PAY.name().equals(order.getStatus())) {
-      log.warn("支付回调重复处理: orderNo={}, status={}", orderNo, order.getStatus());
+    // 原子抢占：仅 PENDING_PAY 能进入"已支付"，与取消/超时取消并发时后提交方不会覆盖状态
+    LocalDateTime paidAt = LocalDateTime.now();
+    int claimed = orderMapper.update(null,
+        new LambdaUpdateWrapper<OrderEntity>()
+            .eq(OrderEntity::getId, order.getId())
+            .eq(OrderEntity::getStatus, PENDING_PAY.name())
+            .set(OrderEntity::getStatus, PENDING_SHIP.name())
+            .set(OrderEntity::getPaidAt, paidAt)
+            .set(OrderEntity::getPayChannel, payChannel)
+            .set(OrderEntity::getPayTransactionId, transactionId));
+    if (claimed == 0) {
+      // 抢占失败：可能已被支付(重复回调)或已被取消/拦截，进入对账分支
+      handlePaymentForNonPendingOrder(order, payChannel, transactionId);
       return;
     }
-
-    // 更新订单状态：支付成功后直接进入「待发货」，与主流电商一致
-    // 保留 PAID 枚举（发货接口仍接受 PAID/PENDING_SHIP 双态，兼容历史数据）
+    // 同步内存对象，供下方任务/Woo/通知使用
     order.setStatus(PENDING_SHIP.name());
-    order.setPaidAt(LocalDateTime.now());
+    order.setPaidAt(paidAt);
     order.setPayChannel(payChannel);
     order.setPayTransactionId(transactionId);
-    orderMapper.updateById(order);
 
     // 记录支付流水
     PaymentEntity payment = new PaymentEntity();
@@ -417,6 +545,20 @@ public class OrderServiceImpl implements OrderService {
     paymentMapper.insert(payment);
 
     log.info("支付回调处理成功: orderNo={}, transactionId={}", orderNo, transactionId);
+
+    // 积分抵扣闭环：支付成功后才真正扣减下单时计算的抵扣积分(pointsUsed)。
+    // 余额不足等异常不阻断支付(钱已到账)，仅告警并交给对账/后续人工处理；
+    // 抢占式状态更新保证本段只执行一次，不会重复扣减。
+    if (order.getPointsUsed() != null && order.getPointsUsed() > 0) {
+      try {
+        memberService.spendPoints(order.getUserId(), order.getPointsUsed(),
+            order.getOrderNo(), "订单积分抵扣");
+        log.info("订单积分抵扣已扣减: orderNo={}, pointsUsed={}", order.getOrderNo(), order.getPointsUsed());
+      } catch (Exception e) {
+        log.error("[points] 支付成功扣减抵扣积分失败，请人工对账 orderNo={}, pointsUsed={}, reason={}",
+            order.getOrderNo(), order.getPointsUsed(), e.getMessage());
+      }
+    }
 
     // 任务中心埋点：付款成功即视为完成一单；首单触发"首单完成"；按订单实付金额累加"累计消费"
     try {

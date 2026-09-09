@@ -23,13 +23,22 @@ public class PetVO {
 
   private String gender;
 
+  /** 宠物状态：ACTIVE(正常)/DIED(去世)/ACCIDENT(意外) */
+  private String status;
+
   private LocalDate birthday;
+
+  /** 加入家庭时间 */
+  private LocalDate adoptedAt;
 
   private String avatar;
 
   private Double weight;
 
   private String notes;
+
+  /** 性格标签 */
+  private List<String> tags;
 
   private LocalDateTime createdAt;
 

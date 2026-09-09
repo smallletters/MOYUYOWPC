@@ -1,17 +1,17 @@
-﻿<template>
+<template>
   <view class="pet-diary">
     <view class="page-header">
-      <view class="back" aria-label="返回" @click="goBack">
+      <view class="back" :aria-label="$t('petDiary.title')" @click="goBack">
         <text class="luc luc-arrow-left" />
       </view>
-      <text class="title">宠物日记</text>
-      <view class="add-btn" @click="onAdd">+ 写日记</view>
+      <text class="title">{{ $t('petDiary.title') }}</text>
+      <view class="add-btn" @click="onAdd">+ {{ $t('petDiary.add') }}</view>
     </view>
 
     <scroll-view scroll-y class="content">
-      <view v-if="entries.length === 0" class="empty">
+      <view v-if="!loading && entries.length === 0" class="empty">
         <text class="empty-icon luc-book" />
-        <text class="empty-text">还没有日记，写下今天的回忆吧</text>
+        <text class="empty-text">{{ $t('petDiary.empty') }}</text>
       </view>
 
       <view v-else class="entry-list">
@@ -34,38 +34,37 @@
 </template>
 
 <script>
-import { petApi } from '@/api'
+import { petApi, petDiaryApi } from '@/api'
+import { usePetStore } from '@/store'
 
 export default {
   pageTitleKey: 'pageTitle.petDiary',
 
   data() {
     return {
-      entries: [
-        {
-          id: 1,
-          date: '今天',
-          petName: '旺财',
-          content: '今天带旺财去公园玩，它追蝴蝶追得很开心！',
-          image: 'https://picsum.photos/300/200?random=30',
-          mood: '😊 开心',
-        },
-        {
-          id: 2,
-          date: '昨天',
-          petName: '旺财',
-          content: '学会了新技能"坐下"，奖励了一个小饼干',
-          mood: '🎉 骄傲',
-        },
-        {
-          id: 3,
-          date: '3天前',
-          petName: '旺财',
-          content: '体检一切正常，医生说继续保持',
-          mood: '😌 安心',
-        },
-      ],
+      petId: null,
+      loading: true,
+      entries: [],
     }
+  },
+
+  computed: {
+    petStore() {
+      return usePetStore()
+    },
+  },
+
+  onLoad(query) {
+    // 与记忆树等页一致：URL petId 优先，缺省回退当前宠物
+    // petId 为雪花 ID（约 2e18），超出 JS 安全整数范围(2^53)，
+    // 必须保持字符串传递，不能用 Number() 强转，否则精度丢失会请求到错误宠物
+    const raw = query.petId === undefined || query.petId === null ? '' : String(query.petId)
+    this.petId = raw || null
+    if (!this.petId) {
+      const pet = this.petStore.activePet || this.petStore.pets[0] || null
+      if (pet && pet.id) this.petId = String(pet.id)
+    }
+    this.loadDiaries()
   },
 
   methods: {
@@ -73,8 +72,59 @@ export default {
       uni.navigateBack()
     },
 
+    // 拉取宠物档案（取名字）+ 真实成长日记列表，映射为卡片展示数据
+    async loadDiaries() {
+      if (!this.petId) {
+        this.loading = false
+        return
+      }
+      try {
+        const [pet, list] = await Promise.all([
+          petApi.getPetDetail(this.petId),
+          petDiaryApi.getPetDiaries(this.petId),
+        ])
+        const rows = Array.isArray(list) ? list : []
+        const petName = pet?.name || ''
+        this.entries = rows.map((d) => ({
+          id: d.id,
+          date: this.fmtDate(d.createTime),
+          petName,
+          content: d.content || '',
+          image: this.firstImage(d.images),
+          mood: d.mood || '',
+        }))
+      } catch (e) {
+        console.warn('[pet-diary] load failed', e)
+        this.entries = []
+      } finally {
+        this.loading = false
+      }
+    },
+
     onAdd() {
-      uni.showToast({ title: '日记编辑页', icon: 'none' })
+      uni.showToast({ title: this.$t('petDiary.addToast'), icon: 'none' })
+    },
+
+    // LocalDateTime → YYYY-MM-DD
+    fmtDate(v) {
+      if (!v) return ''
+      const s = String(v)
+      return s.length >= 10 ? s.slice(0, 10) : s
+    },
+
+    // 日记图片：兼容数组 / JSON 字符串 / 单个 URL
+    firstImage(images) {
+      if (!images) return ''
+      if (Array.isArray(images)) return images[0] || ''
+      const s = String(images).trim()
+      if (!s) return ''
+      try {
+        const arr = JSON.parse(s)
+        if (Array.isArray(arr)) return arr[0] || ''
+      } catch (e) {
+        /* 非 JSON 按单 URL 处理 */
+      }
+      return s
     },
   },
 }

@@ -16,6 +16,7 @@ import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.common.enums.OrderStatusEnum;
+import com.moyuyo.service.MemberService;
 import com.moyuyo.service.admin.AdminUserProfileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +41,7 @@ public class AdminUserProfileServiceImpl implements AdminUserProfileService {
   private final BrowsingHistoryMapper browsingHistoryMapper;
   private final ProductMapper productMapper;
   private final VisitLogMapper visitLogMapper;
+  private final MemberService memberService;
 
   @Override
   public Page<UserEntity> listAll(String keyword, Integer status, int page, int size) {
@@ -116,7 +118,9 @@ public class AdminUserProfileServiceImpl implements AdminUserProfileService {
     // 会员等级 / 成长值 / 会员卡号
     result.put("memberLevel", memberLevel);
     result.put("growthValue", growthValue);
-    result.put("memberNo", generateMemberNo(user.getId()));
+    // 卡号仅在用户已有会员记录(建档)时返回；无记录返回空 → 前端展示“非会员”。
+    // 避免“仅查看画像”就替用户创建会员记录/分配卡号的副作用。
+    result.put("memberNo", member != null ? memberService.getOrAssignMemberNo(user.getId()) : null);
     // 最近登录时间
     result.put("lastLoginTime", user.getLastLoginTime() != null ? user.getLastLoginTime().toString() : null);
     return result;
@@ -136,21 +140,6 @@ public class AdminUserProfileServiceImpl implements AdminUserProfileService {
       return null;
     }
     return Period.between(birthday, today).getYears();
-  }
-
-  /**
-   * 会员卡号：与 C 端 MemberServiceImpl 保持一致，确保管理后台与 C 端展示统一。
-   * 格式：MY + userId 低 8 位十进制 + 4 位数字校验位
-   */
-  private String generateMemberNo(Long userId) {
-    if (userId == null) return "MY·00000000·0000";
-    String seg = String.format("%08d", Math.abs(userId) % 100_000_000L);
-    long check = Math.abs(userId);
-    for (int i = 0; i < 4; i++) {
-      check = (check / 10) + (check % 10);
-    }
-    String checkNum = String.format("%04d", (int) (check % 10_000L));
-    return String.format("MY·%s·%s", seg, checkNum);
   }
 
   @Override

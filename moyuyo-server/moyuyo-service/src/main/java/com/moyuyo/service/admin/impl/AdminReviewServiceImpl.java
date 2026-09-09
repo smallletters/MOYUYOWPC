@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.enums.OrderStatusEnum;
+import com.moyuyo.common.enums.ReviewStatusEnum;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.ProductReviewEntity;
@@ -35,10 +36,6 @@ public class AdminReviewServiceImpl implements AdminReviewService {
   private final OrderItemMapper orderItemMapper;
   private final OrderMapper orderMapper;
 
-  /** 视为"已评价"的状态集合：PENDING（用户刚提交待审核也算已占坑）、已审核、REPLIED */
-  private static final Set<String> REVIEWED_STATUSES =
-    new HashSet<>(Arrays.asList("待审核", "已审核", "REPLIED"));
-
   @Override
   public Page<ProductReviewEntity> listAll(String status, int page, int size) {
     LambdaQueryWrapper<ProductReviewEntity> wrapper = new LambdaQueryWrapper<>();
@@ -64,7 +61,8 @@ public class AdminReviewServiceImpl implements AdminReviewService {
         new LambdaQueryWrapper<ProductReviewEntity>().le(ProductReviewEntity::getRating, 2));
     // 待审核
     Long pending = productReviewMapper.selectCount(
-        new LambdaQueryWrapper<ProductReviewEntity>().eq(ProductReviewEntity::getStatus, "待审核"));
+        new LambdaQueryWrapper<ProductReviewEntity>().eq(ProductReviewEntity::getStatus,
+            ReviewStatusEnum.PENDING.name()));
 
     Map<String, Object> result = new HashMap<>();
     result.put("total", total);
@@ -79,11 +77,10 @@ public class AdminReviewServiceImpl implements AdminReviewService {
 
   @Override
   public void reply(Long id, String content) {
-    // 直接更新状态为已回复，并在评价内容末尾追加回复标记
+    // 没有独立 replyContent 字段：在 content 末尾追加客服回复标记。
+    // 不改变 status（迁移后已统一为 APPROVED/PENDING/REJECTED），避免评价从 C 端列表消失。
     ProductReviewEntity entity = productReviewMapper.selectById(id);
-    if (entity != null) {
-      entity.setStatus("REPLIED");
-      // 没有 replyContent 字段，在 content 字段末尾追加回复内容
+    if (entity != null && content != null && !content.isBlank()) {
       String originalContent = entity.getContent() != null ? entity.getContent() : "";
       entity.setContent(originalContent + "\n[客服回复]: " + content);
       productReviewMapper.updateById(entity);
@@ -102,7 +99,7 @@ public class AdminReviewServiceImpl implements AdminReviewService {
     if (entity == null) {
       return;
     }
-    entity.setStatus("已审核");
+    entity.setStatus(ReviewStatusEnum.APPROVED.name());
     productReviewMapper.updateById(entity);
 
     // 审批通过后：如果订单所有 item 都已被覆盖评价，则订单流转到 COMPLETED（和主流电商一致）
@@ -120,8 +117,9 @@ public class AdminReviewServiceImpl implements AdminReviewService {
   }
 
   /**
-   * 检查订单是否所有 item 都已评价（覆盖已审核/待审核/已回复），是则把订单状态推进到 COMPLETED。
-   * 采用条件更新（WHERE status IN (RECEIVED)）保证幂等。
+   * 审批通过后检查订单：仅当订单所有 item 都有“审核通过(APPROVED)”的评价（含系统默认好评）时，
+   * 才把订单推进 COMPLETED。待审核/已驳回不触发完结，避免在评价未过审时误完结。
+   * 采用条件更新（WHERE status = RECEIVED）保证幂等。
    */
   public void tryCompleteOrderByReview(Long orderId) {
     // 1. 所有 item 总数
@@ -130,11 +128,11 @@ public class AdminReviewServiceImpl implements AdminReviewService {
     if (items == null || items.isEmpty()) {
       return;
     }
-    // 2. 已被评价覆盖的 itemId 集合（包含待审核/已审核/已回复，驳回的不算）
+    // 2. 审核通过(APPROVED)的评价所覆盖的 itemId 集合
     List<ProductReviewEntity> reviews = productReviewMapper.selectList(
       new LambdaQueryWrapper<ProductReviewEntity>()
         .eq(ProductReviewEntity::getOrderId, orderId)
-        .in(ProductReviewEntity::getStatus, REVIEWED_STATUSES));
+        .eq(ProductReviewEntity::getStatus, ReviewStatusEnum.APPROVED.name()));
     Set<Long> reviewedItemIds = new HashSet<>();
     for (ProductReviewEntity r : reviews) {
       if (r.getOrderItemId() != null) {
@@ -178,7 +176,7 @@ public class AdminReviewServiceImpl implements AdminReviewService {
   public void reject(Long id) {
     ProductReviewEntity entity = productReviewMapper.selectById(id);
     if (entity != null) {
-      entity.setStatus("已驳回");
+      entity.setStatus(ReviewStatusEnum.REJECTED.name());
       productReviewMapper.updateById(entity);
     }
   }

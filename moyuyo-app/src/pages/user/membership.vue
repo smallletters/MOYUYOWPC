@@ -45,19 +45,10 @@
             </view>
           </view>
 
-          <!-- 卡片底部：卡号样式装饰 + CTA -->
+          <!-- 卡片底部：卡号样式装饰 -->
           <view class="card-bottom">
             <text class="card-no">No. {{ cardNo }}</text>
-            <view class="card-cta" @click="onUpgrade">
-              <text class="card-cta-text">立即升级</text>
-              <text class="luc luc-arrow-right card-cta-arrow" />
-            </view>
           </view>
-        </view>
-
-        <!-- 价格提示（独立于卡片之外，呼吸感更强） -->
-        <view class="price-hint">
-          <text class="price-hint-text">年付 $99 · 首月仅需 $9</text>
         </view>
       </view>
     </view>
@@ -154,9 +145,7 @@ import { memberApi } from '@/api'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.userMembership')
 
-
 // 用户会员信息（来自后端 /api/v1/member）
-
 
 const userInfo = ref({ nickname: '', level: 'NORMAL', growthValue: 0, points: 0, memberNo: '' })
 
@@ -194,8 +183,13 @@ const greeting = computed(() => {
   return map[currentLevelCode.value] || '欢迎加入'
 })
 
-// 会员卡号：直接使用后端返回的 memberNo，未返回时兜底显示
-const cardNo = computed(() => userInfo.value.memberNo || 'MY·00000000·0000')
+// 会员卡号：后端统一返回 12 位数字，这里拼前缀展示（No.MY.000000000001）
+// 兼容旧格式“MY·xxxxxxxx·xxxx”：仅提取数字后拼接，避免重复出现 MY 前缀
+const cardNo = computed(() => {
+  const raw = userInfo.value.memberNo || ''
+  const digits = String(raw).replace(/\D/g, '').slice(0, 12)
+  return `MY.${digits ? digits.padStart(12, '0') : '000000000000'}`
+})
 
 // 进度条使用后端返回的 growthValue(成长值)与等级门槛(growthThreshold)对照计算
 // 修复前用 userInfo.points(积分) 当成长值,导致进度数值无意义
@@ -277,10 +271,6 @@ async function loadPrivileges() {
   } catch (e) {
     console.warn('[membership] load privileges failed', e)
   }
-}
-
-function onUpgrade() {
-  uni.navigateTo({ url: '/pages/user/prime-page' })
 }
 
 function goRules() {
@@ -543,49 +533,17 @@ onActivated(() => {
   border-top: 1rpx dashed rgba(46, 43, 41, 0.25);
 }
 .card-no {
-  font-size: 22rpx;
-  color: rgba(46, 43, 41, 0.7);
-  letter-spacing: 4rpx;
-  font-variant-numeric: tabular-nums;
-  font-family: Georgia, serif;
-}
-.card-cta {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 12rpx 22rpx;
-  border-radius: 999rpx;
-  background: #2e2b29;
-  color: #dbc98a;
-  transition: transform 0.2s ease;
-}
-.card-cta:active {
-  transform: scale(0.96);
-}
-.card-cta-text {
   font-size: 24rpx;
-  font-weight: 700;
-  letter-spacing: 1rpx;
-}
-.card-cta-arrow {
-  font-size: 24rpx;
-}
-
-/* 价格提示（卡片下方，呼吸感） */
-.price-hint {
-  margin-top: 28rpx;
-  text-align: center;
-}
-.price-hint-text {
-  display: inline-block;
-  padding: 10rpx 24rpx;
-  border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(246, 242, 238, 0.85);
-  font-size: 22rpx;
-  letter-spacing: 2rpx;
-  backdrop-filter: blur(10rpx);
-  -webkit-backdrop-filter: blur(10rpx);
+  color: rgba(46, 43, 41, 0.72);
+  letter-spacing: 3rpx;
+  /* 卡号统一使用等宽数字字体，确保每个数字等高对齐、宽度一致 */
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings:
+    'tnum' 1,
+    'lnum' 1;
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  line-height: 1.4;
+  font-weight: 500;
 }
 
 // ===== 区域标题（eyebrow + title 模式） =====

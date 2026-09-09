@@ -80,11 +80,20 @@
             <view
               v-for="opt in group.options"
               :key="opt"
-              class="variant-chip"
-              :class="{ active: isAttrSelected(group.name, opt) }"
+              class="variant-card"
+              :class="{
+                active: isAttrSelected(group.name, opt),
+                'no-img': !optionImage(group.name, opt),
+              }"
               @tap="onAttrSelect(group.name, opt)"
             >
-              {{ opt }}
+              <image
+                v-if="optionImage(group.name, opt)"
+                :src="optionImage(group.name, opt)"
+                class="variant-card-img"
+                mode="aspectFill"
+              />
+              <text class="variant-card-text">{{ opt }}</text>
             </view>
           </view>
         </view>
@@ -173,7 +182,7 @@
     <view class="bottom-bar safe-area-bottom">
       <view class="bar-icon" @tap="goCart">
         <text class="luc" :class="$luc('shopping-cart')" />
-        <text class="bar-label">{{ $t('cart.title') || '购物车' }}</text>
+        <text class="bar-label">{{ $t('pageTitle.cartIndex') }}</text>
         <view v-if="cartStore.totalQuantity > 0" class="bar-badge">
           {{ cartStore.totalQuantity }}
         </view>
@@ -188,8 +197,12 @@
         <text class="luc" :class="$luc('message-circle')" />
         <text class="bar-label">{{ $t('goodsDetail.service') }}</text>
       </view>
-      <view class="bar-btn cart-btn" @tap="onAddCart">{{ $t('goodsDetail.addCart') }}</view>
-      <view class="bar-btn buy-btn" @tap="onBuyNow">{{ $t('goodsDetail.buyNow') }}</view>
+      <view class="bar-btn cart-btn" :class="{ 'is-off': !isOnSale }" @tap="onAddCart">
+        {{ isOnSale ? $t('goodsDetail.addCart') : '已下架' }}
+      </view>
+      <view class="bar-btn buy-btn" :class="{ 'is-off': !isOnSale }" @tap="onBuyNow">
+        {{ isOnSale ? $t('goodsDetail.buyNow') : '已下架' }}
+      </view>
     </view>
   </view>
 
@@ -266,8 +279,40 @@ export default {
     hasVariations() {
       return this.attributeGroups.length > 0
     },
+    /**
+     * 当前选中规格对应的 SKU(依据 sku.spec 值与 selectedAttrs 匹配)
+     * 未选中任何规格(简单商品/默认场景)回退第一个 SKU；
+     * 已选规格但匹配不到时返回 null → 禁止购买，避免"选 A 下单 B"的错配
+     */
+    currentSku() {
+      const skus = this.product?.skus
+      if (!Array.isArray(skus) || !skus.length) return null
+      if (!this.selectedAttrs.length) return skus[0]
+      const sel = this.selectedAttrs
+        .map((a) => String(a.value || '').trim())
+        .filter(Boolean)
+        .sort()
+        .join('|')
+      if (!sel) return skus[0]
+      const hit = skus.find((sku) => {
+        if (!sku.spec) return false
+        const vals = this.parseSpecString(sku.spec)
+          .map((a) => String(a.value || '').trim())
+          .filter(Boolean)
+          .sort()
+          .join('|')
+        return vals === sel
+      })
+      // 命中直接返回；未命中说明规格数据不一致，返回 null 由调用方拦截并提示
+      return hit || null
+    },
+    /** 是否在售：下架商品详情仍可浏览(收藏/历史进入),但禁用加购与立即购买 */
+    isOnSale() {
+      return !this.product || this.product.onSale !== false
+    },
     stockState() {
       void this.localeVersion
+      if (!this.isOnSale) return '已下架'
       if (!this.selectedAttrs.length) return ''
       if (this.stock === 0) return i18n.t('goodsDetail.outOfStock')
       if (this.stock <= 5) return i18n.t('goodsDetail.stockLow', { count: this.stock })
@@ -439,22 +484,26 @@ export default {
     },
 
     /**
+     * 相对路径(/uploads/...) 在 APP/H5 无对应静态资源,统一拼上后端 base
+     */
+    toAbsUrl(u) {
+      if (!u) return u
+      if (String(u).startsWith('http')) return u
+      const base = process.env.VITE_ADMIN_API_BASE
+      if (String(u).startsWith('/') && base) return `${base}${u}`
+      return u
+    },
+
+    /**
      * 组装详情页图集
      * 顺序：变体图(若当前选中变体有图) → 后端 images[] → 主图 mainImage
      */
     buildGallery(data) {
       const list = []
       const seen = new Set()
-      // 相对路径(/uploads/...) APP 端无 dev server，必须拼上后端 base
-      const base = process.env.VITE_ADMIN_API_BASE
-      const toAbs = (u) => {
-        if (!u) return u
-        if (u.startsWith('http')) return u
-        if (u.startsWith('/') && base) return `${base}${u}`
-        return u
-      }
       const push = (url, key) => {
-        const abs = toAbs(url)
+        // 相对路径(/uploads/...) APP 端无 dev server，必须拼上后端 base
+        const abs = this.toAbsUrl(url)
         if (!abs || seen.has(abs)) return
         seen.add(abs)
         list.push({ url: abs, key: key || abs })
@@ -485,9 +534,10 @@ export default {
       const groups = Array.isArray(obj.custom_attributes) ? obj.custom_attributes : []
       for (const g of groups) {
         if (g && g.name && Array.isArray(g.options) && g.options.length) {
+          // 选项值统一去首尾空格,保证与规格串/变体值精确匹配
           result.attributeGroups.push({
             name: g.name,
-            options: g.options.filter((o) => o != null && o !== ''),
+            options: g.options.map((o) => String(o).trim()).filter((o) => o !== ''),
           })
         }
       }
@@ -496,7 +546,10 @@ export default {
         if (!v || !Array.isArray(v.attributes)) continue
         const attrs = v.attributes
           .filter((a) => a && a.name)
-          .map((a) => ({ name: a.name, value: a.value }))
+          .map((a) => ({
+            name: String(a.name).trim(),
+            value: typeof a.value === 'string' ? a.value.trim() : String(a.value),
+          }))
         result.variations.push({
           id: v.id,
           attrs,
@@ -507,7 +560,8 @@ export default {
                 ? v.stock
                 : null,
           price: typeof v.salePrice === 'number' && v.salePrice > 0 ? v.salePrice : v.regularPrice,
-          image: v.image?.src || null,
+          // 变体图同样拼上后端 base,否则 /uploads 相对路径在 APP/H5 加载不出
+          image: v.image?.src ? this.toAbsUrl(String(v.image.src)) : null,
           enabled: v.enabled !== false,
         })
       }
@@ -515,21 +569,28 @@ export default {
     },
 
     /**
-     * 将 SKU.spec 字符串(如 "香草白/500ml")解析为 [{name, value}]
-     * 找不到对应属性名时,按"按顺序匹配"兜底
+     * 将 SKU.spec 字符串解析为 [{name, value}]
+     * 支持两种格式：
+     * - 后端标准格式 "属性名:属性值"，多属性以 "/" 拼接(如 size:500ml / color:black)
+     * - 旧数据纯值拼接(如 香草白/500ml)
+     * 找不到属性名时按位置对应规格组兜底
      */
     parseSpecString(spec) {
       if (!spec) return []
+      const groups = this.attributeGroups
       const parts = String(spec)
-        .split(/[/,\uff0f]/)
+        .split(/[/,，、\uff0f]/)
         .map((s) => s.trim())
         .filter(Boolean)
-      const groups = this.attributeGroups
-      if (!groups.length) return parts.map((p) => ({ name: '规格', value: p }))
-      return parts.map((p, i) => ({
-        name: groups[i]?.name || `规格${i + 1}`,
-        value: p,
-      }))
+      return parts.map((p, i) => {
+        // 片段形如 "属性名:值" 时直接拆分,保证值与规格组/变体值精确匹配
+        const colon = p.search(/[:：]/)
+        if (colon > 0) {
+          return { name: p.slice(0, colon).trim(), value: p.slice(colon + 1).trim() }
+        }
+        // 纯值片段:按位置对号入座
+        return { name: groups[i]?.name || `规格${i + 1}`, value: p }
+      })
     },
 
     /**
@@ -579,6 +640,29 @@ export default {
 
     isAttrSelected(name, value) {
       return !!this.selectedAttrs.find((a) => a.name === name && a.value === value)
+    },
+
+    /**
+     * 规格选项对应的变体图:取启用且带图、匹配该选项的变体
+     * 多规格时优先返回与当前已选组合一致的变体图,否则取该选项任一启用变体图
+     * 无图返回空串,chip 不渲染缩略图
+     */
+    optionImage(groupName, optionValue) {
+      const candidates = this.variations.filter(
+        (v) =>
+          v.enabled &&
+          v.image &&
+          v.attrs.some((a) => a.name === groupName && a.value === optionValue),
+      )
+      if (!candidates.length) return ''
+      const matched = candidates.find((v) =>
+        v.attrs.every((a) => {
+          if (a.name === groupName) return true
+          const sel = this.selectedAttrs.find((s) => s.name === a.name)
+          return !sel || sel.value === a.value
+        }),
+      )
+      return (matched || candidates[0]).image
     },
 
     onAttrSelect(name, value) {
@@ -726,32 +810,65 @@ export default {
       })
     },
 
-    onAddCart() {
+    async onAddCart() {
       if (!this.product) return
-      const firstSku = this.product.skus?.[0]
-      this.cartStore.addItem({
-        skuId: firstSku?.id || this.product.id,
+      // 下架商品禁止加购(按钮已置灰,此处兜底)
+      if (!this.isOnSale) {
+        uni.showToast({ title: '商品已下架', icon: 'none' })
+        return
+      }
+      // 取当前选中规格对应的 SKU(含真实库存),与购物车数量上限保持一致
+      const sku = this.currentSku
+      // 有规格选项但当前组合匹配不到 SKU:禁止加入,避免加错规格
+      if (!sku && this.variations.length) {
+        uni.showToast({ title: '请选择有效的规格组合', icon: 'none' })
+        return
+      }
+      const ok = await this.cartStore.addItem({
+        skuId: sku?.id || this.product.id,
         productId: this.product.id,
         name: this.product.name,
         image: this.galleryImages[0]?.url || this.product.mainImage,
         price: parseFloat(this.product.price) || 0,
         quantity: 1,
+        stock: sku?.stock ?? this.stock,
         attrs: this.selectedAttrs,
       })
-      uni.showToast({ title: '已加入购物车', icon: 'success' })
+      // 库存不足等被拦截时 store 已提示,不再弹加购成功
+      if (ok !== false) {
+        uni.showToast({ title: i18n.t('goodsDetail.addCartSuccess'), icon: 'success' })
+      }
     },
 
     onBuyNow() {
       if (!this.product) return
-      const firstSku = this.product.skus?.[0]
+      // 下架商品禁止购买
+      if (!this.isOnSale) {
+        uni.showToast({ title: '商品已下架', icon: 'none' })
+        return
+      }
+      // 取当前选中规格对应的 SKU(含真实库存),保证立即购买与结算对象一致
+      const sku = this.currentSku
+      // 有规格选项但组合匹配不到 SKU → 规格数据不一致,禁止下单防止买错规格
+      if (!sku && this.variations.length) {
+        uni.showToast({ title: '请选择有效的规格组合', icon: 'none' })
+        return
+      }
+      // 规格已无库存时禁止直接下单,与加购口径一致(无 SKU 的简单商品用商品主库存)
+      const stockVal = sku?.stock != null ? Number(sku.stock) : Number(this.stock)
+      if (stockVal <= 0) {
+        uni.showToast({ title: '该规格暂时缺货', icon: 'none' })
+        return
+      }
       // 立即购买:设置临时单品直接进入结算,不写入购物车
       this.cartStore.setBuyNow({
-        skuId: firstSku?.id || this.product.id,
+        skuId: sku?.id || this.product.id,
         productId: this.product.id,
         name: this.product.name,
         image: this.galleryImages[0]?.url || this.product.mainImage,
         price: parseFloat(this.product.price) || 0,
         quantity: 1,
+        stock: sku?.stock ?? this.stock,
         attrs: this.selectedAttrs,
       })
       uni.navigateTo({ url: '/pages/cart/checkout' })
@@ -1000,25 +1117,61 @@ export default {
   gap: 16rpx;
 }
 
-.variant-chip {
-  display: inline-flex;
+/* 电商风格规格卡片:有变体图时上图下文,无图时纯文字居中 */
+.variant-card {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0 32rpx;
-  height: 64rpx;
-  font-size: 26rpx;
-  font-weight: 500;
-  border-radius: 9999rpx;
+  gap: 8rpx;
+  min-width: 168rpx;
+  padding: 10rpx;
+  border-radius: 16rpx;
   background-color: var(--color-surface, #ffffff);
+  border: 2rpx solid var(--border, #eae5dd);
+  box-sizing: border-box;
+}
+
+.variant-card.no-img {
+  min-width: 120rpx;
+  height: 80rpx;
+  padding: 0 28rpx;
+  flex-direction: row;
+  border-radius: 9999rpx;
+}
+
+.variant-card-img {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 10rpx;
+  flex-shrink: 0;
+  background-color: var(--background-200, #f2efe9);
+}
+
+.variant-card-text {
+  max-width: 150rpx;
+  font-size: 24rpx;
+  font-weight: 500;
   color: var(--text-800, #2e2b29);
-  border: 1rpx solid var(--border, #eae5dd);
+  text-align: center;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.variant-chip.active {
-  background-color: var(--brand-500, #dbc98a);
-  color: var(--primary-foreground, #ffffff);
+.variant-card.active {
   border-color: var(--brand-500, #dbc98a);
+  background-color: var(--color-primary-light, #faf6ea);
+}
+
+.variant-card.active .variant-card-text {
+  color: var(--brand-700, #8a7224);
+  font-weight: 600;
+}
+
+.variant-card.active .variant-card-img {
+  border: 2rpx solid var(--brand-500, #dbc98a);
 }
 
 .stock-state {
@@ -1313,6 +1466,11 @@ export default {
 .buy-btn {
   background-color: var(--brand-500, #dbc98a);
   color: var(--primary-foreground, #ffffff);
+}
+
+/* 下架商品购买按钮置灰 */
+.bar-btn.is-off {
+  opacity: 0.45;
 }
 
 /* iPhone X 及以上底部安全区 */

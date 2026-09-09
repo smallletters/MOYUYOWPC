@@ -1,6 +1,7 @@
 package com.moyuyo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.dao.entity.CouponEntity;
 import com.moyuyo.dao.entity.UserCouponEntity;
@@ -12,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashSet;
@@ -109,11 +112,89 @@ public class CouponServiceImpl implements CouponService {
         UserCouponEntity uc = userCouponMapper.selectById(userCouponId);
         if (uc == null) throw new IllegalArgumentException("用户优惠券不存在");
         if (!uc.getUserId().equals(userId)) throw new IllegalArgumentException("无权使用他人优惠券");
-        if (!"UNUSED".equals(uc.getStatus())) throw new IllegalArgumentException("该优惠券不可使用");
-        uc.setStatus("USED");
-        uc.setUsedTime(LocalDateTime.now());
-        uc.setUsedOrderId(orderId);
-        userCouponMapper.updateById(uc);
+        // 条件更新防止并发双花：仅 UNUSED 能核销成功；失败说明已被其他订单使用
+        int updated = userCouponMapper.update(null,
+                new LambdaUpdateWrapper<UserCouponEntity>()
+                        .eq(UserCouponEntity::getId, userCouponId)
+                        .eq(UserCouponEntity::getUserId, userId)
+                        .eq(UserCouponEntity::getStatus, "UNUSED")
+                        .set(UserCouponEntity::getStatus, "USED")
+                        .set(UserCouponEntity::getUsedTime, LocalDateTime.now())
+                        .set(UserCouponEntity::getUsedOrderId, orderId));
+        if (updated == 0) {
+            throw new IllegalStateException("该优惠券已被使用");
+        }
+    }
+
+    @Override
+    @Transactional
+    public void releaseCoupon(Long userCouponId, Long orderId) {
+        if (userCouponId == null || orderId == null) {
+            return;
+        }
+        // 条件更新：仅当该券确由本订单核销(USED & usedOrderId)时才返还，防止并发误还
+        int updated = userCouponMapper.update(null,
+                new LambdaUpdateWrapper<UserCouponEntity>()
+                        .eq(UserCouponEntity::getId, userCouponId)
+                        .eq(UserCouponEntity::getStatus, "USED")
+                        .eq(UserCouponEntity::getUsedOrderId, orderId)
+                        .set(UserCouponEntity::getStatus, "UNUSED")
+                        .set(UserCouponEntity::getUsedTime, null)
+                        .set(UserCouponEntity::getUsedOrderId, null));
+        if (updated == 1) {
+            log.info("Coupon released by order cancel: userCouponId={}, orderId={}", userCouponId, orderId);
+        }
+    }
+
+    @Override
+    public BigDecimal computeCouponDiscount(Long userId, Long userCouponId, BigDecimal goodsAmount) {
+        if (userCouponId == null) {
+            return BigDecimal.ZERO; // 未使用优惠券
+        }
+        UserCouponEntity uc = userCouponMapper.selectById(userCouponId);
+        if (uc == null) {
+            throw new IllegalArgumentException("用户优惠券不存在");
+        }
+        if (uc.getUserId() == null || !uc.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("无权使用他人优惠券");
+        }
+        if (!"UNUSED".equals(uc.getStatus())) {
+            throw new IllegalArgumentException("该优惠券不可使用");
+        }
+        CouponEntity coupon = couponMapper.selectById(uc.getCouponId());
+        if (coupon == null || !Boolean.TRUE.equals(coupon.getActive())) {
+            throw new IllegalArgumentException("该优惠券不可使用");
+        }
+        if (coupon.getEndTime() != null && coupon.getEndTime().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("该优惠券已过期");
+        }
+        BigDecimal subtotal = goodsAmount == null ? BigDecimal.ZERO : goodsAmount;
+        if (coupon.getMinOrderAmount() != null && subtotal.compareTo(coupon.getMinOrderAmount()) < 0) {
+            throw new IllegalArgumentException("未满足优惠券使用门槛（满 "
+                    + coupon.getMinOrderAmount().setScale(2, RoundingMode.DOWN) + " 可用）");
+        }
+        BigDecimal discount;
+        if ("PERCENT".equalsIgnoreCase(coupon.getType()) && coupon.getDiscountValue() != null) {
+            // 折扣值 95 = 9.5 折：减免 = subtotal × (100 - 95)/100（与前端一致）
+            discount = subtotal.multiply(BigDecimal.valueOf(100)
+                            .subtract(coupon.getDiscountValue()))
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        } else {
+            discount = coupon.getDiscountValue() == null ? BigDecimal.ZERO : coupon.getDiscountValue();
+        }
+        // 防御：券配置异常导致折扣为负时按 0 处理，绝不给订单加价
+        if (discount.compareTo(BigDecimal.ZERO) < 0) {
+            discount = BigDecimal.ZERO;
+        }
+        // 封顶：优惠券自身上限 + 订单小计
+        if (coupon.getMaxDiscountAmount() != null
+                && discount.compareTo(coupon.getMaxDiscountAmount()) > 0) {
+            discount = coupon.getMaxDiscountAmount();
+        }
+        if (discount.compareTo(subtotal) > 0) {
+            discount = subtotal;
+        }
+        return discount;
     }
 
     @Override

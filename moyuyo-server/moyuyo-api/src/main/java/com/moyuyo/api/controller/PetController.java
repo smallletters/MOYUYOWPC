@@ -2,6 +2,7 @@ package com.moyuyo.api.controller;
 
 import com.moyuyo.common.Result;
 import com.moyuyo.common.dto.pet.PetAchievementVO;
+import com.moyuyo.common.dto.pet.PetCareSummaryVO;
 import com.moyuyo.common.dto.pet.PetReminderVO;
 import com.moyuyo.common.dto.pet.PetVO;
 import com.moyuyo.common.security.UserContextHolder;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Tag(name = "宠物档案")
@@ -62,6 +64,14 @@ public class PetController {
     return Result.success(petService.updatePet(UserContextHolder.getUserId(), pet));
   }
 
+  @Operation(summary = "更新宠物状态（ACTIVE/DIED/ACCIDENT）")
+  @PutMapping("/{id}/status")
+  public Result<PetEntity> updateStatus(
+      @PathVariable @Positive(message = "宠物 ID 必须为正整数") Long id,
+      @RequestBody Map<String, String> body) {
+    return Result.success(petService.updatePetStatus(UserContextHolder.getUserId(), id, body.get("status")));
+  }
+
   @Operation(summary = "删除宠物")
   @DeleteMapping("/{id}")
   public Result<Void> delete(@PathVariable @Positive(message = "宠物 ID 必须为正整数") Long id) {
@@ -82,21 +92,37 @@ public class PetController {
     return Result.success(petService.createGrowthRecord(UserContextHolder.getUserId(), record));
   }
 
+  @Operation(summary = "删除成长记录（会联动回算该类型下次提醒）")
+  @DeleteMapping("/{id}/records/{recordId}")
+  public Result<Void> deleteRecord(
+      @PathVariable @Positive(message = "宠物 ID 必须为正整数") Long id,
+      @PathVariable @Positive(message = "记录 ID 必须为正整数") Long recordId) {
+    petService.deleteGrowthRecord(UserContextHolder.getUserId(), id, recordId);
+    return Result.success();
+  }
+
   @Operation(summary = "护理提醒列表")
   @GetMapping("/{id}/reminders")
   public Result<List<PetReminderVO>> getReminders(@PathVariable @Positive(message = "宠物 ID 必须为正整数") Long id) {
     return Result.success(petService.getReminders(id, UserContextHolder.getUserId()));
   }
 
-  @Operation(summary = "更新提醒")
+  @Operation(summary = "更新提醒（reminderId=0 表示按 petId+type 新增/upsert）")
   @PutMapping("/{id}/reminders/{reminderId}")
   public Result<PetReminderEntity> updateReminder(
       @PathVariable @Positive(message = "宠物 ID 必须为正整数") Long id,
-      @PathVariable @Positive(message = "提醒 ID 必须为正整数") Long reminderId,
+      @PathVariable Long reminderId,
       @RequestBody PetReminderEntity reminder) {
     reminder.setId(reminderId);
     reminder.setPetId(id);
     return Result.success(petService.updateReminder(UserContextHolder.getUserId(), reminder));
+  }
+
+  @Operation(summary = "护理聚合摘要（主页洗护/疫苗/驱虫卡片数据源）")
+  @GetMapping("/{id}/care-summary")
+  public Result<List<PetCareSummaryVO>> getCareSummary(
+      @PathVariable @Positive(message = "宠物 ID 必须为正整数") Long id) {
+    return Result.success(petService.getCareSummary(id, UserContextHolder.getUserId()));
   }
 
   @Operation(summary = "成就列表")

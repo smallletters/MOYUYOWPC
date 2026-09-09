@@ -14,9 +14,9 @@
         <el-form-item label="审核状态">
           <el-select v-model="filters.auditStatus" placeholder="全部" clearable style="width:140px">
             <el-option label="全部" value="" />
-            <el-option label="待审核" value="待审核" />
-            <el-option label="已审核" value="已审核" />
-            <el-option label="已驳回" value="已驳回" />
+            <el-option label="待审核" value="PENDING" />
+            <el-option label="已审核" value="APPROVED" />
+            <el-option label="已驳回" value="REJECTED" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -39,14 +39,14 @@
         <el-table-column prop="content" label="评价内容" min-width="220" show-overflow-tooltip />
         <el-table-column prop="status" label="审核状态" width="110">
           <template #default="{ row }">
-            <el-tag :type="auditTag(row.status)" size="small">{{ row.status }}</el-tag>
+            <el-tag :type="auditTag(row.status)" size="small">{{ auditLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="提交时间" width="170" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" type="success" @click="handlePass(row)" :disabled="row.status !== '待审核'">通过</el-button>
-            <el-button size="small" type="danger" @click="handleReject(row)" :disabled="row.status !== '待审核'">驳回</el-button>
+            <el-button size="small" type="success" @click="handlePass(row)" :disabled="row.status !== 'PENDING'">通过</el-button>
+            <el-button size="small" type="danger" @click="handleReject(row)" :disabled="row.status !== 'PENDING'">驳回</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -82,8 +82,13 @@ const filters = reactive({
 const tableData = ref([])
 
 function auditTag(status) {
-  const map = { '待审核': 'warning', '已审核': 'success', '已驳回': 'danger' }
+  const map = { PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger' }
   return map[status] || ''
+}
+
+function auditLabel(status) {
+  const map = { PENDING: '待审核', APPROVED: '已审核', REJECTED: '已驳回' }
+  return map[status] || status || '-'
 }
 
 // 加载商品评价列表

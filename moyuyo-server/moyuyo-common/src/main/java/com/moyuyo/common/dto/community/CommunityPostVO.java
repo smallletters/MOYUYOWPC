@@ -12,6 +12,8 @@ public class CommunityPostVO {
 
     private Long id;
     private Long userId;
+    /** 关联宠物 ID（可空） */
+    private Long petId;
     private String username;
     private String avatar;
     private String content;

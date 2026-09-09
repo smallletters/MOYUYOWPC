@@ -14,6 +14,9 @@ public class CommunityPostEntity {
 
     private Long userId;
 
+    /** 关联宠物 ID（可空）：非空时帖子进入该宠物的记忆树 */
+    private Long petId;
+
     private String content;
 
     private String images;

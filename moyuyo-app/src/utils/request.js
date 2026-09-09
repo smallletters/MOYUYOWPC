@@ -1,5 +1,6 @@
 import { config, REQUEST_TIMEOUT, RESPONSE_CODE } from './config'
 import { getStorage, removeStorage, setStorage, STORAGE_KEYS } from './storage'
+import { t } from '@/i18n'
 // 静态 import(替代原 import('@/api/user') 动态 import):
 //   HBuilder(uni-app 3.8.12)在编译期看到 dynamic import 会启用 Rollup
 //   代码分割,但其 output.format 默认 iife,二者冲突 → build failed.
@@ -111,6 +112,28 @@ function resolveBaseUrl(url) {
   return `${config.apiBase}${url}`
 }
 
+// 后端中文错误 → i18n key 映射：后端 Result.message 多为中文字面量，无法跟随 App
+// 语言切换。命中本表时按当前语言翻译，未收录的文案回落后端原文(运营/新增错误不受影响)。
+// 新增后端错误提示时，在两份语言包的 serverMsg.* 里补文案并在此追加一条映射即可。
+const SERVER_ERROR_MAP = {
+  宠物不存在或无权访问: 'serverMsg.petNotFoundOrNoAccess',
+  宠物不存在或无权操作: 'serverMsg.petNotFoundOrNoOperate',
+  宠物不存在: 'serverMsg.petNotFound',
+  记录不存在或不属于该宠物: 'serverMsg.recordNotBelongToPet',
+  日记不存在或无权访问: 'serverMsg.diaryNotFoundOrNoAccess',
+  日记不存在或无权操作: 'serverMsg.diaryNotFoundOrNoOperate',
+  帖子不存在: 'serverMsg.postNotFound',
+  关联宠物不存在或无权使用: 'serverMsg.linkedPetNotFound',
+  '内容包含敏感词，无法发布': 'serverMsg.sensitiveWord',
+}
+
+// 后端错误提示本地化：命中映射返回当前语言文案，否则原样返回
+function localizeServerMessage(msg) {
+  if (!msg) return msg
+  const key = SERVER_ERROR_MAP[String(msg).trim()]
+  return key ? t(key) : msg
+}
+
 export function request(options) {
   const {
     url,
@@ -160,17 +183,19 @@ export function request(options) {
           } else if (res.data && res.data.code === 0) {
             resolve(res.data.data)
           } else {
-            // 后端 Result.error:code !== 0 但 HTTP 200,直接用 message
-            const msg = res.data?.message || `请求失败(${res.statusCode})`
+            // 后端 Result.error:code !== 0 但 HTTP 200,直接用 message(先做 i18n 本地化)
+            const msg = localizeServerMessage(res.data?.message) || `请求失败(${res.statusCode})`
             console.warn('[request] biz error:', fullUrl, res.statusCode, res.data)
             if (showError) uni.showToast({ title: msg, icon: 'none', duration: 3000 })
             reject(new Error(msg))
           }
         } else {
           // HTTP 4xx/5xx:后端通常也返回 Result.error JSON(code+message)
+          // 命中后端错误映射表时按当前语言翻译,未收录则回落后端原文
           const backendMsg = res.data?.message
           const status = res.statusCode
-          const msg = (backendMsg && String(backendMsg).trim()) || `Request failed (${status})`
+          const msg =
+            (localizeServerMessage(backendMsg) || '').trim() || `Request failed (${status})`
           console.error('[request] http error:', fullUrl, status, res.data)
           // 把 HTTP 状态码附加到 Error 对象,便于登录页区分 401/403/400 等
           const err = new Error(msg)

@@ -45,7 +45,7 @@
           :interval="3000"
           :duration="500"
           :circular="true"
-          :disable-touch="true"
+          :disable-touch="false"
           :indicator-dots="true"
           indicator-active-color="#2E2B29"
           indicator-color="rgba(46,43,41,0.3)"

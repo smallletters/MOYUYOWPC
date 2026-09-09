@@ -178,56 +178,79 @@ export function getSupportedLanguages() {
 export const i18n = new I18n()
 
 /**
-   * 便捷函数:在 Vue 选项式 API / setup 中调用
-   */
-  export function t(key, params) {
-    return i18n.t(key, params)
-  }
+ * 便捷函数:在 Vue 选项式 API / setup 中调用
+ */
+export function t(key, params) {
+  return i18n.t(key, params)
+}
 
-  /**
-   * 后端分类名本地化:输入后端 name,返回当前 locale 下的展示文本。
-   * 字典查不到时回落到后端原值(运营新增分类不会因为前端没翻译而消失)。
-   *
-   * @param {string} name - 后端返回的分类名(精确匹配)
-   * @param {boolean} [isSub] - 是否二级分类;默认 false(一级)
-   * @returns {string}
-   */
-  export function tCategoryName(name, isSub) {
-    if (!name) return ''
-    const key = isSub ? 'category.subNames' : 'category.names'
-    const map = i18n.t(key) || {}
-    // i18n.t 返回的是字符串(如果 key 找不到)或对象(找到了);
-    // 我们这里访问的就是字典里的对象,如果取到的是字符串说明字典里没这个对象(不太可能)
-    if (typeof map === 'object' && map !== null) {
-      return Object.prototype.hasOwnProperty.call(map, name) ? map[name] : name
-    }
-    return name
+/**
+ * 后端分类名本地化:输入后端 name,返回当前 locale 下的展示文本。
+ * 字典查不到时回落到后端原值(运营新增分类不会因为前端没翻译而消失)。
+ *
+ * @param {string} name - 后端返回的分类名(精确匹配)
+ * @param {boolean} [isSub] - 是否二级分类;默认 false(一级)
+ * @returns {string}
+ */
+export function tCategoryName(name, isSub) {
+  if (!name) return ''
+  const key = isSub ? 'category.subNames' : 'category.names'
+  const map = i18n.t(key) || {}
+  // i18n.t 返回的是字符串(如果 key 找不到)或对象(找到了);
+  // 我们这里访问的就是字典里的对象,如果取到的是字符串说明字典里没这个对象(不太可能)
+  if (typeof map === 'object' && map !== null) {
+    return Object.prototype.hasOwnProperty.call(map, name) ? map[name] : name
   }
+  return name
+}
 
-  /**
-   * 把当前 i18n.locale 同步到 uni-app 内置 i18n 系统。
-   *
-   * 背景:uni-h5 内置了 tabBar / navigationBar 的 i18n 机制——读取
-   * pages.json 里 %key% 形式的占位符,然后从 __uniConfig.locales 字典
-   * 里取当前 locale 对应的文本。这个机制依赖 uni.getLocale() 返回的值。
-   *
-   * 我们自己实现的 i18n 模块(i18n.locale)与 uni 内置 locale 是两份独立状态,
-   * 必须在每次切换时同步,否则切换语言后:
-   *   - 自己页面模板的 $t() 会更新(响应式)
-   *   - 但 tabBar 底栏、navigationBar 标题仍然是 pages.json 初始 locale 的文字
-   *
-   * 用法:在 createApp() 启动时调一次 + 订阅 i18n.locale 变化时再调
-   */
-  export function syncUniLocale() {
-    const apply = () => {
-      if (typeof uni === 'undefined' || typeof uni.setLocale !== 'function') return
-      try {
-        uni.setLocale(i18n.locale)
-      } catch (e) {
-        // uni-h5 内部 setLocale 失败通常是因为 __uniConfig.locales 没配
-        // 此场景下 tabBar 不会自动翻译,只能靠 setTabBarItem 兜底(已废弃)
+/**
+ * 把当前 i18n.locale 同步到 uni-app 内置 i18n 系统。
+ *
+ * 背景:uni-h5 内置了 tabBar / navigationBar 的 i18n 机制——读取
+ * pages.json 里 %key% 形式的占位符,然后从 __uniConfig.locales 字典
+ * 里取当前 locale 对应的文本。这个机制依赖 uni.getLocale() 返回的值。
+ *
+ * 我们自己实现的 i18n 模块(i18n.locale)与 uni 内置 locale 是两份独立状态,
+ * 必须在每次切换时同步,否则切换语言后:
+ *   - 自己页面模板的 $t() 会更新(响应式)
+ *   - 但 tabBar 底栏、navigationBar 标题仍然是 pages.json 初始 locale 的文字
+ *
+ * 用法:在 createApp() 启动时调一次 + 订阅 i18n.locale 变化时再调
+ */
+export function syncUniLocale() {
+  // uni-app 内置 i18n（如 picker 弹窗的「完成/取消」等组件文案）只注册了
+  // en / es / fr / zh-Hans / zh-Hant 五种标准语言代码；而项目自身 I18n 用的是
+  // zh-CN / en-US。若不映射直接传给 uni.setLocale，内置组件匹配不到语言包，
+  // 会回退显示 key（如 uni.picker.done）。故这里做一次映射。
+  const UNI_LOCALE_MAP = {
+    'zh-CN': 'zh-Hans',
+    'en-US': 'en',
+  }
+  const apply = () => {
+    const uniLocale = UNI_LOCALE_MAP[i18n.locale] || i18n.locale
+    // 关键：H5 端 uni-h5 的 useI18n() 在懒初始化时优先读取 localStorage['UNI_LOCALE']
+    // 来决定内置组件的语言码。而 main.js 里 syncUniLocale() 在 createSSRApp 之前执行，
+    // 此时 uni 的 app 实例尚未创建，uni.setLocale() 会静默返回 false 不落地任何语言设置，
+    // 内置组件便退回 navigator.language（浏览器为 zh-CN），可 uni 内置文案只注册在 zh-Hans/en，
+    // 于是 picker 弹窗出现 uni.picker.done 这类未翻译的 key。
+    // 这里主动写入该存储键，保证内置组件初始化时就能拿到映射后的标准语言码。
+    try {
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        window.localStorage['UNI_LOCALE'] = uniLocale
       }
+    } catch (e) {
+      // 非浏览器环境或存储被禁用时忽略，无碍业务
     }
-    apply()
-    i18n.subscribe(apply)
+    // 若 app 已创建，再调用 uni.setLocale 动态切换框架语言（后续切换语言时 app 已就绪，可生效）
+    if (typeof uni === 'undefined' || typeof uni.setLocale !== 'function') return
+    try {
+      uni.setLocale(uniLocale)
+    } catch (e) {
+      // uni-h5 内部 setLocale 失败通常是因为 __uniConfig.locales 没配
+      // 此场景下 tabBar 不会自动翻译，只能靠 setTabBarItem 兜底(已废弃)
+    }
   }
+  apply()
+  i18n.subscribe(apply)
+}

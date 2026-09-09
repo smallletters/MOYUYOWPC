@@ -4,11 +4,17 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.dto.review.CreateReviewRequest;
 import com.moyuyo.common.dto.review.ReviewVO;
+import com.moyuyo.common.enums.OrderStatusEnum;
+import com.moyuyo.common.enums.ReviewStatusEnum;
 import com.moyuyo.common.utils.JsonUtils;
 import com.moyuyo.common.utils.PageUtils;
 import com.moyuyo.common.utils.XssSanitizer;
+import com.moyuyo.dao.entity.OrderEntity;
+import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.ProductReviewEntity;
 import com.moyuyo.dao.entity.UserEntity;
+import com.moyuyo.dao.mapper.OrderItemMapper;
+import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.ProductReviewMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.ReviewService;
@@ -28,6 +34,8 @@ public class ReviewServiceImpl implements ReviewService {
 
     private final ProductReviewMapper productReviewMapper;
     private final UserMapper userMapper;
+    private final OrderItemMapper orderItemMapper;
+    private final OrderMapper orderMapper;
 
     @Override
     public Page<ReviewVO> getProductReviews(Long productId, int page, int size) {
@@ -35,7 +43,7 @@ public class ReviewServiceImpl implements ReviewService {
             new Page<>(page, size),
             new LambdaQueryWrapper<ProductReviewEntity>()
                 .eq(ProductReviewEntity::getProductId, productId)
-                .eq(ProductReviewEntity::getStatus, "APPROVED")
+                .eq(ProductReviewEntity::getStatus, ReviewStatusEnum.APPROVED.name())
                 .orderByDesc(ProductReviewEntity::getCreateTime)
         );
         return toReviewVOPage(entityPage);
@@ -44,6 +52,39 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional
     public ReviewVO createReview(Long userId, CreateReviewRequest request) {
+        // 归属校验：只能评价"自己的、已收货/已完成订单中的真实商品"，防止刷评价/刷积分
+        if (request.getOrderId() == null || request.getOrderItemId() == null
+            || request.getProductId() == null) {
+            throw new IllegalArgumentException("缺少订单信息，无法评价");
+        }
+        OrderItemEntity item = orderItemMapper.selectById(request.getOrderItemId());
+        if (item == null) {
+            throw new IllegalArgumentException("评价的订单商品不存在");
+        }
+        if (!request.getOrderId().equals(item.getOrderId())) {
+            throw new IllegalArgumentException("订单与商品明细不匹配");
+        }
+        if (!request.getProductId().equals(item.getProductId())) {
+            throw new IllegalArgumentException("商品与订单明细不一致");
+        }
+        OrderEntity order = orderMapper.selectById(item.getOrderId());
+        if (order == null || !userId.equals(order.getUserId())) {
+            throw new IllegalArgumentException("无权评价该订单");
+        }
+        String status = order.getStatus();
+        if (!OrderStatusEnum.RECEIVED.name().equals(status)
+            && !OrderStatusEnum.COMPLETED.name().equals(status)) {
+            throw new IllegalArgumentException("订单需确认收货/完成后才能评价");
+        }
+        // 防重复评价（唯一索引 user_id+order_item_id 兜底）
+        Long duplicate = productReviewMapper.selectCount(
+            new LambdaQueryWrapper<ProductReviewEntity>()
+                .eq(ProductReviewEntity::getUserId, userId)
+                .eq(ProductReviewEntity::getOrderItemId, request.getOrderItemId()));
+        if (duplicate != null && duplicate > 0) {
+            throw new IllegalArgumentException("该订单商品已评价");
+        }
+
         ProductReviewEntity entity = new ProductReviewEntity();
         entity.setProductId(request.getProductId());
         entity.setUserId(userId);
@@ -54,9 +95,13 @@ public class ReviewServiceImpl implements ReviewService {
         entity.setContent(XssSanitizer.sanitizeRichText(request.getContent()));
         entity.setTags(JsonUtils.toJsonArray(request.getTags()));
         entity.setImages(JsonUtils.toJsonArray(request.getImages()));
-        entity.setStatus("PENDING");
-
-        productReviewMapper.insert(entity);
+        entity.setStatus(ReviewStatusEnum.PENDING.name());
+        try {
+            productReviewMapper.insert(entity);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            // 并发重复提交：唯一索引兜底
+            throw new IllegalArgumentException("该订单商品已评价");
+        }
 
         UserEntity user = userMapper.selectById(userId);
         if (user != null) {

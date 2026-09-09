@@ -1,6 +1,7 @@
 package com.moyuyo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -210,9 +211,20 @@ public class RefundServiceImpl implements RefundService {
     public void completeRefund(Long refundId, Long operatorId, String transactionId) {
         RefundEntity entity = refundMapper.selectById(refundId);
         if (entity == null) throw new IllegalArgumentException("退款申请不存在");
-        if (!"APPROVED".equals(entity.getStatus())) throw new IllegalStateException("当前状态不允许完成退款");
 
         OrderEntity order = orderMapper.selectById(entity.getOrderId());
+
+        // 原子抢占：仅 APPROVED 可进入完成流程(PROCESSING→COMPLETED)。
+        // 防止并发重复点击/Webhook 重试导致"多次三方退款 + 多次积分返还/扣回"。
+        // 若第三方调用失败抛出异常，事务回滚自动恢复 APPROVED 供重试。
+        int claimed = refundMapper.update(null,
+            new LambdaUpdateWrapper<RefundEntity>()
+                .eq(RefundEntity::getId, refundId)
+                .eq(RefundEntity::getStatus, "APPROVED")
+                .set(RefundEntity::getStatus, "PROCESSING"));
+        if (claimed == 0) {
+            throw new IllegalStateException("退款单已被处理或当前状态不允许完成退款");
+        }
 
         // #3：自动调用第三方支付渠道退款 API
         // 优先级：手动录入的 transactionId（财务已线下处理）> 自动调用三方

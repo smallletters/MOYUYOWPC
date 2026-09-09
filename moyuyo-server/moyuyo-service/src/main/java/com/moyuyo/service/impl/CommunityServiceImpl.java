@@ -37,6 +37,7 @@ public class CommunityServiceImpl implements CommunityService {
     private final CommunityLikeMapper likeMapper;
     private final CommunityCollectMapper collectMapper;
     private final UserMapper userMapper;
+    private final PetMapper petMapper;
     private final ContentReviewMapper contentReviewMapper;
     private final NotificationService notificationService;
     private final SensitiveWordMapper sensitiveWordMapper;
@@ -123,12 +124,21 @@ public class CommunityServiceImpl implements CommunityService {
 
     @Override
     @Transactional
-    public CommunityPostVO createPost(Long userId, String content, List<String> images, String video, String cover, String topic, java.time.LocalDateTime scheduledAt) {
+    public CommunityPostVO createPost(Long userId, Long petId, String content, List<String> images, String video, String cover, String topic, java.time.LocalDateTime scheduledAt) {
         String cleanContent = XssSanitizer.sanitizeRichText(content);
         rejectSensitiveContent(cleanContent);
 
+        // 关联宠物归属校验：petId 可选，传了必须是当前用户自己的宠物
+        if (petId != null) {
+            PetEntity pet = petMapper.selectById(petId);
+            if (pet == null || !Objects.equals(pet.getUserId(), userId)) {
+                throw new IllegalArgumentException("关联宠物不存在或无权使用");
+            }
+        }
+
         CommunityPostEntity entity = new CommunityPostEntity();
         entity.setUserId(userId);
+        entity.setPetId(petId);
         entity.setContent(cleanContent);
         // 视频与图片互斥：有视频则清空图片数组，避免冗余存储
         entity.setImages((video != null && !video.isBlank()) ? null : JsonUtils.toJsonArray(images));
@@ -225,11 +235,17 @@ public class CommunityServiceImpl implements CommunityService {
     }
 
     @Override
-    public Page<CommunityPostVO> listMyPosts(Long userId, int page, int size) {
-        Page<CommunityPostEntity> entityPage = postMapper.selectPage(new Page<>(page, size),
-                new LambdaQueryWrapper<CommunityPostEntity>()
-                        .eq(CommunityPostEntity::getUserId, userId)
-                        .orderByDesc(CommunityPostEntity::getCreateTime));
+    public Page<CommunityPostVO> listMyPosts(Long userId, Long petId, int page, int size) {
+        LambdaQueryWrapper<CommunityPostEntity> wrapper = new LambdaQueryWrapper<CommunityPostEntity>()
+                .eq(CommunityPostEntity::getUserId, userId)
+                .orderByDesc(CommunityPostEntity::getCreateTime);
+        // petId 非空：只取已发布(status=1)且关联到该宠物的帖子（宠物记忆树语义：
+        // 定时待发布/隐藏帖不进入时间轴，避免把“未来的事”显示成已发生）
+        if (petId != null) {
+            wrapper.eq(CommunityPostEntity::getPetId, petId)
+                    .eq(CommunityPostEntity::getStatus, 1);
+        }
+        Page<CommunityPostEntity> entityPage = postMapper.selectPage(new Page<>(page, size), wrapper);
         return toVOPage(entityPage);
     }
 
@@ -373,6 +389,7 @@ public class CommunityServiceImpl implements CommunityService {
         CommunityPostVO vo = new CommunityPostVO();
         vo.setId(entity.getId());
         vo.setUserId(entity.getUserId());
+        vo.setPetId(entity.getPetId());
         vo.setContent(entity.getContent());
         vo.setImages(JsonUtils.parseStringArray(entity.getImages()));
         vo.setVideo(entity.getVideo());

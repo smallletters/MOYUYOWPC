@@ -1,5 +1,20 @@
-﻿<template>
+<template>
   <view class="cart">
+    <!-- 顶部导航栏：页面已关闭原生导航(navigationStyle: custom)，统一在此渲染，避免两条导航栏 -->
+    <view class="header" :style="{ paddingTop: statusBarHeight + 'px' }">
+      <view class="header-inner">
+        <view class="header-back" aria-label="返回" @click="goBack">
+          <text class="header-back-icon luc luc-arrow-left" />
+        </view>
+        <text class="header-title">{{ $t('pageTitle.cartIndex') }}</text>
+        <view class="header-edit" @click="onToggleEdit">
+          <text v-if="cartItems.length > 0" class="header-edit-text">
+            {{ editing ? '完成' : '编辑' }}
+          </text>
+        </view>
+      </view>
+    </view>
+
     <!-- 空状态 -->
     <view v-if="cartItems.length === 0 && expiredItems.length === 0" class="empty">
       <text class="empty-emoji luc-shopping-cart" />
@@ -8,17 +23,6 @@
     </view>
 
     <template v-else>
-      <!-- 顶部导航栏 -->
-      <view class="header">
-        <view class="header-back" aria-label="返回" @click="goBack">
-          <text class="header-back-icon luc-arrow-left" />
-        </view>
-        <text class="header-title">购物车</text>
-        <view class="header-edit" @click="onToggleEdit">
-          <text class="header-edit-text">{{ editing ? '完成' : '编辑' }}</text>
-        </view>
-      </view>
-
       <!-- 降价提醒横幅 -->
       <view v-if="showBanner" class="banner">
         <text class="banner-tag luc-tag" />
@@ -39,7 +43,10 @@
             @touchend="onTouchEnd"
           >
             <view class="item-check" @click="onCheck(item)">
-              <view class="checkbox" :class="{ checked: item.checked }">
+              <view
+                class="checkbox"
+                :class="{ checked: item.checked, disabled: item.cartStatus === 'OUT_OF_STOCK' }"
+              >
                 <text v-if="item.checked"><text class="luc luc-check" /></text>
               </view>
             </view>
@@ -52,7 +59,11 @@
                 {{ formatAttrs(item.attrs) }}
               </text>
               <view class="item-bottom">
-                <text class="item-price">${{ item.price.toFixed(2) }}</text>
+                <view class="price-wrap">
+                  <text class="item-price">${{ item.price.toFixed(2) }}</text>
+                  <!-- 缺货标记:仍展示在购物车,但不可勾选结算 -->
+                  <text v-if="item.cartStatus === 'OUT_OF_STOCK'" class="out-stock-text">缺货</text>
+                </view>
                 <view v-if="!editing" class="quantity-control">
                   <view class="qty-btn" aria-label="减少数量" @click.stop="onQtyChange(item, -1)">
                     -
@@ -79,12 +90,15 @@
             </text>
           </view>
           <view v-show="expandedExpired" class="expired-list">
-            <view v-for="item in expiredItems" :key="item.id" class="expired-item">
+            <view v-for="item in expiredItems" :key="itemKey(item)" class="expired-item">
               <image :src="item.image" class="expired-image" mode="aspectFill" />
               <view class="expired-info">
                 <text class="expired-name">{{ item.name }}</text>
                 <text class="expired-status">{{ item.statusText }}</text>
                 <text class="expired-price">${{ item.price.toFixed(2) }}</text>
+              </view>
+              <view class="expired-del" @click.stop="onExpiredDelete(item)">
+                <text class="expired-del-text">删除</text>
               </view>
             </view>
           </view>
@@ -172,6 +186,13 @@ export default {
   pageTitleKey: 'pageTitle.cartIndex',
 
   onLoad() {
+    // 自定义导航：按系统状态栏高度下推，避免内容顶到状态栏
+    try {
+      const sysInfo = uni.getSystemInfoSync ? uni.getSystemInfoSync() : null
+      this.statusBarHeight = (sysInfo && sysInfo.statusBarHeight) || 20
+    } catch (e) {
+      this.statusBarHeight = 20
+    }
     // 已登录则从服务端同步购物车
     if (this.cartStore && this.cartStore.syncFromServer) {
       this.cartStore.syncFromServer()
@@ -179,10 +200,10 @@ export default {
   },
   data() {
     return {
+      statusBarHeight: 20,
       showBanner: true,
       editing: false,
       expandedExpired: false,
-      expiredItems: [],
       upsellItems: [],
     }
   },
@@ -191,8 +212,30 @@ export default {
     cartStore() {
       return useCartStore()
     },
+    /**
+     * 有效商品列表：可售(VALID) + 缺货(OUT_OF_STOCK,置灰不可结算)
+     * 失效(下架/删除/规格失效)在失效商品区展示
+     */
     cartItems() {
-      return this.cartStore.items || []
+      return (this.cartStore.items || []).filter(
+        (i) =>
+          i.cartStatus !== 'OFF_SALE' &&
+          i.cartStatus !== 'PRODUCT_GONE' &&
+          i.cartStatus !== 'INVALID_SKU',
+      )
+    },
+    /**
+     * 失效商品区：已下架/商品已删除/规格失效 的下单项
+     */
+    expiredItems() {
+      return (this.cartStore.items || [])
+        .filter(
+          (i) =>
+            i.cartStatus === 'OFF_SALE' ||
+            i.cartStatus === 'PRODUCT_GONE' ||
+            i.cartStatus === 'INVALID_SKU',
+        )
+        .map((i) => ({ ...i, statusText: this.invalidReason(i.cartStatus) }))
     },
     subtotal() {
       return this.cartStore.selectedPrice
@@ -216,7 +259,25 @@ export default {
       if (!attrs || !attrs.length) return ''
       return attrs.map((a) => a.value).join(' / ')
     },
+    /** 失效原因文案(电商购物车"失效商品"区展示) */
+    invalidReason(status) {
+      const map = {
+        OFF_SALE: '已下架',
+        PRODUCT_GONE: '商品已失效',
+        INVALID_SKU: '规格已失效',
+      }
+      return map[status] || '已失效'
+    },
+    onExpiredDelete(item) {
+      const key = this.itemKey(item)
+      this.cartStore.removeItem(key)
+      uni.showToast({ title: '已移除', icon: 'success' })
+    },
     onCheck(item) {
+      if (item.cartStatus === 'OUT_OF_STOCK') {
+        uni.showToast({ title: '商品缺货,暂不能结算', icon: 'none' })
+        return
+      }
       const key = this.itemKey(item)
       this.cartStore.toggleCheck(key)
     },
@@ -226,11 +287,20 @@ export default {
     onQtyChange(item, delta) {
       const key = this.itemKey(item)
       const next = item.quantity + delta
-      if (next >= 1) {
-        this.cartStore.updateQuantity(key, next)
-      } else {
+      if (next < 1) {
         this.onDelete(item)
+        return
       }
+      // 库存上限:加购数量不允许超过库存(缺失库存信息时交由后端校验拦截)
+      const stockLimit =
+        typeof item.stock === 'number' && Number.isFinite(item.stock)
+          ? Math.max(0, item.stock)
+          : null
+      if (delta > 0 && stockLimit !== null && item.quantity >= stockLimit) {
+        uni.showToast({ title: stockLimit <= 0 ? '该商品已售罄' : '库存不足', icon: 'none' })
+        return
+      }
+      this.cartStore.updateQuantity(key, next)
     },
     onDelete(item) {
       uni.showModal({
@@ -253,6 +323,8 @@ export default {
         uni.showToast({ title: '请选择商品', icon: 'none' })
         return
       }
+      // 清理可能残留的“立即购买”临时单品，避免劫持购物车结算
+      this.cartStore.clearBuyNow()
       uni.navigateTo({ url: '/pages/cart/checkout' })
     },
     onUpsellClick(item) {
@@ -304,16 +376,20 @@ export default {
   color: var(--color-text-tertiary);
 }
 
-/* ===== 顶部导航栏 ===== */
+/* ===== 顶部导航栏（自定义导航，替代原生导航栏） ===== */
 .header {
+  background: var(--color-surface);
+  border-bottom: 1rpx solid var(--color-divider);
+  flex-shrink: 0;
+  box-sizing: content-box;
+}
+
+.header-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 88rpx;
   padding: 0 var(--space-md);
-  background: var(--color-surface);
-  border-bottom: 1rpx solid var(--color-divider);
-  flex-shrink: 0;
 }
 
 .header-back {
@@ -337,7 +413,12 @@ export default {
 }
 
 .header-edit {
+  min-width: 72rpx;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
   padding: 8rpx 0;
+  box-sizing: border-box;
 }
 
 .header-edit-text {
@@ -848,5 +929,40 @@ export default {
 
 .checkout-btn.disabled {
   opacity: 0.45;
+}
+
+/* ===== 缺货商品 ===== */
+.price-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  min-width: 0;
+}
+
+.out-stock-text {
+  flex-shrink: 0;
+  font-size: 18rpx;
+  line-height: 1;
+  padding: 6rpx 12rpx;
+  border-radius: 999rpx;
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.checkbox.disabled {
+  opacity: 0.35;
+}
+
+/* 失效商品区单行删除按钮 */
+.expired-del {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 10rpx 14rpx;
+}
+
+.expired-del-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-danger);
+  font-weight: var(--font-weight-medium);
 }
 </style>

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.dao.entity.OrderEntity;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 import java.util.Map;
@@ -13,6 +14,13 @@ import java.util.Map;
 @Mapper
 public interface OrderMapper extends BaseMapper<OrderEntity> {
 
+  /**
+   * 加锁当前读订单：用于支付回调/取消抢占失败后的最新状态判断。
+   * 普通 select 在 REPEATABLE READ 下读的是事务快照，会看到过期的 PENDING_PAY；
+   * FOR UPDATE 走当前读，能看到其他已提交事务的最新状态，避免把"重复回调"误判为"异常对账"。
+   */
+  @Select("SELECT * FROM mo_order WHERE id = #{id} FOR UPDATE")
+  OrderEntity selectByIdForUpdate(@Param("id") Long id);
   /**
    * 按用户分页查询订单，可按订单状态筛选
    */

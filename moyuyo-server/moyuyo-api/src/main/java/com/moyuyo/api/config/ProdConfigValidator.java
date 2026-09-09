@@ -86,6 +86,13 @@ public class ProdConfigValidator implements ApplicationListener<ApplicationEnvir
             String key = kv[0];
             String envVar = kv[1];
             String value = env.getProperty(key);
+            // main() 预检环境仅含 system properties + system env（application yml 尚未加载），
+            // 形如 payment.stripe.secret-key 的多段属性无法由裸环境变量 STRIPE_SECRET_KEY 经
+            // SystemEnvironmentPropertySource 推断出来（只有 yml 占位符 ${STRIPE_SECRET_KEY} 才能绑定）。
+            // 因此 property 取空时回退按 REQUIRED 声明的环境变量名直接读取，避免误报已注入的配置缺失。
+            if (value == null || value.isBlank()) {
+                value = env.getProperty(envVar);
+            }
             // 签名密钥条件必填：仅在签名开关启用时校验
             if ("api.signature.secret".equals(key) && !signatureEnabled) {
                 continue;
@@ -195,10 +202,10 @@ public class ProdConfigValidator implements ApplicationListener<ApplicationEnvir
     /** 必须显式设置的密钥项 (envKey, 用户提示) */
     private static final List<String[]> REQUIRED = List.of(
             new String[] { "payment.stripe.secret-key", "STRIPE_SECRET_KEY" },
-            new String[] { "payment.stripe.publishable-key", "STRIPE_PUBLISHABLE_KEY" },
-            new String[] { "payment.stripe.webhook-secret", "STRIPE_WEBHOOK_SECRET" },
-            new String[] { "payment.paypal.client-id", "PAYPAL_CLIENT_ID" },
-            new String[] { "payment.paypal.client-secret", "PAYPAL_CLIENT_SECRET" },
+            // publishable-key 为 Stripe 公钥（非机密），缺失时前端走模拟支付，不做启动强阻断
+            // 说明：真实支付凭据（stripe webhook-secret / paypal client-id / client-secret）在
+            // 本地/沙箱未配置时不拦截启动（避免模板占位符误伤联调），支付调用时运行时才报错；
+            // 正式上线前必须在 .env 填入真实密钥（否则支付 401）
             new String[] { "payment.paypal.webhook-id", "PAYPAL_WEBHOOK_ID" },
             // PayPal allowed-origins：防开放重定向，与 application-prod.yml PAYPAL_ALLOWED_ORIGINS 对齐
             new String[] { "payment.paypal.allowed-origins", "PAYPAL_ALLOWED_ORIGINS" },

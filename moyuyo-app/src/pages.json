@@ -65,6 +65,7 @@
     {
       "path": "pages/cart/index",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "购物车"
       }
     },
@@ -272,6 +273,13 @@
       }
     },
     {
+      "path": "pages/pet/memory",
+      "style": {
+        "navigationBarTitleText": "记忆",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/pet/health-calendar",
       "style": {
         "navigationBarTitleText": "健康日历"
@@ -430,7 +438,15 @@
     {
       "path": "pages/pet/weight-chart",
       "style": {
-        "navigationBarTitleText": "体重记录"
+        "navigationBarTitleText": "体重记录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/pet/care-records",
+      "style": {
+        "navigationBarTitleText": "护理记录",
+        "navigationStyle": "custom"
       }
     },
     {

@@ -37,7 +37,7 @@ export function getPostDetail(id) {
   return get(`/api/v1/community/posts/${id}`)
 }
 
-export function createPost(content, images, video, cover, topic, scheduledAt) {
+export function createPost(content, images, video, cover, topic, scheduledAt, petId) {
   const params = { content }
   // 视频与图片互斥：优先视频
   if (video) {
@@ -49,6 +49,8 @@ export function createPost(content, images, video, cover, topic, scheduledAt) {
   if (topic) params.topic = topic
   // 定时发布时间:可选,ISO 字符串
   if (scheduledAt) params.scheduledAt = scheduledAt
+  // 关联宠物:可选,用于把帖子挂到宠物记忆树
+  if (petId) params.petId = petId
   return post('/api/v1/community/posts', params)
 }
 

@@ -37,6 +37,9 @@ public class OrderEntity {
 
   private String couponId;
 
+  /** 下单使用的用户优惠券记录 ID（mo_user_coupon.id）；下单即核销，未支付取消时返还 */
+  private Long userCouponId;
+
   private Integer pointsUsed;
 
   private String status;

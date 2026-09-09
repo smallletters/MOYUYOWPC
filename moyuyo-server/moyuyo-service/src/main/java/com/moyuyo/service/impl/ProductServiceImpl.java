@@ -78,11 +78,15 @@ public class ProductServiceImpl implements ProductService {
   }
 
   @Override
-  public Page<ProductEntity> listProductsByCategoryIds(int page, int size, List<Long> categoryIds, String sortBy, String sortOrder, String keyword, Long brandIpId) {
+  public Page<ProductEntity> listProductsByCategoryIds(int page, int size, List<Long> categoryIds, String sortBy, String sortOrder, String keyword, String status, Long brandIpId) {
     LambdaQueryWrapper<ProductEntity> wrapper = new LambdaQueryWrapper<ProductEntity>()
         .in(categoryIds != null && !categoryIds.isEmpty(), ProductEntity::getCategoryId, categoryIds)
         .eq(brandIpId != null, ProductEntity::getBrandIpId, brandIpId)
         .like(StringUtils.isNotBlank(keyword), ProductEntity::getName, keyword);
+    // 状态筛选：active=在售, inactive=已下架, 不传则不过滤
+    if (StringUtils.isNotBlank(status)) {
+      wrapper.eq(ProductEntity::getOnSale, "active".equals(status));
+    }
     if (StringUtils.isNotBlank(sortBy)) {
       boolean asc = !"desc".equalsIgnoreCase(sortOrder);
       if ("price".equalsIgnoreCase(sortBy)) {

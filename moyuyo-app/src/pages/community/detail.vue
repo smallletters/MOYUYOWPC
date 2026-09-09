@@ -16,7 +16,11 @@
             :class="{ 'follow-btn--on': isFollowingAuthor }"
             @tap.stop="onToggleFollow"
           >
-            {{ isFollowingAuthor ? t('community.postActions.followDone') : t('community.postActions.followAdd') }}
+            {{
+              isFollowingAuthor
+                ? t('community.postActions.followDone')
+                : t('community.postActions.followAdd')
+            }}
           </view>
         </view>
         <!-- 帖子正文:把 #话题 和 @用户 解析为可点击的富文本段 -->
@@ -27,12 +31,16 @@
               v-else-if="seg.type === 'topic'"
               class="content__topic"
               @tap="onTapTopic(seg.text)"
-            >{{ seg.text }}</text>
+            >
+              {{ seg.text }}
+            </text>
             <text
               v-else-if="seg.type === 'mention'"
               class="content__mention"
               @tap="onTapMention(seg.text)"
-            >{{ seg.text }}</text>
+            >
+              {{ seg.text }}
+            </text>
           </template>
         </view>
         <!-- 单独的话题 tag(由发布时选择,展示为可点击徽章) -->
@@ -225,10 +233,19 @@ export default {
     async loadDetail() {
       try {
         const data = await communityApi.getPostDetail(this.postId)
-        // 后端 VO 用 List<String> 存图片 URL；缺字段兜底为空数组，保证模板渲染安全
+        // 后端 VO 用 List<String> 存图片 URL；相对路径(/uploads/...)需拼上后端 base，否则 H5/APP 加载 404
+        const toAbs = (u) => {
+          if (!u) return u
+          if (/^https?:\/\//i.test(u)) return u
+          const base = process.env.VITE_ADMIN_API_BASE
+          if (String(u).startsWith('/') && base) return `${base}${u}`
+          return u
+        }
         this.post = {
           ...data,
-          images: Array.isArray(data?.images) ? data.images : [],
+          images: Array.isArray(data?.images) ? data.images.map(toAbs) : [],
+          cover: toAbs(data?.cover),
+          avatar: toAbs(data?.avatar),
         }
         // 登录态下补查关注状态(后端没在 detail 里直接返回 isFollowingAuthor)
         this.loadFollowStatus()
@@ -332,7 +349,9 @@ export default {
           await communityApi.uncollectPost(this.postId)
         }
         uni.showToast({
-          title: this.t(next ? 'community.postActions.collected' : 'community.postActions.uncollected'),
+          title: this.t(
+            next ? 'community.postActions.collected' : 'community.postActions.uncollected',
+          ),
           icon: 'success',
         })
       } catch (e) {

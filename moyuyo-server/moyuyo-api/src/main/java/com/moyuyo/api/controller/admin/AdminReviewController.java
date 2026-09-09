@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.enums.ReviewStatusEnum;
 import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductReviewEntity;
 import com.moyuyo.dao.entity.UserEntity;
@@ -73,7 +74,7 @@ public class AdminReviewController {
     adminReviewService.approve(id);
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("id", id);
-    result.put("status", "已审核");
+    result.put("status", ReviewStatusEnum.APPROVED.name());
     result.put("message", "审核通过成功");
     return Result.success(result);
   }
@@ -84,7 +85,7 @@ public class AdminReviewController {
     adminReviewService.reject(id);
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("id", id);
-    result.put("status", "已驳回");
+    result.put("status", ReviewStatusEnum.REJECTED.name());
     result.put("message", "审核驳回成功");
     return Result.success(result);
   }

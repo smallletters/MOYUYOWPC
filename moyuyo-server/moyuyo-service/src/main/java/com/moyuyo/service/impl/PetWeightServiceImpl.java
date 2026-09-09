@@ -26,7 +26,10 @@ public class PetWeightServiceImpl implements PetWeightService {
     return petWeightMapper.selectList(
         new LambdaQueryWrapper<PetWeightEntity>()
             .eq(PetWeightEntity::getPetId, petId)
-            .orderByDesc(PetWeightEntity::getMeasuredAt));
+            // 同一天多次记录 measuredAt 可能相同（前端固定正午 12:00），
+            // 追加 id 次级排序，保证最新录入的一定排在最前
+            .orderByDesc(PetWeightEntity::getMeasuredAt)
+            .orderByDesc(PetWeightEntity::getId));
   }
 
   @Override
@@ -54,6 +57,8 @@ public class PetWeightServiceImpl implements PetWeightService {
     return petWeightMapper.selectList(
         new LambdaQueryWrapper<PetWeightEntity>()
             .eq(PetWeightEntity::getPetId, petId)
-            .orderByAsc(PetWeightEntity::getMeasuredAt));
+            // 图表需时间升序（旧→新），同时间戳时按 id 升序保证绘制顺序稳定
+            .orderByAsc(PetWeightEntity::getMeasuredAt)
+            .orderByAsc(PetWeightEntity::getId));
   }
 }

@@ -1,8 +1,10 @@
 <template>
   <view class="achievement">
     <view class="header">
-      <text class="title">Achievements</text>
-      <text class="subtitle">{{ unlockedCount }} / {{ achievements.length }} Unlocked</text>
+      <text class="title">{{ $t('petAchievement.title') }}</text>
+      <text class="subtitle">
+        {{ $t('petAchievement.unlocked', { unlocked: unlockedCount, total: achievements.length }) }}
+      </text>
     </view>
 
     <view class="grid">
@@ -18,7 +20,7 @@
         </view>
         <text class="badge-name">{{ achievementName(a.achievementCode) }}</text>
         <text class="badge-desc">
-          {{ a.unlocked ? achievementDesc(a.achievementCode) : 'Locked' }}
+          {{ a.unlocked ? achievementDesc(a.achievementCode) : $t('petAchievement.locked') }}
         </text>
         <view v-if="!a.unlocked" class="progress-bar">
           <view class="progress-fill" :style="{ width: `${(a.progress || 0) * 100}%` }" />
@@ -77,18 +79,26 @@ export default {
     achievementIcon(code) {
       return ACHIEVEMENT_MAP[code]?.icon || 'trophy'
     },
+    // 成就名：优先字典（新加成就后补词条）；缺失时回退内置英文，保证不显示 key
     achievementName(code) {
+      const key = `petAchievement.badge.${code}.name`
+      const t = this.$t(key)
+      if (t !== key) return t
       return ACHIEVEMENT_MAP[code]?.name || code
     },
     achievementDesc(code) {
+      const key = `petAchievement.badge.${code}.desc`
+      const t = this.$t(key)
+      if (t !== key) return t
       return ACHIEVEMENT_MAP[code]?.desc || ''
     },
 
     onBadgeClick(a) {
+      const pct = Math.round((a.progress || 0) * 100)
       uni.showToast({
         title: a.unlocked
           ? this.achievementName(a.achievementCode)
-          : `${(a.progress || 0) * 100}% complete`,
+          : this.$t('petAchievement.completeTip', { percent: pct }),
         icon: 'none',
       })
     },

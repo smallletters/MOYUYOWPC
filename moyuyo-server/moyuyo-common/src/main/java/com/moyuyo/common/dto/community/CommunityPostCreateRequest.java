@@ -23,6 +23,9 @@ import java.util.List;
 @Data
 public class CommunityPostCreateRequest {
 
+    @Schema(description = "关联宠物 ID（可选）：传递当前用户的宠物 id 时，帖子会归入该宠物的记忆树")
+    private Long petId;
+
     @Schema(description = "帖子内容（1~2000 字符）", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "帖子内容不能为空")
     @Size(min = 1, max = 2000, message = "帖子内容长度必须在 1~2000 字符之间")

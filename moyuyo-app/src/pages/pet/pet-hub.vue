@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="pet-hub">
     <view class="page-header">
       <text class="header-title">Pet Hub</text>
@@ -152,7 +152,7 @@ export default {
     },
 
     goAddPet() {
-      uni.navigateTo({ url: '/pages/pet/profile' })
+      uni.navigateTo({ url: '/pages/pet/profile?mode=new' })
     },
 
     goEditPet() {

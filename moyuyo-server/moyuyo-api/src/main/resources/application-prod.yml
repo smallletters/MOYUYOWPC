@@ -108,7 +108,7 @@ spring:
     # data-source-properties "com.mysql.cj.jdbc.Driver.enabledTLSProtocols" 中配置为 TLSv1.3 only。
     # 原因：data-source-properties 是 Connector/J 8 推荐配置方式，会覆盖 URL 参数；两条都写
     # 会造成配置歧义（实际生效的版本取决于驱动加载顺序），统一只保留一处。
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:moyuyo_prod}?useSSL=true&requireSSL=true&verifyServerCertificate=${MYSQL_VERIFY_SERVER_CERTIFICATE}&serverTimezone=Asia/Shanghai&characterEncoding=utf8mb4&connectTimeout=5000&socketTimeout=30000&tcpKeepAlive=true&rewriteBatchedStatements=true&useServerPrepStmts=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:moyuyo_prod}?useSSL=true&requireSSL=true&verifyServerCertificate=${MYSQL_VERIFY_SERVER_CERTIFICATE}&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&connectTimeout=5000&socketTimeout=30000&tcpKeepAlive=true&rewriteBatchedStatements=true&useServerPrepStmts=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048
     username: ${MYSQL_USER:moyuyo}
     password: ${MYSQL_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -132,13 +132,12 @@ spring:
       keepalive-time: 300000          # 5 分钟保活（发心跳 SQL 防止中间设备切断）
       # 监控
       register-mbeans: true
-      # connection-init-sql：每次创建连接时执行的 SQL，强制会话时区与字符集，
-      # 避免 MySQL 容器/宿主机/客户端时区漂移导致 NOW() / TIMESTAMP 行为异常
+      # connection-init-sql：每次创建连接时执行的 SQL（HikariCP 仅支持单条语句，
+      # 多条分号语句会抛 SQL 语法错误），强制会话时区与 MySQL 服务端一致
       # - time_zone='+08:00'：与 JVM TZ 一致；CI/CD / 备份恢复等异地场景同样适用
-      # - names utf8mb4 + character_set_results=utf8mb4：冗余兜底（JDBC URL 已带 characterEncoding=utf8mb4，
-      #   但部分驱动场景下 results 字符集可能由 MySQL 全局变量控制，需显式 SET）
-      # - sql_mode：显式设置常用 STRICT 模式，避免 MySQL 8 默认 sql_mode 漂移导致非严格模式下数据截断被掩盖
-      connection-init-sql: "SET time_zone='+08:00'; SET NAMES utf8mb4; SET character_set_results=utf8mb4; SET SESSION sql_mode='STRICT_ALL_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO'"
+      # - 字符集由 JDBC URL characterEncoding=UTF-8 + MySQL 服务端 utf8mb4 保证，无需在此 SET NAMES；
+      #   sql_mode 严格模式由 MySQL 服务端 global 配置控制，避免连接初始化多语句限制
+      connection-init-sql: "SET time_zone='+08:00'"
       # connection-test-query 不设置：使用 MySQL Connector/J 8 默认的
       # SELECT 1（驱动内置 lightweight ping），避免额外 SQL 流量
       data-source-properties:
@@ -311,6 +310,21 @@ moyuyo:
   # 开关可由 MOYUYO_USER_RATELIMIT_ENABLED 环境变量覆盖
   user-ratelimit:
     enabled: ${MOYUYO_USER_RATELIMIT_ENABLED:true}
+  # 物流轨迹 API 生产环境覆盖
+  # 强制要求显式声明 provider：生产环境若未设置则回落到 none（本地占位），仅人工维护轨迹
+  # 启用第三方时必须填入对应 api-key，缺失会被 LogisticsTrackProperties 启动期校验阻断
+  logistics:
+    # 生产环境默认关闭，明确启用时设为 17track / kuaidi100 / aftership
+    provider: ${MOYUYO_LOGISTICS_PROVIDER:none}
+    # API 密钥：17TRACK/aftership 必填；快递100 需配合 customer 使用
+    api-key: ${MOYUYO_LOGISTICS_API_KEY:}
+    # 快递100 customer id（仅 provider=kuaidi100 时必填）
+    customer: ${MOYUYO_LOGISTICS_CUSTOMER:}
+    # 生产环境拉取间隔适当放长，降低对第三方 API 的调用频次
+    poll-interval-minutes: ${MOYUYO_LOGISTICS_POLL_INTERVAL:60}
+    poll-batch-size: ${MOYUYO_LOGISTICS_POLL_BATCH_SIZE:200}
+    connect-timeout-ms: ${MOYUYO_LOGISTICS_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${MOYUYO_LOGISTICS_READ_TIMEOUT_MS:15000}
 
 management:
   # P1 安全修复：actuator 端口与业务端口分离
@@ -656,19 +670,3 @@ logging:
 # - 调试 JMX 时通过 jcmd / jconsole 连接本地 socket（容器内 nsenter / docker exec）
 spring.jmx.enabled: false
 
-# 物流轨迹 API 生产环境覆盖
-# 强制要求显式声明 provider：生产环境若未设置则回落到 none（本地占位），仅人工维护轨迹
-# 启用第三方时必须填入对应 api-key，缺失会被 LogisticsTrackProperties 启动期校验阻断
-moyuyo:
-  logistics:
-    # 生产环境默认关闭，明确启用时设为 17track / kuaidi100 / aftership
-    provider: ${MOYUYO_LOGISTICS_PROVIDER:none}
-    # API 密钥：17TRACK/aftership 必填；快递100 需配合 customer 使用
-    api-key: ${MOYUYO_LOGISTICS_API_KEY:}
-    # 快递100 customer id（仅 provider=kuaidi100 时必填）
-    customer: ${MOYUYO_LOGISTICS_CUSTOMER:}
-    # 生产环境拉取间隔适当放长，降低对第三方 API 的调用频次
-    poll-interval-minutes: ${MOYUYO_LOGISTICS_POLL_INTERVAL:60}
-    poll-batch-size: ${MOYUYO_LOGISTICS_POLL_BATCH_SIZE:200}
-    connect-timeout-ms: ${MOYUYO_LOGISTICS_CONNECT_TIMEOUT_MS:5000}
-    read-timeout-ms: ${MOYUYO_LOGISTICS_READ_TIMEOUT_MS:15000}

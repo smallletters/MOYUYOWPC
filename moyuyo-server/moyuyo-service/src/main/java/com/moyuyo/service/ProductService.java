@@ -20,7 +20,7 @@ public interface ProductService {
   /**
    * 按多个分类ID（IN 列表）查询商品：用于"一级分类点全部时查其下全部二级分类商品"场景
    */
-  Page<ProductEntity> listProductsByCategoryIds(int page, int size, List<Long> categoryIds, String sortBy, String sortOrder, String keyword, Long brandIpId);
+  Page<ProductEntity> listProductsByCategoryIds(int page, int size, List<Long> categoryIds, String sortBy, String sortOrder, String keyword, String status, Long brandIpId);
 
   ProductEntity getProductDetail(Long productId);
 

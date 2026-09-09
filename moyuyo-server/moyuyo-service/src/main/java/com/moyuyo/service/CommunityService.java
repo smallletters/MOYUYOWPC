@@ -17,7 +17,7 @@ public interface CommunityService {
 
     CommunityPostVO getPostDetail(Long postId, Long currentUserId);
 
-    CommunityPostVO createPost(Long userId, String content, List<String> images, String video, String cover, String topic, java.time.LocalDateTime scheduledAt);
+    CommunityPostVO createPost(Long userId, Long petId, String content, List<String> images, String video, String cover, String topic, java.time.LocalDateTime scheduledAt);
 
     /**
      * 定时任务:扫描到点的待发布帖子,切换为已发布。
@@ -31,7 +31,10 @@ public interface CommunityService {
 
     void addComment(Long userId, Long postId, Long parentId, String content);
 
-    Page<CommunityPostVO> listMyPosts(Long userId, int page, int size);
+    /**
+     * 当前用户的帖子。petId 非空时按宠物过滤（用于宠物记忆树/我的宠物帖子）。
+     */
+    Page<CommunityPostVO> listMyPosts(Long userId, Long petId, int page, int size);
 
     /**
      * 当前用户收藏的帖子（按收藏时间倒序，含完整 VO）。

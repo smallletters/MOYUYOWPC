@@ -11,9 +11,9 @@ export function getPrimeStatus() {
   return get('/api/v1/prime/status')
 }
 
-/** 订阅 Prime（dev/mock 直接落库 ACTIVE） */
-export function subscribePrime(planCode, payChannel = 'STRIPE') {
-  return post('/api/v1/prime/subscribe', { planCode, payChannel })
+/** 订阅 Prime（模拟直开 / Stripe Checkout 支付，extra 携带客户端回跳信息） */
+export function subscribePrime(planCode, payChannel = 'STRIPE', extra = {}) {
+  return post('/api/v1/prime/subscribe', { planCode, payChannel, ...extra })
 }
 
 /** 取消 Prime 订阅 */

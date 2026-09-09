@@ -24,7 +24,10 @@ public class CreateOrderRequest {
   /** 优惠券 ID（用户优惠券编码）；空表示不使用优惠券 */
   private String couponId;
 
-  /** 优惠券减免金额（前端结算页计算后传入），后端落库并折入 payAmount */
+  /** 用户优惠券记录 ID（mo_user_coupon.id），服务端据此核验归属/状态并重算优惠金额 */
+  private Long couponUserId;
+
+  /** 优惠券减免金额（仅作展示参考，服务端会按 couponUserId 重算后覆盖） */
   private BigDecimal couponDiscount;
 
   /** 用户希望使用的积分数；后端校验余额 + 上限后落库 */

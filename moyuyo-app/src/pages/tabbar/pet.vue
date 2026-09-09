@@ -62,20 +62,20 @@
         <view class="scene-top">
           <view class="glass scene-pill" @click.stop="goDresser">
             <text class="luc luc-shirt scene-pill-icon" />
-            <text class="scene-pill-text">装扮</text>
+            <text class="scene-pill-text">{{ $t('petHub.dress') }}</text>
           </view>
           <view class="glass scene-pill" @click.stop="goSpace">
             <text class="luc luc-sparkles scene-pill-icon" />
-            <text class="scene-pill-text">3D空间</text>
+            <text class="scene-pill-text">{{ $t('petHub.space3d') }}</text>
           </view>
         </view>
 
         <!-- 底部互动提示 -->
         <view v-if="activePet" class="scene-hint">
-          <text>拖拽旋转 · 点击互动</text>
+          <text>{{ $t('petHub.hintRotate') }}</text>
         </view>
         <view v-else class="scene-hint" @click.stop="goAddPet">
-          <text>添加宠物档案</text>
+          <text>{{ $t('petHub.hintAddPet') }}</text>
         </view>
 
         <!-- 场景选择器 -->
@@ -99,7 +99,7 @@
             v-for="c in careItems"
             :key="c.type"
             class="care-card"
-            @click="onCareClick">
+            @click="onCareClick(c)">
             <view class="care-icon" :class="`tone-${c.tone}`">
               <!-- 洗护：设计稿浴缸图标 -->
               <svg
@@ -166,13 +166,13 @@
         </view>
 
         <!-- 下次护理提醒条 -->
-        <view v-if="nextReminder" class="reminder-banner" @click="goHealth">
+        <view v-if="nextReminder" class="reminder-banner" @click="goCareRecords(nextReminder.type)">
           <view class="reminder-main">
             <text class="rm-text">{{ nextReminder.text }}</text>
             <text v-if="nextReminder.num" class="rm-num">{{ nextReminder.num }}</text>
             <text v-if="nextReminder.suffix" class="rm-text">{{ nextReminder.suffix }}</text>
           </view>
-          <view class="rm-btn" @click.stop="goHealth">
+          <view class="rm-btn" @click.stop="goCareRecords(nextReminder.type)">
             <text class="luc luc-more-horizontal" />
           </view>
         </view>
@@ -181,7 +181,7 @@
       <!-- 快捷操作 -->
       <view class="quick-block">
         <view class="quick-head">
-          <text class="quick-title">快捷操作</text>
+          <text class="quick-title">{{ $t('petHub.quickTitle') }}</text>
         </view>
         <view class="quick-grid">
           <view
@@ -201,15 +201,11 @@
 </template>
 
 <script>
-import { usePetStore, useUserStore } from '@/store'
+import { usePetStore } from '@/store'
 
-// 提醒类型 → 中文名（护理卡图标为内联 SVG，不再依赖图标字体）
-const REMINDER_META = {
-  BATH: { label: '洗护' },
-  VACCINE: { label: '疫苗' },
-  DEWORM: { label: '驱虫' },
-  EXAM: { label: '体检' },
-}
+// 支持护理记录/提醒的类型（护理卡图标为内联 SVG，类型文案走 i18n: petHub.careTypes.*）
+const REMINDER_TYPES = ['BATH', 'VACCINE', 'DEWORM', 'EXAM']
+const CARE_TYPE_SET = new Set(REMINDER_TYPES)
 
 // 护理卡类型与图标状态色：洗护/疫苗 → 绿；驱虫 → 红（与设计稿一致）
 const CARE_TYPES = ['BATH', 'VACCINE', 'DEWORM']
@@ -224,30 +220,35 @@ export default {
 
   data() {
     return {
-      // 3D 可选场景（当前仅切换选中态，无真实换景）
-      scenes: [
-        { id: 'grass', label: '草地' },
-        { id: 'living', label: '客厅' },
-        { id: 'training', label: '训练场' },
-        { id: 'studio', label: '工作室' },
-      ],
+      // 当前选中场景（选项 scenes 走 computed，随语言切换动态生成）
       selectedScene: 'grass',
-      actions: [
-        { id: 'shop', label: '购买', icon: 'shopping-bag' },
-        { id: 'share', label: '晒宠', icon: 'camera' },
-        { id: 'calendar', label: '日历', icon: 'calendar' },
-        { id: 'achievement', label: '成就', icon: 'trophy' },
-        { id: 'weight', label: '体重', icon: 'scale' },
-      ],
     }
   },
 
   computed: {
+    // 3D 可选场景（当前仅切换选中态，无真实换景；标签走 i18n）
+    scenes() {
+      return [
+        { id: 'grass', label: this.$t('petHub.scenes.grass') },
+        { id: 'living', label: this.$t('petHub.scenes.living') },
+        { id: 'training', label: this.$t('petHub.scenes.training') },
+        { id: 'studio', label: this.$t('petHub.scenes.studio') },
+      ]
+    },
+
+    // 快捷操作入口（标签走 i18n）
+    actions() {
+      return [
+        { id: 'shop', label: this.$t('petHub.actions.shop'), icon: 'shopping-bag' },
+        { id: 'share', label: this.$t('petHub.actions.share'), icon: 'camera' },
+        { id: 'calendar', label: this.$t('petHub.actions.calendar'), icon: 'calendar' },
+        { id: 'achievement', label: this.$t('petHub.actions.memory'), icon: 'book' },
+        { id: 'weight', label: this.$t('petHub.actions.weight'), icon: 'scale' },
+      ]
+    },
+
     petStore() {
       return usePetStore()
-    },
-    userStore() {
-      return useUserStore()
     },
     activePet() {
       return this.petStore.activePet
@@ -256,57 +257,70 @@ export default {
     // 场景卡信息浮层：kicker 为种类/品种，title 为「名字, 年龄」
     sceneKicker() {
       const p = this.activePet
-      if (!p) return '宠物空间 3D'
+      if (!p) return this.$t('petHub.noPetScene')
       const label = [p.species, p.breed].filter(Boolean).join(' · ')
-      return label || p.type || '我的小伙伴'
+      return label || p.type || this.$t('petHub.buddy')
     },
     sceneTitle() {
       const p = this.activePet
-      if (!p) return '开启宠物互动新体验'
+      if (!p) return this.$t('petHub.emptyTitle')
       const age = this.ageText(p.birthday)
       return age ? `${p.name}, ${age}` : p.name
     },
 
-    // 护理卡：有宠物取该宠物的护理提醒；无宠物时显示占位卡（保证结构始终可见）
+    // 护理卡：由 care-summary 聚合项驱动（最近记录 + 提醒配置），无宠物时显示占位卡
     careItems() {
       const p = this.activePet
-      const list = Array.isArray(this.petStore.reminders) ? this.petStore.reminders : []
+      const list = Array.isArray(this.petStore.careSummary) ? this.petStore.careSummary : []
+      const byType = {}
+      list.forEach((s) => {
+        if (s && s.careType) byType[s.careType] = s
+      })
       return CARE_TYPES.map((type) => {
-        const meta = REMINDER_META[type]
         const tone = CARE_TONES[type]
-        const rem = p ? list.find((r) => r.reminderType === type) : null
-        return this.buildCareCard(type, meta, tone, rem)
+        const item = p ? byType[type] || null : null
+        return this.buildCareCard(type, tone, item)
       })
     },
 
     // 距离最近的下一条护理提醒（用于提醒条单行文案）
     nextReminder() {
-      const list = Array.isArray(this.petStore.reminders) ? this.petStore.reminders : []
-      const active = list.filter((r) => r.enabled !== false && r.nextDate)
-      if (active.length === 0) return null
-      const today = new Date()
-      const soon = active.reduce((a, b) => {
-        const da = new Date(a.nextDate)
-        const db = new Date(b.nextDate)
-        return Math.abs(da - today) <= Math.abs(db - today) ? a : b
-      })
-      const diff = Math.ceil((new Date(soon.nextDate) - today) / 86400000)
-      const meta = REMINDER_META[soon.reminderType] || { label: soon.reminderType }
-      if (diff < 0) {
-        return { text: `${meta.label}提醒已到期，请尽快安排`, num: '', suffix: '' }
+      const list = Array.isArray(this.petStore.careSummary) ? this.petStore.careSummary : []
+      const active = list.filter((s) => s.nextDate && s.enabled !== false)
+      if (!this.activePet || active.length === 0) return null
+      const soon = active.reduce((a, b) => (a.daysUntilNext <= b.daysUntilNext ? a : b))
+      const label = this.careLabel(soon.careType)
+      const d = soon.daysUntilNext
+      if (d < 0) {
+        return {
+          type: soon.careType,
+          text: this.$t('petHub.reminder.overdue', { label }),
+          num: '',
+          suffix: '',
+        }
       }
-      if (diff === 0) {
-        return { text: `${meta.label}提醒就在今天`, num: '', suffix: '' }
+      if (d === 0) {
+        return {
+          type: soon.careType,
+          text: this.$t('petHub.reminder.today', { label }),
+          num: '',
+          suffix: '',
+        }
       }
-      return { text: `距下次${meta.label}提醒还有 `, num: String(diff), suffix: ' 天' }
+      return {
+        type: soon.careType,
+        text: this.$t('petHub.reminder.next', { label }),
+        num: String(d),
+        suffix: this.$t('petHub.reminder.dayUnit'),
+      }
     },
   },
 
   onShow() {
-    // 未登录不调接口，避免 Pet Tab 每次切回都打 401 噪音日志
-    if (!this.userStore?.isLoggedIn) return
+    // 始终走 loadPets：未登录时 store 内部会清空宠物缓存并直接返回（不发请求、无 401），
+    // 避免登出/换号后 Pet Tab 仍残留上一账号的宠物数据
     this.petStore.loadPets().then(() => {
-      this.refreshReminders()
+      this.refreshCareSummary()
     })
   },
 
@@ -318,66 +332,60 @@ export default {
       return map[pet.type] || 'paw-print'
     },
 
-    // 刷新当前宠物提醒数据
-    refreshReminders() {
+    // 刷新当前宠物护理聚合数据（care-summary）
+    refreshCareSummary() {
       const pet = this.activePet
-      if (pet?.id) this.petStore.loadReminders(pet.id)
+      if (pet?.id) this.petStore.loadCareSummary(pet.id)
     },
 
     switchPet(pet) {
       this.petStore.currentPet = pet
-      this.refreshReminders()
+      this.refreshCareSummary()
     },
 
-    // 组装单张护理卡展示数据：以「上次护理时间」为主，距下次护理判断紧迫度
-    buildCareCard(type, meta, tone, rem) {
-      const base = { type, label: meta.label, ...tone }
-      const set = (value, status, statusClass) => ({
-        ...base,
-        enabled: true,
-        value,
-        status,
-        statusClass,
-      })
-      if (!rem) {
+    // 护理类型展示文案（未知类型直接回退原值，避免显示字典 key）
+    careLabel(type) {
+      if (CARE_TYPE_SET.has(type)) return this.$t(`petHub.careTypes.${type}`)
+      return type || ''
+    },
+
+    // 组装单张护理卡展示数据：以「最近一次护理」为值，「下次护理」判断紧迫度
+    buildCareCard(type, tone, item) {
+      const statusT = (k, params) => this.$t(`petHub.status.${k}`, params)
+      const base = { type, label: this.careLabel(type), ...tone }
+      const hasRecord = !!(item && item.hasRecord)
+      const value = hasRecord
+        ? item.daysAgo === 0
+          ? statusT('today')
+          : statusT('daysAgo', { days: item.daysAgo })
+        : statusT('never')
+      // 提醒被用户显式关闭
+      if (item && item.enabled === false) {
+        return { ...base, enabled: false, value, status: statusT('off'), statusClass: 'todo' }
+      }
+      // 完全未配置（无下次护理日期）
+      if (!item || !item.nextDate) {
+        if (hasRecord) {
+          return { ...base, enabled: true, value, status: statusT('setup'), statusClass: 'todo' }
+        }
         return {
           ...base,
           enabled: false,
-          value: '未设置',
-          status: '点击去设置',
+          value: statusT('never'),
+          status: statusT('toRecord'),
           statusClass: 'todo',
         }
       }
-      if (rem.enabled === false) {
-        return { ...base, enabled: false, value: '已关闭', status: '点击开启', statusClass: 'todo' }
+      // 已过期 → 红色警示
+      if (item.overdue) {
+        return { ...base, enabled: true, value, status: statusT('overdue'), statusClass: 'warn' }
       }
-
-      // 上次护理时间 → 「X天前」
-      const last = rem.lastNotifiedDate ? new Date(rem.lastNotifiedDate) : null
-      const lastDiff =
-        last && !Number.isNaN(last.getTime())
-          ? Math.max(0, Math.floor((new Date() - last) / 86400000))
-          : null
-
-      // 距下次护理天数 → 判断是否临近到期
-      const next = rem.nextDate ? new Date(rem.nextDate) : null
-      const nextDiff =
-        next && !Number.isNaN(next.getTime()) ? Math.ceil((next - new Date()) / 86400000) : null
-      const warnDays = rem.advanceDays || 7 // 提前提醒天数
-
-      if (lastDiff === null) {
-        // 尚未记录上次护理时间
-        const soon = nextDiff !== null && nextDiff <= warnDays
-        return set('未记录', soon ? '尽快安排' : '待设置', soon ? 'warn' : 'todo')
+      // 临近下次护理（advanceDays 内）→ 黄色提醒
+      const warnDays = item.advanceDays || 3
+      if (item.daysUntilNext !== null && item.daysUntilNext <= warnDays) {
+        return { ...base, enabled: true, value, status: statusT('dueSoon'), statusClass: 'warn' }
       }
-
-      const value = lastDiff === 0 ? '今天' : `${lastDiff} 天前`
-      // 临近下次护理 → 红色提醒
-      if (nextDiff !== null && nextDiff <= warnDays) {
-        return set(value, '即将到期', 'warn')
-      }
-      const status = lastDiff <= 7 ? '状态良好' : '无需担心'
-      return set(value, status, 'ok')
+      return { ...base, enabled: true, value, status: statusT('good'), statusClass: 'ok' }
     },
 
     // 生日 → 年龄文案
@@ -388,10 +396,10 @@ export default {
       const now = new Date()
       let months = (now.getFullYear() - b.getFullYear()) * 12 + now.getMonth() - b.getMonth()
       if (now.getDate() < b.getDate()) months -= 1
-      if (months <= 0) return '幼年'
-      if (months < 12) return `${months} 个月`
+      if (months <= 0) return this.$t('petHub.age.puppy')
+      if (months < 12) return this.$t('petHub.age.months', { n: months })
       const years = Math.floor(months / 12)
-      return `${years} 岁`
+      return this.$t('petHub.age.years', { n: years })
     },
 
     // 场景卡点击：有宠物进 3D 空间，无宠物去添加
@@ -413,19 +421,21 @@ export default {
       uni.navigateTo({ url: `/pages/pet/dresser?petId=${pet.id}` })
     },
 
-    // 护理卡点击 → 健康记录页
-    onCareClick() {
-      this.goHealth()
+    // 护理卡点击 → 对应类型的护理记录页
+    onCareClick(card) {
+      this.goCareRecords(card?.type)
     },
 
-    // 进入健康日历（护理提醒管理）
-    goHealth() {
+    // 进入护理记录页（记录一次护理 / 查看历史 / 滚动下次提醒）
+    goCareRecords(careType) {
       const pet = this.activePet
       if (!pet?.id) {
         this.goAddPet()
         return
       }
-      uni.navigateTo({ url: `/pages/pet/health?petId=${pet.id}` })
+      // 提醒条可能来自体检等类型，故按完整类型集合校验而非仅卡片三类
+      const type = CARE_TYPE_SET.has(careType) ? careType : 'BATH'
+      uni.navigateTo({ url: `/pages/pet/care-records?petId=${pet.id}&type=${type}` })
     },
 
     onActionClick(action) {
@@ -436,24 +446,31 @@ export default {
           uni.switchTab({ url: '/pages/tabbar/category' })
           break
         case 'share':
-          uni.switchTab({ url: '/pages/tabbar/community' })
+          // 晒宠：有宠物时直达社区发帖并预选当前宠物（帖子归入宠物记忆树），否则进社区流
+          if (pet?.id) {
+            uni.navigateTo({ url: `/pages/community/create?petId=${pet.id}` })
+          } else {
+            uni.switchTab({ url: '/pages/tabbar/community' })
+          }
           break
         case 'calendar':
           uni.navigateTo({ url: petUrl('/pages/pet/health-calendar') })
           break
         case 'achievement':
-          uni.navigateTo({ url: petUrl('/pages/pet/achievement') })
+          // “记忆”入口：进入记忆树状时间轴（记录成长足迹 + 加入家庭时间）
+          uni.navigateTo({ url: petUrl('/pages/pet/memory') })
           break
         case 'weight':
           uni.navigateTo({ url: petUrl('/pages/pet/weight-chart') })
           break
         default:
-          uni.showToast({ title: '敬请期待', icon: 'none' })
+          uni.showToast({ title: this.$t('petHub.comingSoon'), icon: 'none' })
       }
     },
 
     goAddPet() {
-      uni.navigateTo({ url: '/pages/pet/profile' })
+      // mode=new 直达新增表单：有宠物档案时该入口也保持“新增”语义，不误入档案回显
+      uni.navigateTo({ url: '/pages/pet/profile?mode=new' })
     },
 
     // 进入 3D 房间（页面独立运行，不依赖宠物参数，任何状态都可进入）

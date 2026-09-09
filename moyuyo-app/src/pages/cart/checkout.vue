@@ -21,7 +21,9 @@
       <view class="block">
         <view class="block-head">
           <text class="block-title">{{ $t('checkout.sections.address') }}</text>
-          <text class="block-action" @click="onSelectAddress">{{ $t('checkout.address.change') }}</text>
+          <text class="block-action" @click="onSelectAddress">
+            {{ $t('checkout.address.change') }}
+          </text>
         </view>
         <view class="block-body">
           <view v-if="selectedAddress" class="addr-line">
@@ -34,7 +36,8 @@
               {{ selectedAddress.zipCode || selectedAddress.postcode || '' }}
             </text>
             <text class="addr-phone">
-              {{ $t('checkout.address.phone') }} {{ selectedAddress.receiverPhone || selectedAddress.phone }}
+              {{ $t('checkout.address.phone') }}
+              {{ selectedAddress.receiverPhone || selectedAddress.phone }}
             </text>
           </view>
           <view v-else class="addr-line addr-empty" @click="onSelectAddress">
@@ -65,8 +68,7 @@
                 v-if="p.icon"
                 :src="p.icon"
                 class="pay-icon-img"
-                mode="aspectFit"
-              />
+                mode="aspectFit" />
               <text v-else class="pay-icon-text">{{ p.iconText }}</text>
             </view>
             <view class="pay-info">
@@ -94,7 +96,9 @@
             <view class="item-info">
               <text class="item-name text-ellipsis-2">{{ item.name }}</text>
               <text class="item-qty">{{ $t('checkout.item.qty') }} {{ item.quantity }}</text>
-              <text v-if="item.seller" class="item-seller">{{ $t('checkout.item.soldBy') }} {{ item.seller }}</text>
+              <text v-if="item.seller" class="item-seller">
+                {{ $t('checkout.item.soldBy') }} {{ item.seller }}
+              </text>
               <view class="item-stock">
                 <text class="stock-dot" />
                 <text class="stock-text">{{ $t('checkout.item.inStock') }}</text>
@@ -151,7 +155,9 @@
               >
                 {{ $t('checkout.coupon.noApplicable') }}
               </text>
-              <text v-else-if="couponAutoDismissed" class="reward-sub">{{ $t('checkout.coupon.removed') }}</text>
+              <text v-else-if="couponAutoDismissed" class="reward-sub">
+                {{ $t('checkout.coupon.removed') }}
+              </text>
             </view>
             <view class="reward-right">
               <text v-if="activeCoupon" class="reward-active">−${{ discount.toFixed(2) }}</text>
@@ -165,7 +171,9 @@
           </view>
           <view class="reward-row">
             <view class="reward-left">
-              <text class="reward-label">{{ $t('checkout.coupon.points.label', { balance: pointsBalance }) }}</text>
+              <text class="reward-label">
+                {{ $t('checkout.coupon.points.label', { balance: pointsBalance }) }}
+              </text>
               <text class="reward-sub">{{ $t('checkout.coupon.points.rule') }}</text>
             </view>
             <switch
@@ -201,13 +209,19 @@
         </view>
         <view class="block-body summary-body">
           <view class="sum-row">
-            <text class="sum-label">{{ $t('checkout.summary.items', { count: checkoutQuantity }) }}</text>
+            <text class="sum-label">
+              {{ $t('checkout.summary.items', { count: checkoutQuantity }) }}
+            </text>
             <text class="sum-value">${{ subtotal.toFixed(2) }}</text>
           </view>
           <view class="sum-row">
             <text class="sum-label">{{ $t('checkout.summary.shipping') }}</text>
             <text class="sum-value">
-              {{ selectedShippingPrice > 0 ? '$' + selectedShippingPrice.toFixed(2) : freeShippingLabel }}
+              {{
+                selectedShippingPrice > 0
+                  ? '$' + selectedShippingPrice.toFixed(2)
+                  : freeShippingLabel
+              }}
             </text>
           </view>
           <view v-if="activeCoupon" class="sum-row">
@@ -757,12 +771,19 @@ export default {
           })
         }
 
-        // 立即购买场景只清临时单品,购物车结算场景清空已购选中项
+        // 立即购买场景只清临时单品
         if (this.cartStore.buyNowItem) {
           this.cartStore.clearBuyNow()
           this.cartStore.selectedCoupon = null
         } else {
-          this.cartStore.clear()
+          // 购物车结算：只移除本次已结算的勾选项，保留未勾选/失效商品
+          this.cartStore.selectedCoupon = null
+          const cartKeys = items
+            .map((it) => it.skuId || it.variationId || it.productId)
+            .filter(Boolean)
+          for (const k of cartKeys) {
+            await this.cartStore.removeItem(k)
+          }
         }
 
         uni.showToast({ title: i18n.t('checkout.toast.orderPlaced'), icon: 'success' })

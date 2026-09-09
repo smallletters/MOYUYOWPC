@@ -13,6 +13,12 @@ public interface MemberService {
 
   MemberVO getMemberInfo(Long userId);
 
+  /**
+   * 获取/分配会员卡号：首次调用生成随机唯一 12 位数字并落库，此后永久返回同一号码。
+   * C 端会员中心与管理后台统一走此方法，保证同一用户两边看到一致卡号。
+   */
+  String getOrAssignMemberNo(Long userId);
+
   Page<PointsLogEntity> getPointsLog(Long userId, int page, int size);
 
   void addPoints(Long userId, int changeValue, String type, String bizNo, String remark);

@@ -204,5 +204,5 @@
     },
     "vueVersion" : "3",
     "locale" : "auto",
-    "fallbackLocale" : "en-US"
+    "fallbackLocale" : "en"
 }

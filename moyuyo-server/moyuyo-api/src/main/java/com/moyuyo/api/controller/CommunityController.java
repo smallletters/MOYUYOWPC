@@ -80,16 +80,17 @@ public class CommunityController {
     @RateLimiter(name = "postCreate", fallbackMethod = "postRateLimitFallback")
     public Result<CommunityPostVO> createPost(@Valid @RequestBody CommunityPostCreateRequest request) {
         return Result.success(communityService.createPost(
-                UserContextHolder.getUserId(), request.getContent(), request.getImages(),
+                UserContextHolder.getUserId(), request.getPetId(), request.getContent(), request.getImages(),
                 request.getVideo(), request.getCover(), request.getTopic(), request.getScheduledAt()));
     }
 
-    @Operation(summary = "我的帖子")
+    @Operation(summary = "我的帖子（可带 petId 按宠物过滤，用于宠物记忆树）")
     @GetMapping("/posts/mine")
     public Result<Page<CommunityPostVO>> myPosts(
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        return Result.success(communityService.listMyPosts(UserContextHolder.getUserId(), page, size));
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Long petId) {
+        return Result.success(communityService.listMyPosts(UserContextHolder.getUserId(), petId, page, size));
     }
 
     @Operation(summary = "点赞")

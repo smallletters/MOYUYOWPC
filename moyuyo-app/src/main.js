@@ -18,9 +18,6 @@ import UPopup from 'uview-plus/components/u-popup/u-popup.vue'
 import UCoupon from 'uview-plus/components/u-coupon/u-coupon.vue'
 import UNavbar from 'uview-plus/components/u-navbar/u-navbar.vue'
 import UButton from 'uview-plus/components/u-button/u-button.vue'
-// uview-plus 源组件叫 u-textarea,目录里也只有 u-textarea/u-textarea.vue,
-// 但项目里 post-create.vue 模板写的标签是 <u--textarea>。这里把 UTextarea 同时注册成两个名字,两边都能用。
-import UTextarea from 'uview-plus/components/u-textarea/u-textarea.vue'
 import UUpload from 'uview-plus/components/u-upload/u-upload.vue'
 import UCellGroup from 'uview-plus/components/u-cell-group/u-cell-group.vue'
 import UCell from 'uview-plus/components/u-cell/u-cell.vue'
@@ -40,18 +37,15 @@ export function createApp() {
   // locale 切换时也会实时更新(设置页改了语言,所有打开的页面立即反映)
   app.mixin(i18nPageMixin)
   // 全局注册 uview-plus 组件(以及 uView 根组件,用于 toast/notify 等全局 API)
-  app.component('u-icon', UIcon)
-  app.component('u-popup', UPopup)
-  app.component('u-coupon', UCoupon)
-  app.component('u-navbar', UNavbar)
-  app.component('u-button', UButton)
-  // 同名注册:兼容 post-create.vue 用的 <u--textarea> 与 uview-plus 默认名 u-textarea
-  app.component('u-textarea', UTextarea)
-  app.component('u--textarea', UTextarea)
-  app.component('u-upload', UUpload)
-  app.component('u-cell-group', UCellGroup)
-  app.component('u-cell', UCell)
-  app.component('u-view', UView)
+  app.component('UIcon', UIcon)
+  app.component('UPopup', UPopup)
+  app.component('UCoupon', UCoupon)
+  app.component('UNavbar', UNavbar)
+  app.component('UButton', UButton)
+  app.component('UUpload', UUpload)
+  app.component('UCellGroup', UCellGroup)
+  app.component('UCell', UCell)
+  app.component('UView', UView)
   // 全局图标映射:模板中可用 $luc(emojiOrName) 得到 'luc luc-xxx' 类名
   app.config.globalProperties.$luc = lucClass
   // 全局 i18n:模板中可用 $t('key', params),$i18n.locale 读取当前语言

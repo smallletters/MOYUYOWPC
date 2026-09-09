@@ -1,18 +1,5 @@
-﻿<template>
+<template>
   <view class="health-calendar">
-    <!-- 顶部导航 -->
-    <view class="header">
-      <view class="header-inner">
-        <view class="header-btn" @click="onBack">
-          <text class="header-btn-icon luc-arrow-left" />
-        </view>
-        <text class="header-title">健康日历</text>
-        <view class="header-btn header-btn-primary" @click="onAddReminder">
-          <text class="header-btn-icon header-btn-icon-white">+</text>
-        </view>
-      </view>
-    </view>
-
     <!-- 宠物切换 -->
     <view class="pet-scroll">
       <view class="pet-scroll-inner">
@@ -22,18 +9,22 @@
           class="pet-item"
           @click="onSwitchPet(pet)">
           <view class="pet-avatar" :class="{ 'pet-avatar-active': pet.active }">
-            <text class="pet-avatar-emoji">{{ pet.emoji }}</text>
+            <!-- 后端 PetVO 只有 avatar 图片，无 emoji 字段：有图用图，无图按类型给表情兜底 -->
+            <image
+              v-if="pet.avatar"
+              class="pet-avatar-img"
+              :src="pet.avatar"
+              mode="aspectFill" />
+            <text v-else class="pet-avatar-emoji">{{ petEmoji(pet) }}</text>
           </view>
           <text class="pet-name-label" :class="{ 'pet-name-active': pet.active }">
             {{ pet.name }}
           </text>
         </view>
-        <view class="pet-item" @click="onAddPet">
-          <view class="pet-avatar pet-avatar-add">
-            <text class="pet-add-icon">+</text>
-          </view>
-          <text class="pet-name-label pet-name-add">添加</text>
-        </view>
+      </view>
+      <!-- 添加提醒入口：置于宠物列表右侧 -->
+      <view class="pet-add-btn" @click="onAddReminder">
+        <text class="pet-add-icon">+</text>
       </view>
     </view>
 
@@ -253,6 +244,26 @@ const TYPE_ICONS = {
   diary: 'edit-3',
 }
 
+// 后端 reminderType（大写）→ 页面展示 key（小写，匹配 CSS 类/图例）
+// 注意：护理/体检体系后端统一用 EXAM，页面视觉沿用 checkup，避免同义提醒重复出现
+const BACKEND_TYPE_KEY = {
+  BATH: 'bath',
+  VACCINE: 'vaccine',
+  DEWORM: 'deworm',
+  EXAM: 'checkup',
+  CHECKUP: 'checkup', // 兼容历史遗留的 checkup 存储
+  DIARY: 'diary',
+}
+
+// 页面展示 key → 后端提醒类型（大写，提交用）
+const TYPE_KEY_BACKEND = {
+  bath: 'BATH',
+  vaccine: 'VACCINE',
+  deworm: 'DEWORM',
+  checkup: 'EXAM',
+  diary: 'DIARY',
+}
+
 export default {
   pageTitleKey: 'pageTitle.petHealthCalendar',
 
@@ -284,8 +295,11 @@ export default {
       const map = {}
       for (const r of this.reminders) {
         if (!r.nextDate) continue
-        if (!map[r.nextDate]) map[r.nextDate] = []
-        map[r.nextDate].push(r.reminderType || r.type)
+        // 后端类型大写（EXAM 等）统一映射到页面展示 key，日历 key 用数字拼接去掉前导零
+        const t = this.displayType(r.reminderType || r.type || '')
+        const key = this.dateKey(r.nextDate)
+        if (!map[key]) map[key] = []
+        map[key].push(t)
       }
       return map
     },
@@ -349,16 +363,24 @@ export default {
 
     upcomingReminders() {
       return this.reminders.slice(0, 4).map((r) => {
-        const type = r.reminderType || r.type || 'bath'
+        const type = this.displayType(r.reminderType || r.type || 'bath')
         const legend = LEGEND_ITEMS.find((l) => l.type === type)
-        const nextDate = r.nextDate ? new Date(r.nextDate) : null
-        const diff = nextDate ? Math.ceil((nextDate - this.today) / (1000 * 60 * 60 * 24)) : 0
+        // 用「日期字符串→本地当天零点」计算天数差，避免 UTC 解析导致的日期偏移
+        const nextMid = r.nextDate ? this.localMidnight(r.nextDate) : null
+        const todayMid = new Date(
+          this.today.getFullYear(),
+          this.today.getMonth(),
+          this.today.getDate(),
+        )
+        const diff = nextMid
+          ? Math.round((nextMid.getTime() - todayMid.getTime()) / (1000 * 60 * 60 * 24))
+          : 0
         return {
           type,
           icon: TYPE_ICONS[type] || 'map-pin',
           typeLabel: legend ? legend.label : type,
           date: r.nextDate || '-',
-          desc: r.note || r.desc || '',
+          desc: this.extraNote(r) || (legend ? `${legend.label}计划` : ''),
           statusText:
             diff < 0 ? `已过期 ${Math.abs(diff)} 天` : diff === 0 ? '今天' : `还剩 ${diff} 天`,
           overdue: diff < 0,
@@ -369,8 +391,11 @@ export default {
     monthlyStats() {
       const counts = {}
       for (const r of this.reminders) {
-        if (!r.nextDate) continue
-        const type = r.reminderType || r.type
+        // 只统计当前查看月且启用的提醒，避免跨月/已关闭类型混入概览
+        if (!r.nextDate || r.enabled === false) continue
+        const [y, m] = String(r.nextDate).split('-').map(Number)
+        if (y !== this.currentYear || m !== this.currentMonth + 1) continue
+        const type = this.displayType(r.reminderType || r.type || '')
         counts[type] = (counts[type] || 0) + 1
       }
       return Object.entries(counts).map(([type, count]) => {
@@ -392,29 +417,33 @@ export default {
   },
 
   methods: {
-    onBack() {
-      uni.navigateBack()
-    },
-
     async loadData() {
       try {
-        const [pets, reminders] = await Promise.all([
-          petApi.getPets(),
-          this.petId ? petApi.getReminders(this.petId) : Promise.resolve([]),
-        ])
-        this.petList = pets.map((p) => ({
-          ...p,
-          active: p.id === this.petId,
-        }))
-        this.reminders = reminders || []
-        const activePet = this.petList.find((p) => p.active) || this.petList[0]
-        if (activePet) {
-          this.currentPetName = activePet.name
-          if (!this.petId) {
-            this.petId = activePet.id
-            this.loadData()
-          }
+        const pets = await petApi.getPets()
+        this.petList = Array.isArray(pets) ? pets : []
+        // 未传 petId（如无宠物时入口不传参）时兜底第一只宠物再拉提醒
+        if (!this.petId && this.petList.length > 0) {
+          this.petId = this.petList[0].id
         }
+        if (this.petId) {
+          try {
+            this.reminders = (await petApi.getReminders(this.petId)) || []
+          } catch (e) {
+            console.warn('[health-calendar] reminders load failed', e)
+            this.reminders = []
+          }
+        } else {
+          this.reminders = []
+        }
+        // 高亮与名字用数字比较，避免 petId 字符串与 p.id 数字失配
+        const activePet =
+          this.petList.find((p) => p.id === Number(this.petId)) || this.petList[0] || null
+        this.petList.forEach((p) => {
+          p.active = p.id === Number(this.petId)
+        })
+        this.currentPetName = activePet ? activePet.name : ''
+        // 首次进入/切换宠物后同步刷新选中日详情，避免残留上一只宠物的旧事件
+        this.updateSelectedEvents()
       } catch (e) {
         console.warn('[health-calendar] load failed', e)
         this.reminders = []
@@ -430,10 +459,6 @@ export default {
       this.petId = pet.id
       this.selectedDate = this.today.getDate()
       this.loadData()
-    },
-
-    onAddPet() {
-      uni.showToast({ title: '添加宠物', icon: 'none' })
     },
 
     prevMonth() {
@@ -474,21 +499,21 @@ export default {
 
     updateSelectedEvents() {
       const fullDate = `${this.currentYear}-${this.currentMonth + 1}-${this.selectedDate}`
-      const types = this.eventMap[fullDate]
-      if (types && types.length > 0) {
-        this.selectedEvents = types.map((t) => {
-          const legend = LEGEND_ITEMS.find((l) => l.type === t)
+      // 直接按选中日期过滤提醒，可带出备注/类型文案
+      this.selectedEvents = this.reminders
+        .filter((r) => r.nextDate && this.dateKey(r.nextDate) === fullDate)
+        .map((r) => {
+          const type = this.displayType(r.reminderType || r.type || '')
+          const legend = LEGEND_ITEMS.find((l) => l.type === type)
+          const note = this.extraNote(r)
           return {
-            type: t,
-            icon: TYPE_ICONS[t] || 'edit-3',
-            typeLabel: legend ? legend.label : t,
-            time: '10:00',
-            desc: `${legend ? legend.label : t}记录`,
+            type,
+            icon: TYPE_ICONS[type] || 'calendar',
+            typeLabel: legend ? legend.label : type,
+            time: '全天',
+            desc: note || `${legend ? legend.label : type}提醒`,
           }
         })
-      } else {
-        this.selectedEvents = []
-      }
     },
 
     onAddReminder() {
@@ -509,11 +534,25 @@ export default {
         uni.showToast({ title: '请选择日期', icon: 'none' })
         return
       }
+      // 页面 key → 后端大写类型；体检用 EXAM，避免与护理记录体系产生 checkup 重复提醒
+      const backendType = TYPE_KEY_BACKEND[this.reminderForm.type]
+      if (!backendType) {
+        uni.showToast({ title: '请选择有效的提醒类型', icon: 'none' })
+        return
+      }
+      if (!this.petId) {
+        uni.showToast({ title: '请先选择宠物', icon: 'none' })
+        return
+      }
       try {
-        await petApi.updateReminder(this.petId, null, {
-          reminderType: this.reminderForm.type.toUpperCase(),
+        // reminderId 传 0：后端按 petId+reminderType upsert，可新增/覆盖该类型提醒；
+        // 后端无 note 字段，备注统一放 extra(JSON 列) 并写为 { note }，读取时解析
+        await petApi.updateReminder(this.petId, 0, {
+          reminderType: backendType,
           nextDate: this.reminderForm.date,
-          note: this.reminderForm.note,
+          extra: this.reminderForm.note
+            ? JSON.stringify({ note: this.reminderForm.note.trim() })
+            : null,
           enabled: true,
         })
         uni.showToast({ title: '提醒已添加', icon: 'success' })
@@ -528,6 +567,51 @@ export default {
     onDateChange(e) {
       this.reminderForm.date = e.detail.value
     },
+
+    // 后端 reminderType（大写）→ 页面展示 key；体检 EXAM 映射到 checkup 视觉
+    displayType(raw) {
+      const upper = String(raw || '').toUpperCase()
+      return BACKEND_TYPE_KEY[upper] || upper.toLowerCase()
+    },
+
+    // 从 extra(JSON) 中解析备注；兼容纯文本与非法 JSON
+    extraNote(r) {
+      const ex = r && r.extra
+      if (ex === null || ex === undefined) return ''
+      if (typeof ex === 'string') {
+        try {
+          const o = JSON.parse(ex)
+          if (o && typeof o.note === 'string') return o.note
+          if (typeof o === 'string') return o
+        } catch (e) {
+          /* 非法 JSON 按原样展示 */
+        }
+      }
+      return typeof ex === 'string' ? ex : ''
+    },
+
+    // '2026-09-07' → '2026-9-7'（与日历 fullDate 的拼接格式一致）
+    dateKey(dateStr) {
+      const [y, m, d] = String(dateStr || '')
+        .split('-')
+        .map(Number)
+      if (!y || !m || !d) return ''
+      return `${y}-${m}-${d}`
+    },
+
+    // 按本地时区解析 'YYYY-MM-DD' 为当天零点，避免 UTC 偏移
+    localMidnight(dateStr) {
+      const [y, m, d] = String(dateStr || '')
+        .split('-')
+        .map(Number)
+      return new Date(y, m - 1, d)
+    },
+
+    // 宠物头像占位（后端 PetVO 无 emoji 字段，按类型给默认表情）
+    petEmoji(pet) {
+      const map = { DOG: '🐶', CAT: '🐱', RABBIT: '🐰', BIRD: '🐦', OTHER: '🐾' }
+      return (pet && map[pet.type]) || '🐾'
+    },
   },
 }
 </script>
@@ -539,62 +623,39 @@ export default {
   padding-bottom: 48rpx;
 }
 
-// 顶部导航
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  background: var(--color-surface);
-  border-bottom: 1rpx solid var(--color-divider);
-}
-
-.header-inner {
+// 宠物横向滚动
+.pet-scroll {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  height: 88rpx;
-  padding: 0 24rpx;
+  gap: 24rpx;
+  padding: 16rpx 24rpx 8rpx;
 }
 
-.header-title {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
+// 宠物列表自身横向滚动，占满剩余空间，把右侧「+」按钮推到最右
+.pet-scroll-inner {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 24rpx;
+  overflow-x: auto;
 }
 
-.header-btn {
+.pet-add-btn {
+  flex-shrink: 0;
   width: 72rpx;
   height: 72rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: var(--color-surface);
-}
-
-.header-btn-primary {
   background: var(--color-primary);
 }
 
-.header-btn-icon {
+.pet-add-icon {
   font-size: 40rpx;
-  color: var(--color-primary);
-  font-weight: var(--font-weight-bold);
-}
-
-.header-btn-icon-white {
   color: #ffffff;
-}
-
-// 宠物横向滚动
-.pet-scroll {
-  padding: 16rpx 24rpx 8rpx;
-  overflow-x: auto;
-}
-
-.pet-scroll-inner {
-  display: flex;
-  gap: 24rpx;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
 }
 
 .pet-item {
@@ -624,17 +685,14 @@ export default {
   transform: scale(1.08);
 }
 
-.pet-avatar-add {
-  border: 2rpx dashed var(--color-divider);
+.pet-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
 }
 
 .pet-avatar-emoji {
   font-size: 36rpx;
-}
-
-.pet-add-icon {
-  font-size: 32rpx;
-  color: var(--color-text-tertiary);
 }
 
 .pet-name-label {
@@ -645,10 +703,6 @@ export default {
 
 .pet-name-active {
   color: var(--color-primary);
-}
-
-.pet-name-add {
-  color: var(--color-text-tertiary);
 }
 
 // 日历卡片

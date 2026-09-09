@@ -21,6 +21,8 @@ public class MemberPrimeEntity {
   }
 
   public enum Status {
+    /** 待支付（已创建支付单，等待 webhook 确认后转 ACTIVE） */
+    PENDING,
     ACTIVE, CANCELLED, EXPIRED
   }
 

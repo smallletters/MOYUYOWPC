@@ -18,6 +18,9 @@ public class MemberEntity {
 
   private Long userId;
 
+  /** 会员卡号：随机唯一 12 位数字（不含 MY. 前缀），首次访问会员中心时生成 */
+  private String memberNo;
+
   private Level level;
 
   private Integer growthValue;

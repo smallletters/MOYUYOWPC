@@ -19,22 +19,22 @@ ALTER TABLE mo_pet
   ADD INDEX idx_next_vaccine (`last_vaccine_date`),
   ADD INDEX idx_next_deworm (`last_deworm_date`);
 
--- 2. 成长记录表
+-- 2. 成长记录表（记录一次已完成护理/成长事件：洗澡/疫苗/驱虫/体检）
+-- 字段与 GrowthRecordEntity 严格对齐：record_type/content/media_url/record_date + user_id
 CREATE TABLE mo_growth_record (
-  id            BIGINT       NOT NULL                  COMMENT '雪花ID',
-  pet_id        BIGINT       NOT NULL                  COMMENT '关联宠物ID',
-  type          VARCHAR(16)  NOT NULL                  COMMENT 'VACCINE/DEWORM/EXAM/BATH',
-  title         VARCHAR(128) NOT NULL                  COMMENT '记录标题',
-  record_time   DATE         NOT NULL                  COMMENT '记录日期',
-  note          TEXT         NULL                      COMMENT '备注',
-  image_url     VARCHAR(512) NULL                      COMMENT '附件图片URL',
-  reminder_type VARCHAR(16)  NULL                      COMMENT '关联提醒类型',
-  alert_date    DATE         NULL                      COMMENT '设置的下次提醒日期',
-  create_time   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  id          BIGINT       NOT NULL                  COMMENT '雪花ID',
+  pet_id      BIGINT       NOT NULL                  COMMENT '关联宠物ID',
+  user_id     BIGINT       NOT NULL                  COMMENT '记录人ID',
+  record_type VARCHAR(16)  NOT NULL                  COMMENT 'VACCINE/DEWORM/EXAM/BATH',
+  content     VARCHAR(512) NULL                      COMMENT '记录内容（如疫苗名称/驱虫药/护理描述）',
+  media_url   VARCHAR(512) NULL                      COMMENT '附件图片URL',
+  record_date DATE         NOT NULL                  COMMENT '护理发生日期',
+  create_time DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  KEY idx_pet_type (`pet_id`, `type`),
-  KEY idx_record_time (`record_time`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='成长记录表（洗澡/疫苗/驱虫/体检）';
+  KEY idx_pet_type (`pet_id`, `record_type`),
+  KEY idx_pet_date (`pet_id`, `record_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='成长记录表（洗护/疫苗/驱虫/体检）';
 
 -- 3. 护理提醒配置表
 CREATE TABLE mo_pet_reminder (

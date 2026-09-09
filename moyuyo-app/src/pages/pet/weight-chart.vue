@@ -1,10 +1,10 @@
-﻿<template>
+<template>
   <view class="weight-chart">
     <!-- 顶部导航 -->
     <view class="header">
       <view class="header-inner">
         <view class="header-btn" @click="onBack">
-          <text class="header-btn-icon luc-arrow-left" />
+          <text class="header-btn-icon luc luc-arrow-left" />
         </view>
         <text class="header-title">体重记录</text>
         <view class="header-btn header-btn-primary" @click="onAddWeight">
@@ -17,17 +17,33 @@
     <view class="current-weight-card">
       <text class="current-weight-label">当前体重</text>
       <view class="current-weight-main">
-        <text class="current-weight-number">28.5</text>
-        <text class="current-weight-unit">kg</text>
-        <view class="current-weight-trend current-weight-trend-down">
-          <text class="trend-icon luc luc-arrow-down" />
-          <text class="trend-value">0.3</text>
-        </view>
+        <template v-if="weightRecords.length">
+          <text class="current-weight-number">{{ latestWeight }}</text>
+          <text class="current-weight-unit">kg</text>
+          <view
+            v-if="latestTrend !== null"
+            class="current-weight-trend"
+            :class="latestTrend >= 0 ? 'current-weight-trend-up' : 'current-weight-trend-down'"
+          >
+            <text
+              class="trend-icon luc"
+              :class="$luc(latestTrend >= 0 ? 'arrow-up' : 'arrow-down')"
+            />
+            <text class="trend-value">{{ latestTrendText }}</text>
+          </view>
+        </template>
+        <template v-else>
+          <text class="current-weight-number">--</text>
+          <text class="current-weight-unit">kg</text>
+        </template>
       </view>
       <view class="current-weight-meta">
-        <text class="meta-item">较上月</text>
-        <text class="meta-divider">|</text>
-        <text class="meta-item">目标 25.0 - 30.0 kg</text>
+        <template v-if="latestDate">
+          <text class="meta-item">较上次</text>
+          <text class="meta-divider">|</text>
+          <text class="meta-item">{{ latestDate }}</text>
+        </template>
+        <text v-else class="meta-item">暂无记录，点右上角「+」开始记录</text>
       </view>
     </view>
 
@@ -36,14 +52,14 @@
       <view
         class="toggle-item"
         :class="{ 'toggle-active': chartMode === 'weekly' }"
-        @click="chartMode = 'weekly'"
+        @click="onToggleMode('weekly')"
       >
         <text class="toggle-text">周</text>
       </view>
       <view
         class="toggle-item"
         :class="{ 'toggle-active': chartMode === 'monthly' }"
-        @click="chartMode = 'monthly'"
+        @click="onToggleMode('monthly')"
       >
         <text class="toggle-text">月</text>
       </view>
@@ -54,32 +70,41 @@
       <view class="chart-header">
         <text class="chart-title">{{ chartMode === 'weekly' ? '本周' : '本月' }}体重变化</text>
       </view>
-      <!-- 柱状图 -->
-      <view class="chart-container">
-        <!-- Y 轴标签 -->
+      <!-- 柱状图：Y 轴刻度与柱高同源，随数据动态计算 -->
+      <view v-if="chartData.length" class="chart-container">
+        <!-- Y 轴刻度 -->
         <view class="chart-y-axis">
-          <text class="y-label">30.0</text>
-          <text class="y-label">29.0</text>
-          <text class="y-label">28.0</text>
-          <text class="y-label">27.0</text>
-          <text class="y-label">26.0</text>
+          <view
+            v-for="t in chartRange.ticks"
+            :key="t"
+            class="y-tick"
+            :style="{ bottom: tickBottom(t) }"
+          >
+            <text class="y-label">{{ fmtTick(t) }}</text>
+          </view>
         </view>
         <!-- 图表主体 -->
         <view class="chart-body">
-          <!-- 网格线 -->
+          <!-- 网格线（与刻度位置一致） -->
           <view class="chart-grid">
-            <view v-for="i in 4" :key="i" class="grid-line" />
+            <view
+              v-for="t in chartRange.ticks"
+              :key="'g' + t"
+              class="grid-line"
+              :style="{ bottom: barOffset(t) }"
+            />
           </view>
           <!-- 柱子 -->
           <view class="chart-bars">
             <view v-for="(bar, bIdx) in chartData" :key="bIdx" class="chart-bar-col">
-              <view class="bar-wrap">
-                <view
-                  class="bar-fill"
-                  :class="{ 'bar-above': bar.value > 28.5, 'bar-below': bar.value <= 28.5 }"
-                  :style="{ height: barHeight(bar.value) + '%' }"
-                />
-              </view>
+              <view
+                class="bar-fill"
+                :class="{
+                  'bar-above': bar.value >= chartBaseline,
+                  'bar-below': bar.value < chartBaseline,
+                }"
+                :style="{ height: barOffset(bar.value) }"
+              />
               <view class="bar-label-col">
                 <text class="bar-value-label">{{ bar.value }}</text>
                 <text class="bar-date-label">{{ bar.label }}</text>
@@ -87,6 +112,9 @@
             </view>
           </view>
         </view>
+      </view>
+      <view v-else class="chart-empty">
+        <text>该时间段暂无记录</text>
       </view>
     </view>
 
@@ -112,7 +140,7 @@
         </view>
         <view class="record-right">
           <text class="record-diff" :class="record.trend === 'up' ? 'diff-up' : 'diff-down'">
-            {{ record.trend === 'up' ? '+' : '-' }}{{ record.diff }}
+            {{ record.diffText }}
           </text>
           <text class="record-note">{{ record.note }}</text>
         </view>
@@ -161,6 +189,11 @@
 
 <script>
 import { petWeightApi } from '@/api'
+import { usePetStore } from '@/store'
+
+// 绘图区高度 / 底部柱标签区高度（rpx，须与 <style> 中 .chart-body 的取值一致）
+const CHART_PLOT_H = 260
+const CHART_LABEL_H = 60
 
 export default {
   pageTitleKey: 'pageTitle.petWeightChart',
@@ -175,19 +208,123 @@ export default {
         date: '',
         note: '',
       },
+      // 后端 /chart 返回的原始实体（时间升序）
+      rawChart: [],
+      // 柱状图展示数据 [{ value, label }]
       chartData: [],
+      // 历史列表展示数据（最新在前，已含 diff/趋势/日期文案）
       weightRecords: [],
+      // 当前体重卡片展示数据
+      latestWeight: '--',
+      latestDate: '',
+      latestTrend: null,
+      latestTrendText: '',
+      // 柱状图颜色基准（取最新体重）
+      chartBaseline: null,
     }
   },
 
+  computed: {
+    petStore() {
+      return usePetStore()
+    },
+
+    // 图表 Y 轴范围：数据 min~max 外扩后取“好看”步长，得到 lo/hi/ticks，
+    // 刻度标签与柱高共用同一范围，保证柱顶读数与刻度一致
+    chartRange() {
+      const vals = (this.chartData || []).map((d) => d.value)
+      let lo = 0
+      let hi = 1
+      if (vals.length) {
+        let min = Math.min(...vals)
+        let max = Math.max(...vals)
+        // 上下外扩，避免柱子贴死顶/底、首尾刻度缺失
+        const pad = Math.max((max - min) * 0.15, 0.5)
+        min -= pad
+        max += pad
+        // 4 等分下选“好看”步长：1 / 2 / 2.5 / 5 × 10^n
+        const raw = (max - min) / 4
+        const base = Math.pow(10, Math.floor(Math.log10(raw)))
+        const niceSteps = [1, 2, 2.5, 5, 10]
+        let step = base * 10
+        for (let i = 0; i < niceSteps.length; i += 1) {
+          const s = base * niceSteps[i]
+          if (s >= raw) {
+            step = s
+            break
+          }
+        }
+        lo = Math.floor(min / step) * step
+        hi = Math.ceil(max / step) * step
+        // 在 lo/hi 之间按 step 生成刻度（至少 4 段）
+        step = (hi - lo) / Math.max(4, Math.round((hi - lo) / step))
+        const ticks = []
+        for (let v = lo; v <= hi + 1e-9; v += step) {
+          ticks.push(Math.round(v * 100) / 100)
+        }
+        return { lo, hi, step, ticks }
+      }
+      return { lo, hi, step: 1, ticks: [0, 1] }
+    },
+  },
+
   onLoad(query) {
-    this.petId = query.petId || null
+    // petId 为雪花 ID（约 2e18），超出 JS 安全整数范围(2^53)，
+    // 必须保持字符串传递，不能用 Number() 强转，否则精度丢失会请求到错误宠物
+    const raw = query.petId === undefined || query.petId === null ? '' : String(query.petId)
+    this.petId = raw || null
+    // 未带 petId（无宠物时快捷入口不传参）时兜底当前宠物
+    if (!this.petId) {
+      const pet = this.petStore.activePet || this.petStore.pets[0] || null
+      if (pet && pet.id) this.petId = String(pet.id)
+    }
     this.loadData()
   },
 
   methods: {
     onBack() {
       uni.navigateBack()
+    },
+
+    // 后端原始实体转展示数据；记录接口按时间降序（最新在前）
+    decorateRecords(descRecords) {
+      const chrono = descRecords.slice().reverse()
+      this.weightRecords = chrono
+        .map((w, i) => {
+          const prev = chrono[i - 1]
+          const weight = this.toWeightText(w.weight)
+          let diff = null
+          if (prev) diff = Number(w.weight) - Number(prev.weight)
+          return {
+            weight,
+            date: this.formatDate(w.measuredAt),
+            note: w.note || '',
+            // 涨/跌相对更早一条记录；首条记录无对比对象
+            trend: diff === null || diff < 0 ? 'down' : 'up',
+            diffText:
+              diff === null ? '首次' : `${diff >= 0 ? '+' : '-'}${Math.abs(diff).toFixed(1)}`,
+          }
+        })
+        .reverse()
+
+      // 当前体重卡片：最新一条 + 与上一条的差值
+      const latest = descRecords[0]
+      if (latest) {
+        const prev = descRecords[1]
+        const diff = prev ? Number(latest.weight) - Number(prev.weight) : null
+        this.latestWeight = this.toWeightText(latest.weight)
+        this.latestDate = this.formatDate(latest.measuredAt)
+        this.latestTrend = diff
+        this.latestTrendText =
+          diff === null ? '' : `${diff >= 0 ? '+' : '-'}${Math.abs(diff).toFixed(1)}`
+        this.chartBaseline = Number(latest.weight)
+      } else {
+        this.latestWeight = '--'
+        this.latestDate = ''
+        this.latestTrend = null
+        this.latestTrendText = ''
+        this.chartBaseline = null
+      }
     },
 
     async loadData() {
@@ -197,24 +334,62 @@ export default {
           petWeightApi.getPetWeightChart(this.petId),
           petWeightApi.getPetWeights(this.petId),
         ])
-        this.chartData = chart || []
-        this.weightRecords = records || []
+        // chart 为时间升序的原始实体（旧→新）
+        this.rawChart = Array.isArray(chart) ? chart : []
+        this.decorateRecords(Array.isArray(records) ? records : [])
+        this.applyChartMode()
       } catch (e) {
         console.warn('[weight] load failed', e)
+        this.rawChart = []
         this.chartData = []
         this.weightRecords = []
       }
     },
 
-    barHeight(value) {
-      const min = 26.0
-      const max = 30.0
-      const percent = ((value - min) / (max - min)) * 100
-      return Math.max(10, Math.min(100, percent))
+    // 周/月切换：仅保留最近 7 / 30 天的点，再映射为柱状图数据
+    onToggleMode(mode) {
+      this.chartMode = mode
+      this.applyChartMode()
+    },
+
+    applyChartMode() {
+      const days = this.chartMode === 'monthly' ? 29 : 6
+      const from = new Date()
+      from.setDate(from.getDate() - days)
+      const pad = (n) => String(n).padStart(2, '0')
+      const fromStr = `${from.getFullYear()}-${pad(from.getMonth() + 1)}-${pad(from.getDate())}`
+      this.chartData = (this.rawChart || [])
+        .filter((e) => (e.measuredAt || '').slice(0, 10) >= fromStr)
+        .map((e) => ({
+          value: Number(e.weight),
+          label: (e.measuredAt || '').slice(5, 10),
+        }))
+    },
+
+    // 柱顶 / 网格线相对绘图区底部的偏移高度（rpx），刻度与柱体共用同一映射
+    barOffset(value) {
+      const { lo, hi } = this.chartRange
+      if (!(hi > lo)) return '0rpx'
+      const pct = Math.max(0, Math.min(1, (value - lo) / (hi - lo)))
+      return `${(pct * CHART_PLOT_H).toFixed(1)}rpx`
+    },
+
+    // Y 轴刻度文本定位：底部柱标签区之上，再按刻度偏移
+    tickBottom(value) {
+      return `calc(${CHART_LABEL_H}rpx + ${this.barOffset(value)})`
+    },
+
+    // 刻度文本格式化：去掉浮点误差，整数不显示小数点
+    fmtTick(v) {
+      return String(Math.round(v * 100) / 100)
     },
 
     onAddWeight() {
-      this.weightForm = { value: '', date: '', note: '' }
+      // 日期默认今天，减少一次选择
+      const now = new Date()
+      const pad = (n) => String(n).padStart(2, '0')
+      const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+      this.weightForm = { value: '', date: today, note: '' }
       this.showWeightModal = true
     },
 
@@ -223,12 +398,24 @@ export default {
     },
 
     async onSubmitWeight() {
-      if (!this.weightForm.value) {
-        uni.showToast({ title: '请输入体重', icon: 'none' })
+      const value = Number(this.weightForm.value)
+      if (!value || value <= 0) {
+        uni.showToast({ title: '请输入正确的体重', icon: 'none' })
+        return
+      }
+      if (!this.weightForm.date) {
+        uni.showToast({ title: '请选择日期', icon: 'none' })
         return
       }
       try {
-        await petWeightApi.createPetWeight(this.petId, this.weightForm)
+        // 后端实体字段为 weight/unit/note/measuredAt(LocalDateTime)，
+        // 取所选日期中午时分提交，避免字段错位导致入库失败
+        await petWeightApi.createPetWeight(this.petId, {
+          weight: value,
+          unit: 'kg',
+          note: (this.weightForm.note || '').trim(),
+          measuredAt: `${this.weightForm.date}T12:00:00`,
+        })
         uni.showToast({ title: '记录成功', icon: 'success' })
         this.showWeightModal = false
         this.loadData()
@@ -241,6 +428,20 @@ export default {
     onWeightDateChange(e) {
       this.weightForm.date = e.detail.value
     },
+
+    // 后端 LocalDateTime 形如 2026-09-07T12:00:00，只取日期部分展示
+    formatDate(iso) {
+      if (!iso) return ''
+      const s = String(iso)
+      return s.length >= 10 ? s.slice(0, 10) : s
+    },
+
+    // 体重数值转文本（整数不带小数点）
+    toWeightText(w) {
+      const num = Number(w)
+      if (Number.isNaN(num)) return '--'
+      return num % 1 === 0 ? String(num) : num.toFixed(1)
+    },
   },
 }
 </script>
@@ -252,11 +453,12 @@ export default {
   padding-bottom: 48rpx;
 }
 
-// 顶部导航
+// 顶部导航（自定义导航栏，叠加状态栏高度）
 .header {
   position: sticky;
   top: 0;
   z-index: 30;
+  padding-top: calc(var(--status-bar-height, 0px) + env(safe-area-inset-top, 0px));
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }
@@ -438,75 +640,82 @@ export default {
   color: var(--color-text);
 }
 
-// 图表容器
+// 图表容器（左轴刻度列 + 绘图区）
 .chart-container {
   display: flex;
-  gap: 16rpx;
+  align-items: stretch;
 }
 
+// Y 轴刻度列：刻度文本由 JS 定位在绘图区 60rpx 标签区之上
 .chart-y-axis {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding-bottom: 56rpx;
+  position: relative;
+  width: 96rpx;
+  margin-right: 12rpx;
   flex-shrink: 0;
+}
+
+.y-tick {
+  position: absolute;
+  left: 0;
+  right: 0;
+  line-height: 1;
+  transform: translateY(50%);
+  text-align: right;
 }
 
 .y-label {
   font-size: 18rpx;
   color: var(--color-text-tertiary);
   font-variant-numeric: tabular-nums;
-  line-height: 1;
 }
 
+// 绘图区总高 = 260rpx 数据区 + 60rpx 柱底标签区（与脚本 CHART_PLOT_H / CHART_LABEL_H 一致）
 .chart-body {
-  flex: 1;
   position: relative;
+  flex: 1;
+  height: 320rpx;
 }
 
+// 网格线层：只覆盖绘图区高度，线位置与刻度同源
 .chart-grid {
   position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding-bottom: 56rpx;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 60rpx;
 }
 
 .grid-line {
+  position: absolute;
+  left: 0;
+  right: 0;
   height: 1rpx;
   background: var(--color-divider);
 }
 
+// 柱子层：铺满整个绘图区
 .chart-bars {
-  position: relative;
-  z-index: 1;
+  position: absolute;
+  inset: 0;
   display: flex;
   justify-content: space-around;
-  align-items: flex-end;
-  height: 100%;
 }
 
 .chart-bar-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  position: relative;
   flex: 1;
+  max-width: 120rpx;
 }
 
-.bar-wrap {
-  width: 40rpx;
-  height: 240rpx;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
+// 柱体：从柱底标签区顶部（bottom 60rpx）向上按数据刻度绘制
 .bar-fill {
-  width: 100%;
+  position: absolute;
+  bottom: 60rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 44rpx;
   border-radius: 8rpx 8rpx 0 0;
   transition: height 0.4s ease;
-  min-height: 8rpx;
 }
 
 .bar-above {
@@ -519,12 +728,18 @@ export default {
   opacity: 0.7;
 }
 
+// 柱底标签（体重值 + 日期）
 .bar-label-col {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 60rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 4rpx;
-  margin-top: 8rpx;
 }
 
 .bar-value-label {
@@ -532,10 +747,22 @@ export default {
   color: var(--color-text-secondary);
   font-weight: var(--font-weight-medium);
   font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .bar-date-label {
   font-size: 18rpx;
+  color: var(--color-text-tertiary);
+  line-height: 1;
+}
+
+// 图表空态
+.chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48rpx 0;
+  font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
 }
 

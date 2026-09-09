@@ -4,6 +4,7 @@ import com.moyuyo.common.Result;
 import com.moyuyo.common.dto.prime.PrimePlanVO;
 import com.moyuyo.common.dto.prime.PrimeStatusVO;
 import com.moyuyo.common.dto.prime.PrimeSubscribeRequest;
+import com.moyuyo.common.dto.prime.PrimeSubscribeVO;
 import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.service.PrimeService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,14 +36,20 @@ public class PrimeController {
     return Result.success(primeService.getStatus(userId));
   }
 
-  @Operation(summary = "订阅 Prime（dev/mock 直接落库，prod 应走支付 webhook）")
+  @Operation(summary = "订阅 Prime（未配支付密钥时模拟直开；配了密钥则返回 Stripe Checkout 支付地址，由 webhook 激活）")
   @PostMapping("/subscribe")
-  public Result<PrimeStatusVO> subscribe(@Valid @RequestBody PrimeSubscribeRequest body) {
+  public Result<PrimeSubscribeVO> subscribe(@Valid @RequestBody PrimeSubscribeRequest body) {
     Long userId = UserContextHolder.getUserId();
     if (userId == null) {
       return Result.error(401, "请先登录");
     }
-    return Result.success(primeService.subscribe(userId, body.getPlanCode(), body.getPayChannel()));
+    return Result.success(primeService.subscribe(
+        userId,
+        body.getPlanCode(),
+        body.getPayChannel(),
+        body.getClientType(),
+        body.getSchemeBase(),
+        body.getReturnUrl()));
   }
 
   @Operation(summary = "取消订阅（标记 CANCELLED，已开通视图调用）")

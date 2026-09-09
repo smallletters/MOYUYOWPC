@@ -1,11 +1,13 @@
 package com.moyuyo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.dto.member.MemberVO;
 import com.moyuyo.common.dto.member.WalletVO;
 import com.moyuyo.dao.entity.MemberEntity;
 import com.moyuyo.dao.entity.MemberEntity.Level;
+import com.moyuyo.dao.entity.MemberNoSeqEntity;
 import com.moyuyo.dao.entity.PointsLogEntity;
 import com.moyuyo.dao.entity.UserEntity;
 import com.moyuyo.dao.entity.WalletEntity;
@@ -50,7 +52,7 @@ public class MemberServiceImpl implements MemberService {
     vo.setGrowthValue(member.getGrowthValue());
     vo.setPoints(user != null ? user.getPoints() : 0);
     vo.setBalance(wallet.getBalance());
-    vo.setMemberNo(generateMemberNo(userId));
+    vo.setMemberNo(getOrAssignMemberNo(userId));
     return vo;
   }
 
@@ -196,21 +198,46 @@ public class MemberServiceImpl implements MemberService {
   }
 
   /**
-   * 根据 userId 确定性生成会员卡号：MY + 8 位数字区段 + 4 位数字校验位
-   * 同 userId 永远生成同一卡号，无需落库
-   * 例：userId = 200000000017 → MY·00000017·2177
+   * 会员卡号：取自增序列的全局递增 id，12 位前导零格式（000000000001、000000000002…）。
+   * 数字自然递增、全局唯一；首次生成后写回 mo_member.member_no 永久固定。
    */
-  private String generateMemberNo(Long userId) {
-    if (userId == null) return "MY·00000000·0000";
-    // 仅取 userId 低 8 位十进制数字作为区段，保证短小易读
-    String seg = String.format("%08d", Math.abs(userId) % 100_000_000L);
-    // 校验位：userId 各字节累加再取模，输出固定 4 位数字
-    long check = Math.abs(userId);
-    for (int i = 0; i < 4; i++) {
-      check = (check / 10) + (check % 10);
+  @Override
+  public String getOrAssignMemberNo(Long userId) {
+    MemberEntity entity = ensureMember(userId);
+    if (entity.getMemberNo() != null && !entity.getMemberNo().isBlank()) {
+      return entity.getMemberNo();
     }
-    String checkNum = String.format("%04d", (int) (check % 10_000L));
-    return String.format("MY·%s·%s", seg, checkNum);
+    for (int attempt = 0; attempt < 5; attempt++) {
+      // 领取下一个自增号（DB 生成，天然唯一、无撞号）
+      MemberNoSeqEntity seq = new MemberNoSeqEntity();
+      memberMapper.insertSeq(seq);
+      if (seq.getId() == null) {
+        throw new IllegalStateException("会员卡号分配失败，请稍后重试");
+      }
+      String no = String.format("%012d", seq.getId());
+      // 仅当仍为空时写回；同用户并发时后者改为读取已分配号码
+      LambdaUpdateWrapper<MemberEntity> uw = new LambdaUpdateWrapper<>();
+      uw.eq(MemberEntity::getId, entity.getId())
+          .isNull(MemberEntity::getMemberNo)
+          .set(MemberEntity::getMemberNo, no);
+      int updated;
+      try {
+        updated = memberMapper.update(null, uw);
+      } catch (org.springframework.dao.DuplicateKeyException e) {
+        // 理论上自增号不会冲突，此处仅防御性兜底
+        updated = 0;
+      }
+      if (updated == 1) {
+        entity.setMemberNo(no);
+        return no;
+      }
+      // 并发下其他请求已分配：重读返回
+      MemberEntity fresh = memberMapper.selectById(entity.getId());
+      if (fresh != null && fresh.getMemberNo() != null && !fresh.getMemberNo().isBlank()) {
+        return fresh.getMemberNo();
+      }
+    }
+    throw new IllegalStateException("会员卡号分配失败，请稍后重试");
   }
 
   private boolean isAtLeast(Long userId, String minLevel) {

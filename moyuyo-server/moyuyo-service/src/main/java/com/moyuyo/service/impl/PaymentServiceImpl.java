@@ -10,6 +10,7 @@ import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.PaymentMapper;
 import com.moyuyo.service.OrderService;
 import com.moyuyo.service.PaymentService;
+import com.moyuyo.service.PrimeService;
 import com.stripe.Stripe;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
@@ -53,6 +54,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final OrderMapper orderMapper;
     private final RestTemplate restTemplate;
     private final StringRedisTemplate redisTemplate;
+    private final PrimeService primeService;
     /** 全局复用的 Jackson 实例，避免每次 new ObjectMapper 浪费资源 */
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -60,12 +62,14 @@ public class PaymentServiceImpl implements PaymentService {
                                PaymentMapper paymentMapper,
                                OrderMapper orderMapper,
                                @Qualifier("restTemplate") RestTemplate restTemplate,
-                               StringRedisTemplate redisTemplate) {
+                               StringRedisTemplate redisTemplate,
+                               PrimeService primeService) {
         this.orderService = orderService;
         this.paymentMapper = paymentMapper;
         this.orderMapper = orderMapper;
         this.restTemplate = restTemplate;
         this.redisTemplate = redisTemplate;
+        this.primeService = primeService;
     }
 
     @Value("${payment.stripe.secret-key}")
@@ -749,6 +753,13 @@ public class PaymentServiceImpl implements PaymentService {
                 Object metadataObj = object.get("metadata");
                 Map<String, String> metadata = metadataObj instanceof Map
                         ? (Map<String, String>) metadataObj : null;
+
+                // Prime 会员订阅支付：metadata.biz=prime，由 PrimeService 激活订阅
+                if (metadata != null && "prime".equals(metadata.get("biz"))) {
+                    handlePrimeCheckoutCompleted(sessionId, metadata);
+                    return;
+                }
+
                 String orderNo = metadata != null ? metadata.get("order_no") : null;
                 // 兜底：取 client_reference_id（创建 session 时设置的 orderNo）
                 if (orderNo == null) {
@@ -818,6 +829,28 @@ public class PaymentServiceImpl implements PaymentService {
         } catch (Exception e) {
             // webhook 处理异常不能向上抛（已签名通过，应由重试机制验证最终一致）
             log.error("Failed to process Stripe webhook", e);
+        }
+    }
+
+    /**
+     * 处理 Prime 订阅支付成功：从 Checkout Session metadata 还原 userId/套餐并激活。
+     * 复用顶层幂等（event.id 去重），失败只记日志交给渠道重试。
+     */
+    private void handlePrimeCheckoutCompleted(String sessionId, Map<String, String> metadata) {
+        try {
+            String uidRaw = metadata.get("user_id");
+            String planCode = metadata.get("plan_code");
+            if (uidRaw == null || planCode == null) {
+                log.warn("Prime checkout.completed missing user_id/plan_code, sessionId={}", sessionId);
+                return;
+            }
+            Long userId = Long.valueOf(uidRaw);
+            primeService.handleCheckoutCompleted(userId, planCode, "STRIPE", sessionId);
+            log.info("Prime checkout.session.completed: userId={}, planCode={}, sessionId={}",
+                    userId, planCode, sessionId);
+        } catch (Exception e) {
+            // webhook 处理异常不向上抛：签名已通过，交由 Stripe 重试机制兜底
+            log.error("Prime checkout.completed handle failed, sessionId={}", sessionId, e);
         }
     }
 

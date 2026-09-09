@@ -77,7 +77,7 @@ RUN apk add --no-cache tzdata curl tini && \
 # 注意：hprof 文件名固定 heapdump.hprof，便于运维通过 ls /app/heapdump/*.hprof 统一归档
 RUN addgroup -g 1000 -S moyuyo && \
     adduser -u 1000 -S moyuyo -G moyuyo && \
-    mkdir -p /app /var/log/moyuyo /app/heapdump /var/log/moyuyo/jfr && \
+    mkdir -p /app /var/log/moyuyo /app/heapdump /var/log/moyuyo/jfr /app/logs && \
     chown -R moyuyo:moyuyo /app /var/log/moyuyo
 
 WORKDIR /app

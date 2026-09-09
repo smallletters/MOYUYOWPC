@@ -2,7 +2,6 @@
   <view class="flash-sale-page">
     <!-- 导航栏 -->
 
-
     <!-- 限时抢购状态横幅：倒计时由 sale.endTime 驱动,文案随状态切换 -->
     <view class="flash-header">
       <view class="flash-banner">
@@ -129,6 +128,8 @@ export default {
     sessionStatus() {
       if (!this.sale || !this.sale.id) return 'inactive'
       if (this.sale.active === false) return 'inactive'
+      // 商品已下架/已删除：活动仍在时间窗内也禁止抢购
+      if (this.product && this.product.onSale === false) return 'inactive'
       const now = Date.now()
       const start = parseDate(this.sale.startTime)
       const end = parseDate(this.sale.endTime)

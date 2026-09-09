@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="prime-page">
     <!-- 顶部品牌区（蓝色渐变） -->
     <view class="prime-header">
@@ -42,7 +42,9 @@
               </view>
               <view class="plan-option-row1">
                 <text class="plan-option-name">{{ p.name }}</text>
-                <text v-if="p.code === 'YEARLY'" class="save-badge">省 $20.88</text>
+                <text v-if="p.code === 'YEARLY' && saveBadgeText" class="save-badge">
+                  {{ saveBadgeText }}
+                </text>
               </view>
               <view class="plan-option-row2">
                 <text class="plan-price">${{ p.price }}</text>
@@ -60,17 +62,17 @@
             <text class="activate-text">立即开通</text>
           </view>
 
-          <!-- 30天免费试用提示 -->
+          <!-- 订阅说明提示（自动续费） -->
           <view class="trial-row">
-            <text class="luc luc-gift trial-icon" />
-            <text class="trial-text">30天免费试用，随时可取消</text>
+            <text class="luc luc-credit-card trial-icon" />
+            <text class="trial-text">自动续费订阅，可随时取消</text>
           </view>
 
           <!-- 合规提示 -->
           <view class="legal">
             <text class="legal-text">
-              开通即表示你同意自动续费服务。试用期内免费，试用结束后将按所选方案自动扣费。你可以在「我的
-              > 订阅管理」中随时取消自动续费，取消后服务将持续至当前周期结束。
+              开通即表示你同意自动续费服务。你可以在「我的 >
+              订阅管理」中随时取消自动续费，取消后服务将持续至当前周期结束。
             </text>
           </view>
         </view>
@@ -119,33 +121,7 @@
           </view>
         </view>
 
-        <!-- 本月权益统计 -->
-        <view class="stats-card">
-          <text class="stats-title">本月已享权益</text>
-          <view class="stats-grid">
-            <view class="stat-card">
-              <view class="stat-icon-wrap" style="background: #e8f2ff">
-                <text class="luc luc-truck stat-icon" style="color: #007aff" />
-              </view>
-              <text class="stat-num">12</text>
-              <text class="stat-label">免运费次数</text>
-            </view>
-            <view class="stat-card">
-              <view class="stat-icon-wrap" style="background: #e9f9ee">
-                <text class="luc luc-piggy-bank stat-icon" style="color: #34c759" />
-              </view>
-              <text class="stat-num">$86</text>
-              <text class="stat-label">累计节省</text>
-            </view>
-            <view class="stat-card">
-              <view class="stat-icon-wrap" style="background: #e8f2ff">
-                <text class="luc luc-zap stat-icon" style="color: #0064d6" />
-              </view>
-              <text class="stat-num">8</text>
-              <text class="stat-label">优先发货单</text>
-            </view>
-          </view>
-        </view>
+        <!-- 已开通：权益数据暂未接入,仅展示订阅状态与管理入口,避免展示虚构数字 -->
 
         <!-- 管理订阅 -->
         <view class="manage-card">
@@ -168,10 +144,7 @@
               <text class="luc luc-gift manage-icon" />
               <text class="manage-label">赠送积分</text>
             </view>
-            <view class="manage-right">
-              <text class="manage-meta">本月 $10</text>
-              <text class="luc luc-chevron-right manage-arrow" />
-            </view>
+            <text class="luc luc-chevron-right manage-arrow" />
           </view>
         </view>
 
@@ -188,16 +161,60 @@
 import { ref, computed, onMounted } from 'vue'
 import { listPrimePlans, getPrimeStatus, subscribePrime, cancelPrime } from '@/api/marketing'
 import { usePageTitle } from '@/utils/i18nPageMixin'
+import { useUserStore } from '@/store'
 usePageTitle('pageTitle.userPrimePage')
 
-
 const plans = ref([])
-
 
 const selectedPlanCode = ref('YEARLY') // 默认选中年付推荐方案
 const primeStatus = ref(null) // 当前用户 Prime 状态；null = 未开通
 const loading = ref(false)
 const submitting = ref(false)
+const userStore = useUserStore()
+
+// 是否原生 APP 环境（决定 Checkout 回跳方案与打开支付页方式）
+const isNativeApp = (() => {
+  try {
+    const platform = (uni.getSystemInfoSync && uni.getSystemInfoSync().platform) || ''
+    return /ios|android/i.test(String(platform))
+  } catch (e) {
+    return false
+  }
+})()
+
+/** H5 环境取当前页面 origin，供后端拼支付成功/取消回跳地址 */
+function currentOrigin() {
+  try {
+    return typeof window !== 'undefined' ? window.location.origin : ''
+  } catch (e) {
+    return ''
+  }
+}
+
+/** 打开 Stripe Checkout 支付页：APP 用系统浏览器，H5 整页跳转（付完由后端回跳本页刷新状态） */
+function openPayment(url) {
+  if (!url) return
+  // #ifdef APP-PLUS
+  plus.runtime.openURL(url)
+  // #endif
+  // #ifdef H5
+  window.location.href = url
+  // #endif
+}
+
+/**
+ * 年付相对月付的省钱文案：套餐未加载或无法对比时不展示
+ */
+const saveBadgeText = computed(() => {
+  const yearly = plans.value.find((p) => p.code === 'YEARLY')
+  const monthly = plans.value.find((p) => p.code === 'MONTHLY')
+  if (!yearly || !monthly) return ''
+  const y = Number(yearly.price) || 0
+  const m = Number(monthly.price) || 0
+  if (y <= 0 || m <= 0) return ''
+  const saved = m * 12 - y
+  return saved > 0 ? `省 $${saved.toFixed(2)}` : ''
+})
 
 // 设计稿中的 9 项权益（图标 / 标题 / 描述 / 配色）
 const benefitList = [
@@ -205,64 +222,64 @@ const benefitList = [
     icon: 'luc-truck',
     title: '全场免运费',
     desc: '无门槛，全品类包邮',
-    iconBg: '#e8f2ff',
-    iconColor: '#007aff',
+    iconBg: '#ece3c6',
+    iconColor: '#8a7224',
   },
   {
     icon: 'luc-badge-percent',
     title: '专属会员价',
     desc: '额外 5-10% off 折扣',
-    iconBg: '#e9f9ee',
-    iconColor: '#34c759',
+    iconBg: '#e3ebe5',
+    iconColor: '#5f7d6a',
   },
   {
     icon: 'luc-zap',
     title: '优先发货',
     desc: '24小时内极速发货',
-    iconBg: '#e8f2ff',
-    iconColor: '#0064d6',
+    iconBg: '#ece3c6',
+    iconColor: '#96693b',
   },
   {
     icon: 'luc-refresh-cw',
     title: '免费退换货',
     desc: '退货运费全免',
-    iconBg: '#e9f9ee',
-    iconColor: '#34c759',
+    iconBg: '#e3ebe5',
+    iconColor: '#5f7d6a',
   },
   {
     icon: 'luc-headphones',
     title: '专属客服',
     desc: '1v1 优先响应',
-    iconBg: '#e8f2ff',
-    iconColor: '#007aff',
+    iconBg: '#ece3c6',
+    iconColor: '#8a7224',
   },
   {
     icon: 'luc-flame',
     title: 'Prime Day 专属大促',
     desc: '会员限定大促专场',
-    iconBg: '#ffecea',
-    iconColor: '#ff3b30',
+    iconBg: '#f6e0da',
+    iconColor: '#b2574c',
   },
   {
     icon: 'luc-coins',
     title: '每月赠送 $10 积分',
     desc: '自动到账，购物抵扣',
-    iconBg: '#e8f2ff',
-    iconColor: '#0064d6',
+    iconBg: '#ece3c6',
+    iconColor: '#96693b',
   },
   {
     icon: 'luc-sparkles',
     title: '新品优先购',
     desc: '抢先体验新品',
-    iconBg: '#e9f9ee',
-    iconColor: '#34c759',
+    iconBg: '#e3ebe5',
+    iconColor: '#5f7d6a',
   },
   {
     icon: 'luc-lock-open',
     title: 'Pet Hub 全部场景解锁',
     desc: '健康、社交、护理全场景',
-    iconBg: '#e8f2ff',
-    iconColor: '#007aff',
+    iconBg: '#ece3c6',
+    iconColor: '#8a7224',
   },
 ]
 
@@ -295,6 +312,12 @@ async function loadAll() {
 
 async function onActivate() {
   if (submitting.value) return
+  // 订阅需登录：未登录先引导登录，登录后回到本页再次开通
+  if (!userStore.isLoggedIn) {
+    uni.showToast({ title: '请先登录后开通', icon: 'none' })
+    uni.navigateTo({ url: '/pages/user/login' })
+    return
+  }
   const selected = plans.value.find((p) => p.code === selectedPlanCode.value)
   if (!selected) {
     uni.showToast({ title: '套餐信息加载中', icon: 'none' })
@@ -302,14 +325,29 @@ async function onActivate() {
   }
   uni.showModal({
     title: '确认开通',
-    content: `开通 ${selected.name} 方案 $${selected.price}（dev 环境直接激活）`,
+    content: `确认开通 ${selected.name} 方案（$${selected.price}）？开通即视为同意自动续费，可随时在「订阅管理」中取消。`,
     success: async (res) => {
       if (!res.confirm) return
       submitting.value = true
       try {
-        const result = await subscribePrime(selected.code, 'STRIPE')
-        primeStatus.value = result
-        uni.showToast({ title: '已开通', icon: 'success' })
+        const result = await subscribePrime(selected.code, 'STRIPE', {
+          clientType: isNativeApp ? 'APP' : 'H5',
+          schemeBase: '',
+          returnUrl: currentOrigin(),
+        })
+        // 模拟直开：密钥未配置(本地/联调)直接激活
+        if (result && result.simulated) {
+          primeStatus.value = result.status
+          uni.showToast({ title: '已开通', icon: 'success' })
+          return
+        }
+        // 真实支付：跳转 Stripe Checkout，付完回跳本页刷新订阅状态
+        if (result && result.sessionUrl) {
+          uni.showToast({ title: '正在跳转支付…', icon: 'none' })
+          openPayment(result.sessionUrl)
+          return
+        }
+        throw new Error('订阅请求异常')
       } catch (e) {
         console.warn('[prime-page] subscribe failed', e)
         uni.showToast({ title: e?.message || '开通失败', icon: 'none' })
@@ -367,7 +405,7 @@ onMounted(loadAll)
 <style lang="scss" scoped>
 .prime-page {
   min-height: 100vh;
-  background: #f2f2f7;
+  background: var(--color-background);
   padding-bottom: 80rpx;
 }
 
@@ -375,10 +413,11 @@ onMounted(loadAll)
 .prime-header {
   position: relative;
   padding: 0 32rpx 56rpx;
+  /* MOYUYO 米金色系渐变：温暖砂岩质感 */
   background:
-    radial-gradient(120% 80% at 80% 0%, rgba(0, 122, 255, 0.18) 0%, transparent 55%),
-    linear-gradient(135deg, #0064d6 0%, #007aff 40%, #2e8dff 100%);
-  color: #ffffff;
+    radial-gradient(120% 80% at 80% 0%, rgba(138, 114, 36, 0.16) 0%, transparent 55%),
+    linear-gradient(135deg, #c3ab62 0%, #dbc98a 45%, #e8dbb0 100%);
+  color: #4a3f26;
 }
 .nav-row {
   display: flex;
@@ -394,14 +433,14 @@ onMounted(loadAll)
 }
 .back-btn .luc {
   font-size: 40rpx;
-  color: #ffffff;
+  color: #4a3f26;
 }
 .nav-title {
   flex: 1;
   text-align: center;
   font-size: 28rpx;
   font-weight: 500;
-  color: #ffffff;
+  color: #4a3f26;
 }
 .brand-row {
   display: flex;
@@ -413,16 +452,16 @@ onMounted(loadAll)
   width: 96rpx;
   height: 96rpx;
   border-radius: 28rpx;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1rpx solid rgba(255, 255, 255, 0.18);
+  border: 1rpx solid rgba(255, 255, 255, 0.7);
 }
 .brand-icon {
   font-size: 52rpx;
-  color: #ffffff;
+  color: #6d5b24;
 }
 .brand-text {
   flex: 1;
@@ -436,7 +475,7 @@ onMounted(loadAll)
 .brand-sub {
   display: block;
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(74, 63, 38, 0.72);
   margin-top: 6rpx;
 }
 
@@ -450,10 +489,10 @@ onMounted(loadAll)
 .status-card,
 .stats-card,
 .manage-card {
-  background: #ffffff;
+  background: var(--color-surface);
   border-radius: 24rpx;
   padding: 32rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-md);
   margin-bottom: 24rpx;
 }
 
@@ -463,7 +502,7 @@ onMounted(loadAll)
 }
 .state-text {
   font-size: 28rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
 }
 
 /* ============ 未开通：套餐切换 ============ */
@@ -476,15 +515,15 @@ onMounted(loadAll)
   flex: 1;
   position: relative;
   padding: 28rpx 24rpx;
-  border: 2rpx solid #e5e5ea;
+  border: 2rpx solid var(--color-divider);
   border-radius: 24rpx;
   transition:
     border-color 0.2s ease,
     background-color 0.2s ease;
 }
 .plan-option.selected {
-  border-color: #007aff;
-  background: #e8f2ff;
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
 }
 .recommend-tag-wrap {
   position: absolute;
@@ -495,7 +534,7 @@ onMounted(loadAll)
   display: inline-block;
   padding: 4rpx 12rpx;
   border-radius: 999px;
-  background: #007aff;
+  background: #8a7224;
   color: #ffffff;
   font-size: 18rpx;
   font-weight: 700;
@@ -510,15 +549,15 @@ onMounted(loadAll)
 .plan-option-name {
   font-size: 28rpx;
   font-weight: 700;
-  color: #1d1d1f;
+  color: var(--color-text);
 }
 .save-badge {
   display: inline-flex;
   align-items: center;
   padding: 4rpx 10rpx;
   border-radius: 999px;
-  background: #e9f9ee;
-  color: #34c759;
+  background: var(--color-primary-light);
+  color: #6d5b24;
   font-size: 18rpx;
   font-weight: 700;
 }
@@ -530,16 +569,16 @@ onMounted(loadAll)
 .plan-price {
   font-size: 44rpx;
   font-weight: 800;
-  color: #1d1d1f;
+  color: var(--color-text);
 }
 .plan-unit {
   font-size: 22rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
 }
 .plan-monthly-hint {
   display: block;
   font-size: 22rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
   margin-top: 4rpx;
 }
 
@@ -551,8 +590,8 @@ onMounted(loadAll)
   gap: 8rpx;
   height: 112rpx;
   border-radius: 32rpx;
-  background: #007aff;
-  color: #ffffff;
+  background: var(--color-primary);
+  color: var(--color-text);
   font-size: 32rpx;
   font-weight: 700;
 }
@@ -573,11 +612,11 @@ onMounted(loadAll)
 }
 .trial-icon {
   font-size: 26rpx;
-  color: #007aff;
+  color: #8a7224;
 }
 .trial-text {
   font-size: 22rpx;
-  color: #007aff;
+  color: #8a7224;
   font-weight: 500;
 }
 
@@ -585,13 +624,13 @@ onMounted(loadAll)
 .legal {
   margin-top: 24rpx;
   padding-top: 20rpx;
-  border-top: 1rpx solid #f2f2f7;
+  border-top: 1rpx solid var(--color-background);
 }
 .legal-text {
   display: block;
   font-size: 20rpx;
   line-height: 1.55;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
 }
 
 /* ============ 权益列表 ============ */
@@ -602,12 +641,12 @@ onMounted(loadAll)
   display: block;
   font-size: 30rpx;
   font-weight: 700;
-  color: #1d1d1f;
+  color: var(--color-text);
 }
 .benefits-sub {
   display: block;
   font-size: 22rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
   margin-top: 4rpx;
   margin-bottom: 8rpx;
 }
@@ -616,7 +655,7 @@ onMounted(loadAll)
   align-items: center;
   gap: 20rpx;
   padding: 24rpx 0;
-  border-bottom: 1rpx solid #f2f2f7;
+  border-bottom: 1rpx solid var(--color-background);
 }
 .benefit-row:last-child {
   border-bottom: none;
@@ -638,17 +677,17 @@ onMounted(loadAll)
   display: block;
   font-size: 28rpx;
   font-weight: 600;
-  color: #1d1d1f;
+  color: var(--color-text);
 }
 .benefit-desc {
   display: block;
   font-size: 22rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
   margin-top: 4rpx;
 }
 .benefit-arrow {
   font-size: 32rpx;
-  color: #c7c7cc;
+  color: var(--color-text-tertiary);
 }
 
 /* ============ 已开通：状态卡 ============ */
@@ -662,7 +701,7 @@ onMounted(loadAll)
   width: 88rpx;
   height: 88rpx;
   border-radius: 24rpx;
-  background: rgba(0, 122, 255, 0.12);
+  background: var(--color-primary-light);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -670,7 +709,7 @@ onMounted(loadAll)
 }
 .status-mark-icon {
   font-size: 44rpx;
-  color: #007aff;
+  color: #6d5b24;
 }
 .status-info {
   flex: 1;
@@ -683,22 +722,22 @@ onMounted(loadAll)
 .status-name {
   font-size: 30rpx;
   font-weight: 700;
-  color: #1d1d1f;
+  color: var(--color-text);
 }
 .status-tag {
   display: inline-flex;
   align-items: center;
   padding: 4rpx 12rpx;
   border-radius: 999px;
-  background: #e9f9ee;
-  color: #34c759;
+  background: #8a7224;
+  color: #ffffff;
   font-size: 20rpx;
   font-weight: 700;
 }
 .status-plan {
   display: block;
   font-size: 24rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
   margin-top: 8rpx;
 }
 .status-expire-row {
@@ -707,7 +746,7 @@ onMounted(loadAll)
   justify-content: space-between;
   padding: 24rpx 28rpx;
   border-radius: 24rpx;
-  background: #f2f2f7;
+  background: var(--color-primary-light);
 }
 .status-expire-left {
   display: flex;
@@ -716,16 +755,16 @@ onMounted(loadAll)
 }
 .status-cal-icon {
   font-size: 28rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
 }
 .status-expire-label {
   font-size: 26rpx;
-  color: #1d1d1f;
+  color: var(--color-text);
 }
 .status-expire-val {
   font-size: 28rpx;
   font-weight: 700;
-  color: #1d1d1f;
+  color: var(--color-text);
 }
 
 /* ============ 已开通：权益统计 ============ */
@@ -733,7 +772,7 @@ onMounted(loadAll)
   display: block;
   font-size: 30rpx;
   font-weight: 700;
-  color: #1d1d1f;
+  color: var(--color-text);
   margin-bottom: 24rpx;
 }
 .stats-grid {
@@ -744,7 +783,7 @@ onMounted(loadAll)
   flex: 1;
   padding: 24rpx 16rpx;
   border-radius: 24rpx;
-  background: #f2f2f7;
+  background: var(--color-primary-light);
   text-align: center;
 }
 .stat-icon-wrap {
@@ -763,13 +802,13 @@ onMounted(loadAll)
   display: block;
   font-size: 36rpx;
   font-weight: 800;
-  color: #1d1d1f;
+  color: var(--color-text);
   font-variant-numeric: tabular-nums;
 }
 .stat-label {
   display: block;
   font-size: 22rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
   margin-top: 4rpx;
 }
 
@@ -779,7 +818,7 @@ onMounted(loadAll)
   align-items: center;
   justify-content: space-between;
   padding: 24rpx 0;
-  border-bottom: 1rpx solid #f2f2f7;
+  border-bottom: 1rpx solid var(--color-background);
 }
 .manage-row:first-child {
   padding-top: 0;
@@ -795,12 +834,12 @@ onMounted(loadAll)
 }
 .manage-icon {
   font-size: 40rpx;
-  color: #007aff;
+  color: #8a7224;
 }
 .manage-label {
   font-size: 28rpx;
   font-weight: 500;
-  color: #1d1d1f;
+  color: var(--color-text);
 }
 .manage-right {
   display: flex;
@@ -810,11 +849,11 @@ onMounted(loadAll)
 .manage-meta {
   font-size: 26rpx;
   font-weight: 700;
-  color: #007aff;
+  color: #8a7224;
 }
 .manage-arrow {
   font-size: 30rpx;
-  color: #c7c7cc;
+  color: var(--color-text-tertiary);
 }
 
 /* ============ 取消按钮 ============ */
@@ -824,13 +863,13 @@ onMounted(loadAll)
   justify-content: center;
   height: 88rpx;
   border-radius: 999px;
-  background: #ffffff;
-  border: 1rpx solid #ffecea;
+  background: var(--color-surface);
+  border: 1rpx solid var(--color-danger);
   margin-top: 16rpx;
 }
 .cancel-text {
   font-size: 28rpx;
   font-weight: 500;
-  color: #ff3b30;
+  color: var(--color-danger);
 }
 </style>

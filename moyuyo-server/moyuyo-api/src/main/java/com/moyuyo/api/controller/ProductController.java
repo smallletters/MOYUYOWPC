@@ -64,9 +64,11 @@ public class ProductController {
     }
     Page<ProductEntity> result;
     if (categoryIds != null) {
-      result = productService.listProductsByCategoryIds(page, size, categoryIds, sortBy, sortOrder, keyword, brandIpId);
+      // APP 端商品列表只展示在售商品
+      result = productService.listProductsByCategoryIds(page, size, categoryIds, sortBy, sortOrder, keyword, "active", brandIpId);
     } else {
-      result = productService.listProducts(page, size, categoryId, sortBy, sortOrder, keyword, null, null, brandIpId);
+      // APP 端商品列表只展示在售商品（status=active 强制过滤已下架）
+      result = productService.listProducts(page, size, categoryId, sortBy, sortOrder, keyword, "active", null, brandIpId);
     }
     // 给每个商品附加 rating / reviewCount（聚合 mo_product_review）
     if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {

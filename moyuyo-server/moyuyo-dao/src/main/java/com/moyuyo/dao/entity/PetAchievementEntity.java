@@ -26,9 +26,10 @@ public class PetAchievementEntity {
 
   private Integer progress;
 
-  @TableField(fill = FieldFill.INSERT)
+  // 表列名为 create_time/update_time（非 created_at/updated_at），显式映射避免 SQL 报错
+  @TableField(value = "create_time", fill = FieldFill.INSERT)
   private LocalDateTime createdAt;
 
-  @TableField(fill = FieldFill.INSERT_UPDATE)
+  @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
   private LocalDateTime updatedAt;
 }

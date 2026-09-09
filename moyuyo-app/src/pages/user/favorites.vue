@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="favorites">
     <!-- 顶部导航栏 -->
     <view class="header">
@@ -251,17 +251,22 @@ export default {
             const price = parseFloat(detail.price) || 0
             const originalPrice = parseFloat(detail.originalPrice) || 0
             const stock = parseInt(detail.stock, 10) || 0
-            // 动态计算 badges
+            // 下架商品仍保留在收藏列表(历史收藏可见)，但明确标注"已下架"，不再显示促销类标签
+            const offSale = detail.onSale === false
             const badges = []
-            if (originalPrice > price) badges.push('降价')
-            // 上新:上架 30 天内
-            if (detail.createTime) {
-              const created = new Date(String(detail.createTime).replace(/-/g, '/'))
-              if (!isNaN(created.getTime()) && Date.now() - created.getTime() < 30 * 86400000) {
-                badges.push('上新')
+            if (offSale) {
+              badges.unshift('已下架')
+            } else {
+              if (originalPrice > price) badges.push('降价')
+              // 上新:上架 30 天内
+              if (detail.createTime) {
+                const created = new Date(String(detail.createTime).replace(/-/g, '/'))
+                if (!isNaN(created.getTime()) && Date.now() - created.getTime() < 30 * 86400000) {
+                  badges.push('上新')
+                }
               }
+              if (stock > 0 && stock <= 10) badges.push('库存紧张')
             }
-            if (stock > 0 && stock <= 10) badges.push('库存紧张')
             return {
               id: pid,
               name: detail.name || '',
@@ -273,6 +278,7 @@ export default {
               isFav: true,
               selected: false,
               stock,
+              offSale,
               favoritedAt: this.formatDate(favTimeMap.get(pid)),
             }
           })
@@ -408,6 +414,7 @@ export default {
       if (badge === '降价') return 'badge-danger'
       if (badge === '库存紧张') return 'badge-warning'
       if (badge === '上新') return 'badge-primary'
+      if (badge === '已下架') return 'badge-muted'
       return ''
     },
 
@@ -639,6 +646,10 @@ export default {
 
 .badge-primary {
   background: var(--color-primary);
+}
+
+.badge-muted {
+  background: var(--color-text-tertiary);
 }
 
 /* 单卡片收藏按钮(非管理态) */

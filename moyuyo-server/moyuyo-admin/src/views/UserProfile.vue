@@ -46,7 +46,7 @@
           </div>
           <div class="profile-sub">
             ID: {{ userInfo.userId }} ·
-            {{ userInfo.memberNo ? '卡号 ' + userInfo.memberNo : '非会员' }} ·
+            {{ userInfo.memberNo ? '卡号 ' + memberNoText(userInfo.memberNo) : '非会员' }} ·
             注册于 {{ userInfo.registerTime }}
           </div>
         </div>
@@ -256,6 +256,13 @@ const GENDER_LABELS = {
 function genderLabel(code) {
   if (!code) return '未填写'
   return GENDER_LABELS[code] || code
+}
+
+// 会员卡号规范展示：后端存储为 12 位数字；兼容旧格式“MY·xxxxxxxx·xxxx”，只取数字再拼前缀
+function memberNoText(no) {
+  if (!no) return ''
+  const digits = String(no).replace(/\D/g, '').slice(0, 12)
+  return digits ? `MY.${digits.padStart(12, '0')}` : ''
 }
 
 // 行为类型映射（mo_user_behavior.behaviorType 枚举）

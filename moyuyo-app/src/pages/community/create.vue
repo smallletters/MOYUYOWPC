@@ -5,32 +5,62 @@
       <view class="navbar__back" @click="onBack">
         <text class="navbar__back-icon">‹</text>
       </view>
-      <text class="navbar__title">发布帖子</text>
+      <text class="navbar__title">{{ $t('pageTitle.communityCreate') }}</text>
       <!-- 草稿操作:有内容时显示"存草稿",已有草稿时显示"草稿"标签 -->
-      <view
-        v-if="hasUnsavedContent || draftExists"
-        class="navbar__draft"
-        @click="onDraftTap"
-      >
-        <text v-if="hasUnsavedContent && !draftSavedAt" class="navbar__draft-text">存草稿</text>
+      <view v-if="hasUnsavedContent || draftExists" class="navbar__draft" @click="onDraftTap">
+        <text v-if="hasUnsavedContent && !draftSavedAt" class="navbar__draft-text">
+          {{ $t('communityPost.saveDraftNav') }}
+        </text>
         <text v-else class="navbar__draft-text navbar__draft-text--active">
-          草稿{{ draftSavedAt ? ' · ' + formatDraftAge(draftSavedAt) : '' }}
+          {{ $t('communityPost.draft')
+          }}{{ draftSavedAt ? ' · ' + formatDraftAge(draftSavedAt) : '' }}
         </text>
       </view>
       <!-- 主操作按钮:未填内容时置灰但不消失,持续可见引导用户 -->
       <view class="navbar__publish" :class="{ 'is-disabled': !canPublish }" @click="onPublish">
-        <text v-if="submitting" class="navbar__publish-loading">发布中</text>
-        <text v-else>发布</text>
+        <text v-if="submitting" class="navbar__publish-loading">
+          {{ $t('communityPost.publishing') }}
+        </text>
+        <text v-else>{{ $t('communityPost.publish') }}</text>
       </view>
     </view>
 
     <scroll-view scroll-y class="content">
+      <!-- 关联宠物（可选）：仅在我有宠物时展示，用于把帖子挂到该宠物记忆树 -->
+      <view v-if="pets.length" class="pet-tags">
+        <view class="pet-tags__label">{{ $t('communityPost.linkPet') }}</view>
+        <scroll-view scroll-x class="pet-tags__scroll" :show-scrollbar="false">
+          <view class="pet-tags__row">
+            <view class="pet-tag" :class="{ 'pet-tag--active': !petId }" @click="petId = ''">
+              <text class="pet-tag__label">{{ $t('communityPost.unlinkPet') }}</text>
+            </view>
+            <view
+              v-for="p in pets"
+              :key="p.id"
+              class="pet-tag"
+              :class="{ 'pet-tag--active': petId === p.id }"
+              @click="petId = p.id"
+            >
+              <image
+                v-if="p.avatar"
+                :src="p.avatar"
+                class="pet-tag__avatar"
+                mode="aspectFill" />
+              <view v-else class="pet-tag__avatar pet-tag__avatar--ph">
+                <text class="luc luc-paw-print" />
+              </view>
+              <text class="pet-tag__label">{{ p.name }}</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
       <!-- 内容输入:大尺寸文本框 + 字数计数(右下角) -->
       <view class="composer">
         <textarea
           v-model="content"
           class="composer__textarea"
-          placeholder="说点什么吧…分享你和宠物的日常"
+          :placeholder="$t('communityPost.contentPlaceholder')"
           :maxlength="2000"
           placeholder-class="composer__placeholder"
           :auto-height="true"
@@ -45,21 +75,19 @@
         <view v-if="sensitiveHits.length > 0" class="composer__warning">
           <text class="composer__warning-icon">⚠</text>
           <text class="composer__warning-text">
-            包含敏感词:
-            <text
-              v-for="(hit, i) in sensitiveHits"
-              :key="i"
-              class="composer__warning-hit"
-            >{{ hit }}{{ i < sensitiveHits.length - 1 ? '、' : '' }}</text>
-            ,请修改
+            {{ $t('communityPost.sensitivePrefix') }}
+            <text v-for="(hit, i) in sensitiveHits" :key="i" class="composer__warning-hit">
+              {{ hit }}{{ i < sensitiveHits.length - 1 ? $t('communityPost.sensitiveJoin') : '' }}
+            </text>
+            {{ $t('communityPost.sensitiveSuffix') }}
           </text>
         </view>
 
         <!-- # 话题联想浮层:输入 # 时浮在 textarea 下方,绝对定位避免影响布局 -->
         <view v-if="topicSuggest.visible" class="topic-suggest" catchtap="noop">
           <view class="topic-suggest__head">
-            <text class="topic-suggest__title">话题</text>
-            <text class="topic-suggest__hint">点击插入或选「创建话题」</text>
+            <text class="topic-suggest__title">{{ $t('communityPost.topicSuggestTitle') }}</text>
+            <text class="topic-suggest__hint">{{ $t('communityPost.topicSuggestHint') }}</text>
           </view>
           <scroll-view scroll-y class="topic-suggest__list">
             <view
@@ -68,7 +96,9 @@
               @tap="onCreateTopic"
             >
               <text class="topic-suggest__icon">+</text>
-              <text class="topic-suggest__name">创建话题 #{{ topicSuggest.query }}</text>
+              <text class="topic-suggest__name">
+                {{ $t('communityPost.createTopicWithQuery', { query: topicSuggest.query }) }}
+              </text>
             </view>
             <view
               v-for="(t, idx) in topicSuggest.candidates"
@@ -78,13 +108,15 @@
               @tap="onPickTopicFromSuggest(t)"
             >
               <text class="topic-suggest__name"># {{ t.name }}</text>
-              <text v-if="t.postCount != null" class="topic-suggest__count">{{ formatCount(t.postCount) }} 帖</text>
+              <text v-if="t.postCount != null" class="topic-suggest__count">
+                {{ $t('communityPost.postCount', { count: formatCount(t.postCount) }) }}
+              </text>
             </view>
             <view
               v-if="topicSuggest.candidates.length === 0 && !topicSuggest.allowCreate"
               class="topic-suggest__empty"
             >
-              <text>没有匹配的话题</text>
+              <text>{{ $t('communityPost.noMatchingTopics') }}</text>
             </view>
           </scroll-view>
         </view>
@@ -92,10 +124,12 @@
         <!-- @ 提及用户联想浮层:输入 @ 时触发,实时调用 /users/search 接口 -->
         <view v-if="mentionSuggest.visible" class="mention-suggest" catchtap="noop">
           <view class="mention-suggest__head">
-            <text class="mention-suggest__title">提及用户</text>
-            <text v-if="mentionSuggest.loading" class="mention-suggest__loading">搜索中…</text>
+            <text class="mention-suggest__title">{{ $t('communityPost.mentionTitle') }}</text>
+            <text v-if="mentionSuggest.loading" class="mention-suggest__loading">
+              {{ $t('communityPost.searching') }}
+            </text>
             <text v-else-if="mentionSuggest.query" class="mention-suggest__hint">
-              匹配「{{ mentionSuggest.query }}」
+              {{ $t('communityPost.mentionMatchQuery', { query: mentionSuggest.query }) }}
             </text>
           </view>
           <scroll-view scroll-y class="mention-suggest__list">
@@ -120,16 +154,24 @@
               </view>
             </view>
             <view
-              v-if="!mentionSuggest.loading && mentionSuggest.candidates.length === 0 && mentionSuggest.query"
+              v-if="
+                !mentionSuggest.loading &&
+                  mentionSuggest.candidates.length === 0 &&
+                  mentionSuggest.query
+              "
               class="mention-suggest__empty"
             >
-              <text>没有匹配的用户</text>
+              <text>{{ $t('communityPost.noMatchingUsers') }}</text>
             </view>
             <view
-              v-else-if="!mentionSuggest.loading && mentionSuggest.candidates.length === 0 && !mentionSuggest.query"
+              v-else-if="
+                !mentionSuggest.loading &&
+                  mentionSuggest.candidates.length === 0 &&
+                  !mentionSuggest.query
+              "
               class="mention-suggest__empty"
             >
-              <text>输入昵称关键词搜索</text>
+              <text>{{ $t('communityPost.mentionSearchHint') }}</text>
             </view>
           </scroll-view>
         </view>
@@ -157,15 +199,17 @@
         </view>
         <view class="media-video__meta">
           <text class="media-video__duration">⏱ {{ formatDuration(videoDuration) }}</text>
-          <text class="media-video__size" v-if="videoSize">{{ formatSize(videoSize) }}</text>
-          <text v-if="videoUrl" class="media-video__state">已上传</text>
-          <text v-else class="media-video__state media-video__state--pending">待上传</text>
+          <text v-if="videoSize" class="media-video__size">{{ formatSize(videoSize) }}</text>
+          <text v-if="videoUrl" class="media-video__state">{{ $t('communityPost.uploaded') }}</text>
+          <text v-else class="media-video__state media-video__state--pending">
+            {{ $t('communityPost.pendingUpload') }}
+          </text>
         </view>
         <!-- 封面选择按钮:点击生成 3 张候选帧并弹出选择面板 -->
         <view class="media-video__cover-btn" @click="onPickCover">
           <text class="media-video__cover-btn-icon">🎞</text>
           <text class="media-video__cover-btn-text">
-            {{ coverUrl ? '已选封面 · 点击重选' : '选择视频封面' }}
+            {{ coverUrl ? $t('communityPost.coverReselect') : $t('communityPost.chooseCover') }}
           </text>
           <image
             v-if="coverUrl"
@@ -202,7 +246,9 @@
             {{ imageMeta[idx].ratioLabel }}{{ imageMeta[idx].isIdealRatio ? ' ✓' : '' }}
           </view>
           <!-- 拖拽模式下隐藏删除按钮(避免误删) -->
-          <view v-if="draggingIndex < 0" class="media-thumb__remove" @click.stop="removeImage(idx)">×</view>
+          <view v-if="draggingIndex < 0" class="media-thumb__remove" @click.stop="removeImage(idx)">
+            ×
+          </view>
         </view>
         <view v-if="images.length < 9" class="media-add" @click="onPickImage">
           <text class="media-add__icon">+</text>
@@ -214,55 +260,61 @@
       <view class="option-card">
         <view class="option-cell" @click="onPickTopic">
           <text class="option-cell__icon">🐾</text>
-          <text class="option-cell__label">话题</text>
+          <text class="option-cell__label">{{ $t('communityPost.topic') }}</text>
           <text class="option-cell__value" :class="{ 'is-placeholder': !topic }">
-            {{ topic || '选择话题' }}
+            {{ topic || $t('communityPost.chooseTopic') }}
           </text>
           <text class="option-cell__arrow">›</text>
         </view>
         <view class="option-cell" @click="onPickLocation">
           <text class="option-cell__icon">📍</text>
-          <text class="option-cell__label">位置</text>
+          <text class="option-cell__label">{{ $t('communityPost.location') }}</text>
           <text class="option-cell__value" :class="{ 'is-placeholder': !location }">
-            {{ location || '不显示位置' }}
+            {{ location || $t('communityPost.hideLocation') }}
           </text>
           <text class="option-cell__arrow">›</text>
         </view>
         <!-- 已选位置支持清除 -->
         <view v-if="location" class="option-cell option-cell--clearable" @click="onClearLocation">
           <text class="option-cell__icon option-cell__icon--muted">🗑️</text>
-          <text class="option-cell__label option-cell__label--muted">清除位置</text>
+          <text class="option-cell__label option-cell__label--muted">
+            {{ $t('communityPost.clearLocation') }}
+          </text>
         </view>
         <view class="option-cell" @click="onPickVisibility">
           <text class="option-cell__icon">👁</text>
-          <text class="option-cell__label">谁可以看</text>
+          <text class="option-cell__label">{{ $t('communityPost.audience') }}</text>
           <text class="option-cell__value">{{ visibilityLabel }}</text>
           <text class="option-cell__arrow">›</text>
         </view>
         <!-- 定时发布:cell 模式,点击弹出日期+时间 picker -->
         <view class="option-cell" @click="onPickScheduled">
           <text class="option-cell__icon">⏰</text>
-          <text class="option-cell__label">定时发布</text>
+          <text class="option-cell__label">{{ $t('communityPost.schedule') }}</text>
           <text class="option-cell__value" :class="{ 'is-placeholder': !scheduledAt }">
-            {{ scheduledAt ? formatScheduled(scheduledAt) : '立即发布' }}
+            {{
+              scheduledAt ? formatScheduled(scheduledAt) : $t('communityPost.publishImmediately')
+            }}
           </text>
           <text class="option-cell__arrow">›</text>
         </view>
         <!-- 清除定时发布(仅在已选时显示) -->
-        <view v-if="scheduledAt" class="option-cell option-cell--clearable" @click="onClearScheduled">
+        <view
+          v-if="scheduledAt"
+          class="option-cell option-cell--clearable"
+          @click="onClearScheduled"
+        >
           <text class="option-cell__icon option-cell__icon--muted">🗑️</text>
-          <text class="option-cell__label option-cell__label--muted">清除定时</text>
+          <text class="option-cell__label option-cell__label--muted">
+            {{ $t('communityPost.clearSchedule') }}
+          </text>
         </view>
       </view>
     </scroll-view>
 
     <!-- 底部工具栏:快捷输入入口 -->
     <view class="toolbar">
-      <view
-        class="toolbar__btn"
-        :class="{ active: emojiPanelVisible }"
-        @click="toggleEmojiPanel"
-      >
+      <view class="toolbar__btn" :class="{ active: emojiPanelVisible }" @click="toggleEmojiPanel">
         <text class="toolbar__icon">😊</text>
       </view>
       <view class="toolbar__btn" @click="onMention">
@@ -287,7 +339,7 @@
         <input
           v-model="emojiKeyword"
           class="emoji-panel__search-input"
-          placeholder="搜索 emoji(中文/英文/拼音首字母)"
+          :placeholder="$t('communityPost.emojiSearchPlaceholder')"
           placeholder-class="emoji-panel__search-placeholder"
           confirm-type="search"
         >
@@ -303,7 +355,10 @@
           :key="idx"
           class="emoji-panel__tab"
           :class="{ active: emojiActiveCat === idx }"
-          @tap="emojiActiveCat = idx; emojiKeyword = ''"
+          @tap="
+            emojiActiveCat = idx
+            emojiKeyword = ''
+          "
         >
           <text class="emoji-panel__tab-icon">{{ cat.icon }}</text>
           <text class="emoji-panel__tab-name">{{ cat.name }}</text>
@@ -317,9 +372,11 @@
             :key="'s-' + i"
             class="emoji-panel__item"
             @tap="insertEmojiAtCursor(e)"
-          >{{ e }}</view>
+          >
+            {{ e }}
+          </view>
           <view v-if="emojiSearchResults.length === 0" class="emoji-panel__empty">
-            <text>没有匹配的 emoji</text>
+            <text>{{ $t('communityPost.noMatchingEmoji') }}</text>
           </view>
         </view>
         <!-- 默认视图:按当前分类显示 -->
@@ -329,7 +386,9 @@
             :key="i"
             class="emoji-panel__item"
             @tap="insertEmojiAtCursor(e)"
-          >{{ e }}</view>
+          >
+            {{ e }}
+          </view>
         </view>
       </scroll-view>
       <view class="emoji-panel__footer">
@@ -343,14 +402,14 @@
     <view v-if="topicPickerVisible" class="sheet-mask" @click="closeTopicPicker">
       <view class="sheet" @click.stop>
         <view class="sheet__header">
-          <text class="sheet__title">选择话题</text>
+          <text class="sheet__title">{{ $t('communityPost.chooseTopic') }}</text>
           <view class="sheet__close" @click="closeTopicPicker">×</view>
         </view>
         <view v-if="topicsLoading" class="sheet__loading">
-          <text>加载中...</text>
+          <text>{{ $t('communityPost.loading') }}</text>
         </view>
         <view v-else-if="!topics.length" class="sheet__empty">
-          <text>暂无可用话题</text>
+          <text>{{ $t('communityPost.noTopicsAvailable') }}</text>
         </view>
         <scroll-view v-else scroll-y class="sheet__list">
           <view
@@ -364,7 +423,9 @@
               <text class="topic-item__name"># {{ t.name }}</text>
               <text v-if="t.description" class="topic-item__desc">{{ t.description }}</text>
             </view>
-            <text class="topic-item__count">{{ formatCount(t.postCount) }} 帖</text>
+            <text class="topic-item__count">
+              {{ $t('communityPost.postCount', { count: formatCount(t.postCount) }) }}
+            </text>
           </view>
         </scroll-view>
       </view>
@@ -374,49 +435,60 @@
     <view v-if="scheduledPickerVisible" class="sheet-mask" @click="closeScheduledPicker">
       <view class="sheet" @click.stop>
         <view class="sheet__header">
-          <text class="sheet__title">定时发布</text>
+          <text class="sheet__title">{{ $t('communityPost.schedule') }}</text>
           <view class="sheet__close" @click="closeScheduledPicker">×</view>
         </view>
         <view class="scheduled-picker__hint">
-          <text>选择未来某个时间点(至少 1 分钟后),系统到点自动发布</text>
+          <text>{{ $t('communityPost.scheduleHint') }}</text>
         </view>
         <!-- 快捷选项 -->
         <view class="scheduled-picker__shortcuts">
           <view class="scheduled-picker__shortcut" @tap="onPickScheduledShortcut(30)">
-            <text class="scheduled-picker__shortcut-name">30 分钟后</text>
+            <text class="scheduled-picker__shortcut-name">
+              {{ $t('communityPost.in30Minutes') }}
+            </text>
             <text class="scheduled-picker__shortcut-desc">{{ formatFutureTime(30) }}</text>
           </view>
           <view class="scheduled-picker__shortcut" @tap="onPickScheduledShortcut(60)">
-            <text class="scheduled-picker__shortcut-name">1 小时后</text>
+            <text class="scheduled-picker__shortcut-name">{{ $t('communityPost.in1Hour') }}</text>
             <text class="scheduled-picker__shortcut-desc">{{ formatFutureTime(60) }}</text>
           </view>
           <view class="scheduled-picker__shortcut" @tap="onPickScheduledShortcut(180)">
-            <text class="scheduled-picker__shortcut-name">3 小时后</text>
+            <text class="scheduled-picker__shortcut-name">{{ $t('communityPost.in3Hours') }}</text>
             <text class="scheduled-picker__shortcut-desc">{{ formatFutureTime(180) }}</text>
           </view>
           <view class="scheduled-picker__shortcut" @tap="onPickScheduledShortcut(1440)">
-            <text class="scheduled-picker__shortcut-name">明天同时</text>
+            <text class="scheduled-picker__shortcut-name">
+              {{ $t('communityPost.tomorrowSameTime') }}
+            </text>
             <text class="scheduled-picker__shortcut-desc">{{ formatFutureTime(1440) }}</text>
           </view>
         </view>
         <!-- 自定义时间:用 picker 选日期 + 时间 -->
         <view class="scheduled-picker__custom">
-          <text class="scheduled-picker__custom-label">自定义时间</text>
-          <picker mode="multiSelector" :range="customTimeRange" :value="customTimeValue" @change="onCustomTimeChange">
+          <text class="scheduled-picker__custom-label">{{ $t('communityPost.customTime') }}</text>
+          <picker
+            mode="multiSelector"
+            :range="customTimeRange"
+            :value="customTimeValue"
+            @change="onCustomTimeChange"
+          >
             <view class="scheduled-picker__custom-input">
-              <text>{{ customTimeDisplay || '点击选择日期和时间' }}</text>
+              <text>{{ customTimeDisplay || $t('communityPost.pickDateTime') }}</text>
               <text class="scheduled-picker__custom-arrow">›</text>
             </view>
           </picker>
         </view>
         <view class="scheduled-picker__footer">
-          <view class="scheduled-picker__btn" @click="closeScheduledPicker">取消</view>
+          <view class="scheduled-picker__btn" @click="closeScheduledPicker">
+            {{ $t('communityPost.cancel') }}
+          </view>
           <view
             class="scheduled-picker__btn scheduled-picker__btn--primary"
             :class="{ disabled: !scheduledAt }"
             @click="onConfirmScheduled"
           >
-            确定
+            {{ $t('communityPost.confirm') }}
           </view>
         </view>
       </view>
@@ -426,14 +498,16 @@
     <view v-if="coverPickerVisible" class="sheet-mask" @click="closeCoverPicker">
       <view class="sheet" @click.stop>
         <view class="sheet__header">
-          <text class="sheet__title">选择视频封面</text>
+          <text class="sheet__title">{{ $t('communityPost.chooseCover') }}</text>
           <view class="sheet__close" @click="closeCoverPicker">×</view>
         </view>
         <view class="cover-picker__hint">
-          <text>系统已从视频 {{ formatDuration(videoDuration) }} 中抽取 3 帧,点击选择一张作为封面</text>
+          <text>
+            {{ $t('communityPost.coverPickerHint', { duration: formatDuration(videoDuration) }) }}
+          </text>
         </view>
         <view v-if="!coverCandidates.length && !coverCapturing" class="cover-picker__loading">
-          <text>正在截取视频帧...</text>
+          <text>{{ $t('communityPost.capturingFrames') }}</text>
         </view>
         <scroll-view v-else scroll-y class="sheet__list">
           <view class="cover-grid">
@@ -450,17 +524,19 @@
             </view>
           </view>
           <view v-if="uploadingCover" class="cover-picker__uploading">
-            <text>上传封面中...</text>
+            <text>{{ $t('communityPost.uploadingCover') }}</text>
           </view>
         </scroll-view>
         <view class="cover-picker__footer">
-          <view class="cover-picker__btn" @click="closeCoverPicker">取消</view>
+          <view class="cover-picker__btn" @click="closeCoverPicker">
+            {{ $t('communityPost.cancel') }}
+          </view>
           <view
             class="cover-picker__btn cover-picker__btn--primary"
             :class="{ disabled: selectedCoverIdx < 0 || uploadingCover }"
             @click="onConfirmCover"
           >
-            {{ uploadingCover ? '上传中...' : '确定' }}
+            {{ uploadingCover ? $t('communityPost.uploading') : $t('communityPost.confirm') }}
           </view>
         </view>
       </view>
@@ -470,7 +546,7 @@
     <view v-if="locationPickerVisible" class="sheet-mask" @click="closeLocationPicker">
       <view class="sheet" @click.stop>
         <view class="sheet__header">
-          <text class="sheet__title">选择位置</text>
+          <text class="sheet__title">{{ $t('communityPost.chooseLocation') }}</text>
           <view class="sheet__close" @click="closeLocationPicker">×</view>
         </view>
 
@@ -480,14 +556,17 @@
           <input
             v-model="locationKeyword"
             class="location-picker__search-input"
-            placeholder="搜索附近地点"
+            :placeholder="$t('communityPost.searchNearbyPlaceholder')"
             placeholder-class="location-picker__search-placeholder"
             @input="onLocationKeywordChange"
           >
           <text
             v-if="locationKeyword"
             class="luc luc-x location-picker__search-clear"
-            @click="locationKeyword = ''; onLocationKeywordChange()"
+            @click="
+              locationKeyword = ''
+              onLocationKeywordChange()
+            "
           />
         </view>
 
@@ -496,41 +575,65 @@
           <view class="location-picker__shortcut" @tap="onUseCurrentLocation">
             <text class="location-picker__shortcut-icon">📍</text>
             <view class="location-picker__shortcut-info">
-              <text class="location-picker__shortcut-name">使用当前定位</text>
-              <text class="location-picker__shortcut-desc">{{ locationLoading ? '获取中…' : '获取您所在位置' }}</text>
+              <text class="location-picker__shortcut-name">
+                {{ $t('communityPost.useCurrentLocation') }}
+              </text>
+              <text class="location-picker__shortcut-desc">
+                {{
+                  locationLoading
+                    ? $t('communityPost.locating')
+                    : $t('communityPost.getYourLocation')
+                }}
+              </text>
             </view>
           </view>
           <view class="location-picker__shortcut" @tap="onClearLocation">
             <text class="location-picker__shortcut-icon">🚫</text>
             <view class="location-picker__shortcut-info">
-              <text class="location-picker__shortcut-name">不显示位置</text>
-              <text class="location-picker__shortcut-desc">关闭位置标签</text>
+              <text class="location-picker__shortcut-name">
+                {{ $t('communityPost.hideLocation') }}
+              </text>
+              <text class="location-picker__shortcut-desc">
+                {{ $t('communityPost.hideLocationDesc') }}
+              </text>
             </view>
           </view>
         </view>
 
-        <!-- 附近地点列表(本地演示数据,真实环境接入腾讯/高德 POI) -->
+        <!-- 附近地点：由后端 Google Places 代理实时搜索（关键词为空时提示输入） -->
         <view class="location-picker__hint">
-          <text>附近地点(本地演示)</text>
+          <text>
+            {{
+              locationKeyword
+                ? $t('communityPost.searchResultHint')
+                : $t('communityPost.searchNearbyHint')
+            }}
+          </text>
         </view>
         <scroll-view scroll-y class="sheet__list">
-          <view
-            v-for="(p, idx) in filteredPois"
-            :key="p.name + '-' + idx"
-            class="poi-item"
-            :class="{ 'is-active': selectedLocation && selectedLocation.name === p.name }"
-            @tap="onPickPoi(p)"
-          >
-            <text class="poi-item__icon">{{ p.icon }}</text>
-            <view class="poi-item__main">
-              <text class="poi-item__name">{{ p.name }}</text>
-              <text class="poi-item__address">{{ p.address }}</text>
+          <view v-if="geoLoading" class="sheet__empty">
+            <text>{{ $t('communityPost.searchingPlaces') }}</text>
+          </view>
+          <template v-else>
+            <view
+              v-for="(p, idx) in nearbyPlaces"
+              :key="idx"
+              class="poi-item"
+              :class="{ 'is-active': selectedLocation && selectedLocation.name === p.name }"
+              @tap="onPickPoi(p)"
+            >
+              <view class="poi-item__icon">
+                <text class="luc luc-map-pin" />
+              </view>
+              <view class="poi-item__main">
+                <text class="poi-item__name">{{ p.name }}</text>
+                <text class="poi-item__address">{{ p.address }}</text>
+              </view>
             </view>
-            <text class="poi-item__distance">{{ p.distance }}</text>
-          </view>
-          <view v-if="filteredPois.length === 0" class="sheet__empty">
-            <text>没有匹配的地点</text>
-          </view>
+            <view v-if="locationKeyword && nearbyPlaces.length === 0" class="sheet__empty">
+              <text>{{ $t('communityPost.noMatchingPlaces') }}</text>
+            </view>
+          </template>
         </scroll-view>
       </view>
     </view>
@@ -538,7 +641,7 @@
 </template>
 
 <script>
-import { communityApi, uploadApi } from '@/api'
+import { communityApi, geoApi, petApi, uploadApi } from '@/api'
 import { useUserStore } from '@/store'
 import { STORAGE_KEYS } from '@/utils/storage'
 
@@ -549,6 +652,10 @@ export default {
     return {
       // 表单数据
       content: '',
+      // 关联宠物：'' = 不关联；非空为宠物 id（帖子归入该宠物记忆树）
+      petId: '',
+      // 当前用户宠物列表（用于选择关联宠物）
+      pets: [],
       // images: 本地预览路径,发布时逐张上传转 URL
       images: [],
       // uploadedImageUrls: 已上传的图片 URL,最终传给 createPost
@@ -602,38 +709,42 @@ export default {
       topics: [],
       topicsLoading: false,
       // 草稿相关
-      draftExists: false,    // 进入页面时检测到本地有草稿
-      draftSavedAt: null,    // 草稿保存时间
+      draftExists: false, // 进入页面时检测到本地有草稿
+      draftSavedAt: null, // 草稿保存时间
       // # 话题联想
       topicSuggest: {
-        visible: false,        // 浮层是否显示
-        query: '',             // 当前光标前的 #xxx 查询词(去掉 #)
-        rangeStart: -1,        // # 字符在文本中的索引
-        rangeEnd: -1,          // 当前光标位置
-        candidates: [],        // 候选话题列表
-        activeIdx: -1,         // 键盘选中索引
-        allowCreate: false,    // 是否显示"创建话题"
+        visible: false, // 浮层是否显示
+        query: '', // 当前光标前的 #xxx 查询词(去掉 #)
+        rangeStart: -1, // # 字符在文本中的索引
+        rangeEnd: -1, // 当前光标位置
+        candidates: [], // 候选话题列表
+        activeIdx: -1, // 键盘选中索引
+        allowCreate: false, // 是否显示"创建话题"
       },
       // Emoji 面板
       emojiPanelVisible: false,
-      emojiActiveCat: 0,        // 当前分类索引
-      emojiKeyword: '',         // emoji 搜索关键词(emoji 面板顶部搜索)
+      emojiActiveCat: 0, // 当前分类索引
+      emojiKeyword: '', // emoji 搜索关键词(emoji 面板顶部搜索)
       // 记录 textarea 当前光标位置,emoji 插入用
       textareaCursor: 0,
       // @ 提及联想
       mentionSuggest: {
         visible: false,
-        query: '',             // @ 后输入的查询词
-        rangeStart: -1,        // @ 字符在文本中的索引
-        rangeEnd: -1,          // 当前光标位置
-        candidates: [],        // 候选用户列表
+        query: '', // @ 后输入的查询词
+        rangeStart: -1, // @ 字符在文本中的索引
+        rangeEnd: -1, // 当前光标位置
+        candidates: [], // 候选用户列表
         activeIdx: -1,
         loading: false,
       },
       // 位置 POI 选择面板
       locationPickerVisible: false,
-      locationKeyword: '',     // POI 搜索关键词
-      locationLoading: false,   // 正在获取定位
+      locationKeyword: '', // POI 搜索关键词
+      locationLoading: false, // 正在获取定位
+      // 真实地点搜索（后端 Google Places 代理）
+      nearbyPlaces: [],
+      geoLoading: false,
+      locationSearchTimer: null,
       // 已选 POI:{ name: string, address: string, lat?: number, lon?: number }
       // 优先从 location 对象读;location 字符串仅用于 cell 显示
       selectedLocation: null,
@@ -646,10 +757,10 @@ export default {
     },
     /** 是否可发布:有内容或图片或视频,且未提交中 */
     canPublish() {
-      return !this.submitting
-        && (!!(this.content || '').trim()
-          || this.images.length > 0
-          || !!this.videoUrl)
+      return (
+        !this.submitting &&
+        (!!(this.content || '').trim() || this.images.length > 0 || !!this.videoUrl)
+      )
     },
     /** 是否含有未保存的文字内容(用于退出提示) */
     hasUnsavedContent() {
@@ -657,50 +768,25 @@ export default {
     },
     /** 可见性文本映射 */
     visibilityLabel() {
-      return { public: '公开', friends: '仅好友', private: '仅自己' }[this.visibility] || '公开'
-    },
-    /**
-     * POI 数据 + 过滤:
-     * 当前未接入第三方地图 SDK,使用本地演示数据。
-     * 生产环境应替换为:调起腾讯/高德地图 SDK 搜索接口,按 keyword 返回 POI 列表。
-     */
-    poiList() {
-      return [
-        { name: '三里屯 SOHO', address: '北京市朝阳区工体北路', distance: '0.5km', icon: '🏢', lat: 39.9367, lon: 116.4561 },
-        { name: '蓝色港湾', address: '北京市朝阳区朝阳公园路', distance: '1.2km', icon: '🛍️', lat: 39.9418, lon: 116.4779 },
-        { name: '朝阳公园', address: '北京市朝阳区朝阳公园南路', distance: '1.5km', icon: '🌳', lat: 39.9388, lon: 116.4779 },
-        { name: '悠唐购物中心', address: '北京市朝阳区三丰北里', distance: '1.8km', icon: '🛍️', lat: 39.9235, lon: 116.4624 },
-        { name: '团结湖公园', address: '北京市朝阳区团结湖南里', distance: '2.0km', icon: '🌳', lat: 39.9305, lon: 116.4649 },
-        { name: '宠物医院(24小时)', address: '北京市朝阳区工体北路', distance: '0.8km', icon: '🏥', lat: 39.9380, lon: 116.4570 },
-        { name: '宠物咖啡馆 MOFUN', address: '北京市朝阳区三里屯太古里', distance: '0.6km', icon: '☕', lat: 39.9363, lon: 116.4537 },
-        { name: '萌宠主题公园', address: '北京市朝阳区东风公园', distance: '3.2km', icon: '🐾', lat: 39.9421, lon: 116.4823 },
-        { name: '三里屯宠物医院', address: '北京市朝阳区工人体育场北路', distance: '0.7km', icon: '🏥', lat: 39.9372, lon: 116.4559 },
-      ]
-    },
-    /**
-     * 根据 locationKeyword 过滤 POI 列表
-     * 匹配方式:name 或 address 包含关键词(大小写不敏感)
-     */
-    filteredPois() {
-      const all = this.poiList || []
-      const q = (this.locationKeyword || '').trim().toLowerCase()
-      if (!q) return all
-      return all.filter((p) => {
-        return (p.name || '').toLowerCase().includes(q)
-            || (p.address || '').toLowerCase().includes(q)
-      })
+      const map = { public: 'public', friends: 'friends', private: 'private' }
+      return this.$t('communityPost.visibility.' + (map[this.visibility] || 'public'))
     },
   },
 
   onLoad(query) {
     // 登录态校验:未登录直接拦截并跳登录页
     if (!this.userStore.isLoggedIn) {
-      uni.showToast({ title: '请先登录', icon: 'none' })
+      uni.showToast({ title: this.$t('communityPost.loginFirst'), icon: 'none' })
       setTimeout(() => uni.reLaunch({ url: '/pages/user/login' }), 800)
       return
     }
     // 预加载话题列表,用户进入即可点选
     this.loadTopics()
+    // 关联宠物：晒宠入口带 petId 时默认选中
+    // petId 为雪花 ID（约 2e18），超出 JS 安全整数范围(2^53)，
+    // 必须保持字符串传递，不能用 Number() 强转，否则精度丢失会匹配不到宠物
+    this.petId = query && query.petId ? String(query.petId) : ''
+    this.loadPets()
     // 优先:从草稿列表跳转过来(query.draftId)→ 直接恢复该草稿
     if (query && query.draftId) {
       const all = this.readAllDrafts()
@@ -725,6 +811,21 @@ export default {
 
   methods: {
     /**
+     * 加载当前用户的宠物列表（用于帖子关联宠物）
+     * 仅保留正常状态宠物，避免把已去世的宠物选进去
+     */
+    async loadPets() {
+      try {
+        const list = await petApi.getPets()
+        const arr = Array.isArray(list) ? list : []
+        this.pets = arr.filter((p) => !p.status || p.status === 'ACTIVE')
+      } catch (e) {
+        console.warn('[create] load pets failed', e)
+        this.pets = []
+      }
+    },
+
+    /**
      * 返回处理:主流社交 APP 模式(三选项)
      * - 有未保存内容: 弹"保存草稿/放弃/取消"
      * - 无内容: 直接返回
@@ -736,14 +837,21 @@ export default {
         return
       }
       uni.showActionSheet({
-        itemList: ['保存草稿', '放弃编辑', '继续编辑'],
+        itemList: [
+          this.$t('communityPost.backSheet.saveDraft'),
+          this.$t('communityPost.backSheet.discardEdit'),
+          this.$t('communityPost.backSheet.continueEdit'),
+        ],
         success: (res) => {
           if (res.tapIndex === 0) {
             // 保存草稿
-            this.saveDraft({ silent: false, onSuccess: () => {
-              this._draftDiscarded = true
-              uni.navigateBack()
-            } })
+            this.saveDraft({
+              silent: false,
+              onSuccess: () => {
+                this._draftDiscarded = true
+                uni.navigateBack()
+              },
+            })
           } else if (res.tapIndex === 1) {
             // 放弃:清掉旧草稿,直接退出
             this._draftDiscarded = true
@@ -819,13 +927,13 @@ export default {
         this.draftExists = true
         this.draftSavedAt = draft.savedAt
         if (!silent) {
-          uni.showToast({ title: '已保存到草稿', icon: 'success' })
+          uni.showToast({ title: this.$t('communityPost.draftSaved'), icon: 'success' })
         }
         onSuccess && onSuccess()
       } catch (e) {
         console.error('[create] saveDraft failed:', e)
         if (!silent) {
-          uni.showToast({ title: '保存失败', icon: 'none' })
+          uni.showToast({ title: this.$t('communityPost.saveDraftFailed'), icon: 'none' })
         }
       }
     },
@@ -855,10 +963,10 @@ export default {
         const draft = all[0]
         const ageStr = this.formatDraftAge(draft.savedAt)
         uni.showModal({
-          title: '发现草稿',
-          content: `上次编辑于${ageStr},是否恢复?`,
-          confirmText: '恢复',
-          cancelText: '丢弃',
+          title: this.$t('communityPost.foundDraftTitle'),
+          content: this.$t('communityPost.foundDraftContent', { age: ageStr }),
+          confirmText: this.$t('communityPost.restoreDraft'),
+          cancelText: this.$t('communityPost.discardDraft'),
           success: (res) => {
             if (res.confirm) {
               this.restoreDraft(draft)
@@ -872,10 +980,10 @@ export default {
       }
       // 多份:引导用户去草稿列表选择
       uni.showModal({
-        title: `发现 ${all.length} 份草稿`,
-        content: '是否前往草稿列表选择恢复?',
-        confirmText: '查看草稿',
-        cancelText: '稍后',
+        title: this.$t('communityPost.foundDraftsTitle', { count: all.length }),
+        content: this.$t('communityPost.foundDraftsContent'),
+        confirmText: this.$t('communityPost.viewDrafts'),
+        cancelText: this.$t('communityPost.later'),
         success: (res) => {
           if (res.confirm) {
             uni.navigateTo({ url: '/pages/community/drafts' })
@@ -893,7 +1001,7 @@ export default {
       this.draftId = draft.id || null
       this.draftExists = true
       this.draftSavedAt = draft.savedAt
-      uni.showToast({ title: '已恢复草稿', icon: 'success' })
+      uni.showToast({ title: this.$t('communityPost.draftRestored'), icon: 'success' })
     },
 
     /** 删除当前草稿(单条) */
@@ -905,7 +1013,7 @@ export default {
       this.draftSavedAt = null
       this.draftId = null
       if (!silent) {
-        uni.showToast({ title: '草稿已删除', icon: 'success' })
+        uni.showToast({ title: this.$t('communityPost.draftDeleted'), icon: 'success' })
       }
     },
 
@@ -920,12 +1028,12 @@ export default {
       if (!ts) return ''
       const diff = Date.now() - ts
       const min = Math.floor(diff / 60000)
-      if (min < 1) return '刚刚'
-      if (min < 60) return `${min}分钟前`
+      if (min < 1) return this.$t('communityPost.draftAge.justNow')
+      if (min < 60) return this.$t('communityPost.draftAge.minutesAgo', { n: min })
       const hr = Math.floor(min / 60)
-      if (hr < 24) return `${hr}小时前`
+      if (hr < 24) return this.$t('communityPost.draftAge.hoursAgo', { n: hr })
       const day = Math.floor(hr / 24)
-      if (day < 30) return `${day}天前`
+      if (day < 30) return this.$t('communityPost.draftAge.daysAgo', { n: day })
       const d = new Date(ts)
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     },
@@ -1059,9 +1167,7 @@ export default {
      */
     detectTopicSuggest(e) {
       const val = e.detail.value || ''
-      const cursor = (typeof e.detail.cursor === 'number')
-        ? e.detail.cursor
-        : val.length
+      const cursor = typeof e.detail.cursor === 'number' ? e.detail.cursor : val.length
       const before = val.slice(0, cursor)
       // 匹配最后一个 #[^#\s]{0,20}(光标紧跟其后)
       const m = before.match(/(^|[\s\n])#[^#\s]{0,20}$/)
@@ -1088,9 +1194,7 @@ export default {
      */
     detectMentionSuggest(e) {
       const val = e.detail.value || ''
-      const cursor = (typeof e.detail.cursor === 'number')
-        ? e.detail.cursor
-        : val.length
+      const cursor = typeof e.detail.cursor === 'number' ? e.detail.cursor : val.length
       const before = val.slice(0, cursor)
       // @ 后非空白字符 0~20 个
       const m = before.match(/(^|[\s\n])@[^@\s]{0,20}$/)
@@ -1189,7 +1293,8 @@ export default {
         ? all.filter((t) => (t.name || '').toLowerCase().includes(q)).slice(0, 8)
         : all.slice(0, 8)
       // 已选中话题(=已发布的 topic)就不再允许重复插入
-      const allowCreate = !!q && q.length > 0 && !list.some((t) => (t.name || '').toLowerCase() === q)
+      const allowCreate =
+        !!q && q.length > 0 && !list.some((t) => (t.name || '').toLowerCase() === q)
       this.topicSuggest.candidates = list
       this.topicSuggest.allowCreate = allowCreate
       this.topicSuggest.activeIdx = list.length > 0 ? 0 : -1
@@ -1231,10 +1336,10 @@ export default {
       const q = (this.topicSuggest.query || '').trim()
       if (!q) return
       uni.showModal({
-        title: '创建话题',
-        content: `暂不支持自定义创建话题,是否仍按"${q}"发布?`,
-        confirmText: '仍然发布',
-        cancelText: '取消',
+        title: this.$t('communityPost.createTopicTitle'),
+        content: this.$t('communityPost.createTopicContent', { topic: q }),
+        confirmText: this.$t('communityPost.publishAnyway'),
+        cancelText: this.$t('communityPost.cancel'),
         success: (res) => {
           if (res.confirm) {
             // 将其视为普通话题字符串填入(后端会按字符串接收,topic 字段无外键约束)
@@ -1265,7 +1370,7 @@ export default {
     async onPickImage() {
       const remain = 9 - this.images.length
       if (remain <= 0) {
-        uni.showToast({ title: '最多 9 张图片', icon: 'none' })
+        uni.showToast({ title: this.$t('communityPost.max9Images'), icon: 'none' })
         return
       }
       const res = await new Promise((resolve) => {
@@ -1293,7 +1398,10 @@ export default {
       }
       // 3. 异步上传得到真实 URL
       this.uploadingImages = true
-      uni.showLoading({ title: `上传中 0/${localPaths.length}...`, mask: true })
+      uni.showLoading({
+        title: this.$t('communityPost.uploadingImagesTitle', { done: 0, total: localPaths.length }),
+        mask: true,
+      })
       let successCount = 0
       for (let i = 0; i < localPaths.length; i++) {
         try {
@@ -1304,14 +1412,26 @@ export default {
           }
         } catch (e) {
           console.error('[create] upload failed:', e.message)
-          uni.showToast({ title: `第 ${i + 1} 张上传失败`, icon: 'none' })
+          uni.showToast({
+            title: this.$t('communityPost.imageUploadFailed', { index: i + 1 }),
+            icon: 'none',
+          })
         }
-        uni.showLoading({ title: `上传中 ${i + 1}/${localPaths.length}...`, mask: true })
+        uni.showLoading({
+          title: this.$t('communityPost.uploadingImagesTitle', {
+            done: i + 1,
+            total: localPaths.length,
+          }),
+          mask: true,
+        })
       }
       uni.hideLoading()
       this.uploadingImages = false
       if (successCount > 0) {
-        uni.showToast({ title: `已上传 ${successCount} 张`, icon: 'success' })
+        uni.showToast({
+          title: this.$t('communityPost.uploadedCount', { count: successCount }),
+          icon: 'success',
+        })
       }
       // 4. 首图比例校验提示:如果首图不是 3:4,提示用户(仅一次,不打扰)
       this.maybeShowCoverRatioHint()
@@ -1367,7 +1487,7 @@ export default {
       const first = this.imageMeta[0]
       if (!first || first.isIdealRatio || first.width === 0) return
       uni.showToast({
-        title: `首图建议 3:4 比例,当前 ${first.ratioLabel}`,
+        title: this.$t('communityPost.ratioHint', { ratio: first.ratioLabel }),
         icon: 'none',
         duration: 2500,
       })
@@ -1390,7 +1510,7 @@ export default {
     onImageLongPress(idx) {
       if (this.draggingIndex === idx) return
       this.draggingIndex = idx
-      uni.showToast({ title: '点击其他图片交换位置', icon: 'none', duration: 1800 })
+      uni.showToast({ title: this.$t('communityPost.dragSwapHint'), icon: 'none', duration: 1800 })
     },
 
     /**
@@ -1468,7 +1588,7 @@ export default {
     async onPickVideo() {
       // 已选视频:不允许再加(避免覆盖),提示先删除
       if (this.videoLocal || this.videoUrl) {
-        uni.showToast({ title: '请先删除已选视频', icon: 'none' })
+        uni.showToast({ title: this.$t('communityPost.deleteVideoFirst'), icon: 'none' })
         return
       }
       // 收起键盘/面板
@@ -1490,13 +1610,16 @@ export default {
       if (!res || !res.tempFilePath) return
       // 时长二次校验(部分平台不严格遵守 maxDuration)
       if (res.duration && res.duration > 60) {
-        uni.showToast({ title: '视频时长不能超过 60 秒', icon: 'none' })
+        uni.showToast({ title: this.$t('communityPost.videoTooLong'), icon: 'none' })
         return
       }
       // 大小校验(后端 200MB 上限;前端兜底 180MB 留余量)
       const sizeMB = (res.size || 0) / (1024 * 1024)
       if (sizeMB > 180) {
-        uni.showToast({ title: `视频过大(${(sizeMB).toFixed(0)}MB),请压缩到 180MB 以内`, icon: 'none' })
+        uni.showToast({
+          title: this.$t('communityPost.videoTooLarge', { size: sizeMB.toFixed(0) }),
+          icon: 'none',
+        })
         return
       }
       // 清理旧的图片(互斥)
@@ -1510,7 +1633,7 @@ export default {
       this.videoUploadProgress = 0
       // 上传到后端
       this.uploadingVideo = true
-      uni.showLoading({ title: '上传视频中...', mask: true })
+      uni.showLoading({ title: this.$t('communityPost.uploadingVideo'), mask: true })
       try {
         const result = await uploadApi.uploadVideo(res.tempFilePath, (p) => {
           this.videoUploadProgress = p
@@ -1518,12 +1641,15 @@ export default {
         if (result?.url) {
           this.videoUrl = result.url
           uni.hideLoading()
-          uni.showToast({ title: '视频已上传', icon: 'success' })
+          uni.showToast({ title: this.$t('communityPost.videoUploaded'), icon: 'success' })
         }
       } catch (e) {
         uni.hideLoading()
         console.error('[create] video upload failed:', e.message)
-        uni.showToast({ title: e.message || '视频上传失败', icon: 'none' })
+        uni.showToast({
+          title: e.message || this.$t('communityPost.videoUploadFailed'),
+          icon: 'none',
+        })
         // 上传失败:清掉本地预览,允许用户重选
         this.videoLocal = ''
         this.videoDuration = 0
@@ -1583,12 +1709,20 @@ export default {
         const candidates = await this.captureFramesH5()
         this.coverCandidates = candidates
         if (candidates.length === 0) {
-          uni.showToast({ title: '自动截帧失败,请手动上传图片作为封面', icon: 'none', duration: 3000 })
+          uni.showToast({
+            title: this.$t('communityPost.captureFailedHint'),
+            icon: 'none',
+            duration: 3000,
+          })
         }
         // #endif
         // #ifndef H5
         // 小程序/APP 自动截帧复杂,先给出友好提示,留接口扩展
-        uni.showToast({ title: '小程序暂不支持自动截帧,请上传图片或选择首帧', icon: 'none', duration: 3000 })
+        uni.showToast({
+          title: this.$t('communityPost.miniProgramNoCapture'),
+          icon: 'none',
+          duration: 3000,
+        })
         // #endif
       } catch (e) {
         console.warn('[create] capture cover failed:', e.message)
@@ -1663,7 +1797,7 @@ export default {
     /** 确认选择:把 dataURL 转 File,走 uploadApi 上传,得到 URL 存到 coverUrl */
     async onConfirmCover() {
       if (this.selectedCoverIdx < 0) {
-        uni.showToast({ title: '请先选择一帧', icon: 'none' })
+        uni.showToast({ title: this.$t('communityPost.selectFrameFirst'), icon: 'none' })
         return
       }
       const item = this.coverCandidates[this.selectedCoverIdx]
@@ -1674,12 +1808,15 @@ export default {
         const result = await uploadApi.uploadImage(filePath)
         if (result?.url) {
           this.coverUrl = result.url
-          uni.showToast({ title: '封面已设置', icon: 'success' })
+          uni.showToast({ title: this.$t('communityPost.coverSet'), icon: 'success' })
           this.coverPickerVisible = false
         }
       } catch (e) {
         console.error('[create] cover upload failed:', e.message)
-        uni.showToast({ title: e.message || '封面上传失败', icon: 'none' })
+        uni.showToast({
+          title: e.message || this.$t('communityPost.coverUploadFailed'),
+          icon: 'none',
+        })
       } finally {
         this.uploadingCover = false
       }
@@ -1703,13 +1840,14 @@ export default {
       // 小程序/APP:dataURL 需要先写到临时文件,这里返回 dataURL 字符串,
       // 适配器层 uni.uploadFile 在某些平台也接受 base64,但更稳妥是先写临时文件
       // 此处简化处理,如有需要再扩展
+      // eslint-disable-next-line no-unreachable -- 条件编译：#ifndef 分支内 return 使该行在 H5 端静态分析时不可达
       return dataUrl
       // #endif
     },
 
     /** 视频元素播放错误(如编码不支持),提示用户 */
     onVideoError() {
-      uni.showToast({ title: '视频预览失败,但不影响发布', icon: 'none' })
+      uni.showToast({ title: this.$t('communityPost.videoPreviewFailed'), icon: 'none' })
     },
 
     /** 格式化时长:62 秒 → "01:02" */
@@ -1750,11 +1888,7 @@ export default {
       for (let m = 0; m < 60; m += 5) minutes.push(String(m).padStart(2, '0'))
       this.customTimeRange = [dates, hours, minutes]
       // 默认值:今天 +1 小时(避开整点冲突)
-      this.customTimeValue = [
-        0,
-        Math.min(23, now.getHours() + 1),
-        0,
-      ]
+      this.customTimeValue = [0, Math.min(23, now.getHours() + 1), 0]
       this.customTimeDisplay = ''
     },
 
@@ -1793,18 +1927,20 @@ export default {
     /** 确认定时发布 */
     onConfirmScheduled() {
       if (!this.scheduledAt) {
-        uni.showToast({ title: '请选择发布时间', icon: 'none' })
+        uni.showToast({ title: this.$t('communityPost.chooseScheduleTime'), icon: 'none' })
         return
       }
       // 必须未来时间
       const t = new Date(this.scheduledAt)
       if (t.getTime() <= Date.now()) {
-        uni.showToast({ title: '请选择未来的时间', icon: 'none' })
+        uni.showToast({ title: this.$t('communityPost.futureTimeRequired'), icon: 'none' })
         return
       }
       this.scheduledPickerVisible = false
       uni.showToast({
-        title: `已设置定时:${this.formatScheduled(this.scheduledAt)}`,
+        title: this.$t('communityPost.scheduleSetToast', {
+          time: this.formatScheduled(this.scheduledAt),
+        }),
         icon: 'none',
       })
     },
@@ -1823,8 +1959,8 @@ export default {
       const dayDiff = Math.floor((t.getTime() - now.setHours(0, 0, 0, 0)) / 86400000)
       const pad = (n) => String(n).padStart(2, '0')
       const hm = `${pad(t.getHours())}:${pad(t.getMinutes())}`
-      if (dayDiff <= 0) return `今天 ${hm}`
-      if (dayDiff === 1) return `明天 ${hm}`
+      if (dayDiff <= 0) return this.$t('communityPost.scheduleTime.today', { time: hm })
+      if (dayDiff === 1) return this.$t('communityPost.scheduleTime.tomorrow', { time: hm })
       return `${t.getMonth() + 1}/${t.getDate()} ${hm}`
     },
 
@@ -1866,99 +2002,148 @@ export default {
       this.closeTopicPicker()
     },
 
-    /** 选择位置:弹出 POI 选择面板 */
+    /** 选择位置:弹出位置选择面板 */
     onPickLocation() {
       // 收起 emoji 面板避免冲突
       this.emojiPanelVisible = false
       this.hideTopicSuggest()
       this.hideMentionSuggest()
       this.locationPickerVisible = true
-      // 重置搜索词
+      // 重置搜索词与旧结果
       this.locationKeyword = ''
+      this.nearbyPlaces = []
+      this.geoLoading = false
     },
 
     /** 关闭位置面板 */
     closeLocationPicker() {
       this.locationPickerVisible = false
       this.locationKeyword = ''
+      this.nearbyPlaces = []
+      this.geoLoading = false
     },
 
-    /** 搜索关键词变化(无需处理逻辑,v-model 自动更新,filteredPois computed 自动重算) */
+    /** 关键词变化：防抖后调后端 Google Places 代理搜索 */
     onLocationKeywordChange() {
-      // 留空:computed 自动响应
+      if (this.locationSearchTimer) clearTimeout(this.locationSearchTimer)
+      const keyword = (this.locationKeyword || '').trim()
+      if (!keyword) {
+        this.nearbyPlaces = []
+        this.geoLoading = false
+        return
+      }
+      this.geoLoading = true
+      this.locationSearchTimer = setTimeout(() => this.searchNearbyPlaces(keyword), 300)
+    },
+
+    /** 搜索附近地点：需要中心坐标（无则先定位一次并缓存） */
+    async searchNearbyPlaces(keyword) {
+      try {
+        const center = this._userCoords || (await this.requestCurrentCoords())
+        this._userCoords = center
+        const list = await geoApi.searchNearbyPlaces({
+          keyword,
+          lat: center.lat,
+          lng: center.lng,
+          radius: 5000,
+        })
+        this.nearbyPlaces = Array.isArray(list) ? list : []
+      } catch (e) {
+        console.warn('[create] nearby search failed', e)
+        this.nearbyPlaces = []
+        uni.showToast({
+          title: (e && e.message) || this.$t('communityPost.getLocationFailed'),
+          icon: 'none',
+        })
+      } finally {
+        this.geoLoading = false
+      }
     },
 
     /**
-     * 选择一个 POI:
+     * 选择一个 POI：
      * - selectedLocation:存结构化对象(name/address/lat/lon)
-     * - location(cell 显示):"POI 名称 + 简短地址"
-     * 这样后端 createPost 拿到的是字符串(后端只存 topic 字段,location 仅前端展示)
+     * - location(cell 显示):"POI 名称 + 地址"
      */
     onPickPoi(p) {
-      this.selectedLocation = { ...p }
-      this.location = `${p.name} · ${p.address}`
+      this.selectedLocation = { name: p.name, address: p.address, lat: p.lat, lng: p.lng }
+      this.location = p.address && p.address !== p.name ? `${p.name} · ${p.address}` : p.name
       this.locationPickerVisible = false
-      uni.showToast({ title: '位置已选', icon: 'success' })
+      uni.showToast({ title: this.$t('communityPost.locationSelected'), icon: 'success' })
     },
 
     /**
-     * 使用当前定位:请求 uni.getLocation,成功后把坐标写入 location
-     * (后端未支持位置字段存储,这里仅前端展示)
+     * 当前坐标统一获取（uni.getLocation / H5 navigator.geolocation 通用路径）
+     * @returns {Promise<{lat: number, lng: number}>}
      */
-    onUseCurrentLocation() {
-      // H5 / 浏览器:用 navigator.geolocation
-      // 微信小程序 / APP:用 uni.authorize + uni.getLocation
-      // 这里采用通用路径,优先 uni.authorize 失败回退到 H5 geolocation
-      this.locationLoading = true
-      const onSuccess = (lat, lon, accuracy) => {
-        // 取 lat/lon 保留 4 位小数;同时尝试逆地理(浏览器无 key,简单显示)
-        this.selectedLocation = {
-          name: '当前位置',
-          address: `${lat.toFixed(4)}, ${lon.toFixed(4)}`,
-          lat,
-          lon,
+    requestCurrentCoords() {
+      return new Promise((resolve, reject) => {
+        const onSuccess = (lat, lng) => resolve({ lat, lng })
+        const onFail = (msg) => reject(new Error(msg || this.$t('communityPost.getLocationFailed')))
+        // 优先 uni 路径（APP / 小程序）
+        if (typeof uni !== 'undefined' && uni.getLocation) {
+          uni.authorize({
+            scope: 'scope.userLocation',
+            success: () => {
+              uni.getLocation({
+                type: 'wgs84',
+                success: (res) => onSuccess(res.latitude, res.longitude),
+                fail: () => onFail(this.$t('communityPost.getLocationFailed')),
+              })
+            },
+            fail: () => {
+              // 浏览器环境：navigator.geolocation 兜底
+              if (navigator && navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                  (pos) => onSuccess(pos.coords.latitude, pos.coords.longitude),
+                  () => onFail(this.$t('communityPost.locationDenied')),
+                  { enableHighAccuracy: false, timeout: 8000 },
+                )
+              } else {
+                onFail(this.$t('communityPost.locationUnsupported'))
+              }
+            },
+          })
+        } else if (navigator && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => onSuccess(pos.coords.latitude, pos.coords.longitude),
+            () => onFail(this.$t('communityPost.locationDenied')),
+            { enableHighAccuracy: false, timeout: 8000 },
+          )
+        } else {
+          onFail(this.$t('communityPost.locationUnsupported'))
         }
-        this.location = `当前位置 · ${lat.toFixed(4)}, ${lon.toFixed(4)}`
+      })
+    },
+
+    /**
+     * 使用当前定位：取坐标后调后端逆地理得到真实地址名；
+     * 逆地理失败时退化为经纬度展示（不阻塞发布）
+     */
+    async onUseCurrentLocation() {
+      this.locationLoading = true
+      try {
+        const c = await this.requestCurrentCoords()
+        this._userCoords = c
+        let name = this.$t('communityPost.currentLocationName')
+        try {
+          const geo = await geoApi.reverseGeocode({ lat: c.lat, lng: c.lng })
+          if (geo && geo.address) name = geo.address
+        } catch (e) {
+          console.warn('[create] reverse geocode failed, fallback to coords', e)
+        }
+        const coordText = `${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`
+        this.selectedLocation = { name, address: coordText, lat: c.lat, lng: c.lng }
+        this.location = `${name} · ${coordText}`
         this.locationPickerVisible = false
         this.locationLoading = false
-        uni.showToast({ title: '已获取当前位置', icon: 'success' })
-      }
-      const onFail = (msg) => {
+        uni.showToast({ title: this.$t('communityPost.locationAcquired'), icon: 'success' })
+      } catch (e) {
         this.locationLoading = false
-        uni.showToast({ title: msg || '获取位置失败', icon: 'none' })
-      }
-      // 尝试 uni 路径(APP / 小程序)
-      if (typeof uni !== 'undefined' && uni.getLocation) {
-        uni.authorize({
-          scope: 'scope.userLocation',
-          success: () => {
-            uni.getLocation({
-              type: 'wgs84',
-              success: (res) => onSuccess(res.latitude, res.longitude, res.accuracy),
-              fail: () => onFail('获取位置失败'),
-            })
-          },
-          fail: () => {
-            // 浏览器环境:用 navigator.geolocation 兜底
-            if (navigator && navigator.geolocation) {
-              navigator.geolocation.getCurrentPosition(
-                (pos) => onSuccess(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
-                () => onFail('浏览器拒绝定位或不可用'),
-                { enableHighAccuracy: false, timeout: 8000 }
-              )
-            } else {
-              onFail('当前环境不支持定位')
-            }
-          },
+        uni.showToast({
+          title: (e && e.message) || this.$t('communityPost.getLocationFailed'),
+          icon: 'none',
         })
-      } else if (navigator && navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => onSuccess(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
-          () => onFail('浏览器拒绝定位或不可用'),
-          { enableHighAccuracy: false, timeout: 8000 }
-        )
-      } else {
-        onFail('当前环境不支持定位')
       }
     },
 
@@ -1972,7 +2157,11 @@ export default {
     /** 选择可见性:当前后端未支持,仅前端占位 */
     onPickVisibility() {
       uni.showActionSheet({
-        itemList: ['公开', '仅好友', '仅自己'],
+        itemList: [
+          this.$t('communityPost.visibility.public'),
+          this.$t('communityPost.visibility.friends'),
+          this.$t('communityPost.visibility.private'),
+        ],
         success: (res) => {
           const map = ['public', 'friends', 'private']
           this.visibility = map[res.tapIndex]
@@ -1986,32 +2175,729 @@ export default {
      */
     emojiCategories: [
       {
-        name: '表情', icon: '😀',
-        list: ['😀','😁','😂','🤣','😃','😄','😅','😆','😉','😊','😋','😎','😍','😘','🥰','😗','😙','😚','🙂','🤗','🤩','🤔','🤨','😐','😑','😶','🙄','😏','😣','😥','😮','🤐','😯','😪','😫','🥱','😴','😌','😛','😜','😝','🤤','😒','😓','😔','😕','🙃','🤑','😲','☹️','🙁','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','🥵','🥶','😳','🤪','😵','🥴','😠','😡','🤬','😷','🤒','🤕','🤢','🤮','🥳','🥺','🤠','🤡','🤥','🤫','🤭','🧐','🤓','😈','👿'],
+        name: 'smileys',
+        icon: '😀',
+        list: [
+          '😀',
+          '😁',
+          '😂',
+          '🤣',
+          '😃',
+          '😄',
+          '😅',
+          '😆',
+          '😉',
+          '😊',
+          '😋',
+          '😎',
+          '😍',
+          '😘',
+          '🥰',
+          '😗',
+          '😙',
+          '😚',
+          '🙂',
+          '🤗',
+          '🤩',
+          '🤔',
+          '🤨',
+          '😐',
+          '😑',
+          '😶',
+          '🙄',
+          '😏',
+          '😣',
+          '😥',
+          '😮',
+          '🤐',
+          '😯',
+          '😪',
+          '😫',
+          '🥱',
+          '😴',
+          '😌',
+          '😛',
+          '😜',
+          '😝',
+          '🤤',
+          '😒',
+          '😓',
+          '😔',
+          '😕',
+          '🙃',
+          '🤑',
+          '😲',
+          '☹️',
+          '🙁',
+          '😖',
+          '😞',
+          '😟',
+          '😤',
+          '😢',
+          '😭',
+          '😦',
+          '😧',
+          '😨',
+          '😩',
+          '🤯',
+          '😬',
+          '😰',
+          '😱',
+          '🥵',
+          '🥶',
+          '😳',
+          '🤪',
+          '😵',
+          '🥴',
+          '😠',
+          '😡',
+          '🤬',
+          '😷',
+          '🤒',
+          '🤕',
+          '🤢',
+          '🤮',
+          '🥳',
+          '🥺',
+          '🤠',
+          '🤡',
+          '🤥',
+          '🤫',
+          '🤭',
+          '🧐',
+          '🤓',
+          '😈',
+          '👿',
+        ],
       },
       {
-        name: '爱心', icon: '❤️',
-        list: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','♥️','💌','💋','💯','💢','💥','💫','💦','💨','🕳️','💣','💬','👁️‍🗨️','🗨️','🗯️','💭','💤'],
+        name: 'hearts',
+        icon: '❤️',
+        list: [
+          '❤️',
+          '🧡',
+          '💛',
+          '💚',
+          '💙',
+          '💜',
+          '🖤',
+          '🤍',
+          '🤎',
+          '💔',
+          '❣️',
+          '💕',
+          '💞',
+          '💓',
+          '💗',
+          '💖',
+          '💘',
+          '💝',
+          '💟',
+          '♥️',
+          '💌',
+          '💋',
+          '💯',
+          '💢',
+          '💥',
+          '💫',
+          '💦',
+          '💨',
+          '🕳️',
+          '💣',
+          '💬',
+          '👁️‍🗨️',
+          '🗨️',
+          '🗯️',
+          '💭',
+          '💤',
+        ],
       },
       {
-        name: '动物', icon: '🐾',
-        list: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🐤','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🪰','🪲','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🐘','🦣','🦛','🦏','🐪','🐫','🦒','🦘','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐕‍🦺','🐈','🐈‍⬛','🪶','🐓','🦃','🦚','🦜','🦢','🦩','🕊️','🐇','🦝','🦨','🦡','🦫','🦦','🦥','🐁','🐀','🐿️','🦔','🐲','🐉','🦖','🦕','🐳','🐋','🐬','🐟','🐠','🐡','🦈','🐊','🐅','🐆','🦓','🦍','🐘','🐁','🐀'],
+        name: 'animals',
+        icon: '🐾',
+        list: [
+          '🐶',
+          '🐱',
+          '🐭',
+          '🐹',
+          '🐰',
+          '🦊',
+          '🐻',
+          '🐼',
+          '🐨',
+          '🐯',
+          '🦁',
+          '🐮',
+          '🐷',
+          '🐸',
+          '🐵',
+          '🐔',
+          '🐧',
+          '🐦',
+          '🐤',
+          '🦆',
+          '🦅',
+          '🦉',
+          '🦇',
+          '🐺',
+          '🐗',
+          '🐴',
+          '🦄',
+          '🐝',
+          '🐛',
+          '🦋',
+          '🐌',
+          '🐞',
+          '🐜',
+          '🪰',
+          '🪲',
+          '🐢',
+          '🐍',
+          '🦎',
+          '🦖',
+          '🦕',
+          '🐙',
+          '🦑',
+          '🦐',
+          '🦞',
+          '🦀',
+          '🐡',
+          '🐠',
+          '🐟',
+          '🐬',
+          '🐳',
+          '🐋',
+          '🦈',
+          '🐊',
+          '🐅',
+          '🐆',
+          '🦓',
+          '🦍',
+          '🦧',
+          '🐘',
+          '🦣',
+          '🦛',
+          '🦏',
+          '🐪',
+          '🐫',
+          '🦒',
+          '🦘',
+          '🐃',
+          '🐂',
+          '🐄',
+          '🐎',
+          '🐖',
+          '🐏',
+          '🐑',
+          '🦙',
+          '🐐',
+          '🦌',
+          '🐕',
+          '🐩',
+          '🦮',
+          '🐕‍🦺',
+          '🐈',
+          '🐈‍⬛',
+          '🪶',
+          '🐓',
+          '🦃',
+          '🦚',
+          '🦜',
+          '🦢',
+          '🦩',
+          '🕊️',
+          '🐇',
+          '🦝',
+          '🦨',
+          '🦡',
+          '🦫',
+          '🦦',
+          '🦥',
+          '🐁',
+          '🐀',
+          '🐿️',
+          '🦔',
+          '🐲',
+          '🐉',
+          '🦖',
+          '🦕',
+          '🐳',
+          '🐋',
+          '🐬',
+          '🐟',
+          '🐠',
+          '🐡',
+          '🦈',
+          '🐊',
+          '🐅',
+          '🐆',
+          '🦓',
+          '🦍',
+          '🐘',
+          '🐁',
+          '🐀',
+        ],
       },
       {
-        name: '食物', icon: '🍔',
-        list: ['🍏','🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶','🫑','🌽','🥕','🫒','🧄','🧅','🥔','🍠','🥐','🥯','🍞','🥖','🥨','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🦴','🌭','🍔','🍟','🍕','🥪','🥙','🧆','🌮','🌯','🫔','🥗','🥘','🫕','🥫','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🦪','🍤','🍙','🍚','🍘','🍥','🥠','🥮','🍢','🍡','🍧','🍨','🍦','🥧','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪'],
+        name: 'food',
+        icon: '🍔',
+        list: [
+          '🍏',
+          '🍎',
+          '🍐',
+          '🍊',
+          '🍋',
+          '🍌',
+          '🍉',
+          '🍇',
+          '🍓',
+          '🫐',
+          '🍈',
+          '🍒',
+          '🍑',
+          '🥭',
+          '🍍',
+          '🥥',
+          '🥝',
+          '🍅',
+          '🍆',
+          '🥑',
+          '🥦',
+          '🥬',
+          '🥒',
+          '🌶',
+          '🫑',
+          '🌽',
+          '🥕',
+          '🫒',
+          '🧄',
+          '🧅',
+          '🥔',
+          '🍠',
+          '🥐',
+          '🥯',
+          '🍞',
+          '🥖',
+          '🥨',
+          '🧀',
+          '🥚',
+          '🍳',
+          '🧈',
+          '🥞',
+          '🧇',
+          '🥓',
+          '🥩',
+          '🍗',
+          '🍖',
+          '🦴',
+          '🌭',
+          '🍔',
+          '🍟',
+          '🍕',
+          '🥪',
+          '🥙',
+          '🧆',
+          '🌮',
+          '🌯',
+          '🫔',
+          '🥗',
+          '🥘',
+          '🫕',
+          '🥫',
+          '🍝',
+          '🍜',
+          '🍲',
+          '🍛',
+          '🍣',
+          '🍱',
+          '🥟',
+          '🦪',
+          '🍤',
+          '🍙',
+          '🍚',
+          '🍘',
+          '🍥',
+          '🥠',
+          '🥮',
+          '🍢',
+          '🍡',
+          '🍧',
+          '🍨',
+          '🍦',
+          '🥧',
+          '🧁',
+          '🍰',
+          '🎂',
+          '🍮',
+          '🍭',
+          '🍬',
+          '🍫',
+          '🍿',
+          '🍩',
+          '🍪',
+        ],
       },
       {
-        name: '活动', icon: '⚽',
-        list: ['⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳','🪁','🏹','🎣','🤿','🥊','🥋','🎽','🛹','🛼','🛷','⛸','🥌','🎿','⛷','🏂','🪂','🏋️','🤼','🤸','⛹️','🤺','🤾','🏌️','🏇','🧘','🏄','🏊','🤽','🚣','🧗','🚵','🚴','🏆','🥇','🥈','🥉','🏅','🎖️','🏵️','🎗️','🎫','🎟️','🎪','🤹','🎭','🩰','🎨','🎬','🎤','🎧','🎼','🎹','🥁','🪘','🎷','🎺','🎸','🪕','🎻','🎲','♟️','🎯','🎳','🎮','🎰','🧩'],
+        name: 'activities',
+        icon: '⚽',
+        list: [
+          '⚽',
+          '🏀',
+          '🏈',
+          '⚾',
+          '🥎',
+          '🎾',
+          '🏐',
+          '🏉',
+          '🥏',
+          '🎱',
+          '🪀',
+          '🏓',
+          '🏸',
+          '🏒',
+          '🏑',
+          '🥍',
+          '🏏',
+          '🪃',
+          '🥅',
+          '⛳',
+          '🪁',
+          '🏹',
+          '🎣',
+          '🤿',
+          '🥊',
+          '🥋',
+          '🎽',
+          '🛹',
+          '🛼',
+          '🛷',
+          '⛸',
+          '🥌',
+          '🎿',
+          '⛷',
+          '🏂',
+          '🪂',
+          '🏋️',
+          '🤼',
+          '🤸',
+          '⛹️',
+          '🤺',
+          '🤾',
+          '🏌️',
+          '🏇',
+          '🧘',
+          '🏄',
+          '🏊',
+          '🤽',
+          '🚣',
+          '🧗',
+          '🚵',
+          '🚴',
+          '🏆',
+          '🥇',
+          '🥈',
+          '🥉',
+          '🏅',
+          '🎖️',
+          '🏵️',
+          '🎗️',
+          '🎫',
+          '🎟️',
+          '🎪',
+          '🤹',
+          '🎭',
+          '🩰',
+          '🎨',
+          '🎬',
+          '🎤',
+          '🎧',
+          '🎼',
+          '🎹',
+          '🥁',
+          '🪘',
+          '🎷',
+          '🎺',
+          '🎸',
+          '🪕',
+          '🎻',
+          '🎲',
+          '♟️',
+          '🎯',
+          '🎳',
+          '🎮',
+          '🎰',
+          '🧩',
+        ],
       },
       {
-        name: '旅行', icon: '🚗',
-        list: ['🚗','🚕','🚙','🚌','🚎','🏎','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🛴','🚲','🛵','🏍','🛺','🚨','🚔','🚍','🚘','🚖','🚡','🚠','🚟','🚃','🚋','🚞','🚝','🚄','🚅','🚈','🚂','🚆','🚇','🚊','🚉','✈️','🛫','🛬','🛩️','💺','🛰️','🚀','🛸','🚁','🛶','⛵','🚤','🛥️','🛳️','⛴️','🚢','⚓','🚧','⛽','🚏','🚦','🚥','🗺️','🗿','🗽','🗼','🏰','🏯','🏟️','🎡','🎢','🎠','⛲','🏖️','🏝️','🏜️','🌋','⛰️','🏔️','🗻','🏕️','⛺','🏠','🏡','🏘️','🏚️','🏗️','🏭','🏢','🏬','🏣','🏤','🏥','🏦','🏨','🏪','🏫','🏩','💒','🏛️','⛪','🕌','🕍','🛕','🕋','⛩️'],
+        name: 'travel',
+        icon: '🚗',
+        list: [
+          '🚗',
+          '🚕',
+          '🚙',
+          '🚌',
+          '🚎',
+          '🏎',
+          '🚓',
+          '🚑',
+          '🚒',
+          '🚐',
+          '🛻',
+          '🚚',
+          '🚛',
+          '🚜',
+          '🛴',
+          '🚲',
+          '🛵',
+          '🏍',
+          '🛺',
+          '🚨',
+          '🚔',
+          '🚍',
+          '🚘',
+          '🚖',
+          '🚡',
+          '🚠',
+          '🚟',
+          '🚃',
+          '🚋',
+          '🚞',
+          '🚝',
+          '🚄',
+          '🚅',
+          '🚈',
+          '🚂',
+          '🚆',
+          '🚇',
+          '🚊',
+          '🚉',
+          '✈️',
+          '🛫',
+          '🛬',
+          '🛩️',
+          '💺',
+          '🛰️',
+          '🚀',
+          '🛸',
+          '🚁',
+          '🛶',
+          '⛵',
+          '🚤',
+          '🛥️',
+          '🛳️',
+          '⛴️',
+          '🚢',
+          '⚓',
+          '🚧',
+          '⛽',
+          '🚏',
+          '🚦',
+          '🚥',
+          '🗺️',
+          '🗿',
+          '🗽',
+          '🗼',
+          '🏰',
+          '🏯',
+          '🏟️',
+          '🎡',
+          '🎢',
+          '🎠',
+          '⛲',
+          '🏖️',
+          '🏝️',
+          '🏜️',
+          '🌋',
+          '⛰️',
+          '🏔️',
+          '🗻',
+          '🏕️',
+          '⛺',
+          '🏠',
+          '🏡',
+          '🏘️',
+          '🏚️',
+          '🏗️',
+          '🏭',
+          '🏢',
+          '🏬',
+          '🏣',
+          '🏤',
+          '🏥',
+          '🏦',
+          '🏨',
+          '🏪',
+          '🏫',
+          '🏩',
+          '💒',
+          '🏛️',
+          '⛪',
+          '🕌',
+          '🕍',
+          '🛕',
+          '🕋',
+          '⛩️',
+        ],
       },
       {
-        name: '物品', icon: '🏠',
-        list: ['⌚','📱','📲','💻','⌨️','🖥','🖨','🖱','🖲','🕹','🗜','💽','💾','💿','📀','📼','📷','📸','📹','🎥','📽','🎞','📞','☎️','📟','📠','📺','📻','🎙','🎚','🎛','🧭','⏱','⏲','⏰','🕰','⌛','⏳','📡','🔋','🔌','💡','🔦','🕯','🪔','🧯','🛢','💸','💵','💴','💶','💷','💰','💳','💎','⚖️','🪜','🧰','🪛','🔧','🔨','⚒','🛠','⛏','🪚','🔩','⚙️','🪤','🧱','⛓','🧲','🔫','💣','🧨','🪓','🔪','🗡','⚔️','🛡','🚬','⚰️','🪦','⚱️','🏺','🔮','📿','🧿','💈','⚗️','🔭','🔬','🕳','🩹','🩺','💊','💉','🩸','🧬','🦠','🧫','🩻','🎒','👜','👝','🛍','🎓','👔','👕','👖','🧦','🧤','🧣','🧥','🥼','🦺','👗','👘','🥻','🩱','🩳','🩲','👙','👚','👛','🪖','🎩','🧢','👒','🎓','⛑','💄','💋','👑','👒','🎒','🧳','🌂','☂️','💼','🛅','🛌','🛏','🛋','🚽','🚾','🧻','🧼','🪒','🧽','🧯','🛒','🚮','🧺'],
+        name: 'objects',
+        icon: '🏠',
+        list: [
+          '⌚',
+          '📱',
+          '📲',
+          '💻',
+          '⌨️',
+          '🖥',
+          '🖨',
+          '🖱',
+          '🖲',
+          '🕹',
+          '🗜',
+          '💽',
+          '💾',
+          '💿',
+          '📀',
+          '📼',
+          '📷',
+          '📸',
+          '📹',
+          '🎥',
+          '📽',
+          '🎞',
+          '📞',
+          '☎️',
+          '📟',
+          '📠',
+          '📺',
+          '📻',
+          '🎙',
+          '🎚',
+          '🎛',
+          '🧭',
+          '⏱',
+          '⏲',
+          '⏰',
+          '🕰',
+          '⌛',
+          '⏳',
+          '📡',
+          '🔋',
+          '🔌',
+          '💡',
+          '🔦',
+          '🕯',
+          '🪔',
+          '🧯',
+          '🛢',
+          '💸',
+          '💵',
+          '💴',
+          '💶',
+          '💷',
+          '💰',
+          '💳',
+          '💎',
+          '⚖️',
+          '🪜',
+          '🧰',
+          '🪛',
+          '🔧',
+          '🔨',
+          '⚒',
+          '🛠',
+          '⛏',
+          '🪚',
+          '🔩',
+          '⚙️',
+          '🪤',
+          '🧱',
+          '⛓',
+          '🧲',
+          '🔫',
+          '💣',
+          '🧨',
+          '🪓',
+          '🔪',
+          '🗡',
+          '⚔️',
+          '🛡',
+          '🚬',
+          '⚰️',
+          '🪦',
+          '⚱️',
+          '🏺',
+          '🔮',
+          '📿',
+          '🧿',
+          '💈',
+          '⚗️',
+          '🔭',
+          '🔬',
+          '🕳',
+          '🩹',
+          '🩺',
+          '💊',
+          '💉',
+          '🩸',
+          '🧬',
+          '🦠',
+          '🧫',
+          '🩻',
+          '🎒',
+          '👜',
+          '👝',
+          '🛍',
+          '🎓',
+          '👔',
+          '👕',
+          '👖',
+          '🧦',
+          '🧤',
+          '🧣',
+          '🧥',
+          '🥼',
+          '🦺',
+          '👗',
+          '👘',
+          '🥻',
+          '🩱',
+          '🩳',
+          '🩲',
+          '👙',
+          '👚',
+          '👛',
+          '🪖',
+          '🎩',
+          '🧢',
+          '👒',
+          '🎓',
+          '⛑',
+          '💄',
+          '💋',
+          '👑',
+          '👒',
+          '🎒',
+          '🧳',
+          '🌂',
+          '☂️',
+          '💼',
+          '🛅',
+          '🛌',
+          '🛏',
+          '🛋',
+          '🚽',
+          '🚾',
+          '🧻',
+          '🧼',
+          '🪒',
+          '🧽',
+          '🧯',
+          '🛒',
+          '🚮',
+          '🧺',
+        ],
       },
     ],
 
@@ -2022,40 +2908,306 @@ export default {
      * 这里精选常用关键词,够 90% 用户场景
      */
     emojiKeywords: {
-      '笑': ['😀','😁','😂','🤣','😃','😄','😅','😆','😉','😊','😋','😎','😏','🙂','🤗','🤭','🤪','😝','😜','😛','🤤'],
-      '哭': ['😢','😭','😿','🥺'],
-      '爱': ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','💕','💖','💗','💘','💝','💞','💓','😻','🥰','😍','😘','😗'],
-      '心': ['❤️','💔','💖','💗','💘','💝','💞','💓','💕','🖤','🤍','💟','♥️','💌'],
-      '花': ['🌸','🌺','🌻','🌷','🌹','🌼','💐','🏵️'],
-      '狗': ['🐶','🐕','🐩','🦮','🐕‍🦺'],
-      '猫': ['🐱','🐈','🐈‍⬛','😺','😸','😹','😻','😼','😽','🙀'],
-      '食物': ['🍎','🍌','🍔','🍕','🍣','🍜','🍱','🍝','🍲','🍳','🍰','🎂','🍦','🍩','🍪','🍫','🍬','🍭','🍮','🍯','🍇','🍓','🍑','🥝','🍍','🥥','🍒','🍊','🍋','🍌','🍐','🍏'],
-      '喝': ['☕','🍵','🍶','🍾','🍷','🍸','🍹','🍺','🥂','🥃','🥤'],
-      '运动': ['⚽','🏀','🏈','⚾','🎾','🏐','🏉','🥏','🎱','🏓','🏸','⛳','🏹','🎣','🏊','🏃','🚴','🏋️','🤸','⛹️','🤾','🏌️','🏇','🧗','🧘','🥊','🥋','🎽','🎿','⛷','🏂','🛹'],
-      '车': ['🚗','🚕','🚙','🚌','🚎','🏎','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🏍','🛵','🚲','🛴','🛺','🚜','🚦','🚥'],
-      '家': ['🏠','🏡','🏘️','🏚️','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏬','🏭','🏯','🏰','💒'],
-      '工作': ['💼','📁','📂','📄','📊','📈','📉','📋','📌','📍','📎','📏','📐','🖇️','📆','📅','📇','🗂️','🗃️','🗄️'],
-      '钱': ['💰','💵','💴','💶','💷','💸','💳','💎','🏦','💱'],
-      '点赞': ['👍','👎','👏','🙌','👐','🤝','🙏'],
-      '手': ['👌','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️','✋','🤚','🖐️','🖖','👋','🤛','🤜','✊','👊','🫶','🫱','🫲','🫳','🫴','🫰'],
-      '火': ['🔥','💥','✨','🎇','🎆','🌟','⭐','🌠'],
-      '水': ['💧','💦','🌊','🚰','🛁','🚿','💦'],
-      '生日': ['🎂','🎉','🎊','🎈','🎁','🎀','🍰'],
-      '爪': ['🐾','🐱','🐶','🐯','🐻','🦁'],
-      '好': ['👍','👌','✅','💯','🙆','🙆‍♂️','🙆‍♀️'],
-      '哭脸': ['😢','😭','😿','🥺','😞','😔','😟','😕','🙁','☹️'],
-      'no': ['🙅','🙅‍♂️','🙅‍♀️','❌','⛔','🚫','👎'],
-      'yes': ['🙆','🙆‍♂️','🙆‍♀️','✅','👍','✔️','🆗','👌'],
-      '歌': ['🎤','🎵','🎶','🎸','🎹','🎺','🎻','🎷','🥁','🎧','📻'],
-      'gift': ['🎁','🎀','🎊','🎉','🎈','🏆','🥇','🏅','🎖️','💝'],
-      'star': ['⭐','🌟','✨','💫','🌠','🎇','🎆'],
-      'rainbow': ['🌈','🌤️','⛅','🌥️','☁️','🌦️','🌧️','⛈️','🌩️','🌨️','❄️','☃️','⛄','🌬️','💨','💧','💦','☔','☂️'],
-      'happy': ['😀','😁','😂','🤣','😃','😄','😅','😆','😉','😊','😋','😎','😏','🙂','🤗','😺','😸','😹','😻'],
-      'sad': ['😢','😭','😿','🥺','😞','😔','😟','😕','🙁','☹️','😦','😧','😨','😩','🤯','😬','😰','😱','🥵','🥶','😳','🤪','😵','🥴'],
-      'cool': ['😎','🤩','🤘','🤟','🤞','✌️'],
-      'fire': ['🔥','💥','✨','🎇','🎆','🌟','⭐','🌠','🚒','🧯'],
-      'ok': ['👌','🙆','🙆‍♂️','🙆‍♀️','✅','👍','✔️','🆗','🟢'],
-      'angry': ['😠','😡','🤬','😤','😾','💢'],
+      笑: [
+        '😀',
+        '😁',
+        '😂',
+        '🤣',
+        '😃',
+        '😄',
+        '😅',
+        '😆',
+        '😉',
+        '😊',
+        '😋',
+        '😎',
+        '😏',
+        '🙂',
+        '🤗',
+        '🤭',
+        '🤪',
+        '😝',
+        '😜',
+        '😛',
+        '🤤',
+      ],
+      哭: ['😢', '😭', '😿', '🥺'],
+      爱: [
+        '❤️',
+        '🧡',
+        '💛',
+        '💚',
+        '💙',
+        '💜',
+        '🖤',
+        '🤍',
+        '🤎',
+        '💔',
+        '💕',
+        '💖',
+        '💗',
+        '💘',
+        '💝',
+        '💞',
+        '💓',
+        '😻',
+        '🥰',
+        '😍',
+        '😘',
+        '😗',
+      ],
+      心: ['❤️', '💔', '💖', '💗', '💘', '💝', '💞', '💓', '💕', '🖤', '🤍', '💟', '♥️', '💌'],
+      花: ['🌸', '🌺', '🌻', '🌷', '🌹', '🌼', '💐', '🏵️'],
+      狗: ['🐶', '🐕', '🐩', '🦮', '🐕‍🦺'],
+      猫: ['🐱', '🐈', '🐈‍⬛', '😺', '😸', '😹', '😻', '😼', '😽', '🙀'],
+      食物: [
+        '🍎',
+        '🍌',
+        '🍔',
+        '🍕',
+        '🍣',
+        '🍜',
+        '🍱',
+        '🍝',
+        '🍲',
+        '🍳',
+        '🍰',
+        '🎂',
+        '🍦',
+        '🍩',
+        '🍪',
+        '🍫',
+        '🍬',
+        '🍭',
+        '🍮',
+        '🍯',
+        '🍇',
+        '🍓',
+        '🍑',
+        '🥝',
+        '🍍',
+        '🥥',
+        '🍒',
+        '🍊',
+        '🍋',
+        '🍌',
+        '🍐',
+        '🍏',
+      ],
+      喝: ['☕', '🍵', '🍶', '🍾', '🍷', '🍸', '🍹', '🍺', '🥂', '🥃', '🥤'],
+      运动: [
+        '⚽',
+        '🏀',
+        '🏈',
+        '⚾',
+        '🎾',
+        '🏐',
+        '🏉',
+        '🥏',
+        '🎱',
+        '🏓',
+        '🏸',
+        '⛳',
+        '🏹',
+        '🎣',
+        '🏊',
+        '🏃',
+        '🚴',
+        '🏋️',
+        '🤸',
+        '⛹️',
+        '🤾',
+        '🏌️',
+        '🏇',
+        '🧗',
+        '🧘',
+        '🥊',
+        '🥋',
+        '🎽',
+        '🎿',
+        '⛷',
+        '🏂',
+        '🛹',
+      ],
+      车: [
+        '🚗',
+        '🚕',
+        '🚙',
+        '🚌',
+        '🚎',
+        '🏎',
+        '🚓',
+        '🚑',
+        '🚒',
+        '🚐',
+        '🛻',
+        '🚚',
+        '🚛',
+        '🚜',
+        '🏍',
+        '🛵',
+        '🚲',
+        '🛴',
+        '🛺',
+        '🚜',
+        '🚦',
+        '🚥',
+      ],
+      家: [
+        '🏠',
+        '🏡',
+        '🏘️',
+        '🏚️',
+        '🏢',
+        '🏣',
+        '🏤',
+        '🏥',
+        '🏦',
+        '🏨',
+        '🏩',
+        '🏪',
+        '🏫',
+        '🏬',
+        '🏭',
+        '🏯',
+        '🏰',
+        '💒',
+      ],
+      工作: [
+        '💼',
+        '📁',
+        '📂',
+        '📄',
+        '📊',
+        '📈',
+        '📉',
+        '📋',
+        '📌',
+        '📍',
+        '📎',
+        '📏',
+        '📐',
+        '🖇️',
+        '📆',
+        '📅',
+        '📇',
+        '🗂️',
+        '🗃️',
+        '🗄️',
+      ],
+      钱: ['💰', '💵', '💴', '💶', '💷', '💸', '💳', '💎', '🏦', '💱'],
+      点赞: ['👍', '👎', '👏', '🙌', '👐', '🤝', '🙏'],
+      手: [
+        '👌',
+        '✌️',
+        '🤞',
+        '🤟',
+        '🤘',
+        '🤙',
+        '👈',
+        '👉',
+        '👆',
+        '👇',
+        '☝️',
+        '✋',
+        '🤚',
+        '🖐️',
+        '🖖',
+        '👋',
+        '🤛',
+        '🤜',
+        '✊',
+        '👊',
+        '🫶',
+        '🫱',
+        '🫲',
+        '🫳',
+        '🫴',
+        '🫰',
+      ],
+      火: ['🔥', '💥', '✨', '🎇', '🎆', '🌟', '⭐', '🌠'],
+      水: ['💧', '💦', '🌊', '🚰', '🛁', '🚿', '💦'],
+      生日: ['🎂', '🎉', '🎊', '🎈', '🎁', '🎀', '🍰'],
+      爪: ['🐾', '🐱', '🐶', '🐯', '🐻', '🦁'],
+      好: ['👍', '👌', '✅', '💯', '🙆', '🙆‍♂️', '🙆‍♀️'],
+      哭脸: ['😢', '😭', '😿', '🥺', '😞', '😔', '😟', '😕', '🙁', '☹️'],
+      no: ['🙅', '🙅‍♂️', '🙅‍♀️', '❌', '⛔', '🚫', '👎'],
+      yes: ['🙆', '🙆‍♂️', '🙆‍♀️', '✅', '👍', '✔️', '🆗', '👌'],
+      歌: ['🎤', '🎵', '🎶', '🎸', '🎹', '🎺', '🎻', '🎷', '🥁', '🎧', '📻'],
+      gift: ['🎁', '🎀', '🎊', '🎉', '🎈', '🏆', '🥇', '🏅', '🎖️', '💝'],
+      star: ['⭐', '🌟', '✨', '💫', '🌠', '🎇', '🎆'],
+      rainbow: [
+        '🌈',
+        '🌤️',
+        '⛅',
+        '🌥️',
+        '☁️',
+        '🌦️',
+        '🌧️',
+        '⛈️',
+        '🌩️',
+        '🌨️',
+        '❄️',
+        '☃️',
+        '⛄',
+        '🌬️',
+        '💨',
+        '💧',
+        '💦',
+        '☔',
+        '☂️',
+      ],
+      happy: [
+        '😀',
+        '😁',
+        '😂',
+        '🤣',
+        '😃',
+        '😄',
+        '😅',
+        '😆',
+        '😉',
+        '😊',
+        '😋',
+        '😎',
+        '😏',
+        '🙂',
+        '🤗',
+        '😺',
+        '😸',
+        '😹',
+        '😻',
+      ],
+      sad: [
+        '😢',
+        '😭',
+        '😿',
+        '🥺',
+        '😞',
+        '😔',
+        '😟',
+        '😕',
+        '🙁',
+        '☹️',
+        '😦',
+        '😧',
+        '😨',
+        '😩',
+        '🤯',
+        '😬',
+        '😰',
+        '😱',
+        '🥵',
+        '🥶',
+        '😳',
+        '🤪',
+        '😵',
+        '🥴',
+      ],
+      cool: ['😎', '🤩', '🤘', '🤟', '🤞', '✌️'],
+      fire: ['🔥', '💥', '✨', '🎇', '🎆', '🌟', '⭐', '🌠', '🚒', '🧯'],
+      ok: ['👌', '🙆', '🙆‍♂️', '🙆‍♀️', '✅', '👍', '✔️', '🆗', '🟢'],
+      angry: ['😠', '😡', '🤬', '😤', '😾', '💢'],
     },
 
     /**
@@ -2127,7 +3279,11 @@ export default {
       const before = (this.content || '').slice(0, cur)
       let removeLen = 1
       // surrogate pair 起始位:charCodeAt 落在 0xD800~0xDBFF
-      if (cur >= 2 && before.charCodeAt(cur - 1) >= 0xDC00 && before.charCodeAt(cur - 2) >= 0xD800) {
+      if (
+        cur >= 2 &&
+        before.charCodeAt(cur - 1) >= 0xdc00 &&
+        before.charCodeAt(cur - 2) >= 0xd800
+      ) {
         removeLen = 2
       }
       this.content = before.slice(0, cur - removeLen) + (this.content || '').slice(cur)
@@ -2172,20 +3328,20 @@ export default {
     /** 发布:调用真实后端 /api/v1/community/posts */
     async onPublish() {
       if (!this.userStore.isLoggedIn) {
-        uni.showToast({ title: '请先登录', icon: 'none' })
+        uni.showToast({ title: this.$t('communityPost.loginFirst'), icon: 'none' })
         return
       }
       if (!this.canPublish) {
-        uni.showToast({ title: '请输入内容或上传图片', icon: 'none' })
+        uni.showToast({ title: this.$t('communityPost.contentOrImageRequired'), icon: 'none' })
         return
       }
       if (this.submitting) return
       if (this.uploadingImages) {
-        uni.showToast({ title: '图片正在上传,请稍候', icon: 'none' })
+        uni.showToast({ title: this.$t('communityPost.imagesUploading'), icon: 'none' })
         return
       }
       if (this.uploadingVideo) {
-        uni.showToast({ title: '视频正在上传,请稍候', icon: 'none' })
+        uni.showToast({ title: this.$t('communityPost.videoUploading'), icon: 'none' })
         return
       }
 
@@ -2193,7 +3349,7 @@ export default {
       const hasVideo = !!(this.videoLocal || this.videoUrl)
       const videoUrl = this.videoUrl
       if (hasVideo && !videoUrl) {
-        uni.showToast({ title: '视频上传失败,请重新选择', icon: 'none' })
+        uni.showToast({ title: this.$t('communityPost.videoReselect'), icon: 'none' })
         return
       }
 
@@ -2201,19 +3357,19 @@ export default {
       const trimmed = (this.content || '').trim()
       // 视频帖允许纯视频发布(图文帖仍要求有内容)
       if (!trimmed && !hasVideo && this.images.length === 0) {
-        uni.showToast({ title: '帖子内容不能为空', icon: 'none' })
+        uni.showToast({ title: this.$t('communityPost.contentRequired'), icon: 'none' })
         return
       }
       if (trimmed.length > 2000) {
-        uni.showToast({ title: '内容不能超过 2000 字', icon: 'none' })
+        uni.showToast({ title: this.$t('communityPost.contentTooLong'), icon: 'none' })
         return
       }
       if (this.topic && this.topic.length > 32) {
-        uni.showToast({ title: '话题不能超过 32 字符', icon: 'none' })
+        uni.showToast({ title: this.$t('communityPost.topicTooLong'), icon: 'none' })
         return
       }
       if (this.images.length > 9) {
-        uni.showToast({ title: '图片不能超过 9 张', icon: 'none' })
+        uni.showToast({ title: this.$t('communityPost.imagesTooMany'), icon: 'none' })
         return
       }
 
@@ -2221,12 +3377,17 @@ export default {
       // 这种情况下要求用户删除该图重新选择,避免给后端传本地路径
       const imageUrls = this.uploadedImageUrls
       if (this.images.length > 0 && imageUrls.length === 0) {
-        uni.showToast({ title: '图片上传失败,请重新选择', icon: 'none' })
+        uni.showToast({ title: this.$t('communityPost.imagesReselect'), icon: 'none' })
         return
       }
 
       this.submitting = true
-      uni.showLoading({ title: this.scheduledAt ? '设置定时中...' : '发布中...', mask: true })
+      uni.showLoading({
+        title: this.scheduledAt
+          ? this.$t('communityPost.scheduling')
+          : this.$t('communityPost.publishing'),
+        mask: true,
+      })
       try {
         const result = await communityApi.createPost(
           trimmed,
@@ -2234,11 +3395,14 @@ export default {
           hasVideo ? videoUrl : null,
           hasVideo && this.coverUrl ? this.coverUrl : null,
           this.topic || null,
-          this.scheduledAt || null
+          this.scheduledAt || null,
+          this.petId || null,
         )
         uni.hideLoading()
         uni.showToast({
-          title: this.scheduledAt ? '已设置定时发布' : '发布成功',
+          title: this.scheduledAt
+            ? this.$t('communityPost.scheduledToast')
+            : this.$t('communityPost.publishSuccess'),
           icon: 'success',
         })
         // 发布成功后清理草稿(避免下次进入还提示恢复)
@@ -2362,9 +3526,68 @@ export default {
   box-sizing: border-box;
 }
 
+/* ========== 关联宠物选择条 ========== */
+.pet-tags {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+  background: var(--color-surface, #ffffff);
+  border-radius: var(--radius-md, 16rpx);
+  padding: 20rpx 24rpx;
+}
+.pet-tags__label {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: var(--color-text-tertiary, #999999);
+}
+.pet-tags__scroll {
+  flex: 1;
+  white-space: nowrap;
+}
+.pet-tags__row {
+  display: inline-flex;
+  gap: 12rpx;
+}
+.pet-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 8rpx 20rpx;
+  border: 2rpx solid var(--color-divider, #eeeeee);
+  border-radius: 999rpx;
+  background: var(--color-surface, #ffffff);
+}
+.pet-tag--active {
+  border-color: var(--color-primary, #ff8fab);
+  background: var(--color-primary-light, #fff0f5);
+}
+.pet-tag__avatar {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--color-background, #f7f7f7);
+}
+.pet-tag__avatar--ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  color: var(--color-primary, #ff8fab);
+}
+.pet-tag__label {
+  font-size: 24rpx;
+  color: var(--color-text-secondary, #666666);
+}
+.pet-tag--active .pet-tag__label {
+  color: var(--color-primary, #ff8fab);
+  font-weight: 600;
+}
+
 /* ========== 文本输入区 ========== */
 .composer {
-  position: relative;  /* 让 .topic-suggest 浮层能以 composer 左上角为锚点 */
+  position: relative; /* 让 .topic-suggest 浮层能以 composer 左上角为锚点 */
   background: var(--color-surface, #ffffff);
   border-radius: var(--radius-md, 16rpx);
   padding: 24rpx;
@@ -2611,7 +3834,9 @@ export default {
   border-radius: var(--radius-md, 16rpx);
   overflow: hidden;
   background: var(--color-surface, #ffffff);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 /* 拖拽模式:被拖动的图片轻微放大 + 半透明 + 高亮边框 */
 .media-thumb--dragging {

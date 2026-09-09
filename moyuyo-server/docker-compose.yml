@@ -114,6 +114,8 @@ services:
     environment:
       # 容器时区与 JVM/宿主机一致，避免 EXPIRE 类 TTL 误差
       TZ: Asia/Shanghai
+      # healthcheck 与日志脚本内通过 $REDIS_PASSWORD 引用密码（$$ 转义后容器内展开）
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
     ports:
       # 仅绑定本机回环，避免 Redis 端口暴露公网
       - "127.0.0.1:6379:6379"
@@ -137,13 +139,15 @@ services:
     container_name: moyuyo-es-certs-init
     user: "0"
     command: >-
-      bash -c 'if [ ! -f /usr/share/elasticsearch/config/certs/elasticsearch.p12 ]; then
-      elasticsearch-certutil cert --silent --name elasticsearch
-      --dns elasticsearch,localhost --out /usr/share/elasticsearch/config/certs/elasticsearch.p12
-      --pass "${ELASTICSEARCH_TRUSTSTORE_PASSWORD}";
+      bash -c 'set -e;
+      if [ ! -f /usr/share/elasticsearch/config/certs/ca.p12 ]; then
+      elasticsearch-certutil ca --silent --pass "${ELASTICSEARCH_TRUSTSTORE_PASSWORD}" --out /usr/share/elasticsearch/config/certs/ca.p12;
       fi;
-      chown 1000:0 /usr/share/elasticsearch/config/certs/elasticsearch.p12;
-      chmod 640 /usr/share/elasticsearch/config/certs/elasticsearch.p12'
+      if [ ! -f /usr/share/elasticsearch/config/certs/elasticsearch.p12 ]; then
+      elasticsearch-certutil cert --silent --name elasticsearch --dns elasticsearch,localhost --ca /usr/share/elasticsearch/config/certs/ca.p12 --ca-pass "${ELASTICSEARCH_TRUSTSTORE_PASSWORD}" --out /usr/share/elasticsearch/config/certs/elasticsearch.p12 --pass "${ELASTICSEARCH_TRUSTSTORE_PASSWORD}";
+      fi;
+      chown 1000:0 /usr/share/elasticsearch/config/certs/ca.p12 /usr/share/elasticsearch/config/certs/elasticsearch.p12;
+      chmod 640 /usr/share/elasticsearch/config/certs/ca.p12 /usr/share/elasticsearch/config/certs/elasticsearch.p12'
     environment:
       ELASTICSEARCH_TRUSTSTORE_PASSWORD: ${ELASTICSEARCH_TRUSTSTORE_PASSWORD:?ELASTICSEARCH_TRUSTSTORE_PASSWORD must be set}
     volumes:
@@ -191,9 +195,9 @@ services:
       # 仅绑定本机回环，避免 ES 暴露公网
       - "127.0.0.1:9200:9200"
     healthcheck:
-      # 注意：在 docker-compose 中，"$$" 是字面 "$" 的转义，shell 中最终看到 "${ELASTICSEARCH_PASSWORD}"。
-      # 这样密码值里的 $ 不会被 docker-compose 字符串替换器吞掉。
-      test: ["CMD-SHELL", "curl -kfs -u elastic:\"$${ELASTICSEARCH_PASSWORD}\" https://localhost:9200/_cluster/health >/dev/null"]
+      # 注意：在 docker-compose 中，"$$" 是字面 "$" 的转义，shell 中最终看到 "${ELASTIC_PASSWORD}"。
+      # 容器内密码环境变量名为 ELASTIC_PASSWORD（compose 已从 ELASTICSEARCH_PASSWORD 映射）
+      test: ["CMD-SHELL", "curl -kfs -u elastic:\"$${ELASTIC_PASSWORD}\" https://localhost:9200/_cluster/health >/dev/null"]
       interval: 15s
       timeout: 10s
       retries: 10
@@ -218,7 +222,10 @@ services:
     ports:
       - "127.0.0.1:9876:9876"
     healthcheck:
-      test: ["CMD-SHELL", "sh mqadmin clusterList -n localhost:9876 >/dev/null 2>&1"]
+      # 直接探测 9876 端口：mqadmin 为 JVM 工具，启动常超 5s 阈值导致误判 unhealthy；
+      # Name Server boot success 即监听 9876，端口连通即可确认就绪
+      # 注意：镜像默认 sh 为 dash，不支持 /dev/tcp，必须用 bash -c
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/9876 || exit 1'"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -247,7 +254,7 @@ services:
       sh mqbroker
         -n rocketmq-namesrv:9876
         --enable-proxy false
-        -c /opt/rocketmq/conf/broker.conf
+        -c /home/rocketmq/rocketmq-5.3.2/conf/broker.conf
     ports:
       - "127.0.0.1:10909:10909"
       - "127.0.0.1:10911:10911"
@@ -257,7 +264,8 @@ services:
     healthcheck:
       # 通过 broker 10911 端口连通性确认 broker 已真正就绪（而非仅进程存在）
       # 端口连通比进程检查更可靠：进程在但监听未就绪时也能被发现
-      test: ["CMD-SHELL", "sh -c 'echo > /dev/tcp/127.0.0.1/10911 || exit 1'"]
+      # 注意：镜像默认 sh 为 dash，不支持 /dev/tcp，必须用 bash -c
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/10911 || exit 1'"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -286,8 +294,9 @@ services:
       rocketmq-broker:
         condition: service_healthy
     ports:
-      # 仅绑定本机回环，由前置 Nginx/反向代理转发
-      - "127.0.0.1:8080:8080"
+      # 业务端口：本机无前置 Nginx 时需监听 0.0.0.0 供局域网直连
+      # （生产由 1Panel/Nginx 反代时建议改回 127.0.0.1）
+      - "0.0.0.0:8080:8080"
       # P1 安全：actuator 端口独立绑定到 127.0.0.1:9090
       # 仅允许 Prometheus 与同主机监控进程访问，外部攻击面彻底关闭
       - "127.0.0.1:9090:9090"
@@ -303,7 +312,8 @@ services:
       # 持久化 OOM 堆转储文件：容器重建后仍可保留，便于事后根因分析
       - moyuyo-heapdump:/app/heapdump
     environment:
-      SPRING_PROFILES_ACTIVE: prod
+      # 默认 prod；本机联调可在 .env 设 SPRING_PROFILES_ACTIVE=dev（dev 跳过生产强校验、弱密码仅限本机）
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306
       MYSQL_DATABASE: ${MYSQL_DATABASE:-moyuyo_prod}
@@ -317,10 +327,14 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      # 监控 exporter 独立密码：注入以通过 ProdConfigValidator 启动期"账号独立 + 必填"校验
+      MYSQL_EXPORTER_PASSWORD: ${MYSQL_EXPORTER_PASSWORD:?MYSQL_EXPORTER_PASSWORD must be set}
+      REDIS_EXPORTER_PASSWORD: ${REDIS_EXPORTER_PASSWORD:?REDIS_EXPORTER_PASSWORD must be set}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       API_SIGN_SECRET: ${API_SIGN_SECRET:?API_SIGN_SECRET must be set}
       MOYUYO_CORS_ORIGINS: ${MOYUYO_CORS_ORIGINS:?MOYUYO_CORS_ORIGINS must be set}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?STRIPE_SECRET_KEY must be set}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:?STRIPE_WEBHOOK_SECRET must be set}
       PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:?PAYPAL_CLIENT_ID must be set}
       PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:?PAYPAL_CLIENT_SECRET must be set}
@@ -353,15 +367,15 @@ services:
       # 透传 .env 里的 SPRING_MAIL_* 到容器内,Sprint Boot relaxed binding 自动映射为 spring.mail.host 等
       # 注意:SPRING_MAIL_PASSWORD 必须是腾讯企业邮箱"客户端专用密码"(16 位),
       # 而不是网页登录密码,否则会 Authentication failed 抛 502
-      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
       SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-465}
-      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:}
-      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
       SPRING_MAIL_SMTP_AUTH: ${SPRING_MAIL_SMTP_AUTH:-true}
       SPRING_MAIL_SMTP_STARTTLS: ${SPRING_MAIL_SMTP_STARTTLS:-false}
       SPRING_MAIL_SMTP_SSL: ${SPRING_MAIL_SMTP_SSL:-true}
       # moyuyo.mail.* 业务自定义配置:发件人地址 / 显示名 / 邮件开关
-      MOYUYO_MAIL_FROM: ${MOYUYO_MAIL_FROM:}
+      MOYUYO_MAIL_FROM: ${MOYUYO_MAIL_FROM:-}
       MOYUYO_MAIL_FROM_NAME: ${MOYUYO_MAIL_FROM_NAME:-MOYUYO Support}
       MOYUYO_MAIL_ENABLED: ${MOYUYO_MAIL_ENABLED:-true}
       JVM_XMS: ${JVM_XMS:-1g}

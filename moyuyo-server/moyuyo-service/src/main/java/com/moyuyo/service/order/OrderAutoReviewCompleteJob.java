@@ -3,6 +3,7 @@ package com.moyuyo.service.order;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.moyuyo.common.enums.OrderStatusEnum;
+import com.moyuyo.common.enums.ReviewStatusEnum;
 import com.moyuyo.dao.admin.entity.SystemConfigEntity;
 import com.moyuyo.dao.admin.mapper.SystemConfigMapper;
 import com.moyuyo.dao.entity.OrderEntity;
@@ -54,9 +55,11 @@ public class OrderAutoReviewCompleteJob {
   private final ProductReviewMapper productReviewMapper;
   private final SystemConfigMapper systemConfigMapper;
 
-  /** 视为"已评价"的状态集合（和 AdminReviewServiceImpl 保持一致） */
-  private static final Set<String> REVIEWED_STATUSES =
-    new HashSet<>(Arrays.asList("待审核", "已审核", "REPLIED"));
+  /** 视为"已有评价记录"的状态集合（PENDING/APPROVED/REJECTED，含待审核，避免与用户评价双写） */
+  private static final Set<String> REVIEWED_STATUSES = new HashSet<>(
+    Arrays.asList(ReviewStatusEnum.PENDING.name(),
+      ReviewStatusEnum.APPROVED.name(),
+      ReviewStatusEnum.REJECTED.name()));
 
   private static final String CONFIG_KEY_AUTO_REVIEW_DAYS = "auto_review_days";
   private static final int DEFAULT_AUTO_REVIEW_DAYS = 7;
@@ -158,7 +161,7 @@ public class OrderAutoReviewCompleteJob {
       autoReview.setRating(5); // 默认 5 星好评（主流电商约定）
       autoReview.setContent(DEFAULT_REVIEW_CONTENT);
       autoReview.setTags("系统默认好评");
-      autoReview.setStatus("已审核"); // 系统插入的直接审核通过，不走审批流
+      autoReview.setStatus(ReviewStatusEnum.APPROVED.name()); // 系统插入的直接审核通过，不走审批流
       // 注意：createTime 由 MyBatis FieldFill.INSERT 自动注入
       inserts.add(autoReview);
     }
@@ -166,11 +169,34 @@ public class OrderAutoReviewCompleteJob {
       productReviewMapper.insert(entity);
     }
 
+    // 完结条件：订单所有 item 都必须有“审核通过(APPROVED)”的评价(含刚插入的默认好评)。
+    // 存在待审核/已驳回记录时不升级，等待管理员审核后由审批流程完结。
+    List<ProductReviewEntity> approvedReviews = productReviewMapper.selectList(
+      new LambdaQueryWrapper<ProductReviewEntity>()
+        .eq(ProductReviewEntity::getOrderId, orderId)
+        .eq(ProductReviewEntity::getStatus, ReviewStatusEnum.APPROVED.name()));
+    Set<Long> approvedItemIds = new HashSet<>();
+    for (ProductReviewEntity r : approvedReviews) {
+      if (r.getOrderItemId() != null) {
+        approvedItemIds.add(r.getOrderItemId());
+      } else if (r.getProductId() != null) {
+        for (OrderItemEntity item : items) {
+          if (r.getProductId().equals(item.getProductId())) {
+            approvedItemIds.add(item.getId());
+          }
+        }
+      }
+    }
+    boolean allApproved = items.stream().allMatch(it -> approvedItemIds.contains(it.getId()));
+
     // 升级订单状态（条件更新：只对 RECEIVED 生效）
-    int updated = upgradeToCompleted(orderId);
-    if (!inserts.isEmpty()) {
-      log.info("[auto-review] 订单 orderId={} 生成 {} 条默认好评，是否同时升级到 COMPLETED: {}",
+    if (allApproved) {
+      int updated = upgradeToCompleted(orderId);
+      log.info("[auto-review] 订单 orderId={} 默认好评 {} 条，全部 item 已过审，升级 COMPLETED: {}",
         orderId, inserts.size(), updated > 0);
+    } else {
+      log.info("[auto-review] 订单 orderId={} 尚有未过审评价，暂不完结(留待管理员审批)",
+        orderId);
     }
     return true;
   }
