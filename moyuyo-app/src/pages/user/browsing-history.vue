@@ -4,7 +4,7 @@
       <view class="header-btn" @click="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">浏览记录</text>
+      <text class="header-title">{{ $t('browsingHistory.title') }}</text>
       <view class="header-actions">
         <view v-if="!editMode" class="header-btn-text" @click="onEnterEdit">
           <text class="action-text">{{ $t('browsingHistory.manage') }}</text>
@@ -23,7 +23,7 @@
       <empty-state
         v-if="loadError"
         type="error"
-        title="加载失败"
+        :title="$t('browsingHistory.loadFailed')"
         :desc="loadErrorMsg"
         icon="signal"
         :btn-text="$t('common.retry')"
@@ -34,7 +34,7 @@
         v-else-if="filteredList.length === 0 && !editMode"
         type="empty"
         :title="$t('browsingHistory.empty')"
-        desc="去逛逛喜欢的商品吧"
+        :desc="$t('browsingHistory.emptyDesc')"
         icon="eye"
         :btn-text="$t('favorites.shopNow')"
         @action="goShopping"
@@ -60,7 +60,9 @@
         </view>
         <view v-if="selectedIds.length > 0" class="delete-bar">
           <view class="delete-btn" @click="onDeleteSelected">
-            <text class="delete-text">删除选中 ({{ selectedIds.length }})</text>
+            <text class="delete-text">
+              {{ $t('browsingHistory.deleteSelectedFmt', { count: selectedIds.length }) }}
+            </text>
           </view>
         </view>
       </template>
@@ -89,7 +91,7 @@
       </template>
 
       <view v-if="!editMode && filteredList.length > 0" class="footer-hint">
-        <text class="hint-text">记录保留 90 天，最多 500 条</text>
+        <text class="hint-text">{{ $t('browsingHistory.retentionHint') }}</text>
       </view>
     </scroll-view>
   </view>
@@ -108,7 +110,7 @@ export default {
       selectedIds: [],
       records: [],
       loadError: false,
-      loadErrorMsg: '请稍后重试',
+      loadErrorMsg: i18n.t('browsingHistory.retryLater'),
     }
   },
 
@@ -163,7 +165,7 @@ export default {
       } catch (e) {
         this.records = []
         this.loadError = true
-        this.loadErrorMsg = '本地存储读取失败'
+        this.loadErrorMsg = i18n.t('browsingHistory.storageReadFailed')
       }
     },
 
@@ -224,7 +226,7 @@ export default {
               }
             })
             this.selectedIds = []
-            uni.showToast({ title: '删除成功', icon: 'success' })
+            uni.showToast({ title: i18n.t('browsingHistory.deleteSuccess'), icon: 'success' })
             if (this.records.length === 0) {
               this.editMode = false
             }
@@ -252,6 +254,10 @@ export default {
   padding-bottom: 48rpx;
 }
 
+/* 顶部导航栏
+   APP 端 navigationStyle:custom 自渲染 header,
+   需要为系统状态栏(刘海/灵动岛/胶囊)预留顶部空间,
+   加上 var(--status-bar-height) 与 env(safe-area-inset-top) 兜底 */
 .header {
   position: sticky;
   top: 0;
@@ -259,7 +265,10 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 88rpx;
+  height: calc(88rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  /* 把内容下移避开状态栏 */
+  padding-top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  box-sizing: border-box;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }
@@ -267,6 +276,8 @@ export default {
 .header-btn {
   position: absolute;
   left: 16rpx;
+  /* 跟随 header 的状态栏 padding,并补偿与 88rpx 内容行的高度差,保持与标题垂直居中对齐 */
+  top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px) + 8rpx);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -285,6 +296,8 @@ export default {
 .header-actions {
   position: absolute;
   right: 16rpx;
+  /* 与 .header-btn 一致:避开状态栏并与标题垂直居中对齐 */
+  top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px) + 8rpx);
   display: flex;
   align-items: center;
   gap: 24rpx;
@@ -324,7 +337,11 @@ export default {
 }
 
 .scroll {
+  width: 100%;
   padding: 16rpx 20rpx 32rpx;
+  // uni-app H5 下 uni-scroll-view 默认为 content-box,
+  // 不加 border-box 时左右内边距会撑出视口导致内容超出屏幕宽度
+  box-sizing: border-box;
 }
 
 .empty-state {

@@ -4,43 +4,47 @@
       <view class="nav-back" @tap="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="title">{{ year }} 年报</text>
+      <text class="title">{{ t('annualReport.yearReport', { year }) }}</text>
     </view>
 
-    <view v-if="loading" class="loading"><text class="loading-text">加载中…</text></view>
+    <view v-if="loading" class="loading">
+      <text class="loading-text">{{ t('common.loading') }}</text>
+    </view>
     <view v-else class="content">
       <view class="hero">
         <text class="hero-year">{{ year }}</text>
-        <text class="hero-title">属于你的 MOYUYO 年度报告</text>
+        <text class="hero-title">{{ t('annualReport.heroTitle') }}</text>
       </view>
 
       <view class="stat-grid">
         <view class="stat-card">
           <text class="stat-num">{{ report?.orderCount || 0 }}</text>
-          <text class="stat-label">订单数</text>
+          <text class="stat-label">{{ t('annualReport.ordersCount') }}</text>
         </view>
         <view class="stat-card">
-          <text class="stat-num">${{ report?.totalSpent || 0 }}</text>
-          <text class="stat-label">消费总额</text>
+          <text class="stat-num">{{ currencySymbol }}{{ report?.totalSpent || 0 }}</text>
+          <text class="stat-label">{{ t('annualReport.totalSpent') }}</text>
         </view>
         <view class="stat-card">
           <text class="stat-num">+{{ report?.pointsEarned || 0 }}</text>
-          <text class="stat-label">获得积分</text>
+          <text class="stat-label">{{ t('annualReport.pointsEarned') }}</text>
         </view>
         <view class="stat-card">
-          <text class="stat-num">{{ report?.daysWithUs || 0 }} 天</text>
-          <text class="stat-label">相伴时长</text>
+          <text class="stat-num">
+            {{ t('annualReport.daysSuffix', { n: report?.daysWithUs || 0 }) }}
+          </text>
+          <text class="stat-label">{{ t('annualReport.daysWithUs') }}</text>
         </view>
       </view>
 
       <view class="current-points">
-        <text class="cp-label">当前积分</text>
+        <text class="cp-label">{{ t('annualReport.currentPoints') }}</text>
         <text class="cp-num">{{ report?.currentPoints || 0 }}</text>
       </view>
 
       <view class="tip">
         <text class="tip-text">
-          感谢 {{ year }} 年与 MOYUYO 一起走过，{{ year + 1 }} 我们继续相伴！
+          {{ t('annualReport.thanks', { year, nextYear: year + 1 }) }}
         </text>
       </view>
     </view>
@@ -48,17 +52,20 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { i18n } from '@/i18n'
 import { marketingApi } from '@/api'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.userAnnualReport')
 
-
 const report = ref(null)
-
 
 const loading = ref(false)
 const year = ref(new Date().getFullYear())
+// 语言版本号:locale 变化时自增,触发模板中依赖 t() 的内容重新求值
+const localeVersion = ref(0)
+// 语言订阅解绑函数
+let unsubLocale = null
 
 async function load() {
   loading.value = true
@@ -77,6 +84,13 @@ function goBack() {
 }
 onMounted(() => {
   load()
+  // 订阅语言切换，触发模板与本页 t() 依赖重新求值
+  unsubLocale = i18n.subscribe(() => {
+    localeVersion.value += 1
+  })
+})
+onBeforeUnmount(() => {
+  if (unsubLocale) unsubLocale()
 })
 </script>
 

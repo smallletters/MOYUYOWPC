@@ -303,14 +303,15 @@ export default {
       return ['PENDING_PAY'].includes(o.status)
     },
 
-    /** 根据按钮数量计算展开时应滑动到的 px 值（每按钮约 60rpx ≈ 30px） */
+    /** 根据按钮数量计算展开时应滑动到的 px 值 */
     computeBtnPx(o) {
       let count = 0
       if (this.canDelete(o)) count++
       if (this.canCancel(o)) count++
-      // 设计稿 750rpx → 实际宽度一半（H5 下 1rpx ≈ 0.5px）
-      // 实际按钮宽由 CSS 控制：.swipe-btn { width: 120rpx } → 60px
-      return count * 60
+      // 按钮宽由 CSS 控制：.swipe-btn { width: 120rpx }
+      // 用 uni.upx2px 按当前窗口宽度换算,保证与 CSS 的 rpx 换算规则一致;
+      // 写死 60px 只在 375px 视口下成立,更宽的视口会露出不全
+      return count * uni.upx2px(120)
     },
 
     /** 触摸开始：记录起始坐标 & 起始 offset */
@@ -496,6 +497,9 @@ export default {
 .scroll {
   flex: 1;
   padding: 20rpx;
+  // uni-app H5 下 uni-scroll-view 默认为 content-box,
+  // 若不加 border-box,20rpx 的左右内边距会撑出视口导致卡片右侧被裁切
+  box-sizing: border-box;
 }
 
 .order-card {

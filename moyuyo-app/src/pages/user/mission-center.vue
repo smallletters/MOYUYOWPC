@@ -21,16 +21,16 @@
             </svg>
             <view class="ring-text">
               <text class="ring-count">{{ dailyDone }}/{{ dailyTotal }}</text>
-              <text class="ring-label">今日任务</text>
+              <text class="ring-label">{{ $t('missionCenter.todayMissions') }}</text>
             </view>
           </view>
 
           <view class="ring-side">
-            <text class="ring-side-label">今日已获积分</text>
+            <text class="ring-side-label">{{ $t('missionCenter.todayPoints') }}</text>
             <text class="ring-side-points">+{{ todayPoints }}</text>
             <view class="streak-row">
               <text class="flame-icon luc-flame" />
-              <text class="streak-text">连续签到 {{ streak }} 天</text>
+              <text class="streak-text">{{ $t('missionCenter.streak', { days: streak }) }}</text>
             </view>
           </view>
         </view>
@@ -45,7 +45,7 @@
             :class="{ active: activeTab === tab.key }"
             @click="switchTab(tab.key)"
           >
-            <text>{{ tab.label }}</text>
+            <text>{{ $t(tab.labelKey) }}</text>
           </view>
         </view>
 
@@ -60,7 +60,7 @@
             </view>
             <view class="mission-info">
               <view class="mission-title-row">
-                <text class="mission-name">{{ mission.name }}</text>
+                <text class="mission-name">{{ $tMissionName(mission.name) }}</text>
                 <text class="mission-points">+{{ mission.points }}</text>
               </view>
               <view v-if="mission.total > 1" class="mission-progress-row">
@@ -80,12 +80,12 @@
               >
                 {{
                   mission.claimed
-                    ? '已领取'
+                    ? $t('missionCenter.statusClaimed')
                     : mission.completed
-                      ? '可领取'
+                      ? $t('missionCenter.statusClaimable')
                       : mission.done > 0
-                        ? '进行中'
-                        : '未完成'
+                        ? $t('missionCenter.statusInProgress')
+                        : $t('missionCenter.statusIncomplete')
                 }}
               </text>
             </view>
@@ -94,7 +94,13 @@
               :class="mission.claimed ? 'btn-done' : mission.completed ? 'btn-claim' : 'btn-go'"
               @click="onMissionAction(mission)"
             >
-              {{ mission.claimed ? '已领取' : mission.completed ? '领取' : '去完成' }}
+              {{
+                mission.claimed
+                  ? $t('missionCenter.statusClaimed')
+                  : mission.completed
+                    ? $t('missionCenter.btnClaim')
+                    : $t('missionCenter.btnGo')
+              }}
             </view>
           </view>
         </view>
@@ -110,7 +116,7 @@
             </view>
             <view class="mission-info">
               <view class="mission-title-row">
-                <text class="mission-name">{{ mission.name }}</text>
+                <text class="mission-name">{{ $tMissionName(mission.name) }}</text>
                 <text class="mission-points">+{{ mission.points }}</text>
               </view>
               <view v-if="mission.total > 1" class="mission-progress-row">
@@ -130,12 +136,12 @@
               >
                 {{
                   mission.claimed
-                    ? '已领取'
+                    ? $t('missionCenter.statusClaimed')
                     : mission.completed
-                      ? '可领取'
+                      ? $t('missionCenter.statusClaimable')
                       : mission.done > 0
-                        ? '进行中'
-                        : '未完成'
+                        ? $t('missionCenter.statusInProgress')
+                        : $t('missionCenter.statusIncomplete')
                 }}
               </text>
             </view>
@@ -144,7 +150,13 @@
               :class="mission.claimed ? 'btn-done' : mission.completed ? 'btn-claim' : 'btn-go'"
               @click="onMissionAction(mission)"
             >
-              {{ mission.claimed ? '已领取' : mission.completed ? '领取' : '去完成' }}
+              {{
+                mission.claimed
+                  ? $t('missionCenter.statusClaimed')
+                  : mission.completed
+                    ? $t('missionCenter.btnClaim')
+                    : $t('missionCenter.btnGo')
+              }}
             </view>
           </view>
         </view>
@@ -156,7 +168,7 @@
             </view>
             <view class="mission-info">
               <view class="mission-title-row">
-                <text class="mission-name">{{ ach.name }}</text>
+                <text class="mission-name">{{ $tMissionName(ach.name) }}</text>
                 <text v-if="ach.points" class="mission-points">+{{ ach.points }}</text>
               </view>
               <view v-if="ach.total > 1" class="mission-progress-row">
@@ -170,9 +182,13 @@
                 <text class="progress-text">{{ ach.done }}/{{ ach.total }}</text>
               </view>
               <view v-else class="mission-status">
-                <text v-if="ach.claimed" class="earned-text">已获得</text>
-                <text v-else-if="ach.completed" class="earned-text">可领取</text>
-                <text v-else class="locked-text">未达成</text>
+                <text v-if="ach.claimed" class="earned-text">
+                  {{ $t('missionCenter.achEarned') }}
+                </text>
+                <text v-else-if="ach.completed" class="earned-text">
+                  {{ $t('missionCenter.statusClaimable') }}
+                </text>
+                <text v-else class="locked-text">{{ $t('missionCenter.achLocked') }}</text>
               </view>
             </view>
             <view
@@ -180,7 +196,13 @@
               :class="ach.claimed ? 'btn-done' : ach.completed ? 'btn-claim' : 'btn-go'"
               @click="onMissionAction(ach)"
             >
-              {{ ach.claimed ? '已获得' : ach.completed ? '领取' : '去完成' }}
+              {{
+                ach.claimed
+                  ? $t('missionCenter.achEarned')
+                  : ach.completed
+                    ? $t('missionCenter.btnClaim')
+                    : $t('missionCenter.btnGo')
+              }}
             </view>
           </view>
         </view>
@@ -191,6 +213,7 @@
 
 <script>
 import { missionApi, productApi } from '@/api'
+import { i18n } from '@/i18n'
 
 const CIRCUMFERENCE = 314.16
 
@@ -200,13 +223,28 @@ const CIRCUMFERENCE = 314.16
  * type: 'tab' = uni.switchTab  /  'page' = uni.navigateTo
  */
 const ACTION_ROUTE_MAP = {
-  BROWSE_PRODUCTS: { type: 'tab', url: '/pages/tabbar/home', toast: '请浏览 5 件不同商品' },
+  BROWSE_PRODUCTS: {
+    type: 'tab',
+    url: '/pages/tabbar/home',
+    toastKey: 'missionCenter.toastBrowsedProducts',
+  },
   CHECKIN_DAILY: { type: 'page', url: '/pages/user/check-in' },
   SHARE_PRODUCT: { type: 'page', url: '/pages/goods/share-product' },
   PET_HUB_INTERACT: { type: 'tab', url: '/pages/tabbar/pet' },
   PURCHASE_ORDER: { type: 'tab', url: '/pages/tabbar/home' },
   POST_COMMUNITY: { type: 'tab', url: '/pages/tabbar/community' },
   INVITE_FRIEND: { type: 'page', url: '/pages/user/invite' },
+}
+
+/**
+ * 任务名本地化:后端 mo_mission.name 为中文原值,按字典映射成当前语言。
+ * 字典查不到时回退后端原值(运营新增任务不会因缺翻译而空白)。
+ * 注意:只用于展示,判断任务类型的 name.includes(...) 仍用后端原值。
+ */
+function getMissionName(name) {
+  if (!name) return ''
+  const map = i18n.t('missionCenter.missionNames')
+  return map && typeof map === 'object' && map[name] ? map[name] : name
 }
 
 export default {
@@ -216,9 +254,9 @@ export default {
     return {
       activeTab: 'daily',
       tabs: [
-        { key: 'daily', label: '每日' },
-        { key: 'weekly', label: '每周' },
-        { key: 'achievement', label: '成就' },
+        { key: 'daily', labelKey: 'missionCenter.tabDaily' },
+        { key: 'weekly', labelKey: 'missionCenter.tabWeekly' },
+        { key: 'achievement', labelKey: 'missionCenter.tabAchievement' },
       ],
       dailyDone: 0,
       dailyTotal: 0,
@@ -254,6 +292,11 @@ export default {
       this.activeTab = key
     },
 
+    /** 任务名本地化(供模板调用),响应式:locale 变化时模板重渲自动取最新文案 */
+    $tMissionName(name) {
+      return getMissionName(name)
+    },
+
     async loadMissions() {
       try {
         // request.js 已解包，res 直接是后端 data:{daily,weekly,achievements}
@@ -287,17 +330,23 @@ export default {
       if (mission.completed && !mission.claimed && mission.id) {
         try {
           await missionApi.claimMission(mission.id)
-          uni.showToast({ title: `已领取 +${mission.points} 积分`, icon: 'success' })
+          uni.showToast({
+            title: i18n.t('missionCenter.toastClaimed', { points: mission.points }),
+            icon: 'success',
+          })
           this.loadMissions()
           this.loadStats()
         } catch (e) {
-          uni.showToast({ title: (e && e.message) || '领取失败', icon: 'none' })
+          uni.showToast({
+            title: (e && e.message) || i18n.t('missionCenter.toastClaimFailed'),
+            icon: 'none',
+          })
         }
         return
       }
       // 已领取 → 提示
       if (mission.claimed) {
-        uni.showToast({ title: '已领取', icon: 'none' })
+        uni.showToast({ title: i18n.t('missionCenter.statusClaimed'), icon: 'none' })
         return
       }
       // 未完成 → 按关键字匹配后跳到对应真实页面，便于用户完成
@@ -305,7 +354,7 @@ export default {
       // 浏览任务：直接跳到首页，用户在首页浏览商品详情即可触发浏览埋点
       if (name.includes('浏览')) {
         uni.switchTab({ url: '/pages/tabbar/home' })
-        uni.showToast({ title: '请浏览 5 件不同商品', icon: 'none' })
+        uni.showToast({ title: i18n.t('missionCenter.toastBrowsedProducts'), icon: 'none' })
         return
       }
       // 签到任务：跳到每日签到页面
@@ -321,6 +370,11 @@ export default {
       }
       // Pet Hub 互动任务：跳到宠物 Tab 下的 Pet Hub
       if (name.includes('pet hub') || name.includes('pet hub 互动')) {
+        uni.switchTab({ url: '/pages/tabbar/pet' })
+        return
+      }
+      // 记录宠物体重任务：体重记录入口在 Pet Hub，跳到宠物 Tab
+      if (name.includes('体重')) {
         uni.switchTab({ url: '/pages/tabbar/pet' })
         return
       }
@@ -340,7 +394,10 @@ export default {
         return
       }
       // 兜底：原类型 tab 的首页
-      uni.showToast({ title: `前往: ${mission.name}`, icon: 'none' })
+      uni.showToast({
+        title: i18n.t('missionCenter.toastGo', { name: getMissionName(mission.name) }),
+        icon: 'none',
+      })
     },
 
     /**
@@ -349,7 +406,7 @@ export default {
      */
     async pickAndOpenShareProduct() {
       try {
-        uni.showLoading({ title: '加载中...', mask: true })
+        uni.showLoading({ title: i18n.t('common.loading'), mask: true })
         const data = await productApi.getProductList({
           page: 1,
           size: 3,

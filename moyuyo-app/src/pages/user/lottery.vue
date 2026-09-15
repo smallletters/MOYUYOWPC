@@ -1,10 +1,10 @@
-﻿<template>
+<template>
   <view class="lottery">
     <view class="nav-header dark">
       <view class="nav-back" @click="goBack">
         <text class="back-icon light luc-arrow-left" />
       </view>
-      <text class="nav-title light">幸运抽奖</text>
+      <text class="nav-title light">{{ $t('lottery.title') }}</text>
       <view class="nav-placeholder" />
     </view>
 
@@ -19,7 +19,9 @@
           @click="onSelectLottery(lt)"
         >
           <text class="lottery-tab-name">{{ lt.name }}</text>
-          <text v-if="lt.pointsCost > 0" class="lottery-tab-cost">{{ lt.pointsCost }}/次</text>
+          <text v-if="lt.pointsCost > 0" class="lottery-tab-cost">
+            {{ $t('lottery.costPerSpin', { points: lt.pointsCost }) }}
+          </text>
         </view>
       </view>
 
@@ -30,14 +32,18 @@
           </view>
           <view class="chances-info">
             <text class="chances-num">
-              今日已用 {{ statsTodayUsed }} /
-              {{ currentLottery ? currentLottery.dailyFree : 0 }} 次免费
+              {{
+                $t('lottery.dailyUsed', {
+                  used: statsTodayUsed,
+                  total: currentLottery ? currentLottery.dailyFree : 0,
+                })
+              }}
             </text>
             <text class="chances-hint">
               {{
                 currentLottery && currentLottery.pointsCost > 0
-                  ? `免费用完后每次扣 ${currentLottery.pointsCost} 积分`
-                  : '今日免费'
+                  ? $t('lottery.costHint', { points: currentLottery.pointsCost })
+                  : $t('lottery.freeToday')
               }}
             </text>
           </view>
@@ -69,17 +75,17 @@
             </view>
           </view>
           <view class="wheel-center" @click="onSpin">
-            <text class="center-text">{{ isSpinning ? '...' : '开始' }}</text>
+            <text class="center-text">{{ isSpinning ? '...' : $t('lottery.start') }}</text>
           </view>
         </view>
-        <text class="wheel-tip">点击「开始」按钮进行抽奖</text>
+        <text class="wheel-tip">{{ $t('lottery.spinTip') }}</text>
       </view>
 
       <!-- 奖品列表 -->
       <view class="prize-list-section">
         <text class="section-title">
           <text class="luc luc-gift" />
-          本次活动奖品
+          {{ $t('lottery.prizeSectionTitle') }}
         </text>
         <view class="prize-grid">
           <view class="prize-item">
@@ -93,7 +99,11 @@
               <text class="prize-icon luc-ticket" />
             </view>
             <text class="prize-name">
-              免费 {{ currentLottery ? currentLottery.dailyFree : 0 }} 次/天
+              {{
+                $t('lottery.freeTimesPerDay', {
+                  count: currentLottery ? currentLottery.dailyFree : 0,
+                })
+              }}
             </text>
           </view>
           <view class="prize-item">
@@ -101,7 +111,7 @@
               <text class="prize-icon luc-calendar" />
             </view>
             <text class="prize-name">
-              {{ currentLottery ? formatTime(currentLottery.endTime) : '长期' }}
+              {{ currentLottery ? formatTime(currentLottery.endTime) : $t('lottery.longTerm') }}
             </text>
           </view>
           <view class="prize-item">
@@ -109,7 +119,11 @@
               <text class="prize-icon luc-trending-up" />
             </view>
             <text class="prize-name">
-              概率 {{ currentLottery ? formatProb(currentLottery.probability) : '—' }}
+              {{
+                $t('lottery.probability', {
+                  value: currentLottery ? formatProb(currentLottery.probability) : '—',
+                })
+              }}
             </text>
           </view>
         </view>
@@ -120,7 +134,7 @@
           <view class="history-title-row">
             <text class="history-title">
               <text class="luc luc-clock" />
-              抽奖记录
+              {{ $t('lottery.historyTitle') }}
             </text>
             <text class="history-count">{{ spinHistory.length }}</text>
           </view>
@@ -135,9 +149,13 @@
               <text class="history-icon luc" :class="$luc(record.won ? 'trophy' : 'ticket')" />
             </view>
             <view class="history-info">
-              <text class="history-name">{{ record.prizeName || '未中奖' }}</text>
+              <text class="history-name">{{ record.prizeName || $t('lottery.noWin') }}</text>
               <text class="history-meta">
-                {{ record.usedFreeSpin ? '免费' : `扣 ${record.pointsSpent} 积分` }}
+                {{
+                  record.usedFreeSpin
+                    ? $t('lottery.free')
+                    : $t('lottery.pointsDeducted', { points: record.pointsSpent })
+                }}
                 · {{ formatDate(record.createTime) }}
               </text>
             </view>
@@ -159,15 +177,17 @@
           />
         </view>
         <text class="modal-title">
-          {{ spinResult && spinResult.won ? '恭喜中奖' : '差一点就中了' }}
+          {{ spinResult && spinResult.won ? $t('lottery.wonTitle') : $t('lottery.lostTitle') }}
         </text>
         <text class="modal-desc">
           {{ spinResult ? spinResult.prizeName : '' }}
           <block v-if="spinResult && !spinResult.usedFreeSpin && spinResult.pointsSpent > 0">
-            （消耗 {{ spinResult.pointsSpent }} 积分）
+            {{ $t('lottery.pointsConsumed', { points: spinResult.pointsSpent }) }}
           </block>
         </text>
-        <view class="modal-btn" @click="showPrizeModal = false">收下奖品</view>
+        <view class="modal-btn" @click="showPrizeModal = false">
+          {{ $t('lottery.claimPrize') }}
+        </view>
       </view>
     </view>
   </view>
@@ -175,6 +195,7 @@
 
 <script>
 import { lotteryApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.userLottery',
@@ -192,12 +213,26 @@ export default {
       showPrizeModal: false,
       spinResult: null,
       spinHistory: [],
+      localeVersion: 0,
+      unsubLocale: null,
     }
   },
 
   onShow() {
     this.loadLotteries()
     this.loadHistory()
+  },
+
+  created() {
+    // 订阅语言变化，重建转盘占位文案
+    this.unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+      this.rebuildPrizes()
+    })
+  },
+
+  beforeUnmount() {
+    if (this.unsubLocale) this.unsubLocale()
   },
 
   methods: {
@@ -212,10 +247,15 @@ export default {
         this.lotteries = list
         this.currentLottery = list[0] || null
         // 凑 8 个转盘槽位让转盘好看
-        this.prizes = this.currentLottery ? this.makePrizes(this.currentLottery.prizeName) : []
+        this.rebuildPrizes()
       } catch (err) {
         console.warn('[lottery] load failed', err)
       }
+    },
+
+    // 按当前活动重建转盘槽位（随语言切换刷新）
+    rebuildPrizes() {
+      this.prizes = this.currentLottery ? this.makePrizes(this.currentLottery.prizeName) : []
     },
 
     /**
@@ -225,7 +265,11 @@ export default {
       const slotCount = 8
       const result = []
       for (let i = 0; i < slotCount; i++) {
-        result.push(i === 0 ? mainPrizeName || '神秘奖品' : '谢谢参与')
+        result.push(
+          i === 0
+            ? mainPrizeName || i18n.t('lottery.mysteryPrize')
+            : i18n.t('lottery.thanksForPlaying'),
+        )
       }
       return result
     },
@@ -253,7 +297,7 @@ export default {
     async onSpin() {
       if (this.isSpinning) return
       if (!this.currentLottery) {
-        uni.showToast({ title: '当前没有可用的抽奖活动', icon: 'none' })
+        uni.showToast({ title: i18n.t('lottery.noLotteryToast'), icon: 'none' })
         return
       }
       this.isSpinning = true
@@ -278,7 +322,7 @@ export default {
       } catch (err) {
         this.isSpinning = false
         uni.showToast({
-          title: (err && err.message) || '抽奖失败',
+          title: (err && err.message) || i18n.t('lottery.spinFailed'),
           icon: 'none',
         })
       }
@@ -292,9 +336,9 @@ export default {
     },
 
     formatTime(t) {
-      if (!t) return '长期'
+      if (!t) return i18n.t('lottery.longTerm')
       const d = new Date(t)
-      if (isNaN(d.getTime())) return '长期'
+      if (isNaN(d.getTime())) return i18n.t('lottery.longTerm')
       return `${d.getMonth() + 1}/${d.getDate()}`
     },
 

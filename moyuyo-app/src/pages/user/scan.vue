@@ -1,10 +1,10 @@
-﻿<template>
+<template>
   <view class="scan-page">
     <view class="header">
       <view class="header-btn" @click="goBack">
         <text class="header-icon luc-arrow-left" />
       </view>
-      <text class="header-title">扫一扫</text>
+      <text class="header-title">{{ $t('scan.title') }}</text>
       <view class="header-btn" @click="onPickAlbum">
         <text class="header-icon luc-image" />
       </view>
@@ -18,7 +18,7 @@
         <view class="corner corner-bl" />
         <view class="corner corner-br" />
       </view>
-      <text class="scan-hint">将二维码/条形码放入框内，即可自动扫描</text>
+      <text class="scan-hint">{{ $t('scan.hint') }}</text>
     </view>
 
     <view class="bottom-bar">
@@ -26,30 +26,32 @@
         <view class="btn-circle">
           <text class="btn-icon luc-zap" />
         </view>
-        <text class="btn-label">闪光灯</text>
+        <text class="btn-label">{{ $t('scan.flashOn') }}</text>
       </view>
       <view class="bottom-btn" @click="onPickAlbum">
         <view class="btn-circle">
           <text class="btn-icon luc-image" />
         </view>
-        <text class="btn-label">相册</text>
+        <text class="btn-label">{{ $t('scan.album') }}</text>
       </view>
       <view class="bottom-btn" @click="onViewHistory">
         <view class="btn-circle">
           <text class="btn-icon luc-clock" />
         </view>
-        <text class="btn-label">记录</text>
+        <text class="btn-label">{{ $t('scan.history') }}</text>
       </view>
     </view>
 
     <view v-if="showResult" class="result-modal">
       <view class="result-overlay" @click="showResult = false" />
       <view class="result-content">
-        <text class="result-title">扫描结果</text>
+        <text class="result-title">{{ $t('scan.resultTitle') }}</text>
         <text class="result-data">{{ scanResult }}</text>
         <view class="result-actions">
-          <view class="result-btn result-copy" @click="onCopyResult">复制</view>
-          <view class="result-btn result-close" @click="showResult = false">关闭</view>
+          <view class="result-btn result-copy" @click="onCopyResult">{{ $t('scan.copy') }}</view>
+          <view class="result-btn result-close" @click="showResult = false">
+            {{ $t('scan.close') }}
+          </view>
         </view>
       </view>
     </view>
@@ -57,6 +59,8 @@
 </template>
 
 <script>
+import { i18n } from '@/i18n'
+
 export default {
   pageTitleKey: 'pageTitle.userScan',
 
@@ -76,7 +80,7 @@ export default {
     onToggleFlash() {
       this.flashOn = !this.flashOn
       uni.showToast({
-        title: this.flashOn ? '闪光灯已开启' : '闪光灯已关闭',
+        title: this.flashOn ? i18n.t('scan.flashEnabled') : i18n.t('scan.flashDisabled'),
         icon: 'none',
       })
     },
@@ -85,20 +89,20 @@ export default {
       uni.chooseImage({
         count: 1,
         success: (res) => {
-          uni.showToast({ title: '图片已选择，扫码功能开发中', icon: 'none' })
+          uni.showToast({ title: i18n.t('scan.imageSelectedDeveloping'), icon: 'none' })
         },
       })
     },
 
     onViewHistory() {
-      uni.showToast({ title: '扫码记录功能开发中', icon: 'none' })
+      uni.showToast({ title: i18n.t('scan.historyDeveloping'), icon: 'none' })
     },
 
     onCopyResult() {
       uni.setClipboardData({
         data: this.scanResult,
         success: () => {
-          uni.showToast({ title: '已复制', icon: 'success' })
+          uni.showToast({ title: i18n.t('scan.copied'), icon: 'success' })
         },
       })
     },

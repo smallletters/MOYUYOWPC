@@ -79,6 +79,54 @@ services:
       retries: 10
       start_period: 30s
 
+  # MySQL 证书信任库初始化
+  # 背景：mysql:8.0 首次初始化时会在数据目录自动生成「自签 CA + 由其签发的服务端证书」，
+  #       客户端要校验服务端证书，必须持有该自签 CA。
+  # 做法：用带 keytool 的 JRE 镜像把 ca.pem 导入为 PKCS12 信任库，供 app 以 sslMode=VERIFY_CA 校验。
+  #       ⚠️ 不能用 `openssl pkcs12 -export -nokeys` 导出：OpenSSL 生成的是 cert-only PKCS12
+  #       （pbeWithSHA1And40BitRC2-CBC 证书袋），Java KeyStore 读出来条目数为 0，校验必然失败；
+  #       MySQL 官方文档同样推荐用 keytool -importcert 导入 ca.pem。
+  # 幂等性：每次 up 都重建信任库，保证 mysql-data 卷被重建（自签证书换新）后信任库同步更新
+  mysql-certs-init:
+    # 与 app 运行时同基础镜像（含 keytool），构建 app 镜像时该层已在本地缓存，无需额外拉大镜像
+    image: eclipse-temurin:25-jre-alpine
+    container_name: moyuyo-mysql-certs-init
+    # 一次性任务，执行完即退出，不需要重启策略
+    restart: "no"
+    depends_on:
+      mysql:
+        # 必须等 MySQL 初始化完成（自签证书生成）后再导入，否则找不到 ca.pem
+        condition: service_healthy
+    environment:
+      # 该值同时作为 PKCS12 信任库的密码，app 侧用同一变量解锁，两处必须一致
+      MYSQL_TRUSTSTORE_PASSWORD: ${MYSQL_TRUSTSTORE_PASSWORD:?MYSQL_TRUSTSTORE_PASSWORD must be set}
+    volumes:
+      # 只读读取 MySQL 数据目录中的自签 CA（随 mysql-data 命名卷持久化）
+      - mysql-data:/var/lib/mysql:ro
+      # 输出信任库，供 app 只读挂载
+      - mysql-certs:/certs
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      # 注意：compose 会把 "$" 当变量插值，shell 变量一律写成 "$$"（最终容器内为 "$"）
+      - |
+        set -e
+        CA=/var/lib/mysql/ca.pem
+        if [ ! -f "$$CA" ]; then
+          echo "[mysql-certs] 未找到 MySQL CA：$$CA（MySQL 是否已完成初始化？）" >&2
+          exit 1
+        fi
+        # keytool -importcert 遇到同名别名会报错，先删除旧文件实现幂等重建
+        rm -f /certs/mysql-ca.p12
+        # -storepass:env 从环境变量读密码，避免密码出现在容器进程命令行里
+        keytool -importcert -noprompt \
+          -alias moyuyo-mysql-ca \
+          -file "$$CA" \
+          -keystore /certs/mysql-ca.p12 \
+          -storetype PKCS12 \
+          -storepass:env MYSQL_TRUSTSTORE_PASSWORD
+        chmod 644 /certs/mysql-ca.p12
+        echo "[mysql-certs] 信任库已生成：/certs/mysql-ca.p12（alias=moyuyo-mysql-ca）"
+
   # Redis 缓存
   redis:
     image: redis:7.2-alpine
@@ -287,6 +335,9 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      # 依赖 MySQL 自签 CA 导出的信任库，必须等初始化容器成功退出后再启动应用
+      mysql-certs-init:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       elasticsearch:
@@ -303,14 +354,18 @@ services:
     volumes:
       # 共享 ES 证书，使应用能验证 ES 自签证书
       - es-certs:/opt/es-certs:ro
-      # 挂载运维侧提供的 MySQL CA 信任库，容器启动前必须存在
-      - ${MYSQL_TRUSTSTORE_PATH:?MYSQL_TRUSTSTORE_PATH must be set}:/opt/mysql-certs/mysql-ca.p12:ro
+      # MySQL CA 信任库：由 mysql-certs-init 从 MySQL 自签 CA（/var/lib/mysql/ca.pem）导出，
+      # 应用据此以 sslMode=VERIFY_CA 校验服务端证书（路径与 MYSQL_TRUSTSTORE_URL 一致）
+      - mysql-certs:/opt/mysql-certs:ro
       # 持久化应用日志，避免容器重建后丢失
       # Dockerfile 中 GC 日志 (-Xlog:gc*) 落到 /var/log/moyuyo/gc.log，
       # JFR 录制 (JFR_RECORDING=true 时) 落到 /var/log/moyuyo/jfr/，均覆盖在 moyuyo-logs 卷下
       - moyuyo-logs:/var/log/moyuyo
       # 持久化 OOM 堆转储文件：容器重建后仍可保留，便于事后根因分析
       - moyuyo-heapdump:/app/heapdump
+      # 持久化用户/管理员上传文件：不挂卷时默认落到容器 /tmp（tmpfs），重启即全部丢失
+      # 挂载目标必须与 MOYUYO_UPLOAD_DIR 一致，否则文件写入目录与 /uploads/** 静态映射目录不一致
+      - moyuyo-uploads:${MOYUYO_UPLOAD_DIR:-/app/uploads}
     environment:
       # 默认 prod；本机联调可在 .env 设 SPRING_PROFILES_ACTIVE=dev（dev 跳过生产强校验、弱密码仅限本机）
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
@@ -378,8 +433,58 @@ services:
       MOYUYO_MAIL_FROM: ${MOYUYO_MAIL_FROM:-}
       MOYUYO_MAIL_FROM_NAME: ${MOYUYO_MAIL_FROM_NAME:-MOYUYO Support}
       MOYUYO_MAIL_ENABLED: ${MOYUYO_MAIL_ENABLED:-true}
+      # 上传文件落盘目录：必须与上方 moyuyo-uploads 卷挂载目标保持一致
+      MOYUYO_UPLOAD_DIR: ${MOYUYO_UPLOAD_DIR:-/app/uploads}
       JVM_XMS: ${JVM_XMS:-1g}
       JVM_XMX: ${JVM_XMX:-2g}
+      # ---- 应用功能开关与第三方服务（此前未透传，写在 .env 里不生效，现补齐）----
+      # 默认值均与 application-prod.yml / application.yml 的内置默认保持一致，
+      # 未在 .env 中配置时行为与补齐前完全相同
+      # 限流开关（IP / 用户维度）
+      MOYUYO_IP_RATELIMIT_ENABLED: ${MOYUYO_IP_RATELIMIT_ENABLED:-true}
+      MOYUYO_USER_RATELIMIT_ENABLED: ${MOYUYO_USER_RATELIMIT_ENABLED:-true}
+      # 链路追踪采样率（prod 默认 0.1）
+      MOYUYO_TRACE_SAMPLE_RATE: ${MOYUYO_TRACE_SAMPLE_RATE:-0.1}
+      # BCrypt 强度（prod 默认 12）
+      MOYUYO_BCRYPT_STRENGTH: ${MOYUYO_BCRYPT_STRENGTH:-12}
+      # 审计日志（prod 默认开启、保留 90 天）
+      MOYUYO_AUDIT_QUEUE_CAPACITY: ${MOYUYO_AUDIT_QUEUE_CAPACITY:-10000}
+      MOYUYO_AUDIT_BLOCK_ON_FULL: ${MOYUYO_AUDIT_BLOCK_ON_FULL:-false}
+      MOYUYO_AUDIT_RETENTION_ENABLED: ${MOYUYO_AUDIT_RETENTION_ENABLED:-true}
+      MOYUYO_AUDIT_RETENTION_DAYS: ${MOYUYO_AUDIT_RETENTION_DAYS:-90}
+      # WooCommerce 库存同步定时任务（prod 默认开启）
+      WC_STOCK_SYNC_ENABLED: ${WC_STOCK_SYNC_ENABLED:-true}
+      WC_STOCK_SYNC_CRON: "${WC_STOCK_SYNC_CRON:-0 */5 * * * *}"
+      # API 签名开关（yml 默认 false；开启需同时配置 API_SIGN_SECRET 与客户端 SDK）
+      API_SIGNATURE_ENABLED: ${API_SIGNATURE_ENABLED:-false}
+      # RocketMQ 总开关（prod 默认 true）
+      ROCKETMQ_ENABLED: ${ROCKETMQ_ENABLED:-true}
+      # 仅本地开发使用；prod 若误设为 true，ProdConfigValidator 会在启动期直接阻断
+      MOYUYO_SKIP_ADMIN_INIT: ${MOYUYO_SKIP_ADMIN_INIT:-false}
+      # OpenAPI 文档元数据（默认值与 application.yml 一致）
+      OPENAPI_CONTACT_EMAIL: ${OPENAPI_CONTACT_EMAIL:-backend@example.com}
+      OPENAPI_VERSION: ${OPENAPI_VERSION:-1.0.0}
+      # 阿里云短信：MOYUYO_SMS_PROVIDER 留空时验证码仅打印日志（NoopSmsServiceImpl）
+      MOYUYO_SMS_PROVIDER: ${MOYUYO_SMS_PROVIDER:-}
+      MOYUYO_SMS_ACCESS_KEY_ID: ${MOYUYO_SMS_ACCESS_KEY_ID:-}
+      MOYUYO_SMS_ACCESS_KEY_SECRET: ${MOYUYO_SMS_ACCESS_KEY_SECRET:-}
+      MOYUYO_SMS_SIGN_NAME: ${MOYUYO_SMS_SIGN_NAME:-MOYUYO}
+      MOYUYO_SMS_TEMPLATE_LOGIN: ${MOYUYO_SMS_TEMPLATE_LOGIN:-SMS_LOGIN_DEFAULT}
+      MOYUYO_SMS_TEMPLATE_REGISTER: ${MOYUYO_SMS_TEMPLATE_REGISTER:-SMS_REGISTER_DEFAULT}
+      MOYUYO_SMS_TEMPLATE_RESET: ${MOYUYO_SMS_TEMPLATE_RESET:-SMS_RESET_DEFAULT}
+      # 物流轨迹第三方 Provider（默认 none：仅人工维护轨迹）
+      MOYUYO_LOGISTICS_PROVIDER: ${MOYUYO_LOGISTICS_PROVIDER:-none}
+      MOYUYO_LOGISTICS_API_KEY: ${MOYUYO_LOGISTICS_API_KEY:-}
+      MOYUYO_LOGISTICS_CUSTOMER: ${MOYUYO_LOGISTICS_CUSTOMER:-}
+      MOYUYO_LOGISTICS_POLL_INTERVAL: ${MOYUYO_LOGISTICS_POLL_INTERVAL:-60}
+      MOYUYO_LOGISTICS_POLL_BATCH_SIZE: ${MOYUYO_LOGISTICS_POLL_BATCH_SIZE:-200}
+      # Google Maps 位置服务（留空时 /api/v1/geo/* 返回"地图服务未配置"）
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
+      # CSP 白名单：默认值与 SecurityHeadersFilter 的 @Value 默认一致，
+      # 注意不能留空（空值会覆盖默认白名单，导致 CSP 头异常收紧）
+      MOYUYO_SECURITY_CSP_CONNECT_SRC: ${MOYUYO_SECURITY_CSP_CONNECT_SRC:-https://api.stripe.com,https://api-m.paypal.com,https://*.sentry.io}
+      MOYUYO_SECURITY_CSP_IMG_SRC: ${MOYUYO_SECURITY_CSP_IMG_SRC:-data:,https://*.moyuyo.com,https://*.moyuyoshop.com,https://*.bloomwitness.com}
+      MOYUYO_SECURITY_CSP_FONT_SRC: ${MOYUYO_SECURITY_CSP_FONT_SRC:-data:}
     # 给 Spring 优雅停机 + 容器退出留出余量：Spring lifecycle 默认 30s，加 15s 容器退出 buffer
     # 避免长事务或 RocketMQ 回调未完成时被 SIGKILL
     stop_grace_period: 45s
@@ -526,11 +631,15 @@ services:
 
 volumes:
   mysql-data:
+  # MySQL 自签 CA 导出的 PKCS12 信任库（mysql-certs-init 写入，app 只读挂载）
+  mysql-certs:
   redis-data:
   es-data:
   es-certs:
   moyuyo-logs:
   moyuyo-heapdump:
+  # 上传文件持久卷：挂载到 app 容器的 MOYUYO_UPLOAD_DIR
+  moyuyo-uploads:
   rocketmq-data:
   rocketmq-logs:
   # MySQL / Redis 日志命名卷：与 moyuyo-logs 分开，避免日志滚转互相影响

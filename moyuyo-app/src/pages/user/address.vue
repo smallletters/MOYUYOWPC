@@ -2,10 +2,7 @@
   <view class="address">
     <!-- 顶部导航栏：标题 + 新增收货地址（始终可见） -->
     <view class="navbar">
-      <view
-        class="header-back"
-        aria-label="返回"
-        @click="goBack">
+      <view class="header-back" :aria-label="$t('common.back')" @click="goBack">
         <text class="luc luc-x" />
       </view>
       <text class="title">{{ $t('address.title') }}</text>
@@ -24,7 +21,9 @@
 
       <!-- 空态 -->
       <view v-else-if="addressList.length === 0" class="empty">
-        <text class="luc luc-map-pin empty-icon" />
+        <view class="empty-icon">
+          <text class="luc luc-map-pin" />
+        </view>
         <text class="empty-title">{{ $t('address.emptyTitle') }}</text>
         <text class="empty-desc">{{ $t('address.emptyDesc') }}</text>
         <view class="btn btn-primary empty-btn" @click="goEdit(null)">
@@ -37,10 +36,7 @@
         v-for="addr in addressList"
         :key="addr.id"
         class="card address-card"
-        :class="{
-          active: selectedId === addr.id,
-          'from-checkout': fromCheckout,
-        }"
+        :class="{ active: selectedId === addr.id }"
         @click="onCardTap(addr)"
       >
         <!-- 左侧色条 / 选中态视觉锚 -->
@@ -54,6 +50,11 @@
             <view v-if="addr.tag" class="tag" :class="`tag-${(addr.tag || '').toLowerCase()}`">
               {{ addr.tag }}
             </view>
+            <!-- 结算场景:「使用」按钮内联在姓名行右侧,避免绝对定位浮在地址详情上 -->
+            <view v-if="fromCheckout" class="use-btn" @click.stop="onUseAddress(addr)">
+              <text class="luc luc-check" />
+              <text>{{ $t('address.use') }}</text>
+            </view>
           </view>
           <text class="detail">
             {{ formatRegion(addr.country, addr.province, addr.city) }} {{ addr.detail }}
@@ -64,20 +65,19 @@
 
           <!-- 操作行：编辑 / 删除 / 设为默认 始终可见（满足增改删需求） -->
           <view class="actions">
-            <text v-if="!addr.isDefault" class="action-btn" @click.stop="onSetDefault(addr)">
-              {{ $t('address.setDefault') }}
-            </text>
-            <text class="action-btn" @click.stop="goEdit(addr)">{{ $t('address.edit') }}</text>
-            <text class="action-btn danger" @click.stop="onDelete(addr)">
-              {{ $t('address.delete') }}
-            </text>
+            <view v-if="!addr.isDefault" class="action-btn" @click.stop="onSetDefault(addr)">
+              <text class="luc luc-star" />
+              <text>{{ $t('address.setDefault') }}</text>
+            </view>
+            <view class="action-btn" @click.stop="goEdit(addr)">
+              <text class="luc luc-pencil" />
+              <text>{{ $t('address.edit') }}</text>
+            </view>
+            <view class="action-btn danger" @click.stop="onDelete(addr)">
+              <text class="luc luc-trash-2" />
+              <text>{{ $t('address.delete') }}</text>
+            </view>
           </view>
-        </view>
-
-        <!-- 结算场景：右上角"使用此地址"按钮（点整张卡也会触发） -->
-        <view v-if="fromCheckout" class="use-btn" @click.stop="onUseAddress(addr)">
-          <text class="luc luc-check" />
-          <text>{{ $t('address.use') }}</text>
         </view>
       </view>
     </scroll-view>
@@ -233,42 +233,77 @@ export default {
   min-height: 100vh;
   background: var(--color-background);
   padding-bottom: 160rpx; // 给底部"新增收货地址"按钮留出空间
+  box-sizing: border-box;
 }
 
-/* ============ 顶部 ============ */
+/* ============ 顶部导航栏 ============ */
+.navbar {
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  /* 高度含顶部安全区（H5 下 --status-bar-height 为 0，可安全兜底） */
+  min-height: calc(96rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  padding: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px)) var(--space-md) 0;
+  background: var(--color-surface);
+  border-bottom: 1rpx solid var(--color-divider);
+  box-shadow: var(--shadow-sm);
+  box-sizing: border-box;
+}
 .header-back {
   width: 64rpx;
   height: 64rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 50%;
   font-size: 40rpx;
   color: var(--color-text);
+  transition:
+    background-color 0.18s ease,
+    transform 0.12s ease;
+}
+.header-back:active {
+  background: var(--color-divider);
+  transform: scale(0.94);
 }
 .title {
   flex: 1;
   text-align: center;
-  font-size: 32rpx;
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text);
+  letter-spacing: 1rpx;
 }
+/* 新增按钮：主色淡底 + 主色深字，规避浅金底白字的对比度不足 */
 .header-btn {
   height: 56rpx;
-  padding: 0 20rpx;
+  padding: 0 22rpx;
   display: inline-flex;
   align-items: center;
   gap: 6rpx;
-  border-radius: 999px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 24rpx;
+  border-radius: var(--radius-pill);
+  background: rgba(219, 201, 138, 0.16);
+  border: 1rpx solid rgba(219, 201, 138, 0.6);
+  color: var(--color-primary-dark);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
+  transition:
+    background-color 0.18s ease,
+    transform 0.12s ease;
+}
+.header-btn:active {
+  background: rgba(219, 201, 138, 0.3);
+  transform: scale(0.96);
 }
 .header-btn .luc {
   font-size: 24rpx;
 }
 .header-btn-text {
-  color: #fff;
+  color: var(--color-primary-dark);
   line-height: 1;
 }
 
@@ -278,7 +313,7 @@ export default {
   display: block;
   width: 100%;
   flex: 1;
-  padding: 16rpx;
+  padding: var(--space-sm);
   box-sizing: border-box;
 }
 /* uni-app h5 编译后会在 scroll-view 内嵌套一层 .uni-scroll-view 容器，需要让它也撑满 */
@@ -290,11 +325,28 @@ export default {
   box-sizing: border-box;
 }
 .state-state {
-  padding: 96rpx 0;
+  padding: 120rpx 0;
   text-align: center;
 }
+/* 加载态：纯 CSS 旋转指示器，无需新增模板节点 */
+.state-state::before {
+  content: '';
+  display: block;
+  width: 48rpx;
+  height: 48rpx;
+  margin: 0 auto var(--space-sm);
+  border-radius: 50%;
+  border: 4rpx solid var(--color-divider);
+  border-top-color: var(--color-primary);
+  animation: addr-spin 0.8s linear infinite;
+}
+@keyframes addr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .state-text {
-  font-size: 26rpx;
+  font-size: var(--font-size-sm);
   color: var(--color-text-tertiary);
 }
 
@@ -303,25 +355,38 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16rpx;
+  gap: var(--space-xs);
 }
+/* 空态图标：柔和圆形底，与页面层级拉开 */
 .empty-icon {
-  font-size: 96rpx;
-  color: var(--color-divider);
+  width: 160rpx;
+  height: 160rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--color-primary-dark);
+  background: rgba(219, 201, 138, 0.14);
+  margin-bottom: var(--space-xs);
+}
+.empty-icon .luc {
+  font-size: 72rpx;
 }
 .empty-title {
-  font-size: 30rpx;
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text);
 }
 .empty-desc {
-  font-size: 24rpx;
+  font-size: var(--font-size-sm);
   color: var(--color-text-tertiary);
+  text-align: center;
+  padding: 0 var(--space-xl);
 }
 .empty-btn {
-  margin-top: 16rpx;
+  margin-top: var(--space-sm);
   padding: 20rpx 56rpx;
-  font-size: 28rpx;
+  font-size: var(--font-size-base);
 }
 
 /* ============ 地址卡 ============ */
@@ -329,28 +394,35 @@ export default {
   position: relative;
   display: flex;
   background: var(--color-surface);
-  border-radius: var(--radius-lg, 24rpx);
-  padding: 28rpx 28rpx 24rpx;
-  margin-bottom: 16rpx;
+  border-radius: var(--radius-lg);
+  padding: var(--space-md) var(--space-md) 20rpx;
+  margin-bottom: var(--space-sm);
   border: 2rpx solid transparent;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
   transition:
     border-color 0.18s ease,
-    transform 0.18s ease;
+    background-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.14s ease;
 }
+.address-card:active {
+  transform: scale(0.99);
+}
+/* 选中态：品牌主色描边 + 主色淡底，替代原先的蓝色底 */
 .address-card.active {
   border-color: var(--color-primary);
-  background: #f5faff;
-}
-.address-card.from-checkout {
-  padding-right: 132rpx; // 给右侧"使用"按钮留位
+  background: rgba(219, 201, 138, 0.12);
+  box-shadow: var(--shadow-md);
 }
 
 .address-card-rail {
-  width: 6rpx;
-  border-radius: 3rpx;
+  width: 8rpx;
+  border-radius: var(--radius-pill);
   background: var(--color-divider);
-  margin-right: 20rpx;
+  margin-right: var(--space-sm);
   flex-shrink: 0;
+  transition: background-color 0.18s ease;
 }
 .address-card.active .address-card-rail {
   background: var(--color-primary);
@@ -361,97 +433,131 @@ export default {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  gap: 10rpx;
 }
 
 .name-row {
   display: flex;
   align-items: center;
-  gap: 14rpx;
+  column-gap: 14rpx;
+  row-gap: 8rpx;
   flex-wrap: wrap;
 }
 .name {
-  font-size: 30rpx;
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text);
 }
 .phone {
-  font-size: 24rpx;
+  font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
+  letter-spacing: 1rpx;
 }
+/* 默认标签：主色淡底 + 主色深字，替代原「浅金底白字」保证可读性 */
 .default-tag {
-  padding: 4rpx 12rpx;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 20rpx;
-  border-radius: 999px;
+  padding: 4rpx 14rpx;
+  background: rgba(219, 201, 138, 0.24);
+  border: 1rpx solid rgba(219, 201, 138, 0.6);
+  color: var(--color-primary-dark);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-pill);
   line-height: 1.2;
 }
 .tag {
-  padding: 4rpx 12rpx;
-  border-radius: 999px;
-  font-size: 20rpx;
+  padding: 4rpx 14rpx;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
   line-height: 1.2;
   background: var(--color-background);
   color: var(--color-text-secondary);
 }
+/* 分类标签统一使用品牌色系淡色底，替换原硬编码橙/蓝/灰 */
 .tag-home {
-  background: #fff4e5;
-  color: #ff9500;
+  background: rgba(217, 180, 176, 0.22);
+  color: var(--color-accent);
 }
 .tag-company {
-  background: #e8f2ff;
-  color: #007aff;
+  background: rgba(143, 168, 182, 0.22);
+  color: var(--color-text-secondary);
 }
 .tag-other {
-  background: #f2f2f7;
-  color: #6e6e73;
+  background: var(--color-divider);
+  color: var(--color-text-secondary);
 }
 
 .detail {
-  font-size: 26rpx;
+  font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   line-height: 1.5;
   word-break: break-all;
 }
 .zip {
-  font-size: 22rpx;
+  font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
 }
 
 .actions {
   display: flex;
-  gap: 24rpx;
-  margin-top: 16rpx;
-  padding-top: 16rpx;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
   border-top: 1rpx solid var(--color-divider);
 }
+/* 操作项：胶囊幽灵按钮，热区更大、反馈更清晰 */
 .action-btn {
-  font-size: 24rpx;
-  color: var(--color-primary-dark);
-  padding: 6rpx 0;
-}
-.action-btn.danger {
-  color: var(--color-danger);
-}
-
-.use-btn {
-  position: absolute;
-  top: 50%;
-  right: 24rpx;
-  transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   gap: 6rpx;
-  padding: 12rpx 24rpx;
-  border-radius: 999px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 24rpx;
-  font-weight: var(--font-weight-medium);
+  padding: 8rpx 20rpx;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
+  color: var(--color-primary-dark);
+  background: var(--color-background);
+  border: 1rpx solid transparent;
+  line-height: 1.3;
+  transition:
+    background-color 0.18s ease,
+    transform 0.12s ease;
 }
-.address-card.active .use-btn {
-  background: var(--color-primary);
+.action-btn .luc {
+  font-size: 22rpx;
+}
+.action-btn:active {
+  background: var(--color-divider);
+  transform: scale(0.95);
+}
+.action-btn.danger {
+  color: var(--color-danger);
+  background: rgba(201, 110, 95, 0.1);
+}
+.action-btn.danger:active {
+  background: rgba(201, 110, 95, 0.2);
+}
+
+/* 结算场景「使用」按钮：内联在姓名行右侧，主色淡底 + 主色深字 */
+.use-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 8rpx 22rpx;
+  border-radius: var(--radius-pill);
+  background: rgba(219, 201, 138, 0.18);
+  border: 1rpx solid rgba(219, 201, 138, 0.6);
+  color: var(--color-primary-dark);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  transition:
+    background-color 0.18s ease,
+    transform 0.12s ease;
+}
+.use-btn:active {
+  background: rgba(219, 201, 138, 0.32);
+  transform: scale(0.95);
 }
 .use-btn .luc {
   font-size: 22rpx;
@@ -463,12 +569,15 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 16rpx 24rpx;
+  z-index: 20;
+  /* 底部安全区在此显式计算，避免被 padding 简写覆盖 */
+  padding: var(--space-sm) var(--space-md) calc(var(--space-sm) + env(safe-area-inset-bottom, 0px));
   background: var(--color-surface);
   border-top: 1rpx solid var(--color-divider);
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
 }
 .footer-btn {
   width: 100%;
@@ -477,7 +586,7 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 8rpx;
-  font-size: 28rpx;
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
 }
 .footer-btn-icon {
@@ -491,19 +600,32 @@ export default {
   justify-content: center;
   padding: 12rpx 32rpx;
   border-radius: var(--radius-pill);
-  font-size: 26rpx;
+  font-size: var(--font-size-sm);
   border: 1rpx solid transparent;
   background: var(--color-surface);
   color: var(--color-text);
+  transition:
+    background-color 0.18s ease,
+    transform 0.12s ease;
 }
+.btn:active {
+  transform: scale(0.97);
+}
+/* 主 CTA：改为主色淡底 + 主色深字，替换浅金底白字 */
 .btn-primary {
-  background: var(--color-primary);
-  color: #fff;
-  border-color: var(--color-primary);
+  background: rgba(219, 201, 138, 0.18);
+  border-color: rgba(219, 201, 138, 0.6);
+  color: var(--color-primary-dark);
+}
+.btn-primary:active {
+  background: rgba(219, 201, 138, 0.32);
 }
 .btn-secondary {
-  background: #f2f2f7;
+  background: var(--color-background);
   color: var(--color-text);
   border-color: var(--color-divider);
+}
+.btn-secondary:active {
+  background: var(--color-divider);
 }
 </style>

@@ -55,7 +55,12 @@
             class="image-cell"
             @tap="previewImages(idx)"
           >
-            <image :src="img" class="post-image" mode="aspectFill" />
+            <!-- 单图用 widthFix 由图片自身比例撑高(单元格无固定高度)，多图用 aspectFill 填满方格 -->
+            <image
+              :src="img"
+              class="post-image"
+              :mode="gridClass === 'grid-single' ? 'widthFix' : 'aspectFill'"
+            />
           </view>
         </view>
         <view class="stats">
@@ -594,9 +599,14 @@ export default {
   aspect-ratio: 1 / 1;
 }
 
-/* 单图：占满宽度，按原图比例展示 */
+/* 单图：占满宽度，按原图比例展示（宽度 100% + widthFix 由组件算高度） */
 .grid-single .image-cell {
   width: 100%;
+}
+
+/* 单图高度交给 widthFix 决定，覆盖下方 height:100%（父高 auto 会算成 0 导致图片不可见） */
+.grid-single .image-cell .post-image {
+  height: auto;
 }
 
 .image-cell .post-image {

@@ -1,23 +1,23 @@
-﻿<template>
+<template>
   <view class="page">
     <!-- 顶部摘要卡：余额 + 概览统计 -->
     <view class="hero">
       <view class="hero-balance">
-        <text class="hero-label">当前积分</text>
+        <text class="hero-label">{{ t('pointsDetail.balanceLabel') }}</text>
         <view class="hero-num-row">
           <text class="hero-num">{{ balance }}</text>
-          <text class="hero-unit">分</text>
+          <text class="hero-unit">{{ t('pointsDetail.unit') }}</text>
         </view>
       </view>
       <view class="hero-stats">
         <view class="hero-stat">
           <text class="hero-stat-val">{{ stats.income }}</text>
-          <text class="hero-stat-label">累计获得</text>
+          <text class="hero-stat-label">{{ t('pointsDetail.totalIncome') }}</text>
         </view>
         <view class="hero-stat-divider" />
         <view class="hero-stat">
           <text class="hero-stat-val">{{ stats.spent }}</text>
-          <text class="hero-stat-label">累计使用</text>
+          <text class="hero-stat-label">{{ t('pointsDetail.totalSpent') }}</text>
         </view>
       </view>
     </view>
@@ -26,13 +26,13 @@
     <view class="list">
       <!-- 加载中 -->
       <view v-if="loading && list.length === 0" class="state-block">
-        <text class="state-text">加载中…</text>
+        <text class="state-text">{{ t('common.loading') }}</text>
       </view>
 
       <!-- 空态 -->
       <view v-else-if="list.length === 0" class="empty">
         <text class="luc luc-inbox empty-icon" />
-        <text class="empty-text">暂无积分记录</text>
+        <text class="empty-text">{{ t('pointsDetail.empty') }}</text>
       </view>
 
       <!-- 按月分组的流水列表 -->
@@ -40,7 +40,9 @@
         <view v-for="group in groupedList" :key="group.month" class="group">
           <view class="group-head">
             <text class="group-title">{{ group.month }}</text>
-            <text class="group-sub">共 {{ group.items.length }} 笔</text>
+            <text class="group-sub">
+              {{ t('pointsDetail.countInMonth', { count: group.items.length }) }}
+            </text>
           </view>
           <view class="group-list">
             <view
@@ -78,24 +80,33 @@
 
       <!-- 加载更多 -->
       <view v-if="hasMore && list.length > 0" class="loadmore" @tap="loadMore">
-        <text class="loadmore-text">{{ loadingMore ? '加载中…' : '加载更多' }}</text>
+        <text class="loadmore-text">
+          {{ loadingMore ? t('common.loading') : t('pointsDetail.loadMore') }}
+        </text>
       </view>
       <view v-else-if="list.length > 0" class="loadmore">
-        <text class="loadmore-text">— 已经到底了 —</text>
+        <text class="loadmore-text">{{ t('pointsDetail.noMore') }}</text>
       </view>
     </view>
   </view>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { getPointsLog, getPointsBalance } from '@/api/points'
+import { i18n } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.userPointsDetail')
 
+// 轻量翻译函数（响应 localeVersion 变化，刷新依赖本地化的 computed）
+const localeVersion = ref(0)
+let _unsubLocale = null
+function t(key, params) {
+  void localeVersion.value // 触发依赖追踪
+  return i18n.t(key, params)
+}
 
 const balance = ref(0)
-
 
 const stats = ref({ income: 0, spent: 0 })
 const list = ref([])
@@ -119,29 +130,84 @@ const groupedList = computed(() => {
   return Array.from(map.entries()).map(([month, items]) => ({ month, items }))
 })
 
-// 类型映射：后端 mo_points_log.type 枚举
+// 类型映射：后端 mo_points_log.type 枚举（titleKey 对应 i18n pointsDetail.types.*）
 const TYPE_META = {
-  CHECKIN: { title: '每日签到', icon: 'luc-calendar-check', bg: '#e8f2ff', color: '#007aff' },
-  ORDER: { title: '购物返积分', icon: 'luc-shopping-bag', bg: '#e9f9ee', color: '#34c759' },
-  REFUND: { title: '退款扣减', icon: 'luc-undo-2', bg: '#ffecea', color: '#ff3b30' },
-  EXCHANGE: { title: '积分兑换', icon: 'luc-gift', bg: '#f3e8ff', color: '#af52de' },
-  EXPIRE: { title: '积分过期', icon: 'luc-clock', bg: '#fff4e5', color: '#ff9500' },
-  INVITE: { title: '邀请奖励', icon: 'luc-user-plus', bg: '#e9f9ee', color: '#34c759' },
-  ACTIVITY: { title: '活动奖励', icon: 'luc-sparkles', bg: '#fff4e5', color: '#ff9500' },
-  ADJUST: { title: '管理员调整', icon: 'luc-settings', bg: '#e8f2ff', color: '#0064d6' },
-  REVIEW: { title: '评价奖励', icon: 'luc-message-square', bg: '#e9f9ee', color: '#34c759' },
-  MISSION: { title: '任务奖励', icon: 'luc-target', bg: '#f3e8ff', color: '#af52de' },
-  SIGN_IN: { title: '每日签到', icon: 'luc-calendar-check', bg: '#e8f2ff', color: '#007aff' },
+  CHECKIN: {
+    titleKey: 'pointsDetail.types.CHECKIN',
+    icon: 'luc-calendar-check',
+    bg: '#e8f2ff',
+    color: '#007aff',
+  },
+  ORDER: {
+    titleKey: 'pointsDetail.types.ORDER',
+    icon: 'luc-shopping-bag',
+    bg: '#e9f9ee',
+    color: '#34c759',
+  },
+  REFUND: {
+    titleKey: 'pointsDetail.types.REFUND',
+    icon: 'luc-undo-2',
+    bg: '#ffecea',
+    color: '#ff3b30',
+  },
+  EXCHANGE: {
+    titleKey: 'pointsDetail.types.EXCHANGE',
+    icon: 'luc-gift',
+    bg: '#f3e8ff',
+    color: '#af52de',
+  },
+  EXPIRE: {
+    titleKey: 'pointsDetail.types.EXPIRE',
+    icon: 'luc-clock',
+    bg: '#fff4e5',
+    color: '#ff9500',
+  },
+  INVITE: {
+    titleKey: 'pointsDetail.types.INVITE',
+    icon: 'luc-user-plus',
+    bg: '#e9f9ee',
+    color: '#34c759',
+  },
+  ACTIVITY: {
+    titleKey: 'pointsDetail.types.ACTIVITY',
+    icon: 'luc-sparkles',
+    bg: '#fff4e5',
+    color: '#ff9500',
+  },
+  ADJUST: {
+    titleKey: 'pointsDetail.types.ADJUST',
+    icon: 'luc-settings',
+    bg: '#e8f2ff',
+    color: '#0064d6',
+  },
+  REVIEW: {
+    titleKey: 'pointsDetail.types.REVIEW',
+    icon: 'luc-message-square',
+    bg: '#e9f9ee',
+    color: '#34c759',
+  },
+  MISSION: {
+    titleKey: 'pointsDetail.types.MISSION',
+    icon: 'luc-target',
+    bg: '#f3e8ff',
+    color: '#af52de',
+  },
+  SIGN_IN: {
+    titleKey: 'pointsDetail.types.SIGN_IN',
+    icon: 'luc-calendar-check',
+    bg: '#e8f2ff',
+    color: '#007aff',
+  },
 }
 function typeMeta(type) {
-  return (
-    TYPE_META[type] || {
-      title: type || '其他变动',
-      icon: 'luc-coins',
-      bg: '#f2f2f7',
-      color: '#8e8e93',
-    }
-  )
+  const meta = TYPE_META[type]
+  if (meta) return { ...meta, title: t(meta.titleKey) }
+  return {
+    title: type || t('pointsDetail.types.other'),
+    icon: 'luc-coins',
+    bg: '#f2f2f7',
+    color: '#8e8e93',
+  }
 }
 
 async function loadBalance() {
@@ -205,9 +271,16 @@ function formatTime(iso) {
 }
 
 onMounted(async () => {
+  // 订阅语言切换，触发模板与本页 t() 依赖重新求值
+  _unsubLocale = i18n.subscribe(() => {
+    localeVersion.value += 1
+  })
   loading.value = true
   await Promise.all([loadBalance(), loadList(true)])
   loading.value = false
+})
+onBeforeUnmount(() => {
+  if (_unsubLocale) _unsubLocale()
 })
 </script>
 

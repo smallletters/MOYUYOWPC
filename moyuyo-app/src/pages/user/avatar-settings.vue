@@ -1,11 +1,11 @@
-﻿<template>
+<template>
   <view class="avatar-settings">
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">编辑资料</text>
+      <text class="header-title">{{ $t('editProfile.title') }}</text>
       <view class="placeholder" />
     </view>
 
@@ -21,22 +21,22 @@
             <text class="camera-icon luc-camera" />
           </view>
         </view>
-        <text class="avatar-hint">点击更换头像</text>
+        <text class="avatar-hint">{{ $t('editProfile.changeAvatarHint') }}</text>
       </view>
 
       <!-- 昵称编辑 -->
       <view class="form-card">
         <view class="form-card-inner">
           <view class="field-header">
-            <text class="field-label">昵称</text>
-            <text class="field-limit">2-20 个字符</text>
+            <text class="field-label">{{ $t('editProfile.nickname') }}</text>
+            <text class="field-limit">{{ $t('editProfile.nicknameLengthHint') }}</text>
           </view>
           <!-- 昵称显示模式 -->
           <view v-if="!isEditingNickname" class="nickname-display">
             <text class="nickname-value">{{ nickname }}</text>
             <view class="edit-nickname-btn" @click="startEditNickname">
               <text class="edit-nickname-icon luc-pencil" />
-              <text class="edit-nickname-text">编辑</text>
+              <text class="edit-nickname-text">{{ $t('editProfile.edit') }}</text>
             </view>
           </view>
           <!-- 昵称编辑模式 -->
@@ -44,7 +44,7 @@
             <input
               v-model="nickname"
               class="nickname-input"
-              placeholder="请输入昵称"
+              :placeholder="$t('editProfile.nicknamePlaceholder')"
               maxlength="20"
               focus
               @input="onNicknameInput"
@@ -52,7 +52,7 @@
             <view class="nickname-footer">
               <view class="hint-row">
                 <text class="hint-icon luc-check-circle" />
-                <text class="hint-text" :class="hintType">昵称可用</text>
+                <text class="hint-text" :class="hintType">{{ $t('editProfile.nicknameOk') }}</text>
               </view>
               <text class="char-count">{{ nickname.length }}/20</text>
             </view>
@@ -64,13 +64,13 @@
       <view class="form-card">
         <view class="form-card-inner">
           <view class="field-header">
-            <text class="field-label">个人简介</text>
-            <text class="field-limit">最多 100 字</text>
+            <text class="field-label">{{ $t('editProfile.bio') }}</text>
+            <text class="field-limit">{{ $t('editProfile.bioLimitHint') }}</text>
           </view>
           <textarea
             v-model="bio"
             class="bio-textarea"
-            placeholder="介绍一下你和你的宠物吧..."
+            :placeholder="$t('editProfile.bioPlaceholder')"
             maxlength="100"
             @input="onBioInput"
           />
@@ -83,7 +83,7 @@
       <!-- 性别选择 -->
       <view class="form-card">
         <view class="form-card-inner">
-          <text class="field-label block-label">性别</text>
+          <text class="field-label block-label">{{ $t('editProfile.gender') }}</text>
           <view class="gender-options">
             <view
               v-for="option in genderOptions"
@@ -101,7 +101,7 @@
       <!-- 生日设置 -->
       <view class="form-card">
         <view class="form-item" @click="onSelectBirthday">
-          <text class="item-label">生日</text>
+          <text class="item-label">{{ $t('editProfile.birthday') }}</text>
           <view class="item-right">
             <text class="item-value">{{ birthday }}</text>
             <text class="chevron luc-chevron-right" />
@@ -112,7 +112,7 @@
       <!-- 地区设置 -->
       <view class="form-card">
         <view class="form-item" @click="onSelectRegion">
-          <text class="item-label">地区</text>
+          <text class="item-label">{{ $t('editProfile.region') }}</text>
           <view class="item-right">
             <text class="item-value">{{ region }}</text>
             <text class="chevron luc-chevron-right" />
@@ -124,8 +124,8 @@
       <view class="form-card">
         <view class="form-card-inner">
           <view class="field-header">
-            <text class="field-label">IP 偏好</text>
-            <text class="field-limit">可多选</text>
+            <text class="field-label">{{ $t('editProfile.ipPreference') }}</text>
+            <text class="field-limit">{{ $t('editProfile.multiSelect') }}</text>
           </view>
           <view class="ip-grid">
             <view
@@ -150,7 +150,7 @@
     <!-- 底部固定保存按钮 -->
     <view class="save-bar safe-area-bottom">
       <view class="save-btn" @click="onSave">
-        <text class="save-btn-text">保存</text>
+        <text class="save-btn-text">{{ $t('editProfile.save') }}</text>
       </view>
     </view>
 
@@ -159,16 +159,16 @@
       <view class="action-sheet" @click.stop>
         <view class="action-option" @click="onTakePhoto">
           <text class="action-icon luc-camera" />
-          <text class="action-text">拍照</text>
+          <text class="action-text">{{ $t('editProfile.takePhoto') }}</text>
         </view>
         <view class="action-divider" />
         <view class="action-option" @click="onFromGallery">
           <text class="action-icon luc-image" />
-          <text class="action-text">从相册选择</text>
+          <text class="action-text">{{ $t('editProfile.chooseFromGallery') }}</text>
         </view>
         <view class="action-gap" />
         <view class="action-option cancel" @click="onCloseActionSheet">
-          <text class="action-cancel-text">取消</text>
+          <text class="action-cancel-text">{{ $t('editProfile.cancel') }}</text>
         </view>
       </view>
     </view>
@@ -176,17 +176,23 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { i18n } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.userAvatarSettings')
 
+// 轻量翻译函数（响应 localeVersion 变化，刷新依赖本地化的 computed）
+const localeVersion = ref(0)
+let _unsubLocale = null
+function t(key, params) {
+  void localeVersion.value // 触发依赖追踪
+  return i18n.t(key, params)
+}
 
 const goBack = () => uni.navigateBack()
 
-
-
 // 昵称
-const nickname = ref('宠物爱好者')
+const nickname = ref(t('editProfile.defaultNickname'))
 const isEditingNickname = ref(false)
 const hintType = ref('success')
 
@@ -200,16 +206,16 @@ const onNicknameInput = () => {
 }
 
 // 个人简介
-const bio = ref('热爱生活的铲屎官，有一只叫小橘的猫咪，喜欢记录日常。')
+const bio = ref(t('editProfile.defaultBio'))
 const onBioInput = () => {}
 
 // 性别
 const gender = ref('unset')
-const genderOptions = [
-  { label: '男', value: 'male' },
-  { label: '女', value: 'female' },
-  { label: '不设置', value: 'unset' },
-]
+const genderOptions = computed(() => [
+  { label: t('editProfile.genderMale'), value: 'male' },
+  { label: t('editProfile.genderFemale'), value: 'female' },
+  { label: t('editProfile.genderUnset'), value: 'unset' },
+])
 
 const selectGender = (value) => {
   gender.value = value
@@ -217,11 +223,12 @@ const selectGender = (value) => {
 
 // 生日
 const birthday = ref('1995-06-15')
-const onSelectBirthday = () => uni.showToast({ title: '选择生日', icon: 'none' })
+const onSelectBirthday = () =>
+  uni.showToast({ title: t('editProfile.selectBirthday'), icon: 'none' })
 
 // 地区
-const region = ref('上海市 浦东新区')
-const onSelectRegion = () => uni.showToast({ title: '选择地区', icon: 'none' })
+const region = ref(t('editProfile.defaultRegion'))
+const onSelectRegion = () => uni.showToast({ title: t('editProfile.selectRegion'), icon: 'none' })
 
 // IP 偏好
 const ipOptions = [
@@ -251,15 +258,24 @@ const onCloseActionSheet = () => {
 }
 const onTakePhoto = () => {
   showActionSheet.value = false
-  uni.showToast({ title: '打开相机', icon: 'none' })
+  uni.showToast({ title: t('editProfile.openCamera'), icon: 'none' })
 }
 const onFromGallery = () => {
   showActionSheet.value = false
-  uni.showToast({ title: '打开相册', icon: 'none' })
+  uni.showToast({ title: t('editProfile.openGallery'), icon: 'none' })
 }
 
 // 保存
-const onSave = () => uni.showToast({ title: '资料已保存', icon: 'success' })
+const onSave = () => uni.showToast({ title: t('editProfile.profileSaved'), icon: 'success' })
+
+onMounted(() => {
+  _unsubLocale = i18n.subscribe(() => {
+    localeVersion.value += 1
+  })
+})
+onBeforeUnmount(() => {
+  if (_unsubLocale) _unsubLocale()
+})
 </script>
 
 <style lang="scss" scoped>

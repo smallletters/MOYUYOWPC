@@ -4,7 +4,7 @@
     <view class="navbar">
       <view class="navbar-search" @click="goSearch">
         <u-icon name="search" color="#9A948C" size="18" />
-        <text class="navbar-search-placeholder">搜索宠物好物、品牌、攻略</text>
+        <text class="navbar-search-placeholder">{{ $t('home.searchPlaceholder') }}</text>
       </view>
       <view class="navbar-icon" @click="onScan">
         <u-icon name="camera-fill" color="#2E2B29" size="22" />
@@ -91,8 +91,9 @@
             <image :src="resolveImage(p)" class="recommend-image" mode="aspectFill" />
             <view class="recommend-body">
               <text class="recommend-name">{{ p.name }}</text>
-              <text class="recommend-desc">
-                {{ truncate(p.shortDetail || p.detail || '', 30) }}
+              <!-- 只展示纯文本简短描述，避免回退到富文本 detail 露出 HTML 标签 -->
+              <text v-if="p.shortDetail" class="recommend-desc">
+                {{ truncate(p.shortDetail, 30) }}
               </text>
               <view class="recommend-price-row">
                 <text class="recommend-price">${{ p.price }}</text>

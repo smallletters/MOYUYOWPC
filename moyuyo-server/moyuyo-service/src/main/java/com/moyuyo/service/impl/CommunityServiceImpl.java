@@ -1,6 +1,7 @@
 package com.moyuyo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.dto.community.CommunityPostVO;
 import com.moyuyo.common.utils.JsonUtils;
@@ -163,12 +164,11 @@ public class CommunityServiceImpl implements CommunityService {
         // 解析 @ 提及并给被 @ 的用户发通知(排除作者自己 + 重复用户)
         notifyMentionedUsers(userId, cleanContent, entity.getId(), "POST", "有人 @ 了你");
 
-        // 任务中心埋点：发布成功后触发"发布 1 条社区笔记"和累计成就进度
-        try {
-            missionService.incrementByKeyword(userId, "WEEKLY", "发布 1 条社区笔记", 1);
-            missionService.incrementByKeyword(userId, "ACHIEVEMENT", "发布 10 条笔记", 1);
-        } catch (Exception e) {
-            log.warn("[community] trigger mission failed: postId={}, reason={}", entity.getId(), e.getMessage());
+        // 任务中心埋点：仅"立即发布"的帖子在此计分；
+        // 定时发布(status=3 待发布)要等 publishScheduledPosts 真正发布时才计，
+        // 否则帖子还没发出去任务就已经完成了
+        if (!isScheduled) {
+            triggerPostMissions(userId);
         }
 
         return toVO(entity);
@@ -250,6 +250,24 @@ public class CommunityServiceImpl implements CommunityService {
     }
 
     /**
+     * 任务中心埋点：笔记"真正发布"后推进每日/每周笔记任务与累计成就进度。
+     * 立即发布的帖子在 createPost 里调用；定时发布的帖子由 publishScheduledPosts 到点发布时调用。
+     * 失败只记录日志，不影响发帖主流程（MissionService 内部为独立事务，不会污染外层事务）。
+     */
+    private void triggerPostMissions(Long userId) {
+        if (userId == null) {
+            return;
+        }
+        try {
+            missionService.incrementByKeyword(userId, "DAILY", "发布 1 条社区笔记", 1);
+            missionService.incrementByKeyword(userId, "WEEKLY", "发布 1 条社区笔记", 1);
+            missionService.incrementByKeyword(userId, "ACHIEVEMENT", "发布 10 条笔记", 1);
+        } catch (Exception e) {
+            log.warn("[community] trigger post mission failed: userId={}, reason={}", userId, e.getMessage());
+        }
+    }
+
+    /**
      * 定时发布扫描:
      * - 查询 status=3 且 scheduled_at <= now 的帖子
      * - 批量改 status=1,清空 scheduled_at(可选保留,这里保留以便排查)
@@ -267,12 +285,23 @@ public class CommunityServiceImpl implements CommunityService {
         if (duePosts == null || duePosts.isEmpty()) {
             return 0;
         }
+        int published = 0;
         for (CommunityPostEntity p : duePosts) {
             p.setStatus(1);
-            postMapper.updateById(p);
+            // 条件更新（WHERE 仍要求 status=3）：只有真正把"待发布"改成"已发布"的这次才算发布成功，
+            // 避免多实例/重复扫描时同一帖子被发布两次并重复计入任务进度
+            int updated = postMapper.update(p, new LambdaUpdateWrapper<CommunityPostEntity>()
+                    .eq(CommunityPostEntity::getId, p.getId())
+                    .eq(CommunityPostEntity::getStatus, 3));
+            if (updated == 0) {
+                continue;
+            }
+            published++;
             log.info("[community-schedule] post published: postId={}, scheduledAt={}", p.getId(), p.getScheduledAt());
+            // 到点真正发布后才计入任务进度（创建时未计分）
+            triggerPostMissions(p.getUserId());
         }
-        return duePosts.size();
+        return published;
     }
 
     @Override

@@ -1,11 +1,11 @@
-﻿<template>
+<template>
   <view class="gift-card-manage">
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="header-left" @tap="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">礼品卡管理</text>
+      <text class="header-title">{{ $t('giftCardManage.title') }}</text>
       <view class="header-right" />
     </view>
 
@@ -16,19 +16,19 @@
           <view class="quick-icon" style="background: var(--brand-50)">
             <text class="quick-emoji luc-shopping-bag" />
           </view>
-          <text class="quick-label">购买礼品卡</text>
+          <text class="quick-label">{{ $t('giftCardManage.buyCard') }}</text>
         </view>
         <view class="quick-entry" @tap="handleBindCard">
           <view class="quick-icon" style="background: var(--state-success-surface)">
             <text class="quick-emoji luc-link" />
           </view>
-          <text class="quick-label">绑定礼品卡</text>
+          <text class="quick-label">{{ $t('giftCardManage.bindCard') }}</text>
         </view>
         <view class="quick-entry" @tap="handleSendCard">
           <view class="quick-icon" style="background: var(--state-warning-surface)">
             <text class="quick-emoji luc-gift" />
           </view>
-          <text class="quick-label">赠送礼品卡</text>
+          <text class="quick-label">{{ $t('giftCardManage.sendCard') }}</text>
         </view>
       </view>
 
@@ -45,7 +45,7 @@
           }"
           @tap="activeCardTab = tab.key"
         >
-          <text>{{ tab.label }}</text>
+          <text>{{ $t(tab.labelKey) }}</text>
         </view>
       </view>
 
@@ -113,7 +113,12 @@
                   class="card-balance"
                   :style="{ color: 'rgba(255,255,255,0.5)' }"
                 >
-                  余额 ${{ card.balance }} / ${{ card.faceValue }}
+                  {{
+                    $t('giftCardManage.cardBalance', {
+                      balance: '$' + card.balance,
+                      faceValue: '$' + card.faceValue,
+                    })
+                  }}
                 </text>
                 <view class="card-status-badge" :class="card.status">
                   <text>{{ card.statusText }}</text>
@@ -130,9 +135,15 @@
 
       <!-- 操作按钮（仅活跃卡片） -->
       <view v-if="selectedCard && selectedCard.status === 'active'" class="card-actions">
-        <view class="action-btn text" @tap="handleViewDetail(selectedCard)">查看详情</view>
-        <view class="action-btn primary" @tap="handleUseCard(selectedCard)">使用</view>
-        <view class="action-btn outline" @tap="handleGiftCard(selectedCard)">赠送</view>
+        <view class="action-btn text" @tap="handleViewDetail(selectedCard)">
+          {{ $t('giftCardManage.viewDetail') }}
+        </view>
+        <view class="action-btn primary" @tap="handleUseCard(selectedCard)">
+          {{ $t('giftCardManage.use') }}
+        </view>
+        <view class="action-btn outline" @tap="handleGiftCard(selectedCard)">
+          {{ $t('giftCardManage.gift') }}
+        </view>
       </view>
 
       <!-- 购买礼品卡区域 -->
@@ -142,8 +153,8 @@
             <text><text class="luc luc-shopping-bag" /></text>
           </view>
           <view>
-            <text class="section-card-title">购买礼品卡</text>
-            <text class="section-card-desc">自定义面额，心意无限</text>
+            <text class="section-card-title">{{ $t('giftCardManage.buyCard') }}</text>
+            <text class="section-card-desc">{{ $t('giftCardManage.buyDesc') }}</text>
           </view>
         </view>
 
@@ -167,7 +178,7 @@
         <!-- 自定义面额滑块 -->
         <view class="slider-section">
           <view class="slider-header">
-            <text class="slider-label">自定义面额</text>
+            <text class="slider-label">{{ $t('giftCardManage.customAmount') }}</text>
             <text class="slider-value">${{ customAmount }}</text>
           </view>
           <slider
@@ -190,7 +201,7 @@
 
         <!-- 购买数量 -->
         <view class="qty-section">
-          <text class="qty-label">购买数量</text>
+          <text class="qty-label">{{ $t('giftCardManage.quantity') }}</text>
           <view class="qty-controls">
             <view class="qty-btn" @tap="decreaseQty">−</view>
             <text class="qty-value">{{ purchaseQty }}</text>
@@ -203,7 +214,7 @@
           <view class="collapse-header" @tap="toggleGiftAfterBuy">
             <view class="collapse-header-left">
               <text class="collapse-icon luc-gift" />
-              <text class="collapse-label">购买后直接赠送</text>
+              <text class="collapse-label">{{ $t('giftCardManage.giftAfterBuy') }}</text>
             </view>
             <text class="collapse-arrow" :class="{ open: giftAfterBuyOpen }">
               <text class="luc luc-chevron-right" />
@@ -212,20 +223,20 @@
           <view class="collapse-body" :class="{ open: giftAfterBuyOpen }">
             <view class="collapse-content">
               <view class="input-row">
-                <text class="input-label">收件人邮箱</text>
+                <text class="input-label">{{ $t('giftCardManage.recipientEmail') }}</text>
                 <input
                   v-model="giftEmail"
                   class="input-field"
-                  placeholder="输入对方邮箱"
+                  :placeholder="$t('giftCardManage.emailPlaceholder')"
                   type="email"
                 >
               </view>
               <view class="input-row">
-                <text class="input-label">手机号码</text>
+                <text class="input-label">{{ $t('giftCardManage.phone') }}</text>
                 <input
                   v-model="giftPhone"
                   class="input-field"
-                  placeholder="输入对方手机号"
+                  :placeholder="$t('giftCardManage.phonePlaceholder')"
                   type="tel"
                 >
               </view>
@@ -234,7 +245,7 @@
         </view>
 
         <view class="buy-now-btn" @tap="handleBuyNow">
-          <text>立即购买</text>
+          <text>{{ $t('giftCardManage.buyNow') }}</text>
         </view>
       </view>
 
@@ -243,7 +254,7 @@
         <view class="collapse-header" @tap="toggleBindCard">
           <view class="collapse-header-left">
             <text class="collapse-icon luc-link" />
-            <text class="collapse-label">绑定礼品卡</text>
+            <text class="collapse-label">{{ $t('giftCardManage.bindCard') }}</text>
           </view>
           <text class="collapse-arrow" :class="{ open: bindCardOpen }">
             <text class="luc luc-chevron-right" />
@@ -252,24 +263,24 @@
         <view class="collapse-body" :class="{ open: bindCardOpen }">
           <view class="collapse-content">
             <view class="input-row">
-              <text class="input-label">礼品卡卡号</text>
+              <text class="input-label">{{ $t('giftCardManage.cardNo') }}</text>
               <input
                 v-model="bindCardNumber"
                 class="input-field"
-                placeholder="请输入16位卡号"
+                :placeholder="$t('giftCardManage.cardNoPlaceholder')"
                 maxlength="16"
               >
             </view>
             <view class="input-row">
-              <text class="input-label">礼品卡密码</text>
+              <text class="input-label">{{ $t('giftCardManage.cardPwd') }}</text>
               <input
                 v-model="bindCardPwd"
                 class="input-field"
-                placeholder="请输入礼品卡密码"
+                :placeholder="$t('giftCardManage.cardPwdPlaceholder')"
                 type="password"
               >
             </view>
-            <view class="bind-btn" @tap="handleBindConfirm">绑定</view>
+            <view class="bind-btn" @tap="handleBindConfirm">{{ $t('giftCardManage.bind') }}</view>
           </view>
         </view>
       </view>
@@ -279,7 +290,7 @@
         <view class="collapse-header" @tap="toggleUsageLog">
           <view class="collapse-header-left">
             <text class="collapse-icon luc-clipboard-list" />
-            <text class="collapse-label">礼品卡 **** 5678 使用记录</text>
+            <text class="collapse-label">{{ $t('giftCardManage.usageLogTitle') }}</text>
           </view>
           <text class="collapse-arrow" :class="{ open: usageLogOpen }">
             <text class="luc luc-chevron-right" />
@@ -292,32 +303,40 @@
                 <view class="timeline-dot" />
                 <view class="timeline-info">
                   <text class="timeline-date">2026-07-01 14:23</text>
-                  <text class="timeline-order">关联订单：#MOY20260701001</text>
+                  <text class="timeline-order">
+                    {{ $t('giftCardManage.relatedOrder', { orderNo: '#MOY20260701001' }) }}
+                  </text>
                 </view>
                 <view class="timeline-amount">
                   <text class="timeline-spend">-$35.00</text>
-                  <text class="timeline-remain">剩余 $45.00</text>
+                  <text class="timeline-remain">
+                    {{ $t('giftCardManage.remain', { amount: '$45.00' }) }}
+                  </text>
                 </view>
               </view>
               <view class="timeline-item">
                 <view class="timeline-dot green" />
                 <view class="timeline-info">
                   <text class="timeline-date">2026-06-10 09:15</text>
-                  <text class="timeline-order">关联订单：#MOY20260610023</text>
+                  <text class="timeline-order">
+                    {{ $t('giftCardManage.relatedOrder', { orderNo: '#MOY20260610023' }) }}
+                  </text>
                 </view>
                 <view class="timeline-amount">
                   <text class="timeline-spend">-$20.00</text>
-                  <text class="timeline-remain">剩余 $80.00</text>
+                  <text class="timeline-remain">
+                    {{ $t('giftCardManage.remain', { amount: '$80.00' }) }}
+                  </text>
                 </view>
               </view>
             </view>
             <view class="usage-summary">
               <view class="summary-row">
-                <text class="summary-label">累计使用</text>
+                <text class="summary-label">{{ $t('giftCardManage.totalUsed') }}</text>
                 <text class="summary-value">$55.00</text>
               </view>
               <view class="summary-row">
-                <text class="summary-label">当前余额</text>
+                <text class="summary-label">{{ $t('giftCardManage.currentBalance') }}</text>
                 <text class="summary-value primary">$45.00</text>
               </view>
             </view>
@@ -332,12 +351,14 @@
 
 <script>
 import { giftCardApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.userGiftCardManage',
 
   data() {
     return {
+      localeVersion: 0,
       activeCardTab: 'all',
       selectedAmount: 100,
       customAmount: 100,
@@ -351,10 +372,10 @@ export default {
       bindCardPwd: '',
       selectedCard: null,
       cardTabs: [
-        { key: 'all', label: '全部' },
-        { key: 'available', label: '可用' },
-        { key: 'used', label: '已使用' },
-        { key: 'expired', label: '已过期' },
+        { key: 'all', labelKey: 'giftCardManage.tabs.all' },
+        { key: 'available', labelKey: 'giftCardManage.tabs.available' },
+        { key: 'used', labelKey: 'giftCardManage.tabs.used' },
+        { key: 'expired', labelKey: 'giftCardManage.tabs.expired' },
       ],
       amounts: [
         { value: 25, label: '25' },
@@ -367,15 +388,36 @@ export default {
   },
   computed: {
     filteredCards() {
-      if (this.activeCardTab === 'all') return this.cards
-      if (this.activeCardTab === 'available') return this.cards.filter((c) => c.status === 'active')
-      if (this.activeCardTab === 'used') return this.cards.filter((c) => c.status === 'used')
-      if (this.activeCardTab === 'expired') return this.cards.filter((c) => c.status === 'expired')
-      return this.cards
+      void this.localeVersion
+      let list = this.cards
+      if (this.activeCardTab === 'available') list = this.cards.filter((c) => c.status === 'active')
+      else if (this.activeCardTab === 'used') list = this.cards.filter((c) => c.status === 'used')
+      else if (this.activeCardTab === 'expired')
+        list = this.cards.filter((c) => c.status === 'expired')
+      // 后端未返回状态文案时按当前语言映射展示
+      return list.map((c) => ({
+        ...c,
+        statusText:
+          c.serverStatusText ||
+          i18n.t(
+            c.status === 'active'
+              ? 'giftCardManage.statusActive'
+              : c.status === 'used'
+                ? 'giftCardManage.statusUsed'
+                : 'giftCardManage.statusExpired',
+          ),
+      }))
     },
   },
   onLoad() {
     this.loadCards()
+    // 语言切换时刷新展示文案
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
+  },
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
   },
   methods: {
     async loadCards() {
@@ -385,9 +427,7 @@ export default {
         this.cards = (list.items || list || []).map((c) => ({
           id: c.id,
           status: c.status || 'active',
-          statusText:
-            c.statusText ||
-            (c.status === 'active' ? '可用' : c.status === 'used' ? '已使用' : '已过期'),
+          serverStatusText: c.statusText || '',
           faceValue: c.faceValue || 0,
           balance: c.balance || 0,
           lastFour: c.lastFour || '0000',
@@ -404,13 +444,13 @@ export default {
       uni.navigateBack()
     },
     handleBuyCard() {
-      uni.showToast({ title: '购买礼品卡', icon: 'none' })
+      uni.showToast({ title: i18n.t('giftCardManage.buyCard'), icon: 'none' })
     },
     handleBindCard() {
       this.bindCardOpen = !this.bindCardOpen
     },
     handleSendCard() {
-      uni.showToast({ title: '赠送礼品卡', icon: 'none' })
+      uni.showToast({ title: i18n.t('giftCardManage.sendCard'), icon: 'none' })
     },
     handleCardTap(card) {
       this.selectedCard = card
@@ -419,10 +459,10 @@ export default {
       this.usageLogOpen = !this.usageLogOpen
     },
     handleUseCard(card) {
-      uni.showToast({ title: '使用礼品卡', icon: 'none' })
+      uni.showToast({ title: i18n.t('giftCardManage.useCard'), icon: 'none' })
     },
     handleGiftCard(card) {
-      uni.showToast({ title: '赠送礼品卡', icon: 'none' })
+      uni.showToast({ title: i18n.t('giftCardManage.sendCard'), icon: 'none' })
     },
     onSliderChange(e) {
       this.customAmount = e.detail.value
@@ -449,28 +489,31 @@ export default {
       try {
         await giftCardApi.purchaseGiftCard(this.customAmount, this.purchaseQty)
         uni.showToast({
-          title: `购买 ${this.purchaseQty} 张 $${this.customAmount} 礼品卡成功`,
+          title: i18n.t('giftCardManage.purchaseSuccess', {
+            qty: this.purchaseQty,
+            amount: '$' + this.customAmount,
+          }),
           icon: 'success',
         })
         this.loadCards()
       } catch (e) {
-        uni.showToast({ title: '购买失败，请重试', icon: 'none' })
+        uni.showToast({ title: i18n.t('giftCardManage.purchaseFailed'), icon: 'none' })
       }
     },
     async handleBindConfirm() {
       if (!this.bindCardNumber || !this.bindCardPwd) {
-        uni.showToast({ title: '请填写完整信息', icon: 'none' })
+        uni.showToast({ title: i18n.t('giftCardManage.fillRequired'), icon: 'none' })
         return
       }
       try {
         await giftCardApi.bindGiftCard(this.bindCardNumber, this.bindCardPwd)
-        uni.showToast({ title: '礼品卡绑定成功', icon: 'success' })
+        uni.showToast({ title: i18n.t('giftCardManage.bindSuccess'), icon: 'success' })
         this.bindCardNumber = ''
         this.bindCardPwd = ''
         this.bindCardOpen = false
         this.loadCards()
       } catch (e) {
-        uni.showToast({ title: '绑定失败，请重试', icon: 'none' })
+        uni.showToast({ title: i18n.t('giftCardManage.bindFailed'), icon: 'none' })
       }
     },
   },

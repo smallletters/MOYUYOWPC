@@ -1,7 +1,7 @@
 <template>
   <view class="invite-friends">
     <view class="page-header">
-      <view class="back" aria-label="返回" @click="goBack">
+      <view class="back" :aria-label="$t('common.back')" @click="goBack">
         <text class="luc luc-arrow-left" />
       </view>
       <text class="title">{{ $t('invite.title') }}</text>

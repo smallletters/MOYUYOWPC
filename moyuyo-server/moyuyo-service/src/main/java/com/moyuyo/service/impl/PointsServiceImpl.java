@@ -20,10 +20,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -131,14 +135,34 @@ public class PointsServiceImpl implements PointsService {
 
   /**
    * 章节 2.1：漏签补签规则
-   * - 每月可免费补签 1 次
-   * - 之后每次补签消耗 50 积分
-   * - 补签成功后写入 CHECKIN 流水（type=CHECKIN），积分到账
+   * - 只能补"当月、今天之前"且当天没有签到流水的漏签日；date 为空时自动取当月最近的漏签日
+   * - 每月可免费补签 1 次，之后每次补签消耗 50 积分
+   * - 补签成功后写入 CHECKIN 流水，时间回填到被补签那一天（而不是操作当天），
+   *   这样才真正修复连续签到：操作当天仍可正常签到，连续天数也能接上
+   * - 补签不推进任务中心进度：被补日期可能落在上一周，推进"累计签到 5 天"会造成跨周口径混乱
    */
   @Override
   @Transactional
-  public Map<String, Object> makeupCheckin(Long userId) {
-    String ym = LocalDate.now().format(YM);
+  public Map<String, Object> makeupCheckin(Long userId, LocalDate date) {
+    LocalDate today = LocalDate.now();
+    LocalDate target = date != null ? date : latestMissedDay(userId, today);
+
+    if (target == null) {
+      throw new IllegalStateException("当月没有可补签的漏签日");
+    }
+    if (!target.isBefore(today)) {
+      throw new IllegalStateException("只能补签今天之前的日期，今天请直接签到");
+    }
+    if (target.getYear() != today.getYear() || target.getMonthValue() != today.getMonthValue()) {
+      throw new IllegalStateException("只能补签当月的漏签日期");
+    }
+    // 取 [target, today] 窗口的签到日期集合，用于判断该日期是否已签到
+    int span = (int) (today.toEpochDay() - target.toEpochDay()) + 1;
+    if (memberService.getRecentCheckinDates(userId, span).contains(target)) {
+      throw new IllegalStateException("该日期已签到，无需补签");
+    }
+
+    String ym = today.format(YM);
 
     CheckinMakeupEntity record = checkinMakeupMapper.selectOne(
         new LambdaQueryWrapper<CheckinMakeupEntity>()
@@ -157,8 +181,9 @@ public class PointsServiceImpl implements PointsService {
       memberService.spendPoints(userId, cost, ym, "漏签补签消耗积分");
     }
 
-    // 写流水（CHECKIN +5）
-    memberService.addPoints(userId, 5, "CHECKIN", "makeup:" + ym, "漏签补签 +5 积分");
+    // 写流水（CHECKIN +5），created_at 回填到被补签那天（沿用当前时刻，便于流水列表展示）
+    memberService.addPointsAt(userId, 5, "CHECKIN", "makeup:" + target,
+        "漏签补签 +5 积分（" + target + "）", target.atTime(LocalTime.now()));
 
     // 累加当月补签次数
     if (record == null) {
@@ -176,9 +201,46 @@ public class PointsServiceImpl implements PointsService {
     result.put("points", 5);
     result.put("cost", cost);
     result.put("free", free);
+    result.put("makeupDate", target.toString());
     result.put("monthCount", currentCount + 1);
-    log.info("Checkin makeup: userId={}, month={}, free={}, cost={}",
-        userId, ym, free, cost);
+    log.info("Checkin makeup: userId={}, date={}, month={}, free={}, cost={}",
+        userId, target, ym, free, cost);
     return result;
+  }
+
+  /**
+   * 章节 2.1：签到日历数据（指定月份的已签到日期 + 当前连续签到天数）。
+   * 前端直接按 dates 渲染日历，不再用"最近 N 条积分流水"自行推算。
+   */
+  @Override
+  public Map<String, Object> getCheckinCalendar(Long userId, YearMonth month) {
+    LocalDate today = LocalDate.now();
+    YearMonth target = month != null ? month : YearMonth.from(today);
+    List<LocalDate> dates = memberService.getCheckinDatesOfMonth(userId, target);
+
+    Map<String, Object> result = new HashMap<>();
+    result.put("month", target.toString());
+    result.put("dates", dates.stream().map(LocalDate::toString).collect(Collectors.toList()));
+    result.put("checkedToday", dates.contains(today));
+    result.put("streak", memberService.getCurrentCheckinStreak(userId));
+    return result;
+  }
+
+  /**
+   * 取当月最近的一个漏签日（今天之前、且当天没有签到流水），没有则返回 null。
+   * 只回溯到当月 1 号，与"每月免费 1 次"的计数口径保持一致。
+   */
+  private LocalDate latestMissedDay(Long userId, LocalDate today) {
+    // days=今天是几号 → 窗口正好是 [当月 1 号, 今天]
+    Set<LocalDate> checkinDates = memberService.getRecentCheckinDates(userId, today.getDayOfMonth());
+    LocalDate firstOfMonth = today.withDayOfMonth(1);
+    LocalDate cursor = today.minusDays(1);
+    while (!cursor.isBefore(firstOfMonth)) {
+      if (!checkinDates.contains(cursor)) {
+        return cursor;
+      }
+      cursor = cursor.minusDays(1);
+    }
+    return null;
   }
 }

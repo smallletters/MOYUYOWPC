@@ -102,7 +102,9 @@
     {
       "path": "pages/user/address",
       "style": {
-        "navigationBarTitleText": "收货地址"
+        "navigationBarTitleText": "收货地址",
+        // 页面自带自定义顶部栏(.navbar),必须关闭原生导航栏,否则出现"双标题栏"
+        "navigationStyle": "custom"
       }
     },
     {
@@ -554,7 +556,8 @@
     {
       "path": "pages/user/browsing-history",
       "style": {
-        "navigationBarTitleText": "浏览记录"
+        "navigationBarTitleText": "浏览记录",
+        "navigationStyle": "custom"
       }
     },
     {

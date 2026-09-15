@@ -1,21 +1,21 @@
-﻿<template>
+<template>
   <view class="device-manager">
     <view class="page-header">
       <view class="back" @click="goBack"><text class="luc luc-arrow-left" /></view>
-      <text class="title">设备管理</text>
+      <text class="title">{{ t('deviceManager.title') }}</text>
     </view>
 
     <scroll-view scroll-y class="content">
       <view class="banner">
         <text class="banner-icon luc-shield" />
         <view class="banner-info">
-          <text class="banner-title">登录设备管理</text>
-          <text class="banner-desc">查看已登录设备，异常设备请及时移除</text>
+          <text class="banner-title">{{ t('deviceManager.bannerTitle') }}</text>
+          <text class="banner-desc">{{ t('deviceManager.bannerDesc') }}</text>
         </view>
       </view>
 
-      <view v-if="loading" class="empty">加载中…</view>
-      <view v-else-if="!devices.length" class="empty">暂无登录设备</view>
+      <view v-if="loading" class="empty">{{ t('deviceManager.loading') }}</view>
+      <view v-else-if="!devices.length" class="empty">{{ t('deviceManager.empty') }}</view>
       <view v-else class="device-list">
         <view v-for="d in devices" :key="d.id" class="device-card">
           <text class="device-icon luc-smartphone" />
@@ -24,8 +24,10 @@
             <text class="device-meta">{{ d.os }} · {{ d.location }}</text>
             <text class="device-time">{{ formatTime(d.lastActiveAt || d.loginAt) }}</text>
           </view>
-          <view v-if="d.isCurrent" class="current-tag">当前</view>
-          <view v-else class="remove-btn" @click="onRemove(d)">退出</view>
+          <view v-if="d.isCurrent" class="current-tag">{{ t('deviceManager.current') }}</view>
+          <view v-else class="remove-btn" @click="onRemove(d)">
+            {{ t('deviceManager.remove') }}
+          </view>
         </view>
       </view>
     </scroll-view>
@@ -33,8 +35,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { deviceApi } from '@/api'
+import { i18n } from '@/i18n'
+import { usePageTitle } from '@/utils/i18nPageMixin'
+usePageTitle('pageTitle.userDeviceManager')
+
+// 轻量翻译函数（响应 localeVersion 变化，刷新依赖本地化的模板）
+const localeVersion = ref(0)
+let _unsubLocale = null
+function t(key, params) {
+  void localeVersion.value // 触发依赖追踪
+  return i18n.t(key, params)
+}
 
 const devices = ref([])
 const loading = ref(false)
@@ -63,14 +76,14 @@ function formatTime(t) {
 
 function onRemove(d) {
   uni.showModal({
-    title: '退出该设备？',
+    title: t('deviceManager.removeTitle'),
     success: async (r) => {
       if (r.confirm) {
         try {
           await deviceApi.removeDevice(d.id)
           devices.value = devices.value.filter((x) => x.id !== d.id)
         } catch (e) {
-          uni.showToast({ title: '操作失败', icon: 'none' })
+          uni.showToast({ title: t('deviceManager.operationFailed'), icon: 'none' })
         }
       }
     },
@@ -82,6 +95,12 @@ function goBack() {
 }
 onMounted(() => {
   load()
+  _unsubLocale = i18n.subscribe(() => {
+    localeVersion.value += 1
+  })
+})
+onBeforeUnmount(() => {
+  if (_unsubLocale) _unsubLocale()
 })
 </script>
 

@@ -1,12 +1,12 @@
-﻿<template>
+<template>
   <view class="page">
-
-
-    <view v-if="loading" class="loading"><text class="loading-text">加载中…</text></view>
+    <view v-if="loading" class="loading">
+      <text class="loading-text">{{ $t('postCollection.loading') }}</text>
+    </view>
     <view v-else-if="!collected.length" class="empty">
-      <text class="empty-text">还没有收藏任何帖子</text>
+      <text class="empty-text">{{ $t('postCollection.empty') }}</text>
       <view class="empty-btn" @tap="goCommunity">
-        <text class="empty-btn-text">去社区逛逛</text>
+        <text class="empty-btn-text">{{ $t('postCollection.goCommunity') }}</text>
       </view>
     </view>
     <view v-else class="post-list">
@@ -19,11 +19,15 @@
           <image :src="post.images[0]" mode="aspectFill" class="post-cover-img" />
         </view>
         <view class="post-content">
-          <text class="post-title">{{ post.title || post.content || `帖子 #${post.id}` }}</text>
+          <text class="post-title">
+            {{ post.title || post.content || $t('postCollection.postNo', { id: post.id }) }}
+          </text>
           <text v-if="post.content && post.title" class="post-excerpt">
             {{ truncate(post.content, 60) }}
           </text>
-          <text class="post-meta">收藏于 {{ formatTime(post.createTime) }}</text>
+          <text class="post-meta">
+            {{ $t('postCollection.collectedAt', { date: formatTime(post.createTime) }) }}
+          </text>
         </view>
       </view>
     </view>
@@ -37,9 +41,7 @@ import { communityApi } from '@/api'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.userPostCollection')
 
-
 const collected = ref([])
-
 
 const loading = ref(false)
 

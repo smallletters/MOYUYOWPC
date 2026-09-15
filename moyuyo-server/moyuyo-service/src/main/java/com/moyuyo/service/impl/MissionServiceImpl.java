@@ -9,10 +9,13 @@ import com.moyuyo.dao.mapper.MissionMapper;
 import com.moyuyo.dao.mapper.PointsLogMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.dao.mapper.UserMissionMapper;
+import com.moyuyo.service.MemberService;
 import com.moyuyo.service.MissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -27,10 +30,18 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class MissionServiceImpl implements MissionService {
 
+  /**
+   * 成就任务的周期基准日：成就无周期概念，用固定基准日保证进度永不被重置。
+   * 存量数据由 V20260910_02 迁移成同一基准，否则首次触发会被判定为"换周期"而清零累计进度。
+   */
+  private static final LocalDate ACHIEVEMENT_CYCLE = LocalDate.of(1970, 1, 1);
+
   private final MissionMapper missionMapper;
   private final UserMissionMapper userMissionMapper;
   private final UserMapper userMapper;
   private final PointsLogMapper pointsLogMapper;
+  // 连续签到天数统一由 MemberService 提供，避免任务中心与签到页各算一套
+  private final MemberService memberService;
 
   @Override
   public List<MissionEntity> listAllMissions() {
@@ -90,12 +101,16 @@ public class MissionServiceImpl implements MissionService {
    * 增加用户某任务的进度（如签到、浏览、分享后调用）。自动判断是否达成完成。
    * progress 字段累加，当 progress >= target 时标记 completed。
    * 自动按周期重置：DAILY 任务跨天后 progress=0；WEEKLY 任务跨周后 progress=0。
+   * <p>
+   * 事务传播为 REQUIRES_NEW：埋点属于旁路记账，失败时只回滚自身，
+   * 不能让外层业务事务（发笔记/记体重/支付）被标记 rollback-only 而一起失败。
    */
   @Override
-  @Transactional
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void incrementProgress(Long userId, Long missionId, int delta) {
     MissionEntity m = missionMapper.selectById(missionId);
-    if (m == null || m.getActive() != 1) {
+    // active 为 bit(1) 映射的 Integer,需先判空再比较,避免拆箱 NPE
+    if (m == null || m.getActive() == null || m.getActive() != 1) {
       return;
     }
     UserMissionEntity um = userMissionMapper.selectOne(
@@ -110,7 +125,7 @@ public class MissionServiceImpl implements MissionService {
       um.setCompleted(m.getTarget() != null && um.getProgress() >= m.getTarget() ? 1 : 0);
       um.setClaimed(0);
       um.setCycleDate(currentCycleDate(m.getType()));
-      userMissionMapper.insert(um);
+      insertUserMissionSafely(um);
     } else {
       // 周期过期：自动重置进度（DAILY=换日 / WEEKLY=换周）
       LocalDate todayCycle = currentCycleDate(m.getType());
@@ -135,9 +150,12 @@ public class MissionServiceImpl implements MissionService {
 
   /**
    * 计算任务当前周期基准日期。
-   * DAILY: 今天(0点);WEEKLY: 本周一(0点);ACHIEVEMENT: 1970-01-01(永不过期)。
+   * DAILY: 今天(0点);WEEKLY: 本周一(0点);ACHIEVEMENT: 固定基准日(永不过期)。
    */
   private LocalDate currentCycleDate(String missionType) {
+    if ("ACHIEVEMENT".equalsIgnoreCase(missionType)) {
+      return ACHIEVEMENT_CYCLE;
+    }
     LocalDate today = LocalDate.now();
     if ("WEEKLY".equalsIgnoreCase(missionType)) {
       // ISO 周: Monday=1 ... Sunday=7
@@ -152,7 +170,7 @@ public class MissionServiceImpl implements MissionService {
    * type 必须非空（DAILY/WEEKLY/ACHIEVEMENT），keyword 非空，用于精确定位。
    */
   @Override
-  @Transactional
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void incrementByKeyword(Long userId, String type, String keyword, int delta) {
     if (userId == null || type == null || keyword == null) return;
     MissionEntity mission = missionMapper.selectOne(
@@ -169,12 +187,74 @@ public class MissionServiceImpl implements MissionService {
   }
 
   /**
-   * 累加金额型任务进度（不重置，仅累加；适合"累计消费 $500"）。
+   * 累加金额型任务进度（不再重置，仅累加；适合"累计消费 $500"）。
    */
   @Override
-  @Transactional
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void accumulateByKeyword(Long userId, String type, String keyword, int delta) {
     incrementByKeyword(userId, type, keyword, delta);
+  }
+
+  /**
+   * 把任务进度直接设为指定值（进度行不存在时按需创建）。
+   * 用于「连续签到 30 天」这类需要"断签即归零"的任务。
+   */
+  @Override
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void setProgressByKeyword(Long userId, String type, String keyword, int progress) {
+    if (userId == null || type == null || keyword == null) return;
+    MissionEntity mission = missionMapper.selectOne(
+        new LambdaQueryWrapper<MissionEntity>()
+            .eq(MissionEntity::getActive, 1)
+            .eq(MissionEntity::getType, type.toUpperCase())
+            .like(MissionEntity::getName, keyword)
+            .last("LIMIT 1"));
+    if (mission == null) {
+      log.debug("[mission] no active mission matched type={}, keyword={}", type, keyword);
+      return;
+    }
+    UserMissionEntity um = userMissionMapper.selectOne(
+        new LambdaQueryWrapper<UserMissionEntity>()
+            .eq(UserMissionEntity::getUserId, userId)
+            .eq(UserMissionEntity::getMissionId, mission.getId()));
+    if (um != null && um.getClaimed() != null && um.getClaimed() == 1) {
+      // 已领取过奖励的进度行保持原状,重置会让其变成"可再次领取"
+      return;
+    }
+    int completed = mission.getTarget() != null && progress >= mission.getTarget() ? 1 : 0;
+    LocalDate cycle = currentCycleDate(mission.getType());
+    if (um == null) {
+      um = new UserMissionEntity();
+      um.setUserId(userId);
+      um.setMissionId(mission.getId());
+      um.setProgress(progress);
+      um.setCompleted(completed);
+      um.setClaimed(0);
+      um.setCycleDate(cycle);
+      insertUserMissionSafely(um);
+    } else {
+      um.setProgress(progress);
+      um.setCompleted(completed);
+      um.setCycleDate(cycle);
+      userMissionMapper.updateById(um);
+    }
+    log.info("Mission progress set: userId={}, missionId={}, progress={}", userId, mission.getId(), progress);
+  }
+
+  /**
+   * 插入任务进度行。并发首次触发时唯一索引 uk_user_mission 会拦下重复插入，
+   * 这里吞掉并返回 false：本次埋点放弃即可，进度由并发的另一次请求推进，
+   * 避免把 DuplicateKeyException 抛给业务调用方（签到/分享等埋点外层没有兜底）。
+   */
+  private boolean insertUserMissionSafely(UserMissionEntity um) {
+    try {
+      userMissionMapper.insert(um);
+      return true;
+    } catch (DuplicateKeyException e) {
+      log.debug("[mission] duplicate progress row, skip insert: userId={}, missionId={}",
+          um.getUserId(), um.getMissionId());
+      return false;
+    }
   }
 
   @Override
@@ -192,6 +272,12 @@ public class MissionServiceImpl implements MissionService {
 
     if (userMission == null) {
       throw new IllegalArgumentException("未领取该任务");
+    }
+    // 周期校验:上一周期"已完成未领取"的记录不允许跨周期补领
+    // (展示层同样按新周期渲染为未完成,这里做接口层兜底,防止直接调接口刷奖励)
+    LocalDate nowCycle = currentCycleDate(mission.getType());
+    if (userMission.getCycleDate() == null || !nowCycle.equals(userMission.getCycleDate())) {
+      throw new IllegalStateException("任务已过周期，无法领取奖励");
     }
     if (userMission.getCompleted() != 1) {
       throw new IllegalStateException("任务未完成，无法领取奖励");
@@ -246,8 +332,8 @@ public class MissionServiceImpl implements MissionService {
             .eq(MissionEntity::getType, "DAILY"));
     long dailyTotal = allDaily.size();
 
-    // 连续签到天数：从 points_log(CHECKIN) 倒推，与签到页 calculateStreak 保持一致
-    int streak = calculateCheckinStreak(userId, today);
+    // 连续签到天数：统一由 MemberService 计算（从今天往回数，今天未签为 0），避免多处实现口径不一致
+    int streak = memberService.getCurrentCheckinStreak(userId);
 
     Map<String, Object> stats = new HashMap<>();
     stats.put("todayPoints", todayPoints);
@@ -258,35 +344,11 @@ public class MissionServiceImpl implements MissionService {
   }
 
   /**
-   * 从今天往前数连续 CHECKIN 流水天数（包含今天如果已签）。
-   * 与 check-in.vue calculateStreak 算法一致。
-   */
-  private int calculateCheckinStreak(Long userId, LocalDate today) {
-    List<PointsLogEntity> logs = pointsLogMapper.selectList(
-        new LambdaQueryWrapper<PointsLogEntity>()
-            .eq(PointsLogEntity::getUserId, userId)
-            .eq(PointsLogEntity::getType, "CHECKIN"));
-    if (logs.isEmpty()) {
-      return 0;
-    }
-    // 仅保留日期不重复的 CHECKIN 日（一天多次只算 1 次）
-    java.util.Set<String> dateSet = new java.util.HashSet<>();
-    for (PointsLogEntity l : logs) {
-      if (l.getCreatedAt() == null) continue;
-      LocalDate d = l.getCreatedAt().toLocalDate();
-      dateSet.add(d.toString());
-    }
-    int streak = 0;
-    LocalDate cursor = today;
-    while (dateSet.contains(cursor.toString())) {
-      streak++;
-      cursor = cursor.minusDays(1);
-    }
-    return streak;
-  }
-
-  /**
    * 用户首次查询任务时为每个任务创建一条 user_mission 记录（progress=0, completed=0, claimed=0）。
+   * <p>
+   * 注意：本方法会被任务中心页面并发调用（onLoad / onShow 各请求一次），
+   * 且外层 listGroupedMissions 未开启事务，因此这里用 insertUserMissionSafely 逐条兜底，
+   * 避免并发初始化时唯一索引抛 DuplicateKeyException 导致接口 500。
    */
   private void ensureUserMissions(Long userId, List<MissionEntity> all) {
     if (all.isEmpty()) {
@@ -306,7 +368,7 @@ public class MissionServiceImpl implements MissionService {
       um.setCompleted(0);
       um.setClaimed(0);
       um.setCreateTime(now);
-      userMissionMapper.insert(um);
+      insertUserMissionSafely(um);
     }
   }
 
@@ -333,7 +395,12 @@ public class MissionServiceImpl implements MissionService {
 
     int progress = (um == null || um.getProgress() == null || cycleExpired) ? 0 : um.getProgress();
     int completed = (um == null || um.getCompleted() == null || cycleExpired) ? 0 : um.getCompleted();
-    int claimed = um == null || um.getClaimed() == null ? 0 : um.getClaimed(); // 领取记录跨周期保留
+    // 周期过期的 DAILY/WEEKLY 任务必须一并把 claimed 归零:
+    // 否则新周期里仍显示"已领取"且按钮不可点,用户不会再去完成动作,导致本周/今日奖励永远领不到
+    // (incrementProgress 在新周期触发时也会把 DB 里的 claimed 置 0,这里只是让展示与之一致)
+    // 成就任务周期固定(见 ACHIEVEMENT_CYCLE),正常不会过期;此处的排除仅针对历史脏 cycle_date 兜底
+    boolean resetClaimed = cycleExpired && !"ACHIEVEMENT".equalsIgnoreCase(m.getType());
+    int claimed = (um == null || um.getClaimed() == null || resetClaimed) ? 0 : um.getClaimed();
     map.put("done", progress);
     map.put("total", m.getTarget() == null ? 1 : m.getTarget());
     map.put("progress", progress);
@@ -383,6 +450,8 @@ public class MissionServiceImpl implements MissionService {
     if (n.contains("邀请")) return "INVITE_FRIEND";
     if (n.contains("分享")) return "SHARE_PRODUCT";
     if (n.toLowerCase().contains("pet hub")) return "PET_HUB_INTERACT";
+    // 记录宠物体重属于 Pet Hub 互动,跳转到宠物 Tab 的体重记录入口
+    if (n.contains("体重")) return "PET_HUB_INTERACT";
     if (n.contains("笔记") || n.contains("社区")) return "POST_COMMUNITY";
     if (n.contains("浏览")) return "BROWSE_PRODUCTS";
     if (n.contains("购物") || n.contains("下单") || n.contains("订单")) return "PURCHASE_ORDER";

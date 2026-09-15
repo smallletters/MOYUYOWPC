@@ -7,7 +7,7 @@
         <input
           v-model="keyword"
           class="search-input"
-          placeholder="搜索昵称、简介或ID…"
+          :placeholder="$t('followList.searchPlaceholder')"
           confirm-type="search"
           :focus="true"
           @confirm="onSearchConfirm"
@@ -26,7 +26,7 @@
         @tap="onTabChange(t.value)"
       >
         <text class="tab-text" :class="{ 'tab-active-text': mode === t.value }">
-          {{ t.label }}
+          {{ $t(t.labelKey) }}
           <text v-if="total > 0" class="tab-count">{{ total }}</text>
         </text>
         <view v-if="mode === t.value" class="tab-indicator" />
@@ -49,13 +49,18 @@
       <!-- 搜索结果摘要(只有关键词时显示) -->
       <view v-if="searchSummary" class="search-summary">
         <text class="search-summary-text">
-          匹配 {{ searchSummary.matched }} / 共 {{ searchSummary.total }}
+          {{
+            $t('followList.searchSummary', {
+              matched: searchSummary.matched,
+              total: searchSummary.total,
+            })
+          }}
         </text>
       </view>
 
       <!-- 加载中 -->
       <view v-if="loading && !filteredList.length" class="status">
-        <text class="status-text">加载中…</text>
+        <text class="status-text">{{ $t('followList.loading') }}</text>
       </view>
 
       <!-- 空结果 -->
@@ -65,10 +70,12 @@
         </text>
         <text class="empty-title">{{ emptyHint }}</text>
         <!-- 搜索无结果:给一个「清空搜索」按钮 -->
-        <text v-if="isSearching" class="empty-action" @tap="onClearSearchFromEmpty">清空搜索</text>
+        <text v-if="isSearching" class="empty-action" @tap="onClearSearchFromEmpty">
+          {{ $t('followList.clearSearch') }}
+        </text>
         <!-- 非搜索空态(关注/粉丝列表本身为空)时,只有 following 给引导按钮 -->
         <text v-else-if="mode === 'following'" class="empty-action" @tap="goDiscover">
-          去发现感兴趣的人
+          {{ $t('followList.goDiscover') }}
         </text>
       </view>
 
@@ -92,37 +99,39 @@
 
         <view class="user-info">
           <view class="user-name-row">
-            <text class="user-name">{{ u.nickname || '匿名用户' }}</text>
-            <text v-if="u.mutualFollowed" class="mutual-badge">互相关注</text>
+            <text class="user-name">{{ u.nickname || $t('followList.anonymous') }}</text>
+            <text v-if="u.mutualFollowed" class="mutual-badge">
+              {{ $t('followList.mutualFollowed') }}
+            </text>
           </view>
           <text v-if="u.bio" class="user-bio">{{ u.bio }}</text>
           <text v-else class="user-bio user-bio--placeholder">
             {{
               mode === 'following'
-                ? formatRelativeTime(u.createdAt) + ' 关注了TA'
-                : formatRelativeTime(u.createdAt) + ' 关注了你'
+                ? $t('followList.followedTa', { time: formatRelativeTime(u.createdAt) })
+                : $t('followList.followedYou', { time: formatRelativeTime(u.createdAt) })
             }}
           </text>
         </view>
 
         <!-- 操作按钮 -->
         <view v-if="mode === 'following'" class="btn btn-unfollow" @tap.stop="onUnfollow(u)">
-          <text class="btn-text">已关注</text>
+          <text class="btn-text">{{ $t('followList.followed') }}</text>
         </view>
         <view v-else-if="!u.followed" class="btn btn-follow" @tap.stop="onFollow(u)">
-          <text class="btn-text-white">回关</text>
+          <text class="btn-text-white">{{ $t('followList.followBack') }}</text>
         </view>
         <view v-else class="btn btn-mutual" @tap.stop="onChat(u)">
-          <text class="btn-text-white">发消息</text>
+          <text class="btn-text-white">{{ $t('followList.sendMessage') }}</text>
         </view>
       </view>
 
       <!-- 加载更多 / 到底 -->
       <view v-if="loading && filteredList.length" class="status">
-        <text class="status-text">加载中…</text>
+        <text class="status-text">{{ $t('followList.loading') }}</text>
       </view>
       <view v-if="!loading && filteredList.length && noMore" class="status">
-        <text class="status-text">— 没有更多了 —</text>
+        <text class="status-text">{{ $t('followList.noMore') }}</text>
       </view>
     </scroll-view>
   </view>
@@ -132,11 +141,20 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { followApi } from '@/api/follow'
 import { usePageTitle } from '@/utils/i18nPageMixin'
+import { i18n } from '@/i18n'
 usePageTitle('pageTitle.userFollowList')
 
+// 语言版本号:locale 变化时自增,驱动脚本内依赖本地化的 computed 重算
+const localeVersion = ref(0)
+let _unsubLocale = null
+function t(key, params) {
+  void localeVersion.value
+  return i18n.t(key, params)
+}
+
 const tabs = [
-  { value: 'following', label: '关注' },
-  { value: 'followers', label: '粉丝' },
+  { value: 'following', labelKey: 'followList.tabs.following' },
+  { value: 'followers', labelKey: 'followList.tabs.followers' },
 ]
 
 // 从 query.mode 读取初始 tab;uniapp vue3 setup 阶段 options 可能未注入,这里兜底读 onLoad
@@ -209,17 +227,25 @@ const searchSummary = computed(() => {
  *   - 搜索无结果:提示「未找到匹配的用户」+ 「清空搜索」操作
  */
 const emptyHint = computed(() => {
-  if (isSearching.value) return '未找到匹配的用户'
-  if (mode.value === 'following') return '还没有关注任何人'
-  return '还没有粉丝'
+  if (isSearching.value) return t('followList.emptySearch')
+  if (mode.value === 'following') return t('followList.emptyFollowing')
+  return t('followList.emptyFollowers')
 })
 
 // 在 setup 顶层注册 onLoad 钩子(uniapp vue3 setup 语法)
 onMounted(() => {
+  // 订阅语言变化
+  _unsubLocale = i18n.subscribe(() => {
+    localeVersion.value += 1
+  })
   // 兜底:onMounted 时 page options 通常已就绪,如果还没读取到 query,再读一次
   const m = resolveInitialMode()
   if (mode.value !== m) mode.value = m
   loadList(true)
+})
+
+onUnmounted(() => {
+  if (_unsubLocale) _unsubLocale()
 })
 
 // 监听 pageshow:用户从其他页返回时刷新关注状态(如取消关注后回退)
@@ -228,9 +254,6 @@ function onShowHook() {
     loadList(true)
   }
 }
-
-// 兜底:在某些端 onShow 通过 onUnmounted 模拟
-onUnmounted(() => {})
 
 async function loadList(reset = false) {
   if (reset) {
@@ -309,19 +332,19 @@ function onClearSearchFromEmpty() {
 
 async function onUnfollow(u) {
   uni.showModal({
-    title: '取消关注',
-    content: `确认取消关注「${u.nickname}」?`,
-    confirmText: '取消关注',
-    cancelText: '再想想',
+    title: i18n.t('followList.unfollowTitle'),
+    content: i18n.t('followList.unfollowConfirm', { name: u.nickname }),
+    confirmText: i18n.t('followList.unfollowConfirmText'),
+    cancelText: i18n.t('followList.unfollowCancelText'),
     success: async (res) => {
       if (!res.confirm) return
       try {
         await followApi.unfollow(u.targetId || u.userId)
         list.value = list.value.filter((x) => (x.targetId || x.userId) !== (u.targetId || u.userId))
         total.value = Math.max(0, total.value - 1)
-        uni.showToast({ title: '已取消关注', icon: 'none' })
+        uni.showToast({ title: i18n.t('followList.unfollowed'), icon: 'none' })
       } catch (e) {
-        uni.showToast({ title: '操作失败', icon: 'none' })
+        uni.showToast({ title: i18n.t('followList.operationFailed'), icon: 'none' })
       }
     },
   })
@@ -335,9 +358,9 @@ async function onFollow(u) {
     if (idx >= 0) {
       list.value[idx].followed = true
     }
-    uni.showToast({ title: '已关注', icon: 'success' })
+    uni.showToast({ title: i18n.t('followList.followed'), icon: 'success' })
   } catch (e) {
-    uni.showToast({ title: '操作失败', icon: 'none' })
+    uni.showToast({ title: i18n.t('followList.operationFailed'), icon: 'none' })
   }
 }
 
@@ -351,27 +374,37 @@ function onLongPress(u) {
   uni.showActionSheet({
     itemList:
       mode.value === 'following'
-        ? ['取消关注', '设置分组', '推荐给朋友']
-        : ['回关', '拉黑', '推荐给朋友'],
+        ? [
+            i18n.t('followList.actionUnfollow'),
+            i18n.t('followList.actionSetGroup'),
+            i18n.t('followList.actionRecommend'),
+          ]
+        : [
+            i18n.t('followList.actionFollowBack'),
+            i18n.t('followList.actionBlock'),
+            i18n.t('followList.actionRecommend'),
+          ],
     success: async (res) => {
       if (mode.value === 'following') {
         if (res.tapIndex === 0) onUnfollow(u)
         else if (res.tapIndex === 1) {
-          uni.showToast({ title: '分组功能即将上线', icon: 'none' })
+          uni.showToast({ title: i18n.t('followList.groupComingSoon'), icon: 'none' })
         } else if (res.tapIndex === 2) {
           uni.setClipboardData({
             data: `@${u.nickname}`,
-            success: () => uni.showToast({ title: '昵称已复制', icon: 'none' }),
+            success: () =>
+              uni.showToast({ title: i18n.t('followList.nicknameCopied'), icon: 'none' }),
           })
         }
       } else {
         if (res.tapIndex === 0) onFollow(u)
         else if (res.tapIndex === 1) {
-          uni.showToast({ title: '拉黑功能即将上线', icon: 'none' })
+          uni.showToast({ title: i18n.t('followList.blockComingSoon'), icon: 'none' })
         } else if (res.tapIndex === 2) {
           uni.setClipboardData({
             data: `@${u.nickname}`,
-            success: () => uni.showToast({ title: '昵称已复制', icon: 'none' }),
+            success: () =>
+              uni.showToast({ title: i18n.t('followList.nicknameCopied'), icon: 'none' }),
           })
         }
       }
@@ -408,10 +441,11 @@ function formatRelativeTime(t) {
     const d = new Date(t)
     const now = new Date()
     const diff = Math.floor((now - d) / 1000)
-    if (diff < 60) return '刚刚'
-    if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`
-    if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`
-    if (diff < 7 * 86400) return `${Math.floor(diff / 86400)}天前`
+    if (diff < 60) return i18n.t('followList.time.justNow')
+    if (diff < 3600) return i18n.t('followList.time.minutesAgo', { count: Math.floor(diff / 60) })
+    if (diff < 86400) return i18n.t('followList.time.hoursAgo', { count: Math.floor(diff / 3600) })
+    if (diff < 7 * 86400)
+      return i18n.t('followList.time.daysAgo', { count: Math.floor(diff / 86400) })
     const yyyy = d.getFullYear()
     const mm = String(d.getMonth() + 1).padStart(2, '0')
     const dd = String(d.getDate()).padStart(2, '0')

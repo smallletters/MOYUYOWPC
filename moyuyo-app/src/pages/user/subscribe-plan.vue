@@ -5,7 +5,7 @@
       <view class="back-btn" @click="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">订阅计划</text>
+      <text class="header-title">{{ t('subscribe.title') }}</text>
       <view class="header-spacer" />
     </view>
 
@@ -15,8 +15,8 @@
         <image :src="product.image" class="product-image" mode="aspectFill" />
         <view class="product-info">
           <text class="product-name">{{ product.name }}</text>
-          <text class="product-price">${{ product.price }}</text>
-          <text class="product-price-label">单次购买价</text>
+          <text class="product-price">{{ currencySymbol }}{{ product.price }}</text>
+          <text class="product-price-label">{{ t('subscribe.singlePrice') }}</text>
         </view>
       </view>
 
@@ -24,9 +24,9 @@
       <view class="subscribe-header">
         <view class="subscribe-title-row">
           <text class="subscribe-title">Subscribe & Save</text>
-          <text class="save-badge">省10%</text>
+          <text class="save-badge">{{ t('subscribe.save10') }}</text>
         </view>
-        <text class="subscribe-desc">选择配送周期，定期自动送达，享受订阅专属折扣</text>
+        <text class="subscribe-desc">{{ t('subscribe.desc') }}</text>
       </view>
 
       <!-- 订阅周期选择 -->
@@ -40,7 +40,7 @@
         >
           <!-- 推荐标签 -->
           <view v-if="plan.recommend" class="recommend-badge">
-            <text class="recommend-text">推荐</text>
+            <text class="recommend-text">{{ t('subscribe.recommend') }}</text>
           </view>
 
           <!-- 自定义 radio -->
@@ -50,18 +50,18 @@
 
           <view class="plan-content">
             <view class="plan-name-row">
-              <text class="plan-name">{{ plan.name }}</text>
-              <text class="plan-save">{{ $t('subscribe.saveN', { n: plan.discount }) }}</text>
+              <text class="plan-name">{{ t(plan.nameKey) }}</text>
+              <text class="plan-save">{{ t('subscribe.saveN', { n: plan.discount }) }}</text>
             </view>
             <text class="plan-price">
               {{ currencySymbol }}{{ plan.price }}
-              <text class="plan-period">/{{ plan.periodLabel }}</text>
+              <text class="plan-period">/{{ t(plan.periodKey) }}</text>
             </text>
             <!-- 额外权益 -->
-            <view v-if="plan.benefits.length" class="plan-benefits">
-              <view v-for="(b, i) in plan.benefits" :key="i" class="benefit-item">
+            <view v-if="plan.benefitKeys.length" class="plan-benefits">
+              <view v-for="(b, i) in plan.benefitKeys" :key="i" class="benefit-item">
                 <text class="benefit-icon luc-check" />
-                <text class="benefit-text">{{ b }}</text>
+                <text class="benefit-text">{{ t(b) }}</text>
               </view>
             </view>
           </view>
@@ -70,24 +70,24 @@
 
       <!-- 订阅权益说明 -->
       <view class="benefits-section">
-        <text class="section-title">订阅权益</text>
+        <text class="section-title">{{ t('subscribe.benefits') }}</text>
         <view class="benefits-card">
           <view v-for="(b, i) in subscribeBenefits" :key="i" class="benefit-row">
             <text class="benefit-check luc-check" />
-            <text class="benefit-desc">{{ b }}</text>
+            <text class="benefit-desc">{{ t(b) }}</text>
           </view>
         </view>
       </view>
 
       <!-- 配送信息 -->
       <view class="delivery-section">
-        <text class="section-title">配送信息</text>
+        <text class="section-title">{{ t('subscribe.deliveryInfo') }}</text>
         <view class="delivery-card">
           <!-- 首次配送日期 -->
           <view class="delivery-row" @click="showDatePicker">
             <view class="delivery-left">
               <text class="delivery-icon luc-map-pin" />
-              <text class="delivery-label">首次配送日期</text>
+              <text class="delivery-label">{{ t('subscribe.firstDelivery') }}</text>
             </view>
             <view class="delivery-right">
               <text class="delivery-value">{{ firstDeliveryDate }}</text>
@@ -99,7 +99,7 @@
           <view class="delivery-row" @click="showAddressPicker">
             <view class="delivery-left">
               <text class="delivery-icon luc-map-pin" />
-              <text class="delivery-label">配送地址</text>
+              <text class="delivery-label">{{ t('subscribe.deliveryAddress') }}</text>
             </view>
             <view class="delivery-right">
               <text class="delivery-value">{{ deliveryAddress }}</text>
@@ -116,16 +116,16 @@
     <!-- 底部固定 CTA -->
     <view class="bottom-bar">
       <view class="bottom-price-row">
-        <text class="bottom-label">{{ $t('subscribe.totalLabel') }}</text>
+        <text class="bottom-label">{{ t('subscribe.totalLabel') }}</text>
         <text class="bottom-price">
           {{ currencySymbol }}{{ currentPlanPrice }}
-          <text class="bottom-period">/{{ currentPlanPeriod }}</text>
+          <text class="bottom-period">/{{ t(currentPlanPeriod) }}</text>
         </text>
       </view>
       <button class="subscribe-btn" @click="onSubscribe">
-        {{ $t('subscribe.startSubscribe') }}
+        {{ t('subscribe.startSubscribe') }}
       </button>
-      <text class="bottom-note">{{ $t('subscribe.cancelAnytime') }}</text>
+      <text class="bottom-note">{{ t('subscribe.cancelAnytime') }}</text>
     </view>
   </view>
 </template>
@@ -136,9 +136,7 @@ import { i18n } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.userSubscribePlan')
 
-
 // 商品信息 mock
-
 
 const product = ref({
   name: 'MOYUYO 温和沐浴露 500ml',
@@ -155,43 +153,43 @@ const firstDeliveryDate = ref('2026-07-15')
 // 配送地址
 const deliveryAddress = ref('默认地址 - 北京市朝阳区')
 
-// 订阅计划列表 mock
+// 订阅计划列表 mock（name/periodLabel/benefits 存 i18n key，展示时翻译）
 const plans = ref([
   {
     key: 'monthly',
-    name: '每月配送',
+    nameKey: 'subscribe.plans.monthly',
     price: '25.20',
-    periodLabel: '月',
+    periodKey: 'subscribe.period.month',
     discount: 10,
     recommend: false,
-    benefits: [],
+    benefitKeys: [],
   },
   {
     key: 'bimonthly',
-    name: '双月配送',
+    nameKey: 'subscribe.plans.bimonthly',
     price: '50.40',
-    periodLabel: '2月',
+    periodKey: 'subscribe.periodBimonthly',
     discount: 10,
     recommend: false,
-    benefits: ['免运费'],
+    benefitKeys: ['subscribe.benefitsList.freeShipping'],
   },
   {
     key: 'quarterly',
-    name: '季度配送',
+    nameKey: 'subscribe.plans.quarterly',
     price: '75.60',
-    periodLabel: '3月',
+    periodKey: 'subscribe.periodQuarterly',
     discount: 10,
     recommend: true,
-    benefits: ['免运费', '赠品'],
+    benefitKeys: ['subscribe.benefitsList.freeShipping', 'subscribe.benefitsList.gift'],
   },
 ])
 
 // 订阅权益说明
 const subscribeBenefits = [
-  '自动享 10% off',
-  '免运费',
-  '随时调整周期 / 暂停 / 取消',
-  '提前 7 天续订提醒',
+  'subscribe.benefitAuto10',
+  'subscribe.benefitsList.freeShipping',
+  'subscribe.cancelAnytime',
+  'subscribe.benefitReminder',
 ]
 
 // 当前选中计划的价格
@@ -200,16 +198,26 @@ const currentPlanPrice = computed(() => {
   return plan ? plan.price : '25.20'
 })
 
-// 当前选中计划的周期
+// 当前选中计划的周期(i18n key,展示时翻译)
 const currentPlanPeriod = computed(() => {
   const plan = plans.value.find((p) => p.key === selectedPlan.value)
-  return plan ? plan.periodLabel : '月'
+  return plan ? plan.periodKey : 'subscribe.period.month'
 })
 
-// 当前语言货币符号
-const currencySymbol = computed(() => i18n.currencySymbol)
 // locale 版本号触发响应式
 const localeVersion = ref(0)
+
+// 翻译函数:读取 localeVersion,语言切换时触发模板重渲染
+const t = (key, params) => {
+  void localeVersion.value
+  return i18n.t(key, params)
+}
+
+// 当前语言货币符号
+const currencySymbol = computed(() => {
+  void localeVersion.value
+  return i18n.currencySymbol
+})
 
 const goBack = () => {
   uni.navigateBack()
@@ -228,7 +236,7 @@ const onSubscribe = () => {
     title: i18n.t('subscribe.confirmTitle'),
     content: i18n.t('subscribe.confirmContent', {
       price: `${currencySymbol.value}${currentPlanPrice.value}`,
-      period: currentPlanPeriod.value,
+      period: t(currentPlanPeriod.value),
     }),
     success: (res) => {
       if (res.confirm) {

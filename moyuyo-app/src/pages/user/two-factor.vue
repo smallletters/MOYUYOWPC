@@ -1,8 +1,8 @@
 <template>
   <view class="two-factor">
     <view class="header">
-      <text class="title">Two-Factor Authentication</text>
-      <text class="sub">Enter the 6-digit code sent to your phone</text>
+      <text class="title">{{ $t('twoFactor.title') }}</text>
+      <text class="sub">{{ $t('twoFactor.sub') }}</text>
     </view>
 
     <view class="form">
@@ -26,11 +26,11 @@
         :class="{ disabled: !codeComplete }"
         @click="onVerify"
       >
-        Verify
+        {{ $t('twoFactor.verify') }}
       </view>
 
       <view class="resend" @click="onResend">
-        {{ cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend Code' }}
+        {{ cooldown > 0 ? $t('twoFactor.resendIn', { sec: cooldown }) : $t('twoFactor.resend') }}
       </view>
     </view>
   </view>
@@ -38,6 +38,7 @@
 
 <script>
 import { useUserStore } from '@/store'
+import { i18n } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.userTwoFactor',
@@ -71,10 +72,10 @@ export default {
     async sendCode() {
       try {
         await this.userStore.sendTwoFactorCode()
-        uni.showToast({ title: 'Code sent to your phone', icon: 'success' })
+        uni.showToast({ title: i18n.t('twoFactor.codeSent'), icon: 'success' })
         this.startCooldown()
       } catch (e) {
-        uni.showToast({ title: e.message || 'Failed to send code', icon: 'none' })
+        uni.showToast({ title: e.message || i18n.t('twoFactor.sendFailed'), icon: 'none' })
       }
     },
 
@@ -110,10 +111,10 @@ export default {
       const fullCode = this.code.join('')
       try {
         await this.userStore.verifyTwoFactorCode(fullCode)
-        uni.showToast({ title: 'Verified', icon: 'success' })
+        uni.showToast({ title: i18n.t('twoFactor.verified'), icon: 'success' })
         setTimeout(() => uni.navigateBack(), 800)
       } catch (e) {
-        uni.showToast({ title: e.message || 'Invalid code', icon: 'none' })
+        uni.showToast({ title: e.message || i18n.t('twoFactor.invalidCode'), icon: 'none' })
         this.code = []
       }
     },

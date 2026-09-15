@@ -106,26 +106,6 @@ ensure_env() {
     log_ok ".env 校验通过"
 }
 
-# ---- 创建 MySQL/ES PKCS12 信任库 ----
-ensure_truststore() {
-    local ts_path="/opt/moyuyo/certs/mysql-ca.p12"
-    if [ ! -f "$ts_path" ]; then
-        log_warn "MySQL truststore 不存在，生成自签 CA（仅首次启动需要）"
-        mkdir -p /opt/moyuyo/certs
-        openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
-            -keyout /opt/moyuyo/certs/mysql-ca.key \
-            -out /opt/moyuyo/certs/mysql-ca.crt \
-            -subj "/CN=moyuyo-mysql-ca" 2>/dev/null
-        local pwd
-        pwd=$(grep -E "^MYSQL_TRUSTSTORE_PASSWORD=" "$ENV_FILE" | cut -d= -f2-)
-        openssl pkcs12 -export -in /opt/moyuyo/certs/mysql-ca.crt \
-            -inkey /opt/moyuyo/certs/mysql-ca.key \
-            -out "$ts_path" -password "pass:$pwd"
-        chmod 600 "$ts_path"
-        log_ok "MySQL truststore 已生成：$ts_path"
-    fi
-}
-
 # ---- 启动编排 ----
 start_stack() {
     local rebuild="${1:-false}"
@@ -143,6 +123,11 @@ start_stack() {
     log_info "启动 MySQL..."
     $COMPOSE --env-file "$ENV_FILE" up -d mysql
     wait_healthy mysql 120
+
+    # 从 MySQL 自签 CA（数据目录内 ca.pem）导出 PKCS12 信任库，供 app 校验服务端证书；
+    # 一次性任务，前台运行以便失败时立即暴露（pipefail 会把失败退出码传递出来）
+    log_info "生成 MySQL CA 信任库（mysql-certs-init）..."
+    $COMPOSE --env-file "$ENV_FILE" up mysql-certs-init 2>&1 | tee -a "$LOG_FILE"
 
     log_info "启动 Redis..."
     $COMPOSE --env-file "$ENV_FILE" up -d redis
@@ -255,7 +240,6 @@ main() {
     case "$mode" in
         deploy)
             ensure_env
-            ensure_truststore
             start_stack "$rebuild"
             post_check
             show_status

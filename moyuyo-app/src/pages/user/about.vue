@@ -1,13 +1,5 @@
 <template>
   <view class="about">
-    <!-- 顶部导航栏 -->
-    <view class="header">
-      <view class="back-btn" @click="goBack">
-        <text class="back-icon luc-arrow-left" />
-      </view>
-      <text class="header-title">关于我们</text>
-    </view>
-
     <scroll-view class="content" scroll-y>
       <!-- 品牌英雄区 -->
       <view class="hero">
@@ -21,9 +13,9 @@
 
       <!-- 品牌故事 -->
       <view class="card">
-        <text class="card-title">品牌故事</text>
+        <text class="card-title">{{ $t('about.brandStory') }}</text>
         <text class="card-body">
-          MOYUYO是一个高端宠物生活方式品牌，我们相信每一只宠物都值得最好的。从专业的户外装备到温和的日常护理，从有趣的互动玩具到舒适的家居空间，我们用匠心打造每一件产品，为TA创造更美好的生活。
+          {{ $t('about.brandStoryBody') }}
         </text>
       </view>
 
@@ -40,7 +32,7 @@
 
       <!-- 联系我们 -->
       <view class="card">
-        <text class="card-title">联系我们</text>
+        <text class="card-title">{{ $t('about.contact') }}</text>
         <view class="contact-list">
           <view v-for="item in contacts" :key="item.label" class="contact-item">
             <text class="contact-icon luc" :class="$luc(item.icon)" />
@@ -73,63 +65,95 @@
 <script>
 import { config } from '@/utils/config'
 import { isUrlAllowed } from '@/utils/webview-guard'
+import { i18n } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.userAbout',
 
   data() {
     return {
-      characters: [
+      localeVersion: 0,
+      unsubLocale: null,
+    }
+  },
+
+  computed: {
+    // IP 角色介绍（随语言切换刷新）
+    characters() {
+      void this.localeVersion
+      return [
         {
           name: 'MILO',
-          role: '探险家',
+          role: i18n.t('about.roleExplorer'),
           initial: 'M',
           bgColor: 'var(--color-primary-light)',
           color: 'var(--color-primary)',
         },
         {
           name: 'LUNA',
-          role: '生活家',
+          role: i18n.t('about.roleLifestyle'),
           initial: 'L',
           bgColor: 'var(--color-divider)',
           color: 'var(--color-text)',
         },
-        { name: 'ATLAS', role: '守护者', initial: 'A', bgColor: '#e9f9ee', color: '#34c759' },
+        {
+          name: 'ATLAS',
+          role: i18n.t('about.roleGuardian'),
+          initial: 'A',
+          bgColor: '#e9f9ee',
+          color: '#34c759',
+        },
         {
           name: 'OLIVE',
-          role: '创作者',
+          role: i18n.t('about.roleCreator'),
           initial: 'O',
           bgColor: 'var(--color-divider)',
           color: 'var(--color-text-secondary)',
         },
-      ],
-      // 联系方式从环境变量读取(.env 中 VITE_CONTACT_*),上线前必须替换
-      contacts: [
-        { icon: 'globe', label: '官方网站', value: config.contactWebsite },
-        { icon: 'mail', label: '客服邮箱', value: config.contactEmail },
-        { icon: 'phone', label: '客服热线', value: config.contactPhone },
-      ],
-      // 协议链接:有 VITE_*_URL 时优先走外链,否则走内置兜底页
-      infoLinks: [
-        { label: '用户协议', type: 'terms', url: config.termsUrl },
-        { label: '隐私政策', type: 'privacy', url: config.privacyUrl },
-        { label: '商户资质', type: 'qualification', url: config.qualificationUrl },
-        { label: '开源许可', type: 'license', url: config.licenseUrl },
-      ],
-    }
+      ]
+    },
+    // 联系方式从环境变量读取(.env 中 VITE_CONTACT_*),上线前必须替换
+    contacts() {
+      void this.localeVersion
+      return [
+        { icon: 'globe', label: i18n.t('about.contactWebsite'), value: config.contactWebsite },
+        { icon: 'mail', label: i18n.t('about.contactEmail'), value: config.contactEmail },
+        { icon: 'phone', label: i18n.t('about.contactPhone'), value: config.contactPhone },
+      ]
+    },
+    // 协议链接:有 VITE_*_URL 时优先走外链,否则走内置兜底页
+    infoLinks() {
+      void this.localeVersion
+      return [
+        { label: i18n.t('about.terms'), type: 'terms', url: config.termsUrl },
+        { label: i18n.t('about.privacy'), type: 'privacy', url: config.privacyUrl },
+        {
+          label: i18n.t('about.linkQualification'),
+          type: 'qualification',
+          url: config.qualificationUrl,
+        },
+        { label: i18n.t('about.linkLicense'), type: 'license', url: config.licenseUrl },
+      ]
+    },
+  },
+
+  created() {
+    // 订阅语言变化，刷新上方依赖本地化的 computed
+    this.unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
+  },
+  beforeUnmount() {
+    if (this.unsubLocale) this.unsubLocale()
   },
 
   methods: {
-    goBack() {
-      uni.navigateBack()
-    },
-
     onInfoClick(item) {
       // 已配置外链:用通用 web-view 容器打开
       if (item.url) {
         // 兜底校验:URL 不在白名单则提示,避免引入 XSS/钓鱼面
         if (!isUrlAllowed(item.url)) {
-          uni.showToast({ title: '外链不在白名单,已拦截', icon: 'none' })
+          uni.showToast({ title: i18n.t('about.externalBlocked'), icon: 'none' })
           return
         }
         uni.navigateTo({
@@ -150,43 +174,6 @@ export default {
 .about {
   min-height: 100vh;
   background: var(--color-background);
-}
-
-/* 顶部导航栏 */
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 88rpx;
-  background: var(--color-surface);
-  border-bottom: 1rpx solid var(--color-divider);
-}
-
-.back-btn {
-  position: absolute;
-  left: 16rpx;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: var(--radius-sm);
-}
-
-.back-icon {
-  font-size: 48rpx;
-  color: var(--color-primary);
-  line-height: 1;
-}
-
-.header-title {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
-  letter-spacing: -0.02em;
 }
 
 /* 内容区 */

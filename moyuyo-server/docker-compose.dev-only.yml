@@ -176,9 +176,53 @@ services:
       MOYUYO_MAIL_ENABLED: "${MOYUYO_MAIL_ENABLED:-false}"
       # 容器内 hostname
       HOSTNAME: moyuyo-server
+      # 上传文件落盘目录：必须与下方 moyuyo-uploads 卷挂载目标保持一致，
+      # 否则容器重建后用户上传的图片/视频会丢失（默认 /tmp 在容器可写层）
+      MOYUYO_UPLOAD_DIR: ${MOYUYO_UPLOAD_DIR:-/app/uploads}
+      # ---- 应用功能开关与第三方服务（与生产 compose 对齐，此前未透传）----
+      # 默认值均取自 application-dev.yml / application.yml 的 dev 内置默认，
+      # 未在 .env 中配置时行为与补齐前完全相同
+      # 链路追踪采样率（dev 默认 1.0 = 全量采样）
+      MOYUYO_TRACE_SAMPLE_RATE: "${MOYUYO_TRACE_SAMPLE_RATE:-1.0}"
+      # BCrypt 强度（dev 默认 10，降低登录/注册耗时）
+      MOYUYO_BCRYPT_STRENGTH: "${MOYUYO_BCRYPT_STRENGTH:-10}"
+      # 审计日志（dev 默认：小队列 + 关闭保留期清理）
+      MOYUYO_AUDIT_QUEUE_CAPACITY: "${MOYUYO_AUDIT_QUEUE_CAPACITY:-1000}"
+      MOYUYO_AUDIT_BLOCK_ON_FULL: "${MOYUYO_AUDIT_BLOCK_ON_FULL:-false}"
+      MOYUYO_AUDIT_RETENTION_ENABLED: "${MOYUYO_AUDIT_RETENTION_ENABLED:-false}"
+      MOYUYO_AUDIT_RETENTION_DAYS: "${MOYUYO_AUDIT_RETENTION_DAYS:-90}"
+      # WooCommerce 库存同步（dev 默认关闭，避免本机频繁调 WC）
+      WC_STOCK_SYNC_ENABLED: "${WC_STOCK_SYNC_ENABLED:-false}"
+      WC_STOCK_SYNC_CRON: "${WC_STOCK_SYNC_CRON:-0 */5 * * * *}"
+      # OpenAPI 文档元数据（dev 默认邮箱见 application-dev.yml）
+      OPENAPI_CONTACT_EMAIL: "${OPENAPI_CONTACT_EMAIL:-dev@moyuyo.local}"
+      OPENAPI_VERSION: "${OPENAPI_VERSION:-1.0.0}"
+      # 阿里云短信：MOYUYO_SMS_PROVIDER 留空时验证码仅打印日志（NoopSmsServiceImpl）
+      MOYUYO_SMS_PROVIDER: "${MOYUYO_SMS_PROVIDER:-}"
+      MOYUYO_SMS_ACCESS_KEY_ID: "${MOYUYO_SMS_ACCESS_KEY_ID:-}"
+      MOYUYO_SMS_ACCESS_KEY_SECRET: "${MOYUYO_SMS_ACCESS_KEY_SECRET:-}"
+      MOYUYO_SMS_SIGN_NAME: "${MOYUYO_SMS_SIGN_NAME:-MOYUYO}"
+      MOYUYO_SMS_TEMPLATE_LOGIN: "${MOYUYO_SMS_TEMPLATE_LOGIN:-SMS_LOGIN_DEFAULT}"
+      MOYUYO_SMS_TEMPLATE_REGISTER: "${MOYUYO_SMS_TEMPLATE_REGISTER:-SMS_REGISTER_DEFAULT}"
+      MOYUYO_SMS_TEMPLATE_RESET: "${MOYUYO_SMS_TEMPLATE_RESET:-SMS_RESET_DEFAULT}"
+      # 物流轨迹第三方 Provider（dev 默认 none；dev 内置 poll 间隔 30 分钟）
+      MOYUYO_LOGISTICS_PROVIDER: "${MOYUYO_LOGISTICS_PROVIDER:-none}"
+      MOYUYO_LOGISTICS_API_KEY: "${MOYUYO_LOGISTICS_API_KEY:-}"
+      MOYUYO_LOGISTICS_CUSTOMER: "${MOYUYO_LOGISTICS_CUSTOMER:-}"
+      MOYUYO_LOGISTICS_POLL_INTERVAL: "${MOYUYO_LOGISTICS_POLL_INTERVAL:-30}"
+      MOYUYO_LOGISTICS_POLL_BATCH_SIZE: "${MOYUYO_LOGISTICS_POLL_BATCH_SIZE:-100}"
+      # Google Maps 位置服务（留空时 /api/v1/geo/* 返回"地图服务未配置"）
+      GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY:-}"
+      # CSP 白名单：默认值与 SecurityHeadersFilter 的 @Value 默认一致，
+      # 注意不能留空（空值会覆盖默认白名单，导致 CSP 头异常收紧）
+      MOYUYO_SECURITY_CSP_CONNECT_SRC: "${MOYUYO_SECURITY_CSP_CONNECT_SRC:-https://api.stripe.com,https://api-m.paypal.com,https://*.sentry.io}"
+      MOYUYO_SECURITY_CSP_IMG_SRC: "${MOYUYO_SECURITY_CSP_IMG_SRC:-data:,https://*.moyuyo.com,https://*.moyuyoshop.com,https://*.bloomwitness.com}"
+      MOYUYO_SECURITY_CSP_FONT_SRC: "${MOYUYO_SECURITY_CSP_FONT_SRC:-data:}"
     volumes:
       - moyuyo-logs:/var/log/moyuyo
       - moyuyo-heapdump:/app/heapdump
+      # 持久化用户/管理员上传文件，避免容器重建后图片、视频全部丢失
+      - moyuyo-uploads:${MOYUYO_UPLOAD_DIR:-/app/uploads}
     cpus: '2.0'
     mem_limit: 4G
     mem_reservation: 1G
@@ -198,5 +242,7 @@ volumes:
   redis-data:
   moyuyo-logs:
   moyuyo-heapdump:
+  # 上传文件持久卷：挂载到 app 容器的 MOYUYO_UPLOAD_DIR
+  moyuyo-uploads:
   moyuyo-mysql-logs:
   moyuyo-redis-logs:

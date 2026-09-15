@@ -5,9 +5,9 @@
       <view class="back-btn" @click="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">通知</text>
+      <text class="header-title">{{ $t('notifications.title') }}</text>
       <view class="header-action" @click="markAllRead">
-        <text class="header-action-text">全部已读</text>
+        <text class="header-action-text">{{ $t('notifications.markAllRead') }}</text>
       </view>
     </view>
 
@@ -59,7 +59,7 @@
       <!-- 空状态 -->
       <view v-else class="empty-state">
         <text class="empty-icon luc-bell" />
-        <text class="empty-text">暂无通知</text>
+        <text class="empty-text">{{ $t('notifications.empty') }}</text>
       </view>
     </scroll-view>
   </view>
@@ -138,7 +138,7 @@ export default {
         })
         uni.showToast({ title: i18n.t('notifications.markedAllRead'), icon: 'none' })
       } catch {
-        uni.showToast({ title: 'Failed, please retry', icon: 'none' })
+        uni.showToast({ title: i18n.t('notifications.failedRetry'), icon: 'none' })
       }
     },
 

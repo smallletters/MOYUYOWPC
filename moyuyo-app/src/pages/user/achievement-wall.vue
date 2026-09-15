@@ -1,20 +1,24 @@
-﻿<template>
+<template>
   <view class="page">
     <view class="header">
       <view class="nav-back" @tap="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="title">成就墙</text>
+      <text class="title">{{ $t('achievementWall.title') }}</text>
     </view>
 
-    <view v-if="loading" class="loading"><text class="loading-text">加载中…</text></view>
+    <view v-if="loading" class="loading">
+      <text class="loading-text">{{ $t('common.loading') }}</text>
+    </view>
     <view v-else class="content">
       <view class="grid">
         <view v-for="a in achievements" :key="a.id" class="ach-card">
           <view class="ach-icon luc" :class="$luc(a.icon) || 'luc luc-trophy'" />
           <text class="ach-name">{{ a.name }}</text>
           <text class="ach-desc">{{ a.description }}</text>
-          <text class="ach-reward">+{{ a.pointsReward || 0 }} 积分</text>
+          <text class="ach-reward">
+            {{ $t('achievementWall.pointsReward', { points: a.pointsReward || 0 }) }}
+          </text>
           <view
             class="ach-tag"
             :class="a.category ? 'tag-' + a.category.toLowerCase() : 'tag-common'"
@@ -23,7 +27,7 @@
           </view>
         </view>
         <view v-if="!achievements.length" class="empty">
-          <text class="empty-text">暂无成就</text>
+          <text class="empty-text">{{ $t('achievementWall.empty') }}</text>
         </view>
       </view>
     </view>

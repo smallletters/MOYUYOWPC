@@ -1,18 +1,20 @@
-﻿<template>
+<template>
   <view class="points-shop">
     <view class="balance-card card">
-      <text class="balance-label">Your Points</text>
+      <text class="balance-label">{{ $t('pointsShop.pointsLabel') }}</text>
       <text class="balance-value">{{ points }}</text>
-      <view v-if="loading" class="loading-line">加载中…</view>
+      <view v-if="loading" class="loading-line">{{ $t('pointsShop.loading') }}</view>
       <view v-else-if="checkedIn" class="checked-in">
         <text class="luc luc-check" />
-        Today checked in
+        {{ $t('pointsShop.checkedIn') }}
       </view>
-      <view v-else class="btn btn-sm btn-outline" @click="onCheckin">Check in +5</view>
+      <view v-else class="btn btn-sm btn-outline" @click="onCheckin">
+        {{ $t('pointsShop.checkIn') }}
+      </view>
     </view>
 
     <view class="section">
-      <text class="section-title">Points History</text>
+      <text class="section-title">{{ $t('pointsShop.historyTitle') }}</text>
       <view v-for="log in logs" :key="log.id" class="log-item">
         <text class="log-type">{{ logLabel(log.type) }}</text>
         <text class="log-amount" :class="log.changeValue > 0 ? 'positive' : 'negative'">
@@ -20,13 +22,14 @@
         </text>
         <text class="log-time">{{ formatTime(log.createdAt) }}</text>
       </view>
-      <view v-if="!logs.length && !loading" class="empty">No history</view>
+      <view v-if="!logs.length && !loading" class="empty">{{ $t('pointsShop.noHistory') }}</view>
     </view>
   </view>
 </template>
 
 <script>
 import { pointsApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.userPointsShop',
@@ -74,46 +77,52 @@ export default {
         // request.js 已解包,result 即 payload: { points, consecutiveDays, doubleReward }
         const result = await pointsApi.checkin()
         this.checkedIn = true
-        this.points += result?.points || 5
+        const earned = result?.points || 5
+        this.points += earned
         // 重新拉取流水与余额,确保展示与服务端一致
         this.loadData()
+        // 连续签到翻倍时用带 (x2) 的文案
+        const toastKey = result?.doubleReward
+          ? 'pointsShop.checkinSuccessDouble'
+          : 'pointsShop.checkinSuccess'
         uni.showToast({
-          title: `签到成功 +${result?.points || 5} 积分${result?.doubleReward ? ' (x2)' : ''}`,
+          title: i18n.t(toastKey, { points: earned }),
           icon: 'success',
         })
       } catch (e) {
         const msg = (e && e.message) || ''
+        // msg 为后端返回的中文业务提示,此处仅做判定,不翻译
         if (msg.includes('今日已签到')) {
           this.checkedIn = true
-          uni.showToast({ title: '今日已签到', icon: 'none' })
+          uni.showToast({ title: i18n.t('pointsShop.alreadyCheckedIn'), icon: 'none' })
         } else {
-          uni.showToast({ title: msg || '签到失败', icon: 'none' })
+          uni.showToast({ title: msg || i18n.t('pointsShop.checkinFailed'), icon: 'none' })
         }
       }
     },
 
     onRedeem(item) {
       if (this.points < item.points) {
-        uni.showToast({ title: 'Not enough points', icon: 'none' })
+        uni.showToast({ title: i18n.t('pointsShop.notEnoughPoints'), icon: 'none' })
         return
       }
       if (this.redeemingId) return
       uni.showModal({
-        title: 'Redeem ' + item.name,
-        content: 'This will cost ' + item.points + ' points. Continue?',
+        title: i18n.t('pointsShop.redeemTitle', { name: item.name }),
+        content: i18n.t('pointsShop.redeemContent', { points: item.points }),
         success: async (res) => {
           if (!res.confirm) return
           try {
             this.redeemingId = item.id
-            uni.showLoading({ title: '兑换中...', mask: true })
+            uni.showLoading({ title: i18n.t('pointsShop.redeeming'), mask: true })
             await pointsApi.exchangePointsGoods(item.id)
             uni.hideLoading()
-            uni.showToast({ title: '兑换成功', icon: 'success' })
+            uni.showToast({ title: i18n.t('pointsShop.redeemSuccess'), icon: 'success' })
             // 重新拉取积分余额,保证与服务端一致
             this.loadData()
           } catch (e) {
             uni.hideLoading()
-            uni.showToast({ title: e?.message || '兑换失败', icon: 'none' })
+            uni.showToast({ title: e?.message || i18n.t('pointsShop.redeemFailed'), icon: 'none' })
           } finally {
             this.redeemingId = null
           }
@@ -122,14 +131,10 @@ export default {
     },
 
     logLabel(type) {
-      const map = {
-        CHECKIN: 'Check-in',
-        SPEND: 'Spent',
-        EARN: 'Earned',
-        ORDER: 'Purchase',
-        SIGNUP: 'Welcome',
-      }
-      return map[type] || type
+      // 积分变动类型映射(与后端枚举一致),未知类型回退原值
+      const known = ['CHECKIN', 'SPEND', 'EARN', 'ORDER', 'SIGNUP']
+      if (known.includes(type)) return i18n.t(`pointsShop.logs.${type}`)
+      return type
     },
 
     formatTime(time) {

@@ -1,34 +1,46 @@
-﻿<template>
+<template>
   <view class="invoice-manage">
     <view class="page-header">
-      <view class="back" aria-label="返回" @click="goBack">
+      <view class="back" :aria-label="$t('common.back')" @click="goBack">
         <text class="luc luc-arrow-left" />
       </view>
-      <text class="title">发票管理</text>
-      <view class="add-btn" @click="onAdd">+ 新增</view>
+      <text class="title">{{ $t('invoiceManage.title') }}</text>
+      <view class="add-btn" @click="onAdd">{{ $t('invoiceManage.add') }}</view>
     </view>
 
     <scroll-view scroll-y class="content">
       <view v-if="invoices.length === 0" class="empty">
         <text class="empty-icon luc-receipt" />
-        <text class="empty-text">暂无发票信息</text>
-        <view class="btn-primary" @click="onAdd">添加发票抬头</view>
+        <text class="empty-text">{{ $t('invoiceManage.empty') }}</text>
+        <view class="btn-primary" @click="onAdd">{{ $t('invoiceManage.addHeader') }}</view>
       </view>
 
       <view v-else class="invoice-list">
         <view v-for="inv in invoices" :key="inv.id" class="invoice-card">
           <view class="invoice-header">
-            <text class="invoice-type">{{ inv.type === 'company' ? '企业' : '个人' }}</text>
-            <text v-if="inv.isDefault" class="default-tag">默认</text>
+            <text class="invoice-type">
+              {{
+                inv.type === 'company'
+                  ? $t('invoiceManage.typeCompany')
+                  : $t('invoiceManage.typePersonal')
+              }}
+            </text>
+            <text v-if="inv.isDefault" class="default-tag">
+              {{ $t('invoiceManage.defaultTag') }}
+            </text>
           </view>
           <text class="invoice-name">{{ inv.title }}</text>
-          <text v-if="inv.taxNo" class="invoice-tax">税号：{{ inv.taxNo }}</text>
+          <text v-if="inv.taxNo" class="invoice-tax">
+            {{ $t('invoiceManage.taxIdLabel', { taxId: inv.taxNo }) }}
+          </text>
           <view class="invoice-actions">
             <view v-if="!inv.isDefault" class="action-text" @click="onSetDefault(inv)">
-              设为默认
+              {{ $t('invoiceManage.setDefault') }}
             </view>
-            <view class="action-text" @click="onEdit(inv)">编辑</view>
-            <view class="action-text danger" @click="onDelete(inv)">删除</view>
+            <view class="action-text" @click="onEdit(inv)">{{ $t('invoiceManage.edit') }}</view>
+            <view class="action-text danger" @click="onDelete(inv)">
+              {{ $t('invoiceManage.delete') }}
+            </view>
           </view>
         </view>
       </view>
@@ -37,6 +49,8 @@
 </template>
 
 <script>
+import { i18n } from '@/i18n'
+
 export default {
   data() {
     return {
@@ -68,26 +82,29 @@ export default {
     },
 
     onAdd() {
-      uni.showToast({ title: '新增发票', icon: 'none' })
+      uni.showToast({ title: i18n.t('invoiceManage.added'), icon: 'none' })
     },
 
     onSetDefault(inv) {
       this.invoices.forEach((i) => (i.isDefault = false))
       inv.isDefault = true
-      uni.showToast({ title: '已设为默认', icon: 'success' })
+      uni.showToast({ title: i18n.t('invoiceManage.defaultSet'), icon: 'success' })
     },
 
     onEdit(inv) {
-      uni.showToast({ title: `编辑 ${inv.title}`, icon: 'none' })
+      uni.showToast({
+        title: i18n.t('invoiceManage.editToast', { title: inv.title }),
+        icon: 'none',
+      })
     },
 
     onDelete(inv) {
       uni.showModal({
-        title: '删除发票？',
+        title: i18n.t('invoiceManage.deleteConfirm'),
         success: (r) => {
           if (r.confirm) {
             this.invoices = this.invoices.filter((i) => i.id !== inv.id)
-            uni.showToast({ title: '已删除', icon: 'success' })
+            uni.showToast({ title: i18n.t('invoiceManage.deleted'), icon: 'success' })
           }
         },
       })

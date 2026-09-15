@@ -1,54 +1,52 @@
 <template>
   <view class="magic-link">
     <view class="header">
-      <text class="title">Magic Link</text>
+      <text class="title">{{ $t('magicLink.title') }}</text>
       <text class="sub">
-        {{
-          step === 1
-            ? "Enter your email and we'll send a sign-in link"
-            : 'Check your email for the sign-in link'
-        }}
+        {{ step === 1 ? $t('magicLink.subStep1') : $t('magicLink.subStep2') }}
       </text>
     </view>
 
     <view v-if="step === 1" class="form">
       <view class="input-group">
-        <text class="input-label">Email</text>
+        <text class="input-label">{{ $t('magicLink.email') }}</text>
         <input
           v-model="email"
           class="input"
           type="text"
-          placeholder="your@email.com">
+          :placeholder="$t('magicLink.emailPlaceholder')"
+        >
       </view>
 
       <view class="btn btn-primary submit-btn" :class="{ disabled: !canSend }" @click="onSend">
-        Send Magic Link
+        {{ $t('magicLink.send') }}
       </view>
 
-      <view class="back-link" @click="goBack">Back to Sign In</view>
+      <view class="back-link" @click="goBack">{{ $t('magicLink.backToSignIn') }}</view>
     </view>
 
     <view v-else class="form">
       <view class="sent-info">
         <text class="sent-icon luc-mail" />
-        <text class="sent-text">We sent a sign-in link to</text>
+        <text class="sent-text">{{ $t('magicLink.sentTo') }}</text>
         <text class="sent-email">{{ email }}</text>
         <text class="sent-hint">
-          The link expires in 15 minutes. If you don't see it, check your spam folder.
+          {{ $t('magicLink.hint') }}
         </text>
       </view>
 
       <view class="resend" @click="onResend">
-        {{ cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend Magic Link' }}
+        {{ cooldown > 0 ? $t('magicLink.resendIn', { sec: cooldown }) : $t('magicLink.resend') }}
       </view>
 
-      <view class="back-link" @click="goBack">Back to Sign In</view>
+      <view class="back-link" @click="goBack">{{ $t('magicLink.backToSignIn') }}</view>
     </view>
   </view>
 </template>
 
 <script>
 import { useUserStore } from '@/store'
+import { i18n } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.userMagicLink',
@@ -83,7 +81,7 @@ export default {
         this.step = 2
         this.startCooldown()
       } catch (e) {
-        uni.showToast({ title: e.message || 'Failed to send', icon: 'none' })
+        uni.showToast({ title: e.message || i18n.t('magicLink.sendFailed'), icon: 'none' })
       }
     },
 

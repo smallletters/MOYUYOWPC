@@ -1,7 +1,8 @@
 <template>
   <view class="profile">
     <view class="avatar-section">
-      <image :src="userStore.userInfo?.avatar || defaultAvatar" class="avatar" />
+      <!-- mode="aspectFill":等比缩放裁剪填满,避免非正方形头像被默认 scaleToFill 拉伸变形 -->
+      <image :src="userStore.userInfo?.avatar || defaultAvatar" class="avatar" mode="aspectFill" />
       <text class="name">{{ userStore.userInfo?.nickname || 'User' }}</text>
       <text class="email">{{ userStore.userInfo?.email }}</text>
       <view
@@ -87,10 +88,10 @@ export default {
     const myId = this.userStore.userInfo && this.userStore.userInfo.id
     if (query && query.id && String(query.id) !== String(myId)) {
       uni.showModal({
-        title: '暂不支持查看他人主页',
-        content: '可在搜索页的用户 Tab 中查看',
+        title: i18n.t('profile.viewOthersUnsupported'),
+        content: i18n.t('profile.viewOthersHint'),
         showCancel: false,
-        confirmText: '我知道了',
+        confirmText: i18n.t('profile.gotIt'),
         success: () => uni.navigateBack(),
       })
       return

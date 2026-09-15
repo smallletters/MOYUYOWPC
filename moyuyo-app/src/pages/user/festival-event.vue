@@ -1,15 +1,17 @@
-﻿<template>
+<template>
   <view class="page">
     <view class="header">
       <view class="nav-back" @tap="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="title">节日活动</text>
+      <text class="title">{{ $t('festivalEvent.title') }}</text>
     </view>
 
-    <view v-if="loading" class="loading"><text class="loading-text">加载中…</text></view>
+    <view v-if="loading" class="loading">
+      <text class="loading-text">{{ $t('common.loading') }}</text>
+    </view>
     <view v-else-if="!festivals.length" class="empty">
-      <text class="empty-text">暂无可参与的节日活动</text>
+      <text class="empty-text">{{ $t('festivalEvent.empty') }}</text>
     </view>
     <view v-else class="fest-list">
       <view
@@ -36,9 +38,7 @@ import { marketingApi } from '@/api'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.userFestivalEvent')
 
-
 const festivals = ref([])
-
 
 const loading = ref(false)
 

@@ -420,8 +420,10 @@
             @click="selectTopic(t)"
           >
             <view class="topic-item__main">
-              <text class="topic-item__name"># {{ t.name }}</text>
-              <text v-if="t.description" class="topic-item__desc">{{ t.description }}</text>
+              <text class="topic-item__name"># {{ $tTopicName(t.name) }}</text>
+              <text v-if="t.description" class="topic-item__desc">
+                {{ $tTopicDesc(t.name, t.description) }}
+              </text>
             </view>
             <text class="topic-item__count">
               {{ $t('communityPost.postCount', { count: formatCount(t.postCount) }) }}
@@ -1347,6 +1349,19 @@ export default {
           }
         },
       })
+    },
+
+    /** 话题名本地化:后端返回中文原值 → 当前语言;字典查不到时回退原值(运营/用户新建话题不丢) */
+    $tTopicName(name) {
+      if (!name) return ''
+      const map = this.$t('communityTopic.names')
+      return map && typeof map === 'object' && map[name] ? map[name] : name
+    },
+
+    /** 话题简介本地化:以话题名为 key 查字典;查不到时回退后端原简介 */
+    $tTopicDesc(name, desc) {
+      const map = this.$t('communityTopic.descs')
+      return (map && typeof map === 'object' && map[name]) || desc || ''
     },
 
     /** 加载话题列表(真实后端 /api/v1/community/topics) */

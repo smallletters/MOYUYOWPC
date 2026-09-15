@@ -2,10 +2,19 @@
   <view class="user">
     <view class="header">
       <view v-if="userStore.isLoggedIn" class="user-info" @click="goProfile">
-        <image :src="userStore.userInfo?.avatar || defaultAvatar" class="avatar" />
+        <!-- mode="aspectFill":等比缩放裁剪填满,避免非正方形头像被默认 scaleToFill 拉伸变形 -->
+        <image
+          :src="userStore.userInfo?.avatar || defaultAvatar"
+          class="avatar"
+          mode="aspectFill"
+        />
         <view class="info">
           <text class="name">
-            {{ userStore.userInfo?.nickname || userStore.userInfo?.email || $t('userCenter.defaultNickname') }}
+            {{
+              userStore.userInfo?.nickname ||
+                userStore.userInfo?.email ||
+                $t('userCenter.defaultNickname')
+            }}
           </text>
           <text class="email">{{ userStore.userInfo?.email }}</text>
           <text class="member-level">{{ memberLevel }}</text>
@@ -87,7 +96,8 @@
         v-for="(f, i) in featuresLabel"
         :key="i"
         class="feature-item"
-        @click="onFeatureClick(f)">
+        @click="onFeatureClick(f)"
+      >
         <text class="feature-icon luc" :class="$luc(f.icon)" />
         <text class="feature-label">{{ f.label }}</text>
         <text class="feature-arrow luc luc-chevron-right" />

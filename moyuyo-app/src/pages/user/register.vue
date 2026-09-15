@@ -23,7 +23,11 @@
             <text class="social-label">{{ $t('auth.signUpWithGoogle') }}</text>
           </view>
           <view class="social-btn apple" @click="onSocial('apple')">
-            <image src="/static/icons/apple.svg" class="social-logo social-logo-apple" mode="aspectFit" />
+            <image
+              src="/static/icons/apple.svg"
+              class="social-logo social-logo-apple"
+              mode="aspectFit"
+            />
             <text class="social-label">{{ $t('auth.signUpWithApple') }}</text>
           </view>
         </view>
@@ -393,7 +397,7 @@ export default {
         .catch((e) => {
           clearInterval(timer)
           this.codeCountdown = 0
-          uni.showToast({ title: e.message || i18n.t('auth.sendCodeFailed'), icon: 'none' })
+          uni.showToast({ title: e.message || i18n.t('auth.codeSendFailed'), icon: 'none' })
         })
     },
 
@@ -421,7 +425,7 @@ export default {
         // 失败时重置倒计时,允许用户重试
         clearInterval(timer)
         this.emailCodeCountdown = 0
-        uni.showToast({ title: e.message || i18n.t('auth.sendCodeFailed'), icon: 'none' })
+        uni.showToast({ title: e.message || i18n.t('auth.codeSendFailed'), icon: 'none' })
       }
     },
 

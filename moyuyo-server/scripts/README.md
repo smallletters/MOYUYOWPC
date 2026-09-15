@@ -6,7 +6,6 @@
 
 | 脚本 | 平台 | 用途 |
 | --- | --- | --- |
-| `init-mysql-truststore.sh` | Linux / macOS / WSL | 从 MySQL 服务端拉取 CA 证书，导出 PKCS12 truststore，供应用启用 TLS 服务端证书校验 |
 | `backup-mysql.ps1` | Windows / PowerShell | 通过 docker exec 调用 mysqldump 备份 MySQL，自动压缩归档 + 清理过期备份 |
 | `restore-mysql.ps1` | Windows / PowerShell | 从 .sql.gz 恢复到目标 MySQL 容器（二次确认后执行，避免误覆盖） |
 | `backup-elasticsearch.ps1` | Windows / PowerShell | 通过 ES Snapshot API 创建索引快照，清理过期 snapshot |
@@ -24,7 +23,6 @@
 
 ```bash
 # MySQL 每日全量备份（凌晨 3 点）
-0 3 * * * bash /opt/moyuyo/moyuyo-server/scripts/init-mysql-truststore.sh  # 仅首次需要执行
 0 3 * * * /usr/local/bin/docker-exec-backup-mysql.sh
 
 # ES 每周快照（周日凌晨 4 点）
@@ -45,4 +43,3 @@
 | `mysqldump: Got error` | 容器内 MySQL root 权限不足；检查 `.env` 中 `MYSQL_ROOT_PASSWORD` 与 `docker-compose.yml` 中 `MYSQL_ROOT_PASSWORD` 一致 |
 | `tar: command not found` | Windows PowerShell 默认无 tar；Win10 1803+ 已自带，旧版需安装 Git for Windows 或 7-Zip |
 | ES snapshot 卡在 STARTED | 检查 ES 集群磁盘空间（snapshot 需要共享卷剩余容量 ≥ 索引总大小） |
-| truststore 路径找不到 | 容器启动前必须先运行 `init-mysql-truststore.sh` 生成 `.p12` 文件 |

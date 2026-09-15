@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="help-center">
     <view class="page-header">
       <view class="back" @click="goBack"><text class="luc luc-arrow-left" /></view>
@@ -8,12 +8,18 @@
     <scroll-view scroll-y class="content">
       <view class="search-bar">
         <text class="search-icon luc-search" />
-        <input v-model="keyword" placeholder="搜索常见问题" class="search-input">
+        <input
+          v-model="keyword"
+          :placeholder="$t('helpCenter.searchPlaceholder')"
+          class="search-input"
+        >
       </view>
 
-      <view v-if="loading" class="loading"><text class="loading-text">加载中…</text></view>
+      <view v-if="loading" class="loading">
+        <text class="loading-text">{{ $t('common.loading') }}</text>
+      </view>
       <view v-else-if="!filteredFAQ.length" class="empty">
-        <text class="empty-text">暂无相关问题</text>
+        <text class="empty-text">{{ $t('helpCenter.emptyResult') }}</text>
       </view>
       <view v-else class="faq-list">
         <view
@@ -30,14 +36,14 @@
           <view v-if="f.expanded" class="faq-a">
             <text class="faq-a-text">{{ f.content }}</text>
             <view class="faq-helpful">
-              <text class="faq-helpful-text">是否解决了您的问题？</text>
+              <text class="faq-helpful-text">{{ $t('helpCenter.helpfulQuestion') }}</text>
               <view class="helpful-btn" @tap.stop="vote(f, true)">
                 <text class="luc luc-thumbs-up" />
-                有帮助
+                {{ $t('helpCenter.helpfulYes') }}
               </view>
               <view class="helpful-btn no" @tap.stop="vote(f, false)">
                 <text class="luc luc-thumbs-down" />
-                没解决
+                {{ $t('helpCenter.helpfulNo') }}
               </view>
             </view>
           </view>
@@ -45,8 +51,8 @@
       </view>
 
       <view class="contact-bar">
-        <text class="contact-title">没找到答案？</text>
-        <view class="btn-primary" @click="onContact">联系在线客服</view>
+        <text class="contact-title">{{ $t('helpCenter.noAnswer') }}</text>
+        <view class="btn-primary" @click="onContact">{{ $t('helpCenter.contactCS') }}</view>
       </view>
     </scroll-view>
   </view>
@@ -54,6 +60,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { i18n } from '@/i18n'
 import { helpApi } from '@/api'
 
 const keyword = ref('')
@@ -94,9 +101,9 @@ function toggleFaq(i) {
 async function vote(article, helpful) {
   try {
     await helpApi.helpful(article.id, helpful)
-    uni.showToast({ title: '感谢您的反馈', icon: 'none' })
+    uni.showToast({ title: i18n.t('helpCenter.feedbackThanks'), icon: 'none' })
   } catch (e) {
-    uni.showToast({ title: '操作失败', icon: 'none' })
+    uni.showToast({ title: i18n.t('helpCenter.operationFailed'), icon: 'none' })
   }
 }
 

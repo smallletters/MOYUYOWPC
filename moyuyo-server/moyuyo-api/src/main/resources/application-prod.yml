@@ -141,11 +141,13 @@ spring:
       # connection-test-query 不设置：使用 MySQL Connector/J 8 默认的
       # SELECT 1（驱动内置 lightweight ping），避免额外 SQL 流量
       data-source-properties:
-        # 信任库路径：保留默认值仅作"开发/容器环境"的兜底，
-        # 生产环境必须显式设置 MYSQL_TRUSTSTORE_URL 指向受信任的 MySQL CA 证书
-        # （docker-compose 中由 scripts/init-mysql-truststore.sh 提前生成）。
-        # 若使用默认值且未挂载对应文件，启动会因找不到证书而中断。
+        # 信任库路径：指向 MySQL 自签 CA 的 PKCS12 信任库。
+        # 该文件由 docker-compose 的 mysql-certs-init 容器（keytool -importcert 导入
+        # MySQL 数据目录内的 ca.pem）自动生成并挂载到 /opt/mysql-certs，无需在宿主机准备证书。
         trustCertificateKeyStoreUrl: ${MYSQL_TRUSTSTORE_URL:file:/opt/mysql-certs/mysql-ca.p12}
+        # 信任库类型必须显式声明为 PKCS12：Connector/J 的 trustCertificateKeyStoreType 默认为 JKS，
+        # 与 mysql-certs-init 生成的文件类型不一致时会导致信任库无法被正确加载。
+        trustCertificateKeyStoreType: PKCS12
         # 默认值留空：让 HikariCP 在未设置时直接抛异常，
         # 由 ProdConfigValidator 在启动期捕获 MYSQL_TRUSTSTORE_PASSWORD 缺失并阻断启动。
         # 注意：必须使用无默认值的占位符 ${MYSQL_TRUSTSTORE_PASSWORD}（不能加 : 默认值），

@@ -1,35 +1,37 @@
-﻿<template>
+<template>
   <view class="balance-manage">
     <view class="page-header">
-      <view class="back" aria-label="返回" @click="goBack">
+      <view class="back" :aria-label="$t('balanceManage.backLabel')" @click="goBack">
         <text class="luc luc-arrow-left" />
       </view>
-      <text class="title">余额管理</text>
+      <text class="title">{{ $t('balanceManage.title') }}</text>
     </view>
 
     <scroll-view scroll-y class="content">
       <!-- 余额卡片 -->
       <view class="balance-card">
-        <text class="balance-label">账户余额</text>
+        <text class="balance-label">{{ $t('balanceManage.accountBalance') }}</text>
         <view class="balance-value-wrap">
           <text class="balance-value">${{ showBalance ? balance : '****' }}</text>
           <view
             class="toggle luc"
-            aria-label="显示/隐藏余额"
+            :aria-label="$t('balanceManage.toggleBalanceLabel')"
             :class="$luc(showBalance ? 'eye-off' : 'eye')"
             @click="showBalance = !showBalance"
           />
         </view>
         <view class="balance-actions">
-          <view class="action-btn primary" @click="onRecharge">充值</view>
-          <view class="action-btn" @click="onWithdraw">提现</view>
+          <view class="action-btn primary" @click="onRecharge">
+            {{ $t('balanceManage.recharge') }}
+          </view>
+          <view class="action-btn" @click="onWithdraw">{{ $t('balanceManage.withdraw') }}</view>
         </view>
       </view>
 
       <!-- 交易明细 -->
       <view class="section">
         <view class="section-header">
-          <text class="section-title">交易明细</text>
+          <text class="section-title">{{ $t('balanceManage.txTitle') }}</text>
           <view class="filter-tabs">
             <view
               v-for="t in filterTabs"
@@ -38,11 +40,11 @@
               :class="{ active: activeFilter === t.value }"
               @click="activeFilter = t.value"
             >
-              {{ t.label }}
+              {{ $t(t.labelKey) }}
             </view>
           </view>
         </view>
-        <view v-if="filteredTx.length === 0" class="empty">暂无交易记录</view>
+        <view v-if="filteredTx.length === 0" class="empty">{{ $t('balanceManage.empty') }}</view>
         <view v-else class="tx-list">
           <view v-for="tx in filteredTx" :key="tx.id" class="tx-item">
             <view class="tx-left">
@@ -61,6 +63,7 @@
 
 <script>
 import { walletApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   data() {
@@ -69,18 +72,28 @@ export default {
       showBalance: true,
       activeFilter: 'all',
       filterTabs: [
-        { value: 'all', label: '全部' },
-        { value: 'income', label: '收入' },
-        { value: 'expense', label: '支出' },
+        { value: 'all', labelKey: 'balanceManage.filters.all' },
+        { value: 'income', labelKey: 'balanceManage.filters.income' },
+        { value: 'expense', labelKey: 'balanceManage.filters.expense' },
       ],
       txList: [],
+      localeVersion: 0,
     }
   },
 
   computed: {
     filteredTx() {
-      if (this.activeFilter === 'all') return this.txList
-      return this.txList.filter((tx) => tx.type === this.activeFilter)
+      void this.localeVersion
+      const list =
+        this.activeFilter === 'all'
+          ? this.txList
+          : this.txList.filter((tx) => tx.type === this.activeFilter)
+      // 兜底演示数据存 i18n key，展示时按当前语言映射
+      return list.map((tx) => ({
+        ...tx,
+        desc: tx.descKey ? i18n.t(tx.descKey) : tx.desc,
+        time: tx.timeKey ? i18n.t(tx.timeKey, tx.timeParams) : tx.time,
+      }))
     },
   },
 
@@ -105,9 +118,30 @@ export default {
         this.txList = Array.isArray(list) ? list : []
       } catch (e) {
         this.txList = [
-          { id: 1, desc: '充值', time: '今天 10:00', amount: 100, type: 'income' },
-          { id: 2, desc: '购物消费', time: '昨天 14:30', amount: 89, type: 'expense' },
-          { id: 3, desc: '退款', time: '3天前', amount: 50, type: 'income' },
+          {
+            id: 1,
+            descKey: 'balanceManage.tx.topup',
+            timeKey: 'balanceManage.tx.todayAt',
+            timeParams: { time: '10:00' },
+            amount: 100,
+            type: 'income',
+          },
+          {
+            id: 2,
+            descKey: 'balanceManage.tx.shopping',
+            timeKey: 'balanceManage.tx.yesterdayAt',
+            timeParams: { time: '14:30' },
+            amount: 89,
+            type: 'expense',
+          },
+          {
+            id: 3,
+            descKey: 'balanceManage.tx.refund',
+            timeKey: 'balanceManage.tx.daysAgo',
+            timeParams: { count: 3 },
+            amount: 50,
+            type: 'income',
+          },
         ]
       }
     },
@@ -121,7 +155,7 @@ export default {
     },
 
     onWithdraw() {
-      uni.showToast({ title: '提现功能开发中', icon: 'none' })
+      uni.showToast({ title: i18n.t('balanceManage.withdrawInProgress'), icon: 'none' })
     },
   },
 }

@@ -1,28 +1,19 @@
-﻿<template>
+<template>
   <view class="invite">
-    <!-- 顶部导航栏 -->
-    <view class="header">
-      <view class="header-btn" @click="goBack">
-        <text class="back-icon luc-arrow-left" />
-      </view>
-      <text class="header-title">邀请好友</text>
-      <view class="header-btn" />
-    </view>
-
     <!-- 顶部品牌色渐变区域 -->
     <view class="hero-section">
       <view class="hero-bg-circle hero-bg-circle--tl" />
       <view class="hero-bg-circle hero-bg-circle--bl" />
       <view class="hero-content">
-        <text class="hero-title">邀请好友，各得奖励</text>
-        <text class="hero-subtitle">每邀请1位好友注册，双方各得200积分</text>
+        <text class="hero-title">{{ $t('invite.heroSectionTitle') }}</text>
+        <text class="hero-subtitle">{{ $t('invite.heroSubtitle') }}</text>
         <!-- 邀请码展示 -->
         <view class="invite-code-box">
-          <text class="invite-code-label">邀请码</text>
+          <text class="invite-code-label">{{ $t('invite.codeLabel') }}</text>
           <text class="invite-code-value">{{ inviteCode }}</text>
           <view class="invite-code-copy" @click="onCopyCode">
             <text class="copy-icon luc-clipboard-list" />
-            <text class="copy-text">复制</text>
+            <text class="copy-text">{{ $t('invite.copy') }}</text>
           </view>
         </view>
       </view>
@@ -30,78 +21,78 @@
 
     <!-- 奖励说明卡片 -->
     <view class="reward-card">
-      <text class="reward-card-title">如何获取奖励</text>
+      <text class="reward-card-title">{{ $t('invite.rewardCardTitle') }}</text>
       <view class="reward-steps">
         <view class="reward-step">
           <view class="step-icon step-icon--brand">
             <text class="step-icon-text luc-link" />
           </view>
-          <text class="step-title">分享邀请链接</text>
-          <text class="step-desc">发送给好友</text>
+          <text class="step-title">{{ $t('invite.stepShare') }}</text>
+          <text class="step-desc">{{ $t('invite.stepShareDesc') }}</text>
         </view>
         <view class="reward-step">
           <view class="step-icon step-icon--brand">
             <text class="step-icon-text luc-user" />
           </view>
-          <text class="step-title">好友注册下单</text>
-          <text class="step-desc">完成首单购买</text>
+          <text class="step-title">{{ $t('invite.stepRegister') }}</text>
+          <text class="step-desc">{{ $t('invite.stepRegisterDesc') }}</text>
         </view>
         <view class="reward-step">
           <view class="step-icon step-icon--success">
             <text class="step-icon-text luc-gift" />
           </view>
-          <text class="step-title">双方获得积分</text>
-          <text class="step-desc">积分即时到账</text>
+          <text class="step-title">{{ $t('invite.stepPoints') }}</text>
+          <text class="step-desc">{{ $t('invite.stepPointsDesc') }}</text>
         </view>
       </view>
     </view>
 
     <!-- 分享渠道 -->
     <view class="share-section">
-      <text class="share-section-title">分享给好友</text>
+      <text class="share-section-title">{{ $t('invite.shareSectionTitle') }}</text>
       <view class="share-channels">
         <view class="share-channel" @click="onShareWeChat">
           <view class="channel-icon channel-icon--green">
             <text class="channel-icon-text luc-message-circle" />
           </view>
-          <text class="channel-label">微信</text>
+          <text class="channel-label">{{ $t('invite.shareWechat') }}</text>
         </view>
         <view class="share-channel" @click="onShareWhatsApp">
           <view class="channel-icon channel-icon--brand">
             <text class="channel-icon-text luc-phone" />
           </view>
-          <text class="channel-label">WhatsApp</text>
+          <text class="channel-label">{{ $t('invite.shareWhatsApp') }}</text>
         </view>
         <view class="share-channel" @click="onShareSMS">
           <view class="channel-icon channel-icon--blue">
             <text class="channel-icon-text luc-mail" />
           </view>
-          <text class="channel-label">短信</text>
+          <text class="channel-label">{{ $t('invite.shareSMS') }}</text>
         </view>
         <view class="share-channel" @click="onCopyLink">
           <view class="channel-icon">
             <text class="channel-icon-text luc-link" />
           </view>
-          <text class="channel-label">复制链接</text>
+          <text class="channel-label">{{ $t('invite.copyLink') }}</text>
         </view>
       </view>
     </view>
 
     <!-- 邀请统计 -->
     <view class="stats-section">
-      <text class="section-title">我的邀请</text>
+      <text class="section-title">{{ $t('invite.statsTitle') }}</text>
       <view class="stats-row">
         <view class="stat-item">
           <text class="stat-value stat-value--brand">{{ stats.invited }}</text>
-          <text class="stat-label">已邀请</text>
+          <text class="stat-label">{{ $t('invite.statInvited') }}</text>
         </view>
         <view class="stat-item">
           <text class="stat-value stat-value--brand">{{ stats.ordered }}</text>
-          <text class="stat-label">已完成首单</text>
+          <text class="stat-label">{{ $t('invite.statOrdered') }}</text>
         </view>
         <view class="stat-item">
           <text class="stat-value stat-value--success">{{ stats.points }}</text>
-          <text class="stat-label">获得积分</text>
+          <text class="stat-label">{{ $t('invite.statPoints') }}</text>
         </view>
       </view>
     </view>
@@ -135,13 +126,13 @@
     <view class="ranking-banner">
       <view class="ranking-banner-icon"><text class="luc luc-trophy" /></view>
       <view class="ranking-banner-info">
-        <text class="ranking-banner-title">月度 TOP 10 额外奖励</text>
-        <text class="ranking-banner-desc">本月排名靠前可获额外积分奖励</text>
+        <text class="ranking-banner-title">{{ $t('invite.rankingTitle') }}</text>
+        <text class="ranking-banner-desc">{{ $t('invite.rankingDesc') }}</text>
       </view>
       <view class="ranking-banner-rank">
         <text class="rank-number">{{ stats.rank }}</text>
         <text class="rank-unit">th</text>
-        <text class="rank-label">你的排名</text>
+        <text class="rank-label">{{ $t('invite.rankingLabel') }}</text>
       </view>
     </view>
   </view>
@@ -149,6 +140,7 @@
 
 <script>
 import { inviteApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.userInvite',
@@ -163,6 +155,8 @@ export default {
         rank: 0,
       },
       inviteHistory: [],
+      localeVersion: 0,
+      unsubLocale: null,
     }
   },
 
@@ -170,9 +164,38 @@ export default {
     this.loadInviteData()
   },
 
+  created() {
+    // 订阅语言变化，重新本地化邀请记录
+    this.unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+      this.rebuildHistory()
+    })
+  },
+
+  beforeUnmount() {
+    if (this.unsubLocale) this.unsubLocale()
+  },
+
   methods: {
-    goBack() {
-      uni.navigateBack()
+    // 按当前语言重建邀请记录展示数据
+    rebuildHistory() {
+      const records = this._inviteRecords || []
+      this.inviteHistory = records.map((it) => {
+        const ordered = it.status === 'ORDERED'
+        return {
+          id: it.id,
+          initial: (it.inviteeUserId || 'U').toString().slice(-1).toUpperCase(),
+          name: ordered
+            ? i18n.t('invite.friendName', { id: it.inviteeUserId })
+            : i18n.t('invite.pendingName', {
+                id: it.inviteeUserId || i18n.t('invite.registering'),
+              }),
+          time: it.createTime ? new Date(it.createTime).toLocaleDateString(i18n.locale) : '',
+          status: ordered ? 'ordered' : 'pending',
+          statusLabel: ordered ? i18n.t('invite.statusDone') : i18n.t('invite.statusPending'),
+          reward: it.pointsAwarded || 0,
+        }
+      })
     },
 
     async loadInviteData() {
@@ -196,22 +219,13 @@ export default {
           : Array.isArray(historyPage)
             ? historyPage
             : []
-        this.inviteHistory = records.map((it) => {
-          const ordered = it.status === 'ORDERED'
-          return {
-            id: it.id,
-            initial: (it.inviteeUserId || 'U').toString().slice(-1).toUpperCase(),
-            name: ordered ? `好友 ${it.inviteeUserId}` : `待激活 ${it.inviteeUserId || '注册中'}`,
-            time: it.createTime ? new Date(it.createTime).toLocaleDateString('zh-CN') : '',
-            status: ordered ? 'ordered' : 'pending',
-            statusLabel: ordered ? '已完成' : '待完成',
-            reward: it.pointsAwarded || 0,
-          }
-        })
+        this._inviteRecords = records
+        this.rebuildHistory()
       } catch (e) {
         console.warn('[invite] load failed', e)
         this.inviteCode = ''
         this.stats = { invited: 0, ordered: 0, points: 0, rank: 0 }
+        this._inviteRecords = []
         this.inviteHistory = []
       }
     },
@@ -221,7 +235,7 @@ export default {
       uni.setClipboardData({
         data: this.inviteCode,
         success: () => {
-          uni.showToast({ title: '复制成功', icon: 'none' })
+          uni.showToast({ title: i18n.t('invite.toastCodeCopied'), icon: 'none' })
         },
       })
     },
@@ -231,14 +245,14 @@ export default {
       if (typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent || '')) {
         uni.setClipboardData({
           data: 'https://moyuyo.com/invite/' + this.inviteCode,
-          success: () => uni.showToast({ title: '请前往微信粘贴分享', icon: 'none' }),
+          success: () => uni.showToast({ title: i18n.t('invite.toastToWechat'), icon: 'none' }),
         })
         return
       }
       // 非微信环境:复制邀请链接,提示用户手动打开微信
       uni.setClipboardData({
         data: 'https://moyuyo.com/invite/' + this.inviteCode,
-        success: () => uni.showToast({ title: '链接已复制,请在微信中粘贴', icon: 'none' }),
+        success: () => uni.showToast({ title: i18n.t('invite.toastPasteWechat'), icon: 'none' }),
       })
     },
 
@@ -257,7 +271,7 @@ export default {
       // 原生端无插件时回退为复制
       uni.setClipboardData({
         data: url,
-        success: () => uni.showToast({ title: '链接已复制,请在 WhatsApp 内粘贴', icon: 'none' }),
+        success: () => uni.showToast({ title: i18n.t('invite.toastPasteWhatsApp'), icon: 'none' }),
       })
     },
 
@@ -274,7 +288,7 @@ export default {
       // 原生端:复制链接兜底
       uni.setClipboardData({
         data: url,
-        success: () => uni.showToast({ title: '链接已复制', icon: 'none' }),
+        success: () => uni.showToast({ title: i18n.t('invite.copied'), icon: 'none' }),
       })
     },
 
@@ -283,7 +297,7 @@ export default {
       uni.setClipboardData({
         data: 'https://moyuyo.com/invite/' + this.inviteCode,
         success: () => {
-          uni.showToast({ title: '链接已复制', icon: 'none' })
+          uni.showToast({ title: i18n.t('invite.copied'), icon: 'none' })
         },
       })
     },
@@ -296,39 +310,6 @@ export default {
   min-height: 100vh;
   background: var(--background);
   padding-bottom: 40rpx;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 88rpx;
-  padding: 0 30rpx;
-  background: var(--background);
-  border-bottom: 1rpx solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 30;
-}
-
-.header-btn {
-  width: 72rpx;
-  height: 72rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.back-icon {
-  font-size: 44rpx;
-  color: var(--icon-700);
-  line-height: 1;
-}
-
-.header-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: var(--foreground);
 }
 
 /* ===== 品牌渐变区域 ===== */

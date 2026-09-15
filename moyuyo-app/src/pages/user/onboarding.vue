@@ -1,7 +1,7 @@
 <template>
   <view class="onboarding">
     <!-- 跳过按钮 -->
-    <text class="skip-btn" @click="goToHome">跳过</text>
+    <text class="skip-btn" @click="goToHome">{{ $t('onboarding.skip') }}</text>
     <!-- 滑动区域 -->
     <swiper
       class="swiper"
@@ -18,8 +18,8 @@
           </view>
           <!-- 文字内容 -->
           <view class="slide-content">
-            <text class="slide-title">{{ slide.title }}</text>
-            <text class="slide-desc">{{ slide.desc }}</text>
+            <text class="slide-title">{{ $t(slide.titleKey) }}</text>
+            <text class="slide-desc">{{ $t(slide.descKey) }}</text>
           </view>
         </view>
       </swiper-item>
@@ -41,45 +41,59 @@
         :class="currentIndex === slides.length - 1 ? 'btn-primary' : 'btn-secondary'"
         @click="onActionClick"
       >
-        {{ currentIndex === slides.length - 1 ? '立即开始' : '下一步' }}
+        {{ currentIndex === slides.length - 1 ? $t('onboarding.start') : $t('onboarding.next') }}
       </button>
     </view>
   </view>
 </template>
 <script>
+import { i18n } from '@/i18n'
+
 export default {
   pageTitleKey: 'pageTitle.userOnboarding',
 
   data() {
     return {
       currentIndex: 0,
+      // locale 版本号:locale 切换时自增,触发依赖它的渲染更新
+      localeVersion: 0,
       slides: [
         {
-          title: '欢迎来到 MOYUYO',
-          desc: '为您的宠物提供最优质的产品与服务，开启美好养宠生活',
+          titleKey: 'onboarding.slide1Title',
+          descKey: 'onboarding.slide1Desc',
           emoji: 'paw-print',
           bg: 'linear-gradient(135deg, var(--color-primary-light), var(--color-background))',
         },
         {
-          title: '发现优质宠物好物',
-          desc: '精选全球优质宠物用品，从食品到配件，一站式购齐',
+          titleKey: 'onboarding.slide2Title',
+          descKey: 'onboarding.slide2Desc',
           emoji: 'shopping-bag',
           bg: 'linear-gradient(135deg, var(--color-info), var(--color-background))',
         },
         {
-          title: '追踪宠物健康',
-          desc: '记录宠物体重、疫苗、驱虫等健康数据，科学养宠更省心',
+          titleKey: 'onboarding.slide3Title',
+          descKey: 'onboarding.slide3Desc',
           emoji: 'bar-chart',
           bg: 'linear-gradient(135deg, var(--color-success), var(--color-background))',
         },
         {
-          title: '加入我们的社区',
-          desc: '与千万宠物主分享养宠经验，记录与TA的每一个美好瞬间',
+          titleKey: 'onboarding.slide4Title',
+          descKey: 'onboarding.slide4Desc',
           emoji: 'heart',
           bg: 'linear-gradient(135deg, var(--color-warm), var(--color-background))',
         },
       ],
     }
+  },
+
+  onLoad() {
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
+  },
+
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
   },
 
   methods: {

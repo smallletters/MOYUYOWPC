@@ -1,20 +1,22 @@
-﻿<template>
+<template>
   <view class="subscribe">
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">订阅服务</text>
+      <text class="header-title">{{ $t('subscribeService.title') }}</text>
       <view class="header-spacer" />
     </view>
 
     <!-- 当前订阅概览 -->
     <view v-if="currentPlan" class="overview-card">
       <view class="overview-left">
-        <text class="overview-label">当前订阅</text>
+        <text class="overview-label">{{ $t('subscribeService.currentLabel') }}</text>
         <text class="overview-plan">{{ currentPlan.label }}</text>
-        <text class="overview-date">下次续费: {{ currentPlan.nextBilling }}</text>
+        <text class="overview-date">
+          {{ $t('subscribeService.nextBilling', { date: currentPlan.nextBilling }) }}
+        </text>
       </view>
       <view class="overview-right">
         <text class="overview-price">{{ currentPlan.price }}</text>
@@ -24,7 +26,7 @@
     <scroll-view class="content" scroll-y>
       <!-- 套餐卡片区 -->
       <view class="plans-section">
-        <view class="section-title">选择订阅方案</view>
+        <view class="section-title">{{ $t('subscribeService.selectPlan') }}</view>
         <view class="plans-row">
           <view
             v-for="plan in plans"
@@ -37,9 +39,13 @@
             <text class="plan-name">{{ plan.name }}</text>
             <text class="plan-price">{{ plan.price }}</text>
             <text class="plan-period">/{{ plan.period }}</text>
-            <text v-if="plan.original" class="plan-original">原价 {{ plan.original }}</text>
+            <text v-if="plan.original" class="plan-original">
+              {{ $t('subscribeService.originalPrice', { price: plan.original }) }}
+            </text>
             <view v-if="plan.save" class="plan-save">
-              <text class="plan-save-text">节省 {{ plan.save }}</text>
+              <text class="plan-save-text">
+                {{ $t('subscribeService.saveAmount', { amount: plan.save }) }}
+              </text>
             </view>
           </view>
         </view>
@@ -49,13 +55,17 @@
           :class="{ subscribed: currentPlan && selectedPlan === currentPlan.key }"
           @click="onSubscribe"
         >
-          {{ currentPlan && selectedPlan === currentPlan.key ? '当前方案' : '立即订阅' }}
+          {{
+            currentPlan && selectedPlan === currentPlan.key
+              ? $t('subscribeService.currentPlan')
+              : $t('subscribeService.subscribeNow')
+          }}
         </button>
       </view>
 
       <!-- 自动续费开关 -->
       <view class="toggle-row">
-        <text class="toggle-label">自动续费</text>
+        <text class="toggle-label">{{ $t('subscribeService.autoRenew') }}</text>
         <switch
           class="toggle-switch"
           :checked="autoRenew"
@@ -66,14 +76,16 @@
 
       <!-- 功能对比 -->
       <view class="feature-section">
-        <view class="section-title">功能对比</view>
+        <view class="section-title">{{ $t('subscribeService.featureCompare') }}</view>
         <view class="feature-table">
           <view class="feature-header">
-            <text class="feature-cell feature-label">功能</text>
-            <text class="feature-cell feature-head">免费版</text>
-            <text class="feature-cell feature-head feature-premium">高级版</text>
+            <text class="feature-cell feature-label">{{ $t('subscribeService.feature') }}</text>
+            <text class="feature-cell feature-head">{{ $t('subscribeService.freeTier') }}</text>
+            <text class="feature-cell feature-head feature-premium">
+              {{ $t('subscribeService.premiumTier') }}
+            </text>
           </view>
-          <view v-for="item in featureList" :key="item.label" class="feature-row">
+          <view v-for="item in featureItems" :key="item.key" class="feature-row">
             <text class="feature-cell feature-label">{{ item.label }}</text>
             <text
               class="feature-cell"
@@ -90,12 +102,14 @@
 
       <!-- 历史订阅 -->
       <view class="history-section">
-        <view class="section-title">历史订阅</view>
+        <view class="section-title">{{ $t('subscribeService.historyTitle') }}</view>
         <view v-if="historyList.length > 0" class="history-list">
           <view v-for="item in historyList" :key="item.id" class="history-item">
             <view class="history-left">
               <text class="history-plan">{{ item.plan }}</text>
-              <text class="history-date">{{ item.startDate }} 至 {{ item.endDate }}</text>
+              <text class="history-date">
+                {{ $t('subscribeService.dateRange', { start: item.startDate, end: item.endDate }) }}
+              </text>
             </view>
             <text class="history-status" :class="'status-' + item.status">
               {{ item.statusText }}
@@ -103,7 +117,7 @@
           </view>
         </view>
         <view v-else class="history-empty">
-          <text class="history-empty-text">暂无历史订阅记录</text>
+          <text class="history-empty-text">{{ $t('subscribeService.historyEmpty') }}</text>
         </view>
       </view>
     </scroll-view>
@@ -112,6 +126,7 @@
 
 <script>
 import { subscribeApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.userSubscribe',
@@ -122,21 +137,42 @@ export default {
       selectedPlan: '',
       autoRenew: true,
       plans: [],
+      // 语言版本号：语言切换时触发模板重渲染
+      localeVersion: 0,
       featureList: [
-        { label: '商品浏览', free: true },
-        { label: '社区互动', free: true },
-        { label: '基础健康记录', free: true },
-        { label: '专属折扣', free: false },
-        { label: '免运费', free: false },
-        { label: '优先客服', free: false },
-        { label: '独家内容', free: false },
-        { label: '生日礼包', free: false },
+        { key: 'browse', free: true },
+        { key: 'community', free: true },
+        { key: 'health', free: true },
+        { key: 'discount', free: false },
+        { key: 'shipping', free: false },
+        { key: 'support', free: false },
+        { key: 'exclusive', free: false },
+        { key: 'birthday', free: false },
       ],
       historyList: [],
     }
   },
 
+  computed: {
+    // 功能对比清单（label 随语言切换）
+    featureItems() {
+      void this.localeVersion
+      return this.featureList.map((item) => ({
+        key: item.key,
+        free: item.free,
+        label: i18n.t('subscribeService.features.' + item.key),
+      }))
+    },
+  },
+
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
+  },
+
   onLoad() {
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
     this.loadPlans()
     this.loadMySubscription()
   },
@@ -154,7 +190,7 @@ export default {
           this.selectedPlan = this.plans[0].key
         }
       } catch (err) {
-        uni.showToast({ title: '加载订阅方案失败', icon: 'none' })
+        uni.showToast({ title: i18n.t('subscribeService.loadFailed'), icon: 'none' })
       }
     },
 
@@ -173,15 +209,18 @@ export default {
 
     async onSubscribe() {
       if (this.currentPlan && this.selectedPlan === this.currentPlan.key) {
-        uni.showToast({ title: '已是当前方案', icon: 'none' })
+        uni.showToast({ title: i18n.t('subscribeService.alreadyCurrent'), icon: 'none' })
         return
       }
       try {
         const res = await subscribeApi.subscribe(this.selectedPlan)
         this.currentPlan = res.data
-        uni.showToast({ title: '订阅成功', icon: 'success' })
+        uni.showToast({ title: i18n.t('subscribeService.subscribeSuccess'), icon: 'success' })
       } catch (err) {
-        uni.showToast({ title: err.message || '订阅失败', icon: 'none' })
+        uni.showToast({
+          title: err.message || i18n.t('subscribeService.subscribeFailed'),
+          icon: 'none',
+        })
       }
     },
   },

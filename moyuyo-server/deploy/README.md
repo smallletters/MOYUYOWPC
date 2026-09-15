@@ -207,7 +207,7 @@ java -cp app.jar org.springframework.security.crypto.bcrypt.BCryptPasswordEncode
 - [ ] 用默认管理员账号登录后台成功
 - [ ] `docker compose ps` 所有服务都是 `healthy`
 - [ ] `.env` 权限是 `600`（`stat -c '%a' .env`）
-- [ ] MySQL truststore 已生成（`ls -la /opt/moyuyo/certs/`）
+- [ ] MySQL 信任库已自动生成（`docker compose logs mysql-certs-init` 可见"信任库已生成"）
 - [ ] 1Panel 反向代理已启用 HTTPS + HSTS
 - [ ] 服务器防火墙已放行 80/443，关闭 8080/9090 对外
 

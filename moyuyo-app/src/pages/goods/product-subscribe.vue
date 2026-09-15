@@ -13,7 +13,9 @@
         <image :src="resolveImage(product)" class="product-image" mode="aspectFill" />
         <view class="product-info">
           <text class="product-name">{{ product.name }}</text>
-          <text class="product-desc">{{ stripHtml(product.shortDetail || product.detail) }}</text>
+          <text v-if="product.shortDetail" class="product-desc">
+            {{ stripHtml(product.shortDetail) }}
+          </text>
           <view class="product-price-row">
             <text class="product-price">${{ (product.price || 0).toFixed(2) }}</text>
             <text v-if="product.originalPrice" class="product-original-price">

@@ -1,14 +1,14 @@
-﻿<template>
+<template>
   <view class="invoice-page">
     <!-- 顶部导航栏 -->
-
-
 
     <scroll-view scroll-y class="scroll">
       <!-- 发票抬头管理 -->
       <view class="section-label">
-        <text class="label-text">发票抬头</text>
-        <text class="label-action" @tap="showInvoiceForm = true">添加新抬头</text>
+        <text class="label-text">{{ $t('invoice.headerSection') }}</text>
+        <text class="label-action" @tap="showInvoiceForm = true">
+          {{ $t('invoice.addHeader') }}
+        </text>
       </view>
 
       <!-- 当前抬头卡片 -->
@@ -16,35 +16,35 @@
         <view class="header-top">
           <view class="header-type company">
             <text class="luc luc-building-2" />
-            <text>增值税专用发票</text>
+            <text>{{ $t('invoice.typeSpecial') }}</text>
           </view>
           <view class="header-actions">
             <view class="action-btn" @tap="showInvoiceForm = true">
               <text class="luc luc-pencil" />
-              <text>编辑</text>
+              <text>{{ $t('invoice.edit') }}</text>
             </view>
           </view>
         </view>
-        <text class="header-name">上海某某宠物用品有限公司</text>
+        <text class="header-name">{{ $t('invoice.demoCompany') }}</text>
         <view class="header-detail">
           <view class="detail-row">
-            <text class="detail-label">税号</text>
+            <text class="detail-label">{{ $t('invoice.taxId') }}</text>
             <text class="detail-value">91310000MA1FL8XQ30</text>
           </view>
           <view class="detail-row">
-            <text class="detail-label">地址</text>
-            <text class="detail-value">上海市浦东新区张江高科技园区</text>
+            <text class="detail-label">{{ $t('invoice.address') }}</text>
+            <text class="detail-value">{{ $t('invoice.demoAddress') }}</text>
           </view>
           <view class="detail-row">
-            <text class="detail-label">电话</text>
+            <text class="detail-label">{{ $t('invoice.phone') }}</text>
             <text class="detail-value">021-5888XXXX</text>
           </view>
           <view class="detail-row">
-            <text class="detail-label">开户行</text>
-            <text class="detail-value">中国工商银行上海张江支行</text>
+            <text class="detail-label">{{ $t('invoice.bankName') }}</text>
+            <text class="detail-value">{{ $t('invoice.demoBank') }}</text>
           </view>
           <view class="detail-row">
-            <text class="detail-label">银行账号</text>
+            <text class="detail-label">{{ $t('invoice.bankAccount') }}</text>
             <text class="detail-value">1001 2088 0920 0158 XXX</text>
           </view>
         </view>
@@ -57,21 +57,21 @@
           :class="{ active: invoiceType === '普通' }"
           @tap="invoiceType = '普通'"
         >
-          增值税普通发票
+          {{ $t('invoice.typeGeneral') }}
         </view>
         <view
           class="type-option"
           :class="{ active: invoiceType === '专用' }"
           @tap="invoiceType = '专用'"
         >
-          增值税专用发票
+          {{ $t('invoice.typeSpecial') }}
         </view>
       </view>
 
       <!-- 开票统计 -->
       <view class="stats-card">
         <view class="stat-item">
-          <text class="stat-label">本月开票金额</text>
+          <text class="stat-label">{{ $t('invoice.monthlyAmount') }}</text>
           <view class="stat-value-row">
             <text class="stat-value">
               {{ stats.monthlyAmount.split('.')[0] || stats.monthlyAmount }}
@@ -79,15 +79,15 @@
             <text class="stat-unit">
               {{
                 stats.monthlyAmount.includes('.')
-                  ? '.' + stats.monthlyAmount.split('.')[1] + ' 元'
-                  : ' 元'
+                  ? '.' + stats.monthlyAmount.split('.')[1] + $t('invoice.currencyUnit')
+                  : $t('invoice.currencyUnit')
               }}
             </text>
           </view>
         </view>
         <view class="stat-divider" />
         <view class="stat-item">
-          <text class="stat-label">累计开票金额</text>
+          <text class="stat-label">{{ $t('invoice.totalAmount') }}</text>
           <view class="stat-value-row">
             <text class="stat-value">
               {{ stats.totalAmount.split('.')[0] || stats.totalAmount }}
@@ -95,8 +95,8 @@
             <text class="stat-unit">
               {{
                 stats.totalAmount.includes('.')
-                  ? '.' + stats.totalAmount.split('.')[1] + ' 元'
-                  : ' 元'
+                  ? '.' + stats.totalAmount.split('.')[1] + $t('invoice.currencyUnit')
+                  : $t('invoice.currencyUnit')
               }}
             </text>
           </view>
@@ -112,7 +112,7 @@
           :class="{ active: currentTab === i }"
           @tap="switchTab(i)"
         >
-          <text>{{ tab.name }}</text>
+          <text>{{ $t(tab.nameKey) }}</text>
           <view v-if="tab.badge" class="tab-badge">{{ tab.badge }}</view>
           <view v-if="currentTab === i" class="tab-indicator" />
         </view>
@@ -123,22 +123,22 @@
         <view v-for="(order, i) in availableOrders" :key="i" class="order-card">
           <view class="order-top">
             <view>
-              <text class="order-id">订单号：{{ order.id }}</text>
-              <text class="order-time">下单时间：{{ order.time }}</text>
+              <text class="order-id">{{ $t('invoice.orderNo', { id: order.id }) }}</text>
+              <text class="order-time">{{ $t('invoice.orderTime', { time: order.time }) }}</text>
             </view>
             <text class="luc luc-chevron-right" />
           </view>
           <view class="order-amount-row">
-            <text class="amount-label">订单金额</text>
+            <text class="amount-label">{{ $t('invoice.orderAmount') }}</text>
             <text class="amount-value">{{ order.amount }}</text>
           </view>
           <view class="amount-sub">
             <text class="sub-item">
-              已开票
+              {{ $t('invoice.invoiced') }}
               <text class="invoiced">{{ order.invoiced }}</text>
             </text>
             <text class="sub-item">
-              未开票
+              {{ $t('invoice.uninvoiced') }}
               <text class="uninvoiced">{{ order.uninvoiced }}</text>
             </text>
           </view>
@@ -146,15 +146,17 @@
             <view class="invoice-type-select">
               <view class="type-btn selected">
                 <text class="luc luc-file-text" />
-                <text>电子发票</text>
+                <text>{{ $t('invoice.eInvoice') }}</text>
               </view>
               <view class="type-btn">
                 <text class="luc luc-mail" />
-                <text>纸质发票</text>
+                <text>{{ $t('invoice.paperInvoice') }}</text>
               </view>
             </view>
-            <view v-if="order.canApply" class="apply-btn" @tap="handleApply(order)">申请开票</view>
-            <view v-else class="apply-btn disabled">已开完</view>
+            <view v-if="order.canApply" class="apply-btn" @tap="handleApply(order)">
+              {{ $t('invoice.applyInvoice') }}
+            </view>
+            <view v-else class="apply-btn disabled">{{ $t('invoice.fullyInvoiced') }}</view>
           </view>
         </view>
       </view>
@@ -165,7 +167,7 @@
           <view class="invoiced-top">
             <view>
               <text class="invoice-number">{{ inv.number }}</text>
-              <text class="invoiced-date">开票时间：{{ inv.date }}</text>
+              <text class="invoiced-date">{{ $t('invoice.issuedAt', { time: inv.date }) }}</text>
             </view>
             <view class="status-badge" :class="inv.statusClass">
               <view class="status-dot" />
@@ -174,26 +176,26 @@
           </view>
           <view class="invoiced-info">
             <view class="info-row">
-              <text class="info-label">关联订单</text>
+              <text class="info-label">{{ $t('invoice.relatedOrder') }}</text>
               <text class="info-value">{{ inv.orderId }}</text>
             </view>
             <view class="info-row">
-              <text class="info-label">发票金额</text>
+              <text class="info-label">{{ $t('invoice.amount') }}</text>
               <text class="info-value amount-highlight">{{ inv.amount }}</text>
             </view>
             <view class="info-row">
-              <text class="info-label">发票类型</text>
+              <text class="info-label">{{ $t('invoice.type') }}</text>
               <text class="info-value">{{ inv.type }}</text>
             </view>
           </view>
           <view class="invoiced-actions">
             <view class="action-detail" @tap="handleViewDetail(inv)">
               <text class="luc luc-eye" />
-              <text>查看详情</text>
+              <text>{{ $t('invoice.viewDetail') }}</text>
             </view>
             <view class="action-primary" @tap="handleDownload(inv)">
               <text class="luc luc-download" />
-              <text>下载 PDF</text>
+              <text>{{ $t('invoice.downloadPdf') }}</text>
             </view>
           </view>
         </view>
@@ -205,37 +207,39 @@
           <view class="failed-top">
             <view>
               <text class="invoice-number">FP20250603003</text>
-              <text class="invoiced-date">申请时间：2025-06-03 16:20</text>
+              <text class="invoiced-date">
+                {{ $t('invoice.appliedAt', { time: '2025-06-03 16:20' }) }}
+              </text>
             </view>
             <view class="failed-reason">
               <text class="luc luc-x-circle" />
-              <text>抬头信息不完整</text>
+              <text>{{ $t('invoice.incompleteHeader') }}</text>
             </view>
           </view>
           <view class="failed-info">
             <view class="info-row">
-              <text class="info-label">关联订单</text>
+              <text class="info-label">{{ $t('invoice.relatedOrder') }}</text>
               <text class="info-value">MY20250601001</text>
             </view>
             <view class="info-row">
-              <text class="info-label">发票金额</text>
+              <text class="info-label">{{ $t('invoice.amount') }}</text>
               <text class="info-value">1,280.00</text>
             </view>
             <view class="info-row">
-              <text class="info-label">失败原因</text>
+              <text class="info-label">{{ $t('invoice.failReason') }}</text>
               <text class="info-value" style="color: var(--state-error)">
-                请补充开户行及银行账号信息后重新申请
+                {{ $t('invoice.failReasonText') }}
               </text>
             </view>
           </view>
           <view class="failed-actions">
             <view class="btn-retry" @tap="handleRetry">
               <text class="luc luc-rotate-ccw" />
-              <text>重新申请</text>
+              <text>{{ $t('invoice.reapply') }}</text>
             </view>
             <view class="btn-contact" @tap="handleContact">
               <text class="luc luc-headphones" />
-              <text>联系客服</text>
+              <text>{{ $t('invoice.contactSupport') }}</text>
             </view>
           </view>
         </view>
@@ -248,7 +252,7 @@
     <view class="form-overlay" :class="{ active: showInvoiceForm }" @tap="showInvoiceForm = false">
       <view class="form-sheet" @tap.stop>
         <view class="sheet-handle" />
-        <text class="form-title">申请开票</text>
+        <text class="form-title">{{ $t('invoice.applyInvoice') }}</text>
 
         <!-- 个人/企业切换 -->
         <view class="form-type-toggle">
@@ -257,49 +261,57 @@
             :class="{ active: formType === '个人' }"
             @tap="formType = '个人'"
           >
-            个人
+            {{ $t('invoice.personal') }}
           </view>
           <view
             class="type-option"
             :class="{ active: formType === '企业' }"
             @tap="formType = '企业'"
           >
-            企业
+            {{ $t('invoice.company') }}
           </view>
         </view>
 
         <view class="form-content">
           <view class="form-group">
-            <text class="form-label">发票抬头</text>
-            <input v-model="formData.title" class="form-input" placeholder="请输入发票抬头">
+            <text class="form-label">{{ $t('invoice.headerSection') }}</text>
+            <input
+              v-model="formData.title"
+              class="form-input"
+              :placeholder="$t('invoice.titlePlaceholder')"
+            >
           </view>
           <view class="form-group">
-            <text class="form-label">税号</text>
-            <input v-model="formData.taxId" class="form-input" placeholder="请输入纳税人识别号">
+            <text class="form-label">{{ $t('invoice.taxId') }}</text>
+            <input
+              v-model="formData.taxId"
+              class="form-input"
+              :placeholder="$t('invoice.taxIdPlaceholder')"
+            >
           </view>
           <view class="form-group">
-            <text class="form-label">开票金额</text>
+            <text class="form-label">{{ $t('invoice.invoiceAmount') }}</text>
             <input
               v-model="formData.amount"
               class="form-input"
-              placeholder="请输入开票金额"
+              :placeholder="$t('invoice.amountPlaceholder')"
               type="number"
             >
           </view>
           <view class="form-group">
-            <text class="form-label">电子邮箱</text>
+            <text class="form-label">{{ $t('invoice.email') }}</text>
             <input
               v-model="formData.email"
               class="form-input"
-              placeholder="接收电子发票的邮箱"
+              :placeholder="$t('invoice.emailPlaceholder')"
               type="email"
             >
           </view>
         </view>
 
         <view class="form-actions">
-          <view class="form-cancel" @tap="showInvoiceForm = false">取消</view>
-          <view class="form-submit" @tap="handleSubmitInvoice">提交申请</view>
+          <view class="form-cancel" @tap="showInvoiceForm = false">{{ $t('common.cancel') }}</view>
+          <view class="form-submit" @tap="handleSubmitInvoice">{{ $t('invoice.submit') }}</view>
         </view>
       </view>
     </view>
@@ -308,6 +320,7 @@
 
 <script>
 import { invoiceApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.userInvoice',
@@ -325,9 +338,9 @@ export default {
         email: '',
       },
       tabs: [
-        { name: '可开票', badge: null },
-        { name: '已开票', badge: null },
-        { name: '申请失败', badge: null },
+        { nameKey: 'invoice.tabAvailable', badge: null },
+        { nameKey: 'invoice.tabInvoiced', badge: null },
+        { nameKey: 'invoice.tabFailed', badge: null },
       ],
       availableOrders: [],
       invoicedList: [],
@@ -368,20 +381,20 @@ export default {
       this.showInvoiceForm = true
     },
     handleViewDetail(inv) {
-      uni.showToast({ title: `查看发票详情：${inv.number}`, icon: 'none' })
+      uni.showToast({ title: i18n.t('invoice.detailToast', { number: inv.number }), icon: 'none' })
     },
     handleDownload(inv) {
-      uni.showToast({ title: '下载中...', icon: 'none' })
+      uni.showToast({ title: i18n.t('invoice.downloading'), icon: 'none' })
     },
     handleRetry() {
-      uni.showToast({ title: '重新申请已提交', icon: 'none' })
+      uni.showToast({ title: i18n.t('invoice.reapplySubmitted'), icon: 'none' })
     },
     handleContact() {
-      uni.showToast({ title: '联系客服中...', icon: 'none' })
+      uni.showToast({ title: i18n.t('invoice.contacting'), icon: 'none' })
     },
     async handleSubmitInvoice() {
       if (!this.formData.title || !this.formData.taxId) {
-        uni.showToast({ title: '请填写完整信息', icon: 'none' })
+        uni.showToast({ title: i18n.t('invoice.fillRequired'), icon: 'none' })
         return
       }
       try {
@@ -392,11 +405,11 @@ export default {
           email: this.formData.email,
           type: this.invoiceType,
         })
-        uni.showToast({ title: '开票申请已提交', icon: 'success' })
+        uni.showToast({ title: i18n.t('invoice.submitted'), icon: 'success' })
         this.showInvoiceForm = false
         this.loadInvoices()
       } catch (e) {
-        uni.showToast({ title: '提交失败，请重试', icon: 'none' })
+        uni.showToast({ title: i18n.t('invoice.submitFailed'), icon: 'none' })
       }
     },
   },

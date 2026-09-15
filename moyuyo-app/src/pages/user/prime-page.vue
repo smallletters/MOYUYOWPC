@@ -13,7 +13,7 @@
         </view>
         <view class="brand-text">
           <text class="brand-name">MOYUYO Prime</text>
-          <text class="brand-sub">专属于你的高端宠物生活</text>
+          <text class="brand-sub">{{ t('prime.brandSub') }}</text>
         </view>
       </view>
     </view>
@@ -22,7 +22,7 @@
     <view class="content">
       <!-- 加载中 -->
       <view v-if="loading" class="state-block">
-        <text class="state-text">加载中…</text>
+        <text class="state-text">{{ t('common.loading') }}</text>
       </view>
 
       <!-- 未开通视图 -->
@@ -38,7 +38,7 @@
               @tap="selectPlan(p.code)"
             >
               <view v-if="p.recommend" class="recommend-tag-wrap">
-                <text class="recommend-tag">推荐</text>
+                <text class="recommend-tag">{{ t('prime.recommendTag') }}</text>
               </view>
               <view class="plan-option-row1">
                 <text class="plan-option-name">{{ p.name }}</text>
@@ -48,10 +48,12 @@
               </view>
               <view class="plan-option-row2">
                 <text class="plan-price">${{ p.price }}</text>
-                <text class="plan-unit">/ {{ p.code === 'MONTHLY' ? '月' : '年' }}</text>
+                <text class="plan-unit">
+                  / {{ p.code === 'MONTHLY' ? t('prime.unitMonth') : t('prime.unitYear') }}
+                </text>
               </view>
               <text v-if="p.code === 'YEARLY'" class="plan-monthly-hint">
-                约 ${{ (p.price / 12).toFixed(2) }}/月
+                {{ t('prime.perMonth', { price: '$' + (p.price / 12).toFixed(2) }) }}
               </text>
             </view>
           </view>
@@ -59,29 +61,26 @@
           <!-- 立即开通按钮 -->
           <view class="activate-btn" @tap="onActivate">
             <text class="luc luc-crown activate-icon" />
-            <text class="activate-text">立即开通</text>
+            <text class="activate-text">{{ t('prime.subscribe') }}</text>
           </view>
 
           <!-- 订阅说明提示（自动续费） -->
           <view class="trial-row">
             <text class="luc luc-credit-card trial-icon" />
-            <text class="trial-text">自动续费订阅，可随时取消</text>
+            <text class="trial-text">{{ t('prime.trialText') }}</text>
           </view>
 
           <!-- 合规提示 -->
           <view class="legal">
-            <text class="legal-text">
-              开通即表示你同意自动续费服务。你可以在「我的 >
-              订阅管理」中随时取消自动续费，取消后服务将持续至当前周期结束。
-            </text>
+            <text class="legal-text">{{ t('prime.legal') }}</text>
           </view>
         </view>
 
         <!-- 权益列表 -->
         <view class="benefits-card">
           <view class="benefits-head">
-            <text class="benefits-title">会员专属权益</text>
-            <text class="benefits-sub">开通 Prime 即享全部权益</text>
+            <text class="benefits-title">{{ t('prime.benefitsTitle') }}</text>
+            <text class="benefits-sub">{{ t('prime.benefitsSub') }}</text>
           </view>
           <view v-for="(b, i) in benefitList" :key="i" class="benefit-row">
             <view class="benefit-icon-wrap" :style="{ background: b.iconBg }">
@@ -106,16 +105,18 @@
             </view>
             <view class="status-info">
               <view class="status-name-row">
-                <text class="status-name">MOYUYO Prime 会员</text>
-                <text class="status-tag">已开通</text>
+                <text class="status-name">{{ t('prime.memberName') }}</text>
+                <text class="status-tag">{{ t('prime.subscribed') }}</text>
               </view>
-              <text class="status-plan">{{ primeStatus.planName }}方案 · 自动续费已开启</text>
+              <text class="status-plan">
+                {{ t('prime.planStatus', { name: primeStatus.planName }) }}
+              </text>
             </view>
           </view>
           <view class="status-expire-row">
             <view class="status-expire-left">
               <text class="luc luc-calendar status-cal-icon" />
-              <text class="status-expire-label">到期时间</text>
+              <text class="status-expire-label">{{ t('prime.expiresAt') }}</text>
             </view>
             <text class="status-expire-val">{{ formatDate(primeStatus.expireAt) }}</text>
           </view>
@@ -128,21 +129,21 @@
           <view class="manage-row" @tap="onManageSubscription">
             <view class="manage-left">
               <text class="luc luc-credit-card manage-icon" />
-              <text class="manage-label">管理订阅</text>
+              <text class="manage-label">{{ t('prime.manageSubscription') }}</text>
             </view>
             <text class="luc luc-chevron-right manage-arrow" />
           </view>
           <view class="manage-row" @tap="onViewBills">
             <view class="manage-left">
               <text class="luc luc-receipt manage-icon" />
-              <text class="manage-label">查看账单</text>
+              <text class="manage-label">{{ t('prime.viewBills') }}</text>
             </view>
             <text class="luc luc-chevron-right manage-arrow" />
           </view>
           <view class="manage-row" @tap="onViewPoints">
             <view class="manage-left">
               <text class="luc luc-gift manage-icon" />
-              <text class="manage-label">赠送积分</text>
+              <text class="manage-label">{{ t('prime.giftPoints') }}</text>
             </view>
             <text class="luc luc-chevron-right manage-arrow" />
           </view>
@@ -150,7 +151,7 @@
 
         <!-- 取消订阅（放底部，红字按钮） -->
         <view class="cancel-btn" @tap="onCancel">
-          <text class="cancel-text">取消订阅</text>
+          <text class="cancel-text">{{ t('prime.cancelSubscription') }}</text>
         </view>
       </view>
     </view>
@@ -158,11 +159,26 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { listPrimePlans, getPrimeStatus, subscribePrime, cancelPrime } from '@/api/marketing'
+import { i18n } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 import { useUserStore } from '@/store'
 usePageTitle('pageTitle.userPrimePage')
+
+// 轻量翻译函数（响应 localeVersion 变化，刷新依赖本地化的模板）
+const localeVersion = ref(0)
+let _unsubLocale = null
+function t(key, params) {
+  void localeVersion.value // 触发依赖追踪
+  return i18n.t(key, params)
+}
+
+// 货币符号（随语言切换）
+const currencySymbol = computed(() => {
+  void localeVersion.value
+  return i18n.currencySymbol
+})
 
 const plans = ref([])
 
@@ -213,71 +229,71 @@ const saveBadgeText = computed(() => {
   const m = Number(monthly.price) || 0
   if (y <= 0 || m <= 0) return ''
   const saved = m * 12 - y
-  return saved > 0 ? `省 $${saved.toFixed(2)}` : ''
+  return saved > 0 ? t('prime.saveText', { amount: saved.toFixed(2) }) : ''
 })
 
-// 设计稿中的 9 项权益（图标 / 标题 / 描述 / 配色）
+// 设计稿中的 9 项权益（图标 / 标题 / 描述 / 配色），标题与描述走 i18n
 const benefitList = [
   {
     icon: 'luc-truck',
-    title: '全场免运费',
-    desc: '无门槛，全品类包邮',
+    titleKey: 'prime.benefits.shipping.title',
+    descKey: 'prime.benefits.shipping.desc',
     iconBg: '#ece3c6',
     iconColor: '#8a7224',
   },
   {
     icon: 'luc-badge-percent',
-    title: '专属会员价',
-    desc: '额外 5-10% off 折扣',
+    titleKey: 'prime.benefits.memberPrice.title',
+    descKey: 'prime.benefits.memberPrice.desc',
     iconBg: '#e3ebe5',
     iconColor: '#5f7d6a',
   },
   {
     icon: 'luc-zap',
-    title: '优先发货',
-    desc: '24小时内极速发货',
+    titleKey: 'prime.benefits.priority.title',
+    descKey: 'prime.benefits.priority.desc',
     iconBg: '#ece3c6',
     iconColor: '#96693b',
   },
   {
     icon: 'luc-refresh-cw',
-    title: '免费退换货',
-    desc: '退货运费全免',
+    titleKey: 'prime.benefits.returns.title',
+    descKey: 'prime.benefits.returns.desc',
     iconBg: '#e3ebe5',
     iconColor: '#5f7d6a',
   },
   {
     icon: 'luc-headphones',
-    title: '专属客服',
-    desc: '1v1 优先响应',
+    titleKey: 'prime.benefits.support.title',
+    descKey: 'prime.benefits.support.desc',
     iconBg: '#ece3c6',
     iconColor: '#8a7224',
   },
   {
     icon: 'luc-flame',
-    title: 'Prime Day 专属大促',
-    desc: '会员限定大促专场',
+    titleKey: 'prime.benefits.primeDay.title',
+    descKey: 'prime.benefits.primeDay.desc',
     iconBg: '#f6e0da',
     iconColor: '#b2574c',
   },
   {
     icon: 'luc-coins',
-    title: '每月赠送 $10 积分',
-    desc: '自动到账，购物抵扣',
+    titleKey: 'prime.benefits.points.title',
+    descKey: 'prime.benefits.points.desc',
     iconBg: '#ece3c6',
     iconColor: '#96693b',
   },
   {
     icon: 'luc-sparkles',
-    title: '新品优先购',
-    desc: '抢先体验新品',
+    titleKey: 'prime.benefits.newArrival.title',
+    descKey: 'prime.benefits.newArrival.desc',
     iconBg: '#e3ebe5',
     iconColor: '#5f7d6a',
   },
   {
     icon: 'luc-lock-open',
-    title: 'Pet Hub 全部场景解锁',
-    desc: '健康、社交、护理全场景',
+    titleKey: 'prime.benefits.petHub.title',
+    descKey: 'prime.benefits.petHub.desc',
     iconBg: '#ece3c6',
     iconColor: '#8a7224',
   },
@@ -314,18 +330,18 @@ async function onActivate() {
   if (submitting.value) return
   // 订阅需登录：未登录先引导登录，登录后回到本页再次开通
   if (!userStore.isLoggedIn) {
-    uni.showToast({ title: '请先登录后开通', icon: 'none' })
+    uni.showToast({ title: t('prime.loginFirst'), icon: 'none' })
     uni.navigateTo({ url: '/pages/user/login' })
     return
   }
   const selected = plans.value.find((p) => p.code === selectedPlanCode.value)
   if (!selected) {
-    uni.showToast({ title: '套餐信息加载中', icon: 'none' })
+    uni.showToast({ title: t('prime.planLoading'), icon: 'none' })
     return
   }
   uni.showModal({
-    title: '确认开通',
-    content: `确认开通 ${selected.name} 方案（$${selected.price}）？开通即视为同意自动续费，可随时在「订阅管理」中取消。`,
+    title: t('prime.confirmTitle'),
+    content: t('prime.confirmContent', { name: selected.name, price: selected.price }),
     success: async (res) => {
       if (!res.confirm) return
       submitting.value = true
@@ -338,19 +354,19 @@ async function onActivate() {
         // 模拟直开：密钥未配置(本地/联调)直接激活
         if (result && result.simulated) {
           primeStatus.value = result.status
-          uni.showToast({ title: '已开通', icon: 'success' })
+          uni.showToast({ title: t('prime.subscribed'), icon: 'success' })
           return
         }
         // 真实支付：跳转 Stripe Checkout，付完回跳本页刷新订阅状态
         if (result && result.sessionUrl) {
-          uni.showToast({ title: '正在跳转支付…', icon: 'none' })
+          uni.showToast({ title: t('prime.redirecting'), icon: 'none' })
           openPayment(result.sessionUrl)
           return
         }
-        throw new Error('订阅请求异常')
+        throw new Error(t('prime.subscribeError'))
       } catch (e) {
         console.warn('[prime-page] subscribe failed', e)
-        uni.showToast({ title: e?.message || '开通失败', icon: 'none' })
+        uni.showToast({ title: e?.message || t('prime.activateFailed'), icon: 'none' })
       } finally {
         submitting.value = false
       }
@@ -360,16 +376,16 @@ async function onActivate() {
 
 async function onCancel() {
   uni.showModal({
-    title: '确认取消订阅',
-    content: '取消后当前周期仍可使用，到期后将不再自动续费',
+    title: t('prime.cancelConfirmTitle'),
+    content: t('prime.cancelConfirmContent'),
     success: async (res) => {
       if (!res.confirm) return
       try {
         await cancelPrime()
         await loadAll() // 重新拉取状态，未开通视图会自动恢复
-        uni.showToast({ title: '已取消', icon: 'none' })
+        uni.showToast({ title: t('prime.cancelled'), icon: 'none' })
       } catch (e) {
-        uni.showToast({ title: '取消失败', icon: 'none' })
+        uni.showToast({ title: t('prime.cancelFailed'), icon: 'none' })
       }
     },
   })
@@ -380,6 +396,10 @@ function formatDate(iso) {
   // 兼容 "yyyy-MM-ddTHH:mm:ss" 与 "yyyy-MM-dd HH:mm:ss"
   const d = new Date(iso.replace(' ', 'T'))
   if (isNaN(d.getTime())) return iso
+  // 按当前语言格式化日期
+  if (i18n.locale === 'en-US') {
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  }
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`
 }
 
@@ -392,14 +412,23 @@ function onManageSubscription() {
 }
 
 function onViewBills() {
-  uni.showToast({ title: '账单详情开发中', icon: 'none' })
+  uni.showToast({ title: t('prime.billsDev'), icon: 'none' })
 }
 
 function onViewPoints() {
   uni.navigateTo({ url: '/pages/user/points-detail' })
 }
 
-onMounted(loadAll)
+onMounted(() => {
+  loadAll()
+  // 订阅语言切换，触发模板与本页 t() 依赖重新求值
+  _unsubLocale = i18n.subscribe(() => {
+    localeVersion.value += 1
+  })
+})
+onBeforeUnmount(() => {
+  if (_unsubLocale) _unsubLocale()
+})
 </script>
 
 <style lang="scss" scoped>

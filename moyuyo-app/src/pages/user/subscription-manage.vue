@@ -1,11 +1,11 @@
-﻿<template>
+<template>
   <view class="subscription-manage">
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">我的订阅</text>
+      <text class="header-title">{{ t('subscriptionManage.mySubscriptions') }}</text>
       <view class="header-spacer" />
     </view>
 
@@ -14,13 +14,13 @@
       <view class="overview-card">
         <view class="overview-stats">
           <view class="stat-item">
-            <text class="stat-label">活跃订阅</text>
+            <text class="stat-label">{{ t('subscriptionManage.activeSubscriptions') }}</text>
             <text class="stat-value">{{ activeCount }}</text>
           </view>
           <view class="stat-divider" />
           <view class="stat-item">
-            <text class="stat-label">总节省</text>
-            <text class="stat-value stat-success">${{ totalSaved }}</text>
+            <text class="stat-label">{{ t('subscriptionManage.totalSaved') }}</text>
+            <text class="stat-value stat-success">{{ currencySymbol }}{{ totalSaved }}</text>
           </view>
         </view>
         <view class="overview-icon">
@@ -30,7 +30,7 @@
 
       <!-- 活跃订阅列表 -->
       <view class="section-header">
-        <text class="section-title">活跃订阅</text>
+        <text class="section-title">{{ t('subscriptionManage.activeSubscriptions') }}</text>
       </view>
 
       <view v-for="item in activeSubscriptions" :key="item.id" class="sub-card">
@@ -40,7 +40,9 @@
           <view class="sub-detail">
             <view class="sub-name-row">
               <text class="sub-name">{{ item.name }}</text>
-              <text class="status-tag" :class="'status-' + item.status">{{ item.statusText }}</text>
+              <text class="status-tag" :class="'status-' + item.status">
+                {{ t(item.statusKey) }}
+              </text>
             </view>
             <text class="sub-spec">{{ item.spec }}</text>
             <view class="sub-cycle">
@@ -48,7 +50,7 @@
                 class="cycle-icon luc"
                 :class="$luc(item.status === 'paused' ? 'pause' : 'play')"
               />
-              <text class="cycle-text">{{ item.cycleText }}</text>
+              <text class="cycle-text">{{ t(item.cycleKey) }}</text>
             </view>
           </view>
         </view>
@@ -59,21 +61,27 @@
         <!-- 价格与配送信息 -->
         <view class="price-delivery">
           <view class="price-row">
-            <text class="price-current">${{ item.price }}</text>
-            <text class="price-original">${{ item.originalPrice }}</text>
-            <text class="discount-tag">省{{ item.discount }}%</text>
+            <text class="price-current">{{ currencySymbol }}{{ item.price }}</text>
+            <text class="price-original">{{ currencySymbol }}{{ item.originalPrice }}</text>
+            <text class="discount-tag">
+              {{ t('subscriptionManage.savePercent', { discount: item.discount }) }}
+            </text>
           </view>
           <view class="delivery-row">
             <text class="delivery-icon luc-package" />
-            <text class="delivery-text">下次 {{ item.nextDate }}</text>
+            <text class="delivery-text">
+              {{ t('subscriptionManage.nextDeliveryOn', { date: item.nextDate }) }}
+            </text>
           </view>
         </view>
 
         <!-- 配送倒计时进度条 -->
         <view class="countdown-section">
           <view class="countdown-labels">
-            <text class="countdown-label">距下次配送</text>
-            <text class="countdown-days">{{ item.daysLeft }} 天</text>
+            <text class="countdown-label">{{ t('subscriptionManage.countdownLabel') }}</text>
+            <text class="countdown-days">
+              {{ t('subscriptionManage.daysSuffix', { n: item.daysLeft }) }}
+            </text>
           </view>
           <view class="progress-bar">
             <view class="progress-fill" :style="{ width: item.progress + '%' }" />
@@ -86,16 +94,26 @@
         <!-- 操作按钮行 -->
         <view class="action-row">
           <view class="action-btn action-primary" @click="editPlan(item)">
-            <text class="action-text action-text-primary">修改周期</text>
+            <text class="action-text action-text-primary">
+              {{ t('subscriptionManage.editCycle') }}
+            </text>
           </view>
           <view class="action-btn" @click="togglePause(item)">
-            <text class="action-text">{{ item.status === 'paused' ? '恢复' : '暂停' }}</text>
+            <text class="action-text">
+              {{
+                t(
+                  item.status === 'paused'
+                    ? 'subscriptionManage.resume'
+                    : 'subscriptionManage.pause',
+                )
+              }}
+            </text>
           </view>
           <view class="action-btn" @click="skipDelivery(item)">
-            <text class="action-text">跳过本次</text>
+            <text class="action-text">{{ t('subscriptionManage.skipThis') }}</text>
           </view>
           <view class="action-btn action-danger" @click="cancelSubscription(item)">
-            <text class="action-text action-text-danger">取消订阅</text>
+            <text class="action-text action-text-danger">{{ t('subscriptionManage.cancel') }}</text>
           </view>
         </view>
       </view>
@@ -103,9 +121,11 @@
       <!-- 历史订阅（折叠区域） -->
       <view class="history-section">
         <view class="history-toggle" @click="toggleHistory">
-          <text class="section-title">历史订阅</text>
+          <text class="section-title">{{ t('subscriptionManage.historyTitle') }}</text>
           <view class="history-toggle-right">
-            <text class="history-count">{{ historySubscriptions.length }} 条记录</text>
+            <text class="history-count">
+              {{ t('subscriptionManage.historyCount', { n: historySubscriptions.length }) }}
+            </text>
             <text class="chevron" :class="{ rotated: historyExpanded }">▼</text>
           </view>
         </view>
@@ -117,12 +137,21 @@
               <view class="sub-detail">
                 <view class="sub-name-row">
                   <text class="sub-name">{{ item.name }}</text>
-                  <text class="status-tag status-cancelled">已取消</text>
+                  <text class="status-tag status-cancelled">
+                    {{ t('subscriptionManage.cancelled') }}
+                  </text>
                 </view>
-                <text class="sub-spec">{{ item.spec }} / {{ item.cycleText }}</text>
+                <text class="sub-spec">{{ item.spec }} / {{ t(item.cycleKey) }}</text>
                 <view class="sub-cycle">
                   <text class="cycle-icon luc-minus" />
-                  <text class="cycle-text cycle-text-muted">{{ item.dateRange }}</text>
+                  <text class="cycle-text cycle-text-muted">
+                    {{
+                      t('subscriptionManage.dateRange', {
+                        start: item.dateStart,
+                        end: item.dateEnd,
+                      })
+                    }}
+                  </text>
                 </view>
               </view>
             </view>
@@ -133,22 +162,33 @@
       <!-- 底部提示 -->
       <view class="tip-box">
         <text class="tip-icon luc-help-circle" />
-        <text class="tip-text">
-          订阅灵活管理：可随时调整周期、暂停或取消，无额外费用。如有疑问请联系客服。
-        </text>
+        <text class="tip-text">{{ t('subscriptionManage.tip') }}</text>
       </view>
     </scroll-view>
   </view>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { i18n } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.userSubscriptionManage')
 
+// 语言版本号：语言切换时触发模板重渲染
+const localeVersion = ref(0)
+let _unsubLocale = null
+// 国际化翻译（依赖 localeVersion 实现响应式）
+function t(key, params) {
+  void localeVersion.value // 触发依赖追踪
+  return i18n.t(key, params)
+}
+// 货币符号（随语言切换）
+const currencySymbol = computed(() => {
+  void localeVersion.value
+  return i18n.currencySymbol
+})
 
 // 历史订阅折叠状态
-
 
 const historyExpanded = ref(false)
 
@@ -163,8 +203,8 @@ const activeSubscriptions = ref([
     originalPrice: '28.00',
     discount: 10,
     status: 'active',
-    statusText: '活跃',
-    cycleText: '每月配送',
+    statusKey: 'subscriptionManage.statusActive',
+    cycleKey: 'subscriptionManage.cycleMonthly',
     nextDate: '07-15',
     daysLeft: 7,
     progress: 70,
@@ -178,8 +218,8 @@ const activeSubscriptions = ref([
     originalPrice: '20.00',
     discount: 10,
     status: 'paused',
-    statusText: '暂停',
-    cycleText: '双月配送',
+    statusKey: 'subscriptionManage.statusPaused',
+    cycleKey: 'subscriptionManage.cycleBimonthly',
     nextDate: '08-01',
     daysLeft: 24,
     progress: 20,
@@ -193,8 +233,9 @@ const historySubscriptions = ref([
     name: 'MOYUYO 温和沐浴露',
     spec: '500ml',
     image: '/static/images/product-shampoo.png',
-    cycleText: '每月配送',
-    dateRange: '2026-03-01 至 2026-06-01',
+    cycleKey: 'subscriptionManage.cycleMonthly',
+    dateStart: '2026-03-01',
+    dateEnd: '2026-06-01',
   },
 ])
 
@@ -230,15 +271,25 @@ const editPlan = (item) => {
 
 // 暂停/恢复订阅
 const togglePause = (item) => {
-  const action = item.status === 'paused' ? '恢复' : '暂停'
+  const isPaused = item.status === 'paused'
+  const actionKey = isPaused ? 'subscriptionManage.resume' : 'subscriptionManage.pause'
   uni.showModal({
-    title: '确认操作',
-    content: `确定要${action}「${item.name}」的订阅吗？`,
+    title: i18n.t('subscriptionManage.pauseConfirmTitle'),
+    content: i18n.t('subscriptionManage.pauseConfirmContent', {
+      action: i18n.t(actionKey),
+      name: item.name,
+    }),
     success: (res) => {
       if (res.confirm) {
-        item.status = item.status === 'paused' ? 'active' : 'paused'
-        item.statusText = item.status === 'paused' ? '暂停' : '活跃'
-        uni.showToast({ title: `${action}成功`, icon: 'success' })
+        item.status = isPaused ? 'active' : 'paused'
+        item.statusKey =
+          item.status === 'paused'
+            ? 'subscriptionManage.statusPaused'
+            : 'subscriptionManage.statusActive'
+        uni.showToast({
+          title: i18n.t('subscriptionManage.pauseSuccess', { action: i18n.t(actionKey) }),
+          icon: 'success',
+        })
       }
     },
   })
@@ -246,22 +297,32 @@ const togglePause = (item) => {
 
 // 跳过本次配送
 const skipDelivery = (item) => {
-  uni.showToast({ title: '已跳过本次配送', icon: 'success' })
+  uni.showToast({ title: i18n.t('subscriptionManage.skipped'), icon: 'success' })
 }
 
 // 取消订阅
 const cancelSubscription = (item) => {
   uni.showModal({
-    title: '取消订阅',
-    content: `确定要取消「${item.name}」的订阅吗？取消后将不再享受订阅折扣。`,
+    title: i18n.t('subscriptionManage.cancel'),
+    content: i18n.t('subscriptionManage.cancelConfirmContent', { name: item.name }),
     confirmColor: '#C96E5F',
     success: (res) => {
       if (res.confirm) {
-        uni.showToast({ title: '订阅已取消', icon: 'success' })
+        uni.showToast({ title: i18n.t('subscriptionManage.cancelledToast'), icon: 'success' })
       }
     },
   })
 }
+
+onMounted(() => {
+  _unsubLocale = i18n.subscribe(() => {
+    localeVersion.value += 1
+  })
+})
+
+onBeforeUnmount(() => {
+  if (_unsubLocale) _unsubLocale()
+})
 </script>
 
 <style lang="scss" scoped>

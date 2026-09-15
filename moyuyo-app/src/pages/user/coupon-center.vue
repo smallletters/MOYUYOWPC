@@ -2,15 +2,14 @@
   <view class="coupon-center">
     <!-- 深色顶部导航栏 -->
 
-
     <!-- 限时抢券倒计时横幅 -->
     <view v-if="totalSeconds > 0" class="countdown-banner">
       <view class="countdown-left">
         <text class="countdown-icon luc-zap" />
-        <text class="countdown-label">限时领券</text>
+        <text class="countdown-label">{{ $t('couponCenter.limited') }}</text>
       </view>
       <view class="countdown-right">
-        <text class="countdown-hint">剩余</text>
+        <text class="countdown-hint">{{ $t('couponCenter.remaining') }}</text>
         <view class="countdown-timer">
           <text class="timer-block">{{ countdownStr.h }}</text>
           <text class="timer-colon">:</text>
@@ -54,7 +53,7 @@
 
       <!-- 空状态 -->
       <view v-if="filteredCoupons.length === 0" class="empty-tip">
-        <text>暂无可领取的优惠券</text>
+        <text>{{ $t('couponCenter.empty') }}</text>
       </view>
     </view>
 
@@ -104,19 +103,22 @@ export default {
       // 倒计时初始为 0,首屏不显示,等接口返回 endTime 后再启动
       totalSeconds: 0,
       timerId: null,
-      coupons: [],
+      rawCoupons: [],
       localeVersion: 0,
     }
   },
 
   computed: {
     filteredCoupons() {
-      if (this.activeTab === 'all') return this.coupons
-      return this.coupons.filter((c) => c.category === this.activeTab)
+      void this.localeVersion
+      // 每次按当前语言归一化，保证切换语言时卡片文案同步刷新
+      const list = this.rawCoupons.map((c) => this.normalizeCoupon(c))
+      if (this.activeTab === 'all') return list
+      return list.filter((c) => c.category === this.activeTab)
     },
 
     claimedCount() {
-      return this.coupons.filter((c) => c.claimed).length
+      return this.rawCoupons.filter((c) => c.claimedByMe || c.claimed).length
     },
 
     countdownStr() {
@@ -198,11 +200,11 @@ export default {
         this.applyCountdownFromServer(farthestEnd)
         const normalized = list.map((c) => this.normalizeCoupon(c))
         console.log('[coupon-center] normalized count:', normalized.length)
-        this.coupons = normalized
+        this.rawCoupons = list
       } catch (e) {
         // 接口失败时清空列表,展示空状态
         console.error('[coupon-center] loadCoupons failed:', e)
-        this.coupons = []
+        this.rawCoupons = []
       }
     },
 
@@ -225,16 +227,21 @@ export default {
       let unit
       if (isPercent) {
         amount = String(rawValue).replace(/\.0+$/, '')
-        unit = '折'
+        unit = i18n.t('couponCenter.discountUnit')
       } else {
         amount = String(rawValue).replace(/[^\d.]/g, '')
         unit = this.currencySymbol
       }
       // typeLabel 给 up-coupon 的 desc 区域作为副标题,优先 description 字段
-      const typeLabel = c.description || (isPercent ? '折扣券' : '满减券')
+      const typeLabel =
+        c.description ||
+        i18n.t(isPercent ? 'couponCenter.percentCoupon' : 'couponCenter.amountCoupon')
       // condition 拼装
       const minAmt = Number(c.minOrderAmount || 0)
-      const condition = minAmt > 0 ? `满${this.formatMoney(minAmt)}可用` : '无门槛'
+      const condition =
+        minAmt > 0
+          ? i18n.t('couponCenter.minOrder', { amount: this.formatMoney(minAmt) })
+          : i18n.t('couponCenter.noThreshold')
       // validity 拼装:优先显示结束日期;若 startTime 存在则一并显示
       const validity = this.formatValidity(c.startTime, c.endTime)
       const category = this.inferCategory(c, typeLabel)
@@ -249,8 +256,8 @@ export default {
         validity,
         claimed: Boolean(c.claimedByMe || c.claimed),
         themeType: CATEGORY_TO_THEME[category] || 'primary',
-        actionText: i18n.t('couponCenter.goClaim') || '立即领取',
-        claimedText: i18n.t('couponCenter.claimed') || '已领取',
+        actionText: i18n.t('couponCenter.goClaim'),
+        claimedText: i18n.t('couponCenter.claimed'),
       }
     },
 
@@ -269,10 +276,10 @@ export default {
       }
       const s = fmt(start)
       const e = fmt(end)
-      if (s && e) return `${s} 至 ${e}`
-      if (e) return `至 ${e} 前使用`
-      if (s) return `${s} 起使用`
-      return '长期有效'
+      if (s && e) return i18n.t('couponCenter.validityRange', { start: s, end: e })
+      if (e) return i18n.t('couponCenter.validityUntil', { date: e })
+      if (s) return i18n.t('couponCenter.validityFrom', { date: s })
+      return i18n.t('couponCenter.validityLongTerm')
     },
 
     // 历史数据兜底:从 description / typeLabel 文本中识别分类
@@ -307,10 +314,11 @@ export default {
       if (coupon.claimed) return
       try {
         await couponApi.claimCoupon(coupon.id)
-        coupon.claimed = true
-        uni.showToast({ title: '领取成功', icon: 'none' })
+        const raw = this.rawCoupons.find((c) => c.id === coupon.id)
+        if (raw) raw.claimed = true
+        uni.showToast({ title: i18n.t('couponCenter.claimSuccess'), icon: 'none' })
       } catch (e) {
-        uni.showToast({ title: '领取失败，请重试', icon: 'none' })
+        uni.showToast({ title: i18n.t('couponCenter.claimFailed'), icon: 'none' })
       }
     },
 

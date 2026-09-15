@@ -7,19 +7,19 @@
       </view>
       <view class="nav-title">
         <text class="hash">#</text>
-        <text>{{ topicName || '话题' }}</text>
+        <text>{{ topicName || $t('communityTopic.topicFallback') }}</text>
       </view>
       <view class="nav-spacer" />
     </view>
 
     <!-- 加载中 -->
     <view v-if="loading && posts.length === 0" class="status">
-      <text class="status-text">加载中…</text>
+      <text class="status-text">{{ $t('communityTopic.loading') }}</text>
     </view>
 
     <!-- 空结果 -->
     <view v-else-if="posts.length === 0" class="status">
-      <text class="status-text">该话题下还没有帖子</text>
+      <text class="status-text">{{ $t('communityTopic.empty') }}</text>
     </view>
 
     <!-- 帖子列表:复用搜索页的卡片样式 -->
@@ -28,8 +28,7 @@
         v-for="p in posts"
         :key="p.id"
         class="post-card"
-        @tap="goPostDetail(p.id)"
-      >
+        @tap="goPostDetail(p.id)">
         <view class="post-header">
           <image
             v-if="p.avatar"
@@ -47,7 +46,7 @@
           </view>
         </view>
         <view class="post-content">
-          <text class="post-text">{{ p.content || '(无内容)' }}</text>
+          <text class="post-text">{{ p.content || $t('communityTopic.emptyContent') }}</text>
           <view v-if="p.images && p.images.length" class="post-images">
             <image
               v-for="(img, idx) in p.images.slice(0, 3)"
@@ -67,16 +66,17 @@
 
     <!-- 加载更多 / 到底提示 -->
     <view v-if="loading && posts.length > 0" class="status">
-      <text class="status-text">加载中…</text>
+      <text class="status-text">{{ $t('communityTopic.loading') }}</text>
     </view>
     <view v-if="!hasMore && posts.length > 0" class="status">
-      <text class="status-text">— 没有更多了 —</text>
+      <text class="status-text">{{ $t('communityTopic.noMore') }}</text>
     </view>
   </view>
 </template>
 
 <script>
 import { communityApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.userCommunityTopic',
@@ -177,10 +177,13 @@ export default {
       const d = new Date(iso)
       const now = new Date()
       const diff = (now - d) / 1000
-      if (diff < 60) return '刚刚'
-      if (diff < 3600) return Math.floor(diff / 60) + '分钟前'
-      if (diff < 86400) return Math.floor(diff / 3600) + '小时前'
-      if (diff < 7 * 86400) return Math.floor(diff / 86400) + '天前'
+      if (diff < 60) return i18n.t('communityTopic.time.justNow')
+      if (diff < 3600)
+        return i18n.t('communityTopic.time.minutesAgo', { count: Math.floor(diff / 60) })
+      if (diff < 86400)
+        return i18n.t('communityTopic.time.hoursAgo', { count: Math.floor(diff / 3600) })
+      if (diff < 7 * 86400)
+        return i18n.t('communityTopic.time.daysAgo', { count: Math.floor(diff / 86400) })
       const yyyy = d.getFullYear()
       const mm = String(d.getMonth() + 1).padStart(2, '0')
       const dd = String(d.getDate()).padStart(2, '0')

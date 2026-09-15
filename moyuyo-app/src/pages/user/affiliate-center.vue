@@ -1,74 +1,86 @@
-﻿<template>
+<template>
   <view class="page">
     <view class="header">
       <view class="nav-back" @tap="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="title">分销中心</text>
+      <text class="title">{{ $t('affiliateCenter.title') }}</text>
     </view>
 
-    <view v-if="loading" class="loading"><text class="loading-text">加载中…</text></view>
+    <view v-if="loading" class="loading">
+      <text class="loading-text">{{ $t('common.loading') }}</text>
+    </view>
     <view v-else class="content">
       <view class="hero">
-        <text class="hero-title">分享赚佣金</text>
+        <text class="hero-title">{{ $t('affiliateCenter.heroTitle') }}</text>
         <view class="hero-stats">
           <view class="stat">
             <text class="stat-num">{{ account?.totalInvites || 0 }}</text>
-            <text class="stat-label">邀请数</text>
+            <text class="stat-label">{{ $t('affiliateCenter.statInvites') }}</text>
           </view>
           <view class="stat">
-            <text class="stat-num">${{ account?.totalCommission || 0 }}</text>
-            <text class="stat-label">累计佣金</text>
+            <text class="stat-num">{{ currencySymbol }}{{ account?.totalCommission || 0 }}</text>
+            <text class="stat-label">{{ $t('affiliateCenter.statCommission') }}</text>
           </view>
           <view class="stat">
-            <text class="stat-num">${{ account?.availableAmount || 0 }}</text>
-            <text class="stat-label">可提现</text>
+            <text class="stat-num">{{ currencySymbol }}{{ account?.availableAmount || 0 }}</text>
+            <text class="stat-label">{{ $t('affiliateCenter.statAvailable') }}</text>
           </view>
         </view>
       </view>
 
       <view class="level-card">
-        <text class="level-label">当前等级</text>
+        <text class="level-label">{{ $t('affiliateCenter.levelLabel') }}</text>
         <text class="level-name">{{ account?.level || 'BRONZE' }}</text>
       </view>
 
       <view class="section">
-        <text class="section-title">佣金明细</text>
-        <view v-if="loading" class="empty"><text class="empty-text">加载中…</text></view>
+        <text class="section-title">{{ $t('affiliateCenter.commissionTitle') }}</text>
+        <view v-if="loading" class="empty">
+          <text class="empty-text">{{ $t('common.loading') }}</text>
+        </view>
         <view v-else-if="!commissions.length" class="empty">
-          <text class="empty-text">暂无佣金记录</text>
+          <text class="empty-text">{{ $t('affiliateCenter.emptyCommission') }}</text>
         </view>
         <view v-else class="commission-list">
           <view v-for="c in commissions" :key="c.id" class="commission-item">
             <view class="ci-left">
-              <text class="ci-title">{{ c.description || '分销订单' }}</text>
+              <text class="ci-title">{{ c.description || $t('affiliateCenter.orderLabel') }}</text>
               <text class="ci-meta">{{ formatTime(c.createTime) }}</text>
             </view>
-            <text class="ci-amount">+${{ c.amount || 0 }}</text>
+            <text class="ci-amount">+{{ currencySymbol }}{{ c.amount || 0 }}</text>
           </view>
         </view>
       </view>
 
       <view class="actions">
-        <view class="btn" @tap="shareLink">分享邀请链接</view>
-        <view class="btn primary" @tap="withdraw">申请提现</view>
+        <view class="btn" @tap="shareLink">{{ $t('affiliateCenter.shareLink') }}</view>
+        <view class="btn primary" @tap="withdraw">{{ $t('affiliateCenter.withdraw') }}</view>
       </view>
     </view>
   </view>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { marketingApi } from '@/api'
 import { usePageTitle } from '@/utils/i18nPageMixin'
+import { i18n } from '@/i18n'
 usePageTitle('pageTitle.userAffiliateCenter')
-
 
 const account = ref(null)
 
-
 const commissions = ref([])
 const loading = ref(false)
+
+// 语言版本号：语言切换时触发依赖刷新
+const localeVersion = ref(0)
+let _unsubLocale = null
+// 货币符号（随语言切换）
+const currencySymbol = computed(() => {
+  void localeVersion.value
+  return i18n.currencySymbol
+})
 
 async function load() {
   loading.value = true
@@ -99,12 +111,12 @@ function formatTime(t) {
 function shareLink() {
   uni.setClipboardData({
     data: 'https://moyuyo.com/invite/' + (account.value?.userId || ''),
-    success: () => uni.showToast({ title: '邀请链接已复制', icon: 'none' }),
+    success: () => uni.showToast({ title: i18n.t('affiliateCenter.linkCopied'), icon: 'none' }),
   })
 }
 
 function withdraw() {
-  uni.showToast({ title: '提现功能开发中', icon: 'none' })
+  uni.showToast({ title: i18n.t('affiliateCenter.withdrawDev'), icon: 'none' })
 }
 
 function goBack() {
@@ -112,6 +124,12 @@ function goBack() {
 }
 onMounted(() => {
   load()
+  _unsubLocale = i18n.subscribe(() => {
+    localeVersion.value += 1
+  })
+})
+onBeforeUnmount(() => {
+  if (_unsubLocale) _unsubLocale()
 })
 </script>
 

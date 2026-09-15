@@ -33,5 +33,12 @@ public interface MissionService {
    */
   void accumulateByKeyword(Long userId, String type, String keyword, int delta);
 
+  /**
+   * 按任务类型 + 名称关键字匹配后，把进度**直接设为**指定值（进度行不存在时按需创建）。
+   * 用于「连续签到 30 天」这类"断签即归零"的任务：断签时把进度拉回今天这一次。
+   * 已领取(claimed=1)的进度行不会被覆盖，避免重置后重复领奖。
+   */
+  void setProgressByKeyword(Long userId, String type, String keyword, int progress);
+
   Map<String, Object> getMissionStats(Long userId);
 }

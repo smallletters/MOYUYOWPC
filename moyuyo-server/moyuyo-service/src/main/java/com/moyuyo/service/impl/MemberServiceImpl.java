@@ -23,9 +23,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -66,8 +73,84 @@ public class MemberServiceImpl implements MemberService {
   }
 
   @Override
+  public Set<LocalDate> getRecentCheckinDates(Long userId, int days) {
+    if (userId == null || days <= 0) {
+      return Collections.emptySet();
+    }
+    // 含今天：days=7 表示 [今天-6, 今天]
+    LocalDate from = LocalDate.now().minusDays(days - 1L);
+    List<PointsLogEntity> logs = pointsLogMapper.selectList(
+        new LambdaQueryWrapper<PointsLogEntity>()
+            .eq(PointsLogEntity::getUserId, userId)
+            .eq(PointsLogEntity::getType, "CHECKIN")
+            .ge(PointsLogEntity::getCreatedAt, from.atStartOfDay()));
+    Set<LocalDate> dates = new HashSet<>();
+    for (PointsLogEntity l : logs) {
+      if (l.getCreatedAt() != null) {
+        // 同一天多次签到只算一天
+        dates.add(l.getCreatedAt().toLocalDate());
+      }
+    }
+    return dates;
+  }
+
+  @Override
+  public List<LocalDate> getCheckinDatesOfMonth(Long userId, YearMonth month) {
+    if (userId == null || month == null) {
+      return Collections.emptyList();
+    }
+    // [当月 1 号 00:00, 次月 1 号 00:00) 左闭右开，避免月末最后一秒的边界问题
+    LocalDateTime from = month.atDay(1).atStartOfDay();
+    LocalDateTime to = month.plusMonths(1).atDay(1).atStartOfDay();
+    List<PointsLogEntity> logs = pointsLogMapper.selectList(
+        new LambdaQueryWrapper<PointsLogEntity>()
+            .eq(PointsLogEntity::getUserId, userId)
+            .eq(PointsLogEntity::getType, "CHECKIN")
+            .ge(PointsLogEntity::getCreatedAt, from)
+            .lt(PointsLogEntity::getCreatedAt, to));
+    return logs.stream()
+        .map(PointsLogEntity::getCreatedAt)
+        .filter(Objects::nonNull)
+        .map(LocalDateTime::toLocalDate)
+        .distinct()
+        .sorted()
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  public int getCurrentCheckinStreak(Long userId) {
+    if (userId == null) {
+      return 0;
+    }
+    List<PointsLogEntity> logs = pointsLogMapper.selectList(
+        new LambdaQueryWrapper<PointsLogEntity>()
+            .eq(PointsLogEntity::getUserId, userId)
+            .eq(PointsLogEntity::getType, "CHECKIN"));
+    Set<LocalDate> dates = new HashSet<>();
+    for (PointsLogEntity l : logs) {
+      if (l.getCreatedAt() != null) {
+        dates.add(l.getCreatedAt().toLocalDate());
+      }
+    }
+    int streak = 0;
+    LocalDate cursor = LocalDate.now();
+    while (dates.contains(cursor)) {
+      streak++;
+      cursor = cursor.minusDays(1);
+    }
+    return streak;
+  }
+
+  @Override
   @Transactional
   public void addPoints(Long userId, int changeValue, String type, String bizNo, String remark) {
+    addPointsAt(userId, changeValue, type, bizNo, remark, LocalDateTime.now());
+  }
+
+  @Override
+  @Transactional
+  public void addPointsAt(Long userId, int changeValue, String type, String bizNo, String remark,
+      LocalDateTime createdAt) {
     UserEntity user = userMapper.selectById(userId);
     if (user == null) {
       throw new IllegalArgumentException("用户不存在");
@@ -81,16 +164,21 @@ public class MemberServiceImpl implements MemberService {
     user.setPoints(newPoints);
     userMapper.updateById(user);
 
+    LocalDateTime base = createdAt != null ? createdAt : LocalDateTime.now();
     PointsLogEntity log = new PointsLogEntity();
     log.setUserId(userId);
     log.setChangeValue(changeValue);
     log.setType(type);
     log.setBizNo(bizNo);
     log.setRemark(remark);
+    // 补签等场景需要回填流水时间。createdAt 上是 FieldFill.INSERT，
+    // 而 MyMetaObjectHandler 用的是 strictInsertFill（仅字段为空时填充），因此显式赋值不会被覆盖
+    if (createdAt != null) {
+      log.setCreatedAt(createdAt);
+    }
     // 仅正向流水（积分发放）设置 12 月有效期；扣减/退款/兑换等流水不设
     if (changeValue > 0) {
-      LocalDateTime expireTime = LocalDateTime.now().plusMonths(POINTS_VALID_MONTHS);
-      log.setExpireTime(expireTime);
+      log.setExpireTime(base.plusMonths(POINTS_VALID_MONTHS));
     }
     pointsLogMapper.insert(log);
 

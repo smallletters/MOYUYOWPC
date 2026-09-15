@@ -6,7 +6,9 @@
           <view class="month-btn" @click="prevMonth">
             <text class="month-arrow luc-arrow-left" />
           </view>
-          <text class="month-title">{{ currentYear }}年{{ currentMonth }}月</text>
+          <text class="month-title">
+            {{ $t('checkIn.monthTitle', { year: currentYear, month: currentMonth }) }}
+          </text>
           <view class="month-btn" @click="nextMonth">
             <text class="month-arrow luc-chevron-right" />
           </view>
@@ -30,7 +32,7 @@
                 <text v-if="cell.checked" class="check-icon">
                   <text class="luc luc-check" />
                 </text>
-                <text v-else-if="cell.today" class="today-text">签</text>
+                <text v-else-if="cell.today" class="today-text">{{ $t('checkIn.todayMark') }}</text>
                 <text v-else class="day-num">{{ cell.day }}</text>
               </view>
             </block>
@@ -42,22 +44,22 @@
       <view class="streak-card">
         <view class="streak-header">
           <text class="streak-star luc-star" />
-          <text class="streak-title">已连续签到 {{ streak }} 天</text>
+          <text class="streak-title">{{ $t('checkIn.streakTitle', { days: streak }) }}</text>
         </view>
-        <text class="streak-hint">连续 7 天签到积分 x2 倍率</text>
+        <text class="streak-hint">{{ $t('checkIn.streakHint') }}</text>
         <view class="streak-bar">
           <view class="streak-track">
-            <view class="streak-fill" :style="{ width: (streak / 7) * 100 + '%' }" />
+            <view class="streak-fill" :style="{ width: (weeklyProgress / 7) * 100 + '%' }" />
           </view>
           <view class="streak-labels">
-            <text class="streak-label">本周进度</text>
-            <text class="streak-count">{{ streak }} / 7</text>
+            <text class="streak-label">{{ $t('checkIn.weekProgress') }}</text>
+            <text class="streak-count">{{ weeklyProgress }} / 7</text>
           </view>
         </view>
       </view>
 
       <view class="reward-card">
-        <text class="reward-title">本周签到奖励</text>
+        <text class="reward-title">{{ $t('checkIn.weekRewardTitle') }}</text>
         <view class="reward-grid">
           <view v-for="(reward, idx) in weeklyRewards" :key="idx" class="reward-item">
             <view
@@ -70,9 +72,9 @@
               <text v-else-if="reward.current" class="reward-star">
                 <text class="luc luc-star" />
               </text>
-              <text v-else class="reward-day">{{ '第' + (idx + 1) + '天' }}</text>
+              <text v-else class="reward-day">{{ $t('checkIn.dayLabel', { day: idx + 1 }) }}</text>
             </view>
-            <text class="reward-label">第{{ idx + 1 }}天</text>
+            <text class="reward-label">{{ $t('checkIn.dayLabel', { day: idx + 1 }) }}</text>
             <view class="reward-points-row">
               <text class="reward-points">+{{ reward.points }}</text>
               <text v-if="reward.x2" class="reward-x2">(x2)</text>
@@ -82,7 +84,7 @@
       </view>
 
       <view class="check-in-btn" :class="{ checked: isCheckedIn }" @click="onCheckIn">
-        <text>{{ isCheckedIn ? '已签到' : '立即签到' }}</text>
+        <text>{{ isCheckedIn ? $t('checkIn.checked') : $t('checkIn.checkInNow') }}</text>
       </view>
 
       <view v-if="showSuccess" class="success-section">
@@ -91,19 +93,21 @@
             <text class="success-check luc-check" />
           </view>
         </view>
-        <text class="success-title">签到成功</text>
+        <text class="success-title">{{ $t('checkIn.successTitle') }}</text>
         <text class="success-points">
-          获得 +{{ earnedPoints }} 积分{{ earnedX2 ? ' (x2 倍率)' : '' }}
+          {{ $t('checkIn.successPoints', { points: earnedPoints })
+          }}{{ earnedX2 ? $t('checkIn.x2Suffix') : '' }}
         </text>
       </view>
 
-      <text class="rules-text">每月可免费补签 1 次，之后 50 积分/次</text>
+      <text class="rules-text">{{ $t('checkIn.makeupRule') }}</text>
     </view>
   </view>
 </template>
 
 <script>
 import { pointsApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.userCheckIn',
@@ -118,13 +122,20 @@ export default {
       showSuccess: false,
       earnedPoints: 0,
       earnedX2: false,
-      weekdays: ['日', '一', '二', '三', '四', '五', '六'],
-      checkedDays: [],
-      weeklyRewards: [],
+      localeVersion: 0,
+      unsubLocale: null,
+      // 已签到日期集合（yyyy-MM-dd，服务端返回，按月份变化）
+      checkedDates: [],
     }
   },
 
   computed: {
+    // 星期表头（随语言切换刷新）
+    weekdays() {
+      void this.localeVersion
+      return i18n.t('checkIn.weekdays')
+    },
+
     calendarCells() {
       const { currentYear, currentMonth } = this
       const today = new Date()
@@ -143,7 +154,8 @@ export default {
         const date = new Date(currentYear, currentMonth - 1, d)
         const isToday = date.toDateString() === today.toDateString()
         const isFuture = date > today
-        const isChecked = this.checkedDays.includes(d)
+        // 用完整日期串比较，避免切换月份时"同一天号"被误标为已签到
+        const isChecked = this.checkedDates.includes(this.toDateKey(currentYear, currentMonth, d))
 
         cells.push({
           day: d,
@@ -155,60 +167,73 @@ export default {
 
       return cells
     },
+
+    /** 7 天签到周期的进度（连续天数按 7 天封顶，用于进度条与"x/7"文案） */
+    weeklyProgress() {
+      return Math.min(this.streak, 7)
+    },
+
+    /**
+     * 7 天签到奖励进度，与后端倍率规则保持一致（连续 7 天起 ×2）：
+     * 第 1~6 天 +5 积分，第 7 天 +10 积分（x2）
+     * claimed=已领取的格子，current=当前进行到的格子
+     */
+    weeklyRewards() {
+      const done = this.weeklyProgress
+      return Array.from({ length: 7 }, (_, i) => ({
+        points: i === 6 ? 10 : 5,
+        x2: i === 6,
+        claimed: i < done,
+        current: i === done && done < 7,
+      }))
+    },
   },
 
   onLoad() {
     this.loadCheckinStatus()
   },
 
-  methods: {
-    async loadCheckinStatus() {
-      try {
-        // 后端 Page<PointsLogEntity>：{ records, total, current, size }
-        // request.js 已解包,res 即 IPage 本身
-        const page = await pointsApi.getPointsLog({ page: 1, size: 50 })
-        const logs = page?.records || page?.list || []
-        const checkedDays = []
-        const today = new Date()
-        for (const log of logs) {
-          if (log.type === 'CHECKIN' || log.type === 'checkin') {
-            const d = new Date(log.createdAt)
-            if (d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth()) {
-              checkedDays.push(d.getDate())
-            }
-          }
-        }
-        this.checkedDays = checkedDays
-        this.isCheckedIn = checkedDays.includes(today.getDate())
+  created() {
+    // 订阅语言变化，刷新星期表头等依赖本地化的内容
+    this.unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
+  },
 
-        // 从日志计算连续签到天数
-        this.streak = this.calculateStreak(logs, today)
-      } catch {
-        this.checkedDays = []
-        this.isCheckedIn = false
-      }
+  beforeUnmount() {
+    if (this.unsubLocale) this.unsubLocale()
+  },
+
+  methods: {
+    /** 生成 yyyy-MM-dd 日期串（与后端 dates 字段格式一致） */
+    toDateKey(year, month, day) {
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     },
 
-    calculateStreak(logs, today) {
-      const checkinDates = logs
-        .filter((l) => l.type === 'CHECKIN' || l.type === 'checkin')
-        .map((l) => {
-          const d = new Date(l.createdAt)
-          return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
-        })
-      const uniqueDates = [...new Set(checkinDates)].sort().reverse()
-      let streak = 0
-      const cursor = new Date(today)
-      for (const dateStr of uniqueDates) {
-        const expected = `${cursor.getFullYear()}-${cursor.getMonth() + 1}-${cursor.getDate()}`
-        if (dateStr === expected) {
-          streak++
-          cursor.setDate(cursor.getDate() - 1)
-        } else {
-          break
+    /**
+     * 拉取当前展示月份的签到日历。
+     * 数据全部来自服务端（已签到日期 / 连续天数 / 今天是否已签），
+     * 不再用"最近 50 条积分流水"自行推算，避免流水被任务奖励等挤掉导致日历或连续天数不准。
+     */
+    async loadCheckinStatus() {
+      const { currentYear, currentMonth } = this
+      const month = `${currentYear}-${String(currentMonth).padStart(2, '0')}`
+      try {
+        const data = (await pointsApi.getCheckinCalendar({ month })) || {}
+        // 连续快速切月会有多个请求在飞，丢弃过期响应，避免日历数据与标题月份对不上
+        if (this.currentYear !== currentYear || this.currentMonth !== currentMonth) {
+          return
         }
+        this.checkedDates = Array.isArray(data.dates) ? data.dates : []
+        this.streak = data.streak || 0
+        // "今天是否已签到"只与当月视图有关，切到历史月份时不能改按钮状态
+        const now = new Date()
+        if (currentYear === now.getFullYear() && currentMonth === now.getMonth() + 1) {
+          this.isCheckedIn = !!data.checkedToday
+        }
+      } catch {
+        this.checkedDates = []
       }
-      return streak
     },
 
     prevMonth() {
@@ -218,6 +243,8 @@ export default {
       } else {
         this.currentMonth--
       }
+      // 换月后重新拉该月的签到数据，否则日历只会显示当月数据
+      this.loadCheckinStatus()
     },
 
     nextMonth() {
@@ -227,6 +254,7 @@ export default {
       } else {
         this.currentMonth++
       }
+      this.loadCheckinStatus()
     },
 
     async onCheckIn() {
@@ -235,30 +263,27 @@ export default {
       try {
         // request.js 已解包,res 即 payload 本身: { points, consecutiveDays, doubleReward }
         const result = await pointsApi.checkin()
-        this.isCheckedIn = true
         this.showSuccess = true
         this.earnedPoints = result?.points || 5
         this.earnedX2 = !!result?.doubleReward
-        if (typeof result?.consecutiveDays === 'number') {
-          this.streak = result.consecutiveDays
-        } else {
-          this.streak += 1
-        }
+        // 重新拉服务端日历：当日签到状态与连续天数都以服务端为准。
+        // 注意不能用签到响应里的 consecutiveDays 覆盖 streak —— 它只回溯 7 天，
+        // 长连签（如 30 天）时会被截断成 8
+        await this.loadCheckinStatus()
+        this.isCheckedIn = true
 
-        const today = new Date()
-        if (!this.checkedDays.includes(today.getDate())) {
-          this.checkedDays.push(today.getDate())
-        }
-
-        uni.showToast({ title: `签到成功 +${this.earnedPoints} 积分`, icon: 'success' })
+        uni.showToast({
+          title: i18n.t('checkIn.toastSuccess', { points: this.earnedPoints }),
+          icon: 'success',
+        })
       } catch (e) {
         // 后端返回 IllegalStateException 时前端显示具体文案
         const msg = (e && e.message) || ''
         if (msg.includes('今日已签到')) {
           this.isCheckedIn = true
-          uni.showToast({ title: '今日已签到', icon: 'none' })
+          uni.showToast({ title: i18n.t('checkIn.todayChecked'), icon: 'none' })
         } else {
-          uni.showToast({ title: '签到失败，请重试', icon: 'none' })
+          uni.showToast({ title: i18n.t('checkIn.toastFailed'), icon: 'none' })
         }
       }
     },
@@ -477,7 +502,8 @@ export default {
 .reward-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 16rpx;
+  /* 7 列在窄屏上很挤，压缩列间距给圆点留出空间 */
+  gap: 8rpx;
 }
 
 .reward-item {
@@ -536,6 +562,9 @@ export default {
 .reward-points-row {
   display: flex;
   align-items: center;
+  justify-content: center;
+  /* 第 7 天是 "+10 (x2)"，窄屏放不下时换行而不是溢出格子 */
+  flex-wrap: wrap;
   gap: 4rpx;
 }
 

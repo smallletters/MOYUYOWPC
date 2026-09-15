@@ -5,14 +5,14 @@
       <view class="back-btn" @click="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">意见反馈</text>
+      <text class="header-title">{{ $t('feedback.title') }}</text>
       <view class="header-placeholder" />
     </view>
 
     <scroll-view class="content" scroll-y>
       <!-- 反馈类型选择 -->
       <view class="section">
-        <text class="section-title">反馈类型</text>
+        <text class="section-title">{{ $t('feedback.typeLabel') }}</text>
         <view class="type-list">
           <view
             v-for="item in typeOptions"
@@ -21,19 +21,19 @@
             :class="{ active: feedbackType === item.value }"
             @click="feedbackType = item.value"
           >
-            <text class="type-text">{{ item.label }}</text>
+            <text class="type-text">{{ $t(item.labelKey) }}</text>
           </view>
         </view>
       </view>
 
       <!-- 问题描述 -->
       <view class="section">
-        <text class="section-title">问题描述</text>
+        <text class="section-title">{{ $t('feedback.descLabel') }}</text>
         <view class="textarea-wrapper">
           <textarea
             v-model="description"
             class="textarea"
-            placeholder="请详细描述您遇到的问题或建议..."
+            :placeholder="$t('feedback.descPlaceholder')"
             maxlength="500"
             :show-count="false"
           />
@@ -55,7 +55,7 @@
           </view>
           <view v-if="uploadedImages.length < 3" class="upload-btn" @click="onUploadImage">
             <text class="upload-btn-icon">+</text>
-            <text class="upload-btn-label">添加</text>
+            <text class="upload-btn-label">{{ $t('feedback.addImage') }}</text>
           </view>
         </view>
       </view>
@@ -68,7 +68,7 @@
             v-model="contact"
             class="input"
             type="text"
-            placeholder="手机号/邮箱，方便我们回复您（选填）"
+            :placeholder="$t('feedback.contactPlaceholder')"
           >
         </view>
       </view>
@@ -85,6 +85,7 @@
 
 <script>
 import { feedbackApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.userFeedback',
@@ -96,10 +97,10 @@ export default {
       contact: '',
       uploadedImages: [],
       typeOptions: [
-        { label: '功能建议', value: 'feature' },
-        { label: '体验问题', value: 'ux' },
-        { label: '内容错误', value: 'content' },
-        { label: '其他', value: 'other' },
+        { labelKey: 'feedback.types.feature', value: 'feature' },
+        { labelKey: 'feedback.types.ux', value: 'ux' },
+        { labelKey: 'feedback.types.content', value: 'content' },
+        { labelKey: 'feedback.types.other', value: 'other' },
       ],
       submitting: false,
     }
@@ -132,12 +133,12 @@ export default {
       if (this.submitting) return
 
       if (!this.feedbackType) {
-        uni.showToast({ title: '请选择反馈类型', icon: 'none' })
+        uni.showToast({ title: i18n.t('feedback.typeRequired'), icon: 'none' })
         return
       }
 
       if (!this.description.trim()) {
-        uni.showToast({ title: '请描述您的问题', icon: 'none' })
+        uni.showToast({ title: i18n.t('feedback.descRequired'), icon: 'none' })
         return
       }
 
@@ -149,12 +150,12 @@ export default {
           contact: this.contact,
           images: this.uploadedImages,
         })
-        uni.showToast({ title: '感谢您的反馈！', icon: 'success' })
+        uni.showToast({ title: i18n.t('feedback.submitted'), icon: 'success' })
         setTimeout(() => {
           uni.navigateBack()
         }, 1500)
       } catch {
-        uni.showToast({ title: '提交失败，请稍后重试', icon: 'none' })
+        uni.showToast({ title: i18n.t('feedback.failed'), icon: 'none' })
       } finally {
         this.submitting = false
       }

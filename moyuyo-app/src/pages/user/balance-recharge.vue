@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="recharge">
     <view class="header">
       <view class="header-btn" @click="goBack">
@@ -28,7 +28,9 @@
             :class="{ selected: selectedAmount === opt.value, recommended: opt.recommended }"
             @click="onSelectAmount(opt.value)"
           >
-            <text v-if="opt.recommended" class="recommend-badge">Recommended</text>
+            <text v-if="opt.recommended" class="recommend-badge">
+              {{ $t('recharge.recommended') }}
+            </text>
             <text class="amount-text">{{ opt.label }}</text>
           </view>
         </view>
@@ -40,7 +42,7 @@
               v-model="customValue"
               class="custom-field"
               type="digit"
-              placeholder="Enter amount"
+              :placeholder="$t('recharge.customPlaceholder')"
               @input="onCustomInput"
             >
           </view>
@@ -99,23 +101,37 @@ export default {
       selectedPayment: 'applePay',
       balanceAmount: 0,
       localeVersion: 0,
-      amountOptions: [
-        { value: 10, label: '$10' },
-        { value: 20, label: '$20' },
-        { value: 50, label: '$50', recommended: true },
-        { value: 100, label: '$100' },
-        { value: 200, label: '$200' },
-        { value: 'custom', label: '自定义' },
-      ],
-      paymentMethods: [
-        { value: 'applePay', name: 'Apple Pay', icon: 'A', hint: '' },
-        { value: 'creditCard', name: '信用卡/借记卡', icon: 'C', hint: 'Visa **** 4242' },
-        { value: 'paypal', name: 'PayPal', icon: 'P', hint: '' },
-      ],
     }
   },
 
   computed: {
+    // 充值金额选项:随 locale 重算(货币符号与"自定义"文案跟随语言)
+    amountOptions() {
+      void this.localeVersion
+      const symbol = i18n.currencySymbol
+      return [
+        { value: 10, label: `${symbol}10` },
+        { value: 20, label: `${symbol}20` },
+        { value: 50, label: `${symbol}50`, recommended: true },
+        { value: 100, label: `${symbol}100` },
+        { value: 200, label: `${symbol}200` },
+        { value: 'custom', label: i18n.t('recharge.custom') },
+      ]
+    },
+    // 支付方式列表:随 locale 重算(信用卡名称本地化)
+    paymentMethods() {
+      void this.localeVersion
+      return [
+        { value: 'applePay', name: 'Apple Pay', icon: 'A', hint: '' },
+        {
+          value: 'creditCard',
+          name: i18n.t('recharge.creditCard'),
+          icon: 'C',
+          hint: 'Visa **** 4242',
+        },
+        { value: 'paypal', name: 'PayPal', icon: 'P', hint: '' },
+      ]
+    },
     displayAmount() {
       if (this.selectedAmount === 'custom') {
         const val = parseFloat(this.customValue)
@@ -193,12 +209,12 @@ export default {
       try {
         await memberApi.recharge(amount, this.selectedPayment)
         uni.showToast({
-          title: `i18n.t("recharge.success", { amount: this.currencySymbol + amount.toFixed(2) })`,
+          title: i18n.t('recharge.success', { amount: this.currencySymbol + amount.toFixed(2) }),
           icon: 'success',
         })
         this.loadBalance()
       } catch (e) {
-        uni.showToast({ title: 'Top-up failed, please retry', icon: 'none' })
+        uni.showToast({ title: i18n.t('recharge.topUpFailed'), icon: 'none' })
       }
     },
   },

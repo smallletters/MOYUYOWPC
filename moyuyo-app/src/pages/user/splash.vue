@@ -1,9 +1,9 @@
-﻿<template>
+<template>
   <view class="splash">
     <!-- 品牌名 -->
     <text class="brand-name" :style="brandStyle">MOYUYO</text>
     <!-- 标语 -->
-    <text class="tagline" :style="taglineStyle">为TA创造美好生活</text>
+    <text class="tagline" :style="taglineStyle">{{ $t('splash.tagline') }}</text>
     <!-- IP 角色图标行 -->
     <view class="mascots" :style="mascotsStyle">
       <view
@@ -33,7 +33,7 @@
     </view>
     <!-- 底部加载区 -->
     <view class="loading-area" :style="loadingStyle">
-      <text class="loading-text">正在加载...</text>
+      <text class="loading-text">{{ $t('splash.loading') }}</text>
       <view class="loading-bar">
         <view class="loading-bar-inner" />
       </view>

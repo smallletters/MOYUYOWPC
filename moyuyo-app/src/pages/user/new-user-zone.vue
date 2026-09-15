@@ -1,17 +1,19 @@
-﻿<template>
+<template>
   <view class="page">
     <view class="header">
       <view class="nav-back" @tap="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="title">新人专享</text>
+      <text class="title">{{ t('newUser.title') }}</text>
     </view>
 
-    <view v-if="loading" class="loading"><text class="loading-text">加载中…</text></view>
+    <view v-if="loading" class="loading">
+      <text class="loading-text">{{ t('common.loading') }}</text>
+    </view>
     <view v-else class="content">
       <view class="hero">
-        <text class="hero-title">欢迎来到 MOYUYO</text>
-        <text class="hero-sub">完成新手任务，领取专属福利</text>
+        <text class="hero-title">{{ t('newUser.welcomeTitle') }}</text>
+        <text class="hero-sub">{{ t('newUser.heroSub') }}</text>
       </view>
 
       <view class="gift-list">
@@ -19,22 +21,28 @@
           <view class="gift-icon"><text class="luc luc-gift" /></view>
           <view class="gift-info">
             <text class="gift-name">{{ g.name }}</text>
-            <text class="gift-desc">{{ g.description || `价值 $${g.amount || 0}` }}</text>
-            <text class="gift-points">+{{ g.points || 0 }} 积分</text>
+            <text class="gift-desc">
+              {{ g.description || t('newUser.value', { amount: g.amount || 0 }) }}
+            </text>
+            <text class="gift-points">{{ t('newUser.pointsSuffix', { n: g.points || 0 }) }}</text>
           </view>
-          <view class="gift-btn" @tap="claim(g)">领取</view>
+          <view class="gift-btn" @tap="claim(g)">{{ t('newUser.claim') }}</view>
         </view>
-        <view v-if="!gifts.length" class="empty"><text class="empty-text">暂无新手福利</text></view>
+        <view v-if="!gifts.length" class="empty">
+          <text class="empty-text">{{ t('newUser.emptyGifts') }}</text>
+        </view>
       </view>
 
       <view class="claimed">
-        <text class="claimed-title">已领取</text>
+        <text class="claimed-title">{{ t('newUser.claimedTitle') }}</text>
         <view v-if="!claimed.length" class="empty">
-          <text class="empty-text">尚未领取任何福利</text>
+          <text class="empty-text">{{ t('newUser.emptyClaimed') }}</text>
         </view>
         <view v-else>
           <view v-for="c in claimed" :key="c.id" class="claimed-item">
-            <text class="ci-name">{{ c.giftName || `礼包 #${c.giftId}` }}</text>
+            <text class="ci-name">
+              {{ c.giftName || t('newUser.giftFallback', { id: c.giftId }) }}
+            </text>
             <text class="ci-time">{{ formatTime(c.claimedAt || c.createTime) }}</text>
           </view>
         </view>
@@ -44,14 +52,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { marketingApi } from '@/api'
+import { i18n } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.userNewUserZone')
 
+// 轻量翻译函数（响应 localeVersion 变化，刷新依赖本地化的模板）
+const localeVersion = ref(0)
+let _unsubLocale = null
+function t(key, params) {
+  void localeVersion.value // 触发依赖追踪
+  return i18n.t(key, params)
+}
 
 const gifts = ref([])
-
 
 const claimed = ref([])
 const loading = ref(false)
@@ -75,10 +90,10 @@ async function load() {
 async function claim(g) {
   try {
     await marketingApi.claimGift(g.id)
-    uni.showToast({ title: '领取成功', icon: 'success' })
+    uni.showToast({ title: i18n.t('newUser.claimSuccess'), icon: 'success' })
     claimed.value.unshift({ giftId: g.id, giftName: g.name, claimedAt: new Date().toISOString() })
   } catch (e) {
-    uni.showToast({ title: '领取失败', icon: 'none' })
+    uni.showToast({ title: i18n.t('newUser.claimFailed'), icon: 'none' })
   }
 }
 
@@ -97,6 +112,13 @@ function goBack() {
 }
 onMounted(() => {
   load()
+  // 订阅语言切换，触发模板与本页 t() 依赖重新求值
+  _unsubLocale = i18n.subscribe(() => {
+    localeVersion.value += 1
+  })
+})
+onBeforeUnmount(() => {
+  if (_unsubLocale) _unsubLocale()
 })
 </script>
 

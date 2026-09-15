@@ -1,22 +1,22 @@
-﻿<template>
+<template>
   <view class="points-mall">
     <view class="page-header">
-      <view class="back" aria-label="返回" @click="goBack">
+      <view class="back" :aria-label="$t('common.back')" @click="goBack">
         <text class="luc luc-arrow-left" />
       </view>
-      <text class="title">积分商城</text>
+      <text class="title">{{ $t('pointsMall.title') }}</text>
     </view>
 
     <scroll-view scroll-y class="content">
       <!-- 积分余额 -->
-      <view class="points-card" aria-label="积分余额">
-        <text class="points-label">我的积分</text>
+      <view class="points-card" :aria-label="$t('pointsMall.pointsCardLabel')">
+        <text class="points-label">{{ $t('pointsMall.myPoints') }}</text>
         <text class="points-value">{{ points.toLocaleString() }}</text>
-        <text class="points-tip">积分可兑换精美礼品</text>
+        <text class="points-tip">{{ $t('pointsMall.pointsTip') }}</text>
       </view>
 
       <!-- 礼品分类 -->
-      <view class="cat-tabs" aria-label="礼品分类">
+      <view class="cat-tabs" :aria-label="$t('pointsMall.catLabel')">
         <view
           v-for="cat in categories"
           :key="cat.id"
@@ -24,12 +24,12 @@
           :class="{ active: activeCat === cat.id }"
           @click="activeCat = cat.id"
         >
-          {{ cat.label }}
+          {{ $t(cat.labelKey) }}
         </view>
       </view>
 
       <!-- 礼品列表 -->
-      <view class="goods-list" aria-label="积分礼品列表">
+      <view class="goods-list" :aria-label="$t('pointsMall.goodsListLabel')">
         <view v-for="g in filteredGoods" :key="g.id" class="goods-card">
           <image :src="g.image" class="goods-image" />
           <view class="goods-info">
@@ -37,20 +37,22 @@
             <view class="goods-bottom">
               <view class="points-cost">
                 <text class="points-num">{{ g.points }}</text>
-                <text class="points-unit">积分</text>
+                <text class="points-unit">{{ $t('pointsMall.pointsUnit') }}</text>
               </view>
-              <view class="btn-exchange" @click="onExchange(g)">兑换</view>
+              <view class="btn-exchange" @click="onExchange(g)">
+                {{ $t('pointsMall.exchange') }}
+              </view>
             </view>
           </view>
         </view>
       </view>
 
       <!-- 积分说明 -->
-      <view class="points-rules" aria-label="积分说明">
-        <text class="rules-title">积分说明</text>
-        <text class="rules-line">· 1 元 = 1 积分，消费即送</text>
-        <text class="rules-line">· 积分有效期 12 个月</text>
-        <text class="rules-line">· 商品兑换后不支持退换</text>
+      <view class="points-rules" :aria-label="$t('pointsMall.rulesLabel')">
+        <text class="rules-title">{{ $t('pointsMall.rulesTitle') }}</text>
+        <text class="rules-line">{{ $t('pointsMall.rule1') }}</text>
+        <text class="rules-line">{{ $t('pointsMall.rule2') }}</text>
+        <text class="rules-line">{{ $t('pointsMall.rule3') }}</text>
       </view>
     </scroll-view>
   </view>
@@ -58,6 +60,7 @@
 
 <script>
 import { pointsApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   data() {
@@ -65,10 +68,10 @@ export default {
       points: 0,
       activeCat: 'all',
       categories: [
-        { id: 'all', label: '全部' },
-        { id: 'digital', label: '数码' },
-        { id: 'daily', label: '日用' },
-        { id: 'coupon', label: '优惠券' },
+        { id: 'all', labelKey: 'pointsMall.cat.all' },
+        { id: 'digital', labelKey: 'pointsMall.cat.digital' },
+        { id: 'daily', labelKey: 'pointsMall.cat.daily' },
+        { id: 'coupon', labelKey: 'pointsMall.cat.coupon' },
       ],
       goods: [],
     }
@@ -111,26 +114,32 @@ export default {
     onExchange(g) {
       // 章节 3.2：兑换礼品
       if (this.points < g.points) {
-        uni.showToast({ title: '积分不足', icon: 'none' })
+        uni.showToast({ title: i18n.t('pointsMall.insufficient'), icon: 'none' })
         return
       }
       const doExchange = async (receiver) => {
         try {
           await pointsApi.exchangePointsGoods(g.id, receiver)
-          uni.showToast({ title: '兑换成功', icon: 'success' })
+          uni.showToast({ title: i18n.t('pointsMall.exchangeSuccess'), icon: 'success' })
           this.points -= g.points
           this.loadData()
         } catch (e) {
-          uni.showToast({ title: (e && e.message) || '兑换失败', icon: 'none' })
+          uni.showToast({
+            title: (e && e.message) || i18n.t('pointsMall.exchangeFailed'),
+            icon: 'none',
+          })
         }
       }
 
       // 实物礼品需要地址
       if (g.needAddress) {
         uni.showModal({
-          title: '确认兑换',
-          content: `${g.points} 积分 兑换 ${g.name}\n（实物需填写收货地址）`,
-          confirmText: '填地址兑换',
+          title: i18n.t('pointsMall.confirmTitle'),
+          content: i18n.t('pointsMall.confirmContentWithAddress', {
+            points: g.points,
+            name: g.name,
+          }),
+          confirmText: i18n.t('pointsMall.fillAddress'),
           success: (r) => {
             if (!r.confirm) return
             uni.navigateTo({ url: `/pages/user/address-list?purpose=exchange&goodsId=${g.id}` })
@@ -139,8 +148,8 @@ export default {
         return
       }
       uni.showModal({
-        title: '确认兑换',
-        content: `${g.points} 积分 兑换 ${g.name}`,
+        title: i18n.t('pointsMall.confirmTitle'),
+        content: i18n.t('pointsMall.confirmContent', { points: g.points, name: g.name }),
         success: (r) => {
           if (r.confirm) doExchange(null)
         },

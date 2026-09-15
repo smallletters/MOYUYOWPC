@@ -4,36 +4,24 @@
 # 生产环境部署请使用 `docker compose -f docker-compose.yml --env-file .env up -d` 显式排除此文件
 #
 # 用途：
-# 1. 暴露所有端口到 0.0.0.0（便于本地多容器调试）
-# 2. 关闭 read_only 根文件系统（dev 期间需频繁修改前端构建产物 / 调试 JVM 参数）
-# 3. 挂载本地源码与日志目录（热更新 / 实时日志查看）
-# 4. 简化资源限制（dev 不需要 prod 级别的内存上限）
+# 1. 关闭 read_only 根文件系统（dev 期间需频繁修改前端构建产物 / 调试 JVM 参数）
+# 2. 挂载本地日志目录（实时日志查看）
+# 3. 简化资源限制（dev 不需要 prod 级别的内存上限）
+#
+# ⚠️ 不要在这里重复声明 services.*.ports：
+#    compose 对 ports 是"列表合并"而不是覆盖，重复声明会让同一容器同时申请
+#    127.0.0.1:PORT 和 0.0.0.0:PORT，二者互相冲突，启动时报
+#    "failed to bind host port ... address already in use"（端口实际无人占用）。
+#    基础文件已满足本机需求：app 发布 0.0.0.0:8080（局域网/前端直连），
+#    mysql/redis/elasticsearch/rocketmq 发布 127.0.0.1（本机工具如 DataGrip、RedisInsight 可连）。
+#    若确实需要额外暴露到 0.0.0.0，请用 `ports: !override` 替换而非追加。
+#
+# ⚠️ 不要对 app 执行 `--build`：下面的 build.target=builder 会产出 Maven 构建阶段镜像
+#    （内含源码但无 app.jar，ENTRYPOINT 为 mvn），不是可运行的运行时镜像。
+#    本地启动请直接使用已构建好的 moyuyo-server-app:latest 镜像。
 # ============================================================
 
 services:
-  mysql:
-    ports:
-      # dev 环境允许外部工具（如 DataGrip / MySQL Workbench）连接
-      - "3306:3306"
-
-  redis:
-    ports:
-      # dev 环境允许 RedisInsight / Redis CLI 连接
-      - "6379:6379"
-
-  elasticsearch:
-    ports:
-      - "9200:9200"
-
-  rocketmq-namesrv:
-    ports:
-      - "9876:9876"
-
-  rocketmq-broker:
-    ports:
-      - "10909:10909"
-      - "10911:10911"
-
   app:
     build:
       target: builder  # dev 阶段直接使用 builder 镜像，便于排错
@@ -50,10 +38,10 @@ services:
       # dev 启用 OpenAPI 文档
       SPRINGDOC_ENABLED: "true"
       SPRINGDOC_SWAGGER_ENABLED: "true"
-    ports:
-      # dev 环境允许本地前端直连 API（绕过 Nginx）
-      - "8080:8080"
-      - "9090:9090"
+      # management.server.port=9090 只在 prod profile 里配置；dev 下 actuator 会落到主端口 8080，
+      # 导致 Dockerfile 里写死探测 9090 的 HEALTHCHECK 一直失败（容器长期 unhealthy）。
+      # dev 显式指定同一端口，保持与 HEALTHCHECK / compose 端口映射一致。
+      MANAGEMENT_SERVER_PORT: "9090"
     volumes:
       # 实时挂载日志到宿主机，便于 tail/grep
       - ./logs/app:/var/log/moyuyo

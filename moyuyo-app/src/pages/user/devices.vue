@@ -1,12 +1,12 @@
-﻿<template>
+<template>
   <view class="devices">
+    <view class="tip">{{ t('devices.tip') }}</view>
 
-
-    <view class="tip">您最多可在 3 台设备上登录。在陌生设备上发现账户活动？立即踢出。</view>
-
-    <view v-if="loading" class="loading"><text class="loading-text">加载中…</text></view>
+    <view v-if="loading" class="loading">
+      <text class="loading-text">{{ t('devices.loading') }}</text>
+    </view>
     <view v-else-if="!devices.length" class="empty">
-      <text class="empty-text">暂无登录设备</text>
+      <text class="empty-text">{{ t('devices.empty') }}</text>
     </view>
     <view v-else>
       <view v-for="d in devices" :key="d.id" class="card device-card">
@@ -14,33 +14,41 @@
           <text class="device-icon luc" :class="$luc(deviceIcon(d.deviceType))" />
           <view class="device-meta">
             <text class="device-name">
-              {{ d.deviceName || d.model || '未知设备' }}
-              <text v-if="d.isCurrent" class="current-tag">当前</text>
+              {{ d.deviceName || d.model || t('devices.unknownDevice') }}
+              <text v-if="d.isCurrent" class="current-tag">{{ t('devices.current') }}</text>
             </text>
             <text class="device-detail">
               {{ d.os || '' }} {{ d.browser ? '· ' + d.browser : '' }}
             </text>
             <text class="device-detail">
-              {{ d.location || '' }} · 最近活跃 {{ formatTime(d.lastActiveAt || d.loginAt) }}
+              {{ d.location || '' }} ·
+              {{ t('devices.lastActive', { time: formatTime(d.lastActiveAt || d.loginAt) }) }}
             </text>
           </view>
         </view>
         <view class="device-actions">
-          <view v-if="!d.isCurrent" class="trust" @tap="onKick(d)">踢出</view>
+          <view v-if="!d.isCurrent" class="trust" @tap="onKick(d)">{{ t('devices.kick') }}</view>
         </view>
       </view>
     </view>
   </view>
 </template>
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { deviceApi } from '@/api'
+import { i18n } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.userDevices')
 
+// 轻量翻译函数（响应 localeVersion 变化，刷新依赖本地化的模板）
+const localeVersion = ref(0)
+let _unsubLocale = null
+function t(key, params) {
+  void localeVersion.value // 触发依赖追踪
+  return i18n.t(key, params)
+}
 
 const devices = ref([])
-
 
 const loading = ref(false)
 
@@ -65,7 +73,7 @@ function deviceIcon(t) {
 }
 
 function formatTime(t) {
-  if (!t) return '未知'
+  if (!t) return i18n.t('devices.unknownTime')
   try {
     const d = new Date(t)
     return `${d.getMonth() + 1}-${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
@@ -76,16 +84,16 @@ function formatTime(t) {
 
 function onKick(d) {
   uni.showModal({
-    title: '踢出该设备？',
-    content: d.deviceName || '该设备',
+    title: t('devices.kickTitle'),
+    content: d.deviceName || t('devices.thisDevice'),
     success: async (res) => {
       if (res.confirm) {
         try {
           await deviceApi.removeDevice(d.id)
           devices.value = devices.value.filter((x) => x.id !== d.id)
-          uni.showToast({ title: '已踢出', icon: 'none' })
+          uni.showToast({ title: t('devices.kicked'), icon: 'none' })
         } catch (e) {
-          uni.showToast({ title: '操作失败', icon: 'none' })
+          uni.showToast({ title: t('devices.operationFailed'), icon: 'none' })
         }
       }
     },
@@ -98,6 +106,12 @@ function goBack() {
 
 onMounted(() => {
   load()
+  _unsubLocale = i18n.subscribe(() => {
+    localeVersion.value += 1
+  })
+})
+onBeforeUnmount(() => {
+  if (_unsubLocale) _unsubLocale()
 })
 </script>
 

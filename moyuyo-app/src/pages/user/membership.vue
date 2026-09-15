@@ -30,7 +30,9 @@
               </view>
               <view class="card-user-text">
                 <text class="card-greeting">{{ greeting }}</text>
-                <text class="card-name">{{ userInfo.nickname || '会员' }}</text>
+                <text class="card-name">
+                  {{ userInfo.nickname || t('membership.memberFallback') }}
+                </text>
               </view>
             </view>
 
@@ -58,9 +60,11 @@
       <view class="section-head">
         <view class="section-head-left">
           <text class="section-eyebrow">LEVELS</text>
-          <text class="section-title">五级阶梯 · 向上生长</text>
+          <text class="section-title">{{ t('membership.ladderTitle') }}</text>
         </view>
-        <text class="section-meta">共 {{ levels.length }} 级</text>
+        <text class="section-meta">
+          {{ t('membership.totalLevels', { count: levels.length }) }}
+        </text>
       </view>
 
       <view class="ladder">
@@ -83,7 +87,7 @@
                 {{ $t('membership.currentTag') }}
               </text>
             </view>
-            <text class="ladder-desc">{{ lv.description }}</text>
+            <text class="ladder-desc">{{ lv.descKey ? t(lv.descKey) : lv.description }}</text>
             <view class="ladder-meta">
               <view class="meta-item">
                 <text class="meta-label">{{ $t('membership.pointsRateLabel') }}</text>
@@ -105,22 +109,22 @@
       <view class="section-head">
         <view class="section-head-left">
           <text class="section-eyebrow">PERKS</text>
-          <text class="section-title">会员专属特权</text>
+          <text class="section-title">{{ t('membership.perksTitle') }}</text>
         </view>
       </view>
 
       <view class="privilege-grid">
         <view
           v-for="(item, idx) in privileges"
-          :key="item.title"
+          :key="item.titleKey || item.title"
           class="privilege-card"
           :class="`pg-${idx % 4}`"
         >
           <view class="privilege-icon-wrap">
             <text class="privilege-emoji luc" :class="$luc(item.icon)" />
           </view>
-          <text class="privilege-title">{{ item.title }}</text>
-          <text class="privilege-desc">{{ item.desc }}</text>
+          <text class="privilege-title">{{ item.titleKey ? t(item.titleKey) : item.title }}</text>
+          <text class="privilege-desc">{{ item.descKey ? t(item.descKey) : item.desc }}</text>
         </view>
       </view>
     </view>
@@ -128,7 +132,7 @@
     <!-- 底部链接 -->
     <view class="bottom-links">
       <view class="link-item" @click="goRules">
-        <text class="link-text">了解会员规则</text>
+        <text class="link-text">{{ t('membership.rulesLink') }}</text>
         <text class="link-arrow luc-chevron-right" />
       </view>
       <view class="link-divider" />
@@ -140,10 +144,19 @@
   </view>
 </template>
 <script setup>
-import { ref, computed, onMounted, onActivated } from 'vue'
+import { ref, computed, onMounted, onActivated, onBeforeUnmount } from 'vue'
 import { memberApi } from '@/api'
+import { i18n } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.userMembership')
+
+// 轻量翻译函数（响应 localeVersion 变化，刷新依赖本地化的模板）
+const localeVersion = ref(0)
+let _unsubLocale = null
+function t(key, params) {
+  void localeVersion.value // 触发依赖追踪
+  return i18n.t(key, params)
+}
 
 // 用户会员信息（来自后端 /api/v1/member）
 
@@ -151,37 +164,52 @@ const userInfo = ref({ nickname: '', level: 'NORMAL', growthValue: 0, points: 0,
 
 // 等级档位（来自后端 /api/v1/member/levels）
 const levels = ref([
-  { code: 'L1', name: 'Member', description: '注册即获得', growthThreshold: 0, pointsRate: 1.0 },
+  {
+    code: 'L1',
+    name: 'Member',
+    descKey: 'membership.levelDesc.L1',
+    growthThreshold: 0,
+    pointsRate: 1.0,
+  },
   {
     code: 'L2',
     name: 'Silver',
-    description: '完成首单+签到',
+    descKey: 'membership.levelDesc.L2',
     growthThreshold: 500,
     pointsRate: 1.1,
   },
-  { code: 'L3', name: 'Gold', description: '活跃用户', growthThreshold: 2000, pointsRate: 1.2 },
+  {
+    code: 'L3',
+    name: 'Gold',
+    descKey: 'membership.levelDesc.L3',
+    growthThreshold: 2000,
+    pointsRate: 1.2,
+  },
   {
     code: 'L4',
     name: 'Platinum',
-    description: '高频消费用户',
+    descKey: 'membership.levelDesc.L4',
     growthThreshold: 8000,
     pointsRate: 1.5,
   },
-  { code: 'L5', name: 'Black', description: '顶级 VIP', growthThreshold: 25000, pointsRate: 2.0 },
+  {
+    code: 'L5',
+    name: 'Black',
+    descKey: 'membership.levelDesc.L5',
+    growthThreshold: 25000,
+    pointsRate: 2.0,
+  },
 ])
 
 const currentLevelCode = computed(() => mapLevelCode(userInfo.value.level))
 
 const levelLabel = computed(() => {
   const lv = levels.value.find((l) => l.code === currentLevelCode.value)
-  return lv ? lv.name : 'Member'
+  return lv ? lv.name : t('membership.memberFallback')
 })
 
 // 问候语：根据等级切换，赋予身份感
-const greeting = computed(() => {
-  const map = { L1: '欢迎加入', L2: '感谢同行', L3: '尊享之旅', L4: '荣耀之选', L5: '王者归来' }
-  return map[currentLevelCode.value] || '欢迎加入'
-})
+const greeting = computed(() => t('membership.greeting.' + currentLevelCode.value))
 
 // 会员卡号：后端统一返回 12 位数字，这里拼前缀展示（No.MY.000000000001）
 // 兼容旧格式“MY·xxxxxxxx·xxxx”：仅提取数字后拼接，避免重复出现 MY 前缀
@@ -208,17 +236,29 @@ const progressPercent = computed(() => {
 const progressHint = computed(() => {
   const idx = levels.value.findIndex((l) => l.code === currentLevelCode.value)
   const next = levels.value[idx + 1]
-  if (!next) return `已是顶级会员 · 成长值 ${userInfo.value.growthValue || 0}`
+  if (!next) return t('membership.topLevel', { value: userInfo.value.growthValue || 0 })
   const curGrowth = userInfo.value.growthValue || 0
   const need = Math.max(0, next.growthThreshold - curGrowth)
-  return `距 ${next.name} 还需 ${need} 成长值`
+  return t('membership.distanceNext', { next: next.name, need })
 })
 
 // 专属特权（来自后端 /api/v1/member/privileges，未返回时使用兜底）
 const privileges = ref([
-  { icon: 'tag', title: '新品优先购', desc: '新品提前48小时购买权' },
-  { icon: 'star', title: '会员日特惠', desc: '每月8号会员专属折扣' },
-  { icon: 'package', title: '专属IP周边', desc: 'MOYUYO IP限定周边' },
+  {
+    icon: 'tag',
+    titleKey: 'membership.privileges.newArrival.title',
+    descKey: 'membership.privileges.newArrival.desc',
+  },
+  {
+    icon: 'star',
+    titleKey: 'membership.privileges.memberDay.title',
+    descKey: 'membership.privileges.memberDay.desc',
+  },
+  {
+    icon: 'package',
+    titleKey: 'membership.privileges.ipMerch.title',
+    descKey: 'membership.privileges.ipMerch.desc',
+  },
 ])
 
 function mapLevelCode(apiLevel) {
@@ -244,7 +284,7 @@ async function loadMemberInfo() {
     // request.get 已经解包 Result 包装，res 直接是业务 payload
     const data = (await memberApi.getMemberInfo()) || {}
     userInfo.value = {
-      nickname: data.nickname || '会员',
+      nickname: data.nickname || t('membership.memberFallback'),
       level: data.level || 'NORMAL',
       growthValue: data.growthValue || 0,
       points: data.points || 0,
@@ -288,10 +328,17 @@ onMounted(() => {
   loadMemberInfo()
   loadLevels()
   loadPrivileges()
+  // 订阅语言切换，触发模板与本页 t() 依赖重新求值
+  _unsubLocale = i18n.subscribe(() => {
+    localeVersion.value += 1
+  })
 })
 onActivated(() => {
   loadMemberInfo()
   loadPrivileges()
+})
+onBeforeUnmount(() => {
+  if (_unsubLocale) _unsubLocale()
 })
 </script>
 

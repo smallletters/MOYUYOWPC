@@ -174,7 +174,7 @@ sudo ./deploy/deploy.sh
 
 1. **权限与依赖检查**：必须 root，Docker / Compose v2 必须就绪
 2. **.env 校验**：必填项缺失 / 占位符（`your_xxx` / `REPLACE_WITH_xxx`）→ 阻断启动
-3. **生成 MySQL truststore**：`/opt/moyuyo/certs/mysql-ca.p12`（首次部署）
+3. **生成 MySQL 信任库**：`mysql-certs-init` 容器从 MySQL 自签 CA（数据目录 `ca.pem`）用 keytool 导入为 PKCS12，写入命名卷 `mysql-certs`；不需要在宿主机准备证书文件
 4. **拉取基础镜像**：`mysql:8.0.36` / `redis:7.2-alpine` / `elasticsearch:8.13.4` / `apache/rocketmq:5.3.2` / `prom/mysqld-exporter:v0.15.1` / `oliver006/redis_exporter:v1.58.0` / `apache/rocketmq-exporter:0.0.3`
 5. **构建后端镜像**（首次约 5-10 分钟）：
    - 多阶段：`maven:3.9-eclipse-temurin-25` 构建 → `eclipse-temurin:25-jre-alpine` 运行
@@ -293,7 +293,7 @@ ss -tlnp | grep -E ":(8080|9090|3306|6379|9200|9876|10911)"
 - [ ] `curl http://127.0.0.1:8080/actuator/health` → `{"status":"UP"}`
 - [ ] `curl http://127.0.0.1:8080/admin/` → 200 HTML（admin SPA）
 - [ ] `docker compose --env-file .env ps` → 所有服务 `healthy`
-- [ ] `ls -la /opt/moyuyo/certs/mysql-ca.p12` → 文件存在，`600` 权限
+- [ ] `docker compose --env-file .env logs mysql-certs-init` → 输出"信任库已生成"（信任库由该容器自动生成，无需宿主机准备文件）
 - [ ] `stat -c '%a' .env` → `600`
 - [ ] 浏览器 `https://api.your-domain.com/admin/` → 能打开登录页
 - [ ] 用 `.env` 中 `ADMIN_USERNAME` / `ADMIN_PASSWORD` 登录后台成功
@@ -465,7 +465,7 @@ java -cp app.jar org.springframework.security.crypto.bcrypt.BCryptPasswordEncode
 
 ### Q6：`./deploy/deploy.sh` 报权限错误？
 
-必须 `root` 执行（容器需要创建 `/opt/moyuyo/certs`、挂载卷等）。SSH 后用 `sudo` 或 `su -` 切换。
+必须 `root` 执行（需要 Docker 守护进程权限、创建命名卷等）。SSH 后用 `sudo` 或 `su -` 切换。
 
 ### Q7：actuator 健康检查返回 DOWN 但容器还在运行？
 

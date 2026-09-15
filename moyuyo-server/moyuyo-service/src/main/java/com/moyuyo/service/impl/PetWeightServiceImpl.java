@@ -46,6 +46,9 @@ public class PetWeightServiceImpl implements PetWeightService {
     // 任务中心埋点：记录体重视为一次 Pet Hub 互动
     try {
       missionService.incrementByKeyword(userId, "DAILY", "Pet Hub", 1);
+      // 记录宠物体重专项任务：每日 1 次 + 每周累计 3 次（按 type 隔离，关键字 "体重" 各自匹配唯一任务）
+      missionService.incrementByKeyword(userId, "DAILY", "体重", 1);
+      missionService.incrementByKeyword(userId, "WEEKLY", "体重", 1);
     } catch (Exception e) {
       log.warn("[pet-weight] trigger mission failed: petId={}, reason={}", petId, e.getMessage());
     }

@@ -1,11 +1,11 @@
-﻿<template>
+<template>
   <view class="service-booking">
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="header-btn" @tap="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">服务预约</text>
+      <text class="header-title">{{ $t('serviceBooking.title') }}</text>
       <view class="header-btn" />
     </view>
 
@@ -26,7 +26,7 @@
             class="step-label"
             :style="{ color: step.done ? 'var(--primary)' : 'var(--text-400)' }"
           >
-            {{ step.label }}
+            {{ $t(step.labelKey) }}
           </text>
           <view
             v-if="idx < steps.length - 1"
@@ -38,7 +38,7 @@
 
       <!-- 服务类型选择 -->
       <view class="section">
-        <text class="section-title">选择服务类型</text>
+        <text class="section-title">{{ $t('serviceBooking.selectServiceType') }}</text>
         <scroll-view scroll-x class="service-scroll" show-scrollbar="false">
           <view
             v-for="svc in services"
@@ -60,9 +60,9 @@
                 color: selectedService === svc.id ? 'var(--primary)' : 'var(--foreground)',
               }"
             >
-              {{ svc.name }}
+              {{ $t(svc.nameKey) }}
             </text>
-            <text class="service-desc">{{ svc.desc }}</text>
+            <text class="service-desc">{{ $t(svc.descKey) }}</text>
           </view>
         </scroll-view>
       </view>
@@ -70,44 +70,48 @@
       <!-- 推荐门店 -->
       <view class="section">
         <view class="section-header">
-          <text class="section-title">推荐门店</text>
+          <text class="section-title">{{ $t('serviceBooking.recommendedStores') }}</text>
           <text class="section-more">
-            查看全部
+            {{ $t('serviceBooking.viewAll') }}
             <text class="luc luc-chevron-right" />
           </text>
         </view>
         <view v-for="store in stores" :key="store.id" class="store-card">
           <view class="store-top">
             <view class="store-avatar">
-              <text>{{ store.initial }}</text>
+              <text>{{ $t(store.initialKey) }}</text>
             </view>
             <view class="store-info">
               <view class="store-name-row">
-                <text class="store-name">{{ store.name }}</text>
+                <text class="store-name">{{ $t(store.nameKey) }}</text>
                 <view class="store-rating">
                   <text class="star luc-star" />
                   <text class="rating-value">{{ store.rating }}</text>
                 </view>
               </view>
               <view class="store-address">
-                <text>{{ store.address }}</text>
+                <text>{{ $t(store.addressKey) }}</text>
               </view>
               <view class="store-tags">
-                <view v-for="tag in store.tags" :key="tag" class="store-tag">{{ tag }}</view>
+                <view v-for="tag in store.tags" :key="tag" class="store-tag">{{ $t(tag) }}</view>
               </view>
             </view>
           </view>
           <view class="store-bottom">
-            <text class="store-price-label">参考价</text>
-            <text class="store-price">${{ store.priceMin }} - ${{ store.priceMax }}</text>
-            <view class="book-btn" @tap="handleQuickBook(store)">立即预约</view>
+            <text class="store-price-label">{{ $t('serviceBooking.referencePrice') }}</text>
+            <text class="store-price">
+              {{ currencySymbol }}{{ store.priceMin }} - {{ currencySymbol }}{{ store.priceMax }}
+            </text>
+            <view class="book-btn" @tap="handleQuickBook(store)">
+              {{ $t('serviceBooking.bookNow') }}
+            </view>
           </view>
         </view>
       </view>
 
       <!-- 选择日期 -->
       <view class="section">
-        <text class="section-title">选择日期</text>
+        <text class="section-title">{{ $t('serviceBooking.selectDate') }}</text>
         <scroll-view scroll-x class="date-scroll" show-scrollbar="false">
           <view
             v-for="(date, idx) in dates"
@@ -126,7 +130,7 @@
                 color: selectedDate === idx ? 'var(--primary-foreground)' : 'var(--text-400)',
               }"
             >
-              {{ date.label }}
+              {{ $t(date.labelKey) }}
             </text>
             <text
               class="date-num"
@@ -142,7 +146,7 @@
 
       <!-- 选择时段 -->
       <view class="section">
-        <text class="section-title">选择时段</text>
+        <text class="section-title">{{ $t('serviceBooking.selectSlot') }}</text>
         <view class="time-grid">
           <view
             v-for="slot in timeSlots"
@@ -162,7 +166,7 @@
                   selectedTimeSlot === slot.id ? 'var(--primary-foreground)' : 'var(--foreground)',
               }"
             >
-              {{ slot.name }}
+              {{ $t(slot.nameKey) }}
             </text>
             <text
               class="slot-time"
@@ -180,8 +184,8 @@
       <!-- 选择宠物 -->
       <view class="section">
         <view class="section-header">
-          <text class="section-title">选择宠物</text>
-          <text class="section-more">＋ 添加宠物</text>
+          <text class="section-title">{{ $t('serviceBooking.selectPet') }}</text>
+          <text class="section-more">{{ $t('serviceBooking.addPet') }}</text>
         </view>
         <view
           v-for="pet in pets"
@@ -218,22 +222,24 @@
 
       <!-- 费用明细 -->
       <view class="section">
-        <text class="section-title">费用明细</text>
+        <text class="section-title">{{ $t('serviceBooking.feeDetail') }}</text>
         <view class="fee-card">
           <view class="fee-row">
-            <text class="fee-label">洗澡 + 造型（金毛）</text>
-            <text class="fee-value">$198.00</text>
+            <text class="fee-label">{{ $t('serviceBooking.feeItemGrooming') }}</text>
+            <text class="fee-value">{{ currencySymbol }}198.00</text>
           </view>
           <view class="fee-row">
-            <text class="fee-label">在线定金（20%）</text>
-            <text class="fee-value fee-primary">-$39.60</text>
+            <text class="fee-label">{{ $t('serviceBooking.feeItemDeposit') }}</text>
+            <text class="fee-value fee-primary">-{{ currencySymbol }}39.60</text>
           </view>
           <view class="fee-row total">
-            <text class="fee-label">合计应付</text>
-            <text class="fee-total">$39.60</text>
+            <text class="fee-label">{{ $t('serviceBooking.feeTotal') }}</text>
+            <text class="fee-total">{{ currencySymbol }}39.60</text>
           </view>
         </view>
-        <text class="fee-note">到店后支付剩余 80% 费用（$158.40），定金不可退</text>
+        <text class="fee-note">
+          {{ $t('serviceBooking.feeNote', { amount: currencySymbol + '158.40' }) }}
+        </text>
       </view>
 
       <view class="bottom-spacer" />
@@ -244,17 +250,20 @@
       <view class="policy-hint">
         <text class="hint-icon luc-alert-triangle" />
         <text class="hint-text">
-          预约成功后如需取消，请提前24小时操作；逾期取消或爽约将扣除全额定金。
+          {{ $t('serviceBooking.cancelPolicy') }}
         </text>
       </view>
       <view class="confirm-btn" @tap="handleConfirmBooking">
-        <text>确认预约 · $39.60</text>
+        <text>
+          {{ $t('serviceBooking.confirmBookingFmt', { amount: currencySymbol + '39.60' }) }}
+        </text>
       </view>
     </view>
   </view>
 </template>
 <script>
 import { petApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.userServiceBooking',
@@ -265,39 +274,41 @@ export default {
       selectedDate: 1,
       selectedTimeSlot: 'morning',
       selectedPet: null,
+      // locale 版本号：locale 切换时自增，触发 computed 重算
+      localeVersion: 0,
       steps: [
-        { label: '选服务', done: true },
-        { label: '选门店', done: false },
-        { label: '选日期', done: false },
-        { label: '选宠物', done: false },
-        { label: '支付', done: false },
+        { labelKey: 'serviceBooking.stepService', done: true },
+        { labelKey: 'serviceBooking.stepStore', done: false },
+        { labelKey: 'serviceBooking.stepDate', done: false },
+        { labelKey: 'serviceBooking.stepPet', done: false },
+        { labelKey: 'serviceBooking.stepPay', done: false },
       ],
       services: [
         {
           id: 'grooming',
-          name: '宠物美容',
-          desc: '洗澡 / 造型 / 修甲',
+          nameKey: 'serviceBooking.serviceGrooming',
+          descKey: 'serviceBooking.serviceGroomingDesc',
           icon: 'sparkles',
           iconBg: 'var(--primary)',
         },
         {
           id: 'health',
-          name: '健康体检',
-          desc: '疫苗 / 驱虫 / 年检',
+          nameKey: 'serviceBooking.serviceHealth',
+          descKey: 'serviceBooking.serviceHealthDesc',
           icon: 'heart',
           iconBg: 'var(--secondary)',
         },
         {
           id: 'boarding',
-          name: '宠物寄养',
-          desc: '日托 / 长期',
+          nameKey: 'serviceBooking.serviceBoarding',
+          descKey: 'serviceBooking.serviceBoardingDesc',
           icon: '⌂',
           iconBg: 'var(--secondary)',
         },
         {
           id: 'home',
-          name: '上门服务',
-          desc: '上门洗护 / 上门喂养',
+          nameKey: 'serviceBooking.serviceHome',
+          descKey: 'serviceBooking.serviceHomeDesc',
           icon: '⊕',
           iconBg: 'var(--secondary)',
         },
@@ -305,55 +316,74 @@ export default {
       stores: [
         {
           id: 1,
-          name: '萌宠美学馆',
-          initial: '萌',
+          nameKey: 'serviceBooking.store1Name',
+          initialKey: 'serviceBooking.store1Initial',
           rating: 4.9,
-          address: '朝阳区望京街道 · 1.2km',
-          tags: ['洗澡', '造型', '修甲'],
+          addressKey: 'serviceBooking.store1Address',
+          tags: ['serviceBooking.tagBath', 'serviceBooking.tagGrooming', 'serviceBooking.tagNail'],
           priceMin: 68,
           priceMax: 298,
         },
         {
           id: 2,
-          name: '小爪子宠物护理',
-          initial: '小',
+          nameKey: 'serviceBooking.store2Name',
+          initialKey: 'serviceBooking.store2Initial',
           rating: 4.8,
-          address: '海淀区中关村 · 3.5km',
-          tags: ['洗澡', 'SPA护理'],
+          addressKey: 'serviceBooking.store2Address',
+          tags: ['serviceBooking.tagBath', 'serviceBooking.tagSpa'],
           priceMin: 58,
           priceMax: 198,
         },
         {
           id: 3,
-          name: '汪星人美容工坊',
-          initial: '汪',
+          nameKey: 'serviceBooking.store3Name',
+          initialKey: 'serviceBooking.store3Initial',
           rating: 4.7,
-          address: '西城区金融街 · 5.1km',
-          tags: ['造型', '染色', '修甲'],
+          addressKey: 'serviceBooking.store3Address',
+          tags: ['serviceBooking.tagGrooming', 'serviceBooking.tagDye', 'serviceBooking.tagNail'],
           priceMin: 88,
           priceMax: 358,
         },
       ],
       dates: [
-        { label: '今天', num: '08' },
-        { label: '明天', num: '09' },
-        { label: '周四', num: '10' },
-        { label: '周五', num: '11' },
-        { label: '周六', num: '12' },
-        { label: '周日', num: '13' },
-        { label: '周一', num: '14' },
+        { labelKey: 'serviceBooking.today', num: '08' },
+        { labelKey: 'serviceBooking.tomorrow', num: '09' },
+        { labelKey: 'serviceBooking.weekThu', num: '10' },
+        { labelKey: 'serviceBooking.weekFri', num: '11' },
+        { labelKey: 'serviceBooking.weekSat', num: '12' },
+        { labelKey: 'serviceBooking.weekSun', num: '13' },
+        { labelKey: 'serviceBooking.weekMon', num: '14' },
       ],
       timeSlots: [
-        { id: 'morning', name: '上午', time: '09:00-12:00' },
-        { id: 'afternoon', name: '下午', time: '12:00-18:00' },
-        { id: 'evening', name: '晚上', time: '18:00-21:00' },
+        { id: 'morning', nameKey: 'serviceBooking.slotMorning', time: '09:00-12:00' },
+        { id: 'afternoon', nameKey: 'serviceBooking.slotAfternoon', time: '12:00-18:00' },
+        { id: 'evening', nameKey: 'serviceBooking.slotEvening', time: '18:00-21:00' },
       ],
       pets: [],
     }
   },
 
+  computed: {
+    /**
+     * 当前语言货币符号：locale 切换时通过 localeVersion 触发重算
+     */
+    currencySymbol() {
+      // 读取 this.localeVersion 让 Vue 追踪依赖，触发 reactive
+      void this.localeVersion
+      return i18n.currencySymbol
+    },
+  },
+
   onLoad() {
     this.loadPets()
+    // 订阅 locale 变化：locale 切换时让 currencySymbol 重新计算
+    this._unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
+  },
+
+  onUnload() {
+    if (this._unsubLocale) this._unsubLocale()
   },
 
   methods: {
@@ -374,7 +404,10 @@ export default {
     },
 
     handleQuickBook(store) {
-      uni.showToast({ title: `已选择「${store.name}」`, icon: 'success' })
+      uni.showToast({
+        title: i18n.t('serviceBooking.selectedStoreFmt', { name: i18n.t(store.nameKey) }),
+        icon: 'success',
+      })
     },
 
     async handleConfirmBooking() {
@@ -385,9 +418,12 @@ export default {
           timeSlot: this.selectedTimeSlot,
           petId: this.selectedPet,
         })
-        uni.showToast({ title: '预约成功！', icon: 'success' })
+        uni.showToast({ title: i18n.t('serviceBooking.bookingSuccess'), icon: 'success' })
       } catch (err) {
-        uni.showToast({ title: err.message || '预约失败', icon: 'none' })
+        uni.showToast({
+          title: err.message || i18n.t('serviceBooking.bookingFailed'),
+          icon: 'none',
+        })
       }
     },
   },

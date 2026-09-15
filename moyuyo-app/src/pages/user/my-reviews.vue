@@ -1,11 +1,11 @@
-﻿<template>
+<template>
   <view class="my-reviews">
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="header-left" @tap="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">我的评价</text>
+      <text class="header-title">{{ $t('myReviews.title') }}</text>
       <view class="header-right" />
     </view>
 
@@ -15,17 +15,17 @@
         <view class="stats-card">
           <view class="stat-item">
             <text class="stat-value primary">{{ stats.total }}</text>
-            <text class="stat-label">累计评价</text>
+            <text class="stat-label">{{ $t('myReviews.stats.total') }}</text>
           </view>
           <view class="stat-divider" />
           <view class="stat-item">
             <text class="stat-value primary">{{ stats.likes }}</text>
-            <text class="stat-label">获赞</text>
+            <text class="stat-label">{{ $t('myReviews.stats.likes') }}</text>
           </view>
           <view class="stat-divider" />
           <view class="stat-item">
             <text class="stat-value success">{{ stats.highQuality }}</text>
-            <text class="stat-label">优质评价</text>
+            <text class="stat-label">{{ $t('myReviews.stats.highQuality') }}</text>
           </view>
         </view>
       </view>
@@ -44,7 +44,7 @@
           }"
           @tap="activeTab = tab.key"
         >
-          <text>{{ tab.label }}</text>
+          <text>{{ $t(tab.labelKey) }}</text>
         </view>
       </view>
 
@@ -76,7 +76,7 @@
           </view>
 
           <view v-if="review.shopReply" class="shop-reply">
-            <text class="shop-reply-label">店铺回复：</text>
+            <text class="shop-reply-label">{{ $t('myReviews.shopReply') }}</text>
             <text class="shop-reply-text">{{ review.shopReply }}</text>
           </view>
 
@@ -92,12 +92,16 @@
                   color: tag === '已回复' ? 'var(--success)' : 'var(--primary)',
                 }"
               >
-                <text>{{ tag }}</text>
+                <text>{{ tagLabel(tag) }}</text>
               </view>
             </view>
             <view class="review-actions">
-              <text class="review-action" @tap="handleEditReview(review)">编辑</text>
-              <text class="review-action" @tap="handleDeleteReview(review)">删除</text>
+              <text class="review-action" @tap="handleEditReview(review)">
+                {{ $t('myReviews.edit') }}
+              </text>
+              <text class="review-action" @tap="handleDeleteReview(review)">
+                {{ $t('myReviews.delete') }}
+              </text>
             </view>
           </view>
         </view>
@@ -106,10 +110,10 @@
       <!-- 空状态 -->
       <view v-else class="empty-state">
         <text class="empty-icon luc-inbox" />
-        <text class="empty-title">暂无{{ activeTabLabel }}评价</text>
-        <text class="empty-desc">完成订单后即可发表评价，您的反馈对其他宠物主人很有帮助</text>
+        <text class="empty-title">{{ $t('myReviews.emptyWithTab', { tab: activeTabLabel }) }}</text>
+        <text class="empty-desc">{{ $t('myReviews.emptyDesc') }}</text>
         <view class="go-shop-btn" @tap="handleGoShop">
-          <text>去逛逛</text>
+          <text>{{ $t('myReviews.goShop') }}</text>
         </view>
       </view>
     </scroll-view>
@@ -118,18 +122,22 @@
 
 <script>
 import { reviewApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.userMyReviews',
 
   data() {
     return {
+      // 语言版本号:locale 变化时自增,驱动依赖本地化的 computed 重算
+      localeVersion: 0,
+      unsubLocale: null,
       activeTab: 'all',
       tabs: [
-        { key: 'all', label: '全部' },
-        { key: 'withImage', label: '有图' },
-        { key: 'good', label: '好评' },
-        { key: 'bad', label: '差评' },
+        { key: 'all', labelKey: 'myReviews.all' },
+        { key: 'withImage', labelKey: 'myReviews.withImage' },
+        { key: 'good', labelKey: 'myReviews.good' },
+        { key: 'bad', labelKey: 'myReviews.bad' },
       ],
       stats: {
         total: 0,
@@ -141,8 +149,10 @@ export default {
   },
   computed: {
     activeTabLabel() {
+      // 读取 localeVersion 建立响应式依赖,语言切换时重算
+      void this.localeVersion
       const tab = this.tabs.find((t) => t.key === this.activeTab)
-      return tab ? tab.label : ''
+      return tab ? i18n.t(tab.labelKey) : ''
     },
     filteredReviews() {
       if (this.activeTab === 'all') return this.reviews
@@ -151,6 +161,15 @@ export default {
       if (this.activeTab === 'bad') return this.reviews.filter((r) => r.rating <= 2)
       return this.reviews
     },
+  },
+  created() {
+    // 订阅语言变化
+    this.unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
+  },
+  beforeUnmount() {
+    if (this.unsubLocale) this.unsubLocale()
   },
   onLoad() {
     this.loadReviews()
@@ -182,22 +201,28 @@ export default {
     goBack() {
       uni.navigateBack()
     },
+    // 后端标签本地化:已回复映射为 i18n key,其余原样展示
+    tagLabel(tag) {
+      void this.localeVersion
+      if (tag === '已回复') return i18n.t('myReviews.tagReplied')
+      return tag
+    },
     handleEditReview(review) {
-      uni.showToast({ title: '编辑评价', icon: 'none' })
+      uni.showToast({ title: i18n.t('myReviews.editToast'), icon: 'none' })
     },
     handleDeleteReview(review) {
       uni.showModal({
-        title: '提示',
-        content: '确定要删除该评价吗？',
+        title: i18n.t('myReviews.deleteConfirmTitle'),
+        content: i18n.t('myReviews.deleteConfirmContent'),
         success: async (res) => {
           if (res.confirm) {
             try {
               await reviewApi.deleteReview(review.id)
               const idx = this.reviews.findIndex((r) => r.id === review.id)
               if (idx > -1) this.reviews.splice(idx, 1)
-              uni.showToast({ title: '评价已删除', icon: 'success' })
+              uni.showToast({ title: i18n.t('myReviews.deleted'), icon: 'success' })
             } catch (e) {
-              uni.showToast({ title: '删除失败，请重试', icon: 'none' })
+              uni.showToast({ title: i18n.t('myReviews.deleteFailed'), icon: 'none' })
             }
           }
         },

@@ -74,10 +74,12 @@ RUN apk add --no-cache tzdata curl tini && \
 # 创建非 root 用户（UID 1000，符合 1Panel/Docker 默认用户）
 # 先创建 /app 目录并设置所有权，再切到非 root 用户，避免运行时权限问题
 # /app/heapdump 用于 OOM 时堆转储（-XX:HeapDumpPath 指向该目录）
+# /app/uploads 用于用户/管理员上传的图片与视频落盘，compose 以命名卷挂载该目录持久化；
+# 目录必须在镜像内预先创建并授权给 moyuyo，否则命名卷首次挂载后属主为 root，非 root 用户写入失败
 # 注意：hprof 文件名固定 heapdump.hprof，便于运维通过 ls /app/heapdump/*.hprof 统一归档
 RUN addgroup -g 1000 -S moyuyo && \
     adduser -u 1000 -S moyuyo -G moyuyo && \
-    mkdir -p /app /var/log/moyuyo /app/heapdump /var/log/moyuyo/jfr /app/logs && \
+    mkdir -p /app /var/log/moyuyo /app/heapdump /var/log/moyuyo/jfr /app/uploads && \
     chown -R moyuyo:moyuyo /app /var/log/moyuyo
 
 WORKDIR /app

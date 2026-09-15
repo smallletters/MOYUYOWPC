@@ -13,9 +13,9 @@
  *   usePageTitle('pageTitle.userWallet')
  *
  * 行为:
- *   - onLoad 时调用 uni.setNavigationBarTitle 把当前 locale 的标题写入原生 navbar
+ *   - mounted 时调用 uni.setNavigationBarTitle 把当前 locale 的标题写入原生 navbar
  *   - 订阅 i18n.subscribe,locale 切换时(设置页改了语言)立刻重设当前页标题
- *   - onUnload 时取消订阅,避免内存泄漏
+ *   - beforeUnmount 时取消订阅,避免内存泄漏
  *
  * 注意:
  *   1. 仅对原生 navbar 生效(navigationStyle !== 'custom');custom 模式页面
@@ -60,11 +60,15 @@ export function applyPageTitle(title) {
         if (el.textContent !== title) el.textContent = title
       })
     }
-  } catch (e) { /* ignore */ }
+  } catch (e) {
+    /* ignore */
+  }
   // #endif
   try {
     uni.setNavigationBarTitle({ title })
-  } catch (e) { /* ignore */ }
+  } catch (e) {
+    /* ignore */
+  }
 }
 
 /** Composition API / <script setup> 用法 */
@@ -100,14 +104,23 @@ export const i18nPageMixin = {
   // fallback:字典里没有时回落的标题(可选,不传则回落到 pages.json 里的 navigationBarTitleText)
   pageTitleFallback: '',
 
-  onLoad() {
+  // 注意 1:这里必须用 Vue 组件生命周期(mounted/beforeUnmount),不能用 uni 页面钩子
+  // (onLoad/onUnload)。绝大多数页面自身都定义了 onLoad,而 Vue/uni 对非数组合并选项
+  // 采用「子覆盖父」策略,页面自己的 onLoad 会把全局 mixin 的同名钩子挤掉,
+  // 导致标题逻辑从未执行。Vue 生命周期钩子会合并成数组,页面定义同名钩子也不会覆盖。
+  // 注意 2:Vue 3 不会把自定义选项(如 pageTitleKey)挂到 this 上,必须用
+  // this.$options.pageTitleKey 读取(全局 mixin 为所有组件混入本 mixin,故这里先做
+  // 判空守卫,只有声明了 pageTitleKey 的页面组件才继续)。
+  mounted() {
+    if (!this.$options.pageTitleKey) return
+    // mounted 时页面已注册进页面栈且 head DOM 已渲染,setNavigationBarTitle 与 DOM 同步均生效
     this._applyPageTitle()
     // 订阅 locale 变化,切换语言时立即更新当前页标题
     this._i18nUnsub = i18n.subscribe(() => {
       this._applyPageTitle()
     })
   },
-  onUnload() {
+  beforeUnmount() {
     if (this._i18nUnsub) {
       this._i18nUnsub()
       this._i18nUnsub = null
@@ -115,9 +128,8 @@ export const i18nPageMixin = {
   },
   methods: {
     _applyPageTitle() {
-      const title = resolvePageTitle(this.pageTitleKey, this.pageTitleFallback)
+      const title = resolvePageTitle(this.$options.pageTitleKey, this.$options.pageTitleFallback)
       applyPageTitle(title)
     },
   },
 }
-

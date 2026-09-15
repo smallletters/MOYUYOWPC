@@ -1,41 +1,43 @@
-﻿<template>
+<template>
   <view class="wallet-recharge">
     <view class="page-header">
-      <view class="back" aria-label="返回钱包" @click="goBack">
+      <view class="back" :aria-label="$t('walletRecharge.backLabel')" @click="goBack">
         <text class="luc luc-arrow-left" />
       </view>
-      <text class="title">充值</text>
+      <text class="title">{{ $t('walletRecharge.title') }}</text>
     </view>
 
     <scroll-view scroll-y class="content">
       <!-- 余额信息 -->
-      <view class="balance-card" aria-label="余额信息">
-        <text class="balance-label">当前余额</text>
+      <view class="balance-card" :aria-label="$t('walletRecharge.balanceCardLabel')">
+        <text class="balance-label">{{ $t('walletRecharge.currentBalance') }}</text>
         <text class="balance-value">${{ balance }}</text>
       </view>
 
       <!-- 充值金额 -->
-      <view class="section" aria-label="充值金额">
-        <text class="section-title">选择充值金额</text>
+      <view class="section" :aria-label="$t('walletRecharge.amountSectionLabel')">
+        <text class="section-title">{{ $t('walletRecharge.selectAmount') }}</text>
         <view class="amount-grid">
           <view
             v-for="opt in amountOptions"
             :key="opt.value"
             class="amount-option"
             :class="{ selected: selectedAmount === opt.value }"
-            :aria-label="opt.label"
+            :aria-label="$t('walletRecharge.topUpAmount', { amount: '$' + opt.value })"
             @click="onAmountSelect(opt)"
           >
             <text class="amount-num">${{ opt.value }}</text>
-            <text v-if="opt.bonus" class="amount-bonus">送 ${{ opt.bonus }}</text>
+            <text v-if="opt.bonus" class="amount-bonus">
+              {{ $t('walletRecharge.bonus', { amount: '$' + opt.bonus }) }}
+            </text>
           </view>
           <view
             class="amount-option"
             :class="{ selected: selectedAmount === 'custom' }"
-            aria-label="自定义金额"
+            :aria-label="$t('walletRecharge.customLabel')"
             @click="onAmountSelect({ value: 'custom' })"
           >
-            <text class="amount-num">自定义</text>
+            <text class="amount-num">{{ $t('walletRecharge.custom') }}</text>
           </view>
         </view>
         <input
@@ -43,14 +45,14 @@
           v-model="customAmount"
           class="custom-input"
           type="number"
-          placeholder="输入金额"
-          aria-label="自定义充值金额"
+          :placeholder="$t('walletRecharge.customPlaceholder')"
+          :aria-label="$t('walletRecharge.customInputLabel')"
         >
       </view>
 
       <!-- 支付方式 -->
-      <view class="section" aria-label="支付方式">
-        <text class="section-title">支付方式</text>
+      <view class="section" :aria-label="$t('walletRecharge.paySectionLabel')">
+        <text class="section-title">{{ $t('walletRecharge.paymentMethods') }}</text>
         <view class="pay-list">
           <view
             v-for="p in payMethods"
@@ -60,15 +62,19 @@
             @click="selectedPay = p.id"
           >
             <text class="pay-icon luc" :class="$luc(p.icon)" />
-            <text class="pay-name">{{ p.name }}</text>
+            <text class="pay-name">{{ $t(p.nameKey) }}</text>
             <view class="pay-radio" :class="{ checked: selectedPay === p.id }" />
           </view>
         </view>
       </view>
 
       <view class="bottom-bar safe-area-bottom">
-        <view class="btn-primary" aria-label="确认充值" @click="onRecharge">
-          确认充值 ${{ finalAmount }}
+        <view
+          class="btn-primary"
+          :aria-label="$t('walletRecharge.confirmLabel')"
+          @click="onRecharge"
+        >
+          {{ $t('walletRecharge.action', { amount: '$' + finalAmount }) }}
         </view>
       </view>
     </scroll-view>
@@ -76,24 +82,25 @@
 </template>
 <script>
 import { walletApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   data() {
     return {
       balance: 0,
       amountOptions: [
-        { value: 10, label: '充值 $10', bonus: 0 },
-        { value: 20, label: '充值 $20', bonus: 0 },
-        { value: 50, label: '充值 $50', bonus: 5 },
-        { value: 100, label: '充值 $100', bonus: 12 },
-        { value: 200, label: '充值 $200', bonus: 30 },
+        { value: 10, bonus: 0 },
+        { value: 20, bonus: 0 },
+        { value: 50, bonus: 5 },
+        { value: 100, bonus: 12 },
+        { value: 200, bonus: 30 },
       ],
       selectedAmount: 50,
       customAmount: '',
       payMethods: [
-        { id: 'wechat', name: '微信支付', icon: 'heart' },
-        { id: 'alipay', name: '支付宝', icon: 'heart' },
-        { id: 'card', name: '银行卡', icon: 'credit-card' },
+        { id: 'wechat', nameKey: 'walletRecharge.pay.wechat', icon: 'heart' },
+        { id: 'alipay', nameKey: 'walletRecharge.pay.alipay', icon: 'heart' },
+        { id: 'card', nameKey: 'walletRecharge.pay.card', icon: 'credit-card' },
       ],
       selectedPay: 'wechat',
     }
@@ -133,13 +140,13 @@ export default {
     onRecharge() {
       const amt = this.finalAmount
       if (amt <= 0) {
-        uni.showToast({ title: '请选择充值金额', icon: 'none' })
+        uni.showToast({ title: i18n.t('walletRecharge.selectAmountRequired'), icon: 'none' })
         return
       }
-      uni.showLoading({ title: '跳转支付中...' })
+      uni.showLoading({ title: i18n.t('walletRecharge.redirecting') })
       setTimeout(() => {
         uni.hideLoading()
-        uni.showToast({ title: '充值成功', icon: 'success' })
+        uni.showToast({ title: i18n.t('walletRecharge.success'), icon: 'success' })
         setTimeout(() => uni.navigateBack(), 800)
       }, 1000)
     },

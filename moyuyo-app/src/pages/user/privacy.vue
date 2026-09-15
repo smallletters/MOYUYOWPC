@@ -1,10 +1,10 @@
-﻿<template>
+<template>
   <view class="privacy">
     <view class="header">
       <view class="header-btn" @click="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">隐私设置</text>
+      <text class="header-title">{{ $t('privacy.title') }}</text>
       <view class="header-btn" />
     </view>
 
@@ -14,16 +14,16 @@
           <text class="shield-icon luc-shield" />
         </view>
         <view class="overview-info">
-          <text class="overview-title">您的隐私保护等级：高</text>
-          <text class="overview-subtitle">您可以随时管理您的隐私设置</text>
+          <text class="overview-title">{{ $t('privacy.overviewTitle') }}</text>
+          <text class="overview-subtitle">{{ $t('privacy.overviewSubtitle') }}</text>
         </view>
       </view>
 
       <view class="section">
-        <text class="section-title">隐私项目</text>
+        <text class="section-title">{{ $t('privacy.itemsTitle') }}</text>
         <view class="section-body">
           <view v-for="item in toggleSettings" :key="item.key" class="setting-item">
-            <text class="setting-label">{{ item.label }}</text>
+            <text class="setting-label">{{ $t('privacy.' + item.key) }}</text>
             <view class="toggle" :class="{ active: item.value }" @click="toggleSwitch(item)">
               <view class="toggle-thumb" />
             </view>
@@ -32,12 +32,12 @@
       </view>
 
       <view class="section">
-        <text class="section-title">数据管理</text>
+        <text class="section-title">{{ $t('privacy.dataTitle') }}</text>
         <view class="section-body">
           <view class="action-item" @click="onExportData">
             <view class="action-left">
               <text class="action-icon">↓</text>
-              <text class="action-label">导出我的数据</text>
+              <text class="action-label">{{ $t('privacy.exportData') }}</text>
             </view>
             <view class="action-right">
               <text class="action-hint">PDF/JSON</text>
@@ -48,7 +48,7 @@
           <view class="action-item" @click="onDeleteAccount">
             <view class="action-left">
               <text class="action-icon del luc-x" />
-              <text class="action-label del">删除账号</text>
+              <text class="action-label del">{{ $t('privacy.deleteAccount') }}</text>
             </view>
             <text class="action-arrow luc-chevron-right" />
           </view>
@@ -56,33 +56,35 @@
       </view>
 
       <view class="section">
-        <text class="section-title">隐私政策</text>
+        <text class="section-title">{{ $t('privacy.policyName') }}</text>
         <view class="section-body">
           <view class="action-item" @click="onViewPolicy">
-            <text class="action-label">隐私政策</text>
+            <text class="action-label">{{ $t('privacy.policyName') }}</text>
             <text class="action-arrow luc-chevron-right" />
           </view>
         </view>
       </view>
 
-      <text class="footer-note">最后更新于 2026-07-01 · 符合 GDPR & CCPA 规范</text>
+      <text class="footer-note">{{ $t('privacy.footerNote') }}</text>
     </view>
   </view>
 </template>
 
 <script>
 import { userApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.userPrivacy',
 
   data() {
     return {
+      // 隐私开关项（label 由模板按 key 取 i18n 文案）
       toggleSettings: [
-        { key: 'publicFavorites', label: '公开我的收藏', value: true },
-        { key: 'allowViewProfile', label: '允许他人查看主页', value: true },
-        { key: 'showOnlineStatus', label: '显示在线状态', value: false },
-        { key: 'allowMessages', label: '允许私信', value: true },
+        { key: 'publicFavorites', value: true },
+        { key: 'allowViewProfile', value: true },
+        { key: 'showOnlineStatus', value: false },
+        { key: 'allowMessages', value: true },
       ],
     }
   },
@@ -97,26 +99,29 @@ export default {
       try {
         await userApi.updateUser({ [item.key]: newValue })
         item.value = newValue
-        uni.showToast({ title: newValue ? '已开启' : '已关闭', icon: 'none' })
+        uni.showToast({
+          title: newValue ? i18n.t('privacy.enabled') : i18n.t('privacy.disabled'),
+          icon: 'none',
+        })
       } catch {
-        uni.showToast({ title: '设置失败，请重试', icon: 'none' })
+        uni.showToast({ title: i18n.t('privacy.toggleFailed'), icon: 'none' })
       }
     },
 
     async onExportData() {
       uni.showModal({
-        title: '导出数据',
-        content: '我们将为您生成包含个人资料、订单记录等数据的文件，发送至您的邮箱。确定要导出吗？',
+        title: i18n.t('privacy.exportModalTitle'),
+        content: i18n.t('privacy.exportModalContent'),
         success: async (res) => {
           if (res.confirm) {
             try {
-              uni.showLoading({ title: '正在导出...' })
+              uni.showLoading({ title: i18n.t('privacy.exporting') })
               await userApi.updateUser({ exportData: true })
               uni.hideLoading()
-              uni.showToast({ title: '导出请求已提交，请查收邮件', icon: 'success' })
+              uni.showToast({ title: i18n.t('privacy.exportSubmitted'), icon: 'success' })
             } catch {
               uni.hideLoading()
-              uni.showToast({ title: '导出失败，请重试', icon: 'none' })
+              uni.showToast({ title: i18n.t('privacy.exportFailed'), icon: 'none' })
             }
           }
         },
@@ -125,20 +130,20 @@ export default {
 
     async onDeleteAccount() {
       uni.showModal({
-        title: '确认删除',
-        content: '删除账号后，所有数据将被永久清除且无法恢复。确定要继续吗？',
-        confirmText: '确认删除',
+        title: i18n.t('privacy.deleteModalTitle'),
+        content: i18n.t('privacy.deleteModalContent'),
+        confirmText: i18n.t('privacy.deleteConfirmText'),
         confirmColor: '#ff3b30',
         success: async (res) => {
           if (res.confirm) {
             try {
-              uni.showLoading({ title: '处理中...' })
+              uni.showLoading({ title: i18n.t('privacy.deleting') })
               await userApi.updateUser({ deleteAccount: true })
               uni.hideLoading()
-              uni.showToast({ title: '账号删除申请已提交', icon: 'success' })
+              uni.showToast({ title: i18n.t('privacy.deleteSubmitted'), icon: 'success' })
             } catch {
               uni.hideLoading()
-              uni.showToast({ title: '操作失败，请重试', icon: 'none' })
+              uni.showToast({ title: i18n.t('privacy.operationFailed'), icon: 'none' })
             }
           }
         },
@@ -146,7 +151,7 @@ export default {
     },
 
     onViewPolicy() {
-      uni.showToast({ title: '隐私政策', icon: 'none' })
+      uni.showToast({ title: i18n.t('privacy.policyName'), icon: 'none' })
     },
   },
 }

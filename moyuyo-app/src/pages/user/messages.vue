@@ -1,11 +1,11 @@
-﻿<template>
+<template>
   <view class="messages">
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">消息详情</text>
+      <text class="header-title">{{ $t('messages.headerTitle') }}</text>
       <view class="header-star" @click="onToggleStar">
         <text class="star-icon" :class="{ starred: isStarred }">
           <text class="luc luc-star" />
@@ -24,12 +24,12 @@
           class="type-badge"
           :style="{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }"
         >
-          {{ message.typeLabel }}
+          {{ $t(message.typeLabelKey) }}
         </text>
       </view>
 
       <!-- 消息标题 -->
-      <text class="msg-title">{{ message.title }}</text>
+      <text class="msg-title">{{ $t(message.titleKey) }}</text>
 
       <!-- 消息时间 -->
       <text class="msg-time">{{ message.time }}</text>
@@ -39,27 +39,29 @@
 
       <!-- 消息正文 -->
       <view class="msg-body">
-        <text class="msg-text">{{ message.content }}</text>
+        <text class="msg-text">{{ $t(message.contentKey) }}</text>
 
         <!-- 扩展信息卡片 -->
         <view v-if="message.info" class="info-card">
-          <text class="info-card-title">{{ message.info.title }}</text>
-          <view v-for="row in message.info.rows" :key="row.label" class="info-row">
-            <text class="info-label">{{ row.label }}</text>
+          <text class="info-card-title">{{ $t(message.info.titleKey) }}</text>
+          <view v-for="row in message.info.rows" :key="row.labelKey" class="info-row">
+            <text class="info-label">{{ $t(row.labelKey) }}</text>
             <text class="info-value">{{ row.value }}</text>
           </view>
-          <view v-if="message.info.action" class="info-action">
-            <text class="info-action-text" @click="onInfoAction">{{ message.info.action }}</text>
+          <view v-if="message.info.actionKey" class="info-action">
+            <text class="info-action-text" @click="onInfoAction">
+              {{ $t(message.info.actionKey) }}
+            </text>
           </view>
         </view>
 
         <!-- 商品信息卡片 -->
         <view v-if="message.product" class="product-card">
-          <text class="info-card-title">商品信息</text>
+          <text class="info-card-title">{{ $t('messages.productInfo') }}</text>
           <view class="product-row">
             <image class="product-image" :src="message.product.image" mode="aspectFill" />
             <view class="product-detail">
-              <text class="product-name">{{ message.product.name }}</text>
+              <text class="product-name">{{ $t(message.product.nameKey) }}</text>
               <text class="product-qty">x{{ message.product.quantity }}</text>
             </view>
             <text class="product-price">{{ message.product.price }}</text>
@@ -70,13 +72,19 @@
 
     <!-- 底部操作栏 -->
     <view class="bottom-bar">
-      <button class="action-btn btn-primary" @click="onViewOrder">查看订单</button>
-      <button class="action-btn btn-text" @click="onDeleteMessage">删除消息</button>
+      <button class="action-btn btn-primary" @click="onViewOrder">
+        {{ $t('messages.viewOrder') }}
+      </button>
+      <button class="action-btn btn-text" @click="onDeleteMessage">
+        {{ $t('messages.deleteMessage') }}
+      </button>
     </view>
   </view>
 </template>
 
 <script>
+import { i18n } from '@/i18n'
+
 export default {
   pageTitleKey: 'pageTitle.userMessages',
 
@@ -85,22 +93,22 @@ export default {
       isStarred: false,
       message: {
         type: 'order',
-        typeLabel: '订单通知',
-        title: '您的订单已发货',
+        typeLabelKey: 'messages.demoTypeLabel',
+        titleKey: 'messages.demoTitle',
         time: '2026-07-08 10:30',
-        content: '亲爱的用户，您的订单 #MOY2026070812 已发货。',
+        contentKey: 'messages.demoContent',
         info: {
-          title: '物流信息',
+          titleKey: 'messages.logisticsTitle',
           rows: [
-            { label: '承运商', value: 'FedEx' },
-            { label: '运单号', value: '794644790132' },
-            { label: '预计送达', value: '2026-07-12' },
+            { labelKey: 'messages.carrier', value: 'FedEx' },
+            { labelKey: 'messages.trackingNo', value: '794644790132' },
+            { labelKey: 'messages.estimatedDelivery', value: '2026-07-12' },
           ],
-          action: '查看物流',
+          actionKey: 'messages.viewLogistics',
         },
         product: {
           image: 'https://via.placeholder.com/128',
-          name: '经典尼龙宠物牵引套装',
+          nameKey: 'messages.demoProductName',
           quantity: 1,
           price: '$89.00',
         },
@@ -116,22 +124,22 @@ export default {
     onToggleStar() {
       this.isStarred = !this.isStarred
       uni.showToast({
-        title: this.isStarred ? '已标星' : '取消标星',
+        title: this.isStarred ? i18n.t('messages.starred') : i18n.t('messages.unstarred'),
         icon: 'none',
       })
     },
 
     onViewOrder() {
-      uni.showToast({ title: '查看订单', icon: 'none' })
+      uni.showToast({ title: i18n.t('messages.viewOrder'), icon: 'none' })
     },
 
     onDeleteMessage() {
       uni.showModal({
-        title: '提示',
-        content: '确定删除此消息？',
+        title: i18n.t('messages.noticeTitle'),
+        content: i18n.t('messages.deleteConfirm'),
         success: (res) => {
           if (res.confirm) {
-            uni.showToast({ title: '已删除', icon: 'success' })
+            uni.showToast({ title: i18n.t('messages.deleted'), icon: 'success' })
             uni.navigateBack()
           }
         },
@@ -139,7 +147,7 @@ export default {
     },
 
     onInfoAction() {
-      uni.showToast({ title: '查看物流', icon: 'none' })
+      uni.showToast({ title: i18n.t('messages.viewLogistics'), icon: 'none' })
     },
   },
 }

@@ -1,51 +1,55 @@
 <template>
   <view class="change-pwd">
     <view class="header">
-      <text class="title">Change Password</text>
-      <text class="sub">Update your login password</text>
+      <text class="title">{{ $t('changePassword.title') }}</text>
+      <text class="sub">{{ $t('changePassword.sub') }}</text>
     </view>
 
     <view class="form">
       <view class="input-group">
-        <text class="input-label">Current Password</text>
+        <text class="input-label">{{ $t('changePassword.oldPassword') }}</text>
         <input
           v-model="oldPassword"
           class="input"
           type="password"
-          placeholder="Enter current password"
+          :placeholder="$t('changePassword.oldRequired')"
         >
       </view>
 
       <view class="input-group">
-        <text class="input-label">New Password</text>
+        <text class="input-label">{{ $t('changePassword.newPassword') }}</text>
         <input
           v-model="newPassword"
           class="input"
           type="password"
-          placeholder="At least 8 characters, letters and numbers"
+          :placeholder="$t('changePassword.newPlaceholder')"
         >
       </view>
 
       <view class="input-group">
-        <text class="input-label">Confirm New Password</text>
+        <text class="input-label">{{ $t('changePassword.confirmPassword') }}</text>
         <input
           v-model="confirmPassword"
           class="input"
           type="password"
-          placeholder="Re-enter new password"
+          :placeholder="$t('changePassword.confirmRequired')"
         >
       </view>
 
       <view class="password-rules">
-        <text class="rule" :class="{ met: hasLower }">● One lowercase letter</text>
-        <text class="rule" :class="{ met: hasUpper }">● One uppercase letter</text>
-        <text class="rule" :class="{ met: hasDigit }">● One number</text>
-        <text class="rule" :class="{ met: hasMinLen }">● At least 8 characters</text>
-        <text class="rule" :class="{ met: passwordsMatch }">● Passwords match</text>
+        <text class="rule" :class="{ met: hasLower }">● {{ $t('changePassword.ruleLower') }}</text>
+        <text class="rule" :class="{ met: hasUpper }">● {{ $t('changePassword.ruleUpper') }}</text>
+        <text class="rule" :class="{ met: hasDigit }">● {{ $t('changePassword.ruleDigit') }}</text>
+        <text class="rule" :class="{ met: hasMinLen }">
+          ● {{ $t('changePassword.ruleMinLen') }}
+        </text>
+        <text class="rule" :class="{ met: passwordsMatch }">
+          ● {{ $t('changePassword.ruleMatch') }}
+        </text>
       </view>
 
       <view class="btn btn-primary submit-btn" :class="{ disabled: !canSubmit }" @click="onChange">
-        Update Password
+        {{ $t('changePassword.updatePassword') }}
       </view>
     </view>
   </view>
@@ -53,6 +57,7 @@
 
 <script>
 import { useUserStore } from '@/store'
+import { i18n } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.userChangePassword',
@@ -99,15 +104,15 @@ export default {
   methods: {
     async onChange() {
       if (!this.canSubmit) {
-        uni.showToast({ title: '请检查密码规则', icon: 'none' })
+        uni.showToast({ title: i18n.t('changePassword.checkRules'), icon: 'none' })
         return
       }
       try {
         await this.userStore.changePassword(this.oldPassword, this.newPassword)
-        uni.showToast({ title: 'Password updated', icon: 'success' })
+        uni.showToast({ title: i18n.t('changePassword.submitted'), icon: 'success' })
         setTimeout(() => uni.navigateBack(), 1000)
       } catch (e) {
-        uni.showToast({ title: e.message || 'Failed to update password', icon: 'none' })
+        uni.showToast({ title: e.message || i18n.t('changePassword.failed'), icon: 'none' })
       }
     },
   },

@@ -6,8 +6,8 @@
         <text class="luc luc-book-open hero-icon" />
       </view>
       <view class="hero-info">
-        <text class="hero-title">MOYUYO 会员规则</text>
-        <text class="hero-sub">清晰透明的成长体系，每一分投入都被看见</text>
+        <text class="hero-title">{{ t('membershipRule.heroTitle') }}</text>
+        <text class="hero-sub">{{ t('membershipRule.heroSub') }}</text>
       </view>
     </view>
 
@@ -16,8 +16,8 @@
       <!-- 1. 等级阶梯 -->
       <view class="section-card">
         <view class="section-head">
-          <text class="section-title">等级阶梯</text>
-          <text class="section-tag">5 级</text>
+          <text class="section-title">{{ t('membershipRule.ladderTitle') }}</text>
+          <text class="section-tag">{{ t('membershipRule.ladderLevels') }}</text>
         </view>
         <view class="ladder">
           <view
@@ -32,10 +32,14 @@
             <view class="ladder-body">
               <view class="ladder-head">
                 <text class="ladder-name">{{ lv.name }}</text>
-                <text class="ladder-threshold">{{ lv.threshold }} 积分起</text>
+                <text class="ladder-threshold">
+                  {{ t('membershipRule.thresholdFrom', { points: lv.threshold }) }}
+                </text>
               </view>
-              <text class="ladder-desc">{{ lv.desc }}</text>
-              <text class="ladder-rate">积分倍率 {{ lv.rate }}x</text>
+              <text class="ladder-desc">{{ t(lv.descKey) }}</text>
+              <text class="ladder-rate">
+                {{ t('membershipRule.rateMultiple', { rate: lv.rate }) }}
+              </text>
             </view>
           </view>
         </view>
@@ -44,19 +48,19 @@
       <!-- 2. 积分获取 -->
       <view class="section-card">
         <view class="section-head">
-          <text class="section-title">积分获取</text>
+          <text class="section-title">{{ t('membershipRule.earnTitle') }}</text>
         </view>
         <view class="rule-list">
-          <view v-for="r in earnRules" :key="r.title" class="rule-row">
+          <view v-for="r in earnRules" :key="r.titleKey" class="rule-row">
             <view class="rule-icon-wrap" :style="{ background: r.bg }">
               <text class="luc" :class="r.icon" :style="{ color: r.color, fontSize: '20px' }" />
             </view>
             <view class="rule-body">
               <view class="rule-row-head">
-                <text class="rule-title">{{ r.title }}</text>
-                <text class="rule-value">+{{ r.value }}</text>
+                <text class="rule-title">{{ t(r.titleKey) }}</text>
+                <text class="rule-value">+{{ t(r.valueKey) }}</text>
               </view>
-              <text class="rule-desc">{{ r.desc }}</text>
+              <text class="rule-desc">{{ t(r.descKey) }}</text>
             </view>
           </view>
         </view>
@@ -65,19 +69,19 @@
       <!-- 3. 积分使用 -->
       <view class="section-card">
         <view class="section-head">
-          <text class="section-title">积分使用</text>
+          <text class="section-title">{{ t('membershipRule.useTitle') }}</text>
         </view>
         <view class="rule-list">
-          <view v-for="r in useRules" :key="r.title" class="rule-row">
+          <view v-for="r in useRules" :key="r.titleKey" class="rule-row">
             <view class="rule-icon-wrap" :style="{ background: r.bg }">
               <text class="luc" :class="r.icon" :style="{ color: r.color, fontSize: '20px' }" />
             </view>
             <view class="rule-body">
               <view class="rule-row-head">
-                <text class="rule-title">{{ r.title }}</text>
-                <text class="rule-value">-{{ r.value }}</text>
+                <text class="rule-title">{{ t(r.titleKey) }}</text>
+                <text class="rule-value">-{{ t(r.valueKey) }}</text>
               </view>
-              <text class="rule-desc">{{ r.desc }}</text>
+              <text class="rule-desc">{{ t(r.descKey) }}</text>
             </view>
           </view>
         </view>
@@ -86,131 +90,158 @@
       <!-- 4. 重要条款 -->
       <view class="section-card">
         <view class="section-head">
-          <text class="section-title">重要条款</text>
+          <text class="section-title">{{ t('membershipRule.termsTitle') }}</text>
         </view>
         <view class="terms">
-          <view v-for="(t, i) in terms" :key="i" class="term-row">
+          <view v-for="(termKey, i) in terms" :key="termKey" class="term-row">
             <text class="term-num">{{ i + 1 }}.</text>
-            <text class="term-text">{{ t }}</text>
+            <text class="term-text">{{ t(termKey) }}</text>
           </view>
         </view>
       </view>
 
       <!-- 温馨提示 -->
       <view class="tips">
-        <text class="tips-text">本规则最终解释权归 MOYUYO 所有。如有疑问请联系在线客服。</text>
+        <text class="tips-text">{{ t('membershipRule.tips') }}</text>
       </view>
     </view>
   </view>
 </template>
 
 <script setup>
-
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { i18n } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.userMembershipRule')
 
-
-
-
+// 轻量翻译函数（响应 localeVersion 变化，刷新依赖本地化的模板）
+const localeVersion = ref(0)
+let _unsubLocale = null
+function t(key, params) {
+  void localeVersion.value // 触发依赖追踪
+  return i18n.t(key, params)
+}
 
 // 等级阶梯（与后端 listLevels 字段对齐）
 const levels = [
-  { code: 'L1', name: 'Member', threshold: 0, desc: '注册即获得，享受基础会员权益', rate: 1.0 },
-  { code: 'L2', name: 'Silver', threshold: 500, desc: '完成首单 + 几次签到即可升级', rate: 1.1 },
-  { code: 'L3', name: 'Gold', threshold: 2000, desc: '活跃用户专属，解锁进阶特权', rate: 1.2 },
-  { code: 'L4', name: 'Platinum', threshold: 8000, desc: '高频消费用户，享高级权益', rate: 1.5 },
-  { code: 'L5', name: 'Black', threshold: 25000, desc: '顶级 VIP，享受最高级别礼遇', rate: 2.0 },
+  { code: 'L1', name: 'Member', threshold: 0, descKey: 'membershipRule.levelDesc.L1', rate: 1.0 },
+  { code: 'L2', name: 'Silver', threshold: 500, descKey: 'membershipRule.levelDesc.L2', rate: 1.1 },
+  { code: 'L3', name: 'Gold', threshold: 2000, descKey: 'membershipRule.levelDesc.L3', rate: 1.2 },
+  {
+    code: 'L4',
+    name: 'Platinum',
+    threshold: 8000,
+    descKey: 'membershipRule.levelDesc.L4',
+    rate: 1.5,
+  },
+  {
+    code: 'L5',
+    name: 'Black',
+    threshold: 25000,
+    descKey: 'membershipRule.levelDesc.L5',
+    rate: 2.0,
+  },
 ]
 
-// 积分获取规则
+// 积分获取规则（文案走 i18n，key 指向 membershipRule.earn.*）
 const earnRules = [
   {
-    title: '每日签到',
-    value: '5/日',
-    desc: '连续 7 天签到，奖励翻倍',
+    titleKey: 'membershipRule.earn.checkinTitle',
+    valueKey: 'membershipRule.earn.checkinValue',
+    descKey: 'membershipRule.earn.checkinDesc',
     icon: 'luc-calendar-check',
     bg: '#e8f2ff',
     color: '#007aff',
   },
   {
-    title: '购物消费',
-    value: '1x',
-    desc: '按会员等级倍率返还积分（最低1倍）',
+    titleKey: 'membershipRule.earn.purchaseTitle',
+    valueKey: 'membershipRule.earn.purchaseValue',
+    descKey: 'membershipRule.earn.purchaseDesc',
     icon: 'luc-shopping-bag',
     bg: '#e9f9ee',
     color: '#34c759',
   },
   {
-    title: '订单完成',
-    value: '+50',
-    desc: '每完成一单赠送 50 积分',
+    titleKey: 'membershipRule.earn.orderTitle',
+    valueKey: 'membershipRule.earn.orderValue',
+    descKey: 'membershipRule.earn.orderDesc',
     icon: 'luc-package-check',
     bg: '#e8f2ff',
     color: '#0064d6',
   },
   {
-    title: '撰写评价',
-    value: '+20',
-    desc: '订单首次评价得 20 积分',
+    titleKey: 'membershipRule.earn.reviewTitle',
+    valueKey: 'membershipRule.earn.reviewValue',
+    descKey: 'membershipRule.earn.reviewDesc',
     icon: 'luc-message-square',
     bg: '#fff4e5',
     color: '#ff9500',
   },
   {
-    title: '邀请好友',
-    value: '+100',
-    desc: '好友注册 +100，好友首单再加 200',
+    titleKey: 'membershipRule.earn.inviteTitle',
+    valueKey: 'membershipRule.earn.inviteValue',
+    descKey: 'membershipRule.earn.inviteDesc',
     icon: 'luc-user-plus',
     bg: '#e9f9ee',
     color: '#34c759',
   },
   {
-    title: '完成任务',
-    value: '不定',
-    desc: '每日 / 每周 / 成就任务奖励',
+    titleKey: 'membershipRule.earn.missionTitle',
+    valueKey: 'membershipRule.earn.missionValue',
+    descKey: 'membershipRule.earn.missionDesc',
     icon: 'luc-target',
     bg: '#f3e8ff',
     color: '#af52de',
   },
 ]
 
-// 积分使用规则
+// 积分使用规则（文案走 i18n，key 指向 membershipRule.use.*）
 const useRules = [
   {
-    title: '下单抵扣',
-    value: '100积分/元',
-    desc: '结算时勾选积分抵扣，最高抵扣订单金额 30%',
+    titleKey: 'membershipRule.use.deductTitle',
+    valueKey: 'membershipRule.use.deductValue',
+    descKey: 'membershipRule.use.deductDesc',
     icon: 'luc-coins',
     bg: '#ffecea',
     color: '#ff3b30',
   },
   {
-    title: '积分商城兑换',
-    value: '实物/券',
-    desc: '兑换实物礼品、宠物用品、优惠券等',
+    titleKey: 'membershipRule.use.redeemTitle',
+    valueKey: 'membershipRule.use.redeemValue',
+    descKey: 'membershipRule.use.redeemDesc',
     icon: 'luc-gift',
     bg: '#e8f2ff',
     color: '#007aff',
   },
   {
-    title: '漏签补签',
-    value: '50/次',
-    desc: '每月第 1 次免费，之后每次消耗 50 积分',
+    titleKey: 'membershipRule.use.makeupTitle',
+    valueKey: 'membershipRule.use.makeupValue',
+    descKey: 'membershipRule.use.makeupDesc',
     icon: 'luc-calendar-off',
     bg: '#fff4e5',
     color: '#ff9500',
   },
 ]
 
-// 重要条款
+// 重要条款（存 i18n key，按顺序渲染）
 const terms = [
-  '积分仅在 MOYUYO 注册账户内有效，不支持跨账户转移或提现为法定货币。',
-  '积分有效期为获得之日起 12 个月，到期未使用积分将自动清零，请及时使用。',
-  '发生退款时，已抵扣积分原路返还，已发放积分按比例扣回。',
-  '会员等级根据历史累计积分判定，积分减少（如退款扣减）不会主动降级。',
-  '刷单、恶意刷积分、利用漏洞等违规行为，一经查实将冻结账户并清零积分。',
-  '本规则最终解释权归 MOYUYO 所有，运营活动奖励以活动页文案为准。',
+  'membershipRule.term1',
+  'membershipRule.term2',
+  'membershipRule.term3',
+  'membershipRule.term4',
+  'membershipRule.term5',
+  'membershipRule.term6',
 ]
+
+onMounted(() => {
+  // 订阅语言切换，触发模板与本页 t() 依赖重新求值
+  _unsubLocale = i18n.subscribe(() => {
+    localeVersion.value += 1
+  })
+})
+onBeforeUnmount(() => {
+  if (_unsubLocale) _unsubLocale()
+})
 </script>
 
 <style lang="scss" scoped>

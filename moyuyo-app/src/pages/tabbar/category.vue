@@ -234,7 +234,7 @@ export default {
           name: p.name,
           image: this.resolveImage(p),
           price: p.price,
-          description: this.stripHtml(p.shortDetail || p.detail || '').slice(0, 80),
+          description: this.stripHtml(p.shortDetail || '').slice(0, 80),
           ip: this.detectIP(p),
         }))
         this.products.push(...mapped)

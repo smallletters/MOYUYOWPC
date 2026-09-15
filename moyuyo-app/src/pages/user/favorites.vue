@@ -1,19 +1,5 @@
 <template>
   <view class="favorites">
-    <!-- 顶部导航栏 -->
-    <view class="header">
-      <view class="header-btn" aria-label="返回" @click="goBack">
-        <text class="header-btn-icon">
-          <text class="luc luc-arrow-left" />
-        </text>
-      </view>
-      <text class="header-title">我的收藏</text>
-      <!-- 右上角:管理模式切换 -->
-      <view class="header-btn header-action" :class="{ active: editing }" @click="onToggleEdit">
-        <text class="header-btn-text">{{ editing ? '完成' : '管理' }}</text>
-      </view>
-    </view>
-
     <!-- 筛选标签栏 -->
     <scroll-view
       v-if="!editing"
@@ -27,7 +13,7 @@
         :class="{ active: activeTab === tab.value }"
         @click="onTabChange(tab.value)"
       >
-        <text>{{ tab.label }}</text>
+        <text>{{ $t(tab.labelKey) }}</text>
       </view>
     </scroll-view>
 
@@ -39,8 +25,8 @@
     <!-- 空状态 -->
     <view v-else-if="!loading && products.length === 0" class="empty-tip">
       <text class="empty-tip-icon">♡</text>
-      <text class="empty-tip-text">还没有收藏的商品</text>
-      <view class="empty-tip-btn" @click="goShopping">去逛逛</view>
+      <text class="empty-tip-text">{{ $t('favorites.empty') }}</text>
+      <view class="empty-tip-btn" @click="goShopping">{{ $t('favorites.shopNow') }}</view>
     </view>
 
     <!-- 商品列表(网格,支持管理态加勾选框) -->
@@ -57,7 +43,7 @@
           v-if="editing"
           class="select-box"
           :class="{ checked: item.selected }"
-          aria-label="选择"
+          :aria-label="$t('favorites.select')"
           @click.stop="onSelectItem(item)"
         >
           <text v-if="item.selected" class="select-box-tick">✓</text>
@@ -77,14 +63,15 @@
             :key="badge"
             class="badge"
             :class="badgeClass(badge)">
-            {{ badge }}
+            {{ $t(badge) }}
           </text>
           <!-- 非管理态下显示收藏心形,点击直接取消收藏 -->
           <view
             v-if="!editing"
             class="fav-btn"
-            aria-label="取消收藏"
-            @click.stop="toggleFav(item)">
+            :aria-label="$t('favorites.remove')"
+            @click.stop="toggleFav(item)"
+          >
             <text class="fav-icon" :class="{ 'fav-active': item.isFav }">
               {{ item.isFav ? '❤' : '♡' }}
             </text>
@@ -92,7 +79,7 @@
         </view>
 
         <view class="product-info">
-          <text class="product-name">{{ item.name || '商品已下架' }}</text>
+          <text class="product-name">{{ item.name || $t('favorites.productRemoved') }}</text>
           <view class="product-price-row">
             <text class="product-price">${{ formatPrice(item.price) }}</text>
             <text
@@ -102,7 +89,9 @@
               ${{ formatPrice(item.originalPrice) }}
             </text>
           </view>
-          <text v-if="item.favoritedAt" class="product-time">收藏于 {{ item.favoritedAt }}</text>
+          <text v-if="item.favoritedAt" class="product-time">
+            {{ $t('favorites.favoritedAt', { date: item.favoritedAt }) }}
+          </text>
         </view>
       </view>
 
@@ -111,7 +100,7 @@
         v-if="filteredList.length === 0 && products.length > 0"
         class="empty-tip empty-tip-inline"
       >
-        <text class="empty-tip-text">该分类下暂无收藏</text>
+        <text class="empty-tip-text">{{ $t('favorites.categoryEmpty') }}</text>
       </view>
     </view>
 
@@ -123,7 +112,7 @@
           <view class="select-box" :class="{ checked: isAllSelected, partial: isPartialSelected }">
             <text v-if="isAllSelected" class="select-box-tick">✓</text>
           </view>
-          <text class="footer-left-text">全选</text>
+          <text class="footer-left-text">{{ $t('favorites.selectAll') }}</text>
         </view>
         <view class="footer-right">
           <view
@@ -131,12 +120,20 @@
             :class="{ disabled: selectedCount === 0 }"
             @click="onBatchRemove"
           >
-            删除{{ selectedCount > 0 ? `(${selectedCount})` : '' }}
+            {{ $t('favorites.delete') }}{{ selectedCount > 0 ? `(${selectedCount})` : '' }}
+          </view>
+          <!-- 退出管理态(原顶部导航栏的“完成”) -->
+          <view class="footer-manage-btn" @click="onToggleEdit">
+            <text class="footer-manage-text">{{ $t('favorites.done') }}</text>
           </view>
         </view>
       </template>
       <template v-else>
         <text class="stat-text">{{ $t('favorites.totalCount', { count: products.length }) }}</text>
+        <!-- 管理入口(原顶部导航栏的“管理/完成”,改由底部操作栏承载) -->
+        <view class="footer-manage-btn" @click="onToggleEdit">
+          <text class="footer-manage-text">{{ $t('favorites.management') }}</text>
+        </view>
       </template>
     </view>
   </view>
@@ -144,6 +141,7 @@
 
 <script>
 import { cartApi, productApi } from '@/api'
+import { i18n } from '@/i18n'
 
 export default {
   pageTitleKey: 'pageTitle.userFavorites',
@@ -152,6 +150,9 @@ export default {
     return {
       activeTab: 'all',
       loading: false,
+      // 语言版本号:订阅 locale 变化,触发依赖本地化的计算属性刷新
+      localeVersion: 0,
+      unsubLocale: null,
       editing: false,
       // 拉到的原始收藏关联(用于记录收藏时间)
       favoriteRecords: [],
@@ -159,10 +160,10 @@ export default {
       defaultImage:
         'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGZpbGw9IiNlYWVjZDMiLz48L3N2Zz4=',
       filterTabs: [
-        { label: '全部', value: 'all' },
-        { label: '降价', value: 'priceDown' },
-        { label: '上新', value: 'newArrival' },
-        { label: '库存紧张', value: 'lowStock' },
+        { labelKey: 'favorites.filters.all', value: 'all' },
+        { labelKey: 'favorites.filters.priceDrop', value: 'priceDown' },
+        { labelKey: 'favorites.filters.newArrival', value: 'newArrival' },
+        { labelKey: 'favorites.filters.lowStock', value: 'lowStock' },
       ],
     }
   },
@@ -172,9 +173,9 @@ export default {
     filteredList() {
       if (this.activeTab === 'all') return this.products
       const map = {
-        priceDown: (item) => item.badges.includes('降价'),
-        newArrival: (item) => item.badges.includes('上新'),
-        lowStock: (item) => item.badges.includes('库存紧张'),
+        priceDown: (item) => item.badges.includes('favorites.badges.priceDrop'),
+        newArrival: (item) => item.badges.includes('favorites.badges.newArrival'),
+        lowStock: (item) => item.badges.includes('favorites.badges.lowStock'),
       }
       const fn = map[this.activeTab]
       return fn ? this.products.filter(fn) : this.products
@@ -209,6 +210,17 @@ export default {
   // 下拉刷新
   onPullDownRefresh() {
     this.loadFavorites().finally(() => uni.stopPullDownRefresh())
+  },
+
+  created() {
+    // 订阅语言切换,触发依赖本地化的计算属性刷新
+    this.unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
+  },
+
+  beforeUnmount() {
+    if (this.unsubLocale) this.unsubLocale()
   },
 
   methods: {
@@ -255,17 +267,17 @@ export default {
             const offSale = detail.onSale === false
             const badges = []
             if (offSale) {
-              badges.unshift('已下架')
+              badges.unshift('favorites.badges.offShelf')
             } else {
-              if (originalPrice > price) badges.push('降价')
+              if (originalPrice > price) badges.push('favorites.badges.priceDrop')
               // 上新:上架 30 天内
               if (detail.createTime) {
                 const created = new Date(String(detail.createTime).replace(/-/g, '/'))
                 if (!isNaN(created.getTime()) && Date.now() - created.getTime() < 30 * 86400000) {
-                  badges.push('上新')
+                  badges.push('favorites.badges.newArrival')
                 }
               }
-              if (stock > 0 && stock <= 10) badges.push('库存紧张')
+              if (stock > 0 && stock <= 10) badges.push('favorites.badges.lowStock')
             }
             return {
               id: pid,
@@ -351,9 +363,9 @@ export default {
       // 二次确认
       const confirmed = await new Promise((resolve) => {
         uni.showModal({
-          title: '确认删除',
-          content: `将取消收藏 ${selected.length} 件商品?`,
-          confirmText: '删除',
+          title: i18n.t('favorites.confirmDeleteTitle'),
+          content: i18n.t('favorites.removedN', { count: selected.length }),
+          confirmText: i18n.t('favorites.delete'),
           confirmColor: '#c96e5f',
           success: (r) => resolve(r.confirm),
           fail: () => resolve(false),
@@ -370,7 +382,7 @@ export default {
       // 如果全部删完了,自动退出管理态
       if (this.products.length === 0) this.editing = false
       uni.showToast({
-        title: `已删除 ${successIds.length} 件`,
+        title: i18n.t('favorites.removedSuccess', { count: successIds.length }),
         icon: 'success',
       })
     },
@@ -383,25 +395,15 @@ export default {
         item.isFav = false
         // 从列表中移除(动画效果可选)
         this.products = this.products.filter((p) => p.id !== item.id)
-        uni.showToast({ title: '已取消收藏', icon: 'none' })
+        uni.showToast({ title: i18n.t('favorites.removed'), icon: 'none' })
       } catch (e) {
-        uni.showToast({ title: e?.message || '操作失败', icon: 'none' })
+        uni.showToast({ title: e?.message || i18n.t('favorites.operationFailed'), icon: 'none' })
       }
     },
 
     /** 跳转详情 */
     goDetail(id) {
       uni.navigateTo({ url: `/pages/goods/detail?id=${id}` })
-    },
-
-    /** 返回上一页 */
-    goBack() {
-      const pages = getCurrentPages()
-      if (pages.length > 1) {
-        uni.navigateBack()
-      } else {
-        uni.switchTab({ url: '/pages/tabbar/user' })
-      }
     },
 
     /** 去首页逛逛 */
@@ -411,10 +413,10 @@ export default {
 
     /** 标签 class */
     badgeClass(badge) {
-      if (badge === '降价') return 'badge-danger'
-      if (badge === '库存紧张') return 'badge-warning'
-      if (badge === '上新') return 'badge-primary'
-      if (badge === '已下架') return 'badge-muted'
+      if (badge === 'favorites.badges.priceDrop') return 'badge-danger'
+      if (badge === 'favorites.badges.lowStock') return 'badge-warning'
+      if (badge === 'favorites.badges.newArrival') return 'badge-primary'
+      if (badge === 'favorites.badges.offShelf') return 'badge-muted'
       return ''
     },
 
@@ -432,69 +434,6 @@ export default {
   background: var(--color-background);
   /* 底部操作栏 + 安全区 */
   padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
-}
-
-/* ===== 顶部导航 ===== */
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 88rpx;
-  background: var(--color-background);
-  border-bottom: 1rpx solid var(--color-divider);
-}
-
-.header-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 56rpx;
-  padding: 0 20rpx;
-  border-radius: var(--radius-sm);
-  transition: background-color 0.18s ease;
-}
-
-.header-btn:first-child {
-  left: 16rpx;
-  padding: 0;
-  width: 56rpx;
-}
-
-.header-btn:last-child {
-  right: 16rpx;
-}
-
-.header-btn:active {
-  background: var(--color-divider);
-}
-
-.header-btn-icon {
-  font-size: 40rpx;
-  color: var(--color-text);
-  line-height: 1;
-}
-
-.header-btn-text {
-  font-size: var(--font-size-base);
-  color: var(--color-text);
-  font-weight: var(--font-weight-medium);
-}
-
-.header-btn.active .header-btn-text {
-  color: var(--color-primary-dark);
-}
-
-.header-title {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
-  letter-spacing: -0.02em;
 }
 
 /* ===== 筛选标签栏 ===== */
@@ -778,7 +717,7 @@ export default {
 }
 
 .stat-text {
-  width: 100%;
+  flex: 1;
   text-align: center;
   font-size: 26rpx;
   color: var(--color-text-tertiary);
@@ -799,6 +738,22 @@ export default {
 .footer-right {
   display: flex;
   align-items: center;
+  gap: 24rpx;
+}
+
+/* 底部操作栏里的“管理/完成”入口 */
+.footer-manage-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8rpx;
+  height: 72rpx;
+}
+
+.footer-manage-text {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary);
 }
 
 .footer-btn {

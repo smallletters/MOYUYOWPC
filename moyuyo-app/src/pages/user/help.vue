@@ -1,17 +1,9 @@
 <template>
   <view class="help-center">
-    <view class="header">
-      <view class="header-btn" @click="goBack">
-        <text class="back-icon luc-arrow-left" />
-      </view>
-      <text class="header-title">帮助中心</text>
-      <view class="header-btn" />
-    </view>
-
     <view class="hero-section">
       <view class="hero-placeholder">
         <text class="hero-icon luc-help-circle" />
-        <text class="hero-text">有什么可以帮助你的？</text>
+        <text class="hero-text">{{ $t('help.heroText') }}</text>
       </view>
     </view>
 
@@ -22,11 +14,14 @@
           v-model="keyword"
           class="search-input"
           type="text"
-          placeholder="搜索常见问题">
+          :placeholder="$t('help.searchPlaceholder')"
+        >
       </view>
     </view>
 
-    <view v-if="loading" class="loading"><text class="loading-text">加载中…</text></view>
+    <view v-if="loading" class="loading">
+      <text class="loading-text">{{ $t('common.loading') }}</text>
+    </view>
     <view v-else class="category-list">
       <view
         v-for="c in filteredCategories"
@@ -42,7 +37,7 @@
         <text class="category-arrow luc-chevron-right" />
       </view>
       <view v-if="!filteredCategories.length" class="empty">
-        <text class="empty-text">暂无相关问题</text>
+        <text class="empty-text">{{ $t('help.emptyResult') }}</text>
       </view>
     </view>
   </view>
@@ -55,9 +50,7 @@ import { helpApi } from '@/api'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.userHelp')
 
-
 const keyword = ref('')
-
 
 const categories = ref([])
 const articles = ref([])
@@ -98,10 +91,6 @@ function openCategory(c) {
   })
 }
 
-function goBack() {
-  uni.navigateBack()
-}
-
 onMounted(() => {
   load()
 })
@@ -111,27 +100,6 @@ onMounted(() => {
 .help-center {
   min-height: 100vh;
   background: var(--color-background);
-}
-.header {
-  display: flex;
-  align-items: center;
-  height: 88rpx;
-  padding: 0 24rpx;
-  background: var(--color-surface);
-  border-bottom: 1rpx solid var(--color-divider);
-}
-.header-btn {
-  width: 60rpx;
-}
-.back-icon {
-  font-size: 44rpx;
-  color: var(--color-primary);
-}
-.header-title {
-  flex: 1;
-  text-align: center;
-  font-size: 32rpx;
-  font-weight: 600;
 }
 .hero-section {
   padding: 32rpx 24rpx;

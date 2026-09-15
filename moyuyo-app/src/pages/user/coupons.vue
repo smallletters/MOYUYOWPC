@@ -34,12 +34,14 @@
         >
           <view class="coupon-left">
             <text class="coupon-amount">{{ currencySymbol }}{{ c.amount }}</text>
-            <text class="coupon-threshold">满{{ c.threshold }}可用</text>
+            <text class="coupon-threshold">
+              {{ $t('coupons.minOrder', { amount: c.threshold }) }}
+            </text>
           </view>
           <view class="coupon-right">
             <text class="coupon-name">{{ c.name }}</text>
             <text class="coupon-scope">{{ c.scope }}</text>
-            <text class="coupon-expire">有效期至 {{ c.expire }}</text>
+            <text class="coupon-expire">{{ $t('coupons.expiresAt', { date: c.expire }) }}</text>
           </view>
         </view>
       </view>

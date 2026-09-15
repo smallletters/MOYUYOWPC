@@ -1,15 +1,19 @@
-﻿<template>
+<template>
   <view class="page">
     <view class="nav-bar">
       <view class="nav-back" @tap="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="nav-title">用户主页</text>
+      <text class="nav-title">{{ $t('userProfilePage.title') }}</text>
       <view class="nav-placeholder" />
     </view>
 
-    <view v-if="loading" class="loading"><text class="loading-text">加载中…</text></view>
-    <view v-else-if="!profile" class="empty"><text class="empty-text">用户不存在</text></view>
+    <view v-if="loading" class="loading">
+      <text class="loading-text">{{ $t('userProfilePage.loading') }}</text>
+    </view>
+    <view v-else-if="!profile" class="empty">
+      <text class="empty-text">{{ $t('userProfilePage.notFound') }}</text>
+    </view>
     <view v-else class="profile">
       <view class="header">
         <image
@@ -19,7 +23,7 @@
           mode="aspectFill" />
         <view v-else class="avatar avatar-text">{{ (profile.nickname || 'U')[0] }}</view>
         <view class="info">
-          <text class="nick">{{ profile.nickname || '用户' }}</text>
+          <text class="nick">{{ profile.nickname || $t('userProfilePage.defaultNickname') }}</text>
           <text v-if="profile.country || profile.gender" class="meta">
             {{ profile.country || '' }} {{ profile.gender ? '· ' + profile.gender : '' }}
           </text>
@@ -30,33 +34,35 @@
       <view class="stats">
         <view class="stat">
           <text class="stat-num">{{ profile.following || 0 }}</text>
-          <text class="stat-label">关注</text>
+          <text class="stat-label">{{ $t('userProfilePage.follow') }}</text>
         </view>
         <view class="stat">
           <text class="stat-num">{{ profile.followers || 0 }}</text>
-          <text class="stat-label">粉丝</text>
+          <text class="stat-label">{{ $t('userProfilePage.followers') }}</text>
         </view>
         <view class="stat">
           <text class="stat-num">{{ profile.points || 0 }}</text>
-          <text class="stat-label">积分</text>
+          <text class="stat-label">{{ $t('userProfilePage.points') }}</text>
         </view>
       </view>
 
       <view class="actions">
         <view class="btn primary" @tap="toggleFollow">
-          <text class="btn-text">{{ following ? '已关注' : '关注' }}</text>
+          <text class="btn-text">
+            {{ following ? $t('userProfilePage.followed') : $t('userProfilePage.follow') }}
+          </text>
         </view>
         <view class="btn" @tap="chat">
-          <text class="btn-text">私信</text>
+          <text class="btn-text">{{ $t('userProfilePage.message') }}</text>
         </view>
         <view class="btn danger" @tap="blockUser">
-          <text class="btn-text">拉黑</text>
+          <text class="btn-text">{{ $t('userProfilePage.block') }}</text>
         </view>
       </view>
 
       <view class="section">
-        <text class="section-title">积分明细（占位）</text>
-        <text class="section-hint">用户完整主页数据接口正在接入中</text>
+        <text class="section-title">{{ $t('userProfilePage.pointsDetailPlaceholder') }}</text>
+        <text class="section-hint">{{ $t('userProfilePage.sectionHint') }}</text>
       </view>
     </view>
   </view>
@@ -65,6 +71,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { followApi, blockApi } from '@/api'
+import { i18n } from '@/i18n'
 
 const loading = ref(false)
 const profile = ref(null)
@@ -95,9 +102,14 @@ async function toggleFollow() {
       await followApi.follow(id)
       following.value = true
     }
-    uni.showToast({ title: following.value ? '已关注' : '已取消关注', icon: 'none' })
+    uni.showToast({
+      title: following.value
+        ? i18n.t('userProfilePage.followed')
+        : i18n.t('userProfilePage.unfollowed'),
+      icon: 'none',
+    })
   } catch (e) {
-    uni.showToast({ title: '操作失败', icon: 'none' })
+    uni.showToast({ title: i18n.t('userProfilePage.operationFailed'), icon: 'none' })
   }
 }
 
@@ -112,15 +124,15 @@ async function blockUser() {
   const id = targetUserId.value
   if (!id) return
   uni.showModal({
-    title: '确认拉黑？',
-    content: '拉黑后您将不再看到此用户的内容',
+    title: i18n.t('userProfilePage.blockConfirmTitle'),
+    content: i18n.t('userProfilePage.blockConfirmContent'),
     success: async (res) => {
       if (res.confirm) {
         try {
           await blockApi.blockUser(id)
-          uni.showToast({ title: '已拉黑', icon: 'none' })
+          uni.showToast({ title: i18n.t('userProfilePage.blocked'), icon: 'none' })
         } catch (e) {
-          uni.showToast({ title: '操作失败', icon: 'none' })
+          uni.showToast({ title: i18n.t('userProfilePage.operationFailed'), icon: 'none' })
         }
       }
     },

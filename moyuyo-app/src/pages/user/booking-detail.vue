@@ -1,67 +1,73 @@
-﻿<template>
+<template>
   <view class="page">
     <view class="header">
       <view class="nav-back" @tap="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="title">预约详情</text>
+      <text class="title">{{ $t('bookingDetail.title') }}</text>
     </view>
 
-    <view v-if="loading" class="loading"><text class="loading-text">加载中…</text></view>
-    <view v-else-if="!detail" class="empty"><text class="empty-text">预约不存在</text></view>
+    <view v-if="loading" class="loading">
+      <text class="loading-text">{{ $t('bookingDetail.loading') }}</text>
+    </view>
+    <view v-else-if="!detail" class="empty">
+      <text class="empty-text">{{ $t('bookingDetail.notFound') }}</text>
+    </view>
     <view v-else class="content">
       <view class="card">
         <view class="row">
-          <text class="label">预约编号</text>
+          <text class="label">{{ $t('bookingDetail.bookingNo') }}</text>
           <text class="value">#{{ detail.id }}</text>
         </view>
         <view class="row">
-          <text class="label">类型</text>
+          <text class="label">{{ $t('bookingDetail.type') }}</text>
           <text class="value">{{ detail.serviceType || detail.type || '—' }}</text>
         </view>
         <view class="row">
-          <text class="label">预约时间</text>
+          <text class="label">{{ $t('bookingDetail.bookingTime') }}</text>
           <text class="value">{{ formatTime(detail.bookingTime || detail.scheduledAt) }}</text>
         </view>
         <view v-if="detail.location" class="row">
-          <text class="label">地点</text>
+          <text class="label">{{ $t('bookingDetail.location') }}</text>
           <text class="value">{{ detail.location }}</text>
         </view>
         <view v-if="detail.contact" class="row">
-          <text class="label">联系方式</text>
+          <text class="label">{{ $t('bookingDetail.contact') }}</text>
           <text class="value">{{ detail.contact }}</text>
         </view>
         <view class="row">
-          <text class="label">状态</text>
+          <text class="label">{{ $t('bookingDetail.status') }}</text>
           <text class="value status" :class="'status-' + (detail.status || 'PENDING')">
             {{ statusLabel(detail.status) }}
           </text>
         </view>
         <view v-if="detail.remark" class="row">
-          <text class="label">备注</text>
+          <text class="label">{{ $t('bookingDetail.remark') }}</text>
           <text class="value">{{ detail.remark }}</text>
         </view>
       </view>
 
       <view v-if="detail.status !== 'CANCELLED' && detail.status !== 'COMPLETED'" class="actions">
-        <view class="btn" @tap="cancel">取消预约</view>
+        <view class="btn" @tap="cancel">{{ $t('bookingDetail.cancelBooking') }}</view>
       </view>
     </view>
   </view>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { marketingApi } from '@/api'
+import { i18n } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.userBookingDetail')
 
-
 const detail = ref(null)
-
 
 const loading = ref(false)
 const bookingId = ref(null)
+// 语言切换版本号：computed/函数内读取它以跟随语言刷新
+const localeVersion = ref(0)
+let _unsubLocale = null
 
 async function load(id) {
   loading.value = true
@@ -78,17 +84,18 @@ async function cancel() {
   try {
     await marketingApi.cancelBooking(bookingId.value)
     detail.value.status = 'CANCELLED'
-    uni.showToast({ title: '已取消预约', icon: 'none' })
+    uni.showToast({ title: i18n.t('bookingDetail.cancelled'), icon: 'none' })
   } catch (e) {
-    uni.showToast({ title: '取消失败', icon: 'none' })
+    uni.showToast({ title: i18n.t('bookingDetail.cancelFailed'), icon: 'none' })
   }
 }
 
 function statusLabel(s) {
-  if (s === 'CONFIRMED') return '已确认'
-  if (s === 'CANCELLED') return '已取消'
-  if (s === 'COMPLETED') return '已完成'
-  return '待确认'
+  void localeVersion.value // 建立响应式依赖，语言切换时刷新
+  if (s === 'CONFIRMED') return i18n.t('bookingDetail.statusConfirmed')
+  if (s === 'CANCELLED') return i18n.t('bookingDetail.statusCancelled')
+  if (s === 'COMPLETED') return i18n.t('bookingDetail.statusCompleted')
+  return i18n.t('bookingDetail.statusPending')
 }
 
 function formatTime(t) {
@@ -106,6 +113,9 @@ function goBack() {
 }
 
 onMounted(() => {
+  _unsubLocale = i18n.subscribe(() => {
+    localeVersion.value += 1
+  })
   try {
     const pages = getCurrentPages()
     const cur = pages[pages.length - 1]
@@ -117,6 +127,10 @@ onMounted(() => {
   } catch (e) {
     /* ignore */
   }
+})
+
+onBeforeUnmount(() => {
+  if (_unsubLocale) _unsubLocale()
 })
 </script>
 

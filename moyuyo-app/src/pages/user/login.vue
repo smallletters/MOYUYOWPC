@@ -24,7 +24,11 @@
             <text class="social-label">{{ $t('auth.signInWithGoogle') }}</text>
           </view>
           <view class="social-btn apple" @click="onSocial('apple')">
-            <image src="/static/icons/apple.svg" class="social-logo social-logo-apple" mode="aspectFit" />
+            <image
+              src="/static/icons/apple.svg"
+              class="social-logo social-logo-apple"
+              mode="aspectFit"
+            />
             <text class="social-label">{{ $t('auth.signInWithApple') }}</text>
           </view>
         </view>
@@ -274,11 +278,11 @@ export default {
     async onLogin() {
       // Clickwrap合规:未勾选条款时提示
       if (!this.termsAgreed) {
-        uni.showToast({ title: '请先同意服务条款', icon: 'none' })
+        uni.showToast({ title: i18n.t('auth.agreeTermsFirst'), icon: 'none' })
         return
       }
       if (!this.canSubmit) return
-      uni.showLoading({ title: '登录中...', mask: true })
+      uni.showLoading({ title: i18n.t('auth.loggingIn'), mask: true })
       try {
         if (this.activeTab === 'phone') {
           // 手机号 + 验证码登录：直接走 loginByPhone,未注册时后端自动创建账号
@@ -301,12 +305,12 @@ export default {
           }
         }
         uni.hideLoading()
-        uni.showToast({ title: '登录成功', icon: 'success' })
+        uni.showToast({ title: i18n.t('auth.loginSuccess'), icon: 'success' })
         setTimeout(() => uni.switchTab({ url: '/pages/tabbar/home' }), 800)
       } catch (e) {
         uni.hideLoading()
         // 修复:把后端真实错误消息完整透出(避免 "Request failed (403)" 这种掩盖问题)
-        const msg = e?.message || '登录失败'
+        const msg = e?.message || i18n.t('auth.loginFailed')
         uni.showToast({ title: msg, icon: 'none', duration: 3000 })
         // 调试日志:console 可见原始错误对象,便于排查 403/400
         console.error('[login] error:', e)
@@ -316,7 +320,7 @@ export default {
     async onSendCode() {
       if (this.codeCountdown > 0) return
       if (this.phone.length < 8) {
-        uni.showToast({ title: '请输入手机号', icon: 'none' })
+        uni.showToast({ title: i18n.t('auth.phoneRequired'), icon: 'none' })
         return
       }
       const fullPhone = this.countryCode + this.phone
@@ -334,7 +338,7 @@ export default {
         uni.showToast({ title: i18n.t('auth.codeSent'), icon: 'success' })
       } catch (e) {
         // 后端限流/短信故障时把 message 透传
-        const msg = e?.message || '发送失败,请稍后再试'
+        const msg = e?.message || i18n.t('auth.codeSendFailed')
         uni.showToast({ title: msg, icon: 'none', duration: 3000 })
         console.error('[login] sendPhoneCode error:', e)
       }
@@ -357,10 +361,10 @@ export default {
           // #endif
           // 原生端：走 web-view 容器打开
           uni.navigateTo({
-            url: `/pages/webview/document?url=${encodeURIComponent(config.socialGoogleUrl)}&title=Google 登录`,
+            url: `/pages/webview/document?url=${encodeURIComponent(config.socialGoogleUrl)}&title=${i18n.t('auth.googleLoginTitle')}`,
           })
         } else {
-          uni.showToast({ title: 'Google 登录未配置', icon: 'none' })
+          uni.showToast({ title: i18n.t('auth.googleLoginNotConfig'), icon: 'none' })
         }
         return
       }
@@ -370,7 +374,7 @@ export default {
         uni.login({
           provider: 'apple',
           success: (res) => {
-            uni.showToast({ title: 'Apple 登录待接入', icon: 'none' })
+            uni.showToast({ title: i18n.t('auth.appleLoginDeveloping'), icon: 'none' })
           },
           fail: () => {
             uni.showToast({ title: i18n.t('auth.appleLoginFailed'), icon: 'none' })
@@ -378,11 +382,11 @@ export default {
         })
         // #endif
         // #ifdef H5
-        uni.showToast({ title: 'H5 暂不支持 Apple 登录', icon: 'none' })
+        uni.showToast({ title: i18n.t('auth.appleLoginNotSupported'), icon: 'none' })
         // #endif
         return
       }
-      uni.showToast({ title: `${provider} 登录即将上线`, icon: 'none' })
+      uni.showToast({ title: i18n.t('auth.providerComingSoon', { provider }), icon: 'none' })
     },
 
     onSocialMore() {

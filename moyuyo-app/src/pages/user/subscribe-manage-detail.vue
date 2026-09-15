@@ -1,11 +1,11 @@
-﻿<template>
+<template>
   <view class="subscribe-manage-detail">
     <!-- 顶部导航栏 -->
     <view class="header">
       <view class="back-btn" @click="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">订阅管理</text>
+      <text class="header-title">{{ t('subscribeDetail.headerTitle') }}</text>
       <view class="header-spacer" />
     </view>
 
@@ -14,16 +14,16 @@
       <view class="overview-card">
         <view class="overview-row">
           <view class="overview-stat">
-            <text class="overview-label">活跃订阅</text>
+            <text class="overview-label">{{ t('subscribeDetail.activeLabel') }}</text>
             <view class="overview-num-row">
               <text class="overview-num">{{ activeCount }}</text>
-              <text class="overview-unit">个</text>
+              <text class="overview-unit">{{ t('subscribeDetail.countUnit') }}</text>
             </view>
           </view>
           <view class="overview-stat">
-            <text class="overview-label">累计节省</text>
+            <text class="overview-label">{{ t('subscribeDetail.savedLabel') }}</text>
             <view class="overview-num-row">
-              <text class="overview-num">$326</text>
+              <text class="overview-num">{{ currencySymbol }}326</text>
             </view>
           </view>
           <view class="overview-badge">
@@ -31,7 +31,7 @@
           </view>
         </view>
         <view class="overview-action" @click="viewAllSubscriptions">
-          <text class="overview-action-text">查看全部订阅</text>
+          <text class="overview-action-text">{{ t('subscribeDetail.viewAll') }}</text>
           <text class="overview-action-arrow luc-chevron-right" />
         </view>
       </view>
@@ -50,7 +50,7 @@
               <view class="product-tags">
                 <text class="status-active">
                   <text class="luc luc-check" />
-                  活跃
+                  {{ t('subscribeDetail.activeTag') }}
                 </text>
                 <text class="sub-id">{{ subscription.subId }}</text>
               </view>
@@ -61,7 +61,7 @@
 
           <!-- 订阅周期切换 -->
           <view class="cycle-section">
-            <text class="cycle-label">订阅周期</text>
+            <text class="cycle-label">{{ t('subscribeDetail.period') }}</text>
             <view class="cycle-btns">
               <view
                 v-for="c in cycles"
@@ -74,7 +74,7 @@
                   class="cycle-btn-text"
                   :class="{ 'cycle-btn-active-text': selectedCycle === c.key }"
                 >
-                  {{ c.label }}
+                  {{ t(c.labelKey) }}
                 </text>
               </view>
             </view>
@@ -85,7 +85,7 @@
           <!-- 配送频率 -->
           <view class="info-row" @click="editDeliveryDate">
             <view class="info-left">
-              <text class="info-label">配送频率</text>
+              <text class="info-label">{{ t('subscribeDetail.deliveryFreq') }}</text>
               <text class="info-value">{{ subscription.deliveryFreq }}</text>
             </view>
             <text class="info-edit luc-pencil" />
@@ -94,7 +94,7 @@
           <!-- 下次配送 + 倒计时 -->
           <view class="info-row">
             <view class="info-left">
-              <text class="info-label">下次配送</text>
+              <text class="info-label">{{ t('subscribeDetail.nextDeliveryLabel') }}</text>
               <text class="info-value">{{ subscription.nextDelivery }}</text>
             </view>
             <view class="countdown">
@@ -106,9 +106,9 @@
             </view>
           </view>
           <view class="countdown-units">
-            <text class="countdown-unit">天</text>
-            <text class="countdown-unit">时</text>
-            <text class="countdown-unit">分</text>
+            <text class="countdown-unit">{{ t('subscribeDetail.units.days') }}</text>
+            <text class="countdown-unit">{{ t('subscribeDetail.units.hours') }}</text>
+            <text class="countdown-unit">{{ t('subscribeDetail.units.minutes') }}</text>
           </view>
 
           <view class="card-divider" style="margin-top: 16rpx" />
@@ -116,12 +116,16 @@
           <!-- 价格信息 -->
           <view class="price-row">
             <view class="price-left">
-              <text class="price-discount">${{ subscription.discountPrice }}</text>
+              <text class="price-discount">
+                {{ currencySymbol }}{{ subscription.discountPrice }}
+              </text>
               <text class="discount-badge">10% OFF</text>
             </view>
             <view class="price-right">
-              <text class="price-original">${{ subscription.originalPrice }}</text>
-              <text class="price-original-label">原价</text>
+              <text class="price-original">
+                {{ currencySymbol }}{{ subscription.originalPrice }}
+              </text>
+              <text class="price-original-label">{{ t('subscribeDetail.originalPrice') }}</text>
             </view>
           </view>
         </view>
@@ -129,31 +133,31 @@
 
       <!-- 配送管理操作区 -->
       <view class="manage-section">
-        <text class="manage-title">配送管理</text>
+        <text class="manage-title">{{ t('subscribeDetail.deliveryManage') }}</text>
         <view class="manage-grid">
           <view class="manage-item" @click="skipDelivery">
             <view class="manage-icon" style="background: rgba(219, 201, 138, 0.15)">
               <text>⏩</text>
             </view>
-            <text class="manage-label">跳过本次</text>
+            <text class="manage-label">{{ t('subscribeDetail.skipThis') }}</text>
           </view>
           <view class="manage-item" @click="earlyDelivery">
             <view class="manage-icon" style="background: rgba(171, 185, 173, 0.2)">
               <text><text class="luc luc-alert-triangle" /></text>
             </view>
-            <text class="manage-label">提前配送</text>
+            <text class="manage-label">{{ t('subscribeDetail.earlyDelivery') }}</text>
           </view>
           <view class="manage-item" @click="changeProduct">
             <view class="manage-icon" style="background: rgba(255, 149, 0, 0.1)">
               <text><text class="luc luc-refresh-cw" /></text>
             </view>
-            <text class="manage-label">更换商品</text>
+            <text class="manage-label">{{ t('subscribeDetail.changeProduct') }}</text>
           </view>
           <view class="manage-item" @click="modifyDate">
             <view class="manage-icon" style="background: rgba(0, 0, 0, 0.04)">
               <text><text class="luc luc-calendar" /></text>
             </view>
-            <text class="manage-label">改配送日</text>
+            <text class="manage-label">{{ t('subscribeDetail.changeDate') }}</text>
           </view>
         </view>
       </view>
@@ -163,8 +167,10 @@
         <view class="history-toggle" @click="toggleHistory">
           <view class="history-toggle-left">
             <text class="history-toggle-icon luc-clock" />
-            <text class="history-toggle-title">配送历史</text>
-            <text class="history-count-badge">{{ deliveryHistory.length }} 次</text>
+            <text class="history-toggle-title">{{ t('subscribeDetail.historyTitle') }}</text>
+            <text class="history-count-badge">
+              {{ t('subscribeDetail.historyCount', { n: deliveryHistory.length }) }}
+            </text>
           </view>
           <text class="chevron" :class="{ rotated: historyExpanded }">▼</text>
         </view>
@@ -176,9 +182,9 @@
               <text class="history-item-date">{{ item.date }}</text>
             </view>
             <view class="history-item-right">
-              <text class="history-item-price">${{ item.price }}</text>
+              <text class="history-item-price">{{ currencySymbol }}{{ item.price }}</text>
               <text class="history-item-status" :class="'status-' + item.status">
-                {{ item.statusText }}
+                {{ t(item.statusKey) }}
               </text>
             </view>
           </view>
@@ -190,16 +196,15 @@
         <view class="compliance-row">
           <text class="compliance-icon">ℹ</text>
           <view class="compliance-content">
-            <text class="compliance-title">自动续订条款</text>
+            <text class="compliance-title">{{ t('subscribeDetail.termsTitle') }}</text>
             <text class="compliance-desc">
-              您的订阅将按所选周期自动续订并扣款。每次续订前 24 小时我们将发送提醒通知。订阅价享受
-              10% 优惠折扣，取消订阅后优惠即刻失效。
+              {{ t('subscribeDetail.termsDesc') }}
             </text>
           </view>
         </view>
         <view class="cancel-btn" @click="cancelSubscription">
           <text class="cancel-icon luc-x" />
-          <text class="cancel-text">取消订阅</text>
+          <text class="cancel-text">{{ t('subscribeDetail.cancelSubscription') }}</text>
         </view>
       </view>
 
@@ -209,13 +214,28 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { i18n } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.userSubscribeManageDetail')
 
+// 语言版本号：语言切换时自增以触发文案重算
+const localeVersion = ref(0)
+let _unsubLocale = null
+
+// 国际化翻译（读取 localeVersion 以保持响应式）
+function t(key, params) {
+  void localeVersion.value
+  return i18n.t(key, params)
+}
+
+// 货币符号（随语言切换）
+const currencySymbol = computed(() => {
+  void localeVersion.value
+  return i18n.currencySymbol
+})
 
 // 订阅详情 mock
-
 
 const subscription = ref({
   name: '高端猫粮 成猫专用',
@@ -235,9 +255,9 @@ const selectedCycle = ref('bimonthly')
 
 // 周期选项
 const cycles = [
-  { key: 'monthly', label: '月付' },
-  { key: 'bimonthly', label: '双月付' },
-  { key: 'quarterly', label: '季付' },
+  { key: 'monthly', labelKey: 'subscribeDetail.cycles.monthly' },
+  { key: 'bimonthly', labelKey: 'subscribeDetail.cycles.bimonthly' },
+  { key: 'quarterly', labelKey: 'subscribeDetail.cycles.quarterly' },
 ]
 
 // 倒计时 mock
@@ -253,42 +273,42 @@ const deliveryHistory = ref([
     date: '2026-06-15',
     price: '170.10',
     status: 'delivered',
-    statusText: '已配送',
+    statusKey: 'subscribeDetail.statusDelivered',
   },
   {
     name: '高端猫粮 成猫专用',
     date: '2026-05-15',
     price: '170.10',
     status: 'delivered',
-    statusText: '已配送',
+    statusKey: 'subscribeDetail.statusDelivered',
   },
   {
     name: '高端猫粮 成猫专用',
     date: '2026-04-15',
     price: '170.10',
     status: 'delivered',
-    statusText: '已配送',
+    statusKey: 'subscribeDetail.statusDelivered',
   },
   {
     name: '高端猫粮 成猫专用',
     date: '2026-03-15',
     price: '170.10',
     status: 'skipped',
-    statusText: '已跳过',
+    statusKey: 'subscribeDetail.statusSkipped',
   },
   {
     name: '高端猫粮 成猫专用',
     date: '2026-02-15',
     price: '170.10',
     status: 'delivered',
-    statusText: '已配送',
+    statusKey: 'subscribeDetail.statusDelivered',
   },
   {
     name: '高端猫粮 成猫专用',
     date: '2026-01-15',
     price: '170.10',
     status: 'delivered',
-    statusText: '已配送',
+    statusKey: 'subscribeDetail.statusDelivered',
   },
 ])
 
@@ -304,24 +324,24 @@ const viewAllSubscriptions = () => {
 
 // 编辑配送日期
 const editDeliveryDate = () => {
-  uni.showToast({ title: '修改配送频率', icon: 'none' })
+  uni.showToast({ title: i18n.t('subscribeDetail.editFreq'), icon: 'none' })
 }
 
 // 配送管理操作
 const skipDelivery = () => {
-  uni.showToast({ title: '已跳过本次', icon: 'success' })
+  uni.showToast({ title: i18n.t('subscribeDetail.skippedToast'), icon: 'success' })
 }
 
 const earlyDelivery = () => {
-  uni.showToast({ title: '已申请提前配送', icon: 'success' })
+  uni.showToast({ title: i18n.t('subscribeDetail.earlyRequested'), icon: 'success' })
 }
 
 const changeProduct = () => {
-  uni.showToast({ title: '更换商品', icon: 'none' })
+  uni.showToast({ title: i18n.t('subscribeDetail.changeProductToast'), icon: 'none' })
 }
 
 const modifyDate = () => {
-  uni.showToast({ title: '修改配送日期', icon: 'none' })
+  uni.showToast({ title: i18n.t('subscribeDetail.changeDateToast'), icon: 'none' })
 }
 
 // 切换历史
@@ -332,16 +352,27 @@ const toggleHistory = () => {
 // 取消订阅
 const cancelSubscription = () => {
   uni.showModal({
-    title: '取消订阅',
-    content: '确定要取消此订阅吗？取消后优惠即刻失效。',
+    title: i18n.t('subscribeDetail.cancelSubscription'),
+    content: i18n.t('subscribeDetail.cancelConfirmContent'),
     confirmColor: '#C96E5F',
     success: (res) => {
       if (res.confirm) {
-        uni.showToast({ title: '订阅已取消', icon: 'success' })
+        uni.showToast({ title: i18n.t('subscribeDetail.cancelledToast'), icon: 'success' })
       }
     },
   })
 }
+
+// 订阅语言变更以刷新文案
+onMounted(() => {
+  _unsubLocale = i18n.subscribe(() => {
+    localeVersion.value += 1
+  })
+})
+
+onBeforeUnmount(() => {
+  if (_unsubLocale) _unsubLocale()
+})
 </script>
 
 <style lang="scss" scoped>
