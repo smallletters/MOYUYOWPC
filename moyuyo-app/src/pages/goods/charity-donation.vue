@@ -1,8 +1,6 @@
-﻿<template>
+<template>
   <view class="charity-donation">
     <!-- 顶部导航栏 -->
-
-
 
     <scroll-view scroll-y class="scroll">
       <!-- 爱心横幅卡片 -->
@@ -312,6 +310,8 @@ export default {
 }
 .scroll {
   padding: 32rpx 32rpx 180rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* 爱心横幅 */

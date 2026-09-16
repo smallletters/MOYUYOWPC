@@ -206,3 +206,6 @@ page {
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* 注：全局 scroll-view 宽度自适应修复规则已移至 src/App.vue 的 <style> 块,
+ * 这样无论 @use 还是 @import common.scss 都不会影响规则输出。*/

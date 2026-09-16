@@ -9,9 +9,12 @@
             <text class="username">{{ post.username || 'Pet Lover' }}</text>
             <text class="time">{{ formatTime(post.createTime) }}</text>
           </view>
-          <!-- 关注作者按钮:仅作者 != 登录用户时显示,匿名/自己时不显示 -->
+          <!-- 头部右侧：自己=删除（红色描边）；他人=关注。匿名/作者==自己时不显示任何按钮 -->
+          <view v-if="canShowDeleteBtn" class="delete-btn" @tap.stop="onDeletePost">
+            {{ t('community.actions.delete') }}
+          </view>
           <view
-            v-if="canShowFollowBtn"
+            v-else-if="canShowFollowBtn"
             class="follow-btn"
             :class="{ 'follow-btn--on': isFollowingAuthor }"
             @tap.stop="onToggleFollow"
@@ -136,6 +139,8 @@ export default {
       collecting: false,
       // 关注请求中标记
       followingLoading: false,
+      // 删除请求中标记:防止用户在 API 请求飞行中再次触发删除
+      deleting: false,
       // 是否已关注作者(默认 false;登录后由 detail 接口或独立查询填充)
       isFollowingAuthor: false,
       // locale 切换时自增,用于让模板里的 $t()/t() 重新求值
@@ -169,6 +174,17 @@ export default {
       if (!this.post || !this.userStore.isLoggedIn) return false
       const me = this.userStore.userInfo && this.userStore.userInfo.id
       return !!me && String(this.post.userId) !== String(me)
+    },
+    /**
+     * 是否展示"删除"按钮：
+     * - 必须已登录
+     * - 作者 == 当前登录用户（仅自己帖子可删）
+     * 与 canShowFollowBtn 互斥:详情页头部右上角只能出现一种(删除/关注)。
+     */
+    canShowDeleteBtn() {
+      if (!this.post || !this.userStore.isLoggedIn) return false
+      const me = this.userStore.userInfo && this.userStore.userInfo.id
+      return !!me && String(this.post.userId) === String(me)
     },
     // 图片数量决定网格列数与排布：
     // - 1 张：单图大图模式
@@ -428,6 +444,55 @@ export default {
       }
     },
 
+    /**
+     * 删除当前帖子（仅自己帖子可进入）。
+     * 1. 二次确认弹窗（红色 confirm 按钮）防误删
+     * 2. 调 API 成功后延迟 600ms 返回上一页，让 toast 能完整展示
+     * 3. 边缘情况:若当前页是分享直链进入（无上一页栈），fallback 到 reLaunch 回 tabbar 社区页
+     * 4. deleting 标记防止用户在请求中重复触发
+     * 5. 失败给提示
+     */
+    async onDeletePost() {
+      if (!this.post) return
+      if (this.deleting) return
+      uni.showModal({
+        title: this.t('community.actions.delete'),
+        content: this.t('community.actions.deleteConfirm'),
+        confirmText: this.t('community.actions.delete'),
+        cancelText: this.t('community.actions.cancel'),
+        confirmColor: '#ff4d4f',
+        success: async (res) => {
+          if (!res.confirm) return
+          this.deleting = true
+          try {
+            await communityApi.deletePost(this.postId)
+            uni.showToast({
+              title: this.t('community.actions.deleteSuccess'),
+              icon: 'success',
+              duration: 1500,
+            })
+            // 边缘情况:分享直链进入时 getCurrentPages 长度==1,navigateBack 不工作
+            // 这种情况下 reLaunch 回 tabbar 社区页
+            setTimeout(() => {
+              const pages = getCurrentPages ? getCurrentPages() : []
+              if (pages.length > 1) {
+                uni.navigateBack()
+              } else {
+                uni.reLaunch({ url: '/pages/tabbar/community' })
+              }
+            }, 600)
+          } catch (e) {
+            uni.showToast({
+              title: this.t('community.actions.deleteFailed'),
+              icon: 'none',
+            })
+          } finally {
+            this.deleting = false
+          }
+        },
+      })
+    },
+
     formatTime(time) {
       if (!time) return ''
       return new Date(time).toLocaleString()
@@ -533,6 +598,20 @@ export default {
 .follow-btn--on {
   background: transparent;
   color: var(--color-primary, #18b367);
+}
+/* 删除按钮：仅作者本人可见，与关注按钮互斥；红色描边+透明底表达警示 */
+.delete-btn {
+  flex-shrink: 0;
+  padding: 8rpx 20rpx;
+  font-size: 24rpx;
+  border-radius: 999rpx;
+  background: transparent;
+  color: #ff4d4f;
+  border: 1rpx solid #ff4d4f;
+  transition: all 0.2s ease;
+}
+.delete-btn:active {
+  opacity: 0.7;
 }
 .content {
   font-size: var(--font-size-base);

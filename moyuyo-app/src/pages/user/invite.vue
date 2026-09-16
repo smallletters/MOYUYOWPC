@@ -47,32 +47,24 @@
       </view>
     </view>
 
-    <!-- 分享渠道 -->
+    <!-- 分享渠道：针对美国市场（Messenger / WhatsApp / X / Copy Link） -->
     <view class="share-section">
       <text class="share-section-title">{{ $t('invite.shareSectionTitle') }}</text>
       <view class="share-channels">
-        <view class="share-channel" @click="onShareWeChat">
-          <view class="channel-icon channel-icon--green">
-            <text class="channel-icon-text luc-message-circle" />
-          </view>
-          <text class="channel-label">{{ $t('invite.shareWechat') }}</text>
+        <view class="share-channel" @click="onShareMessenger">
+          <view class="channel-icon channel-icon--messenger" />
+          <text class="channel-label">{{ $t('invite.shareMessenger') }}</text>
         </view>
         <view class="share-channel" @click="onShareWhatsApp">
-          <view class="channel-icon channel-icon--brand">
-            <text class="channel-icon-text luc-phone" />
-          </view>
+          <view class="channel-icon channel-icon--whatsapp" />
           <text class="channel-label">{{ $t('invite.shareWhatsApp') }}</text>
         </view>
-        <view class="share-channel" @click="onShareSMS">
-          <view class="channel-icon channel-icon--blue">
-            <text class="channel-icon-text luc-mail" />
-          </view>
-          <text class="channel-label">{{ $t('invite.shareSMS') }}</text>
+        <view class="share-channel" @click="onShareX">
+          <view class="channel-icon channel-icon--x" />
+          <text class="channel-label">{{ $t('invite.shareX') }}</text>
         </view>
         <view class="share-channel" @click="onCopyLink">
-          <view class="channel-icon">
-            <text class="channel-icon-text luc-link" />
-          </view>
+          <view class="channel-icon channel-icon--link" />
           <text class="channel-label">{{ $t('invite.copyLink') }}</text>
         </view>
       </view>
@@ -240,19 +232,14 @@ export default {
       })
     },
 
-    onShareWeChat() {
-      // 微信内唤起走 navigator://(微信内 JSAPI),其他环境直接复制兜底
-      if (typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent || '')) {
-        uni.setClipboardData({
-          data: 'https://moyuyo.com/invite/' + this.inviteCode,
-          success: () => uni.showToast({ title: i18n.t('invite.toastToWechat'), icon: 'none' }),
-        })
-        return
-      }
-      // 非微信环境:复制邀请链接,提示用户手动打开微信
+    onShareMessenger() {
+      // Messenger 没有标准的 web share URL;
+      // 这里统一走复制链接 + 提示用户在 Messenger 内粘贴兜底
+      // (要做真唤起需要 Facebook SDK + fb-messenger-share-dialog,后续按需接入)
+      const url = 'https://moyuyo.com/invite/' + this.inviteCode
       uni.setClipboardData({
-        data: 'https://moyuyo.com/invite/' + this.inviteCode,
-        success: () => uni.showToast({ title: i18n.t('invite.toastPasteWechat'), icon: 'none' }),
+        data: url,
+        success: () => uni.showToast({ title: i18n.t('invite.toastPasteMessenger'), icon: 'none' }),
       })
     },
 
@@ -275,20 +262,21 @@ export default {
       })
     },
 
-    onShareSMS() {
-      // 原生端可直接打开短信;H5 走 sms: 协议唤起系统短信 App
+    onShareX() {
+      // X (Twitter) 提供官方 web intent URL,会唤起 tweet 弹窗
       const url = 'https://moyuyo.com/invite/' + this.inviteCode
-      const body = `Join MOYUYO with my invite: ${url}`
+      const text = `Join MOYUYO with my invite: ${url}`
+      const xUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text)
       // #ifdef H5
       if (typeof window !== 'undefined') {
-        window.location.href = `sms:?body=${encodeURIComponent(body)}`
+        window.open(xUrl, '_blank')
         return
       }
       // #endif
       // 原生端:复制链接兜底
       uni.setClipboardData({
         data: url,
-        success: () => uni.showToast({ title: i18n.t('invite.copied'), icon: 'none' }),
+        success: () => uni.showToast({ title: i18n.t('invite.toastPasteX'), icon: 'none' }),
       })
     },
 
@@ -520,23 +508,63 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--secondary);
+  background-color: var(--secondary);
+  /* 圆形内缩进，避免图标贴边 */
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 48rpx 48rpx;
 }
 
-.channel-icon--green {
-  background: var(--state-success-surface);
+/* 品牌图标：
+   使用 mask-image 把 SVG 作为蒙版，background-color 控制实际颜色，
+   这样无需 inline svg，也能精准控制图标颜色（Simple Icons 规范的 currentColor 思路）。
+   -webkit-mask 兼容 H5 / iOS Safari */
+.channel-icon--messenger {
+  background-color: #00b2ff; /* Messenger brand color */
+  -webkit-mask-image: url('/static/icons/messenger.svg');
+  mask-image: url('/static/icons/messenger.svg');
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 48rpx 48rpx;
+  mask-size: 48rpx 48rpx;
 }
 
-.channel-icon--brand {
-  background: var(--brand-50);
+.channel-icon--whatsapp {
+  background-color: #25d366; /* WhatsApp brand color */
+  -webkit-mask-image: url('/static/icons/whatsapp.svg');
+  mask-image: url('/static/icons/whatsapp.svg');
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 48rpx 48rpx;
+  mask-size: 48rpx 48rpx;
 }
 
-.channel-icon--blue {
-  background: var(--brand-50);
+.channel-icon--x {
+  background-color: #000000; /* X brand color */
+  -webkit-mask-image: url('/static/icons/x.svg');
+  mask-image: url('/static/icons/x.svg');
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 48rpx 48rpx;
+  mask-size: 48rpx 48rpx;
 }
 
-.channel-icon-text {
-  font-size: 36rpx;
+.channel-icon--link {
+  background-color: var(--text-500); /* 链接：项目中性色 */
+  -webkit-mask-image: url('/static/icons/link.svg');
+  mask-image: url('/static/icons/link.svg');
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 48rpx 48rpx;
+  mask-size: 48rpx 48rpx;
 }
 
 .channel-label {

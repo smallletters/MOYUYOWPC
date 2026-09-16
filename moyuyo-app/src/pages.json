@@ -128,25 +128,29 @@
     {
       "path": "pages/user/change-password",
       "style": {
-        "navigationBarTitleText": "修改密码"
+        "navigationBarTitleText": "修改密码",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/user/forgot",
       "style": {
-        "navigationBarTitleText": "重置密码"
+        "navigationBarTitleText": "重置密码",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/user/magic-link",
       "style": {
-        "navigationBarTitleText": "Magic Link"
+        "navigationBarTitleText": "Magic Link",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/user/two-factor",
       "style": {
-        "navigationBarTitleText": "Two-Factor Auth"
+        "navigationBarTitleText": "Two-Factor Auth",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -208,7 +212,8 @@
     {
       "path": "pages/community/drafts",
       "style": {
-        "navigationBarTitleText": "草稿箱"
+        "navigationBarTitleText": "草稿箱",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -257,6 +262,12 @@
       }
     },
     {
+      "path": "pages/user/help-center",
+      "style": {
+        "navigationBarTitleText": "FAQ"
+      }
+    },
+    {
       "path": "pages/pet/profile",
       "style": {
         "navigationBarTitleText": "宠物档案"
@@ -265,13 +276,22 @@
     {
       "path": "pages/pet/health",
       "style": {
-        "navigationBarTitleText": "宠物健康"
+        "navigationBarTitleText": "宠物健康",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/pet/achievement",
       "style": {
-        "navigationBarTitleText": "成就墙"
+        "navigationBarTitleText": "成就墙",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/user/achievement-wall",
+      "style": {
+        "navigationBarTitleText": "成就墙",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -302,7 +322,8 @@
     {
       "path": "pages/debug/plugin-test",
       "style": {
-        "navigationBarTitleText": "插件通信测试"
+        "navigationBarTitleText": "插件通信测试",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -314,31 +335,36 @@
     {
       "path": "pages/user/terms-document",
       "style": {
-        "navigationBarTitleText": "协议详情"
+        "navigationBarTitleText": "协议详情",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/user/notifications",
       "style": {
-        "navigationBarTitleText": "通知"
+        "navigationBarTitleText": "通知",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/user/customer-service",
       "style": {
-        "navigationBarTitleText": "客服中心"
+        "navigationBarTitleText": "客服中心",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/user/feedback",
       "style": {
-        "navigationBarTitleText": "意见反馈"
+        "navigationBarTitleText": "意见反馈",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/user/scan",
       "style": {
-        "navigationBarTitleText": "扫一扫"
+        "navigationBarTitleText": "扫一扫",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -386,7 +412,8 @@
     {
       "path": "pages/goods/qa",
       "style": {
-        "navigationBarTitleText": "商品问答"
+        "navigationBarTitleText": "商品问答",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -416,7 +443,8 @@
     {
       "path": "pages/goods/frequent-purchase",
       "style": {
-        "navigationBarTitleText": "常购清单"
+        "navigationBarTitleText": "常购清单",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -490,19 +518,22 @@
     {
       "path": "pages/goods/share-product",
       "style": {
-        "navigationBarTitleText": "分享商品"
+        "navigationBarTitleText": "分享商品",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/order/after-sales",
       "style": {
-        "navigationBarTitleText": "售后记录"
+        "navigationBarTitleText": "售后记录",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/user/service-booking",
       "style": {
-        "navigationBarTitleText": "服务预约"
+        "navigationBarTitleText": "服务预约",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -514,13 +545,15 @@
     {
       "path": "pages/user/new-user-zone",
       "style": {
-        "navigationBarTitleText": "新人专区"
+        "navigationBarTitleText": "新人专区",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/user/festival-event",
       "style": {
-        "navigationBarTitleText": "活动中心"
+        "navigationBarTitleText": "活动中心",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -538,19 +571,22 @@
     {
       "path": "pages/user/my-reviews",
       "style": {
-        "navigationBarTitleText": "我的评价"
+        "navigationBarTitleText": "我的评价",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/user/gift-card-manage",
       "style": {
-        "navigationBarTitleText": "礼品卡管理"
+        "navigationBarTitleText": "礼品卡管理",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/user/privacy",
       "style": {
-        "navigationBarTitleText": "隐私设置"
+        "navigationBarTitleText": "隐私设置",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -563,13 +599,15 @@
     {
       "path": "pages/user/balance-recharge",
       "style": {
-        "navigationBarTitleText": "充值"
+        "navigationBarTitleText": "充值",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/user/balance-withdraw",
       "style": {
-        "navigationBarTitleText": "提现"
+        "navigationBarTitleText": "提现",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -595,13 +633,15 @@
     {
       "path": "pages/user/subscribe",
       "style": {
-        "navigationBarTitleText": "订阅服务"
+        "navigationBarTitleText": "订阅服务",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/user/messages",
       "style": {
-        "navigationBarTitleText": "消息详情"
+        "navigationBarTitleText": "消息详情",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -613,7 +653,8 @@
     {
       "path": "pages/user/affiliate-center",
       "style": {
-        "navigationBarTitleText": "推广中心"
+        "navigationBarTitleText": "推广中心",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -687,31 +728,36 @@
     {
       "path": "pages/user/subscribe-manage-detail",
       "style": {
-        "navigationBarTitleText": "订阅详情"
+        "navigationBarTitleText": "订阅详情",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/goods/product-subscribe",
       "style": {
-        "navigationBarTitleText": "商品订阅"
+        "navigationBarTitleText": "商品订阅",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/goods/product-subscribe-list",
       "style": {
-        "navigationBarTitleText": "订阅商品列表"
+        "navigationBarTitleText": "订阅商品列表",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/user/booking-detail",
       "style": {
-        "navigationBarTitleText": "预约详情"
+        "navigationBarTitleText": "预约详情",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/pet/pet-hub-3d",
       "style": {
-        "navigationBarTitleText": "Pet Hub 3D"
+        "navigationBarTitleText": "Pet Hub 3D",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -724,7 +770,8 @@
     {
       "path": "pages/pet/allergy-profile",
       "style": {
-        "navigationBarTitleText": "过敏档案"
+        "navigationBarTitleText": "过敏档案",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -737,19 +784,22 @@
     {
       "path": "pages/user/edit-profile",
       "style": {
-        "navigationBarTitleText": "编辑资料"
+        "navigationBarTitleText": "编辑资料",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/user/avatar-settings",
       "style": {
-        "navigationBarTitleText": "头像设置"
+        "navigationBarTitleText": "头像设置",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/user/block-manager",
       "style": {
-        "navigationBarTitleText": "屏蔽管理"
+        "navigationBarTitleText": "屏蔽管理",
+        "navigationStyle": "custom"
       }
     },
     {

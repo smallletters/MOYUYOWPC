@@ -1,8 +1,6 @@
-﻿<template>
+<template>
   <view class="bargain">
     <!-- 深色顶部导航栏 -->
-
-
 
     <scroll-view scroll-y class="scroll">
       <!-- 商品展示卡片 -->
@@ -271,6 +269,8 @@ export default {
 }
 .scroll {
   padding: 0 32rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 .product-card {
   margin-top: 32rpx;

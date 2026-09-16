@@ -2,16 +2,14 @@
   <view class="flash-sale">
     <!-- 顶部导航栏 -->
 
-
-
     <!-- 秒杀头部横幅：倒计时基于当前进行中活动最近一条 endTime -->
     <view class="flash-banner">
       <view class="banner-left">
-        <text class="banner-title">限时秒杀</text>
-        <text class="banner-sub">超值好物 限量抢购</text>
+        <text class="banner-title">{{ $t('flashSale.bannerTitle') }}</text>
+        <text class="banner-sub">{{ $t('flashSale.bannerSub') }}</text>
       </view>
       <view v-if="activeSession === 'ongoing' && ongoingCountdownLabel" class="banner-right">
-        <text class="countdown-label">本场距结束</text>
+        <text class="countdown-label">{{ $t('flashSale.countdownOngoing') }}</text>
         <view class="countdown">
           <text class="countdown-digit">{{ ongoingCountdownLabel.h }}</text>
           <text class="countdown-sep">:</text>
@@ -21,7 +19,7 @@
         </view>
       </view>
       <view v-else-if="activeSession === 'upcoming' && nextCountdownLabel" class="banner-right">
-        <text class="countdown-label">距下一场开始</text>
+        <text class="countdown-label">{{ $t('flashSale.countdownUpcoming') }}</text>
         <view class="countdown">
           <text class="countdown-digit">{{ nextCountdownLabel.h }}</text>
           <text class="countdown-sep">:</text>
@@ -58,7 +56,7 @@
     <scroll-view scroll-y class="scroll">
       <!-- 秒杀商品网格 -->
       <view v-if="flashProducts.length === 0" class="empty-tip">
-        <text>暂无{{ sessionEmptyLabel }}的活动</text>
+        <text>{{ $t('flashSale.emptyFmt', { label: sessionEmptyLabel }) }}</text>
       </view>
       <view v-else class="product-grid">
         <view
@@ -77,9 +75,9 @@
               mode="aspectFill"
             />
             <view v-else class="img-placeholder" :style="{ background: product.color }" />
-            <view class="flash-badge">秒杀</view>
+            <view class="flash-badge">{{ $t('flashSale.badge') }}</view>
             <view v-if="product.soldOut" class="sold-out-overlay">
-              <text>已售罄</text>
+              <text>{{ $t('flashSale.soldOut') }}</text>
             </view>
           </view>
           <view class="product-info">
@@ -92,7 +90,9 @@
             </view>
             <view class="progress-bar">
               <view class="progress-fill" :style="{ width: product.soldPercent + '%' }" />
-              <text class="progress-text">已抢 {{ product.soldPercent }}%</text>
+              <text class="progress-text">
+                {{ $t('flashSale.soldPercent', { n: product.soldPercent }) }}
+              </text>
             </view>
             <view class="product-actions">
               <view
@@ -103,9 +103,11 @@
                 }"
                 @tap.stop="handleFlashBuy(product)"
               >
-                <text>{{ product.actionLabel }}</text>
+                <text>{{ resolveActionLabel(product) }}</text>
               </view>
-              <text class="limit-text">每人限{{ product.limit }}件</text>
+              <text class="limit-text">
+                {{ $t('flashSale.perUserLimit', { n: product.limit }) }}
+              </text>
             </view>
           </view>
         </view>
@@ -124,12 +126,9 @@ import { flashSaleApi } from '@/api'
  * - upcoming: 尚未开始（startTime > now）
  * - ongoing:  进行中（startTime <= now <= endTime 且 active=true）
  * - ended:    已结束（endTime < now 或 active=false）
+ * label/status 文案走 i18n(flashSale.sessions.*),通过 computed sessions 计算
  */
-const SESSION_LIST = [
-  { id: 'ongoing', label: '进行中', status: '抢购中' },
-  { id: 'upcoming', label: '即将开始', status: '预告' },
-  { id: 'ended', label: '已结束', status: '已结束' },
-]
+const SESSION_DEFS = [{ id: 'ongoing' }, { id: 'upcoming' }, { id: 'ended' }]
 
 export default {
   pageTitleKey: 'pageTitle.goodsFlashSale',
@@ -137,7 +136,8 @@ export default {
   data() {
     return {
       activeSession: 'ongoing',
-      sessions: SESSION_LIST.map((s) => ({ ...s, count: 0 })),
+      // sessions 由 computed 提供(走 i18n),此处只保留 count 数字缓存
+      sessionCounts: { ongoing: 0, upcoming: 0, ended: 0 },
       // 三个状态的活动分别缓存,避免切换 tab 时重复请求
       cache: { ongoing: [], upcoming: [], ended: [] },
       flashProducts: [],
@@ -149,6 +149,18 @@ export default {
   },
 
   computed: {
+    // 场次列表(label/status 走 i18n,locale 切换时跟随更新)
+    sessions() {
+      return SESSION_DEFS.map((s) => {
+        const t = this.$t(`flashSale.sessions.${s.id}`)
+        return {
+          id: s.id,
+          label: t.label,
+          status: t.status,
+          count: this.sessionCounts[s.id] || 0,
+        }
+      })
+    },
     sessionEmptyLabel() {
       const found = this.sessions.find((s) => s.id === this.activeSession)
       return found ? found.label : ''
@@ -169,6 +181,15 @@ export default {
     },
     nextCountdownLabel() {
       return this.formatHMS(this.nextCountdownSec)
+    },
+    // 商品操作按钮文案 map(status → i18n key)
+    actionsI18n() {
+      return {
+        upcoming: this.$t('flashSale.actions.upcoming'),
+        ended: this.$t('flashSale.actions.ended'),
+        soldOut: this.$t('flashSale.actions.soldOut'),
+        buy: this.$t('flashSale.actions.buy'),
+      }
     },
   },
 
@@ -246,27 +267,28 @@ export default {
       const soldPercent = total > 0 ? Math.min(100, Math.round((sold / total) * 100)) : 0
       const stockLeft = Math.max(0, total - sold)
       const status = this.sessionOf(p, Date.now())
-      const actionLabel =
-        status === 'upcoming'
-          ? '即将开始'
-          : status === 'ended'
-            ? '已结束'
-            : stockLeft <= 0
-              ? '已售罄'
-              : '抢购'
+      // actionLabel 在 computed actionsI18n 里集中翻译,这里只存 status + soldOut,
+      // 模板渲染时按 status 映射 i18n key,避免 status 变更时 actionLabel 不同步
       return {
         id: p.id,
-        name: p.name || '限时秒杀',
+        name: p.name || this.$t('flashSale.productFallbackName'),
         flashPrice: Number(p.flashPrice || 0).toFixed(2),
         originalPrice: Number(p.originalPrice || 0).toFixed(2),
         soldPercent,
         limit: Number(p.limitPerUser || 1),
         soldOut: stockLeft <= 0,
         status,
-        actionLabel,
         image: '',
         color: 'linear-gradient(135deg, #cfe5ff, #007aff)',
       }
+    },
+
+    // 计算商品操作按钮文案（locale 切换时跟随更新）
+    resolveActionLabel(product) {
+      if (product.status === 'upcoming') return this.actionsI18n.upcoming
+      if (product.status === 'ended') return this.actionsI18n.ended
+      if (product.soldOut) return this.actionsI18n.soldOut
+      return this.actionsI18n.buy
     },
 
     onSwitchSession(id) {
@@ -281,10 +303,11 @@ export default {
     },
 
     updateSessionCounts() {
-      this.sessions = SESSION_LIST.map((s) => ({
-        ...s,
-        count: (this.cache[s.id] || []).length,
-      }))
+      this.sessionCounts = {
+        ongoing: (this.cache.ongoing || []).length,
+        upcoming: (this.cache.upcoming || []).length,
+        ended: (this.cache.ended || []).length,
+      }
     },
 
     /**
@@ -343,12 +366,12 @@ export default {
       return { h: pad(h), m: pad(m), s: pad(s) }
     },
     toggleNotify() {
-      uni.showToast({ title: '已设置开抢提醒', icon: 'success' })
+      uni.showToast({ title: this.$t('flashSale.notifySet'), icon: 'success' })
     },
 
     handleProductTap(product) {
       if (product.status === 'upcoming') {
-        uni.showToast({ title: '活动即将开始，敬请期待', icon: 'none' })
+        uni.showToast({ title: this.$t('flashSale.upcomingToast'), icon: 'none' })
         return
       }
       if (product.status === 'ended' || product.soldOut) {
@@ -359,13 +382,16 @@ export default {
 
     async handleFlashBuy(product) {
       if (product.status === 'upcoming') {
-        uni.showToast({ title: '活动尚未开始', icon: 'none' })
+        uni.showToast({ title: this.$t('flashSale.notStartedToast'), icon: 'none' })
         return
       }
       if (product.status === 'ended' || product.soldOut) return
       try {
         await flashSaleApi.buyFlashSale(product.id, 1)
-        uni.showToast({ title: `抢购「${product.name}」成功！`, icon: 'success' })
+        uni.showToast({
+          title: this.$t('flashSale.buySuccessFmt', { name: product.name }),
+          icon: 'success',
+        })
         // 抢购成功后减少本地库存显示
         const idx = this.flashProducts.findIndex((p) => p.id === product.id)
         if (idx >= 0) {
@@ -376,7 +402,7 @@ export default {
           this.flashProducts.splice(idx, 1, updated)
         }
       } catch (e) {
-        uni.showToast({ title: e.message || '抢购失败，请重试', icon: 'none' })
+        uni.showToast({ title: e.message || this.$t('flashSale.buyFailed'), icon: 'none' })
       }
     },
   },
@@ -499,6 +525,8 @@ export default {
   background: var(--color-background);
   border-top-left-radius: 32rpx;
   border-top-right-radius: 32rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 .empty-tip {
   text-align: center;

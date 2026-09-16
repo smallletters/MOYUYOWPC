@@ -63,10 +63,10 @@
       <template v-else>
         <div class="review-card" v-for="item in reviewItems" :key="item.id">
           <div class="review-thumb">
-            <!-- 优先展示帖子真实图片(后端 images[0]);无图时回退 emoji -->
+            <!-- 缩略图位置展示用户头像(便于审核员一眼识别作者);无头像时回退 emoji -->
             <img
-              v-if="item.imageUrl"
-              :src="item.imageUrl"
+              v-if="item.avatar"
+              :src="item.avatar"
               class="review-thumb-img"
               @error="onThumbError(item)"
             />
@@ -85,10 +85,10 @@
             <div class="review-desc" :title="item.description">{{ item.description }}</div>
             <div class="review-publisher">
               <div class="user-info-cell">
-                <!-- 优先展示用户头像(后端 avatar);无头像时用昵称首字符 -->
+                <!-- 用户条展示帖子缩略图(便于审核员看清内容本身);无图时用昵称首字符 -->
                 <img
-                  v-if="item.avatar"
-                  :src="item.avatar"
+                  v-if="item.imageUrl"
+                  :src="item.imageUrl"
                   class="user-avatar user-avatar-img"
                   @error="onAvatarError(item)"
                 />
@@ -466,14 +466,14 @@ function resolveMediaUrl(url) {
   return ''
 }
 
-/** 缩略图加载失败：清空 imageUrl,显示 emoji fallback */
+/** 缩略图(现展示头像)加载失败:清空 avatar,显示 emoji fallback */
 function onThumbError(item) {
-  if (item) item.imageUrl = ''
+  if (item) item.avatar = ''
 }
 
-/** 头像加载失败：清空 avatar,显示首字符 fallback */
+/** 用户条(现展示帖子图)加载失败:清空 imageUrl,显示首字符 fallback */
 function onAvatarError(item) {
-  if (item) item.avatar = ''
+  if (item) item.imageUrl = ''
 }
 
 async function handleReview(id, action) {

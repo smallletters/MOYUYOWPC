@@ -216,8 +216,13 @@ export default {
 
 /* 内容区 */
 .content {
+  /* uni-scroll-view 在 H5 下为自定义元素,默认 display:inline 会收缩宽度,
+     需显式 block + width:100% + border-box 才能铺满屏幕宽度 */
+  display: block;
+  width: 100%;
   height: calc(100vh - 88rpx);
   padding: 32rpx;
+  box-sizing: border-box;
 }
 
 /* 区块 */

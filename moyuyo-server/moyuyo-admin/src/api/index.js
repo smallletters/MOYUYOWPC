@@ -5,6 +5,26 @@ import router from '../router'
 // 防止多个并发 401 请求触发多次登录跳转
 let isRedirectingToLogin = false
 
+/**
+ * 会话失效统一处理：清 token + 提示 + 跳转登录页
+ * 被 HTTP 401、业务码 401 / 403 共用，避免分散处理逻辑
+ * 携带 from query 便于登录页展示来源与登录后回跳
+ */
+function handleSessionExpired(message) {
+  // 同时清理 localStorage 与 sessionStorage 中的 token，
+  // 避免路由守卫（[router/index.js#L522]）下次误判"已登录"再次绕过跳转
+  localStorage.removeItem('admin_token')
+  sessionStorage.removeItem('admin_token')
+  ElMessage.warning(message || '会话已过期，请重新登录')
+  const currentPath = router.currentRoute.value.path
+  if (!isRedirectingToLogin && !currentPath.startsWith('/login')) {
+    isRedirectingToLogin = true
+    router.push({ path: '/login', query: { from: currentPath, reason: 'session_expired' } }).finally(() => {
+      isRedirectingToLogin = false
+    })
+  }
+}
+
 // 后端 API 根地址：dev 默认 '/api'（Vite 代理），prod 由 VITE_API_BASE_URL 注入完整后端地址
 // 注意：axios 与组件（el-upload 等）共用此值，避免出现"axios 用 /api 但 el-upload 用了别的"的不一致
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
@@ -59,6 +79,19 @@ api.interceptors.response.use(
     // 后端返回了业务错误码（如 code=500），reject 让调用方处理
     // 携带 code 字段，便于登录页等场景区分"账号被锁(code=423)" / "密码错(code=401)"
     if (body && body.code !== undefined && body.code !== 0) {
+      // 业务码 401 / 403 等同会话失效：清理 Token + 跳转登录页
+      // 触发场景：token 被吊销、账号被禁用、权限被收回等后端用 200 + 业务码表达的场景
+      // 重要：必须排除 /auth/login（密码错也用 401）、/auth/logout、密码重置等"业务码 401"非会话失效的接口，
+      // 否则用户密码打错会触发"会话已过期"提示覆盖真实错误信息
+      const url = response.config?.url || ''
+      const isAuthEndpoint = /\/auth\/(login|logout|forgot-password|reset-password)/.test(url)
+      if (!isAuthEndpoint && (body.code === 401 || body.code === 403)) {
+        handleSessionExpired(body.message || '会话已过期，请重新登录')
+        const bizErr = new Error(body.message || '操作失败')
+        bizErr.code = body.code
+        bizErr.business = true
+        return Promise.reject(bizErr)
+      }
       const bizErr = new Error(body.message || '操作失败')
       bizErr.code = body.code
       bizErr.business = true
@@ -74,14 +107,7 @@ api.interceptors.response.use(
 
     // 401 未登录：清理 Token 并跳转登录页（避免重复跳转和页面刷新的 ERR_ABORTED）
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('admin_token')
-      const currentPath = router.currentRoute.value.path
-      if (!isRedirectingToLogin && !currentPath.startsWith('/login')) {
-        isRedirectingToLogin = true
-        router.push('/login').finally(() => {
-          isRedirectingToLogin = false
-        })
-      }
+      handleSessionExpired('会话已过期，请重新登录')
       return Promise.reject(error)
     }
 

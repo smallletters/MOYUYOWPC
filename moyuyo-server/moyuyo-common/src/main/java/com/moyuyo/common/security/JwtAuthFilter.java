@@ -92,6 +92,10 @@ public class JwtAuthFilter implements Filter {
             // 用户点击"领取"按钮时由 /api/v1/coupons/{id}/claim 强制登录校验
             new WhiteListEntry("/api/v1/coupons", true),
             new WhiteListEntry("/api/v1/coupons/", true),
+            // 帮助中心 FAQ 公开浏览：列表 GET / 详情 GET 都允许匿名访问
+            // （"是否有帮助"投票仍由前端判断登录态后再调 POST；当前 controller 未做 POST 校验）
+            new WhiteListEntry("/api/v1/help", true),
+            new WhiteListEntry("/api/v1/help/", true),
             // APP 首页 CMS Banner 公开拉取（仅 GET）
             new WhiteListEntry("/api/v1/cms/banners", true),
             new WhiteListEntry("/api/v1/cms/banners/", true),

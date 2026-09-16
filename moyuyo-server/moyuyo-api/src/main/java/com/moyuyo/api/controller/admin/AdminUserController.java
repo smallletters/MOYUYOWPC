@@ -38,7 +38,7 @@ public class AdminUserController {
     // 分页参数统一守卫：避免 size=100000 触发 OOM / 全表扫描
     int[] pageParams = PageParamGuard.normalize(page, size, 15);
     // 会员等级与注册渠道校验：仅允许已知枚举值，避免任意 SQL 片段注入
-    String normalizedLevel = normalizeEnum(level, java.util.Set.of("NORMAL", "SILVER", "GOLD", "DIAMOND"));
+    String normalizedLevel = normalizeEnum(level, java.util.Set.of("NORMAL", "SILVER", "GOLD", "PLATINUM", "DIAMOND"));
     String normalizedChannel = normalizeEnum(channel, java.util.Set.of("web", "app", "wechat"));
     // 状态值映射：前端传 active/banned/inactive -> 后端 ACTIVE/INACTIVE
     String normalizedStatus = mapStatus(status);

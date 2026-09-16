@@ -107,6 +107,20 @@ public class CommunityController {
         return Result.success();
     }
 
+    /**
+     * 删除帖子（仅作者本人）。
+     * 业务约束：
+     *  - 仅作者本人可调（他人调返回 403）
+     *  - 仅允许删除已发布(status=1)的帖子；定时待发布(status=3)的撤回走另一路径
+     *  - 级联清理：评论(逻辑删除) / 点赞(物理删除) / 收藏(物理删除) / 审核记录保留
+     */
+    @Operation(summary = "删除帖子(仅作者本人)")
+    @DeleteMapping("/posts/{id}")
+    public Result<Void> deletePost(@PathVariable Long id) {
+        communityService.deletePost(UserContextHolder.getUserId(), id);
+        return Result.success();
+    }
+
     @Operation(summary = "评论")
     @PostMapping("/posts/{postId}/comments")
     @RateLimiter(name = "commentCreate", fallbackMethod = "commentRateLimitFallback")

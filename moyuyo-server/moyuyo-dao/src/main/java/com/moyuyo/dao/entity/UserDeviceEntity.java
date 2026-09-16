@@ -10,7 +10,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("mo_user_device")
+@TableName("mo_device")
 public class UserDeviceEntity {
 
   @TableId(type = IdType.ASSIGN_ID)
@@ -20,23 +20,24 @@ public class UserDeviceEntity {
 
   private String deviceId;
 
-  private String deviceName;
+  /** IOS / ANDROID / WEB / MAC / WINDOWS — 对应表字段 platform */
+  private String platform;
 
-  /** IOS / ANDROID / WEB / MAC / WINDOWS */
-  private String deviceType;
+  /** 设备型号(iphone15/xiaomi-14 等) — 对应表字段 model */
+  private String model;
 
   private String osVersion;
 
   private String appVersion;
 
-  private String ipAddress;
+  /** 推送 token(APP 端) */
+  private String pushToken;
 
-  private String location;
-
+  /** 是否 2FA 可信设备(0/1) */
   private Integer trusted;
 
   private LocalDateTime lastActive;
 
   @TableField(fill = FieldFill.INSERT)
-  private LocalDateTime loginTime;
+  private LocalDateTime createTime;
 }

@@ -221,6 +221,81 @@ public class AuthController {
         return Result.error(429, "请求过于频繁，请稍后再试");
     }
 
+    // ============ 账号注销 ============
+
+    /**
+     * 查询当前用户注销状态。
+     * <p>
+     * 返回 pending / scheduledAt / remainingSeconds,前端展示倒计时。
+     */
+    @Operation(summary = "查询账号注销状态")
+    @GetMapping("/account/deletion")
+    public Result<com.moyuyo.service.AuthService.DeletionStatus> getDeletionStatus() {
+        Long userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.error(401, "未登录");
+        }
+        return Result.success(authService.getDeletionStatus(userId));
+    }
+
+    /**
+     * 申请注销账户（冻结 15 天，到期由定时任务清理）。
+     * <p>
+     * 行为：
+     * <ul>
+     *   <li>写入 {@code delete_scheduled_at} + 状态变为 {@code PENDING_DELETE}</li>
+     *   <li>吊销当前 access token 及所有 refresh token（即时冻结）</li>
+     *   <li>冻结期内调用本接口幂等；登录/撤销可恢复 ACTIVE</li>
+     *   <li>返回 {@code scheduledAtMillis}（epoch 毫秒）与 {@code remainingSeconds}，
+     *       前端用毫秒直接做差值计算，避免 ISO 字符串的时区歧义</li>
+     * </ul>
+     */
+    @Operation(summary = "申请注销账户（15 天冻结期）")
+    @PostMapping("/account/deletion")
+    public Result<java.util.Map<String, Object>> requestAccountDeletion() {
+        Long userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.error(401, "未登录");
+        }
+        try {
+            java.time.LocalDateTime scheduledAt = authService.requestAccountDeletion(userId);
+            java.util.Map<String, Object> data = new java.util.HashMap<>();
+            // 后端 LocalDateTime 在中国时区容器下转 ISO 字符串会带 +08:00,
+            // 但跨时区容器（UTC）下生成无时区的字符串会被前端按本地时区解析,
+            // 导致 days 计算漂移 1 天。统一返回 epoch 毫秒让前端无歧义地计算
+            data.put("scheduledAtMillis",
+                    scheduledAt.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+            // 15 天 = 1296000 秒,前端可直接 setInterval 倒计时
+            data.put("remainingSeconds",
+                    java.time.Duration.between(java.time.LocalDateTime.now(), scheduledAt).getSeconds());
+            return Result.success(data);
+        } catch (IllegalArgumentException e) {
+            return Result.badRequest(e.getMessage());
+        }
+    }
+
+    /**
+     * 撤销注销申请（15 天冻结期内可"悔棋"）。
+     * <p>
+     * 撤销后清空 {@code delete_scheduled_at},status 回滚 {@code ACTIVE}。
+     * 由于请求时 access token 可能已被注销流程吊销（前端可能用新登录态访问），
+     * 此接口兼容"已被吊销但仍在冻结期"的用户。
+     */
+    @Operation(summary = "撤销账号注销申请")
+    @DeleteMapping("/account/deletion")
+    public Result<Void> cancelAccountDeletion() {
+        Long userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.error(401, "未登录");
+        }
+        try {
+            authService.cancelAccountDeletion(userId);
+            return Result.success();
+        } catch (IllegalArgumentException e) {
+            return Result.badRequest(e.getMessage());
+        }
+    }
+
     /** 通用限流降级方法：仅限流拒绝时触发，业务异常正常传播给全局异常处理器 */
     @SuppressWarnings("unused")
     private Result<Void> rateLimitFallback(EmailVerifyRequest request, RequestNotPermitted e) {

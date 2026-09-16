@@ -154,7 +154,6 @@ import { usePageTitle } from '@/utils/i18nPageMixin'
 import { i18n } from '@/i18n'
 usePageTitle('pageTitle.tabbarCommunity')
 
-
 // locale 变化时自增,触发依赖它的 computed 重新求值
 // (i18n.t 内部读取 _localeRef.value,但通过函数间接读取不会自动建立 Vue 响应式依赖)
 const localeVersion = ref(0)
@@ -204,6 +203,8 @@ const loading = ref(false)
 const noMore = ref(false)
 const page = ref(1)
 const pageSize = 20
+// 正在删除的帖子 id 集合:防止同一帖子在请求飞行中被重复触发删除
+const deleting = ref(new Set())
 
 /** 不同 Tab 的空态提示 */
 const emptyHint = computed(() => {
@@ -332,10 +333,64 @@ function onShare(p) {
 }
 
 function onMore(p) {
+  // 判断是否为自己的帖子：用 userStore.userId 对比 p.userId
+  const me = userStore.userInfo && userStore.userInfo.id
+  const isMine = me != null && String(p.userId) === String(me)
+  // 自己的帖子：把「删除」放最前（最显眼，符合用户预期）
+  // 别人的帖子：保持原有两项
+  const itemList = isMine
+    ? [
+        t('community.actions.delete'),
+        t('community.actions.notInterested'),
+        t('community.actions.report'),
+      ]
+    : [t('community.actions.notInterested'), t('community.actions.report')]
   uni.showActionSheet({
-    itemList: ['不感兴趣', '举报'],
-    success: (res) => {
-      uni.showToast({ title: ['不感兴趣', '举报'][res.tapIndex] + ' 已提交', icon: 'none' })
+    itemList,
+    success: async (res) => {
+      // 索引随是否 mine 不同，需要重新对齐
+      const chosen = isMine
+        ? ['delete', 'notInterested', 'report'][res.tapIndex]
+        : ['notInterested', 'report'][res.tapIndex]
+      if (chosen === 'delete') {
+        await onDeletePost(p)
+      } else if (chosen === 'report') {
+        uni.showToast({ title: t('community.actions.report') + ' 已提交', icon: 'none' })
+      } else {
+        uni.showToast({ title: t('community.actions.notInterested') + ' 已提交', icon: 'none' })
+      }
+    },
+  })
+}
+
+/**
+ * 删除帖子（仅自己的帖子会进入这里）。
+ * 1. 二次确认弹窗（红色 confirm 按钮 + 明确文案）防止误删
+ * 2. 调 API 成功后直接从 posts 中过滤掉（无需整页刷新）
+ * 3. 失败提示原因
+ */
+async function onDeletePost(p) {
+  uni.showModal({
+    title: t('community.actions.delete'),
+    content: t('community.actions.deleteConfirm'),
+    confirmText: t('community.actions.delete'),
+    cancelText: t('community.actions.cancel'),
+    confirmColor: '#ff4d4f',
+    success: async (res) => {
+      if (!res.confirm) return
+      // 防双击:正在删除本帖(或别的帖正在请求中)时直接拦截
+      if (deleting.value.has(p.id)) return
+      deleting.value.add(p.id)
+      try {
+        await communityApi.deletePost(p.id)
+        uni.showToast({ title: t('community.actions.deleteSuccess'), icon: 'success' })
+        // 从列表中移除该卡片,无需 reload
+        posts.value = posts.value.filter((x) => x.id !== p.id)
+      } catch (e) {
+        uni.showToast({ title: t('community.actions.deleteFailed'), icon: 'none' })
+      } finally {
+        deleting.value.delete(p.id)
+      }
     },
   })
 }

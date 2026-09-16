@@ -48,7 +48,7 @@ export const config = {
   // 客服联系方式(about 页)
   // 上线前必须改为真实号码/邮箱/官网
   contactWebsite: getEnv('VITE_CONTACT_WEBSITE', 'www.moyuyo.com'),
-  contactEmail: getEnv('VITE_CONTACT_EMAIL', 'support@moyuyo.com'),
+  contactEmail: getEnv('VITE_CONTACT_EMAIL', 'moyuyo@moyuyoshop.com'),
   contactPhone: getEnv('VITE_CONTACT_PHONE', '400-888-MOYU'),
   // 社会化登录开关：登录页 Google / Apple 按钮是否展示
   // - googleEnabled: 设为 'true' 后显示 Google 按钮(VITE_SOCIAL_GOOGLE_URL 必填)

@@ -45,6 +45,19 @@ public class UserEntity {
 
     private Boolean marketingOptIn;
 
+    // 隐私开关 4 项（由 V20260916_01 迁移新增）：
+    // 默认值在 DB 端通过 DEFAULT 1/0 控制,Entity 字段缺省值仅为 Java 兜底
+    private Boolean publicFavorites;
+
+    private Boolean allowViewProfile;
+
+    private Boolean showOnlineStatus;
+
+    private Boolean allowMessages;
+
+    /** 最后一次数据导出请求时间,用于限流（V20260916_01 新增） */
+    private LocalDateTime dataExportRequestedAt;
+
     private Integer status;
 
     private LocalDateTime lastLoginTime;

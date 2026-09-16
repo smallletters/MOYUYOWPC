@@ -29,6 +29,7 @@
             <option value="NORMAL">普通会员</option>
             <option value="SILVER">银卡会员</option>
             <option value="GOLD">金卡会员</option>
+            <option value="PLATINUM">铂金会员</option>
             <option value="DIAMOND">钻石会员</option>
           </select>
         </div>
@@ -155,6 +156,7 @@
             <el-option label="普通会员" value="NORMAL" />
             <el-option label="银卡会员" value="SILVER" />
             <el-option label="金卡会员" value="GOLD" />
+            <el-option label="铂金会员" value="PLATINUM" />
             <el-option label="钻石会员" value="DIAMOND" />
           </el-select>
         </el-form-item>

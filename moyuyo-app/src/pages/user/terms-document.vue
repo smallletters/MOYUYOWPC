@@ -141,6 +141,17 @@ export default {
   flex: 1;
   height: calc(100vh - 88rpx);
   padding: 32rpx 40rpx 80rpx;
+  /* 兼容 H5:uni-app 的 scroll-view 在 H5 下会渲染多层嵌套 div,
+     这里强制让最内层内容容器占满屏幕宽度,避免内容缩到一侧 */
+  width: 100%;
+  box-sizing: border-box;
+}
+/* H5 下 scroll-view 内部包裹 div,显式撑满宽度 */
+.content :deep(.uni-scroll-view),
+.content :deep(.uni-scroll-view-content) {
+  width: 100% !important;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .meta {

@@ -197,9 +197,13 @@
           <!-- 条款:CTA下方小字+弱色,不抢夺注意力(Shein风格) -->
           <view class="terms">
             <text class="terms-text">{{ $t('auth.agreeTerms') }}</text>
-            <text class="terms-link">{{ $t('auth.termsAndPolicy') }}</text>
+            <text class="terms-link" @click.stop="openTerms('terms')">
+              {{ $t('auth.termsAndPolicy') }}
+            </text>
             <text class="terms-text">{{ $t('common.and') }}</text>
-            <text class="terms-link">{{ $t('auth.privacyPolicy') }}</text>
+            <text class="terms-link" @click.stop="openTerms('privacy')">
+              {{ $t('auth.privacyPolicy') }}
+            </text>
           </view>
 
           <!-- 信任徽章(Amazon结账页模式) -->
@@ -460,6 +464,11 @@ export default {
     goLogin() {
       // 登录页与注册页互跳使用reLaunch避免栈叠加(美国电商标准做法)
       uni.navigateTo({ url: '/pages/user/login' })
+    },
+
+    // 打开服务条款 / 隐私政策(type=terms|privacy|qualification|license)
+    openTerms(type) {
+      uni.navigateTo({ url: `/pages/user/terms-document?type=${type}` })
     },
   },
 }

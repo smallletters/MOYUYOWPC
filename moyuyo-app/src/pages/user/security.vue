@@ -7,11 +7,23 @@
       </view>
       <view class="status-info">
         <view class="status-row">
-          <text class="status-title">{{ $t('security.statusTitleFmt', { level: $t(`security.level.${securityStatus.level}`) }) }}</text>
-          <view class="status-badge" :class="`status-badge--${securityStatus.level}`">{{ $t(`security.badge.${securityStatus.badgeKey}`) }}</view>
+          <text class="status-title">
+            {{
+              $t('security.statusTitleFmt', { level: $t(`security.level.${securityStatus.level}`) })
+            }}
+          </text>
+          <view class="status-badge" :class="`status-badge--${securityStatus.level}`">
+            {{ $t(`security.badge.${securityStatus.badgeKey}`) }}
+          </view>
         </view>
-        <text class="status-desc">{{ $t('security.statusDescFmt', { state: $t(`security.state.${securityStatus.stateKey}`) }) }}</text>
-        <text class="status-hint">{{ $t('security.statusHintFmt', { count: securityStatus.suggestionCount }) }}</text>
+        <text class="status-desc">
+          {{
+            $t('security.statusDescFmt', { state: $t(`security.state.${securityStatus.stateKey}`) })
+          }}
+        </text>
+        <text class="status-hint">
+          {{ $t('security.statusHintFmt', { count: securityStatus.suggestionCount }) }}
+        </text>
       </view>
     </view>
 
@@ -38,7 +50,11 @@
           <text class="row-icon luc-smartphone" />
           <text class="row-text">{{ $t('security.enable2FA') }}</text>
         </view>
-        <view class="toggle" :class="{ active: tfaEnabled, disabled: toggling2FA }" @click="onToggle2FA">
+        <view
+          class="toggle"
+          :class="{ active: tfaEnabled, disabled: toggling2FA }"
+          @click="onToggle2FA"
+        >
           <view class="toggle-knob" />
         </view>
       </view>
@@ -64,7 +80,9 @@
           <text class="row-text">{{ $t('security.manageDevices') }}</text>
         </view>
         <view class="row-right">
-          <text class="row-value">{{ $t('security.deviceCountFmt', { current: deviceCount, max: deviceMax }) }}</text>
+          <text class="row-value">
+            {{ $t('security.deviceCountFmt', { current: deviceCount, max: deviceMax }) }}
+          </text>
           <text class="row-arrow luc-chevron-right" />
         </view>
       </view>
@@ -81,7 +99,9 @@
       <view class="row">
         <view class="row-left">
           <text class="row-icon luc" :class="$luc(oauthMethod.icon)" />
-          <text class="row-text">{{ $t('security.oauthMethodLabel', { method: oauthMethod.label }) }}</text>
+          <text class="row-text">
+            {{ $t('security.oauthMethodLabel', { method: oauthMethod.label }) }}
+          </text>
         </view>
         <view class="row-right">
           <view class="badge-safe">{{ $t('security.bound') }}</view>
@@ -109,7 +129,7 @@
             :placeholder="$t('security.twoFactorVerifyCodePlaceholder')"
             :disabled="verifyModal.verifying"
             @input="onVerifyCodeInput"
-          />
+          >
         </view>
         <text v-if="verifyModal.errorMsg" class="modal-error">{{ verifyModal.errorMsg }}</text>
         <view class="modal-actions">
@@ -120,7 +140,9 @@
             v-if="verifyModal.countdown > 0"
             class="btn-modal-secondary btn-modal-resend disabled"
           >
-            <text>{{ $t('security.twoFactorResendAfter', { seconds: verifyModal.countdown }) }}</text>
+            <text>
+              {{ $t('security.twoFactorResendAfter', { seconds: verifyModal.countdown }) }}
+            </text>
           </view>
           <view
             v-else
@@ -335,7 +357,7 @@ export default {
         } else if (Array.isArray(r)) {
           this.deviceCount = r.length
         } else {
-          this.deviceCount = 0
+          /* 异常响应:保留旧值,避免 UI 瞬间归零 */
         }
       } catch (e) {
         console.warn('[security] loadDeviceCount failed', e)
@@ -465,8 +487,8 @@ export default {
     /**
      * 提交验证码并开启 2FA:
      * 1) 校验 6 位格式
-     * 2) 调 userStore.enable2FAWithCode(code):内部依次 send/verify/PUT
-     *    (store 内部不调 PUT 之前还会再 send 一次以保证最新码,前端无需重复)
+     * 2) 调 userStore.enable2FAWithCode(code):内部依次 verify/PUT
+     *    (前端已在 openVerifyModal 时 send 过,store 不再重复 send 避免后端覆盖式刷码)
      * 3) 成功关闭弹窗 + toast 开启成功;失败在弹窗内展示错误,不关闭
      */
     async submitVerifyAndEnable() {
@@ -486,8 +508,18 @@ export default {
         uni.showToast({ title: i18n.t('security.twoFactorOn'), icon: 'none' })
       } catch (e) {
         // 区分错误:验证码错 / 其它服务端错误
-        const msg = (e && e.message) || ''
-        if (/invalid|expired|mismatch|验证码/.test(msg)) {
+        // 后端错误体结构见 src/utils/request.js 的 success/fail 回调:
+        //   - HTTP 200 业务错误:仅 e.message(本地化后的 message)
+        //   - HTTP 4xx/5xx:e.statusCode(HTTP)+ e.body(Result.error JSON: code/message/...)
+        // 后端 /api/v1/auth/2fa/verify 在 code 不匹配时抛 IllegalArgumentException
+        // → GlobalExceptionHandler → Result.error(400, "Invalid or expired verification code"),
+        // 即 statusCode=400 + body.code=400 + message="Invalid or expired verification code"。
+        // 优先按 HTTP 状态码 + 错误信息判断:仅当后端明确反馈"验证码错误/过期"才显示
+        // 验证码错误文案,其余(403 二次校验失败、500 服务异常、网络错误等)走通用失败提示。
+        const statusCode = (e && (e.statusCode || (e.body && e.body.code))) || 0
+        const msg = (e && ((e.body && e.body.message) || e.message)) || ''
+        const looksLikeCodeErr = statusCode === 400 && /invalid|expired/i.test(msg)
+        if (looksLikeCodeErr) {
           this.verifyModal.errorMsg = i18n.t('security.twoFactorCodeMismatch')
         } else {
           this.verifyModal.errorMsg = i18n.t('security.twoFactorVerifyFailed')
@@ -504,28 +536,6 @@ export default {
 
     goDevices() {
       uni.navigateTo({ url: '/pages/user/devices' })
-    },
-
-    onMergeAccount() {
-      uni.showToast({ title: i18n.t('security.mergeAccountToast'), icon: 'none' })
-    },
-
-    onLockRecords() {
-      uni.showToast({ title: i18n.t('security.lockRecordsToast'), icon: 'none' })
-    },
-
-    onDeleteAccount() {
-      uni.showModal({
-        title: i18n.t('security.deleteAccountTitle'),
-        content: i18n.t('security.deleteAccountContent'),
-        confirmText: i18n.t('security.deleteAccountConfirm'),
-        confirmColor: '#C96E5F',
-        success: (res) => {
-          if (res.confirm) {
-            uni.showToast({ title: i18n.t('security.deleteAccountDone'), icon: 'none' })
-          }
-        },
-      })
     },
   },
 }
@@ -890,22 +900,5 @@ export default {
 .btn-modal-primary.disabled {
   opacity: 0.5;
   pointer-events: none;
-}
-
-/* 注销账号 */
-.delete-section {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 104rpx;
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  margin-top: 8rpx;
-}
-
-.delete-text {
-  font-size: 28rpx;
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-danger);
 }
 </style>

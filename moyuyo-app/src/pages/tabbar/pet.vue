@@ -3,9 +3,11 @@
     <!-- 可滚动内容区（场景直达页面顶部） -->
     <scroll-view scroll-y class="page-scroll">
       <!-- 3D 宠物互动场景 -->
-      <view class="scene" @click="onSceneTap">
-        <!-- 设计稿固定场景图 -->
-        <image class="scene-bg" src="/static/pet/pet-hub-scene.jpg" mode="aspectFill" />
+      <!-- 注意:scene 容器不设 @click,避免背景图被点击后误触跳转;
+           3D 空间入口只能通过右上角「3D 空间」按钮(scene-pill)触发 -->
+      <view class="scene">
+        <!-- 选中背景(优先) > 原固定背景 -->
+        <image class="scene-bg" :src="sceneBgSrc" mode="aspectFill" />
         <!-- 顶部轻微压暗、底部加深，保证浮层文字可读 -->
         <view class="scene-mask" />
 
@@ -52,6 +54,18 @@
           </scroll-view>
         </view>
 
+        <!-- 中央:当前装扮形象(用户自定义 / 内置) - 3D 模型 / 图片 -->
+        <view v-if="dressedAvatar" class="scene-figure" @click.stop>
+          <image
+            v-if="dressedAvatar.type !== 'model3d'"
+            class="scene-figure-img"
+            :src="dressedAvatar.src"
+            mode="aspectFit"
+          />
+          <!-- 3D 模型嵌入 canvas(仅 H5/APP) -->
+          <view v-else :id="figureCanvasId" class="scene-figure-canvas" />
+        </view>
+
         <!-- 左上：宠物信息浮层 -->
         <view v-if="activePet" class="glass scene-info">
           <text class="info-kicker">{{ sceneKicker }}</text>
@@ -60,7 +74,7 @@
 
         <!-- 右上：装扮入口 + 3D 空间入口（始终显示，点击守卫见 methods） -->
         <view class="scene-top">
-          <view class="glass scene-pill" @click.stop="goDresser">
+          <view class="glass scene-pill" @click.stop="openDressPopup">
             <text class="luc luc-shirt scene-pill-icon" />
             <text class="scene-pill-text">{{ $t('petHub.dress') }}</text>
           </view>
@@ -70,25 +84,9 @@
           </view>
         </view>
 
-        <!-- 底部互动提示 -->
-        <view v-if="activePet" class="scene-hint">
-          <text>{{ $t('petHub.hintRotate') }}</text>
-        </view>
-        <view v-else class="scene-hint" @click.stop="goAddPet">
+        <!-- 底部互动提示：仅无宠物时显示「去添加」 -->
+        <view v-if="!activePet" class="scene-hint" @click.stop="goAddPet">
           <text>{{ $t('petHub.hintAddPet') }}</text>
-        </view>
-
-        <!-- 场景选择器 -->
-        <view class="scene-selector">
-          <view
-            v-for="s in scenes"
-            :key="s.id"
-            class="scene-chip"
-            :class="{ active: selectedScene === s.id }"
-            @click="selectedScene = s.id"
-          >
-            <text>{{ s.label }}</text>
-          </view>
         </view>
       </view>
 
@@ -197,11 +195,61 @@
         </view>
       </view>
     </scroll-view>
+
+    <!-- 装扮弹窗:用 v-if 控制挂载,未点装扮按钮前组件完全不渲染,避免任何残留显示 -->
+    <dress-popup
+      v-if="dressPopupMounted"
+      ref="dressPopup"
+      :pet="activePet"
+      :initial-avatar-id="petStore.selectedAvatarId"
+      :initial-bg-id="petStore.selectedBgId"
+      :custom-avatar-list="petStore.customAvatars"
+      @confirm="onDressConfirm"
+      @upload-avatar="onUploadAvatar"
+      @delete-custom="onDeleteCustom"
+      @close="onDressClose"
+    />
   </view>
 </template>
 
 <script>
+// 显式 import 兜底:vite-plugin-uni H5 模式下 easycom.autoscan 偶尔扫不到 kebab-case 引用
+import DressPopup from '@/components/dress-popup/dress-popup.vue'
 import { usePetStore } from '@/store'
+
+// 内置宠物形象:与 dress-popup 的 BUILTIN_AVATARS 保持一致,用于 scene-figure 回查
+// store 仅持久化 customAvatars + selectedAvatarId,内置形象只在前端常量里;
+// 当 selectedAvatarId 是内置 id(a1~a4)时,dressedAvatar 需要在此列表里查到 src
+// name 走 i18n(key 在下方 builtinAvatars computed 里解析),避免硬编码中文
+const BUILTIN_AVATAR_DEFS = [
+  {
+    id: 'a1',
+    nameKey: 'petHub.builtinAvatars.labrador',
+    src: '/static/pet/avatar-labrador.png',
+    type: 'image',
+  },
+  {
+    id: 'a2',
+    nameKey: 'petHub.builtinAvatars.shepherd',
+    src: '/static/pet/avatar-shepherd.png',
+    type: 'image',
+  },
+  {
+    id: 'a3',
+    nameKey: 'petHub.builtinAvatars.bulldog',
+    src: '/static/pet/avatar-bulldog.png',
+    type: 'image',
+  },
+  {
+    id: 'a4',
+    nameKey: 'petHub.builtinAvatars.maineCoon',
+    src: '/static/pet/avatar-maine-coon.png',
+    type: 'image',
+  },
+]
+
+// three.js 实例挂到 WeakMap 桶,避免 Vue 响应式代理 three 只读属性触发 "is read-only" 报错
+const figureThreeBucket = new WeakMap()
 
 // 支持护理记录/提醒的类型（护理卡图标为内联 SVG，类型文案走 i18n: petHub.careTypes.*）
 const REMINDER_TYPES = ['BATH', 'VACCINE', 'DEWORM', 'EXAM']
@@ -218,24 +266,19 @@ const CARE_TONES = {
 export default {
   pageTitleKey: 'pageTitle.tabbarPet',
 
+  // 显式注册装扮弹窗组件,避免 easycom.autoscan 在 vite-plugin-uni H5 模式下偶尔未扫到
+  components: { DressPopup },
+
   data() {
     return {
-      // 当前选中场景（选项 scenes 走 computed，随语言切换动态生成）
-      selectedScene: 'grass',
+      // 场景中央 3D 模型预览的 canvas id(与装扮弹窗内的独立开,避免冲突)
+      figureCanvasId: 'pet-figure-canvas-' + Math.random().toString(36).slice(2, 9),
+      // 装扮弹窗挂载控制:false 时组件完全不渲染,避免任何残留显示
+      dressPopupMounted: false,
     }
   },
 
   computed: {
-    // 3D 可选场景（当前仅切换选中态，无真实换景；标签走 i18n）
-    scenes() {
-      return [
-        { id: 'grass', label: this.$t('petHub.scenes.grass') },
-        { id: 'living', label: this.$t('petHub.scenes.living') },
-        { id: 'training', label: this.$t('petHub.scenes.training') },
-        { id: 'studio', label: this.$t('petHub.scenes.studio') },
-      ]
-    },
-
     // 快捷操作入口（标签走 i18n）
     actions() {
       return [
@@ -254,6 +297,17 @@ export default {
       return this.petStore.activePet
     },
 
+    // 内置宠物形象列表（name 走 i18n，locale 切换时自动更新）
+    // 用于 dressedAvatar 回查，以及其它场景需要展示内置名时复用
+    builtinAvatars() {
+      return BUILTIN_AVATAR_DEFS.map((it) => ({
+        id: it.id,
+        name: this.$t(it.nameKey),
+        src: it.src,
+        type: it.type,
+      }))
+    },
+
     // 场景卡信息浮层：kicker 为种类/品种，title 为「名字, 年龄」
     sceneKicker() {
       const p = this.activePet
@@ -266,6 +320,48 @@ export default {
       if (!p) return this.$t('petHub.emptyTitle')
       const age = this.ageText(p.birthday)
       return age ? `${p.name}, ${age}` : p.name
+    },
+
+    // 当前场景背景:优先用装扮选中的背景,否则用回默认场景图
+    sceneBgSrc() {
+      const bgId = this.petStore.selectedBgId
+      if (bgId) {
+        // 内置背景 id 映射到 static 路径
+        const builtInMap = {
+          b1: '/static/pet/bg/bg-living.jpg',
+          b2: '/static/pet/bg/bg-bedroom.jpg',
+          b3: '/static/pet/bg/bg-garden.jpg',
+          b4: '/static/pet/bg/bg-beach.jpg',
+          b5: '/static/pet/bg/bg-forest.jpg',
+        }
+        if (builtInMap[bgId]) return builtInMap[bgId]
+      }
+      return '/static/pet/pet-hub-scene.jpg'
+    },
+
+    // 当前场景中央显示的形象(用户选中的装扮)
+    // 优先级:customAvatars 中匹配 selectedAvatarId > 内置 builtinAvatars 匹配 > 默认 pet-self
+    dressedAvatar() {
+      const sid = this.petStore.selectedAvatarId
+      if (sid) {
+        // 1. 自定义形象(id 通常是 'cu-xxx')
+        const custom = (this.petStore.customAvatars || []).find((a) => a.id === sid)
+        if (custom) return custom
+        // 2. 内置形象(id 是 a1~a4),从本地常量查 src
+        const builtin = this.builtinAvatars.find((a) => a.id === sid)
+        if (builtin) return builtin
+      }
+      // 未选装扮时:用当前宠物头像作为默认形象
+      const pet = this.activePet
+      if (pet?.avatar) {
+        return {
+          id: 'pet-self',
+          name: pet.name || this.$t('petHub.petSelfFallback'),
+          src: pet.avatar,
+          type: 'image',
+        }
+      }
+      return null
     },
 
     // 护理卡：由 care-summary 聚合项驱动（最近记录 + 提醒配置），无宠物时显示占位卡
@@ -317,11 +413,37 @@ export default {
   },
 
   onShow() {
+    // 先加载本地装扮缓存(无需宠物),再加载宠物列表
+    this.petStore.loadDress()
     // 始终走 loadPets：未登录时 store 内部会清空宠物缓存并直接返回（不发请求、无 401），
     // 避免登出/换号后 Pet Tab 仍残留上一账号的宠物数据
     this.petStore.loadPets().then(() => {
+      // 宠物就绪后重新拉取装扮(从后端同步用户自定义形象,APP 更新后可恢复)
+      this.petStore.loadDress()
       this.refreshCareSummary()
+      // 加载完后,如当前装扮为 3D 模型则启动场景中央预览
+      this.$nextTick(() => this.syncFigureModel())
     })
+  },
+
+  watch: {
+    // 监听 dressedAvatar 变化(已依赖 selectedAvatarId + customAvatars),同步场景中央 3D 模型
+    dressedAvatar: {
+      handler() {
+        this.$nextTick(() => this.syncFigureModel())
+      },
+    },
+    // 弹窗挂载状态变化(冗余保险:openDressPopup 已经显式调用,这里只是兜底)
+    dressPopupMounted(val) {
+      if (val) {
+        // 已由 openDressPopup 主动调用,此处无需重复触发
+      }
+    },
+  },
+
+  beforeUnmount() {
+    // 页面销毁时释放 three.js 资源
+    this.disposeFigureModel()
   },
 
   methods: {
@@ -402,23 +524,222 @@ export default {
       return this.$t('petHub.age.years', { n: years })
     },
 
-    // 场景卡点击：有宠物进 3D 空间，无宠物去添加
-    onSceneTap() {
-      if (this.activePet) {
-        this.goSpace()
+    // 打开装扮弹窗
+    openDressPopup() {
+      console.log('[pet] openDressPopup called')
+      // 不强制要求有宠物:无宠物时弹窗仍可打开
+      // 1. 同步挂载组件
+      this.dressPopupMounted = true
+      // 2. 立即尝试调用 open()(多次尝试确保 ref 已就绪)
+      this.tryOpenDressPopup(0)
+    },
+
+    // 多次尝试调用 open(),直到 ref 建立完成
+    tryOpenDressPopup(retry) {
+      if (this.$refs.dressPopup && typeof this.$refs.dressPopup.open === 'function') {
+        this.$refs.dressPopup.open()
+        console.log('[pet] dressPopup opened')
+      } else if (retry < 5) {
+        // ref 还没建立,等几毫秒再试
+        setTimeout(() => this.tryOpenDressPopup(retry + 1), 20)
       } else {
-        this.goAddPet()
+        console.warn('[pet] dressPopup ref 多次重试仍未就绪')
       }
     },
 
-    // 进入装扮页
-    goDresser() {
-      const pet = this.activePet
-      if (!pet) {
-        this.goAddPet()
+    // 弹窗关闭回调:从子组件通过 emit('close') 通知,父组件卸载组件
+    onDressClose() {
+      this.dressPopupMounted = false
+    },
+
+    // 弹窗 confirm:把选中项写入 store
+    onDressConfirm(payload) {
+      if (!payload) return
+      if (payload.avatar) this.petStore.setSelectedAvatar(payload.avatar.id)
+      if (payload.background) this.petStore.setSelectedBg(payload.background.id)
+      uni.showToast({ title: this.$t('petHub.dressApplied'), icon: 'success' })
+    },
+
+    // 弹窗 emit 上传事件:写入 store
+    onUploadAvatar(item) {
+      const ok = this.petStore.addCustomAvatar(item)
+      if (ok) {
+        // 上传后自动选中新形象,提升体验
+        this.petStore.setSelectedAvatar(item.id)
+      }
+    },
+
+    // 弹窗 emit 删除事件
+    onDeleteCustom(id) {
+      this.petStore.removeCustomAvatar(id)
+    },
+
+    // 同步场景中央 3D 模型:仅当 dressedAvatar 是 model3d 时初始化 canvas
+    syncFigureModel() {
+      const item = this.dressedAvatar
+      if (!item) {
+        this.disposeFigureModel()
         return
       }
-      uni.navigateTo({ url: `/pages/pet/dresser?petId=${pet.id}` })
+      if (item.type !== 'model3d') {
+        this.disposeFigureModel()
+        return
+      }
+      // #ifdef H5 || APP-PLUS
+      // 传 storeKey(优先)给 initFigureModel,内部从 IDB 拿 blob URL;
+      // 兼容老数据(item.src 仍可能是个临时 URL)
+      this.initFigureModel(item.storeKey || null, item.format, item.src)
+      // #endif
+    },
+
+    // 初始化场景中央 3D 模型 canvas
+    // storeKey: IDB 里的 key(优先),不存在时 fallback 到 fallbackUrl
+    initFigureModel(storeKey, format, fallbackUrl) {
+      // #ifdef H5 || APP-PLUS
+      // 先释放旧实例
+      this.disposeFigureModel()
+      if (typeof document === 'undefined') return
+      const el = document.getElementById(this.figureCanvasId)
+      if (!el) return
+      const w = el.clientWidth
+      const h = el.clientHeight
+      if (!w || !h) return
+
+      Promise.all([
+        import('three'),
+        import('three/examples/jsm/loaders/GLTFLoader.js'),
+        import('@/utils/idb-storage'),
+      ])
+        .then(async ([THREE, { GLTFLoader }, { idbGetBlobURL }]) => {
+          // 1. 优先从 IDB 拿 blob URL(持久化路径,刷新后仍可用)
+          let url = null
+          if (storeKey) {
+            const r = await idbGetBlobURL(storeKey)
+            if (r && r.url) url = r.url
+          }
+          // 2. fallback:用 item.src(老数据或同步流程)
+          if (!url && fallbackUrl) url = fallbackUrl
+          if (!url) {
+            uni.showToast({ title: this.$t('petHub.modelMissing'), icon: 'none' })
+            return
+          }
+
+          let FBXLoader = null
+          if (format === 'fbx') {
+            try {
+              const m = await import('three/examples/jsm/loaders/FBXLoader.js')
+              FBXLoader = m.FBXLoader
+            } catch (e) {
+              console.warn('[pet] FBXLoader 加载失败', e)
+            }
+          }
+          const scene = new THREE.Scene()
+          scene.background = null
+          const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100)
+          camera.position.set(0, 0.8, 3.2)
+
+          const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+          renderer.setSize(w, h)
+          el.appendChild(renderer.domElement)
+
+          scene.add(new THREE.AmbientLight(0xffffff, 1.1))
+          const dir = new THREE.DirectionalLight(0xffffff, 0.7)
+          dir.position.set(3, 5, 3)
+          scene.add(dir)
+
+          const Loader = format === 'fbx' && FBXLoader ? FBXLoader : GLTFLoader
+          const loader = new Loader()
+          loader.load(
+            url,
+            (gltf) => {
+              const obj = gltf.scene
+              const box = new THREE.Box3().setFromObject(obj)
+              const size = box.getSize(new THREE.Vector3())
+              const center = box.getCenter(new THREE.Vector3())
+              const maxAxis = Math.max(size.x, size.y, size.z) || 1
+              const scale = 1.6 / maxAxis
+              obj.scale.setScalar(scale)
+              obj.position.x = -center.x * scale
+              obj.position.y = -box.min.y * scale
+              obj.position.z = -center.z * scale
+              scene.add(obj)
+
+              // 简单交互:触摸拖动旋转
+              let dragging = false
+              let lastX = 0
+              let lastY = 0
+              const onDown = (e) => {
+                dragging = true
+                lastX = e.clientX
+                lastY = e.clientY
+              }
+              const onMove = (e) => {
+                if (!dragging) return
+                obj.rotation.y += (e.clientX - lastX) * 0.01
+                obj.rotation.x += (e.clientY - lastY) * 0.01
+                lastX = e.clientX
+                lastY = e.clientY
+              }
+              const onUp = () => {
+                dragging = false
+              }
+              renderer.domElement.addEventListener('pointerdown', onDown)
+              renderer.domElement.addEventListener('pointermove', onMove)
+              renderer.domElement.addEventListener('pointerup', onUp)
+              renderer.domElement.addEventListener('pointercancel', onUp)
+
+              const animate = () => {
+                const bucket = figureThreeBucket.get(this)
+                if (!bucket) return
+                bucket.animId = requestAnimationFrame(animate)
+                if (!dragging) obj.rotation.y += 0.004
+                renderer.render(scene, camera)
+              }
+              figureThreeBucket.set(this, {
+                scene,
+                camera,
+                renderer,
+                animId: null,
+                storeKey, // 销毁时释放 IDB blob URL 引用
+                cleanups: [
+                  () => renderer.domElement.removeEventListener('pointerdown', onDown),
+                  () => renderer.domElement.removeEventListener('pointermove', onMove),
+                  () => renderer.domElement.removeEventListener('pointerup', onUp),
+                  () => renderer.domElement.removeEventListener('pointercancel', onUp),
+                ],
+              })
+              animate()
+            },
+            undefined,
+            (err) => {
+              console.error('[pet] 场景中央模型加载失败', err)
+              uni.showToast({ title: this.$t('petHub.modelLoadFailed'), icon: 'none' })
+            },
+          )
+        })
+        .catch((e) => console.error('[pet] three.js 加载失败', e))
+      // #endif
+    },
+
+    // 释放场景中央 3D 资源
+    disposeFigureModel() {
+      const t = figureThreeBucket.get(this)
+      if (!t) return
+      if (t.animId) cancelAnimationFrame(t.animId)
+      if (Array.isArray(t.cleanups)) t.cleanups.forEach((fn) => fn())
+      if (t.renderer) {
+        t.renderer.dispose()
+        const dom = t.renderer.domElement
+        if (dom && dom.parentNode) dom.parentNode.removeChild(dom)
+      }
+      // 释放 IDB blob URL 引用(refCount -1,降到 0 自动 revoke)
+      if (t.storeKey) {
+        import('@/utils/idb-storage').then(({ idbReleaseBlobURL }) => {
+          idbReleaseBlobURL(t.storeKey)
+        })
+      }
+      figureThreeBucket.delete(this)
     },
 
     // 护理卡点击 → 对应类型的护理记录页
@@ -547,6 +868,30 @@ export default {
   font-size: 32rpx;
 }
 
+/* ===== 中央形象区（装扮形象的展示） ===== */
+.scene-figure {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 360rpx;
+  height: 360rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  z-index: 4;
+}
+.scene-figure-img {
+  width: 320rpx;
+  height: 320rpx;
+  filter: drop-shadow(0 8rpx 24rpx rgba(0, 0, 0, 0.25));
+}
+.scene-figure-canvas {
+  width: 360rpx;
+  height: 360rpx;
+}
+
 /* ===== 场景内悬浮宠物切换条（场景左上角） ===== */
 .scene-pets {
   position: absolute;
@@ -602,10 +947,17 @@ export default {
   inset: 0;
   width: 100%;
   height: 100%;
+  /* 装饰背景图:不接收点击,避免遮挡按钮点击事件 */
+  pointer-events: none;
+  /* 浏览器原生 <img> 默认可拖拽,关闭避免长按拖动影响交互 */
+  -webkit-user-drag: none;
+  user-drag: none;
 }
 .scene-mask {
   position: absolute;
   inset: 0;
+  /* 装饰层:不接收点击,避免拦截按钮事件 */
+  pointer-events: none;
   /* 顶部轻微压暗 + 底部加深（from-black/10 via-transparent to-black/25） */
   background: linear-gradient(
     180deg,
@@ -653,6 +1005,8 @@ export default {
   flex-direction: column;
   align-items: flex-end;
   gap: 16rpx;
+  /* 显式高 z-index,确保不被 .scene-mask / .scene-figure 等绝对定位层拦截点击 */
+  z-index: 20;
 }
 .scene-pill {
   display: flex;
@@ -735,34 +1089,6 @@ export default {
   50% {
     opacity: 1;
   }
-}
-
-/* 场景选择器 */
-.scene-selector {
-  position: absolute;
-  bottom: 84rpx; /* 上移至场景图内悬浮，不贴合下方护理卡 */
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: center;
-  gap: 16rpx;
-}
-.scene-chip {
-  padding: 12rpx 24rpx;
-  border-radius: var(--radius-pill);
-  background: rgba(0, 0, 0, 0.3);
-  border: 1rpx solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(20rpx);
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.12); /* 悬浮感阴影 */
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  color: rgba(255, 255, 255, 0.8);
-}
-.scene-chip.active {
-  background: #ffffff;
-  border-color: #ffffff;
-  color: var(--color-text);
-  box-shadow: var(--shadow-sm);
 }
 
 /* ===== 护理状态卡片（上叠 32rpx 到场景图） ===== */

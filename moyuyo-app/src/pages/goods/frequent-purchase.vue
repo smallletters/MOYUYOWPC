@@ -282,6 +282,8 @@ export default {
 .product-list {
   padding: 16rpx 32rpx;
   padding-bottom: 160rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 .product-card {
   display: flex;

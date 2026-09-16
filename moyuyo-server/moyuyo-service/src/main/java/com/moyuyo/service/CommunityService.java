@@ -32,6 +32,13 @@ public interface CommunityService {
     void addComment(Long userId, Long postId, Long parentId, String content);
 
     /**
+     * 删除帖子（仅作者本人）。
+     * 内部会校验权限 + 仅允许删除已发布帖子 + 级联清理评论/点赞/收藏；
+     * 任一异常通过 IllegalArgumentException / IllegalStateException 抛出，由 ControllerAdvice 转 4xx。
+     */
+    void deletePost(Long userId, Long postId);
+
+    /**
      * 当前用户的帖子。petId 非空时按宠物过滤（用于宠物记忆树/我的宠物帖子）。
      */
     Page<CommunityPostVO> listMyPosts(Long userId, Long petId, int page, int size);

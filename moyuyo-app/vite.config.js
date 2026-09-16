@@ -14,7 +14,39 @@ export default defineConfig(({ mode }) => {
   )
 
   return {
-    plugins: [uni()],
+    plugins: [
+      uni(),
+      // APP 端构建时,uni 内部插件(uniUniModulesExtApiPlugin)会把 output.format 设为 'iife',
+      // 而 iife 不支持 code-splitting。项目中 three / idb-storage 等使用了动态 import(),
+      // Rollup 会尝试拆 chunk,导致编译报错 "Invalid value iife for option output.format"。
+      // 此插件在 uni() 之后执行,强制给非 H5 平台注入 inlineDynamicImports:true,
+      // 把动态 import 内联进主 chunk,与 iife 格式兼容。
+      {
+        name: 'moyuyo-fix-iife-code-splitting',
+        apply: 'build',
+        config() {
+          if (process.env.UNI_PLATFORM === 'h5') return {}
+          return {
+            build: {
+              rollupOptions: {
+                output: {
+                  inlineDynamicImports: true,
+                },
+              },
+            },
+          }
+        },
+        // uni 插件可能设置了 manualChunks,与 inlineDynamicImports 互斥;
+        // 在 config 解析完成后强制清除 manualChunks,避免 Rollup 报错。
+        configResolved(config) {
+          if (process.env.UNI_PLATFORM === 'h5') return
+          const output = config.build.rollupOptions.output
+          if (output && !Array.isArray(output)) {
+            delete output.manualChunks
+          }
+        },
+      },
+    ],
     // 路径别名
     resolve: {
       alias: {

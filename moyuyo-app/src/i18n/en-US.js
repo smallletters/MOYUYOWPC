@@ -160,12 +160,6 @@ export default {
       DEWORM: 'Deworm',
       EXAM: 'Check-up',
     },
-    scenes: {
-      grass: 'Lawn',
-      living: 'Living Room',
-      training: 'Training Ground',
-      studio: 'Studio',
-    },
     actions: {
       shop: 'Shop',
       share: 'Showcase',
@@ -195,6 +189,53 @@ export default {
       next: 'Next {label} reminder in ',
       dayUnit: ' days',
     },
+    // Toast messages (extracted from pet.vue hard-coded strings)
+    dressApplied: 'Dress-up applied',
+    modelMissing: 'Model file missing, please re-upload',
+    modelLoadFailed: 'Failed to load model',
+    // Built-in avatar names (B1: shared by dress-popup & pet.vue constants)
+    builtinAvatars: {
+      labrador: 'Labrador',
+      shepherd: 'Shepherd',
+      bulldog: 'Bulldog',
+      maineCoon: 'Maine Coon',
+    },
+    // B2: fallback name when no outfit is selected
+    petSelfFallback: 'My Pet',
+  },
+
+  // Dress popup components/dress-popup
+  dressPopup: {
+    title: 'Pet Dress-up',
+    builtinAvatar: 'Built-in avatars',
+    customAvatar: 'My avatars',
+    uploadImg: 'Upload image',
+    uploadModel: 'Upload 3D',
+    tipPick: 'Pick an avatar',
+    confirm: 'Apply',
+    // Tab labels
+    tabAvatar: 'Avatar',
+    tabBg: 'Background',
+    // Default name placeholder when uploading a custom avatar
+    customAvatarName: 'Custom',
+    // Background names (id → display text, locale-aware)
+    bgNames: {
+      living: 'Living Room',
+      bedroom: 'Bedroom',
+      garden: 'Garden',
+      beach: 'Beach',
+      forest: 'Forest',
+    },
+    // Toast / loading messages
+    readImageFailed: 'Failed to read image',
+    uploadingImg: 'Uploading...',
+    savingModel: 'Saving model...',
+    modelSaveFailed: 'Failed to save model',
+    modelLoadFailed: 'Failed to load model',
+    modelMissing: 'Model file missing, please re-upload',
+    mpNoModelUpload: 'Mini Program does not support 3D model upload',
+    mpNoModelPreview: 'Mini Program does not support 3D preview',
+    thxLoadFailed: '3D preview unavailable',
   },
 
   // Pet Diary /pages/pet/diary
@@ -421,6 +462,11 @@ export default {
     back: 'Back',
     settings: 'Settings',
     settingsSaved: 'Settings saved',
+    later: 'Later',
+    relogin: 'Sign in again',
+    // Session expired modal (utils/request.js promptReLogin)
+    sessionExpiredTitle: 'Session expired',
+    sessionExpiredContent: 'Your sign-in has expired. Please sign in again to return to this page.',
   },
 
   // 语言列表(独立于 common,便于扩展)
@@ -760,14 +806,6 @@ export default {
     twoFactorCodeDevHint:
       'A 6-digit code has been sent to your registered email. Check your inbox (and spam folder).',
     loginRequired: 'Please sign in first',
-    // Script-side reservations (not currently invoked from template)
-    mergeAccountToast: 'Merge Account',
-    lockRecordsToast: 'Lock Records',
-    deleteAccountTitle: 'Delete Account?',
-    deleteAccountContent:
-      'Your account will be scheduled for deletion. You have 30 days to recover.',
-    deleteAccountConfirm: 'Delete',
-    deleteAccountDone: 'Account scheduled for deletion',
     accountNames: {
       apple: 'Apple ID',
       google: 'Google',
@@ -789,6 +827,8 @@ export default {
     darkModeOn: 'Dark mode enabled',
     darkModeOff: 'Dark mode disabled',
     language: { title: 'Language' },
+    // Privacy settings entry (directs to /pages/user/privacy from settings page)
+    privacy: 'Privacy',
     help: 'Help Center',
     feedback: 'Feedback',
     about: 'About',
@@ -1067,6 +1107,46 @@ export default {
     groupComingSoon: 'Group feature coming soon',
     blockComingSoon: 'Block feature coming soon',
     nicknameCopied: 'Nickname copied',
+  },
+
+  // 限时抢购 /pages/goods/flash-sale
+  flashSale: {
+    // banner
+    bannerTitle: 'Flash Sale',
+    bannerSub: 'Hot deals · Limited stock',
+    // countdown labels
+    countdownOngoing: 'Ending in',
+    countdownUpcoming: 'Next session starts in',
+    // session tabs (matches SESSION_LIST label/status)
+    sessions: {
+      ongoing: { label: 'Live', status: 'Selling' },
+      upcoming: { label: 'Upcoming', status: 'Preview' },
+      ended: { label: 'Ended', status: 'Ended' },
+    },
+    // product card
+    badge: 'Flash',
+    soldOut: 'Sold Out',
+    // progress text: {n}% sold
+    soldPercent: '{n}% sold',
+    // per-user limit
+    perUserLimit: 'Limit {n} per user',
+    // product name fallback
+    productFallbackName: 'Flash Sale',
+    // empty state
+    emptyFmt: 'No {label} sessions',
+    // product action buttons (by status)
+    actions: {
+      upcoming: 'Upcoming',
+      ended: 'Ended',
+      soldOut: 'Sold Out',
+      buy: 'Buy',
+    },
+    // toasts
+    notifySet: 'Reminder set',
+    upcomingToast: 'Coming soon, stay tuned',
+    notStartedToast: 'Not started yet',
+    buySuccessFmt: 'Successfully claimed 「{name}」!',
+    buyFailed: 'Failed to claim, please retry',
   },
 
   // 帖子收藏 /pages/user/post-collection
@@ -1751,8 +1831,10 @@ export default {
     stepPoints: 'Both get points',
     stepPointsDesc: 'Points credited instantly',
     shareSectionTitle: 'Share with friends',
+    // Share channels (US-market focused: Messenger / WhatsApp / X / Copy Link)
+    shareMessenger: 'Messenger',
     shareWhatsApp: 'WhatsApp',
-    shareSMS: 'SMS',
+    shareX: 'X',
     statsTitle: 'My Invites',
     statInvited: 'Invited',
     statOrdered: 'First order done',
@@ -1766,9 +1848,9 @@ export default {
     statusDone: 'Completed',
     statusPending: 'Pending',
     toastCodeCopied: 'Copied',
-    toastToWechat: 'Open WeChat to paste and share',
-    toastPasteWechat: 'Link copied, paste it in WeChat',
+    toastPasteMessenger: 'Link copied, paste it in Messenger',
     toastPasteWhatsApp: 'Link copied, paste it in WhatsApp',
+    toastPasteX: 'Link copied, paste it in X',
   },
 
   // 售后 /pages/order/after-sales
@@ -2160,6 +2242,11 @@ export default {
     passwordTooShort: 'Password must be at least 8 characters',
     loginSuccess: 'Logged in successfully',
     loginFailed: 'Login failed',
+    // Deletion auto-revoked notification (login page checks DELETION_REQUESTED flag)
+    deletionRevokedTitle: 'Deletion Cancelled',
+    deletionRevokedContent:
+      "Your account deletion request has been automatically cancelled and all features are restored. If this wasn't you, please change your password immediately.",
+    gotIt: 'Got it',
     codeSent: 'Code sent',
     codeSendFailed: 'Send failed, please retry',
     pleaseSelectCountry: 'Please select country/region',
@@ -2291,22 +2378,52 @@ export default {
     allowViewProfile: 'Allow others to view my profile',
     showOnlineStatus: 'Show online status',
     allowMessages: 'Allow direct messages',
+    // Subtitles for each toggle (UX hints)
+    publicFavoritesDesc: 'Others can see my favorites on my profile',
+    allowViewProfileDesc: 'Others can visit my profile page',
+    showOnlineStatusDesc: 'Show "online" status publicly (hidden by default)',
+    allowMessagesDesc: 'Allow others to send me direct messages',
     enabled: 'Enabled',
     disabled: 'Disabled',
     toggleFailed: 'Failed to update, please retry',
-    exportModalTitle: 'Export Data',
+    loading: 'Loading...',
+    exportModalTitle: 'Export My Data',
     exportModalContent:
-      'We will generate a file containing your profile, order history and other data, and email it to you. Export now?',
-    exporting: 'Exporting...',
+      'We will generate a JSON file containing your profile, order history, community content and other data, and email it to your registered address. Each user can submit up to 1 export request every 24 hours.',
+    exportConfirm: 'Export Now',
+    exporting: 'Submitting export request...',
+    exportSubmittedTitle: 'Export Request Submitted',
+    exportSubmittedContent:
+      'We have started preparing your data file. Once ready, you will receive an email notification. Please check your inbox (including spam folder).',
     exportSubmitted: 'Export request submitted, please check your email',
-    exportFailed: 'Export failed, please retry',
-    deleteModalTitle: 'Confirm Deletion',
+    exportFailed: 'Export failed, please retry later',
+    exportFailedTitle: 'Export Request Failed',
+    deleteModalTitle: 'Request Account Deletion',
     deleteModalContent:
-      'After deletion, all your data will be permanently erased and cannot be recovered. Continue?',
-    deleteConfirmText: 'Delete',
+      'After submitting the deletion request, your account will enter a 15-day grace period. During this period:\n• You will not be able to sign in or use the service\n• Your profile, orders, favorites, and community content will stop being displayed\n• You can sign in again or actively cancel the deletion request within 15 days\n\nIf not cancelled within 15 days, your account will be permanently deleted and cannot be recovered.',
+    continueText: 'Continue',
+    thinkAgain: "I'll think about it",
+    deleteConfirmTitle: 'Final Confirmation',
+    deleteConfirmContent:
+      'Please confirm again: tapping "Confirm Deletion" will immediately put your account into a 15-day grace period. If not cancelled, it will be permanently deleted.',
+    deleteConfirmText: 'Confirm Deletion',
     deleting: 'Processing...',
     deleteSubmitted: 'Account deletion request submitted',
+    deleteSubmittedTitle: 'Deletion Request Submitted',
+    deleteSubmittedContent:
+      'Your account will be permanently deleted in {days} days. Signing in again during the grace period will automatically cancel the deletion.',
+    gotIt: 'Got it',
     operationFailed: 'Operation failed, please retry',
+    // Cancel deletion (grace period "undo")
+    cancelDeletion: 'Cancel Deletion',
+    cancelDeletionTitle: 'Cancel Deletion Request',
+    cancelDeletionContent:
+      'Once cancelled, your account will return to normal and all features will be available again. Confirm cancellation?',
+    cancelDeletionConfirm: 'Confirm Cancel',
+    canceling: 'Processing...',
+    cancelDeletionSuccess: 'Deletion request cancelled',
+    deleteCountdownFmt: '{d}d {h}h {m}m remaining',
+    deleteExpired: 'Expired',
   },
 
   // Devices /pages/user/devices
@@ -2938,6 +3055,16 @@ export default {
       新品速递: 'New Arrivals',
       猫咪专区: 'Cats Zone',
     },
+    // Post "more" menu items + delete confirmation copy
+    actions: {
+      delete: 'Delete',
+      deleteConfirm: 'This cannot be undone. Delete this post?',
+      deleteSuccess: 'Deleted',
+      deleteFailed: 'Delete failed, please retry',
+      notInterested: 'Not interested',
+      report: 'Report',
+      cancel: 'Cancel',
+    },
   },
 
   // Post editor page /pages/community/create
@@ -3108,58 +3235,294 @@ export default {
   },
 
   // Static legal document page /pages/user/terms-document
+  // 美区合规版本:参考 Chewy / Amazon / Etsy 等同类电商条款结构,
+  // 含 E-SIGN Act 同意、Arbitration、CCPA/CPRA、COPPA 等美国常见合规要点。
   documents: {
     updatedAtLabel: 'Last updated: {date}',
     footerNote:
-      'These terms are formulated by MOYUYO ATELIER, which reserves the right of final interpretation.',
-    updatedDate: '2026-01-01',
+      'These terms are issued by MOYUYO ATELIER, Inc. By using the Services you agree to them. (c) MOYUYO ATELIER, Inc.',
+    updatedDate: '2026-09-15',
     types: {
       terms: {
         title: 'Terms of Service',
         body: [
-          'Welcome to MOYUYO ATELIER ("the Platform"). Before completing the registration process or using the Platform in any way, please read and fully understand every clause of these Terms.',
-          '1. Account & Registration',
-          '(1) You must ensure that the information you provide during registration is true, accurate and complete; otherwise the Platform may refuse your registration or terminate your use.',
-          '(2) You are responsible for safeguarding your account password. Any loss caused by your own disclosure or careless custody is your sole responsibility.',
-          '2. Products & Orders',
-          '(1) Product price, quantity, specifications and other details shown on the listing page prevail. The Platform is not liable for errors in product information unless otherwise required by law.',
-          '(2) You must complete payment within the stated time after submitting an order; otherwise the order will be auto-closed.',
-          '3. Acceptable Use',
-          '(1) You must not use the Platform for any illegal activity, including but not limited to publishing unlawful content or infringing on the rights of others.',
-          '(2) You must follow the Platform community guidelines and must not post abusive, harassing, advertising or other inappropriate content.',
-          '4. Changes & Termination',
-          'The Platform may revise these Terms from time to time. Material changes will be announced at least 7 days before taking effect.',
-          '5. Governing Law & Disputes',
-          'These Terms are governed by the laws of the People\u2019s Republic of China. Any dispute arising from or in connection with these Terms shall first be resolved through friendly negotiation; if no agreement is reached, either party may bring the dispute before the people\u2019s court with jurisdiction where the Platform is located.',
+          'Last updated: 2026-09-15',
+          'Effective: 2026-09-15',
+
+          'IMPORTANT — PLEASE READ CAREFULLY:',
+
+          'These Terms of Service ("Terms") constitute a legally binding agreement between you and MOYUYO ATELIER, Inc. ("MOYUYO," "we," "us," or "our"), a Delaware corporation, governing your access to and use of our websites, mobile applications (including our iOS application available on the Apple App Store and our Android application available on Google Play), and any related services that link to these Terms (collectively, the "Services").',
+
+          'By creating an account, signing in, making a purchase, downloading our mobile application, or otherwise accessing or using the Services, you agree to be bound by these Terms and our Privacy Policy, which is incorporated into these Terms by reference. If you do not agree to these Terms, you must not access or use the Services.',
+
+          '1. Eligibility',
+          'You must be at least 18 years old (or the age of majority in your state of residence) and have the legal capacity to enter into a binding contract to use the Services. If you use the Services on behalf of an organization (including a business, employer, or non-profit), you represent and warrant that you have authority to bind that organization to these Terms, and references to "you" will refer to that organization. The Services are not directed to children under 13; see our Privacy Policy for information about children\u2019s privacy.',
+
+          '2. Your Account',
+          '(a) When you register, you agree to provide accurate, current, and complete information and to keep it updated.',
+          '(b) You are responsible for safeguarding your password and for all activity that occurs under your account, whether or not you authorized it.',
+          '(c) You agree to notify us immediately at moyuyo@moyuyoshop.com of any unauthorized use of your account or any other breach of security.',
+          '(d) We may suspend or terminate accounts that contain information we reasonably believe is false, misleading, or impersonates another person.',
+          '(e) You may close your account at any time by following the instructions in Settings > Privacy > Delete Account, or by emailing moyuyo@moyuyoshop.com with subject line "Delete my account."',
+
+          '3. License Grant and Restrictions',
+          'Subject to your continued compliance with these Terms, MOYUYO grants you a personal, worldwide, royalty-free, non-exclusive, non-transferable, non-sublicensable, revocable license to access and use the Services for your personal, non-commercial use. You may not: (a) modify, disassemble, decompile, reverse-engineer, or attempt to derive the source code of any part of the Services; (b) rent, lease, sublicense, distribute, or otherwise transfer the Services; (c) use the Services to build a competitive product or service; (d) remove, alter, or obscure any proprietary notices; (e) use the Services in violation of any applicable law or regulation; or (f) circumvent any technological measure designed to protect the Services.',
+
+          '4. Software Updates and Mobile Applications',
+          'MOYUYO may from time to time, at its sole discretion, develop and provide updates to its mobile applications, including bug fixes, patches, and new features ("Updates"). Updates may be installed automatically. You agree to receive such Updates as part of your use of the Services. For iOS applications, the Apple App Store\u2019s standard end-user license agreement (set forth in the Apple Media Services Terms and Conditions, currently available at https://www.apple.com/legal/internet-services/itunes/) applies to your use of our iOS application, except as modified by these Terms. For Android applications, the Google Play Terms of Service apply, except as modified by these Terms. Notwithstanding anything in such Apple or Google terms, MOYUYO, not Apple or Google, is responsible for the Services and the content thereof.',
+
+          '5. Beta and Experimental Features',
+          'From time to time we may offer features labeled as "beta," "experimental," "preview," or similar. Such features are provided "AS IS," may contain bugs, errors, or other problems, may be discontinued at any time without notice, and are not subject to any service-level commitments. You use beta features at your own risk, and we may limit or revoke your access to them at any time.',
+
+          '6. Orders, Pricing & Payment',
+          '(a) All prices are displayed in U.S. Dollars and are subject to change without notice. Sales tax is calculated and collected where required by law. We strive for accurate pricing but reserve the right to correct any pricing errors.',
+          '(b) Products are intended for personal use within the United States; we may cancel orders we reasonably believe are intended for resale or shipment outside the U.S.',
+          '(c) By submitting an order, you represent that you have the legal right to use the payment method provided. You authorize us (or our payment processor) to charge your selected payment method for all amounts due, including applicable taxes and shipping.',
+          '(d) Title and risk of loss for items pass to you upon delivery to the carrier.',
+          '(e) We reserve the right to refuse or cancel any order for reasons including suspected fraud, pricing errors, insufficient inventory, or where prohibited by law.',
+
+          '7. Shipping, Risk of Loss, and Returns',
+          '(a) We currently offer shipping within the contiguous United States. Shipping and handling charges are non-refundable unless the return is due to our error.',
+          '(b) Title and risk of loss for any purchased items pass to you upon delivery to the carrier.',
+          '(c) If you are not 100% satisfied with your purchase, you may return eligible items within 30 days of delivery for a refund of the purchase price. Perishable items such as opened pet food, prescription medications, personalized products, and final-sale items are non-returnable.',
+          '(d) To start a return, contact us at moyuyo@moyuyoshop.com with your order number. Refunds are credited to the original payment method within 5\u201310 business days after we receive the returned item.',
+          '(e) We may charge a restocking fee for returns showing excessive use or missing components.',
+
+          '8. Subscriptions, Memberships, and Auto-Renewal',
+          '(a) If you enroll in any subscription, membership (including MOYUYO+), or auto-ship program, you authorize us to charge your payment method on a recurring basis at the then-current price until you cancel.',
+          '(b) You may cancel at any time through your account settings; cancellation takes effect at the end of the then-current billing cycle. We do not provide refunds for partial-period subscriptions, except where required by law.',
+          '(c) We will send you a reminder at least 7 days before each renewal, and at least 30 days before any material price change, in compliance with California\u2019s Auto-Renewal Law and similar state laws.',
+          '(d) Free trials, if offered, will automatically convert to paid subscriptions at the end of the trial period unless you cancel before the trial ends.',
+
+          '9. Promotional Offers, Gift Cards, and Promo Codes',
+          '(a) Promotional discounts, coupons, and promo codes are subject to specific terms stated at the point of offer and may be modified or withdrawn at any time.',
+          '(b) Gift cards are non-refundable, have no expiration date (except where required by state law), and cannot be redeemed for cash except where required by law.',
+          '(c) Only one promotional offer may be applied per order unless otherwise stated. We may limit stacking of offers at our discretion.',
+
+          '10. MOYUYO+ Membership Specific Terms',
+          '(a) MOYUYO+ is a paid monthly, quarterly, or annual membership program that provides benefits including free standard shipping, member-only discounts, early access to new products, and a monthly points allowance.',
+          '(b) Membership fees are non-refundable except where required by law. You may cancel at any time; benefits continue until the end of the paid period.',
+          '(c) Member benefits may be modified, replaced, or discontinued at any time. We will give at least 30 days\u2019 notice of any material reduction in benefits.',
+          '(d) MOYUYO+ benefits are non-transferable and may not be shared, resold, or used for commercial purposes.',
+
+          '11. Pet Health and Wellness Disclaimer',
+          '(a) The Services provide general information about pet care and wellness. Content made available through the Services (including AI-generated suggestions, breed information, product recommendations, and any pet care routine output) is for informational purposes only and is NOT a substitute for professional veterinary advice, diagnosis, or treatment.',
+          '(b) Always seek the advice of a qualified, licensed veterinarian with any questions you may have regarding your pet\u2019s health.',
+          '(c) Never disregard professional veterinary advice or delay in seeking it because of something you have read or accessed through the Services.',
+          '(d) If you think your pet may have a medical emergency, call your veterinarian or local animal hospital immediately.',
+
+          '12. Acceptable Use',
+          'You agree not to (a) use the Services for any unlawful purpose or in violation of any applicable laws; (b) post content that is infringing, defamatory, obscene, harassing, hateful, or otherwise objectionable; (c) impersonate any person or entity; (d) interfere with or disrupt the Services or any servers or networks connected to the Services; (e) attempt to gain unauthorized access to the Services, other accounts, or computer systems connected to the Services; (f) use the Services to harm or attempt to harm minors; (g) upload viruses, malware, or other malicious code; (h) send unsolicited communications, promotions, advertisements, or spam; or (i) use any robot, spider, scraper, or other automated means to access the Services for any purpose without our prior written consent.',
+
+          '13. User Content and Pet Information',
+          '(a) You retain ownership of any content you submit (photos, reviews, posts, pet profiles, comments, suggestions) ("User Content").',
+          '(b) You grant MOYUYO a worldwide, non-exclusive, royalty-free, sublicensable, and transferable license to use, host, reproduce, modify, adapt, publish, translate, create derivative works from, distribute, perform, and display your User Content in connection with operating and promoting the Services.',
+          '(c) You represent and warrant that you own or have the necessary rights to any User Content you provide, including the right to share photos and health records of your pet(s).',
+          '(d) We may remove or refuse to display any User Content that we reasonably believe violates these Terms or any third-party right, but we have no obligation to monitor User Content.',
+
+          '14. Intellectual Property',
+          'The Services, including all software, designs, text, graphics, logos, icons, images, audio clips, video clips, data compilations, and trademarks, are owned by MOYUYO or its licensors and are protected by U.S. and international intellectual property laws. You may not copy, modify, distribute, sell, or create derivative works of any portion of the Services without our prior written consent. MOYUYO and the MOYUYO logo are trademarks of MOYUYO ATELIER, Inc. All other trademarks appearing on the Services are the property of their respective owners.',
+
+          '15. Third-Party Services and Open Source',
+          'The Services may include links to or integrations with third-party services (such as Sign in with Apple, Google Sign-In, Stripe, PayPal, FedEx, UPS, USPS, Meta, TikTok, or Google Maps) and may incorporate open-source software components. We are not responsible for the practices of any third-party service. Your use of such services is governed by the terms and privacy policies of those third parties. Open-source components are governed by their respective licenses (MIT, Apache 2.0, BSD, etc.). A list of open-source components and their licenses is available in our open-source notice, accessible at the bottom of our website and within our mobile applications.',
+
+          '16. Feedback and Suggestions',
+          'If you submit feedback, ideas, or suggestions about the Services ("Feedback"), you grant MOYUYO a perpetual, irrevocable, worldwide, royalty-free license to use, modify, and incorporate such Feedback into the Services without any obligation to you. You waive any moral rights you may have in such Feedback.',
+
+          '17. Disclaimers',
+          'THE SERVICES ARE PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, AND TITLE. WITHOUT LIMITING THE FOREGOING, MOYUYO DOES NOT WARRANT THAT THE SERVICES WILL BE UNINTERRUPTED, ERROR-FREE, SECURE, FREE OF VIRUSES OR OTHER HARMFUL CODE, OR THAT DEFECTS WILL BE CORRECTED. NO ADVICE OR INFORMATION, WHETHER ORAL OR WRITTEN, OBTAINED BY YOU FROM MOYUYO WILL CREATE ANY WARRANTY NOT EXPRESSLY STATED IN THESE TERMS. SOME JURISDICTIONS DO NOT ALLOW THE EXCLUSION OF IMPLIED WARRANTIES, SO SOME OF THE ABOVE EXCLUSIONS MAY NOT APPLY TO YOU.',
+
+          '18. Limitation of Liability',
+          'TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL MOYUYO, ITS AFFILIATES, OFFICERS, DIRECTORS, EMPLOYEES, AGENTS, OR SERVICE PROVIDERS BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS OR REVENUES, WHETHER INCURRED DIRECTLY OR INDIRECTLY, OR ANY LOSS OF DATA, USE, GOODWILL, OR OTHER INTANGIBLE LOSSES, RESULTING FROM (a) YOUR ACCESS TO OR USE OF (OR INABILITY TO ACCESS OR USE) THE SERVICES; (b) ANY CONDUCT OR CONTENT OF ANY THIRD PARTY ON OR THROUGH THE SERVICES; (c) ANY CONTENT OBTAINED FROM THE SERVICES; OR (d) UNAUTHORIZED ACCESS, USE, OR ALTERATION OF YOUR TRANSMISSIONS OR CONTENT. IN ANY EVENT, OUR TOTAL LIABILITY FOR ANY CLAIM ARISING OUT OF OR RELATING TO THESE TERMS SHALL NOT EXCEED THE GREATER OF (i) ONE HUNDRED U.S. DOLLARS ($100) OR (ii) THE TOTAL AMOUNTS YOU PAID TO MOYUYO IN THE TWELVE (12) MONTHS PRECEDING THE EVENT GIVING RISE TO THE LIABILITY. THE LIMITATIONS IN THIS SECTION APPLY TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, EVEN IF ANY LIMITED REMEDY FAILS OF ITS ESSENTIAL PURPOSE.',
+
+          '19. Indemnification',
+          'You agree to defend, indemnify, and hold harmless MOYUYO and its affiliates, officers, directors, employees, agents, licensors, and service providers from and against any claims, damages, obligations, losses, liabilities, costs, or expenses (including reasonable attorneys\u2019 fees) arising from (a) your access to or use of the Services; (b) your violation of these Terms; (c) your violation of any third-party right, including intellectual property or privacy rights; or (d) any claim that your User Content caused damage to a third party.',
+
+          '20. Electronic Communications and E-SIGN Consent',
+          'By using the Services, you agree to receive notices, agreements, and other communications from us electronically (e.g., via email, push notifications, in-app messages, or postings on the Services). You agree that all agreements, notices, disclosures, and other communications we provide to you electronically satisfy any legal requirement that such communications be in writing under the federal Electronic Signatures in Global and National Commerce Act (E-SIGN Act) and any applicable state laws (including the California Uniform Electronic Transactions Act). You may withdraw this consent at any time by contacting moyuyo@moyuyoshop.com; if you withdraw consent, we may close your account as described in Section 23.',
+
+          '21. SMS and Push Notifications',
+          'If you provide a mobile phone number, you consent to receive SMS messages from us regarding order updates, security alerts, customer service, and (with separate explicit consent where required) marketing. Message and data rates may apply. You may opt out of marketing SMS at any time by replying STOP. Push notifications may be managed through your device settings.',
+
+          '22. Force Majeure',
+          'MOYUYO will not be liable for any delay or failure to perform resulting from causes outside its reasonable control, including acts of God, natural disasters, pandemics or epidemics (including COVID-19 and any successors), war, terrorism, civil unrest, government actions, strikes, labor disputes, supply chain disruptions, internet or telecommunications outages, or other force majeure events.',
+
+          '23. Termination',
+          '(a) We may suspend or terminate your access to the Services at any time, with or without cause, including if we reasonably believe you have violated these Terms or the Privacy Policy.',
+          '(b) You may terminate these Terms at any time by closing your account and ceasing use of the Services.',
+          '(c) Upon termination, your right to use the Services will immediately cease, but provisions that by their nature should survive (including payment obligations, ownership, disclaimers, limitations of liability, indemnification, dispute resolution, and the survival provisions in Section 28) will survive.',
+
+          '24. Dispute Resolution and Arbitration',
+          'PLEASE READ THIS SECTION CAREFULLY — IT AFFECTS YOUR RIGHTS.',
+          '(a) Informal Resolution: Before filing any formal claim, you agree to first contact us at moyuyo@moyuyoshop.com with a description of your dispute and your contact information. We will attempt to resolve the dispute informally within 45 days. If we cannot resolve the dispute within 45 days, either party may commence arbitration.',
+          '(b) Arbitration Agreement: You and MOYUYO agree that any dispute, claim, or controversy arising out of or relating to these Terms, the Privacy Policy, or the breach, termination, enforcement, interpretation, or validity thereof, including the determination of the scope or applicability of this agreement to arbitrate, shall be determined by binding individual arbitration administered by the American Arbitration Association (AAA) under its Consumer Arbitration Rules (currently available at https://www.adr.org/consumer).',
+          '(c) Class Action Waiver: You and MOYUYO each agree that any dispute resolution proceedings will be conducted only on an individual basis and not in a class, consolidated, or representative action. If for any reason a claim proceeds in court rather than arbitration, you and MOYUYO each waive any right to a jury trial.',
+          '(d) Exceptions: Notwithstanding the foregoing, either party may seek temporary or preliminary injunctive relief in a court of competent jurisdiction. Claims of intellectual property infringement or unauthorized access to the Services may be brought in court without first attempting informal resolution or arbitration.',
+          '(e) Small Claims Court: Either party may bring an individual action in small claims court for disputes within that court\u2019s jurisdiction, in lieu of arbitration.',
+          '(f) 30-Day Opt-Out: You have the right to opt out of arbitration by sending written notice to moyuyo@moyuyoshop.com within 30 days of first accepting these Terms. Your notice must include your name, address, and a clear statement that you wish to opt out of arbitration.',
+
+          '25. Governing Law and Venue',
+          'These Terms and any non-arbitrable disputes are governed by the laws of the State of Delaware, without regard to its conflict-of-laws principles. Subject to Section 24, any judicial proceedings (other than small-claims actions) shall be brought exclusively in the state or federal courts located in New Castle County, Delaware, and you consent to personal jurisdiction and venue in such courts.',
+
+          '26. Export Controls and Sanctions',
+          'You represent and warrant that you are not located in, under the control of, or a national or resident of any country subject to U.S. sanctions or trade embargoes (including but not limited to Cuba, Iran, North Korea, Syria, and the Crimea, Donetsk, and Luhansk regions), and you are not on any U.S. government list of prohibited or restricted parties (such as the SDN List or the Entity List). You agree to comply with all applicable U.S. and international export control and economic sanctions laws in your use of the Services.',
+
+          '27. U.S. Government Users',
+          'The Services and related documentation are "commercial items" as defined at 48 C.F.R. \u00a72.101, consisting of "commercial computer software" and "commercial computer software documentation" as used in 48 C.F.R. \u00a712.212 or 48 C.F.R. \u00a7227.7202. Consistent with 48 C.F.R. \u00a712.212 or 48 C.F.R. \u00a7\u00a7227.7202-1 through 227.7202-4, the commercial computer software and commercial computer software documentation are licensed to U.S. Government end users (a) only as commercial items and (b) with only those rights as are granted to all other end users pursuant to the terms and conditions herein.',
+
+          '28. General Provisions',
+          '(a) Entire Agreement: These Terms (together with the Privacy Policy and any other referenced documents) constitute the entire agreement between you and MOYUYO regarding the Services and supersede all prior or contemporaneous communications and proposals on the same subject matter.',
+          '(b) Severability: If any provision of these Terms is held to be invalid, illegal, or unenforceable, that provision shall be severed and the remaining provisions shall remain in full force and effect.',
+          '(c) No Waiver: Our failure to enforce any right or provision of these Terms will not be deemed a waiver of such right or provision.',
+          '(d) Assignment: You may not assign or transfer these Terms without our prior written consent. We may assign these Terms to any of our affiliates, or in connection with a merger, acquisition, or sale of all or substantially all of our business or assets.',
+          '(e) Notices: We may provide notices to you by email, postal mail, or postings on the Services. Notices are deemed delivered upon posting or 24 hours after email transmission.',
+          '(f) Headings: Section headings are for convenience only and have no legal effect.',
+
+          '29. Apple-Specific Acknowledgments',
+          '(a) You acknowledge that these Terms are between you and MOYUYO only, not with Apple Inc. ("Apple"), and MOYUYO, not Apple, is solely responsible for the Services and the content thereof.',
+          '(b) The license granted to you for our iOS application is limited to a non-transferable license to use the application on any Apple-branded product that you own or control and as permitted by the Usage Rules set forth in the Apple Media Services Terms and Conditions, except that such license may be transferred to another person who owns or controls the Apple-branded product with which the application was originally downloaded, subject to those Usage Rules.',
+          '(c) Apple has no obligation whatsoever to furnish any maintenance and support services with respect to the Services.',
+          '(d) In the event of any failure of the Services to conform to any applicable warranty, you may notify Apple, and Apple will refund the purchase price (if any) for the application to the maximum extent permitted by applicable law. To the maximum extent permitted by applicable law, Apple will have no other warranty obligation whatsoever with respect to the Services.',
+          '(e) Apple is not responsible for addressing any claims by you or any third party relating to the Services or your possession or use of the Services, including but not limited to (i) product liability claims; (ii) any claim that the Services fail to conform to any applicable legal or regulatory requirement; or (iii) claims arising under consumer protection, privacy, or similar legislation.',
+          '(f) In the event of any third-party claim that the Services or your possession and use of the Services infringes a third party\u2019s intellectual property rights, Apple is not responsible for the investigation, defense, settlement, or discharge of such claim.',
+          '(g) Apple and Apple\u2019s subsidiaries are third-party beneficiaries of these Terms with respect to your iOS application license, and Apple (or its subsidiaries) may enforce these Terms against you in that capacity as a third-party beneficiary.',
+
+          '30. Changes to These Terms',
+          'We may update these Terms from time to time. The "Last updated" date at the top of this page reflects when these Terms were last revised. If we make material changes, we will provide notice by updating the "Last updated" date and, where required by law, by additional means (such as email or in-app notice at least 30 days before changes take effect). Your continued use of the Services after the effective date of any changes constitutes your acceptance of the revised Terms.',
+
+          '31. Contact',
+          'MOYUYO ATELIER, Inc.',
+          '8 The Green, Suite #5198, Dover, DE 19901, USA',
+          'Email: moyuyo@moyuyoshop.com',
+          'Toll-free: 1-800-XXX-MOYU (placeholder — update with live number before App Store submission)',
         ],
       },
       privacy: {
         title: 'Privacy Policy',
         body: [
-          'We take the protection of your personal information seriously. This policy explains how we collect, use, store and share your personal information.',
+          'Last updated: 2026-09-15',
+          'Effective: 2026-09-15',
+
+          'MOYUYO ATELIER, Inc. ("MOYUYO," "we," "us," or "our") respects your privacy and is committed to protecting your personal information. This Privacy Policy ("Policy") explains what information we collect, how we use it, with whom we share it, how we protect it, and what choices and rights you have. This Policy applies to our websites, mobile applications (including our iOS and Android apps available on the Apple App Store and Google Play), and any other services that link to this Policy (collectively, the "Services").',
+
+          'We have designed this Policy to satisfy the requirements of (a) U.S. federal law (including the Children\u2019s Online Privacy Protection Act, "COPPA," and the Electronic Communications Privacy Act); (b) the California Consumer Privacy Act of 2018 as amended by the California Privacy Rights Act of 2020 ("CCPA/CPRA"); (c) comprehensive consumer privacy laws of Colorado, Connecticut, Delaware, Indiana, Iowa, Kentucky, Maryland, Minnesota, Montana, Nebraska, New Hampshire, New Jersey, Oregon, Rhode Island, Tennessee, Texas, Utah, Virginia, and other U.S. states that have enacted comparable legislation; and (d) Apple\u2019s App Store Review Guidelines, including Guideline 5.1 (Privacy). Where the laws of multiple jurisdictions apply, we follow the strictest standard.',
+
+          'NOTICE AT COLLECTION (California / CCPA/CPRA)',
+          'At or before the point of collection, California residents have the right to receive a Notice at Collection listing the categories of personal information we collect and the purposes for which we use each category. The categories listed in Section 1 below, and the purposes listed in Section 2, together satisfy our Notice at Collection obligation. We do not sell or share personal information of California residents for cross-context behavioral advertising.',
+
           '1. Information We Collect',
-          '(1) Account information: nickname, email, phone number, shipping address, etc.',
-          '(2) Order information: products, amounts, shipping address, payment method, etc.',
-          '(3) Device & log information: IP address, device model, operating system version, browsing history, etc.',
+          'We collect personal information directly from you, automatically from your device, and from third parties. The categories of personal information we collect (matching Apple\u2019s 14 Privacy Nutrition Label categories) include:',
+          '(a) Contact Information: name, email address, phone number, shipping and billing addresses.',
+          '(b) Account & Profile Information: nickname, login credentials (hashed), preferences, language, and notification settings.',
+          '(c) Financial Information: payment-method details (tokenized and never stored in clear-text on our servers), purchase history, gift-card balance, refund and chargeback records.',
+          '(d) Transaction Information: items purchased, amounts paid, order history, returns, customer-service interactions, and chat transcripts with our support team.',
+          '(e) Pet Information: pet name, breed, gender, birthdate, weight, photos, and optional care records (vaccines, grooming, vet visits) you choose to store. Pet information is treated as personal information under this Policy.',
+          '(f) User Content: reviews, community posts, photos, videos, comments, and any other content you submit through the Services.',
+          '(g) Identifiers: user ID, device identifiers (including iOS Identifier for Advertising where permitted), IP address, and similar online identifiers.',
+          '(h) Device & Usage Information: browser type, operating system, screen size, referring URLs, pages viewed, taps, timestamps, and crash logs.',
+          '(i) Location Information: general region (city/state/country) inferred from IP for shipping, tax, and fraud-prevention purposes. We do not collect precise GPS location; if a future feature requires precise location, we will request your explicit permission first.',
+          '(j) Cookies and Similar Technologies: cookies, web beacons, local storage, and SDK identifiers used to remember your preferences and analyze usage.',
+          '(k) Inferences: preferences, characteristics, predispositions, and behavioral trends derived from the information above.',
+          '(l) Information from Third Parties: payment processors (Stripe, PayPal), shipping carriers (FedEx, UPS, USPS), identity-verification vendors, advertising partners (Google, Meta, TikTok), social-login providers (Sign in with Apple, Google), and (if applicable) consumer-reporting agencies for fraud prevention.',
+
           '2. How We Use Information',
-          '(1) To provide core services such as ordering, payment, logistics and customer support.',
-          '(2) For security risk control, violation detection and compliance audits.',
-          '3. Information Sharing',
-          'Except as required by law or with your explicit consent, we do not share your personal information with third parties.',
-          '4. Your Rights',
-          'You have the right to access, correct or delete your personal information through [Settings \u2013 Privacy] or by contacting customer support.',
-          '5. Contact Us',
-          'If you have any questions, please reach us at support@moyuyo.com.',
+          'We use the categories above for the following business purposes (mapped to Apple\u2019s six permitted purposes):',
+          '(a) App Functionality: to create and maintain your account, process orders and payments, fulfill shipping and returns, deliver customer support, and operate the core features of the Services.',
+          '(b) Product Personalization: to remember your preferences (such as language, favorite pet, recent searches, recently viewed items) and to surface relevant products and recommendations.',
+          '(c) Developer\u2019s Advertising or Marketing: to send you transactional emails (order updates, security alerts) and, with your consent where required, marketing communications about new products, promotions, and events. You may opt out of marketing emails at any time using the "unsubscribe" link in any email or via Settings > Notifications.',
+          '(d) Analytics: to understand how the Services are used, measure feature adoption, debug performance issues, and improve our products. We use aggregated or de-identified data for analytics where reasonably possible.',
+          '(e) Security and Fraud Prevention: to detect and prevent unauthorized access, fraud, abuse, and other harmful activity; to verify your identity; and to protect our rights and the rights of other users.',
+          '(f) Legal and Compliance: to comply with applicable law, regulation, valid legal process, and governmental requests, and to enforce our Terms of Service and other agreements.',
+
+          '3. Sign in with Apple',
+          'When you choose to sign in to MOYUYO using Sign in with Apple, Apple provides us with a unique identifier and (at your option) a private relay email address. We do not receive your real Apple ID email address unless you choose to share it. You may hide your email from us at any time through your Apple ID settings; if you do, we will use the private relay address and your account may be limited in ways described in Settings > Privacy.',
+
+          '4. App Tracking Transparency (iOS 14.5+)',
+          'MOYUYO does not engage in cross-app or cross-website tracking for advertising attribution. We do not share your activity data with data brokers, and we do not use your device\u2019s Identifier for Advertising (IDFA) for third-party tracking purposes. Accordingly, the App Tracking Transparency (ATT) prompt is not currently displayed. If we ever introduce such tracking, we will: (a) update this Policy; (b) update our App Store nutrition labels; and (c) request your permission through the standard iOS ATT prompt before any tracking begins.',
+
+          '5. Cookies, SDKs, and Similar Technologies',
+          'We use cookies, local storage, and similar technologies to operate the Services, remember your preferences, and analyze usage. We also work with advertising partners (such as Google Ads, Meta, and TikTok) that use cookies to show you MOYUYO ads on other sites and to measure ad performance. You can manage cookie preferences through your browser settings and through industry tools such as the Digital Advertising Alliance\u2019s opt-out at optout.aboutads.info. We also honor Global Privacy Control ("GPC") signals as a valid opt-out of sale/sharing under CCPA/CPRA.',
+
+          '6. How We Share Information',
+          'We do not sell your personal information for monetary consideration, and we do not share it for cross-context behavioral advertising. We disclose personal information only as follows:',
+          '(a) Service Providers: with vendors that perform services on our behalf (payment processing, shipping, cloud hosting, customer support, marketing, analytics, fraud prevention) under written contracts that limit their use of your information to providing services to us.',
+          '(b) Payment Networks and Banks: with payment processors and financial institutions to process transactions, prevent fraud, and manage chargebacks.',
+          '(c) Legal and Safety: when we believe in good faith that disclosure is necessary to comply with a law, valid legal process, or governmental request, or to protect the rights, property, or safety of MOYUYO, our users, or others.',
+          '(d) Corporate Transactions: in connection with a merger, acquisition, financing, restructuring, bankruptcy, or sale of all or part of our business; in such cases the recipient will be bound by this Policy or a comparable privacy commitment.',
+          '(e) With Your Consent: at your direction or with your explicit consent.',
+          '(f) Aggregated or De-identified Information: we may share aggregated or de-identified information that cannot reasonably be used to identify you, without restriction.',
+
+          '7. Your Rights and Choices',
+          'Depending on your state of residence (and particularly if you are a California, Colorado, Connecticut, Delaware, Indiana, Iowa, Kentucky, Maryland, Minnesota, Montana, Nebraska, New Hampshire, New Jersey, Oregon, Rhode Island, Tennessee, Texas, Utah, or Virginia resident), you may have some or all of the following rights:',
+          '(a) Right to Know / Access: request a copy of the personal information we have collected about you, including the categories, sources, and business purposes.',
+          '(b) Right to Correct / Rectify: request that we correct inaccurate information.',
+          '(c) Right to Delete / Erasure: request that we delete your personal information, subject to certain legal exceptions (for example, we may retain transaction records for tax and accounting purposes for up to 7 years).',
+          '(d) Right to Portability: receive your information in a portable, structured, machine-readable format.',
+          '(e) Right to Opt Out of Sale or Sharing: although we do not sell personal information, you may direct us not to "share" personal information for cross-context behavioral advertising. We also honor GPC signals.',
+          '(f) Right to Limit Use of Sensitive Personal Information: where applicable (e.g., precise geolocation, racial or ethnic origin, religious beliefs, biometric data, health information, sex life or sexual orientation), you may limit our use of sensitive personal information to that necessary to provide the Services.',
+          '(g) Right to Non-Discrimination: we will not deny service, charge different prices, or provide a different level of quality for exercising your rights.',
+          '(h) Right to Correct Inaccurate Information: see Section 7(b) above.',
+          '(i) Right to Appeal (Colorado and certain other states): if we deny your request, you may appeal our decision by replying to our response with "appeal." We will respond to your appeal within 45 days.',
+          'To exercise any of these rights, go to Settings > Privacy, email moyuyo@moyuyoshop.com, or call 1-800-XXX-MOYU. You may designate an authorized agent to make a request on your behalf, subject to verification of the agent\u2019s authority. We will respond to verifiable requests within the timeframes required by applicable law (typically 45 days).',
+
+          '8. Account Deletion and Data Deletion Mechanism',
+          'You may delete your MOYUYO account at any time by going to Settings > Privacy > Delete Account, or by emailing moyuyo@moyuyoshop.com with subject line "Delete my account." When you delete your account:',
+          '(a) We will permanently delete your account, profile, pet information, community content, and saved preferences within 30 days of verification.',
+          '(b) We will delete or anonymize your order history, with the exception of transaction records we must retain for tax, accounting, and anti-fraud purposes (typically 7 years).',
+          '(c) Backup copies will be purged within a further 90 days in the ordinary course of backup rotation.',
+          '(d) Anonymized, aggregated data may be retained indefinitely.',
+          'For California residents, this satisfies the CCPA/CPRA right to delete. For other state residents, equivalent rights are honored.',
+
+          '9. California-Specific Notices',
+          '(a) Shine the Light (California Civil Code §1798.83): California residents may request information about the categories of personal information disclosed to third parties for those third parties\u2019 direct marketing purposes. We do not disclose personal information to third parties for their direct marketing purposes.',
+          '(b) California Online Privacy Protection Act (CalOPPA): We honor Do Not Track (DNT) and Global Privacy Control (GPC) browser signals as opt-outs of sale/sharing.',
+          '(c) Under-16 Users: We do not knowingly sell or share personal information of consumers under 16 years of age.',
+          '(d) Financial Incentives: We may offer programs (such as MOYUYO+ membership) that involve benefits in exchange for personal information. California residents may opt out of such programs at any time without retaliation. We will provide a Notice of Financial Incentive at the point of enrollment describing the material terms.',
+
+          '10. Children\u2019s Privacy (COPPA + State Laws)',
+          'The Services are not directed to children under 13, and we do not knowingly collect personal information from children under 13. If we become aware that we have collected personal information from a child under 13 without verifiable parental consent, we will delete it as soon as possible. We also do not knowingly sell or share personal information of consumers under 16. If you are a parent or guardian and believe we have collected information about a child, please contact us at moyuyo@moyuyoshop.com so we can delete the information. Some U.S. states (such as Connecticut, Texas, and Maryland) also restrict profiling of minors; we do not engage in such profiling.',
+
+          '11. Automated Decision-Making and AI',
+          'MOYUYO uses automated systems and limited artificial intelligence to (a) recommend products you may like, (b) suggest pet care routines, and (c) detect fraud. We do not use automated decision-making that produces legal or similarly significant effects on you (such as automatic denial of services) without human review. You may request a manual review of any automated decision that affects your access to the Services by emailing moyuyo@moyuyoshop.com.',
+
+          '12. Health and Wellness Information',
+          'Any pet health or care information you store in Pet Hub is provided by you for your own records. MOYUYO does not provide veterinary advice. AI-generated pet care suggestions are for informational purposes only and are not a substitute for professional veterinary advice, diagnosis, or treatment. Always consult a qualified veterinarian regarding your pet\u2019s health. We do not sell or share health-related personal information for advertising.',
+
+          '13. Data Retention',
+          'We retain personal information for as long as needed to (a) provide the Services and fulfill the purposes described in this Policy; (b) comply with our legal, tax, and accounting obligations (typically 7 years for transaction records, 5 years for marketing consent records); and (c) resolve disputes and enforce our agreements. When personal information is no longer needed, we securely delete or anonymize it.',
+
+          '14. Data Security',
+          'We use administrative, technical, and physical safeguards designed to protect personal information, including encryption in transit (TLS 1.3), encryption at rest where applicable, access controls, multi-factor authentication for staff, regular security testing, and employee training. No method of transmission over the Internet or method of electronic storage, however, is 100% secure; we cannot guarantee absolute security. In the event of a data breach affecting your personal information, we will notify you and applicable regulators as required by applicable state law.',
+
+          '15. Health and Insurance (HIPAA)',
+          'MOYUYO is not a covered entity or business associate under the Health Insurance Portability and Accountability Act (HIPAA). Any pet health information you choose to store through the Services is stored at your own discretion and is not protected by HIPAA. If you submit pet prescription information to a third-party veterinary pharmacy through the Services, that pharmacy\u2019s privacy practices apply.',
+
+          '16. International Users',
+          'The Services are intended for users located in the United States. If you access the Services from outside the U.S., you understand that your information will be transferred to, stored in, and processed in the United States, where data-protection laws may differ from those in your jurisdiction. By using the Services, you consent to this transfer. We do not rely on the EU-US Data Privacy Framework or other adequacy mechanisms; if you are an EEA, UK, or Swiss resident, you may have additional rights (access, rectification, erasure, restriction, portability, objection, automated decision-making) which you may exercise by emailing moyuyo@moyuyoshop.com.',
+
+          '17. Third-Party Links and Services',
+          'The Services may contain links to third-party websites, plug-ins, and applications (such as social-login providers or embedded videos). We are not responsible for the privacy practices of those third parties; please review their policies separately.',
+
+          '18. Changes to This Policy',
+          'We may update this Privacy Policy from time to time. The "Last updated" date at the top of this page reflects when the Policy was last revised. If we make material changes, we will provide additional notice as required by law (for example, by email or in-app notice, or by re-prompting consent where required). Your continued use of the Services after the effective date constitutes your acceptance of the revised Policy.',
+
+          '19. Contact Us',
+          'MOYUYO ATELIER, Inc. — Privacy Office',
+          '8 The Green, Suite #5198, Dover, DE 19901, USA',
+          'Email: moyuyo@moyuyoshop.com',
+          'Privacy-specific email: privacy@moyuyoshop.com',
+          'Toll-free: 1-800-XXX-MOYU (placeholder — update with live number before App Store submission)',
         ],
       },
       qualification: {
         title: 'Merchant Qualifications',
         body: [
-          'MOYUYO ATELIER is operated by a properly licensed company. The relevant qualification documents are listed below:',
-          '1. Business License (Unified Social Credit Code XXXXXXXX).',
-          '2. Value-Added Telecommunications Service Operating License.',
-          '3. Food / Pet Supplies Operating License (per business scope).',
-          'To inspect the originals, please contact us at support@moyuyo.com.',
+          'MOYUYO ATELIER, Inc. is a Delaware-incorporated company. The relevant registration and qualification information is listed below:',
+          '1. Legal entity: MOYUYO ATELIER, Inc. — registered in the State of Delaware, USA.',
+          '2. Business mailing address: 8 The Green, Suite #5198, Dover, DE 19901, USA.',
+          '3. Tax / EIN: available on request via moyuyo@moyuyoshop.com.',
+          '4. Product categories: pet apparel, pet care, pet accessories, and related consumer goods.',
+          'For copies of incorporation documents, EIN confirmation letters, or product-safety certifications, please contact moyuyo@moyuyoshop.com.',
         ],
       },
       license: {
@@ -3465,5 +3828,9 @@ export default {
     postNotFound: 'Post not found',
     linkedPetNotFound: 'Linked pet not found or unavailable',
     sensitiveWord: 'Content contains sensitive words and cannot be published',
+    // Structured error codes (matched by STRUCTURED_ERROR_PATTERNS in request.js)
+    deletionHasActiveOrders:
+      'You have {count} unfinished order(s). Please complete or cancel them before requesting account deletion.',
+    dataExportRateLimited: 'Data export request is rate-limited. Please try again after {date}',
   },
 }

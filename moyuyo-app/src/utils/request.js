@@ -71,15 +71,15 @@ function handleUnauthorized() {
 }
 
 /**
- * 登录态失效提示:用 showModal 让用户主动确认再跳转,文案中文化。
+ * 登录态失效提示:用 showModal 让用户主动确认再跳转,文案走 i18n。
  * 避免直接 reLaunch 造成"我在看账单突然掉到登录页"的体验割裂。
  */
 function promptReLogin() {
   uni.showModal({
-    title: '登录已过期',
-    content: '您的登录状态已失效,重新登录后将返回此页面',
-    confirmText: '重新登录',
-    cancelText: '稍后',
+    title: t('common.sessionExpiredTitle'),
+    content: t('common.sessionExpiredContent'),
+    confirmText: t('common.relogin'),
+    cancelText: t('common.later'),
     success: (res) => {
       if (res.confirm) {
         uni.reLaunch({ url: '/pages/user/login' })
@@ -127,10 +127,70 @@ const SERVER_ERROR_MAP = {
   '内容包含敏感词，无法发布': 'serverMsg.sensitiveWord',
 }
 
+/**
+ * 后端结构化错误码前缀解析。
+ * 一些后端错误需要带参数（如 "DELETION_HAS_ACTIVE_ORDERS:3"），
+ * 前端解析前缀做 i18n key 匹配 + 模板插值，避免直接对整串字符串做精确匹配。
+ *
+ * 返回 { key, params }，未匹配返回 null。
+ */
+const STRUCTURED_ERROR_PATTERNS = [
+  {
+    // 注销申请被拒绝：账号存在未完成订单
+    test: /^DELETION_HAS_ACTIVE_ORDERS:(\d+)$/,
+    i18nKey: 'serverMsg.deletionHasActiveOrders',
+    extract: (m) => ({ count: parseInt(m[1], 10) }),
+  },
+  {
+    // 数据导出频次超限：下次可发起时间戳（毫秒）
+    test: /^DATA_EXPORT_RATE_LIMITED:(\d+)$/,
+    i18nKey: 'serverMsg.dataExportRateLimited',
+    extract: (m) => ({ nextAllowedAtMillis: parseInt(m[1], 10) }),
+  },
+]
+
+/**
+ * 把 epoch 毫秒格式化为 "YYYY-MM-DD HH:mm" 本地时间字符串。
+ * 用于限流提示"下次可发起时间"。
+ */
+function formatLocalDateTime(ms) {
+  if (!ms || Number.isNaN(Number(ms))) return ''
+  const d = new Date(Number(ms))
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+    `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  )
+}
+
+function resolveStructuredError(msg) {
+  const text = String(msg || '').trim()
+  for (const p of STRUCTURED_ERROR_PATTERNS) {
+    const m = text.match(p.test)
+    if (m) {
+      const params = p.extract(m)
+      // 时间戳字段额外格式化为可读日期字符串
+      if (params && typeof params.nextAllowedAtMillis === 'number') {
+        params.date = formatLocalDateTime(params.nextAllowedAtMillis)
+      }
+      return { key: p.i18nKey, params }
+    }
+  }
+  return null
+}
+
 // 后端错误提示本地化：命中映射返回当前语言文案，否则原样返回
 function localizeServerMessage(msg) {
   if (!msg) return msg
-  const key = SERVER_ERROR_MAP[String(msg).trim()]
+  const text = String(msg).trim()
+  // 1) 优先匹配结构化错误码（带参数的模板）
+  const structured = resolveStructuredError(text)
+  if (structured) {
+    return t(structured.key, structured.params)
+  }
+  // 2) 命中静态文案表
+  const key = SERVER_ERROR_MAP[text]
   return key ? t(key) : msg
 }
 
@@ -234,4 +294,34 @@ export const post = (url, data = {}, options = {}) =>
 export const put = (url, data = {}, options = {}) =>
   request({ ...options, url, method: 'PUT', data })
 
-export const del = (url, options = {}) => request({ ...options, url, method: 'DELETE' })
+// request() 解构出来的 options 字段白名单;不在此列表的 key 视为 query params
+const REQUEST_OPTION_KEYS = new Set([
+  'method',
+  'data',
+  'header',
+  'showLoading',
+  'showError',
+  'timeout',
+  'skipResultUnwrap',
+  'hideErrorToast',
+])
+
+export const del = (url, params = {}, options = {}) => {
+  // del 第二参数统一为 params(query string),与 get/post 签名保持一致
+  // 第三个参数为 options(headers/timeout 等);旧代码兼容:
+  //   - del(url, options) → params 取空,options 正常展开(原行为)
+  // 判断 params 是否实际是 options:含 request 白名单任一字段即视为 options
+  if (params && !Array.isArray(params) && typeof params === 'object') {
+    const looksLikeOptions = Object.keys(params).some((k) => REQUEST_OPTION_KEYS.has(k))
+    if (looksLikeOptions) {
+      options = params
+      params = {}
+    }
+  }
+  const query = Object.keys(params || {})
+    .filter((k) => params[k] !== undefined && params[k] !== null && params[k] !== '')
+    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
+    .join('&')
+  const fullUrl = query ? `${url}${url.includes('?') ? '&' : '?'}${query}` : url
+  return request({ ...options, url: fullUrl, method: 'DELETE' })
+}

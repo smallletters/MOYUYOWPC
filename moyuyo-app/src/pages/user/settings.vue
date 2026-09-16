@@ -13,7 +13,11 @@
         H5 下 <navigator> 默认渲染为 <a>(inline),其内层 flex 容器在浏览器里失效,
         改为 <view @click> + uni.navigateTo 替代,样式按 .item/.section-header 预期渲染 -->
       <view class="section">
-        <view class="section-header" hover-class="item-hover" @click="navTo('/pages/user/security')">
+        <view
+          class="section-header"
+          hover-class="item-hover"
+          @click="navTo('/pages/user/security')"
+        >
           <view class="item-left">
             <text class="item-icon luc luc-lock" />
             <text class="item-label">{{ $t('settings.security.title') }}</text>
@@ -87,6 +91,16 @@
 
       <!-- 支持区域 -->
       <view class="section">
+        <!-- 隐私设置入口:点击进入 /pages/user/privacy（注销账户也在该页面）
+             业内通用做法：隐私/注销属于低频但合规重要入口，与"帮助/反馈"分组一致 -->
+        <view class="item" hover-class="item-hover" @click="navTo('/pages/user/privacy')">
+          <view class="item-left">
+            <text class="item-icon luc luc-shield" />
+            <text class="item-label">{{ $t('settings.privacy') }}</text>
+          </view>
+          <text class="chevron luc luc-chevron-right" />
+        </view>
+        <view class="divider indent" />
         <view class="item" hover-class="item-hover" @click="navTo('/pages/user/help')">
           <view class="item-left">
             <text class="item-icon luc luc-help-circle" />
@@ -146,7 +160,11 @@
           </view>
         </view>
         <view class="lang-picker-cancel-wrap">
-          <view class="lang-picker-cancel" hover-class="lang-picker-item-hover" @click="closeLanguagePicker">
+          <view
+            class="lang-picker-cancel"
+            hover-class="lang-picker-item-hover"
+            @click="closeLanguagePicker"
+          >
             <text class="lang-picker-cancel-text">{{ $t('common.cancel') }}</text>
           </view>
         </view>

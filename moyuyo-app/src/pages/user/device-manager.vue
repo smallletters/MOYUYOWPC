@@ -20,11 +20,18 @@
         <view v-for="d in devices" :key="d.id" class="device-card">
           <text class="device-icon luc-smartphone" />
           <view class="device-info">
-            <text class="device-name">{{ d.deviceName || d.model }}</text>
-            <text class="device-meta">{{ d.os }} · {{ d.location }}</text>
-            <text class="device-time">{{ formatTime(d.lastActiveAt || d.loginAt) }}</text>
+            <!-- 设备名:优先 model,回退 platform -->
+            <text class="device-name">{{ d.model || d.platform || d.deviceId }}</text>
+            <!-- 系统信息:platform + osVersion + appVersion -->
+            <text class="device-meta">
+              {{ d.platform }} · {{ d.osVersion }}{{ d.appVersion ? ' · ' + d.appVersion : '' }}
+            </text>
+            <text class="device-time">{{ formatTime(d.lastActive || d.createTime) }}</text>
           </view>
-          <view v-if="d.isCurrent" class="current-tag">{{ t('deviceManager.current') }}</view>
+          <!-- 暂用 deviceId 与 store 中 deviceId 判定"当前设备";真要更准可后端在 upsert 返回时打标 -->
+          <view v-if="d.deviceId === currentDeviceId" class="current-tag">
+            {{ t('deviceManager.current') }}
+          </view>
           <view v-else class="remove-btn" @click="onRemove(d)">
             {{ t('deviceManager.remove') }}
           </view>
@@ -35,10 +42,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { deviceApi } from '@/api'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { i18n } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
+import { useUserStore } from '@/store'
+import { getDeviceFingerprint } from '@/utils/deviceFingerprint'
 usePageTitle('pageTitle.userDeviceManager')
 
 // 轻量翻译函数（响应 localeVersion 变化，刷新依赖本地化的模板）
@@ -52,11 +60,18 @@ function t(key, params) {
 const devices = ref([])
 const loading = ref(false)
 
+// 当前设备的 deviceId(用于在列表中标记"当前设备");共用 store 中的指纹生成器,
+// 保证"哪些是本机"判定与 store.upsertCurrentDevice 完全一致
+const userStore = useUserStore()
+const currentDeviceId = computed(() => getDeviceFingerprint())
+
 async function load() {
   loading.value = true
   try {
-    const res = await deviceApi.listDevices({ size: 50 })
-    devices.value = res?.records || res || []
+    // 复用 store.fetchDevices:统一缓存/异常处理/分页参数,
+    // 避免本页与 store 各拉一次造成的"删一条后这里不更新"问题
+    const list = await userStore.fetchDevices()
+    devices.value = list || []
   } catch (e) {
     console.warn('[device-manager] load failed', e)
   } finally {
@@ -78,13 +93,14 @@ function onRemove(d) {
   uni.showModal({
     title: t('deviceManager.removeTitle'),
     success: async (r) => {
-      if (r.confirm) {
-        try {
-          await deviceApi.removeDevice(d.id)
-          devices.value = devices.value.filter((x) => x.id !== d.id)
-        } catch (e) {
-          uni.showToast({ title: t('deviceManager.operationFailed'), icon: 'none' })
-        }
+      if (!r.confirm) return
+      try {
+        // 走 store:统一处理缓存(storage + 内存),避免本页与 store 数据脱节
+        await userStore.removeDevice(d.id)
+        // 从 store 取最新列表同步本地 ref,触发 UI 更新
+        devices.value = userStore.deviceList || []
+      } catch (e) {
+        uni.showToast({ title: t('deviceManager.operationFailed'), icon: 'none' })
       }
     },
   })

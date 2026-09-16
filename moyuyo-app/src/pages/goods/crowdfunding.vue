@@ -1,8 +1,6 @@
-﻿<template>
+<template>
   <view class="crowdfunding">
     <!-- 顶部深色导航栏 -->
-
-
 
     <scroll-view scroll-y class="scroll">
       <!-- 众筹主图区域 -->
@@ -272,6 +270,11 @@ export default {
   justify-content: space-between;
   height: 88rpx;
   padding: 0 32rpx;
+}
+/* 滚动内容:H5 下需要显式 width + box-sizing 才能撑满屏幕 */
+.scroll {
+  width: 100%;
+  box-sizing: border-box;
 }
 .nav-back {
   display: flex;

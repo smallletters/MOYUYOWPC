@@ -82,6 +82,11 @@
           登录失败次数过多，账号已临时锁定
         </div>
 
+        <!-- 会话过期提示横幅，由 axios 拦截器跳转登录时携带 reason=session_expired 触发 -->
+        <div v-if="sessionExpiredNotice" class="lock-banner" style="background:#fdf6ec;color:#e6a23c;border-color:#faecd8;">
+          会话已过期，请重新登录
+        </div>
+
         <!-- 分隔线 -->
         <div class="divider">
           <span>或</span>
@@ -101,11 +106,16 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { login } from '../api/auth'
 
 const router = useRouter()
+const route = useRoute()
+
+// 携带 reason=session_expired 表示被踢回登录：显示会话过期横幅，登录后回跳到 from 路径
+const sessionExpiredNotice = ref(route.query.reason === 'session_expired')
+const redirectFrom = ref(typeof route.query.from === 'string' ? route.query.from : '')
 
 const form = reactive({
   email: '',
@@ -156,14 +166,17 @@ async function handleLogin() {
         sessionStorage.setItem('admin_email', form.email)
       }
       ElMessage.success('登录成功')
-      // 使用 next tick 等 token 写入后再跳转，避免守卫拦回登录页
+      // 若来自会话过期跳转的回跳，跳回原页面（安全白名单：仅允许 admin 内部路径）
+      const target = redirectFrom.value && redirectFrom.value.startsWith('/') && !redirectFrom.value.startsWith('//')
+        ? redirectFrom.value
+        : '/dashboard'
       try {
-        await router.push('/dashboard')
+        await router.push(target)
       } catch (navErr) {
         // vue-router 4 在重复路由或守卫 reject 时抛 NavigationFailure；
         // 退化到整页跳转，避免出现"登录成功但卡在登录页"的体验
         console.warn('router.push 失败，降级到 location.href:', navErr)
-        window.location.href = '/admin/dashboard'
+        window.location.href = '/admin' + target
       }
     } else {
       ElMessage.error(res?.message || '登录失败')

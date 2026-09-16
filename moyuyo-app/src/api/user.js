@@ -1,4 +1,4 @@
-import { post, get, put } from '@/utils/request'
+import { post, get, put, del } from '@/utils/request'
 
 export function register(data) {
   return post('/api/v1/auth/register', data)
@@ -82,6 +82,46 @@ export function loginByPhone(phone, code) {
   return post('/api/v1/auth/phone/login', { phone, code }, { showError: false })
 }
 
+/**
+ * 查询账号注销状态（冻结期倒计时用）。
+ * 返回 { pending, scheduledAtMillis, remainingSeconds, status }
+ * <p>
+ * 用 showError:false 调用：401 时让 request.js 的 handleUnauthorized 走全局弹窗，
+ * 这里不重复 toast；其它业务错误（500 等）由调用方决定是否提示。
+ */
+export function getDeletionStatus() {
+  return get('/api/v1/auth/account/deletion', {}, { showError: false })
+}
+
+/**
+ * 申请注销账户。
+ * 后端写入 delete_scheduled_at = now + 15d 并吊销全部 token,
+ * 冻结期内登录或调用 cancelDeleteAccount 可撤销。
+ */
+export function requestDeleteAccount() {
+  return post('/api/v1/auth/account/deletion')
+}
+
+/**
+ * 撤销注销申请（15 天冻结期内可"悔棋"）。
+ */
+export function cancelDeleteAccount() {
+  return del('/api/v1/auth/account/deletion')
+}
+
+/**
+ * 请求账户数据导出（USER 端）。
+ * <p>
+ * 后端 1 天内同账号最多 1 次，超出抛 HTTP 429 + 错误码前缀 DATA_EXPORT_RATE_LIMITED:{nextAllowedAtMillis}，
+ * 前端通过 i18n 模板 {date} 展示下次可发起时间。
+ * <p>
+ * @param {object} [options] 透传 request.js 选项,常用：
+ *   - showError:false 让 request.js 不自动 toast,由调用方自己用 showModal 展示
+ */
+export function requestDataExport(options = {}) {
+  return post('/api/v1/users/me/export', {}, options)
+}
+
 export default {
   register,
   login,
@@ -101,4 +141,8 @@ export default {
   setTwoFactorEnabled,
   sendPhoneCode,
   loginByPhone,
+  getDeletionStatus,
+  requestDeleteAccount,
+  cancelDeleteAccount,
+  requestDataExport,
 }

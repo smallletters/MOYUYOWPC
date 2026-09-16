@@ -130,7 +130,36 @@ public class UserController {
   }
 
   /**
+   * 请求数据导出：USER 端自助导出账户数据。
+   * <p>
+   * 限流：同账号 1 天内最多 1 次，超出抛 429 + 错误码前缀 {@code DATA_EXPORT_RATE_LIMITED:},
+   * 前端按 i18n key {@code serverMsg.dataExportRateLimited} 翻译 + 解析下次可发起时间。
+   * <p>
+   * 异步：实际数据生成由定时任务接管，本接口只写入 {@code mo_data_export_request}
+   * (status=PENDING) + 更新 {@code mo_user.data_export_requested_at}。
+   *
+   * @return 导出请求 ID、状态、当前时间
+   */
+  @PostMapping("/me/export")
+  @Operation(summary = "请求数据导出（USER 端）")
+  public Result<com.moyuyo.service.AuthService.DataExportAck> requestDataExport() {
+    Long userId = UserContextHolder.getUserId();
+    if (userId == null) {
+      return Result.error(401, "未登录");
+    }
+    try {
+      return Result.success(authService.requestDataExport(userId));
+    } catch (IllegalArgumentException e) {
+      return Result.badRequest(e.getMessage());
+    }
+    // BusinessException(429 限流) 不在此 catch,会冒到 GlobalExceptionHandler
+    // → 自动映射 HTTP 429 + Result.error(code=429, message=DATA_EXPORT_RATE_LIMITED:xxx)
+  }
+
+  /**
    * UserEntity → profile VO(GET /me 与 PUT /me 共用,保持响应结构一致)。
+   * <p>
+   * 隐私开关 4 项（V20260916_01）一并返回,供 /pages/user/privacy 页面初始化。
    */
   private Map<String, Object> toProfileMap(UserEntity u) {
     Map<String, Object> p = new HashMap<>();
@@ -145,6 +174,11 @@ public class UserController {
     p.put("twoFactorEnabled", u.getTwoFactorEnabled() != null && u.getTwoFactorEnabled());
     p.put("points", u.getPoints());
     p.put("registrationChannel", u.getRegistrationChannel());
+    // 隐私开关：null 兜底成默认策略（与 DB DEFAULT 对齐），避免前端读到 null 误判
+    p.put("publicFavorites", u.getPublicFavorites() == null ? Boolean.TRUE : u.getPublicFavorites());
+    p.put("allowViewProfile", u.getAllowViewProfile() == null ? Boolean.TRUE : u.getAllowViewProfile());
+    p.put("showOnlineStatus", u.getShowOnlineStatus() == null ? Boolean.FALSE : u.getShowOnlineStatus());
+    p.put("allowMessages", u.getAllowMessages() == null ? Boolean.TRUE : u.getAllowMessages());
     return p;
   }
 }

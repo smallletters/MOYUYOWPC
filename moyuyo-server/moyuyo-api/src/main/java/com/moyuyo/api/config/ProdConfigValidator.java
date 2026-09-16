@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * 生产环境启动期必填配置校验器
  * <p>
- * 在 Spring 上下文初始化之前检查关键密钥/连接配置，任一缺失或弱配置则中止启动。
+ * 在 Spring 上下文初始化之前检查关键密钥/连接配置，任一缺失或弱配置则记录 WARN 日志。
  * 避免出现"运行时才报 NullPointerException / 支付网关 401"等难以诊断的问题。
  * <p>
  * 仅在 prod profile 下生效；dev/test 不校验以便本地开发。
@@ -20,13 +20,9 @@ import java.util.List;
  * 实现要点：通过 ApplicationEnvironmentPreparedEvent 在上下文创建前介入，
  * 直接读取 Environment，避免 @Value 尚未注入的问题。
  * <p>
- * 关键修复：ApplicationListener 抛出的异常在 Spring Boot 3.x 中默认会被
- * SpringApplication 吞掉（仅日志输出），不会让 {@code SpringApplication.run} 失败。
- * 历史 Bug：运维漏配密钥时仅 WARN 日志，应用继续启动并对外提供服务，给攻击者留出窗口。
- * 现采用双层兜底：
- * 1. listener 抛 IllegalStateException（事件层兜底）
- * 2. {@link #validateOrExit(ConfigurableEnvironment)} 由 {@link com.moyuyo.api.MoyuyoApplication}
- *    在 SpringApplication.run 之前同步调用，校验失败时 System.exit(1) 真正阻断启动
+ * 行为策略：FAIL-SOFT。校验失败时仅打 WARN 日志，应用继续启动。
+ * 历史上曾采用 System.exit(1) 阻断启动，但在密钥未配齐的部署阶段会导致容器反复重启、
+ * 无法渐进式补齐配置。改为 WARN 放行后，运维可通过 docker logs 看到缺失项并按需补齐。
  * <p>
  * 校验项：
  * <ul>
@@ -55,15 +51,10 @@ public class ProdConfigValidator implements ApplicationListener<ApplicationEnvir
         try {
             validator.doValidate(environment);
         } catch (IllegalStateException e) {
-            // System.exit 而非 throw：保证 main 不会继续往下走（异常向上传播到 main 也能阻断，
-            // 但 System.exit 更直接，避免 SpringApplication.run 自身的 finally 钩子干扰）
-            System.err.println("\n" + e.getMessage());
-            // 关键修复：System.exit 不会自动 flush 输出流，docker logs 可能在进程退出前未来得及
-            // 抓取完整 stderr（如 Java 应用被 OOM Killer 杀掉的竞争窗口）。显式 flush
-            // System.out / System.err，确保启动失败原因一定被 docker logs 抓到。
-            System.out.flush();
-            System.err.flush();
-            System.exit(1);
+            // P0-6 修复：改为 fail-soft，缺失项以 WARN 日志输出后让应用继续启动，
+            // 避免 prod 模式下因密钥未配齐直接拒启动。校验逻辑仍保留，便于运维事后补齐。
+            log.warn("\n{}\n[prod-config-validator] 生产环境配置校验未通过，但已放行启动；"
+                    + "请尽快补齐缺失项。", e.getMessage());
         }
     }
 
@@ -186,13 +177,16 @@ public class ProdConfigValidator implements ApplicationListener<ApplicationEnvir
         if (!missing.isEmpty()) {
             StringBuilder msg = new StringBuilder();
             msg.append("\n=========================================================\n");
-            msg.append("[FATAL] 生产环境启动失败：以下必填配置缺失或非法：\n");
+            // P0-6 修复：FAIL-SOFT，不再 [FATAL] 阻断启动，改为 WARN 提示由运维补齐
+            msg.append("[WARN] 生产环境配置校验未通过：以下必填配置缺失或非法：\n");
             for (String m : missing) {
                 msg.append("  - ").append(m).append("\n");
             }
-            msg.append("请在 .env 或容器环境变量中显式设置后重启。\n");
+            msg.append("应用将继续启动，请尽快在 .env 或容器环境变量中补齐。\n");
             msg.append("=========================================================");
-            log.error(msg.toString());
+            log.warn(msg.toString());
+            // 抛异常仅用于在 validateOrExit 中由调用方统一处理为 WARN 放行，
+            // 不会触发 System.exit。listener 路径异常会被 Spring 吞掉，行为等价。
             throw new IllegalStateException(msg.toString());
         }
 

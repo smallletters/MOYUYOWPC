@@ -81,6 +81,22 @@ public class ProfileUpdateRequest {
     @Schema(description = "是否订阅营销通知", example = "true")
     private Boolean marketingOptIn;
 
+    // ==================== 隐私开关（V20260916_01 新增） ====================
+    // 仅作为读写开关:无格式校验,无需 XSS 净化（布尔值）;
+    // Service 层会做一次 null→不更新 的语义判断,避免前端传 undefined 时把现有值清空
+
+    @Schema(description = "公开我的收藏", example = "true")
+    private Boolean publicFavorites;
+
+    @Schema(description = "允许他人查看我的主页", example = "true")
+    private Boolean allowViewProfile;
+
+    @Schema(description = "显示在线状态", example = "false")
+    private Boolean showOnlineStatus;
+
+    @Schema(description = "允许他人向我发送私信", example = "true")
+    private Boolean allowMessages;
+
     /**
      * 头像 URL 协议白名单二级校验。
      * <p>

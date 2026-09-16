@@ -158,6 +158,7 @@ export default {
   min-height: 100vh;
   background: var(--color-background);
   padding-bottom: calc(env(safe-area-inset-bottom) + 160rpx);
+  position: relative;
 }
 
 .header {
@@ -218,6 +219,17 @@ export default {
 
 .content {
   padding: 32rpx;
+  /* 兼容 H5：uni-app 的 scroll-view 在 H5 下会渲染多层嵌套 div,
+     这里强制让最内层内容容器占满屏幕宽度,避免内容缩到一侧 */
+  width: 100%;
+  box-sizing: border-box;
+}
+/* H5 下 scroll-view 内部包裹 div，显式撑满宽度 */
+.content :deep(.uni-scroll-view),
+.content :deep(.uni-scroll-view-content) {
+  width: 100% !important;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .type-row {

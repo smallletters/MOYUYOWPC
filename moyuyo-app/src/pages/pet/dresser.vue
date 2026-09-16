@@ -1,10 +1,15 @@
-﻿<template>
+<template>
   <view class="pet-dresser">
     <view class="page-header">
       <view class="back" aria-label="返回" @click="goBack">
         <text class="luc luc-arrow-left" />
       </view>
       <text class="title">宠物装扮</text>
+      <!-- 上传自定义形象入口 -->
+      <view class="upload-btn" @click="onUpload">
+        <text class="luc luc-plus" />
+        <text class="upload-btn-text">上传</text>
+      </view>
     </view>
 
     <scroll-view scroll-y class="content">
@@ -37,9 +42,18 @@
           :class="{ equipped: d.equipped }"
           @click="onEquip(d)"
         >
-          <image :src="d.image" class="dresser-image" />
+          <image :src="d.imageUrl" class="dresser-image" mode="aspectFill" />
           <text class="dresser-name">{{ d.name }}</text>
           <text v-if="d.equipped" class="equipped-tag">已穿戴</text>
+          <!-- 仅用户自定义装扮(userId 非 NULL)显示删除按钮，系统装扮不可删 -->
+          <view v-if="d.userId" class="delete-btn" @click.stop="onDelete(d)">
+            <text class="luc luc-trash-2" />
+          </view>
+        </view>
+
+        <!-- 空状态 -->
+        <view v-if="!loading && filteredItems.length === 0" class="empty-state">
+          <text class="empty-text">暂无装扮，点击右上角上传自定义形象</text>
         </view>
       </view>
     </scroll-view>
@@ -47,7 +61,7 @@
 </template>
 
 <script>
-import { petApi } from '@/api'
+import { petApi, petDresserApi, uploadApi } from '@/api'
 
 export default {
   pageTitleKey: 'pageTitle.petDresser',
@@ -56,52 +70,17 @@ export default {
     return {
       currentPet: null,
       activeCat: 'all',
+      // 分类与后端 category 白名单保持一致: hat/scarf/clothes/toy/custom
       categories: [
         { id: 'all', label: '全部' },
         { id: 'hat', label: '帽子' },
         { id: 'scarf', label: '围巾' },
         { id: 'clothes', label: '衣服' },
         { id: 'toy', label: '玩具' },
+        { id: 'custom', label: '自定义' },
       ],
-      items: [
-        {
-          id: 1,
-          name: '蝴蝶结',
-          category: 'hat',
-          image: 'https://picsum.photos/200/200?random=40',
-          equipped: true,
-        },
-        {
-          id: 2,
-          name: '贝雷帽',
-          category: 'hat',
-          image: 'https://picsum.photos/200/200?random=41',
-        },
-        {
-          id: 3,
-          name: '圣诞帽',
-          category: 'hat',
-          image: 'https://picsum.photos/200/200?random=42',
-        },
-        {
-          id: 4,
-          name: '格子围巾',
-          category: 'scarf',
-          image: 'https://picsum.photos/200/200?random=43',
-        },
-        {
-          id: 5,
-          name: '潮流外套',
-          category: 'clothes',
-          image: 'https://picsum.photos/200/200?random=44',
-        },
-        {
-          id: 6,
-          name: '毛绒球',
-          category: 'toy',
-          image: 'https://picsum.photos/200/200?random=45',
-        },
-      ],
+      items: [],
+      loading: false,
     }
   },
 
@@ -113,16 +92,39 @@ export default {
   },
 
   onShow() {
-    this.loadPet()
+    this.init()
   },
 
   methods: {
+    async init() {
+      await this.loadPet()
+      if (this.currentPet?.id) {
+        this.loadOutfits()
+      }
+    },
+
+    // 加载当前用户宠物列表，取第一只作为当前宠物
     async loadPet() {
       try {
-        const pets = await petApi.getPetList()
+        const pets = await petApi.getPets()
         this.currentPet = (pets && pets[0]) || null
       } catch (e) {
         this.currentPet = { name: '宠物' }
+      }
+    },
+
+    // 从后端加载装扮列表：系统装扮 + 当前用户自定义装扮
+    async loadOutfits() {
+      if (!this.currentPet?.id) return
+      this.loading = true
+      try {
+        const list = await petDresserApi.getPetOutfits(this.currentPet.id)
+        this.items = Array.isArray(list) ? list : []
+      } catch (e) {
+        console.warn('[dresser] load outfits failed', e)
+        uni.showToast({ title: '装扮列表加载失败', icon: 'none' })
+      } finally {
+        this.loading = false
       }
     },
 
@@ -130,10 +132,83 @@ export default {
       uni.navigateBack()
     },
 
-    onEquip(item) {
-      this.items.forEach((i) => (i.equipped = false))
-      item.equipped = true
-      uni.showToast({ title: `已穿戴 ${item.name}`, icon: 'success' })
+    // 装备装扮：调用后端接口，成功后刷新列表(后端会更新 equipped 字段)
+    async onEquip(item) {
+      if (!this.currentPet?.id) return
+      try {
+        await petDresserApi.equipOutfit(this.currentPet.id, item.id)
+        await this.loadOutfits()
+        uni.showToast({ title: `已穿戴 ${item.name}`, icon: 'success' })
+      } catch (e) {
+        uni.showToast({ title: e?.message || '装备失败', icon: 'none' })
+      }
+    },
+
+    // 上传自定义装扮形象：选图 → 上传图片 → 提交装扮记录
+    onUpload() {
+      if (!this.currentPet?.id) {
+        uni.showToast({ title: '请先创建宠物', icon: 'none' })
+        return
+      }
+      uni.chooseImage({
+        count: 1,
+        sourceType: ['album', 'camera'],
+        success: async (res) => {
+          const filePath = res.tempFilePaths && res.tempFilePaths[0]
+          if (!filePath) return
+          // 1. 先上传图片拿到 imageUrl
+          uni.showLoading({ title: '上传中...', mask: true })
+          try {
+            const uploadRes = await uploadApi.uploadImage(filePath)
+            const imageUrl = uploadRes?.url
+            if (!imageUrl) throw new Error('图片上传失败')
+            // 2. 提交装扮记录到后端（默认归类为 custom）
+            const created = await petDresserApi.uploadOutfit(this.currentPet.id, {
+              category: 'custom',
+              name: '自定义形象',
+              imageUrl,
+            })
+            uni.hideLoading()
+            uni.showToast({ title: '上传成功', icon: 'success' })
+            // 上传完成后自动切到"自定义"分类并刷新列表
+            this.activeCat = 'custom'
+            await this.loadOutfits()
+            // 可选：提示用户可重命名
+            if (created?.id) {
+              console.log('[dresser] outfit created:', created.id)
+            }
+          } catch (e) {
+            uni.hideLoading()
+            uni.showToast({ title: e?.message || '上传失败', icon: 'none' })
+          }
+        },
+        fail: () => {
+          // 用户取消选择，静默处理
+        },
+      })
+    },
+
+    // 删除装扮：仅用户自定义装扮可删，调用前二次确认
+    onDelete(item) {
+      if (!item.userId) {
+        uni.showToast({ title: '系统装扮不可删除', icon: 'none' })
+        return
+      }
+      uni.showModal({
+        title: '删除装扮',
+        content: `确定删除「${item.name}」吗？删除后不可恢复。`,
+        confirmColor: '#ff4d4f',
+        success: async (modalRes) => {
+          if (!modalRes.confirm) return
+          try {
+            await petDresserApi.deleteOutfit(this.currentPet.id, item.id)
+            uni.showToast({ title: '已删除', icon: 'success' })
+            await this.loadOutfits()
+          } catch (e) {
+            uni.showToast({ title: e?.message || '删除失败', icon: 'none' })
+          }
+        },
+      })
     },
   },
 }
@@ -171,6 +246,25 @@ export default {
   font-weight: var(--font-weight-semibold);
   color: var(--color-text);
   margin-right: 60rpx;
+}
+
+.upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 8rpx 16rpx;
+  background: var(--color-primary);
+  border-radius: 999rpx;
+  color: #fff;
+  font-size: var(--font-size-xs);
+}
+
+.upload-btn .luc {
+  font-size: 28rpx;
+}
+
+.upload-btn-text {
+  color: #fff;
 }
 
 .content {
@@ -212,16 +306,19 @@ export default {
   background: var(--color-surface);
   border-radius: var(--radius-md);
   margin-bottom: 16rpx;
+  overflow-x: auto;
 }
 
 .cat-tab {
   flex: 1;
+  min-width: 110rpx;
   height: 72rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+  white-space: nowrap;
 }
 
 .cat-tab.active {
@@ -263,6 +360,10 @@ export default {
   font-size: var(--font-size-xs);
   color: var(--color-text);
   text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .equipped-tag {
@@ -274,5 +375,31 @@ export default {
   color: var(--color-text);
   border-radius: 999rpx;
   font-size: 18rpx;
+}
+
+.delete-btn {
+  position: absolute;
+  top: 8rpx;
+  left: 8rpx;
+  width: 44rpx;
+  height: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 50%;
+  color: #fff;
+  font-size: 24rpx;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  padding: 80rpx 0;
+  text-align: center;
+}
+
+.empty-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
 }
 </style>

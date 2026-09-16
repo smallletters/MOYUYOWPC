@@ -1,8 +1,6 @@
-﻿<template>
+<template>
   <view class="group-buy">
     <!-- 顶部导航栏 -->
-
-
 
     <scroll-view scroll-y class="scroll">
       <!-- 主商品展示区 -->
@@ -249,6 +247,8 @@ export default {
 }
 .scroll {
   padding-bottom: 32rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 .main-product {
   background: var(--card);

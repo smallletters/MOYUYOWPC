@@ -3,6 +3,7 @@ package com.moyuyo.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.moyuyo.common.JwtUtil;
 import com.moyuyo.common.dto.auth.*;
+import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.common.exception.BusinessException;
 import com.moyuyo.dao.entity.SmsCodeEntity;
 import com.moyuyo.dao.entity.UserEntity;
@@ -39,6 +40,11 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserMapper userMapper;
     private final SmsCodeMapper smsCodeMapper;
+    // 注销预校验:检测用户未完成订单(避免死单/资产悬空)
+    private final com.moyuyo.dao.mapper.OrderMapper orderMapper;
+    // USER 端数据导出请求落库:复用 admin 端的 mo_data_export_request 表
+    // requestType='USER_DATA_EXPORT' 作为用户自导出场景的标识
+    private final com.moyuyo.dao.admin.mapper.DataExportRequestMapper dataExportRequestMapper;
     // 使用 ObjectProvider 支持可选注入：未配置 SMS Provider 时 SmsService Bean 可能不存在（NoopSmsServiceImpl 在 Spring 6.x 下因
     // @Service + @ConditionalOnMissingBean 顺序问题不一定会被注册），避免构造器装配失败导致 dev 启动阻塞
     private final ObjectProvider<SmsService> smsServiceProvider;
@@ -58,6 +64,8 @@ public class AuthServiceImpl implements AuthService {
     // 这里通过构造注入 MeterRegistry 创建 Prometheus 计数器
     public AuthServiceImpl(UserMapper userMapper,
                            SmsCodeMapper smsCodeMapper,
+                           com.moyuyo.dao.mapper.OrderMapper orderMapper,
+                           com.moyuyo.dao.admin.mapper.DataExportRequestMapper dataExportRequestMapper,
                            ObjectProvider<SmsService> smsServiceProvider,
                            ObjectProvider<EmailService> emailServiceProvider,
                            JwtUtil jwtUtil,
@@ -66,6 +74,8 @@ public class AuthServiceImpl implements AuthService {
                            MeterRegistry meterRegistry) {
         this.userMapper = userMapper;
         this.smsCodeMapper = smsCodeMapper;
+        this.orderMapper = orderMapper;
+        this.dataExportRequestMapper = dataExportRequestMapper;
         this.smsServiceProvider = smsServiceProvider;
         this.emailServiceProvider = emailServiceProvider;
         this.jwtUtil = jwtUtil;
@@ -277,6 +287,23 @@ public class AuthServiceImpl implements AuthService {
 
         if (user.getStatus() == null || user.getStatus() != 1) {
             throw new IllegalArgumentException("Account is disabled");
+        }
+
+        // 注销冻结期校验：到期后拒绝登录（与微信/京东一致）
+        // 期内未到期则放行并自动撤销（业内"登录即后悔"模式，参考 ProcessOn 7 天）
+        if (user.getDeleteScheduledAt() != null) {
+            LocalDateTime now = LocalDateTime.now();
+            if (!user.getDeleteScheduledAt().isAfter(now)) {
+                // 已到期：定时任务尚未清理前仍阻断登录，避免"到期空档期"被攻击
+                log.warn("Login rejected: account deletion grace period expired, userId={}", user.getId());
+                throw new IllegalArgumentException("账号已注销，如需使用请重新注册");
+            }
+            // 期内：撤销注销申请 + 清空 deleteScheduledAt + 状态回滚到 ACTIVE
+            log.info("Login during deletion grace period, auto-revoke: userId={}, scheduledAt={}",
+                    user.getId(), user.getDeleteScheduledAt());
+            user.setDeleteScheduledAt(null);
+            user.setStatus(USER_STATUS_ACTIVE);
+            userMapper.updateById(user);
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
@@ -708,6 +735,20 @@ public class AuthServiceImpl implements AuthService {
         if (update.getMarketingOptIn() != null) {
             user.setMarketingOptIn(update.getMarketingOptIn());
         }
+        // 隐私开关 4 项（V20260916_01）：null 表示前端未传，保留原值；
+        // Boolean 字段允许 false,与 marketingOptIn 处理一致
+        if (update.getPublicFavorites() != null) {
+            user.setPublicFavorites(update.getPublicFavorites());
+        }
+        if (update.getAllowViewProfile() != null) {
+            user.setAllowViewProfile(update.getAllowViewProfile());
+        }
+        if (update.getShowOnlineStatus() != null) {
+            user.setShowOnlineStatus(update.getShowOnlineStatus());
+        }
+        if (update.getAllowMessages() != null) {
+            user.setAllowMessages(update.getAllowMessages());
+        }
 
         userMapper.updateById(user);
         user.setPasswordHash(null);
@@ -773,6 +814,18 @@ public class AuthServiceImpl implements AuthService {
 
         if (user.getStatus() == null || user.getStatus() != 1) {
             throw new IllegalArgumentException("Account is disabled");
+        }
+
+        // 注销冻结期校验：与 password/phone login 路径一致（期内登录即撤销）
+        if (user.getDeleteScheduledAt() != null) {
+            LocalDateTime now = LocalDateTime.now();
+            if (!user.getDeleteScheduledAt().isAfter(now)) {
+                log.warn("Magic link login rejected: account deletion grace period expired, userId={}", user.getId());
+                throw new IllegalArgumentException("账号已注销，如需使用请重新注册");
+            }
+            user.setDeleteScheduledAt(null);
+            user.setStatus(USER_STATUS_ACTIVE);
+            log.info("Magic link login during deletion grace period, auto-revoke: userId={}", user.getId());
         }
 
         user.setLastLoginTime(LocalDateTime.now());
@@ -914,6 +967,22 @@ public class AuthServiceImpl implements AuthService {
     private static final long PHONE_HOURLY_LIMIT = 5;
     private static final long PHONE_HOURLY_WINDOW_SECONDS = 3600;
 
+    // ==================== 账号注销 ====================
+
+    /** 注销冻结期：15 天（业内通用，参考微信 15 天/京东 30 天） */
+    private static final long DELETION_GRACE_DAYS = 15L;
+    /** mo_user.status：正常 */
+    private static final int USER_STATUS_ACTIVE = 1;
+    /** mo_user.status：注销待执行（PENDING_DELETE，等同于"冻结中"） */
+    private static final int USER_STATUS_PENDING_DELETE = 3;
+
+    /** 数据导出请求类型（与 admin 端导出订单区分） */
+    private static final String DATA_EXPORT_TYPE_USER = "USER_DATA_EXPORT";
+    /** 数据导出初始状态 */
+    private static final String DATA_EXPORT_STATUS_PENDING = "PENDING";
+    /** 同账号两次导出最小间隔（24h） */
+    private static final long DATA_EXPORT_COOLDOWN_HOURS = 24L;
+
     @Override
     @Transactional
     public void sendPhoneCode(String phone, String purpose) {
@@ -1036,6 +1105,17 @@ public class AuthServiceImpl implements AuthService {
             if (user.getStatus() == null || user.getStatus() != 1) {
                 throw new IllegalArgumentException("账号已被禁用");
             }
+            // 注销冻结期校验：与 password login 路径行为一致
+            if (user.getDeleteScheduledAt() != null) {
+                LocalDateTime now = LocalDateTime.now();
+                if (!user.getDeleteScheduledAt().isAfter(now)) {
+                    log.warn("Phone login rejected: account deletion grace period expired, userId={}", user.getId());
+                    throw new IllegalArgumentException("账号已注销，如需使用请重新注册");
+                }
+                user.setDeleteScheduledAt(null);
+                user.setStatus(USER_STATUS_ACTIVE);
+                log.info("Phone login during deletion grace period, auto-revoke: userId={}", user.getId());
+            }
             user.setLastLoginTime(LocalDateTime.now());
             userMapper.updateById(user);
         }
@@ -1067,6 +1147,211 @@ public class AuthServiceImpl implements AuthService {
                 refreshToken,
                 "Bearer",
                 ACCESS_TOKEN_EXPIRE_SECONDS);
+    }
+
+    // ==================== 账号注销 ====================
+
+    /**
+     * 申请注销账户。
+     * <p>
+     * 关键设计：
+     * <ul>
+     *   <li>幂等：重复提交直接返回当前已存在的时间戳，不覆盖</li>
+     *   <li>状态机：写入 {@code delete_scheduled_at} + {@code status=3(PENDING_DELETE)}</li>
+     *   <li>先写 DB 再吊销 token：拆为事务方法 + 事务外 logout,
+     *       避免 Redis 已写入但 DB 事务回滚导致"被踢出但未冻结"</li>
+     *   <li>吊销失败不阻断流程（用户已确认意愿）</li>
+     *   <li>审计：日志输出 userId/scheduledAt，便于后续追溯</li>
+     * </ul>
+     */
+    @Override
+    public LocalDateTime requestAccountDeletion(Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User not logged in");
+        }
+        // 第一步：事务内写 DB（独立事务方法,确保回滚不连带 Redis）
+        LocalDateTime scheduledAt = markDeletionPending(userId);
+
+        // 第二步：事务提交后再吊销 token（Redis 操作不参与事务）
+        // 校验 token:ThreadLocal 可能因拦截器/过滤器执行顺序、异步切换等原因未写入,
+        // 拿到 null 会被拼成 "blacklist:null" 这种非法 key,既未真正拉黑当前 access token,
+        // 也可能让 Redis 客户端对 null value 抛 NPE。
+        String accessToken = UserContextHolder.getToken();
+        if (accessToken == null || accessToken.isBlank()) {
+            // 兜底:不阻断注销流程(用户意愿已确认,DB 已写入 deleteScheduledAt,15 天后定时任务会清理)
+            log.warn("注销流程未拿到 access token,跳过 Redis 拉黑,userId={}", userId);
+        } else {
+            try {
+                logout(userId, accessToken);
+            } catch (Exception e) {
+                // logout 失败不应阻断注销流程（DB 已写入 deleteScheduledAt,
+                // 即使 token 暂时未吊销,15 天后定时任务仍会清理;用户也无法撤销 token 失效前的请求)
+                log.warn("Logout during deletion request failed, userId={}: {}", userId, e.getMessage());
+            }
+        }
+        return scheduledAt;
+    }
+
+    /**
+     * 标记账号进入 PENDING_DELETE 状态（独立更新,与 logout 解耦）。
+     * <p>
+     * 注意：未显式加 {@code @Transactional}，因为 {@link #requestAccountDeletion} 同类内
+     * 自调用会绕过 Spring AOP 代理导致事务失效；MyBatis-Plus 的 updateById
+     * 自身走单语句隐式事务即可。
+     * <p>
+     * 预校验：用户存在未完成订单（PENDING_PAY/PAID/PENDING_SHIP/SHIPPED/RECEIVED/REFUNDING/EXCHANGING）
+     * 时拒绝申请，引导用户先处理订单（业内通用规则,参考京东/淘宝注销须知）。
+     * 校验失败抛 {@link com.moyuyo.common.exception.BusinessException} 携带 409 业务码，
+     * 让前端弹"请先完成/取消订单"。
+     */
+    public LocalDateTime markDeletionPending(Long userId) {
+        UserEntity user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new IllegalArgumentException("User not found");
+        }
+        // 幂等：已有未到期注销计划则直接返回,不重置倒计时(保护后悔药窗口)
+        if (user.getDeleteScheduledAt() != null && user.getDeleteScheduledAt().isAfter(LocalDateTime.now())) {
+            log.info("Account deletion already requested: userId={}, scheduledAt={}", userId, user.getDeleteScheduledAt());
+            return user.getDeleteScheduledAt();
+        }
+
+        // 预校验：未完成订单
+        // 只统计 delete_status=0（未软删）且状态不在终态的订单
+        // 终态：CANCELLED / COMPLETED / REFUNDED / EXCHANGED
+        List<String> terminalStatuses = java.util.Arrays.asList(
+                com.moyuyo.common.enums.OrderStatusEnum.CANCELLED.name(),
+                com.moyuyo.common.enums.OrderStatusEnum.COMPLETED.name(),
+                com.moyuyo.common.enums.OrderStatusEnum.REFUNDED.name(),
+                com.moyuyo.common.enums.OrderStatusEnum.EXCHANGED.name());
+        Long activeOrderCount = orderMapper.selectCount(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.moyuyo.dao.entity.OrderEntity>()
+                        .eq(com.moyuyo.dao.entity.OrderEntity::getUserId, userId)
+                        .eq(com.moyuyo.dao.entity.OrderEntity::getDeleteStatus, 0)
+                        .notIn(com.moyuyo.dao.entity.OrderEntity::getStatus, terminalStatuses));
+        if (activeOrderCount != null && activeOrderCount > 0) {
+            log.warn("Account deletion blocked: user has {} active orders, userId={}", activeOrderCount, userId);
+            // 文案模板:固定前缀让前端可以做 SERVER_ERROR_MAP 匹配 i18n key,
+            // 数字部分由前端拼接(避免后端 message 随数字漂移导致翻译匹配失败)
+            throw new com.moyuyo.common.exception.BusinessException(
+                    409, "DELETION_HAS_ACTIVE_ORDERS:" + activeOrderCount);
+        }
+
+        LocalDateTime scheduledAt = LocalDateTime.now().plusDays(DELETION_GRACE_DAYS);
+        user.setDeleteScheduledAt(scheduledAt);
+        user.setStatus(USER_STATUS_PENDING_DELETE);
+        userMapper.updateById(user);
+        log.info("Account deletion requested: userId={}, scheduledAt={}", userId, scheduledAt);
+        return scheduledAt;
+    }
+
+    /**
+     * 撤销注销申请。
+     * <p>
+     * 三种场景：
+     * <ol>
+     *   <li>未提交注销：直接 200（幂等）</li>
+     *   <li>期内撤销：清空字段 + status=1</li>
+     *   <li>已到期：保留状态（定时任务已清理或正在清理），不报错，
+     *       但前端提示文案应引导用户重新注册</li>
+     * </ol>
+     */
+    @Override
+    public void cancelAccountDeletion(Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User not logged in");
+        }
+        UserEntity user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new IllegalArgumentException("User not found");
+        }
+        if (user.getDeleteScheduledAt() == null) {
+            log.info("Cancel deletion but no pending request: userId={}", userId);
+            return;
+        }
+        user.setDeleteScheduledAt(null);
+        user.setStatus(USER_STATUS_ACTIVE);
+        userMapper.updateById(user);
+        log.info("Account deletion cancelled: userId={}", userId);
+    }
+
+    /**
+     * 查询注销状态。
+     * <p>
+     * 同时返回剩余秒数与 epoch 毫秒，便于前端做"撤销倒计时"展示。
+     * 注意：该接口需要登录态（被冻结用户无法再访问，所以这里不需要单独鉴权）。
+     */
+    @Override
+    public DeletionStatus getDeletionStatus(Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User not logged in");
+        }
+        UserEntity user = userMapper.selectById(userId);
+        if (user == null) {
+            return null;
+        }
+        LocalDateTime scheduledAt = user.getDeleteScheduledAt();
+        if (scheduledAt == null) {
+            return new DeletionStatus(false, null, 0L, "ACTIVE");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        long remaining = java.time.Duration.between(now, scheduledAt).getSeconds();
+        // 统一用服务端时区把 LocalDateTime 转 epoch 毫秒,前端无需猜测时区
+        Long scheduledAtMillis = scheduledAt.atZone(java.time.ZoneId.systemDefault())
+                .toInstant().toEpochMilli();
+        if (remaining <= 0) {
+            // 已到期但定时任务尚未清理：状态仍标记 PENDING_DELETE，由定时任务接管
+            return new DeletionStatus(true, scheduledAtMillis, 0L, "PENDING_DELETE");
+        }
+        return new DeletionStatus(true, scheduledAtMillis, remaining, "PENDING_DELETE");
+    }
+
+    // ==================== 数据导出（V20260916_01） ====================
+
+    /** USER 端数据导出：1 天内同账号最多 1 次，超出抛 429 */
+    @Override
+    public DataExportAck requestDataExport(Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User not logged in");
+        }
+        UserEntity user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new IllegalArgumentException("User not found");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        long nowMillis = now.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+
+        // 频次限制：data_export_requested_at + 24h > now → 拒绝
+        if (user.getDataExportRequestedAt() != null) {
+            LocalDateTime nextAllowed = user.getDataExportRequestedAt()
+                    .plusHours(DATA_EXPORT_COOLDOWN_HOURS);
+            if (nextAllowed.isAfter(now)) {
+                long nextAllowedMillis = nextAllowed.atZone(java.time.ZoneId.systemDefault())
+                        .toInstant().toEpochMilli();
+                log.info("Data export rate limited: userId={}, nextAllowed={}", userId, nextAllowed);
+                throw new com.moyuyo.common.exception.BusinessException(
+                        429, "DATA_EXPORT_RATE_LIMITED:" + nextAllowedMillis);
+            }
+        }
+
+        // 1) 写入 mo_data_export_request（PENDING 状态，由定时任务异步处理）
+        com.moyuyo.dao.admin.entity.DataExportRequestEntity req =
+                new com.moyuyo.dao.admin.entity.DataExportRequestEntity();
+        req.setUserId(userId);
+        req.setExportId("EXP-" + userId + "-" + System.currentTimeMillis());
+        req.setTaskName("USER_DATA_EXPORT");
+        req.setFormat("JSON");
+        req.setRequestType(DATA_EXPORT_TYPE_USER);
+        req.setStatus(DATA_EXPORT_STATUS_PENDING);
+        req.setRemark("用户自助导出账户数据，文件将发送至注册邮箱");
+        dataExportRequestMapper.insert(req);
+
+        // 2) 更新 mo_user.data_export_requested_at,触发限流窗口
+        user.setDataExportRequestedAt(now);
+        userMapper.updateById(user);
+
+        log.info("Data export requested: userId={}, requestId={}", userId, req.getId());
+        return new DataExportAck(req.getId(), DATA_EXPORT_STATUS_PENDING, nowMillis, null);
     }
 
     /**

@@ -952,6 +952,8 @@ export default {
 
 .scroll {
   flex: 1;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .loading-state {

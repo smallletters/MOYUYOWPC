@@ -136,9 +136,13 @@
             </view>
             <view class="terms-text-wrap">
               <text class="terms-text">{{ $t('auth.agreeLoginTerms') }}</text>
-              <text class="terms-link">{{ $t('auth.termsAndPolicy') }}</text>
+              <text class="terms-link" @click.stop="openTerms('terms')">
+                {{ $t('auth.termsAndPolicy') }}
+              </text>
               <text class="terms-text">{{ $t('common.and') }}</text>
-              <text class="terms-link">{{ $t('auth.privacyPolicy') }}</text>
+              <text class="terms-link" @click.stop="openTerms('privacy')">
+                {{ $t('auth.privacyPolicy') }}
+              </text>
             </view>
           </view>
 
@@ -196,7 +200,7 @@
 import { useUserStore } from '@/store'
 import { sendPhoneCode, loginByPhone } from '@/api/user'
 import { config } from '@/utils/config'
-import { setStorage, STORAGE_KEYS } from '@/utils/storage'
+import { setStorage, getStorage, removeStorage, STORAGE_KEYS } from '@/utils/storage'
 import { i18n } from '@/i18n'
 
 export default {
@@ -305,8 +309,26 @@ export default {
           }
         }
         uni.hideLoading()
-        uni.showToast({ title: i18n.t('auth.loginSuccess'), icon: 'success' })
-        setTimeout(() => uni.switchTab({ url: '/pages/tabbar/home' }), 800)
+        // 检测是否从注销流程跳转来:是的话弹"注销已自动撤销"提示
+        // （业内"登录即后悔药"模式,参考微信/京东；后端会在 login 流程中清 deleteScheduledAt）
+        const deletionFlag = getStorage(STORAGE_KEYS.DELETION_REQUESTED, '')
+        if (deletionFlag === '1') {
+          // 一次性标记,读完即清,避免下次正常登录误弹
+          removeStorage(STORAGE_KEYS.DELETION_REQUESTED)
+          uni.showModal({
+            title: i18n.t('auth.deletionRevokedTitle'),
+            content: i18n.t('auth.deletionRevokedContent'),
+            showCancel: false,
+            confirmText: i18n.t('auth.gotIt'),
+            success: () => {
+              uni.showToast({ title: i18n.t('auth.loginSuccess'), icon: 'success' })
+              setTimeout(() => uni.switchTab({ url: '/pages/tabbar/home' }), 600)
+            },
+          })
+        } else {
+          uni.showToast({ title: i18n.t('auth.loginSuccess'), icon: 'success' })
+          setTimeout(() => uni.switchTab({ url: '/pages/tabbar/home' }), 800)
+        }
       } catch (e) {
         uni.hideLoading()
         // 修复:把后端真实错误消息完整透出(避免 "Request failed (403)" 这种掩盖问题)
@@ -400,6 +422,11 @@ export default {
 
     goRegister() {
       uni.navigateTo({ url: '/pages/user/register' })
+    },
+
+    // 打开服务条款 / 隐私政策(type=terms|privacy|qualification|license)
+    openTerms(type) {
+      uni.navigateTo({ url: `/pages/user/terms-document?type=${type}` })
     },
   },
 }

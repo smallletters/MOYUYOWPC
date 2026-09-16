@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.moyuyo.common.JwtUtil;
 import com.moyuyo.common.dto.auth.EmailVerifyRequest;
 import com.moyuyo.common.dto.auth.ResetPasswordRequest;
+import com.moyuyo.dao.admin.mapper.DataExportRequestMapper;
 import com.moyuyo.dao.entity.UserEntity;
+import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.SmsCodeMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.AuthService;
@@ -50,12 +52,17 @@ import static org.mockito.Mockito.when;
  * 5) resetPassword：失败计数 ≥ 5 → 主动清 key + 抛"验证码错误次数过多"
  */
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("unchecked")
 class AuthServiceImplPasswordResetTest {
 
     @Mock
     private UserMapper userMapper;
     @Mock
     private SmsCodeMapper smsCodeMapper;
+    @Mock
+    private OrderMapper orderMapper;
+    @Mock
+    private DataExportRequestMapper dataExportRequestMapper;
     @Mock
     private ObjectProvider<SmsService> smsServiceProvider;
     @Mock
@@ -92,6 +99,7 @@ class AuthServiceImplPasswordResetTest {
         lenient().when(emailServiceProvider.getIfAvailable()).thenReturn(emailService);
         MeterRegistry meterRegistry = new SimpleMeterRegistry();
         authService = new AuthServiceImpl(userMapper, smsCodeMapper,
+                orderMapper, dataExportRequestMapper,
                 smsServiceProvider, emailServiceProvider,
                 jwtUtil, redisTemplate, passwordEncoder, meterRegistry);
     }

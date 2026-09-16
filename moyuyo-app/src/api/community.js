@@ -6,6 +6,7 @@ import { get, post, del } from '@/utils/request'
  *  - GET    /api/v1/community/posts
  *  - GET    /api/v1/community/posts/{id}
  *  - POST   /api/v1/community/posts
+ *  - DELETE /api/v1/community/posts/{id}     删除帖子（仅作者本人）
  *  - GET    /api/v1/community/posts/mine
  *  - POST   /api/v1/community/posts/{id}/like
  *  - DELETE /api/v1/community/posts/{id}/like
@@ -73,6 +74,17 @@ export function addComment(postId, content, parentId) {
 }
 
 /**
+ * 删除帖子（仅作者本人）。后端会校验：
+ *  - 当前用户 == 帖子作者 userId（否则 403）
+ *  - 帖子 status == 1（已发布；待发布/隐藏不可由用户删）
+ * 级联清理：评论(逻辑删除)、点赞、收藏(物理删除)。
+ * 注意：审核记录(mo_content_review)后端保留不动。
+ */
+export function deletePost(id) {
+  return del(`/api/v1/community/posts/${id}`)
+}
+
+/**
  * 收藏/取消收藏帖子：用于帖子详情页心形按钮。
  */
 export function collectPost(id) {
@@ -123,6 +135,7 @@ export default {
   searchCommunityUsers,
   getPostDetail,
   createPost,
+  deletePost,
   getMyPosts,
   likePost,
   unlikePost,

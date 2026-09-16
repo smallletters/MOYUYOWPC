@@ -234,6 +234,52 @@ public class CommunityServiceImpl implements CommunityService {
         notifyMentionedUsers(userId, cleanContent, comment.getId(), "COMMENT", "评论中 @ 了你");
     }
 
+    /**
+     * 删除帖子（仅作者本人）。
+     * 步骤：
+     *  1. 查帖子（@TableLogic 自动过滤 deleted=1）
+     *  2. 权限校验：仅作者本人；他人抛权限异常
+     *  3. 状态校验：仅允许删除已发布(status=1)；定时待发布/隐藏不删
+     *  4. 逻辑删除帖子（@TableLogic 自动转 deleted=1）
+     *  5. 级联清理：评论(逻辑删除)、点赞(物理删除)、收藏(物理删除)
+     *  6. 审核记录(mo_content_review)保留不动 —— 合规要求
+     * 整个流程包在 @Transactional 中，任一步失败整体回滚，避免孤儿数据。
+     */
+    @Override
+    @Transactional
+    public void deletePost(Long userId, Long postId) {
+        if (userId == null || postId == null) {
+            throw new IllegalArgumentException("参数缺失");
+        }
+        CommunityPostEntity post = postMapper.selectById(postId);
+        if (post == null) {
+            throw new IllegalArgumentException("帖子不存在或已删除");
+        }
+        // 1. 权限校验：作者本人才能删
+        if (!Objects.equals(post.getUserId(), userId)) {
+            throw new org.springframework.security.access.AccessDeniedException("无权删除他人帖子");
+        }
+        // 2. 状态校验：仅允许删除已发布帖子；status=3(待发布)走发布页撤回路径，status=0(隐藏)不允许用户删
+        if (!Objects.equals(post.getStatus(), 1)) {
+            throw new IllegalStateException("仅可删除已发布帖子");
+        }
+        // 3. 逻辑删除帖子(@TableLogic 注解自动转 deleted=1)
+        postMapper.deleteById(postId);
+        // 4. 评论：逻辑删除(@TableLogic)。评论本身无 status，直接按 postId 删即可
+        commentMapper.delete(
+                new LambdaQueryWrapper<CommunityCommentEntity>()
+                        .eq(CommunityCommentEntity::getPostId, postId));
+        // 5. 点赞：物理删除(无 @TableLogic)
+        likeMapper.delete(
+                new LambdaQueryWrapper<CommunityLikeEntity>()
+                        .eq(CommunityLikeEntity::getPostId, postId));
+        // 6. 收藏：物理删除(无 @TableLogic)
+        collectMapper.delete(
+                new LambdaQueryWrapper<CommunityCollectEntity>()
+                        .eq(CommunityCollectEntity::getPostId, postId));
+        log.info("[community] post deleted: postId={}, userId={}, cascade=comment+like+collect", postId, userId);
+    }
+
     @Override
     public Page<CommunityPostVO> listMyPosts(Long userId, Long petId, int page, int size) {
         LambdaQueryWrapper<CommunityPostEntity> wrapper = new LambdaQueryWrapper<CommunityPostEntity>()

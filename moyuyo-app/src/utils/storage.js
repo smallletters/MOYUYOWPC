@@ -23,6 +23,9 @@ export const STORAGE_KEYS = {
   BUYNOW_ITEM: `${STORAGE_PREFIX}buynow_item`,
   // 社区帖子草稿列表:支持多份草稿(数组)
   COMMUNITY_POST_DRAFTS: `${STORAGE_PREFIX}community_post_drafts`,
+  // 注销流程标记:提交注销后置 1,下次登录成功时弹"注销已撤销"提示,然后清除
+  // 用于引导用户了解"登录即后悔药"语义(参考微信/京东)
+  DELETION_REQUESTED: `${STORAGE_PREFIX}deletion_requested`,
 }
 
 export function setStorage(key, value) {

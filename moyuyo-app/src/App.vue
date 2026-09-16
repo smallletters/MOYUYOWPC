@@ -17,10 +17,8 @@ import { registerMoyuyoScheme } from '@/utils/payAppBridge'
 let _schemeCleanup = null
 function ensureSchemeRegistered() {
   if (_schemeCleanup) return
-  // //#ifndef APP-PLUS
-  return
-  // //#endif
-  // eslint-disable-next-line no-unreachable -- 条件编译：#ifndef 分支内 return 使该行在非 APP 端不可达
+  // 非 APP 端没有 plus.runtime,直接早退避免后续 try 块不可达
+  // #ifdef APP-PLUS
   try {
     _schemeCleanup = registerMoyuyoScheme((ret) => {
       if (!ret || !ret.orderNo) return
@@ -57,6 +55,7 @@ function ensureSchemeRegistered() {
   } catch (e) {
     /* APP 端运行时报错可忽略(H5 等平台没有 plus.runtime) */
   }
+  // #endif
 }
 
 export default {
@@ -72,6 +71,9 @@ export default {
     if (userStore.token) {
       // 静默拉取用户信息，失败则强制登出
       userStore.fetchProfile().catch(() => userStore.forceLogout())
+      // 注册/刷新当前设备到后端,让"我的设备列表"能展示此 APP 实例
+      // 不阻塞启动,失败仅打 warn
+      userStore.upsertCurrentDevice()
     }
 
     // APP 端：支付回跳 scheme 监听（冷启动时，若系统带 url 唤起 APP）
@@ -94,10 +96,13 @@ export default {
 /* 1) 公共变量、mixin */
 @use '@/styles/common.scss' as *;
 
-/* 2) uView Plus 全局样式(用 @forward 仅触发副作用,
- * 避免 App.vue 自己再发 DEPRECATION 警告;uview-plus/index.scss
- * 自身仍用 @import,Dart Sass 2.0 才会强制移除)*/
-@forward 'uview-plus/index.scss';
+/* 2) uView Plus 全局样式
+ * 必须用 @import 而非 @forward:@forward 会创建模块隔离作用域,
+ * 导致 uni.scss 全局注入的 $u-border-color 等变量无法穿透到
+ * uview-plus/libs/css/common.scss,编译报 Undefined variable。
+ * @import 共享作用域,uni.scss 变量可在整个导入链中解析。
+ * (vite.config 已 silence legacy-js-api/import 弃用警告)*/
+@import 'uview-plus/index.scss';
 
 /* 3) Lucide 图标字体 + 类名(H5 / APP 通用):
  * 用 @import 把 src/styles/lucide.css 内联进 App.vue 全局样式。
@@ -106,4 +111,29 @@ export default {
  * 原生 webview 从 _www/ 加载,/static/... 路径合法。
  * 这样 H5 和 APP 都能正常显示图标,无需运行时 JS 注入。*/
 @import url('@/styles/lucide.css');
+
+/* ============================================================
+ * 全局 scroll-view 宽度自适应修复（H5 专用）
+ *
+ * 背景：uni-app 在 H5 端会把 <scroll-view> 编译为多层嵌套的 div：
+ *   <scroll-view> -> <div class="uni-scroll-view">
+ *     <div class="uni-scroll-view">
+ *       <div class="uni-scroll-view-content">...</div>
+ *     </div>
+ *   </div>
+ *
+ * 外层 .scroll / .content 即使设了 width:100%，内层嵌套 div
+ * 也可能因 display 默认值收缩（特别当 padding+box-sizing 未生效时）。
+ *
+ * 策略：直接给 H5 渲染出来的 .uni-scroll-view 和 .uni-scroll-view-content
+ * 强制 width:100% + box-sizing:border-box，避免每个组件单独写 :deep()。
+ *
+ * 影响范围：仅 H5 平台（uni-app 小程序/APP 端 scroll-view 编译产物不同，不受影响）。
+ * 不影响 scroll-x 横向滚动（横向滚动由子元素 flex 布局溢出实现，与父容器 width 无关）。
+ * ============================================================ */
+.uni-scroll-view,
+.uni-scroll-view-content {
+  width: 100%;
+  box-sizing: border-box;
+}
 </style>
