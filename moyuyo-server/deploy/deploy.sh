@@ -182,11 +182,12 @@ post_check() {
     log_info "最终业务健康检查..."
     sleep 5
     local code
-    code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/actuator/health || echo "000")
+    # actuator 已迁移到独立端口 9090（management.server.port），业务 8080 上 /actuator 路由已不存在
+    code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9090/actuator/health/liveness || echo "000")
     if [ "$code" = "200" ]; then
-        log_ok "后端 /actuator/health 返回 200 ✓"
+        log_ok "后端 /actuator/health/liveness (9090) 返回 200 ✓"
     else
-        log_err "后端 /actuator/health 返回 $code"
+        log_err "后端 /actuator/health/liveness (9090) 返回 $code"
         $COMPOSE --env-file "$ENV_FILE" logs --tail=80 app | tee -a "$LOG_FILE"
         return 1
     fi

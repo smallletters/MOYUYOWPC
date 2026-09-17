@@ -1,8 +1,5 @@
-﻿<template>
+<template>
   <view class="shipping-calculator">
-
-
-
     <scroll-view class="scroll" scroll-y>
       <view class="section-card">
         <view class="section-title">
@@ -195,7 +192,7 @@ export default {
 
     calculateShipping() {
       if (!this.weight || parseFloat(this.weight) <= 0) {
-        uni.showToast({ title: '请输入有效重量', icon: 'none' })
+        uni.showToast({ title: this.$t('shippingCalculator.invalidWeight'), icon: 'none' })
         return
       }
       const w = parseFloat(this.weight)

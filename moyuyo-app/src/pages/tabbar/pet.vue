@@ -98,64 +98,14 @@
             :key="c.type"
             class="care-card"
             @click="onCareClick(c)">
+            <!-- 图标：lucide iconfont，APP/H5 跨端均能正确渲染（内联 svg 在 app-plus 端部分机型不可见） -->
             <view class="care-icon" :class="`tone-${c.tone}`">
-              <!-- 洗护：设计稿浴缸图标 -->
-              <svg
-                v-if="c.type === 'BATH'"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M10 10v.2A3 3 0 0 1 8.9 16H5a3 3 0 0 1-1-5.8V10a3 3 0 0 1 6 0Z" />
-                <path d="M7 16v6" />
-                <path d="M13 19v3" />
-                <path
-                  d="M12 19h8.3a1 1 0 0 0 .7-1.7L18 14h.3a1 1 0 0 0 .7-1.7L16 9h.2a1 1 0 0 0 .8-1.7L13 3l-1.4 1.5"
-                />
-              </svg>
-              <!-- 疫苗：设计稿三角警示图标 -->
-              <svg
-                v-else-if="c.type === 'VACCINE'"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path
-                  d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"
-                />
-                <path d="M12 9v4" />
-                <path d="M12 17h.01" />
-              </svg>
-              <!-- 驱虫：设计稿胶囊图标 -->
-              <svg
-                v-else
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="m8 2 1.88 1.88" />
-                <path d="M14.12 3.88 16 2" />
-                <path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1" />
-                <path
-                  d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"
-                />
-                <path d="M12 20v-9" />
-                <path d="M6.53 9C4.6 8.8 3 7.1 3 5" />
-                <path d="M6 13H2" />
-                <path d="M3 21c0-2.1 1.7-3.9 3.8-4" />
-                <path d="M20.97 5c0 2.1-1.6 3.9-3.5 4" />
-                <path d="M22 13h-4" />
-                <path d="M17.2 17c2.1.1 3.8 1.9 3.8 4" />
-              </svg>
+              <!-- 洗护：浴缸 -->
+              <text v-if="c.type === 'BATH'" class="luc luc-bath care-icon-font" />
+              <!-- 疫苗：注射器 -->
+              <text v-else-if="c.type === 'VACCINE'" class="luc luc-syringe care-icon-font" />
+              <!-- 驱虫：药丸 -->
+              <text v-else class="luc luc-pill care-icon-font" />
             </view>
             <text class="care-label">{{ c.label }}</text>
             <text class="care-value" :class="{ muted: !c.enabled }">{{ c.value }}</text>
@@ -1123,9 +1073,10 @@ export default {
   justify-content: center;
   margin-bottom: 16rpx;
 }
-.care-icon svg {
-  width: 32rpx;
-  height: 32rpx;
+.care-icon .care-icon-font {
+  /* lucide iconfont 字符需要合适的字号和行高,才能在 64rpx 圆内视觉居中 */
+  font-size: 32rpx;
+  line-height: 1;
 }
 .care-icon.tone-ok {
   background: var(--hub-ok-bg);

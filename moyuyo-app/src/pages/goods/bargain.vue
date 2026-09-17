@@ -213,22 +213,22 @@ export default {
         }
         this.helperList = res.data.helpers || []
       } catch (err) {
-        uni.showToast({ title: '加载砍价信息失败', icon: 'none' })
+        uni.showToast({ title: this.$t('bargain.loadFailed'), icon: 'none' })
       }
     },
 
     async handleHelpBargain() {
       try {
         await bargainApi.helpBargain(this.bargainId)
-        uni.showToast({ title: '助力成功！', icon: 'success' })
+        uni.showToast({ title: this.$t('bargain.helpSucceeded'), icon: 'success' })
         this.loadBargainDetail()
       } catch (err) {
-        uni.showToast({ title: err.message || '助力失败', icon: 'none' })
+        uni.showToast({ title: err.message || this.$t('bargain.helpFailed'), icon: 'none' })
       }
     },
 
     handleBuyCurrent() {
-      uni.showToast({ title: '以当前价格加入购物车', icon: 'none' })
+      uni.showToast({ title: this.$t('bargain.buyAtCurrentPrice'), icon: 'none' })
     },
   },
 }

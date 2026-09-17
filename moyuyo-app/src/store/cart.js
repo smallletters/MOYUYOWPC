@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { setStorage, getStorage, removeStorage, STORAGE_KEYS } from '@/utils/storage'
 import { cartApi } from '@/api'
+import { t } from '@/i18n'
 import { useUserStore } from './user'
 
 /**
@@ -106,11 +107,17 @@ export const useCartStore = defineStore('cart', {
 
       // 超库存时直接拦截,避免购物车数量超过可售库存
       if (exist && stockLimit !== null && exist.quantity + quantity > stockLimit) {
-        uni.showToast({ title: stockLimit <= 0 ? '该商品已售罄' : '库存不足', icon: 'none' })
+        uni.showToast({
+          title: stockLimit <= 0 ? t('cart.soldOut') : t('cart.stockShort'),
+          icon: 'none',
+        })
         return false
       }
       if (!exist && stockLimit !== null && quantity > stockLimit) {
-        uni.showToast({ title: stockLimit <= 0 ? '该商品已售罄' : '库存不足', icon: 'none' })
+        uni.showToast({
+          title: stockLimit <= 0 ? t('cart.soldOut') : t('cart.stockShort'),
+          icon: 'none',
+        })
         return false
       }
 
@@ -149,7 +156,7 @@ export const useCartStore = defineStore('cart', {
             this.items = this.items.filter((i) => (i.skuId || i.variationId || i.productId) !== key)
           }
           this.persist()
-          uni.showToast({ title: e?.message || '加购失败', icon: 'none' })
+          uni.showToast({ title: e?.message || t('cart.addFailed'), icon: 'none' })
           return false
         }
       }
@@ -172,7 +179,10 @@ export const useCartStore = defineStore('cart', {
         }
         // 库存已售罄/已达上限:提示并保持原数量
         if (target <= before) {
-          uni.showToast({ title: stockLimit <= 0 ? '该商品已售罄' : '库存不足', icon: 'none' })
+          uni.showToast({
+            title: stockLimit <= 0 ? t('cart.soldOut') : t('cart.stockShort'),
+            icon: 'none',
+          })
           return
         }
       }
@@ -188,7 +198,7 @@ export const useCartStore = defineStore('cart', {
           // 服务端库存已变化导致拒绝:回滚到原数量并提示
           item.quantity = before
           this.persist()
-          uni.showToast({ title: e?.message || '库存不足', icon: 'none' })
+          uni.showToast({ title: e?.message || t('cart.stockShort'), icon: 'none' })
         }
       }
     },
@@ -214,7 +224,7 @@ export const useCartStore = defineStore('cart', {
       if (item.cartStatus === 'OUT_OF_STOCK' || !isSellable(item)) {
         uni.showToast({
           title:
-            item.cartStatus === 'OUT_OF_STOCK' ? '商品缺货,暂不能结算' : '该商品已失效,不能结算',
+            item.cartStatus === 'OUT_OF_STOCK' ? t('cart.outOfStock') : t('cart.itemUnavailable'),
           icon: 'none',
         })
         return

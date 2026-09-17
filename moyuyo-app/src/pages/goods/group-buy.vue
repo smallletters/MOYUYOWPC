@@ -189,7 +189,7 @@ export default {
         const res = await groupBuyApi.getGroupBuyDetail(this.groupBuyId)
         this.groupBuyDetail = res.data
       } catch (err) {
-        uni.showToast({ title: '加载拼团信息失败', icon: 'none' })
+        uni.showToast({ title: this.$t('groupBuy.loadFailed'), icon: 'none' })
       }
     },
 
@@ -203,11 +203,11 @@ export default {
     },
 
     handleInvite() {
-      uni.showToast({ title: '邀请好友功能开发中', icon: 'none' })
+      uni.showToast({ title: this.$t('groupBuy.inviteWip'), icon: 'none' })
     },
 
     handleAlone() {
-      uni.showToast({ title: '以原价单独购买', icon: 'none' })
+      uni.showToast({ title: this.$t('groupBuy.buyAtOriginalPrice'), icon: 'none' })
     },
   },
 }

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="returns">
     <view class="page-header">
       <view class="back" aria-label="返回" @click="goBack">
@@ -148,13 +148,13 @@ export default {
 
     onSubmit() {
       if (!this.selectedReason) {
-        uni.showToast({ title: '请选择退款原因', icon: 'none' })
+        uni.showToast({ title: this.$t('returns.selectReasonFirst'), icon: 'none' })
         return
       }
-      uni.showLoading({ title: '提交中...' })
+      uni.showLoading({ title: this.$t('returns.submitting') })
       setTimeout(() => {
         uni.hideLoading()
-        uni.showToast({ title: '申请已提交', icon: 'success' })
+        uni.showToast({ title: this.$t('returns.submitted'), icon: 'success' })
         setTimeout(() => uni.navigateBack(), 800)
       }, 1000)
     },

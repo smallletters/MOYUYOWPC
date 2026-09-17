@@ -1,7 +1,6 @@
-﻿<template>
+<template>
   <view class="ar-tryon-page">
     <!-- 导航栏 -->
-
 
     <!-- 主视图区域 -->
     <view class="main-view">
@@ -148,12 +147,11 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { t } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.goodsArTryOn')
 
-
 // AR 状态
-
 
 const arActive = ref(false)
 const flashOn = ref(false)
@@ -256,7 +254,7 @@ const startAr = () => {
 
 // 切换摄像头
 const toggleCamera = () => {
-  uni.showToast({ title: '切换摄像头', icon: 'none' })
+  uni.showToast({ title: t('arTryOn.cameraSwitched'), icon: 'none' })
 }
 
 // 闪光灯
@@ -266,7 +264,7 @@ const toggleFlash = () => {
 
 // 拍照
 const capturePhoto = () => {
-  uni.showToast({ title: '已保存到相册', icon: 'success' })
+  uni.showToast({ title: t('common.savedToAlbum'), icon: 'success' })
 }
 
 // 选择商品
@@ -284,7 +282,7 @@ const resetAr = () => {
 
 // 加入购物车
 const addToCart = () => {
-  uni.showToast({ title: '已加入购物车', icon: 'success' })
+  uni.showToast({ title: t('common.addedToCart'), icon: 'success' })
 }
 </script>
 

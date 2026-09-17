@@ -1,7 +1,5 @@
 <template>
   <view class="page">
-
-
     <view v-if="loading" class="loading">
       <text class="loading-text">{{ $t('common.loading') }}</text>
     </view>
@@ -151,7 +149,7 @@ export default {
     goTransfer() {
       uni.navigateTo({ url: `/pages/user/coupon-transfer?id=${this.detail.id}` })
     },
-    },
+  },
 }
 </script>
 

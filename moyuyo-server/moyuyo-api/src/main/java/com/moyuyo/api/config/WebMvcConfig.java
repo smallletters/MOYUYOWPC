@@ -152,6 +152,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations(location)
                 .resourceChain(true);
+        // 3D 模型（classpath:/static/models/）通过上面的 /static/** 通用映射即可命中,
+        // 缓存策略由 application.yml 中 spring.web.resources.cache.cachecontrol.max-age=31536000 全局生效。
     }
 
     /**

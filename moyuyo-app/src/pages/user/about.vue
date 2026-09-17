@@ -118,7 +118,6 @@ export default {
       return [
         { icon: 'globe', label: i18n.t('about.contactWebsite'), value: config.contactWebsite },
         { icon: 'mail', label: i18n.t('about.contactEmail'), value: config.contactEmail },
-        { icon: 'phone', label: i18n.t('about.contactPhone'), value: config.contactPhone },
       ]
     },
     // 协议链接:有 VITE_*_URL 时优先走外链,否则走内置兜底页

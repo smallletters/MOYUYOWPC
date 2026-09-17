@@ -1,7 +1,5 @@
 ﻿<template>
   <view class="chat-history-page">
-
-
     <view class="tab-bar">
       <view
         v-for="(tab, index) in tabs"
@@ -50,9 +48,7 @@ import { csApi } from '@/api'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.communityChatHistory')
 
-
 const tabs = ['全部', '进行中', '已关闭']
-
 
 const activeTab = ref(0)
 const sessions = ref([])

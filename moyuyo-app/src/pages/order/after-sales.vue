@@ -168,7 +168,7 @@ export default {
         this.records = this.page === 1 ? data : [...this.records, ...data]
         this.noMore = data.length === 0
       } catch (err) {
-        uni.showToast({ title: '加载售后记录失败', icon: 'none' })
+        uni.showToast({ title: this.$t('afterSales.loadFailed'), icon: 'none' })
       } finally {
         this.loading = false
       }

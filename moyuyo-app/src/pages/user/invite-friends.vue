@@ -127,7 +127,7 @@ export default {
     },
 
     onShare(s) {
-      uni.showToast({ title: `Share to ${s.label}`, icon: 'none' })
+      uni.showToast({ title: this.$t('invite.shareTo', { label: s.label }), icon: 'none' })
     },
   },
 }

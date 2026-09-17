@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="pet-hub">
     <!-- 顶部导航栏 -->
     <view class="header">
@@ -180,12 +180,11 @@
 </template>
 <script setup>
 import { ref, computed } from 'vue'
+import { t } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.petPetHub3d')
 
-
 // 返回上一页
-
 
 const goBack = () => uni.navigateBack()
 
@@ -193,7 +192,10 @@ const goBack = () => uni.navigateBack()
 const arActive = ref(false)
 const toggleAr = () => {
   arActive.value = !arActive.value
-  uni.showToast({ title: arActive.value ? 'AR 模式已开启' : 'AR 模式已关闭', icon: 'none' })
+  uni.showToast({
+    title: arActive.value ? t('petHub3dScene.arOn') : t('petHub3dScene.arOff'),
+    icon: 'none',
+  })
 }
 
 // 场景数据
@@ -208,7 +210,7 @@ const currentScene = ref('grass')
 
 const switchScene = (key) => {
   currentScene.value = key
-  uni.showToast({ title: '已切换到 ' + sceneLabels[key], icon: 'none' })
+  uni.showToast({ title: t('petHub3dScene.switchedTo', { scene: sceneLabels[key] }), icon: 'none' })
 }
 
 // 宠物数据
@@ -259,7 +261,10 @@ const currentPet = computed(() => pets.find((p) => p.id === currentPetId.value) 
 
 const switchPet = (id) => {
   currentPetId.value = id
-  uni.showToast({ title: '已切换至 ' + pets.find((p) => p.id === id)?.name, icon: 'none' })
+  uni.showToast({
+    title: t('petHub3dScene.switchedToPet', { name: pets.find((p) => p.id === id)?.name }),
+    icon: 'none',
+  })
 }
 
 // 属性数据
@@ -307,21 +312,31 @@ const activities = [
 ]
 
 // 3D 控制操作
-const onRotate = () => uni.showToast({ title: '360° 旋转展示', icon: 'none' })
-const onZoomIn = () => uni.showToast({ title: '已放大', icon: 'none' })
-const onZoomOut = () => uni.showToast({ title: '已还原', icon: 'none' })
+const onRotate = () => uni.showToast({ title: t('petHub3dScene.rotate360'), icon: 'none' })
+const onZoomIn = () => uni.showToast({ title: t('petHub3dScene.zoomedIn'), icon: 'none' })
+const onZoomOut = () => uni.showToast({ title: t('petHub3dScene.zoomedOut'), icon: 'none' })
 
 // 互动操作
 const onPlay = () =>
-  uni.showToast({ title: '🎾 正在和 ' + currentPet.value.name + ' 玩耍...', icon: 'none' })
-const onFeed = () => uni.showToast({ title: '🍗 正在喂食 ' + currentPet.value.name, icon: 'none' })
+  uni.showToast({
+    title: t('petHub3dScene.playingWith', { name: currentPet.value.name }),
+    icon: 'none',
+  })
+const onFeed = () =>
+  uni.showToast({
+    title: t('petHub3dScene.feeding', { name: currentPet.value.name }),
+    icon: 'none',
+  })
 const onGroom = () =>
-  uni.showToast({ title: '🛁 正在为 ' + currentPet.value.name + ' 护理', icon: 'none' })
+  uni.showToast({
+    title: t('petHub3dScene.grooming', { name: currentPet.value.name }),
+    icon: 'none',
+  })
 
 // 其他操作
-const onShare = () => uni.showToast({ title: '📤 分享链接已复制', icon: 'none' })
-const onMore = () => uni.showToast({ title: '更多选项', icon: 'none' })
-const onAddPet = () => uni.showToast({ title: '🐾 添加新宠物', icon: 'none' })
+const onShare = () => uni.showToast({ title: t('petHub3dScene.shareLinkCopied'), icon: 'none' })
+const onMore = () => uni.showToast({ title: t('petHub3dScene.moreOptions'), icon: 'none' })
+const onAddPet = () => uni.showToast({ title: t('petHub3dScene.addNewPet'), icon: 'none' })
 </script>
 
 <style lang="scss" scoped>

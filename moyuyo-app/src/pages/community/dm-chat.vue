@@ -115,12 +115,11 @@
 
 <script setup>
 import { ref, nextTick, onMounted } from 'vue'
+import { t } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.communityDmChat')
 
-
 // 目标用户信息：从 URL query 取（name/avatar/userId）
-
 
 const targetUser = ref({
   id: null,
@@ -171,7 +170,7 @@ function goBack() {
 
 function showMoreOptions() {
   uni.showActionSheet({
-    itemList: ['查看主页', '屏蔽用户', '举报'],
+    itemList: [t('dm.viewProfile'), t('dm.blockUser'), t('dm.report')],
     success: (res) => {
       if (res.tapIndex === 0) viewProfile()
     },
@@ -193,7 +192,7 @@ function addAttachment() {
   uni.chooseImage({
     count: 1,
     success: () => {
-      uni.showToast({ title: '图片发送功能开发中', icon: 'none' })
+      uni.showToast({ title: t('dm.imageSendWip'), icon: 'none' })
     },
   })
 }

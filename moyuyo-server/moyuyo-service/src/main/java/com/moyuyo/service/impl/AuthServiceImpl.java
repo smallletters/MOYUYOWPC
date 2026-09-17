@@ -34,6 +34,8 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+// 抑制 JDT 静态检查对 MyBatis-Plus Lambda 引用的 null type safety 警告
+@SuppressWarnings("null")
 @Slf4j
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -158,7 +160,7 @@ public class AuthServiceImpl implements AuthService {
             Long count = userMapper.selectCount(
                     new LambdaQueryWrapper<UserEntity>()
                             .eq(UserEntity::getEmail, email));
-            if (count > 0) {
+            if (count != null && count > 0) {
                 throw new IllegalArgumentException("Email already registered");
             }
         }
@@ -171,7 +173,7 @@ public class AuthServiceImpl implements AuthService {
             Long count = userMapper.selectCount(
                     new LambdaQueryWrapper<UserEntity>()
                             .eq(UserEntity::getPhone, phone));
-            if (count > 0) {
+            if (count != null && count > 0) {
                 throw new IllegalArgumentException("Phone already registered");
             }
             // 复用 loginByPhone 中的验证码校验逻辑:保持与登录/注册一致
@@ -952,6 +954,66 @@ public class AuthServiceImpl implements AuthService {
             }
         }
         log.info("[2FA] toggle: user={} enabled={} changed={}", userId, enabled, changed);
+        return user;
+    }
+
+    @Override
+    @Transactional
+    public UserEntity changePhone(Long userId, String phone, String code) {
+        // 1. 当前用户校验
+        UserEntity user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new IllegalArgumentException("User not found");
+        }
+        // 2. 注销冻结期：与 password login / phone login 行为一致
+        if (user.getDeleteScheduledAt() != null) {
+            LocalDateTime now = LocalDateTime.now();
+            if (!user.getDeleteScheduledAt().isAfter(now)) {
+                throw new IllegalArgumentException("账号已注销，如需使用请重新注册");
+            }
+        }
+        // 3. 新号不能与当前相同
+        if (phone.equals(user.getPhone())) {
+            throw new IllegalArgumentException("新手机号不能与当前相同");
+        }
+        // 4. 校验 purpose=CHANGE_PHONE 的验证码（仅取最近一条未使用未过期记录）
+        SmsCodeEntity record = smsCodeMapper.selectOne(
+                new LambdaQueryWrapper<SmsCodeEntity>()
+                        .eq(SmsCodeEntity::getPhone, phone)
+                        .eq(SmsCodeEntity::getPurpose, "CHANGE_PHONE")
+                        .eq(SmsCodeEntity::getUsed, 0)
+                        .gt(SmsCodeEntity::getExpireAt, LocalDateTime.now())
+                        .orderByDesc(SmsCodeEntity::getId)
+                        .last("LIMIT 1"));
+        if (record == null) {
+            throw new IllegalArgumentException("验证码不存在或已过期");
+        }
+        // 5. 失败次数防爆破
+        if (record.getFailCount() != null && record.getFailCount() >= PHONE_CODE_MAX_FAIL) {
+            record.setUsed(1);
+            smsCodeMapper.updateById(record);
+            throw new IllegalArgumentException("验证码错误次数过多,请重新获取");
+        }
+        // 6. 验证码匹配：失败递增计数,达上限置 used=1
+        if (!code.equals(record.getCode())) {
+            record.setFailCount((record.getFailCount() == null ? 0 : record.getFailCount()) + 1);
+            smsCodeMapper.updateById(record);
+            throw new IllegalArgumentException("验证码错误");
+        }
+        // 7. 校验新手机号未被其他账号占用（uk_user_phone 唯一索引兜底，这里先抛业务异常）
+        Long occupied = userMapper.selectCount(
+                new LambdaQueryWrapper<UserEntity>()
+                        .eq(UserEntity::getPhone, phone)
+                        .ne(UserEntity::getId, userId));
+        if (occupied != null && occupied > 0) {
+            throw new IllegalArgumentException("该手机号已被其他账号使用");
+        }
+        // 8. 标记验证码已使用 + 更新用户手机号
+        record.setUsed(1);
+        smsCodeMapper.updateById(record);
+        user.setPhone(phone);
+        userMapper.updateById(user);
+        log.info("[changePhone] success: user={} newPhone={}", userId, phone);
         return user;
     }
 

@@ -12,11 +12,7 @@
           :focus="true"
           @confirm="onSearch"
         >
-        <text
-          v-if="keyword"
-          class="luc luc-x clear-btn"
-          @click="keyword = ''"
-        />
+        <text v-if="keyword" class="luc luc-x clear-btn" @click="keyword = ''" />
       </view>
       <text class="cancel" @click="onCancel">取消</text>
     </view>
@@ -51,8 +47,9 @@
               v-for="h in searchHistory"
               :key="h"
               class="chip"
-              @click="onQuickSearch(h)"
-            >{{ h }}</view>
+              @click="onQuickSearch(h)">
+              {{ h }}
+            </view>
           </view>
         </view>
 
@@ -66,8 +63,9 @@
               v-for="h in hotSearches"
               :key="h"
               class="chip hot"
-              @click="onQuickSearch(h)"
-            >{{ h }}</view>
+              @click="onQuickSearch(h)">
+              {{ h }}
+            </view>
           </view>
         </view>
       </template>
@@ -78,10 +76,7 @@
       </view>
 
       <!-- 无结果 -->
-      <view
-        v-else-if="results.length === 0"
-        class="status"
-      >
+      <view v-else-if="results.length === 0" class="status">
         <text class="status-text">没有找到相关内容</text>
       </view>
 
@@ -91,8 +86,7 @@
           v-for="p in results"
           :key="p.id"
           class="post-card"
-          @tap="goPostDetail(p.id)"
-        >
+          @tap="goPostDetail(p.id)">
           <view class="post-header">
             <image
               v-if="p.avatar"
@@ -130,8 +124,7 @@
           v-for="u in results"
           :key="u.id"
           class="user-card"
-          @tap="goUserProfile(u.id)"
-        >
+          @tap="goUserProfile(u.id)">
           <image
             v-if="u.avatar"
             :src="resolveImageUrl(u.avatar)"
@@ -153,11 +146,12 @@
           v-for="t in results"
           :key="t.id"
           class="topic-card"
-          @tap="onTopicClick(t)"
-        >
+          @tap="onTopicClick(t)">
           <text class="topic-name"># {{ t.name }}</text>
           <text v-if="t.description" class="topic-desc">{{ t.description }}</text>
-          <text class="topic-meta">{{ t.postCount || 0 }} 帖 · {{ t.followCount || 0 }} 人关注</text>
+          <text class="topic-meta">
+            {{ t.postCount || 0 }} 帖 · {{ t.followCount || 0 }} 人关注
+          </text>
         </view>
       </template>
 
@@ -291,7 +285,7 @@ export default {
         } else if (this.activeTab === 'topic') {
           // 话题不分页，一次性返回
           res = await communityApi.getCommunityTopics({ keyword: this.keyword })
-          this.results = Array.isArray(res) ? res : (res.records || [])
+          this.results = Array.isArray(res) ? res : res.records || []
           this.hasMore = false
         }
       } catch (e) {

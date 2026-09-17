@@ -45,7 +45,7 @@ public interface AuthService {
     /**
      * 发送手机验证码。
      * @param phone 手机号（含国家区号）
-     * @param purpose LOGIN / REGISTER / RESET_PASSWORD
+     * @param purpose LOGIN / REGISTER / RESET_PASSWORD / CHANGE_PHONE
      */
     void sendPhoneCode(String phone, String purpose);
 
@@ -54,6 +54,21 @@ public interface AuthService {
      * 若手机号未注册则自动创建账号（生成随机密码、默认昵称），已注册则返回 JWT。
      */
     TokenResponse loginByPhone(String phone, String code);
+
+    /**
+     * 已登录用户更换/绑定手机号。
+     * <p>
+     * 流程：
+     * <ol>
+     *   <li>校验当前用户存在且未注销</li>
+     *   <li>校验 {@code purpose=CHANGE_PHONE} 的验证码（复用 {@link #sendPhoneCode} 的发码记录）</li>
+     *   <li>校验新手机号未被其他账号占用（mo_user.phone 已 uk_user_phone 唯一索引）</li>
+     *   <li>更新 {@code mo_user.phone}</li>
+     * </ol>
+     *
+     * @return 更新后的用户实体
+     */
+    UserEntity changePhone(Long userId, String phone, String code);
 
     /**
      * 申请注销账户。

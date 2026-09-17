@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="logistics-tracking">
     <view class="page-header">
       <view class="back" aria-label="返回" @click="goBack">
@@ -102,14 +102,14 @@ export default {
     },
 
     onCallCarrier() {
-      uni.showToast({ title: '请联系顺丰客服 95338', icon: 'none' })
+      uni.showToast({ title: this.$t('logistics.callSfCarrier'), icon: 'none' })
     },
 
     onRefresh() {
-      uni.showLoading({ title: '刷新中...' })
+      uni.showLoading({ title: this.$t('logistics.refreshing') })
       setTimeout(() => {
         uni.hideLoading()
-        uni.showToast({ title: '已刷新', icon: 'success' })
+        uni.showToast({ title: this.$t('logistics.refreshed'), icon: 'success' })
       }, 800)
     },
   },

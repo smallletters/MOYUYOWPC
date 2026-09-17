@@ -158,6 +158,23 @@ export const useUserStore = defineStore('user', {
       await userApi.changePassword(oldPassword, newPassword)
     },
 
+    /**
+     * 更换/绑定当前登录用户的手机号。
+     * 后端 PUT /api/v1/users/me/phone 已做 purpose=CHANGE_PHONE 验证码校验,
+     * 且返回结构与 GET /me 一致(toProfileMap);直接展开覆盖本地 userInfo,
+     * 让 settings 页 / profile 页的脱敏手机号实时刷新。
+     */
+    async changePhone(phone, code) {
+      const updated = await userApi.changePhone(phone, code)
+      if (this.userInfo && updated) {
+        // 与 updateProfile 保持一致:toProfileMap 返回的字段都是友好的,
+        // 直接展开覆盖即可,不手动 pick(避免漏字段 / 类型不一致)
+        this.userInfo = { ...this.userInfo, ...updated }
+        setStorage(STORAGE_KEYS.USER_INFO, this.userInfo)
+      }
+      return updated
+    },
+
     async sendMagicLink(email) {
       await userApi.sendMagicLink(email)
     },

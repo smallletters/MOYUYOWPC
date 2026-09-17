@@ -4,6 +4,7 @@
  * 功能: 3D 宠物渲染、手势交互、IP 动画、换装
  */
 /* eslint-disable no-unreachable */
+import { t } from '@/i18n'
 
 const PLUGIN_NAME = 'MOYUYO-PetHub3D'
 
@@ -23,7 +24,7 @@ export function openPetHub3d(params) {
       if (result.success) {
         resolve(result.data)
       } else {
-        reject(new Error(result.message || '3D 场景加载失败'))
+        reject(new Error(result.message || t('plugin.petHub3dSceneFailed')))
       }
     })
   })
@@ -31,8 +32,8 @@ export function openPetHub3d(params) {
 
   // #ifndef APP-PLUS
   // H5/小程序降级: 显示 2D 静态宠物卡片
-  uni.showToast({ title: '3D 功能仅支持 APP 端', icon: 'none' })
-  return Promise.reject(new Error('当前环境不支持 3D'))
+  uni.showToast({ title: t('plugin.petHub3dAppOnly'), icon: 'none' })
+  return Promise.reject(new Error(t('plugin.petHub3dUnsupported')))
   // #endif
 }
 
@@ -51,7 +52,7 @@ export function applyPetCosmetic(params) {
       if (result.success) {
         resolve(result.data)
       } else {
-        reject(new Error(result.message || '换装失败'))
+        reject(new Error(result.message || t('plugin.petHub3dCosmeticFailed')))
       }
     })
   })
@@ -85,7 +86,7 @@ export function capturePetSnapshot() {
       if (result.success) {
         resolve(result.imagePath)
       } else {
-        reject(new Error(result.message || '截图失败'))
+        reject(new Error(result.message || t('plugin.petHub3dSnapshotFailed')))
       }
     })
   })

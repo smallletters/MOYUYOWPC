@@ -266,9 +266,14 @@ export default {
           orderAmount: this.orderAmount,
           autoRoundup: this.autoRoundup,
         })
-        uni.showToast({ title: `捐赠 $${this.donationAmount.toFixed(2)} 并结算`, icon: 'success' })
+        uni.showToast({
+          title: this.$t('charityDonation.donatedAndCheckout', {
+            amount: this.donationAmount.toFixed(2),
+          }),
+          icon: 'success',
+        })
       } catch (err) {
-        uni.showToast({ title: err.message || '捐赠失败', icon: 'none' })
+        uni.showToast({ title: err.message || this.$t('charityDonation.failed'), icon: 'none' })
       }
     },
   },

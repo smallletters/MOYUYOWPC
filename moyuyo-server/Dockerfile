@@ -153,6 +153,11 @@ ENTRYPOINT ["/sbin/tini", "-g", "--", "sh", "-c", \
    -Djava.security.egd=file:/dev/./urandom \
    -Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8 \
    -Duser.timezone=Asia/Shanghai \
+   # 修复 jansi 在 tmpfs noexec 环境下无法 mmap native lib 的问题:
+   # 默认 jansi 把 libjansi.so 解压到 /tmp,Docker Desktop 的 tmpfs 默�noexec,
+   # 导致 UnsatisfiedLinkError: failed to map segment from shared object
+   # 把解压目录改到 /app(/app 是 named volume 挂载,可执行 mmap)
+   -Djansi.tmpdir=/app \
    -Djdk.attach.allowAttachSelf=true \
    -Djava.net.preferIPv4Stack=true \
    -Dsun.net.client.defaultConnectTimeout=5000 \

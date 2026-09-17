@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="share-product">
     <!-- 顶部导航栏 -->
     <view class="header">
@@ -222,7 +222,7 @@ export default {
     if (this.productId) {
       this.loadProduct()
     } else {
-      uni.showToast({ title: '缺少商品 id', icon: 'none' })
+      uni.showToast({ title: this.$t('shareProduct.missingProductId'), icon: 'none' })
     }
   },
 
@@ -308,7 +308,10 @@ export default {
           this.shareByFacebook()
           break
         default:
-          uni.showToast({ title: `已分享到 ${channel.name}`, icon: 'success' })
+          uni.showToast({
+            title: this.$t('shareProduct.sharedTo', { name: channel.name }),
+            icon: 'success',
+          })
       }
     },
 
@@ -316,8 +319,9 @@ export default {
       if (!this.shareLink) return
       uni.setClipboardData({
         data: this.shareLink,
-        success: () => uni.showToast({ title: '链接已复制', icon: 'success' }),
-        fail: () => uni.showToast({ title: '复制失败', icon: 'none' }),
+        success: () =>
+          uni.showToast({ title: this.$t('shareProduct.linkCopied'), icon: 'success' }),
+        fail: () => uni.showToast({ title: this.$t('shareProduct.copyFailed'), icon: 'none' }),
       })
     },
 
@@ -381,7 +385,12 @@ export default {
         const plus = (typeof globalThis !== 'undefined' && globalThis.plus) || undefined
         if (plus && plus.runtime && plus.runtime.openURL) {
           plus.runtime.openURL(href, (err) => {
-            uni.showToast({ title: '打开失败：' + ((err && err.message) || ''), icon: 'none' })
+            uni.showToast({
+              title: this.$t('shareProduct.openFailedWithReason', {
+                reason: (err && err.message) || '',
+              }),
+              icon: 'none',
+            })
           })
           return
         }
@@ -393,7 +402,7 @@ export default {
       uni.setClipboardData({
         data: this.shareLink,
         success: () =>
-          uni.showToast({ title: '已复制链接，请手动打开对应 App 粘贴', icon: 'none' }),
+          uni.showToast({ title: this.$t('shareProduct.linkCopiedManualPaste'), icon: 'none' }),
       })
     },
 
@@ -403,7 +412,7 @@ export default {
      */
     handleGenerateImage() {
       if (!this.productId) {
-        uni.showToast({ title: '缺少商品 id', icon: 'none' })
+        uni.showToast({ title: this.$t('shareProduct.missingProductId'), icon: 'none' })
         return
       }
       // 初始化画布尺寸（H5 用 750x1000，App/小程序按系统 dpi 缩放）
@@ -411,7 +420,7 @@ export default {
       const height = 1000
       this.canvasWidth = width
       this.canvasHeight = height
-      uni.showLoading({ title: '生成中...', mask: true })
+      uni.showLoading({ title: this.$t('shareProduct.generating'), mask: true })
       // 等下一帧 canvas style 生效后，先预加载图片（H5 canvas 不允许直接画跨域图）再绘制
       this.$nextTick(() => this.prepareImages(width, height))
     },
@@ -574,7 +583,7 @@ export default {
             },
             fail: (err) => {
               console.warn('[share] canvasToTempFilePath failed', err)
-              uni.showToast({ title: '生成失败', icon: 'none' })
+              uni.showToast({ title: this.$t('shareProduct.generateFailed'), icon: 'none' })
             },
           },
           this,
@@ -595,16 +604,18 @@ export default {
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
-        uni.showToast({ title: '图片已下载', icon: 'success' })
+        uni.showToast({ title: this.$t('shareProduct.imageDownloaded'), icon: 'success' })
       } catch (e) {
-        uni.showToast({ title: '下载失败', icon: 'none' })
+        uni.showToast({ title: this.$t('shareProduct.downloadFailed'), icon: 'none' })
       }
       // #endif
       // #ifdef APP-PLUS || MP-WEIXIN
       uni.saveImageToPhotosAlbum({
         filePath,
-        success: () => uni.showToast({ title: '已保存到相册', icon: 'success' }),
-        fail: () => uni.showToast({ title: '保存失败，请检查权限', icon: 'none' }),
+        success: () =>
+          uni.showToast({ title: this.$t('shareProduct.savedToAlbum'), icon: 'success' }),
+        fail: () =>
+          uni.showToast({ title: this.$t('shareProduct.saveFailedCheckPermission'), icon: 'none' }),
       })
       // #endif
     },

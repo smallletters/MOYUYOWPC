@@ -32,6 +32,7 @@ export default {
     userDevices: 'Devices',
     userSecurity: 'Security',
     userChangePassword: 'Change Password',
+    userPhone: 'Phone Number',
     userForgot: 'Reset Password',
     userMagicLink: 'Magic Link',
     userTwoFactor: 'Two-Factor Auth',
@@ -202,6 +203,9 @@ export default {
     },
     // B2: fallback name when no outfit is selected
     petSelfFallback: 'My Pet',
+    title: 'Unlock All Pet Hub Scenarios',
+    desc: 'Health, social, and care — all in one place',
+    useShareInTopRight: 'Please use the share button in the top-right',
   },
 
   // Dress popup components/dress-popup
@@ -467,6 +471,20 @@ export default {
     // Session expired modal (utils/request.js promptReLogin)
     sessionExpiredTitle: 'Session expired',
     sessionExpiredContent: 'Your sign-in has expired. Please sign in again to return to this page.',
+    // Network layer (utils/request.js) common error messages
+    requestFailed: 'Request failed ({status})',
+    requestFailedHttp: 'Request failed ({status})',
+    requestTimeout: 'Request timeout',
+    networkError: 'Network error',
+    // Webview URL whitelist guard (utils/webview-guard.js)
+    urlBlocked: 'This link is not on the allowlist and has been blocked.',
+    // Shared across community/home/cart/social-grid/empty-state pages
+    shareWip: 'Sharing is coming soon',
+    comingSoon: 'Coming soon',
+    actionFailed: 'Action failed',
+    savedToAlbum: 'Saved to album',
+    addedToCart: 'Added to cart',
+    loadingFailed: 'Failed to load',
   },
 
   // 语言列表(独立于 common,便于扩展)
@@ -1147,6 +1165,7 @@ export default {
     notStartedToast: 'Not started yet',
     buySuccessFmt: 'Successfully claimed 「{name}」!',
     buyFailed: 'Failed to claim, please retry',
+    buying: 'Grabbing…',
   },
 
   // 帖子收藏 /pages/user/post-collection
@@ -1719,6 +1738,11 @@ export default {
   // 首页 /pages/tabbar/home
   home: {
     searchPlaceholder: 'Search products, brands, guides',
+    // Home toasts
+    bannerN: 'Banner {n}',
+    scanResult: 'Scanned: {value}',
+    scanInvalid: 'No valid QR code detected',
+    scanAppOnly: 'Please use the APP to scan',
     kingkong: {
       care: 'Grooming',
       gear: 'Gear',
@@ -1869,6 +1893,7 @@ export default {
     statusCancelled: 'Cancelled',
     viewDetail: 'View Details',
     applyTime: 'Applied At',
+    loadFailed: 'Failed to load after-sales records',
   },
 
   // 退货 /pages/order/returns
@@ -1886,6 +1911,20 @@ export default {
     progress: 'Progress',
     uploadProof: 'Upload Proof',
     contactCS: 'Contact Support',
+    primeDay: { title: 'Prime Day Exclusive Sale', desc: 'Members-only mega sale' },
+    newArrival: { title: 'Early Access to New Arrivals', desc: 'Be first to try new products' },
+    newUser: {
+      welcomeTitle: 'Welcome to MOYUYO',
+      claimAll: 'Claim All',
+      value: 'Value ${amount}',
+      heroSub: 'Complete new-user tasks to claim exclusive perks',
+      emptyGifts: 'No new-user perks yet',
+      emptyClaimed: 'You have not claimed any perks yet',
+      pointsSuffix: '+{n} points',
+      claimFailed: 'Claim failed',
+      selectReasonFirst: 'Please select a refund reason',
+      submitted: 'Request submitted',
+    },
   },
 
   // 支付成功 /pages/order/payment-success
@@ -1918,6 +1957,7 @@ export default {
     deleteContent: 'This cannot be undone. The order will be permanently deleted.',
     deleted: 'Deleted',
     deleteFailed: 'Delete failed',
+    permanentDeleteTitle: 'Delete permanently?',
   },
 
   // 客服评价 /pages/order/cs-rating
@@ -1938,6 +1978,7 @@ export default {
     rewardHint: 'Earn {reward} points for completing',
     feedbackPrompt: 'Not satisfied?',
     feedbackBtn: 'Submit Feedback',
+    imageUploadWip: 'Image upload is coming soon',
   },
 
   // 关税明细 /pages/order/tariff-detail
@@ -2084,6 +2125,26 @@ export default {
     ruleMinLen: 'At least 8 characters',
     ruleMatch: 'Passwords match',
     checkRules: 'Please check the password rules',
+  },
+
+  // 手机号 /pages/user/phone
+  phone: {
+    title: 'Phone Number',
+    current: 'Current Phone Number',
+    newPhone: 'New Phone Number',
+    newPhonePlaceholder: 'Enter your new phone number',
+    code: 'Verification Code',
+    codePlaceholder: '6-digit code',
+    sendCode: 'Send Code',
+    codeSent: 'Code sent',
+    codeSendFailed: 'Failed to send. Please try again later',
+    phoneRequired: 'Please enter a valid phone number',
+    selectCountry: 'Select Country/Region',
+    submit: 'Submit',
+    submitting: 'Submitting...',
+    submitted: 'Phone number updated',
+    failed: 'Update failed',
+    checkInput: 'Please check your input',
   },
 
   // 忘记密码 /pages/user/forgot
@@ -2821,39 +2882,7 @@ export default {
       shipping: { title: 'Free Shipping Sitewide', desc: 'Free shipping on all items, no minimum' },
       memberPrice: { title: 'Member-Only Pricing', desc: 'An extra 5-10% off' },
       priority: { title: 'Priority Shipping', desc: 'Dispatched within 24 hours' },
-      returns: { title: 'Free Returns & Exchanges', desc: 'Return shipping fully covered' },
-      support: { title: 'Dedicated Support', desc: '1-on-1 priority response' },
-      primeDay: { title: 'Prime Day Exclusive Sale', desc: 'Members-only mega sale' },
-      points: {
-        title: '$10 in Points Every Month',
-        desc: 'Credited automatically, redeemable at checkout',
-      },
-      newArrival: { title: 'Early Access to New Arrivals', desc: 'Be first to try new products' },
-      petHub: {
-        title: 'Unlock All Pet Hub Scenarios',
-        desc: 'Health, social and care — every scenario',
-      },
     },
-  },
-
-  // 新人专区 /pages/user/new-user-zone
-  newUser: {
-    title: 'New User Zone',
-    welcomeTitle: 'Welcome to MOYUYO',
-    welcomeDesc: 'New user perks valued at $48',
-    claimAll: 'Claim All',
-    coupon: 'Coupon',
-    value: 'Value ${amount}',
-    startShopping: 'Start Browsing',
-    heroSub: 'Complete new-user tasks to claim exclusive perks',
-    claim: 'Claim',
-    emptyGifts: 'No new-user perks yet',
-    claimedTitle: 'Claimed',
-    emptyClaimed: 'You have not claimed any perks yet',
-    giftFallback: 'Gift #{id}',
-    pointsSuffix: '+{n} points',
-    claimSuccess: 'Claimed successfully',
-    claimFailed: 'Claim failed',
   },
 
   // 周年报告 /pages/user/annual-report
@@ -2954,6 +2983,9 @@ export default {
     copiedLink: 'Link copied',
     shareProduct: 'Share Product',
     stockLow: 'Only {count} left',
+    productNotReady: 'Product info is not ready yet',
+    offShelf: 'This product is no longer available',
+    skuOutOfStock: 'This SKU is out of stock',
   },
 
   // 客服中心会话页 /pages/user/customer-service
@@ -3012,6 +3044,12 @@ export default {
       hoursAgo: '{n} hours ago',
       daysAgo: '{n} days ago',
     },
+    // Sign-in guard prompts (tabbar/community.vue)
+    loginToLike: 'Sign in to like',
+    loginToPost: 'Sign in to post',
+    goLoginPrompt: 'Go to sign in?',
+    goLogin: 'Sign in',
+    maybeLater: 'Maybe later',
     // Action labels in community post detail bottom bar
     postActions: {
       favorite: 'Favorite',
@@ -3832,5 +3870,291 @@ export default {
     deletionHasActiveOrders:
       'You have {count} unfinished order(s). Please complete or cancel them before requesting account deletion.',
     dataExportRateLimited: 'Data export request is rate-limited. Please try again after {date}',
+  },
+
+  // Cart store (store/cart.js)
+  cart: {
+    soldOut: 'This item is sold out',
+    stockShort: 'Insufficient stock',
+    addFailed: 'Failed to add to cart',
+    outOfStock: 'This item is out of stock and cannot be checked out',
+    itemUnavailable: 'This item is no longer available and cannot be checked out',
+    removed: 'Removed',
+    selectItemsFirst: 'Please select items first',
+    deleteConfirmTitle: 'Confirm delete',
+    deleteConfirmContent: 'Remove this item from your cart?',
+  },
+
+  // Pet store (store/pet.js)
+  pet: {
+    dressStorageFull: 'Storage is full. Please delete some outfits.',
+    dressUploadLostAfterUpdate:
+      'Upload to server failed. This outfit may be lost after an app update.',
+  },
+
+  // Native plugins (plugins/arTryOn.js, petHub3d.js, ...)
+  plugin: {
+    arStartFailed: 'Failed to start AR',
+    arAppOnly: 'AR try-on is only available on the APP',
+    arUnsupported: 'AR is not supported in this environment',
+    arCaptureFailed: 'Failed to capture photo',
+    petHub3dSceneFailed: 'Failed to load 3D scene',
+    petHub3dAppOnly: '3D features are only available on the APP',
+    petHub3dUnsupported: '3D is not supported in this environment',
+    petHub3dCosmeticFailed: 'Failed to apply outfit',
+    petHub3dSnapshotFailed: 'Failed to capture snapshot',
+  },
+
+  // Goods list page (pages/goods/list.vue) — top bar, filter sheet, list footer
+  goodsList: {
+    filter: 'Filter',
+    filtersTitle: 'Filters',
+    petType: 'Pet Type',
+    ip: 'IP',
+    size: 'Size',
+    priceRange: 'Price Range',
+    reset: 'Reset',
+    apply: 'Apply',
+    noMore: '— No more —',
+    empty: 'No products found',
+    sortDefault: 'Default',
+    sortPopularity: 'Best Selling',
+    sortPriceAsc: 'Price ↑',
+    sortPriceDesc: 'Price ↓',
+    sortNewest: 'Newest',
+    petDog: 'Dog',
+    petCat: 'Cat',
+    petOther: 'Other',
+    priceUnder20: 'Under $20',
+    price20to50: '$20 - $50',
+    price50to100: '$50 - $100',
+    priceOver100: 'Over $100',
+  },
+
+  // Order recycle bin (pages/order/recycle-bin.vue)
+  // Refund request (pages/order/returns.vue)
+  // Logistics tracking (pages/order/logistics-tracking.vue)
+  logistics: {
+    callSfCarrier: 'Please contact SF Express at 95338',
+    refreshing: 'Refreshing…',
+    refreshed: 'Refreshed',
+  },
+
+  // Customer-service rating (pages/order/cs-rating.vue)
+  // After-sales records (pages/order/after-sales.vue)
+  // Goods detail (pages/goods/detail.vue)
+  // Share product (pages/goods/share-product.vue)
+  shareProduct: {
+    missingProductId: 'Missing product id',
+    sharedTo: 'Shared to {name}',
+    linkCopied: 'Link copied',
+    copyFailed: 'Copy failed',
+    openFailedWithReason: 'Failed to open: {reason}',
+    linkCopiedManualPaste: 'Link copied. Please open the app and paste it manually.',
+    generating: 'Generating…',
+    generateFailed: 'Failed to generate',
+    imageDownloaded: 'Image downloaded',
+    downloadFailed: 'Download failed',
+    savedToAlbum: 'Saved to album',
+    saveFailedCheckPermission: 'Save failed. Please check your permissions.',
+  },
+
+  // Live room (pages/goods/live-room.vue)
+  liveRoom: {
+    loadFailed: 'Failed to load live room info',
+    shareWip: 'Sharing is coming soon',
+    buy: 'Buy {name}',
+    commentSent: 'Comment sent',
+    liked: 'Liked +1',
+    viewCart: 'View cart',
+  },
+
+  // Bargain (pages/goods/bargain.vue)
+  bargain: {
+    loadFailed: 'Failed to load bargain info',
+    helpSucceeded: 'Bargain helped!',
+    helpFailed: 'Failed to help bargain',
+    buyAtCurrentPrice: 'Added to cart at the current price',
+  },
+
+  // Bundle deal (pages/goods/bundle-deal.vue)
+  bundleDeal: {
+    loadFailed: 'Failed to load bundle info',
+    addedToCart: 'Added "{name}" to cart',
+    maxThreeItems: 'You can select up to 3 items',
+    customAddedToCart: 'Custom bundle added to cart',
+  },
+
+  // Flash sale detail (pages/goods/flash-sale-detail.vue)
+  // Crowdfunding (pages/goods/crowdfunding.vue)
+  crowdfunding: {
+    supportTier: 'Support {tier} at ${price}',
+    selectTierFirst: 'Please pick a reward tier first',
+  },
+
+  // Product compare (pages/goods/product-compare.vue)
+  productCompare: {
+    maxFour: 'You can compare up to 4 products',
+    addedToCart: '{name} added to cart',
+  },
+
+  // Q&A (pages/goods/qa.vue)
+  qa: {
+    asked: 'Question submitted',
+  },
+
+  // Fit finder (pages/goods/fit-finder.vue)
+  fitFinder: {
+    sizeSelected: 'Size {size} selected',
+  },
+
+  // Frequent purchase (pages/goods/frequent-purchase.vue)
+  frequentPurchase: {
+    addedCount: 'Added {count} item(s) to cart',
+  },
+
+  // Group buy (pages/goods/group-buy.vue)
+  groupBuy: {
+    loadFailed: 'Failed to load group buy info',
+    inviteWip: 'Invite friends is coming soon',
+    buyAtOriginalPrice: 'Buy at original price',
+  },
+
+  // Product subscribe (pages/goods/product-subscribe.vue)
+  productSubscribe: {
+    selectCycleFirst: 'Please select a delivery cycle',
+    subscribing: 'Subscribing…',
+    subscribed: 'Subscribed',
+    subscribeFailed: 'Failed to subscribe',
+  },
+
+  // Shipping calculator (pages/goods/shipping-calculator.vue)
+  shippingCalculator: {
+    invalidWeight: 'Please enter a valid weight',
+  },
+
+  // Try before buy (pages/goods/try-before-buy.vue)
+  tryBeforeBuy: {
+    kept: 'Kept {name}',
+    returnScheduled: 'Return scheduled. Please check the return label.',
+    browseTryable: 'Browse tryable items',
+  },
+
+  // Charity donation (pages/goods/charity-donation.vue)
+  charityDonation: {
+    donatedAndCheckout: 'Donated ${amount} and proceeding to checkout',
+    failed: 'Failed to donate',
+  },
+
+  // AR try-on (pages/goods/ar-try-on.vue)
+  arTryOn: {
+    cameraSwitched: 'Camera switched',
+  },
+
+  // Pet weight (pages/pet/weight-chart.vue)
+  petWeight: {
+    invalidWeight: 'Please enter a valid weight',
+    selectDateFirst: 'Please select a date',
+    recorded: 'Recorded',
+    recordFailed: 'Failed to record',
+  },
+
+  // Pet 3D space (pages/pet/space-3d.vue)
+  petHub3d: {
+    dogModelLoadFailed: 'Failed to load the puppy model',
+    cameraFps: '🐶 First-person (animal eye)',
+    cameraTps: '👀 Third-person follow',
+  },
+
+  // Pet health (pages/pet/health.vue, health-calendar.vue)
+  petHealth: {
+    dayEventsCount: '{count} event(s)',
+    selectDateFirst: 'Please select a date',
+    invalidReminderType: 'Please select a valid reminder type',
+    selectPetFirst: 'Please select a pet first',
+    reminderAdded: 'Reminder added',
+    addFailed: 'Failed to add',
+  },
+
+  // Pet allergy (pages/pet/allergy-profile.vue)
+  petAllergy: {
+    removed: 'Removed {item}',
+    added: 'Added {item}',
+    enterEditMode: 'Enter edit mode',
+    viewAllRecords: 'View all records',
+    viewMoreProducts: 'View more products',
+    addRecord: 'Add allergy record',
+  },
+
+  // Pet hub 3D (pages/pet/pet-hub-3d.vue)
+  petHub3dScene: {
+    arOn: 'AR mode on',
+    arOff: 'AR mode off',
+    switchedTo: 'Switched to {scene}',
+    switchedToPet: 'Switched to {name}',
+    rotate360: '360° rotation',
+    zoomedIn: 'Zoomed in',
+    zoomedOut: 'Reset zoom',
+    playingWith: '🎾 Playing with {name}...',
+    feeding: '🍗 Feeding {name}',
+    grooming: '🛁 Grooming {name}',
+    shareLinkCopied: '📤 Share link copied',
+    moreOptions: 'More options',
+    addNewPet: '🐾 Add new pet',
+  },
+
+  // Pet dresser (pages/pet/dresser.vue)
+  petDresser: {
+    loadFailed: 'Failed to load outfits',
+    equipped: 'Equipped {name}',
+    equipFailed: 'Failed to equip',
+    createPetFirst: 'Please create a pet first',
+    uploading: 'Uploading…',
+    uploaded: 'Uploaded',
+    uploadFailed: 'Failed to upload',
+    systemOutfitUnremovable: 'System outfits cannot be removed',
+    deleteTitle: 'Delete outfit',
+    deleteContent: 'Delete "{name}"? This action cannot be undone.',
+    deleted: 'Deleted',
+    deleteFailed: 'Failed to delete',
+  },
+
+  // Pet hub (pages/pet/pet-hub.vue)
+  // Pet album (pages/pet/album.vue)
+  petAlbum: {
+    prevMonth: 'Previous month',
+    nextMonth: 'Next month',
+    uploaded: 'Uploaded',
+  },
+
+  // Community drafts (pages/community/drafts.vue)
+  communityDrafts: {
+    deleteThisDraft: 'Delete this draft',
+    deleteTitle: 'Delete draft',
+    deleteContent: 'Delete this draft?',
+    deleteConfirm: 'Delete',
+    deleted: 'Deleted',
+    clearAllTitle: 'Clear all drafts',
+    clearAllContent: 'Delete all {count} drafts?',
+    clearAllConfirm: 'Clear',
+    cleared: 'Cleared',
+  },
+
+  // Direct messages (pages/community/dm-chat.vue)
+  dm: {
+    viewProfile: 'View profile',
+    blockUser: 'Block user',
+    report: 'Report',
+    imageSendWip: 'Image sending is coming soon',
+  },
+
+  // Community tab (pages/tabbar/community.vue)
+  // Home tab (pages/tabbar/home.vue)
+  // Cart page (pages/cart/index.vue)
+  // Invite friends (pages/user/invite-friends.vue)
+  // Empty state samples (pages/common/empty-state.vue)
+  emptyState: {
+    reconnecting: 'Reconnecting…',
+    refreshing: 'Refreshing…',
   },
 }

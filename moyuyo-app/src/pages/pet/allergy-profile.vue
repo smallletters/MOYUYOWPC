@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="allergy-profile">
     <!-- 顶部导航栏 -->
     <view class="header">
@@ -166,13 +166,11 @@
 
 <script setup>
 import { ref } from 'vue'
+import { t } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.petAllergyProfile')
 
-
 const goBack = () => uni.navigateBack()
-
-
 
 // 宠物选择
 const pets = [
@@ -206,14 +204,14 @@ const commonAllergens = ['牛肉', '鱼类', '大豆', '香精', '防腐剂', '�
 // 移除过敏原
 const removeAllergen = (item) => {
   markedAllergens.value = markedAllergens.value.filter((a) => a !== item)
-  uni.showToast({ title: '已移除 ' + item, icon: 'none' })
+  uni.showToast({ title: t('petAllergy.removed', { item }), icon: 'none' })
 }
 
 // 添加过敏原
 const addAllergen = (item) => {
   if (!markedAllergens.value.includes(item)) {
     markedAllergens.value.push(item)
-    uni.showToast({ title: '已添加 ' + item, icon: 'none' })
+    uni.showToast({ title: t('petAllergy.added', { item }), icon: 'none' })
   }
 }
 
@@ -224,7 +222,7 @@ const addCustomAllergen = () => {
   if (val && !markedAllergens.value.includes(val)) {
     markedAllergens.value.push(val)
     customAllergen.value = ''
-    uni.showToast({ title: '已添加 ' + val, icon: 'none' })
+    uni.showToast({ title: t('petAllergy.added', { item: val }), icon: 'none' })
   }
 }
 
@@ -285,10 +283,11 @@ const safeProducts = [
 ]
 
 // 操作
-const onEdit = () => uni.showToast({ title: '进入编辑模式', icon: 'none' })
-const onViewAll = () => uni.showToast({ title: '查看全部记录', icon: 'none' })
-const onMoreProducts = () => uni.showToast({ title: '查看更多商品', icon: 'none' })
-const onAddRecord = () => uni.showToast({ title: '添加过敏记录', icon: 'none' })
+const onEdit = () => uni.showToast({ title: t('petAllergy.enterEditMode'), icon: 'none' })
+const onViewAll = () => uni.showToast({ title: t('petAllergy.viewAllRecords'), icon: 'none' })
+const onMoreProducts = () =>
+  uni.showToast({ title: t('petAllergy.viewMoreProducts'), icon: 'none' })
+const onAddRecord = () => uni.showToast({ title: t('petAllergy.addRecord'), icon: 'none' })
 </script>
 
 <style lang="scss" scoped>

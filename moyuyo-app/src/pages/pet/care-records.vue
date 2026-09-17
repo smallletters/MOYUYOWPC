@@ -91,7 +91,10 @@
         </view>
       </view>
       <view v-else class="empty-box">
-        <text class="luc empty-icon" :class="`luc-${meta.icon}`" />
+        <!-- APP 端 <text> + ::before content PUA 字符有渲染兼容问题,
+             直接把 PUA 字符作为文本内容写出来,强制 APP webview 按 LucideIcons 渲染。
+             i18n 切换/类型切换时通过 meta.iconChar 拿到对应 codepoint。 -->
+        <text class="luc empty-icon">{{ meta.iconChar }}</text>
         <text class="empty-text">{{ $t('careRecords.noRecordYet', { type: meta.label }) }}</text>
         <view class="empty-btn" @click="openForm">
           {{ $t('careRecords.recordFirst', { type: meta.label }) }}
@@ -197,11 +200,15 @@
 import { usePetStore } from '@/store'
 
 // 四种护理类型的图标映射（label/placeholder 文案由 i18n 字典 careRecords.* 提供，随 locale 切换）
+// 双字段:
+//   icon    : 用于回退渲染(模板里 :class 拼 luc-${icon}),css 里 .luc-${icon} ::before 命中
+//   iconChar: 直接写出 PUA 字符作为 <text> 的文本内容,绕开 APP webview 对 ::before content 的渲染兼容问题
+// 二者映射到同一个 glyph,APP 端优先用 iconChar,H5 两种都行
 const TYPE_META = {
-  BATH: { icon: 'droplets' },
-  VACCINE: { icon: 'syringe' },
-  DEWORM: { icon: 'bug' },
-  EXAM: { icon: 'stethoscope' },
+  BATH: { icon: 'bath', iconChar: '\ue90a' },
+  VACCINE: { icon: 'syringe', iconChar: '\ue977' },
+  DEWORM: { icon: 'pill', iconChar: '\ue95a' },
+  EXAM: { icon: 'stethoscope', iconChar: '\ue975' },
 }
 const TYPE_ORDER = ['BATH', 'VACCINE', 'DEWORM', 'EXAM']
 
@@ -245,6 +252,7 @@ export default {
       return {
         label: this.$t(`careRecords.types.${type}`),
         icon: TYPE_META[type].icon,
+        iconChar: TYPE_META[type].iconChar,
         placeholder: this.$t(`careRecords.placeholders.${type}`),
       }
     },

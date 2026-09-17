@@ -369,6 +369,15 @@ services:
     environment:
       # 默认 prod；本机联调可在 .env 设 SPRING_PROFILES_ACTIVE=dev（dev 跳过生产强校验、弱密码仅限本机）
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      # logback 日志目录：容器根目录 read_only=true（安全加固），默认 ./logs(/app/logs) 不可写；
+      # 强制指向已挂载的 moyuyo-logs 卷（/var/log/moyuyo，chown moyuyo:moyuyo）。
+      # 透传 .env 中的 LOG_PATH，未设置时默认 /var/log/moyuyo
+      LOG_PATH: ${LOG_PATH:-/var/log/moyuyo}
+      # management.server.port：actuator 独立监听 9090 端口（与 compose 端口映射一致）。
+      # prod 默认 9090；dev 必须显式指定（否则 actuator 落到 8080，
+      # Dockerfile 的 HEALTHCHECK 探测 9090 持续 exit=7 失败，容器长期 unhealthy）。
+      # 见 override.yml 文件说明注释
+      MANAGEMENT_SERVER_PORT: ${MANAGEMENT_SERVER_PORT:-9090}
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306
       MYSQL_DATABASE: ${MYSQL_DATABASE:-moyuyo_prod}
@@ -388,9 +397,13 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       API_SIGN_SECRET: ${API_SIGN_SECRET:?API_SIGN_SECRET must be set}
       MOYUYO_CORS_ORIGINS: ${MOYUYO_CORS_ORIGINS:?MOYUYO_CORS_ORIGINS must be set}
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?STRIPE_SECRET_KEY must be set}
-      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:?STRIPE_WEBHOOK_SECRET must be set}
+      # Stripe（Google Pay / Apple Pay / Credit Card 通道）
+      # 当前状态：待 Stripe Atlas 美国公司主体注册完成后回填；上线前必须为真实 sk_live_ 密钥
+      # 此处用 :- 占位符避免 docker-compose 启动期硬阻断，应用启动后由 PaymentServiceImpl
+      # 在支付调用时检测到占位符并返回 Mock URL（保证结算页 UI 可演示）
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_placeholder}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-pk_test_placeholder}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-whsec_placeholder}
       PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:?PAYPAL_CLIENT_ID must be set}
       PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:?PAYPAL_CLIENT_SECRET must be set}
       PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID:?PAYPAL_WEBHOOK_ID must be set}

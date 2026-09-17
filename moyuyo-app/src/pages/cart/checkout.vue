@@ -319,6 +319,7 @@ import { orderApi, pointsApi, addressApi, couponApi } from '@/api'
 import { useCartStore } from '@/store'
 import { savePendingOrder } from '@/utils/storage'
 import { i18n } from '@/i18n'
+import { buildPayIconDataUris } from '@/static/icons/pay-icons'
 
 export default {
   pageTitleKey: 'pageTitle.cartCheckout',
@@ -345,6 +346,9 @@ export default {
       couponAutoDismissed: false,
       // 优惠券选择弹窗显示状态(底部弹出用户已领取的优惠券列表)
       showCouponPopup: false,
+      // 支付方式 logo 的 base64 data URI 映射,onLoad 时一次性生成
+      // 走内联而不是 /static/icons/*.svg 是为了规避 APP 真机偶发 SVG 渲染白盒
+      payIconUris: { googlepay: '', applepay: '', paypal: '', card: '' },
       // 配送方式固定数据,文案走 i18n,价格/免费标志保留
       shippingMethods: [
         {
@@ -362,34 +366,34 @@ export default {
           free: false,
         },
       ],
-      // 支付方式固定数据,文案走 i18n
+      // 支付方式固定数据,文案走 i18n;logo 用 id 关联 data URI,真机/H5 都稳定
       paymentMethods: [
         {
           id: 'googlepay',
           nameKey: 'orderPay.methods.googlepay.name',
           descKey: 'orderPay.methods.googlepay.desc',
-          icon: '/static/icons/googlepay.svg',
+          iconKey: 'googlepay',
           iconText: 'G Pay',
         },
         {
           id: 'applepay',
           nameKey: 'orderPay.methods.applepay.name',
           descKey: 'orderPay.methods.applepay.desc',
-          icon: '/static/icons/applepay.svg',
+          iconKey: 'applepay',
           iconText: '',
         },
         {
           id: 'paypal',
           nameKey: 'orderPay.methods.paypal.name',
           descKey: 'orderPay.methods.paypal.desc',
-          icon: '/static/icons/paypal.svg',
+          iconKey: 'paypal',
           iconText: 'PP',
         },
         {
           id: 'card',
           nameKey: 'orderPay.methods.card.name',
           descKey: 'orderPay.methods.card.desc',
-          icon: '/static/icons/card.svg',
+          iconKey: 'card',
           iconText: 'CARD',
         },
       ],
@@ -409,12 +413,14 @@ export default {
         eta: i18n.t(s.etaKey),
       }))
     },
-    /** 支付方式注入 i18n 文案 */
+    /** 支付方式注入 i18n 文案,并把 logo 解析成 base64 data URI */
     i18nPaymentMethods() {
+      const uris = this.payIconUris || {}
       return this.paymentMethods.map((p) => ({
         ...p,
         name: i18n.t(p.nameKey),
         desc: i18n.t(p.descKey),
+        icon: uris[p.iconKey] || '',
       }))
     },
     /** 运费免邮文案 */
@@ -538,6 +544,9 @@ export default {
     this.loadAddress()
     this.loadPoints()
     this.loadMyCoupons()
+    // 进入页面即把支付方式 SVG 转成 base64 data URI
+    // 避开 APP 真机偶发的 /static/icons/*.svg 渲染白盒问题
+    this.payIconUris = buildPayIconDataUris()
   },
 
   methods: {

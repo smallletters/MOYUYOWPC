@@ -1,7 +1,5 @@
 <template>
   <view class="address-edit">
-
-
     <scroll-view scroll-y class="form">
       <view class="input-group">
         <text class="input-label">

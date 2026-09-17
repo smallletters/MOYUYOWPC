@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+// 抑制 JDT 静态检查对 MyBatis-Plus Lambda 引用的 null type safety 警告
+@SuppressWarnings("null")
 @Tag(name = "设备管理")
 @RestController
 @RequestMapping("/api/v1/devices")
@@ -62,7 +64,8 @@ public class DeviceController {
     if (userId == null) {
       throw new IllegalStateException("未登录");
     }
-    String deviceId = body == null ? null : body.get("deviceId");
+    if (body == null) throw new IllegalArgumentException("请求体不能为空");
+    String deviceId = body.get("deviceId");
     if (deviceId == null) throw new IllegalArgumentException("deviceId 不能为空");
     // 行锁:同 (userId, deviceId) 的并发请求在此串行化;
     // 记录不存在时 InnoDB 间隙锁仍能挡住相邻区间的并发 insert。

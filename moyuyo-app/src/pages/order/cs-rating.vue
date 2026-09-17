@@ -1,7 +1,6 @@
-﻿<template>
+<template>
   <view class="rating-page">
     <!-- 导航栏 -->
-
 
     <scroll-view class="rating-body" scroll-y>
       <!-- 客服信息卡片 -->
@@ -109,12 +108,11 @@
 </template>
 <script setup>
 import { ref } from 'vue'
+import { t } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.orderCsRating')
 
-
 // 评分维度
-
 
 const dimensions = ref([
   { label: '解决问题程度', rating: 5 },
@@ -145,7 +143,7 @@ const addImage = () => {
     count: 3 - uploadedImages.value.length,
     success: () => {
       uploadedImages.value.push('camera')
-      uni.showToast({ title: '图片上传功能开发中', icon: 'none' })
+      uni.showToast({ title: t('csRating.imageUploadWip'), icon: 'none' })
     },
   })
 }
@@ -159,13 +157,13 @@ const removeImage = (index) => {
 const submitRating = () => {
   const allRated = dimensions.value.every((d) => d.rating > 0)
   if (!allRated) {
-    uni.showToast({ title: '请完成所有评分', icon: 'none' })
+    uni.showToast({ title: t('csRating.completeAllRatings'), icon: 'none' })
     return
   }
-  uni.showLoading({ title: '提交中...' })
+  uni.showLoading({ title: t('csRating.submitting') })
   setTimeout(() => {
     uni.hideLoading()
-    uni.showToast({ title: '评价提交成功', icon: 'success' })
+    uni.showToast({ title: t('csRating.submitted'), icon: 'success' })
     setTimeout(() => uni.navigateBack(), 1500)
   }, 1000)
 }

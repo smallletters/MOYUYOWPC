@@ -310,12 +310,12 @@ export default {
       } else if (item.id === 'flash') {
         uni.navigateTo({ url: '/pages/goods/flash-sale' })
       } else {
-        uni.showToast({ title: '敬请期待', icon: 'none' })
+        uni.showToast({ title: this.$t('common.comingSoon'), icon: 'none' })
       }
     },
 
     onBannerClick(idx) {
-      uni.showToast({ title: `Banner ${idx + 1}`, icon: 'none' })
+      uni.showToast({ title: this.$t('home.bannerN', { n: idx + 1 }), icon: 'none' })
     },
 
     goSearch() {
@@ -339,17 +339,20 @@ export default {
       uni.scanCode({
         success: (res) => {
           if (res.result) {
-            uni.showToast({ title: `识别: ${res.result.slice(0, 20)}`, icon: 'none' })
+            uni.showToast({
+              title: this.$t('home.scanResult', { value: res.result.slice(0, 20) }),
+              icon: 'none',
+            })
             // 实际项目中根据 URL 解析跳转
           }
         },
         fail: () => {
-          uni.showToast({ title: '未识别到有效二维码', icon: 'none' })
+          uni.showToast({ title: this.$t('home.scanInvalid'), icon: 'none' })
         },
       })
       // #endif
       // #ifdef H5
-      uni.showToast({ title: '请使用 APP 扫码', icon: 'none' })
+      uni.showToast({ title: this.$t('home.scanAppOnly'), icon: 'none' })
       // #endif
     },
   },

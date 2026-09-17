@@ -271,11 +271,11 @@ export default {
     onExpiredDelete(item) {
       const key = this.itemKey(item)
       this.cartStore.removeItem(key)
-      uni.showToast({ title: '已移除', icon: 'success' })
+      uni.showToast({ title: this.$t('cart.removed'), icon: 'success' })
     },
     onCheck(item) {
       if (item.cartStatus === 'OUT_OF_STOCK') {
-        uni.showToast({ title: '商品缺货,暂不能结算', icon: 'none' })
+        uni.showToast({ title: this.$t('cart.outOfStock'), icon: 'none' })
         return
       }
       const key = this.itemKey(item)
@@ -297,20 +297,23 @@ export default {
           ? Math.max(0, item.stock)
           : null
       if (delta > 0 && stockLimit !== null && item.quantity >= stockLimit) {
-        uni.showToast({ title: stockLimit <= 0 ? '该商品已售罄' : '库存不足', icon: 'none' })
+        uni.showToast({
+          title: stockLimit <= 0 ? this.$t('cart.soldOut') : this.$t('cart.stockShort'),
+          icon: 'none',
+        })
         return
       }
       this.cartStore.updateQuantity(key, next)
     },
     onDelete(item) {
       uni.showModal({
-        title: '确认删除',
-        content: '确定将该商品从购物车移除吗？',
+        title: this.$t('cart.deleteConfirmTitle'),
+        content: this.$t('cart.deleteConfirmContent'),
         success: (res) => {
           if (res.confirm) {
             const key = this.itemKey(item)
             this.cartStore.removeItem(key)
-            uni.showToast({ title: '已移除', icon: 'success' })
+            uni.showToast({ title: this.$t('cart.removed'), icon: 'success' })
           }
         },
       })
@@ -320,7 +323,7 @@ export default {
     },
     onCheckout() {
       if (this.cartStore.selectedQuantity === 0) {
-        uni.showToast({ title: '请选择商品', icon: 'none' })
+        uni.showToast({ title: this.$t('cart.selectItemsFirst'), icon: 'none' })
         return
       }
       // 清理可能残留的“立即购买”临时单品，避免劫持购物车结算

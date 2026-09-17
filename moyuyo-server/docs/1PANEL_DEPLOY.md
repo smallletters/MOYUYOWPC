@@ -75,7 +75,8 @@ docker compose logs -f app
 
 ```bash
 # 本机回环访问（端口已在 docker-compose 中绑定 127.0.0.1）
-curl http://127.0.0.1:8080/actuator/health
+# actuator 已迁移到独立端口 9090，业务 8080 上 /actuator 路由已不存在
+curl http://127.0.0.1:9090/actuator/health/liveness
 # 期望：{"status":"UP"}
 ```
 

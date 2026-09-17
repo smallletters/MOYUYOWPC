@@ -141,6 +141,14 @@ export default defineConfig(({ mode }) => {
           target: 'http://localhost:8080',
           changeOrigin: true,
         },
+        // 3D 模型（classpath:/static/models/ 下的 .glb）：
+        // dev 模式 modelDownload.js#resolveRemoteUrl 不会拼 VITE_ADMIN_API_BASE（.env.development 为空），
+        // 会用相对路径 /static/models/*.glb，浏览器请求落到 Vite 5174。
+        // 这里把 /static/** 代理到后端 8080，让 dev 环境能像 prod 一样命中 Spring 的 classpath:/static 映射。
+        '/static': {
+          target: 'http://localhost:8080',
+          changeOrigin: true,
+        },
 
         // ===== 客服/帮助/设备/关注/黑名单/会员/营销 =====
         '/api/v1/cs': { target: 'http://localhost:8080', changeOrigin: true },

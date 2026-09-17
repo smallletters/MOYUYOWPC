@@ -55,18 +55,19 @@ export const useThemeStore = defineStore('theme', {
     },
 
     applyTheme() {
+      // 全平台统一切换深色:
+      //   H5 端 .theme-dark 加到 <html>,CSS 变量(.theme-dark 选择器)立即覆盖 :root 内的默认值
+      //   APP/MP 端 document.body 是稳定可访问的根节点,加类后同样触发 CSS 变量覆盖,
+      //     不依赖 plus.navigator / page-meta 等 nvue 原生 API,各端行为一致
       // #ifdef H5
-      const root = document.documentElement
-      if (this.darkMode) {
-        root.classList.add('theme-dark')
-      } else {
-        root.classList.remove('theme-dark')
+      const htmlRoot = document.documentElement
+      if (this.darkMode) htmlRoot.classList.add('theme-dark')
+      else htmlRoot.classList.remove('theme-dark')
+      // #endif
+      if (typeof document !== 'undefined' && document.body) {
+        if (this.darkMode) document.body.classList.add('theme-dark')
+        else document.body.classList.remove('theme-dark')
       }
-      // #endif
-      // #ifdef MP-WEIXIN / APP-PLUS
-      // 小程序和 APP 通过 navigationBarTextStyle / page meta 实现
-      // 这里简化处理
-      // #endif
     },
 
     /** 跟随系统主题变化(system 模式下用户切换系统深色时调用) */

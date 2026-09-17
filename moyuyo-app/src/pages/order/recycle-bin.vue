@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="recycle-bin">
     <view class="page-header">
       <view class="back" aria-label="返回" @click="goBack">
@@ -78,16 +78,16 @@ export default {
 
     onRestore(order) {
       uni.showModal({
-        title: '恢复订单？',
-        content: `订单 #${order.orderNo} 将回到我的订单列表`,
+        title: this.$t('recycleBin.restoreTitle'),
+        content: this.$t('recycleBin.restoreContent', { no: order.orderNo }),
         success: async (res) => {
           if (res.confirm) {
             try {
               await orderApi.restoreOrder(order.id)
               this.loadRecycleBin()
-              uni.showToast({ title: '已恢复', icon: 'success' })
+              uni.showToast({ title: this.$t('recycleBin.restored'), icon: 'success' })
             } catch (e) {
-              uni.showToast({ title: '恢复失败', icon: 'none' })
+              uni.showToast({ title: this.$t('recycleBin.restoreFailed'), icon: 'none' })
             }
           }
         },
@@ -96,16 +96,16 @@ export default {
 
     onDeleteForever(order) {
       uni.showModal({
-        title: '永久删除？',
-        content: '此操作不可撤销，订单将彻底删除',
+        title: this.$t('recycleBin.permanentDeleteTitle'),
+        content: this.$t('recycleBin.permanentDeleteContent'),
         success: async (res) => {
           if (res.confirm) {
             try {
               await orderApi.permanentDeleteOrder(order.id)
               this.loadRecycleBin()
-              uni.showToast({ title: '已删除', icon: 'success' })
+              uni.showToast({ title: this.$t('recycleBin.deleted'), icon: 'success' })
             } catch (e) {
-              uni.showToast({ title: '删除失败', icon: 'none' })
+              uni.showToast({ title: this.$t('recycleBin.deleteFailed'), icon: 'none' })
             }
           }
         },

@@ -470,11 +470,11 @@ export default {
           console.warn('[detail] retry load detail once')
           return this.loadDetail(retry + 1)
         }
-        this.errorMessage = e?.message || '加载失败'
+        this.errorMessage = e?.message || this.$t('common.loadingFailed')
         uni.showToast({
           title: e?.message?.includes('timeout')
-            ? '连接服务器超时,请检查后端 8080 是否启动'
-            : '商品加载失败',
+            ? this.$t('goodsDetail.serverTimeout')
+            : this.$t('goodsDetail.loadFailed'),
           icon: 'none',
           duration: 2500,
         })
@@ -763,7 +763,7 @@ export default {
       // 跳到分享商品页并带上商品 id，便于页面加载真实商品信息与生成对应二维码
       const productId = this.productId || (this.product && this.product.id)
       if (!productId) {
-        uni.showToast({ title: '商品信息未就绪', icon: 'none' })
+        uni.showToast({ title: this.$t('goodsDetail.productNotReady'), icon: 'none' })
         return
       }
       uni.navigateTo({ url: `/pages/goods/share-product?id=${productId}` })
@@ -782,15 +782,15 @@ export default {
         const skuId = this.product.skus?.[0]?.id || null
         if (next) {
           await cartApi.addFavorite(this.product.id, skuId)
-          uni.showToast({ title: '已收藏', icon: 'success' })
+          uni.showToast({ title: this.$t('goodsDetail.favorited'), icon: 'success' })
         } else {
           await cartApi.removeFavorite(this.product.id, skuId)
-          uni.showToast({ title: '已取消收藏', icon: 'none' })
+          uni.showToast({ title: this.$t('goodsDetail.unfavorited'), icon: 'none' })
         }
       } catch (e) {
         // 失败回滚
         this.wishlisted = !next
-        uni.showToast({ title: e.message || '收藏失败', icon: 'none' })
+        uni.showToast({ title: e.message || this.$t('goodsDetail.favoriteFailed'), icon: 'none' })
       }
     },
 
@@ -814,14 +814,14 @@ export default {
       if (!this.product) return
       // 下架商品禁止加购(按钮已置灰,此处兜底)
       if (!this.isOnSale) {
-        uni.showToast({ title: '商品已下架', icon: 'none' })
+        uni.showToast({ title: this.$t('goodsDetail.offShelf'), icon: 'none' })
         return
       }
       // 取当前选中规格对应的 SKU(含真实库存),与购物车数量上限保持一致
       const sku = this.currentSku
       // 有规格选项但当前组合匹配不到 SKU:禁止加入,避免加错规格
       if (!sku && this.variations.length) {
-        uni.showToast({ title: '请选择有效的规格组合', icon: 'none' })
+        uni.showToast({ title: this.$t('goodsDetail.invalidSku'), icon: 'none' })
         return
       }
       const ok = await this.cartStore.addItem({
@@ -844,20 +844,20 @@ export default {
       if (!this.product) return
       // 下架商品禁止购买
       if (!this.isOnSale) {
-        uni.showToast({ title: '商品已下架', icon: 'none' })
+        uni.showToast({ title: this.$t('goodsDetail.offShelf'), icon: 'none' })
         return
       }
       // 取当前选中规格对应的 SKU(含真实库存),保证立即购买与结算对象一致
       const sku = this.currentSku
       // 有规格选项但组合匹配不到 SKU → 规格数据不一致,禁止下单防止买错规格
       if (!sku && this.variations.length) {
-        uni.showToast({ title: '请选择有效的规格组合', icon: 'none' })
+        uni.showToast({ title: this.$t('goodsDetail.invalidSku'), icon: 'none' })
         return
       }
       // 规格已无库存时禁止直接下单,与加购口径一致(无 SKU 的简单商品用商品主库存)
       const stockVal = sku?.stock != null ? Number(sku.stock) : Number(this.stock)
       if (stockVal <= 0) {
-        uni.showToast({ title: '该规格暂时缺货', icon: 'none' })
+        uni.showToast({ title: this.$t('goodsDetail.skuOutOfStock'), icon: 'none' })
         return
       }
       // 立即购买:设置临时单品直接进入结算,不写入购物车
@@ -890,9 +890,12 @@ export default {
 <style lang="scss" scoped>
 /* 设计稿 Apple 风格 design tokens → MOYUYO 品牌色 */
 .detail {
+  /* APP 端 scroll-view 必须有明确高度才能滚动,改用 height:100vh + overflow:hidden,
+     避免外层页面级滚动与内部 scroll-view 滚动冲突,导致看起来"拉不动" */
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background-color: var(--background-200, #ede9e4);
 }
 
@@ -951,8 +954,11 @@ export default {
 }
 
 .scroll {
+  /* scroll-view 在 APP 端 flex:1 不一定生效,显式计算可视区高度,
+     减去顶部自定义导航(44px + 状态栏)与底部操作栏(120rpx),确保滚动区能铺满 */
   flex: 1;
   width: 100%;
+  height: calc(100vh - 44px - 120rpx);
   box-sizing: border-box;
 }
 

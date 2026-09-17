@@ -45,6 +45,18 @@ export function changePassword(oldPassword, newPassword) {
   return post('/api/v1/auth/password/change', { oldPassword, newPassword })
 }
 
+/**
+ * 更换/绑定当前登录用户的手机号。
+ * 后端 PUT /api/v1/users/me/phone,body: { phone, code }
+ * 返回结构与 GET /me 一致,前端可覆盖本地 userInfo.phone。
+ * <p>
+ * 用 showError:false：让调用方(phone.vue.onSubmit)统一 toast 后端 message,
+ * 避免 request.js 默认 toast 与本地 catch toast 重复弹窗。
+ */
+export function changePhone(phone, code) {
+  return put('/api/v1/users/me/phone', { phone, code }, { showError: false })
+}
+
 export function sendMagicLink(email) {
   return post('/api/v1/auth/magic-link/send', { email })
 }
@@ -71,9 +83,14 @@ export function setTwoFactorEnabled(enabled) {
   return put('/api/v1/auth/2fa', { enabled })
 }
 
-/** 发送手机短信验证码 */
-export function sendPhoneCode(phone, purpose = 'LOGIN') {
-  return post('/api/v1/auth/phone/send-code', { phone, purpose })
+/**
+ * 发送手机短信验证码。
+ * 默认 showError:false:调用方(register.vue / phone.vue.onSendCode 等)自己
+ * 处理错误 toast,避免 request.js 默认 toast 与调用方 catch toast 重复弹窗。
+ * 需要自动 toast 的场景可显式传 options:{ showError: true } 覆盖。
+ */
+export function sendPhoneCode(phone, purpose = 'LOGIN', options = { showError: false }) {
+  return post('/api/v1/auth/phone/send-code', { phone, purpose }, options)
 }
 
 /** 手机号 + 验证码登录（后端会在未注册时自动创建账号） */
@@ -140,6 +157,7 @@ export default {
   verifyTwoFactorCode,
   setTwoFactorEnabled,
   sendPhoneCode,
+  changePhone,
   loginByPhone,
   getDeletionStatus,
   requestDeleteAccount,

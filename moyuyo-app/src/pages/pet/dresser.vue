@@ -122,7 +122,7 @@ export default {
         this.items = Array.isArray(list) ? list : []
       } catch (e) {
         console.warn('[dresser] load outfits failed', e)
-        uni.showToast({ title: '装扮列表加载失败', icon: 'none' })
+        uni.showToast({ title: this.$t('petDresser.loadFailed'), icon: 'none' })
       } finally {
         this.loading = false
       }
@@ -138,16 +138,19 @@ export default {
       try {
         await petDresserApi.equipOutfit(this.currentPet.id, item.id)
         await this.loadOutfits()
-        uni.showToast({ title: `已穿戴 ${item.name}`, icon: 'success' })
+        uni.showToast({
+          title: this.$t('petDresser.equipped', { name: item.name }),
+          icon: 'success',
+        })
       } catch (e) {
-        uni.showToast({ title: e?.message || '装备失败', icon: 'none' })
+        uni.showToast({ title: e?.message || this.$t('petDresser.equipFailed'), icon: 'none' })
       }
     },
 
     // 上传自定义装扮形象：选图 → 上传图片 → 提交装扮记录
     onUpload() {
       if (!this.currentPet?.id) {
-        uni.showToast({ title: '请先创建宠物', icon: 'none' })
+        uni.showToast({ title: this.$t('petDresser.createPetFirst'), icon: 'none' })
         return
       }
       uni.chooseImage({
@@ -157,7 +160,7 @@ export default {
           const filePath = res.tempFilePaths && res.tempFilePaths[0]
           if (!filePath) return
           // 1. 先上传图片拿到 imageUrl
-          uni.showLoading({ title: '上传中...', mask: true })
+          uni.showLoading({ title: this.$t('petDresser.uploading'), mask: true })
           try {
             const uploadRes = await uploadApi.uploadImage(filePath)
             const imageUrl = uploadRes?.url
@@ -169,7 +172,7 @@ export default {
               imageUrl,
             })
             uni.hideLoading()
-            uni.showToast({ title: '上传成功', icon: 'success' })
+            uni.showToast({ title: this.$t('petDresser.uploaded'), icon: 'success' })
             // 上传完成后自动切到"自定义"分类并刷新列表
             this.activeCat = 'custom'
             await this.loadOutfits()
@@ -179,7 +182,7 @@ export default {
             }
           } catch (e) {
             uni.hideLoading()
-            uni.showToast({ title: e?.message || '上传失败', icon: 'none' })
+            uni.showToast({ title: e?.message || this.$t('petDresser.uploadFailed'), icon: 'none' })
           }
         },
         fail: () => {
@@ -191,21 +194,21 @@ export default {
     // 删除装扮：仅用户自定义装扮可删，调用前二次确认
     onDelete(item) {
       if (!item.userId) {
-        uni.showToast({ title: '系统装扮不可删除', icon: 'none' })
+        uni.showToast({ title: this.$t('petDresser.systemOutfitUnremovable'), icon: 'none' })
         return
       }
       uni.showModal({
-        title: '删除装扮',
-        content: `确定删除「${item.name}」吗？删除后不可恢复。`,
+        title: this.$t('petDresser.deleteTitle'),
+        content: this.$t('petDresser.deleteContent', { name: item.name }),
         confirmColor: '#ff4d4f',
         success: async (modalRes) => {
           if (!modalRes.confirm) return
           try {
             await petDresserApi.deleteOutfit(this.currentPet.id, item.id)
-            uni.showToast({ title: '已删除', icon: 'success' })
+            uni.showToast({ title: this.$t('petDresser.deleted'), icon: 'success' })
             await this.loadOutfits()
           } catch (e) {
-            uni.showToast({ title: e?.message || '删除失败', icon: 'none' })
+            uni.showToast({ title: e?.message || this.$t('petDresser.deleteFailed'), icon: 'none' })
           }
         },
       })

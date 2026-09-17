@@ -531,17 +531,17 @@ export default {
 
     async onSubmitReminder() {
       if (!this.reminderForm.date) {
-        uni.showToast({ title: '请选择日期', icon: 'none' })
+        uni.showToast({ title: this.$t('petHealth.selectDateFirst'), icon: 'none' })
         return
       }
       // 页面 key → 后端大写类型；体检用 EXAM，避免与护理记录体系产生 checkup 重复提醒
       const backendType = TYPE_KEY_BACKEND[this.reminderForm.type]
       if (!backendType) {
-        uni.showToast({ title: '请选择有效的提醒类型', icon: 'none' })
+        uni.showToast({ title: this.$t('petHealth.invalidReminderType'), icon: 'none' })
         return
       }
       if (!this.petId) {
-        uni.showToast({ title: '请先选择宠物', icon: 'none' })
+        uni.showToast({ title: this.$t('petHealth.selectPetFirst'), icon: 'none' })
         return
       }
       try {
@@ -555,12 +555,12 @@ export default {
             : null,
           enabled: true,
         })
-        uni.showToast({ title: '提醒已添加', icon: 'success' })
+        uni.showToast({ title: this.$t('petHealth.reminderAdded'), icon: 'success' })
         this.showReminderModal = false
         this.loadData()
       } catch (e) {
         console.warn('[health-calendar] add reminder failed', e)
-        uni.showToast({ title: '添加失败', icon: 'none' })
+        uni.showToast({ title: this.$t('petHealth.addFailed'), icon: 'none' })
       }
     },
 

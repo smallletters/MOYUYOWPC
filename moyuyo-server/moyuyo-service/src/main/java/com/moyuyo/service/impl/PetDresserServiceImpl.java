@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+// 抑制 JDT 静态检查对 MyBatis-Plus Lambda 引用的 null type safety 警告
+@SuppressWarnings("null")
 @Slf4j
 @Service
 @RequiredArgsConstructor

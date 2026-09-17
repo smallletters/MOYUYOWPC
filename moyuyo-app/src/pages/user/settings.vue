@@ -33,7 +33,7 @@
           <text class="chevron luc luc-chevron-right" />
         </view>
         <view class="divider indent" />
-        <view class="item" hover-class="item-hover" @click="navTo('/pages/user/change-password')">
+        <view class="item" hover-class="item-hover" @click="navTo('/pages/user/phone')">
           <view class="item-left">
             <text class="item-icon luc luc-phone" />
             <text class="item-label">{{ $t('settings.phone.title') }}</text>

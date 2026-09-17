@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { petApi, petDresserApi } from '@/api'
+import { t } from '@/i18n'
 import { useUserStore } from '@/store/user'
 
 // 护理摘要请求自增序号：loadCareSummary 竞态防护，仅最后一次请求的结果会写入 store
@@ -252,7 +253,7 @@ export const usePetStore = defineStore('pet', {
       } catch (e) {
         // 配额超限等场景;提示用户清理
         console.warn('[pet] saveDress failed', e)
-        uni.showToast({ title: '存储空间不足,请删除部分装扮', icon: 'none' })
+        uni.showToast({ title: t('pet.dressStorageFull'), icon: 'none' })
       }
     },
 
@@ -284,7 +285,7 @@ export const usePetStore = defineStore('pet', {
               console.warn('[pet] 上传装扮到后端失败', e)
               // 后端写入失败:本地仍可临时使用,但 APP 更新后会丢失,需提示用户
               uni.showToast({
-                title: '上传到服务器失败,更新后可能丢失',
+                title: t('pet.dressUploadLostAfterUpdate'),
                 icon: 'none',
                 duration: 3000,
               })

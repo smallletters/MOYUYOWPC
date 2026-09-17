@@ -181,7 +181,7 @@ sudo ./deploy/deploy.sh
    - 非 root 用户（UID 1000）、`tini` 处理 PID 1、ZGC + NMT + HeapDump
 6. **按顺序启动**：MySQL → Redis → ES（首次生成证书 60-120s）→ RocketMQ（namesrv + broker）→ app → exporters
 7. **健康检查等待**：每个服务最长 180s 超时
-8. **最终验证**：本地 `curl http://127.0.0.1:8080/actuator/health` 必须返回 200 + `{"status":"UP"}`
+8. **最终验证**：本地 `curl http://127.0.0.1:9090/actuator/health/liveness` 必须返回 200 + `{"status":"UP"}`（actuator 独立监听 9090，业务 8080 上已无该路径）
 
 ### 启动成功的输出特征
 

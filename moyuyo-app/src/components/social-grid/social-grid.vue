@@ -65,7 +65,7 @@ export default {
     },
     onTap(item) {
       if (!item || !item.url) {
-        uni.showToast({ title: '功能即将上线', icon: 'none' })
+        uni.showToast({ title: this.$t('common.comingSoon'), icon: 'none' })
         return
       }
       // 父级 user.vue 模板用 @tap="onSocialTap" 监听,

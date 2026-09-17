@@ -11,6 +11,26 @@ import { getStorage, STORAGE_KEYS } from '@/utils/storage'
  */
 
 /**
+ * 把上传接口的相对路径解析为实际请求 URL。
+ * <p>
+ * 关键修复:APP 端 uni.uploadFile 不会像 uni.request 那样被前端代码做 baseURL 拼接,
+ * 相对路径在 APP 端会被拼到当前页面 URL(file:///android_asset/... 等本地包路径)上,
+ * 最终 URL 变成 file:///api/v1/file/upload/image —— 非 HTTP 协议,网络层直接失败,
+ * 表现为 uploadFile:fail statusCode:null(根本没收到响应)。
+ * <p>
+ * 此处与 utils/request.js 的 resolveBaseUrl 行为保持一致:
+ * 1) 已是绝对路径(http/https)直接用
+ * 2) 编译期注入了 VITE_ADMIN_API_BASE(APP 真机/自定义基座)则拼接绝对 URL
+ * 3) 否则保留相对路径(H5 dev 走 Vite proxy;prod 走 nginx 同源)
+ */
+function resolveUploadUrl(url) {
+  if (url.startsWith('http')) return url
+  const absBase = process.env.VITE_ADMIN_API_BASE
+  if (absBase) return `${absBase}${url}`
+  return url
+}
+
+/**
  * 上传单张图片
  * @param {string} filePath uni.chooseImage 返回的本地路径(tempFilePaths[0])
  * @returns {Promise<{url: string, filename: string, size: number, ...}>}
@@ -21,7 +41,7 @@ export function uploadImage(filePath) {
     const header = token ? { Authorization: `Bearer ${token}` } : {}
     // 注意: 不能再设置 Content-Type,让浏览器自动生成 multipart boundary
     uni.uploadFile({
-      url: '/api/v1/file/upload/image',
+      url: resolveUploadUrl('/api/v1/file/upload/image'),
       filePath,
       name: 'file',
       header,
@@ -78,7 +98,7 @@ export function uploadVideo(filePath, onProgress) {
     const token = getStorage(STORAGE_KEYS.TOKEN)
     const header = token ? { Authorization: `Bearer ${token}` } : {}
     const task = uni.uploadFile({
-      url: '/api/v1/file/upload/video',
+      url: resolveUploadUrl('/api/v1/file/upload/video'),
       filePath,
       name: 'file',
       header,

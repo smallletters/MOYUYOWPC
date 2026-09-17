@@ -2,7 +2,11 @@
   <view class="profile">
     <view class="avatar-section">
       <!-- mode="aspectFill":等比缩放裁剪填满,避免非正方形头像被默认 scaleToFill 拉伸变形 -->
-      <image :src="userStore.userInfo?.avatar || defaultAvatar" class="avatar" mode="aspectFill" />
+      <!-- avatarCacheBust:换头像后新 URL 与旧 URL 是 /uploads/ 同路径下的不同资源,
+         APP 端 <image>/WebView 会按 URL 缓存图片,造成"上传成功但页面不显示新头像"。
+         追加 ?v=<毫秒> 强制图片重新加载;同一秒内重复渲染不会持续跳时间戳,
+         只在 updateProfile 成功后通过 avatarVersion 自增触发刷新。 -->
+      <image :src="avatarSrc" class="avatar" mode="aspectFill" />
       <text class="name">{{ userStore.userInfo?.nickname || 'User' }}</text>
       <text class="email">{{ userStore.userInfo?.email }}</text>
       <view
@@ -52,6 +56,7 @@
 import { useUserStore } from '@/store'
 import { uploadImage } from '@/api/upload'
 import { i18n } from '@/i18n'
+import { toAbsoluteImageUrl } from '@/utils/imageUrl'
 
 export default {
   pageTitleKey: 'pageTitle.userProfile',
@@ -63,6 +68,10 @@ export default {
       saving: false,
       // 头像上传中标记:和 saving 独立,允许分别显示状态
       avatarUploading: false,
+      // 头像 cache busting 版本号:换头像成功后自增,
+      // 让 avatarSrc 计算属性返回带新 ?v= 的 URL,
+      // 强制 APP <image> 跳过同 URL 缓存重新加载新头像。
+      avatarVersion: 0,
       form: {
         nickname: '',
         phone: '',
@@ -79,6 +88,19 @@ export default {
     },
     userStore() {
       return useUserStore()
+    },
+    // 头像 src：store 里的 avatar 拼接 cache busting 版本号,
+    // 换头像成功自增 avatarVersion 强制 <image> 重新加载,
+    // 解决 APP 端同 URL 复用图片缓存导致"换了头像但页面不刷新"的问题。
+    // 先用 toAbsoluteImageUrl 把后端的相对路径(/uploads/...)补成 http://host/uploads/...,
+    // 否则 APP 端 <image> 拿不到绝对地址会显示空白
+    avatarSrc() {
+      const raw = this.userStore.userInfo?.avatar || this.defaultAvatar
+      const base = toAbsoluteImageUrl(raw)
+      // 绝对 URL / 相对路径都允许;时间戳作 query 不会改变服务端路由。
+      const v = this.avatarVersion || 0
+      const sep = base.includes('?') ? '&' : '?'
+      return `${base}${sep}v=${v}`
     },
   },
 
@@ -159,6 +181,9 @@ export default {
         const avatarUrl = uploadRes?.url
         if (!avatarUrl) throw new Error('Upload returned no URL')
         await this.userStore.updateProfile({ avatar: avatarUrl })
+        // 自增 cache busting 版本号,触发 avatarSrc 重新计算,
+        // 强制 <image> 跳过 URL 缓存,显示新头像。
+        this.avatarVersion += 1
         uni.hideLoading()
         uni.showToast({ title: i18n.t('profile.avatarUpdated'), icon: 'success' })
       } catch (e) {
@@ -168,8 +193,14 @@ export default {
         const msg = String(e?.errMsg || e?.message || '')
         const canceled = /cancel/i.test(msg)
         if (!chose || canceled) return
-        // 给用户友好提示:不再透传后端技术文案(例如 "不支持的文件类型,仅允许 PNG/JPG/JPEG/GIF/WebP")
-        uni.showToast({ title: i18n.t('profile.avatarUploadFailed'), icon: 'none' })
+        // 调试模式:把真实错误打到 console,toast 也带上后端 message,
+        // 方便区分网络 / 401 / 业务错误。
+        console.error('[avatar upload] failed:', e)
+        uni.showToast({
+          title: msg || i18n.t('profile.avatarUploadFailed'),
+          icon: 'none',
+          duration: 4000,
+        })
       } finally {
         this.avatarUploading = false
       }

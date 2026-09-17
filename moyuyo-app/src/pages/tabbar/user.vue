@@ -1,114 +1,124 @@
 <template>
-  <view class="user">
-    <view class="header">
-      <view v-if="userStore.isLoggedIn" class="user-info" @click="goProfile">
-        <!-- mode="aspectFill":等比缩放裁剪填满,避免非正方形头像被默认 scaleToFill 拉伸变形 -->
-        <image
-          :src="userStore.userInfo?.avatar || defaultAvatar"
-          class="avatar"
-          mode="aspectFill"
-        />
-        <view class="info">
-          <text class="name">
-            {{
-              userStore.userInfo?.nickname ||
-                userStore.userInfo?.email ||
-                $t('userCenter.defaultNickname')
-            }}
+  <scroll-view
+    class="user-scroll"
+    scroll-y
+    :refresher-enabled="true"
+    :refresher-triggered="refresherTriggered"
+    :refresher-background="refresherBg"
+    :refresher-default-text="refresherDefaultText"
+    :refresher-pulling-text="refresherPullingText"
+    :refresher-refreshing-text="refresherRefreshingText"
+    @refresherrefresh="onRefresherRefresh"
+  >
+    <view class="user">
+      <view class="header">
+        <view v-if="userStore.isLoggedIn" class="user-info" @click="goProfile">
+          <!-- mode="aspectFill":等比缩放裁剪填满,避免非正方形头像被默认 scaleToFill 拉伸变形 -->
+          <!-- avatarSrc:头像 src 走 cache busting,避免"个人资料页换了头像,
+             回到我的页还是旧图"。avatarVersion 由从个人资料页返回时 + 1 触发刷新 -->
+          <image :src="avatarSrc" class="avatar" mode="aspectFill" />
+          <view class="info">
+            <text class="name">
+              {{
+                userStore.userInfo?.nickname ||
+                  userStore.userInfo?.email ||
+                  $t('userCenter.defaultNickname')
+              }}
+            </text>
+            <text class="email">{{ userStore.userInfo?.email }}</text>
+            <text class="member-level">{{ memberLevel }}</text>
+          </view>
+          <text class="arrow luc-chevron-right" />
+        </view>
+        <view v-else class="login-prompt" @click="goLogin">
+          <image :src="defaultAvatar" class="avatar" />
+          <view class="login-text">
+            <text class="name">{{ $t('userCenter.loginRegister') }}</text>
+            <text class="email">{{ $t('userCenter.loginSubtitle') }}</text>
+          </view>
+          <view class="login-btn">{{ $t('userCenter.loginBtn') }}</view>
+        </view>
+      </view>
+
+      <!-- 会员卡片：点击整张卡片跳转到会员中心 -->
+      <view v-if="userStore.isLoggedIn" class="vip-card" @click="goMembership">
+        <view class="vip-bg" />
+        <view class="vip-content">
+          <text class="vip-title">{{ $t('userCenter.vipTitle') }}</text>
+          <text class="vip-points">Points: {{ points.toLocaleString() }}</text>
+          <text class="vip-tip">{{ $t('userCenter.vipTip') }}</text>
+        </view>
+        <text class="vip-arrow luc-chevron-right" />
+      </view>
+
+      <!-- 钱包区域 -->
+      <view v-if="userStore.isLoggedIn" class="wallet-area card">
+        <view class="wallet-grid">
+          <view class="wallet-item" @click="goWallet">
+            <text class="wallet-num">${{ walletBalance }}</text>
+            <text class="wallet-label">{{ $t('userCenter.walletBalance') }}</text>
+          </view>
+          <view class="wallet-item" @click="goPoints">
+            <text class="wallet-num">{{ points.toLocaleString() }}</text>
+            <text class="wallet-label">{{ $t('userCenter.walletPoints') }}</text>
+          </view>
+          <view class="wallet-item" @click="goCoupons">
+            <text class="wallet-num">{{ couponCount }}{{ $t('coupons.unit') }}</text>
+            <text class="wallet-label">{{ $t('userCenter.walletCoupons') }}</text>
+          </view>
+          <view class="wallet-item" @click="goGiftCards">
+            <text class="wallet-num">{{ giftCardCount }}{{ $t('coupons.unit') }}</text>
+            <text class="wallet-label">{{ $t('userCenter.walletGiftCards') }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 关注 / 粉丝 / 收藏 / 足迹 入口（封装为 social-grid 组件） -->
+      <social-grid :items="socialItems" @click="onSocialTap" />
+
+      <!-- 订单宫格 -->
+      <view class="card order-card">
+        <view class="card-header">
+          <text class="card-title">{{ $t('userCenter.orderTitle') }}</text>
+          <text class="card-more" @click="goOrders">
+            {{ $t('userCenter.orderAll') }}
+            <text class="luc luc-chevron-right" />
           </text>
-          <text class="email">{{ userStore.userInfo?.email }}</text>
-          <text class="member-level">{{ memberLevel }}</text>
         </view>
-        <text class="arrow luc-chevron-right" />
-      </view>
-      <view v-else class="login-prompt" @click="goLogin">
-        <image :src="defaultAvatar" class="avatar" />
-        <view class="login-text">
-          <text class="name">{{ $t('userCenter.loginRegister') }}</text>
-          <text class="email">{{ $t('userCenter.loginSubtitle') }}</text>
+        <view class="order-grid">
+          <view
+            v-for="item in orderTypesLabel"
+            :key="item.value"
+            class="order-item"
+            @click="goOrders(item.value)"
+          >
+            <text class="order-icon luc" :class="$luc(item.icon)" />
+            <text class="order-label">{{ item.label }}</text>
+            <view v-if="item.badge > 0" class="order-badge">{{ item.badge }}</view>
+          </view>
         </view>
-        <view class="login-btn">{{ $t('userCenter.loginBtn') }}</view>
       </view>
-    </view>
 
-    <!-- 会员卡片：点击整张卡片跳转到会员中心 -->
-    <view v-if="userStore.isLoggedIn" class="vip-card" @click="goMembership">
-      <view class="vip-bg" />
-      <view class="vip-content">
-        <text class="vip-title">{{ $t('userCenter.vipTitle') }}</text>
-        <text class="vip-points">Points: {{ points.toLocaleString() }}</text>
-        <text class="vip-tip">{{ $t('userCenter.vipTip') }}</text>
-      </view>
-      <text class="vip-arrow luc-chevron-right" />
-    </view>
-
-    <!-- 钱包区域 -->
-    <view v-if="userStore.isLoggedIn" class="wallet-area card">
-      <view class="wallet-grid">
-        <view class="wallet-item" @click="goWallet">
-          <text class="wallet-num">${{ walletBalance }}</text>
-          <text class="wallet-label">{{ $t('userCenter.walletBalance') }}</text>
-        </view>
-        <view class="wallet-item" @click="goPoints">
-          <text class="wallet-num">{{ points.toLocaleString() }}</text>
-          <text class="wallet-label">{{ $t('userCenter.walletPoints') }}</text>
-        </view>
-        <view class="wallet-item" @click="goCoupons">
-          <text class="wallet-num">{{ couponCount }}{{ $t('coupons.unit') }}</text>
-          <text class="wallet-label">{{ $t('userCenter.walletCoupons') }}</text>
-        </view>
-        <view class="wallet-item" @click="goGiftCards">
-          <text class="wallet-num">{{ giftCardCount }}{{ $t('coupons.unit') }}</text>
-          <text class="wallet-label">{{ $t('userCenter.walletGiftCards') }}</text>
-        </view>
-      </view>
-    </view>
-
-    <!-- 关注 / 粉丝 / 收藏 / 足迹 入口（封装为 social-grid 组件） -->
-    <social-grid :items="socialItems" @click="onSocialTap" />
-
-    <!-- 订单宫格 -->
-    <view class="card order-card">
-      <view class="card-header">
-        <text class="card-title">{{ $t('userCenter.orderTitle') }}</text>
-        <text class="card-more" @click="goOrders">
-          {{ $t('userCenter.orderAll') }}
-          <text class="luc luc-chevron-right" />
-        </text>
-      </view>
-      <view class="order-grid">
+      <!-- 功能列表 -->
+      <view class="card feature-card">
         <view
-          v-for="item in orderTypesLabel"
-          :key="item.value"
-          class="order-item"
-          @click="goOrders(item.value)"
+          v-for="(f, i) in featuresLabel"
+          :key="i"
+          class="feature-item"
+          @click="onFeatureClick(f)"
         >
-          <text class="order-icon luc" :class="$luc(item.icon)" />
-          <text class="order-label">{{ item.label }}</text>
-          <view v-if="item.badge > 0" class="order-badge">{{ item.badge }}</view>
+          <text class="feature-icon luc" :class="$luc(f.icon)" />
+          <text class="feature-label">{{ f.label }}</text>
+          <text class="feature-arrow luc luc-chevron-right" />
         </view>
       </view>
-    </view>
 
-    <!-- 功能列表 -->
-    <view class="card feature-card">
-      <view
-        v-for="(f, i) in featuresLabel"
-        :key="i"
-        class="feature-item"
-        @click="onFeatureClick(f)"
-      >
-        <text class="feature-icon luc" :class="$luc(f.icon)" />
-        <text class="feature-label">{{ f.label }}</text>
-        <text class="feature-arrow luc luc-chevron-right" />
+      <view class="footer">
+        <text>{{ $t('userCenter.footerBrand') }}</text>
+        <text>{{ $t('userCenter.footerSlogan') }}</text>
       </view>
     </view>
-
-    <view class="footer">
-      <text>{{ $t('userCenter.footerBrand') }}</text>
-      <text>{{ $t('userCenter.footerSlogan') }}</text>
-    </view>
-  </view>
+  </scroll-view>
 </template>
 
 <script>
@@ -117,6 +127,7 @@ import { i18n } from '@/i18n'
 import { memberApi, couponApi, giftCardApi, orderApi, communityApi } from '@/api'
 import followApi from '@/api/follow'
 import browseApi from '@/api/browsingHistory'
+import { toAbsoluteImageUrl } from '@/utils/imageUrl'
 // social-grid 是 src/components 下的自建组件,正常情况下 easycom.autoscan 会自动注册;
 // vite-plugin-uni H5 模式下偶尔会扫不到 kebab-case 引用,这里显式 import 兜底
 import SocialGrid from '@/components/social-grid/social-grid.vue'
@@ -129,6 +140,17 @@ export default {
   data() {
     return {
       defaultAvatar: 'https://i.pravatar.cc/100?img=20',
+      // 头像 cache busting 版本号:从个人资料页 onShow 时 +1,
+      // 强制 <image> 重新加载,解决"换完头像回到我的页还是旧头像"
+      avatarVersion: 0,
+      // scroll-view 下拉刷新状态(refresher-triggered 控制 refresher 收回),
+      // true=下拉动画展示中;onRefresherRefresh 完成后置回 false
+      refresherTriggered: false,
+      // refresher 文案配置:固定文案,避免 i18n 触发重渲染时丢文案
+      refresherBg: '#F5F2EC',
+      refresherDefaultText: '下拉刷新',
+      refresherPullingText: '松开刷新',
+      refresherRefreshingText: '刷新中...',
       memberInfo: null,
       points: 0,
       walletBalance: 0,
@@ -238,6 +260,17 @@ export default {
       const current = this.memberInfo.growthValue || 0
       return Math.min(100, Math.round((current / total) * 100))
     },
+    // 头像 src:store 里的 avatar 拼接 cache busting 版本号,
+    // avatarVersion 自增时强制 <image> 重新加载。
+    // 先用 toAbsoluteImageUrl 把后端的相对路径(/uploads/...)补成 http://host/uploads/...,
+    // 否则 APP 端 <image> 拿不到绝对地址会显示空白(社区帖子侧已用 toAbs 兜底,这里统一一下)
+    avatarSrc() {
+      const raw = this.userStore.userInfo?.avatar || this.defaultAvatar
+      const base = toAbsoluteImageUrl(raw)
+      const v = this.avatarVersion || 0
+      const sep = base.includes('?') ? '&' : '?'
+      return `${base}${sep}v=${v}`
+    },
   },
 
   onShow() {
@@ -247,12 +280,69 @@ export default {
         this.localeVersion += 1
       })
     }
+    // 从个人资料页返回时(刚换了头像)让头像 src 重新加载,避免 URL 不变复用旧缓存
+    // 仅在非首次 onShow 时自增;用 _inited 标记避免首次进入页面时也刷新,
+    // 防止冷启动时头像闪一下
+    if (this._inited && this.userStore.isLoggedIn) {
+      this.avatarVersion += 1
+    }
+    this._inited = true
     if (this.userStore.isLoggedIn) {
       this.loadMemberInfo()
       this.loadWalletExtras()
       this.loadSocialCounts()
       this.loadOrderBadges()
     }
+  },
+
+  /**
+   * 下拉刷新:APP 端原生 tabbar 页面需要在 pages.json 配置
+   * enablePullDownRefresh:true 后,本钩子才会被触发。
+   * 重新拉取会员/钱包/订单/社交计数,确保下拉后数据最新。
+   * <p>
+   * 关键修复:本页面同时支持两种下拉入口,任一被触发都能刷新:
+   * 1) onPullDownRefresh:page 原生下拉(由 pages.json 的 enablePullDownRefresh 触发),
+   *    适用于 page 内容溢出屏幕、native 接管滚动的场景。
+   * 2) onRefresherRefresh:scroll-view 自带的下拉刷新(refresher-enabled 触发),
+   *    适用于 page 内容未溢出屏幕、需主动包 scroll-view 才能下拉的场景。
+   * 两者都委托到 doRefresh() 复用刷新逻辑。
+   */
+  async onPullDownRefresh() {
+    try {
+      await this.doRefresh()
+    } finally {
+      uni.stopPullDownRefresh()
+    }
+  },
+
+  /**
+   * scroll-view refresher 下拉回调:refresher-triggered 受控模式,
+   * 拉数据时设 true,完成后置回 false 让 refresher 收回。
+   */
+  async onRefresherRefresh() {
+    this.refresherTriggered = true
+    try {
+      await this.doRefresh()
+    } finally {
+      // 通知 scroll-view 收回 refresher 动画
+      this.refresherTriggered = false
+    }
+  },
+
+  /**
+   * 实际下拉刷新逻辑:并行拉取所有面板数据,fetchProfile 后头像 URL
+   * 可能变化,自增 avatarVersion 强制 <image> 重新加载。
+   */
+  async doRefresh() {
+    if (!this.userStore.isLoggedIn) return
+    await Promise.all([
+      this.userStore.fetchProfile().catch((e) => console.warn('[user] refresh profile failed', e)),
+      this.loadMemberInfo(),
+      this.loadWalletExtras(),
+      this.loadSocialCounts(),
+      this.loadOrderBadges(),
+    ])
+    this.avatarVersion += 1
   },
 
   onUnload() {
@@ -477,6 +567,13 @@ export default {
   min-height: 100vh;
   background: var(--color-background);
   padding-bottom: 64rpx;
+}
+/* scroll-view 包裹层:固定高度为整屏,使内容未溢出屏幕时也能下拉。
+   - 100vh 减去 tabBar 高度(env(safe-area-inset-bottom)+ 常见 tabBar ≈ 50px + 安全区),
+     这里取 100vh 即可,内容超出时 scroll-view 自然滚动,tabBar 浮在上层。 */
+.user-scroll {
+  height: 100vh;
+  background: var(--color-background);
 }
 
 .header {

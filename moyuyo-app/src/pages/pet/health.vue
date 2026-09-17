@@ -170,7 +170,10 @@ export default {
 
     onDayClick(day) {
       if (day.events?.length) {
-        uni.showToast({ title: `${day.events.length} event(s)`, icon: 'none' })
+        uni.showToast({
+          title: this.$t('petHealth.dayEventsCount', { count: day.events.length }),
+          icon: 'none',
+        })
       }
     },
   },

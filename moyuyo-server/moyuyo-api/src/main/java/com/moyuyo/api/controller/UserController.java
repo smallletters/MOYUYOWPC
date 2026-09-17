@@ -2,7 +2,9 @@ package com.moyuyo.api.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.moyuyo.common.Result;
+import com.moyuyo.common.dto.auth.ChangePhoneRequest;
 import com.moyuyo.common.dto.auth.ProfileUpdateRequest;
+import com.moyuyo.common.exception.BusinessException;
 import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.dao.entity.FollowEntity;
 import com.moyuyo.dao.entity.UserEntity;
@@ -28,6 +30,8 @@ public class UserController {
   private final FollowMapper followMapper;
   private final AuthService authService;
 
+  // 抑制 JDT 静态检查对 MyBatis-Plus Lambda 引用的 null type safety 警告(实体 getter 被推断为 @Nonnull)
+  @SuppressWarnings("null")
   @GetMapping("/{id}/profile")
   public Result<Map<String, Object>> profile(@PathVariable Long id) {
     UserEntity u = userMapper.selectById(id);
@@ -55,6 +59,8 @@ public class UserController {
    * 修复历史：原项目未提供该端点,前端 userStore.fetchProfile 调用 /api/v1/users/me 返回 403/404。
    * 返回字段与 user.js 的 getUserInfo() 期望对齐(id/email/nickname/avatar/phone/birthday/country/emailVerified/twoFactorEnabled)。
    */
+  // 抑制 JDT 静态检查对 MyBatis-Plus Lambda 引用的 null type safety 警告
+  @SuppressWarnings("null")
   @GetMapping("/search")
   public Result<Map<String, Object>> search(
       @RequestParam(required = false) String keyword,
@@ -125,6 +131,38 @@ public class UserController {
     } catch (IllegalArgumentException e) {
       // Service 层兜底校验失败:头像 URL 非法 / 用户不存在
       return Result.badRequest(e.getMessage());
+    }
+    return Result.success(toProfileMap(updated));
+  }
+
+  /**
++   * 更换/绑定当前登录用户的手机号。
++   * <p>
++   * 前置流程：客户端需先调 {@code POST /api/v1/auth/phone/send-code}
++   * 传 {@code purpose=CHANGE_PHONE} 获取验证码,本接口才接受提交。
++   * <p>
++   * 与 PUT /me 解耦的原因：手机号走专用 DTO + 短信验证码校验,
++   * 不会让 {@link ProfileUpdateRequest} 膨胀出 phone 字段,避免在
++   * 通用资料更新路径里暴露"短信验证码二次认证"语义。
++   * <p>
++   * 返回结构与 GET /me 一致,前端可直接覆盖本地 userInfo.phone。
++   */
+  @PutMapping("/me/phone")
+  @Operation(summary = "更换/绑定手机号")
+  public Result<Map<String, Object>> changePhone(@Valid @RequestBody ChangePhoneRequest req) {
+    Long userId = UserContextHolder.getUserId();
+    if (userId == null) {
+      return Result.error(401, "未登录");
+    }
+    UserEntity updated;
+    try {
+      updated = authService.changePhone(userId, req.getPhone(), req.getCode());
+    } catch (IllegalArgumentException e) {
+      // 业务校验失败:验证码错/过期/新号被占/与当前相同等
+      return Result.badRequest(e.getMessage());
+    } catch (BusinessException e) {
+      // 403 注销冻结期等场景:直接透传 code/message
+      return Result.error(e.getCode(), e.getMessage());
     }
     return Result.success(toProfileMap(updated));
   }

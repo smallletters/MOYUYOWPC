@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="pet-album">
     <view class="page-header">
       <view class="back" aria-label="返回" @click="goBack">
@@ -85,11 +85,11 @@ export default {
     },
 
     prevMonth() {
-      uni.showToast({ title: '上个月', icon: 'none' })
+      uni.showToast({ title: this.$t('petAlbum.prevMonth'), icon: 'none' })
     },
 
     nextMonth() {
-      uni.showToast({ title: '下个月', icon: 'none' })
+      uni.showToast({ title: this.$t('petAlbum.nextMonth'), icon: 'none' })
     },
 
     onUpload() {
@@ -97,7 +97,7 @@ export default {
         count: 9,
         success: (res) => {
           this.photos.unshift(...res.tempFilePaths)
-          uni.showToast({ title: '已上传', icon: 'success' })
+          uni.showToast({ title: this.$t('petAlbum.uploaded'), icon: 'success' })
         },
       })
     },

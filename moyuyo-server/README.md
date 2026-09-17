@@ -108,8 +108,9 @@ docker compose logs -f app
 
 ```bash
 # 业务健康检查（前置 Nginx 转发路径）
-# 注：prod 环境 actuator 已迁移到独立端口 9090（management.server.port=9090），
+# 注：actuator 已迁移到独立端口 9090（management.server.port=9090，对应环境变量 MANAGEMENT_SERVER_PORT），
 # 8080 不再暴露 actuator 端点（避免被扫描发现）。
+# 端口由 docker-compose.yml 显式注入，dev 与 prod 都生效，无需在 .env 单独配置。
 # K8s readiness/liveness probe 必须指向 9090，否则会被 404 阻断
 curl http://localhost:9090/actuator/health/liveness
 # 期望返回 {"status":"UP"}

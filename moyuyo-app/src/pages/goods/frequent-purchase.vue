@@ -186,7 +186,10 @@ export default {
         }, 1500)
         return
       }
-      uni.showToast({ title: `成功加入 ${this.selectedCount} 件商品`, icon: 'none' })
+      uni.showToast({
+        title: this.$t('frequentPurchase.addedCount', { count: this.selectedCount }),
+        icon: 'none',
+      })
       this.productList.forEach((item) => {
         item.selected = false
       })

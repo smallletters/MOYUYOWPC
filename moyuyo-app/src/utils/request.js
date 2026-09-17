@@ -218,7 +218,7 @@ export function request(options) {
 
   const requestId = genRequestId()
 
-  if (showLoading) uni.showLoading({ title: 'Loading...', mask: true })
+  if (showLoading) uni.showLoading({ title: t('common.loading'), mask: true })
 
   return new Promise((resolve, reject) => {
     const task = uni.request({
@@ -244,7 +244,8 @@ export function request(options) {
             resolve(res.data.data)
           } else {
             // 后端 Result.error:code !== 0 但 HTTP 200,直接用 message(先做 i18n 本地化)
-            const msg = localizeServerMessage(res.data?.message) || `请求失败(${res.statusCode})`
+            const localized = localizeServerMessage(res.data?.message)
+            const msg = localized || t('common.requestFailed', { status: res.statusCode })
             console.warn('[request] biz error:', fullUrl, res.statusCode, res.data)
             if (showError) uni.showToast({ title: msg, icon: 'none', duration: 3000 })
             reject(new Error(msg))
@@ -255,7 +256,8 @@ export function request(options) {
           const backendMsg = res.data?.message
           const status = res.statusCode
           const msg =
-            (localizeServerMessage(backendMsg) || '').trim() || `Request failed (${status})`
+            (localizeServerMessage(backendMsg) || '').trim() ||
+            t('common.requestFailedHttp', { status })
           console.error('[request] http error:', fullUrl, status, res.data)
           // 把 HTTP 状态码附加到 Error 对象,便于登录页区分 401/403/400 等
           const err = new Error(msg)
@@ -269,7 +271,9 @@ export function request(options) {
       fail: (err) => {
         pendingRequests.delete(requestId)
         if (showLoading) uni.hideLoading()
-        const msg = err.errMsg?.includes('timeout') ? 'Request timeout' : 'Network error'
+        const msg = err.errMsg?.includes('timeout')
+          ? t('common.requestTimeout')
+          : t('common.networkError')
         if (showError) uni.showToast({ title: msg, icon: 'none' })
         reject(new Error(msg))
       },

@@ -1,4 +1,5 @@
 import { config } from './config'
+import { t } from '@/i18n'
 
 /**
  * WebView URL 安全守卫。
@@ -36,7 +37,7 @@ export function isUrlAllowed(url) {
  */
 export function guardUrlOrToast(url) {
   if (isUrlAllowed(url)) return true
-  uni.showToast({ title: '外链不在白名单,已拦截', icon: 'none', duration: 2500 })
+  uni.showToast({ title: t('common.urlBlocked'), icon: 'none', duration: 2500 })
   return false
 }
 

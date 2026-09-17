@@ -1,7 +1,5 @@
 <template>
   <view class="page">
-
-
     <view v-if="loading" class="loading">
       <text class="loading-text">{{ $t('common.loading') }}</text>
     </view>
@@ -108,7 +106,7 @@ export default {
         },
       })
     },
-    },
+  },
 }
 </script>
 

@@ -1,8 +1,5 @@
-﻿<template>
+<template>
   <view class="product-compare">
-
-
-
     <scroll-view class="scroll" scroll-y>
       <view class="thumb-row">
         <view v-for="(product, idx) in products" :key="product.id" class="thumb-item">
@@ -195,7 +192,7 @@ export default {
 
     addProduct(item) {
       if (this.products.length >= 4) {
-        uni.showToast({ title: '最多对比4件商品', icon: 'none' })
+        uni.showToast({ title: this.$t('productCompare.maxFour'), icon: 'none' })
         return
       }
       const fullItem = {
@@ -217,7 +214,10 @@ export default {
     },
 
     addToCart(product) {
-      uni.showToast({ title: `${product.name} 已加入购物车`, icon: 'success' })
+      uni.showToast({
+        title: this.$t('productCompare.addedToCart', { name: product.name }),
+        icon: 'success',
+      })
     },
   },
 }

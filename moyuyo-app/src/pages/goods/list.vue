@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="goods-list">
     <!-- 顶部排序栏 -->
     <view class="sort-bar">
@@ -12,7 +12,7 @@
         {{ opt.label }}
       </view>
       <view class="sort-item" @click="filterVisible = true">
-        Filter
+        {{ $t('goodsList.filter') }}
         <text v-if="filterCount > 0" class="filter-count">{{ filterCount }}</text>
       </view>
     </view>
@@ -20,9 +20,9 @@
     <!-- 筛选弹窗 -->
     <u-popup v-model:show="filterVisible" mode="right" width="80%">
       <view class="filter-panel">
-        <view class="filter-title">Filters</view>
+        <view class="filter-title">{{ $t('goodsList.filtersTitle') }}</view>
         <view class="filter-section">
-          <text class="filter-label">Pet Type</text>
+          <text class="filter-label">{{ $t('goodsList.petType') }}</text>
           <view class="filter-options">
             <view
               v-for="opt in petTypes"
@@ -36,7 +36,7 @@
           </view>
         </view>
         <view class="filter-section">
-          <text class="filter-label">IP</text>
+          <text class="filter-label">{{ $t('goodsList.ip') }}</text>
           <view class="filter-options">
             <view
               v-for="opt in ipOptions"
@@ -50,7 +50,7 @@
           </view>
         </view>
         <view class="filter-section">
-          <text class="filter-label">Size</text>
+          <text class="filter-label">{{ $t('goodsList.size') }}</text>
           <view class="filter-options">
             <view
               v-for="opt in sizes"
@@ -64,7 +64,7 @@
           </view>
         </view>
         <view class="filter-section">
-          <text class="filter-label">Price Range</text>
+          <text class="filter-label">{{ $t('goodsList.priceRange') }}</text>
           <view class="filter-options">
             <view
               v-for="opt in priceRanges"
@@ -78,8 +78,8 @@
           </view>
         </view>
         <view class="filter-footer">
-          <view class="btn btn-outline" @click="resetFilter">Reset</view>
-          <view class="btn btn-primary" @click="applyFilter">Apply</view>
+          <view class="btn btn-outline" @click="resetFilter">{{ $t('goodsList.reset') }}</view>
+          <view class="btn btn-primary" @click="applyFilter">{{ $t('goodsList.apply') }}</view>
         </view>
       </view>
     </u-popup>
@@ -112,9 +112,11 @@
           </view>
         </view>
       </view>
-      <view v-if="loading" class="loading">Loading...</view>
-      <view v-else-if="noMore" class="loading">— No more —</view>
-      <view v-if="!loading && products.length === 0" class="empty">No products found</view>
+      <view v-if="loading" class="loading">{{ $t('common.loading') }}</view>
+      <view v-else-if="noMore" class="loading">{{ $t('goodsList.noMore') }}</view>
+      <view v-if="!loading && products.length === 0" class="empty">
+        {{ $t('goodsList.empty') }}
+      </view>
     </scroll-view>
   </view>
 </template>
@@ -128,26 +130,8 @@ export default {
   data() {
     return {
       sortBy: 'default',
-      sortOptions: [
-        { value: 'default', label: 'Default' },
-        { value: 'popularity', label: 'Best Selling' },
-        { value: 'price_asc', label: 'Price ↑' },
-        { value: 'price_desc', label: 'Price ↓' },
-        { value: 'date', label: 'Newest' },
-      ],
-      petTypes: [
-        { value: 'dog', label: 'Dog' },
-        { value: 'cat', label: 'Cat' },
-        { value: 'other', label: 'Other' },
-      ],
       ipOptions: ['MILO', 'LUNA', 'ATLAS', 'OLIVE', 'Classic'],
       sizes: ['XS', 'S', 'M', 'L', 'XL'],
-      priceRanges: [
-        { value: '0-20', label: 'Under $20' },
-        { value: '20-50', label: '$20 - $50' },
-        { value: '50-100', label: '$50 - $100' },
-        { value: '100+', label: 'Over $100' },
-      ],
       filter: {
         petType: '',
         ip: '',
@@ -168,6 +152,31 @@ export default {
   computed: {
     filterCount() {
       return Object.values(this.filter).filter(Boolean).length
+    },
+    // 选项文案走 i18n:放 computed 而非 data,确保 locale 切换时 label 跟随刷新
+    sortOptions() {
+      return [
+        { value: 'default', label: this.$t('goodsList.sortDefault') },
+        { value: 'popularity', label: this.$t('goodsList.sortPopularity') },
+        { value: 'price_asc', label: this.$t('goodsList.sortPriceAsc') },
+        { value: 'price_desc', label: this.$t('goodsList.sortPriceDesc') },
+        { value: 'date', label: this.$t('goodsList.sortNewest') },
+      ]
+    },
+    petTypes() {
+      return [
+        { value: 'dog', label: this.$t('goodsList.petDog') },
+        { value: 'cat', label: this.$t('goodsList.petCat') },
+        { value: 'other', label: this.$t('goodsList.petOther') },
+      ]
+    },
+    priceRanges() {
+      return [
+        { value: '0-20', label: this.$t('goodsList.priceUnder20') },
+        { value: '20-50', label: this.$t('goodsList.price20to50') },
+        { value: '50-100', label: this.$t('goodsList.price50to100') },
+        { value: '100+', label: this.$t('goodsList.priceOver100') },
+      ]
     },
   },
 

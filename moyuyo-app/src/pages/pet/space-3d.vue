@@ -25,7 +25,13 @@
     </view>
 
     <!-- 3D 画布 -->
-    <view class="canvas-wrap">
+    <view
+      class="canvas-wrap"
+      @touchstart="onCanvasTouchStart"
+      @touchmove="onCanvasTouchMove"
+      @touchend="onCanvasTouchEnd"
+      @touchcancel="onCanvasTouchEnd"
+    >
       <view :id="canvasId" ref="canvasEl" class="canvas">
         <view v-if="debugInfo" class="debug-info">
           <text>{{ debugInfo }}</text>
@@ -70,25 +76,6 @@
           <view class="crosshair-v" />
         </view>
 
-        <!-- 右下：方向摇杆 (WASD/方向键) -->
-        <view class="joystick-area">
-          <view
-            class="joystick-base"
-            @touchstart.stop="onJoystickStart"
-            @touchmove.stop="onJoystickMove"
-            @touchend.stop="onJoystickEnd"
-            @touchcancel.stop="onJoystickEnd"
-          >
-            <view
-              class="joystick-stick"
-              :style="{
-                transform: `translate(${joystickDx - 30}rpx, ${joystickDy - 30}rpx)`,
-              }"
-            />
-            <text class="joystick-label">{{ joystickLabel }}</text>
-          </view>
-        </view>
-
         <!-- 左下：前进/后退快捷按钮 (移动端备用) -->
         <view class="action-buttons">
           <view
@@ -112,6 +99,9 @@
 </template>
 
 <script>
+// 3D 模型远程下载 + 本地缓存工具
+import { ensureLocalModel } from '@/utils/modelDownload'
+
 // 不在顶层 import three.js —— 顶层 import 失败会导致整个页面渲染不出来
 let THREE = null
 let PointerLockControls = null
@@ -142,9 +132,6 @@ export default {
       // 第一人称相关 UI 状态
       pointerLocked: false,
       positionText: '加载中...',
-      joystickDx: 30,
-      joystickDy: 30,
-      joystickLabel: '拖动控制方向',
       // 视角模式：fps = 第一人称（动物眼睛）/ tps = 第三人称跟随（能看到自己）
       viewMode: 'fps',
     }
@@ -356,14 +343,27 @@ export default {
 
     /**
      * 加载 GLB 模型 + 加载完后把相机定位到门口
+     * 模型远程地址,通过 ensureLocalModel 走"远程下载 + 本地缓存"
      */
-    loadModel(renderer, scene) {
+    async loadModel(renderer, scene) {
       this.loadingText = '正在加载模型...'
-      const modelUrl = '/static/models/modern_apartment.glb'
+      const modelUrl = '/static/models/home.glb'
+      let localUrl
+      try {
+        localUrl = await ensureLocalModel(modelUrl, (p) => {
+          this.progress = p
+          this.loadingText = `下载中 ${p}%`
+        })
+      } catch (e) {
+        console.error('[space-3d] 远程模型下载失败', e)
+        this.errorMsg = '模型下载失败，请检查网络或文件路径'
+        this.loading = false
+        return
+      }
       // GLTFLoader 是单独加载的，不能从 THREE 取
       const loader = new GLTFLoader()
       loader.load(
-        modelUrl,
+        localUrl,
         (gltf) => {
           const model = gltf.scene
 
@@ -415,26 +415,22 @@ export default {
           })
           this.loadedVertices = vertexCount
 
-          // 6. 门口定位：相机在房间门口**内** 0.5m（往 minX 方向缩进 0.5m）
-          // 视高 0.5m（宠物视角，接近地板）
-          const doorX = finalBox.min.x + 0.5
-          const doorY = 0.5
-          const doorZ = finalCenter.z
-          const startPos = new THREE.Vector3(doorX, doorY, doorZ)
+          // 6. 初始位置：硬编码为门口内偏 0.5m 处（视高 0.5m，宠物视角）
+          const startPos = new THREE.Vector3(-0.8, 0.5, -1.1)
           this.three.camera.position.copy(startPos)
 
           // 加载小狗化身（放在相机脚下，狗头位置 ≈ 相机视高）
           this.loadPetAvatar()
 
-          // 7. 朝房间深处看（视线水平，水平方向看向 maxX 端，y 保持 doorY 避免仰/俯视）
-          this.three.camera.lookAt(finalBox.max.x, doorY, finalCenter.z)
+          // 7. 朝房间深处看（视线水平，看向 maxX 端，y 保持 0.5 避免仰/俯视）
+          this.three.camera.lookAt(finalBox.max.x, 0.5, finalCenter.z)
 
           // 8. 配置移动边界（限制在模型包围盒内 + 0.5m 缓冲）
           this.three.bounds = {
             minX: finalBox.min.x - 0.5,
             maxX: finalBox.max.x + 1.0,
-            minY: doorY,
-            maxY: doorY + 1.0, // 不允许抬头看到模型顶外（天花板）
+            minY: 0.5,
+            maxY: 0.5 + 1.0, // 不允许抬头看到模型顶外（天花板）
             minZ: finalBox.min.z - 0.5,
             maxZ: finalBox.max.z + 0.5,
           }
@@ -457,8 +453,10 @@ export default {
         },
         (xhr) => {
           if (xhr.lengthComputable) {
-            this.progress = Math.round((xhr.loaded / xhr.total) * 100)
-            this.loadingText = `加载中 ${this.progress}%`
+            // 模型文件已落到本地,这里仅 GLTFLoader 解析阶段的进度,合并到 50~99%
+            const ratio = xhr.loaded / xhr.total
+            this.progress = Math.round(50 + ratio * 49)
+            this.loadingText = `解析中 ${this.progress}%`
           }
         },
         (err) => {
@@ -502,6 +500,8 @@ export default {
           t.lookTouch.touchId = touch.identifier
           t.lookTouch.lastX = touch.clientX
           t.lookTouch.lastY = touch.clientY
+          // 阻止默认行为，避免 h5 页面把 touch 抢去做滚动/下拉刷新
+          e.preventDefault()
           break
         }
       }
@@ -518,6 +518,8 @@ export default {
         const halfPi = Math.PI / 2
         if (t.pitch > halfPi) t.pitch = halfPi
         if (t.pitch < -halfPi) t.pitch = -halfPi
+        // 持续 preventDefault，保证拖动期间不会触发页面滚动
+        e.preventDefault()
       }
       this._onWindowTouchEnd = (e) => {
         let stillActive = false
@@ -532,20 +534,38 @@ export default {
           t.lookTouch.touchId = null
         }
       }
-      window.addEventListener('touchstart', this._onWindowTouchStart, { passive: true })
-      window.addEventListener('touchmove', this._onWindowTouchMove, { passive: true })
-      window.addEventListener('touchend', this._onWindowTouchEnd, { passive: true })
-      window.addEventListener('touchcancel', this._onWindowTouchEnd, { passive: true })
+      // 移动端 h5：必须在 document 上非 passive + capture 阶段注册，
+      // 这样能抢在 uni-app 页面级 touchmove 监听器之前 preventDefault，
+      // 阻止页面滚动/下拉刷新吃事件，导致 window/document 后续收不到完整事件序列
+      document.addEventListener('touchstart', this._onWindowTouchStart, {
+        passive: false,
+        capture: true,
+      })
+      document.addEventListener('touchmove', this._onWindowTouchMove, {
+        passive: false,
+        capture: true,
+      })
+      document.addEventListener('touchend', this._onWindowTouchEnd, {
+        passive: false,
+        capture: true,
+      })
+      document.addEventListener('touchcancel', this._onWindowTouchEnd, {
+        passive: false,
+        capture: true,
+      })
     },
 
     unbindKeyboard() {
       if (this._onKeyDown) window.removeEventListener('keydown', this._onKeyDown)
       if (this._onKeyUp) window.removeEventListener('keyup', this._onKeyUp)
       if (this._onWindowTouchStart)
-        window.removeEventListener('touchstart', this._onWindowTouchStart)
-      if (this._onWindowTouchMove) window.removeEventListener('touchmove', this._onWindowTouchMove)
-      if (this._onWindowTouchEnd) window.removeEventListener('touchend', this._onWindowTouchEnd)
-      if (this._onWindowTouchEnd) window.removeEventListener('touchcancel', this._onWindowTouchEnd)
+        document.removeEventListener('touchstart', this._onWindowTouchStart, { capture: true })
+      if (this._onWindowTouchMove)
+        document.removeEventListener('touchmove', this._onWindowTouchMove, { capture: true })
+      if (this._onWindowTouchEnd)
+        document.removeEventListener('touchend', this._onWindowTouchEnd, { capture: true })
+      if (this._onWindowTouchEnd)
+        document.removeEventListener('touchcancel', this._onWindowTouchEnd, { capture: true })
     },
 
     /**
@@ -647,17 +667,14 @@ export default {
     },
 
     /**
-     * 重置相机到门口
+     * 重置相机到门口初始位置（与加载完成时的初始位置一致）
      */
     resetCamera() {
       const t = this.three
       if (!t.modelBox) return
-      // 门口**内** 0.5m + 视高 0.5m（宠物视角）
-      const doorX = t.modelBox.min.x + 0.5
-      const doorY = 0.5
-      const doorZ = t.modelCenter.z
-      t.camera.position.set(doorX, doorY, doorZ)
-      t.camera.lookAt(t.modelBox.max.x, doorY, t.modelCenter.z)
+      // 硬编码初始位置：门口内偏 0.5m，视高 0.5m
+      t.camera.position.set(-0.8, 0.5, -1.1)
+      t.camera.lookAt(t.modelBox.max.x, 0.5, t.modelCenter.z)
     },
 
     /**
@@ -676,7 +693,7 @@ export default {
       })
     },
 
-    // ============== 触摸摇杆 ==============
+    // ============== canvas-wrap 本地触摸监听 ==============
     onCanvasTouchStart(e) {
       const t = this.three
       // 1. 尝试 PointerLock（H5 桌面浏览器有效，APP webview 多半失败，会自动 catch）
@@ -687,7 +704,7 @@ export default {
           console.warn('PointerLock 不可用，改用触摸旋转', err)
         }
       }
-      // 2. 找到落在非摇杆/非按钮区的第一个 touch，作为视角旋转的输入
+      // 2. 找到落在非按钮区的第一个 touch，作为视角旋转的输入
       for (const touch of e.touches) {
         if (this.isInControlArea(touch.clientX, touch.clientY)) continue
         // 第一个落在空白区的 touch = 视角控制 touch
@@ -695,6 +712,8 @@ export default {
         t.lookTouch.touchId = touch.identifier
         t.lookTouch.lastX = touch.clientX
         t.lookTouch.lastY = touch.clientY
+        // 阻止默认行为（页面滚动/下拉刷新）
+        if (e.cancelable) e.preventDefault()
         break
       }
     },
@@ -711,16 +730,14 @@ export default {
       t.lookTouch.lastY = touch.clientY
 
       // 累积 yaw（水平）和 pitch（垂直）
-      // 手指拖向右 (dx > 0) → 视角应该向右转（和鼠标拖动一致） → yaw 减小（右手系绕 Y 轴反向）
-      // 手指拖向下 (dy > 0) → 视角应该向下看 → pitch 减小
-      // 注意：用 quaternion setFromEuler(pitch, yaw, 0, 'YXZ') 时，
-      //   yaw 正值 = 顺时针从上往下看（右手系），所以手指拖右要 yaw 减小
       t.yaw += dx * t.lookSensitivity
       t.pitch += dy * t.lookSensitivity
       // 限制 pitch 在 [-PI/2, PI/2]，防止翻转
       const halfPi = Math.PI / 2
       if (t.pitch > halfPi) t.pitch = halfPi
       if (t.pitch < -halfPi) t.pitch = -halfPi
+      // 持续 preventDefault 阻止滚动
+      if (e.cancelable) e.preventDefault()
     },
 
     onCanvasTouchEnd(e) {
@@ -737,75 +754,26 @@ export default {
         t.lookTouch.active = false
         t.lookTouch.touchId = null
       }
+      if (e.cancelable) e.preventDefault()
     },
 
     /**
-     * 判断 (x, y) 是否落在 UI 控制区（摇杆/前进后退按钮）
-     * 摇杆在右下 240rpx、按钮在左下各 96rpx
+     * 判断 (x, y) 是否落在 UI 控制区（前进后退按钮）
+     * 按钮在左下各 96rpx
      * 这里用页面坐标做简化判断（rpx 已按 750 设计 宽 折算）
      */
     isInControlArea(x, y) {
       const winW = window.innerWidth
       const winH = window.innerHeight
-      // 右下摇杆：右 60rpx、底 60rpx、240rpx 见方（按 750 设计宽 折算 px）
-      const rpx2px = winW / 750
-      const joyR = 60 * rpx2px
-      const joyS = 240 * rpx2px
-      if (x > winW - joyR - joyS && x < winW - joyR && y > winH - joyR - joyS && y < winH - joyR)
-        return true
       // 左下前进/后退：左 60rpx、底 60rpx、宽 96rpx
+      const rpx2px = winW / 750
+      const btnR = 60 * rpx2px
       const btnL = 60 * rpx2px
       const btnW = 96 * rpx2px
       const btnH = 96 * rpx2px
-      if (x > btnL && x < btnL + btnW && y > winH - joyR - btnH * 2 - 16 && y < winH - joyR)
+      if (x > btnL && x < btnL + btnW && y > winH - btnR - btnH * 2 - 16 && y < winH - btnR)
         return true
       return false
-    },
-
-    onJoystickStart(e) {
-      const touch = e.touches[0]
-      this.three.joystick.touchId = touch.identifier
-      this.three.joystick.active = true
-      this.updateJoystick(touch, e.currentTarget)
-    },
-
-    onJoystickMove(e) {
-      const t = this.three
-      if (!t.joystick.active) return
-      const touch = Array.from(e.touches).find((tt) => tt.identifier === t.joystick.touchId)
-      if (!touch) return
-      this.updateJoystick(touch, e.currentTarget)
-    },
-
-    onJoystickEnd() {
-      this.three.joystick.active = false
-      this.three.joystick.x = 0
-      this.three.joystick.y = 0
-      this.three.joystick.touchId = null
-      this.joystickDx = 30
-      this.joystickDy = 30
-      this.joystickLabel = '拖动控制方向'
-    },
-
-    updateJoystick(touch, baseEl) {
-      const rect = baseEl.getBoundingClientRect()
-      const cx = rect.left + rect.width / 2
-      const cy = rect.top + rect.height / 2
-      let dx = touch.clientX - cx
-      let dy = touch.clientY - cy
-      const radius = Math.min(rect.width, rect.height) / 2 - 20
-      const dist = Math.hypot(dx, dy)
-      if (dist > radius) {
-        dx = (dx / dist) * radius
-        dy = (dy / dist) * radius
-      }
-      this.three.joystick.x = dx / radius
-      this.three.joystick.y = dy / radius
-      this.joystickDx = 30 + dx
-      this.joystickDy = 30 + dy
-      const labelX = this.three.joystick.x.toFixed(1)
-      const labelY = this.three.joystick.y.toFixed(1)
-      this.joystickLabel = `X:${labelX} Y:${labelY}`
     },
 
     // ============== 前进/后退快捷按钮（移动端备用） ==============
@@ -825,17 +793,26 @@ export default {
      * 加载小狗化身 GLB 模型
      * 位置：相机脚下（y=0），相机视高 ≈ 狗头高度
      * 模型跟着相机移动，但不渲染相机本身（第一人称看不到自己）
+     * 模型远程地址,通过 ensureLocalModel 走"远程下载 + 本地缓存"
      */
-    loadPetAvatar() {
+    async loadPetAvatar() {
       const t = this.three
       if (!t.scene) return
       const petUrl = '/static/models/puppy.glb'
+      let localUrl
+      try {
+        localUrl = await ensureLocalModel(petUrl)
+      } catch (e) {
+        console.error('[space-3d] puppy 下载失败', e)
+        uni.showToast({ title: this.$t('petHub3d.dogModelLoadFailed'), icon: 'none' })
+        return
+      }
       // eslint-disable-next-line
-      console.log('[space-3d] 开始加载 puppy, url=', petUrl)
+      console.log('[space-3d] puppy 本地路径, url=', localUrl)
       const loader = new GLTFLoader()
 
       loader.load(
-        petUrl,
+        localUrl,
         (gltf) => {
           const pet = gltf.scene
           // eslint-disable-next-line
@@ -922,7 +899,7 @@ export default {
         },
         (err) => {
           console.error('[space-3d] puppy 模型加载失败', err)
-          uni.showToast({ title: '小狗模型加载失败', icon: 'none' })
+          uni.showToast({ title: this.$t('petHub3d.dogModelLoadFailed'), icon: 'none' })
         },
       )
     },
@@ -990,7 +967,7 @@ export default {
         }
       }
       uni.showToast({
-        title: next === 'fps' ? '🐶 第一人称（动物眼睛）' : '👀 第三人称跟随',
+        title: next === 'fps' ? this.$t('petHub3d.cameraFps') : this.$t('petHub3d.cameraTps'),
         icon: 'none',
       })
     },
@@ -1057,6 +1034,9 @@ export default {
   background: #1a1a1a;
   color: #f6f2ee;
   overflow: hidden;
+  // 整页禁止浏览器处理触摸手势（滚动/缩放/下拉刷新），全部交给我们自己的 touch 监听
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .header {
@@ -1236,45 +1216,6 @@ export default {
   bottom: 0;
   width: 2rpx;
   transform: translateX(-50%);
-}
-
-.joystick-area {
-  position: absolute;
-  bottom: 60rpx;
-  right: 60rpx;
-  width: 240rpx;
-  height: 240rpx;
-  pointer-events: auto;
-}
-.joystick-base {
-  position: relative;
-  width: 240rpx;
-  height: 240rpx;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 4rpx solid rgba(255, 255, 255, 0.15);
-  box-sizing: border-box;
-  overflow: hidden;
-}
-.joystick-stick {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100rpx;
-  height: 100rpx;
-  border-radius: 50%;
-  background: radial-gradient(circle, #dbc98a, #b38a5a);
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.4);
-  transition: transform 0.05s linear;
-}
-.joystick-label {
-  position: absolute;
-  bottom: -36rpx;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 20rpx;
-  color: rgba(255, 255, 255, 0.5);
-  white-space: nowrap;
 }
 
 .action-buttons {

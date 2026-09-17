@@ -243,13 +243,13 @@ export default {
       this.riskOpen = !this.riskOpen
     },
     handleSupport(tier, price) {
-      uni.showToast({ title: `支持 ${tier} $${price}`, icon: 'none' })
+      uni.showToast({ title: this.$t('crowdfunding.supportTier', { tier, price }), icon: 'none' })
     },
     handleShare() {
-      uni.showToast({ title: '分享功能开发中', icon: 'none' })
+      uni.showToast({ title: this.$t('common.shareWip'), icon: 'none' })
     },
     handleSupportNow() {
-      uni.showToast({ title: '请先选择支持档位', icon: 'none' })
+      uni.showToast({ title: this.$t('crowdfunding.selectTierFirst'), icon: 'none' })
     },
   },
 }

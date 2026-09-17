@@ -270,7 +270,7 @@ export default {
         this.startCountdown()
       } catch (e) {
         console.warn('[flash-sale-detail] load failed', e)
-        uni.showToast({ title: '加载失败', icon: 'none' })
+        uni.showToast({ title: this.$t('common.loadingFailed'), icon: 'none' })
       }
     },
 
@@ -320,18 +320,18 @@ export default {
         uni.showToast({ title: this.buyBtnLabel, icon: 'none' })
         return
       }
-      uni.showLoading({ title: '抢购中...' })
+      uni.showLoading({ title: this.$t('flashSale.buying') })
       try {
         await flashSaleApi.buyFlashSale(this.saleId, 1)
         uni.hideLoading()
-        uni.showToast({ title: '抢购成功', icon: 'success' })
+        uni.showToast({ title: this.$t('flashSale.buySucceeded'), icon: 'success' })
         // 抢购成功后本地累加 soldStock 提升用户体验
         const sold = Number(this.sale.soldStock || 0) + 1
         this.$set(this.sale, 'soldStock', sold)
         setTimeout(() => uni.navigateBack(), 800)
       } catch (e) {
         uni.hideLoading()
-        uni.showToast({ title: e.message || '抢购失败', icon: 'none' })
+        uni.showToast({ title: e.message || this.$t('flashSale.buyFailed'), icon: 'none' })
       }
     },
   },

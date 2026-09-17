@@ -1,8 +1,5 @@
-﻿<template>
+<template>
   <view class="try-before-buy">
-
-
-
     <scroll-view class="scroll" scroll-y>
       <view class="banner-card">
         <view class="banner-deco" />
@@ -146,15 +143,18 @@ export default {
 
   methods: {
     onKeep(product) {
-      uni.showToast({ title: `已确认留下 ${product.name}`, icon: 'success' })
+      uni.showToast({
+        title: this.$t('tryBeforeBuy.kept', { name: product.name }),
+        icon: 'success',
+      })
     },
 
     onReturn(product) {
-      uni.showToast({ title: '已预约寄回，请查收退货标签', icon: 'none' })
+      uni.showToast({ title: this.$t('tryBeforeBuy.returnScheduled'), icon: 'none' })
     },
 
     onBrowse() {
-      uni.showToast({ title: '浏览可试用商品', icon: 'none' })
+      uni.showToast({ title: this.$t('tryBeforeBuy.browseTryable'), icon: 'none' })
     },
   },
 }

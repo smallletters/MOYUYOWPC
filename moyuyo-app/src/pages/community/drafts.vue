@@ -115,7 +115,7 @@ export default {
     /** 长按草稿 → 弹删除确认 */
     onLongPress(d) {
       uni.showActionSheet({
-        itemList: ['删除此草稿'],
+        itemList: [this.$t('communityDrafts.deleteThisDraft')],
         success: (res) => {
           if (res.tapIndex === 0) this.onDelete(d)
         },
@@ -125,16 +125,16 @@ export default {
     /** 删除单条 */
     onDelete(d) {
       uni.showModal({
-        title: '删除草稿',
-        content: '确认删除该草稿?',
-        confirmText: '删除',
-        cancelText: '取消',
+        title: this.$t('communityDrafts.deleteTitle'),
+        content: this.$t('communityDrafts.deleteContent'),
+        confirmText: this.$t('communityDrafts.deleteConfirm'),
+        cancelText: this.$t('common.cancel'),
         success: (res) => {
           if (!res.confirm) return
           const next = this.drafts.filter((x) => x.id !== d.id)
           uni.setStorageSync(STORAGE_KEYS.COMMUNITY_POST_DRAFTS, next)
           this.drafts = next
-          uni.showToast({ title: '已删除', icon: 'success' })
+          uni.showToast({ title: this.$t('communityDrafts.deleted'), icon: 'success' })
         },
       })
     },
@@ -142,15 +142,15 @@ export default {
     /** 清空全部 */
     onClearAll() {
       uni.showModal({
-        title: '清空草稿',
-        content: `确认删除全部 ${this.drafts.length} 份草稿?`,
-        confirmText: '清空',
-        cancelText: '取消',
+        title: this.$t('communityDrafts.clearAllTitle'),
+        content: this.$t('communityDrafts.clearAllContent', { count: this.drafts.length }),
+        confirmText: this.$t('communityDrafts.clearAllConfirm'),
+        cancelText: this.$t('common.cancel'),
         success: (res) => {
           if (!res.confirm) return
           uni.setStorageSync(STORAGE_KEYS.COMMUNITY_POST_DRAFTS, [])
           this.drafts = []
-          uni.showToast({ title: '已清空', icon: 'success' })
+          uni.showToast({ title: this.$t('communityDrafts.cleared'), icon: 'success' })
         },
       })
     },

@@ -32,14 +32,25 @@
       "path": "pages/tabbar/community",
       "style": {
         "navigationBarTitleText": "社区",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        // 开启原生下拉刷新,与 community.vue 的 onPullDownRefresh 配套。
+        // 改用 page 原生接管滚动后,scroll-view refresher 已被移除,
+        // 必须开启 pages.json 的 enablePullDownRefresh 才能触发原生下拉刷新
+        "enablePullDownRefresh": true,
+        "backgroundColor": "#F5F2EC",
+        "backgroundTextStyle": "dark"
       }
     },
     {
       "path": "pages/tabbar/user",
       "style": {
         "navigationBarTitleText": "我的",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        // 开启原生下拉刷新,与 pages/tabbar/user.vue 的 onPullDownRefresh 配套,
+        // APP 端原生 tabbar 页面下拉后调 onPullDownRefresh 刷新会员/钱包/订单/社交计数
+        "enablePullDownRefresh": true,
+        "backgroundColor": "#F5F2EC",
+        "backgroundTextStyle": "dark"
       }
     },
     {
@@ -129,6 +140,13 @@
       "path": "pages/user/change-password",
       "style": {
         "navigationBarTitleText": "修改密码",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/user/phone",
+      "style": {
+        "navigationBarTitleText": "手机号",
         "navigationStyle": "custom"
       }
     },

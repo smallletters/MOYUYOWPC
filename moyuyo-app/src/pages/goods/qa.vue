@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="qa">
     <!-- 顶部导航栏 -->
     <view class="header">
@@ -275,7 +275,7 @@ export default {
         isLiked: false,
       })
       this.onCloseAskModal()
-      uni.showToast({ title: '提问成功', icon: 'none' })
+      uni.showToast({ title: this.$t('qa.asked'), icon: 'none' })
     },
   },
 }

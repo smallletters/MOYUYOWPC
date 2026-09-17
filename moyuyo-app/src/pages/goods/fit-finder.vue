@@ -1,8 +1,5 @@
-﻿<template>
+<template>
   <view class="fit-finder">
-
-
-
     <view class="step-indicator">
       <view class="step-dot" :class="{ active: currentStep >= 1, done: currentStep > 1 }">
         <text class="dot-text">
@@ -290,7 +287,10 @@ export default {
     },
 
     applySize() {
-      uni.showToast({ title: `已选择 ${this.recommendedSize} 码`, icon: 'success' })
+      uni.showToast({
+        title: this.$t('fitFinder.sizeSelected', { size: this.recommendedSize }),
+        icon: 'success',
+      })
     },
   },
 }

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="live-room">
     <!-- 全屏直播画面占位区 -->
     <view class="live-video-area">
@@ -140,7 +140,7 @@ export default {
         const res = await liveRoomApi.getLiveRoomDetail(this.roomId)
         this.roomDetail = res.data
       } catch (err) {
-        uni.showToast({ title: '加载直播间信息失败', icon: 'none' })
+        uni.showToast({ title: this.$t('liveRoom.loadFailed'), icon: 'none' })
       }
     },
 
@@ -154,11 +154,11 @@ export default {
     },
 
     handleShare() {
-      uni.showToast({ title: '分享功能开发中', icon: 'none' })
+      uni.showToast({ title: this.$t('liveRoom.shareWip'), icon: 'none' })
     },
 
     handleBuy(item) {
-      uni.showToast({ title: `购买 ${item.name}`, icon: 'none' })
+      uni.showToast({ title: this.$t('liveRoom.buy', { name: item.name }), icon: 'none' })
     },
 
     onInput(e) {
@@ -167,16 +167,16 @@ export default {
 
     handleSend() {
       if (!this.inputValue.trim()) return
-      uni.showToast({ title: '评论发送成功', icon: 'none' })
+      uni.showToast({ title: this.$t('liveRoom.commentSent'), icon: 'none' })
       this.inputValue = ''
     },
 
     handleLike() {
-      uni.showToast({ title: '点赞 +1', icon: 'none' })
+      uni.showToast({ title: this.$t('liveRoom.liked'), icon: 'none' })
     },
 
     handleCart() {
-      uni.showToast({ title: '查看购物袋', icon: 'none' })
+      uni.showToast({ title: this.$t('liveRoom.viewCart'), icon: 'none' })
     },
   },
 }

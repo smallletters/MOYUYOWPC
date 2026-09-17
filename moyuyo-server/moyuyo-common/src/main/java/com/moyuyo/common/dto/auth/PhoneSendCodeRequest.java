@@ -18,7 +18,7 @@ public class PhoneSendCodeRequest {
     @Schema(description = "手机号(含国家区号)", example = "+8613800000000")
     private String phone;
 
-    @Schema(description = "用途: LOGIN / REGISTER / RESET_PASSWORD",
-            example = "LOGIN", allowableValues = {"LOGIN", "REGISTER", "RESET_PASSWORD"})
+    @Schema(description = "用途: LOGIN / REGISTER / RESET_PASSWORD / CHANGE_PHONE",
+            example = "LOGIN", allowableValues = {"LOGIN", "REGISTER", "RESET_PASSWORD", "CHANGE_PHONE"})
     private String purpose = "LOGIN";
 }

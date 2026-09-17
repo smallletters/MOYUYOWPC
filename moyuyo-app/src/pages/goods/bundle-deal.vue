@@ -1,8 +1,6 @@
-﻿<template>
+<template>
   <view class="bundle-deal">
     <!-- 顶部导航栏 -->
-
-
 
     <scroll-view scroll-y class="scroll">
       <!-- 套餐类型 Tab -->
@@ -292,12 +290,15 @@ export default {
         this.optionalBundles = data.optionalBundles || []
         this.customPool = data.customPool || []
       } catch (err) {
-        uni.showToast({ title: '加载套餐信息失败', icon: 'none' })
+        uni.showToast({ title: this.$t('bundleDeal.loadFailed'), icon: 'none' })
       }
     },
 
     handleAddBundle(bundle) {
-      uni.showToast({ title: `已添加「${bundle.name}」到购物车`, icon: 'success' })
+      uni.showToast({
+        title: this.$t('bundleDeal.addedToCart', { name: bundle.name }),
+        icon: 'success',
+      })
     },
 
     toggleCustomItem(id) {
@@ -307,13 +308,13 @@ export default {
       } else if (this.customSelected.length < 3) {
         this.customSelected.push(id)
       } else {
-        uni.showToast({ title: '最多选择 3 件商品', icon: 'none' })
+        uni.showToast({ title: this.$t('bundleDeal.maxThreeItems'), icon: 'none' })
       }
     },
 
     handleCustomAdd() {
       if (this.customSelected.length === 3) {
-        uni.showToast({ title: '自定义套餐已加入购物车', icon: 'success' })
+        uni.showToast({ title: this.$t('bundleDeal.customAddedToCart'), icon: 'success' })
       }
     },
   },

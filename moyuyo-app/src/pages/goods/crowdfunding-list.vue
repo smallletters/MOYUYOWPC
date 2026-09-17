@@ -1,7 +1,6 @@
-﻿<template>
+<template>
   <view class="crowdfunding-page">
     <!-- 导航栏 -->
-
 
     <!-- 标签筛选 -->
     <scroll-view scroll-x class="tab-scroll">
@@ -76,12 +75,11 @@
 
 <script setup>
 import { ref } from 'vue'
+import { t } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.goodsCrowdfundingList')
 
-
 // 标签
-
 
 const tabs = ref(['全部', '进行中', '即将结束', '即将开始', '已成功'])
 const activeTab = ref('全部')
@@ -157,7 +155,7 @@ const goDetail = (project) => {
 
 // 加载更多
 const loadMore = () => {
-  uni.showToast({ title: '加载中...', icon: 'none' })
+  uni.showToast({ title: t('common.loading'), icon: 'none' })
 }
 </script>
 

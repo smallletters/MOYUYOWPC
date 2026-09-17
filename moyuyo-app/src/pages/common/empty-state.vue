@@ -1,7 +1,6 @@
-﻿<template>
+<template>
   <view class="empty-state-page">
     <!-- 导航栏 -->
-
 
     <scroll-view class="state-body" scroll-y>
       <!-- 空状态展示区 -->
@@ -169,12 +168,11 @@
 </template>
 <script setup>
 import { ref } from 'vue'
+import { t } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.commonEmptyState')
 
-
 // 页面标题
-
 
 const pageTitle = ref('空状态')
 
@@ -258,7 +256,7 @@ const errorStates = ref([
     desc: '请检查你的网络连接，稍后重试',
     btnIcon: 'refresh-cw',
     btnText: '重新连接',
-    action: () => uni.showToast({ title: '正在重连...', icon: 'none' }),
+    action: () => uni.showToast({ title: t('emptyState.reconnecting'), icon: 'none' }),
   },
   {
     label: 'Server Error',
@@ -268,7 +266,7 @@ const errorStates = ref([
     desc: '服务暂时不可用，我们正在紧急修复中',
     btnIcon: 'refresh-cw',
     btnText: '刷新重试',
-    action: () => uni.showToast({ title: '正在刷新...', icon: 'none' }),
+    action: () => uni.showToast({ title: t('emptyState.refreshing'), icon: 'none' }),
   },
   {
     label: '404',

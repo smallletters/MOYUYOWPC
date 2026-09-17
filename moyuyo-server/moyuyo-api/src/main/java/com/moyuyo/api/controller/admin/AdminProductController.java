@@ -17,7 +17,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin/products")
 @RequiredArgsConstructor
-@SuppressWarnings("ConstantConditions")
+// 抑制 JDT 静态检查对 MyBatis-Plus Lambda 引用的 null type safety 警告
+@SuppressWarnings({"ConstantConditions", "null"})
 public class AdminProductController {
 
   private final ProductService productService;
@@ -168,6 +169,11 @@ public class AdminProductController {
     tabCounts.put("pending", 0L);
     // 把 Page 数据显式构造为 Map 返回，避免 Page 内部 Map 结构对 Jackson 序列化产生影响，
     // 同时新增 tabCounts 字段供前端顶部 tab 标签显示真实计数
+    // 防御性 null 短路:理论上 selectPage 不会返回 null,但 JDT 静态分析无法跨方法判定,
+    // 补上空判定同时避免上游实现变更时 NPE
+    if (productPage == null) {
+      return Result.success(java.util.Collections.emptyMap());
+    }
     java.util.Map<String, Object> resp = new java.util.LinkedHashMap<>();
     resp.put("records", productPage.getRecords());
     resp.put("total", productPage.getTotal());

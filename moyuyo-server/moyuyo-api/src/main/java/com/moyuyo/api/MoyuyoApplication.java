@@ -23,10 +23,10 @@ import java.time.Instant;
  *    让 StartupBannerLogger / 停机钩子 / 启动失败耗时统一从同一时间戳读取
  * 2. ShutdownHook 提前到 SpringApplication.run() 之前注册，
  *    修复"app.run() 阻塞导致 Hook 永远不被注册"的隐性问题
- * 3. ProdConfigValidator 兜底：SpringApplication 不会传播 ApplicationListener 抛出的异常，
+ * 3. ProdConfigValidator 入口保留：SpringApplication 不会传播 ApplicationListener 抛出的异常，
  *    这里构造最小 Environment（基于环境变量与 system properties）并调用
- *    {@link ProdConfigValidator#validateOrExit(ConfigurableEnvironment)} 同步执行校验。
- *    校验失败时 System.exit(1) 真正阻断启动，避免运维漏配密钥时应用仍能对外提供服务
+ *    {@link ProdConfigValidator#validateOrExit(ConfigurableEnvironment)}。
+ *    当前实现已禁用强校验（仅打 INFO 日志后放行），保留调用入口仅为兼容部署脚本。
  */
 @Slf4j
 @SpringBootApplication(scanBasePackages = "com.moyuyo", exclude = {
@@ -72,13 +72,12 @@ public class MoyuyoApplication {
             System.out.flush();
         }, "moyuyo-shutdown-logger"));
 
-        // P2 修复：提前做生产环境必填配置校验，校验失败时 System.exit(1) 真正阻断启动。
+        // P2 修复：保持生产环境必填配置校验入口，但当前实现已改为 fail-soft（不阻断启动）。
         // 这里构造一个最小可用的 ConfigurableEnvironment（基于 system properties + system env），
         // 让 ProdConfigValidator 在 SpringApplication.run() 之前同步执行；
         // SpringApplication 的 ApplicationEnvironmentPreparedEvent 阶段 listener 抛出的异常
         // 会被 SpringApplication 吞掉（仅日志输出），不能让 run() 失败。
-        // 注意：完整 Environment 在 SpringApplication.run() 阶段构建（合并 yaml / properties），
-        // 这里仅基于 system properties + env 做最严的"启动即阻断"校验，重复执行不会影响正常启动。
+        // 当前 validator 仅打 INFO 日志后放行；保留入口便于未来恢复严格校验。
         ConfigurableEnvironment preCheckEnv = buildPreCheckEnvironment();
         ProdConfigValidator.validateOrExit(preCheckEnv);
 

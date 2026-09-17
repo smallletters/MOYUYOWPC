@@ -42,9 +42,13 @@
         <text class="section-title">护理提醒</text>
         <scroll-view scroll-x class="remind-scroll">
           <view class="remind-list">
+            <!-- APP webview 对 <text> + ::before content PUA 字符存在渲染兼容问题,
+                 直接把 PUA 字符写进 <text> 文本内容,强制按 LucideIcons 渲染。 -->
             <view class="remind-card">
               <view class="remind-top">
-                <view class="remind-icon"><text class="luc luc-alert-triangle" /></view>
+                <view class="remind-icon">
+                  <text class="luc">{{ remindIcons.deworm }}</text>
+                </view>
                 <text class="remind-days">12天</text>
               </view>
               <text class="remind-name">驱虫</text>
@@ -52,7 +56,9 @@
             </view>
             <view class="remind-card">
               <view class="remind-top">
-                <view class="remind-icon success"><text class="luc luc-check" /></view>
+                <view class="remind-icon success">
+                  <text class="luc">{{ remindIcons.vaccine }}</text>
+                </view>
                 <text class="remind-days">25天</text>
               </view>
               <text class="remind-name">疫苗</text>
@@ -60,7 +66,9 @@
             </view>
             <view class="remind-card">
               <view class="remind-top">
-                <view class="remind-icon"><text class="luc luc-bath" /></view>
+                <view class="remind-icon">
+                  <text class="luc">{{ remindIcons.bath }}</text>
+                </view>
                 <text class="remind-days">7天</text>
               </view>
               <text class="remind-name">洗澡</text>
@@ -68,7 +76,9 @@
             </view>
             <view class="remind-card">
               <view class="remind-top">
-                <view class="remind-icon"><text class="luc luc-brush" /></view>
+                <view class="remind-icon">
+                  <text class="luc">{{ remindIcons.dental }}</text>
+                </view>
                 <text class="remind-days">15天</text>
               </view>
               <text class="remind-name">口腔</text>
@@ -121,6 +131,15 @@ export default {
     return {
       pets: [],
       currentPet: null,
+      // 护理提醒图标 PUA 字符:APP 端 <text> + ::before content 渲染 PUA 不稳,
+      // 直接把 PUA 字符写到 <text> 文本内容,绕开兼容问题。
+      // codepoint 与 lucide.css 中 .luc-alert-triangle/.luc-check/.luc-bath/.luc-brush 一致。
+      remindIcons: {
+        deworm: '\ue900', // alert-triangle
+        vaccine: '\ue918', // check
+        bath: '\ue90a', // bath
+        dental: '\ue913', // brush
+      },
       quickEntries: [
         { id: 'album', label: '相册', icon: 'camera' },
         { id: 'diary', label: '日记', icon: 'edit-3' },
@@ -162,7 +181,7 @@ export default {
     },
 
     onShare() {
-      uni.showToast({ title: '请使用右上角分享', icon: 'none' })
+      uni.showToast({ title: this.$t('petHub.useShareInTopRight'), icon: 'none' })
     },
 
     onQuickClick(q) {
@@ -177,7 +196,7 @@ export default {
       if (map[q.id]) {
         uni.navigateTo({ url: map[q.id] })
       } else {
-        uni.showToast({ title: '敬请期待', icon: 'none' })
+        uni.showToast({ title: this.$t('common.comingSoon'), icon: 'none' })
       }
     },
   },

@@ -36,6 +36,7 @@ export default {
     userDevices: '登录设备',
     userSecurity: '账号安全',
     userChangePassword: '修改密码',
+    userPhone: '手机号',
     userForgot: '重置密码',
     userMagicLink: 'Magic Link',
     userTwoFactor: 'Two-Factor Auth',
@@ -206,6 +207,9 @@ export default {
     },
     // B2：未选装扮时 scene-figure 默认名（fallback）
     petSelfFallback: '我的宠物',
+    title: 'Pet Hub 全部场景解锁',
+    desc: '健康、社交、护理全场景',
+    useShareInTopRight: '请使用右上角分享',
   },
 
   // 装扮弹窗 components/dress-popup
@@ -477,6 +481,20 @@ export default {
     // 登录态失效弹窗（utils/request.js promptReLogin）
     sessionExpiredTitle: '登录已过期',
     sessionExpiredContent: '您的登录状态已失效，重新登录后将返回此页面',
+    // 网络层（utils/request.js）通用错误文案
+    requestFailed: '请求失败({status})',
+    requestFailedHttp: 'Request failed ({status})',
+    requestTimeout: '请求超时',
+    networkError: '网络异常',
+    // Webview 白名单拦截（utils/webview-guard.js）
+    urlBlocked: '外链不在白名单,已拦截',
+    // 各页面通用文案（community/home/cart/social-grid/empty-state 等共享）
+    shareWip: '分享功能开发中',
+    comingSoon: '敬请期待',
+    actionFailed: '操作失败',
+    savedToAlbum: '已保存到相册',
+    addedToCart: '已加入购物车',
+    loadingFailed: '加载失败',
   },
 
   // 语言列表(独立于 common,便于扩展)
@@ -1151,6 +1169,7 @@ export default {
     notStartedToast: '活动尚未开始',
     buySuccessFmt: '抢购「{name}」成功！',
     buyFailed: '抢购失败，请重试',
+    buying: '抢购中…',
   },
 
   // 帖子收藏 /pages/user/post-collection
@@ -1730,6 +1749,11 @@ export default {
   // 首页 /pages/tabbar/home
   home: {
     searchPlaceholder: '搜索宠物好物、品牌、攻略',
+    // 首页弹窗文案
+    bannerN: 'Banner {n}',
+    scanResult: '识别: {value}',
+    scanInvalid: '未识别到有效二维码',
+    scanAppOnly: '请使用 APP 扫码',
     kingkong: {
       care: '洗护',
       gear: '装备',
@@ -1880,6 +1904,7 @@ export default {
     statusCancelled: '已取消',
     viewDetail: '查看详情',
     applyTime: '申请时间',
+    loadFailed: '加载售后记录失败',
   },
 
   // 退货 /pages/order/returns
@@ -1897,6 +1922,20 @@ export default {
     progress: '处理进度',
     uploadProof: '上传凭证',
     contactCS: '联系客服',
+    primeDay: { title: 'Prime Day 专属大促', desc: '会员限定大促专场' },
+    newArrival: { title: '新品优先购', desc: '抢先体验新品' },
+    newUser: {
+      welcomeTitle: '欢迎加入 MOYUYO',
+      claimAll: '一键领取',
+      value: '价值 ¥{amount}',
+      heroSub: '完成新手任务，领取专属福利',
+      emptyGifts: '暂无新手福利',
+      emptyClaimed: '尚未领取任何福利',
+      pointsSuffix: '+{n} 积分',
+      claimFailed: '领取失败',
+      selectReasonFirst: '请选择退款原因',
+      submitted: '申请已提交',
+    },
   },
 
   // 支付成功 /pages/order/payment-success
@@ -1929,6 +1968,7 @@ export default {
     deleteContent: '此操作不可撤销,订单将彻底删除',
     deleted: '已删除',
     deleteFailed: '删除失败',
+    permanentDeleteTitle: '永久删除？',
   },
 
   // 客服评价 /pages/order/cs-rating
@@ -1949,6 +1989,7 @@ export default {
     rewardHint: '完成评价可获得 {reward} 积分奖励',
     feedbackPrompt: '对服务不满意?',
     feedbackBtn: '提交意见反馈',
+    imageUploadWip: '图片上传功能开发中',
   },
 
   // 关税明细 /pages/order/tariff-detail
@@ -2092,6 +2133,26 @@ export default {
     ruleMinLen: '至少 8 位字符',
     ruleMatch: '两次密码一致',
     checkRules: '请检查密码规则',
+  },
+
+  // 手机号 /pages/user/phone
+  phone: {
+    title: '手机号',
+    current: '当前手机号',
+    newPhone: '新手机号',
+    newPhonePlaceholder: '请输入新手机号',
+    code: '验证码',
+    codePlaceholder: '6 位数字验证码',
+    sendCode: '发送验证码',
+    codeSent: '验证码已发送',
+    codeSendFailed: '发送失败,请稍后再试',
+    phoneRequired: '请填写完整的手机号',
+    selectCountry: '选择国家/地区',
+    submit: '提交',
+    submitting: '提交中...',
+    submitted: '修改成功',
+    failed: '修改失败',
+    checkInput: '请检查输入',
   },
 
   // 忘记密码 /pages/user/forgot
@@ -2820,33 +2881,7 @@ export default {
       shipping: { title: '全场免运费', desc: '无门槛，全品类包邮' },
       memberPrice: { title: '专属会员价', desc: '额外 5-10% off 折扣' },
       priority: { title: '优先发货', desc: '24小时内极速发货' },
-      returns: { title: '免费退换货', desc: '退货运费全免' },
-      support: { title: '专属客服', desc: '1v1 优先响应' },
-      primeDay: { title: 'Prime Day 专属大促', desc: '会员限定大促专场' },
-      points: { title: '每月赠送 $10 积分', desc: '自动到账，购物抵扣' },
-      newArrival: { title: '新品优先购', desc: '抢先体验新品' },
-      petHub: { title: 'Pet Hub 全部场景解锁', desc: '健康、社交、护理全场景' },
     },
-  },
-
-  // 新人专区 /pages/user/new-user-zone
-  newUser: {
-    title: '新人专区',
-    welcomeTitle: '欢迎加入 MOYUYO',
-    welcomeDesc: '新用户专属福利,价值 ¥328',
-    claimAll: '一键领取',
-    coupon: '优惠券',
-    value: '价值 ¥{amount}',
-    startShopping: '开始逛逛',
-    heroSub: '完成新手任务，领取专属福利',
-    claim: '领取',
-    emptyGifts: '暂无新手福利',
-    claimedTitle: '已领取',
-    emptyClaimed: '尚未领取任何福利',
-    giftFallback: '礼包 #{id}',
-    pointsSuffix: '+{n} 积分',
-    claimSuccess: '领取成功',
-    claimFailed: '领取失败',
   },
 
   // 周年报告 /pages/user/annual-report
@@ -2946,6 +2981,9 @@ export default {
     copiedLink: '链接已复制',
     shareProduct: '分享商品',
     stockLow: '仅剩 {count} 件',
+    productNotReady: '商品信息未就绪',
+    offShelf: '商品已下架',
+    skuOutOfStock: '该规格暂时缺货',
   },
 
   // 客服中心会话页 /pages/user/customer-service
@@ -2993,6 +3031,12 @@ export default {
       hoursAgo: '{n} 小时前',
       daysAgo: '{n} 天前',
     },
+    // 登录引导弹窗（tabbar/community.vue）
+    loginToLike: '登录后即可点赞',
+    loginToPost: '登录后即可发布',
+    goLoginPrompt: '是否前往登录?',
+    goLogin: '去登录',
+    maybeLater: '再看看',
     // 帖子详情页底部操作栏文案
     postActions: {
       favorite: '收藏',
@@ -3807,5 +3851,290 @@ export default {
     // 结构化错误码（request.js 的 STRUCTURED_ERROR_PATTERNS 匹配）
     deletionHasActiveOrders: '您还有 {count} 笔未完成订单，请先完成或取消后再申请注销',
     dataExportRateLimited: '数据导出请求过于频繁，请于 {date} 后再试',
+  },
+
+  // 购物车 store（store/cart.js）
+  cart: {
+    soldOut: '该商品已售罄',
+    stockShort: '库存不足',
+    addFailed: '加购失败',
+    outOfStock: '商品缺货,暂不能结算',
+    itemUnavailable: '该商品已失效,不能结算',
+    removed: '已移除',
+    selectItemsFirst: '请选择商品',
+    deleteConfirmTitle: '确认删除',
+    deleteConfirmContent: '确定将该商品从购物车移除吗？',
+  },
+
+  // 宠物 store（store/pet.js）
+  pet: {
+    dressStorageFull: '存储空间不足,请删除部分装扮',
+    dressUploadLostAfterUpdate: '上传到服务器失败,更新后可能丢失',
+  },
+
+  // 原生插件（plugins/arTryOn.js、petHub3d.js 等）
+  plugin: {
+    arStartFailed: 'AR 启动失败',
+    arAppOnly: 'AR 试穿仅支持 APP 端',
+    arUnsupported: '当前环境不支持 AR',
+    arCaptureFailed: '拍照失败',
+    petHub3dSceneFailed: '3D 场景加载失败',
+    petHub3dAppOnly: '3D 功能仅支持 APP 端',
+    petHub3dUnsupported: '当前环境不支持 3D',
+    petHub3dCosmeticFailed: '换装失败',
+    petHub3dSnapshotFailed: '截图失败',
+  },
+
+  // 商品列表页（pages/goods/list.vue）—— 顶栏 / 筛选弹窗 / 列表底部状态
+  goodsList: {
+    filter: '筛选',
+    filtersTitle: '筛选',
+    petType: '宠物类型',
+    ip: 'IP',
+    size: '尺码',
+    priceRange: '价格区间',
+    reset: '重置',
+    apply: '应用',
+    noMore: '— 没有更多了 —',
+    empty: '未找到相关商品',
+    sortDefault: '综合',
+    sortPopularity: '销量优先',
+    sortPriceAsc: '价格 ↑',
+    sortPriceDesc: '价格 ↓',
+    sortNewest: '最新',
+    petDog: '狗狗',
+    petCat: '猫咪',
+    petOther: '其他',
+    priceUnder20: '$20 以下',
+    price20to50: '$20 - $50',
+    price50to100: '$50 - $100',
+    priceOver100: '$100 以上',
+  },
+
+  // 订单回收站（pages/order/recycle-bin.vue）
+  // 退货申请（pages/order/returns.vue）
+  // 物流追踪（pages/order/logistics-tracking.vue）
+  logistics: {
+    callSfCarrier: '请联系顺丰客服 95338',
+    refreshing: '刷新中…',
+    refreshed: '已刷新',
+  },
+
+  // 客服评价（pages/order/cs-rating.vue）
+  // 售后记录（pages/order/after-sales.vue）
+  // 商品详情（pages/goods/detail.vue）
+  // 分享商品（pages/goods/share-product.vue）
+  shareProduct: {
+    missingProductId: '缺少商品 id',
+    sharedTo: '已分享到 {name}',
+    linkCopied: '链接已复制',
+    copyFailed: '复制失败',
+    openFailedWithReason: '打开失败：{reason}',
+    linkCopiedManualPaste: '已复制链接，请手动打开对应 App 粘贴',
+    generating: '生成中…',
+    generateFailed: '生成失败',
+    imageDownloaded: '图片已下载',
+    downloadFailed: '下载失败',
+    savedToAlbum: '已保存到相册',
+    saveFailedCheckPermission: '保存失败，请检查权限',
+  },
+
+  // 直播间（pages/goods/live-room.vue）
+  liveRoom: {
+    loadFailed: '加载直播间信息失败',
+    shareWip: '分享功能开发中',
+    buy: '购买 {name}',
+    commentSent: '评论发送成功',
+    liked: '点赞 +1',
+    viewCart: '查看购物袋',
+  },
+
+  // 砍价（pages/goods/bargain.vue）
+  bargain: {
+    loadFailed: '加载砍价信息失败',
+    helpSucceeded: '助力成功！',
+    helpFailed: '助力失败',
+    buyAtCurrentPrice: '以当前价格加入购物车',
+  },
+
+  // 套餐优惠（pages/goods/bundle-deal.vue）
+  bundleDeal: {
+    loadFailed: '加载套餐信息失败',
+    addedToCart: '已添加「{name}」到购物车',
+    maxThreeItems: '最多选择 3 件商品',
+    customAddedToCart: '自定义套餐已加入购物车',
+  },
+
+  // 限时抢购详情（pages/goods/flash-sale-detail.vue）
+  // 众筹（pages/goods/crowdfunding.vue）
+  crowdfunding: {
+    supportTier: '支持 {tier} ${price}',
+    selectTierFirst: '请先选择支持档位',
+  },
+
+  // 商品对比（pages/goods/product-compare.vue）
+  productCompare: {
+    maxFour: '最多对比4件商品',
+    addedToCart: '{name} 已加入购物车',
+  },
+
+  // 商品问答（pages/goods/qa.vue）
+  qa: {
+    asked: '提问成功',
+  },
+
+  // 尺码推荐（pages/goods/fit-finder.vue）
+  fitFinder: {
+    sizeSelected: '已选择 {size} 码',
+  },
+
+  // 常购清单（pages/goods/frequent-purchase.vue）
+  frequentPurchase: {
+    addedCount: '成功加入 {count} 件商品',
+  },
+
+  // 拼团（pages/goods/group-buy.vue）
+  groupBuy: {
+    loadFailed: '加载拼团信息失败',
+    inviteWip: '邀请好友功能开发中',
+    buyAtOriginalPrice: '以原价单独购买',
+  },
+
+  // 商品订阅（pages/goods/product-subscribe.vue）
+  productSubscribe: {
+    selectCycleFirst: '请选择配送周期',
+    subscribing: '订阅中…',
+    subscribed: '订阅成功',
+    subscribeFailed: '订阅失败',
+  },
+
+  // 运费计算（pages/goods/shipping-calculator.vue）
+  shippingCalculator: {
+    invalidWeight: '请输入有效重量',
+  },
+
+  // 先试后买（pages/goods/try-before-buy.vue）
+  tryBeforeBuy: {
+    kept: '已确认留下 {name}',
+    returnScheduled: '已预约寄回，请查收退货标签',
+    browseTryable: '浏览可试用商品',
+  },
+
+  // 公益捐赠（pages/goods/charity-donation.vue）
+  charityDonation: {
+    donatedAndCheckout: '捐赠 ${amount} 并结算',
+    failed: '捐赠失败',
+  },
+
+  // AR 试穿（pages/goods/ar-try-on.vue）
+  arTryOn: {
+    cameraSwitched: '切换摄像头',
+  },
+
+  // 宠物体重（pages/pet/weight-chart.vue）
+  petWeight: {
+    invalidWeight: '请输入正确的体重',
+    selectDateFirst: '请选择日期',
+    recorded: '记录成功',
+    recordFailed: '记录失败',
+  },
+
+  // 宠物 3D 空间（pages/pet/space-3d.vue）
+  petHub3d: {
+    dogModelLoadFailed: '小狗模型加载失败',
+    cameraFps: '🐶 第一人称（动物眼睛）',
+    cameraTps: '👀 第三人称跟随',
+  },
+
+  // 宠物健康（pages/pet/health.vue、health-calendar.vue）
+  petHealth: {
+    dayEventsCount: '{count} 项事件',
+    selectDateFirst: '请选择日期',
+    invalidReminderType: '请选择有效的提醒类型',
+    selectPetFirst: '请先选择宠物',
+    reminderAdded: '提醒已添加',
+    addFailed: '添加失败',
+  },
+
+  // 宠物过敏（pages/pet/allergy-profile.vue）
+  petAllergy: {
+    removed: '已移除 {item}',
+    added: '已添加 {item}',
+    enterEditMode: '进入编辑模式',
+    viewAllRecords: '查看全部记录',
+    viewMoreProducts: '查看更多商品',
+    addRecord: '添加过敏记录',
+  },
+
+  // 宠物中心 3D（pages/pet/pet-hub-3d.vue）
+  petHub3dScene: {
+    arOn: 'AR 模式已开启',
+    arOff: 'AR 模式已关闭',
+    switchedTo: '已切换到 {scene}',
+    switchedToPet: '已切换至 {name}',
+    rotate360: '360° 旋转展示',
+    zoomedIn: '已放大',
+    zoomedOut: '已还原',
+    playingWith: '🎾 正在和 {name} 玩耍...',
+    feeding: '🍗 正在喂食 {name}',
+    grooming: '🛁 正在为 {name} 护理',
+    shareLinkCopied: '📤 分享链接已复制',
+    moreOptions: '更多选项',
+    addNewPet: '🐾 添加新宠物',
+  },
+
+  // 宠物装扮（pages/pet/dresser.vue）
+  petDresser: {
+    loadFailed: '装扮列表加载失败',
+    equipped: '已穿戴 {name}',
+    equipFailed: '装备失败',
+    createPetFirst: '请先创建宠物',
+    uploading: '上传中…',
+    uploaded: '上传成功',
+    uploadFailed: '上传失败',
+    systemOutfitUnremovable: '系统装扮不可删除',
+    deleteTitle: '删除装扮',
+    deleteContent: '确定删除「{name}」吗？删除后不可恢复。',
+    deleted: '已删除',
+    deleteFailed: '删除失败',
+  },
+
+  // 宠物中心（pages/pet/pet-hub.vue）
+  // 宠物相册（pages/pet/album.vue）
+  petAlbum: {
+    prevMonth: '上个月',
+    nextMonth: '下个月',
+    uploaded: '已上传',
+  },
+
+  // 社区草稿箱（pages/community/drafts.vue）
+  communityDrafts: {
+    deleteThisDraft: '删除此草稿',
+    deleteTitle: '删除草稿',
+    deleteContent: '确认删除该草稿?',
+    deleteConfirm: '删除',
+    deleted: '已删除',
+    clearAllTitle: '清空草稿',
+    clearAllContent: '确认删除全部 {count} 份草稿?',
+    clearAllConfirm: '清空',
+    cleared: '已清空',
+  },
+
+  // 私信（pages/community/dm-chat.vue）
+  dm: {
+    viewProfile: '查看主页',
+    blockUser: '屏蔽用户',
+    report: '举报',
+    imageSendWip: '图片发送功能开发中',
+  },
+
+  // 社区页（pages/tabbar/community.vue） — 登录引导已在 community 内补过,此处不再重复
+  // 首页（pages/tabbar/home.vue） — 首页弹窗已在 home 内补过,此处不再重复
+  // 购物车页面（pages/cart/index.vue） — 弹窗已在 cart 内补过,此处不再重复
+  // 邀请好友（pages/user/invite-friends.vue） — shareTo 已在 invite 内补过,此处不再重复
+  // 空状态示例（pages/common/empty-state.vue）
+  emptyState: {
+    reconnecting: '正在重连…',
+    refreshing: '正在刷新…',
   },
 }

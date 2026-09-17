@@ -149,18 +149,21 @@ export default {
     },
     async onSubscribe() {
       if (!this.planId) {
-        uni.showToast({ title: '请选择配送周期', icon: 'none' })
+        uni.showToast({ title: this.$t('productSubscribe.selectCycleFirst'), icon: 'none' })
         return
       }
-      uni.showLoading({ title: '订阅中...' })
+      uni.showLoading({ title: this.$t('productSubscribe.subscribing') })
       try {
         await subscribeApi.subscribe(this.planId)
         uni.hideLoading()
-        uni.showToast({ title: '订阅成功', icon: 'success' })
+        uni.showToast({ title: this.$t('productSubscribe.subscribed'), icon: 'success' })
         setTimeout(() => uni.navigateBack(), 800)
       } catch (e) {
         uni.hideLoading()
-        uni.showToast({ title: e.message || '订阅失败', icon: 'none' })
+        uni.showToast({
+          title: e.message || this.$t('productSubscribe.subscribeFailed'),
+          icon: 'none',
+        })
       }
     },
   },

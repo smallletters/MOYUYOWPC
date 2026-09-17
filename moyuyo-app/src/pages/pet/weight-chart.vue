@@ -400,11 +400,11 @@ export default {
     async onSubmitWeight() {
       const value = Number(this.weightForm.value)
       if (!value || value <= 0) {
-        uni.showToast({ title: '请输入正确的体重', icon: 'none' })
+        uni.showToast({ title: this.$t('petWeight.invalidWeight'), icon: 'none' })
         return
       }
       if (!this.weightForm.date) {
-        uni.showToast({ title: '请选择日期', icon: 'none' })
+        uni.showToast({ title: this.$t('petWeight.selectDateFirst'), icon: 'none' })
         return
       }
       try {
@@ -416,12 +416,12 @@ export default {
           note: (this.weightForm.note || '').trim(),
           measuredAt: `${this.weightForm.date}T12:00:00`,
         })
-        uni.showToast({ title: '记录成功', icon: 'success' })
+        uni.showToast({ title: this.$t('petWeight.recorded'), icon: 'success' })
         this.showWeightModal = false
         this.loadData()
       } catch (e) {
         console.warn('[weight] submit failed', e)
-        uni.showToast({ title: '记录失败', icon: 'none' })
+        uni.showToast({ title: this.$t('petWeight.recordFailed'), icon: 'none' })
       }
     },
 

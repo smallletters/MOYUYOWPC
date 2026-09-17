@@ -90,6 +90,15 @@ add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; prelo
 
 `actuator` 端口 9090 已绑定 127.0.0.1，仅供本机 Prometheus 抓取，**无需对外暴露**。
 
+> **dev profile 注意事项**：`application-prod.yml` 默认启用 actuator 独立端口 9090（`management.server.port`）。
+> 但 dev profile 默认让 actuator 落到业务端口 8080，会导致 Dockerfile 的 `HEALTHCHECK` 探测 9090 持续 `exit=7` 失败，
+> 容器长期处于 `unhealthy` 状态。`docker-compose.yml` 已通过环境变量 `MANAGEMENT_SERVER_PORT=9090`
+> 显式覆盖该行为，dev 与 prod 都能正常通过健康检查。如需在 `.env` 中自定义端口，按 Spring relaxed binding 命名：
+> ```bash
+> # 留空走 compose 默认 9090
+> MANAGEMENT_SERVER_PORT=9090
+> ```
+
 ---
 
 ## 常用命令
@@ -164,6 +173,34 @@ docker images | grep moyuyo-api
 docker compose --env-file .env down app
 docker tag moyuyo-api:previous moyuyo-api:latest
 docker compose --env-file .env up -d app
+```
+
+### Q3.1：容器启动后报 `Logback configuration error detected: ... ./logs/moyuyo.log (No such file or directory)`？
+
+**A**：容器根目录 `read_only: true`（compose 安全加固），logback 默认写入的 `./logs`（容器内 `/app/logs`）不可写。
+`docker-compose.yml` 已通过 `LOG_PATH=/var/log/moyuyo` 显式指向已挂载的 `moyuyo-logs` 命名卷，覆盖了 logback 默认值。
+
+如果自定义了 compose 文件但忘了透传 `LOG_PATH`，可临时在容器环境变量或 `.env` 中显式声明：
+
+```bash
+# .env 中追加（默认空值，compose 会用内置的 /var/log/moyuyo）
+LOG_PATH=/var/log/moyuyo
+```
+
+### Q3.2：容器状态显示 `Up X minutes (unhealthy)`，healthcheck 探测 9090 一直 `exit=7`？
+
+**A**：Spring Boot actuator 没监听 9090。常见原因与对应修法：
+
+1. **dev profile 漏配**：dev profile 默认让 actuator 落到业务端口 8080，Dockerfile 的 `HEALTHCHECK` 探测 9090 因此失败。
+   `docker-compose.yml` 已通过 `MANAGEMENT_SERVER_PORT=9090` 修复；如使用自定义 compose，请保留该环境变量。
+2. **`application-prod.yml` 改了变量名**：本项目统一用 Spring 标准名 `MANAGEMENT_SERVER_PORT`（对应属性 `management.server.port`），
+   别名 `MANAGEMENT_PORT` / `MOYUYO_MANAGEMENT_PORT` 也能被 relaxed binding 兼容，但不推荐混用。
+3. **手动改了 management.server.address**：默认 127.0.0.1，如果改成 0.0.0.0 需同步确保宿主机防火墙策略。
+
+```bash
+# 验证容器内 actuator 监听状态
+docker exec moyuyo-server sh -c "ss -lntp | grep -E ':8080|:9090'"
+# 期望：9090 仅绑定 127.0.0.1，8080 绑定 0.0.0.0（compose 后置部署由反代转发）
 ```
 
 ### Q4：磁盘满了怎么办？
