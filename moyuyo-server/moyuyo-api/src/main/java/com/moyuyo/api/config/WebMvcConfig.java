@@ -15,7 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -48,7 +47,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private static final Pattern ORIGIN_PATTERN = Pattern.compile(
             "^https?://[A-Za-z0-9][A-Za-z0-9\\-\\.]*(\\:[0-9]{1,5})?(/[^\\s]*)?$");
 
-    // 生产环境必须通过环境变量 MOYUYO_CORS_ORIGINS 显式设置允许的前端域名
+    // 生产环境必须通过环境变量 MOYUYO_CORS_ALLOWED_ORIGINS 显式设置允许的前端域名
     @Value("${moyuyo.cors.allowed-origins:}")
     private String allowedOrigins;
 
@@ -72,6 +71,24 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .exposedHeaders("X-Trace-Id", "Content-Disposition")
                 .allowCredentials(true)
                 .maxAge(3600);
+
+        // 3D 模型与上传文件等静态资源走 ResourceHandler，Spring 默认不套 CorsFilter，
+        // 必须显式注册 CORS 才能让 H5（5174）、APP 真机直连 8080 跨源加载 .glb / .jpg 等
+        // 仅 GET + HEAD 即可满足资源请求（.glb / .fbx / 图片），不带凭据避免浏览器对 ACAO 严格匹配
+        registry.addMapping("/static/**")
+                .allowedOriginPatterns(patterns)
+                .allowedMethods("GET", "HEAD", "OPTIONS")
+                .allowedHeaders("Content-Type", "Accept", "Origin", "Range")
+                .exposedHeaders("Content-Length", "Content-Range", "Accept-Ranges")
+                .allowCredentials(false)
+                .maxAge(3600);
+        registry.addMapping("/uploads/**")
+                .allowedOriginPatterns(patterns)
+                .allowedMethods("GET", "HEAD", "OPTIONS")
+                .allowedHeaders("Content-Type", "Accept", "Origin", "Range")
+                .exposedHeaders("Content-Length", "Content-Range", "Accept-Ranges")
+                .allowCredentials(false)
+                .maxAge(3600);
     }
 
     /**
@@ -90,7 +107,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         String[] split = raw.split(",");
         if (split.length > MAX_ORIGIN_COUNT) {
             throw new IllegalStateException(
-                    "MOYUYO_CORS_ORIGINS 条目数超过上限 " + MAX_ORIGIN_COUNT + "（实际 " + split.length + "），请精简白名单");
+                    "MOYUYO_CORS_ALLOWED_ORIGINS 条目数超过上限 " + MAX_ORIGIN_COUNT + "（实际 " + split.length + "），请精简白名单");
         }
         Set<String> seen = new HashSet<>();
         List<String> result = new ArrayList<>(split.length);

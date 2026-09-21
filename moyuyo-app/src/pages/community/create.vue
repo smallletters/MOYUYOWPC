@@ -355,10 +355,7 @@
           :key="idx"
           class="emoji-panel__tab"
           :class="{ active: emojiActiveCat === idx }"
-          @tap="
-            emojiActiveCat = idx
-            emojiKeyword = ''
-          "
+          @tap="onEmojiCategoryTap(idx)"
         >
           <text class="emoji-panel__tab-icon">{{ cat.icon }}</text>
           <text class="emoji-panel__tab-name">{{ cat.name }}</text>
@@ -565,10 +562,7 @@
           <text
             v-if="locationKeyword"
             class="luc luc-x location-picker__search-clear"
-            @click="
-              locationKeyword = ''
-              onLocationKeywordChange()
-            "
+            @click="onClearLocationKeyword"
           />
         </view>
 
@@ -2051,6 +2045,12 @@ export default {
       this.locationSearchTimer = setTimeout(() => this.searchNearbyPlaces(keyword), 300)
     },
 
+    /** 清空位置搜索关键词并触发一次重新搜索 */
+    onClearLocationKeyword() {
+      this.locationKeyword = ''
+      this.onLocationKeywordChange()
+    },
+
     /** 搜索附近地点：需要中心坐标（无则先定位一次并缓存） */
     async searchNearbyPlaces(keyword) {
       try {
@@ -3303,6 +3303,12 @@ export default {
       }
       this.content = before.slice(0, cur - removeLen) + (this.content || '').slice(cur)
       this.textareaCursor = cur - removeLen
+    },
+
+    /** 切换 emoji 分类:同步清空搜索关键词 */
+    onEmojiCategoryTap(idx) {
+      this.emojiActiveCat = idx
+      this.emojiKeyword = ''
     },
 
     /** 工具栏:@好友 —— 在 textarea 末尾插入 "@" 并展开联想浮层 */

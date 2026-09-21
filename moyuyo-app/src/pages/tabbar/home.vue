@@ -9,7 +9,7 @@
       <view class="navbar-icon" @click="onScan">
         <u-icon name="camera-fill" color="#2E2B29" size="22" />
       </view>
-      <view class="navbar-icon" @click="goMessages">
+      <view class="navbar-icon" @click="goNotifications">
         <u-icon name="bell-fill" color="#2E2B29" size="22" />
         <view v-if="unreadCount > 0" class="navbar-badge">{{ unreadCount }}</view>
       </view>
@@ -322,8 +322,8 @@ export default {
       uni.navigateTo({ url: '/pages/goods/search' })
     },
 
-    goMessages() {
-      uni.navigateTo({ url: '/pages/user/messages' })
+    goNotifications() {
+      uni.navigateTo({ url: '/pages/user/notifications' })
     },
 
     goDetail(id) {

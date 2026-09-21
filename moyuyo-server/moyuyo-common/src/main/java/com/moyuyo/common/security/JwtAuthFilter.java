@@ -115,6 +115,15 @@ public class JwtAuthFilter implements Filter {
         String method = request.getMethod();
 
         try {
+            // CORS 预检放行：浏览器在跨域携带自定义头（如 Authorization）时会先发 OPTIONS 预检，
+            // 预检不带 Authorization 头且 method=OPTIONS；若由本过滤器拦截返回 401，浏览器
+            // 看不到 Access-Control-Allow-* 头，会直接判定为 CORS 失败。
+            // 因此 OPTIONS 请求必须无条件放行，由 Spring MVC 的 CORS 处理器（WebMvcConfig.addCorsMappings）
+            // 统一回写 Access-Control-Allow-* 响应头。
+            if ("OPTIONS".equalsIgnoreCase(method)) {
+                chain.doFilter(request, response);
+                return;
+            }
             // 兜底：所有 /api/admin/** 端点必须强制 JWT 校验，即使白名单配置错误
             // 也不允许 admin 路径绕过鉴权
             if (path.startsWith("/api/admin/")) {

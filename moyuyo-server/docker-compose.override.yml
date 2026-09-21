@@ -22,9 +22,15 @@
 # ============================================================
 
 services:
+  # 把 redis 暴露到 6380（避开本机 Windows Redis 服务的 6379 端口冲突）
+  # 容器内部仍监听 6379，仅修改主机端口映射；app 容器通过 compose 内网 redis:6379 连接，不受影响
+  # 必须用 !override 锚点替换而不是追加：基础文件已声明 127.0.0.1:6379:6379，
+  # compose 对 ports 是列表合并而非覆盖，直接写 ports 会让两个端口映射同时申请导致启动失败
+  redis:
+    ports: !override
+      - "127.0.0.1:6380:6379"
   app:
-    build:
-      target: builder  # dev 阶段直接使用 builder 镜像，便于排错
+    # image 已在基础 compose.yml 显式锁定为 moyuyo-server-app:latest,这里不再覆盖
     environment:
       # dev 默认启用 SQL DEBUG 日志，便于查看 MyBatis 生成的 SQL
       MYBATIS_LOG_IMPL: org.apache.ibatis.logging.stdout.StdOutImpl

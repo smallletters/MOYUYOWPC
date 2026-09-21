@@ -31,6 +31,7 @@
           indicator-dots
           indicator-active-color="var(--brand-500)"
           indicator-color="var(--background-400)"
+          :disable-touch="true"
           @change="onSwiperChange"
         >
           <swiper-item v-for="(img, i) in galleryImages" :key="img.key || i">
@@ -174,8 +175,6 @@
           查看全部评价 ›
         </view>
       </view>
-
-      <view class="bottom-spacer" />
     </scroll-view>
 
     <!-- 底部固定操作栏 -->
@@ -313,19 +312,23 @@ export default {
     stockState() {
       void this.localeVersion
       if (!this.isOnSale) return '已下架'
+      // 多维度变体未选完时,提示用户继续选择,避免显示"已选但无库存"误导
+      if (this.hasVariations && this.selectedAttrs.length < this.attributeGroups.length) {
+        return '请选择规格'
+      }
       if (!this.selectedAttrs.length) return ''
       if (this.stock === 0) return i18n.t('goodsDetail.outOfStock')
       if (this.stock <= 5) return i18n.t('goodsDetail.stockLow', { count: this.stock })
       return ''
     },
     reviewRateText() {
-      if (!this.reviewTotalCount) return '100%'
+      if (!this.reviewTotalCount) return '—'
       // 平均评分 5 分制 → 好评率 = 评分>=4 的占比
       const avg = this.averageRating
       return Math.min(100, Math.round((avg / 5) * 100)) + '%'
     },
     averageRating() {
-      if (!this.reviews.length) return 5
+      if (!this.reviews.length) return 0
       const sum = this.reviews.reduce((s, r) => s + (r.rating || 0), 0)
       return sum / this.reviews.length
     },
@@ -368,6 +371,19 @@ export default {
 
   onLoad(query) {
     this.productId = query.id
+    // 重置页面状态,防止从商品 A 跳到商品 B 时残留 A 的数据导致"数据闪烁"
+    this.product = null
+    this.galleryImages = []
+    this.defaultImages = []
+    this.attributeGroups = []
+    this.variations = []
+    this.selectedAttrs = []
+    this.stock = 0
+    this.reviews = []
+    this.reviewTotalCount = 0
+    this.activeTab = 'detail'
+    this.wishlisted = false
+    this.errorMessage = ''
     // 读取系统状态栏高度(自定义导航栏时需要)
     try {
       const sysInfo = uni.getSystemInfoSync()
@@ -413,8 +429,10 @@ export default {
 
         // 3. 默认选中第一个 SKU 的规格(若有)
         const firstSku = data.skus?.[0]
-        if (firstSku?.spec) {
-          this.selectedAttrs = this.parseSpecString(firstSku.spec)
+        // firstSku.spec 解析后非空才视为有效选中(spec 为空串/纯分隔符时跳过)
+        const firstSkuAttrs = firstSku?.spec ? this.parseSpecString(firstSku.spec) : []
+        if (firstSkuAttrs.length) {
+          this.selectedAttrs = firstSkuAttrs
           this.stock = firstSku.stock ?? 0
         } else if (this.attributeGroups.length === 1) {
           // 单维度变体自动选中第一个值
@@ -426,8 +444,15 @@ export default {
           ]
           this.syncStockBySelection()
         } else if (this.attributeGroups.length > 1) {
-          // 多维度变体：用第一个变体作为默认选中(若存在)
-          const firstVar = this.variations[0]
+          // 多维度变体:优先用 data.skus[0] 兜底,避免 variations 解析时被过滤导致与业务数据源不一致
+          const firstVar =
+            (firstSkuAttrs.length &&
+              this.variations.find((v) =>
+                v.attrs.every((a) =>
+                  firstSkuAttrs.some((sa) => sa.name === a.name && sa.value === a.value),
+                ),
+              )) ||
+            this.variations[0]
           if (firstVar) {
             this.selectedAttrs = [...firstVar.attrs]
             this.syncStockBySelection()
@@ -580,8 +605,11 @@ export default {
       const groups = this.attributeGroups
       const parts = String(spec)
         .split(/[/,，、\uff0f]/)
+        // 过滤口径与 parseAttributes 一致:trim 后空串视为无效段,
+        // 避免后端 spec 含 "color: " 时空 value 落到 selectedAttrs 里,
+        // 导致后续与 variations 匹配永远失败
         .map((s) => s.trim())
-        .filter(Boolean)
+        .filter((s) => s !== '')
       return parts.map((p, i) => {
         // 片段形如 "属性名:值" 时直接拆分,保证值与规格组/变体值精确匹配
         const colon = p.search(/[:：]/)
@@ -682,6 +710,15 @@ export default {
      */
     syncStockBySelection() {
       if (!this.variations.length) return
+      // 多维度变体未选完时,不匹配变体,清空库存避免显示"已选但无库存"
+      // (stockState 会展示"请选择规格"提示用户继续)
+      if (
+        this.attributeGroups.length > 1 &&
+        this.selectedAttrs.length < this.attributeGroups.length
+      ) {
+        this.stock = 0
+        return
+      }
       const sel = this.selectedAttrs
         .map((a) => `${a.name}:${a.value}`)
         .sort()
@@ -741,10 +778,6 @@ export default {
       this.errorMessage = ''
       this.loading = true
       this.loadDetail(0)
-    },
-
-    onUnload() {
-      if (this._unsubLocale) this._unsubLocale()
     },
 
     previewImage(i) {
@@ -890,12 +923,13 @@ export default {
 <style lang="scss" scoped>
 /* 设计稿 Apple 风格 design tokens → MOYUYO 品牌色 */
 .detail {
-  /* APP 端 scroll-view 必须有明确高度才能滚动,改用 height:100vh + overflow:hidden,
-     避免外层页面级滚动与内部 scroll-view 滚动冲突,导致看起来"拉不动" */
+  /* APP 端让 page 级滚动接管,移除 height:100vh + overflow:hidden 锁死,
+     避免外层滚动与内部 scroll-view 双滚动冲突导致"拉不动";
+     同时避免硬编码 calc 高度时 rpx/px 单位混用 + safe-area 漏算
+     导致 scroll-view 高度溢出,把底部 fixed 栏卷入滚动 */
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
   background-color: var(--background-200, #ede9e4);
 }
 
@@ -954,11 +988,11 @@ export default {
 }
 
 .scroll {
-  /* scroll-view 在 APP 端 flex:1 不一定生效,显式计算可视区高度,
-     减去顶部自定义导航(44px + 状态栏)与底部操作栏(120rpx),确保滚动区能铺满 */
+  /* 不再硬编码 calc(100vh - ...) 高度,改用 flex:1 让容器自适应剩余高度,
+     避免 rpx/px 混用 + safe-area-inset-bottom 漏算导致高度溢出,
+     进而把底部 fixed 操作栏卷入滚动区域 */
   flex: 1;
   width: 100%;
-  height: calc(100vh - 44px - 120rpx);
   box-sizing: border-box;
 }
 
@@ -1400,10 +1434,6 @@ export default {
 }
 
 /* ====== 底部操作栏 ====== */
-.bottom-spacer {
-  height: 160rpx;
-}
-
 .bottom-bar {
   position: fixed;
   bottom: 0;

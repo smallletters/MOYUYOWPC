@@ -321,6 +321,9 @@ services:
 
   # 后端服务（多阶段构建：编译阶段使用 JDK 25，运行时仅保留 JRE）
   app:
+    # 显式锁 image tag:避免 compose 在 -p <其他名> up 时把多阶段构建的中间产物(builder 镜像,ENTRYPOINT=mvn)
+    # 当成最终镜像启动,产生 "No goals have been specified" BUILD FAILURE 后无限重启循环
+    image: moyuyo-server-app:latest
     build:
       context: .
       # 启用 BuildKit 缓存挂载（需 docker buildx 或 DOCKER_BUILDKIT=1）
@@ -396,7 +399,7 @@ services:
       REDIS_EXPORTER_PASSWORD: ${REDIS_EXPORTER_PASSWORD:?REDIS_EXPORTER_PASSWORD must be set}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       API_SIGN_SECRET: ${API_SIGN_SECRET:?API_SIGN_SECRET must be set}
-      MOYUYO_CORS_ORIGINS: ${MOYUYO_CORS_ORIGINS:?MOYUYO_CORS_ORIGINS must be set}
+      MOYUYO_CORS_ALLOWED_ORIGINS: ${MOYUYO_CORS_ALLOWED_ORIGINS:?MOYUYO_CORS_ALLOWED_ORIGINS must be set}
       # Stripe（Google Pay / Apple Pay / Credit Card 通道）
       # 当前状态：待 Stripe Atlas 美国公司主体注册完成后回填；上线前必须为真实 sk_live_ 密钥
       # 此处用 :- 占位符避免 docker-compose 启动期硬阻断，应用启动后由 PaymentServiceImpl
@@ -414,10 +417,18 @@ services:
       ELASTICSEARCH_SSL_CERT_VALIDATION: ${ELASTICSEARCH_SSL_CERT_VALIDATION:-true}
       ELASTICSEARCH_SSL_BUNDLE: ${ELASTICSEARCH_SSL_BUNDLE:-/opt/es-certs/elasticsearch.p12}
       ELASTICSEARCH_TRUSTSTORE_PASSWORD: ${ELASTICSEARCH_TRUSTSTORE_PASSWORD:?ELASTICSEARCH_TRUSTSTORE_PASSWORD must be set}
-      JAVA_TOOL_OPTIONS: >-
-        -Djavax.net.ssl.trustStore=/opt/es-certs/elasticsearch.p12
-        -Djavax.net.ssl.trustStorePassword=${ELASTICSEARCH_TRUSTSTORE_PASSWORD}
-        -Djavax.net.ssl.trustStoreType=pkcs12
+      # 已移除 JAVA_TOOL_OPTIONS 全局 truststore 覆盖:
+      #   旧实现用 -Djavax.net.ssl.trustStore 把 JVM 全局信任库替换为 ES 的 p12,
+      #   会导致 SMTP / WooCommerce 等其它出站 SSL 连接拿不到 DigiCert 等公网 CA,
+      #   触发 SSL 握手失败 / banner 读取超时(2026-09-21 复现: smtp 502, 耗时 15s+).
+      # ES 客户端的 truststore 由 spring.elasticsearch.ssl.bundle(见 application-prod.yml)
+      # 显式控制, 不再需要 JVM 全局 truststore 参数.
+      # 仍保留 jdk.tls.client.protocols=TLSv1.2:
+      #   锁定 JSSE 客户端默认走 TLSv1.2, 避免 Tencent SMTP 海外节点
+      #   (hwsmtp.exmail.qq.com) 与 Eclipse Angus Mail + JDK 25 的 TLS 1.3 record padding
+      #   互操作 bug (ServerHello 后 220 banner 阶段触发 "bad record mac" 触发 15s read-timed-out).
+      # 仅影响 client 端默认协商协议, 不影响 ES HTTP client (其通过 spring.elasticsearch.ssl.* 显式控制).
+      JAVA_TOOL_OPTIONS: -Djdk.tls.client.protocols=TLSv1.2
       ROCKETMQ_NAMESRV_ADDR: ${ROCKETMQ_NAMESRV_ADDR:-rocketmq-namesrv:9876}
       # 显式注入 HOSTNAME：logback JSON 日志依赖 ${HOSTNAME} 作为日志 host 维度标签，
       # 部分编排器（Nomad / 非 K8s Docker host）默认不会注入容器 hostname。

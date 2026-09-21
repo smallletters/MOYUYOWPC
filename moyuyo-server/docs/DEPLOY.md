@@ -131,7 +131,7 @@ chmod +x deploy/*.sh
 ```
 ==== 下一步 ====
 1) 编辑 .env 补全 Stripe / PayPal / WooCommerce 第三方密钥
-2) 编辑 .env 修改 MOYUYO_CORS_ORIGINS 为真实域名
+2) 编辑 .env 修改 MOYUYO_CORS_ALLOWED_ORIGINS 为真实域名
 3) 执行 ./deploy/deploy.sh 开始拉起服务
 ```
 
@@ -159,7 +159,7 @@ WOOCOMMERCE_CONSUMER_KEY=ck_xxx
 WOOCOMMERCE_CONSUMER_SECRET=cs_xxx
 
 # 真实前端域名（逗号分隔，禁止 *）
-MOYUYO_CORS_ORIGINS=https://admin.your-domain.com,https://www.your-domain.com
+MOYUYO_CORS_ALLOWED_ORIGINS=https://admin.your-domain.com,https://www.your-domain.com
 ```
 
 ---
@@ -485,7 +485,7 @@ curl http://127.0.0.1:9090/actuator/health/liveness
 
 ### Q8：访问管理后台提示 CORS 错误？
 
-`.env` 中 `MOYUYO_CORS_ORIGINS` 没有当前访问域名（注意要写完整 scheme + 端口，如 `https://admin.your-domain.com`）。修改后重启：
+`.env` 中 `MOYUYO_CORS_ALLOWED_ORIGINS` 没有当前访问域名（注意要写完整 scheme + 端口，如 `https://admin.your-domain.com`）。修改后重启：
 
 ```bash
 # 修改 .env 后

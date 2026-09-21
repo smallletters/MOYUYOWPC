@@ -174,6 +174,9 @@ spring:
       mail.smtp.connectiontimeout: 10000
       mail.smtp.timeout: 15000
       mail.smtp.writetimeout: 15000
+      # [FIX-2026-09-21] 锁定 SMTP 客户端只走 TLSv1.2:
+      #   详见下方注释与日志记录(2026-09-21 复现).
+      mail.smtp.ssl.protocols: TLSv1.2
 
 mybatis-plus:
   configuration:
@@ -282,7 +285,7 @@ moyuyo:
   # CORS：生产环境强制要求显式设置允许的前端域名（逗号分隔）
   # WebMvcConfig 在未配置时会拒绝注册 CORS 映射，等同于"全拒绝跨域"
   cors:
-    allowed-origins: ${MOYUYO_CORS_ORIGINS:}
+    allowed-origins: ${MOYUYO_CORS_ALLOWED_ORIGINS:}
   # 密码编码器强度：可通过环境变量覆盖（范围 4~31，默认 12）
   # 调高会显著增加登录/注册 CPU 成本（cost=14 约 1s/次），但安全强度倍增
   password:

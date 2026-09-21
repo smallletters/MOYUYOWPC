@@ -84,7 +84,7 @@ ELASTICSEARCH_URIS=https://es-node1:9200,https://es-node2:9200
 ELASTICSEARCH_PASSWORD=<强密码>
 ELASTICSEARCH_TRUSTSTORE_PASSWORD=<与 ES 证书一致>
 MYSQL_VERIFY_SERVER_CERTIFICATE=false # 配置 MySQL CA 证书后改为 true
-MOYUYO_CORS_ORIGINS=https://moyuyo.com,https://admin.moyuyo.com
+MOYUYO_CORS_ALLOWED_ORIGINS=https://moyuyo.com,https://admin.moyuyo.com
 ```
 
 ### 2. 构建并启动
@@ -231,7 +231,7 @@ mvn -pl moyuyo-api -am test
 64. **异步客户端断连优化**：`AsyncRequestTimeoutException` / `AsyncRequestNotUsableException` / `ClientAbortException` 统一返回 204 + DEBUG 日志，避免浏览器关闭 / 网络抖动造成的 5xx 风暴触发 Alertmanager 误报。
 65. **JWT 黑名单 fail-closed**：`JwtAuthFilter.isBlacklisted` 在 Redis 不可用时拒绝请求（fail-closed），与限流的 fail-open 策略刻意区分：限流优先业务可用性，黑名单优先安全（防 Redis 抖动期间被吊销 token 仍能通过鉴权），并通过 `moyuyo_jwt_blacklist_fail_closed_total` 指标让 Prometheus 第一时间感知。
 66. **JWT / API 签名密钥 base64 比特强度**：`ProdConfigValidator` 新增 `meetsHs256SecretBitStrength` 校验：除字符长度 ≥ 32、字符多样性、连续重复字符外，额外校验 base64 解码后实际字节数 ≥ 32（RFC 7518 §3.2 对 HS256 的硬性要求）。拦截"32 字符但解码后只剩几字节"的伪强密钥（如 `AAAAAAAAAAAAAAAAAAAA...A`），防止运维被工具生成的"随机"字符串误导。
-67. **CORS 单条 origin 长度启动期校验**：`ProdConfigValidator` 在启动期拦截 `MOYUYO_CORS_ORIGINS` 单条 origin 长度 > 256 字符（与 `WebMvcConfig.MAX_ORIGIN_LENGTH` 对齐），防止运维误粘贴超长字符串（含 URL 编码注入载荷）导致 `Access-Control-Allow-Origin` 响应头超长被浏览器截断。
+67. **CORS 单条 origin 长度启动期校验**：`ProdConfigValidator` 在启动期拦截 `MOYUYO_CORS_ALLOWED_ORIGINS` 单条 origin 长度 > 256 字符（与 `WebMvcConfig.MAX_ORIGIN_LENGTH` 对齐），防止运维误粘贴超长字符串（含 URL 编码注入载荷）导致 `Access-Control-Allow-Origin` 响应头超长被浏览器截断。
 68. **Jackson 全局时区显式声明**：`spring.jackson.time-zone: Asia/Shanghai` 与 JVM `-Duser.timezone` 对齐，避免序列化 `LocalDateTime` 时退化为 UTC 导致跨时区漂移（业务侧补单/对账时间不一致）。
 69. **Spring Cache 抽象显式关闭**：`spring.cache.type=none` 显式声明，避免未来引入 `spring-boot-starter-data-redis` 后 Spring 自动启用 `RedisCacheManager`，让 `@Cacheable` 注解默默把数据写入 Redis（与现有 `RedisTemplate` 缓存策略不一致、序列化器不匹配，会引发 `CacheException` / `SerializationException`）。
 70. **SpringDoc 隐藏 /actuator**：`springdoc.show-actuator=false` 显式声明，避免 actuator 端点出现在 OpenAPI 文档中（即便 `management.endpoints.web.exposure.include` 按需收敛，OpenAPI 仍可能反向暴露 actuator URL）。
@@ -395,7 +395,7 @@ sum(rate(hikaricp_connections_usage_seconds_bucket{quantile="0.99"}[5m]))
    - [ ] 反向代理（Nginx/1Panel）启用 HTTPS + HSTS
    - [ ] 反向代理对 `/actuator/*` 设置 IP 白名单
 3. **CORS**
-   - [ ] `MOYUYO_CORS_ORIGINS` 显式列出允许的前端域名（不含 `*`）
+   - [ ] `MOYUYO_CORS_ALLOWED_ORIGINS` 显式列出允许的前端域名（不含 `*`）
 4. **健康检查**
    - [ ] `curl http://localhost:9090/actuator/health/liveness` 返回 `{"status":"UP"}`（prod 环境 actuator 在独立端口 9090）
    - [ ] K8s readiness 探针路径为 `/actuator/health/readiness`，liveness 路径为 `/actuator/health/liveness`

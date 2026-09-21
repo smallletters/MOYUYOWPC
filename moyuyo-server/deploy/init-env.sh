@@ -52,7 +52,7 @@ is_default_placeholder() {
         ADMIN_EMAIL)     [ "$val" = "admin@moyuyo.com" ] && return 0 ;;
         WOOCOMMERCE_URL) [[ "$val" == *"your-woocommerce"* ]] && return 0 ;;
         MYSQL_USER)      [ "$val" = "moyuyo" ] && return 0 ;;
-        MOYUYO_CORS_ORIGINS) [[ "$val" == *"example.com"* ]] && return 0 ;;
+        MOYUYO_CORS_ALLOWED_ORIGINS) [[ "$val" == *"example.com"* ]] && return 0 ;;
     esac
     return 1
 }
@@ -137,9 +137,9 @@ main() {
     fi
 
     # ---- CORS：留待用户填域名，仅在空或仍是 example.com 时设占位 ----
-    if is_placeholder "$(get_value MOYUYO_CORS_ORIGINS)" || is_default_placeholder "$(get_value MOYUYO_CORS_ORIGINS)" MOYUYO_CORS_ORIGINS; then
-        set_or_replace MOYUYO_CORS_ORIGINS "https://your-domain.com,https://admin.your-domain.com"
-        echo -e "  ${YELLOW}MOYUYO_CORS_ORIGINS          请替换为真实域名（占位已写入）${NC}"
+    if is_placeholder "$(get_value MOYUYO_CORS_ALLOWED_ORIGINS)" || is_default_placeholder "$(get_value MOYUYO_CORS_ALLOWED_ORIGINS)" MOYUYO_CORS_ALLOWED_ORIGINS; then
+        set_or_replace MOYUYO_CORS_ALLOWED_ORIGINS "https://your-domain.com,https://admin.your-domain.com"
+        echo -e "  ${YELLOW}MOYUYO_CORS_ALLOWED_ORIGINS  请替换为真实域名（占位已写入）${NC}"
     fi
 
     # ---- Stripe / PayPal / WooCommerce 占位符提示 ----
@@ -178,7 +178,7 @@ main() {
     echo -e "${GREEN}权限：$(stat -c '%a' "$ENV_FILE")${NC}"
     echo -e "${YELLOW}下一步：${NC}"
     echo "  1) 编辑 .env 补全 Stripe / PayPal / WooCommerce 第三方密钥"
-    echo "  2) 编辑 .env 修改 MOYUYO_CORS_ORIGINS 为真实域名"
+    echo "  2) 编辑 .env 修改 MOYUYO_CORS_ALLOWED_ORIGINS 为真实域名"
     echo "  3) 执行 ./deploy/deploy.sh 开始拉起服务"
     echo -e "${GREEN}====================================================${NC}"
 }

@@ -60,7 +60,7 @@ chmod 600 .env
 # 编辑 .env 补全第三方密钥（Stripe / PayPal / WooCommerce）和真实域名
 # 关注 <TODO: ...> 占位项:
 #   1) 替换所有 <TODO: ...> 占位为你自己的真实值
-#   2) MOYUYO_CORS_ORIGINS 改为真实生产域名
+#   2) MOYUYO_CORS_ALLOWED_ORIGINS 改为真实生产域名
 #   3) MYSQL_TRUSTSTORE_PASSWORD / ELASTICSEARCH_TRUSTSTORE_PASSWORD 用随机值覆盖
 #   4) ADMIN_PASSWORD 用 16+ 位随机覆盖
 nano .env

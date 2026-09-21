@@ -16,7 +16,7 @@
 - [ ] `ELASTICSEARCH_TRUSTSTORE_PASSWORD` ≥ 8 字符
 - [ ] `STRIPE_SECRET_KEY` 以 `sk_live_` 开头（严禁 `sk_test_`）
 - [ ] `WOOCOMMERCE_URL` 以 `https://` 开头、不含 `localhost`
-- [ ] `MOYUYO_CORS_ORIGINS` 仅含公司自有域名（严禁 `*` / `null` / `example.com`）
+- [ ] `MOYUYO_CORS_ALLOWED_ORIGINS` 仅含公司自有域名（严禁 `*` / `null` / `example.com`）
 
 ### 0.2 数据库迁移
 - [ ] Flyway 迁移脚本已纳入 CI 校验（`failBuildOnCVSS=7` 与 OWASP Dependency-Check）

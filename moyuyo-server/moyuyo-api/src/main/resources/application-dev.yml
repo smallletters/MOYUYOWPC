@@ -111,7 +111,7 @@ jwt:
 # CORS 开发开放 + 邮件/H5 等 moyuyo.* 扩展（与后面单独追加的块合并，避免重复 key）
 moyuyo:
   cors:
-    allowed-origins: ${MOYUYO_CORS_ORIGINS:http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:8080,http://127.0.0.1:8080,http://192.168.6.103:8080,http://192.168.6.103:5173,http://192.168.6.103:5174}
+    allowed-origins: ${MOYUYO_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost,http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:8080,http://127.0.0.1:8080,http://192.168.6.103:8080,http://192.168.6.103:5173,http://192.168.6.103:5174}
   # dev 环境降低密码哈希强度（避免注册/登录阻塞开发体验）；
   # 平时建议不动；如做性能测试可调高（受 Moyuyo 范围 4~31 约束）
   password:

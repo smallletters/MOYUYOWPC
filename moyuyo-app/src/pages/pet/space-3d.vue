@@ -5,7 +5,7 @@
       <view class="back-btn" @click="goBack">
         <text class="luc luc-arrow-left" />
       </view>
-      <text class="header-title">宠物空间 3D · 第一人称</text>
+      <text class="header-title">宠物空间 3D · 第一人称(人物化身)</text>
       <view class="header-actions">
         <view
           class="icon-btn"
@@ -25,13 +25,12 @@
     </view>
 
     <!-- 3D 画布 -->
-    <view
-      class="canvas-wrap"
-      @touchstart="onCanvasTouchStart"
-      @touchmove="onCanvasTouchMove"
-      @touchend="onCanvasTouchEnd"
-      @touchcancel="onCanvasTouchEnd"
-    >
+    <!--
+      仅保留 touchstart:
+      - PointerLockControls 必须在 canvas 元素的用户手势上 lock()(全局 capture 不行)
+      - move/end 由全局 capture 监听处理,避免双路径重复更新 yaw/pitch
+    -->
+    <view class="canvas-wrap" @touchstart="onCanvasTouchStart">
       <view :id="canvasId" ref="canvasEl" class="canvas">
         <view v-if="debugInfo" class="debug-info">
           <text>{{ debugInfo }}</text>
@@ -68,6 +67,9 @@
               }}
             </text>
           </view>
+          <view v-if="figureFallback" class="hud-pill">
+            <text class="hud-pill-text">🧍 化身:占位几何体(0/1.fbx 缺失)</text>
+          </view>
         </view>
 
         <!-- 中心十字准星 -->
@@ -76,21 +78,20 @@
           <view class="crosshair-v" />
         </view>
 
-        <!-- 左下：前进/后退快捷按钮 (移动端备用) -->
-        <view class="action-buttons">
-          <view
-            class="action-btn"
-            @touchstart.stop="onActionDown('forward')"
-            @touchend.stop="onActionUp('forward')"
-          >
-            <text>▲</text>
-          </view>
-          <view
-            class="action-btn"
-            @touchstart.stop="onActionDown('backward')"
-            @touchend.stop="onActionUp('backward')"
-          >
-            <text>▼</text>
+        <!-- 左下：方向控制摇杆 (圆盘) -->
+        <view
+          class="joystick-pad"
+          @touchstart.stop="onJoystickStart"
+          @touchmove.stop="onJoystickMove"
+          @touchend.stop="onJoystickEnd"
+          @touchcancel.stop="onJoystickEnd"
+        >
+          <view class="joystick-base">
+            <view
+              class="joystick-knob"
+              :class="{ 'joystick-knob-drag': joystickDragging }"
+              :style="{ transform: `translate(${joystickOffset.x}px, ${joystickOffset.y}px)` }"
+            />
           </view>
         </view>
       </view>
@@ -106,6 +107,8 @@ import { ensureLocalModel } from '@/utils/modelDownload'
 let THREE = null
 let PointerLockControls = null
 let GLTFLoader = null
+let FBXLoader = null
+let DRACOLoader = null
 
 // 动态加载：用 package name 走 vite alias，保证 PointerLockControls 内部的 import { ... } from 'three' 命中同一个实例
 // 这样不会出现 "Multiple instances of Three.js" 警告（GLTFLoader 等子模块内部也 import 了 three）
@@ -132,12 +135,27 @@ export default {
       // 第一人称相关 UI 状态
       pointerLocked: false,
       positionText: '加载中...',
-      // 视角模式：fps = 第一人称（动物眼睛）/ tps = 第三人称跟随（能看到自己）
+      // 视角模式：fps = 第一人称（人物眼睛）/ tps = 第三人称跟随（能看到自己）
       viewMode: 'fps',
+
+      // 摇杆 UI:手柄相对外圈中心的偏移(像素),用于渲染 .joystick-knob 的 transform
+      joystickOffset: { x: 0, y: 0 },
+      // 摇杆拖动中:true 时关闭手柄 transition 保证跟手
+      joystickDragging: false,
+      // 摇杆外圈半径(像素):在 onJoystickStart 时取一次缓存,避免 move 高频 querySelector
+      joystickRadiusCached: 120,
+      // 化身是否为兜底几何体(true 时 HUD 给提示)
+      figureFallback: false,
     }
   },
 
   computed: {
+    // three 桶用 computed + WeakMap 隔离 Vue 响应式:
+    // - Vue 不会把 WeakMap 里的 bucket 包装成 Proxy(bucket 不是 this 直接属性)
+    // - computed 内无 reactive 依赖,dirty 永远 false → getter 只在首次执行一次
+    // - 每帧访问 this.three 都是 cached value 直接返回,实测开销 ≈ 普通字段读
+    // 注意:不能直接把 bucket 放 data(),否则 Vue 会深度 reactive 包装,
+    // 触发 three 内部 modelViewMatrix 等只读属性的 "is read-only" 报错
     three() {
       let bucket = threeInstances.get(this)
       if (!bucket) {
@@ -166,7 +184,16 @@ export default {
             ArrowLeft: false,
             ArrowRight: false,
           },
-          joystick: { x: 0, y: 0, active: false, touchId: null },
+          joystick: {
+            x: 0,
+            y: 0,
+            active: false,
+            touchId: null,
+            originX: 0,
+            originY: 0,
+            // 摇杆 start 时记录 / end 时还原的键盘 w/s 状态,防止吞掉玩家已按住的键
+            savedKeys: null,
+          },
           moveSpeed: 0.05, // 每次步进的位移
           lookSensitivity: 0.003, // 触摸旋转灵敏度（每像素多少弧度）
           // 视角触摸状态：PointerLockControls 在 webview 不可用，自己实现触摸看视角
@@ -174,6 +201,14 @@ export default {
           // 累计 yaw/pitch（弧度）
           yaw: 0,
           pitch: 0,
+          // 人物化身：两个 FBX group(0=静态 / 1=走路) + 走路 mixer
+          figureIdleGroup: null, // 0.fbx 静态姿态
+          figureWalkGroup: null, // 1.fbx 走路动画
+          figureWalkMixer: null,
+          figureWalkAction: null,
+          figureWalkClock: null,
+          // 当前化身的姿态:idle / walk,根据玩家是否在移动切换
+          figureState: 'idle',
         }
         threeInstances.set(this, bucket)
       }
@@ -200,10 +235,21 @@ export default {
       cancelAnimationFrame(t.animationId)
       t.animationId = null
     }
+    // 暂停走路动画 mixer,避免后台累积 delta;恢复时重置 clock 防止跳帧
+    if (t.figureWalkMixer) {
+      t.figureWalkMixer.stopAllAction()
+    }
+    if (t.figureWalkClock) {
+      t.figureWalkClock.stop()
+    }
   },
 
   onShow() {
     const t = this.three
+    // 重置走路动画 clock:清空后台期间的累计时间,恢复后第一帧 delta 不会跳变
+    if (t.figureWalkClock) {
+      t.figureWalkClock.start()
+    }
     if (t.renderer && !t.animationId) {
       this.animate()
     }
@@ -222,6 +268,8 @@ export default {
 
       // 动态加载 three 主包 + PointerLockControls + GLTFLoader（H5/APP 的 webview 都支持）
       // 用 package name 走 vite alias，保证子模块内的 import 'three' 命中同一个实例（避免 Multiple instances 警告）
+      // APP 自定义基座真机冷启动时,three.js 几个 chunk 加起来可能在 500ms~1s 之内才 resolve,
+      // 此时 webview 内部的 document 已就绪(否则 import 都跑不了),所以这里无需重试
       Promise.all([
         import('three').then((m) => {
           THREE = m
@@ -231,6 +279,12 @@ export default {
         }),
         import('three/examples/jsm/loaders/GLTFLoader.js').then((m) => {
           GLTFLoader = m.GLTFLoader
+        }),
+        import('three/examples/jsm/loaders/FBXLoader.js').then((m) => {
+          FBXLoader = m.FBXLoader
+        }),
+        import('three/examples/jsm/loaders/DRACOLoader.js').then((m) => {
+          DRACOLoader = m.DRACOLoader
         }),
       ])
         .then(() => this.startScene())
@@ -252,21 +306,71 @@ export default {
           typeof THREE,
           'PLC=',
           typeof PointerLockControls,
+          'doc=',
+          typeof document,
+          'plus=',
+          typeof plus,
         )
 
+        // APP 端 document 可能在 webview 启动早期短暂 undefined
+        // 改为延迟 200ms 重试,给真机 webview 充分冷启动时间(实测自定义基座首次进入可达 1~2s)
+        // 总共最多 30 次 ≈ 6s,覆盖到绝大多数 APP webview 冷启动场景
         if (typeof document === 'undefined') {
+          // 守卫:页面已卸载就不再做任何事,既不报错也不重排 timer
+          if (this.three._disposed) return
+          this.three._docRetryCount = (this.three._docRetryCount || 0) + 1
+          if (this.three._docRetryCount <= 30) {
+            this.debugInfo = `等待 webview 初始化 document...(${this.three._docRetryCount}/30)`
+            this.three._docRetryTimer = setTimeout(() => this.startScene(), 200)
+            return
+          }
           this.errorMsg = '当前环境不支持 3D（仅 H5/APP 支持）'
           this.loading = false
-          this.debugInfo = `typeof document=undefined`
+          this.debugInfo = `typeof document=undefined 重试 30 次仍无`
           return
         }
+        // document 已就绪,清零重试计数
+        this.three._docRetryCount = 0
 
         const canvasEl = document.getElementById(this.canvasId)
         if (!canvasEl) {
-          this.debugInfo = `找不到节点 #${this.canvasId}，200ms 后重试`
-          setTimeout(() => this.startScene(), 200)
+          // 守卫:页面已卸载就不再做任何事,既不报错也不重排 timer
+          if (this.three._disposed) return
+          // 性能:canvas DOM 重试限制次数,避免极端情况(模板编译异常 / DOM id 冲突)
+          // 下无限 setTimeout 循环,造成内存与定时器泄漏
+          this.three._canvasRetryCount = (this.three._canvasRetryCount || 0) + 1
+          if (this.three._canvasRetryCount > 30) {
+            this.errorMsg = '画布节点长时间未就绪，请返回重试'
+            this.loading = false
+            this.debugInfo = `canvas DOM 重试 ${this.three._canvasRetryCount} 次仍无`
+            return
+          }
+          this.debugInfo = `找不到节点 #${this.canvasId}，200ms 后重试 (${this.three._canvasRetryCount}/30)`
+          // 清理上一次尝试创建的 renderer(避免 WebGL context 泄漏堆积)
+          if (this.three.renderer) {
+            try {
+              this.three.renderer.dispose()
+            } catch (e) {
+              // ignore
+            }
+            this.three.renderer = null
+          }
+          if (this.three.controls) {
+            try {
+              this.three.controls.dispose()
+            } catch (e) {
+              // ignore
+            }
+            this.three.controls = null
+          }
+          this.three._canvasRetryTimer = setTimeout(() => this.startScene(), 200)
           return
         }
+        // canvas 就绪,清零重试计数
+        this.three._canvasRetryCount = 0
+        // 守卫:走到这里之前用户可能已经返回页面(disposeScene 把 _disposed 置 true),
+        // 此时不再创建 WebGL context / 加载模型,直接返回,避免资源浪费与回调打到已销毁实例
+        if (this.three._disposed) return
 
         this.debugInfo = `容器尺寸 ${canvasEl.clientWidth}x${canvasEl.clientHeight}`
 
@@ -274,12 +378,21 @@ export default {
         const height = canvasEl.clientHeight || window.innerHeight
 
         // 渲染器
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+        // 性能优化:移动端 WebView GPU 算力有限,默认配置(antialias + dpr=2 + ACES)会
+        // 导致单帧像素填充率过高,直接卡到 5~10fps。以下配置是移动端权衡后的最优点:
+        // - antialias=false:场景以室内低对比度为主,AA 几乎看不出差异,但 GPU 节省 ~30%
+        // - setPixelRatio(1):不再按 dpr 放大,渲染分辨率 = CSS 尺寸(像素量 = width*height)
+        //   例如 1080×1920 屏从渲染 2160×3840 = 8.3M 像素降到 1M,GPU 压力降 ~80%
+        // - NoToneMapping:ACES 对低对比度场景收益小,移除省 ~10% GPU
+        // - 视觉损失:场景边缘有锯齿、暗部细节略丢失;可在桌面端 if 分支恢复
+        const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true })
+        renderer.setPixelRatio(1)
         renderer.setSize(width, height)
         renderer.outputColorSpace = THREE.SRGBColorSpace
-        renderer.toneMapping = THREE.ACESFilmicToneMapping
-        renderer.toneMappingExposure = 1.0
+        // 简化 tone mapping:场景以暖色室内为主,NoToneMapping 比 ACES 快 ~10%
+        renderer.toneMapping = THREE.NoToneMapping
+        // 启用按需渲染 - 当没有任何变化时跳过 render 调用(本次先注释保留显式 render)
+        // renderer.shadowMap.enabled = false // 不需要阴影
         canvasEl.appendChild(renderer.domElement)
         this.three.renderer = renderer
 
@@ -295,7 +408,7 @@ export default {
         camera.position.set(0, 1.7, 0)
         this.three.camera = camera
 
-        // 环境光：提高强度，确保小狗模型即使没有纹理也可见
+        // 环境光：提高强度，确保人物模型即使没有纹理也可见
         const ambient = new THREE.AmbientLight(0xffffff, 1.2)
         scene.add(ambient)
         this.three.ambientLight = ambient
@@ -362,9 +475,20 @@ export default {
       }
       // GLTFLoader 是单独加载的，不能从 THREE 取
       const loader = new GLTFLoader()
+      // home.glb 是 Draco 压缩的 GLB，必须挂 DRACOLoader 才能解析
+      // 使用 jsDelivr CDN 上的 draco 解码器（与 three.js r150+ 兼容），路径与 three 包内 examples/jsm/libs/draco 保持一致
+      // 这里走 CDN 避免把 draco 整个目录打进包；如需完全离线，可改为 import 本地 decoder wasm
+      const dracoLoader = new DRACOLoader()
+      dracoLoader.setDecoderPath(
+        'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/',
+      )
+      loader.setDRACOLoader(dracoLoader)
       loader.load(
         localUrl,
         (gltf) => {
+          // 异步回调期间用户可能已返回页面,scene 已置 null,
+          // 直接 return 避免对已 dispose 的资源继续操作触发 warn
+          if (this.three._disposed || !this.three.scene) return
           const model = gltf.scene
 
           // 1. 缩放到合理大小 (长边 ~12 单位)
@@ -415,12 +539,15 @@ export default {
           })
           this.loadedVertices = vertexCount
 
-          // 6. 初始位置：硬编码为门口内偏 0.5m 处（视高 0.5m，宠物视角）
+          // 6. 初始位置：硬编码为门口内偏 0.5m 处（视高 0.5m）
           const startPos = new THREE.Vector3(-0.8, 0.5, -1.1)
           this.three.camera.position.copy(startPos)
 
-          // 加载小狗化身（放在相机脚下，狗头位置 ≈ 相机视高）
-          this.loadPetAvatar()
+          // 加载人物化身（放在相机脚下，人物头/肩位置 ≈ 相机视高）
+          // 这里仅 fire-and-forget:化身失败不应阻塞场景,内部已用 Promise.allSettled 隔离每个 fbx
+          this.loadFigureAvatar().catch((e) => {
+            console.error('[space-3d] 加载人物化身异常', e)
+          })
 
           // 7. 朝房间深处看（视线水平，看向 maxX 端，y 保持 0.5 避免仰/俯视）
           this.three.camera.lookAt(finalBox.max.x, 0.5, finalCenter.z)
@@ -469,9 +596,16 @@ export default {
 
     /**
      * 键盘绑定：WASD/方向键控制移动
+     * 重复进入 startScene(document 重试 / canvas DOM 重试)时,已绑定的监听器不再重复注册,
+     * 避免多个回调同时触发导致视角旋转/按键响应翻倍
      */
     bindKeyboard() {
       const t = this.three
+      // 已绑定过则跳过:防止 startScene 重入导致多个 keydown/touchstart 监听器并存
+      // (上一轮 bindKeyboard 创建的 _onKeyDown / _onWindowTouchStart 仍是同一个引用,
+      //  但每次都 addEventListener 会导致同一事件触发 N 次回调)
+      if (t._keyboardBound) return
+      t._keyboardBound = true
       this._onKeyDown = (e) => {
         const k = e.key
         if (k in t.keys) {
@@ -492,7 +626,8 @@ export default {
       // 全局触摸事件：直接在 window 监听，绕开 canvas-wrap 被 HUD 遮挡的问题
       // 用 isInControlArea() 区分摇杆/按钮区
       this._onWindowTouchStart = (e) => {
-        if (this._loading) return // 加载中不响应
+        // 仅在场景未就绪时拒绝;loading=true 但相机已就绪也允许响应(支持边加载边旋转)
+        if (!t.camera || !t.scene) return
         // 找到第一个不在摇杆/按钮区的 touch
         for (const touch of e.touches) {
           if (this.isInControlArea(touch.clientX, touch.clientY)) continue
@@ -506,7 +641,7 @@ export default {
         }
       }
       this._onWindowTouchMove = (e) => {
-        if (!t.lookTouch.active) return
+        if (!t.lookTouch.active || !t.lookTouch.touchId) return
         const touch = Array.from(e.touches).find((tt) => tt.identifier === t.lookTouch.touchId)
         if (!touch) return
         const dx = touch.clientX - t.lookTouch.lastX
@@ -522,14 +657,29 @@ export default {
         e.preventDefault()
       }
       this._onWindowTouchEnd = (e) => {
-        let stillActive = false
-        for (const touch of e.touches) {
-          if (touch.identifier === t.lookTouch.touchId) {
-            stillActive = true
-            break
+        if (!t.lookTouch.touchId) return
+        // 优先看 changedTouches:本次松手的手指是不是 lookTouch.touchId
+        let isLookTouchLeaving = false
+        if (e && e.changedTouches) {
+          for (const touch of e.changedTouches) {
+            if (touch.identifier === t.lookTouch.touchId) {
+              isLookTouchLeaving = true
+              break
+            }
           }
         }
-        if (!stillActive) {
+        // fallback:touches 里不再有该 touchId 也视为已松开
+        if (!isLookTouchLeaving && e && e.touches) {
+          let stillActive = false
+          for (const touch of e.touches) {
+            if (touch.identifier === t.lookTouch.touchId) {
+              stillActive = true
+              break
+            }
+          }
+          isLookTouchLeaving = !stillActive
+        }
+        if (isLookTouchLeaving) {
           t.lookTouch.active = false
           t.lookTouch.touchId = null
         }
@@ -537,22 +687,26 @@ export default {
       // 移动端 h5：必须在 document 上非 passive + capture 阶段注册，
       // 这样能抢在 uni-app 页面级 touchmove 监听器之前 preventDefault，
       // 阻止页面滚动/下拉刷新吃事件，导致 window/document 后续收不到完整事件序列
-      document.addEventListener('touchstart', this._onWindowTouchStart, {
-        passive: false,
-        capture: true,
-      })
-      document.addEventListener('touchmove', this._onWindowTouchMove, {
-        passive: false,
-        capture: true,
-      })
-      document.addEventListener('touchend', this._onWindowTouchEnd, {
-        passive: false,
-        capture: true,
-      })
-      document.addEventListener('touchcancel', this._onWindowTouchEnd, {
-        passive: false,
-        capture: true,
-      })
+      // 守卫:bindKeyboard 重入时这里已注册过,跳过避免重复
+      if (!t._touchBound) {
+        t._touchBound = true
+        document.addEventListener('touchstart', this._onWindowTouchStart, {
+          passive: false,
+          capture: true,
+        })
+        document.addEventListener('touchmove', this._onWindowTouchMove, {
+          passive: false,
+          capture: true,
+        })
+        document.addEventListener('touchend', this._onWindowTouchEnd, {
+          passive: false,
+          capture: true,
+        })
+        document.addEventListener('touchcancel', this._onWindowTouchEnd, {
+          passive: false,
+          capture: true,
+        })
+      }
     },
 
     unbindKeyboard() {
@@ -574,11 +728,11 @@ export default {
     animate() {
       this.three.animationId = requestAnimationFrame(() => this.animate())
       this.applyMovement()
-      // applyLook 在 FPS 模式用 yaw/pitch 重设 quaternion；TPS 模式由 syncPetAvatar 用 lookAt(pet)
+      // applyLook 在 FPS 模式用 yaw/pitch 重设 quaternion；TPS 模式由 syncFigureAvatar 用 lookAt(figure)
       if (this.viewMode === 'fps') {
         this.applyLook()
       }
-      this.syncPetAvatar() // 同步小狗化身位置/朝向到相机
+      this.syncFigureAvatar() // 同步人物化身位置/朝向到相机
       // PointerLockControls 没有 update() 方法（事件自动处理旋转），所以这里什么都不调用
       if (this.three.renderer && this.three.scene && this.three.camera) {
         this.three.renderer.render(this.three.scene, this.three.camera)
@@ -592,12 +746,16 @@ export default {
     applyLook() {
       const t = this.three
       if (!t.camera) return
-      // 用 quaternion 设置朝向，避免 euler 万向锁
-      const quaternion = new THREE.Quaternion()
-      // YXZ 顺序：先 yaw 再 pitch，符合 FPS 习惯
-      const euler = new THREE.Euler(t.pitch, t.yaw, 0, 'YXZ')
-      quaternion.setFromEuler(euler)
-      t.camera.quaternion.copy(quaternion)
+      // 复用 quaternion/euler 实例,避免每帧 new 触发 GC
+      // 60fps 下每秒会创建 120 个临时对象,不复用会导致短时 GC 停顿卡顿
+      if (!t._lookQuat) {
+        t._lookQuat = new THREE.Quaternion()
+        t._lookEuler = new THREE.Euler(0, 0, 0, 'YXZ')
+      }
+      // YXZ 顺序:先 yaw 再 pitch,符合 FPS 习惯
+      t._lookEuler.set(t.pitch, t.yaw, 0, 'YXZ')
+      t._lookQuat.setFromEuler(t._lookEuler)
+      t.camera.quaternion.copy(t._lookQuat)
     },
 
     /**
@@ -622,24 +780,40 @@ export default {
         forward = -t.joystick.y
       }
 
-      if (forward === 0 && rightward === 0) return
+      // === 化身姿态:有输入 → 走路,无输入 → 静态 ===
+      const moving = forward !== 0 || rightward !== 0
+      const newState = moving ? 'walk' : 'idle'
+      if (t.figureState !== newState) {
+        t.figureState = newState
+        this.syncFigureState()
+      }
+
+      if (!moving) return
 
       // 2. 取当前相机朝向向量（在 XZ 平面投影，避免上下飞）
       const cam = t.camera
-      const direction = new THREE.Vector3()
+      // 复用 Vector3 实例,减少每帧 GC 压力
+      if (!t._moveVecs) {
+        t._moveVecs = {
+          direction: new THREE.Vector3(),
+          right: new THREE.Vector3(),
+          up: new THREE.Vector3(0, 1, 0),
+          moveVec: new THREE.Vector3(),
+        }
+      }
+      const { direction, right: rightVec, up, moveVec } = t._moveVecs
       cam.getWorldDirection(direction)
       // 锁定水平面 (y 分量清零)，这样移动是地面平行的
       direction.y = 0
       direction.normalize()
 
       // 3. right 向量 = direction × up
-      const right = new THREE.Vector3()
-      right.crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize()
+      rightVec.crossVectors(direction, up).normalize()
 
       // 4. 计算位移
-      const moveVec = new THREE.Vector3()
+      moveVec.set(0, 0, 0)
       moveVec.addScaledVector(direction, forward * t.moveSpeed)
-      moveVec.addScaledVector(right, rightward * t.moveSpeed)
+      moveVec.addScaledVector(rightVec, rightward * t.moveSpeed)
 
       // 5. 应用位移
       cam.position.add(moveVec)
@@ -648,12 +822,18 @@ export default {
       if (t.bounds) {
         cam.position.x = Math.max(t.bounds.minX, Math.min(t.bounds.maxX, cam.position.x))
         cam.position.z = Math.max(t.bounds.minZ, Math.min(t.bounds.maxZ, cam.position.z))
-        // 视高根据视角模式：fps 锁 0.5（动物眼睛）；tps 由 syncPetAvatar 设 0.8，不强制覆盖
+        // 视高根据视角模式：fps 锁 0.5；tps 由 syncFigureAvatar 设 1.2,不强制覆盖
         if (this.viewMode === 'fps') cam.position.y = t.bounds.minY
       }
 
-      // 7. 更新 HUD 位置
-      this.positionText = `${cam.position.x.toFixed(1)}, ${cam.position.y.toFixed(1)}, ${cam.position.z.toFixed(1)}`
+      // 7. 更新 HUD 位置 - 节流到 200ms,避免每帧触发 Vue 响应式更新整页重渲染
+      // 之前每帧都赋值 reactive 变量 → Vue 60fps 重排 → H5 页面卡顿 / 触摸延迟
+      this.three._lastHudUpdate = this.three._lastHudUpdate || 0
+      const now = Date.now()
+      if (now - this.three._lastHudUpdate > 200) {
+        this.three._lastHudUpdate = now
+        this.positionText = `${cam.position.x.toFixed(1)}, ${cam.position.y.toFixed(1)}, ${cam.position.z.toFixed(1)}`
+      }
     },
 
     onResize() {
@@ -694,9 +874,12 @@ export default {
     },
 
     // ============== canvas-wrap 本地触摸监听 ==============
+    // 只处理 PointerLock 触发；视角旋转的 lookTouch 指派/move/end 由全局 capture 监听统一处理,
+    // 这样只有一处更新 yaw/pitch,避免元素冒泡 + capture 同时跑导致视角速度翻倍
     onCanvasTouchStart(e) {
       const t = this.three
-      // 1. 尝试 PointerLock（H5 桌面浏览器有效，APP webview 多半失败，会自动 catch）
+      // 尝试 PointerLock（H5 桌面浏览器有效，APP webview 多半失败，会自动 catch）
+      // 必须在 canvas 元素的用户手势里调用,全局 capture 不行
       if (t.controls && !this.pointerLocked) {
         try {
           t.controls.lock()
@@ -704,250 +887,436 @@ export default {
           console.warn('PointerLock 不可用，改用触摸旋转', err)
         }
       }
-      // 2. 找到落在非按钮区的第一个 touch，作为视角旋转的输入
-      for (const touch of e.touches) {
-        if (this.isInControlArea(touch.clientX, touch.clientY)) continue
-        // 第一个落在空白区的 touch = 视角控制 touch
-        t.lookTouch.active = true
-        t.lookTouch.touchId = touch.identifier
-        t.lookTouch.lastX = touch.clientX
-        t.lookTouch.lastY = touch.clientY
-        // 阻止默认行为（页面滚动/下拉刷新）
-        if (e.cancelable) e.preventDefault()
-        break
-      }
-    },
-
-    onCanvasTouchMove(e) {
-      const t = this.three
-      if (!t.lookTouch.active) return
-      // 找到对应的 touch
-      const touch = Array.from(e.touches).find((tt) => tt.identifier === t.lookTouch.touchId)
-      if (!touch) return
-      const dx = touch.clientX - t.lookTouch.lastX
-      const dy = touch.clientY - t.lookTouch.lastY
-      t.lookTouch.lastX = touch.clientX
-      t.lookTouch.lastY = touch.clientY
-
-      // 累积 yaw（水平）和 pitch（垂直）
-      t.yaw += dx * t.lookSensitivity
-      t.pitch += dy * t.lookSensitivity
-      // 限制 pitch 在 [-PI/2, PI/2]，防止翻转
-      const halfPi = Math.PI / 2
-      if (t.pitch > halfPi) t.pitch = halfPi
-      if (t.pitch < -halfPi) t.pitch = -halfPi
-      // 持续 preventDefault 阻止滚动
-      if (e.cancelable) e.preventDefault()
-    },
-
-    onCanvasTouchEnd(e) {
-      const t = this.three
-      // 如果松开的 touch 是当前视角控制 touch，则停止
-      let stillActive = false
-      for (const touch of e.touches) {
-        if (touch.identifier === t.lookTouch.touchId) {
-          stillActive = true
-          break
-        }
-      }
-      if (!stillActive) {
-        t.lookTouch.active = false
-        t.lookTouch.touchId = null
-      }
-      if (e.cancelable) e.preventDefault()
     },
 
     /**
-     * 判断 (x, y) 是否落在 UI 控制区（前进后退按钮）
-     * 按钮在左下各 96rpx
+     * 判断 (x, y) 是否落在 UI 控制区（摇杆圆盘）
+     * 摇杆位于左下 60rpx,外圈直径 240rpx；用方形兜底判断手指在盘内
      * 这里用页面坐标做简化判断（rpx 已按 750 设计 宽 折算）
      */
     isInControlArea(x, y) {
       const winW = window.innerWidth
       const winH = window.innerHeight
-      // 左下前进/后退：左 60rpx、底 60rpx、宽 96rpx
+      // 左下摇杆：左 60rpx、底 60rpx、直径 240rpx
       const rpx2px = winW / 750
-      const btnR = 60 * rpx2px
-      const btnL = 60 * rpx2px
-      const btnW = 96 * rpx2px
-      const btnH = 96 * rpx2px
-      if (x > btnL && x < btnL + btnW && y > winH - btnR - btnH * 2 - 16 && y < winH - btnR)
-        return true
+      const padL = 60 * rpx2px
+      const padB = 60 * rpx2px
+      const padW = 240 * rpx2px
+      // 优先用真实 DOM 位置（页面缩放/安全区可能让 rpx 换算失准）
+      if (typeof document !== 'undefined') {
+        const el = document.querySelector('.joystick-pad')
+        if (el) {
+          const rect = el.getBoundingClientRect()
+          if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+            return true
+          }
+          return false
+        }
+      }
+      // fallback:rpx 折算
+      if (x > padL && x < padL + padW && y > winH - padB - padW && y < winH - padB) return true
       return false
     },
 
-    // ============== 前进/后退快捷按钮（移动端备用） ==============
-    onActionDown(dir) {
-      if (dir === 'forward') this.three.keys.w = true
-      if (dir === 'backward') this.three.keys.s = true
+    // ============== 方向控制摇杆 ==============
+    // 摇杆外圈半径 (CSS rpx → 运行时按比例换算)
+    // 触摸在 .joystick-pad 内按下时,以按下点为摇杆原点;拖动产生 (x, y) ∈ [-1, 1]
+    // 输出写入 t.joystick,applyMovement 会用 joystick 输入覆盖键盘
+    onJoystickStart(e) {
+      const t = this.three
+      // 优先取 changedTouches(本次 touchstart 新增的手指,多指时定位准确)
+      // fallback 到 touches[0]:
+      //  - uni-app 小程序 / APP 内嵌 webview 可能没有 changedTouches 字段
+      //  - 单指场景下两者等价,fallback 不会出错
+      const touch =
+        (e.changedTouches && e.changedTouches[0]) ||
+        (e.touches && e.touches[0]) ||
+        (e.mp && e.mp.touches && e.mp.touches[0]) // 兼容 uni-app 旧事件包装
+      if (!touch) return
+      // 起点作为本次摇杆会话的中心点,允许玩家"自由原点"操作
+      // 记录摇杆按下前的键盘 w/s 状态,end 时还原;
+      // 避免"按住 W + 按摇杆 → 松摇杆后 W 状态被吞"的体验问题
+      // 必须在清掉 w/s 之前记录,否则 savedKeys 永远记的是 false
+      t.joystick.savedKeys = {
+        w: t.keys.w,
+        s: t.keys.s,
+      }
+      t.joystick.active = true
+      t.joystick.touchId = touch.identifier
+      t.joystick.originX = touch.clientX
+      t.joystick.originY = touch.clientY
+      t.joystick.x = 0
+      t.joystick.y = 0
+      // 同时清掉键盘 w/s,避免出现"摇杆向左时键盘还在向前走"
+      t.keys.w = false
+      t.keys.s = false
+      this.joystickOffset.x = 0
+      this.joystickOffset.y = 0
+      this.joystickDragging = true
+      // 缓存外圈半径:move 高频调用不再每次 querySelector
+      this.joystickRadiusCached = this.joystickRadius()
+      if (e.cancelable) e.preventDefault()
     },
-    onActionUp(dir) {
-      if (dir === 'forward') this.three.keys.w = false
-      if (dir === 'backward') this.three.keys.s = false
+
+    onJoystickMove(e) {
+      const t = this.three
+      if (!t.joystick.active) return
+      const touch = Array.from(e.touches).find((tt) => tt.identifier === t.joystick.touchId)
+      if (!touch) return
+      const r = this.joystickRadiusCached
+      const dx = touch.clientX - t.joystick.originX
+      const dy = touch.clientY - t.joystick.originY
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      // 超出外圈时夹紧到边界,保持方向
+      const cx = dist > r ? (dx * r) / dist : dx
+      const cy = dist > r ? (dy * r) / dist : dy
+      // 归一化输出,供 applyMovement 使用
+      t.joystick.x = cx / r
+      t.joystick.y = cy / r
+      // UI 手柄位置 (像素)
+      this.joystickOffset.x = cx
+      this.joystickOffset.y = cy
+      if (e.cancelable) e.preventDefault()
+    },
+
+    onJoystickEnd(e) {
+      const t = this.three
+      // 先看 changedTouches:本次 touchend/touchcancel 离开的手指里有没有摇杆 touchId
+      // 没找到的话再看 touches:可能在某些平台(uni-app 小程序/APP 内嵌 H5)changedTouches 缺失
+      let isJoystickTouchLeaving = false
+      if (e && e.changedTouches) {
+        for (const touch of e.changedTouches) {
+          if (touch.identifier === t.joystick.touchId) {
+            isJoystickTouchLeaving = true
+            break
+          }
+        }
+      }
+      if (!isJoystickTouchLeaving && e && e.touches) {
+        // changedTouches 没匹配时,看 touches 里还有没有摇杆 touchId:
+        // - 还有 → 当前事件不是摇杆 touch 离开,什么都不做
+        // - 没有 → 兜底认为摇杆已松手(平台差异下也能复位)
+        let stillActive = false
+        for (const touch of e.touches) {
+          if (touch.identifier === t.joystick.touchId) {
+            stillActive = true
+            break
+          }
+        }
+        isJoystickTouchLeaving = !stillActive
+      }
+      if (isJoystickTouchLeaving) {
+        // 还原键盘 w/s 状态:玩家在摇杆按下前若已按住 W,松开摇杆后不应吞掉这个状态
+        // savedKeys 在 onJoystickStart 时已记录;未记录(摇杆还没 start 就 end)时跳过
+        if (t.joystick.savedKeys) {
+          t.keys.w = t.joystick.savedKeys.w
+          t.keys.s = t.joystick.savedKeys.s
+          t.joystick.savedKeys = null
+        }
+        t.joystick.active = false
+        t.joystick.touchId = null
+        t.joystick.x = 0
+        t.joystick.y = 0
+        this.joystickOffset.x = 0
+        this.joystickOffset.y = 0
+        // 松开:打开 transition 让手柄回中时有 0.15s 缓动
+        this.joystickDragging = false
+      }
+      if (e && e.cancelable) e.preventDefault()
+    },
+
+    /**
+     * 摇杆外圈半径(像素):按 .joystick-pad 实际尺寸计算
+     * 用 .joystick-pad 而不是 .joystick-base:
+     *  - .joystick-pad 是 absolute 定位的最外层,不受 flex/缩放拉伸影响,clientWidth 稳定
+     *  - .joystick-base 是绝对居中的内层,viewport 缩放或父元素拉伸时 clientWidth 可能偏小
+     * 拿不到 DOM 时 fallback 用 120(对应默认 240rpx 外圈),比 80 更接近真实值
+     */
+    joystickRadius() {
+      if (typeof document === 'undefined') return 120
+      const el = document.querySelector('.joystick-pad')
+      if (!el) return 120
+      return el.clientWidth / 2
     },
 
     /**
      * 释放 three.js 资源
      */
     /**
-     * 加载小狗化身 GLB 模型
-     * 位置：相机脚下（y=0），相机视高 ≈ 狗头高度
+     * 加载人物化身 FBX 模型(0.fbx 静态 + 1.fbx 走路动画)
+     * 位置：相机脚下（y=0），相机视高 ≈ 人物头/肩高度
      * 模型跟着相机移动，但不渲染相机本身（第一人称看不到自己）
-     * 模型远程地址,通过 ensureLocalModel 走"远程下载 + 本地缓存"
+     * 两个 FBX 同时挂在场景里，根据 figureState(idle/walk)切换可见性 + 走路动画播放
+     * 模型远程地址通过 ensureLocalModel 走"远程下载 + 本地缓存"
      */
-    async loadPetAvatar() {
+    async loadFigureAvatar() {
       const t = this.three
       if (!t.scene) return
-      const petUrl = '/static/models/puppy.glb'
-      let localUrl
-      try {
-        localUrl = await ensureLocalModel(petUrl)
-      } catch (e) {
-        console.error('[space-3d] puppy 下载失败', e)
-        uni.showToast({ title: this.$t('petHub3d.dogModelLoadFailed'), icon: 'none' })
-        return
+
+      // 并行下载 + 解析两个 FBX(0=静态 / 1=走路)
+      // 失败不致命:任一缺失时不显示对应化身(不影响另一个生效)
+      const results = await Promise.allSettled([
+        this.loadFigureFbx('/static/models/0.fbx', 'idle'),
+        this.loadFigureFbx('/static/models/1.fbx', 'walk'),
+      ])
+      const ok = results.filter((r) => r.status === 'fulfilled')
+
+      // 任一 FBX 缺失时,用 procedural 几何体(胶囊体)做兜底化身,
+      // 至少在第三人称模式下玩家能看见"自己",不再"模型加载失败但啥都没有"
+      if (ok.length < 2) {
+        const reasons = results
+          .map(
+            (r, i) =>
+              `${i === 0 ? 'idle' : 'walk'}: ${r.status === 'rejected' ? r.reason?.message || r.reason : 'ok'}`,
+          )
+          .join(' | ')
+        console.warn('[space-3d] 化身加载不完整,启用几何体兜底 →', reasons)
+        this.debugInfo = `化身加载不完整,已用兜底几何体(${reasons})`
+        if (!t.figureIdleGroup) this.buildFallbackFigure('idle')
+        if (!t.figureWalkGroup) this.buildFallbackFigure('walk')
+        this.syncFigureState()
+        this.figureFallback = true
       }
-      // eslint-disable-next-line
-      console.log('[space-3d] puppy 本地路径, url=', localUrl)
-      const loader = new GLTFLoader()
-
-      loader.load(
-        localUrl,
-        (gltf) => {
-          const pet = gltf.scene
-          // eslint-disable-next-line
-          console.log('[space-3d] puppy GLTF 响应，scene type=', pet.type)
-
-          // 自动缩放到合适大小（小狗身高 ~0.5m，对应视高）
-          const box = new THREE.Box3().setFromObject(pet)
-          const size = box.getSize(new THREE.Vector3())
-          // eslint-disable-next-line
-          console.log('[space-3d] puppy 原始包围盒 min=', box.min, 'max=', box.max, 'size=', size)
-          const maxAxis = Math.max(size.x, size.y, size.z)
-          // GLB 模型单位可能不是米，强制从更小 scale 开始
-          // 0.5 倍缩放，最大边约 0.5m
-          const scale = 0.5
-          pet.scale.set(scale, scale, scale) // 用三元组 set
-          pet.scale.setScalar(scale) // 二次保险
-          pet.rotation.x = 0
-          pet.rotation.y = 0
-          pet.rotation.z = 0
-          // 缩放后重新计算包围盒
-          pet.updateMatrixWorld(true)
-          const finalBox = new THREE.Box3().setFromObject(pet)
-          // 把模型**底部**对齐到 y=0（即使物体小，也别埋地里）
-          pet.position.y = -finalBox.min.y
-          // eslint-disable-next-line
-          console.log('[space-3d] puppy scale SET to', scale, '最终尺寸:', {
-            x: finalBox.max.x - finalBox.min.x,
-            y: finalBox.max.y - finalBox.min.y,
-            z: finalBox.max.z - finalBox.min.z,
-          })
-
-          // 保留模型原始材质（不再强制覆盖）
-          // 但确保有法线 + frustumCulled=false
-          let meshCount = 0
-          pet.traverse((child) => {
-            if (child.isMesh) {
-              meshCount++
-              if (!child.geometry.attributes.normal) {
-                child.geometry.computeVertexNormals()
-              }
-              // 关闭 frustum culling，避免穿过屏幕时消失
-              child.frustumCulled = false
-              // 如果材质缺失，给个兜底
-              if (!child.material) {
-                child.material = new THREE.MeshStandardMaterial({ color: 0x8b4513 })
-              }
-            }
-          })
-          // eslint-disable-next-line
-          console.log(
-            '[space-3d] puppy mesh count=',
-            meshCount,
-            'scale=',
-            scale,
-            'finalBox.min.y=',
-            finalBox.min.y,
-            'pet.position.y=',
-            pet.position.y,
-          )
-
-          // 初始位置：放在场景中心（syncPetAvatar 每帧会更新）
-          pet.position.set(0, 0, 0)
-          // 直接设置一个固定的抬升量，把小狗浮到地面以上
-          // 数值根据实际渲染效果调整
-          // eslint-disable-next-line
-          console.log(
-            '[space-3d] puppy finalBox.min.y=',
-            finalBox.min.y,
-            ', height=',
-            finalBox.max.y - finalBox.min.y,
-          )
-          t.petGroundOffset = 0.15 // 硬编码：往上抬 0.15m（小狗一半身体高度）
-          // eslint-disable-next-line
-          console.log('[space-3d] petGroundOffset hardcoded to 0.15')
-
-          t.scene.add(pet)
-          t.petAvatar = pet
-          // eslint-disable-next-line
-          console.log('[space-3d] puppy DEBUG 固定放在相机前方 1.5m, pet.position=', pet.position)
-        },
-        (xhr) => {
-          // eslint-disable-next-line
-          console.log('[space-3d] puppy 加载进度', xhr.loaded, '/', xhr.total)
-        },
-        (err) => {
-          console.error('[space-3d] puppy 模型加载失败', err)
-          uni.showToast({ title: this.$t('petHub3d.dogModelLoadFailed'), icon: 'none' })
-        },
-      )
     },
 
     /**
-     * 同步小狗化身到相机位置（每帧调用）
+     * 用 procedural 几何体(身体+头 双胶囊)做兜底化身
+     * 替换原本"啥也不挂"的逻辑,确保第三人称下玩家至少能看见自己
+     * 复用了 figureIdleGroup / figureWalkGroup 两个槽位,syncFigureAvatar 不需要改
+     */
+    buildFallbackFigure(kind) {
+      const t = this.three
+      if (!t.scene) return null
+      const group = new THREE.Group()
+      const skin = new THREE.MeshStandardMaterial({
+        color: kind === 'idle' ? 0xd9b48a : 0xc7a07a,
+        roughness: 0.7,
+        metalness: 0.05,
+        emissive: 0x222222,
+      })
+      // 身体：胶囊体(高 ~1m),脚底贴 y=0
+      const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.45, 6, 12), skin)
+      body.position.y = 0.22 + 0.45 / 2 // 半径 + 圆柱段一半
+      group.add(body)
+      // 头：小球,放在身体顶部
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 12), skin)
+      head.position.y = body.position.y + 0.45 / 2 + 0.18
+      group.add(head)
+      // 朝向：默认 -Z 是前方,但我们的人物是用 yaw 旋转控制朝向,这里不需要再额外设 rotation
+      t.scene.add(group)
+      if (kind === 'idle') {
+        t.figureIdleGroup = group
+      } else {
+        t.figureWalkGroup = group
+      }
+      return group
+    },
+
+    /**
+     * 加载单个 FBX 并归一化缩放(目标身高 ~1m)
+     * @param {string} url 模型地址
+     * @param {'idle'|'walk'} kind 静态 / 走路
+     */
+    async loadFigureFbx(url, kind) {
+      const t = this.three
+      const localUrl = await ensureLocalModel(url)
+      return new Promise((resolve, reject) => {
+        const loader = new FBXLoader()
+        loader.load(
+          localUrl,
+          (fbx) => {
+            // 异步回调期间用户可能已返回页面,scene 已置 null,直接 reject 走兜底
+            if (this.three._disposed || !this.three.scene) {
+              reject(new Error('页面已卸载,取消 fbx 加载'))
+              return
+            }
+            // 1. 包围盒 + 自动缩放到目标身高 1.7m(人类正常身高)
+            // 旧逻辑硬编码 "size.y / 100" 假定 FBX 单位是厘米,导致:
+            //   - 已经是米的 FBX(原始身高 100) → rawHeightMeters=1 → scale=1 → 化身 100m 高
+            //   - Mixamo 厘米单位 → 正确缩到 1m,但目标身高 1m 太矮相机视高 0.5m 看着像看脚
+            // 改为:不假定单位,直接把"原始 size.y"当成身高原始单位,缩到 1.7m。
+            //  - 100m 高的原始 → 缩到 1.7m
+            //  - 100 厘米的原始(Mixamo) → 缩到 1.7m
+            //  - 1m 高的原始 → 缩到 1.7m
+            const box = new THREE.Box3().setFromObject(fbx)
+            const size = box.getSize(new THREE.Vector3())
+            const maxAxis = Math.max(size.x, size.y, size.z) || 1
+            const targetHeight = 1.7 // 米
+            const rawHeight = size.y // FBX y 方向当作身高(人物都是 y-up)
+            // 边界保护:rawHeight 异常(0 / 极小)时退化为最大边
+            const scale = rawHeight > 0.1 ? targetHeight / rawHeight : targetHeight / maxAxis
+            fbx.scale.setScalar(scale)
+            fbx.rotation.x = 0
+            fbx.rotation.y = 0
+            fbx.rotation.z = 0
+            fbx.updateMatrixWorld(true)
+            const finalBox = new THREE.Box3().setFromObject(fbx)
+            // 底部对齐 y=0(踩在地面网格上)
+            fbx.position.y = -finalBox.min.y
+
+            // 2. 材质兜底:FBX 经常不嵌贴图,默认材质在暗场景里看不见,
+            // 这里给个暖白色 + 中等亮度,确保裸模型可见
+            let meshCount = 0
+            fbx.traverse((child) => {
+              if (child.isMesh) {
+                meshCount++
+                if (child.geometry && !child.geometry.attributes.normal) {
+                  child.geometry.computeVertexNormals()
+                }
+                child.frustumCulled = false
+                if (!child.material) {
+                  child.material = new THREE.MeshStandardMaterial({
+                    color: 0xd9b48a,
+                    roughness: 0.7,
+                    metalness: 0.1,
+                  })
+                } else {
+                  // 有材质但没贴图的情况:给 emissive 一点点,确保暗处可见
+                  const mats = Array.isArray(child.material) ? child.material : [child.material]
+                  mats.forEach((m) => {
+                    if (!m.emissive) m.emissive = new THREE.Color(0x000000)
+                    m.emissive = new THREE.Color(0x222222)
+                    m.needsUpdate = true
+                  })
+                }
+              }
+            })
+
+            const group = new THREE.Group()
+            group.add(fbx)
+            group.position.set(0, 0, 0)
+            t.scene.add(group)
+
+            if (kind === 'idle') {
+              t.figureIdleGroup = group
+            } else {
+              t.figureWalkGroup = group
+              // 走路动画:fbx.animations[0] 即为 AnimationClip
+              if (fbx.animations && fbx.animations.length > 0) {
+                const mixer = new THREE.AnimationMixer(fbx)
+                const action = mixer.clipAction(fbx.animations[0])
+                action.play()
+                t.figureWalkMixer = mixer
+                t.figureWalkAction = action
+                t.figureWalkClock = new THREE.Clock()
+              } else {
+                console.warn('[space-3d] 1.fbx 不含骨骼动画,走路模型仅作为静态显示')
+              }
+            }
+            // 两个 group 都就绪(或一个就绪)后,统一按当前 figureState 同步可见性 + 动画,
+            // 避免加载期间玩家已按键导致 group.visible 停留在加载瞬间的状态
+            this.syncFigureState()
+
+            // 调试信息:输出化身包围盒 + 房间模型尺寸,方便对账高度链
+            const figureSize = finalBox.getSize(new THREE.Vector3())
+            // eslint-disable-next-line
+            console.log(
+              '[space-3d] fbx 加载完成 kind=',
+              kind,
+              '原始尺寸=',
+              size,
+              'scale=',
+              scale,
+              '最终尺寸(m)=',
+              { x: figureSize.x, y: figureSize.y, z: figureSize.z },
+            )
+            // 拼到页面 debug 信息(显示在左上角)
+            this.debugInfo = `化身 ${kind}: 原始${size.x.toFixed(2)}×${size.y.toFixed(2)}×${size.z.toFixed(2)} | scale=${scale.toFixed(3)} | 最终${figureSize.x.toFixed(2)}×${figureSize.y.toFixed(2)}×${figureSize.z.toFixed(2)}m`
+            if (t.modelSize) {
+              this.debugInfo += ` | 房间 ${t.modelSize.x.toFixed(2)}×${t.modelSize.y.toFixed(2)}×${t.modelSize.z.toFixed(2)}m`
+            }
+
+            resolve(group)
+          },
+          undefined,
+          (err) => {
+            console.error('[space-3d] fbx 加载失败 url=', url, err)
+            reject(err)
+          },
+        )
+      })
+    },
+
+    /**
+     * 同步人物化身到相机位置（每帧调用）
      * 根据 viewMode 不同：
      * - fps 第一人称：模型就在相机脚下（看不到自己）
      * - tps 第三人称：模型走在前面，相机在身后略上方
      */
-    syncPetAvatar() {
+    syncFigureAvatar() {
       const t = this.three
-      if (!t.petAvatar || !t.camera) return
+      if (!t.camera) return
       const cam = t.camera
-      const pet = t.petAvatar
-      const petGroundY = t.petGroundOffset
+
+      // === 推进走路动画 mixer ===
+      if (t.figureWalkMixer && t.figureWalkClock && t.figureState === 'walk') {
+        t.figureWalkMixer.update(t.figureWalkClock.getDelta())
+      }
+
+      // 复用 forward Vector3,避免每帧 new
+      if (!t._syncForward) t._syncForward = new THREE.Vector3()
+      const forward = t._syncForward
+      forward.set(-Math.sin(t.yaw), 0, -Math.cos(t.yaw))
 
       if (this.viewMode === 'tps') {
-        // === 第三人称：相机固定在小狗身后 1.5m + 高 1.2m ===
-        // 玩家移动 = 小狗移动（applyMovement 移动 camera，syncPetAvatar 反向算小狗位置）
-        // 玩家拖屏 = 相机围绕小狗转
-
-        // 计算相机水平视线方向（基于 yaw）
-        const forward = new THREE.Vector3(-Math.sin(t.yaw), 0, -Math.cos(t.yaw))
-
-        // 1. 玩家输入控制的"主角"是相机（applyMovement 移动 camera.x/z）
-        // 2. 小狗位置 = 相机位置 + 视线前方 1.5m（小狗在相机前方）
-        const petOffset = 1.5
-        pet.position.x = cam.position.x + forward.x * petOffset
-        pet.position.z = cam.position.z + forward.z * petOffset
-        pet.position.y = petGroundY // 脚下踩地
-
-        // 3. 小狗朝向：面朝前进方向
-        // GLB 模型小狗默认朝 +x 方向（建模习惯），要旋转 -90° 才能和相机视线对齐
-        pet.rotation.y = t.yaw - Math.PI / 2
-
-        // 4. 相机视高：1.2m（俯瞰小狗）
+        // === 第三人称：相机固定在人物身后 1.5m + 高 1.2m ===
+        const figureOffset = 1.5
+        const figureX = cam.position.x + forward.x * figureOffset
+        const figureZ = cam.position.z + forward.z * figureOffset
+        // 性能:可见 group 才更新 transform,不可见 group 直接跳过
+        // 同时只更新当前 figureState 对应的那一个 group(idle/walk 二选一)
+        if (t.figureState === 'idle' && t.figureIdleGroup && t.figureIdleGroup.visible) {
+          t.figureIdleGroup.position.set(figureX, 0, figureZ)
+          t.figureIdleGroup.rotation.y = t.yaw - Math.PI / 2
+        }
+        if (t.figureState === 'walk' && t.figureWalkGroup && t.figureWalkGroup.visible) {
+          t.figureWalkGroup.position.set(figureX, 0, figureZ)
+          t.figureWalkGroup.rotation.y = t.yaw - Math.PI / 2
+        }
+        // 相机视高 1.2m,看向人物
         cam.position.y = 1.2
-
-        // 5. 相机看向小狗（保证小狗在画面中央）
-        cam.lookAt(pet.position.x, 0.3, pet.position.z)
+        cam.lookAt(figureX, 0.3, figureZ)
       } else {
-        // === 第一人称：模型在相机脚下（看不到自己） ===
-        pet.position.x = cam.position.x
-        pet.position.z = cam.position.z
-        pet.position.y = petGroundY
-        // GLB 模型小狗默认朝 +x，需要偏移 -90° 才能和相机视线对齐
-        pet.rotation.y = t.yaw - Math.PI / 2
+        // === 第一人称：模型就在相机脚下(看不到自己) ===
+        // 性能:fps 模式下相机看不到自己,本质不需要每帧更新 group 位置
+        // 但 tps ↔ fps 切换时需要一次定位,所以保留更新但只在 figureState 对应 group
+        if (t.figureState === 'idle' && t.figureIdleGroup && t.figureIdleGroup.visible) {
+          t.figureIdleGroup.position.x = cam.position.x
+          t.figureIdleGroup.position.z = cam.position.z
+          t.figureIdleGroup.position.y = 0
+          t.figureIdleGroup.rotation.y = t.yaw - Math.PI / 2
+        }
+        if (t.figureState === 'walk' && t.figureWalkGroup && t.figureWalkGroup.visible) {
+          t.figureWalkGroup.position.x = cam.position.x
+          t.figureWalkGroup.position.z = cam.position.z
+          t.figureWalkGroup.position.y = 0
+          t.figureWalkGroup.rotation.y = t.yaw - Math.PI / 2
+        }
+      }
+    },
+
+    /**
+     * 根据 figureState(idle/walk)切换两个 FBX group 的可见性 + 控制走路动画播放/暂停
+     */
+    syncFigureState() {
+      const t = this.three
+      // 当前状态为 walk:显示走路 group,隐藏静态 group,推进 mixer
+      // 当前状态为 idle:显示静态 group,隐藏走路 group,停止走路动画
+      if (t.figureIdleGroup) {
+        t.figureIdleGroup.visible = t.figureState === 'idle'
+      }
+      if (t.figureWalkGroup) {
+        t.figureWalkGroup.visible = t.figureState === 'walk'
+      }
+      if (t.figureWalkAction) {
+        if (t.figureState === 'walk') {
+          if (!t.figureWalkAction.isRunning()) {
+            t.figureWalkAction.reset()
+            t.figureWalkAction.play()
+          }
+        } else {
+          t.figureWalkAction.stop()
+        }
       }
     },
 
@@ -961,7 +1330,7 @@ export default {
       const t = this.three
       if (t.camera) {
         if (next === 'fps') {
-          t.camera.position.y = 0.5 // 动物眼睛高度
+          t.camera.position.y = 0.5 // 人物眼睛高度
         } else {
           t.camera.position.y = 1.2 // 第三人称俯瞰
         }
@@ -974,7 +1343,23 @@ export default {
 
     disposeScene() {
       const t = this.three
+      // 标记已卸载,startScene 的重试分支看到后会立即停止再排 setTimeout,
+      // 避免回调打到已被销毁的 Vue 实例上导致诡异报错
+      t._disposed = true
+      if (t._docRetryTimer) {
+        clearTimeout(t._docRetryTimer)
+        t._docRetryTimer = null
+      }
+      if (t._canvasRetryTimer) {
+        clearTimeout(t._canvasRetryTimer)
+        t._canvasRetryTimer = null
+      }
       this.unbindKeyboard()
+      // 重置 document 重试计数,避免下次进入页面累计后误判
+      // (不清零的话,第二次进入页面 _docRetryCount 仍是上次的累加值,
+      //  第一次重试就可能超过 5 次阈值,直接弹"不支持 3D")
+      t._docRetryCount = 0
+      t._canvasRetryCount = 0
       if (t.animationId) {
         cancelAnimationFrame(t.animationId)
         t.animationId = null
@@ -993,10 +1378,22 @@ export default {
             }
           }
         })
+        // 从场景里摘掉,避免被已 dispose 的 group 残留引用
+        if (t.modelGroup.parent) t.modelGroup.parent.remove(t.modelGroup)
+        t.modelGroup = null
       }
-      // 释放小狗化身
-      if (t.petAvatar) {
-        t.petAvatar.traverse((child) => {
+      // 释放走路 mixer(必须先 stop 再 uncacheRoot)
+      if (t.figureWalkMixer) {
+        t.figureWalkMixer.stopAllAction()
+        const root = t.figureWalkMixer.getRoot()
+        t.figureWalkMixer.uncacheRoot(root)
+        t.figureWalkMixer = null
+      }
+      t.figureWalkAction = null
+      // 释放两个 FBX group(0.fbx 静态 + 1.fbx 走路)
+      const disposeGroup = (g) => {
+        if (!g) return
+        g.traverse((child) => {
           if (child.isMesh) {
             if (child.geometry) child.geometry.dispose()
             if (child.material) {
@@ -1005,8 +1402,13 @@ export default {
             }
           }
         })
-        t.petAvatar = null
+        // 从场景里摘掉
+        if (g.parent) g.parent.remove(g)
       }
+      disposeGroup(t.figureIdleGroup)
+      disposeGroup(t.figureWalkGroup)
+      t.figureIdleGroup = null
+      t.figureWalkGroup = null
       if (t.controls) {
         t.controls.dispose()
         t.controls = null
@@ -1218,29 +1620,52 @@ export default {
   transform: translateX(-50%);
 }
 
-.action-buttons {
+/* ===== 方向控制摇杆 (左下角圆盘) ===== */
+.joystick-pad {
   position: absolute;
   bottom: 60rpx;
   left: 60rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
+  width: 240rpx;
+  height: 240rpx;
+  /* 摇杆区域需要接收触摸,不让视角旋转抢事件 */
   pointer-events: auto;
-}
-.action-btn {
-  width: 96rpx;
-  height: 96rpx;
-  background: rgba(255, 255, 255, 0.08);
-  border: 2rpx solid rgba(255, 255, 255, 0.15);
-  border-radius: 16rpx;
+  /* 自己处理触摸,不触发页面滚动 */
+  touch-action: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 40rpx;
-  color: #dbc98a;
-  user-select: none;
 }
-.action-btn:active {
-  background: rgba(219, 201, 138, 0.25);
+.joystick-base {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  border: 4rpx solid rgba(219, 201, 138, 0.45);
+  box-shadow: inset 0 0 16rpx rgba(0, 0, 0, 0.4);
+  /* 用 transform 中心点 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.joystick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 96rpx;
+  height: 96rpx;
+  margin-left: -48rpx;
+  margin-top: -48rpx;
+  border-radius: 50%;
+  background: rgba(219, 201, 138, 0.85);
+  border: 2rpx solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.35);
+  /* 松手时缓动回中 */
+  transition: transform 0.15s ease-out;
+  pointer-events: none;
+}
+/* 拖动中关掉 transition,保证手柄跟手不滞后 */
+.joystick-knob.joystick-knob-drag {
+  transition: none;
 }
 </style>

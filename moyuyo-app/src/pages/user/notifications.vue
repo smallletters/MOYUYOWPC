@@ -151,6 +151,8 @@ export default {
           // 静默失败
         }
       }
+      // 跳转到消息详情页（复用 messages.vue），把通知 id 带过去
+      uni.navigateTo({ url: `/pages/user/messages?id=${item.id}` })
     },
   },
 }

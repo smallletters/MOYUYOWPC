@@ -24,12 +24,12 @@
           class="type-badge"
           :style="{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }"
         >
-          {{ $t(message.typeLabelKey) }}
+          {{ message.typeLabel }}
         </text>
       </view>
 
       <!-- 消息标题 -->
-      <text class="msg-title">{{ $t(message.titleKey) }}</text>
+      <text class="msg-title">{{ message.title }}</text>
 
       <!-- 消息时间 -->
       <text class="msg-time">{{ message.time }}</text>
@@ -39,42 +39,12 @@
 
       <!-- 消息正文 -->
       <view class="msg-body">
-        <text class="msg-text">{{ $t(message.contentKey) }}</text>
-
-        <!-- 扩展信息卡片 -->
-        <view v-if="message.info" class="info-card">
-          <text class="info-card-title">{{ $t(message.info.titleKey) }}</text>
-          <view v-for="row in message.info.rows" :key="row.labelKey" class="info-row">
-            <text class="info-label">{{ $t(row.labelKey) }}</text>
-            <text class="info-value">{{ row.value }}</text>
-          </view>
-          <view v-if="message.info.actionKey" class="info-action">
-            <text class="info-action-text" @click="onInfoAction">
-              {{ $t(message.info.actionKey) }}
-            </text>
-          </view>
-        </view>
-
-        <!-- 商品信息卡片 -->
-        <view v-if="message.product" class="product-card">
-          <text class="info-card-title">{{ $t('messages.productInfo') }}</text>
-          <view class="product-row">
-            <image class="product-image" :src="message.product.image" mode="aspectFill" />
-            <view class="product-detail">
-              <text class="product-name">{{ $t(message.product.nameKey) }}</text>
-              <text class="product-qty">x{{ message.product.quantity }}</text>
-            </view>
-            <text class="product-price">{{ message.product.price }}</text>
-          </view>
-        </view>
+        <text class="msg-text">{{ message.content }}</text>
       </view>
     </scroll-view>
 
     <!-- 底部操作栏 -->
     <view class="bottom-bar">
-      <button class="action-btn btn-primary" @click="onViewOrder">
-        {{ $t('messages.viewOrder') }}
-      </button>
       <button class="action-btn btn-text" @click="onDeleteMessage">
         {{ $t('messages.deleteMessage') }}
       </button>
@@ -84,6 +54,14 @@
 
 <script>
 import { i18n } from '@/i18n'
+import { notificationApi } from '@/api'
+
+// 通知 type 到中文标签的映射（直接展示后端字段，不再走 messages.* i18n key）
+const TYPE_LABEL_MAP = {
+  order: '订单',
+  activity: '活动',
+  system: '系统',
+}
 
 export default {
   pageTitleKey: 'pageTitle.userMessages',
@@ -91,34 +69,52 @@ export default {
   data() {
     return {
       isStarred: false,
+      notificationId: null,
       message: {
-        type: 'order',
-        typeLabelKey: 'messages.demoTypeLabel',
-        titleKey: 'messages.demoTitle',
-        time: '2026-07-08 10:30',
-        contentKey: 'messages.demoContent',
-        info: {
-          titleKey: 'messages.logisticsTitle',
-          rows: [
-            { labelKey: 'messages.carrier', value: 'FedEx' },
-            { labelKey: 'messages.trackingNo', value: '794644790132' },
-            { labelKey: 'messages.estimatedDelivery', value: '2026-07-12' },
-          ],
-          actionKey: 'messages.viewLogistics',
-        },
-        product: {
-          image: 'https://via.placeholder.com/128',
-          nameKey: 'messages.demoProductName',
-          quantity: 1,
-          price: '$89.00',
-        },
+        type: '',
+        typeLabel: '',
+        title: '',
+        time: '',
+        content: '',
       },
+    }
+  },
+
+  onLoad(query) {
+    // 从通知列表跳转过来，url 上带有通知 id
+    if (query && query.id) {
+      this.notificationId = query.id
+      this.loadDetail()
     }
   },
 
   methods: {
     goBack() {
       uni.navigateBack()
+    },
+
+    async loadDetail() {
+      try {
+        const res = await notificationApi.getNotificationDetail(this.notificationId)
+        const detail = res.data || {}
+        this.message = {
+          type: detail.type || '',
+          typeLabel: TYPE_LABEL_MAP[detail.type] || detail.type || '',
+          title: detail.title || '',
+          time: this.formatTime(detail.createTime),
+          content: detail.content || '',
+        }
+      } catch {
+        uni.showToast({ title: i18n.t('messages.failedRetry'), icon: 'none' })
+      }
+    },
+
+    // 把后端 LocalDateTime 字符串格式化成 YYYY-MM-DD HH:mm
+    formatTime(value) {
+      if (!value) return ''
+      // 形如 "2026-07-08T10:30:00" 或 "2026-07-08 10:30:00"
+      const str = String(value).replace('T', ' ')
+      return str.length >= 16 ? str.slice(0, 16) : str
     },
 
     onToggleStar() {
@@ -129,25 +125,22 @@ export default {
       })
     },
 
-    onViewOrder() {
-      uni.showToast({ title: i18n.t('messages.viewOrder'), icon: 'none' })
-    },
-
     onDeleteMessage() {
       uni.showModal({
         title: i18n.t('messages.noticeTitle'),
         content: i18n.t('messages.deleteConfirm'),
-        success: (res) => {
+        success: async (res) => {
           if (res.confirm) {
+            try {
+              await notificationApi.deleteNotification(this.notificationId)
+            } catch {
+              // 删除失败也允许返回
+            }
             uni.showToast({ title: i18n.t('messages.deleted'), icon: 'success' })
             uni.navigateBack()
           }
         },
       })
-    },
-
-    onInfoAction() {
-      uni.showToast({ title: i18n.t('messages.viewLogistics'), icon: 'none' })
     },
   },
 }

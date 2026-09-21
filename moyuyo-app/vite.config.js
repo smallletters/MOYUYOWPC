@@ -144,8 +144,11 @@ export default defineConfig(({ mode }) => {
         // 3D 模型（classpath:/static/models/ 下的 .glb）：
         // dev 模式 modelDownload.js#resolveRemoteUrl 不会拼 VITE_ADMIN_API_BASE（.env.development 为空），
         // 会用相对路径 /static/models/*.glb，浏览器请求落到 Vite 5174。
-        // 这里把 /static/** 代理到后端 8080，让 dev 环境能像 prod 一样命中 Spring 的 classpath:/static 映射。
-        '/static': {
+        // 重要：这里只代理 /static/models/** 子路径，不要写 /static/**，
+        // 否则会拦截 uni-app 项目内置的 static/icons / static/images / static/fonts 等静态资源，
+        // Vite dev server 默认会从 moyuyo-app/static/ 直接 serve 这些内置资源，
+        // 代理后端会导致 google.svg 等 404，并连带让 dynamic import (login.vue 等) 加载失败。
+        '/static/models': {
           target: 'http://localhost:8080',
           changeOrigin: true,
         },

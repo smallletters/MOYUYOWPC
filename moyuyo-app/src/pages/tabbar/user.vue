@@ -36,7 +36,11 @@
             <text class="name">{{ $t('userCenter.loginRegister') }}</text>
             <text class="email">{{ $t('userCenter.loginSubtitle') }}</text>
           </view>
-          <view class="login-btn">{{ $t('userCenter.loginBtn') }}</view>
+          <!-- 登录按钮：单独再绑一次 @click，避免依赖事件冒泡。
+               原因：父级 .login-prompt 包在 scroll-view 内、且页面启用了 refresher-enabled，
+               在 H5/Vite 开发模式下，外层 view 的 click 有时会被 scroll-view 的下拉手势拦截，
+               导致点击没有触发 goLogin，URL 也不会变。直接给按钮自身绑定事件最稳。 -->
+          <view class="login-btn" @click.stop="goLogin">{{ $t('userCenter.loginBtn') }}</view>
         </view>
       </view>
 
