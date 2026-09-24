@@ -933,6 +933,14 @@ export default {
   background-color: var(--background-200, #ede9e4);
 }
 
+/* 图文详情里的图片必须跟随容器宽度,否则 <img> 缺 width/height 时
+   webview 会按原始尺寸渲染,scrollHeight 计算异常导致"内容其实在却滚不到底" */
+.rich-content :deep(img) {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block;
+}
+
 .navbar {
   position: sticky;
   top: 0;
@@ -988,11 +996,17 @@ export default {
 }
 
 .scroll {
-  /* 不再硬编码 calc(100vh - ...) 高度,改用 flex:1 让容器自适应剩余高度,
-     避免 rpx/px 混用 + safe-area-inset-bottom 漏算导致高度溢出,
-     进而把底部 fixed 操作栏卷入滚动区域 */
-  flex: 1;
+  /* <scroll-view scroll-y> 在 webview 里必须有确定的"视口高度"才能滚动;
+     .bottom-bar 是 position:fixed 脱离文档流,不参与 flex 高度计算,
+     所以这里需要显式减去 底部 fixed 栏 高度(120rpx) + 底部安全区,
+     否则富文本详情会被底部栏遮住最后一段,看起来"滚不到底"
+     navbar 用 position:sticky 不占文档流,无需减算 */
   width: 100%;
+  /* 100vh 已包含可视区高度,直接减去底部栏(120rpx)+ 安全区即可;
+     uni-app rpx 与 px 在 webview 下 750rpx = 设备宽度,这里 750rpx/2 ≈ 60px(粗算) ;
+     为了跨设备稳定,改用 px 数值:120rpx@750 设计稿 ≈ 60px,按 2x 取 120px 偏多,
+     这里用 rpx→px 折中值 calc,直接给 120px 给到大多数 webview 足够 */
+  height: calc(100vh - 140rpx - env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 

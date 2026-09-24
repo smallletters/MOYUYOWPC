@@ -21,6 +21,14 @@ export function getCommunityPosts(params = {}) {
 }
 
 /**
+ * 按 userId 拉取指定用户已发布的帖子（用于他人 profile 页的"帖子" tab）。
+ * 后端会忽略 keyword/topic 参数,只按 userId 过滤 status=1 的帖子。
+ */
+export function getUserPosts(userId, params = {}) {
+  return get('/api/v1/community/posts', { userId, ...params })
+}
+
+/**
  * 搜索帖子：等价于 getCommunityPosts({ keyword })，但走专用 /search 端点便于后端日志/限流区分。
  */
 export function searchCommunityPosts(params = {}) {
@@ -121,6 +129,16 @@ export function getCollectedPosts(params = {}) {
 }
 
 /**
+ * 当前用户点赞过的帖子列表（按点赞时间倒序）。
+ * 后端: GET /api/v1/community/posts/liked
+ * 用于"我的"页 → 个人中心 → 点赞 Tab。
+ * 返回的 VO.liked 恒为 true；VO.collected 反映当前是否已收藏。
+ */
+export function getLikedPosts(params = {}) {
+  return get('/api/v1/community/posts/liked', params)
+}
+
+/**
  * 实时敏感词检查:返回命中的敏感词字符串列表(去重保序)。
  * 用于发帖 / 评论时实时高亮提示,不阻断提交。
  * 后端: GET /api/v1/community/sensitive-check?text=xxx
@@ -131,6 +149,7 @@ export function sensitiveCheck(text) {
 
 export default {
   getCommunityPosts,
+  getUserPosts,
   searchCommunityPosts,
   searchCommunityUsers,
   getPostDetail,
@@ -143,5 +162,8 @@ export default {
   collectPost,
   uncollectPost,
   getCollectedPosts,
+  getLikedPosts,
   getCommunityTopics,
+  // 关注 Tab 真实数据源（关注的人发布的帖子分页），由 default 导出暴露给 communityApi
+  getFollowFeed,
 }

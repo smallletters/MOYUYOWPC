@@ -63,14 +63,14 @@
       <template v-else>
         <div class="review-card" v-for="item in reviewItems" :key="item.id">
           <div class="review-thumb">
-            <!-- 缩略图位置展示用户头像(便于审核员一眼识别作者);无头像时回退 emoji -->
+            <!-- 缩略图位置展示用户头像(便于审核员一眼识别作者);无头像时回退昵称首字符 -->
             <img
               v-if="item.avatar"
               :src="item.avatar"
               class="review-thumb-img"
               @error="onThumbError(item)"
             />
-            <span v-else>{{ item.thumb }}</span>
+            <div v-else class="review-thumb-fallback">{{ item.publisher.charAt(0) }}</div>
           </div>
           <div class="review-body">
             <div class="review-top">
@@ -81,19 +81,30 @@
               </div>
               <span class="review-time">{{ item.submitTime }}</span>
             </div>
+            <!-- 发布人 + ID(便于审核员定位) -->
+            <div class="review-publisher">
+              <span>{{ item.publisher }}</span>
+              <span v-if="item.userId" class="review-user-id">#{{ item.userId }}</span>
+            </div>
             <!-- 完整帖子内容(后端 content 字段,不再是 500 字摘要) -->
             <div class="review-desc" :title="item.description">{{ item.description }}</div>
-            <div class="review-publisher">
-              <div class="user-info-cell">
-                <!-- 用户条展示帖子缩略图(便于审核员看清内容本身);无图时用昵称首字符 -->
+            <!-- 多图九宫格预览(与详情页 detail-image-grid 保持一致:1/2/3 列自适应) -->
+            <div
+              v-if="item.imageList && item.imageList.length"
+              class="detail-image-grid"
+              :class="getImageGridClass(item.imageList.length)"
+            >
+              <div
+                v-for="(url, idx) in item.imageList"
+                :key="idx"
+                class="detail-image-cell"
+                @click="openImagePreview(url)"
+              >
                 <img
-                  v-if="item.imageUrl"
-                  :src="item.imageUrl"
-                  class="user-avatar user-avatar-img"
-                  @error="onAvatarError(item)"
+                  :src="url"
+                  class="detail-image-img"
+                  @error="onImageListError(item, idx)"
                 />
-                <div v-else class="user-avatar">{{ item.publisher.charAt(0) }}</div>
-                <span>{{ item.publisher }}</span>
               </div>
             </div>
             <div class="review-actions">
@@ -108,6 +119,17 @@
         </div>
       </template>
     </div>
+
+    <!-- 图片大图预览弹层(点击九宫格中的图片触发,与详情页一致) -->
+    <el-dialog
+      v-model="previewVisible"
+      :show-close="true"
+      width="90%"
+      center
+      @close="previewVisible = false"
+    >
+      <img :src="previewUrl" class="preview-fullscreen" />
+    </el-dialog>
 
     <!-- 分页:自实现 UI(不依赖 el-pagination 渲染,确保 SPA 路由切换时一定可见) -->
     <div class="pagination-bar">
@@ -237,6 +259,9 @@ const violationTabs = [
 ]
 
 const reviewItems = ref([])
+// 图片大图预览（点击列表卡片中九宫格的图片时打开）
+const previewVisible = ref(false)
+const previewUrl = ref('')
 // 分页状态(参考商品页:每页 10/20/50/100 可选)
 const reviewPage = ref(1)
 // 默认每页 100 条,贴合"全部选项 = 看完全部数据"的直觉;
@@ -416,22 +441,22 @@ async function loadReviewItems() {
     const records = toArray(res?.list)
     reviewTotal.value = res?.total || 0
     // 映射为前端需要的格式
-      reviewItems.value = records.map((item, index) => {
+    reviewItems.value = records.map((item, index) => {
         // 后端返回英文状态枚举（PENDING/APPROVED/REJECTED/HIDDEN/BANNED/DELETED），
         // 统一翻译成中文标签用于列表展示；并把"已处理"状态（包括 DELETED）的
         // 通过/隐藏/删除/封禁按钮置灰，避免重复操作造成状态机漂移
         const rawStatus = item.status || 'PENDING'
-        // 后端 images 字段为 List<String>（已 JSON.parse）,取第一张作为缩略图
-        const imageList = Array.isArray(item.images) ? item.images : []
-        const imageUrl = imageList.length > 0 ? resolveMediaUrl(imageList[0]) : ''
+        // 后端 images 字段为 List<String>（已 JSON.parse），用于多图九宫格预览
+        const imageList = (Array.isArray(item.images) ? item.images : [])
+          .map(u => resolveMediaUrl(u))
+          .filter(Boolean)
         const avatarUrl = item.avatar ? resolveMediaUrl(item.avatar) : ''
         // 后端返回完整 content（contentType=POST 时取自原帖）,不再是 500 字摘要
         const fullContent = item.content || item.contentExcerpt || ''
         return {
           id: item.id,
-          // emoji 仅作为无图时的回退缩略图
-          thumb: item.contentType === '视频' ? '🎬' : item.contentType === '图片' ? '📷' : '📝',
-          imageUrl,
+          // 头像用 item.avatar；多图九宫格用 imageList（替代了之前的单图 imageUrl + emoji thumb）
+          imageList,
           contentType: item.contentType || (item.rating ? '评论' : '图文'),
           contentTypeClass: item.contentType === '视频' ? 'tag-orange' : item.contentType === '图片' ? 'tag-blue' : 'tag-green',
           autoResult: STATUS_LABEL_MAP[rawStatus] || rawStatus || '待审核',
@@ -442,6 +467,7 @@ async function loadReviewItems() {
           description: fullContent,
           // 优先用后端返回的 username(nickname);缺失时回退 "用户 + userId"
           publisher: item.username || ('用户' + (item.userId || '')),
+          userId: item.userId || '',
           avatar: avatarUrl,
           submitTime: item.reviewTime || item.createTime || ''
         }
@@ -466,14 +492,33 @@ function resolveMediaUrl(url) {
   return ''
 }
 
-/** 缩略图(现展示头像)加载失败:清空 avatar,显示 emoji fallback */
+/** 缩略图（用户头像）加载失败：清空 avatar,显示昵称首字符 fallback */
 function onThumbError(item) {
   if (item) item.avatar = ''
 }
 
-/** 用户条(现展示帖子图)加载失败:清空 imageUrl,显示首字符 fallback */
-function onAvatarError(item) {
-  if (item) item.imageUrl = ''
+/** 多图九宫格单图加载失败：从 imageList 中移除该张,空数组时自动隐藏整个网格 */
+function onImageListError(item, idx) {
+  if (!item || !Array.isArray(item.imageList)) return
+  item.imageList.splice(idx, 1)
+}
+
+/**
+ * 多图网格列数（与详情页保持一致）
+ *  - 1 张：大图（单列）
+ *  - 2-3 张：2 列
+ *  - 4+ 张：3 列
+ */
+function getImageGridClass(count) {
+  if (count <= 1) return 'grid-single'
+  if (count <= 3) return 'grid-col-2'
+  return 'grid-col-3'
+}
+
+/** 图片大图预览（点击九宫格中的图片触发） */
+function openImagePreview(url) {
+  previewUrl.value = url
+  previewVisible.value = true
 }
 
 async function handleReview(id, action) {
@@ -725,7 +770,7 @@ onMounted(() => {
   overflow: hidden;
 }
 
-/* 真实图片缩略图(与 emoji fallback 共用容器尺寸) */
+/* 真实图片缩略图(用户头像;无头像时显示首字符 fallback) */
 .review-thumb-img {
   width: 100%;
   height: 100%;
@@ -733,12 +778,24 @@ onMounted(() => {
   display: block;
 }
 
-/* 用户头像真实图片:与 .user-avatar 共用容器尺寸,scoped 防止与全局样式冲突 */
-.user-avatar-img {
+/* 头像缺失时的首字符回退 */
+.review-thumb-fallback {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background-200);
+  color: var(--text-500);
+  font-size: 28px;
+  font-weight: 600;
+}
+
+/* 发布人 ID（#数字） */
+.review-user-id {
+  color: var(--text-400);
+  margin-left: 6px;
+  font-size: 12px;
 }
 
 .review-body {
@@ -846,4 +903,55 @@ onMounted(() => {
 
 .legend-dot.pass { background: var(--state-success); }
 .legend-dot.reject { background: var(--state-error); }
+
+/* 多图九宫格预览（与 ContentReviewDetail 保持一致:1/2/3 列自适应） */
+.detail-image-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+}
+.detail-image-grid.grid-single {
+  grid-template-columns: 1fr;
+}
+.detail-image-grid.grid-single .detail-image-cell {
+  height: 220px;
+  border-radius: 6px;
+}
+.detail-image-grid.grid-col-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+.detail-image-grid.grid-col-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.detail-image-grid.grid-col-2 .detail-image-cell,
+.detail-image-grid.grid-col-3 .detail-image-cell {
+  aspect-ratio: 1 / 1;
+  border-radius: 6px;
+}
+.detail-image-cell {
+  position: relative;
+  background: var(--background-200);
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--border);
+}
+.detail-image-cell .detail-image-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.2s ease;
+}
+.detail-image-cell:hover .detail-image-img {
+  transform: scale(1.03);
+}
+
+/* 大图预览弹层（与详情页共用样式） */
+.preview-fullscreen {
+  width: 100%;
+  height: auto;
+  max-height: 80vh;
+  object-fit: contain;
+  display: block;
+}
 </style>

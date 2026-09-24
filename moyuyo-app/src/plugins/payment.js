@@ -107,6 +107,8 @@ export function handlePaymentCallback(callbackData) {
 /**
  * 支付插件调用封装（composable）
  * 与 payment.ts 中 usePaymentPlugin 保持一致
+ * - pay: 把协议入参映射为原生 { orderNo, payMethod, amount, currency }
+ * - isAvailable: 走原生 getAvailableChannels 二次判断目标 channel 是否被支持
  * @returns {{ pay: Function, isAvailable: Function }}
  */
 export function usePaymentPlugin() {
@@ -126,9 +128,39 @@ export function usePaymentPlugin() {
     })
   }
 
+  // 内部专用：拉取原生支持的渠道列表
+  const getAvailableChannels = () => {
+    return new Promise((resolve) => {
+      // #ifdef APP-PLUS
+      const plugin = uni.requireNativePlugin(PLUGIN_NAME)
+      if (!plugin) {
+        resolve({ success: false, error: '原生支付插件不可用' })
+        return
+      }
+      plugin.getAvailableChannels({}, (res) => resolve(res || {}))
+      // #endif
+      // #ifndef APP-PLUS
+      resolve({ success: false, error: '原生支付插件不可用' })
+      // #endif
+    })
+  }
+
   return {
-    pay: (channel, orderInfo) => call('pay', { channel, ...orderInfo }),
-    isAvailable: (channel) => call('isAvailable', { channel }),
+    pay: (channel, orderInfo) =>
+      call('pay', {
+        // 协议入参用 channel，原生 pay 用 payMethod；做一次映射
+        orderNo: orderInfo.orderNo,
+        payMethod: channel,
+        amount: orderInfo.amount,
+        currency: orderInfo.currency || 'USD',
+      }),
+    // 通过 getAvailableChannels 判断目标 channel 是否被原生支持
+    isAvailable: async (channel) => {
+      const result = await getAvailableChannels()
+      if (!result.success) return result
+      const list = (result.data && result.data.channels) || []
+      return { success: true, data: list.includes(channel) }
+    },
   }
 }
 

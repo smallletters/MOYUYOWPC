@@ -33,6 +33,7 @@ public class CartServiceImpl implements CartService {
   private final OrderService orderService;
 
   @Override
+  @SuppressWarnings("null")
   public List<CartEntity> getUserCart(Long userId) {
     List<CartEntity> carts = cartMapper.selectList(
         new LambdaQueryWrapper<CartEntity>()
@@ -46,6 +47,7 @@ public class CartServiceImpl implements CartService {
 
   @Override
   @Transactional
+  @SuppressWarnings("null")
   public CartEntity addItem(Long userId, Long skuId, int quantity) {
     CartEntity existing = cartMapper.selectOne(
         new LambdaQueryWrapper<CartEntity>()
@@ -97,6 +99,7 @@ public class CartServiceImpl implements CartService {
 
   @Override
   @Transactional
+  @SuppressWarnings("null")
   public CartEntity updateQuantity(Long userId, Long skuId, int quantity) {
     CartEntity existing = cartMapper.selectOne(
         new LambdaQueryWrapper<CartEntity>()
@@ -131,6 +134,7 @@ public class CartServiceImpl implements CartService {
 
   @Override
   @Transactional
+  @SuppressWarnings("null")
   public void removeItem(Long userId, Long skuId) {
     cartMapper.delete(
         new LambdaQueryWrapper<CartEntity>()
@@ -140,6 +144,7 @@ public class CartServiceImpl implements CartService {
 
   @Override
   @Transactional
+  @SuppressWarnings("null")
   public void toggleCheck(Long userId, Long skuId, Boolean selected) {
     CartEntity existing = cartMapper.selectOne(
         new LambdaQueryWrapper<CartEntity>()
@@ -156,6 +161,7 @@ public class CartServiceImpl implements CartService {
 
   @Override
   @Transactional
+  @SuppressWarnings("null")
   public void toggleCheckAll(Long userId, boolean selected) {
     CartEntity update = new CartEntity();
     update.setSelected(selected);
@@ -166,6 +172,7 @@ public class CartServiceImpl implements CartService {
 
   @Override
   @Transactional
+  @SuppressWarnings("null")
   public void clear(Long userId) {
     cartMapper.delete(
         new LambdaQueryWrapper<CartEntity>()
@@ -174,6 +181,7 @@ public class CartServiceImpl implements CartService {
 
   @Override
   @Transactional
+  @SuppressWarnings("null")
   public OrderEntity checkout(Long userId, Long addressId, String remark, String couponId) {
     List<CartEntity> selected = cartMapper.selectList(
         new LambdaQueryWrapper<CartEntity>()
@@ -226,6 +234,7 @@ public class CartServiceImpl implements CartService {
    * - skuId 恰等于商品 id      → 兼容简单商品，按商品主库存判 VALID / OUT_OF_STOCK
    * - SKU 找不到              → INVALID_SKU（规格已失效，移入失效区）
    */
+  @SuppressWarnings("null")
   private void fillAvailability(List<CartEntity> carts) {
     if (carts == null || carts.isEmpty()) {
       return;
@@ -240,11 +249,14 @@ public class CartServiceImpl implements CartService {
         .filter(Objects::nonNull)
         .distinct()
         .collect(Collectors.toList());
+    // 使用 selectList + in 取代过时的 selectBatchIds，同时规避其 @Nullable 返回值带来的 null type safety 警告
     Map<Long, ProductSkuEntity> skuMap = skuIds.isEmpty() ? Collections.emptyMap()
-        : productSkuMapper.selectBatchIds(skuIds).stream()
+        : productSkuMapper.selectList(
+            new LambdaQueryWrapper<ProductSkuEntity>().in(ProductSkuEntity::getId, skuIds)).stream()
             .collect(Collectors.toMap(ProductSkuEntity::getId, s -> s, (a, b) -> a));
     Map<Long, ProductEntity> productMap = productIds.isEmpty() ? Collections.emptyMap()
-        : productMapper.selectBatchIds(productIds).stream()
+        : productMapper.selectList(
+            new LambdaQueryWrapper<ProductEntity>().in(ProductEntity::getId, productIds)).stream()
             .collect(Collectors.toMap(ProductEntity::getId, p -> p, (a, b) -> a));
 
     for (CartEntity cart : carts) {

@@ -29,6 +29,11 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/community")
 @RequiredArgsConstructor
+// 类级抑制：MyBatis-Plus 的 LambdaQueryWrapper.eq(OrderItem::getXxx, ...) 等方法引用
+// 在 Eclipse JDT 类型推导下，函数描述符是 Function<Entity, Object>，与 lombok @Data 生成的
+// @Nonnull Entity 参数不严格匹配 → 报 67109822 (severity 4, info 级)；
+// javac 编译时无此告警，且运行时无影响。这里统一在类级别抑制，避免逐行加注解。
+@SuppressWarnings("null")
 public class CommunityController {
 
     private final CommunityService communityService;
@@ -42,7 +47,12 @@ public class CommunityController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String topic,
-            @RequestParam(required = false) String keyword) {
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long userId) {
+        // 指定 userId 时只拉该用户帖子(用于他人 profile),与列表/搜索互斥
+        if (userId != null) {
+            return Result.success(communityService.listPostsByUser(userId, page, size));
+        }
         // 关键字非空时走搜索；topic 单独过滤；都不传则拉全部
         if (keyword != null && !keyword.trim().isEmpty()) {
             return Result.success(communityService.searchPosts(keyword.trim(), topic, page, size));
@@ -69,7 +79,10 @@ public class CommunityController {
     }
 
     @Operation(summary = "帖子详情")
-    @GetMapping("/posts/{id}")
+    // 用 {id:\\d+} 约束 {id} 只匹配数字，避免与字面量路由 /posts/liked /posts/mine
+    // /posts/collected /posts/{id}/like 等冲突；不加正则时 Spring 会先匹配 {id}，
+    // 然后因 "liked"/"mine"/"collected" 转 Long 失败抛 400 参数类型错误
+    @GetMapping("/posts/{id:\\d+}")
     public Result<CommunityPostVO> getPostDetail(@PathVariable Long id) {
         Long userId = UserContextHolder.getUserId();
         return Result.success(communityService.getPostDetail(id, userId));
@@ -182,6 +195,21 @@ public class CommunityController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
         return Result.success(communityService.listCollectedPosts(
+                UserContextHolder.getUserId(), page, size));
+    }
+
+    /**
+     * 当前用户点赞过的帖子（按点赞时间倒序，分页 VO）。
+     * 用于"我的"页 → 个人中心 → 点赞 Tab。
+     * 返回的 VO 中 liked 字段恒为 true（同一份 like 表筛选而来），
+     * collected 字段反映当前用户是否同时收藏了该帖。
+     */
+    @Operation(summary = "我点赞的帖子（分页 VO）")
+    @GetMapping("/posts/liked")
+    public Result<Page<CommunityPostVO>> myLiked(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return Result.success(communityService.listLikedPosts(
                 UserContextHolder.getUserId(), page, size));
     }
 

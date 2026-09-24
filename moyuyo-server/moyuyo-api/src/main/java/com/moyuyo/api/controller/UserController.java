@@ -6,8 +6,10 @@ import com.moyuyo.common.dto.auth.ChangePhoneRequest;
 import com.moyuyo.common.dto.auth.ProfileUpdateRequest;
 import com.moyuyo.common.exception.BusinessException;
 import com.moyuyo.common.security.UserContextHolder;
+import com.moyuyo.dao.entity.CommunityPostEntity;
 import com.moyuyo.dao.entity.FollowEntity;
 import com.moyuyo.dao.entity.UserEntity;
+import com.moyuyo.dao.mapper.CommunityPostMapper;
 import com.moyuyo.dao.mapper.FollowMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.AuthService;
@@ -28,6 +30,7 @@ public class UserController {
 
   private final UserMapper userMapper;
   private final FollowMapper followMapper;
+  private final CommunityPostMapper postMapper;
   private final AuthService authService;
 
   // 抑制 JDT 静态检查对 MyBatis-Plus Lambda 引用的 null type safety 警告(实体 getter 被推断为 @Nonnull)
@@ -36,20 +39,32 @@ public class UserController {
   public Result<Map<String, Object>> profile(@PathVariable Long id) {
     UserEntity u = userMapper.selectById(id);
     if (u == null) throw new IllegalArgumentException("用户不存在");
+    // 关注/粉丝数只统计真实"在关注"的关系(FOLLOWING),与 FollowController.following/followers 保持一致
     long following = followMapper.selectCount(
-        new LambdaQueryWrapper<FollowEntity>().eq(FollowEntity::getUserId, id));
+        new LambdaQueryWrapper<FollowEntity>()
+            .eq(FollowEntity::getUserId, id)
+            .eq(FollowEntity::getStatus, "FOLLOWING"));
     long followers = followMapper.selectCount(
-        new LambdaQueryWrapper<FollowEntity>().eq(FollowEntity::getTargetId, id));
+        new LambdaQueryWrapper<FollowEntity>()
+            .eq(FollowEntity::getTargetId, id)
+            .eq(FollowEntity::getStatus, "FOLLOWING"));
+    // 已发布帖子数（status=1）:用于他人 profile 数据条"帖子"展示
+    long posts = postMapper.selectCount(
+        new LambdaQueryWrapper<CommunityPostEntity>()
+            .eq(CommunityPostEntity::getUserId, id)
+            .eq(CommunityPostEntity::getStatus, 1));
     Map<String, Object> p = new HashMap<>();
     p.put("id", u.getId());
     p.put("nickname", u.getNickname());
     p.put("avatar", u.getAvatar());
     p.put("country", u.getCountry());
     p.put("gender", u.getGender());
-    p.put("bio", "");
+    // bio 走真实 DB 字段,NULL/空串都返回 null,前端统一展示默认文案
+    p.put("bio", u.getBio());
     p.put("points", u.getPoints());
     p.put("following", following);
     p.put("followers", followers);
+    p.put("posts", posts);
     p.put("isFollowing", false);
     return Result.success(p);
   }
@@ -208,6 +223,8 @@ public class UserController {
     p.put("phone", u.getPhone());
     p.put("birthday", u.getBirthday());
     p.put("country", u.getCountry());
+    // bio 真实字段写入,NULL 时前端按 i18n 默认文案展示
+    p.put("bio", u.getBio());
     p.put("emailVerified", u.getEmailVerified() != null && u.getEmailVerified());
     p.put("twoFactorEnabled", u.getTwoFactorEnabled() != null && u.getTwoFactorEnabled());
     p.put("points", u.getPoints());

@@ -560,6 +560,7 @@ onUnmounted(() => document.removeEventListener('click', handleDocClick))
 /* ===== 主区域 ===== */
 .admin-main {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -712,6 +713,7 @@ onUnmounted(() => document.removeEventListener('click', handleDocClick))
 /* 内容区：统一 24px 内边距，保证各页面间距一致 */
 .admin-content {
   flex: 1;
+  min-width: 0;
   overflow-y: auto;
   padding: 24px;
 }

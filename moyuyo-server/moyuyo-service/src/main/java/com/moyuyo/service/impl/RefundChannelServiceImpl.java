@@ -6,6 +6,7 @@ import com.moyuyo.service.RefundChannelService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -92,8 +93,11 @@ public class RefundChannelServiceImpl implements RefundChannelService {
                     + "&idempotency_key=" + urlEncode(refundNo);
 
             HttpEntity<String> entity = new HttpEntity<>(body, headers);
-            ResponseEntity<Map> response = restTemplate.postForEntity(
-                    "https://api.stripe.com/v1/refunds", entity, Map.class);
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    "https://api.stripe.com/v1/refunds",
+                    org.springframework.http.HttpMethod.POST,
+                    entity,
+                    new ParameterizedTypeReference<Map<String, Object>>() {});
             Map<String, Object> result = response.getBody();
             if (result == null || result.containsKey("error")) {
                 log.error("Stripe refund failed: {}", result);
@@ -134,15 +138,26 @@ public class RefundChannelServiceImpl implements RefundChannelService {
                     amountStr.toPlainString(), refundNo);
 
             HttpEntity<String> entity = new HttpEntity<>(body, headers);
-            ResponseEntity<Map> response = restTemplate.postForEntity(
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     baseUrl + "/v2/payments/captures/" + captureId + "/refund",
-                    entity, Map.class);
+                    org.springframework.http.HttpMethod.POST,
+                    entity,
+                    new ParameterizedTypeReference<Map<String, Object>>() {});
             Map<String, Object> result = response.getBody();
             if (result == null) {
                 throw new RuntimeException("PayPal 退款响应为空");
             }
             String refundId = (String) result.get("id");
-            log.info("PayPal refund success: refundId={}", refundId);
+            // 校验 PayPal 返回的 status：仅 COMPLETED/PENDING 视为成功。
+            // 历史上出现过 HTTP 200 但 status=FAILED/DENIED 的场景（合规/欺诈/账户问题），
+            // 若不校验则本地 refund_no 与渠道方对不上，未来对账会发现"有钱但没退款记录"。
+            String status = (String) result.get("status");
+            if (!"COMPLETED".equals(status) && !"PENDING".equals(status)) {
+                log.error("PayPal refund rejected: refundId={}, status={}, fullResponse={}",
+                        refundId, status, result);
+                throw new RuntimeException("PayPal 退款未受理: status=" + status + ", refundId=" + refundId);
+            }
+            log.info("PayPal refund success: refundId={}, status={}", refundId, status);
             return refundId;
         } catch (Exception e) {
             log.error("PayPal refund exception", e);
@@ -151,7 +166,6 @@ public class RefundChannelServiceImpl implements RefundChannelService {
     }
 
     /** PayPal OAuth 客户端凭据模式获取 access_token */
-    @SuppressWarnings("unchecked")
     private String getPayPalAccessToken() {
         try {
             String baseUrl = "sandbox".equals(config.getPaypalMode())
@@ -162,8 +176,11 @@ public class RefundChannelServiceImpl implements RefundChannelService {
             headers.setBasicAuth(config.getPaypalClientId(), config.getPaypalClientSecret());
             String body = "grant_type=client_credentials";
             HttpEntity<String> entity = new HttpEntity<>(body, headers);
-            ResponseEntity<Map> response = restTemplate.postForEntity(
-                    baseUrl + "/v1/oauth2/token", entity, Map.class);
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    baseUrl + "/v1/oauth2/token",
+                    org.springframework.http.HttpMethod.POST,
+                    entity,
+                    new ParameterizedTypeReference<Map<String, Object>>() {});
             Map<String, Object> result = response.getBody();
             if (result == null || result.get("access_token") == null) {
                 throw new RuntimeException("PayPal token 获取失败");

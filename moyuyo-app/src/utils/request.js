@@ -45,29 +45,47 @@ function getBearerToken() {
   return safeGet(STORAGE_KEYS.TOKEN)
 }
 
+// 401 刷新去抖锁：并发请求共用一次 refresh，避免 5+ 个接口同时触发 5+ 个 modal
+let isRefreshing = false
+const pendingUnauthorizedHandlers = []
+
 function handleUnauthorized() {
   const refreshTokenVal = safeGet('moyuyo_refresh_token')
-  if (refreshTokenVal) {
-    refreshToken(refreshTokenVal)
-      .then((newTokens) => {
-        safeSet(STORAGE_KEYS.TOKEN, newTokens.accessToken)
-        if (newTokens.refreshToken) {
-          safeSet('moyuyo_refresh_token', newTokens.refreshToken)
-        }
-      })
-      .catch(() => {
-        // 刷新失败:清空凭证 + 文案中文化 + 弹窗确认再跳转,避免突兀踢出
-        safeRemove(STORAGE_KEYS.TOKEN)
-        safeRemove(STORAGE_KEYS.USER_INFO)
-        safeRemove('moyuyo_refresh_token')
-        promptReLogin()
-      })
-  } else {
-    // 无 refresh token:同样先弹窗确认,避免用户在查看账单时被强制踢出
+  if (!refreshTokenVal) {
+    // 无 refresh token：清凭证 + 弹窗确认再跳转
     safeRemove(STORAGE_KEYS.TOKEN)
     safeRemove(STORAGE_KEYS.USER_INFO)
     promptReLogin()
+    return
   }
+  if (isRefreshing) {
+    // 正在刷新中：把后续 401 的 reject 挂到队列，等刷新结束后统一 reject
+    return new Promise((resolve, reject) => {
+      pendingUnauthorizedHandlers.push({ resolve, reject })
+    })
+  }
+  isRefreshing = true
+  refreshToken(refreshTokenVal)
+    .then((newTokens) => {
+      safeSet(STORAGE_KEYS.TOKEN, newTokens.accessToken)
+      if (newTokens.refreshToken) {
+        safeSet('moyuyo_refresh_token', newTokens.refreshToken)
+      }
+      pendingUnauthorizedHandlers.forEach(({ resolve }) => resolve())
+      pendingUnauthorizedHandlers.length = 0
+    })
+    .catch(() => {
+      // 刷新失败：清凭证 + 弹窗
+      safeRemove(STORAGE_KEYS.TOKEN)
+      safeRemove(STORAGE_KEYS.USER_INFO)
+      safeRemove('moyuyo_refresh_token')
+      pendingUnauthorizedHandlers.forEach(({ reject }) => reject(new Error('Unauthorized')))
+      pendingUnauthorizedHandlers.length = 0
+      promptReLogin()
+    })
+    .finally(() => {
+      isRefreshing = false
+    })
 }
 
 /**
@@ -271,11 +289,20 @@ export function request(options) {
       fail: (err) => {
         pendingRequests.delete(requestId)
         if (showLoading) uni.hideLoading()
-        const msg = err.errMsg?.includes('timeout')
-          ? t('common.requestTimeout')
-          : t('common.networkError')
+        const isTimeout = err.errMsg?.includes('timeout')
+        const msg = isTimeout ? t('common.requestTimeout') : t('common.networkError')
+        console.warn('[request] network fail:', fullUrl, err)
         if (showError) uni.showToast({ title: msg, icon: 'none' })
-        reject(new Error(msg))
+        // 网络错误兜底：后端重启后旧 token 可能被作废，
+        // 这里清掉 token 让下次进入页面走登录流程，
+        // 避免用户反复看到"网络错误"却无法自动恢复
+        if (fullUrl.includes('/api/v1/')) {
+          safeRemove(STORAGE_KEYS.TOKEN)
+        }
+        const e = new Error(msg)
+        e.isNetworkError = true
+        e.url = fullUrl
+        reject(e)
       },
     })
 

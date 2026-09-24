@@ -398,7 +398,7 @@ async function handleAction(action) {
 
 // 返回内容审核列表（整页跳转，避免 SPA chunk 缓存导致组件未加载）
 function handleBack() {
-  window.location.href = '/admin/content-review'
+  window.location.href = '/admin/reviews'
 }
 
 // 路由 id 变化时重新加载

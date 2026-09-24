@@ -10,6 +10,11 @@ public interface CommunityService {
     Page<CommunityPostVO> listPosts(String topic, int page, int size);
 
     /**
+     * 按用户 ID 拉取该用户已发布的帖子（用于他人 profile 页）。仅展示 status=1。
+     */
+    Page<CommunityPostVO> listPostsByUser(Long userId, int page, int size);
+
+    /**
      * 按关键字搜索帖子（基于 content LIKE %keyword%）。
      * topic 可选，不传则搜全部主题。
      */
@@ -48,4 +53,11 @@ public interface CommunityService {
      * 用于"我的"页 → 收藏 入口。
      */
     Page<CommunityPostVO> listCollectedPosts(Long userId, int page, int size);
+
+    /**
+     * 当前用户点赞过的帖子（按点赞时间倒序，含完整 VO）。
+     * 用于"我的"页 → 个人中心 → 点赞 Tab。
+     * 返回 VO 的 liked 字段恒为 true（同一份 liked 表筛选而来），collected 字段反映当前是否已收藏。
+     */
+    Page<CommunityPostVO> listLikedPosts(Long userId, int page, int size);
 }

@@ -228,6 +228,12 @@
       }
     },
     {
+      "path": "pages/community/profile",
+      "style": {
+        "navigationBarTitleText": "我的主页"
+      }
+    },
+    {
       "path": "pages/community/drafts",
       "style": {
         "navigationBarTitleText": "草稿箱",
@@ -868,7 +874,7 @@
     "selectedColor": "#DBC98A",
     "backgroundColor": "#FFFFFF",
     "borderStyle": "black",
-    "iconfontSrc": "static/fonts/lucide.ttf",
+    "iconfontSrc": "/static/fonts/lucide.ttf",
     "list": [
       {
         "pagePath": "pages/tabbar/home",

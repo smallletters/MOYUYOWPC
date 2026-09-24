@@ -174,16 +174,6 @@ export function idbClear() {
 // 同一 key 多次 get 时复用同一个 blob URL,避免每次都 URL.createObjectURL 造成内存泄漏
 const urlCache = new Map() // key -> { url, refCount, blob }
 
-function revokeIfOrphan(url) {
-  // refCount <= 0 才回收
-  for (const [k, v] of urlCache) {
-    if (v.url === url && v.refCount <= 0) {
-      URL.revokeObjectURL(url)
-      urlCache.delete(k)
-    }
-  }
-}
-
 /**
  * 获取一个 key 对应的 blob URL(自动管理 URL.createObjectURL 生命周期)
  * 如果该 key 已有 URL,refCount + 1 并返回;否则从 IDB 读 blob 后创建 URL

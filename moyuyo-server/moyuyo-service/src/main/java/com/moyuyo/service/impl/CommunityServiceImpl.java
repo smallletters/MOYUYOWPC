@@ -31,6 +31,9 @@ import java.util.stream.Stream;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+// 抑制 JDT null-analysis 对 MyBatis-Plus SFunction / Stream 方法引用的误报
+// （底层 SFunction 的 @Nonnull 类型参数 vs Function.apply 形参推断冲突，mvn 编译无影响）
+@SuppressWarnings("null")
 public class CommunityServiceImpl implements CommunityService {
 
     private final CommunityPostMapper postMapper;
@@ -54,6 +57,17 @@ public class CommunityServiceImpl implements CommunityService {
             wrapper.eq(CommunityPostEntity::getTopic, topic);
         }
 
+        Page<CommunityPostEntity> entityPage = postMapper.selectPage(new Page<>(page, size), wrapper);
+        return toVOPage(entityPage);
+    }
+
+    @Override
+    public Page<CommunityPostVO> listPostsByUser(Long userId, int page, int size) {
+        // 仅查已发布帖子,按发布时间倒序,用于他人 profile 页"帖子" tab
+        LambdaQueryWrapper<CommunityPostEntity> wrapper = new LambdaQueryWrapper<CommunityPostEntity>()
+                .eq(CommunityPostEntity::getUserId, userId)
+                .eq(CommunityPostEntity::getStatus, 1)
+                .orderByDesc(CommunityPostEntity::getCreateTime);
         Page<CommunityPostEntity> entityPage = postMapper.selectPage(new Page<>(page, size), wrapper);
         return toVOPage(entityPage);
     }
@@ -365,7 +379,7 @@ public class CommunityServiceImpl implements CommunityService {
         // 按收藏顺序组装 VO（保持收藏顺序，而不是按发布时间）
         List<Long> postIds = collectPage.getRecords().stream()
                 .map(CommunityCollectEntity::getPostId).collect(Collectors.toList());
-        List<CommunityPostEntity> posts = postMapper.selectBatchIds(postIds);
+        List<CommunityPostEntity> posts = postMapper.selectByIds(postIds);
         Map<Long, CommunityPostEntity> postMap = posts.stream()
                 .collect(Collectors.toMap(CommunityPostEntity::getId, p -> p));
         List<CommunityPostEntity> ordered = postIds.stream()
@@ -377,6 +391,44 @@ public class CommunityServiceImpl implements CommunityService {
         if (voPage.getRecords() != null) {
             voPage.getRecords().forEach(v -> {
                 v.setLiked(isLiked(userId, v.getId()));
+                v.setCollected(isCollected(userId, v.getId()));
+            });
+        }
+        return voPage;
+    }
+
+    /**
+     * 当前用户点赞过的帖子（按点赞时间倒序）。
+     * 实现思路与 listCollectedPosts 一致：先分页查 like 表得到 postId 列表与总数，
+     * 再 selectByIds 拿帖子实体，按 like 顺序组装，调用 toVOPage 转 VO，
+     * 补齐 liked（恒 true，因为这些 postId 就是从同一份 like 表筛出来的）
+     * 与 collected（反映当前是否已收藏，便于前端图标状态正确）。
+     */
+    @Override
+    public Page<CommunityPostVO> listLikedPosts(Long userId, int page, int size) {
+        Page<CommunityLikeEntity> likePage = likeMapper.selectPage(new Page<>(page, size),
+                new LambdaQueryWrapper<CommunityLikeEntity>()
+                        .eq(CommunityLikeEntity::getUserId, userId)
+                        .orderByDesc(CommunityLikeEntity::getCreateTime));
+        if (likePage.getRecords() == null || likePage.getRecords().isEmpty()) {
+            Page<CommunityPostVO> voPage = new Page<>(page, size, 0);
+            voPage.setRecords(Collections.emptyList());
+            return voPage;
+        }
+        List<Long> postIds = likePage.getRecords().stream()
+                .map(CommunityLikeEntity::getPostId).collect(Collectors.toList());
+        List<CommunityPostEntity> posts = postMapper.selectByIds(postIds);
+        Map<Long, CommunityPostEntity> postMap = posts.stream()
+                .collect(Collectors.toMap(CommunityPostEntity::getId, p -> p));
+        // 保持 like 顺序，而不是按发布时间
+        List<CommunityPostEntity> ordered = postIds.stream()
+                .map(postMap::get).filter(java.util.Objects::nonNull).collect(Collectors.toList());
+        Page<CommunityPostEntity> entityPage = new Page<>(page, size, likePage.getTotal());
+        entityPage.setRecords(ordered);
+        Page<CommunityPostVO> voPage = toVOPage(entityPage, userId);
+        if (voPage.getRecords() != null) {
+            voPage.getRecords().forEach(v -> {
+                v.setLiked(true);
                 v.setCollected(isCollected(userId, v.getId()));
             });
         }
@@ -515,8 +567,10 @@ public class CommunityServiceImpl implements CommunityService {
         List<Long> distinct = userIds.stream().filter(Objects::nonNull).distinct().collect(Collectors.toList());
         if (distinct.isEmpty()) return Collections.emptyMap();
         log.info("[community-debug] loadUserMap ids={}", distinct);
-        List<UserEntity> users = userMapper.selectBatchIds(distinct);
+        List<UserEntity> users = userMapper.selectByIds(distinct);
         log.info("[community-debug] loadUserMap found {} users for ids={}", users == null ? 0 : users.size(), distinct);
+        // 防御：selectByIds 在 Mapper 默认实现下不应返回 null，但接口契约允许，统一兜底避免 NPE
+        if (users == null) return Collections.emptyMap();
         return users.stream()
                 .collect(Collectors.toMap(UserEntity::getId, u -> u, (a, b) -> a));
     }

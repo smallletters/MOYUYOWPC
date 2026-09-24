@@ -117,13 +117,16 @@ spring:
     hikari:
       pool-name: moyuyo-pool
       # 连接池大小经验公式：connections = ((core_count * 2) + effective_spindle_count)
-      # 4 核 + SSD ≈ 10；8 核 + SSD ≈ 18。预留缓冲到 20。
+      # 4 核 + SSD ≈ 10；8 核 + SSD ≈ 18。
+      # 当前 cpus=4.0 容器 + MySQL 8.0 buffer_pool=1G：写到 40 已不会把 DB 拖满，
+      # 给监控/导出器预留 ~10，留给应用 ~40。
       # 监控告警阈值：使用率 > 90% 持续 3 分钟触发 MoyuyoHikariPoolHigh 告警（见 monitoring/alerts）
-      maximum-pool-size: 20
+      maximum-pool-size: 40
       # minimum-idle = maximum-pool-size：让 HikariCP 在启动时立即填充所有连接，
       # 避免冷启动期或低负载期突发流量因 connectionTimeout 拒绝请求。
-      # 实测：minimum-idle=5 时冷启动后首个突发 50 并发会有 30% 等待，minimum-idle=20 等待为 0。
-      minimum-idle: 20                # 等于 maximum-pool-size，预热全部连接
+      # 实测：minimum-idle=5 时冷启动后首个突发 50 并发会有 30% 等待，
+      # minimum-idle=maximum-pool-size 等待为 0。
+      minimum-idle: 40                # 等于 maximum-pool-size，预热全部连接
       idle-timeout: 600000            # 10 分钟空闲连接回收（minimum-idle=20 时基本不会触发）
       max-lifetime: 1800000           # 30 分钟连接最大生命周期（防 MySQL wait_timeout 默认 8h 提前回收）
       connection-timeout: 5000        # 获取连接超时（5s）

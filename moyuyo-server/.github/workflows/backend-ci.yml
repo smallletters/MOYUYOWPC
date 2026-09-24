@@ -98,6 +98,12 @@ jobs:
       - name: Checkstyle validation
         run: mvn validate -B
 
+      # env 覆盖检查：确保 application-prod.yml 用到的 ${ENV} 都在 docker-compose.yml app.environment 注入
+      # 防止"yml 改了但 compose 没透传"导致生产部署拿到 yml 默认值（静默配置漂移）
+      # 与 check-env-coverage.ps1 是同一逻辑的 Linux 实现
+      - name: Check env coverage (yml <-> compose)
+        run: bash ./check-env-coverage.sh
+
       - name: Flyway 迁移校验（完整跑一遍 db/migration）
         # 关键：CI 中真实执行 Flyway 迁移，可提前发现 DDL 错误（如 V20260804_02 分区变更）
         # 注意：mo_order 分区 DDL 需要 MySQL 8.0+，CI 已用 8.0

@@ -129,9 +129,19 @@ export function logoutFromProvider(provider) {
 /**
  * 社交登录插件调用封装（composable）
  * 与 auth.ts 中 useAuthPlugin 保持一致
+ * - login: 映射到原生 loginWithApple / loginWithGoogle / loginWithFacebook
+ * - logout: 直接调原生 logout
+ * - isAuthorized: 走原生 isAppInstalled 判断
  * @returns {{ login: Function, logout: Function, isAuthorized: Function }}
  */
 export function useAuthPlugin() {
+  // 协议 provider 到原生方法名的映射
+  const loginMethodMap = {
+    apple: 'loginWithApple',
+    google: 'loginWithGoogle',
+    facebook: 'loginWithFacebook',
+  }
+
   const call = (method, args) => {
     return new Promise((resolve) => {
       // #ifdef APP-PLUS
@@ -149,9 +159,9 @@ export function useAuthPlugin() {
   }
 
   return {
-    login: (provider) => call('login', { provider }),
+    login: (provider) => call(loginMethodMap[provider] || 'loginWithApple', {}),
     logout: (provider) => call('logout', { provider }),
-    isAuthorized: (provider) => call('isAuthorized', { provider }),
+    isAuthorized: (provider) => call('isAppInstalled', { provider }),
   }
 }
 

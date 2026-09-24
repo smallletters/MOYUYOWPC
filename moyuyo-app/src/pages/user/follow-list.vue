@@ -116,7 +116,7 @@
 
         <!-- 操作按钮 -->
         <view v-if="mode === 'following'" class="btn btn-unfollow" @tap.stop="onUnfollow(u)">
-          <text class="btn-text">{{ $t('followList.followed') }}</text>
+          <text class="btn-text">{{ $t('followList.unfollowBtn') }}</text>
         </view>
         <view v-else-if="!u.followed" class="btn btn-follow" @tap.stop="onFollow(u)">
           <text class="btn-text-white">{{ $t('followList.followBack') }}</text>
@@ -138,7 +138,10 @@
 </template>
 
 <script setup>
+// onShow 是 uni-app 的页面生命周期,必须从 @dcloudio/uni-app 导入,
+// 从 'vue' 拿不到,运行时会是 undefined。
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { followApi } from '@/api/follow'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 import { i18n } from '@/i18n'
@@ -248,12 +251,12 @@ onUnmounted(() => {
   if (_unsubLocale) _unsubLocale()
 })
 
-// 监听 pageshow:用户从其他页返回时刷新关注状态(如取消关注后回退)
-function onShowHook() {
+// 监听页面 onShow:用户从其他页返回时刷新关注状态(如取消关注后回退)
+onShow(() => {
   if (list.value.length > 0) {
     loadList(true)
   }
-}
+})
 
 async function loadList(reset = false) {
   if (reset) {
@@ -412,13 +415,15 @@ function onLongPress(u) {
   })
 }
 
-/** 跳到用户主页(本项目无独立 profile 页时,跳到 search 页用昵称搜,主流 APP 兜底策略) */
+/** 跳到用户主页：跳到社区 profile 页，通过 query.id 区分"自己"和"他人" */
 function goProfile(u) {
   const id = u.targetId || u.userId || u.id
   const name = u.nickname
   // 优先 id 跳转,无 id 时按昵称走搜索
   if (id) {
-    uni.navigateTo({ url: `/pages/user/profile?id=${id}&name=${encodeURIComponent(name || '')}` })
+    uni.navigateTo({
+      url: `/pages/community/profile?id=${id}&name=${encodeURIComponent(name || '')}`,
+    })
   } else if (name) {
     uni.navigateTo({ url: `/pages/community/search?keyword=${encodeURIComponent(name)}` })
   }
@@ -561,6 +566,11 @@ function onImgError(e) {
 /* 列表 */
 .list {
   flex: 1;
+  /* 自适应屏幕宽度:避免 flex 列方向子项被内部内容撑开超过视口 */
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 16rpx;
 }
 .status {

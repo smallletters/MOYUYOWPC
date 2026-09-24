@@ -119,7 +119,7 @@ body {
   color: var(--foreground);
   background: var(--background);
   line-height: 1.5;
-  min-width: 1280px;
+  min-width: 0;
 }
 
 a {

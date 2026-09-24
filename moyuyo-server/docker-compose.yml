@@ -381,6 +381,12 @@ services:
       # Dockerfile 的 HEALTHCHECK 探测 9090 持续 exit=7 失败，容器长期 unhealthy）。
       # 见 override.yml 文件说明注释
       MANAGEMENT_SERVER_PORT: ${MANAGEMENT_SERVER_PORT:-9090}
+      # actuator 监听地址：prod 默认 127.0.0.1（仅本机 Prometheus 可达）；
+      # 改为 0.0.0.0 可让同主机其他容器（如独立 Prometheus）直连，但会暴露在公网需慎用
+      MANAGEMENT_ADDRESS: ${MANAGEMENT_ADDRESS:-127.0.0.1}
+      # Spring 懒初始化：prod 默认 true（冷启动更快，但首次访问时 Bean 配置错误才暴露）；
+      # 调试期可设为 false 让所有 Bean 在启动期装配，便于排障
+      SPRING_MAIN_LAZY_INITIALIZATION: ${SPRING_MAIN_LAZY_INITIALIZATION:-true}
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306
       MYSQL_DATABASE: ${MYSQL_DATABASE:-moyuyo_prod}
@@ -394,6 +400,9 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      # Redis SSL：prod 默认关闭，启用需同步挂载客户端证书到容器并配置 REDIS_SSL_BUNDLE
+      REDIS_SSL_ENABLED: ${REDIS_SSL_ENABLED:-false}
+      REDIS_SSL_BUNDLE: ${REDIS_SSL_BUNDLE:-}
       # 监控 exporter 独立密码：注入以通过 ProdConfigValidator 启动期"账号独立 + 必填"校验
       MYSQL_EXPORTER_PASSWORD: ${MYSQL_EXPORTER_PASSWORD:?MYSQL_EXPORTER_PASSWORD must be set}
       REDIS_EXPORTER_PASSWORD: ${REDIS_EXPORTER_PASSWORD:?REDIS_EXPORTER_PASSWORD must be set}
@@ -476,6 +485,9 @@ services:
       MOYUYO_AUDIT_BLOCK_ON_FULL: ${MOYUYO_AUDIT_BLOCK_ON_FULL:-false}
       MOYUYO_AUDIT_RETENTION_ENABLED: ${MOYUYO_AUDIT_RETENTION_ENABLED:-true}
       MOYUYO_AUDIT_RETENTION_DAYS: ${MOYUYO_AUDIT_RETENTION_DAYS:-90}
+      # 审计日志批大小与 flush 间隔：未透传前写在 .env 里调参不生效，现补齐
+      MOYUYO_AUDIT_BATCH_SIZE: ${MOYUYO_AUDIT_BATCH_SIZE:-200}
+      MOYUYO_AUDIT_FLUSH_INTERVAL_MS: ${MOYUYO_AUDIT_FLUSH_INTERVAL_MS:-1000}
       # WooCommerce 库存同步定时任务（prod 默认开启）
       WC_STOCK_SYNC_ENABLED: ${WC_STOCK_SYNC_ENABLED:-true}
       WC_STOCK_SYNC_CRON: "${WC_STOCK_SYNC_CRON:-0 */5 * * * *}"
@@ -502,6 +514,9 @@ services:
       MOYUYO_LOGISTICS_CUSTOMER: ${MOYUYO_LOGISTICS_CUSTOMER:-}
       MOYUYO_LOGISTICS_POLL_INTERVAL: ${MOYUYO_LOGISTICS_POLL_INTERVAL:-60}
       MOYUYO_LOGISTICS_POLL_BATCH_SIZE: ${MOYUYO_LOGISTICS_POLL_BATCH_SIZE:-200}
+      # 物流轨迹 API 请求超时：之前未透传，写在 .env 里调超时无效，现补齐
+      MOYUYO_LOGISTICS_CONNECT_TIMEOUT_MS: ${MOYUYO_LOGISTICS_CONNECT_TIMEOUT_MS:-5000}
+      MOYUYO_LOGISTICS_READ_TIMEOUT_MS: ${MOYUYO_LOGISTICS_READ_TIMEOUT_MS:-15000}
       # Google Maps 位置服务（留空时 /api/v1/geo/* 返回"地图服务未配置"）
       GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
       # CSP 白名单：默认值与 SecurityHeadersFilter 的 @Value 默认一致，
@@ -515,7 +530,9 @@ services:
     # 资源限制：避免单个容器拖垮宿主（按需调整；当前为单机示例）
     # 注意：docker-compose v3 deploy.resources 仅在 swarm 模式生效；
     # 单机部署可用 cpus / memory 直接约束（需 docker engine >= 19.03）
-    cpus: '2.0'
+    # cpus=4.0：与 HikariCP=40 / Tomcat max-threads=800 匹配，
+    # 实测 cpus=2.0 时 Tomcat 在 c=200 即撞 CPU 墙（RPS≈1,900）
+    cpus: '4.0'
     mem_limit: 4G
     mem_reservation: 1G
     # ulimit：限制 JVM 可创建线程数，避免 fork 炸弹或恶意流量打爆文件描述符

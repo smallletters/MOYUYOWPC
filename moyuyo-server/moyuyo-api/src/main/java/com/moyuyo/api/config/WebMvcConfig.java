@@ -2,6 +2,7 @@ package com.moyuyo.api.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -51,6 +52,33 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Value("${moyuyo.cors.allowed-origins:}")
     private String allowedOrigins;
 
+    /**
+     * dev profile 下未配置 MOYUYO_CORS_ALLOWED_ORIGINS 时自动放行的本地常见 origin，
+     * 仅作为"启动成功即跨域可用"的兜底，避免 dev 阶段因为忘了导 env 导致模型/图片资源 CORS 被拦截。
+     * prod profile 不参与 fallback：必须显式配置，否则保持"未配置则不注册 CORS"的严控语义。
+     */
+    private static final String[] DEV_DEFAULT_ORIGINS = new String[] {
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174",
+            "http://localhost:8080",
+            "http://127.0.0.1:8080",
+            // 常见内网联调 IP（按需补全；这里给几组典型段，避免 dev 阶段忘了设 env 导致 APP 真机/H5 加载模型 CORS 失败）
+            "http://192.168.6.103:5173",
+            "http://192.168.6.103:5174",
+            "http://192.168.6.103:8080",
+            "http://10.0.2.2:5173",
+            "http://10.0.2.2:5174",
+            "http://10.0.2.2:8080"
+    };
+
+    private final Environment environment;
+
+    public WebMvcConfig(Environment environment) {
+        this.environment = environment;
+    }
+
     @Override
     public void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
         StringHttpMessageConverter converter = new StringHttpMessageConverter(StandardCharsets.UTF_8);
@@ -61,8 +89,19 @@ public class WebMvcConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         String[] patterns = parseOrigins(allowedOrigins);
         if (patterns.length == 0) {
-            // 未配置跨域来源时不注册 CORS，避免空数组导致的意外开放
-            return;
+            // dev profile 兜底：未配置 MOYUYO_CORS_ALLOWED_ORIGINS 时自动放行本地常见 origin，
+            // 避免 H5/APP 加载 .glb 等静态资源时被 CORS 拦截。
+            // 仅 dev 生效；prod 仍保持"未配置则不注册"的严控语义（保护线上不因配置缺失而意外开放）。
+            String[] activeProfiles = environment.getActiveProfiles();
+            boolean isDev = java.util.Arrays.asList(activeProfiles).contains("dev");
+            if (isDev) {
+                log.warn("[cors] moyuyo.cors.allowed-origins 未配置，dev profile 自动放行本地常见 origin: {}",
+                        String.join(", ", DEV_DEFAULT_ORIGINS));
+                patterns = DEV_DEFAULT_ORIGINS;
+            } else {
+                // prod / 其他 profile：未配置跨域来源时不注册 CORS，避免空数组导致的意外开放
+                return;
+            }
         }
         registry.addMapping("/api/**")
                 .allowedOriginPatterns(patterns)

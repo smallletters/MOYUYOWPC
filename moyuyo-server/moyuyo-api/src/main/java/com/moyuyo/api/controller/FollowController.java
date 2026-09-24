@@ -1,17 +1,17 @@
 package com.moyuyo.api.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
 import com.moyuyo.common.dto.community.CommunityPostVO;
 import com.moyuyo.common.security.UserContextHolder;
+import com.moyuyo.common.utils.JsonUtils;
 import com.moyuyo.dao.entity.CommunityPostEntity;
 import com.moyuyo.dao.entity.FollowEntity;
 import com.moyuyo.dao.mapper.CommunityPostMapper;
 import com.moyuyo.dao.mapper.FollowMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.dao.entity.UserEntity;
-import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -40,9 +40,9 @@ public class FollowController {
     Long targetId = body == null ? null : body.get("targetId");
     if (targetId == null || targetId.equals(userId)) throw new IllegalArgumentException("目标用户无效");
     FollowEntity exist = followMapper.selectOne(
-        new LambdaQueryWrapper<FollowEntity>()
-            .eq(FollowEntity::getUserId, userId)
-            .eq(FollowEntity::getTargetId, targetId));
+        new QueryWrapper<FollowEntity>()
+            .eq("user_id", userId)
+            .eq("target_id", targetId));
     if (exist != null) return Result.success();
     FollowEntity f = new FollowEntity();
     f.setUserId(userId);
@@ -54,18 +54,20 @@ public class FollowController {
 
   @DeleteMapping("/{targetId}")
   public Result<Void> unfollow(@PathVariable Long targetId) {
-    followMapper.delete(new LambdaQueryWrapper<FollowEntity>()
-        .eq(FollowEntity::getUserId, UserContextHolder.getUserId())
-        .eq(FollowEntity::getTargetId, targetId));
+    followMapper.delete(new QueryWrapper<FollowEntity>()
+        .eq("user_id", UserContextHolder.getUserId())
+        .eq("target_id", targetId));
     return Result.success();
   }
 
   @GetMapping("/{targetId}/status")
   public Result<Map<String, Boolean>> status(@PathVariable Long targetId) {
+    // 只统计真实"在关注"的关系(FOLLOWING);MUTED/BLOCKED 不算关注中
     long count = followMapper.selectCount(
-        new LambdaQueryWrapper<FollowEntity>()
-            .eq(FollowEntity::getUserId, UserContextHolder.getUserId())
-            .eq(FollowEntity::getTargetId, targetId));
+        new QueryWrapper<FollowEntity>()
+            .eq("user_id", UserContextHolder.getUserId())
+            .eq("target_id", targetId)
+            .eq("status", "FOLLOWING"));
     Map<String, Boolean> r = new HashMap<>();
     r.put("following", count > 0);
     return Result.success(r);
@@ -79,10 +81,10 @@ public class FollowController {
     // 1) 先按 userId + status 查分页总数,拿到真实 total(避免前端 size=1 + length 误判)
     com.baomidou.mybatisplus.extension.plugins.pagination.Page<FollowEntity> countPage = followMapper.selectPage(
         new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size),
-        new LambdaQueryWrapper<FollowEntity>()
-                .eq(FollowEntity::getUserId, me)
-                .eq(FollowEntity::getStatus, "FOLLOWING")
-                .orderByDesc(FollowEntity::getCreateTime));
+        new QueryWrapper<FollowEntity>()
+                .eq("user_id", me)
+                .eq("status", "FOLLOWING")
+                .orderByDesc("create_time"));
     // 2) 用完整列表 enrich 后,只截取当前页 records(避免再写一遍 enrich 逻辑,数据量小)
     List<Map<String, Object>> all = enrichFollowing(countPage.getRecords());
     com.baomidou.mybatisplus.extension.plugins.pagination.Page<Map<String, Object>> voPage = new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(
@@ -96,11 +98,14 @@ public class FollowController {
   public Result<Page<Map<String, Object>>> followers(
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "20") int size) {
+    // 与 following 保持一致:只统计真实"在关注"的关系,排除 MUTED/BLOCKED
+    // (FollowEntity.status 可为 FOLLOWING / MUTED / BLOCKED;只有 FOLLOWING 算有效关注)
     com.baomidou.mybatisplus.extension.plugins.pagination.Page<FollowEntity> countPage = followMapper.selectPage(
         new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size),
-        new LambdaQueryWrapper<FollowEntity>()
-                .eq(FollowEntity::getTargetId, UserContextHolder.getUserId())
-                .orderByDesc(FollowEntity::getCreateTime));
+        new QueryWrapper<FollowEntity>()
+                .eq("target_id", UserContextHolder.getUserId())
+                .eq("status", "FOLLOWING")
+                .orderByDesc("create_time"));
     List<Map<String, Object>> all = enrichFollowers(countPage.getRecords());
     com.baomidou.mybatisplus.extension.plugins.pagination.Page<Map<String, Object>> voPage = new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(
             countPage.getCurrent(), countPage.getSize(), countPage.getTotal());
@@ -114,9 +119,9 @@ public class FollowController {
    */
   private List<Map<String, Object>> enrichFollowing(List<FollowEntity> rows) {
     if (rows.isEmpty()) return Collections.emptyList();
-    Set<Long> targetIds = rows.stream().map(FollowEntity::getTargetId).collect(Collectors.toSet());
-    Map<Long, UserEntity> userMap = userMapper.selectBatchIds(targetIds).stream()
-        .collect(Collectors.toMap(UserEntity::getId, u -> u));
+    Set<Long> targetIds = rows.stream().map(f -> f.getTargetId()).collect(Collectors.toSet());
+    Map<Long, UserEntity> userMap = userMapper.selectByIds(targetIds).stream()
+        .collect(Collectors.toMap(u -> u.getId(), u -> u));
     List<Map<String, Object>> out = new ArrayList<>(rows.size());
     for (FollowEntity f : rows) {
       Map<String, Object> m = new HashMap<>();
@@ -134,12 +139,20 @@ public class FollowController {
     return out;
   }
 
-  /** 粉丝列表（关注我的人）：每条记录附加粉丝用户信息 */
+  /** 粉丝列表（关注我的人）：每条记录附加粉丝用户信息 + 是否互关(我有没有回关 ta) */
   private List<Map<String, Object>> enrichFollowers(List<FollowEntity> rows) {
     if (rows.isEmpty()) return Collections.emptyList();
-    Set<Long> userIds = rows.stream().map(FollowEntity::getUserId).collect(Collectors.toSet());
-    Map<Long, UserEntity> userMap = userMapper.selectBatchIds(userIds).stream()
-        .collect(Collectors.toMap(UserEntity::getId, u -> u));
+    Long me = UserContextHolder.getUserId();
+    Set<Long> userIds = rows.stream().map(f -> f.getUserId()).collect(Collectors.toSet());
+    Map<Long, UserEntity> userMap = userMapper.selectByIds(userIds).stream()
+        .collect(Collectors.toMap(u -> u.getId(), u -> u));
+    // 一次查"我关注了哪些粉丝",把命中 userId 收集成 Set 用于 O(1) 判定互关
+    Set<Long> followedBack = followMapper.selectList(
+        new QueryWrapper<FollowEntity>()
+            .eq("user_id", me)
+            .eq("status", "FOLLOWING")
+            .in("target_id", userIds))
+        .stream().map(f -> f.getTargetId()).collect(Collectors.toSet());
     List<Map<String, Object>> out = new ArrayList<>(rows.size());
     for (FollowEntity f : rows) {
       Map<String, Object> m = new HashMap<>();
@@ -147,6 +160,10 @@ public class FollowController {
       m.put("userId", f.getUserId());
       m.put("status", f.getStatus());
       m.put("createdAt", f.getCreateTime());
+      // 我有没有回关 ta:true 时按钮显示「发消息」,否则显示「回关」
+      boolean mutual = followedBack.contains(f.getUserId());
+      m.put("followed", mutual);
+      m.put("mutualFollowed", mutual);
       UserEntity u = userMap.get(f.getUserId());
       if (u != null) {
         m.put("nickname", u.getNickname());
@@ -168,21 +185,21 @@ public class FollowController {
     Long me = UserContextHolder.getUserId();
     // 1) 取我关注的所有人 id 列表
     List<FollowEntity> follows = followMapper.selectList(
-        new LambdaQueryWrapper<FollowEntity>()
-            .eq(FollowEntity::getUserId, me)
-            .eq(FollowEntity::getStatus, "FOLLOWING"));
+        new QueryWrapper<FollowEntity>()
+            .eq("user_id", me)
+            .eq("status", "FOLLOWING"));
     if (follows.isEmpty()) {
       return Result.success(Page.of(page, size));
     }
     List<Long> targetIds = follows.stream()
-        .map(FollowEntity::getTargetId)
+        .map(f -> f.getTargetId())
         .collect(Collectors.toList());
     // 2) 拉这些人在 mo_community_post 的已发布帖子（status=1），按时间倒序
     Page<CommunityPostEntity> entityPage = postMapper.selectPage(new Page<>(page, size),
-        new LambdaQueryWrapper<CommunityPostEntity>()
-            .eq(CommunityPostEntity::getStatus, 1)
-            .in(CommunityPostEntity::getUserId, targetIds)
-            .orderByDesc(CommunityPostEntity::getCreateTime));
+        new QueryWrapper<CommunityPostEntity>()
+            .eq("status", 1)
+            .in("user_id", targetIds)
+            .orderByDesc("create_time"));
     return Result.success(toFeedVO(entityPage));
   }
 
@@ -194,15 +211,18 @@ public class FollowController {
       return voPage;
     }
     // 批量拉用户信息
-    Set<Long> userIds = entityPage.getRecords().stream().map(CommunityPostEntity::getUserId).collect(Collectors.toSet());
-    Map<Long, UserEntity> userMap = userMapper.selectBatchIds(userIds).stream()
-        .collect(Collectors.toMap(UserEntity::getId, u -> u));
+    Set<Long> userIds = entityPage.getRecords().stream().map(p -> p.getUserId()).collect(Collectors.toSet());
+    Map<Long, UserEntity> userMap = userMapper.selectByIds(userIds).stream()
+        .collect(Collectors.toMap(u -> u.getId(), u -> u));
     List<CommunityPostVO> vos = entityPage.getRecords().stream().map(p -> {
       CommunityPostVO vo = new CommunityPostVO();
       vo.setId(p.getId());
       vo.setUserId(p.getUserId());
       vo.setContent(p.getContent());
-      vo.setImages(null);  // 简化：列表页不展开 images JSON
+      // images 字段在 DB 中是 JSON 字符串,前端 list 渲染依赖 List<String> 结构,这里按 JsonUtils 解析
+      vo.setImages(JsonUtils.parseStringArray(p.getImages()));
+      vo.setVideo(p.getVideo());
+      vo.setCover(p.getCover());
       vo.setTopic(p.getTopic());
       vo.setLikes(p.getLikes());
       vo.setComments(p.getComments());

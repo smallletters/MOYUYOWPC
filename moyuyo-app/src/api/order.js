@@ -25,7 +25,9 @@ export function deleteOrder(id) {
 }
 
 export function createPayment(data) {
-  return post('/api/v1/payments/create', data)
+  // 关闭 request 默认 showLoading：pay.vue 自身已用 mask loading 控制 UI，
+  // 避免与 request 内部默认 loading 嵌套触发"showLoading/hideLoading 必须配对"告警。
+  return post('/api/v1/payments/create', data, { showLoading: false })
 }
 
 export function getLogistics(orderId) {

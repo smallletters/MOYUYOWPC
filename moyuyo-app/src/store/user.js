@@ -57,6 +57,9 @@ export const useUserStore = defineStore('user', {
           country: data.country || '',
           emailVerified: data.emailVerified || false,
           twoFactorEnabled: data.twoFactorEnabled || false,
+          // 个人简介(V20260924_01):bio 字段写入 store,
+          // 避免 /pages/community/profile 首屏读取时是 undefined 走默认文案
+          bio: data.bio || '',
           // 隐私开关 4 项（V20260916_01）：
           // 后端 GET /me 已返回这些字段,这里 pick 进 store,
           // 避免 /pages/user/privacy 首屏读取时全是 undefined 走默认值
@@ -73,7 +76,9 @@ export const useUserStore = defineStore('user', {
           const cached = getStorage(STORAGE_KEYS.USER_INFO)
           if (cached) this.userInfo = cached
         }
-        return this.userInfo
+        // 后端重启 / 401 / 网络错误时,把错误向上抛,让 onShow 等调用方能感知到,
+        // 否则 fetchProfile 静默吞错,页面无法区分"网络不通"和"登录态已失效"
+        throw e
       }
     },
 

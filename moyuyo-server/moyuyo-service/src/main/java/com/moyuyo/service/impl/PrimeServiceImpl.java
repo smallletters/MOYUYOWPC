@@ -46,6 +46,7 @@ public class PrimeServiceImpl implements PrimeService {
   private String stripeCurrency;
 
   @Override
+  @SuppressWarnings("null")
   public List<PrimePlanVO> listPlans() {
     List<PrimePlanEntity> list = planMapper.selectList(
         new LambdaQueryWrapper<PrimePlanEntity>()
@@ -59,6 +60,7 @@ public class PrimeServiceImpl implements PrimeService {
   }
 
   @Override
+  @SuppressWarnings("null")
   public PrimeStatusVO getStatus(Long userId) {
     PrimeStatusVO vo = new PrimeStatusVO();
     if (userId == null) {
@@ -138,14 +140,25 @@ public class PrimeServiceImpl implements PrimeService {
   @Override
   @Transactional
   public void handleCheckoutCompleted(Long userId, String planCode, String payChannel, String transactionId) {
+    // 参数缺失：抛 IllegalStateException 让上游 PaymentServiceImpl 透传到 webhook catch (Throwable)，
+    // 触发渠道重投 + 5 次异常熔断保护。避免静默 return 后写 24h 长期幂等 key 锁死事件。
     if (userId == null || planCode == null) {
-      log.warn("Prime checkout.completed 缺少必要 metadata: userId={}, planCode={}", userId, planCode);
-      return;
+      log.error("Prime checkout.completed 缺少必要 metadata: userId={}, planCode={}, tx={}",
+          userId, planCode, transactionId);
+      throw new IllegalStateException(
+          "Prime checkout missing required metadata: userId=" + userId + ", planCode=" + planCode);
     }
-    PrimePlanEntity plan = findActivePlan(planCode);
-    if (plan == null) {
-      log.warn("Prime checkout.completed 对应套餐不存在/已下架: planCode={}", planCode);
-      return;
+    PrimePlanEntity plan;
+    try {
+      plan = findActivePlan(planCode);
+    } catch (IllegalArgumentException e) {
+      // 套餐下架/不存在：典型场景是用户发起支付后运营临时下架套餐。
+      // 抛 IllegalStateException 让 webhook 重投，给运营恢复套餐或人工补单的窗口；
+      // 多次重投仍失败由 5 次熔断机制兜底写 PERM_FAIL key 阻断重投。
+      log.error("Prime checkout.completed 对应套餐不存在/已下架，需人工补单: planCode={}, tx={}, reason={}",
+          planCode, transactionId, e.getMessage());
+      throw new IllegalStateException(
+          "Prime plan unavailable (removed/off-shelf): planCode=" + planCode, e);
     }
     String channel = payChannel == null || payChannel.isBlank() ? "STRIPE" : payChannel;
     activate(userId, plan, channel, transactionId);
@@ -153,6 +166,7 @@ public class PrimeServiceImpl implements PrimeService {
   }
 
   /** 激活/续期订阅：已有效未到期则从原到期日顺延，否则从现在开始计算 */
+  @SuppressWarnings("null")
   private PrimeStatusVO activate(Long userId, PrimePlanEntity plan, String channel, String transactionId) {
     MemberPrimeEntity entity = memberPrimeMapper.selectOne(
         new LambdaQueryWrapper<MemberPrimeEntity>().eq(MemberPrimeEntity::getUserId, userId));
@@ -183,6 +197,7 @@ public class PrimeServiceImpl implements PrimeService {
   }
 
   /** 记录一笔待支付的订阅单（仅当用户当前无有效订阅时降级为 PENDING） */
+  @SuppressWarnings("null")
   private MemberPrimeEntity ensurePendingEntity(Long userId, PrimePlanEntity plan, String channel) {
     MemberPrimeEntity entity = memberPrimeMapper.selectOne(
         new LambdaQueryWrapper<MemberPrimeEntity>().eq(MemberPrimeEntity::getUserId, userId));
@@ -207,6 +222,7 @@ public class PrimeServiceImpl implements PrimeService {
     return entity;
   }
 
+  @SuppressWarnings("null")
   private PrimePlanEntity findActivePlan(String planCode) {
     PrimePlanEntity plan = planMapper.selectOne(
         new LambdaQueryWrapper<PrimePlanEntity>().eq(PrimePlanEntity::getCode, planCode));
@@ -302,6 +318,7 @@ public class PrimeServiceImpl implements PrimeService {
 
   @Override
   @Transactional
+  @SuppressWarnings("null")
   public void cancel(Long userId) {
     MemberPrimeEntity entity = memberPrimeMapper.selectOne(
         new LambdaQueryWrapper<MemberPrimeEntity>().eq(MemberPrimeEntity::getUserId, userId));

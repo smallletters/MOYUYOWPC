@@ -722,6 +722,11 @@ public class AuthServiceImpl implements AuthService {
         if (update.getGender() != null) {
             user.setGender(update.getGender().isEmpty() ? null : update.getGender());
         }
+        // 个人简介：与 nickname 一致走 XSS 净化；空串视为"清空简介"，写 NULL 入库
+        if (update.getBio() != null) {
+            String sanitized = com.moyuyo.common.utils.XssSanitizer.sanitizePlainText(update.getBio());
+            user.setBio(sanitized.isEmpty() ? null : sanitized);
+        }
         if (update.getBirthday() != null) {
             user.setBirthday(update.getBirthday());
         }

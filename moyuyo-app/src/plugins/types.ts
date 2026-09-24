@@ -50,17 +50,50 @@ export interface AuthUserInfo {
 // PetHub 3D 插件协议
 // ============================================================
 
+/**
+ * 宠物装扮部位
+ * BODY 主体服饰 / HEAD 头部配饰 / ACCESSORY 附加挂件
+ */
+export type CosmeticSlot = 'BODY' | 'HEAD' | 'ACCESSORY'
+
+/**
+ * 原生侧 openScene 入参
+ */
+export interface PetHubOpenSceneParams {
+  petId: string
+  petType: string
+  breed?: string
+  customization?: Record<string, unknown>
+}
+
+/**
+ * 原生侧 applyCosmetic 入参
+ */
+export interface PetHubApplyCosmeticParams {
+  petId: string
+  slot: CosmeticSlot
+  itemId: string
+}
+
+/**
+ * 原生侧 playAnimation 入参
+ */
+export interface PetHubPlayAnimationParams {
+  petId: string
+  animationId: string
+}
+
 export interface PetHubPluginProtocol {
-  /** 加载 3D 宠物模型 */
-  loadPet(petId: string): Promise<PluginResult>
-  /** 切换 IP 场景 */
-  switchScene(scene: PetScene): Promise<PluginResult>
-  /** 播放宠物动画 */
-  playAnimation(animName: string): Promise<PluginResult>
-  /** 宠物互动反馈（点击/抚摸） */
-  onInteraction(type: string): Promise<PluginResult>
-  /** 释放 3D 资源 */
-  dispose(): Promise<PluginResult>
+  /** 打开 3D 宠物场景（原生侧会启动 PetHubActivity，返回 success 表示已拉起） */
+  openScene(params: PetHubOpenSceneParams): Promise<PluginResult>
+  /** 为宠物更换服饰/配饰 */
+  applyCosmetic(params: PetHubApplyCosmeticParams): Promise<PluginResult>
+  /** 播放宠物动画（原生侧 fire-and-forget） */
+  playAnimation(params: PetHubPlayAnimationParams): Promise<PluginResult>
+  /** 截取 3D 场景截图 */
+  captureSnapshot(): Promise<PluginResult<{ imagePath: string }>>
+  /** 关闭 3D 场景释放资源 */
+  closeScene(): Promise<PluginResult>
 }
 
 // ============================================================

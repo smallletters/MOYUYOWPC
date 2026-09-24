@@ -21,6 +21,14 @@ export function getUserInfo() {
   return get('/api/v1/users/me')
 }
 
+/**
+ * 按用户 ID 查询公开 profile(头像/昵称/简介/关注数/粉丝数/积分等)。
+ * 用于"他人 profile 页",与 /me 不同,无需登录态也可匿名调用(后端放行)。
+ */
+export function getUserProfile(id) {
+  return get(`/api/v1/users/${id}/profile`)
+}
+
 export function updateUser(data) {
   return put('/api/v1/users/me', data)
 }
@@ -160,6 +168,7 @@ export default {
   changePhone,
   loginByPhone,
   getDeletionStatus,
+  getUserProfile,
   requestDeleteAccount,
   cancelDeleteAccount,
   requestDataExport,

@@ -604,7 +604,11 @@ onMounted(() => {
 
 <style scoped lang="css">
 .user-list-page {
-  max-width: 1200px;
+  /* 让容器始终跟父级可视区同宽，超宽表格走内部横向滚动，避免被挤压 */
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .page-header {
@@ -717,6 +721,8 @@ onMounted(() => {
   border-radius: 10px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   overflow: hidden;
+  /* 表格列较多时内部走横向滚动，保持外层容器宽度不变 */
+  overflow-x: auto;
 }
 
 .table-toolbar {

@@ -54,6 +54,17 @@ public class ProfileUpdateRequest {
     @Schema(description = "性别：MALE(男)/FEMALE(女)/OTHER(中性)/UNDISCLOSED(不透露)", example = "MALE")
     private String gender;
 
+    /**
+     * 用户简介：个人主页展示文案
+     * <p>
+     * - 与 DB 端 mo_user.bio(VARCHAR(200)) 对齐,@Size 上限 200
+     * - 走 XssSanitizer.sanitizePlainText 净化,剥离 <script>/onload= 等危险标签
+     * - 空串视为"清空简介",Service 层会写 NULL 入库,与"未填写"语义一致
+     */
+    @Size(max = 200, message = "简介长度不能超过 200 字符")
+    @Schema(description = "用户简介（个人主页展示文案）", example = "这个人很懒，什么也没留下~")
+    private String bio;
+
     /** 生日：必须为过去日期，避免用户输入未来日期产生负数年龄 */
     @Past(message = "生日必须为过去日期")
     @Schema(description = "生日（ISO-8601，过去日期）", example = "1990-01-01")

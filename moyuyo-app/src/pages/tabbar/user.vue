@@ -1,15 +1,5 @@
 <template>
-  <scroll-view
-    class="user-scroll"
-    scroll-y
-    :refresher-enabled="true"
-    :refresher-triggered="refresherTriggered"
-    :refresher-background="refresherBg"
-    :refresher-default-text="refresherDefaultText"
-    :refresher-pulling-text="refresherPullingText"
-    :refresher-refreshing-text="refresherRefreshingText"
-    @refresherrefresh="onRefresherRefresh"
-  >
+  <scroll-view class="user-scroll" scroll-y>
     <view class="user">
       <view class="header">
         <view v-if="userStore.isLoggedIn" class="user-info" @click="goProfile">
@@ -58,9 +48,9 @@
       <!-- 钱包区域 -->
       <view v-if="userStore.isLoggedIn" class="wallet-area card">
         <view class="wallet-grid">
-          <view class="wallet-item" @click="goWallet">
-            <text class="wallet-num">${{ walletBalance }}</text>
-            <text class="wallet-label">{{ $t('userCenter.walletBalance') }}</text>
+          <view class="wallet-item" @click="goHistory">
+            <text class="wallet-num">{{ historyCount }}</text>
+            <text class="wallet-label">{{ $t('userCenter.walletHistory') }}</text>
           </view>
           <view class="wallet-item" @click="goPoints">
             <text class="wallet-num">{{ points.toLocaleString() }}</text>
@@ -70,9 +60,9 @@
             <text class="wallet-num">{{ couponCount }}{{ $t('coupons.unit') }}</text>
             <text class="wallet-label">{{ $t('userCenter.walletCoupons') }}</text>
           </view>
-          <view class="wallet-item" @click="goGiftCards">
-            <text class="wallet-num">{{ giftCardCount }}{{ $t('coupons.unit') }}</text>
-            <text class="wallet-label">{{ $t('userCenter.walletGiftCards') }}</text>
+          <view class="wallet-item" @click="goFavorites">
+            <text class="wallet-num">{{ favoriteCount }}</text>
+            <text class="wallet-label">{{ $t('userCenter.walletFavorites') }}</text>
           </view>
         </view>
       </view>
@@ -128,9 +118,11 @@
 <script>
 import { useUserStore, useCartStore } from '@/store'
 import { i18n } from '@/i18n'
-import { memberApi, couponApi, giftCardApi, orderApi, communityApi } from '@/api'
+import { memberApi, couponApi, orderApi, communityApi } from '@/api'
 import followApi from '@/api/follow'
 import browseApi from '@/api/browsingHistory'
+// 商品收藏(钱包区第 4 格点击进入 /pages/user/favorites);接口挂在 cartApi 下
+import cartApi from '@/api/cart'
 import { toAbsoluteImageUrl } from '@/utils/imageUrl'
 // social-grid 是 src/components 下的自建组件,正常情况下 easycom.autoscan 会自动注册;
 // vite-plugin-uni H5 模式下偶尔会扫不到 kebab-case 引用,这里显式 import 兜底
@@ -147,23 +139,16 @@ export default {
       // 头像 cache busting 版本号:从个人资料页 onShow 时 +1,
       // 强制 <image> 重新加载,解决"换完头像回到我的页还是旧头像"
       avatarVersion: 0,
-      // scroll-view 下拉刷新状态(refresher-triggered 控制 refresher 收回),
-      // true=下拉动画展示中;onRefresherRefresh 完成后置回 false
-      refresherTriggered: false,
-      // refresher 文案配置:固定文案,避免 i18n 触发重渲染时丢文案
-      refresherBg: '#F5F2EC',
-      refresherDefaultText: '下拉刷新',
-      refresherPullingText: '松开刷新',
-      refresherRefreshingText: '刷新中...',
       memberInfo: null,
       points: 0,
-      walletBalance: 0,
       couponCount: 0,
-      giftCardCount: 0,
+      favoriteCount: 0,
       followingCount: 0,
       followerCount: 0,
       collectCount: 0,
       historyCount: 0,
+      // social-grid 第 4 项改造为「个人中心」入口后,value 改为发过的帖子数
+      postCount: 0,
       // i18n locale 版本号:locale 切换时自增,触发依赖 i18n 的 computed 重算
       localeVersion: 0,
       // 订单宫格只存结构与图标,badge 由 loadOrderBadges 异步回填
@@ -245,11 +230,13 @@ export default {
           url: '/pages/user/post-collection',
         },
         {
-          key: 'history',
-          label: i18n.t('userCenter.socialHistory'),
-          value: this.historyCount,
-          icon: 'footprints',
-          url: '/pages/user/browsing-history',
+          key: 'profile-center',
+          label: i18n.t('userCenter.socialProfileCenter'),
+          value: this.postCount,
+          // user-round 在 lucide.css 中未定义类名,导致 social-grid 渲染图标失败;
+          // 改用已存在的 luc-user 类(对应 codepoint \e982),保证"个人中心"图标正常显示
+          icon: 'user',
+          url: '/pages/community/profile',
         },
       ]
     },
@@ -292,10 +279,10 @@ export default {
     }
     this._inited = true
     if (this.userStore.isLoggedIn) {
-      this.loadMemberInfo()
-      this.loadWalletExtras()
-      this.loadSocialCounts()
-      this.loadOrderBadges()
+      // 后端重启后旧 token 可能失效：先 ping 一次轻量接口验证登录态，
+      // 失败时让 request.js / store 自动清 token + 弹登录提示，
+      // 避免页面同时跑 5 个接口导致 5 次 toast 或 5 次 modal
+      this.verifySessionAndLoad().catch((e) => console.warn('[user] verifySession failed', e))
     }
   },
 
@@ -319,36 +306,6 @@ export default {
     }
   },
 
-  /**
-   * scroll-view refresher 下拉回调:refresher-triggered 受控模式,
-   * 拉数据时设 true,完成后置回 false 让 refresher 收回。
-   */
-  async onRefresherRefresh() {
-    this.refresherTriggered = true
-    try {
-      await this.doRefresh()
-    } finally {
-      // 通知 scroll-view 收回 refresher 动画
-      this.refresherTriggered = false
-    }
-  },
-
-  /**
-   * 实际下拉刷新逻辑:并行拉取所有面板数据,fetchProfile 后头像 URL
-   * 可能变化,自增 avatarVersion 强制 <image> 重新加载。
-   */
-  async doRefresh() {
-    if (!this.userStore.isLoggedIn) return
-    await Promise.all([
-      this.userStore.fetchProfile().catch((e) => console.warn('[user] refresh profile failed', e)),
-      this.loadMemberInfo(),
-      this.loadWalletExtras(),
-      this.loadSocialCounts(),
-      this.loadOrderBadges(),
-    ])
-    this.avatarVersion += 1
-  },
-
   onUnload() {
     if (this._unsubLocale) {
       this._unsubLocale()
@@ -357,12 +314,57 @@ export default {
   },
 
   methods: {
+    /**
+     * 实际下拉刷新逻辑:并行拉取所有面板数据,fetchProfile 后头像 URL
+     * 可能变化,自增 avatarVersion 强制 <image> 重新加载。
+     * 放在 methods 内而非 export 根级,避免 this.doRefresh is not a function 报错。
+     */
+    async doRefresh() {
+      if (!this.userStore.isLoggedIn) return
+      await Promise.all([
+        this.userStore
+          .fetchProfile()
+          .catch((e) => console.warn('[user] refresh profile failed', e)),
+        this.loadMemberInfo(),
+        this.loadWalletExtras(),
+        this.loadSocialCounts(),
+        this.loadOrderBadges(),
+      ])
+      this.avatarVersion += 1
+    },
+
+    /**
+     * 先用 fetchProfile 探测登录态，再决定是否拉取其余面板数据。
+     * 后端重启场景下：第一次请求可能 fail 清掉 token + 弹登录提示，
+     * 后续 4 个接口直接短路，不再重复弹 toast/modal。
+     */
+    async verifySessionAndLoad() {
+      try {
+        await this.userStore.fetchProfile()
+      } catch (e) {
+        if (e?.isNetworkError) {
+          // 网络不通：保留现有 token 不动，等用户下拉刷新或后端恢复
+          console.warn('[user] network unreachable, skip load')
+          return
+        }
+        // 401 / 业务错误：request.js / store 已清 token 并弹提示，
+        // 这里不重复弹，直接退出
+        return
+      }
+      // 登录态有效，并行加载其余面板数据
+      await Promise.all([
+        this.loadMemberInfo(),
+        this.loadWalletExtras(),
+        this.loadSocialCounts(),
+        this.loadOrderBadges(),
+      ])
+    },
+
     async loadMemberInfo() {
       try {
         const info = await memberApi.getMemberInfo()
         this.memberInfo = info
         this.points = info.points || 0
-        this.walletBalance = info.walletBalance || 0
       } catch (e) {
         console.warn('[user] load member info failed', e)
       }
@@ -391,18 +393,25 @@ export default {
             .getBrowsingHistory({ page: 1, size: 1 })
             .then((r) => Number(r?.total ?? 0))
             .catch(() => 0),
+          // 个人中心入口 value：当前用户发过的帖子数
+          // 直接复用 communityApi.getMyPosts，total 即总数
+          communityApi
+            .getMyPosts({ page: 1, size: 1 })
+            .then((r) => Number(r?.total ?? 0))
+            .catch(() => 0),
         ]
-        const [following, followers, collect, history] = await Promise.all(tasks)
+        const [following, followers, collect, history, postCount] = await Promise.all(tasks)
         this.followingCount = following
         this.followerCount = followers
         this.collectCount = collect
         this.historyCount = history
+        this.postCount = postCount
       } catch (e) {
         console.warn('[user] load social counts failed', e)
       }
     },
 
-    /** 加载钱包附加数据：优惠券 / 礼品卡数量 */
+    /** 加载钱包附加数据：优惠券 / 商品收藏数量 */
     async loadWalletExtras() {
       try {
         const tasks = [
@@ -414,14 +423,15 @@ export default {
               return Array.isArray(r) ? r.length : 0
             })
             .catch(() => 0),
-          giftCardApi
-            .getGiftCards({ page: 1, size: 1 })
-            .then((r) => r?.total || 0)
+          // 商品收藏:接口直接返回数组,长度即收藏数
+          cartApi
+            .getFavorites()
+            .then((r) => (Array.isArray(r) ? r.length : 0))
             .catch(() => 0),
         ]
-        const [couponCnt, giftCnt] = await Promise.all(tasks)
+        const [couponCnt, favCnt] = await Promise.all(tasks)
         this.couponCount = couponCnt
-        this.giftCardCount = giftCnt
+        this.favoriteCount = favCnt
       } catch (e) {
         console.warn('[user] load wallet extras failed', e)
       }
@@ -526,10 +536,6 @@ export default {
       }
     },
 
-    goWallet() {
-      uni.navigateTo({ url: '/pages/user/wallet' })
-    },
-
     goPoints() {
       uni.navigateTo({ url: '/pages/user/points-shop' })
     },
@@ -538,9 +544,9 @@ export default {
       uni.navigateTo({ url: '/pages/user/coupon-center' })
     },
 
-    goGiftCards() {
-      // 跳到礼品卡管理页(已注册: pages/user/gift-cards.vue)
-      uni.navigateTo({ url: '/pages/user/gift-cards' })
+    /** 跳到商品收藏页(钱包区第 4 格) */
+    goFavorites() {
+      uni.navigateTo({ url: '/pages/user/favorites' })
     },
 
     /** 跳到每日签到 */

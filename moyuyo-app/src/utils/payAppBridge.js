@@ -47,30 +47,30 @@ function isExternalAppScheme(url) {
   const scheme = getScheme(url)
   if (!scheme) return false
   // 已知要跳外 APP 的 scheme（持续收集扩展）
-    // 美国市场方案：只保留实际支付链路需要的 scheme
-    // - paypal / paypalme / paypalpay: PayPal 官方 SDK
-    // - googlepay / gpay: Google Pay APP
-    // - intent: Android intent:// URL（Stripe Checkout 跳 G Pay 用）
-    // - applepay / com-apple-payment-pass: iOS Apple Pay PassKit scheme
-    // - itms-*: App Store（用户未安装对应 APP 时可能跳到 App Store 提示下载）
-    const open = [
-      // PayPal 官方 SDK
-      'paypal',
-      'paypalme',
-      'paypalpay',
-      // Google Pay
-      'googlepay',
-      'gpay',
-      // Android intent:// URLs
-      'intent',
-      // iOS Apple Pay
-      'applepay',
-      'com-apple-payment-pass',
-      // App Store 兜底
-      'itms-apps',
-      'itms-services',
-      'itms',
-    ]
+  // 美国市场方案：只保留实际支付链路需要的 scheme
+  // - paypal / paypalme / paypalpay: PayPal 官方 SDK
+  // - googlepay / gpay: Google Pay APP
+  // - intent: Android intent:// URL（Stripe Checkout 跳 G Pay 用）
+  // - applepay / com-apple-payment-pass: iOS Apple Pay PassKit scheme
+  // - itms-*: App Store（用户未安装对应 APP 时可能跳到 App Store 提示下载）
+  const open = [
+    // PayPal 官方 SDK
+    'paypal',
+    'paypalme',
+    'paypalpay',
+    // Google Pay
+    'googlepay',
+    'gpay',
+    // Android intent:// URLs
+    'intent',
+    // iOS Apple Pay
+    'applepay',
+    'com-apple-payment-pass',
+    // App Store 兜底
+    'itms-apps',
+    'itms-services',
+    'itms',
+  ]
   if (open.indexOf(scheme) !== -1) return true
   // Android intent:// URLs
   if (url.indexOf('intent://') === 0) return true
@@ -523,9 +523,9 @@ export function startApplePayNative(opts) {
       return resolve({ success: false, fallback: true, error: new Error('not APP environment') })
     }
     try {
-      // 尝试调 MOYUYOPayment 原生插件（如果在 manifest.nativePlugins 中注册了）
+      // 尝试调 MOYUYO-Payment 原生插件（与 nativeplugins/*/dcloud_uniplugins.json 声明名一致）
       const paymentModule =
-        uni && uni.requireNativePlugin ? uni.requireNativePlugin('MOYUYOPayment') : null
+        uni && uni.requireNativePlugin ? uni.requireNativePlugin('MOYUYO-Payment') : null
       if (!paymentModule || typeof paymentModule.startApplePay !== 'function') {
         return resolve({
           success: false,

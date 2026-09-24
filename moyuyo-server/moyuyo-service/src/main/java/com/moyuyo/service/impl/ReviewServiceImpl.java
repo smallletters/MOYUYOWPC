@@ -30,6 +30,9 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+// 抑制 JDT null-analysis 对 MyBatis-Plus SFunction / Stream 方法引用的误报
+// （底层 SFunction 的 @Nonnull 类型参数 vs Function.apply 形参推断冲突，mvn 编译无影响）
+@SuppressWarnings("null")
 public class ReviewServiceImpl implements ReviewService {
 
     private final ProductReviewMapper productReviewMapper;
@@ -158,7 +161,7 @@ public class ReviewServiceImpl implements ReviewService {
         // 批量查询用户昵称
         List<Long> userIds = entityPage.getRecords().stream()
             .map(ProductReviewEntity::getUserId).distinct().collect(Collectors.toList());
-        Map<Long, String> nicknameMap = userMapper.selectBatchIds(userIds).stream()
+        Map<Long, String> nicknameMap = userMapper.selectByIds(userIds).stream()
             .collect(Collectors.toMap(UserEntity::getId, UserEntity::getNickname, (a, b) -> a));
 
         // 分页转换 + 富化用户昵称
