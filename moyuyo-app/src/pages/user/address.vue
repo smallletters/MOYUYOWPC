@@ -31,55 +31,20 @@
         </view>
       </view>
 
-      <!-- 地址卡 -->
-      <view
+      <!-- 地址卡：抽到 AddressCard.vue 子组件，父组件只负责列表 + 状态 -->
+      <AddressCard
         v-for="addr in addressList"
         :key="addr.id"
-        class="card address-card"
-        :class="{ active: selectedId === addr.id }"
-        @click="onCardTap(addr)"
-      >
-        <!-- 左侧色条 / 选中态视觉锚 -->
-        <view class="address-card-rail" />
-
-        <view class="card-body">
-          <view class="name-row">
-            <text class="name">{{ addr.receiver }}</text>
-            <text class="phone">{{ formatPhone(addr.phone) }}</text>
-            <view v-if="addr.isDefault" class="default-tag">{{ $t('address.isDefault') }}</view>
-            <view v-if="addr.tag" class="tag" :class="`tag-${(addr.tag || '').toLowerCase()}`">
-              {{ addr.tag }}
-            </view>
-            <!-- 结算场景:「使用」按钮内联在姓名行右侧,避免绝对定位浮在地址详情上 -->
-            <view v-if="fromCheckout" class="use-btn" @click.stop="onUseAddress(addr)">
-              <text class="luc luc-check" />
-              <text>{{ $t('address.use') }}</text>
-            </view>
-          </view>
-          <text class="detail">
-            {{ formatRegion(addr.country, addr.province, addr.city) }} {{ addr.detail }}
-          </text>
-          <text v-if="addr.zipCode" class="zip">
-            {{ $t('address.zip', { code: addr.zipCode }) }}
-          </text>
-
-          <!-- 操作行：编辑 / 删除 / 设为默认 始终可见（满足增改删需求） -->
-          <view class="actions">
-            <view v-if="!addr.isDefault" class="action-btn" @click.stop="onSetDefault(addr)">
-              <text class="luc luc-star" />
-              <text>{{ $t('address.setDefault') }}</text>
-            </view>
-            <view class="action-btn" @click.stop="goEdit(addr)">
-              <text class="luc luc-pencil" />
-              <text>{{ $t('address.edit') }}</text>
-            </view>
-            <view class="action-btn danger" @click.stop="onDelete(addr)">
-              <text class="luc luc-trash-2" />
-              <text>{{ $t('address.delete') }}</text>
-            </view>
-          </view>
-        </view>
-      </view>
+        :addr="addr"
+        :selected="selectedId === addr.id"
+        :unshippable="isUnshippable(addr)"
+        :from-checkout="fromCheckout"
+        @tap="onCardTap"
+        @use="onUseAddress"
+        @edit="goEdit"
+        @delete="onDelete"
+        @set-default="onSetDefault"
+      />
     </scroll-view>
 
     <!-- 底部固定新增按钮（结算场景下便利触达） -->
@@ -89,140 +54,175 @@
         <text>{{ $t('address.add') }}</text>
       </view>
     </view>
+    <!-- 全部不可发货时给结算场景一个明确提示 -->
+    <view
+      v-else-if="!loading && addressList.length > 0 && unshippableIds.length === addressList.length"
+      class="footer-bar safe-area-bottom footer-warn"
+    >
+      <text class="footer-warn-text">{{ $t('address.allUnshippableHint') }}</text>
+    </view>
   </view>
 </template>
 
-<script>
+<script setup>
+import { ref, computed, onMounted } from 'vue'
 import { addressApi } from '@/api'
+import AddressCard from '@/components/AddressCard.vue'
 import { i18n } from '@/i18n'
 
-export default {
-  pageTitleKey: 'pageTitle.userAddress',
+defineOptions({ name: 'UserAddress' })
 
-  data() {
-    return {
-      localeVersion: 0,
-      addressList: [],
-      selectedId: '',
-      fromCheckout: false,
-      loading: false,
+// ==================== 状态 ====================
+
+const addressList = ref([])
+// 不可发的地址 id 集合（命中后置灰禁用）
+const unshippableIds = ref([])
+const selectedId = ref('')
+const fromCheckout = ref(false)
+const loading = ref(false)
+
+/** 至少有一个可发货地址时，下单流程才允许继续 */
+const hasShippable = computed(() =>
+  addressList.value.some((a) => !unshippableIds.value.includes(a.id)),
+)
+
+function isUnshippable(addr) {
+  return unshippableIds.value.includes(addr.id)
+}
+
+// ==================== 生命周期 ====================
+
+onMounted(async () => {
+  // 读 URL ?from=checkout
+  try {
+    const pages = getCurrentPages()
+    const cur = pages[pages.length - 1]
+    const query = (cur && cur.options) || {}
+    fromCheckout.value = query.from === 'checkout'
+  } catch (e) {
+    console.warn('[address] read page query failed', e)
+  }
+  // 结算场景：如果有上次选中地址，预先标记
+  if (fromCheckout.value) {
+    try {
+      const cached = uni.getStorageSync('moyuyo_selected_address')
+      if (cached && cached.id) selectedId.value = cached.id
+    } catch (e) {
+      // ignore
     }
-  },
+  }
+  await loadAddresses()
+})
 
-  onLoad(query) {
-    this.fromCheckout = query.from === 'checkout'
-    // 结算场景：如果有上次选中地址，预先标记
-    if (this.fromCheckout) {
+async function loadAddresses() {
+  loading.value = true
+  try {
+    const list = (await addressApi.getAddressList()) || []
+    addressList.value = list
+    // 批量校验：1 次请求替代 N 次 N+1；接口失败时保守认为全部可发货，由后端 checkout 兜底
+    unshippableIds.value = await batchValidate(list)
+  } catch (e) {
+    console.warn('[address] load failed', e)
+    // 出错时同时清空列表与不可发集合，避免下次校验前 isUnshippable(addr) 仍以旧数据为准
+    addressList.value = []
+    unshippableIds.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+/**
+ * 批量校验地址可发货性。后端 /api/v1/addresses/batch-validate 替代
+ * 原先 N 次 Promise.all(validateAddress) 的 N+1 调用方式。
+ * - 失败时保守视作全部可发货（依赖后端 checkout 兜底）
+ */
+async function batchValidate(list) {
+  if (!list || list.length === 0) return []
+  try {
+    const items = await addressApi.batchValidateAddresses(list.map((a) => a.id))
+    return (items || []).filter((it) => !it.shippable).map((it) => it.addressId)
+  } catch (e) {
+    console.warn('[address] batch validate failed, fallback to lenient', e)
+    return []
+  }
+}
+
+// ==================== 事件 ====================
+
+/** 点击整张卡：结算模式直接使用；管理模式仅高亮 */
+function onCardTap(addr) {
+  if (isUnshippable(addr)) {
+    uni.showToast({ title: i18n.t('address.unshippable'), icon: 'none' })
+    return
+  }
+  if (fromCheckout.value) {
+    onUseAddress(addr)
+  } else {
+    selectedId.value = addr.id
+  }
+}
+
+/** 结算模式：把选中地址写入 storage 并返回上一页 */
+function onUseAddress(addr) {
+  if (isUnshippable(addr)) {
+    uni.showToast({ title: i18n.t('address.unshippable'), icon: 'none' })
+    return
+  }
+  try {
+    uni.setStorageSync('moyuyo_selected_address', addr)
+  } catch (e) {
+    console.warn('[address] save selected failed', e)
+  }
+  uni.navigateBack({ delta: 1, fail: () => uni.switchTab({ url: '/pages/tabbar/user' }) })
+}
+
+/** 设为默认地址 */
+async function onSetDefault(addr) {
+  try {
+    await addressApi.setDefaultAddress(addr.id)
+    addressList.value = addressList.value.map((a) => ({ ...a, isDefault: a.id === addr.id }))
+    uni.showToast({ title: i18n.t('address.setDefaultSuccess'), icon: 'success' })
+  } catch (e) {
+    console.warn('[address] set default failed', e)
+    uni.showToast({ title: i18n.t('address.setDefaultFailed'), icon: 'none' })
+  }
+}
+
+/** 进入新增 / 编辑页 */
+function goEdit(addr) {
+  const url = addr ? `/pages/user/address-edit?id=${addr.id}` : '/pages/user/address-edit'
+  uni.navigateTo({ url })
+}
+
+/** 删除地址 */
+function onDelete(addr) {
+  uni.showModal({
+    title: i18n.t('address.deleteModalTitle'),
+    content: i18n.t('address.deleteModalContent', { name: addr.receiver }),
+    confirmText: i18n.t('address.deleteConfirm'),
+    confirmColor: '#ff3b30',
+    success: async (res) => {
+      if (!res.confirm) return
       try {
-        const cached = uni.getStorageSync('moyuyo_selected_address')
-        if (cached && cached.id) this.selectedId = cached.id
+        await addressApi.deleteAddress(addr.id)
+        addressList.value = addressList.value.filter((a) => a.id !== addr.id)
+        if (selectedId.value === addr.id) selectedId.value = ''
+        uni.showToast({ title: i18n.t('address.deleted'), icon: 'success' })
       } catch (e) {
-        // ignore
-      }
-    }
-    // 订阅语言切换（当前页面文案均在模板里直读 $t,这里订阅是为了扩展一致性）
-    this._unsubLocale = i18n.subscribe(() => {
-      this.localeVersion += 1
-    })
-    this.loadAddresses()
-  },
-  onUnload() {
-    if (this._unsubLocale) this._unsubLocale()
-  },
-
-  methods: {
-    async loadAddresses() {
-      this.loading = true
-      try {
-        this.addressList = (await addressApi.getAddressList()) || []
-      } catch (e) {
-        console.warn('[address] load failed', e)
-        this.addressList = []
-      } finally {
-        this.loading = false
+        console.warn('[address] delete failed', e)
+        uni.showToast({ title: i18n.t('address.deleteFailed'), icon: 'none' })
       }
     },
+  })
+}
 
-    /** 点击整张卡：结算模式直接使用；管理模式仅高亮 */
-    onCardTap(addr) {
-      if (this.fromCheckout) {
-        this.onUseAddress(addr)
-      } else {
-        this.selectedId = addr.id
-      }
-    },
-
-    /** 结算模式：把选中地址写入 storage 并返回上一页 */
-    onUseAddress(addr) {
-      try {
-        uni.setStorageSync('moyuyo_selected_address', addr)
-      } catch (e) {
-        console.warn('[address] save selected failed', e)
-      }
-      uni.navigateBack({ delta: 1, fail: () => uni.switchTab({ url: '/pages/tabbar/user' }) })
-    },
-
-    /** 设为默认地址 */
-    async onSetDefault(addr) {
-      try {
-        await addressApi.setDefaultAddress(addr.id)
-        this.addressList = this.addressList.map((a) => ({ ...a, isDefault: a.id === addr.id }))
-        uni.showToast({ title: i18n.t('address.setDefaultSuccess'), icon: 'success' })
-      } catch (e) {
-        console.warn('[address] set default failed', e)
-        uni.showToast({ title: i18n.t('address.setDefaultFailed'), icon: 'none' })
-      }
-    },
-
-    /** 进入新增 / 编辑页 */
-    goEdit(addr) {
-      const url = addr ? `/pages/user/address-edit?id=${addr.id}` : '/pages/user/address-edit'
-      uni.navigateTo({ url })
-    },
-
-    /** 删除地址 */
-    onDelete(addr) {
-      uni.showModal({
-        title: i18n.t('address.deleteModalTitle'),
-        content: i18n.t('address.deleteModalContent', { name: addr.receiver }),
-        confirmText: i18n.t('address.deleteConfirm'),
-        confirmColor: '#ff3b30',
-        success: async (res) => {
-          if (!res.confirm) return
-          try {
-            await addressApi.deleteAddress(addr.id)
-            this.addressList = this.addressList.filter((a) => a.id !== addr.id)
-            if (this.selectedId === addr.id) this.selectedId = ''
-            uni.showToast({ title: i18n.t('address.deleted'), icon: 'success' })
-          } catch (e) {
-            console.warn('[address] delete failed', e)
-            uni.showToast({ title: i18n.t('address.deleteFailed'), icon: 'none' })
-          }
-        },
-      })
-    },
-
-    goBack() {
-      const pages = getCurrentPages()
-      if (pages.length > 1) {
-        uni.navigateBack({ delta: 1 })
-      } else {
-        uni.switchTab({ url: '/pages/tabbar/user' })
-      }
-    },
-
-    formatPhone(phone) {
-      if (!phone) return ''
-      // 简单分组：138 1234 5678（11 位中国大陆手机号）
-      const s = String(phone).replace(/\s+/g, '')
-      if (s.length === 11) return s.replace(/(\d{3})(\d{4})(\d{4})/, '$1 $2 $3')
-      return s
-    },
-
-    formatRegion(country, province, city) {
-      return [country, province, city].filter(Boolean).join(' ')
-    },
-  },
+function goBack() {
+  const pages = getCurrentPages()
+  if (pages.length > 1) {
+    uni.navigateBack({ delta: 1 })
+  } else {
+    uni.switchTab({ url: '/pages/tabbar/user' })
+  }
 }
 </script>
 
@@ -389,179 +389,7 @@ export default {
   font-size: var(--font-size-base);
 }
 
-/* ============ 地址卡 ============ */
-.address-card {
-  position: relative;
-  display: flex;
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  padding: var(--space-md) var(--space-md) 20rpx;
-  margin-bottom: var(--space-sm);
-  border: 2rpx solid transparent;
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-  transition:
-    border-color 0.18s ease,
-    background-color 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.14s ease;
-}
-.address-card:active {
-  transform: scale(0.99);
-}
-/* 选中态：品牌主色描边 + 主色淡底，替代原先的蓝色底 */
-.address-card.active {
-  border-color: var(--color-primary);
-  background: rgba(219, 201, 138, 0.12);
-  box-shadow: var(--shadow-md);
-}
-
-.address-card-rail {
-  width: 8rpx;
-  border-radius: var(--radius-pill);
-  background: var(--color-divider);
-  margin-right: var(--space-sm);
-  flex-shrink: 0;
-  transition: background-color 0.18s ease;
-}
-.address-card.active .address-card-rail {
-  background: var(--color-primary);
-}
-
-.card-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10rpx;
-}
-
-.name-row {
-  display: flex;
-  align-items: center;
-  column-gap: 14rpx;
-  row-gap: 8rpx;
-  flex-wrap: wrap;
-}
-.name {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
-}
-.phone {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
-  letter-spacing: 1rpx;
-}
-/* 默认标签：主色淡底 + 主色深字，替代原「浅金底白字」保证可读性 */
-.default-tag {
-  padding: 4rpx 14rpx;
-  background: rgba(219, 201, 138, 0.24);
-  border: 1rpx solid rgba(219, 201, 138, 0.6);
-  color: var(--color-primary-dark);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  border-radius: var(--radius-pill);
-  line-height: 1.2;
-}
-.tag {
-  padding: 4rpx 14rpx;
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-xs);
-  line-height: 1.2;
-  background: var(--color-background);
-  color: var(--color-text-secondary);
-}
-/* 分类标签统一使用品牌色系淡色底，替换原硬编码橙/蓝/灰 */
-.tag-home {
-  background: rgba(217, 180, 176, 0.22);
-  color: var(--color-accent);
-}
-.tag-company {
-  background: rgba(143, 168, 182, 0.22);
-  color: var(--color-text-secondary);
-}
-.tag-other {
-  background: var(--color-divider);
-  color: var(--color-text-secondary);
-}
-
-.detail {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  line-height: 1.5;
-  word-break: break-all;
-}
-.zip {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
-}
-
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-  margin-top: var(--space-sm);
-  padding-top: var(--space-sm);
-  border-top: 1rpx solid var(--color-divider);
-}
-/* 操作项：胶囊幽灵按钮，热区更大、反馈更清晰 */
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6rpx;
-  padding: 8rpx 20rpx;
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-xs);
-  color: var(--color-primary-dark);
-  background: var(--color-background);
-  border: 1rpx solid transparent;
-  line-height: 1.3;
-  transition:
-    background-color 0.18s ease,
-    transform 0.12s ease;
-}
-.action-btn .luc {
-  font-size: 22rpx;
-}
-.action-btn:active {
-  background: var(--color-divider);
-  transform: scale(0.95);
-}
-.action-btn.danger {
-  color: var(--color-danger);
-  background: rgba(201, 110, 95, 0.1);
-}
-.action-btn.danger:active {
-  background: rgba(201, 110, 95, 0.2);
-}
-
-/* 结算场景「使用」按钮：内联在姓名行右侧，主色淡底 + 主色深字 */
-.use-btn {
-  margin-left: auto;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 6rpx;
-  padding: 8rpx 22rpx;
-  border-radius: var(--radius-pill);
-  background: rgba(219, 201, 138, 0.18);
-  border: 1rpx solid rgba(219, 201, 138, 0.6);
-  color: var(--color-primary-dark);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  transition:
-    background-color 0.18s ease,
-    transform 0.12s ease;
-}
-.use-btn:active {
-  background: rgba(219, 201, 138, 0.32);
-  transform: scale(0.95);
-}
-.use-btn .luc {
-  font-size: 22rpx;
-}
+/* 地址卡样式已搬到 AddressCard.vue 子组件（.address-card / .use-btn / .action-btn / .unshippable-tag / ...）*/
 
 /* ============ 底部 ============ */
 .footer-bar {
@@ -591,6 +419,17 @@ export default {
 }
 .footer-btn-icon {
   font-size: 26rpx;
+}
+/* 全部不可发货时的红色提示条 */
+.footer-warn {
+  background: rgba(201, 110, 95, 0.08);
+  border-top-color: rgba(201, 110, 95, 0.3);
+}
+.footer-warn-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+  line-height: 1.4;
+  text-align: center;
 }
 
 /* 通用按钮 */

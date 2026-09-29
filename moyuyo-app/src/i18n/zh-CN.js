@@ -400,6 +400,13 @@ export default {
       Dogs: '狗狗用品',
       Cats: '猫咪用品',
       Uncategorized: '其他',
+      // 后端一级分类英文 name → 中文 label（生产数据库目前使用的 6 个一级分类）
+      'Bath & Grooming': '洗护美容',
+      Apparel: '服饰',
+      'Beds & Furniture': '窝床家具',
+      Toys: '玩具',
+      Feeding: '喂食用具',
+      'Travel & Outdoor': '出行户外',
     },
     // 二级分类名(后端原值 → 中文 label)
     subNames: {
@@ -460,6 +467,26 @@ export default {
       车载宠物座椅: '车载宠物座椅',
       车载安全带: '车载安全带',
       防丢吊牌: '防丢吊牌',
+      // 英文 name → 中文 label（后端二级分类存在英文原值,字典需要兜底映射）
+      Shampoo: '沐浴露',
+      Conditioner: '护毛素',
+      'Ear Care': '耳部护理',
+      'Dental Care': '口腔护理',
+      'Eye Care': '眼部清洁',
+      'Paw Balm': '护爪膏',
+      'Coats & Sweaters': '冬装外套',
+      'T-Shirts': 'T恤',
+      Costumes: '主题服饰',
+      // 后端新增的中文 name(字典原本缺):保持中文,value=自身
+      主粮: '主粮',
+      零食: '零食',
+      饮水设备: '饮水设备',
+      训练用品: '训练用品',
+      宠物服饰: '宠物服饰',
+      出行装备: '出行装备',
+      户外运动: '户外运动',
+      防水系列: '防水系列',
+      季节限定: '季节限定',
     },
   },
 
@@ -784,6 +811,15 @@ export default {
     profileBioSaveSuccess: '简介已更新',
     profileBioSaveFailed: '简介保存失败,请重试',
     profileBioPlaceholder: '介绍一下自己吧（200字以内）',
+    // 帖子卡片时间显示:相对时间 + 日期回退(profile.vue 的 formatTime 使用)
+    time: {
+      justNow: '刚刚',
+      minutesAgo: '{count}分钟前',
+      hoursAgo: '{count}小时前',
+      daysAgo: '{count}天前',
+      // 日期格式:超过 24 小时后展示 yyyy-mm-dd（locale 由 JS Date 解析,前端已统一）
+      dateFmt: '{y}-{m}-{d}',
+    },
     memberLevel: {
       NORMAL: '普通会员',
       SILVER: '白银会员',
@@ -1142,6 +1178,8 @@ export default {
       minutesAgo: '{count}分钟前',
       hoursAgo: '{count}小时前',
       daysAgo: '{count}天前',
+      // 日期格式：超过 24 小时后的回退展示，沿用 yyyy-mm-dd（locale 由 JS Date 解析,前端已统一）
+      dateFmt: '{y}-{m}-{d}',
     },
     unfollowTitle: '取消关注',
     unfollowConfirm: '确认取消关注「{name}」?',
@@ -1798,6 +1836,8 @@ export default {
       hot: '今日爆款',
       rating: '口碑好评',
     },
+    // 商品卡片评分右侧的"X 好评"文案:{count} 为 formatCount 后的数字
+    recommendRating: '{count} 好评',
   },
 
   // 意见反馈 /pages/user/feedback
@@ -2089,6 +2129,10 @@ export default {
     use: '使用',
     zip: '邮编 {code}',
     new: '新增',
+    // 不可发货：运营后台"发货区域"未配置该国家，下单会被拒绝
+    unshippable: '该地址暂不可发货',
+    unshippableCountryHint: '该国家暂不支持发货，请选择其他国家',
+    allUnshippableHint: '当前所有地址均不在可发货范围内，请新增其他收货地址',
     // /pages/user/address-edit 编辑/新增地址
     editTitle: '编辑地址',
     addTitle: '新增地址',
@@ -3876,6 +3920,9 @@ export default {
     postNotFound: '帖子不存在',
     linkedPetNotFound: '关联宠物不存在或无权使用',
     sensitiveWord: '内容包含敏感词，无法发布',
+    // 地址校验（AddressController 返的 message）
+    addressCountryRequired: '请选择国家',
+    addressNotFound: '地址不存在',
     // 结构化错误码（request.js 的 STRUCTURED_ERROR_PATTERNS 匹配）
     deletionHasActiveOrders: '您还有 {count} 笔未完成订单，请先完成或取消后再申请注销',
     dataExportRateLimited: '数据导出请求过于频繁，请于 {date} 后再试',

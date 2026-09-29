@@ -49,6 +49,12 @@ function getBearerToken() {
 let isRefreshing = false
 const pendingUnauthorizedHandlers = []
 
+// 登录过期 modal 防重入锁：
+//   页面 onLoad + onShow 一进入就会发 2~4 个并发请求，无 refresh token 时
+//   都会触发 promptReLogin，没这把锁就会连续弹出 4 次"登录已过期"。
+//   用户关闭 modal（success 回调）后解锁,允许下次真过期时再提示。
+let isExpiredModalShown = false
+
 function handleUnauthorized() {
   const refreshTokenVal = safeGet('moyuyo_refresh_token')
   if (!refreshTokenVal) {
@@ -91,17 +97,25 @@ function handleUnauthorized() {
 /**
  * 登录态失效提示:用 showModal 让用户主动确认再跳转,文案走 i18n。
  * 避免直接 reLaunch 造成"我在看账单突然掉到登录页"的体验割裂。
+ * 加 isExpiredModalShown 防重入:并发 401 只弹一次,用户关闭(点稍后/确认)后再允许下次弹。
  */
 function promptReLogin() {
+  if (isExpiredModalShown) return
+  isExpiredModalShown = true
   uni.showModal({
     title: t('common.sessionExpiredTitle'),
     content: t('common.sessionExpiredContent'),
     confirmText: t('common.relogin'),
     cancelText: t('common.later'),
     success: (res) => {
+      isExpiredModalShown = false
       if (res.confirm) {
         uni.reLaunch({ url: '/pages/user/login' })
       }
+    },
+    fail: () => {
+      // showModal 自身失败也要解锁,否则后续真过期也弹不出来
+      isExpiredModalShown = false
     },
   })
 }
@@ -143,6 +157,9 @@ const SERVER_ERROR_MAP = {
   帖子不存在: 'serverMsg.postNotFound',
   关联宠物不存在或无权使用: 'serverMsg.linkedPetNotFound',
   '内容包含敏感词，无法发布': 'serverMsg.sensitiveWord',
+  // AddressServiceImpl 校验失败
+  'Country is required': 'serverMsg.addressCountryRequired',
+  'Address not found': 'serverMsg.addressNotFound',
 }
 
 /**

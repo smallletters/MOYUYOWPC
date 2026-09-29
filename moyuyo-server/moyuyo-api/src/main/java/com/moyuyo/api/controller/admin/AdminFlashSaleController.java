@@ -34,21 +34,29 @@ public class AdminFlashSaleController {
   @Operation(summary = "创建秒杀活动")
   @PostMapping("/create")
   public Result<OperationResult> create(@RequestBody Map<String, Object> body) {
-    adminFlashSaleService.create(body);
-    OperationResult result = new OperationResult();
-    result.setId(body.get("id") != null ? Long.valueOf(body.get("id").toString()) : null);
-    result.setMessage("创建成功");
-    return Result.success(result);
+    try {
+      adminFlashSaleService.create(body);
+      OperationResult result = new OperationResult();
+      result.setId(body.get("id") != null ? Long.valueOf(body.get("id").toString()) : null);
+      result.setMessage("创建成功");
+      return Result.success(result);
+    } catch (IllegalArgumentException e) {
+      return Result.error(400, e.getMessage());
+    }
   }
 
   @Operation(summary = "更新秒杀活动")
   @PutMapping("/update")
   public Result<OperationResult> update(@RequestBody Map<String, Object> body) {
-    adminFlashSaleService.update(body);
-    OperationResult result = new OperationResult();
-    result.setId(body.get("id") != null ? Long.valueOf(body.get("id").toString()) : null);
-    result.setMessage("更新成功");
-    return Result.success(result);
+    try {
+      adminFlashSaleService.update(body);
+      OperationResult result = new OperationResult();
+      result.setId(body.get("id") != null ? Long.valueOf(body.get("id").toString()) : null);
+      result.setMessage("更新成功");
+      return Result.success(result);
+    } catch (IllegalArgumentException e) {
+      return Result.error(400, e.getMessage());
+    }
   }
 
   @Operation(summary = "删除秒杀活动")

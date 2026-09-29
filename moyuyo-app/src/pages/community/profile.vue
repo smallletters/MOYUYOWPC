@@ -566,20 +566,29 @@ export default {
     /** 时间格式化为相对时间或日期 */
     formatTime(t) {
       if (!t) return ''
+      // read localeVersion 以建立响应式依赖:locale 切换后列表中的时间文案会立刻刷新
+      void this.localeVersion
+      // 直接用 i18n 模块引用,避免依赖 computed `t`(computed 在 methods 调用栈内
+      // 的响应式追踪不可靠,导致首次渲染时拿到旧值/原始 key)
+      const tt = (key, params) => i18n.t(key, params)
       const d = new Date(t)
       const now = Date.now()
       const diff = now - d.getTime()
       // 1 分钟内:刚刚
-      if (diff < 60_000) return '刚刚'
+      if (diff < 60_000) return tt('userCenter.time.justNow')
       // 1 小时内:X 分钟前
-      if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`
+      if (diff < 3_600_000) {
+        return tt('userCenter.time.minutesAgo', { count: Math.floor(diff / 60_000) })
+      }
       // 24 小时内:X 小时前
-      if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`
-      // 其它:显示 yyyy-mm-dd
+      if (diff < 86_400_000) {
+        return tt('userCenter.time.hoursAgo', { count: Math.floor(diff / 3_600_000) })
+      }
+      // 其它:显示 yyyy-mm-dd（i18n 文案模板,日期数字由 JS Date 计算后填入）
       const y = d.getFullYear()
       const m = String(d.getMonth() + 1).padStart(2, '0')
       const day = String(d.getDate()).padStart(2, '0')
-      return `${y}-${m}-${day}`
+      return tt('userCenter.time.dateFmt', { y, m, d: day })
     },
 
     /**

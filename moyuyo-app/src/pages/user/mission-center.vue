@@ -277,11 +277,11 @@ export default {
   },
 
   onLoad() {
-    this.loadMissions()
-    this.loadStats()
+    // 首次进入由 onShow 触发加载，避免 onLoad+onShow 双触发并发 4 个请求
+    // → token 过期时会同时触发 4 次"登录已过期"弹窗。
   },
 
-  // 每次页面显示（包含从商品详情返回）都刷新任务进度
+  // 每次页面显示（首次进入 + 从其他页面返回）都刷新任务进度
   onShow() {
     this.loadMissions()
     this.loadStats()

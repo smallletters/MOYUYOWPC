@@ -26,6 +26,7 @@
             <span v-if="selectedTemplateId === tpl.id" class="badge selected-badge">
               <el-icon :size="12"><Check /></el-icon>已选
             </span>
+            <span v-if="tpl.requiresShipping && !yanwenEnabled" class="badge unavailable-badge">需配置</span>
           </div>
           <div class="template-name">{{ tpl.name }}</div>
           <div class="template-meta">
@@ -187,7 +188,8 @@
 
     <!-- 打印内容区：Teleport 至 body，仅打印时可见，触发 window.print() 输出 -->
     <Teleport to="body">
-      <div class="print-area" v-if="printingRow">
+      <!-- 通用模板：拣货单/打包单/发货单/配货标签 -->
+      <div class="print-area" v-if="printingRow && !isShippingLabelMode">
         <div class="print-sheet" :style="printSheetStyle">
           <div class="print-header">
             <h2>{{ currentTemplate ? currentTemplate.name : '打印单' }}</h2>
@@ -205,16 +207,135 @@
           <div class="print-footer">MOYUYO 订单打印系统</div>
         </div>
       </div>
+      <!-- 快递面单模板：渲染燕文等承运商返回的 PDF/PNG base64。
+           支持单条 + 批量（shippingLabels 是数组）。 -->
+      <div class="print-area print-area--shipping" v-if="isShippingLabelMode && shippingLabels.length">
+        <!-- 批量打单：每个订单渲染一份面单，每份按 printSettings.copies 复制多联 -->
+        <div
+          v-for="label in shippingLabels"
+          :key="label.orderId"
+          class="print-batch-group">
+          <div v-for="(_, idx) in printSettings.copies" :key="label.orderId + '-copy-' + idx" class="print-sheet print-sheet--shipping">
+            <!-- 燕文取号成功：用 iframe 嵌入 PDF 或 img 嵌入 PNG -->
+            <iframe
+              v-if="label.dataUrl && label.contentType === 'application/pdf'"
+              :src="label.dataUrl"
+              class="shipping-iframe"
+              :title="'燕文快递面单 ' + label.orderNo"
+            ></iframe>
+            <img
+              v-else-if="label.dataUrl"
+              :src="label.dataUrl"
+              class="shipping-image"
+              :alt="'快递面单 ' + label.orderNo"
+            />
+            <!-- 燕文未启用 / 取号失败：使用通用面单模板（手动打印兜底） -->
+            <div v-else class="shipping-fallback">
+              <div class="shipping-fallback-title">快递面单（兜底）</div>
+              <table class="print-table">
+                <tbody>
+                  <tr><th>订单号</th><td>{{ label.orderNo }}</td></tr>
+                  <tr><th>承运商</th><td>{{ printingRow?.shippingCarrier || '—' }}</td></tr>
+                  <tr><th>运单号</th><td>{{ printingRow?.trackingNumber || '—' }}</td></tr>
+                  <tr><th>收件人</th><td>{{ printingRow?.receiver || '—' }}</td></tr>
+                  <tr><th>商品</th><td>{{ printingRow?.productInfo || '—' }}</td></tr>
+                  <tr><th>取号失败</th><td>{{ label.error || '—' }}</td></tr>
+                  <tr><th>打印时间</th><td>{{ printTime }}</td></tr>
+                </tbody>
+              </table>
+              <div class="print-footer">MOYUYO · 手动打印（请配置燕文 SDK 后获取电子面单）</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </Teleport>
+
+    <!-- 快递面单打印预览面板：常驻显示，方便用户预检后再触发 window.print() -->
+    <el-card v-if="showShippingPreview" shadow="never" class="section-card shipping-preview">
+      <template #header>
+        <div class="section-header">
+          <span class="section-title">📦 燕文快递面单预览（{{ shippingLabels.length }} 张）</span>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span v-if="shippingLabelError" class="shipping-error">{{ shippingLabelError }}</span>
+            <el-button size="small" type="primary" :disabled="!shippingLabels.length" @click="triggerBrowserPrint">
+              <el-icon :size="12" style="margin-right:2px"><Printer /></el-icon>浏览器打印
+            </el-button>
+            <el-button size="small" @click="closeShippingPreview">关闭</el-button>
+          </div>
+        </div>
+      </template>
+      <div class="shipping-preview-body">
+        <!-- 批量打单时使用 Tab 切换展示每张面单 -->
+        <template v-if="shippingLabels.length > 1">
+          <el-tabs v-model="activeShippingTab" type="card" class="shipping-tabs">
+            <el-tab-pane
+              v-for="label in shippingLabels"
+              :key="label.orderId"
+              :name="String(label.orderId)">
+              <template #label>
+                <span :class="{ 'shipping-tab-error': label.error }">
+                  {{ label.orderNo || '#' + label.orderId }}
+                  <span v-if="label.error" style="color:var(--state-error);">⚠</span>
+                </span>
+              </template>
+              <div class="shipping-pane">
+                <div v-if="label.error" class="shipping-error-banner">取号失败：{{ label.error }}</div>
+                <iframe
+                  v-if="label.dataUrl && label.contentType === 'application/pdf'"
+                  :src="label.dataUrl"
+                  class="shipping-preview-iframe"
+                ></iframe>
+                <img
+                  v-else-if="label.dataUrl"
+                  :src="label.dataUrl"
+                  class="shipping-preview-image"
+                  :alt="'快递面单 ' + label.orderNo"
+                />
+              </div>
+            </el-tab-pane>
+          </el-tabs>
+        </template>
+        <!-- 单张面单直接占满预览区 -->
+        <template v-else-if="shippingLabels.length === 1">
+          <div class="shipping-pane">
+            <div v-if="shippingLabels[0].error" class="shipping-error-banner">取号失败：{{ shippingLabels[0].error }}</div>
+            <iframe
+              v-if="shippingLabels[0].dataUrl && shippingLabels[0].contentType === 'application/pdf'"
+              :src="shippingLabels[0].dataUrl"
+              class="shipping-preview-iframe"
+            ></iframe>
+            <img
+              v-else-if="shippingLabels[0].dataUrl"
+              :src="shippingLabels[0].dataUrl"
+              class="shipping-preview-image"
+              :alt="'快递面单 ' + shippingLabels[0].orderNo"
+            />
+          </div>
+        </template>
+        <!-- 加载中或无数据 -->
+        <div v-else-if="shippingLabelLoading" class="shipping-loading">正在调取燕文面单…</div>
+        <div v-else class="shipping-empty">
+          <div style="font-size:32px;margin-bottom:6px;">📭</div>
+          <div>未取到面单数据</div>
+          <div style="font-size:11px;color:var(--text-400);margin-top:4px;">请检查后端 moyuyo.logistics.yanwen.* 配置与运单号</div>
+        </div>
+      </div>
+    </el-card>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { List, Box, DocumentChecked, PriceTag, Check, Edit, Star, Printer } from '@element-plus/icons-vue'
-import { getPrintList, recordPrint } from '../api/admin'
+import { List, Box, DocumentChecked, PriceTag, Check, Edit, Star, Printer, Promotion } from '@element-plus/icons-vue'
+import {
+  getPrintList, recordPrint, getPrintDetail, fetchShippingLabel, getYanwenStatus
+} from '../api/admin'
 import { toArray } from '../utils/safeArray'
+
+const route = useRoute()
+const router = useRouter()
 
 const page = ref(1)
 const pageSize = ref(10)
@@ -230,15 +351,44 @@ const tableData = ref([])
 
 // ==================== 打印模板（示例数据：后端暂无模板接口，先用结构化示例数据展示） ====================
 const printTemplates = ref([
-  { id: 1, name: '拣货单', type: '拣货单', paper: 'A4', desc: '按商品汇总，含货位 / SKU / 数量', gradient: 'linear-gradient(135deg, #e8f2ff, #cfe5ff)', color: '#2e8dff', icon: List, tagType: 'primary', isDefault: true },
-  { id: 2, name: '打包单', type: '打包单', paper: 'A5', desc: '按订单展示商品明细，放入包裹', gradient: 'linear-gradient(135deg, #f7f7fa, #e5e5ea)', color: '#8e8e93', icon: Box, tagType: 'info', isDefault: false },
-  { id: 3, name: '发货单', type: '发货单', paper: 'A4', desc: '含收件人信息 / 订单号 / 商品清单', gradient: 'linear-gradient(135deg, #fff7ed, #ffedd5)', color: '#c2410c', icon: DocumentChecked, tagType: 'warning', isDefault: false },
-  { id: 4, name: '配货标签', type: '配货标签', paper: '热敏 100x150mm', desc: '地址标签，可粘贴至包裹', gradient: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', color: '#16a34a', icon: PriceTag, tagType: 'success', isDefault: false }
+  { id: 1, name: '拣货单', type: '拣货单', paper: 'A4', desc: '按商品汇总，含货位 / SKU / 数量', gradient: 'linear-gradient(135deg, #e8f2ff, #cfe5ff)', color: '#2e8dff', icon: List, tagType: 'primary', isDefault: true, requiresShipping: false },
+  { id: 2, name: '打包单', type: '打包单', paper: 'A5', desc: '按订单展示商品明细，放入包裹', gradient: 'linear-gradient(135deg, #f7f7fa, #e5e5ea)', color: '#8e8e93', icon: Box, tagType: 'info', isDefault: false, requiresShipping: false },
+  { id: 3, name: '发货单', type: '发货单', paper: 'A4', desc: '含收件人信息 / 订单号 / 商品清单', gradient: 'linear-gradient(135deg, #fff7ed, #ffedd5)', color: '#c2410c', icon: DocumentChecked, tagType: 'warning', isDefault: false, requiresShipping: false },
+  { id: 4, name: '配货标签', type: '配货标签', paper: '热敏 100x150mm', desc: '地址标签，可粘贴至包裹', gradient: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', color: '#16a34a', icon: PriceTag, tagType: 'success', isDefault: false, requiresShipping: false },
+  { id: 5, name: '快递面单', type: '快递面单', paper: '热敏 100x150mm', desc: '燕文等承运商电子面单 PDF，启用 SDK 后可直接调取并打印', gradient: 'linear-gradient(135deg, #fdf2f8, #fce7f3)', color: '#db2777', icon: Promotion, tagType: 'danger', isDefault: false, requiresShipping: true }
 ])
 const selectedTemplateId = ref(1)
 
 // 当前选中的模板
 const currentTemplate = computed(() => printTemplates.value.find(t => t.id === selectedTemplateId.value))
+
+// 燕文 SDK 是否启用（控制"快递面单"模板的可用性）
+const yanwenEnabled = ref(false)
+
+// 快递面单模板标识（id=5）：仅在当前选中快递面单模板时启用
+const isShippingLabelMode = computed(() => selectedTemplateId.value === 5)
+
+// 快递面单预览面板状态
+const showShippingPreview = ref(false)
+const shippingLabelLoading = ref(false)
+// 改为数组：单条 / 多条场景统一处理
+// 单条订单时 length=1，多条时 length=N（用于"批量打单"）
+const shippingLabels = ref([])
+// 当前查看中面单对应的 orderId（用于定位错误信息）
+const shippingLabelError = ref('')
+
+// 当前订单详情（从 query 传入或列表行传入）
+const currentOrderDetail = ref(null)
+
+// 标记"已在 loadOrderFromQuery 中主动拉过面单"，避免 watch 重复触发
+const isLoadingFromQuery = ref(false)
+
+// 兼容旧模板引用（仍按"第一条面单"渲染打印内容区）
+const shippingLabelDataUrl = computed(() => shippingLabels.value[0]?.dataUrl || '')
+const shippingLabelContentType = computed(() => shippingLabels.value[0]?.contentType || 'application/pdf')
+
+// 当前预览面板激活的 Tab（批量打单时切换查看哪张面单）
+const activeShippingTab = ref('')
 
 // 选择打印模板
 function selectTemplate(tpl) {
@@ -350,6 +500,14 @@ const printSheetStyle = computed(() => {
 async function handlePrint(row) {
   try {
     const tpl = currentTemplate.value
+    // 兼容：如果选中"快递面单"模板，且行有运单号，自动调燕文取号
+    if (isShippingLabelMode.value) {
+      await fetchShippingLabelForOrder(row)
+      // 取号失败不阻断，仍然可走通用模板兜底
+      if (!shippingLabelDataUrl.value) {
+        ElMessage.warning('燕文取号失败，使用通用面单模板打印（请检查 SDK 配置 / 运单号）')
+      }
+    }
     // 后端 recordPrint 只读取 orderId/printType/templateName/paperSize，其余字段不提交
     await recordPrint({
       orderId: row.id,
@@ -360,7 +518,7 @@ async function handlePrint(row) {
     ElMessage.success('打印任务已记录，订单：' + row.orderNo)
     // 准备打印内容并进入打印模式
     printingRow.value = row
-    printTime.value = new Date().toLocaleString()
+    printTime.value = formatPrintTime()
     document.body.classList.add('print-mode')
     await nextTick()
     // 触发浏览器真实打印对话框（同步阻塞，关闭后继续执行）
@@ -387,7 +545,7 @@ async function handleBatchPrint() {
     }
     ElMessage.success('已记录 ' + list.length + ' 单打印任务，开始打印')
     printingRow.value = list[0]
-    printTime.value = new Date().toLocaleString()
+    printTime.value = formatPrintTime()
     document.body.classList.add('print-mode')
     await nextTick()
     window.print()
@@ -401,7 +559,208 @@ async function handleBatchPrint() {
   }
 }
 
-onMounted(() => { loadSettings(); loadData() })
+// 拉取燕文 SDK 启用状态（页面加载时调用一次）
+async function loadYanwenStatus() {
+  try {
+    const res = await getYanwenStatus()
+    const data = res?.data || res
+    yanwenEnabled.value = !!(data && data.enabled)
+  } catch (e) {
+    // 静默失败：状态用于 UI 提示
+    yanwenEnabled.value = false
+  }
+}
+
+// 从 query 加载订单详情（OrderList "打印快递单" 跳转时携带 orderId）
+async function loadOrderFromQuery() {
+  // 同时支持单条（?orderId=1）和批量（?ids=1,2,3）两种入口
+  const singleId = Number(route.query.orderId)
+  const idsStr = (route.query.ids || '').toString().trim()
+  const batchIds = idsStr
+    ? idsStr.split(',').map(s => Number(s.trim())).filter(n => !isNaN(n) && n > 0)
+    : []
+  const allIds = singleId ? [singleId] : batchIds
+  if (!allIds.length) return
+
+  // 标记"已经在加载时主动拉过面单"，避免 watch 监听 selectedTemplateId=5 重复触发
+  isLoadingFromQuery.value = true
+  // 自动选快递面单模板
+  selectedTemplateId.value = 5
+
+  // 把当前激活 Tab 切到第一张，方便用户切换
+  activeShippingTab.value = String(allIds[0])
+
+  // 单条场景：复用原有逻辑（保存到 currentOrderDetail 便于兼容兜底渲染）
+  if (singleId) {
+    try {
+      const res = await getPrintDetail(singleId)
+      const data = res?.data || res
+      if (data && data.id) {
+        currentOrderDetail.value = data
+        await fetchShippingLabelForOrder({
+          id: data.id,
+          orderNo: data.orderNo,
+          receiver: data.receiverName,
+          productInfo: (data.items || []).map(it => `${it.productName} x${it.quantity}`).join('; '),
+          createTime: data.createTime,
+          shippingCarrier: data.shippingCarrier,
+          trackingNumber: data.trackingNumber
+        })
+      }
+    } catch (e) {
+      console.warn('加载订单打印详情失败：', e?.message || e)
+    } finally {
+      isLoadingFromQuery.value = false
+    }
+    return
+  }
+
+  // 批量场景：循环并发拉取（Promise.allSettled 防止单条失败影响全部）
+  try {
+    const results = await Promise.allSettled(
+      allIds.map(async (id) => {
+        const res = await getPrintDetail(id)
+        const data = res?.data || res
+        if (!data || !data.id) throw new Error('订单 ' + id + ' 详情为空')
+        return {
+          id: data.id,
+          orderNo: data.orderNo,
+          receiver: data.receiverName,
+          productInfo: (data.items || []).map(it => `${it.productName} x${it.quantity}`).join('; '),
+          createTime: data.createTime,
+          shippingCarrier: data.shippingCarrier,
+          trackingNumber: data.trackingNumber
+        }
+      })
+    )
+    // 对拉取成功的订单挨个调燕文 SDK（fetchShippingLabelForOrder 内部已经 try/catch）
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) {
+        await fetchShippingLabelForOrder(r.value)
+      }
+    }
+  } catch (e) {
+    console.warn('批量加载订单打印详情失败：', e?.message || e)
+  } finally {
+    isLoadingFromQuery.value = false
+  }
+}
+
+// 取订单的快递电子面单（燕文），追加到数组（支持批量）
+async function fetchShippingLabelForOrder(row) {
+  if (!row || !row.id) return
+  showShippingPreview.value = true
+  shippingLabelLoading.value = true
+  // 单条/批量场景：根据是否已有"该 orderId 的条目"决定是覆盖还是新增
+  const idx = shippingLabels.value.findIndex(s => s.orderId === row.id)
+  try {
+    const res = await fetchShippingLabel(row.id, undefined)
+    const data = res?.data || res
+    // P1-2：后端返回 base64String + contentType（不再返回 dataUrl），前端自己拼。
+    // 这样响应体小了约 33%，批量 5 张从 ~1.5MB 降到 ~1MB。
+    if (data && data.base64String) {
+      const contentType = data.contentType || 'application/pdf'
+      const item = {
+        orderId: row.id,
+        orderNo: row.orderNo || row.id,
+        dataUrl: 'data:' + contentType + ';base64,' + data.base64String,
+        contentType,
+        sizeBytes: data.sizeBytes || 0,
+        error: ''
+      }
+      if (idx >= 0) shippingLabels.value.splice(idx, 1, item)
+      else shippingLabels.value.push(item)
+      shippingLabelError.value = ''
+    } else {
+      const err = (data && data.message) || '燕文未返回面单数据'
+      if (idx >= 0) {
+        shippingLabels.value[idx] = { ...shippingLabels.value[idx], error: err }
+      }
+      shippingLabelError.value = err
+    }
+  } catch (e) {
+    const err = e?.message || '取面单失败，请确认后端 SDK 配置'
+    if (idx >= 0) {
+      shippingLabels.value[idx] = { ...shippingLabels.value[idx], error: err }
+    }
+    shippingLabelError.value = err
+  } finally {
+    shippingLabelLoading.value = false
+  }
+}
+
+// 关闭面单预览面板
+function closeShippingPreview() {
+  showShippingPreview.value = false
+  shippingLabels.value = []
+  shippingLabelError.value = ''
+}
+
+// 直接触发浏览器打印（不依赖 printingRow，适合在预览面板中触发）
+async function triggerBrowserPrint() {
+  // 兜底：如果没有当前行，先用 currentOrderDetail 渲染
+  if (!printingRow.value && currentOrderDetail.value) {
+    const d = currentOrderDetail.value
+    printingRow.value = {
+      id: d.id,
+      orderNo: d.orderNo,
+      receiver: d.receiverName,
+      productInfo: (d.items || []).map(it => `${it.productName} x${it.quantity}`).join('; '),
+      createTime: d.createTime,
+      shippingCarrier: d.shippingCarrier,
+      trackingNumber: d.trackingNumber
+    }
+  }
+  if (!printingRow.value) {
+    ElMessage.warning('请先选择要打印的订单')
+    return
+  }
+  // P1-3：固定 YYYY-MM-DD HH:mm:ss，规避浏览器/locale 差异
+  printTime.value = formatPrintTime()
+  document.body.classList.add('print-mode')
+  await nextTick()
+  window.print()
+  setTimeout(() => {
+    document.body.classList.remove('print-mode')
+  }, 500)
+}
+
+/**
+ * P1-3：把打印时间固定为 YYYY-MM-DD HH:mm:ss。
+ * 之前用 new Date().toLocaleString()，不同浏览器的 locale 会输出
+ *   "2026/9/29 14:23:45"、"9/29/2026, 2:23:45 PM" 等，
+ * 导致打印输出不一致。统一格式化便于审计。
+ */
+function formatPrintTime() {
+  const d = new Date()
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+// 当切换到"快递面单"模板时，若已有当前订单则自动取号
+// 跳过 silent 期间跳过 isLoadingFromQuery=true 的触发（避免 loadOrderFromQuery 已拉过的二次取）
+watch(selectedTemplateId, (val) => {
+  if (val === 5
+      && !isLoadingFromQuery.value
+      && currentOrderDetail.value
+      && !shippingLabelDataUrl.value
+      && !shippingLabelLoading.value) {
+    fetchShippingLabelForOrder({
+      id: currentOrderDetail.value.id,
+      orderNo: currentOrderDetail.value.orderNo,
+      shippingCarrier: currentOrderDetail.value.shippingCarrier,
+      trackingNumber: currentOrderDetail.value.trackingNumber
+    })
+  }
+})
+
+onMounted(() => {
+  loadSettings()
+  loadData()
+  loadYanwenStatus()
+  // 如果路由 query 带 orderId，从 OrderList 跳过来则自动加载订单详情
+  loadOrderFromQuery()
+})
 </script>
 
 <style scoped>
@@ -451,6 +810,13 @@ onMounted(() => { loadSettings(); loadData() })
 }
 .default-badge { left: 8px; background: var(--brand-50); color: var(--brand-700); }
 .selected-badge { right: 8px; background: var(--primary); color: var(--primary-foreground); }
+.unavailable-badge {
+  left: 8px;
+  top: 32px;
+  background: rgba(255, 59, 48, 0.1);
+  color: var(--state-error);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+}
 .template-name { font-size: 14px; font-weight: 600; color: var(--text-800); margin-bottom: 6px; }
 .template-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .template-paper { font-size: 12px; color: var(--text-400); }
@@ -475,6 +841,115 @@ onMounted(() => { loadSettings(); loadData() })
 
 @media print {
   .print-area { display: block !important; }
+  /* 快递面单打印：去掉页边距，PDF/PNG 自带 100mm 宽度 */
+  body.print-mode { @page { size: 100mm 150mm; margin: 0; } }
+}
+
+/* ===== 快递面单预览 ===== */
+.shipping-preview { border-color: var(--brand-200); }
+.shipping-preview-body {
+  min-height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background-100);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.shipping-preview-iframe {
+  width: 100%;
+  height: 540px;
+  border: none;
+  background: #fff;
+}
+.shipping-preview-image {
+  max-width: 100%;
+  max-height: 540px;
+  background: #fff;
+  padding: 12px;
+  box-sizing: border-box;
+}
+.shipping-loading {
+  padding: 60px 20px;
+  font-size: 13px;
+  color: var(--text-500);
+}
+.shipping-tabs {
+  width: 100%;
+}
+.shipping-tabs :deep(.el-tabs__header) { margin-bottom: 8px; }
+.shipping-tabs :deep(.el-tabs__item) { font-size: 12px; padding: 0 12px; }
+.shipping-tab-error { color: var(--state-error); font-weight: 600; }
+.shipping-pane { padding: 4px; }
+.shipping-error-banner {
+  padding: 6px 12px;
+  margin-bottom: 8px;
+  background: var(--state-error-surface);
+  color: var(--state-error);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.print-batch-group {
+  /* 批量打单：每个订单独立分组，按订单分页（page-break-after） */
+  page-break-after: always;
+}
+.print-batch-group:last-child { page-break-after: auto; }
+.shipping-empty {
+  padding: 60px 20px;
+  font-size: 14px;
+  color: var(--text-500);
+  text-align: center;
+}
+.shipping-error {
+  font-size: 12px;
+  color: var(--state-error);
+  background: var(--state-error-surface);
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+/* ===== 打印区（Teleport 到 body） ===== */
+.print-area--shipping { display: none; }
+.print-sheet--shipping {
+  width: 100mm;
+  height: 150mm;
+  padding: 0;
+  margin: 0 auto;
+  background: #fff;
+  box-sizing: border-box;
+  page-break-after: always;
+}
+.shipping-iframe {
+  width: 100mm;
+  height: 150mm;
+  border: none;
+  display: block;
+}
+.shipping-image {
+  width: 100mm;
+  height: 150mm;
+  object-fit: contain;
+  display: block;
+}
+.shipping-fallback {
+  padding: 8mm;
+  font-family: var(--font-sans);
+  color: var(--text-800);
+  height: 100%;
+  box-sizing: border-box;
+}
+.shipping-fallback-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8mm;
+  border-bottom: 2px solid var(--text-800);
+  padding-bottom: 4mm;
+}
+
+@media print {
+  .print-area { display: block !important; }
+  /* 快递面单打印：去掉页边距，PDF/PNG 自带 100mm 宽度 */
+  body.print-mode.printing-shipping @page { size: 100mm 150mm; margin: 0; }
 }
 </style>
 
@@ -484,5 +959,9 @@ onMounted(() => { loadSettings(); loadData() })
   body.print-mode .admin-layout { display: none !important; }
   body.print-mode #app { display: none !important; }
   @page { size: A4; margin: 10mm; }
+}
+/* 快递面单打印时切换纸张 */
+@media print {
+  body.print-mode.printing-shipping { @page { size: 100mm 150mm; margin: 0; } }
 }
 </style>

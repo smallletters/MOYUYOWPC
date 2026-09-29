@@ -390,6 +390,13 @@ export default {
       Dogs: 'Dogs',
       Cats: 'Cats',
       Uncategorized: 'Uncategorized',
+      // 后端一级分类英文 name → 英文 label（生产数据库目前使用的 6 个一级分类）
+      'Bath & Grooming': 'Bath & Grooming',
+      Apparel: 'Apparel',
+      'Beds & Furniture': 'Beds & Furniture',
+      Toys: 'Toys',
+      Feeding: 'Feeding',
+      'Travel & Outdoor': 'Travel & Outdoor',
     },
     // 二级分类(后端原值 → 英文 label);中文原值翻译为英文
     subNames: {
@@ -450,6 +457,27 @@ export default {
       车载宠物座椅: 'Car Pet Seat',
       车载安全带: 'Car Safety Belt',
       防丢吊牌: 'ID Tag',
+      // English name → English label（后端二级分类存在英文原值,字典需要兜底映射;
+      // value 与 key 相同是因为英文原值本身就是 en-US 应当展示的文本）
+      Shampoo: 'Shampoo',
+      Conditioner: 'Conditioner',
+      'Ear Care': 'Ear Care',
+      'Dental Care': 'Dental Care',
+      'Eye Care': 'Eye Care',
+      'Paw Balm': 'Paw Balm',
+      'Coats & Sweaters': 'Coats & Sweaters',
+      'T-Shirts': 'T-Shirts',
+      Costumes: 'Costumes',
+      // 后端新增的中文 name(字典原本缺):补英文翻译
+      主粮: 'Dry Food',
+      零食: 'Treats',
+      饮水设备: 'Water Dispensers',
+      训练用品: 'Training Gear',
+      宠物服饰: 'Pet Apparel',
+      出行装备: 'Travel Gear',
+      户外运动: 'Outdoor Sports',
+      防水系列: 'Waterproof',
+      季节限定: 'Seasonal',
     },
   },
 
@@ -770,6 +798,16 @@ export default {
     profileBioSaveSuccess: 'Bio updated',
     profileBioSaveFailed: 'Failed to save bio, please retry',
     profileBioPlaceholder: 'Tell something about yourself (up to 200 chars)',
+    // Post card time display (relative + date fallback used by profile.vue formatTime)
+    time: {
+      justNow: 'Just now',
+      minutesAgo: '{count}m ago',
+      hoursAgo: '{count}h ago',
+      daysAgo: '{count}d ago',
+      // Date fallback for posts older than 24h; locale-agnostic yyyy-mm-dd keeps
+      // the order consistent across all users (matches the previous zh-CN layout).
+      dateFmt: '{y}-{m}-{d}',
+    },
     memberLevel: {
       NORMAL: 'Member',
       SILVER: 'Silver Member',
@@ -1134,6 +1172,9 @@ export default {
       minutesAgo: '{count}m ago',
       hoursAgo: '{count}h ago',
       daysAgo: '{count}d ago',
+      // Date fallback when the post is older than 24h; locale-agnostic yyyy-mm-dd keeps
+      // the order consistent across all users (matches the previous zh-CN layout).
+      dateFmt: '{y}-{m}-{d}',
     },
     unfollowTitle: 'Unfollow',
     unfollowConfirm: 'Unfollow "{name}"?',
@@ -1783,6 +1824,8 @@ export default {
       hot: 'Hot Today',
       rating: 'Top Rated',
     },
+    // 商品卡片评分右侧的"X 好评"文案:{count} 为 formatCount 后的数字
+    recommendRating: '{count} reviews',
   },
 
   // 意见反馈 /pages/user/feedback
@@ -2077,6 +2120,10 @@ export default {
     use: 'Use',
     zip: 'Zip {code}',
     new: 'New',
+    // Not shippable: backend shipping-zone did not include this country; checkout will reject
+    unshippable: 'Not shippable to this address',
+    unshippableCountryHint: 'This country is not supported for delivery, please pick another',
+    allUnshippableHint: 'None of your addresses is shippable. Please add a new one',
     // /pages/user/address-edit page
     editTitle: 'Edit Address',
     addTitle: 'Add New Address',
@@ -3890,6 +3937,9 @@ export default {
     postNotFound: 'Post not found',
     linkedPetNotFound: 'Linked pet not found or unavailable',
     sensitiveWord: 'Content contains sensitive words and cannot be published',
+    // Address validation (AddressController returned messages)
+    addressCountryRequired: 'Please choose a country',
+    addressNotFound: 'Address not found',
     // Structured error codes (matched by STRUCTURED_ERROR_PATTERNS in request.js)
     deletionHasActiveOrders:
       'You have {count} unfinished order(s). Please complete or cancel them before requesting account deletion.',

@@ -564,6 +564,23 @@ export function recordPrint(data) {
   return api.post('/order-ops/print/record', data)
 }
 
+// 单个订单打印详情（OrderPrint.vue 单笔打印用）
+export function getPrintDetail(orderId) {
+  return api.get(`/order-ops/print/detail/${orderId}`)
+}
+
+// 取订单的快递电子面单（按承运商编码路由 SDK，目前支持 yanwen）
+// 返回 { dataUrl, contentType, waybillNumber, sizeBytes }，
+// dataUrl 可直接绑定到 <iframe> / <img> 预览或走 window.print()
+export function fetchShippingLabel(orderId, carrierId) {
+  return api.get('/order-ops/print/shipping-label', { params: { orderId, carrierId } })
+}
+
+// 查询燕文电子面单 SDK 是否启用（订单列表按钮可用性）
+export function getYanwenStatus() {
+  return api.get('/order-ops/print/shipping-status')
+}
+
 // ==================== 订单改价 ====================
 export function getPriceModifyList(params) {
   return api.get('/order-ops/price-modify/list', { params })
@@ -636,6 +653,12 @@ export function getCustoms() {
 export function getShippingStrategies() {
   return api.get('/logistics/shipping-strategies')
 }
+
+// 发货区域（控制 APP 可发货地址）
+export function getShippingZones() {
+  return api.get('/logistics/shipping-zones')
+}
+export const { create: createShippingZone, update: updateShippingZone, delete: deleteShippingZone } = logisticsCrud('shipping-zones')
 
 export function getLogisticsKpi() {
   return api.get('/logistics/kpi')

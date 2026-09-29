@@ -5,18 +5,39 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
 import com.moyuyo.dao.admin.entity.*;
 import com.moyuyo.dao.admin.mapper.*;
+import com.moyuyo.dao.admin.entity.InventoryEntity;
+import com.moyuyo.dao.admin.entity.InventoryTransferEntity;
+import com.moyuyo.dao.entity.CategoryEntity;
 import com.moyuyo.dao.entity.LogisticsEntity;
 import com.moyuyo.dao.entity.OrderEntity;
+import com.moyuyo.dao.entity.ProductEntity;
+import com.moyuyo.dao.mapper.CategoryMapper;
 import com.moyuyo.dao.mapper.LogisticsMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
-import com.moyuyo.service.admin.AdminLogisticsService;
+import com.moyuyo.dao.mapper.ProductMapper;
+import com.moyuyo.service.admin.AdminShippingStrategyService;
+import com.moyuyo.service.admin.AdminShippingZoneService;
+import com.moyuyo.common.dto.admin.logistics.CarrierCreateRequest;
+import com.moyuyo.common.dto.admin.logistics.CarrierUpdateRequest;
+import com.moyuyo.common.dto.admin.logistics.ClearanceCreateRequest;
+import com.moyuyo.common.dto.admin.logistics.ClearanceUpdateRequest;
+import com.moyuyo.common.dto.admin.logistics.ShippingStrategyCreateRequest;
+import com.moyuyo.common.dto.admin.logistics.ShippingStrategyUpdateRequest;
+import com.moyuyo.common.dto.admin.logistics.ShippingZoneCreateRequest;
+import com.moyuyo.common.dto.admin.logistics.ShippingZoneUpdateRequest;
+import com.moyuyo.service.admin.AdminCarrierService;
+import com.moyuyo.service.admin.AdminClearanceService;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -28,17 +49,24 @@ import java.util.*;
 @Tag(name = "管理后台 - 物流管理")
 @RestController
 @RequestMapping("/api/admin/logistics")
+@SuppressWarnings("null") // 抑制 MyBatis-Plus 3.x @Nonnull T 与 JDT 静态分析差异（覆盖 nullUncheckedConversion 等所有 null 子类别）
 public class AdminLogisticsController {
 
-  private final AdminLogisticsService adminLogisticsService;
   private final LogisticsMapper logisticsMapper;
   private final OrderMapper orderMapper;
   private final WarehouseMapper warehouseMapper;
-  private final CarrierMapper carrierMapper;
   private final ClearanceMapper clearanceMapper;
-  private final ShippingStrategyMapper shippingStrategyMapper;
+  private final AdminShippingZoneService adminShippingZoneService;
+  private final AdminShippingStrategyService adminShippingStrategyService;
+  private final AdminCarrierService adminCarrierService;
+  private final AdminClearanceService adminClearanceService;
   private final MergePackageMapper mergePackageMapper;
   private final SplitPackageMapper splitPackageMapper;
+  private final ProductMapper productMapper;
+  private final CategoryMapper categoryMapper;
+  private final InventoryTransferMapper inventoryTransferMapper;
+  private final InventoryMapper inventoryMapper;
+  private final JdbcTemplate jdbcTemplate;
 
   @Operation(summary = "物流KPI统计")
   @GetMapping("/kpi")
@@ -106,9 +134,24 @@ public class AdminLogisticsController {
     // 使用 MyBatis-Plus Page 进行数据库分页查询
     Page<LogisticsEntity> pageResult = logisticsMapper.selectPage(new Page<>(page, size), wrapper);
 
+    // 一次性批量取出本页所有订单，避免循环内 N+1 查询
+    List<LogisticsEntity> records = pageResult.getRecords();
+    java.util.Set<Long> orderIds = new java.util.HashSet<>();
+    for (LogisticsEntity logi : records) {
+      if (logi.getOrderId() != null) orderIds.add(logi.getOrderId());
+    }
+    Map<Long, OrderEntity> orderMap = new java.util.HashMap<>();
+    if (!orderIds.isEmpty()) {
+      // selectBatchIds 在 MyBatis-Plus 3.5.x 已废弃，改用 selectByIds（同签名，避免 IDE 黄色感叹号）
+      List<OrderEntity> orders = orderMapper.selectByIds(orderIds);
+      for (OrderEntity o : orders) {
+        if (o != null && o.getId() != null) orderMap.put(o.getId(), o);
+      }
+    }
+
     List<Map<String, Object>> list = new ArrayList<>();
-    for (LogisticsEntity logi : pageResult.getRecords()) {
-      OrderEntity order = orderMapper.selectById(logi.getOrderId());
+    for (LogisticsEntity logi : records) {
+      OrderEntity order = orderMap.get(logi.getOrderId());
 
       String statusStr;
       if (logi.getReceivedAt() != null) {
@@ -251,16 +294,280 @@ public class AdminLogisticsController {
     return Result.success(result);
   }
 
+  // ==================== 仓库扩展端点（前端 WarehouseManage.vue 使用）====================
+
+  @Operation(summary = "仓库KPI汇总")
+  @GetMapping("/warehouse/kpi")
+  public Result<Map<String, Object>> warehouseKpi() {
+    List<WarehouseEntity> warehouses = warehouseMapper.selectList(
+        new LambdaQueryWrapper<WarehouseEntity>().orderByAsc(WarehouseEntity::getId));
+    int total = warehouses.size();
+    // ACTIVE = 启用
+    long active = warehouses.stream()
+        .filter(w -> "ACTIVE".equalsIgnoreCase(w.getStatus()))
+        .count();
+
+    // 最大容量（来自 mo_warehouse.max_capacity_qty）
+    long totalMaxCapacity = warehouses.stream()
+        .mapToLong(w -> w.getMaxCapacityQty() == null ? 0L : w.getMaxCapacityQty())
+        .sum();
+    // 在库件数（来自 mo_inventory.quantity）
+    List<InventoryEntity> allInventory = inventoryMapper.selectList(null);
+    long totalStockQty = allInventory.stream()
+        .mapToLong(inv -> inv.getQuantity() == null ? 0L : inv.getQuantity())
+        .sum();
+    // 平均仓库利用率：∑库存件数 / ∑最大容量（按仓库层级加权）
+    double avgUsage = totalMaxCapacity > 0
+        ? Math.round((totalStockQty * 1000.0 / totalMaxCapacity)) / 10.0
+        : -1d;
+    // 在途件数：按"调拨单 IN_TRANSIT 状态的件数总和"统计（更符合仓库在途语义）
+    List<InventoryTransferEntity> inTransitList = inventoryTransferMapper.selectList(
+        new LambdaQueryWrapper<InventoryTransferEntity>()
+            .eq(InventoryTransferEntity::getStatus, "IN_TRANSIT"));
+    long inTransit = inTransitList.stream()
+        .mapToLong(t -> t.getQuantity() == null ? 0L : t.getQuantity())
+        .sum();
+
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("total", total);
+    data.put("active", active);
+    // 最大可容纳库存件数（单位 件）
+    data.put("totalCapacity", totalMaxCapacity);
+    // 在库件数（单位 件）
+    data.put("usedCapacity", totalStockQty);
+    // 平均利用率（百分比，-1 表示暂无数据）
+    data.put("avgUsage", avgUsage);
+    // 在途件数
+    data.put("inTransit", inTransit);
+    // 额外字段：总 SKU 库存记录数（用于卡片展示）
+    data.put("totalSkuRecords", allInventory.size());
+    // 单位提示（前端文案兜底）
+    data.put("capacityUnit", "件");
+    data.put("stockUnit", "件");
+    return Result.success(data);
+  }
+
+  @Operation(summary = "仓库智能分配建议列表")
+  @GetMapping("/warehouse/allocation-suggest")
+  public Result<List<Map<String, Object>>> warehouseAllocationSuggest() {
+    // mo_warehouse_allocation_suggest 表无对应 Entity，用 JdbcTemplate 读取
+    String sql = "SELECT id, product_id, product_name, from_warehouse, to_warehouse, " +
+        "qty, reason, priority, status, create_time " +
+        "FROM mo_warehouse_allocation_suggest " +
+        "ORDER BY priority ASC, create_time DESC";
+    List<Map<String, Object>> list = jdbcTemplate.query(sql, (rs, rowNum) -> {
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("id", rs.getLong("id"));
+      item.put("productId", rs.getObject("product_id"));
+      item.put("productName", rs.getString("product_name"));
+      item.put("fromWarehouse", rs.getString("from_warehouse"));
+      item.put("toWarehouse", rs.getString("to_warehouse"));
+      item.put("qty", rs.getObject("qty"));
+      item.put("reason", rs.getString("reason"));
+      item.put("priority", rs.getObject("priority"));
+      item.put("status", rs.getString("status"));
+      Timestamp ts = rs.getTimestamp("create_time");
+      item.put("createTime", ts == null ? null : ts.toLocalDateTime().toString());
+      return item;
+    });
+    return Result.success(list);
+  }
+
+  @Operation(summary = "采纳仓库智能分配建议")
+  @PostMapping("/warehouse/allocation-suggest/{id}/apply")
+  public Result<Map<String, Object>> applyAllocationSuggest(@PathVariable Long id) {
+    String sql = "UPDATE mo_warehouse_allocation_suggest SET status = 'APPLIED' WHERE id = ?";
+    int rows = jdbcTemplate.update(sql, id);
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("id", id);
+    result.put("affected", rows);
+    result.put("message", rows > 0 ? "已采纳" : "记录不存在");
+    return Result.success(result);
+  }
+
+  @Operation(summary = "仓库品类库存分布")
+  @GetMapping("/warehouse/category-stocks")
+  public Result<Map<String, Object>> warehouseCategoryStocks(
+      @RequestParam(required = false, defaultValue = "上海自营仓") String warehouse) {
+    // 解析仓库名 → 仓库 ID
+    WarehouseEntity targetWh = warehouseMapper.selectList(
+        new LambdaQueryWrapper<WarehouseEntity>().eq(WarehouseEntity::getName, warehouse))
+        .stream().findFirst().orElse(null);
+
+    // 1) 找出该仓库下的所有库存记录（warehouse_id 维度）
+    //    注：仓库名错配时不退化为全平台聚合，返回空 items + 错误 note，
+    //    避免前端"美西仓库存分布"误展示全平台数据
+    List<InventoryEntity> inventories = new ArrayList<>();
+    if (targetWh != null) {
+      inventories = inventoryMapper.selectList(
+          new LambdaQueryWrapper<InventoryEntity>().eq(InventoryEntity::getWarehouseId, targetWh.getId()));
+    }
+
+    // 2) inventory.productId → 商品 categoryId（守卫：非空时再批量查）
+    Set<Long> productIds = new HashSet<>();
+    for (InventoryEntity inv : inventories) {
+      if (inv.getProductId() != null) productIds.add(inv.getProductId());
+    }
+    Map<Long, Long> productToCategory = new HashMap<>();
+    if (!productIds.isEmpty()) {
+      List<ProductEntity> products = productMapper.selectByIds(productIds);
+      for (ProductEntity p : products) {
+        if (p.getCategoryId() != null) {
+          productToCategory.put(p.getId(), p.getCategoryId());
+        }
+      }
+    }
+
+    // 3) 类目 id → 一级类目 id（递归上溯到 parentId == null）
+    List<CategoryEntity> categories = categoryMapper.selectList(
+        new LambdaQueryWrapper<CategoryEntity>().orderByAsc(CategoryEntity::getId));
+    Map<Long, Long> catToRoot = new HashMap<>();
+    Map<Long, CategoryEntity> catMap = new HashMap<>();
+    for (CategoryEntity c : categories) {
+      catMap.put(c.getId(), c);
+    }
+    for (CategoryEntity c : categories) {
+      catToRoot.put(c.getId(), resolveRootCategoryId(c.getId(), catMap));
+    }
+
+    // 4) 按一级类目聚合 quantity
+    Map<Long, Long> stockByRoot = new HashMap<>();
+    for (InventoryEntity inv : inventories) {
+      Long catId = productToCategory.get(inv.getProductId());
+      if (catId == null) continue;
+      Long rootId = catToRoot.getOrDefault(catId, 0L);
+      stockByRoot.merge(rootId, (long) (inv.getQuantity() == null ? 0 : inv.getQuantity()), Long::sum);
+    }
+
+    // 5) 取 Top 类目构建分布（按库存降序）
+    List<Map.Entry<Long, Long>> sorted = new ArrayList<>(stockByRoot.entrySet());
+    sorted.sort((a, b) -> Long.compare(b.getValue(), a.getValue()));
+    long total = sorted.stream().mapToLong(Map.Entry::getValue).sum();
+    List<Map<String, Object>> items = new ArrayList<>();
+    String[] palette = {"#FF7A45", "#40A9FF", "#52C41A", "#722ED1", "#FAAD14", "#13C2C2"};
+    long shownTotal = 0;
+    int topN = Math.min(5, sorted.size());
+    for (int i = 0; i < topN; i++) {
+      Map.Entry<Long, Long> e = sorted.get(i);
+      CategoryEntity cat = catMap.get(e.getKey());
+      String name = cat != null ? cat.getName() : ("类目-" + e.getKey());
+      double percent = total > 0 ? Math.round(e.getValue() * 1000.0 / total) / 10.0 : 0d;
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("name", name);
+      item.put("value", e.getValue());
+      item.put("percent", percent);
+      item.put("color", palette[i % palette.length]);
+      items.add(item);
+      shownTotal += e.getValue();
+    }
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("items", items);
+    data.put("otherValue", Math.max(0, total - shownTotal));
+    data.put("warehouse", warehouse);
+    data.put("warehouseResolved", targetWh != null);
+    if (targetWh == null) {
+      // 仓库名错配：返回空 + 明确提示，前端可展示"未找到仓库"
+      data.put("note", "未找到仓库「" + warehouse + "」，请检查仓库名称");
+      data.put("error", "WAREHOUSE_NOT_FOUND");
+    } else if (inventories.isEmpty()) {
+      data.put("note", "仓库「" + warehouse + "」暂无库存数据");
+    } else {
+      data.put("note", "按仓库「" + warehouse + "」实际库存聚合");
+    }
+    return Result.success(data);
+  }
+
+  /**
+   * 递归上溯到一级类目（parentId == null 即视为一级）。
+   * 防止循环引用导致的栈溢出，最多迭代深度 10。
+   */
+  private Long resolveRootCategoryId(Long catId, Map<Long, CategoryEntity> catMap) {
+    if (catId == null) return 0L;
+    Long current = catId;
+    for (int i = 0; i < 10; i++) {
+      CategoryEntity c = catMap.get(current);
+      if (c == null || c.getParentId() == null) {
+        return current;
+      }
+      current = c.getParentId();
+    }
+    return current;
+  }
+
+  @Operation(summary = "智能选品建议（按销量 Top）")
+  @GetMapping("/warehouse/smart-picks")
+  public Result<List<Map<String, Object>>> warehouseSmartPicks(
+      @RequestParam(defaultValue = "6") int limit) {
+    int top = Math.max(1, Math.min(limit, 50));
+    LambdaQueryWrapper<ProductEntity> wrapper = new LambdaQueryWrapper<ProductEntity>()
+        .eq(ProductEntity::getOnSale, true)
+        .orderByDesc(ProductEntity::getSales)
+        .last("LIMIT " + top);
+    List<ProductEntity> products = productMapper.selectList(wrapper);
+    // 候选仓库清单：循环外一次查出，循环内 hash 分桶，避免 N+1 查询 + 全部推荐同一个仓库
+    List<WarehouseEntity> activeOverseas = warehouseMapper.selectList(
+        new LambdaQueryWrapper<WarehouseEntity>()
+            .eq(WarehouseEntity::getType, "OVERSEAS")
+            .eq(WarehouseEntity::getStatus, "ACTIVE")
+            .orderByAsc(WarehouseEntity::getId));
+    List<WarehouseEntity> activeSelf = warehouseMapper.selectList(
+        new LambdaQueryWrapper<WarehouseEntity>()
+            .eq(WarehouseEntity::getType, "SELF")
+            .eq(WarehouseEntity::getStatus, "ACTIVE")
+            .orderByAsc(WarehouseEntity::getId));
+    List<Map<String, Object>> list = new ArrayList<>();
+    int idx = 0;
+    for (ProductEntity p : products) {
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("id", p.getId());
+      item.put("name", p.getName());
+      item.put("sku", p.getSpuCode());
+      // 简单 tag 判定
+      String tag;
+      String tagClass;
+      if (Boolean.TRUE.equals(p.getManageStock()) && p.getStock() != null && p.getStock() < 100) {
+        tag = "需补货";
+        tagClass = "tag-orange";
+      } else if (p.getSales() != null && p.getSales() > 500) {
+        tag = "爆款";
+        tagClass = "tag-red";
+      } else {
+        tag = "潜力款";
+        tagClass = "tag-green";
+      }
+      item.put("tag", tag);
+      item.put("tagClass", tagClass);
+      // 推荐仓库：商品 id 取模分桶，避免所有商品推荐同一仓
+      List<WarehouseEntity> pool = !activeOverseas.isEmpty() ? activeOverseas : activeSelf;
+      WarehouseEntity target = pool.isEmpty() ? null
+          : pool.get(Math.floorMod(p.getId() == null ? idx : p.getId().hashCode(), pool.size()));
+      item.put("warehouse", target != null ? target.getName() : "上海自营仓");
+      item.put("sales", p.getSales() == null ? 0 : p.getSales());
+      BigDecimal profit = p.getPrice() == null ? BigDecimal.ZERO
+          : p.getPrice().multiply(BigDecimal.valueOf(0.15))
+              .multiply(BigDecimal.valueOf(p.getSales() == null ? 0 : p.getSales()))
+              .setScale(2, RoundingMode.HALF_UP);
+      item.put("profit", "¥" + profit.toPlainString());
+      list.add(item);
+      idx++;
+    }
+    return Result.success(list);
+  }
+
   @Operation(summary = "海外仓列表")
   @GetMapping("/overseas")
   public Result<List<Map<String, Object>>> overseasWarehouses(
       @RequestParam(defaultValue = "1") int page,
-      @RequestParam(defaultValue = "15") int size) {
+      @RequestParam(defaultValue = "15") int size,
+      @RequestParam(required = false) String status) {
     try {
-      List<WarehouseEntity> records = warehouseMapper.selectList(
-          new LambdaQueryWrapper<WarehouseEntity>()
-              .eq(WarehouseEntity::getType, "OVERSEAS")
-              .orderByAsc(WarehouseEntity::getId));
+      LambdaQueryWrapper<WarehouseEntity> wrapper = new LambdaQueryWrapper<WarehouseEntity>()
+          .eq(WarehouseEntity::getType, "OVERSEAS");
+      // 形参 status 真正生效：仅在非空时叠加等值条件；走归一化兼容中文"启用/在售/停用/已下架"
+      if (status != null && !status.isEmpty()) {
+        wrapper.eq(WarehouseEntity::getStatus, normalizeEntityStatus(status));
+      }
+      List<WarehouseEntity> records = warehouseMapper.selectList(wrapper.orderByAsc(WarehouseEntity::getId));
       List<Map<String, Object>> list = new ArrayList<>();
       for (WarehouseEntity w : records) {
         Map<String, Object> item = new LinkedHashMap<>();
@@ -287,10 +594,16 @@ public class AdminLogisticsController {
   @GetMapping("/merge-packages")
   public Result<List<Map<String, Object>>> mergePackages(
       @RequestParam(defaultValue = "1") int page,
-      @RequestParam(defaultValue = "15") int size) {
+      @RequestParam(defaultValue = "15") int size,
+      @RequestParam(required = false) String status) {
     try {
-      List<MergePackageEntity> records = mergePackageMapper.selectList(
-          new LambdaQueryWrapper<MergePackageEntity>().orderByDesc(MergePackageEntity::getCreateTime));
+      LambdaQueryWrapper<MergePackageEntity> wrapper =
+          new LambdaQueryWrapper<MergePackageEntity>().orderByDesc(MergePackageEntity::getCreateTime);
+      // 形参 status 真正生效：非空时叠加等值条件；走归一化兼容中文展示值
+      if (status != null && !status.isEmpty()) {
+        wrapper.eq(MergePackageEntity::getStatus, normalizeEntityStatus(status));
+      }
+      List<MergePackageEntity> records = mergePackageMapper.selectList(wrapper);
       List<Map<String, Object>> list = new ArrayList<>();
       for (MergePackageEntity m : records) {
         Map<String, Object> item = new LinkedHashMap<>();
@@ -317,10 +630,16 @@ public class AdminLogisticsController {
   @GetMapping("/split-packages")
   public Result<List<Map<String, Object>>> splitPackages(
       @RequestParam(defaultValue = "1") int page,
-      @RequestParam(defaultValue = "15") int size) {
+      @RequestParam(defaultValue = "15") int size,
+      @RequestParam(required = false) String status) {
     try {
-      List<SplitPackageEntity> records = splitPackageMapper.selectList(
-          new LambdaQueryWrapper<SplitPackageEntity>().orderByDesc(SplitPackageEntity::getCreateTime));
+      LambdaQueryWrapper<SplitPackageEntity> wrapper =
+          new LambdaQueryWrapper<SplitPackageEntity>().orderByDesc(SplitPackageEntity::getCreateTime);
+      // 形参 status 真正生效：非空时叠加等值条件；走归一化兼容中文展示值
+      if (status != null && !status.isEmpty()) {
+        wrapper.eq(SplitPackageEntity::getStatus, normalizeEntityStatus(status));
+      }
+      List<SplitPackageEntity> records = splitPackageMapper.selectList(wrapper);
       List<Map<String, Object>> list = new ArrayList<>();
       for (SplitPackageEntity s : records) {
         Map<String, Object> item = new LinkedHashMap<>();
@@ -347,10 +666,10 @@ public class AdminLogisticsController {
   @GetMapping("/carriers")
   public Result<List<Map<String, Object>>> carriers(
       @RequestParam(defaultValue = "1") int page,
-      @RequestParam(defaultValue = "15") int size) {
+      @RequestParam(defaultValue = "15") int size,
+      @RequestParam(required = false) String status) {
     try {
-      List<CarrierEntity> records = carrierMapper.selectList(
-          new LambdaQueryWrapper<CarrierEntity>().orderByAsc(CarrierEntity::getId));
+      List<CarrierEntity> records = adminCarrierService.listAll(status);
       List<Map<String, Object>> list = new ArrayList<>();
       for (CarrierEntity c : records) {
         Map<String, Object> item = new LinkedHashMap<>();
@@ -377,10 +696,10 @@ public class AdminLogisticsController {
   @GetMapping("/clearance")
   public Result<List<Map<String, Object>>> clearance(
       @RequestParam(defaultValue = "1") int page,
-      @RequestParam(defaultValue = "15") int size) {
+      @RequestParam(defaultValue = "15") int size,
+      @RequestParam(required = false) String status) {
     try {
-      List<ClearanceEntity> records = clearanceMapper.selectList(
-          new LambdaQueryWrapper<ClearanceEntity>().orderByDesc(ClearanceEntity::getDeclareTime));
+      List<ClearanceEntity> records = adminClearanceService.listAll(status, false);
       List<Map<String, Object>> list = new ArrayList<>();
       for (ClearanceEntity c : records) {
         Map<String, Object> item = new LinkedHashMap<>();
@@ -406,13 +725,10 @@ public class AdminLogisticsController {
   @GetMapping("/customs")
   public Result<List<Map<String, Object>>> customs(
       @RequestParam(defaultValue = "1") int page,
-      @RequestParam(defaultValue = "15") int size) {
+      @RequestParam(defaultValue = "15") int size,
+      @RequestParam(required = false) String status) {
     try {
-      List<ClearanceEntity> records = clearanceMapper.selectList(
-          new LambdaQueryWrapper<ClearanceEntity>()
-              .isNotNull(ClearanceEntity::getHsCode)
-              .ne(ClearanceEntity::getHsCode, "")
-              .orderByAsc(ClearanceEntity::getId));
+      List<ClearanceEntity> records = adminClearanceService.listAll(status, true);
       List<Map<String, Object>> list = new ArrayList<>();
       for (ClearanceEntity c : records) {
         Map<String, Object> item = new LinkedHashMap<>();
@@ -437,10 +753,11 @@ public class AdminLogisticsController {
   @GetMapping("/shipping-strategies")
   public Result<List<Map<String, Object>>> shippingStrategies(
       @RequestParam(defaultValue = "1") int page,
-      @RequestParam(defaultValue = "15") int size) {
+      @RequestParam(defaultValue = "15") int size,
+      @RequestParam(required = false) String status) {
     try {
-      List<ShippingStrategyEntity> records = shippingStrategyMapper.selectList(
-          new LambdaQueryWrapper<ShippingStrategyEntity>().orderByAsc(ShippingStrategyEntity::getId));
+      List<ShippingStrategyEntity> records = adminShippingStrategyService.listAll(status);
+      Map<Long, String> zoneNameMap = adminShippingStrategyService.listZoneNameMap();
       List<Map<String, Object>> list = new ArrayList<>();
       for (ShippingStrategyEntity s : records) {
         Map<String, Object> item = new LinkedHashMap<>();
@@ -449,6 +766,8 @@ public class AdminLogisticsController {
         item.put("name", s.getName());
         item.put("strategyName", s.getName());
         item.put("region", s.getRegion());
+        item.put("zoneId", s.getZoneId());
+        item.put("zoneName", zoneNameMap.getOrDefault(s.getZoneId(), "-"));
         item.put("method", s.getMethod());
         item.put("shippingMethod", s.getMethod());
         item.put("rule", s.getRuleDesc());
@@ -647,39 +966,21 @@ public class AdminLogisticsController {
 
   @Operation(summary = "创建承运商")
   @PostMapping("/carriers")
-  public Result<Map<String, Object>> createCarrier(@RequestBody Map<String, Object> body) {
-    CarrierEntity entity = new CarrierEntity();
-    entity.setName((String) body.get("name"));
-    entity.setTransportMode((String) body.get("transportMode"));
-    if (body.get("avgDeliveryDays") != null) entity.setAvgDeliveryDays(new BigDecimal(body.get("avgDeliveryDays").toString()));
-    if (body.get("firstWeightPrice") != null) entity.setFirstWeightPrice(new BigDecimal(body.get("firstWeightPrice").toString()));
-    if (body.get("renewWeightPrice") != null) entity.setRenewWeightPrice(new BigDecimal(body.get("renewWeightPrice").toString()));
-    if (body.get("praiseRate") != null) entity.setPraiseRate(new BigDecimal(body.get("praiseRate").toString()));
-    entity.setStatus((String) body.get("status"));
-    carrierMapper.insert(entity);
+  public Result<Map<String, Object>> createCarrier(@Valid @RequestBody CarrierCreateRequest req) {
+    CarrierEntity e = adminCarrierService.create(req);
     Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", entity.getId());
+    result.put("id", e.getId());
     result.put("message", "承运商创建成功");
     return Result.success(result);
   }
 
   @Operation(summary = "更新承运商")
   @PutMapping("/carriers/{id}")
-  public Result<Map<String, Object>> updateCarrier(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-    CarrierEntity entity = carrierMapper.selectById(id);
-    if (entity == null) {
-      return Result.error("承运商不存在");
-    }
-    if (body.get("name") != null) entity.setName((String) body.get("name"));
-    if (body.get("transportMode") != null) entity.setTransportMode((String) body.get("transportMode"));
-    if (body.get("avgDeliveryDays") != null) entity.setAvgDeliveryDays(new BigDecimal(body.get("avgDeliveryDays").toString()));
-    if (body.get("firstWeightPrice") != null) entity.setFirstWeightPrice(new BigDecimal(body.get("firstWeightPrice").toString()));
-    if (body.get("renewWeightPrice") != null) entity.setRenewWeightPrice(new BigDecimal(body.get("renewWeightPrice").toString()));
-    if (body.get("praiseRate") != null) entity.setPraiseRate(new BigDecimal(body.get("praiseRate").toString()));
-    if (body.get("status") != null) entity.setStatus((String) body.get("status"));
-    carrierMapper.updateById(entity);
+  public Result<Map<String, Object>> updateCarrier(@PathVariable Long id,
+      @Valid @RequestBody CarrierUpdateRequest req) {
+    CarrierEntity e = adminCarrierService.update(id, req);
     Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", id);
+    result.put("id", e.getId());
     result.put("message", "承运商更新成功");
     return Result.success(result);
   }
@@ -687,7 +988,7 @@ public class AdminLogisticsController {
   @Operation(summary = "删除承运商")
   @DeleteMapping("/carriers/{id}")
   public Result<Map<String, Object>> deleteCarrier(@PathVariable Long id) {
-    carrierMapper.deleteById(id);
+    adminCarrierService.delete(id);
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("id", id);
     result.put("message", "承运商删除成功");
@@ -698,37 +999,21 @@ public class AdminLogisticsController {
 
   @Operation(summary = "创建清关记录")
   @PostMapping("/clearance")
-  public Result<Map<String, Object>> createClearance(@RequestBody Map<String, Object> body) {
-    ClearanceEntity entity = new ClearanceEntity();
-    entity.setDeclarationNo((String) body.get("declarationNo"));
-    entity.setOrderNo((String) body.get("orderNo"));
-    entity.setProductName((String) body.get("productName"));
-    entity.setHsCode((String) body.get("hsCode"));
-    if (body.get("taxRate") != null) entity.setTaxRate(new BigDecimal(body.get("taxRate").toString()));
-    entity.setStatus((String) body.get("status"));
-    clearanceMapper.insert(entity);
+  public Result<Map<String, Object>> createClearance(@Valid @RequestBody ClearanceCreateRequest req) {
+    ClearanceEntity e = adminClearanceService.create(req);
     Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", entity.getId());
+    result.put("id", e.getId());
     result.put("message", "清关记录创建成功");
     return Result.success(result);
   }
 
   @Operation(summary = "更新清关记录")
   @PutMapping("/clearance/{id}")
-  public Result<Map<String, Object>> updateClearance(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-    ClearanceEntity entity = clearanceMapper.selectById(id);
-    if (entity == null) {
-      return Result.error("清关记录不存在");
-    }
-    if (body.get("declarationNo") != null) entity.setDeclarationNo((String) body.get("declarationNo"));
-    if (body.get("orderNo") != null) entity.setOrderNo((String) body.get("orderNo"));
-    if (body.get("productName") != null) entity.setProductName((String) body.get("productName"));
-    if (body.get("hsCode") != null) entity.setHsCode((String) body.get("hsCode"));
-    if (body.get("taxRate") != null) entity.setTaxRate(new BigDecimal(body.get("taxRate").toString()));
-    if (body.get("status") != null) entity.setStatus((String) body.get("status"));
-    clearanceMapper.updateById(entity);
+  public Result<Map<String, Object>> updateClearance(@PathVariable Long id,
+      @Valid @RequestBody ClearanceUpdateRequest req) {
+    ClearanceEntity e = adminClearanceService.update(id, req);
     Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", id);
+    result.put("id", e.getId());
     result.put("message", "清关记录更新成功");
     return Result.success(result);
   }
@@ -736,7 +1021,7 @@ public class AdminLogisticsController {
   @Operation(summary = "删除清关记录")
   @DeleteMapping("/clearance/{id}")
   public Result<Map<String, Object>> deleteClearance(@PathVariable Long id) {
-    clearanceMapper.deleteById(id);
+    adminClearanceService.delete(id);
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("id", id);
     result.put("message", "清关记录删除成功");
@@ -744,36 +1029,25 @@ public class AdminLogisticsController {
   }
 
   // ==================== 海关 CRUD ====================
-
+  // 注意：海关与清关共用 mo_clearance 表；customs 是"hsCode 非空"的查询视图，
+  // 创建/更新/删除复用 AdminClearanceService，只是 url 路径前缀不同。
   @Operation(summary = "创建海关记录")
   @PostMapping("/customs")
-  public Result<Map<String, Object>> createCustoms(@RequestBody Map<String, Object> body) {
-    ClearanceEntity entity = new ClearanceEntity();
-    entity.setHsCode((String) body.get("hsCode"));
-    entity.setProductName((String) body.get("productName"));
-    if (body.get("taxRate") != null) entity.setTaxRate(new BigDecimal(body.get("taxRate").toString()));
-    entity.setStatus((String) body.get("status"));
-    clearanceMapper.insert(entity);
+  public Result<Map<String, Object>> createCustoms(@Valid @RequestBody ClearanceCreateRequest req) {
+    ClearanceEntity e = adminClearanceService.create(req);
     Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", entity.getId());
+    result.put("id", e.getId());
     result.put("message", "海关记录创建成功");
     return Result.success(result);
   }
 
   @Operation(summary = "更新海关记录")
   @PutMapping("/customs/{id}")
-  public Result<Map<String, Object>> updateCustoms(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-    ClearanceEntity entity = clearanceMapper.selectById(id);
-    if (entity == null) {
-      return Result.error("海关记录不存在");
-    }
-    if (body.get("hsCode") != null) entity.setHsCode((String) body.get("hsCode"));
-    if (body.get("productName") != null) entity.setProductName((String) body.get("productName"));
-    if (body.get("taxRate") != null) entity.setTaxRate(new BigDecimal(body.get("taxRate").toString()));
-    if (body.get("status") != null) entity.setStatus((String) body.get("status"));
-    clearanceMapper.updateById(entity);
+  public Result<Map<String, Object>> updateCustoms(@PathVariable Long id,
+      @Valid @RequestBody ClearanceUpdateRequest req) {
+    ClearanceEntity e = adminClearanceService.update(id, req);
     Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", id);
+    result.put("id", e.getId());
     result.put("message", "海关记录更新成功");
     return Result.success(result);
   }
@@ -781,7 +1055,7 @@ public class AdminLogisticsController {
   @Operation(summary = "删除海关记录")
   @DeleteMapping("/customs/{id}")
   public Result<Map<String, Object>> deleteCustoms(@PathVariable Long id) {
-    clearanceMapper.deleteById(id);
+    adminClearanceService.delete(id);
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("id", id);
     result.put("message", "海关记录删除成功");
@@ -792,54 +1066,33 @@ public class AdminLogisticsController {
 
   @Operation(summary = "创建发货策略")
   @PostMapping("/shipping-strategies")
-  public Result<Map<String, Object>> createShippingStrategy(@RequestBody Map<String, Object> body) {
-    ShippingStrategyEntity entity = new ShippingStrategyEntity();
-    // 兼容前端字段名（strategyName/shippingMethod/feeRule）与旧字段名（name/method/ruleDesc）
-    entity.setName(strValue(body, "name", "strategyName"));
-    entity.setRegion(strValue(body, "region"));
-    entity.setMethod(strValue(body, "method", "shippingMethod"));
-    entity.setRuleDesc(strValue(body, "ruleDesc", "feeRule"));
-    if (body.get("priority") != null) entity.setPriority(Integer.valueOf(body.get("priority").toString()));
-    entity.setStatus(normalizeStrategyStatus(strValue(body, "status")));
-    shippingStrategyMapper.insert(entity);
+  public Result<Map<String, Object>> createShippingStrategy(
+      @Valid @RequestBody ShippingStrategyCreateRequest req) {
+    ShippingStrategyEntity e = adminShippingStrategyService.create(req);
     Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", entity.getId());
+    result.put("id", e.getId());
     result.put("message", "发货策略创建成功");
     return Result.success(result);
   }
 
   @Operation(summary = "更新发货策略")
   @PutMapping("/shipping-strategies/{id}")
-  public Result<Map<String, Object>> updateShippingStrategy(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-    ShippingStrategyEntity entity = shippingStrategyMapper.selectById(id);
-    if (entity == null) {
-      return Result.error("发货策略不存在");
-    }
-    if (strValue(body, "name", "strategyName") != null) entity.setName(strValue(body, "name", "strategyName"));
-    if (body.get("region") != null) entity.setRegion(strValue(body, "region"));
-    if (strValue(body, "method", "shippingMethod") != null) entity.setMethod(strValue(body, "method", "shippingMethod"));
-    if (strValue(body, "ruleDesc", "feeRule") != null) entity.setRuleDesc(strValue(body, "ruleDesc", "feeRule"));
-    if (body.get("priority") != null) entity.setPriority(Integer.valueOf(body.get("priority").toString()));
-    if (strValue(body, "status") != null) entity.setStatus(normalizeStrategyStatus(strValue(body, "status")));
-    shippingStrategyMapper.updateById(entity);
+  public Result<Map<String, Object>> updateShippingStrategy(@PathVariable Long id,
+      @Valid @RequestBody ShippingStrategyUpdateRequest req) {
+    ShippingStrategyEntity e = adminShippingStrategyService.update(id, req);
     Map<String, Object> result = new LinkedHashMap<>();
-    result.put("id", id);
+    result.put("id", e.getId());
     result.put("message", "发货策略更新成功");
     return Result.success(result);
   }
 
-  /** 取 Map 中第一个非空字段值（用于字段名兼容） */
-  private String strValue(Map<String, Object> data, String... keys) {
-    for (String k : keys) {
-      Object v = data.get(k);
-      if (v != null) return v.toString();
-    }
-    return null;
-  }
-
-  /** 中文状态 → 存储状态（ACTIVE/INACTIVE），兼容直接传英文 */
-  private String normalizeStrategyStatus(String status) {
-    if (status == null || status.isEmpty()) return "ACTIVE";
+  /**
+   * 通用状态归一化：只映射仓库/承运商/合包/分包裹/清关等维度下无歧义的中文（启用/停用），
+   * 避免"在售/已下架/缺货/正常/草稿/待审核"等商品/库存维度状态被误映射成 ACTIVE/INACTIVE。
+   * 未识别值原样透传，由数据库决定是否命中。
+   */
+  private String normalizeEntityStatus(String status) {
+    if (status == null || status.isEmpty()) return status;
     if ("启用".equals(status)) return "ACTIVE";
     if ("停用".equals(status)) return "INACTIVE";
     return status;
@@ -856,10 +1109,62 @@ public class AdminLogisticsController {
   @Operation(summary = "删除发货策略")
   @DeleteMapping("/shipping-strategies/{id}")
   public Result<Map<String, Object>> deleteShippingStrategy(@PathVariable Long id) {
-    shippingStrategyMapper.deleteById(id);
+    adminShippingStrategyService.delete(id);
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("id", id);
     result.put("message", "发货策略删除成功");
+    return Result.success(result);
+  }
+
+  // ==================== 发货区域（Shipping Zone）CRUD ====================
+
+  @Operation(summary = "发货区域列表（策略页面下拉使用）")
+  @GetMapping("/shipping-zones")
+  public Result<List<Map<String, Object>>> shippingZones() {
+    List<ShippingZoneEntity> records = adminShippingZoneService.listAll();
+    List<Map<String, Object>> list = new ArrayList<>();
+    for (ShippingZoneEntity z : records) {
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("id", z.getId());
+      item.put("name", z.getName());
+      item.put("countryCodes", z.getCountryCodes());
+      item.put("status", z.getStatus());
+      item.put("sortOrder", z.getSortOrder());
+      item.put("remark", z.getRemark());
+      list.add(item);
+    }
+    return Result.success(list);
+  }
+
+  @Operation(summary = "创建发货区域")
+  @PostMapping("/shipping-zones")
+  public Result<Map<String, Object>> createShippingZone(@Valid @RequestBody ShippingZoneCreateRequest req) {
+    ShippingZoneEntity e = adminShippingZoneService.create(req);
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("id", e.getId());
+    result.put("message", "发货区域创建成功");
+    return Result.success(result);
+  }
+
+  @Operation(summary = "更新发货区域")
+  @PutMapping("/shipping-zones/{id}")
+  public Result<Map<String, Object>> updateShippingZone(@PathVariable Long id,
+      @Valid @RequestBody ShippingZoneUpdateRequest req) {
+    ShippingZoneEntity e = adminShippingZoneService.update(id, req);
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("id", e.getId());
+    result.put("message", "发货区域更新成功");
+    return Result.success(result);
+  }
+
+  @Operation(summary = "删除发货区域")
+  @DeleteMapping("/shipping-zones/{id}")
+  public Result<Map<String, Object>> deleteShippingZone(@PathVariable Long id) {
+    // service 内部抛 BusinessException，被 GlobalExceptionHandler 统一映射为 409
+    adminShippingZoneService.delete(id);
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("id", id);
+    result.put("message", "发货区域删除成功");
     return Result.success(result);
   }
 }

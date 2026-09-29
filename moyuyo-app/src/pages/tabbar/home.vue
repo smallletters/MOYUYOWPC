@@ -108,7 +108,9 @@
                 <text class="recommend-star luc-star" />
                 <text class="recommend-rating-num">{{ p.rating.toFixed(1) }}</text>
                 <text class="recommend-rating-sep">·</text>
-                <text class="recommend-rating-count">{{ formatCount(p.reviewCount) }} 好评</text>
+                <text class="recommend-rating-count">
+                  {{ $t('home.recommendRating', { count: formatCount(p.reviewCount) }) }}
+                </text>
               </view>
             </view>
           </view>

@@ -37,6 +37,7 @@
           mode="selector"
           :range="countryLabels"
           :value="countryIndex"
+          :disabled="countryCodes.length === 0"
           @change="onCountryChange"
         >
           <view class="input picker">
@@ -44,6 +45,10 @@
             <text class="luc luc-chevron-down picker-arrow" />
           </view>
         </picker>
+        <!-- 即时提示：当前所选国家不在运营配置中，下单会被拒 -->
+        <text v-if="form.country && !isCountryShippable" class="picker-warn">
+          {{ $t('address.unshippableCountryHint') }}
+        </text>
       </view>
 
       <view class="row-group">
@@ -134,155 +139,154 @@
   </view>
 </template>
 
-<script>
+<script setup>
+import { reactive, ref, computed, onMounted } from 'vue'
 import { addressApi } from '@/api'
 import { i18n } from '@/i18n'
+import { useAddressCountries } from '@/composables/useAddressCountries'
 
-// 国家码（值与英文/本地化文案分离，便于在 picker 中显示本地化文本）
-const COUNTRY_CODES = [
-  'US',
-  'CA',
-  'GB',
-  'DE',
-  'FR',
-  'ES',
-  'IT',
-  'NL',
-  'AU',
-  'JP',
-  'CN',
-  'HK',
-  'TW',
-  'SG',
-  'MY',
-]
+defineOptions({ name: 'UserAddressEdit' })
 
-export default {
-  pageTitleKey: 'pageTitle.userAddressEdit',
+// ==================== 表单状态 ====================
 
-  data() {
-    return {
-      localeVersion: 0,
-      form: {
-        id: null,
-        receiver: '',
-        phone: '',
-        country: 'US',
-        province: '',
-        city: '',
-        district: '',
-        detail: '',
-        zipCode: '',
-        tag: '',
-        isDefault: false,
-      },
-    }
-  },
+const form = reactive({
+  id: null,
+  receiver: '',
+  phone: '',
+  country: '',
+  province: '',
+  city: '',
+  district: '',
+  detail: '',
+  zipCode: '',
+  tag: '',
+  isDefault: false,
+})
 
-  computed: {
-    // 依赖 localeVersion,语言切换时 picker 文本会重新渲染
-    countryLabels() {
-      void this.localeVersion
-      return COUNTRY_CODES.map((code) => i18n.t(`address.countryCodes.${code}`))
-    },
-    tags() {
-      void this.localeVersion
-      return [
-        { value: 'HOME', label: i18n.t('address.tagHome'), icon: 'luc-home' },
-        { value: 'COMPANY', label: i18n.t('address.tagCompany'), icon: 'luc-briefcase' },
-        { value: 'OTHER', label: i18n.t('address.tagOther'), icon: 'luc-map-pin' },
-      ]
-    },
-    countryIndex() {
-      const idx = COUNTRY_CODES.indexOf(this.form.country)
-      return idx >= 0 ? idx : 0
-    },
-  },
+// ==================== 国家码（composable） ====================
 
-  onLoad(query) {
-    // 订阅语言切换
-    this._unsubLocale = i18n.subscribe(() => {
-      this.localeVersion += 1
-    })
+const {
+  countryCodes,
+  countryLabels,
+  loadCountries,
+  isCountryShippable: isCountryShippableFn,
+} = useAddressCountries()
+const countryIndex = computed(() => {
+  const idx = countryCodes.value.indexOf(form.country)
+  return idx >= 0 ? idx : 0
+})
+const isCountryShippable = computed(() => isCountryShippableFn(form.country))
+
+// ==================== 标签（依赖 i18n 自动响应） ====================
+
+const tags = computed(() => [
+  { value: 'HOME', label: i18n.t('address.tagHome'), icon: 'luc-home' },
+  { value: 'COMPANY', label: i18n.t('address.tagCompany'), icon: 'luc-briefcase' },
+  { value: 'OTHER', label: i18n.t('address.tagOther'), icon: 'luc-map-pin' },
+])
+
+// ==================== 生命周期 ====================
+
+// 与项目其他 setup 页面一致：用 getCurrentPages() 读 URL query 入参
+const editId = ref(null)
+onMounted(() => bootstrap())
+
+async function bootstrap() {
+  await loadCountries()
+  // 读 URL ?id=xxx（uni-app 跳页约定）
+  try {
+    const pages = getCurrentPages()
+    const cur = pages[pages.length - 1]
+    const query = (cur && cur.options) || {}
     if (query.id) {
-      this.loadDetail(query.id)
+      editId.value = Number(query.id)
+      await loadDetail(editId.value)
     }
-  },
-  onUnload() {
-    if (this._unsubLocale) this._unsubLocale()
-  },
+  } catch (e) {
+    console.warn('[address-edit] read page query failed', e)
+  }
+  // 编辑模式：保留已有国家；新增模式：默认选第一项（仅当用户没有历史 country 时）
+  if (!form.country && countryCodes.value.length > 0) {
+    form.country = countryCodes.value[0]
+  }
+}
 
-  methods: {
-    async loadDetail(id) {
-      try {
-        const addr = await addressApi.getAddressDetail(id)
-        if (addr) {
-          this.form = { ...this.form, ...addr }
-          // 兼容后端可能不返回 tag 的情况
-          if (typeof this.form.tag !== 'string') this.form.tag = ''
-        }
-      } catch (e) {
-        console.warn('[address-edit] load failed', e)
-        uni.showToast({ title: i18n.t('address.loadFailed'), icon: 'none' })
-      }
-    },
+async function loadDetail(id) {
+  try {
+    const addr = await addressApi.getAddressDetail(id)
+    if (addr) {
+      Object.assign(form, addr)
+      if (typeof form.tag !== 'string') form.tag = ''
+    }
+  } catch (e) {
+    console.warn('[address-edit] load failed', e)
+    uni.showToast({ title: i18n.t('address.loadFailed'), icon: 'none' })
+  }
+}
 
-    countryLabel(code) {
-      if (!code) return ''
-      return i18n.t(`address.countryCodes.${code}`)
-    },
+function countryLabel(code) {
+  if (!code) return ''
+  return i18n.t(`address.countryCodes.${code}`, code)
+}
 
-    onCountryChange(e) {
-      const idx = Number(e.detail.value)
-      if (COUNTRY_CODES[idx]) this.form.country = COUNTRY_CODES[idx]
-    },
+function onCountryChange(e) {
+  const idx = Number(e.detail.value)
+  if (countryCodes.value[idx]) form.country = countryCodes.value[idx]
+}
 
-    async onSave() {
-      // 必填校验
-      const required = [
-        { key: 'receiver', field: i18n.t('address.fieldReceiver') },
-        { key: 'phone', field: i18n.t('address.fieldPhone') },
-        { key: 'detail', field: i18n.t('address.fieldDetail') },
-        { key: 'city', field: i18n.t('address.fieldCity') },
-      ]
-      for (const r of required) {
-        if (!this.form[r.key] || !String(this.form[r.key]).trim()) {
-          uni.showToast({
-            title: i18n.t('address.requiredField', { field: r.field }),
-            icon: 'none',
-          })
-          return
-        }
-      }
-      // 手机号简单格式校验（最少 6 位数字即可，海外号码格式差异大）
-      if (!/^\d{6,20}$/.test(String(this.form.phone).replace(/\s+/g, ''))) {
-        uni.showToast({ title: i18n.t('address.invalidPhone'), icon: 'none' })
-        return
-      }
+// ==================== 保存校验 ====================
 
-      try {
-        uni.showLoading({ title: i18n.t('address.saving') })
-        if (this.form.id) {
-          await addressApi.updateAddress(this.form.id, this.form)
-        } else {
-          await addressApi.createAddress(this.form)
-        }
-        uni.hideLoading()
-        uni.showToast({ title: i18n.t('address.saved'), icon: 'success' })
-        setTimeout(() => uni.navigateBack(), 600)
-      } catch (e) {
-        uni.hideLoading()
-        console.warn('[address-edit] save failed', e)
-        uni.showToast({ title: i18n.t('address.saveFailed'), icon: 'none' })
-      }
-    },
+async function onSave() {
+  const required = [
+    { key: 'receiver', field: i18n.t('address.fieldReceiver') },
+    { key: 'phone', field: i18n.t('address.fieldPhone') },
+    { key: 'detail', field: i18n.t('address.fieldDetail') },
+    { key: 'city', field: i18n.t('address.fieldCity') },
+  ]
+  for (const r of required) {
+    if (!form[r.key] || !String(form[r.key]).trim()) {
+      uni.showToast({
+        title: i18n.t('address.requiredField', { field: r.field }),
+        icon: 'none',
+      })
+      return
+    }
+  }
+  if (!/^\d{6,20}$/.test(String(form.phone).replace(/\s+/g, ''))) {
+    uni.showToast({ title: i18n.t('address.invalidPhone'), icon: 'none' })
+    return
+  }
+  // 国家必须在当前运营配置的 countryCodes 内，否则保存后下单会被后端拒
+  if (!countryCodes.value || countryCodes.value.length === 0) {
+    uni.showToast({ title: i18n.t('address.unshippableCountryHint'), icon: 'none' })
+    return
+  }
+  if (!form.country || countryCodes.value.indexOf(form.country) < 0) {
+    uni.showToast({ title: i18n.t('address.unshippableCountryHint'), icon: 'none' })
+    return
+  }
 
-    goBack() {
-      const pages = getCurrentPages()
-      if (pages.length > 1) uni.navigateBack({ delta: 1 })
-      else uni.switchTab({ url: '/pages/tabbar/user' })
-    },
-  },
+  try {
+    uni.showLoading({ title: i18n.t('address.saving') })
+    if (form.id) {
+      await addressApi.updateAddress(form.id, form)
+    } else {
+      await addressApi.createAddress(form)
+    }
+    uni.hideLoading()
+    uni.showToast({ title: i18n.t('address.saved'), icon: 'success' })
+    setTimeout(() => uni.navigateBack(), 600)
+  } catch (e) {
+    uni.hideLoading()
+    console.warn('[address-edit] save failed', e)
+    uni.showToast({ title: i18n.t('address.saveFailed'), icon: 'none' })
+  }
+}
+
+function goBack() {
+  const pages = getCurrentPages()
+  if (pages.length > 1) uni.navigateBack({ delta: 1 })
+  else uni.switchTab({ url: '/pages/tabbar/user' })
 }
 </script>
 
@@ -358,6 +362,14 @@ export default {
 .picker-arrow {
   font-size: 28rpx;
   color: var(--color-text-tertiary);
+}
+/* picker 下方红色警告：当前国家不在运营配置中 */
+.picker-warn {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: var(--color-danger);
+  line-height: 1.4;
 }
 
 /* 双列（省 / 市） */

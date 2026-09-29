@@ -17,8 +17,10 @@
         <h3 class="wh-section-title">仓库概览</h3>
         <!-- 真实后端：仓库总数 / 总容量 / 平均利用率 / 在途 -->
         <span class="wh-section-meta">
-          共 {{ warehouseOverview.length }} 个仓库 · 总容量 {{ kpiData.totalCapacity }} m³ ·
-          平均利用率 {{ kpiData.avgUsage }}% · 在途 {{ kpiData.inTransit }} 件
+          共 {{ warehouseOverview.length }} 个仓库 · 最大容量 {{ kpiData.totalCapacity }} 件 ·
+          在库 {{ kpiData.usedCapacity }} 件 ·
+          平均利用率 {{ formatUsage(kpiData.avgUsage) }} ·
+          在途 {{ kpiData.inTransit }} 件
         </span>
       </div>
       <div class="wh-overview-grid">
@@ -344,7 +346,8 @@ import { OfficeBuilding, Box, Switch, Check, ArrowRight } from '@element-plus/ic
 import {
   getWarehouses, createWarehouse, updateWarehouse, deleteWarehouse, createInventoryTransfer,
   getWarehouseKpi, getWarehouseAllocationSuggest, applyWarehouseAllocation,
-  getWarehouseCategoryStocks, getWarehouseSmartPicks
+  getWarehouseCategoryStocks, getWarehouseSmartPicks,
+  getInventoryTransferList
 } from '../api/admin'
 
 const router = useRouter()
@@ -374,6 +377,12 @@ const warehouseOverview = ref([])
 const kpiData = reactive({ total: 0, active: 0, totalCapacity: 0, usedCapacity: 0, avgUsage: 0, inTransit: 0 })
 const overviewTotalTransit = computed(() => kpiData.inTransit)
 
+// 格式化利用率：后端返回 -1 表示"暂无数据"，前端展示"暂无数据"占位
+function formatUsage(val) {
+  if (val === null || val === undefined || val < 0) return '暂无数据'
+  return val + '%'
+}
+
 // ==================== 真实后端：美西仓各品类库存分布（按一级类目聚合 mo_product.stock） ====================
 const categoryStocks = ref([])
 const otherStockValue = ref(0)
@@ -384,9 +393,18 @@ const allocationSuggestions = ref([])
 // ==================== 真实后端：仓间调拨单（来自 mo_inventory_transfer） ====================
 const transferOrders = ref([])
 const transferStatusFilter = ref('全部')
+// radio 中文标签 → 后端 dbStatus 映射（前端没有"已驳回"按钮，但 dbStatus 仍可能为 REJECTED）
+const transferFilterMap = {
+  '待审核': 'PENDING',
+  '运输中': 'IN_TRANSIT',
+  '待入库': 'IN_TRANSIT', // 业务上"待入库"≈"运输中"（尚未完成入库动作）
+  '已完成': 'COMPLETED',
+  '已驳回': 'REJECTED'
+}
 const transferFiltered = computed(() => {
   if (transferStatusFilter.value === '全部') return transferOrders.value
-  return transferOrders.value.filter(o => o.status === transferStatusFilter.value)
+  const targetDb = transferFilterMap[transferStatusFilter.value]
+  return transferOrders.value.filter(o => o.dbStatus === targetDb)
 })
 function transferStatusClass(status) {
   const map = { '待审核': 'tag-orange', '运输中': 'tag-blue', '待入库': 'tag-purple', '已完成': 'tag-green' }
@@ -552,10 +570,38 @@ async function loadSuggestions() {
 }
 
 async function loadTransfers() {
-  // 调拨单已由独立 /inventory-transfer 接口支持，这里直接展示真实空数据
+  // 调拨单：调用真实的 /api/admin/inventory-transfer/list，并把 VO 字段映射为页面表格字段
   try {
-    transferOrders.value = []
+    const res = await getInventoryTransferList({ page: 1, size: 10 })
+    // axios 拦截器已解包 body.data，这里 res 即为 PageResponse；records 不存在则视为空
+    const records = (res && (res.records || res)) || []
+    transferOrders.value = (Array.isArray(records) ? records : []).map(r => {
+      // DB 状态(PENDING/IN_TRANSIT/COMPLETED/REJECTED) → 页面中文
+      const dbStatus = (r.dbStatus || r.status || '').toUpperCase()
+      const statusMap = {
+        PENDING: '待审核',
+        IN_TRANSIT: '运输中',
+        COMPLETED: '已完成',
+        REJECTED: '已驳回'
+      }
+      const cnStatus = statusMap[dbStatus] || (r.status || '待审核')
+      // 进度：根据状态粗略估算（PENDING=10 / IN_TRANSIT=60 / COMPLETED=100 / REJECTED=0）
+      const progressMap = { PENDING: 10, IN_TRANSIT: 60, COMPLETED: 100, REJECTED: 0 }
+      return {
+        id: r.id,
+        no: 'TF' + String(r.id || '').padStart(8, '0'),
+        from: r.fromWarehouse || '-',
+        to: r.toWarehouse || '-',
+        qty: r.quantity || 0,
+        progress: progressMap[dbStatus] ?? 0,
+        // 同时挂载 dbStatus，供"待入库"过滤使用
+        status: cnStatus,
+        dbStatus: dbStatus,
+        eta: r.completeTime ? String(r.completeTime).slice(0, 10) : (r.createTime ? String(r.createTime).slice(0, 10) : '-')
+      }
+    })
   } catch (e) {
+    console.error('获取调拨单列表失败:', e)
     transferOrders.value = []
   }
 }

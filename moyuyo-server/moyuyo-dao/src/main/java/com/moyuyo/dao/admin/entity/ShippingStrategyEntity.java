@@ -15,8 +15,11 @@ public class ShippingStrategyEntity {
     /** 策略名称 */
     private String name;
 
-    /** 适用区域 */
+    /** 适用区域（展示文案，自由文本） */
     private String region;
+
+    /** 所属发货区域 id，关联 mo_shipping_zone.id（控制 APP 可发货地址） */
+    private Long zoneId;
 
     /** 配送方式 */
     private String method;

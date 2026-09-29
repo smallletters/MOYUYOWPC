@@ -22,6 +22,11 @@
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="strategyName" label="策略名称" width="160" />
         <el-table-column prop="region" label="适用区域" width="130" />
+        <el-table-column prop="zoneName" label="发货区域" width="120">
+          <template #default="{ row }">
+            <el-tag size="small" type="info">{{ row.zoneName }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="发货方式" width="120">
           <template #default="{ row }">
             <el-tag :type="row.shippingMethod === '快递' ? 'primary' : row.shippingMethod === '海运' ? 'warning' : 'success'">{{ row.shippingMethod }}</el-tag>
@@ -59,6 +64,15 @@
         <el-form-item label="适用区域">
           <el-input v-model="editForm.region" placeholder="如：华东地区" />
         </el-form-item>
+        <el-form-item label="发货区域">
+          <el-select v-model="editForm.zoneId" placeholder="选择发货区域" style="width:100%">
+            <el-option
+              v-for="z in zoneOptions"
+              :key="z.id"
+              :label="`${z.name} (${z.countryCodes})`"
+              :value="z.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="发货方式">
           <el-select v-model="editForm.shippingMethod">
             <el-option label="快递" value="快递" />
@@ -90,7 +104,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getShippingStrategies, createShippingStrategy, updateShippingStrategy, deleteShippingStrategy } from '../api/admin'
+import { getShippingStrategies, createShippingStrategy, updateShippingStrategy, deleteShippingStrategy, getShippingZones } from '../api/admin'
 
 const pageTitle = '发货策略'
 const filters = reactive({ keyword: '' })
@@ -100,9 +114,12 @@ const pageSize = ref(15)
 const total = ref(0)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
+// 发货区域列表（下拉数据源）
+const zoneOptions = ref([])
 const editForm = reactive({
   strategyName: '',
   region: '',
+  zoneId: 1,
   shippingMethod: '快递',
   feeRule: '',
   priority: 1,
@@ -111,10 +128,20 @@ const editForm = reactive({
 
 async function loadData() {
   try {
-    const res = await getShippingStrategies()
-    const list = res || []
+    const [list, zones] = await Promise.all([
+      getShippingStrategies(),
+      getShippingZones().catch(() => [])
+    ])
+    zoneOptions.value = zones || []
+    const rows = list || []
+    // 用 zoneName 增强展示
+    const zoneMap = new Map((zones || []).map(z => [z.id, z]))
+    const enriched = rows.map(r => ({
+      ...r,
+      zoneName: zoneMap.get(r.zoneId)?.name || '-'
+    }))
     // 前端过滤
-    let filtered = [...list]
+    let filtered = [...enriched]
     if (filters.keyword) {
       filtered = filtered.filter(item => item.strategyName && item.strategyName.includes(filters.keyword))
     }
@@ -126,8 +153,23 @@ async function loadData() {
 }
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.keyword = ''; handleSearch() }
-function handleAdd() { dialogTitle.value = '新建策略'; editForm.strategyName = ''; editForm.region = ''; editForm.shippingMethod = '快递'; editForm.feeRule = ''; editForm.priority = 1; editForm.status = '启用'; dialogVisible.value = true }
-function handleEdit(row) { dialogTitle.value = '编辑策略'; Object.assign(editForm, row); dialogVisible.value = true }
+function handleAdd() {
+  dialogTitle.value = '新建策略'
+  editForm.strategyName = ''
+  editForm.region = ''
+  editForm.zoneId = (zoneOptions.value[0] && zoneOptions.value[0].id) || 1
+  editForm.shippingMethod = '快递'
+  editForm.feeRule = ''
+  editForm.priority = 1
+  editForm.status = '启用'
+  dialogVisible.value = true
+}
+function handleEdit(row) {
+  dialogTitle.value = '编辑策略'
+  Object.assign(editForm, row)
+  if (!editForm.zoneId) editForm.zoneId = (zoneOptions.value[0] && zoneOptions.value[0].id) || 1
+  dialogVisible.value = true
+}
 async function handleDelete(row) {
   try {
     await ElMessageBox.confirm('确定删除？', '提示')
@@ -142,24 +184,19 @@ async function handleDelete(row) {
 }
 async function handleSave() {
   try {
+    const payload = {
+      strategyName: editForm.strategyName,
+      region: editForm.region,
+      zoneId: editForm.zoneId,
+      shippingMethod: editForm.shippingMethod,
+      feeRule: editForm.feeRule,
+      priority: editForm.priority,
+      status: editForm.status
+    }
     if (editForm.id) {
-      await updateShippingStrategy(editForm.id, {
-        strategyName: editForm.strategyName,
-        region: editForm.region,
-        shippingMethod: editForm.shippingMethod,
-        feeRule: editForm.feeRule,
-        priority: editForm.priority,
-        status: editForm.status
-      })
+      await updateShippingStrategy(editForm.id, payload)
     } else {
-      await createShippingStrategy({
-        strategyName: editForm.strategyName,
-        region: editForm.region,
-        shippingMethod: editForm.shippingMethod,
-        feeRule: editForm.feeRule,
-        priority: editForm.priority,
-        status: editForm.status
-      })
+      await createShippingStrategy(payload)
     }
     ElMessage.success('保存成功')
     dialogVisible.value = false

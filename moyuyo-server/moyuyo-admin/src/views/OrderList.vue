@@ -71,6 +71,34 @@
       </div>
     </div>
 
+    <!-- 操作工具栏（批量打单 + 燕文状态提示） -->
+    <div class="action-toolbar">
+      <div class="toolbar-left">
+        <button
+          class="btn btn-primary"
+          style="height: 38px; padding: 0 16px; font-size: 13px; gap: 6px;"
+          :disabled="!selectedIds.length"
+          @click="handleBatchPrint">
+          🖨 批量打印快递单（{{ selectedIds.length }}）
+        </button>
+        <button
+          class="btn btn-outline"
+          style="height: 38px; padding: 0 16px; font-size: 13px;"
+          @click="refreshYanwenStatus">
+          刷新燕文状态
+        </button>
+        <span v-if="yanwenStatus.enabled" class="toolbar-hint toolbar-hint--ok">
+          ✅ 燕文电子面单已启用
+          <template v-if="!yanwenStatus.userIdConfigured || !yanwenStatus.apiTokenConfigured">
+            （未配置凭证，仅可走手动打印）
+          </template>
+        </span>
+        <span v-else class="toolbar-hint toolbar-hint--warn">
+          ⚠ 燕文电子面单未启用（按"打印快递单"会走手动打印流程）
+        </span>
+      </div>
+    </div>
+
     <!-- 数据表格 -->
     <div class="data-table-wrapper">
       <table class="data-table">
@@ -141,6 +169,7 @@
               <div class="cell-actions">
                 <button class="btn btn-sm btn-outline" @click="handleConfirmShip(order)">确认发货</button>
                 <button class="btn btn-sm btn-outline" @click="handleLogistics(order)">物流</button>
+                <button class="btn btn-sm btn-outline" @click="handlePrint(order)">打印快递单</button>
                 <button class="btn btn-sm btn-outline" @click="handleDetail(order)">详情</button>
                 <button class="btn btn-sm btn-outline" :disabled="syncingIds.includes(order.id)"
                   @click="handleSyncToWoo(order)">
@@ -282,7 +311,8 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   getOrderOpsStats, getOrderList, shipOrder, syncOrderToWoo,
-  getOrderLogistics, updateOrderLogistics, getCarriers
+  getOrderLogistics, updateOrderLogistics, getCarriers,
+  getYanwenStatus, getPrintDetail, fetchShippingLabel, recordPrint
 } from '../api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { toArray } from '../utils/safeArray'
@@ -304,6 +334,9 @@ const statsData = ref({
 
 const selectAll = ref(false)
 const selectedIds = ref([])
+
+// 燕文电子面单启用状态：进入页面时拉一次，用于按钮文案与提示
+const yanwenStatus = reactive({ enabled: false, userIdConfigured: false, apiTokenConfigured: false })
 const currentPage = ref(1)
 const pageSize = 10
 const loading = ref(false)
@@ -672,6 +705,40 @@ function handleDetail(order) {
   router.push(`/orders/${order.id}`)
 }
 
+// 打印快递单：单条订单直接走 OrderPrint 页（携带订单 id 预览 + 模板选择 + 打单）
+function handlePrint(order) {
+  // 路由到独立 OrderPrint 页面，orderId 作为 query 传入
+  router.push({ path: '/order-print', query: { orderId: order.id, orderNo: order.orderNo || order.no } })
+}
+
+// 批量打印：先跳到 OrderPrint 页面，传入 ids；OrderPrint.vue 已实现 onMounted bulk
+async function handleBatchPrint() {
+  if (!selectedIds.value || selectedIds.value.length === 0) {
+    ElMessage.warning('请先勾选需要打印的订单')
+    return
+  }
+  // 取当前选中订单的订单号，逗号拼接便于一眼看清
+  const picked = (orderList.value || []).filter(o => selectedIds.value.includes(o.id))
+  const orderNos = picked.map(o => o.orderNo || o.no).join(',')
+  router.push({ path: '/order-print', query: { ids: selectedIds.value.join(','), orderNos } })
+}
+
+// 拉取燕文 SDK 启用状态
+async function refreshYanwenStatus() {
+  try {
+    const res = await getYanwenStatus()
+    const data = res?.data || res
+    if (data) {
+      yanwenStatus.enabled = !!data.enabled
+      yanwenStatus.userIdConfigured = !!data.userIdConfigured
+      yanwenStatus.apiTokenConfigured = !!data.apiTokenConfigured
+    }
+  } catch (e) {
+    // 静默失败：状态提示仅是辅助信息
+    console.warn('拉取燕文状态失败：', e?.message || e)
+  }
+}
+
 // WC 同步状态：根据 wooOrderId / syncStatus 展示
 function wooOrderClass(order) {
   if (order.wooOrderId) return 'tag tag-green'
@@ -714,10 +781,44 @@ watch(currentPage, () => {
 onMounted(() => {
   fetchStats()
   fetchOrders()
+  refreshYanwenStatus()
 })
 </script>
 
 <style scoped>
+/* ======== 操作工具栏（批量打单 + 燕文状态） ======== */
+.action-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-xs);
+}
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.toolbar-hint {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  line-height: 1.4;
+}
+.toolbar-hint--ok {
+  background: var(--state-success-surface);
+  color: var(--state-success);
+}
+.toolbar-hint--warn {
+  background: var(--state-error-surface);
+  color: var(--state-error);
+}
+
 /* 订单状态概览 */
 .order-summary {
   display: grid;

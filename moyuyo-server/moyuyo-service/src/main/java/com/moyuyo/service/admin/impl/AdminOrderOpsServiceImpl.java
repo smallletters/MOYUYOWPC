@@ -15,9 +15,11 @@ import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
+import com.moyuyo.common.dto.logistics.YanWenLabelResponse;
 import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.service.admin.AdminOrderOpsService;
+import com.moyuyo.service.admin.YanWenLabelService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +48,9 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
   private final OrderInterceptMapper interceptMapper;
   private final OrderPrintLogMapper printLogMapper;
   private final DataExportRequestMapper exportRequestMapper;
+  private final YanWenLabelService yanWenLabelService;
+  // 独立 Bean：用于跨 Bean 调用以触发事务代理（同类内部调用 @Transactional 不生效）
+  private final com.moyuyo.service.admin.PrintLogWriter printLogWriter;
   private static final Logger log = LoggerFactory.getLogger(AdminOrderOpsServiceImpl.class);
 
   @Override
@@ -314,6 +320,84 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
     log.setPrintCount(1);
     log.setCreateTime(LocalDateTime.now());
     printLogMapper.insert(log);
+  }
+
+  @Override
+  public Map<String, Object> getPrintDetail(Long orderId) {
+    if (orderId == null) return null;
+    OrderEntity order = orderMapper.selectById(orderId);
+    if (order == null) return null;
+    Map<String, Object> detail = new LinkedHashMap<>();
+    detail.put("id", order.getId());
+    detail.put("orderNo", order.getOrderNo());
+    detail.put("status", order.getStatus());
+    detail.put("statusLabel", orderStatusName(order.getStatus()));
+    detail.put("payAmount", order.getPayAmount());
+    detail.put("receiverName", order.getReceiverName());
+    detail.put("receiverPhone", order.getReceiverPhone());
+    detail.put("receiverAddress", order.getReceiverAddress());
+    detail.put("shippingCarrier", order.getShippingCarrier());
+    detail.put("trackingNumber", order.getTrackingNumber());
+    detail.put("remark", order.getRemark());
+    detail.put("createTime", order.getCreateTime());
+    // 订单商品明细（用于打印配货单 / 拣货单）
+    List<OrderItemEntity> items = orderItemMapper.selectByOrderId(orderId);
+    List<Map<String, Object>> itemList = new ArrayList<>();
+    if (items != null) {
+      for (OrderItemEntity it : items) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("productName", it.getProductName());
+        m.put("skuSpec", it.getSkuSpec());
+        m.put("quantity", it.getQuantity());
+        m.put("price", it.getPrice());
+        itemList.add(m);
+      }
+    }
+    detail.put("items", itemList);
+    return detail;
+  }
+
+  @Override
+  public YanWenLabelResponse fetchShippingLabel(Long orderId, Long carrierId) {
+    if (orderId == null) {
+      throw new IllegalArgumentException("orderId 不能为空");
+    }
+    OrderEntity order = orderMapper.selectById(orderId);
+    if (order == null) {
+      throw new IllegalArgumentException("订单不存在: " + orderId);
+    }
+    // 关键：去掉 @Transactional！
+    // 燕文 HTTP 调用可能耗时 1~15s，如果包在事务里会一直占用数据库连接，
+    // 高并发时会撑爆连接池（hikari 默认 10 个连接，全卡住后整个服务不可用）。
+    YanWenLabelResponse resp = yanWenLabelService.fetchLabel(order, carrierId);
+    // 日志写入走独立短事务（不阻塞 HTTP 调用，也不阻塞面单返回）
+    try {
+      printLogWriter.recordShippingLabelLog(order);
+    } catch (Exception e) {
+      // 日志失败不影响主流程
+      log.warn("记录燕文面单打印日志失败：orderId={}, err={}", orderId, e.getMessage());
+    }
+    return resp;
+  }
+
+  @Override
+  public boolean isYanwenEnabled() {
+    return yanWenLabelService != null && yanWenLabelService.isEnabled();
+  }
+
+  /** 订单状态枚举 → 中文名（与前端 statusLabel 保持一致） */
+  private static String orderStatusName(String status) {
+    if (status == null) return "未知";
+    return switch (status.toUpperCase()) {
+      case "PENDING_PAY" -> "待付款";
+      case "PENDING_SHIP" -> "待发货";
+      case "SHIPPED" -> "已发货";
+      case "COMPLETED" -> "已完成";
+      case "CANCELLED", "CANCELED" -> "已取消";
+      case "REFUNDING" -> "退款中";
+      case "REFUNDED" -> "已退款";
+      default -> status;
+    };
   }
 
   // ==================== 订单改价 ====================

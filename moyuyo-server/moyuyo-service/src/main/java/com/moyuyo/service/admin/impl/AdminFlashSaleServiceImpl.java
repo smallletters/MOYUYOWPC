@@ -4,8 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.dao.entity.FlashSaleEntity;
 import com.moyuyo.dao.entity.FlashSaleOrderEntity;
+import com.moyuyo.dao.entity.ProductEntity;
+import com.moyuyo.dao.entity.ProductSkuEntity;
 import com.moyuyo.dao.mapper.FlashSaleMapper;
 import com.moyuyo.dao.mapper.FlashSaleOrderMapper;
+import com.moyuyo.dao.mapper.ProductMapper;
+import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.admin.AdminFlashSaleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,22 +29,24 @@ public class AdminFlashSaleServiceImpl implements AdminFlashSaleService {
 
   private final FlashSaleMapper flashSaleMapper;
   private final FlashSaleOrderMapper flashSaleOrderMapper;
+  private final ProductMapper productMapper;
+  private final ProductSkuMapper productSkuMapper;
 
   @Override
   public List<Map<String, Object>> listAll() {
     List<FlashSaleEntity> list = flashSaleMapper.selectList(
-        new LambdaQueryWrapper<FlashSaleEntity>().orderByDesc(FlashSaleEntity::getCreateTime));
-    return list.stream().map(this::toItem).collect(Collectors.toList());
+        new LambdaQueryWrapper<FlashSaleEntity>().orderByDesc(f -> f.getCreateTime()));
+    return toItemsWithProduct(list);
   }
 
   @Override
   public Map<String, Object> listPage(int page, int size) {
     Page<FlashSaleEntity> pageObj = new Page<>(page, size);
     Page<FlashSaleEntity> result = flashSaleMapper.selectPage(pageObj,
-        new LambdaQueryWrapper<FlashSaleEntity>().orderByDesc(FlashSaleEntity::getCreateTime));
+        new LambdaQueryWrapper<FlashSaleEntity>().orderByDesc(f -> f.getCreateTime()));
     Map<String, Object> data = new LinkedHashMap<>();
     data.put("total", result.getTotal());
-    data.put("records", result.getRecords().stream().map(this::toItem).collect(Collectors.toList()));
+    data.put("records", toItemsWithProduct(result.getRecords()));
     return data;
   }
 
@@ -50,6 +56,7 @@ public class AdminFlashSaleServiceImpl implements AdminFlashSaleService {
     item.put("id", f.getId());
     item.put("name", f.getName());
     item.put("productId", f.getProductId());
+    item.put("skuId", f.getSkuId());
     item.put("status", f.getActive());
     item.put("startTime", f.getStartTime());
     item.put("endTime", f.getEndTime());
@@ -58,6 +65,40 @@ public class AdminFlashSaleServiceImpl implements AdminFlashSaleService {
     item.put("stock", f.getTotalStock());
     item.put("createTime", f.getCreateTime());
     return item;
+  }
+
+  /**
+   * 批量按 productId 补齐商品名/spuCode 后再转换。
+   * 用于列表/分页等"多条秒杀"场景，避免对每条记录都发起额外查询。
+   */
+  private List<Map<String, Object>> toItemsWithProduct(List<FlashSaleEntity> rows) {
+    if (rows == null || rows.isEmpty()) return java.util.Collections.emptyList();
+    // 1) 收集不重复的 productId
+    java.util.Set<Long> productIds = new java.util.HashSet<>();
+    for (FlashSaleEntity f : rows) {
+      if (f.getProductId() != null) productIds.add(f.getProductId());
+    }
+    // 2) 一次性批量查询商品，构造 productId -> ProductEntity 映射
+    java.util.Map<Long, ProductEntity> productMap = java.util.Collections.emptyMap();
+    if (!productIds.isEmpty()) {
+      // selectBatchIds 在 MyBatis-Plus 新版本中已标记 deprecated，
+      // 改用链式 lambdaQuery().in().list() 等价且无警告
+      List<ProductEntity> products = productMapper.selectList(
+          new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ProductEntity>()
+              .in(p -> p.getId(), productIds));
+      productMap = products.stream()
+          .collect(Collectors.toMap(p -> p.getId(), p -> p, (a, b) -> a));
+    }
+    // 3) 转换时附带商品名/spuCode
+    List<Map<String, Object>> items = new java.util.ArrayList<>(rows.size());
+    for (FlashSaleEntity f : rows) {
+      Map<String, Object> item = toItem(f);
+      ProductEntity p = f.getProductId() != null ? productMap.get(f.getProductId()) : null;
+      item.put("productName", p != null ? p.getName() : null);
+      item.put("spuCode", p != null ? p.getSpuCode() : null);
+      items.add(item);
+    }
+    return items;
   }
 
   @Override
@@ -72,12 +113,25 @@ public class AdminFlashSaleServiceImpl implements AdminFlashSaleService {
 
     Object productIdVal = data.get("productId");
     if (productIdVal == null) productIdVal = data.get("product_id");
-    if (productIdVal != null) entity.setProductId(Long.valueOf(productIdVal.toString()));
-    else entity.setProductId(0L);
+    if (productIdVal != null) {
+      Long pid = Long.valueOf(productIdVal.toString());
+      // 商品存在性校验：避免脏数据写入，便于排查"活动上架了但 APP 找不到商品"
+      if (productMapper.selectById(pid) == null) {
+        throw new IllegalArgumentException("商品不存在 (productId=" + pid + ")");
+      }
+      entity.setProductId(pid);
+    } else {
+      entity.setProductId(0L);
+    }
 
     Object skuIdVal = data.get("skuId");
     if (skuIdVal == null) skuIdVal = data.get("sku_id");
-    if (skuIdVal != null) entity.setSkuId(Long.valueOf(skuIdVal.toString()));
+    if (skuIdVal != null) {
+      Long skuId = Long.valueOf(skuIdVal.toString());
+      // SKU 存在性 + 归属校验：SKU 必须存在且属于上面设置的 productId
+      validateSkuBelongsToProduct(skuId, entity.getProductId());
+      entity.setSkuId(skuId);
+    }
 
     Object flashPriceVal = data.get("flashPrice");
     if (flashPriceVal == null) flashPriceVal = data.get("flash_price");
@@ -116,6 +170,27 @@ public class AdminFlashSaleServiceImpl implements AdminFlashSaleService {
     return v == null ? null : v.toString();
   }
 
+  /**
+   * 校验 SKU 存在且属于指定商品。
+   * - skuId 不存在 → IllegalArgumentException("SKU 不存在")
+   * - skuId 存在但不属于 productId → IllegalArgumentException("SKU 不属于该商品")
+   * - productId 为 null/0 → 跳过（视为商品级秒杀，不校验 SKU 归属）
+   */
+  private void validateSkuBelongsToProduct(Long skuId, Long productId) {
+    if (skuId == null) return;
+    // productId 为 0L 表示"商品级秒杀"，允许任意 SKU（理论上不会出现 SKU，因 create 时 productId=0 也无法选 SKU）
+    if (productId == null || productId == 0L) return;
+    ProductSkuEntity sku = productSkuMapper.selectById(skuId);
+    if (sku == null) {
+      throw new IllegalArgumentException("SKU 不存在 (skuId=" + skuId + ")");
+    }
+    if (sku.getProductId() == null || !sku.getProductId().equals(productId)) {
+      throw new IllegalArgumentException(
+          "SKU 不属于该商品 (skuId=" + skuId + ", expectedProductId=" + productId
+              + ", actualProductId=" + sku.getProductId() + ")");
+    }
+  }
+
   @Override
   @Transactional
   public void update(Map<String, Object> data) {
@@ -123,7 +198,40 @@ public class AdminFlashSaleServiceImpl implements AdminFlashSaleService {
     FlashSaleEntity entity = flashSaleMapper.selectById(Long.valueOf(data.get("id").toString()));
     if (entity == null) return;
     if (data.get("name") != null) entity.setName((String) data.get("name"));
-    if (data.get("productId") != null) entity.setProductId(Long.valueOf(data.get("productId").toString()));
+    if (data.get("productId") != null) {
+      Long pid = Long.valueOf(data.get("productId").toString());
+      // 商品存在性校验：避免脏数据写入
+      if (productMapper.selectById(pid) == null) {
+        throw new IllegalArgumentException("商品不存在 (productId=" + pid + ")");
+      }
+      // productId 变更后，已绑定的 skuId 可能不再属于新商品
+      // 必须先用"新 productId"重新校验当前 skuId，否则会写入 productId/skuId 归属不一致的脏数据
+      if (entity.getSkuId() != null) {
+        validateSkuBelongsToProduct(entity.getSkuId(), pid);
+      }
+      entity.setProductId(pid);
+    }
+    // skuId 支持显式传 null 清空，也支持 camelCase / snake_case 兜底；
+    // 校验时基于当前 entity.productId（可能来自本次入参，也可能保留旧值）
+    if (data.containsKey("skuId")) {
+      Object skuVal = data.get("skuId");
+      if (skuVal == null) {
+        entity.setSkuId(null);
+      } else {
+        Long skuId = Long.valueOf(skuVal.toString());
+        validateSkuBelongsToProduct(skuId, entity.getProductId());
+        entity.setSkuId(skuId);
+      }
+    } else if (data.containsKey("sku_id")) {
+      Object skuVal = data.get("sku_id");
+      if (skuVal == null) {
+        entity.setSkuId(null);
+      } else {
+        Long skuId = Long.valueOf(skuVal.toString());
+        validateSkuBelongsToProduct(skuId, entity.getProductId());
+        entity.setSkuId(skuId);
+      }
+    }
     if (data.get("flashPrice") != null) entity.setFlashPrice(new BigDecimal(data.get("flashPrice").toString()));
     if (data.get("originalPrice") != null) entity.setOriginalPrice(new BigDecimal(data.get("originalPrice").toString()));
     if (data.get("stock") != null) entity.setTotalStock(Integer.valueOf(data.get("stock").toString()));
@@ -143,7 +251,7 @@ public class AdminFlashSaleServiceImpl implements AdminFlashSaleService {
   public void delete(Long id) {
     // 先删除关联的抢购订单，再删除抢购活动
     flashSaleOrderMapper.delete(new LambdaQueryWrapper<FlashSaleOrderEntity>()
-        .eq(FlashSaleOrderEntity::getFlashSaleId, id));
+        .eq(o -> o.getFlashSaleId(), id));
     flashSaleMapper.deleteById(id);
   }
 
@@ -166,7 +274,7 @@ public class AdminFlashSaleServiceImpl implements AdminFlashSaleService {
     
     // 进行中的活动数
     long activeCount = flashSaleMapper.selectCount(
-        new LambdaQueryWrapper<FlashSaleEntity>().eq(FlashSaleEntity::getActive, true));
+        new LambdaQueryWrapper<FlashSaleEntity>().eq(f -> f.getActive(), true));
     
     // 总参与人数（秒杀订单数）
     long participants = flashSaleOrderMapper.selectCount(new LambdaQueryWrapper<>());
@@ -195,7 +303,15 @@ public class AdminFlashSaleServiceImpl implements AdminFlashSaleService {
     if (f == null) {
       return null;
     }
-    return toItem(f);
+    Map<String, Object> item = toItem(f);
+    if (f.getProductId() != null) {
+      ProductEntity p = productMapper.selectById(f.getProductId());
+      if (p != null) {
+        item.put("productName", p.getName());
+        item.put("spuCode", p.getSpuCode());
+      }
+    }
+    return item;
   }
 
   /**

@@ -1,6 +1,7 @@
 package com.moyuyo.service.admin;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyuyo.common.dto.logistics.YanWenLabelResponse;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -48,6 +49,31 @@ public interface AdminOrderOpsService {
 
   /** 创建打印记录 */
   void recordPrint(Long orderId, String printType, String templateName, String paperSize, String operator);
+
+  /**
+   * 拉取单个订单的打印详情（含收货人/商品/承运商），用于打印预览。
+   * <p>
+   * 与 listPrint 不同：本方法返回的是"单条详情 + 商品明细 + 承运商名称"，
+   * 适配 OrderPrint.vue 的"单笔打印快递单"流程。
+   *
+   * @param orderId 订单 id
+   * @return 单条订单的打印详情 Map；订单不存在时返回 null
+   */
+  Map<String, Object> getPrintDetail(Long orderId);
+
+  /**
+   * 取订单的快递面单（按 carrier.code 路由到对应 SDK，目前支持 yanwen）。
+   * <p>
+   * 内部会调用对应 SDK 取 base64 PDF/PNG，并自动记录一次打印日志（type=SHIPPING_LABEL）。
+   *
+   * @param orderId   订单 id
+   * @param carrierId 承运商 id（mo_carrier.id）
+   * @return 燕文面单响应
+   */
+  YanWenLabelResponse fetchShippingLabel(Long orderId, Long carrierId);
+
+  /** 燕文 SDK 是否启用（用于前端判断按钮可用性） */
+  boolean isYanwenEnabled();
 
   // ==================== 订单改价 ====================
 

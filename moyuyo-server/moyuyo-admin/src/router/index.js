@@ -485,6 +485,12 @@ const routes = [
         meta: { title: '发货策略' }
       },
       {
+        path: 'shipping-zone',
+        name: 'ShippingZone',
+        component: () => import('../views/ShippingZone.vue'),
+        meta: { title: '发货区域' }
+      },
+      {
         path: 'content-review-detail',
         name: 'ContentReviewDetail',
         component: () => import('../views/ContentReviewDetail.vue'),

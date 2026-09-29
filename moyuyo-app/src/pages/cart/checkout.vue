@@ -26,7 +26,11 @@
           </text>
         </view>
         <view class="block-body">
-          <view v-if="selectedAddress" class="addr-line">
+          <view
+            v-if="selectedAddress"
+            class="addr-line"
+            :class="{ 'addr-unshippable': selectedAddressUnshippable }"
+          >
             <text class="addr-name">
               {{ selectedAddress.receiverName || selectedAddress.first_name }}
             </text>
@@ -38,6 +42,10 @@
             <text class="addr-phone">
               {{ $t('checkout.address.phone') }}
               {{ selectedAddress.receiverPhone || selectedAddress.phone }}
+            </text>
+            <!-- 不可发货：底部红字提示，引导用户回 /pages/user/address 换地址 -->
+            <text v-if="selectedAddressUnshippable" class="addr-warn-text">
+              {{ $t('address.unshippable') }}
             </text>
           </view>
           <view v-else class="addr-line addr-empty" @click="onSelectAddress">
@@ -248,7 +256,11 @@
         <text class="bottom-total-label">{{ $t('checkout.bottom.totalLabel') }}</text>
         <text class="bottom-total-price">${{ total.toFixed(2) }}</text>
       </view>
-      <view class="place-btn" @click="onSubmit">
+      <view
+        class="place-btn"
+        :class="{ 'place-btn-disabled': selectedAddressUnshippable || submitting }"
+        @click="onSubmit"
+      >
         <text class="place-btn-text">{{ $t('checkout.bottom.placeOrder') }}</text>
       </view>
     </view>
@@ -320,6 +332,7 @@ import { useCartStore } from '@/store'
 import { savePendingOrder } from '@/utils/storage'
 import { i18n } from '@/i18n'
 import { buildPayIconDataUris } from '@/static/icons/pay-icons'
+import { useAddressCountries } from '@/composables/useAddressCountries'
 
 export default {
   pageTitleKey: 'pageTitle.cartCheckout',
@@ -404,6 +417,14 @@ export default {
     /** 当前 locale 的步骤标签（响应式依赖 i18n.locale） */
     steps() {
       return i18n.t('checkout.steps')
+    },
+    /** 当前所选地址的国家是否在运营配置的可发货集中（防御后端 400） */
+    selectedAddressUnshippable() {
+      const code = this.selectedAddress?.country
+      if (!code) return false
+      // 复用 useAddressCountries 的可发货判定（已含 30s L1 缓存 + L2 storage 缓存）
+      const { isCountryShippable } = useAddressCountries()
+      return !isCountryShippable(code)
     },
     /** 配送方式注入 i18n 文案 */
     i18nShippingMethods() {
@@ -547,6 +568,13 @@ export default {
     // 进入页面即把支付方式 SVG 转成 base64 data URI
     // 避开 APP 真机偶发的 /static/icons/*.svg 渲染白盒问题
     this.payIconUris = buildPayIconDataUris()
+  },
+
+  created() {
+    // 预热运营配置的国家码（与其他页面共享 L1 in-memory + L2 storage 缓存）
+    // 进入页面之前 picker 立即有选项，避免提交前才发请求
+    const { loadCountries } = useAddressCountries()
+    loadCountries()
   },
 
   methods: {
@@ -733,6 +761,16 @@ export default {
     async onSubmit() {
       if (!this.selectedAddress) {
         uni.showToast({ title: i18n.t('checkout.toast.selectAddress'), icon: 'none' })
+        return
+      }
+      // 兜底校验：所选地址国家不在运营配置的可发货集中时，提前阻止下单
+      // （后端 CartServiceImpl.checkout 也会校验，但前端友好提示避免 400）
+      if (this.selectedAddressUnshippable) {
+        uni.showToast({
+          title: i18n.t('address.unshippable'),
+          icon: 'none',
+          duration: 3000,
+        })
         return
       }
 
@@ -1731,6 +1769,28 @@ export default {
 .place-btn:active {
   background: #ddb347;
   transform: translateY(1rpx);
+}
+/* 不可发货地址 / 提交中：禁用按钮，避免重复点击 */
+.place-btn.place-btn-disabled {
+  background: #d5d5d5;
+  border-color: #c0c0c0;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.place-btn.place-btn-disabled:active {
+  background: #d5d5d5;
+  transform: none;
+}
+/* 不可发货地址行：浅红边框 + 红字提示 */
+.addr-line.addr-unshippable {
+  border-left: 4rpx solid #b12704;
+  padding-left: 16rpx;
+}
+.addr-warn-text {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #b12704;
+  font-weight: 600;
 }
 
 .place-btn-text {

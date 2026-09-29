@@ -2,6 +2,7 @@ package com.moyuyo.api;
 
 import com.moyuyo.api.config.ProdConfigValidator;
 import com.moyuyo.common.config.WooCommerceProperties;
+import com.moyuyo.common.config.YanWenProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -33,7 +34,7 @@ import java.time.Instant;
     SecurityAutoConfiguration.class,
     ManagementWebSecurityAutoConfiguration.class
 })
-@EnableConfigurationProperties(WooCommerceProperties.class)
+@EnableConfigurationProperties({WooCommerceProperties.class, YanWenProperties.class})
 @EnableAsync
 @EnableScheduling
 public class MoyuyoApplication {

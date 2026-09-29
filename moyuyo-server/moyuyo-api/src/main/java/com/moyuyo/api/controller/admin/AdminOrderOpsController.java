@@ -1,7 +1,9 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.config.YanWenProperties;
 import com.moyuyo.common.dto.admin.order.*;
+import com.moyuyo.common.dto.logistics.YanWenLabelResponse;
 import com.moyuyo.service.admin.AdminOrderOpsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,6 +34,7 @@ import java.util.Map;
 public class AdminOrderOpsController {
 
   private final AdminOrderOpsService adminOrderOpsService;
+  private final YanWenProperties yanWenProperties;
   private final JdbcTemplate jdbcTemplate;
 
   @Operation(summary = "订单导出列表")
@@ -144,6 +147,68 @@ public class AdminOrderOpsController {
     String operator = request.getOperator() != null ? request.getOperator() : "系统";
     adminOrderOpsService.recordPrint(orderId, printType, templateName, paperSize, operator);
     return Result.success(Map.of("message", "打印记录成功"));
+  }
+
+  /**
+   * 取单个订单的打印详情（收货人/商品/承运商），用于前端打印预览页 OrderPrint.vue。
+   * <p>
+   * 与 /print/list 的差异：本接口返回单条订单的完整结构（items 商品明细），便于前端
+   * 渲染拣货单 / 发货单 / 配货标签 / 快递面单多种模板。
+   */
+  @Operation(summary = "单个订单打印详情")
+  @GetMapping("/print/detail/{orderId}")
+  public Result<Map<String, Object>> printDetail(@PathVariable Long orderId) {
+    Map<String, Object> detail = adminOrderOpsService.getPrintDetail(orderId);
+    if (detail == null) {
+      return Result.error(404, "订单不存在或已被删除");
+    }
+    return Result.success(detail);
+  }
+
+  /**
+   * 取订单的快递电子面单（按 carrier.code 路由 SDK，目前支持 yanwen）。
+   * <p>
+   * 调用方应当先确保订单已录入运单号 + 承运商编码 = yanwen；
+   * SDK 启用开关参见 {@code moyuyo.logistics.yanwen.enabled}。
+   */
+  @Operation(summary = "取订单快递面单（燕文电子面单）")
+  @GetMapping("/print/shipping-label")
+  public Result<Map<String, Object>> shippingLabel(
+      @RequestParam Long orderId,
+      @RequestParam(required = false) Long carrierId) {
+    if (!yanWenProperties.isEnabled()) {
+      return Result.error(503, "燕文电子面单未启用，请先在 moyuyo.logistics.yanwen.enabled 设置为 true 并配置凭证");
+    }
+    try {
+      YanWenLabelResponse resp = adminOrderOpsService.fetchShippingLabel(orderId, carrierId);
+      Map<String, Object> data = new LinkedHashMap<>();
+      data.put("waybillNumber", resp.getWaybillNumber());
+      data.put("contentType", resp.getContentType());
+      data.put("sizeBytes", resp.getSizeBytes());
+      // P1-2：不再在响应里拼装 "data:...;base64,..." 这种超长 dataUrl。
+      //   - 旧实现会让单个面单响应体暴增 33%（base64 编码膨胀 + data URL 前缀）
+      //   - 批量 5 张 → 1~2MB 的 JSON，Spring 默认 Jackson 序列化 + gzip 之前就已经很大
+      //   - 前端拿到 base64String 后自己拼 data URL 即可（atob + btoa 都不需要，纯字符串拼接）
+      data.put("base64String", resp.getBase64String());
+      data.put("message", "面单获取成功，请使用浏览器打印");
+      return Result.success(data);
+    } catch (Exception e) {
+      log.warn("取燕文面单失败：orderId={}, err={}", orderId, e.getMessage());
+      return Result.error(500, "取面单失败：" + e.getMessage());
+    }
+  }
+
+  /**
+   * 燕文 SDK 状态（前端按钮"打印快递单"是否可点的判断依据）。
+   */
+  @Operation(summary = "燕文电子面单启用状态")
+  @GetMapping("/print/shipping-status")
+  public Result<Map<String, Object>> yanwenStatus() {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("enabled", yanWenProperties.isEnabled());
+    data.put("userIdConfigured", yanWenProperties.getUserId() != null && !yanWenProperties.getUserId().isBlank());
+    data.put("apiTokenConfigured", yanWenProperties.getApiToken() != null && !yanWenProperties.getApiToken().isBlank());
+    return Result.success(data);
   }
 
   // ==================== 订单改价 ====================

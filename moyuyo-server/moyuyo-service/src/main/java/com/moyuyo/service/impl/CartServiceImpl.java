@@ -1,16 +1,20 @@
 package com.moyuyo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.moyuyo.common.exception.BusinessException;
 import com.moyuyo.dao.entity.CartEntity;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductSkuEntity;
+import com.moyuyo.dao.entity.AddressEntity;
+import com.moyuyo.dao.mapper.AddressMapper;
 import com.moyuyo.dao.mapper.CartMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.CartService;
 import com.moyuyo.service.OrderService;
+import com.moyuyo.service.admin.ShippingZoneService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +34,8 @@ public class CartServiceImpl implements CartService {
   private final CartMapper cartMapper;
   private final ProductSkuMapper productSkuMapper;
   private final ProductMapper productMapper;
+  private final AddressMapper addressMapper;
+  private final ShippingZoneService shippingZoneService;
   private final OrderService orderService;
 
   @Override
@@ -192,6 +198,22 @@ public class CartServiceImpl implements CartService {
       throw new IllegalArgumentException("请选择要结算的商品");
     }
 
+    // 兜底：地址可发货校验。运营通过后台"发货区域"控制可发货国家；
+    // 即便 APP 端未及时校验或被绕过，下单时再拒绝一次。
+    AddressEntity address = addressMapper.selectById(addressId);
+    if (address == null) {
+      throw new IllegalArgumentException("收货地址不存在");
+    }
+    String country = address.getCountry();
+    if (country == null || country.isBlank()) {
+      throw new IllegalArgumentException("收货地址国家不能为空");
+    }
+    if (!shippingZoneService.loadShippableCountries().contains(country.trim().toUpperCase())) {
+      log.warn("Cart checkout rejected (unshippable country): userId={}, addressId={}, country={}",
+          userId, addressId, country);
+      throw new BusinessException(400, "We currently do not ship to " + country);
+    }
+
     List<OrderItemEntity> items = new java.util.ArrayList<>();
     for (CartEntity cart : selected) {
       ProductSkuEntity sku = productSkuMapper.selectById(cart.getSkuId());
@@ -215,10 +237,17 @@ public class CartServiceImpl implements CartService {
 
     OrderEntity order = orderService.createOrder(userId, items, addressId, remark, couponId);
 
-    cartMapper.delete(
-        new LambdaQueryWrapper<CartEntity>()
-            .eq(CartEntity::getUserId, userId)
-            .eq(CartEntity::getSelected, true));
+    // 关键：购物车清空失败不能让整个事务回滚（订单已经成功下发，可能已扣库存）
+    // 失败仅记日志，由用户在下次进入购物车时手动清空；不影响订单本身。
+    try {
+      cartMapper.delete(
+          new LambdaQueryWrapper<CartEntity>()
+              .eq(CartEntity::getUserId, userId)
+              .eq(CartEntity::getSelected, true));
+    } catch (Exception e) {
+      log.error("Cart checkout: clear cart failed (order still valid). userId={}, orderNo={}",
+          userId, order.getOrderNo(), e);
+    }
 
     log.info("Cart checkout: userId={}, orderNo={}, items={}", userId, order.getOrderNo(), items.size());
     return order;

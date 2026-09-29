@@ -26,6 +26,8 @@ export const STORAGE_KEYS = {
   // 注销流程标记:提交注销后置 1,下次登录成功时弹"注销已撤销"提示,然后清除
   // 用于引导用户了解"登录即后悔药"语义(参考微信/京东)
   DELETION_REQUESTED: `${STORAGE_PREFIX}deletion_requested`,
+  // APP 国家选择器缓存：地址编辑/列表 picker 离线可用。结构 { countries: string[], ts: number }
+  SUPPORTED_COUNTRIES_CACHE: `${STORAGE_PREFIX}supported_countries_cache`,
 }
 
 export function setStorage(key, value) {

@@ -38,22 +38,54 @@
       </el-table>
     </el-card>
     <!-- 新建/编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑秒杀' : '新建秒杀'" width="550px">
+    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑秒杀' : '新建秒杀'" width="620px">
       <el-form :model="form" label-width="100px">
         <el-form-item label="活动名称" required>
           <el-input v-model="form.name" placeholder="秒杀活动名称" />
         </el-form-item>
-        <el-form-item label="商品ID" required>
-          <el-input-number v-model="form.productId" :min="1" />
+        <el-form-item label="选择商品" required>
+          <el-select
+            v-model="form.productId"
+            filterable
+            remote
+            :remote-method="searchProducts"
+            :loading="productSearching"
+            placeholder="输入关键字搜索商品（名称/SPU 编码）"
+            style="width: 100%"
+            @change="onProductChange"
+          >
+            <el-option
+              v-for="p in productOptions"
+              :key="p.id"
+              :label="`${p.name}${p.spuCode ? ' (' + p.spuCode + ')' : ''}`"
+              :value="p.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="skuOptions.length > 0" label="选择 SKU">
+          <el-select
+            v-model="form.skuId"
+            placeholder="可选：选择具体 SKU"
+            clearable
+            style="width: 100%"
+            @change="onSkuChange"
+          >
+            <el-option
+              v-for="s in skuOptions"
+              :key="s.id"
+              :label="`${s.skuCode}（库存 ${s.stock ?? 0}）`"
+              :value="s.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="秒杀价" required>
-          <el-input-number v-model="form.flashPrice" :min="0.01" :precision="2" />
+          <el-input-number v-model="form.flashPrice" :min="0.01" :precision="2" @change="userTouched.flashPrice = true" />
         </el-form-item>
         <el-form-item label="原价">
-          <el-input-number v-model="form.originalPrice" :min="0" :precision="2" />
+          <el-input-number v-model="form.originalPrice" :min="0" :precision="2" @change="userTouched.originalPrice = true" />
         </el-form-item>
         <el-form-item label="库存" required>
-          <el-input-number v-model="form.stock" :min="1" />
+          <el-input-number v-model="form.stock" :min="1" @change="userTouched.stock = true" />
         </el-form-item>
         <el-form-item label="开始时间">
           <el-date-picker v-model="form.startTime" type="datetime" placeholder="选择开始时间" />
@@ -74,23 +106,49 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useStatusTag } from '../composables/useStatusTag'
-import { getFlashSaleList, createFlashSale, updateFlashSale, deleteFlashSale, updateFlashSaleStatus } from '../api/admin'
+import {
+  getFlashSaleList,
+  createFlashSale,
+  updateFlashSale,
+  deleteFlashSale,
+  updateFlashSaleStatus,
+  searchProductsLite,
+  getProductDetail,
+} from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
 const tableData = ref([])
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const editId = ref(null)
+const productOptions = ref([])
+const productSearching = ref(false)
+const skuOptions = ref([])
 
 const form = reactive({
   name: '',
   productId: null,
+  skuId: null,
   flashPrice: 0,
   originalPrice: 0,
   stock: 0,
   startTime: null,
   endTime: null,
 })
+
+// 标记用户是否已经手动改过这些字段，避免被自动回填覆盖。
+// 切换商品/SKU 时如果这些位为 false，才会自动填充；否则保留用户输入。
+const userTouched = reactive({
+  flashPrice: false,
+  originalPrice: false,
+  stock: false,
+})
+
+function resetUserTouched() {
+  userTouched.flashPrice = false
+  userTouched.originalPrice = false
+  userTouched.stock = false
+}
 
 const { getStatusText, getStatusType } = useStatusTag(
   { active: '进行中', inactive: '未开始', ended: '已结束' },
@@ -100,11 +158,14 @@ const { getStatusText, getStatusType } = useStatusTag(
 function resetForm() {
   form.name = ''
   form.productId = null
+  form.skuId = null
   form.flashPrice = 0
   form.originalPrice = 0
   form.stock = 0
   form.startTime = null
   form.endTime = null
+  skuOptions.value = []
+  resetUserTouched()
 }
 
 async function loadData() {
@@ -128,12 +189,97 @@ function handleEdit(row) {
   editId.value = row.id
   form.name = row.name
   form.productId = row.productId
+  form.skuId = row.skuId || null
   form.flashPrice = row.flashPrice
   form.originalPrice = row.originalPrice
   form.stock = row.stock
   form.startTime = row.startTime
   form.endTime = row.endTime
+  // 编辑模式：从后端拿到的值视作用户输入，不应再被自动回填覆盖
+  userTouched.flashPrice = true
+  userTouched.originalPrice = true
+  userTouched.stock = true
+  // 编辑时回填商品下拉选项，并尝试加载 SKU 列表
+  if (row.productId) {
+    productOptions.value = [
+      { id: row.productId, name: row.productName || `商品#${row.productId}`, spuCode: row.spuCode || '' },
+    ]
+    // 同时加载 SKU 列表并回填已选 skuId（确保 el-select 能正确显示当前选中项）
+    loadSkuFormToFill(row.productId, row.skuId || null)
+  }
   dialogVisible.value = true
+}
+
+/**
+ * 远程搜索商品（关键字命中名称 / SPU 编码）
+ */
+async function searchProducts(keyword) {
+  productSearching.value = true
+  try {
+    const res = await searchProductsLite({ keyword: keyword || '', size: 50 })
+    productOptions.value = toArray(res)
+  } catch (e) {
+    ElMessage.error('搜索商品失败')
+  } finally {
+    productSearching.value = false
+  }
+}
+
+/**
+ * 选择商品后：拉取该商品的 SKU 列表，自动用首个 SKU 的价格/库存填充表单
+ */
+async function onProductChange(productId) {
+  form.skuId = null
+  skuOptions.value = []
+  if (!productId) return
+  await loadSkuFormToFill(productId, null)
+}
+
+async function loadSkusForProduct(productId) {
+  skuOptions.value = []
+  try {
+    const res = await getProductDetail(productId)
+    // axios 拦截器已自动解包 body.data，所以 res 就是商品实体本身
+    const skus = (res && res.skus) || []
+    skuOptions.value = Array.isArray(skus) ? skus : []
+  } catch (e) {
+    skuOptions.value = []
+  }
+}
+
+async function loadSkuFormToFill(productId, skuId) {
+  try {
+    const res = await getProductDetail(productId)
+    // axios 拦截器已自动解包 body.data，所以 res 就是商品实体本身
+    const data = res || {}
+    const skus = Array.isArray(data.skus) ? data.skus : []
+    skuOptions.value = skus
+    // 用商品主价格作为原价兜底（仅当用户未手动改过原价时才填充）
+    if (!userTouched.originalPrice && form.originalPrice === 0 && data.price != null) {
+      form.originalPrice = Number(data.price)
+    }
+    // 若传入了 skuId，自动选中并填充库存/价格（同样遵守 userTouched 标志）
+    if (skuId) {
+      const sku = skus.find((s) => String(s.id) === String(skuId))
+      if (sku) {
+        form.skuId = sku.id
+        if (!userTouched.flashPrice && sku.price != null) form.flashPrice = Number(sku.price)
+        if (!userTouched.stock && sku.stock != null && form.stock === 0) form.stock = Number(sku.stock)
+      }
+    }
+  } catch (e) {
+    console.error('加载商品详情失败:', e)
+  }
+}
+
+function onSkuChange(skuId) {
+  if (!skuId) return
+  const sku = skuOptions.value.find((s) => String(s.id) === String(skuId))
+  if (sku) {
+    // 仅在用户未手动改过字段时填充，避免覆盖用户输入
+    if (!userTouched.flashPrice && sku.price != null) form.flashPrice = Number(sku.price)
+    if (!userTouched.stock && sku.stock != null && form.stock === 0) form.stock = Number(sku.stock)
+  }
 }
 
 async function handleSave() {
@@ -145,6 +291,7 @@ async function handleSave() {
     const payload = {
       name: form.name,
       productId: form.productId,
+      skuId: form.skuId || null,
       flashPrice: form.flashPrice,
       originalPrice: form.originalPrice,
       stock: form.stock,

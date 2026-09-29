@@ -517,3 +517,19 @@ moyuyo:
     # 请求超时（毫秒）
     connect-timeout-ms: ${MOYUYO_LOGISTICS_CONNECT_TIMEOUT_MS:5000}
     read-timeout-ms: ${MOYUYO_LOGISTICS_READ_TIMEOUT_MS:15000}
+    # ============================================================
+    # 燕文物流电子面单（取号打单）— 用于订单打印快递单
+    # 接口文档：https://opendocs.yw56.com.cn/
+    # - enabled=false（默认）时，订单打印仍可走"手动填运单号 + window.print()"
+    #   的兜底流程，不影响发货主链路。
+    # - 启用后会在 AdminOrderOpsController 的
+    #   /order-ops/print/shipping-label 接口按 carrier.code 路由到燕文 SDK 取面单。
+    # - 优先级：mo_carrier 表里填写了 api_user_id/api_token 的承运商优先；
+    #   表里没填则回退到下面配置的全局默认值（便于测试环境快速验证）。
+    # ============================================================
+    yanwen:
+      enabled: ${MOYUYO_YANWEN_ENABLED:false}
+      user-id: ${MOYUYO_YANWEN_USER_ID:}
+      api-token: ${MOYUYO_YANWEN_API_TOKEN:}
+      base-url: ${MOYUYO_YANWEN_BASE_URL:https://open.yw56.com.cn/api/order}
+      # 测试环境使用 https://open-fat.yw56.com.cn/api/order（官方测试地址）

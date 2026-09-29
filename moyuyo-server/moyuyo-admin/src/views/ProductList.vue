@@ -96,6 +96,7 @@
         <thead>
           <tr>
             <th class="checkbox-cell"><input type="checkbox" v-model="selectAll" @change="toggleSelectAll" /></th>
+            <th>商品ID</th>
             <th>商品</th>
             <th>SKU</th>
             <th>价格</th>
@@ -109,6 +110,7 @@
         <tbody>
           <tr v-for="product in filteredProducts" :key="product.id">
             <td class="checkbox-cell"><input type="checkbox" v-model="selectedIds" :value="product.id" /></td>
+            <td class="product-id">{{ product.id }}</td>
             <td>
               <div class="product-cell">
                 <div class="thumb" :style="product.color && !product.coverImage ? { backgroundColor: product.color } : {}">
@@ -188,7 +190,7 @@
             </td>
           </tr>
           <tr v-if="filteredProducts.length === 0">
-            <td colspan="9">
+            <td colspan="10">
               <div class="empty-state">
                 <div class="empty-state-icon">📦</div>
                 <div class="empty-state-text">暂无商品数据</div>
@@ -574,6 +576,13 @@ onMounted(() => {
 .tab-switcher-item.active .tab-count {
   background: var(--brand-50);
   color: var(--brand-600);
+}
+
+/* 商品ID单元格 */
+.product-id {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-500);
 }
 
 /* SKU 单元格 */

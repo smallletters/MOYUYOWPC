@@ -78,6 +78,23 @@ public class AddressController {
     return Result.success(addressService.validateAddress(id, UserContextHolder.getUserId()));
   }
 
+  /**
+   * 批量校验 APP 端地址列表可发货性。一次请求代替 N 次 /{id}/validate，避免 N+1。
+   * 入参：用户当前所有地址 ID 列表；出参：归属当前用户的那部分地址的可发货结果。
+   */
+  @Operation(summary = "批量校验地址可配送（解决 N+1）")
+  @PostMapping("/batch-validate")
+  public Result<java.util.List<AddressValidateResponse.Item>> batchValidate(
+      @RequestBody java.util.List<Long> addressIds) {
+    return Result.success(addressService.batchValidate(addressIds, UserContextHolder.getUserId()));
+  }
+
+  @Operation(summary = "APP 国家选择器数据源：当前所有可配置的国家码（去重排序，ISO 3166-1 alpha-2）")
+  @GetMapping("/supported-countries")
+  public Result<java.util.List<String>> supportedCountries() {
+    return Result.success(addressService.listSupportedCountries());
+  }
+
   private AddressEntity buildEntity(AddressRequest request) {
     AddressEntity entity = new AddressEntity();
     entity.setReceiver(request.getReceiver());

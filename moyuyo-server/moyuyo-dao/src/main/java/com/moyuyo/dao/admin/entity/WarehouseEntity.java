@@ -42,6 +42,9 @@ public class WarehouseEntity {
     /** 总库存 */
     private Integer totalStock;
 
+    /** 最大可容纳库存件数（用于计算仓库利用率） */
+    private Integer maxCapacityQty;
+
     /** 使用率(%) */
     private Integer usageRate;
 
