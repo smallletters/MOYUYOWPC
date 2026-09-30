@@ -165,8 +165,9 @@ services:
       # healthcheck 与日志脚本内通过 $REDIS_PASSWORD 引用密码（$$ 转义后容器内展开）
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
     ports:
+      # 宿主 6379 已被本机原生 Redis 占用 → 容器 6379 → 宿主 6390
       # 仅绑定本机回环，避免 Redis 端口暴露公网
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:6390:6379"
     volumes:
       - redis-data:/data
       # 持久化 AOF + RDB：即使容器重启也能恢复热点 key
@@ -517,6 +518,13 @@ services:
       # 物流轨迹 API 请求超时：之前未透传，写在 .env 里调超时无效，现补齐
       MOYUYO_LOGISTICS_CONNECT_TIMEOUT_MS: ${MOYUYO_LOGISTICS_CONNECT_TIMEOUT_MS:-5000}
       MOYUYO_LOGISTICS_READ_TIMEOUT_MS: ${MOYUYO_LOGISTICS_READ_TIMEOUT_MS:-15000}
+      # 燕文电子面单（订单打印快递单取号）
+      # 未透传时写在 .env 里调参不生效，application-prod.yml 的默认 false 会让打印面单接口返回 503
+      MOYUYO_YANWEN_ENABLED: ${MOYUYO_YANWEN_ENABLED:-false}
+      MOYUYO_YANWEN_USER_ID: ${MOYUYO_YANWEN_USER_ID:-}
+      MOYUYO_YANWEN_API_TOKEN: ${MOYUYO_YANWEN_API_TOKEN:-}
+      MOYUYO_YANWEN_BASE_URL: ${MOYUYO_YANWEN_BASE_URL:-https://open.yw56.com.cn/api/order}
+      MOYUYO_YANWEN_CHANNEL_ID: ${MOYUYO_YANWEN_CHANNEL_ID:-}
       # Google Maps 位置服务（留空时 /api/v1/geo/* 返回"地图服务未配置"）
       GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
       # CSP 白名单：默认值与 SecurityHeadersFilter 的 @Value 默认一致，
@@ -645,7 +653,7 @@ services:
   # 抓取 RocketMQ broker / consumer / topic 指标（消息堆积、broker 延迟、生产消费比）
   # 由 Prometheus 抓取，仅绑定本机回环
   rocketmq-exporter:
-    image: apache/rocketmq-exporter:0.0.3
+    image: apache/rocketmq-exporter:0.0.2-SNAPSHOT
     container_name: moyuyo-rocketmq-exporter
     restart: unless-stopped
     command:

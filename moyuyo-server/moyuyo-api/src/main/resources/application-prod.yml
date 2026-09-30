@@ -307,6 +307,8 @@ moyuyo:
     # 关闭方式：moyuyo.audit.retention-enabled=false
     retention-enabled: ${MOYUYO_AUDIT_RETENTION_ENABLED:true}
     retention-days: ${MOYUYO_AUDIT_RETENTION_DAYS:90}
+    retention-batch-size: ${MOYUYO_AUDIT_RETENTION_BATCH_SIZE:5000}
+    retention-max-batches: ${MOYUYO_AUDIT_RETENTION_MAX_BATCHES:100}
     # 异步持久化队列容量（合法范围 1000~100000）；OperationLogPersister @PostConstruct 中归一化
     queue-capacity: ${MOYUYO_AUDIT_QUEUE_CAPACITY:10000}
     # 审计日志批量落库大小（单批 INSERT）；MyBatis-Plus insertBatchSomeColumn 默认 100
@@ -325,6 +327,15 @@ moyuyo:
   # 开关可由 MOYUYO_USER_RATELIMIT_ENABLED 环境变量覆盖
   user-ratelimit:
     enabled: ${MOYUYO_USER_RATELIMIT_ENABLED:true}
+  # 幂等记录保留期清理：每天 04:00 清理超过 retention-days 的历史幂等记录
+  # 设计依据：幂等记录防并发 / 重试导致的重复发货；30 天足够覆盖任何正常订单生命周期。
+  # 30 天之后即使出现极罕见的重复发货，业务上可接受人工核查。
+  # 关闭方式：moyuyo.idempotency.retention-enabled=false
+  idempotency:
+    retention-enabled: ${MOYUYO_IDEMPOTENCY_RETENTION_ENABLED:true}
+    retention-days: ${MOYUYO_IDEMPOTENCY_RETENTION_DAYS:30}
+    retention-batch-size: ${MOYUYO_IDEMPOTENCY_RETENTION_BATCH_SIZE:5000}
+    retention-max-batches: ${MOYUYO_IDEMPOTENCY_RETENTION_MAX_BATCHES:100}
   # 物流轨迹 API 生产环境覆盖
   # 强制要求显式声明 provider：生产环境若未设置则回落到 none（本地占位），仅人工维护轨迹
   # 启用第三方时必须填入对应 api-key，缺失会被 LogisticsTrackProperties 启动期校验阻断
@@ -340,6 +351,20 @@ moyuyo:
     poll-batch-size: ${MOYUYO_LOGISTICS_POLL_BATCH_SIZE:200}
     connect-timeout-ms: ${MOYUYO_LOGISTICS_CONNECT_TIMEOUT_MS:5000}
     read-timeout-ms: ${MOYUYO_LOGISTICS_READ_TIMEOUT_MS:15000}
+    # ============================================================
+    # 燕文电子面单（生产环境覆盖）
+    # ============================================================
+    yanwen:
+      enabled: ${MOYUYO_YANWEN_ENABLED:false}
+      user-id: ${MOYUYO_YANWEN_USER_ID:}
+      api-token: ${MOYUYO_YANWEN_API_TOKEN:}
+      base-url: ${MOYUYO_YANWEN_BASE_URL:https://open.yw56.com.cn/api/order}
+      channel-id: ${MOYUYO_YANWEN_CHANNEL_ID:}
+      # 国家码解析：与 application.yml 共用同一份 aliases（生产环境一般不动这块业务配置）
+      # 这里保留最小可用配置 —— 兜底默认 US
+      country-mapping:
+        default-country: US
+        aliases: []  # 生产可由运维按需覆盖；空 aliases 时按 default-country 兜底
 
 management:
   # P1 安全修复：actuator 端口与业务端口分离

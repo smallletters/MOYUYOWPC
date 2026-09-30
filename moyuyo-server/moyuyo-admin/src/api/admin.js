@@ -564,9 +564,25 @@ export function recordPrint(data) {
   return api.post('/order-ops/print/record', data)
 }
 
+// 订单打印设置（服务端持久化）—— 替代 localStorage，
+// 多设备/多浏览器共享同一份设置。
+export function getPrintSettings() {
+  return api.get('/order-ops/print/settings')
+}
+
+export function savePrintSettings(data) {
+  return api.put('/order-ops/print/settings', data)
+}
+
 // 单个订单打印详情（OrderPrint.vue 单笔打印用）
 export function getPrintDetail(orderId) {
   return api.get(`/order-ops/print/detail/${orderId}`)
+}
+
+// 订单时间轴（OrderDetail.vue 全景时间轴用）
+// 返回按时间升序的事件列表：[{ time, type, title, detail }]
+export function getOrderTimeline(orderId) {
+  return api.get(`/order-ops/orders/${orderId}/timeline`)
 }
 
 // 取订单的快递电子面单（按承运商编码路由 SDK，目前支持 yanwen）
@@ -579,6 +595,41 @@ export function fetchShippingLabel(orderId, carrierId) {
 // 查询燕文电子面单 SDK 是否启用（订单列表按钮可用性）
 export function getYanwenStatus() {
   return api.get('/order-ops/print/shipping-status')
+}
+
+// 单独累加燕文面单打印日志（用户实际点击打印后调用，预览不再自动累加）
+export function recordShippingLabelLog(orderId) {
+  return api.post(`/order-ops/print/shipping-label/record/${orderId}`)
+}
+
+// ==================== 燕文国家目录（admin 调试用） ====================
+// 由后端 AdminOrderOpsController 的 4 个端点提供：
+//   GET  /order-ops/print/yanwen-countries/status
+//   GET  /order-ops/print/yanwen-countries?keyword=&limit=
+//   POST /order-ops/print/yanwen-countries/refresh
+//   POST /order-ops/print/yanwen-countries/preview  body: { address: "..." }
+export function getYanwenCountryDirectoryStatus() {
+  return api.get('/order-ops/print/yanwen-countries/status')
+}
+export function listYanwenCountryDirectory(params) {
+  return api.get('/order-ops/print/yanwen-countries', { params })
+}
+export function refreshYanwenCountryDirectory() {
+  return api.post('/order-ops/print/yanwen-countries/refresh')
+}
+export function previewYanwenCountryResolve(data) {
+  return api.post('/order-ops/print/yanwen-countries/preview', data)
+}
+
+// 打印模板 CRUD（持久化到 mo_print_template 表）
+export function getPrintTemplates() {
+  return api.get('/order-ops/print/templates')
+}
+export function updatePrintTemplate(id, data) {
+  return api.put(`/order-ops/print/templates/${id}`, data)
+}
+export function setDefaultPrintTemplate(id) {
+  return api.put(`/order-ops/print/templates/${id}/set-default`)
 }
 
 // ==================== 订单改价 ====================

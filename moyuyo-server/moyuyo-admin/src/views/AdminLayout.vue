@@ -188,6 +188,7 @@ const navGroups = [
       { path: '/carrier-compare', label: '承运商对比' },
       { path: '/shipping-strategy', label: '发货策略' },
       { path: '/shipping-zone', label: '发货区域' },
+      { path: '/yanwen-countries', label: '燕文国家目录' },
       { path: '/clearance', label: '清关管理' },
       { path: '/customs', label: '海关管理' },
       { path: '/tariff', label: '关税管理' },

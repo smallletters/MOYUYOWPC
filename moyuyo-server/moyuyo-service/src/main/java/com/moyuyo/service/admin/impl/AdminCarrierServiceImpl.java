@@ -43,8 +43,16 @@ public class AdminCarrierServiceImpl implements AdminCarrierService {
     e.setRenewWeightPrice(req.getRenewWeightPrice());
     e.setPraiseRate(req.getPraiseRate());
     e.setStatus(normalizeStatus(req.getStatus()));
+    // API 凭证与产品编码：承运商记录可独立覆盖 .env 全局默认（YanWenOrderCreator:144 优先取本字段）
+    e.setCode(req.getCode());
+    e.setApiUserId(req.getApiUserId());
+    e.setApiToken(req.getApiToken());
+    e.setChannelId(req.getChannelId());
+    e.setApiBaseUrl(req.getApiBaseUrl());
+    e.setLabelApiEnabled(req.getLabelApiEnabled());
+    e.setApiRemark(req.getApiRemark());
     carrierMapper.insert(e);
-    log.info("Carrier created: id={}, name={}", e.getId(), e.getName());
+    log.info("Carrier created: id={}, name={}, code={}", e.getId(), e.getName(), e.getCode());
     return e;
   }
 
@@ -62,6 +70,14 @@ public class AdminCarrierServiceImpl implements AdminCarrierService {
     if (req.getRenewWeightPrice() != null) e.setRenewWeightPrice(req.getRenewWeightPrice());
     if (req.getPraiseRate() != null) e.setPraiseRate(req.getPraiseRate());
     if (req.getStatus() != null) e.setStatus(normalizeStatus(req.getStatus()));
+    // partial update：API 凭证/产品编码字段保持与 create 一致，全部 nullable
+    if (req.getCode() != null) e.setCode(req.getCode());
+    if (req.getApiUserId() != null) e.setApiUserId(req.getApiUserId());
+    if (req.getApiToken() != null) e.setApiToken(req.getApiToken());
+    if (req.getChannelId() != null) e.setChannelId(req.getChannelId());
+    if (req.getApiBaseUrl() != null) e.setApiBaseUrl(req.getApiBaseUrl());
+    if (req.getLabelApiEnabled() != null) e.setLabelApiEnabled(req.getLabelApiEnabled());
+    if (req.getApiRemark() != null) e.setApiRemark(req.getApiRemark());
     carrierMapper.updateById(e);
     log.info("Carrier updated: id={}, name={}", e.getId(), e.getName());
     return e;

@@ -10,11 +10,14 @@ import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.mapper.LogisticsMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.common.enums.OrderStatusEnum;
+import com.moyuyo.common.util.IdempotencyHelper;
 import com.moyuyo.service.LogisticsService;
 import com.moyuyo.service.LogisticsTrackProvider;
 import com.moyuyo.service.config.LogisticsTrackProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +36,8 @@ public class LogisticsServiceImpl implements LogisticsService {
     private final OrderMapper orderMapper;
     private final ObjectMapper objectMapper;
     private final LogisticsTrackProperties logisticsTrackProperties;
+    // P0：幂等表读写，避免并发 / 重试造成的重复发货
+    private final JdbcTemplate jdbcTemplate;
 
     /**
      * 物流轨迹查询 Provider（按 moyuyo.logistics.provider 配置自动注入对应实现）
@@ -61,13 +66,34 @@ public class LogisticsServiceImpl implements LogisticsService {
     @Override
     @Transactional
     public LogisticsEntity shipOrder(Long orderId, String carrier, String trackingNumber) {
+        // P0：幂等守卫 —— 先用 INSERT IGNORE 抢锁，再走业务逻辑。
+        // 设计要点：
+        //   1) INSERT IGNORE 在事务内执行；唯一索引 (scope, biz_id, idem_key) 保证并发时只有一个事务插入成功。
+        //   2) 插入成功 → 本事务拿到发货权，继续走下面的状态校验 + 写 logistics。
+        //   3) 插入失败（被忽略）→ 另一事务已发货 → 直接返回已有物流记录，绝不重复写。
+        //   4) 走完业务后不再 INSERT 幂等行（重复 INSERT 必抛 DataIntegrityViolationException），减少一次写入。
+        String idemKey = IdempotencyHelper.shipFingerprint(orderId, carrier, trackingNumber);
+        int inserted = jdbcTemplate.update(
+            "INSERT IGNORE INTO mo_idempotency_record (scope, biz_id, idem_key, response_json) VALUES (?, ?, ?, ?)",
+            "ship_order", orderId, idemKey, "{\"orderId\":" + orderId + "}");
+        if (inserted == 0) {
+            // 被 IGNORE 跳过 → 另一事务已抢到幂等键，本事务放弃发货
+            log.info("shipOrder 幂等命中（并发抢锁失败），跳过重复发货：orderId={}, key={}", orderId, idemKey);
+            return logisticsMapper.selectOne(
+                new LambdaQueryWrapper<LogisticsEntity>().eq(LogisticsEntity::getOrderId, orderId));
+        }
+
         OrderEntity order = orderMapper.selectById(orderId);
         if (order == null) throw new IllegalArgumentException("订单不存在");
-        // 已支付（PAID）或待发货（PENDING_SHIP）状态均可发货
+        // 已支付（PAID）或待发货（PENDING_SHIP）状态均可发货 —— 与 OrderStatusGuard.SHIP_FROM 一致。
         String status = order.getStatus();
         if (!OrderStatusEnum.PAID.name().equals(status) && !OrderStatusEnum.PENDING_SHIP.name().equals(status)) {
             throw new IllegalStateException("订单未支付或不在待发货状态，不能发货");
         }
+        // 注意：这里暂不调用 OrderStatusGuard.assertAllowed() —— shipOrder 是
+        //   service 层底层接口，被多处复用；保留 string 比对是为了不破坏现有错误消息。
+        //   controller 层 AdminOrderController#ship 已先用 OrderStatusEnum 守卫，
+        //   业务上游拒绝的状态根本走不到这里。
 
         LogisticsEntity existing = logisticsMapper.selectOne(
                 new LambdaQueryWrapper<LogisticsEntity>()
@@ -80,7 +106,17 @@ public class LogisticsServiceImpl implements LogisticsService {
         logistics.setTrackingNumber(trackingNumber);
         logistics.setShippedAt(LocalDateTime.now());
         logistics.setTraces(toTracesJson("Shipped", carrier, trackingNumber));
-        logisticsMapper.insert(logistics);
+        try {
+            // V20260929_07 后 mo_logistics.order_id 已加 UNIQUE 索引。
+            //   配合上面的幂等键抢锁，正常情况不会冲突；
+            //   catch 兜底以应对：不同运单号 hash 出巧合 idemKey 的极端情况。
+            logisticsMapper.insert(logistics);
+        } catch (org.springframework.dao.DuplicateKeyException dup) {
+            // 唯一索引 (order_id) 拒绝 → 已有 logistics 行；返回已有记录。
+            log.warn("shipOrder 物流行唯一索引冲突（已被另一事务写入）：orderId={}", orderId);
+            return logisticsMapper.selectOne(
+                new LambdaQueryWrapper<LogisticsEntity>().eq(LogisticsEntity::getOrderId, orderId));
+        }
 
         order.setStatus(OrderStatusEnum.SHIPPED.name());
         order.setShippingCarrier(carrier);

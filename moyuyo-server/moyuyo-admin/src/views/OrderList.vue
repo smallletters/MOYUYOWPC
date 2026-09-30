@@ -145,7 +145,8 @@
                 <div v-if="order.shippingCarrier || order.trackingNumber" class="shipping-info">
                   <div class="shipping-carrier">
                     <span class="shipping-icon">🚚</span>
-                    {{ order.shippingCarrier || '—' }}
+                    <!-- 承运商 code → name 友好展示：先按 code 查 carrierOptions，找不到再按 name，最后回退原值 -->
+                    {{ resolveCarrierLabel(order.shippingCarrier) || '—' }}
                   </div>
                   <div class="shipping-tracking">
                     {{ order.trackingNumber || '—' }}
@@ -220,14 +221,19 @@
             <div class="form-row">
               <div class="form-group">
                 <label>承运商 <span class="required">*</span></label>
+                <!--
+                    选项 value 改为 c.code || c.name：优先存承运商编码（与 YanWenOrderCreator 查询路径对齐），
+                    老承运商无 code 时回退到 name 保持兼容
+                  -->
                 <select v-model="logisticsDialog.form.carrier" class="select-wrapper carrier-select">
                   <option value="">请选择或手动输入承运商</option>
-                  <option v-for="c in carrierOptions" :key="c.id" :value="c.name">
+                  <option v-for="c in carrierOptions" :key="c.id" :value="c.code || c.name">
                     {{ c.name }}<span v-if="c.transportMode"> · {{ c.transportMode }}</span>
                   </option>
                 </select>
+                <!-- 手动输入框：存储值不变，由保存函数统一规整为 code/name -->
                 <input v-model="logisticsDialog.form.carrier" type="text" class="carrier-custom-input"
-                  placeholder="也可直接输入承运商名称（如 UPS / DHL / 顺丰国际）" maxlength="64" />
+                  placeholder="也可直接输入承运商名称或编码（如 yanwen_us / 燕文-美国）" maxlength="64" />
               </div>
               <div class="form-group">
                 <label>运单号 <span class="required">*</span></label>
@@ -255,7 +261,8 @@
 
           <!-- 信息展示：运单号、发货/收货时间 -->
           <div class="info-summary">
-            <div class="summary-line"><span>承运商：</span><b>{{ logisticsDialog.data?.carrier || logisticsDialog.form.carrier || '—' }}</b></div>
+            <!-- 承运商展示用 name（友好展示），底层可能存的是 code -->
+            <div class="summary-line"><span>承运商：</span><b>{{ resolveCarrierLabel(logisticsDialog.data?.carrier || logisticsDialog.form.carrier) || '—' }}</b></div>
             <div class="summary-line"><span>运单号：</span>
               <b v-if="logisticsDialog.data?.trackingNumber" class="mono">{{ logisticsDialog.data.trackingNumber }}</b>
               <span v-else>—</span>
@@ -546,16 +553,48 @@ function handleReset() {
   fetchOrders()
 }
 
-// 确认发货
+// 确认发货：先拉取当前订单已录入的物流信息（承运商 + 运单号），
+// 避免之前在物流弹窗里录的真实运单被后端"默认承运商 / 空运单号"覆盖。
+// 若尚未录入任何物流信息，弹二次确认提醒运营。
 async function handleConfirmShip(order) {
   try {
+    // P1-14：先拉已录入的承运商 + 运单号，避免被默认值覆盖
+    let existingCarrier = ''
+    let existingTracking = ''
+    try {
+      const logistics = await getOrderLogistics(order.id)
+      if (logistics) {
+        existingCarrier = (logistics.carrier || '').trim()
+        existingTracking = (logistics.trackingNumber || '').trim()
+      }
+    } catch (e) {
+      // 拉取失败不阻断：仍允许运营走"确认发货"流程，仅日志告警
+      console.warn('拉取订单物流信息失败:', e?.message || e)
+    }
+
+    // 未录入运单 → 二次确认：避免运营误点导致运单号丢失
+    const orderNo = order.orderNo || order.no || ''
+    let confirmMsg = `确认订单 ${orderNo} 已发货？`
+    if (!existingCarrier || !existingTracking) {
+      confirmMsg = `订单 ${orderNo} 尚未录入承运商或运单号。\n确认使用「默认承运商 + 空运单号」发货吗？\n（建议先在「物流」弹窗录入后再发货）`
+    }
+
     await ElMessageBox.confirm(
-      `确认订单 ${order.no} 已发货？请确保物流单号已填写。`,
+      confirmMsg,
       '发货确认',
-      { type: 'warning', confirmButtonText: '确认发货', cancelButtonText: '取消' }
+      {
+        type: 'warning',
+        confirmButtonText: '确认发货',
+        cancelButtonText: '取消'
+      }
     )
-    await shipOrder(order.id)
-    ElMessage.success(`订单 ${order.no} 已确认发货`)
+    // 把已存运单带进 shipOrder：后端 ship 接口未传值时会用"默认承运商/空运单"覆盖，
+    // 这里显式传值确保不会丢失。
+    await shipOrder(order.id, {
+      carrier: existingCarrier || '默认承运商',
+      trackingNo: existingTracking || ''
+    })
+    ElMessage.success(`订单 ${orderNo} 已确认发货`)
     fetchOrders()
   } catch (err) {
     if (err !== 'cancel' && err !== 'close') {
@@ -620,12 +659,34 @@ function canShipOrder(order) {
   return true
 }
 
+/**
+ * 承运商展示规整：把存储的 code / name 翻译成友好中文名
+ *  - 优先按 carrierOptions.code 匹配（不区分大小写）
+ *  - 回退按 carrierOptions.name 匹配
+ *  - 都未命中 → 原样返回（兼容手动输入的纯文本）
+ * 作用：底层 mo_order.shipping_carrier 现在存的是 code（如 yanwen_us），
+ *       表格与详情里展示时需要翻译成 "燕文-美国"，避免运营看到 yanwen_us 一脸懵。
+ */
+function resolveCarrierLabel(stored) {
+  if (!stored) return ''
+  const text = String(stored).trim()
+  if (!text) return ''
+  const found = carrierOptions.value.find(
+    c => (c.code && c.code.toLowerCase() === text.toLowerCase())
+      || (c.name && c.name.toLowerCase() === text.toLowerCase())
+  )
+  return found ? found.name : text
+}
+
 // 保存物流信息（写承运商 / 运单号；如果勾选了 forceShip 则顺便发货）
 async function saveOrderLogistics() {
   if (!logisticsDialog.order?.id) return
-  const carrier = (logisticsDialog.form.carrier || '').trim()
+  // 表单取值为 code（首选）或原始输入值。保存前统一规整：
+  // - 若输入能在 carrierOptions 里按 code/name 命中 → 存 code（更稳定，便于 YanWenOrderCreator 反查）
+  // - 若输入的是下拉外的纯文本（如 "UPS"）→ 原样保存，与后端 name 匹配路径兼容
+  const carrierInput = (logisticsDialog.form.carrier || '').trim()
   const trackingNo = (logisticsDialog.form.trackingNo || '').trim()
-  if (!carrier) {
+  if (!carrierInput) {
     ElMessage.warning('请先填写承运商（可在下拉选择或手动输入）')
     return
   }
@@ -633,7 +694,7 @@ async function saveOrderLogistics() {
     ElMessage.warning('请先填写运单号')
     return
   }
-  if (carrier.length > 64) {
+  if (carrierInput.length > 64) {
     ElMessage.warning('承运商名称长度不能超过 64 字符')
     return
   }
@@ -641,6 +702,13 @@ async function saveOrderLogistics() {
     ElMessage.warning('运单号长度不能超过 64 字符')
     return
   }
+  // 反查 carrierOptions：先按 code 匹配，再按 name 匹配（不区分大小写）
+  const matched = carrierOptions.value.find(
+    c => (c.code && c.code.toLowerCase() === carrierInput.toLowerCase())
+      || (c.name && c.name.toLowerCase() === carrierInput.toLowerCase())
+  )
+  // 命中且有 code → 存 code；未命中或无 code → 存原值（兼容手动输入 / 老承运商）
+  const carrier = matched && matched.code ? matched.code : carrierInput
   logisticsDialog.saving = true
   try {
     const payload = {

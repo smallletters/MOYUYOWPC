@@ -5,6 +5,7 @@ import com.moyuyo.common.config.YanWenProperties;
 import com.moyuyo.common.dto.admin.order.*;
 import com.moyuyo.common.dto.logistics.YanWenLabelResponse;
 import com.moyuyo.service.admin.AdminOrderOpsService;
+import com.moyuyo.service.admin.YanWenCountryDirectory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -36,6 +37,14 @@ public class AdminOrderOpsController {
   private final AdminOrderOpsService adminOrderOpsService;
   private final YanWenProperties yanWenProperties;
   private final JdbcTemplate jdbcTemplate;
+  // 燕文国家目录管理：admin 调试接口使用（status / list / refresh / preview）
+  private final YanWenCountryDirectory yanWenCountryDirectory;
+  // 燕文国家目录查询接口（preview 接口里复用，与 CountryResolver 用同一个 bean）
+  private final com.moyuyo.common.util.CountryDirectoryLookup countryDirectoryLookup;
+  // yml aliases 配置：preview 接口里做命中检测
+  private final com.moyuyo.common.config.CountryMappingProperties countryMappingProperties;
+  // CountryResolver 实例：preview 接口里直接 resolve（确保与生产路径一致）
+  private final com.moyuyo.common.util.CountryResolver countryResolver;
 
   @Operation(summary = "订单导出列表")
   @GetMapping("/export")
@@ -129,24 +138,64 @@ public class AdminOrderOpsController {
       @RequestParam(required = false) String printType,
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "15") int size) {
-    return Result.success(adminOrderOpsService.listPrint(printType, page, size));
+    // printType 过滤参数白名单：
+    //   - null / '' / 'order'：前端默认兜底值，返回全部待打印订单（不过滤）
+    //   - PICK / PACK / SHIP / LABEL / SHIPPING_LABEL：按"曾用此类型打印"过滤
+    // 其他值忽略（按不过滤处理），避免脏数据触发慢 SQL EXISTS 子查询
+    String effectivePrintType = (printType == null || printType.isBlank() || "order".equals(printType))
+        ? null : printType;
+    return Result.success(adminOrderOpsService.listPrint(effectivePrintType, page, size));
   }
+
+  /**
+   * 允许的 printType 白名单。
+   * <p>
+   * 与 mo_print_template.code 字段保持一致：PICK / PACK / SHIP / LABEL / SHIPPING_LABEL。
+   * 前端传任意字符串都会被拒绝，防止脏数据落库（之前 line 144 直接用 request.getPrintType() 兜底"默认值 PICK"）。
+   */
+  private static final java.util.Set<String> ALLOWED_PRINT_TYPES = java.util.Set.of(
+      "PICK", "PACK", "SHIP", "LABEL", "SHIPPING_LABEL");
 
   @Operation(summary = "记录打印操作")
   @PostMapping("/print/record")
-  public Result<Map<String, Object>> recordPrint(@RequestBody OrderPrintRecordRequest request) {
-    // 参数校验:orderId 必填,避免 NPE 导致 500
+  public Result<Map<String, Object>> recordPrint(@Valid @RequestBody OrderPrintRecordRequest request) {
+    // @Valid 让 DTO 上的 @NotNull 注解生效（Spring 会抛 MethodArgumentNotValidException）。
+    // 显式判空保留作为双保险（@RequestBody 可缺省、整体 null 不会被 @Valid 拦到）。
+    if (request == null) {
+      return Result.error(400, "参数错误：请求体不能为空");
+    }
     if (request.getOrderId() == null) {
       return Result.error(400, "参数错误：orderId 不能为空");
     }
     Long orderId = request.getOrderId();
-    // 未指定可选字段时使用默认值(与原 Map 逻辑保持一致)
+    // P2：printType 白名单校验 —— 防止前端传任意字符串写入数据库。
+    // 若 printType 为空/null，默认用 PICK（拣货单），与历史行为兼容。
     String printType = request.getPrintType() != null ? request.getPrintType() : "PICK";
+    if (!ALLOWED_PRINT_TYPES.contains(printType)) {
+      return Result.error(400, "printType 不合法：" + printType
+          + "（允许值：" + ALLOWED_PRINT_TYPES + "）");
+    }
     String templateName = request.getTemplateName() != null ? request.getTemplateName() : "默认模板";
-    String paperSize = request.getPaperSize() != null ? request.getPaperSize() : "A4";
+    // paperSize 归一化交给 Service.normalizePaperSize() 处理（白名单字典映射，
+    // 不能简单 toUpperCase 否则 'thermal-100' 会变成 'THERMAL-100' 与模板表不一致）
+    String paperSize = request.getPaperSize();
     String operator = request.getOperator() != null ? request.getOperator() : "系统";
     adminOrderOpsService.recordPrint(orderId, printType, templateName, paperSize, operator);
     return Result.success(Map.of("message", "打印记录成功"));
+  }
+
+  /**
+   * 单独累加一次燕文电子面单打印日志（由前端在用户实际点击打印按钮后调用，
+   * 不再由 fetchShippingLabel 自动触发，避免预览动作被误记为打印）。
+   */
+  @Operation(summary = "累加燕文面单打印日志")
+  @PostMapping("/print/shipping-label/record/{orderId}")
+  public Result<Map<String, Object>> recordShippingLabelLog(@PathVariable Long orderId) {
+    if (orderId == null) {
+      return Result.error(400, "参数错误：orderId 不能为空");
+    }
+    adminOrderOpsService.recordShippingLabelLog(orderId);
+    return Result.success(Map.of("orderId", orderId, "message", "燕文面单日志已记录"));
   }
 
   /**
@@ -209,6 +258,256 @@ public class AdminOrderOpsController {
     data.put("userIdConfigured", yanWenProperties.getUserId() != null && !yanWenProperties.getUserId().isBlank());
     data.put("apiTokenConfigured", yanWenProperties.getApiToken() != null && !yanWenProperties.getApiToken().isBlank());
     return Result.success(data);
+  }
+
+  /**
+   * P0（路径B）：仅创建燕文运单（不取面单）。
+   * <p>
+   * 适用场景：
+   *   - 提前创建运单（运营先核对地址，再走 /print/shipping-label 取面单）
+   *   - 调试 createOrder 请求/响应字段
+   *   - 想拿 waybillNumber 但暂不打面单
+   * <p>
+   * 成功后：燕文返回的运单号已写回 mo_order.tracking_number + mo_order.shipping_carrier，
+   * 后续取面单走"已运单号"快路径。
+   */
+  @Operation(summary = "创建燕文运单（路径B：先建运单，再取面单）")
+  @PostMapping("/print/shipping-label/create-waybill")
+  public Result<Map<String, Object>> createYanwenWaybill(
+      @RequestParam Long orderId,
+      @RequestParam(required = false) Long carrierId) {
+    if (orderId == null) {
+      return Result.error(400, "orderId 不能为空");
+    }
+    if (!yanWenProperties.isEnabled()) {
+      return Result.error(503, "燕文电子面单未启用，请先在 moyuyo.logistics.yanwen.enabled 设置为 true 并配置凭证");
+    }
+    try {
+      String waybill = adminOrderOpsService.createYanwenWaybill(orderId, carrierId);
+      Map<String, Object> data = new LinkedHashMap<>();
+      data.put("orderId", orderId);
+      data.put("waybillNumber", waybill);
+      data.put("message", "燕文运单创建成功，已写回订单。可继续调用 /print/shipping-label 取面单。");
+      return Result.success(data);
+    } catch (Exception e) {
+      log.warn("创建燕文运单失败：orderId={}, err={}", orderId, e.getMessage());
+      return Result.error(500, "创建燕文运单失败：" + e.getMessage());
+    }
+  }
+
+  // ==================== 打印模板 CRUD ====================
+  // 对应 mo_print_template 表（Flyway: V20260929_03__create_mo_print_template.sql）
+  // 解决 OrderPrint.vue 编辑模板"刷新即丢失"问题：模板数据由数据库持久化。
+
+  @Operation(summary = "查询所有打印模板")
+  @GetMapping("/print/templates")
+  public Result<List<Map<String, Object>>> listPrintTemplates() {
+    return Result.success(adminOrderOpsService.listPrintTemplates());
+  }
+
+  // ==================== 燕文国家目录（admin 调试用） ====================
+  // 提供 4 个端点帮运营排查"地址解析出的国家码对不对 / 缓存是否最新"。
+  // 设计目标：让运营不需要登服务器、不需要看日志就能验证 CountryResolver 行为。
+
+  /**
+   * 国家目录缓存状态。
+   * <p>
+   * 包含：是否启用、缓存大小、上次成功刷新时间、上次刷新耗时、上次刷新错误。
+   * 用于运营检查"燕文缓存是否工作"。
+   */
+  @Operation(summary = "燕文国家目录缓存状态")
+  @GetMapping("/print/yanwen-countries/status")
+  public Result<Map<String, Object>> yanwenCountryDirectoryStatus() {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("yanwenEnabled", yanWenProperties.isEnabled());
+    data.put("cacheSize", yanWenCountryDirectory.size());
+    // P0：返回毫秒时间戳而非 Date 对象 —— 避免 Jackson 默认 ISO 字符串化后
+    // 前端 new Date("...Z") 解析再 getHours() 时受时区漂移影响（UTC vs 本地时区）
+    long ts = yanWenCountryDirectory.getLastRefreshAt();
+    data.put("lastRefreshAt", ts == 0 ? null : ts);
+    data.put("lastRefreshCostMs", yanWenCountryDirectory.getLastRefreshCostMs());
+    data.put("lastRefreshError", yanWenCountryDirectory.getLastRefreshError());
+    data.put("refreshScheduleHours", 24);
+    return Result.success(data);
+  }
+
+  /**
+   * 国家目录完整列表（带搜索）。
+   * <p>
+   * 搜索规则：在缓存快照里找"小写国名（含小写 code）contains 小写 keyword"。
+   * 返回结构 [{code, name}] —— 前端用于"国家选择器"或排查"某个国名为啥没匹配"。
+   * <p>
+   * 这里返回的 code / name 都是燕文原始字段，未做大小写归一（运营排查时要看到原始值）。
+   */
+  @Operation(summary = "燕文国家目录列表（支持 keyword 模糊搜索）")
+  @GetMapping("/print/yanwen-countries")
+  public Result<List<Map<String, Object>>> yanwenCountryDirectoryList(
+      @RequestParam(required = false) String keyword,
+      @RequestParam(defaultValue = "500") int limit) {
+    Map<String, String> snapshot = yanWenCountryDirectory.snapshot();
+    String kw = keyword == null ? null : keyword.trim().toLowerCase();
+    List<Map<String, Object>> out = new ArrayList<>();
+    int count = 0;
+    // 用 snapshot 反向归一：key 是小写国名 → value 是 code
+    // 反推回原始大写需要后端保留原始数据 —— 这里用 LinkedHashMap 兜底
+    // 设计取舍：缓存 map 的 key 是小写国名 / value 是 code，原始 nameCh / nameEn 没保留
+    //   折中：返回 {code, name（= 小写 key 转回首字母大写）}  —— 仅作调试够用
+    for (Map.Entry<String, String> e : snapshot.entrySet()) {
+      if (kw != null && !e.getKey().contains(kw) && !e.getValue().toLowerCase().contains(kw)) {
+        continue;
+      }
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("code", e.getValue());
+      item.put("name", e.getKey()); // 小写归一后值；运营可通过首字母大写 + code 校验
+      out.add(item);
+      count++;
+      if (count >= limit) break;
+    }
+    return Result.success(out);
+  }
+
+  /**
+   * 主动触发一次燕文国家目录刷新（不阻塞调用线程）。
+   * <p>
+   * 用于：① 运营改了 yml 后想立刻生效；② 燕文新增国家后想立即看到；
+   * ③ 调试"上次刷新失败"后手动重试。
+   * <p>
+   * 注意：本接口只触发刷新动作，不等待结果。如要看结果请调 status 接口。
+   */
+  @Operation(summary = "主动刷新燕文国家目录")
+  @PostMapping("/print/yanwen-countries/refresh")
+  public Result<Map<String, Object>> yanwenCountryDirectoryRefresh() {
+    if (!yanWenProperties.isEnabled()) {
+      return Result.error(503, "燕文未启用，无法刷新");
+    }
+    yanWenCountryDirectory.refreshNow();
+    return Result.success(Map.of(
+            "message", "已提交刷新任务，几秒后查询 status 接口查看结果",
+            "cacheSizeBefore", yanWenCountryDirectory.size()));
+  }
+
+  /**
+   * 解析预览：输入 address，返回 CountryResolver 解析出的国家码 + 命中规则。
+   * <p>
+   * 用于运营排查"这个地址为啥解析成 X 国家 / 命中的是哪条规则"。
+   * 返回结构：
+   *   - resolvedCountry: 解析结果
+   *   - hitDirectoryLookup: 是否命中燕文目录缓存
+   *   - hitAliasesPattern: yml aliases 命中的 pattern
+   *   - hitRule: 命中规则描述
+   * <p>
+   * 调试专用，前端可作为"高级运营面板"的功能。
+   */
+  @Operation(summary = "地址解析预览（CountryResolver 调试）")
+  @PostMapping("/print/yanwen-countries/preview")
+  public Result<Map<String, Object>> yanwenCountryPreview(@RequestBody Map<String, String> body) {
+    if (body == null) body = new java.util.HashMap<>();
+    String address = body.get("address");
+    if (address == null || address.isBlank()) {
+      return Result.error(400, "address 不能为空");
+    }
+    Map<String, Object> data = new LinkedHashMap<>();
+    String resolved = countryResolver.resolve(address);
+    data.put("address", address);
+    data.put("resolvedCountry", resolved);
+
+    // P0：精确检测每层命中 —— 与 CountryResolver 内部优先级一致（目录 > aliases > 兜底）
+    //   1) 先查目录缓存 —— 如果非空且与 resolvedCountry 一致 → directoryLookupHit 返 code
+    //   2) 否则查 aliases —— 如果命中 → aliasHit = true + aliasPattern
+    //   3) 否则就是 default-country 兜底
+    // 这样避免运营看到"目录命中 + aliases 命中"的双标签造成的混淆。
+    String dirHit = null;
+    boolean directoryActive = false;
+    try {
+      if (countryDirectoryLookup != null && countryDirectoryLookup.size() > 0) {
+        directoryActive = true;
+        String found = countryDirectoryLookup.findFirstCodeIn(address);
+        // 仅当目录命中结果与生产路径 resolvedCountry 一致，才算"目录路径命中"
+        if (found != null && found.equalsIgnoreCase(resolved)) {
+          dirHit = found;
+        }
+      }
+    } catch (Exception ignored) {}
+    data.put("directoryLookupHit", dirHit);
+    data.put("directoryActive", directoryActive);
+
+    boolean aliasHit = false;
+    String aliasPattern = null;
+    String defaultCountry = countryMappingProperties != null
+            ? countryMappingProperties.getDefaultCountry() : "US";
+    // aliases 仅在目录**未命中**时才参与判断（与 CountryResolver 内部逻辑一致）
+    if (dirHit == null && countryMappingProperties != null
+            && countryMappingProperties.getAliases() != null) {
+      for (var rule : countryMappingProperties.getAliases()) {
+        if (rule == null || rule.getPattern() == null || rule.getCountry() == null) continue;
+        String p = rule.getPattern();
+        String target = address;
+        if (containsRegexMeta(p)) {
+          // 邮编正则：从 address 抽邮编段
+          String zip = extractFirstZipLike(address);
+          if (zip != null) target = zip;
+          if (java.util.regex.Pattern.compile(p).matcher(target).matches()) {
+            aliasHit = true;
+            aliasPattern = p + " → " + rule.getCountry();
+            break;
+          }
+        } else {
+          if (address.toLowerCase().contains(p.toLowerCase())) {
+            aliasHit = true;
+            aliasPattern = p + " → " + rule.getCountry();
+            break;
+          }
+        }
+      }
+    }
+    data.put("aliasHit", aliasHit);
+    data.put("aliasPattern", aliasPattern);
+    data.put("defaultCountry", defaultCountry);
+    // 综合路径（前端运营一眼能看出最终命中哪一层）
+    String hitPath;
+    if (dirHit != null) {
+      hitPath = "directory";
+    } else if (aliasHit) {
+      hitPath = "alias";
+    } else {
+      hitPath = "default";
+    }
+    data.put("hitPath", hitPath);
+    return Result.success(data);
+  }
+
+  // ==================== 打印设置（服务端持久化） ====================
+  // P1：替代 localStorage，多设备/多浏览器共享同一份打印设置。
+  // 复用 mo_system_config（key/value 结构，无需新建表）。
+
+  @Operation(summary = "获取订单打印设置")
+  @GetMapping("/print/settings")
+  public Result<Map<String, Object>> getPrintSettings() {
+    return Result.success(adminOrderOpsService.getPrintSettings());
+  }
+
+  @Operation(summary = "保存订单打印设置")
+  @PutMapping("/print/settings")
+  public Result<Map<String, Object>> savePrintSettings(@RequestBody Map<String, Object> body) {
+    adminOrderOpsService.savePrintSettings(body);
+    return Result.success(Map.of("message", "打印设置已保存到服务端"));
+  }
+
+  @Operation(summary = "更新打印模板")
+  @PutMapping("/print/templates/{id}")
+  public Result<Map<String, Object>> updatePrintTemplate(
+      @PathVariable Long id, @Valid @RequestBody PrintTemplateRequest request) {
+    adminOrderOpsService.updatePrintTemplate(
+        id, request.getName(), request.getPaperSize(), request.getDescription(),
+        request.getIsDefault(), request.getSortOrder());
+    return Result.success(Map.of("id", id, "message", "模板已更新"));
+  }
+
+  @Operation(summary = "设置默认打印模板")
+  @PutMapping("/print/templates/{id}/set-default")
+  public Result<Map<String, Object>> setDefaultPrintTemplate(@PathVariable Long id) {
+    adminOrderOpsService.setDefaultPrintTemplate(id);
+    return Result.success(Map.of("id", id, "message", "已设为默认模板"));
   }
 
   // ==================== 订单改价 ====================
@@ -287,6 +586,31 @@ public class AdminOrderOpsController {
   }
 
   // ==================== 订单监控 ====================
+
+  // ==================== 订单时间轴 ====================
+  // P2：聚合订单的全生命周期事件流（创建/支付/发货/收货/物流/拦截/改价/打印），
+  //   用于 OrderDetail.vue 的"全景时间轴"展示。
+  // 单一接口替代前端多次轮询 5 张表。
+
+  @Operation(summary = "订单时间轴（按时间升序的事件流）")
+  @GetMapping("/orders/{orderId}/timeline")
+  public Result<Map<String, Object>> orderTimeline(
+      @PathVariable Long orderId,
+      @RequestParam(required = false) Integer limit,
+      @RequestParam(required = false) Integer offset) {
+    if (orderId == null) {
+      return Result.error(400, "orderId 不能为空");
+    }
+    // UNION ALL SQL 第一条就是 mo_order WHERE id = ?，订单不存在时整段返回空数组，
+    //   直接判 404 即可（无需再查一次 order 存在性）。
+    // limit/offset 用于分页；前端按"加载更多"模式拼 offset/length。
+    // 返回结构：{ events: [...], total: N, limit, offset }，方便前端判断是否还有更多。
+    Map<String, Object> timeline = adminOrderOpsService.getOrderTimeline(orderId, limit, offset);
+    if (((java.util.List<?>) timeline.get("events")).isEmpty()) {
+      return Result.error(404, "订单不存在");
+    }
+    return Result.success(timeline);
+  }
 
   @Operation(summary = "异常订单监控看板")
   @GetMapping("/monitor/data")
@@ -440,5 +764,32 @@ public class AdminOrderOpsController {
       log.error("删除监控规则失败", e);
       return Result.error(500, "删除监控规则失败：" + e.getMessage());
     }
+  }
+
+  // ==================== 燕文国家目录调试辅助方法 ====================
+
+  /**
+   * 启发式判定 pattern 是否为正则（与 CountryResolver 内部逻辑一致）。
+   */
+  private static boolean containsRegexMeta(String s) {
+    if (s == null || s.length() < 2) return false;
+    return s.startsWith("^") || s.endsWith("$")
+            || s.contains(".*") || s.contains(".+")
+            || s.contains("\\d") || s.contains("\\s")
+            || s.contains("[") || s.contains("(");
+  }
+
+  /**
+   * 简易邮编抽取（与 CountryResolver 内部一致）：取第一个"看起来像邮编"的字段。
+   * <p>
+   * 这里只做最简实现，覆盖 5/5-4/6/4 位 + 加拿大/英国字母数字混合格式。
+   * 注意：与 CountryResolver 的 ZIP_PATTERN 完全等价（保留一份是为了 controller 独立编译）。
+   */
+  private static String extractFirstZipLike(String address) {
+    if (address == null) return null;
+    java.util.regex.Matcher m = java.util.regex.Pattern.compile(
+            "\\b(\\d{5}(-\\d{4})?|\\d{6}|\\d{4}|[A-Z]\\d[A-Z]\\s?\\d[A-Z]\\d|[A-Z]{1,2}\\d[A-Z\\d]?\\s?\\d[A-Z]{2})\\b"
+    ).matcher(address);
+    return m.find() ? m.group(1) : null;
   }
 }

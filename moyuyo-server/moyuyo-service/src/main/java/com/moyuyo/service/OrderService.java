@@ -59,4 +59,13 @@ public interface OrderService {
   Map<Long, List<OrderItemEntity>> getOrderItemsByOrderIds(List<Long> orderIds);
 
   OrderEntity getOrderByOrderNo(String orderNo);
+
+  /**
+   * 若订单的收件人/电话/详细地址三字段都为空，且存在 addressId，
+   * 则按 addressId 回查 mo_address 并把快照字段补齐，便于详情页与列表展示。
+   * 不会回写数据库（仅在内存对象上赋值）。
+   * <p>
+   * 用于在打印 / 燕文取号等"订单 receiver 字段可能缺失"的入口补齐数据。
+   */
+  void fillAddressIfAbsent(OrderEntity order);
 }

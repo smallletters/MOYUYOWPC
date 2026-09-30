@@ -290,14 +290,10 @@ public class AdminOrderController {
     if (order == null) {
       return Result.error(404, "订单不存在");
     }
-    // 仅允许已支付/待发货的订单发货
-    if (!order.isPaid() || order.getStatusEnum() == OrderStatusEnum.CANCELLED) {
-      return Result.error(400, "订单未支付或已取消，无法发货");
-    }
-    if (order.getStatusEnum() == OrderStatusEnum.SHIPPED
-        || order.getStatusEnum() == OrderStatusEnum.RECEIVED
-        || order.getStatusEnum() == OrderStatusEnum.COMPLETED) {
-      return Result.error(400, "订单已发货或已完成，请勿重复发货");
+    // 仅允许已支付/待发货的订单发货 —— 复用 OrderEntity.canShip() 守卫，
+    // 该方法已排除 HOLD / SHIPPED / RECEIVED / COMPLETED / CANCELLED / REFUNDING 等中间态。
+    if (!order.canShip()) {
+      return Result.error(400, "订单当前状态不允许发货（仅 PAID / PENDING_SHIP 可发货）");
     }
 
     // 提取物流信息,未传值时使用默认值(与原 Map 逻辑保持一致)

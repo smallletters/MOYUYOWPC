@@ -141,8 +141,14 @@ public class OrderEntity {
       || s == OrderStatusEnum.COMPLETED;
   }
 
-  /** 是否可以发货（已支付且待发货） */
+  /** 是否可以发货（已支付或待发货） */
   public boolean canShip() {
+    OrderStatusEnum s = getStatusEnum();
+    return s == OrderStatusEnum.PAID || s == OrderStatusEnum.PENDING_SHIP;
+  }
+
+  /** 是否可以发货（仅待发货，排除已拦截等中间态） */
+  public boolean isShippable() {
     return getStatusEnum() == OrderStatusEnum.PENDING_SHIP;
   }
 

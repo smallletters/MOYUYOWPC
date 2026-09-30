@@ -1,6 +1,7 @@
 package com.moyuyo.api;
 
 import com.moyuyo.api.config.ProdConfigValidator;
+import com.moyuyo.common.config.CountryMappingProperties;
 import com.moyuyo.common.config.WooCommerceProperties;
 import com.moyuyo.common.config.YanWenProperties;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +35,7 @@ import java.time.Instant;
     SecurityAutoConfiguration.class,
     ManagementWebSecurityAutoConfiguration.class
 })
-@EnableConfigurationProperties({WooCommerceProperties.class, YanWenProperties.class})
+@EnableConfigurationProperties({WooCommerceProperties.class, YanWenProperties.class, CountryMappingProperties.class})
 @EnableAsync
 @EnableScheduling
 public class MoyuyoApplication {

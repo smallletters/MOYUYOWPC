@@ -1,0 +1,65 @@
+# ============================================================
+# 本机部署资源覆盖文件（仅本地 Docker Desktop 使用）
+# 与 docker-compose.yml 合并使用:
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml --env-file .env up -d
+#
+# 调整原因: 本机 Docker Desktop 内存仅 7.7 GB,
+#   生产 compose 资源限制合计约 14 GB 会触发 OOM-killer.
+# 此文件删除 Elasticsearch / RocketMQ / Exporters 等重型组件,
+#   仅保留 MySQL + Redis + App, 让本地能稳定运行.
+# 删除方法: 把对应 service 设为 null (compose 会忽略继承的同名服务).
+#
+# ⚠️ 不要提交到生产服务器（仅本机调试）.
+# ============================================================
+
+services:
+  elasticsearch: !reset null
+  es-certs-init: !reset null
+  rocketmq-namesrv: !reset null
+  rocketmq-broker: !reset null
+  mysqld-exporter: !reset null
+  redis-exporter: !reset null
+  rocketmq-exporter: !reset null
+
+  mysql:
+    # 原 mem_limit=2G -> 调整为 1G（本机内存吃紧）
+    mem_limit: 1G
+    mem_reservation: 512M
+    # InnoDB buffer pool 同步调小
+    environment:
+      MYSQL_INNODB_BUFFER_POOL_SIZE: '512M'
+
+  redis:
+    mem_limit: 768M
+    mem_reservation: 256M
+    # maxmemory 调小（与 mem_limit 留 25% buffer）
+    command:
+      - "redis-server"
+      - "--requirepass"
+      - "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}"
+      - "--maxclients"
+      - "10000"
+      - "--maxmemory"
+      - "400mb"
+      - "--maxmemory-policy"
+      - "allkeys-lru"
+      - "--lazyfree-lazy-eviction"
+      - "yes"
+
+  app:
+    mem_limit: 2G
+    mem_reservation: 768M
+    cpus: '2.0'
+    # JVM 堆同步调小（避免容器被 OOM-kill）
+    environment:
+      JVM_XMS: 512m
+      JVM_XMX: 1g
+    # 本机 7.7 GB 资源约束：不依赖 elasticsearch / rocketmq-broker
+    # 这些服务在本机不启动；启动期通过 ROCKETMQ_ENABLED=false + 占位 ES URL 让 starter 跳过严格校验
+    depends_on: !override
+      mysql:
+        condition: service_healthy
+      mysql-certs-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy

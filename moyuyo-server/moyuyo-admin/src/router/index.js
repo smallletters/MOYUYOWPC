@@ -491,6 +491,12 @@ const routes = [
         meta: { title: '发货区域' }
       },
       {
+        path: 'yanwen-countries',
+        name: 'YanWenCountryDirectory',
+        component: () => import('../views/YanWenCountryDirectory.vue'),
+        meta: { title: '燕文国家目录' }
+      },
+      {
         path: 'content-review-detail',
         name: 'ContentReviewDetail',
         component: () => import('../views/ContentReviewDetail.vue'),

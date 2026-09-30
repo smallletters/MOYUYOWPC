@@ -238,7 +238,20 @@
       <el-table :data="tableData" stripe>
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="name" label="承运商名称" width="140" />
-        <el-table-column prop="transportMode" label="运输方式" width="120" />
+        <el-table-column prop="code" label="编码" width="120" />
+        <el-table-column prop="transportMode" label="运输方式" width="100" />
+        <el-table-column label="产品编码" width="120">
+          <template #default="{ row }">
+            <el-tag v-if="row.channelId" type="success" size="small">{{ row.channelId }}</el-tag>
+            <span v-else class="placeholder-text">未配置</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="电子面单" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.labelApiEnabled === 1" type="primary" size="small">已启用</el-tag>
+            <span v-else class="placeholder-text">未启用</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="avgDeliveryDays" label="平均时效(天)" width="120" />
         <el-table-column prop="firstWeightPrice" label="首重价格" width="100">
           <template #default="{ row }">￥{{ row.firstWeightPrice }}</template>
@@ -266,10 +279,14 @@
         />
       </div>
     </el-card>
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="700px">
-      <el-form :model="editForm" label-width="110px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="780px">
+      <el-form :model="editForm" label-width="130px">
+        <!-- ===== 基础信息 ===== -->
         <el-form-item label="承运商名称">
-          <el-input v-model="editForm.name" placeholder="请输入承运商名称" />
+          <el-input v-model="editForm.name" placeholder="请输入承运商名称，如 燕文-美国" />
+        </el-form-item>
+        <el-form-item label="承运商编码">
+          <el-input v-model="editForm.code" placeholder="内部 code，订单关联用，如 yanwen_us" />
         </el-form-item>
         <el-form-item label="运输方式">
           <el-select v-model="editForm.transportMode">
@@ -290,6 +307,27 @@
         </el-form-item>
         <el-form-item label="好评率(%)">
           <el-input-number v-model="editForm.praiseRate" :min="0" :max="100" :step="0.1" />
+        </el-form-item>
+
+        <!-- ===== API 与产品编码（电子面单调取必需） ===== -->
+        <el-divider content-position="left">API 凭证与产品编码（电子面单）</el-divider>
+        <el-form-item label="API 客户号">
+          <el-input v-model="editForm.apiUserId" placeholder="如燕文 userId" />
+        </el-form-item>
+        <el-form-item label="API Token">
+          <el-input v-model="editForm.apiToken" placeholder="apitoken / partnerKey / appSecret" show-password />
+        </el-form-item>
+        <el-form-item label="产品编码 channelId">
+          <el-input v-model="editForm.channelId" placeholder="燕文后台『产品管理』查询的目的国产品编码，如 1615" />
+        </el-form-item>
+        <el-form-item label="API 地址">
+          <el-input v-model="editForm.apiBaseUrl" placeholder="如 https://open.yw56.com.cn/api/order" />
+        </el-form-item>
+        <el-form-item label="启用电子面单">
+          <el-switch v-model="editForm.labelApiEnabled" :active-value="1" :inactive-value="0" />
+        </el-form-item>
+        <el-form-item label="对接备注">
+          <el-input v-model="editForm.apiRemark" type="textarea" :rows="2" placeholder="选填：内部对接说明" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -428,11 +466,18 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const editForm = reactive({
   name: '',
+  code: '',
   transportMode: '快递',
   avgDeliveryDays: 3,
   firstWeightPrice: 0,
   renewWeightPrice: 0,
-  praiseRate: 95
+  praiseRate: 95,
+  apiUserId: '',
+  apiToken: '',
+  channelId: '',
+  apiBaseUrl: '',
+  labelApiEnabled: 0,
+  apiRemark: ''
 })
 
 // 加载承运商数据
@@ -453,8 +498,28 @@ async function loadData() {
 }
 function handleSearch() { currentPage.value = 1; loadData() }
 function handleReset() { filters.keyword = ''; handleSearch() }
-function handleAdd() { dialogTitle.value = '新建承运商'; editForm.name = ''; editForm.transportMode = '快递'; editForm.avgDeliveryDays = 3; editForm.firstWeightPrice = 0; editForm.renewWeightPrice = 0; editForm.praiseRate = 95; dialogVisible.value = true }
-function handleEdit(row) { dialogTitle.value = '编辑承运商'; Object.assign(editForm, row); dialogVisible.value = true }
+function handleAdd() {
+  dialogTitle.value = '新建承运商';
+  Object.assign(editForm, {
+    name: '', code: '', transportMode: '快递', avgDeliveryDays: 3,
+    firstWeightPrice: 0, renewWeightPrice: 0, praiseRate: 95,
+    apiUserId: '', apiToken: '', channelId: '', apiBaseUrl: '', labelApiEnabled: 0, apiRemark: ''
+  });
+  dialogVisible.value = true;
+}
+function handleEdit(row) {
+  dialogTitle.value = '编辑承运商';
+  // 用空白对象打底，避免 row 上缺字段时残留旧值
+  Object.assign(editForm, {
+    name: '', code: '', transportMode: '快递', avgDeliveryDays: 3,
+    firstWeightPrice: 0, renewWeightPrice: 0, praiseRate: 95,
+    apiUserId: '', apiToken: '', channelId: '', apiBaseUrl: '', labelApiEnabled: 0, apiRemark: ''
+  });
+  // row.labelApiEnabled 可能为 null/0/1，统一规整成 0/1
+  const rowCopy = { ...row, labelApiEnabled: row.labelApiEnabled == null ? 0 : row.labelApiEnabled };
+  Object.assign(editForm, rowCopy);
+  dialogVisible.value = true;
+}
 async function handleDelete(row) {
   try {
     await ElMessageBox.confirm('确定删除？', '提示')
@@ -469,24 +534,25 @@ async function handleDelete(row) {
 }
 async function handleSave() {
   try {
+    const payload = {
+      name: editForm.name,
+      code: editForm.code,
+      transportMode: editForm.transportMode,
+      avgDeliveryDays: editForm.avgDeliveryDays,
+      firstWeightPrice: editForm.firstWeightPrice,
+      renewWeightPrice: editForm.renewWeightPrice,
+      praiseRate: editForm.praiseRate,
+      apiUserId: editForm.apiUserId,
+      apiToken: editForm.apiToken,
+      channelId: editForm.channelId,
+      apiBaseUrl: editForm.apiBaseUrl,
+      labelApiEnabled: editForm.labelApiEnabled,
+      apiRemark: editForm.apiRemark
+    }
     if (editForm.id) {
-      await updateCarrier(editForm.id, {
-        name: editForm.name,
-        transportMode: editForm.transportMode,
-        avgDeliveryDays: editForm.avgDeliveryDays,
-        firstWeightPrice: editForm.firstWeightPrice,
-        renewWeightPrice: editForm.renewWeightPrice,
-        praiseRate: editForm.praiseRate
-      })
+      await updateCarrier(editForm.id, payload)
     } else {
-      await createCarrier({
-        name: editForm.name,
-        transportMode: editForm.transportMode,
-        avgDeliveryDays: editForm.avgDeliveryDays,
-        firstWeightPrice: editForm.firstWeightPrice,
-        renewWeightPrice: editForm.renewWeightPrice,
-        praiseRate: editForm.praiseRate
-      })
+      await createCarrier(payload)
     }
     ElMessage.success('保存成功')
     dialogVisible.value = false
@@ -514,6 +580,9 @@ onMounted(() => {
 .page-desc { font-size: 13px; color: var(--text-400); margin: 6px 0 0; }
 .filter-card { margin-bottom: 16px; }
 .header-actions { display: flex; gap: 8px; }
+
+/* 表格里的占位文字（产品编码/电子面单未配置时） */
+.placeholder-text { font-size: 12px; color: var(--text-300); }
 
 /* ===== 区块卡片 ===== */
 .block-card { margin-bottom: 16px; }

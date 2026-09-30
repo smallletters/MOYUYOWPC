@@ -13,7 +13,11 @@ public class OrderPrintRecordRequest {
   @NotNull(message = "订单ID不能为空")
   private Long orderId;
 
-  /** 打印类型:PICK(拣货单)/SHIPPING(快递单)/INVOICE(发票),空则默认 PICK */
+  /**
+   * 打印类型（白名单见 AdminOrderOpsController.ALLOWED_PRINT_TYPES）：
+   *   PICK 拣货单 / PACK 打包单 / SHIP 发货单 / LABEL 配货标签 / SHIPPING_LABEL 快递面单。
+   * 空则默认 PICK（与历史行为一致）。
+   */
   private String printType;
 
   /** 模板名称,空则默认"默认模板" */

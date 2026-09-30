@@ -675,11 +675,21 @@ public class AdminLogisticsController {
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("id", c.getId());
         item.put("name", c.getName());
+        item.put("code", c.getCode());
         item.put("transportMode", c.getTransportMode());
         item.put("avgDeliveryDays", c.getAvgDeliveryDays());
         item.put("firstWeightPrice", c.getFirstWeightPrice());
         item.put("renewWeightPrice", c.getRenewWeightPrice());
         item.put("praiseRate", c.getPraiseRate());
+        // API 配置与产品编码（承运商级别的 channelId 用于覆盖 .env 全局默认）
+        item.put("apiUserId", c.getApiUserId());
+        // apiToken 仅在管理端展示用，不做脱敏处理（管理后台均为内部账号）
+        item.put("apiToken", c.getApiToken());
+        item.put("channelId", c.getChannelId());
+        item.put("apiBaseUrl", c.getApiBaseUrl());
+        item.put("labelApiEnabled", c.getLabelApiEnabled());
+        item.put("apiRemark", c.getApiRemark());
+        item.put("status", c.getStatus());
         list.add(item);
       }
       // 手动分页

@@ -116,7 +116,8 @@
                 <div class="timeline-dot" :class="log.status"></div>
                 <div class="timeline-content">
                   <div class="timeline-title">{{ log.action }}</div>
-                  <div class="timeline-meta">{{ log.operator }} · {{ log.time }}</div>
+                  <div class="timeline-meta">{{ log.operator || '-' }} · {{ log.time }}</div>
+                  <div v-if="log._detail" class="timeline-detail">{{ log._detail }}</div>
                 </div>
               </div>
             </div>
@@ -221,7 +222,8 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getOrderDetail, shipOrder, updateOrderAddress, updateOrderRemark, syncOrderToWoo } from '../api/admin'
+import { getOrderDetail, shipOrder, updateOrderAddress, updateOrderRemark, syncOrderToWoo,
+  getOrderTimeline } from '../api/admin'
 
 const router = useRouter()
 const route = useRoute()
@@ -435,10 +437,10 @@ async function fetchOrderDetail() {
       currentStep.value = progress.current
       progressSteps.value = progress.steps
       orderItems.value = data.items || []
-      // 使用辅助函数生成操作日志（优先使用后端返回的日志）
-      operationLogs.value = data.operationLogs && data.operationLogs.length > 0
-        ? data.operationLogs
-        : buildOperationLogs(data)
+      // 优先用后端 /orders/{id}/timeline 接口（聚合 5 张表），
+      //   接口失败 / 404 时降级到本地 buildOperationLogs。
+      // 传入 data 是为了降级时能用完整的原始订单数据构造时间轴。
+      await loadTimeline(data)
 
       priceSummary.goodsAmount = data.goodsAmount || '0.00'
       priceSummary.freight = data.freight || '0.00'
@@ -559,6 +561,74 @@ async function confirmNote() {
 onMounted(() => {
   fetchOrderDetail()
 })
+
+// 加载订单时间轴（聚合 5 张表事件），失败时降级到本地 buildOperationLogs
+// 参数 fallbackData：调用方传入完整订单 data，用于失败时本地构造完整时间轴。
+async function loadTimeline(fallbackData) {
+  // 注意：orderInfo.id 此时可能还没赋值（fetchOrderDetail 中
+  //   Object.assign(orderInfo, ...) 在 await loadTimeline 之后），
+  //   这里从路由参数取订单 ID，确保能拿到。
+  const id = route.params.id
+  // 降级源：fallbackData（传入的原始 data）> orderInfo > {}
+  const fallback = fallbackData || orderInfo || {}
+  if (!id) {
+    operationLogs.value = buildOperationLogs(fallback)
+    return
+  }
+  try {
+    const res = await getOrderTimeline(id)
+    // 后端返回结构：{ events: [...], total, limit, offset }
+    const data = res?.data || res || {}
+    const events = data.events || []
+    // 后端返回 events 元素 { time, type, title, detail }，映射为 operationLogs 的字段格式
+    operationLogs.value = events.map(e => ({
+      action: e.title || e.type || '-',
+      operator: '',
+      time: formatTimelineTime(e.time),
+      status: mapTimelineTypeToStatus(e.type),
+      // 原始字段（便于前端需要 detail 时取用）
+      _type: e.type,
+      _detail: e.detail
+    }))
+    // 后端无事件（如全新订单） → 用本地构造兜底
+    if (operationLogs.value.length === 0) {
+      operationLogs.value = buildOperationLogs(fallback)
+    }
+  } catch (e) {
+    console.warn('加载订单时间轴失败，降级到本地操作日志：', e?.message || e)
+    operationLogs.value = buildOperationLogs(fallback)
+  }
+}
+
+// 后端返回的 time 可能是以下两种格式：
+//   1) ISO 字符串："2026-09-29T10:30:00"（Jackson 默认 write-dates-as-timestamps=false）
+//   2) Timestamp.toString()："2026-09-29 10:30:00.0"（某些边缘配置）
+// 这里统一渲染成 "YYYY-MM-DD HH:mm:ss" 形式（去掉毫秒、T 分隔符）。
+function formatTimelineTime(t) {
+  if (!t) return ''
+  let str = String(t)
+  // 截掉末尾微秒（.0 或 .000）
+  str = str.replace(/\.0+(\s|$)/, '$1')
+  // ISO 8601 的 T 分隔符替换为空格（更符合中文用户阅读习惯）
+  str = str.replace('T', ' ')
+  return str
+}
+
+// 后端 event_type → 现有 timeline-dot 的状态类（done/current/...）
+//   - done（绿色）：所有"已发生的历史事件"，包括订单生命周期和运营动作。
+//   - current（蓝色）：仅保留给仍处于活动态的事件（INTERCEPT_ACTIVE 未解除时）。
+//   拦截点对调是因为时间轴所有事件都是过去时点，不应大量出现 current 标记。
+function mapTimelineTypeToStatus(type) {
+  if (!type) return ''
+  // 进行中的活动事件（拦截还未解除）—— 用蓝色强调
+  if (type === 'INTERCEPT_ACTIVE') {
+    return 'current'
+  }
+  // 其余全部算"已完成的历史动作"，绿色统一标识
+  // 包含：订单生命周期（CREATED/PAID/SHIPPED/RECEIVED）+ 物流（LOGISTICS_*）
+  //       + 改价（PRICE_MODIFIED）+ 打印（PRINT_RECORD）+ 拦截解除（INTERCEPT_RELEASED）
+  return 'done'
+}
 </script>
 
 <style scoped lang="css">
@@ -871,6 +941,15 @@ onMounted(() => {
   font-size: 12px;
   color: var(--text-400);
   margin-top: 2px;
+}
+.timeline-detail {
+  font-size: 12px;
+  color: var(--text-500);
+  margin-top: 4px;
+  padding: 4px 8px;
+  background: var(--background-100, #f5f7fa);
+  border-radius: 4px;
+  border-left: 2px solid var(--brand-300, #93c5fd);
 }
 
 /* 信息卡 */

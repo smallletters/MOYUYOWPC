@@ -3,6 +3,9 @@ package com.moyuyo.common.logistics;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.common.dto.logistics.YanWenApiException;
+import com.moyuyo.common.dto.logistics.YanWenCountryListResponse;
+import com.moyuyo.common.dto.logistics.YanWenCreateRequest;
+import com.moyuyo.common.dto.logistics.YanWenCreateResponse;
 import com.moyuyo.common.dto.logistics.YanWenLabelRequest;
 import com.moyuyo.common.dto.logistics.YanWenLabelResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -49,8 +52,14 @@ public class YanWenApiClient {
     /** 请求方法：打 印 面 单 */
     public static final String METHOD_GET_LABEL = "express.order.label.get";
 
+    /** 请求方法：创建运单（用于无运单号订单先建运单再取面单） */
+    public static final String METHOD_CREATE_ORDER = "express.order.create";
+
     /** 请求方法：查询运单详情（暂未在本类暴露，便于后续扩展） */
     public static final String METHOD_GET_ORDER = "express.order.get";
+
+    /** 请求方法：查询燕文通达国家列表（启动期预热缓存） */
+    public static final String METHOD_GET_COUNTRY_LIST = "common.country.getlist";
 
     private final String baseUrl;
     private final String userId;
@@ -79,6 +88,106 @@ public class YanWenApiClient {
                 .connectTimeout(Duration.ofSeconds(8))
                 .build();
         this.objectMapper = new ObjectMapper();
+    }
+
+    /**
+     * 调用 express.order.create 创建燕文运单（用于无运单号订单先建运单再取面单）。
+     * <p>
+     * 请求 data 是嵌套对象（receiverInfo/parcelInfo/productList/senderInfo），
+     * 用 Jackson 序列化整个请求对象为 JSON 字符串，避免手工拼装漏字段或转义错误。
+     * <p>
+     * 响应成功后会拿到 waybillNumber，写回订单表后再调 getLabel 取面单。
+     *
+     * @param request 创建运单请求（含 channelId / orderNumber / 收件人 / 商品 / 发件人 等）
+     * @return 燕文响应（成功时 data.waybillNumber 非空）
+     * @throws YanWenApiException 业务错误（code != 0）
+     */
+    public YanWenCreateResponse createOrder(YanWenCreateRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("请求不能为空");
+        }
+        if (request.getChannelId() == null || request.getChannelId().isBlank()) {
+            throw new IllegalArgumentException("channelId 不能为空（请在 mo_carrier.channelId 配置）");
+        }
+        if (request.getOrderNumber() == null || request.getOrderNumber().isBlank()) {
+            throw new IllegalArgumentException("orderNumber 不能为空");
+        }
+        // 序列化请求对象为 JSON 字符串
+        String dataJson;
+        try {
+            dataJson = objectMapper.writeValueAsString(request);
+        } catch (Exception e) {
+            throw new YanWenApiException("序列化 createOrder 请求失败：" + e.getMessage(), e);
+        }
+        String rawResponse = invoke(METHOD_CREATE_ORDER, dataJson);
+
+        YanWenCreateResponse resp = new YanWenCreateResponse();
+        try {
+            JsonNode root = objectMapper.readTree(rawResponse);
+            resp.setSuccess(root.path("success").asBoolean(false));
+            resp.setCode(root.path("code").asText(""));
+            resp.setMessage(root.path("message").asText(""));
+
+            boolean success = Boolean.TRUE.equals(resp.getSuccess());
+            if (!success) {
+                String err = "燕文创建运单失败：" + (resp.getMessage().isEmpty() ? resp.getCode() : resp.getMessage())
+                        + " (orderNumber=" + request.getOrderNumber() + ", code=" + resp.getCode() + ")";
+                log.warn(err);
+                throw new YanWenApiException(resp.getCode(), err);
+            }
+            JsonNode data = root.path("data");
+            YanWenCreateResponse.DataEntity dataObj = new YanWenCreateResponse.DataEntity();
+            dataObj.setWaybillNumber(data.path("waybillNumber").asText(""));
+            dataObj.setOrderNumber(data.path("orderNumber").asText(request.getOrderNumber()));
+            resp.setData(dataObj);
+            return resp;
+        } catch (YanWenApiException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new YanWenApiException("解析燕文 createOrder 响应失败：" + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 调用 common.country.getlist 拿燕文通达国家列表。
+     * <p>
+     * 响应是数组（data: [...]），每条 { id, code, nameCh, nameEn }。
+     * 用于启动期预热缓存 + 业务 CountryResolver 做精确中文名匹配。
+     * <p>
+     * 调用方应在 catch 里降级（不阻塞业务）：缓存为空时 CountryResolver 走 yml aliases 兜底。
+     */
+    public YanWenCountryListResponse getCountryList() {
+        String rawResponse = invoke(METHOD_GET_COUNTRY_LIST, "{}");
+        try {
+            JsonNode root = objectMapper.readTree(rawResponse);
+            YanWenCountryListResponse resp = new YanWenCountryListResponse();
+            resp.setSuccess(root.path("success").asBoolean(false));
+            resp.setCode(root.path("code").asText(""));
+            resp.setMessage(root.path("message").asText(""));
+            if (!Boolean.TRUE.equals(resp.getSuccess())) {
+                String err = "燕文 getCountryList 失败：" + (resp.getMessage().isEmpty() ? resp.getCode() : resp.getMessage());
+                log.warn(err);
+                throw new YanWenApiException(resp.getCode(), err);
+            }
+            JsonNode data = root.path("data");
+            if (data != null && data.isArray()) {
+                for (JsonNode node : data) {
+                    YanWenCountryListResponse.CountryItem item =
+                            new YanWenCountryListResponse.CountryItem();
+                    item.setId(node.path("id").asText(""));
+                    item.setCode(node.path("code").asText(""));
+                    item.setNameCh(node.path("nameCh").asText(""));
+                    item.setNameEn(node.path("nameEn").asText(""));
+                    resp.getData().add(item);
+                }
+            }
+            log.info("燕文 getCountryList 成功：{} 个国家", resp.getData().size());
+            return resp;
+        } catch (YanWenApiException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new YanWenApiException("解析燕文 getCountryList 响应失败：" + e.getMessage(), e);
+        }
     }
 
     /**
@@ -151,6 +260,11 @@ public class YanWenApiClient {
                 + "&timestamp=" + timestamp
                 + "&sign=" + sign
                 + "&version=" + DEFAULT_VERSION;
+
+        // P1 调试日志：仅在 DEBUG 开启时打印（部署后保持安静）
+        if (log.isDebugEnabled()) {
+            log.debug("燕文请求 url=\"{}\", baseUrl.length={}, method={}", url, baseUrl == null ? -1 : baseUrl.length(), method);
+        }
 
         HttpRequest httpReq = HttpRequest.newBuilder()
                 .uri(URI.create(url))

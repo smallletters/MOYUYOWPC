@@ -533,3 +533,72 @@ moyuyo:
       api-token: ${MOYUYO_YANWEN_API_TOKEN:}
       base-url: ${MOYUYO_YANWEN_BASE_URL:https://open.yw56.com.cn/api/order}
       # 测试环境使用 https://open-fat.yw56.com.cn/api/order（官方测试地址）
+      channel-id: ${MOYUYO_YANWEN_CHANNEL_ID:}
+      # ============================================================
+      # 国家码解析配置（receiverAddress → ISO 3166-1 alpha-2）
+      # 用于燕文 createOrder 的 receiverInfo.country 字段。
+      # 匹配优先级：按 aliases 列表顺序，命中即返回；都不匹配用 default-country。
+      # pattern 是普通字符串时按 contains 匹配；
+      # 以 ^ 开头 / 含正则元字符（.* .+ \d \s [ ( ）时按正则匹配（用于邮编格式兜底）。
+      # ============================================================
+      country-mapping:
+        # 兜底默认国家码（所有规则都不匹配时用），建议保持 US（跨境电商最高频）
+        default-country: US
+        # 别名匹配列表：按顺序匹配，命中即返回
+        aliases:
+          # ---- 中文别名 ----
+          - pattern: 中国
+            country: CN
+          - pattern: 美国
+            country: US
+          - pattern: 英国
+            country: GB
+          - pattern: 加拿大
+            country: CA
+          - pattern: 澳大利亚
+            country: AU
+          - pattern: 日本
+            country: JP
+          - pattern: 韩国
+            country: KR
+          - pattern: 法国
+            country: FR
+          - pattern: 德国
+            country: DE
+          - pattern: 墨西哥
+            country: MX
+          - pattern: 西班牙
+            country: ES
+          - pattern: 意大利
+            country: IT
+          # ---- 英文别名（拼音/英文都支持）----
+          - pattern: China
+            country: CN
+          - pattern: United States
+            country: US
+          - pattern: USA
+            country: US
+          - pattern: United Kingdom
+            country: GB
+          - pattern: UK
+            country: GB
+          - pattern: Canada
+            country: CA
+          - pattern: Australia
+            country: AU
+          # ---- 邮编格式兜底（无国家关键字时按邮编推断）----
+          # 美国邮编 5/9 位（如 10001 或 10001-1234）
+          - pattern: '^\d{5}(-\d{4})?$'
+            country: US
+          # 加拿大邮编 A1A 1A1（字母数字交替；运营有时漏写空格，故 \s? 容忍）
+          - pattern: '^[A-Z]\d[A-Z]\s?\d[A-Z]\d$'
+            country: CA
+          # 英国邮编 SW1A 1AA（开头 1-2 字母 + 数字 + 字母 + \s + 数字 + 2 字母）
+          - pattern: '^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$'
+            country: GB
+          # 中国邮编 6 位数字（100000-999999）
+          - pattern: '^\d{6}$'
+            country: CN
+          # 澳大利亚邮编 4 位数字
+          - pattern: '^\d{4}$'
+            country: AU

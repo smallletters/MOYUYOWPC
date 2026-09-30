@@ -46,6 +46,9 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+// 抑制 JDT null-analysis 对 MyBatis-Plus SFunction / Stream 方法引用的误报
+// （底层 SFunction 的 @Nonnull 类型参数 vs Function.apply 形参推断冲突，mvn 编译无影响）
+@SuppressWarnings("null")
 public class OrderServiceImpl implements OrderService {
 
   private final OrderMapper orderMapper;
@@ -200,7 +203,7 @@ public class OrderServiceImpl implements OrderService {
   @Transactional
   public OrderEntity createOrderFromRequest(Long userId, CreateOrderRequest request) {
     // 将请求中的商品信息转换为订单项实体（含 SKU/商品校验）
-    List<OrderItemEntity> items = new ArrayList();
+    List<OrderItemEntity> items = new ArrayList<>();
     for (OrderItemRequest itemReq : request.getItems()) {
       ProductSkuEntity sku = productSkuMapper.selectById(itemReq.getSkuId());
       ProductEntity product = productMapper.selectById(itemReq.getProductId());
@@ -306,7 +309,8 @@ public class OrderServiceImpl implements OrderService {
       payment.setOrderId(order.getId());
       payment.setPayChannel(payChannel);
       payment.setTransactionId(transactionId);
-      payment.setAmount(latest.getPayAmount());
+      // latest 在 line 283 之后已做 null-check；JDT 跨分支流分析弱，显式抛一次以消除 Potential null pointer access 警告
+      payment.setAmount(Objects.requireNonNull(latest).getPayAmount());
       payment.setStatus("SUCCESS");
       payment.setPaidAt(java.time.LocalDateTime.now());
       paymentMapper.insert(payment);
@@ -389,8 +393,11 @@ public class OrderServiceImpl implements OrderService {
    * 若订单的收件人/电话/详细地址三字段都为空，且存在 addressId，
    * 则回查 mo_address 并把快照字段补齐，便于详情页与列表展示。
    * 不会回写数据库（避免触发不必要的 update），仅在内存对象上赋值。
+   * <p>
+   * 实现为 public，供打印 / 燕文取号等入口直接复用（详见 {@link OrderService#fillAddressIfAbsent}）。
    */
-  private void fillAddressIfAbsent(OrderEntity order) {
+  @Override
+  public void fillAddressIfAbsent(OrderEntity order) {
     if (order == null) return;
     boolean hasSnapshot = isNotBlank(order.getReceiverName())
         || isNotBlank(order.getReceiverPhone())
