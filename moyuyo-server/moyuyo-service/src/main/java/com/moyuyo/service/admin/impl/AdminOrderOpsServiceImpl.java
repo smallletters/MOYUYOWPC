@@ -36,9 +36,11 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -344,6 +346,9 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
       item.put("remark", e.getRemark());
       // P0：实付金额（核对金额、对账必用）
       item.put("payAmount", e.getPayAmount());
+      // 修复：下单时间 —— 打印预览"下单时间"格子原本为空（listPrint 未返回 createTime）
+      // 与 /print/detail 接口对齐：返回 LocalDateTime，由 Jackson ISO-8601 字符串序列化
+      item.put("createTime", e.getCreateTime());
       // P1：物流信息（看是否有现成运单号，避免重复打单/重复发货）
       item.put("shippingCarrier", e.getShippingCarrier());
       item.put("trackingNumber", e.getTrackingNumber());
@@ -432,6 +437,9 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
       m.put("name", e.getName());
       m.put("paperSize", e.getPaperSize());
       m.put("description", e.getDescription());
+      // 模板 HTML 正文（占位符语法 {{order.xxx}} / {{items}} / {{time}} / {{paper}}）。
+      // 可能为 null（数据库新增列后老数据行还没回填），统一空字符串返回便于前端判断"是否自定义"。
+      m.put("contentTemplate", e.getContentTemplate() != null ? e.getContentTemplate() : "");
       m.put("isDefault", Boolean.TRUE.equals(e.getIsDefault()));
       m.put("sortOrder", e.getSortOrder());
       result.add(m);
@@ -441,7 +449,7 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
 
   @Override
   @Transactional
-  public void updatePrintTemplate(Long id, String name, String paperSize, String description,
+  public void updatePrintTemplate(Long id, String name, String paperSize, String description, String contentTemplate,
                                   Boolean isDefault, Integer sortOrder) {
     PrintTemplateEntity entity = printTemplateMapper.selectById(id);
     if (entity == null) {
@@ -450,6 +458,10 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
     if (name != null && !name.isBlank()) entity.setName(name.trim());
     if (paperSize != null && !paperSize.isBlank()) entity.setPaperSize(paperSize.trim());
     if (description != null) entity.setDescription(description);
+    // contentTemplate 允许传 null/空串（重置为代码默认模板），与 description 同策略（ALWAYS）。
+    // 由于 entity 字段标记了 updateStrategy=ALWAYS，传 null 也会写入；这里仍做非 null 判断，
+    // 是为了区分"前端没传该字段"和"前端主动清空"两种语义 —— 没传则不动库。
+    if (contentTemplate != null) entity.setContentTemplate(contentTemplate);
     if (sortOrder != null) entity.setSortOrder(sortOrder);
     if (Boolean.TRUE.equals(isDefault)) {
       // 设为默认时，先把其他模板的 isDefault 清掉（保证唯一默认）
@@ -503,12 +515,20 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
     detail.put("createTime", order.getCreateTime());
     // 订单商品明细（用于打印配货单 / 拣货单）
     List<OrderItemEntity> items = orderItemMapper.selectByOrderId(orderId);
+    // P2：兜底 —— LEFT JOIN 拿不到 skuCode 时（如 sku_id 为 NULL 的简单商品），
+    //   复用 fillMissingSkuCodeByProduct 按 productId 找默认 SKU 编码补上，
+    //   保证 /admin/order-print?orderId=... 单条打印路径也能展示商品SKU
+    if (items != null && !items.isEmpty()) {
+      fillMissingSkuCodeByProduct(java.util.Collections.singletonMap(orderId, items));
+    }
     List<Map<String, Object>> itemList = new ArrayList<>();
     if (items != null) {
       for (OrderItemEntity it : items) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("productName", it.getProductName());
         m.put("skuSpec", it.getSkuSpec());
+        // P2：补 SKU 编码 —— 与 listPrint 接口对齐（LEFT JOIN mo_product_sku 填充）
+        m.put("skuCode", it.getSkuCode());
         m.put("quantity", it.getQuantity());
         m.put("price", it.getPrice());
         itemList.add(m);
@@ -737,9 +757,14 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
     // 关键：OrderItemEntity.skuCode 是 @TableField(exist = false) 的非表字段，
     //   MyBatis-Plus 默认会忽略。这里改用 jdbcTemplate.queryForList + 手写映射，
     //   只取实际表字段，避免触发 MyBatis 对非表字段的"列不存在"异常。
-    String sql = "SELECT id, order_id, product_id, sku_id, product_name, sku_spec, " +
-                 "       main_image, price, quantity, subtotal, create_time " +
-                 "FROM mo_order_item WHERE order_id IN (" + inClause + ")";
+    // P2：LEFT JOIN mo_product_sku 取 sku_code —— 打印模板"商品SKU"列要用。
+    //   简单商品（sku_id 为 null 或 sku_id 指向已被删除的 SKU）由下面"productId 兜底"再补一次。
+    String sql = "SELECT oi.id, oi.order_id, oi.product_id, oi.sku_id, oi.product_name, oi.sku_spec, " +
+                 "       oi.main_image, oi.price, oi.quantity, oi.subtotal, oi.create_time, " +
+                 "       ps.sku_code AS sku_code " +
+                 "FROM mo_order_item oi " +
+                 "LEFT JOIN mo_product_sku ps ON ps.id = oi.sku_id " +
+                 "WHERE oi.order_id IN (" + inClause + ")";
     Map<Long, List<com.moyuyo.dao.entity.OrderItemEntity>> result = new HashMap<>();
     jdbcTemplate.query(sql, rs -> {
       long oid = rs.getLong("order_id");
@@ -758,11 +783,66 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
       it.setSubtotal(subtotal);
       java.sql.Timestamp ts = rs.getTimestamp("create_time");
       if (ts != null) it.setCreateTime(ts.toLocalDateTime());
-      // skuCode 是非表字段（@TableField(exist=false)），这里不强求赋值；
-      //   若业务需要商家编码，应改为从 mo_product_sku 表关联读取。
+      // skuCode 是非表字段（@TableField(exist=false)），由 LEFT JOIN 出来的 sku_code 填充；
+      //   LEFT JOIN 没匹配到（如 sku_id 为 null / sku_id 指向已被删除的 SKU）时为 null，
+      //   下面再用 productId 兜底回查一次"默认 SKU 的 sku_code"
+      it.setSkuCode(rs.getString("sku_code"));
       result.computeIfAbsent(oid, k -> new ArrayList<>()).add(it);
     }, orderIds.toArray());
+
+    // P2：兜底 —— 对 LEFT JOIN 拿不到 sku_code 的 item，按 productId 找该商品的默认 SKU。
+    //   简单商品 skuId 经常是 null；旧订单 skuId 可能指向已被删除的 SKU 行 —— 都需要兜底。
+    //   复用 AdminOrderController 已有的内存兜底逻辑（key2: productId -> 默认 skuCode）。
+    fillMissingSkuCodeByProduct(result);
     return result;
+  }
+
+  /**
+   * P2：兜底填充 skuCode —— 当 item.skuCode 仍为 null 时（LEFT JOIN 没匹配到），
+   *   按 productId 查该商品的首条 mo_product_sku.sku_code 作为默认 SKU 编码填上。
+   *   与 AdminOrderController.getDetail 里"productId 兜底"语义一致，避免打单显示"—"。
+   */
+  private void fillMissingSkuCodeByProduct(Map<Long, List<com.moyuyo.dao.entity.OrderItemEntity>> itemsByOrderId) {
+    if (itemsByOrderId == null || itemsByOrderId.isEmpty()) return;
+    // 收集所有需要兜底的 productId（去重）
+    Set<Long> productIdsNeedingFallback = new HashSet<>();
+    for (List<com.moyuyo.dao.entity.OrderItemEntity> list : itemsByOrderId.values()) {
+      for (com.moyuyo.dao.entity.OrderItemEntity it : list) {
+        if ((it.getSkuCode() == null || it.getSkuCode().isEmpty()) && it.getProductId() != null) {
+          productIdsNeedingFallback.add(it.getProductId());
+        }
+      }
+    }
+    if (productIdsNeedingFallback.isEmpty()) return;
+    // 一次 SQL：拉这些 productId 下的所有 SKU 行；简单商品只有 1 条，变体商品多条
+    StringBuilder inClause = new StringBuilder();
+    Object[] args = productIdsNeedingFallback.toArray();
+    for (int i = 0; i < args.length; i++) {
+      if (i > 0) inClause.append(", ");
+      inClause.append("?");
+    }
+    // GROUP BY product_id 取每个商品"最早入库的 SKU"作为默认 SKU，
+    //   简单商品（sku_id=null 的场景）也能拿到编码；变体商品即使全缺也有兜底。
+    //   一条 SQL 同时拿 productId 和 sku_code，免去两步查询。
+    String sql = "SELECT ps.product_id, ps.sku_code " +
+                 "FROM mo_product_sku ps " +
+                 "INNER JOIN (SELECT product_id, MIN(id) AS first_sku_id " +
+                 "             FROM mo_product_sku WHERE product_id IN (" + inClause + ") " +
+                 "             GROUP BY product_id) first " +
+                 "  ON first.first_sku_id = ps.id";
+    Map<Long, String> productIdToDefaultCode = new HashMap<>();
+    jdbcTemplate.query(sql, rs -> {
+      productIdToDefaultCode.put(rs.getLong("product_id"), rs.getString("sku_code"));
+    }, args);
+    // 兜底回填
+    for (List<com.moyuyo.dao.entity.OrderItemEntity> list : itemsByOrderId.values()) {
+      for (com.moyuyo.dao.entity.OrderItemEntity it : list) {
+        if ((it.getSkuCode() == null || it.getSkuCode().isEmpty()) && it.getProductId() != null) {
+          String code = productIdToDefaultCode.get(it.getProductId());
+          if (code != null) it.setSkuCode(code);
+        }
+      }
+    }
   }
 
   private Map<Long, Long> batchSumPrintCounts(List<Long> orderIds, String printType) {

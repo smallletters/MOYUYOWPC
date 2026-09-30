@@ -63,8 +63,8 @@ public interface AdminOrderOpsService {
   /** 查询所有打印模板（按 sortOrder 升序） */
   List<Map<String, Object>> listPrintTemplates();
 
-  /** 更新打印模板（按 ID 局部更新，name/paperSize/description/isDefault/sortOrder） */
-  void updatePrintTemplate(Long id, String name, String paperSize, String description,
+  /** 更新打印模板（按 ID 局部更新，name/paperSize/description/contentTemplate/isDefault/sortOrder） */
+  void updatePrintTemplate(Long id, String name, String paperSize, String description, String contentTemplate,
                            Boolean isDefault, Integer sortOrder);
 
   /** 设置默认模板（同一时刻仅一个模板为默认） */

@@ -4,19 +4,32 @@
 <mapper namespace="com.moyuyo.dao.mapper.OrderItemMapper">
 
   <select id="selectByOrderId" resultType="com.moyuyo.dao.entity.OrderItemEntity">
-    SELECT * FROM mo_order_item
-    WHERE order_id = #{orderId}
-    ORDER BY id ASC
+    <!-- P2：LEFT JOIN mo_product_sku 把 sku_code 带回 OrderItemEntity.skuCode
+         （该字段是 @TableField(exist=false) 的非表字段，MyBatis 按列名自动映射）。
+         显式列出 oi.* 字段，避免未来 mo_order_item 表新增 sku_code 同名列时
+         与 ps.sku_code AS sku_code 产生 Duplicate column name 冲突。 -->
+    SELECT oi.id, oi.order_id, oi.product_id, oi.sku_id, oi.product_name, oi.sku_spec,
+           oi.main_image, oi.price, oi.quantity, oi.subtotal, oi.create_time,
+           ps.sku_code AS sku_code
+    FROM mo_order_item oi
+    LEFT JOIN mo_product_sku ps ON ps.id = oi.sku_id
+    WHERE oi.order_id = #{orderId}
+    ORDER BY oi.id ASC
   </select>
 
   <!-- 批量按订单ID列表查询订单行，避免列表接口 N+1 -->
   <select id="selectByOrderIds" resultType="com.moyuyo.dao.entity.OrderItemEntity">
-    SELECT * FROM mo_order_item
-    WHERE order_id IN
+    <!-- P2：LEFT JOIN mo_product_sku 把 sku_code 带回 OrderItemEntity.skuCode -->
+    SELECT oi.id, oi.order_id, oi.product_id, oi.sku_id, oi.product_name, oi.sku_spec,
+           oi.main_image, oi.price, oi.quantity, oi.subtotal, oi.create_time,
+           ps.sku_code AS sku_code
+    FROM mo_order_item oi
+    LEFT JOIN mo_product_sku ps ON ps.id = oi.sku_id
+    WHERE oi.order_id IN
     <foreach collection="orderIds" item="orderId" open="(" separator="," close=")">
       #{orderId}
     </foreach>
-    ORDER BY order_id ASC, id ASC
+    ORDER BY oi.order_id ASC, oi.id ASC
   </select>
 
   <!-- 按 productId 聚合近 N 天内的销量与营收（用于智能选品） -->

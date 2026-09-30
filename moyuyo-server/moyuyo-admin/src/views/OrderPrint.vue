@@ -168,7 +168,7 @@
             <span>{{ row.receiverAddress || '—' }}</span>
           </template>
         </el-table-column>
-        <!-- P0：商品三件套 —— 用 popover 嵌套表格展示名称 / 规格 / 数量 -->
+        <!-- P0：商品三件套 —— 用 popover 嵌套表格展示 SKU / 名称 / 规格 / 数量 -->
         <el-table-column label="商品信息" min-width="200">
           <template #default="{ row }">
             <el-popover
@@ -186,19 +186,21 @@
                   <table class="product-popover-table">
                     <thead>
                       <tr>
-                        <th style="width:46%">商品名称</th>
-                        <th style="width:34%">规格</th>
-                        <th style="width:20%;text-align:right">数量</th>
+                        <th style="width:22%">商品SKU</th>
+                        <th style="width:34%">商品名称</th>
+                        <th style="width:26%">规格</th>
+                        <th style="width:18%;text-align:right">数量</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr v-for="(it, idx) in (row.items || [])" :key="idx">
+                        <td style="font-family:Consolas,monospace;">{{ it.skuCode || '—' }}</td>
                         <td>{{ it.productName || '—' }}</td>
                         <td>{{ it.skuSpec || '—' }}</td>
                         <td style="text-align:right">×{{ it.quantity }}</td>
                       </tr>
                       <tr v-if="!(row.items || []).length">
-                        <td colspan="3" style="text-align:center;color:var(--text-400);">暂无商品明细</td>
+                        <td colspan="4" style="text-align:center;color:var(--text-400);">暂无商品明细</td>
                       </tr>
                     </tbody>
                   </table>
@@ -264,31 +266,96 @@
       </div>
     </el-card>
 
-    <!-- 模板编辑对话框 -->
-    <el-dialog v-model="templateDialogVisible" title="编辑打印模板" width="460px" append-to-body>
+    <!-- 模板编辑对话框：宽度 760px 容纳"基本信息 + HTML 编辑器 + 占位符帮助"三段式布局 -->
+    <el-dialog v-model="templateDialogVisible" title="编辑打印模板" width="760px" append-to-body>
       <el-form :model="editingTemplate" label-width="80px">
-        <el-form-item label="模板名称">
-          <el-input v-model="editingTemplate.name" placeholder="请输入模板名称" />
-        </el-form-item>
-        <el-form-item label="纸张规格">
-          <el-select v-model="editingTemplate.paper" style="width: 200px">
-            <el-option label="A4 (210×297mm)" value="a4" />
-            <el-option label="A5 (148×210mm)" value="a5" />
-            <el-option label="热敏纸 80×80mm" value="thermal-80" />
-            <el-option label="热敏纸 100×150mm" value="thermal-100" />
-          </el-select>
-        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="模板名称">
+              <el-input v-model="editingTemplate.name" placeholder="请输入模板名称" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="纸张规格">
+              <el-select v-model="editingTemplate.paper" style="width: 100%">
+                <el-option label="A4 (210×297mm)" value="a4" />
+                <el-option label="A5 (148×210mm)" value="a5" />
+                <el-option label="热敏纸 80×80mm" value="thermal-80" />
+                <el-option label="热敏纸 100×150mm" value="thermal-100" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-form-item label="模板说明">
           <el-input v-model="editingTemplate.desc" type="textarea" :rows="2" placeholder="请输入模板说明" />
         </el-form-item>
+        <el-form-item label="模板内容">
+          <div class="tpl-editor-toolbar">
+            <span class="tpl-editor-tip">支持 HTML + 占位符，点击插入</span>
+            <el-dropdown trigger="click" @command="insertPlaceholder">
+              <el-button size="small" type="primary" plain>
+                <el-icon :size="12" style="margin-right:2px"><Plus /></el-icon>插入占位符
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-for="p in PLACEHOLDERS" :key="p.token" :command="p.token">
+                    <span class="ph-token">{{ p.token }}</span>
+                    <span class="ph-desc">{{ p.desc }}</span>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <el-button size="small" plain @click="resetToDefaultTemplate">
+              <el-icon :size="12" style="margin-right:2px"><RefreshRight /></el-icon>恢复默认模板
+            </el-button>
+            <el-button size="small" plain @click="showTemplatePreview = !showTemplatePreview">
+              <el-icon :size="12" style="margin-right:2px"><View /></el-icon>{{ showTemplatePreview ? '隐藏预览' : '预览效果' }}
+            </el-button>
+          </div>
+          <el-input
+            v-model="editingTemplate.contentTemplate"
+            type="textarea"
+            :rows="14"
+            placeholder="支持 HTML 模板，使用 {{order.orderNo}} / {{items}} 等占位符。留空则使用代码默认模板。"
+            class="tpl-editor-textarea"
+            spellcheck="false"
+          />
+        </el-form-item>
+        <!-- 占位符语法说明（折叠展示，避免太占空间） -->
+        <el-collapse class="tpl-editor-help">
+          <el-collapse-item title="占位符语法 & 使用说明" name="help">
+            <div class="help-section">
+              <p><strong>支持的占位符（点击上方"插入占位符"自动写入光标位置）：</strong></p>
+              <ul>
+                <li v-for="p in PLACEHOLDERS" :key="p.token">
+                  <code>{{ p.token }}</code> — {{ p.desc }}
+                </li>
+              </ul>
+              <p><strong>语法说明：</strong></p>
+              <ul>
+                <li>占位符区分大小写，必须严格使用双花括号 <code v-pre>{{ }}</code> 包裹。</li>
+                <li><code v-pre>{{items}}</code> 会在打印时整段替换为商品明细 HTML（自动生成表格）。</li>
+                <li>其他 <code v-pre>{{order.xxx}}</code> 占位符会做 HTML 转义后注入，杜绝 XSS。</li>
+                <li>建议用 <code>&lt;style&gt;</code> 块内联 CSS，避免依赖后台布局样式。</li>
+                <li>支持 <code>@media print</code> 媒体查询，打印时自动生效。</li>
+              </ul>
+            </div>
+          </el-collapse-item>
+        </el-collapse>
         <el-alert
           type="warning"
           :closable="false"
           show-icon
           title="改名将重置打印次数累加"
           description="模板名称变更后,旧记录将以旧名为唯一键、新记录以新名为唯一键,不会合并 print_count。"
+          style="margin-top: 8px;"
         />
       </el-form>
+      <!-- 预览面板（仅在用户点击"预览效果"时显示） -->
+      <div v-if="showTemplatePreview" class="tpl-preview-wrapper">
+        <div class="tpl-preview-title">预览效果（基于示例订单数据）</div>
+        <div class="tpl-preview-frame" v-html="renderedPreviewHtml"></div>
+      </div>
       <template #footer>
         <el-button @click="templateDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleSaveTemplate">保存</el-button>
@@ -300,6 +367,11 @@
       <!-- 通用模板：拣货单/打包单/发货单/配货标签 -->
       <div class="print-area" v-if="printingRow && !isShippingLabelMode">
         <div class="print-sheet" :style="printSheetStyle">
+          <!-- P1：自定义模板优先 —— 当前模板若在数据库存了 contentTemplate，
+               整页用 v-html 渲染运营自定义的 HTML（已做占位符替换 + XSS 转义）。
+               否则走下面的"内置默认模板"块（向后兼容历史运营体验）。 -->
+          <div v-if="currentTemplate && currentTemplate.contentTemplate" class="print-custom" v-html="renderedPrintHtml"></div>
+          <template v-else>
           <div class="print-header">
             <h2>{{ currentTemplate ? currentTemplate.name : '打印单' }}</h2>
             <span class="print-time">打印时间：{{ printTime }}</span>
@@ -335,13 +407,15 @@
                   <table class="print-items" v-if="printingRow.items && printingRow.items.length">
                     <thead>
                       <tr>
-                        <th style="width:50%">商品名称</th>
-                        <th style="width:25%">规格</th>
-                        <th style="width:25%;text-align:right">数量</th>
+                        <th style="width:22%">商品SKU</th>
+                        <th style="width:38%">商品名称</th>
+                        <th style="width:22%">规格</th>
+                        <th style="width:18%;text-align:right">数量</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr v-for="(it, idx) in printingRow.items" :key="idx">
+                        <td style="font-family:Consolas,monospace;">{{ it.skuCode || '—' }}</td>
                         <td>{{ it.productName || '—' }}</td>
                         <td>{{ it.skuSpec || '—' }}</td>
                         <td style="text-align:right">×{{ it.quantity }}</td>
@@ -365,6 +439,7 @@
             </tbody>
           </table>
           <div class="print-footer">MOYUYO 订单打印系统</div>
+          </template>
         </div>
       </div>
       <!-- 快递面单模板：渲染燕文等承运商返回的 PDF/PNG base64。
@@ -488,7 +563,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { List, Box, DocumentChecked, PriceTag, Check, Edit, Star, Printer, Promotion } from '@element-plus/icons-vue'
+import { List, Box, DocumentChecked, PriceTag, Check, Edit, Star, Printer, Promotion, Plus, RefreshRight, View } from '@element-plus/icons-vue'
 import {
   getPrintList, recordPrint, getPrintDetail, fetchShippingLabel, getYanwenStatus, shipOrder,
   getPrintTemplates, updatePrintTemplate, setDefaultPrintTemplate,
@@ -549,6 +624,9 @@ async function loadPrintTemplates() {
         type: meta.type || r.code,
         paper: r.paperSize || meta.paper || 'A4',
         desc: r.description || '',
+        // 模板 HTML 正文：null 当空字符串处理；空字符串表示"使用代码默认模板"。
+        // 后端 Service.listPrintTemplates 已统一空字符串返回，前端不再需要兼容 null。
+        contentTemplate: r.contentTemplate || '',
         isDefault: !!r.isDefault,
         sortOrder: r.sortOrder || 0,
         gradient: meta.gradient || 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
@@ -618,21 +696,179 @@ function selectTemplate(tpl) {
 // 模板编辑对话框状态
 const templateDialogVisible = ref(false)
 const editingTemplate = ref({})
+// 控制"预览效果"面板显示
+const showTemplatePreview = ref(false)
+
+// P0：打印模板占位符字典 —— 单一真相源，编辑对话框的"插入占位符"下拉 + 帮助文档共用。
+// 与渲染时 renderTemplate() 的白名单严格对齐（添加新占位符需同步两边）。
+// 字段说明：
+//   - token: 占位符字面量（双花括号包裹），与 HTML 模板里出现的一致
+//   - desc:  中文说明，运营在 UI 上能看懂
+const PLACEHOLDERS = [
+  { token: '{{order.orderNo}}',         desc: '订单编号' },
+  { token: '{{order.createTime}}',      desc: '下单时间' },
+  { token: '{{order.receiverName}}',    desc: '收件人姓名' },
+  { token: '{{order.receiverPhone}}',   desc: '收件人电话' },
+  { token: '{{order.receiverAddress}}', desc: '完整收货地址' },
+  { token: '{{order.payAmount}}',       desc: '实付金额（含币种）' },
+  { token: '{{order.freight}}',         desc: '运费' },
+  { token: '{{order.remark}}',          desc: '买家备注' },
+  { token: '{{order.statusLabel}}',     desc: '订单状态（中文）' },
+  { token: '{{order.shippingCarrier}}', desc: '承运商名称' },
+  { token: '{{order.trackingNumber}}',  desc: '运单号' },
+  { token: '{{template.name}}',         desc: '当前模板名称' },
+  { token: '{{time}}',                  desc: '打印时间（YYYY-MM-DD HH:mm:ss）' },
+  { token: '{{paper}}',                 desc: '纸张规格（中文）' },
+  { token: '{{items}}',                 desc: '商品明细表格（整段 HTML）' }
+]
 
 function handleEditTemplate(tpl) {
   editingTemplate.value = { ...tpl }
+  // 打开对话框时关闭预览面板，避免上次预览结果残留
+  showTemplatePreview.value = false
   templateDialogVisible.value = true
+}
+
+// 在编辑器的 textarea 当前光标位置插入占位符。
+// 未取到光标位置时（textarea 未聚焦）直接追加到末尾。
+function insertPlaceholder(token) {
+  const area = document.querySelector('.tpl-editor-textarea textarea')
+  const current = editingTemplate.value.contentTemplate || ''
+  if (!area) {
+    editingTemplate.value.contentTemplate = current + token
+    return
+  }
+  const start = area.selectionStart || 0
+  const end = area.selectionEnd || 0
+  // 在光标处插入，并保留原有选区文本
+  const next = current.slice(0, start) + token + current.slice(end)
+  editingTemplate.value.contentTemplate = next
+  // 让 el-input 的 v-model 感知到变化后，再把光标定位到插入文本之后
+  nextTick(() => {
+    try {
+      area.focus()
+      const pos = start + token.length
+      area.setSelectionRange(pos, pos)
+    } catch (_) { /* 忽略聚焦异常 */ }
+  })
+}
+
+// "恢复默认模板"按钮：用当前模板 code 对应的内置兜底 HTML 重置 contentTemplate。
+// 这里直接把新版（优化样式）的默认 HTML 写一份在脚本里，让运营在不依赖后端的情况下也能"重置"。
+// 反向操作（从 SQL 拉默认）需要新增 /print/templates/{code}/default 接口，超出本期需求。
+function resetToDefaultTemplate() {
+  const code = editingTemplate.value.code
+  const html = DEFAULT_TEMPLATE_HTML[code]
+  if (!html) {
+    ElMessage.warning('该模板类型无内置默认 HTML（如快递面单走燕文 PDF）')
+    return
+  }
+  editingTemplate.value.contentTemplate = html
+  ElMessage.success('已恢复「' + (editingTemplate.value.name || code) + '」默认模板')
+}
+
+// ==================== 占位符渲染 ====================
+// 渲染单个占位符的"示例值"（用于编辑对话框里的实时预览）。
+// 与渲染时 renderTemplate() 共用同一套转义函数，保证预览与最终打印一致。
+const renderedPreviewHtml = computed(() => {
+  const tpl = editingTemplate.value
+  if (!tpl || !tpl.contentTemplate) {
+    return '<div class="tpl-preview-empty">（空模板：将使用代码内置默认模板）</div>'
+  }
+  // 用一份示例订单做"伪渲染"——运营编辑时能马上看到效果
+  const sampleOrder = {
+    orderNo: 'TEST_US_YANWEN_20260930001',
+    createTime: '2026-09-30 14:23:45',
+    receiverName: '张三',
+    receiverPhone: '+1 415-555-0100',
+    receiverAddress: '123 Main St, San Francisco, CA 94105, US',
+    payAmount: '¥128.00',
+    freight: '¥15.00',
+    remark: '请轻拿轻放，谢谢',
+    statusLabel: '待发货',
+    shippingCarrier: '燕文物流',
+    trackingNumber: 'YW2026093000123'
+  }
+  const sampleItemsHtml = '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+    '<thead><tr style="background:#f0f0f0;"><th style="border:1px solid #999;padding:4px 6px;">商品SKU</th>' +
+    '<th style="border:1px solid #999;padding:4px 6px;">商品名称</th>' +
+    '<th style="border:1px solid #999;padding:4px 6px;">规格</th>' +
+    '<th style="border:1px solid #999;padding:4px 6px;">数量</th></tr></thead>' +
+    '<tbody><tr><td style="border:1px solid #999;padding:4px 6px;font-family:Consolas,monospace;">SKU-A001</td>' +
+    '<td style="border:1px solid #999;padding:4px 6px;">示例商品 A</td>' +
+    '<td style="border:1px solid #999;padding:4px 6px;">默认规格</td>' +
+    '<td style="border:1px solid #999;padding:4px 6px;">×2</td></tr>' +
+    '<tr><td style="border:1px solid #999;padding:4px 6px;font-family:Consolas,monospace;">SKU-B002</td>' +
+    '<td style="border:1px solid #999;padding:4px 6px;">示例商品 B</td>' +
+    '<td style="border:1px solid #999;padding:4px 6px;">大号</td>' +
+    '<td style="border:1px solid #999;padding:4px 6px;">×1</td></tr></tbody></table>'
+  return renderTemplate(tpl.contentTemplate, {
+    order: sampleOrder,
+    template: { name: tpl.name || tpl.code || '拣货单' },
+    time: '2026-09-30 14:23:45',
+    paper: paperSizeLabel.value || 'A4 (210×297mm)',
+    items: sampleItemsHtml
+  })
+})
+
+/**
+ * 渲染自定义模板：把所有 {{token}} 替换成实际值。
+ * 设计要点：
+ *   1) 简单占位符（order.xxx / template.name / time / paper）：HTML 转义后注入，防 XSS。
+ *   2) {{items}}：整段替换为商品明细 HTML（不再二次转义，因为明细 HTML 由我们生成，可信）。
+ *   3) 白名单之外的占位符：原样保留，让运营看到"未替换"提示，避免静默失败。
+ *   4) 同步支持 {{ token }}（带空格）—— \s* 容忍运营手抖多打空格。
+ */
+function renderTemplate(html, ctx) {
+  if (!html) return ''
+  let out = html
+  // items 整段替换：单独的 regex 处理，避免被字段替换提前匹配到
+  out = out.replace(/\{\{\s*items\s*\}\}/g, ctx.items || '')
+  // 字段占位符：白名单 key → 值
+  // 注意：ctx.order.* / ctx.template.* 是嵌套对象，这里手动展开，避免 eval
+  const lookup = (key) => {
+    if (key === 'time') return ctx.time || ''
+    if (key === 'paper') return ctx.paper || ''
+    if (key.startsWith('order.')) {
+      const v = ctx.order ? ctx.order[key.slice(6)] : null
+      return v == null ? '' : String(v)
+    }
+    if (key.startsWith('template.')) {
+      const v = ctx.template ? ctx.template[key.slice(9)] : null
+      return v == null ? '' : String(v)
+    }
+    return null // 不识别的 key
+  }
+  out = out.replace(/\{\{\s*([a-zA-Z][\w.]*)\s*\}\}/g, (m, key) => {
+    const val = lookup(key)
+    if (val === null) return m // 未识别的占位符原样返回，便于运营排查
+    return escapeHtml(val)
+  })
+  return out
+}
+
+// HTML 实体转义（防 XSS）：将 & < > " ' 转义。
+// 用于把用户数据插入到自定义 HTML 模板里，避免恶意订单数据触发脚本执行。
+function escapeHtml(v) {
+  return String(v)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 async function handleSaveTemplate() {
   const id = editingTemplate.value.id
   if (!id) return
   try {
-    // 调用后端持久化：name/paperSize/description/isDefault/sortOrder
+    // 调用后端持久化：name/paperSize/description/contentTemplate/isDefault/sortOrder
+    // contentTemplate 始终带上（即使为空串），便于运营主动"清空重置"操作
     await updatePrintTemplate(id, {
       name: editingTemplate.value.name,
       paperSize: editingTemplate.value.paper,
-      description: editingTemplate.value.desc
+      description: editingTemplate.value.desc,
+      contentTemplate: editingTemplate.value.contentTemplate || ''
     })
     // 同步更新本地缓存，避免用户立即重新拉取
     const target = printTemplates.value.find(t => t.id === id)
@@ -640,6 +876,7 @@ async function handleSaveTemplate() {
       target.name = editingTemplate.value.name
       target.paper = editingTemplate.value.paper
       target.desc = editingTemplate.value.desc
+      target.contentTemplate = editingTemplate.value.contentTemplate || ''
     }
     templateDialogVisible.value = false
     ElMessage.success('模板已保存到数据库')
@@ -814,6 +1051,48 @@ function handleReset() { filters.keyword = ''; filters.printStatus = ''; handleS
 const printingRow = ref(null)
 const printTime = ref('')
 
+// P1：自定义模板的"打印时"渲染 —— 把 printingRow + 模板元数据 + 时间 + 纸张塞进
+// 运营自定义的 HTML，做占位符替换。
+// 与 renderedPreviewHtml 走同一套 renderTemplate()，保证预览和打印一致
+const renderedPrintHtml = computed(() => {
+  const tpl = currentTemplate.value
+  if (!tpl || !tpl.contentTemplate || !printingRow.value) return ''
+  return renderTemplate(tpl.contentTemplate, {
+    order: printingRow.value,
+    template: { name: tpl.name || tpl.code },
+    time: printTime.value || formatPrintTime(),
+    paper: paperSizeLabel.value || 'A4 (210×297mm)',
+    items: buildItemsHtml(printingRow.value)
+  })
+})
+
+// 把订单商品明细序列化为 HTML 表格，注入到 {{items}} 占位符。
+// 与打印内容区原"商品明细"格保持视觉一致：4 列（SKU/名称/规格/数量），细边框。
+// 商品SKU：取自后端 OrderItemEntity.skuCode（LEFT JOIN mo_product_sku.sku_code 填充）。
+function buildItemsHtml(row) {
+  if (!row || !row.items || !row.items.length) {
+    const fallback = (row && row.productInfo) ? String(row.productInfo) : '—'
+    return '<div class="items-empty">' + escapeHtml(fallback) + '</div>'
+  }
+  let html = '<table class="items-table" style="width:100%;border-collapse:collapse;font-size:11px;">'
+  html += '<thead><tr style="background:#f0f0f0;">'
+  html += '<th style="border:1px solid #999;padding:4px 6px;text-align:left;width:22%;">商品SKU</th>'
+  html += '<th style="border:1px solid #999;padding:4px 6px;text-align:left;width:38%;">商品名称</th>'
+  html += '<th style="border:1px solid #999;padding:4px 6px;text-align:left;width:22%;">规格</th>'
+  html += '<th style="border:1px solid #999;padding:4px 6px;text-align:right;width:18%;">数量</th>'
+  html += '</tr></thead><tbody>'
+  for (const it of row.items) {
+    html += '<tr>'
+    html += '<td style="border:1px solid #999;padding:4px 6px;font-family:Consolas,monospace;">' + escapeHtml(it.skuCode || '—') + '</td>'
+    html += '<td style="border:1px solid #999;padding:4px 6px;">' + escapeHtml(it.productName || '—') + '</td>'
+    html += '<td style="border:1px solid #999;padding:4px 6px;">' + escapeHtml(it.skuSpec || '—') + '</td>'
+    html += '<td style="border:1px solid #999;padding:4px 6px;text-align:right;">×' + escapeHtml(String(it.quantity || 0)) + '</td>'
+    html += '</tr>'
+  }
+  html += '</tbody></table>'
+  return html
+}
+
 // 按纸张规格计算打印内容区尺寸（4 档：A4 / A5 / 热敏 80x80 / 热敏 100x150）。
 // 这里决定的是"打印内容框"的物理大小，CSS 里也要配套改 @page 与边距。
 const printSheetStyle = computed(() => {
@@ -840,6 +1119,228 @@ const paperSizeLabel = computed(() => {
     default: return 'A4 (210×297mm)'
   }
 })
+
+// 内置默认模板 HTML（新版：参考电商后台最佳实践重设计样式）
+// SHIPPING_LABEL 走燕文 PDF 渲染，不提供 HTML 默认值。
+// 设计参考：
+//   - Attribute 拣货单最佳实践（https://www.getattribute.com/blog/packing-slip-best-practices）
+//   - 拼多多 商家发货 SOP（拣货单带复选框 + 行号 + SKU + 加急标签）
+//   - Shopify Order Printer（HTML + 占位符语法）
+const DEFAULT_TEMPLATE_HTML = {
+  // ========== 拣货单 A4：横向分区，拣货员视角，重点是商品核对 + 签字栏 ==========
+  PICK: '<div class="moyu-tpl tpl-pick">' +
+    '<div class="tpl-brand">' +
+      '<div class="tpl-brand-name">MOYUYO 海外仓</div>' +
+      '<div class="tpl-brand-contact">拣货单 · 客服：support@moyuyo.com</div>' +
+    '</div>' +
+    '<div class="tpl-order-id">' +
+      '<div class="tpl-order-no"><span class="lbl">订单号</span><span class="val">{{order.orderNo}}</span></div>' +
+      '<div class="tpl-order-meta">' +
+        '<div><span class="lbl">下单时间</span><span class="val">{{order.createTime}}</span></div>' +
+        '<div><span class="lbl">打印时间</span><span class="val">{{time}}</span></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="tpl-address-row">' +
+      '<div class="tpl-addr-block to">' +
+        '<div class="tpl-addr-label">收件人</div>' +
+        '<div class="tpl-addr-name">{{order.receiverName}}</div>' +
+        '<div class="tpl-addr-phone">{{order.receiverPhone}}</div>' +
+        '<div class="tpl-addr-text">{{order.receiverAddress}}</div>' +
+      '</div>' +
+    '</div>' +
+    '<h3 class="tpl-section-title">拣货明细</h3>' +
+    '<div class="items">{{items}}</div>' +
+    '<div class="tpl-footer">' +
+      '<div class="tpl-sign">拣货员：__________</div>' +
+      '<div class="tpl-sign">复核：__________</div>' +
+      '<div class="tpl-paper">{{paper}}</div>' +
+    '</div>' +
+  '</div>' +
+  '<style>' +
+    '.tpl-pick{font-family:"Helvetica Neue","Microsoft YaHei",sans-serif;color:#000;font-size:11px;line-height:1.4;}' +
+    '.tpl-pick .tpl-brand{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:10px;}' +
+    '.tpl-pick .tpl-brand-name{font-size:14px;font-weight:700;letter-spacing:.5px;}' +
+    '.tpl-pick .tpl-brand-contact{font-size:10px;color:#444;}' +
+    '.tpl-pick .tpl-order-id{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #000;padding-bottom:8px;margin-bottom:12px;}' +
+    '.tpl-pick .tpl-order-no .lbl{display:block;font-size:10px;color:#666;letter-spacing:1px;}' +
+    '.tpl-pick .tpl-order-no .val{display:block;font-size:20px;font-weight:700;font-family:"Courier New",monospace;margin-top:2px;}' +
+    '.tpl-pick .tpl-order-meta{display:flex;gap:18px;}' +
+    '.tpl-pick .tpl-order-meta>div .lbl{display:block;font-size:9px;color:#666;}' +
+    '.tpl-pick .tpl-order-meta>div .val{font-family:"Courier New",monospace;font-size:11px;}' +
+    '.tpl-pick .tpl-address-row{display:flex;gap:10px;margin-bottom:10px;}' +
+    '.tpl-pick .tpl-addr-block{flex:1;border:1px solid #000;padding:8px 10px;}' +
+    '.tpl-pick .tpl-addr-label{font-size:9px;color:#666;letter-spacing:1px;border-bottom:1px solid #ddd;padding-bottom:3px;margin-bottom:4px;}' +
+    '.tpl-pick .tpl-addr-name{font-size:14px;font-weight:700;}' +
+    '.tpl-pick .tpl-addr-phone{font-size:11px;font-family:"Courier New",monospace;color:#333;margin-top:1px;}' +
+    '.tpl-pick .tpl-addr-text{font-size:11px;margin-top:3px;line-height:1.4;}' +
+    '.tpl-pick .tpl-section-title{font-size:13px;font-weight:700;margin:10px 0 6px;padding-bottom:3px;border-bottom:1px solid #000;}' +
+    '.tpl-pick table{width:100%;border-collapse:collapse;}' +
+    '.tpl-pick table th{background:#000;color:#fff;font-size:10px;text-align:left;padding:5px 8px;letter-spacing:.5px;}' +
+    '.tpl-pick table td{border-bottom:1px solid #999;padding:6px 8px;font-size:11px;vertical-align:top;}' +
+    '.tpl-pick table tbody tr:nth-child(even) td{background:#f7f7f7;}' +
+    '.tpl-pick .tpl-footer{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:8px;border-top:1px solid #000;font-size:10px;color:#444;}' +
+    '.tpl-pick .tpl-sign{flex:1;}' +
+  '</style>',
+
+  // ========== 打包单 A5：纵向紧凑，打包员视角，重点是核对 + 签字 ==========
+  PACK: '<div class="moyu-tpl tpl-pack">' +
+    '<div class="tpl-header">' +
+      '<div class="tpl-title">打包单</div>' +
+      '<div class="tpl-subtitle">Packing Slip · MOYUYO</div>' +
+    '</div>' +
+    '<div class="tpl-meta-row">' +
+      '<div><span class="lbl">订单号</span><strong>{{order.orderNo}}</strong></div>' +
+      '<div><span class="lbl">打印</span>{{time}}</div>' +
+    '</div>' +
+    '<div class="tpl-addr-block">' +
+      '<div class="tpl-addr-label">TO</div>' +
+      '<div class="tpl-addr-name">{{order.receiverName}}</div>' +
+      '<div class="tpl-addr-phone">{{order.receiverPhone}}</div>' +
+      '<div class="tpl-addr-text">{{order.receiverAddress}}</div>' +
+    '</div>' +
+    '<h3 class="tpl-section-title">商品清单（核对无误后打勾）</h3>' +
+    '<div class="items">{{items}}</div>' +
+    '<div class="tpl-footer">' +
+      '<div class="tpl-sign-row"><span>打包员</span><span class="line"></span></div>' +
+      '<div class="tpl-sign-row"><span>复核</span><span class="line"></span></div>' +
+    '</div>' +
+  '</div>' +
+  '<style>' +
+    '.tpl-pack{font-family:"Helvetica Neue","Microsoft YaHei",sans-serif;color:#000;font-size:11px;line-height:1.4;}' +
+    '.tpl-pack .tpl-header{text-align:center;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:10px;}' +
+    '.tpl-pack .tpl-title{font-size:18px;font-weight:700;letter-spacing:2px;}' +
+    '.tpl-pack .tpl-subtitle{font-size:9px;color:#666;letter-spacing:1px;margin-top:2px;}' +
+    '.tpl-pack .tpl-meta-row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:10px;}' +
+    '.tpl-pack .tpl-meta-row .lbl{display:inline-block;width:42px;color:#666;font-size:10px;}' +
+    '.tpl-pack .tpl-addr-block{border:1px solid #000;padding:8px 10px;margin-bottom:8px;}' +
+    '.tpl-pack .tpl-addr-label{font-size:9px;color:#666;letter-spacing:2px;margin-bottom:3px;}' +
+    '.tpl-pack .tpl-addr-name{font-size:15px;font-weight:700;}' +
+    '.tpl-pack .tpl-addr-phone{font-size:11px;font-family:"Courier New",monospace;margin-top:1px;}' +
+    '.tpl-pack .tpl-addr-text{font-size:11px;margin-top:3px;line-height:1.4;}' +
+    '.tpl-pack .tpl-section-title{font-size:12px;font-weight:700;margin:8px 0 4px;}' +
+    '.tpl-pack table{width:100%;border-collapse:collapse;}' +
+    '.tpl-pack table th{background:#000;color:#fff;font-size:10px;text-align:left;padding:4px 6px;}' +
+    '.tpl-pack table td{border-bottom:1px solid #999;padding:5px 6px;font-size:11px;}' +
+    '.tpl-pack .tpl-footer{margin-top:12px;border-top:1px dashed #999;padding-top:8px;}' +
+    '.tpl-pack .tpl-sign-row{display:flex;align-items:center;gap:8px;font-size:11px;margin-top:6px;}' +
+    '.tpl-pack .tpl-sign-row .lbl{width:42px;}' +
+    '.tpl-pack .tpl-sign-row .line{flex:1;border-bottom:1px solid #000;height:14px;}' +
+  '</style>',
+
+  // ========== 发货单 A4：发件方 + 收件方 双块对称，重点是金额 + 物流条 ==========
+  SHIP: '<div class="moyu-tpl tpl-ship">' +
+    '<div class="tpl-header">' +
+      '<div class="tpl-brand-block">' +
+        '<div class="tpl-brand-name">MOYUYO</div>' +
+        '<div class="tpl-brand-tag">海外仓直发 · 全球速运</div>' +
+      '</div>' +
+      '<div class="tpl-doc-title">' +
+        '<div class="tpl-title">发货单</div>' +
+        '<div class="tpl-subtitle">SHIPPING ORDER</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="tpl-status-bar">' +
+      '<span>订单状态：<strong>{{order.statusLabel}}</strong></span>' +
+      '<span>实付金额：<strong>{{order.payAmount}}</strong></span>' +
+    '</div>' +
+    '<div class="tpl-address-row">' +
+      '<div class="tpl-addr-block from">' +
+        '<div class="tpl-addr-label">FROM · 发件人</div>' +
+        '<div class="tpl-addr-name">MOYUYO 海外仓</div>' +
+        '<div class="tpl-addr-text">中国 · 跨境物流集散中心</div>' +
+        '<div class="tpl-addr-text" style="margin-top:3px;">客服：support@moyuyo.com</div>' +
+      '</div>' +
+      '<div class="tpl-addr-arrow">▶</div>' +
+      '<div class="tpl-addr-block to">' +
+        '<div class="tpl-addr-label">TO · 收件人</div>' +
+        '<div class="tpl-addr-name">{{order.receiverName}}</div>' +
+        '<div class="tpl-addr-phone">{{order.receiverPhone}}</div>' +
+        '<div class="tpl-addr-text">{{order.receiverAddress}}</div>' +
+      '</div>' +
+    '</div>' +
+    '<h3 class="tpl-section-title">商品明细</h3>' +
+    '<div class="items">{{items}}</div>' +
+    '<div class="tpl-footer">' +
+      '<div class="tpl-sign">发货人：__________</div>' +
+      '<div class="tpl-sign">承运签字：__________</div>' +
+      '<div class="tpl-sign">客户签收：__________</div>' +
+    '</div>' +
+    '<div class="tpl-bottom-line">{{template.name}} · {{paper}} · 打印：{{time}}</div>' +
+  '</div>' +
+  '<style>' +
+    '.tpl-ship{font-family:"Helvetica Neue","Microsoft YaHei",sans-serif;color:#000;font-size:11px;line-height:1.4;}' +
+    '.tpl-ship .tpl-header{display:flex;justify-content:space-between;align-items:center;border-bottom:3px double #000;padding-bottom:8px;margin-bottom:10px;}' +
+    '.tpl-ship .tpl-brand-name{font-size:20px;font-weight:900;letter-spacing:3px;}' +
+    '.tpl-ship .tpl-brand-tag{font-size:9px;color:#666;letter-spacing:1px;margin-top:2px;}' +
+    '.tpl-ship .tpl-doc-title{text-align:right;}' +
+    '.tpl-ship .tpl-title{font-size:24px;font-weight:900;letter-spacing:4px;}' +
+    '.tpl-ship .tpl-subtitle{font-size:9px;color:#666;letter-spacing:2px;margin-top:2px;}' +
+    '.tpl-ship .tpl-status-bar{display:flex;gap:24px;background:#fff7ed;border:1px solid #fed7aa;padding:6px 12px;margin-bottom:10px;font-size:11px;border-radius:2px;}' +
+    '.tpl-ship .tpl-status-bar strong{color:#c2410c;font-size:13px;}' +
+    '.tpl-ship .tpl-address-row{display:flex;align-items:stretch;gap:8px;margin-bottom:10px;}' +
+    '.tpl-ship .tpl-addr-block{flex:1;border:1px solid #000;padding:8px 10px;}' +
+    '.tpl-ship .tpl-addr-block.from{background:#f7f7f7;}' +
+    '.tpl-ship .tpl-addr-block.to{background:#fff;border-width:2px;}' +
+    '.tpl-ship .tpl-addr-arrow{display:flex;align-items:center;font-size:18px;color:#999;font-weight:700;}' +
+    '.tpl-ship .tpl-addr-label{font-size:9px;color:#666;letter-spacing:2px;margin-bottom:3px;border-bottom:1px solid #ddd;padding-bottom:2px;}' +
+    '.tpl-ship .tpl-addr-name{font-size:15px;font-weight:700;margin-top:2px;}' +
+    '.tpl-ship .tpl-addr-phone{font-size:11px;font-family:"Courier New",monospace;margin-top:1px;}' +
+    '.tpl-ship .tpl-addr-text{font-size:11px;line-height:1.4;}' +
+    '.tpl-ship .tpl-section-title{font-size:13px;font-weight:700;margin:10px 0 6px;padding:3px 8px;background:#000;color:#fff;letter-spacing:1px;}' +
+    '.tpl-ship table{width:100%;border-collapse:collapse;}' +
+    '.tpl-ship table th{background:#f0f0f0;border:1px solid #999;padding:5px 8px;text-align:left;font-size:10px;font-weight:700;}' +
+    '.tpl-ship table td{border:1px solid #999;padding:6px 8px;font-size:11px;}' +
+    '.tpl-ship .tpl-footer{display:flex;justify-content:space-between;margin-top:14px;padding-top:8px;border-top:1px dashed #999;font-size:11px;color:#444;}' +
+    '.tpl-ship .tpl-sign{flex:1;}' +
+    '.tpl-ship .tpl-bottom-line{margin-top:6px;text-align:center;font-size:9px;color:#888;letter-spacing:1px;}' +
+  '</style>',
+
+  // ========== 配货标签 100×150 热敏：分拣用，大字收货人 + 条码 + 醒目地址 ==========
+  LABEL: '<div class="moyu-tpl tpl-label">' +
+    '<div class="tpl-brand-row">' +
+      '<div class="tpl-brand-name">MOYUYO</div>' +
+      '<div class="tpl-brand-tag">SHIPMENT LABEL</div>' +
+    '</div>' +
+    '<div class="tpl-to-block">' +
+      '<div class="tpl-to-label">SHIP TO</div>' +
+      '<div class="tpl-to-name">{{order.receiverName}}</div>' +
+      '<div class="tpl-to-phone">{{order.receiverPhone}}</div>' +
+    '</div>' +
+    '<div class="tpl-addr-block">' +
+      '<div class="tpl-addr-text">{{order.receiverAddress}}</div>' +
+    '</div>' +
+    '<div class="tpl-barcode">' +
+      '<div class="tpl-barcode-label">ORDER NO.</div>' +
+      '<div class="tpl-barcode-no">{{order.orderNo}}</div>' +
+      '<div class="tpl-barcode-stripes">||||||||||||||||||||||||||||||||||||</div>' +
+    '</div>' +
+    '<div class="tpl-from-row">' +
+      '<div class="tpl-from-label">FROM</div>' +
+      '<div class="tpl-from-name">MOYUYO 海外仓</div>' +
+    '</div>' +
+    '<div class="tpl-bottom">{{time}}</div>' +
+  '</div>' +
+  '<style>' +
+    '.tpl-label{font-family:"Helvetica Neue","Microsoft YaHei",sans-serif;color:#000;font-size:11px;line-height:1.3;padding:4mm;}' +
+    '.tpl-label .tpl-brand-row{display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid #000;padding-bottom:3px;margin-bottom:6px;}' +
+    '.tpl-label .tpl-brand-name{font-size:13px;font-weight:900;letter-spacing:2px;}' +
+    '.tpl-label .tpl-brand-tag{font-size:8px;color:#666;letter-spacing:1px;font-weight:700;}' +
+    '.tpl-label .tpl-to-block{margin-bottom:6px;}' +
+    '.tpl-label .tpl-to-label{font-size:9px;color:#666;letter-spacing:2px;font-weight:700;margin-bottom:2px;}' +
+    '.tpl-label .tpl-to-name{font-size:24px;font-weight:900;line-height:1.1;letter-spacing:1px;}' +
+    '.tpl-label .tpl-to-phone{font-size:13px;font-family:"Courier New",monospace;font-weight:700;margin-top:2px;}' +
+    '.tpl-label .tpl-addr-block{border:1.5px solid #000;padding:5px 6px;margin-bottom:8px;min-height:18mm;}' +
+    '.tpl-label .tpl-addr-text{font-size:13px;font-weight:600;line-height:1.35;}' +
+    '.tpl-label .tpl-barcode{text-align:center;border:1px solid #000;padding:4px;margin-bottom:6px;background:#fff;}' +
+    '.tpl-label .tpl-barcode-label{font-size:8px;letter-spacing:2px;color:#666;}' +
+    '.tpl-label .tpl-barcode-no{font-family:"Courier New",monospace;font-size:14px;font-weight:700;letter-spacing:1px;margin:1px 0;}' +
+    '.tpl-label .tpl-barcode-stripes{font-family:monospace;font-size:14px;letter-spacing:0;color:#000;line-height:1;overflow:hidden;}' +
+    '.tpl-label .tpl-from-row{border-top:1px dashed #666;padding-top:3px;display:flex;align-items:center;gap:6px;}' +
+    '.tpl-label .tpl-from-label{font-size:8px;color:#666;letter-spacing:1px;font-weight:700;}' +
+    '.tpl-label .tpl-from-name{font-size:10px;font-weight:600;}' +
+    '.tpl-label .tpl-bottom{text-align:right;font-size:8px;color:#666;font-family:"Courier New",monospace;margin-top:2px;}' +
+  '</style>'
+}
 
 // 打印订单：先记录打印（保留原 recordPrint API 调用），再调用 window.print() 触发浏览器真实打印
 async function handlePrint(row) {
@@ -1281,9 +1782,11 @@ async function triggerBrowserPrint() {
       shippingCarrier: d.shippingCarrier,
       trackingNumber: d.trackingNumber,
       // 关键：把结构化 items 也复制过来 —— 否则打印纸上的"商品明细"表格会回退到拼接字符串
+      // skuCode：同步带过来，确保从 query 进入打印预览时也展示商品SKU
       items: (d.items || []).map(it => ({
         productName: it.productName,
         skuSpec: it.skuSpec,
+        skuCode: it.skuCode,
         quantity: it.quantity,
         price: it.price
       })),
@@ -1580,6 +2083,12 @@ onUnmounted(() => {
 
 /* ===== 打印内容区：屏幕隐藏，仅打印时显示（Teleport 至 body） ===== */
 .print-area { display: none; }
+/* P1：自定义模板容器 —— 强制字体颜色为黑（防止后台布局变量串入） */
+.print-custom { color: #000; font-family: var(--font-sans, sans-serif); }
+/* 自定义模板里的 <style> 由内联方式注入；这里补容器兜底 */
+.print-custom :deep(table) { border-collapse: collapse; }
+.print-custom :deep(h1),
+.print-custom :deep(h2) { margin: 8px 0; }
 .print-sheet { background: #fff; padding: 20px; font-family: var(--font-sans); color: var(--text-800); }
 .print-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--text-800); padding-bottom: 12px; margin-bottom: 16px; }
 .print-header h2 { font-size: 18px; font-weight: 700; margin: 0; }
@@ -1743,6 +2252,89 @@ onUnmounted(() => {
   margin-bottom: 8mm;
   border-bottom: 2px solid var(--text-800);
   padding-bottom: 4mm;
+}
+
+/* ===== P1：模板编辑对话框 —— 工具栏 / 编辑区 / 预览区 ===== */
+.tpl-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.tpl-editor-toolbar .tpl-editor-tip {
+  font-size: 12px;
+  color: var(--text-500);
+  margin-right: auto;
+}
+.tpl-editor-textarea :deep(textarea) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+  font-size: 12px !important;
+  line-height: 1.55 !important;
+  background: var(--background-50, #fafafa);
+}
+.tpl-editor-help :deep(.el-collapse-item__header) {
+  font-size: 12px;
+  color: var(--text-600);
+}
+.tpl-editor-help .help-section {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-700);
+  padding: 4px 4px 8px;
+}
+.tpl-editor-help .help-section ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+.tpl-editor-help .help-section li {
+  margin-bottom: 3px;
+}
+.tpl-editor-help .help-section code {
+  background: var(--background-100, #f3f4f6);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: #c2410c;
+}
+.ph-token {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--brand-700, #1d4ed8);
+  font-size: 12px;
+  min-width: 200px;
+}
+.ph-desc {
+  color: var(--text-500);
+  font-size: 11px;
+  margin-left: 8px;
+}
+.tpl-preview-wrapper {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.tpl-preview-title {
+  background: var(--background-100, #f3f4f6);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-700);
+  border-bottom: 1px solid var(--border);
+}
+.tpl-preview-frame {
+  padding: 16px 20px;
+  max-height: 480px;
+  overflow-y: auto;
+  background: #fff;
+  color: #000;
+}
+.tpl-preview-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-400);
+  font-size: 13px;
 }
 
 @media print {

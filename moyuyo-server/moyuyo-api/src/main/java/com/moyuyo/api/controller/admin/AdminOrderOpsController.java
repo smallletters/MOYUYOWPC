@@ -498,7 +498,7 @@ public class AdminOrderOpsController {
   public Result<Map<String, Object>> updatePrintTemplate(
       @PathVariable Long id, @Valid @RequestBody PrintTemplateRequest request) {
     adminOrderOpsService.updatePrintTemplate(
-        id, request.getName(), request.getPaperSize(), request.getDescription(),
+        id, request.getName(), request.getPaperSize(), request.getDescription(), request.getContentTemplate(),
         request.getIsDefault(), request.getSortOrder());
     return Result.success(Map.of("id", id, "message", "模板已更新"));
   }

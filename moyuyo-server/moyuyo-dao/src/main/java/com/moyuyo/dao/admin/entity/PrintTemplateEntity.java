@@ -38,6 +38,17 @@ public class PrintTemplateEntity {
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String description;
 
+    /**
+     * 模板 HTML 正文（占位符语法 {{order.xxx}} / {{items}} / {{time}} / {{paper}}）。
+     * <p>
+     * 与 description 同样需要 ALWAYS 策略：允许运营清空模板（重置为代码默认模板），
+     * 这里传 "" 时也要写库。
+     * <p>
+     * MEDIUMTEXT 列在 MyBatis 中映射为 String，长度上限 16MB，足够复杂的电商模板使用。
+     */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private String contentTemplate;
+
     /** 是否默认模板 */
     private Boolean isDefault;
 
