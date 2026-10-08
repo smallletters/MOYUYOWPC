@@ -86,6 +86,8 @@ public class AdminPermissionFilter implements Filter {
         m.put("logistics", "logistics");
         m.put("shipping-strategy", "logistics");
         m.put("shipping-zone", "logistics");
+        m.put("shipping-rates", "logistics");
+        m.put("shipping-methods", "logistics");
         m.put("warehouse", "inventory");
         m.put("tariff", "finance");
         m.put("settlement", "finance");

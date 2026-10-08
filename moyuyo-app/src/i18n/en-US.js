@@ -1324,8 +1324,21 @@ export default {
         name: 'Express Shipping',
         eta: 'Next day delivery',
       },
+      priority: {
+        name: 'Priority Shipping',
+        eta: 'Arrives in 1-2 days',
+      },
+      same_day: {
+        name: 'Same Day Delivery',
+        eta: 'Arrives today',
+      },
       free: 'FREE',
-      choose: 'Choose a delivery option:',
+      choose: 'Choose a shipping method:',
+      loading: 'Loading shipping...',
+      empty: 'No shipping methods available for this address',
+      freeShortBy: 'Spend ${amount} more for FREE shipping',
+      etaUnit: 'days',
+      etaRange: 'Estimated delivery in ${min}-${max} days',
     },
     coupon: {
       apply: 'Apply a coupon',

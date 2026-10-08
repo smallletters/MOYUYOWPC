@@ -54,6 +54,19 @@ export function getShippingRate(country, weight) {
   return get('/api/v1/shipping/estimate', { country, weight })
 }
 
+/**
+ * 查询某国家所有可用配送方式及实时运费（新版，后端权威）
+ * @param {object} payload
+ * @param {string} payload.country        ISO 3166-1 alpha-2 大写
+ * @param {Array}  payload.items          [{ productId, skuId, quantity, weightGrams }]
+ * @param {number} payload.subtotal       满减前商品总金额（USD）
+ * @param {string} [payload.currency]     默认 USD
+ * @returns {Promise<Array<ShippingMethodVO>>} 各配送方式的实时运费
+ */
+export function getShippingMethods(payload) {
+  return post('/api/v1/shipping/methods', payload)
+}
+
 export default {
   createOrder,
   getOrderList,
@@ -68,4 +81,5 @@ export default {
   getRefundDetail,
   getMyRefunds,
   getShippingRate,
+  getShippingMethods,
 }

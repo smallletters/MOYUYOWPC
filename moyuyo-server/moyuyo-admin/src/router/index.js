@@ -363,12 +363,6 @@ const routes = [
         meta: { title: '黑名单管理' }
       },
       {
-        path: 'tariff',
-        name: 'TariffManage',
-        component: () => import('../views/TariffManage.vue'),
-        meta: { title: '关税管理' }
-      },
-      {
         path: 'risk-alert',
         name: 'RiskAlert',
         component: () => import('../views/RiskAlert.vue'),
@@ -392,13 +386,6 @@ const routes = [
         component: () => import('../views/OrderTags.vue'),
         meta: { title: '订单标签' }
       },
-      {
-        path: 'inventory-transfer',
-        name: 'InventoryTransfer',
-        component: () => import('../views/InventoryTransfer.vue'),
-        meta: { title: '库存调拨' }
-      },
-
       // ===== 第四阶段：物流/订单/系统辅助模块 =====
       {
         path: 'merge-package',
@@ -429,18 +416,6 @@ const routes = [
         name: 'WarehouseManage',
         component: () => import('../views/WarehouseManage.vue'),
         meta: { title: '仓库管理' }
-      },
-      {
-        path: 'clearance',
-        name: 'ClearanceManage',
-        component: () => import('../views/ClearanceManage.vue'),
-        meta: { title: '清关管理' }
-      },
-      {
-        path: 'customs',
-        name: 'CustomsManage',
-        component: () => import('../views/CustomsManage.vue'),
-        meta: { title: '海关管理' }
       },
       {
         path: 'settlement',

@@ -862,9 +862,11 @@ async function handleSaveTemplate() {
   const id = editingTemplate.value.id
   if (!id) return
   try {
-    // 调用后端持久化：name/paperSize/description/contentTemplate/isDefault/sortOrder
+    // 调用后端持久化：code/name/paperSize/description/contentTemplate/isDefault/sortOrder
+    // 后端 PrintTemplateRequest.code 字段 @NotBlank 校验非空，必须传
     // contentTemplate 始终带上（即使为空串），便于运营主动"清空重置"操作
     await updatePrintTemplate(id, {
+      code: editingTemplate.value.code,
       name: editingTemplate.value.name,
       paperSize: editingTemplate.value.paper,
       description: editingTemplate.value.desc,

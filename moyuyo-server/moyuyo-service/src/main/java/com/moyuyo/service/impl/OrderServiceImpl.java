@@ -24,6 +24,7 @@ import com.moyuyo.service.MemberService;
 import com.moyuyo.service.MissionService;
 import com.moyuyo.service.NotificationService;
 import com.moyuyo.service.OrderService;
+import com.moyuyo.service.ShippingRateService;
 import com.moyuyo.service.WooCommerceSyncService;
 import com.moyuyo.service.mq.NotificationMessageProducer;
 import static com.moyuyo.common.enums.OrderStatusEnum.*;
@@ -69,6 +70,8 @@ public class OrderServiceImpl implements OrderService {
   // 资金安全：下单优惠金额必须服务端重算（券核验/积分抵扣），不能信任前端传入数值
   private final CouponService couponService;
   private final MemberService memberService;
+  // 资金安全：运费由服务端按 zone × method 重算覆盖前端传的 freight，防止改包刷价
+  private final ShippingRateService shippingRateService;
 
   @Override
   @Transactional
@@ -140,8 +143,11 @@ public class OrderServiceImpl implements OrderService {
     // 金额兜底：null 转 0，避免 NPE 与下游 BigDecimal 计算异常
     BigDecimal safeCouponDiscount = couponDiscount == null ? BigDecimal.ZERO : couponDiscount;
     BigDecimal safePointsDiscount = pointsDiscount == null ? BigDecimal.ZERO : pointsDiscount;
-    BigDecimal safeFreight = freight == null ? BigDecimal.ZERO : freight;
     int safePointsUsed = pointsUsed == null ? 0 : Math.max(pointsUsed, 0);
+
+    // 服务端权威运费：按 (country, shippingMethod) 重算覆盖前端传的 freight
+    // 防改包刷价；不可达 zone（未配置运费规则）时降级用前端传入值（不阻断下单）
+    BigDecimal safeFreight = resolveServerFreight(userId, addressId, items, goodsAmount, shippingMethod, freight);
 
     // M1 修复：payAmount = 商品总金额 + 运费 - 优惠券减免 - 积分抵扣，下限 0
     // 原实现直接 payAmount = goodsAmount，导致前端展示的优惠金额与实际扣款金额不一致
@@ -672,5 +678,106 @@ public class OrderServiceImpl implements OrderService {
     return orderMapper.selectOne(
         new LambdaQueryWrapper<OrderEntity>()
             .eq(OrderEntity::getOrderNo, orderNo));
+  }
+
+  /**
+   * 服务端权威运费计算：从地址查国家，按 (country, shippingMethod) 调用 ShippingRateService 重算，
+   * 覆盖前端传入的 freight。
+   * <p>
+   * 回退策略（P0 修复后）：
+   * <ol>
+   *   <li>addressId 为空（兼容旧调用）/ 查不到地址 / country 为空 → 抛 BusinessException(400)，
+   *       阻断下单（防止改包刷价 + 脏数据落库）</li>
+   *   <li>zone 未命中（该国家不在可发货集合）或 method 未配置 → 抛 BusinessException(400)，
+   *       阻断下单（核心防御：之前会沿用前端值，导致攻击者改 freight=0 即可免费购）</li>
+   *   <li>ShippingRateService 抛异常（DB/Redis 故障）→ 抛 BusinessException(503)，
+   *       告知用户稍后重试</li>
+   * </ol>
+   * <p>
+   * 关键：服务端算不出运费时**绝不再信任前端值**——这是 P0 漏洞修复点。
+   */
+  private BigDecimal resolveServerFreight(Long userId, Long addressId, List<OrderItemEntity> items,
+                                          BigDecimal goodsAmount, String shippingMethod,
+                                          BigDecimal clientFreight) {
+    if (addressId == null) {
+      throw new com.moyuyo.common.exception.BusinessException(400, "请选择收货地址后再下单");
+    }
+    AddressEntity address;
+    try {
+      address = addressMapper.selectById(addressId);
+    } catch (Exception e) {
+      throw new com.moyuyo.common.exception.BusinessException(503,
+          "运费计算服务暂不可用，请稍后重试", e);
+    }
+    if (address == null) {
+      throw new com.moyuyo.common.exception.BusinessException(400, "收货地址不存在，请重新选择");
+    }
+    if (address.getCountry() == null || address.getCountry().isBlank()) {
+      throw new com.moyuyo.common.exception.BusinessException(400, "收货地址缺少国家信息，请补全后再下单");
+    }
+
+    // 转换 items -> ShippingQuoteRequest.Item（含重量：商品 weight × quantity，无则按 500g 默认）
+    List<com.moyuyo.common.dto.shipping.ShippingQuoteRequest.Item> quoteItems = new ArrayList<>(items.size());
+    for (OrderItemEntity it : items) {
+      com.moyuyo.common.dto.shipping.ShippingQuoteRequest.Item qi =
+              new com.moyuyo.common.dto.shipping.ShippingQuoteRequest.Item();
+      qi.setProductId(it.getProductId());
+      qi.setSkuId(it.getSkuId());
+      qi.setQuantity(it.getQuantity() == null ? 0 : it.getQuantity());
+      Integer grams = lookupProductWeightGrams(it.getProductId());
+      qi.setWeightGrams(grams);
+      quoteItems.add(qi);
+    }
+
+    String method = shippingMethod == null || shippingMethod.isBlank() ? "standard" : shippingMethod;
+    // 兼容旧订单：shippingMethod 为空时按 standard 处理；如果该 zone 没 standard 规则，
+    // calcFreight 会返 null → 走 400 抛业务异常，不沿用前端值
+    BigDecimal serverFreight;
+    try {
+      serverFreight = shippingRateService.calcFreight(
+              address.getCountry(), method, quoteItems, goodsAmount);
+    } catch (Exception e) {
+      // DB/Redis 故障：503 让用户重试，不再沿用前端值
+      log.error("[order] 服务端运费计算异常 country={} method={}", address.getCountry(), method, e);
+      throw new com.moyuyo.common.exception.BusinessException(503,
+          "运费计算服务暂不可用，请稍后重试", e);
+    }
+    if (serverFreight == null) {
+      // P0 修复：不再沿用前端值。该 country 不在可发货 zone 或 method 未配置 → 阻断下单。
+      log.warn("[order] 服务端运费不可用 country={} method={}, 阻断下单（不再沿用前端值以防改包）",
+              address.getCountry(), method);
+      throw new com.moyuyo.common.exception.BusinessException(400,
+          "当前收货地址或配送方式不可用，请更换地址或选择其他配送方式");
+    }
+
+    // 防御：若前后端运费偏差超过 10%，记告警日志（运营可在管理后台核查）
+    BigDecimal fallback = clientFreight == null ? BigDecimal.ZERO : clientFreight;
+    if (fallback.compareTo(BigDecimal.ZERO) > 0) {
+      BigDecimal diff = serverFreight.subtract(fallback).abs();
+      // divide 必须带 RoundingMode，否则 result 是无限循环小数时会抛 ArithmeticException
+      BigDecimal ratio = diff.divide(fallback.max(BigDecimal.valueOf(0.01)), 4, java.math.RoundingMode.HALF_UP);
+      if (ratio.compareTo(new BigDecimal("0.10")) > 0) {
+        log.warn("[order] 运费差异超过 10% client={} server={} country={} method={}",
+                fallback, serverFreight, address.getCountry(), method);
+      }
+    }
+    return serverFreight;
+  }
+
+  /**
+   * 查询商品单件重量（克）。SKU 没重量字段时回退到商品重量；都没有返回 null（由 ShippingRateService 兜底 500g）。
+   * <p>
+   * 性能：N 个商品 → N 次单查；非热点路径（下单），不做缓存。
+   */
+  private Integer lookupProductWeightGrams(Long productId) {
+    try {
+      ProductEntity p = productMapper.selectById(productId);
+      if (p == null || p.getWeight() == null) return null;
+      // mo_product.weight 是 BigDecimal，按"克"为单位（与 ShippingRateService 一致）；小数向上取整
+      return p.getWeight().setScale(0, java.math.RoundingMode.CEILING).intValue();
+    } catch (Exception e) {
+      log.debug("[order] 查商品重量异常 productId={}", productId);
+      return null;
+    }
   }
 }

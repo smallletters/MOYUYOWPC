@@ -1339,8 +1339,21 @@ export default {
         name: '加急配送',
         eta: '次日送达',
       },
+      priority: {
+        name: '优先配送',
+        eta: '次日达',
+      },
+      same_day: {
+        name: '当日达',
+        eta: '当天送达',
+      },
       free: '包邮',
       choose: '请选择配送方式:',
+      loading: '正在加载运费...',
+      empty: '当前收货地址暂无可用配送方式',
+      freeShortBy: '还差 ${amount} 即可包邮',
+      etaUnit: '天',
+      etaRange: '预计 ${min}-${max} 天送达',
     },
     // 优惠 / 积分
     coupon: {

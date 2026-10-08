@@ -122,22 +122,40 @@
         <view class="block-divider" />
         <view class="block-sub">
           <text class="sub-title">{{ $t('checkout.shipping.choose') }}</text>
+
+          <!-- 加载中 / 空态 -->
+          <view v-if="shippingLoading" class="ship-loading">
+            <text>{{ $t('checkout.shipping.loading') }}</text>
+          </view>
+          <view v-else-if="i18nShippingMethods.length === 0" class="ship-empty">
+            <text>{{ $t('checkout.shipping.empty') }}</text>
+          </view>
+
+          <!-- 配送方式列表 -->
           <view
             v-for="s in i18nShippingMethods"
-            :key="s.id"
+            :key="s.code"
             class="ship-row"
-            :class="{ active: selectedShipping === s.id }"
-            @click="selectedShipping = s.id"
+            :class="{ active: selectedShipping === s.code }"
+            @click="selectedShipping = s.code"
           >
             <view class="ship-radio">
-              <view v-if="selectedShipping === s.id" class="ship-radio-dot" />
+              <view v-if="selectedShipping === s.code" class="ship-radio-dot" />
             </view>
             <view class="ship-info">
               <text class="ship-name">{{ s.name }}</text>
               <text class="ship-time">{{ s.eta }}</text>
+              <!-- 未达免邮门槛：显示"还差 $X 即可包邮"提示（按 Baymard 调研：包邮进度可减少弃单） -->
+              <text v-if="s.freeShortBy && Number(s.freeShortBy) > 0" class="ship-shortby">
+                {{
+                  $t('checkout.shipping.freeShortBy', {
+                    amount: '$' + Number(s.freeShortBy).toFixed(2),
+                  })
+                }}
+              </text>
             </view>
-            <text class="ship-price">
-              {{ s.free ? freeShippingLabel : '$' + s.price.toFixed(2) }}
+            <text class="ship-price" :class="{ 'ship-price-free': s.free }">
+              {{ s.free ? freeShippingLabel : '$' + Number(s.freight).toFixed(2) }}
             </text>
           </view>
         </view>
@@ -328,6 +346,7 @@
 
 <script>
 import { orderApi, pointsApi, addressApi, couponApi } from '@/api'
+import { getShippingMethods } from '@/api/order'
 import { useCartStore } from '@/store'
 import { savePendingOrder } from '@/utils/storage'
 import { i18n } from '@/i18n'
@@ -345,7 +364,6 @@ export default {
       pointsBalance: 0,
       pointsLoaded: false,
       orderRemark: '',
-      selectedShipping: 'standard',
       selectedPayment: 'googlepay',
       // 步骤指示器：地址 1、支付 2、复核 3、下单 4；按实际状态自动推进
       currentStep: 1,
@@ -362,23 +380,13 @@ export default {
       // 支付方式 logo 的 base64 data URI 映射,onLoad 时一次性生成
       // 走内联而不是 /static/icons/*.svg 是为了规避 APP 真机偶发 SVG 渲染白盒
       payIconUris: { googlepay: '', applepay: '', paypal: '', card: '' },
-      // 配送方式固定数据,文案走 i18n,价格/免费标志保留
-      shippingMethods: [
-        {
-          id: 'standard',
-          nameKey: 'checkout.shipping.standard.name',
-          etaKey: 'checkout.shipping.standard.eta',
-          price: 0,
-          free: true,
-        },
-        {
-          id: 'express',
-          nameKey: 'checkout.shipping.express.name',
-          etaKey: 'checkout.shipping.express.eta',
-          price: 12.0,
-          free: false,
-        },
-      ],
+      // 配送方式数据：从后端 /api/v1/shipping/methods 拉取，服务端权威计算
+      // 默认给空数组 + loading 标志，避免页面闪烁时硬编码旧值
+      shippingMethods: [],
+      shippingLoading: false,
+      shippingLoaded: false,
+      // 默认选中第一个 ACTIVE method；地址变更或 subtotal 变化时重新拉取并保持选中态
+      selectedShipping: '',
       // 支付方式固定数据,文案走 i18n;logo 用 id 关联 data URI,真机/H5 都稳定
       paymentMethods: [
         {
@@ -426,12 +434,26 @@ export default {
       const { isCountryShippable } = useAddressCountries()
       return !isCountryShippable(code)
     },
-    /** 配送方式注入 i18n 文案 */
+    /** 配送方式注入 i18n 文案。
+     * 后端返回的 VO 含 nameZh/nameEn/etaMinDays/etaMaxDays；
+     * 前端按当前 locale 渲染，缺省时按 nameEn 兜底。
+     */
     i18nShippingMethods() {
+      const isZh = (i18n.locale || '').toLowerCase().startsWith('zh')
       return this.shippingMethods.map((s) => ({
         ...s,
-        name: i18n.t(s.nameKey),
-        eta: i18n.t(s.etaKey),
+        // name 优先 i18n 表里写死的命名（兼容运营调整文案），缺省回退到后端返回的中英文
+        name:
+          i18n.t(`checkout.shipping.${s.code}.name`) !== `checkout.shipping.${s.code}.name`
+            ? i18n.t(`checkout.shipping.${s.code}.name`)
+            : isZh
+              ? s.nameZh || s.nameEn
+              : s.nameEn || s.nameZh,
+        // eta 用 i18n 模板 + 后端 etaMin/etaMax
+        eta:
+          s.etaMinDays != null && s.etaMaxDays != null
+            ? i18n.t('checkout.shipping.etaRange', { min: s.etaMinDays, max: s.etaMaxDays })
+            : i18n.t(`checkout.shipping.${s.code}.eta`),
       }))
     },
     /** 支付方式注入 i18n 文案,并把 logo 解析成 base64 data URI */
@@ -452,8 +474,18 @@ export default {
       return useCartStore()
     },
     selectedShippingPrice() {
-      const method = this.shippingMethods.find((s) => s.id === this.selectedShipping)
-      return method ? method.price : 0
+      // 从已加载的后端 VO 里取 freight；运费由服务端权威计算（freight 已套免邮门槛）
+      const method = this.shippingMethods.find((s) => s.code === this.selectedShipping)
+      if (!method) return 0
+      const f = Number(method.freight)
+      return Number.isFinite(f) ? f : 0
+    },
+    /** 当前选中方式的免邮差额（>0 表示未达免邮门槛） */
+    selectedShippingFreeShortBy() {
+      const method = this.shippingMethods.find((s) => s.code === this.selectedShipping)
+      if (!method) return 0
+      const f = Number(method.freeShortBy)
+      return Number.isFinite(f) ? f : 0
     },
     /** 当前结算商品列表:立即购买临时单品优先,否则取购物车选中项 */
     checkoutItems() {
@@ -568,6 +600,18 @@ export default {
     // 进入页面即把支付方式 SVG 转成 base64 data URI
     // 避开 APP 真机偶发的 /static/icons/*.svg 渲染白盒问题
     this.payIconUris = buildPayIconDataUris()
+  },
+
+  // 监听：地址或商品总额变化时，重新拉配送方式 + 运费
+  watch: {
+    'selectedAddress.id'(newId, oldId) {
+      // 地址切换（含首次 loadAddress 完成）触发重拉
+      if (newId !== oldId) this.loadShippingMethods()
+    },
+    // subtotal 是 computed，Vue 默认对 computed 变化触发 watch；用于满减/优惠券实时影响免邮门槛
+    subtotal() {
+      if (this.shippingLoaded && this.selectedAddress) this.loadShippingMethods()
+    },
   },
 
   created() {
@@ -739,6 +783,43 @@ export default {
         uni.showToast({ title: i18n.t('checkout.toast.loadCouponsFailed'), icon: 'none' })
       } finally {
         this.myCouponsLoaded = true
+      }
+    },
+
+    /** 从后端拉取当前地址可用的配送方式及运费 */
+    async loadShippingMethods() {
+      if (!this.selectedAddress || !this.selectedAddress.country) return
+      this.shippingLoading = true
+      try {
+        const items = this.checkoutItems.map((it) => ({
+          productId: it.productId,
+          skuId: it.skuId || it.variationId || null,
+          quantity: it.quantity || 1,
+          // 重量（克）暂时不传，由服务端从 mo_product.weight 兜底
+        }))
+        const list = await getShippingMethods({
+          country: this.selectedAddress.country,
+          items,
+          // 传递 subtotal 让后端做免邮门槛判定
+          subtotal: this.subtotal,
+          currency: 'USD',
+        })
+        const methods = Array.isArray(list) ? list : []
+        this.shippingMethods = methods
+        // 默认选中第一个 ACTIVE 的 method；若当前 selectedShipping 仍可用则保留
+        if (!this.selectedShipping || !methods.find((m) => m.code === this.selectedShipping)) {
+          const first = methods.find((m) => m.active !== false) || methods[0]
+          this.selectedShipping = first ? first.code : ''
+        }
+      } catch (e) {
+        console.warn('[checkout] loadShippingMethods failed', e)
+        this.shippingMethods = []
+        // Bug Q 修复：失败时给用户 toast 提示（之前只 console.warn，用户毫无感知）
+        // 用最简英文文案兜底，避免 i18n key 缺失时显示 raw key
+        uni.showToast({ title: 'Failed to load shipping methods', icon: 'none' })
+      } finally {
+        this.shippingLoaded = true
+        this.shippingLoading = false
       }
     },
 
@@ -1382,6 +1463,25 @@ export default {
   font-weight: 700;
   color: #2e2b29;
   flex-shrink: 0;
+}
+.ship-price-free {
+  color: #067d62;
+}
+/* 加载中 / 空态 */
+.ship-loading,
+.ship-empty {
+  padding: 20rpx 0;
+  text-align: center;
+  font-size: 24rpx;
+  color: #8e8e93;
+}
+/* 未达免邮门槛提示：Amazon 风格橙色小字 */
+.ship-shortby {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 20rpx;
+  color: #b12704;
+  font-weight: 500;
 }
 
 /* 优惠 / 积分行 */

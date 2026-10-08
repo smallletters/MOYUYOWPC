@@ -8,11 +8,10 @@ services:
     image: mysql:8.0.36
     container_name: moyuyo-mysql
     restart: unless-stopped
-    # 资源限制：避免 MySQL OOM 时拖垮宿主机
+    # 资源限制：仅限制内存，CPU 交给宿主机 4 核自然调度（避免被 throttle 拖慢业务）
     # mem_limit: 硬上限（容器 OOM 后被 kill，但其他容器不受影响）
-    # cpus: 限制 CPU 使用，避免慢查询占用全部 CPU
-    # 注意：deploy.resources 仅在 swarm 模式生效，单机用 cpus / mem_limit 直接约束（需 Docker >= 19.03）
-    cpus: '2.0'
+    # 注意：deploy.resources 仅在 swarm 模式生效，单机用 mem_limit 直接约束（需 Docker >= 19.03）
+    # CPU 不设限：4C8G 小机器让 Linux CFS 自由调度比硬限更稳
     mem_limit: 2G
     mem_reservation: 1G
     # 限制文件描述符 / 进程数：防止异常连接耗尽 fd
@@ -132,11 +131,11 @@ services:
     image: redis:7.2-alpine
     container_name: moyuyo-redis
     restart: unless-stopped
-    # 资源限制：Redis 单进程
+    # 资源限制：Redis 单进程，CPU 不限
     # P1 优化：mem_limit 必须 >= --maxmemory + Redis 自身开销（fork COW、AOF rewrite 等）
     # 原配置 mem_limit=1G 但 maxmemory=800m，剩余 200M 在 fork/rewrite 高峰时被宿主机 OOM-killer 杀掉
     # 调整后 mem_limit=1.2G 留出 25% buffer，与生产级 Redis 部署规范一致
-    cpus: '1.0'
+    # CPU 不设限：让宿主机 4 核自由调度，避免被 throttle 阻塞
     mem_limit: 1280M
     mem_reservation: 512M
     ulimits:
@@ -229,8 +228,7 @@ services:
     # 资源限制：ES JVM 堆已固定 1g，加上 index buffer / file system cache / segment merging，
     # 实际进程常驻 ~2g；显式设 mem_limit=2g 给 OS 留 0.5g 余量，避免容器被宿主机 OOM-killer 杀掉
     # （Elasticsearch 默认 host 级别无上限，单次大查询即可撑爆 32g 内存）
-    # cpus 限制 1.5：避免 ES 在 reload/merge 期间吃满宿主 CPU 拖慢 MySQL/Redis
-    cpus: '1.5'
+    # CPU 不设限：让宿主机 4 核自由调度（rebuild/merge 期间自然占用，限了反而阻塞）
     mem_limit: 2G
     mem_reservation: 1G
     ulimits:
@@ -258,7 +256,7 @@ services:
     container_name: moyuyo-rocketmq-namesrv
     restart: unless-stopped
     # Name Server 本身内存占用很低（< 256MB），但仍显式限制防止异常路径
-    cpus: '0.5'
+    # CPU 不设限：宿主机 4 核自然调度
     mem_limit: 512M
     mem_reservation: 128M
     ulimits:
@@ -290,7 +288,7 @@ services:
         condition: service_healthy
     # 资源限制：RocketMQ broker 主要吃 PageCache（CommitLog 预分配），commitLog 默认 1G
     # 加 JVM + index + consume queue，进程常驻 ~2G；显式限制避免 broker 内存抖动拖垮宿主
-    cpus: '1.5'
+    # CPU 不设限：宿主机 4 核自然调度
     mem_limit: 3G
     mem_reservation: 1G
     ulimits:
@@ -471,6 +469,11 @@ services:
       MOYUYO_UPLOAD_DIR: ${MOYUYO_UPLOAD_DIR:-/app/uploads}
       JVM_XMS: ${JVM_XMS:-1g}
       JVM_XMX: ${JVM_XMX:-2g}
+      # ---- Flyway 容错（用于手动基线场景）----
+      # 当历史库中已手动 INSERT 历史记录（绕过 Flyway 执行），可用此配置跳过校验
+      # 默认 true（application-prod.yml）；本机调试可临时改为 false
+      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: ${SPRING_FLYWAY_VALIDATE_ON_MIGRATE:-true}
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE:-false}
       # ---- 应用功能开关与第三方服务（此前未透传，写在 .env 里不生效，现补齐）----
       # 默认值均与 application-prod.yml / application.yml 的内置默认保持一致，
       # 未在 .env 中配置时行为与补齐前完全相同
@@ -537,10 +540,9 @@ services:
     stop_grace_period: 45s
     # 资源限制：避免单个容器拖垮宿主（按需调整；当前为单机示例）
     # 注意：docker-compose v3 deploy.resources 仅在 swarm 模式生效；
-    # 单机部署可用 cpus / memory 直接约束（需 docker engine >= 19.03）
-    # cpus=4.0：与 HikariCP=40 / Tomcat max-threads=800 匹配，
-    # 实测 cpus=2.0 时 Tomcat 在 c=200 即撞 CPU 墙（RPS≈1,900）
-    cpus: '4.0'
+    # 单机部署可用 mem_limit 直接约束（需 docker engine >= 19.03）
+    # CPU 不设限：宿主机 4 核由 Linux CFS 自然调度，避免硬限被 throttle 拖慢业务
+    # （实测 cpus=2.0 时 Tomcat 在 c=200 即撞 CPU 墙（RPS≈1,900），不限反而更稳）
     mem_limit: 4G
     mem_reservation: 1G
     # ulimit：限制 JVM 可创建线程数，避免 fork 炸弹或恶意流量打爆文件描述符
@@ -608,7 +610,7 @@ services:
         condition: service_healthy
     # 资源限制：mysqld-exporter 是单进程 Go 应用，常驻内存约 30MB；
     # 设置 mem_limit=128M 给 metrics 解析 + buffer 留余量，避免被宿主机 OOM-killer 杀掉
-    cpus: '0.2'
+    # CPU 不设限：宿主机 4 核自然调度
     mem_limit: 128M
     mem_reservation: 32M
     # 健康检查：避免 exporter 进程异常但端口仍可达时被 Prometheus 抓取到陈旧指标
@@ -638,7 +640,7 @@ services:
         condition: service_healthy
     # 资源限制：redis_exporter 是单进程 Go 应用，常驻内存约 30MB；
     # 设置 mem_limit=128M 给 metrics 解析 + buffer 留余量
-    cpus: '0.2'
+    # CPU 不设限：宿主机 4 核自然调度
     mem_limit: 128M
     mem_reservation: 32M
     # 健康检查：避免 exporter 进程崩溃但端口仍可达时被 Prometheus 抓取到空指标
@@ -667,7 +669,7 @@ services:
         condition: service_healthy
     # 资源限制：rocketmq-exporter 是 Java 进程，常驻内存约 200MB；
     # 设置 mem_limit=512M 给 JVM 堆 + buffer 留余量
-    cpus: '0.5'
+    # CPU 不设限：宿主机 4 核自然调度
     mem_limit: 512M
     mem_reservation: 128M
     # 健康检查：避免 exporter 异常但端口仍可达时被 Prometheus 抓取到陈旧指标

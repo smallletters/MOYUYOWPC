@@ -17,6 +17,13 @@
             <groupId>com.moyuyo</groupId>
             <artifactId>moyuyo-dao</artifactId>
         </dependency>
+        <!-- common 模块：DTO / 工具类（CountryCodes / BusinessException）。
+             moyuyo-dao 已传递依赖 common，但为确保 test scope 下 testCompile 能直接看到，
+             在 service 模块显式声明一次更稳 -->
+        <dependency>
+            <groupId>com.moyuyo</groupId>
+            <artifactId>moyuyo-common</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

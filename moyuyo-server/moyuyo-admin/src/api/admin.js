@@ -711,6 +711,19 @@ export function getShippingZones() {
 }
 export const { create: createShippingZone, update: updateShippingZone, delete: deleteShippingZone } = logisticsCrud('shipping-zones')
 
+// 配送方式字典（mo_shipping_method）
+// 后端提供 GET 列表接口；这里从后端动态加载
+export function getShippingMethods(params = {}) {
+  return api.get('/logistics/shipping-methods', { params })
+}
+export const { create: createShippingMethod, update: updateShippingMethod, delete: deleteShippingMethod } = logisticsCrud('shipping-methods')
+
+// 运费规则 CRUD（mo_shipping_rate）
+export function getShippingRates(params = {}) {
+  return api.get('/logistics/shipping-rates', { params })
+}
+export const { create: createShippingRate, update: updateShippingRate, delete: deleteShippingRate } = logisticsCrud('shipping-rates')
+
 export function getLogisticsKpi() {
   return api.get('/logistics/kpi')
 }
