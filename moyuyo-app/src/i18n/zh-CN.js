@@ -44,6 +44,7 @@ export default {
     orderDetail: '订单详情',
     orderLogistics: '物流追踪',
     orderReview: '评价晒图',
+    orderReviewDetail: '查看评价',
     orderPay: '支付',
     orderRefund: '退款申请',
     communityDetail: '帖子详情',
@@ -1440,6 +1441,14 @@ export default {
       good: '满意',
       great: '非常满意',
     },
+  },
+
+  // 订单评价详情 /pages/order/reviewDetail（只读查看已提交的评价）
+  orderReviewDetail: {
+    title: '查看评价',
+    orderStatus: '订单状态',
+    empty: '本订单暂无评价',
+    reviewedAt: '评价于 {time}',
   },
 
   // 订单退款 /pages/order/refund

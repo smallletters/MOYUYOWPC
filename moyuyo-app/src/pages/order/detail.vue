@@ -131,8 +131,10 @@
         {{ $t('orderDetail.confirmReceive') }}
       </view>
       <view v-if="order.status === 'COMPLETED'" class="btn btn-primary" @click="onReview">
-        {{ $t('orderDetail.review') }}
+        {{ $t('orderReviewDetail.title') }}
       </view>
+      <!-- COMPLETED 状态下"评价"按钮只读展示已提交评价，跳只读页；
+      其它状态下才允许继续写评价（理论上不会出现：review 页对 COMPLETED 订单不应再写） -->
       <view
         v-if="order.status === 'PAID' || order.status === 'RECEIVED'"
         class="btn btn-outline"
@@ -269,7 +271,13 @@ export default {
     },
 
     onReview() {
-      uni.navigateTo({ url: `/pages/order/review?orderId=${this.orderId}` })
+      // 状态判断：COMPLETED 走只读评价详情页，避免重复进入评价表单；
+      // 其它状态仍走写评价页（兜底，正常流程 RECEIVED 时进入）
+      if (this.order && this.order.status === 'COMPLETED') {
+        uni.navigateTo({ url: `/pages/order/reviewDetail?orderId=${this.orderId}` })
+      } else {
+        uni.navigateTo({ url: `/pages/order/review?orderId=${this.orderId}` })
+      }
     },
 
     onRefund() {

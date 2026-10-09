@@ -204,15 +204,21 @@ public class PaymentServiceImpl implements PaymentService {
      * 复用条件：transactionId 不为空且能成功 retrieve 出有效 url（H5 returnUrl 仍存在）。
      * 任一环节失败则返回 null，调用方按新流程走。
      */
+    @SuppressWarnings("null") // 抑制 JDT 静态分析对 PaymentEntity 方法引用的 @Nonnull 类型检查告警
+    // （底层 SFunction 的 @Nonnull 类型参数 vs Function.apply 形参推断冲突，mvn 编译无影响）
     private CreatePaymentResponse tryReusePendingPayment(Long orderId, CreatePaymentRequest request) {
         // 必须按渠道过滤：同一订单上一次用 Stripe 创建的 PENDING 记录，
         // 这次切到 PayPal 再点"立即支付"时，不应复用 Stripe 的 session，避免渠道错乱。
+        // 关键修复：使用「PaymentEntity::getXxx」方法引用，避免 Lambda 表达式生成
+        // 形如 lambda$tryReusePendingPayment$xxx$1 的合成方法名触发 MyBatis OGNL 反射路径
+        // 报「Didn't start with 'is', 'get' or 'set'」，被 GlobalExceptionHandler 误识别为
+        // 数据访问异常返回 500（traceId=20e99f8a67404f73932f00460ee2b750 即此 Bug）。
         PaymentEntity pending = paymentMapper.selectOne(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<PaymentEntity>()
-                        .eq(e -> e.getOrderId(), orderId)
-                        .eq(e -> e.getPayChannel(), request.getPayChannel())
-                        .eq(e -> e.getStatus(), PENDING.name())
-                        .orderByDesc(e -> e.getCreateTime())
+                        .eq(PaymentEntity::getOrderId, orderId)
+                        .eq(PaymentEntity::getPayChannel, request.getPayChannel())
+                        .eq(PaymentEntity::getStatus, PENDING.name())
+                        .orderByDesc(PaymentEntity::getCreateTime)
                         .last("LIMIT 1"));
         if (pending == null) {
             return null;
@@ -1431,12 +1437,15 @@ public class PaymentServiceImpl implements PaymentService {
      *
      * @return 实际使用的 transactionId（复用旧值或新生成值）
      */
+    @SuppressWarnings("null") // 抑制 JDT 静态分析对 PaymentEntity 方法引用的 @Nonnull 类型检查告警
+    // （底层 SFunction 的 @Nonnull 类型参数 vs Function.apply 形参推断冲突，mvn 编译无影响）
     private String saveOrReusePaymentRecord(Long orderId, String payChannel, String transactionId,
                                             java.math.BigDecimal amount) {
         if (transactionId != null) {
+            // 与 tryReusePendingPayment 保持一致：方法引用避免 OGNL 反射路径报错
             PaymentEntity exist = paymentMapper.selectOne(
                     new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<PaymentEntity>()
-                            .eq(e -> e.getTransactionId(), transactionId));
+                            .eq(PaymentEntity::getTransactionId, transactionId));
             if (exist != null) {
                 log.info("Payment record already exists, reuse it: orderId={}, payChannel={}, transactionId={}",
                         orderId, payChannel, transactionId);

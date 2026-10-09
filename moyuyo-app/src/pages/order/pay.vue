@@ -60,10 +60,7 @@ import { i18n } from '@/i18n'
 //   - 命中 moyuyo://pay/return 时关闭 WebView + 处理结果
 // 美国市场目前支持：Google Pay / Apple Pay / PayPal / Credit Card。
 // 暂不集成第三方 Stripe 原生插件（无开源免费版），靠 Stripe Checkout + scheme 拦截兜底。
-import {
-  createPaymentWebView,
-  registerMoyuyoScheme,
-} from '@/utils/payAppBridge'
+import { createPaymentWebView, registerMoyuyoScheme } from '@/utils/payAppBridge'
 
 export default {
   pageTitleKey: 'pageTitle.orderPay',
@@ -73,12 +70,7 @@ export default {
       orderId: null,
       order: null,
       // 与 checkout.vue 完全一致的支付方式 ID 列表：文案走 i18n,通过 currentPaymentMethods 渲染
-      paymentMethods: [
-        { id: 'googlepay' },
-        { id: 'applepay' },
-        { id: 'paypal' },
-        { id: 'card' },
-      ],
+      paymentMethods: [{ id: 'googlepay' }, { id: 'applepay' }, { id: 'paypal' }, { id: 'card' }],
       // 前端 UI 层的选中 ID（googlepay/applepay/paypal/card）
       selectedMethodId: 'googlepay',
       clientType: 'H5',
@@ -136,7 +128,8 @@ export default {
   },
 
   onLoad(query) {
-    this.orderId = query.id
+    // 兼容 list.vue 之前误传的 orderId（已修正为 id），旧链接仍能解析
+    this.orderId = query.id || query.orderId
     // checkout 页已选支付方式（带 channel/method 参数）→ 反查 UI 选中 ID 并自动支付
     if (query.method) {
       this.selectedMethodId = this.resolveMethodIdFromBackend(query.method.toUpperCase())
@@ -166,7 +159,10 @@ export default {
     if (this.clientType === 'APP') {
       try {
         this.schemeOff = registerMoyuyoScheme((ret) => {
-          this.handlePayResult(ret.status, ret.status === 'success' ? '' : i18n.t('orderPay.payCancelled'))
+          this.handlePayResult(
+            ret.status,
+            ret.status === 'success' ? '' : i18n.t('orderPay.payCancelled'),
+          )
         })
       } catch (e) {
         /* APP 端运行时报错可忽略 */
@@ -242,6 +238,25 @@ export default {
     async loadOrder() {
       try {
         this.order = await orderApi.getOrderDetail(this.orderId)
+        // 订单已不在 PENDING_PAY（已超时自动取消 / 用户手动取消 / 已支付），
+        // 立即把状态反映到 UI，并引导用户返回订单列表；避免继续走 onPay 后 createPayment 抛"订单状态不允许支付"
+        if (this.order && this.order.status !== 'PENDING_PAY') {
+          this.status = 'failed'
+          if (this.order.status === 'CANCELLED') {
+            this.statusText = i18n.t('orderPay.cancelReason')
+          } else if (this.order.status === 'PAID' || this.order.status === 'PENDING_SHIP') {
+            // 已支付（用户可能在别的端付过款）→ 走 success 分支，让用户进入订单详情
+            this.status = 'success'
+            this.statusText = i18n.t('orderPay.paySuccess') + '!'
+          } else {
+            this.statusText = i18n.t('orderPay.payFailed')
+          }
+          // 2.5s 后跳回订单列表，让用户先看清文案再跳转
+          if (!this.autoPayReady) {
+            setTimeout(() => this.goDetail(), 2500)
+          }
+          return
+        }
         // checkout 页带 channel 参数 → 订单加载完自动发起支付
         if (this.autoPayReady && this.order?.status === 'PENDING_PAY') {
           this.autoPayReady = false
@@ -314,7 +329,10 @@ export default {
         createPaymentWebView({
           page: this,
           onReturn: (ret) => {
-            this.handlePayResult(ret.status || '', ret.status === 'success' ? '' : i18n.t('orderPay.payCancelled'))
+            this.handlePayResult(
+              ret.status || '',
+              ret.status === 'success' ? '' : i18n.t('orderPay.payCancelled'),
+            )
           },
           onMessage: (e) => {
             const data = e.detail?.data?.[0]

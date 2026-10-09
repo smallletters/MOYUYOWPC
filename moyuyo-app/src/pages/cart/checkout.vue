@@ -789,6 +789,14 @@ export default {
     /** 从后端拉取当前地址可用的配送方式及运费 */
     async loadShippingMethods() {
       if (!this.selectedAddress || !this.selectedAddress.country) return
+      // 兜底：下单成功后 onSubmit 会清空购物车/buyNowItem，触发 subtotal watcher 重跑此方法，
+      // 此时 checkoutItems 已为空，传给后端会被 @NotEmpty 拦截为 400。
+      // 早退避免无效请求污染 console
+      if (!this.checkoutItems || this.checkoutItems.length === 0) {
+        this.shippingMethods = []
+        this.shippingLoaded = true
+        return
+      }
       this.shippingLoading = true
       try {
         const items = this.checkoutItems.map((it) => ({

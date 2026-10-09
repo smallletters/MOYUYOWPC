@@ -198,6 +198,13 @@
       }
     },
     {
+      "path": "pages/order/reviewDetail",
+      "style": {
+        "navigationBarTitleText": "查看评价",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/order/pay",
       "style": {
         "navigationBarTitleText": "支付"

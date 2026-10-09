@@ -40,6 +40,7 @@ export default {
     orderDetail: 'Order Details',
     orderLogistics: 'Track Order',
     orderReview: 'Write Review',
+    orderReviewDetail: 'View Review',
     orderPay: 'Payment',
     orderRefund: 'Refund',
     communityDetail: 'Post Details',
@@ -1419,6 +1420,14 @@ export default {
       good: 'Satisfied',
       great: 'Very satisfied',
     },
+  },
+
+  // 订单评价详情 /pages/order/reviewDetail（只读查看已提交的评价）
+  orderReviewDetail: {
+    title: 'View Review',
+    orderStatus: 'Order Status',
+    empty: 'No reviews for this order yet',
+    reviewedAt: 'Reviewed at {time}',
   },
 
   // 订单退款 /pages/order/refund

@@ -190,7 +190,15 @@ export default {
       }
       this.loading = true
       try {
-        const params = { page: this.page, size: 10 }
+        // 分页 size:从 10 调到 20。
+        // 原因:H5 端 uni-app <scroll-view @scrolltolower> 在某些浏览器(尤其是 iOS Safari)
+        // 不稳定触发,用户滚到底经常加载不出第二页;把单页 size 调大,大多数用户的全部订单
+        // 一次拉完(测试用户总订单 16 条,20 一页即可全部展示),
+        // 避免"全部" tab 下看不到 SHIPPED/RECEIVED 等排在时间靠后的订单。
+        // 风险:订单很多(数百)的用户首屏渲染慢,但服务端已经 selectPage + size 上限 PageParamGuard=100,
+        // 20 仍属安全值。
+        const params = { page: this.page, size: 20 }
+        this._lastPageSize = params.size
         if (this.activeTab !== 'all') params.status = this.activeTab
         // request.js 已解包外层 envelope,result 即 IPage { records, total, size, current, ... }
         const result = await orderApi.getOrderList(params)
@@ -205,7 +213,18 @@ export default {
           const pending = getPendingOrders()
           if (pending.length > 0) {
             const seen = new Set(list.map((o) => o.id))
-            const merged = [...pending.filter((o) => !seen.has(o.id)), ...list]
+            // 清理陈旧本地记录：本地 pending 里那些 id 没出现在后端 PENDING_PAY 返回里的订单，
+            // 已经被 30 分钟定时任务取消 / 已被取消 / 已支付过，强行合并会让"已取消"订单混进"待付款"列表，
+            // 用户点"立即支付"会被 pay.vue 提示"订单已取消"。这里主动从 storage 移除这些脏数据。
+            const alivePending = []
+            for (const p of pending) {
+              if (seen.has(p.id)) {
+                alivePending.push(p)
+              } else {
+                removePendingOrder(p.id)
+              }
+            }
+            const merged = [...alivePending.filter((o) => !seen.has(o.id)), ...list]
             list = merged.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
           }
         }
@@ -219,7 +238,7 @@ export default {
         if (Number.isFinite(total) && total >= 0) {
           this.noMore = this.orders.length >= total
         } else {
-          this.noMore = list.length < 10
+          this.noMore = list.length < (this._lastPageSize || 10)
         }
         if (list.length > 0) this.page += 1
         // 拉完首屏后,异步补一次"我已提交过评价的订单 id"集合,用于在 RECEIVED tab 把
@@ -318,8 +337,10 @@ export default {
     onAction(order) {
       const s = order.status
       if (s === 'PENDING_PAY') {
+        // 注意字段名：pay.vue onLoad 读的是 query.id（与 checkout.vue 的跳转保持一致），
+        // 之前误用 orderId 会导致 this.orderId=undefined，进而请求 /api/v1/orders/undefined 触发 400
         uni.navigateTo({
-          url: `/pages/order/pay?orderId=${order.id}&amount=${order.payAmount}`,
+          url: `/pages/order/pay?id=${order.id}&amount=${order.payAmount}`,
         })
       } else if (s === 'PAID' || s === 'PENDING_SHIP') {
         // 已支付/待发货 → 暂无 APP 侧操作按钮(等 admin 发货)
@@ -346,8 +367,9 @@ export default {
           uni.navigateTo({ url: `/pages/order/review?orderId=${order.id}` })
         }
       } else if (s === 'COMPLETED') {
-        // 已完成订单:跳订单详情页(详情页里有查看评价/申请售后等入口),保持原行为
-        uni.navigateTo({ url: `/pages/order/detail?id=${order.id}` })
+        // 已完成订单:直接进入只读"查看评价"页(展示本订单已提交的评价内容),
+        // 不再绕一圈先跳详情页，避免按钮文案"查看评价"与实际行为不符。
+        uni.navigateTo({ url: `/pages/order/reviewDetail?orderId=${order.id}` })
       } else {
         this.goDetail(order.id)
       }
@@ -441,7 +463,12 @@ export default {
     /** 触摸结束:根据最终位置决定"弹回去"还是"展开" */
     onTouchEnd(e, order) {
       if (!this.touchingOrder) return
-      this.justTouchedAt = Date.now()
+      // 仅"真实滑动过"才拦截后续 click；普通 tap（按一下没动）放过，让 onCardClick 触发跳转。
+      // 原实现无条件设 justTouchedAt=Date.now()，但 H5 触屏 tap 也会触发 touchstart/touchend，
+      // click 紧随其后 <50ms 触发，导致普通点击被吞、待付款/待发货卡片无法跳转订单详情。
+      if (this.isSwiping) {
+        this.justTouchedAt = Date.now()
+      }
       const full = this.computeBtnPx(order)
       const current = this.touchingOrder.swipeOffset || 0
       // 超过一半就展开到底,否则弹回
