@@ -118,13 +118,18 @@ export default {
       // - PENDING_PAY → 待支付
       // - PAID,PENDING_SHIP → 支付成功后、发货前（admin 发货前状态可能是 PAID 或 PENDING_SHIP）
       // - SHIPPED → 已发货、待收货
-      // - RECEIVED,COMPLETED → 已收货（待评价）、已完成
+      // - RECEIVED → 已收货（待评价）
+      // - COMPLETED → 已完成（已评价）
+      // 6 个 tab,语义对齐用户视角:
+      // - RECEIVED (待评价) 与 COMPLETED (已完成) 拆分,避免同一 tab 内按钮一会"去评价"一会"查看"
+      // - 待发货 PAID/PENDING_SHIP 仍合并,后端 listOrders 已支持逗号分隔多状态 in 查询
       return [
         { value: 'all', label: i18n.t('orderList.statusTabs.all') },
         { value: 'PENDING_PAY', label: i18n.t('orderList.statusTabs.pendingPay') },
         { value: 'PAID,PENDING_SHIP', label: i18n.t('orderList.statusTabs.pendingShip') },
         { value: 'SHIPPED', label: i18n.t('orderList.statusTabs.pendingReceive') },
-        { value: 'RECEIVED,COMPLETED', label: i18n.t('orderList.statusTabs.completed') },
+        { value: 'RECEIVED', label: i18n.t('orderList.statusTabs.toReview') },
+        { value: 'COMPLETED', label: i18n.t('orderList.statusTabs.completed') },
       ]
     },
     currencySymbol() {
@@ -135,7 +140,16 @@ export default {
 
   onLoad(query) {
     if (query.type && query.type !== 'all') {
-      this.activeTab = query.type
+      // 兜底:如果传入的 type 不在 tabs 列表里(典型例子:历史值 PENDING_RECEIVE / COMPLETED,
+      // 与后端枚举和 tab value 已不对齐),静默回退到 'all',
+      // 避免 activeTab 落到一个 tabs 数组里没有的 value,导致所有 tab 都没点亮、页面看上去空白。
+      // 静默回退而不是 toast:旧 URL 可能是用户收藏/分享,弹窗体验差。
+      const known = this.tabs.some((t) => t.value === query.type)
+      if (known) {
+        this.activeTab = query.type
+      } else {
+        this.activeTab = 'all'
+      }
     }
     this.loadOrders(true)
     this._unsubLocale = i18n.subscribe(() => {
@@ -223,7 +237,7 @@ export default {
         PENDING_SHIP: i18n.t('orderList.actionWaitShip'), // 待发货
         SHIPPED: i18n.t('orderList.actionConfirmReceive'), // 已发货 → 确认收货
         RECEIVED: i18n.t('orderList.actionReview'), // 已收货 → 去评价
-        COMPLETED: i18n.t('orderList.actionReview'), // 已完成 → 查看评价
+        COMPLETED: i18n.t('orderList.actionReviewed'), // 已完成 → 查看评价(避免和 RECEIVED 同文案)
       }
       return map[status] || i18n.t('orderList.actionView')
     },
@@ -253,6 +267,7 @@ export default {
       } else if (s === 'RECEIVED') {
         uni.navigateTo({ url: `/pages/order/review?orderId=${order.id}` })
       } else if (s === 'COMPLETED') {
+        // 已完成订单:跳订单详情页(详情页里有查看评价/申请售后等入口),保持原行为
         uni.navigateTo({ url: `/pages/order/detail?id=${order.id}` })
       } else {
         this.goDetail(order.id)

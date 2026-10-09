@@ -74,21 +74,23 @@
         :key="p.id"
         class="post-card"
         @tap="goDetail(p.id)">
-        <!-- 用户信息行 -->
+        <!-- 用户信息行：头像/昵称点击进入作者社区主页(@tap.stop 防止冒泡到帖子卡片的详情跳转) -->
         <view class="post-header">
-          <image
-            v-if="p.avatar"
-            :src="resolveImageUrl(p.avatar)"
-            class="post-avatar"
-            mode="aspectFill"
-            @error="onImageError"
-          />
-          <view v-else class="post-avatar post-avatar-fallback">
-            {{ avatarChar(p.username) }}
-          </view>
-          <view class="post-user">
-            <text class="post-username">{{ p.username || 'Pet Lover' }}</text>
-            <text class="post-time">{{ formatTime(p.createTime) }}</text>
+          <view class="post-author" @tap.stop="goAuthorProfile(p)">
+            <image
+              v-if="p.avatar"
+              :src="resolveImageUrl(p.avatar)"
+              class="post-avatar"
+              mode="aspectFill"
+              @error="onImageError"
+            />
+            <view v-else class="post-avatar post-avatar-fallback">
+              {{ avatarChar(p.username) }}
+            </view>
+            <view class="post-user">
+              <text class="post-username">{{ p.username || 'Pet Lover' }}</text>
+              <text class="post-time">{{ formatTime(p.createTime) }}</text>
+            </view>
           </view>
           <view class="more-btn" @tap.stop="onMore(p)">
             <text class="more-icon">⋯</text>
@@ -331,6 +333,29 @@ export default {
     onTopicClick(t) {
       uni.navigateTo({
         url: `/pages/user/community-topic?id=${t.id}&name=${encodeURIComponent(t.name)}`,
+      })
+    },
+
+    /**
+     * 点击帖子卡片里的用户头像/昵称:进入作者社区主页
+     * - 自己：不传 id,走"自己的社区主页"分支(loadStatBar + loadActiveTab),
+     *   避免调 GET /users/{id}/profile 公开接口失败导致 toast 加载失败
+     * - 他人：传 id + name,走公开 profile + 用户帖子分支
+     * 阻止冒泡(模板里已 @tap.stop),不会触发外层卡片的帖子详情跳转
+     */
+    goAuthorProfile(p) {
+      if (!p) return
+      const id = p.userId
+      const name = p.username || ''
+      if (!id && !name) return
+      const userStore = useUserStore()
+      const me = userStore.userInfo && userStore.userInfo.id
+      const isSelf = id != null && me != null && String(id) === String(me)
+      const params = []
+      if (!isSelf && id) params.push(`id=${id}`)
+      if (name) params.push(`name=${encodeURIComponent(name)}`)
+      uni.navigateTo({
+        url: `/pages/community/profile${params.length ? '?' + params.join('&') : ''}`,
       })
     },
 
@@ -749,6 +774,14 @@ export default {
   align-items: center;
   gap: 20rpx;
   padding: 20rpx 20rpx 16rpx;
+}
+/* 作者信息（头像+昵称）:点击进入作者主页 */
+.post-author {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  min-width: 0;
 }
 .post-avatar {
   width: 72rpx;

@@ -37,7 +37,7 @@ class AdminOrderOpsControllerTest {
   @Test
   void createExport_有效请求_调用Service并返回任务信息() {
     // given:Service 返回 taskId 和初始状态
-    when(adminOrderOpsService.createExportTask(any(Map.class)))
+    when(adminOrderOpsService.createExportTask(any(OrderExportCreateRequest.class)))
         .thenReturn(Map.of("taskId", "EXPORT-123", "status", "PENDING"));
     OrderExportCreateRequest request = new OrderExportCreateRequest();
     request.setTaskName("日终导出");
@@ -56,6 +56,12 @@ class AdminOrderOpsControllerTest {
     assertEquals("CSV", data.get("format"));
     assertEquals("PENDING", data.get("status"));
     assertEquals("导出任务已创建", data.get("message"));
+    // 校验透传的 DTO 字段与请求一致
+    ArgumentCaptor<OrderExportCreateRequest> captor = ArgumentCaptor.forClass(OrderExportCreateRequest.class);
+    verify(adminOrderOpsService).createExportTask(captor.capture());
+    assertEquals("日终导出", captor.getValue().getTaskName());
+    assertEquals("已支付订单", captor.getValue().getOrderScope());
+    assertEquals("CSV", captor.getValue().getFormat());
   }
 
   // ============ batchShip ============

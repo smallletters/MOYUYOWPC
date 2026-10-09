@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="search">
     <!-- 顶部搜索栏 -->
     <view class="search-bar">
@@ -124,7 +124,7 @@
           v-for="u in results"
           :key="u.id"
           class="user-card"
-          @tap="goUserProfile(u.id)">
+          @tap="goUserProfile(u)">
           <image
             v-if="u.avatar"
             :src="resolveImageUrl(u.avatar)"
@@ -168,6 +168,7 @@
 
 <script>
 import { communityApi } from '@/api'
+import { useUserStore } from '@/store'
 import { setStorage, getStorage, removeStorage, STORAGE_KEYS } from '@/utils/storage'
 
 const SEARCH_HISTORY_KEY = STORAGE_KEYS.SEARCH_HISTORY
@@ -308,8 +309,22 @@ export default {
       uni.navigateTo({ url: `/pages/community/detail?id=${id}` })
     },
 
-    goUserProfile(id) {
-      uni.navigateTo({ url: `/pages/user/profile?id=${id}` })
+    goUserProfile(item) {
+      // 点击用户搜索结果:跳转到社区主页 profile
+      // - 自己（搜索到自己）:不传 id,走"自己的社区主页"分支,避免公开接口失败
+      // - 他人：传 id + name,落地页走公开 profile + 用户帖子分支
+      // name 用于落地页直接展示昵称,避免进入页面后再次请求网络获取
+      const id = item && (item.id ?? item.userId)
+      const name = (item && (item.nickname || item.username || item.name)) || ''
+      const userStore = useUserStore()
+      const me = userStore.userInfo && userStore.userInfo.id
+      const isSelf = id != null && me != null && String(id) === String(me)
+      const params = []
+      if (!isSelf && id) params.push(`id=${id}`)
+      if (name) params.push(`name=${encodeURIComponent(name)}`)
+      uni.navigateTo({
+        url: `/pages/community/profile${params.length ? '?' + params.join('&') : ''}`,
+      })
     },
 
     onTopicClick(t) {

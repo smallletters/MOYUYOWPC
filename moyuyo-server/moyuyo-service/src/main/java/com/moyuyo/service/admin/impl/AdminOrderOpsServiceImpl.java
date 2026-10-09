@@ -15,6 +15,7 @@ import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
+import com.moyuyo.common.dto.admin.order.OrderExportCreateRequest;
 import com.moyuyo.common.dto.logistics.YanWenLabelResponse;
 import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.common.exception.OrderStatusGuard;
@@ -222,10 +223,10 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
 
   @Override
   @Transactional
-  public Map<String, Object> createExportTask(Map<String, Object> body) {
-    String taskName = (String) body.getOrDefault("taskName", "订单导出");
-    String orderScope = (String) body.getOrDefault("orderScope", "全部订单");
-    String format = (String) body.getOrDefault("format", "Excel");
+  public Map<String, Object> createExportTask(OrderExportCreateRequest body) {
+    String taskName = body.getTaskName() != null ? body.getTaskName() : "订单导出";
+    String orderScope = body.getOrderScope() != null ? body.getOrderScope() : "全部订单";
+    String format = body.getFormat() != null ? body.getFormat() : "Excel";
 
     DataExportRequestEntity entity = new DataExportRequestEntity();
     // 从当前登录用户上下文获取操作人ID，未获取到则使用系统用户ID

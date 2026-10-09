@@ -7,6 +7,7 @@
         <text class="nickname">
           {{
             viewedProfile?.nickname ||
+              viewedProfileInitialName ||
               userStore.userInfo?.nickname ||
               userStore.userInfo?.email ||
               t('userCenter.defaultNickname')
@@ -211,6 +212,8 @@ export default {
       bioText: '',
       // 他人 profile：从 query.id 解析出的被查看者 id（未传则是自己）
       viewedUserId: 0,
+      // 他人 profile 初始昵称占位：来自 query.name，接口返回前先渲染,避免闪烁
+      viewedProfileInitialName: '',
       // 拉取到的被查看者公开资料（id/nickname/avatar/bio/following/followers/isFollowing）
       viewedProfile: null,
       // loadOtherProfile 防抖锁：onShow 反复触发时避免重复请求 + 闪烁
@@ -311,6 +314,9 @@ export default {
     const rawId = query && (query.id ?? query.userId)
     const parsedId = Number(rawId)
     this.viewedUserId = Number.isFinite(parsedId) && parsedId > 0 ? parsedId : 0
+    // 解析 query.name（可选）：传入昵称作为初始占位,避免接口返回前昵称空白闪烁
+    const rawName = query && query.name
+    this.viewedProfileInitialName = rawName ? decodeURIComponent(String(rawName)) : ''
     // 每次进入页面都清空 viewedProfile,避免上一次进入的他人数据残留
     this.viewedProfile = null
     // 他人 profile 只能看"帖子" tab,防止上一次的 activeTab 残留为 liked/collected 导致空态

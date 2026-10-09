@@ -1,6 +1,7 @@
 package com.moyuyo.service.admin;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyuyo.common.dto.admin.order.OrderExportCreateRequest;
 import com.moyuyo.common.dto.logistics.YanWenLabelResponse;
 
 import java.math.BigDecimal;
@@ -25,7 +26,7 @@ public interface AdminOrderOpsService {
   /**
    * 创建导出任务
    */
-  Map<String, Object> createExportTask(Map<String, Object> body);
+  Map<String, Object> createExportTask(OrderExportCreateRequest body);
 
   /**
    * 构建导出文件内容（CSV 字节）

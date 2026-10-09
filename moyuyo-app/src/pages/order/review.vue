@@ -65,6 +65,7 @@
 
 <script>
 import { orderApi, reviewApi } from '@/api'
+import { uploadImage } from '@/api/upload'
 import { i18n } from '@/i18n'
 
 export default {
@@ -123,10 +124,41 @@ export default {
       else item.tags.push(tag)
     },
 
-    addImage(item) {
-      // 实际项目应调 uni.chooseImage
-      item.images = item.images || []
-      item.images.push(`https://picsum.photos/200?random=${Math.floor(Math.random() * 100)}`)
+    /**
+     * 选图 → 上传 → 拿到后端 URL 后再 push 到 item.images。
+     * 与 pet/profile.vue 头像上传保持同一套流程(uni.chooseImage + uploadImage),
+     * 防止把临时路径(tempFilePaths/带 _tmp 后缀)直接交给后端——后端拿这种路径无法显示。
+     * 失败时只 toast 当前图片,不阻断用户继续编辑或删除其它图。
+     */
+    async addImage(item) {
+      if ((item.images || []).length >= 9) return
+      try {
+        // 单张选图;压缩以节省流量;显式 ['album'] 绕开 Android 上
+        // uni-app 的 sourceType 弹层文案渲染 bug(显示成 "uni.chooseImage.sourceType.xxx")
+        const chooseRes = await uni.chooseImage({
+          count: 1,
+          sizeType: ['compressed'],
+          sourceType: ['album'],
+        })
+        const filePath = chooseRes.tempFilePaths?.[0]
+        if (!filePath) return
+        uni.showLoading({ title: i18n.t('common.loading'), mask: true })
+        const uploadRes = await uploadImage(filePath)
+        const url = uploadRes?.url
+        uni.hideLoading()
+        if (!url) throw new Error('Upload returned no URL')
+        item.images = item.images || []
+        item.images.push(url)
+      } catch (e) {
+        uni.hideLoading()
+        // 用户在系统选择器里"取消"时,errMsg 含 "cancel",不弹错误
+        const msg = String(e?.errMsg || e?.message || '')
+        if (msg.includes('cancel')) return
+        uni.showToast({
+          title: e?.message || i18n.t('orderReview.uploadFailed'),
+          icon: 'none',
+        })
+      }
     },
 
     removeImage(item, idx) {

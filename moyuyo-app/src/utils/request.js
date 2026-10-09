@@ -310,12 +310,11 @@ export function request(options) {
         const msg = isTimeout ? t('common.requestTimeout') : t('common.networkError')
         console.warn('[request] network fail:', fullUrl, err)
         if (showError) uni.showToast({ title: msg, icon: 'none' })
-        // 网络错误兜底：后端重启后旧 token 可能被作废，
-        // 这里清掉 token 让下次进入页面走登录流程，
-        // 避免用户反复看到"网络错误"却无法自动恢复
-        if (fullUrl.includes('/api/v1/')) {
-          safeRemove(STORAGE_KEYS.TOKEN)
-        }
+        // 注意：fail 分支只代表"请求没成功到达业务层"，可能是 CORS 拦截、
+        // WiFi 断、后端宕机、timeout 等。这些场景 token 本身可能完全有效，
+        // 不能与 success 分支的 401 业务错误混为一谈。
+        // 清 token / 弹登录过期的逻辑统一交给 success 分支的 handleUnauthorized
+        // （依赖后端真正返回的 401 状态码），保证提示语义准确。
         const e = new Error(msg)
         e.isNetworkError = true
         e.url = fullUrl

@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -31,14 +32,24 @@ public class CouponServiceImpl implements CouponService {
     private final UserCouponMapper userCouponMapper;
 
     @Override
+    @SuppressWarnings("null")
     public Page<CouponEntity> listAvailable(int page, int size, Long userId) {
+        // JDT 误报:LambdaQueryWrapper.eq/and(SFunction, ...) 走 Function.apply(this) 路径,
+        // JDT 推断 this 为 @Nonnull 产生冲突,实际仅反射列名,运行时无 NPE 风险
         LambdaQueryWrapper<CouponEntity> q = new LambdaQueryWrapper<>();
         q.eq(CouponEntity::getActive, true);
         q.and(w -> w.isNull(CouponEntity::getEndTime).or().ge(CouponEntity::getEndTime, LocalDateTime.now()));
         q.orderByDesc(CouponEntity::getCreateTime);
         Page<CouponEntity> result = couponMapper.selectPage(Page.of(page, size), q);
+        // 防御：selectPage 在部分 MP 版本下 records 可能为 null，给个空列表避免 NPE
+        if (result == null) {
+            return new Page<>(page, size, 0);
+        }
+        if (result.getRecords() == null) {
+            result.setRecords(java.util.Collections.emptyList());
+        }
         // 已登录用户：批量查询其已领取的 couponId 集合，标记 claimedByMe
-        if (userId != null && result != null && !result.getRecords().isEmpty()) {
+        if (userId != null && !result.getRecords().isEmpty()) {
             fillClaimedByMe(result.getRecords(), userId);
         }
         return result;
@@ -47,10 +58,13 @@ public class CouponServiceImpl implements CouponService {
     /**
      * 批量填充当前用户已领取标记，避免 N+1 查询
      */
+    @SuppressWarnings("null")
     private void fillClaimedByMe(List<CouponEntity> coupons, Long userId) {
         List<Long> couponIds = coupons.stream().map(CouponEntity::getId).collect(Collectors.toList());
         if (couponIds.isEmpty()) return;
         LambdaQueryWrapper<UserCouponEntity> q = new LambdaQueryWrapper<>();
+        // JDT 误报:LambdaQueryWrapper#eq/in(SFunction, ...) 走 Function.apply(this) 路径,
+        // JDT 推断 this 为 @Nonnull 产生冲突,实际仅反射列名,运行时无 NPE 风险
         q.eq(UserCouponEntity::getUserId, userId).in(UserCouponEntity::getCouponId, couponIds);
         List<UserCouponEntity> userCoupons = userCouponMapper.selectList(q);
         Set<Long> claimedIds = userCoupons == null
@@ -68,6 +82,7 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     @Transactional
+    @SuppressWarnings("null")
     public void claimCoupon(Long userId, Long couponId) {
         CouponEntity coupon = couponMapper.selectById(couponId);
         if (coupon == null) throw new IllegalArgumentException("优惠券不存在");
@@ -75,10 +90,15 @@ public class CouponServiceImpl implements CouponService {
         if (coupon.getEndTime() != null && coupon.getEndTime().isBefore(LocalDateTime.now()))
             throw new IllegalArgumentException("该优惠券已过期");
 
-        // 防止重复领取
+        // 先查一次,命中已领取时直接 409(业务可读 message),不依赖唯一索引兜底
+        // JDT 误报:LambdaQueryWrapper#eq(SFunction, ...) 走 Function.apply(this) 路径,
+        // JDT 推断 this 为 @Nonnull 产生冲突,实际仅反射列名,运行时无 NPE 风险
         LambdaQueryWrapper<UserCouponEntity> q = new LambdaQueryWrapper<>();
         q.eq(UserCouponEntity::getUserId, userId).eq(UserCouponEntity::getCouponId, couponId);
-        if (userCouponMapper.selectCount(q) > 0) throw new IllegalArgumentException("您已领取过该优惠券");
+        if (userCouponMapper.selectCount(q) > 0) {
+            // 业务冲突:同一用户重复领取同一张券
+            throw new com.moyuyo.common.exception.BusinessException(409, "您已领取过该优惠券");
+        }
 
         // 库存校验
         if (coupon.getTotalCount() != null && coupon.getClaimedCount() != null
@@ -89,7 +109,14 @@ public class CouponServiceImpl implements CouponService {
         uc.setUserId(userId);
         uc.setCouponId(couponId);
         uc.setStatus("UNUSED");
-        userCouponMapper.insert(uc);
+        try {
+            userCouponMapper.insert(uc);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            // 并发兜底:两次请求同时通过 selectCount 校验后,insert 撞 uk_user_coupon 唯一索引
+            // 把数据库 409 转成业务 409,前端能拿到"已领取"语义
+            log.info("[coupon] duplicate claim detected, userId={}, couponId={}", userId, couponId);
+            throw new com.moyuyo.common.exception.BusinessException(409, "您已领取过该优惠券");
+        }
 
         // 增加领取数
         coupon.setClaimedCount((coupon.getClaimedCount() == null ? 0 : coupon.getClaimedCount()) + 1);
@@ -97,22 +124,36 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
+    @SuppressWarnings("null")
     public List<CouponEntity> listUserCoupons(Long userId, String status) {
+        // JDT 误报:LambdaQueryWrapper#eq/orderByDesc(SFunction, ...) 走 Function.apply(this) 路径,
+        // JDT 推断 this 为 @Nonnull 产生冲突,实际仅反射列名,运行时无 NPE 风险
         LambdaQueryWrapper<UserCouponEntity> q = new LambdaQueryWrapper<>();
         q.eq(UserCouponEntity::getUserId, userId);
         if (status != null && !status.isEmpty()) q.eq(UserCouponEntity::getStatus, status);
         q.orderByDesc(UserCouponEntity::getCreateTime);
         List<UserCouponEntity> ucs = userCouponMapper.selectList(q);
-        return ucs.stream().map(uc -> couponMapper.selectById(uc.getCouponId())).toList();
+        if (ucs.isEmpty()) return Collections.emptyList();
+        // 批量查 coupon,避免 N 张券 N 次 SQL 的 N+1
+        List<Long> couponIds = ucs.stream().map(UserCouponEntity::getCouponId).distinct().collect(Collectors.toList());
+        Map<Long, CouponEntity> couponMap = couponMapper.selectByIds(couponIds).stream()
+                .collect(Collectors.toMap(CouponEntity::getId, c -> c, (a, b) -> a));
+        return ucs.stream()
+                .map(uc -> couponMap.get(uc.getCouponId()))
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional
+    @SuppressWarnings("null")
     public void useCoupon(Long userId, Long userCouponId, Long orderId) {
         UserCouponEntity uc = userCouponMapper.selectById(userCouponId);
         if (uc == null) throw new IllegalArgumentException("用户优惠券不存在");
         if (!uc.getUserId().equals(userId)) throw new IllegalArgumentException("无权使用他人优惠券");
         // 条件更新防止并发双花：仅 UNUSED 能核销成功；失败说明已被其他订单使用
+        // JDT 误报:LambdaUpdateWrapper#eq/set(SFunction, ...) 走 Function.apply(this) 路径,
+        // JDT 推断 this 为 @Nonnull 产生冲突,实际仅反射列名,运行时无 NPE 风险
         int updated = userCouponMapper.update(null,
                 new LambdaUpdateWrapper<UserCouponEntity>()
                         .eq(UserCouponEntity::getId, userCouponId)
@@ -128,11 +169,14 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     @Transactional
+    @SuppressWarnings("null")
     public void releaseCoupon(Long userCouponId, Long orderId) {
         if (userCouponId == null || orderId == null) {
             return;
         }
         // 条件更新：仅当该券确由本订单核销(USED & usedOrderId)时才返还，防止并发误还
+        // JDT 误报:LambdaUpdateWrapper#eq/set(SFunction, ...) 走 Function.apply(this) 路径,
+        // JDT 推断 this 为 @Nonnull 产生冲突,实际仅反射列名,运行时无 NPE 风险
         int updated = userCouponMapper.update(null,
                 new LambdaUpdateWrapper<UserCouponEntity>()
                         .eq(UserCouponEntity::getId, userCouponId)
@@ -175,10 +219,11 @@ public class CouponServiceImpl implements CouponService {
         }
         BigDecimal discount;
         if ("PERCENT".equalsIgnoreCase(coupon.getType()) && coupon.getDiscountValue() != null) {
-            // 折扣值 95 = 9.5 折：减免 = subtotal × (100 - 95)/100（与前端一致）
-            discount = subtotal.multiply(BigDecimal.valueOf(100)
-                            .subtract(coupon.getDiscountValue()))
-                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            // discountValue 存『价格百分比』(90 = 9 折 = 减扣 10%);
+            // 减免 = subtotal × (1 - discountValue/100)
+            BigDecimal rate = BigDecimal.ONE.subtract(coupon.getDiscountValue()
+                    .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+            discount = subtotal.multiply(rate).setScale(2, RoundingMode.HALF_UP);
         } else {
             discount = coupon.getDiscountValue() == null ? BigDecimal.ZERO : coupon.getDiscountValue();
         }

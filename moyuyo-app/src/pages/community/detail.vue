@@ -4,7 +4,7 @@
     <template v-else>
       <view class="post-card">
         <view class="post-header">
-          <image :src="post.avatar || defaultAvatar" class="avatar" />
+          <image :src="post.avatar || defaultAvatar" class="avatar" @tap="onTapAuthor" />
           <view class="user-info" @tap="onTapAuthor">
             <text class="username">{{ post.username || 'Pet Lover' }}</text>
             <text class="time">{{ formatTime(post.createTime) }}</text>
@@ -499,16 +499,23 @@ export default {
     },
 
     /**
-     * 点击作者区域(头像/昵称):进入作者主页
-     * 当前后端没有"按 id 查用户"接口,所以暂跳到社区搜索页用昵称搜(用户 Tab)
-     * 后续有了 /users/{id} 详情接口再换成 user-profile-page
+     * 点击作者区域(头像/昵称):直接进入作者社区主页
+     * - 自己：不传 id,走"自己的社区主页"分支(loadStatBar + loadActiveTab),
+     *   避免调 GET /users/{id}/profile 公开接口时拿不到自己的数据而 toast 加载失败
+     * - 他人：传 id + name,落地页走公开 profile + 用户帖子分支
      */
     onTapAuthor() {
       if (!this.post) return
+      const id = this.post.userId
       const name = this.post.username || ''
-      if (!name) return
+      if (!id && !name) return
+      const me = this.userStore.userInfo && this.userStore.userInfo.id
+      const isSelf = id != null && me != null && String(id) === String(me)
+      const params = []
+      if (!isSelf && id) params.push(`id=${id}`)
+      if (name) params.push(`name=${encodeURIComponent(name)}`)
       uni.navigateTo({
-        url: `/pages/community/search?keyword=${encodeURIComponent(name)}`,
+        url: `/pages/community/profile${params.length ? '?' + params.join('&') : ''}`,
       })
     },
 

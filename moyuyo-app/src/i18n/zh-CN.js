@@ -772,8 +772,12 @@ export default {
     orderStatus: {
       PENDING_PAY: '待付款',
       CART: '购物车',
-      PENDING_RECEIVE: '待收货',
-      COMPLETED: '待评价',
+      // 修复:之前是 PENDING_RECEIVE,与后端 OrderStatusEnum.SHIPPED 和 list.vue tabs 对不齐,
+      // user.vue 改 value='SHIPPED' 后 i18n key 拼接变 SHIPPED,这里补一条匹配。
+      SHIPPED: '待收货',
+      // 修复:之前是 COMPLETED,跳到 list.vue 点亮的是"已完成" tab,与"待评价"图标语义不符,
+      // user.vue 改 value='RECEIVED' 后 i18n key 拼接变 RECEIVED,这里补一条匹配。
+      RECEIVED: '待评价',
     },
     featureCheckin: '每日签到',
     featureMissions: '任务中心',
@@ -936,11 +940,13 @@ export default {
       pendingPay: '待付款',
       pendingShip: '待发货',
       pendingReceive: '待收货',
-      completed: '待评价',
+      toReview: '待评价',
+      completed: '已完成',
       cancelled: '已取消',
     },
     actionTrack: '查看物流',
     actionReview: '评价晒单',
+    actionReviewed: '查看评价',
     actionView: '查看详情',
     actionWaitShip: '等待发货',
     actionConfirmReceive: '确认收货',
@@ -1423,6 +1429,7 @@ export default {
     submit: '提交评价',
     submitted: '评价已提交',
     failed: '提交失败',
+    uploadFailed: '图片上传失败',
     ratingRequired: '请给 {name} 评分',
     presetTags: ['质量好', '味道好', '宠物喜爱', '尺码合适', '送货快'],
     rateDesc: {
@@ -1493,6 +1500,7 @@ export default {
     validityLongTerm: '长期有效',
     claimSuccess: '领取成功',
     claimFailed: '领取失败，请重试',
+    alreadyClaimed: '您已领取过该优惠券',
     categories: {
       discount: '满减券',
       cash: '现金券',

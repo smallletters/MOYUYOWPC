@@ -220,16 +220,27 @@ export default {
      */
     normalizeCoupon(c) {
       const isPercent = (c.type || '').toUpperCase() === 'PERCENT'
-      const rawValue = Number(c.discountValue || 0)
-      // AMOUNT 取纯数字交给 up-coupon 渲染主金额;
-      // PERCENT 用 10 - value/10 得到"几折"语义(8.5折 = 打85折)
+      // displayValue 由后端按 UI 语义产出：PERCENT → 折数；AMOUNT → 减免金额
+      const displayValue = Number(c.displayValue != null ? c.displayValue : c.discountValue || 0)
+      // PERCENT 用 discountValue(价格百分比) 推算『减扣百分比』给国外文案，
+      // AMOUNT 直接拿 displayValue 作金额
+      const pricePct = Number(c.discountValue || 0)
       let amount
       let unit
       if (isPercent) {
-        amount = String(rawValue).replace(/\.0+$/, '')
-        unit = i18n.t('couponCenter.discountUnit')
+        const isZh = (i18n.locale || '').toLowerCase().startsWith('zh')
+        if (isZh) {
+          // 中文显示『X 折』
+          amount = String(displayValue).replace(/\.0+$/, '')
+          unit = i18n.t('couponCenter.discountUnit')
+        } else {
+          // 国外显示『X % off』，其中 X = 100 - 价格百分比
+          const offPct = 100 - pricePct
+          amount = String(offPct).replace(/\.0+$/, '')
+          unit = i18n.t('couponCenter.discountUnit')
+        }
       } else {
-        amount = String(rawValue).replace(/[^\d.]/g, '')
+        amount = String(displayValue).replace(/[^\d.]/g, '')
         unit = this.currencySymbol
       }
       // typeLabel 给 up-coupon 的 desc 区域作为副标题,优先 description 字段
@@ -312,13 +323,39 @@ export default {
 
     async onClaim(coupon) {
       if (coupon.claimed) return
+      // 防重:同一张券在请求未结束前不再触发第二次(避免 H5 端 u-coupon 按钮 + 卡片 click 双触发)
+      if (this._claimingIds && this._claimingIds.has(coupon.id)) return
+      if (!this._claimingIds) this._claimingIds = new Set()
+      this._claimingIds.add(coupon.id)
       try {
         await couponApi.claimCoupon(coupon.id)
         const raw = this.rawCoupons.find((c) => c.id === coupon.id)
-        if (raw) raw.claimed = true
+        if (raw) {
+          raw.claimed = true
+          raw.claimedByMe = true
+        }
         uni.showToast({ title: i18n.t('couponCenter.claimSuccess'), icon: 'none' })
       } catch (e) {
-        uni.showToast({ title: i18n.t('couponCenter.claimFailed'), icon: 'none' })
+        // 后端 409 业务冲突(已领取过)时,使用后端 message;其它错误走通用失败提示
+        const backendMsg = e && e.body && e.body.message
+        const isAlreadyClaimed =
+          (e && e.statusCode === 409) ||
+          (typeof backendMsg === 'string' && backendMsg.includes('已领取'))
+        if (isAlreadyClaimed) {
+          const raw = this.rawCoupons.find((c) => c.id === coupon.id)
+          if (raw) {
+            raw.claimed = true
+            raw.claimedByMe = true
+          }
+          uni.showToast({
+            title: backendMsg || i18n.t('couponCenter.alreadyClaimed'),
+            icon: 'none',
+          })
+        } else {
+          uni.showToast({ title: i18n.t('couponCenter.claimFailed'), icon: 'none' })
+        }
+      } finally {
+        if (this._claimingIds) this._claimingIds.delete(coupon.id)
       }
     },
 

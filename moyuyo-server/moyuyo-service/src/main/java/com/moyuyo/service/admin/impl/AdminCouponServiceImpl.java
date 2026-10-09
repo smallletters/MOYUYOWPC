@@ -25,6 +25,9 @@ public class AdminCouponServiceImpl implements AdminCouponService {
   private final UserCouponMapper userCouponMapper;
 
   @Override
+  // JDT 误报:LambdaQueryWrapper#orderByDesc(SFunction, ...) 走 Function.apply(this) 路径,
+  // JDT 推断 this 为 @Nonnull 产生冲突,实际仅反射列名,运行时无 NPE 风险
+  @SuppressWarnings("null")
   public List<Map<String, Object>> listAll() {
     List<CouponEntity> list = couponMapper.selectList(
         new LambdaQueryWrapper<CouponEntity>().orderByDesc(CouponEntity::getCreateTime));
@@ -32,6 +35,8 @@ public class AdminCouponServiceImpl implements AdminCouponService {
   }
 
   @Override
+  // JDT 误报:同 listAll(),Page 构造器及 LambdaQueryWrapper#orderByDesc 的方法引用路径
+  @SuppressWarnings("null")
   public Map<String, Object> listPage(int page, int size) {
     Page<CouponEntity> pageObj = new Page<>(page, size);
     Page<CouponEntity> result = couponMapper.selectPage(pageObj,
@@ -57,7 +62,8 @@ public class AdminCouponServiceImpl implements AdminCouponService {
     item.put("id", c.getId());
     item.put("name", c.getName());
     item.put("type", c.getType());
-    item.put("value", c.getDiscountValue());
+    // PERCENT 券：数据库存『价格百分比』，对外展示回退为『折数』(9 折 = 90)
+    item.put("value", toDisplayValue(c));
     item.put("minAmount", c.getMinOrderAmount());
     item.put("status", c.getActive());
     item.put("totalCount", c.getTotalCount());
@@ -68,13 +74,32 @@ public class AdminCouponServiceImpl implements AdminCouponService {
     return item;
   }
 
+  /**
+   * PERCENT 类型将『价格百分比』(如 90)转回『折数』(如 9)展示给管理端 UI;
+   * AMOUNT 类型原样返回减免金额。
+   */
+  private java.math.BigDecimal toDisplayValue(CouponEntity c) {
+    if (c.getDiscountValue() == null) return null;
+    if ("PERCENT".equalsIgnoreCase(c.getType())) {
+      // 保留 1 位小数,不做 stripTrailingZeros 避免 BigDecimal 转字符串出现科学计数法
+      return c.getDiscountValue().divide(new java.math.BigDecimal(10), 1, java.math.RoundingMode.HALF_UP);
+    }
+    return c.getDiscountValue();
+  }
+
   @Override
   @Transactional
   public void create(Map<String, Object> data) {
     CouponEntity entity = new CouponEntity();
     if (data.get("name") != null) entity.setName((String) data.get("name"));
-    if (data.get("type") != null) entity.setType(normalizeType((String) data.get("type")));
-    if (data.get("value") != null) entity.setDiscountValue(new java.math.BigDecimal(data.get("value").toString()));
+    String normalizedType = data.get("type") != null
+        ? normalizeType((String) data.get("type"))
+        : null;
+    if (normalizedType != null) entity.setType(normalizedType);
+    // value: null / 空串都视为"未传"，避免前端 form 未填字段(默认 "")把 discountValue 写成 NULL
+    Object rawValue = data.get("value");
+    if (rawValue != null && !rawValue.toString().isEmpty())
+      entity.setDiscountValue(toStoredValue(normalizedType, rawValue));
     if (data.get("minAmount") != null) entity.setMinOrderAmount(new java.math.BigDecimal(data.get("minAmount").toString()));
     if (data.get("maxAmount") != null) entity.setMaxDiscountAmount(new java.math.BigDecimal(data.get("maxAmount").toString()));
     if (data.get("totalCount") != null) entity.setTotalCount(Integer.valueOf(data.get("totalCount").toString()));
@@ -120,10 +145,35 @@ public class AdminCouponServiceImpl implements AdminCouponService {
     CouponEntity entity = couponMapper.selectById(Long.valueOf(data.get("id").toString()));
     if (entity == null) return;
     if (data.get("name") != null) entity.setName((String) data.get("name"));
-    if (data.get("type") != null) entity.setType(normalizeType((String) data.get("type")));
-    if (data.get("value") != null) entity.setDiscountValue(new java.math.BigDecimal(data.get("value").toString()));
+    // type 字段：先按入参归一；若未传，回退到 DB 原值(避免 value 单独更新时类型判断失误)
+    String normalizedType = data.get("type") != null
+        ? normalizeType((String) data.get("type"))
+        : entity.getType();
+    if (data.get("type") != null) entity.setType(normalizedType);
+    // value: null / 空串都视为"未传"，保持 DB 原值不变(form 未填字段默认 "" 是常见情况)
+    Object rawValue = data.get("value");
+    if (rawValue != null && !rawValue.toString().isEmpty())
+      entity.setDiscountValue(toStoredValue(normalizedType, rawValue));
     if (data.get("status") != null) entity.setActive(Boolean.valueOf(data.get("status").toString()));
     couponMapper.updateById(entity);
+  }
+
+  /**
+   * 入参 value 语义对齐存储:
+   * - PERCENT 类型入参为『折数』(9 表示 9 折)，数据库存『价格百分比』(9 → 90)
+   * - AMOUNT 类型入参为减免金额，原样存储
+   * 空值/null/空串:返回 null,由调用方决定是否更新 discountValue 字段
+   */
+  private java.math.BigDecimal toStoredValue(String normalizedType, Object rawValue) {
+    if (rawValue == null) return null;
+    String s = rawValue.toString();
+    if (s.isEmpty()) return null;
+    java.math.BigDecimal v = new java.math.BigDecimal(s);
+    if ("PERCENT".equals(normalizedType)) {
+      // 9 折 → 90 (即 100% * 0.9 的整数百分制);先乘以 10 再四舍五入到 2 位小数
+      return v.multiply(new java.math.BigDecimal(10)).setScale(2, java.math.RoundingMode.HALF_UP);
+    }
+    return v;
   }
 
   /**
@@ -153,6 +203,9 @@ public class AdminCouponServiceImpl implements AdminCouponService {
 
   @Override
   @Transactional
+  // JDT 误报:LambdaQueryWrapper#eq(SFunction, ...) 走 Function.apply(this) 路径,
+  // JDT 推断 this 为 @Nonnull 产生冲突,实际仅反射列名,运行时无 NPE 风险
+  @SuppressWarnings("null")
   public void delete(Long id) {
     // 先删除用户领取的优惠券记录，再删除优惠券
     userCouponMapper.delete(new LambdaQueryWrapper<UserCouponEntity>()
@@ -161,6 +214,9 @@ public class AdminCouponServiceImpl implements AdminCouponService {
   }
 
   @Override
+  // JDT 误报:LambdaQueryWrapper#eq(SFunction, ...) 走 Function.apply(this) 路径,
+  // JDT 推断 this 为 @Nonnull 产生冲突,实际仅反射列名,运行时无 NPE 风险
+  @SuppressWarnings("null")
   public Map<String, Object> getStats() {
     Map<String, Object> stats = new LinkedHashMap<>();
     long total = couponMapper.selectCount(new LambdaQueryWrapper<>());

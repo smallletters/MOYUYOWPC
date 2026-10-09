@@ -63,13 +63,8 @@ public class AdminOrderOpsController {
   @Operation(summary = "创建导出任务")
   @PostMapping("/export/create")
   public Result<Map<String, Object>> createExport(@RequestBody OrderExportCreateRequest request) {
-    // TODO: 跨模块 service 接口签名迁移（moyuyo-service 模块）。当前 AdminOrderOpsService.createExportTask 仍接收 Map<String, Object>，
-    // 待 service 层切换为 OrderExportCreateRequest 后删除此处 Map 转换，避免类型漂移。
-    Map<String, Object> body = new LinkedHashMap<>();
-    body.put("taskName", request.getTaskName());
-    body.put("orderScope", request.getOrderScope());
-    body.put("format", request.getFormat());
-    Map<String, Object> taskResult = adminOrderOpsService.createExportTask(body);
+    // Service 层已切换为接收 OrderExportCreateRequest,直接透传 DTO,避免 Map 类型漂移
+    Map<String, Object> taskResult = adminOrderOpsService.createExportTask(request);
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("taskId", taskResult.getOrDefault("taskId", ""));
     result.put("taskName", request.getTaskName());

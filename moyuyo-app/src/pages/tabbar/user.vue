@@ -156,8 +156,14 @@ export default {
       orderTypes: [
         { value: 'PENDING_PAY', icon: '💳', badge: 0 },
         { value: 'CART', icon: '🛒', badge: 0 },
-        { value: 'PENDING_RECEIVE', icon: '🚚', badge: 0 },
-        { value: 'COMPLETED', icon: '⭐', badge: 0 },
+        // 修复:之前用 PENDING_RECEIVE,后端 OrderStatusEnum 没有此枚举、list.vue tabs 里也没有
+        // 这个 value,导致跳转后 onLoad 把它赋给 activeTab,渲染时没有任何 tab 被点亮。
+        // 后端真实状态是 SHIPPED,与 list.vue statusTabs.pendingReceive 的 value 对齐。
+        { value: 'SHIPPED', icon: '📦', badge: 0 },
+        // 修复:之前用 COMPLETED,跳到 list.vue 点亮的是"已完成" tab(已评价完的),
+        // 但用户从"待评价"图标点进来期望看到"待评价" tab(还能去评价的,即 RECEIVED)。
+        // 把 value 改为 RECEIVED,与 list.vue statusTabs.toReview 的 value 对齐。
+        { value: 'RECEIVED', icon: '✅', badge: 0 },
       ],
       // 功能入口只存 id 与图标,label 通过 featuresLabel computed 从 i18n 注入
       features: [

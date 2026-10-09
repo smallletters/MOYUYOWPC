@@ -84,7 +84,8 @@ services:
       # 基础 compose 用 $${REDIS_PASSWORD} 转义让 compose 跳过该变量，由 shell 展开。
       # 但本容器 environment 没注入 REDIS_PASSWORD，所以 shell 拿到空串 → NOAUTH 失败。
       # 这里把密码明文展开进命令字符串，与 .env 文件保持同步即可（容器内仅本机访问）。
-      test: ["CMD-SHELL", "redis-cli -a \"gmMdFR7QwCGVYal9n1HhyEzP\" --no-auth-warning ping | grep -q PONG"]
+      # 与 .env 中 REDIS_PASSWORD 保持一致（容器内仅本机访问，明文与启动命令对齐即可）
+      test: ["CMD-SHELL", "redis-cli -a \"AbCdEf123456GhIjKlMnOp789\" --no-auth-warning ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -108,8 +109,9 @@ services:
       - "8080:8080"
       - "9090:9090"
     environment:
-      # 关键：dev profile，跳过 ProdConfigValidator
-      SPRING_PROFILES_ACTIVE: dev
+      # 跟随 .env（默认 prod；本机调试可在 .env 设为 dev）
+      # 不要在这里硬写 dev：dev profile 默认把数据库指向 127.0.0.1，容器化场景下连不上独立 mysql 容器
+      # SPRING_PROFILES_ACTIVE: dev
       # 关闭 MySQL TLS 校验
       MYSQL_VERIFY_SERVER_CERTIFICATE: "false"
       MYSQL_TRUSTSTORE_URL: ""
