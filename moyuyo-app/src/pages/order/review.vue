@@ -8,17 +8,19 @@
         </view>
         <!-- 评分 -->
         <view class="rating-row">
-          <text>Rating</text>
+          <text>{{ $t('orderReview.rating') }}</text>
           <view class="stars">
-            <text
+            <view
               v-for="i in 5"
               :key="i"
               class="star"
               :class="{ filled: (item.rating || 0) >= i }"
               @click="item.rating = i"
             >
-              <text class="luc luc-star" />
-            </text>
+              <!-- 选中:实心;未选中:空心 lucide 图标 -->
+              <text v-if="(item.rating || 0) >= i" class="star-glyph">★</text>
+              <text v-else class="luc luc-star star-icon" />
+            </view>
           </view>
         </view>
         <!-- 标签 -->
@@ -55,7 +57,7 @@
       </view>
     </scroll-view>
 
-    <view class="bottom-bar safe-area-bottom">
+    <view class="bottom-bar">
       <view class="btn btn-primary submit-btn" @click="onSubmit">
         {{ $t('orderReview.submit') }}
       </view>
@@ -202,18 +204,27 @@ export default {
 
 <style lang="scss" scoped>
 .review {
+  position: relative;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  // 给底部按钮预留空间,避免最后一项被按钮遮挡
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+  min-height: 100vh;
   background: var(--color-background);
 }
 
 .form {
+  // 自适应屏幕宽度;scroll-view 在 H5/APP 上自然占满可见区域
+  width: 100%;
   flex: 1;
   padding: 16rpx;
+  box-sizing: border-box;
 }
 
 .review-item {
+  // 自适应父容器宽度,避免在某些端被压缩
+  width: 100%;
+  box-sizing: border-box;
   background: var(--color-surface);
   border-radius: var(--radius-md);
   padding: 24rpx;
@@ -253,8 +264,25 @@ export default {
 }
 
 .star {
-  font-size: 40rpx;
+  // 给星星一个明确的点击热区,避免在 H5/APP 上太小不易点
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--color-divider);
+}
+
+.star-icon {
+  font-size: 40rpx;
+}
+
+// 选中状态:用实心字符「★」,不依赖图标字体,确保五颗星都填满
+.star-glyph {
+  font-size: 44rpx;
+  line-height: 1;
+  color: var(--color-primary);
+  font-weight: bold;
 }
 
 .star.filled {
@@ -340,12 +368,20 @@ export default {
 }
 
 .bottom-bar {
+  // 固定贴底,不依赖 flex 容器,跨 H5/APP 一致
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
   padding: 16rpx 24rpx;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   background: var(--color-surface);
   border-top: 1rpx solid var(--color-divider);
+  z-index: 10;
 }
 
 .submit-btn {
+  width: 100%;
   padding: 24rpx 0;
   font-size: var(--font-size-md);
 }

@@ -2,6 +2,7 @@ package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
 import com.moyuyo.common.enums.ReviewStatusEnum;
+import com.moyuyo.common.utils.JsonUtils;
 import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductReviewEntity;
 import com.moyuyo.dao.entity.UserEntity;
@@ -57,6 +58,9 @@ public class AdminReviewController {
       }
       item.put("rating", review.getRating());
       item.put("content", review.getContent());
+      // 图片/标签是 JSON 字符串字段,反序列化为数组返回给前端
+      item.put("images", JsonUtils.parseStringArray(review.getImages()));
+      item.put("tags", JsonUtils.parseStringArray(review.getTags()));
       item.put("status", review.getStatus());
       item.put("createTime", review.getCreateTime());
       list.add(item);
@@ -126,6 +130,9 @@ public class AdminReviewController {
     }
     item.put("rating", review.getRating());
     item.put("content", review.getContent());
+    // 图片/标签是 JSON 字符串字段,反序列化为数组返回给前端
+    item.put("images", JsonUtils.parseStringArray(review.getImages()));
+    item.put("tags", JsonUtils.parseStringArray(review.getTags()));
     item.put("status", review.getStatus());
     item.put("createTime", review.getCreateTime());
     return Result.success(item);

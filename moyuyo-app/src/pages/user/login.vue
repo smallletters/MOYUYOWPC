@@ -298,6 +298,8 @@ export default {
           this.userStore.refreshToken = result.refreshToken
           setStorage(STORAGE_KEYS.TOKEN, result.accessToken)
           setStorage('moyuyo_refresh_token', result.refreshToken)
+          // 启动 accessToken 主动续期定时器（与 store.login() 行为一致）
+          this.userStore.startAutoRefresh()
           await this.userStore.fetchProfile()
         } else {
           const credentials = { username: this.email, password: this.password }
@@ -395,7 +397,7 @@ export default {
         // #ifdef APP-PLUS || MP-WEIXIN
         uni.login({
           provider: 'apple',
-          success: (res) => {
+          success: () => {
             uni.showToast({ title: i18n.t('auth.appleLoginDeveloping'), icon: 'none' })
           },
           fail: () => {

@@ -176,6 +176,9 @@ public class ReviewServiceImpl implements ReviewService {
         ReviewVO vo = new ReviewVO();
         vo.setId(entity.getId());
         vo.setProductId(entity.getProductId());
+        // 暴露 orderId / orderItemId,APP 端「我的评价」列表需要按 orderId 关联订单
+        vo.setOrderId(entity.getOrderId());
+        vo.setOrderItemId(entity.getOrderItemId());
         vo.setUserId(entity.getUserId());
         vo.setRating(entity.getRating());
         vo.setContent(entity.getContent());

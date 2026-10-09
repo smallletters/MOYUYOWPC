@@ -3,6 +3,16 @@ import { userApi, deviceApi } from '@/api'
 import { setStorage, getStorage, removeStorage, STORAGE_KEYS } from '@/utils/storage'
 import { getDeviceFingerprint } from '@/utils/deviceFingerprint'
 
+/**
+ * 主动续期定时器引用（模块级 closure）
+ * <p>
+ * 不放在 state 里：timer id 不需要响应式追踪，放进 state 反而会被 Vue 代理，
+ * 在 devtools 里出现噪音。模块级 closure + null 初始化更干净。
+ * <p>
+ * 跨 store 实例共享：单进程内只有一个定时器在跑，多处 startAutoRefresh 不会重复启动。
+ */
+let autoRefreshTimer = null
+
 export const useUserStore = defineStore('user', {
   state: () => ({
     token: getStorage(STORAGE_KEYS.TOKEN, ''),
@@ -23,6 +33,8 @@ export const useUserStore = defineStore('user', {
       this.refreshToken = result.refreshToken
       setStorage(STORAGE_KEYS.TOKEN, result.accessToken)
       setStorage('moyuyo_refresh_token', result.refreshToken)
+      // 登录成功：启动 accessToken 主动续期定时器（2h 过期 → 1h 周期续期，避免后台切回掉登录）
+      this.startAutoRefresh()
       await this.fetchProfile()
       // 注册/刷新当前设备到后端;登录路径同步等待,避免进入"我的设备页"看不到本机
       // upsertCurrentDevice 内部已 try/catch,失败不阻断登录
@@ -39,6 +51,8 @@ export const useUserStore = defineStore('user', {
       this.refreshToken = result.refreshToken
       setStorage(STORAGE_KEYS.TOKEN, result.accessToken)
       setStorage('moyuyo_refresh_token', result.refreshToken)
+      // 注册成功同样启动续期定时器
+      this.startAutoRefresh()
       await this.fetchProfile()
       await this.upsertCurrentDevice()
       return true
@@ -99,6 +113,64 @@ export const useUserStore = defineStore('user', {
     },
 
     /**
+     * 启动 accessToken 主动续期定时器
+     * <p>
+     * 后端 accessToken 有效期 2h（参见 application-prod.yml jwt.expire-hours）。
+     * 启动 1h 周期的定时器，每小时提前续期一次，确保用户长时间不操作也不会因为 token 过期掉登录。
+     * 续期失败（refresh token 也失效）时停止定时器 + 触发 forceLogout 让用户重新登录。
+     * <p>
+     * 设计取舍：
+     * - 1h 周期：远小于 2h 有效期，给网络/服务异常留足容错窗口
+     * - 不用 JWT exp 解析 token：后端鉴权只用签名 + 过期时间，客户端无 exp 解析也能正常工作；
+     *   解析 exp 增加复杂度且 JWT exp 解码是 base64 而非 HMAC 验签，轻量可行但收益不大
+     */
+    startAutoRefresh() {
+      if (autoRefreshTimer) return // 防重入：模块级 closure，跨 store 实例共享
+      if (!this.refreshToken) return // 无 refresh token 不启动
+      // 6h = 21600000ms；首次启动延迟 5s（让登录流程先完成），之后每 6h 续期一次
+      // 设计理由（2026-10 调整）：
+      // - 后端 accessToken 有效期 24h（参见 application-prod.yml jwt.expire-hours）
+      // - 后端 refreshToken 有效期 28d（参见 AuthServiceImpl.REFRESH_TOKEN_EXPIRE_SECONDS）
+      // - 6h 周期远小于 24h，给网络/服务异常留 4 次容错窗口
+      // - iOS 后台冻结 30s 后 setTimeout 不会触发，但 24h access 兜底，6h 主动续期作为"前台期间"补充
+      //   用户从后台切回前台时由 App.vue onShow 的 tryProbe 触发续期
+      const REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000
+      const INITIAL_DELAY_MS = 5 * 1000
+      // 关键：用箭头函数定义 tick 即可直接通过 this 访问 store 状态，
+      // 避免之前 function tick() {...}.bind(this) 的怪异写法。
+      // 箭头函数自引用：在 setTimeout 回调内把 timer 重新调度为 tick 自身。
+      const tick = () => {
+        // 续期前再校验：用户可能在中途登出
+        if (!this.refreshToken) {
+          this.stopAutoRefresh()
+          return
+        }
+        this.refreshTokenAction()
+          .then(() => {
+            console.log('[user] auto refresh token success')
+            autoRefreshTimer = setTimeout(tick, REFRESH_INTERVAL_MS)
+          })
+          .catch((e) => {
+            console.warn('[user] auto refresh token failed:', e?.message)
+            // refresh token 也失效：停止续期 + 强制登出让用户重新登录
+            this.stopAutoRefresh()
+            this.forceLogout()
+          })
+      }
+      autoRefreshTimer = setTimeout(tick, INITIAL_DELAY_MS)
+    },
+
+    /**
+     * 停止主动续期定时器（登出时调用）
+     */
+    stopAutoRefresh() {
+      if (autoRefreshTimer) {
+        clearTimeout(autoRefreshTimer)
+        autoRefreshTimer = null
+      }
+    },
+
+    /**
      * 清空本地登录态与设备缓存(纯客户端,不发请求)
      * logout() 调服务端成功后、forceLogout() token 已失效时复用
      */
@@ -115,6 +187,8 @@ export const useUserStore = defineStore('user', {
     },
 
     async logout() {
+      // 登出前停止 accessToken 续期定时器（避免登出后定时器还在续期）
+      this.stopAutoRefresh()
       // 登出前先调服务端吊销 token(已在 userApi.logout 中实现)
       try {
         await userApi.logout()
@@ -136,6 +210,8 @@ export const useUserStore = defineStore('user', {
 
     forceLogout() {
       // token 已失效场景:不发任何请求,直接清本地态
+      // 必须先停续期定时器,否则定时器回调里又用已过期的 refresh token 续期导致死循环
+      this.stopAutoRefresh()
       this._clearLocalState()
     },
 
@@ -190,6 +266,8 @@ export const useUserStore = defineStore('user', {
       this.refreshToken = result.refreshToken
       setStorage(STORAGE_KEYS.TOKEN, result.accessToken)
       setStorage('moyuyo_refresh_token', result.refreshToken)
+      // 魔法链接登录成功：启动续期定时器
+      this.startAutoRefresh()
       await this.fetchProfile()
       // 与 login/register 一致,魔法链接登录也要注册当前设备
       await this.upsertCurrentDevice()

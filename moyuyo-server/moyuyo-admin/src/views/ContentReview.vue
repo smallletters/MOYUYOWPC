@@ -904,28 +904,38 @@ onMounted(() => {
 .legend-dot.pass { background: var(--state-success); }
 .legend-dot.reject { background: var(--state-error); }
 
-/* 多图九宫格预览（与 ContentReviewDetail 保持一致:1/2/3 列自适应） */
+/* 多图九宫格预览（与 ContentReviewDetail 保持一致:1/2/3 列自适应）
+ * 尺寸控制要点：
+ *  - 单图(grid-single):固定 max-width 280px + 16:9 比例,
+ *    不让单图横向铺满整个卡片(原 220px 高度拉伸原图视觉过大)。
+ *  - 多图(grid-col-2/3):grid 列用 repeat(N, 120px) 而非 1fr,
+ *    单图固定 120×120,9 张图网格总高度 = 3×120+2×8 = 376px(原 ~780px),
+ *    避免 9 张图把卡片高度撑到半屏,提升列表浏览效率。
+ *  - 多图用 120px(对比单图 280px)是更紧凑的"信息密度"考量,
+ *    列表场景下小图即可预览,需要大图点击打开全屏预览弹层。
+ */
 .detail-image-grid {
   display: grid;
   gap: 8px;
   margin-top: 6px;
 }
 .detail-image-grid.grid-single {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 280px);
 }
 .detail-image-grid.grid-single .detail-image-cell {
-  height: 220px;
+  aspect-ratio: 16 / 9;
   border-radius: 6px;
 }
 .detail-image-grid.grid-col-2 {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, 120px);
 }
 .detail-image-grid.grid-col-3 {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, 120px);
 }
 .detail-image-grid.grid-col-2 .detail-image-cell,
 .detail-image-grid.grid-col-3 .detail-image-cell {
-  aspect-ratio: 1 / 1;
+  width: 120px;
+  height: 120px;
   border-radius: 6px;
 }
 .detail-image-cell {

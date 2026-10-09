@@ -194,9 +194,11 @@ mybatis-plus:
 
 jwt:
   secret: ${JWT_SECRET}
-  # 生产环境 access token 有效期固定 2 小时：与 dev 一致避免误配置时长差异；
-  # refresh token 有效期由 AuthService 控制（7 天）
-  expire-hours: 2
+  # 生产环境 access token 有效期 24 小时：
+  # - 与 iOS 后台冻结机制兼容：用户切后台 30s 后 JS 线程被冻结，setTimeout 不再触发；
+  #   24h 兜底确保即使用户长时间不切回前台也不会掉登录。
+  # - refresh token 由 AuthService 控制（28 天），前端 onShow 探活 + 6h 主动续期作为补充。
+  expire-hours: 24
 
 api:
   signature:

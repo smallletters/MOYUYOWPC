@@ -44,9 +44,14 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="filters.status" placeholder="全部" clearable style="width:140px">
+            <!--
+              value 与后端 ReviewStatusEnum 枚举值对齐(PENDING/APPROVED/REJECTED),
+              label 仅展示文案。这样 row.status === filters.status 才能正确过滤。
+            -->
             <el-option label="全部" value="" />
-            <el-option label="已审核" value="已审核" />
-            <el-option label="待审核" value="待审核" />
+            <el-option label="已审核" value="APPROVED" />
+            <el-option label="待审核" value="PENDING" />
+            <el-option label="已驳回" value="REJECTED" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -65,10 +70,36 @@
             <span :style="{ color: '#f59e0b' }">{{ '★'.repeat(row.rating) + '☆'.repeat(5 - row.rating) }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="summary" label="内容摘要" min-width="200" show-overflow-tooltip />
+        <el-table-column label="内容摘要" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span>{{ row.content ? (row.content.length > 30 ? row.content.slice(0, 30) + '...' : row.content) : '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="图片" width="120">
+          <template #default="{ row }">
+            <div v-if="row.images && row.images.length" class="thumb-list">
+              <el-image
+                v-for="(img, idx) in row.images.slice(0, 3)"
+                :key="idx"
+                :src="img"
+                :preview-src-list="row.images"
+                :initial-index="idx"
+                fit="cover"
+                class="thumb-image"
+              >
+                <template #error>
+                  <div class="image-error">!</div>
+                </template>
+              </el-image>
+              <span v-if="row.images.length > 3" class="thumb-more">+{{ row.images.length - 3 }}</span>
+            </div>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.status === '已审核' ? 'success' : 'warning'" size="small">{{ row.status }}</el-tag>
+            <!-- row.status 是后端枚举值(PENDING/APPROVED/REJECTED),展示成中文 -->
+            <el-tag :type="row.status === 'APPROVED' ? 'success' : (row.status === 'REJECTED' ? 'danger' : 'warning')" size="small">{{ reviewStatusText(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="reviewTime" label="评价时间" width="170" />
@@ -103,10 +134,32 @@
         <el-form-item label="评价内容">
           <el-input v-model="editForm.content" type="textarea" :rows="3" disabled />
         </el-form-item>
+        <el-form-item v-if="editForm.tags && editForm.tags.length" label="评价标签">
+          <el-tag v-for="tag in editForm.tags" :key="tag" size="small" style="margin-right:6px">{{ tag }}</el-tag>
+        </el-form-item>
+        <el-form-item v-if="editForm.images && editForm.images.length" label="晒图">
+          <div class="evidence-grid">
+            <el-image
+              v-for="(img, idx) in editForm.images"
+              :key="idx"
+              :src="img"
+              :preview-src-list="editForm.images"
+              :initial-index="idx"
+              fit="cover"
+              class="evidence-image"
+            >
+              <template #error>
+                <div class="image-error">加载失败</div>
+              </template>
+            </el-image>
+          </div>
+        </el-form-item>
         <el-form-item label="审核状态">
           <el-select v-model="editForm.status" style="width:100%">
-            <el-option label="待审核" value="待审核" />
-            <el-option label="已审核" value="已审核" />
+            <!-- value 与后端 ReviewStatusEnum 对齐,label 仅展示 -->
+            <el-option label="待审核" value="PENDING" />
+            <el-option label="已审核" value="APPROVED" />
+            <el-option label="已驳回" value="REJECTED" />
           </el-select>
         </el-form-item>
         <el-form-item label="回复内容">
@@ -156,7 +209,10 @@ const editForm = reactive({
   userName: '',
   rating: 5,
   content: '',
-  status: '待审核',
+  tags: [],
+  images: [],
+  // 与后端 ReviewStatusEnum 对齐,而不是中文文案
+  status: 'PENDING',
   reply: '',
   reviewTime: ''
 })
@@ -166,29 +222,45 @@ const tableData = ref([])
 // 加载评价列表
 async function loadData() {
   try {
-    const res = await getReviewList()
+    // 后端返回 {list, total, page, size} 结构,优先用服务端分页(支持 status 过滤),
+    // 客户端再做 keyword / rating 二次筛选;客户端筛选不影响 total。
+    const res = await getReviewList({
+      page: currentPage.value,
+      size: pageSize.value,
+      // 后端按 ReviewStatusEnum 枚举值(PENDING/APPROVED/REJECTED)精确过滤。
+      // 前端 status 文案("待审核"/"已审核")与枚举不对齐,这里不传给后端,
+      // 全部由前端 filters.status 过滤。
+    })
     const records = toArray(res)
-      // 客户端筛选
-      let list = [...records]
-      const kw = filters.keyword.toLowerCase()
-      if (kw) {
-        list = list.filter(d => (d.productName || '').toLowerCase().includes(kw))
-      }
-      if (filters.rating) {
-        list = list.filter(d => d.rating === Number(filters.rating))
-      }
-      if (filters.status) {
-        list = list.filter(d => d.status === filters.status)
-      }
-      total.value = list.length
-      const start = (currentPage.value - 1) * pageSize.value
-      tableData.value = list.slice(start, start + pageSize.value)
+    // total 必须用后端返回的真实总数,而不是当前页条数
+    total.value = Number(res?.total) || records.length
+    // 客户端筛选
+    let list = [...records]
+    const kw = filters.keyword.toLowerCase()
+    if (kw) {
+      list = list.filter(d => (d.productName || '').toLowerCase().includes(kw))
+    }
+    if (filters.rating) {
+      list = list.filter(d => d.rating === Number(filters.rating))
+    }
+    if (filters.status) {
+      list = list.filter(d => d.status === filters.status)
+    }
+    // 客户端筛选会导致当前页条数减少,但 total 仍应是后端的真实总数,
+    // 分页器才能正确显示"共 N 条"
+    tableData.value = list
   } catch (e) {
     ElMessage.error('获取评价列表失败')
   }
 }
 
 function handleSearch() { currentPage.value = 1; loadData() }
+
+// 评价状态枚举 → 中文文案(后端 ReviewStatusEnum)
+function reviewStatusText(status) {
+  const map = { PENDING: '待审核', APPROVED: '已审核', REJECTED: '已驳回' }
+  return map[status] || status
+}
 
 function handleReset() { filters.keyword = ''; filters.rating = ''; filters.status = ''; handleSearch() }
 
@@ -200,7 +272,9 @@ function handleAdd() {
   editForm.userName = ''
   editForm.rating = 5
   editForm.content = ''
-  editForm.status = '已审核'
+  editForm.tags = []
+  editForm.images = []
+  editForm.status = 'APPROVED'
   editForm.reply = ''
   editForm.reviewTime = ''
   dialogVisible.value = true
@@ -227,12 +301,13 @@ async function handleDelete(row) {
 async function handleSave() {
   try {
     if (isEdit.value) {
-      // 审核评价：通过或驳回
-      if (editForm.status === '已审核') {
+      // 审核评价：通过或驳回。editForm.status 已经是后端枚举值
+      if (editForm.status === 'APPROVED') {
         await approveReview(editForm.id)
-      } else {
+      } else if (editForm.status === 'REJECTED') {
         await rejectReview(editForm.id)
       }
+      // PENDING 仅作为展示状态,不调任何审核接口
       // 有回复内容则保存回复
       if (editForm.reply) {
         await replyReview(editForm.id, { content: editForm.reply })
@@ -302,4 +377,16 @@ onMounted(() => { loadData() })
 .stat-card-sub { font-size: 11px; color: var(--text-400); margin-top: 4px; }
 .stat-card-sub .trend-up { color: var(--state-success); }
 .stat-card-sub .trend-down { color: var(--state-error); }
+
+/* 评价图片：列表缩略图 + 详情举证 */
+.thumb-list { display: flex; align-items: center; gap: 6px; }
+.thumb-image { width: 40px; height: 40px; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; }
+/* 强制内部 <img> 撑满,避免 fit cover 时只显示一角 */
+.thumb-image :deep(.el-image__inner) { width: 100%; height: 100%; }
+.thumb-more { font-size: 12px; color: var(--text-400); }
+.evidence-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.evidence-image { width: 100px; height: 100px; border-radius: 4px; border: 1px solid var(--border); }
+.evidence-image :deep(.el-image__inner) { width: 100%; height: 100%; }
+.image-error { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 12px; color: var(--text-400); background: var(--bg-50); }
+.text-muted { color: var(--text-400); }
 </style>

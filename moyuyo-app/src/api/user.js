@@ -10,7 +10,10 @@ export function login(username, password) {
 }
 
 export function refreshToken(refreshToken) {
-  return post('/api/v1/auth/refresh', { refreshToken })
+  // _silent:true 让 request.js 在 fail 时不弹 toast / 不标记 isNetworkError
+  // 因为外层 handleUnauthorized 失败时会自己弹"登录已过期"modal，
+  // 避免"网络异常" + "登录已过期"两个提示同时弹出互相干扰
+  return post('/api/v1/auth/refresh', { refreshToken }, { _silent: true })
 }
 
 export function logout() {

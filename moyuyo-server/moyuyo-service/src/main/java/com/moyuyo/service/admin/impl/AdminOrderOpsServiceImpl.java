@@ -147,7 +147,9 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
     // 任务不存在时，导出空表头（保证下载不报错）
     StringBuilder sb = new StringBuilder();
     sb.append('\uFEFF'); // UTF-8 BOM，Excel 打开中文不乱码
-    sb.append("订单号,状态,实付金额,币种,收货人,联系电话,收货地址,支付渠道,创建时间\n");
+    // 表头新增两列：商品名称、商品SKU（一单一品的场景下与原导出结构兼容；
+    // 多商品订单会展开为多行，每行都重复订单字段，便于 Excel 筛选）
+    sb.append("订单号,状态,实付金额,币种,收货人,联系电话,收货地址,支付渠道,创建时间,商品名称,商品SKU\n");
     if (task != null) {
       // 查询订单数据（按任务范围过滤：全部订单 / 本月订单 / 上周订单 / 自定义）
       LambdaQueryWrapper<OrderEntity> ow = new LambdaQueryWrapper<>();
@@ -161,16 +163,36 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
       }
       ow.orderByDesc(OrderEntity::getCreateTime).last("LIMIT 500");
       List<OrderEntity> orders = orderMapper.selectList(ow);
+      // 一次性查所有订单的商品明细（含 sku_code LEFT JOIN），
+      // 避免 500 单 × N 件商品 = 500 次 N+1 SQL；复用现有 batchLoadItems + fillMissingSkuCodeByProduct
+      Map<Long, List<com.moyuyo.dao.entity.OrderItemEntity>> itemsByOrderId =
+          orders.isEmpty() ? java.util.Collections.emptyMap() : batchLoadItems(
+              orders.stream().map(OrderEntity::getId).collect(Collectors.toList()));
       for (OrderEntity o : orders) {
-        sb.append(escapeCsv(o.getOrderNo())).append(',')
-            .append(escapeCsv(o.getStatus())).append(',')
-            .append(o.getPayAmount() == null ? "" : o.getPayAmount().toPlainString()).append(',')
-            .append(escapeCsv(o.getCurrency())).append(',')
-            .append(escapeCsv(o.getReceiverName())).append(',')
-            .append(escapeCsv(o.getReceiverPhone())).append(',')
-            .append(escapeCsv(o.getReceiverAddress())).append(',')
-            .append(escapeCsv(o.getPayChannel())).append(',')
-            .append(o.getCreateTime() == null ? "" : o.getCreateTime().toString()).append('\n');
+        String baseRow =
+            escapeCsv(o.getOrderNo()) + ","
+                + escapeCsv(o.getStatus()) + ","
+                + (o.getPayAmount() == null ? "" : o.getPayAmount().toPlainString()) + ","
+                + escapeCsv(o.getCurrency()) + ","
+                + escapeCsv(o.getReceiverName()) + ","
+                + escapeCsv(o.getReceiverPhone()) + ","
+                + escapeCsv(o.getReceiverAddress()) + ","
+                + escapeCsv(o.getPayChannel()) + ","
+                + (o.getCreateTime() == null ? "" : o.getCreateTime().toString());
+        List<com.moyuyo.dao.entity.OrderItemEntity> items =
+            itemsByOrderId.getOrDefault(o.getId(), java.util.Collections.emptyList());
+        if (items.isEmpty()) {
+          // 防御：理论上每个订单至少 1 件商品，没有就输出空商品列
+          sb.append(baseRow).append(",,\n");
+        } else {
+          // 一订单多商品：每行重复订单基础信息,最后两列写对应商品的名称/SKU。
+          // 这样运营在 Excel 里能直接按"商品SKU"筛选、按"订单号"排序,不必拆分单元格。
+          for (com.moyuyo.dao.entity.OrderItemEntity it : items) {
+            sb.append(baseRow).append(',')
+                .append(escapeCsv(it.getProductName())).append(',')
+                .append(escapeCsv(it.getSkuCode())).append('\n');
+          }
+        }
       }
     }
     return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);

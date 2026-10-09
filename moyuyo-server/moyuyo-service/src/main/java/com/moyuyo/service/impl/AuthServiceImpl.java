@@ -111,8 +111,13 @@ public class AuthServiceImpl implements AuthService {
     // 使用密码学安全的随机数生成器，避免 Math.random() 的可预测性
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
-    private static final long ACCESS_TOKEN_EXPIRE_SECONDS = 7200;
-    private static final long REFRESH_TOKEN_EXPIRE_SECONDS = 604800;
+    private static final long ACCESS_TOKEN_EXPIRE_SECONDS = 86400;
+    // refresh token 有效期 28 天（与 access 24h + 前端 6h 主动续期配合）：
+    // - 28d 不打开 APP 才需要重新登录，覆盖了绝大部分"季节性用户"场景
+    // - 比 7d 延长 4 倍，提升用户体验
+    // - 安全权衡：refresh token 一次性有效，被盗用一次后服务端吊销；被盗窗口 28d
+    //   比 7d 略大但仍可通过 2FA + 设备绑定降低风险
+    private static final long REFRESH_TOKEN_EXPIRE_SECONDS = 2419200; // 28d = 28 * 24 * 3600
     private static final long VERIFICATION_CODE_EXPIRE_SECONDS = 300;
     private static final long RESET_TOKEN_EXPIRE_SECONDS = 1800;
     private static final long MAGIC_LINK_EXPIRE_SECONDS = 900;

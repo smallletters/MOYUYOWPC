@@ -47,6 +47,8 @@ function getBearerToken() {
 
 // 401 刷新去抖锁：并发请求共用一次 refresh，避免 5+ 个接口同时触发 5+ 个 modal
 let isRefreshing = false
+// 待重试的 401 请求队列：refresh 成功后按入队顺序逐个重发原请求
+// 每项包含 { options, resolve, reject }，resolve 接收重试结果，reject 接收失败原因
 const pendingUnauthorizedHandlers = []
 
 // 登录过期 modal 防重入锁：
@@ -55,41 +57,104 @@ const pendingUnauthorizedHandlers = []
 //   用户关闭 modal（success 回调）后解锁,允许下次真过期时再提示。
 let isExpiredModalShown = false
 
-function handleUnauthorized() {
+/**
+ * 401 处理核心：先用 refreshToken 换新 accessToken，再用新 token 自动重发原请求
+ * <p>
+ * 设计要点：
+ * 1) refresh 成功：用新 token 串行重发"当前 options + 队列里的所有 401 请求"，
+ *    caller 通过 Promise.then 直接接住当前 options 的重发结果（成功/失败都正确传播）
+ * 2) isRefreshing 在"所有重发都完成"之后才释放，避免重发期间新 401 又触发一次 refresh
+ * 3) 错误分类处理：
+ *    - refresh 失败：清凭证 + 弹"登录已过期"modal + reject caller('Unauthorized')
+ *    - 首项重发业务错误（4xx/5xx/network）：原错误透传给 caller，token 仍有效
+ * <p>
+ * 历史实现只 resolve 队列里的 promise（其实队列在首 401 时还是空的），原业务请求
+ * 永远被 reject('Unauthorized')，需要用户手动重试或重新登录。修复后 401 对用户完全
+ * 透明：refresh 成功后会自动重发原请求并把结果 resolve 回去，refresh 失败才弹 modal。
+ *
+ * @param {object} options 触发 401 的原请求 options（用于重发）
+ * @returns {Promise} resolve = 重发结果；reject = 刷新失败或重发失败
+ */
+function handleUnauthorized(options) {
   const refreshTokenVal = safeGet('moyuyo_refresh_token')
   if (!refreshTokenVal) {
     // 无 refresh token：清凭证 + 弹窗确认再跳转
     safeRemove(STORAGE_KEYS.TOKEN)
     safeRemove(STORAGE_KEYS.USER_INFO)
     promptReLogin()
-    return
+    return Promise.reject(new Error('Unauthorized'))
   }
   if (isRefreshing) {
-    // 正在刷新中：把后续 401 的 reject 挂到队列，等刷新结束后统一 reject
+    // 正在刷新中：把原请求入队，刷新成功后按顺序重发
     return new Promise((resolve, reject) => {
-      pendingUnauthorizedHandlers.push({ resolve, reject })
+      pendingUnauthorizedHandlers.push({ options, resolve, reject })
     })
   }
   isRefreshing = true
-  refreshToken(refreshTokenVal)
-    .then((newTokens) => {
+  // 关键：把"当前 options 的重发"和"队列重发"放在同一个链路里：
+  // 1) 先发当前 options 拿到结果
+  // 2) 再按顺序处理队列
+  // 3) 全部完成后才释放 isRefreshing
+  // 任何一步失败都不会让 caller 拿到 undefined（首项重发失败直接 reject 当前 caller）
+  // 用 .catch 区分错误来源：refresh 失败 vs 首项业务错误，决定是否清凭证+弹 modal
+  return refreshToken(refreshTokenVal)
+    .catch((refreshErr) => {
+      // refresh 失败：标记 _isRefreshFailure 让外层 .catch 走"清凭证+弹 modal"分支
+      // 然后把 refresh 错误转成一个标记对象传出去
+      const err = new Error('Unauthorized')
+      err._isRefreshFailure = true
+      err._originalError = refreshErr
+      throw err
+    })
+    .then(async (newTokens) => {
       safeSet(STORAGE_KEYS.TOKEN, newTokens.accessToken)
       if (newTokens.refreshToken) {
         safeSet('moyuyo_refresh_token', newTokens.refreshToken)
       }
-      pendingUnauthorizedHandlers.forEach(({ resolve }) => resolve())
+      // 先发当前 options（caller 期望的结果），失败直接抛出进 catch
+      let currentResult
+      try {
+        currentResult = await request({ ...options, _isRetry: true })
+      } catch (e) {
+        // 首项重发失败：先把队列里所有 caller reject 掉，再把错误抛给当前 caller
+        // 关键：首项业务错误透传给 caller，token 仍有效，不要清凭证/弹 modal
+        const queue = pendingUnauthorizedHandlers.slice()
+        pendingUnauthorizedHandlers.length = 0
+        queue.forEach(({ reject }) => reject(new Error('Unauthorized')))
+        throw e
+      }
+      // 首项成功：处理队列里的剩余 401 请求
+      const queue = pendingUnauthorizedHandlers.slice()
       pendingUnauthorizedHandlers.length = 0
+      for (const h of queue) {
+        try {
+          const r = await request({ ...h.options, _isRetry: true })
+          h.resolve(r)
+        } catch (e) {
+          h.reject(e)
+        }
+      }
+      return currentResult
     })
-    .catch(() => {
-      // 刷新失败：清凭证 + 弹窗
-      safeRemove(STORAGE_KEYS.TOKEN)
-      safeRemove(STORAGE_KEYS.USER_INFO)
-      safeRemove('moyuyo_refresh_token')
-      pendingUnauthorizedHandlers.forEach(({ reject }) => reject(new Error('Unauthorized')))
-      pendingUnauthorizedHandlers.length = 0
-      promptReLogin()
+    .catch((err) => {
+      // 关键：只有 refresh 自身失败（_isRefreshFailure=true）才清凭证+弹 modal
+      // 首项重发的业务错误（4xx/5xx/network）透传给 caller，token 仍有效
+      if (err && err._isRefreshFailure) {
+        safeRemove(STORAGE_KEYS.TOKEN)
+        safeRemove(STORAGE_KEYS.USER_INFO)
+        safeRemove('moyuyo_refresh_token')
+        const queue = pendingUnauthorizedHandlers.slice()
+        pendingUnauthorizedHandlers.length = 0
+        queue.forEach(({ reject }) => reject(new Error('Unauthorized')))
+        promptReLogin()
+        throw new Error('Unauthorized')
+      }
+      // 首项业务错误：原样透传给 caller（token 仍有效，只是请求本身有 4xx/5xx 或网络问题）
+      throw err
     })
     .finally(() => {
+      // 关键：放在 .finally 里确保重发链路全部完成后才释放 isRefreshing
+      // 避免重发期间新 401 又触发一次 refresh
       isRefreshing = false
     })
 }
@@ -102,6 +167,10 @@ function handleUnauthorized() {
 function promptReLogin() {
   if (isExpiredModalShown) return
   isExpiredModalShown = true
+  // 关键：先 hideToast 避免上一个 toast（"网络异常"等）覆盖掉 showModal
+  // APP / 小程序端 showToast 与 showModal 同时存在时 toast 会遮挡 modal
+  // 导致"登录已过期"看起来没弹出来
+  uni.hideToast()
   uni.showModal({
     title: t('common.sessionExpiredTitle'),
     content: t('common.sessionExpiredContent'),
@@ -117,6 +186,39 @@ function promptReLogin() {
       // showModal 自身失败也要解锁,否则后续真过期也弹不出来
       isExpiredModalShown = false
     },
+  })
+}
+
+/**
+ * 主动触发"登录已过期"提示
+ * <p>
+ * 暴露给 App.vue / store 等需要在"非业务请求触发的 401"场景下弹 modal：
+ * 典型场景是 App.vue onShow 探活时发现 refresh token 也失效，调用 forceLogout 之后
+ * 用户无感知（被悄悄踢出登录），需要主动弹 modal 告知原因。
+ * <p>
+ * 复用 promptReLogin 的防重入锁，避免与 401 流程弹的 modal 重复。
+ */
+export function triggerSessionExpired() {
+  promptReLogin()
+}
+
+/**
+ * 探测当前网络是否可用（uni.getNetworkType 异步回调）
+ * <p>
+ * 用于 fail 分支：30 分钟后台切回时 OS 网络栈可能 keep-alive 失效导致 uni.request fail，
+ * 但实际网络是通的。探测一次可避免误报"网络异常"。
+ *
+ * @returns {Promise<boolean>} true = 网络可用；false = 无网络
+ */
+function probeNetwork() {
+  return new Promise((resolve) => {
+    uni.getNetworkType({
+      success: (res) => {
+        // networkType: wifi / 2g / 3g / 4g / 5g / ethernet / none / unknown
+        resolve(res.networkType && res.networkType !== 'none')
+      },
+      fail: () => resolve(false),
+    })
   })
 }
 
@@ -230,6 +332,12 @@ function localizeServerMessage(msg) {
 }
 
 export function request(options) {
+  // _isRetry 标记：refresh 后重发请求时为 true，避免新 token 仍 401 时再次进入 refresh 死循环
+  const isRetry = options._isRetry === true
+  // _silent 标记：内部调用（如 refreshToken）失败时静默处理，不弹 toast、不标记 isNetworkError
+  // 因为 refresh 失败时外层 handleUnauthorized 会自己弹"登录已过期"modal，
+  // 如果 fail 分支再弹"网络异常"会同时出现两个提示互相干扰
+  const silent = options._silent === true
   const {
     url,
     method = 'GET',
@@ -266,9 +374,13 @@ export function request(options) {
         pendingRequests.delete(requestId)
         if (showLoading) uni.hideLoading()
 
-        if (res.statusCode === RESPONSE_CODE.UNAUTHORIZED) {
-          handleUnauthorized()
-          reject(new Error('Unauthorized'))
+        // 401 处理：refresh 成功后会自动重发原请求并 resolve，无需业务方感知
+        // _isRetry=true 时直接拒绝（避免 refresh 后仍 401 时死循环）
+        // _silent=true 时直接拒绝（refresh 内部调用不能再走 401 自动重试，避免死循环）
+        if (res.statusCode === RESPONSE_CODE.UNAUTHORIZED && !isRetry && !silent) {
+          handleUnauthorized(options)
+            .then((retryResult) => resolve(retryResult))
+            .catch(() => reject(new Error('Unauthorized')))
           return
         }
 
@@ -285,6 +397,15 @@ export function request(options) {
             if (showError) uni.showToast({ title: msg, icon: 'none', duration: 3000 })
             reject(new Error(msg))
           }
+        } else if (silent) {
+          // silent 模式（内部 refreshToken 调用）：4xx/5xx 也不弹 toast，直接 reject 让外层处理
+          // 避免 refresh 失败时同时弹"后端错误" + "登录已过期"两个提示
+          const err = new Error(`HTTP ${res.statusCode} (silent): ${res.data?.message || ''}`)
+          err.statusCode = res.statusCode
+          err.body = res.data
+          err.url = fullUrl
+          err._silent = true
+          reject(err)
         } else {
           // HTTP 4xx/5xx:后端通常也返回 Result.error JSON(code+message)
           // 命中后端错误映射表时按当前语言翻译,未收录则回落后端原文
@@ -306,16 +427,42 @@ export function request(options) {
       fail: (err) => {
         pendingRequests.delete(requestId)
         if (showLoading) uni.hideLoading()
-        const isTimeout = err.errMsg?.includes('timeout')
-        const msg = isTimeout ? t('common.requestTimeout') : t('common.networkError')
-        console.warn('[request] network fail:', fullUrl, err)
-        if (showError) uni.showToast({ title: msg, icon: 'none' })
-        // 注意：fail 分支只代表"请求没成功到达业务层"，可能是 CORS 拦截、
-        // WiFi 断、后端宕机、timeout 等。这些场景 token 本身可能完全有效，
-        // 不能与 success 分支的 401 业务错误混为一谈。
-        // 清 token / 弹登录过期的逻辑统一交给 success 分支的 handleUnauthorized
-        // （依赖后端真正返回的 401 状态码），保证提示语义准确。
-        const e = new Error(msg)
+        // silent 模式（内部 refreshToken 调用）：不弹 toast、不重试、不标记 isNetworkError
+        // 外层 handleUnauthorized 会自己处理错误提示
+        if (silent) {
+          console.warn('[request] silent fail:', fullUrl, err)
+          reject(new Error(`Network fail (silent): ${err.errMsg || 'unknown'}`))
+          return
+        }
+        // 30 分钟后台切回：OS 网络栈 keep-alive 失效会导致 uni.request fail（timeout / socket reset），
+        // 但实际网络是通的。探测一次网络状态：若可用则重试一次原请求，否则才报"网络异常"
+        // _isRetry=true 时不再重试（避免失败请求无限重试）
+        if (!isRetry) {
+          probeNetwork().then((hasNetwork) => {
+            if (hasNetwork) {
+              console.warn('[request] fail but network ok, retry once:', fullUrl, err)
+              // 隐式重试：不再弹 toast（让最终结果决定是否提示）
+              request({ ...options, _isRetry: true, showError })
+                .then(resolve)
+                .catch((retryErr) => {
+                  // 重试仍失败：按 fail 原逻辑提示
+                  handleNetworkFailToast(retryErr.errMsg, fullUrl, showError)
+                  reject(retryErr)
+                })
+              return
+            }
+            // 真的无网络：走原 fail 提示
+            handleNetworkFailToast(err.errMsg, fullUrl, showError)
+            const e = new Error(t('common.networkError'))
+            e.isNetworkError = true
+            e.url = fullUrl
+            reject(e)
+          })
+          return
+        }
+        // 重试仍 fail：按原逻辑提示
+        handleNetworkFailToast(err.errMsg, fullUrl, showError)
+        const e = new Error(t('common.networkError'))
         e.isNetworkError = true
         e.url = fullUrl
         reject(e)
@@ -324,6 +471,22 @@ export function request(options) {
 
     pendingRequests.set(requestId, task)
   })
+}
+
+/**
+ * 网络失败的 toast 提示（从 fail 分支抽出来复用）
+ * <p>
+ * 区分 timeout 与其他网络错误：timeout 通常是后台 keep-alive 失效，给"请求超时"提示更友好
+ */
+function handleNetworkFailToast(errMsg, fullUrl, showError) {
+  const isTimeout = errMsg?.includes('timeout')
+  const msg = isTimeout ? t('common.requestTimeout') : t('common.networkError')
+  console.warn('[request] network fail:', fullUrl, errMsg)
+  if (showError) {
+    // 先 hide 避免与 modal 冲突
+    uni.hideToast()
+    uni.showToast({ title: msg, icon: 'none' })
+  }
 }
 
 export const get = (url, params = {}, options = {}) => {

@@ -373,8 +373,8 @@ export function assignComplaint(id, data) {
 }
 
 // ==================== 评价审核 ====================
-export function getReviewList() {
-  return api.get('/review/list')
+export function getReviewList(params = {}) {
+  return api.get('/review/list', params)
 }
 
 export function approveReview(id) {

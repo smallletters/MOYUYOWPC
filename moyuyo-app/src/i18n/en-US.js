@@ -938,6 +938,7 @@ export default {
     actionTrack: 'Track',
     actionReview: 'Write Review',
     actionReviewed: 'View Review',
+    actionReviewSubmitted: 'Submitted · Pending Review',
     actionView: 'View',
     actionWaitShip: 'Awaiting Shipment',
     actionConfirmReceive: 'Confirm Receipt',

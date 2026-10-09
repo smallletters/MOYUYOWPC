@@ -947,6 +947,7 @@ export default {
     actionTrack: '查看物流',
     actionReview: '评价晒单',
     actionReviewed: '查看评价',
+    actionReviewSubmitted: '已评价·待审核',
     actionView: '查看详情',
     actionWaitShip: '等待发货',
     actionConfirmReceive: '确认收货',

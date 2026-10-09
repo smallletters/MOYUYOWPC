@@ -7,6 +7,8 @@ import { useUserStore } from '@/store'
 //   静态 import 在各端都被正常打入(并被 tree-shake / 条件编译优化),
 //   运行时通过 if(_schemeCleanup) 早退保证只在 APP 端真正注册监听。
 import { registerMoyuyoScheme } from '@/utils/payAppBridge'
+// 探活 forceLogout 后弹登录过期 modal 用
+import { triggerSessionExpired } from '@/utils/request'
 
 // APP 端全局 scheme 监听：
 // 支付成功/取消后,Stripe Checkout / PayPal / 支付宝 APP 会用
@@ -15,6 +17,89 @@ import { registerMoyuyoScheme } from '@/utils/payAppBridge'
 //   1) 如果 pay 页在栈上,pay 页自己注册的监听会处理(更精确,不重复)
 //   2) 如果 APP 已被系统回收 → 冷启动 → 全局监听到后直接跳到订单详情
 let _schemeCleanup = null
+
+/**
+ * M6：onShow 探活节流（闭包变量，仅 App.vue 内部使用）
+ * <p>
+ * 用闭包而非 store 字段：避免与业务页面主动调用的 fetchProfile 耦合，
+ * 节流只作用于"探活"这条特定路径（onLaunch / onShow），
+ * 业务页面 onShow 主动调 fetchProfile 不受 30s 节流限制。
+ */
+let _lastProbeAt = 0
+const PROBE_THROTTLE_MS = 30 * 1000
+// 探活请求所属业务路径（用于日志区分 onShow 探活 vs 业务页面主动调用）
+const PROBE_LOG_TAG = '[App.probe]'
+
+/**
+ * M4：onLaunch 完成标志
+ * <p>
+ * 防御 uni-app 在 onLaunch 完成前就触发 onShow 的极端场景（某些平台/低概率时序）：
+ * onShow 内的 useUserStore() / useThemeStore() 依赖 pinia 初始化，
+ * onLaunch 没跑完时 pinia store 可能未挂载。
+ * <p>
+ * onLaunch 末尾置 true；onShow 检查 false 则早退，等下次 onShow 再处理。
+ */
+let appLaunched = false
+
+/**
+ * 根据 fetchProfile 抛出的错误决定是否 forceLogout
+ * <p>
+ * 关键修复：网络错误（isNetworkError=true）和超时不能让用户掉登录！
+ * 历史上 App.vue 的 onLaunch / onShow 在 fetchProfile 失败时无脑 forceLogout，
+ * 配合 30 分钟后台切回时 OS 网络栈 keep-alive 失效的场景，会让"网络抖动 = 掉登录"。
+ * <p>
+ * 现在区分：
+ * - 网络错误/超时：静默忽略（request.js 内部已重试一次，仍失败说明真没网）
+ * - 真 Unauthorized：说明 refresh token 也失效了，必须 forceLogout
+ * - 其他业务错误：用户 token 是有效的，只是后端临时错误，不应 forceLogout
+ *
+ * @param {Error} e fetchProfile 抛出的错误
+ */
+function handleProbeError(e) {
+  if (!e) return
+  if (e.isNetworkError) {
+    // 网络错误：不掉登录，等下次网络恢复再由业务请求触发 refresh
+    console.warn(`${PROBE_LOG_TAG} network error, skip forceLogout:`, e.message)
+    return
+  }
+  if (e.message === 'Unauthorized') {
+    // 真 401 且 refresh 也失败：掉登录（forceLogout 内部会停续期定时器）
+    // 关键：用户必须感知被踢的原因，主动弹登录过期 modal
+    console.warn(`${PROBE_LOG_TAG} unauthorized, forceLogout + prompt`)
+    const userStore = useUserStore()
+    userStore.forceLogout()
+    triggerSessionExpired()
+    return
+  }
+  // 其他业务错误（如 5xx、4xx）：token 仍有效，userInfo 用缓存兜底
+  console.warn(`${PROBE_LOG_TAG} other error, keep login state:`, e.message)
+}
+
+/**
+ * 探活核心函数：拉一次 /me 验证登录态，按错误类型决定是否踢用户
+ * <p>
+ * 抽出来的好处：
+ * 1) onLaunch 和 onShow 复用同一份探活逻辑（避免代码重复）
+ * 2) 节流、handleProbeError、forceLogout 提示都集中在一处，便于维护
+ * 3) 与业务页面 onShow 主动 fetchProfile 完全解耦（节流只作用于本函数）
+ *
+ * @param {object} userStore useUserStore() 返回的 store 实例
+ * @param {string} reason 调用方标识（如 'onLaunch' / 'onShow'），用于日志
+ */
+function tryProbe(userStore, reason) {
+  if (!userStore.token) return
+  // 探活节流：30 秒内的重复切回不重复发 /me
+  // 业务页面 onShow 调 fetchProfile 不走本函数，节流不影响
+  const now = Date.now()
+  if (now - _lastProbeAt < PROBE_THROTTLE_MS) {
+    console.log(`${PROBE_LOG_TAG}[${reason}] throttled, skip`)
+    return
+  }
+  _lastProbeAt = now
+  console.log(`${PROBE_LOG_TAG}[${reason}] probing...`)
+  userStore.fetchProfile().catch(handleProbeError)
+}
+
 function ensureSchemeRegistered() {
   if (_schemeCleanup) return
   // 非 APP 端没有 plus.runtime,直接早退避免后续 try 块不可达
@@ -69,20 +154,40 @@ export default {
     // 校验已保存的 Token 是否有效
     const userStore = useUserStore()
     if (userStore.token) {
-      // 静默拉取用户信息，失败则强制登出
-      userStore.fetchProfile().catch(() => userStore.forceLogout())
       // 注册/刷新当前设备到后端,让"我的设备列表"能展示此 APP 实例
       // 不阻塞启动,失败仅打 warn
       userStore.upsertCurrentDevice()
+      // 冷启动时也启动续期定时器（处理用户杀进程后用 onLaunch 重启 APP 的场景）
+      userStore.startAutoRefresh()
+      // 冷启动探活：复用 tryProbe，与 onShow 探活共享 30s 节流窗口
+      tryProbe(userStore, 'onLaunch')
     }
 
     // APP 端：支付回跳 scheme 监听（冷启动时，若系统带 url 唤起 APP）
     ensureSchemeRegistered()
+
+    // M4：标记 onLaunch 完成，onShow 内的 pinia 依赖可以安全使用
+    appLaunched = true
   },
   onShow() {
+    // M4：onShow 可能在 onLaunch 完成前触发（极端平台时序），早退等下次
+    if (!appLaunched) {
+      console.log('[MOYUYO] App onShow before onLaunch, skip')
+      return
+    }
     // APP 端：从后台回到前台时，重新确保 scheme 监听存在
     // （例如 iPhone 用户用 Apple Pay 后切回来，iOS 会用 scheme 打开一次 APP）
     ensureSchemeRegistered()
+    // 从后台切回前台时主动探活：避免页面 onShow 才发请求导致 OS 网络栈 keep-alive
+    // 失效直接 fail（30 分钟后台切回的典型场景）。先发一个轻量请求预热：
+    // 1) 触发 request.js 的 fail 分支探测网络 → 必要时重试一次
+    // 2) 触发 401 流程 → refresh + 自动重发原请求
+    // 静默执行不弹任何 toast/modal（showError:false + 不解包）
+    const userStore = useUserStore()
+    // 启动续期定时器（处理后台期间定时器被 OS 回收的场景；startAutoRefresh 内部幂等）
+    userStore.startAutoRefresh()
+    // 后台切回探活：复用 tryProbe，30s 节流防重复请求
+    tryProbe(userStore, 'onShow')
   },
   onHide() {
     // 进入后台

@@ -12,6 +12,10 @@ public class ReviewVO {
 
     private Long productId;
 
+    private Long orderId;
+
+    private Long orderItemId;
+
     private Long userId;
 
     private Integer rating;
