@@ -1,5 +1,42 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-cd moyuyo-app
+# husky 的 cwd 默认是仓库根目录，这里显式记录下来，
+# 后面所有路径都以它为基准，避免子目录切换带来路径错位。
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# 进入前端项目目录，供 npx lint-staged 使用
+cd "$REPO_ROOT/moyuyo-app"
+
+# 去掉本次暂存区里 .vue / .js 文件的 UTF-8 BOM，
+# 避免 vue-eslint-parser + @babel/eslint-parser 在带 BOM 的脚本块上报
+# "Missing semicolon" 误报（Windows 中文环境下 Git 写入时常见带 BOM）。
+# 仅处理 staged 文件，避免误改未提交内容。
+node -e "
+  const { execSync } = require('child_process');
+  const fs = require('fs');
+  const path = require('path');
+  const REPO_ROOT = process.argv[1];
+  const BOM = Buffer.from([0xEF, 0xBB, 0xBF]);
+  // 用 -C 锁定仓库根目录，拿到的是相对于仓库根的稳定路径
+  const files = execSync('git -C ' + JSON.stringify(REPO_ROOT) + ' diff --cached --name-only --diff-filter=ACMR', { encoding: 'utf8' })
+    .split(/\r?\n/)
+    .filter(f => /\.(vue|js)\$/.test(f));
+  for (const rel of files) {
+    const abs = path.join(REPO_ROOT, rel);
+    try {
+      const buf = fs.readFileSync(abs);
+      if (buf.length >= 3 && buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) {
+        fs.writeFileSync(abs, buf.slice(3));
+        // 让变更同步回暂存区
+        execSync('git -C ' + JSON.stringify(REPO_ROOT) + ' add ' + JSON.stringify(rel));
+        console.log('[pre-commit] stripped BOM:', rel);
+      }
+    } catch (e) {
+      console.error('[pre-commit] BOM strip failed:', rel, e.message);
+    }
+  }
+" "$REPO_ROOT"
+
+# 继续走原有 lint-staged 流程
 npx lint-staged
