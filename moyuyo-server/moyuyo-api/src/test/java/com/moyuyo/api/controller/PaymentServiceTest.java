@@ -5,8 +5,7 @@ import com.moyuyo.common.dto.payment.CreatePaymentRequest;
 import com.moyuyo.common.dto.payment.CreatePaymentResponse;
 import com.moyuyo.service.PaymentService;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -15,7 +14,7 @@ import static org.mockito.Mockito.*;
 
 class PaymentServiceTest extends BaseIntegrationTest {
 
-    @MockBean
+    @MockitoBean
     private PaymentService paymentService;
 
     @Test
@@ -24,8 +23,11 @@ class PaymentServiceTest extends BaseIntegrationTest {
         req.setOrderNo("ORD-TEST-001");
         req.setPayChannel("STRIPE");
 
+        // 11 参构造器顺序：paymentId, clientSecret, sessionUrl, publishableKey, approvalUrl,
+        //                  payChannel, paypalClientId, paypalEnvironment, applePayMerchantId, currencyCode, countryCode
         CreatePaymentResponse mockRes = new CreatePaymentResponse(
-                "pi_test_123", "secret_test", null, null, null, "STRIPE");
+                "pi_test_123", "secret_test", null, null, null, "STRIPE",
+                null, null, null, null, null);
         when(paymentService.createPayment(anyLong(), any())).thenReturn(mockRes);
 
         CreatePaymentResponse result = paymentService.createPayment(1L, req);

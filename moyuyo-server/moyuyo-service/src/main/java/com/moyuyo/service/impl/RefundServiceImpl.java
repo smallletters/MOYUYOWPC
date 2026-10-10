@@ -9,6 +9,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.common.dto.refund.RefundApplyRequest;
 import com.moyuyo.common.dto.refund.RefundVO;
 import com.moyuyo.common.utils.PageUtils;
+import com.moyuyo.dao.admin.entity.FinanceRecordEntity;
+import com.moyuyo.dao.admin.mapper.FinanceRecordMapper;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.PointsLogEntity;
@@ -37,6 +39,8 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+// 抑制 MyBatis-Plus 3.x @Nonnull T 与 JDT 静态分析差异（覆盖 nullUncheckedConversion 等所有 null 子类别）
+@SuppressWarnings("null")
 public class RefundServiceImpl implements RefundService {
 
     private final RefundMapper refundMapper;
@@ -45,8 +49,10 @@ public class RefundServiceImpl implements RefundService {
     private final RefundChannelService refundChannelService;
     private final MemberService memberService;
     private final PointsLogMapper pointsLogMapper;
-    /** 全局复用的 Jackson 实例 */
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    // 财务流水 Mapper：退款完成时写入 mo_finance_record
+    private final FinanceRecordMapper financeRecordMapper;
+    /** 全局复用的 Jackson 实例（由 Spring Boot 自动注入） */
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -91,7 +97,6 @@ public class RefundServiceImpl implements RefundService {
             }
 
             BigDecimal itemsTotal = BigDecimal.ZERO;
-            int itemsQtyTotal = 0;
             for (RefundApplyRequest.RefundItem ri : items) {
                 OrderItemEntity oi = itemMap.get(ri.getSkuId());
                 if (oi == null) {
@@ -117,7 +122,6 @@ public class RefundServiceImpl implements RefundService {
                             "SKU " + ri.getSkuId() + " 退款金额超过可退金额上限");
                 }
                 itemsTotal = itemsTotal.add(ri.getAmount());
-                itemsQtyTotal += ri.getQuantity();
             }
 
             // 请求 amount 必须等于 items 合计
@@ -262,6 +266,21 @@ public class RefundServiceImpl implements RefundService {
             } catch (Exception e) {
                 // 积分联动失败不影响退款主流程，但需记录便于对账
                 log.error("[refund] 积分联动失败 refundId={}, orderNo={}, reason={}",
+                        refundId, order.getOrderNo(), e.getMessage(), e);
+            }
+
+            // 同步写入交易流水（mo_finance_record），供后台"交易流水"实时展示
+            try {
+                FinanceRecordEntity record = new FinanceRecordEntity();
+                record.setOrderNo(order.getOrderNo());
+                record.setType("REFUND");
+                record.setChannel(order.getPayChannel());
+                record.setAmount(entity.getAmount() != null ? entity.getAmount() : BigDecimal.ZERO);
+                record.setStatus("SUCCESS");
+                record.setCreateTime(LocalDateTime.now());
+                financeRecordMapper.insert(record);
+            } catch (Exception e) {
+                log.error("[finance-record] 写入 REFUND 流水失败 refundId={}, orderNo={}, reason={}",
                         refundId, order.getOrderNo(), e.getMessage(), e);
             }
         }

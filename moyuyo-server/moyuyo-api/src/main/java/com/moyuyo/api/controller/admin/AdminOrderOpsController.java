@@ -70,20 +70,29 @@ public class AdminOrderOpsController {
     result.put("taskName", request.getTaskName());
     result.put("orderScope", request.getOrderScope());
     result.put("format", request.getFormat() == null ? "Excel" : request.getFormat());
+    // 自定义范围回显（仅自定义时有意义，前端按需展示）
+    result.put("startDate", request.getStartDate());
+    result.put("endDate", request.getEndDate());
     result.put("status", taskResult.getOrDefault("status", "PENDING"));
     result.put("message", "导出任务已创建");
     return Result.success(result);
   }
 
-  @Operation(summary = "下载导出文件")
+  /**
+   * @deprecated 该路径已与 /export/file/{exportId} 不一致（仅返回元数据，
+   *   不是真实下载流）。前端应直接调 /export/file/{exportId}。
+   *   保留这里仅为兼容未知调用方，下个迭代可删除。
+   */
+  @Deprecated
+  @Operation(summary = "下载导出文件（已废弃，请使用 /export/file/{exportId}）")
   @GetMapping("/export/download/{exportId}")
   public Result<Map<String, Object>> downloadExport(@PathVariable String exportId) {
-    // 返回导出文件信息（实际场景中应生成签名下载URL或流式输出Excel文件）
+    // 仅作元数据返回（兼容历史调用方）；新代码应直接走 /export/file/{exportId} 取真实字节流
     Map<String, Object> result = new java.util.LinkedHashMap<>();
     result.put("exportId", exportId);
-    // 使用独立的下载路径避免自引用循环
+    // 引导调用方改用统一的下载路径
     result.put("downloadUrl", "/api/admin/order-ops/export/file/" + exportId);
-    result.put("message", "导出文件下载链接已生成");
+    result.put("message", "请改用 /api/admin/order-ops/export/file/{exportId} 下载真实文件");
     result.put("status", "READY");
     return Result.success(result);
   }

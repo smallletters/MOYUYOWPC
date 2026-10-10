@@ -2,6 +2,8 @@ package com.moyuyo.common.dto.admin.finance;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 /**
  * 管理后台结算记录请求(创建/更新共用)
  * 创建时 id 为空,更新时 id 由路径参数提供
@@ -13,7 +15,7 @@ public class SettlementRequest {
   private String period;
 
   /** 结算金额 */
-  private Double amount;
+  private BigDecimal amount;
 
   /** 状态:PENDING/COMPLETED/FAILED */
   private String status;

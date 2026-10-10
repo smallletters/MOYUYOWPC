@@ -29,12 +29,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -68,6 +69,9 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
   private final ObjectMapper objectMapper;
   // 独立 Bean：用于跨 Bean 调用以触发事务代理（同类内部调用 @Transactional 不生效）
   private final com.moyuyo.service.admin.PrintLogWriter printLogWriter;
+  // 独立 Bean：用于跨 Bean 调用以触发 @Async 代理（同类内部调用 @Async 不生效）。
+  // 生成下载链接 + 状态翻转为 COMPLETED/FAILED 的动作放到异步线程里，不阻塞 createExportTask 的事务提交。
+  private final com.moyuyo.service.admin.ExportFileExecutor exportFileExecutor;
   private static final Logger log = LoggerFactory.getLogger(AdminOrderOpsServiceImpl.class);
 
   @Override
@@ -77,13 +81,14 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
     // 只查询订单导出类型的记录
     wrapper.in(DataExportRequestEntity::getRequestType, "订单导出", "ORDER_EXPORT");
     if (status != null && !status.isEmpty()) {
-      // 状态映射：前端用中文，数据库存英文
-      String dbStatus = switch (status) {
-        case "进行中" -> "PROCESSING";
-        case "已完成" -> "COMPLETED";
-        case "失败" -> "FAILED";
-        case "待处理" -> "PENDING";
-        default -> status;
+      // 状态映射：前端用中文，数据库存英文。
+      // 中英文兜底：用户可能传 PROCESSING / processing（任意大小写），统一转大写后比对。
+      String dbStatus = switch (status.toUpperCase()) {
+        case "进行中", "PROCESSING" -> "PROCESSING";
+        case "已完成", "COMPLETED" -> "COMPLETED";
+        case "失败", "FAILED" -> "FAILED";
+        case "待处理", "PENDING" -> "PENDING";
+        default -> status.toUpperCase();
       };
       wrapper.eq(DataExportRequestEntity::getStatus, dbStatus);
     }
@@ -97,6 +102,9 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
       item.put("taskName", e.getTaskName());
       item.put("orderScope", e.getOrderScope());
       item.put("format", e.getFormat() != null ? e.getFormat() : "Excel");
+      // 自定义日期范围（仅 orderScope=自定义 时有值）。前端表格按需展示
+      item.put("startDate", e.getStartDate());
+      item.put("endDate", e.getEndDate());
       // 前端显示中文状态
       item.put("exportStatus", getExportStatusName(e.getStatus()));
       item.put("downloadUrl", e.getDownloadUrl());
@@ -147,19 +155,31 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
     // 任务不存在时，导出空表头（保证下载不报错）
     StringBuilder sb = new StringBuilder();
     sb.append('\uFEFF'); // UTF-8 BOM，Excel 打开中文不乱码
-    // 表头新增两列：商品名称、商品SKU（一单一品的场景下与原导出结构兼容；
-    // 多商品订单会展开为多行，每行都重复订单字段，便于 Excel 筛选）
-    sb.append("订单号,状态,实付金额,币种,收货人,联系电话,收货地址,支付渠道,创建时间,商品名称,商品SKU\n");
+    // 表头新增五列：商品名称、商品SKU、商品数量、商品单价、商品小计
+    // （一单一品的场景下与原导出结构兼容；多商品订单会展开为多行，
+    // 每行都重复订单字段，便于 Excel 筛选 / 对账 / 算分摊）
+    // 状态：导出时用中文（与 listPrint 的 statusLabel 对齐），不再输出数据库原始枚举值
+    sb.append("订单号,状态,实付金额,币种,收货人,联系电话,收货地址,支付渠道,创建时间,商品名称,商品SKU,商品数量,商品单价,商品小计\n");
     if (task != null) {
       // 查询订单数据（按任务范围过滤：全部订单 / 本月订单 / 上周订单 / 自定义）
       LambdaQueryWrapper<OrderEntity> ow = new LambdaQueryWrapper<>();
       String scope = task.getOrderScope() == null ? "" : task.getOrderScope();
       if ("本月订单".equals(scope)) {
-        ow.ge(OrderEntity::getCreateTime, java.time.LocalDate.now().withDayOfMonth(1).atStartOfDay());
+        ow.ge(OrderEntity::getCreateTime, LocalDate.now().withDayOfMonth(1).atStartOfDay());
       } else if ("上周订单".equals(scope)) {
+        // 修复：原实现 end 用 minusWeeks(0) + MONDAY + atStartOfDay()，相当于本周一 0 点，
+        // 会把本周一以后到今天为止的订单也带进来（应为上周日的 23:59:59）。
+        // 改为：起 = 本周一的前 7 天 0 点；止 = 本周一的前 1 天 23:59:59.999999999
+        LocalDate thisMonday = LocalDate.now().with(java.time.DayOfWeek.MONDAY);
         ow.between(OrderEntity::getCreateTime,
-            java.time.LocalDate.now().minusWeeks(1).with(java.time.DayOfWeek.MONDAY).atStartOfDay(),
-            java.time.LocalDate.now().minusWeeks(0).with(java.time.DayOfWeek.MONDAY).atStartOfDay());
+            thisMonday.minusDays(7).atStartOfDay(),
+            thisMonday.minusDays(1).atTime(LocalTime.MAX));
+      } else if ("自定义".equals(scope)
+          && task.getStartDate() != null && task.getEndDate() != null) {
+        // 自定义日期范围：含两端。endDate 当天 23:59:59.999999999 保证当天订单不丢
+        ow.between(OrderEntity::getCreateTime,
+            task.getStartDate().atStartOfDay(),
+            task.getEndDate().atTime(LocalTime.MAX));
       }
       ow.orderByDesc(OrderEntity::getCreateTime).last("LIMIT 500");
       List<OrderEntity> orders = orderMapper.selectList(ow);
@@ -171,7 +191,8 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
       for (OrderEntity o : orders) {
         String baseRow =
             escapeCsv(o.getOrderNo()) + ","
-                + escapeCsv(o.getStatus()) + ","
+                // 状态：转中文（如 PENDING_SHIP → 待发货），与 listPrint.statusLabel 行为一致
+                + escapeCsv(orderStatusName(o.getStatus())) + ","
                 + (o.getPayAmount() == null ? "" : o.getPayAmount().toPlainString()) + ","
                 + escapeCsv(o.getCurrency()) + ","
                 + escapeCsv(o.getReceiverName()) + ","
@@ -183,14 +204,29 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
             itemsByOrderId.getOrDefault(o.getId(), java.util.Collections.emptyList());
         if (items.isEmpty()) {
           // 防御：理论上每个订单至少 1 件商品，没有就输出空商品列
-          sb.append(baseRow).append(",,\n");
+          // 5 个空列：商品名称、商品SKU、商品数量、商品单价、商品小计
+          sb.append(baseRow).append(",,,,,\n");
         } else {
-          // 一订单多商品：每行重复订单基础信息,最后两列写对应商品的名称/SKU。
-          // 这样运营在 Excel 里能直接按"商品SKU"筛选、按"订单号"排序,不必拆分单元格。
+          // 一订单多商品：每行重复订单基础信息,最后五列写对应商品的名称/SKU/数量/单价/小计。
+          // 这样运营在 Excel 里能直接按"商品SKU"筛选、按"订单号"排序,
+          // 也能按"商品小计"对账,不必在 Excel 里再建公式 = 数量×单价。
           for (com.moyuyo.dao.entity.OrderItemEntity it : items) {
+            // 商品小计 = 数量 × 单价,用 BigDecimal.multiply 避免 double 精度问题;
+            // 任一因子为 null 时小计留空（与"无单价"语义保持一致,而不是误导成 0）。
+            String subtotal = "";
+            Integer qty = it.getQuantity();
+            java.math.BigDecimal price = it.getPrice();
+            if (qty != null && price != null) {
+              subtotal = price.multiply(java.math.BigDecimal.valueOf(qty)).toPlainString();
+            }
             sb.append(baseRow).append(',')
                 .append(escapeCsv(it.getProductName())).append(',')
-                .append(escapeCsv(it.getSkuCode())).append('\n');
+                .append(escapeCsv(it.getSkuCode())).append(',')
+                // 数量：null 时输出空字符串（与单价保持一致，单元格保持为空而不是字面量 "null" 也不是误导性 "0"）
+                .append(qty == null ? "" : qty.toString()).append(',')
+                // 单价：null 时输出空字符串（保持单元格为空而不是字面量 "null"）
+                .append(price == null ? "" : price.toPlainString()).append(',')
+                .append(subtotal).append('\n');
           }
         }
       }
@@ -249,6 +285,24 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
     String taskName = body.getTaskName() != null ? body.getTaskName() : "订单导出";
     String orderScope = body.getOrderScope() != null ? body.getOrderScope() : "全部订单";
     String format = body.getFormat() != null ? body.getFormat() : "Excel";
+    // 自定义范围：归一化校验 + 落库，避免下载时再校验（buildExportFile 是异步执行，
+    //   抛异常会被吞掉转 FAILED，运营拿不到具体的入参错误）
+    LocalDate startDate = body.getStartDate();
+    LocalDate endDate = body.getEndDate();
+    if ("自定义".equals(orderScope)) {
+      if (startDate == null || endDate == null) {
+        throw new com.moyuyo.common.exception.BusinessException(
+            400, "自定义订单范围需提供开始日期与结束日期");
+      }
+      if (endDate.isBefore(startDate)) {
+        throw new com.moyuyo.common.exception.BusinessException(
+            400, "结束日期不能早于开始日期");
+      }
+    } else {
+      // 非自定义范围：清空日期，避免历史脏数据混入
+      startDate = null;
+      endDate = null;
+    }
 
     DataExportRequestEntity entity = new DataExportRequestEntity();
     // 从当前登录用户上下文获取操作人ID，未获取到则使用系统用户ID
@@ -258,13 +312,17 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
     entity.setTaskName(taskName);
     entity.setOrderScope(orderScope);
     entity.setFormat(format);
+    entity.setStartDate(startDate);
+    entity.setEndDate(endDate);
     entity.setRequestType("ORDER_EXPORT");
     entity.setStatus("PENDING");
     entity.setCreateTime(LocalDateTime.now());
     exportRequestMapper.insert(entity);
 
-    // 启动异步导出（简化：立即标记为完成并生成下载链接）
-    generateExportFile(entity);
+    // 启动异步导出（独立 Bean 调用，@Async 才会真正生效）。
+    // 这里不能再用"同类内 this.generateExportFile(...)"——AOP 代理失效，
+    // 导致 Thread.sleep(500) 仍然阻塞主线程。
+    exportFileExecutor.executeExport(entity);
 
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("taskId", entity.getExportId());
@@ -272,36 +330,16 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
     return result;
   }
 
-  /**
-   * 生成导出文件（异步执行，避免阻塞主线程）
-   */
-  @Async
-  public void generateExportFile(DataExportRequestEntity entity) {
-    try {
-      // 模拟导出处理：等待一小段时间后标记完成
-      Thread.sleep(500);
-
-      // 实际场景应异步执行：查询订单 → 写入Excel/CSV → 上传到OSS → 记录下载链接
-      String downloadUrl = "/api/admin/order-ops/export/download/" + entity.getExportId();
-      entity.setStatus("COMPLETED");
-      entity.setDownloadUrl(downloadUrl);
-      entity.setCompleteTime(LocalDateTime.now());
-      exportRequestMapper.updateById(entity);
-    } catch (Exception e) {
-      // 异常详情仅记录日志，不对外暴露，防止敏感信息泄露
-      log.error("导出任务执行失败: {}", entity.getExportId(), e);
-      entity.setStatus("FAILED");
-      entity.setRemark("导出失败，请联系管理员查看日志");
-      exportRequestMapper.updateById(entity);
-    }
-  }
+  // generateExportFile 已抽出到 com.moyuyo.service.admin.ExportFileExecutor
+  // （独立 Bean 才能让 @Async 真正生效，同类内部调用 @Async 会被 Spring AOP 跳过）
 
   /**
    * 导出状态中文映射
    */
   private String getExportStatusName(String status) {
     if (status == null) return "待处理";
-    return switch (status) {
+    // 大小写兜底：DB 里如果混入 'pending' / 'Pending' 这类脏数据也映射得到中文
+    return switch (status.toUpperCase()) {
       case "PENDING" -> "待处理";
       case "PROCESSING" -> "进行中";
       case "COMPLETED" -> "已完成";

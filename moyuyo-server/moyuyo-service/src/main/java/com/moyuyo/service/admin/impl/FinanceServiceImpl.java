@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null") // 抑制 MyBatis-Plus 3.x @Nonnull T 与 JDT 静态分析差异（覆盖 nullUncheckedConversion 等所有 null 子类别）
 public class FinanceServiceImpl implements FinanceService {
 
   private final OrderMapper orderMapper;
@@ -176,7 +177,7 @@ public class FinanceServiceImpl implements FinanceService {
         item.put("date", entity.getPeriod() != null ? entity.getPeriod()
           : (entity.getCreateTime() != null ? entity.getCreateTime().toLocalDate().toString() : ""));
         item.put("amount", entity.getAmount() != null
-          ? BigDecimal.valueOf(entity.getAmount()) : BigDecimal.ZERO);
+          ? entity.getAmount() : BigDecimal.ZERO);
         item.put("status", entity.getStatus());
         list.add(item);
       }
@@ -286,7 +287,7 @@ public class FinanceServiceImpl implements FinanceService {
         String channel = entry.getKey();
         List<SettlementEntity> list = entry.getValue();
         BigDecimal amount = list.stream()
-          .map(s -> s.getAmount() != null ? BigDecimal.valueOf(s.getAmount()) : BigDecimal.ZERO)
+          .map(s -> s.getAmount() != null ? s.getAmount() : BigDecimal.ZERO)
           .reduce(BigDecimal.ZERO, BigDecimal::add);
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("channel", channel);

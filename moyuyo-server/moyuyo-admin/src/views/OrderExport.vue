@@ -38,7 +38,15 @@
       <el-table :data="tableData" stripe>
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="taskName" label="导出任务名称" min-width="180" />
-        <el-table-column prop="orderScope" label="订单范围" min-width="160" />
+        <el-table-column label="订单范围" min-width="220">
+          <template #default="{ row }">
+            <!-- 自定义范围把日期拼到同一格，避免再加一列拖宽表格 -->
+            <span v-if="row.orderScope === '自定义' && row.startDate && row.endDate">
+              自定义（{{ row.startDate }} ~ {{ row.endDate }}）
+            </span>
+            <span v-else>{{ row.orderScope }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="format" label="导出格式" width="100" />
         <el-table-column prop="exportStatus" label="导出状态" width="110">
           <template #default="{ row }">
@@ -75,6 +83,18 @@
             <el-option label="自定义" value="自定义" />
           </el-select>
         </el-form-item>
+        <!-- 自定义日期范围：仅选择"自定义"时显示；后端要求含两端 -->
+        <el-form-item v-if="editForm.orderScope === '自定义'" label="日期范围" required>
+          <el-date-picker
+            v-model="customDateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            style="width:100%"
+          />
+        </el-form-item>
         <el-form-item label="导出格式">
           <el-radio-group v-model="editForm.format">
             <el-radio value="Excel">Excel</el-radio>
@@ -102,6 +122,8 @@ const pageSize = ref(10)
 const total = ref(0)
 const dialogVisible = ref(false)
 const dateRange = ref(null)
+// 弹窗内"自定义"订单范围的日期范围；与 daterange v-model 对齐，长度为 2 的数组
+const customDateRange = ref(null)
 
 const filters = reactive({
   keyword: '',
@@ -149,6 +171,8 @@ function handleAdd() {
   editForm.taskName = ''
   editForm.orderScope = '全部订单'
   editForm.format = 'Excel'
+  // 新建时清空自定义日期，避免打开弹窗后旧值残留
+  customDateRange.value = null
   dialogVisible.value = true
 }
 
@@ -158,18 +182,36 @@ async function handleSave() {
     ElMessage.warning('请输入任务名称')
     return
   }
+  // 自定义订单范围：前端校验起止日期必填且顺序合法，
+  //   防止请求到后端才被 400 拦截（运营体感更差）
+  const payload = {
+    taskName: editForm.taskName,
+    orderScope: editForm.orderScope,
+    format: editForm.format
+  }
+  if (editForm.orderScope === '自定义') {
+    const range = customDateRange.value
+    if (!range || !Array.isArray(range) || !range[0] || !range[1]) {
+      ElMessage.warning('请选择自定义日期范围')
+      return
+    }
+    if (range[1] < range[0]) {
+      ElMessage.warning('结束日期不能早于开始日期')
+      return
+    }
+    payload.startDate = range[0]
+    payload.endDate = range[1]
+  }
   try {
-    await createOrderExport({
-      taskName: editForm.taskName,
-      orderScope: editForm.orderScope,
-      format: editForm.format
-    })
+    await createOrderExport(payload)
     dialogVisible.value = false
     loadData()
     ElMessage.success('导出任务已创建')
   } catch (error) {
     console.error('创建导出任务失败:', error)
-    ElMessage.error('创建导出任务失败')
+    // 后端 400 时一般带 message，直接显示避免重复 toast
+    const msg = error?.response?.data?.message || error?.message || '创建导出任务失败'
+    ElMessage.error(msg)
   }
 }
 

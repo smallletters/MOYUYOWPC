@@ -2,11 +2,11 @@ package com.moyuyo;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
@@ -30,13 +30,13 @@ import static org.mockito.Mockito.when;
 @Transactional
 public abstract class BaseIntegrationTest {
 
-  @MockBean
+  @MockitoBean
   protected StringRedisTemplate redisTemplate;
 
-  @MockBean
+  @MockitoBean
   protected ValueOperations<String, String> valueOperations;
 
-  @MockBean
+  @MockitoBean
   protected SetOperations<String, String> setOperations;
 
   /** 内存模拟 Redis String 存储 */
@@ -46,6 +46,7 @@ public abstract class BaseIntegrationTest {
   private final Map<String, Set<String>> redisSetStore = new ConcurrentHashMap<>();
 
   @BeforeEach
+  @SuppressWarnings("unchecked") // Mockito any() 返回 Object，强转 Collection<String> 用于桩 delete(Collection) 是预期用法
   void setUpRedisMock() {
     // 连接 redisTemplate.opsForValue() 到内存 mock
     when(redisTemplate.opsForValue()).thenReturn(valueOperations);

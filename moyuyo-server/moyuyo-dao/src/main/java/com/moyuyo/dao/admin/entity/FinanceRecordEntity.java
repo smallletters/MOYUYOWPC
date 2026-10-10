@@ -3,6 +3,7 @@ package com.moyuyo.dao.admin.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -24,8 +25,8 @@ public class FinanceRecordEntity {
     /** 支付渠道 */
     private String channel;
 
-    /** 金额 */
-    private Double amount;
+    /** 金额（BigDecimal 与数据库 DECIMAL(12,2) 对齐，避免 doubleValue 精度损耗） */
+    private BigDecimal amount;
 
     /** 状态 */
     private String status;

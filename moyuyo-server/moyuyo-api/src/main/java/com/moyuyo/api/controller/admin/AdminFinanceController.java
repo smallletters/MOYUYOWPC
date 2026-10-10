@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
 import com.moyuyo.common.dto.admin.OperationResult;
-import com.moyuyo.common.dto.admin.PageResponse;
 import com.moyuyo.common.dto.admin.finance.FinanceOverviewResponse;
 import com.moyuyo.common.dto.admin.finance.SettlementDetailResponse;
 import com.moyuyo.common.dto.admin.finance.SettlementRequest;
@@ -19,6 +18,8 @@ import com.moyuyo.service.admin.FinanceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -33,7 +34,9 @@ import java.util.*;
 @Tag(name = "管理后台 - 财务管理")
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 @RequestMapping("/api/admin/finance")
+@SuppressWarnings("null") // 抑制 MyBatis-Plus 3.x @Nonnull T 与 JDT 静态分析差异（覆盖 nullUncheckedConversion 等所有 null 子类别）
 public class AdminFinanceController {
 
   private final FinanceService financeService;
@@ -149,7 +152,7 @@ public class AdminFinanceController {
 
       // amount 字段作为总金额，计算手续费和净额(统一2位小数)
       BigDecimal totalAmount = settlement.getAmount() != null
-        ? BigDecimal.valueOf(settlement.getAmount()).setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        ? settlement.getAmount().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
       BigDecimal fee = totalAmount.multiply(BigDecimal.valueOf(0.01))
         .setScale(2, RoundingMode.HALF_UP);
       BigDecimal netAmount = totalAmount.subtract(fee);
@@ -235,17 +238,66 @@ public class AdminFinanceController {
   @PostMapping("/settlements")
   public Result<OperationResult> createSettlement(@RequestBody SettlementRequest request) {
     try {
-      SettlementEntity entity = new SettlementEntity();
       // 生成结算单号: SET-年月日格式
+      // 同日防重：settlementNo = SET-yyyyMMdd，DB 无唯一约束，靠应用层判重避免同日多结算单
       String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-      entity.setSettlementNo("SET-" + datePart);
+      String settlementNo = "SET-" + datePart;
+      SettlementEntity existing = settlementMapper.selectOne(
+        new LambdaQueryWrapper<SettlementEntity>()
+          .eq(SettlementEntity::getSettlementNo, settlementNo));
+      if (existing != null) {
+        // 已存在同日的结算单：直接返回原记录，避免重复插结算 + 重复写交易流水
+        OperationResult dup = new OperationResult();
+        dup.setId(existing.getId());
+        dup.setMessage("当日结算单已存在，已返回原记录");
+        log.info("createSettlement hit duplicate: settlementNo={}, existingId={}",
+          settlementNo, existing.getId());
+        return Result.success(dup);
+      }
+
+      SettlementEntity entity = new SettlementEntity();
+      entity.setSettlementNo(settlementNo);
       entity.setPeriod(request.getPeriod());
       entity.setAmount(request.getAmount());
       entity.setStatus(request.getStatus());
       entity.setRemark(request.getRemark());
       entity.setPayChannel(request.getPayChannel());
 
-      settlementMapper.insert(entity);
+      try {
+        settlementMapper.insert(entity);
+      } catch (DuplicateKeyException dup) {
+        // 并发兜底：两个请求同时通过应用层 selectOne 后，第二个 INSERT 被 uk_settlement_no 拒绝
+        // 重新按 settlementNo 查一次，返回原记录，保持与"应用层判重"一致的用户体验
+        SettlementEntity raceWinner = settlementMapper.selectOne(
+          new LambdaQueryWrapper<SettlementEntity>()
+            .eq(SettlementEntity::getSettlementNo, settlementNo));
+        if (raceWinner != null) {
+          log.warn("createSettlement hit DB unique key race: settlementNo={}, existingId={}",
+            settlementNo, raceWinner.getId());
+          OperationResult dupRes = new OperationResult();
+          dupRes.setId(raceWinner.getId());
+          dupRes.setMessage("当日结算单已存在，已返回原记录");
+          return Result.success(dupRes);
+        }
+        // 极端情况下唯一索引冲突但又查不到记录（理论不应发生），透传原始错误
+        throw dup;
+      }
+
+      // 同步写入交易流水（mo_finance_record），SETTLEMENT 用 settlementNo 作为关联键
+      try {
+        FinanceRecordEntity record = new FinanceRecordEntity();
+        record.setOrderNo(entity.getSettlementNo());
+        record.setType("SETTLEMENT");
+        record.setChannel(entity.getPayChannel());
+        record.setAmount(entity.getAmount() != null ? entity.getAmount() : BigDecimal.ZERO);
+        record.setStatus(entity.getStatus() != null ? entity.getStatus() : "PENDING");
+        record.setCreateTime(LocalDateTime.now());
+        financeRecordMapper.insert(record);
+      } catch (Exception ex) {
+        // 流水写入失败不影响结算主流程，记日志便于对账
+        log.error("[finance-record] 写入 SETTLEMENT 流水失败 settlementNo={}, reason={}",
+            entity.getSettlementNo(), ex.getMessage(), ex);
+      }
 
       OperationResult result = new OperationResult();
       result.setId(entity.getId());

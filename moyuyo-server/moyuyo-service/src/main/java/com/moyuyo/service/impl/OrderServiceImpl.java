@@ -8,6 +8,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.dto.order.CreateOrderRequest;
 import com.moyuyo.common.dto.order.OrderItemRequest;
 import com.moyuyo.dao.entity.AddressEntity;
+import com.moyuyo.dao.admin.entity.FinanceRecordEntity;
+import com.moyuyo.dao.admin.mapper.FinanceRecordMapper;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.PaymentEntity;
@@ -57,6 +59,8 @@ public class OrderServiceImpl implements OrderService {
   private final PaymentMapper paymentMapper;
   private final ProductMapper productMapper;
   private final ProductSkuMapper productSkuMapper;
+  // 财务流水 Mapper：支付成功后写入 mo_finance_record，供管理后台"交易流水"展示
+  private final FinanceRecordMapper financeRecordMapper;
   // 地址表 Mapper：用于创建订单时快照地址详情，以及详情接口对历史订单按 addressId 回填
   private final AddressMapper addressMapper;
   // 注入 WooCommerce 同步服务：付款回调完成后自动推送订单到 WooCommerce
@@ -556,6 +560,22 @@ public class OrderServiceImpl implements OrderService {
     payment.setStatus("SUCCESS");
     payment.setPaidAt(LocalDateTime.now());
     paymentMapper.insert(payment);
+
+    // 同步写入交易流水（mo_finance_record），供后台财务概览"交易流水"实时展示
+    try {
+      FinanceRecordEntity record = new FinanceRecordEntity();
+      record.setOrderNo(order.getOrderNo());
+      record.setType("PAYMENT");
+      record.setChannel(payChannel);
+      record.setAmount(order.getPayAmount() != null ? order.getPayAmount() : BigDecimal.ZERO);
+      record.setStatus("SUCCESS");
+      record.setCreateTime(LocalDateTime.now());
+      financeRecordMapper.insert(record);
+    } catch (Exception e) {
+      // 流水写入失败不影响支付主流程，记日志供后续对账
+      log.error("[finance-record] 写入 PAYMENT 流水失败 orderNo={}, reason={}",
+          orderNo, e.getMessage(), e);
+    }
 
     log.info("支付回调处理成功: orderNo={}, transactionId={}", orderNo, transactionId);
 

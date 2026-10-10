@@ -5,8 +5,8 @@ import com.moyuyo.service.PaymentService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -26,7 +26,7 @@ class WebhookIdempotencyTest extends BaseIntegrationTest {
     private MockMvc mockMvc;
 
     // mock PaymentService 以跳过验签，聚焦测试 Webhook 接口的幂等性
-    @MockBean
+    @MockitoBean
     private PaymentService paymentService;
 
     /**

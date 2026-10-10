@@ -5,6 +5,8 @@ import com.moyuyo.common.dto.admin.OperationResult;
 import com.moyuyo.common.dto.admin.finance.FinanceOverviewResponse;
 import com.moyuyo.common.dto.admin.finance.SettlementDetailResponse;
 import com.moyuyo.common.dto.admin.finance.SettlementRequest;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.moyuyo.dao.admin.entity.FinanceRecordEntity;
 import com.moyuyo.dao.admin.entity.SettlementEntity;
 import com.moyuyo.dao.admin.mapper.FinanceRecordMapper;
 import com.moyuyo.dao.admin.mapper.SettlementMapper;
@@ -16,6 +18,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -49,7 +52,7 @@ class AdminFinanceControllerTest {
   private AdminFinanceController adminFinanceController;
 
   /** 构造测试结算实体 */
-  private SettlementEntity buildSettlement(Long id, String period, Double amount, String status) {
+  private SettlementEntity buildSettlement(Long id, String period, BigDecimal amount, String status) {
     SettlementEntity entity = new SettlementEntity();
     entity.setId(id);
     entity.setSettlementNo("SET-20260804");
@@ -108,7 +111,7 @@ class AdminFinanceControllerTest {
   void settlementDetail_记录存在_返回详情包含手续费和净额() {
     // given:结算记录金额 1000,期望手续费 10,净额 990
     when(settlementMapper.selectById(1L))
-        .thenReturn(buildSettlement(1L, "2026-08-04", 1000.0, "COMPLETED"));
+        .thenReturn(buildSettlement(1L, "2026-08-04", new BigDecimal("1000.00"), "COMPLETED"));
     // period 解析为单日,查询当天订单
     when(orderMapper.selectList(any())).thenReturn(List.of());
 
@@ -134,7 +137,7 @@ class AdminFinanceControllerTest {
     // given
     SettlementRequest request = new SettlementRequest();
     request.setPeriod("2026-08-04");
-    request.setAmount(5000.0);
+    request.setAmount(new BigDecimal("5000.00"));
     request.setStatus("PENDING");
     request.setRemark("8月结算");
     request.setPayChannel("Stripe");
@@ -147,7 +150,7 @@ class AdminFinanceControllerTest {
     verify(settlementMapper).insert(captor.capture());
     SettlementEntity inserted = captor.getValue();
     assertEquals("2026-08-04", inserted.getPeriod());
-    assertEquals(5000.0, inserted.getAmount());
+    assertEquals(new BigDecimal("5000.00"), inserted.getAmount());
     assertEquals("PENDING", inserted.getStatus());
     assertEquals("8月结算", inserted.getRemark());
     assertEquals("Stripe", inserted.getPayChannel());
@@ -173,6 +176,34 @@ class AdminFinanceControllerTest {
     assertNull(captor.getValue().getAmount());
   }
 
+  @Test
+  @SuppressWarnings("unchecked") // any(LambdaQueryWrapper.class) raw type 桩 Wrapper<SettlementEntity> 是 Mockito 测试桩预期用法
+  void createSettlement_并发撞唯一索引_返回原记录() {
+    // given:应用层 selectOne 未命中(并发场景下另一线程刚好插入),
+    // 随后本线程 insert 被 uk_settlement_no 拒绝抛 DuplicateKeyException,
+    // Controller 应再查一次并返回原记录
+    SettlementEntity raceWinner = buildSettlement(99L, "2026-10-10",
+      new BigDecimal("8888.00"), "PENDING");
+    when(settlementMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(raceWinner);
+    doThrow(new DuplicateKeyException("Duplicate entry 'SET-20261010' for key 'uk_settlement_no'"))
+      .when(settlementMapper).insert(any(SettlementEntity.class));
+
+    SettlementRequest request = new SettlementRequest();
+    request.setPeriod("2026-10-10");
+    request.setAmount(new BigDecimal("8888.00"));
+    request.setStatus("PENDING");
+
+    // when
+    Result<OperationResult> result = adminFinanceController.createSettlement(request);
+
+    // then
+    assertEquals(0, result.getCode(), "应返回成功,而不是错误");
+    assertEquals(99L, result.getData().getId(), "返回原记录的 id");
+    assertEquals("当日结算单已存在,已返回原记录", result.getData().getMessage());
+    // 不应再插入一条 finance_record(避免重复流水)
+    verify(financeRecordMapper, never()).insert(any(FinanceRecordEntity.class));
+  }
+
   // ============ updateSettlement ============
 
   @Test
@@ -189,7 +220,7 @@ class AdminFinanceControllerTest {
   void updateSettlement_有效请求_更新非空字段() {
     // given:数据库中已有记录
     when(settlementMapper.selectById(1L))
-        .thenReturn(buildSettlement(1L, "2026-08-04", 1000.0, "PENDING"));
+        .thenReturn(buildSettlement(1L, "2026-08-04", new BigDecimal("1000.00"), "PENDING"));
     SettlementRequest request = new SettlementRequest();
     request.setStatus("COMPLETED");
     request.setRemark("已结算");
@@ -205,7 +236,7 @@ class AdminFinanceControllerTest {
     assertEquals("已结算", updated.getRemark());
     // 未传字段保持原值
     assertEquals("2026-08-04", updated.getPeriod());
-    assertEquals(1000.0, updated.getAmount());
+    assertEquals(new BigDecimal("1000.00"), updated.getAmount());
     // 返回体
     assertEquals(0, result.getCode());
     assertEquals(1L, result.getData().getId());

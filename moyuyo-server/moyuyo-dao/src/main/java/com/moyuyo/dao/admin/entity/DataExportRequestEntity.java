@@ -3,6 +3,7 @@ package com.moyuyo.dao.admin.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -29,6 +30,12 @@ public class DataExportRequestEntity {
 
     /** 导出格式：Excel/CSV */
     private String format;
+
+    /** 自定义开始日期（orderScope=自定义 时生效，包含） */
+    private LocalDate startDate;
+
+    /** 自定义结束日期（orderScope=自定义 时生效，包含） */
+    private LocalDate endDate;
 
     /** 状态：PENDING/PROCESSING/COMPLETED/FAILED */
     private String status;
