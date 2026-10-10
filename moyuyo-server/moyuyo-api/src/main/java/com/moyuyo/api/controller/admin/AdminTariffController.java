@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.common.dto.admin.OperationResult;
 import com.moyuyo.service.admin.AdminTariffService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,6 +32,8 @@ public class AdminTariffController {
 
   @Operation(summary = "创建税率配置")
   @PostMapping("/configs/create")
+  @AdminAudit(action = "CREATE", module = "FINANCE",
+      resourceId = "tariff-config", detail = "财务创建税率配置")
   public Result<OperationResult> createConfig(@RequestBody Map<String, Object> body) {
     adminTariffService.createConfig(body);
     OperationResult result = new OperationResult();
@@ -41,6 +44,8 @@ public class AdminTariffController {
 
   @Operation(summary = "更新税率配置")
   @PutMapping("/configs/update")
+  @AdminAudit(action = "UPDATE", module = "FINANCE",
+      resourceId = "tariff-config", detail = "财务更新税率配置")
   public Result<OperationResult> updateConfig(@RequestBody Map<String, Object> body) {
     adminTariffService.updateConfig(body);
     OperationResult result = new OperationResult();
@@ -51,6 +56,8 @@ public class AdminTariffController {
 
   @Operation(summary = "删除税率配置")
   @DeleteMapping("/configs/{id}")
+  @AdminAudit(action = "DELETE", module = "FINANCE",
+      resourceId = "#id", detail = "财务删除税率配置")
   public Result<OperationResult> deleteConfig(@PathVariable Long id) {
     adminTariffService.deleteConfig(id);
     OperationResult result = new OperationResult();

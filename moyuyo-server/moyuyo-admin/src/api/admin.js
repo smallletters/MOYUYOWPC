@@ -1246,6 +1246,16 @@ export function getRealtimeTopProducts() {
   return api.get('/crm/realtime/top-products')
 }
 
+// 实时大屏 - GMV 趋势(今日/昨日按小时)
+export function getRealtimeGmvTrend() {
+  return api.get('/crm/realtime/gmv-trend')
+}
+
+// 实时大屏 - 今日发货概览(待发货/已发货)
+export function getRealtimeShipping() {
+  return api.get('/crm/realtime/shipping')
+}
+
 // ==================== 商品审核 ====================
 export function getProductApprovalList(params) { return api.get('/product-approval/list', { params }) }
 export function getProductApprovalDetail(id) { return api.get(`/product-approval/${id}`) }

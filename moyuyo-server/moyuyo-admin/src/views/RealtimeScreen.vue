@@ -70,7 +70,7 @@
             <span>06</span>
             <span>09</span>
             <span>12</span>
-            <span class="x-current">{{ gmvTrend[gmvTrend.length - 1].hour }}</span>
+            <span class="x-current">{{ gmvTrend.length ? gmvTrend[gmvTrend.length - 1].hour : '—' }}</span>
           </div>
         </el-card>
       </el-col>
@@ -101,16 +101,16 @@
           <div class="order-scroll-wrap">
             <el-table :data="realtimeOrders" stripe style="width: 100%" :show-header="true" height="400">
               <el-table-column prop="orderNo" label="订单号" width="160" />
-              <el-table-column prop="user" label="用户" width="100" />
+              <el-table-column prop="userName" label="用户" width="100" />
               <el-table-column prop="amount" label="金额" width="100">
                 <template #default="{ row }">¥{{ row.amount }}</template>
               </el-table-column>
               <el-table-column prop="status" label="状态" width="100">
                 <template #default="{ row }">
-                  <el-tag :type="row.status === '支付成功' ? 'success' : 'warning'" size="small">{{ row.status }}</el-tag>
+                  <el-tag :type="PAID_STATUS_KEYS.includes(row.status) ? 'success' : 'warning'" size="small">{{ formatOrderStatus(row.status) }}</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column prop="time" label="时间" width="160" />
+              <el-table-column prop="orderTime" label="时间" width="160" />
             </el-table>
           </div>
         </el-card>
@@ -119,10 +119,10 @@
         <el-card shadow="never">
           <template #header><span>热门商品排行榜</span></template>
           <div class="rank-list">
-            <div v-for="(item, idx) in hotProducts" :key="item.id" class="rank-item">
-              <span class="rank-num" :class="{ 'rank-top': idx < 3 }">{{ idx + 1 }}</span>
-              <span class="rank-name">{{ item.name }}</span>
-              <span class="rank-sales">{{ item.sales }} 单</span>
+            <div v-for="item in hotProducts" :key="item.rank" class="rank-item">
+              <span class="rank-num" :class="{ 'rank-top': item.rank <= 3 }">{{ item.rank }}</span>
+              <span class="rank-name">{{ item.productName }}</span>
+              <span class="rank-sales">{{ item.salesCount }} 单</span>
             </div>
           </div>
         </el-card>
@@ -134,7 +134,7 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getRealtimeData, getRealtimeOrderFlow, getRealtimeTopProducts } from '../api/admin'
+import { getRealtimeData, getRealtimeOrderFlow, getRealtimeTopProducts, getRealtimeGmvTrend, getRealtimeShipping } from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
 const kpi = reactive({
@@ -147,33 +147,35 @@ const kpi = reactive({
 const realtimeOrders = ref([])
 const hotProducts = ref([])
 
-// 示例数据：GMV 趋势（今日/昨日 00-13 时按小时占比 %，无真实接口时使用）
-// 数值参考设计稿柱状图形态：夜间低谷、8-11 时高峰、午间回落
-const gmvTrend = ref([
-  { hour: '00', today: 5, yesterday: 8 },
-  { hour: '01', today: 3, yesterday: 4 },
-  { hour: '02', today: 2, yesterday: 3 },
-  { hour: '03', today: 2, yesterday: 2 },
-  { hour: '04', today: 2, yesterday: 3 },
-  { hour: '05', today: 8, yesterday: 6 },
-  { hour: '06', today: 18, yesterday: 15 },
-  { hour: '07', today: 32, yesterday: 28 },
-  { hour: '08', today: 50, yesterday: 45 },
-  { hour: '09', today: 65, yesterday: 58 },
-  { hour: '10', today: 78, yesterday: 72 },
-  { hour: '11', today: 92, yesterday: 85 },
-  { hour: '12', today: 75, yesterday: 68 },
-  { hour: '13', today: 88, yesterday: 80 }
-])
-
-// 示例数据：今日发货（待发货 / 已发货，无真实接口时使用）
+// GMV 趋势：今日/昨日 24 小时数据（由 /crm/realtime/gmv-trend 返回）
+const gmvTrend = ref([])
 const shipping = reactive({
-  pending: 186,
-  shipped: 997
+  pending: '—',
+  shipped: '—'
 })
 
+// 订单状态 → 中文映射（后端返回的是 PAID/SHIPPED 等枚举值，前端负责本地化显示）
+const ORDER_STATUS_LABEL = {
+  PENDING_PAY: '待支付',
+  PAID: '支付成功',
+  PENDING_SHIP: '待发货',
+  SHIPPED: '已发货',
+  RECEIVED: '已收货',
+  COMPLETED: '已完成',
+  CANCELLED: '已取消',
+  REFUNDING: '退款中',
+  REFUNDED: '已退款',
+  EXCHANGING: '换货中',
+  EXCHANGED: '已换货',
+  HOLD: '已拦截'
+}
+function formatOrderStatus(s) {
+  return ORDER_STATUS_LABEL[s] || s || '—'
+}
+// 支付成功状态用于表格颜色高亮
+const PAID_STATUS_KEYS = ['PAID', 'PENDING_SHIP', 'SHIPPED', 'RECEIVED', 'COMPLETED']
+
 let timer = null
-let gmvTimer = null
 
 async function loadKpi() {
   try {
@@ -210,30 +212,53 @@ async function loadHotProducts() {
   }
 }
 
-// 模拟实时更新：微调最后一小时（当前时段）的今日柱与待发货数，营造实时感
-function simulateRealtime() {
-  const last = gmvTrend.value[gmvTrend.value.length - 1]
-  last.today = Math.min(100, Math.max(10, last.today + Math.round(Math.random() * 6 - 2)))
-  shipping.pending = Math.max(0, shipping.pending + Math.round(Math.random() * 4 - 2))
+async function loadGmvTrend() {
+  try {
+    const list = toArray(await getRealtimeGmvTrend())
+    // 后端返回的是绝对金额元，柱状图按各自 24 小时最大值归一化为百分比高度（与设计稿一致）
+    const maxToday = Math.max(1, ...list.map(i => Number(i.today) || 0))
+    const maxYesterday = Math.max(1, ...list.map(i => Number(i.yesterday) || 0))
+    gmvTrend.value = list.map(i => ({
+      hour: i.hour,
+      today: Math.round(((Number(i.today) || 0) / maxToday) * 100),
+      yesterday: Math.round(((Number(i.yesterday) || 0) / maxYesterday) * 100)
+    }))
+  } catch (err) {
+    console.error('获取 GMV 趋势失败', err)
+    // 趋势图刷新失败保留上一次渲染，不弹窗干扰大屏
+  }
+}
+
+async function loadShipping() {
+  try {
+    const res = await getRealtimeShipping()
+    if (res) {
+      shipping.pending = res.pending ?? '—'
+      shipping.shipped = res.shipped ?? '—'
+    }
+  } catch (err) {
+    console.error('获取今日发货数据失败', err)
+  }
 }
 
 onMounted(() => {
   loadKpi()
   loadOrders()
   loadHotProducts()
+  loadGmvTrend()
+  loadShipping()
   // 定时刷新（30 秒同步一次业务数据）
   timer = setInterval(() => {
     loadKpi()
     loadOrders()
     loadHotProducts()
+    loadGmvTrend()
+    loadShipping()
   }, 30000)
-  // 模拟实时更新（5 秒一次，仅作用于示例数据）
-  gmvTimer = setInterval(simulateRealtime, 5000)
 })
 
 onUnmounted(() => {
   if (timer) clearInterval(timer)
-  if (gmvTimer) clearInterval(gmvTimer)
 })
 </script>
 

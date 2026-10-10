@@ -1,10 +1,10 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.common.dto.admin.OperationResult;
 import com.moyuyo.common.dto.admin.live.LiveRoomProductResponse;
 import com.moyuyo.common.dto.admin.live.LiveRoomResponse;
-import com.moyuyo.common.dto.admin.live.LiveRoomStatusRequest;
 import com.moyuyo.dao.entity.LiveRoomEntity;
 import com.moyuyo.dao.entity.LiveRoomProductEntity;
 import com.moyuyo.dao.mapper.LiveRoomMapper;
@@ -45,6 +45,8 @@ public class AdminLiveController {
 
   @Operation(summary = "创建直播间")
   @PostMapping("/rooms")
+  @AdminAudit(action = "CREATE", module = "MARKETING",
+      resourceId = "live-room", detail = "管理员创建直播间")
   public Result<OperationResult> createRoom(@RequestBody LiveRoomEntity entity) {
     // 写入数据库
     liveRoomService.createRoom(entity);
@@ -56,6 +58,8 @@ public class AdminLiveController {
 
   @Operation(summary = "更新直播间")
   @PutMapping("/rooms/{id}")
+  @AdminAudit(action = "UPDATE", module = "MARKETING",
+      resourceId = "#id", detail = "管理员更新直播间")
   public Result<OperationResult> updateRoom(@PathVariable Long id, @RequestBody LiveRoomEntity entity) {
     // 更新数据库中的直播间信息
     entity.setId(id);
@@ -68,7 +72,9 @@ public class AdminLiveController {
 
   @Operation(summary = "更新直播状态")
   @PutMapping("/rooms/{id}/status")
-  public Result<OperationResult> updateRoomStatus(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+  @AdminAudit(action = "UPDATE", module = "MARKETING",
+      resourceId = "#id", detail = "管理员更新直播状态")
+  public Result<?> updateStatus(@PathVariable Long id, @RequestBody Map<String, Object> body) {
     // 更新数据库中的直播间状态；支持 body 传参和 query param 兼容
     String status = body != null && body.containsKey("status")
         ? (String) body.get("status")
@@ -113,6 +119,8 @@ public class AdminLiveController {
 
   @Operation(summary = "删除直播间")
   @DeleteMapping("/rooms/{id}")
+  @AdminAudit(action = "DELETE", module = "MARKETING",
+      resourceId = "#id", detail = "管理员删除直播间")
   public Result<OperationResult> deleteRoom(@PathVariable Long id) {
     LiveRoomEntity entity = liveRoomMapper.selectById(id);
     if (entity == null) {

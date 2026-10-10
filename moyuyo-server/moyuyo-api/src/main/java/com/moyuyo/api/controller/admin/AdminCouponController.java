@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.service.admin.AdminCouponService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -42,6 +43,8 @@ public class AdminCouponController {
 
     @Operation(summary = "创建优惠券")
     @PostMapping("/create")
+    @AdminAudit(action = "CREATE", module = "MARKETING",
+        resourceId = "coupon", detail = "管理员创建优惠券")
     public Result<Map<String, Object>> create(@RequestBody Map<String, Object> body) {
         try {
             // 前置参数校验：name 为 NOT NULL 字段，空 body 时直接返回友好错误而非数据库异常
@@ -63,6 +66,8 @@ public class AdminCouponController {
 
     @Operation(summary = "更新优惠券")
     @PutMapping("/update")
+    @AdminAudit(action = "UPDATE", module = "MARKETING",
+        resourceId = "#body['id']", detail = "管理员更新优惠券")
     public Result<Map<String, Object>> update(@RequestBody Map<String, Object> body) {
         try {
             adminCouponService.update(body);
@@ -79,6 +84,8 @@ public class AdminCouponController {
 
     @Operation(summary = "删除优惠券")
     @DeleteMapping("/{id}")
+    @AdminAudit(action = "DELETE", module = "MARKETING",
+        resourceId = "#id", detail = "管理员删除优惠券")
     public Result<Map<String, Object>> delete(@PathVariable Long id) {
         try {
             adminCouponService.delete(id);

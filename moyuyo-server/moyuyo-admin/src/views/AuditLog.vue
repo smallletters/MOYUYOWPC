@@ -100,11 +100,11 @@
         </thead>
         <tbody>
           <tr v-for="row in pagedData" :key="row.id">
-            <td>{{ row.operator }}</td>
-            <td><span :class="actionPillClass(row.actionType)">{{ row.actionType }}</span></td>
-            <td>{{ row.target }}</td>
+            <td>{{ row.operatorName }}</td>
+            <td><span :class="actionPillClass(toZhAction(row.action))">{{ toZhAction(row.action) }}</span></td>
+            <td>{{ (row.module || '') + (row.resourceId ? '/' + row.resourceId : '') }}</td>
             <td class="detail-cell" :title="row.detail">{{ row.detail }}</td>
-            <td class="mono-cell">{{ row.ipAddress }}</td>
+            <td class="mono-cell">{{ row.ip }}</td>
             <td class="time-cell">{{ row.createTime }}</td>
           </tr>
           <tr v-if="pagedData.length === 0">
@@ -156,8 +156,16 @@ function actionPillClass(type) {
   return map[type] || 'tag tag-gray'
 }
 
+// 将后端英文 action 映射为前端中文显示（与下拉筛选选项保持一致）
+function toZhAction(action) {
+  const map = { 'CREATE': '新增', 'UPDATE': '修改', 'DELETE': '删除', 'EXPORT': '导出', 'LOGIN': '查询' }
+  return map[action] || action
+}
+
 function countByType(type) {
-  return tableData.value.filter(d => d.actionType === type).length
+  // data 是原始数据，action 字段是后端英文（C/CREATE/UPDATE/DELETE）,
+  // 需先转中文再与下拉选项（中文）匹配
+  return tableData.value.filter(d => toZhAction(d.action) === type).length
 }
 
 // 从API加载审计日志数据
@@ -167,8 +175,8 @@ async function loadData() {
     let list = toArray(res)
     // 前端筛选
     list = list.filter(item => {
-      if (filters.operator && !(item.operator || '').includes(filters.operator)) return false
-      if (filters.actionType && item.actionType !== filters.actionType) return false
+      if (filters.operator && !(item.operatorName || '').includes(filters.operator)) return false
+      if (filters.actionType && toZhAction(item.action) !== filters.actionType) return false
       if (filters.dateRange && filters.dateRange.length === 2) {
         const t = (item.createTime || '').slice(0, 10)
         if (t < filters.dateRange[0] || t > filters.dateRange[1]) return false
@@ -186,13 +194,23 @@ function handleSearch() { loadData() }
 function handleReset() { filters.operator = ''; filters.actionType = ''; filters.dateRange = null; loadData() }
 // 导出当前筛选结果到 CSV
 function handleExport() {
-  const ok = exportCsv(tableData.value, [
+  // 导出前对数据做一次轻量映射,与表格展示字段保持一致
+  const rows = tableData.value.map(r => ({
+    id: r.id,
+    operatorName: r.operatorName,
+    action: toZhAction(r.action),
+    target: (r.module || '') + (r.resourceId ? '/' + r.resourceId : ''),
+    detail: r.detail,
+    ip: r.ip,
+    createTime: r.createTime
+  }))
+  const ok = exportCsv(rows, [
     { key: 'id', label: 'ID' },
-    { key: 'operator', label: '操作人' },
-    { key: 'actionType', label: '操作类型' },
+    { key: 'operatorName', label: '操作人' },
+    { key: 'action', label: '操作类型' },
     { key: 'target', label: '操作对象' },
     { key: 'detail', label: '操作详情' },
-    { key: 'ipAddress', label: 'IP 地址' },
+    { key: 'ip', label: 'IP 地址' },
     { key: 'createTime', label: '操作时间' }
   ], `审计日志_${new Date().toISOString().slice(0, 10)}.csv`)
   if (ok) {

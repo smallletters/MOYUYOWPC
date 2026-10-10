@@ -3,6 +3,7 @@ package com.moyuyo.api.controller.admin;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
+import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.dao.admin.entity.AdminUserEntity;
 import com.moyuyo.dao.admin.entity.CsPerformanceEntity;
 import com.moyuyo.dao.admin.mapper.AdminUserMapper;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/admin/crm")
+@SuppressWarnings("null") // 抑制 MyBatis-Plus 3.x @Nonnull T 与 JDT 静态分析差异（覆盖 nullUncheckedConversion 等所有 null 子类别）
 public class AdminCrmController {
 
   private final OrderMapper orderMapper;
@@ -109,21 +111,28 @@ public class AdminCrmController {
   @GetMapping("/realtime")
   public Result<Map<String, Object>> realtime() {
     // 从 mo_order 表统计今日订单数和销售额
+    // 边界统一用半开区间 [todayStart, todayStart.plusDays(1))，避免 DATETIME 秒级精度下 LocalTime.MAX 被截断造成的边界脆弱性
     LocalDateTime todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
-    LocalDateTime todayEnd = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
+    LocalDateTime tomorrowStart = todayStart.plusDays(1);
 
     // 今日订单数（createTime 在今天范围内）
     Long todayOrders = orderMapper.selectCount(
         new LambdaQueryWrapper<OrderEntity>()
             .ge(OrderEntity::getCreateTime, todayStart)
-            .le(OrderEntity::getCreateTime, todayEnd));
+            .lt(OrderEntity::getCreateTime, tomorrowStart));
 
-    // 今日销售额（已支付订单的 goodsAmount 之和）
+    // 今日销售额：已支付及后续正向状态的订单 pay_amount 之和
+    // 注意：历史上曾误用旧枚举值 "DELIVERED"，与 OrderStatusEnum.SHIPPED 不匹配，会漏算已发货但未收货的订单。
+    // 这里统一按 OrderStatusEnum 当前枚举写出，避免后续枚举再改名时再出现同类口径漂移。
     List<OrderEntity> todayOrdersList = orderMapper.selectList(
         new LambdaQueryWrapper<OrderEntity>()
             .ge(OrderEntity::getCreateTime, todayStart)
-            .le(OrderEntity::getCreateTime, todayEnd)
-            .in(OrderEntity::getStatus, "PAID", "DELIVERED", "RECEIVED"));
+            .lt(OrderEntity::getCreateTime, tomorrowStart)
+            .in(OrderEntity::getStatus,
+                OrderStatusEnum.PAID.name(),
+                OrderStatusEnum.SHIPPED.name(),
+                OrderStatusEnum.RECEIVED.name(),
+                OrderStatusEnum.COMPLETED.name()));
     BigDecimal todaySales = todayOrdersList.stream()
         .map(o -> o.getPayAmount() != null ? o.getPayAmount() : BigDecimal.ZERO)
         .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -171,19 +180,126 @@ public class AdminCrmController {
     return Result.success(list);
   }
 
+  /**
+   * 实时大屏 - GMV 趋势
+   * 返回今日 00~ 当前小时 与 昨日 00~23 时的 GMV（元），按小时分桶。
+   * 数据源：mo_order，仅统计已支付/已发货/已收货/已完成（PAID/SHIPPED/RECEIVED/COMPLETED）的 pay_amount。
+   * 注意：与上方 /realtime 的口径存在差异（那里写的是旧枚举 DELIVERED），本接口按 OrderStatusEnum 当前真值给出。
+   */
+  @Operation(summary = "实时大屏 - GMV趋势(今日/昨日按小时)")
+  @GetMapping("/realtime/gmv-trend")
+  public Result<List<Map<String, Object>>> realtimeGmvTrend() {
+    LocalDateTime todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
+    // 注意：必须是"昨天 00:00"，而非 todayStart - 1 day（否则昨天 0~当前时刻的订单会漏进桶）
+    LocalDateTime yesterdayStart = LocalDateTime.of(LocalDate.now().minusDays(1), LocalTime.MIN);
+    int currentHour = LocalTime.now().getHour();
+
+    // 一次性查"昨天 00:00 ~ 明天 00:00（不含）"范围内的已支付订单，内存按小时分桶，避免两条 SQL
+    List<OrderEntity> orders = orderMapper.selectList(
+        new LambdaQueryWrapper<OrderEntity>()
+            .ge(OrderEntity::getCreateTime, yesterdayStart)
+            .lt(OrderEntity::getCreateTime, todayStart.plusDays(1))
+            .in(OrderEntity::getStatus,
+                OrderStatusEnum.PAID.name(),
+                OrderStatusEnum.SHIPPED.name(),
+                OrderStatusEnum.RECEIVED.name(),
+                OrderStatusEnum.COMPLETED.name())
+            .select(OrderEntity::getPayAmount, OrderEntity::getCreateTime));
+
+    // 初始化 24 小时桶（缺小时补 0，保证前端柱状图整点对齐）
+    BigDecimal[] todayBucket = new BigDecimal[24];
+    BigDecimal[] yesterdayBucket = new BigDecimal[24];
+    for (int i = 0; i < 24; i++) {
+      todayBucket[i] = BigDecimal.ZERO;
+      yesterdayBucket[i] = BigDecimal.ZERO;
+    }
+    for (OrderEntity o : orders) {
+      if (o.getPayAmount() == null || o.getCreateTime() == null) continue;
+      LocalDateTime t = o.getCreateTime();
+      int hour = t.getHour();
+      // 查询范围已限定在 [yesterdayStart, todayStart+1day)，按今天/昨天分桶只需判断是否早于 todayStart
+      BigDecimal[] target = t.isBefore(todayStart) ? yesterdayBucket : todayBucket;
+      target[hour] = target[hour].add(o.getPayAmount());
+    }
+
+    List<Map<String, Object>> list = new ArrayList<>(24);
+    for (int h = 0; h < 24; h++) {
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("hour", String.format("%02d", h));
+      item.put("today", todayBucket[h]);
+      item.put("yesterday", yesterdayBucket[h]);
+      // 仅返回今日 ≤ 当前小时的数据为"已发生"段；超过当前小时的今日值前端仍可见（值=0），便于对位昨天同时刻
+      item.put("isCurrentOrPast", h <= currentHour);
+      list.add(item);
+    }
+    return Result.success(list);
+  }
+
+  /**
+   * 实时大屏 - 今日发货概览
+   * 数据源：mo_order；当前口径与 OrderStatusEnum 严格对齐。
+   *   pending : 今日进入 PENDING_SHIP 但尚未发货的订单数（涵盖当日新增待发 + 历史遗留待发）
+   *   shipped : 今日 deliverTime 在今日范围内的订单数（不论下单日，只看发货动作发生时间）
+   *   todayDeliveredAmount : 今日已发货订单的 pay_amount 之和
+   */
+  @Operation(summary = "实时大屏 - 今日发货概览")
+  @GetMapping("/realtime/shipping")
+  public Result<Map<String, Object>> realtimeShipping() {
+    // 边界统一为半开区间 [todayStart, tomorrowStart)，与 realtime() / realtimeGmvTrend() 保持一致
+    LocalDateTime todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
+    LocalDateTime tomorrowStart = todayStart.plusDays(1);
+
+    // 待发货：当前仍处于 PENDING_SHIP 的订单总数（不限于今日新增，反映仓库压力）
+    Long pending = orderMapper.selectCount(
+        new LambdaQueryWrapper<OrderEntity>()
+            .eq(OrderEntity::getStatus, OrderStatusEnum.PENDING_SHIP.name()));
+
+    // 今日已发货：以 deliverTime 落入今日为准（避免今日之前下单但今日发货被漏算）。
+    // 注意：状态覆盖 SHIPPED/RECEIVED/COMPLETED——订单发货后会继续流转到已收货/已完成，
+    // 当日发货动作在"今日已发货数"里仍然要算入，否则发货后很快被签收的订单会被漏算。
+    List<OrderEntity> shippedToday = orderMapper.selectList(
+        new LambdaQueryWrapper<OrderEntity>()
+            .ge(OrderEntity::getDeliverTime, todayStart)
+            .lt(OrderEntity::getDeliverTime, tomorrowStart)
+            .in(OrderEntity::getStatus,
+                OrderStatusEnum.SHIPPED.name(),
+                OrderStatusEnum.RECEIVED.name(),
+                OrderStatusEnum.COMPLETED.name())
+            .select(OrderEntity::getPayAmount));
+
+    BigDecimal todayDeliveredAmount = shippedToday.stream()
+        .map(o -> o.getPayAmount() != null ? o.getPayAmount() : BigDecimal.ZERO)
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("pending", pending);
+    result.put("shipped", (long) shippedToday.size());
+    result.put("todayDeliveredAmount", todayDeliveredAmount);
+    result.put("updateTime", LocalDateTime.now());
+    return Result.success(result);
+  }
+
   @Operation(summary = "热门商品排行榜")
   @GetMapping("/realtime/top-products")
   public Result<List<Map<String, Object>>> topProducts() {
     // 从 mo_order_item 表统计今日销量最高的商品
+    // 边界统一为半开区间 [todayStart, tomorrowStart)
     LocalDateTime todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
-    LocalDateTime todayEnd = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
+    LocalDateTime tomorrowStart = todayStart.plusDays(1);
 
-    // 查询今日所有订单项（修复：添加时间范围过滤）
+    // 仅统计处于"正向状态"（PAID/SHIPPED/RECEIVED/COMPLETED）的订单项，
+    // 避免把今日创建但仍处 PENDING_PAY / CANCELLED / REFUNDED / REFUNDING 的数量计入"今日销量"
+    String positiveStatusSql = "'" + OrderStatusEnum.PAID.name() + "','"
+        + OrderStatusEnum.SHIPPED.name() + "','"
+        + OrderStatusEnum.RECEIVED.name() + "','"
+        + OrderStatusEnum.COMPLETED.name() + "'";
+
     List<OrderItemEntity> todayItems = orderItemMapper.selectList(
         new LambdaQueryWrapper<OrderItemEntity>()
           .ge(OrderItemEntity::getCreateTime, todayStart)
-          .le(OrderItemEntity::getCreateTime, todayEnd)
-          .orderByDesc(OrderItemEntity::getQuantity));
+          .lt(OrderItemEntity::getCreateTime, tomorrowStart)
+          .inSql(OrderItemEntity::getOrderId,
+              "SELECT id FROM mo_order WHERE status IN (" + positiveStatusSql + ")"));
 
     if (todayItems.isEmpty()) {
       return Result.success(Collections.emptyList());

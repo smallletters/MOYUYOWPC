@@ -9,6 +9,11 @@ import { useUserStore } from '@/store'
 import { registerMoyuyoScheme } from '@/utils/payAppBridge'
 // 探活 forceLogout 后弹登录过期 modal 用
 import { triggerSessionExpired } from '@/utils/request'
+// 全局心跳：保证"用户在任意页面 → 后台切回 APP"都能刷新 last_login_time，
+// 让管理后台 实时大屏 的 30 分钟在线窗口能持续计入。
+// 复用 home.vue 的三重去重实现（本地 dateKey + 服务端 Redis SETNX + 失败兜底），
+// 内部已经处理同日幂等，不会变成 N 次请求。
+import { reportActiveHeartbeat } from '@/utils/heartbeat'
 
 // APP 端全局 scheme 监听：
 // 支付成功/取消后,Stripe Checkout / PayPal / 支付宝 APP 会用
@@ -188,6 +193,10 @@ export default {
     userStore.startAutoRefresh()
     // 后台切回探活：复用 tryProbe，30s 节流防重复请求
     tryProbe(userStore, 'onShow')
+    // 全局上报今日活跃：与 home.vue 共用同一份去重实现，
+    // 即便用户停留在「我的 / 社区 / 宠物」等非首页 tab，从后台切回也会刷新 last_login_time。
+    // 同一用户多设备登录只会 UPDATE 同一 userId 行 → 实时在线用户 COUNT 物理去重。
+    reportActiveHeartbeat()
   },
   onHide() {
     // 进入后台

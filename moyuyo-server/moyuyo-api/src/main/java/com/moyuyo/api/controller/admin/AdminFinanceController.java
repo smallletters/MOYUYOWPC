@@ -3,6 +3,7 @@ package com.moyuyo.api.controller.admin;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.common.dto.admin.OperationResult;
 import com.moyuyo.common.dto.admin.finance.FinanceOverviewResponse;
 import com.moyuyo.common.dto.admin.finance.SettlementDetailResponse;
@@ -236,6 +237,8 @@ public class AdminFinanceController {
 
   @Operation(summary = "创建结算记录")
   @PostMapping("/settlements")
+  @AdminAudit(action = "CREATE", module = "FINANCE",
+      resourceId = "settlement", detail = "财务创建结算记录")
   public Result<OperationResult> createSettlement(@RequestBody SettlementRequest request) {
     try {
       // 生成结算单号: SET-年月日格式
@@ -310,6 +313,8 @@ public class AdminFinanceController {
 
   @Operation(summary = "更新结算记录")
   @PutMapping("/settlements/{id}")
+  @AdminAudit(action = "UPDATE", module = "FINANCE",
+      resourceId = "#id", detail = "财务更新结算记录")
   public Result<OperationResult> updateSettlement(@PathVariable Long id, @RequestBody SettlementRequest request) {
     try {
       SettlementEntity entity = settlementMapper.selectById(id);
@@ -337,6 +342,8 @@ public class AdminFinanceController {
 
   @Operation(summary = "删除结算记录")
   @DeleteMapping("/settlements/{id}")
+  @AdminAudit(action = "DELETE", module = "FINANCE",
+      resourceId = "#id", detail = "财务删除结算记录")
   public Result<OperationResult> deleteSettlement(@PathVariable Long id) {
     try {
       settlementMapper.deleteById(id);

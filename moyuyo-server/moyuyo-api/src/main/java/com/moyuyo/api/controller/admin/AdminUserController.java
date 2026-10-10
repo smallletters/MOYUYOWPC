@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.common.utils.PageParamGuard;
 import com.moyuyo.service.admin.AdminUserManageService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -86,6 +87,8 @@ public class AdminUserController {
 
   @Operation(summary = "更新用户状态")
   @PutMapping("/{id}/status")
+  @AdminAudit(action = "UPDATE", module = "USER",
+      resourceId = "#id", detail = "管理员更新用户状态")
   public Result<Map<String, Object>> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
     String status = body.get("status");
     adminUserManageService.updateUserStatus(id, status);
@@ -98,6 +101,8 @@ public class AdminUserController {
 
   @Operation(summary = "创建用户")
   @PostMapping("/create")
+  @AdminAudit(action = "CREATE", module = "USER",
+      resourceId = "create-user", detail = "管理员创建用户")
   public Result<Map<String, Object>> create(@RequestBody Map<String, Object> body) {
     try {
       Map<String, Object> result = adminUserManageService.createUser(body);
@@ -111,6 +116,8 @@ public class AdminUserController {
 
   @Operation(summary = "更新用户信息")
   @PutMapping("/{id}")
+  @AdminAudit(action = "UPDATE", module = "USER",
+      resourceId = "#id", detail = "管理员更新用户信息")
   public Result<Map<String, Object>> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
     try {
       adminUserManageService.updateUser(id, body);
@@ -127,6 +134,8 @@ public class AdminUserController {
 
   @Operation(summary = "删除用户")
   @DeleteMapping("/{id}")
+  @AdminAudit(action = "DELETE", module = "USER",
+      resourceId = "#id", detail = "管理员删除用户")
   public Result<Map<String, Object>> delete(@PathVariable Long id) {
     try {
       adminUserManageService.deleteUser(id);
@@ -143,6 +152,8 @@ public class AdminUserController {
 
   @Operation(summary = "重置用户密码")
   @PostMapping("/{id}/reset-password")
+  @AdminAudit(action = "UPDATE", module = "USER",
+      resourceId = "#id", detail = "管理员重置用户密码")
   public Result<Map<String, Object>> resetPassword(@PathVariable Long id, @RequestBody Map<String, String> body) {
     try {
       // P0 安全修复：拒绝缺省弱密码兜底，避免 body 缺 password 字段时被设置为 "123456"

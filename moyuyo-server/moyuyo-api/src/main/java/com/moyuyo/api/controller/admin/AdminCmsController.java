@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.dao.admin.entity.CmsContentEntity;
 import com.moyuyo.dao.admin.mapper.CmsContentMapper;
 import com.moyuyo.service.admin.CmsContentService;
@@ -9,7 +10,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.*;
 
 @Tag(name = "管理后台 - CMS内容管理")
@@ -86,6 +86,8 @@ public class AdminCmsController {
 
     @Operation(summary = "新建内容")
     @PostMapping("/create")
+    @AdminAudit(action = "CREATE", module = "CONTENT",
+        resourceId = "cms-content", detail = "管理员新建 CMS 内容")
     public Result<Map<String, Object>> create(@RequestBody Map<String, Object> body) {
         try {
             // 前置参数校验：title 为核心字段，空 body 时直接返回友好错误而非数据库异常
@@ -116,6 +118,8 @@ public class AdminCmsController {
 
     @Operation(summary = "更新内容")
     @PutMapping("/update")
+    @AdminAudit(action = "UPDATE", module = "CONTENT",
+        resourceId = "#entity.id", detail = "管理员更新 CMS 内容")
     public Result<Map<String, Object>> update(@RequestBody Map<String, Object> body) {
         try {
             if (body.get("id") == null) {
@@ -145,6 +149,8 @@ public class AdminCmsController {
 
     @Operation(summary = "删除内容")
     @DeleteMapping("/{id}")
+    @AdminAudit(action = "DELETE", module = "CONTENT",
+        resourceId = "#id", detail = "管理员删除 CMS 内容")
     public Result<Map<String, Object>> delete(@PathVariable Long id) {
         try {
             cmsContentService.delete(id);
@@ -159,6 +165,8 @@ public class AdminCmsController {
 
     @Operation(summary = "更新内容状态")
     @PutMapping("/{id}/status")
+    @AdminAudit(action = "UPDATE", module = "CONTENT",
+        resourceId = "#id", detail = "管理员更新 CMS 内容状态")
     public Result<Map<String, Object>> updateStatus(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         try {
             String status = (String) body.get("status");
@@ -175,6 +183,8 @@ public class AdminCmsController {
 
     @Operation(summary = "拖拽排序")
     @PutMapping("/reorder")
+    @AdminAudit(action = "UPDATE", module = "CONTENT",
+        resourceId = "cms-reorder", detail = "管理员拖拽排序 CMS 内容")
     public Result<Map<String, Object>> reorder(@RequestBody List<Map<String, Object>> orders) {
         try {
             if (orders != null) {

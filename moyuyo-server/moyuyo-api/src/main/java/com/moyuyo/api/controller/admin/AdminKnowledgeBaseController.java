@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.dao.admin.entity.KnowledgeBaseEntity;
 import com.moyuyo.service.admin.AdminKnowledgeBaseService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,6 +37,8 @@ public class AdminKnowledgeBaseController {
 
   @Operation(summary = "创建文章")
   @PostMapping("/create")
+  @AdminAudit(action = "CREATE", module = "CONTENT",
+      resourceId = "kb-article", detail = "管理员创建知识库文章")
   public Result<Map<String, Object>> create(@RequestBody KnowledgeBaseEntity body) {
     adminKnowledgeBaseService.create(body);
     return Result.success(Map.of("id", body.getId(), "message", "文章创建成功"));
@@ -43,6 +46,8 @@ public class AdminKnowledgeBaseController {
 
   @Operation(summary = "更新文章")
   @PutMapping("/update")
+  @AdminAudit(action = "UPDATE", module = "CONTENT",
+      resourceId = "#body.id", detail = "管理员更新知识库文章")
   public Result<Map<String, Object>> update(@RequestBody KnowledgeBaseEntity body) {
     // 校验 id 必填
     if (body == null || body.getId() == null) {
@@ -54,6 +59,8 @@ public class AdminKnowledgeBaseController {
 
   @Operation(summary = "删除文章")
   @DeleteMapping("/{id}")
+  @AdminAudit(action = "DELETE", module = "CONTENT",
+      resourceId = "#id", detail = "管理员删除知识库文章")
   public Result<Map<String, Object>> delete(@PathVariable Long id) {
     adminKnowledgeBaseService.delete(id);
     return Result.success(Map.of("id", id, "message", "删除成功"));

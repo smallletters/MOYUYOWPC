@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.service.admin.AdminBlacklistService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,6 +30,8 @@ public class AdminBlacklistController {
 
     @Operation(summary = "添加黑名单")
     @PostMapping("/create")
+    @AdminAudit(action = "CREATE", module = "RISK",
+        resourceId = "blacklist", detail = "管理员添加黑名单")
     public Result<Map<String, Object>> create(@RequestBody Map<String, Object> body) {
         // 前置参数校验：type/value 为 NOT NULL 字段，空 body 时直接返回友好错误而非数据库异常
         Object typeObj = body.get("type");
@@ -51,6 +54,8 @@ public class AdminBlacklistController {
 
     @Operation(summary = "批量添加黑名单")
     @PostMapping("/batch-create")
+    @AdminAudit(action = "CREATE", module = "RISK",
+        resourceId = "blacklist-batch", detail = "管理员批量添加黑名单")
     public Result<Map<String, Object>> batchCreate(@RequestBody List<Map<String, Object>> items) {
         if (items == null || items.isEmpty()) {
             return Result.error(400, "批量添加列表不能为空");
@@ -76,6 +81,8 @@ public class AdminBlacklistController {
 
     @Operation(summary = "移除黑名单")
     @DeleteMapping("/{id}")
+    @AdminAudit(action = "DELETE", module = "RISK",
+        resourceId = "#id", detail = "管理员移除黑名单")
     public Result<Map<String, Object>> delete(@PathVariable Long id) {
         adminBlacklistService.delete(id);
         Map<String, Object> result = new java.util.LinkedHashMap<>();
@@ -86,6 +93,8 @@ public class AdminBlacklistController {
 
     @Operation(summary = "更新黑名单")
     @PutMapping("/{id}")
+    @AdminAudit(action = "UPDATE", module = "RISK",
+        resourceId = "#id", detail = "管理员更新黑名单")
     public Result<Map<String, Object>> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         adminBlacklistService.update(id, body);
         Map<String, Object> result = new java.util.LinkedHashMap<>();

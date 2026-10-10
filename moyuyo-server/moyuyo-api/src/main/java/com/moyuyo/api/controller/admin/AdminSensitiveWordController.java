@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.dao.admin.entity.SensitiveWordEntity;
 import com.moyuyo.service.admin.SensitiveWordService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -54,6 +55,8 @@ public class AdminSensitiveWordController {
 
     @Operation(summary = "新增敏感词")
     @PostMapping("/create")
+    @AdminAudit(action = "CREATE", module = "CONTENT",
+        resourceId = "sensitive-word", detail = "管理员新增敏感词")
     public Result<Map<String, Object>> create(@RequestBody Map<String, Object> body) {
         if (body == null || body.get("word") == null || body.get("word").toString().isBlank()) {
             return Result.error(400, "参数错误：word 不能为空");
@@ -74,6 +77,8 @@ public class AdminSensitiveWordController {
 
     @Operation(summary = "更新敏感词")
     @PutMapping("/update")
+    @AdminAudit(action = "UPDATE", module = "CONTENT",
+        resourceId = "#body['id']", detail = "管理员更新敏感词")
     public Result<Map<String, Object>> update(@RequestBody Map<String, Object> body) {
         // 校验 id 必填
         if (body == null || body.get("id") == null) {
@@ -107,6 +112,8 @@ public class AdminSensitiveWordController {
 
     @Operation(summary = "删除敏感词")
     @DeleteMapping("/{id}")
+    @AdminAudit(action = "DELETE", module = "CONTENT",
+        resourceId = "#id", detail = "管理员删除敏感词")
     public Result<Map<String, Object>> delete(@PathVariable Long id) {
         sensitiveWordService.delete(id);
         Map<String, Object> result = new LinkedHashMap<>();
@@ -117,6 +124,8 @@ public class AdminSensitiveWordController {
 
     @Operation(summary = "批量删除敏感词")
     @PostMapping("/batch-delete")
+    @AdminAudit(action = "DELETE", module = "CONTENT",
+        resourceId = "sensitive-word-batch", detail = "管理员批量删除敏感词")
     public Result<Map<String, Object>> batchDelete(@RequestBody @Size(max = 500) List<Long> ids) {
         sensitiveWordService.batchDelete(ids);
         Map<String, Object> result = new LinkedHashMap<>();

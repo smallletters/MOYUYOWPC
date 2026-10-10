@@ -3,6 +3,7 @@ package com.moyuyo.api.controller.admin;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.dao.admin.entity.PushRecordEntity;
 import com.moyuyo.dao.admin.mapper.PushRecordMapper;
 import com.moyuyo.service.admin.PushManageService;
@@ -37,6 +38,8 @@ public class AdminPushController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "15") int size) {
         // 使用 MyBatis-Plus Page 进行数据库分页查询
+        // 抑制 MyBatis-Plus 3.x @Nonnull T 与 JDT 静态分析差异（Function<T,R> 类型推断）
+        @SuppressWarnings("null")
         Page<PushRecordEntity> pageResult = pushRecordMapper.selectPage(
             new Page<>(page, size),
             new LambdaQueryWrapper<PushRecordEntity>()
@@ -67,7 +70,9 @@ public class AdminPushController {
 
     @Operation(summary = "新建推送")
     @PostMapping("/create")
-    public Result<Map<String, Object>> create(@RequestBody Map<String, Object> body) {
+    @AdminAudit(action = "CREATE", module = "MARKETING",
+        resourceId = "push", detail = "管理员创建推送任务")
+    public Result<?> create(@RequestBody Map<String, Object> body) {
         // 前置参数校验：title/content 必填，避免数据库 NOT NULL 异常被全局异常捕获为 409
         String title = (String) body.get("title");
         if (title == null || title.trim().isEmpty()) {
@@ -98,6 +103,8 @@ public class AdminPushController {
 
     @Operation(summary = "发送推送")
     @PostMapping("/{id}/send")
+    @AdminAudit(action = "UPDATE", module = "MARKETING",
+        resourceId = "#id", detail = "管理员发送推送")
     public Result<Map<String, Object>> send(@PathVariable Long id) {
         pushManageService.send(id);
         Map<String, Object> result = new LinkedHashMap<>();
@@ -132,7 +139,9 @@ public class AdminPushController {
 
     @Operation(summary = "更新推送")
     @PutMapping("/{id}")
-    public Result<Map<String, Object>> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+    @AdminAudit(action = "UPDATE", module = "MARKETING",
+        resourceId = "#id", detail = "管理员更新推送")
+    public Result<?> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         PushRecordEntity entity = pushRecordMapper.selectById(id);
         if (entity == null) {
             return Result.error("推送记录不存在");
@@ -152,7 +161,9 @@ public class AdminPushController {
 
     @Operation(summary = "取消推送")
     @PostMapping("/{id}/cancel")
-    public Result<Map<String, Object>> cancel(@PathVariable Long id) {
+    @AdminAudit(action = "UPDATE", module = "MARKETING",
+        resourceId = "#id", detail = "管理员取消推送")
+    public Result<?> cancel(@PathVariable Long id) {
         pushManageService.cancel(id);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", id);
@@ -162,7 +173,9 @@ public class AdminPushController {
 
     @Operation(summary = "取消定时推送")
     @PostMapping("/scheduled/{id}/cancel")
-    public Result<Map<String, Object>> cancelScheduled(@PathVariable Long id) {
+    @AdminAudit(action = "UPDATE", module = "MARKETING",
+        resourceId = "#id", detail = "管理员取消定时推送")
+    public Result<?> cancelScheduled(@PathVariable Long id) {
         pushManageService.cancel(id);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", id);
@@ -172,6 +185,8 @@ public class AdminPushController {
 
     @Operation(summary = "删除推送")
     @DeleteMapping("/{id}")
+    @AdminAudit(action = "DELETE", module = "MARKETING",
+        resourceId = "#id", detail = "管理员删除推送")
     public Result<Map<String, Object>> delete(@PathVariable Long id) {
         pushManageService.delete(id);
         Map<String, Object> result = new LinkedHashMap<>();
@@ -199,7 +214,9 @@ public class AdminPushController {
 
     @Operation(summary = "设置定时推送")
     @PostMapping("/schedule")
-    public Result<Map<String, Object>> schedule(@RequestBody Map<String, Object> body) {
+    @AdminAudit(action = "CREATE", module = "MARKETING",
+        resourceId = "push-schedule", detail = "管理员设置定时推送")
+    public Result<?> schedule(@RequestBody Map<String, Object> body) {
         PushRecordEntity entity = new PushRecordEntity();
         entity.setTitle((String) body.get("title"));
         entity.setContent((String) body.get("content"));

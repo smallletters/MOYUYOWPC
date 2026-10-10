@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.common.dto.admin.OperationResult;
 import com.moyuyo.service.admin.AdminFlashSaleService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,7 +34,9 @@ public class AdminFlashSaleController {
 
   @Operation(summary = "创建秒杀活动")
   @PostMapping("/create")
-  public Result<OperationResult> create(@RequestBody Map<String, Object> body) {
+  @AdminAudit(action = "CREATE", module = "MARKETING",
+      resourceId = "flash-sale", detail = "管理员创建秒杀活动")
+  public Result<?> create(@RequestBody Map<String, Object> body) {
     try {
       adminFlashSaleService.create(body);
       OperationResult result = new OperationResult();
@@ -47,7 +50,9 @@ public class AdminFlashSaleController {
 
   @Operation(summary = "更新秒杀活动")
   @PutMapping("/update")
-  public Result<OperationResult> update(@RequestBody Map<String, Object> body) {
+  @AdminAudit(action = "UPDATE", module = "MARKETING",
+      resourceId = "flash-sale", detail = "管理员更新秒杀活动")
+  public Result<?> update(@RequestBody Map<String, Object> body) {
     try {
       adminFlashSaleService.update(body);
       OperationResult result = new OperationResult();
@@ -61,7 +66,9 @@ public class AdminFlashSaleController {
 
   @Operation(summary = "删除秒杀活动")
   @DeleteMapping("/{id}")
-  public Result<OperationResult> delete(@PathVariable Long id) {
+  @AdminAudit(action = "DELETE", module = "MARKETING",
+      resourceId = "#id", detail = "管理员删除秒杀活动")
+  public Result<?> delete(@PathVariable Long id) {
     adminFlashSaleService.delete(id);
     OperationResult result = new OperationResult();
     result.setId(id);
@@ -95,6 +102,8 @@ public class AdminFlashSaleController {
 
   @Operation(summary = "修改秒杀活动状态")
   @PutMapping("/{id}/status")
+  @AdminAudit(action = "UPDATE", module = "MARKETING",
+      resourceId = "#id", detail = "管理员修改秒杀活动状态")
   public Result<Map<String, Object>> updateStatus(@PathVariable Long id,
                                                   @RequestBody Map<String, Object> body) {
     // 从 RequestBody 中获取 active 值

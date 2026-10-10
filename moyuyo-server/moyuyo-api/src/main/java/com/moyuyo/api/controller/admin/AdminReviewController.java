@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.common.enums.ReviewStatusEnum;
 import com.moyuyo.common.utils.JsonUtils;
 import com.moyuyo.dao.entity.ProductEntity;
@@ -74,6 +75,8 @@ public class AdminReviewController {
 
   @Operation(summary = "审核通过")
   @PutMapping("/{id}/approve")
+  @AdminAudit(action = "UPDATE", module = "CONTENT",
+      resourceId = "#id", detail = "管理员审核通过评价")
   public Result<Map<String, Object>> approve(@PathVariable Long id) {
     adminReviewService.approve(id);
     Map<String, Object> result = new LinkedHashMap<>();
@@ -85,6 +88,8 @@ public class AdminReviewController {
 
   @Operation(summary = "审核驳回")
   @PutMapping("/{id}/reject")
+  @AdminAudit(action = "UPDATE", module = "CONTENT",
+      resourceId = "#id", detail = "管理员审核驳回评价")
   public Result<Map<String, Object>> reject(@PathVariable Long id) {
     adminReviewService.reject(id);
     Map<String, Object> result = new LinkedHashMap<>();
@@ -96,6 +101,8 @@ public class AdminReviewController {
 
   @Operation(summary = "回复评价")
   @PostMapping("/{id}/reply")
+  @AdminAudit(action = "UPDATE", module = "CONTENT",
+      resourceId = "#id", detail = "管理员回复评价")
   public Result<Map<String, Object>> reply(@PathVariable Long id, @RequestBody Map<String, String> body) {
     adminReviewService.reply(id, body.getOrDefault("content", ""));
     Map<String, Object> result = new LinkedHashMap<>();
@@ -140,6 +147,8 @@ public class AdminReviewController {
 
   @Operation(summary = "删除评价")
   @DeleteMapping("/{id}")
+  @AdminAudit(action = "DELETE", module = "CONTENT",
+      resourceId = "#id", detail = "管理员删除评价")
   public Result<Map<String, Object>> delete(@PathVariable Long id) {
     adminReviewService.delete(id);
     Map<String, Object> result = new LinkedHashMap<>();
@@ -150,6 +159,8 @@ public class AdminReviewController {
 
   @Operation(summary = "批量删除评价")
   @PostMapping("/batch-delete")
+  @AdminAudit(action = "DELETE", module = "CONTENT",
+      resourceId = "review-batch-delete", detail = "管理员批量删除评价")
   public Result<Map<String, Object>> batchDelete(@RequestBody Map<String, Object> body) {
     @SuppressWarnings("unchecked")
     List<Integer> idsRaw = (List<Integer>) body.get("ids");
@@ -169,6 +180,8 @@ public class AdminReviewController {
 
   @Operation(summary = "批量审核通过")
   @PostMapping("/batch-approve")
+  @AdminAudit(action = "UPDATE", module = "CONTENT",
+      resourceId = "review-batch-approve", detail = "管理员批量审核通过评价")
   public Result<Map<String, Object>> batchApprove(@RequestBody Map<String, Object> body) {
     @SuppressWarnings("unchecked")
     List<Integer> idsRaw = (List<Integer>) body.get("ids");

@@ -1,7 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.common.utils.PageParamGuard;
 import com.moyuyo.dao.entity.RefundEntity;
@@ -234,6 +234,8 @@ public class AdminRefundController {
 
   @Operation(summary = "同意退款")
   @PutMapping("/{id}/approve")
+  @AdminAudit(action = "UPDATE", module = "REFUND",
+      resourceId = "#id", detail = "管理员同意退款")
   public Result<Map<String, Object>> approve(@PathVariable Long id) {
     try {
       refundService.approveRefund(id, UserContextHolder.getUserId());
@@ -247,6 +249,8 @@ public class AdminRefundController {
 
   @Operation(summary = "拒绝退款")
   @PutMapping("/{id}/reject")
+  @AdminAudit(action = "UPDATE", module = "REFUND",
+      resourceId = "#id", detail = "管理员拒绝退款")
   public Result<Map<String, Object>> reject(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
     try {
       String reason = body != null ? body.get("reason") : null;
@@ -261,6 +265,8 @@ public class AdminRefundController {
 
   @Operation(summary = "完成退款（财务录入第三方流水号）")
   @PutMapping("/{id}/complete")
+  @AdminAudit(action = "UPDATE", module = "REFUND",
+      resourceId = "#id", detail = "财务完成退款并录入第三方流水号")
   public Result<Map<String, Object>> complete(
       @PathVariable Long id, @RequestParam String transactionId) {
     try {
@@ -280,6 +286,8 @@ public class AdminRefundController {
   @Operation(summary = "批量同意退款")
   @PutMapping("/batch-approve")
   @RateLimiter(name = "refundBatch", fallbackMethod = "refundRateLimitFallback")
+  @AdminAudit(action = "UPDATE", module = "REFUND",
+      resourceId = "batch-approve", detail = "管理员批量同意退款")
   public Result<Map<String, Object>> batchApprove(@RequestBody Map<String, Object> body) {
     try {
       List<Long> ids = new ArrayList<>();

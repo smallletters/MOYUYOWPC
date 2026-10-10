@@ -121,23 +121,7 @@
 </template>
 <script>
 import { cmsApi } from '@/api'
-import { heartbeat as reportHeartbeat } from '@/api/user'
-import { getStorage, setStorage, STORAGE_KEYS } from '@/utils/storage'
-
-/**
- * 简单日期工具：返回本地今日 yyyyMMdd (与后端 HeartbeatAck.dateKey 对齐)
- * 不依赖 dayjs / moment,小且够用;与后端 LocalDate.format 同步
- * 注意：使用本地时区，与后端的 LocalDateTime 行为一致。
- * 0 点临界差异:APP 端超过本地 0 点 dateKey 会 +1,而服务端仍是昨天 → 触发新一次心跳调用,
- * 服务端拿到自己今天 dateKey 后写本地 → 两端很快重新对齐(误差最多一次心跳)。
- */
-function todayDateKey() {
-  const d = new Date()
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}${m}${day}`
-}
+import { reportActiveHeartbeat } from '@/utils/heartbeat'
 
 export default {
   pageTitleKey: 'pageTitle.tabbarHome',
@@ -205,10 +189,8 @@ export default {
   },
 
   onShow() {
-    // 首页 onShow 是高频入口(每次切到首页都触发),心跳要做客户端+服务端双重去重
-    // 1) 客户端按 dateKey(yyyyMMdd)本地去重:同日反复切首页不发请求
-    // 2) 服务端 Redis SETNX 再去重一次,客户端时钟漂移/被清缓存也不会发多次
-    this.reportActiveHeartbeat()
+    // 心跳改由 @/utils/heartbeat 提供；此处调用以保持"切到首页 tab"也算活跃
+    reportActiveHeartbeat()
   },
 
   /**
@@ -231,55 +213,6 @@ export default {
   },
 
   methods: {
-    /**
-     * 上报"今日活跃"心跳。
-     * <p>
-     * 设计:三重去重,保证 onShow 高频触发也不会造成浪费。
-     * <ol>
-     *   <li>客户端预检:本地 dateKey 已等于今日 → 直接 short-circuit,不发请求</li>
-     *   <li>服务端 Redis SETNX:即便客户端缓存丢失/跨设备,服务端也保证同 userId+dateKey 一日只写一次 DB</li>
-     *   <li>失败兜底:请求不论成败都把服务端给的 dateKey 写本地,
-     *       下一次 onShow 客户端预检直接拦截,避免反复失败反复请求</li>
-     * </ol>
-     * 未登录直接 short-circuit;异常全部吞掉不影响首页主流程。
-     * <p>
-     * 注意：必须放在 methods:{} 内，Vue 2 的 Options API 才会把它挂到 this 上；
-     * 之前误放在外层导致 H5 控制台报 "this.reportActiveHeartbeat is not a function"。
-     */
-    reportActiveHeartbeat() {
-      try {
-        // 1) 未登录(token 为空)直接返回,不浪费一次请求
-        const token = getStorage(STORAGE_KEYS.TOKEN)
-        if (!token) return
-
-        // 2) 客户端预检:本地 dateKey 与今日一致 → 同一日重复进首页不发请求
-        //    跨日时本地仍是昨天/前天的 dateKey,与今日不同 → 自然会发请求完成"补打"
-        const localDateKey = getStorage(STORAGE_KEYS.HEARTBEAT_DATE_KEY)
-        const today = todayDateKey()
-        if (localDateKey === today) return
-
-        // 3) 真正调接口,服务端 SETNX 再兜底一次
-        reportHeartbeat()
-          .then((res) => {
-            // 后端约定:Result.success 包装,data = { dateKey, nowMillis }
-            const payload = res && (res.data || res)
-            const serverDateKey = payload && payload.dateKey
-            // 拿到服务端 dateKey 后立刻写本地(不论是否与 localDateKey 相同)
-            // 这样下一次 onShow 触发就能命中客户端预检直接 short-circuit
-            if (serverDateKey) {
-              setStorage(STORAGE_KEYS.HEARTBEAT_DATE_KEY, serverDateKey)
-            }
-          })
-          .catch(() => {
-            // 心跳失败不能影响首页,吞掉(401 由 request.js 弹 modal,4xx/5xx 已 _silent)
-            // 不写本地 dateKey → 下次 onShow 仍会重试,Redis SETNX 保证服务端仍幂等
-          })
-      } catch (e) {
-        // 整个心跳流程任何同步异常都不能阻断首页
-        console.warn('[home] heartbeat failed:', e)
-      }
-    },
-
     async loadBanners() {
       try {
         const list = await cmsApi.getBannerList()

@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.common.dto.admin.OperationResult;
 import com.moyuyo.common.dto.admin.PageResponse;
 import com.moyuyo.common.dto.admin.campaign.*;
@@ -31,12 +32,16 @@ public class CampaignMarketingController {
 
   @Operation(summary = "创建活动")
   @PostMapping("/campaigns")
+  @AdminAudit(action = "CREATE", module = "MARKETING",
+      resourceId = "campaign", detail = "管理员创建营销活动")
   public Result<OperationResult> createCampaign(@Valid @RequestBody CampaignRequest request) {
     return Result.success(campaignMarketingService.createCampaign(request));
   }
 
   @Operation(summary = "保存活动草稿")
   @PostMapping("/campaigns/draft")
+  @AdminAudit(action = "CREATE", module = "MARKETING",
+      resourceId = "campaign-draft", detail = "管理员保存活动草稿")
   public Result<OperationResult> saveDraft(@RequestBody CampaignRequest request) {
     // 草稿不强制 @Valid,name 为空由 Service 层兜底,避免空校验阻断"先存后补"的工作流
     return Result.success(campaignMarketingService.saveDraft(request));
@@ -44,6 +49,8 @@ public class CampaignMarketingController {
 
   @Operation(summary = "更新活动")
   @PutMapping("/campaigns/{id}")
+  @AdminAudit(action = "UPDATE", module = "MARKETING",
+      resourceId = "#id", detail = "管理员更新营销活动")
   public Result<OperationResult> updateCampaign(@PathVariable Long id, @Valid @RequestBody CampaignRequest request) {
     return Result.success(campaignMarketingService.updateCampaign(id, request));
   }
@@ -60,7 +67,9 @@ public class CampaignMarketingController {
 
   @Operation(summary = "删除活动")
   @DeleteMapping("/campaigns/{id}")
-  public Result<OperationResult> deleteCampaign(@PathVariable Long id) {
+  @AdminAudit(action = "DELETE", module = "MARKETING",
+      resourceId = "#id", detail = "管理员删除营销活动")
+  public Result<?> deleteCampaign(@PathVariable Long id) {
     return Result.success(campaignMarketingService.deleteCampaign(id));
   }
 
@@ -72,12 +81,16 @@ public class CampaignMarketingController {
 
   @Operation(summary = "创建A/B测试")
   @PostMapping("/ab-tests")
+  @AdminAudit(action = "CREATE", module = "MARKETING",
+      resourceId = "ab-test", detail = "管理员创建 A/B 测试")
   public Result<OperationResult> createAbTest(@RequestBody AbTestRequest request) {
     return Result.success(campaignMarketingService.createAbTest(request));
   }
 
   @Operation(summary = "更新A/B测试")
   @PutMapping("/ab-tests/{id}")
+  @AdminAudit(action = "UPDATE", module = "MARKETING",
+      resourceId = "#id", detail = "管理员更新 A/B 测试")
   public Result<OperationResult> updateAbTest(@PathVariable Long id, @RequestBody AbTestRequest request) {
     return Result.success(campaignMarketingService.updateAbTest(id, request));
   }

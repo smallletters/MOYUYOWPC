@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.service.admin.AdminSmsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,6 +36,8 @@ public class AdminSmsController {
 
   @Operation(summary = "发送短信")
   @PostMapping("/send")
+  @AdminAudit(action = "CREATE", module = "MARKETING",
+      resourceId = "sms-send", detail = "管理员发送短信")
   public Result<Map<String, Object>> send(@RequestBody Map<String, Object> body) {
     String phone = (String) body.get("phone");
     String content = (String) body.get("content");

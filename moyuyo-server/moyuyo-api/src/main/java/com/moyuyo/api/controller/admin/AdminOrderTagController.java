@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.common.dto.admin.OperationResult;
 import com.moyuyo.common.dto.admin.ordertag.OrderTagCreateRequest;
 import com.moyuyo.common.dto.admin.ordertag.OrderTagUpdateRequest;
@@ -32,6 +33,8 @@ public class AdminOrderTagController {
 
   @Operation(summary = "创建标签")
   @PostMapping("/create")
+  @AdminAudit(action = "CREATE", module = "ORDER",
+      resourceId = "order-tag", detail = "管理员创建订单标签")
   public Result<OperationResult> create(@Valid @RequestBody OrderTagCreateRequest request) {
     adminOrderTagService.create(request);
     OperationResult result = new OperationResult();
@@ -41,6 +44,8 @@ public class AdminOrderTagController {
 
   @Operation(summary = "更新标签")
   @PutMapping("/update")
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "#request.id", detail = "管理员更新订单标签")
   public Result<OperationResult> update(@Valid @RequestBody OrderTagUpdateRequest request) {
     adminOrderTagService.update(request);
     OperationResult result = new OperationResult();
@@ -51,6 +56,8 @@ public class AdminOrderTagController {
 
   @Operation(summary = "删除标签")
   @DeleteMapping("/{id}")
+  @AdminAudit(action = "DELETE", module = "ORDER",
+      resourceId = "#id", detail = "管理员删除订单标签")
   public Result<OperationResult> delete(@PathVariable Long id) {
     adminOrderTagService.delete(id);
     OperationResult result = new OperationResult();
@@ -61,6 +68,8 @@ public class AdminOrderTagController {
 
   @Operation(summary = "给订单打标签")
   @PostMapping("/{orderId}/tags")
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "#orderId", detail = "管理员给订单打标签")
   public Result<OperationResult> addOrderTags(@PathVariable Long orderId, @RequestBody Object body) {
     // 兼容两种格式:直接传整数ID列表,或传包装对象 {tags: [1,2,3]}
     List<Long> tagIds = parseTagIds(body);
@@ -82,7 +91,6 @@ public class AdminOrderTagController {
   }
 
   /** 从请求体中解析标签ID列表,兼容直接传数组或 {tags: [...]} 两种格式 */
-  @SuppressWarnings("unchecked")
   private static List<Long> parseTagIds(Object body) {
     if (body instanceof List<?> rawList) {
       return rawList.stream()

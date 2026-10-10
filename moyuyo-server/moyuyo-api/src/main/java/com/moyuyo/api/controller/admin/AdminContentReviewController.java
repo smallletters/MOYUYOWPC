@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.service.admin.AdminContentReviewService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -48,7 +49,9 @@ public class AdminContentReviewController {
 
     @Operation(summary = "审核通过")
     @PutMapping("/{id}/approve")
-    public Result<Void> approve(@PathVariable Long id) {
+    @AdminAudit(action = "UPDATE", module = "CONTENT",
+        resourceId = "#id", detail = "管理员审核通过内容")
+    public Result<Map<String, Object>> approve(@PathVariable Long id) {
         // 使用当前登录用户ID作为审核人，避免审计日志为null
         Long reviewerId = UserContextHolder.getUserId();
         adminContentReviewService.approve(id, reviewerId);
@@ -57,6 +60,8 @@ public class AdminContentReviewController {
 
     @Operation(summary = "审核驳回")
     @PutMapping("/{id}/reject")
+    @AdminAudit(action = "UPDATE", module = "CONTENT",
+        resourceId = "#id", detail = "管理员审核驳回内容")
     public Result<Void> reject(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         if (body == null || body.get("reason") == null || body.get("reason").toString().isBlank()) {
             return Result.error(400, "驳回原因不能为空");
@@ -70,20 +75,26 @@ public class AdminContentReviewController {
 
     @Operation(summary = "隐藏内容")
     @PutMapping("/{id}/hide")
-    public Result<Void> hide(@PathVariable Long id) {
+    @AdminAudit(action = "UPDATE", module = "CONTENT",
+        resourceId = "#id", detail = "管理员隐藏内容")
+    public Result<Map<String, Object>> hide(@PathVariable Long id) {
         adminContentReviewService.hide(id);
         return Result.success();
     }
 
     @Operation(summary = "删除内容")
     @DeleteMapping("/{id}")
-    public Result<Void> delete(@PathVariable Long id) {
+    @AdminAudit(action = "DELETE", module = "CONTENT",
+        resourceId = "#id", detail = "管理员删除内容")
+    public Result<Map<String, Object>> delete(@PathVariable Long id) {
         adminContentReviewService.deleteContent(id);
         return Result.success();
     }
 
     @Operation(summary = "封禁内容")
     @PutMapping("/{id}/ban")
+    @AdminAudit(action = "UPDATE", module = "CONTENT",
+        resourceId = "#id", detail = "管理员封禁内容")
     public Result<Void> ban(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
         // 必填违规类型(前端下拉:色情/暴力/仇恨言论/侵权/虚假信息/虐待动物),
         // 备注可选。封禁原因会同步到 content_review.reason 便于审计追溯。

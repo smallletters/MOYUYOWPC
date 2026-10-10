@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -199,6 +200,9 @@ public class AdminProductController {
 
   @Operation(summary = "创建商品")
   @PostMapping("/create")
+  @AdminAudit(action = "CREATE", module = "PRODUCT",
+      resourceId = "create",
+      detail = "管理员创建商品")
   public Result<Map<String, Object>> createProduct(@RequestBody Map<String, Object> body) {
     try {
       // 前置参数校验：name 为 NOT NULL 字段，空 body 时直接返回友好错误而非数据库异常
@@ -225,6 +229,8 @@ public class AdminProductController {
 
   @Operation(summary = "更新商品")
   @PutMapping("/{id}")
+  @AdminAudit(action = "UPDATE", module = "PRODUCT",
+      resourceId = "#id", detail = "管理员更新商品，productId=#id")
   public Result<Map<String, Object>> updateProduct(@PathVariable Long id, @RequestBody Map<String, Object> body) {
     try {
       productService.updateProduct(id, body);
@@ -244,6 +250,8 @@ public class AdminProductController {
 
   @Operation(summary = "切换商品上架/下架状态")
   @PutMapping("/{id}/status")
+  @AdminAudit(action = "UPDATE", module = "PRODUCT",
+      resourceId = "#id", detail = "管理员切换商品上下架状态")
   public Result<Map<String, Object>> toggleStatus(@PathVariable Long id) {
     try {
       ProductEntity entity = productService.toggleProductStatus(id);
@@ -261,6 +269,8 @@ public class AdminProductController {
 
   @Operation(summary = "删除商品")
   @DeleteMapping("/{id}")
+  @AdminAudit(action = "DELETE", module = "PRODUCT",
+      resourceId = "#id", detail = "管理员删除商品，productId=#id")
   public Result<Map<String, Object>> deleteProduct(@PathVariable Long id) {
     try {
       int count = productService.batchProductAction("delete", java.util.Collections.singletonList(id));
@@ -278,6 +288,8 @@ public class AdminProductController {
 
   @Operation(summary = "批量操作商品")
   @PostMapping("/batch")
+  @AdminAudit(action = "UPDATE", module = "PRODUCT",
+      resourceId = "batch", detail = "管理员批量操作商品")
   public Result<Map<String, Object>> batchAction(@RequestBody Map<String, Object> body) {
     String action = (String) body.get("action");
     List<Long> ids = extractIds(body.get("ids"));
@@ -321,6 +333,8 @@ public class AdminProductController {
    */
   @Operation(summary = "从 WooCommerce 拉取商品")
   @PostMapping("/sync-from-woo")
+  @AdminAudit(action = "UPDATE", module = "PRODUCT",
+      resourceId = "sync-from-woo", detail = "管理员从 WooCommerce 拉取全量商品")
   public Result<Map<String, Object>> syncFromWoo() {
     Result<?> check = checkWooCommerceConfigured();
     if (check != null) {
@@ -363,6 +377,8 @@ public class AdminProductController {
    */
   @Operation(summary = "推送商品到 WooCommerce")
   @PostMapping("/{id}/push-to-woo")
+  @AdminAudit(action = "UPDATE", module = "PRODUCT",
+      resourceId = "#id", detail = "管理员推送商品到 WooCommerce")
   public Result<Map<String, Object>> pushToWoo(@PathVariable Long id) {
     Result<?> check = checkWooCommerceConfigured();
     if (check != null) {
@@ -394,6 +410,8 @@ public class AdminProductController {
    */
   @Operation(summary = "批量推送商品到 WooCommerce")
   @PostMapping("/push-all-to-woo")
+  @AdminAudit(action = "UPDATE", module = "PRODUCT",
+      resourceId = "push-all-to-woo", detail = "管理员批量推送商品到 WooCommerce")
   public Result<Map<String, Object>> pushAllToWoo() {
     Result<?> check = checkWooCommerceConfigured();
     if (check != null) {
@@ -419,6 +437,8 @@ public class AdminProductController {
    */
   @Operation(summary = "从 WooCommerce 拉取单个商品更新")
   @PostMapping("/{id}/pull-from-woo")
+  @AdminAudit(action = "UPDATE", module = "PRODUCT",
+      resourceId = "#id", detail = "管理员从 WooCommerce 拉取单个商品更新")
   public Result<Map<String, Object>> pullFromWoo(@PathVariable Long id) {
     Result<?> check = checkWooCommerceConfigured();
     if (check != null) {
@@ -470,6 +490,8 @@ public class AdminProductController {
    */
   @Operation(summary = "从 WooCommerce 批量同步库存")
   @PostMapping("/sync-stock-from-woo")
+  @AdminAudit(action = "UPDATE", module = "PRODUCT",
+      resourceId = "sync-stock", detail = "管理员从 WooCommerce 批量同步库存")
   public Result<Map<String, Object>> syncStockFromWoo() {
     Result<?> check = checkWooCommerceConfigured();
     if (check != null) {
@@ -492,6 +514,8 @@ public class AdminProductController {
    */
   @Operation(summary = "从 WooCommerce 同步单个商品库存")
   @PostMapping("/{id}/sync-stock")
+  @AdminAudit(action = "UPDATE", module = "PRODUCT",
+      resourceId = "#id", detail = "管理员同步单个商品库存")
   public Result<Map<String, Object>> syncSingleStock(@PathVariable Long id) {
     Result<?> check = checkWooCommerceConfigured();
     if (check != null) {

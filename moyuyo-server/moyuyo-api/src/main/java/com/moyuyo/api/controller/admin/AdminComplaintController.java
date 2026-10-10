@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.common.Result;
 import com.moyuyo.dao.admin.entity.ComplaintProcessEntity;
 import com.moyuyo.dao.admin.mapper.ComplaintProcessMapper;
@@ -27,6 +28,8 @@ public class AdminComplaintController {
 
   @Operation(summary = "新建投诉")
   @PostMapping("/create")
+  @AdminAudit(action = "CREATE", module = "CONTENT",
+      resourceId = "complaint", detail = "管理员新建投诉")
   public Result<Map<String, Object>> create(@RequestBody Map<String, Object> body) {
     FeedbackEntity feedback = new FeedbackEntity();
     feedback.setUserId(body.get("userId") != null ? Long.valueOf(body.get("userId").toString()) : null);
@@ -89,6 +92,8 @@ public class AdminComplaintController {
     data.put("createTime", feedback.getCreateTime());
 
     // 从 mo_complaint_process 表查询处理记录
+    // 抑制 MyBatis-Plus 3.x @Nonnull T 与 JDT 静态分析差异（Function<T,R> 类型推断）
+    @SuppressWarnings("null")
     List<ComplaintProcessEntity> processList = complaintProcessMapper.selectList(
         new LambdaQueryWrapper<ComplaintProcessEntity>()
             .eq(ComplaintProcessEntity::getComplaintId, id)
@@ -109,6 +114,8 @@ public class AdminComplaintController {
 
   @Operation(summary = "开始处理")
   @PostMapping("/{id}/start-process")
+  @AdminAudit(action = "UPDATE", module = "CONTENT",
+      resourceId = "#id", detail = "管理员开始处理投诉")
   public Result<Map<String, Object>> startProcess(@PathVariable Long id) {
     adminComplaintService.handle(id, "PROCESSING", "");
     Map<String, Object> result = new LinkedHashMap<>();
@@ -122,6 +129,8 @@ public class AdminComplaintController {
 
   @Operation(summary = "完结投诉")
   @PostMapping("/{id}/close")
+  @AdminAudit(action = "UPDATE", module = "CONTENT",
+      resourceId = "#id", detail = "管理员完结投诉")
   public Result<Map<String, Object>> close(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
     String remark = body != null && body.get("remark") != null ? body.get("remark").toString() : "";
     adminComplaintService.handle(id, "CLOSED", remark);
@@ -137,6 +146,8 @@ public class AdminComplaintController {
 
   @Operation(summary = "分配处理人")
   @PutMapping("/{id}/assign")
+  @AdminAudit(action = "UPDATE", module = "CONTENT",
+      resourceId = "#id", detail = "管理员分配投诉处理人")
   public Result<Map<String, Object>> assign(@PathVariable Long id, @RequestBody Map<String, Object> body) {
     String assignee = body.get("assignee") != null ? body.get("assignee").toString() : "";
     String remark = body.get("remark") != null ? body.get("remark").toString() : "";

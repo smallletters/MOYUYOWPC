@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.common.config.YanWenProperties;
 import com.moyuyo.common.dto.admin.order.*;
 import com.moyuyo.common.dto.logistics.YanWenLabelResponse;
@@ -62,6 +63,8 @@ public class AdminOrderOpsController {
 
   @Operation(summary = "创建导出任务")
   @PostMapping("/export/create")
+  @AdminAudit(action = "CREATE", module = "ORDER",
+      resourceId = "export-task", detail = "管理员创建订单导出任务")
   public Result<Map<String, Object>> createExport(@RequestBody OrderExportCreateRequest request) {
     // Service 层已切换为接收 OrderExportCreateRequest,直接透传 DTO,避免 Map 类型漂移
     Map<String, Object> taskResult = adminOrderOpsService.createExportTask(request);
@@ -112,6 +115,8 @@ public class AdminOrderOpsController {
 
   @Operation(summary = "批量发货")
   @PostMapping("/batch-ship")
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "batch-ship", detail = "管理员批量发货")
   public Result<Map<String, Object>> batchShip(@Valid @RequestBody BatchShipRequest request) {
     // 参数校验:ids 已由 @NotEmpty 保证非空
     if (request.getIds() == null || request.getIds().isEmpty()) {
@@ -127,6 +132,8 @@ public class AdminOrderOpsController {
 
   @Operation(summary = "更新备注")
   @PutMapping("/{id}/remark")
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "#id", detail = "管理员更新订单备注")
   public Result<Map<String, Object>> updateRemark(@PathVariable Long id, @RequestBody OrderRemarkUpdateRequest request) {
     String remark = request != null ? request.getRemark() : null;
     adminOrderOpsService.updateRemark(id, remark);
@@ -161,6 +168,8 @@ public class AdminOrderOpsController {
 
   @Operation(summary = "记录打印操作")
   @PostMapping("/print/record")
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "print-record", detail = "管理员记录订单打印操作")
   public Result<Map<String, Object>> recordPrint(@Valid @RequestBody OrderPrintRecordRequest request) {
     // @Valid 让 DTO 上的 @NotNull 注解生效（Spring 会抛 MethodArgumentNotValidException）。
     // 显式判空保留作为双保险（@RequestBody 可缺省、整体 null 不会被 @Valid 拦到）。
@@ -193,6 +202,8 @@ public class AdminOrderOpsController {
    */
   @Operation(summary = "累加燕文面单打印日志")
   @PostMapping("/print/shipping-label/record/{orderId}")
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "#orderId", detail = "管理员累加燕文面单打印日志")
   public Result<Map<String, Object>> recordShippingLabelLog(@PathVariable Long orderId) {
     if (orderId == null) {
       return Result.error(400, "参数错误：orderId 不能为空");
@@ -276,6 +287,8 @@ public class AdminOrderOpsController {
    */
   @Operation(summary = "创建燕文运单（路径B：先建运单，再取面单）")
   @PostMapping("/print/shipping-label/create-waybill")
+  @AdminAudit(action = "CREATE", module = "ORDER",
+      resourceId = "#orderId", detail = "管理员创建燕文运单")
   public Result<Map<String, Object>> createYanwenWaybill(
       @RequestParam Long orderId,
       @RequestParam(required = false) Long carrierId) {
@@ -379,6 +392,8 @@ public class AdminOrderOpsController {
    */
   @Operation(summary = "主动刷新燕文国家目录")
   @PostMapping("/print/yanwen-countries/refresh")
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "yanwen-refresh", detail = "管理员主动刷新燕文国家目录")
   public Result<Map<String, Object>> yanwenCountryDirectoryRefresh() {
     if (!yanWenProperties.isEnabled()) {
       return Result.error(503, "燕文未启用，无法刷新");
@@ -491,6 +506,8 @@ public class AdminOrderOpsController {
 
   @Operation(summary = "保存订单打印设置")
   @PutMapping("/print/settings")
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "print-settings", detail = "管理员保存订单打印设置")
   public Result<Map<String, Object>> savePrintSettings(@RequestBody Map<String, Object> body) {
     adminOrderOpsService.savePrintSettings(body);
     return Result.success(Map.of("message", "打印设置已保存到服务端"));
@@ -498,6 +515,8 @@ public class AdminOrderOpsController {
 
   @Operation(summary = "更新打印模板")
   @PutMapping("/print/templates/{id}")
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "#id", detail = "管理员更新打印模板")
   public Result<Map<String, Object>> updatePrintTemplate(
       @PathVariable Long id, @Valid @RequestBody PrintTemplateRequest request) {
     adminOrderOpsService.updatePrintTemplate(
@@ -508,6 +527,8 @@ public class AdminOrderOpsController {
 
   @Operation(summary = "设置默认打印模板")
   @PutMapping("/print/templates/{id}/set-default")
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "#id", detail = "管理员设置默认打印模板")
   public Result<Map<String, Object>> setDefaultPrintTemplate(@PathVariable Long id) {
     adminOrderOpsService.setDefaultPrintTemplate(id);
     return Result.success(Map.of("id", id, "message", "已设为默认模板"));
@@ -527,6 +548,8 @@ public class AdminOrderOpsController {
 
   @Operation(summary = "创建改价记录")
   @PostMapping("/price-modify/create")
+  @AdminAudit(action = "CREATE", module = "ORDER",
+      resourceId = "#request.orderId", detail = "管理员创建订单改价记录")
   public Result<Map<String, Object>> createPriceModify(@RequestBody OrderPriceModifyRequest request) {
     // 参数校验:必须提供 orderId 或 orderNo
     Long orderId = request.getOrderId();
@@ -561,6 +584,8 @@ public class AdminOrderOpsController {
 
   @Operation(summary = "创建拦截")
   @PostMapping("/intercept/create")
+  @AdminAudit(action = "CREATE", module = "ORDER",
+      resourceId = "#request.orderId", detail = "管理员创建订单拦截")
   public Result<Map<String, Object>> createIntercept(@RequestBody OrderInterceptRequest request) {
     // 参数校验:orderId 必填,避免 NPE 导致 500
     if (request.getOrderId() == null) {
@@ -578,6 +603,8 @@ public class AdminOrderOpsController {
 
   @Operation(summary = "解除拦截")
   @PostMapping("/intercept/release/{id}")
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "#id", detail = "管理员解除订单拦截")
   public Result<Map<String, Object>> releaseIntercept(@PathVariable Long id, @RequestBody(required = false) OrderInterceptReleaseRequest request) {
     // 未指定可选字段时使用默认值(与原 Map 逻辑保持一致)
     String releaseReason = request != null && request.getReleaseReason() != null
@@ -664,6 +691,8 @@ public class AdminOrderOpsController {
   @Operation(summary = "创建监控规则")
   @PostMapping("/monitor/rules")
   @Transactional
+  @AdminAudit(action = "CREATE", module = "ORDER",
+      resourceId = "monitor-rule", detail = "管理员创建订单监控规则")
   public Result<Map<String, Object>> createMonitorRule(@RequestBody Map<String, Object> body) {
     String name = body.get("name") != null ? body.get("name").toString().trim() : "";
     String condition = body.get("condition") != null ? body.get("condition").toString().trim() : "";
@@ -701,6 +730,8 @@ public class AdminOrderOpsController {
   @Operation(summary = "更新监控规则")
   @PutMapping("/monitor/rules/{id}")
   @Transactional
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "#id", detail = "管理员更新订单监控规则")
   public Result<Map<String, Object>> updateMonitorRule(@PathVariable Long id, @RequestBody Map<String, Object> body) {
     String name = body.get("name") != null ? body.get("name").toString().trim() : "";
     String condition = body.get("condition") != null ? body.get("condition").toString().trim() : "";
@@ -732,6 +763,8 @@ public class AdminOrderOpsController {
   @Operation(summary = "切换监控规则启用状态")
   @PutMapping("/monitor/rules/{id}/status")
   @Transactional
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "#id", detail = "管理员切换订单监控规则启用状态")
   public Result<Map<String, Object>> toggleMonitorRule(@PathVariable Long id, @RequestBody Map<String, Object> body) {
     Object enabledObj = body.get("enabled");
     if (enabledObj == null) {
@@ -754,6 +787,8 @@ public class AdminOrderOpsController {
   @Operation(summary = "删除监控规则")
   @DeleteMapping("/monitor/rules/{id}")
   @Transactional
+  @AdminAudit(action = "DELETE", module = "ORDER",
+      resourceId = "#id", detail = "管理员删除订单监控规则")
   public Result<Map<String, Object>> deleteMonitorRule(@PathVariable Long id) {
     try {
       int affected = jdbcTemplate.update("DELETE FROM mo_order_monitor_rule WHERE id = ?", id);

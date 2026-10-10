@@ -16,6 +16,8 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/admin/system")
 @RequiredArgsConstructor
+// 抑制 MyBatis-Plus 3.x @Nonnull T 与 JDT 静态分析差异（Function<T,R> 方法引用）
+@SuppressWarnings("null")
 public class AdminSystemConfigController {
 
     private final SystemConfigService systemConfigService;
@@ -59,26 +61,35 @@ public class AdminSystemConfigController {
   @GetMapping("/logs")
   public Result<Map<String, Object>> logs(
           @RequestParam(defaultValue = "1") int page,
-          @RequestParam(defaultValue = "20") int size) {
+          @RequestParam(defaultValue = "20") int size,
+          @RequestParam(required = false) String operator,
+          @RequestParam(required = false) String operationType,
+          @RequestParam(required = false) String startDate,
+          @RequestParam(required = false) String endDate) {
     // 分页查询 mo_audit_log 表，按 createTime 降序排列
+    // 字段名映射为前端 OperationLog.vue 期望的格式：operator / operationType / content / ipAddress / operationTime
     com.baomidou.mybatisplus.extension.plugins.pagination.Page<AuditLogEntity> pageResult =
       auditLogMapper.selectPage(
         new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size),
         new LambdaQueryWrapper<AuditLogEntity>()
+          .like(org.springframework.util.StringUtils.hasText(operator), AuditLogEntity::getOperatorName, operator)
+          .eq(org.springframework.util.StringUtils.hasText(operationType), AuditLogEntity::getAction, operationType)
+          .ge(org.springframework.util.StringUtils.hasText(startDate), AuditLogEntity::getCreateTime, startDate)
+          .le(org.springframework.util.StringUtils.hasText(endDate), AuditLogEntity::getCreateTime, endDate + " 23:59:59")
           .orderByDesc(AuditLogEntity::getCreateTime));
-    
+
     List<Map<String, Object>> list = new ArrayList<>();
     for (AuditLogEntity log : pageResult.getRecords()) {
       Map<String, Object> item = new LinkedHashMap<>();
       item.put("id", log.getId());
       item.put("operator", log.getOperatorName());
-      item.put("action", log.getAction());
-      item.put("detail", log.getDetail());
-      item.put("ip", log.getIp());
-      item.put("createTime", log.getCreateTime());
+      item.put("operationType", log.getAction());
+      item.put("content", log.getDetail());
+      item.put("ipAddress", log.getIp());
+      item.put("operationTime", log.getCreateTime() != null ? log.getCreateTime().toString() : null);
       list.add(item);
     }
-    
+
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("records", list);
     result.put("total", pageResult.getTotal());

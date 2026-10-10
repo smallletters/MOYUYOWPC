@@ -3,6 +3,7 @@ package com.moyuyo.api.controller.admin;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.common.dto.admin.OperationResult;
 import com.moyuyo.common.dto.admin.order.OrderAddressUpdateRequest;
 import com.moyuyo.common.dto.admin.order.OrderLogisticsRequest;
@@ -39,6 +40,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/admin/orders")
 @RequiredArgsConstructor
 @Slf4j
+// 抑制 MyBatis-Plus 3.x @Nonnull T 与 JDT 静态分析差异（Function<T,R> 方法引用 + selectBatchIds 弃用）
+@SuppressWarnings({"null", "deprecation"})
 public class AdminOrderController {
 
   private final OrderService orderService;
@@ -254,6 +257,8 @@ public class AdminOrderController {
 
   @Operation(summary = "修改收货地址")
   @PutMapping("/{id}/address")
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "#id", detail = "管理员修改订单收货地址")
   public Result<OperationResult> updateAddress(@PathVariable Long id, @RequestBody OrderAddressUpdateRequest request) {
     OrderEntity order = orderService.getOrderDetail(id, null);
     if (order == null) {
@@ -284,6 +289,8 @@ public class AdminOrderController {
 
   @Operation(summary = "确认发货")
   @PutMapping("/{id}/ship")
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "#id", detail = "管理员确认订单发货")
   public Result<OperationResult> ship(@PathVariable Long id, @RequestBody(required = false) OrderShipRequest request) {
     // 验证订单是否存在
     OrderEntity order = orderService.getOrderDetail(id, null);
@@ -313,6 +320,8 @@ public class AdminOrderController {
 
   @Operation(summary = "取消订单（管理后台）")
   @PutMapping("/{id}/cancel")
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "#id", detail = "管理员取消订单")
   public Result<OperationResult> cancel(@PathVariable Long id, @RequestBody(required = false) CancelOrderRequest request) {
     OrderEntity order = orderService.getOrderDetail(id, null);
     if (order == null) {
@@ -336,6 +345,8 @@ public class AdminOrderController {
 
   @Operation(summary = "删除/作废订单（管理后台）")
   @DeleteMapping("/{id}")
+  @AdminAudit(action = "DELETE", module = "ORDER",
+      resourceId = "#id", detail = "管理员删除/作废订单")
   public Result<Map<String, Object>> delete(@PathVariable Long id) {
     OrderEntity order = orderService.getOrderDetail(id, null);
     if (order == null) {
@@ -359,6 +370,8 @@ public class AdminOrderController {
    */
   @Operation(summary = "手动重推订单到 WooCommerce")
   @PostMapping("/{id}/sync-to-woo")
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "#id", detail = "管理员手动重推订单到 WooCommerce")
   public Result<Map<String, Object>> syncToWoo(@PathVariable Long id) {
     OrderEntity order = orderService.getOrderDetail(id, null);
     if (order == null) {
@@ -441,6 +454,8 @@ public class AdminOrderController {
 
   @Operation(summary = "更新订单物流信息（手动设置承运商 / 运单号，未发货可顺带发货）")
   @PutMapping("/{id}/logistics")
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "#id", detail = "管理员更新订单物流信息")
   public Result<Map<String, Object>> updateOrderLogistics(@PathVariable Long id,
       @RequestBody(required = false) OrderLogisticsRequest request) {
     if (request == null) {

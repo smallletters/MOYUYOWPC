@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.service.admin.AdminPointsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -66,7 +67,9 @@ public class AdminPointsController {
 
   @Operation(summary = "创建积分活动")
   @PostMapping("/activities/create")
-  public Result<Map<String, Object>> createActivity(@RequestBody Map<String, Object> body) {
+  @AdminAudit(action = "CREATE", module = "MARKETING",
+      resourceId = "points-activity", detail = "管理员创建积分活动")
+  public Result<?> createActivity(@RequestBody Map<String, Object> body) {
     try {
       adminPointsService.createActivity(body);
       Map<String, Object> result = new LinkedHashMap<>();
@@ -80,6 +83,8 @@ public class AdminPointsController {
 
   @Operation(summary = "更新积分活动")
   @PutMapping("/activities/{id}")
+  @AdminAudit(action = "UPDATE", module = "MARKETING",
+      resourceId = "#id", detail = "管理员更新积分活动")
   public Result<Map<String, Object>> updateActivity(@PathVariable String id, @RequestBody Map<String, Object> body) {
     try {
       adminPointsService.updateActivity(id, body);
@@ -94,6 +99,8 @@ public class AdminPointsController {
 
   @Operation(summary = "删除积分活动（通过ID删除）")
   @DeleteMapping("/activities/{id}")
+  @AdminAudit(action = "DELETE", module = "MARKETING",
+      resourceId = "#id", detail = "管理员删除积分活动")
   public Result<Map<String, Object>> deleteActivityById(@PathVariable String id) {
     try {
       adminPointsService.deleteActivity(id);
@@ -140,7 +147,9 @@ public class AdminPointsController {
 
   @Operation(summary = "手动调整积分")
   @PostMapping("/users/{userId}/adjust")
-  public Result<Map<String, Object>> adjustPoints(@PathVariable Long userId, @RequestBody Map<String, Object> body) {
+  @AdminAudit(action = "UPDATE", module = "USER",
+      resourceId = "#userId", detail = "管理员手动调整用户积分")
+  public Result<?> adjustPoints(@PathVariable Long userId, @RequestBody Map<String, Object> body) {
     try {
       int amount = body.get("amount") instanceof Number ? ((Number) body.get("amount")).intValue() : 0;
       String reason = (String) body.getOrDefault("reason", "手动调整");

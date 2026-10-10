@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.service.admin.AdminProductApprovalService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,6 +36,8 @@ public class AdminProductApprovalController {
 
     @Operation(summary = "通过审核")
     @PutMapping("/{id}/approve")
+    @AdminAudit(action = "UPDATE", module = "PRODUCT",
+        resourceId = "#id", detail = "管理员通过商品审核")
     public Result<Void> approve(@PathVariable Long id) {
         // 使用当前登录用户ID作为审核人，避免审计日志为null
         adminProductApprovalService.approve(id, UserContextHolder.getUserId());
@@ -43,6 +46,8 @@ public class AdminProductApprovalController {
 
     @Operation(summary = "驳回审核")
     @PutMapping("/{id}/reject")
+    @AdminAudit(action = "UPDATE", module = "PRODUCT",
+        resourceId = "#id", detail = "管理员驳回商品审核")
     public Result<Void> reject(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         String reason = (String) body.getOrDefault("reason", "");
         adminProductApprovalService.reject(id, UserContextHolder.getUserId(), reason);
@@ -51,6 +56,8 @@ public class AdminProductApprovalController {
 
     @Operation(summary = "标记加急")
     @PutMapping("/{id}/urgent")
+    @AdminAudit(action = "UPDATE", module = "PRODUCT",
+        resourceId = "#id", detail = "管理员标记商品加急")
     public Result<Void> urgent(@PathVariable Long id) {
         adminProductApprovalService.setUrgent(id);
         return Result.success();
