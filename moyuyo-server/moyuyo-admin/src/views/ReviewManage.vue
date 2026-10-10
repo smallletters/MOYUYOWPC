@@ -178,17 +178,62 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Clock, CircleCheck, CircleClose, TrendCharts, DataAnalysis } from '@element-plus/icons-vue'
-import { getReviewList, approveReview, replyReview, rejectReview } from '../api/admin'
+import { getReviewList, approveReview, replyReview, rejectReview, getReviewTodayStats } from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
-// 今日审核统计（示例数据：暂无真实统计 API，接入后端后替换为接口返回数据）
-// 通过率 = 已通过 / (已通过 + 已驳回) = 28 / 32 ≈ 88%
-const todayStatCards = [
-  { label: '今日待审核', value: 15, icon: Clock, iconClass: 'icon-pending', valueClass: 'value-pending', trend: '较昨日 +3', trendClass: 'trend-up' },
-  { label: '今日已通过', value: 28, icon: CircleCheck, iconClass: 'icon-approved', valueClass: 'value-approved', trend: '较昨日 +5', trendClass: 'trend-up' },
-  { label: '今日已驳回', value: 4, icon: CircleClose, iconClass: 'icon-rejected', valueClass: 'value-rejected', trend: '较昨日 -1', trendClass: 'trend-down' },
-  { label: '今日通过率', value: '88%', icon: TrendCharts, iconClass: 'icon-passrate', valueClass: 'value-passrate', trend: '较昨日 +2%', trendClass: 'trend-up' }
-]
+// 今日审核统计：默认占位（接口失败 / 首次加载时使用），成功后再用真实数据替换
+const todayStatCards = ref([
+  { label: '今日待审核', value: 0, icon: Clock, iconClass: 'icon-pending', valueClass: 'value-pending', trend: '较昨日 +0', trendClass: 'trend-up' },
+  { label: '今日已通过', value: 0, icon: CircleCheck, iconClass: 'icon-approved', valueClass: 'value-approved', trend: '较昨日 +0', trendClass: 'trend-up' },
+  { label: '今日已驳回', value: 0, icon: CircleClose, iconClass: 'icon-rejected', valueClass: 'value-rejected', trend: '较昨日 +0', trendClass: 'trend-down' },
+  { label: '今日通过率', value: '0%', icon: TrendCharts, iconClass: 'icon-passrate', valueClass: 'value-passrate', trend: '较昨日 +0%', trendClass: 'trend-up' }
+])
+
+// 数值差值转趋势文案：正值加"+"，0保持"+0"，负值保留负号
+function buildTrend(current, yesterday) {
+  const diff = Number(current) - Number(yesterday || 0)
+  if (diff > 0) return { text: `较昨日 +${diff}`, up: true }
+  if (diff < 0) return { text: `较昨日 ${diff}`, up: false }
+  return { text: '较昨日 +0', up: true }
+}
+
+// 加载今日审核统计
+async function loadTodayStats() {
+  try {
+    const res = await getReviewTodayStats()
+    const data = res?.data || res || {}
+    const pending = Number(data.pending) || 0
+    const approved = Number(data.approved) || 0
+    const rejected = Number(data.rejected) || 0
+    const passRate = Number(data.passRate) || 0
+    const yesterdayPending = Number(data.yesterdayPending) || 0
+    const yesterdayApproved = Number(data.yesterdayApproved) || 0
+    const yesterdayRejected = Number(data.yesterdayRejected) || 0
+    const yesterdayPassRate = Number(data.yesterdayPassRate) || 0
+
+    const tPending = buildTrend(pending, yesterdayPending)
+    const tApproved = buildTrend(approved, yesterdayApproved)
+    // 已驳回减少是好事：显示"+差"但 trend 类仍按"好"的语义着色（绿）
+    const tRejected = buildTrend(rejected, yesterdayRejected)
+    const passRateDiff = passRate - yesterdayPassRate
+    const tPassRate = passRateDiff > 0
+      ? { text: `较昨日 +${passRateDiff.toFixed(1)}%`, up: true }
+      : passRateDiff < 0
+        ? { text: `较昨日 ${passRateDiff.toFixed(1)}%`, up: false }
+        : { text: '较昨日 +0%', up: true }
+
+    todayStatCards.value = [
+      { label: '今日待审核', value: pending, icon: Clock, iconClass: 'icon-pending', valueClass: 'value-pending', trend: tPending.text, trendClass: tPending.up ? 'trend-up' : 'trend-down' },
+      { label: '今日已通过', value: approved, icon: CircleCheck, iconClass: 'icon-approved', valueClass: 'value-approved', trend: tApproved.text, trendClass: tApproved.up ? 'trend-up' : 'trend-down' },
+      // 已驳回"减少"为好：颜色反向（差↓→绿；差↑→红）
+      { label: '今日已驳回', value: rejected, icon: CircleClose, iconClass: 'icon-rejected', valueClass: 'value-rejected', trend: tRejected.text, trendClass: tRejected.up ? 'trend-down' : 'trend-up' },
+      { label: '今日通过率', value: `${passRate.toFixed(1)}%`, icon: TrendCharts, iconClass: 'icon-passrate', valueClass: 'value-passrate', trend: tPassRate.text, trendClass: tPassRate.up ? 'trend-up' : 'trend-down' }
+    ]
+  } catch (e) {
+    // 失败时保留默认占位数据，不影响页面其他功能
+    ElMessage.error('获取今日审核统计失败')
+  }
+}
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -292,7 +337,8 @@ async function handleDelete(row) {
     await ElMessageBox.confirm('确认删除该评价吗？', '提示', { type: 'warning' })
     await rejectReview(row.id)
     ElMessage.success('删除成功')
-    await loadData()
+    // 列表与统计互不依赖，并行刷新缩短操作反馈延迟
+    await Promise.all([loadData(), loadTodayStats()])
   } catch (e) {
     // 用户取消不处理
   }
@@ -318,13 +364,15 @@ async function handleSave() {
       ElMessage.success('回复成功')
     }
     dialogVisible.value = false
-    await loadData()
+    // 列表与统计互不依赖，并行刷新缩短操作反馈延迟
+    await Promise.all([loadData(), loadTodayStats()])
   } catch (e) {
     ElMessage.error('操作失败')
   }
 }
 
-onMounted(() => { loadData() })
+// 首屏同时拉取列表和今日统计，互不依赖可并行缩短首屏延迟
+onMounted(() => { Promise.all([loadData(), loadTodayStats()]) })
 </script>
 
 <style scoped>

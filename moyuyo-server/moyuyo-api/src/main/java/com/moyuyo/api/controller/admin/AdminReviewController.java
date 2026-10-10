@@ -167,9 +167,37 @@ public class AdminReviewController {
     return Result.success(result);
   }
 
+  @Operation(summary = "批量审核通过")
+  @PostMapping("/batch-approve")
+  public Result<Map<String, Object>> batchApprove(@RequestBody Map<String, Object> body) {
+    @SuppressWarnings("unchecked")
+    List<Integer> idsRaw = (List<Integer>) body.get("ids");
+    if (idsRaw == null || idsRaw.isEmpty()) {
+      return Result.error("请选择要审核的评价");
+    }
+    // 服务端把 Integer 归一为 Long,避免业务层处理类型转换
+    List<Long> ids = new ArrayList<>(idsRaw.size());
+    for (Integer id : idsRaw) {
+      if (id != null) {
+        ids.add(Long.valueOf(id));
+      }
+    }
+    int approved = adminReviewService.batchApprove(ids);
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("approved", approved);
+    result.put("message", "批量通过成功，共通过 " + approved + " 条评价");
+    return Result.success(result);
+  }
+
   @Operation(summary = "评价统计")
   @GetMapping("/stats")
   public Result<Map<String, Object>> stats() {
     return Result.success(adminReviewService.stats());
+  }
+
+  @Operation(summary = "今日评价审核统计（实时 + 昨日对比）")
+  @GetMapping("/today-stats")
+  public Result<Map<String, Object>> todayStats() {
+    return Result.success(adminReviewService.todayStats());
   }
 }

@@ -59,6 +59,34 @@ public class AuthController {
         return Result.success();
     }
 
+    /**
+     * 心跳接口 - 用于"今日活跃用户"统计信号。
+     * <p>
+     * APP 端建议在首页 onShow 时调用（已登录态）。
+     * 后端同日幂等（Redis SETNX）：同一天重复调用不重复写库，返回相同 dateKey。
+     * 跨日 dateKey 会变，客户端可基于 dateKey 做本地去重，
+     * 避免每次切到首页都发请求。
+     * <p>
+     * 鉴权：依赖 JwtAuthFilter 已认证的 token；token 失效由 401 处理器自动弹 modal。
+     * 未登录态允许调用，此时后端不做任何 DB 写入，只返回当日 dateKey 让前端按需缓存。
+     * <p>
+     * 复用 authLogin 限流：避免被恶意脚本刷写，
+     * 正常用户每天打开 APP 多次也只命中 1 次，限流阈值远高于合理调用频次。
+     */
+    @Operation(summary = "心跳（今日活跃统计）")
+    @PostMapping("/heartbeat")
+    @RateLimiter(name = "authLogin", fallbackMethod = "heartbeatRateLimitFallback")
+    public Result<com.moyuyo.service.AuthService.HeartbeatAck> heartbeat() {
+        Long userId = UserContextHolder.getUserId();
+        return Result.success(authService.heartbeat(userId));
+    }
+
+    /** heartbeat 限流降级：签名与 heartbeat 一致 */
+    @SuppressWarnings("unused")
+    private Result<com.moyuyo.service.AuthService.HeartbeatAck> heartbeatRateLimitFallback(RequestNotPermitted e) {
+        return Result.error(429, "请求过于频繁，请稍后再试");
+    }
+
     @Operation(summary = "发送邮箱验证码")
     @PostMapping("/email/verify")
     @RateLimiter(name = "authLogin", fallbackMethod = "rateLimitFallback")

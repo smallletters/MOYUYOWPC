@@ -138,6 +138,28 @@ export function cancelDeleteAccount() {
 }
 
 /**
+ * 今日活跃心跳。
+ * <p>
+ * 后端 POST /api/v1/auth/heartbeat,body 空。
+ * <p>
+ * 行为约定：
+ * <ul>
+ *   <li>后端同日幂等,返回相同 dateKey;客户端可基于 dateKey 做本地去重,
+ *       同日重复调用不会触发任何副作用</li>
+ *   <li>用于支持管理后台"今日活跃用户"统计:
+ *       服务端只在心跳当日首次上报时把 last_login_time 更新为 now()
+ *       (AdminUserManageServiceImpl.getStats / AdminDashboardServiceImpl 都基于此字段计数)</li>
+ *   <li>未登录也可调用(返回 200 + dateKey),不抛错,允许在 onLaunch 阶段就触发</li>
+ *   <li>若 token 失效被 JwtAuthFilter 拒绝,request.js 会自动弹"登录已过期"modal,
+ *       心跳本身不参与刷新流程,失败也不做业务兜底</li>
+ *   <li>showError:false 让 request.js 不自动弹 toast,onShow 是高频入口不能每次弹错误</li>
+ * </ul>
+ */
+export function heartbeat() {
+  return post('/api/v1/auth/heartbeat', {}, { showError: false, _silent: true })
+}
+
+/**
  * 请求账户数据导出（USER 端）。
  * <p>
  * 后端 1 天内同账号最多 1 次，超出抛 HTTP 429 + 错误码前缀 DATA_EXPORT_RATE_LIMITED:{nextAllowedAtMillis}，
@@ -175,4 +197,5 @@ export default {
   requestDeleteAccount,
   cancelDeleteAccount,
   requestDataExport,
+  heartbeat,
 }

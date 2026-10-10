@@ -120,18 +120,18 @@
           </div>
         </template>
         <div class="metric-grid">
-          <div v-for="m in NEW_PRODUCT_TRACKING.metrics" :key="m.label" class="metric-card">
+          <div v-for="m in newProductTracking.metrics" :key="m.label" class="metric-card">
             <div class="metric-label">{{ m.label }}</div>
             <div class="metric-value">{{ m.value }}</div>
             <div class="metric-change" :class="m.up ? 'up' : 'down'">{{ m.change }}</div>
-            <!-- CSS 趋势柱状图 -->
+            <!-- CSS 趋势柱状图：归一化到 4%~100%，避免原始销量数值溢出 -->
             <div class="trend-line">
-              <div v-for="(h, i) in m.trend" :key="i" class="trend-bar" :style="{ height: h + '%' }"></div>
+              <div v-for="(h, i) in m.trend" :key="i" class="trend-bar" :style="{ height: trendBarHeight(h, m.trend) }"></div>
             </div>
           </div>
         </div>
         <div class="new-product-list">
-          <div v-for="item in NEW_PRODUCT_TRACKING.list" :key="item.name" class="new-product-item">
+          <div v-for="item in newProductTracking.list" :key="item.name" class="new-product-item">
             <div class="new-product-info">
               <div class="new-product-name">{{ item.name }}</div>
               <div class="new-product-meta">上架 {{ item.launchAt }} · 销量 {{ item.sales }}</div>
@@ -146,11 +146,11 @@
         <template #header>
           <div class="card-header">
             <span class="card-title">滞销商品预警</span>
-            <span class="warning-badge">{{ SLOW_MOVING_PRODUCTS.length }}</span>
+            <span class="warning-badge">{{ slowMovingProducts.length }}</span>
           </div>
         </template>
         <div class="slow-moving-list">
-          <div v-for="item in SLOW_MOVING_PRODUCTS" :key="item.name" class="slow-moving-item">
+          <div v-for="item in slowMovingProducts" :key="item.name" class="slow-moving-item">
             <div class="slow-moving-info">
               <div class="slow-moving-name">{{ item.name }}</div>
               <div class="slow-moving-meta">
@@ -158,7 +158,7 @@
                 <span>近30天售出: {{ item.sales30 }}</span>
               </div>
             </div>
-            <span class="slow-moving-days" :class="item.level">{{ item.days }}天</span>
+            <span class="slow-moving-days" :class="item.level">{{ formatTurnoverDays(item.days) }}</span>
           </div>
         </div>
       </el-card>
@@ -171,13 +171,13 @@
           </div>
         </template>
         <div class="turnover-metrics">
-          <div v-for="m in TURNOVER_RATE.metrics" :key="m.label" class="turnover-metric">
+          <div v-for="m in turnoverOverview.metrics" :key="m.label" class="turnover-metric">
             <div class="turnover-label">{{ m.label }}</div>
             <div class="turnover-value">{{ m.value }}</div>
           </div>
         </div>
         <div class="category-list">
-          <div v-for="(c, i) in TURNOVER_RATE.categories" :key="c.name" class="rank-item">
+          <div v-for="(c, i) in turnoverOverview.categories" :key="c.name" class="rank-item">
             <span class="rank-badge" :class="rankClass(i + 1)">{{ i + 1 }}</span>
             <div class="rank-info">
               <div class="rank-name">{{ c.name }}</div>
@@ -199,7 +199,7 @@
           </div>
         </template>
         <div class="keyword-list">
-          <div v-for="kw in HOT_SEARCH_KEYWORDS" :key="kw.keyword" class="keyword-item">
+          <div v-for="kw in hotSearchKeywords" :key="kw.keyword" class="keyword-item">
             <div class="keyword-header">
               <span class="keyword-name">{{ kw.keyword }}</span>
               <div class="keyword-stats">
@@ -222,7 +222,7 @@
           </div>
         </template>
         <div class="review-summary">
-          <div v-for="r in REVIEW_ANALYSIS.items" :key="r.label" class="review-row">
+          <div v-for="r in reviewItems" :key="r.label" class="review-row">
             <div class="review-icon" :class="r.color">{{ r.icon }}</div>
             <div class="review-info">
               <div class="review-label">{{ r.label }}</div>
@@ -234,7 +234,7 @@
         <!-- 评分分布条形图 -->
         <div class="rating-distribution">
           <div class="rating-title">评分分布</div>
-          <div v-for="d in REVIEW_ANALYSIS.distribution" :key="d.stars" class="rating-row">
+          <div v-for="d in reviewAnalysis.distribution || []" :key="d.stars" class="rating-row">
             <span class="rating-stars">{{ d.stars }}星</span>
             <div class="bar-track">
               <div class="bar-fill rating" :style="{ width: d.percent + '%' }"></div>
@@ -253,12 +253,12 @@
         </template>
         <div class="keyword-cloud">
           <el-tag
-            v-for="k in HIGH_FREQ_REVIEW_KEYWORDS"
+            v-for="k in reviewKeywords"
             :key="k.keyword"
             :type="k.type || 'info'"
             effect="light"
             class="cloud-tag"
-          >{{ k.keyword }}</el-tag>
+          >{{ k.keyword }} <span v-if="k.count" style="opacity:.6;font-size:11px;margin-left:2px">({{ k.count }})</span></el-tag>
         </div>
       </el-card>
 
@@ -272,15 +272,15 @@
         <div class="inventory-kpis">
           <div class="inventory-kpi">
             <div class="inventory-kpi-label">总库存</div>
-            <div class="inventory-kpi-value">{{ INVENTORY_HEALTH.totalStock }}</div>
+            <div class="inventory-kpi-value">{{ inventoryHealth.totalStock }}</div>
           </div>
           <div class="inventory-kpi">
             <div class="inventory-kpi-label">健康占比</div>
-            <div class="inventory-kpi-value" style="color: var(--state-success)">{{ INVENTORY_HEALTH.healthRate }}</div>
+            <div class="inventory-kpi-value" style="color: var(--state-success)">{{ inventoryHealth.healthRate }}</div>
           </div>
         </div>
         <div class="inventory-health">
-          <div v-for="item in INVENTORY_HEALTH.items" :key="item.label" class="inventory-health-row">
+          <div v-for="item in inventoryHealth.items || []" :key="item.label" class="inventory-health-row">
             <span class="inventory-health-label" :style="{ color: stateColor(item.level) }">{{ item.label }}</span>
             <div class="inventory-health-track">
               <div class="inventory-health-fill" :class="item.level" :style="{ width: item.percent + '%' }">{{ item.count }}</div>
@@ -297,7 +297,7 @@
             <span class="card-title">库存周转天数排行</span>
           </div>
         </template>
-        <el-table :data="INVENTORY_TURNOVER_RANKING" size="small">
+        <el-table :data="inventoryTurnoverRanking" size="small">
           <el-table-column label="排名" width="60">
             <template #default="{ $index }">
               <span class="rank-badge" :class="rankClass($index + 1)">{{ $index + 1 }}</span>
@@ -307,7 +307,7 @@
           <el-table-column prop="stock" label="库存" width="80" />
           <el-table-column label="周转天数" width="100">
             <template #default="{ row }">
-              <span :style="{ color: stateColor(row.level) }">{{ row.days }}天</span>
+              <span :style="{ color: stateColor(row.level) }">{{ formatTurnoverDays(row.days) }}</span>
             </template>
           </el-table-column>
         </el-table>
@@ -352,9 +352,20 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getProductAnalysisKpi, getProductAnalysisList } from '../api/admin'
+import {
+  getProductAnalysisKpi,
+  getProductAnalysisList,
+  getNewProductTracking,
+  getSlowMovingProducts,
+  getTurnoverOverview,
+  getHotSearchKeywords,
+  getReviewAnalysis,
+  getReviewKeywords,
+  getInventoryHealth,
+  getInventoryTurnoverRanking
+} from '../api/admin'
 
 // ===== 现有分页与筛选状态（保留） =====
 const currentPage = ref(1)
@@ -389,18 +400,165 @@ const timeOptions = [
   { label: '自定义', value: 'custom' }
 ]
 
-// 时间范围变化：刷新数据（后端接口暂不支持时间参数，仅预留交互）
+// 时间范围变化：刷新数据 + 传递时间参数到 KPI / 列表接口
 function handleTimeChange() {
-  loadData()
+  // 串行：先拉基础列表（始终走 list 接口，保证浏览/收藏/加购不变），
+  // 再按时间范围拉 report，覆盖区间销量与收入。
+  loadData().then(loadTimeRangeData)
 }
 
+// ===== 各分析区块响应式数据（替换原硬编码示例） =====
+const newProductTracking = ref({ metrics: [], list: [] })
+const slowMovingProducts = ref([])
+const turnoverOverview = ref({ metrics: [], categories: [] })
+const hotSearchKeywords = ref([])
+const reviewAnalysis = ref({ positive: '0%', neutral: '0%', negative: '0%', distribution: [] })
+const reviewKeywords = ref([])
+const inventoryHealth = ref({ totalStock: 0, healthRate: '0%', items: [] })
+const inventoryTurnoverRanking = ref([])
+
+// 把后端 reviewAnalysis 转换为模板用的 items 列表
+const reviewItems = computed(() => [
+  { label: '好评', desc: '评分 ≥ 4 星', value: reviewAnalysis.value.positive || '0%', color: 'success', icon: '😊' },
+  { label: '中评', desc: '评分 = 3 星', value: reviewAnalysis.value.neutral || '0%', color: 'warning', icon: '😐' },
+  { label: '差评', desc: '评分 ≤ 2 星', value: reviewAnalysis.value.negative || '0%', color: 'error', icon: '🙁' }
+])
+
+// 新品追踪周期切换：周期变化重新拉数据
+const newProductPeriods = ['近 7 天', '近 14 天', '近 30 天']
+const newProductPeriod = ref('近 7 天')
+const newProductPeriodDays = computed(() => {
+  if (newProductPeriod.value === '近 14 天') return 14
+  if (newProductPeriod.value === '近 30 天') return 30
+  return 7
+})
+
+// 解析时间范围 value -> 起止日期（用于筛选报表）
+const timeRangeDates = computed(() => {
+  const today = new Date()
+  // 用本地日期格式化，避免 UTC 时区把"今天"算成昨天（凌晨 0-8 点会触发）
+  const fmt = (d) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+  const end = today
+  let start = new Date(today)
+  switch (timeRange.value) {
+    case 'today': break
+    case '7d': start.setDate(today.getDate() - 7); break
+    case '30d': start.setDate(today.getDate() - 30); break
+    case '90d': start.setDate(today.getDate() - 90); break
+    case 'half-year': start.setDate(today.getDate() - 183); break
+    case 'custom':
+      if (customRange.value && customRange.value.length === 2) {
+        return { startDate: fmt(customRange.value[0]), endDate: fmt(customRange.value[1]) }
+      }
+      return { startDate: null, endDate: null }
+    default: start.setDate(today.getDate() - 7)
+  }
+  return { startDate: fmt(start), endDate: fmt(end) }
+})
+
+// 加载受时间范围影响的数据（新品追踪 / 报表）
+function loadTimeRangeData() {
+  const { startDate, endDate } = timeRangeDates.value
+  const hasRange = !!(startDate && endDate)
+  // 新品追踪：根据周期重新拉
+  getNewProductTracking(newProductPeriodDays.value).then(res => {
+    newProductTracking.value = res || { metrics: [], list: [] }
+  }).catch(e => console.error('加载新品追踪失败:', e))
+  // 报表传时间区间，覆盖 allFiltered 的 periodSales 与 revenue；浏览/收藏/加购来自 list 不变
+  getProductAnalysisReport({ startDate, endDate }).then(res => {
+    const reportList = Array.isArray(res) ? res : (res && res.records) || []
+    if (reportList.length === 0 && hasRange) {
+      // 有区间但 report 无数据：保留 list 数据，提示用户，期间销量清零
+      ElMessage.warning(`所选区间 ${startDate} ~ ${endDate} 无订单数据，期间销量按 0 显示`)
+      allFiltered.value = allFiltered.value.map(d => ({ ...d, periodSales: 0, revenue: 0 }))
+      total.value = allFiltered.value.length
+      const s = (currentPage.value - 1) * pageSize.value
+      tableData.value = allFiltered.value.slice(s, s + pageSize.value)
+      return
+    }
+    if (reportList.length === 0) {
+      // 无区间时 report 也空：保持原样
+      return
+    }
+    // 按 id 把 report 区间销量合入 list
+    const reportMap = new Map(reportList.map(d => [d.id, d]))
+    allFiltered.value = allFiltered.value.map(d => {
+      const r = reportMap.get(d.id)
+      if (!r) return { ...d, periodSales: 0, revenue: 0 }
+      return {
+        ...d,
+        periodSales: r.periodSales ?? r.sales ?? 0,
+        revenue: r.revenue ?? 0
+      }
+    })
+    total.value = allFiltered.value.length
+    const s = (currentPage.value - 1) * pageSize.value
+    tableData.value = allFiltered.value.slice(s, s + pageSize.value)
+  }).catch(e => {
+    console.error('加载商品报表失败:', e)
+    ElMessage.error('加载商品报表失败，已显示全量商品')
+  })
+}
+
+// 加载不受时间影响的静态分析数据
+async function loadStaticAnalysisData() {
+  const tasks = [
+    getSlowMovingProducts().then(r => { slowMovingProducts.value = r || [] }).catch(e => console.error('滞销加载失败:', e)),
+    getTurnoverOverview().then(r => { turnoverOverview.value = r || { metrics: [], categories: [] } }).catch(e => console.error('流转率加载失败:', e)),
+    getHotSearchKeywords().then(r => { hotSearchKeywords.value = r || [] }).catch(e => console.error('搜索词加载失败:', e)),
+    getReviewAnalysis().then(r => { reviewAnalysis.value = r || {} }).catch(e => console.error('评价分析加载失败:', e)),
+    getReviewKeywords().then(r => { reviewKeywords.value = r || [] }).catch(e => console.error('评价关键词加载失败:', e)),
+    getInventoryHealth().then(r => { inventoryHealth.value = r || { totalStock: 0, healthRate: '0%', items: [] } }).catch(e => console.error('库存健康度加载失败:', e)),
+    getInventoryTurnoverRanking().then(r => { inventoryTurnoverRanking.value = r || [] }).catch(e => console.error('库存周转加载失败:', e))
+  ]
+  await Promise.all(tasks)
+}
+
+// 监听新品周期切换
+watch(newProductPeriodDays, () => {
+  getNewProductTracking(newProductPeriodDays.value).then(res => {
+    newProductTracking.value = res || { metrics: [], list: [] }
+  }).catch(e => console.error('加载新品追踪失败:', e))
+})
+
 // ===== Top 10 商品排行（基于接口数据按销量排序计算） =====
+// 有时间范围时按区间销量排序；无时间范围时按总销量排序。
 const top10Products = computed(() => {
+  const hasRange = (() => {
+    const { startDate, endDate } = timeRangeDates.value
+    return !!(startDate && endDate)
+  })()
   return [...allFiltered.value]
-    .sort((a, b) => (b.sales || 0) - (a.sales || 0))
+    .sort((a, b) => {
+      const av = hasRange ? (a.periodSales || 0) : (a.sales || 0)
+      const bv = hasRange ? (b.periodSales || 0) : (b.sales || 0)
+      return bv - av
+    })
     .slice(0, 10)
     .map((d, i) => ({ ...d, rank: i + 1 }))
 })
+
+// 周转天数显示上限：超过 999 天显示为 999+，避免 UI 撑爆
+function formatTurnoverDays(days) {
+  const n = Number(days) || 0
+  if (n >= 999) return '999+天'
+  return n + '天'
+}
+
+// 趋势柱状图：把后端原始销量数值归一化到 4~100%，避免 height: 120% 撑破容器
+function trendBarHeight(h, trend) {
+  const arr = Array.isArray(trend) ? trend : []
+  if (!arr.length) return '4%'
+  const max = Math.max(...arr, 0)
+  if (!max) return '4%'
+  // 最低 4%，最高 100%
+  return Math.max((Number(h) || 0) * 100 / max, 4) + '%'
+}
 
 // 计算某商品销量占 Top1 销量的比例，用于水平条形图宽度
 function salesPercent(sales) {
@@ -415,139 +573,37 @@ function rankClass(rank) {
 }
 
 // 状态等级映射为设计令牌颜色变量（success/warning/error 与库存 slow/normal/low）
+// 紧缺(low/critical)用更醒目的 critical 色，提示优先级高于滞销
 function stateColor(level) {
   const map = {
     success: 'var(--state-success)',
     warning: 'var(--state-warning)',
     error: 'var(--state-error)',
     danger: 'var(--state-error)',
+    critical: 'var(--state-error)',
     slow: 'var(--state-error)',
     normal: 'var(--state-success)',
-    low: 'var(--state-warning)'
+    low: 'var(--state-error)'
   }
   return map[level] || 'var(--text-800)'
 }
 
-// ===== 以下区块为示例数据（后端暂无对应接口，结构与设计稿一致，接入真实 API 后替换） =====
-// 新品表现追踪示例数据：KPI 指标（含 CSS 趋势柱状图）+ 新品列表
-const NEW_PRODUCT_TRACKING = {
-  metrics: [
-    { label: '新品销量', value: '3,462', change: '+12.5%', up: true, trend: [45, 60, 40, 72, 55, 80, 92] },
-    { label: '新品转化率', value: '6.8%', change: '+0.3%', up: true, trend: [50, 55, 48, 65, 58, 70, 85] }
-  ],
-  list: [
-    { name: '智能宠物饮水机 Pro', launchAt: '2026-07-12', sales: 1286, conversion: '7.2%' },
-    { name: '自动逗猫机器人', launchAt: '2026-07-05', sales: 864, conversion: '6.5%' },
-    { name: '宠物毛发清理滚轮', launchAt: '2026-06-28', sales: 652, conversion: '5.9%' }
-  ]
-}
-// 新品周期切换（示例交互）
-const newProductPeriods = ['近 7 天', '近 14 天', '近 30 天']
-const newProductPeriod = ref('近 7 天')
+// ===== 以下区块数据来自后端接口（已替换原硬编码示例） =====
+// 各 ref 已在文件上方声明并通过 loadStaticAnalysisData / loadTimeRangeData 填充
 
-// 滞销商品预警示例数据：低销量商品列表（danger=红色标签，warning=橙色标签）
-const SLOW_MOVING_PRODUCTS = [
-  { name: '复古皮质狗项圈', stock: 328, sales30: 2, days: 96, level: 'danger' },
-  { name: '夏季薄款宠物T恤', stock: 215, sales30: 5, days: 72, level: 'danger' },
-  { name: '迷你陶瓷宠物食盆', stock: 186, sales30: 8, days: 58, level: 'danger' },
-  { name: '猫用电动剃毛器', stock: 142, sales30: 12, days: 45, level: 'warning' },
-  { name: '宠物车载安全带', stock: 96, sales30: 6, days: 42, level: 'warning' },
-  { name: '宠物冰垫凉席', stock: 267, sales30: 18, days: 38, level: 'warning' }
-]
-
-// 流转率概览示例数据：核心 KPI + 分类流转率排行
-const TURNOVER_RATE = {
-  metrics: [
-    { label: '平均流转率', value: '68.4%' },
-    { label: '加购率', value: '12.7%' },
-    { label: '收藏率', value: '8.3%' }
-  ],
-  categories: [
-    { name: '洗护用品', views: '12.4k', deals: '8.5k', rate: '68.5%', level: 'high' },
-    { name: '主粮', views: '18.2k', deals: '11.9k', rate: '65.4%', level: 'high' },
-    { name: '装备', views: '8.7k', deals: '5.2k', rate: '59.8%', level: 'medium' },
-    { name: '玩具', views: '6.1k', deals: '3.4k', rate: '55.7%', level: 'medium' },
-    { name: '家居', views: '4.3k', deals: '2.1k', rate: '48.9%', level: 'low' }
-  ]
-}
-
-// 热门搜索词 Top 10 示例数据：percent 为相对最大搜索量的条形图宽度
-const HOT_SEARCH_KEYWORDS = [
-  { keyword: '猫粮', count: 3847, cartRate: '18.2%', percent: 100 },
-  { keyword: '狗粮', count: 3126, cartRate: '15.7%', percent: 81.2 },
-  { keyword: '猫砂', count: 2845, cartRate: '22.4%', percent: 73.9 },
-  { keyword: '胸背带', count: 2198, cartRate: '16.8%', percent: 57.1 },
-  { keyword: '宠物洗护', count: 1876, cartRate: '14.3%', percent: 48.8 },
-  { keyword: '猫玩具', count: 1654, cartRate: '19.5%', percent: 43.0 },
-  { keyword: '狗玩具', count: 1423, cartRate: '17.1%', percent: 37.0 },
-  { keyword: '宠物外套', count: 1187, cartRate: '12.8%', percent: 30.9 },
-  { keyword: '牵引绳', count: 986, cartRate: '13.5%', percent: 25.6 },
-  { keyword: '宠物营养', count: 845, cartRate: '10.6%', percent: 22.0 }
-]
-
-// 评价分析概览示例数据：好评/中评/差评 KPI + 评分分布条形图
-const REVIEW_ANALYSIS = {
-  items: [
-    { label: '好评', desc: '占比最高的评价类型', value: '89.2%', color: 'success', icon: '😊' },
-    { label: '中评', desc: '需关注改进的商品体验', value: '7.4%', color: 'warning', icon: '😐' },
-    { label: '差评', desc: '需要紧急处理的问题', value: '3.4%', color: 'error', icon: '🙁' }
-  ],
-  distribution: [
-    { stars: 5, percent: 72 },
-    { stars: 4, percent: 17 },
-    { stars: 3, percent: 6 },
-    { stars: 2, percent: 2 },
-    { stars: 1, percent: 3 }
-  ]
-}
-
-// 高频评价关键词示例数据（标签云，type 对应 el-tag 状态色）
-const HIGH_FREQ_REVIEW_KEYWORDS = [
-  { keyword: '质量好', type: 'success' },
-  { keyword: '快递快', type: 'success' },
-  { keyword: '性价比高', type: 'success' },
-  { keyword: '包装精美', type: 'success' },
-  { keyword: '耐用', type: 'success' },
-  { keyword: '客服好', type: 'success' },
-  { keyword: '偏小', type: 'warning' },
-  { keyword: '物流慢', type: 'warning' },
-  { keyword: '味道大', type: 'danger' },
-  { keyword: '尺寸不准', type: 'danger' }
-]
-
-// 库存健康度概览示例数据：level 对应 slow=滞销 / normal=正常 / low=紧缺
-const INVENTORY_HEALTH = {
-  totalStock: 867,
-  healthRate: '65%',
-  items: [
-    { label: '滞销', count: 156, percent: 18, level: 'slow' },
-    { label: '正常', count: 564, percent: 65, level: 'normal' },
-    { label: '紧缺', count: 147, percent: 17, level: 'low' }
-  ]
-}
-
-// 库存周转天数排行示例数据
-const INVENTORY_TURNOVER_RANKING = [
-  { name: '复古皮质狗项圈', stock: 328, days: 96, level: 'danger' },
-  { name: '夏季薄款宠物T恤', stock: 215, days: 72, level: 'danger' },
-  { name: '迷你陶瓷宠物食盆', stock: 186, days: 58, level: 'warning' },
-  { name: '猫用电动剃毛器', stock: 142, days: 45, level: 'warning' },
-  { name: '高端宠物洗护套装', stock: 89, days: 12, level: 'success' }
-]
-
-// ===== 从API加载KPI和列表数据（保留原逻辑） =====
+// ===== 从API加载KPI和列表数据（保留原逻辑，修复 KPI 总浏览量字段错配）=====
 async function loadData() {
   try {
-    // 并行加载KPI和列表数据
+    // 始终走 list 接口：保证浏览/收藏/加购不受时间筛选影响，且不会被 report 接口的合并逻辑覆盖
     const [kpiRes, listRes] = await Promise.all([
       getProductAnalysisKpi(),
       getProductAnalysisList()
     ])
-    // 填充KPI
+    // 填充KPI（修复原 bug：之前用 totalFavorites 显示为"总浏览量"，现在用后端真实返回的 totalViews）
     if (kpiRes) {
       kpiData.totalProducts = kpiRes.totalProductCount ?? 0
       kpiData.activeProducts = kpiRes.activeProductCount ?? 0
-      kpiData.totalViews = kpiRes.totalFavorites ?? 0
+      kpiData.totalViews = kpiRes.totalViews ?? 0
       kpiData.totalSales = kpiRes.totalSales ?? 0
     }
     // 填充列表
@@ -560,7 +616,9 @@ async function loadData() {
       favorites: d.favorites || 0,
       cartAdds: d.cartAdds || 0,
       sales: d.sales || 0,
-      revenue: d.revenue || (d.price && d.sales ? d.price * d.sales : 0)
+      // 期间销量与收入由 loadTimeRangeData 用 report 接口覆盖；初始为空区间标识 0
+      periodSales: 0,
+      revenue: 0
     }))
     const filtered = mapped.filter(d => {
       const kw = filters.keyword.toLowerCase()
@@ -586,7 +644,12 @@ function handleDetail(row) {
   ElMessage.info('查看商品详情：' + row.productName)
 }
 
-onMounted(() => { loadData() })
+onMounted(() => {
+  // 串行执行：loadData 先拉基础数据 → loadTimeRangeData 用它合并时间范围内的销量 → 再并行拉静态分析
+  loadData()
+    .then(loadTimeRangeData)
+    .then(loadStaticAnalysisData)
+})
 </script>
 
 <style scoped>
@@ -737,7 +800,9 @@ onMounted(() => { loadData() })
 .inventory-health-fill { height: 100%; border-radius: 999px; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; font-size: 11px; font-weight: 700; color: var(--background-50); transition: width 0.6s ease; }
 .inventory-health-fill.slow { background: var(--state-error); }
 .inventory-health-fill.normal { background: var(--state-success); }
-.inventory-health-fill.low { background: var(--state-warning); }
+/* 紧缺用渐变，比 warning 更醒目；零库存场景（最紧急）会用更红的 critical */
+.inventory-health-fill.low { background: linear-gradient(90deg, var(--state-warning), var(--state-error)); }
+.inventory-health-fill.critical { background: var(--state-error); }
 .inventory-health-percent { width: 36px; text-align: right; font-size: 13px; font-weight: 600; color: var(--text-800); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 
 /* 明细表格 */

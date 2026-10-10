@@ -118,6 +118,33 @@ public interface AuthService {
     }
 
     /**
+     * 心跳：用于 APP 端在首页 onShow 等场景上报"今日活跃"信号。
+     * <p>
+     * 行为：
+     * <ol>
+     *   <li>同日幂等：Redis Key {@code auth:heartbeat:{userId}:{yyyyMMdd}} 存在则直接跳过 DB UPDATE,
+     *       避免高并发/频繁 onShow 触发大量冗余写入</li>
+     *   <li>更新 {@code mo_user.last_login_time = now()},与"今日活跃用户"统计口径对齐
+     *       (AdminUserManageServiceImpl.getStats / AdminDashboardServiceImpl 均基于 last_login_time >= today 计数)</li>
+     *   <li>返回今日日期 Key(YYYYMMDD),前端可缓存用于客户端去重,跨日(0 点后下一次心跳)自动重新计数</li>
+     *   <li>不影响 token / 凭证 / 会员等级,纯统计信号</li>
+     * </ol>
+     *
+     * @return 今日 dateKey + 服务端当前时间(epoch millis)
+     */
+    HeartbeatAck heartbeat(Long userId);
+
+    /** 心跳响应 VO */
+    @lombok.Data
+    @lombok.AllArgsConstructor
+    class HeartbeatAck {
+        /** 今日日期 Key(YYYYMMDD),前端本地去重用,跨日会变化 */
+        private String dateKey;
+        /** 服务端当前时间(epoch millis),便于前端校正本地时钟漂移 */
+        private long nowMillis;
+    }
+
+    /**
      * 请求数据导出：1 天内同一账号最多 1 次，超出抛 429。
      * <p>
      * 返回导出请求 ID 与下次可发起时间（epoch 毫秒）。

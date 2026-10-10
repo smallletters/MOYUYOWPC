@@ -37,6 +37,27 @@
           </template>
         </el-table-column>
         <el-table-column prop="content" label="评价内容" min-width="220" show-overflow-tooltip />
+        <el-table-column label="图片" width="120">
+          <template #default="{ row }">
+            <div v-if="row.images && row.images.length" class="thumb-list">
+              <el-image
+                v-for="(img, idx) in row.images.slice(0, 3)"
+                :key="idx"
+                :src="img"
+                :preview-src-list="row.images"
+                :initial-index="idx"
+                fit="cover"
+                class="thumb-image"
+              >
+                <template #error>
+                  <div class="image-error">!</div>
+                </template>
+              </el-image>
+              <span v-if="row.images.length > 3" class="thumb-more">+{{ row.images.length - 3 }}</span>
+            </div>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="审核状态" width="110">
           <template #default="{ row }">
             <el-tag :type="auditTag(row.status)" size="small">{{ auditLabel(row.status) }}</el-tag>
@@ -66,7 +87,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getReviewList, approveReview, rejectReview } from '../api/admin'
+import { getReviewList, approveReview, rejectReview, batchApproveReview } from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
 const currentPage = ref(1)
@@ -94,23 +115,24 @@ function auditLabel(status) {
 // 加载商品评价列表
 async function loadData() {
   try {
-    const res = await getReviewList()
+    // 后端按 status 精确过滤并真分页,客户端仅做 keyword 模糊匹配。
+    // total 必须取后端真实总数,客户端 keyword 过滤不影响 total,保证分页器正确显示"共 N 条"。
+    const res = await getReviewList({
+      page: currentPage.value,
+      size: pageSize.value,
+      status: filters.auditStatus || undefined,
+    })
     const records = toArray(res)
-    // 客户端筛选
+    total.value = Number(res?.total) || records.length
     let list = [...records]
-      const kw = filters.keyword.toLowerCase()
-      if (kw) {
-        list = list.filter(d =>
-          (d.productName || '').toLowerCase().includes(kw) ||
-          (d.userName || '').includes(kw)
-        )
-      }
-      if (filters.auditStatus) {
-        list = list.filter(d => d.status === filters.auditStatus)
-      }
-      total.value = list.length
-      const start = (currentPage.value - 1) * pageSize.value
-      tableData.value = list.slice(start, start + pageSize.value)
+    const kw = filters.keyword.toLowerCase()
+    if (kw) {
+      list = list.filter(d =>
+        (d.productName || '').toLowerCase().includes(kw) ||
+        (d.userName || '').includes(kw)
+      )
+    }
+    tableData.value = list
   } catch (e) {
     ElMessage.error('获取评价列表失败')
   }
@@ -147,12 +169,14 @@ async function handleReject(row) {
 
 async function handleBatchPass() {
   const count = selectedIds.value.length
+  if (count === 0) {
+    return
+  }
   try {
-    // 批量通过选中的评价
-    for (const id of selectedIds.value) {
-      await approveReview(id)
-    }
-    ElMessage.success('批量通过 ' + count + ' 条评价')
+    // 单次请求完成批量审核，避免 N 次串行 PUT。已审结的评价会被后端自动忽略。
+    const res = await batchApproveReview(selectedIds.value)
+    const approved = Number(res?.approved ?? count)
+    ElMessage.success('批量通过 ' + approved + ' 条评价')
     await loadData()
   } catch (e) {
     ElMessage.error('批量操作失败')
@@ -168,4 +192,13 @@ onMounted(() => { loadData() })
 .page-header h2 { font-size: 20px; font-weight: 700; color: var(--text-800); margin: 0; }
 .filter-card { margin-bottom: 16px; }
 .header-actions { display: flex; gap: 8px; }
+
+/* 评价图片缩略图（与 ReviewManage.vue 保持一致） */
+.thumb-list { display: flex; align-items: center; gap: 6px; }
+.thumb-image { width: 40px; height: 40px; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; }
+/* 强制内部 <img> 撑满,避免 fit cover 时只显示一角 */
+.thumb-image :deep(.el-image__inner) { width: 100%; height: 100%; }
+.thumb-more { font-size: 12px; color: var(--text-400); }
+.image-error { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 12px; color: var(--text-400); background: var(--bg-50); }
+.text-muted { color: var(--text-400); }
 </style>

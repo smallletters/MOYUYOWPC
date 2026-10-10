@@ -285,7 +285,16 @@ export default {
     },
 
     onCS() {
-      uni.showToast({ title: t('orderDetail.csComingSoon'), icon: 'none' })
+      // 取订单首个商品作为客服上下文(订单可能含多件商品,这里默认以第一件为代表发起咨询)
+      const firstItem = this.order?.items?.[0] || {}
+      // 用 encodeURIComponent 防止商品名包含特殊字符破坏 query
+      const params = [
+        `productId=${encodeURIComponent(firstItem.productId || '')}`,
+        `productName=${encodeURIComponent(firstItem.productName || '')}`,
+      ]
+      uni.navigateTo({
+        url: `/pages/user/customer-service?${params.join('&')}`,
+      })
     },
   },
 }

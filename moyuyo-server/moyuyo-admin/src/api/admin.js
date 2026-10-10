@@ -381,12 +381,22 @@ export function approveReview(id) {
   return api.put(`/review/${id}/approve`)
 }
 
+// 批量审核通过
+export function batchApproveReview(ids) {
+  return api.post('/review/batch-approve', { ids })
+}
+
 export function rejectReview(id) {
   return api.put(`/review/${id}/reject`)
 }
 
 export function replyReview(id, data) {
   return api.post(`/review/${id}/reply`, data)
+}
+
+// 今日评价审核统计（含昨日对比，用于"今日审核统计"卡片）
+export function getReviewTodayStats() {
+  return api.get('/review/today-stats')
 }
 
 // ==================== 商品管理 ====================
@@ -497,12 +507,44 @@ export function getProductAnalysisKpi() {
   return api.get('/product-analysis/kpi')
 }
 
-export function getProductAnalysisList() {
-  return api.get('/product-analysis/list')
+export function getProductAnalysisList(params) {
+  return api.get('/product-analysis/list', { params })
 }
 
-export function getProductAnalysisReport() {
-  return api.get('/product-analysis/report')
+export function getProductAnalysisReport(params) {
+  return api.get('/product-analysis/report', { params })
+}
+
+export function getNewProductTracking(days = 7) {
+  return api.get('/product-analysis/new-products', { params: { days } })
+}
+
+export function getSlowMovingProducts() {
+  return api.get('/product-analysis/slow-moving')
+}
+
+export function getTurnoverOverview() {
+  return api.get('/product-analysis/turnover')
+}
+
+export function getHotSearchKeywords() {
+  return api.get('/product-analysis/hot-keywords')
+}
+
+export function getReviewAnalysis() {
+  return api.get('/product-analysis/review-analysis')
+}
+
+export function getReviewKeywords() {
+  return api.get('/product-analysis/review-keywords')
+}
+
+export function getInventoryHealth() {
+  return api.get('/product-analysis/inventory-health')
+}
+
+export function getInventoryTurnoverRanking() {
+  return api.get('/product-analysis/inventory-turnover')
 }
 
 // ==================== 价格管理 ====================

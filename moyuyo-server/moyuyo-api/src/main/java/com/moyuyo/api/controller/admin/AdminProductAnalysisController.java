@@ -43,4 +43,52 @@ public class AdminProductAnalysisController {
     List<Map<String, Object>> list = adminProductAnalysisService.report(startDate, endDate);
     return Result.success(list);
   }
+
+  @Operation(summary = "新品表现追踪")
+  @GetMapping("/new-products")
+  public Result<Map<String, Object>> newProducts(@RequestParam(defaultValue = "7") int days) {
+    return Result.success(adminProductAnalysisService.newProductTracking(days));
+  }
+
+  @Operation(summary = "滞销商品预警")
+  @GetMapping("/slow-moving")
+  public Result<List<Map<String, Object>>> slowMoving() {
+    return Result.success(adminProductAnalysisService.slowMovingProducts());
+  }
+
+  @Operation(summary = "流转率概览")
+  @GetMapping("/turnover")
+  public Result<Map<String, Object>> turnover() {
+    return Result.success(adminProductAnalysisService.turnoverOverview());
+  }
+
+  @Operation(summary = "热门搜索词 Top 10")
+  @GetMapping("/hot-keywords")
+  public Result<List<Map<String, Object>>> hotKeywords() {
+    return Result.success(adminProductAnalysisService.hotSearchKeywords());
+  }
+
+  @Operation(summary = "评价分析概览")
+  @GetMapping("/review-analysis")
+  public Result<Map<String, Object>> reviewAnalysis() {
+    return Result.success(adminProductAnalysisService.reviewAnalysis());
+  }
+
+  @Operation(summary = "高频评价关键词")
+  @GetMapping("/review-keywords")
+  public Result<List<Map<String, Object>>> reviewKeywords() {
+    return Result.success(adminProductAnalysisService.reviewKeywords());
+  }
+
+  @Operation(summary = "库存健康度概览")
+  @GetMapping("/inventory-health")
+  public Result<Map<String, Object>> inventoryHealth() {
+    return Result.success(adminProductAnalysisService.inventoryHealth());
+  }
+
+  @Operation(summary = "库存周转天数排行")
+  @GetMapping("/inventory-turnover")
+  public Result<List<Map<String, Object>>> inventoryTurnover() {
+    return Result.success(adminProductAnalysisService.inventoryTurnoverRanking());
+  }
 }

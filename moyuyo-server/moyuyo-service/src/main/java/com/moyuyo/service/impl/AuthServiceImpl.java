@@ -124,6 +124,9 @@ public class AuthServiceImpl implements AuthService {
     private static final long TWO_FACTOR_CODE_EXPIRE_SECONDS = 300;
 
     private static final String REDIS_KEY_REFRESH = "auth:refresh:";
+    // 心跳同日幂等：{userId}:{yyyyMMdd} 存在即视为今日已上报过活跃,避免冗余 UPDATE
+    // TTL 选 48h 是为了给"凌晨 0 点附近"留出 24h 余量,防止跨日竞态下旧 Key 误判
+    private static final String REDIS_KEY_HEARTBEAT = "auth:heartbeat:";
     // 反向索引：userId -> refresh token 集合，用于登出时批量吊销
     private static final String REDIS_KEY_USER_REFRESH = "auth:user-refresh:";
     private static final String REDIS_KEY_BLACKLIST = "auth:blacklist:";
@@ -1424,6 +1427,59 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("Data export requested: userId={}, requestId={}", userId, req.getId());
         return new DataExportAck(req.getId(), DATA_EXPORT_STATUS_PENDING, nowMillis, null);
+    }
+
+    // ==================== 心跳（活跃用户统计信号） ====================
+
+    /**
+     * APP 端首页 onShow 等场景调用，用于把"今天活跃过"写回 lastLoginTime。
+     * <p>
+     * 关键点：
+     * <ul>
+     *   <li>Redis SETNX 当日幂等 Key（{@code auth:heartbeat:{userId}:{yyyyMMdd}}），TTL=48h
+     *       → 同一天多次心跳只产生一次数据库 UPDATE + 第一次 Redis SET</li>
+     *   <li>未拿到锁的并发请求走"读路径"：直接构造返回值返回，不再写库，但同样返回正确的 dateKey，
+     *       让前端缓存命中、避免并发竞态导致 statisactive 漏数</li>
+     *   <li>Redis 不可用时降级 fail-open：直接走 DB UPDATE，保证统计正确性；
+     *       牺牲一点"同日去重"，但不会丢活跃信号</li>
+     *   <li>不影响 token / 凭证 / 注销状态，仅写 last_login_time 字段</li>
+     *   <li>不抛异常给前端调用方（包括用户不存在）：保持纯"上报"语义,
+     *       让 APP 端无需根据业务错误码做不同处理</li>
+     * </ul>
+     */
+    @Override
+    public HeartbeatAck heartbeat(Long userId) {
+        LocalDateTime now = LocalDateTime.now();
+        long nowMillis = now.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        String dateKey = now.toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+        if (userId == null) {
+            // 未登录调用:返回空 dateKey,前端可直接丢弃
+            return new HeartbeatAck(dateKey, nowMillis);
+        }
+
+        String redisKey = REDIS_KEY_HEARTBEAT + userId + ":" + dateKey;
+
+        // 1) Redis SETNX 当日幂等标记(48h 自然过期,跨日自动重新计数)
+        boolean acquired = false;
+        try {
+            Boolean res = redisTemplate.opsForValue().setIfAbsent(redisKey, "1", java.time.Duration.ofHours(48));
+            acquired = Boolean.TRUE.equals(res);
+        } catch (Exception e) {
+            // Redis 不可用:不阻断,fail-open 直接走 DB UPDATE 保证活跃统计正确
+            log.warn("[heartbeat] Redis SETNX 失败,降级直接 UPDATE DB: userId={}", userId, e);
+        }
+
+        // 2) 只有拿到锁(当天第一次心跳)才写库;并发请求跳过避免冗余 UPDATE
+        if (acquired) {
+            UserEntity user = userMapper.selectById(userId);
+            if (user != null) {
+                user.setLastLoginTime(now);
+                userMapper.updateById(user);
+                log.debug("[heartbeat] lastLoginTime updated: userId={}, dateKey={}", userId, dateKey);
+            }
+        }
+
+        return new HeartbeatAck(dateKey, nowMillis);
     }
 
     /**
