@@ -1,1 +1,0 @@
-function e(e={},t={}){let n={...t};function r(t){return e[t]||t||`未知`}function i(e){return n[e]||`info`}return{getStatusText:r,getStatusType:i}}export{e as t};
