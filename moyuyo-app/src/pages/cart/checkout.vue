@@ -602,6 +602,17 @@ export default {
     this.payIconUris = buildPayIconDataUris()
   },
 
+  // 从地址页返回时才会触发（uni-app 中 navigateBack 不会重触发 onLoad）
+  onShow() {
+    const addr = uni.getStorageSync('moyuyo_selected_address')
+    if (!addr || !addr.id) return
+    // 消费后立即清除，避免旧值污染后续进入
+    uni.removeStorageSync('moyuyo_selected_address')
+    this.selectedAddress = addr
+    // 地址已选，推进到支付方式步骤
+    if (this.currentStep < 2) this.currentStep = 2
+  },
+
   // 监听：地址或商品总额变化时，重新拉配送方式 + 运费
   watch: {
     'selectedAddress.id'(newId, oldId) {

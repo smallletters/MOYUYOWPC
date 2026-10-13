@@ -39,7 +39,7 @@
         :selected="selectedId === addr.id"
         :unshippable="isUnshippable(addr)"
         :from-checkout="fromCheckout"
-        @tap="onCardTap"
+        @select="onCardTap"
         @use="onUseAddress"
         @edit="goEdit"
         @delete="onDelete"

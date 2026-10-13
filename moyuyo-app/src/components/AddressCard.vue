@@ -11,7 +11,8 @@
     unshippable - 是否不可发货（命中置灰 + 徽标）
     fromCheckout - 是否来自结算页面（控制"使用"按钮显示）
   Events:
-    tap        - 点击整张卡
+    select     - 点击整张卡（不用 tap：tap 是 uni-app 保留原生事件名，
+                 用作自定义事件名会与根节点原生监听叠加，导致父组件收到事件对象而非地址）
     use        - 点击"使用"按钮（结算模式）
     edit       - 点击"编辑"
     delete     - 点击"删除"
@@ -21,7 +22,7 @@
   <view
     class="card address-card"
     :class="{ active: selected, disabled: unshippable }"
-    @click="$emit('tap', addr)"
+    @click="(e) => $emit('select', addr)"
   >
     <!-- 左侧色条 / 选中态视觉锚 -->
     <view class="address-card-rail" />
@@ -85,7 +86,7 @@ export default {
     unshippable: { type: Boolean, default: false },
     fromCheckout: { type: Boolean, default: false },
   },
-  emits: ['tap', 'use', 'edit', 'delete', 'setDefault'],
+  emits: ['select', 'use', 'edit', 'delete', 'setDefault'],
   methods: {
     formatPhone(phone) {
       if (!phone) return ''
