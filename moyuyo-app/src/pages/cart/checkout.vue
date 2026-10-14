@@ -1011,19 +1011,19 @@ export default {
 }
 
 .nav-back:active {
-  background: #f0f0f0;
+  background: var(--color-background);
 }
 .nav-title {
   font-size: 32rpx;
   font-weight: 700;
-  color: #2e2b29;
+  color: var(--color-text);
   letter-spacing: 0.5rpx;
   flex: 1;
 }
 
 .nav-step {
   font-size: 22rpx;
-  color: #6e6e73;
+  color: var(--color-text-secondary);
   letter-spacing: 1rpx;
   flex-shrink: 0;
 }
@@ -1032,11 +1032,11 @@ export default {
 .progress-bar {
   display: flex;
   width: 100%;
-  background: var(--color-surface, #fff);
+  background: var(--color-surface);
   padding: 16rpx 24rpx 20rpx;
   box-sizing: border-box;
   gap: 8rpx;
-  border-bottom: 1rpx solid #e7e7e7;
+  border-bottom: 1rpx solid var(--color-divider);
 }
 
 .progress-dot {
@@ -1057,20 +1057,20 @@ export default {
   left: calc(50% + 20rpx);
   right: calc(-50% + 20rpx);
   height: 2rpx;
-  background: #e7e7e7;
+  background: var(--color-divider);
 }
 
 .progress-dot.done:not(:last-child)::after,
 .progress-dot.active:not(:last-child)::after {
-  background: #f0c14b;
+  background: var(--color-primary);
 }
 
 .dot-circle {
   width: 36rpx;
   height: 36rpx;
   border-radius: 50%;
-  border: 2rpx solid #e7e7e7;
-  background: #fff;
+  border: 2rpx solid var(--color-divider);
+  background: var(--color-surface);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1079,15 +1079,16 @@ export default {
 }
 
 .progress-dot.active .dot-circle {
-  border-color: #f0c14b;
-  background: #f0c14b;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
 }
 
 .progress-dot.done .dot-circle {
-  border-color: #f0c14b;
-  background: #f0c14b;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
 }
 
+/* 圆点为浅金底色，文字固定深色保证对比度 */
 .dot-check {
   color: #2e2b29;
   font-size: 22rpx;
@@ -1096,7 +1097,7 @@ export default {
 }
 
 .dot-num {
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
   font-size: 22rpx;
   font-weight: 600;
   line-height: 1;
@@ -1108,7 +1109,7 @@ export default {
 
 .dot-label {
   font-size: 20rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
   letter-spacing: 0.5rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1118,7 +1119,7 @@ export default {
 }
 
 .progress-dot.active .dot-label {
-  color: #2e2b29;
+  color: var(--color-text);
   font-weight: 600;
 }
 
@@ -1135,12 +1136,12 @@ export default {
 /* 通用块 —— 白底卡片 */
 .block {
   width: 100%;
-  background: var(--color-surface, #fff);
+  background: var(--color-surface);
   border-radius: 6rpx;
   margin-bottom: 16rpx;
   box-sizing: border-box;
   overflow: hidden;
-  box-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-sm);
 }
 
 .block-head {
@@ -1149,7 +1150,7 @@ export default {
   width: 100%;
   padding: 20rpx 24rpx;
   box-sizing: border-box;
-  border-bottom: 1rpx solid #e7e7e7;
+  border-bottom: 1rpx solid var(--color-divider);
   gap: 12rpx;
 }
 
@@ -1157,7 +1158,7 @@ export default {
   flex: 1;
   font-size: 28rpx;
   font-weight: 700;
-  color: #2e2b29;
+  color: var(--color-text);
   letter-spacing: 0.5rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1180,7 +1181,7 @@ export default {
 .block-divider {
   width: 100%;
   height: 1rpx;
-  background: #e7e7e7;
+  background: var(--color-divider);
 }
 
 .block-sub {
@@ -1193,7 +1194,7 @@ export default {
   display: block;
   font-size: 24rpx;
   font-weight: 600;
-  color: #2e2b29;
+  color: var(--color-text);
   margin-bottom: 16rpx;
 }
 
@@ -1208,19 +1209,19 @@ export default {
 .addr-name {
   font-size: 28rpx;
   font-weight: 700;
-  color: #2e2b29;
+  color: var(--color-text);
 }
 
 .addr-detail {
   font-size: 26rpx;
-  color: #2e2b29;
+  color: var(--color-text);
   line-height: 1.5;
   word-break: break-word;
 }
 
 .addr-phone {
   font-size: 24rpx;
-  color: #6e6e73;
+  color: var(--color-text-secondary);
   margin-top: 4rpx;
 }
 
@@ -1246,7 +1247,7 @@ export default {
   padding: 20rpx 24rpx;
   box-sizing: border-box;
   gap: 20rpx;
-  border-bottom: 1rpx solid #f0f0f0;
+  border-bottom: 1rpx solid var(--color-divider);
   transition: background 0.15s ease;
 }
 
@@ -1254,50 +1255,51 @@ export default {
   border-bottom: none;
 }
 
+/* 选中态：金色半透明叠加，浅色/深色底都保持可读 */
 .pay-row.active {
-  background: #fff8e3;
+  background: rgba(219, 201, 138, 0.22);
 }
 
 .pay-radio {
   width: 36rpx;
   height: 36rpx;
   border-radius: 50%;
-  border: 2rpx solid #aeaeb2;
+  border: 2rpx solid var(--color-text-tertiary);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: #fff;
+  background: var(--color-surface);
 }
 
 .pay-row.active .pay-radio {
-  border-color: #f0c14b;
+  border-color: var(--color-primary);
 }
 
 .pay-radio-dot {
   width: 20rpx;
   height: 20rpx;
   border-radius: 50%;
-  background: #f0c14b;
+  background: var(--color-primary);
 }
 
 .pay-icon-box {
   width: 80rpx;
   height: 56rpx;
-  border: 1rpx solid #d5d5d5;
+  border: 1rpx solid var(--color-divider);
   border-radius: 6rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;
+  background: var(--color-surface);
   flex-shrink: 0;
   padding: 4rpx;
   box-sizing: border-box;
 }
 
 .pay-row.active .pay-icon-box {
-  background: #fff;
-  border-color: #f0c14b;
+  background: var(--color-surface);
+  border-color: var(--color-primary);
 }
 
 /* 真实支付方式图标:填满容器，保持原始比例 */
@@ -1310,7 +1312,7 @@ export default {
 .pay-icon-text {
   font-size: 20rpx;
   font-weight: 700;
-  color: #2e2b29;
+  color: var(--color-text);
   letter-spacing: 0.5rpx;
 }
 
@@ -1325,7 +1327,7 @@ export default {
 .pay-name {
   font-size: 26rpx;
   font-weight: 600;
-  color: #2e2b29;
+  color: var(--color-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1333,7 +1335,7 @@ export default {
 
 .pay-desc {
   font-size: 22rpx;
-  color: #6e6e73;
+  color: var(--color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1351,7 +1353,7 @@ export default {
   padding: 20rpx 0;
   box-sizing: border-box;
   gap: 20rpx;
-  border-bottom: 1rpx solid #f0f0f0;
+  border-bottom: 1rpx solid var(--color-divider);
 }
 
 .item-row:last-child {
@@ -1362,7 +1364,7 @@ export default {
   width: 120rpx;
   height: 120rpx;
   border-radius: 4rpx;
-  background: #f7f7f7;
+  background: var(--color-background);
   flex-shrink: 0;
 }
 
@@ -1384,12 +1386,12 @@ export default {
 
 .item-qty {
   font-size: 22rpx;
-  color: #6e6e73;
+  color: var(--color-text-secondary);
 }
 
 .item-seller {
   font-size: 22rpx;
-  color: #6e6e73;
+  color: var(--color-text-secondary);
 }
 
 .item-stock {
@@ -1422,7 +1424,7 @@ export default {
 .item-price {
   font-size: 28rpx;
   font-weight: 700;
-  color: #2e2b29;
+  color: var(--color-text);
 }
 
 /* 配送行 */
@@ -1439,23 +1441,23 @@ export default {
   width: 32rpx;
   height: 32rpx;
   border-radius: 50%;
-  border: 2rpx solid #aeaeb2;
+  border: 2rpx solid var(--color-text-tertiary);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: #fff;
+  background: var(--color-surface);
 }
 
 .ship-row.active .ship-radio {
-  border-color: #f0c14b;
+  border-color: var(--color-primary);
 }
 
 .ship-radio-dot {
   width: 18rpx;
   height: 18rpx;
   border-radius: 50%;
-  background: #f0c14b;
+  background: var(--color-primary);
 }
 
 .ship-info {
@@ -1467,20 +1469,20 @@ export default {
   display: block;
   font-size: 26rpx;
   font-weight: 500;
-  color: #2e2b29;
+  color: var(--color-text);
 }
 
 .ship-time {
   display: block;
   font-size: 22rpx;
-  color: #6e6e73;
+  color: var(--color-text-secondary);
   margin-top: 4rpx;
 }
 
 .ship-price {
   font-size: 26rpx;
   font-weight: 700;
-  color: #2e2b29;
+  color: var(--color-text);
   flex-shrink: 0;
 }
 .ship-price-free {
@@ -1492,7 +1494,7 @@ export default {
   padding: 20rpx 0;
   text-align: center;
   font-size: 24rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
 }
 /* 未达免邮门槛提示：Amazon 风格橙色小字 */
 .ship-shortby {
@@ -1524,13 +1526,13 @@ export default {
 
 .reward-label {
   font-size: 26rpx;
-  color: #2e2b29;
+  color: var(--color-text);
   font-weight: 500;
 }
 
 .reward-sub {
   font-size: 22rpx;
-  color: #6e6e73;
+  color: var(--color-text-secondary);
 }
 
 .reward-right {
@@ -1548,20 +1550,21 @@ export default {
 
 .reward-placeholder {
   font-size: 24rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
 }
 
 /* 自动选中的副标题与 Auto 标签 */
 .reward-sub-active {
-  color: #2e2b29;
+  color: var(--color-text);
   font-weight: 500;
 }
 
+/* Auto 标签为金色底，文字固定深色保证对比度 */
 .reward-sub-tag {
   display: inline-block;
   margin-left: 8rpx;
   padding: 2rpx 10rpx;
-  background: #f0c14b;
+  background: var(--color-primary);
   color: #2e2b29;
   font-size: 18rpx;
   font-weight: 700;
@@ -1581,7 +1584,7 @@ export default {
 
 .chev {
   font-size: 32rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
   line-height: 1;
 }
 
@@ -1601,7 +1604,7 @@ export default {
 .coupon-popup {
   width: 100%;
   max-height: 80vh;
-  background: #fff;
+  background: var(--color-surface);
   border-radius: 24rpx 24rpx 0 0;
   display: flex;
   flex-direction: column;
@@ -1614,14 +1617,14 @@ export default {
   align-items: center;
   justify-content: center;
   height: 88rpx;
-  border-bottom: 1rpx solid #eee;
+  border-bottom: 1rpx solid var(--color-divider);
   flex-shrink: 0;
 }
 
 .cp-title {
   font-size: 30rpx;
   font-weight: 600;
-  color: #2e2b29;
+  color: var(--color-text);
 }
 
 .cp-close {
@@ -1630,7 +1633,7 @@ export default {
   top: 50%;
   transform: translateY(-50%);
   font-size: 32rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
   padding: 8rpx 16rpx;
 }
 
@@ -1648,14 +1651,14 @@ export default {
 
 .cp-empty-text {
   font-size: 26rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
 }
 
 .cp-item {
   display: flex;
   align-items: stretch;
-  background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
-  border: 1rpx solid #f0d0d0;
+  background: var(--color-background);
+  border: 1rpx solid var(--color-divider);
   border-radius: 16rpx;
   margin-bottom: 16rpx;
   overflow: hidden;
@@ -1663,8 +1666,8 @@ export default {
 }
 
 .cp-item.cp-disabled {
-  background: #f5f5f5;
-  border-color: #e0e0e0;
+  background: var(--color-background);
+  border-color: var(--color-divider);
   opacity: 0.6;
 }
 
@@ -1714,7 +1717,7 @@ export default {
 .cp-name {
   font-size: 26rpx;
   font-weight: 500;
-  color: #2e2b29;
+  color: var(--color-text);
 }
 
 .cp-desc {
@@ -1724,7 +1727,7 @@ export default {
 
 .cp-expire {
   font-size: 20rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
 }
 
 .cp-check {
@@ -1743,14 +1746,14 @@ export default {
   top: 50%;
   transform: translateY(-50%);
   font-size: 20rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
   max-width: 200rpx;
   text-align: right;
 }
 
 .cp-footer {
   padding: 16rpx 24rpx 24rpx;
-  border-top: 1rpx solid #eee;
+  border-top: 1rpx solid var(--color-divider);
   flex-shrink: 0;
 }
 
@@ -1759,10 +1762,10 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1rpx solid #d5d5d5;
+  border: 1rpx solid var(--color-divider);
   border-radius: 40rpx;
   font-size: 26rpx;
-  color: #2e2b29;
+  color: var(--color-text);
 }
 
 .cp-none-btn.cp-none-active {
@@ -1776,10 +1779,11 @@ export default {
   box-sizing: border-box;
   min-height: 120rpx;
   padding: 16rpx;
-  background: #f7f7f7;
+  background: var(--color-background);
   border-radius: 4rpx;
   font-size: 26rpx;
-  border: 1rpx solid #d5d5d5;
+  color: var(--color-text);
+  border: 1rpx solid var(--color-divider);
   line-height: 1.5;
 }
 
@@ -1799,21 +1803,21 @@ export default {
 
 .sum-label {
   font-size: 24rpx;
-  color: #2e2b29;
+  color: var(--color-text);
   flex-shrink: 0;
 }
 
 .sum-value {
   font-size: 26rpx;
   font-weight: 500;
-  color: #2e2b29;
+  color: var(--color-text);
   text-align: right;
 }
 
 .sum-total {
   margin-top: 12rpx;
   padding-top: 16rpx;
-  border-top: 1rpx solid #e7e7e7;
+  border-top: 1rpx solid var(--color-divider);
 }
 
 .sum-total-label {
@@ -1843,12 +1847,12 @@ export default {
   display: flex;
   align-items: center;
   width: 100%;
-  background: var(--color-surface, #fff);
+  background: var(--color-surface);
   padding: 16rpx 32rpx 20rpx;
   box-sizing: border-box;
   gap: 24rpx;
-  border-top: 1rpx solid #e7e7e7;
-  box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.04);
+  border-top: 1rpx solid var(--color-divider);
+  box-shadow: var(--shadow-md);
   z-index: 100;
 }
 
@@ -1862,7 +1866,7 @@ export default {
 
 .bottom-total-label {
   font-size: 22rpx;
-  color: #6e6e73;
+  color: var(--color-text-secondary);
   letter-spacing: 0.5rpx;
 }
 
@@ -1874,8 +1878,8 @@ export default {
 }
 
 .place-btn {
-  background: #f0c14b;
-  border: 1rpx solid #a88734;
+  background: var(--color-primary);
+  border: 1rpx solid var(--color-primary-dark);
   border-radius: 6rpx;
   padding: 20rpx 32rpx;
   box-shadow: 0 1rpx 0 rgba(255, 255, 255, 0.4) inset;
@@ -1886,18 +1890,18 @@ export default {
 }
 
 .place-btn:active {
-  background: #ddb347;
+  background: var(--color-primary-dark);
   transform: translateY(1rpx);
 }
 /* 不可发货地址 / 提交中：禁用按钮，避免重复点击 */
 .place-btn.place-btn-disabled {
-  background: #d5d5d5;
-  border-color: #c0c0c0;
+  background: var(--color-text-tertiary);
+  border-color: var(--color-text-tertiary);
   cursor: not-allowed;
   pointer-events: none;
 }
 .place-btn.place-btn-disabled:active {
-  background: #d5d5d5;
+  background: var(--color-text-tertiary);
   transform: none;
 }
 /* 不可发货地址行：浅红边框 + 红字提示 */
@@ -1912,10 +1916,65 @@ export default {
   font-weight: 600;
 }
 
+/* 主色按钮为浅金底色，文字固定深色保证对比度 */
 .place-btn-text {
   font-size: 28rpx;
   font-weight: 700;
   color: #2e2b29;
   letter-spacing: 0.5rpx;
+}
+
+/* ===== 深色模式 =====
+ * 上面的亚马逊品牌色（青蓝 / 橙红 / 深绿）是为浅底设计的，
+ * 深色底上对比度不足，这里统一提亮。
+ * 中性色已全部走 --color-* 变量，无需在此重复。
+ */
+.theme-dark {
+  /* 青蓝：链接、商品名、Remove */
+  .block-action,
+  .addr-empty-text,
+  .item-name,
+  .reward-remove {
+    color: #6fc7da;
+  }
+
+  /* 橙红：价格合计、抵扣、不可发货提示 */
+  .ship-shortby,
+  .reward-active,
+  .sum-total-label,
+  .sum-total-value,
+  .bottom-total-price,
+  .addr-warn-text {
+    color: #f08a5d;
+  }
+  .addr-line.addr-unshippable {
+    border-left-color: #f08a5d;
+  }
+
+  /* 深绿：有货、FREESHIP */
+  .stock-text,
+  .ship-price-free {
+    color: #6bbf9c;
+  }
+  .stock-dot {
+    background: #6bbf9c;
+  }
+
+  /* 优惠券弹窗红/灰元素 */
+  .cp-desc,
+  .cp-check,
+  .cp-none-btn.cp-none-active {
+    color: #f08a5d;
+  }
+  .cp-item.cp-selected {
+    border-color: #f08a5d;
+    box-shadow: 0 0 0 2rpx #f08a5d inset;
+  }
+  .cp-item-left {
+    background: #a8432a;
+  }
+  .cp-item.cp-disabled .cp-item-left {
+    background: #5a534c;
+  }
 }
 </style>

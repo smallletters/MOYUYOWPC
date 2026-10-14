@@ -12,17 +12,36 @@ import { setStorage, getStorage, STORAGE_KEYS } from '@/utils/storage'
 
 const VALID_MODES = ['light', 'dark', 'system']
 
-// 把存储的 mode 映射到"当前是否启用深色"(system 时跟随系统)
-function resolveDarkMode(mode) {
-  if (mode === 'dark') return true
-  if (mode === 'light') return false
-  // system: 仅 H5 能查询;其他端按 light 处理,后续 onShow 监听会刷新
+// 系统主题监听是否已注册（模块级幂等标记，避免 onLaunch 重复注册）
+let _systemWatcherStarted = false
+
+/**
+ * 读取"系统当前是否为深色"。
+ * - H5：matchMedia 天然跟随系统
+ * - App / 小程序：必须在 manifest.json 对应平台开启 darkmode:true，
+ *   uni.getSystemInfoSync().theme 才会返回 'light' | 'dark'；
+ *   未开启时 theme 为 undefined，这里按浅色兜底。
+ */
+function readSystemDark() {
   // #ifdef H5
   if (typeof window !== 'undefined' && window.matchMedia) {
     return !!window.matchMedia('(prefers-color-scheme: dark)').matches
   }
   // #endif
-  return false
+  try {
+    const info = uni.getSystemInfoSync ? uni.getSystemInfoSync() : null
+    return !!info && info.theme === 'dark'
+  } catch (e) {
+    console.warn('[theme] readSystemDark failed', e)
+    return false
+  }
+}
+
+// 把存储的 mode 映射到"当前是否启用深色"(system 时跟随系统)
+function resolveDarkMode(mode) {
+  if (mode === 'dark') return true
+  if (mode === 'light') return false
+  return readSystemDark()
 }
 
 export const useThemeStore = defineStore('theme', {
@@ -78,6 +97,38 @@ export const useThemeStore = defineStore('theme', {
         this.darkMode = next
         this.applyTheme()
       }
+    },
+
+    /**
+     * 注册系统主题变化监听，实现 system 模式的实时跟随。
+     * 在 App.vue onLaunch 调用一次即可（模块级幂等，重复调用直接返回）。
+     */
+    startSystemWatcher() {
+      if (_systemWatcherStarted) return
+
+      // App 端必须先开启"跟随系统主题"，否则收不到主题切换事件
+      // #ifdef APP-PLUS
+      try {
+        if (typeof plus !== 'undefined' && plus.nativeUI && plus.nativeUI.setUIStyle) {
+          plus.nativeUI.setUIStyle('auto')
+        }
+      } catch (e) {
+        console.warn('[theme] setUIStyle(auto) failed', e)
+      }
+      // #endif
+
+      // onThemeChange 仅 H5 / App / 微信小程序等部分平台支持，其他端静默跳过
+      if (typeof uni === 'undefined' || typeof uni.onThemeChange !== 'function') return
+      _systemWatcherStarted = true
+
+      uni.onThemeChange((res) => {
+        // 非 system 模式（强制浅色/深色）不跟随系统
+        if (this.mode !== 'system') return
+        const next = !!(res && res.theme === 'dark')
+        if (next === this.darkMode) return
+        this.darkMode = next
+        this.applyTheme()
+      })
     },
   },
 })

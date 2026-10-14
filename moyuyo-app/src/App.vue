@@ -155,6 +155,8 @@ export default {
     // 主题初始化
     const themeStore = useThemeStore()
     themeStore.applyTheme()
+    // system 模式下注册系统主题变化监听（App 端需先 setUIStyle('auto') 才能收到事件）
+    themeStore.startSystemWatcher()
 
     // 校验已保存的 Token 是否有效
     const userStore = useUserStore()
@@ -183,6 +185,9 @@ export default {
     // APP 端：从后台回到前台时，重新确保 scheme 监听存在
     // （例如 iPhone 用户用 Apple Pay 后切回来，iOS 会用 scheme 打开一次 APP）
     ensureSchemeRegistered()
+    // system 模式下补同步一次系统主题：
+    // APP 退到后台期间部分平台不派发 onThemeChange，回前台按当前系统主题重算一遍
+    useThemeStore().refreshFromSystem()
     // 从后台切回前台时主动探活：避免页面 onShow 才发请求导致 OS 网络栈 keep-alive
     // 失效直接 fail（30 分钟后台切回的典型场景）。先发一个轻量请求预热：
     // 1) 触发 request.js 的 fail 分支探测网络 → 必要时重试一次

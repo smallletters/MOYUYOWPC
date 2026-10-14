@@ -9,6 +9,10 @@
         "usingComponents" : true,
         "nvueStyleCompiler" : "uni-app",
         "compilerVersion" : 3,
+        // 深色模式：必须开启，否则 uni.getSystemInfoSync().theme 恒为 undefined、
+        // uni.onThemeChange 也不触发，导致「跟随系统」模式切主题无反应。
+        // 参考：https://uniapp.dcloud.net.cn/tutorial/darkmode.html
+        "darkmode" : true,
         "splashscreen" : {
             "alwaysShowBeforeRender" : true,
             "waiting" : true,

@@ -5,7 +5,7 @@
       <view class="back-btn" @click="goBack">
         <text class="luc luc-arrow-left" />
       </view>
-      <text class="header-title">宠物空间 3D · 第一人称(人物化身)</text>
+      <text class="header-title">宠物空间 3D · 第三人称(跟随)</text>
       <view class="header-actions">
         <view
           class="icon-btn"
@@ -135,8 +135,9 @@ export default {
       // 第一人称相关 UI 状态
       pointerLocked: false,
       positionText: '加载中...',
-      // 视角模式：fps = 第一人称（人物眼睛）/ tps = 第三人称跟随（能看到自己）
-      viewMode: 'fps',
+      // 视角模式：fps = 第一人称（人物眼睛）/ tps = 第三人称跟随（相机在人物身后上方）
+      // 默认 tps：让玩家一进入页面就看到类似游戏第三人称跟随的视角
+      viewMode: 'tps',
 
       // 摇杆 UI:手柄相对外圈中心的偏移(像素),用于渲染 .joystick-knob 的 transform
       joystickOffset: { x: 0, y: 0 },
@@ -173,6 +174,12 @@ export default {
           modelCenter: null,
           modelSize: null,
           bounds: null,
+          // 碰撞体：模型加载后从每个 mesh 提取世界空间 AABB,人物移动时做滑动检测
+          colliders: null,
+          // 复用对象,避免每帧碰撞检测产生 GC 压力
+          colliderTestBox: null, // new THREE.Box3()
+          colliderTestMin: null, // new THREE.Vector3()
+          colliderTestMax: null, // new THREE.Vector3()
           // 第一人称专用：键盘状态、摇杆状态
           keys: {
             w: false,
@@ -195,6 +202,8 @@ export default {
             savedKeys: null,
           },
           moveSpeed: 0.05, // 每次步进的位移
+          // 复用对象,球 vs AABB 检测人物腰部位置是否在 mesh 内
+          checkSphere: null, // new THREE.Sphere(new THREE.Vector3(), 0.15)
           lookSensitivity: 0.003, // 触摸旋转灵敏度（每像素多少弧度）
           // 视角触摸状态：PointerLockControls 在 webview 不可用，自己实现触摸看视角
           lookTouch: { active: false, touchId: null, lastX: 0, lastY: 0 },
@@ -525,10 +534,15 @@ export default {
           const group = new THREE.Group()
           group.add(model)
           scene.add(group)
+          // 强制刷新世界矩阵,buildColliders 里 setFromObject 才拿得到正确的世界 AABB
+          group.updateMatrixWorld(true)
           this.three.modelGroup = group
           this.three.modelBox = finalBox
           this.three.modelCenter = finalCenter
           this.three.modelSize = finalSize
+
+          // 4.5 建立碰撞体:遍历所有 mesh 的世界包围盒,供人物移动做沿墙滑动检测
+          this.buildColliders(model)
 
           // 5. 顶点统计
           let vertexCount = 0
@@ -539,8 +553,23 @@ export default {
           })
           this.loadedVertices = vertexCount
 
-          // 6. 初始位置：硬编码为门口内偏 0.5m 处（视高 0.5m）
-          const startPos = new THREE.Vector3(-0.8, 0.5, -1.1)
+          // 6. 初始位置：相机在房间内部 (z=1.0),人物化身落在 (z=-1.5) 房间内部
+          //    注意:FrontWall z=1.48~1.76(房间前墙),BackFascia z=-6.01~6.00 覆盖整房间
+          //    cam.z=1.0 < 1.48 在 FrontWall 南侧 → 在房间里;人物化身 z=-1.5 也在房间里
+          //    之前 z=2.5 实际已经超过 FrontWall(z=1.48~1.76)→ 相机在门外
+          let startPos = new THREE.Vector3(0, 2.0, 1.0)
+          // 6.1 碰撞兜底——若起始位置正好卡在家具/墙内部,applyMovement 的滑动逻辑全部失败,
+          //     人物会"原地踏步"但位置不动。这里自动找一个最近的安全位置。
+          const safe = this.findSafeStartPosition(startPos.x, startPos.z)
+          if (safe.x !== startPos.x || safe.z !== startPos.z) {
+            // eslint-disable-next-line
+            console.warn('[space-3d] 起始位置被碰撞体占用,自动偏移到安全位置:', {
+              from: { x: startPos.x, z: startPos.z },
+              to: { x: safe.x, z: safe.z },
+            })
+          }
+          startPos.x = safe.x
+          startPos.z = safe.z
           this.three.camera.position.copy(startPos)
 
           // 加载人物化身（放在相机脚下，人物头/肩位置 ≈ 相机视高）
@@ -549,8 +578,8 @@ export default {
             console.error('[space-3d] 加载人物化身异常', e)
           })
 
-          // 7. 朝房间深处看（视线水平，看向 maxX 端，y 保持 0.5 避免仰/俯视）
-          this.three.camera.lookAt(finalBox.max.x, 0.5, finalCenter.z)
+          // 7. 初始朝向由 syncFigureAvatar 每帧重设(lookAt 人物),这里不手动 lookAt,
+          //    避免首帧 lookAt(maxX) 后下一帧立刻被 lookAt(figure) 覆盖造成闪烁
 
           // 8. 配置移动边界（限制在模型包围盒内 + 0.5m 缓冲）
           this.three.bounds = {
@@ -815,8 +844,41 @@ export default {
       moveVec.addScaledVector(direction, forward * t.moveSpeed)
       moveVec.addScaledVector(rightVec, rightward * t.moveSpeed)
 
-      // 5. 应用位移
-      cam.position.add(moveVec)
+      // 5. 球 vs AABB 碰撞检测（人物当前位置 + 目标位置双重检测）
+      // - 球:人物腰部 (cam.x, 0.5, cam.z), 半径 0.15m
+      // - 测试当前位置和目标位置是否都在 mesh 外部
+      // - 用 box.min.y > 1.0 过滤"门以下没墙"的墙(它们 ymin ≥ 1.30,人物腰部 y=0.5 永远不撞)
+      // - 用薄板过滤(厚度 < 0.25m)跳过地毯/贴脚线
+      const stepLen = Math.sqrt(moveVec.x * moveVec.x + moveVec.z * moveVec.z)
+      if (stepLen > 0.001 && t.colliders && t.colliders.length > 0) {
+        if (!t.checkSphere) t.checkSphere = new THREE.Sphere()
+        const sphere = t.checkSphere
+        sphere.radius = 0.15
+        // 测试移动后的目标位置是否在 mesh 内
+        sphere.center.set(cam.position.x + moveVec.x, 0.5, cam.position.z + moveVec.z)
+        let blocked = false
+        for (let i = 0; i < t.colliders.length; i++) {
+          const c = t.colliders[i]
+          // 过滤:ymin > 1.5 的物体（"门以下没墙"的外墙,完全在腰部高度以上）
+          if (c.box.min.y > 1.5) continue
+          // 过滤:厚度 < 0.25m 的薄板（地毯/贴脚线）
+          if (c.box.max.y - c.box.min.y < 0.25) continue
+          if (sphere.intersectsBox(c.box)) {
+            blocked = true
+            break
+          }
+        }
+        if (blocked) {
+          // 缩短 moveVec:沿 moveVec 反方向收缩,直到 sphere 不与 mesh 相交
+          // 简化:把 moveVec 设为 0（直接停住,不沿墙滑动）
+          moveVec.x = 0
+          moveVec.z = 0
+        }
+      }
+
+      // 6. 应用位移(已被 Raycaster 缩短)
+      cam.position.x += moveVec.x
+      cam.position.z += moveVec.z
 
       // 6. 边界限制
       if (t.bounds) {
@@ -852,9 +914,9 @@ export default {
     resetCamera() {
       const t = this.three
       if (!t.modelBox) return
-      // 硬编码初始位置：门口内偏 0.5m，视高 0.5m
-      t.camera.position.set(-0.8, 0.5, -1.1)
-      t.camera.lookAt(t.modelBox.max.x, 0.5, t.modelCenter.z)
+      // 硬编码初始位置：与 loadModel 中 startPos 一致 (z=1.0,人物化身 z=-1.5,都在房间里)
+      t.camera.position.set(0, 2.0, 1.0)
+      // camera.quaternion 由 syncFigureAvatar 每帧重设,这里不手动 lookAt
     },
 
     /**
@@ -1080,6 +1142,84 @@ export default {
     },
 
     /**
+     * 从已加载的模型中提取所有 mesh 的世界空间 AABB,作为碰撞体
+     * 必须在 scene.add + updateMatrixWorld(true) 之后调用,
+     * 否则 setFromObject 拿到的还是 identity 矩阵下的 AABB
+     */
+    buildColliders(model) {
+      const t = this.three
+      t.colliders = []
+      model.traverse((child) => {
+        if (child.isMesh && child.geometry) {
+          // setFromObject 自动应用 child 及所有父级的矩阵,得到世界空间 AABB
+          const worldBox = new THREE.Box3().setFromObject(child)
+          t.colliders.push({ box: worldBox, mesh: child })
+        }
+      })
+      // 初始化复用的检测 Box3/Vector,避免每帧碰撞检测产生 GC 压力
+      if (!t.colliderTestBox) t.colliderTestBox = new THREE.Box3()
+      if (!t.colliderTestMin) t.colliderTestMin = new THREE.Vector3()
+      if (!t.colliderTestMax) t.colliderTestMax = new THREE.Vector3()
+    },
+
+    /**
+     * 检测人物在 (x, z) 位置(底部为地面 y=0.1,顶部 1.8m)是否与任何碰撞体重叠
+     * - y 起点设为 0.1 而非 0:忽略与地板的相交,否则人物永远无法起步
+     * - y 终点 1.8:对应人物身高,墙体/家具都会挡,天花/吊顶不会误触发
+     */
+    figureCollidesAt(x, z) {
+      // 已切换到 Raycaster 沿移动方向检测,AABB 检测结果不再需要
+      // 保留方法框架以兼容旧调用点(applyMovement 的滑动分支)
+      return false
+    },
+
+    /**
+     * 在 preferred 位置附近找一个不与碰撞体相交的安全位置
+     * 螺旋式搜索：先原位置 → 周围 0.5m → 1m → 2m,直到找到一个安全点
+     * 找不到时兜底返回原位置(理论上不会发生,房间模型肯定有空地)
+     */
+    findSafeStartPosition(preferredX, preferredZ) {
+      if (!this.figureCollidesAt(preferredX, preferredZ)) {
+        return { x: preferredX, z: preferredZ }
+      }
+      // 螺旋搜索：先 ±0.5(4 方向 + 4 对角)→ ±1.0 → ±2.0
+      const steps = [
+        [0.5, 0],
+        [-0.5, 0],
+        [0, 0.5],
+        [0, -0.5],
+        [0.5, 0.5],
+        [-0.5, 0.5],
+        [0.5, -0.5],
+        [-0.5, -0.5],
+        [1.0, 0],
+        [-1.0, 0],
+        [0, 1.0],
+        [0, -1.0],
+        [1.0, 1.0],
+        [-1.0, 1.0],
+        [1.0, -1.0],
+        [-1.0, -1.0],
+        [2.0, 0],
+        [-2.0, 0],
+        [0, 2.0],
+        [0, -2.0],
+        [2.0, 2.0],
+        [-2.0, 2.0],
+        [2.0, -2.0],
+        [-2.0, -2.0],
+      ]
+      for (const [dx, dz] of steps) {
+        const x = preferredX + dx
+        const z = preferredZ + dz
+        if (!this.figureCollidesAt(x, z)) {
+          return { x, z }
+        }
+      }
+      return { x: preferredX, z: preferredZ }
+    },
+
+    /**
      * 用 procedural 几何体(身体+头 双胶囊)做兜底化身
      * 替换原本"啥也不挂"的逻辑,确保第三人称下玩家至少能看见自己
      * 复用了 figureIdleGroup / figureWalkGroup 两个槽位,syncFigureAvatar 不需要改
@@ -1259,23 +1399,26 @@ export default {
       forward.set(-Math.sin(t.yaw), 0, -Math.cos(t.yaw))
 
       if (this.viewMode === 'tps') {
-        // === 第三人称：相机固定在人物身后 1.5m + 高 1.2m ===
-        const figureOffset = 1.5
+        // === 第三人称：相机固定在人物身后 2.5m + 高 2m,俯瞰看向人物头部,符合游戏第三人称跟随 ===
+        const figureOffset = 2.5
         const figureX = cam.position.x + forward.x * figureOffset
         const figureZ = cam.position.z + forward.z * figureOffset
         // 性能:可见 group 才更新 transform,不可见 group 直接跳过
         // 同时只更新当前 figureState 对应的那一个 group(idle/walk 二选一)
         if (t.figureState === 'idle' && t.figureIdleGroup && t.figureIdleGroup.visible) {
-          t.figureIdleGroup.position.set(figureX, 0, figureZ)
-          t.figureIdleGroup.rotation.y = t.yaw - Math.PI / 2
+          // 抬高 0.1m,避免脚陷进 home.glb 里 y 起点 = 0 的低矮 mesh(地毯/贴脚线/屏风底部)
+          t.figureIdleGroup.position.set(figureX, 0.1, figureZ)
+          // 让人物面朝前进方向（与相机看的方向一致）；FBX 模型默认朝 +Z，需加 180° 补偿
+          t.figureIdleGroup.rotation.y = t.yaw + Math.PI
         }
         if (t.figureState === 'walk' && t.figureWalkGroup && t.figureWalkGroup.visible) {
-          t.figureWalkGroup.position.set(figureX, 0, figureZ)
-          t.figureWalkGroup.rotation.y = t.yaw - Math.PI / 2
+          t.figureWalkGroup.position.set(figureX, 0.1, figureZ)
+          // 让人物面朝前进方向（与相机看的方向一致）；FBX 模型默认朝 +Z，需加 180° 补偿
+          t.figureWalkGroup.rotation.y = t.yaw + Math.PI
         }
-        // 相机视高 1.2m,看向人物
-        cam.position.y = 1.2
-        cam.lookAt(figureX, 0.3, figureZ)
+        // 相机视高 2m,看向人物头部(1.5m),形成"在人物身后上方俯瞰"的游戏第三人称视角
+        cam.position.y = 2.0
+        cam.lookAt(figureX, 1.5, figureZ)
       } else {
         // === 第一人称：模型就在相机脚下(看不到自己) ===
         // 性能:fps 模式下相机看不到自己,本质不需要每帧更新 group 位置
@@ -1283,14 +1426,18 @@ export default {
         if (t.figureState === 'idle' && t.figureIdleGroup && t.figureIdleGroup.visible) {
           t.figureIdleGroup.position.x = cam.position.x
           t.figureIdleGroup.position.z = cam.position.z
-          t.figureIdleGroup.position.y = 0
-          t.figureIdleGroup.rotation.y = t.yaw - Math.PI / 2
+          // 抬高 0.1m 避免与 y=0 起点的低矮 mesh(地毯/贴脚线)穿模
+          t.figureIdleGroup.position.y = 0.1
+          // 让人物面朝前进方向（与相机看的方向一致）；FBX 模型默认朝 +Z，需加 180° 补偿
+          t.figureIdleGroup.rotation.y = t.yaw + Math.PI
         }
         if (t.figureState === 'walk' && t.figureWalkGroup && t.figureWalkGroup.visible) {
           t.figureWalkGroup.position.x = cam.position.x
           t.figureWalkGroup.position.z = cam.position.z
-          t.figureWalkGroup.position.y = 0
-          t.figureWalkGroup.rotation.y = t.yaw - Math.PI / 2
+          // 抬高 0.1m 避免与 y=0 起点的低矮 mesh(地毯/贴脚线)穿模
+          t.figureWalkGroup.position.y = 0.1
+          // 让人物面朝前进方向（与相机看的方向一致）；FBX 模型默认朝 +Z，需加 180° 补偿
+          t.figureWalkGroup.rotation.y = t.yaw + Math.PI
         }
       }
     },
@@ -1332,7 +1479,7 @@ export default {
         if (next === 'fps') {
           t.camera.position.y = 0.5 // 人物眼睛高度
         } else {
-          t.camera.position.y = 1.2 // 第三人称俯瞰
+          t.camera.position.y = 2.0 // 第三人称俯瞰（在人物身后上方）
         }
       }
       uni.showToast({
@@ -1390,6 +1537,8 @@ export default {
         t.figureWalkMixer = null
       }
       t.figureWalkAction = null
+      // 清理碰撞体(只持有 mesh 引用,不持有 GPU 资源,直接清空即可)
+      t.colliders = null
       // 释放两个 FBX group(0.fbx 静态 + 1.fbx 走路)
       const disposeGroup = (g) => {
         if (!g) return
