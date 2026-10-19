@@ -56,6 +56,20 @@ padding-right: 24rpx; padding-left: 24rpx; padding-bottom: 0; box-sizing: border
 - 审计基线（2026-10-16）：131 页 / 61 custom / 已占位 60 全 v2 / 漏处理 0 / 待确认 1（`user/splash`）。`src/components/` 无公共导航栏兜底。
 - 审计脚本已固化为技能 `~/.workbuddy/skills/moyuyo-status-bar-safe-area/`（`scripts/audit-statusbar.mjs`，单独统计 v1 残留、剥离注释后判定）。
 
+### 铁律 7：后端「参数从哪来」必须和前端实际发的一致；DELETE 一律走 query
+- 2026-10-19 事故：`api/cart.js#removeFavorite` 发 `DELETE /api/v1/favorites?productId=..`（刻意不带 body），`FavoriteController` 却只写 `@RequestBody` → 参数恒 null；MyBatis-Plus `LambdaQueryWrapper.eq(col, null)` 拼成 `product_id = null`（恒假），**删 0 行照样 200** → 前端提示"取消收藏成功"、刷新后记录还在。
+- 规范：改接口前先看 `src/api/*.js` 实际怎么发（query / body / path）；DELETE 用 `@RequestParam`/`@PathVariable`，需兼容旧客户端再补 `@RequestBody(required=false)`。
+- 所有"按 id 删/查"的 service 必须显式校验 id 非空并抛 `IllegalArgumentException`（→400），删 0 行打 warn。`eq(x, null)` 静默失效是这套栈最会骗过测试的坑。
+- 雪花 ID（19 位）比较一律 `String()`，禁止 `Number()`/`parseInt`（后端 `JacksonLongToStringConfig` 已把 Long 序列化为 string）。
+- 后端部署：`cd moyuyo-server && docker compose build app && docker compose up -d app`（容器 `moyuyo-server`、镜像 `moyuyo-server-app:latest`、project=`moyuyo-server`；根目录那份 compose 的 `container_name: moyuyo-app` **不是**本机在跑的）。构建约 11 分钟。
+- 本地验证接口可自造 JWT：HS256 + `.env` 的 `JWT_SECRET`，claims 只需 `sub=<userId>`、`email`（`JwtAuthFilter` 只额外查 redis 黑名单）。
+
+### 铁律 8：`swiper` 不要加 `disable-touch`；原生组件参数不认 CSS 变量
+- 2026-10-19 事故：`goods/detail` 主图 `<swiper :disable-touch="true">` → 主图无法左右滑动。uni-h5 `uni-h5.es.js:15508` 的 `useTouchtrack` 回调首行 `if (props.disableTouch) return;`，触摸起点即被丢弃。
+- 原生组件（APP 端 swiper、picker 等）的 `*-color` 参数走原生传参，**不支持 `var(--xxx)`**；这些属性必须写字面 `#RRGGBB`（参照 `home.vue` / `flash-sale-detail.vue` 的写法）。
+- 排查"轮播不能滑"先看三处：`disable-touch`、外层是否有覆盖层拦截 touch、数据是否真的只有 1 张图。
+
+
 ## 开发数据 / 开发库（moyuyo-server）
 
 - **开发库**：容器 `moyuyo-mysql`，库 `moyuyo_prod`，凭证在 `moyuyo-server/.env`。本机无 mysql 客户端，只能走 docker；PowerShell 里**禁止 `cmd /c`**。

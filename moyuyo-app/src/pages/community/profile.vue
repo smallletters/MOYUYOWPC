@@ -187,8 +187,16 @@ const OTHER_TAB_LOADERS = {
 }
 
 export default {
-  // 页面级 i18n 标题:navbar 标题文案来源
-  pageTitleKey: 'pageTitle.communityProfile',
+  /**
+   * 页面级 i18n 标题:navbar 标题文案来源
+   * 本页面「自己主页」和「他人主页」复用同一个路由(他人主页带 ?id=xxx),
+   * 所以标题不能写死成"我的主页",必须按 onLoad 解析出的 viewedUserId 动态切换,
+   * 否则访问他人主页时原生导航栏仍显示"我的主页"。
+   * 函数形式的 pageTitleKey 由 i18nPageMixin 以 this 为上下文调用。
+   */
+  pageTitleKey() {
+    return this.isOwnProfile ? 'pageTitle.communityProfile' : 'pageTitle.communityUserProfile'
+  },
 
   data() {
     return {
@@ -315,9 +323,23 @@ export default {
     const rawId = query && (query.id ?? query.userId)
     const parsedId = Number(rawId)
     this.viewedUserId = Number.isFinite(parsedId) && parsedId > 0 ? parsedId : 0
+    // 标题依赖 viewedUserId(自己/他人),越早设越好:
+    // mounted 里 mixin 还会再设一次(H5 需等 head DOM 就绪),两处幂等;
+    // 此处提前设置可避免 pages.json 默认标题"我的主页"在他人主页上短暂闪现。
+    if (typeof this._applyPageTitle === 'function') this._applyPageTitle()
     // 解析 query.name（可选）：传入昵称作为初始占位,避免接口返回前昵称空白闪烁
+    // decodeURIComponent 必须 try/catch：昵称含 "100%棉" 这类裸 % 会抛 URIError,
+    // 一旦在 onLoad 中抛出,后面的 loadOtherProfile/loadStatBar 全部中断(页面空白)
     const rawName = query && query.name
-    this.viewedProfileInitialName = rawName ? decodeURIComponent(String(rawName)) : ''
+    if (rawName) {
+      try {
+        this.viewedProfileInitialName = decodeURIComponent(String(rawName))
+      } catch (e) {
+        this.viewedProfileInitialName = String(rawName)
+      }
+    } else {
+      this.viewedProfileInitialName = ''
+    }
     // 每次进入页面都清空 viewedProfile,避免上一次进入的他人数据残留
     this.viewedProfile = null
     // 他人 profile 只能看"帖子" tab,防止上一次的 activeTab 残留为 liked/collected 导致空态

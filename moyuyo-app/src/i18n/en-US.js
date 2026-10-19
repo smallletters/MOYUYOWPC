@@ -46,6 +46,7 @@ export default {
     communityDetail: 'Post Details',
     communityCreate: 'New Post',
     communityProfile: 'My Profile',
+    communityUserProfile: "User's Profile",
     communitySearch: 'Search',
     communityDrafts: 'Drafts',
     userPointsShop: 'Points Mall',

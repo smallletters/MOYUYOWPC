@@ -26,10 +26,16 @@
  */
 import { i18n } from '@/i18n'
 
-/** 解析 key 为当前 locale 下的标题文本 */
-export function resolvePageTitle(key, fallback) {
+/**
+ * 解析 key 为当前 locale 下的标题文本
+ *
+ * ctx:当 key 是函数且需要读 this(如 this.isOwnProfile)时传入页面实例。
+ * 顶层自定义选项不会被 Vue 自动 bind 到 this,所以必须显式 call(ctx);
+ * 不传 ctx 时保持原行为(可直接传箭头函数,不依赖 this)。
+ */
+export function resolvePageTitle(key, fallback, ctx) {
   if (!key) return ''
-  const resolved = typeof key === 'function' ? key() : key
+  const resolved = typeof key === 'function' ? (ctx ? key.call(ctx) : key()) : key
   if (!resolved) return ''
   const text = i18n.t(resolved)
   // 字典缺失时 i18n.t 返回原 key,需要 fallback
@@ -128,7 +134,12 @@ export const i18nPageMixin = {
   },
   methods: {
     _applyPageTitle() {
-      const title = resolvePageTitle(this.$options.pageTitleKey, this.$options.pageTitleFallback)
+      // 传 this 作为 ctx:pageTitleKey 写成普通方法时可在内部读 this(viewedUserId/isOwnProfile 等)
+      const title = resolvePageTitle(
+        this.$options.pageTitleKey,
+        this.$options.pageTitleFallback,
+        this,
+      )
       applyPageTitle(title)
     },
   },

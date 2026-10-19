@@ -24,14 +24,20 @@
     <scroll-view scroll-y class="scroll" @scrolltolower="onScrollLower">
       <!-- 商品图片轮播 + 缩略图 -->
       <view class="media-section">
+        <!--
+          注意：不要加 :disable-touch="true"。
+          该属性会彻底关闭 swiper 的手势滑动，导致主图只能用缩略图切换，
+          与"主图可左右滑动"的电商详情页预期不符（2026-10-19 修复）。
+          指示点颜色改成字面色值：APP 端 swiper 是原生组件，
+          indicator-*-color 走原生参数传递，不支持 var(--xxx) 这种 CSS 变量。
+        -->
         <swiper
           class="swiper"
           :current="currentImageIndex"
           circular
           indicator-dots
-          indicator-active-color="var(--brand-500)"
-          indicator-color="var(--background-400)"
-          :disable-touch="true"
+          indicator-active-color="#dbc98a"
+          indicator-color="#d1ccc4"
           @change="onSwiperChange"
         >
           <swiper-item v-for="(img, i) in galleryImages" :key="img.key || i">
@@ -507,7 +513,9 @@ export default {
           const favRes = await cartApi.getFavorites()
           const favList = favRes?.data || favRes?.records || favRes?.items || favRes || []
           const records = Array.isArray(favList) ? favList : []
-          this.wishlisted = records.some((f) => Number(f.productId) === Number(this.productId))
+          // 雪花 ID(19 位)超过 JS Number.MAX_SAFE_INTEGER,Number() 会丢精度,
+          // 一律按字符串比较;后端 JacksonLongToStringConfig 已把 Long 序列化成 string
+          this.wishlisted = records.some((f) => String(f.productId) === String(this.productId))
         } catch (e) {
           // 未登录/未授权时静默失败,保持 wishlisted = false
           console.warn('[detail] favorite status load failed', e)

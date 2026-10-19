@@ -50,6 +50,7 @@ export default {
     communityDetail: '帖子详情',
     communityCreate: '发布帖子',
     communityProfile: '我的主页',
+    communityUserProfile: 'TA的主页',
     communitySearch: '搜索',
     communityDrafts: '草稿箱',
     userPointsShop: '积分商城',
