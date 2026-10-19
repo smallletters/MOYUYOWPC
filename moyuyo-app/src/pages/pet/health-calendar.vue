@@ -13,8 +13,9 @@
             <image
               v-if="pet.avatar"
               class="pet-avatar-img"
-              :src="pet.avatar"
-              mode="aspectFill" />
+              :src="$img(pet.avatar)"
+              mode="aspectFill"
+            />
             <text v-else class="pet-avatar-emoji">{{ petEmoji(pet) }}</text>
           </view>
           <text class="pet-name-label" :class="{ 'pet-name-active': pet.active }">
@@ -35,7 +36,9 @@
         <view class="cal-nav-btn" @click="prevMonth">
           <text class="cal-nav-arrow luc-arrow-left" />
         </view>
-        <text class="cal-month-label">{{ currentYear }}年{{ currentMonth + 1 }}月</text>
+        <text class="cal-month-label">
+          {{ $t('petHealth.monthLabel', { year: currentYear, month: currentMonth + 1 }) }}
+        </text>
         <view class="cal-nav-btn" @click="nextMonth">
           <text class="cal-nav-arrow luc-chevron-right" />
         </view>
@@ -94,7 +97,9 @@
       <view class="detail-header">
         <view class="detail-title-row">
           <text class="detail-date">{{ selectedDateLabel }}</text>
-          <text v-if="selectedDay.isToday" class="detail-today-tag">今天</text>
+          <text v-if="selectedDay.isToday" class="detail-today-tag">
+            {{ $t('petHealth.todayTag') }}
+          </text>
         </view>
         <text class="detail-pet-name">{{ currentPetName }}</text>
       </view>
@@ -117,15 +122,15 @@
       </view>
 
       <view v-else class="detail-empty">
-        <text class="detail-empty-text">暂无记录</text>
+        <text class="detail-empty-text">{{ $t('petHealth.noRecords') }}</text>
       </view>
     </view>
 
     <!-- 近期提醒 -->
     <view class="reminder-card">
       <view class="reminder-header">
-        <text class="reminder-title">近期提醒</text>
-        <text class="reminder-more">查看全部</text>
+        <text class="reminder-title">{{ $t('petHealth.reminderTitle') }}</text>
+        <text class="reminder-more">{{ $t('petHealth.viewAll') }}</text>
       </view>
 
       <view class="reminder-list">
@@ -147,7 +152,9 @@
                 {{ rem.statusText }}
               </text>
             </view>
-            <text class="reminder-desc">预计日期：{{ rem.date }} · {{ rem.desc }}</text>
+            <text class="reminder-desc">
+              {{ $t('petHealth.reminderDesc', { date: rem.date, desc: rem.desc }) }}
+            </text>
           </view>
         </view>
       </view>
@@ -155,7 +162,7 @@
 
     <!-- 本月统计 -->
     <view class="stat-card">
-      <text class="stat-title">本月概览</text>
+      <text class="stat-title">{{ $t('petHealth.monthOverview') }}</text>
       <view class="stat-grid">
         <view
           v-for="stat in monthlyStats"
@@ -173,13 +180,13 @@
     <view v-if="showReminderModal" class="modal-overlay" @click="onCloseReminderModal">
       <view class="modal-content" @click.stop>
         <view class="modal-header">
-          <text class="modal-cancel" @click="onCloseReminderModal">取消</text>
-          <text class="modal-title">添加提醒</text>
-          <text class="modal-submit" @click="onSubmitReminder">保存</text>
+          <text class="modal-cancel" @click="onCloseReminderModal">{{ $t('common.cancel') }}</text>
+          <text class="modal-title">{{ $t('petHealth.addReminder') }}</text>
+          <text class="modal-submit" @click="onSubmitReminder">{{ $t('petHealth.saveBtn') }}</text>
         </view>
         <view class="modal-body">
           <view class="form-group">
-            <text class="form-label">提醒类型</text>
+            <text class="form-label">{{ $t('petHealth.reminderType') }}</text>
             <view class="type-select-list">
               <view
                 v-for="item in legendItems"
@@ -194,20 +201,22 @@
             </view>
           </view>
           <view class="form-group">
-            <text class="form-label">日期</text>
+            <text class="form-label">{{ $t('petHealth.dateLabel') }}</text>
             <picker mode="date" :value="reminderForm.date" @change="onDateChange">
               <view class="form-picker">
-                <text class="form-picker-text">{{ reminderForm.date || '请选择日期' }}</text>
+                <text class="form-picker-text">
+                  {{ reminderForm.date || $t('petHealth.datePlaceholder') }}
+                </text>
                 <text class="form-picker-arrow luc-chevron-right" />
               </view>
             </picker>
           </view>
           <view class="form-group">
-            <text class="form-label">备注</text>
+            <text class="form-label">{{ $t('petHealth.noteLabel') }}</text>
             <input
               v-model="reminderForm.note"
               class="form-input"
-              placeholder="添加备注信息（选填）"
+              :placeholder="$t('petHealth.notePlaceholder')"
             >
           </view>
         </view>
@@ -218,22 +227,22 @@
 <script>
 import { petApi } from '@/api'
 
-const WEEKDAYS = [
-  { label: '日', isWeekend: true },
-  { label: '一', isWeekend: false },
-  { label: '二', isWeekend: false },
-  { label: '三', isWeekend: false },
-  { label: '四', isWeekend: false },
-  { label: '五', isWeekend: false },
-  { label: '六', isWeekend: true },
+const WEEKDAY_KEYS = [
+  { key: 'sun', isWeekend: true },
+  { key: 'mon', isWeekend: false },
+  { key: 'tue', isWeekend: false },
+  { key: 'wed', isWeekend: false },
+  { key: 'thu', isWeekend: false },
+  { key: 'fri', isWeekend: false },
+  { key: 'sat', isWeekend: true },
 ]
 
-const LEGEND_ITEMS = [
-  { type: 'bath', label: '洗澡', color: 'var(--color-primary)' },
-  { type: 'vaccine', label: '疫苗', color: 'var(--color-success)' },
-  { type: 'deworm', label: '驱虫', color: 'var(--color-warning)' },
-  { type: 'checkup', label: '体检', color: 'var(--color-info)' },
-  { type: 'diary', label: '日记', color: 'var(--color-warm)' },
+const LEGEND_DEFS = [
+  { type: 'bath', color: 'var(--color-primary)' },
+  { type: 'vaccine', color: 'var(--color-success)' },
+  { type: 'deworm', color: 'var(--color-warning)' },
+  { type: 'checkup', color: 'var(--color-info)' },
+  { type: 'diary', color: 'var(--color-warm)' },
 ]
 
 const TYPE_ICONS = {
@@ -274,8 +283,6 @@ export default {
       currentYear: now.getFullYear(),
       currentMonth: now.getMonth(),
       today: now,
-      weekdays: WEEKDAYS,
-      legendItems: LEGEND_ITEMS,
       selectedDate: now.getDate(),
       showReminderModal: false,
       reminderForm: {
@@ -291,6 +298,14 @@ export default {
   },
 
   computed: {
+    // 星期表头：WEEKDAY_KEYS 只存 key，渲染时取翻译（computed 保证切语言即刷新）
+    weekdays() {
+      return WEEKDAY_KEYS.map((d) => ({ ...d, label: this.$t(`petHealth.weekday.${d.key}`) }))
+    },
+    // 图例 / 提醒类型下拉：LEGEND_DEFS 只存 type+color，label 走翻译
+    legendItems() {
+      return LEGEND_DEFS.map((d) => ({ ...d, label: this.$t(`petHealth.legend.${d.type}`) }))
+    },
     eventMap() {
       const map = {}
       for (const r of this.reminders) {
@@ -358,13 +373,16 @@ export default {
     },
 
     selectedDateLabel() {
-      return `${this.currentMonth + 1}月${this.selectedDate}日`
+      return this.$t('petHealth.selectedDateLabel', {
+        month: this.currentMonth + 1,
+        day: this.selectedDate,
+      })
     },
 
     upcomingReminders() {
       return this.reminders.slice(0, 4).map((r) => {
         const type = this.displayType(r.reminderType || r.type || 'bath')
-        const legend = LEGEND_ITEMS.find((l) => l.type === type)
+        const legend = this.legendItems.find((l) => l.type === type)
         // 用「日期字符串→本地当天零点」计算天数差，避免 UTC 解析导致的日期偏移
         const nextMid = r.nextDate ? this.localMidnight(r.nextDate) : null
         const todayMid = new Date(
@@ -380,9 +398,15 @@ export default {
           icon: TYPE_ICONS[type] || 'map-pin',
           typeLabel: legend ? legend.label : type,
           date: r.nextDate || '-',
-          desc: this.extraNote(r) || (legend ? `${legend.label}计划` : ''),
+          desc:
+            this.extraNote(r) ||
+            (legend ? this.$t('petHealth.planSuffix', { label: legend.label }) : ''),
           statusText:
-            diff < 0 ? `已过期 ${Math.abs(diff)} 天` : diff === 0 ? '今天' : `还剩 ${diff} 天`,
+            diff < 0
+              ? this.$t('petHealth.overdueDays', { days: Math.abs(diff) })
+              : diff === 0
+                ? this.$t('petHealth.todayTag')
+                : this.$t('petHealth.daysLeft', { days: diff }),
           overdue: diff < 0,
         }
       })
@@ -399,7 +423,7 @@ export default {
         counts[type] = (counts[type] || 0) + 1
       }
       return Object.entries(counts).map(([type, count]) => {
-        const legend = LEGEND_ITEMS.find((l) => l.type === type)
+        const legend = this.legendItems.find((l) => l.type === type)
         return {
           type,
           label: legend ? legend.label : type,
@@ -504,14 +528,15 @@ export default {
         .filter((r) => r.nextDate && this.dateKey(r.nextDate) === fullDate)
         .map((r) => {
           const type = this.displayType(r.reminderType || r.type || '')
-          const legend = LEGEND_ITEMS.find((l) => l.type === type)
+          const legend = this.legendItems.find((l) => l.type === type)
           const note = this.extraNote(r)
           return {
             type,
             icon: TYPE_ICONS[type] || 'calendar',
             typeLabel: legend ? legend.label : type,
-            time: '全天',
-            desc: note || `${legend ? legend.label : type}提醒`,
+            time: this.$t('petHealth.allDay'),
+            desc:
+              note || this.$t('petHealth.reminderSuffix', { label: legend ? legend.label : type }),
           }
         })
     },

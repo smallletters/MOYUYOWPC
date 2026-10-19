@@ -1,7 +1,6 @@
-﻿<template>
+<template>
   <view class="tariff-page">
     <!-- 顶部导航栏 -->
-
 
     <scroll-view class="tariff-body" scroll-y>
       <!-- 模式选择卡片 -->
@@ -265,9 +264,7 @@ import { ref } from 'vue'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.orderTariffDetail')
 
-
 // 选中的关税模式
-
 
 const selectedMode = ref('ddp')
 
@@ -306,7 +303,7 @@ const goBack = () => {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
 }
 .nav-title {
   font-size: 36rpx;
@@ -371,7 +368,7 @@ const goBack = () => {
 }
 
 .mode-icon-ddu {
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
 }
 
 .mode-emoji {
@@ -442,7 +439,7 @@ const goBack = () => {
   width: 32rpx;
   height: 32rpx;
   border-radius: 50%;
-  border: 3rpx solid #d1d1d6;
+  border: 3rpx solid var(--color-fill-dim);
 }
 
 .indicator-text {
@@ -501,7 +498,7 @@ const goBack = () => {
 }
 
 .compare-ddu {
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
 }
 
 .compare-label {
@@ -560,7 +557,7 @@ const goBack = () => {
   justify-content: space-between;
   align-items: center;
   padding: 24rpx 0;
-  border-bottom: 1rpx solid #f2f2f7;
+  border-bottom: 1rpx solid var(--color-border, #f2f2f7);
 }
 
 .tariff-label {
@@ -577,7 +574,7 @@ const goBack = () => {
 .origin-tag {
   padding: 4rpx 12rpx;
   border-radius: 8rpx;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
 }
 
 .origin-tag-text {
@@ -679,7 +676,7 @@ const goBack = () => {
 .formula-box {
   padding: 24rpx;
   border-radius: 16rpx;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
 }
 
 .formula-text {
@@ -755,7 +752,7 @@ const goBack = () => {
   gap: 16rpx;
   padding: 24rpx;
   border-radius: 16rpx;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
 }
 
 .deposit-note-icon {

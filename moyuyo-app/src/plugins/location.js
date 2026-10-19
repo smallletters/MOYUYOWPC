@@ -3,6 +3,7 @@
  * 插件标识: MOYUYO-Location
  * 功能: GPS 定位、地址选择、物流轨迹地图
  */
+import { t } from '@/i18n'
 /* eslint-disable no-unreachable */
 
 const PLUGIN_NAME = 'MOYUYO-Location'
@@ -27,7 +28,7 @@ export function getCurrentLocation(options = {}) {
           city: result.city,
         })
       } else {
-        reject(new Error(result.message || '定位失败'))
+        reject(new Error(result.message || t('locationPlugin.locateFailed')))
       }
     })
   })
@@ -38,7 +39,7 @@ export function getCurrentLocation(options = {}) {
     uni.getLocation({
       type: 'wgs84',
       success: (res) => resolve({ latitude: res.latitude, longitude: res.longitude }),
-      fail: () => reject(new Error('定位失败，请检查位置权限')),
+      fail: () => reject(new Error(t('locationPlugin.locatePermission'))),
     })
   })
   // #endif
@@ -64,13 +65,13 @@ export function openMapSelector(options = {}) {
           name: result.name,
         })
       } else {
-        reject(new Error(result.message || '选择地址取消'))
+        reject(new Error(result.message || t('locationPlugin.chooseAddressCancelled')))
       }
     })
   })
   // #endif
   /* #ifndef APP-PLUS */
-  return Promise.reject(new Error('当前环境不支持'))
+  return Promise.reject(new Error(t('locationPlugin.unsupported')))
   /* #endif */
 }
 
@@ -101,13 +102,13 @@ export function geocode(address) {
       if (result.success) {
         resolve({ latitude: result.latitude, longitude: result.longitude })
       } else {
-        reject(new Error(result.message || '地址解析失败'))
+        reject(new Error(result.message || t('locationPlugin.geocodeFailed')))
       }
     })
   })
   // #endif
   /* #ifndef APP-PLUS */
-  return Promise.reject(new Error('当前环境不支持'))
+  return Promise.reject(new Error(t('locationPlugin.unsupported')))
   /* #endif */
 }
 

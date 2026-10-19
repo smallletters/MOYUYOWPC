@@ -12,7 +12,7 @@
       <view class="profile-card">
         <view class="profile-row">
           <view class="avatar-wrap">
-            <image :src="currentPet?.avatar || ''" class="avatar" />
+            <image mode="aspectFill" :src="currentPet?.avatar || ''" class="avatar" />
           </view>
           <view class="profile-info">
             <text class="pet-name">{{ currentPet?.name || '添加宠物' }}</text>
@@ -111,7 +111,7 @@
         </view>
         <view v-else class="pet-list">
           <view v-for="p in pets" :key="p.id" class="pet-card">
-            <image :src="p.avatar" class="pet-avatar" />
+            <image mode="aspectFill" :src="$img(p.avatar)" class="pet-avatar" />
             <view class="pet-card-info">
               <text class="pet-card-name">{{ p.name }}</text>
               <text class="pet-card-breed">{{ p.breed }}</text>

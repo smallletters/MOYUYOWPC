@@ -105,8 +105,14 @@ onBeforeUnmount(() => {
   align-items: center;
   /* APP 端因 navigationStyle:custom 自渲染 header,
      需为系统状态栏预留顶部空间 */
-  height: calc(88rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
-  padding: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px)) 24rpx 0;
+  /* 取二者较大值（而非相加）：iOS 上 env 与 status-bar-height 同为状态栏高度，相加会翻倍 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  padding-right: 24rpx;
+  padding-left: 24rpx;
+  padding-bottom: 0;
   box-sizing: border-box;
 }
 .nav-back {

@@ -25,7 +25,11 @@
 
       <!-- 商品列表 -->
       <view class="goods-card">
-        <image :src="orderItem?.mainImage || ''" class="goods-image" />
+        <image
+          mode="aspectFill"
+          :src="resolveItemImage(orderItem?.mainImage)"
+          class="goods-image"
+        />
         <view class="goods-info">
           <text class="goods-name">{{ orderItem?.productName || '商品名称' }}</text>
           <text class="goods-spec">{{ orderItem?.skuSpec || '' }}</text>
@@ -76,7 +80,7 @@
         <text class="section-title">上传凭证</text>
         <view class="upload-list">
           <view v-for="(img, i) in uploadImages" :key="i" class="upload-item">
-            <image :src="img" class="upload-image" />
+            <image mode="aspectFill" :src="$img(img)" class="upload-image" />
             <view class="upload-remove" @click="uploadImages.splice(i, 1)">
               <text class="luc luc-x" />
             </view>
@@ -97,6 +101,7 @@
 
 <script>
 import { orderApi } from '@/api'
+import { toAbsoluteImageUrl } from '@/utils/imageUrl'
 
 export default {
   data() {
@@ -123,6 +128,14 @@ export default {
   },
 
   methods: {
+    /**
+     * 商品图：后端返回相对路径(/uploads/...)，APP 端 <image> 不走 Vite proxy，
+     * 必须补成绝对地址，否则真机上商品图空白。
+     */
+    resolveItemImage(url) {
+      return toAbsoluteImageUrl(url) || ''
+    },
+
     async loadOrderItem(orderId) {
       try {
         const order = await orderApi.getOrderDetail(orderId)

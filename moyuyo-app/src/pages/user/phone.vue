@@ -121,23 +121,33 @@ export default {
       sendingCode: false,
       // 提交请求中
       submitting: false,
-      // 国家列表:与 register.vue 保持一致
-      countries: [
-        { code: 'US', dial: '+1', flag: '🇺🇸', name: 'United States' },
-        { code: 'CA', dial: '+1', flag: '🇨🇦', name: 'Canada' },
-        { code: 'GB', dial: '+44', flag: '🇬🇧', name: 'United Kingdom' },
-        { code: 'AU', dial: '+61', flag: '🇦🇺', name: 'Australia' },
-        { code: 'CN', dial: '+86', flag: '🇨🇳', name: '中国' },
-        { code: 'JP', dial: '+81', flag: '🇯🇵', name: '日本' },
-        { code: 'KR', dial: '+82', flag: '🇰🇷', name: '한국' },
-        { code: 'HK', dial: '+852', flag: '🇭🇰', name: 'Hong Kong' },
-      ],
       // 倒计时 setInterval 句柄(onUnload 清理)
       timer: null,
+      // 语言版本号:语言切换时触发国家列表等依赖本地化的内容重渲染
+      localeVersion: 0,
+      unsubLocale: null,
     }
   },
 
   computed: {
+    /**
+     * 国家列表(与 register.vue 保持一致)。
+     * 仅中文本地化部分(中国 / 日本)走 i18n,其余国家名保持原语言(英文 / 韩文)。
+     * 必须放 computed:翻译后的文案随语言切换刷新。
+     */
+    countries() {
+      void this.localeVersion
+      return [
+        { code: 'US', dial: '+1', flag: '🇺🇸', name: 'United States' },
+        { code: 'CA', dial: '+1', flag: '🇨🇦', name: 'Canada' },
+        { code: 'GB', dial: '+44', flag: '🇬🇧', name: 'United Kingdom' },
+        { code: 'AU', dial: '+61', flag: '🇦🇺', name: 'Australia' },
+        { code: 'CN', dial: '+86', flag: '🇨🇳', name: i18n.t('phone.countryCN') },
+        { code: 'JP', dial: '+81', flag: '🇯🇵', name: i18n.t('phone.countryJP') },
+        { code: 'KR', dial: '+82', flag: '🇰🇷', name: '한국' },
+        { code: 'HK', dial: '+852', flag: '🇭🇰', name: 'Hong Kong' },
+      ]
+    },
     userStore() {
       return useUserStore()
     },
@@ -198,6 +208,8 @@ export default {
       clearInterval(this.timer)
       this.timer = null
     }
+    // 取消语言订阅,避免内存泄漏
+    if (this.unsubLocale) this.unsubLocale()
   },
 
   methods: {
@@ -294,8 +306,11 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: calc(88rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
-  padding-top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  /* 取二者较大值（而非相加）：iOS 上 env 与 status-bar-height 同为状态栏高度，相加会翻倍 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   box-sizing: border-box;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
@@ -304,7 +319,9 @@ export default {
 .back-btn {
   position: absolute;
   left: 16rpx;
-  top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  /* 跟随 header 的状态栏 padding，绝对定位元素吃不到父级 padding，需自行下移 */
+  top: var(--status-bar-height, 0px);
+  top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   display: inline-flex;
   align-items: center;
   justify-content: center;

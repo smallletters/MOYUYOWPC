@@ -5,9 +5,9 @@
       <view class="header-btn" @click="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">商品问答</text>
+      <text class="header-title">{{ $t('qa.title') }}</text>
       <view class="header-btn" @click="onOpenAskModal">
-        <text class="ask-btn-text">提问</text>
+        <text class="ask-btn-text">{{ $t('qa.ask') }}</text>
       </view>
     </view>
 
@@ -19,7 +19,7 @@
           v-model="searchText"
           class="search-input"
           type="text"
-          placeholder="搜索问题..."
+          :placeholder="$t('qa.searchPlaceholder')"
           @input="onSearch"
         >
       </view>
@@ -75,7 +75,7 @@
               class="answer-tag"
               :class="item.answerTag === '商家' ? 'tag-merchant' : 'tag-buyer'"
             >
-              {{ item.answerTag }}
+              {{ item.answerTag === '商家' ? $t('qa.mock.roleMerchant') : $t('qa.mock.roleBuyer') }}
             </text>
             <text class="answer-author">{{ item.answerAuthor }}</text>
             <text class="answer-time">{{ item.answerTime }}</text>
@@ -84,16 +84,16 @@
           <view class="answer-like">
             <text class="like-btn" :class="{ liked: item.isLiked }" @click="onToggleLike(item)">
               <text class="luc luc-thumbs-up" />
-              <text class="like-text">有帮助</text>
+              <text class="like-text">{{ $t('qa.helpful') }}</text>
             </text>
-            <text class="like-count">{{ item.likeCount }} 人觉得有帮助</text>
+            <text class="like-count">{{ $t('qa.likeHelpful', { count: item.likeCount }) }}</text>
           </view>
         </view>
 
         <!-- 无回答 -->
         <view v-else class="qa-no-answer">
           <text class="no-answer-icon">⏰</text>
-          <text class="no-answer-text">暂无回答，等待商家或用户回复</text>
+          <text class="no-answer-text">{{ $t('qa.waitingAnswer') }}</text>
         </view>
       </view>
     </view>
@@ -101,8 +101,8 @@
     <!-- 空搜索状态 -->
     <view v-else-if="searchText" class="empty-state">
       <text class="empty-icon luc-search" />
-      <text class="empty-title">没有找到相关问题</text>
-      <text class="empty-desc">试试换个关键词搜索</text>
+      <text class="empty-title">{{ $t('qa.emptyTitle') }}</text>
+      <text class="empty-desc">{{ $t('qa.emptyDesc') }}</text>
     </view>
 
     <!-- 底部 FAB 提问按钮 -->
@@ -114,19 +114,25 @@
     <view class="modal-overlay" :class="{ active: showAskModal }" @click="onCloseAskModal">
       <view class="modal-panel" @click.stop>
         <view class="modal-handle" />
-        <text class="modal-title">我要提问</text>
-        <text class="modal-desc">请描述你在使用商品时遇到的问题</text>
+        <text class="modal-title">{{ $t('qa.askTitle') }}</text>
+        <text class="modal-desc">{{ $t('qa.askDesc') }}</text>
         <view class="modal-textarea-wrap">
-          <textarea v-model="askText" class="modal-textarea" placeholder="请输入你的问题..." />
+          <textarea
+            v-model="askText"
+            class="modal-textarea"
+            :placeholder="$t('qa.askInputPlaceholder')"
+          />
         </view>
         <view class="modal-actions">
-          <view class="modal-btn modal-btn--cancel" @click="onCloseAskModal">取消</view>
+          <view class="modal-btn modal-btn--cancel" @click="onCloseAskModal">
+            {{ $t('common.cancel') }}
+          </view>
           <view
             class="modal-btn modal-btn--submit"
             :class="{ disabled: !askText.trim() }"
             @click="onSubmitQuestion"
           >
-            提交
+            {{ $t('qa.submit') }}
           </view>
         </view>
       </view>
@@ -145,57 +151,61 @@ export default {
       activeFilter: 'all',
       showAskModal: false,
       askText: '',
-      hotTags: ['成分安全吗', '适合多大宠物', '多久发货', '可以混用吗'],
-      filterTabs: [
-        { label: '全部', value: 'all' },
-        { label: '未回复', value: 'unanswered' },
-        { label: '已回复', value: 'answered' },
-      ],
-      qaList: [
+    }
+  },
+  computed: {
+    hotTags() {
+      return this.$t('qa.hotTags')
+    },
+    filterTabs() {
+      return [
+        { label: this.$t('qa.filterAll'), value: 'all' },
+        { label: this.$t('qa.filterUnanswered'), value: 'unanswered' },
+        { label: this.$t('qa.filterAnswered'), value: 'answered' },
+      ]
+    },
+    qaList() {
+      return [
         {
           id: 1,
-          question:
-            '这款洗护套装的成分对猫咪皮肤敏感的情况适用吗？我家猫咪之前用过其他品牌会红肿。',
-          asker: '小猫咪的铲屎官',
+          question: this.$t('qa.mock.q1'),
+          asker: this.$t('qa.mock.user1'),
           time: '2025-06-12',
-          answer:
-            '您好！本产品采用天然植物萃取成分，不含人工香精、色素和防腐剂，经过皮肤科兽医测试，敏感肌猫咪也可以放心使用。建议首次使用时先在小面积皮肤试用观察24小时。',
+          answer: this.$t('qa.mock.a1'),
           answerTag: '商家',
-          answerAuthor: 'MOYUYO 官方',
+          answerAuthor: this.$t('qa.mock.author1'),
           answerTime: '2025-06-13',
           likeCount: 32,
           isLiked: false,
         },
         {
           id: 2,
-          question: '3个月大的金毛幼犬可以用这款吗？用量大概是多少？',
-          asker: '金毛妈妈',
+          question: this.$t('qa.mock.q2'),
+          asker: this.$t('qa.mock.user2'),
           time: '2025-06-10',
-          answer:
-            '我家柴犬从2个月就开始用了，完全没有问题。幼犬用量大概是成年犬的三分之一到一半，具体看狗狗体型。可以先买小包装试试。',
+          answer: this.$t('qa.mock.a2'),
           answerTag: '已购用户',
-          answerAuthor: '柴柴酱的主人',
+          answerAuthor: this.$t('qa.mock.author2'),
           answerTime: '2025-06-11',
           likeCount: 18,
           isLiked: false,
         },
         {
           id: 3,
-          question: '这款洗护套装和你们家的护毛素可以一起用吗？会不会冲突？',
-          asker: '布偶猫铲屎官',
+          question: this.$t('qa.mock.q3'),
+          asker: this.$t('qa.mock.user3'),
           time: '2025-06-08',
-          answer:
-            '可以的！我们的洗护套装和护毛素是同一系列产品，配方互相兼容。使用顺序是先用洗护套装清洁，冲洗干净后再使用护毛素，效果更佳。',
+          answer: this.$t('qa.mock.a3'),
           answerTag: '商家',
-          answerAuthor: 'MOYUYO 官方',
+          answerAuthor: this.$t('qa.mock.author1'),
           answerTime: '2025-06-08',
           likeCount: 9,
           isLiked: false,
         },
         {
           id: 4,
-          question: '请问这款套装包含几瓶？保质期是多久？开封后需要多久用完？',
-          asker: '新手铲屎官',
+          question: this.$t('qa.mock.q4'),
+          asker: this.$t('qa.mock.user4'),
           time: '2025-07-02',
           answer: '',
           answerTag: '',
@@ -206,8 +216,8 @@ export default {
         },
         {
           id: 5,
-          question: '有没有试用装可以买？想先试试味道和效果再买正装。',
-          asker: '哈士奇爸爸',
+          question: this.$t('qa.mock.q5'),
+          asker: this.$t('qa.mock.user5'),
           time: '2025-07-06',
           answer: '',
           answerTag: '',
@@ -216,10 +226,8 @@ export default {
           likeCount: 0,
           isLiked: false,
         },
-      ],
-    }
-  },
-  computed: {
+      ]
+    },
     filteredQaList() {
       let list = this.qaList
       if (this.activeFilter === 'answered') {
@@ -265,7 +273,7 @@ export default {
       this.qaList.unshift({
         id: Date.now(),
         question: this.askText.trim(),
-        asker: '我',
+        asker: this.$t('qa.mockMe'),
         time: new Date().toISOString().slice(0, 10),
         answer: '',
         answerTag: '',
@@ -292,9 +300,16 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 88rpx;
-  padding: 0 30rpx;
-  background: rgba(255, 255, 255, 0.95);
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  padding-right: 30rpx;
+  padding-left: 30rpx;
+  padding-bottom: 0;
+  box-sizing: border-box;
+  background: var(--color-surface-veil-95, rgba(255, 255, 255, 0.95));
   border-bottom: 1rpx solid var(--border);
   position: sticky;
   top: 0;
@@ -311,7 +326,7 @@ export default {
 
 .back-icon {
   font-size: 44rpx;
-  color: var(--icon-700);
+  color: var(--color-text);
   line-height: 1;
 }
 

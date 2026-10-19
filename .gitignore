@@ -38,6 +38,10 @@ Thumbs.db
 *.tmp
 *.temp
 
+# 本地调试 / 探针产物目录、根目录调试日志
+tmp/
+/debug.log
+
 # Maven 构建产物
 **/target/
 

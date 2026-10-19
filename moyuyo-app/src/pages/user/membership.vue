@@ -462,7 +462,7 @@ onBeforeUnmount(() => {
 .brand-text {
   font-size: 26rpx;
   font-weight: 700;
-  color: #2e2b29;
+  color: #2e2b29; /* 设计为金色底深字，两态一致：.member-card 为金色渐变，深色下保持不变 */
   letter-spacing: 4rpx;
 }
 .card-tier {
@@ -479,7 +479,7 @@ onBeforeUnmount(() => {
   display: block;
   font-size: 30rpx;
   font-weight: 800;
-  color: #2e2b29;
+  color: #2e2b29; /* 设计为金色底深字，两态一致：.member-card 为金色渐变，深色下保持不变 */
   letter-spacing: 2rpx;
   margin-top: 2rpx;
   font-family: Georgia, serif;
@@ -527,7 +527,7 @@ onBeforeUnmount(() => {
 .card-name {
   font-size: 36rpx;
   font-weight: 800;
-  color: #2e2b29;
+  color: #2e2b29; /* 设计为金色底深字，两态一致：.member-card 为金色渐变，深色下保持不变 */
   letter-spacing: 1rpx;
   font-family: Georgia, serif;
 }
@@ -550,7 +550,7 @@ onBeforeUnmount(() => {
 .card-progress-val {
   font-size: 26rpx;
   font-weight: 800;
-  color: #2e2b29;
+  color: #2e2b29; /* 设计为金色底深字，两态一致：.member-card 为金色渐变，深色下保持不变 */
   font-variant-numeric: tabular-nums;
 }
 .card-progress-track {

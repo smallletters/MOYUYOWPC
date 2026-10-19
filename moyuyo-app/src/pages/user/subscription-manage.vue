@@ -36,7 +36,7 @@
       <view v-for="item in activeSubscriptions" :key="item.id" class="sub-card">
         <!-- 商品信息行 -->
         <view class="sub-info">
-          <image :src="item.image" class="sub-image" mode="aspectFill" />
+          <image :src="$img(item.image)" class="sub-image" mode="aspectFill" />
           <view class="sub-detail">
             <view class="sub-name-row">
               <text class="sub-name">{{ item.name }}</text>
@@ -133,7 +133,7 @@
         <view v-if="historyExpanded" class="history-list">
           <view v-for="item in historySubscriptions" :key="item.id" class="history-card">
             <view class="sub-info">
-              <image :src="item.image" class="sub-image" mode="aspectFill" />
+              <image :src="$img(item.image)" class="sub-image" mode="aspectFill" />
               <view class="sub-detail">
                 <view class="sub-name-row">
                   <text class="sub-name">{{ item.name }}</text>
@@ -196,7 +196,7 @@ const historyExpanded = ref(false)
 const activeSubscriptions = ref([
   {
     id: 1,
-    name: 'MOYUYO 温和沐浴露',
+    name: i18n.t('subscriptionManage.mockProductShampoo'),
     spec: '500ml',
     image: '/static/images/product-shampoo.png',
     price: '25.20',
@@ -211,8 +211,8 @@ const activeSubscriptions = ref([
   },
   {
     id: 2,
-    name: 'MOYUYO 宠物零食混合装',
-    spec: '混合口味 200g',
+    name: i18n.t('subscriptionManage.mockProductTreats'),
+    spec: i18n.t('subscriptionManage.mockProductTreatsSpec'),
     image: '/static/images/product-treats.png',
     price: '18.00',
     originalPrice: '20.00',
@@ -230,7 +230,7 @@ const activeSubscriptions = ref([
 const historySubscriptions = ref([
   {
     id: 3,
-    name: 'MOYUYO 温和沐浴露',
+    name: i18n.t('subscriptionManage.mockProductShampoo'),
     spec: '500ml',
     image: '/static/images/product-shampoo.png',
     cycleKey: 'subscriptionManage.cycleMonthly',
@@ -327,13 +327,29 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .subscription-manage {
-  min-height: 100vh;
+  /* 视口锁定外壳：整页锁定视口高度 + 裁剪溢出，唯一滚动权威是内部 scroll-view。
+     100vh 写在 100dvh 之前做兜底。约定见 goods/detail.vue。 */
+  display: flex;
+  flex-direction: column;
+  /* 视口高度：三层渐进增强。
+     1) 100vh  —— 兜底，所有环境合法
+     2) 100dvh —— H5 移动浏览器动态视口（地址栏）
+     3) var(--window-top) —— uni-app 顶部窗口偏移：非 custom 页 = 导航栏高 + 状态栏高，custom 页 = 0。
+        必须扣除，否则顶部内容会顶到导航栏/状态栏底下。
+     只减 --window-top 不减 --window-bottom：后者在 H5 被归一化为 env(safe-area-inset-bottom)，
+     会与页面自身底栏的 safe-area padding 重复预留。本批无 tabBar 页，故安全。 */
+  height: 100vh;
+  height: 100dvh;
+  height: calc(100dvh - var(--window-top, 0px));
+  overflow: hidden;
   background: var(--color-background);
 }
 
+/* 顶部导航栏：常流 flex 子项，天然吸顶（sticky 已删除）。
+   flex-shrink:0 防止被压缩塌陷；position:relative 为 .back-btn 的绝对定位保留包含块。 */
 .header {
-  position: sticky;
-  top: 0;
+  position: relative;
+  flex-shrink: 0;
   z-index: 30;
   display: flex;
   align-items: center;
@@ -371,7 +387,9 @@ onBeforeUnmount(() => {
 }
 
 .content {
-  height: calc(100vh - 88rpx);
+  /* 唯一滚动权威：flex:1 占满外壳剩余空间，不再硬算高度（约定见 goods/detail.vue）。 */
+  flex: 1;
+  min-height: 0;
   padding: 0 32rpx 120rpx;
 }
 
@@ -721,7 +739,7 @@ onBeforeUnmount(() => {
   margin-bottom: 32rpx;
   padding: 28rpx;
   border-radius: 24rpx;
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--color-overlay-subtle, rgba(0, 0, 0, 0.04));
 }
 
 .tip-icon {

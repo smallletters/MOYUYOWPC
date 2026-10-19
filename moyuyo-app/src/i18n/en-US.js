@@ -212,6 +212,9 @@ export default {
 
   // Dress popup components/dress-popup
   dressPopup: {
+    dragToRotate: ' · Drag to rotate preview',
+    modelTooLarge: 'Model exceeds {size}MB, please compress before uploading',
+    modelSaved: '3D model saved',
     title: 'Pet Dress-up',
     builtinAvatar: 'Built-in avatars',
     customAvatar: 'My avatars',
@@ -948,6 +951,13 @@ export default {
       cancel: 'Cancel',
     },
     moreItems: '+{count} more',
+    // 待付款订单金额明细（与结算页同口径）
+    amount: {
+      goods: 'Items',
+      freight: 'Shipping',
+      coupon: 'Coupon',
+      points: 'Points',
+    },
     noMore: '— No more —',
     backAria: 'Back',
     cancelReason: 'Cancelled by user',
@@ -1066,6 +1076,7 @@ export default {
       unused: 'Unused',
       used: 'Used',
       expired: 'Expired',
+      locked: 'Reserved (unpaid)',
     },
     unit: '',
   },
@@ -1202,6 +1213,24 @@ export default {
 
   // 限时抢购 /pages/goods/flash-sale
   flashSale: {
+    buySucceeded: 'Order placed successfully',
+    noImage: 'No product image',
+    discountSuffix: '{discount} OFF',
+    defaultTitle: 'Flash Sale',
+    defaultDesc: 'Limited-time price, while stocks last',
+    soldCount: '{count} claimed',
+    stockLeft: '{count} left',
+    limitPerUser: 'Limit {count} per person',
+    statusUpcoming: 'Starting soon',
+    statusEnded: 'Event ended',
+    statusSoldOut: 'Sold out',
+    statusInactive: 'Event removed',
+    defaultRunning: 'Flash sale in progress',
+    startsAt: 'Starts at {time}',
+    endedAt: 'Ended at {time}',
+    btnUpcoming: 'Not started',
+    btnInactive: 'Removed',
+    btnBuyNow: 'Buy now {price}',
     // banner
     bannerTitle: 'Flash Sale',
     bannerSub: 'Hot deals · Limited stock',
@@ -1252,6 +1281,10 @@ export default {
 
   // 浏览历史 /pages/user/browsing-history
   browsingHistory: {
+    today: 'Today',
+    yesterday: 'Yesterday',
+    thisWeek: 'This Week',
+    daysAgo: '{days} days ago',
     title: 'Browsing History',
     empty: 'No browsing history',
     manage: 'Manage',
@@ -1553,6 +1586,8 @@ export default {
 
   // 订阅计划 /pages/user/subscribe-plan
   subscribe: {
+    mockProductName: 'MOYUYO Gentle Shampoo 500ml',
+    mockAddress: 'Default address - Chaoyang, Beijing',
     title: 'Subscription Plan',
     desc: 'Choose a delivery schedule and enjoy subscription-only discounts',
     selectPeriod: 'Select Delivery Period',
@@ -1634,6 +1669,9 @@ export default {
 
   // 订阅管理 /pages/user/subscription-manage
   subscriptionManage: {
+    mockProductShampoo: 'MOYUYO Gentle Shampoo',
+    mockProductTreats: 'MOYUYO Pet Treat Variety Pack',
+    mockProductTreatsSpec: 'Mixed flavors 200g',
     title: 'Subscription Manager',
     activeTab: 'Active',
     pausedTab: 'Paused',
@@ -1833,6 +1871,9 @@ export default {
 
   // 首页 /pages/tabbar/home
   home: {
+    loading: 'Loading...',
+    bannerMilo: 'MILO Explorer',
+    bannerLuna: 'LUNA Curator',
     searchPlaceholder: 'Search products, brands, guides',
     // Home toasts
     bannerN: 'Banner {n}',
@@ -1996,6 +2037,9 @@ export default {
 
   // 退货 /pages/order/returns
   returns: {
+    selectReasonFirst: 'Please select a refund reason',
+    submitted: 'Request submitted',
+    submitting: 'Submitting...',
     title: 'Return Status',
     empty: 'No return records',
     status: {
@@ -2011,18 +2055,23 @@ export default {
     contactCS: 'Contact Support',
     primeDay: { title: 'Prime Day Exclusive Sale', desc: 'Members-only mega sale' },
     newArrival: { title: 'Early Access to New Arrivals', desc: 'Be first to try new products' },
-    newUser: {
-      welcomeTitle: 'Welcome to MOYUYO',
-      claimAll: 'Claim All',
-      value: 'Value ${amount}',
-      heroSub: 'Complete new-user tasks to claim exclusive perks',
-      emptyGifts: 'No new-user perks yet',
-      emptyClaimed: 'You have not claimed any perks yet',
-      pointsSuffix: '+{n} points',
-      claimFailed: 'Claim failed',
-      selectReasonFirst: 'Please select a refund reason',
-      submitted: 'Request submitted',
-    },
+  },
+
+  // 新人专区 /pages/user/new-user-zone
+  newUser: {
+    title: 'New User Zone',
+    claim: 'Claim',
+    claimedTitle: 'Claimed Perks',
+    giftFallback: 'Perk #{id}',
+    claimSuccess: 'Claimed successfully',
+    welcomeTitle: 'Welcome to MOYUYO',
+    claimAll: 'Claim All',
+    value: 'Value ${amount}',
+    heroSub: 'Complete new-user tasks to claim exclusive perks',
+    emptyGifts: 'No new-user perks yet',
+    emptyClaimed: 'You have not claimed any perks yet',
+    pointsSuffix: '+{n} points',
+    claimFailed: 'Claim failed',
   },
 
   // 支付成功 /pages/order/payment-success
@@ -2040,6 +2089,7 @@ export default {
 
   // 订单回收站 /pages/order/recycle-bin
   recycleBin: {
+    permanentDeleteContent: 'This cannot be undone. Continue?',
     title: 'Order Recycle Bin',
     empty: 'Recycle bin is empty',
     bannerTitle: 'Recycle Bin Rules',
@@ -2060,6 +2110,7 @@ export default {
 
   // 客服评价 /pages/order/cs-rating
   csRating: {
+    completeAllRatings: 'Please complete all ratings',
     title: 'Service Rating',
     csName: 'Support Agent Mo',
     ratePrompt: 'Please rate this service',
@@ -2231,6 +2282,8 @@ export default {
 
   // 手机号 /pages/user/phone
   phone: {
+    countryCN: 'China',
+    countryJP: 'Japan',
     title: 'Phone Number',
     current: 'Current Phone Number',
     newPhone: 'New Phone Number',
@@ -2686,6 +2739,8 @@ export default {
       ADJUST: 'Admin Adjustment',
       REVIEW: 'Review Reward',
       MISSION: 'Mission Reward',
+      FREEZE: 'Points Frozen',
+      UNFREEZE: 'Points Unfrozen',
       other: 'Other',
     },
   },
@@ -2751,6 +2806,10 @@ export default {
 
   // 通知消息 /pages/user/messages
   messages: {
+    failedRetry: 'Action failed, please retry',
+    typeOrder: 'Order',
+    typeActivity: 'Activity',
+    typeSystem: 'System',
     title: 'Messages',
     empty: 'No messages',
     markAllRead: 'Mark All Read',
@@ -3049,6 +3108,8 @@ export default {
 
   // 商品详情 /pages/goods/detail
   goodsDetail: {
+    serverTimeout: 'Request timed out, please retry',
+    invalidSku: 'Variant unavailable',
     share: 'Share',
     favorite: 'Favorite',
     unfavorite: 'Unfavorite',
@@ -3088,6 +3149,24 @@ export default {
     productNotReady: 'Product info is not ready yet',
     offShelf: 'This product is no longer available',
     skuOutOfStock: 'This SKU is out of stock',
+    // Added for the product detail page (previously hardcoded Chinese in the page)
+    soldOut: 'Off shelf',
+    loading: 'Loading...',
+    memberPrice: 'Member price',
+    goodRate: 'Positive rate',
+    anonymous: 'Anonymous',
+    specFallback: 'Option {index}',
+    specTags: 'Tags',
+    specProductLine: 'Product Line',
+    specWeight: 'Weight',
+    timeToday: 'Today',
+    timeDaysAgo: '{days}d ago',
+    timeWeeksAgo: '{weeks}w ago',
+    timeMonthsAgo: '{months}mo ago',
+    ariaBack: 'Back',
+    ariaShare: 'Share',
+    ariaFavorite: 'Favorite',
+    retry: 'Retry',
   },
 
   // 客服中心会话页 /pages/user/customer-service
@@ -3132,6 +3211,15 @@ export default {
 
   // Community page /pages/tabbar/community
   community: {
+    emptyFollow: 'No followed users yet. Go discover interesting people~',
+    emptyTopic: 'Select a topic tag above to view posts',
+    emptyDefault: 'No posts yet. Create one~',
+    copyFailed: 'Copy failed, please retry',
+    fallbackTopic1: 'Pet Outfits',
+    fallbackTopic2: 'Summer Care',
+    fallbackTopic3: 'New Arrivals',
+    fallbackTopic4: 'Cat Zone',
+    fallbackTopic5: 'Dog Daily',
     title: 'Community',
     tabs: {
       recommend: 'Recommended',
@@ -3681,6 +3769,9 @@ export default {
 
   // Care records page /pages/pet/care-records
   careRecords: {
+    delete: 'Delete',
+    petFallback: 'Pet',
+    monthDay: '{m}/{d}',
     title: 'Care Records',
     back: 'Back',
     addRecord: 'New Record',
@@ -3979,6 +4070,33 @@ export default {
 
   // Cart store (store/cart.js)
   cart: {
+    editDone: 'Done',
+    edit: 'Edit',
+    empty: 'Your cart is empty',
+    goShopping: 'Go shopping',
+    priceDropTip: '{count} items dropped in price, saving you {amount}',
+    closeBanner: 'Dismiss',
+    outOfStockLabel: 'Out of stock',
+    decreaseQty: 'Decrease quantity',
+    increaseQty: 'Increase quantity',
+    delete: 'Delete',
+    expiredTitle: 'Unavailable items ({count})',
+    upsellTitle: 'You may also like',
+    promoRule: 'Spend {threshold}, save {discount}',
+    orderSummary: 'Order Summary',
+    goodsSubtotal: 'Subtotal',
+    shipping: 'Shipping',
+    freeShipping: 'Free Shipping',
+    discount: 'Discount',
+    payableAmount: 'Amount Due',
+    selectAll: 'Select all',
+    totalLabel: 'Total:',
+    checkoutBtn: 'Checkout ({count})',
+    offSale: 'Off the shelf',
+    productGone: 'Product unavailable',
+    invalidSku: 'Variant unavailable',
+    invalidDefault: 'Unavailable',
+    attrSpecName: 'Variant',
     soldOut: 'This item is sold out',
     stockShort: 'Insufficient stock',
     addFailed: 'Failed to add to cart',
@@ -3999,6 +4117,7 @@ export default {
 
   // Native plugins (plugins/arTryOn.js, petHub3d.js, ...)
   plugin: {
+    unsupported: 'Not supported in this environment',
     arStartFailed: 'Failed to start AR',
     arAppOnly: 'AR try-on is only available on the APP',
     arUnsupported: 'AR is not supported in this environment',
@@ -4050,6 +4169,29 @@ export default {
   // Goods detail (pages/goods/detail.vue)
   // Share product (pages/goods/share-product.vue)
   shareProduct: {
+    title: 'Share Product',
+    qrLoading: 'Loading QR code...',
+    qrScanHint: 'Scan to view details',
+    recommenderPrefix: 'Recommended by {name}',
+    qrSource: 'From MOYUYO Pet Store',
+    linkTitle: 'Share Link',
+    copy: 'Copy',
+    shareToTitle: 'Share to',
+    customMessageTitle: 'Add a message (optional)',
+    customMessagePlaceholder: 'Write a short recommendation...',
+    generateImage: 'Generate share image',
+    defaultProductName: 'Pet Product',
+    defaultUserName: 'MOYUYO User',
+    channelMessages: 'SMS',
+    channelCopyLink: 'Copy Link',
+    settingCaption: 'Add message',
+    settingPrice: 'Show price',
+    settingWatermark: 'Add watermark',
+    emailSubject: 'Recommendation: {name}',
+    imgLoadFailed: 'Failed to load product image',
+    qrLoadFailed: 'Failed to load QR code',
+    posterScanHint: 'Scan to view product details',
+    posterFooter: '— MOYUYO Pet Store —',
     missingProductId: 'Missing product id',
     sharedTo: 'Shared to {name}',
     linkCopied: 'Link copied',
@@ -4105,6 +4247,47 @@ export default {
 
   // Q&A (pages/goods/qa.vue)
   qa: {
+    title: 'Product Q&A',
+    ask: 'Ask',
+    searchPlaceholder: 'Search questions...',
+    helpful: 'Helpful',
+    likeHelpful: '{count} people found this helpful',
+    waitingAnswer: 'No answer yet. Waiting for the merchant or other users to reply',
+    emptyTitle: 'No related questions found',
+    emptyDesc: 'Try searching with different keywords',
+    askTitle: 'Ask a Question',
+    askDesc: 'Describe the issue you encountered while using the product',
+    askInputPlaceholder: 'Enter your question...',
+    submit: 'Submit',
+    hotTags: [
+      'Are the ingredients safe?',
+      'Suitable for what age pet?',
+      'How long is shipping?',
+      'Can they be used together?',
+    ],
+    filterAll: 'All',
+    filterUnanswered: 'Unanswered',
+    filterAnswered: 'Answered',
+    mockMe: 'Me',
+    mock: {
+      q1: 'Is this grooming set suitable for cats with sensitive skin? My cat got red and swollen from other brands before.',
+      user1: "Kitten's Caretaker",
+      a1: 'Hello! This product uses natural plant extracts, free from artificial fragrance, colorants, and preservatives. It has been tested by dermatologist veterinarians and is safe for cats with sensitive skin. We recommend a small-area patch test for 24 hours on first use.',
+      roleMerchant: 'Merchant',
+      author1: 'MOYUYO Official',
+      q2: 'Can a 3-month-old golden retriever puppy use this? About how much per use?',
+      user2: 'Golden Retriever Mom',
+      a2: "My Shiba started using it at 2 months with no problems at all. Puppy dosage is roughly one-third to half of an adult dog's, depending on the dog's size. You can start with a small package to try.",
+      roleBuyer: 'Verified Buyer',
+      author2: "Chacha's Owner",
+      q3: 'Can this grooming set be used together with your conditioner? Will they conflict?',
+      user3: 'Ragdoll Cat Caretaker',
+      a3: 'Yes! Our grooming set and conditioner are from the same product line and their formulas are compatible. The order is: clean with the grooming set first, rinse thoroughly, then apply the conditioner for best results.',
+      q4: 'How many bottles are in this set? What is the shelf life? How soon after opening should it be used up?',
+      user4: 'Newbie Caretaker',
+      q5: "Is there a trial size available? I'd like to try the scent and effect before buying the full size.",
+      user5: 'Husky Dad',
+    },
     asked: 'Question submitted',
   },
 
@@ -4127,6 +4310,16 @@ export default {
 
   // Product subscribe (pages/goods/product-subscribe.vue)
   productSubscribe: {
+    title: 'Subscribe to this product',
+    memberSave: 'Save up to 20% with a subscription',
+    loadingProduct: 'Loading product info...',
+    cycleTitle: 'Delivery Cycle',
+    perCyclePrice: '${price}/cycle',
+    qtyTitle: 'Quantity per Delivery',
+    subscribeNow: 'Subscribe now {price}',
+    cycleWeek: 'Weekly',
+    cycleMonth: 'Monthly',
+    cycleQuarter: 'Quarterly',
     selectCycleFirst: 'Please select a delivery cycle',
     subscribing: 'Subscribing…',
     subscribed: 'Subscribed',
@@ -4158,6 +4351,26 @@ export default {
 
   // Pet weight (pages/pet/weight-chart.vue)
   petWeight: {
+    title: 'Weight Log',
+    currentWeight: 'Current Weight',
+    vsLast: 'vs Last',
+    noRecords: 'No records yet. Tap "+" at the top right to start',
+    weekly: 'W',
+    monthly: 'M',
+    thisWeek: 'This Week',
+    thisMonth: 'This Month',
+    chartTitle: '{range} Weight Trend',
+    emptyRange: 'No records in this period',
+    history: 'History',
+    recordWeight: 'Log Weight',
+    saveBtn: 'Save',
+    weightLabel: 'Weight (kg)',
+    weightPlaceholder: 'Enter weight',
+    dateLabel: 'Date',
+    datePlaceholder: 'Select a date',
+    noteLabel: 'Notes',
+    notePlaceholder: 'e.g. measured after a bath',
+    first: 'First',
     invalidWeight: 'Please enter a valid weight',
     selectDateFirst: 'Please select a date',
     recorded: 'Recorded',
@@ -4166,6 +4379,22 @@ export default {
 
   // Pet 3D space (pages/pet/space-3d.vue)
   petHub3d: {
+    diagTitle: 'Diagnostics',
+    diagPlatformLabel: 'Platform',
+    diagModelSourceLabel: 'Model Source',
+    diagCloseHint: 'Tap the overlay to close',
+    loadingThree: 'Loading three.js...',
+    loadingScene: 'Initializing scene...',
+    envUnsupported: '3D is not supported in this environment (H5/APP only)',
+    canvasNotReady: 'Canvas not ready after a long wait. Please go back and retry',
+    sceneInitFailed: 'Scene initialization failed: ',
+    loadingModel: 'Loading model...',
+    downloading: 'Downloading {p}%',
+    modelDownloadFailed: 'Model download failed. Please check your network or file path',
+    parsing: 'Parsing {progress}%',
+    modelLoadFailed: 'Model load failed. Please check your network or file path',
+    loadingShort: 'Loading...',
+    threeLoadFailed: 'three.js failed to load: ',
     dogModelLoadFailed: 'Failed to load the puppy model',
     cameraFps: '🐶 First-person (animal eye)',
     cameraTps: '👀 Third-person follow',
@@ -4173,6 +4402,34 @@ export default {
 
   // Pet health (pages/pet/health.vue, health-calendar.vue)
   petHealth: {
+    weekday: { sun: 'Su', mon: 'Mo', tue: 'Tu', wed: 'We', thu: 'Th', fri: 'Fr', sat: 'Sa' },
+    legend: {
+      bath: 'Bath',
+      vaccine: 'Vaccine',
+      deworm: 'Deworming',
+      checkup: 'Checkup',
+      diary: 'Diary',
+    },
+    monthLabel: '{month}/{year}',
+    todayTag: 'Today',
+    noRecords: 'No records',
+    reminderTitle: 'Upcoming Reminders',
+    viewAll: 'View All',
+    reminderDesc: 'Expected: {date} · {desc}',
+    monthOverview: 'This Month',
+    addReminder: 'Add Reminder',
+    saveBtn: 'Save',
+    reminderType: 'Reminder Type',
+    dateLabel: 'Date',
+    datePlaceholder: 'Select a date',
+    noteLabel: 'Notes',
+    notePlaceholder: 'Add a note (optional)',
+    selectedDateLabel: '{month}/{day}',
+    planSuffix: '{label} Plan',
+    overdueDays: 'Overdue {days} days',
+    daysLeft: '{days} days left',
+    allDay: 'All day',
+    reminderSuffix: '{label} reminder',
     dayEventsCount: '{count} event(s)',
     selectDateFirst: 'Please select a date',
     invalidReminderType: 'Please select a valid reminder type',
@@ -4210,6 +4467,22 @@ export default {
 
   // Pet dresser (pages/pet/dresser.vue)
   petDresser: {
+    ariaBack: 'Back',
+    title: 'Pet Dress-up',
+    upload: 'Upload',
+    petFallback: 'Pet',
+    previewTip: 'Tap a category on the right to accessorize your pet',
+    equippedTag: 'Worn',
+    emptyTip: 'No outfits yet. Upload a custom look from the top right',
+    catAll: 'All',
+    catHat: 'Hats',
+    catScarf: 'Scarves',
+    catClothes: 'Clothes',
+    catToy: 'Toys',
+    catCustom: 'Custom',
+    imgUploadFailed: 'Image upload failed',
+    customAvatarName: 'Custom Look',
+    customAvatarFallbackName: 'Custom Look',
     loadFailed: 'Failed to load outfits',
     equipped: 'Equipped {name}',
     equipFailed: 'Failed to equip',
@@ -4227,6 +4500,14 @@ export default {
   // Pet hub (pages/pet/pet-hub.vue)
   // Pet album (pages/pet/album.vue)
   petAlbum: {
+    ariaBack: 'Back',
+    titleSuffix: "{name}'s Album",
+    ariaUpload: 'Upload photo',
+    ariaGrid: 'Photo grid',
+    empty: 'No photos yet',
+    ariaAddPhoto: 'Add new photo',
+    petFallback: 'Pet',
+    monthTitle: '{month}/{year}',
     prevMonth: 'Previous month',
     nextMonth: 'Next month',
     uploaded: 'Uploaded',
@@ -4234,6 +4515,16 @@ export default {
 
   // Community drafts (pages/community/drafts.vue)
   communityDrafts: {
+    title: 'My Drafts ({count})',
+    clear: 'Clear',
+    empty: 'No drafts yet',
+    emptyDesc: 'Tap "Save Draft" at the top right while editing a post',
+    newPost: 'New Post',
+    emptyContent: '(Empty)',
+    justNow: 'Just now',
+    minutesAgo: '{n} min ago',
+    hoursAgo: '{n} h ago',
+    daysAgo: '{n} d ago',
     deleteThisDraft: 'Delete this draft',
     deleteTitle: 'Delete draft',
     deleteContent: 'Delete this draft?',
@@ -4261,5 +4552,118 @@ export default {
   emptyState: {
     reconnecting: 'Reconnecting…',
     refreshing: 'Refreshing…',
+  },
+  communitySearch: {
+    placeholder: 'Search posts, users, topics…',
+    historyTitle: 'Recent Searches',
+    hotTitle: 'Trending Searches',
+    searching: 'Searching…',
+    noResults: 'No results found',
+    noContent: '(No content)',
+    topicMeta: '{posts} posts · {followers} followers',
+    tabPost: 'Posts',
+    tabUser: 'Users',
+    tabTopic: 'Topics',
+    hotDailyLife: 'Pet Daily Life',
+    hotCats: 'Cats',
+    hotDogWalk: 'Dog Walking',
+    hotSupplies: 'Pet Supplies',
+    hotLostPet: 'Lost Pet Notices',
+    justNow: 'Just now',
+    minutesAgo: '{n} min ago',
+    hoursAgo: '{n} h ago',
+    daysAgo: '{n} d ago',
+  },
+  communityChatHistory: {
+    tabAll: 'All',
+    tabProcessing: 'In Progress',
+    tabClosed: 'Closed',
+    empty: 'No conversations yet',
+    sessionTitle: 'Session {id}',
+    messageCount: '{count} messages',
+    statusProcessing: 'In Progress',
+    statusClosed: 'Closed',
+    statusWaiting: 'Awaiting Reply',
+  },
+  dmChat: {
+    title: 'Chat',
+    followed: 'Following',
+    todayTime: 'Today {time}',
+    viewDetail: 'View Details',
+    inputPlaceholder: 'Send a message...',
+    defaultFriendName: 'Pet Friend',
+    greeting: "Hi! Let's start chatting~",
+  },
+  webviewPay: {
+    loading: 'Loading payment page...',
+    success: 'Payment successful!',
+    cancelled: 'Order cancelled',
+    failedPrefix: 'Payment failed: ',
+    loadFailed: 'Failed to load payment page',
+  },
+  validate: {
+    emailRequired: 'Email is required',
+    emailInvalid: 'Invalid email format',
+    phoneRequired: 'Phone number is required',
+    phoneNeedCountryCode: 'Phone number must include a country code (e.g. +86)',
+    phoneInvalid: 'Invalid phone number format',
+    phoneNumberInvalid: 'Please enter a valid phone number',
+    smsRequired: 'Verification code is required',
+    smsInvalid: 'Verification code must be 6 digits',
+    passwordRequired: 'Password is required',
+    passwordMin: 'Password must be at least {min} characters',
+    passwordWeak: 'Password must contain both letters and numbers',
+    receiverRequired: 'Recipient name is required',
+    receiverLength: 'Name must be between 2 and 30 characters',
+    petNameTooLong: 'Pet name is too long (max 20 characters)',
+  },
+  upload: {
+    failed: 'Upload failed ({code})',
+    parseFailed: 'Failed to parse upload response',
+    networkError: 'Network error',
+    videoFailed: 'Video upload failed ({code})',
+    videoParseFailed: 'Failed to parse video upload response',
+  },
+  authPlugin: {
+    nativeUnavailable: 'Native login plugin unavailable, please use another sign-in method',
+    nativeUnavailableShort: 'Native login plugin unavailable',
+    loginFailed: '{provider} sign-in failed',
+    unsupported: 'Sign in with {provider} is not supported in this environment',
+  },
+  paymentPlugin: {
+    payFailed: 'Payment failed',
+    useMiniProgramPay: 'Please use native mini-program payment',
+    queryFailed: 'Query failed',
+    unsupported: 'Not supported in this environment',
+    nativeUnavailable: 'Native payment plugin unavailable',
+  },
+  cameraPlugin: {
+    takePhotoFailed: 'Failed to take photo',
+    takePhotoCancelled: 'Photo capture cancelled',
+    pickFailed: 'Failed to select image',
+    pickCancelled: 'Image selection cancelled',
+    compressFailed: 'Image compression failed',
+  },
+  locationPlugin: {
+    locateFailed: 'Location failed',
+    locatePermission: 'Location failed, please check permissions',
+    chooseAddressCancelled: 'Address selection cancelled',
+    unsupported: 'Not supported in this environment',
+    geocodeFailed: 'Geocoding failed',
+  },
+  biometricPlugin: {
+    prompt: 'Verify your identity to continue',
+    failed: 'Authentication failed',
+    noDevice: 'Please use a device that supports biometrics',
+    unsupported: 'Biometrics are not supported in this environment',
+  },
+  pushPlugin: {
+    registerFailed: 'Push registration failed',
+  },
+  petHubPlugin: {
+    nativeUnavailable: 'Native plugin unavailable',
+  },
+  imageFallback: {
+    loadFailed: 'Failed to load image',
   },
 }

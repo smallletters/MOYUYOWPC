@@ -6,7 +6,7 @@
          APP 端 <image>/WebView 会按 URL 缓存图片,造成"上传成功但页面不显示新头像"。
          追加 ?v=<毫秒> 强制图片重新加载;同一秒内重复渲染不会持续跳时间戳,
          只在 updateProfile 成功后通过 avatarVersion 自增触发刷新。 -->
-      <image :src="avatarSrc" class="avatar" mode="aspectFill" />
+      <image :src="$img(avatarSrc)" class="avatar" mode="aspectFill" />
       <text class="name">{{ userStore.userInfo?.nickname || 'User' }}</text>
       <text class="email">{{ userStore.userInfo?.email }}</text>
       <view
@@ -63,7 +63,8 @@ export default {
 
   data() {
     return {
-      defaultAvatar: 'https://i.pravatar.cc/200?img=20',
+      // 本地静态占位图：真机可能只连局域网、无公网，用外链会在无网络时空白
+      defaultAvatar: '/static/images/default-avatar.png',
       // 保存中标记:防止双击重复提交
       saving: false,
       // 头像上传中标记:和 saving 独立,允许分别显示状态

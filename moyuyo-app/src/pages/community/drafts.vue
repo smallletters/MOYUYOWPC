@@ -4,20 +4,20 @@
       <view class="navbar__back" @click="onBack">
         <text class="navbar__back-icon">‹</text>
       </view>
-      <text class="navbar__title">我的草稿 ({{ drafts.length }})</text>
+      <text class="navbar__title">{{ $t('communityDrafts.title', { count: drafts.length }) }}</text>
       <view v-if="drafts.length" class="navbar__action" @click="onClearAll">
-        <text class="navbar__action-text">清空</text>
+        <text class="navbar__action-text">{{ $t('communityDrafts.clear') }}</text>
       </view>
     </view>
 
-    <view v-if="loading" class="loading">加载中…</view>
+    <view v-if="loading" class="loading">{{ $t('common.loading') }}</view>
 
     <view v-else-if="!drafts.length" class="empty">
       <text class="empty__icon">📭</text>
-      <text class="empty__title">还没有草稿</text>
-      <text class="empty__desc">编辑帖子时点击右上角"存草稿"即可保存</text>
+      <text class="empty__title">{{ $t('communityDrafts.empty') }}</text>
+      <text class="empty__desc">{{ $t('communityDrafts.emptyDesc') }}</text>
       <view class="empty__btn" @click="onNewPost">
-        <text>新建帖子</text>
+        <text>{{ $t('communityDrafts.newPost') }}</text>
       </view>
     </view>
 
@@ -87,19 +87,19 @@ export default {
       if (c) return c.length > 60 ? c.slice(0, 60) + '…' : c
       if (d.topic) return `# ${d.topic}`
       if (d.location) return `📍 ${d.location}`
-      return '(空内容)'
+      return this.$t('communityDrafts.emptyContent')
     },
 
     formatTime(ts) {
       if (!ts) return ''
       const diff = Date.now() - ts
       const min = Math.floor(diff / 60000)
-      if (min < 1) return '刚刚'
-      if (min < 60) return `${min} 分钟前`
+      if (min < 1) return this.$t('communityDrafts.justNow')
+      if (min < 60) return this.$t('communityDrafts.minutesAgo', { n: min })
       const hr = Math.floor(min / 60)
-      if (hr < 24) return `${hr} 小时前`
+      if (hr < 24) return this.$t('communityDrafts.hoursAgo', { n: hr })
       const day = Math.floor(hr / 24)
-      if (day < 30) return `${day} 天前`
+      if (day < 30) return this.$t('communityDrafts.daysAgo', { n: day })
       const dt = new Date(ts)
       return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
     },
@@ -178,8 +178,15 @@ export default {
 .navbar {
   display: flex;
   align-items: center;
-  height: 88rpx;
-  padding: 0 24rpx;
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  padding-right: 24rpx;
+  padding-left: 24rpx;
+  padding-bottom: 0;
+  box-sizing: border-box;
   background: var(--color-surface, #ffffff);
   border-bottom: 1rpx solid var(--color-divider, #ececec);
 }

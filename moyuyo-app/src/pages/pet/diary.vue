@@ -22,7 +22,7 @@
           </view>
           <text class="entry-content">{{ e.content }}</text>
           <view v-if="e.image" class="entry-image-wrap">
-            <image :src="e.image" class="entry-image" />
+            <image mode="aspectFill" :src="$img(e.image)" class="entry-image" />
           </view>
           <view class="entry-mood">
             <text>{{ e.mood }}</text>

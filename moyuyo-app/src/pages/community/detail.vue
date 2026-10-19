@@ -4,7 +4,12 @@
     <template v-else>
       <view class="post-card">
         <view class="post-header">
-          <image :src="post.avatar || defaultAvatar" class="avatar" @tap="onTapAuthor" />
+          <image
+            mode="aspectFill"
+            :src="post.avatar || defaultAvatar"
+            class="avatar"
+            @tap="onTapAuthor"
+          />
           <view class="user-info" @tap="onTapAuthor">
             <text class="username">{{ post.username || 'Pet Lover' }}</text>
             <text class="time">{{ formatTime(post.createTime) }}</text>
@@ -60,7 +65,7 @@
           >
             <!-- 单图用 widthFix 由图片自身比例撑高(单元格无固定高度)，多图用 aspectFill 填满方格 -->
             <image
-              :src="img"
+              :src="$img(img)"
               class="post-image"
               :mode="gridClass === 'grid-single' ? 'widthFix' : 'aspectFill'"
             />
@@ -132,7 +137,8 @@ export default {
       postId: null,
       post: null,
       commentText: '',
-      defaultAvatar: 'https://i.pravatar.cc/100?img=1',
+      // 本地静态占位图：真机可能只连局域网、无公网，用外链会在无网络时空白
+      defaultAvatar: '/static/images/default-avatar.png',
       // 点赞请求中标记：避免用户连续点击产生重复请求
       liking: false,
       // 收藏请求中标记

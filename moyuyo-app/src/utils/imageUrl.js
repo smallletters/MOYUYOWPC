@@ -9,7 +9,8 @@
  * 行为：
  * - 空值：原样返回（让调用方继续用 defaultAvatar 兜底）
  * - 已经是 http(s):// 的：原样返回（兼容 OAuth / 三方头像）
- * - 以 / 开头且有 base：拼上 base
+ * - 以 /static/ 开头：原样返回（uni-app 内置静态资源，随包打进 APP，绝不能拼后端 base）
+ * - 其余以 / 开头且有 base：拼上 base
  * - 其余（裸文件名 / data URI 等）：原样返回
  *
  * @param {string} url 后端返回的图片 URL
@@ -18,11 +19,18 @@
 export function toAbsoluteImageUrl(url) {
   if (!url) return url
   if (/^https?:\/\//i.test(url)) return url
-  // APP 端运行时 process.env.VITE_ADMIN_API_BASE 由 vite define 在编译期字面量替换；
-  // H5 端由 vite proxy 处理（base 留空），同样能走通。
-  const base =
-    (typeof process !== 'undefined' && process.env && process.env.VITE_ADMIN_API_BASE) || ''
+  // 与 request.js 的既有约定保持一致：vite.config.js 的 define 会在编译期把
+  // process.env.VITE_ADMIN_API_BASE 静态替换成字符串字面量（APP 端同样生效）。
+  // 绝对不能用 typeof process !== 'undefined' 做运行时守卫：uni-app APP 端
+  // typeof process === 'undefined'，守卫会让整个 && 链短路、base 恒为空，
+  // 相对路径 /uploads/... 就拼不成绝对 URL，原生 <image> 加载失败显示空白。
+  // 也不能用 import.meta.env（vite-plugin-uni APP 端 polyfill 会用到 new URL/document 导致白屏）。
+  const base = process.env.VITE_ADMIN_API_BASE || ''
   if (typeof url === 'string' && url.startsWith('/') && base) {
+    // /static/** 是 uni-app 内置静态资源（随包打进 APP，H5 由 Vite dev server 提供），
+    // 属于「本地资源」而非后端资源，拼上后端 base 会 404 —— 必须先排除。
+    if (url.startsWith('/static/')) return url
+    // /uploads/** 等后端相对路径：补成 http(s)://host/...
     return `${base}${url}`
   }
   return url

@@ -1,15 +1,15 @@
 <template>
   <view class="cart">
     <!-- 顶部导航栏：页面已关闭原生导航(navigationStyle: custom)，统一在此渲染，避免两条导航栏 -->
-    <view class="header" :style="{ paddingTop: statusBarHeight + 'px' }">
+    <view class="header">
       <view class="header-inner">
-        <view class="header-back" aria-label="返回" @click="goBack">
+        <view class="header-back" :aria-label="$t('common.back')" @click="goBack">
           <text class="header-back-icon luc luc-arrow-left" />
         </view>
         <text class="header-title">{{ $t('pageTitle.cartIndex') }}</text>
         <view class="header-edit" @click="onToggleEdit">
           <text v-if="cartItems.length > 0" class="header-edit-text">
-            {{ editing ? '完成' : '编辑' }}
+            {{ editing ? $t('cart.editDone') : $t('cart.edit') }}
           </text>
         </view>
       </view>
@@ -18,16 +18,18 @@
     <!-- 空状态 -->
     <view v-if="cartItems.length === 0 && expiredItems.length === 0" class="empty">
       <text class="empty-emoji luc-shopping-cart" />
-      <text class="empty-text">购物车是空的</text>
-      <view class="btn btn-primary" @click="goShopping">去逛逛</view>
+      <text class="empty-text">{{ $t('cart.empty') }}</text>
+      <view class="btn btn-primary" @click="goShopping">{{ $t('cart.goShopping') }}</view>
     </view>
 
     <template v-else>
       <!-- 降价提醒横幅 -->
       <view v-if="showBanner" class="banner">
         <text class="banner-tag luc-tag" />
-        <text class="banner-text">2件商品降价啦，已为您节省$18.00</text>
-        <view class="banner-close" aria-label="关闭提醒" @click="showBanner = false">
+        <text class="banner-text">
+          {{ $t('cart.priceDropTip', { count: 2, amount: '$18.00' }) }}
+        </text>
+        <view class="banner-close" :aria-label="$t('cart.closeBanner')" @click="showBanner = false">
           <text class="banner-close-icon luc-x" />
         </view>
       </view>
@@ -50,7 +52,7 @@
                 <text v-if="item.checked"><text class="luc luc-check" /></text>
               </view>
             </view>
-            <image :src="item.image" class="item-image" mode="aspectFill" />
+            <image :src="$img(item.image)" class="item-image" mode="aspectFill" />
             <view class="item-content">
               <view class="item-header">
                 <text class="item-name">{{ item.name }}</text>
@@ -62,19 +64,29 @@
                 <view class="price-wrap">
                   <text class="item-price">${{ item.price.toFixed(2) }}</text>
                   <!-- 缺货标记:仍展示在购物车,但不可勾选结算 -->
-                  <text v-if="item.cartStatus === 'OUT_OF_STOCK'" class="out-stock-text">缺货</text>
+                  <text v-if="item.cartStatus === 'OUT_OF_STOCK'" class="out-stock-text">
+                    {{ $t('cart.outOfStockLabel') }}
+                  </text>
                 </view>
                 <view v-if="!editing" class="quantity-control">
-                  <view class="qty-btn" aria-label="减少数量" @click.stop="onQtyChange(item, -1)">
+                  <view
+                    class="qty-btn"
+                    :aria-label="$t('cart.decreaseQty')"
+                    @click.stop="onQtyChange(item, -1)"
+                  >
                     -
                   </view>
                   <text class="qty-value">{{ item.quantity }}</text>
-                  <view class="qty-btn" aria-label="增加数量" @click.stop="onQtyChange(item, 1)">
+                  <view
+                    class="qty-btn"
+                    :aria-label="$t('cart.increaseQty')"
+                    @click.stop="onQtyChange(item, 1)"
+                  >
                     +
                   </view>
                 </view>
                 <view v-else class="item-delete" @click.stop="onDelete(item)">
-                  <text class="item-delete-text">删除</text>
+                  <text class="item-delete-text">{{ $t('cart.delete') }}</text>
                 </view>
               </view>
             </view>
@@ -84,21 +96,23 @@
         <!-- 失效商品区 -->
         <view v-if="expiredItems.length > 0" class="expired-section">
           <view class="expired-header" @click="expandedExpired = !expandedExpired">
-            <text class="expired-header-text">失效商品 ({{ expiredItems.length }})</text>
+            <text class="expired-header-text">
+              {{ $t('cart.expiredTitle', { count: expiredItems.length }) }}
+            </text>
             <text class="expired-header-arrow" :class="{ rotated: expandedExpired }">
               <text class="luc luc-chevron-right" />
             </text>
           </view>
           <view v-show="expandedExpired" class="expired-list">
             <view v-for="item in expiredItems" :key="itemKey(item)" class="expired-item">
-              <image :src="item.image" class="expired-image" mode="aspectFill" />
+              <image :src="$img(item.image)" class="expired-image" mode="aspectFill" />
               <view class="expired-info">
                 <text class="expired-name">{{ item.name }}</text>
                 <text class="expired-status">{{ item.statusText }}</text>
                 <text class="expired-price">${{ item.price.toFixed(2) }}</text>
               </view>
               <view class="expired-del" @click.stop="onExpiredDelete(item)">
-                <text class="expired-del-text">删除</text>
+                <text class="expired-del-text">{{ $t('cart.delete') }}</text>
               </view>
             </view>
           </view>
@@ -107,8 +121,10 @@
         <!-- 凑单推荐 -->
         <view v-if="upsellItems.length > 0" class="upsell-section">
           <view class="upsell-header">
-            <text class="upsell-title">凑单推荐</text>
-            <view class="upsell-tag">满199减20</view>
+            <text class="upsell-title">{{ $t('cart.upsellTitle') }}</text>
+            <view class="upsell-tag">
+              {{ $t('cart.promoRule', { threshold: 199, discount: 20 }) }}
+            </view>
           </view>
           <scroll-view scroll-x class="upsell-scroll" show-scrollbar="false">
             <view class="upsell-track">
@@ -118,7 +134,7 @@
                 class="upsell-card"
                 @click="onUpsellClick(item)"
               >
-                <image :src="item.image" class="upsell-card-image" mode="aspectFill" />
+                <image :src="$img(item.image)" class="upsell-card-image" mode="aspectFill" />
                 <text class="upsell-card-name">{{ item.name }}</text>
                 <text class="upsell-card-price">${{ item.price.toFixed(2) }}</text>
               </view>
@@ -128,24 +144,24 @@
 
         <!-- 价格汇总 -->
         <view class="summary-section">
-          <text class="summary-title">订单摘要</text>
+          <text class="summary-title">{{ $t('cart.orderSummary') }}</text>
           <view class="summary-row">
-            <text class="summary-label">商品合计</text>
+            <text class="summary-label">{{ $t('cart.goodsSubtotal') }}</text>
             <text class="summary-value">${{ subtotal.toFixed(2) }}</text>
           </view>
           <view class="summary-row">
-            <text class="summary-label">运费</text>
+            <text class="summary-label">{{ $t('cart.shipping') }}</text>
             <view class="summary-value-wrap">
               <text class="summary-value">${{ shipping.toFixed(2) }}</text>
-              <text v-if="shipping === 0" class="summary-badge">免运费</text>
+              <text v-if="shipping === 0" class="summary-badge">{{ $t('cart.freeShipping') }}</text>
             </view>
           </view>
           <view class="summary-row">
-            <text class="summary-label">优惠</text>
+            <text class="summary-label">{{ $t('cart.discount') }}</text>
             <text class="summary-value summary-discount">-${{ discountAmount.toFixed(2) }}</text>
           </view>
           <view class="summary-total">
-            <text class="summary-total-label">应付金额</text>
+            <text class="summary-total-label">{{ $t('cart.payableAmount') }}</text>
             <text class="summary-total-price">${{ total.toFixed(2) }}</text>
           </view>
         </view>
@@ -159,11 +175,11 @@
           <view class="checkbox" :class="{ checked: cartStore.isAllChecked }">
             <text v-if="cartStore.isAllChecked"><text class="luc luc-check" /></text>
           </view>
-          <text class="check-all-text">全选</text>
+          <text class="check-all-text">{{ $t('cart.selectAll') }}</text>
         </view>
         <view class="bottom-right">
           <view class="bottom-total">
-            <text class="bottom-total-label">合计:</text>
+            <text class="bottom-total-label">{{ $t('cart.totalLabel') }}</text>
             <text class="bottom-total-price">${{ total.toFixed(2) }}</text>
           </view>
           <view
@@ -171,7 +187,7 @@
             :class="{ disabled: cartStore.selectedQuantity === 0 }"
             @click="onCheckout"
           >
-            结算({{ cartStore.selectedQuantity }})
+            {{ $t('cart.checkoutBtn', { count: cartStore.selectedQuantity }) }}
           </view>
         </view>
       </view>
@@ -186,13 +202,6 @@ export default {
   pageTitleKey: 'pageTitle.cartIndex',
 
   onLoad() {
-    // 自定义导航：按系统状态栏高度下推，避免内容顶到状态栏
-    try {
-      const sysInfo = uni.getSystemInfoSync ? uni.getSystemInfoSync() : null
-      this.statusBarHeight = (sysInfo && sysInfo.statusBarHeight) || 20
-    } catch (e) {
-      this.statusBarHeight = 20
-    }
     // 已登录则从服务端同步购物车
     if (this.cartStore && this.cartStore.syncFromServer) {
       this.cartStore.syncFromServer()
@@ -200,7 +209,6 @@ export default {
   },
   data() {
     return {
-      statusBarHeight: 20,
       showBanner: true,
       editing: false,
       expandedExpired: false,
@@ -262,11 +270,11 @@ export default {
     /** 失效原因文案(电商购物车"失效商品"区展示) */
     invalidReason(status) {
       const map = {
-        OFF_SALE: '已下架',
-        PRODUCT_GONE: '商品已失效',
-        INVALID_SKU: '规格已失效',
+        OFF_SALE: this.$t('cart.offSale'),
+        PRODUCT_GONE: this.$t('cart.productGone'),
+        INVALID_SKU: this.$t('cart.invalidSku'),
       }
-      return map[status] || '已失效'
+      return map[status] || this.$t('cart.invalidDefault')
     },
     onExpiredDelete(item) {
       const key = this.itemKey(item)
@@ -384,6 +392,12 @@ export default {
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
   flex-shrink: 0;
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 的**较大值**而非相加，
+     iOS 支持 env() 时二者同为状态栏高度，相加会让顶栏被推低一倍。
+     原先用 JS 的 uni.getSystemInfoSync().statusBarHeight 绑定内联 paddingTop，
+     在 H5 下该值为 0 却被 `|| 20` 当成 falsy 退化成 20px，且 data 初值 20 会有首帧跳动。 */
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   box-sizing: content-box;
 }
 

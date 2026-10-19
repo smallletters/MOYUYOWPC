@@ -6,7 +6,7 @@
         <view class="header-btn" @click="onBack">
           <text class="header-btn-icon luc luc-arrow-left" />
         </view>
-        <text class="header-title">体重记录</text>
+        <text class="header-title">{{ $t('petWeight.title') }}</text>
         <view class="header-btn header-btn-primary" @click="onAddWeight">
           <text class="header-btn-icon header-btn-icon-white">+</text>
         </view>
@@ -15,7 +15,7 @@
 
     <!-- 当前体重卡片 -->
     <view class="current-weight-card">
-      <text class="current-weight-label">当前体重</text>
+      <text class="current-weight-label">{{ $t('petWeight.currentWeight') }}</text>
       <view class="current-weight-main">
         <template v-if="weightRecords.length">
           <text class="current-weight-number">{{ latestWeight }}</text>
@@ -39,11 +39,11 @@
       </view>
       <view class="current-weight-meta">
         <template v-if="latestDate">
-          <text class="meta-item">较上次</text>
+          <text class="meta-item">{{ $t('petWeight.vsLast') }}</text>
           <text class="meta-divider">|</text>
           <text class="meta-item">{{ latestDate }}</text>
         </template>
-        <text v-else class="meta-item">暂无记录，点右上角「+」开始记录</text>
+        <text v-else class="meta-item">{{ $t('petWeight.noRecords') }}</text>
       </view>
     </view>
 
@@ -54,21 +54,27 @@
         :class="{ 'toggle-active': chartMode === 'weekly' }"
         @click="onToggleMode('weekly')"
       >
-        <text class="toggle-text">周</text>
+        <text class="toggle-text">{{ $t('petWeight.weekly') }}</text>
       </view>
       <view
         class="toggle-item"
         :class="{ 'toggle-active': chartMode === 'monthly' }"
         @click="onToggleMode('monthly')"
       >
-        <text class="toggle-text">月</text>
+        <text class="toggle-text">{{ $t('petWeight.monthly') }}</text>
       </view>
     </view>
 
     <!-- 图表区域（div 模拟） -->
     <view class="chart-card">
       <view class="chart-header">
-        <text class="chart-title">{{ chartMode === 'weekly' ? '本周' : '本月' }}体重变化</text>
+        <text class="chart-title">
+          {{
+            $t('petWeight.chartTitle', {
+              range: chartMode === 'weekly' ? $t('petWeight.thisWeek') : $t('petWeight.thisMonth'),
+            })
+          }}
+        </text>
       </view>
       <!-- 柱状图：Y 轴刻度与柱高同源，随数据动态计算 -->
       <view v-if="chartData.length" class="chart-container">
@@ -114,13 +120,13 @@
         </view>
       </view>
       <view v-else class="chart-empty">
-        <text>该时间段暂无记录</text>
+        <text>{{ $t('petWeight.emptyRange') }}</text>
       </view>
     </view>
 
     <!-- 记录列表 -->
     <view class="record-section">
-      <text class="record-section-title">历史记录</text>
+      <text class="record-section-title">{{ $t('petWeight.history') }}</text>
 
       <view v-for="(record, rIdx) in weightRecords" :key="rIdx" class="record-item">
         <view class="record-left">
@@ -151,35 +157,41 @@
     <view v-if="showWeightModal" class="modal-overlay" @click="onCloseWeightModal">
       <view class="modal-content" @click.stop>
         <view class="modal-header">
-          <text class="modal-cancel" @click="onCloseWeightModal">取消</text>
-          <text class="modal-title">记录体重</text>
-          <text class="modal-submit" @click="onSubmitWeight">保存</text>
+          <text class="modal-cancel" @click="onCloseWeightModal">{{ $t('common.cancel') }}</text>
+          <text class="modal-title">{{ $t('petWeight.recordWeight') }}</text>
+          <text class="modal-submit" @click="onSubmitWeight">{{ $t('petWeight.saveBtn') }}</text>
         </view>
         <view class="modal-body">
           <view class="form-group">
-            <text class="form-label">体重（kg）</text>
+            <text class="form-label">{{ $t('petWeight.weightLabel') }}</text>
             <view class="weight-input-wrap">
               <input
                 v-model="weightForm.value"
                 class="weight-input"
                 type="digit"
-                placeholder="请输入体重"
+                :placeholder="$t('petWeight.weightPlaceholder')"
               >
               <text class="weight-input-unit">kg</text>
             </view>
           </view>
           <view class="form-group">
-            <text class="form-label">日期</text>
+            <text class="form-label">{{ $t('petWeight.dateLabel') }}</text>
             <picker mode="date" :value="weightForm.date" @change="onWeightDateChange">
               <view class="form-picker">
-                <text class="form-picker-text">{{ weightForm.date || '请选择日期' }}</text>
+                <text class="form-picker-text">
+                  {{ weightForm.date || $t('petWeight.datePlaceholder') }}
+                </text>
                 <text class="form-picker-arrow luc-chevron-right" />
               </view>
             </picker>
           </view>
           <view class="form-group">
-            <text class="form-label">备注</text>
-            <input v-model="weightForm.note" class="form-input" placeholder="如：洗澡后测量">
+            <text class="form-label">{{ $t('petWeight.noteLabel') }}</text>
+            <input
+              v-model="weightForm.note"
+              class="form-input"
+              :placeholder="$t('petWeight.notePlaceholder')"
+            >
           </view>
         </view>
       </view>
@@ -302,7 +314,9 @@ export default {
             // 涨/跌相对更早一条记录；首条记录无对比对象
             trend: diff === null || diff < 0 ? 'down' : 'up',
             diffText:
-              diff === null ? '首次' : `${diff >= 0 ? '+' : '-'}${Math.abs(diff).toFixed(1)}`,
+              diff === null
+                ? this.$t('petWeight.first')
+                : `${diff >= 0 ? '+' : '-'}${Math.abs(diff).toFixed(1)}`,
           }
         })
         .reverse()
@@ -458,7 +472,9 @@ export default {
   position: sticky;
   top: 0;
   z-index: 30;
-  padding-top: calc(var(--status-bar-height, 0px) + env(safe-area-inset-top, 0px));
+  /* 取二者较大值（而非相加）：iOS 上 env 与 status-bar-height 同为状态栏高度，相加会翻倍 */
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }

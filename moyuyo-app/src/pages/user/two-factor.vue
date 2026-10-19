@@ -133,7 +133,9 @@ export default {
   min-height: 100vh;
   background: var(--color-background);
   padding: 64rpx 48rpx;
-  padding-top: calc(64rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  /* 取二者较大值（而非相加）：iOS 上 env 与 status-bar-height 同为状态栏高度，相加会翻倍 */
+  padding-top: calc(64rpx + var(--status-bar-height, 0px));
+  padding-top: calc(64rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
 }
 
 .header {

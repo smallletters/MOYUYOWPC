@@ -56,7 +56,7 @@
         </view>
 
         <view class="card-body">
-          <image :src="item.image" mode="aspectFill" class="card-img" />
+          <image :src="resolveItemImage(item.image)" mode="aspectFill" class="card-img" />
           <view class="card-info">
             <text class="card-name">{{ item.productName }}</text>
             <text class="card-sku">{{ item.sku }}</text>
@@ -123,6 +123,7 @@
 
 <script>
 import { afterSalesApi } from '@/api'
+import { toAbsoluteImageUrl } from '@/utils/imageUrl'
 
 export default {
   pageTitleKey: 'pageTitle.orderAfterSales',
@@ -156,6 +157,14 @@ export default {
   },
 
   methods: {
+    /**
+     * 商品图：后端返回相对路径(/uploads/...)，APP 端 <image> 不走 Vite proxy，
+     * 必须补成绝对地址，否则真机上商品图空白。
+     */
+    resolveItemImage(url) {
+      return toAbsoluteImageUrl(url) || ''
+    },
+
     goBack() {
       uni.navigateBack()
     },
@@ -209,7 +218,12 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 88rpx;
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  box-sizing: border-box;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }
@@ -217,6 +231,9 @@ export default {
 .header-btn {
   position: absolute;
   left: 16rpx;
+  /* 绝对定位元素吃不到父级 padding，需自行下移状态栏高度 */
+  top: var(--status-bar-height, 0px);
+  top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -252,7 +269,9 @@ export default {
 
 .tabs {
   position: sticky;
-  top: 88rpx;
+  /* 吸附点需跟随 .header 的实际高度（header 已加状态栏安全区），否则 iOS 上会被加高后的 header 盖住 */
+  top: calc(88rpx + var(--status-bar-height, 0px));
+  top: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
   z-index: 20;
   display: flex;
   background: var(--color-surface);
@@ -512,7 +531,7 @@ export default {
 .empty-line {
   height: 4rpx;
   border-radius: 2rpx;
-  background: #d1d1d6;
+  background: var(--color-fill-dim);
 
   &.short {
     width: 48rpx;

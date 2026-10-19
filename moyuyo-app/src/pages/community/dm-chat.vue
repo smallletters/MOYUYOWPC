@@ -5,7 +5,7 @@
       <view class="nav-back" @tap="goBack">
         <text class="luc luc-arrow-left" />
       </view>
-      <text class="nav-title">{{ targetUser.nickname || '私聊' }}</text>
+      <text class="nav-title">{{ targetUser.nickname || $t('dmChat.title') }}</text>
       <view class="nav-action" @tap="viewProfile">
         <text class="luc luc-user" />
       </view>
@@ -28,7 +28,7 @@
             <view class="profile-info">
               <text class="profile-name">{{ targetUser.name }}</text>
               <view class="follow-tag">
-                <text class="follow-tag-text">已关注</text>
+                <text class="follow-tag-text">{{ $t('dmChat.followed') }}</text>
               </view>
             </view>
           </view>
@@ -39,7 +39,7 @@
         <!-- 可折叠内容 -->
         <view class="profile-card-body" :class="{ collapsed: profileCollapsed }">
           <view class="view-profile-btn" @tap="viewProfile">
-            <text class="view-profile-text">查看主页</text>
+            <text class="view-profile-text">{{ $t('dm.viewProfile') }}</text>
           </view>
         </view>
       </view>
@@ -48,7 +48,7 @@
       <view class="message-list">
         <!-- 时间戳分隔 -->
         <view class="time-divider">
-          <text class="time-text">今天 14:30</text>
+          <text class="time-text">{{ $t('dmChat.todayTime', { time: '14:30' }) }}</text>
         </view>
 
         <!-- 消息项 -->
@@ -75,7 +75,7 @@
               <view class="product-bottom">
                 <text class="product-price">{{ msg.product.price }}</text>
                 <view class="product-cta">
-                  <text class="product-cta-text">查看详情</text>
+                  <text class="product-cta-text">{{ $t('dmChat.viewDetail') }}</text>
                 </view>
               </view>
             </view>
@@ -99,7 +99,7 @@
           <input
             v-model="inputText"
             class="msg-input"
-            placeholder="发送消息..."
+            :placeholder="$t('dmChat.inputPlaceholder')"
             placeholder-class="msg-input-placeholder"
             confirm-type="send"
             @confirm="sendMessage"
@@ -115,15 +115,17 @@
 
 <script setup>
 import { ref, nextTick, onMounted } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { t } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
+import { getPageQuery } from '@/utils/pageQuery'
 usePageTitle('pageTitle.communityDmChat')
 
 // 目标用户信息：从 URL query 取（name/avatar/userId）
 
 const targetUser = ref({
   id: null,
-  name: '宠物好友',
+  name: t('dmChat.defaultFriendName'),
   avatar: 'P',
 })
 
@@ -197,22 +199,36 @@ function addAttachment() {
   })
 }
 
-onMounted(() => {
+// 幂等启动：onLoad 先于 onMounted 触发，两者都调用，副作用只发生一次
+// 不能只读 `getCurrentPages().slice(-1)[0].options` —— APP 运行时（initPageVm）
+// 从不写 pageVm.options，APP 真机上恒读到 {}，结果是聊天对象信息丢失。
+let booted = false
+
+function bootstrap(options) {
+  if (booted) return
+  booted = true
   // 读取 URL query 中的目标用户信息
   try {
-    const pages = getCurrentPages()
-    const cur = pages[pages.length - 1]
-    const q = cur?.options || {}
-    if (q.id) targetUser.value.id = q.id
+    const hasOptions = !!options && typeof options === 'object' && Object.keys(options).length > 0
+    const q = hasOptions ? options : getPageQuery()
+    if (q.id) targetUser.value.id = String(q.id) // 雪花 ID 用 String 承接，避免精度丢失
     if (q.name) targetUser.value.name = q.name
     if (q.avatar) targetUser.value.avatar = q.avatar
   } catch (e) {
-    /* ignore */
+    console.warn('[dm-chat] read page query failed', e)
   }
   loadMessages(targetUser.value.id)
   if (messages.value.length === 0) {
-    messages.value.push({ isSelf: false, type: 'text', content: '你好，开始聊天吧～' })
+    messages.value.push({ isSelf: false, type: 'text', content: t('dmChat.greeting') })
   }
+}
+
+onLoad((options) => {
+  bootstrap(options)
+})
+
+onMounted(() => {
+  bootstrap()
 })
 </script>
 
@@ -257,7 +273,7 @@ onMounted(() => {
 /* 聊天主体 */
 .dm-body {
   flex: 1;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
   padding: 24rpx;
   width: 100%;
   box-sizing: border-box;
@@ -359,7 +375,7 @@ onMounted(() => {
   justify-content: center;
   height: 72rpx;
   border-radius: 36rpx;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
 }
 
 .view-profile-text {
@@ -385,7 +401,7 @@ onMounted(() => {
   border-radius: 20rpx;
   font-size: 22rpx;
   color: var(--color-text-secondary);
-  background: #e5e5ea;
+  background: var(--color-fill);
 }
 
 .message-item {
@@ -429,7 +445,7 @@ onMounted(() => {
 }
 
 .bubble-remote {
-  background: #ffffff;
+  background: var(--color-surface);
   border-radius: 28rpx 28rpx 28rpx 8rpx;
 }
 
@@ -457,7 +473,7 @@ onMounted(() => {
 
 .product-image {
   height: 200rpx;
-  background: linear-gradient(135deg, #f2f2f7, #ffffff);
+  background: linear-gradient(135deg, var(--color-fill, #f2f2f7), var(--color-surface, #ffffff));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -511,7 +527,7 @@ onMounted(() => {
 /* 底部输入栏 */
 .dm-input-bar {
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--color-surface-veil-95, rgba(255, 255, 255, 0.95));
   border-top: 1rpx solid var(--color-border);
   padding: 16rpx 32rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
@@ -527,7 +543,9 @@ onMounted(() => {
   width: 72rpx;
   height: 72rpx;
   border-radius: 50%;
-  background: #f2f2f7;
+  /* 原写死 #f2f2f7，深色下会变成亮色圆钮；改用 --color-background
+     （浅 #f6f2ee / 深 #1a1816），保持"凹陷输入区比栏底更深"的关系。 */
+  background: var(--color-background);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -543,7 +561,7 @@ onMounted(() => {
   flex: 1;
   height: 72rpx;
   border-radius: 36rpx;
-  background: #f2f2f7;
+  background: var(--color-background);
   border: 1rpx solid var(--color-border);
   padding: 0 28rpx;
   display: flex;

@@ -36,16 +36,19 @@ INSERT IGNORE INTO mo_order (id, order_no, user_id, address_id, goods_amount, fr
 (186100003, 'TEST_ORD_20260829003', 180000099, 182000099, 56.97, 5.99, 6.99, 10.00, 0, 59.95, 'USD', 'PENDING_SHIP', 'APPLE_PAY', 'ap_test_applepay_003', NULL, NULL, '测试订单-待发货-ApplePay', '2026-08-29 09:00:00', '2026-08-29 09:01:00');
 
 -- 4. 待发货订单的商品明细（复用 demo 商品 ID 183000001 等）
+-- 注意：商品图片已改为自托管路径（/uploads/...，与 mo_product.main_image 一致），
+--       原先使用的 Unsplash 外链（images.unsplash.com/photo-*）已全部 404 失效，
+--       会导致 APP/H5 订单卡片商品图空白，故统一替换为本地已存在的上传图片。
 INSERT IGNORE INTO mo_order_item (id, order_id, product_id, sku_id, product_name, sku_spec, main_image, price, quantity, subtotal) VALUES
 -- 订单 1 明细：洗发水 2 瓶 + 耳朵清洁湿巾 1 包
-(187100001, 186100001, 183000001, 184000001, 'Premium Pet Shampoo 500ml', '500ml',   'https://images.unsplash.com/photo-1565708097481-e285a4bb4ff1?w=400', 18.99, 2, 37.98),
-(187100002, 186100001, 183000009, 184000012, 'Ear Cleaning Wipes 50-pack', '50-pack', 'https://images.unsplash.com/photo-1535241749838-2994de95b2f7?w=400', 8.99,  1, 8.99),
+(187100001, 186100001, 183000001, 184000001, 'Premium Pet Shampoo 500ml', '500ml',   '/uploads/2026/09/30/14359668f2b348c0b1722d5712f83190.jpg', 18.99, 2, 37.98),
+(187100002, 186100001, 183000009, 184000012, 'Ear Cleaning Wipes 50-pack', '50-pack', '/uploads/2026/10/09/0230eee636c041e4bdd9d314fe8c3372.jpg', 8.99,  1, 8.99),
 -- 订单 2 明细：宠物床 1 个
-(187100003, 186100002, 183000003, 184000005, 'Orthopedic Pet Bed Large', 'Large',   'https://images.unsplash.com/photo-1541592568934-d22f60f68380?w=400', 89.99, 1, 89.99),
+(187100003, 186100002, 183000003, 184000005, 'Orthopedic Pet Bed Large', 'Large',   '/uploads/2026/10/09/2829e612bde4417799ec754235659827.jpg', 89.99, 1, 89.99),
 -- 订单 3 明细：玩具 1 个 + 洗发水 1 瓶 + 牙齿咀嚼棒 1 包
-(187100004, 186100003, 183000004, 184000006, 'Interactive Treat Ball Toy', 'Standard','https://images.unsplash.com/photo-1583511656206-52dd61175823?w=400', 14.99, 1, 14.99),
-(187100005, 186100003, 183000001, 184000001, 'Premium Pet Shampoo 500ml', '500ml',   'https://images.unsplash.com/photo-1565708097481-e285a4bb4ff1?w=400', 18.99, 1, 18.99),
-(187100006, 186100003, 183000007, 184000010, 'Dental Chew Sticks 30-pack', '30-pack', 'https://images.unsplash.com/photo-1530293149014-8d6ef22d90d5?w=400', 12.99, 1, 12.99);
+(187100004, 186100003, 183000004, 184000006, 'Interactive Treat Ball Toy', 'Standard','/uploads/2026/09/30/b5803fe6a7854bc0869aa0526794214b.jpg', 14.99, 1, 14.99),
+(187100005, 186100003, 183000001, 184000001, 'Premium Pet Shampoo 500ml', '500ml',   '/uploads/2026/09/30/14359668f2b348c0b1722d5712f83190.jpg', 18.99, 1, 18.99),
+(187100006, 186100003, 183000007, 184000010, 'Dental Chew Sticks 30-pack', '30-pack', '/uploads/2026/09/30/3e8f597f40da448bbf673c9fb8e02ab6.jpg', 12.99, 1, 12.99);
 
 -- 5. 待发货订单的支付记录
 INSERT IGNORE INTO mo_payment (id, order_id, pay_channel, transaction_id, amount, currency, status, paid_at, create_time) VALUES
@@ -70,11 +73,11 @@ INSERT IGNORE INTO mo_order (id, order_no, user_id, address_id, goods_amount, fr
 -- 7. 待收货订单的商品明细
 INSERT IGNORE INTO mo_order_item (id, order_id, product_id, sku_id, product_name, sku_spec, main_image, price, quantity, subtotal) VALUES
 -- 订单 4 明细：便携水壶 2 个
-(187100007, 186100004, 183000008, 184000011, 'Portable Water Bottle for Pets', '500ml', 'https://images.unsplash.com/photo-1605515996523-6b7688a6139b?w=400', 9.99, 2, 19.98),
+(187100007, 186100004, 183000008, 184000011, 'Portable Water Bottle for Pets', '500ml', '/uploads/2026/09/30/c46df65cffd84b0b8ca3090751139554.jpg', 9.99, 2, 19.98),
 -- 订单 5 明细：宠物床 1 个
-(187100008, 186100005, 183000003, 184000005, 'Orthopedic Pet Bed Large', 'Large', 'https://images.unsplash.com/photo-1541592568934-d22f60f68380?w=400', 89.99, 1, 89.99),
+(187100008, 186100005, 183000003, 184000005, 'Orthopedic Pet Bed Large', 'Large', '/uploads/2026/10/09/2829e612bde4417799ec754235659827.jpg', 89.99, 1, 89.99),
 -- 订单 6 明细：猫用胸背带 1 套
-(187100009, 186100006, 183000006, 184000008, 'Cat Harness & Leash Set', 'M Blue', 'https://images.unsplash.com/photo-1605515996523-6b7688a6139b?w=400', 22.99, 1, 22.99);
+(187100009, 186100006, 183000006, 184000008, 'Cat Harness & Leash Set', 'M Blue', '/uploads/2026/09/30/e9980b89fa614e7fbe33ef461e09b807.jpg', 22.99, 1, 22.99);
 
 -- 8. 待收货订单的支付记录
 INSERT IGNORE INTO mo_payment (id, order_id, pay_channel, transaction_id, amount, currency, status, paid_at, create_time) VALUES

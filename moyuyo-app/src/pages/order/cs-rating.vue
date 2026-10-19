@@ -224,12 +224,12 @@ const goBack = () => {
   width: 96rpx;
   height: 96rpx;
   border-radius: 50%;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 3rpx solid #f2f2f7;
+  border: 3rpx solid var(--color-border, #f2f2f7);
 }
 
 .cs-emoji {
@@ -257,7 +257,7 @@ const goBack = () => {
   align-self: flex-start;
   padding: 4rpx 16rpx;
   border-radius: 16rpx;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
 }
 
 .cs-topic-text {
@@ -310,7 +310,7 @@ const goBack = () => {
 
 .star-icon {
   font-size: 40rpx;
-  color: #c7c7cc;
+  color: var(--color-fill-dim-strong);
 }
 
 .star-active {
@@ -334,7 +334,7 @@ const goBack = () => {
   min-height: 200rpx;
   padding: 28rpx;
   border-radius: 24rpx;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
   border: 1rpx solid var(--color-border);
   font-size: 28rpx;
   line-height: 1.6;
@@ -377,7 +377,7 @@ const goBack = () => {
   height: 160rpx;
   border-radius: 24rpx;
   overflow: hidden;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
   border: 1rpx solid var(--color-border);
   display: flex;
   align-items: center;
@@ -410,8 +410,8 @@ const goBack = () => {
   width: 160rpx;
   height: 160rpx;
   border-radius: 24rpx;
-  border: 3rpx dashed #d1d1d6;
-  background: #f2f2f7;
+  border: 3rpx dashed var(--color-fill-dim);
+  background: var(--color-fill, #f2f2f7);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -489,7 +489,7 @@ const goBack = () => {
   height: 96rpx;
   padding: 0 48rpx;
   border-radius: 32rpx;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
 }
 
 .feedback-btn-icon {

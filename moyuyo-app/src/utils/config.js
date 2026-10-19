@@ -7,13 +7,44 @@
 
 // 通用 H5 端从 window.__MOYUYO_CONFIG__ 注入（index.html 模板）
 // 移动端从 process.env 注入（Vite 编译时）
+//
+// ⚠️ 重要（与 imageUrl.js / request.js 同一条铁律）：
+// vite.config.js 的 define 只能在编译期把「静态字面量」process.env.VITE_X 替换成字符串。
+// 它无法替换动态下标访问 process.env[key]，也无法穿透 typeof process !== 'undefined' 守卫
+// （守卫是运行时求值，APP 端 typeof process === 'undefined' 会整段短路）。
+// 所以这里必须先用显式属性访问把需要的变量收集成字面量对象，getEnv 再从这个对象取值。
+// 新增变量时请同步加到本对象，并确保 .env / .env.<mode> 中有对应定义（否则打包后该处
+// 仍是 process.env.VITE_X，APP 端会因 process 未定义而报错）。
+const ENV = {
+  VITE_API_BASE: process.env.VITE_API_BASE,
+  VITE_WP_BASE: process.env.VITE_WP_BASE,
+  VITE_PAY_RETURN_BASE: process.env.VITE_PAY_RETURN_BASE,
+  VITE_CONSUMER_KEY: process.env.VITE_CONSUMER_KEY,
+  VITE_CONSUMER_SECRET: process.env.VITE_CONSUMER_SECRET,
+  VITE_OAUTH_CLIENT_ID: process.env.VITE_OAUTH_CLIENT_ID,
+  VITE_OAUTH_CLIENT_SECRET: process.env.VITE_OAUTH_CLIENT_SECRET,
+  VITE_CURRENCY: process.env.VITE_CURRENCY,
+  VITE_THEME_MODE: process.env.VITE_THEME_MODE,
+  VITE_TERMS_URL: process.env.VITE_TERMS_URL,
+  VITE_PRIVACY_URL: process.env.VITE_PRIVACY_URL,
+  VITE_QUALIFICATION_URL: process.env.VITE_QUALIFICATION_URL,
+  VITE_LICENSE_URL: process.env.VITE_LICENSE_URL,
+  VITE_CONTACT_WEBSITE: process.env.VITE_CONTACT_WEBSITE,
+  VITE_CONTACT_EMAIL: process.env.VITE_CONTACT_EMAIL,
+  VITE_CONTACT_PHONE: process.env.VITE_CONTACT_PHONE,
+  VITE_SOCIAL_GOOGLE_ENABLED: process.env.VITE_SOCIAL_GOOGLE_ENABLED,
+  VITE_SOCIAL_APPLE_ENABLED: process.env.VITE_SOCIAL_APPLE_ENABLED,
+  VITE_SOCIAL_GOOGLE_URL: process.env.VITE_SOCIAL_GOOGLE_URL,
+  VITE_WEBVIEW_ALLOWED_HOSTS: process.env.VITE_WEBVIEW_ALLOWED_HOSTS,
+}
+
 function getEnv(key, defaultValue = '') {
+  // H5 端优先用 index.html 注入的 window.__MOYUYO_CONFIG__
   if (typeof window !== 'undefined' && window.__MOYUYO_CONFIG__?.[key]) {
     return window.__MOYUYO_CONFIG__[key]
   }
-  if (typeof process !== 'undefined' && process.env?.[key]) {
-    return process.env[key]
-  }
+  const v = ENV[key]
+  if (v) return v
   return defaultValue
 }
 

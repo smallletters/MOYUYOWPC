@@ -98,6 +98,10 @@ public class PointsExpireJob {
 
     /**
      * 单用户过期清理：实际扣减 = min(过期总额, 当前可用余额)
+     * <p>
+     * 注意：可用余额 = points − points_frozen。过期只能清理"可用"积分，
+     * 不能动被待付款订单冻结占用的积分，否则会出现 points &lt; points_frozen 的不变量破坏，
+     * 导致该订单支付/取消时冻结转实扣或解冻条件不满足而走人工对账。
      */
     @Transactional
     public int expireForUser(Long userId, int expireTotal) {
@@ -105,7 +109,9 @@ public class PointsExpireJob {
         if (user == null || user.getPoints() == null || user.getPoints() <= 0) {
             return 0;
         }
-        int actual = Math.min(expireTotal, user.getPoints());
+        int frozen = user.getPointsFrozen() != null ? user.getPointsFrozen() : 0;
+        int available = Math.max(0, user.getPoints() - frozen);
+        int actual = Math.min(expireTotal, available);
         if (actual <= 0) {
             return 0;
         }

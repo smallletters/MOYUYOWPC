@@ -56,13 +56,6 @@
 import { i18n } from '@/i18n'
 import { notificationApi } from '@/api'
 
-// 通知 type 到中文标签的映射（直接展示后端字段，不再走 messages.* i18n key）
-const TYPE_LABEL_MAP = {
-  order: '订单',
-  activity: '活动',
-  system: '系统',
-}
-
 export default {
   pageTitleKey: 'pageTitle.userMessages',
 
@@ -70,6 +63,8 @@ export default {
     return {
       isStarred: false,
       notificationId: null,
+      localeVersion: 0,
+      unsubLocale: null,
       message: {
         type: '',
         typeLabel: '',
@@ -80,12 +75,31 @@ export default {
     }
   },
 
+  computed: {
+    // 通知 type → 展示标签的映射（随语言切换刷新）
+    typeLabelMap() {
+      void this.localeVersion
+      return {
+        order: i18n.t('messages.typeOrder'),
+        activity: i18n.t('messages.typeActivity'),
+        system: i18n.t('messages.typeSystem'),
+      }
+    },
+  },
+
   onLoad(query) {
+    this.unsubLocale = i18n.subscribe(() => {
+      this.localeVersion += 1
+    })
     // 从通知列表跳转过来，url 上带有通知 id
     if (query && query.id) {
       this.notificationId = query.id
       this.loadDetail()
     }
+  },
+
+  onUnload() {
+    if (this.unsubLocale) this.unsubLocale()
   },
 
   methods: {
@@ -99,7 +113,7 @@ export default {
         const detail = res.data || {}
         this.message = {
           type: detail.type || '',
-          typeLabel: TYPE_LABEL_MAP[detail.type] || detail.type || '',
+          typeLabel: this.typeLabelMap[detail.type] || detail.type || '',
           title: detail.title || '',
           time: this.formatTime(detail.createTime),
           content: detail.content || '',
@@ -161,7 +175,12 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 88rpx;
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  box-sizing: border-box;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }
@@ -169,6 +188,9 @@ export default {
 .back-btn {
   position: absolute;
   left: 16rpx;
+  /* 绝对定位元素吃不到父级 padding，需自行下移状态栏高度 */
+  top: var(--status-bar-height, 0px);
+  top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -192,6 +214,9 @@ export default {
 .header-star {
   position: absolute;
   right: 16rpx;
+  /* 绝对定位元素吃不到父级 padding，需自行下移状态栏高度 */
+  top: var(--status-bar-height, 0px);
+  top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -391,7 +416,7 @@ export default {
   right: 0;
   z-index: 30;
   padding: 24rpx 32rpx calc(env(safe-area-inset-bottom) + 24rpx);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--color-surface-veil-92, rgba(255, 255, 255, 0.92));
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1rpx solid var(--color-divider);

@@ -235,7 +235,12 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 88rpx;
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  box-sizing: border-box;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }
@@ -243,6 +248,9 @@ export default {
 .header-btn {
   position: absolute;
   left: 16rpx;
+  /* 绝对定位元素吃不到父级 padding，需自行下移状态栏高度 */
+  top: var(--status-bar-height, 0px);
+  top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -516,7 +524,7 @@ export default {
   left: 0;
   right: 0;
   z-index: 40;
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--color-surface-veil-88, rgba(255, 255, 255, 0.88));
   backdrop-filter: blur(20px);
   border-top: 1rpx solid var(--color-divider);
 }

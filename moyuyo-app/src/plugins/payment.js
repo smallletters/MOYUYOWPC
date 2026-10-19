@@ -3,6 +3,7 @@
  * 插件标识: MOYUYO-Payment
  * 功能: Stripe / PayPal / Apple Pay / Google Pay 原生支付
  */
+import { t } from '@/i18n'
 /* eslint-disable no-unreachable */
 
 const PLUGIN_NAME = 'MOYUYO-Payment'
@@ -51,7 +52,7 @@ export function createPay(params) {
         if (result.success) {
           resolve({ transactionId: result.transactionId })
         } else {
-          reject(new Error(result.message || '支付失败'))
+          reject(new Error(result.message || t('paymentPlugin.payFailed')))
         }
       },
     )
@@ -66,7 +67,7 @@ export function createPay(params) {
 
   // #ifdef MP-WEIXIN
   // 小程序支付通过 uni.requestPayment 实现
-  return Promise.reject(new Error('请使用小程序原生支付'))
+  return Promise.reject(new Error(t('paymentPlugin.useMiniProgramPay')))
   // #endif
 }
 
@@ -83,13 +84,13 @@ export function queryPaymentStatus(orderNo) {
       if (result.success) {
         resolve({ status: result.status, transactionId: result.transactionId })
       } else {
-        reject(new Error(result.message || '查询失败'))
+        reject(new Error(result.message || t('paymentPlugin.queryFailed')))
       }
     })
   })
   // #endif
   /* #ifndef APP-PLUS */
-  return Promise.reject(new Error('当前环境不支持'))
+  return Promise.reject(new Error(t('paymentPlugin.unsupported')))
   /* #endif */
 }
 
@@ -117,13 +118,13 @@ export function usePaymentPlugin() {
       // #ifdef APP-PLUS
       const plugin = uni.requireNativePlugin(PLUGIN_NAME)
       if (!plugin) {
-        resolve({ success: false, error: '原生支付插件不可用' })
+        resolve({ success: false, error: t('paymentPlugin.nativeUnavailable') })
         return
       }
       plugin[method](args, (res) => resolve(res))
       // #endif
       // #ifndef APP-PLUS
-      resolve({ success: false, error: '原生支付插件不可用' })
+      resolve({ success: false, error: t('paymentPlugin.nativeUnavailable') })
       // #endif
     })
   }
@@ -134,13 +135,13 @@ export function usePaymentPlugin() {
       // #ifdef APP-PLUS
       const plugin = uni.requireNativePlugin(PLUGIN_NAME)
       if (!plugin) {
-        resolve({ success: false, error: '原生支付插件不可用' })
+        resolve({ success: false, error: t('paymentPlugin.nativeUnavailable') })
         return
       }
       plugin.getAvailableChannels({}, (res) => resolve(res || {}))
       // #endif
       // #ifndef APP-PLUS
-      resolve({ success: false, error: '原生支付插件不可用' })
+      resolve({ success: false, error: t('paymentPlugin.nativeUnavailable') })
       // #endif
     })
   }

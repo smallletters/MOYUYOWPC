@@ -164,7 +164,7 @@ const currentProduct = ref({
   name: '舒适透气胸背带',
   price: '$24.00',
   overlayBg: 'rgba(219, 201, 138, 0.4)',
-  thumbBg: 'linear-gradient(135deg, #e9f9ee, #f2f2f7)',
+  thumbBg: 'linear-gradient(135deg, #e9f9ee, var(--color-fill, #f2f2f7))',
   colors: [
     { name: '奶油白', hex: '#f7f0e5' },
     { name: '燕麦灰', hex: '#8e8e93' },
@@ -185,7 +185,7 @@ const products = ref([
     category: '胸背带',
     price: '$24.00',
     overlayBg: 'rgba(219, 201, 138, 0.4)',
-    thumbBg: 'linear-gradient(135deg, #e9f9ee, #f2f2f7)',
+    thumbBg: 'linear-gradient(135deg, #e9f9ee, var(--color-fill, #f2f2f7))',
     colors: [
       { name: '奶油白', hex: '#f7f0e5' },
       { name: '燕麦灰', hex: '#8e8e93' },
@@ -199,7 +199,7 @@ const products = ref([
     category: '项圈',
     price: '$18.00',
     overlayBg: 'rgba(166, 124, 82, 0.4)',
-    thumbBg: 'linear-gradient(135deg, #fff4e5, #f7f7fa)',
+    thumbBg: 'linear-gradient(135deg, #fff4e5, var(--color-fill-hi, #f7f7fa))',
     colors: [
       { name: '复古棕', hex: '#a67c52' },
       { name: '墨黑', hex: '#1d1d1f' },
@@ -213,7 +213,7 @@ const products = ref([
     category: '服饰',
     price: '$38.00',
     overlayBg: 'rgba(0, 122, 255, 0.3)',
-    thumbBg: 'linear-gradient(135deg, #e8f2ff, #f2f2f7)',
+    thumbBg: 'linear-gradient(135deg, #e8f2ff, var(--color-fill, #f2f2f7))',
     colors: [
       { name: '雾蓝', hex: '#007aff' },
       { name: '浅粉', hex: '#ff9a9e' },
@@ -227,7 +227,7 @@ const products = ref([
     category: '鞋套',
     price: '$15.00',
     overlayBg: 'rgba(52, 199, 89, 0.3)',
-    thumbBg: 'linear-gradient(135deg, #e9f9ee, #f2f2f7)',
+    thumbBg: 'linear-gradient(135deg, #e9f9ee, var(--color-fill, #f2f2f7))',
     colors: [
       { name: '活力橙', hex: '#ff9500' },
       { name: '沉稳灰', hex: '#8e8e93' },
@@ -317,6 +317,12 @@ const addToCart = () => {
 .main-view {
   flex: 1;
   position: relative;
+  /* 本页无页面级顶栏（AR 全屏预览，.nav-* 导航样式已无对应模板节点，仅剩注释）；
+     主视图顶部预留系统状态栏：.ar-preview 是在流内的 height:100% 子节点，
+     会随 padding-top 整体下移，从而避免状态栏压住 .ar-indicator 等 top 锚定浮层控件。 */
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  box-sizing: border-box;
 }
 
 // AR 预览
@@ -463,7 +469,7 @@ const addToCart = () => {
   width: 96rpx;
   height: 96rpx;
   border-radius: 50%;
-  border: 6rpx solid #fff;
+  border: 6rpx solid #fff; /* 装饰性白环，两态均保持白色 */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -472,7 +478,7 @@ const addToCart = () => {
   width: 72rpx;
   height: 72rpx;
   border-radius: 50%;
-  background: #fff;
+  background: var(--color-surface);
 }
 
 // 商品选择面板

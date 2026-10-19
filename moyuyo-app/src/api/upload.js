@@ -1,4 +1,5 @@
 import { getStorage, STORAGE_KEYS } from '@/utils/storage'
+import { t } from '@/i18n'
 
 /**
  * 用户端文件上传 API（社区发帖/客服/反馈 等场景）。
@@ -51,14 +52,14 @@ export function uploadImage(filePath) {
           if (res.statusCode >= 200 && res.statusCode < 300 && body?.code === 0) {
             resolve(body.data)
           } else {
-            reject(new Error(body?.message || `上传失败(${res.statusCode})`))
+            reject(new Error(body?.message || t('upload.failed', { code: res.statusCode })))
           }
         } catch (e) {
-          reject(new Error('上传响应解析失败'))
+          reject(new Error(t('upload.parseFailed')))
         }
       },
       fail: (err) => {
-        reject(new Error(err.errMsg || '网络错误'))
+        reject(new Error(err.errMsg || t('upload.networkError')))
       },
     })
   })
@@ -108,14 +109,14 @@ export function uploadVideo(filePath, onProgress) {
           if (res.statusCode >= 200 && res.statusCode < 300 && body?.code === 0) {
             resolve(body.data)
           } else {
-            reject(new Error(body?.message || `视频上传失败(${res.statusCode})`))
+            reject(new Error(body?.message || t('upload.videoFailed', { code: res.statusCode })))
           }
         } catch (e) {
-          reject(new Error('视频上传响应解析失败'))
+          reject(new Error(t('upload.videoParseFailed')))
         }
       },
       fail: (err) => {
-        reject(new Error(err.errMsg || '网络错误'))
+        reject(new Error(err.errMsg || t('upload.networkError')))
       },
     })
     // 监听上传进度(uni.uploadFile 在 H5 上不暴露 onProgressUpdate,但部分平台支持)

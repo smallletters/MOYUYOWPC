@@ -56,9 +56,11 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { marketingApi } from '@/api'
 import { i18n } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
+import { getPageQuery } from '@/utils/pageQuery'
 usePageTitle('pageTitle.userBookingDetail')
 
 const detail = ref(null)
@@ -112,21 +114,36 @@ function goBack() {
   uni.navigateBack()
 }
 
-onMounted(() => {
+// 幂等启动：onLoad 先于 onMounted 触发，两者都调用，副作用只发生一次。
+// 不能只读 `getCurrentPages().slice(-1)[0].options` —— APP 运行时（initPageVm）
+// 从不写 pageVm.options，APP 真机上深链进来恒读到 {}。
+let booted = false
+
+async function bootstrap(options) {
+  if (booted) return
+  booted = true
   _unsubLocale = i18n.subscribe(() => {
     localeVersion.value += 1
   })
   try {
-    const pages = getCurrentPages()
-    const cur = pages[pages.length - 1]
-    const q = cur?.options || {}
+    const hasOptions = !!options && typeof options === 'object' && Object.keys(options).length > 0
+    const q = hasOptions ? options : getPageQuery()
     if (q.id) {
-      bookingId.value = q.id
-      load(q.id)
+      // 雪花 ID 必须用 String 承接，Number() 会丢精度
+      bookingId.value = String(q.id)
+      await load(bookingId.value)
     }
   } catch (e) {
-    /* ignore */
+    console.warn('[booking-detail] read page query failed', e)
   }
+}
+
+onLoad((options) => {
+  bootstrap(options)
+})
+
+onMounted(() => {
+  bootstrap()
 })
 
 onBeforeUnmount(() => {
@@ -142,8 +159,15 @@ onBeforeUnmount(() => {
 .header {
   display: flex;
   align-items: center;
-  height: 88rpx;
-  padding: 0 24rpx;
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  padding-right: 24rpx;
+  padding-left: 24rpx;
+  padding-bottom: 0;
+  box-sizing: border-box;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }

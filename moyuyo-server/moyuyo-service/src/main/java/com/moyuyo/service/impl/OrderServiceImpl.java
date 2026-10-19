@@ -15,6 +15,7 @@ import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.PaymentEntity;
 import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductSkuEntity;
+import com.moyuyo.dao.entity.UserCouponEntity;
 import com.moyuyo.dao.mapper.AddressMapper;
 import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
@@ -250,7 +251,8 @@ public class OrderServiceImpl implements OrderService {
     // 2) 优惠券：按 userCoupon 记录核验归属/状态/门槛并重算减免
     BigDecimal serverCouponDiscount = couponService.computeCouponDiscount(
         userId, request.getCouponUserId(), goodsSubtotal);
-    // 3) 积分抵扣：100 积分 = 1 元，最高抵扣小计 30%（与前端结算页规则一致，防止伪造抵扣）
+    // 3) 积分抵扣：100 积分 = 1 元，最高抵扣小计 30%（与前端结算页规则一致，防止伪造抵扣）。
+    //    语义：最终抵扣 = min(客户端请求抵扣额, 比例上限 30%, 余额上限)。不再"只要勾选就送满额"。
     BigDecimal serverPointsDiscount = BigDecimal.ZERO;
     int serverPointsUsed = 0;
     boolean wantsPoints = (request.getPointsUsed() != null && request.getPointsUsed() > 0)
@@ -258,28 +260,77 @@ public class OrderServiceImpl implements OrderService {
             && request.getPointsDiscount().compareTo(BigDecimal.ZERO) > 0);
     if (wantsPoints) {
       int balance = Math.max(memberService.getPointsBalance(userId), 0);
+      // 比例上限：商品小计 30%（HALF_UP），沿用原口径
       BigDecimal maxByRate = goodsSubtotal.multiply(new BigDecimal("0.3"))
           .setScale(2, java.math.RoundingMode.HALF_UP);
+      // 余额上限：可用积分按 100 积分 = 1 元折算（DOWN），沿用原口径
       BigDecimal maxByBalance = BigDecimal.valueOf(balance)
           .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.DOWN);
-      serverPointsDiscount = maxByRate.min(maxByBalance);
+
+      // 客户端"请求抵扣额"：优先取 pointsDiscount（前端结算页实际展示、并用于计算 total 的金额），
+      // 其次才用 pointsUsed 折算。为什么优先金额而非优先积分数（重要，涉及回归红线）：
+      // 前端 usedPoints = Math.floor(pointsDiscount * 100)，而 pointsDiscount = min(subtotal*0.3,
+      // balance/100) 是**未取整的浮点数**；当 0.3×subtotal 落到 19.43999… / 9.99899… 这类值时，
+      // floor 后再 /100 会比页面展示值低 1 分（实测：subtotal=64.8→19.43 而页面为 19.44；
+      // 33.33→9.99 而页面为 10.00）。若优先 pointsUsed，"按满额提交"这一路径会把 pay_amount
+      // 抬高 1 分，破坏"与结算页逐分对齐"的红线。改用 pointsDiscount(金额) 取 HALF_UP 到分后，
+      // 满额提交时恰等于比例上限 → 结果与改动前逐分一致（98/97/64.8/33.33 均已验证）。
+      BigDecimal requested;
+      if (request.getPointsDiscount() != null
+          && request.getPointsDiscount().compareTo(BigDecimal.ZERO) > 0) {
+        requested = request.getPointsDiscount().setScale(2, java.math.RoundingMode.HALF_UP);
+      } else if (request.getPointsUsed() != null && request.getPointsUsed() > 0) {
+        requested = BigDecimal.valueOf(request.getPointsUsed())
+            .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.DOWN);
+      } else {
+        requested = null;
+      }
+      // 三值取 min：客户端请求值 与 两个上限。请求值缺失时退化为纯上限（等价于旧行为）
+      BigDecimal cap = maxByRate.min(maxByBalance);
+      serverPointsDiscount = requested == null ? cap : requested.min(cap);
       serverPointsUsed = serverPointsDiscount.multiply(BigDecimal.valueOf(100))
           .setScale(0, java.math.RoundingMode.DOWN).intValue();
+
+      // 2b：勾选了积分但服务端算下来可用抵扣为 0（可用余额已被其它待付款订单占用/耗尽）——
+      // 绝不能静默按"0 积分"成单：否则用户按结算页"带抵扣"的价格付款、落库却不减分，正是本次要修的
+      // 资金静默偏离。抛业务异常回滚整单，提示回结算页刷新（真并发场景由 freeze 条件更新兜底）。
+      if (serverPointsUsed <= 0) {
+        throw new com.moyuyo.common.exception.BusinessException(400, "可用积分不足，请返回结算页刷新后重试");
+      }
     }
     BigDecimal serverFreight = request.getFreight() == null ? BigDecimal.ZERO : request.getFreight();
 
-    // 落库（同一事务内）并核销优惠券，避免同一张券被多笔待支付订单同时占用
+    // 落库（同一事务内）并"占用"优惠券 + "冻结"积分，避免同一张券/同一批积分被多笔待支付订单同时抵扣。
+    // couponId 传 null：券模板 id 一律由服务端从 userCoupon 记录推导后落库，绝不信任前端传入的 code/id。
     OrderEntity order = createOrder(userId, items, request.getAddressId(), request.getRemark(),
-            request.getCouponId(), serverCouponDiscount,
+            null, serverCouponDiscount,
             serverPointsUsed, serverPointsDiscount,
             request.getShippingMethod(), serverFreight);
 
+    // 优惠券：以服务端 couponUserId 为准（不信任前端 couponId/couponDiscount）
     if (serverCouponDiscount.compareTo(BigDecimal.ZERO) > 0 && request.getCouponUserId() != null) {
-        // 记录用券明细，便于取消返还与对账
-        order.setUserCouponId(request.getCouponUserId());
+        // 记录用券明细；couponId(券模板 id)由服务端从用户券记录推导后落库，
+        // 不再依赖前端传的 code（mo_coupon.code 全为 NULL，这条链路本就是死的）
+        UserCouponEntity uc = couponService.getUserCoupon(userId, request.getCouponUserId());
+        order.setUserCouponId(uc.getId());
+        order.setCouponId(uc.getCouponId() == null ? null : String.valueOf(uc.getCouponId()));
         orderMapper.updateById(order);
-        couponService.useCoupon(userId, request.getCouponUserId(), order.getId());
-        log.info("订单使用优惠券已核销: orderId={}, userCouponId={}", order.getId(), request.getCouponUserId());
+        // 占用券（UNUSED→LOCKED，写 used_order_id）；抢不到抛异常 → 整个下单事务回滚（含库存）
+        couponService.useCoupon(userId, uc.getId(), order.getId());
+        log.info("订单优惠券已占用: orderId={}, userCouponId={}, couponId={}",
+                order.getId(), uc.getId(), uc.getCouponId());
+    }
+
+    // 积分：下单即"冻结"（占用），支付成功转实扣，取消/超时解冻回退。
+    // 用条件 UPDATE 原子冻结，两笔待付款订单无法占用同一批积分；冻结失败 → 回滚整单。
+    if (serverPointsUsed > 0) {
+        boolean frozen = memberService.freezePoints(userId, serverPointsUsed,
+                order.getOrderNo(), "订单积分抵扣冻结：" + order.getOrderNo());
+        if (!frozen) {
+            throw new com.moyuyo.common.exception.BusinessException(400, "可用积分不足，请刷新后重试");
+        }
+        log.info("订单抵扣积分已冻结: orderId={}, orderNo={}, pointsUsed={}",
+                order.getId(), order.getOrderNo(), serverPointsUsed);
     }
     return order;
   }
@@ -473,13 +524,27 @@ public class OrderServiceImpl implements OrderService {
     // 仅在成功抢占取消后恢复已扣减的库存，避免并发双倍回补导致超卖
     restoreStockForOrderItems(orderId);
 
-    // 取消未支付订单：返还本次下单已核销的优惠券，供用户重新使用
+    // 取消未支付订单：释放本次下单"占用(LOCKED)"的优惠券，供用户重新使用。
+    // releaseCoupon 内部条件更新(LOCKED & usedOrderId=orderId)，重复取消/并发取消命中 0 行不报错（幂等）。
     if (order.getUserCouponId() != null) {
       try {
         couponService.releaseCoupon(order.getUserCouponId(), orderId);
       } catch (Exception e) {
-        log.warn("[order] 取消订单返还优惠券失败: orderId={}, userCouponId={}, reason={}",
+        log.warn("[order] 取消订单释放优惠券失败: orderId={}, userCouponId={}, reason={}",
                 orderId, order.getUserCouponId(), e.getMessage());
+      }
+    }
+
+    // 取消未支付订单：解冻本次下单"冻结"的抵扣积分，归还用户可用余额。
+    // 解冻同样走条件更新(points_frozen >= points)，无对应冻结时安全跳过（幂等、不误还）；
+    // 每单只解冻一次由上面的 PENDING_PAY→CANCELLED 原子抢占保证。
+    if (order.getPointsUsed() != null && order.getPointsUsed() > 0) {
+      try {
+        memberService.unfreezePoints(order.getUserId(), order.getPointsUsed(),
+            order.getOrderNo(), "订单取消解冻积分：" + order.getOrderNo());
+      } catch (Exception e) {
+        log.warn("[order] 取消订单解冻积分失败: orderId={}, pointsUsed={}, reason={}",
+                orderId, order.getPointsUsed(), e.getMessage());
       }
     }
   }
@@ -579,16 +644,33 @@ public class OrderServiceImpl implements OrderService {
 
     log.info("支付回调处理成功: orderNo={}, transactionId={}", orderNo, transactionId);
 
-    // 积分抵扣闭环：支付成功后才真正扣减下单时计算的抵扣积分(pointsUsed)。
-    // 余额不足等异常不阻断支付(钱已到账)，仅告警并交给对账/后续人工处理；
-    // 抢占式状态更新保证本段只执行一次，不会重复扣减。
+    // 优惠券闭环：支付成功后才把"占用中(LOCKED)"的券真正核销为"已使用(USED)"。
+    // 抢占式状态更新（PENDING_PAY→PENDING_SHIP）保证本段每个订单只执行一次；
+    // 核销失败仅告警，不阻断支付主流程（钱已到账）。
+    if (order.getUserCouponId() != null) {
+      try {
+        couponService.markCouponUsed(order.getUserCouponId(), order.getId());
+      } catch (Exception e) {
+        log.error("[coupon] 支付成功核销优惠券失败，请人工对账 orderNo={}, userCouponId={}, reason={}",
+            order.getOrderNo(), order.getUserCouponId(), e.getMessage());
+      }
+    }
+
+    // 积分抵扣闭环：支付成功把下单时"冻结"的抵扣积分转为"实扣"（同一个 UPDATE 内扣总积分与冻结额，
+    // 绝不再额外 spendPoints，避免双扣）。余额/冻结不足等异常不阻断支付(钱已到账)，
+    // 仅告警并交给对账/人工处理；抢占式状态更新保证本段只执行一次。
     if (order.getPointsUsed() != null && order.getPointsUsed() > 0) {
       try {
-        memberService.spendPoints(order.getUserId(), order.getPointsUsed(),
+        boolean settled = memberService.consumeFrozenPoints(order.getUserId(), order.getPointsUsed(),
             order.getOrderNo(), "订单积分抵扣");
-        log.info("订单积分抵扣已扣减: orderNo={}, pointsUsed={}", order.getOrderNo(), order.getPointsUsed());
+        if (settled) {
+          log.info("订单积分冻结已转实扣: orderNo={}, pointsUsed={}", order.getOrderNo(), order.getPointsUsed());
+        } else {
+          log.error("[points] 支付成功积分实扣失败(冻结/余额不足或已处理)，请人工对账 orderNo={}, pointsUsed={}",
+              order.getOrderNo(), order.getPointsUsed());
+        }
       } catch (Exception e) {
-        log.error("[points] 支付成功扣减抵扣积分失败，请人工对账 orderNo={}, pointsUsed={}, reason={}",
+        log.error("[points] 支付成功积分实扣异常，请人工对账 orderNo={}, pointsUsed={}, reason={}",
             order.getOrderNo(), order.getPointsUsed(), e.getMessage());
       }
     }

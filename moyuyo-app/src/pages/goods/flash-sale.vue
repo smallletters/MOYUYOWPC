@@ -70,7 +70,7 @@
           <view class="product-image">
             <image
               v-if="product.image"
-              :src="product.image"
+              :src="$img(product.image)"
               class="product-img"
               mode="aspectFill"
             />
@@ -167,7 +167,9 @@ export default {
     },
     // 货币符号：从编译期注入的 VITE_CURRENCY 推导
     currencySymbol() {
-      const env = (typeof process !== 'undefined' && process.env && process.env.VITE_CURRENCY) || ''
+      // 必须裸读：define 在编译期把 process.env.VITE_CURRENCY 替换成字面量，
+      // 加 typeof process 守卫会在 APP 端短路，导致货币符号错误回退
+      const env = process.env.VITE_CURRENCY || ''
       const win =
         (typeof window !== 'undefined' &&
           window.__MOYUYO_CONFIG__ &&
@@ -411,35 +413,30 @@ export default {
 
 <style lang="scss" scoped>
 .flash-sale {
-  min-height: 100vh;
+  /* 视口锁定外壳：整页固定为 100vh 且 overflow:hidden，使「页面级滚动」彻底不会发生，
+     唯一滚动权威是内部 <scroll-view class="scroll">（flex:1 占满剩余空间）。
+     banner / session-tabs 作为不可滚动的常流子项，必须 flex-shrink:0 以免被压缩塌陷。 */
+  display: flex;
+  flex-direction: column;
+  /* 视口高度：三层渐进增强。
+     1) 100vh  —— 兜底，所有环境合法
+     2) 100dvh —— H5 移动浏览器动态视口（地址栏）
+     3) calc(100dvh - var(--window-top, 0px)) —— 扣除 uni-app 顶部窗口偏移：
+        非 custom 页 = 导航栏高 + 状态栏高（H5 与 app-plus 均非 0），custom 页 = 0；必须扣除，
+        否则顶部内容会顶到导航栏/状态栏底下。
+     只减 --window-top 不减 --window-bottom：后者在 H5 归一化为 env(safe-area-inset-bottom)，
+     会与页面自身底栏的 safe-area padding 重复预留；本批无 tabBar 页，故安全。
+     末尾 0px 兜底：变量缺失时避免整条声明 invalid-at-computed-value → height 退化为 auto。 */
+  height: 100vh;
+  height: 100dvh;
+  height: calc(100dvh - var(--window-top, 0px));
+  overflow: hidden;
   background: linear-gradient(180deg, #ff4757 0%, #ff6b81 35%, #f6f2ee 35%, #f6f2ee 100%);
 }
-.nav-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24rpx;
-  height: 88rpx;
-  color: #fff;
-}
-.nav-back {
-  width: 64rpx;
-  height: 64rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.back-icon,
-.notify-icon {
-  font-size: 40rpx;
-  color: #fff;
-}
-.nav-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #fff;
-}
+/* 说明：原 .nav-header / .nav-back / .back-icon / .notify-icon / .nav-title 为死代码
+   （模板中不存在对应元素，本页导航栏由原生 titleNView 提供），已移除。 */
 .flash-banner {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -488,6 +485,7 @@ export default {
   font-weight: 700;
 }
 .session-tabs {
+  flex-shrink: 0;
   display: flex;
   gap: 12rpx;
   padding: 0 24rpx 24rpx;
@@ -521,7 +519,12 @@ export default {
   font-weight: 700;
 }
 .scroll {
-  height: calc(100vh - 280rpx);
+  /* 不再硬算高度：flex:1 占据 banner 与 tabs 之下的剩余空间；min-height:0 覆盖 flex 项默认
+     min-height:auto，允许收缩到小于内容高度，使 scroll-view 内部真正产生滚动。
+     取代 calc(100vh - 280rpx)（280=导航88+banner+ tabs 三项硬编码之和，任一高度变化即失效），
+     并消除 rpx→rem 依赖根字号、env() 兼容性等脆弱点。 */
+  flex: 1;
+  min-height: 0;
   background: var(--color-background);
   border-top-left-radius: 32rpx;
   border-top-right-radius: 32rpx;

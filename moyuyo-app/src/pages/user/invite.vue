@@ -385,7 +385,7 @@ export default {
   gap: 8rpx;
   padding: 16rpx 24rpx;
   border-radius: 999rpx;
-  background: #ffffff;
+  background: var(--color-surface);
   white-space: nowrap;
 }
 

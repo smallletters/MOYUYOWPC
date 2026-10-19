@@ -86,7 +86,7 @@ export const useCartStore = defineStore('cart', {
                   : item.selected !== false
                 : false,
               sku: item.skuSpec || '',
-              attrs: item.skuSpec ? [{ name: '规格', value: item.skuSpec }] : [],
+              attrs: item.skuSpec ? [{ name: t('cart.attrSpecName'), value: item.skuSpec }] : [],
             }
           })
           this.persist()

@@ -308,10 +308,10 @@ export default {
 
 .calendar-card {
   background: var(--color-background, #ffffff);
-  border: 1rpx solid #e5e5ea;
+  border: 1rpx solid var(--color-divider);
   border-radius: 24rpx;
   padding: 32rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-md);
 }
 
 .month-header {
@@ -325,7 +325,7 @@ export default {
   width: 64rpx;
   height: 64rpx;
   border-radius: 50%;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -355,7 +355,7 @@ export default {
   font-size: 24rpx;
   font-weight: 500;
   padding: 8rpx 0;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
 }
 
 .calendar-grid {
@@ -418,10 +418,10 @@ export default {
 
 .streak-card {
   background: var(--color-background, #ffffff);
-  border: 1rpx solid #e5e5ea;
+  border: 1rpx solid var(--color-divider);
   border-radius: 24rpx;
   padding: 32rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-md);
 }
 
 .streak-header {
@@ -443,7 +443,7 @@ export default {
 
 .streak-hint {
   font-size: 28rpx;
-  color: #6e6e73;
+  color: var(--color-text-secondary);
   margin-bottom: 24rpx;
 }
 
@@ -457,7 +457,7 @@ export default {
   width: 100%;
   height: 16rpx;
   border-radius: 8rpx;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
   overflow: hidden;
 }
 
@@ -475,7 +475,7 @@ export default {
 
 .streak-label {
   font-size: 24rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
 }
 
 .streak-count {
@@ -486,10 +486,10 @@ export default {
 
 .reward-card {
   background: var(--color-background, #ffffff);
-  border: 1rpx solid #e5e5ea;
+  border: 1rpx solid var(--color-divider);
   border-radius: 24rpx;
   padding: 32rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-md);
 }
 
 .reward-title {
@@ -549,14 +549,14 @@ export default {
 
 .reward-day {
   font-size: 20rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
   font-weight: 500;
 }
 
 .reward-label {
   font-size: 20rpx;
   font-weight: 500;
-  color: #6e6e73;
+  color: var(--color-text-secondary);
 }
 
 .reward-points-row {
@@ -603,8 +603,8 @@ export default {
 }
 
 .check-in-btn.checked {
-  background: #e5e5ea;
-  color: #8e8e93;
+  background: var(--color-fill-dim);
+  color: var(--color-text-tertiary);
   box-shadow: none;
 }
 
@@ -646,13 +646,13 @@ export default {
 
 .success-points {
   font-size: 28rpx;
-  color: #6e6e73;
+  color: var(--color-text-secondary);
 }
 
 .rules-text {
   text-align: center;
   font-size: 24rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
   padding-bottom: 32rpx;
 }
 

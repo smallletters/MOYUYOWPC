@@ -3,6 +3,7 @@
  * 插件标识: MOYUYO-Push
  * 功能: FCM / APNs 设备注册、通知接收、角标管理
  */
+import { t } from '@/i18n'
 /* eslint-disable no-unreachable */
 
 const PLUGIN_NAME = 'MOYUYO-Push'
@@ -19,7 +20,7 @@ export function registerPush() {
       if (result.success) {
         resolve(result.token)
       } else {
-        reject(new Error(result.message || '推送注册失败'))
+        reject(new Error(result.message || t('pushPlugin.registerFailed')))
       }
     })
   })

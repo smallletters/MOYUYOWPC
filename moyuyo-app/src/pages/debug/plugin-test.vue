@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="debug">
     <view class="header">
       <text class="title">原生插件通信测试</text>
@@ -104,7 +104,14 @@ export default {
 }
 
 .header {
-  padding: var(--space-lg) 0;
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底 */
+  padding-top: calc(var(--space-lg) + var(--status-bar-height, 0px));
+  padding-top: calc(
+    var(--space-lg) + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px))
+  );
+  padding-right: 0;
+  padding-left: 0;
+  padding-bottom: var(--space-lg);
 }
 .title {
   font-size: var(--font-size-xl);

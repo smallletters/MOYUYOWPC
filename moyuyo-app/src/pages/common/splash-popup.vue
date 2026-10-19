@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="splash-page">
     <!-- 简化的首页占位背景 -->
     <view class="home-placeholder">
@@ -88,9 +88,7 @@ import { couponApi } from '@/api'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.commonSplashPopup')
 
-
 // 弹窗是否可见
-
 
 const popupVisible = ref(true)
 // 领取中状态,防止双击重复提交
@@ -398,7 +396,7 @@ const neverShowAgain = () => {
   width: 100%;
   height: 96rpx;
   border-radius: 24rpx;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
 }
 
 .action-secondary-text {

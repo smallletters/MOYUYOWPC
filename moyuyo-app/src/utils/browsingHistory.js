@@ -14,6 +14,7 @@
  * - 超过 90 天的记录自动清理
  * - 同一商品重复浏览仅更新时间戳并置顶
  */
+import { t } from '@/i18n'
 
 // 本地存储键名（H5/APP 通用）
 const STORAGE_KEY = 'moyuyo_browsing_history'
@@ -150,14 +151,17 @@ export function buildGroup(ts) {
   // 本周一 0 点（周一作为一周开始）
   const day = now.getDay() === 0 ? 7 : now.getDay()
   const weekStart = todayStart - (day - 1) * 24 * 60 * 60 * 1000
-  const t = date.getTime()
+  // 归一化后的时间戳。注意不能命名为 t：会遮蔽上方从 @/i18n 导入的翻译函数 t
+  const viewTs = date.getTime()
 
-  if (t >= todayStart) return { group: 'today', dateLabel: '今天' }
-  if (t >= yesterdayStart) return { group: 'yesterday', dateLabel: '昨天' }
-  if (t >= weekStart) return { group: 'thisWeek', dateLabel: '本周' }
+  if (viewTs >= todayStart) return { group: 'today', dateLabel: t('browsingHistory.today') }
+  if (viewTs >= yesterdayStart)
+    return { group: 'yesterday', dateLabel: t('browsingHistory.yesterday') }
+  if (viewTs >= weekStart) return { group: 'thisWeek', dateLabel: t('browsingHistory.thisWeek') }
   // 更早：按 x 天前显示，简化展示
-  const days = Math.floor((todayStart - t) / (24 * 60 * 60 * 1000))
-  if (days < RETENTION_DAYS) return { group: 'earlier', dateLabel: `${days} 天前` }
+  const days = Math.floor((todayStart - viewTs) / (24 * 60 * 60 * 1000))
+  if (days < RETENTION_DAYS)
+    return { group: 'earlier', dateLabel: t('browsingHistory.daysAgo', { days }) }
   const pad = (n) => String(n).padStart(2, '0')
   return {
     group: 'earlier',

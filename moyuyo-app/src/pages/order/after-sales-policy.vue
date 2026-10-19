@@ -2,7 +2,6 @@
   <view class="policy-page">
     <!-- 顶部导航栏 -->
 
-
     <!-- 内容区域 -->
     <scroll-view class="policy-body" scroll-y>
       <!-- 更新时间提示 -->
@@ -92,9 +91,7 @@ import { ref } from 'vue'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.orderAfterSalesPolicy')
 
-
 // FAQ 各分区数据
-
 
 const sections = ref([
   {
@@ -248,7 +245,7 @@ const contactService = () => {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
 }
 .nav-title {
   font-size: 34rpx;
@@ -265,7 +262,7 @@ const contactService = () => {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
 }
 
 .share-icon {

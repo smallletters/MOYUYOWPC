@@ -236,7 +236,7 @@ const emptyStates = ref([
   {
     label: 'Search',
     icon: 'search',
-    iconBg: '#F2F2F7',
+    iconBg: 'var(--color-fill, #f2f2f7)',
     title: '未找到相关结果',
     desc: '试试其他关键词，或者换个筛选条件看看',
     btnText: '重新搜索',
@@ -271,7 +271,7 @@ const errorStates = ref([
   {
     label: '404',
     icon: 'search',
-    iconBg: '#F2F2F7',
+    iconBg: 'var(--color-fill, #f2f2f7)',
     title: '页面不存在',
     desc: '你访问的页面可能已被移除或地址有误',
     btnIcon: 'home',
@@ -391,7 +391,7 @@ const goBack = () => {
 }
 
 .state-btn-secondary {
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
 }
 
 .state-btn-ghost {
@@ -433,7 +433,12 @@ const goBack = () => {
   width: 96rpx;
   height: 96rpx;
   border-radius: 50%;
-  background: linear-gradient(90deg, #f2f2f7 25%, #f7f7fa 50%, #f2f2f7 75%);
+  background: linear-gradient(
+    90deg,
+    var(--color-fill, #f2f2f7) 25%,
+    var(--color-fill-hi, #f7f7fa) 50%,
+    var(--color-fill, #f2f2f7) 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
   flex-shrink: 0;
@@ -449,7 +454,12 @@ const goBack = () => {
 .skeleton-line {
   height: 28rpx;
   border-radius: 12rpx;
-  background: linear-gradient(90deg, #f2f2f7 25%, #f7f7fa 50%, #f2f2f7 75%);
+  background: linear-gradient(
+    90deg,
+    var(--color-fill, #f2f2f7) 25%,
+    var(--color-fill-hi, #f7f7fa) 50%,
+    var(--color-fill, #f2f2f7) 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
@@ -515,7 +525,7 @@ const goBack = () => {
 .progress-track {
   width: 100%;
   height: 12rpx;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
   border-radius: 6rpx;
   overflow: hidden;
   margin-bottom: 16rpx;

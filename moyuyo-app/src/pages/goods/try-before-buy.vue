@@ -135,7 +135,7 @@ export default {
           spec: 'S 码 / 棕色',
           price: '45.00',
           timeLeft: '5天 08:15:22',
-          color: 'linear-gradient(145deg, #f2f2f7, #d1d1d6)',
+          color: 'linear-gradient(145deg, var(--color-fill, #f2f2f7), var(--color-fill-dim))',
         },
       ],
     }
@@ -162,49 +162,28 @@ export default {
 
 <style lang="scss" scoped>
 .try-before-buy {
-  min-height: 100vh;
+  /* 视口锁定外壳：唯一滚动权威是内部 <scroll-view class="scroll">（flex:1）。 */
+  display: flex;
+  flex-direction: column;
+  /* 视口高度：三层渐进增强（100vh 兜底 → 100dvh → 扣除 --window-top 顶部窗口偏移）。
+     非 custom 页 --window-top = 导航栏高 + 状态栏高，必须扣除，否则顶部内容顶到导航栏下。
+     末尾 0px 兜底：避免变量缺失时整条声明 invalid-at-computed-value → height 退化为 auto。 */
+  height: 100vh;
+  height: 100dvh;
+  height: calc(100dvh - var(--window-top, 0px));
+  overflow: hidden;
   background: var(--color-background);
 }
 
-.nav-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 88rpx;
-  padding: 0 24rpx;
-  background: var(--color-surface);
-  border-bottom: 1rpx solid var(--color-divider);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.nav-back {
-  width: 60rpx;
-  height: 60rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.back-icon {
-  font-size: 48rpx;
-  color: var(--color-primary);
-  line-height: 1;
-}
-
-.nav-title {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
-}
-
-.nav-placeholder {
-  width: 60rpx;
-}
+/* 说明：原 .nav-header / .nav-back / .back-icon / .nav-title / .nav-placeholder 为死代码
+   （模板中不存在对应元素，本页导航栏由原生 titleNView 提供），已移除。 */
 
 .scroll {
-  height: calc(100vh - 88rpx);
+  /* 滚动区是根的唯一在流子项：flex:1 占满整个视口外壳，min-height:0 允许内部滚动。
+     原 calc(100vh - 88rpx) 硬扣 88rpx 是脆弱写法（依赖具体导航栏高度、两端语义不一致）；
+     改用 flex 后滚动区高度交由布局决定，与平台/导航栏实现无关。 */
+  flex: 1;
+  min-height: 0;
   padding: 24rpx;
 }
 

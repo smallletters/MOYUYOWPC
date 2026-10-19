@@ -1,4 +1,4 @@
-﻿<!--
+<!--
   通用图片组件:封装 lazy-load + 加载失败兜底图。
   用法:<image-fallback :src="item.image" mode="aspectFill" />
 -->
@@ -6,7 +6,7 @@
   <view class="img-fallback" :class="{ 'is-loading': loading, 'is-error': loadError }">
     <image
       v-if="src"
-      :src="src"
+      :src="$img(src)"
       :mode="mode"
       lazy-load
       class="img"
@@ -15,11 +15,11 @@
     />
     <!-- 加载中骨架 -->
     <view v-if="loading && !loadError" class="img-placeholder">
-      <text class="placeholder-text">加载中…</text>
+      <text class="placeholder-text">{{ $t('common.loading') }}</text>
     </view>
     <!-- 加载失败兜底:显示 SVG 灰底 -->
     <view v-if="loadError" class="img-placeholder img-error-placeholder">
-      <text class="placeholder-error-text">图片加载失败</text>
+      <text class="placeholder-error-text">{{ $t('imageFallback.loadFailed') }}</text>
     </view>
   </view>
 </template>
@@ -87,14 +87,19 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(90deg, #f2f2f7 25%, #f7f7fa 50%, #f2f2f7 75%);
+  background: linear-gradient(
+    90deg,
+    var(--color-fill, #f2f2f7) 25%,
+    var(--color-fill-hi, #f7f7fa) 50%,
+    var(--color-fill, #f2f2f7) 75%
+  );
   background-size: 200% 100%;
   animation: imgShimmer 1.5s ease-in-out infinite;
 }
 
 .img-error-placeholder {
   animation: none;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
 }
 
 .placeholder-text {

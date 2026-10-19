@@ -31,7 +31,7 @@
       <!-- 礼品列表 -->
       <view class="goods-list" :aria-label="$t('pointsMall.goodsListLabel')">
         <view v-for="g in filteredGoods" :key="g.id" class="goods-card">
-          <image :src="g.image" class="goods-image" />
+          <image mode="aspectFill" :src="$img(g.image)" class="goods-image" />
           <view class="goods-info">
             <text class="goods-name">{{ g.name }}</text>
             <view class="goods-bottom">

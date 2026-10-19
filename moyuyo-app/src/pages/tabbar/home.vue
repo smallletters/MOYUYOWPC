@@ -38,7 +38,7 @@
       <!-- ② CMS Banner 轮播（从 /api/v1/cms/banners 拉取，支持管理后台配置图片） -->
       <!-- bannerLoaded 用于在请求未返回前隐藏 swiper，避免初始 swiper 在数据替换时
            触发 uview-plus 的 getBoundingClientRect null 崩溃 -->
-      <view v-if="bannerLoaded && banners.length" class="banner">
+      <view v-if="bannerLoaded && displayBanners.length" class="banner">
         <swiper
           :key="bannerVersion"
           :autoplay="true"
@@ -51,9 +51,9 @@
           indicator-color="rgba(46,43,41,0.3)"
           @click="onBannerClick"
         >
-          <swiper-item v-for="(b, idx) in banners" :key="b.id || idx">
+          <swiper-item v-for="(b, idx) in displayBanners" :key="b.id || idx">
             <view class="banner-item">
-              <image :src="b.image" class="banner-img" mode="aspectFill" />
+              <image :src="$img(b.image)" class="banner-img" mode="aspectFill" />
               <view v-if="b.title" class="banner-title-overlay">
                 <text v-if="b.tag" class="banner-tag">{{ b.tag }}</text>
                 <text class="banner-title-text">{{ b.title }}</text>
@@ -79,9 +79,11 @@
         </view>
 
         <view v-if="recommendLoading && recommend.length === 0" class="recommend-empty">
-          加载中...
+          {{ $t('home.loading') }}
         </view>
-        <view v-else-if="recommend.length === 0" class="recommend-empty">暂无商品</view>
+        <view v-else-if="recommend.length === 0" class="recommend-empty">
+          {{ $t('category.empty.product') }}
+        </view>
         <view v-else class="recommend-grid">
           <view
             v-for="p in recommend"
@@ -122,6 +124,7 @@
 <script>
 import { cmsApi } from '@/api'
 import { reportActiveHeartbeat } from '@/utils/heartbeat'
+import { useThemeStore } from '@/store'
 
 export default {
   pageTitleKey: 'pageTitle.tabbarHome',
@@ -136,11 +139,8 @@ export default {
       // swiper 的 :key；数据来源变化时递增，绕开 uview-plus 在 swiper-item 卸载时的 DOM 引用 bug
       bannerVersion: 0,
       // 从 CMS Banner 接口拉取（管理后台「CMS管理 → Banner 管理」配置的图片）。
-      // 兜底数据用于接口失败时降级显示，避免页面空白。
-      banners: [
-        { image: 'https://picsum.photos/750/360?random=1', title: 'MILO 探险家' },
-        { image: 'https://picsum.photos/750/360?random=2', title: 'LUNA 策展家' },
-      ],
+      // 兜底数据用于接口失败时降级显示，避免页面空白（见 computed fallbackBanners）。
+      banners: [],
       kingkongList: [
         {
           id: 'care',
@@ -189,8 +189,31 @@ export default {
   },
 
   onShow() {
+    // 原生 tabBar 不吃 CSS 变量，深色模式下必须在这里重新上色。
+    // 切 tab / 从设置页（非 tabBar 页）返回都会走到这里；
+    // 且 setTabBarStyle 要求当前页是 tabBar 页，这里是唯一能可靠落色的时机。
+    useThemeStore().syncTabBar()
     // 心跳改由 @/utils/heartbeat 提供；此处调用以保持"切到首页 tab"也算活跃
     reportActiveHeartbeat()
+  },
+
+  computed: {
+    /**
+     * Banner 兜底数据（接口失败 / 数据未返回时降级展示）。
+     * 用 computed 而非 data：标题走 i18n，locale 切换时跟随刷新。
+     */
+    fallbackBanners() {
+      return [
+        { image: 'https://picsum.photos/750/360?random=1', title: this.$t('home.bannerMilo') },
+        { image: 'https://picsum.photos/750/360?random=2', title: this.$t('home.bannerLuna') },
+      ]
+    },
+    /**
+     * 实际渲染的 banner 列表：接口数据优先，空则回落兜底。
+     */
+    displayBanners() {
+      return this.banners.length ? this.banners : this.fallbackBanners
+    },
   },
 
   /**
@@ -375,10 +398,13 @@ export default {
   display: flex;
   align-items: center;
   padding: 16rpx 24rpx;
-  /* 状态栏安全区：uni-app 编译后 --status-bar-height 是真机状态栏高度（如 44px），env 是 iOS safe area */
-  /* H5 调试下两个值都是 0，真机/PWA/WebView 嵌入时自动撑开 */
-  padding-top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
-  min-height: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px) + 44px);
+  /* 状态栏安全区：uni-app 编译后 --status-bar-height 是真机状态栏高度（如 44px），env 是 iOS safe area
+     H5 调试下两个值都是 0，真机/PWA/WebView 嵌入时自动撑开。
+     取二者较大值（而非相加）：iOS 上 env 与 status-bar-height 同为状态栏高度，相加会翻倍 */
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  min-height: calc(44px + var(--status-bar-height, 0px));
+  min-height: calc(44px + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
   background: var(--color-surface);
   box-sizing: border-box;
   /* 让 navbar 在 page 文档流中作为正常块级元素，不参与 flex 拉伸 */
@@ -426,7 +452,7 @@ export default {
   margin: 24rpx 32rpx 0;
   border-radius: 24rpx;
   overflow: hidden;
-  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-pop);
 }
 .banner :deep(.uni-swiper-wrapper),
 .banner swiper {
@@ -620,7 +646,7 @@ export default {
 
 .recommend-original {
   font-size: var(--font-size-xs);
-  color: var(--color-text-300);
+  color: var(--color-text-tertiary);
   text-decoration: line-through;
 }
 

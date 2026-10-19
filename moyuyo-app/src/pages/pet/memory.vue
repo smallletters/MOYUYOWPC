@@ -27,7 +27,7 @@
       <view class="pet-strip">
         <image
           v-if="pet.avatar"
-          :src="pet.avatar"
+          :src="$img(pet.avatar)"
           class="pet-avatar"
           mode="aspectFill" />
         <view v-else class="pet-avatar pet-avatar-fallback">
@@ -65,7 +65,7 @@
             <text v-if="item.desc" class="tl-desc clamp-3">{{ item.desc }}</text>
             <image
               v-if="item.thumb"
-              :src="item.thumb"
+              :src="$img(item.thumb)"
               class="tl-thumb"
               mode="aspectFill" />
           </view>
@@ -383,7 +383,9 @@ export default {
   position: sticky;
   top: 0;
   z-index: 30;
-  padding-top: calc(var(--status-bar-height, 0px) + env(safe-area-inset-top, 0px));
+  /* 取二者较大值（而非相加）：iOS 上 env 与 status-bar-height 同为状态栏高度，相加会翻倍 */
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }

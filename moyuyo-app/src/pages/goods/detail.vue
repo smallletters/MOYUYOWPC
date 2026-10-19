@@ -1,18 +1,18 @@
 <template>
-  <view v-if="loading && !product" class="loading-state">加载中...</view>
+  <view v-if="loading && !product" class="loading-state">{{ $t('goodsDetail.loading') }}</view>
 
   <view v-else-if="product" class="detail">
     <!-- 顶部导航栏 -->
-    <view class="navbar" :style="{ paddingTop: statusBarHeight + 'px' }">
+    <view class="navbar">
       <view class="navbar-inner">
-        <view class="nav-btn" aria-label="返回" @click="goBack">
+        <view class="nav-btn" :aria-label="$t('goodsDetail.ariaBack')" @click="goBack">
           <text class="luc" :class="$luc('chevron-left')" />
         </view>
         <view class="nav-actions">
-          <view class="nav-btn" aria-label="分享" @click="onShare">
+          <view class="nav-btn" :aria-label="$t('goodsDetail.ariaShare')" @click="onShare">
             <text class="luc" :class="$luc('share-2')" />
           </view>
-          <view class="nav-btn" aria-label="收藏" @click="onWishToggle">
+          <view class="nav-btn" :aria-label="$t('goodsDetail.ariaFavorite')" @click="onWishToggle">
             <text class="fav-icon" :class="{ 'is-fav': wishlisted }">
               {{ wishlisted ? '❤' : '♡' }}
             </text>
@@ -36,10 +36,11 @@
         >
           <swiper-item v-for="(img, i) in galleryImages" :key="img.key || i">
             <image
-              :src="img.url"
+              :src="$img(img.url)"
               class="swiper-image"
               mode="aspectFill"
-              @tap="previewImage(i)" />
+              @tap="previewImage(i)"
+            />
           </swiper-item>
         </swiper>
 
@@ -52,7 +53,7 @@
             :class="{ active: i === currentImageIndex }"
             @tap="onThumbTap(i)"
           >
-            <image :src="img.url" mode="aspectFill" class="thumb-img" />
+            <image :src="$img(img.url)" mode="aspectFill" class="thumb-img" />
           </view>
         </scroll-view>
       </view>
@@ -67,7 +68,7 @@
             ${{ formatPrice(originalPriceNum) }}
           </text>
           <view v-if="memberPrice && memberPrice < currentPrice" class="member-tag">
-            会员价 ${{ formatPrice(memberPrice) }}
+            {{ $t('goodsDetail.memberPrice') }} ${{ formatPrice(memberPrice) }}
           </view>
         </view>
         <view v-if="product.shortDetail" class="short-desc">{{ product.shortDetail }}</view>
@@ -117,10 +118,15 @@
         </view>
       </view>
 
-      <!-- 图文详情：仅渲染后端 mo_product.description/detail 字段 -->
+      <!-- 图文详情：仅渲染后端 mo_product.description/detail 字段。
+           nodes 必须走 detailHtml(已把 /uploads/... 相对路径补成绝对地址)：
+           后端 detail 存的是 <img src="/uploads/..."> 相对路径，APP 端/无
+           Vite 代理的 H5 会把它解析到页面自身 host → 图片 404 → 图片渲染高度 0
+           → 图文详情面板高度坍缩 → 整页内容不足一屏 → 手指滑不动
+           (表现为"图文详情没显示/看不到")。 -->
       <view v-if="activeTab === 'detail'" class="tab-panel">
-        <rich-text v-if="product.detail" class="rich-content" :nodes="product.detail" />
-        <view v-else class="empty-detail">暂无详情</view>
+        <rich-text v-if="detailHtml" class="rich-content" :nodes="detailHtml" />
+        <view v-else class="empty-detail">{{ $t('goodsDetail.emptyDetail') }}</view>
       </view>
 
       <!-- 规格参数 -->
@@ -139,9 +145,11 @@
         <view class="review-summary">
           <view class="review-score">
             <text class="score-num">{{ reviewRateText }}</text>
-            <text class="score-label">好评率</text>
+            <text class="score-label">{{ $t('goodsDetail.goodRate') }}</text>
           </view>
-          <text class="review-count">· {{ reviewTotalCount }} 条评价</text>
+          <text class="review-count">
+            {{ $t('goodsDetail.reviewCount', { count: reviewTotalCount }) }}
+          </text>
         </view>
         <view v-if="reviewTags.length" class="review-tags">
           <view v-for="tag in reviewTags" :key="tag.label" class="review-tag">
@@ -149,12 +157,16 @@
           </view>
         </view>
 
-        <view v-if="reviews.length === 0" class="empty-reviews">暂无评价</view>
+        <view v-if="reviews.length === 0" class="empty-reviews">
+          {{ $t('goodsDetail.emptyReviews') }}
+        </view>
         <view v-for="r in displayedReviews" :key="r.id" class="review-card">
           <image :src="r.avatar || defaultAvatar" mode="aspectFill" class="review-avatar" />
           <view class="review-body">
             <view class="review-head">
-              <text class="reviewer">{{ r.reviewerName || '匿名用户' }}</text>
+              <text class="reviewer">
+                {{ r.reviewerName || $t('goodsDetail.anonymous') }}
+              </text>
               <text class="review-date">{{ formatRelativeTime(r.createTime) }}</text>
             </view>
             <view class="rating-stars">
@@ -172,7 +184,7 @@
         </view>
 
         <view v-if="reviews.length > 3" class="see-all-btn" @tap="seeAllReviews">
-          查看全部评价 ›
+          {{ $t('goodsDetail.viewAllReviews') }} ›
         </view>
       </view>
     </scroll-view>
@@ -197,17 +209,17 @@
         <text class="bar-label">{{ $t('goodsDetail.service') }}</text>
       </view>
       <view class="bar-btn cart-btn" :class="{ 'is-off': !isOnSale }" @tap="onAddCart">
-        {{ isOnSale ? $t('goodsDetail.addCart') : '已下架' }}
+        {{ isOnSale ? $t('goodsDetail.addCart') : $t('goodsDetail.soldOut') }}
       </view>
       <view class="bar-btn buy-btn" :class="{ 'is-off': !isOnSale }" @tap="onBuyNow">
-        {{ isOnSale ? $t('goodsDetail.buyNow') : '已下架' }}
+        {{ isOnSale ? $t('goodsDetail.buyNow') : $t('goodsDetail.soldOut') }}
       </view>
     </view>
   </view>
 
   <view v-else class="loading-state">
-    <text>{{ errorMessage || '商品不存在' }}</text>
-    <view class="retry-btn" @tap="retryLoad">重新加载</view>
+    <text>{{ errorMessage || $t('goodsDetail.productNotFound') }}</text>
+    <view class="retry-btn" @tap="retryLoad">{{ $t('goodsDetail.retry') }}</view>
   </view>
 </template>
 
@@ -222,7 +234,6 @@ export default {
 
   data() {
     return {
-      statusBarHeight: 20,
       productId: null,
       product: null,
       loading: true,
@@ -241,11 +252,6 @@ export default {
       reviewTotalCount: 0,
       // UI 状态
       activeTab: 'detail',
-      tabs: [
-        { key: 'detail', label: '图文详情' },
-        { key: 'spec', label: '规格参数' },
-        { key: 'review', label: '用户评价' },
-      ],
       wishlisted: false,
     }
   },
@@ -253,6 +259,14 @@ export default {
   computed: {
     cartStore() {
       return useCartStore()
+    },
+    // Tab 名称走 i18n：必须放在 computed 里，放在 data 里切语言不会重新求值
+    tabs() {
+      return [
+        { key: 'detail', label: this.$t('goodsDetail.tabDetail') },
+        { key: 'spec', label: this.$t('goodsDetail.tabSpec') },
+        { key: 'review', label: this.$t('goodsDetail.tabReview') },
+      ]
     },
     // 默认头像兜底:指向静态资源,确保 image 永远有 src
     defaultAvatar() {
@@ -311,10 +325,10 @@ export default {
     },
     stockState() {
       void this.localeVersion
-      if (!this.isOnSale) return '已下架'
+      if (!this.isOnSale) return i18n.t('goodsDetail.soldOut')
       // 多维度变体未选完时,提示用户继续选择,避免显示"已选但无库存"误导
       if (this.hasVariations && this.selectedAttrs.length < this.attributeGroups.length) {
-        return '请选择规格'
+        return i18n.t('goodsDetail.selectSpec')
       }
       if (!this.selectedAttrs.length) return ''
       if (this.stock === 0) return i18n.t('goodsDetail.outOfStock')
@@ -358,14 +372,47 @@ export default {
         .split(',')
         .map((t) => t.trim())
         .filter(Boolean)
-      if (tags.length) rows.push({ label: '标签', value: tags.join(' / ') })
-      if (this.product.brandIpId) rows.push({ label: '产品线', value: this.brandLine })
-      if (this.product.weight) rows.push({ label: '重量', value: this.product.weight + ' kg' })
-      if (this.product.spuCode) rows.push({ label: '商品编码', value: this.product.spuCode })
+      if (tags.length) rows.push({ label: i18n.t('goodsDetail.specTags'), value: tags.join(' / ') })
+      if (this.product.brandIpId)
+        rows.push({ label: i18n.t('goodsDetail.specProductLine'), value: this.brandLine })
+      if (this.product.weight)
+        rows.push({ label: i18n.t('goodsDetail.specWeight'), value: this.product.weight + ' kg' })
+      if (this.product.spuCode)
+        rows.push({ label: i18n.t('goodsDetail.specSpu'), value: this.product.spuCode })
       if (this.product.productType)
-        rows.push({ label: '商品类型', value: this.product.productType })
-      if (this.stock != null) rows.push({ label: '库存', value: String(this.stock) })
+        rows.push({ label: i18n.t('goodsDetail.specType'), value: this.product.productType })
+      if (this.stock != null)
+        rows.push({ label: i18n.t('goodsDetail.specStock'), value: String(this.stock) })
       return rows
+    },
+    /**
+     * 图文详情 HTML(后端 mo_product.detail)
+     *
+     * 后端存的是富文本 HTML，其中图片是**根相对路径**，例如：
+     *   <img src="/uploads/2026/09/30/xxx.jpg" alt="" style="max-width:100%;height:auto" />
+     * 该路径只有在「页面 host 恰好能提供 /uploads 静态资源」时才可加载：
+     * - H5 dev：Vite 配了 '/uploads' 代理 → 能加载
+     * - APP 端 / H5 生产(nginx 未反代 /uploads) → 被解析到 _www/ 或页面自身域名
+     *   → 404 → <img> 渲染高度为 0 → 图文详情面板高度坍缩
+     *   → 整页内容高度 ≈ 视口高度 → 手指滑不动(看起来像"详情没渲染出来")
+     *
+     * 因此这里统一把详情里所有「根相对路径」的资源地址补成绝对地址，
+     * 口径与图集 buildGallery/optionImage 使用的 toAbsUrl 完全一致。
+     */
+    detailHtml() {
+      const raw = this.product?.detail
+      if (!raw || typeof raw !== 'string') return ''
+      // 仅改写根相对路径资源(src / data-src / poster)；
+      // 跳过 //host 协议相对、http(s)://、data:、blob: 等已有 scheme 的地址。
+      // toAbsUrl 在没有 base 时原样返回，因此不会破坏 H5 同源/代理场景。
+      return raw.replace(
+        /\b(src|data-src|poster)\s*=\s*(?:"(\/(?!\/)[^"]*)"|'(\/(?!\/)[^']*)'|(\/(?!\/)[^\s"'>]+))/gi,
+        (match, attr, dq, sq, uq) => {
+          const path = dq || sq || uq
+          if (!path) return match
+          return `${attr}="${this.toAbsUrl(path)}"`
+        },
+      )
     },
   },
 
@@ -384,13 +431,6 @@ export default {
     this.activeTab = 'detail'
     this.wishlisted = false
     this.errorMessage = ''
-    // 读取系统状态栏高度(自定义导航栏时需要)
-    try {
-      const sysInfo = uni.getSystemInfoSync()
-      this.statusBarHeight = sysInfo.statusBarHeight || 20
-    } catch (e) {
-      this.statusBarHeight = 20
-    }
     this.loadDetail()
   },
 
@@ -617,7 +657,10 @@ export default {
           return { name: p.slice(0, colon).trim(), value: p.slice(colon + 1).trim() }
         }
         // 纯值片段:按位置对号入座
-        return { name: groups[i]?.name || `规格${i + 1}`, value: p }
+        return {
+          name: groups[i]?.name || i18n.t('goodsDetail.specFallback', { index: i + 1 }),
+          value: p,
+        }
       })
     },
 
@@ -658,12 +701,11 @@ export default {
       if (isNaN(d.getTime())) return ''
       const diffMs = Date.now() - d.getTime()
       const days = Math.floor(diffMs / 86400000)
-      if (days <= 0) return '今天'
-      if (days === 1) return '1天前'
-      if (days < 7) return `${days}天前`
-      if (days < 14) return '1周前'
-      if (days < 30) return `${Math.floor(days / 7)}周前`
-      return `${Math.floor(days / 30)}个月前`
+      if (days <= 0) return i18n.t('goodsDetail.timeToday')
+      if (days < 7) return i18n.t('goodsDetail.timeDaysAgo', { days })
+      if (days < 30)
+        return i18n.t('goodsDetail.timeWeeksAgo', { weeks: Math.max(1, Math.floor(days / 7)) })
+      return i18n.t('goodsDetail.timeMonthsAgo', { months: Math.floor(days / 30) })
     },
 
     isAttrSelected(name, value) {
@@ -923,13 +965,24 @@ export default {
 <style lang="scss" scoped>
 /* 设计稿 Apple 风格 design tokens → MOYUYO 品牌色 */
 .detail {
-  /* APP 端让 page 级滚动接管,移除 height:100vh + overflow:hidden 锁死,
-     避免外层滚动与内部 scroll-view 双滚动冲突导致"拉不动";
-     同时避免硬编码 calc 高度时 rpx/px 单位混用 + safe-area 漏算
-     导致 scroll-view 高度溢出,把底部 fixed 栏卷入滚动 */
+  /* 视口锁定外壳：整页固定为 100vh 且裁剪溢出，使「页面级滚动」彻底不会发生，
+     唯一的滚动权威是内部的 <scroll-view class="scroll">（flex:1 占满剩余空间）。
+     这样不会再出现「外层滚动与内部 scroll-view 双层滚动互相抢手势 → 滑不动」，
+     底部固定栏也不会因页面橡皮筋(bounce)被拖动/形变。
+     注意：本页 navigationStyle=custom，webview 全屏，100vh = 整屏高度（含状态栏区域），
+     navbar 用 padding-top 让内容避开状态栏（见下方 .navbar 的注释）。 */
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  /* H5 移动浏览器：100vh 含地址栏/工具栏区域，会把底部栏顶出可视区。
+     dvh 跟随动态视口，能正确反映可视高度；不支持 dvh 的旧 webview/APP 端
+     会忽略本行并保留上面的 100vh（app-plus 全屏下两者等价，无副作用）。 */
+  height: 100dvh;
+  /* custom 页：app-plus 下 --window-top 为 "0px"（APP 端零行为变化）；H5 custom 页为
+     calc(0px + env(safe-area-inset-top))，即顶部安全区，减去后正确让出刘海区。
+     统一写法：只减 window-top，不减 window-bottom。 */
+  height: calc(100dvh - var(--window-top, 0px));
+  overflow: hidden;
   background-color: var(--background-200, #ede9e4);
 }
 
@@ -942,10 +995,20 @@ export default {
 }
 
 .navbar {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  background-color: rgba(255, 255, 255, 0.92);
+  /* 常流 flex 子项：锚定在不可滚动的视口外壳(.detail, overflow:hidden)顶部，
+     内容区由唯一的滚动容器 scroll-view 承担、不经过导航栏，
+     因此不再需要 position:sticky / top 这类吸顶声明（已删除）。
+     导航栏作为 scroll-view 的前一个兄弟常驻顶部，天然吸顶。 */
+  flex-shrink: 0;
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 的**较大值**而非相加，
+     iOS 支持 env() 时二者同为状态栏高度，相加会让顶栏被推低一倍。
+     原先用 JS 的 uni.getSystemInfoSync().statusBarHeight 绑定内联 paddingTop，
+     在 H5 下该值为 0 却被 `|| 20` 当成 falsy 退化成 20px，且 data 初值 20 会有首帧跳动。 */
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  /* 同 .bottom-bar：原先是写死的 rgba(255,255,255,.92)，深色模式下顶栏一直是白的。
+     改用 --color-surface（浅 #ffffff / 深 #2a2724），与底栏、tabBar 取色统一。 */
+  background-color: var(--color-surface, #ffffff);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1rpx solid var(--border, #eae5dd);
@@ -996,17 +1059,14 @@ export default {
 }
 
 .scroll {
-  /* <scroll-view scroll-y> 在 webview 里必须有确定的"视口高度"才能滚动;
-     .bottom-bar 是 position:fixed 脱离文档流,不参与 flex 高度计算,
-     所以这里需要显式减去 底部 fixed 栏 高度(120rpx) + 底部安全区,
-     否则富文本详情会被底部栏遮住最后一段,看起来"滚不到底"
-     navbar 用 position:sticky 不占文档流,无需减算 */
+  /* 不再硬算高度：用 flex:1 占据 navbar 与底部栏之间的「剩余空间」，
+     min-height:0 覆盖 flex 项默认的 min-height:auto，允许收缩到小于内容高度，
+     从而让 <scroll-view> 内部的 .uni-scroll-view(main) 真正产生 overflow-y:auto 滚动。
+     这避免了 calc(100vh - Nrpx - env(...)) 里 rpx→rem 依赖根字号、env() 不被 webview
+     支持时整条声明失效 → height 退回 auto → scroll-view 不再滚动 的脆弱点。 */
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  /* 100vh 已包含可视区高度,直接减去底部栏(120rpx)+ 安全区即可;
-     uni-app rpx 与 px 在 webview 下 750rpx = 设备宽度,这里 750rpx/2 ≈ 60px(粗算) ;
-     为了跨设备稳定,改用 px 数值:120rpx@750 设计稿 ≈ 60px,按 2x 取 120px 偏多,
-     这里用 rpx→px 折中值 calc,直接给 120px 给到大多数 webview 足够 */
-  height: calc(100vh - 140rpx - env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 
@@ -1449,17 +1509,23 @@ export default {
 
 /* ====== 底部操作栏 ====== */
 .bottom-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 50;
+  /* 作为视口锁定外壳(.detail)的最后一个 flex 纵向子项，天然稳定贴底，
+     不再使用 position:fixed：页面不发生滚动，底栏就不会随拖动位移/形变；
+     也不需要给 .scroll 预留 padding-bottom 来避免遮挡。 */
+  flex-shrink: 0;
+  /* 必须保持 content-box：height(120rpx) 是内容盒高度，
+     safe-area 的 padding-bottom 叠加在其下方才是正确的安全区留白。
+     改成 border-box 会让安全区内缩进内容盒，把按钮挤出/压扁。 */
+  box-sizing: content-box;
   display: flex;
   align-items: center;
   gap: 16rpx;
   height: 120rpx;
   padding: 0 32rpx;
-  background-color: rgba(255, 255, 255, 0.95);
+  /* 必须走 design token：原先是写死的 rgba(255,255,255,.95)，深色模式下
+     没有任何规则能覆盖它 → 底栏保持白底，与首页原生 tabBar(#2a2724) 不一致。
+     --color-surface = 浅色 #ffffff / 深色 #2a2724，与 tabBar 同一套取色。 */
+  background-color: var(--color-surface, #ffffff);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-top: 1rpx solid var(--border, #eae5dd);
@@ -1523,6 +1589,15 @@ export default {
 /* 下架商品购买按钮置灰 */
 .bar-btn.is-off {
   opacity: 0.45;
+}
+
+/* ===== 深色模式：底部购物栏对齐首页原生 tabBar =====
+ * .bar-icon 用的是 --text-500(#7a746c)，它在 common.scss 里是写死的、没有深色值，
+ * 所以底栏图标/文字在深色下不会跟着变。这里改为 --color-text-tertiary
+ * （深色 #807a72），与 tabBar 未选中态完全同色；浅色模式保持原有 #7a746c 不变，
+ * 避免产生用户没要求的视觉回退。.bar-label 是 .bar-icon 的子节点，继承颜色。 */
+.theme-dark .bar-icon {
+  color: var(--color-text-tertiary, #807a72);
 }
 
 /* iPhone X 及以上底部安全区 */

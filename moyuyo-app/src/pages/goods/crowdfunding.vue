@@ -649,7 +649,7 @@ export default {
   gap: 16rpx;
 }
 .risk-left .iconfont {
-  color: var(--chart-3);
+  color: var(--color-info);
 }
 .risk-label {
   font-size: 28rpx;
@@ -675,7 +675,7 @@ export default {
   margin-top: 32rpx;
   padding: 24rpx;
   border-radius: var(--radius);
-  background: var(--accent);
+  background: var(--color-accent);
   border: 2rpx solid var(--border);
 }
 .risk-card-title {
@@ -705,7 +705,8 @@ export default {
   gap: 24rpx;
   padding: 16rpx 32rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.92);
+  /* 浮层底栏：原写死 rgba 白，深色下无规则可覆盖 → 永远白底。改用带深色值的 token。 */
+  background: var(--color-surface-veil-92, rgba(255, 255, 255, 0.92));
   border-top: 2rpx solid var(--border);
 }
 .bar-share {

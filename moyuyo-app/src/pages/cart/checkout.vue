@@ -71,13 +71,17 @@
               <view v-if="selectedPayment === p.id" class="pay-radio-dot" />
             </view>
             <view class="pay-icon-box">
-              <!-- 优先用对应支付方式的 SVG 图标;缺失时降级显示文字标识 -->
-              <image
-                v-if="p.icon"
-                :src="p.icon"
-                class="pay-icon-img"
-                mode="aspectFit" />
-              <text v-else class="pay-icon-text">{{ p.iconText }}</text>
+              <!-- 品牌标识改为纯 view + text 绘制，不再走 <image>：
+                   APP 端 <image> 对 SVG / SVG base64 data URI 渲染不可靠
+                   （SVG 需要解释器，且 data URI 依赖 btoa/TextEncoder 等宿主能力），
+                   色块 + 文字的方案不依赖任何图片解码，H5 与真机表现一致 -->
+              <view v-if="p.iconKey === 'card'" class="pay-badge pay-badge-card">
+                <view class="pay-card-stripe" />
+                <view class="pay-card-chip" />
+              </view>
+              <view v-else class="pay-badge" :class="`pay-badge-${p.iconKey}`">
+                <text class="pay-badge-text">{{ p.iconText }}</text>
+              </view>
             </view>
             <view class="pay-info">
               <text class="pay-name">{{ p.name }}</text>
@@ -100,7 +104,7 @@
             :key="item.variationId || item.productId"
             class="item-row"
           >
-            <image :src="item.image" class="item-image" mode="aspectFill" />
+            <image :src="$img(item.image)" class="item-image" mode="aspectFill" />
             <view class="item-info">
               <text class="item-name text-ellipsis-2">{{ item.name }}</text>
               <text class="item-qty">{{ $t('checkout.item.qty') }} {{ item.quantity }}</text>
@@ -350,7 +354,6 @@ import { getShippingMethods } from '@/api/order'
 import { useCartStore } from '@/store'
 import { savePendingOrder } from '@/utils/storage'
 import { i18n } from '@/i18n'
-import { buildPayIconDataUris } from '@/static/icons/pay-icons'
 import { useAddressCountries } from '@/composables/useAddressCountries'
 
 export default {
@@ -377,9 +380,6 @@ export default {
       couponAutoDismissed: false,
       // 优惠券选择弹窗显示状态(底部弹出用户已领取的优惠券列表)
       showCouponPopup: false,
-      // 支付方式 logo 的 base64 data URI 映射,onLoad 时一次性生成
-      // 走内联而不是 /static/icons/*.svg 是为了规避 APP 真机偶发 SVG 渲染白盒
-      payIconUris: { googlepay: '', applepay: '', paypal: '', card: '' },
       // 配送方式数据：从后端 /api/v1/shipping/methods 拉取，服务端权威计算
       // 默认给空数组 + loading 标志，避免页面闪烁时硬编码旧值
       shippingMethods: [],
@@ -387,7 +387,7 @@ export default {
       shippingLoaded: false,
       // 默认选中第一个 ACTIVE method；地址变更或 subtotal 变化时重新拉取并保持选中态
       selectedShipping: '',
-      // 支付方式固定数据,文案走 i18n;logo 用 id 关联 data URI,真机/H5 都稳定
+      // 支付方式固定数据,文案走 i18n;品牌标识用 iconKey + iconText 由 view/text 绘制
       paymentMethods: [
         {
           id: 'googlepay',
@@ -401,7 +401,7 @@ export default {
           nameKey: 'orderPay.methods.applepay.name',
           descKey: 'orderPay.methods.applepay.desc',
           iconKey: 'applepay',
-          iconText: '',
+          iconText: 'Pay',
         },
         {
           id: 'paypal',
@@ -456,14 +456,12 @@ export default {
             : i18n.t(`checkout.shipping.${s.code}.eta`),
       }))
     },
-    /** 支付方式注入 i18n 文案,并把 logo 解析成 base64 data URI */
+    /** 支付方式注入 i18n 文案（品牌标识由模板按 iconKey 用 view/text 绘制） */
     i18nPaymentMethods() {
-      const uris = this.payIconUris || {}
       return this.paymentMethods.map((p) => ({
         ...p,
         name: i18n.t(p.nameKey),
         desc: i18n.t(p.descKey),
-        icon: uris[p.iconKey] || '',
       }))
     },
     /** 运费免邮文案 */
@@ -597,9 +595,6 @@ export default {
     this.loadAddress()
     this.loadPoints()
     this.loadMyCoupons()
-    // 进入页面即把支付方式 SVG 转成 base64 data URI
-    // 避开 APP 真机偶发的 /static/icons/*.svg 渲染白盒问题
-    this.payIconUris = buildPayIconDataUris()
   },
 
   // 从地址页返回时才会触发（uni-app 中 navigateBack 不会重触发 onLoad）
@@ -888,8 +883,11 @@ export default {
           })),
           addressId: this.selectedAddress.id || null,
           remark: this.orderRemark,
-          // 优先用 auto-selected activeCoupon(支持 AMOUNT/PERCENT 两种)
-          couponId: this.activeCoupon?.code || null,
+          // 优先用 auto-selected activeCoupon(支持 AMOUNT/PERCENT 两种)。
+          // couponUserId 来自后端 /coupons/mine 返回的用户券记录 id(必传，服务端据此核销/重算减免)；
+          // couponId 仅作展示参考，改用券模板 id(activeCoupon.couponId)，不再传恒为 undefined 的 code。
+          // 注意：真正的资金判据在服务端(couponUserId)，前端这两个值只是提示。
+          couponId: this.activeCoupon?.couponId != null ? String(this.activeCoupon.couponId) : null,
           couponUserId: this.activeCoupon?.userCouponId || null,
           couponDiscount: this.discount,
           pointsUsed: usedPoints,
@@ -1302,18 +1300,78 @@ export default {
   border-color: var(--color-primary);
 }
 
-/* 真实支付方式图标:填满容器，保持原始比例 */
-.pay-icon-img {
+/* 支付方式品牌标识：纯 view + text 绘制，不依赖 <image>（APP 端 SVG/data URI 不可靠）
+ * 统一铺满图标框（80 x 56rpx），用品牌色块 + 短文字表达，H5 与真机渲染一致 */
+.pay-badge {
   width: 100%;
   height: 100%;
-  display: block;
+  border-radius: 4rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rpx;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.pay-icon-text {
+.pay-badge-text {
   font-size: 20rpx;
   font-weight: 700;
-  color: var(--color-text);
+  line-height: 1.1;
   letter-spacing: 0.5rpx;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Google Pay：浅灰底 + 深灰字 */
+.pay-badge-googlepay {
+  background: #f1f3f4;
+  border: 1rpx solid #dadce0;
+}
+.pay-badge-googlepay .pay-badge-text {
+  color: #3c4043;
+}
+
+/* Apple Pay：苹果官方黑底白字 */
+.pay-badge-applepay {
+  background: #000000;
+}
+.pay-badge-applepay .pay-badge-text {
+  color: #ffffff;
+}
+
+/* PayPal：品牌深蓝底 + 白字 PP */
+.pay-badge-paypal {
+  background: #003087;
+}
+.pay-badge-paypal .pay-badge-text {
+  color: #ffffff;
+}
+
+/* Card：深蓝卡面 + 金色磁条 + 白色芯片 */
+.pay-badge-card {
+  background: #1a1f71;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+}
+.pay-card-stripe {
+  width: 100%;
+  height: 10rpx;
+  background: #f0c14b;
+  flex-shrink: 0;
+}
+.pay-card-chip {
+  width: 36%;
+  height: 8rpx;
+  margin: 10rpx 0 0 8rpx;
+  border-radius: 2rpx;
+  background: #ffffff;
+  opacity: 0.85;
+  flex-shrink: 0;
 }
 
 .pay-info {

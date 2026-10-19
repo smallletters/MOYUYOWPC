@@ -22,6 +22,12 @@
   --card: var(--color-surface);
   --card-foreground: var(--color-text);
   --border: var(--color-divider);
+  /* --color-border：历史上有 16 个文件在用，但**从未定义过**。
+     变量缺失会让 var() 在计算值阶段失效 → border-color 退回 currentColor
+     （浅色下看起来像"深色边框"、深色下文字变浅就成了一条亮线），
+     而用它当背景的分隔线（height:1rpx）则整条不可见。
+     这里补成 --color-divider 的别名：浅色 #eae5dd / 深色 #3a3530，两端自动跟随。 */
+  --color-border: var(--color-divider);
   --input: var(--color-divider);
   --muted: var(--color-background);
   --muted-foreground: var(--color-text-tertiary);
@@ -50,6 +56,48 @@
   --brand-500: var(--color-primary);
   --brand-600: #b8a66b;
   --brand-700: #9c8a50;
+  --brand-800: #8a7844;
+}
+
+/* ===== 深色模式：数字色阶补齐（写死值，不会自动跟随）=====
+ * 上面 --background-* / --text-* / --brand-* 是**写死色值**而非别名，
+ * 不随 --color-* 切换；深色下必须逐档重定义，
+ * 否则 chip、次级文字、品牌浅底会保持浅色
+ * （例：首页金刚区 background: var(--background-200) 一直是浅灰）。
+ * 注：--background-700/800/900 与 --text-50 是「深色面板」自成一套（深底 + 浅字），
+ * 浅/深两端一致，故此处**不**反转。 */
+@media (prefers-color-scheme: dark) {
+  /* :root:not(.theme-light)：App 内「强制浅色」时 html 带 .theme-light，压制本块，
+   * 修复「系统深色 + 强制浅色仍显示深色」的遗留缺陷。 */
+  :root:not(.theme-light) {
+    --background-50: #1c1a18;
+    --background-100: #221f1c;
+    --background-200: #2a2723;
+    --background-300: #332f2b;
+    --background-400: #3e3934;
+    --text-300: #6b655e;
+    --text-500: #a8a29e;
+    --text-700: #d9d2c8;
+    --text-900: #f6f2ee;
+    --brand-50: #2b2620;
+    --brand-100: #383122;
+    --brand-200: #4a4128;
+  }
+}
+
+.theme-dark {
+  --background-50: #1c1a18;
+  --background-100: #221f1c;
+  --background-200: #2a2723;
+  --background-300: #332f2b;
+  --background-400: #3e3934;
+  --text-300: #6b655e;
+  --text-500: #a8a29e;
+  --text-700: #d9d2c8;
+  --text-900: #f6f2ee;
+  --brand-50: #2b2620;
+  --brand-100: #383122;
+  --brand-200: #4a4128;
 }
 
 page {

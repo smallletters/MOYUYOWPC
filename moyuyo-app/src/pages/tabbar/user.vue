@@ -6,7 +6,7 @@
           <!-- mode="aspectFill":等比缩放裁剪填满,避免非正方形头像被默认 scaleToFill 拉伸变形 -->
           <!-- avatarSrc:头像 src 走 cache busting,避免"个人资料页换了头像,
              回到我的页还是旧图"。avatarVersion 由从个人资料页返回时 + 1 触发刷新 -->
-          <image :src="avatarSrc" class="avatar" mode="aspectFill" />
+          <image :src="$img(avatarSrc)" class="avatar" mode="aspectFill" />
           <view class="info">
             <text class="name">
               {{
@@ -21,7 +21,7 @@
           <text class="arrow luc-chevron-right" />
         </view>
         <view v-else class="login-prompt" @click="goLogin">
-          <image :src="defaultAvatar" class="avatar" />
+          <image mode="aspectFill" :src="$img(defaultAvatar)" class="avatar" />
           <view class="login-text">
             <text class="name">{{ $t('userCenter.loginRegister') }}</text>
             <text class="email">{{ $t('userCenter.loginSubtitle') }}</text>
@@ -116,7 +116,7 @@
 </template>
 
 <script>
-import { useUserStore, useCartStore } from '@/store'
+import { useUserStore, useCartStore, useThemeStore } from '@/store'
 import { i18n } from '@/i18n'
 import { memberApi, couponApi, orderApi, communityApi } from '@/api'
 import followApi from '@/api/follow'
@@ -135,7 +135,8 @@ export default {
   components: { SocialGrid },
   data() {
     return {
-      defaultAvatar: 'https://i.pravatar.cc/100?img=20',
+      // 本地静态占位图：真机可能只连局域网、无公网，用外链会在无网络时空白
+      defaultAvatar: '/static/images/default-avatar.png',
       // 头像 cache busting 版本号:从个人资料页 onShow 时 +1,
       // 强制 <image> 重新加载,解决"换完头像回到我的页还是旧头像"
       avatarVersion: 0,
@@ -271,6 +272,9 @@ export default {
   },
 
   onShow() {
+    // 原生 tabBar 不吃 CSS 变量，深色模式下必须在这里重新上色。
+    // setTabBarStyle 要求「当前页是 tabBar 页」，切 tab / 从设置页返回时靠这里兜底。
+    useThemeStore().syncTabBar()
     // 首次进入时订阅 i18n locale 变化,触发依赖文案的 computed 重算
     if (!this._unsubLocale) {
       this._unsubLocale = i18n.subscribe(() => {
@@ -595,8 +599,10 @@ export default {
 .header {
   background: var(--color-surface);
   padding: 48rpx 24rpx;
-  /* 状态栏安全区：原公式只覆盖 iOS safe-area，APP 端（Android）需要再加 status-bar-height */
-  padding-top: calc(48rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  /* 状态栏安全区：取二者较大值（而非相加）——iOS 上 env 与 status-bar-height 同为状态栏高度，相加会翻倍；
+     Android 端 env 为 0，仅 status-bar-height 生效，与原行为一致 */
+  padding-top: calc(48rpx + var(--status-bar-height, 0px));
+  padding-top: calc(48rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
 }
 
 .user-info,

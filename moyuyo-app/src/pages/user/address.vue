@@ -66,9 +66,11 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { addressApi } from '@/api'
 import AddressCard from '@/components/AddressCard.vue'
 import { i18n } from '@/i18n'
+import { getPageQuery } from '@/utils/pageQuery'
 
 defineOptions({ name: 'UserAddress' })
 
@@ -92,26 +94,59 @@ function isUnshippable(addr) {
 
 // ==================== 生命周期 ====================
 
-onMounted(async () => {
-  // 读 URL ?from=checkout
+/**
+ * 读取入参 ?from=checkout 判定是否来自结算页（幂等，可重复调用）。
+ *
+ * 为什么不能只在 onMounted 里读 getCurrentPages().slice(-1)[0].options：
+ * H5 运行时会把 query 同时写到 pageVm.options 与 pageVm.$page.options，
+ * 但 APP 运行时（initPageVm）只挂了 pageVm.$page，不会写 pageVm.options，
+ * 于是 APP 上 options 恒为 undefined、fromCheckout 恒为 false —— 表现为
+ * 「AddressCard 不渲染『使用』按钮 + 点整张卡只做高亮」，看起来就是点了没反应。
+ *
+ * 这里以 uni-app 官方 onLoad 入参为首选，再用 getPageQuery() 多路径兜底。
+ *
+ * @param {Object} [options] uni-app onLoad 传入的页面参数
+ */
+function resolveFromCheckout(options) {
+  const hasOptions = !!options && typeof options === 'object' && Object.keys(options).length > 0
+  const query = hasOptions ? options : getPageQuery()
+  if (query.from === 'checkout') fromCheckout.value = true
+}
+
+/** 结算场景：预先高亮上次选中的地址 */
+function restoreCachedSelection() {
   try {
-    const pages = getCurrentPages()
-    const cur = pages[pages.length - 1]
-    const query = (cur && cur.options) || {}
-    fromCheckout.value = query.from === 'checkout'
+    const cached = uni.getStorageSync('moyuyo_selected_address')
+    if (cached && cached.id) selectedId.value = cached.id
   } catch (e) {
-    console.warn('[address] read page query failed', e)
+    // ignore
   }
-  // 结算场景：如果有上次选中地址，预先标记
-  if (fromCheckout.value) {
-    try {
-      const cached = uni.getStorageSync('moyuyo_selected_address')
-      if (cached && cached.id) selectedId.value = cached.id
-    } catch (e) {
-      // ignore
-    }
+}
+
+// 启动去重标记：onLoad / onMounted 都会触发 bootstrap，副作用只允许发生一次
+let booted = false
+let selectionRestored = false
+
+/** 幂等启动流程：读取入参 -> 预选缓存地址 -> 拉取列表 */
+async function bootstrap(options) {
+  resolveFromCheckout(options)
+  if (fromCheckout.value && !selectionRestored) {
+    selectionRestored = true
+    restoreCachedSelection()
   }
+  if (booted) return
+  booted = true
   await loadAddresses()
+}
+
+// 官方页面生命周期：H5 / APP / 小程序各端都能稳定拿到 URL query
+onLoad((options) => {
+  bootstrap(options)
+})
+
+// 兜底：万一某端 onLoad 未触发，仍在挂载时再读一次入参（bootstrap 幂等）
+onMounted(() => {
+  bootstrap()
 })
 
 async function loadAddresses() {
@@ -245,9 +280,15 @@ function goBack() {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-sm);
-  /* 高度含顶部安全区（H5 下 --status-bar-height 为 0，可安全兜底） */
-  min-height: calc(96rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
-  padding: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px)) var(--space-md) 0;
+  /* 高度含顶部安全区（H5 下 --status-bar-height 为 0，可安全兜底）。
+     取二者较大值（而非相加）：iOS 上 env 与 status-bar-height 同为状态栏高度，相加会翻倍 */
+  min-height: calc(96rpx + var(--status-bar-height, 0px));
+  min-height: calc(96rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  padding-right: var(--space-md);
+  padding-left: var(--space-md);
+  padding-bottom: 0;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
   box-shadow: var(--shadow-sm);

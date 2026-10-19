@@ -136,7 +136,9 @@ export default {
     currencySymbol() {
       // process.env.VITE_CURRENCY 在编译时注入;运行期取不到时回退到 CNY
       // H5 端 window.__MOYUYO_CONFIG__ 在 index.html 注入
-      const env = (typeof process !== 'undefined' && process.env && process.env.VITE_CURRENCY) || ''
+      // 必须裸读：define 在编译期把 process.env.VITE_CURRENCY 替换成字面量，
+      // 加 typeof process 守卫会在 APP 端短路，导致货币符号错误回退
+      const env = process.env.VITE_CURRENCY || ''
       const win =
         (typeof window !== 'undefined' &&
           window.__MOYUYO_CONFIG__ &&

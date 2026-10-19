@@ -4,6 +4,7 @@
  * 调用端通过 uni.requireNativePlugin('MOYUYO-PetHub3D') 与原生通信。
  * 降级策略：App 端调用原生插件，H5/小程序端使用静态图片占位。
  */
+import { t } from '@/i18n'
 import type {
   PetHubPluginProtocol,
   PetHubOpenSceneParams,
@@ -49,7 +50,7 @@ export function usePetHubPlugin(): PetHubPluginProtocol {
   const call = <T = void>(method: string, args?: any): Promise<PluginResult<T>> => {
     return new Promise((resolve) => {
       if (!isNativeAvailable()) {
-        resolve({ success: false, error: '原生插件不可用' } as PluginResult<T>)
+        resolve({ success: false, error: t('petHubPlugin.nativeUnavailable') } as PluginResult<T>)
         return
       }
       getPlugin()[method](args, (res: any) => {
@@ -62,7 +63,7 @@ export function usePetHubPlugin(): PetHubPluginProtocol {
   const fire = (method: string, args: any): Promise<PluginResult> => {
     return new Promise((resolve) => {
       if (!isNativeAvailable()) {
-        resolve({ success: false, error: '原生插件不可用' } as PluginResult)
+        resolve({ success: false, error: t('petHubPlugin.nativeUnavailable') } as PluginResult)
         return
       }
       getPlugin()[method](args, () => resolve({ success: true }))

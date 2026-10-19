@@ -4,10 +4,14 @@
     <view class="top-bar">
       <text class="top-title">{{ $t('community.title') }}</text>
       <view class="top-actions">
-        <view class="icon-btn" aria-label="搜索" @tap="goSearch">
+        <view class="icon-btn" :aria-label="$t('pageTitle.communitySearch')" @tap="goSearch">
           <text class="icon luc-search" />
         </view>
-        <view class="icon-btn relative" aria-label="通知" @tap="goNotifications">
+        <view
+          class="icon-btn relative"
+          :aria-label="$t('notifications.title')"
+          @tap="goNotifications"
+        >
           <text class="icon luc-bell" />
           <view class="badge-dot" />
         </view>
@@ -62,7 +66,7 @@
          下拉刷新走 page 级 onPullDownRefresh,触底加载走 page 级 onReachBottom。 -->
     <view class="feed">
       <view v-if="loading && !posts.length" class="status">
-        <text class="status-text">加载中…</text>
+        <text class="status-text">{{ $t('common.loading') }}</text>
       </view>
 
       <view v-else-if="!posts.length" class="status">
@@ -138,15 +142,15 @@
       </view>
 
       <view v-if="!loading && posts.length && noMore" class="status">
-        <text class="status-text">— 没有更多了 —</text>
+        <text class="status-text">{{ $t('category.noMore') }}</text>
       </view>
       <view v-if="loading && posts.length" class="status">
-        <text class="status-text">加载中…</text>
+        <text class="status-text">{{ $t('common.loading') }}</text>
       </view>
     </view>
 
     <!-- 浮动发布按钮 -->
-    <view class="fab" aria-label="发布帖子" @tap="goCreate">
+    <view class="fab" :aria-label="$t('pageTitle.communityCreate')" @tap="goCreate">
       <text class="fab-icon luc-camera" />
     </view>
   </view>
@@ -156,7 +160,7 @@
 import { getCurrentInstance } from 'vue'
 import { communityApi } from '@/api'
 import { get } from '@/utils/request'
-import { useUserStore } from '@/store'
+import { useUserStore, useThemeStore } from '@/store'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 import { i18n } from '@/i18n'
 
@@ -222,15 +226,21 @@ export default {
     },
     emptyHint() {
       void this.localeVersion
-      if (this.activeTab === 'follow') return '还没有关注的人，去发现感兴趣的用户吧～'
-      if (this.activeTab === 'topic') return '选择上方话题标签查看帖子'
-      return '还没有帖子，发一个吧～'
+      if (this.activeTab === 'follow') return i18n.t('community.emptyFollow')
+      if (this.activeTab === 'topic') return i18n.t('community.emptyTopic')
+      return i18n.t('community.emptyDefault')
     },
   },
 
   onLoad() {
     this.loadTopicTags()
     this.loadPosts(true)
+  },
+
+  onShow() {
+    // 原生 tabBar 不吃 CSS 变量，深色模式下必须在这里重新上色。
+    // setTabBarStyle 要求「当前页是 tabBar 页」，切 tab / 从设置页返回时靠这里兜底。
+    useThemeStore().syncTabBar()
   },
 
   /**
@@ -386,10 +396,10 @@ export default {
       uni.setClipboardData({
         data: shareUrl,
         success: () => {
-          uni.showToast({ title: '链接已复制', icon: 'success' })
+          uni.showToast({ title: i18n.t('shareProduct.linkCopied'), icon: 'success' })
         },
         fail: () => {
-          uni.showToast({ title: '复制失败,请重试', icon: 'none' })
+          uni.showToast({ title: i18n.t('community.copyFailed'), icon: 'none' })
         },
       })
     },
@@ -563,11 +573,11 @@ export default {
         this.topicTags = Array.isArray(list) ? list.slice(0, 8) : []
       } catch (e) {
         this.topicTags = [
-          { id: 'fallback-1', name: '宠物穿搭' },
-          { id: 'fallback-2', name: '夏日护理' },
-          { id: 'fallback-3', name: '新品速递' },
-          { id: 'fallback-4', name: '猫咪专区' },
-          { id: 'fallback-5', name: '狗狗日常' },
+          { id: 'fallback-1', name: this.$t('community.fallbackTopic1') },
+          { id: 'fallback-2', name: this.$t('community.fallbackTopic2') },
+          { id: 'fallback-3', name: this.$t('community.fallbackTopic3') },
+          { id: 'fallback-4', name: this.$t('community.fallbackTopic4') },
+          { id: 'fallback-5', name: this.$t('community.fallbackTopic5') },
         ]
       }
     },
@@ -625,8 +635,10 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 12rpx 20rpx 16rpx;
-  /* 状态栏安全区：与 home.vue .navbar 保持一致，避免"社区"标题被状态栏遮挡 */
-  padding-top: calc(12rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  /* 状态栏安全区：与 home.vue .navbar 保持一致，避免"社区"标题被状态栏遮挡。
+     取二者较大值（而非相加）：iOS 上 env 与 status-bar-height 同为状态栏高度，相加会翻倍 */
+  padding-top: calc(12rpx + var(--status-bar-height, 0px));
+  padding-top: calc(12rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
   background: var(--color-background);
 }
 .top-title {
@@ -706,7 +718,7 @@ export default {
   gap: 8rpx;
   height: 72rpx;
   padding: 0 20rpx;
-  background: var(--color-background-200, #f2f2f7);
+  background: var(--color-fill, #f2f2f7);
   border-radius: 36rpx;
   color: var(--color-text-tertiary);
 }
@@ -765,7 +777,7 @@ export default {
   border: 1rpx solid var(--color-divider);
   margin-top: 16rpx;
   overflow: hidden;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-card-sm);
 }
 
 /* 用户信息行 */

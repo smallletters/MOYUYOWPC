@@ -60,7 +60,12 @@
               <view class="log-body">
                 <view class="log-row1">
                   <text class="log-title">{{ typeMeta(it.type).title }}</text>
-                  <text class="log-change" :class="it.changeValue >= 0 ? 'plus' : 'minus'">
+                  <!-- 冻结/解冻流水不改变总积分(changeValue=0)，不展示 "+0"，只保留事件标题与备注 -->
+                  <text
+                    v-if="Number(it.changeValue || 0) !== 0"
+                    class="log-change"
+                    :class="it.changeValue >= 0 ? 'plus' : 'minus'"
+                  >
                     {{ it.changeValue >= 0 ? '+' : '' }}{{ it.changeValue }}
                   </text>
                 </view>
@@ -198,6 +203,19 @@ const TYPE_META = {
     bg: '#e8f2ff',
     color: '#007aff',
   },
+  // 下单冻结 / 取消解冻：不改变总积分（changeValue=0），仅为"待付款订单占用积分"留痕
+  FREEZE: {
+    titleKey: 'pointsDetail.types.FREEZE',
+    icon: 'luc-lock',
+    bg: '#fff4e5',
+    color: '#ff9500',
+  },
+  UNFREEZE: {
+    titleKey: 'pointsDetail.types.UNFREEZE',
+    icon: 'luc-undo-2',
+    bg: '#e9f9ee',
+    color: '#34c759',
+  },
 }
 function typeMeta(type) {
   const meta = TYPE_META[type]
@@ -205,7 +223,7 @@ function typeMeta(type) {
   return {
     title: type || t('pointsDetail.types.other'),
     icon: 'luc-coins',
-    bg: '#f2f2f7',
+    bg: 'var(--color-fill, #f2f2f7)',
     color: '#8e8e93',
   }
 }
@@ -368,7 +386,7 @@ onBeforeUnmount(() => {
 }
 .state-text {
   font-size: 28rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
 }
 .empty {
   padding: 120rpx 0;
@@ -379,11 +397,11 @@ onBeforeUnmount(() => {
 }
 .empty-icon {
   font-size: 96rpx;
-  color: #c7c7cc;
+  color: var(--color-fill-dim-strong);
 }
 .empty-text {
   font-size: 26rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
 }
 
 /* 月份分组 */
@@ -391,7 +409,7 @@ onBeforeUnmount(() => {
   background: var(--color-surface, #ffffff);
   border-radius: 24rpx;
   overflow: hidden;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-card-md);
 }
 .group-head {
   display: flex;

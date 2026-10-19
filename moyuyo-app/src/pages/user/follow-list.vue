@@ -89,7 +89,7 @@
       >
         <image
           v-if="u.avatar"
-          :src="u.avatar"
+          :src="$img(u.avatar)"
           class="avatar"
           mode="aspectFill"
           lazy-load
@@ -141,10 +141,11 @@
 // onShow 是 uni-app 的页面生命周期,必须从 @dcloudio/uni-app 导入,
 // 从 'vue' 拿不到,运行时会是 undefined。
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { followApi } from '@/api/follow'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 import { i18n } from '@/i18n'
+import { getPageQuery } from '@/utils/pageQuery'
 usePageTitle('pageTitle.userFollowList')
 
 // 语言版本号:locale 变化时自增,驱动脚本内依赖本地化的 computed 重算
@@ -160,12 +161,21 @@ const tabs = [
   { value: 'followers', labelKey: 'followList.tabs.followers' },
 ]
 
-// 从 query.mode 读取初始 tab;uniapp vue3 setup 阶段 options 可能未注入,这里兜底读 onLoad
-function resolveInitialMode() {
+/**
+ * 从 query.mode 读取初始 tab。
+ *
+ * 不能只依赖 `getCurrentPages().slice(-1)[0].options`：uni-app APP 运行时
+ * （uni-app-plus initPageVm）只挂了 `pageVm.$page`，从不写 `pageVm.options`，
+ * 所以 APP 真机上恒读到 {} —— 表现为从「粉丝」入口进来仍停在「关注」列表。
+ * 这里优先用 uni-app 官方 onLoad 入参，拿不到时回落 getPageQuery()（多路径兜底）。
+ *
+ * @param {Object} [options] uni-app onLoad 传入的页面参数
+ * @returns {'following'|'followers'} 初始 tab
+ */
+function resolveInitialMode(options) {
   try {
-    const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : []
-    const cur = pages[pages.length - 1]
-    const q = (cur && cur.options) || {}
+    const hasOptions = !!options && typeof options === 'object' && Object.keys(options).length > 0
+    const q = hasOptions ? options : getPageQuery()
     return q.mode === 'followers' ? 'followers' : 'following'
   } catch (e) {
     return 'following'
@@ -235,16 +245,30 @@ const emptyHint = computed(() => {
   return t('followList.emptyFollowers')
 })
 
-// 在 setup 顶层注册 onLoad 钩子(uniapp vue3 setup 语法)
-onMounted(() => {
+// 幂等启动：onLoad 先于 onMounted 触发，两者都调用，副作用只发生一次
+// 启动去重标记
+let booted = false
+
+async function bootstrap(options) {
+  // 兜底：无论从哪个钩子进来都再解析一次入参，保证 tab 正确
+  const m = resolveInitialMode(options)
+  if (mode.value !== m) mode.value = m
+  if (booted) return
+  booted = true
   // 订阅语言变化
   _unsubLocale = i18n.subscribe(() => {
     localeVersion.value += 1
   })
-  // 兜底:onMounted 时 page options 通常已就绪,如果还没读取到 query,再读一次
-  const m = resolveInitialMode()
-  if (mode.value !== m) mode.value = m
-  loadList(true)
+  await loadList(true)
+}
+
+// 官方页面生命周期：H5 / APP / 小程序各端都能稳定拿到 URL query
+onLoad((options) => {
+  bootstrap(options)
+})
+
+onMounted(() => {
+  bootstrap()
 })
 
 onUnmounted(() => {
@@ -368,8 +392,12 @@ async function onFollow(u) {
 }
 
 function onChat(u) {
-  // 跳到 DM 聊天页(已注册: pages/chat/dm-chat)
-  uni.navigateTo({ url: `/pages/chat/dm-chat?targetId=${u.userId || u.id}` })
+  // 跳到 DM 聊天页（pages.json 只注册了 pages/community/dm-chat，没有 pages/chat/dm-chat）。
+  // 参数名必须是 id：dm-chat 端只读 q.id，传 targetId 会落到默认「宠物好友」、
+  // 且 storage key 退化成 u_default 造成聊天记录串号。
+  // 实体 ID 是雪花 ID，用 String 承接避免精度丢失（与 dm-chat 端 String(q.id) 对齐）。
+  const targetId = String(u.userId || u.id || '')
+  uni.navigateTo({ url: `/pages/community/dm-chat?id=${targetId}` })
 }
 
 /** 长按:弹操作菜单(主流 APP 通用模式) */
@@ -536,7 +564,7 @@ function onImgError(e) {
   font-size: 22rpx;
   margin-left: 6rpx;
   color: var(--color-text-tertiary);
-  font-weight: var(--font-weight-normal, 400);
+  font-weight: var(--font-weight-regular);
 }
 .tab-active-text .tab-count {
   color: var(--color-primary);

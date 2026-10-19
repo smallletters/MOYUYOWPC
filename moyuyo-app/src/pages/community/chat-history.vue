@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="chat-history-page">
     <view class="tab-bar">
       <view
@@ -14,10 +14,10 @@
 
     <scroll-view class="chat-list" scroll-y>
       <view v-if="loading" class="loading">
-        <text class="loading-text">加载中…</text>
+        <text class="loading-text">{{ $t('common.loading') }}</text>
       </view>
       <view v-else-if="filteredChats.length === 0" class="empty">
-        <text class="empty-text">暂无会话记录</text>
+        <text class="empty-text">{{ $t('communityChatHistory.empty') }}</text>
       </view>
       <view
         v-for="chat in filteredChats"
@@ -27,14 +27,18 @@
         <view class="chat-avatar">{{ statusLabel(chat.status).charAt(0) }}</view>
         <view class="chat-info">
           <view class="chat-row1">
-            <text class="chat-title">会话 {{ chat.sessionId || chat.id }}</text>
+            <text class="chat-title">
+              {{ $t('communityChatHistory.sessionTitle', { id: chat.sessionId || chat.id }) }}
+            </text>
             <text class="chat-time">{{ formatTime(chat.lastMessageAt || chat.createTime) }}</text>
           </view>
           <view class="chat-row2">
             <text class="chat-status" :class="'status-' + (chat.status || 'WAITING')">
               {{ statusLabel(chat.status) }}
             </text>
-            <text class="chat-count">{{ chat.messageCount || 0 }} 条消息</text>
+            <text class="chat-count">
+              {{ $t('communityChatHistory.messageCount', { count: chat.messageCount || 0 }) }}
+            </text>
           </view>
         </view>
       </view>
@@ -44,11 +48,16 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { i18n } from '@/i18n'
 import { csApi } from '@/api'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.communityChatHistory')
 
-const tabs = ['全部', '进行中', '已关闭']
+const tabs = computed(() => [
+  i18n.t('communityChatHistory.tabAll'),
+  i18n.t('communityChatHistory.tabProcessing'),
+  i18n.t('communityChatHistory.tabClosed'),
+])
 
 const activeTab = ref(0)
 const sessions = ref([])
@@ -65,9 +74,9 @@ function switchTab(i) {
 }
 
 function statusLabel(s) {
-  if (s === 'PROCESSING') return '进行中'
-  if (s === 'CLOSED') return '已关闭'
-  return '待响应'
+  if (s === 'PROCESSING') return i18n.t('communityChatHistory.statusProcessing')
+  if (s === 'CLOSED') return i18n.t('communityChatHistory.statusClosed')
+  return i18n.t('communityChatHistory.statusWaiting')
 }
 
 function formatTime(t) {
@@ -108,19 +117,23 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .chat-history-page {
-  min-height: 100vh;
+  /* 视口锁定外壳：唯一滚动权威是内部 .chat-list(scroll-y)。tab-bar 为常流前置子项，
+     必须 flex-shrink:0 防塌陷。 */
+  display: flex;
+  flex-direction: column;
+  /* 视口高度：三层渐进增强（100vh 兜底 → 100dvh → 扣除 --window-top 顶部窗口偏移）。
+     非 custom 页 --window-top = 导航栏高 + 状态栏高，必须扣除，否则顶部内容顶到导航栏下。
+     末尾 0px 兜底：避免变量缺失时整条声明 invalid-at-computed-value → height 退化为 auto。 */
+  height: 100vh;
+  height: 100dvh;
+  height: calc(100dvh - var(--window-top, 0px));
+  overflow: hidden;
   background: var(--color-background);
 }
-.nav-back {
-  width: 60rpx;
-}
-.nav-title {
-  flex: 1;
-  text-align: center;
-  font-size: 32rpx;
-  font-weight: 600;
-}
+/* 说明：原 .nav-back / .nav-title 为死代码（模板中不存在对应元素，本页导航栏由原生
+   titleNView 提供），已移除。 */
 .tab-bar {
+  flex-shrink: 0;
   display: flex;
   gap: 24rpx;
   padding: 16rpx 24rpx;
@@ -143,9 +156,12 @@ onMounted(() => {
   font-weight: 600;
 }
 .chat-list {
+  /* 唯一滚动权威：flex:1 占满 tab-bar 之后的剩余空间，min-height:0 允许收缩以产生滚动。
+     取代 calc(100vh - 160rpx)（160=导航88+tab-bar72 的硬编码和，任一变化即失配）。 */
+  flex: 1;
+  min-height: 0;
   /* 显式宽度让 scroll-view 跟随屏幕宽度 */
   width: 100%;
-  height: calc(100vh - 160rpx);
   box-sizing: border-box;
 }
 .chat-item {

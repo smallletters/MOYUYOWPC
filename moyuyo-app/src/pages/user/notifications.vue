@@ -160,19 +160,40 @@ export default {
 
 <style lang="scss" scoped>
 .notifications {
-  min-height: 100vh;
+  /* 视口锁定外壳：整页锁定视口高度 + 裁剪溢出，唯一滚动权威是内部 scroll-view。
+     100vh 写在 100dvh 之前做兜底。约定见 goods/detail.vue。 */
+  display: flex;
+  flex-direction: column;
+  /* 视口高度：三层渐进增强。
+     1) 100vh  —— 兜底，所有环境合法
+     2) 100dvh —— H5 移动浏览器动态视口（地址栏）
+     3) var(--window-top) —— uni-app 顶部窗口偏移：非 custom 页 = 导航栏高 + 状态栏高，custom 页 = 0。
+        必须扣除，否则顶部内容会顶到导航栏/状态栏底下。
+     只减 --window-top 不减 --window-bottom：后者在 H5 被归一化为 env(safe-area-inset-bottom)，
+     会与页面自身底栏的 safe-area padding 重复预留。本批无 tabBar 页，故安全。 */
+  height: 100vh;
+  height: 100dvh;
+  height: calc(100dvh - var(--window-top, 0px));
+  overflow: hidden;
   background: var(--color-background);
 }
 
-/* 顶部导航栏 */
+/* 顶部导航栏：常流 flex 子项，天然吸顶（sticky 已随父级 overflow:hidden 失效，删除）。
+   flex-shrink:0 防止被压缩塌陷；position:relative 为 .back-btn/.header-action
+   的绝对定位保留包含块（原由 sticky 提供）。 */
 .header {
-  position: sticky;
-  top: 0;
+  position: relative;
+  flex-shrink: 0;
   z-index: 30;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 88rpx;
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  box-sizing: border-box;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }
@@ -180,6 +201,9 @@ export default {
 .back-btn {
   position: absolute;
   left: 16rpx;
+  /* 绝对定位元素吃不到父级 padding，需自行下移状态栏高度 */
+  top: var(--status-bar-height, 0px);
+  top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -204,6 +228,9 @@ export default {
 .header-action {
   position: absolute;
   right: 16rpx;
+  /* 绝对定位元素吃不到父级 padding，需自行下移状态栏高度 */
+  top: var(--status-bar-height, 0px);
+  top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -218,6 +245,9 @@ export default {
 
 /* Tab 栏 */
 .tabs {
+  /* 横向 scroll-x 行：作为外壳的非滚动直接子元素，必须 flex-shrink:0，
+     否则在列向 flex 中会被压缩塌陷（本方案第一大坑）。 */
+  flex-shrink: 0;
   border-bottom: 1rpx solid var(--color-divider);
   background: var(--color-surface);
 }
@@ -262,7 +292,9 @@ export default {
 
 /* 通知列表 */
 .list {
-  height: calc(100vh - 176rpx);
+  /* 唯一滚动权威：flex:1 占满外壳剩余空间，不再硬算高度（原 calc(100vh-176rpx) 已删除）。 */
+  flex: 1;
+  min-height: 0;
 }
 
 .list-inner {

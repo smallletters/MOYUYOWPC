@@ -13,6 +13,10 @@
         // uni.onThemeChange 也不触发，导致「跟随系统」模式切主题无反应。
         // 参考：https://uniapp.dcloud.net.cn/tutorial/darkmode.html
         "darkmode" : true,
+        // APP 全局屏幕方向：auto = 由页面级 pageOrientation 决定（space-3d 设为 landscape），
+        // 其余页面保持竖屏。不要写死 landscape，否则全 App 都会被强制横屏。
+        // 参考：https://uniapp.dcloud.net.cn/tutorial/page-horizontal.html
+        "screenOrientation" : [ "auto" ],
         "splashscreen" : {
             "alwaysShowBeforeRender" : true,
             "waiting" : true,

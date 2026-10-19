@@ -52,7 +52,7 @@
               <text class="luc luc-check" />
             </text>
           </view>
-          <image :src="item.image" mode="aspectFill" class="edit-img" />
+          <image :src="$img(item.image)" mode="aspectFill" class="edit-img" />
           <view class="edit-info">
             <text class="edit-name">{{ item.name }}</text>
             <text class="edit-price">${{ item.price }}</text>
@@ -79,7 +79,7 @@
               class="timeline-card"
               @click="goDetail(item)"
             >
-              <image :src="item.image" mode="aspectFill" class="timeline-img" />
+              <image :src="$img(item.image)" mode="aspectFill" class="timeline-img" />
               <view class="timeline-info">
                 <text class="timeline-name">{{ item.name }}</text>
                 <text class="timeline-price">${{ item.price }}</text>
@@ -265,9 +265,12 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: calc(88rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  /* 取二者较大值（而非相加）：iOS 上 env 与 status-bar-height 同为状态栏高度，相加会翻倍 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
   /* 把内容下移避开状态栏 */
-  padding-top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   box-sizing: border-box;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
@@ -276,8 +279,10 @@ export default {
 .header-btn {
   position: absolute;
   left: 16rpx;
-  /* 跟随 header 的状态栏 padding,并补偿与 88rpx 内容行的高度差,保持与标题垂直居中对齐 */
-  top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px) + 8rpx);
+  /* 跟随 header 的状态栏 padding,并补偿与 88rpx 内容行的高度差,保持与标题垂直居中对齐。
+     基准 8rpx 提至最前，安全区取二者较大值（而非相加） */
+  top: calc(8rpx + var(--status-bar-height, 0px));
+  top: calc(8rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -297,7 +302,8 @@ export default {
   position: absolute;
   right: 16rpx;
   /* 与 .header-btn 一致:避开状态栏并与标题垂直居中对齐 */
-  top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px) + 8rpx);
+  top: calc(8rpx + var(--status-bar-height, 0px));
+  top: calc(8rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
   display: flex;
   align-items: center;
   gap: 24rpx;

@@ -4,7 +4,7 @@
       <view class="back-btn" @click="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">订阅此商品</text>
+      <text class="header-title">{{ $t('productSubscribe.title') }}</text>
       <view class="header-spacer" />
     </view>
 
@@ -24,15 +24,15 @@
           </view>
           <view class="sub-save-tag">
             <text class="sub-save-emoji luc-sparkles" />
-            <text class="sub-save-text">订阅享会员价 8 折起</text>
+            <text class="sub-save-text">{{ $t('productSubscribe.memberSave') }}</text>
           </view>
         </view>
       </view>
-      <view v-else class="empty">商品信息加载中...</view>
+      <view v-else class="empty">{{ $t('productSubscribe.loadingProduct') }}</view>
 
       <!-- 周期 -->
       <view class="spec-section">
-        <text class="section-title">配送周期</text>
+        <text class="section-title">{{ $t('productSubscribe.cycleTitle') }}</text>
         <view class="spec-options">
           <view
             v-for="p in plans"
@@ -42,14 +42,16 @@
             @click="planId = p.id"
           >
             <text class="spec-name">{{ p.name }}</text>
-            <text class="spec-price">${{ p.price }}/期</text>
+            <text class="spec-price">
+              {{ $t('productSubscribe.perCyclePrice', { price: p.price }) }}
+            </text>
           </view>
         </view>
       </view>
 
       <!-- 数量 -->
       <view class="qty-section">
-        <text class="section-title">每次配送数量</text>
+        <text class="section-title">{{ $t('productSubscribe.qtyTitle') }}</text>
         <view class="qty-control">
           <view class="qty-btn" @click="onQty(-1)">-</view>
           <text class="qty-num">{{ quantity }}</text>
@@ -62,7 +64,9 @@
 
     <view class="bottom-bar safe-area-bottom">
       <view class="btn btn-primary subscribe-btn" @click="onSubscribe">
-        立即订阅 ${{ (currentPlanPrice * quantity).toFixed(2) }}
+        {{
+          $t('productSubscribe.subscribeNow', { price: (currentPlanPrice * quantity).toFixed(2) })
+        }}
       </view>
     </view>
   </view>
@@ -134,9 +138,9 @@ export default {
           Array.isArray(list) && list.length
             ? list
             : [
-                { id: 'week', name: '每周', price: 9.9 },
-                { id: 'month', name: '每月', price: 29.9 },
-                { id: 'quart', name: '每季度', price: 79.9 },
+                { id: 'week', name: this.$t('productSubscribe.cycleWeek'), price: 9.9 },
+                { id: 'month', name: this.$t('productSubscribe.cycleMonth'), price: 29.9 },
+                { id: 'quart', name: this.$t('productSubscribe.cycleQuarter'), price: 79.9 },
               ]
         this.planId = this.plans[0]?.id || null
       } catch (e) {
@@ -180,8 +184,15 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 88rpx;
-  padding: 0 32rpx;
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  padding-right: 32rpx;
+  padding-left: 32rpx;
+  padding-bottom: 0;
+  box-sizing: border-box;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }

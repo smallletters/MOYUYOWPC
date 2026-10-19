@@ -141,9 +141,11 @@
 
 <script setup>
 import { reactive, ref, computed, onMounted } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { addressApi } from '@/api'
 import { i18n } from '@/i18n'
 import { useAddressCountries } from '@/composables/useAddressCountries'
+import { getPageQuery } from '@/utils/pageQuery'
 
 defineOptions({ name: 'UserAddressEdit' })
 
@@ -187,19 +189,35 @@ const tags = computed(() => [
 
 // ==================== 生命周期 ====================
 
-// 与项目其他 setup 页面一致：用 getCurrentPages() 读 URL query 入参
+// ?id=xxx 入参：以 uni-app 官方 onLoad 入参为准。
+// 不能直接依赖 getCurrentPages().slice(-1)[0].options —— APP 运行时（initPageVm）
+// 只挂了 $page、不会写 options，APP 端会读成 undefined，导致编辑页退化成「新增」。
+// getPageQuery() 内部按 options -> $page.options -> $page.query 依次兜底。
 const editId = ref(null)
-onMounted(() => bootstrap())
 
-async function bootstrap() {
+// 幂等去重标记：onLoad / onMounted 都会触发 bootstrap，副作用只允许发生一次
+let booted = false
+
+onLoad((options) => {
+  bootstrap(options)
+})
+onMounted(() => {
+  bootstrap()
+})
+
+async function bootstrap(options) {
+  // onLoad 先于 onMounted 触发；第二次调用直接跳过，避免重复拉数据
+  if (booted) return
+  booted = true
+  const hasOptions = !!options && typeof options === 'object' && Object.keys(options).length > 0
   await loadCountries()
   // 读 URL ?id=xxx（uni-app 跳页约定）
   try {
-    const pages = getCurrentPages()
-    const cur = pages[pages.length - 1]
-    const query = (cur && cur.options) || {}
+    const query = hasOptions ? options : getPageQuery()
     if (query.id) {
-      editId.value = Number(query.id)
+      // 实体 ID 是雪花 ID（约 2e18 > Number.MAX_SAFE_INTEGER），必须用 String 承接，
+      // Number() 会丢精度（与 community/create.vue 里 petId 的处理保持一致）
+      editId.value = String(query.id)
       await loadDetail(editId.value)
     }
   } catch (e) {

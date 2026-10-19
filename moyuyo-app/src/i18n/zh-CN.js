@@ -216,6 +216,9 @@ export default {
 
   // 装扮弹窗 components/dress-popup
   dressPopup: {
+    dragToRotate: ' · 拖动旋转预览',
+    modelTooLarge: '模型超过 {size}MB,请压缩后上传',
+    modelSaved: '3D模型已保存',
     title: '宠物装扮',
     builtinAvatar: '内置形象',
     customAvatar: '我的形象',
@@ -957,6 +960,13 @@ export default {
       cancel: '取消订单',
     },
     moreItems: '还有 {count} 件',
+    // 待付款订单金额明细（与结算页同口径）
+    amount: {
+      goods: '商品金额',
+      freight: '运费',
+      coupon: '优惠券抵扣',
+      points: '积分抵扣',
+    },
     noMore: '— 没有更多了 —',
     backAria: '返回',
     cancelReason: '用户主动取消',
@@ -1075,6 +1085,7 @@ export default {
       unused: '未使用',
       used: '已使用',
       expired: '已过期',
+      locked: '待支付占用',
     },
     unit: '张',
   },
@@ -1207,6 +1218,24 @@ export default {
 
   // 限时抢购 /pages/goods/flash-sale
   flashSale: {
+    buySucceeded: '抢购成功',
+    noImage: '暂无商品图',
+    discountSuffix: '{discount}折',
+    defaultTitle: '限时秒杀',
+    defaultDesc: '限时特价，售完即止',
+    soldCount: '已抢 {count} 件',
+    stockLeft: '剩余 {count} 件',
+    limitPerUser: '每人限购 {count} 件',
+    statusUpcoming: '即将开始',
+    statusEnded: '活动已结束',
+    statusSoldOut: '已售罄',
+    statusInactive: '活动已下架',
+    defaultRunning: '限时抢购进行中',
+    startsAt: '将于 {time} 开始',
+    endedAt: '{time} 已结束',
+    btnUpcoming: '尚未开始',
+    btnInactive: '已下架',
+    btnBuyNow: '立即抢购 {price}',
     // banner
     bannerTitle: '限时秒杀',
     bannerSub: '超值好物 限量抢购',
@@ -1257,6 +1286,10 @@ export default {
 
   // 浏览历史 /pages/user/browsing-history
   browsingHistory: {
+    today: '今天',
+    yesterday: '昨天',
+    thisWeek: '本周',
+    daysAgo: '{days} 天前',
     title: '浏览历史',
     empty: '暂无浏览记录',
     manage: '管理',
@@ -1567,6 +1600,8 @@ export default {
 
   // 订阅计划 /pages/user/subscribe-plan
   subscribe: {
+    mockProductName: 'MOYUYO 温和沐浴露 500ml',
+    mockAddress: '默认地址 - 北京市朝阳区',
     title: '订阅计划',
     desc: '选择配送周期,定期自动送达,享受订阅专属折扣',
     selectPeriod: '选择订阅周期',
@@ -1648,6 +1683,9 @@ export default {
 
   // 订阅管理 /pages/user/subscription-manage
   subscriptionManage: {
+    mockProductShampoo: 'MOYUYO 温和沐浴露',
+    mockProductTreats: 'MOYUYO 宠物零食混合装',
+    mockProductTreatsSpec: '混合口味 200g',
     title: '订阅管理',
     activeTab: '进行中',
     pausedTab: '已暂停',
@@ -1845,6 +1883,9 @@ export default {
 
   // 首页 /pages/tabbar/home
   home: {
+    loading: '加载中...',
+    bannerMilo: 'MILO 探险家',
+    bannerLuna: 'LUNA 策展家',
     searchPlaceholder: '搜索宠物好物、品牌、攻略',
     // 首页弹窗文案
     bannerN: 'Banner {n}',
@@ -2008,6 +2049,9 @@ export default {
 
   // 退货 /pages/order/returns
   returns: {
+    selectReasonFirst: '请选择退款原因',
+    submitted: '申请已提交',
+    submitting: '提交中...',
     title: '退货进度',
     empty: '暂无退货记录',
     status: {
@@ -2023,18 +2067,23 @@ export default {
     contactCS: '联系客服',
     primeDay: { title: 'Prime Day 专属大促', desc: '会员限定大促专场' },
     newArrival: { title: '新品优先购', desc: '抢先体验新品' },
-    newUser: {
-      welcomeTitle: '欢迎加入 MOYUYO',
-      claimAll: '一键领取',
-      value: '价值 ¥{amount}',
-      heroSub: '完成新手任务，领取专属福利',
-      emptyGifts: '暂无新手福利',
-      emptyClaimed: '尚未领取任何福利',
-      pointsSuffix: '+{n} 积分',
-      claimFailed: '领取失败',
-      selectReasonFirst: '请选择退款原因',
-      submitted: '申请已提交',
-    },
+  },
+
+  // 新人专区 /pages/user/new-user-zone
+  newUser: {
+    title: '新人专区',
+    claim: '领取',
+    claimedTitle: '已领取福利',
+    giftFallback: '福利 #{id}',
+    claimSuccess: '领取成功',
+    welcomeTitle: '欢迎加入 MOYUYO',
+    claimAll: '一键领取',
+    value: '价值 ¥{amount}',
+    heroSub: '完成新手任务，领取专属福利',
+    emptyGifts: '暂无新手福利',
+    emptyClaimed: '尚未领取任何福利',
+    pointsSuffix: '+{n} 积分',
+    claimFailed: '领取失败',
   },
 
   // 支付成功 /pages/order/payment-success
@@ -2052,6 +2101,7 @@ export default {
 
   // 订单回收站 /pages/order/recycle-bin
   recycleBin: {
+    permanentDeleteContent: '删除后无法恢复，确定要继续吗？',
     title: '订单回收站',
     empty: '回收站空空如也',
     bannerTitle: '回收站规则',
@@ -2072,6 +2122,7 @@ export default {
 
   // 客服评价 /pages/order/cs-rating
   csRating: {
+    completeAllRatings: '请完成所有评分',
     title: '服务评价',
     csName: '客服小 MO',
     ratePrompt: '请对本次服务进行评价',
@@ -2240,6 +2291,8 @@ export default {
 
   // 手机号 /pages/user/phone
   phone: {
+    countryCN: '中国',
+    countryJP: '日本',
     title: '手机号',
     current: '当前手机号',
     newPhone: '新手机号',
@@ -2694,6 +2747,8 @@ export default {
       ADJUST: '管理员调整',
       REVIEW: '评价奖励',
       MISSION: '任务奖励',
+      FREEZE: '积分冻结',
+      UNFREEZE: '积分解冻',
       other: '其他变动',
     },
   },
@@ -2758,6 +2813,10 @@ export default {
 
   // 通知消息 /pages/user/messages
   messages: {
+    failedRetry: '操作失败，请重试',
+    typeOrder: '订单',
+    typeActivity: '活动',
+    typeSystem: '系统',
     title: '消息',
     empty: '暂无消息',
     markAllRead: '全部已读',
@@ -3048,6 +3107,8 @@ export default {
 
   // 商品详情 /pages/goods/detail
   goodsDetail: {
+    serverTimeout: '请求超时，请重试',
+    invalidSku: '规格已失效',
     share: '分享',
     favorite: '收藏',
     unfavorite: '取消收藏',
@@ -3087,6 +3148,24 @@ export default {
     productNotReady: '商品信息未就绪',
     offShelf: '商品已下架',
     skuOutOfStock: '该规格暂时缺货',
+    // 以下为商品详情页补齐的文案（原先在页面里写死中文）
+    soldOut: '已下架',
+    loading: '加载中...',
+    memberPrice: '会员价',
+    goodRate: '好评率',
+    anonymous: '匿名用户',
+    specFallback: '规格{index}',
+    specTags: '标签',
+    specProductLine: '产品线',
+    specWeight: '重量',
+    timeToday: '今天',
+    timeDaysAgo: '{days}天前',
+    timeWeeksAgo: '{weeks}周前',
+    timeMonthsAgo: '{months}个月前',
+    ariaBack: '返回',
+    ariaShare: '分享',
+    ariaFavorite: '收藏',
+    retry: '重新加载',
   },
 
   // 客服中心会话页 /pages/user/customer-service
@@ -3120,6 +3199,15 @@ export default {
 
   // 社区页 /pages/tabbar/community
   community: {
+    emptyFollow: '还没有关注的人，去发现感兴趣的用户吧～',
+    emptyTopic: '选择上方话题标签查看帖子',
+    emptyDefault: '还没有帖子，发一个吧～',
+    copyFailed: '复制失败,请重试',
+    fallbackTopic1: '宠物穿搭',
+    fallbackTopic2: '夏日护理',
+    fallbackTopic3: '新品速递',
+    fallbackTopic4: '猫咪专区',
+    fallbackTopic5: '狗狗日常',
     title: '社区',
     tabs: {
       recommend: '推荐',
@@ -3666,6 +3754,9 @@ export default {
 
   // 护理记录页 /pages/pet/care-records
   careRecords: {
+    delete: '删除',
+    petFallback: '宝贝',
+    monthDay: '{m}月{d}日',
     title: '护理记录',
     back: '返回',
     addRecord: '新增记录',
@@ -3961,6 +4052,33 @@ export default {
 
   // 购物车 store（store/cart.js）
   cart: {
+    editDone: '完成',
+    edit: '编辑',
+    empty: '购物车是空的',
+    goShopping: '去逛逛',
+    priceDropTip: '{count}件商品降价啦，已为您节省{amount}',
+    closeBanner: '关闭提醒',
+    outOfStockLabel: '缺货',
+    decreaseQty: '减少数量',
+    increaseQty: '增加数量',
+    delete: '删除',
+    expiredTitle: '失效商品 ({count})',
+    upsellTitle: '凑单推荐',
+    promoRule: '满{threshold}减{discount}',
+    orderSummary: '订单摘要',
+    goodsSubtotal: '商品合计',
+    shipping: '运费',
+    freeShipping: '免运费',
+    discount: '优惠',
+    payableAmount: '应付金额',
+    selectAll: '全选',
+    totalLabel: '合计:',
+    checkoutBtn: '结算({count})',
+    offSale: '已下架',
+    productGone: '商品已失效',
+    invalidSku: '规格已失效',
+    invalidDefault: '已失效',
+    attrSpecName: '规格',
     soldOut: '该商品已售罄',
     stockShort: '库存不足',
     addFailed: '加购失败',
@@ -3980,6 +4098,7 @@ export default {
 
   // 原生插件（plugins/arTryOn.js、petHub3d.js 等）
   plugin: {
+    unsupported: '当前环境不支持',
     arStartFailed: 'AR 启动失败',
     arAppOnly: 'AR 试穿仅支持 APP 端',
     arUnsupported: '当前环境不支持 AR',
@@ -4031,6 +4150,29 @@ export default {
   // 商品详情（pages/goods/detail.vue）
   // 分享商品（pages/goods/share-product.vue）
   shareProduct: {
+    title: '分享商品',
+    qrLoading: '二维码加载中...',
+    qrScanHint: '扫码查看详情',
+    recommenderPrefix: '推荐人：{name}',
+    qrSource: '来自 MOYUYO 宠物商城',
+    linkTitle: '分享链接',
+    copy: '复制',
+    shareToTitle: '分享到',
+    customMessageTitle: '添加分享文案（可选）',
+    customMessagePlaceholder: '写一段推荐语...',
+    generateImage: '生成分享图片',
+    defaultProductName: '宠物商品',
+    defaultUserName: 'MOYUYO 用户',
+    channelMessages: '短信',
+    channelCopyLink: '复制链接',
+    settingCaption: '添加分享文案',
+    settingPrice: '显示价格',
+    settingWatermark: '添加水印',
+    emailSubject: '推荐：{name}',
+    imgLoadFailed: '商品图片加载失败',
+    qrLoadFailed: '二维码加载失败',
+    posterScanHint: '扫码查看商品详情',
+    posterFooter: '— MOYUYO 宠物商城 —',
     missingProductId: '缺少商品 id',
     sharedTo: '已分享到 {name}',
     linkCopied: '链接已复制',
@@ -4086,6 +4228,42 @@ export default {
 
   // 商品问答（pages/goods/qa.vue）
   qa: {
+    title: '商品问答',
+    ask: '提问',
+    searchPlaceholder: '搜索问题...',
+    helpful: '有帮助',
+    likeHelpful: '{count} 人觉得有帮助',
+    waitingAnswer: '暂无回答，等待商家或用户回复',
+    emptyTitle: '没有找到相关问题',
+    emptyDesc: '试试换个关键词搜索',
+    askTitle: '我要提问',
+    askDesc: '请描述你在使用商品时遇到的问题',
+    askInputPlaceholder: '请输入你的问题...',
+    submit: '提交',
+    hotTags: ['成分安全吗', '适合多大宠物', '多久发货', '可以混用吗'],
+    filterAll: '全部',
+    filterUnanswered: '未回复',
+    filterAnswered: '已回复',
+    mockMe: '我',
+    mock: {
+      q1: '这款洗护套装的成分对猫咪皮肤敏感的情况适用吗？我家猫咪之前用过其他品牌会红肿。',
+      user1: '小猫咪的铲屎官',
+      a1: '您好！本产品采用天然植物萃取成分，不含人工香精、色素和防腐剂，经过皮肤科兽医测试，敏感肌猫咪也可以放心使用。建议首次使用时先在小面积皮肤试用观察24小时。',
+      roleMerchant: '商家',
+      author1: 'MOYUYO 官方',
+      q2: '3个月大的金毛幼犬可以用这款吗？用量大概是多少？',
+      user2: '金毛妈妈',
+      a2: '我家柴犬从2个月就开始用了，完全没有问题。幼犬用量大概是成年犬的三分之一到一半，具体看狗狗体型。可以先买小包装试试。',
+      roleBuyer: '已购用户',
+      author2: '柴柴酱的主人',
+      q3: '这款洗护套装和你们家的护毛素可以一起用吗？会不会冲突？',
+      user3: '布偶猫铲屎官',
+      a3: '可以的！我们的洗护套装和护毛素是同一系列产品，配方互相兼容。使用顺序是先用洗护套装清洁，冲洗干净后再使用护毛素，效果更佳。',
+      q4: '请问这款套装包含几瓶？保质期是多久？开封后需要多久用完？',
+      user4: '新手铲屎官',
+      q5: '有没有试用装可以买？想先试试味道和效果再买正装。',
+      user5: '哈士奇爸爸',
+    },
     asked: '提问成功',
   },
 
@@ -4108,6 +4286,16 @@ export default {
 
   // 商品订阅（pages/goods/product-subscribe.vue）
   productSubscribe: {
+    title: '订阅此商品',
+    memberSave: '订阅享会员价 8 折起',
+    loadingProduct: '商品信息加载中...',
+    cycleTitle: '配送周期',
+    perCyclePrice: '${price}/期',
+    qtyTitle: '每次配送数量',
+    subscribeNow: '立即订阅 {price}',
+    cycleWeek: '每周',
+    cycleMonth: '每月',
+    cycleQuarter: '每季度',
     selectCycleFirst: '请选择配送周期',
     subscribing: '订阅中…',
     subscribed: '订阅成功',
@@ -4139,6 +4327,26 @@ export default {
 
   // 宠物体重（pages/pet/weight-chart.vue）
   petWeight: {
+    title: '体重记录',
+    currentWeight: '当前体重',
+    vsLast: '较上次',
+    noRecords: '暂无记录，点右上角「+」开始记录',
+    weekly: '周',
+    monthly: '月',
+    thisWeek: '本周',
+    thisMonth: '本月',
+    chartTitle: '{range}体重变化',
+    emptyRange: '该时间段暂无记录',
+    history: '历史记录',
+    recordWeight: '记录体重',
+    saveBtn: '保存',
+    weightLabel: '体重（kg）',
+    weightPlaceholder: '请输入体重',
+    dateLabel: '日期',
+    datePlaceholder: '请选择日期',
+    noteLabel: '备注',
+    notePlaceholder: '如：洗澡后测量',
+    first: '首次',
     invalidWeight: '请输入正确的体重',
     selectDateFirst: '请选择日期',
     recorded: '记录成功',
@@ -4147,6 +4355,22 @@ export default {
 
   // 宠物 3D 空间（pages/pet/space-3d.vue）
   petHub3d: {
+    diagTitle: '运行诊断',
+    diagPlatformLabel: '平台',
+    diagModelSourceLabel: '模型来源',
+    diagCloseHint: '点击遮罩关闭',
+    loadingThree: '正在加载 three.js...',
+    loadingScene: '正在初始化场景...',
+    envUnsupported: '当前环境不支持 3D（仅 H5/APP 支持）',
+    canvasNotReady: '画布节点长时间未就绪，请返回重试',
+    sceneInitFailed: '场景初始化失败：',
+    loadingModel: '正在加载模型...',
+    downloading: '下载中 {p}%',
+    modelDownloadFailed: '模型下载失败，请检查网络或文件路径',
+    parsing: '解析中 {progress}%',
+    modelLoadFailed: '模型加载失败，请检查网络或文件路径',
+    loadingShort: '加载中...',
+    threeLoadFailed: 'three.js 加载失败：',
     dogModelLoadFailed: '小狗模型加载失败',
     cameraFps: '🐶 第一人称（动物眼睛）',
     cameraTps: '👀 第三人称跟随',
@@ -4154,6 +4378,28 @@ export default {
 
   // 宠物健康（pages/pet/health.vue、health-calendar.vue）
   petHealth: {
+    weekday: { sun: '日', mon: '一', tue: '二', wed: '三', thu: '四', fri: '五', sat: '六' },
+    legend: { bath: '洗澡', vaccine: '疫苗', deworm: '驱虫', checkup: '体检', diary: '日记' },
+    monthLabel: '{year}年{month}月',
+    todayTag: '今天',
+    noRecords: '暂无记录',
+    reminderTitle: '近期提醒',
+    viewAll: '查看全部',
+    reminderDesc: '预计日期：{date} · {desc}',
+    monthOverview: '本月概览',
+    addReminder: '添加提醒',
+    saveBtn: '保存',
+    reminderType: '提醒类型',
+    dateLabel: '日期',
+    datePlaceholder: '请选择日期',
+    noteLabel: '备注',
+    notePlaceholder: '添加备注信息（选填）',
+    selectedDateLabel: '{month}月{day}日',
+    planSuffix: '{label}计划',
+    overdueDays: '已过期 {days} 天',
+    daysLeft: '还剩 {days} 天',
+    allDay: '全天',
+    reminderSuffix: '{label}提醒',
     dayEventsCount: '{count} 项事件',
     selectDateFirst: '请选择日期',
     invalidReminderType: '请选择有效的提醒类型',
@@ -4191,6 +4437,22 @@ export default {
 
   // 宠物装扮（pages/pet/dresser.vue）
   petDresser: {
+    ariaBack: '返回',
+    title: '宠物装扮',
+    upload: '上传',
+    petFallback: '宠物',
+    previewTip: '点击右侧装扮为宠物添加配饰',
+    equippedTag: '已穿戴',
+    emptyTip: '暂无装扮，点击右上角上传自定义形象',
+    catAll: '全部',
+    catHat: '帽子',
+    catScarf: '围巾',
+    catClothes: '衣服',
+    catToy: '玩具',
+    catCustom: '自定义',
+    imgUploadFailed: '图片上传失败',
+    customAvatarName: '自定义形象',
+    customAvatarFallbackName: '自定义形象',
     loadFailed: '装扮列表加载失败',
     equipped: '已穿戴 {name}',
     equipFailed: '装备失败',
@@ -4208,6 +4470,14 @@ export default {
   // 宠物中心（pages/pet/pet-hub.vue）
   // 宠物相册（pages/pet/album.vue）
   petAlbum: {
+    ariaBack: '返回',
+    titleSuffix: '{name}的相册',
+    ariaUpload: '上传照片',
+    ariaGrid: '照片网格',
+    empty: '暂无照片',
+    ariaAddPhoto: '添加新照片',
+    petFallback: '宠物',
+    monthTitle: '{year}年{month}月',
     prevMonth: '上个月',
     nextMonth: '下个月',
     uploaded: '已上传',
@@ -4215,6 +4485,16 @@ export default {
 
   // 社区草稿箱（pages/community/drafts.vue）
   communityDrafts: {
+    title: '我的草稿 ({count})',
+    clear: '清空',
+    empty: '还没有草稿',
+    emptyDesc: '编辑帖子时点击右上角"存草稿"即可保存',
+    newPost: '新建帖子',
+    emptyContent: '(空内容)',
+    justNow: '刚刚',
+    minutesAgo: '{n} 分钟前',
+    hoursAgo: '{n} 小时前',
+    daysAgo: '{n} 天前',
     deleteThisDraft: '删除此草稿',
     deleteTitle: '删除草稿',
     deleteContent: '确认删除该草稿?',
@@ -4242,5 +4522,118 @@ export default {
   emptyState: {
     reconnecting: '正在重连…',
     refreshing: '正在刷新…',
+  },
+  communitySearch: {
+    placeholder: '搜索帖子、用户、话题…',
+    historyTitle: '历史搜索',
+    hotTitle: '热门搜索',
+    searching: '搜索中…',
+    noResults: '没有找到相关内容',
+    noContent: '(无内容)',
+    topicMeta: '{posts} 帖 · {followers} 人关注',
+    tabPost: '帖子',
+    tabUser: '用户',
+    tabTopic: '话题',
+    hotDailyLife: '萌宠日常',
+    hotCats: '猫咪',
+    hotDogWalk: '遛狗',
+    hotSupplies: '宠物用品',
+    hotLostPet: '寻宠启事',
+    justNow: '刚刚',
+    minutesAgo: '{n}分钟前',
+    hoursAgo: '{n}小时前',
+    daysAgo: '{n}天前',
+  },
+  communityChatHistory: {
+    tabAll: '全部',
+    tabProcessing: '进行中',
+    tabClosed: '已关闭',
+    empty: '暂无会话记录',
+    sessionTitle: '会话 {id}',
+    messageCount: '{count} 条消息',
+    statusProcessing: '进行中',
+    statusClosed: '已关闭',
+    statusWaiting: '待响应',
+  },
+  dmChat: {
+    title: '私聊',
+    followed: '已关注',
+    todayTime: '今天 {time}',
+    viewDetail: '查看详情',
+    inputPlaceholder: '发送消息...',
+    defaultFriendName: '宠物好友',
+    greeting: '你好，开始聊天吧～',
+  },
+  webviewPay: {
+    loading: '加载支付页面...',
+    success: '支付成功！',
+    cancelled: '订单已取消',
+    failedPrefix: '支付失败：',
+    loadFailed: '加载支付页面失败',
+  },
+  validate: {
+    emailRequired: '邮箱不能为空',
+    emailInvalid: '邮箱格式不正确',
+    phoneRequired: '手机号不能为空',
+    phoneNeedCountryCode: '手机号需包含国家区号(如 +86)',
+    phoneInvalid: '手机号格式不正确',
+    phoneNumberInvalid: '请输入正确的手机号',
+    smsRequired: '验证码不能为空',
+    smsInvalid: '验证码必须为 6 位数字',
+    passwordRequired: '密码不能为空',
+    passwordMin: '密码至少 {min} 位',
+    passwordWeak: '密码必须同时包含字母和数字',
+    receiverRequired: '收货人姓名不能为空',
+    receiverLength: '姓名长度需在 2~30 字之间',
+    petNameTooLong: '宠物名字过长(最多 20 字)',
+  },
+  upload: {
+    failed: '上传失败({code})',
+    parseFailed: '上传响应解析失败',
+    networkError: '网络错误',
+    videoFailed: '视频上传失败({code})',
+    videoParseFailed: '视频上传响应解析失败',
+  },
+  authPlugin: {
+    nativeUnavailable: '原生登录插件不可用,请使用其他登录方式',
+    nativeUnavailableShort: '原生登录插件不可用',
+    loginFailed: '{provider} 登录失败',
+    unsupported: '当前环境不支持 {provider} 登录',
+  },
+  paymentPlugin: {
+    payFailed: '支付失败',
+    useMiniProgramPay: '请使用小程序原生支付',
+    queryFailed: '查询失败',
+    unsupported: '当前环境不支持',
+    nativeUnavailable: '原生支付插件不可用',
+  },
+  cameraPlugin: {
+    takePhotoFailed: '拍照失败',
+    takePhotoCancelled: '拍照取消',
+    pickFailed: '选择图片失败',
+    pickCancelled: '选择图片取消',
+    compressFailed: '图片压缩失败',
+  },
+  locationPlugin: {
+    locateFailed: '定位失败',
+    locatePermission: '定位失败，请检查位置权限',
+    chooseAddressCancelled: '选择地址取消',
+    unsupported: '当前环境不支持',
+    geocodeFailed: '地址解析失败',
+  },
+  biometricPlugin: {
+    prompt: '验证身份以继续',
+    failed: '身份验证失败',
+    noDevice: '请使用支持生物识别的设备',
+    unsupported: '当前环境不支持生物识别',
+  },
+  pushPlugin: {
+    registerFailed: '推送注册失败',
+  },
+  petHubPlugin: {
+    nativeUnavailable: '原生插件不可用',
+  },
+  imageFallback: {
+    loadFailed: '图片加载失败',
   },
 }

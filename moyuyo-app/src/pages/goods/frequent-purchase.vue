@@ -233,8 +233,15 @@ export default {
 .nav-row {
   display: flex;
   align-items: center;
-  height: 96rpx;
-  padding: 0 32rpx;
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底 */
+  height: calc(96rpx + var(--status-bar-height, 0px));
+  height: calc(96rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  padding-right: 32rpx;
+  padding-left: 32rpx;
+  padding-bottom: 0;
+  box-sizing: border-box;
 }
 .nav-back {
   display: flex;
@@ -370,7 +377,10 @@ export default {
   left: 0;
   right: 0;
   z-index: 40;
-  background: rgba(255, 255, 255, 0.92);
+  /* 走 design token：原写死 rgba 白，深色模式下没有任何规则能覆盖，底栏会一直是白色。
+     --color-surface-veil-92 浅色 = rgba(255,255,255,.92)（视觉零变化）/
+     深色 = rgba(42,39,36,.92)，与首页 tabBar 的 #2a2724 同一取色。 */
+  background: var(--color-surface-veil-92, rgba(255, 255, 255, 0.92));
   border-top: 2rpx solid var(--border);
 }
 .bar-inner {

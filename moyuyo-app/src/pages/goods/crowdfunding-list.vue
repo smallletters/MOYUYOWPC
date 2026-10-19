@@ -129,7 +129,7 @@ const projects = ref([
     id: 4,
     name: 'MOYUYO 宠物推车 · 城市出行版',
     desc: '一键折叠 · 360°旋转轮 · 透气网窗 · 防雨罩',
-    coverBg: 'linear-gradient(135deg, #f2f2f7, #c7c7cc)',
+    coverBg: 'linear-gradient(135deg, var(--color-fill, #f2f2f7), var(--color-fill-dim-strong))',
     status: '已成功',
     statusBg: 'rgba(52, 199, 89, 0.8)',
     countdown: '',

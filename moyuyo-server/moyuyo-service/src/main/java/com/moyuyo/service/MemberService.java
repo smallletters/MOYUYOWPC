@@ -55,7 +55,43 @@ public interface MemberService {
 
   void spendPoints(Long userId, int changeValue, String bizNo, String remark);
 
+  /**
+   * 可用积分余额 = 总积分(mo_user.points) − 冻结积分(mo_user.points_frozen)。
+   * <p>
+   * 冻结积分是"未支付订单占用的抵扣积分"：下单即冻结、支付成功转实扣、取消/超时解冻。
+   * 结算页/兑换/补签等一切"用户本次能用多少积分"的判断都必须用可用余额，
+   * 否则同一批积分会被多笔待付款订单重复勾选（原缺陷）。
+   */
   int getPointsBalance(Long userId);
+
+  /**
+   * 冻结积分（下单占用）：原子条件更新 points_frozen += points，
+   * 仅当可用积分(points − points_frozen) ≥ points 时成功，用 affected rows 判定，避免"先查后判"的并发竞态。
+   *
+   * @return true=冻结成功；false=可用积分不足（未做任何变更）
+   */
+  boolean freezePoints(Long userId, int points, String bizNo, String remark);
+
+  /**
+   * 解冻积分（取消/超时回退）：原子条件更新 points_frozen −= points，仅当 points_frozen ≥ points 时成功。
+   * <p>
+   * 幂等：无对应冻结（如存量订单、重复取消）时命中 0 行并返回 false，不报错、不误还。
+   * 调用方（cancelOrder）已通过 PENDING_PAY→CANCELLED 原子抢占保证每单只解冻一次。
+   *
+   * @return true=解冻成功；false=无对应冻结（已忽略）
+   */
+  boolean unfreezePoints(Long userId, int points, String bizNo, String remark);
+
+  /**
+   * 冻结转实扣（支付成功）：在同一个 UPDATE 内同时 points −= points 与 points_frozen −= points，
+   * 避免"先解冻再 spendPoints"两步之间存在并发窗口导致重复扣减/漏扣。
+   * <p>
+   * 语义替代原来的 spendPoints：支付成功只调用本方法，绝不再额外 spendPoints，防止双扣。
+   * 失败（冻结/余额不足）返回 false，由调用方记录告警走人工对账，不阻断支付主流程。
+   *
+   * @return true=实扣成功；false=冻结或余额不足
+   */
+  boolean consumeFrozenPoints(Long userId, int points, String bizNo, String remark);
 
   WalletVO getWallet(Long userId);
 

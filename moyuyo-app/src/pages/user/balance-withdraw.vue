@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="withdraw">
     <view class="header">
       <view class="header-btn" @click="goBack">
@@ -297,13 +297,21 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 88rpx;
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  box-sizing: border-box;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }
 
 .header-btn {
   position: absolute;
+  /* 绝对定位元素吃不到父级 padding，需自行下移状态栏高度 */
+  top: var(--status-bar-height, 0px);
+  top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -379,7 +387,7 @@ export default {
 .balance-amount {
   font-size: 72rpx;
   font-weight: var(--font-weight-semibold);
-  color: #2e2b29;
+  color: #2e2b29; /* 设计为金色底深字，两态一致：父级 .balance-card 为金色渐变 #dbc98a，深色下保持不变 */
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
@@ -391,11 +399,11 @@ export default {
 
 /* 区块 */
 .section {
-  background: #ffffff;
-  border: 1rpx solid #f2f2f7;
+  background: var(--color-surface);
+  border: 1rpx solid var(--color-border, #f2f2f7);
   border-radius: 24rpx;
   padding: 32rpx;
-  box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-card-lg);
   display: flex;
   flex-direction: column;
   gap: 24rpx;

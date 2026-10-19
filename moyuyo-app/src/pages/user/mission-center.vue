@@ -439,7 +439,7 @@ export default {
 <style lang="scss" scoped>
 .mission-center {
   min-height: 100vh;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
   display: flex;
   flex-direction: column;
 }
@@ -553,13 +553,13 @@ export default {
   background: var(--color-background, #ffffff);
   border-radius: 24rpx;
   overflow: hidden;
-  border: 1rpx solid #e5e5ea;
+  border: 1rpx solid var(--color-divider);
   box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.08);
 }
 
 .tab-bar {
   display: flex;
-  border-bottom: 1rpx solid #e5e5ea;
+  border-bottom: 1rpx solid var(--color-divider);
 }
 
 .tab-btn {
@@ -570,7 +570,7 @@ export default {
   justify-content: center;
   font-size: 28rpx;
   font-weight: 500;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
   background: transparent;
   position: relative;
   cursor: pointer;
@@ -607,7 +607,7 @@ export default {
   gap: 24rpx;
   padding: 28rpx 32rpx;
   background: var(--color-background, #ffffff);
-  border: 1rpx solid #e5e5ea;
+  border: 1rpx solid var(--color-divider);
   border-radius: 24rpx;
   box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, 0.06);
   transition: transform 0.18s ease;
@@ -667,7 +667,7 @@ export default {
   flex: 1;
   height: 12rpx;
   border-radius: 6rpx;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
   overflow: hidden;
 }
 
@@ -684,13 +684,13 @@ export default {
 
 .progress-text {
   font-size: 24rpx;
-  color: #6e6e73;
+  color: var(--color-text-secondary);
   flex-shrink: 0;
 }
 
 .mission-status {
   font-size: 24rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
 }
 
 .mission-status.done {
@@ -727,8 +727,8 @@ export default {
 }
 
 .btn-done {
-  background: #f2f2f7;
-  color: #8e8e93;
+  background: var(--color-fill, #f2f2f7);
+  color: var(--color-text-tertiary);
   cursor: default;
 }
 
@@ -747,7 +747,7 @@ export default {
 }
 
 .badge-icon:not(.earned) {
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
 }
 
 .badge-emoji {
@@ -760,7 +760,7 @@ export default {
 }
 
 .locked-text {
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
   font-size: 24rpx;
 }
 </style>

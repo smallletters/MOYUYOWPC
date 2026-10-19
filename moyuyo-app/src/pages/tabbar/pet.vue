@@ -7,7 +7,7 @@
            3D 空间入口只能通过右上角「3D 空间」按钮(scene-pill)触发 -->
       <view class="scene">
         <!-- 选中背景(优先) > 原固定背景 -->
-        <image class="scene-bg" :src="sceneBgSrc" mode="aspectFill" />
+        <image class="scene-bg" :src="$img(sceneBgSrc)" mode="aspectFill" />
         <!-- 顶部轻微压暗、底部加深，保证浮层文字可读 -->
         <view class="scene-mask" />
 
@@ -35,8 +35,9 @@
                   <image
                     v-if="pet.avatar"
                     class="pet-avatar"
-                    :src="pet.avatar"
-                    mode="aspectFill" />
+                    :src="$img(pet.avatar)"
+                    mode="aspectFill"
+                  />
                   <view v-else class="pet-avatar pet-avatar-fallback">
                     <text class="luc" :class="$luc(petIcon(pet))" />
                   </view>
@@ -59,7 +60,7 @@
           <image
             v-if="dressedAvatar.type !== 'model3d'"
             class="scene-figure-img"
-            :src="dressedAvatar.src"
+            :src="$img(dressedAvatar.src)"
             mode="aspectFit"
           />
           <!-- 3D 模型嵌入 canvas(仅 H5/APP) -->
@@ -165,7 +166,7 @@
 <script>
 // 显式 import 兜底:vite-plugin-uni H5 模式下 easycom.autoscan 偶尔扫不到 kebab-case 引用
 import DressPopup from '@/components/dress-popup/dress-popup.vue'
-import { usePetStore } from '@/store'
+import { usePetStore, useThemeStore } from '@/store'
 
 // 内置宠物形象:与 dress-popup 的 BUILTIN_AVATARS 保持一致,用于 scene-figure 回查
 // store 仅持久化 customAvatars + selectedAvatarId,内置形象只在前端常量里;
@@ -363,6 +364,9 @@ export default {
   },
 
   onShow() {
+    // 原生 tabBar 不吃 CSS 变量，深色模式下必须在这里重新上色。
+    // setTabBarStyle 要求「当前页是 tabBar 页」，切 tab / 从设置页返回时靠这里兜底。
+    useThemeStore().syncTabBar()
     // 先加载本地装扮缓存(无需宠物),再加载宠物列表
     this.petStore.loadDress()
     // 始终走 loadPets：未登录时 store 内部会清空宠物缓存并直接返回（不发请求、无 401），
@@ -755,10 +759,10 @@ export default {
 <style lang="scss" scoped>
 /* 页面内局部 token：把设计稿的 iOS 风格色映射到本页，不改动全局主题 */
 .pet-hub {
-  --hub-bg: #f7f7fa; /* 页面浅灰背景 */
+  --hub-bg: var(--color-fill-hi, #f7f7fa); /* 页面浅灰背景 */
   --hub-card: #ffffff; /* 卡片 / 顶部栏表面 */
   --hub-line: #e5e5ea; /* 分隔 / 卡片描边 */
-  --hub-chip: #f2f2f7; /* 图标底圆 / 灰按钮 */
+  --hub-chip: var(--color-fill, #f2f2f7); /* 图标底圆 / 灰按钮 */
   --hub-muted: #8e8e93; /* 次要文字 */
   --hub-ok: #34c759; /* 状态良好 */
   --hub-ok-bg: #e9f9ee;
@@ -767,7 +771,13 @@ export default {
   /* 设计稿 text-xs = 12px，本页统一覆盖为 24rpx（1rpx≈0.5px） */
   --font-size-xs: 24rpx;
   /* 场景内容顶部距（状态栏高度 + H5 安全区），供场景内绝对定位浮层使用 */
-  --sb: calc(var(--status-bar-height, 0px) + env(safe-area-inset-top, 0px));
+  /* 取二者较大值（而非相加）：iOS 上 env 与 status-bar-height 同为状态栏高度，相加会翻倍 */
+  /* 自定义属性不能用「重复声明」兜底 —— --* 的值几乎不解析失败，第二条会直接覆盖第一条，
+     老引擎上消费点代入后 IACVT 会退化成 top:auto，而不是回落到前一条。故改用能力查询。 */
+  --sb: var(--status-bar-height, 0px);
+  @supports (top: max(0px, 0px)) {
+    --sb: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  }
 
   display: flex;
   flex-direction: column;
@@ -775,9 +785,11 @@ export default {
   background: var(--hub-bg);
 }
 
-/* 深色模式适配（跟随系统） */
+/* 深色模式适配（跟随系统）
+ * 选择器与全局一致加 :root:not(.theme-light)：App 内「强制浅色」时 html 带 .theme-light，
+ * 压制本块，避免系统深色下强制浅色在本页失效。 */
 @media (prefers-color-scheme: dark) {
-  .pet-hub {
+  :root:not(.theme-light) .pet-hub {
     --hub-bg: #1a1816;
     --hub-card: #2a2724;
     --hub-line: #3a3530;
@@ -788,6 +800,23 @@ export default {
     --hub-err: #ff453a;
     --hub-err-bg: rgba(255, 69, 58, 0.14);
   }
+}
+
+/* 强制深色覆盖（App 内切深色，而系统可能仍是浅色）。
+ * 原因：@media (prefers-color-scheme: dark) 只按系统判断，
+ * 「系统浅色 + 强制深色」时该媒体查询不命中，而 --hub-bg/--hub-chip 会随全局 .theme-dark 变深，
+ * 但 --hub-card/--hub-line/--hub-muted 等本页硬编码值没有任何覆盖 → 深色底 + 白卡片。
+ * 这里补齐与上面 @media 深色块**逐项一致**的取值，保证三态（浅/系统深/强制深）输出同一套深色变量。 */
+.theme-dark .pet-hub {
+  --hub-bg: #1a1816;
+  --hub-card: #2a2724;
+  --hub-line: #3a3530;
+  --hub-chip: #232120;
+  --hub-muted: #807a72;
+  --hub-ok: #30d158;
+  --hub-ok-bg: rgba(48, 209, 88, 0.12);
+  --hub-err: #ff453a;
+  --hub-err-bg: rgba(255, 69, 58, 0.14);
 }
 
 /* ===== 通用头像圆（40px） ===== */

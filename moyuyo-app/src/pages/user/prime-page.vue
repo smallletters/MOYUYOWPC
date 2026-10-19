@@ -441,7 +441,13 @@ onBeforeUnmount(() => {
 /* ============ 顶部品牌区 ============ */
 .prime-header {
   position: relative;
-  padding: 0 32rpx 56rpx;
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底。
+     加在顶部品牌区上，品牌渐变同时铺到状态栏区域 */
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  padding-right: 32rpx;
+  padding-bottom: 56rpx;
+  padding-left: 32rpx;
   /* MOYUYO 米金色系渐变：温暖砂岩质感 */
   background:
     radial-gradient(120% 80% at 80% 0%, rgba(138, 114, 36, 0.16) 0%, transparent 55%),

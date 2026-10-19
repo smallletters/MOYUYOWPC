@@ -1,7 +1,7 @@
 <template>
   <view v-if="order" class="order-detail">
     <view class="page-header">
-      <view class="header-back" aria-label="返回" @click="goBack">
+      <view class="header-back" :aria-label="$t('common.back')" @click="goBack">
         <text class="luc luc-arrow-left" />
       </view>
       <text class="header-title">{{ $t('orderDetail.title') }}</text>
@@ -49,7 +49,12 @@
     <view class="card items-card">
       <text class="card-title">{{ $t('orderDetail.items') }}</text>
       <view v-for="item in order.items" :key="item.id" class="item-row">
-        <image :src="item.mainImage || ''" class="item-image" />
+        <image
+          :src="resolveItemImage(item.mainImage)"
+          mode="aspectFill"
+          class="item-image"
+          @error="onItemImageError(item)"
+        />
         <view class="item-info">
           <text class="item-name">{{ item.productName }}</text>
           <text v-if="item.skuSpec" class="item-spec">{{ item.skuSpec }}</text>
@@ -150,6 +155,9 @@
 <script>
 import { orderApi } from '@/api'
 import { i18n, t } from '@/i18n'
+import { toAbsoluteImageUrl } from '@/utils/imageUrl'
+
+const DEFAULT_PRODUCT_IMAGE = '/static/images/default-product.png'
 
 export default {
   pageTitleKey: 'pageTitle.orderDetail',
@@ -198,6 +206,21 @@ export default {
   },
 
   methods: {
+    /**
+     * 订单商品图：后端返回相对路径(/uploads/...)，APP 端 <image> 不走 Vite proxy，
+     * 必须补成绝对地址，否则真机上商品图空白。
+     */
+    resolveItemImage(url) {
+      return toAbsoluteImageUrl(url) || DEFAULT_PRODUCT_IMAGE
+    },
+
+    /** <image> 加载失败（404 / 外链失效 / 网络不可达）时兜底到本地占位图，避免卡片留白 */
+    onItemImageError(item) {
+      if (!item) return
+      if (item.mainImage === DEFAULT_PRODUCT_IMAGE) return
+      item.mainImage = DEFAULT_PRODUCT_IMAGE
+    },
+
     async loadOrder() {
       try {
         this.order = await orderApi.getOrderDetail(this.orderId)
@@ -310,8 +333,15 @@ export default {
 .page-header {
   display: flex;
   align-items: center;
-  height: 88rpx;
-  padding: 0 24rpx;
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  padding-right: 24rpx;
+  padding-left: 24rpx;
+  padding-bottom: 0;
+  box-sizing: border-box;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }
@@ -433,6 +463,60 @@ export default {
   font-weight: var(--font-weight-semibold);
   margin-bottom: 16rpx;
   display: block;
+}
+
+.items-card {
+  .item-row {
+    display: flex;
+    align-items: center;
+    padding: 16rpx 0;
+
+    &:not(:last-child) {
+      border-bottom: 1rpx solid var(--color-divider);
+    }
+  }
+
+  .item-image {
+    width: 140rpx;
+    height: 140rpx;
+    border-radius: 12rpx;
+    margin-right: 20rpx;
+    flex-shrink: 0;
+    background: var(--color-background);
+  }
+
+  .item-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .item-name {
+    font-size: 28rpx;
+    color: var(--color-text);
+    display: block;
+  }
+
+  .item-spec {
+    font-size: 24rpx;
+    color: var(--color-text-tertiary);
+    display: block;
+    margin-top: 6rpx;
+  }
+
+  .item-qty {
+    font-size: 24rpx;
+    color: var(--color-text-tertiary);
+    display: block;
+    margin-top: 6rpx;
+  }
+
+  .item-price {
+    font-size: 28rpx;
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+    flex-shrink: 0;
+    margin-left: 16rpx;
+  }
 }
 
 .action-bar {

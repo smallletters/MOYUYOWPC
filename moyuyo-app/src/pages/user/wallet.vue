@@ -445,7 +445,7 @@ export default {
 }
 
 .btn-topup {
-  background: #ffffff;
+  background: var(--color-surface);
   color: var(--color-primary);
 }
 
@@ -468,15 +468,15 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 28rpx 24rpx;
-  background: #ffffff;
-  border: 1rpx solid #f2f2f7;
+  background: var(--color-surface);
+  border: 1rpx solid var(--color-border, #f2f2f7);
   border-radius: 24rpx;
-  box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-card-lg);
   transition: all 0.18s ease;
 }
 
 .feature-item:active {
-  background: #fafafa;
+  background: var(--background-50);
   transform: scale(0.985);
 }
 
@@ -533,11 +533,11 @@ export default {
 
 /* 交易列表(同款磨砂白卡片) */
 .trans-list {
-  background: #ffffff;
-  border: 1rpx solid #f2f2f7;
+  background: var(--color-surface);
+  border: 1rpx solid var(--color-border, #f2f2f7);
   border-radius: 24rpx;
   overflow: hidden;
-  box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-card-lg);
 }
 
 .trans-item {

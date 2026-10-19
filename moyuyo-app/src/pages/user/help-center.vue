@@ -60,8 +60,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { i18n } from '@/i18n'
 import { helpApi } from '@/api'
+import { getPageQuery } from '@/utils/pageQuery'
 
 const keyword = ref('')
 const loading = ref(false)
@@ -114,17 +116,32 @@ function goBack() {
   uni.navigateBack()
 }
 
-onMounted(() => {
+// 幂等启动：onLoad 先于 onMounted 触发，两者都调用，副作用只发生一次。
+// 不能只读 `getCurrentPages().slice(-1)[0].options` —— APP 运行时（initPageVm）
+// 从不写 pageVm.options，APP 真机上恒读到 {}，结果是分类跳转失效、恒显示全部分类。
+// 注意入参解析必须在 load() 之前：filteredFAQ 依赖 categoryId 做筛选。
+let booted = false
+
+async function bootstrap(options) {
+  if (booted) return
+  booted = true
   try {
-    const pages = getCurrentPages()
-    const cur = pages[pages.length - 1]
-    const q = cur?.options || {}
+    const hasOptions = !!options && typeof options === 'object' && Object.keys(options).length > 0
+    const q = hasOptions ? options : getPageQuery()
     if (q.categoryId) categoryId.value = q.categoryId
     if (q.categoryName) categoryName.value = decodeURIComponent(q.categoryName)
   } catch (e) {
-    /* ignore */
+    console.warn('[help-center] read page query failed', e)
   }
-  load()
+  await load()
+}
+
+onLoad((options) => {
+  bootstrap(options)
+})
+
+onMounted(() => {
+  bootstrap()
 })
 </script>
 

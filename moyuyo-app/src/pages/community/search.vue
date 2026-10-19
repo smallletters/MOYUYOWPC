@@ -7,14 +7,14 @@
         <input
           v-model="keyword"
           class="search-input"
-          placeholder="搜索帖子、用户、话题…"
+          :placeholder="$t('communitySearch.placeholder')"
           confirm-type="search"
           :focus="true"
           @confirm="onSearch"
         >
         <text v-if="keyword" class="luc luc-x clear-btn" @click="keyword = ''" />
       </view>
-      <text class="cancel" @click="onCancel">取消</text>
+      <text class="cancel" @click="onCancel">{{ $t('common.cancel') }}</text>
     </view>
 
     <!-- 三 Tab：帖子 / 用户 / 话题 -->
@@ -27,7 +27,7 @@
         @tap="onTabChange(t.value)"
       >
         <text class="tab-text" :class="{ 'tab-text-active': activeTab === t.value }">
-          {{ t.label }}
+          {{ $t('communitySearch.' + t.labelKey) }}
         </text>
         <view v-if="activeTab === t.value" class="tab-indicator" />
       </view>
@@ -39,7 +39,7 @@
         <!-- 历史搜索 -->
         <view v-if="searchHistory.length" class="section">
           <view class="section-header">
-            <text class="section-title">历史搜索</text>
+            <text class="section-title">{{ $t('communitySearch.historyTitle') }}</text>
             <text class="luc luc-trash" @click="onClearHistory" />
           </view>
           <view class="chips">
@@ -56,15 +56,16 @@
         <!-- 热门搜索 -->
         <view class="section">
           <view class="section-header">
-            <text class="section-title">热门搜索</text>
+            <text class="section-title">{{ $t('communitySearch.hotTitle') }}</text>
           </view>
           <view class="chips">
             <view
               v-for="h in hotSearches"
               :key="h"
               class="chip hot"
-              @click="onQuickSearch(h)">
-              {{ h }}
+              @click="onQuickSearch(hotSearchLabel(h))"
+            >
+              {{ hotSearchLabel(h) }}
             </view>
           </view>
         </view>
@@ -72,12 +73,12 @@
 
       <!-- 搜索中或加载中 -->
       <view v-else-if="loading && results.length === 0" class="status">
-        <text class="status-text">搜索中…</text>
+        <text class="status-text">{{ $t('communitySearch.searching') }}</text>
       </view>
 
       <!-- 无结果 -->
       <view v-else-if="results.length === 0" class="status">
-        <text class="status-text">没有找到相关内容</text>
+        <text class="status-text">{{ $t('communitySearch.noResults') }}</text>
       </view>
 
       <!-- ============= 帖子结果 ============= -->
@@ -104,7 +105,7 @@
             </view>
           </view>
           <view class="post-content">
-            <text class="post-text">{{ p.content || '(无内容)' }}</text>
+            <text class="post-text">{{ p.content || $t('communitySearch.noContent') }}</text>
             <view v-if="p.images && p.images.length" class="post-images">
               <image
                 v-for="(img, idx) in p.images.slice(0, 3)"
@@ -150,17 +151,22 @@
           <text class="topic-name"># {{ t.name }}</text>
           <text v-if="t.description" class="topic-desc">{{ t.description }}</text>
           <text class="topic-meta">
-            {{ t.postCount || 0 }} 帖 · {{ t.followCount || 0 }} 人关注
+            {{
+              $t('communitySearch.topicMeta', {
+                posts: t.postCount || 0,
+                followers: t.followCount || 0,
+              })
+            }}
           </text>
         </view>
       </template>
 
       <!-- 加载更多占位 -->
       <view v-if="loading && results.length > 0" class="status">
-        <text class="status-text">加载中…</text>
+        <text class="status-text">{{ $t('common.loading') }}</text>
       </view>
       <view v-if="!hasMore && results.length > 0" class="status">
-        <text class="status-text">— 没有更多了 —</text>
+        <text class="status-text">{{ $t('goodsList.noMore') }}</text>
       </view>
     </scroll-view>
   </view>
@@ -181,12 +187,12 @@ export default {
       keyword: '',
       activeTab: 'post',
       tabs: [
-        { label: '帖子', value: 'post' },
-        { label: '用户', value: 'user' },
-        { label: '话题', value: 'topic' },
+        { labelKey: 'tabPost', value: 'post' },
+        { labelKey: 'tabUser', value: 'user' },
+        { labelKey: 'tabTopic', value: 'topic' },
       ],
       searchHistory: getStorage(SEARCH_HISTORY_KEY, []),
-      hotSearches: ['萌宠日常', '猫咪', '遛狗', '宠物用品', '寻宠启事'],
+      hotSearches: ['hotDailyLife', 'hotCats', 'hotDogWalk', 'hotSupplies', 'hotLostPet'],
       results: [],
       loading: false,
       hasMore: true,
@@ -358,15 +364,20 @@ export default {
       return String(name).trim().charAt(0).toUpperCase()
     },
 
+    hotSearchLabel(k) {
+      return this.$t('communitySearch.' + k)
+    },
+
     formatTime(iso) {
       if (!iso) return ''
       const d = new Date(iso)
       const now = new Date()
       const diff = (now - d) / 1000
-      if (diff < 60) return '刚刚'
-      if (diff < 3600) return Math.floor(diff / 60) + '分钟前'
-      if (diff < 86400) return Math.floor(diff / 3600) + '小时前'
-      if (diff < 7 * 86400) return Math.floor(diff / 86400) + '天前'
+      if (diff < 60) return this.$t('communitySearch.justNow')
+      if (diff < 3600) return this.$t('communitySearch.minutesAgo', { n: Math.floor(diff / 60) })
+      if (diff < 86400) return this.$t('communitySearch.hoursAgo', { n: Math.floor(diff / 3600) })
+      if (diff < 7 * 86400)
+        return this.$t('communitySearch.daysAgo', { n: Math.floor(diff / 86400) })
       const yyyy = d.getFullYear()
       const mm = String(d.getMonth() + 1).padStart(2, '0')
       const dd = String(d.getDate()).padStart(2, '0')
@@ -391,7 +402,10 @@ export default {
   gap: 16rpx;
   padding: 16rpx 24rpx;
   background: var(--color-surface, #ffffff);
-  padding-top: calc(16rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  /* 本页在 pages.json 中**没有** navigationStyle:custom，即使用原生导航栏，
+     webview 内容本就从导航栏下方开始，再加 --status-bar-height 会在 APP 端多出一段空白。
+     只保留 env 项，用于兜底 H5 PWA/standalone（viewport-fit=cover）场景。 */
+  padding-top: calc(16rpx + env(safe-area-inset-top, 0px));
   border-bottom: 1rpx solid var(--color-divider, #ececec);
 }
 

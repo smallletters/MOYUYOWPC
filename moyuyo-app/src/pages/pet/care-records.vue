@@ -6,7 +6,7 @@
         <view class="header-btn" :aria-label="$t('careRecords.back')" @click="onBack">
           <text class="luc luc-arrow-left" />
         </view>
-        <text class="header-title">{{ petName }} · {{ $t('careRecords.title') }}</text>
+        <text class="header-title">{{ petNameDisplay }} · {{ $t('careRecords.title') }}</text>
         <view
           class="header-btn header-btn-primary"
           :aria-label="$t('careRecords.addRecord')"
@@ -227,7 +227,7 @@ export default {
   data() {
     return {
       petId: null,
-      petName: '宝贝',
+      petName: '',
       activeType: 'BATH',
       showModal: false,
       submitting: false,
@@ -245,6 +245,10 @@ export default {
   computed: {
     petStore() {
       return usePetStore()
+    },
+    // 宠物名兜底（未匹配到宠物时显示，随 locale 切换）
+    petNameDisplay() {
+      return this.petName || this.$t('careRecords.petFallback')
     },
     // 当前类型的展示信息（label / placeholder 走 i18n，切换语言即时生效）
     meta() {
@@ -425,7 +429,7 @@ export default {
       const [y, m, d] = String(dateStr).split('-').map(Number)
       if (!y || !m || !d) return dateStr
       const isEn = this.$i18n && this.$i18n.locale === 'en-US'
-      if (!isEn) return `${m}月${d}日`
+      if (!isEn) return this.$t('careRecords.monthDay', { m, d })
       const MONTHS_EN = [
         'Jan',
         'Feb',
@@ -544,7 +548,9 @@ export default {
   position: sticky;
   top: 0;
   z-index: 30;
-  padding-top: calc(var(--status-bar-height, 0px) + env(safe-area-inset-top, 0px));
+  /* 取二者较大值（而非相加）：iOS 上 env 与 status-bar-height 同为状态栏高度，相加会翻倍 */
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }
@@ -664,7 +670,7 @@ export default {
 
 /* 激活态徽标反白：白底 + 品牌深沙金数字，与白字 label 形成对比层次 */
 .type-tab.active .tab-count {
-  background: #ffffff;
+  background: var(--color-surface);
   color: var(--color-primary-dark);
   box-shadow: 0 2rpx 6rpx rgba(90, 74, 38, 0.18);
 }

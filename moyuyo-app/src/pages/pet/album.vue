@@ -1,39 +1,41 @@
 <template>
   <view class="pet-album">
     <view class="page-header">
-      <view class="back" aria-label="返回" @click="goBack">
+      <view class="back" :aria-label="$t('petAlbum.ariaBack')" @click="goBack">
         <text class="luc luc-arrow-left" />
       </view>
-      <text class="title">{{ currentPet?.name || '宠物' }}的相册</text>
-      <view class="upload-btn" aria-label="上传照片" @click="onUpload">+</view>
+      <text class="title">
+        {{ $t('petAlbum.titleSuffix', { name: currentPet?.name || $t('petAlbum.petFallback') }) }}
+      </text>
+      <view class="upload-btn" :aria-label="$t('petAlbum.ariaUpload')" @click="onUpload">+</view>
     </view>
 
     <scroll-view scroll-y class="content">
       <!-- 月份切换 -->
       <view class="month-nav">
-        <view class="month-arrow" aria-label="上个月" @click="prevMonth">
+        <view class="month-arrow" :aria-label="$t('petAlbum.prevMonth')" @click="prevMonth">
           <text class="luc luc-arrow-left" />
         </view>
         <text class="month-title">{{ currentMonth }}</text>
-        <view class="month-arrow" aria-label="下个月" @click="nextMonth">
+        <view class="month-arrow" :aria-label="$t('petAlbum.nextMonth')" @click="nextMonth">
           <text class="luc luc-chevron-right" />
         </view>
       </view>
 
       <!-- 照片网格 -->
-      <view class="photo-grid" aria-label="照片网格">
+      <view class="photo-grid" :aria-label="$t('petAlbum.ariaGrid')">
         <view
           v-for="(photo, i) in photos"
           :key="i"
           class="photo-item"
           @click="onPhotoClick(i)">
-          <image :src="photo" class="photo-image" mode="aspectFill" />
+          <image :src="$img(photo)" class="photo-image" mode="aspectFill" />
         </view>
-        <view v-if="photos.length === 0" class="empty">暂无照片</view>
+        <view v-if="photos.length === 0" class="empty">{{ $t('petAlbum.empty') }}</view>
       </view>
 
       <!-- FAB -->
-      <view class="fab" aria-label="添加新照片" @click="onUpload">+</view>
+      <view class="fab" :aria-label="$t('petAlbum.ariaAddPhoto')" @click="onUpload">+</view>
     </scroll-view>
   </view>
 </template>
@@ -62,7 +64,7 @@ export default {
         const pets = await petApi.getPetList()
         this.currentPet = (pets && pets[0]) || null
       } catch (e) {
-        this.currentPet = { name: '宠物' }
+        this.currentPet = { name: this.$t('petAlbum.petFallback') }
       }
       // mock photos
       this.photos = [
@@ -77,7 +79,10 @@ export default {
     },
 
     formatMonth(date) {
-      return `${date.getFullYear()}年${date.getMonth() + 1}月`
+      return this.$t('petAlbum.monthTitle', {
+        year: date.getFullYear(),
+        month: date.getMonth() + 1,
+      })
     },
 
     goBack() {

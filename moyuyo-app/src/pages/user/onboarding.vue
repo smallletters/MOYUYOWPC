@@ -129,7 +129,9 @@ export default {
 
 .skip-btn {
   position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px) + 16rpx);
+  /* 基准 16rpx 提至最前，安全区取二者较大值（而非相加） */
+  top: calc(16rpx + var(--status-bar-height, 0px));
+  top: calc(16rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
   right: 32rpx;
   z-index: 10;
   font-size: 30rpx;

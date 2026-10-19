@@ -443,7 +443,7 @@ export default {
    - 辅助文案、条款12-13sp弱灰,与CTA形成层级 */
 .login {
   min-height: 100vh;
-  background: #ffffff;
+  background: var(--color-surface);
   display: flex;
   flex-direction: column;
 }
@@ -468,7 +468,7 @@ export default {
   font-size: 52rpx;
   font-weight: 800;
   line-height: 1.2;
-  color: #1d1d1f;
+  color: var(--color-text);
   margin-bottom: 12rpx;
   letter-spacing: -0.5rpx;
 }
@@ -477,7 +477,7 @@ export default {
   display: block;
   font-size: 28rpx;
   line-height: 1.5;
-  color: #6e6e73;
+  color: var(--color-text-secondary);
 }
 
 /* 社交登录按钮:全宽白底描边(Shein/Temu美国站点标准) */
@@ -491,8 +491,8 @@ export default {
 .social-btn {
   height: 92rpx;
   border-radius: 999rpx;
-  border: 2rpx solid #e5e5ea;
-  background: #ffffff;
+  border: 2rpx solid var(--color-divider);
+  background: var(--color-surface);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -501,18 +501,18 @@ export default {
 }
 
 .social-btn:active {
-  background: #f7f7f9;
+  background: var(--color-fill-hi);
   transform: scale(0.99);
 }
 
 .social-btn.google {
-  color: #1d1d1f;
+  color: var(--color-text);
 }
 
 .social-btn.apple {
-  background: #000000;
-  border-color: #000000;
-  color: #ffffff;
+  background: var(--color-text);
+  border-color: var(--color-text);
+  color: var(--color-surface);
 }
 
 .social-logo {
@@ -526,6 +526,15 @@ export default {
 .social-logo-apple {
   /* 100% 反相 + 100% 转灰,可把任何单色 SVG 变白 */
   filter: brightness(0) invert(1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.theme-light) .social-logo-apple {
+    filter: brightness(0);
+  }
+}
+.theme-dark .social-logo-apple {
+  filter: brightness(0);
 }
 
 .social-label {
@@ -544,12 +553,12 @@ export default {
 .divider-line {
   flex: 1;
   height: 1rpx;
-  background: #e5e5ea;
+  background: var(--color-divider);
 }
 
 .divider-text {
   font-size: 24rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
   text-transform: uppercase;
   letter-spacing: 1rpx;
 }
@@ -564,7 +573,7 @@ export default {
 /* 登录方式切换:Segmented Control(iOS 16样式) */
 .segmented {
   display: flex;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
   border-radius: 14rpx;
   padding: 4rpx;
 }
@@ -574,16 +583,16 @@ export default {
   text-align: center;
   padding: 18rpx 0;
   font-size: 26rpx;
-  color: #1d1d1f;
+  color: var(--color-text);
   border-radius: 10rpx;
   font-weight: 500;
   transition: all 0.2s ease;
 }
 
 .segmented-item.active {
-  background: #ffffff;
-  box-shadow: 0 3rpx 8rpx rgba(0, 0, 0, 0.08);
-  color: #1d1d1f;
+  background: var(--color-fill-raised);
+  box-shadow: var(--shadow-card-sm);
+  color: var(--color-text);
   font-weight: 700;
 }
 
@@ -597,7 +606,7 @@ export default {
 .field-label {
   font-size: 26rpx;
   font-weight: 600;
-  color: #1d1d1f;
+  color: var(--color-text);
   line-height: 1.4;
 }
 
@@ -605,9 +614,9 @@ export default {
   height: 92rpx;
   padding: 0 24rpx;
   font-size: 30rpx;
-  color: #1d1d1f;
-  background: #ffffff;
-  border: 2rpx solid #d1d1d6;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 2rpx solid var(--color-fill-dim);
   border-radius: 16rpx;
   outline: none;
   box-sizing: border-box;
@@ -623,10 +632,10 @@ export default {
   display: flex;
   align-items: stretch;
   height: 92rpx;
-  border: 2rpx solid #d1d1d6;
+  border: 2rpx solid var(--color-fill-dim);
   border-radius: 16rpx;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--color-surface);
 }
 
 .phone-field:focus-within {
@@ -639,8 +648,8 @@ export default {
   align-items: center;
   gap: 8rpx;
   padding: 0 16rpx 0 20rpx;
-  border-right: 2rpx solid #e5e5ea;
-  background: #fafafa;
+  border-right: 2rpx solid var(--color-divider);
+  background: var(--background-50);
 }
 
 .country-flag {
@@ -651,12 +660,12 @@ export default {
 .country-dial {
   font-size: 28rpx;
   font-weight: 600;
-  color: #1d1d1f;
+  color: var(--color-text);
 }
 
 .chevron {
   font-size: 18rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
   margin-left: 2rpx;
 }
 
@@ -687,7 +696,7 @@ export default {
   padding: 0 28rpx;
   border-radius: 16rpx;
   background: var(--color-primary, #007aff);
-  color: #ffffff;
+  color: var(--color-surface);
   font-size: 26rpx;
   font-weight: 600;
   display: flex;
@@ -697,7 +706,7 @@ export default {
 }
 
 .code-btn.disabled {
-  background: #c7c7cc;
+  background: var(--color-fill-dim-strong);
 }
 
 /* 密码标题行:label居左 + "忘记密码"link居右(Target标准) */
@@ -736,7 +745,7 @@ export default {
   align-items: center;
   justify-content: center;
   font-size: 36rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
 }
 
 /* 主CTA按钮:全宽实心胶囊(Amazon/Target风格),与注册页同款 */
@@ -744,7 +753,7 @@ export default {
   margin-top: 8rpx;
   height: 104rpx;
   border-radius: 999rpx;
-  background: linear-gradient(135deg, #e8ddb5 0%, #dbc98a 100%);
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -763,16 +772,16 @@ export default {
   font-size: 32rpx;
   font-weight: 800;
   letter-spacing: 2rpx;
-  color: #2e2b29;
+  color: var(--primary-foreground);
 }
 
 .cta-btn.disabled {
-  background: #e5e5ea;
+  background: var(--color-fill-dim);
   box-shadow: none;
 }
 
 .cta-btn.disabled .cta-text {
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
 }
 
 /* 条款区:CTA下方12sp小字居中,不抢主流程注意力 */
@@ -788,7 +797,7 @@ export default {
 .checkbox {
   width: 36rpx;
   height: 36rpx;
-  border: 3rpx solid #c7c7cc;
+  border: 3rpx solid var(--color-fill-dim-strong);
   border-radius: 8rpx;
   flex-shrink: 0;
   display: flex;
@@ -803,7 +812,7 @@ export default {
 }
 
 .check-icon {
-  color: #fff;
+  color: var(--primary-foreground);
   font-size: 24rpx;
   font-weight: 700;
 }
@@ -815,7 +824,7 @@ export default {
 .terms-text {
   font-size: 22rpx;
   line-height: 1.6;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
 }
 
 .terms-link {
@@ -829,7 +838,7 @@ export default {
 .trust-row {
   margin-top: 32rpx;
   padding: 20rpx 24rpx;
-  background: #f7f7f9;
+  background: var(--color-fill-hi);
   border-radius: 16rpx;
   display: flex;
   flex-direction: column;
@@ -850,7 +859,7 @@ export default {
 
 .trust-text {
   font-size: 24rpx;
-  color: #3c3c43;
+  color: var(--color-text);
   line-height: 1.4;
 }
 
@@ -858,13 +867,13 @@ export default {
 .bottom-register {
   margin: 56rpx 0 24rpx;
   padding-top: 28rpx;
-  border-top: 1rpx solid #f0f0f3;
+  border-top: 1rpx solid var(--color-divider);
   text-align: center;
 }
 
 .bottom-text {
   font-size: 26rpx;
-  color: #6e6e73;
+  color: var(--color-text-secondary);
 }
 
 .bottom-link {
@@ -892,7 +901,7 @@ export default {
 .country-sheet {
   width: 100%;
   max-height: 70vh;
-  background: #ffffff;
+  background: var(--color-surface);
   border-radius: 28rpx 28rpx 0 0;
   display: flex;
   flex-direction: column;
@@ -904,7 +913,7 @@ export default {
   display: flex;
   align-items: center;
   padding: 28rpx 28rpx 20rpx;
-  border-bottom: 1rpx solid #f0f0f3;
+  border-bottom: 1rpx solid var(--color-divider);
 }
 
 .sheet-title {
@@ -912,7 +921,7 @@ export default {
   text-align: center;
   font-size: 30rpx;
   font-weight: 700;
-  color: #1d1d1f;
+  color: var(--color-text);
 }
 
 .sheet-close {
@@ -922,7 +931,7 @@ export default {
   align-items: center;
   justify-content: center;
   font-size: 32rpx;
-  color: #8e8e93;
+  color: var(--color-text-tertiary);
 }
 
 .country-list {
@@ -935,7 +944,7 @@ export default {
   display: flex;
   align-items: center;
   padding: 24rpx 28rpx;
-  border-bottom: 1rpx solid #f2f2f7;
+  border-bottom: 1rpx solid var(--color-border, #f2f2f7);
 }
 
 .country-item.active {
@@ -951,13 +960,13 @@ export default {
 .ci-name {
   flex: 1;
   font-size: 28rpx;
-  color: #1d1d1f;
+  color: var(--color-text);
   font-weight: 500;
 }
 
 .ci-dial {
   font-size: 26rpx;
-  color: #6e6e73;
+  color: var(--color-text-secondary);
   font-weight: 600;
 }
 </style>

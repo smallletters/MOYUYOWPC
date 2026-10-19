@@ -303,7 +303,7 @@ onBeforeUnmount(() => {
   border-radius: 24rpx;
   padding: 32rpx;
   margin-bottom: 24rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-card-md);
 }
 .section-head {
   display: flex;

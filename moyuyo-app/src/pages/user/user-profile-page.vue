@@ -18,7 +18,7 @@
       <view class="header">
         <image
           v-if="profile.avatar"
-          :src="profile.avatar"
+          :src="$img(profile.avatar)"
           class="avatar"
           mode="aspectFill" />
         <view v-else class="avatar avatar-text">{{ (profile.nickname || 'U')[0] }}</view>
@@ -70,8 +70,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { followApi, blockApi } from '@/api'
 import { i18n } from '@/i18n'
+import { getPageQuery } from '@/utils/pageQuery'
 
 const loading = ref(false)
 const profile = ref(null)
@@ -143,18 +145,33 @@ function goBack() {
   uni.navigateBack()
 }
 
-onMounted(() => {
+// 幂等启动：onLoad 先于 onMounted 触发，两者都调用，副作用只发生一次
+// 不能只读 `getCurrentPages().slice(-1)[0].options` —— APP 运行时（initPageVm）
+// 从不写 pageVm.options，APP 真机上恒读到 {}，结果是拿不到 userId、页面全空。
+let booted = false
+
+async function bootstrap(options) {
+  if (booted) return
+  booted = true
   try {
-    const pages = getCurrentPages()
-    const cur = pages[pages.length - 1]
-    const q = cur?.options || {}
+    const hasOptions = !!options && typeof options === 'object' && Object.keys(options).length > 0
+    const q = hasOptions ? options : getPageQuery()
     if (q.id) {
-      targetUserId.value = q.id
-      loadProfile(q.id)
+      // 雪花 ID 必须用 String 承接，Number() 会丢精度
+      targetUserId.value = String(q.id)
+      await loadProfile(targetUserId.value)
     }
   } catch (e) {
-    /* ignore */
+    console.warn('[user-profile] read page query failed', e)
   }
+}
+
+onLoad((options) => {
+  bootstrap(options)
+})
+
+onMounted(() => {
+  bootstrap()
 })
 </script>
 
@@ -163,11 +180,24 @@ onMounted(() => {
   min-height: 100vh;
   background: var(--color-background);
 }
+/* 自渲染顶部栏（pages.json 里该页为 navigationStyle: custom）。
+   顶部安全区按全站 v2 约定：基准 88rpx 留在 calc() 外层，取 --status-bar-height 与
+   env(safe-area-inset-top) 的较大值 —— 二者相加会在 iOS 上翻倍，写成 max(88rpx, ...)
+   则 H5 端两者皆 0 时只剩 88rpx 造成回归。
+   第一条为老 WebView 兜底，必须写在前面。
+   内部 .nav-back / .nav-title / .nav-placeholder 都是普通 flex 子项（非 absolute），
+   所以只在这里加 padding-top，不要再给子元素加 top，否则双重下移。 */
 .nav-bar {
   display: flex;
   align-items: center;
-  height: 88rpx;
-  padding: 0 24rpx;
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  padding-right: 24rpx;
+  padding-left: 24rpx;
+  padding-bottom: 0;
+  box-sizing: border-box;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }

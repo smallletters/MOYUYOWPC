@@ -42,6 +42,20 @@ public class UserEntity {
 
     private Integer points;
 
+    // 因"未支付订单"被冻结(占用)的积分：下单即冻结，支付成功转实扣，取消/超时解冻回退。
+    // 可用积分 = points - pointsFrozen（MemberService.getPointsBalance 口径）。
+    // 由 V20260929_01__add_user_points_frozen.sql 迁移新增，DB 端 DEFAULT 0，此处字段缺省值仅为 Java 兜底。
+    //
+    // updateStrategy = NEVER：本列只允许由 MemberService 的
+    // freezePoints / unfreezePoints / consumeFrozenPoints 通过条件 UPDATE
+    // （LambdaUpdateWrapper#setSql，不受本策略影响）原子改写；禁止任何 updateById(整实体) 回写本列。
+    // 原因：全项目大量路径是"读出整实体 → 改若干字段 → userMapper.updateById(user)"
+    // （签到/中奖/任务奖励/评价/邀请/后台调分等），若这些路径也把本列写回，
+    // 就会覆盖并发中刚变更的 points_frozen，导致"冻结被静默释放"的丢更新：
+    // 同一批积分被多笔待付款订单重复占用、支付/取消时条件更新落空走人工对账。
+    @TableField(updateStrategy = FieldStrategy.NEVER)
+    private Integer pointsFrozen;
+
     private Boolean twoFactorEnabled;
 
     private Boolean emailVerified;

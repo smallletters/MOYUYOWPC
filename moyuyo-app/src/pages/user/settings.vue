@@ -370,9 +370,12 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: calc(88rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  /* 取二者较大值（而非相加）：iOS 上 env 与 status-bar-height 同为状态栏高度，相加会翻倍 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
   /* 把内容下移避开状态栏,back-btn 仍贴顶 */
-  padding-top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   box-sizing: border-box;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
@@ -382,7 +385,8 @@ export default {
   position: absolute;
   left: 16rpx;
   /* 跟随 header 的状态栏 padding,保持返回按钮在标题同一水平基线 */
-  top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  top: var(--status-bar-height, 0px);
+  top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   display: inline-flex;
   align-items: center;
   justify-content: center;

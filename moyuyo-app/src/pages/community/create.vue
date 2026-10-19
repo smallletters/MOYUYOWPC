@@ -43,9 +43,10 @@
             >
               <image
                 v-if="p.avatar"
-                :src="p.avatar"
+                :src="$img(p.avatar)"
                 class="pet-tag__avatar"
-                mode="aspectFill" />
+                mode="aspectFill"
+              />
               <view v-else class="pet-tag__avatar pet-tag__avatar--ph">
                 <text class="luc luc-paw-print" />
               </view>
@@ -213,7 +214,7 @@
           </text>
           <image
             v-if="coverUrl"
-            :src="coverUrl"
+            :src="$img(coverUrl)"
             class="media-video__cover-thumb"
             mode="aspectFill"
           />
@@ -232,7 +233,7 @@
           @tap="onImageTapInDragMode(idx)"
           @touchmove.stop.prevent="noop"
         >
-          <image :src="img" class="media-thumb__img" mode="aspectFill" />
+          <image :src="$img(img)" class="media-thumb__img" mode="aspectFill" />
           <!-- 拖拽模式下显示序号 -->
           <view v-if="draggingIndex >= 0" class="media-thumb__order">
             {{ idx + 1 }}
@@ -517,7 +518,7 @@
               :class="{ active: selectedCoverIdx === idx }"
               @tap="onSelectCover(idx)"
             >
-              <image :src="c.dataUrl" class="cover-grid__img" mode="aspectFill" />
+              <image :src="$img(c.dataUrl)" class="cover-grid__img" mode="aspectFill" />
               <view class="cover-grid__time">{{ formatDuration(c.time) }}</view>
               <view v-if="selectedCoverIdx === idx" class="cover-grid__check">✓</view>
             </view>
@@ -3468,8 +3469,14 @@ export default {
   align-items: center;
   /* APP 端因 navigationStyle:custom 自渲染 header,
      需为系统状态栏预留顶部空间 */
-  height: calc(88rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
-  padding: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px)) 24rpx 0;
+  /* 取二者较大值（而非相加）：iOS 上 env 与 status-bar-height 同为状态栏高度，相加会翻倍 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  padding-right: 24rpx;
+  padding-left: 24rpx;
+  padding-bottom: 0;
   box-sizing: border-box;
   background: var(--color-surface, #ffffff);
   border-bottom: 1rpx solid var(--color-divider, #ececec);

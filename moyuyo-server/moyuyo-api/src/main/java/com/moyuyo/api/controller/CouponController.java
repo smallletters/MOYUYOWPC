@@ -57,9 +57,22 @@ public class CouponController {
         // CouponEntity 中的 discountValue 是『价格百分比』(PERCENT) / 减免金额(AMOUNT),
         // 通过 CouponView 额外暴露 displayValue：『折数』(PERCENT) / 减免金额(AMOUNT),
         // 避免 C 端按字面值展示金额时把"9 折"显示为"90 元"。
-        List<CouponEntity> list = couponService.listUserCoupons(UserContextHolder.getUserId(), status);
+        // 另外必须暴露 userCouponId(mo_user_coupon.id)：前端下单要拿它核销券，
+        // 原实现只返回券模板，导致 checkout 提交的 couponUserId 永远为 undefined（P0 资金口径缺陷）。
+        List<UserCouponEntity> list = couponService.listUserCoupons(UserContextHolder.getUserId(), status);
         List<CouponView> views = new ArrayList<>(list.size());
-        for (CouponEntity c : list) views.add(CouponView.from(c));
+        if (!list.isEmpty()) {
+            // 批量查券模板，避免 N+1
+            List<Long> couponIds = list.stream()
+                    .map(UserCouponEntity::getCouponId)
+                    .collect(java.util.stream.Collectors.toList());
+            java.util.Map<Long, CouponEntity> couponMap = couponService.mapCouponsByIds(couponIds);
+            for (UserCouponEntity uc : list) {
+                // 保持"一条 user_coupon 一条记录"语义：以 uc 为主键组装视图，模板字段从 couponMap 取
+                CouponView v = CouponView.from(couponMap.get(uc.getCouponId()), uc);
+                if (v != null) views.add(v);
+            }
+        }
         return Result.success(views);
     }
 
@@ -130,6 +143,14 @@ public class CouponController {
     /**
      * C 端优惠券展示视图：在 CouponEntity 基础上额外暴露 displayValue，
      * 使前端拿到与 UI 语义一致的字段值（PERCENT → 折数；AMOUNT → 金额）。
+     * <p>
+     * 另携带用户券维度字段（仅 /mine 接口填充）：
+     * <ul>
+     *   <li>{@code userCouponId} = mo_user_coupon.id（前端下单核销必须用它，而非券模板 id）</li>
+     *   <li>{@code couponId}     = 券模板 id（等价于 id，命名对齐前端语义）</li>
+     *   <li>{@code status}       = 用户券状态 UNUSED / LOCKED / USED</li>
+     * </ul>
+     * 注意：{@code id} 仍为券模板 id，不能改（前端 bestCoupon / isCouponAvailable 依赖该字段名）。
      */
     public static class CouponView {
         public Long id;
@@ -149,9 +170,19 @@ public class CouponController {
         public Boolean claimedByMe;
         public java.time.LocalDateTime createTime;
 
+        // ===== 用户券维度（仅"我的优惠券"填充；可领列表/详情为 null）=====
+        /** 用户优惠券记录 id（mo_user_coupon.id），下单核销键 */
+        public Long userCouponId;
+        /** 券模板 id（与 id 等值，语义更明确） */
+        public Long couponId;
+        /** 用户券状态：UNUSED / LOCKED（下单占用）/ USED */
+        public String status;
+
         public static CouponView from(CouponEntity c) {
+            if (c == null) return null;
             CouponView v = new CouponView();
             v.id = c.getId();
+            v.couponId = c.getId();
             v.name = c.getName();
             v.description = c.getDescription();
             v.type = c.getType();
@@ -167,6 +198,21 @@ public class CouponController {
             v.active = c.getActive();
             v.claimedByMe = c.getClaimedByMe();
             v.createTime = c.getCreateTime();
+            return v;
+        }
+
+        /**
+         * 组装"我的优惠券"视图：模板字段取 coupon，用户券字段取 uc。
+         * 模板不存在（券被下架/删除）时返回 null，由调用方过滤。
+         */
+        public static CouponView from(CouponEntity c, UserCouponEntity uc) {
+            CouponView v = from(c);
+            if (v == null) return null;
+            if (uc != null) {
+                v.userCouponId = uc.getId();
+                v.couponId = uc.getCouponId();
+                v.status = uc.getStatus();
+            }
             return v;
         }
     }

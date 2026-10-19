@@ -84,9 +84,15 @@
 
     <!-- 商品上下文(从商品详情页跳转过来时携带) -->
     <view v-if="productName" class="product-context">
-      <text class="product-context-label">{{ $t('csChat.productContextHint') }}{{ $t('csChat.productContextHintSuffix') }}</text>
+      <text class="product-context-label">
+        {{ $t('csChat.productContextHint') }}{{ $t('csChat.productContextHintSuffix') }}
+      </text>
       <text class="product-context-name">{{ productName }}</text>
-      <view class="product-context-close" :aria-label="$t('csChat.closeAriaLabel')" @tap="clearProductContext">
+      <view
+        class="product-context-close"
+        :aria-label="$t('csChat.closeAriaLabel')"
+        @tap="clearProductContext"
+      >
         <text class="luc luc-x" />
       </view>
     </view>
@@ -116,15 +122,14 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { csApi } from '@/api'
 import { i18n } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
+import { getPageQuery } from '@/utils/pageQuery'
 usePageTitle('pageTitle.userCustomerService')
 
-
 const sessionId = ref(null)
-
 
 const messages = ref([])
 const draft = ref('')
@@ -154,13 +159,34 @@ const quickReplies = computed(() => {
   return list.map((text) => ({ text }))
 })
 
-// 接收路由参数(从商品详情页跳转时携带商品 ID/名称)
-function parseQuery() {
-  const pages = getCurrentPages()
-  const page = pages[pages.length - 1]
-  const q = page?.options || {}
-  productId.value = decodeURIComponent(q.productId || '')
-  productName.value = decodeURIComponent(q.productName || '')
+/**
+ * 接收路由参数(从商品详情页跳转时携带商品 ID/名称)。
+ *
+ * 不能只读 `getCurrentPages().slice(-1)[0].options` —— APP 运行时（initPageVm）
+ * 从不写 pageVm.options，APP 真机上恒读到 {}，结果是客服会话丢失商品上下文。
+ * 这里优先用 uni-app 官方 onLoad 入参，拿不到时回落 getPageQuery()（多路径兜底）。
+ *
+ * @param {Object} [options] uni-app onLoad 传入的页面参数
+ */
+function parseQuery(options) {
+  const hasOptions = !!options && typeof options === 'object' && Object.keys(options).length > 0
+  const q = hasOptions ? options : getPageQuery()
+  // decodeURIComponent 遇到非法百分号编码（如商品名含「100%棉」）会抛 URIError。
+  // 这里必须降级成空值而不是让异常冒泡：parseQuery 在 bootstrap 的最前面执行，
+  // 一旦抛出，booted 还没置位、ensureSession() 永不执行，且 onMounted 再调仍会抛，
+  // 结果是客服页彻底不可用且无自愈。其余读参页面同理都包了 try/catch。
+  try {
+    productId.value = decodeURIComponent(q.productId || '')
+  } catch (e) {
+    console.warn('[cs] decode productId failed', e)
+    productId.value = ''
+  }
+  try {
+    productName.value = decodeURIComponent(q.productName || '')
+  } catch (e) {
+    console.warn('[cs] decode productName failed', e)
+    productName.value = ''
+  }
 }
 
 function formatTime(t) {
@@ -405,8 +431,15 @@ const onShowRefresh = async () => {
   }
 }
 
-onMounted(() => {
-  parseQuery()
+// 幂等启动：onLoad 先于 onMounted 触发，两者都调用，副作用只发生一次。
+// 注意 parseQuery 必须在 ensureSession 之前执行：ensureSession 依赖 productName
+// 决定会话类目（PRODUCT / GENERAL）与是否自动发送开场白。
+let booted = false
+
+function bootstrap(options) {
+  parseQuery(options)
+  if (booted) return
+  booted = true
   ensureSession()
   // 等 session 建立后再开始轮询
   setTimeout(() => {
@@ -420,6 +453,14 @@ onMounted(() => {
       setTimeout(startIdleCheck, 1500)
     }
   }, 600)
+}
+
+onLoad((options) => {
+  bootstrap(options)
+})
+
+onMounted(() => {
+  bootstrap()
 })
 
 onBeforeUnmount(() => {
@@ -446,12 +487,25 @@ onShow(() => {
   padding-bottom: calc(120rpx + env(safe-area-inset-bottom, 0));
   box-sizing: border-box;
 }
+/* 顶部导航栏
+   APP 端因为 navigationStyle:custom 自渲染 header,
+   需为系统状态栏(刘海/灵动岛/胶囊)预留顶部空间,
+   加上 var(--status-bar-height) 与 env(safe-area-inset-top) 兜底 */
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 88rpx;
-  padding: 0 24rpx;
+  /* 取二者较大值（而非相加）：iOS 上 env 与 status-bar-height 同为状态栏高度，相加会翻倍 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  /* 把内容下移避开状态栏,三个 flex 子项会一起下移 */
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  /* 左右保持原有 24rpx 内边距 */
+  padding-right: 24rpx;
+  padding-left: 24rpx;
+  padding-bottom: 0;
+  box-sizing: border-box;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }
@@ -682,7 +736,7 @@ onShow(() => {
   padding-bottom: calc(12rpx + env(safe-area-inset-bottom, 0));
   background: var(--color-surface);
   border-top: 1rpx solid var(--color-divider);
-  box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-top);
 }
 .input {
   flex: 1;

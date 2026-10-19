@@ -168,7 +168,10 @@ export default {
   gap: 16rpx;
   padding: 16rpx 24rpx;
   background: var(--color-surface);
-  padding-top: calc(16rpx + env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  /* 本页在 pages.json 中**没有** navigationStyle:custom，即使用原生导航栏，
+     webview 内容本就从导航栏下方开始，再加 --status-bar-height 会在 APP 端多出一段空白。
+     只保留 env 项，用于兜底 H5 PWA/standalone（viewport-fit=cover）场景。 */
+  padding-top: calc(16rpx + env(safe-area-inset-top, 0px));
 }
 
 .search-input-wrap {

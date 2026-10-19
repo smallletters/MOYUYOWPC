@@ -5,7 +5,7 @@
       <view class="header-btn" @tap="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">分享商品</text>
+      <text class="header-title">{{ $t('shareProduct.title') }}</text>
       <view class="header-btn" @tap="handleClose">
         <text class="close-icon luc-x" />
       </view>
@@ -18,7 +18,7 @@
           <view class="product-image-area">
             <image
               v-if="productImage"
-              :src="productImage"
+              :src="$img(productImage)"
               class="product-main-image"
               mode="aspectFill"
             />
@@ -47,23 +47,25 @@
             <view class="share-qr-row">
               <image
                 v-if="qrUrl"
-                :src="qrUrl"
+                :src="$img(qrUrl)"
                 class="qr-code-img"
                 mode="aspectFit"
                 @tap="previewQr"
               />
               <view v-else class="qr-code qr-code--loading">
-                <text class="loading-text">二维码加载中...</text>
+                <text class="loading-text">{{ $t('shareProduct.qrLoading') }}</text>
               </view>
               <view class="qr-info">
-                <text class="qr-label">扫码查看详情</text>
+                <text class="qr-label">{{ $t('shareProduct.qrScanHint') }}</text>
                 <view class="qr-recommender">
                   <view class="recommender-avatar">
                     <text><text class="luc luc-user" /></text>
                   </view>
-                  <text class="recommender-name">推荐人：{{ recommender }}</text>
+                  <text class="recommender-name">
+                    {{ $t('shareProduct.recommenderPrefix', { name: recommender }) }}
+                  </text>
                 </view>
-                <text class="qr-source">来自 MOYUYO 宠物商城</text>
+                <text class="qr-source">{{ $t('shareProduct.qrSource') }}</text>
               </view>
             </view>
           </view>
@@ -72,19 +74,19 @@
 
       <!-- 分享链接（可复制） -->
       <view class="section">
-        <text class="section-title">分享链接</text>
+        <text class="section-title">{{ $t('shareProduct.linkTitle') }}</text>
         <view class="link-card">
           <text class="link-text" :selectable="true">{{ shareLink }}</text>
           <view class="link-copy" @tap="onCopyLink">
             <text class="luc luc-clipboard-list" />
-            <text class="link-copy-text">复制</text>
+            <text class="link-copy-text">{{ $t('shareProduct.copy') }}</text>
           </view>
         </view>
       </view>
 
       <!-- 分享渠道 -->
       <view class="section">
-        <text class="section-title">分享到</text>
+        <text class="section-title">{{ $t('shareProduct.shareToTitle') }}</text>
         <view class="share-channels">
           <view
             v-for="channel in channels"
@@ -129,12 +131,12 @@
 
       <!-- 自定义消息 -->
       <view class="section">
-        <text class="section-title">添加分享文案（可选）</text>
+        <text class="section-title">{{ $t('shareProduct.customMessageTitle') }}</text>
         <view class="message-input-wrapper">
           <textarea
             v-model="customMessage"
             class="message-input"
-            placeholder="写一段推荐语..."
+            :placeholder="$t('shareProduct.customMessagePlaceholder')"
             maxlength="200"
           />
           <text class="char-count">{{ customMessage.length }}/200</text>
@@ -145,7 +147,7 @@
       <view class="generate-btn" @tap="handleGenerateImage">
         <text>
           <text class="luc luc-arrow-up" />
-          生成分享图片
+          {{ $t('shareProduct.generateImage') }}
         </text>
       </view>
 
@@ -174,13 +176,13 @@ export default {
     return {
       productId: null,
       product: {
-        name: '宠物商品',
+        name: this.$t('shareProduct.defaultProductName'),
         shortDetail: '',
         price: 0,
         originalPrice: 0,
       },
       productImage: '',
-      recommender: 'MOYUYO 用户',
+      recommender: this.$t('shareProduct.defaultUserName'),
       customMessage: '',
       qrUrl: '',
       shareLink: '',
@@ -191,19 +193,29 @@ export default {
         { id: 'email', name: 'Email', icon: 'mail', bg: 'var(--background-200)' },
         {
           id: 'messages',
-          name: '短信',
+          name: this.$t('shareProduct.channelMessages'),
           icon: 'message-circle',
           bg: 'var(--state-success-surface)',
         },
         { id: 'whatsapp', name: 'WhatsApp', icon: 'send', bg: 'var(--state-success-surface)' },
         { id: 'twitter', name: 'X', brand: '𝕏', bg: 'var(--background-200)' },
-        { id: 'copy', name: '复制链接', icon: 'link', bg: 'var(--brand-50)' },
+        {
+          id: 'copy',
+          name: this.$t('shareProduct.channelCopyLink'),
+          icon: 'link',
+          bg: 'var(--brand-50)',
+        },
         { id: 'facebook', name: 'Facebook', brand: 'f', bg: 'var(--background-200)' },
       ],
       shareSettings: [
-        { id: 'caption', label: '添加分享文案', value: false, last: false },
-        { id: 'price', label: '显示价格', value: true, last: false },
-        { id: 'watermark', label: '添加水印', value: true, last: true },
+        { id: 'caption', label: this.$t('shareProduct.settingCaption'), value: false, last: false },
+        { id: 'price', label: this.$t('shareProduct.settingPrice'), value: true, last: false },
+        {
+          id: 'watermark',
+          label: this.$t('shareProduct.settingWatermark'),
+          value: true,
+          last: true,
+        },
       ],
     }
   },
@@ -213,7 +225,7 @@ export default {
     this.productId = query && query.id ? query.id : null
     // 推荐人：取本地用户昵称，未登录时显示 MOYUYO 用户
     const userInfo = getStorage(STORAGE_KEYS.USER_INFO)
-    this.recommender = (userInfo && userInfo.nickname) || 'MOYUYO 用户'
+    this.recommender = (userInfo && userInfo.nickname) || this.$t('shareProduct.defaultUserName')
     // 构造分享链接（用前端绝对域名；H5 与 App 都能识别）
     this.shareLink = this.buildShareLink()
     // 二维码图片 URL：直接指向后端 QR 接口
@@ -252,7 +264,7 @@ export default {
         const data = await productApi.getProductDetail(this.productId)
         if (!data) return
         this.product = {
-          name: data.name || '宠物商品',
+          name: data.name || this.$t('shareProduct.defaultProductName'),
           shortDetail: data.shortDetail || '',
           price: parseFloat(data.price) || 0,
           originalPrice: parseFloat(data.originalPrice) || 0,
@@ -339,7 +351,9 @@ export default {
     },
 
     shareByEmail(text) {
-      const subject = encodeURIComponent(`推荐：${this.product.name}`)
+      const subject = encodeURIComponent(
+        this.$t('shareProduct.emailSubject', { name: this.product.name }),
+      )
       const body = encodeURIComponent(`${text}\n\n${this.shareLink}`)
       const href = `mailto:?subject=${subject}&body=${body}`
       this.openExternal(href)
@@ -512,7 +526,7 @@ export default {
         ctx.fillRect(imgX, imgY, imgW, imgH)
         ctx.setFillStyle('#BBBBBB')
         ctx.setFontSize(22)
-        ctx.fillText('商品图片加载失败', imgX + 220, imgY + 180)
+        ctx.fillText(this.$t('shareProduct.imgLoadFailed'), imgX + 220, imgY + 180)
       }
 
       // 商品名称
@@ -552,14 +566,14 @@ export default {
         ctx.strokeRect(qrX, qrY, qrSize, qrSize)
         ctx.setFillStyle('#999999')
         ctx.setFontSize(20)
-        ctx.fillText('二维码加载失败', qrX + 30, qrY + 100)
+        ctx.fillText(this.$t('shareProduct.qrLoadFailed'), qrX + 30, qrY + 100)
       }
 
       // "扫码查看商品详情" + 链接（放在二维码右侧）
       const textX = qrX + qrSize + 24
       ctx.setFillStyle('#111111')
       ctx.setFontSize(24)
-      ctx.fillText('扫码查看商品详情', textX, qrY + 36)
+      ctx.fillText(this.$t('shareProduct.posterScanHint'), textX, qrY + 36)
       ctx.setFillStyle('#666666')
       ctx.setFontSize(16)
       // 链接最多 60 字符；超出截断
@@ -570,7 +584,7 @@ export default {
       // 品牌水印
       ctx.setFillStyle('#999999')
       ctx.setFontSize(18)
-      ctx.fillText('— MOYUYO 宠物商城 —', 40, h - 30)
+      ctx.fillText(this.$t('shareProduct.posterFooter'), 40, h - 30)
 
       ctx.draw(false, () => {
         uni.hideLoading()
@@ -632,8 +646,15 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 88rpx;
-  padding: 0 30rpx;
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  padding-right: 30rpx;
+  padding-left: 30rpx;
+  padding-bottom: 0;
+  box-sizing: border-box;
   background: var(--background);
   border-bottom: 2rpx solid var(--border);
   position: sticky;

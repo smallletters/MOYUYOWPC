@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="product-subscribe-list">
     <!-- 顶部导航栏 -->
     <view class="header">
@@ -59,7 +59,7 @@
       <!-- 商品列表 -->
       <view class="product-list">
         <view v-for="item in filteredProducts" :key="item.id" class="product-card">
-          <image :src="item.image" class="product-image" mode="aspectFill" />
+          <image :src="$img(item.image)" class="product-image" mode="aspectFill" />
           <view class="product-info">
             <text class="product-name">{{ item.name }}</text>
             <text class="product-desc">{{ item.desc }}</text>
@@ -104,9 +104,7 @@ import { ref, computed } from 'vue'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.goodsProductSubscribeList')
 
-
 // 搜索关键词
-
 
 const searchKeyword = ref('')
 
@@ -222,19 +220,43 @@ const goSubscribe = (item) => {
 
 <style lang="scss" scoped>
 .product-subscribe-list {
-  min-height: 100vh;
+  /* 视口锁定外壳：整页固定 100vh 且 overflow:hidden，唯一滚动权威是内部 .content(scroll-y)。
+     三个常流前置子项 header / search-bar / category-scroll 均 flex-shrink:0 防塌陷。 */
+  display: flex;
+  flex-direction: column;
+  /* 视口高度：三层渐进增强。
+     1) 100vh  —— 兜底，所有环境合法
+     2) 100dvh —— H5 移动浏览器动态视口（地址栏）
+     3) calc(100dvh - var(--window-top, 0px)) —— 扣除 uni-app 顶部窗口偏移：
+        非 custom 页 = 导航栏高 + 状态栏高（H5 与 app-plus 均非 0），custom 页 = 0；必须扣除，
+        否则顶部内容会顶到导航栏/状态栏底下。
+     只减 --window-top 不减 --window-bottom：后者在 H5 归一化为 env(safe-area-inset-bottom)，
+     会与页面自身底栏的 safe-area padding 重复预留；本批无 tabBar 页，故安全。
+     末尾 0px 兜底：变量缺失时避免整条声明 invalid-at-computed-value → height 退化为 auto。 */
+  height: 100vh;
+  height: 100dvh;
+  height: calc(100dvh - var(--window-top, 0px));
+  overflow: hidden;
   background: var(--color-background);
 }
 
 .header {
-  position: sticky;
-  top: 0;
-  z-index: 30;
+  /* 常流 flex 子项：父级已 overflow:hidden，sticky 无滚动容器可依附（渲染同 relative），
+     故删除 position:sticky / top / z-index。保留 position:relative 是为了继续作为
+     .back-btn(position:absolute) 的定位祖先（相对定位不产生 fixed 包含块问题，因为本页
+     没有 fixed 子元素）。作为唯一的 scroll-view 前置兄弟天然常驻顶部。 */
+  position: relative;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 88rpx;
-  background: rgba(255, 255, 255, 0.88);
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  box-sizing: border-box;
+  background: var(--color-surface-veil-88, rgba(255, 255, 255, 0.88));
   backdrop-filter: blur(20px);
   border-bottom: 1rpx solid var(--color-border);
 }
@@ -242,13 +264,16 @@ const goSubscribe = (item) => {
 .back-btn {
   position: absolute;
   left: 16rpx;
+  /* 绝对定位元素吃不到父级 padding，需自行下移状态栏高度 */
+  top: var(--status-bar-height, 0px);
+  top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 72rpx;
   height: 72rpx;
   border-radius: 999rpx;
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--color-overlay-subtle, rgba(0, 0, 0, 0.04));
 }
 
 .back-icon {
@@ -269,6 +294,7 @@ const goSubscribe = (item) => {
 
 /* 搜索栏 */
 .search-bar {
+  flex-shrink: 0;
   padding: 16rpx 32rpx;
 }
 
@@ -278,7 +304,7 @@ const goSubscribe = (item) => {
   gap: 12rpx;
   padding: 16rpx 24rpx;
   border-radius: 999rpx;
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--color-overlay-subtle, rgba(0, 0, 0, 0.04));
 }
 
 .search-icon {
@@ -299,6 +325,8 @@ const goSubscribe = (item) => {
 
 /* 分类标签 */
 .category-scroll {
+  /* 横向 scroll-x 行：作为 flex 子项若不 fixed-shrink 高度会被压塌，必须 flex-shrink:0 */
+  flex-shrink: 0;
   white-space: nowrap;
   padding: 0 32rpx;
 }
@@ -311,7 +339,7 @@ const goSubscribe = (item) => {
 .category-tag {
   padding: 12rpx 28rpx;
   border-radius: 999rpx;
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--color-overlay-subtle, rgba(0, 0, 0, 0.04));
   flex-shrink: 0;
 }
 
@@ -331,7 +359,10 @@ const goSubscribe = (item) => {
 
 /* 内容区域 */
 .content {
-  height: calc(100vh - 88rpx - 120rpx - 80rpx);
+  /* flex:1 取代 calc(100vh - 88rpx - 120rpx - 80rpx)（三项分别扣 header/搜索栏/分类行，
+     任一高度变化即失配）。min-height:0 允许收缩到小于内容高度以真正产生滚动。 */
+  flex: 1;
+  min-height: 0;
   padding: 0 32rpx;
 }
 
@@ -521,7 +552,7 @@ const goSubscribe = (item) => {
   margin-bottom: 32rpx;
   padding: 20rpx 24rpx;
   border-radius: 16rpx;
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--color-overlay-subtle, rgba(0, 0, 0, 0.04));
 }
 
 .tip-icon {

@@ -3,6 +3,7 @@
  * 插件标识: MOYUYO-Auth
  * 功能: Apple Sign-In / Google Sign-In / Facebook Login
  */
+import { t } from '@/i18n'
 /* eslint-disable no-unreachable */
 
 const PLUGIN_NAME = 'MOYUYO-Auth'
@@ -15,7 +16,7 @@ export function loginWithApple() {
   // #ifdef APP-PLUS
   const plugin = uni.requireNativePlugin(PLUGIN_NAME)
   if (!plugin) {
-    return Promise.reject(new Error('原生登录插件不可用,请使用其他登录方式'))
+    return Promise.reject(new Error(t('authPlugin.nativeUnavailable')))
   }
   return new Promise((resolve, reject) => {
     plugin.loginWithApple({}, (result) => {
@@ -27,13 +28,13 @@ export function loginWithApple() {
           identityToken: result.identityToken,
         })
       } else {
-        reject(new Error(result.message || 'Apple 登录失败'))
+        reject(new Error(result.message || t('authPlugin.loginFailed', { provider: 'Apple' })))
       }
     })
   })
   // #endif
   /* #ifndef APP-PLUS */
-  return Promise.reject(new Error('当前环境不支持 Apple 登录'))
+  return Promise.reject(new Error(t('authPlugin.unsupported', { provider: 'Apple' })))
   /* #endif */
 }
 
@@ -45,7 +46,7 @@ export function loginWithGoogle() {
   // #ifdef APP-PLUS
   const plugin = uni.requireNativePlugin(PLUGIN_NAME)
   if (!plugin) {
-    return Promise.reject(new Error('原生登录插件不可用,请使用其他登录方式'))
+    return Promise.reject(new Error(t('authPlugin.nativeUnavailable')))
   }
   return new Promise((resolve, reject) => {
     plugin.loginWithGoogle({}, (result) => {
@@ -57,13 +58,13 @@ export function loginWithGoogle() {
           photoUrl: result.photoUrl,
         })
       } else {
-        reject(new Error(result.message || 'Google 登录失败'))
+        reject(new Error(result.message || t('authPlugin.loginFailed', { provider: 'Google' })))
       }
     })
   })
   // #endif
   /* #ifndef APP-PLUS */
-  return Promise.reject(new Error('当前环境不支持 Google 登录'))
+  return Promise.reject(new Error(t('authPlugin.unsupported', { provider: 'Google' })))
   /* #endif */
 }
 
@@ -75,7 +76,7 @@ export function loginWithFacebook() {
   // #ifdef APP-PLUS
   const plugin = uni.requireNativePlugin(PLUGIN_NAME)
   if (!plugin) {
-    return Promise.reject(new Error('原生登录插件不可用,请使用其他登录方式'))
+    return Promise.reject(new Error(t('authPlugin.nativeUnavailable')))
   }
   return new Promise((resolve, reject) => {
     plugin.loginWithFacebook({}, (result) => {
@@ -87,13 +88,13 @@ export function loginWithFacebook() {
           email: result.email,
         })
       } else {
-        reject(new Error(result.message || 'Facebook 登录失败'))
+        reject(new Error(result.message || t('authPlugin.loginFailed', { provider: 'Facebook' })))
       }
     })
   })
   // #endif
   /* #ifndef APP-PLUS */
-  return Promise.reject(new Error('当前环境不支持 Facebook 登录'))
+  return Promise.reject(new Error(t('authPlugin.unsupported', { provider: 'Facebook' })))
   /* #endif */
 }
 
@@ -147,13 +148,13 @@ export function useAuthPlugin() {
       // #ifdef APP-PLUS
       const plugin = uni.requireNativePlugin(PLUGIN_NAME)
       if (!plugin) {
-        resolve({ success: false, error: '原生登录插件不可用' })
+        resolve({ success: false, error: t('authPlugin.nativeUnavailableShort') })
         return
       }
       plugin[method](args, (res) => resolve(res))
       // #endif
       // #ifndef APP-PLUS
-      resolve({ success: false, error: '原生登录插件不可用' })
+      resolve({ success: false, error: t('authPlugin.nativeUnavailableShort') })
       // #endif
     })
   }

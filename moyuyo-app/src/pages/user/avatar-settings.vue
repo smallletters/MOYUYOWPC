@@ -285,7 +285,10 @@ onBeforeUnmount(() => {
   padding-bottom: 180rpx;
 }
 
-/* 顶部导航栏 */
+/* 顶部导航栏
+   APP 端因为 navigationStyle:custom 自渲染 header,
+   需为系统状态栏(刘海/灵动岛/胶囊)预留顶部空间;
+   取 var(--status-bar-height) 与 env(safe-area-inset-top) 的较大值,避免 iOS 上双重计算 */
 .header {
   position: sticky;
   top: 0;
@@ -293,8 +296,14 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 88rpx;
-  padding: 0 24rpx;
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  padding-right: 24rpx;
+  padding-left: 24rpx;
+  padding-bottom: 0;
+  box-sizing: border-box;
   background: var(--color-card);
   border-bottom: 1rpx solid var(--color-border);
 }
@@ -302,6 +311,9 @@ onBeforeUnmount(() => {
 .back-btn {
   position: absolute;
   left: 24rpx;
+  /* 绝对定位子元素吃不到父级 padding,需自行下移避开状态栏 */
+  top: var(--status-bar-height, 0px);
+  top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   width: 72rpx;
   height: 72rpx;
   display: flex;
@@ -623,7 +635,7 @@ onBeforeUnmount(() => {
   z-index: 40;
   padding: 24rpx 40rpx;
   padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--color-surface-veil-88, rgba(255, 255, 255, 0.88));
   backdrop-filter: blur(20px);
   border-top: 1rpx solid var(--color-border);
 }

@@ -12,7 +12,7 @@
     <scroll-view class="content" scroll-y>
       <!-- 商品信息摘要 -->
       <view class="product-summary">
-        <image :src="product.image" class="product-image" mode="aspectFill" />
+        <image :src="$img(product.image)" class="product-image" mode="aspectFill" />
         <view class="product-info">
           <text class="product-name">{{ product.name }}</text>
           <text class="product-price">{{ currencySymbol }}{{ product.price }}</text>
@@ -108,9 +108,6 @@
           </view>
         </view>
       </view>
-
-      <!-- 底部占位 -->
-      <view class="bottom-spacer" />
     </scroll-view>
 
     <!-- 底部固定 CTA -->
@@ -139,7 +136,7 @@ usePageTitle('pageTitle.userSubscribePlan')
 // 商品信息 mock
 
 const product = ref({
-  name: 'MOYUYO 温和沐浴露 500ml',
+  name: i18n.t('subscribe.mockProductName'),
   price: '28.00',
   image: '/static/images/product-shampoo.png',
 })
@@ -151,7 +148,7 @@ const selectedPlan = ref('monthly')
 const firstDeliveryDate = ref('2026-07-15')
 
 // 配送地址
-const deliveryAddress = ref('默认地址 - 北京市朝阳区')
+const deliveryAddress = ref(i18n.t('subscribe.mockAddress'))
 
 // 订阅计划列表 mock（name/periodLabel/benefits 存 i18n key，展示时翻译）
 const plans = ref([
@@ -260,14 +257,26 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 .subscribe-plan {
-  min-height: 100vh;
+  /* 视口锁定外壳：整页固定为 100vh 并裁剪溢出，消除「页面级滚动」，
+     唯一滚动权威是内部的 <scroll-view class="content">（flex:1 占满剩余空间）。
+     导航栏与底部栏均为常流 flex 子项，天然吸顶/贴底，不再被页面橡皮筋拖动。 */
+  display: flex;
+  flex-direction: column;
+  /* 100vh 先写做兜底：不支持 dvh 的旧 webview/APP 端会忽略下一行并保留它 */
+  height: 100vh;
+  /* H5 移动浏览器：dvh 跟随动态视口，避免地址栏/工具栏把底部栏顶出可视区 */
+  height: 100dvh;
+  /* 非 custom 页（app-plus/H5）：100dvh 已含原生导航栏区，须减去 --window-top
+     （标题栏高 + 状态栏高）让内容避开原生导航栏；只减 window-top，不减 window-bottom。 */
+  height: calc(100dvh - var(--window-top, 0px));
+  overflow: hidden;
   background: var(--color-background);
 }
 
 .header {
-  position: sticky;
-  top: 0;
-  z-index: 30;
+  /* 常流 flex 子项，锚定在不可滚动的视口外壳顶部，天然吸顶；
+     父级 overflow:hidden 后原 position:sticky/top/z-index 已无处依附，故删除。 */
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -304,12 +313,13 @@ onUnmounted(() => {
 }
 
 .content {
-  height: calc(100vh - 88rpx);
+  /* 不再硬算高度：用 flex:1 占据 header 与底部栏之间的剩余空间，
+     min-height:0 允许收缩到小于内容高度，使 <scroll-view> 内部真正产生滚动。 */
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
   padding: 0 32rpx;
-}
-
-.bottom-spacer {
-  height: 280rpx;
 }
 
 /* 商品摘要 */
@@ -611,14 +621,16 @@ onUnmounted(() => {
 
 /* 底部固定栏 */
 .bottom-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 40;
+  /* 作为视口锁定外壳(.subscribe-plan)的最后一个常流 flex 子项，天然稳定贴底，
+     不再使用 position:fixed：页面不发生滚动，底栏就不会随拖动位移/形变。 */
+  flex-shrink: 0;
+  /* 保持 content-box：safe-area 的 padding-bottom 需叠加在内容盒之外，
+     改成 border-box 会把安全区内缩进内容盒，把按钮压扁。 */
+  box-sizing: content-box;
   padding: 24rpx 32rpx;
   padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--color-surface-veil-92, rgba(255, 255, 255, 0.92));
+  /* backdrop-filter 只作用于底栏自身、不产生 fixed 后代，保留无害 */
   backdrop-filter: blur(20px);
   border-top: 1rpx solid var(--color-border);
 }

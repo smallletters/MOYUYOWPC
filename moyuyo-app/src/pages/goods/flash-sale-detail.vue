@@ -33,11 +33,11 @@
       indicator-active-color="#ff4757"
     >
       <swiper-item v-for="(img, index) in productImages" :key="index">
-        <image :src="img" class="swiper-img" mode="aspectFill" />
+        <image :src="$img(img)" class="swiper-img" mode="aspectFill" />
       </swiper-item>
     </swiper>
     <view v-else class="product-swiper product-swiper-empty">
-      <text class="empty-text">暂无商品图</text>
+      <text class="empty-text">{{ $t('flashSale.noImage') }}</text>
     </view>
 
     <!-- 商品信息 -->
@@ -53,19 +53,25 @@
             {{ currencySymbol }}{{ Number(product.originalPrice).toFixed(2) }}
           </text>
           <view v-if="discountLabel" class="discount-badge">
-            <text class="discount-text">{{ discountLabel }}折</text>
+            <text class="discount-text">
+              {{ $t('flashSale.discountSuffix', { discount: discountLabel }) }}
+            </text>
           </view>
         </view>
       </view>
-      <text class="product-name">{{ sale.name || product.name || '限时秒杀' }}</text>
+      <text class="product-name">
+        {{ sale.name || product.name || $t('flashSale.defaultTitle') }}
+      </text>
       <text class="product-desc">
-        {{ product.description || sale.description || '限时特价，售完即止' }}
+        {{ product.description || sale.description || $t('flashSale.defaultDesc') }}
       </text>
       <view class="stock-row">
-        <text class="stock-label">已抢 {{ sale.soldStock || 0 }} 件</text>
-        <text class="stock-label">剩余 {{ stockLeft }} 件</text>
+        <text class="stock-label">
+          {{ $t('flashSale.soldCount', { count: sale.soldStock || 0 }) }}
+        </text>
+        <text class="stock-label">{{ $t('flashSale.stockLeft', { count: stockLeft }) }}</text>
         <text v-if="sale.limitPerUser" class="stock-label">
-          每人限购 {{ sale.limitPerUser }} 件
+          {{ $t('flashSale.limitPerUser', { count: sale.limitPerUser }) }}
         </text>
       </view>
       <view v-if="sessionNote" class="session-note">
@@ -115,7 +121,9 @@ export default {
 
   computed: {
     currencySymbol() {
-      const env = (typeof process !== 'undefined' && process.env && process.env.VITE_CURRENCY) || ''
+      // 必须裸读：define 在编译期把 process.env.VITE_CURRENCY 替换成字面量，
+      // 加 typeof process 守卫会在 APP 端短路，导致货币符号错误回退
+      const env = process.env.VITE_CURRENCY || ''
       const win =
         (typeof window !== 'undefined' &&
           window.__MOYUYO_CONFIG__ &&
@@ -145,15 +153,15 @@ export default {
     bannerLabel() {
       switch (this.sessionStatus) {
         case 'upcoming':
-          return '即将开始'
+          return this.$t('flashSale.statusUpcoming')
         case 'ended':
-          return '活动已结束'
+          return this.$t('flashSale.statusEnded')
         case 'sold_out':
-          return '已售罄'
+          return this.$t('flashSale.statusSoldOut')
         case 'inactive':
-          return '活动已下架'
+          return this.$t('flashSale.statusInactive')
         default:
-          return this.sale.name || '限时抢购进行中'
+          return this.sale.name || this.$t('flashSale.defaultRunning')
       }
     },
     sessionNote() {
@@ -161,12 +169,12 @@ export default {
         case 'upcoming': {
           const d = parseDate(this.sale.startTime)
           if (!d) return ''
-          return `将于 ${this.formatLocal(d)} 开始`
+          return this.$t('flashSale.startsAt', { time: this.formatLocal(d) })
         }
         case 'ended': {
           const d = parseDate(this.sale.endTime)
           if (!d) return ''
-          return `${this.formatLocal(d)} 已结束`
+          return this.$t('flashSale.endedAt', { time: this.formatLocal(d) })
         }
         default:
           return ''
@@ -175,15 +183,19 @@ export default {
     buyBtnLabel() {
       switch (this.sessionStatus) {
         case 'upcoming':
-          return '尚未开始'
+          return this.$t('flashSale.btnUpcoming')
         case 'ended':
-          return '活动已结束'
+          return this.$t('flashSale.statusEnded')
         case 'sold_out':
-          return '已售罄'
+          return this.$t('flashSale.statusSoldOut')
         case 'inactive':
-          return '已下架'
+          return this.$t('flashSale.btnInactive')
         default:
-          return `立即抢购 ${this.currencySymbol}${Number(this.product.price || this.sale.flashPrice || 0).toFixed(2)}`
+          return this.$t('flashSale.btnBuyNow', {
+            price:
+              this.currencySymbol +
+              Number(this.product.price || this.sale.flashPrice || 0).toFixed(2),
+          })
       }
     },
     canBuy() {
@@ -404,7 +416,7 @@ export default {
 .product-swiper {
   width: 100%;
   height: 750rpx;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
 }
 .product-swiper-empty {
   display: flex;

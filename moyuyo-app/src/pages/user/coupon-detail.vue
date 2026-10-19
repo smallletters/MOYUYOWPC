@@ -122,6 +122,8 @@ export default {
       const map = {
         USED: i18n.t('coupons.tabs.used'),
         EXPIRED: i18n.t('coupons.tabs.expired'),
+        // LOCKED：券已被一笔待付款订单占用，既非"未使用"也非"已使用"，单独展示避免误导
+        LOCKED: i18n.t('coupons.tabs.locked'),
       }
       return map[s] || i18n.t('coupons.tabs.unused')
     },
@@ -219,6 +221,10 @@ export default {
 }
 .status-EXPIRED {
   background: rgba(0, 0, 0, 0.3);
+}
+/* 待支付占用：与已使用(USED)同底色但加深，视觉上区分"已锁定" */
+.status-LOCKED {
+  background: rgba(255, 255, 255, 0.3);
 }
 .card {
   background: var(--color-surface);

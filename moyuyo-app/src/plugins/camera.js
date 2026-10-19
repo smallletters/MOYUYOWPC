@@ -3,6 +3,7 @@
  * 插件标识: MOYUYO-Camera
  * 功能: 拍照、选图、压缩、裁剪
  */
+import { t } from '@/i18n'
 /* eslint-disable no-unreachable */
 
 const PLUGIN_NAME = 'MOYUYO-Camera'
@@ -27,7 +28,7 @@ export function takePhoto(options = {}) {
           fileSize: result.fileSize,
         })
       } else {
-        reject(new Error(result.message || '拍照失败'))
+        reject(new Error(result.message || t('cameraPlugin.takePhotoFailed')))
       }
     })
   })
@@ -40,7 +41,7 @@ export function takePhoto(options = {}) {
       count: 1,
       sourceType: ['camera'],
       success: (res) => resolve({ imagePath: res.tempFilePaths[0] }),
-      fail: () => reject(new Error('拍照取消')),
+      fail: () => reject(new Error(t('cameraPlugin.takePhotoCancelled'))),
     })
   })
   // #endif
@@ -63,7 +64,7 @@ export function pickImage(options = {}) {
       if (result.success) {
         resolve(result.images || [])
       } else {
-        reject(new Error(result.message || '选择图片失败'))
+        reject(new Error(result.message || t('cameraPlugin.pickFailed')))
       }
     })
   })
@@ -75,7 +76,7 @@ export function pickImage(options = {}) {
       count,
       sourceType: ['album'],
       success: (res) => resolve(res.tempFilePaths),
-      fail: () => reject(new Error('选择图片取消')),
+      fail: () => reject(new Error(t('cameraPlugin.pickCancelled'))),
     })
   })
   // #endif
@@ -98,7 +99,7 @@ export function compressImage(imagePath, options = {}) {
       if (result.success) {
         resolve(result.compressedPath)
       } else {
-        reject(new Error(result.message || '图片压缩失败'))
+        reject(new Error(result.message || t('cameraPlugin.compressFailed')))
       }
     })
   })
@@ -110,7 +111,7 @@ export function compressImage(imagePath, options = {}) {
       src: imagePath,
       quality: options.quality || 80,
       success: (res) => resolve(res.tempFilePath),
-      fail: () => reject(new Error('图片压缩失败')),
+      fail: () => reject(new Error(t('cameraPlugin.compressFailed'))),
     })
   })
   // #endif

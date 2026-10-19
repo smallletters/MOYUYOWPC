@@ -47,7 +47,13 @@
           </view>
           <view class="order-items">
             <view v-for="item in (o.items || []).slice(0, 2)" :key="item.id" class="item-row">
-              <image :src="item.mainImage || ''" lazy-load class="item-image" />
+              <image
+                mode="aspectFill"
+                :src="resolveItemImage(item.mainImage)"
+                lazy-load
+                class="item-image"
+                @error="onItemImageError(item)"
+              />
               <view class="item-info">
                 <text class="item-name text-ellipsis-2">{{ item.productName }}</text>
                 <text class="item-qty">x {{ item.quantity }}</text>
@@ -57,9 +63,33 @@
               {{ $t('orderList.moreItems', { count: o.items.length - 2 }) }}
             </view>
           </view>
+          <!--
+            待付款订单：展示与结算页同口径的金额明细，让用户能核对"结算页合计"与"待付款实付"的差额。
+            恒等式：payAmount = goodsAmount + freight − couponDiscount − pointsDiscount（服务端权威落库）。
+            任一分项缺失/null 时由 num()/money() 兜底为 0，绝不渲染 NaN / $undefined。
+            数据全部来自订单对象已有字段，不新增接口。
+          -->
+          <view v-if="o.status === 'PENDING_PAY'" class="amount-breakdown">
+            <view class="amount-row">
+              <text class="amount-label">{{ $t('orderList.amount.goods') }}</text>
+              <text class="amount-value">{{ money(o.goodsAmount) }}</text>
+            </view>
+            <view v-if="num(o.freight) > 0" class="amount-row">
+              <text class="amount-label">{{ $t('orderList.amount.freight') }}</text>
+              <text class="amount-value">{{ money(o.freight) }}</text>
+            </view>
+            <view v-if="num(o.couponDiscount) > 0" class="amount-row">
+              <text class="amount-label">{{ $t('orderList.amount.coupon') }}</text>
+              <text class="amount-value amount-deduct">−{{ money(o.couponDiscount) }}</text>
+            </view>
+            <view v-if="num(o.pointsDiscount) > 0" class="amount-row">
+              <text class="amount-label">{{ $t('orderList.amount.points') }}</text>
+              <text class="amount-value amount-deduct">−{{ money(o.pointsDiscount) }}</text>
+            </view>
+          </view>
           <view class="card-footer">
             <text class="total">
-              {{ $t('orderList.totalLabel', { amount: `${currencySymbol}${o.payAmount}` }) }}
+              {{ $t('orderList.totalLabel', { amount: money(payableOf(o)) }) }}
             </text>
             <view class="btn btn-primary action-btn" @click.stop="onAction(o)">
               {{ o.status === 'RECEIVED' ? receivedActionText(o) : actionText(o.status) }}
@@ -81,6 +111,11 @@
 import { orderApi, reviewApi } from '@/api'
 import { i18n, t } from '@/i18n'
 import { getPendingOrders, removePendingOrder } from '@/utils/storage'
+import { toAbsoluteImageUrl } from '@/utils/imageUrl'
+
+// 本地占位图（随包打进 APP；toAbsoluteImageUrl 对 /static/** 已做排除、原样返回），
+// 商品图缺失或加载失败（404 / 外链失效 / 网络不可达）时兜底，避免订单卡片留白。
+const DEFAULT_PRODUCT_IMAGE = '/static/images/default-product.png'
 
 export default {
   pageTitleKey: 'pageTitle.orderList',
@@ -182,6 +217,56 @@ export default {
   },
 
   methods: {
+    /** 安全取数：null/undefined/空串/非数字一律返回 0，避免 NaN 传染到金额展示 */
+    num(v) {
+      if (v === null || v === undefined || v === '') return 0
+      const n = Number(v)
+      return Number.isFinite(n) ? n : 0
+    },
+
+    /**
+     * 金额展示：统一 `${currencySymbol}${两位小数}`。
+     * 与结算页 checkout.vue 口径一致（沿用 $ 硬编码写法与 currencySymbol computed），不引入新符号体系。
+     */
+    money(v) {
+      return `${this.currencySymbol}${this.num(v).toFixed(2)}`
+    },
+
+    /**
+     * 订单实付金额：优先取后端落库的 payAmount；缺失/非法时按恒等式回退计算：
+     *   payAmount = goodsAmount + freight − couponDiscount − pointsDiscount（下限 0）
+     * 保证任一分项为 null 时也不会渲染出 NaN / $undefined。
+     */
+    payableOf(o) {
+      const raw = o?.payAmount
+      if (raw !== null && raw !== undefined && raw !== '') {
+        const n = Number(raw)
+        if (Number.isFinite(n)) return n
+      }
+      const goods = this.num(o?.goodsAmount)
+      const freight = this.num(o?.freight)
+      const coupon = this.num(o?.couponDiscount)
+      const points = this.num(o?.pointsDiscount)
+      return Math.max(0, goods + freight - coupon - points)
+    },
+
+    /**
+     * 订单商品图：后端返回的是相对路径(/uploads/...)，APP 端 <image> 不走 Vite proxy，
+     * 必须补成绝对地址，否则真机上商品图会空白（与 utils/imageUrl 的既有约定一致）。
+     * 无图（空值 / 兜底转换后为空）时回退到本地占位图，避免卡片留白。
+     */
+    resolveItemImage(url) {
+      return toAbsoluteImageUrl(url) || DEFAULT_PRODUCT_IMAGE
+    },
+
+    /** <image> 加载失败（404 / 外链失效 / 网络不可达）时兜底到本地占位图，避免卡片留白 */
+    onItemImageError(item) {
+      if (!item) return
+      // 已经是占位图说明兜底已生效，直接返回，防止 @error 无限递归
+      if (item.mainImage === DEFAULT_PRODUCT_IMAGE) return
+      item.mainImage = DEFAULT_PRODUCT_IMAGE
+    },
+
     async loadOrders(reset = false) {
       if (reset) {
         this.page = 1
@@ -743,6 +828,38 @@ export default {
   font-size: 24rpx;
   color: var(--color-text-tertiary);
   padding: 8rpx;
+}
+
+/* 待付款订单金额明细：与结算页同口径（商品/运费/优惠券/积分/实付）。
+   颜色只用项目既有 var(--color-*) token（深色模式自动适配），不写死中性色 */
+.amount-breakdown {
+  margin-top: 16rpx;
+  padding: 16rpx 20rpx;
+  background: var(--color-background);
+  border-radius: 12rpx;
+}
+
+.amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 6rpx 0;
+}
+
+.amount-label {
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+}
+
+.amount-value {
+  font-size: 24rpx;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 抵扣项（优惠券/积分）：用成功色表达"已省"，为既有 token */
+.amount-value.amount-deduct {
+  color: var(--color-success);
 }
 
 .card-footer {

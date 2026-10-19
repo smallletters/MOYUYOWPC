@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="page">
     <!-- 顶部导航栏 -->
     <view class="header">
@@ -186,10 +186,10 @@ export default {
 /* 列表:与 wallet.vue 交易记录同款卡片规格 */
 .list {
   margin: 32rpx;
-  background: #ffffff;
-  border: 1rpx solid #f2f2f7;
+  background: var(--color-surface);
+  border: 1rpx solid var(--color-border, #f2f2f7);
   border-radius: 24rpx;
-  box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-card-lg);
   overflow: hidden;
 }
 

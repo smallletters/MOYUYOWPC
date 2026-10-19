@@ -125,25 +125,58 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     @SuppressWarnings("null")
-    public List<CouponEntity> listUserCoupons(Long userId, String status) {
+    public List<UserCouponEntity> listUserCoupons(Long userId, String status) {
         // JDT 误报:LambdaQueryWrapper#eq/orderByDesc(SFunction, ...) 走 Function.apply(this) 路径,
         // JDT 推断 this 为 @Nonnull 产生冲突,实际仅反射列名,运行时无 NPE 风险
         LambdaQueryWrapper<UserCouponEntity> q = new LambdaQueryWrapper<>();
         q.eq(UserCouponEntity::getUserId, userId);
         if (status != null && !status.isEmpty()) q.eq(UserCouponEntity::getStatus, status);
         q.orderByDesc(UserCouponEntity::getCreateTime);
+        // 返回 user_coupon 记录本身（含 id/status），不再 map 成券模板而丢掉 uc：
+        // 前端下单必须拿到 userCouponId(mo_user_coupon.id) 才能核销，原实现返回的模板列表没有该字段
         List<UserCouponEntity> ucs = userCouponMapper.selectList(q);
-        if (ucs.isEmpty()) return Collections.emptyList();
-        // 批量查 coupon,避免 N 张券 N 次 SQL 的 N+1
-        List<Long> couponIds = ucs.stream().map(UserCouponEntity::getCouponId).distinct().collect(Collectors.toList());
-        Map<Long, CouponEntity> couponMap = couponMapper.selectByIds(couponIds).stream()
-                .collect(Collectors.toMap(CouponEntity::getId, c -> c, (a, b) -> a));
-        return ucs.stream()
-                .map(uc -> couponMap.get(uc.getCouponId()))
-                .filter(java.util.Objects::nonNull)
-                .collect(Collectors.toList());
+        return ucs == null ? Collections.emptyList() : ucs;
     }
 
+    @Override
+    @SuppressWarnings("null")
+    public Map<Long, CouponEntity> mapCouponsByIds(List<Long> couponIds) {
+        if (couponIds == null || couponIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        // 批量查 coupon，避免 N 条券 N 次单查的 N+1；distinct 去重后一次 IN 查询
+        List<Long> distinctIds = couponIds.stream().filter(java.util.Objects::nonNull)
+                .distinct().collect(Collectors.toList());
+        if (distinctIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return couponMapper.selectByIds(distinctIds).stream()
+                .collect(Collectors.toMap(CouponEntity::getId, c -> c, (a, b) -> a));
+    }
+
+    @Override
+    public UserCouponEntity getUserCoupon(Long userId, Long userCouponId) {
+        if (userCouponId == null) {
+            return null;
+        }
+        UserCouponEntity uc = userCouponMapper.selectById(userCouponId);
+        if (uc == null) {
+            throw new IllegalArgumentException("用户优惠券不存在");
+        }
+        if (uc.getUserId() == null || !uc.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("无权使用他人优惠券");
+        }
+        return uc;
+    }
+
+    /**
+     * 下单占用优惠券：UNUSED → LOCKED（写 used_order_id），暂不置 USED。
+     * <p>
+     * 语义修正：券在用户"提交订单但尚未付款"阶段只是被**占用**，若直接置 USED，
+     * 「我的优惠券」会立刻显示"已使用"，且支付成功时没有二次确认动作、取消时也无从区分。
+     * 条件更新（WHERE status='UNUSED'）保证并发下同一张券只被一笔订单占用；
+     * 抢不到时抛异常，由下单事务回滚整单（含已扣库存），避免双花。
+     */
     @Override
     @Transactional
     @SuppressWarnings("null")
@@ -151,7 +184,7 @@ public class CouponServiceImpl implements CouponService {
         UserCouponEntity uc = userCouponMapper.selectById(userCouponId);
         if (uc == null) throw new IllegalArgumentException("用户优惠券不存在");
         if (!uc.getUserId().equals(userId)) throw new IllegalArgumentException("无权使用他人优惠券");
-        // 条件更新防止并发双花：仅 UNUSED 能核销成功；失败说明已被其他订单使用
+        // 条件更新防止并发双花：仅 UNUSED 能占用成功；失败说明已被其他订单占用/已核销
         // JDT 误报:LambdaUpdateWrapper#eq/set(SFunction, ...) 走 Function.apply(this) 路径,
         // JDT 推断 this 为 @Nonnull 产生冲突,实际仅反射列名,运行时无 NPE 风险
         int updated = userCouponMapper.update(null,
@@ -159,11 +192,39 @@ public class CouponServiceImpl implements CouponService {
                         .eq(UserCouponEntity::getId, userCouponId)
                         .eq(UserCouponEntity::getUserId, userId)
                         .eq(UserCouponEntity::getStatus, "UNUSED")
-                        .set(UserCouponEntity::getStatus, "USED")
-                        .set(UserCouponEntity::getUsedTime, LocalDateTime.now())
+                        .set(UserCouponEntity::getStatus, "LOCKED")
                         .set(UserCouponEntity::getUsedOrderId, orderId));
         if (updated == 0) {
-            throw new IllegalStateException("该优惠券已被使用");
+            throw new IllegalStateException("该优惠券已被其他订单占用");
+        }
+    }
+
+    /**
+     * 支付成功核销优惠券：LOCKED → USED（写 used_time）。
+     * <p>
+     * 幂等：仅当该券仍由本订单占用时命中；重复回调 / 券已被释放时命中 0 行 → 仅记日志，不抛异常，
+     * 避免把异常抛到支付回调主流程导致"钱已到账、订单状态却回滚"。
+     */
+    @Override
+    @Transactional
+    @SuppressWarnings("null")
+    public void markCouponUsed(Long userCouponId, Long orderId) {
+        if (userCouponId == null || orderId == null) {
+            return;
+        }
+        int updated = userCouponMapper.update(null,
+                new LambdaUpdateWrapper<UserCouponEntity>()
+                        .eq(UserCouponEntity::getId, userCouponId)
+                        .eq(UserCouponEntity::getStatus, "LOCKED")
+                        .eq(UserCouponEntity::getUsedOrderId, orderId)
+                        .set(UserCouponEntity::getStatus, "USED")
+                        .set(UserCouponEntity::getUsedTime, LocalDateTime.now()));
+        if (updated == 1) {
+            log.info("Coupon marked used by payment: userCouponId={}, orderId={}", userCouponId, orderId);
+        } else {
+            // 幂等兜底：重复回调或券已被释放，不报错
+            log.warn("Coupon mark-used skipped (not LOCKED or order mismatch): userCouponId={}, orderId={}",
+                    userCouponId, orderId);
         }
     }
 
@@ -174,13 +235,14 @@ public class CouponServiceImpl implements CouponService {
         if (userCouponId == null || orderId == null) {
             return;
         }
-        // 条件更新：仅当该券确由本订单核销(USED & usedOrderId)时才返还，防止并发误还
+        // 条件更新：仅当该券确由本订单占用(LOCKED & usedOrderId)时才返还，防止并发误还。
+        // 幂等：重复取消 / 并发取消 / 券已 USED（已支付）时命中 0 行，不报错、不误还。
         // JDT 误报:LambdaUpdateWrapper#eq/set(SFunction, ...) 走 Function.apply(this) 路径,
         // JDT 推断 this 为 @Nonnull 产生冲突,实际仅反射列名,运行时无 NPE 风险
         int updated = userCouponMapper.update(null,
                 new LambdaUpdateWrapper<UserCouponEntity>()
                         .eq(UserCouponEntity::getId, userCouponId)
-                        .eq(UserCouponEntity::getStatus, "USED")
+                        .eq(UserCouponEntity::getStatus, "LOCKED")
                         .eq(UserCouponEntity::getUsedOrderId, orderId)
                         .set(UserCouponEntity::getStatus, "UNUSED")
                         .set(UserCouponEntity::getUsedTime, null)

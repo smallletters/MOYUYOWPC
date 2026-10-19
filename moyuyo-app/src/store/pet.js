@@ -230,7 +230,7 @@ export const usePetStore = defineStore('pet', {
             id: 'cu-svr-' + o.id,
             outfitId: o.id, // 后端 id,删除时用
             outfitPetId: o.petId, // 装扮所属宠物 id,删除时用(与后端 pet_id 对齐)
-            name: o.name || '自定义形象',
+            name: o.name || t('petDresser.customAvatarFallbackName'),
             src: o.imageUrl,
             type: 'image',
           })
@@ -271,7 +271,7 @@ export const usePetStore = defineStore('pet', {
           petDresserApi
             .uploadOutfit(pet.id, {
               category: 'custom',
-              name: item.name || '自定义形象',
+              name: item.name || t('petDresser.customAvatarFallbackName'),
               imageUrl: item.src,
             })
             .then((created) => {

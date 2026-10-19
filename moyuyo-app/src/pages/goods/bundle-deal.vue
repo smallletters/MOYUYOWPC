@@ -392,7 +392,11 @@ export default {
   background: var(--background);
   border-bottom: 2rpx solid var(--border);
   position: sticky;
-  top: 88rpx;
+  /* 原为 top: 88rpx，是为配合上方的 .nav-header（height:88rpx, sticky top:0）让 tab 栏吸在其下方。
+     但 .nav-header 在模板里**没有对应节点**（模板 L3 只有 `<!-- 顶部导航栏 -->` 注释），
+     即本页实际没有自渲染导航栏，且 pages.json 中该页也不是 navigationStyle:custom。
+     于是 tab 栏会悬在距顶 88rpx 处，上方留出一条空白。故改为吸顶。 */
+  top: 0;
   z-index: 20;
 }
 .tab-btn {

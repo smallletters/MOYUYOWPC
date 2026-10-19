@@ -2,7 +2,7 @@
   <view class="profile-page">
     <!-- 顶部用户卡：头像 + 昵称 + 简介 -->
     <view class="user-card">
-      <image :src="avatarSrc" class="avatar" mode="aspectFill" />
+      <image :src="$img(avatarSrc)" class="avatar" mode="aspectFill" />
       <view class="user-meta">
         <text class="nickname">
           {{
@@ -132,7 +132,7 @@
               @tap.stop="previewPostImages(post.images, idx)"
             >
               <image
-                :src="img"
+                :src="$img(img)"
                 class="post-image"
                 :mode="
                   gridClassFor(post.images.length) === 'grid-single' ? 'widthFix' : 'aspectFill'
@@ -192,7 +192,8 @@ export default {
 
   data() {
     return {
-      defaultAvatar: 'https://i.pravatar.cc/100?img=20',
+      // 本地静态占位图：真机可能只连局域网、无公网，用外链会在无网络时空白
+      defaultAvatar: '/static/images/default-avatar.png',
       // locale 切换时自增,触发依赖文案的 computed 重算
       localeVersion: 0,
       // 当前激活的 tab key
@@ -902,7 +903,7 @@ export default {
   background: var(--color-surface);
   border-radius: 24rpx;
   padding: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-md);
 }
 .post-header {
   display: flex;

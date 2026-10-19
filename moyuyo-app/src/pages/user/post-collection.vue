@@ -16,7 +16,7 @@
         class="post-card"
         @tap="openPost(post)">
         <view v-if="post.images && post.images.length" class="post-cover">
-          <image :src="post.images[0]" mode="aspectFill" class="post-cover-img" />
+          <image :src="$img(post.images[0])" mode="aspectFill" class="post-cover-img" />
         </view>
         <view class="post-content">
           <text class="post-title">

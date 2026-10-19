@@ -1,7 +1,7 @@
 <template>
   <view class="review-detail">
     <view class="page-header">
-      <view class="header-back" aria-label="返回" @click="goBack">
+      <view class="header-back" :aria-label="$t('common.back')" @click="goBack">
         <text class="luc luc-arrow-left" />
       </view>
       <text class="header-title">{{ $t('orderReviewDetail.title') }}</text>
@@ -43,7 +43,7 @@
           <image
             v-for="(img, idx) in r.images"
             :key="idx"
-            :src="img"
+            :src="$img(img)"
             class="image-preview"
             mode="aspectFill"
             @click="previewImage(r.images, idx)"
@@ -152,8 +152,15 @@ export default {
 .page-header {
   display: flex;
   align-items: center;
-  height: 88rpx;
-  padding: 0 24rpx;
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  padding-right: 24rpx;
+  padding-left: 24rpx;
+  padding-bottom: 0;
+  box-sizing: border-box;
   background: var(--color-surface, #fff);
   border-bottom: 1rpx solid var(--color-divider, #eee);
 }
@@ -189,7 +196,7 @@ export default {
   padding: 24rpx;
   margin-bottom: 16rpx;
   box-sizing: border-box;
-  box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 .order-card .order-no {

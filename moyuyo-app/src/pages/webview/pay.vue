@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="pay-page">
     <!-- 状态展示 -->
     <view class="status-bar">
@@ -35,7 +35,7 @@ export default {
       orderId: null,
       payUrl: '',
       status: 'loading', // loading | success | failed
-      statusText: '加载支付页面...',
+      statusText: this.$t('webviewPay.loading'),
       pollTimer: null,
     }
   },
@@ -75,7 +75,7 @@ export default {
           const order = await orderApi.getOrderDetail(this.orderId)
           if (order.status === 'processing' || order.status === 'completed') {
             this.status = 'success'
-            this.statusText = '支付成功！'
+            this.statusText = this.$t('webviewPay.success')
             this.stopPolling()
             this.cartStore.clear()
             // 跳转到订单详情
@@ -88,7 +88,7 @@ export default {
             order.status === 'failed'
           ) {
             this.status = 'failed'
-            this.statusText = '订单已取消'
+            this.statusText = this.$t('webviewPay.cancelled')
             this.stopPolling()
           }
         } catch (e) {
@@ -113,10 +113,10 @@ export default {
       if (data?.type === 'pay_result') {
         if (data.status === 'success') {
           this.status = 'success'
-          this.statusText = '支付成功！'
+          this.statusText = this.$t('webviewPay.success')
         } else {
           this.status = 'failed'
-          this.statusText = '支付失败：' + (data.message || '')
+          this.statusText = this.$t('webviewPay.failedPrefix') + (data.message || '')
         }
         this.stopPolling()
       }
@@ -128,7 +128,7 @@ export default {
 
     onError(e) {
       this.status = 'failed'
-      this.statusText = '加载支付页面失败'
+      this.statusText = this.$t('webviewPay.loadFailed')
     },
   },
 }

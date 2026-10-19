@@ -1,5 +1,7 @@
 module.exports = {
   root: true,
+  // 第三方压缩/生成产物（如 Draco 解码器）不参与 lint，避免误报 no-constant-condition 等
+  ignorePatterns: ['src/static/**'],
   env: {
     browser: true,
     es2021: true,
@@ -21,10 +23,7 @@ module.exports = {
       },
     },
   },
-  extends: [
-    'eslint:recommended',
-    'plugin:vue/vue3-recommended',
-  ],
+  extends: ['eslint:recommended', 'plugin:vue/vue3-recommended'],
   plugins: ['vue'],
   rules: {
     'vue/multi-word-component-names': 'off',

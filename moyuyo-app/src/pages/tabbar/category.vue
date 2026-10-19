@@ -61,7 +61,7 @@
             :key="p.id"
             class="product-card"
             @click="goDetail(p.id)">
-            <image :src="p.image" class="product-image" mode="aspectFill" />
+            <image :src="$img(p.image)" class="product-image" mode="aspectFill" />
             <view class="product-info">
               <text class="product-name text-ellipsis-2">{{ p.name }}</text>
               <view class="product-bottom">
@@ -95,6 +95,7 @@
 <script>
 import { productApi } from '@/api'
 import { tCategoryName } from '@/i18n'
+import { useThemeStore } from '@/store'
 
 export default {
   pageTitleKey: 'pageTitle.tabbarCategory',
@@ -128,6 +129,12 @@ export default {
 
   onLoad() {
     this.loadCategories()
+  },
+
+  onShow() {
+    // 原生 tabBar 不吃 CSS 变量，深色模式下必须在这里重新上色。
+    // setTabBarStyle 要求「当前页是 tabBar 页」，切 tab / 从设置页返回时靠这里兜底。
+    useThemeStore().syncTabBar()
   },
 
   methods: {
@@ -327,8 +334,10 @@ export default {
   display: flex;
   background: var(--color-surface);
   padding: 0 12rpx;
-  /* 状态栏安全区：与 home.vue .navbar 保持一致，避免一级分类 Tab 文字被状态栏遮挡 */
-  padding-top: calc(env(safe-area-inset-top, 0px) + var(--status-bar-height, 0px));
+  /* 状态栏安全区：与 home.vue .navbar 保持一致，避免一级分类 Tab 文字被状态栏遮挡。
+     取二者较大值（而非相加）：iOS 上 env 与 status-bar-height 同为状态栏高度，相加会翻倍 */
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   border-bottom: 1rpx solid var(--color-divider);
   overflow-x: auto;
   white-space: nowrap;

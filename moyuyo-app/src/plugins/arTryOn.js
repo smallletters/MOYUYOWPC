@@ -55,7 +55,7 @@ export function captureArPhoto() {
   })
   // #endif
   /* #ifndef APP-PLUS */
-  return Promise.reject(new Error('当前环境不支持'))
+  return Promise.reject(new Error(t('plugin.unsupported')))
   /* #endif */
 }
 

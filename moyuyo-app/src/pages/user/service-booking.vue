@@ -438,8 +438,15 @@ export default {
 .header {
   display: flex;
   align-items: center;
-  height: 88rpx;
-  padding: 0 30rpx;
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  padding-right: 30rpx;
+  padding-left: 30rpx;
+  padding-bottom: 0;
+  box-sizing: border-box;
   background: var(--background);
   border-bottom: 2rpx solid var(--border);
   position: sticky;
@@ -811,7 +818,7 @@ export default {
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--color-surface-veil-88, rgba(255, 255, 255, 0.88));
   backdrop-filter: blur(20px);
   border-top: 2rpx solid var(--border);
   padding: 0 30rpx;
@@ -845,5 +852,13 @@ export default {
   align-items: center;
   justify-content: center;
   margin-top: 8rpx;
+}
+
+/* ===== 深色模式：底部操作栏对齐首页原生 tabBar =====
+ * .hint-text 用的是 --text-500(#7a746c)，它在 common.scss 里写死、没有深色值，
+ * 所以底栏内这段说明文字在深色下不会跟着变。深色改用 --color-text-tertiary
+ * （#807a72），与 tabBar 未选中态同色；浅色保持原有 #7a746c 不变。 */
+.theme-dark .hint-text {
+  color: var(--color-text-tertiary, #807a72);
 }
 </style>

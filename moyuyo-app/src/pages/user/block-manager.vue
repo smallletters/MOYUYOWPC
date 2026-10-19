@@ -133,11 +133,21 @@ onBeforeUnmount(() => {
   min-height: 100vh;
   background: var(--color-background);
 }
+/* 顶部导航栏
+   APP 端因为 navigationStyle:custom 自渲染 header,
+   需为系统状态栏(刘海/灵动岛/胶囊)预留顶部空间;
+   取 var(--status-bar-height) 与 env(safe-area-inset-top) 的较大值,避免 iOS 上双重计算 */
 .header {
   display: flex;
   align-items: center;
-  height: 88rpx;
-  padding: 0 24rpx;
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  padding-right: 24rpx;
+  padding-left: 24rpx;
+  padding-bottom: 0;
+  box-sizing: border-box;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
 }

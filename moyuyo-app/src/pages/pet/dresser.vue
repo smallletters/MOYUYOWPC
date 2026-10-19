@@ -1,23 +1,23 @@
 <template>
   <view class="pet-dresser">
     <view class="page-header">
-      <view class="back" aria-label="返回" @click="goBack">
+      <view class="back" :aria-label="$t('petDresser.ariaBack')" @click="goBack">
         <text class="luc luc-arrow-left" />
       </view>
-      <text class="title">宠物装扮</text>
+      <text class="title">{{ $t('petDresser.title') }}</text>
       <!-- 上传自定义形象入口 -->
       <view class="upload-btn" @click="onUpload">
         <text class="luc luc-plus" />
-        <text class="upload-btn-text">上传</text>
+        <text class="upload-btn-text">{{ $t('petDresser.upload') }}</text>
       </view>
     </view>
 
     <scroll-view scroll-y class="content">
       <!-- 宠物预览 -->
       <view class="preview-card">
-        <image :src="currentPet?.avatar || ''" class="pet-avatar" />
-        <text class="pet-name">{{ currentPet?.name || '宠物' }}</text>
-        <text class="preview-tip">点击右侧装扮为宠物添加配饰</text>
+        <image mode="aspectFill" :src="currentPet?.avatar || ''" class="pet-avatar" />
+        <text class="pet-name">{{ currentPet?.name || $t('petDresser.petFallback') }}</text>
+        <text class="preview-tip">{{ $t('petDresser.previewTip') }}</text>
       </view>
 
       <!-- 装扮分类 -->
@@ -42,9 +42,9 @@
           :class="{ equipped: d.equipped }"
           @click="onEquip(d)"
         >
-          <image :src="d.imageUrl" class="dresser-image" mode="aspectFill" />
+          <image :src="$img(d.imageUrl)" class="dresser-image" mode="aspectFill" />
           <text class="dresser-name">{{ d.name }}</text>
-          <text v-if="d.equipped" class="equipped-tag">已穿戴</text>
+          <text v-if="d.equipped" class="equipped-tag">{{ $t('petDresser.equippedTag') }}</text>
           <!-- 仅用户自定义装扮(userId 非 NULL)显示删除按钮，系统装扮不可删 -->
           <view v-if="d.userId" class="delete-btn" @click.stop="onDelete(d)">
             <text class="luc luc-trash-2" />
@@ -53,7 +53,7 @@
 
         <!-- 空状态 -->
         <view v-if="!loading && filteredItems.length === 0" class="empty-state">
-          <text class="empty-text">暂无装扮，点击右上角上传自定义形象</text>
+          <text class="empty-text">{{ $t('petDresser.emptyTip') }}</text>
         </view>
       </view>
     </scroll-view>
@@ -72,12 +72,12 @@ export default {
       activeCat: 'all',
       // 分类与后端 category 白名单保持一致: hat/scarf/clothes/toy/custom
       categories: [
-        { id: 'all', label: '全部' },
-        { id: 'hat', label: '帽子' },
-        { id: 'scarf', label: '围巾' },
-        { id: 'clothes', label: '衣服' },
-        { id: 'toy', label: '玩具' },
-        { id: 'custom', label: '自定义' },
+        { id: 'all', label: this.$t('petDresser.catAll') },
+        { id: 'hat', label: this.$t('petDresser.catHat') },
+        { id: 'scarf', label: this.$t('petDresser.catScarf') },
+        { id: 'clothes', label: this.$t('petDresser.catClothes') },
+        { id: 'toy', label: this.$t('petDresser.catToy') },
+        { id: 'custom', label: this.$t('petDresser.catCustom') },
       ],
       items: [],
       loading: false,
@@ -109,7 +109,7 @@ export default {
         const pets = await petApi.getPets()
         this.currentPet = (pets && pets[0]) || null
       } catch (e) {
-        this.currentPet = { name: '宠物' }
+        this.currentPet = { name: this.$t('petDresser.petFallback') }
       }
     },
 
@@ -164,11 +164,11 @@ export default {
           try {
             const uploadRes = await uploadApi.uploadImage(filePath)
             const imageUrl = uploadRes?.url
-            if (!imageUrl) throw new Error('图片上传失败')
+            if (!imageUrl) throw new Error(this.$t('petDresser.imgUploadFailed'))
             // 2. 提交装扮记录到后端（默认归类为 custom）
             const created = await petDresserApi.uploadOutfit(this.currentPet.id, {
               category: 'custom',
-              name: '自定义形象',
+              name: this.$t('petDresser.customAvatarName'),
               imageUrl,
             })
             uni.hideLoading()

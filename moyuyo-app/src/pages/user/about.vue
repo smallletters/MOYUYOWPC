@@ -171,13 +171,30 @@ export default {
 
 <style lang="scss" scoped>
 .about {
-  min-height: 100vh;
+  /* 视口锁定外壳：整页锁定视口高度 + 裁剪溢出，使「页面级滚动」不会发生，
+     唯一滚动权威是内部 <scroll-view class="content">。
+     100vh 写在 100dvh 之前做兜底：旧 webview/APP 不支持 dvh 时回退 100vh。
+     （约定见 goods/detail.vue 的 .detail / .scroll） */
+  display: flex;
+  flex-direction: column;
+  /* 视口高度：三层渐进增强。
+     1) 100vh  —— 兜底，所有环境合法
+     2) 100dvh —— H5 移动浏览器动态视口（地址栏）
+     3) var(--window-top) —— uni-app 顶部窗口偏移：非 custom 页 = 导航栏高 + 状态栏高，custom 页 = 0。
+        必须扣除，否则顶部内容会顶到导航栏/状态栏底下。
+     只减 --window-top 不减 --window-bottom：后者在 H5 被归一化为 env(safe-area-inset-bottom)，
+     会与页面自身底栏的 safe-area padding 重复预留。本批无 tabBar 页，故安全。 */
+  height: 100vh;
+  height: 100dvh;
+  height: calc(100dvh - var(--window-top, 0px));
+  overflow: hidden;
   background: var(--color-background);
 }
 
-/* 内容区 */
+/* 内容区：唯一滚动权威，用 flex:1 占满外壳剩余空间（不再硬算高度） */
 .content {
-  height: calc(100vh - 88rpx);
+  flex: 1;
+  min-height: 0;
 }
 
 /* 品牌英雄区 */

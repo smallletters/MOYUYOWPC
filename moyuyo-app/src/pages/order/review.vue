@@ -3,7 +3,7 @@
     <scroll-view scroll-y class="form">
       <view v-for="item in orderItems" :key="item.id" class="card review-item">
         <view class="item-info">
-          <image :src="item.image?.src" class="item-image" />
+          <image mode="aspectFill" :src="$img(item.image?.src)" class="item-image" />
           <text class="item-name">{{ item.name }}</text>
         </view>
         <!-- 评分 -->
@@ -45,7 +45,7 @@
         <!-- 图片上传 -->
         <view class="images">
           <view v-for="(img, idx) in item.images || []" :key="idx" class="image-preview">
-            <image :src="img" mode="aspectFill" />
+            <image :src="$img(img)" mode="aspectFill" />
             <view class="image-remove" @click="removeImage(item, idx)">
               <text class="luc luc-x" />
             </view>
@@ -68,6 +68,7 @@
 <script>
 import { orderApi, reviewApi } from '@/api'
 import { uploadImage } from '@/api/upload'
+import { toAbsoluteImageUrl } from '@/utils/imageUrl'
 import { i18n } from '@/i18n'
 
 export default {
@@ -106,7 +107,8 @@ export default {
           productId: item.productId,
           skuId: item.skuId,
           name: item.productName,
-          image: { src: item.mainImage || '' },
+          // mainImage 是后端返回的相对路径(/uploads/...)，APP 端需补成绝对地址
+          image: { src: toAbsoluteImageUrl(item.mainImage) || '' },
           rating: 0,
           tags: [],
           content: '',

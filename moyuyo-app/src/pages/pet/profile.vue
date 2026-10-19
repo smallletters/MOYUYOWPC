@@ -30,7 +30,7 @@
               :class="{ active: i === currentIndex }"
               @click="switchPet(i)"
             >
-              <image :src="p.avatar || defaultAvatar" class="pet-switch-avatar" />
+              <image mode="aspectFill" :src="p.avatar || defaultAvatar" class="pet-switch-avatar" />
               <text class="pet-switch-name">{{ p.name }}</text>
             </view>
           </view>
@@ -39,7 +39,7 @@
         <!-- 头像 -->
         <view class="avatar-card">
           <view class="avatar-wrap" @click="onChangeAvatar">
-            <image :src="form.avatar || defaultAvatar" class="avatar" />
+            <image mode="aspectFill" :src="form.avatar || defaultAvatar" class="avatar" />
             <view class="avatar-edit"><text class="luc luc-camera" /></view>
           </view>
           <text class="avatar-tip">{{ $t('petProfile.avatarTip') }}</text>
@@ -852,7 +852,7 @@ export default {
 .action-btn.died {
   color: #8c8c8c;
   border: 1rpx solid #d9d9d9;
-  background: #fafafa;
+  background: var(--background-50);
 }
 .action-btn.accident {
   color: #d46b08;

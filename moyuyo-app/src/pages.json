@@ -267,6 +267,15 @@
       }
     },
     {
+      // 他人主页：从 follow-list / dm-chat 跳转进来，此前漏注册导致跳转必失败
+      // 页面自带自渲染顶部栏(.nav-bar)，必须关闭原生导航栏，否则出现"双标题栏"
+      "path": "pages/user/user-profile-page",
+      "style": {
+        "navigationBarTitleText": "个人主页",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/user/wallet",
       "style": {
         "navigationBarTitleText": "我的钱包",
@@ -796,7 +805,9 @@
       "path": "pages/pet/space-3d",
       "style": {
         "navigationBarTitleText": "宠物空间 3D",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "pageOrientation": "landscape",
+        "disableScroll": true
       }
     },
     {

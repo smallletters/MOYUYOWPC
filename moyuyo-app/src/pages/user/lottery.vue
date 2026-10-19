@@ -354,7 +354,23 @@ export default {
 
 <style lang="scss" scoped>
 .lottery {
-  min-height: 100vh;
+  /* 视口锁定外壳：整页锁定视口高度 + 裁剪溢出，唯一滚动权威是内部 scroll-view。
+     100vh 写在 100dvh 之前做兜底。约定见 goods/detail.vue。
+     注：本页有 position:fixed 的 .modal-overlay，本容器未加 transform/filter/
+     backdrop-filter/will-change，故不会成为其包含块，弹层不会被 overflow:hidden 裁掉。 */
+  display: flex;
+  flex-direction: column;
+  /* 视口高度：三层渐进增强。
+     1) 100vh  —— 兜底，所有环境合法
+     2) 100dvh —— H5 移动浏览器动态视口（地址栏）
+     3) var(--window-top) —— uni-app 顶部窗口偏移：非 custom 页 = 导航栏高 + 状态栏高，custom 页 = 0。
+        必须扣除，否则顶部内容会顶到导航栏/状态栏底下。
+     只减 --window-top 不减 --window-bottom：后者在 H5 被归一化为 env(safe-area-inset-bottom)，
+     会与页面自身底栏的 safe-area padding 重复预留。本批无 tabBar 页，故安全。 */
+  height: 100vh;
+  height: 100dvh;
+  height: calc(100dvh - var(--window-top, 0px));
+  overflow: hidden;
   background: var(--color-background);
 }
 
@@ -364,13 +380,15 @@ export default {
 }
 
 .nav-header {
+  /* 常流 flex 子项，天然吸顶（sticky/top 已删除）。
+     flex-shrink:0 防止在列向 flex 中被压缩塌陷。
+     子元素均为普通 flex 项，无绝对定位，故无需 position:relative。 */
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 88rpx;
   padding: 0 24rpx;
-  position: sticky;
-  top: 0;
   z-index: 10;
 }
 
@@ -407,7 +425,9 @@ export default {
 }
 
 .scroll {
-  height: calc(100vh - 88rpx);
+  /* 唯一滚动权威：flex:1 占满外壳剩余空间，不再硬算高度（约定见 goods/detail.vue）。 */
+  flex: 1;
+  min-height: 0;
   padding-bottom: 48rpx;
 }
 
@@ -586,7 +606,7 @@ export default {
   height: 112rpx;
   border-radius: 50%;
   background: var(--color-primary);
-  border: 6rpx solid #fff;
+  border: 6rpx solid #fff; /* 装饰性白环，两态均保持白色 */
   display: flex;
   align-items: center;
   justify-content: center;

@@ -141,7 +141,7 @@ const MOCK_PRODUCTS = [
     features: ['透气网布', '均匀受力'],
     freeShipping: false,
     subscribe: false,
-    color: 'linear-gradient(135deg, #f2f2f7, #d1d1d6)',
+    color: 'linear-gradient(135deg, var(--color-fill, #f2f2f7), var(--color-fill-dim))',
   },
 ]
 
@@ -225,9 +225,21 @@ export default {
 
 <style lang="scss" scoped>
 .product-compare {
-  min-height: 100vh;
+  /* 视口锁定外壳：整页固定为 100vh 并裁剪溢出，消除「页面级滚动」，
+     唯一滚动权威是内部的 <scroll-view class="scroll">（flex:1 占满剩余空间）。
+     这样不会再出现外层滚动与内部 scroll-view 双层滚动互相抢手势 → 滑不动，
+     底部栏作为常流 flex 子项也不会因页面橡皮筋(bounce)被拖动/形变。 */
+  display: flex;
+  flex-direction: column;
+  /* 100vh 先写做兜底：不支持 dvh 的旧 webview/APP 端会忽略下一行并保留它 */
+  height: 100vh;
+  /* H5 移动浏览器：dvh 跟随动态视口，避免地址栏/工具栏把底部栏顶出可视区 */
+  height: 100dvh;
+  /* 非 custom 页（app-plus/H5）：100dvh 已含原生导航栏区，须减去 --window-top
+     （标题栏高 + 状态栏高）让内容避开原生导航栏；只减 window-top，不减 window-bottom。 */
+  height: calc(100dvh - var(--window-top, 0px));
+  overflow: hidden;
   background: var(--color-background);
-  padding-bottom: 140rpx;
 }
 
 .nav-header {
@@ -282,7 +294,13 @@ export default {
 }
 
 .scroll {
-  height: calc(100vh - 88rpx);
+  /* 不再硬算高度：用 flex:1 占据剩余空间，min-height:0 覆盖 flex 项默认的
+     min-height:auto，允许收缩到小于内容高度，使 <scroll-view> 内部真正产生
+     overflow-y:auto 滚动，避免 calc(100vh - Nrpx) 在 rpx/env() 失效时退回 auto。 */
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .thumb-row {
@@ -492,17 +510,18 @@ export default {
 }
 
 .bottom-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  /* 作为视口锁定外壳(.product-compare)的最后一个常流 flex 子项，天然稳定贴底，
+     不再使用 position:fixed：页面不发生滚动，底栏就不会随拖动位移/形变。 */
+  flex-shrink: 0;
+  /* 保持 content-box：safe-area 的 padding-bottom 需叠加在内容盒之外，
+     改成 border-box 会把安全区内缩进内容盒，把按钮压扁。 */
+  box-sizing: content-box;
   display: flex;
   gap: 16rpx;
   padding: 16rpx 24rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   background: var(--color-surface);
   border-top: 1rpx solid var(--color-divider);
-  z-index: 20;
 }
 
 .cart-btn {
@@ -531,6 +550,10 @@ export default {
 }
 
 .modal-content {
+  /* 列 flex 容器：max-height:60vh 封顶，内部 .modal-list 用 flex:1 占据剩余高度，
+     从而给 <scroll-view> 一个确定高度、恢复其滚动能力（同一类根因的修复）。 */
+  display: flex;
+  flex-direction: column;
   width: 100%;
   max-height: 60vh;
   background: var(--color-surface);
@@ -539,6 +562,8 @@ export default {
 }
 
 .modal-title {
+  /* 固定高度子项：必须 flex-shrink:0，否则会被 .modal-list 挤压塌陷 */
+  flex-shrink: 0;
   display: block;
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
@@ -548,7 +573,10 @@ export default {
 }
 
 .modal-list {
-  max-height: 50vh;
+  /* 删除 max-height：改由 flex:1 占据 .modal-content 剩余高度（父级 max-height:60vh 封顶），
+     min-height:0 允许收缩，使 <scroll-view> 获得确定高度后能正常滚动。 */
+  flex: 1;
+  min-height: 0;
 }
 
 .modal-item {
@@ -595,6 +623,8 @@ export default {
 }
 
 .modal-close {
+  /* 固定高度子项：必须 flex-shrink:0，否则会被 .modal-list 挤压 */
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;

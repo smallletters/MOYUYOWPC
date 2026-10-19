@@ -18,6 +18,34 @@
   --color-text-tertiary: #9a948c; /* 三级文字 */
   --color-divider: #eae5dd; /* 分割线 */
 
+  /* ===== 中性填充 =====
+   * 卡片内浅灰底：骨架屏、图标底圆、输入框底、进度条轨道、占位图。
+   * 原先各处写死 #f2f2f7 / #f7f7fa，深色模式下无法跟随，会一直发亮。 */
+  --color-fill: #f2f2f7;
+  --color-fill-hi: #f7f7fa;
+  --color-fill-raised: #ffffff; /* 抬升表面：置于 --color-fill 轨道之上的选中项 */
+
+  /* ===== 幽灵/微弱表面填充 =====
+   * 层级比 --color-fill 更弱，用于「返回按钮底 / 搜索框底 / 分类标签底」等
+   * 依赖「黑 4%」营造微弱表面的元素。原先写死 rgba(0, 0, 0, 0.04)：
+   * 深色下黑底再叠黑底 → 完全看不见，元素像凭空消失。 */
+  --color-overlay-subtle: rgba(0, 0, 0, 0.04);
+
+  /* ===== iOS 中灰档（token 化）=====
+   * #d1d1d6 / #c7c7cc 原先散落写死，深色下会一直发亮。
+   * 浅色保持原观感，深色给同明度的暖灰。 */
+  --color-fill-dim: #d1d1d6; /* 标准中灰：渐变末端 / 浅灰底 / 描边 */
+  --color-fill-dim-strong: #c7c7cc; /* 更强一档中灰：禁用底 / 深描边 / 空心图标 */
+
+  /* ===== 浮层底栏半透明磨砂底 =====
+   * 给 position:fixed 覆盖在内容之上 + backdrop-filter 的底部操作栏用。
+   * 与 --color-surface 同色，仅降低不透明度以保留磨砂观感。
+   * 深色必须单独给值：这类底栏原先写死 rgba(255,255,255,.88/.92)，
+   * 深色模式下没有任何规则能覆盖，底栏会一直保持白色。 */
+  --color-surface-veil-88: rgba(255, 255, 255, 0.88);
+  --color-surface-veil-92: rgba(255, 255, 255, 0.92);
+  --color-surface-veil-95: rgba(255, 255, 255, 0.95);
+
   /* ===== 强调色 ===== */
   --color-accent: #b38a5a; /* Antique Brass 强调色 */
   --color-success: #abb9ad; /* Sage Mist 成功 */
@@ -25,6 +53,26 @@
   --color-warning: #e6b97a;
   --color-danger: #c96e5f; /* 错误/删除 */
   --color-info: #8fa8b6;
+
+  /* ===== 语义状态色 / 卡片表面 =====
+   * 这些 token 被大量页面 var() 引用，历史上却**从未定义**：
+   * 变量缺失会让 var() 在计算值阶段失效 —— 例如 `background: var(--color-card)`
+   * 会整体退回 transparent（卡片失去底色），文字色则退回继承。
+   * --color-card 需要跟随主题，故在浅/深三处块各给一份；
+   * --state-* 为品牌常量色，两端一致，只在 :root 定义。 */
+  --color-card: #ffffff; /* 卡片表面别名（≈ --color-surface），48 处页面在用 */
+  --state-success: #abb9ad; /* 同 --color-success */
+  --state-success-surface: rgba(171, 185, 173, 0.15);
+  --state-error: #c96e5f; /* 同 --color-danger */
+  --state-error-surface: rgba(201, 110, 95, 0.15);
+  --state-error-foreground: #ffffff;
+  --state-warning: #e6b97a; /* 同 --color-warning */
+  --state-warning-surface: rgba(230, 185, 122, 0.15);
+  --color-error: #c96e5f; /* 同 --color-danger */
+  --secondary: #f2f2f7; /* 次级表面（chip / 次级按钮底），跟随主题 */
+  --secondary-foreground: #2e2b29;
+  --color-text-primary: #2e2b29; /* 同 --color-text，主要文字，跟随主题 */
+  --color-primary-bg: rgba(219, 201, 138, 0.15);
 
   /* ===== 4 大产品线色 ===== */
   --color-care: #dbc98a; /* Care 洗护：Linen + Sand Gold */
@@ -50,6 +98,13 @@
   --shadow-sm: 0 1rpx 4rpx rgba(46, 43, 41, 0.04);
   --shadow-md: 0 4rpx 16rpx rgba(46, 43, 41, 0.06);
   --shadow-lg: 0 8rpx 24rpx rgba(46, 43, 41, 0.1);
+  /* 以下 5 档原先是写死的 rgba(0, 0, 0, 0.04) 卡片阴影，深色下不可见 → 卡片失去层次。
+   * 浅色保持原观感（≈ rgba(46,43,41,0.04)），深色给足不透明度以还原层次。 */
+  --shadow-card-sm: 0 2rpx 8rpx rgba(46, 43, 41, 0.04);
+  --shadow-card-md: 0 2rpx 12rpx rgba(46, 43, 41, 0.04);
+  --shadow-card-lg: 0 2rpx 16rpx rgba(46, 43, 41, 0.04);
+  --shadow-pop: 0 6rpx 20rpx rgba(46, 43, 41, 0.04);
+  --shadow-top: 0 -2rpx 8rpx rgba(46, 43, 41, 0.04);
 
   /* ===== 字号 ===== */
   --font-size-xs: 22rpx;
@@ -69,21 +124,44 @@
   --font-weight-bold: 700;
 }
 
-/* ===== 深色模式 ===== */
+/* ===== 深色模式（跟随系统）=====
+ * 选择器用 :root:not(.theme-light)：
+ * 系统深色但用户在 App 内「强制浅色」时，html 会带 .theme-light，
+ * 从而压制本块 —— 修复「强制浅色失效」的遗留缺陷。
+ * 特异性 (0,2,0) 高于 .theme-dark (0,1,0)，但两者在 html 上互斥，不会冲突。 */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.theme-light) {
     --color-background: #1a1816;
     --color-surface: #2a2724;
     --color-text: #f6f2ee;
     --color-text-secondary: #b8b0a5;
     --color-text-tertiary: #807a72;
     --color-divider: #3a3530;
+    --color-fill: #35312d;
+    --color-fill-hi: #403b36;
+    --color-fill-raised: #403b36;
+    --color-overlay-subtle: rgba(255, 255, 255, 0.07);
+    --color-fill-dim: #45403a;
+    --color-fill-dim-strong: #4e4944;
+    --color-card: #2a2724;
+    --secondary: #35312d;
+    --secondary-foreground: #f6f2ee;
+    --color-text-primary: #f6f2ee;
+    --color-primary-bg: rgba(201, 180, 122, 0.2);
+    --color-surface-veil-88: rgba(42, 39, 36, 0.88);
+    --color-surface-veil-92: rgba(42, 39, 36, 0.92);
+    --color-surface-veil-95: rgba(42, 39, 36, 0.95);
     --color-primary: #c9b47a; /* 降低饱和度适配深色 */
     --color-primary-light: #d9c68f;
     --color-primary-dark: #a8964f;
     --shadow-sm: 0 1rpx 4rpx rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4rpx 16rpx rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 8rpx 24rpx rgba(0, 0, 0, 0.5);
+    --shadow-card-sm: 0 2rpx 8rpx rgba(0, 0, 0, 0.4);
+    --shadow-card-md: 0 2rpx 12rpx rgba(0, 0, 0, 0.4);
+    --shadow-card-lg: 0 2rpx 16rpx rgba(0, 0, 0, 0.4);
+    --shadow-pop: 0 6rpx 20rpx rgba(0, 0, 0, 0.45);
+    --shadow-top: 0 -2rpx 8rpx rgba(0, 0, 0, 0.45);
   }
 }
 
@@ -95,10 +173,29 @@
   --color-text-secondary: #b8b0a5;
   --color-text-tertiary: #807a72;
   --color-divider: #3a3530;
+  --color-fill: #35312d;
+  --color-fill-hi: #403b36;
+  --color-fill-raised: #403b36;
+  --color-overlay-subtle: rgba(255, 255, 255, 0.07);
+  --color-fill-dim: #45403a;
+  --color-fill-dim-strong: #4e4944;
+  --color-card: #2a2724;
+  --secondary: #35312d;
+  --secondary-foreground: #f6f2ee;
+  --color-text-primary: #f6f2ee;
+  --color-primary-bg: rgba(201, 180, 122, 0.2);
+  --color-surface-veil-88: rgba(42, 39, 36, 0.88);
+  --color-surface-veil-92: rgba(42, 39, 36, 0.92);
+  --color-surface-veil-95: rgba(42, 39, 36, 0.95);
   --color-primary: #c9b47a;
   --color-primary-light: #d9c68f;
   --color-primary-dark: #a8964f;
   --shadow-sm: 0 1rpx 4rpx rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4rpx 16rpx rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8rpx 24rpx rgba(0, 0, 0, 0.5);
+  --shadow-card-sm: 0 2rpx 8rpx rgba(0, 0, 0, 0.4);
+  --shadow-card-md: 0 2rpx 12rpx rgba(0, 0, 0, 0.4);
+  --shadow-card-lg: 0 2rpx 16rpx rgba(0, 0, 0, 0.4);
+  --shadow-pop: 0 6rpx 20rpx rgba(0, 0, 0, 0.45);
+  --shadow-top: 0 -2rpx 8rpx rgba(0, 0, 0, 0.45);
 }

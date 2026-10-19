@@ -7,6 +7,8 @@ import App from './App.vue'
 import { lucClass } from '@/utils/lucide'
 import { i18n } from '@/i18n'
 import { i18nPageMixin } from '@/utils/i18nPageMixin'
+import { themePageMixin } from '@/utils/themePageMixin'
+import { toAbsoluteImageUrl } from '@/utils/imageUrl'
 import { syncUniLocale } from '@/i18n'
 
 // uview-plus 3.x 的 install() 依赖 `import.meta.glob('./components/u-*/*.vue')` 拉组件对象,
@@ -36,6 +38,9 @@ export function createApp() {
   // 全局 mixin:每页声明 pageTitleKey 即可在 onLoad/onUnload 时自动同步原生 navbar 标题,
   // locale 切换时也会实时更新(设置页改了语言,所有打开的页面立即反映)
   app.mixin(i18nPageMixin)
+  // 全局 mixin:每个页面挂载时同步原生导航栏配色,解决深色模式下
+  // 使用默认导航栏的页面顶部标题栏仍是白底的问题(原生 head 不读 CSS 变量)
+  app.mixin(themePageMixin)
   // 全局注册 uview-plus 组件(以及 uView 根组件,用于 toast/notify 等全局 API)
   app.component('UIcon', UIcon)
   app.component('UPopup', UPopup)
@@ -48,6 +53,12 @@ export function createApp() {
   app.component('UView', UView)
   // 全局图标映射:模板中可用 $luc(emojiOrName) 得到 'luc luc-xxx' 类名
   app.config.globalProperties.$luc = lucClass
+  // 全局图片地址解析:模板中统一用 $img(xxx)，例如 <image :src="$img(item.image)" />。
+  // 后端返回的是相对路径(/uploads/...)，APP 端 <image> 不走 Vite dev proxy，
+  // 相对路径会被解析到 app 自身域名下 → 图片空白（H5 端同源所以看不出问题）。
+  // toAbsoluteImageUrl 是幂等的：已绝对化的 URL、/static/ 本地资源、data URI、
+  // 本地临时路径(wxfile:// 等) 都会原样返回，因此可以安全地全局套用。
+  app.config.globalProperties.$img = toAbsoluteImageUrl
   // 全局 i18n:模板中可用 $t('key', params),$i18n.locale 读取当前语言
   app.config.globalProperties.$t = (key, params) => i18n.t(key, params)
   app.config.globalProperties.$i18n = i18n

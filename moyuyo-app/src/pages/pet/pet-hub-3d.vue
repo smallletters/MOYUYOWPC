@@ -353,9 +353,16 @@ const onAddPet = () => uni.showToast({ title: t('petHub3dScene.addNewPet'), icon
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 88rpx;
-  padding: 0 24rpx;
-  background: rgba(255, 255, 255, 0.88);
+  /* 顶部状态栏安全区：取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算；第二条为老 WebView 兜底 */
+  height: calc(88rpx + var(--status-bar-height, 0px));
+  height: calc(88rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-top: var(--status-bar-height, 0px);
+  padding-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  padding-right: 24rpx;
+  padding-left: 24rpx;
+  padding-bottom: 0;
+  box-sizing: border-box;
+  background: var(--color-surface-veil-88, rgba(255, 255, 255, 0.88));
   backdrop-filter: blur(20px);
   border-bottom: 1rpx solid var(--color-border);
 }
@@ -416,7 +423,7 @@ const onAddPet = () => uni.showToast({ title: t('petHub3dScene.addNewPet'), icon
   position: relative;
   border-radius: 40rpx;
   overflow: hidden;
-  background: linear-gradient(180deg, #f7f7fa, #f2f2f7);
+  background: linear-gradient(180deg, var(--color-fill-hi, #f7f7fa), var(--color-fill, #f2f2f7));
   border: 1rpx solid var(--color-border);
   height: 680rpx;
 }

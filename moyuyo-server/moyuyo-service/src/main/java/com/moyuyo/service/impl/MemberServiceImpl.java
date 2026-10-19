@@ -165,25 +165,39 @@ public class MemberServiceImpl implements MemberService {
     userMapper.updateById(user);
 
     LocalDateTime base = createdAt != null ? createdAt : LocalDateTime.now();
+    // 补签等场景需要回填流水时间。createdAt 上是 FieldFill.INSERT，
+    // 而 MyMetaObjectHandler 用的是 strictInsertFill（仅字段为空时填充），因此显式赋值不会被覆盖
+    insertPointsLog(userId, changeValue, type, bizNo, remark, createdAt, base);
+
+    // 积分变动后自动重算会员等级 / 成长值，确保 mo_member.level 与总积分同步
+    recalculateLevel(userId, newPoints);
+  }
+
+  /**
+   * 写入一条积分流水（只落 mo_points_log，不动余额、不重算等级）。
+   * <p>
+   * 供 addPointsAt（正负向余额变动）与冻结/解冻/冻结转实扣复用：
+   * - 仅正向流水（积分发放）设置 12 月有效期，扣减/冻结/解冻等流水不设；
+   * - createdAt 非空时显式回填流水时间（strictInsertFill 不会覆盖非空值）。
+   *
+   * @param createdAt 流水时间；为空则由 MyBatis-Plus 自动填充为当前时间
+   * @param base      用于计算有效期的基准时间（通常 = createdAt ?: now），不可为空
+   */
+  private void insertPointsLog(Long userId, int changeValue, String type, String bizNo,
+      String remark, LocalDateTime createdAt, LocalDateTime base) {
     PointsLogEntity log = new PointsLogEntity();
     log.setUserId(userId);
     log.setChangeValue(changeValue);
     log.setType(type);
     log.setBizNo(bizNo);
     log.setRemark(remark);
-    // 补签等场景需要回填流水时间。createdAt 上是 FieldFill.INSERT，
-    // 而 MyMetaObjectHandler 用的是 strictInsertFill（仅字段为空时填充），因此显式赋值不会被覆盖
     if (createdAt != null) {
       log.setCreatedAt(createdAt);
     }
-    // 仅正向流水（积分发放）设置 12 月有效期；扣减/退款/兑换等流水不设
     if (changeValue > 0) {
       log.setExpireTime(base.plusMonths(POINTS_VALID_MONTHS));
     }
     pointsLogMapper.insert(log);
-
-    // 积分变动后自动重算会员等级 / 成长值，确保 mo_member.level 与总积分同步
-    recalculateLevel(userId, newPoints);
   }
 
   /**
@@ -247,7 +261,84 @@ public class MemberServiceImpl implements MemberService {
   @Override
   public int getPointsBalance(Long userId) {
     UserEntity user = userMapper.selectById(userId);
-    return user != null && user.getPoints() != null ? user.getPoints() : 0;
+    if (user == null) {
+      return 0;
+    }
+    int total = user.getPoints() != null ? user.getPoints() : 0;
+    int frozen = user.getPointsFrozen() != null ? user.getPointsFrozen() : 0;
+    // 可用积分 = 总积分 - 冻结(待付款订单占用)。上限 0，避免脏数据导致负数展示
+    return Math.max(0, total - frozen);
+  }
+
+  @Override
+  @Transactional
+  public boolean freezePoints(Long userId, int points, String bizNo, String remark) {
+    if (points <= 0) {
+      return true;
+    }
+    // 原子条件更新：仅当「可用 = points - points_frozen >= points」时才冻结。
+    // 用 affected rows 判定而非"先 SELECT 再判断"，杜绝两笔待付款订单并发占用同一批积分的竞态。
+    int updated = userMapper.update(null,
+        new LambdaUpdateWrapper<UserEntity>()
+            .eq(UserEntity::getId, userId)
+            .apply("points - points_frozen >= {0}", points)
+            .setSql("points_frozen = points_frozen + " + points));
+    if (updated == 0) {
+      log.warn("[points] 冻结失败(可用积分不足): userId={}, points={}", userId, points);
+      return false;
+    }
+    // 冻结不改变总积分，写一条 0 变动流水留痕（沿用 addPoints 体系；不影响等级/成长值）
+    insertPointsLog(userId, 0, "FREEZE", bizNo, remark, null, LocalDateTime.now());
+    log.info("[points] 冻结成功: userId={}, points={}, bizNo={}", userId, points, bizNo);
+    return true;
+  }
+
+  @Override
+  @Transactional
+  public boolean unfreezePoints(Long userId, int points, String bizNo, String remark) {
+    if (points <= 0) {
+      return true;
+    }
+    // 原子条件更新：仅当确有足够冻结(points_frozen >= points)时才回退。
+    // 幂等：存量订单/重复取消命中 0 行 → 返回 false，不报错、不误还。
+    int updated = userMapper.update(null,
+        new LambdaUpdateWrapper<UserEntity>()
+            .eq(UserEntity::getId, userId)
+            .apply("points_frozen >= {0}", points)
+            .setSql("points_frozen = points_frozen - " + points));
+    if (updated == 0) {
+      log.warn("[points] 解冻跳过(无对应冻结): userId={}, points={}", userId, points);
+      return false;
+    }
+    insertPointsLog(userId, 0, "UNFREEZE", bizNo, remark, null, LocalDateTime.now());
+    log.info("[points] 解冻成功: userId={}, points={}, bizNo={}", userId, points, bizNo);
+    return true;
+  }
+
+  @Override
+  @Transactional
+  public boolean consumeFrozenPoints(Long userId, int points, String bizNo, String remark) {
+    if (points <= 0) {
+      return true;
+    }
+    // 冻结转实扣：同一个 UPDATE 内同时扣总积分与冻结额，
+    // 避免"先 unfreeze 再 spendPoints"两步之间的并发窗口造成重复扣减/漏扣。
+    int updated = userMapper.update(null,
+        new LambdaUpdateWrapper<UserEntity>()
+            .eq(UserEntity::getId, userId)
+            .apply("points_frozen >= {0}", points)
+            .apply("points >= {0}", points)
+            .setSql("points = points - " + points + ", points_frozen = points_frozen - " + points));
+    if (updated == 0) {
+      log.warn("[points] 冻结转实扣失败(冻结/余额不足): userId={}, points={}", userId, points);
+      return false;
+    }
+    // 扣减流水（SPEND，负向）用于用户侧"积分明细"留痕
+    insertPointsLog(userId, -points, "SPEND", bizNo, remark, null, LocalDateTime.now());
+    // 总积分已变，按总积分同步会员等级/成长值（仅升不降，扣分不会掉级）
+    recalculateLevel(userId);
+    log.info("[points] 冻结转实扣成功: userId={}, points={}, bizNo={}", userId, points, bizNo);
+    return true;
   }
 
   @Override

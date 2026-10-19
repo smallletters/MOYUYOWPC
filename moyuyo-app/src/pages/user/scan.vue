@@ -130,7 +130,12 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24rpx 40rpx 16rpx;
+  /* 顶部状态栏安全区：在原有 24rpx 基准上叠加，取 --status-bar-height 与 env(safe-area-inset-top) 较大值，避免 iOS 双重计算 */
+  padding-top: calc(24rpx + var(--status-bar-height, 0px));
+  padding-top: calc(24rpx + max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px)));
+  padding-right: 40rpx;
+  padding-bottom: 16rpx;
+  padding-left: 40rpx;
   position: relative;
   z-index: 10;
 }
@@ -341,7 +346,7 @@ export default {
 .result-content {
   position: relative;
   width: 600rpx;
-  background: #ffffff;
+  background: var(--color-surface);
   border-radius: 24rpx;
   padding: 48rpx;
   display: flex;
@@ -352,18 +357,18 @@ export default {
 .result-title {
   font-size: 32rpx;
   font-weight: 600;
-  color: #1d1d1f;
+  color: var(--color-text);
   margin-bottom: 24rpx;
 }
 
 .result-data {
   font-size: 28rpx;
-  color: #48484a;
+  color: var(--color-text-secondary);
   text-align: center;
   word-break: break-all;
   margin-bottom: 32rpx;
   padding: 24rpx;
-  background: #f2f2f7;
+  background: var(--color-fill, #f2f2f7);
   border-radius: 16rpx;
   width: 100%;
 }
@@ -391,8 +396,8 @@ export default {
 }
 
 .result-close {
-  background: #f2f2f7;
-  color: #1d1d1f;
+  background: var(--color-fill, #f2f2f7);
+  color: var(--color-text);
 }
 
 @keyframes scanLine {

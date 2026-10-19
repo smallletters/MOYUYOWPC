@@ -1,4 +1,4 @@
-﻿<!--
+<!--
   装扮弹窗组件
   功能:
     1. 顶部 Tab 切换:宠物形象 / 背景
@@ -39,7 +39,7 @@
           <!-- 渲染选中形象:图片 / 3D 模型 / 占位 -->
           <image
             v-if="previewType === 'image'"
-            :src="selectedAvatarItem.src"
+            :src="$img(selectedAvatarItem.src)"
             mode="aspectFit"
             class="dp-preview-img"
           />
@@ -68,7 +68,7 @@
               :class="{ active: selectedAvatarId === item.id }"
               @click="selectAvatar(item)"
             >
-              <image :src="item.src" mode="aspectFill" class="dp-grid-img" />
+              <image :src="$img(item.src)" mode="aspectFill" class="dp-grid-img" />
               <text class="dp-grid-name">{{ item.name }}</text>
             </view>
           </view>
@@ -84,7 +84,7 @@
               :class="{ active: selectedAvatarId === item.id }"
               @click="selectAvatar(item)"
             >
-              <image :src="item.src" mode="aspectFill" class="dp-grid-img" />
+              <image :src="$img(item.src)" mode="aspectFill" class="dp-grid-img" />
               <view class="dp-grid-del" @click.stop="delCustom(item)">
                 <text class="luc luc-x" />
               </view>
@@ -112,7 +112,7 @@
               :class="{ active: selectedBgId === bg.id }"
               @click="selectBg(bg)"
             >
-              <image :src="bg.src" mode="aspectFill" class="dp-bg-img" />
+              <image :src="$img(bg.src)" mode="aspectFill" class="dp-bg-img" />
               <text class="dp-bg-name">{{ bg.name }}</text>
               <view v-if="selectedBgId === bg.id" class="dp-bg-check">
                 <text class="luc luc-check" />
@@ -264,7 +264,7 @@ export default {
     previewTip() {
       const item = this.selectedAvatarItem
       if (!item) return this.$t('dressPopup.tipPick')
-      if (item.type === 'model3d') return item.name + ' · 拖动旋转预览'
+      if (item.type === 'model3d') return item.name + this.$t('dressPopup.dragToRotate')
       return item.name
     },
   },
@@ -405,7 +405,7 @@ export default {
       // 文件大小保护
       if (file.size && file.size > MODEL_MAX_SIZE) {
         uni.showToast({
-          title: `模型超过 ${MODEL_MAX_SIZE / 1024 / 1024}MB,请压缩后上传`,
+          title: this.$t('dressPopup.modelTooLarge', { size: MODEL_MAX_SIZE / 1024 / 1024 }),
           icon: 'none',
         })
         return
@@ -433,7 +433,7 @@ export default {
           format,
         })
         uni.hideLoading()
-        uni.showToast({ title: '3D模型已保存', icon: 'success' })
+        uni.showToast({ title: this.$t('dressPopup.modelSaved'), icon: 'success' })
       } catch (e) {
         uni.hideLoading()
         console.error('[dress-popup] 模型保存失败', e)

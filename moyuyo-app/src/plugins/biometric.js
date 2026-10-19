@@ -3,6 +3,7 @@
  * 插件标识: MOYUYO-Biometric
  * 功能: Face ID / Touch ID 生物识别
  */
+import { t } from '@/i18n'
 /* eslint-disable no-unreachable */
 
 const PLUGIN_NAME = 'MOYUYO-Biometric'
@@ -35,7 +36,7 @@ export function isBiometricAvailable() {
  * @returns {Promise<Boolean>}
  */
 export function authenticateBiometric(options = {}) {
-  const { reason = '验证身份以继续', fallbackToPasscode = true } = options
+  const { reason = t('biometricPlugin.prompt'), fallbackToPasscode = true } = options
 
   // #ifdef APP-PLUS
   const plugin = uni.requireNativePlugin(PLUGIN_NAME)
@@ -44,7 +45,7 @@ export function authenticateBiometric(options = {}) {
       if (result.success) {
         resolve(true)
       } else {
-        reject(new Error(result.message || '身份验证失败'))
+        reject(new Error(result.message || t('biometricPlugin.failed')))
       }
     })
   })
@@ -53,11 +54,11 @@ export function authenticateBiometric(options = {}) {
   // #ifdef H5
   // H5 降级: 使用 WebAuthn API
   if (window.PublicKeyCredential) {
-    return Promise.reject(new Error('请使用支持生物识别的设备'))
+    return Promise.reject(new Error(t('biometricPlugin.noDevice')))
   }
   // #endif
   /* #ifndef APP-PLUS */
-  return Promise.reject(new Error('当前环境不支持生物识别'))
+  return Promise.reject(new Error(t('biometricPlugin.unsupported')))
   /* #endif */
 }
 
