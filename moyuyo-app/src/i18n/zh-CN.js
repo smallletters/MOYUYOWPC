@@ -1889,7 +1889,7 @@ export default {
     bannerLuna: 'LUNA 策展家',
     searchPlaceholder: '搜索宠物好物、品牌、攻略',
     // 首页弹窗文案
-    bannerN: 'Banner {n}',
+    bannerUnavailable: '该活动页面暂不可用',
     scanResult: '识别: {value}',
     scanInvalid: '未识别到有效二维码',
     scanAppOnly: '请使用 APP 扫码',
@@ -1928,6 +1928,8 @@ export default {
     failed: '提交失败，请稍后重试',
     typeRequired: '请选择反馈类型',
     descRequired: '请描述您的问题',
+    descTooShort: '请至少输入 {min} 个字',
+    uploading: '上传中…',
     types: {
       ux: '体验问题',
       bug: '功能异常',
@@ -4372,6 +4374,7 @@ export default {
     modelLoadFailed: '模型加载失败，请检查网络或文件路径',
     loadingShort: '加载中...',
     threeLoadFailed: 'three.js 加载失败：',
+    engineBootTimeout: '3D 引擎未能启动，请重新进入页面',
     dogModelLoadFailed: '小狗模型加载失败',
     cameraFps: '🐶 第一人称（动物眼睛）',
     cameraTps: '👀 第三人称跟随',

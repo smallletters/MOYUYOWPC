@@ -26,6 +26,12 @@ public class FeedbackEntity {
 
   private String replyContent;
 
+  /** 管理员回复时间（管理端处理时写入） */
+  private LocalDateTime replyTime;
+
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createTime;
+
+  /** 记录最后更新时间（DB 侧 ON UPDATE 自动维护，此处仅用于读取） */
+  private LocalDateTime updateTime;
 }

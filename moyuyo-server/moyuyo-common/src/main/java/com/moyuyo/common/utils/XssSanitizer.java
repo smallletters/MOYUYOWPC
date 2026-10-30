@@ -62,6 +62,12 @@ public final class XssSanitizer {
     /**
      * 净化纯文本：转义所有 HTML 标签，返回纯文本内容。
      *
+     * <p><b>注意</b>：OWASP HTML Sanitizer 会把所有非 ASCII 字符输出成数字实体
+     * （{@code ，} → {@code &#xff0c;}、{@code @} → {@code &#64;}）。
+     * 该结果只适合再用 HTML 渲染的场景；若字段最终由
+     * {@code <text>}（uni-app）或 {@code {{ }}}（Vue）当纯文本显示，
+     * 实体会原样暴露成乱码 —— 这类字段请用 {@link #sanitizeText(String)}。
+     *
      * @param input 用户输入的原始文本，可能为 null
      * @return 转义后的纯文本；输入为 null 时返回空字符串
      */
@@ -70,6 +76,28 @@ public final class XssSanitizer {
             return "";
         }
         return PLAIN_TEXT_POLICY.sanitize(input);
+    }
+
+    /**
+     * 保真净化纯文本（不做 HTML 实体转义）。
+     *
+     * <p>适用场景：内容只会以文本节点方式渲染的字段，如意见反馈正文、联系方式、
+     * 备注等。Vue 的 {@code {{ }}} 与 uni-app 的 {@code <text>} 都按文本渲染，
+     * 天然不会执行 HTML，因此无需转义；只需去掉控制字符与首尾空白，保证入库内容
+     * 与用户输入一致。
+     *
+     * <p><b>禁止</b>把该方法的返回值交给 {@code v-html} / {@code rich-text} 渲染。
+     *
+     * @param input 用户输入的原始文本，可能为 null
+     * @return 去掉控制字符并 trim 的原文；输入为 null 时返回空字符串
+     */
+    public static String sanitizeText(String input) {
+        if (input == null || input.isEmpty()) {
+            return "";
+        }
+        // 仅保留 \t \n \r，其余 C0/C1 控制字符（含 \u0000）全部剔除
+        String cleaned = input.replaceAll("[\\p{Cntrl}&&[^\\t\\n\\r]]", "");
+        return cleaned.trim();
     }
 
     /**

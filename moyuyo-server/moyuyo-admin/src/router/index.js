@@ -161,6 +161,13 @@ const routes = [
         meta: { title: '投诉管理' }
       },
       {
+        // 用户 App「意见反馈」页提交的数据（mo_feedback 全量，含建议/缺陷/投诉）
+        path: 'feedback',
+        name: 'FeedbackManage',
+        component: () => import('../views/FeedbackManage.vue'),
+        meta: { title: '意见反馈' }
+      },
+      {
         path: 'review-manage',
         name: 'ReviewManage',
         component: () => import('../views/ReviewManage.vue'),

@@ -1398,3 +1398,22 @@ const monitorCrud = (base) => ({
 export const orderMonitorRuleApi = monitorCrud('/order-ops/monitor')
 
 
+// ==================== 意见反馈（用户 App 提交的建议/缺陷/投诉） ====================
+// 数据源与"投诉管理"同为 mo_feedback，但这里是完整的用户反馈箱：
+// 投诉(type=COMPLAINT) 仍需在投诉管理走处理流水，建议/缺陷在此之前后台无入口。
+export function getFeedbackList(params) {
+  return api.get('/feedback/list', { params })
+}
+
+export function getFeedbackDetail(id) {
+  return api.get(`/feedback/${id}`)
+}
+
+/** @param data {{ status?: string, replyContent?: string }} */
+export function handleFeedback(id, data) {
+  return api.put(`/feedback/${id}`, data)
+}
+
+export function getFeedbackStats() {
+  return api.get('/feedback/stats')
+}

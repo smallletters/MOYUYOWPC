@@ -240,6 +240,7 @@ const navGroups = [
       { path: '/satisfaction', label: '满意度管理' },
       { path: '/app-version', label: '版本管理' },
       { path: '/complaint', label: '投诉管理' },
+      { path: '/feedback', label: '意见反馈' },
       { path: '/complaint-handle', label: '投诉处理' },
       { path: '/cs-sessions', label: '客服会话' },
       { path: '/cs-performance', label: '客服绩效看板' }

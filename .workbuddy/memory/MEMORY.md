@@ -68,6 +68,39 @@ padding-right: 24rpx; padding-left: 24rpx; padding-bottom: 0; box-sizing: border
 - 2026-10-19 事故：`goods/detail` 主图 `<swiper :disable-touch="true">` → 主图无法左右滑动。uni-h5 `uni-h5.es.js:15508` 的 `useTouchtrack` 回调首行 `if (props.disableTouch) return;`，触摸起点即被丢弃。
 - 原生组件（APP 端 swiper、picker 等）的 `*-color` 参数走原生传参，**不支持 `var(--xxx)`**；这些属性必须写字面 `#RRGGBB`（参照 `home.vue` / `flash-sale-detail.vue` 的写法）。
 - 排查"轮播不能滑"先看三处：`disable-touch`、外层是否有覆盖层拦截 touch、数据是否真的只有 1 张图。
+- **`swiper` 没有 `click` 事件 payload**：uni-h5 `uni-h5.es.js` 全文只有 2 处 `trigger("click"`，都在 **map** 组件（25171/25195，`trigger("click", {}, {})`）。swiper 的 `@click` 只是属性透传到根 DOM 节点 → H5 拿到原生 MouseEvent（**无 `detail.current`**），APP 事件结构也不一致。
+  - 事故：`home.vue` `onBannerClick(idx)` 收到事件对象，`idx + 1` 拼出 `"Banner [object Object]1"`。
+  - 正解：点击绑到 `swiper-item` **内部普通节点**，用 v-for 闭包索引 `@click="onBannerClick(idx)"`；不要依赖 `e.detail.current`（那是 `animationfinish` 的 payload，不适用于 click）。
+  - 附带：`tabBar` 页跳转只能 `switchTab` 且不能带 query；CMS 存的 linkUrl 常带域名（`http://host/pages/x`），解析站内路径用**纯字符串正则**（`/^(?:https?:\/\/[^/]+)?(\/pages\/[^?#]*(?:\?[^#]*)?)$/i`），别用 `URL` 构造函数（APP 端不保证可用），也别用 `indexOf('/pages/')`（外站路径会被误判）。
+
+### 铁律 9：纯文本字段禁用 OWASP sanitizer 的实体转义版本；管理端静态资源要单独构建
+- **`XssSanitizer.sanitizePlainText` / `sanitizeRichText` 会把所有非 ASCII 输出成数字实体**
+  （`，`→`&#xff0c;`、`@`→`&#64;`）。字段若由 uni `<text>` 或 Vue `{{ }}` 渲染（都不解析实体），就会显示成乱码。
+  纯文本字段（反馈正文/联系方式/备注等）一律用 `XssSanitizer.sanitizeText()`（去控制字符 + trim，不转义）。
+  注意 `sanitizePlainText` 在 `nickname` 等历史字段上的同类风险尚未清理。
+- 富文本（社区帖子）才用 `sanitizeRichText`，且必须由 `rich-text` / `v-html` 渲染。
+- **管理端 `moyuyo-admin` 是独立 Vue 项目，产物打进后端 jar**（`moyuyo-api/src/main/resources/static/admin/`）。
+  改完页面必须 `npm run build` → `docker compose build app` 才生效；只重启容器没用。
+- `moyuyo-admin/vite.config.js` 必须保持 `emptyOutDir: false`：清空 400+ 旧产物会被 safe-delete 拦截，
+  构建直接失败（`SAFE_DELETE_BULK_CONFIRM_REQUIRED`）。
+- 管理端 axios 的 baseURL 已是 `/api/admin`，所以 `api.admin.js` 里写 `/feedback/list` 即对应
+  `@RequestMapping("/api/admin/feedback")`；路由守卫只校验 token，新页面无需额外权限声明。
+
+### 铁律 10：APP 端页面脚本在**逻辑层**，没有 DOM；要用 DOM/WebGL 只能走 renderjs
+- **vue3 APP 端是逻辑层 + 视图层分离**：页面 `<script>` 全部打进 `app-service.js` 跑在 jscore/V8，`document` / `window` / WebGL **永远不存在**。`__uniappview.html` 只加载 `uni-app-view.umd.js` + `app-renderjs.js`。
+  - 事故：`pages/pet/space-3d` 在页面脚本里 `document.getElementById` + `new THREE.WebGLRenderer()`，还写了「document 可能短暂 undefined，重试 30 次」——前提就是错的，必然落到「当前环境不支持 3D」。
+  - 判据：`typeof document === 'undefined'` 在 APP 端**不会自愈**，别写重试。
+- **唯一出口是 `<script module="xxx" lang="renderjs">`**（H5 也支持，可两端共用一份实现）。
+  - H5：renderjs 作为 mixin 合入页面，`this.xxx === this`
+  - APP：`initRenderjs` 在服务层挂代理，`this.xxx.method(...)` 经 JSON 协议转发到视图层
+  - 视图层 → 逻辑层：`this.$ownerInstance.callMethod('pageMethod', args)`
+  - **`initRenderjs` / `callMethod` 的实现属 HBuilderX 基座运行时，不在业务包里**——业务包搜不到这些字符串是正常的
+- **renderjs 块由 uni 单独用 esbuild 打包，不认 `@` 别名**：必须写相对路径，否则 `uni build -p app` 直接
+  `Could not resolve "@/utils/..."`（H5 dev 却完全正常，极易漏）。同理也**不能用动态 `import()`**（视图层产物是普通脚本，没有 chunk 加载器），three 之类必须静态 import。
+- 依赖 uni 文件 API 的工具（`ensureLocalModel` 用的 `uni.downloadFile/saveFile/getFileSystemManager`）只能留在逻辑层，把结果（本地路径 + HTTP 兜底地址）当**纯数据**传给视图层。
+- 大资源（本页模型 67MB）先逻辑层落地再用；视图层读 `_doc/` 可能失败，必须留 HTTP 回退。
+- 参考实现：`src/utils/pet3d/space3d-engine.js`（引擎，逐字搬运）+ `create-engine.js`（装配 + 32ms 增量推状态）+ `pages/pet/space-3d.vue`（薄壳 + renderjs 宿主）。
+- 验证手段：H5 可用 playwright（`--enable-unsafe-swiftshader`）真跑，配合视图层暴露的 `window.__pet3d` 读引擎内部状态；APP 只能靠产物结构核对（`app-renderjs.js` 是否含 three、service 层是否已清空引擎）。
 
 
 ## 开发数据 / 开发库（moyuyo-server）

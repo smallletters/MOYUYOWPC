@@ -1877,7 +1877,7 @@ export default {
     bannerLuna: 'LUNA Curator',
     searchPlaceholder: 'Search products, brands, guides',
     // Home toasts
-    bannerN: 'Banner {n}',
+    bannerUnavailable: 'This page is not available yet',
     scanResult: 'Scanned: {value}',
     scanInvalid: 'No valid QR code detected',
     scanAppOnly: 'Please use the APP to scan',
@@ -1916,6 +1916,8 @@ export default {
     failed: 'Submission failed, please retry later',
     typeRequired: 'Please select a type',
     descRequired: 'Please describe the issue',
+    descTooShort: 'Please enter at least {min} characters',
+    uploading: 'Uploading...',
     types: {
       ux: 'UX Issue',
       bug: 'Bug Report',
@@ -4396,6 +4398,7 @@ export default {
     modelLoadFailed: 'Model load failed. Please check your network or file path',
     loadingShort: 'Loading...',
     threeLoadFailed: 'three.js failed to load: ',
+    engineBootTimeout: 'The 3D engine did not start. Please reopen this page.',
     dogModelLoadFailed: 'Failed to load the puppy model',
     cameraFps: '🐶 First-person (animal eye)',
     cameraTps: '👀 Third-person follow',

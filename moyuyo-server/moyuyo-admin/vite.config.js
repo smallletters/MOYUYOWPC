@@ -27,7 +27,12 @@ export default defineConfig({
   base: '/admin/',
   build: {
     outDir: '../moyuyo-api/src/main/resources/static/admin/',
-    emptyOutDir: true,
+    // 不要设 emptyOutDir: true。
+    // 清空该目录需要一次性删除 400+ 个旧产物文件，在带 safe-delete 保护的构建环境里
+    // 会被拦截并直接让构建失败（[SAFE_DELETE_BULK_CONFIRM_REQUIRED]）。
+    // 关掉后 Vite 只覆盖同名文件，旧 hash 资源会残留 —— 不影响功能
+    // （index.html 只引用新 hash），可定期人工清理。
+    emptyOutDir: false,
     // 生产环境去除 console / debugger 语句（防止调试代码泄漏）
     minify: 'terser',
     terserOptions: {

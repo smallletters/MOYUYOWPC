@@ -29,8 +29,11 @@ const MODEL_META_PREFIX = 'moyuyo_model_meta_' // 单个模型的 etag/lastModif
 
 /**
  * 把后端相对路径解析为可下载的绝对 URL,行为与 utils/request.js#resolveBaseUrl 对齐
+ *
+ * 导出给 3D 空间页用：那边在视图层（renderjs）读不到 _doc/ 本地文件时，
+ * 需要拿远程地址做兜底。
  */
-function resolveRemoteUrl(url) {
+export function resolveRemoteUrl(url) {
   if (!url) return ''
   if (url.startsWith('http')) return url
   const absBase = process.env.VITE_ADMIN_API_BASE

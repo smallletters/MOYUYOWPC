@@ -45,15 +45,22 @@
           :interval="3000"
           :duration="500"
           :circular="true"
-          :disable-touch="false"
           :indicator-dots="true"
           indicator-active-color="#2E2B29"
           indicator-color="rgba(46,43,41,0.3)"
-          @click="onBannerClick"
         >
           <swiper-item v-for="(b, idx) in displayBanners" :key="b.id || idx">
-            <view class="banner-item">
-              <image :src="$img(b.image)" class="banner-img" mode="aspectFill" />
+            <!-- 点击事件必须绑在 swiper-item 内部：swiper 本身的 @click 在 H5 下拿到的是
+                 原生 MouseEvent（无 detail.current），APP 下事件结构也不一致，
+                 直接用 v-for 闭包里的 idx 最可靠 -->
+            <view class="banner-item" @click="onBannerClick(idx)">
+              <image
+                v-if="b.image"
+                :src="$img(b.image)"
+                class="banner-img"
+                mode="aspectFill" />
+              <!-- 无图兜底（接口失败时的本地降级 banner）：纯色块，不依赖任何外链 -->
+              <view v-else class="banner-placeholder" />
               <view v-if="b.title" class="banner-title-overlay">
                 <text v-if="b.tag" class="banner-tag">{{ b.tag }}</text>
                 <text class="banner-title-text">{{ b.title }}</text>
@@ -125,6 +132,18 @@
 import { cmsApi } from '@/api'
 import { reportActiveHeartbeat } from '@/utils/heartbeat'
 import { useThemeStore } from '@/store'
+
+/**
+ * 站内 tabBar 页：只能用 uni.switchTab 打开，navigateTo 会直接失败。
+ * 与 pages.json 的 tabBar.list 保持一致。
+ */
+const TAB_BAR_PAGES = [
+  '/pages/tabbar/home',
+  '/pages/tabbar/category',
+  '/pages/tabbar/pet',
+  '/pages/tabbar/community',
+  '/pages/tabbar/user',
+]
 
 export default {
   pageTitleKey: 'pageTitle.tabbarHome',
@@ -201,12 +220,12 @@ export default {
     /**
      * Banner 兜底数据（接口失败 / 数据未返回时降级展示）。
      * 用 computed 而非 data：标题走 i18n，locale 切换时跟随刷新。
+     *
+     * 不配置 image：原来用的是 picsum.photos 外链，真机常常只连局域网、没有公网出口，
+     * 会渲染成空白条。这里退化成品牌渐变色块 + 标题，离线也稳定。
      */
     fallbackBanners() {
-      return [
-        { image: 'https://picsum.photos/750/360?random=1', title: this.$t('home.bannerMilo') },
-        { image: 'https://picsum.photos/750/360?random=2', title: this.$t('home.bannerLuna') },
-      ]
+      return [{ title: this.$t('home.bannerMilo') }, { title: this.$t('home.bannerLuna') }]
     },
     /**
      * 实际渲染的 banner 列表：接口数据优先，空则回落兜底。
@@ -341,8 +360,72 @@ export default {
       }
     },
 
+    /**
+     * 点击海报：跳到 CMS 里配置的 linkUrl。
+     *
+     * 入参是 v-for 闭包里的索引（swiper-item 内部绑定）。
+     * 旧实现把 swiper 的 @click 事件对象当索引用（`idx + 1`），
+     * 于是 toast 文案变成 "Banner [object Object]1" —— 保留一点防御，
+     * 万一将来又被改回绑在 swiper 上也不会再拼出脏字符串。
+     */
     onBannerClick(idx) {
-      uni.showToast({ title: this.$t('home.bannerN', { n: idx + 1 }), icon: 'none' })
+      let i = Number(idx)
+      if (!Number.isFinite(i)) {
+        // 兜底：误传事件对象时尝试从 detail.current 取，再不行就取第 1 张
+        const fromDetail = Number(idx && idx.detail && idx.detail.current)
+        i = Number.isFinite(fromDetail) ? fromDetail : 0
+      }
+      const banner = this.displayBanners[i]
+      if (!banner) return
+      const link = String(banner.link || '').trim()
+      // 兜底 banner（接口失败时的降级数据）没有链接，静默忽略
+      if (!link) return
+      this.openBannerLink(link)
+    },
+
+    /**
+     * 解析并打开 banner 链接。
+     * CMS 里运营通常填三种形态（见 mo_cms_banner.link_url 现有数据）：
+     *  1) 带域名的站内页：http://192.168.6.103:5174/pages/goods/detail?id=xxx
+     *  2) 站内相对路径：/pages/goods/detail?id=xxx
+     *  3) 外部网页：https://example.com/activity
+     */
+    openBannerLink(link) {
+      // 只把「路径从 /pages/ 开始」的链接当站内页：
+      // 允许无域名（/pages/x）或带域名（http://host/pages/x），
+      // 但 https://example.com/blog/pages/x 这种外站路径不会被误判。
+      // 用纯字符串 + 正则实现，不依赖 URL 构造函数（APP 端不保证可用）。
+      const internal = link.match(/^(?:https?:\/\/[^/]+)?(\/pages\/[^?#]*(?:\?[^#]*)?)$/i)
+      if (internal) {
+        const path = internal[1]
+        const base = path.split('?')[0]
+        if (TAB_BAR_PAGES.includes(base)) {
+          // tabBar 页在 uni 里只能用 switchTab，且不能带 query
+          uni.switchTab({ url: base })
+        } else {
+          uni.navigateTo({
+            url: path,
+            fail: () => {
+              // 页面未注册 / 已下线时给明确提示，避免点了没反应
+              uni.showToast({ title: this.$t('home.bannerUnavailable'), icon: 'none' })
+            },
+          })
+        }
+        return
+      }
+
+      if (/^https?:\/\//i.test(link)) {
+        // 纯外链：交给系统浏览器 / 新标签页，避免内嵌 webview 无法返回
+        // #ifdef APP-PLUS
+        plus.runtime.openURL(link)
+        // #endif
+        // #ifdef H5
+        window.open(link, '_blank')
+        // #endif
+        return
+      }
+
+      uni.showToast({ title: this.$t('home.bannerUnavailable'), icon: 'none' })
     },
 
     goSearch() {
@@ -473,6 +556,15 @@ export default {
   width: 100%;
   height: 320rpx;
   display: block;
+}
+/* 无图兜底：本地纯色块，不依赖公网图片 */
+.banner-placeholder {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--background-200, #ede9e4);
 }
 .banner-title-overlay {
   position: absolute;

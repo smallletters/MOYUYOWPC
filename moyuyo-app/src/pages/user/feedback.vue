@@ -84,7 +84,7 @@
 </template>
 
 <script>
-import { feedbackApi } from '@/api'
+import { feedbackApi, uploadApi } from '@/api'
 import { i18n } from '@/i18n'
 
 export default {
@@ -96,12 +96,17 @@ export default {
       description: '',
       contact: '',
       uploadedImages: [],
+      // value 必须是后端 FeedbackSubmitRequest 认可的标准值（mo_feedback.type 列注释：
+      // BUG / SUGGESTION / COMPLAINT / OTHER）。此前传的是 feature/ux/content/other，
+      // 后端 @Pattern 直接 400 —— 这是"提交没反应"的直接原因之一。
       typeOptions: [
-        { labelKey: 'feedback.types.feature', value: 'feature' },
-        { labelKey: 'feedback.types.ux', value: 'ux' },
-        { labelKey: 'feedback.types.content', value: 'content' },
-        { labelKey: 'feedback.types.other', value: 'other' },
+        { labelKey: 'feedback.types.suggestion', value: 'SUGGESTION' },
+        { labelKey: 'feedback.types.bug', value: 'BUG' },
+        { labelKey: 'feedback.types.content', value: 'COMPLAINT' },
+        { labelKey: 'feedback.types.other', value: 'OTHER' },
       ],
+      // 与后端 @Size(min = 10) 对齐
+      descMinLength: 10,
       submitting: false,
     }
   },
@@ -137,26 +142,50 @@ export default {
         return
       }
 
-      if (!this.description.trim()) {
+      const content = this.description.trim()
+      if (!content) {
         uni.showToast({ title: i18n.t('feedback.descRequired'), icon: 'none' })
+        return
+      }
+      // 后端 @Size(min = 10) 会 400，提前在前端拦住并给出明确文案
+      if (content.length < this.descMinLength) {
+        uni.showToast({
+          title: i18n.t('feedback.descTooShort', { min: this.descMinLength }),
+          icon: 'none',
+        })
         return
       }
 
       this.submitting = true
       try {
+        // 关键：chooseImage 拿到的是本地临时路径（file:// 或 wxfile://），
+        // 直接当 URL 提交存进库里是一条打不开的死链。必须先上传拿服务端相对路径。
+        let imageUrls = []
+        if (this.uploadedImages.length) {
+          uni.showLoading({ title: i18n.t('feedback.uploading'), mask: true })
+          imageUrls = await uploadApi.uploadImages(this.uploadedImages)
+          uni.hideLoading()
+        }
+
         await feedbackApi.submitFeedback({
           type: this.feedbackType,
-          description: this.description.trim(),
+          // 字段名是 content（后端 DTO），不是 description
+          content,
           contact: this.contact,
-          images: this.uploadedImages,
+          images: imageUrls,
         })
         uni.showToast({ title: i18n.t('feedback.submitted'), icon: 'success' })
         setTimeout(() => {
           uni.navigateBack()
         }, 1500)
-      } catch {
-        uni.showToast({ title: i18n.t('feedback.failed'), icon: 'none' })
+      } catch (e) {
+        // request 层已针对 HTTP/业务错误弹出后端 message，
+        // 这里只在完全没有提示时兜底，避免出现两条 toast
+        if (!e || !e.message) {
+          uni.showToast({ title: i18n.t('feedback.failed'), icon: 'none' })
+        }
       } finally {
+        uni.hideLoading()
         this.submitting = false
       }
     },

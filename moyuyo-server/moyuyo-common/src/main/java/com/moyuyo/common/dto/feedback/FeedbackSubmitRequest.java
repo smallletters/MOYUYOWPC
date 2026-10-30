@@ -17,11 +17,18 @@ import java.util.List;
 @Data
 public class FeedbackSubmitRequest {
 
-    /** 反馈类型枚举值：BUG / SUGGEST / COMPLAINT / OTHER */
-    @Schema(description = "反馈类型（BUG/SUGGEST/COMPLAINT/OTHER）", requiredMode = Schema.RequiredMode.REQUIRED)
+    /**
+     * 反馈类型。
+     *
+     * <p>标准值（与 mo_feedback.type 列注释一致）：BUG / SUGGESTION / COMPLAINT / OTHER。
+     * 同时兼容 App 旧版本仍在发送的别名（FEATURE / UX / CONTENT / SUGGEST），
+     * 由 {@code FeedbackServiceImpl#normalizeType} 归一化后落库，
+     * 避免老客户端因枚举改名直接 400。
+     */
+    @Schema(description = "反馈类型（BUG/SUGGESTION/COMPLAINT/OTHER）", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "反馈类型不能为空")
-    @Pattern(regexp = "^(BUG|SUGGEST|COMPLAINT|OTHER)$",
-            message = "反馈类型必须是 BUG/SUGGEST/COMPLAINT/OTHER 之一")
+    @Pattern(regexp = "(?i)^(BUG|SUGGESTION|SUGGEST|COMPLAINT|OTHER|FEATURE|UX|CONTENT)$",
+            message = "反馈类型必须是 BUG/SUGGESTION/COMPLAINT/OTHER 之一")
     @Size(max = 16, message = "反馈类型长度超限")
     private String type;
 
