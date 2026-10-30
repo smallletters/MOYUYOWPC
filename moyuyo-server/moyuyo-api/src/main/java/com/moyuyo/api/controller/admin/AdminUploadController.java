@@ -1,27 +1,35 @@
 package com.moyuyo.api.controller.admin;
 
+import com.moyuyo.common.dto.admin.UploadPage;
 import com.moyuyo.common.dto.admin.UploadResult;
+import com.moyuyo.common.dto.admin.UploadedFile;
 import com.moyuyo.common.Result;
+import com.moyuyo.service.admin.AdminUploadGroupService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 /**
  * 管理端文件上传 Controller（本地存储 + 静态服务）。
@@ -38,7 +46,11 @@ import java.util.UUID;
 @Tag(name = "管理后台 - 文件上传")
 @RestController
 @RequestMapping("/api/admin/upload")
+@RequiredArgsConstructor
 public class AdminUploadController {
+
+    /** 图片空间分组服务：维护「图片 URL -> 分组」映射 */
+    private final AdminUploadGroupService adminUploadGroupService;
 
     /** 图片白名单：扩展名 + Content-Type 双重校验 */
     private static final Set<String> ALLOWED_EXT = new HashSet<>(
@@ -72,13 +84,15 @@ public class AdminUploadController {
      * 上传图片（单个）。
      * <p>
      * POST /api/admin/upload/image
-     * multipart/form-data: file=@xxx.png
+     * multipart/form-data: file=@xxx.png&groupId=12（groupId 可选，指定则归入该分组）
      * <p>
      * 返回 URL 为相对路径 /uploads/yyyy/MM/dd/uuid.ext，前端按需拼接 baseURL
      */
     @PostMapping("/image")
     @Operation(summary = "上传单张图片")
-    public Result<UploadResult> uploadImage(@RequestParam("file") MultipartFile file) {
+    public Result<UploadResult> uploadImage(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(required = false) Long groupId) {
         if (file == null || file.isEmpty()) {
             return Result.badRequest("文件为空");
         }
@@ -125,6 +139,13 @@ public class AdminUploadController {
         long size = file.getSize();
         String url = urlPrefix + datePart + "/" + filename;
 
+        // 记录图片与分组归属：失败不影响上传结果，可在图片空间重新分组
+        try {
+            adminUploadGroupService.bindOnUpload(url, groupId);
+        } catch (Exception e) {
+            log.warn("[upload] 记录图片分组失败：url={}, groupId={}", url, groupId, e);
+        }
+
         UploadResult result = new UploadResult();
         result.setUrl(url);
         result.setFilename(filename);
@@ -138,18 +159,20 @@ public class AdminUploadController {
      * 批量上传图片（与 WC 产品图库交互对齐）。
      * <p>
      * POST /api/admin/upload/images
-     * multipart/form-data: files=@a.png&files=@b.jpg
+     * multipart/form-data: files=@a.png&files=@b.jpg&groupId=12（groupId 可选）
      */
     @PostMapping("/images")
     @Operation(summary = "批量上传图片")
-    public Result<List<UploadResult>> uploadImages(@RequestParam("files") MultipartFile[] files) {
+    public Result<List<UploadResult>> uploadImages(
+            @RequestParam("files") MultipartFile[] files,
+            @RequestParam(required = false) Long groupId) {
         if (files == null || files.length == 0) {
             return Result.badRequest("文件为空");
         }
         List<UploadResult> results = new java.util.ArrayList<>();
         for (MultipartFile f : files) {
             if (f == null || f.isEmpty()) continue;
-            Result<UploadResult> r = uploadImage(f);
+            Result<UploadResult> r = uploadImage(f, groupId);
             if (r.isSuccess() && r.getData() != null) {
                 results.add(r.getData());
             }
@@ -158,6 +181,87 @@ public class AdminUploadController {
             return Result.badRequest("所有文件上传失败");
         }
         return Result.success(results);
+    }
+
+    /**
+     * 分页查询已上传图片（图片空间）。
+     * <p>
+     * GET /api/admin/upload/list?page=1&size=24&groupId=12
+     * <p>
+     * groupId 传参语义：省略 / 负数 = 全部；0 = 未分组；正数 = 指定分组。
+     * <p>
+     * 说明：图片按日期目录存放，这里直接扫描上传根目录并按最后修改时间倒序分页。
+     * 管理端查询频率低、文件量级有限，扫描可接受；若未来图片数量达到十万级，
+     * 建议改为在 mo_upload_file 表中维护索引，避免每次全量遍历目录。
+     */
+    @GetMapping("/list")
+    @Operation(summary = "分页查询已上传图片")
+    public Result<UploadPage> listImages(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "24") int size,
+            @RequestParam(required = false) Long groupId) {
+        if (page < 1) {
+            page = 1;
+        }
+        if (size < 1 || size > 100) {
+            size = 24;
+        }
+
+        List<UploadedFile> all = new ArrayList<>();
+        if (Files.isDirectory(uploadPath)) {
+            // 目录层级固定为 yyyy/MM/dd/文件名，maxDepth=4 防止扫描到无关的深层目录
+            try (Stream<Path> stream = Files.walk(uploadPath, 4)) {
+                stream.filter(Files::isRegularFile)
+                        .filter(p -> {
+                            String ext = extractExt(p.getFileName().toString());
+                            return ext != null && ALLOWED_EXT.contains(ext.toLowerCase());
+                        })
+                        .forEach(p -> all.add(toUploadedFile(p)));
+            } catch (IOException | UncheckedIOException e) {
+                // Files.walk 为惰性遍历，迭代中的 I/O 异常会被包装成 UncheckedIOException
+                log.error("[upload] 扫描上传目录失败：{}", uploadPath, e);
+                return Result.error("读取图片目录失败");
+            }
+        }
+
+        // 合并分组归属：未建立映射的图片视为「未分组」
+        Map<String, Long> groupByUrl = Map.of();
+        try {
+            groupByUrl = adminUploadGroupService.groupIdByUrl();
+        } catch (Exception e) {
+            // 分组表异常时不影响图片浏览，全部按未分组展示
+            log.warn("[upload] 查询图片分组映射失败，按未分组展示", e);
+        }
+        for (UploadedFile item : all) {
+            item.setGroupId(groupByUrl.get(item.getUrl()));
+        }
+
+        // 按分组筛选：null / 负数 = 全部，0 = 未分组，正数 = 指定分组
+        if (groupId != null && groupId > 0) {
+            all.removeIf(item -> !groupId.equals(item.getGroupId()));
+        } else if (groupId != null && groupId == 0) {
+            all.removeIf(item -> item.getGroupId() != null);
+        }
+
+        // 最新上传的图片排在最前，便于运营快速找到刚上传的图片
+        all.sort((a, b) -> Long.compare(b.getLastModified(), a.getLastModified()));
+
+        // 统计总占用：用普通循环，避免 Stream 方法引用在 IDE 空值分析下产生告警
+        long totalSize = 0L;
+        for (UploadedFile item : all) {
+            totalSize += item.getSize();
+        }
+        long offset = (long) (page - 1) * size;
+        int from = (int) Math.min(offset, all.size());
+        int to = Math.min(from + size, all.size());
+
+        UploadPage result = new UploadPage();
+        result.setRecords(all.subList(from, to));
+        result.setTotal(all.size());
+        result.setPage(page);
+        result.setSize(size);
+        result.setTotalSize(totalSize);
+        return Result.success(result);
     }
 
     /**
@@ -185,11 +289,37 @@ public class AdminUploadController {
             if (!deleted) {
                 log.warn("[upload] 文件不存在：{}", target);
             }
+            // 同步清理分组映射（即使文件已不存在也清理，避免产生脏数据）
+            try {
+                adminUploadGroupService.unbindOnDelete(url);
+            } catch (Exception e) {
+                log.warn("[upload] 清理图片分组映射失败：url={}", url, e);
+            }
             return Result.success();
         } catch (IOException e) {
             log.error("[upload] 删除文件失败：{}", target, e);
             return Result.error("删除失败");
         }
+    }
+
+    /**
+     * 将磁盘文件转换为图片空间列表项（URL 统一使用 / 分隔，兼容 Windows）。
+     */
+    private UploadedFile toUploadedFile(Path file) {
+        UploadedFile item = new UploadedFile();
+        String relative = uploadPath.relativize(file).toString().replace('\\', '/');
+        item.setUrl(urlPrefix + relative);
+        item.setFilename(file.getFileName().toString());
+        try {
+            item.setSize(Files.size(file));
+            item.setLastModified(Files.getLastModifiedTime(file).toMillis());
+        } catch (IOException e) {
+            // 单个文件属性读取失败不影响整个列表，降级为 0
+            log.warn("[upload] 读取文件属性失败：{}", file, e);
+            item.setSize(0L);
+            item.setLastModified(0L);
+        }
+        return item;
     }
 
     /**

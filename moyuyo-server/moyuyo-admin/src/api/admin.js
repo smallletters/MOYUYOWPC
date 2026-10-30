@@ -482,15 +482,49 @@ export function deleteImage(url) {
   return api.delete('/upload/image', { params: { url } })
 }
 
+// 图片空间：分页查询已上传图片，返回 { records, total, page, size, totalSize }
+// params: { page, size, groupId }，groupId 省略/负数=全部，0=未分组，正数=指定分组
+export function getUploadedImages(params) {
+  return api.get('/upload/list', { params })
+}
+
+// ==================== 图片空间分组 ====================
+// 分组列表（含各分组图片数量）
+export function getUploadGroups() {
+  return api.get('/upload/groups')
+}
+
+// 新建分组
+export function createUploadGroup(name) {
+  return api.post('/upload/groups', { name })
+}
+
+// 重命名分组
+export function renameUploadGroup(id, name) {
+  return api.put(`/upload/groups/${id}`, { name })
+}
+
+// 删除分组（图片保留并回到未分组）
+export function deleteUploadGroup(id) {
+  return api.delete(`/upload/groups/${id}`)
+}
+
+// 批量调整图片分组：groupId=0 表示移出分组
+export function assignUploadGroup(urls, groupId) {
+  return api.put('/upload/group', { urls, groupId })
+}
+
 /**
  * 通过 axios 上传图片（绕过 el-upload 的 action 机制，避免 Vite base 干扰）。
  * <p>
  * 使用场景：组件需要自定义上传逻辑（如多文件、拖拽、粘贴），不适合用 el-upload action。
  */
-export function uploadImagesViaAxios(files) {
+export function uploadImagesViaAxios(files, groupId) {
   const fd = new FormData()
   for (const f of files) fd.append('files', f)
-  return api.post('/upload/images', fd)
+  // 指定分组时随上传一并写入归属，避免上传后再发一次分组调整请求
+  const config = groupId ? { params: { groupId } } : undefined
+  return api.post('/upload/images', fd, config)
 }
 
 /**

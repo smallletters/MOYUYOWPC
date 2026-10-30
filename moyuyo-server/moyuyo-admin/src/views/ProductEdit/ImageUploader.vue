@@ -24,6 +24,8 @@
       <span class="upload-icon">+</span>
       <span class="upload-text">添加商品图片</span>
       <span class="upload-hint">支持点击 / 拖拽 / 粘贴；第一张为封面图</span>
+      <!-- 从图片空间选择：阻止冒泡，避免同时触发本地文件选择 -->
+      <button type="button" class="space-btn" @click.stop="openImageSpace">从图片空间选择</button>
     </div>
 
     <!-- 已上传图片网格 -->
@@ -66,6 +68,13 @@
     <div v-if="uploading" class="uploading-tip">
       上传中... {{ uploadProgress }}
     </div>
+
+    <!-- 图片空间选择弹窗 -->
+    <ImageSpacePicker
+      v-model="pickerVisible"
+      title="选择商品图片（首张为封面）"
+      @confirm="onPickerConfirm"
+    />
   </div>
 </template>
 
@@ -73,6 +82,7 @@
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { uploadImagesViaAxios, deleteImage } from '../../api/admin'
+import ImageSpacePicker from './ImageSpacePicker.vue'
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
@@ -85,6 +95,8 @@ const acceptTypes = 'image/png,image/jpeg,image/jpg,image/gif,image/webp,image/s
 const fileInputRef = ref(null)
 const uploading = ref(false)
 const uploadProgress = ref('')
+// 图片空间选择弹窗开关
+const pickerVisible = ref(false)
 
 // 拖拽排序状态
 const dragFromIdx = ref(-1)
@@ -106,6 +118,30 @@ function absUrl(url) {
 
 function triggerFileInput() {
   fileInputRef.value?.click()
+}
+
+function openImageSpace() {
+  pickerVisible.value = true
+}
+
+/**
+ * 图片空间选择确认：追加到商品图库，按 url 去重，首张仍为封面。
+ */
+function onPickerConfirm(selected) {
+  const existing = new Set((props.modelValue || []).map(img => img.url || img))
+  const added = (selected || [])
+    .filter(img => img && img.url && !existing.has(img.url))
+    .map(img => ({ url: img.url, name: img.filename || '' }))
+
+  if (!added.length) {
+    ElMessage.info('所选图片已存在于商品图库中')
+    return
+  }
+
+  const next = [...(props.modelValue || []), ...added]
+  emit('update:modelValue', next)
+  emit('change', next)
+  ElMessage.success(`已从图片空间添加 ${added.length} 张图片`)
 }
 
 function onFileInputChange(e) {
@@ -258,6 +294,21 @@ defineExpose({ triggerFileInput })
 }
 .upload-text { font-size: 13px; color: var(--text-700); font-weight: 500; }
 .upload-hint { font-size: 11px; color: var(--text-400); }
+
+/* 从图片空间选择按钮 */
+.space-btn {
+  margin-top: 6px;
+  padding: 4px 12px;
+  border: 1px solid var(--brand-200, #9fcbff);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--brand-600);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.space-btn:hover { background: var(--brand-50); border-color: var(--brand-500); }
 
 .image-grid {
   display: grid;

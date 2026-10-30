@@ -27,6 +27,7 @@
         @change="onImageSelected"
       />
       <button type="button" class="tb-btn" title="插入图片" @click="triggerImagePicker">🖼️ 图片</button>
+      <button type="button" class="tb-btn" title="从图片空间插入" @click="openImageSpace">🗂 图片空间</button>
       <span class="tb-sep"></span>
       <button
         type="button"
@@ -54,6 +55,13 @@
       <span v-if="modelValue && modelValue.length">{{ (modelValue.match(/<img\b/g) || []).length }} 张图片</span>
       <span v-if="uploading">上传中...</span>
     </div>
+
+    <!-- 图片空间选择弹窗（用于插入详情图） -->
+    <ImageSpacePicker
+      v-model="spacePickerVisible"
+      title="选择详情图（可多选）"
+      @confirm="onSpaceConfirm"
+    />
   </div>
 </template>
 
@@ -61,6 +69,7 @@
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { uploadImageViaAxios } from '../../api/admin'
+import ImageSpacePicker from './ImageSpacePicker.vue'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -73,6 +82,8 @@ const textareaRef = ref(null)
 const imgInputRef = ref(null)
 const preview = ref(false)
 const uploading = ref(false)
+// 图片空间选择弹窗开关
+const spacePickerVisible = ref(false)
 
 const acceptTypes = 'image/png,image/jpeg,image/jpg,image/gif,image/webp,image/svg+xml'
 
@@ -152,6 +163,29 @@ function insertLink() {
 // ========== 图片插入（走 axios） ==========
 function triggerImagePicker() {
   imgInputRef.value?.click()
+}
+
+function openImageSpace() {
+  spacePickerVisible.value = true
+}
+
+/** HTML 属性转义，防止图片地址中的特殊字符破坏标签结构 */
+function escapeAttr(value) {
+  return String(value).replace(/[<>"']/g, c => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+}
+
+/**
+ * 从图片空间插入详情图：在光标位置批量插入 <img> 标签。
+ */
+function onSpaceConfirm(selected) {
+  if (!selected || !selected.length) return
+  // 预览模式下 textarea 被隐藏，先切回编辑模式再按光标位置插入
+  preview.value = false
+  const html = selected
+    .map(img => `<img src="${escapeAttr(img.url)}" alt="" style="max-width:100%;height:auto" />`)
+    .join('<br/>')
+  insertText(html)
+  ElMessage.success(`已插入 ${selected.length} 张详情图`)
 }
 
 async function onImageSelected(e) {

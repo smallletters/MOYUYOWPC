@@ -101,6 +101,12 @@ const routes = [
         component: () => import('../views/ProductEdit.vue'),
         meta: { title: '新增商品' }
       },
+      {
+        path: 'image-space',
+        name: 'ImageSpace',
+        component: () => import('../views/ImageSpace.vue'),
+        meta: { title: '图片空间' }
+      },
 
       // ===== 第一阶段：核心运营模块 =====
       {
