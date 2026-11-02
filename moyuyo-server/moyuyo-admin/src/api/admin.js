@@ -1424,6 +1424,8 @@ export function getOrderList(params) { return api.get('/orders/list', { params }
 export function getOrderDetail(id) { return api.get(`/orders/${id}`) }
 export function updateOrderAddress(id, data) { return api.put(`/orders/${id}/address`, data) }
 export function shipOrder(id, data) { return api.put(`/orders/${id}/ship`, data) }
+// 删除订单（后端为软删除：置 delete_status=1，不再出现在订单列表与统计中）
+export function deleteOrder(id) { return api.delete(`/orders/${id}`) }
 
 // 管理后台订单列表"物流"弹窗：查询订单物流基础信息+轨迹 / 更新承运商运单号 / 获取承运商列表
 export function getOrderLogistics(id) { return api.get(`/orders/${id}/logistics`) }
@@ -1432,6 +1434,10 @@ export function getCarrierOptions() { return getCarrierList() }
 
 // 订单 WooCommerce 手动重推
 export function syncOrderToWoo(id) { return api.post(`/orders/${id}/sync-to-woo`) }
+
+// WC 同步开关（订单列表工具栏）：查询 / 设置是否将订单同步到 WooCommerce
+export function getWcSyncSwitch() { return api.get('/orders/wc-sync/switch') }
+export function updateWcSyncSwitch(enabled) { return api.put('/orders/wc-sync/switch', { enabled }) }
 
 // ==================== 订单监控规则 ====================
 const monitorCrud = (base) => ({

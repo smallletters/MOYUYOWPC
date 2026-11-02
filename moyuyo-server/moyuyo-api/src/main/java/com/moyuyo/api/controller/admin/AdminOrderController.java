@@ -63,6 +63,8 @@ public class AdminOrderController {
     List<Map<String, Object>> statusCounts = orderMapper.selectMaps(
         new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<OrderEntity>()
             .select("status", "COUNT(*) AS cnt")
+            // 已删除订单不计入统计
+            .and(w -> w.isNull("delete_status").or().eq("delete_status", 0))
             .groupBy("status"));
     Map<String, Long> statusMap = new HashMap<>();
     long total = 0L;
@@ -86,6 +88,8 @@ public class AdminOrderController {
     int safeLimit = Math.max(1, Math.min(limit, 100));
     List<OrderEntity> list = orderMapper.selectList(
         new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<OrderEntity>()
+            // 已删除订单不再展示
+            .and(w -> w.isNull("delete_status").or().eq("delete_status", 0))
             .orderByDesc("create_time")
             .last("LIMIT " + safeLimit));
     return Result.success(list);
@@ -127,7 +131,9 @@ public class AdminOrderController {
     }
 
     // 管理后台查看所有订单，支持关键字搜索和日期范围筛选
+    // 排除已删除（delete_status=1）的订单，避免删除后仍出现在列表中
     LambdaQueryWrapper<OrderEntity> wrapper = new LambdaQueryWrapper<OrderEntity>()
+        .and(w -> w.isNull(OrderEntity::getDeleteStatus).or().eq(OrderEntity::getDeleteStatus, 0))
         .eq(status != null && !status.isEmpty(), OrderEntity::getStatus, status)
         .and(keyword != null && !keyword.isEmpty(), kw ->
             kw.like(OrderEntity::getOrderNo, keyword))
@@ -352,10 +358,8 @@ public class AdminOrderController {
     if (order == null) {
       return Result.error(404, "订单不存在");
     }
-    // 仅允许删除已取消的订单
-    if (order.getStatusEnum() != OrderStatusEnum.CANCELLED) {
-      return Result.error(400, "仅支持删除已取消的订单，请先取消订单再删除");
-    }
+    // 管理后台允许删除任意状态的订单（deleteOrder 为软删除：仅置 delete_status=1，
+    // 订单与支付/物流数据仍保留，列表与统计中不再展示）
     orderService.deleteOrder(id, null);
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("id", id);
@@ -377,6 +381,10 @@ public class AdminOrderController {
     if (order == null) {
       return Result.error(404, "订单不存在");
     }
+    // WC 同步开关关闭时禁止手动推送，避免绕过管理后台的同步开关
+    if (!wooCommerceSyncService.isOrderSyncEnabled()) {
+      return Result.error(400, "WC 同步开关已关闭，请先在订单列表开启「WC 同步」");
+    }
     if (!order.isPaid()) {
       return Result.error(400, "仅已支付订单支持手动重推，当前状态: " + order.getStatus());
     }
@@ -389,6 +397,36 @@ public class AdminOrderController {
     result.put("wooOrderId", fresh != null ? fresh.getWooOrderId() : null);
     result.put("syncStatus", fresh != null ? fresh.getSyncStatus() : null);
     result.put("message", "订单重推任务已执行，请查看 syncStatus 与 wooOrderId");
+    return Result.success(result);
+  }
+
+  // ==================== WC 同步开关（订单列表使用） ====================
+
+  @Operation(summary = "查询 WC 同步开关")
+  @GetMapping("/wc-sync/switch")
+  public Result<Map<String, Object>> getWcSyncSwitch() {
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("enabled", wooCommerceSyncService.isOrderSyncEnabled());
+    return Result.success(result);
+  }
+
+  @Operation(summary = "设置 WC 同步开关")
+  @PutMapping("/wc-sync/switch")
+  @AdminAudit(action = "UPDATE", module = "ORDER", detail = "管理员设置 WC 同步开关")
+  public Result<Map<String, Object>> updateWcSyncSwitch(@RequestBody(required = false) Map<String, Object> body) {
+    Object raw = body == null ? null : body.get("enabled");
+    boolean enabled;
+    if (raw instanceof Boolean b) {
+      enabled = b;
+    } else if (raw != null) {
+      enabled = Boolean.parseBoolean(String.valueOf(raw));
+    } else {
+      return Result.error(400, "缺少 enabled 参数");
+    }
+    wooCommerceSyncService.setOrderSyncEnabled(enabled);
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("enabled", enabled);
+    result.put("message", enabled ? "WC 同步已开启" : "WC 同步已关闭");
     return Result.success(result);
   }
 

@@ -117,7 +117,10 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
   @Override
   public Map<String, Object> stats() {
     QueryWrapper<OrderEntity> wrapper = new QueryWrapper<>();
-    wrapper.select("status", "COUNT(*) AS cnt").groupBy("status");
+    // 已删除（软删除）订单不计入订单列表顶部统计卡片
+    wrapper.select("status", "COUNT(*) AS cnt")
+        .and(w -> w.isNull("delete_status").or().eq("delete_status", 0))
+        .groupBy("status");
     List<Map<String, Object>> aggList = orderMapper.selectMaps(wrapper);
 
     Map<String, Long> statusStats = new LinkedHashMap<>();

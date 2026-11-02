@@ -692,9 +692,14 @@ public class OrderServiceImpl implements OrderService {
     }
 
     // 付款确认后实时同步到 WooCommerce
+    // 受管理后台"WC 同步"开关控制：关闭时不推送，避免开关被支付回调绕过
     // syncOrderToWooCommerce 内部已有 try-catch，失败时仅记录 syncStatus=-1，不影响主流程
     try {
-      wooCommerceSyncService.syncOrderToWooCommerce(order);
+      if (wooCommerceSyncService.isOrderSyncEnabled()) {
+        wooCommerceSyncService.syncOrderToWooCommerce(order);
+      } else {
+        log.info("WooCommerce 订单同步开关已关闭，跳过推送: orderNo={}", orderNo);
+      }
     } catch (Exception e) {
       // 兜底：即便 syncOrderToWooCommerce 内部异常也吞掉，不让支付流程回滚
       log.error("触发 WooCommerce 订单同步时异常: orderNo={}, reason={}",

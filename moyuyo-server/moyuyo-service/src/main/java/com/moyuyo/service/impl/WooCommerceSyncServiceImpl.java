@@ -1,7 +1,6 @@
 package com.moyuyo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.ProductEntity;
@@ -12,6 +11,8 @@ import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductImageMapper;
 import com.moyuyo.dao.mapper.CategoryMapper;
+import com.moyuyo.dao.admin.entity.SystemConfigEntity;
+import com.moyuyo.dao.admin.mapper.SystemConfigMapper;
 import com.moyuyo.service.WooCommerceSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+// 抑制 MyBatis-Plus 3.x @Nonnull T 与 JDT 静态分析差异（Function<T,R> 方法引用 + WC 返回的 Map/List 反序列化）
+@SuppressWarnings({"null", "unchecked"})
 public class WooCommerceSyncServiceImpl implements WooCommerceSyncService {
 
     private final OrderMapper orderMapper;
@@ -35,6 +38,44 @@ public class WooCommerceSyncServiceImpl implements WooCommerceSyncService {
     private final CategoryMapper categoryMapper;
     private final WooCommerceClient client;
     private final ObjectMapper objectMapper;
+    private final SystemConfigMapper systemConfigMapper;
+
+    /** 订单同步开关在 mo_system_config 中的 key */
+    private static final String ORDER_SYNC_SWITCH_KEY = "woo_order_sync_enabled";
+
+    // ============ 订单同步开关 ============
+
+    @Override
+    public boolean isOrderSyncEnabled() {
+        SystemConfigEntity config = systemConfigMapper.selectOne(
+                new LambdaQueryWrapper<SystemConfigEntity>()
+                        .eq(SystemConfigEntity::getConfigKey, ORDER_SYNC_SWITCH_KEY));
+        // 未配置过开关时默认开启，保持历史"支付成功即推送 WC"的行为
+        if (config == null || config.getConfigValue() == null || config.getConfigValue().isBlank()) {
+            return true;
+        }
+        return Boolean.parseBoolean(config.getConfigValue().trim());
+    }
+
+    @Override
+    @Transactional
+    public void setOrderSyncEnabled(boolean enabled) {
+        String value = String.valueOf(enabled);
+        SystemConfigEntity existing = systemConfigMapper.selectOne(
+                new LambdaQueryWrapper<SystemConfigEntity>()
+                        .eq(SystemConfigEntity::getConfigKey, ORDER_SYNC_SWITCH_KEY));
+        if (existing != null) {
+            existing.setConfigValue(value);
+            systemConfigMapper.updateById(existing);
+        } else {
+            SystemConfigEntity entity = new SystemConfigEntity();
+            entity.setConfigKey(ORDER_SYNC_SWITCH_KEY);
+            entity.setConfigValue(value);
+            entity.setRemark("订单同步到 WooCommerce 开关（管理后台订单列表控制）");
+            systemConfigMapper.insert(entity);
+        }
+        log.info("[woo-sync] 订单同步开关已更新: enabled={}", enabled);
+    }
 
     // ============ 订单运单同步（WC → 本地） ============
 
@@ -88,7 +129,6 @@ public class WooCommerceSyncServiceImpl implements WooCommerceSyncService {
     }
 
     /** 从 WC 订单 meta_data 数组中按多个候选 key 提取首个非空字符串值 */
-    @SuppressWarnings("unchecked")
     private String extractMetaString(Map<String, Object> wcOrder, String... keys) {
         Object metaObj = wcOrder.get("meta_data");
         if (!(metaObj instanceof List) || keys == null) return null;
@@ -158,6 +198,11 @@ public class WooCommerceSyncServiceImpl implements WooCommerceSyncService {
 
     @Override
     public void syncAllPendingOrders() {
+        // 开关关闭时不执行批量补推，避免绕过管理后台的同步开关
+        if (!isOrderSyncEnabled()) {
+            log.info("[woo-sync] 订单同步开关已关闭，跳过批量补推");
+            return;
+        }
         List<OrderEntity> pending = orderMapper.selectList(
                 new LambdaQueryWrapper<OrderEntity>()
                         .eq(OrderEntity::getSyncStatus, -1)

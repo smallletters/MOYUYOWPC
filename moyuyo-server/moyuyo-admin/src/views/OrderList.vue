@@ -71,7 +71,7 @@
       </div>
     </div>
 
-    <!-- 操作工具栏（批量打单 + 燕文状态提示） -->
+    <!-- 操作工具栏（批量打单 + 燕文状态提示 + WC 同步开关） -->
     <div class="action-toolbar">
       <div class="toolbar-left">
         <button
@@ -96,6 +96,18 @@
         <span v-else class="toolbar-hint toolbar-hint--warn">
           ⚠ 燕文电子面单未启用（按"打印快递单"会走手动打印流程）
         </span>
+        <!-- WC 同步开关：控制支付成功后是否自动把订单推送到 WooCommerce -->
+        <div class="wc-switch">
+          <span class="wc-switch-label">WC 同步</span>
+          <el-switch
+            v-model="wcSyncEnabled"
+            :loading="wcSyncSaving"
+            :disabled="wcSyncSaving"
+            @change="handleWcSyncToggle" />
+          <span class="toolbar-hint" :class="wcSyncEnabled ? 'toolbar-hint--ok' : 'toolbar-hint--warn'">
+            {{ wcSyncEnabled ? '已开启：支付成功后自动推送订单到 WooCommerce' : '已关闭：订单不再同步到 WooCommerce' }}
+          </span>
+        </div>
       </div>
     </div>
 
@@ -172,9 +184,15 @@
                 <button class="btn btn-sm btn-outline" @click="handleLogistics(order)">物流</button>
                 <button class="btn btn-sm btn-outline" @click="handlePrint(order)">打印快递单</button>
                 <button class="btn btn-sm btn-outline" @click="handleDetail(order)">详情</button>
-                <button class="btn btn-sm btn-outline" :disabled="syncingIds.includes(order.id)"
+                <button class="btn btn-sm btn-outline"
+                  :disabled="syncingIds.includes(order.id) || !wcSyncEnabled"
+                  :title="wcSyncEnabled ? '' : 'WC 同步开关已关闭，请先在工具栏开启'"
                   @click="handleSyncToWoo(order)">
                   {{ syncingIds.includes(order.id) ? '同步中…' : '推 WC' }}
+                </button>
+                <button class="btn btn-sm btn-danger" :disabled="deletingIds.includes(order.id)"
+                  @click="handleDelete(order)">
+                  {{ deletingIds.includes(order.id) ? '删除中…' : '删除' }}
                 </button>
               </div>
             </td>
@@ -317,9 +335,10 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  getOrderOpsStats, getOrderList, shipOrder, syncOrderToWoo,
+  getOrderOpsStats, getOrderList, shipOrder, syncOrderToWoo, deleteOrder,
   getOrderLogistics, updateOrderLogistics, getCarriers,
-  getYanwenStatus, getPrintDetail, fetchShippingLabel, recordPrint
+  getYanwenStatus, getPrintDetail, fetchShippingLabel, recordPrint,
+  getWcSyncSwitch, updateWcSyncSwitch
 } from '../api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { toArray } from '../utils/safeArray'
@@ -353,6 +372,13 @@ const orderList = ref([])
 
 // WooCommerce 同步状态：记录正在同步的订单ID，避免重复点击
 const syncingIds = ref([])
+
+// WC 同步开关：控制支付成功后是否自动推送订单到 WooCommerce（持久化在后端 mo_system_config）
+const wcSyncEnabled = ref(true)
+const wcSyncSaving = ref(false)
+
+// 正在删除的订单ID，避免重复点击
+const deletingIds = ref([])
 
 // 承运商选项：弹窗下拉使用（来自 /api/admin/logistics/carriers，mo_carrier 表）
 const carrierOptions = ref([])
@@ -841,6 +867,74 @@ async function handleSyncToWoo(order) {
   }
 }
 
+// 拉取 WC 同步开关状态（进入页面时同步一次，避免前端展示与实际配置不一致）
+async function fetchWcSyncSwitch() {
+  try {
+    const res = await getWcSyncSwitch()
+    const data = res?.data || res
+    if (data && typeof data.enabled === 'boolean') {
+      wcSyncEnabled.value = data.enabled
+    }
+  } catch (e) {
+    // 拉取失败时保持默认开启，不阻断页面其他功能
+    console.warn('拉取 WC 同步开关失败：', e?.message || e)
+  }
+}
+
+// 切换 WC 同步开关：保存到后端，失败时回滚开关状态
+async function handleWcSyncToggle(val) {
+  wcSyncSaving.value = true
+  try {
+    const res = await updateWcSyncSwitch(val)
+    const data = res?.data || res
+    if (data && typeof data.enabled === 'boolean') {
+      wcSyncEnabled.value = data.enabled
+    }
+    ElMessage.success(val ? 'WC 同步已开启' : 'WC 同步已关闭')
+  } catch (err) {
+    // 保存失败回滚开关，避免前端显示与实际配置不一致
+    wcSyncEnabled.value = !val
+    ElMessage.error('设置 WC 同步开关失败: ' + (err?.message || '未知错误'))
+  } finally {
+    wcSyncSaving.value = false
+  }
+}
+
+// 删除订单（后端为软删除，删除后订单不再出现在列表与统计中）
+async function handleDelete(order) {
+  if (!order?.id || deletingIds.value.includes(order.id)) return
+  const orderNo = order.orderNo || order.no || ''
+  try {
+    await ElMessageBox.confirm(
+      `确认删除订单 ${orderNo}？删除后该订单将从订单列表与统计中移除。`,
+      '删除确认',
+      {
+        type: 'warning',
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+  } catch {
+    // 用户取消删除
+    return
+  }
+  deletingIds.value.push(order.id)
+  try {
+    await deleteOrder(order.id)
+    ElMessage.success(`订单 ${orderNo} 已删除`)
+    // 已删除订单从选中集合移除，避免批量打印仍带着它
+    selectedIds.value = selectedIds.value.filter(id => id !== order.id)
+    fetchOrders()
+    fetchStats()
+  } catch (err) {
+    console.error('删除订单失败:', err)
+    ElMessage.error('删除订单失败: ' + (err?.message || '未知错误'))
+  } finally {
+    deletingIds.value = deletingIds.value.filter(id => id !== order.id)
+  }
+}
+
 // 监听页码变化，重新加载数据
 watch(currentPage, () => {
   fetchOrders()
@@ -850,6 +944,7 @@ onMounted(() => {
   fetchStats()
   fetchOrders()
   refreshYanwenStatus()
+  fetchWcSyncSwitch()
 })
 </script>
 
@@ -885,6 +980,21 @@ onMounted(() => {
 .toolbar-hint--warn {
   background: var(--state-error-surface);
   color: var(--state-error);
+}
+
+/* WC 同步开关 */
+.wc-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  border-left: 1px solid var(--divider);
+}
+.wc-switch-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-800);
+  white-space: nowrap;
 }
 
 /* 订单状态概览 */

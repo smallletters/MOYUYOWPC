@@ -9,6 +9,17 @@ public interface WooCommerceSyncService {
     // ===== 订单同步 =====
 
     /**
+     * 是否开启订单同步到 WooCommerce（管理后台订单列表的 WC 同步开关）。
+     * 开关持久化在 mo_system_config，未配置时默认开启以保持历史行为。
+     */
+    boolean isOrderSyncEnabled();
+
+    /**
+     * 设置订单同步到 WooCommerce 的开关（管理后台订单列表调用）。
+     */
+    void setOrderSyncEnabled(boolean enabled);
+
+    /**
      * 将本地订单推送到 WooCommerce（已同步则跳过）。
      * 失败时在订单上记录 syncStatus=-1，不抛异常（不影响主流程）。
      */
