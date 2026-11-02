@@ -6,7 +6,6 @@ import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.dao.admin.entity.CsMessageEntity;
 import com.moyuyo.dao.admin.entity.CsSessionEntity;
 import com.moyuyo.service.CsService;
-import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -32,7 +31,19 @@ public class CsController {
   @PostMapping("/sessions")
   public Result<CsSessionEntity> createSession(@RequestBody(required = false) Map<String, String> body) {
     String category = body == null ? null : body.get("category");
-    return Result.success(csService.createSession(UserContextHolder.getUserId(), category));
+    String productIdStr = body == null ? null : body.get("productId");
+    String productName = body == null ? null : body.get("productName");
+    String orderNo = body == null ? null : body.get("orderNo");
+    Long productId = null;
+    if (productIdStr != null && !productIdStr.isBlank()) {
+      try {
+        productId = Long.valueOf(productIdStr.trim());
+      } catch (NumberFormatException e) {
+        return Result.error(400, "商品ID格式无效");
+      }
+    }
+    return Result.success(csService.createSession(
+        UserContextHolder.getUserId(), category, productId, productName, orderNo));
   }
 
   @GetMapping("/sessions/{id}/messages")

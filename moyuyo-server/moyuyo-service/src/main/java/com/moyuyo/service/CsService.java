@@ -15,16 +15,20 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /** 客服会话 + 消息服务。 */
 @Service
 @RequiredArgsConstructor
+// 抑制 JDT 对 MyBatis-Plus Lambda 方法引用的 @Nonnull 空值分析误报
+@SuppressWarnings("null")
 public class CsService {
 
   private final CsSessionMapper sessionMapper;
   private final CsMessageMapper messageMapper;
   private final UserMapper userMapper;
+  private final CsChatContextService csChatContextService;
 
   public Page<CsSessionEntity> listUserSessions(Long userId, int page, int size) {
     return sessionMapper.selectPage(new Page<>(page, size),
@@ -47,22 +51,48 @@ public class CsService {
   }
 
   @Transactional
-  public CsSessionEntity createSession(Long userId, String category) {
+  public CsSessionEntity createSession(Long userId, String category,
+                                       Long productId, String productName, String orderNo) {
     CsSessionEntity exist = sessionMapper.selectOne(
         new LambdaQueryWrapper<CsSessionEntity>()
             .eq(CsSessionEntity::getUserId, userId)
             .eq(CsSessionEntity::getStatus, "WAITING")
             .orderByDesc(CsSessionEntity::getCreateTime)
             .last("LIMIT 1"));
-    if (exist != null) return exist;
+    if (exist != null) {
+      // 复用等待中的会话时，更新用户本次进入客服携带的商品/订单上下文
+      applyChatContext(exist, productId, productName, orderNo);
+      sessionMapper.updateById(exist);
+      return exist;
+    }
     CsSessionEntity s = new CsSessionEntity();
     s.setUserId(userId);
     s.setSessionId("CS-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase());
     s.setChannel("H5");
     s.setStatus("WAITING");
     s.setMessageCount(0);
+    applyChatContext(s, productId, productName, orderNo);
     sessionMapper.insert(s);
     return s;
+  }
+
+  /**
+   * 写入会话的咨询上下文：
+   * - 商品名称/图片由 APP 传入或从商品表实时补全，作为冗余字段避免商品删除后丢失
+   * - 订单号只保存订单号，后台展示时再按订单号查询最新状态
+   */
+  private void applyChatContext(CsSessionEntity session, Long productId, String productName, String orderNo) {
+    if (productId != null || (productName != null && !productName.isBlank())) {
+      Map<String, Object> snapshot = csChatContextService.productSnapshot(productId);
+      session.setProductId(productId);
+      session.setProductName(productName);
+      if (snapshot != null && snapshot.get("image") != null) {
+        session.setProductImage(String.valueOf(snapshot.get("image")));
+      }
+    }
+    if (orderNo != null && !orderNo.isBlank()) {
+      session.setOrderNo(orderNo.trim());
+    }
   }
 
   @Transactional

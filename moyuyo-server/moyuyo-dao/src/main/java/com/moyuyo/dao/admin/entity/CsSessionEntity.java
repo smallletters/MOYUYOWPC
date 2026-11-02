@@ -34,6 +34,18 @@ public class CsSessionEntity {
     @TableField(value = "operator_id")
     private Long csStaffId;
 
+    /** 咨询商品 ID（从商详/订单页进入客服时携带） */
+    private Long productId;
+
+    /** 咨询商品名称（冗余字段，商品被删除后仍可展示） */
+    private String productName;
+
+    /** 咨询商品主图（冗余字段，商品被删除后仍可展示） */
+    private String productImage;
+
+    /** 咨询订单号（从订单页进入客服时携带） */
+    private String orderNo;
+
     /** 会话状态：WAITING/PROCESSING/CLOSED */
     private String status;
 

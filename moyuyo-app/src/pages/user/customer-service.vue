@@ -44,10 +44,30 @@
             class="msg-bubble"
             :class="[
               m.senderType === 'USER' ? 'msg-user-bubble' : 'msg-bot-bubble',
-              { 'msg-bubble-pending': m.pending, 'msg-bubble-failed': m.failed },
+              {
+                'msg-bubble-pending': m.pending,
+                'msg-bubble-failed': m.failed,
+                'msg-bubble-card': isCardMessage(m),
+              },
             ]"
           >
-            <text class="msg-text" :class="{ 'msg-user-text': m.senderType === 'USER' }">
+            <!-- 商品/订单卡片：客服推荐商品或发送订单信息时渲染 -->
+            <view v-if="isCardMessage(m)" class="msg-card" @tap="openCard(m)">
+              <image
+                v-if="cardImageOf(m)"
+                class="msg-card-img"
+                :src="cardImageOf(m)"
+                mode="aspectFill"
+              />
+              <view class="msg-card-info">
+                <text class="msg-card-title">{{ cardTitleOf(m) }}</text>
+                <text class="msg-card-sub">{{ cardSubtitleOf(m) }}</text>
+              </view>
+              <text class="msg-card-action">
+                {{ m.refType === 'PRODUCT' ? $t('csChat.viewProduct') : $t('csChat.viewOrder') }}
+              </text>
+            </view>
+            <text v-else class="msg-text" :class="{ 'msg-user-text': m.senderType === 'USER' }">
               {{ m.content }}
             </text>
           </view>
@@ -127,6 +147,7 @@ import { csApi } from '@/api'
 import { i18n } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 import { getPageQuery } from '@/utils/pageQuery'
+import { toAbsoluteImageUrl } from '@/utils/imageUrl'
 usePageTitle('pageTitle.userCustomerService')
 
 const sessionId = ref(null)
@@ -139,6 +160,8 @@ const scrollTop = ref(9999)
 // 商品上下文(从商品详情页跳转过来时携带)
 const productId = ref('')
 const productName = ref('')
+// 订单上下文(从订单详情页跳转过来时携带)
+const orderNo = ref('')
 // 周期性拉取的定时器 id,离开页面时清理
 let pollTimer = null
 // 已渲染的最新消息 id,避免重复触发 UI 更新
@@ -187,6 +210,12 @@ function parseQuery(options) {
     console.warn('[cs] decode productName failed', e)
     productName.value = ''
   }
+  try {
+    orderNo.value = decodeURIComponent(q.orderNo || '')
+  } catch (e) {
+    console.warn('[cs] decode orderNo failed', e)
+    orderNo.value = ''
+  }
 }
 
 function formatTime(t) {
@@ -201,11 +230,77 @@ function formatTime(t) {
   }
 }
 
+/** 消息是否为商品/订单卡片 */
+function isCardMessage(m) {
+  return !!m && (m.refType === 'PRODUCT' || m.refType === 'ORDER') && !!m.refSnapshot
+}
+
+/** 解析后端下发的 JSON 卡片快照 */
+function cardDataOf(m) {
+  if (!m || !m.refSnapshot) return null
+  if (typeof m.refSnapshot === 'object') return m.refSnapshot
+  try {
+    return JSON.parse(m.refSnapshot)
+  } catch (e) {
+    return null
+  }
+}
+
+function cardTitleOf(m) {
+  if (m.refTitle) return m.refTitle
+  const data = cardDataOf(m)
+  if (m.refType === 'PRODUCT') return data?.name || i18n.t('csChat.productFallback')
+  return data?.orderNo
+    ? i18n.t('csChat.orderCardTitleFmt', { orderNo: data.orderNo })
+    : i18n.t('csChat.orderFallback')
+}
+
+function cardImageOf(m) {
+  const data = cardDataOf(m)
+  if (!data) return ''
+  const path = m.refType === 'PRODUCT' ? data.image : data.items?.[0]?.image || ''
+  return toAbsoluteImageUrl(path)
+}
+
+function cardCurrencySymbol(code) {
+  const map = { USD: '$', CNY: '¥', EUR: '€', GBP: '£', JPY: '¥' }
+  return map[String(code || 'USD').toUpperCase()] || code || '$'
+}
+
+function cardSubtitleOf(m) {
+  const data = cardDataOf(m)
+  if (!data) return ''
+  if (m.refType === 'PRODUCT') {
+    const price = parseFloat(data.price)
+    return Number.isFinite(price) ? `$${price.toFixed(2)}` : ''
+  }
+  const amount =
+    data.payAmount == null ? '-' : `${cardCurrencySymbol(data.currency)}${data.payAmount}`
+  return i18n.t('csChat.orderCardSubFmt', { orderNo: data.orderNo || '-', amount })
+}
+
+/** 点击卡片跳转商品详情或订单详情 */
+function openCard(m) {
+  const data = cardDataOf(m)
+  const id = data?.id || m.refId
+  if (!id) return
+  if (m.refType === 'PRODUCT') {
+    uni.navigateTo({ url: `/pages/goods/detail?id=${id}` })
+  } else {
+    uni.navigateTo({ url: `/pages/order/detail?id=${id}` })
+  }
+}
+
 async function ensureSession() {
   try {
-    // 带商品上下文时使用 PRODUCT 类目,便于后台客服识别来源
-    const category = productName.value ? 'PRODUCT' : 'GENERAL'
-    const sess = await csApi.createSession(category)
+    // 带商品/订单上下文时使用 PRODUCT 类目,便于后台客服识别来源
+    const category = productName.value || orderNo.value ? 'PRODUCT' : 'GENERAL'
+    // 把商品/订单上下文写入会话,后台客服会话页可直接展示商品图与订单
+    const context = {}
+    if (productId.value) context.productId = productId.value
+    if (productName.value) context.productName = productName.value
+    if (orderNo.value) context.orderNo = orderNo.value
+    const sess = await csApi.createSession(category, context)
     sessionId.value = sess?.id || sess?.sessionId
     // 拉取会话内已有消息(轮询以兼容事务刚提交的瞬时不可见)
     messages.value = await fetchMessagesWithRetry(sessionId.value)
@@ -645,6 +740,57 @@ onShow(() => {
 }
 .msg-user-text {
   color: #fff;
+}
+
+/* 商品/订单卡片消息：外层气泡透明，由卡片自身提供背景 */
+.msg-bubble-card {
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+.msg-card {
+  display: flex;
+  align-items: center;
+  width: 500rpx;
+  max-width: 100%;
+  padding: 16rpx;
+  background: var(--color-surface);
+  border: 1rpx solid var(--color-divider);
+  border-radius: 16rpx;
+  box-sizing: border-box;
+}
+.msg-card-img {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+  background: var(--color-background);
+}
+.msg-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-left: 16rpx;
+}
+.msg-card-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.4;
+  word-break: break-word;
+}
+.msg-card-sub {
+  font-size: 22rpx;
+  color: var(--color-text-secondary);
+  margin-top: 6rpx;
+}
+.msg-card-action {
+  font-size: 22rpx;
+  color: var(--color-primary);
+  flex-shrink: 0;
+  margin-left: 12rpx;
 }
 
 /* 发送中状态:半透明 */

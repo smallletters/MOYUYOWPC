@@ -3191,6 +3191,13 @@ export default {
     productContextHint: 'Inquiring about',
     productContextHintSuffix: ':',
     productIntroFmt: 'Hi, I have a question about the product "{name}".',
+    // Product / order cards
+    viewProduct: 'View product',
+    viewOrder: 'View order',
+    productFallback: 'Product',
+    orderFallback: 'Order',
+    orderCardTitleFmt: 'Order {orderNo}',
+    orderCardSubFmt: 'Order No. {orderNo} · {amount}',
     closeAriaLabel: 'Close',
     userFallbackChar: 'Me',
     systemName: 'System',

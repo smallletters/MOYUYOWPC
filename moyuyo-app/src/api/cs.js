@@ -5,8 +5,9 @@ export function listSessions(params = {}) {
   return get('/api/v1/cs/sessions', params)
 }
 
-export function createSession(category) {
-  return post('/api/v1/cs/sessions', { category })
+export function createSession(category, context = {}) {
+  // context 携带进入客服时的商品/订单上下文，后台客服页可展示商品图与订单
+  return post('/api/v1/cs/sessions', { category, ...context })
 }
 
 export function listMessages(sessionId) {
@@ -26,5 +27,10 @@ export function unreadCount() {
 }
 
 export default {
-  listSessions, createSession, listMessages, sendMessage, closeSession, unreadCount,
+  listSessions,
+  createSession,
+  listMessages,
+  sendMessage,
+  closeSession,
+  unreadCount,
 }

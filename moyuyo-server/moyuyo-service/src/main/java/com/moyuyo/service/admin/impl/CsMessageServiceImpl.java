@@ -6,6 +6,7 @@ import com.moyuyo.dao.admin.entity.CsSessionEntity;
 import com.moyuyo.dao.admin.mapper.CsMessageMapper;
 import com.moyuyo.dao.admin.mapper.CsSessionMapper;
 import com.moyuyo.service.admin.CsMessageService;
+import com.moyuyo.service.CsChatContextService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 客服消息服务实现：
@@ -23,10 +25,13 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+// 抑制 JDT 对 MyBatis-Plus Lambda 方法引用的 @Nonnull 空值分析误报
+@SuppressWarnings("null")
 public class CsMessageServiceImpl implements CsMessageService {
 
   private final CsMessageMapper csMessageMapper;
   private final CsSessionMapper csSessionMapper;
+  private final CsChatContextService csChatContextService;
 
   @Override
   public List<CsMessageEntity> listMessages(Long sessionId) {
@@ -56,11 +61,14 @@ public class CsMessageServiceImpl implements CsMessageService {
     if (message == null || message.getSessionId() == null) {
       throw new IllegalArgumentException("消息缺少 sessionId");
     }
-    if (message.getContent() == null || message.getContent().isBlank()) {
+    // 商品/订单卡片消息允许正文为空，由服务端根据快照生成默认文案
+    String contentType = message.getContentType() == null ? "TEXT" : message.getContentType();
+    boolean isCard = "PRODUCT".equals(contentType) || "ORDER".equals(contentType);
+    if (!isCard && (message.getContent() == null || message.getContent().isBlank())) {
       throw new IllegalArgumentException("消息内容不能为空");
     }
     // 默认值
-    if (message.getContentType() == null) message.setContentType("TEXT");
+    message.setContentType(contentType);
     if (message.getReadFlag() == null) {
       // 客服发的消息无需标记已读；用户发的消息初始为未读
       message.setReadFlag("AGENT".equals(message.getSenderType()) ? 1 : 0);
@@ -74,6 +82,13 @@ public class CsMessageServiceImpl implements CsMessageService {
     }
     if ("CLOSED".equals(session.getStatus())) {
       throw new IllegalStateException("会话已关闭，无法发送新消息");
+    }
+
+    // 商品/订单卡片：生成服务端权威快照，避免前端伪造价格或商品信息
+    if ("PRODUCT".equals(contentType)) {
+      enrichProductCard(message);
+    } else if ("ORDER".equals(contentType)) {
+      enrichOrderCard(message, session);
     }
 
     csMessageMapper.insert(message);
@@ -147,6 +162,46 @@ public class CsMessageServiceImpl implements CsMessageService {
     sys.setCreateTime(LocalDateTime.now());
     csMessageMapper.insert(sys);
     return s;
+  }
+
+  /**
+   * 补全商品卡片：refId 指向商品，快照由服务端生成。
+   */
+  private void enrichProductCard(CsMessageEntity message) {
+    if (message.getRefId() == null) {
+      throw new IllegalArgumentException("商品卡片缺少 refId");
+    }
+    Map<String, Object> snapshot = csChatContextService.productSnapshot(message.getRefId());
+    if (snapshot == null) {
+      throw new IllegalArgumentException("商品不存在或已删除");
+    }
+    String title = snapshot.get("name") == null ? ("商品#" + message.getRefId()) : String.valueOf(snapshot.get("name"));
+    message.setRefType("PRODUCT");
+    message.setRefTitle(title);
+    message.setRefSnapshot(csChatContextService.toJson(snapshot));
+    if (message.getContent() == null || message.getContent().isBlank()) {
+      message.setContent("为您推荐商品：" + title);
+    }
+  }
+
+  /**
+   * 补全订单卡片：只允许发送当前会话用户自己的订单，避免泄露其他用户订单信息。
+   */
+  private void enrichOrderCard(CsMessageEntity message, CsSessionEntity session) {
+    if (message.getRefId() == null) {
+      throw new IllegalArgumentException("订单卡片缺少 refId");
+    }
+    Map<String, Object> snapshot = csChatContextService.orderSnapshot(message.getRefId(), session.getUserId());
+    if (snapshot == null) {
+      throw new IllegalArgumentException("订单不存在或不属于当前用户");
+    }
+    String orderNo = snapshot.get("orderNo") == null ? ("订单#" + message.getRefId()) : String.valueOf(snapshot.get("orderNo"));
+    message.setRefType("ORDER");
+    message.setRefTitle(orderNo);
+    message.setRefSnapshot(csChatContextService.toJson(snapshot));
+    if (message.getContent() == null || message.getContent().isBlank()) {
+      message.setContent("订单信息：" + orderNo);
+    }
   }
 
   /**

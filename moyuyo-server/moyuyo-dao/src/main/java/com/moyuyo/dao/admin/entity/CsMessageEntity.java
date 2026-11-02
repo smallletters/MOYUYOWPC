@@ -40,8 +40,20 @@ public class CsMessageEntity {
     /** 消息内容 */
     private String content;
 
-    /** 消息类型：TEXT 文本 / IMAGE 图片 / SYSTEM 系统提示 */
+    /** 消息类型：TEXT 文本 / IMAGE 图片 / SYSTEM 系统提示 / PRODUCT 商品卡片 / ORDER 订单卡片 */
     private String contentType;
+
+    /** 结构化引用类型：PRODUCT 商品 / ORDER 订单；普通文本消息为空 */
+    private String refType;
+
+    /** 引用对象 ID（商品 ID 或订单 ID） */
+    private Long refId;
+
+    /** 卡片标题（冗余字段，便于会话列表预览） */
+    private String refTitle;
+
+    /** 卡片数据 JSON 快照（前端直接渲染商品/订单卡片，避免反复联表） */
+    private String refSnapshot;
 
     /** 是否已被客服读取（用户发的消息才需要标记；客服发的无需标记） */
     private Integer readFlag;

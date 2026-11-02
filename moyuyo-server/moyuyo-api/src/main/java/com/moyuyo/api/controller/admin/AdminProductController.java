@@ -137,7 +137,6 @@ public class AdminProductController {
           new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.moyuyo.dao.entity.ProductEntity>()
               .select("id", "name", "spu_code AS spuCode", "price", "main_image AS mainImage", "on_sale AS onSale")
               // 仅返回正常商品（下架的也可以选，便于上架后启用）
-              .eq("deleted", 0)
               .orderByDesc("on_sale")
               .orderByDesc("update_time")
               .last("LIMIT " + limit);

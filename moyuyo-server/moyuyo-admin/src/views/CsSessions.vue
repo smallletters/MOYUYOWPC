@@ -72,6 +72,17 @@
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="sessionId" label="会话号" width="140" show-overflow-tooltip />
         <el-table-column prop="userName" label="用户" min-width="120" show-overflow-tooltip />
+        <el-table-column label="咨询内容" min-width="180" show-overflow-tooltip>
+          <template #default="{ row }">
+            <div v-if="row.consultTitle" class="consult-cell">
+              <el-tag :type="row.consultType === 'ORDER' ? 'warning' : 'success'" size="small">
+                {{ row.consultType === 'ORDER' ? '订单' : '商品' }}
+              </el-tag>
+              <span class="consult-text">{{ row.consultType === 'ORDER' ? row.orderNo : row.productName }}</span>
+            </div>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="agentName" label="客服" width="120" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
@@ -97,7 +108,7 @@
     <el-drawer
       v-model="chatVisible"
       :title="chatTitle"
-      size="900px"
+      size="1000px"
       direction="rtl"
       :close-on-click-modal="false"
       @closed="onChatClosed"
@@ -118,6 +129,89 @@
             <el-descriptions-item label="开始时间">{{ activeSession.createTime || activeSession.createdAt }}</el-descriptions-item>
             <el-descriptions-item label="消息数">{{ activeSession.messageCount || messages.length }}</el-descriptions-item>
           </el-descriptions>
+
+          <!-- 用户进入客服时携带的商品 / 订单上下文 -->
+          <el-divider content-position="left">用户咨询</el-divider>
+          <div
+            v-if="activeSession.contextProduct"
+            class="context-card"
+            @click="openProductRef(activeSession.contextProduct.id)"
+          >
+            <img
+              v-if="activeSession.contextProduct.image"
+              class="context-img"
+              :src="resolveImageUrl(activeSession.contextProduct.image)"
+              alt=""
+              @error="onImgError"
+            />
+            <div class="context-info">
+              <div class="context-title">{{ activeSession.contextProduct.name || ('商品#' + activeSession.contextProduct.id) }}</div>
+              <div class="context-sub">
+                <span v-if="activeSession.contextProduct.price != null" class="money">¥{{ activeSession.contextProduct.price }}</span>
+                <el-tag
+                  v-if="activeSession.contextProduct.onSale === false"
+                  type="info"
+                  size="small"
+                  style="margin-left:6px"
+                >已下架</el-tag>
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="activeSession.contextOrder"
+            class="context-card"
+            @click="openOrderRef(activeSession.contextOrder.id)"
+          >
+            <img
+              v-if="orderCoverImage(activeSession.contextOrder)"
+              class="context-img"
+              :src="resolveImageUrl(orderCoverImage(activeSession.contextOrder))"
+              alt=""
+              @error="onImgError"
+            />
+            <div class="context-info">
+              <div class="context-title">订单 {{ activeSession.contextOrder.orderNo }}</div>
+              <div class="context-sub">
+                <el-tag size="small" type="warning">{{ orderStatusText(activeSession.contextOrder.status) }}</el-tag>
+                <span class="money" style="margin-left:6px">{{ formatAmount(activeSession.contextOrder.payAmount, activeSession.contextOrder.currency) }}</span>
+              </div>
+            </div>
+          </div>
+          <p v-if="!activeSession.contextProduct && !activeSession.contextOrder" class="side-tip">
+            用户未携带商品或订单信息
+          </p>
+
+          <!-- 用户最近订单：客服可直接发送订单卡片 -->
+          <el-divider content-position="left">用户订单</el-divider>
+          <div v-loading="ordersLoading" class="order-list">
+            <div v-for="o in userOrders" :key="o.id" class="order-item">
+              <div class="order-head">
+                <span class="order-no">{{ o.orderNo }}</span>
+                <el-tag size="small" type="info">{{ orderStatusText(o.status) }}</el-tag>
+              </div>
+              <div class="order-body">
+                <img
+                  v-if="orderCoverImage(o)"
+                  class="order-img"
+                  :src="resolveImageUrl(orderCoverImage(o))"
+                  alt=""
+                  @error="onImgError"
+                />
+                <div class="order-info">
+                  <div class="order-name">{{ orderMainTitle(o) }}</div>
+                  <div class="order-meta">{{ (o.items || []).length }} 件 · {{ formatAmount(o.payAmount, o.currency) }}</div>
+                </div>
+                <el-button
+                  type="primary"
+                  link
+                  size="small"
+                  :loading="sendingCard"
+                  @click="sendOrderCard(o)"
+                >发送</el-button>
+              </div>
+            </div>
+            <p v-if="!ordersLoading && userOrders.length === 0" class="side-tip">该用户暂无订单</p>
+          </div>
 
           <el-divider />
 
@@ -146,7 +240,29 @@
                 <span class="bubble-name">{{ m.senderName || senderTextOf(m) }}</span>
                 <span class="bubble-time">{{ formatTime(m.createTime) }}</span>
               </div>
-              <div class="bubble">{{ m.content }}</div>
+              <div class="bubble" :class="{ 'bubble--card': isCardMessage(m) }">
+                <div v-if="isCardMessage(m)" class="chat-card" @click="openCardRef(m)">
+                  <img
+                    v-if="cardPrimaryImage(m)"
+                    class="chat-card-img"
+                    :src="resolveImageUrl(cardPrimaryImage(m))"
+                    alt=""
+                    @error="onImgError"
+                  />
+                  <div class="chat-card-info">
+                    <div class="chat-card-title">{{ cardTitleOf(m) }}</div>
+                    <div v-if="m.refType === 'PRODUCT'" class="chat-card-sub money">
+                      ¥{{ cardDataOf(m)?.price ?? '-' }}
+                    </div>
+                    <div v-else class="chat-card-sub">
+                      {{ formatAmount(cardDataOf(m)?.payAmount, cardDataOf(m)?.currency) }}
+                      · {{ (cardDataOf(m)?.items || []).length }} 件
+                    </div>
+                  </div>
+                  <span class="chat-card-link">查看</span>
+                </div>
+                <template v-else>{{ m.content }}</template>
+              </div>
             </div>
           </div>
           <div class="chat-input">
@@ -162,6 +278,13 @@
               <el-tag v-if="activeSession.status === 'CLOSED'" type="info" size="small">会话已关闭</el-tag>
               <el-tag v-if="unreadHint > 0" type="warning" size="small">{{ unreadHint }} 条新消息</el-tag>
               <el-button
+                size="small"
+                type="success"
+                plain
+                :disabled="activeSession.status === 'CLOSED'"
+                @click="openProductPicker"
+              >推荐商品</el-button>
+              <el-button
                 type="primary"
                 :loading="sending"
                 :disabled="!draft.trim() || activeSession.status === 'CLOSED'"
@@ -174,16 +297,59 @@
         </section>
       </div>
     </el-drawer>
+
+    <!-- 推荐商品：搜索商品后点击卡片直接发送给用户 -->
+    <el-dialog v-model="productPickerVisible" title="推荐商品" width="780px" append-to-body>
+      <div class="picker-search">
+        <el-input
+          v-model="productKeyword"
+          placeholder="输入商品名称或 SPU 编码搜索"
+          clearable
+          @keyup.enter="searchRecommendProducts"
+          @clear="searchRecommendProducts"
+        />
+        <el-button type="primary" :loading="productLoading" @click="searchRecommendProducts">搜索</el-button>
+      </div>
+      <div v-loading="productLoading" class="product-grid">
+        <div
+          v-for="p in productOptions"
+          :key="p.id"
+          class="product-card"
+          :class="{ 'product-card--off': p.onSale === false || p.onSale === 0 }"
+          @click="sendProductCard(p)"
+        >
+          <img
+            v-if="p.mainImage"
+            class="product-img"
+            :src="resolveImageUrl(p.mainImage)"
+            alt=""
+            @error="onImgError"
+          />
+          <div class="product-info">
+            <div class="product-name">{{ p.name }}</div>
+            <div class="product-meta">
+              <span class="money">¥{{ p.price }}</span>
+              <el-tag v-if="p.onSale === false || p.onSale === 0" type="info" size="small">已下架</el-tag>
+            </div>
+          </div>
+        </div>
+        <p v-if="!productLoading && productOptions.length === 0" class="picker-empty">
+          未找到商品，换个关键字试试
+        </p>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getCsSessionList, getCsSessionDetail, getCsSessionStats,
   getCsSessionMessages, pollCsSessionMessages, sendCsSessionMessage,
-  markCsSessionRead, closeCsSession, transferCsSession, getRbacUsers
+  markCsSessionRead, closeCsSession, transferCsSession, getRbacUsers,
+  getCsSessionUserOrders, searchProductsLite
 } from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
@@ -248,6 +414,15 @@ const scrollEl = ref(null)
 const lastSeenAt = ref(null)
 let pollTimer = null
 const unreadHint = ref(0)
+// 用户最近订单 + 推荐商品弹窗
+const userOrders = ref([])
+const ordersLoading = ref(false)
+const sendingCard = ref(false)
+const productPickerVisible = ref(false)
+const productKeyword = ref('')
+const productOptions = ref([])
+const productLoading = ref(false)
+const router = useRouter()
 
 const chatTitle = computed(() => {
   if (!activeSession.value) return '会话'
@@ -279,6 +454,183 @@ function formatTime(dt) {
   }
 }
 
+/**
+ * 解析图片地址：
+ * - http(s):// 直接使用
+ * - /uploads/... 是后端静态资源，生产环境与后台同源，直接拼当前 origin
+ * - 本地 Vite dev（5173）不代理 /uploads/，需要指向后端 8080
+ */
+function resolveImageUrl(path) {
+  if (!path) return ''
+  if (/^https?:\/\//i.test(path)) return path
+  if (path.startsWith('//')) return window.location.protocol + path
+  const normalized = path.startsWith('/') ? path : `/${path}`
+  if (window.location.origin.includes(':5173') || import.meta.env.DEV) {
+    const apiBase = (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.startsWith('http'))
+      ? import.meta.env.VITE_API_BASE_URL
+      : 'http://localhost:8080'
+    return `${apiBase.replace(/\/$/, '')}${normalized}`
+  }
+  return `${window.location.origin}${normalized}`
+}
+
+function onImgError(e) {
+  if (e?.target) e.target.style.display = 'none'
+}
+
+function currencySymbolOf(code) {
+  const map = { USD: '$', CNY: '¥', EUR: '€', GBP: '£', JPY: '¥' }
+  return map[String(code || 'USD').toUpperCase()] || (code || '$')
+}
+
+/** 金额格式化：订单快照带 currency，商品快照默认 ¥ */
+function formatAmount(value, currency) {
+  if (value === null || value === undefined || value === '') return '-'
+  const n = Number(value)
+  return `${currencySymbolOf(currency)}${Number.isFinite(n) ? n.toFixed(2) : value}`
+}
+
+const ORDER_STATUS_TEXT = {
+  PENDING_PAY: '待支付', PAID: '已支付', PENDING_SHIP: '待发货', SHIPPED: '已发货',
+  RECEIVED: '已收货', CANCELLED: '已取消', REFUNDING: '退款中', REFUNDED: '已退款',
+  COMPLETED: '已完成', EXCHANGING: '换货中', EXCHANGED: '已换货', HOLD: '已拦截'
+}
+
+function orderStatusText(status) {
+  return ORDER_STATUS_TEXT[status] || status || '-'
+}
+
+function orderCoverImage(order) {
+  return order?.items?.[0]?.image || ''
+}
+
+function orderMainTitle(order) {
+  const first = order?.items?.[0]
+  if (!first) return '订单商品'
+  const name = first.name || '订单商品'
+  return order.items.length > 1 ? `${name} 等 ${order.items.length} 件` : name
+}
+
+/** 消息是否为商品/订单卡片 */
+function isCardMessage(m) {
+  return !!m && (m.refType === 'PRODUCT' || m.refType === 'ORDER') && !!m.refSnapshot
+}
+
+/** 解析卡片 JSON 快照，解析失败时返回 null */
+function cardDataOf(m) {
+  if (!m || !m.refSnapshot) return null
+  if (typeof m.refSnapshot === 'object') return m.refSnapshot
+  try {
+    return JSON.parse(m.refSnapshot)
+  } catch (e) {
+    return null
+  }
+}
+
+function cardTitleOf(m) {
+  if (m.refTitle) return m.refTitle
+  const data = cardDataOf(m)
+  if (m.refType === 'PRODUCT') return data?.name || '商品'
+  return data?.orderNo ? `订单 ${data.orderNo}` : '订单'
+}
+
+function cardPrimaryImage(m) {
+  const data = cardDataOf(m)
+  if (!data) return ''
+  if (m.refType === 'PRODUCT') return data.image || ''
+  return data.items?.[0]?.image || ''
+}
+
+function openProductRef(id) {
+  if (!id) return
+  window.open(router.resolve(`/products/edit/${id}`).href, '_blank')
+}
+
+function openOrderRef(id) {
+  if (!id) return
+  window.open(router.resolve(`/orders/${id}`).href, '_blank')
+}
+
+function openCardRef(m) {
+  const data = cardDataOf(m)
+  if (m.refType === 'PRODUCT') openProductRef(data?.id || m.refId)
+  else openOrderRef(data?.id || m.refId)
+}
+
+async function loadUserOrders(sessionId) {
+  if (!sessionId) return
+  ordersLoading.value = true
+  try {
+    const list = await getCsSessionUserOrders(sessionId, 10)
+    userOrders.value = toArray(list)
+  } catch (e) {
+    userOrders.value = []
+  } finally {
+    ordersLoading.value = false
+  }
+}
+
+/** 发送商品/订单卡片消息（快照由后端生成，前端只传类型与 ID） */
+async function sendCardMessage(contentType, refId, successText) {
+  if (!activeSession.value || sendingCard.value) return
+  if (activeSession.value.status === 'CLOSED') {
+    ElMessage.warning('会话已关闭，无法发送')
+    return
+  }
+  sendingCard.value = true
+  try {
+    const resp = await sendCsSessionMessage(activeSession.value.id, {
+      content: '',
+      contentType,
+      refId,
+      senderId: 0,
+      senderName: '客服'
+    })
+    if (resp && (resp.id || resp.content)) {
+      messages.value.push(resp)
+      lastSeenAt.value = resp.createTime || lastSeenAt.value
+      activeSession.value.messageCount = messages.value.length
+      scrollToBottom()
+    }
+    ElMessage.success(successText)
+  } catch (e) {
+    ElMessage.error((e && e.message) || '发送失败')
+  } finally {
+    sendingCard.value = false
+  }
+}
+
+async function sendProductCard(product) {
+  if (product.onSale === false || product.onSale === 0) {
+    ElMessage.warning('该商品已下架，无法推荐')
+    return
+  }
+  await sendCardMessage('PRODUCT', product.id, '商品已推荐给用户')
+  productPickerVisible.value = false
+}
+
+async function sendOrderCard(order) {
+  await sendCardMessage('ORDER', order.id, '订单卡片已发送')
+}
+
+function openProductPicker() {
+  if (!activeSession.value) return
+  productPickerVisible.value = true
+  if (productOptions.value.length === 0) searchRecommendProducts()
+}
+
+async function searchRecommendProducts() {
+  productLoading.value = true
+  try {
+    const rows = await searchProductsLite({ keyword: productKeyword.value.trim(), size: 30 })
+    productOptions.value = toArray(rows)
+  } catch (e) {
+    productOptions.value = []
+  } finally {
+    productLoading.value = false
+  }
+}
+
 async function openChat(row) {
   // 先确保详情最新（包含 messageCount 真实值）
   let detail = row
@@ -291,10 +643,12 @@ async function openChat(row) {
   activeSession.value = detail
   chatVisible.value = true
   messages.value = []
+  userOrders.value = []
   lastSeenAt.value = null
   unreadHint.value = 0
   await loadAllMessages()
   await markCsSessionReadSafe()
+  await loadUserOrders(detail.id)
   startPoll()
 }
 
@@ -354,7 +708,9 @@ function onChatClosed() {
   stopPoll()
   activeSession.value = null
   messages.value = []
+  userOrders.value = []
   draft.value = ''
+  productPickerVisible.value = false
   loadData() // 关闭抽屉后刷新列表的 messageCount/lastMessage
 }
 
@@ -523,7 +879,7 @@ onBeforeUnmount(() => { stopPoll() })
 /* 抽屉内的聊天布局 */
 .chat-layout {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 300px 1fr;
   gap: 16px;
   height: calc(100vh - 140px);
   min-height: 480px;
@@ -617,5 +973,149 @@ onBeforeUnmount(() => { stopPoll() })
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* 会话列表：咨询内容 */
+.consult-cell { display: flex; align-items: center; gap: 6px; }
+.consult-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.text-muted { color: var(--text-400); }
+
+/* 侧栏：咨询商品 / 订单卡片 */
+.context-card {
+  display: flex;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: border-color .2s;
+}
+.context-card:hover { border-color: #2563eb; }
+.context-img {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: var(--background-100, #f5f5f5);
+}
+.context-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.context-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-800);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.context-sub { margin-top: 4px; display: flex; align-items: center; }
+.money { color: #e6a23c; font-weight: 600; }
+
+/* 侧栏：用户订单列表 */
+.order-list { max-height: 240px; overflow-y: auto; }
+.order-item {
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.order-item:last-child { border-bottom: none; }
+.order-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.order-no { font-size: 12px; color: var(--text-600); overflow: hidden; text-overflow: ellipsis; }
+.order-body { display: flex; align-items: center; gap: 8px; }
+.order-img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: var(--background-100, #f5f5f5);
+}
+.order-info { flex: 1; min-width: 0; }
+.order-name { font-size: 12px; color: var(--text-800); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.order-meta { font-size: 11px; color: var(--text-400); margin-top: 2px; }
+
+/* 聊天气泡内的商品/订单卡片 */
+.bubble--card {
+  padding: 8px;
+  background: #fff;
+  border-color: var(--border);
+  width: 260px;
+  max-width: 100%;
+}
+.bubble-row--agent .bubble--card {
+  background: #fff;
+  color: var(--text-800);
+  border-color: var(--border);
+}
+.chat-card { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.chat-card-img {
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: var(--background-100, #f5f5f5);
+}
+.chat-card-info { flex: 1; min-width: 0; }
+.chat-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.chat-card-sub { font-size: 12px; color: var(--text-400); margin-top: 4px; }
+.chat-card-link { font-size: 12px; color: #2563eb; flex-shrink: 0; }
+
+/* 推荐商品弹窗 */
+.picker-search { display: flex; gap: 8px; margin-bottom: 12px; }
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  max-height: 420px;
+  overflow-y: auto;
+  min-height: 120px;
+}
+.product-card {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color .2s;
+}
+.product-card:hover { border-color: #2563eb; }
+.product-card--off { opacity: .5; }
+.product-img {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: var(--background-100, #f5f5f5);
+}
+.product-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; }
+.product-name {
+  font-size: 12px;
+  color: var(--text-800);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.product-meta { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: 4px; }
+.picker-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--text-400);
+  font-size: 13px;
+  padding: 40px 0;
 }
 </style>

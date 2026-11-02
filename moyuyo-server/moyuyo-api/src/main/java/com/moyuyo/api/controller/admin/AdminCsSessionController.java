@@ -49,6 +49,14 @@ public class AdminCsSessionController {
         return Result.success(adminCsSessionService.getStats());
     }
 
+    @Operation(summary = "会话用户的最近订单（客服侧栏展示 / 发送订单卡片）")
+    @GetMapping("/{id}/user-orders")
+    public Result<List<Map<String, Object>>> userOrders(
+        @PathVariable Long id,
+        @RequestParam(defaultValue = "10") int limit) {
+        return Result.success(adminCsSessionService.listUserOrders(id, limit));
+    }
+
     // ========== 客服在线聊天相关接口 ==========
 
     @Operation(summary = "会话的全部消息（按时间升序）")
@@ -78,15 +86,30 @@ public class AdminCsSessionController {
         @PathVariable Long id,
         @RequestBody Map<String, Object> body) {
         String content = (String) body.get("content");
-        if (content == null || content.isBlank()) {
+        // 接收可选 contentType，默认 TEXT；PRODUCT/ORDER 为商品/订单卡片消息
+        String contentType = (String) body.getOrDefault("contentType", "TEXT");
+        boolean isCard = "PRODUCT".equals(contentType) || "ORDER".equals(contentType);
+        if ((content == null || content.isBlank()) && !isCard) {
             return Result.error(400, "消息内容不能为空");
         }
-        // 接收可选 contentType，默认 TEXT
-        String contentType = (String) body.getOrDefault("contentType", "TEXT");
+        // 卡片消息引用对象 ID：PRODUCT 时为商品 ID，ORDER 时为订单 ID
+        Long refId = null;
+        Object refIdObj = body.get("refId");
+        if (refIdObj != null && !refIdObj.toString().isBlank()) {
+            try {
+                refId = Long.valueOf(refIdObj.toString().trim());
+            } catch (NumberFormatException e) {
+                return Result.error(400, "refId 格式无效");
+            }
+        }
+        if (isCard && refId == null) {
+            return Result.error(400, "卡片消息缺少 refId");
+        }
 
         CsMessageEntity m = new CsMessageEntity();
         m.setSessionId(id);
         m.setSenderType("AGENT");
+        m.setRefId(refId);
         // 当前操作员：JWT 中的 userId 优先；若过滤器未填充则从前端 body 中取（前端从 /me 拿到后回填）
         Long operatorId = UserContextHolder.getUserId();
         if (operatorId == null && body.get("senderId") != null) {
@@ -103,8 +126,8 @@ public class AdminCsSessionController {
         m.setContentType(contentType);
         try {
             return Result.success(csMessageService.sendMessage(m));
-        } catch (IllegalStateException e) {
-            // 状态机校验失败：会话已关闭、状态非法等
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            // 状态机校验失败：会话已关闭、状态非法；或商品/订单卡片引用无效
             return Result.error(400, e.getMessage());
         }
     }

@@ -6,6 +6,7 @@ import com.moyuyo.dao.admin.entity.CsMessageEntity;
 import com.moyuyo.dao.admin.entity.CsSessionEntity;
 import com.moyuyo.dao.admin.mapper.CsMessageMapper;
 import com.moyuyo.dao.admin.mapper.CsSessionMapper;
+import com.moyuyo.service.CsChatContextService;
 import com.moyuyo.service.admin.AdminCsSessionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,10 +30,13 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
+// 抑制 JDT 对 MyBatis-Plus Lambda 方法引用的 @Nonnull 空值分析误报（项目内 AdminProductController 同样处理）
+@SuppressWarnings("null")
 public class AdminCsSessionServiceImpl implements AdminCsSessionService {
 
   private final CsSessionMapper csSessionMapper;
   private final CsMessageMapper csMessageMapper;
+  private final CsChatContextService csChatContextService;
 
   /** 会话最后一条消息的预览（按 content 前 50 字截断） */
   private String lastMessageOf(Long sessionId) {
@@ -82,6 +86,12 @@ public class AdminCsSessionServiceImpl implements AdminCsSessionService {
       item.put("userName", entity.getUserId() != null ? "用户" + entity.getUserId() : "");
       item.put("agentName", entity.getCsStaffId() != null ? "客服" + entity.getCsStaffId() : "");
       item.put("createdAt", entity.getCreateTime());
+      // 用户咨询的商品/订单概览，列表页可直接展示
+      item.put("productId", entity.getProductId());
+      item.put("productName", entity.getProductName());
+      item.put("orderNo", entity.getOrderNo());
+      item.put("consultType", entity.getOrderNo() != null ? "ORDER" : (entity.getProductName() != null ? "PRODUCT" : ""));
+      item.put("consultTitle", consultTitleOf(entity));
       return item;
     }).collect(Collectors.toList());
 
@@ -111,7 +121,37 @@ public class AdminCsSessionServiceImpl implements AdminCsSessionService {
     result.put("duration", computeDuration(entity.getCreateTime(), entity.getUpdateTime()));
     result.put("messageCount", countMessages(entity.getId()));
     result.put("lastMessage", lastMessageOf(entity.getId()));
+    result.put("productId", entity.getProductId());
+    result.put("productName", entity.getProductName());
+    result.put("productImage", entity.getProductImage());
+    result.put("orderNo", entity.getOrderNo());
+    result.put("consultType", entity.getOrderNo() != null ? "ORDER" : (entity.getProductName() != null ? "PRODUCT" : ""));
+    result.put("consultTitle", consultTitleOf(entity));
+    // 咨询商品：商品表实时快照（价格/在售状态），商品已删除时用冗余名称/图片兜底
+    result.put("contextProduct", csChatContextService.productSnapshotWithFallback(
+        entity.getProductId(), entity.getProductName(), entity.getProductImage()));
+    // 咨询订单：按订单号 + 用户查询，避免客服误发他人订单
+    result.put("contextOrder", csChatContextService.orderSnapshotByNo(
+        entity.getOrderNo(), entity.getUserId()));
     return result;
+  }
+
+  @Override
+  public List<Map<String, Object>> listUserOrders(Long sessionId, int limit) {
+    CsSessionEntity session = csSessionMapper.selectById(sessionId);
+    if (session == null || session.getUserId() == null) return List.of();
+    return csChatContextService.listUserOrders(session.getUserId(), limit);
+  }
+
+  /** 会话咨询上下文标题：优先订单，其次商品 */
+  private String consultTitleOf(CsSessionEntity entity) {
+    if (entity.getOrderNo() != null && !entity.getOrderNo().isBlank()) {
+      return "订单：" + entity.getOrderNo();
+    }
+    if (entity.getProductName() != null && !entity.getProductName().isBlank()) {
+      return "商品：" + entity.getProductName();
+    }
+    return "";
   }
 
   @Override

@@ -1386,6 +1386,10 @@ export function closeCsSession(id) {
 export function transferCsSession(id, payload) {
   return api.post(`/cs-sessions/${id}/transfer`, payload)
 }
+// 会话用户的最近订单（客服聊天侧栏展示 / 发送订单卡片）
+export function getCsSessionUserOrders(id, limit = 10) {
+  return api.get(`/cs-sessions/${id}/user-orders`, { params: { limit } })
+}
 
 // ==================== 风控告警 ====================
 export function getRiskAlertConfigs() { return api.get('/risk-alert/configs') }

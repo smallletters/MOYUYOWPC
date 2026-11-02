@@ -3190,6 +3190,13 @@ export default {
     productContextHint: '正在咨询',
     productContextHintSuffix: '：',
     productIntroFmt: '你好,我想咨询商品「{name}」',
+    // 商品/订单卡片
+    viewProduct: '查看商品',
+    viewOrder: '查看订单',
+    productFallback: '商品',
+    orderFallback: '订单',
+    orderCardTitleFmt: '订单 {orderNo}',
+    orderCardSubFmt: '订单号：{orderNo} · {amount}',
     closeAriaLabel: '关闭',
     userFallbackChar: '我',
     systemName: '系统',

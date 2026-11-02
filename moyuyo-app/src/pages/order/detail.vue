@@ -314,6 +314,7 @@ export default {
       const params = [
         `productId=${encodeURIComponent(firstItem.productId || '')}`,
         `productName=${encodeURIComponent(firstItem.productName || '')}`,
+        `orderNo=${encodeURIComponent(this.order?.orderNo || '')}`,
       ]
       uni.navigateTo({
         url: `/pages/user/customer-service?${params.join('&')}`,
