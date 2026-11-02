@@ -961,10 +961,11 @@ export default {
       cancel: '取消订单',
     },
     moreItems: '还有 {count} 件',
-    // 待付款订单金额明细（与结算页同口径）
+    // 待付款 / 待收货订单金额明细（与结算页同口径）
     amount: {
       goods: '商品金额',
       freight: '运费',
+      member: '会员抵扣',
       coupon: '优惠券抵扣',
       points: '积分抵扣',
     },
@@ -1024,7 +1025,8 @@ export default {
       subtotal: '商品小计',
       shipping: '运费',
       tax: '税费',
-      discount: '优惠',
+      discount: '优惠券抵扣',
+      member: '会员优惠',
       points: '积分抵扣',
       total: '实付金额',
     },
@@ -1420,6 +1422,7 @@ export default {
     summary: {
       items: '商品 ({count}):',
       shipping: '运费:',
+      memberDiscount: '会员优惠:',
       couponDiscount: '优惠券抵扣:',
       pointsDiscount: '积分抵扣:',
       total: '应付总额:',
@@ -4078,8 +4081,12 @@ export default {
     orderSummary: '订单摘要',
     goodsSubtotal: '商品合计',
     shipping: '运费',
+    shippingAtCheckout: '结算时计算',
     freeShipping: '免运费',
     discount: '优惠',
+    memberDiscount: '会员优惠',
+    couponDiscount: '优惠券抵扣',
+    totalExcludesShipping: '合计未含运费，运费将在结算时计算',
     payableAmount: '应付金额',
     selectAll: '全选',
     totalLabel: '合计:',

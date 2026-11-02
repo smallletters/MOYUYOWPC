@@ -152,18 +152,36 @@
           <view class="summary-row">
             <text class="summary-label">{{ $t('cart.shipping') }}</text>
             <view class="summary-value-wrap">
-              <text class="summary-value">${{ shipping.toFixed(2) }}</text>
-              <text v-if="shipping === 0" class="summary-badge">{{ $t('cart.freeShipping') }}</text>
+              <!-- 有默认地址时展示后端实时运费；无地址时提示结算时计算，避免误显示"免运费" -->
+              <text v-if="shippingLoading" class="summary-value">…</text>
+              <text v-else-if="shippingLoaded" class="summary-value">
+                ${{ shipping.toFixed(2) }}
+              </text>
+              <text v-else class="summary-value">{{ $t('cart.shippingAtCheckout') }}</text>
+              <text
+                v-if="!shippingLoading && shippingLoaded && shipping === 0"
+                class="summary-badge"
+              >
+                {{ $t('cart.freeShipping') }}
+              </text>
             </view>
           </view>
-          <view class="summary-row">
-            <text class="summary-label">{{ $t('cart.discount') }}</text>
-            <text class="summary-value summary-discount">-${{ discountAmount.toFixed(2) }}</text>
+          <view v-if="memberDiscount > 0" class="summary-row">
+            <text class="summary-label">{{ $t('cart.memberDiscount') }}</text>
+            <text class="summary-value summary-discount">-${{ memberDiscount.toFixed(2) }}</text>
+          </view>
+          <view v-if="couponDiscount > 0" class="summary-row">
+            <text class="summary-label">{{ couponLabel }}</text>
+            <text class="summary-value summary-discount">-${{ couponDiscount.toFixed(2) }}</text>
           </view>
           <view class="summary-total">
             <text class="summary-total-label">{{ $t('cart.payableAmount') }}</text>
             <text class="summary-total-price">${{ total.toFixed(2) }}</text>
           </view>
+          <!-- 无可用地址/运费未算出时，合计不含运费，明确提示避免误读 -->
+          <text v-if="subtotal > 0 && !shippingLoaded" class="summary-total-hint">
+            {{ $t('cart.totalExcludesShipping') }}
+          </text>
         </view>
 
         <view class="bottom-spacer" />
@@ -197,6 +215,9 @@
 
 <script>
 import { useCartStore } from '@/store'
+import { addressApi, couponApi, memberApi } from '@/api'
+import { getShippingMethods } from '@/api/order'
+import { getFlashSales } from '@/api/flashSale'
 
 export default {
   pageTitleKey: 'pageTitle.cartIndex',
@@ -206,6 +227,29 @@ export default {
     if (this.cartStore && this.cartStore.syncFromServer) {
       this.cartStore.syncFromServer()
     }
+    // 订单摘要的运费按默认地址国家 + 选中商品实时计算，避免硬编码为 0 显示"免运费"
+    this.loadShippingCountry()
+    // 会员优惠 / 真实优惠券 / 秒杀商品（秒杀不叠加会员折扣）
+    this.loadMemberDiscountRate()
+    this.loadUnusedCoupons()
+    this.loadActiveFlashSales()
+  },
+  onShow() {
+    // onLoad 已首次加载；后续回到购物车时刷新地址/会员/优惠券，避免离开期间变更导致金额过期
+    if (this.firstShow) {
+      this.firstShow = false
+      return
+    }
+    this.loadShippingCountry()
+    this.loadMemberDiscountRate()
+    this.loadUnusedCoupons()
+    this.loadActiveFlashSales()
+  },
+  onUnload() {
+    if (this.shippingTimer) {
+      clearTimeout(this.shippingTimer)
+      this.shippingTimer = null
+    }
   },
   data() {
     return {
@@ -213,6 +257,21 @@ export default {
       editing: false,
       expandedExpired: false,
       upsellItems: [],
+      // 运费计算上下文：默认地址国家、后端返回的运费、请求序号（丢弃过期响应）
+      shippingCountry: '',
+      shippingFreight: 0,
+      shippingLoading: false,
+      shippingLoaded: false,
+      shippingReqSeq: 0,
+      shippingTimer: null,
+      // 首次 onShow 跳过刷新（onLoad 已加载），避免重复请求
+      firstShow: true,
+      // 会员价折扣系数（1.00 = 原价）与进行中的秒杀商品 ID
+      memberDiscountRate: 1,
+      activeFlashSaleProductIds: [],
+      // 当前用户未使用的优惠券（自动挑选最优券，口径与结算页一致）
+      unusedCoupons: [],
+      couponsLoaded: false,
     }
   },
 
@@ -248,18 +307,213 @@ export default {
     subtotal() {
       return this.cartStore.selectedPrice
     },
+    /** 运费：后端按地址国家 + 商品 + 小计实时计算；无地址/计算失败时按 0 展示并提示结算时计算 */
     shipping() {
-      return 0
+      return this.shippingFreight
     },
-    discountAmount() {
-      return this.subtotal >= 199 ? 20 : 0
+    /**
+     * 会员优惠金额：按会员等级统一折扣，作用于非秒杀商品销售价（与结算页/后端下单口径一致）。
+     */
+    memberDiscount() {
+      const rate = Number(this.memberDiscountRate)
+      if (!(rate > 0 && rate < 1)) return 0
+      const eligibleSubtotal = (this.cartStore.selectedItems || []).reduce((sum, item) => {
+        const productId = item && item.productId
+        if (productId != null && this.activeFlashSaleProductIds.includes(productId)) {
+          return sum
+        }
+        return sum + (Number(item && item.price) || 0) * (Number(item && item.quantity) || 0)
+      }, 0)
+      return Number((eligibleSubtotal * (1 - rate)).toFixed(2))
+    },
+    /**
+     * 当前生效优惠券：优先用户手动选择，否则自动挑选抵扣最大且满足门槛的未使用券。
+     * 规则与结算页 bestCoupon 保持一致。
+     */
+    activeCoupon() {
+      const manual = this.cartStore.selectedCoupon
+      // 手选券也要复核可用性，避免购物车商品变化后继续展示已不可用的券
+      if (manual && this.isCouponUsable(manual)) return manual
+      if (!this.couponsLoaded || this.subtotal <= 0) return null
+      const available = (this.unusedCoupons || []).filter((c) => this.isCouponUsable(c))
+      if (available.length === 0) return null
+      const scored = available
+        .map((c) => ({ coupon: c, discount: this.couponDiscountOf(c) }))
+        .sort((a, b) => b.discount - a.discount || Number(b.coupon.id) - Number(a.coupon.id))
+      return scored[0].discount > 0 ? scored[0].coupon : null
+    },
+    couponDiscount() {
+      return this.activeCoupon ? this.couponDiscountOf(this.activeCoupon) : 0
+    },
+    /** 优惠券行文案：带券名，便于用户确认使用了哪张券 */
+    couponLabel() {
+      const name = this.activeCoupon && this.activeCoupon.name
+      return name ? `${this.$t('cart.couponDiscount')} · ${name}` : this.$t('cart.couponDiscount')
     },
     total() {
-      return Math.max(0, this.subtotal + this.shipping - this.discountAmount)
+      return Math.max(0, this.subtotal + this.shipping - this.memberDiscount - this.couponDiscount)
+    },
+  },
+
+  watch: {
+    // 选中商品数量/金额变化时重新计算运费（含勾选、改数量、删除商品）
+    subtotal() {
+      this.scheduleLoadShipping()
+    },
+    'cartStore.selectedQuantity'() {
+      this.scheduleLoadShipping()
     },
   },
 
   methods: {
+    /** 优惠券当前是否可用：启用、已开始、未过期、金额门槛满足（与服务端一致，门槛对所有类型生效） */
+    isCouponUsable(coupon) {
+      if (!coupon || coupon.active === false) return false
+      const now = new Date()
+      if (coupon.startTime && new Date(String(coupon.startTime).replace(' ', 'T')) > now)
+        return false
+      if (coupon.endTime && new Date(String(coupon.endTime).replace(' ', 'T')) <= now) return false
+      return Number(coupon.minOrderAmount || 0) <= this.subtotal
+    },
+
+    /**
+     * 单张优惠券的实际抵扣金额（与服务端 computeCouponDiscount 口径一致）：
+     * PERCENT 的 discountValue 是价格百分比（95 = 9.5 折），AMOUNT 为固定金额；
+     * 同时套用券自身的 maxDiscountAmount 与订单小计封顶。
+     */
+    couponDiscountOf(coupon) {
+      const subtotal = Number(this.subtotal) || 0
+      if (!coupon || subtotal <= 0) return 0
+      const type = String(coupon.type || '').toUpperCase()
+      let discount
+      if (type === 'PERCENT') {
+        const rate = Number(coupon.discountValue || 0)
+        discount = (subtotal * (100 - rate)) / 100
+      } else {
+        discount = Number(coupon.discountValue || 0)
+      }
+      if (!Number.isFinite(discount) || discount <= 0) return 0
+      const maxDiscount = Number(coupon.maxDiscountAmount)
+      if (Number.isFinite(maxDiscount) && maxDiscount > 0) {
+        discount = Math.min(discount, maxDiscount)
+      }
+      return Number(Math.min(subtotal, discount).toFixed(2))
+    },
+
+    /** 拉取当前用户未使用的优惠券，供订单摘要自动挑选最优券 */
+    async loadUnusedCoupons() {
+      try {
+        const list = await couponApi.getMyCoupons('UNUSED')
+        this.unusedCoupons = Array.isArray(list) ? list : []
+      } catch (e) {
+        console.warn('[cart] load coupons failed', e)
+        this.unusedCoupons = []
+      } finally {
+        this.couponsLoaded = true
+      }
+    },
+
+    /** 拉取当前用户会员价折扣系数（无会员/无配置时后端返回 1.00） */
+    async loadMemberDiscountRate() {
+      try {
+        const res = await memberApi.getMemberPriceDiscount()
+        const rate = Number(res && res.discountRate)
+        this.memberDiscountRate = rate > 0 && rate <= 1 ? rate : 1
+      } catch (e) {
+        console.warn('[cart] load member discount failed', e)
+        this.memberDiscountRate = 1
+      }
+    },
+
+    /** 拉取进行中的秒杀商品，这些商品不叠加会员折扣 */
+    async loadActiveFlashSales() {
+      try {
+        const res = await getFlashSales({ page: 1, size: 100 })
+        const list = Array.isArray(res) ? res : (res && res.records) || []
+        this.activeFlashSaleProductIds = list
+          .filter((f) => f && f.active !== false && f.productId != null)
+          .map((f) => f.productId)
+      } catch (e) {
+        console.warn('[cart] load flash sales failed', e)
+        this.activeFlashSaleProductIds = []
+      }
+    },
+
+    /**
+     * 读取默认收货地址的国家，作为运费试算的入参。
+     * 购物车未强制选地址，因此无地址时订单摘要显示"结算时计算"，而不是错误的"免运费"。
+     */
+    async loadShippingCountry() {
+      try {
+        const list = await addressApi.getAddressList()
+        const addresses = Array.isArray(list) ? list : []
+        const addr = addresses.find((a) => a.isDefault) || addresses[0]
+        const country = addr && addr.country ? String(addr.country).trim().toUpperCase() : ''
+        this.shippingCountry = country
+        if (country) this.loadShipping()
+      } catch (e) {
+        console.warn('[cart] load address for shipping failed', e)
+        this.shippingCountry = ''
+      }
+    },
+
+    /** 防抖：数量/勾选变化时避免连续请求运费 */
+    scheduleLoadShipping() {
+      if (!this.shippingCountry) return
+      if (this.shippingTimer) clearTimeout(this.shippingTimer)
+      this.shippingTimer = setTimeout(() => {
+        this.shippingTimer = null
+        this.loadShipping()
+      }, 300)
+    },
+
+    /** 按默认地址国家 + 已选商品向服务端试算运费（与结算页同一接口与口径） */
+    async loadShipping() {
+      if (!this.shippingCountry) return
+      const selected = this.cartStore.selectedItems || []
+      if (selected.length === 0) {
+        // 未勾选商品时不算运费，也不展示"免运费"徽章
+        this.shippingFreight = 0
+        this.shippingLoaded = false
+        return
+      }
+      const seq = ++this.shippingReqSeq
+      this.shippingLoading = true
+      try {
+        const items = selected.map((it) => ({
+          productId: it.productId,
+          skuId: it.skuId || it.variationId || null,
+          quantity: it.quantity || 1,
+        }))
+        const list = await getShippingMethods({
+          country: this.shippingCountry,
+          items,
+          subtotal: this.subtotal,
+          currency: 'USD',
+        })
+        // 丢弃过期响应：用户连续改数量时只认最后一次请求
+        if (seq !== this.shippingReqSeq) return
+        const methods = Array.isArray(list) ? list : []
+        // 与结算页默认选中规则一致：取第一个启用中的配送方式
+        const first = methods.find((m) => m.active !== false) || methods[0]
+        if (!first) {
+          // 该国家无可用配送方式/未配置运费：不显示"免运费"，交由结算页给出明确结果
+          this.shippingFreight = 0
+          this.shippingLoaded = false
+          return
+        }
+        this.shippingFreight = Number(first.freight) || 0
+        this.shippingLoaded = true
+      } catch (e) {
+        if (seq !== this.shippingReqSeq) return
+        console.warn('[cart] load shipping failed', e)
+        this.shippingFreight = 0
+        this.shippingLoaded = false
+      } finally {
+        if (seq === this.shippingReqSeq) this.shippingLoading = false
+      }
+    },
+
     itemKey(item) {
       return item.variationId || item.skuId || item.productId
     },
@@ -873,6 +1127,15 @@ export default {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text);
+}
+
+/* 合计不含运费时的提示 */
+.summary-total-hint {
+  display: block;
+  margin-top: 6rpx;
+  text-align: right;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
 }
 
 /* ===== 底部留白 ===== */

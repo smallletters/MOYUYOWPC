@@ -126,7 +126,7 @@
       </el-card>
     </div>
 
-    <!-- ===== 会员价配置（示例数据，可编辑） ===== -->
+    <!-- ===== 会员价配置（按会员等级统一折扣，真实接口） ===== -->
     <el-card shadow="never" class="config-card">
       <template #header>
         <div class="card-title-row card-title-between">
@@ -134,7 +134,12 @@
             <span class="section-icon" style="color:var(--brand-500)">★</span>
             <span class="section-title">会员价配置</span>
           </div>
-          <el-button type="primary" size="small" @click="handleSaveMemberConfig">保存会员价配置</el-button>
+          <el-button
+            type="primary"
+            size="small"
+            :loading="memberSaving"
+            @click="handleSaveMemberConfig"
+          >保存会员价配置</el-button>
         </div>
       </template>
       <el-table :data="memberConfigList" border>
@@ -156,6 +161,11 @@
               size="small"
               style="width:140px"
             />
+          </template>
+        </el-table-column>
+        <el-table-column label="启用" width="90" align="center">
+          <template #default="{ row }">
+            <el-switch v-model="row.enabled" />
           </template>
         </el-table-column>
         <el-table-column label="说明" min-width="220">
@@ -255,7 +265,10 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getPriceList, createPrice, updatePrice } from '../api/admin'
+import {
+  getPriceList, createPrice, updatePrice,
+  getMemberPriceConfigs, saveMemberPriceConfigs
+} from '../api/admin'
 
 // ===== 价格 CRUD（原有逻辑保留） =====
 const currentPage = ref(1)
@@ -290,16 +303,13 @@ async function loadData() {
   try {
     const params = { page: currentPage.value, size: pageSize.value }
     if (filters.keyword) params.keyword = filters.keyword
+    // 价格区间下沉到后端，避免前端过滤导致分页页数/总数不准
+    if (filters.priceMin !== null && filters.priceMin !== undefined) params.priceMin = filters.priceMin
+    if (filters.priceMax !== null && filters.priceMax !== undefined) params.priceMax = filters.priceMax
     const res = await getPriceList(params)
-    let list = (res && res.records) || res || []
-    // 价格区间筛选仍在前端处理
-    let filtered = list.filter(d => {
-      if (filters.priceMin !== null && d.sellingPrice < filters.priceMin) return false
-      if (filters.priceMax !== null && d.sellingPrice > filters.priceMax) return false
-      return true
-    })
-    tableData.value = filtered
-    total.value = res.total || filtered.length
+    const list = (res && res.records) || res || []
+    tableData.value = Array.isArray(list) ? list : []
+    total.value = Number(res && res.total) || tableData.value.length
   } catch (e) {
     console.error('加载价格列表失败:', e)
     ElMessage.error('加载价格列表失败')
@@ -384,17 +394,69 @@ const matrixRows = [
   { name: '礼品卡', cells: ['yes', 'yes', 'no', 'yes', 'yes', '-'] }
 ]
 
-// ===== 会员价配置（示例数据，可编辑） =====
-const memberConfigList = ref([
-  { name: '普通会员', badgeText: '普通', badgeClass: 'badge-normal', description: '注册即可享受', discount: 10 },
-  { name: '银卡会员', badgeText: '银卡', badgeClass: 'badge-silver', description: '累计消费满 500 元', discount: 9.5 },
-  { name: '金卡会员', badgeText: '金卡', badgeClass: 'badge-gold', description: '累计消费满 2000 元', discount: 8.8 },
-  { name: '钻石会员', badgeText: '钻石', badgeClass: 'badge-diamond', description: '累计消费满 10000 元', discount: 8.0 }
-])
+// ===== 会员价配置（五档会员等级统一折扣，真实接口） =====
+// 后端 discountRate 为折扣系数（1.00 = 原价），页面展示为"折"（0.95 → 9.5 折）
+const MEMBER_LEVEL_META = {
+  NORMAL: { name: '普通会员', badgeText: '普通', badgeClass: 'badge-normal', description: '注册即获得' },
+  SILVER: { name: '银卡会员', badgeText: '银卡', badgeClass: 'badge-silver', description: '累计消费满 500 元' },
+  GOLD: { name: '金卡会员', badgeText: '金卡', badgeClass: 'badge-gold', description: '累计消费满 2000 元' },
+  PLATINUM: { name: '白金会员', badgeText: '白金', badgeClass: 'badge-platinum', description: '累计消费满 8000 元' },
+  DIAMOND: { name: '钻石会员', badgeText: '钻石', badgeClass: 'badge-diamond', description: '累计消费满 25000 元' }
+}
+const memberConfigList = ref([])
+const memberSaving = ref(false)
 
-// 保存会员价配置（示例数据，无真实接口，仅提示）
-function handleSaveMemberConfig() {
-  ElMessage.success('会员价配置保存成功（示例数据，未接入真实接口）')
+/** 后端配置 → 页面行（折扣系数换算为"折"） */
+function mapMemberConfig(row) {
+  const meta = MEMBER_LEVEL_META[row.level] || {
+    name: row.level, badgeText: row.level, badgeClass: 'badge-normal', description: ''
+  }
+  const rate = Number(row.discountRate != null ? row.discountRate : 1)
+  return {
+    level: row.level,
+    name: meta.name,
+    badgeText: meta.badgeText,
+    badgeClass: meta.badgeClass,
+    description: row.description || meta.description,
+    discount: Number((rate * 10).toFixed(1)),
+    enabled: row.enabled !== false
+  }
+}
+
+async function loadMemberConfigs() {
+  try {
+    const list = await getMemberPriceConfigs()
+    memberConfigList.value = (Array.isArray(list) ? list : []).map(mapMemberConfig)
+  } catch (e) {
+    ElMessage.error('获取会员价配置失败')
+  }
+}
+
+// 保存会员价配置（真实接口：PUT /price/member-configs）
+async function handleSaveMemberConfig() {
+  if (memberConfigList.value.length === 0) {
+    ElMessage.warning('暂无可保存的会员价配置')
+    return
+  }
+  memberSaving.value = true
+  try {
+    const payload = memberConfigList.value.map(row => ({
+      level: row.level,
+      // 页面"折" → 后端折扣系数，保留两位小数（9.5 折 → 0.95）
+      discountRate: Number((Number(row.discount || 10) / 10).toFixed(2)),
+      description: row.description,
+      enabled: row.enabled !== false
+    }))
+    const saved = await saveMemberPriceConfigs(payload)
+    if (Array.isArray(saved)) {
+      memberConfigList.value = saved.map(mapMemberConfig)
+    }
+    ElMessage.success('会员价配置已保存，新折扣将在下单时生效')
+  } catch (e) {
+    ElMessage.error((e && e.message) || '保存会员价配置失败')
+  } finally {
+    memberSaving.value = false
+  }
 }
 
 // ===== 调价审批队列（示例数据，未接入真实接口） =====
@@ -432,7 +494,10 @@ async function handleApprove(row, action) {
   }
 }
 
-onMounted(() => { loadData() })
+onMounted(() => {
+  loadData()
+  loadMemberConfigs()
+})
 </script>
 
 <style scoped>
@@ -540,6 +605,7 @@ onMounted(() => { loadData() })
 .badge-normal { background: var(--background-200); color: var(--text-500); }
 .badge-silver { background: #f0f0f5; color: #8e8e93; }
 .badge-gold { background: #fff8e8; color: #ff9500; }
+.badge-platinum { background: #eef3f8; color: #5a7d9a; }
 .badge-diamond { background: #f0e8ff; color: #5856d6; }
 .member-name { font-size: 14px; font-weight: 600; color: var(--text-800); }
 

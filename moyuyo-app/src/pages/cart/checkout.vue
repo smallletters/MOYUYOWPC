@@ -208,7 +208,7 @@
             </view>
             <switch
               :checked="usePoints"
-              :disabled="!pointsLoaded"
+              :disabled="!pointsLoaded || maxPointsUsable <= 0"
               color="#F0C14B"
               @change="usePoints = $event.detail.value"
             />
@@ -254,11 +254,15 @@
               }}
             </text>
           </view>
+          <view v-if="memberDiscount > 0" class="sum-row">
+            <text class="sum-label">{{ $t('checkout.summary.memberDiscount') }}</text>
+            <text class="sum-value">−${{ memberDiscount.toFixed(2) }}</text>
+          </view>
           <view v-if="activeCoupon" class="sum-row">
             <text class="sum-label">{{ $t('checkout.summary.couponDiscount') }}</text>
             <text class="sum-value">−${{ discount.toFixed(2) }}</text>
           </view>
-          <view v-if="usePoints" class="sum-row">
+          <view v-if="usePoints && pointsDiscount > 0" class="sum-row">
             <text class="sum-label">{{ $t('checkout.summary.pointsDiscount') }}</text>
             <text class="sum-value">−${{ pointsDiscount.toFixed(2) }}</text>
           </view>
@@ -349,8 +353,9 @@
 </template>
 
 <script>
-import { orderApi, pointsApi, addressApi, couponApi } from '@/api'
+import { orderApi, pointsApi, addressApi, couponApi, memberApi } from '@/api'
 import { getShippingMethods } from '@/api/order'
+import { getFlashSales } from '@/api/flashSale'
 import { useCartStore } from '@/store'
 import { savePendingOrder } from '@/utils/storage'
 import { i18n } from '@/i18n'
@@ -366,6 +371,10 @@ export default {
       usePoints: false,
       pointsBalance: 0,
       pointsLoaded: false,
+      // 会员价折扣系数（1.00 = 原价，0.95 = 9.5 折），由 /api/v1/member/price-discount 拉取
+      memberDiscountRate: 1,
+      // 进行中的秒杀商品 ID：秒杀价不叠加会员折扣
+      activeFlashSaleProductIds: [],
       orderRemark: '',
       selectedPayment: 'googlepay',
       // 步骤指示器：地址 1、支付 2、复核 3、下单 4；按实际状态自动推进
@@ -506,47 +515,40 @@ export default {
      */
     bestCoupon() {
       if (this.couponAutoDismissed) return null
-      if (!this.myCouponsLoaded) return this.cartStore.selectedCoupon
+      const manual = this.cartStore.selectedCoupon
+      // 手选券必须复核可用性（商品/金额变化后可能已不满足门槛或已过期）
+      const usableManual = manual && this.isCouponAvailable(manual) ? manual : null
+      if (!this.myCouponsLoaded) return usableManual
       const subtotal = this.subtotal
       if (!subtotal || subtotal <= 0) return null
+      // 可用券：启用、已开始、未过期、满足金额门槛（门槛对 AMOUNT/PERCENT 均生效，与服务端一致）
       const available = this.myCoupons
         .filter((c) => c.active !== false)
+        .filter((c) => !c.startTime || new Date(c.startTime.replace(' ', 'T')) <= new Date())
         .filter((c) => !c.endTime || new Date(c.endTime.replace(' ', 'T')) > new Date())
-        .filter((c) => {
-          // 仅 AMOUNT 券要求门槛;PERCENT 券无门槛
-          if ((c.type || '').toUpperCase() === 'AMOUNT') {
-            return Number(c.minOrderAmount || 0) <= subtotal
-          }
-          return true
-        })
-      if (available.length === 0) return this.cartStore.selectedCoupon
-      // 计算每张券的实际抵扣金额,用于排序
-      const scored = available.map((c) => {
-        const isPercent = (c.type || '').toUpperCase() === 'PERCENT'
-        let actual
-        if (isPercent) {
-          // PERCENT:discountValue 表示折扣百分比(例如 95 = 9.5 折),抵扣 = subtotal * (100 - value) / 100
-          const v = Number(c.discountValue || 0)
-          actual = (subtotal * (100 - v)) / 100
-        } else {
-          actual = Number(c.discountValue || 0)
-        }
-        return { coupon: c, actual }
-      })
+        .filter((c) => Number(c.minOrderAmount || 0) <= subtotal)
+      if (available.length === 0) return usableManual
+      // 计算每张券的实际抵扣金额,用于排序（与服务端 computeCouponDiscount 口径一致）
+      const scored = available.map((c) => ({
+        coupon: c,
+        actual: this.calculateCouponDiscount(c),
+      }))
       scored.sort((a, b) => {
         if (b.actual !== a.actual) return b.actual - a.actual
         // 同抵扣额时选 id 较大(更"新")
         return Number(b.coupon.id) - Number(a.coupon.id)
       })
       const picked = scored[0].coupon
-      // 维持现有 selectedCoupon 以兼容用户手动从 /pages/user/coupons 选的场景
-      return this.cartStore.selectedCoupon || picked
+      // 手动选券仍可用时优先保留，否则自动选最优券
+      return usableManual || picked
     },
     /**
-     * 当前生效的优惠券(优先 bestCoupon;若用户手动选了别的,保留)
+     * 当前生效的优惠券(优先 bestCoupon;若用户手动选了别的且仍可用,保留)
      */
     activeCoupon() {
-      return this.bestCoupon || this.cartStore.selectedCoupon
+      const manual = this.cartStore.selectedCoupon
+      const usableManual = manual && this.isCouponAvailable(manual) ? manual : null
+      return this.bestCoupon || usableManual
     },
     /**
      * 当前生效优惠券的实际抵扣金额(用于价格明细行展示)
@@ -554,12 +556,7 @@ export default {
     discount() {
       const coupon = this.activeCoupon
       if (!coupon) return 0
-      const isPercent = (coupon.type || '').toUpperCase() === 'PERCENT'
-      if (isPercent) {
-        const v = Number(coupon.discountValue || 0)
-        return (this.subtotal * (100 - v)) / 100
-      }
-      return Number(coupon.discountValue || 0)
+      return this.calculateCouponDiscount(coupon)
     },
     /**
      * 弹窗展示的券列表:可用券排前,不可用券排后
@@ -573,20 +570,49 @@ export default {
         return bOk - aOk
       })
     },
-    // 章节 3.1：100 积分 = $1，最高抵扣订单金额 30%
+    /**
+     * 会员优惠与优惠券抵扣后剩余的商品金额。
+     * 积分只能抵扣这部分，不能抵运费，也不能把订单抵成负数。
+     */
+    pointsEligibleBase() {
+      return Math.max(0, this.subtotal - this.memberDiscount - this.discount)
+    },
+    // 章节 3.1：100 积分 = $1，最高抵扣商品金额 30%，且不超过剩余商品金额
     pointsDiscount() {
       if (!this.usePoints) return 0
       const maxByRate = this.subtotal * 0.3
       const maxByBalance = this.pointsBalance / 100
-      return Math.min(maxByRate, maxByBalance)
+      return Math.min(maxByRate, maxByBalance, this.pointsEligibleBase)
     },
     maxPointsUsable() {
-      return Math.floor(Math.min(this.pointsBalance, this.subtotal * 0.3 * 100))
+      return Math.floor(
+        Math.min(this.pointsBalance, this.subtotal * 0.3 * 100, this.pointsEligibleBase * 100),
+      )
+    },
+    /**
+     * 会员优惠金额：按会员等级统一折扣，作用于非秒杀商品的销售价小计。
+     * 与优惠券叠加；秒杀商品不参与，与后端下单计算口径保持一致。
+     */
+    memberDiscount() {
+      const rate = Number(this.memberDiscountRate)
+      if (!(rate > 0 && rate < 1)) return 0
+      const eligibleSubtotal = this.checkoutItems.reduce((sum, item) => {
+        const productId = item && item.productId
+        if (productId != null && this.activeFlashSaleProductIds.includes(productId)) {
+          return sum
+        }
+        return sum + (Number(item && item.price) || 0) * (Number(item && item.quantity) || 0)
+      }, 0)
+      return Number((eligibleSubtotal * (1 - rate)).toFixed(2))
     },
     total() {
       return Math.max(
         0,
-        this.subtotal + this.selectedShippingPrice - this.discount - this.pointsDiscount,
+        this.subtotal +
+          this.selectedShippingPrice -
+          this.memberDiscount -
+          this.discount -
+          this.pointsDiscount,
       )
     },
   },
@@ -595,6 +621,8 @@ export default {
     this.loadAddress()
     this.loadPoints()
     this.loadMyCoupons()
+    this.loadMemberDiscount()
+    this.loadActiveFlashSales()
   },
 
   // 从地址页返回时才会触发（uni-app 中 navigateBack 不会重触发 onLoad）
@@ -628,6 +656,32 @@ export default {
   },
 
   methods: {
+    /**
+     * 单张优惠券的实际抵扣金额（与服务端 computeCouponDiscount 口径一致）：
+     * PERCENT 的 discountValue 是价格百分比（95 = 9.5 折），AMOUNT 为固定金额；
+     * 同时套用券自身 maxDiscountAmount 与订单小计封顶。
+     * 门槛（minOrderAmount）由调用方在筛选可用券时判定。
+     */
+    calculateCouponDiscount(coupon) {
+      const subtotal = Number(this.subtotal) || 0
+      if (!coupon || subtotal <= 0) return 0
+      const type = String(coupon.type || '').toUpperCase()
+      let discount
+      if (type === 'PERCENT') {
+        const rate = Number(coupon.discountValue || 0)
+        discount = (subtotal * (100 - rate)) / 100
+      } else {
+        discount = Number(coupon.discountValue || 0)
+      }
+      if (!Number.isFinite(discount) || discount <= 0) return 0
+      const maxDiscount = Number(coupon.maxDiscountAmount)
+      if (Number.isFinite(maxDiscount) && maxDiscount > 0) {
+        discount = Math.min(discount, maxDiscount)
+      }
+      // 与后端 BigDecimal HALF_UP 到分保持一致
+      return Number(Math.min(subtotal, discount).toFixed(2))
+    },
+
     loadAddress() {
       addressApi
         .getAddressList()
@@ -702,14 +756,13 @@ export default {
       this.closeCouponPopup()
     },
 
-    /** 判断某张券对当前订单是否可用(active、未过期、门槛满足) */
+    /** 判断某张券对当前订单是否可用（启用、已开始、未过期、门槛满足；门槛对所有类型生效） */
     isCouponAvailable(c) {
-      if (c.active === false) return false
-      if (c.endTime && new Date(String(c.endTime).replace(' ', 'T')) <= new Date()) return false
-      if ((c.type || '').toUpperCase() === 'AMOUNT') {
-        return Number(c.minOrderAmount || 0) <= this.subtotal
-      }
-      return true
+      if (!c || c.active === false) return false
+      const now = new Date()
+      if (c.startTime && new Date(String(c.startTime).replace(' ', 'T')) > now) return false
+      if (c.endTime && new Date(String(c.endTime).replace(' ', 'T')) <= now) return false
+      return Number(c.minOrderAmount || 0) <= this.subtotal
     },
 
     /** 判断某张券是否为当前已选中券 */
@@ -834,6 +887,32 @@ export default {
       } finally {
         this.shippingLoaded = true
         this.shippingLoading = false
+      }
+    },
+
+    /** 拉取进行中的秒杀商品，结算时这些商品不叠加会员折扣 */
+    async loadActiveFlashSales() {
+      try {
+        const res = await getFlashSales({ page: 1, size: 100 })
+        const list = Array.isArray(res) ? res : (res && res.records) || []
+        this.activeFlashSaleProductIds = list
+          .filter((f) => f && f.active !== false && f.productId != null)
+          .map((f) => f.productId)
+      } catch (e) {
+        console.warn('[checkout] load flash sales failed', e)
+        this.activeFlashSaleProductIds = []
+      }
+    },
+
+    /** 拉取当前用户会员价折扣系数（无会员/无配置时后端返回 1.00） */
+    async loadMemberDiscount() {
+      try {
+        const res = await memberApi.getMemberPriceDiscount()
+        const rate = Number(res && res.discountRate)
+        this.memberDiscountRate = rate > 0 && rate <= 1 ? rate : 1
+      } catch (e) {
+        console.warn('[checkout] load member discount failed', e)
+        this.memberDiscountRate = 1
       }
     },
 

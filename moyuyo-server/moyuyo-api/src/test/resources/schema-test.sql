@@ -33,6 +33,17 @@ CREATE TABLE mo_member (
     update_time DATETIME
 );
 
+DROP TABLE IF EXISTS mo_member_price_config;
+CREATE TABLE mo_member_price_config (
+    id BIGINT PRIMARY KEY,
+    level VARCHAR(32) NOT NULL,
+    discount_rate DECIMAL(3,2) NOT NULL DEFAULT 1.00,
+    description VARCHAR(128),
+    enabled TINYINT(1) NOT NULL DEFAULT 1,
+    create_time DATETIME,
+    update_time DATETIME
+);
+
 DROP TABLE IF EXISTS mo_wallet;
 CREATE TABLE mo_wallet (
     id BIGINT PRIMARY KEY,
@@ -105,6 +116,7 @@ CREATE TABLE mo_order (
     tax_amount DECIMAL(10,2) DEFAULT 0,
     coupon_discount DECIMAL(10,2) DEFAULT 0,
     points_discount DECIMAL(10,2) DEFAULT 0,
+    member_discount DECIMAL(10,2) DEFAULT 0,
     pay_amount DECIMAL(10,2) DEFAULT 0,
     currency VARCHAR(10) DEFAULT 'USD',
     coupon_id VARCHAR(100),

@@ -39,6 +39,11 @@ export function getMemberPrivileges() {
   return get('/api/v1/member/privileges')
 }
 
+// 当前用户会员价折扣（结算页展示会员优惠用）
+export function getMemberPriceDiscount() {
+  return get('/api/v1/member/price-discount')
+}
+
 export default {
   getMemberInfo,
   getPointsLog,
@@ -48,4 +53,5 @@ export default {
   getMemberLevels,
   getPointsRate,
   getMemberPrivileges,
+  getMemberPriceDiscount,
 }

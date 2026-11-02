@@ -607,6 +607,15 @@ export function updatePrice(data) {
   return api.put('/price/update', data)
 }
 
+// 会员价配置（五档会员等级统一折扣）
+export function getMemberPriceConfigs() {
+  return api.get('/price/member-configs')
+}
+
+export function saveMemberPriceConfigs(configs) {
+  return api.put('/price/member-configs', configs)
+}
+
 export function deletePrice(id) {
   return api.delete(`/price/${id}`)
 }

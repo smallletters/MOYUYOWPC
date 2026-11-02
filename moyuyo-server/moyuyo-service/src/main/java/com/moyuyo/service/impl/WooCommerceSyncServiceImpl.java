@@ -800,9 +800,39 @@ public class WooCommerceSyncServiceImpl implements WooCommerceSyncService {
         }
         data.put("line_items", lineItems);
 
+        // 运费：独立 shipping line，保证 WC 订单总额与本地实付一致
+        BigDecimal freight = order.getFreight() == null ? BigDecimal.ZERO : order.getFreight();
+        if (freight.compareTo(BigDecimal.ZERO) > 0) {
+            Map<String, Object> shipLine = new LinkedHashMap<>();
+            shipLine.put("method_title", "Shipping");
+            shipLine.put("method_id", order.getShippingMethod() == null ? "standard" : order.getShippingMethod());
+            shipLine.put("total", freight.toPlainString());
+            data.put("shipping_lines", List.of(shipLine));
+        }
+
+        // 优惠：会员/优惠券/积分以负向 fee line 推送，避免 WC 侧金额高于本地 payAmount
+        List<Map<String, Object>> feeLines = new ArrayList<>();
+        addFeeLine(feeLines, "会员优惠", order.getMemberDiscount());
+        addFeeLine(feeLines, "优惠券抵扣", order.getCouponDiscount());
+        addFeeLine(feeLines, "积分抵扣", order.getPointsDiscount());
+        if (!feeLines.isEmpty()) {
+            data.put("fee_lines", feeLines);
+        }
+
         data.put("customer_note", "Synced from MOYUYO app. Order #" + order.getOrderNo());
         data.put("set_paid", true);
 
         return data;
+    }
+
+    /** 追加一条负向费用（WooCommerce fee_lines 用负数表示优惠） */
+    private void addFeeLine(List<Map<String, Object>> feeLines, String name, BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+        Map<String, Object> fee = new LinkedHashMap<>();
+        fee.put("name", name);
+        fee.put("total", amount.negate().toPlainString());
+        feeLines.add(fee);
     }
 }

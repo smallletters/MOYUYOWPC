@@ -271,7 +271,11 @@ public class CouponServiceImpl implements CouponService {
         if (coupon == null || !Boolean.TRUE.equals(coupon.getActive())) {
             throw new IllegalArgumentException("该优惠券不可使用");
         }
-        if (coupon.getEndTime() != null && coupon.getEndTime().isBefore(LocalDateTime.now())) {
+        LocalDateTime now = LocalDateTime.now();
+        if (coupon.getStartTime() != null && coupon.getStartTime().isAfter(now)) {
+            throw new IllegalArgumentException("该优惠券尚未开始使用");
+        }
+        if (coupon.getEndTime() != null && coupon.getEndTime().isBefore(now)) {
             throw new IllegalArgumentException("该优惠券已过期");
         }
         BigDecimal subtotal = goodsAmount == null ? BigDecimal.ZERO : goodsAmount;

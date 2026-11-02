@@ -5,6 +5,7 @@ import com.moyuyo.common.dto.member.MemberVO;
 import com.moyuyo.common.dto.member.WalletVO;
 import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.dao.entity.PointsLogEntity;
+import com.moyuyo.service.MemberPriceService;
 import com.moyuyo.service.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,6 +22,7 @@ import java.util.Map;
 public class MemberController {
 
   private final MemberService memberService;
+  private final MemberPriceService memberPriceService;
 
   @Operation(summary = "获取会员信息（含积分和钱包余额）")
   @GetMapping
@@ -52,6 +54,17 @@ public class MemberController {
   @GetMapping("/points-rate")
   public Result<Double> currentPointsRate() {
     return Result.success(memberService.getCurrentPointsRate(UserContextHolder.getUserId()));
+  }
+
+  @Operation(summary = "当前用户会员价折扣（结算页展示会员优惠用）")
+  @GetMapping("/price-discount")
+  public Result<Map<String, Object>> priceDiscount() {
+    Long userId = UserContextHolder.getUserId();
+    // 只读查询等级，避免 GET 请求触发创建会员/钱包记录
+    String level = memberPriceService.getLevelForUser(userId);
+    // 1.00 = 原价，0.95 = 9.5 折；与后端下单时使用的配置一致
+    java.math.BigDecimal rate = memberPriceService.getDiscountForUser(userId);
+    return Result.success(Map.of("level", level == null ? "NORMAL" : level, "discountRate", rate));
   }
 
   @Operation(summary = "会员专属特权列表（按等级过滤）")

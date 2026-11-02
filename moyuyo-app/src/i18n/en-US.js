@@ -952,10 +952,11 @@ export default {
       cancel: 'Cancel',
     },
     moreItems: '+{count} more',
-    // 待付款订单金额明细（与结算页同口径）
+    // 待付款 / 待收货订单金额明细（与结算页同口径）
     amount: {
       goods: 'Items',
       freight: 'Shipping',
+      member: 'Member discount',
       coupon: 'Coupon',
       points: 'Points',
     },
@@ -1015,7 +1016,8 @@ export default {
       subtotal: 'Subtotal',
       shipping: 'Shipping',
       tax: 'Tax',
-      discount: 'Discount',
+      discount: 'Coupon discount',
+      member: 'Member discount',
       points: 'Points',
       total: 'Total',
     },
@@ -1402,6 +1404,7 @@ export default {
     summary: {
       items: 'Items ({count}):',
       shipping: 'Shipping & handling:',
+      memberDiscount: 'Member discount:',
       couponDiscount: 'Coupon discount:',
       pointsDiscount: 'Points discount:',
       total: 'Order total:',
@@ -4096,8 +4099,12 @@ export default {
     orderSummary: 'Order Summary',
     goodsSubtotal: 'Subtotal',
     shipping: 'Shipping',
+    shippingAtCheckout: 'Calculated at checkout',
     freeShipping: 'Free Shipping',
     discount: 'Discount',
+    memberDiscount: 'Member discount',
+    couponDiscount: 'Coupon discount',
+    totalExcludesShipping: 'Total excludes shipping; calculated at checkout',
     payableAmount: 'Amount Due',
     selectAll: 'Select all',
     totalLabel: 'Total:',

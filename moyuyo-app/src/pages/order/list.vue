@@ -64,12 +64,12 @@
             </view>
           </view>
           <!--
-            待付款订单：展示与结算页同口径的金额明细，让用户能核对"结算页合计"与"待付款实付"的差额。
-            恒等式：payAmount = goodsAmount + freight − couponDiscount − pointsDiscount（服务端权威落库）。
+            待付款 / 待收货订单：展示与结算页同口径的金额明细，让用户核对实付金额构成。
+            恒等式：payAmount = goodsAmount + freight − memberDiscount − couponDiscount − pointsDiscount（服务端权威落库）。
             任一分项缺失/null 时由 num()/money() 兜底为 0，绝不渲染 NaN / $undefined。
             数据全部来自订单对象已有字段，不新增接口。
           -->
-          <view v-if="o.status === 'PENDING_PAY'" class="amount-breakdown">
+          <view v-if="showAmountBreakdown(o)" class="amount-breakdown">
             <view class="amount-row">
               <text class="amount-label">{{ $t('orderList.amount.goods') }}</text>
               <text class="amount-value">{{ money(o.goodsAmount) }}</text>
@@ -77,6 +77,10 @@
             <view v-if="num(o.freight) > 0" class="amount-row">
               <text class="amount-label">{{ $t('orderList.amount.freight') }}</text>
               <text class="amount-value">{{ money(o.freight) }}</text>
+            </view>
+            <view v-if="num(o.memberDiscount) > 0" class="amount-row">
+              <text class="amount-label">{{ $t('orderList.amount.member') }}</text>
+              <text class="amount-value amount-deduct">−{{ money(o.memberDiscount) }}</text>
             </view>
             <view v-if="num(o.couponDiscount) > 0" class="amount-row">
               <text class="amount-label">{{ $t('orderList.amount.coupon') }}</text>
@@ -234,7 +238,7 @@ export default {
 
     /**
      * 订单实付金额：优先取后端落库的 payAmount；缺失/非法时按恒等式回退计算：
-     *   payAmount = goodsAmount + freight − couponDiscount − pointsDiscount（下限 0）
+     *   payAmount = goodsAmount + freight − memberDiscount − couponDiscount − pointsDiscount（下限 0）
      * 保证任一分项为 null 时也不会渲染出 NaN / $undefined。
      */
     payableOf(o) {
@@ -245,9 +249,18 @@ export default {
       }
       const goods = this.num(o?.goodsAmount)
       const freight = this.num(o?.freight)
+      const member = this.num(o?.memberDiscount)
       const coupon = this.num(o?.couponDiscount)
       const points = this.num(o?.pointsDiscount)
-      return Math.max(0, goods + freight - coupon - points)
+      return Math.max(0, goods + freight - member - coupon - points)
+    },
+
+    /**
+     * 是否展示金额明细：待付款（核对实付构成）、待收货（核对已支付金额构成）。
+     * 兼容历史状态 PENDING_RECEIVE。
+     */
+    showAmountBreakdown(o) {
+      return ['PENDING_PAY', 'SHIPPED', 'PENDING_RECEIVE'].includes(o?.status)
     },
 
     /**

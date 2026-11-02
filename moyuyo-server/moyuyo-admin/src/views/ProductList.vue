@@ -202,7 +202,16 @@
 
       <!-- 分页 -->
       <div class="pagination" v-if="total > 0">
-        <span class="pagination-info">共 {{ total }} 条 · 第 {{ currentPage }} / {{ totalPages }} 页</span>
+        <div class="pagination-left">
+          <span class="pagination-info">共 {{ total }} 条 · 第 {{ currentPage }} / {{ totalPages }} 页</span>
+          <!-- 每页条数切换：变更后回到第 1 页重新查询 -->
+          <select class="page-size-select" v-model.number="pageSize" @change="handleSizeChange">
+            <option :value="10">10 条/页</option>
+            <option :value="20">20 条/页</option>
+            <option :value="50">50 条/页</option>
+            <option :value="100">100 条/页</option>
+          </select>
+        </div>
         <div class="pagination-btns">
           <button class="pagination-btn" :disabled="currentPage <= 1" @click="currentPage--">‹ 上一页</button>
           <button class="pagination-btn" :disabled="currentPage >= totalPages" @click="currentPage++">下一页 ›</button>
@@ -227,7 +236,8 @@ const activeTab = ref('all')
 const selectAll = ref(false)
 const selectedIds = ref([])
 const currentPage = ref(1)
-const pageSize = 10
+// 每页条数：支持 10 / 20 / 50 / 100 切换
+const pageSize = ref(10)
 const loading = ref(false)
 const total = ref(0)
 
@@ -260,7 +270,7 @@ async function fetchProducts() {
   try {
     const params = {
       page: currentPage.value,
-      size: pageSize,
+      size: pageSize.value,
       keyword: filters.search || undefined
     }
     // 根据 activeTab 设置状态筛选
@@ -314,7 +324,7 @@ async function fetchProducts() {
 // 直接使用 productList，无需额外 computed 包装
 const filteredProducts = productList
 
-const totalPages = computed(() => Math.ceil(total.value / pageSize) || 1)
+const totalPages = computed(() => Math.ceil(total.value / pageSize.value) || 1)
 
 // 根据库存数量返回样式类
 function getStockClass(stock) {
@@ -351,6 +361,15 @@ function handleReset() {
   filters.stock = ''
   currentPage.value = 1
   fetchProducts()
+}
+
+/** 切换每页条数：回到第 1 页（页码变化由 watch 触发查询，已在第 1 页则直接查询） */
+function handleSizeChange() {
+  if (currentPage.value === 1) {
+    fetchProducts()
+  } else {
+    currentPage.value = 1
+  }
 }
 
 // 跳转到新增商品页
@@ -640,5 +659,21 @@ onMounted(() => {
   content: "📦";
   font-size: 18px;
   color: var(--text-300);
+}
+
+/* 分页左侧：总数 + 每页条数切换 */
+.pagination-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.page-size-select {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text-600);
+  font-size: 13px;
+  cursor: pointer;
 }
 </style>

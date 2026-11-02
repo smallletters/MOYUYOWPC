@@ -4,11 +4,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
 import com.moyuyo.common.security.UserContextHolder;
+import com.moyuyo.dao.entity.FlashSaleEntity;
 import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductReviewEntity;
+import com.moyuyo.dao.mapper.FlashSaleMapper;
 import com.moyuyo.dao.mapper.ProductReviewMapper;
 import com.moyuyo.dao.entity.CategoryEntity;
 import com.moyuyo.dao.mapper.CategoryMapper;
+import com.moyuyo.service.MemberPriceService;
 import com.moyuyo.service.MissionService;
 import com.moyuyo.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,7 +22,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -39,6 +45,8 @@ public class ProductController {
   private final ProductReviewMapper productReviewMapper;
   private final CategoryMapper categoryMapper;
   private final MissionService missionService;
+  private final MemberPriceService memberPriceService;
+  private final FlashSaleMapper flashSaleMapper;
   private final StringRedisTemplate redisTemplate;
 
   @Operation(summary = "商品列表（分页+筛选+排序+搜索）")
@@ -103,9 +111,50 @@ public class ProductController {
   @GetMapping("/{id}")
   public Result<ProductEntity> getProductDetail(@PathVariable Long id) {
     ProductEntity product = productService.getProductWithDetails(id);
+    // 会员价：按当前登录用户的会员等级动态计算展示价（未登录/无折扣时为 null）
+    fillMemberPrice(product);
     // 浏览商品触发"浏览 5 个商品"任务进度（同一商品 5 分钟内不重复计数，避免刷新刷分）
     triggerViewMission(id);
     return Result.success(product);
+  }
+
+  /** 按当前用户会员等级计算会员展示价；折扣与下单时使用的配置一致 */
+  private void fillMemberPrice(ProductEntity product) {
+    if (product == null) {
+      return;
+    }
+    // 秒杀标记与登录态无关，需始终返回，供前端隐藏 attributes 里的历史会员价兜底
+    boolean flashSaleActive = isFlashSaleActive(product.getId());
+    product.setFlashSaleActive(flashSaleActive);
+    Long userId = UserContextHolder.getUserId();
+    if (userId == null || product.getPrice() == null) {
+      return;
+    }
+    // 进行中的秒杀商品不叠加会员折扣（与下单口径一致），详情页也不展示会员价
+    if (flashSaleActive) {
+      return;
+    }
+    BigDecimal rate = memberPriceService.getDiscountForUser(userId);
+    if (rate == null || rate.compareTo(BigDecimal.ONE) >= 0 || rate.compareTo(BigDecimal.ZERO) <= 0) {
+      return;
+    }
+    product.setMemberPriceRate(rate);
+    product.setMemberPrice(product.getPrice().multiply(rate)
+        .setScale(2, RoundingMode.HALF_UP));
+  }
+
+  /** 商品是否处于进行中的秒杀活动 */
+  private boolean isFlashSaleActive(Long productId) {
+    if (productId == null) {
+      return false;
+    }
+    LocalDateTime now = LocalDateTime.now();
+    Long count = flashSaleMapper.selectCount(new LambdaQueryWrapper<FlashSaleEntity>()
+        .eq(FlashSaleEntity::getProductId, productId)
+        .eq(FlashSaleEntity::getActive, true)
+        .le(FlashSaleEntity::getStartTime, now)
+        .ge(FlashSaleEntity::getEndTime, now));
+    return count != null && count > 0;
   }
 
   /** 浏览商品任务进度触发：用 Redis 短期去重（同 userId+productId 5 分钟内只算 1 次）。 */

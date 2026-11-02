@@ -1,22 +1,34 @@
 package com.moyuyo.api.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.dto.order.CreateOrderRequest;
 import com.moyuyo.common.dto.order.OrderItemRequest;
+import com.moyuyo.dao.entity.AddressEntity;
+import com.moyuyo.dao.entity.FlashSaleEntity;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductSkuEntity;
 import com.moyuyo.dao.entity.PaymentEntity;
+import com.moyuyo.dao.mapper.AddressMapper;
+import com.moyuyo.dao.mapper.FlashSaleMapper;
 import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.PaymentMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
+import com.moyuyo.service.CouponService;
+import com.moyuyo.service.MemberPriceService;
+import com.moyuyo.service.MemberService;
+import com.moyuyo.service.ShippingRateService;
 import com.moyuyo.service.impl.OrderServiceImpl;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,9 +44,15 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
+// MyBatis-Plus Wrapper 为泛型接口，Mockito 的 any(XxxWrapper.class) / 原始类型 Captor 会产生 unchecked 警告，
+// 测试代码统一抑制，避免 IDE 黄色感叹号（不影响编译）
+@SuppressWarnings({"unchecked", "rawtypes"})
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
 
@@ -53,8 +71,46 @@ class OrderServiceTest {
   @Mock
   private ProductSkuMapper productSkuMapper;
 
+  @Mock
+  private FlashSaleMapper flashSaleMapper;
+
+  @Mock
+  private MemberPriceService memberPriceService;
+
+  @Mock
+  private MemberService memberService;
+
+  @Mock
+  private CouponService couponService;
+
+  @Mock
+  private ShippingRateService shippingRateService;
+
+  @Mock
+  private AddressMapper addressMapper;
+
   @InjectMocks
   private OrderServiceImpl orderService;
+
+  /** 初始化 MyBatis-Plus Lambda 元数据，避免纯 Mockito 单测触发 "lambda cache" 异常 */
+  @BeforeAll
+  static void initMybatisTableInfo() {
+    MapperBuilderAssistant assistant = new MapperBuilderAssistant(new MybatisConfiguration(), "");
+    TableInfoHelper.initTableInfo(assistant, OrderEntity.class);
+    TableInfoHelper.initTableInfo(assistant, OrderItemEntity.class);
+    TableInfoHelper.initTableInfo(assistant, ProductEntity.class);
+    TableInfoHelper.initTableInfo(assistant, ProductSkuEntity.class);
+    TableInfoHelper.initTableInfo(assistant, PaymentEntity.class);
+  }
+
+  /** 构造一个可用的收货地址，供服务端运费计算使用 */
+  private AddressEntity buildUsAddress() {
+    AddressEntity address = new AddressEntity();
+    address.setCountry("US");
+    address.setReceiver("测试收件人");
+    address.setPhone("1234567890");
+    return address;
+  }
 
   @Captor
   private ArgumentCaptor<OrderEntity> orderCaptor;
@@ -86,6 +142,13 @@ class OrderServiceTest {
     product.setName("测试商品");
     product.setOnSale(true);
     when(productMapper.selectById(20L)).thenReturn(product);
+
+    // 非 SKU 商品走原子扣减 product.stock，需返回 1 才能继续
+    when(productMapper.update(any(), any())).thenReturn(1);
+    // 服务端运费重算依赖地址 + 运费规则
+    when(addressMapper.selectById(addressId)).thenReturn(buildUsAddress());
+    when(shippingRateService.calcFreight(anyString(), anyString(), anyList(), any()))
+        .thenReturn(BigDecimal.ZERO);
 
     // 模拟 orderMapper.insert 设置 ID
     doAnswer(invocation -> {
@@ -123,6 +186,126 @@ class OrderServiceTest {
     assertEquals(price, savedItem.getPrice());
     assertEquals(quantity, savedItem.getQuantity());
     assertEquals(new BigDecimal("199.98"), savedItem.getSubtotal()); // 99.99 * 2
+  }
+
+  @Test
+  @DisplayName("会员等级折扣应按商品销售价计算并落库")
+  void createOrder_memberDiscount_shouldApplyToSellingPrice() {
+    Long userId = 1L;
+    Long addressId = 10L;
+
+    OrderItemEntity item = new OrderItemEntity();
+    item.setProductId(20L);
+    item.setPrice(new BigDecimal("99.99"));
+    item.setQuantity(2);
+
+    ProductEntity product = new ProductEntity();
+    product.setId(20L);
+    product.setName("测试商品");
+    product.setOnSale(true);
+    when(productMapper.selectById(20L)).thenReturn(product);
+    when(productMapper.update(any(), any())).thenReturn(1);
+    when(addressMapper.selectById(addressId)).thenReturn(buildUsAddress());
+    when(shippingRateService.calcFreight(anyString(), anyString(), anyList(), any()))
+        .thenReturn(BigDecimal.ZERO);
+    // 9 折会员
+    when(memberPriceService.getDiscountForUser(userId)).thenReturn(new BigDecimal("0.90"));
+    doAnswer(invocation -> {
+      OrderEntity order = invocation.getArgument(0);
+      order.setId(100L);
+      return 1;
+    }).when(orderMapper).insert(any(OrderEntity.class));
+
+    OrderEntity result = orderService.createOrder(userId, List.of(item), addressId, "备注", null);
+
+    assertEquals(new BigDecimal("199.98"), result.getGoodsAmount());
+    // 199.98 × (1 - 0.90) = 19.998 → 20.00
+    assertEquals(new BigDecimal("20.00"), result.getMemberDiscount());
+    assertEquals(new BigDecimal("179.98"), result.getPayAmount());
+  }
+
+  @Test
+  @DisplayName("秒杀商品不参与会员折扣")
+  void createOrder_flashSaleProduct_shouldNotApplyMemberDiscount() {
+    Long userId = 1L;
+    Long addressId = 10L;
+
+    OrderItemEntity item = new OrderItemEntity();
+    item.setProductId(20L);
+    item.setPrice(new BigDecimal("99.99"));
+    item.setQuantity(2);
+
+    ProductEntity product = new ProductEntity();
+    product.setId(20L);
+    product.setName("测试商品");
+    product.setOnSale(true);
+    when(productMapper.selectById(20L)).thenReturn(product);
+    when(productMapper.update(any(), any())).thenReturn(1);
+    when(addressMapper.selectById(addressId)).thenReturn(buildUsAddress());
+    when(shippingRateService.calcFreight(anyString(), anyString(), anyList(), any()))
+        .thenReturn(BigDecimal.ZERO);
+    when(memberPriceService.getDiscountForUser(userId)).thenReturn(new BigDecimal("0.90"));
+    // 商品处于秒杀活动中
+    FlashSaleEntity flash = new FlashSaleEntity();
+    flash.setProductId(20L);
+    when(flashSaleMapper.selectList(any())).thenReturn(List.of(flash));
+    doAnswer(invocation -> {
+      OrderEntity order = invocation.getArgument(0);
+      order.setId(100L);
+      return 1;
+    }).when(orderMapper).insert(any(OrderEntity.class));
+
+    OrderEntity result = orderService.createOrder(userId, List.of(item), addressId, "备注", null);
+
+    assertEquals(BigDecimal.ZERO, result.getMemberDiscount());
+    assertEquals(new BigDecimal("199.98"), result.getPayAmount());
+  }
+
+  @Test
+  @DisplayName("积分抵扣不得超过会员/优惠券后的剩余商品金额")
+  void createOrderFromRequest_pointsCap_shouldNotExceedRemainingGoodsAmount() {
+    OrderItemRequest itemReq = new OrderItemRequest();
+    itemReq.setSkuId(20L); // 与商品 id 相同，走非 SKU 商品路径
+    itemReq.setProductId(20L);
+    itemReq.setQuantity(1);
+
+    CreateOrderRequest request = new CreateOrderRequest();
+    request.setItems(List.of(itemReq));
+    request.setAddressId(100L);
+    // 请求抵扣 30 元
+    request.setPointsDiscount(new BigDecimal("30.00"));
+
+    ProductEntity product = new ProductEntity();
+    product.setId(20L);
+    product.setName("测试商品");
+    product.setOnSale(true);
+    product.setPrice(new BigDecimal("100.00"));
+    when(productMapper.selectById(20L)).thenReturn(product);
+    when(productMapper.update(any(), any())).thenReturn(1);
+    when(addressMapper.selectById(100L)).thenReturn(buildUsAddress());
+    when(shippingRateService.calcFreight(anyString(), anyString(), anyList(), any()))
+        .thenReturn(new BigDecimal("5.00"));
+    // 5 折会员 → 会员优惠 50；优惠券 30 → 剩余商品金额 20，积分最多抵扣 20
+    when(memberPriceService.getDiscountForUser(1L)).thenReturn(new BigDecimal("0.50"));
+    when(couponService.computeCouponDiscount(anyLong(), any(), any()))
+        .thenReturn(new BigDecimal("30.00"));
+    when(memberService.getPointsBalance(1L)).thenReturn(5000);
+    when(memberService.freezePoints(anyLong(), anyInt(), anyString(), anyString())).thenReturn(true);
+
+    doAnswer(invocation -> {
+      OrderEntity order = invocation.getArgument(0);
+      order.setId(300L);
+      return 1;
+    }).when(orderMapper).insert(any(OrderEntity.class));
+
+    OrderEntity result = orderService.createOrderFromRequest(1L, request);
+
+    assertEquals(new BigDecimal("50.00"), result.getMemberDiscount());
+    // 100 - 50 - 30 = 剩余 20；请求 30 被剩余金额封顶为 20（2000 积分）
+    assertEquals(new BigDecimal("20.00"), result.getPointsDiscount());
+    assertEquals(Integer.valueOf(2000), result.getPointsUsed());
+    // 实付 = 100 - 50 + 5 - 30 - 20 = 5
+    assertEquals(new BigDecimal("5.00"), result.getPayAmount());
   }
 
   @Test
@@ -171,6 +354,11 @@ class OrderServiceTest {
 
     // 模拟 SKU 库存原子扣减成功
     when(productSkuMapper.update(any(), any(LambdaUpdateWrapper.class))).thenReturn(1);
+    // 优惠券核验 + 服务端运费重算
+    when(couponService.computeCouponDiscount(anyLong(), any(), any())).thenReturn(BigDecimal.ZERO);
+    when(addressMapper.selectById(100L)).thenReturn(buildUsAddress());
+    when(shippingRateService.calcFreight(anyString(), anyString(), anyList(), any()))
+        .thenReturn(BigDecimal.ZERO);
 
     // 模拟 orderMapper.insert
     doAnswer(invocation -> {
@@ -187,9 +375,9 @@ class OrderServiceTest {
     assertEquals("PENDING_PAY", result.getStatus());
     assertEquals(new BigDecimal("199.00"), result.getGoodsAmount());
 
-    // 验证 SKU 和商品查询（createOrderFromRequest 转换时查询一次，createOrder 校验时再查一次）
+    // 验证 SKU 和商品查询（转换、库存校验、运费重量计算均会查询）
     verify(productSkuMapper, times(2)).selectById(10L);
-    verify(productMapper, times(2)).selectById(20L);
+    verify(productMapper, atLeast(2)).selectById(20L);
 
     // 验证订单项中的商品信息
     verify(orderItemMapper).insert(orderItemCaptor.capture());
@@ -215,14 +403,19 @@ class OrderServiceTest {
     request.setItems(List.of(itemReq));
 
     when(productSkuMapper.selectById(999L)).thenReturn(null);
+    // 商品存在（实现先校验商品、再校验 SKU），确保走到 SKU 缺失分支
+    ProductEntity product = new ProductEntity();
+    product.setId(20L);
+    product.setOnSale(true);
+    when(productMapper.selectById(20L)).thenReturn(product);
 
     // 执行 & 验证
     IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
         () -> orderService.createOrderFromRequest(1L, request));
     assertTrue(ex.getMessage().contains("SKU不存在"));
 
-    // 验证商品查询没有被调用
-    verify(productMapper, never()).selectById(any());
+    // 商品查询仅用于存在性/上架校验
+    verify(productMapper).selectById(20L);
   }
 
   @Test
@@ -255,7 +448,6 @@ class OrderServiceTest {
 
   // ==================== listOrders ====================
 
-  @SuppressWarnings("unchecked")
   @Test
   @DisplayName("按状态筛选应返回分页订单")
   void listOrders_withStatusFilter_shouldReturnPagedOrders() {
@@ -274,7 +466,6 @@ class OrderServiceTest {
     assertEquals(2, result.getRecords().size());
 
     // 验证参数传递
-    @SuppressWarnings("rawtypes")
     ArgumentCaptor<LambdaQueryWrapper> wrapperCaptor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
     verify(orderMapper).selectPage(any(Page.class), wrapperCaptor.capture());
 
@@ -283,7 +474,6 @@ class OrderServiceTest {
     assertNotNull(wrapper);
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   @DisplayName("管理员查询不应按用户过滤")
   void listOrders_withNullUserId_shouldNotFilterByUserId() {
@@ -363,16 +553,17 @@ class OrderServiceTest {
     order.setStatus("PENDING_PAY");
 
     when(orderMapper.selectById(1L)).thenReturn(order);
+    // 原子抢占更新返回 1，表示取消成功
+    when(orderMapper.update(any(), any())).thenReturn(1);
 
     // 执行
     orderService.cancelOrder(1L, 1L, "不想要了");
 
-    // 验证状态更新
-    verify(orderMapper).updateById(orderCaptor.capture());
-    OrderEntity updatedOrder = orderCaptor.getValue();
-    assertEquals("CANCELLED", updatedOrder.getStatus());
-    assertEquals("不想要了", updatedOrder.getCancelReason());
-    assertNotNull(updatedOrder.getCancelTime());
+    // 验证状态更新（实现使用原子 update，内存对象同步为 CANCELLED）
+    verify(orderMapper).update(any(), any(LambdaUpdateWrapper.class));
+    assertEquals("CANCELLED", order.getStatus());
+    assertEquals("不想要了", order.getCancelReason());
+    assertNotNull(order.getCancelTime());
   }
 
   @Test
@@ -409,17 +600,18 @@ class OrderServiceTest {
     order.setPayAmount(new BigDecimal("199.98"));
 
     when(orderMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(order);
+    // 原子抢占 PENDING_PAY → PENDING_SHIP 返回 1
+    when(orderMapper.update(any(), any())).thenReturn(1);
 
     // 执行
     orderService.payCallback("ORD20260721000001", "STRIPE", "pi_test_123");
 
-    // 验证订单状态更新
-    verify(orderMapper).updateById(orderCaptor.capture());
-    OrderEntity updatedOrder = orderCaptor.getValue();
-    assertEquals("PAID", updatedOrder.getStatus());
-    assertEquals("STRIPE", updatedOrder.getPayChannel());
-    assertEquals("pi_test_123", updatedOrder.getPayTransactionId());
-    assertNotNull(updatedOrder.getPaidAt());
+    // 验证订单状态更新（原子 update + 内存对象同步）
+    verify(orderMapper).update(any(), any(LambdaUpdateWrapper.class));
+    assertEquals("PENDING_SHIP", order.getStatus());
+    assertEquals("STRIPE", order.getPayChannel());
+    assertEquals("pi_test_123", order.getPayTransactionId());
+    assertNotNull(order.getPaidAt());
 
     // 验证支付流水创建
     verify(paymentMapper).insert(any(PaymentEntity.class));

@@ -444,8 +444,8 @@ async function fetchOrderDetail() {
 
       priceSummary.goodsAmount = data.goodsAmount || '0.00'
       priceSummary.freight = data.freight || '0.00'
-      // 后端返回的字段：couponDiscount + pointsDiscount
-      const discount = Number(data.couponDiscount || 0) + Number(data.pointsDiscount || 0)
+      // 后端返回的字段：memberDiscount + couponDiscount + pointsDiscount
+      const discount = Number(data.memberDiscount || 0) + Number(data.couponDiscount || 0) + Number(data.pointsDiscount || 0)
       priceSummary.discount = discount > 0 ? discount.toFixed(2) : (data.discount || '0.00')
       // 实付金额优先用 payAmount
       priceSummary.total = data.payAmount || data.total || '0.00'

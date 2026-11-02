@@ -281,7 +281,9 @@ export default {
     },
     // 当前展示价：SKU 命中走 SKU 价,否则用商品主价
     currentPrice() {
-      return parseFloat(this.product?.price) || 0
+      const skuPrice = this.currentSku && this.currentSku.price
+      const price = skuPrice != null ? skuPrice : this.product?.price
+      return parseFloat(price) || 0
     },
     originalPriceNum() {
       return parseFloat(this.product?.originalPrice) || 0
@@ -676,6 +678,17 @@ export default {
      * 从 attributes JSON 抽取会员价(若有)
      */
     parseMemberPrice() {
+      // 秒杀商品不叠加会员价（后端标记），也不能用 attributes 的历史会员价兜底
+      if (this.product?.flashSaleActive === true) return null
+      // 优先用后端返回的折扣系数 × 当前 SKU 价，避免不同 SKU 价格时展示错价
+      const rate = Number(this.product?.memberPriceRate)
+      if (Number.isFinite(rate) && rate > 0 && rate < 1) {
+        const computed = Number((this.currentPrice * rate).toFixed(2))
+        if (computed > 0 && computed < this.currentPrice) return computed
+      }
+      // 兜底：后端按 SPU 价计算的 memberPrice（与下单折扣一致）
+      const direct = Number(this.product?.memberPrice)
+      if (Number.isFinite(direct) && direct > 0 && direct < this.currentPrice) return direct
       if (!this.product?.attributes) return null
       try {
         const obj = JSON.parse(this.product.attributes)

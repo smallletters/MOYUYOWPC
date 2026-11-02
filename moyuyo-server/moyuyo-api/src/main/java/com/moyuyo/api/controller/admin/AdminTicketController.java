@@ -19,12 +19,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Tag(name = "管理后台 - 客服工单管理")
 @RestController
 @RequestMapping("/api/admin/ticket")
 @RequiredArgsConstructor
+// 抑制 JDT 对 MyBatis-Plus Lambda 方法引用的 @Nonnull 空值分析误报（项目内 AdminCsSessionServiceImpl 同样处理）
+@SuppressWarnings("null")
 public class AdminTicketController {
 
   private final AdminTicketService ticketService;
@@ -39,7 +40,8 @@ public class AdminTicketController {
       @RequestParam(required = false) String status,
       @RequestParam(required = false) String type,
       @RequestParam(required = false) String priority,
-      @RequestParam(required = false) String keyword) {
+      @RequestParam(required = false) String keyword,
+      @RequestParam(required = false) Boolean overdue) {
     LambdaQueryWrapper<TicketEntity> wrapper = new LambdaQueryWrapper<>();
     if (status != null && !status.isEmpty()) {
       wrapper.eq(TicketEntity::getStatus, status);
@@ -51,7 +53,15 @@ public class AdminTicketController {
       wrapper.eq(TicketEntity::getPriority, priority);
     }
     if (keyword != null && !keyword.isEmpty()) {
-      wrapper.like(TicketEntity::getTitle, keyword);
+      // 关键词同时匹配工单编号、用户名、标题，与页面搜索提示（工单编号 / 用户）保持一致
+      wrapper.and(w -> w.like(TicketEntity::getTicketNo, keyword)
+          .or().like(TicketEntity::getUserName, keyword)
+          .or().like(TicketEntity::getTitle, keyword));
+    }
+    // 超时筛选下沉到数据库：首响超过 30 分钟（兼容数据库 timeout 标记），保证分页与总数准确
+    if (Boolean.TRUE.equals(overdue)) {
+      wrapper.and(w -> w.eq(TicketEntity::getTimeout, true)
+          .or().gt(TicketEntity::getFirstResponseMinutes, 30));
     }
     wrapper.orderByDesc(TicketEntity::getCreateTime);
 

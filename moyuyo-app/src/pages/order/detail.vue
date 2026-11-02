@@ -77,6 +77,10 @@
         <text>{{ $t('orderDetail.price.tax') }}</text>
         <text>${{ order.taxAmount }}</text>
       </view>
+      <view v-if="order.memberDiscount > 0" class="price-row">
+        <text>{{ $t('orderDetail.price.member') }}</text>
+        <text class="discount">-${{ order.memberDiscount }}</text>
+      </view>
       <view v-if="order.couponDiscount > 0" class="price-row">
         <text>{{ $t('orderDetail.price.discount') }}</text>
         <text class="discount">-${{ order.couponDiscount }}</text>

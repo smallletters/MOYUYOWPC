@@ -210,7 +210,16 @@
 
       <!-- 分页 -->
       <div class="pagination" v-if="total > 0">
-        <span class="pagination-info">共 {{ total }} 条 · 第 {{ currentPage }} / {{ totalPages }} 页</span>
+        <div class="pagination-left">
+          <span class="pagination-info">共 {{ total }} 条 · 第 {{ currentPage }} / {{ totalPages }} 页</span>
+          <!-- 每页条数切换：变更后回到第 1 页重新查询 -->
+          <select class="page-size-select" v-model.number="pageSize" @change="handleSizeChange">
+            <option :value="10">10 条/页</option>
+            <option :value="20">20 条/页</option>
+            <option :value="50">50 条/页</option>
+            <option :value="100">100 条/页</option>
+          </select>
+        </div>
         <div class="pagination-btns">
           <button class="pagination-btn" :disabled="currentPage <= 1" @click="currentPage--">‹ 上一页</button>
           <button class="pagination-btn" :disabled="currentPage >= totalPages" @click="currentPage++">下一页 ›</button>
@@ -364,7 +373,8 @@ const selectedIds = ref([])
 // 燕文电子面单启用状态：进入页面时拉一次，用于按钮文案与提示
 const yanwenStatus = reactive({ enabled: false, userIdConfigured: false, apiTokenConfigured: false })
 const currentPage = ref(1)
-const pageSize = 10
+// 每页条数：支持 10 / 20 / 50 / 100 切换
+const pageSize = ref(10)
 const loading = ref(false)
 const total = ref(0)
 
@@ -436,7 +446,7 @@ async function fetchOrders() {
   try {
     const params = {
       page: currentPage.value,
-      size: pageSize,
+      size: pageSize.value,
       status: filters.status,
       keyword: filters.search,
       startDate: filters.dateStart,
@@ -555,7 +565,7 @@ const filteredOrders = computed(() => {
   return (orderList.value || []).filter(o => o != null)
 })
 
-const totalPages = computed(() => Math.ceil(total.value / pageSize) || 1)
+const totalPages = computed(() => Math.ceil(total.value / pageSize.value) || 1)
 
 function toggleSelectAll() {
   if (selectAll.value) {
@@ -577,6 +587,15 @@ function handleReset() {
   filters.search = ''
   currentPage.value = 1
   fetchOrders()
+}
+
+/** 切换每页条数：回到第 1 页（页码变化由 watch 触发查询，已在第 1 页则直接查询） */
+function handleSizeChange() {
+  if (currentPage.value === 1) {
+    fetchOrders()
+  } else {
+    currentPage.value = 1
+  }
 }
 
 // 确认发货：先拉取当前订单已录入的物流信息（承运商 + 运单号），
@@ -1422,5 +1441,21 @@ onMounted(() => {
   margin-top: 8px;
   font-size: 11px;
   color: var(--text-400);
+}
+
+/* 分页左侧：总数 + 每页条数切换 */
+.pagination-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.page-size-select {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text-600);
+  font-size: 13px;
+  cursor: pointer;
 }
 </style>

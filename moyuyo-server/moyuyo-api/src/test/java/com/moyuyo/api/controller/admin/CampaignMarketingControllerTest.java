@@ -135,11 +135,13 @@ class CampaignMarketingControllerTest {
     op.setMessage("活动删除成功");
     when(campaignMarketingService.deleteCampaign(1L)).thenReturn(op);
 
-    Result<OperationResult> result = controller.deleteCampaign(1L);
+    // 控制器返回 Result<?>，测试侧显式转型避免泛型推断失败
+    Result<?> result = controller.deleteCampaign(1L);
 
     assertEquals(0, result.getCode());
-    assertEquals(1L, result.getData().getId());
-    assertEquals("活动删除成功", result.getData().getMessage());
+    OperationResult data = (OperationResult) result.getData();
+    assertEquals(1L, data.getId());
+    assertEquals("活动删除成功", data.getMessage());
   }
 
   // ============ abTests ============

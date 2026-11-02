@@ -60,7 +60,7 @@
           <input v-model="searchText" placeholder="工单编号 / 用户" />
         </div>
         <div class="form-actions">
-          <button class="btn btn-primary btn-sm" @click="fetchTickets">查询</button>
+          <button class="btn btn-primary btn-sm" @click="handleSearch">查询</button>
           <button class="btn btn-outline btn-sm" @click="resetFilter">重置</button>
         </div>
       </div>
@@ -102,7 +102,16 @@
         </tbody>
       </table>
       <div class="pagination">
-        <div class="pagination-info">共 {{ total }} 条</div>
+        <div class="pagination-left">
+          <div class="pagination-info">共 {{ total }} 条</div>
+          <!-- 每页条数切换：变更后回到第 1 页重新查询 -->
+          <select class="page-size-select" v-model.number="pageSize" @change="handleSizeChange">
+            <option :value="10">10 条/页</option>
+            <option :value="20">20 条/页</option>
+            <option :value="50">50 条/页</option>
+            <option :value="100">100 条/页</option>
+          </select>
+        </div>
         <div class="pagination-btns">
           <button class="pagination-btn" :disabled="currentPage <= 1" @click="prevPage">上一页</button>
           <button
@@ -167,7 +176,8 @@ const priorityFilter = ref('')
 const searchText = ref('')
 const loading = ref(false)
 const currentPage = ref(1)
-const pageSize = 10
+// 每页条数：支持 10 / 20 / 50 / 100 切换
+const pageSize = ref(10)
 const total = ref(0)
 
 const statusTabs = [
@@ -221,7 +231,7 @@ function mapPriority(priority) {
 }
 
 const tickets = ref([])
-const pageCount = computed(() => Math.ceil(total.value / pageSize) || 1)
+const pageCount = computed(() => Math.ceil(total.value / pageSize.value) || 1)
 
 // 动态计算显示页码（最多显示5页）
 const displayPages = computed(() => {
@@ -261,7 +271,7 @@ async function fetchTickets() {
     //   type     = 退款 / 物流 / 咨询 / 投诉      （中文）
     //   priority = 高 / 中 / 低                  （中文）
     // 前端 type/priority 下拉选项是英文枚举，所以需要在这里把英文映射成后端真实值
-    // 'all' / 'overdue' 不传 status，前端二次过滤
+    // 'all' / 'overdue' 不传 status，超时改用后端 overdue 参数过滤
     const typeMap = {
       REFUND: '退款',
       LOGISTICS: '物流',
@@ -275,10 +285,14 @@ async function fetchTickets() {
       LOW: '低'
     }
 
-    const params = {}
-    // 状态：仅当是具体状态（非 all / overdue）时直接把英文传给后端
+    // 分页参数交给后端：保证 total 与当前页数据一致，避免前端过滤导致空页
+    const params = { page: currentPage.value, size: pageSize.value }
+    // 状态：all / overdue 不传 status；超时由 overdue 参数在数据库侧过滤
     if (activeTab.value && activeTab.value !== 'all' && activeTab.value !== 'overdue') {
       params.status = activeTab.value.toUpperCase()
+    }
+    if (activeTab.value === 'overdue') {
+      params.overdue = true
     }
     if (typeFilter.value) {
       params.type = typeMap[typeFilter.value.toUpperCase()] || typeFilter.value
@@ -286,15 +300,16 @@ async function fetchTickets() {
     if (priorityFilter.value) {
       params.priority = priorityMap[priorityFilter.value.toUpperCase()] || priorityFilter.value
     }
-    if (searchText.value) {
-      params.keyword = searchText.value
+    if (searchText.value.trim()) {
+      // 后端 keyword 同时匹配工单编号 / 用户名 / 标题
+      params.keyword = searchText.value.trim()
     }
     const res = await getTicketList(params)
     if (res) {
       const list = toArray(res)
-      total.value = res.total || list.length
+      total.value = Number(res.total || 0)
       // 后端返回的字段与 TicketManage.vue 一致，需要映射为模板使用的显示字段
-      const mappedList = list.map(t => {
+      tickets.value = list.map(t => {
         const statusInfo = mapStatus(t.status || t.statusKey)
         const typeInfo = mapType(t.type || t.typeKey)
         const priorityInfo = mapPriority(t.priority || t.priorityKey)
@@ -311,30 +326,8 @@ async function fetchTickets() {
           typeLabel: typeInfo.label,
           typeClass: typeInfo.class,
           priorityLabel: priorityInfo.label,
-          priorityClass: priorityInfo.class,
-          // 保留原始字段用于过滤
-          _status: String(t.status || t.statusKey || '').toUpperCase(),
-          _type: String(t.type || t.typeKey || '').toUpperCase(),
-          _priority: String(t.priority || t.priorityKey || '').toUpperCase()
+          priorityClass: priorityInfo.class
         }
-      })
-      // 前端兜底过滤
-      // 后端已经按 status/type/priority/keyword 精确过滤，这里只需要处理两类特殊场景：
-      // 1. overdue（超时）：不是数据库状态字段，而是 firstResponseMinutes > 30 计算出来的
-      // 2. searchText 在工单号 / 用户名 / 标题上做模糊匹配（后端 keyword 仅匹配 title）
-      tickets.value = mappedList.filter(t => {
-        // 超时 tab：用后端返回的 timeout 字段判定（firstResponseMinutes > 30 分钟）
-        if (activeTab.value === 'overdue') {
-          const isTimeout = t.timeout === true || (typeof t.firstResponseMinutes === 'number' && t.firstResponseMinutes > 30)
-          if (!isTimeout) return false
-        }
-        // 关键词兜底：除 title 外再匹配 ticketNo / userName（后端 keyword 只查 title）
-        if (searchText.value) {
-          const kw = String(searchText.value).toLowerCase()
-          const haystack = `${t.no || ''} ${t.user || ''} ${t.title || ''}`.toLowerCase()
-          if (!haystack.includes(kw)) return false
-        }
-        return true
       })
     }
   } catch (err) {
@@ -343,6 +336,18 @@ async function fetchTickets() {
   } finally {
     loading.value = false
   }
+}
+
+/** 条件查询：重置到第一页，避免筛完后当前页码超出范围出现空页 */
+function handleSearch() {
+  currentPage.value = 1
+  fetchTickets()
+}
+
+/** 切换每页条数：回到第一页后重新查询 */
+function handleSizeChange() {
+  currentPage.value = 1
+  fetchTickets()
 }
 
 function resetFilter() {
@@ -368,7 +373,7 @@ function prevPage() {
 }
 
 function nextPage() {
-  const maxPage = Math.ceil(total.value / pageSize) || 1
+  const maxPage = Math.ceil(total.value / pageSize.value) || 1
   if (currentPage.value < maxPage) {
     currentPage.value++
     fetchTickets()
@@ -478,5 +483,22 @@ async function confirmTransfer() {
 .kpi-label {
   font-size: 13px;
   color: var(--text-400);
+}
+
+/* 分页左侧：总数 + 每页条数切换 */
+.pagination-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-size-select {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text-600);
+  font-size: 13px;
+  cursor: pointer;
 }
 </style>

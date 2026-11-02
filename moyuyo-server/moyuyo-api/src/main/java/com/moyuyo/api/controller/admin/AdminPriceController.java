@@ -3,10 +3,11 @@ package com.moyuyo.api.controller.admin;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
-import com.moyuyo.dao.admin.entity.PriceStrategyEntity;
 import com.moyuyo.dao.admin.mapper.OrderPriceModifyMapper;
+import com.moyuyo.dao.entity.MemberPriceConfigEntity;
 import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.mapper.ProductMapper;
+import com.moyuyo.service.MemberPriceService;
 import com.moyuyo.service.admin.AdminPriceStrategyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,9 +24,12 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/admin/price")
 @RequiredArgsConstructor
+// 抑制 JDT 对 MyBatis-Plus Lambda 方法引用的 @Nonnull 空值分析误报（项目内 AdminCsSessionServiceImpl 同样处理）
+@SuppressWarnings("null")
 public class AdminPriceController {
 
   private final AdminPriceStrategyService adminPriceStrategyService;
+  private final MemberPriceService memberPriceService;
   private final ProductMapper productMapper;
   private final OrderPriceModifyMapper priceModifyMapper;
 
@@ -37,12 +41,21 @@ public class AdminPriceController {
       @RequestParam(required = false) String type,
       @RequestParam(required = false) Boolean enabled,
       @RequestParam(required = false) String keyword,
+      @RequestParam(required = false) BigDecimal priceMin,
+      @RequestParam(required = false) BigDecimal priceMax,
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "15") int size) {
     // 从产品表查询，优先支持关键词搜索（兼容 PriceManage.vue 的调用方式）
     LambdaQueryWrapper<ProductEntity> wrapper = new LambdaQueryWrapper<>();
     if (keyword != null && !keyword.isEmpty()) {
       wrapper.like(ProductEntity::getName, keyword);
+    }
+    // 价格区间下沉到数据库，保证分页 total 与当前页数据一致
+    if (priceMin != null) {
+      wrapper.ge(ProductEntity::getPrice, priceMin);
+    }
+    if (priceMax != null) {
+      wrapper.le(ProductEntity::getPrice, priceMax);
     }
     wrapper.orderByDesc(ProductEntity::getCreateTime);
 
@@ -69,6 +82,25 @@ public class AdminPriceController {
       return item;
     }).toList());
     return Result.success(resultPage);
+  }
+
+  // ==================== 会员价配置（按会员等级统一折扣） ====================
+
+  @Operation(summary = "会员价配置列表（五档等级）")
+  @GetMapping("/member-configs")
+  public Result<List<MemberPriceConfigEntity>> memberConfigs() {
+    return Result.success(memberPriceService.listConfigs());
+  }
+
+  @Operation(summary = "保存会员价配置")
+  @PutMapping("/member-configs")
+  public Result<List<MemberPriceConfigEntity>> saveMemberConfigs(
+      @RequestBody List<MemberPriceConfigEntity> configs) {
+    try {
+      return Result.success(memberPriceService.saveConfigs(configs));
+    } catch (IllegalArgumentException e) {
+      return Result.error(400, e.getMessage());
+    }
   }
 
   @Operation(summary = "调整商品价格")

@@ -60,7 +60,7 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="loadData">搜索</el-button>
+          <el-button type="primary" @click="handleSearch">搜索</el-button>
           <el-button @click="resetSearch">重置</el-button>
         </el-form-item>
       </el-form>
@@ -102,6 +102,19 @@
           </template>
         </el-table-column>
       </el-table>
+      <!-- 分页：支持切换每页条数、翻页与跳转到指定页 -->
+      <div class="pagination-wrap">
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          @current-change="loadData"
+          @size-change="handleSizeChange"
+        />
+      </div>
     </el-card>
 
     <!-- 聊天抽屉：左右两栏 -->
@@ -357,6 +370,10 @@ const tableData = ref([])
 const stats = ref({})
 const refreshing = ref(false)
 const searchForm = reactive({ sessionId: '', userId: '', status: '' })
+// 分页状态：页码 / 每页条数 / 总条数
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const { getStatusText, getStatusType } = (function () {
   const map = { WAITING: '等待中', PROCESSING: '进行中', CLOSED: '已关闭' }
@@ -369,16 +386,29 @@ const { getStatusText, getStatusType } = (function () {
 
 async function loadData() {
   try {
-    const params = {}
+    const params = { page: currentPage.value, size: pageSize.value }
     if (searchForm.sessionId) params.sessionId = searchForm.sessionId
     if (searchForm.userId) params.userId = searchForm.userId
     if (searchForm.status) params.status = searchForm.status
     const res = await getCsSessionList(params)
-    const list = toArray(res, 'list')
-    tableData.value = list
+    tableData.value = toArray(res, 'list')
+    // 后端返回 total 为总记录数，用于分页组件计算页数
+    total.value = Number(res?.total || 0)
   } catch (e) {
     ElMessage.error('获取会话列表失败')
   }
+}
+
+/** 条件搜索：重新从第一页开始查询 */
+function handleSearch() {
+  currentPage.value = 1
+  loadData()
+}
+
+/** 切换每页条数：重置到第一页 */
+function handleSizeChange() {
+  currentPage.value = 1
+  loadData()
 }
 
 async function loadStats() {
@@ -394,6 +424,7 @@ function resetSearch() {
   searchForm.sessionId = ''
   searchForm.userId = ''
   searchForm.status = ''
+  currentPage.value = 1
   loadData()
 }
 
@@ -875,6 +906,9 @@ onBeforeUnmount(() => { stopPoll() })
 .stat-item { display: flex; flex-direction: column; align-items: center; }
 .stat-label { font-size: 13px; color: var(--text-400); margin-bottom: 4px; }
 .stat-value { font-size: 24px; font-weight: 700; color: var(--text-800); }
+
+/* 列表分页 */
+.pagination-wrap { display: flex; justify-content: flex-end; padding-top: 16px; }
 
 /* 抽屉内的聊天布局 */
 .chat-layout {

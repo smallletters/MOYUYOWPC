@@ -10,6 +10,7 @@ import com.moyuyo.common.dto.order.OrderItemRequest;
 import com.moyuyo.dao.entity.AddressEntity;
 import com.moyuyo.dao.admin.entity.FinanceRecordEntity;
 import com.moyuyo.dao.admin.mapper.FinanceRecordMapper;
+import com.moyuyo.dao.entity.FlashSaleEntity;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.PaymentEntity;
@@ -17,12 +18,14 @@ import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductSkuEntity;
 import com.moyuyo.dao.entity.UserCouponEntity;
 import com.moyuyo.dao.mapper.AddressMapper;
+import com.moyuyo.dao.mapper.FlashSaleMapper;
 import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.PaymentMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.CouponService;
+import com.moyuyo.service.MemberPriceService;
 import com.moyuyo.service.MemberService;
 import com.moyuyo.service.MissionService;
 import com.moyuyo.service.NotificationService;
@@ -42,9 +45,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -75,6 +80,10 @@ public class OrderServiceImpl implements OrderService {
   // 资金安全：下单优惠金额必须服务端重算（券核验/积分抵扣），不能信任前端传入数值
   private final CouponService couponService;
   private final MemberService memberService;
+  // 会员价：按会员等级统一折扣（商品销售价 × 折扣系数），与优惠券叠加
+  private final MemberPriceService memberPriceService;
+  // 秒杀商品不参与会员折扣：下单时需排除进行中的秒杀商品
+  private final FlashSaleMapper flashSaleMapper;
   // 资金安全：运费由服务端按 zone × method 重算覆盖前端传的 freight，防止改包刷价
   private final ShippingRateService shippingRateService;
 
@@ -91,6 +100,19 @@ public class OrderServiceImpl implements OrderService {
   public OrderEntity createOrder(Long userId, List<OrderItemEntity> items, Long addressId, String remark,
                                  String couponId, BigDecimal couponDiscount, Integer pointsUsed,
                                  BigDecimal pointsDiscount, String shippingMethod, BigDecimal freight) {
+    return createOrderInternal(userId, items, addressId, remark, couponId, couponDiscount,
+            pointsUsed, pointsDiscount, shippingMethod, freight, null);
+  }
+
+  /**
+   * 创建订单内部实现。
+   *
+   * @param knownMemberDiscount 调用方已计算的会员优惠金额；为 null 时在此处按会员等级计算
+   */
+  private OrderEntity createOrderInternal(Long userId, List<OrderItemEntity> items, Long addressId, String remark,
+                                          String couponId, BigDecimal couponDiscount, Integer pointsUsed,
+                                          BigDecimal pointsDiscount, String shippingMethod, BigDecimal freight,
+                                          BigDecimal knownMemberDiscount) {
     // 生产防护：禁止空商品列表创建零金额订单
     if (items == null || items.isEmpty()) {
       throw new IllegalArgumentException("订单商品不能为空");
@@ -154,9 +176,15 @@ public class OrderServiceImpl implements OrderService {
     // 防改包刷价；不可达 zone（未配置运费规则）时降级用前端传入值（不阻断下单）
     BigDecimal safeFreight = resolveServerFreight(userId, addressId, items, goodsAmount, shippingMethod, freight);
 
-    // M1 修复：payAmount = 商品总金额 + 运费 - 优惠券减免 - 积分抵扣，下限 0
+    // 会员价：按会员等级统一折扣，作用于商品销售价，与优惠券叠加；秒杀商品不参与
+    // 调用方（createOrderFromRequest）已计算过则直接复用，避免重复查询
+    BigDecimal safeMemberDiscount = knownMemberDiscount != null
+        ? knownMemberDiscount : computeMemberDiscount(userId, items);
+
+    // M1 修复：payAmount = 商品总金额 + 运费 - 会员优惠 - 优惠券减免 - 积分抵扣，下限 0
     // 原实现直接 payAmount = goodsAmount，导致前端展示的优惠金额与实际扣款金额不一致
     BigDecimal payAmount = goodsAmount
+            .subtract(safeMemberDiscount)
             .add(safeFreight)
             .subtract(safeCouponDiscount)
             .subtract(safePointsDiscount);
@@ -171,6 +199,7 @@ public class OrderServiceImpl implements OrderService {
     order.setGoodsAmount(goodsAmount);
     order.setFreight(safeFreight);
     order.setCouponDiscount(safeCouponDiscount);
+    order.setMemberDiscount(safeMemberDiscount);
     order.setPointsDiscount(safePointsDiscount);
     order.setPointsUsed(safePointsUsed);
     order.setPayAmount(payAmount);
@@ -251,8 +280,10 @@ public class OrderServiceImpl implements OrderService {
     // 2) 优惠券：按 userCoupon 记录核验归属/状态/门槛并重算减免
     BigDecimal serverCouponDiscount = couponService.computeCouponDiscount(
         userId, request.getCouponUserId(), goodsSubtotal);
-    // 3) 积分抵扣：100 积分 = 1 元，最高抵扣小计 30%（与前端结算页规则一致，防止伪造抵扣）。
-    //    语义：最终抵扣 = min(客户端请求抵扣额, 比例上限 30%, 余额上限)。不再"只要勾选就送满额"。
+    // 3) 会员价：先计算出来，供积分抵扣封顶使用，避免积分把订单抵扣成负数后仍扣满积分
+    BigDecimal serverMemberDiscount = computeMemberDiscount(userId, items);
+    // 4) 积分抵扣：100 积分 = 1 元，最高抵扣小计 30%，且不得超过"会员/优惠券抵扣后的剩余商品金额"。
+    //    语义：最终抵扣 = min(客户端请求抵扣额, 比例上限 30%, 余额上限, 剩余商品金额)。
     BigDecimal serverPointsDiscount = BigDecimal.ZERO;
     int serverPointsUsed = 0;
     boolean wantsPoints = (request.getPointsUsed() != null && request.getPointsUsed() > 0)
@@ -266,6 +297,11 @@ public class OrderServiceImpl implements OrderService {
       // 余额上限：可用积分按 100 积分 = 1 元折算（DOWN），沿用原口径
       BigDecimal maxByBalance = BigDecimal.valueOf(balance)
           .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.DOWN);
+      // 剩余金额上限：会员优惠 + 优惠券抵扣后剩余的商品金额（运费不允许用积分抵扣）
+      BigDecimal maxByRemaining = goodsSubtotal
+          .subtract(serverMemberDiscount)
+          .subtract(serverCouponDiscount)
+          .max(BigDecimal.ZERO);
 
       // 客户端"请求抵扣额"：优先取 pointsDiscount（前端结算页实际展示、并用于计算 total 的金额），
       // 其次才用 pointsUsed 折算。为什么优先金额而非优先积分数（重要，涉及回归红线）：
@@ -285,27 +321,32 @@ public class OrderServiceImpl implements OrderService {
       } else {
         requested = null;
       }
-      // 三值取 min：客户端请求值 与 两个上限。请求值缺失时退化为纯上限（等价于旧行为）
-      BigDecimal cap = maxByRate.min(maxByBalance);
+      // 四值取 min：客户端请求值 与 比例/余额/剩余金额三个上限
+      BigDecimal cap = maxByRate.min(maxByBalance).min(maxByRemaining);
       serverPointsDiscount = requested == null ? cap : requested.min(cap);
       serverPointsUsed = serverPointsDiscount.multiply(BigDecimal.valueOf(100))
           .setScale(0, java.math.RoundingMode.DOWN).intValue();
 
-      // 2b：勾选了积分但服务端算下来可用抵扣为 0（可用余额已被其它待付款订单占用/耗尽）——
-      // 绝不能静默按"0 积分"成单：否则用户按结算页"带抵扣"的价格付款、落库却不减分，正是本次要修的
-      // 资金静默偏离。抛业务异常回滚整单，提示回结算页刷新（真并发场景由 freeze 条件更新兜底）。
+      // 2b：勾选了积分但服务端算下来可用抵扣为 0。
+      // - 若仍有剩余商品金额、但积分余额为 0（被其它待付款订单占用/耗尽）→ 不能静默按 0 积分成单，抛异常；
+      // - 若订单已被会员/优惠券抵扣到 0（maxByRemaining=0），积分本就不该再扣，按 0 积分继续成单。
       if (serverPointsUsed <= 0) {
-        throw new com.moyuyo.common.exception.BusinessException(400, "可用积分不足，请返回结算页刷新后重试");
+        if (maxByRemaining.compareTo(BigDecimal.ZERO) > 0
+            && maxByBalance.compareTo(BigDecimal.ZERO) <= 0) {
+          throw new com.moyuyo.common.exception.BusinessException(400, "可用积分不足，请返回结算页刷新后重试");
+        }
+        serverPointsDiscount = BigDecimal.ZERO;
+        serverPointsUsed = 0;
       }
     }
     BigDecimal serverFreight = request.getFreight() == null ? BigDecimal.ZERO : request.getFreight();
 
     // 落库（同一事务内）并"占用"优惠券 + "冻结"积分，避免同一张券/同一批积分被多笔待支付订单同时抵扣。
     // couponId 传 null：券模板 id 一律由服务端从 userCoupon 记录推导后落库，绝不信任前端传入的 code/id。
-    OrderEntity order = createOrder(userId, items, request.getAddressId(), request.getRemark(),
+    OrderEntity order = createOrderInternal(userId, items, request.getAddressId(), request.getRemark(),
             null, serverCouponDiscount,
             serverPointsUsed, serverPointsDiscount,
-            request.getShippingMethod(), serverFreight);
+            request.getShippingMethod(), serverFreight, serverMemberDiscount);
 
     // 优惠券：以服务端 couponUserId 为准（不信任前端 couponId/couponDiscount）
     if (serverCouponDiscount.compareTo(BigDecimal.ZERO) > 0 && request.getCouponUserId() != null) {
@@ -333,6 +374,63 @@ public class OrderServiceImpl implements OrderService {
                 order.getId(), order.getOrderNo(), serverPointsUsed);
     }
     return order;
+  }
+
+  /**
+   * 计算会员折扣金额：按会员等级统一折扣，作用于非秒杀商品的销售价。
+   *
+   * <p>规则：与优惠券叠加；秒杀商品不参与（以 mo_flash_sale 中当前时间生效的活动判定）。
+   */
+  private BigDecimal computeMemberDiscount(Long userId, List<OrderItemEntity> items) {
+    if (userId == null || items == null || items.isEmpty()) {
+      return BigDecimal.ZERO;
+    }
+    BigDecimal rate = memberPriceService.getDiscountForUser(userId);
+    // 1.00 = 原价（无折扣），并防御非法系数
+    if (rate == null || rate.compareTo(BigDecimal.ZERO) <= 0 || rate.compareTo(BigDecimal.ONE) >= 0) {
+      return BigDecimal.ZERO;
+    }
+
+    // 一次性查询商品集合中正在进行的秒杀活动，避免逐条查询
+    List<Long> productIds = items.stream()
+        .map(OrderItemEntity::getProductId)
+        .filter(Objects::nonNull)
+        .distinct()
+        .collect(Collectors.toList());
+    Set<Long> flashSaleProductIds = new HashSet<>();
+    if (!productIds.isEmpty()) {
+      LocalDateTime now = LocalDateTime.now();
+      List<FlashSaleEntity> activeFlashSales = flashSaleMapper.selectList(
+          new LambdaQueryWrapper<FlashSaleEntity>()
+              .in(FlashSaleEntity::getProductId, productIds)
+              .eq(FlashSaleEntity::getActive, true)
+              .le(FlashSaleEntity::getStartTime, now)
+              .ge(FlashSaleEntity::getEndTime, now));
+      for (FlashSaleEntity flash : activeFlashSales) {
+        if (flash.getProductId() != null) {
+          flashSaleProductIds.add(flash.getProductId());
+        }
+      }
+    }
+
+    // 仅对非秒杀商品按销售价累计，折扣金额 = 可优惠金额 × (1 - 折扣系数)
+    BigDecimal eligibleAmount = BigDecimal.ZERO;
+    for (OrderItemEntity item : items) {
+      if (item.getPrice() == null || item.getQuantity() == null || item.getQuantity() <= 0) {
+        continue;
+      }
+      if (item.getProductId() != null && flashSaleProductIds.contains(item.getProductId())) {
+        continue;
+      }
+      eligibleAmount = eligibleAmount.add(
+          item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+    }
+    if (eligibleAmount.compareTo(BigDecimal.ZERO) <= 0) {
+      return BigDecimal.ZERO;
+    }
+    BigDecimal discount = eligibleAmount.subtract(eligibleAmount.multiply(rate))
+        .setScale(2, java.math.RoundingMode.HALF_UP);
+    return discount.max(BigDecimal.ZERO);
   }
 
   /**
