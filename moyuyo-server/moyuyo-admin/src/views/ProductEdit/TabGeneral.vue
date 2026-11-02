@@ -14,14 +14,27 @@
 
       <div class="form-row">
         <div class="form-group">
-          <label>商品分类 <span class="required">*</span></label>
-          <select v-model="form.categoryId">
-            <option value="">请选择分类</option>
-            <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+          <label>一级分类 <span class="required">*</span></label>
+          <select v-model="form.parentCategoryId" @change="onParentCategoryChange">
+            <option value="">请选择一级分类</option>
+            <option v-for="cat in topCategories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+          </select>
+          <span class="field-hint">来自「分类设置」维护的一级分类</span>
+        </div>
+        <div class="form-group">
+          <label>二级分类 <span v-if="subCategories.length" class="required">*</span></label>
+          <select v-model="form.categoryId" :disabled="!form.parentCategoryId">
+            <option value="">
+              {{ subCategories.length ? '请选择二级分类' : '该一级分类下暂无二级分类' }}
+            </option>
+            <option v-for="cat in subCategories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
           </select>
           <span class="field-hint">WooCommerce: categories[0].id</span>
         </div>
-        <div class="form-group">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group full">
           <label>商品标签</label>
           <input v-model="form.tags" placeholder="多个标签用逗号分隔" />
           <span class="field-hint">WooCommerce: tags[].name</span>
@@ -162,9 +175,15 @@ import ImageUploader from './ImageUploader.vue'
 
 const props = defineProps({
   form: { type: Object, required: true },
-  categories: { type: Array, default: () => [] }
+  topCategories: { type: Array, default: () => [] },
+  subCategories: { type: Array, default: () => [] }
 })
 const emit = defineEmits(['permalink-change'])
+
+// 切换一级分类时清空二级分类，避免残留上一次的选项
+function onParentCategoryChange() {
+  props.form.categoryId = ''
+}
 </script>
 
 <style scoped>

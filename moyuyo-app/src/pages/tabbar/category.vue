@@ -9,7 +9,7 @@
         :class="{ active: activeTopId === cat.id }"
         @click="onTopChange(cat.id)"
       >
-        <text>{{ $tCatName(cat.name) }}</text>
+        <text>{{ $tCatName(cat) }}</text>
         <view v-if="activeTopId === cat.id" class="tab-indicator" />
       </view>
     </view>
@@ -32,7 +32,7 @@
           :class="{ active: activeSubId === sub.id }"
           @click="onSubChange(sub.id)"
         >
-          <text>{{ $tCatName(sub.name, true) }}</text>
+          <text>{{ $tCatName(sub, true) }}</text>
         </view>
         <view v-if="!currentSubs.length" class="sidebar-empty">
           <text>{{ $t('category.empty.sub') }}</text>
@@ -139,13 +139,13 @@ export default {
 
   methods: {
     /**
-     * 后端分类名本地化:优先从字典查,查不到回后端原值。
+     * 后端分类名本地化:优先使用后台配置的多语言名称,其次查字典,最后回后端原值。
      * isSub=true 用于二级分类(names -> subNames)。
-     * 暴露为方法以便 template 里 $tCatName(cat.name) 直接调用,
+     * 暴露为方法以便 template 里 $tCatName(cat) 直接调用,
      * 响应式:i18n.locale 变化时 template 会重渲,自动取最新文本。
      */
-    $tCatName(name, isSub) {
-      return tCategoryName(name, isSub)
+    $tCatName(category, isSub) {
+      return tCategoryName(category, isSub)
     },
 
     /** 加载真实分类树 */
@@ -159,7 +159,7 @@ export default {
         // 让「其他/Uncategorized」一级分类固定排到最右侧，其余保持后端 sort 顺序
         const isOtherCat = (c) =>
           c.name === 'Uncategorized' ||
-          this.$tCatName(c.name) === this.$t('category.names.Uncategorized')
+          this.$tCatName(c) === this.$t('category.names.Uncategorized')
         tops.sort((a, b) => Number(isOtherCat(a)) - Number(isOtherCat(b)))
         this.topCategories = tops
         if (tops.length) {

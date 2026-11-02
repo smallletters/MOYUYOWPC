@@ -31,6 +31,8 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/v1/products")
 @RequiredArgsConstructor
+// 抑制 MyBatis-Plus 3.x @Nonnull T 与 JDT 静态分析差异（覆盖 nullUncheckedConversion 等所有 null 子类别）
+@SuppressWarnings("null")
 public class ProductController {
 
   private final ProductService productService;
@@ -57,9 +59,9 @@ public class ProductController {
           new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CategoryEntity>()
               .eq(CategoryEntity::getParentId, parentCategoryId));
       categoryIds = new ArrayList<>();
+      // 一级分类自身也可能直接挂商品（例如一级分类下暂无二级分类），需一并返回
+      categoryIds.add(parentCategoryId);
       for (CategoryEntity c : children) categoryIds.add(c.getId());
-      // 没有子分类时，传一个 -1L 强制空集
-      if (categoryIds.isEmpty()) categoryIds.add(-1L);
       categoryId = null;
     }
     Page<ProductEntity> result;

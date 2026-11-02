@@ -17,6 +17,12 @@ public class CategoryEntity {
 
     private String name;
 
+    /**
+     * 多语言名称 JSON 字符串，例如 {"zh-CN":"洗护美容","en-US":"Bath & Grooming"}。
+     * 未配置时为空，前端回落到 name / 静态字典。
+     */
+    private String nameI18n;
+
     private String icon;
 
     private Integer sort;

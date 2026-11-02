@@ -25,6 +25,8 @@ public class AdminProductController {
   private final ProductService productService;
   private final com.moyuyo.dao.mapper.CategoryMapper categoryMapper;
   private final com.moyuyo.dao.mapper.ProductMapper productMapper;
+  // 分类维护服务：供「分类设置」页面维护一级 / 二级分类及多语言名称
+  private final com.moyuyo.service.CategoryService categoryService;
   // 注入 WooCommerce 同步服务：手动触发商品的双向同步
   private final com.moyuyo.service.WooCommerceSyncService wooCommerceSyncService;
   // 注入 WooCommerce 客户端：用于配置检查
@@ -59,6 +61,50 @@ public class AdminProductController {
       return Result.success(list);
     } catch (Exception e) {
       return Result.error("查询分类列表失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "新增商品分类")
+  @PostMapping("/categories")
+  @AdminAudit(action = "CREATE", module = "PRODUCT",
+      resourceId = "category", detail = "管理员新增商品分类")
+  public Result<?> createCategory(@RequestBody com.moyuyo.dao.entity.CategoryEntity body) {
+    try {
+      return Result.success(categoryService.createCategory(body));
+    } catch (IllegalArgumentException e) {
+      return Result.badRequest(e.getMessage());
+    } catch (Exception e) {
+      return Result.error("新增分类失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "更新商品分类")
+  @PutMapping("/categories/{id}")
+  @AdminAudit(action = "UPDATE", module = "PRODUCT",
+      resourceId = "#id", detail = "管理员更新商品分类，categoryId=#id")
+  public Result<?> updateCategory(@PathVariable Long id,
+                                 @RequestBody com.moyuyo.dao.entity.CategoryEntity body) {
+    try {
+      return Result.success(categoryService.updateCategory(id, body));
+    } catch (IllegalArgumentException e) {
+      return Result.badRequest(e.getMessage());
+    } catch (Exception e) {
+      return Result.error("更新分类失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "删除商品分类")
+  @DeleteMapping("/categories/{id}")
+  @AdminAudit(action = "DELETE", module = "PRODUCT",
+      resourceId = "#id", detail = "管理员删除商品分类，categoryId=#id")
+  public Result<?> deleteCategory(@PathVariable Long id) {
+    try {
+      categoryService.deleteCategory(id);
+      return Result.success();
+    } catch (IllegalArgumentException e) {
+      return Result.badRequest(e.getMessage());
+    } catch (Exception e) {
+      return Result.error("删除分类失败: " + e.getMessage());
     }
   }
 

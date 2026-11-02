@@ -51,7 +51,12 @@
         </div>
 
         <div v-show="activeTab === 'general'" class="tab-pane">
-          <TabGeneral :form="form" :categories="categories" @permalink-change="onPermalinkChange" />
+          <TabGeneral
+            :form="form"
+            :topCategories="topCategories"
+            :subCategories="subCategories"
+            @permalink-change="onPermalinkChange"
+          />
         </div>
         <div v-show="activeTab === 'inventory'" class="tab-pane">
           <TabInventory :form="form" />
@@ -229,6 +234,8 @@ function blankForm() {
     // 原有
     id: null,
     name: '',
+    // 商品分类采用一级 + 二级联动：parentCategoryId 为一级分类，categoryId 为二级分类
+    parentCategoryId: '',
     categoryId: '',
     spuCode: '',
     productType: 'simple',
@@ -291,6 +298,28 @@ const shippingClasses = [
 const productId = computed(() => route.params.id)
 const isNew = computed(() => !productId.value || productId.value === 'new')
 
+// 分类树只有两级：parentId 为空 / 0 视为一级分类；后端 Long 序列化为字符串，统一按字符串比较
+function isTopCategory(cat) {
+  const parentId = cat?.parentId
+  return parentId == null || parentId === '' || String(parentId) === '0'
+}
+
+const topCategories = computed(() =>
+  [...categories.value]
+    .filter(isTopCategory)
+    .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0))
+)
+
+const subCategories = computed(() =>
+  [...categories.value]
+    .filter(
+      cat =>
+        !isTopCategory(cat) &&
+        String(cat.parentId) === String(form.parentCategoryId)
+    )
+    .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0))
+)
+
 const wooProductUrl = computed(() => {
   if (!form.wooProductId) return '#'
   return `https://your-woocommerce-store.com/wp-admin/post.php?post=${form.wooProductId}&action=edit`
@@ -347,11 +376,21 @@ async function fetchProduct() {
   try {
     const res = await getProductDetail(id)
     if (res) {
+      // 先根据商品当前分类推导所属一级分类，兼容历史数据直接挂在一级分类上的情况
+      const categoryId = res.categoryId != null ? String(res.categoryId) : ''
+      let parentCategoryId = ''
+      if (categoryId) {
+        const current = categories.value.find(cat => String(cat.id) === categoryId)
+        if (current) {
+          parentCategoryId = isTopCategory(current) ? categoryId : String(current.parentId || '')
+        }
+      }
       // 先填基本字段
       Object.assign(form, blankForm(), {
         id: res.id,
         name: res.name || '',
-        categoryId: res.categoryId || '',
+        parentCategoryId,
+        categoryId,
         spuCode: res.spuCode || '',
         productType: res.productType || 'simple',
         tags: res.tags || '',
@@ -429,16 +468,23 @@ async function handleSave() {
     ElMessage.warning('商品名称不能为空')
     return
   }
-  if (!form.categoryId) {
-    ElMessage.warning('请选择商品分类')
+  if (!form.parentCategoryId) {
+    ElMessage.warning('请选择一级分类')
     return
   }
+  // 一级分类下存在二级分类时必须选择二级分类；否则允许直接挂在一级分类
+  if (subCategories.value.length && !form.categoryId) {
+    ElMessage.warning('请选择二级分类')
+    return
+  }
+  // 后端 Long 已序列化为字符串，直接透传避免 Number 精度丢失
+  const categoryId = form.categoryId || form.parentCategoryId
 
   saving.value = true
   try {
     const body = {
       name: form.name,
-      categoryId: form.categoryId ? Number(form.categoryId) : null,
+      categoryId: categoryId || null,
       spuCode: form.spuCode || null,
       productType: form.productType || 'simple',
       tags: form.tags || null,
@@ -745,8 +791,10 @@ function handleCancel() {
   router.push('/products')
 }
 
-onMounted(() => {
-  Promise.all([fetchCategories(), fetchProduct()])
+onMounted(async () => {
+  // 先加载分类树，再回填商品，保证历史商品的「一级分类」能正确推导
+  await fetchCategories()
+  await fetchProduct()
 })
 </script>
 

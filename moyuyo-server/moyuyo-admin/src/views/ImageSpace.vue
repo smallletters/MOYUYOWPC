@@ -6,6 +6,7 @@
         <p class="page-desc">统一管理商品图片的上传、删除与分组；分组后可快速筛选，便于商品图 / 详情图取材。</p>
       </div>
       <div class="header-actions">
+        <el-button plain @click="goCategorySetting">分类设置</el-button>
         <el-button type="primary" :loading="uploading" @click="triggerFileInput">上传图片</el-button>
       </div>
     </div>
@@ -235,6 +236,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getUploadedImages,
@@ -253,6 +255,7 @@ const ALLOWED_EXT_RE = /\.(png|jpg|jpeg|gif|webp|svg)$/i
 const MAX_FILE_SIZE = 20 * 1024 * 1024
 const acceptTypes = 'image/png,image/jpeg,image/jpg,image/gif,image/webp,image/svg+xml'
 
+const router = useRouter()
 const fileInputRef = ref(null)
 const loading = ref(false)
 const uploading = ref(false)
@@ -288,6 +291,11 @@ const allSelected = computed(
   () => images.value.length > 0 && images.value.every(img => selected.value.includes(img.url))
 )
 const indeterminate = computed(() => selected.value.length > 0 && !allSelected.value)
+
+// 跳转分类设置：图片空间与商品分类同属商品素材维护，入口放在一起便于运营使用
+function goCategorySetting() {
+  router.push('/category-setting')
+}
 
 function groupNameOf(id) {
   const group = groups.value.find(g => Number(g.id) === Number(id))

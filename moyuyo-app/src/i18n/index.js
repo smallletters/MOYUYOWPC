@@ -185,19 +185,52 @@ export function t(key, params) {
 }
 
 /**
- * 后端分类名本地化:输入后端 name,返回当前 locale 下的展示文本。
- * 字典查不到时回落到后端原值(运营新增分类不会因为前端没翻译而消失)。
+ * 解析后端 nameI18n 字段（JSON 字符串或对象），异常数据按空对象处理。
+ */
+function parseNameI18n(raw) {
+  if (!raw) return null
+  if (typeof raw === 'object') return raw
+  try {
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch (e) {
+    return null
+  }
+}
+
+/**
+ * 后端分类名本地化:优先使用后台「分类设置」配置的多语言名称,
+ * 其次查前端静态字典,最后回落到后端原值(运营新增分类不会因未翻译而消失)。
  *
- * @param {string} name - 后端返回的分类名(精确匹配)
+ * @param {string|object} category - 后端分类对象(含 name/nameI18n)或分类名字符串
  * @param {boolean} [isSub] - 是否二级分类;默认 false(一级)
  * @returns {string}
  */
-export function tCategoryName(name, isSub) {
+export function tCategoryName(category, isSub) {
+  if (!category) return ''
+  const isObject = typeof category === 'object'
+  const name = isObject ? category.name || '' : String(category)
+
+  // 1) 后台配置的多语言名称优先（APP 分类页即时生效，无需前端发版）
+  if (isObject) {
+    const nameI18n = parseNameI18n(category.nameI18n)
+    if (nameI18n) {
+      const locale = i18n.locale
+      if (nameI18n[locale]) return nameI18n[locale]
+      // 兼容后端只配置语言主码（如 en / zh）的场景
+      const shortLocale = String(locale).split('-')[0].toLowerCase()
+      const matchedKey = Object.keys(nameI18n).find(
+        (key) => String(key).split('-')[0].toLowerCase() === shortLocale,
+      )
+      if (matchedKey && nameI18n[matchedKey]) return nameI18n[matchedKey]
+    }
+  }
+
   if (!name) return ''
+
+  // 2) 前端静态字典兜底
   const key = isSub ? 'category.subNames' : 'category.names'
   const map = i18n.t(key) || {}
-  // i18n.t 返回的是字符串(如果 key 找不到)或对象(找到了);
-  // 我们这里访问的就是字典里的对象,如果取到的是字符串说明字典里没这个对象(不太可能)
   if (typeof map === 'object' && map !== null) {
     return Object.prototype.hasOwnProperty.call(map, name) ? map[name] : name
   }

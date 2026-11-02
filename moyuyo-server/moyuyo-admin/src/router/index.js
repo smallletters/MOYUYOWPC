@@ -107,6 +107,12 @@ const routes = [
         component: () => import('../views/ImageSpace.vue'),
         meta: { title: '图片空间' }
       },
+      {
+        path: 'category-setting',
+        name: 'CategorySetting',
+        component: () => import('../views/CategorySetting.vue'),
+        meta: { title: '分类设置' }
+      },
 
       // ===== 第一阶段：核心运营模块 =====
       {

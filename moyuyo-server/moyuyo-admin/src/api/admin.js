@@ -457,6 +457,19 @@ export function getCategoryList() {
   return api.get('/products/categories')
 }
 
+// 分类设置：一级 / 二级分类维护（nameI18n 为多语言名称 JSON 字符串）
+export function createCategory(data) {
+  return api.post('/products/categories', data)
+}
+
+export function updateCategory(id, data) {
+  return api.put(`/products/categories/${id}`, data)
+}
+
+export function deleteCategory(id) {
+  return api.delete(`/products/categories/${id}`)
+}
+
 // 关联商品弹窗使用：按关键字搜索轻量商品列表（仅返回 id/name/sku/price/mainImage）
 export function searchProductsLite(params) {
   return api.get('/products/lite', { params })
