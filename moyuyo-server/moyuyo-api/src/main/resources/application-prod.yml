@@ -176,6 +176,14 @@ spring:
     properties:
       # 编码 UTF-8,避免中文标题乱码
       mail.mime.charset: UTF-8
+      # [FIX-2026-11-03] 显式映射 SMTP 认证 / SSL / STARTTLS：
+      #   SPRING_MAIL_SMTP_SSL 这类短键只能绑定 spring.mail.host/port 等标准属性，
+      #   无法映射到 spring.mail.properties.* 子 Map。缺少以下映射时 JavaMail 会以明文
+      #   连接 465（隐式 SSL）端口：服务端等待 TLS 握手、客户端等待 SMTP banner，
+      #   最终 15s read timeout，接口返回 502「邮件发送失败」。
+      mail.smtp.auth: ${SPRING_MAIL_SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${SPRING_MAIL_SMTP_STARTTLS:false}
+      mail.smtp.ssl.enable: ${SPRING_MAIL_SMTP_SSL:true}
       # SMTP 连接 / 读写超时(毫秒),避免外部 SMTP 挂起拖死工作线程
       mail.smtp.connectiontimeout: 10000
       mail.smtp.timeout: 15000

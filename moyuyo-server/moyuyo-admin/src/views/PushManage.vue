@@ -221,7 +221,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getPushStats, getPushRecords, getPushScheduled, createPush, updatePush, sendPush, cancelPush, deletePush } from '../api/admin'
+import { getPushStats, getPushRecords, getPushScheduled, createPush, updatePush, sendPush, cancelPush, deletePush, schedulePush } from '../api/admin'
 
 const router = useRouter()
 const scheduledExpanded = ref(false)
@@ -278,7 +278,7 @@ function typeClassOf(raw) {
 }
 
 function statusLabelOf(status) {
-  const map = { SENT: '已发送', PENDING: '待发送', CANCELLED: '已取消', CANCELED: '已取消', DRAFT: '草稿' }
+  const map = { SENT: '已发送', PENDING: '待发送', CANCELLED: '已取消', CANCELED: '已取消', DRAFT: '草稿', SENDING: '发送中', FAILED: '发送失败' }
   return map[String(status || '').toUpperCase()] || (status || '未知')
 }
 
@@ -397,6 +397,10 @@ async function submitPush() {
     if (editingId.value) {
       await updatePush(editingId.value, payload)
       ElMessage.success('推送已更新')
+    } else if (pushForm.scheduledTime) {
+      // 填写了定时发送时间：创建 SCHEDULED 记录，由后端定时任务到点发送
+      await schedulePush(null, payload)
+      ElMessage.success('定时推送创建成功')
     } else {
       await createPush(payload)
       ElMessage.success('推送创建成功')
@@ -411,15 +415,22 @@ async function submitPush() {
   }
 }
 
-// 发送推送（调用API）
+// 发送推送（调用API，后端按渠道分发到站内通知/短信/邮件/App Push）
 async function handleSend(item) {
   try {
-    await sendPush(item.id)
-    ElMessage.success('推送发送成功')
+    const res = await sendPush(item.id)
+    const sentCount = res?.sentCount ?? 0
+    const channel = channelOf(item.channel)
+    const channelLabel = channel === 'SMS' ? '短信' : (channel === 'EMAIL' ? '邮件' : '站内通知')
+    if (sentCount > 0) {
+      ElMessage.success(`已发送${channelLabel}给 ${sentCount} 位用户`)
+    } else {
+      ElMessage.warning('发送完成，但没有任何用户送达，请检查目标用户或渠道配置')
+    }
     loadData()
   } catch (e) {
     console.error('发送推送失败:', e)
-    ElMessage.error('发送失败')
+    ElMessage.error('发送失败：' + (e?.message || '未知错误'))
   }
 }
 

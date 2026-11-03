@@ -43,4 +43,12 @@ public interface EmailService {
      * @param ttlMinutes 链接有效分钟数（仅用于正文展示）
      */
     void sendMagicLink(String to, String magicLink, int ttlMinutes);
+
+    /**
+     * 发送运营通知邮件（推送管理群发场景逐用户调用）。
+     * @param to 收件人邮箱
+     * @param subject 邮件主题（推送标题）
+     * @param content 邮件正文（纯文本，内部转义后以 HTML 展示）
+     */
+    void sendNotification(String to, String subject, String content);
 }

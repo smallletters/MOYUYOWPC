@@ -451,16 +451,19 @@ services:
       MOYUYO_HTTP_CONNECT_TIMEOUT_MS: ${MOYUYO_HTTP_CONNECT_TIMEOUT_MS:-5000}
       MOYUYO_HTTP_READ_TIMEOUT_MS: ${MOYUYO_HTTP_READ_TIMEOUT_MS:-15000}
       # ---- 邮件 SMTP（腾讯企业邮箱）----
-      # 透传 .env 里的 SPRING_MAIL_* 到容器内,Sprint Boot relaxed binding 自动映射为 spring.mail.host 等
+      # 透传 .env 里的 SPRING_MAIL_* 到容器内：
+      #   - SPRING_MAIL_HOST/PORT/USERNAME/PASSWORD 由 Spring Boot 自动绑定 spring.mail.*
+      #   - 但 auth/ssl/starttls 属于 spring.mail.properties 子 Map，
+      #     必须使用 SPRING_MAIL_PROPERTIES_* 形式，短键不会被绑定
       # 注意:SPRING_MAIL_PASSWORD 必须是腾讯企业邮箱"客户端专用密码"(16 位),
       # 而不是网页登录密码,否则会 Authentication failed 抛 502
       SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
       SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-465}
       SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
       SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
-      SPRING_MAIL_SMTP_AUTH: ${SPRING_MAIL_SMTP_AUTH:-true}
-      SPRING_MAIL_SMTP_STARTTLS: ${SPRING_MAIL_SMTP_STARTTLS:-false}
-      SPRING_MAIL_SMTP_SSL: ${SPRING_MAIL_SMTP_SSL:-true}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: ${SPRING_MAIL_SMTP_AUTH:-true}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_SMTP_STARTTLS:-false}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_ENABLE: ${SPRING_MAIL_SMTP_SSL:-true}
       # moyuyo.mail.* 业务自定义配置:发件人地址 / 显示名 / 邮件开关
       MOYUYO_MAIL_FROM: ${MOYUYO_MAIL_FROM:-}
       MOYUYO_MAIL_FROM_NAME: ${MOYUYO_MAIL_FROM_NAME:-MOYUYO Support}

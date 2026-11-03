@@ -496,6 +496,25 @@ moyuyo:
     template-code-login: ${MOYUYO_SMS_TEMPLATE_LOGIN:SMS_LOGIN_DEFAULT}
     template-code-register: ${MOYUYO_SMS_TEMPLATE_REGISTER:SMS_REGISTER_DEFAULT}
     template-code-reset: ${MOYUYO_SMS_TEMPLATE_RESET:SMS_RESET_DEFAULT}
+    # 运营通知模板（推送管理「短信」渠道使用）：需在阿里云控制台申请通知类模板，
+    # 模板变量名必须为 content；未配置时短信渠道会明确发送失败，不会标记为成功
+    template-code-notice: ${MOYUYO_SMS_TEMPLATE_NOTICE:}
+  # App Push 手机推送
+  # - Android 走 FCM HTTP v1；未启用时只发站内通知
+  # - iOS 走 APNs HTTP/2（.p8 密钥鉴权）；未启用时 iOS 设备会被跳过
+  push:
+    fcm:
+      enabled: ${MOYUYO_FCM_ENABLED:false}
+      service-account-file: ${MOYUYO_FCM_SERVICE_ACCOUNT_FILE:}
+    apns:
+      enabled: ${MOYUYO_APNS_ENABLED:false}
+      # Apple Developer 后台下载的 AuthKey_XXXXXXXXXX.p8 文件绝对路径
+      key-file: ${MOYUYO_APNS_KEY_FILE:}
+      key-id: ${MOYUYO_APNS_KEY_ID:}
+      team-id: ${MOYUYO_APNS_TEAM_ID:}
+      bundle-id: ${MOYUYO_APNS_BUNDLE_ID:}
+      # prod（生产）/ dev 或 sandbox（开发沙箱）
+      environment: ${MOYUYO_APNS_ENVIRONMENT:prod}
   # 物流轨迹 API（第三方平台对接，未配置时由 NoopLogisticsTrackProvider 占位，仅人工维护）
   # provider 取值：
   #   none       - 默认，本地占位，仅人工维护轨迹（NoopLogisticsTrackProvider）

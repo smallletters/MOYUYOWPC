@@ -2,6 +2,7 @@ package com.moyuyo.service.impl;
 
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
+import com.moyuyo.common.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -134,6 +135,19 @@ class EmailServiceImplTest {
         ReflectionTestUtils.setField(degraded, "fromAddress", "noreply@example.com");
         ReflectionTestUtils.setField(degraded, "fromPersonal", "MOYUYO");
         assertDoesNotThrow(() -> degraded.sendPasswordResetCode("x@example.com", "666666", 30));
+    }
+
+    @Test
+    @DisplayName("sendNotification：未配置 SMTP 时明确失败，不伪造成功")
+    void sendNotificationWithoutSmtp_shouldThrow() {
+        when(mailSenderProvider.getIfAvailable()).thenReturn(null);
+        EmailServiceImpl degraded = new EmailServiceImpl(mailSenderProvider);
+        ReflectionTestUtils.setField(degraded, "mailEnabled", true);
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> degraded.sendNotification("x@example.com", "通知标题", "通知正文"));
+        assertEquals(503, error.getCode(), "未配置邮件服务应返回 503 而不是静默成功");
+        verify(javaMailSender, never()).createMimeMessage();
     }
 
     @Test

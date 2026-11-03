@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Tag(name = "管理后台 - 推送管理")
 @RestController
@@ -94,6 +95,17 @@ public class AdminPushController {
             channel = "NOTICE";
         }
         entity.setType(channel);
+        entity.setTargetType(normalizeTargetType(body.get("targetType")));
+        String targetIds = toTargetIdsString(body.get("targetIds"));
+        if (targetIds != null && !targetIds.isEmpty()) {
+            entity.setTargetIds(targetIds);
+        }
+        // 指定用户推送但未提供用户ID时直接拒绝，避免误群发给全部用户
+        if (isUserTarget(entity.getTargetType()) && entity.getTargetIds() == null) {
+            return Result.error(400, "指定用户推送必须提供用户ID");
+        }
+        // 新建记录为待发送状态，页面才会展示「发送」按钮
+        entity.setStatus("PENDING");
         pushManageService.create(entity);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", entity.getId());
@@ -106,10 +118,11 @@ public class AdminPushController {
     @AdminAudit(action = "UPDATE", module = "MARKETING",
         resourceId = "#id", detail = "管理员发送推送")
     public Result<Map<String, Object>> send(@PathVariable Long id) {
-        pushManageService.send(id);
+        int sentCount = pushManageService.send(id);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", id);
-        result.put("message", "推送发送成功");
+        result.put("sentCount", sentCount);
+        result.put("message", sentCount > 0 ? "站内通知发送成功" : "发送失败，未写入任何通知");
         return Result.success(result);
     }
 
@@ -150,8 +163,12 @@ public class AdminPushController {
         if (body.containsKey("content")) entity.setContent((String) body.get("content"));
         if (body.containsKey("type")) entity.setType((String) body.get("type"));
         if (body.containsKey("channel")) entity.setType((String) body.get("channel"));
-        if (body.containsKey("targetType")) entity.setTargetType((String) body.get("targetType"));
-        if (body.containsKey("targetIds")) entity.setTargetIds((String) body.get("targetIds"));
+        if (body.containsKey("targetType")) entity.setTargetType(normalizeTargetType(body.get("targetType")));
+        if (body.containsKey("targetIds")) entity.setTargetIds(toTargetIdsString(body.get("targetIds")));
+        // 指定用户推送但未提供用户ID时直接拒绝，避免误群发给全部用户
+        if (isUserTarget(entity.getTargetType()) && entity.getTargetIds() == null) {
+            return Result.error(400, "指定用户推送必须提供用户ID");
+        }
         pushManageService.update(entity);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", id);
@@ -217,15 +234,33 @@ public class AdminPushController {
     @AdminAudit(action = "CREATE", module = "MARKETING",
         resourceId = "push-schedule", detail = "管理员设置定时推送")
     public Result<?> schedule(@RequestBody Map<String, Object> body) {
+        // 定时推送同样需要标题/内容，缺失时直接返回 400 而不是数据库异常
+        String title = (String) body.get("title");
+        if (title == null || title.trim().isEmpty()) {
+            return Result.error(400, "推送标题不能为空");
+        }
+        String content = (String) body.get("content");
+        if (content == null || content.trim().isEmpty()) {
+            return Result.error(400, "推送内容不能为空");
+        }
         PushRecordEntity entity = new PushRecordEntity();
-        entity.setTitle((String) body.get("title"));
-        entity.setContent((String) body.get("content"));
+        entity.setTitle(title);
+        entity.setContent(content);
         // 前端可能传 channel 字段，映射到 type 字段
         String type = (String) body.get("type");
         if (type == null && body.containsKey("channel")) {
           type = (String) body.get("channel");
         }
         entity.setType(type);
+        entity.setTargetType(normalizeTargetType(body.get("targetType")));
+        String targetIds = toTargetIdsString(body.get("targetIds"));
+        if (targetIds != null && !targetIds.isEmpty()) {
+            entity.setTargetIds(targetIds);
+        }
+        // 指定用户推送但未提供用户ID时直接拒绝，避免到点后误群发给全部用户
+        if (isUserTarget(entity.getTargetType()) && entity.getTargetIds() == null) {
+            return Result.error(400, "指定用户推送必须提供用户ID");
+        }
         if (body.get("scheduledTime") != null) {
             String timeStr = (String) body.get("scheduledTime");
             try {
@@ -239,6 +274,9 @@ public class AdminPushController {
                     return Result.error(400, "定时时间格式无效: " + timeStr);
                 }
             }
+        } else {
+            // 无发送时间会永远无法被调度任务命中，直接拒绝
+            return Result.error(400, "定时发送时间不能为空");
         }
         pushManageService.saveSchedule(entity);
         Map<String, Object> result = new LinkedHashMap<>();
@@ -246,5 +284,42 @@ public class AdminPushController {
         result.put("scheduledTime", entity.getScheduledTime());
         result.put("message", "定时推送设置成功");
         return Result.success(result);
+    }
+
+    /**
+     * 目标人群类型归一化（前端可能传 all/users/tags 小写值）
+     */
+    private String normalizeTargetType(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        String value = String.valueOf(raw).trim().toUpperCase();
+        return value.isEmpty() ? null : value;
+    }
+
+    /**
+     * 目标用户ID兼容处理：前端可能传数组（["1001","1002"]）或逗号分隔字符串，统一存为逗号分隔串
+     */
+    @SuppressWarnings("null") // 抑制 JDT 对 String::trim 方法引用的 @Nonnull 类型检查告警
+    private String toTargetIdsString(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        if (raw instanceof Collection<?> collection) {
+            return collection.stream()
+                .filter(Objects::nonNull)
+                .map(String::valueOf)
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .collect(Collectors.joining(","));
+        }
+        return String.valueOf(raw).trim();
+    }
+
+    /**
+     * 是否按指定用户推送
+     */
+    private boolean isUserTarget(String targetType) {
+        return "USER".equals(targetType) || "USERS".equals(targetType);
     }
 }

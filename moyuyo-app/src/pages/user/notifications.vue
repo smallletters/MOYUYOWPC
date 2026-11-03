@@ -123,11 +123,42 @@ export default {
 
     async loadNotifications() {
       try {
-        const res = await notificationApi.getNotifications()
-        this.notifications = res.data || []
+        const page = await notificationApi.getNotifications()
+        // 后端返回 MyBatis-Plus 分页对象（{ records, total, ... }）
+        const list = (page && page.records) || []
+        this.notifications = list.map((item) => this.mapNotification(item))
       } catch {
         this.notifications = []
       }
+    },
+
+    // 把后端 NotificationEntity 映射为页面展示结构
+    mapNotification(item) {
+      const type = String(item.type || '').toLowerCase()
+      // 图标与底色按通知类型区分，未知类型回退到系统
+      const visual = {
+        order: { icon: 'package', iconBg: 'rgba(59,130,246,0.12)' },
+        activity: { icon: 'sparkles', iconBg: 'rgba(16,185,129,0.12)' },
+        system: { icon: 'bell', iconBg: 'rgba(107,114,128,0.12)' },
+      }[type] || { icon: 'bell', iconBg: 'rgba(107,114,128,0.12)' }
+      return {
+        id: item.id,
+        title: item.title || '',
+        description: item.content || '',
+        time: this.formatTime(item.createTime),
+        // 后端 read 字段：0 未读，1 已读
+        unread: item.read === 0,
+        type,
+        icon: visual.icon,
+        iconBg: visual.iconBg,
+      }
+    },
+
+    // 后端 LocalDateTime 字符串格式化为 YYYY-MM-DD HH:mm
+    formatTime(value) {
+      if (!value) return ''
+      const str = String(value).replace('T', ' ')
+      return str.length >= 16 ? str.slice(0, 16) : str
     },
 
     async markAllRead() {

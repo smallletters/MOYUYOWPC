@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { userApi, deviceApi } from '@/api'
 import { setStorage, getStorage, removeStorage, STORAGE_KEYS } from '@/utils/storage'
 import { getDeviceFingerprint } from '@/utils/deviceFingerprint'
+import { registerPush } from '@/plugins/push'
 
 /**
  * 主动续期定时器引用（模块级 closure）
@@ -402,13 +403,30 @@ export const useUserStore = defineStore('user', {
         const sys = uni.getSystemInfoSync ? uni.getSystemInfoSync() : {}
         // deviceId 只与设备相关(刷新 token / 切换账号不视作新设备)
         const fingerprint = info.deviceId || getDeviceFingerprint()
+        let pushToken = info.pushToken || ''
+        // #ifdef APP-PLUS
+        // 注册推送并上报真实 token；原生插件未真实接入时返回占位 token，过滤避免写入无效数据
+        if (!pushToken) {
+          try {
+            const token = await registerPush()
+            if (token && !String(token).includes('placeholder')) {
+              pushToken = token
+            }
+          } catch (pushError) {
+            console.warn('[user] registerPush failed', pushError)
+          }
+        }
+        // #endif
         const body = {
           deviceId: fingerprint,
           platform: info.platform || sys.platform || 'WEB',
           model: info.model || sys.model || sys.deviceModel || '',
           osVersion: info.osVersion || sys.system || sys.osVersion || '',
           appVersion: info.appVersion || sys.appVersion || '',
-          pushToken: info.pushToken || '',
+        }
+        // 仅在有真实 token 时上报，避免空串覆盖服务端已保存的有效 token
+        if (pushToken) {
+          body.pushToken = pushToken
         }
         await deviceApi.upsertDevice(body)
       } catch (e) {

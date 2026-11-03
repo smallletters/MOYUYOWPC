@@ -91,7 +91,8 @@ public class DeviceController {
 
     if (body.get("osVersion") != null) exist.setOsVersion(body.get("osVersion"));
     if (body.get("appVersion") != null) exist.setAppVersion(body.get("appVersion"));
-    if (body.get("pushToken") != null) exist.setPushToken(body.get("pushToken"));
+    String pushToken = body.get("pushToken");
+    if (isUsablePushToken(pushToken)) exist.setPushToken(pushToken);
     exist.setLastActive(LocalDateTime.now());
 
     if (exist.getId() == null) {
@@ -131,7 +132,15 @@ public class DeviceController {
 
     if (body.get("osVersion") != null) target.setOsVersion(body.get("osVersion"));
     if (body.get("appVersion") != null) target.setAppVersion(body.get("appVersion"));
-    if (body.get("pushToken") != null) target.setPushToken(body.get("pushToken"));
+    String pushToken = body.get("pushToken");
+    if (isUsablePushToken(pushToken)) target.setPushToken(pushToken);
+  }
+
+  /**
+   * 只接受非空、非占位值的 pushToken，避免空串或原生插件占位 token 覆盖已保存的有效 token
+   */
+  private boolean isUsablePushToken(String pushToken) {
+    return pushToken != null && !pushToken.isBlank() && !pushToken.contains("placeholder");
   }
 
   @DeleteMapping("/{id}")

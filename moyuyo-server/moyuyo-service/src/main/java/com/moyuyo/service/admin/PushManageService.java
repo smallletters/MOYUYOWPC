@@ -26,9 +26,12 @@ public interface PushManageService {
   void update(PushRecordEntity entity);
 
   /**
-   * 发送推送
+   * 发送推送：按目标人群批量写入站内通知（mo_notification），供 APP 通知中心展示。
+   *
+   * @param id 推送记录 ID
+   * @return 成功写入通知的用户数
    */
-  void send(Long id);
+  int send(Long id);
 
   /**
    * 取消推送

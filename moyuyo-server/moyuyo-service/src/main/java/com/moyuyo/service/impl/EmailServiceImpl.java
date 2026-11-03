@@ -138,6 +138,25 @@ public class EmailServiceImpl implements EmailService {
         send(to, subject, html, "sendMagicLink", null);
     }
 
+    @Override
+    public void sendNotification(String to, String subject, String content) {
+        // 群发场景：未配置 SMTP 时明确失败，避免把"仅打日志"误报为发送成功
+        if (!mailEnabled || javaMailSender == null) {
+            log.warn("[mail] 邮件服务未配置，通知邮件未发送: to={}", mask(to));
+            throw new BusinessException(503, "邮件服务未配置，通知未发送");
+        }
+        // 正文使用 pre-wrap 保留用户输入的换行；escapeText 防止 HTML 注入
+        String html = buildHtml(
+                subject,
+                "You have a new message from MOYUYO:",
+                "<div style=\"font-size:15px;line-height:1.6;color:#333;white-space:pre-wrap;margin:16px 0;\">" +
+                        escapeText(content) + "</div>",
+                "This message was sent by MOYUYO. You can manage your notification preferences in the app.",
+                null
+        );
+        send(to, subject, html, "sendNotification", null);
+    }
+
     // ======================= 内部辅助 =======================
 
     /**

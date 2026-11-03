@@ -4,6 +4,7 @@ import com.aliyun.dysmsapi20170525.Client;
 import com.aliyun.dysmsapi20170525.models.SendSmsRequest;
 import com.aliyun.dysmsapi20170525.models.SendSmsResponse;
 import com.aliyun.teaopenapi.models.Config;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.common.exception.BusinessException;
 import com.moyuyo.service.SmsService;
 import jakarta.annotation.PostConstruct;
@@ -11,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 /**
  * 阿里云短信服务实现。
@@ -23,6 +25,8 @@ import org.springframework.stereotype.Service;
 @Service
 @ConditionalOnProperty(name = "moyuyo.sms.provider", havingValue = "aliyun")
 public class AliyunSmsServiceImpl implements SmsService {
+
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     @Value("${moyuyo.sms.access-key-id:}")
     private String accessKeyId;
@@ -44,6 +48,10 @@ public class AliyunSmsServiceImpl implements SmsService {
     /** 重置密码模板编码 */
     @Value("${moyuyo.sms.template-code-reset:SMS_RESET_DEFAULT}")
     private String templateCodeReset;
+
+    /** 运营通知模板编码（推送管理短信渠道使用，变量名约定为 content） */
+    @Value("${moyuyo.sms.template-code-notice:}")
+    private String templateCodeNotice;
 
     private Client client;
 
@@ -115,6 +123,59 @@ public class AliyunSmsServiceImpl implements SmsService {
         } catch (Exception e) {
             log.error("[sms] Aliyun sendSms exception: phone={}", phone, e);
             throw new BusinessException(502, "短信发送异常: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void sendNotice(String phone, String title, String content) {
+        if (client == null) {
+            log.warn("[sms] Aliyun client unavailable, notice phone={}", phone);
+            throw new BusinessException(503, "短信服务暂不可用，请稍后再试");
+        }
+        if (!StringUtils.hasText(templateCodeNotice)) {
+            // 未配置通知模板时明确失败，避免把"未发送"误报为发送成功
+            log.warn("[sms] template-code-notice 未配置，通知短信未发送: phone={}", phone);
+            throw new BusinessException(503, "短信通知模板未配置，请先在阿里云申请并配置 template-code-notice");
+        }
+        String text = StringUtils.hasText(title) ? title + "：" + content : content;
+        SendSmsRequest request = new SendSmsRequest()
+                .setPhoneNumbers(phone)
+                .setSignName(signName)
+                .setTemplateCode(templateCodeNotice)
+                // 阿里云模板变量名约定为 content；用 Jackson 序列化避免引号/换行破坏 JSON
+                .setTemplateParam(buildNoticeParam(text));
+        try {
+            SendSmsResponse response = client.sendSms(request);
+            if (response == null || response.getBody() == null) {
+                log.error("[sms] Aliyun sendNotice empty response: phone={}", phone);
+                throw new BusinessException(502, "短信通知发送失败");
+            }
+            String respCode = response.getBody().getCode();
+            if (!"OK".equalsIgnoreCase(respCode)) {
+                String message = response.getBody().getMessage();
+                log.error("[sms] Aliyun sendNotice biz error: phone={}, code={}, message={}",
+                        phone, respCode, message);
+                throw new BusinessException(502, "短信通知发送失败: " + message);
+            }
+            log.info("[sms] Aliyun sendNotice success: phone={}", phone);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("[sms] Aliyun sendNotice exception: phone={}", phone, e);
+            throw new BusinessException(502, "短信通知发送异常: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 构造通知模板参数 JSON：{"content":"..."}
+     */
+    private String buildNoticeParam(String text) {
+        try {
+            return JSON.writeValueAsString(java.util.Map.of("content", text));
+        } catch (Exception e) {
+            // 理论上 String 序列化不会失败；兜底返回空参数避免把敏感异常带出去
+            log.warn("[sms] 通知模板参数序列化失败: {}", e.getMessage());
+            return "{\"content\":\"\"}";
         }
     }
 }

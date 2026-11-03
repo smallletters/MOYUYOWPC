@@ -109,11 +109,12 @@ export default {
 
     async loadDetail() {
       try {
-        const res = await notificationApi.getNotificationDetail(this.notificationId)
-        const detail = res.data || {}
+        // request 层已解包 Result.data，返回的直接是通知详情对象
+        const detail = (await notificationApi.getNotificationDetail(this.notificationId)) || {}
         this.message = {
           type: detail.type || '',
-          typeLabel: this.typeLabelMap[detail.type] || detail.type || '',
+          typeLabel:
+            this.typeLabelMap[String(detail.type || '').toLowerCase()] || detail.type || '',
           title: detail.title || '',
           time: this.formatTime(detail.createTime),
           content: detail.content || '',
