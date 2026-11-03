@@ -344,6 +344,13 @@ const routes = [
         meta: { title: 'GDPR合规' }
       },
       {
+        // 隐私政策全文（GDPR 页「查看全文」跳转的独立页面，支持编辑保存）
+        path: 'gdpr-policy',
+        name: 'GdprPolicyDetail',
+        component: () => import('../views/GdprPolicyDetail.vue'),
+        meta: { title: '隐私政策全文' }
+      },
+      {
         path: 'audit-log',
         name: 'AuditLog',
         component: () => import('../views/AuditLog.vue'),

@@ -99,6 +99,9 @@ public class JwtAuthFilter implements Filter {
             // APP 首页 CMS Banner 公开拉取（仅 GET）
             new WhiteListEntry("/api/v1/cms/banners", true),
             new WhiteListEntry("/api/v1/cms/banners/", true),
+            // 隐私政策等协议公示：未登录用户（含注册前）也需要能读取（仅 GET）
+            new WhiteListEntry("/api/v1/policies/active", false),
+            new WhiteListEntry("/api/v1/policies/", true),
             // 分享链接 QR 公开生成（仅 GET，未登录用户也能扫码看商品）
             new WhiteListEntry("/api/v1/shares/qr", false),
             new WhiteListEntry("/api/v1/shares/qr/", true)

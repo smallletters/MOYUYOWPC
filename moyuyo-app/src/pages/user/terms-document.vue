@@ -27,6 +27,7 @@
 <script>
 // 静态协议正文页:文案走 i18n 字典,按当前 locale 渲染
 import { i18n } from '@/i18n'
+import { getActivePrivacyPolicy } from '@/api/policy'
 
 /**
  * 当后端 / 配置文件中尚未提供正式协议 URL 时作为兜底展示。
@@ -62,11 +63,37 @@ export default {
     this.document = this.buildDocument(this.type)
     // 动态标题设置(走 i18n 后的 title)
     uni.setNavigationBarTitle({ title: this.document.title })
+    // 隐私政策优先读取后台维护的政策库，保证与后台「隐私政策全文」一致
+    if (this.type === 'privacy') {
+      this.loadRemotePolicy()
+    }
   },
 
   methods: {
     goBack() {
       uni.navigateBack()
+    },
+
+    /**
+     * 拉取后台当前生效的隐私政策正文（按当前 App 语言请求对应版本）。
+     * 政策库为空 / 接口异常时静默保留 i18n 内置文案，避免协议页无法展示。
+     */
+    async loadRemotePolicy() {
+      try {
+        const data = await getActivePrivacyPolicy(i18n.locale)
+        const content = data && data.content ? String(data.content).trim() : ''
+        if (!content) return
+        this.document = {
+          title: data.title || this.document.title,
+          // 展示后台配置的生效日期；未配置时沿用内置更新日期
+          updatedAt: data.effectiveDate || this.document.updatedAt,
+          // 后台正文按行保存，空行不渲染
+          body: content.split('\n').filter((line) => line.trim()),
+        }
+        uni.setNavigationBarTitle({ title: this.document.title })
+      } catch (err) {
+        console.warn('[terms-document] 获取后台隐私政策失败，使用内置文案', err)
+      }
     },
 
     /**

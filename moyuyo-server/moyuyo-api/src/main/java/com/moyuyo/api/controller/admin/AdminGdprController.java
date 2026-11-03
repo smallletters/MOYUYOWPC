@@ -55,4 +55,10 @@ public class AdminGdprController {
   public Result<Map<String, Object>> createPolicy(@RequestBody Map<String, Object> body) {
     return Result.success(adminGdprService.createPolicy(body));
   }
+
+  @Operation(summary = "更新隐私政策")
+  @PutMapping("/policy/{id}")
+  public Result<Map<String, Object>> updatePolicy(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+    return Result.success(adminGdprService.updatePolicy(id, body));
+  }
 }

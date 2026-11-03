@@ -20,7 +20,8 @@
             <div class="policy-version">版本 {{ policy.version }}</div>
             <div class="policy-date">生效日期：{{ policy.effectiveDate }}</div>
             <div class="policy-desc">{{ policy.description }}</div>
-            <el-button type="primary" link @click="openPolicyDialog">查看全文</el-button>
+            <!-- 独立的全文页（支持编辑保存），不再用弹窗展示 -->
+            <el-button type="primary" link @click="openPolicyPage">查看全文</el-button>
           </div>
         </el-card>
       </el-col>
@@ -243,15 +244,6 @@
       </template>
     </el-dialog>
 
-    <!-- 查看政策全文弹窗 -->
-    <el-dialog v-model="policyDialogVisible" title="隐私政策全文" width="600px">
-      <div class="policy-full">
-        <h3>{{ policy.title }}（版本 {{ policy.version }}）</h3>
-        <p>生效日期：{{ policy.effectiveDate }}</p>
-        <div class="policy-content">{{ policy.description }}</div>
-      </div>
-    </el-dialog>
-
     <!-- 处理请求弹窗 -->
     <el-dialog v-model="processDialogVisible" title="处理数据请求" width="480px">
       <el-form label-width="90px">
@@ -294,6 +286,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Download, Delete, Document, RefreshLeft, ChatDotRound,
@@ -306,6 +299,8 @@ import {
   getGdprArchiveOverview, triggerGdprQuickAction
 } from '../api/admin'
 import { toArray } from '../utils/safeArray'
+
+const router = useRouter()
 
 const compliance = ref({ consentRecords: '—', dataExportRequests: '—', dataDeleteRequests: '—', consentRate: '—' })
 const policy = ref({ version: '3.0', effectiveDate: '2026-07-01', description: '涵盖了用户数据收集、存储、使用和分享的完整政策说明，符合 GDPR 最新要求。' })
@@ -380,7 +375,6 @@ const archiveOverview = reactive({ total: 0, active: 0, recent: [] })
 const createDialogVisible = ref(false)
 const creating = ref(false)
 const createForm = reactive({ version: '', title: '', effectiveDate: '', content: '' })
-const policyDialogVisible = ref(false)
 const processDialogVisible = ref(false)
 const processing = ref(false)
 const processResult = ref('COMPLETED')
@@ -644,8 +638,9 @@ async function submitCreate() {
   }
 }
 
-function openPolicyDialog() {
-  policyDialogVisible.value = true
+// 跳转到独立的隐私政策全文页（支持编辑保存）
+function openPolicyPage() {
+  router.push('/gdpr-policy')
 }
 
 // ---- 处理数据请求 ----
@@ -794,10 +789,7 @@ onMounted(() => loadData())
   margin-bottom: 12px; font-size: 14px; font-weight: 600; color: var(--text-800);
 }
 
-/* 政策全文弹窗 */
-.policy-full h3 { margin: 0 0 8px; font-size: 16px; color: var(--text-800); }
-.policy-full p { margin: 0 0 12px; font-size: 12px; color: var(--text-400); }
-.policy-content { font-size: 14px; color: var(--text-600); line-height: 1.8; white-space: pre-wrap; }
+/* 政策全文弹窗已改为独立页面 GdprPolicyDetail.vue，原样式一并移除 */
 
 /* 窄屏快速操作单列 */
 @media (max-width: 900px) {

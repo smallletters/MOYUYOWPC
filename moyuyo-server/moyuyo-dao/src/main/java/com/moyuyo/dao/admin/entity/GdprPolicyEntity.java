@@ -12,7 +12,10 @@ public class GdprPolicyEntity {
     private Long id;
     private String version;
     private String title;
+    // 英文标题（title/content 为中文默认版本）
+    private String titleEn;
     private String content;
+    private String contentEn;
     private String status;
     private LocalDate effectiveDate;
     private Long createBy;

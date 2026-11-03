@@ -90,6 +90,8 @@ export default defineConfig(({ mode }) => {
         // 必须写宿主机的局域网 IP 才能命中 docker 端口转发（0.0.0.0:8080->8080）。
         // 若只用本机浏览器访问，可改回 http://localhost:8080。
         '/api/v1/cms': { target: 'http://192.168.6.103:8080', changeOrigin: true },
+        // 协议公示（隐私政策正文由后台 GDPR 政策库维护）
+        '/api/v1/policies': { target: 'http://192.168.6.103:8080', changeOrigin: true },
         '/api/v1/categories': { target: 'http://192.168.6.103:8080', changeOrigin: true },
         '/api/v1/products': { target: 'http://192.168.6.103:8080', changeOrigin: true },
         '/api/v1/community': { target: 'http://192.168.6.103:8080', changeOrigin: true },

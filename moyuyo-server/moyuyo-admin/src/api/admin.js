@@ -950,6 +950,11 @@ export function createGdprPolicy(data) {
   return api.post('/gdpr/policy', data)
 }
 
+// 更新隐私政策正文（后台「隐私政策全文」页保存编辑内容）
+export function updateGdprPolicy(id, data) {
+  return api.put(`/gdpr/policy/${id}`, data)
+}
+
 // 未成年人保护 - 真实后端
 export function getGdprMinorStats() {
   return api.get('/gdpr/minor/stats')
