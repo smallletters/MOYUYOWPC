@@ -751,7 +751,7 @@ export default {
     loginSubtitle: 'Sign in to unlock more member benefits',
     loginBtn: 'Log In',
     vipTitle: 'MOYUYO Member',
-    vipTip: 'Earn 5x points on this order',
+    vipTip: 'Earn up to 2x points as a member',
     walletHistory: 'History',
     walletPoints: 'Points',
     walletCoupons: 'Coupons',

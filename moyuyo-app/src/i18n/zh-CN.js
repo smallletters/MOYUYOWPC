@@ -760,7 +760,7 @@ export default {
     loginSubtitle: '登录后享受更多会员权益',
     loginBtn: '登录',
     vipTitle: 'MOYUYO 会员',
-    vipTip: '本订单享 5 倍积分',
+    vipTip: '会员消费最高享 2 倍积分',
     walletHistory: '足迹',
     walletPoints: '积分',
     walletCoupons: '优惠券',

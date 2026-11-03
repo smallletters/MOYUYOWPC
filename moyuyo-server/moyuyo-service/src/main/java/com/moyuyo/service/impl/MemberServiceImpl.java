@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.dto.member.MemberVO;
 import com.moyuyo.common.dto.member.WalletVO;
+import com.moyuyo.dao.admin.entity.SystemConfigEntity;
+import com.moyuyo.dao.admin.mapper.SystemConfigMapper;
 import com.moyuyo.dao.entity.MemberEntity;
 import com.moyuyo.dao.entity.MemberEntity.Level;
 import com.moyuyo.dao.entity.MemberNoSeqEntity;
@@ -27,6 +29,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -37,15 +40,31 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+// 抑制 MyBatis-Plus 3.x @Nonnull T 与 JDT null 静态分析差异（LambdaQueryWrapper 的 Function<T,R> 方法引用）
+@SuppressWarnings("null")
 public class MemberServiceImpl implements MemberService {
 
   /** 积分有效期：12 个月 */
   private static final int POINTS_VALID_MONTHS = 12;
 
+  /** 配置项前缀：会员等级积分倍率（points.level_rate.NORMAL / SILVER / GOLD / PLATINUM / DIAMOND） */
+  public static final String CONFIG_LEVEL_RATE_PREFIX = "points.level_rate.";
+
+  /** 五档会员积分倍率默认值（后台未配置时使用） */
+  private static final Map<Level, Double> DEFAULT_LEVEL_RATES = new EnumMap<>(Level.class);
+  static {
+    DEFAULT_LEVEL_RATES.put(Level.NORMAL, 1.0);
+    DEFAULT_LEVEL_RATES.put(Level.SILVER, 1.1);
+    DEFAULT_LEVEL_RATES.put(Level.GOLD, 1.2);
+    DEFAULT_LEVEL_RATES.put(Level.PLATINUM, 1.5);
+    DEFAULT_LEVEL_RATES.put(Level.DIAMOND, 2.0);
+  }
+
   private final MemberMapper memberMapper;
   private final UserMapper userMapper;
   private final WalletMapper walletMapper;
   private final PointsLogMapper pointsLogMapper;
+  private final SystemConfigMapper systemConfigMapper;
 
   @Override
   public MemberVO getMemberInfo(Long userId) {
@@ -456,29 +475,55 @@ public class MemberServiceImpl implements MemberService {
 
   @Override
   public List<Map<String, Object>> listLevels() {
-    // 等级档位（按成长值门槛排序）
+    // 等级档位（按成长值门槛排序），倍率统一从后台配置读取
+    Map<Level, Double> rates = readLevelRates();
     List<Map<String, Object>> levels = new java.util.ArrayList<>();
-    levels.add(level("L1", "Member", "注册即获得", 0, 1.0));
-    levels.add(level("L2", "Silver", "完成首单 + 几次签到", 500, 1.1));
-    levels.add(level("L3", "Gold", "活跃用户", 2000, 1.2));
-    levels.add(level("L4", "Platinum", "高频消费用户", 8000, 1.5));
-    levels.add(level("L5", "Black", "顶级 VIP", 25000, 2.0));
+    levels.add(level("L1", "Member", "注册即获得", 0, rates.get(Level.NORMAL)));
+    levels.add(level("L2", "Silver", "完成首单 + 几次签到", 500, rates.get(Level.SILVER)));
+    levels.add(level("L3", "Gold", "活跃用户", 2000, rates.get(Level.GOLD)));
+    levels.add(level("L4", "Platinum", "高频消费用户", 8000, rates.get(Level.PLATINUM)));
+    levels.add(level("L5", "Black", "顶级 VIP", 25000, rates.get(Level.DIAMOND)));
     return levels;
   }
 
   @Override
   public double getCurrentPointsRate(Long userId) {
     MemberEntity m = ensureMember(userId);
-    String level = m.getLevel() == null ? "NORMAL" : m.getLevel().name();
-    switch (level) {
-      case "SILVER": return 1.1;
-      case "GOLD": return 1.2;
-      case "PLATINUM": return 1.5;
-      case "DIAMOND": return 2.0;
-      case "NORMAL":
-      default:
-        return 1.0;
+    Level level = m.getLevel() == null ? Level.NORMAL : m.getLevel();
+    return readLevelRates().getOrDefault(level, DEFAULT_LEVEL_RATES.get(level));
+  }
+
+  /**
+   * 读取后台配置的五档积分倍率。
+   * 配置键：points.level_rate.NORMAL / SILVER / GOLD / PLATINUM / DIAMOND（值为倍率，如 1.2）。
+   * 未配置、值非法或 ≤0 的档位回退到默认倍率。
+   */
+  private Map<Level, Double> readLevelRates() {
+    Map<Level, Double> rates = new EnumMap<>(Level.class);
+    rates.putAll(DEFAULT_LEVEL_RATES);
+    try {
+      List<SystemConfigEntity> list = systemConfigMapper.selectList(
+          new LambdaQueryWrapper<SystemConfigEntity>()
+              .likeRight(SystemConfigEntity::getConfigKey, CONFIG_LEVEL_RATE_PREFIX));
+      for (SystemConfigEntity entity : list) {
+        if (entity.getConfigKey() == null || entity.getConfigValue() == null) {
+          continue;
+        }
+        String code = entity.getConfigKey().substring(CONFIG_LEVEL_RATE_PREFIX.length());
+        try {
+          Level level = Level.valueOf(code);
+          double value = Double.parseDouble(entity.getConfigValue().trim());
+          if (value > 0) {
+            rates.put(level, value);
+          }
+        } catch (IllegalArgumentException ignore) {
+          // 非法等级名 / 非法数值：忽略该条配置，保留默认倍率
+        }
+      }
+    } catch (Exception e) {
+      log.warn("读取会员等级积分倍率失败，使用默认值: {}", e.getMessage());
     }
+    return rates;
   }
 
   private Map<String, Object> level(String code, String name, String desc, int threshold, double rate) {

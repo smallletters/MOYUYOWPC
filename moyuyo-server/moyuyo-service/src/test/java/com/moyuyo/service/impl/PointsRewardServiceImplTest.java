@@ -1,11 +1,11 @@
 package com.moyuyo.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.moyuyo.dao.admin.entity.SystemConfigEntity;
 import com.moyuyo.dao.admin.mapper.SystemConfigMapper;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.service.MemberService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,14 +53,20 @@ class PointsRewardServiceImplTest {
     @Captor
     private ArgumentCaptor<String> typeCaptor;
 
+    @BeforeEach
+    void setUp() {
+        // 默认会员倍率 1.0（普通会员）；需要其他倍率的用例在测试内覆盖
+        lenient().when(memberService.getCurrentPointsRate(anyLong())).thenReturn(1.0);
+    }
+
     @Test
     @DisplayName("首单 + 默认配置：1 USD = 10 积分，首单 2 倍 => 30 美元 = 600 积分")
     void rewardForOrder_firstOrder_defaultConfig() {
         OrderEntity order = buildOrder(1L, 100L, new BigDecimal("30.00"));
         // 首单判定：除当前订单外无其它 PAID 订单
-        when(orderMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+        when(orderMapper.selectCount(any())).thenReturn(0L);
         // 配置缺失走默认值
-        when(systemConfigMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+        when(systemConfigMapper.selectOne(any())).thenReturn(null);
 
         int granted = pointsRewardService.rewardForOrder(order);
 
@@ -74,8 +80,8 @@ class PointsRewardServiceImplTest {
     void rewardForOrder_notFirstOrder_defaultConfig() {
         OrderEntity order = buildOrder(2L, 100L, new BigDecimal("30.00"));
         // 已有 1 笔 PAID 订单：非首单
-        when(orderMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
-        when(systemConfigMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+        when(orderMapper.selectCount(any())).thenReturn(1L);
+        when(systemConfigMapper.selectOne(any())).thenReturn(null);
 
         int granted = pointsRewardService.rewardForOrder(order);
 
@@ -88,13 +94,13 @@ class PointsRewardServiceImplTest {
     @DisplayName("配置覆盖：usd_rate=20 => 10 美元 = 200 积分（非首单）")
     void rewardForOrder_customRateFromConfig() {
         OrderEntity order = buildOrder(3L, 100L, new BigDecimal("10.00"));
-        when(orderMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
+        when(orderMapper.selectCount(any())).thenReturn(1L);
 
         SystemConfigEntity rateCfg = new SystemConfigEntity();
         rateCfg.setConfigKey(PointsRewardServiceImpl.CONFIG_USD_RATE);
         rateCfg.setConfigValue("20");
         // 配置查询时按 key 返回对应记录
-        when(systemConfigMapper.selectOne(any(LambdaQueryWrapper.class)))
+        when(systemConfigMapper.selectOne(any()))
                 .thenReturn(rateCfg);
 
         int granted = pointsRewardService.rewardForOrder(order);
@@ -106,13 +112,13 @@ class PointsRewardServiceImplTest {
     @DisplayName("配置覆盖：first_order_multiplier=3 => 首单 10 美元 = 300 积分")
     void rewardForOrder_customMultiplierFromConfig() {
         OrderEntity order = buildOrder(4L, 100L, new BigDecimal("10.00"));
-        when(orderMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+        when(orderMapper.selectCount(any())).thenReturn(0L);
 
         // 第一次查 usd_rate 返回 null（走默认 10），第二次查 first_order_multiplier 返回 3
         SystemConfigEntity multCfg = new SystemConfigEntity();
         multCfg.setConfigKey(PointsRewardServiceImpl.CONFIG_FIRST_ORDER_MULTIPLIER);
         multCfg.setConfigValue("3");
-        when(systemConfigMapper.selectOne(any(LambdaQueryWrapper.class)))
+        when(systemConfigMapper.selectOne(any()))
                 .thenReturn(null)
                 .thenReturn(multCfg);
 
@@ -136,12 +142,12 @@ class PointsRewardServiceImplTest {
     @DisplayName("配置值非法：使用默认值，逻辑不中断")
     void rewardForOrder_invalidConfigValue_useDefault() {
         OrderEntity order = buildOrder(6L, 100L, new BigDecimal("5.00"));
-        when(orderMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
+        when(orderMapper.selectCount(any())).thenReturn(1L);
 
         SystemConfigEntity badCfg = new SystemConfigEntity();
         badCfg.setConfigKey(PointsRewardServiceImpl.CONFIG_USD_RATE);
         badCfg.setConfigValue("not-a-number");
-        when(systemConfigMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(badCfg);
+        when(systemConfigMapper.selectOne(any())).thenReturn(badCfg);
 
         int granted = pointsRewardService.rewardForOrder(order);
 
@@ -161,8 +167,8 @@ class PointsRewardServiceImplTest {
     @DisplayName("remark 中包含实付金额与首单标记，便于运营核对")
     void rewardForOrder_remarkContainsPayAmountAndFirstFlag() {
         OrderEntity order = buildOrder(7L, 100L, new BigDecimal("15.00"));
-        when(orderMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
-        lenient().when(systemConfigMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+        when(orderMapper.selectCount(any())).thenReturn(0L);
+        lenient().when(systemConfigMapper.selectOne(any())).thenReturn(null);
 
         pointsRewardService.rewardForOrder(order);
 
@@ -171,6 +177,63 @@ class PointsRewardServiceImplTest {
         assertEquals("REWARD", typeCaptor.getValue());
         // 15 USD × 10 × 2 = 300
         assertEquals(300, pointsCaptor.getValue());
+    }
+
+    @Test
+    @DisplayName("精确小数：非首单 1.50 美元 => 1.50 × 10 = 15 积分（不再按整数截断）")
+    void rewardForOrder_decimalAmount_roundToNearest() {
+        OrderEntity order = buildOrder(8L, 100L, new BigDecimal("1.50"));
+        when(orderMapper.selectCount(any())).thenReturn(1L);
+        lenient().when(systemConfigMapper.selectOne(any())).thenReturn(null);
+
+        int granted = pointsRewardService.rewardForOrder(order);
+
+        assertEquals(15, granted, "1.50 USD × 10 × 1 = 15");
+    }
+
+    @Test
+    @DisplayName("会员倍率：非首单 10 美元 × 10 × 1.5 => 150 积分")
+    void rewardForOrder_memberRate_applied() {
+        OrderEntity order = buildOrder(9L, 100L, new BigDecimal("10.00"));
+        when(orderMapper.selectCount(any())).thenReturn(1L);
+        lenient().when(systemConfigMapper.selectOne(any())).thenReturn(null);
+        when(memberService.getCurrentPointsRate(100L)).thenReturn(1.5);
+
+        int granted = pointsRewardService.rewardForOrder(order);
+
+        assertEquals(150, granted, "10 USD × 10 × 1.5 = 150");
+    }
+
+    @Test
+    @DisplayName("会员倍率关闭：配置 points.member_rate_enabled=false => 非首单 10 美元 = 100 积分")
+    void rewardForOrder_memberRateDisabled() {
+        OrderEntity order = buildOrder(10L, 100L, new BigDecimal("10.00"));
+        when(orderMapper.selectCount(any())).thenReturn(1L);
+
+        SystemConfigEntity disabledCfg = new SystemConfigEntity();
+        disabledCfg.setConfigKey(PointsRewardServiceImpl.CONFIG_MEMBER_RATE_ENABLED);
+        disabledCfg.setConfigValue("false");
+        // 调用顺序：usd_rate -> member_rate_enabled（非首单不读首单倍率）
+        when(systemConfigMapper.selectOne(any()))
+                .thenReturn(null)
+                .thenReturn(disabledCfg);
+
+        int granted = pointsRewardService.rewardForOrder(order);
+
+        assertEquals(100, granted, "10 USD × 10 × 1 = 100（会员倍率被关闭）");
+    }
+
+    @Test
+    @DisplayName("首单 + 会员倍率叠加：10 美元 × 10 × 2 × 1.2 => 240 积分")
+    void rewardForOrder_firstOrderWithMemberRate() {
+        OrderEntity order = buildOrder(11L, 100L, new BigDecimal("10.00"));
+        when(orderMapper.selectCount(any())).thenReturn(0L);
+        lenient().when(systemConfigMapper.selectOne(any())).thenReturn(null);
+        when(memberService.getCurrentPointsRate(100L)).thenReturn(1.2);
+
+        int granted = pointsRewardService.rewardForOrder(order);
+
+        assertEquals(240, granted, "10 USD × 10 × 2 × 1.2 = 240");
     }
 
     /**

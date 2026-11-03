@@ -33,6 +33,52 @@
       </div>
     </section>
 
+    <!-- 消费返积分规则（后台可配置，保存到 mo_system_config） -->
+    <section class="section-block">
+      <div class="section-header">
+        <h2 class="section-title">消费返积分规则</h2>
+        <button class="btn btn-primary" :disabled="ruleSaving" @click="savePointsRule">
+          {{ ruleSaving ? '保存中...' : '保存规则' }}
+        </button>
+      </div>
+      <p class="rule-desc">
+        订单支付成功后发放：实付金额 × 每美元积分 × 首单倍率 × 会员倍率，四舍五入取整（1.50 美元 × 10 = 15 积分）。
+      </p>
+      <div class="rule-grid">
+        <div class="form-group">
+          <label>每 1 美元获得积分</label>
+          <input v-model.number="pointsRule.usdRate" type="number" min="1" step="1" class="input" />
+        </div>
+        <div class="form-group">
+          <label>首单倍率</label>
+          <input v-model.number="pointsRule.firstOrderMultiplier" type="number" min="1" step="1" class="input" />
+        </div>
+        <div class="form-group">
+          <label>会员等级倍率</label>
+          <select v-model="pointsRule.memberRateEnabled" class="input">
+            <option :value="true">启用（按下方五档倍率计算）</option>
+            <option :value="false">关闭（所有会员按 1.0 计算）</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 五档会员倍率：逐档可配置（仅“会员等级倍率”启用时生效） -->
+      <div class="level-rate-title">五档会员倍率</div>
+      <div class="level-rate-grid">
+        <div v-for="field in levelRateFields" :key="field.code" class="form-group">
+          <label>{{ field.label }}</label>
+          <input
+            v-model.number="pointsRule.levelRates[field.code]"
+            type="number"
+            min="1"
+            max="10"
+            step="0.1"
+            class="input"
+          />
+        </div>
+      </div>
+    </section>
+
     <!-- 积分活动管理 -->
     <section class="section-block">
       <div class="section-header">
@@ -168,7 +214,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getPointsActivities, createPointsActivity, deletePointsActivity, getPointsLogs, getPointsStats } from '../api/admin'
+import { getPointsActivities, createPointsActivity, deletePointsActivity, getPointsLogs, getPointsStats, getSystemConfig, saveSystemConfig } from '../api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { toArray } from '../utils/safeArray'
 
@@ -186,6 +232,86 @@ const activities = ref([])
 // 积分流水
 const logs = ref([])
 const logFilter = ref({ userId: '' })
+
+// ---- 消费返积分规则（mo_system_config：points.*） ----
+const pointsRule = ref({
+  usdRate: 10,
+  firstOrderMultiplier: 2,
+  memberRateEnabled: true,
+  // 五档会员倍率，键与后端 MemberEntity.Level 一致
+  levelRates: { NORMAL: 1.0, SILVER: 1.1, GOLD: 1.2, PLATINUM: 1.5, DIAMOND: 2.0 }
+})
+const ruleSaving = ref(false)
+// 五档展示顺序与默认倍率（后端未配置时使用）
+const levelRateFields = [
+  { code: 'NORMAL', label: '普通会员', defaultRate: 1.0 },
+  { code: 'SILVER', label: '银卡会员', defaultRate: 1.1 },
+  { code: 'GOLD', label: '金卡会员', defaultRate: 1.2 },
+  { code: 'PLATINUM', label: '铂金会员', defaultRate: 1.5 },
+  { code: 'DIAMOND', label: '钻石会员', defaultRate: 2.0 }
+]
+
+// 读取规则配置；缺失时保留后端默认值（10 积分/美元、首单 2 倍、会员倍率启用）
+async function fetchPointsRule() {
+  try {
+    const list = toArray(await getSystemConfig())
+    const map = {}
+    list.forEach((item) => {
+      if (item && item.key) map[item.key] = item.value
+    })
+    const rate = Number(map['points.usd_rate'])
+    if (Number.isFinite(rate) && rate > 0) pointsRule.value.usdRate = rate
+    const first = Number(map['points.first_order_multiplier'])
+    if (Number.isFinite(first) && first > 0) pointsRule.value.firstOrderMultiplier = first
+    pointsRule.value.memberRateEnabled = String(map['points.member_rate_enabled'] ?? 'true') !== 'false'
+    // 五档倍率：逐档读取 points.level_rate.<LEVEL>
+    levelRateFields.forEach((field) => {
+      const value = Number(map[`points.level_rate.${field.code}`])
+      pointsRule.value.levelRates[field.code] = Number.isFinite(value) && value > 0 ? value : field.defaultRate
+    })
+  } catch (err) {
+    console.error('获取积分规则配置失败:', err)
+  }
+}
+
+// 保存规则：只提交 points.* 配置键，不会覆盖其它系统配置
+async function savePointsRule() {
+  const rate = Math.floor(Number(pointsRule.value.usdRate))
+  const first = Math.floor(Number(pointsRule.value.firstOrderMultiplier))
+  if (!Number.isFinite(rate) || rate <= 0) {
+    ElMessage.warning('每美元积分必须是大于 0 的整数')
+    return
+  }
+  if (!Number.isFinite(first) || first <= 0) {
+    ElMessage.warning('首单倍率必须是大于 0 的整数')
+    return
+  }
+  // 五档倍率校验：1.0 ~ 10.0，最多两位小数
+  const levelPayload = []
+  for (const field of levelRateFields) {
+    const value = Number(pointsRule.value.levelRates[field.code])
+    if (!Number.isFinite(value) || value < 1 || value > 10) {
+      ElMessage.warning(`${field.label}倍率需在 1.0 ~ 10.0 之间`)
+      return
+    }
+    levelPayload.push({ key: `points.level_rate.${field.code}`, value: String(Number(value.toFixed(2))) })
+  }
+  ruleSaving.value = true
+  try {
+    await saveSystemConfig([
+      { key: 'points.usd_rate', value: String(rate) },
+      { key: 'points.first_order_multiplier', value: String(first) },
+      { key: 'points.member_rate_enabled', value: pointsRule.value.memberRateEnabled ? 'true' : 'false' },
+      ...levelPayload
+    ])
+    ElMessage.success('消费返积分规则已保存')
+  } catch (err) {
+    console.error('保存积分规则失败', err)
+    ElMessage.error('保存失败：' + (err?.message || '未知错误'))
+  } finally {
+    ruleSaving.value = false
+  }
+}
 
 // 创建活动弹窗
 const showCreateDialog = ref(false)
@@ -285,6 +411,7 @@ onMounted(() => {
   fetchStats()
   fetchActivities()
   fetchLogs()
+  fetchPointsRule()
 })
 </script>
 
@@ -304,6 +431,19 @@ onMounted(() => {
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .section-title { font-size: 16px; font-weight: 600; color: var(--text-800); margin: 0; }
 .section-filter { display: flex; gap: 8px; align-items: center; }
+
+/* 消费返积分规则：三项配置横排，窄屏自动换行 */
+.rule-desc { margin: 0 0 16px; font-size: 13px; color: var(--text-500); line-height: 1.6; }
+.rule-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+/* 五档会员倍率：桌面五列，窄屏两列 */
+.level-rate-title { margin: 18px 0 8px; font-size: 13px; font-weight: 600; color: var(--text-700); }
+.level-rate-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+@media (max-width: 1200px) {
+  .level-rate-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 900px) {
+  .rule-grid { grid-template-columns: 1fr; }
+}
 
 .input-sm { padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; width: 160px; }
 
