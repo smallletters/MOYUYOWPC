@@ -1367,6 +1367,8 @@ export default {
       addNew: '+ 新增收货地址',
       phone: '电话:',
     },
+    // 后台关闭全部支付方式时的收银台提示
+    paymentEmpty: '暂无可用的支付方式，请联系客服',
     // 商品行
     item: {
       qty: '数量:',

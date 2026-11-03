@@ -11,6 +11,7 @@ import com.moyuyo.dao.mapper.PaymentMapper;
 import com.moyuyo.service.OrderService;
 import com.moyuyo.service.PaymentService;
 import com.moyuyo.service.PrimeService;
+import com.moyuyo.service.config.PaymentMethodConfigService;
 import com.stripe.Stripe;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
@@ -88,6 +89,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final RestTemplate restTemplate;
     private final StringRedisTemplate redisTemplate;
     private final PrimeService primeService;
+    /** 后台「支付设置」开关（渠道/方式是否可用） */
+    private final PaymentMethodConfigService paymentMethodConfigService;
     /** 全局复用的 Jackson 实例，避免每次 new ObjectMapper 浪费资源 */
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -114,13 +117,15 @@ public class PaymentServiceImpl implements PaymentService {
                                OrderMapper orderMapper,
                                @Qualifier("restTemplate") RestTemplate restTemplate,
                                StringRedisTemplate redisTemplate,
-                               PrimeService primeService) {
+                               PrimeService primeService,
+                               PaymentMethodConfigService paymentMethodConfigService) {
         this.orderService = orderService;
         this.paymentMapper = paymentMapper;
         this.orderMapper = orderMapper;
         this.restTemplate = restTemplate;
         this.redisTemplate = redisTemplate;
         this.primeService = primeService;
+        this.paymentMethodConfigService = paymentMethodConfigService;
     }
 
     @Value("${payment.stripe.secret-key}")
@@ -180,6 +185,16 @@ public class PaymentServiceImpl implements PaymentService {
         }
         if (!PENDING_PAY.name().equals(order.getStatus())) {
             throw new IllegalStateException("订单状态不允许支付: " + order.getStatus());
+        }
+
+        // 后台「支付设置」开关校验：关闭的渠道/方式直接拒绝，
+        // 防止前端隐藏入口后仍可绕过 UI 直接调用接口发起支付。
+        String disabledReason = paymentMethodConfigService.findDisabledReason(
+                request.getPayChannel(), request.getPayMethod());
+        if (disabledReason != null) {
+            log.warn("Payment rejected by admin config: orderNo={}, channel={}, method={}, reason={}",
+                    request.getOrderNo(), request.getPayChannel(), request.getPayMethod(), disabledReason);
+            throw new IllegalStateException(disabledReason);
         }
 
         // 前置幂等：若同订单已有 PENDING 支付记录且未过期，复用其 transactionId 与跳转地址，
@@ -454,6 +469,7 @@ public class PaymentServiceImpl implements PaymentService {
      * 根据前端传入的 payMethod 细分，映射为 Stripe Checkout 要求的 payment_method_types 数组。
      *
      * 对照关系：
+     * CARD      -> card              用户明确选择"信用卡 / 借记卡"，只出卡类支付
      * APPLE_PAY -> card              （启用 card 后 Stripe 在支持的设备上动态出 Apple Pay 按钮）
      * GOOGLE_PAY-> card              （同上，动态出 Google Pay 按钮）
      * ALIPAY    -> alipay
@@ -470,6 +486,9 @@ public class PaymentServiceImpl implements PaymentService {
         }
         String m = payMethod.toUpperCase().trim();
         switch (m) {
+            // 用户明确选择"信用卡 / 借记卡"：必须限定 card，
+            // 否则不传 payment_method_types 会按 Dashboard 全量展示（可能夹带其他已启用方式）
+            case "CARD":
             case "APPLE_PAY":
             case "APPLEPAY":
             case "GOOGLE_PAY":

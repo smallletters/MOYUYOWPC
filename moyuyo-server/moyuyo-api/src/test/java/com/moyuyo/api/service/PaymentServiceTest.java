@@ -8,7 +8,10 @@ import com.moyuyo.dao.entity.PaymentEntity;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.PaymentMapper;
 import com.moyuyo.service.OrderService;
+import com.moyuyo.service.config.PaymentMethodConfigService;
 import com.moyuyo.service.impl.PaymentServiceImpl;
+import com.stripe.model.checkout.Session;
+import com.stripe.param.checkout.SessionCreateParams;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,11 +19,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 import javax.crypto.Mac;
@@ -56,6 +58,10 @@ class PaymentServiceTest {
 
   @Mock
   private ValueOperations<String, String> valueOperations;
+
+  /** 后台支付开关：默认全部放行（各用例不关心开关时无需单独配置） */
+  @Mock
+  private PaymentMethodConfigService paymentMethodConfigService;
 
   @InjectMocks
   private PaymentServiceImpl paymentService;
@@ -101,7 +107,6 @@ class PaymentServiceTest {
 
   // ==================== createPayment ====================
 
-  @SuppressWarnings("unchecked")
   @Test
   void createPayment_validStripeRequest_shouldReturnPaymentResponse() {
     // 准备：订单和请求
@@ -114,39 +119,46 @@ class PaymentServiceTest {
 
     when(orderService.getOrderByOrderNo("ORD20260721000001")).thenReturn(order);
 
-    // 模拟 Stripe API 响应
-    Map<String, Object> stripeResponse = Map.of(
-        "id", "pi_test_123",
-        "client_secret", "pi_test_123_secret_xyz"
-    );
-    ResponseEntity<Map> responseEntity = ResponseEntity.ok(stripeResponse);
-    when(restTemplate.postForEntity(
-        eq("https://api.stripe.com/v1/payment_intents"),
-        any(HttpEntity.class),
-        eq(Map.class)
-    )).thenReturn(responseEntity);
+    // 实现已从 PaymentIntent 切换为 Stripe Checkout Session，这里 mock SDK 静态方法
+    // 避免真实外呼；同时验证 sessionUrl / sessionId 正确落到响应与支付记录
+    Session session = mock(Session.class);
+    when(session.getId()).thenReturn("cs_test_123");
+    when(session.getUrl()).thenReturn("https://checkout.stripe.com/c/pay/cs_test_123");
 
-    // 准备请求
     CreatePaymentRequest request = new CreatePaymentRequest();
     request.setOrderNo("ORD20260721000001");
     request.setPayChannel("STRIPE");
+    request.setPayMethod("CARD");
 
-    // 执行（传入订单所属用户 ID）
-    CreatePaymentResponse result = paymentService.createPayment(100L, request);
+    // 捕获传给 Stripe 的会话参数，用于校验"选卡只出卡"
+    ArgumentCaptor<SessionCreateParams> paramsCaptor = ArgumentCaptor.forClass(SessionCreateParams.class);
 
-    // 验证响应
-    assertNotNull(result);
-    assertEquals("pi_test_123", result.getPaymentId());
-    assertEquals("pi_test_123_secret_xyz", result.getClientSecret());
-    assertNull(result.getApprovalUrl());
-    assertEquals("STRIPE", result.getPayChannel());
+    try (MockedStatic<Session> sessionMock = mockStatic(Session.class)) {
+      sessionMock.when(() -> Session.create(paramsCaptor.capture())).thenReturn(session);
+
+      // 执行（传入订单所属用户 ID）
+      CreatePaymentResponse result = paymentService.createPayment(100L, request);
+
+      // 验证响应
+      assertNotNull(result);
+      assertEquals("cs_test_123", result.getPaymentId());
+      assertEquals("https://checkout.stripe.com/c/pay/cs_test_123", result.getSessionUrl());
+      assertNull(result.getApprovalUrl());
+      assertEquals("STRIPE", result.getPayChannel());
+
+      // 验证 payMethod=CARD 时 payment_method_types 必须显式限定为 card，
+      // 不能落回"不传 → Stripe Dashboard 全量展示"的兜底分支
+      assertEquals(
+          java.util.List.of(SessionCreateParams.PaymentMethodType.CARD),
+          paramsCaptor.getValue().getPaymentMethodTypes());
+    }
 
     // 验证支付记录保存
     verify(paymentMapper).insert(paymentCaptor.capture());
     PaymentEntity savedPayment = paymentCaptor.getValue();
     assertEquals(1L, savedPayment.getOrderId());
     assertEquals("STRIPE", savedPayment.getPayChannel());
-    assertEquals("pi_test_123", savedPayment.getTransactionId());
+    assertEquals("cs_test_123", savedPayment.getTransactionId());
     assertEquals(new BigDecimal("99.99"), savedPayment.getAmount());
     assertEquals("PENDING", savedPayment.getStatus());
   }
@@ -209,6 +221,32 @@ class PaymentServiceTest {
   }
 
   @Test
+  void createPayment_channelDisabledByAdminConfig_shouldThrowIllegalStateException() {
+    // 准备：订单可支付，但后台「支付设置」已关闭 STRIPE 渠道
+    OrderEntity order = new OrderEntity();
+    order.setId(1L);
+    order.setUserId(100L);
+    order.setOrderNo("ORD20260721000001");
+    order.setStatus("PENDING_PAY");
+    order.setPayAmount(new BigDecimal("99.99"));
+
+    when(orderService.getOrderByOrderNo("ORD20260721000001")).thenReturn(order);
+    when(paymentMethodConfigService.findDisabledReason("STRIPE", "CARD"))
+        .thenReturn("支付渠道已关闭: STRIPE");
+
+    CreatePaymentRequest request = new CreatePaymentRequest();
+    request.setOrderNo("ORD20260721000001");
+    request.setPayChannel("STRIPE");
+    request.setPayMethod("CARD");
+
+    // 执行 & 验证：后台关闭的渠道必须在下单入口被拒绝（防止绕过前端）
+    IllegalStateException ex = assertThrows(IllegalStateException.class,
+        () -> paymentService.createPayment(100L, request));
+    assertTrue(ex.getMessage().contains("支付渠道已关闭"));
+    verify(paymentMapper, never()).insert(any(PaymentEntity.class));
+  }
+
+  @Test
   void createPayment_unsupportedChannel_shouldThrowIllegalArgumentException() {
     // 准备：不支持的支付渠道
     OrderEntity order = new OrderEntity();
@@ -251,13 +289,16 @@ class PaymentServiceTest {
     Map<String, String> headers = new HashMap<>();
     headers.put("stripe-signature", signature);
 
-    // 模拟 Redis 幂等检查：key 不存在（首次处理）
+    // 模拟 Redis 幂等检查：长期 key 不存在（首次处理），并成功抢到短期并发 lock
+    // 注意 lock key 带 :lock 后缀、TTL 为 5 分钟（WEBHOOK_LOCK_TTL_MINUTES），
+    // 与实现里的"先抢 lock、处理成功后再写 24h 长期 key"两段式幂等保持一致
     when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+    when(redisTemplate.hasKey("idempotent:webhook:evt_test_123")).thenReturn(false);
     when(valueOperations.setIfAbsent(
-        eq("idempotent:webhook:evt_test_123"),
+        eq("idempotent:webhook:evt_test_123:lock"),
         eq("1"),
-        eq(24L),
-        eq(TimeUnit.HOURS)
+        eq(5L),
+        eq(TimeUnit.MINUTES)
     )).thenReturn(true);
 
     // 执行
@@ -268,7 +309,7 @@ class PaymentServiceTest {
   }
 
   @Test
-  void handleWebhook_invalidSignature_shouldReturnSilently() throws Exception {
+  void handleWebhook_invalidSignature_shouldThrowToTriggerProviderRetry() throws Exception {
     // 准备：使用错误的签名
     ObjectMapper mapper = new ObjectMapper();
     String payload = mapper.writeValueAsString(Map.of(
@@ -279,10 +320,14 @@ class PaymentServiceTest {
     Map<String, String> headers = new HashMap<>();
     headers.put("stripe-signature", "t=1234567890,v1=invalid_signature_hash");
 
-    // 执行 & 验证：签名校验失败不应抛异常（webhook 通道必须返回 200 让支付渠道停止重试）
-    assertDoesNotThrow(() -> paymentService.handleWebhook("STRIPE", payload, headers));
+    // 执行 & 验证：验签失败必须抛异常让 controller 返 500，
+    // 使支付渠道按自身策略重投、运维能从告警感知 secret 配错；
+    // 若静默返回 200，渠道会认为已送达而停止重投，事件被永久丢弃
+    RuntimeException ex = assertThrows(RuntimeException.class,
+        () -> paymentService.handleWebhook("STRIPE", payload, headers));
+    assertTrue(ex.getMessage().contains("signature verification failed"));
 
-    // 验证 orderService.payCallback 未被调用
+    // 验证业务未被处理：orderService.payCallback 未被调用
     verify(orderService, never()).payCallback(anyString(), anyString(), anyString());
   }
 

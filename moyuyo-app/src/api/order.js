@@ -30,6 +30,15 @@ export function createPayment(data) {
   return post('/api/v1/payments/create', data, { showLoading: false })
 }
 
+/**
+ * 获取后台「系统配置 - 支付设置」中开启的支付方式（收银台动态展示的数据源）
+ * 返回 [{ code, channel, name, desc }]，code 为 CARD / GOOGLE_PAY / APPLE_PAY / PAYPAL
+ */
+export function getAvailablePaymentMethods() {
+  // 不展示 loading：收银台已有整页 loading，避免重复弹层
+  return get('/api/v1/payments/methods', {}, { showLoading: false })
+}
+
 export function getLogistics(orderId) {
   return get(`/api/v1/logistics/order/${orderId}`)
 }

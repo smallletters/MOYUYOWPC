@@ -422,9 +422,10 @@ const form = reactive({
 })
 
 const paymentMethods = ref([
-  { key: 'stripe', name: 'Stripe', desc: '信用卡 / 借记卡支付', enabled: true },
+  { key: 'stripe', name: 'Stripe', desc: '信用卡 / 借记卡支付（含 Google Pay）', enabled: true },
   { key: 'paypal', name: 'PayPal', desc: 'PayPal 账户支付', enabled: true },
-  { key: 'applepay', name: 'Apple Pay', desc: 'Apple 设备快捷支付', enabled: false }
+  // 默认开启：与后端「未配置的开关视为开启」保持一致，避免后台显示关闭但实际可用
+  { key: 'applepay', name: 'Apple Pay', desc: 'Apple 设备快捷支付', enabled: true }
 ])
 
 // 加载系统配置
@@ -484,23 +485,23 @@ async function loadConfig() {
           }
         }
       })
-    // 加载支付方式配置（从支付API获取名称和描述）
+    // 加载支付方式配置（名称 / 描述 / 开关状态均以后端为准，与 C 端收银台同源）
     try {
       const payRes = await getPaymentMethods()
       if (payRes && payRes.length > 0) {
-        // 合并API返回的支付方式，保留已保存的开关状态
+        // 后端返回的开关状态与真实生效一致（数据源与 C 端收银台同源），以它为准覆盖本地状态
         payRes.forEach(apiMethod => {
           const existing = paymentMethods.value.find(m => m.key === (apiMethod.code || apiMethod.key))
           if (existing) {
-            // 保留已从config恢复的enabled状态
             existing.name = apiMethod.name || existing.name
             existing.desc = apiMethod.desc || existing.desc
+            if (typeof apiMethod.enabled === 'boolean') existing.enabled = apiMethod.enabled
           } else if (apiMethod.code) {
             paymentMethods.value.push({
               key: apiMethod.code,
               name: apiMethod.name,
               desc: apiMethod.desc || '',
-              enabled: apiMethod.status === 'active'
+              enabled: apiMethod.enabled === true
             })
           }
         })

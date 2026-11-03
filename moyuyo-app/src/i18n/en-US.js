@@ -1354,6 +1354,8 @@ export default {
       addNew: '+ Add a new shipping address',
       phone: 'Phone:',
     },
+    // 后台关闭全部支付方式时的收银台提示
+    paymentEmpty: 'No payment method available. Please contact support.',
     item: {
       qty: 'Qty:',
       soldBy: 'Sold by:',

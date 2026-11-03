@@ -60,6 +60,10 @@
           <text class="block-title">{{ $t('checkout.sections.payment') }}</text>
         </view>
         <view class="block-body payment-body">
+          <!-- 后台把全部支付方式关闭时给出明确提示，避免用户看到空白区块 -->
+          <view v-if="i18nPaymentMethods.length === 0" class="pay-empty">
+            <text>{{ $t('checkout.paymentEmpty') }}</text>
+          </view>
           <view
             v-for="p in i18nPaymentMethods"
             :key="p.id"
@@ -354,12 +358,52 @@
 
 <script>
 import { orderApi, pointsApi, addressApi, couponApi, memberApi } from '@/api'
-import { getShippingMethods } from '@/api/order'
+import { getShippingMethods, getAvailablePaymentMethods } from '@/api/order'
 import { getFlashSales } from '@/api/flashSale'
 import { useCartStore } from '@/store'
 import { savePendingOrder } from '@/utils/storage'
 import { i18n } from '@/i18n'
 import { useAddressCountries } from '@/composables/useAddressCountries'
+
+/**
+ * 支付方式本地目录：只负责展示（i18n 文案 + 品牌标识）。
+ * 具体哪几种可用由后端 /api/v1/payments/methods 决定（受后台「支付设置」开关控制），
+ * 因此 code 必须与后端 PaymentMethodConfigService 的目录保持一致。
+ */
+const PAYMENT_METHOD_CATALOG = [
+  {
+    id: 'googlepay',
+    code: 'GOOGLE_PAY',
+    nameKey: 'orderPay.methods.googlepay.name',
+    descKey: 'orderPay.methods.googlepay.desc',
+    iconKey: 'googlepay',
+    iconText: 'G Pay',
+  },
+  {
+    id: 'applepay',
+    code: 'APPLE_PAY',
+    nameKey: 'orderPay.methods.applepay.name',
+    descKey: 'orderPay.methods.applepay.desc',
+    iconKey: 'applepay',
+    iconText: 'Pay',
+  },
+  {
+    id: 'paypal',
+    code: 'PAYPAL',
+    nameKey: 'orderPay.methods.paypal.name',
+    descKey: 'orderPay.methods.paypal.desc',
+    iconKey: 'paypal',
+    iconText: 'PP',
+  },
+  {
+    id: 'card',
+    code: 'CARD',
+    nameKey: 'orderPay.methods.card.name',
+    descKey: 'orderPay.methods.card.desc',
+    iconKey: 'card',
+    iconText: 'CARD',
+  },
+]
 
 export default {
   pageTitleKey: 'pageTitle.cartCheckout',
@@ -396,37 +440,9 @@ export default {
       shippingLoaded: false,
       // 默认选中第一个 ACTIVE method；地址变更或 subtotal 变化时重新拉取并保持选中态
       selectedShipping: '',
-      // 支付方式固定数据,文案走 i18n;品牌标识用 iconKey + iconText 由 view/text 绘制
-      paymentMethods: [
-        {
-          id: 'googlepay',
-          nameKey: 'orderPay.methods.googlepay.name',
-          descKey: 'orderPay.methods.googlepay.desc',
-          iconKey: 'googlepay',
-          iconText: 'G Pay',
-        },
-        {
-          id: 'applepay',
-          nameKey: 'orderPay.methods.applepay.name',
-          descKey: 'orderPay.methods.applepay.desc',
-          iconKey: 'applepay',
-          iconText: 'Pay',
-        },
-        {
-          id: 'paypal',
-          nameKey: 'orderPay.methods.paypal.name',
-          descKey: 'orderPay.methods.paypal.desc',
-          iconKey: 'paypal',
-          iconText: 'PP',
-        },
-        {
-          id: 'card',
-          nameKey: 'orderPay.methods.card.name',
-          descKey: 'orderPay.methods.card.desc',
-          iconKey: 'card',
-          iconText: 'CARD',
-        },
-      ],
+      // 支付方式展示目录,文案走 i18n;品牌标识用 iconKey + iconText 由 view/text 绘制。
+      // 初始为本地全量目录，onLoad 后按后端开关过滤（接口异常时保留全量兜底）
+      paymentMethods: PAYMENT_METHOD_CATALOG.slice(),
     }
   },
 
@@ -623,6 +639,7 @@ export default {
     this.loadMyCoupons()
     this.loadMemberDiscount()
     this.loadActiveFlashSales()
+    this.loadPaymentMethods()
   },
 
   // 从地址页返回时才会触发（uni-app 中 navigateBack 不会重触发 onLoad）
@@ -890,6 +907,26 @@ export default {
       }
     },
 
+    /**
+     * 从后端拉取后台「支付设置」中开启的支付方式，并过滤本地展示目录。
+     * 接口异常时保留本地全量目录：网络抖动不应阻断结算，后端 createPayment 仍会二次校验。
+     */
+    async loadPaymentMethods() {
+      try {
+        const list = await getAvailablePaymentMethods()
+        const enabledCodes = new Set(
+          (Array.isArray(list) ? list : []).map((m) => String(m.code || '').toUpperCase()),
+        )
+        this.paymentMethods = PAYMENT_METHOD_CATALOG.filter((p) => enabledCodes.has(p.code))
+        // 当前选中的方式被后台关闭后，回退到第一个可用方式
+        if (!this.paymentMethods.some((p) => p.id === this.selectedPayment)) {
+          this.selectedPayment = this.paymentMethods[0] ? this.paymentMethods[0].id : ''
+        }
+      } catch (e) {
+        console.warn('[checkout] loadPaymentMethods failed', e)
+      }
+    },
+
     /** 拉取进行中的秒杀商品，结算时这些商品不叠加会员折扣 */
     async loadActiveFlashSales() {
       try {
@@ -945,6 +982,11 @@ export default {
           icon: 'none',
           duration: 3000,
         })
+        return
+      }
+      // 后台关闭了全部支付方式时无法继续支付：提前拦截，避免用户下单后卡在支付页
+      if (!this.selectedPayment) {
+        uni.showToast({ title: i18n.t('checkout.paymentEmpty'), icon: 'none' })
         return
       }
 
@@ -1315,6 +1357,14 @@ export default {
 /* 支付方式行 */
 .payment-body {
   padding: 8rpx 0;
+}
+
+/* 无可用支付方式（后台关闭全部开关）时的提示 */
+.pay-empty {
+  padding: 20rpx 24rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: var(--color-text-tertiary);
 }
 
 .pay-row {
