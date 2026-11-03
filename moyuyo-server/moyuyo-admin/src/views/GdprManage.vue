@@ -296,7 +296,7 @@ import {
   getGdprConsentRecords, getGdprDataRequests, getActivePolicy,
   processGdprRequest, createGdprPolicy,
   getGdprMinorStats, getGdprMinorList, reverifyGdprMinor,
-  getGdprArchiveOverview, triggerGdprQuickAction
+  getGdprConsentProofs, getGdprArchiveOverview, triggerGdprQuickAction
 } from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
