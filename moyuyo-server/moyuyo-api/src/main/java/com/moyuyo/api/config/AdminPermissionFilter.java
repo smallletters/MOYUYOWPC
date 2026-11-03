@@ -22,10 +22,10 @@ import java.util.Set;
  * 在 JwtAuthFilter 之后执行，按"角色 → 资源:操作"校验管理端接口访问权限。
  * 资源取 URL 模块段（/api/admin/{resource}/...），操作按 HTTP 方法映射。
  * <p>
- * 历史问题：原 {@link #resolveResource} 仅取路径第一段，遇到 {@code /api/admin/product-group/...} 类
- * 子模块路径时会得到 "product-group"，与权限表中 "product" 不匹配导致越权拒绝。
- * 修复：维护一份 "子模块 → 主资源" 别名映射表，将子模块路径映射到已配置权限的主资源上；
- * 新增子模块时只需在别名表中追加，无需改动业务 Controller 注解或权限初始化逻辑。
+ * 资源键统一规则：直接使用 Controller {@code @RequestMapping} 的首段，与前端权限矩阵（RbacManage.vue）、
+ * mo_admin_permission.resource 一一对应，勾选即可生效。此处不再维护"子模块 → 主资源"别名表，
+ * 避免矩阵勾选 product-approval 却被按 product 校验之类的"配置不生效"问题。
+ * 新增管理端 Controller 时，只需在权限矩阵中补充对应资源行即可。
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -41,74 +41,12 @@ public class AdminPermissionFilter implements Filter {
     private static final String AUTH_PATH_PREFIX = "/api/admin/auth/";
 
     /**
-     * 子模块 → 主资源映射：将带连字符的子模块路径归一到已注册权限的主资源键。
-     * 命中后按主资源做权限校验；未命中则按路径首段原值校验。
-     * <p>
-     * 历史默认键（如 product / order / user 等）使用下划线或单词命名，新增子模块时请同步更新本表。
-     * <p>
-     * 注意：Map.of() 最多支持 10 对 K/V，超过会编译失败；本表使用 {@link java.util.Map#ofEntries(Map.Entry[])} 突破限制。
+     * 上传接口仅要求登录态，不纳入模块权限校验。
+     * 商品、内容、客服等模块都需要上传图片，若按 upload:create 校验，
+     * 所有非超管角色都会因缺少该权限而无法上传；上传接口内部已做类型/大小/路径校验，
+     * 风险由登录态与业务模块权限共同控制。
      */
-    private static final java.util.Map<String, String> RESOURCE_ALIASES = buildResourceAliases();
-
-    private static java.util.Map<String, String> buildResourceAliases() {
-        java.util.Map<String, String> m = new java.util.HashMap<>();
-        m.put("product-group", "product");
-        m.put("product-approval", "product");
-        m.put("product-report", "product");
-        m.put("order-tag", "order");
-        m.put("order-monitor", "order");
-        m.put("order-export", "order");
-        m.put("order-price-modify", "order");
-        m.put("inventory-transfer", "inventory");
-        m.put("flash-sale", "marketing");
-        m.put("campaign-marketing", "marketing");
-        m.put("coupon", "marketing");
-        m.put("points", "marketing");
-        m.put("lottery", "marketing");
-        m.put("live", "marketing");
-        m.put("push", "marketing");
-        m.put("sms", "marketing");
-        m.put("bargain", "marketing");
-        m.put("group-buy", "marketing");
-        m.put("bundle-deal", "marketing");
-        m.put("gift-card", "marketing");
-        m.put("member", "user");
-        m.put("user-profile", "user");
-        // 客服域子模块：直接使用路径首段作为资源键，与 V20260803 RBAC 矩阵对齐
-        // 之前归一到 "customer-service" 会导致 CUSTOMER_SVC/OPERATOR 等所有非超管角色 403
-        m.put("risk-alert", "risk");
-        m.put("risk-rule-engine", "risk");
-        m.put("blacklist", "risk");
-        m.put("sensitive-word", "risk");
-        m.put("review", "content");
-        m.put("content-review", "content");
-        m.put("cms", "content");
-        m.put("logistics", "logistics");
-        m.put("shipping-strategy", "logistics");
-        m.put("shipping-zone", "logistics");
-        m.put("shipping-rates", "logistics");
-        m.put("shipping-methods", "logistics");
-        m.put("warehouse", "inventory");
-        m.put("tariff", "finance");
-        m.put("settlement", "finance");
-        m.put("invoice", "finance");
-        m.put("refund", "finance");
-        m.put("exchange", "order");
-        m.put("gdpr", "compliance");
-        m.put("ab-test", "analytics");
-        m.put("funnel-analysis", "analytics");
-        m.put("rfm-analysis", "analytics");
-        m.put("carrier-compare", "analytics");
-        m.put("search-analysis", "analytics");
-        m.put("traffic-analysis", "analytics");
-        m.put("marketing-effect", "analytics");
-        m.put("rbac", "system");
-        m.put("audit-log", "system");
-        m.put("operation-log", "system");
-        m.put("system-config", "system");
-        m.put("app-version", "system");
-        return java.util.Collections.unmodifiableMap(m);
-    }
+    private static final String UPLOAD_PATH_PREFIX = "/api/admin/upload";
 
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain chain)
@@ -119,7 +57,10 @@ public class AdminPermissionFilter implements Filter {
         String path = request.getRequestURI();
 
         // 认证相关接口（登录/登出/当前用户信息）不做模块权限校验
-        if (path.startsWith(AUTH_PATH_PREFIX)) {
+        // 上传接口仅校验登录态，避免各业务角色因缺少 upload 权限而无法上传图片
+        if (path.startsWith(AUTH_PATH_PREFIX)
+                || path.equals(UPLOAD_PATH_PREFIX)
+                || path.startsWith(UPLOAD_PATH_PREFIX + "/")) {
             chain.doFilter(request, response);
             return;
         }
@@ -160,9 +101,10 @@ public class AdminPermissionFilter implements Filter {
     }
 
     /**
-     * 从 /api/admin/{resource}/... 提取资源段，无法解析时返回 null。
+     * 从 /api/admin/{resource}/... 提取资源段（即 Controller @RequestMapping 首段），无法解析时返回 null。
      * <p>
-     * 优先在 {@link #RESOURCE_ALIASES} 中查找子模块别名映射；未命中时按路径首段原值返回。
+     * 不做任何别名归一：资源键必须与权限矩阵、mo_admin_permission.resource 完全一致，
+     * 保证在 RBAC 页面勾选的就是接口实际校验的权限。
      */
     private String resolveResource(String path) {
         String prefix = "/api/admin/";
@@ -172,12 +114,7 @@ public class AdminPermissionFilter implements Filter {
         String rest = path.substring(prefix.length());
         int slash = rest.indexOf('/');
         String segment = slash >= 0 ? rest.substring(0, slash) : rest;
-        if (segment.isBlank()) {
-            return null;
-        }
-        // 子模块别名归一（null 表示无别名）
-        String alias = RESOURCE_ALIASES.get(segment);
-        return alias != null ? alias : segment;
+        return segment.isBlank() ? null : segment;
     }
 
     /** HTTP 方法 → 操作类型：GET→view / POST→create / PUT、PATCH→edit / DELETE→delete */

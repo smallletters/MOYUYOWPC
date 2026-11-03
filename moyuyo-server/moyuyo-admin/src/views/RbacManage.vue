@@ -247,6 +247,20 @@
             </div>
             <div class="rbac-form-row">
               <div class="rbac-form-group">
+                <label class="rbac-form-label">角色编码 <span class="rbac-required">*</span></label>
+                <input
+                  v-model="newRole.code"
+                  type="text"
+                  class="rbac-form-input"
+                  placeholder="如：CONTENT_REVIEWER（大写字母/数字/下划线）"
+                  maxlength="32"
+                  @keyup.enter="handleCreateSubmit"
+                />
+                <p class="rbac-form-help">编码用于绑定管理员账号，创建后不建议修改。</p>
+              </div>
+            </div>
+            <div class="rbac-form-row">
+              <div class="rbac-form-group">
                 <label class="rbac-form-label">角色描述</label>
                 <input
                   v-model="newRole.description"
@@ -538,7 +552,7 @@ const permModules = [
   { key: 'push', name: '推送管理' },
   { key: 'sms', name: '短信管理' },
   { key: 'finance', name: '财务管理' },
-  { key: 'settlement', name: '结算管理' },
+  { key: 'exchanges', name: '换货管理' },
   { key: 'refunds', name: '退款管理' },
   { key: 'review', name: '评价管理' },
   { key: 'content-review', name: '内容审核' },
@@ -547,6 +561,7 @@ const permModules = [
   { key: 'cs-sessions', name: '客服会话' },
   { key: 'ticket', name: '工单管理' },
   { key: 'complaint', name: '投诉管理' },
+  { key: 'feedback', name: '意见反馈' },
   { key: 'satisfaction', name: '满意度' },
   { key: 'logistics', name: '物流管理' },
   { key: 'inventory', name: '库存管理' },
@@ -621,6 +636,7 @@ const resetPwdDialogTitle = computed(() => {
 
 const newRole = reactive({
   name: '',
+  code: '',
   description: ''
 })
 
@@ -955,6 +971,7 @@ async function handleDeleteMember(member) {
 function openCreateDialog() {
   // 重置表单
   newRole.name = ''
+  newRole.code = ''
   newRole.description = ''
   createDialogVisible.value = true
   // 弹窗打开后自动聚焦到名称输入框
@@ -967,6 +984,7 @@ function openCreateDialog() {
 function cancelCreate() {
   createDialogVisible.value = false
   newRole.name = ''
+  newRole.code = ''
   newRole.description = ''
 }
 
@@ -977,27 +995,38 @@ async function handleCreateSubmit() {
     ElMessage.warning('请输入角色名称')
     return
   }
+  // 角色编码会写入 admin_user.role 并由权限过滤器查询权限，必须为规范的大写编码
+  const code = (newRole.code || '').trim().toUpperCase()
+  if (!/^[A-Z][A-Z0-9_]{1,31}$/.test(code)) {
+    ElMessage.warning('角色编码需以大写字母开头，仅含大写字母、数字、下划线，长度 2-32')
+    return
+  }
   creating.value = true
   try {
     const created = await createRbacRole({
       name,
+      code,
       description: (newRole.description || '').trim() || '暂无描述'
     })
     // 将新角色加入到本地列表
     roles.value.push({
       id: created.id,
+      // 保留角色编码，供「新建管理员账号」下拉绑定
+      code: created.code || code,
       name: created.name,
       description: created.description || '暂无描述',
       userCount: created.userCount ?? 0,
       isPreset: created.isPreset ?? false,
       permissions: created.permissions || []
     })
-    ElMessage.success(`角色「${name}」创建成功`)
+    ElMessage.success(`角色「${name}」创建成功，可在「新建管理员账号」中绑定该角色`)
     newRole.name = ''
+    newRole.code = ''
     newRole.description = ''
     createDialogVisible.value = false
   } catch (e) {
-    ElMessage.error('创建角色失败')
+    const msg = (e && e.message) || ''
+    ElMessage.error(msg.includes('角色') ? msg : '创建角色失败')
   } finally {
     creating.value = false
   }

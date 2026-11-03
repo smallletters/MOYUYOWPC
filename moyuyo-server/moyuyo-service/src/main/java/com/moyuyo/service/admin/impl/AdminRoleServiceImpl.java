@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null") // 抑制 MyBatis-Plus 3.x @Nonnull T 与 JDT 静态分析差异（LambdaQueryWrapper.eq/orderByDesc 方法引用）
 public class AdminRoleServiceImpl implements AdminRoleService {
 
   private final AdminRoleMapper adminRoleMapper;
@@ -136,6 +137,11 @@ public class AdminRoleServiceImpl implements AdminRoleService {
     AdminRoleEntity role = adminRoleMapper.selectById(roleId);
     if (role == null) {
       throw new IllegalArgumentException("角色不存在: " + roleId);
+    }
+    // 系统预设角色的权限由系统统一维护（前端矩阵已禁止勾选，此处为后端兜底）：
+    // 避免绕过页面直接调用接口改写 OPERATOR/FINANCE 等内置角色的权限
+    if (Boolean.TRUE.equals(role.getIsPreset())) {
+      throw new IllegalArgumentException("系统预设角色权限不可修改，请创建自定义角色后分配权限");
     }
     // 删除旧权限
     adminPermissionMapper.delete(

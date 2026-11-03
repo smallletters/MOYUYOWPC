@@ -1,5 +1,6 @@
 package com.moyuyo.api.controller.admin;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.moyuyo.BaseIntegrationTest;
 import com.moyuyo.common.JwtUtil;
 import com.moyuyo.dao.admin.entity.AdminPermissionEntity;
@@ -144,5 +145,40 @@ class AdminPermissionFilterTest extends BaseIntegrationTest {
                         .header("Authorization", token))
                 // userId=2 不在 mo_admin_user 表，返回业务 401，但不应被权限过滤器拦截为 403
                 .andExpect(jsonPath("$.code").value(401));
+    }
+
+    @Test
+    @DisplayName("子模块按自身资源键校验（product:view 不再放行 product-approval）")
+    void subModule_shouldRequireOwnResourcePermission() throws Exception {
+        // 仅授予 products 模块查看权限，未授予 product-approval
+        grantPermission("TEST_ROLE", "products", "view");
+        String token = "Bearer " + jwtUtil.generate(2L, "test@moyuyo.com", "TEST_ROLE");
+        // 移除别名归一后，product-approval 必须拥有自身权限，否则 403
+        mockMvc.perform(get("/api/admin/product-approval/list")
+                        .header("Authorization", token))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(403));
+    }
+
+    @Test
+    @DisplayName("上传接口仅校验登录态（无 upload 权限也可访问）")
+    void uploadApi_shouldBypassPermissionCheck() throws Exception {
+        String token = "Bearer " + jwtUtil.generate(2L, "test@moyuyo.com", "TEST_ROLE");
+        mockMvc.perform(get("/api/admin/upload/list")
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    /** 为指定角色追加一条权限（resource:action），用于构造子模块校验场景 */
+    @SuppressWarnings("null") // 抑制 MyBatis-Plus 3.x @Nonnull T 与 JDT 静态分析差异（LambdaQueryWrapper.eq 方法引用）
+    private void grantPermission(String roleCode, String resource, String action) {
+        AdminRoleEntity role = adminRoleMapper.selectOne(
+                new LambdaQueryWrapper<AdminRoleEntity>().eq(AdminRoleEntity::getCode, roleCode));
+        AdminPermissionEntity perm = new AdminPermissionEntity();
+        perm.setRoleId(role.getId());
+        perm.setResource(resource);
+        perm.setAction(action);
+        adminPermissionMapper.insert(perm);
     }
 }

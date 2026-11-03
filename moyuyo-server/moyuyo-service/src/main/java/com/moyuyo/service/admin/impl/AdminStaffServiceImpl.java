@@ -2,7 +2,9 @@ package com.moyuyo.service.admin.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyuyo.dao.admin.entity.AdminRoleEntity;
 import com.moyuyo.dao.admin.entity.AdminUserEntity;
+import com.moyuyo.dao.admin.mapper.AdminRoleMapper;
 import com.moyuyo.dao.admin.mapper.AdminUserMapper;
 import com.moyuyo.service.admin.AdminStaffService;
 import lombok.RequiredArgsConstructor;
@@ -22,29 +24,32 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null") // 抑制 MyBatis-Plus 3.x @Nonnull T 与 JDT 静态分析差异（LambdaQueryWrapper.eq/orderByDesc 方法引用）
 public class AdminStaffServiceImpl implements AdminStaffService {
 
-  /** 系统允许的合法角色编码白名单（与 Flyway 种子数据保持一致） */
-  private static final java.util.Set<String> ALLOWED_ROLES = java.util.Set.of(
-      "SUPER_ADMIN", "OPERATOR", "CUSTOMER_SVC", "FINANCE", "VIEWER");
+  private final AdminUserMapper adminUserMapper;
+  private final AdminRoleMapper adminRoleMapper;
+  /** 统一密码编码器 Bean，强度由 moyuyo.password.bcrypt-strength 控制（默认 12） */
+  private final PasswordEncoder passwordEncoder;
 
   /**
-   * 校验角色编码是否在白名单内（RBAC 与 admin_user.role 字段一致性约束）
-   * 任何新增/修改管理员都必须传入合法的角色编码；否则拒绝
+   * 校验角色编码是否合法（RBAC 与 admin_user.role 字段一致性约束）
+   * 规则：角色必须存在于 mo_admin_role 且为 ACTIVE 状态，这样 RBAC 页面新建的自定义角色才能直接绑定管理员。
+   * 任何新增/修改管理员都必须传入合法的角色编码；否则拒绝。
    */
-  private static void validateRoleOrThrow(String role) {
+  private void validateRoleOrThrow(String role) {
     if (role == null || role.isBlank()) {
       throw new IllegalArgumentException("角色不能为空");
     }
-    if (!ALLOWED_ROLES.contains(role)) {
-      throw new IllegalArgumentException(
-        "无效的角色编码: " + role + "；可选值：" + ALLOWED_ROLES);
+    AdminRoleEntity roleEntity = adminRoleMapper.selectOne(
+        new LambdaQueryWrapper<AdminRoleEntity>().eq(AdminRoleEntity::getCode, role));
+    if (roleEntity == null) {
+      throw new IllegalArgumentException("无效的角色编码: " + role + "；角色不存在或已删除");
+    }
+    if (!"ACTIVE".equals(roleEntity.getStatus())) {
+      throw new IllegalArgumentException("角色已禁用，无法绑定管理员: " + role);
     }
   }
-
-  private final AdminUserMapper adminUserMapper;
-  /** 统一密码编码器 Bean，强度由 moyuyo.password.bcrypt-strength 控制（默认 12） */
-  private final PasswordEncoder passwordEncoder;
 
   @Override
   public List<Map<String, Object>> listUsers() {
@@ -87,7 +92,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
       return error;
     }
 
-    // 1. 角色白名单校验（在 body 校验前先做，全局统一一处）
+    // 1. 角色合法性校验（角色必须存在且为 ACTIVE，支持 RBAC 页面新建的自定义角色）
     validateRoleOrThrow(targetRole);
     // 2. 权限提升防护：非 SUPER_ADMIN 操作者禁止创建 SUPER_ADMIN 账号（最小权限原则）
     String operatorRole = com.moyuyo.common.security.UserContextHolder.getRole();

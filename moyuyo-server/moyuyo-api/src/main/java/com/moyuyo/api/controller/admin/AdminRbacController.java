@@ -51,7 +51,7 @@ public class AdminRbacController {
       Map.entry("push", "推送管理"),
       Map.entry("sms", "短信管理"),
       Map.entry("finance", "财务管理"),
-      Map.entry("settlement", "结算管理"),
+      Map.entry("exchanges", "换货管理"),
       Map.entry("refunds", "退款管理"),
       Map.entry("review", "评价管理"),
       Map.entry("content-review", "内容审核"),
@@ -60,6 +60,7 @@ public class AdminRbacController {
       Map.entry("cs-sessions", "客服会话"),
       Map.entry("ticket", "工单管理"),
       Map.entry("complaint", "投诉管理"),
+      Map.entry("feedback", "意见反馈"),
       Map.entry("satisfaction", "满意度"),
       Map.entry("logistics", "物流管理"),
       Map.entry("inventory", "库存管理"),
@@ -117,10 +118,17 @@ public class AdminRbacController {
       }
       AdminRoleEntity entity = new AdminRoleEntity();
       entity.setName(name);
-      // code 字段在数据库中为 UNIQUE NOT NULL，必须有值；缺省时使用 name 作为 code
+      // code 字段在数据库中为 UNIQUE NOT NULL，必须有值；缺省时使用 name 作为 code（兼容旧前端）
       String code = (String) body.get("code");
-      if (code == null || code.isEmpty()) {
+      if (code == null || code.isBlank()) {
         code = entity.getName();
+      } else {
+        code = code.trim();
+        // 角色编码会写入 admin_user.role，并被权限过滤器用于查询角色权限，
+        // 统一为「大写字母开头 + 大写字母/数字/下划线」，避免中文/小写编码带来的绑定失败
+        if (!code.matches("^[A-Z][A-Z0-9_]{1,31}$")) {
+          return Result.error(400, "角色编码格式不合法：需以大写字母开头，仅含大写字母、数字、下划线，长度 2-32");
+        }
       }
       entity.setCode(code);
       entity.setDescription((String) body.get("description"));
@@ -413,6 +421,7 @@ public class AdminRbacController {
   // ==================== 辅助方法 ====================
 
   /** 构建角色展示项 */
+  @SuppressWarnings("null") // 抑制 MyBatis-Plus 3.x @Nonnull T 与 JDT 静态分析差异（LambdaQueryWrapper.eq 方法引用）
   private Map<String, Object> buildRoleItem(AdminRoleEntity e) {
     Map<String, Object> item = new LinkedHashMap<>();
     item.put("id", e.getId());

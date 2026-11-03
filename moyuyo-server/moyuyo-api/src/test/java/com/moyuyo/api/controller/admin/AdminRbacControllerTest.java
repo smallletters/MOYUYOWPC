@@ -3,17 +3,22 @@ package com.moyuyo.api.controller.admin;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.BaseIntegrationTest;
 import com.moyuyo.common.JwtUtil;
+import com.moyuyo.dao.admin.entity.AdminRoleEntity;
+import com.moyuyo.dao.admin.mapper.AdminRoleMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -28,6 +33,9 @@ class AdminRbacControllerTest extends BaseIntegrationTest {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private AdminRoleMapper adminRoleMapper;
 
     private String adminToken;
 
@@ -61,5 +69,24 @@ class AdminRbacControllerTest extends BaseIntegrationTest {
                 // id 为雪花 ID，经全局 Jackson 配置序列化为字符串
                 .andExpect(jsonPath("$.data.id").isString())
                 .andExpect(jsonPath("$.data.name").value("测试角色"));
+    }
+
+    @Test
+    @DisplayName("预设角色权限不可通过接口修改（后端兜底校验）")
+    void updatePermissions_presetRole_shouldReturn400() throws Exception {
+        AdminRoleEntity presetRole = new AdminRoleEntity();
+        presetRole.setName("预设角色测试");
+        presetRole.setCode("PRESET_TEST");
+        presetRole.setStatus("ACTIVE");
+        presetRole.setIsPreset(true);
+        adminRoleMapper.insert(presetRole);
+
+        Map<String, Object> body = Map.of("permKeys", List.of("dashboard:view"));
+        mockMvc.perform(put("/api/admin/rbac/roles/" + presetRole.getId() + "/permissions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", adminToken)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
     }
 }
