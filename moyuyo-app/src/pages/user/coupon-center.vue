@@ -46,8 +46,8 @@
         :time="coupon.validity"
         :type="coupon.themeType"
         shape="round"
-        :disabled="coupon.claimed"
-        :action-text="coupon.claimed ? coupon.claimedText : coupon.actionText"
+        :disabled="coupon.disabled"
+        :action-text="couponActionText(coupon)"
         @click="onClaim(coupon)"
       />
 
@@ -258,6 +258,9 @@ export default {
       // validity 拼装:优先显示结束日期;若 startTime 存在则一并显示
       const validity = this.formatValidity(c.startTime, c.endTime)
       const category = this.inferCategory(c, typeLabel)
+      const claimed = Boolean(c.claimedByMe || c.claimed)
+      // 库存售罄标记由后端列表接口产出（claimedCount >= totalCount），前端只负责置灰
+      const soldOut = Boolean(c.soldOut)
       return {
         id: c.id,
         category,
@@ -267,10 +270,11 @@ export default {
         name: c.name || '',
         condition,
         validity,
-        claimed: Boolean(c.claimedByMe || c.claimed),
+        claimed,
+        soldOut,
+        // 已领取 / 已领完都不可再点，统一置灰
+        disabled: claimed || soldOut,
         themeType: CATEGORY_TO_THEME[category] || 'primary',
-        actionText: i18n.t('couponCenter.goClaim'),
-        claimedText: i18n.t('couponCenter.claimed'),
       }
     },
 
@@ -323,8 +327,16 @@ export default {
       this.activeTab = value
     },
 
+    // 卡片按钮文案：已领取 > 已领完 > 立即领取
+    couponActionText(coupon) {
+      if (coupon.claimed) return i18n.t('couponCenter.claimed')
+      if (coupon.soldOut) return i18n.t('couponCenter.soldOut')
+      return i18n.t('couponCenter.goClaim')
+    },
+
     async onClaim(coupon) {
-      if (coupon.claimed) return
+      // 已领取 / 库存领完的卡片已置灰,这里再兜一层避免 H5 端误触发请求
+      if (coupon.claimed || coupon.soldOut) return
       // 防重:同一张券在请求未结束前不再触发第二次(避免 H5 端 u-coupon 按钮 + 卡片 click 双触发)
       if (this._claimingIds && this._claimingIds.has(coupon.id)) return
       if (!this._claimingIds) this._claimingIds = new Set()
@@ -338,11 +350,15 @@ export default {
         }
         uni.showToast({ title: i18n.t('couponCenter.claimSuccess'), icon: 'none' })
       } catch (e) {
-        // 后端 409 业务冲突(已领取过)时,使用后端 message;其它错误走通用失败提示
+        // 后端 409 业务冲突(已领取过)时,使用后端 message;库存领完时提示已领完;
+        // 其它错误走通用失败提示
         const backendMsg = e && e.body && e.body.message
         const isAlreadyClaimed =
           (e && e.statusCode === 409) ||
           (typeof backendMsg === 'string' && backendMsg.includes('已领取'))
+        const isSoldOut =
+          (typeof backendMsg === 'string' && backendMsg.includes('领完')) ||
+          (e && typeof e.message === 'string' && e.message.includes('领完'))
         if (isAlreadyClaimed) {
           const raw = this.rawCoupons.find((c) => c.id === coupon.id)
           if (raw) {
@@ -353,6 +369,11 @@ export default {
             title: backendMsg || i18n.t('couponCenter.alreadyClaimed'),
             icon: 'none',
           })
+        } else if (isSoldOut) {
+          // 库存被其他用户抢先领完:本地同步置灰,避免用户反复点击
+          const raw = this.rawCoupons.find((c) => c.id === coupon.id)
+          if (raw) raw.soldOut = true
+          uni.showToast({ title: i18n.t('couponCenter.soldOutToast'), icon: 'none' })
         } else {
           uni.showToast({ title: i18n.t('couponCenter.claimFailed'), icon: 'none' })
         }

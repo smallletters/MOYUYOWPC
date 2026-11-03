@@ -51,4 +51,11 @@ public class CouponEntity {
      */
     @TableField(exist = false)
     private Boolean claimedByMe;
+
+    /**
+     * 库存是否已领完（非持久化字段，由 Service 层在列表接口按 claimedCount/totalCount 计算）
+     * 用于 C 端"领券中心"页面把按钮置灰为"已领完"，避免用户点了才收到报错
+     */
+    @TableField(exist = false)
+    private Boolean soldOut;
 }

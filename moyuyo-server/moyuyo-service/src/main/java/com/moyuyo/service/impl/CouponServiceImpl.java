@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -47,6 +48,12 @@ public class CouponServiceImpl implements CouponService {
         }
         if (result.getRecords() == null) {
             result.setRecords(java.util.Collections.emptyList());
+        }
+        // 库存售罄标记：与 claimCoupon 的库存校验口径保持一致（claimedCount 达到 totalCount 即领完），
+        // 让 C 端"领券中心"能把按钮置灰为"已领完"，而不是等用户点了才收到 400 报错
+        for (CouponEntity c : result.getRecords()) {
+            c.setSoldOut(c.getTotalCount() != null && c.getClaimedCount() != null
+                    && c.getClaimedCount() >= c.getTotalCount());
         }
         // 已登录用户：批量查询其已领取的 couponId 集合，标记 claimedByMe
         if (userId != null && !result.getRecords().isEmpty()) {
@@ -130,12 +137,34 @@ public class CouponServiceImpl implements CouponService {
         // JDT 推断 this 为 @Nonnull 产生冲突,实际仅反射列名,运行时无 NPE 风险
         LambdaQueryWrapper<UserCouponEntity> q = new LambdaQueryWrapper<>();
         q.eq(UserCouponEntity::getUserId, userId);
-        if (status != null && !status.isEmpty()) q.eq(UserCouponEntity::getStatus, status);
         q.orderByDesc(UserCouponEntity::getCreateTime);
         // 返回 user_coupon 记录本身（含 id/status），不再 map 成券模板而丢掉 uc：
         // 前端下单必须拿到 userCouponId(mo_user_coupon.id) 才能核销，原实现返回的模板列表没有该字段
+        // 注意：不能先在 SQL 里按 status 过滤 —— "已过期"是按券模板 endTime 推导出来的展示状态，
+        // 库里只会有 UNUSED/LOCKED/USED，先过滤会让"已过期"列表永远为空
         List<UserCouponEntity> ucs = userCouponMapper.selectList(q);
-        return ucs == null ? Collections.emptyList() : ucs;
+        if (ucs == null || ucs.isEmpty()) {
+            return Collections.emptyList();
+        }
+        // 批量取券模板，避免逐条查询产生 N+1
+        Map<Long, CouponEntity> couponMap = mapCouponsByIds(
+                ucs.stream().map(UserCouponEntity::getCouponId).collect(Collectors.toList()));
+        LocalDateTime now = LocalDateTime.now();
+        List<UserCouponEntity> result = new ArrayList<>(ucs.size());
+        for (UserCouponEntity uc : ucs) {
+            CouponEntity coupon = couponMap.get(uc.getCouponId());
+            // 仅"未使用"的券会因模板到期变成已过期；LOCKED(待支付占用)/USED 保持原状态。
+            // 过期状态只在内存里推导用于展示，不落库，避免为此引入定时任务
+            if ("UNUSED".equals(uc.getStatus()) && coupon != null
+                    && coupon.getEndTime() != null && coupon.getEndTime().isBefore(now)) {
+                uc.setStatus("EXPIRED");
+            }
+            // 状态过滤放在推导之后，支持 status=EXPIRED 查询
+            if (status == null || status.isBlank() || status.equalsIgnoreCase(uc.getStatus())) {
+                result.add(uc);
+            }
+        }
+        return result;
     }
 
     @Override
@@ -318,6 +347,12 @@ public class CouponServiceImpl implements CouponService {
         if (uc == null) throw new IllegalArgumentException("用户优惠券不存在");
         if (!uc.getUserId().equals(fromUserId)) throw new IllegalArgumentException("无权转赠他人优惠券");
         if (!"UNUSED".equals(uc.getStatus())) throw new IllegalArgumentException("仅可转赠未使用优惠券");
+        // 券模板已到期：过期券不可转赠，否则受赠方拿到也无法使用（下单会被 endTime 校验拦下）
+        CouponEntity coupon = couponMapper.selectById(uc.getCouponId());
+        if (coupon != null && coupon.getEndTime() != null
+                && coupon.getEndTime().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("该优惠券已过期");
+        }
         uc.setUserId(toUserId);
         userCouponMapper.updateById(uc);
         log.info("Coupon transferred: from={} to={} userCouponId={}", fromUserId, toUserId, userCouponId);

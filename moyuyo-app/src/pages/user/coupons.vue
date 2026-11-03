@@ -30,18 +30,21 @@
           v-for="c in filteredCoupons"
           :key="c.id"
           class="coupon-card"
-          :class="{ used: c.status === 'used' }"
+          :class="{ used: c.status === 'USED', expired: c.status === 'EXPIRED' }"
         >
           <view class="coupon-left">
-            <text class="coupon-amount">{{ currencySymbol }}{{ c.amount }}</text>
-            <text class="coupon-threshold">
-              {{ $t('coupons.minOrder', { amount: c.threshold }) }}
-            </text>
+            <text class="coupon-amount">{{ c.amountText }}</text>
+            <text class="coupon-threshold">{{ c.thresholdText }}</text>
           </view>
           <view class="coupon-right">
-            <text class="coupon-name">{{ c.name }}</text>
-            <text class="coupon-scope">{{ c.scope }}</text>
-            <text class="coupon-expire">{{ $t('coupons.expiresAt', { date: c.expire }) }}</text>
+            <view class="coupon-title">
+              <text class="coupon-name">{{ c.name }}</text>
+              <text class="coupon-status" :class="'coupon-status-' + c.status.toLowerCase()">
+                {{ c.statusText }}
+              </text>
+            </view>
+            <text class="coupon-scope">{{ c.scopeText }}</text>
+            <text class="coupon-expire">{{ c.expireText }}</text>
           </view>
         </view>
       </view>
@@ -56,23 +59,28 @@ import { i18n } from '@/i18n'
 export default {
   data() {
     return {
-      activeTab: 'unused',
-      // tab label 改为 computed 计算(从字典读取,locale 切换时自动更新)
-      coupons: [],
+      // 状态统一使用后端大写值（UNUSED / LOCKED / USED / EXPIRED）
+      activeTab: 'UNUSED',
+      rawCoupons: [],
       localeVersion: 0,
     }
   },
 
   computed: {
     filteredCoupons() {
-      return this.coupons.filter((c) => c.status === this.activeTab)
+      void this.localeVersion
+      // 每次按当前语言归一化，保证切换语言时卡片文案同步刷新
+      return this.rawCoupons
+        .map((c) => this.normalizeCoupon(c))
+        .filter((c) => c.status === this.activeTab)
     },
     tabs() {
       void this.localeVersion
       return [
-        { value: 'unused', label: i18n.t('coupons.tabs.unused') },
-        { value: 'used', label: i18n.t('coupons.tabs.used') },
-        { value: 'expired', label: i18n.t('coupons.tabs.expired') },
+        { value: 'UNUSED', label: i18n.t('coupons.tabs.unused') },
+        { value: 'LOCKED', label: i18n.t('coupons.tabs.locked') },
+        { value: 'USED', label: i18n.t('coupons.tabs.used') },
+        { value: 'EXPIRED', label: i18n.t('coupons.tabs.expired') },
       ]
     },
     /**
@@ -98,11 +106,82 @@ export default {
   methods: {
     async loadCoupons() {
       try {
-        const list = await couponApi.getUserCoupons()
-        this.coupons = Array.isArray(list) ? list : []
+        // 一次拉全量：后端已按券模板 endTime 把过期券推导为 EXPIRED，
+        // 本地按 tab 筛选，避免每个 tab 各发一次请求
+        const list = await couponApi.getMyCoupons()
+        this.rawCoupons = Array.isArray(list) ? list : []
       } catch (e) {
         console.warn('[coupons] load failed', e)
+        this.rawCoupons = []
       }
+    },
+
+    /**
+     * 归一化后端 CouponView → 卡片展示模型
+     * - status：后端返回 UNUSED / LOCKED / USED / EXPIRED，统一转大写后比较
+     * - amount：AMOUNT → 货币符号+面额；PERCENT → 中文"X折"/英文"X% off"
+     * - threshold / scope / expire：由 minOrderAmount、description、endTime 拼装
+     */
+    normalizeCoupon(c) {
+      const status = String(c.status || 'UNUSED').toUpperCase()
+      const isPercent = String(c.type || '').toUpperCase() === 'PERCENT'
+      // displayValue 由后端按 UI 语义产出：PERCENT → 折数；AMOUNT → 减免金额
+      const displayValue = Number(c.displayValue != null ? c.displayValue : c.discountValue || 0)
+      const minAmt = Number(c.minOrderAmount || 0)
+      return {
+        // userCouponId 才是"我的一张券"的唯一主键（同一券模板可能被多人各领一张）
+        id: c.userCouponId || c.id,
+        status,
+        statusText: this.statusText(status),
+        amountText: this.formatAmount(c, isPercent, displayValue),
+        thresholdText:
+          minAmt > 0
+            ? i18n.t('coupons.minOrder', { amount: this.formatMoney(minAmt) })
+            : i18n.t('couponCenter.noThreshold'),
+        scopeText:
+          c.description ||
+          i18n.t(isPercent ? 'couponCenter.percentCoupon' : 'couponCenter.amountCoupon'),
+        expireText: this.formatExpire(c.endTime),
+        name: c.name || '',
+      }
+    },
+
+    statusText(status) {
+      const map = {
+        UNUSED: 'coupons.tabs.unused',
+        LOCKED: 'coupons.tabs.locked',
+        USED: 'coupons.tabs.used',
+        EXPIRED: 'coupons.tabs.expired',
+      }
+      return i18n.t(map[status] || 'coupons.tabs.unused')
+    },
+
+    /**
+     * 面额展示：AMOUNT → ¥/ $ + 两位小数；PERCENT → 中文"X折"、英文"X% off"
+     * 后端 discountValue 对 PERCENT 存的是"价格百分比"(90=9折)，所以英文按 100-discountValue 换算
+     */
+    formatAmount(c, isPercent, displayValue) {
+      if (!isPercent) return this.formatMoney(displayValue)
+      const isZh = String(i18n.locale || '')
+        .toLowerCase()
+        .startsWith('zh')
+      const num = isZh ? displayValue : 100 - Number(c.discountValue || 0)
+      return `${String(num).replace(/\.0+$/, '')}${i18n.t('couponCenter.discountUnit')}`
+    },
+
+    formatMoney(v) {
+      return `${this.currencySymbol}${Number(v).toFixed(2)}`
+    },
+
+    formatExpire(endTime) {
+      if (!endTime) return i18n.t('couponCenter.validityLongTerm')
+      // 后端返 LocalDateTime 形如 "2026-12-31T23:59:59" 或 "2026-12-31 23:59:59"
+      const d = new Date(String(endTime).replace(' ', 'T'))
+      if (Number.isNaN(d.getTime())) return ''
+      const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+        d.getDate(),
+      ).padStart(2, '0')}`
+      return i18n.t('coupons.expiresAt', { date })
     },
 
     goBack() {
@@ -220,6 +299,11 @@ export default {
   opacity: 0.5;
 }
 
+/* 已过期券置灰，与"已使用"区分：过期用状态角标 + 稍浅透明度 */
+.coupon-card.expired {
+  opacity: 0.6;
+}
+
 .coupon-left {
   width: 200rpx;
   padding: 24rpx 16rpx;
@@ -249,10 +333,35 @@ export default {
   gap: 8rpx;
 }
 
+.coupon-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
 .coupon-name {
+  flex: 1;
+  min-width: 0;
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
   color: var(--color-text);
+}
+
+/* 状态角标：未使用/已使用/已过期/待支付占用 */
+.coupon-status {
+  flex-shrink: 0;
+  padding: 4rpx 12rpx;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  background: var(--color-divider);
+  color: var(--color-text-secondary);
+}
+
+.coupon-status-expired {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--color-text-tertiary);
 }
 
 .coupon-scope {

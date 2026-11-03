@@ -50,6 +50,10 @@ public class CouponController {
         return Result.success();
     }
 
+    // 抑制 JDT 静态检查的 null type safety 警告（67109822, severity 4）：
+    // Lombok @Data 生成的 getter 被推断为 @Nonnull，与 MyBatis-Plus 的
+    // Function<UserCouponEntity, Long> 函数描述符不严格匹配；javac 编译无此告警，运行时无影响
+    @SuppressWarnings("null")
     @Operation(summary = "我的优惠券")
     @GetMapping("/mine")
     public Result<List<CouponView>> myCoupons(
@@ -101,10 +105,17 @@ public class CouponController {
             throw new IllegalArgumentException("用户优惠券不存在");
         }
         CouponEntity c = couponService.getCouponDetail(uc.getCouponId());
+        // 券模板到期后库里仍是 UNUSED，这里按模板 endTime 推导展示状态，
+        // 与 /mine 列表口径一致（不落库，避免引入定时任务）
+        String status = uc.getStatus();
+        if ("UNUSED".equals(status) && c != null && c.getEndTime() != null
+                && c.getEndTime().isBefore(java.time.LocalDateTime.now())) {
+            status = "EXPIRED";
+        }
         java.util.Map<String, Object> r = new java.util.HashMap<>();
         r.put("id", uc.getId());
         r.put("couponId", uc.getCouponId());
-        r.put("status", uc.getStatus());
+        r.put("status", status);
         r.put("usedTime", uc.getUsedTime());
         r.put("usedOrderId", uc.getUsedOrderId());
         r.put("createTime", uc.getCreateTime());
@@ -117,6 +128,9 @@ public class CouponController {
             r.put("displayValue", toDisplayValue(c));
             r.put("minOrderAmount", c.getMinOrderAmount());
             r.put("maxDiscountAmount", c.getMaxDiscountAmount());
+            // 有效期：详情页据此展示，并在券模板到期时配合 status 隐藏"去使用/转赠"
+            r.put("startTime", c.getStartTime());
+            r.put("endTime", c.getEndTime());
         }
         return Result.success(r);
     }
@@ -168,6 +182,8 @@ public class CouponController {
         public java.time.LocalDateTime endTime;
         public Boolean active;
         public Boolean claimedByMe;
+        /** 库存是否已领完（前端据此把领取按钮置灰为"已领完"） */
+        public Boolean soldOut;
         public java.time.LocalDateTime createTime;
 
         // ===== 用户券维度（仅"我的优惠券"填充；可领列表/详情为 null）=====
@@ -197,6 +213,7 @@ public class CouponController {
             v.endTime = c.getEndTime();
             v.active = c.getActive();
             v.claimedByMe = c.getClaimedByMe();
+            v.soldOut = c.getSoldOut();
             v.createTime = c.getCreateTime();
             return v;
         }

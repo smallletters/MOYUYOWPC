@@ -50,6 +50,10 @@
           <text class="row-label">{{ $t('couponDetail.maxDiscount') }}</text>
           <text class="row-value">{{ currencySymbol }}{{ detail.maxDiscountAmount }}</text>
         </view>
+        <view v-if="validityText" class="row">
+          <text class="row-label">{{ $t('couponDetail.validity') }}</text>
+          <text class="row-value">{{ validityText }}</text>
+        </view>
         <view class="row">
           <text class="row-label">{{ $t('couponDetail.claimTime') }}</text>
           <text class="row-value">{{ formatTime(detail.createTime) }}</text>
@@ -61,10 +65,10 @@
       </view>
 
       <view class="actions">
-        <view v-if="detail.status === 'UNUSED'" class="btn primary" @tap="goUse">
+        <view v-if="usable" class="btn primary" @tap="goUse">
           {{ $t('couponDetail.useNow') }}
         </view>
-        <view v-if="detail.status === 'UNUSED'" class="btn" @tap="goTransfer">
+        <view v-if="usable" class="btn" @tap="goTransfer">
           {{ $t('couponDetail.transfer') }}
         </view>
       </view>
@@ -91,6 +95,33 @@ export default {
     currencySymbol() {
       void this.localeVersion
       return i18n.currencySymbol
+    },
+
+    /** 券是否已过期：优先后端推导出的 EXPIRED 状态，再用 endTime 兜底（防止接口未刷新） */
+    isExpired() {
+      if (!this.detail) return false
+      if (String(this.detail.status || '').toUpperCase() === 'EXPIRED') return true
+      if (!this.detail.endTime) return false
+      const d = new Date(String(this.detail.endTime).replace(' ', 'T'))
+      return !Number.isNaN(d.getTime()) && d <= new Date()
+    },
+
+    /** 仅"未使用且未过期"的券可继续使用/转赠 */
+    usable() {
+      return (
+        String((this.detail && this.detail.status) || '').toUpperCase() === 'UNUSED' &&
+        !this.isExpired
+      )
+    },
+
+    /** 有效期行文案：有开始+结束时间时展示区间，否则只展示结束时间 */
+    validityText() {
+      void this.localeVersion
+      if (!this.detail) return ''
+      const s = this.formatTime(this.detail.startTime)
+      const e = this.formatTime(this.detail.endTime)
+      if (s && e) return `${s} ~ ${e}`
+      return e || s
     },
   },
 

@@ -31,7 +31,8 @@ public interface CouponService {
      * 这样前端才能拿到 userCouponId 用于下单核销（原实现 map(uc -&gt; couponMap.get(...)) 丢掉了 uc 本身）。
      *
      * @param userId 当前用户
-     * @param status 可选：精确匹配 mo_user_coupon.status（如 UNUSED / LOCKED / USED）；为空则不过滤
+     * @param status 可选：按展示状态过滤（UNUSED / LOCKED / USED / EXPIRED）；为空则不过滤。
+     *               EXPIRED 不落库，由券模板 endTime 推导：未使用且模板已到期即视为已过期
      */
     List<UserCouponEntity> listUserCoupons(Long userId, String status);
 
