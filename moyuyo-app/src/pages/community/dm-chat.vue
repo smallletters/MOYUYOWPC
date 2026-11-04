@@ -277,6 +277,44 @@
         <text class="dm-quote-preview-text">{{ quotedMessage.content }}</text>
         <text class="dm-quote-preview-close" @tap="quotedMessage = null">✕</text>
       </view>
+      <!-- @成员候选面板：群聊中输入 @ 后展开，随输入昵称实时过滤 -->
+      <view v-if="mentionPanelVisible" class="dm-mention-panel" @mousedown.prevent="noop">
+        <view class="dm-mention-head">
+          <text class="dm-mention-title">{{ $t('dmChat.mentionTitle') }}</text>
+          <text class="dm-mention-hint">
+            {{
+              mentionQuery
+                ? $t('dmChat.mentionMatchQuery', { query: mentionQuery })
+                : $t('dmChat.mentionHint')
+            }}
+          </text>
+        </view>
+        <scroll-view scroll-y class="dm-mention-list" :style="{ height: mentionListHeight }">
+          <view v-if="!mentionCandidates.length" class="dm-mention-empty">
+            {{ $t('dmChat.mentionNoMatch') }}
+          </view>
+          <view
+            v-for="member in mentionCandidates"
+            :key="member.userId"
+            class="dm-mention-item"
+            @tap="pickMention(member)"
+          >
+            <image
+              v-if="member.avatarUrl"
+              :src="member.avatarUrl"
+              class="dm-mention-avatar"
+              mode="aspectFill"
+            />
+            <view v-else class="dm-mention-avatar dm-mention-avatar--letter">
+              {{ member.letter }}
+            </view>
+            <text class="dm-mention-name">{{ member.nickname }}</text>
+            <text v-if="member.owner" class="dm-mention-owner-tag">
+              {{ $t('dmChat.groupOwner') }}
+            </text>
+          </view>
+        </scroll-view>
+      </view>
       <view class="input-row">
         <view class="add-btn" @tap="addAttachment">
           <text class="add-icon">＋</text>
@@ -291,10 +329,6 @@
         >
           <text class="luc luc-mic" />
         </view>
-        <!-- @成员：仅群聊展示 -->
-        <view v-if="isGroup" class="mention-btn" @tap="showMentionPicker">
-          <text class="mention-icon">@</text>
-        </view>
         <view class="input-wrapper">
           <input
             v-model="inputText"
@@ -304,7 +338,8 @@
             confirm-type="send"
             :adjust-position="false"
             @focus="onInputFocus"
-            @input="saveDraft"
+            @input="onInputChange"
+            @blur="onInputBlur"
             @confirm="sendMessage"
           >
         </view>
@@ -551,6 +586,30 @@ const inviteCandidates = ref([])
 const groupBusy = ref(false)
 // 群公告
 const groupAnnouncement = ref('')
+// 输入框 @成员候选面板：输入 @ 后展开
+const mentionPanelVisible = ref(false)
+const mentionQuery = ref('')
+// 当前 @ 片段在输入框中的起止下标（选中成员后替换这一段文本）
+const mentionRangeStart = ref(-1)
+const mentionRangeEnd = ref(-1)
+// 失焦延迟关闭计时器：给点击候选成员留出触发时间
+let mentionBlurTimer = null
+
+/** @候选成员：排除自己，按输入的关键词过滤（昵称包含匹配） */
+const mentionCandidates = computed(() => {
+  if (!isGroup.value) return []
+  const keyword = mentionQuery.value.trim().toLowerCase()
+  return groupMembers.value.filter((member) => {
+    if (member.isSelf || !member.nickname) return false
+    return !keyword || member.nickname.toLowerCase().includes(keyword)
+  })
+})
+
+/** 候选面板高度：按候选人数自适应，成员较少时不出现大片空白 */
+const mentionListHeight = computed(() => {
+  const height = Math.max(96, mentionCandidates.value.length * 88)
+  return `${Math.min(360, height)}rpx`
+})
 // 当前用户是否群主（决定是否展示移除成员/邀请入口）
 const isGroupOwner = computed(
   () => isGroup.value && String(groupOwnerId.value) === String(useUserStore().userId || ''),
@@ -882,6 +941,10 @@ onUnmounted(() => {
     clearTimeout(searchTimer)
     searchTimer = null
   }
+  if (mentionBlurTimer) {
+    clearTimeout(mentionBlurTimer)
+    mentionBlurTimer = null
+  }
 })
 
 function toggleProfile() {
@@ -914,6 +977,9 @@ function scrollToBottom() {
     scrollToId.value = `msg-${messages.value.length - 1}`
   })
 }
+
+/** 空函数：候选面板按下时阻止默认行为，避免输入框失焦（H5） */
+function noop() {}
 
 /** 输入框聚焦（软键盘弹出）后滚到最新消息，避免键盘遮挡刚输入的内容 */
 function onInputFocus() {
@@ -1164,23 +1230,64 @@ function showGroupAnnouncement() {
   })
 }
 
-/** @成员：选择群成员后把「@昵称」插入输入框 */
-function showMentionPicker() {
+/**
+ * 输入框内容变化：保存草稿，并检测光标前是否处于「@昵称」输入片段。
+ * 命中规则：@ 位于开头或空白之后，光标紧跟其后，中间不含空格/@（最多 20 字）。
+ */
+function onInputChange(e) {
+  saveDraft()
   if (!isGroup.value) return
-  const candidates = groupMembers.value.filter((member) => !member.isSelf && member.nickname)
-  if (!candidates.length) {
-    uni.showToast({ title: t('dmChat.mentionEmpty'), icon: 'none' })
+  const detail = (e && e.detail) || {}
+  const value = typeof detail.value === 'string' ? detail.value : inputText.value
+  const cursor = typeof detail.cursor === 'number' ? detail.cursor : value.length
+  syncMentionPanel(value, cursor)
+}
+
+/** 根据输入内容与光标位置同步 @成员候选面板（未命中则关闭） */
+function syncMentionPanel(value, cursor) {
+  const before = String(value || '').slice(0, cursor)
+  const atIndex = before.lastIndexOf('@')
+  const query = atIndex >= 0 ? before.slice(atIndex + 1) : ''
+  // @ 后到光标之间不能含空白（输入空格即结束提及，关闭面板）
+  const hit = atIndex >= 0 && /(^|[\s\n])@[^@\s]{0,20}$/.test(before)
+  if (!hit) {
+    closeMentionPanel()
     return
   }
-  uni.showActionSheet({
-    itemList: candidates.map((member) => member.nickname),
-    success: (res) => {
-      const member = candidates[Number(res.tapIndex)]
-      if (!member) return
-      const prefix = inputText.value && /\S$/.test(inputText.value) ? ' ' : ''
-      inputText.value = `${inputText.value}${prefix}@${member.nickname} `
-    },
-  })
+  mentionRangeStart.value = atIndex
+  mentionRangeEnd.value = cursor
+  mentionQuery.value = query
+  mentionPanelVisible.value = true
+}
+
+/** 关闭 @成员候选面板并清空输入片段状态 */
+function closeMentionPanel() {
+  mentionPanelVisible.value = false
+  mentionQuery.value = ''
+  mentionRangeStart.value = -1
+  mentionRangeEnd.value = -1
+}
+
+/** 输入框失焦：延迟关闭面板，避免点击候选成员的 tap 被提前取消 */
+function onInputBlur() {
+  if (mentionBlurTimer) clearTimeout(mentionBlurTimer)
+  mentionBlurTimer = setTimeout(() => {
+    mentionBlurTimer = null
+    if (mentionPanelVisible.value) closeMentionPanel()
+  }, 150)
+}
+
+/** 选中候选成员：把输入框中「@查询词」替换为「@昵称 」 */
+function pickMention(member) {
+  if (!member || !member.nickname) return
+  const start = mentionRangeStart.value
+  const end = mentionRangeEnd.value
+  if (start < 0 || end < 0) return
+  const text = inputText.value || ''
+  const tag = `@${member.nickname} `
+  inputText.value = text.slice(0, start) + tag + text.slice(end)
+  closeMentionPanel()
+  saveDraft()
 }
 
 /** 群主移除成员 */
@@ -1439,6 +1546,7 @@ async function sendMessage() {
   messages.value.push(local)
   inputText.value = ''
   quotedMessage.value = null
+  closeMentionPanel()
   clearDraft()
   scrollToBottom()
   const error = await pushMessage(local)
@@ -3472,22 +3580,90 @@ onMounted(() => {
   color: var(--color-text-secondary);
 }
 
-/* @成员按钮 */
-.mention-btn {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 50%;
+/* @成员候选面板：位于输入栏上方，随输入内容过滤群成员 */
+.dm-mention-panel {
+  margin-bottom: 12rpx;
+  border-radius: 20rpx;
   background: var(--color-background);
+  border: 1rpx solid var(--color-border);
+  overflow: hidden;
+}
+
+.dm-mention-head {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 16rpx 24rpx 8rpx;
+}
+
+.dm-mention-title {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: var(--color-text);
   flex-shrink: 0;
 }
 
-.mention-icon {
-  font-size: 30rpx;
+.dm-mention-hint {
+  font-size: 22rpx;
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dm-mention-list {
+  width: 100%;
+}
+
+.dm-mention-empty {
+  padding: 28rpx 0;
+  text-align: center;
+  font-size: 22rpx;
+  color: var(--color-text-tertiary);
+}
+
+.dm-mention-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 24rpx;
+}
+
+.dm-mention-avatar {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dm-mention-avatar--letter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: 22rpx;
   font-weight: 700;
-  color: var(--color-text-secondary);
+}
+
+.dm-mention-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 26rpx;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dm-mention-owner-tag {
+  padding: 2rpx 10rpx;
+  border-radius: 10rpx;
+  font-size: 18rpx;
+  color: #b7791f;
+  background: rgba(183, 121, 31, 0.12);
+  flex-shrink: 0;
 }
 
 /* 消息中的 @昵称高亮 */
