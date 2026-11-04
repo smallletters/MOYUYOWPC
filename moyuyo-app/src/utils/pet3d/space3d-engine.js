@@ -52,6 +52,22 @@ export function setHostBridge(fn) {
   if (typeof fn === 'function') uniHostBridge = fn
 }
 
+/**
+ * 当前使用的模型地址（由逻辑层从后台配置接口拉取后注入）。
+ * 后台未配置时保持内置默认值，保证引擎单独运行也能加载。
+ */
+const DEFAULT_MODEL_URLS = {
+  scene: '/static/models/home.glb',
+  avatarIdle: '/static/models/0.fbx',
+  avatarWalk: '/static/models/1.fbx',
+}
+let modelUrls = { ...DEFAULT_MODEL_URLS }
+
+export function setModelUrls(urls) {
+  if (!urls || typeof urls !== 'object') return
+  modelUrls = { ...DEFAULT_MODEL_URLS, ...urls }
+}
+
 const callHost = (action, payload) => {
   if (!uniHostBridge) return
   try {
@@ -766,7 +782,7 @@ export const pageOptions = {
      */
     async loadModel(renderer, scene) {
       this.loadingText = this.$t('petHub3d.loadingModel')
-      const modelUrl = '/static/models/home.glb'
+      const modelUrl = modelUrls.scene
       let localUrl
       try {
         const source = await this.resolveModelSource(modelUrl, (p) => {
@@ -1627,8 +1643,8 @@ export const pageOptions = {
       // 并行下载 + 解析两个 FBX(0=静态 / 1=走路)
       // 失败不致命:任一缺失时不显示对应化身(不影响另一个生效)
       const results = await Promise.allSettled([
-        this.loadFigureFbx('/static/models/0.fbx', 'idle'),
-        this.loadFigureFbx('/static/models/1.fbx', 'walk'),
+        this.loadFigureFbx(modelUrls.avatarIdle, 'idle'),
+        this.loadFigureFbx(modelUrls.avatarWalk, 'walk'),
       ])
       const ok = results.filter((r) => r.status === 'fulfilled')
 

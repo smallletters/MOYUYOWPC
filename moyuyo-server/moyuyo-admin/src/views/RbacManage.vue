@@ -578,6 +578,7 @@ const permModules = [
   { key: 'system-info', name: '系统信息' },
   { key: 'settings', name: '系统设置' },
   { key: 'app-version', name: '版本管理' },
+  { key: 'pet-space-model', name: '3D空间模型' },
   { key: 'batch-import', name: '批量导入' },
   { key: 'audit-log', name: '审计日志' }
 ]

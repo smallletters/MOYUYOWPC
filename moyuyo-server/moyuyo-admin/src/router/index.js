@@ -308,6 +308,13 @@ const routes = [
         meta: { title: '应用版本管理' }
       },
       {
+        // APP 宠物 3D 空间的房间场景 / 角色模型管理
+        path: 'pet-space-model',
+        name: 'PetSpaceModel',
+        component: () => import('../views/PetSpaceModel.vue'),
+        meta: { title: '3D空间模型' }
+      },
+      {
         path: 'batch-import',
         name: 'BatchImport',
         component: () => import('../views/BatchImport.vue'),

@@ -241,6 +241,7 @@ const navGroups = [
       { path: '/live-manage', label: '直播管理' },
       { path: '/satisfaction', label: '满意度管理' },
       { path: '/app-version', label: '版本管理' },
+      { path: '/pet-space-model', label: '3D空间模型' },
       { path: '/complaint', label: '投诉管理' },
       { path: '/feedback', label: '意见反馈' },
       { path: '/complaint-handle', label: '投诉处理' },

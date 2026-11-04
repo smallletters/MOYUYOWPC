@@ -14,7 +14,7 @@
  *
  * 业务代码一行没改，只换了宿主。
  */
-import { pageOptions, setModelResolver, setHostBridge } from './space3d-engine'
+import { pageOptions, setModelResolver, setHostBridge, setModelUrls } from './space3d-engine'
 
 /**
  * 需要镜像到逻辑层（也就是要显示在 HUD 上）的字段。
@@ -63,11 +63,13 @@ const digest = (v) => (v && typeof v === 'object' ? JSON.stringify(v) : v)
  * @param {(key:string, params?:object)=>string} host.t  文案
  * @param {(patch:object)=>void} host.onState            状态回流
  * @param {(url:string)=>Promise<{primary:string,fallback:string|null}>} host.modelResolver
+ * @param {object} host.modelUrls     后台配置的房间 / 角色模型地址
  * @param {(action:string, payload:any)=>void} host.onHostAction
  * @returns {object} engine
  */
 export function createEngine(host) {
   if (host.modelResolver) setModelResolver(host.modelResolver)
+  if (host.modelUrls) setModelUrls(host.modelUrls)
   if (host.onHostAction) setHostBridge(host.onHostAction)
 
   const engine = {}

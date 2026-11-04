@@ -52,6 +52,14 @@ export function getAchievements(petId) {
   return get(`/api/v1/pets/${petId}/achievements`)
 }
 
+/**
+ * 3D 空间模型配置：管理后台启用的房间场景 / 静态角色 / 行走角色
+ * 失败时静默返回，由调用方回退到内置模型地址
+ */
+export function getPetSpaceModels() {
+  return get('/api/v1/pet-space/models', {}, { showError: false })
+}
+
 export default {
   getPets,
   getPetDetail,
@@ -66,4 +74,5 @@ export default {
   updateReminder,
   getCareSummary,
   getAchievements,
+  getPetSpaceModels,
 }

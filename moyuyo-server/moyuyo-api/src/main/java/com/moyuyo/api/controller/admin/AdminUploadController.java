@@ -84,6 +84,13 @@ public class AdminUploadController {
     private static final Set<String> ALLOWED_CT = new HashSet<>(
             Arrays.asList("image/png", "image/jpg", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"));
 
+    /** 3D 模型白名单：仅校验扩展名（模型文件 Content-Type 多为 application/octet-stream） */
+    private static final Set<String> ALLOWED_MODEL_EXT = new HashSet<>(
+            Arrays.asList("glb", "gltf", "fbx", "bin", "png", "jpg", "jpeg", "webp", "ktx2", "hdr", "zip"));
+
+    /** 3D 模型独立子目录，避免与图片素材混在一起 */
+    private static final String MODEL_UPLOAD_DIR = "models";
+
     /** 上传根目录：可通过 MOYUYO_UPLOAD_DIR 环境变量覆盖（生产环境建议挂载到持久卷） */
     @Value("${moyuyo.upload.dir:/tmp/moyuyo-uploads}")
     private String uploadDir;
@@ -207,6 +214,59 @@ public class AdminUploadController {
             return Result.badRequest("所有文件上传失败");
         }
         return Result.success(results);
+    }
+
+    /**
+     * 上传 3D 模型文件（GLB / GLTF / FBX 及贴图、bin 等附属文件）。
+     * <p>
+     * POST /api/admin/upload/model
+     * multipart/form-data: file=@home.glb
+     * <p>
+     * 文件落到 uploads/models/yyyy/MM/dd/ 下，返回相对 URL 供模型登记使用。
+     * 扩展名使用 UUID 重写，避免同名覆盖与路径穿越。
+     */
+    @PostMapping("/model")
+    @Operation(summary = "上传 3D 模型文件")
+    public Result<UploadResult> uploadModel(@RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return Result.badRequest("文件为空");
+        }
+
+        String original = file.getOriginalFilename();
+        String ext = extractExt(original);
+        if (ext == null || !ALLOWED_MODEL_EXT.contains(ext.toLowerCase())) {
+            return Result.badRequest("不支持的文件类型，仅允许 GLB/GLTF/FBX/BIN/贴图");
+        }
+        ext = ext.toLowerCase();
+
+        String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+        String filename = UUID.randomUUID().toString().replace("-", "") + "." + ext;
+        Path target = uploadPath.resolve(MODEL_UPLOAD_DIR).resolve(datePart).resolve(filename).normalize();
+        // 防路径穿越：必须仍在 uploadPath 之下
+        if (!target.startsWith(uploadPath)) {
+            return Result.badRequest("非法文件路径");
+        }
+
+        try {
+            Files.createDirectories(target.getParent());
+            try (var in = file.getInputStream()) {
+                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException e) {
+            log.error("[upload] 写入模型文件失败：{}", target, e);
+            return Result.error("文件写入失败");
+        }
+
+        long size = file.getSize();
+        String url = urlPrefix + MODEL_UPLOAD_DIR + "/" + datePart + "/" + filename;
+
+        UploadResult result = new UploadResult();
+        result.setUrl(url);
+        result.setFilename(filename);
+        result.setOriginalName(original);
+        result.setSize(size);
+        result.setContentType(file.getContentType());
+        return Result.success(result);
     }
 
     /**

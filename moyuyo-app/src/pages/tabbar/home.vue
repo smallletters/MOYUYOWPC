@@ -369,7 +369,7 @@ export default {
     /**
      * 解析并打开 banner 链接。
      * CMS 里运营通常填三种形态（见 mo_cms_banner.link_url 现有数据）：
-     *  1) 带域名的站内页：http://192.168.2.118:5174/pages/goods/detail?id=xxx
+     *  1) 带域名的站内页：http://192.168.64.103:5174/pages/goods/detail?id=xxx
      *  2) 站内相对路径：/pages/goods/detail?id=xxx
      *  3) 外部网页：https://example.com/activity
      */

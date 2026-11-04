@@ -69,6 +69,11 @@ export default defineConfig({
       '/uploads/': {
         target: 'http://localhost:8080',
         changeOrigin: true
+      },
+      // /static/ 静态资源代理：3D 模型预览需要访问 /static/models/*.glb 与 /static/draco/ 解码器
+      '/static/': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
       }
     }
   }

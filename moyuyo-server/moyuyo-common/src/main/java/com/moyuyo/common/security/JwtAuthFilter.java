@@ -102,6 +102,8 @@ public class JwtAuthFilter implements Filter {
             // 隐私政策等协议公示：未登录用户（含注册前）也需要能读取（仅 GET）
             new WhiteListEntry("/api/v1/policies/active", false),
             new WhiteListEntry("/api/v1/policies/", true),
+            // APP 3D 空间模型配置：公开只读，避免登录态过期时 3D 页面被登录弹窗打断
+            new WhiteListEntry("/api/v1/pet-space/models", false),
             // 分享链接 QR 公开生成（仅 GET，未登录用户也能扫码看商品）
             new WhiteListEntry("/api/v1/shares/qr", false),
             new WhiteListEntry("/api/v1/shares/qr/", true)

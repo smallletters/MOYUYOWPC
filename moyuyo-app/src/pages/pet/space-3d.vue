@@ -125,6 +125,7 @@
 <!-- 逻辑层：只做 HUD 状态镜像与命令转发 -->
 <script>
 import { ensureLocalModel, resolveRemoteUrl } from '@/utils/modelDownload'
+import { getPetSpaceModels } from '@/api/pet'
 
 /**
  * 3D 空间页 —— 逻辑层薄壳
@@ -144,11 +145,14 @@ import { ensureLocalModel, resolveRemoteUrl } from '@/utils/modelDownload'
  */
 
 /**
- * 模型清单。home.glb 约 6.7MB，0.fbx / 1.fbx 各约 30MB，
- * 加起来 67MB —— 必须在逻辑层用 ensureLocalModel 走「下载 + 本地缓存」，
- * 不能丢给视图层每次进页面重下。
+ * 内置默认模型（管理后台接口不可用时的兜底）。
+ * 后台「3D空间模型」页面启用新版本后，这里会被接口返回的地址覆盖。
  */
-const MODEL_PATHS = ['/static/models/home.glb', '/static/models/0.fbx', '/static/models/1.fbx']
+const DEFAULT_MODEL_URLS = {
+  scene: '/static/models/home.glb',
+  avatarIdle: '/static/models/0.fbx',
+  avatarWalk: '/static/models/1.fbx',
+}
 
 // 引擎会用到 14 个文案：逻辑层翻译好一次性送过去。
 // 视图层不引 i18n 运行时（i18n/index.js 依赖 uni 存储 API，视图层不保证可用）。
@@ -260,11 +264,15 @@ export default {
       this.viewReady = true
       this.booted = false
 
-      // 1. 先把模型在逻辑层落地（下载 / 命中缓存）
+      // 1. 先向后台拉取当前启用的模型地址（失败时回退到内置默认模型）
+      const modelUrls = await this.resolveModelUrls()
+
+      // 2. 在逻辑层把三个模型落地（下载 / 命中缓存）
       const models = {}
       try {
-        for (const p of MODEL_PATHS) {
-          models[p] = await this.loadModelSource(p)
+        for (const key of Object.keys(modelUrls)) {
+          const url = modelUrls[key]
+          models[url] = await this.loadModelSource(url)
         }
       } catch (e) {
         console.error('[space-3d] 模型准备失败', e)
@@ -273,15 +281,40 @@ export default {
         return
       }
 
-      // 2. 交给视图层起引擎
+      // 3. 交给视图层起引擎
       this.booted = this.pet3dPush('boot', {
         canvasId: this.canvasId,
         labels: this.buildLabels(),
         models,
+        modelUrls,
       })
       if (!this.booted) {
         this.errorMsg = this.$t('petHub3d.engineBootTimeout')
         this.loading = false
+      }
+    },
+
+    /**
+     * 解析 APP 3D 空间应使用的模型地址。
+     * 后台未配置、接口异常或字段缺失时，逐项回退到内置默认模型，保证页面始终可进入。
+     */
+    async resolveModelUrls() {
+      try {
+        const list = await getPetSpaceModels()
+        const byKey = {}
+        ;(Array.isArray(list) ? list : []).forEach((item) => {
+          if (item && item.modelKey && item.fileUrl) {
+            byKey[item.modelKey] = item.fileUrl
+          }
+        })
+        return {
+          scene: byKey.SCENE || DEFAULT_MODEL_URLS.scene,
+          avatarIdle: byKey.AVATAR_IDLE || DEFAULT_MODEL_URLS.avatarIdle,
+          avatarWalk: byKey.AVATAR_WALK || DEFAULT_MODEL_URLS.avatarWalk,
+        }
+      } catch (e) {
+        console.warn('[space-3d] 3D 模型配置获取失败，使用内置默认模型', e)
+        return { ...DEFAULT_MODEL_URLS }
       }
     },
 
@@ -472,9 +505,12 @@ export default {
       const owner = this.$ownerInstance
       const labels = cfg.labels || {}
       const models = cfg.models || {}
+      // 后台启用的模型地址（逻辑层已拉取），引擎按用途使用
+      const modelUrls = cfg.modelUrls || {}
 
       engine = createEngine({
         canvasId: cfg.canvasId,
+        modelUrls,
 
         // 文案用逻辑层翻译好的快照：视图层不引 i18n 运行时。
         // 保留 {p} / {progress} 的运行时替换。

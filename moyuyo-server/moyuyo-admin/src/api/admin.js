@@ -1148,6 +1148,55 @@ export function deleteAppVersion(id) {
   return api.delete(`/app-version/${id}`)
 }
 
+// ==================== 3D 空间模型 ====================
+// 列表：params 支持 { modelKey, status }
+export function getPetSpaceModels(params) {
+  return api.get('/pet-space-model/list', { params })
+}
+
+// 模型用途字典（含停用）
+export function getPetSpaceModelPurposes() {
+  return api.get('/pet-space-model/purposes')
+}
+
+export function createPetSpaceModelPurpose(data) {
+  return api.post('/pet-space-model/purposes/create', data)
+}
+
+export function updatePetSpaceModelPurpose(data) {
+  return api.put('/pet-space-model/purposes/update', data)
+}
+
+export function deletePetSpaceModelPurpose(id) {
+  return api.delete(`/pet-space-model/purposes/${id}`)
+}
+
+export function createPetSpaceModel(data) {
+  return api.post('/pet-space-model/create', data)
+}
+
+export function updatePetSpaceModel(data) {
+  return api.put('/pet-space-model/update', data)
+}
+
+export function enablePetSpaceModel(id) {
+  return api.post(`/pet-space-model/${id}/enable`)
+}
+
+export function deletePetSpaceModel(id) {
+  return api.delete(`/pet-space-model/${id}`)
+}
+
+// 模型文件上传：大文件（30MB+）单独放宽超时时间
+export function uploadPetSpaceModelFile(file, onUploadProgress) {
+  const fd = new FormData()
+  fd.append('file', file)
+  return api.post('/upload/model', fd, {
+    timeout: 300000,
+    onUploadProgress
+  })
+}
+
 // ==================== 系统配置 ====================
 export function getSystemConfig() {
   return api.get('/system/config')
