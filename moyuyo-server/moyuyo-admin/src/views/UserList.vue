@@ -64,7 +64,7 @@
       <div class="table-toolbar">
         <div class="table-toolbar__info">已选 {{ selectedIds.length }} 项</div>
         <div class="table-toolbar__actions">
-          <button class="btn btn-sm" :disabled="selectedIds.length === 0" @click="handleBatchUpdateStatus('INACTIVE')">批量封禁</button>
+          <button class="btn btn-sm" :disabled="selectedIds.length === 0" @click="openBanDialog()">批量封禁</button>
           <button class="btn btn-sm" :disabled="selectedIds.length === 0" @click="handleBatchUpdateStatus('ACTIVE')">批量解封</button>
           <button class="btn btn-sm" @click="handleExportCsv">导出 CSV</button>
           <button class="btn btn-sm btn-primary" @click="handleCreate">新建用户</button>
@@ -110,7 +110,7 @@
             <td>¥{{ user.spent }}</td>
             <td>
               <span class="status-dot" :class="'status-' + user.statusClass"></span>
-              {{ user.status }}
+              <span :title="user.banReason ? '封禁理由：' + user.banReason : ''">{{ user.status }}</span>
             </td>
             <td class="action-cell">
               <button class="btn btn-sm" @click="handleDetail(user)">详情</button>
@@ -188,6 +188,43 @@
         <el-button type="primary" :loading="pwdDialog.submitting" @click="handlePwdSubmit">确定重置</el-button>
       </template>
     </el-dialog>
+
+    <!-- 封禁用户弹窗：选择封禁时长 + 必填封禁理由，理由会展示在用户端 -->
+    <el-dialog
+      v-model="banDialog.visible"
+      title="封禁用户"
+      width="480px"
+      :close-on-click-modal="false"
+      @closed="resetBanDialog"
+    >
+      <div class="ban-target">封禁对象：<strong>{{ banDialog.targetLabel }}</strong></div>
+      <el-form :model="banDialog.form" label-width="90px">
+        <el-form-item label="封禁时长" required>
+          <el-select v-model="banDialog.form.durationDays" style="width:100%">
+            <el-option
+              v-for="opt in banDurationOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="封禁理由" required>
+          <el-input
+            v-model="banDialog.form.reason"
+            type="textarea"
+            :rows="3"
+            maxlength="200"
+            show-word-limit
+            placeholder="请填写封禁理由，用户登录/使用时会看到该提示"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="banDialog.visible = false">取消</el-button>
+        <el-button type="danger" :loading="banDialog.submitting" @click="confirmBan">确认封禁</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -221,6 +258,15 @@ const AVATAR_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#
 function pickAvatarColor(id) {
   const n = Number(id) || 0
   return AVATAR_COLORS[n % AVATAR_COLORS.length]
+}
+
+/** 状态文案：正常 / 封禁至 xxx / 永久封禁 / 禁用 */
+function getStatusText(u) {
+  if (u.status === 'ACTIVE') return '正常'
+  const expires = u.banExpiresAt || ''
+  if (expires) return `封禁至 ${String(expires).slice(0, 16)}`
+  if (u.banReason) return '永久封禁'
+  return '禁用'
 }
 
 const statsList = ref([
@@ -284,7 +330,10 @@ async function fetchUsers() {
         levelClass: (u.level || 'NORMAL').toLowerCase(),
         orders: u.orders ?? '-',
         spent: u.spent ?? '0',
-        status: u.status === 'ACTIVE' ? '正常' : '禁用',
+        // 封禁信息：展示"封禁至 xxx"/"永久封禁"，完整理由作为 title 提示
+        banReason: u.banReason || '',
+        banExpiresAt: u.banExpiresAt || '',
+        status: getStatusText(u),
         statusClass: u.status === 'ACTIVE' ? 'active' : 'inactive',
         avatarColor: pickAvatarColor(u.id)
       }))
@@ -341,13 +390,95 @@ function handleDetail(user) {
   window.location.href = `/admin/user-profile?id=${user.id}`
 }
 
+// ============== 封禁用户（时长 + 理由） ==============
+const banDurationOptions = [
+  { label: '1 天', value: 1 },
+  { label: '3 天', value: 3 },
+  { label: '7 天', value: 7 },
+  { label: '30 天', value: 30 },
+  { label: '90 天', value: 90 },
+  { label: '永久封禁', value: 0 }
+]
+
+const banDialog = reactive({
+  visible: false,
+  ids: [],
+  targetLabel: '',
+  submitting: false,
+  form: {
+    durationDays: 7,
+    reason: ''
+  }
+})
+
+/** 打开封禁弹窗：不传 user 时为批量封禁（作用于当前选中用户） */
+function openBanDialog(user) {
+  const ids = user ? [user.id] : [...selectedIds.value]
+  if (ids.length === 0) {
+    ElMessage.warning('请先选择要封禁的用户')
+    return
+  }
+  banDialog.ids = ids
+  banDialog.targetLabel = user ? `用户「${user.name}」` : `已选 ${ids.length} 位用户`
+  banDialog.form.durationDays = 7
+  banDialog.form.reason = ''
+  banDialog.visible = true
+}
+
+/** 弹窗关闭后重置表单，避免下次打开残留上次内容 */
+function resetBanDialog() {
+  banDialog.ids = []
+  banDialog.targetLabel = ''
+  banDialog.form.durationDays = 7
+  banDialog.form.reason = ''
+}
+
+/** 确认封禁：理由必填，逐用户调用状态更新接口 */
+async function confirmBan() {
+  const reason = (banDialog.form.reason || '').trim()
+  if (!reason) {
+    ElMessage.warning('请填写封禁理由')
+    return
+  }
+  const ids = [...banDialog.ids]
+  const duration = banDurationOptions.find(o => o.value === banDialog.form.durationDays)
+  banDialog.submitting = true
+  try {
+    const results = await Promise.allSettled(
+      ids.map(id => updateUserStatus(id, {
+        status: 'INACTIVE',
+        banReason: reason,
+        banDurationDays: banDialog.form.durationDays
+      }))
+    )
+    const success = results.filter(r => r.status === 'fulfilled').length
+    const failed = ids.length - success
+    if (failed === 0) {
+      ElMessage.success(`已封禁 ${success} 位用户（${duration ? duration.label : '永久'}）`)
+    } else {
+      ElMessage.warning(`封禁完成：成功 ${success}，失败 ${failed}`)
+    }
+    banDialog.visible = false
+    fetchUsers()
+  } catch (err) {
+    console.error('封禁用户失败:', err)
+    ElMessage.error('封禁失败：' + (err.message || '未知错误'))
+  } finally {
+    banDialog.submitting = false
+  }
+}
+
 // 单项封禁/解封
 async function handleBan(user) {
-  const newStatus = user.statusClass === 'active' ? 'INACTIVE' : 'ACTIVE'
-  const actionText = newStatus === 'ACTIVE' ? '解封' : '封禁'
+  // 正常用户：打开封禁弹窗（选择时长 + 填写理由）
+  if (user.statusClass === 'active') {
+    openBanDialog(user)
+    return
+  }
+  // 已封禁用户：解封（清空封禁原因与到期时间）
   try {
     await ElMessageBox.confirm(
-      `确认${actionText}用户「${user.name}」？`,
+      `确认解封用户「${user.name}」？`,
       '操作确认',
       { type: 'warning', confirmButtonText: '确定', cancelButtonText: '取消' }
     )
@@ -355,8 +486,8 @@ async function handleBan(user) {
     return
   }
   try {
-    await updateUserStatus(user.id, { status: newStatus })
-    ElMessage.success(`${user.name} 已${actionText}`)
+    await updateUserStatus(user.id, { status: 'ACTIVE' })
+    ElMessage.success(`${user.name} 已解封`)
     fetchUsers()
   } catch (err) {
     console.error('更新用户状态失败:', err)
@@ -930,5 +1061,19 @@ onMounted(() => {
 .page-info {
   font-size: 13px;
   color: #8e8e93;
+}
+
+/* 封禁弹窗：封禁对象提示 */
+.ban-target {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  background: #fdf6ec;
+  border: 1px solid #faecd8;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #6b7280;
+}
+.ban-target strong {
+  color: #303133;
 }
 </style>

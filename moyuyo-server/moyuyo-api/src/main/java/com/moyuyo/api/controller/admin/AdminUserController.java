@@ -85,13 +85,24 @@ public class AdminUserController {
     return Result.success(detail);
   }
 
-  @Operation(summary = "更新用户状态")
+  @Operation(summary = "更新用户状态（封禁/解封，封禁需传原因与时长）")
   @PutMapping("/{id}/status")
   @AdminAudit(action = "UPDATE", module = "USER",
       resourceId = "#id", detail = "管理员更新用户状态")
-  public Result<Map<String, Object>> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
-    String status = body.get("status");
-    adminUserManageService.updateUserStatus(id, status);
+  public Result<Map<String, Object>> updateStatus(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+    String status = body.get("status") == null ? null : String.valueOf(body.get("status"));
+    String banReason = body.get("banReason") == null ? null : String.valueOf(body.get("banReason"));
+    // 封禁天数：>0 临时封禁，0 永久封禁；缺省按永久封禁处理
+    Integer banDurationDays = null;
+    Object rawDays = body.get("banDurationDays");
+    if (rawDays != null && !String.valueOf(rawDays).isBlank()) {
+      try {
+        banDurationDays = Integer.parseInt(String.valueOf(rawDays));
+      } catch (NumberFormatException e) {
+        return Result.error(400, "封禁天数无效");
+      }
+    }
+    adminUserManageService.updateUserStatus(id, status, banReason, banDurationDays);
     Map<String, Object> result = new java.util.LinkedHashMap<>();
     result.put("id", id);
     result.put("status", status);

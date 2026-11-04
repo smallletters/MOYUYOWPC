@@ -1,6 +1,7 @@
 package com.moyuyo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.moyuyo.common.JwtUtil;
 import com.moyuyo.common.dto.auth.*;
 import com.moyuyo.common.security.UserContextHolder;
@@ -27,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -295,9 +297,7 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Invalid email or password");
         }
 
-        if (user.getStatus() == null || user.getStatus() != 1) {
-            throw new IllegalArgumentException("Account is disabled");
-        }
+        ensureLoginAllowed(user);
 
         // 注销冻结期校验：到期后拒绝登录（与微信/京东一致）
         // 期内未到期则放行并自动撤销（业内"登录即后悔"模式，参考 ProcessOn 7 天）
@@ -459,6 +459,8 @@ public class AuthServiceImpl implements AuthService {
         if (user == null) {
             throw new IllegalArgumentException("User not found");
         }
+        // 刷新 Token 时再次校验封禁状态，避免已封禁用户通过旧 refresh token 续期
+        ensureLoginAllowed(user);
 
         return generateTokenPair(user);
     }
@@ -827,9 +829,7 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("User not found");
         }
 
-        if (user.getStatus() == null || user.getStatus() != 1) {
-            throw new IllegalArgumentException("Account is disabled");
-        }
+        ensureLoginAllowed(user);
 
         // 注销冻结期校验：与 password/phone login 路径一致（期内登录即撤销）
         if (user.getDeleteScheduledAt() != null) {
@@ -1177,9 +1177,8 @@ public class AuthServiceImpl implements AuthService {
             userMapper.insert(user);
             log.info("Phone login auto-registered user: id={}, phone={}", user.getId(), phone);
         } else {
-            if (user.getStatus() == null || user.getStatus() != 1) {
-                throw new IllegalArgumentException("账号已被禁用");
-            }
+            // 封禁/禁用校验：到期自动解封，未到期提示原因与解封时间
+            ensureLoginAllowed(user);
             // 注销冻结期校验：与 password login 路径行为一致
             if (user.getDeleteScheduledAt() != null) {
                 LocalDateTime now = LocalDateTime.now();
@@ -1195,6 +1194,43 @@ public class AuthServiceImpl implements AuthService {
             userMapper.updateById(user);
         }
         return generateTokenPair(user);
+    }
+
+    private static final DateTimeFormatter BAN_TIME_FORMATTER =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    /**
+     * 登录前置校验：封禁已到期的账号自动解封；未到期或永久封禁则抛出带原因与解封时间的提示。
+     * 密码登录 / 手机号登录 / 魔法链接登录 / 刷新 Token 均复用此逻辑。
+     */
+    private void ensureLoginAllowed(UserEntity user) {
+        if (user.getStatus() != null && user.getStatus() == USER_STATUS_ACTIVE) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime expiresAt = user.getBanExpiresAt();
+        // 临时封禁已到期：自动解封并清空封禁信息
+        if (expiresAt != null && !expiresAt.isAfter(now)) {
+            userMapper.update(null, new LambdaUpdateWrapper<UserEntity>()
+                .eq(UserEntity::getId, user.getId())
+                .set(UserEntity::getStatus, USER_STATUS_ACTIVE)
+                .set(UserEntity::getBanReason, null)
+                .set(UserEntity::getBannedAt, null)
+                .set(UserEntity::getBanExpiresAt, null));
+            user.setStatus(USER_STATUS_ACTIVE);
+            user.setBanReason(null);
+            user.setBannedAt(null);
+            user.setBanExpiresAt(null);
+            log.info("[auth] 封禁到期自动解封: userId={}", user.getId());
+            return;
+        }
+        String reason = user.getBanReason() == null || user.getBanReason().isBlank()
+            ? "违反社区规范" : user.getBanReason();
+        if (expiresAt != null) {
+            throw new IllegalArgumentException("账号已被封禁，解封时间："
+                + BAN_TIME_FORMATTER.format(expiresAt) + "。原因：" + reason);
+        }
+        throw new IllegalArgumentException("账号已被永久封禁。原因：" + reason);
     }
 
     private TokenResponse generateTokenPair(UserEntity user) {

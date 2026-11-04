@@ -1,6 +1,7 @@
 package com.moyuyo.service.admin.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.dao.entity.MemberEntity;
 import com.moyuyo.dao.entity.UserEntity;
@@ -10,12 +11,16 @@ import com.moyuyo.service.admin.AdminUserManageService;
 import static com.moyuyo.common.enums.GeneralStatusEnum.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -31,9 +36,16 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AdminUserManageServiceImpl implements AdminUserManageService {
 
+  /** Redis 封禁状态 key 前缀：供 JwtAuthFilter 快速拦截被封禁用户（值为封禁提示文案） */
+  public static final String REDIS_KEY_USER_BAN = "auth:user:ban:";
+
+  private static final DateTimeFormatter BAN_TIME_FORMATTER =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
   private final UserMapper userMapper;
   private final MemberMapper memberMapper;
   private final PasswordEncoder passwordEncoder;
+  private final StringRedisTemplate redisTemplate;
 
   @Override
   public Map<String, Object> getStats() {
@@ -139,6 +151,12 @@ public class AdminUserManageServiceImpl implements AdminUserManageService {
       item.put("phone", user.getPhone() != null ? user.getPhone() : "");
       item.put("level", member != null && member.getLevel() != null ? member.getLevel().name() : "NORMAL");
       item.put("status", user.getStatus() != null && user.getStatus() == 1 ? ACTIVE.name() : INACTIVE.name());
+      // 封禁信息：管理端列表展示封禁至何时 / 永久封禁及原因
+      item.put("banReason", user.getBanReason() != null ? user.getBanReason() : "");
+      item.put("bannedAt", user.getBannedAt() != null
+          ? BAN_TIME_FORMATTER.format(user.getBannedAt()) : "");
+      item.put("banExpiresAt", user.getBanExpiresAt() != null
+          ? BAN_TIME_FORMATTER.format(user.getBanExpiresAt()) : "");
       item.put("registerTime", user.getCreatedAt() != null ? user.getCreatedAt().toString().replace("T", " ") : "");
       list.add(item);
     }
@@ -163,6 +181,11 @@ public class AdminUserManageServiceImpl implements AdminUserManageService {
     detail.put("email", user.getEmail() != null ? user.getEmail() : "");
     detail.put("phone", user.getPhone() != null ? user.getPhone() : "");
     detail.put("status", user.getStatus() != null && user.getStatus() == 1 ? ACTIVE.name() : INACTIVE.name());
+    detail.put("banReason", user.getBanReason() != null ? user.getBanReason() : "");
+    detail.put("bannedAt", user.getBannedAt() != null
+        ? BAN_TIME_FORMATTER.format(user.getBannedAt()) : "");
+    detail.put("banExpiresAt", user.getBanExpiresAt() != null
+        ? BAN_TIME_FORMATTER.format(user.getBanExpiresAt()) : "");
     detail.put("registerTime", user.getCreatedAt() != null ? user.getCreatedAt().toString().replace("T", " ") : "");
     detail.put("lastLoginTime", user.getLastLoginTime() != null ? user.getLastLoginTime().toString().replace("T", " ") : "");
 
@@ -181,7 +204,7 @@ public class AdminUserManageServiceImpl implements AdminUserManageService {
 
   @Override
   @Transactional
-  public void updateUserStatus(Long id, String status) {
+  public void updateUserStatus(Long id, String status, String banReason, Integer banDurationDays) {
     if (id == null) {
       throw new IllegalArgumentException("用户ID不能为空");
     }
@@ -192,8 +215,82 @@ public class AdminUserManageServiceImpl implements AdminUserManageService {
     if (user == null) {
       throw new IllegalArgumentException("用户不存在");
     }
-    user.setStatus(ACTIVE.name().equals(status) ? 1 : 0);
-    userMapper.updateById(user);
+    LocalDateTime now = LocalDateTime.now();
+
+    // 解封：恢复启用状态并清空封禁信息 + 删除 Redis 封禁标记
+    if (ACTIVE.name().equals(status)) {
+      userMapper.update(null, new LambdaUpdateWrapper<UserEntity>()
+          .eq(UserEntity::getId, id)
+          .set(UserEntity::getStatus, 1)
+          .set(UserEntity::getBanReason, null)
+          .set(UserEntity::getBannedAt, null)
+          .set(UserEntity::getBanExpiresAt, null));
+      clearBanCache(id);
+      log.info("[admin-user] unban: userId={}", id);
+      return;
+    }
+
+    // 封禁：原因必填；banDurationDays > 0 为临时封禁，0/null 为永久封禁
+    String reason = banReason == null ? "" : banReason.trim();
+    if (reason.isEmpty()) {
+      throw new IllegalArgumentException("封禁原因不能为空");
+    }
+    if (reason.length() > 255) {
+      reason = reason.substring(0, 255);
+    }
+    int days = banDurationDays == null ? 0 : banDurationDays;
+    if (days < 0) {
+      throw new IllegalArgumentException("封禁天数无效");
+    }
+    LocalDateTime expiresAt = days > 0 ? now.plusDays(days) : null;
+    userMapper.update(null, new LambdaUpdateWrapper<UserEntity>()
+        .eq(UserEntity::getId, id)
+        .set(UserEntity::getStatus, 0)
+        .set(UserEntity::getBanReason, reason)
+        .set(UserEntity::getBannedAt, now)
+        .set(UserEntity::getBanExpiresAt, expiresAt));
+
+    // 同步 Redis 封禁标记：JwtAuthFilter 据此拦截已登录用户，并下发封禁提示
+    String message = buildBanMessage(reason, expiresAt);
+    cacheBan(id, message, expiresAt, now);
+    log.info("[admin-user] ban: userId={}, days={}, reason={}", id, days, reason);
+  }
+
+  /**
+   * 构建 C 端可见的封禁提示（登录接口与 JwtAuthFilter 共用同一文案）
+   */
+  public static String buildBanMessage(String reason, LocalDateTime expiresAt) {
+    String safeReason = reason == null || reason.isBlank() ? "违反社区规范" : reason.trim();
+    if (expiresAt != null) {
+      return "账号已被封禁，解封时间：" + BAN_TIME_FORMATTER.format(expiresAt) + "。原因：" + safeReason;
+    }
+    return "账号已被永久封禁。原因：" + safeReason;
+  }
+
+  /** 写入 Redis 封禁标记：临时封禁设置 TTL，永久封禁不设 TTL */
+  private void cacheBan(Long userId, String message, LocalDateTime expiresAt, LocalDateTime now) {
+    String key = REDIS_KEY_USER_BAN + userId;
+    try {
+      if (expiresAt != null) {
+        long seconds = Duration.between(now, expiresAt).getSeconds();
+        if (seconds <= 0) return;
+        redisTemplate.opsForValue().set(key, message, Duration.ofSeconds(seconds));
+      } else {
+        redisTemplate.opsForValue().set(key, message);
+      }
+    } catch (DataAccessException e) {
+      // 缓存失败不阻断封禁落库：登录路径仍会读库拦截；已登录用户下次刷新 token 时被拦截
+      log.error("[admin-user] 写入封禁缓存失败: userId={}", userId, e);
+    }
+  }
+
+  /** 解封时删除 Redis 封禁标记 */
+  private void clearBanCache(Long userId) {
+    try {
+      redisTemplate.delete(REDIS_KEY_USER_BAN + userId);
+    } catch (DataAccessException e) {
+      log.error("[admin-user] 删除封禁缓存失败: userId={}", userId, e);
+    }
   }
 
   @Override

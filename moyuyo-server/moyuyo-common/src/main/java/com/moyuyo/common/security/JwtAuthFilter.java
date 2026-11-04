@@ -47,6 +47,9 @@ public class JwtAuthFilter implements Filter {
 
     private static final String REDIS_KEY_BLACKLIST = "auth:blacklist:";
 
+    /** 用户封禁标记 key 前缀：值为 C 端展示的封禁提示文案，由管理端封禁操作写入 */
+    private static final String REDIS_KEY_USER_BAN = "auth:user:ban:";
+
     /**
      * 公开路径白名单：不需要 JWT 校验的端点
      * <p>
@@ -210,7 +213,14 @@ public class JwtAuthFilter implements Filter {
 
             // C 端接口：仅设置 userId，不强制角色要求
             // 管理端接口已在兜底块中强制校验角色并放行，不会走到这里
-            UserContextHolder.setUserId(jwtUtil.getUserIdFromClaims(claims));
+            Long currentUserId = jwtUtil.getUserIdFromClaims(claims);
+            // 封禁拦截：管理端封禁时写入 Redis 标记，已登录用户下次请求即被拒绝并收到封禁提示
+            String banMessage = getBanMessage(currentUserId);
+            if (banMessage != null) {
+                sendForbidden(response, banMessage);
+                return;
+            }
+            UserContextHolder.setUserId(currentUserId);
             UserContextHolder.setToken(token);
             // C 端 token 不携带 role；如携带（非管理员）则原样保留，由业务层判断
             UserContextHolder.setRole(jwtUtil.getRoleFromClaims(claims));
@@ -219,6 +229,23 @@ public class JwtAuthFilter implements Filter {
 
         } finally {
             UserContextHolder.clear();
+        }
+    }
+
+    /**
+     * 读取用户封禁标记（fail-open：Redis 异常时放行，登录/刷新路径仍会读库拦截）
+     *
+     * @return 非空表示被封禁，值为前端提示文案
+     */
+    private String getBanMessage(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        try {
+            return redisTemplate.opsForValue().get(REDIS_KEY_USER_BAN + userId);
+        } catch (DataAccessException e) {
+            log.warn("封禁状态查询失败（fail-open 放行），userId={}", userId, e);
+            return null;
         }
     }
 

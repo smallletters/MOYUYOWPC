@@ -42,22 +42,27 @@
       >
         {{ tab.label }}
       </button>
-      <!-- 灌入测试数据(仅 dev):便于演示违规类型 tab 筛选与封禁弹窗联动 -->
-      <button
-        class="tab-switcher-item tab-debug"
-        :disabled="seeding"
-        @click="onSeedTestData"
-        title="插入 6 条 reason=各种违规类型的测试数据"
-      >
-        {{ seeding ? '灌入中...' : '+ 测试数据' }}
-      </button>
+    </div>
+
+    <!-- 搜索：内容摘要 / 违规原因 / 用户昵称 / 用户ID / 内容ID -->
+    <div class="search-bar">
+      <input
+        v-model.trim="reviewKeyword"
+        class="search-input"
+        type="text"
+        placeholder="搜索内容、用户昵称、用户ID、内容ID"
+        @keyup.enter="onSearch"
+      />
+      <button class="btn btn-primary btn-sm" @click="onSearch">搜索</button>
+      <button v-if="reviewKeyword" class="btn btn-outline btn-sm" @click="clearSearch">清空</button>
     </div>
 
     <!-- 审核卡片列表 -->
     <div class="review-list">
       <div v-if="loading" class="review-status">加载中...</div>
       <div v-else-if="!reviewItems.length" class="review-status">
-        <template v-if="activeTab === 'all'">暂无审核内容，点击右上角"+ 测试数据"可插入演示记录</template>
+        <template v-if="reviewKeyword">未找到与「{{ reviewKeyword }}」匹配的审核记录</template>
+        <template v-else-if="activeTab === 'all'">暂无审核内容</template>
         <template v-else>当前 tab "{{ activeTab }}" 暂无审核记录</template>
       </div>
       <template v-else>
@@ -227,7 +232,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getContentReviewList, approveContentReview, getContentReviewDetail, getContentReviewStats, getContentReviewTrend, hideContentReview, deleteContentReview, banContentReview, seedContentReview } from '../api/admin'
+import { getContentReviewList, approveContentReview, getContentReviewDetail, getContentReviewStats, getContentReviewTrend, hideContentReview, deleteContentReview, banContentReview } from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
 const router = useRouter()
@@ -269,6 +274,8 @@ const reviewPage = ref(1)
 const reviewSize = ref(100)
 const reviewTotal = ref(0)
 const loading = ref(false)
+// 搜索关键字：内容摘要 / 违规原因 / 用户昵称 / 用户ID / 内容ID
+const reviewKeyword = ref('')
 
 // 封禁弹窗状态
 const banDialogVisible = ref(false)
@@ -281,8 +288,6 @@ const banForm = reactive({
 
 // 分页-跳转输入框
 const jumpPage = ref(1)
-// 测试数据灌入按钮(仅 dev):灌入 6 条 reason=各种违规类型的演示记录
-const seeding = ref(false)
 
 const trendData = reactive([
   { label: '...', pass: 0, reject: 0 },
@@ -309,21 +314,19 @@ function switchTab(tab) {
 }
 
 /**
- * 灌入测试数据(仅 dev):点击后插入 6 条 reason=各种违规类型的演示记录
- * 用于演示 tab 筛选/封禁弹窗联动/联动隐藏逻辑
+ * 搜索：回到第一页并按关键字重新查询
+ * 支持内容摘要 / 违规原因 / 用户昵称 / 用户ID / 内容ID
  */
-async function onSeedTestData() {
-  if (seeding.value) return
-  seeding.value = true
-  try {
-    const count = await seedContentReview()
-    ElMessage.success(`已插入 ${count} 条测试审核记录`)
-    await loadReviewItems()
-  } catch (e) {
-    ElMessage.error('灌入失败: ' + (e.message || '未知错误'))
-  } finally {
-    seeding.value = false
-  }
+function onSearch() {
+  reviewPage.value = 1
+  jumpPage.value = 1
+  loadReviewItems()
+}
+
+/** 清空搜索条件并刷新列表 */
+function clearSearch() {
+  reviewKeyword.value = ''
+  onSearch()
 }
 
 // 分页:页码变化
@@ -435,6 +438,10 @@ async function loadReviewItems() {
     // 而是让后端按 reason LIKE '%违规类型%' 过滤(由 controller 决定;此处不再传 contentType)
     if (activeTab.value !== 'all') {
       params.reasonLike = activeTab.value
+    }
+    // 关键字搜索：内容摘要 / 违规原因 / 用户昵称 / 用户ID / 内容ID
+    if (reviewKeyword.value) {
+      params.keyword = reviewKeyword.value
     }
     const res = await getContentReviewList(params)
     // 后端 Result<Map> 解包后字段:list / total / page / size / mode
@@ -665,6 +672,28 @@ onMounted(() => {
 .stat-card.pending .stat-value { color: var(--state-warning); }
 .stat-card.sla .stat-value { color: var(--primary); }
 .stat-card.done .stat-value { color: var(--state-success); }
+
+/* 搜索栏：内容 / 用户昵称 / 用户ID / 内容ID */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.search-input {
+  flex: 0 1 360px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--text-700);
+  font-size: 13px;
+  outline: none;
+}
+.search-input:focus {
+  border-color: var(--primary);
+}
 
 /* 审核卡片 */
 .review-list {

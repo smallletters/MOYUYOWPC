@@ -77,6 +77,15 @@ public class UserEntity {
 
     private Integer status;
 
+    /** 封禁原因（管理端填写，解封时清空） */
+    private String banReason;
+
+    /** 封禁操作时间 */
+    private LocalDateTime bannedAt;
+
+    /** 封禁到期时间（NULL=永久封禁；到期后登录时自动解封） */
+    private LocalDateTime banExpiresAt;
+
     private LocalDateTime lastLoginTime;
 
     private LocalDateTime deleteScheduledAt;

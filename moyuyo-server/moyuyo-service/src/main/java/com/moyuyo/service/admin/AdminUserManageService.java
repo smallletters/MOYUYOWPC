@@ -24,8 +24,13 @@ public interface AdminUserManageService {
 
   /**
    * 更新用户状态（封禁/解封）
+   *
+   * @param id 用户ID
+   * @param status ACTIVE 解封 / INACTIVE 封禁
+   * @param banReason 封禁原因（封禁时必填，解封时忽略）
+   * @param banDurationDays 封禁天数：>0 为临时封禁，0 或 null 为永久封禁
    */
-  void updateUserStatus(Long id, String status);
+  void updateUserStatus(Long id, String status, String banReason, Integer banDurationDays);
 
   /**
    * 创建用户

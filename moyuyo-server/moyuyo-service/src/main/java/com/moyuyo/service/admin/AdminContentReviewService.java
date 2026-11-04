@@ -16,8 +16,10 @@ public interface AdminContentReviewService {
    * @param contentType 内容种类筛选(POST/COMMENT等)
    * @param status 审核状态筛选
    * @param reasonLike 违规类型关键字(reason LIKE '%xxx%'),对应前端 tab 筛选
+   * @param keyword 搜索关键字：内容摘要 / 违规原因 / 用户昵称 / 内容ID / 用户ID
    */
-  Map<String, Object> listAll(int page, int size, String contentType, String status, String reasonLike);
+  Map<String, Object> listAll(int page, int size, String contentType, String status,
+                              String reasonLike, String keyword);
 
   /**
    * 审核详情

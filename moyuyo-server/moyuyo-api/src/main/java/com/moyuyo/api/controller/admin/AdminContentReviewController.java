@@ -30,7 +30,9 @@ public class AdminContentReviewController {
         @RequestParam(required = false) String mode,
         // 违规类型筛选(对应前端 tab:色情/暴力/仇恨言论/侵权/虚假信息/虐待动物),
         // 在 service 层用 reason LIKE '%xxx%' 匹配
-        @RequestParam(required = false) String reasonLike) {
+        @RequestParam(required = false) String reasonLike,
+        // 搜索：内容摘要 / 违规原因 / 用户昵称 / 内容ID / 用户ID
+        @RequestParam(required = false) String keyword) {
         if (page < 1 || size < 1 || size > 100) {
             return Result.error(400, "分页参数无效");
         }
@@ -38,7 +40,8 @@ public class AdminContentReviewController {
                 && !List.of("auto", "auto_manual", "manual").contains(mode)) {
             return Result.error(400, "审核模式无效");
         }
-        return Result.success(adminContentReviewService.listAll(page, size, contentType, status, reasonLike));
+        return Result.success(adminContentReviewService.listAll(
+            page, size, contentType, status, reasonLike, keyword));
     }
 
     @Operation(summary = "审核详情")

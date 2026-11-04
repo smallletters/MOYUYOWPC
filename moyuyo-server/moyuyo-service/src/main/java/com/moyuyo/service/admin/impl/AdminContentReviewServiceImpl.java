@@ -87,7 +87,8 @@ public class AdminContentReviewServiceImpl implements AdminContentReviewService 
   }
 
   @Override
-  public Map<String, Object> listAll(int page, int size, String contentType, String status, String reasonLike) {
+  public Map<String, Object> listAll(int page, int size, String contentType, String status,
+                                     String reasonLike, String keyword) {
     LambdaQueryWrapper<ContentReviewEntity> wrapper = new LambdaQueryWrapper<>();
     if (contentType != null && !contentType.isEmpty()) {
       wrapper.eq(ContentReviewEntity::getContentType, contentType);
@@ -100,6 +101,42 @@ public class AdminContentReviewServiceImpl implements AdminContentReviewService 
     if (reasonLike != null && !reasonLike.isBlank()) {
       String safe = reasonLike.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
       wrapper.like(ContentReviewEntity::getReason, "%" + safe + "%");
+    }
+    // 关键字搜索：内容摘要/违规原因 LIKE，用户昵称反查用户ID，纯数字时按内容ID/用户ID精确匹配
+    if (keyword != null && !keyword.isBlank()) {
+      String kw = keyword.trim();
+      if (kw.length() > 100) kw = kw.substring(0, 100);
+      String safe = kw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+      Long numeric = null;
+      try {
+        numeric = Long.parseLong(kw);
+      } catch (NumberFormatException ignored) {
+        // 非纯数字关键字：只做文本匹配
+      }
+      Long numericId = numeric;
+      // 昵称匹配的用户 ID（限制条数，避免超长 IN 查询）
+      List<Long> matchedUserIds = userMapper.selectList(
+              new LambdaQueryWrapper<UserEntity>()
+                  .select(UserEntity::getId)
+                  .like(UserEntity::getNickname, safe)
+                  .last("LIMIT 100"))
+          .stream()
+          .map(UserEntity::getId)
+          .collect(Collectors.toList());
+      wrapper.and(w -> {
+        w.like(ContentReviewEntity::getContentExcerpt, safe)
+            .or().like(ContentReviewEntity::getReason, safe);
+        if (numericId != null) {
+          // 支持按审核记录ID（详情页URL中的id）/ 内容ID / 用户ID / 举报人ID 搜索
+          w.or().eq(ContentReviewEntity::getId, numericId)
+              .or().eq(ContentReviewEntity::getContentId, numericId)
+              .or().eq(ContentReviewEntity::getUserId, numericId)
+              .or().eq(ContentReviewEntity::getReporterId, numericId);
+        }
+        if (!matchedUserIds.isEmpty()) {
+          w.or().in(ContentReviewEntity::getUserId, matchedUserIds);
+        }
+      });
     }
     wrapper.orderByDesc(ContentReviewEntity::getCreateTime);
 
