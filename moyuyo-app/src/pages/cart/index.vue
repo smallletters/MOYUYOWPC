@@ -598,7 +598,8 @@ export default {
       })
     },
     goShopping() {
-      uni.switchTab({ url: '/pages/tabbar/category' })
+      // 分类页已从 tabBar 移出，改为普通页面跳转
+      uni.navigateTo({ url: '/pages/tabbar/category' })
     },
     goBack() {
       uni.navigateBack()

@@ -178,7 +178,7 @@ export default {
         if (!filePath) return
         this.avatarUploading = true
         uni.showLoading({ title: i18n.t('profile.uploading'), mask: true })
-        const uploadRes = await uploadImage(filePath)
+        const uploadRes = await uploadImage(filePath, 'AVATAR')
         const avatarUrl = uploadRes?.url
         if (!avatarUrl) throw new Error('Upload returned no URL')
         await this.userStore.updateProfile({ avatar: avatarUrl })

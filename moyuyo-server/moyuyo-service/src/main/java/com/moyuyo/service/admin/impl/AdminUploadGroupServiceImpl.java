@@ -34,6 +34,8 @@ public class AdminUploadGroupServiceImpl implements AdminUploadGroupService {
     private static final int MAX_URL_LENGTH = 512;
     /** 仅允许操作上传目录下的图片，防止越权写入任意 URL */
     private static final String UPLOAD_PREFIX = "/uploads/";
+    /** 管理端素材场景：图片空间只展示该场景 */
+    private static final String SCENE_ADMIN = "ADMIN";
 
     private final UploadGroupMapper groupMapper;
     private final UploadFileMapper fileMapper;
@@ -48,6 +50,7 @@ public class AdminUploadGroupServiceImpl implements AdminUploadGroupService {
         // 分组图片数量来自映射表；删除图片时映射会同步清理，统计不会持续虚高
         Map<Long, Long> counts = fileMapper.selectList(
                         Wrappers.<UploadFileEntity>lambdaQuery()
+                                .eq(UploadFileEntity::getScene, SCENE_ADMIN)
                                 .isNotNull(UploadFileEntity::getGroupId))
                 .stream()
                 .collect(Collectors.groupingBy(UploadFileEntity::getGroupId, Collectors.counting()));
@@ -114,9 +117,11 @@ public class AdminUploadGroupServiceImpl implements AdminUploadGroupService {
         if (existing == null) {
             throw new IllegalArgumentException("分组不存在");
         }
-        // 只解除归属，不删除图片文件；图片回到「未分组」
-        fileMapper.delete(Wrappers.<UploadFileEntity>lambdaQuery()
-                .eq(UploadFileEntity::getGroupId, id));
+        // 只解除归属，不删除图片文件；图片回到「未分组」仍保留在图片空间
+        fileMapper.update(null,
+                Wrappers.<UploadFileEntity>lambdaUpdate()
+                        .eq(UploadFileEntity::getGroupId, id)
+                        .set(UploadFileEntity::getGroupId, null));
         groupMapper.deleteById(id);
     }
 
@@ -147,8 +152,10 @@ public class AdminUploadGroupServiceImpl implements AdminUploadGroupService {
             UploadFileEntity mapping = fileMapper.selectOne(
                     Wrappers.<UploadFileEntity>lambdaQuery().eq(UploadFileEntity::getUrl, url));
             if (targetGroupId == null) {
+                // 移出分组：只清空 group_id，保留场景元数据（图片继续出现在未分组）
                 if (mapping != null) {
-                    fileMapper.deleteById(mapping.getId());
+                    mapping.setGroupId(null);
+                    fileMapper.updateById(mapping);
                 }
                 continue;
             }
@@ -156,6 +163,8 @@ public class AdminUploadGroupServiceImpl implements AdminUploadGroupService {
                 UploadFileEntity created = new UploadFileEntity();
                 created.setUrl(url);
                 created.setGroupId(targetGroupId);
+                created.setScene(SCENE_ADMIN);
+                created.setSize(0L);
                 fileMapper.insert(created);
             } else {
                 mapping.setGroupId(targetGroupId);
@@ -167,7 +176,9 @@ public class AdminUploadGroupServiceImpl implements AdminUploadGroupService {
     @Override
     public Map<String, Long> groupIdByUrl() {
         List<UploadFileEntity> mappings = fileMapper.selectList(
-                Wrappers.<UploadFileEntity>lambdaQuery().isNotNull(UploadFileEntity::getGroupId));
+                Wrappers.<UploadFileEntity>lambdaQuery()
+                        .eq(UploadFileEntity::getScene, SCENE_ADMIN)
+                        .isNotNull(UploadFileEntity::getGroupId));
         Map<String, Long> result = new HashMap<>(Math.max(16, mappings.size() * 2));
         for (UploadFileEntity mapping : mappings) {
             result.put(mapping.getUrl(), mapping.getGroupId());
@@ -177,16 +188,23 @@ public class AdminUploadGroupServiceImpl implements AdminUploadGroupService {
 
     @Override
     public void bindOnUpload(String url, Long groupId) {
-        if (groupId == null || groupId <= 0) {
-            return;
-        }
+        // 兼容旧调用：按管理端素材记录
+        recordUpload(url, groupId, SCENE_ADMIN, 0L);
+    }
+
+    @Override
+    public void recordUpload(String url, Long groupId, String scene, long size) {
         String normalized = normalizeUrl(url);
         if (normalized == null) {
             return;
         }
-        if (groupMapper.selectById(groupId) == null) {
-            log.warn("[upload] 上传指定的分组不存在，按未分组处理：groupId={}, url={}", groupId, normalized);
-            return;
+        String normalizedScene = normalizeScene(scene);
+        Long targetGroupId = (groupId == null || groupId <= 0) ? null : groupId;
+
+        if (targetGroupId != null && groupMapper.selectById(targetGroupId) == null) {
+            log.warn("[upload] 上传指定的分组不存在，按未分组处理：groupId={}, url={}",
+                    targetGroupId, normalized);
+            targetGroupId = null;
         }
 
         UploadFileEntity mapping = fileMapper.selectOne(
@@ -194,12 +212,29 @@ public class AdminUploadGroupServiceImpl implements AdminUploadGroupService {
         if (mapping == null) {
             UploadFileEntity created = new UploadFileEntity();
             created.setUrl(normalized);
-            created.setGroupId(groupId);
+            created.setScene(normalizedScene);
+            created.setSize(Math.max(size, 0L));
+            created.setGroupId(targetGroupId);
             fileMapper.insert(created);
         } else {
-            mapping.setGroupId(groupId);
+            mapping.setScene(normalizedScene);
+            mapping.setSize(Math.max(size, 0L));
+            // 未指定分组时保留原有分组归属
+            if (targetGroupId != null) {
+                mapping.setGroupId(targetGroupId);
+            }
             fileMapper.updateById(mapping);
         }
+    }
+
+    /** 场景收敛：仅允许已知场景，未知值按 USER 处理 */
+    private String normalizeScene(String scene) {
+        if (scene == null) return "USER";
+        String value = scene.trim().toUpperCase();
+        return switch (value) {
+            case "ADMIN", "AVATAR", "COMMUNITY", "DM", "USER" -> value;
+            default -> "USER";
+        };
     }
 
     @Override

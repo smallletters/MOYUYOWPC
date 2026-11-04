@@ -55,6 +55,17 @@
       }
     },
     {
+      // 消息 Tab：私信会话列表 + 通知聚合入口（替代原「分类」Tab 占位）
+      "path": "pages/tabbar/messages",
+      "style": {
+        "navigationBarTitleText": "消息",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true,
+        "backgroundColor": "#F5F2EC",
+        "backgroundTextStyle": "dark"
+      }
+    },
+    {
       "path": "pages/goods/list",
       "style": {
         "navigationBarTitleText": "商品列表",
@@ -848,7 +859,21 @@
     {
       "path": "pages/community/dm-chat",
       "style": {
-        "navigationBarTitleText": "私信"
+        "navigationBarTitleText": "私信",
+        // 页面自带自定义顶部栏（返回 + 对方昵称 + 主页入口），关闭原生导航栏避免双标题栏
+        "navigationStyle": "custom",
+        // 键盘弹出时压缩 WebView 高度（adjustResize）而不是整页上推，
+        // 配合页面 flex 布局让输入栏始终贴在键盘上方
+        "app-plus": {
+          "softinputMode": "adjustResize"
+        }
+      }
+    },
+    {
+      "path": "pages/community/dm-group-create",
+      "style": {
+        "navigationBarTitleText": "发起群聊",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -907,17 +932,6 @@
         }
       },
       {
-        "pagePath": "pages/tabbar/category",
-        "text": "%category%",
-        "iconfont": {
-          "text": "\ue936",
-          "selectedText": "\ue936",
-          "fontSize": "20px",
-          "color": "#9A948C",
-          "selectedColor": "#DBC98A"
-        }
-      },
-      {
         "pagePath": "pages/tabbar/pet",
         "text": "%pet%",
         "iconfont": {
@@ -934,6 +948,17 @@
         "iconfont": {
           "text": "\ue94c",
           "selectedText": "\ue94c",
+          "fontSize": "20px",
+          "color": "#9A948C",
+          "selectedColor": "#DBC98A"
+        }
+      },
+      {
+        "pagePath": "pages/tabbar/messages",
+        "text": "%messages%",
+        "iconfont": {
+          "text": "\ue94d",
+          "selectedText": "\ue94d",
           "fontSize": "20px",
           "color": "#9A948C",
           "selectedColor": "#DBC98A"

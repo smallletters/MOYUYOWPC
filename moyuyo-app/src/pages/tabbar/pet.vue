@@ -718,7 +718,8 @@ export default {
       const petUrl = (path) => (pet?.id ? `${path}?petId=${pet.id}` : path)
       switch (action.id) {
         case 'shop':
-          uni.switchTab({ url: '/pages/tabbar/category' })
+          // 分类页已从 tabBar 移出，改为普通页面跳转
+          uni.navigateTo({ url: '/pages/tabbar/category' })
           break
         case 'share':
           // 晒宠：有宠物时直达社区发帖并预选当前宠物（帖子归入宠物记忆树），否则进社区流

@@ -74,9 +74,9 @@ const NAV_BAR_PALETTE = {
  */
 const TAB_BAR_ICON_FALLBACK = [
   { iconfont: { text: '\ue93c', fontSize: '20px' } }, // home
-  { iconfont: { text: '\ue936', fontSize: '20px' } }, // category
   { iconfont: { text: '\ue956', fontSize: '20px' } }, // pet
   { iconfont: { text: '\ue94c', fontSize: '20px' } }, // community
+  { iconfont: { text: '\ue94d', fontSize: '20px' } }, // messages
   { iconfont: { text: '\ue982', fontSize: '20px' } }, // user
 ]
 

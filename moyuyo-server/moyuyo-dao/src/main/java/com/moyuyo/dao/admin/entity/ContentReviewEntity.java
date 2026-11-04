@@ -21,8 +21,11 @@ public class ContentReviewEntity {
     /** 内容ID */
     private Long contentId;
 
-    /** 用户ID */
+    /** 用户ID（内容作者；用户举报时 = 被举报用户） */
     private Long userId;
+
+    /** 举报人ID（用户举报时写入，管理端自动审核记录为空） */
+    private Long reporterId;
 
     /** 内容摘要 */
     private String contentExcerpt;

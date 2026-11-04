@@ -89,6 +89,20 @@
         </view>
       </scroll-view>
     </view>
+
+    <!-- 底部导航：分类页不是 tabBar 页，原生 tabBar 不会显示，
+         这里补一条与 tabBar 同款的自定义导航，保证从金刚区进来后仍有底部入口 -->
+    <view class="tabbar">
+      <view
+        v-for="tab in tabbarItems"
+        :key="tab.path"
+        class="tabbar-item"
+        @click="onTabbarClick(tab.path)"
+      >
+        <text class="tabbar-icon luc" :class="$luc(tab.icon)" />
+        <text class="tabbar-label">{{ $t(tab.labelKey) }}</text>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -118,6 +132,14 @@ export default {
         { value: 'rating', labelKey: 'category.sort.rating' },
       ],
       sortBy: 'default',
+      // 底部导航项：与 pages.json 的 tabBar.list 保持一致（顺序、文案、图标）
+      tabbarItems: [
+        { path: '/pages/tabbar/home', labelKey: 'tabBar.home', icon: 'home' },
+        { path: '/pages/tabbar/pet', labelKey: 'tabBar.pet', icon: 'paw-print' },
+        { path: '/pages/tabbar/community', labelKey: 'tabBar.community', icon: 'message-circle' },
+        { path: '/pages/tabbar/messages', labelKey: 'tabBar.messages', icon: 'message-square' },
+        { path: '/pages/tabbar/user', labelKey: 'tabBar.user', icon: 'user' },
+      ],
       // 商品分页
       products: [],
       loading: false,
@@ -319,6 +341,11 @@ export default {
     goDetail(id) {
       uni.navigateTo({ url: `/pages/goods/detail?id=${id}` })
     },
+
+    onTabbarClick(path) {
+      // tabBar 页只能用 switchTab 打开（navigateTo 会直接失败）
+      uni.switchTab({ url: path })
+    },
   },
 }
 </script>
@@ -487,5 +514,31 @@ export default {
 .loadmore.done {
   color: var(--color-text-tertiary);
   opacity: 0.7;
+}
+/* 底部自定义导航：高度对齐原生 tabBar（100rpx≈50px），底部再留 iPhone 安全区 */
+.tabbar {
+  flex-shrink: 0;
+  display: flex;
+  background: var(--color-surface);
+  border-top: 1rpx solid var(--color-divider);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.tabbar-item {
+  flex: 1;
+  height: 100rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+  color: var(--color-text-secondary);
+}
+.tabbar-icon {
+  font-size: 40rpx;
+  line-height: 1;
+}
+.tabbar-label {
+  font-size: 22rpx;
+  line-height: 1.2;
 }
 </style>

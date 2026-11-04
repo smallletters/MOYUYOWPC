@@ -43,6 +43,24 @@
       </view>
     </view>
 
+    <!-- 他人主页操作区：关注 / 发私信（自己主页不展示） -->
+    <view v-if="!isOwnProfile" class="action-bar">
+      <view
+        class="action-btn action-btn--follow"
+        :class="{ 'action-btn--followed': isFollowing }"
+        @tap="onToggleFollow"
+      >
+        <text class="luc" :class="isFollowing ? 'luc-check' : 'luc-plus'" />
+        <text class="action-btn-label">
+          {{ isFollowing ? t('userCenter.profileFollowed') : t('userCenter.profileFollowAdd') }}
+        </text>
+      </view>
+      <view class="action-btn action-btn--message" @tap="onSendMessage">
+        <text class="luc luc-send" />
+        <text class="action-btn-label">{{ t('userCenter.profileSendMessage') }}</text>
+      </view>
+    </view>
+
     <!-- 三 Tab 切换：帖子 / 点赞 / 收藏 -->
     <view class="tab-bar">
       <view
@@ -225,6 +243,11 @@ export default {
       viewedProfileInitialName: '',
       // 拉取到的被查看者公开资料（id/nickname/avatar/bio/following/followers/isFollowing）
       viewedProfile: null,
+      // 是否已关注被查看者：后端 profile 接口的 isFollowing 恒为 false,
+      // 登录态下额外查 /follows/{id}/status 拿真实状态
+      isFollowing: false,
+      // 关注/取关请求中：避免连点重复请求
+      followLoading: false,
       // loadOtherProfile 防抖锁：onShow 反复触发时避免重复请求 + 闪烁
       otherProfileLoading: false,
       // bio 保存中：避免用户连点触发多次 PUT
@@ -345,6 +368,8 @@ export default {
     // 他人 profile 只能看"帖子" tab,防止上一次的 activeTab 残留为 liked/collected 导致空态
     if (!this.isOwnProfile) {
       this.activeTab = 'posts'
+      // 重置关注状态：避免上一次进入的他人 A 的关注状态残留到他人 B
+      this.isFollowing = false
       // 重置 tabs 数据,避免上一次进入的他人 A 的帖子列表残留到他人 B
       this.tabsData.posts = { list: [], page: 0, finished: false, loading: false }
       this.tabsData.liked = { list: [], page: 0, finished: true, loading: false }
@@ -529,6 +554,18 @@ export default {
         this.statFollowers = Number(profile?.followers ?? 0)
         this.statPosts = Number(profile?.posts ?? 0)
         this.statLikes = 0 // 后端未提供"他人获赞总数"接口,留 0 占位
+        // 关注状态：后端 profile 接口的 isFollowing 恒为 false,
+        // 登录态下再查一次 /follows/{id}/status 拿真实状态（未登录/失败时保持 false）
+        this.isFollowing = !!(profile && profile.isFollowing)
+        if (this.userStore.isLoggedIn) {
+          try {
+            const status = await followApi.followStatus(this.viewedUserId)
+            this.isFollowing = !!(status && status.following)
+          } catch (e) {
+            // 静默失败：按钮仍可点击,点按时会做登录引导或错误提示
+            console.warn('[profile] load follow status failed', e)
+          }
+        }
         // 简介：有就用，没有走默认文案
         if (profile?.bio) {
           this.bioText = profile.bio
@@ -546,6 +583,63 @@ export default {
       } finally {
         this.otherProfileLoading = false
       }
+    },
+
+    /**
+     * 关注 / 取关被查看者
+     * - 未登录：弹窗引导去登录
+     * - 未关注 → 关注；已关注 → 取消关注
+     * 采用乐观更新：先改按钮状态与粉丝数,请求失败再回滚
+     */
+    async onToggleFollow() {
+      if (!this.viewedUserId || this.followLoading) return
+      if (!this.userStore.isLoggedIn) {
+        uni.showModal({
+          title: this.t('community.postActions.loginRequiredTitleFollow'),
+          content: this.t('community.postActions.loginPrompt'),
+          confirmText: this.t('community.postActions.goLogin'),
+          cancelText: this.t('community.postActions.browseMore'),
+          success: (res) => {
+            if (res.confirm) uni.reLaunch({ url: '/pages/user/login' })
+          },
+        })
+        return
+      }
+      const before = this.isFollowing
+      const next = !before
+      this.isFollowing = next
+      this.followLoading = true
+      try {
+        if (next) {
+          await followApi.follow(this.viewedUserId)
+          // 本地同步粉丝数,避免再发一次 profile 请求造成闪烁
+          this.statFollowers += 1
+          uni.showToast({ title: this.t('community.postActions.followDone'), icon: 'success' })
+        } else {
+          await followApi.unfollow(this.viewedUserId)
+          this.statFollowers = Math.max(0, this.statFollowers - 1)
+          uni.showToast({ title: this.t('community.postActions.unfollowDone'), icon: 'none' })
+        }
+      } catch (e) {
+        // 请求失败回滚按钮状态
+        this.isFollowing = before
+        uni.showToast({ title: this.t('community.postActions.followFailed'), icon: 'none' })
+      } finally {
+        this.followLoading = false
+      }
+    },
+
+    /**
+     * 发私信：跳转现有私信页 pages/community/dm-chat
+     * 参数名必须是 id（dm-chat 只读 q.id）,昵称/头像首字母用于页面初始展示
+     */
+    onSendMessage() {
+      if (!this.viewedUserId) return
+      const name = this.viewedProfile?.nickname || this.viewedProfileInitialName || ''
+      const avatarLetter = (name || 'U').charAt(0)
+      uni.navigateTo({
+        url: `/pages/community/dm-chat?id=${this.viewedUserId}&name=${encodeURIComponent(name)}&avatar=${encodeURIComponent(avatarLetter)}`,
+      })
     },
 
     /**
@@ -847,6 +941,43 @@ export default {
   width: 1rpx;
   height: 40rpx;
   background: var(--color-divider);
+}
+
+/* 他人主页操作区：关注 + 发私信 */
+.action-bar {
+  display: flex;
+  gap: 20rpx;
+  margin: 0 24rpx 16rpx;
+}
+.action-btn {
+  flex: 1;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid var(--color-divider);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.action-btn:active {
+  opacity: 0.8;
+}
+/* 未关注：主色实心按钮 */
+.action-btn--follow {
+  background: var(--color-primary, #18b367);
+  border-color: var(--color-primary, #18b367);
+  color: #fff;
+}
+/* 已关注：浅主色底 + 主色文字，视觉上弱化 */
+.action-btn--followed {
+  background: rgba(24, 179, 103, 0.1);
+  border-color: transparent;
+  color: var(--color-primary, #18b367);
+}
+.action-btn-label {
+  font-size: var(--font-size-base);
 }
 
 /* Tab 切换 */

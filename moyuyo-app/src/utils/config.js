@@ -17,6 +17,8 @@
 // 仍是 process.env.VITE_X，APP 端会因 process 未定义而报错）。
 const ENV = {
   VITE_API_BASE: process.env.VITE_API_BASE,
+  // 自研后端 API 根地址（APP 真机/私信 WebSocket 需要绝对地址）
+  VITE_ADMIN_API_BASE: process.env.VITE_ADMIN_API_BASE,
   VITE_WP_BASE: process.env.VITE_WP_BASE,
   VITE_PAY_RETURN_BASE: process.env.VITE_PAY_RETURN_BASE,
   VITE_CONSUMER_KEY: process.env.VITE_CONSUMER_KEY,
@@ -51,6 +53,8 @@ function getEnv(key, defaultValue = '') {
 export const config = {
   // WooCommerce REST API 基础路径（含 /wp-json 前缀）
   apiBase: getEnv('VITE_API_BASE', 'https://your-wp-site.com/wp-json'),
+  // 自研后端根地址（私信 WebSocket 用；H5 dev 未配置时退回当前页面 origin）
+  adminApiBase: getEnv('VITE_ADMIN_API_BASE', ''),
   // WordPress 站点根地址（用于支付 WebView 跳转）
   wpBase: getEnv('VITE_WP_BASE', 'https://your-wp-site.com'),
   // MOYUYO 后端 API 域名（H1 修复：用于支付成功/取消回跳的绝对 URL，避免与 WP 域名混淆）

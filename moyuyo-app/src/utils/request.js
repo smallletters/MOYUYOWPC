@@ -259,6 +259,24 @@ const SERVER_ERROR_MAP = {
   帖子不存在: 'serverMsg.postNotFound',
   关联宠物不存在或无权使用: 'serverMsg.linkedPetNotFound',
   '内容包含敏感词，无法发布': 'serverMsg.sensitiveWord',
+  // 私信发送校验
+  对方已关闭私信: 'serverMsg.dmClosed',
+  无法向该用户发送私信: 'serverMsg.dmBlocked',
+  // 私信撤回校验
+  超过撤回时间: 'serverMsg.dmRecallExpired',
+  无权撤回该消息: 'serverMsg.dmRecallForbidden',
+  消息已撤回: 'serverMsg.dmAlreadyRecalled',
+  // 私信发送频控
+  '发送过于频繁，请稍后再试': 'serverMsg.dmTooFrequent',
+  // 引用回复 / 举报校验
+  引用的消息不存在或已撤回: 'serverMsg.dmQuoteMissing',
+  请勿重复举报: 'serverMsg.dmDuplicateReport',
+  // 不能给自己发私信（ensureConversation/发送链路的兜底校验）
+  不能给自己发私信: 'serverMsg.dmSelfNotAllowed',
+  // 语音/文件消息媒体元信息校验
+  语音时长无效: 'serverMsg.dmVoiceDurationInvalid',
+  文件名无效: 'serverMsg.dmFileNameInvalid',
+  文件大小无效: 'serverMsg.dmFileSizeInvalid',
   // AddressServiceImpl 校验失败
   'Country is required': 'serverMsg.addressCountryRequired',
   'Address not found': 'serverMsg.addressNotFound',

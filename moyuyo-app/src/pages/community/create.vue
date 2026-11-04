@@ -1415,7 +1415,7 @@ export default {
       let successCount = 0
       for (let i = 0; i < localPaths.length; i++) {
         try {
-          const result = await uploadApi.uploadImage(localPaths[i])
+          const result = await uploadApi.uploadImage(localPaths[i], 'COMMUNITY')
           if (result?.url) {
             this.uploadedImageUrls.push(result.url)
             successCount++
@@ -1815,7 +1815,7 @@ export default {
       this.uploadingCover = true
       try {
         const filePath = await this.dataUrlToFilePath(item.dataUrl, `cover_${Date.now()}.jpg`)
-        const result = await uploadApi.uploadImage(filePath)
+        const result = await uploadApi.uploadImage(filePath, 'COMMUNITY')
         if (result?.url) {
           this.coverUrl = result.url
           uni.showToast({ title: this.$t('communityPost.coverSet'), icon: 'success' })

@@ -198,7 +198,7 @@ const emptyStates = ref([
     btnText: '去逛逛',
     btnClass: 'state-btn-primary',
     btnTextClass: 'state-btn-text-primary',
-    action: () => uni.switchTab({ url: '/pages/tabbar/category' }),
+    action: () => uni.navigateTo({ url: '/pages/tabbar/category' }),
   },
   {
     label: 'Orders',
@@ -220,7 +220,7 @@ const emptyStates = ref([
     btnText: '去发现',
     btnClass: 'state-btn-primary',
     btnTextClass: 'state-btn-text-primary',
-    action: () => uni.switchTab({ url: '/pages/tabbar/category' }),
+    action: () => uni.navigateTo({ url: '/pages/tabbar/category' }),
   },
   {
     label: 'Messages',

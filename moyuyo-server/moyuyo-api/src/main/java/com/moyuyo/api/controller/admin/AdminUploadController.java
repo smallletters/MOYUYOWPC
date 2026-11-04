@@ -1,9 +1,15 @@
 package com.moyuyo.api.controller.admin;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.dto.admin.UploadPage;
 import com.moyuyo.common.dto.admin.UploadResult;
 import com.moyuyo.common.dto.admin.UploadedFile;
 import com.moyuyo.common.Result;
+import com.moyuyo.dao.admin.entity.UploadFileEntity;
+import com.moyuyo.dao.admin.mapper.UploadFileMapper;
+import com.moyuyo.dao.mapper.DmConversationMapper;
+import com.moyuyo.dao.mapper.DmMessageMapper;
 import com.moyuyo.service.admin.AdminUploadGroupService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,11 +30,13 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 /**
@@ -51,6 +59,24 @@ public class AdminUploadController {
 
     /** 图片空间分组服务：维护「图片 URL -> 分组」映射 */
     private final AdminUploadGroupService adminUploadGroupService;
+
+    /** 私信消息 Mapper：用于从图片空间排除用户聊天图片 */
+    private final DmMessageMapper dmMessageMapper;
+
+    /** 会话 Mapper：用于排除群头像等聊天相关图片 */
+    private final DmConversationMapper dmConversationMapper;
+
+    /** 图片元数据 Mapper：图片空间改为按 scene 查询，避免全目录混入用户图片 */
+    private final UploadFileMapper uploadFileMapper;
+
+    /** 聊天附件独立目录（与 UserUploadController#CHAT_UPLOAD_DIR 保持一致） */
+    private static final String CHAT_UPLOAD_DIR = "dm";
+
+    /** 管理端素材场景：图片空间只展示该场景 */
+    private static final String SCENE_ADMIN = "ADMIN";
+
+    /** 场景索引只回填一次（首次访问图片空间时触发） */
+    private final AtomicBoolean sceneIndexReady = new AtomicBoolean(false);
 
     /** 图片白名单：扩展名 + Content-Type 双重校验 */
     private static final Set<String> ALLOWED_EXT = new HashSet<>(
@@ -139,11 +165,11 @@ public class AdminUploadController {
         long size = file.getSize();
         String url = urlPrefix + datePart + "/" + filename;
 
-        // 记录图片与分组归属：失败不影响上传结果，可在图片空间重新分组
+        // 记录图片场景：图片空间只展示 ADMIN
         try {
-            adminUploadGroupService.bindOnUpload(url, groupId);
+            adminUploadGroupService.recordUpload(url, groupId, SCENE_ADMIN, size);
         } catch (Exception e) {
-            log.warn("[upload] 记录图片分组失败：url={}, groupId={}", url, groupId, e);
+            log.warn("[upload] 记录图片元数据失败：url={}, groupId={}", url, groupId, e);
         }
 
         UploadResult result = new UploadResult();
@@ -184,15 +210,14 @@ public class AdminUploadController {
     }
 
     /**
-     * 分页查询已上传图片（图片空间）。
+     * 分页查询已上传图片（图片空间，仅 scene=ADMIN）。
      * <p>
      * GET /api/admin/upload/list?page=1&size=24&groupId=12
      * <p>
      * groupId 传参语义：省略 / 负数 = 全部；0 = 未分组；正数 = 指定分组。
      * <p>
-     * 说明：图片按日期目录存放，这里直接扫描上传根目录并按最后修改时间倒序分页。
-     * 管理端查询频率低、文件量级有限，扫描可接受；若未来图片数量达到十万级，
-     * 建议改为在 mo_upload_file 表中维护索引，避免每次全量遍历目录。
+     * 图片元数据来自 mo_upload_file：首次访问时会把历史文件按场景回填，
+     * 后续查询不再全量扫描上传目录；聊天/头像/社区等用户图片不会混入素材库。
      */
     @GetMapping("/list")
     @Operation(summary = "分页查询已上传图片")
@@ -206,62 +231,174 @@ public class AdminUploadController {
         if (size < 1 || size > 100) {
             size = 24;
         }
+        // 历史图片首次访问时回填 scene，之后列表只查元数据表
+        ensureSceneIndex();
 
-        List<UploadedFile> all = new ArrayList<>();
-        if (Files.isDirectory(uploadPath)) {
-            // 目录层级固定为 yyyy/MM/dd/文件名，maxDepth=4 防止扫描到无关的深层目录
-            try (Stream<Path> stream = Files.walk(uploadPath, 4)) {
-                stream.filter(Files::isRegularFile)
-                        .filter(p -> {
-                            String ext = extractExt(p.getFileName().toString());
-                            return ext != null && ALLOWED_EXT.contains(ext.toLowerCase());
-                        })
-                        .forEach(p -> all.add(toUploadedFile(p)));
-            } catch (IOException | UncheckedIOException e) {
-                // Files.walk 为惰性遍历，迭代中的 I/O 异常会被包装成 UncheckedIOException
-                log.error("[upload] 扫描上传目录失败：{}", uploadPath, e);
-                return Result.error("读取图片目录失败");
+        Page<UploadFileEntity> pageObj = uploadFileMapper.selectPage(
+                new Page<>(page, size), adminSceneWrapper(groupId));
+        List<UploadedFile> records = new ArrayList<>(pageObj.getRecords().size());
+        for (UploadFileEntity mapping : pageObj.getRecords()) {
+            UploadedFile item = toUploadedFile(mapping);
+            if (item == null) {
+                // 元数据存在但文件已丢失：清理脏数据，避免长期展示失效图片
+                try {
+                    uploadFileMapper.deleteById(mapping.getId());
+                } catch (Exception e) {
+                    log.warn("[upload] 清理失效图片元数据失败：url={}", mapping.getUrl(), e);
+                }
+                continue;
             }
+            records.add(item);
         }
 
-        // 合并分组归属：未建立映射的图片视为「未分组」
-        Map<String, Long> groupByUrl = Map.of();
-        try {
-            groupByUrl = adminUploadGroupService.groupIdByUrl();
-        } catch (Exception e) {
-            // 分组表异常时不影响图片浏览，全部按未分组展示
-            log.warn("[upload] 查询图片分组映射失败，按未分组展示", e);
-        }
-        for (UploadedFile item : all) {
-            item.setGroupId(groupByUrl.get(item.getUrl()));
-        }
-
-        // 按分组筛选：null / 负数 = 全部，0 = 未分组，正数 = 指定分组
-        if (groupId != null && groupId > 0) {
-            all.removeIf(item -> !groupId.equals(item.getGroupId()));
-        } else if (groupId != null && groupId == 0) {
-            all.removeIf(item -> item.getGroupId() != null);
-        }
-
-        // 最新上传的图片排在最前，便于运营快速找到刚上传的图片
-        all.sort((a, b) -> Long.compare(b.getLastModified(), a.getLastModified()));
-
-        // 统计总占用：用普通循环，避免 Stream 方法引用在 IDE 空值分析下产生告警
+        // 总占用只按 ADMIN 场景+当前分组统计，size 来自元数据，不再逐个读盘
         long totalSize = 0L;
-        for (UploadedFile item : all) {
-            totalSize += item.getSize();
+        for (UploadFileEntity mapping : uploadFileMapper.selectList(adminSceneWrapper(groupId))) {
+            totalSize += mapping.getSize() == null ? 0L : mapping.getSize();
         }
-        long offset = (long) (page - 1) * size;
-        int from = (int) Math.min(offset, all.size());
-        int to = Math.min(from + size, all.size());
 
         UploadPage result = new UploadPage();
-        result.setRecords(all.subList(from, to));
-        result.setTotal(all.size());
+        result.setRecords(records);
+        result.setTotal(pageObj.getTotal());
         result.setPage(page);
         result.setSize(size);
         result.setTotalSize(totalSize);
         return Result.success(result);
+    }
+
+    /** 管理端素材查询条件：scene=ADMIN + 分组筛选 + 最新优先 */
+    private LambdaQueryWrapper<UploadFileEntity> adminSceneWrapper(Long groupId) {
+        LambdaQueryWrapper<UploadFileEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UploadFileEntity::getScene, SCENE_ADMIN);
+        if (groupId != null && groupId > 0) {
+            wrapper.eq(UploadFileEntity::getGroupId, groupId);
+        } else if (groupId != null && groupId == 0) {
+            wrapper.isNull(UploadFileEntity::getGroupId);
+        }
+        wrapper.orderByDesc(UploadFileEntity::getCreateTime)
+                .orderByDesc(UploadFileEntity::getId);
+        return wrapper;
+    }
+
+    /** 元数据行 → 图片空间列表项；文件缺失返回 null */
+    private UploadedFile toUploadedFile(UploadFileEntity mapping) {
+        String url = mapping.getUrl();
+        if (url == null || !url.startsWith(urlPrefix)) {
+            return null;
+        }
+        String relative = url.substring(urlPrefix.length());
+        Path file = uploadPath.resolve(relative).normalize();
+        if (!file.startsWith(uploadPath) || !Files.isRegularFile(file)) {
+            return null;
+        }
+        UploadedFile item = new UploadedFile();
+        item.setUrl(url);
+        item.setFilename(file.getFileName().toString());
+        long size = mapping.getSize() == null ? 0L : mapping.getSize();
+        item.setSize(size > 0 ? size : safeFileSize(file));
+        try {
+            item.setLastModified(Files.getLastModifiedTime(file).toMillis());
+        } catch (IOException e) {
+            item.setLastModified(0L);
+        }
+        item.setGroupId(mapping.getGroupId());
+        return item;
+    }
+
+    private long safeFileSize(Path file) {
+        try {
+            return Files.size(file);
+        } catch (IOException e) {
+            return 0L;
+        }
+    }
+
+    /**
+     * 首次访问图片空间时回填历史文件场景：
+     * - dm/ 目录或私信消息/群头像引用的图片 → DM
+     * - 其余历史图片 → ADMIN（保持原有素材库可见）
+     */
+    private void ensureSceneIndex() {
+        if (sceneIndexReady.get()) {
+            return;
+        }
+        synchronized (this) {
+            if (sceneIndexReady.get()) {
+                return;
+            }
+            rebuildSceneIndex();
+        }
+    }
+
+    /** 执行场景索引回填（同步执行，避免并发访问时列表不完整） */
+    private void rebuildSceneIndex() {
+        long started = System.currentTimeMillis();
+        try {
+            Map<String, UploadFileEntity> known = new HashMap<>();
+            for (UploadFileEntity mapping : uploadFileMapper.selectList(null)) {
+                if (mapping.getUrl() != null) known.put(mapping.getUrl(), mapping);
+            }
+            Set<String> chatPaths = chatImagePaths();
+            int inserted = 0;
+            if (Files.isDirectory(uploadPath)) {
+                try (Stream<Path> stream = Files.walk(uploadPath, 4)) {
+                    List<Path> files = stream.filter(Files::isRegularFile).toList();
+                    for (Path file : files) {
+                        String ext = extractExt(file.getFileName().toString());
+                        if (ext == null || !ALLOWED_EXT.contains(ext.toLowerCase())) continue;
+                        String relative = uploadPath.relativize(file).toString().replace('\\', '/');
+                        String url = urlPrefix + relative;
+                        UploadFileEntity existing = known.get(url);
+                        if (existing != null) {
+                            // 老映射可能没有 size，顺手补齐，保证图片空间总大小准确
+                            if (existing.getSize() == null || existing.getSize() <= 0) {
+                                existing.setSize(safeFileSize(file));
+                                try {
+                                    uploadFileMapper.updateById(existing);
+                                } catch (Exception e) {
+                                    log.warn("[upload] 补齐图片大小失败：url={}", url, e);
+                                }
+                            }
+                            continue;
+                        }
+                        String scene = (relative.startsWith(CHAT_UPLOAD_DIR + "/")
+                                || chatPaths.contains(relative)) ? "DM" : SCENE_ADMIN;
+                        UploadFileEntity entity = new UploadFileEntity();
+                        entity.setUrl(url);
+                        entity.setScene(scene);
+                        entity.setSize(safeFileSize(file));
+                        try {
+                            uploadFileMapper.insert(entity);
+                            inserted += 1;
+                        } catch (Exception e) {
+                            log.warn("[upload] 回填图片场景失败：url={}", url, e);
+                        }
+                    }
+                }
+            }
+            sceneIndexReady.set(true);
+            log.info("[upload] 图片场景索引回填完成：inserted={}, cost={}ms",
+                    inserted, System.currentTimeMillis() - started);
+        } catch (Exception e) {
+            log.error("[upload] 图片场景索引回填失败，下次访问图片空间将重试", e);
+        }
+    }
+
+    /** 私信消息 / 群头像引用的图片相对路径（用于历史数据场景识别） */
+    private Set<String> chatImagePaths() {
+        Set<String> paths = new HashSet<>();
+        try {
+            List<String> urls = new ArrayList<>(dmMessageMapper.selectImageContents());
+            urls.addAll(dmConversationMapper.selectGroupAvatars());
+            for (String url : urls) {
+                if (url != null && url.startsWith(urlPrefix)) {
+                    paths.add(url.substring(urlPrefix.length()));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[upload] 查询聊天图片引用失败，历史聊天图片可能被归为 ADMIN", e);
+        }
+        return paths;
     }
 
     /**
@@ -300,26 +437,6 @@ public class AdminUploadController {
             log.error("[upload] 删除文件失败：{}", target, e);
             return Result.error("删除失败");
         }
-    }
-
-    /**
-     * 将磁盘文件转换为图片空间列表项（URL 统一使用 / 分隔，兼容 Windows）。
-     */
-    private UploadedFile toUploadedFile(Path file) {
-        UploadedFile item = new UploadedFile();
-        String relative = uploadPath.relativize(file).toString().replace('\\', '/');
-        item.setUrl(urlPrefix + relative);
-        item.setFilename(file.getFileName().toString());
-        try {
-            item.setSize(Files.size(file));
-            item.setLastModified(Files.getLastModifiedTime(file).toMillis());
-        } catch (IOException e) {
-            // 单个文件属性读取失败不影响整个列表，降级为 0
-            log.warn("[upload] 读取文件属性失败：{}", file, e);
-            item.setSize(0L);
-            item.setLastModified(0L);
-        }
-        return item;
     }
 
     /**

@@ -3,9 +3,11 @@ package com.moyuyo.api.controller;
 import com.moyuyo.common.dto.admin.UploadResult;
 import com.moyuyo.common.Result;
 import com.moyuyo.common.security.UserContextHolder;
+import com.moyuyo.service.admin.AdminUploadGroupService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,7 +43,11 @@ import java.util.UUID;
 @Tag(name = "用户端 - 文件上传")
 @RestController
 @RequestMapping("/api/v1/file/upload")
+@RequiredArgsConstructor
 public class UserUploadController {
+
+    /** 上传元数据服务：记录图片场景（图片空间只展示 ADMIN） */
+    private final AdminUploadGroupService adminUploadGroupService;
 
     /** 图片白名单：扩展名 + Content-Type 双重校验（与 AdminUploadController 一致） */
     private static final Set<String> ALLOWED_EXT = new HashSet<>(
@@ -54,6 +60,18 @@ public class UserUploadController {
             Arrays.asList("mp4", "mov", "webm"));
     private static final Set<String> ALLOWED_VIDEO_CT = new HashSet<>(
             Arrays.asList("video/mp4", "video/quicktime", "video/webm"));
+
+    /** 语音白名单：覆盖 H5（webm/ogg）与 APP（mp3/m4a/aac）录音格式 */
+    private static final Set<String> ALLOWED_VOICE_EXT = new HashSet<>(
+            Arrays.asList("mp3", "m4a", "aac", "wav", "ogg", "webm"));
+    private static final Set<String> ALLOWED_VOICE_CT = new HashSet<>(
+            Arrays.asList("audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/aac",
+                    "audio/wav", "audio/x-wav", "audio/ogg", "audio/webm"));
+
+    /** 私信文件白名单：仅常见文档/压缩包，避免被当成任意文件中转站 */
+    private static final Set<String> ALLOWED_FILE_EXT = new HashSet<>(
+            Arrays.asList("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+                    "txt", "md", "csv", "zip", "rar", "7z"));
 
     /** 与 AdminUploadController 共用 moyuyo.upload.dir 默认值 */
     @Value("${moyuyo.upload.dir:/tmp/moyuyo-uploads}")
@@ -76,6 +94,9 @@ public class UserUploadController {
         }
     }
 
+    /** 私信聊天附件独立目录：与管理端图片空间隔离，避免聊天图片混入商品素材库 */
+    private static final String CHAT_UPLOAD_DIR = "dm";
+
     /**
      * 上传单张图片（社区发帖/客服/反馈 通用）。
      * <p>
@@ -87,7 +108,28 @@ public class UserUploadController {
      */
     @PostMapping("/image")
     @Operation(summary = "用户端上传单张图片")
-    public Result<UploadResult> uploadImage(@RequestParam("file") MultipartFile file) {
+    public Result<UploadResult> uploadImage(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(required = false) String scene) {
+        return uploadImageInternal(file, "", scene);
+    }
+
+    /**
+     * 上传聊天图片（私信/群聊专用）。
+     * <p>
+     * POST /api/v1/file/upload/chat-image
+     * <p>
+     * 与普通用户图片共用校验逻辑，但落盘到 /uploads/dm/ 下，
+     * 管理端图片空间会跳过该目录，保证聊天图片不进入商品素材库。
+     */
+    @PostMapping("/chat-image")
+    @Operation(summary = "用户端上传聊天图片")
+    public Result<UploadResult> uploadChatImage(@RequestParam("file") MultipartFile file) {
+        return uploadImageInternal(file, CHAT_UPLOAD_DIR, "DM");
+    }
+
+    /** 图片上传通用实现：subDir 为空时存根目录，否则存到该子目录下 */
+    private Result<UploadResult> uploadImageInternal(MultipartFile file, String subDir, String scene) {
         // 隐式登录态校验:未登录时 UserContextHolder.getUserId() 抛异常被全局处理器转 401
         Long userId = UserContextHolder.getUserId();
         if (userId == null) {
@@ -120,7 +162,8 @@ public class UserUploadController {
         String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
         String filename = UUID.randomUUID().toString().replace("-", "") + "." + ext.toLowerCase();
 
-        Path target = uploadPath.resolve(datePart).resolve(filename).normalize();
+        Path basePath = subDir.isEmpty() ? uploadPath : uploadPath.resolve(subDir);
+        Path target = basePath.resolve(datePart).resolve(filename).normalize();
         // 防路径穿越
         if (!target.startsWith(uploadPath)) {
             return Result.badRequest("非法文件路径");
@@ -137,7 +180,7 @@ public class UserUploadController {
         }
 
         long size = file.getSize();
-        String url = urlPrefix + datePart + "/" + filename;
+        String url = urlPrefix + (subDir.isEmpty() ? "" : subDir + "/") + datePart + "/" + filename;
 
         UploadResult result = new UploadResult();
         result.setUrl(url);
@@ -145,6 +188,12 @@ public class UserUploadController {
         result.setOriginalName(original);
         result.setSize(size);
         result.setContentType(ct);
+        // 记录图片场景：图片空间只展示 ADMIN，聊天/头像/社区图片不会混入素材库
+        try {
+            adminUploadGroupService.recordUpload(url, null, scene, size);
+        } catch (Exception e) {
+            log.warn("[user-upload] 记录上传场景失败：url={}, scene={}", url, scene, e);
+        }
         log.info("[user-upload] userId={} uploaded {} bytes -> {}", userId, size, url);
         return Result.success(result);
     }
@@ -167,7 +216,8 @@ public class UserUploadController {
         List<UploadResult> results = new java.util.ArrayList<>();
         for (MultipartFile f : files) {
             if (f == null || f.isEmpty()) continue;
-            Result<UploadResult> r = uploadImage(f);
+            // 批量图片默认 USER 场景（社区/反馈等由各自页面按需改用单张接口带 scene）
+            Result<UploadResult> r = uploadImageInternal(f, "", "USER");
             if (r.isSuccess() && r.getData() != null) {
                 results.add(r.getData());
             }
@@ -282,6 +332,109 @@ public class UserUploadController {
         result.setSize(size);
         result.setContentType(ct);
         log.info("[user-upload] userId={} uploaded video {} bytes -> {}", userId, size, url);
+        return Result.success(result);
+    }
+
+    /**
+     * 上传语音（私信语音消息）。
+     * <p>
+     * POST /api/v1/file/upload/voice
+     * multipart/form-data: file=@xxx.mp3
+     */
+    @PostMapping("/voice")
+    @Operation(summary = "用户端上传语音")
+    public Result<UploadResult> uploadVoice(@RequestParam("file") MultipartFile file) {
+        Long userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.error(401, "请先登录");
+        }
+        if (file == null || file.isEmpty()) {
+            return Result.badRequest("文件为空");
+        }
+
+        String original = file.getOriginalFilename();
+        String ct = file.getContentType();
+        String ext = extractExt(original);
+        if (ext == null) {
+            ext = extractExtFromContentType(ct);
+        }
+        // H5 MediaRecorder 生成的 blob 常常没有扩展名，按 Content-Type 兜底成 webm
+        if (ext == null && ct != null && ct.toLowerCase().startsWith("audio/")) {
+            ext = ct.toLowerCase().contains("ogg") ? "ogg" : "webm";
+        }
+        if (ext == null || !ALLOWED_VOICE_EXT.contains(ext.toLowerCase())) {
+            return Result.badRequest("不支持的语音格式，仅允许 MP3/M4A/AAC/WAV/OGG/WebM");
+        }
+        if (ct != null && !ct.isBlank()) {
+            // MediaRecorder 会带 codecs 参数（audio/webm;codecs=opus），比较前先去掉参数
+            String baseCt = ct.split(";")[0].trim().toLowerCase();
+            if (!ALLOWED_VOICE_CT.contains(baseCt)) {
+                return Result.badRequest("语音 Content-Type 不匹配");
+            }
+        }
+
+        return store(file, ext, original, ct, userId, "语音");
+    }
+
+    /**
+     * 上传文件（私信文件消息）。
+     * <p>
+     * POST /api/v1/file/upload/file
+     * multipart/form-data: file=@xxx.pdf
+     */
+    @PostMapping("/file")
+    @Operation(summary = "用户端上传文件")
+    public Result<UploadResult> uploadFile(@RequestParam("file") MultipartFile file) {
+        Long userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.error(401, "请先登录");
+        }
+        if (file == null || file.isEmpty()) {
+            return Result.badRequest("文件为空");
+        }
+
+        String original = file.getOriginalFilename();
+        String ct = file.getContentType();
+        String ext = extractExt(original);
+        if (ext == null || !ALLOWED_FILE_EXT.contains(ext.toLowerCase())) {
+            return Result.badRequest("不支持的文件类型，仅允许 PDF/Word/Excel/PPT/TXT/MD/CSV/ZIP/RAR/7Z");
+        }
+        // 文件类型主要依赖扩展名白名单；浏览器/APP 常传 application/octet-stream，不做强 CT 校验
+
+        return store(file, ext, original, ct, userId, "文件");
+    }
+
+    /** 统一落盘：日期分目录 + UUID 文件名，返回相对 URL */
+    private Result<UploadResult> store(MultipartFile file, String ext, String original,
+                                       String ct, Long userId, String label) {
+        String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+        String filename = UUID.randomUUID().toString().replace("-", "") + "." + ext.toLowerCase();
+
+        Path target = uploadPath.resolve(datePart).resolve(filename).normalize();
+        if (!target.startsWith(uploadPath)) {
+            return Result.badRequest("非法文件路径");
+        }
+
+        try {
+            Files.createDirectories(target.getParent());
+            try (var in = file.getInputStream()) {
+                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException e) {
+            log.error("[user-upload] 写入{}失败：{}", label, target, e);
+            return Result.error(label + "写入失败");
+        }
+
+        long size = file.getSize();
+        String url = urlPrefix + datePart + "/" + filename;
+
+        UploadResult result = new UploadResult();
+        result.setUrl(url);
+        result.setFilename(filename);
+        result.setOriginalName(original);
+        result.setSize(size);
+        result.setContentType(ct);
+        log.info("[user-upload] userId={} uploaded {} {} bytes -> {}", userId, label, size, url);
         return Result.success(result);
     }
 }

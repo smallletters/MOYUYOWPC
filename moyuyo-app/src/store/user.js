@@ -3,6 +3,7 @@ import { userApi, deviceApi } from '@/api'
 import { setStorage, getStorage, removeStorage, STORAGE_KEYS } from '@/utils/storage'
 import { getDeviceFingerprint } from '@/utils/deviceFingerprint'
 import { registerPush } from '@/plugins/push'
+import { closeDmSocket, syncMessageTabBadge } from '@/utils/dmSocket'
 
 /**
  * 主动续期定时器引用（模块级 closure）
@@ -185,6 +186,9 @@ export const useUserStore = defineStore('user', {
       removeStorage('moyuyo_refresh_token')
       // 清 deviceList 缓存,防止下一账号冷启动读到本账号的列表
       removeStorage(STORAGE_KEYS.DEVICE_LIST)
+      // 断开私信 WebSocket 并清除消息 Tab 红点，避免登出后仍收到上一账号的私信
+      closeDmSocket()
+      syncMessageTabBadge(0)
     },
 
     async logout() {

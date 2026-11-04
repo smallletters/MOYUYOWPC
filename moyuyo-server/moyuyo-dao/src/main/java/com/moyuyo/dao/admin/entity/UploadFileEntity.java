@@ -24,6 +24,12 @@ public class UploadFileEntity {
     /** 图片相对访问地址（如 /uploads/2026/10/30/xxx.png） */
     private String url;
 
+    /** 上传场景：ADMIN 管理端素材 / AVATAR 头像 / COMMUNITY 社区 / DM 私信聊天 / USER 其他用户上传 */
+    private String scene;
+
+    /** 文件大小（字节） */
+    private Long size;
+
     /** 所属分组ID，NULL 表示未分组 */
     private Long groupId;
 

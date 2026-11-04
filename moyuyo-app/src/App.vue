@@ -14,6 +14,9 @@ import { triggerSessionExpired } from '@/utils/request'
 // 复用 home.vue 的三重去重实现（本地 dateKey + 服务端 Redis SETNX + 失败兜底），
 // 内部已经处理同日幂等，不会变成 N 次请求。
 import { reportActiveHeartbeat } from '@/utils/heartbeat'
+// 私信 WebSocket：全局维持连接，收到新私信时刷新消息 Tab 未读角标
+import { messageApi } from '@/api'
+import { connectDmSocket, onDmSocketEvent, syncMessageTabBadge } from '@/utils/dmSocket'
 
 // APP 端全局 scheme 监听：
 // 支付成功/取消后,Stripe Checkout / PayPal / 支付宝 APP 会用
@@ -45,6 +48,39 @@ const PROBE_LOG_TAG = '[App.probe]'
  * onLaunch 末尾置 true；onShow 检查 false 则早退，等下次 onShow 再处理。
  */
 let appLaunched = false
+
+/** 私信 WebSocket 全局事件订阅（App 生命周期内只注册一次） */
+let _dmSocketUnsub = null
+/** 收到私信后防抖刷新未读角标 */
+let _dmBadgeTimer = null
+
+/** 拉取私信未读数并同步消息 Tab 角标 */
+function refreshDmBadge() {
+  if (!useUserStore().token) return
+  messageApi
+    .unreadCount()
+    .then((count) => syncMessageTabBadge(count))
+    .catch(() => {
+      // 网络异常/未登录时保持现状
+    })
+}
+
+/**
+ * 确保私信 WebSocket 已连接并订阅事件
+ * - connectDmSocket 内部幂等，重复调用无副作用
+ * - 收到新私信后防抖刷新未读数，保证任意 Tab 下底部「消息」红点都是最新的
+ */
+function ensureDmSocket() {
+  if (!useUserStore().token) return
+  connectDmSocket()
+  if (!_dmSocketUnsub) {
+    _dmSocketUnsub = onDmSocketEvent(() => {
+      if (_dmBadgeTimer) clearTimeout(_dmBadgeTimer)
+      _dmBadgeTimer = setTimeout(refreshDmBadge, 300)
+    })
+  }
+  refreshDmBadge()
+}
 
 /**
  * 根据 fetchProfile 抛出的错误决定是否 forceLogout
@@ -168,6 +204,8 @@ export default {
       userStore.startAutoRefresh()
       // 冷启动探活：复用 tryProbe，与 onShow 探活共享 30s 节流窗口
       tryProbe(userStore, 'onLaunch')
+      // 建立私信 WebSocket 并同步消息 Tab 未读角标
+      ensureDmSocket()
     }
 
     // APP 端：支付回跳 scheme 监听（冷启动时，若系统带 url 唤起 APP）
@@ -198,6 +236,8 @@ export default {
     userStore.startAutoRefresh()
     // 后台切回探活：复用 tryProbe，30s 节流防重复请求
     tryProbe(userStore, 'onShow')
+    // 后台期间 WebSocket 可能被系统/网络断开，回前台时重连并刷新未读角标
+    ensureDmSocket()
     // 全局上报今日活跃：与 home.vue 共用同一份去重实现，
     // 即便用户停留在「我的 / 社区 / 宠物」等非首页 tab，从后台切回也会刷新 last_login_time。
     // 同一用户多设备登录只会 UPDATE 同一 userId 行 → 实时在线用户 COUNT 物理去重。

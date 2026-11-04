@@ -31,6 +31,12 @@ public interface AdminUploadGroupService {
     /** 上传成功后绑定分组（groupId 为空/0 时忽略） */
     void bindOnUpload(String url, Long groupId);
 
+    /**
+     * 记录上传元数据：URL、分组、上传场景与文件大小。
+     * 图片空间只查询 scene=ADMIN 的记录，避免聊天/头像等用户图片混入素材库。
+     */
+    void recordUpload(String url, Long groupId, String scene, long size);
+
     /** 删除图片后清理分组映射 */
     void unbindOnDelete(String url);
 }

@@ -100,7 +100,12 @@ export default {
     },
   },
 
-  onLoad() {
+  onLoad(query = {}) {
+    // 消息 Tab 可携带 ?tab=activity/order/system 直达对应分类
+    const tab = query && query.tab
+    if (['all', 'order', 'activity', 'system'].includes(tab)) {
+      this.currentTab = tab
+    }
     // 订阅语言切换，触发 tabs 重新计算
     this._unsubLocale = i18n.subscribe(() => {
       this.localeVersion += 1

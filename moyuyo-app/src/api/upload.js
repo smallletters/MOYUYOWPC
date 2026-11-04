@@ -34,48 +34,25 @@ function resolveUploadUrl(url) {
 /**
  * 上传单张图片
  * @param {string} filePath uni.chooseImage 返回的本地路径(tempFilePaths[0])
+ * @param {string} [scene] 上传场景：AVATAR / COMMUNITY / USER，默认 USER
  * @returns {Promise<{url: string, filename: string, size: number, ...}>}
  */
-export function uploadImage(filePath) {
-  return new Promise((resolve, reject) => {
-    const token = getStorage(STORAGE_KEYS.TOKEN)
-    const header = token ? { Authorization: `Bearer ${token}` } : {}
-    // 注意: 不能再设置 Content-Type,让浏览器自动生成 multipart boundary
-    uni.uploadFile({
-      url: resolveUploadUrl('/api/v1/file/upload/image'),
-      filePath,
-      name: 'file',
-      header,
-      success: (res) => {
-        try {
-          const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
-          if (res.statusCode >= 200 && res.statusCode < 300 && body?.code === 0) {
-            resolve(body.data)
-          } else {
-            reject(new Error(body?.message || t('upload.failed', { code: res.statusCode })))
-          }
-        } catch (e) {
-          reject(new Error(t('upload.parseFailed')))
-        }
-      },
-      fail: (err) => {
-        reject(new Error(err.errMsg || t('upload.networkError')))
-      },
-    })
-  })
+export function uploadImage(filePath, scene) {
+  return uploadTo('/api/v1/file/upload/image', filePath, 'image.png', scene)
 }
 
 /**
  * 批量上传图片(顺序上传,逐张返回 URL)
  * @param {string[]} filePaths
+ * @param {string} [scene] 上传场景
  * @returns {Promise<string[]>} URL 数组(失败的会被跳过并 toast)
  */
-export async function uploadImages(filePaths) {
+export async function uploadImages(filePaths, scene) {
   if (!filePaths || !filePaths.length) return []
   const urls = []
   for (const p of filePaths) {
     try {
-      const result = await uploadImage(p)
+      const result = await uploadImage(p, scene)
       if (result?.url) urls.push(result.url)
     } catch (e) {
       // 单张失败不影响其他张
@@ -128,8 +105,101 @@ export function uploadVideo(filePath, onProgress) {
   })
 }
 
+/**
+ * 通用上传：H5 支持 Blob/File（走 XHR FormData），APP/小程序走 uni.uploadFile。
+ * @param {string} endpoint 上传接口路径
+ * @param {string|Blob|File} source 本地临时路径或 H5 文件对象
+ * @param {string} filename 文件名（H5 Blob 上传时用于扩展名判定）
+ * @param {string} [scene] 上传场景（ADMIN 由后端管理端接口固定，此处用于用户端图片分类）
+ */
+function uploadTo(endpoint, source, filename, scene) {
+  // #ifdef H5
+  if (typeof Blob !== 'undefined' && source instanceof Blob) {
+    return new Promise((resolve, reject) => {
+      const token = getStorage(STORAGE_KEYS.TOKEN)
+      const form = new FormData()
+      form.append('file', source, filename || 'file')
+      if (scene) form.append('scene', scene)
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', resolveUploadUrl(endpoint))
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+      xhr.onload = () => {
+        try {
+          const body = JSON.parse(xhr.responseText || '{}')
+          if (xhr.status >= 200 && xhr.status < 300 && body?.code === 0) {
+            resolve(body.data)
+          } else {
+            reject(new Error(body?.message || t('upload.failed', { code: xhr.status })))
+          }
+        } catch (e) {
+          reject(new Error(t('upload.parseFailed')))
+        }
+      }
+      xhr.onerror = () => reject(new Error(t('upload.networkError')))
+      xhr.send(form)
+    })
+  }
+  // #endif
+  return new Promise((resolve, reject) => {
+    const token = getStorage(STORAGE_KEYS.TOKEN)
+    const header = token ? { Authorization: `Bearer ${token}` } : {}
+    uni.uploadFile({
+      url: resolveUploadUrl(endpoint),
+      filePath: source,
+      name: 'file',
+      header,
+      formData: scene ? { scene } : undefined,
+      success: (res) => {
+        try {
+          const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
+          if (res.statusCode >= 200 && res.statusCode < 300 && body?.code === 0) {
+            resolve(body.data)
+          } else {
+            reject(new Error(body?.message || t('upload.failed', { code: res.statusCode })))
+          }
+        } catch (e) {
+          reject(new Error(t('upload.parseFailed')))
+        }
+      },
+      fail: (err) => {
+        reject(new Error(err.errMsg || t('upload.networkError')))
+      },
+    })
+  })
+}
+
+/**
+ * 上传语音（私信语音消息）
+ * @param {string|Blob|File} source 本地路径或 H5 Blob
+ * @param {string} [filename] H5 Blob 上传时的文件名（含扩展名）
+ */
+export function uploadVoice(source, filename) {
+  return uploadTo('/api/v1/file/upload/voice', source, filename || 'voice.webm')
+}
+
+/**
+ * 上传聊天图片（私信/群聊专用）。
+ * 后端落盘到 /uploads/dm/ 下，管理端图片空间会自动排除。
+ * @param {string|Blob} filePath uni.chooseImage 返回的本地路径或 H5 Blob
+ */
+export function uploadChatImage(filePath) {
+  return uploadTo('/api/v1/file/upload/chat-image', filePath, 'chat-image.png')
+}
+
+/**
+ * 上传文件（私信文件消息）
+ * @param {string|Blob|File} source 本地路径或 H5 File
+ * @param {string} [filename] 原始文件名
+ */
+export function uploadFile(source, filename) {
+  return uploadTo('/api/v1/file/upload/file', source, filename || 'file')
+}
+
 export default {
   uploadImage,
   uploadImages,
   uploadVideo,
+  uploadChatImage,
+  uploadVoice,
+  uploadFile,
 }

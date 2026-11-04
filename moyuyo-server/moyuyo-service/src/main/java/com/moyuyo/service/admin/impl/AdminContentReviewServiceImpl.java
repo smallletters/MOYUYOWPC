@@ -1,15 +1,19 @@
 package com.moyuyo.service.admin.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.annotation.OperationLog;
 import com.moyuyo.common.utils.JsonUtils;
 import com.moyuyo.dao.admin.entity.ContentReviewEntity;
 import com.moyuyo.dao.admin.mapper.ContentReviewMapper;
 import com.moyuyo.dao.entity.CommunityPostEntity;
+import com.moyuyo.dao.entity.DmMessageEntity;
 import com.moyuyo.dao.entity.UserEntity;
 import com.moyuyo.dao.mapper.CommunityPostMapper;
+import com.moyuyo.dao.mapper.DmMessageMapper;
 import com.moyuyo.dao.mapper.UserMapper;
+import com.moyuyo.service.NotificationService;
 import com.moyuyo.service.admin.AdminContentReviewService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -45,6 +49,33 @@ public class AdminContentReviewServiceImpl implements AdminContentReviewService 
   private final ContentReviewMapper contentReviewMapper;
   private final UserMapper userMapper;
   private final CommunityPostMapper communityPostMapper;
+  private final DmMessageMapper dmMessageMapper;
+  private final NotificationService notificationService;
+
+  /**
+   * 举报结果回告：审核动作完成后给举报人写一条站内通知。
+   * 通知失败不阻断审核主流程（审核结果已落库，通知可人工补发）。
+   */
+  private void notifyReporter(ContentReviewEntity entity, String title, String content) {
+    if (entity == null || entity.getReporterId() == null) return;
+    try {
+      // type=system：C 端通知页按 order/activity/system 三分类展示
+      notificationService.saveNotification(
+          entity.getReporterId(), "system", title, content, entity.getContentId());
+      log.info("[content-review] 举报结果已通知举报人: reviewId={}, reporterId={}",
+          entity.getId(), entity.getReporterId());
+    } catch (Exception ex) {
+      log.error("[content-review] 举报结果通知失败: reviewId={}, reporterId={}",
+          entity.getId(), entity.getReporterId(), ex);
+    }
+  }
+
+  /** 举报对象描述：私信消息/用户与社区内容使用不同文案 */
+  private String reportTargetLabel(ContentReviewEntity entity) {
+    if ("DM_MESSAGE".equalsIgnoreCase(entity.getContentType())) return "举报的私信消息";
+    if ("DM_USER".equalsIgnoreCase(entity.getContentType())) return "举报的用户";
+    return "举报的内容";
+  }
 
   @Override
   public Map<String, Object> listAll(int page, int size, String contentType, String status, String reasonLike) {
@@ -136,6 +167,7 @@ public class AdminContentReviewServiceImpl implements AdminContentReviewService 
     vo.put("contentType", entity.getContentType());
     vo.put("contentId", entity.getContentId());
     vo.put("userId", entity.getUserId());
+    vo.put("reporterId", entity.getReporterId());
     vo.put("contentExcerpt", entity.getContentExcerpt());
     vo.put("reason", entity.getReason());
     vo.put("status", entity.getStatus());
@@ -195,6 +227,21 @@ public class AdminContentReviewServiceImpl implements AdminContentReviewService 
     }
   }
 
+  /** DM_MESSAGE 被隐藏/删除/封禁时联动撤回消息，避免聊天页继续展示违规内容 */
+  private void hideReportedDmMessage(ContentReviewEntity entity) {
+    if (!"DM_MESSAGE".equalsIgnoreCase(entity.getContentType()) || entity.getContentId() == null) {
+      return;
+    }
+    DmMessageEntity msg = dmMessageMapper.selectById(entity.getContentId());
+    if (msg == null) return;
+    dmMessageMapper.update(null,
+        new LambdaUpdateWrapper<DmMessageEntity>()
+            .eq(DmMessageEntity::getId, msg.getId())
+            .set(DmMessageEntity::getRecalled, 1)
+            .set(DmMessageEntity::getContent, "")
+            .set(DmMessageEntity::getRecallTime, LocalDateTime.now()));
+  }
+
   @Override
   @OperationLog(type = "内容审核-通过", detail = "#id", logParams = false)
   public void approve(Long id, Long reviewerId) {
@@ -204,6 +251,8 @@ public class AdminContentReviewServiceImpl implements AdminContentReviewService 
     entity.setReviewerId(reviewerId);
     entity.setReviewTime(LocalDateTime.now());
     contentReviewMapper.updateById(entity);
+    notifyReporter(entity, "举报处理结果",
+        "你" + reportTargetLabel(entity) + "经核实存在违规，已处理。感谢你的反馈。");
   }
 
   @Override
@@ -220,6 +269,8 @@ public class AdminContentReviewServiceImpl implements AdminContentReviewService 
     entity.setReviewComment(comment);
     entity.setReviewTime(LocalDateTime.now());
     contentReviewMapper.updateById(entity);
+    notifyReporter(entity, "举报处理结果",
+        "你" + reportTargetLabel(entity) + "经核实未发现违规，感谢你的反馈。");
   }
 
   @Override
@@ -230,6 +281,9 @@ public class AdminContentReviewServiceImpl implements AdminContentReviewService 
     entity.setStatus("HIDDEN");
     entity.setReviewTime(LocalDateTime.now());
     contentReviewMapper.updateById(entity);
+    hideReportedDmMessage(entity);
+    notifyReporter(entity, "举报处理结果",
+        "你" + reportTargetLabel(entity) + "已被隐藏。感谢你的反馈。");
   }
 
   @Override
@@ -244,6 +298,9 @@ public class AdminContentReviewServiceImpl implements AdminContentReviewService 
     entity.setStatus("DELETED");
     entity.setReviewTime(LocalDateTime.now());
     contentReviewMapper.updateById(entity);
+    hideReportedDmMessage(entity);
+    notifyReporter(entity, "举报处理结果",
+        "你" + reportTargetLabel(entity) + "已被删除。感谢你的反馈。");
   }
 
   @Override
@@ -262,6 +319,9 @@ public class AdminContentReviewServiceImpl implements AdminContentReviewService 
     entity.setReviewComment(comment == null ? "" : comment);
     entity.setReviewTime(LocalDateTime.now());
     contentReviewMapper.updateById(entity);
+    hideReportedDmMessage(entity);
+    notifyReporter(entity, "举报处理结果",
+        "你" + reportTargetLabel(entity) + "经核实存在违规，已封禁处理。感谢你的反馈。");
 
     // 联动:被 BANNED 的帖子内容必须在 C 端社区列表中隐藏
     // contentType=POST 时通过 contentId 反查并软删帖子

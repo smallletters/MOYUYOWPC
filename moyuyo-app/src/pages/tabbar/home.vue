@@ -20,7 +20,7 @@
          原因：Android 端 scroll-view 与 swiper 嵌套时，touch-slop(≈20px) 会被
          WebView 用来判定"切断惯性滚动"，体感就是"先下滑一点才能上滑"。 -->
     <view class="home-scroll">
-      <!-- ① 金刚区：4 大产品线 + 4 个运营入口 -->
+      <!-- ① 金刚区：4 个运营入口（分类 / 会员 / 领券 / 限时） -->
       <view class="kingkong">
         <view
           v-for="item in kingkongList"
@@ -139,9 +139,9 @@ import { useThemeStore } from '@/store'
  */
 const TAB_BAR_PAGES = [
   '/pages/tabbar/home',
-  '/pages/tabbar/category',
   '/pages/tabbar/pet',
   '/pages/tabbar/community',
+  '/pages/tabbar/messages',
   '/pages/tabbar/user',
 ]
 
@@ -161,26 +161,13 @@ export default {
       // 兜底数据用于接口失败时降级显示，避免页面空白（见 computed fallbackBanners）。
       banners: [],
       kingkongList: [
+        // 分类入口：进入分类页（不预设产品线，由用户在分类页内自行切换）
         {
-          id: 'care',
-          labelKey: 'home.kingkong.care',
-          icon: 'spray-can',
+          id: 'category',
+          labelKey: 'home.kingkong.category',
+          icon: 'grid',
           bg: 'var(--background-200)',
         },
-        {
-          id: 'gear',
-          labelKey: 'home.kingkong.gear',
-          icon: 'shopping-bag',
-          bg: 'var(--background-200)',
-        },
-        {
-          id: 'health',
-          labelKey: 'home.kingkong.health',
-          icon: 'heart',
-          bg: 'var(--background-200)',
-        },
-        { id: 'play', labelKey: 'home.kingkong.play', icon: 'star', bg: 'var(--background-200)' },
-        { id: 'home', labelKey: 'home.kingkong.living', icon: 'home', bg: 'var(--background-200)' },
         { id: 'vip', labelKey: 'home.kingkong.vip', icon: 'star', bg: 'var(--background-200)' },
         {
           id: 'coupon',
@@ -343,16 +330,12 @@ export default {
 
     onKingkongClick(item) {
       // 根据金刚区类型跳转
-      if (['care', 'gear', 'health', 'play', 'home'].includes(item.id)) {
-        uni.switchTab({ url: '/pages/tabbar/category' })
-        // 通过 globalData 传递选中分类
-        getApp().globalData.categoryTab = item.id
+      if (item.id === 'category') {
+        this.goCategory()
       } else if (item.id === 'coupon') {
         uni.navigateTo({ url: '/pages/user/coupon-center' })
       } else if (item.id === 'vip') {
         uni.navigateTo({ url: '/pages/user/membership' })
-      } else if (item.id === 'subscribe') {
-        uni.navigateTo({ url: '/pages/user/subscribe' })
       } else if (item.id === 'flash') {
         uni.navigateTo({ url: '/pages/goods/flash-sale' })
       } else {
@@ -386,7 +369,7 @@ export default {
     /**
      * 解析并打开 banner 链接。
      * CMS 里运营通常填三种形态（见 mo_cms_banner.link_url 现有数据）：
-     *  1) 带域名的站内页：http://192.168.6.103:5174/pages/goods/detail?id=xxx
+     *  1) 带域名的站内页：http://192.168.2.118:5174/pages/goods/detail?id=xxx
      *  2) 站内相对路径：/pages/goods/detail?id=xxx
      *  3) 外部网页：https://example.com/activity
      */
@@ -441,7 +424,8 @@ export default {
     },
 
     goCategory() {
-      uni.switchTab({ url: '/pages/tabbar/category' })
+      // 分类页不再是 tabBar 页，必须用 navigateTo
+      uni.navigateTo({ url: '/pages/tabbar/category' })
     },
 
     onScan() {
@@ -594,7 +578,8 @@ export default {
 
 .kingkong {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  /* 金刚区现有 4 个入口，按 4 列均分（原 5 列布局预留的产品线入口已移除） */
+  grid-template-columns: repeat(4, 1fr);
   gap: 16rpx;
   padding: 24rpx;
   background: var(--color-surface);
