@@ -73,7 +73,17 @@ export const useCartStore = defineStore('cart', {
               productId: item.productId,
               name: item.productName,
               image: item.mainImage,
-              price: item.price,
+              // 有活动价时展示活动价，原价由后端快照
+              price:
+                item.campaignPrice != null && Number(item.campaignPrice) < Number(item.price)
+                  ? item.campaignPrice
+                  : item.price,
+              originalPrice:
+                item.campaignPrice != null && Number(item.campaignPrice) < Number(item.price)
+                  ? item.price
+                  : null,
+              campaignTag: item.campaignTag || '',
+              campaignId: item.campaignId || null,
               quantity: item.quantity,
               // 服务端返回的当前可用库存,用于前端限制加购数量上限
               stock: typeof item.stock === 'number' ? item.stock : null,

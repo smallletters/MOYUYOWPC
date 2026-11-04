@@ -166,8 +166,12 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="startDate" label="开始日期" width="110" />
-          <el-table-column prop="endDate" label="结束日期" width="110" />
+          <el-table-column label="开始日期" width="160">
+            <template #default="{ row }">{{ formatDateTime(row.startDate) }}</template>
+          </el-table-column>
+          <el-table-column label="结束日期" width="160">
+            <template #default="{ row }">{{ formatDateTime(row.endDate) }}</template>
+          </el-table-column>
           <el-table-column prop="participants" label="参与人数" width="90" />
           <el-table-column prop="gmv" label="GMV" width="100" />
           <el-table-column label="操作" width="140" fixed="right">
@@ -203,10 +207,10 @@
             </el-select>
           </el-form-item>
           <el-form-item label="开始日期">
-            <el-date-picker v-model="editForm.startDate" type="date" value-format="YYYY-MM-DD" placeholder="选择开始日期" style="width:100%" />
+            <el-date-picker v-model="editForm.startDate" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="选择开始日期" style="width:100%" />
           </el-form-item>
           <el-form-item label="结束日期">
-            <el-date-picker v-model="editForm.endDate" type="date" value-format="YYYY-MM-DD" placeholder="选择结束日期" style="width:100%" />
+            <el-date-picker v-model="editForm.endDate" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="选择结束日期" style="width:100%" />
           </el-form-item>
           <el-form-item label="活动描述">
             <el-input v-model="editForm.description" type="textarea" placeholder="请输入活动描述" />
@@ -625,6 +629,12 @@ async function loadDistributionEffects() {
   } catch (e) {
     console.error('加载分销效果失败', e)
   }
+}
+
+// 日期时间展示：兼容 ISO("2026-11-04T10:00:00") 与空格分隔格式
+function formatDateTime(v) {
+  if (!v) return '-'
+  return String(v).replace('T', ' ').replace(/\.\d+$/, '')
 }
 
 // GMV 格式化（>10000 显示为 x.x w）

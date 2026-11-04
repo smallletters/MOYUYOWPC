@@ -14,6 +14,8 @@ import { get, post, del } from '@/utils/request'
  *  - GET    /api/v1/community/topics           话题列表（用于发布页选择话题）
  *  - POST   /api/v1/community/posts/{id}/collect  收藏帖子
  *  - DELETE /api/v1/community/posts/{id}/collect 取消收藏
+ *  - POST   /api/v1/community/posts/{id}/report  举报帖子（管理端内容审核）
+ *  - POST   /api/v1/community/posts/{id}/not-interested  标记不感兴趣（推荐流隐藏）
  */
 
 export function getCommunityPosts(params = {}) {
@@ -99,6 +101,21 @@ export function collectPost(id) {
   return post(`/api/v1/community/posts/${id}/collect`)
 }
 
+/**
+ * 举报帖子：写入管理端内容审核队列（contentType=POST）。
+ * 后端约束：不能举报自己的帖子，同一帖子 24 小时内不可重复举报。
+ */
+export function reportPost(postId, reason, description = '') {
+  return post(`/api/v1/community/posts/${postId}/report`, { reason, description })
+}
+
+/**
+ * 标记帖子「不感兴趣」：仅从当前用户的推荐流中隐藏，幂等。
+ */
+export function markNotInterested(postId) {
+  return post(`/api/v1/community/posts/${postId}/not-interested`)
+}
+
 export function uncollectPost(id) {
   return del(`/api/v1/community/posts/${id}/collect`)
 }
@@ -161,6 +178,8 @@ export default {
   addComment,
   collectPost,
   uncollectPost,
+  reportPost,
+  markNotInterested,
   getCollectedPosts,
   getLikedPosts,
   getCommunityTopics,

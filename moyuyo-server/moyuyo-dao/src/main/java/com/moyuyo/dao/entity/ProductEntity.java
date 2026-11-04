@@ -87,4 +87,36 @@ public class ProductEntity {
     /** 是否处于进行中的秒杀活动（秒杀商品不展示/不叠加会员价） */
     @TableField(exist = false)
     private Boolean flashSaleActive;
+
+    /** 命中的营销活动 ID */
+    @TableField(exist = false)
+    private Long campaignId;
+
+    /** 营销活动名称 */
+    @TableField(exist = false)
+    private String campaignName;
+
+    /** 活动优惠类型：PERCENT / DIRECT / THRESHOLD */
+    @TableField(exist = false)
+    private String campaignType;
+
+    /** 活动优惠值：PERCENT 为折扣系数（0.7），DIRECT 为减免金额，THRESHOLD 为减免金额 */
+    @TableField(exist = false)
+    private BigDecimal campaignValue;
+
+    /** 满减门槛（仅 THRESHOLD 有效） */
+    @TableField(exist = false)
+    private BigDecimal campaignMinAmount;
+
+    /** 活动价（按商品主价计算，SKU 价格不同时前端按 campaignType/Value 重算） */
+    @TableField(exist = false)
+    private BigDecimal campaignPrice;
+
+    /** 活动优惠金额 */
+    @TableField(exist = false)
+    private BigDecimal campaignDiscount;
+
+    /** 活动标签文案，如“限时 7 折”“立减 10 元”“满 100 减 20” */
+    @TableField(exist = false)
+    private String campaignTag;
 }

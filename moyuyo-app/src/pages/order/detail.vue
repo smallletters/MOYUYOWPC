@@ -81,6 +81,10 @@
         <text>{{ $t('orderDetail.price.member') }}</text>
         <text class="discount">-${{ order.memberDiscount }}</text>
       </view>
+      <view v-if="order.campaignDiscount > 0" class="price-row">
+        <text>活动优惠</text>
+        <text class="discount">-${{ order.campaignDiscount }}</text>
+      </view>
       <view v-if="order.couponDiscount > 0" class="price-row">
         <text>{{ $t('orderDetail.price.discount') }}</text>
         <text class="discount">-${{ order.couponDiscount }}</text>

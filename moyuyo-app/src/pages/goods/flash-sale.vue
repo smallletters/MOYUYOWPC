@@ -273,14 +273,20 @@ export default {
       // 模板渲染时按 status 映射 i18n key,避免 status 变更时 actionLabel 不同步
       return {
         id: p.id,
-        name: p.name || this.$t('flashSale.productFallbackName'),
+        // 标题优先展示商品名称，商品缺失时回退到活动名称
+        name: p.productName || p.name || this.$t('flashSale.productFallbackName'),
         flashPrice: Number(p.flashPrice || 0).toFixed(2),
-        originalPrice: Number(p.originalPrice || 0).toFixed(2),
+        // 原价为 0 时留空，模板用 v-if 判断，避免展示「¥0.00」划线价
+        originalPrice: Number(p.originalPrice || 0) > 0 ? Number(p.originalPrice).toFixed(2) : '',
         soldPercent,
         limit: Number(p.limitPerUser || 1),
         soldOut: stockLeft <= 0,
         status,
-        image: '',
+        // 保留时间字段，供顶部倒计时计算（之前缺失导致倒计时不显示）
+        startTime: p.startTime || '',
+        endTime: p.endTime || '',
+        // 后端在列表接口中注入商品主图（productImage），用于卡片展示
+        image: p.productImage || '',
         color: 'linear-gradient(135deg, #cfe5ff, #007aff)',
       }
     },

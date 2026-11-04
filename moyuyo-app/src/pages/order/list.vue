@@ -82,6 +82,10 @@
               <text class="amount-label">{{ $t('orderList.amount.member') }}</text>
               <text class="amount-value amount-deduct">−{{ money(o.memberDiscount) }}</text>
             </view>
+            <view v-if="num(o.campaignDiscount) > 0" class="amount-row">
+              <text class="amount-label">活动优惠</text>
+              <text class="amount-value amount-deduct">−{{ money(o.campaignDiscount) }}</text>
+            </view>
             <view v-if="num(o.couponDiscount) > 0" class="amount-row">
               <text class="amount-label">{{ $t('orderList.amount.coupon') }}</text>
               <text class="amount-value amount-deduct">−{{ money(o.couponDiscount) }}</text>
@@ -238,7 +242,7 @@ export default {
 
     /**
      * 订单实付金额：优先取后端落库的 payAmount；缺失/非法时按恒等式回退计算：
-     *   payAmount = goodsAmount + freight − memberDiscount − couponDiscount − pointsDiscount（下限 0）
+     *   payAmount = goodsAmount + freight − memberDiscount − campaignDiscount − couponDiscount − pointsDiscount（下限 0）
      * 保证任一分项为 null 时也不会渲染出 NaN / $undefined。
      */
     payableOf(o) {
@@ -250,9 +254,10 @@ export default {
       const goods = this.num(o?.goodsAmount)
       const freight = this.num(o?.freight)
       const member = this.num(o?.memberDiscount)
+      const campaign = this.num(o?.campaignDiscount)
       const coupon = this.num(o?.couponDiscount)
       const points = this.num(o?.pointsDiscount)
-      return Math.max(0, goods + freight - member - coupon - points)
+      return Math.max(0, goods + freight - member - campaign - coupon - points)
     },
 
     /**

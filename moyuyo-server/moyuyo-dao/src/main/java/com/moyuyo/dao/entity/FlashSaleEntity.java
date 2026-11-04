@@ -40,4 +40,12 @@ public class FlashSaleEntity {
 
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
+
+    /** 关联商品主图（仅列表/详情接口动态注入，无对应数据库列） */
+    @TableField(exist = false)
+    private String productImage;
+
+    /** 关联商品名称（仅列表/详情接口动态注入，无对应数据库列） */
+    @TableField(exist = false)
+    private String productName;
 }

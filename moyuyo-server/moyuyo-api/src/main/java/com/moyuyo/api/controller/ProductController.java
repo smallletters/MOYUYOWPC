@@ -48,6 +48,7 @@ public class ProductController {
   private final MemberPriceService memberPriceService;
   private final FlashSaleMapper flashSaleMapper;
   private final StringRedisTemplate redisTemplate;
+  private final com.moyuyo.service.impl.CampaignPricingServiceImpl campaignPricingService;
 
   @Operation(summary = "商品列表（分页+筛选+排序+搜索）")
   @GetMapping
@@ -104,6 +105,10 @@ public class ProductController {
         }
       }
     }
+    // 注入营销活动价（列表批量一次查询，避免 N+1）
+    if (result != null && result.getRecords() != null) {
+      campaignPricingService.fillProductCampaigns(result.getRecords(), UserContextHolder.getUserId());
+    }
     return Result.success(result);
   }
 
@@ -111,6 +116,8 @@ public class ProductController {
   @GetMapping("/{id}")
   public Result<ProductEntity> getProductDetail(@PathVariable Long id) {
     ProductEntity product = productService.getProductWithDetails(id);
+    // 营销活动价优先于会员价；活动商品不再展示会员价
+    campaignPricingService.fillProductCampaign(product, UserContextHolder.getUserId());
     // 会员价：按当前登录用户的会员等级动态计算展示价（未登录/无折扣时为 null）
     fillMemberPrice(product);
     // 浏览商品触发"浏览 5 个商品"任务进度（同一商品 5 分钟内不重复计数，避免刷新刷分）
@@ -130,8 +137,8 @@ public class ProductController {
     if (userId == null || product.getPrice() == null) {
       return;
     }
-    // 进行中的秒杀商品不叠加会员折扣（与下单口径一致），详情页也不展示会员价
-    if (flashSaleActive) {
+    // 秒杀/营销活动商品不叠加会员折扣（与下单口径一致），详情页也不展示会员价
+    if (flashSaleActive || product.getCampaignId() != null) {
       return;
     }
     BigDecimal rate = memberPriceService.getDiscountForUser(userId);

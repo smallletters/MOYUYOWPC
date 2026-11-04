@@ -35,7 +35,8 @@ public class AdminFlashSaleServiceImpl implements AdminFlashSaleService {
   @Override
   public List<Map<String, Object>> listAll() {
     List<FlashSaleEntity> list = flashSaleMapper.selectList(
-        new LambdaQueryWrapper<FlashSaleEntity>().orderByDesc(f -> f.getCreateTime()));
+        new LambdaQueryWrapper<FlashSaleEntity>()
+            .orderByDesc(FlashSaleEntity::getCreateTime));
     return toItemsWithProduct(list);
   }
 
@@ -43,7 +44,8 @@ public class AdminFlashSaleServiceImpl implements AdminFlashSaleService {
   public Map<String, Object> listPage(int page, int size) {
     Page<FlashSaleEntity> pageObj = new Page<>(page, size);
     Page<FlashSaleEntity> result = flashSaleMapper.selectPage(pageObj,
-        new LambdaQueryWrapper<FlashSaleEntity>().orderByDesc(f -> f.getCreateTime()));
+        new LambdaQueryWrapper<FlashSaleEntity>()
+            .orderByDesc(FlashSaleEntity::getCreateTime));
     Map<String, Object> data = new LinkedHashMap<>();
     data.put("total", result.getTotal());
     data.put("records", toItemsWithProduct(result.getRecords()));
@@ -57,7 +59,7 @@ public class AdminFlashSaleServiceImpl implements AdminFlashSaleService {
     item.put("name", f.getName());
     item.put("productId", f.getProductId());
     item.put("skuId", f.getSkuId());
-    item.put("status", f.getActive());
+    item.put("status", resolveStatus(f));
     item.put("startTime", f.getStartTime());
     item.put("endTime", f.getEndTime());
     item.put("flashPrice", f.getFlashPrice());
@@ -65,6 +67,17 @@ public class AdminFlashSaleServiceImpl implements AdminFlashSaleService {
     item.put("stock", f.getTotalStock());
     item.put("createTime", f.getCreateTime());
     return item;
+  }
+
+  /**
+   * 计算管理端状态字符串，与后台页面 useStatusTag 的 active/inactive/ended 映射保持一致。
+   * 注意：数据库里只有 active 布尔值，已结束的活动需要按 endTime 判断。
+   */
+  private String resolveStatus(FlashSaleEntity f) {
+    if (f.getEndTime() != null && f.getEndTime().isBefore(LocalDateTime.now())) {
+      return "ended";
+    }
+    return Boolean.TRUE.equals(f.getActive()) ? "active" : "inactive";
   }
 
   /**
@@ -85,7 +98,7 @@ public class AdminFlashSaleServiceImpl implements AdminFlashSaleService {
       // 改用链式 lambdaQuery().in().list() 等价且无警告
       List<ProductEntity> products = productMapper.selectList(
           new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ProductEntity>()
-              .in(p -> p.getId(), productIds));
+              .in(ProductEntity::getId, productIds));
       productMap = products.stream()
           .collect(Collectors.toMap(p -> p.getId(), p -> p, (a, b) -> a));
     }
@@ -251,7 +264,7 @@ public class AdminFlashSaleServiceImpl implements AdminFlashSaleService {
   public void delete(Long id) {
     // 先删除关联的抢购订单，再删除抢购活动
     flashSaleOrderMapper.delete(new LambdaQueryWrapper<FlashSaleOrderEntity>()
-        .eq(o -> o.getFlashSaleId(), id));
+        .eq(FlashSaleOrderEntity::getFlashSaleId, id));
     flashSaleMapper.deleteById(id);
   }
 
@@ -274,7 +287,7 @@ public class AdminFlashSaleServiceImpl implements AdminFlashSaleService {
     
     // 进行中的活动数
     long activeCount = flashSaleMapper.selectCount(
-        new LambdaQueryWrapper<FlashSaleEntity>().eq(f -> f.getActive(), true));
+        new LambdaQueryWrapper<FlashSaleEntity>().eq(FlashSaleEntity::getActive, true));
     
     // 总参与人数（秒杀订单数）
     long participants = flashSaleOrderMapper.selectCount(new LambdaQueryWrapper<>());

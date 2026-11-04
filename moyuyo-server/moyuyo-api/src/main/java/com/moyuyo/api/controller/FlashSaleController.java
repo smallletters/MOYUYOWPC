@@ -20,12 +20,13 @@ public class FlashSaleController {
 
     private final FlashSaleService flashSaleService;
 
-    @Operation(summary = "正在进行的活动列表")
+    @Operation(summary = "秒杀活动列表（按场次筛选）")
     @GetMapping
     public Result<Page<FlashSaleEntity>> listActive(
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        return Result.success(flashSaleService.listActive(page, size));
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false, defaultValue = "") String session) {
+        return Result.success(flashSaleService.listActive(page, size, session));
     }
 
     @Operation(summary = "活动详情")

@@ -97,13 +97,32 @@
                 {{ statusLabel(campaign.status) }}
               </el-tag>
             </el-descriptions-item>
-            <el-descriptions-item label="开始日期">{{ campaign.startDate || '—' }}</el-descriptions-item>
-            <el-descriptions-item label="结束日期">{{ campaign.endDate || '—' }}</el-descriptions-item>
+            <el-descriptions-item label="开始日期">{{ formatTime(campaign.startDate) }}</el-descriptions-item>
+            <el-descriptions-item label="结束日期">{{ formatTime(campaign.endDate) }}</el-descriptions-item>
             <el-descriptions-item label="创建时间">{{ formatTime(campaign.createTime) }}</el-descriptions-item>
             <el-descriptions-item label="预算金额">¥{{ formatMoney(campaign.budget) }}</el-descriptions-item>
             <el-descriptions-item label="已花费">¥{{ formatMoney(campaign.cost) }}</el-descriptions-item>
             <el-descriptions-item label="参与人数">{{ campaign.participants ?? 0 }}</el-descriptions-item>
             <el-descriptions-item label="活动 GMV" :span="2">¥{{ formatMoney(campaign.gmv) }}</el-descriptions-item>
+            <el-descriptions-item label="适用商品">{{ campaign.productScope || '—' }}</el-descriptions-item>
+            <el-descriptions-item label="适用品类">
+              {{ campaign.productCategories || '—' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="优惠规则">
+              {{ campaign.discountType || '—' }} {{ campaign.discountValue || '' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="每人限用次数">{{ campaign.perLimit ?? 0 }}</el-descriptions-item>
+            <el-descriptions-item label="库存限制">
+              {{ campaign.stockLimit ? '启用' : '未启用' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="发放总量">{{ campaign.totalCount ?? 0 }}</el-descriptions-item>
+            <el-descriptions-item label="审批人">{{ campaign.approver || '—' }}</el-descriptions-item>
+            <el-descriptions-item label="审批备注">{{ campaign.remark || '—' }}</el-descriptions-item>
+            <el-descriptions-item label="满减门槛">¥{{ formatMoney(campaign.minOrderAmount) }}</el-descriptions-item>
+            <el-descriptions-item label="指定商品">{{ campaign.productIds || '—' }}</el-descriptions-item>
+            <el-descriptions-item label="指定分类">{{ campaign.productCategoryIds || '—' }}</el-descriptions-item>
+            <el-descriptions-item label="已占用件数">{{ campaign.usedCount ?? 0 }}</el-descriptions-item>
+            <el-descriptions-item label="已占用优惠">¥{{ formatMoney(campaign.usedAmount) }}</el-descriptions-item>
             <el-descriptions-item v-if="campaign.description" label="活动描述" :span="2">
               {{ campaign.description }}
             </el-descriptions-item>
@@ -143,6 +162,20 @@ const campaign = reactive({
   gmv: 0,
   budget: 0,
   cost: 0,
+  productScope: '',
+  productCategories: '',
+  discountType: '',
+  discountValue: '',
+  perLimit: 0,
+  stockLimit: false,
+  totalCount: 0,
+  approver: '',
+  remark: '',
+  minOrderAmount: 0,
+  productIds: '',
+  productCategoryIds: '',
+  usedCount: 0,
+  usedAmount: 0,
   roi: '',
   createTime: ''
 })
@@ -223,6 +256,20 @@ async function loadCampaign() {
         gmv: Number(data.gmv ?? data.revenue ?? 0),
         budget: Number(data.budget ?? 0),
         cost: Number(data.cost ?? 0),
+        productScope: data.productScope || '',
+        productCategories: data.productCategories || '',
+        discountType: data.discountType || '',
+        discountValue: data.discountValue || '',
+        perLimit: data.perLimit ?? 0,
+        stockLimit: !!data.stockLimit,
+        totalCount: data.totalCount ?? 0,
+        approver: data.approver || '',
+        remark: data.remark || '',
+        minOrderAmount: Number(data.minOrderAmount ?? 0),
+        productIds: data.productIds || '',
+        productCategoryIds: data.productCategoryIds || '',
+        usedCount: data.usedCount ?? 0,
+        usedAmount: Number(data.usedAmount ?? 0),
         // roi 在 effects 子对象里；兼容扁平/嵌套两种返回结构
         roi: res?.effects?.roi ?? data.roi ?? '',
         createTime: data.createTime || ''

@@ -24,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Tag(name = "社区管理")
 @RestController
@@ -57,7 +58,8 @@ public class CommunityController {
         if (keyword != null && !keyword.trim().isEmpty()) {
             return Result.success(communityService.searchPosts(keyword.trim(), topic, page, size));
         }
-        return Result.success(communityService.listPosts(topic, page, size));
+        // 传当前用户 ID：推荐流过滤该用户已标记「不感兴趣」的帖子
+        return Result.success(communityService.listPosts(topic, page, size, UserContextHolder.getUserId()));
     }
 
     @Operation(summary = "搜索帖子（与 listPosts?keyword= 等价，便于前端直链）")
@@ -73,7 +75,7 @@ public class CommunityController {
                 ? keyword.trim()
                 : (q != null ? q.trim() : null);
         if (term == null || term.isEmpty()) {
-            return Result.success(communityService.listPosts(topic, page, size));
+            return Result.success(communityService.listPosts(topic, page, size, UserContextHolder.getUserId()));
         }
         return Result.success(communityService.searchPosts(term, topic, page, size));
     }
@@ -131,6 +133,25 @@ public class CommunityController {
     @DeleteMapping("/posts/{id}")
     public Result<Void> deletePost(@PathVariable Long id) {
         communityService.deletePost(UserContextHolder.getUserId(), id);
+        return Result.success();
+    }
+
+    @Operation(summary = "举报帖子(进入管理端内容审核队列)")
+    @PostMapping("/posts/{id:\\d+}/report")
+    public Result<Void> reportPost(@PathVariable Long id,
+                                   @RequestBody(required = false) Map<String, Object> body) {
+        String reason = body == null || body.get("reason") == null
+                ? "" : String.valueOf(body.get("reason"));
+        String description = body == null || body.get("description") == null
+                ? "" : String.valueOf(body.get("description"));
+        communityService.reportPost(UserContextHolder.getUserId(), id, reason, description);
+        return Result.success();
+    }
+
+    @Operation(summary = "标记帖子不感兴趣(仅影响当前用户的推荐流)")
+    @PostMapping("/posts/{id:\\d+}/not-interested")
+    public Result<Void> markNotInterested(@PathVariable Long id) {
+        communityService.markNotInterested(UserContextHolder.getUserId(), id);
         return Result.success();
     }
 

@@ -53,6 +53,11 @@ export function festivalDetail(id) {
   return get(`/api/v1/festivals/${id}`)
 }
 
+// 营销活动试算（购物车/结算页展示活动价与满减）
+export function quoteMarketing(items) {
+  return post('/api/v1/marketing/quote', { items })
+}
+
 // 服务预约
 export function listBookings(params = {}) {
   return get('/api/v1/bookings', params)
@@ -82,6 +87,7 @@ export default {
   myGifts,
   listActiveFestivals,
   festivalDetail,
+  quoteMarketing,
   listBookings,
   bookingDetail,
   createBooking,

@@ -58,8 +58,8 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
   private final FlashSaleOrderMapper flashSaleOrderMapper;
   private final InviteMapper inviteMapper;
 
-  /** 日期格式化器(yyyy-MM-dd) */
-  private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+  /** 日期时间格式化器(yyyy-MM-dd HH:mm:ss) */
+  private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
   @Override
   public PageResponse<CampaignResponse> listCampaigns(int page, int size) {
@@ -88,12 +88,27 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
     vo.setType(c.getType());
     vo.setStatus(c.getStatus());
     vo.setDescription(c.getDescription());
-    vo.setStartDate(c.getStartDate() != null ? c.getStartDate().format(DATE_FMT) : null);
-    vo.setEndDate(c.getEndDate() != null ? c.getEndDate().format(DATE_FMT) : null);
+    vo.setStartDate(c.getStartDate() != null ? c.getStartDate().format(DATE_TIME_FMT) : null);
+    vo.setEndDate(c.getEndDate() != null ? c.getEndDate().format(DATE_TIME_FMT) : null);
     vo.setParticipants(c.getParticipants());
     vo.setGmv(c.getGmv());
     vo.setBudget(c.getBudget());
     vo.setCost(c.getCost());
+    // 创建表单中配置的规则与审批信息
+    vo.setProductScope(c.getProductScope());
+    vo.setProductCategories(c.getProductCategories());
+    vo.setDiscountType(c.getDiscountType());
+    vo.setDiscountValue(c.getDiscountValue());
+    vo.setPerLimit(c.getPerLimit());
+    vo.setStockLimit(c.getStockLimit());
+    vo.setTotalCount(c.getTotalCount());
+    vo.setApprover(c.getApprover());
+    vo.setRemark(c.getRemark());
+    vo.setMinOrderAmount(c.getMinOrderAmount());
+    vo.setProductIds(c.getProductIds());
+    vo.setProductCategoryIds(c.getProductCategoryIds());
+    vo.setUsedCount(c.getUsedCount());
+    vo.setUsedAmount(c.getUsedAmount());
     vo.setCreateTime(c.getCreateTime());
     return vo;
   }
@@ -114,8 +129,14 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
         ? parseDateTime(request.getEndDate()) : LocalDateTime.now().plusDays(30));
 
     entity.setBudget(request.getBudget() != null ? request.getBudget() : BigDecimal.ZERO);
-    // 新建活动根据时间自动计算状态
-    entity.setStatus(calculateStatus(entity.getStartDate(), entity.getEndDate()));
+    // 创建表单中的规则/审批字段统一落库
+    fillFormFields(entity, request);
+    // 前端显式选择的状态优先，未传时按时间自动计算
+    String status = request.getStatus();
+    if (status == null || status.trim().isEmpty()) {
+      status = calculateStatus(entity.getStartDate(), entity.getEndDate());
+    }
+    entity.setStatus(status);
     marketingCampaignMapper.insert(entity);
 
     OperationResult result = new OperationResult();
@@ -141,6 +162,8 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
         ? parseDateTime(request.getEndDate()) : LocalDateTime.now().plusDays(30));
 
     entity.setBudget(request.getBudget() != null ? request.getBudget() : BigDecimal.ZERO);
+    // 草稿同样保存表单规则，便于后续继续编辑
+    fillFormFields(entity, request);
     // 强制落 DRAFT,忽略 calculateStatus(),让草稿明确可见
     entity.setStatus("DRAFT");
     marketingCampaignMapper.insert(entity);
@@ -149,6 +172,23 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
     result.setId(entity.getId());
     result.setMessage("草稿保存成功");
     return result;
+  }
+
+  /** 将创建表单中的商品范围、优惠规则、审批信息写入实体 */
+  private void fillFormFields(MarketingCampaignEntity entity, CampaignRequest request) {
+    entity.setProductScope(request.getProductScope() != null && !request.getProductScope().isEmpty()
+        ? request.getProductScope() : "全部商品");
+    entity.setProductCategories(request.getProductCategories());
+    entity.setDiscountType(request.getDiscountType());
+    entity.setDiscountValue(request.getDiscountValue());
+    entity.setPerLimit(request.getPerLimit() != null ? request.getPerLimit() : 0);
+    entity.setStockLimit(request.getStockLimit() != null ? request.getStockLimit() : Boolean.TRUE);
+    entity.setTotalCount(request.getTotalCount() != null ? request.getTotalCount() : 0);
+    entity.setApprover(request.getApprover());
+    entity.setRemark(request.getRemark());
+    entity.setMinOrderAmount(request.getMinOrderAmount() != null ? request.getMinOrderAmount() : BigDecimal.ZERO);
+    entity.setProductIds(request.getProductIds());
+    entity.setProductCategoryIds(request.getProductCategoryIds());
   }
 
   @Override
@@ -204,6 +244,19 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
     if (request.getStartDate() != null) entity.setStartDate(parseDateTime(request.getStartDate()));
     if (request.getEndDate() != null) entity.setEndDate(parseDateTime(request.getEndDate()));
     if (request.getBudget() != null) entity.setBudget(request.getBudget());
+    // 创建表单规则字段：仅在请求中显式提供时更新，避免编辑弹窗只传基础字段时被覆盖为空
+    if (request.getProductScope() != null) entity.setProductScope(request.getProductScope());
+    if (request.getProductCategories() != null) entity.setProductCategories(request.getProductCategories());
+    if (request.getDiscountType() != null) entity.setDiscountType(request.getDiscountType());
+    if (request.getDiscountValue() != null) entity.setDiscountValue(request.getDiscountValue());
+    if (request.getPerLimit() != null) entity.setPerLimit(request.getPerLimit());
+    if (request.getStockLimit() != null) entity.setStockLimit(request.getStockLimit());
+    if (request.getTotalCount() != null) entity.setTotalCount(request.getTotalCount());
+    if (request.getApprover() != null) entity.setApprover(request.getApprover());
+    if (request.getRemark() != null) entity.setRemark(request.getRemark());
+    if (request.getMinOrderAmount() != null) entity.setMinOrderAmount(request.getMinOrderAmount());
+    if (request.getProductIds() != null) entity.setProductIds(request.getProductIds());
+    if (request.getProductCategoryIds() != null) entity.setProductCategoryIds(request.getProductCategoryIds());
     marketingCampaignMapper.updateById(entity);
 
     OperationResult result = new OperationResult();
@@ -688,8 +741,13 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
           .atZoneSameInstant(ZoneId.systemDefault())
           .toLocalDateTime();
     } catch (DateTimeParseException ignore) {
-      // 回退：按无时区 ISO_LOCAL_DATE_TIME 解析（如 "2026-08-17T16:00:00"）
-      return LocalDateTime.parse(s, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+      // 回退 1：空格分隔的 "yyyy-MM-dd HH:mm:ss"（管理后台表单统一提交该格式）
+      try {
+        return LocalDateTime.parse(s, DATE_TIME_FMT);
+      } catch (DateTimeParseException ignore2) {
+        // 回退 2：无时区 ISO_LOCAL_DATE_TIME（如 "2026-08-17T16:00:00"）
+        return LocalDateTime.parse(s, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+      }
     }
   }
 }

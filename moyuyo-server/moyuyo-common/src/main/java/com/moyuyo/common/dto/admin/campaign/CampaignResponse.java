@@ -26,10 +26,10 @@ public class CampaignResponse {
   /** 活动描述 */
   private String description;
 
-  /** 开始时间(前端展示为 yyyy-MM-dd 字符串) */
+  /** 开始时间(前端展示为 yyyy-MM-dd HH:mm:ss 字符串) */
   private String startDate;
 
-  /** 结束时间(前端展示为 yyyy-MM-dd 字符串) */
+  /** 结束时间(前端展示为 yyyy-MM-dd HH:mm:ss 字符串) */
   private String endDate;
 
   /** 参与人数 */
@@ -43,6 +43,48 @@ public class CampaignResponse {
 
   /** 成本 */
   private BigDecimal cost;
+
+  /** 适用商品范围 */
+  private String productScope;
+
+  /** 适用品类（逗号分隔） */
+  private String productCategories;
+
+  /** 折扣类型 */
+  private String discountType;
+
+  /** 折扣值 */
+  private String discountValue;
+
+  /** 每人限用次数 */
+  private Integer perLimit;
+
+  /** 是否启用库存限制 */
+  private Boolean stockLimit;
+
+  /** 发放总量 */
+  private Integer totalCount;
+
+  /** 审批人 */
+  private String approver;
+
+  /** 审批备注 */
+  private String remark;
+
+  /** 满减门槛金额 */
+  private BigDecimal minOrderAmount;
+
+  /** 指定商品 ID（逗号分隔） */
+  private String productIds;
+
+  /** 指定分类 ID（逗号分隔） */
+  private String productCategoryIds;
+
+  /** 已占用活动件数 */
+  private Integer usedCount;
+
+  /** 已占用活动优惠金额 */
+  private BigDecimal usedAmount;
 
   @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
   private LocalDateTime createTime;

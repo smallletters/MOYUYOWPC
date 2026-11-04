@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,7 @@ public class CommunityServiceImpl implements CommunityService {
     private final CommunityCommentMapper commentMapper;
     private final CommunityLikeMapper likeMapper;
     private final CommunityCollectMapper collectMapper;
+    private final CommunityNotInterestedMapper notInterestedMapper;
     private final UserMapper userMapper;
     private final PetMapper petMapper;
     private final ContentReviewMapper contentReviewMapper;
@@ -49,12 +51,24 @@ public class CommunityServiceImpl implements CommunityService {
     private final MissionService missionService;
 
     @Override
-    public Page<CommunityPostVO> listPosts(String topic, int page, int size) {
+    public Page<CommunityPostVO> listPosts(String topic, int page, int size, Long userId) {
         LambdaQueryWrapper<CommunityPostEntity> wrapper = new LambdaQueryWrapper<CommunityPostEntity>()
                 .eq(CommunityPostEntity::getStatus, 1)
                 .orderByDesc(CommunityPostEntity::getCreateTime);
         if (topic != null && !topic.isEmpty()) {
             wrapper.eq(CommunityPostEntity::getTopic, topic);
+        }
+        // 推荐流负反馈：过滤当前用户已标记「不感兴趣」的帖子（匿名用户不过滤）
+        if (userId != null) {
+            List<Long> hiddenIds = notInterestedMapper.selectList(
+                    new LambdaQueryWrapper<CommunityNotInterestedEntity>()
+                            .select(CommunityNotInterestedEntity::getPostId)
+                            .eq(CommunityNotInterestedEntity::getUserId, userId))
+                    .stream()
+                    .map(CommunityNotInterestedEntity::getPostId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            wrapper.notIn(!hiddenIds.isEmpty(), CommunityPostEntity::getId, hiddenIds);
         }
 
         Page<CommunityPostEntity> entityPage = postMapper.selectPage(new Page<>(page, size), wrapper);
@@ -292,6 +306,82 @@ public class CommunityServiceImpl implements CommunityService {
                 new LambdaQueryWrapper<CommunityCollectEntity>()
                         .eq(CommunityCollectEntity::getPostId, postId));
         log.info("[community] post deleted: postId={}, userId={}, cascade=comment+like+collect", postId, userId);
+    }
+
+    /**
+     * 举报帖子：写入 mo_content_review（contentType=POST），进入管理端内容审核队列。
+     * 管理端详情可通过 contentId 联查帖子原文与图片，审核动作会联动隐藏帖子。
+     * 约束：只能举报已发布帖子、不能举报自己的帖子、同一举报人 24 小时内不可重复举报。
+     */
+    @Override
+    @Transactional
+    public void reportPost(Long reporterId, Long postId, String reason, String description) {
+        if (reporterId == null || postId == null) {
+            throw new IllegalArgumentException("参数缺失");
+        }
+        CommunityPostEntity post = postMapper.selectById(postId);
+        if (post == null || !Objects.equals(post.getStatus(), 1)) {
+            throw new IllegalArgumentException("帖子不存在或已下架");
+        }
+        if (Objects.equals(post.getUserId(), reporterId)) {
+            throw new IllegalArgumentException("不能举报自己的帖子");
+        }
+        String shortReason = reason == null ? "" : reason.trim();
+        if (shortReason.isEmpty()) {
+            throw new IllegalArgumentException("举报原因不能为空");
+        }
+        // reason 列为 VARCHAR(16)，按字符截断避免入库失败
+        if (shortReason.length() > 16) shortReason = shortReason.substring(0, 16);
+
+        long recent = contentReviewMapper.selectCount(
+                new LambdaQueryWrapper<ContentReviewEntity>()
+                        .eq(ContentReviewEntity::getContentType, "POST")
+                        .eq(ContentReviewEntity::getContentId, postId)
+                        .eq(ContentReviewEntity::getReporterId, reporterId)
+                        .ge(ContentReviewEntity::getCreateTime, LocalDateTime.now().minusDays(1)));
+        if (recent > 0) {
+            throw new IllegalStateException("请勿重复举报");
+        }
+
+        ContentReviewEntity review = new ContentReviewEntity();
+        review.setContentType("POST");
+        review.setContentId(postId);
+        // userId 存内容作者（被举报人），reporterId 存举报人
+        review.setUserId(post.getUserId());
+        review.setReporterId(reporterId);
+        String content = post.getContent() == null ? "" : post.getContent();
+        review.setContentExcerpt(content.substring(0, Math.min(content.length(), 500)));
+        review.setImages(post.getImages());
+        review.setReason(shortReason);
+        review.setReviewComment(description == null ? "" : description.trim());
+        review.setStatus("PENDING");
+        review.setAutoFlag(0);
+        contentReviewMapper.insert(review);
+        log.info("[community] post reported: postId={}, reporterId={}, reason={}", postId, reporterId, shortReason);
+    }
+
+    /**
+     * 标记「不感兴趣」：仅写入当前用户自己的负反馈记录，推荐流查询时排除。
+     * 重复标记依赖唯一索引兜底，直接视为成功（幂等）。
+     */
+    @Override
+    public void markNotInterested(Long userId, Long postId) {
+        if (userId == null || postId == null) {
+            throw new IllegalArgumentException("参数缺失");
+        }
+        CommunityPostEntity post = postMapper.selectById(postId);
+        if (post == null || !Objects.equals(post.getStatus(), 1)) {
+            throw new IllegalArgumentException("帖子不存在或已下架");
+        }
+        CommunityNotInterestedEntity record = new CommunityNotInterestedEntity();
+        record.setUserId(userId);
+        record.setPostId(postId);
+        try {
+            notInterestedMapper.insert(record);
+        } catch (org.springframework.dao.DuplicateKeyException ignored) {
+            // 重复标记：唯一索引兜底，忽略即可
+        }
+        log.info("[community] post marked not interested: postId={}, userId={}", postId, userId);
     }
 
     @Override

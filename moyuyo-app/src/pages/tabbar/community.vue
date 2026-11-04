@@ -424,10 +424,55 @@ export default {
           if (chosen === 'delete') {
             await this.onDeletePost(p)
           } else if (chosen === 'report') {
-            uni.showToast({ title: this.$t('community.actions.report') + ' 已提交', icon: 'none' })
+            this.onReportPost(p)
           } else {
+            await this.onNotInterested(p)
+          }
+        },
+      })
+    },
+
+    /**
+     * 标记「不感兴趣」：写入负反馈后立即从本地列表移除，后端推荐流后续也会过滤该帖。
+     */
+    async onNotInterested(p) {
+      try {
+        await communityApi.markNotInterested(p.id)
+        this.posts = this.posts.filter((x) => x.id !== p.id)
+        uni.showToast({
+          title: this.$t('community.actions.notInterestedSubmitted'),
+          icon: 'none',
+        })
+      } catch (e) {
+        uni.showToast({
+          title: (e && e.message) || this.$t('community.actions.notInterestedFailed'),
+          icon: 'none',
+        })
+      }
+    },
+
+    /**
+     * 举报帖子：选择举报原因后调用真实接口，写入管理端内容审核队列。
+     * 后端会拦截「举报自己的帖子」与「24 小时内重复举报同一帖子」。
+     */
+    onReportPost(p) {
+      const reasons = [
+        this.$t('community.actions.reportReasonHarass'),
+        this.$t('community.actions.reportReasonSpam'),
+        this.$t('community.actions.reportReasonPorn'),
+        this.$t('community.actions.reportReasonFraud'),
+        this.$t('community.actions.reportReasonOther'),
+      ]
+      uni.showActionSheet({
+        itemList: reasons,
+        success: async (res) => {
+          const reason = reasons[Number(res.tapIndex)]
+          try {
+            await communityApi.reportPost(p.id, reason)
+            uni.showToast({ title: this.$t('community.actions.reportSubmitted'), icon: 'none' })
+          } catch (e) {
             uni.showToast({
-              title: this.$t('community.actions.notInterested') + ' 已提交',
+              title: (e && e.message) || this.$t('community.actions.reportFailed'),
               icon: 'none',
             })
           }

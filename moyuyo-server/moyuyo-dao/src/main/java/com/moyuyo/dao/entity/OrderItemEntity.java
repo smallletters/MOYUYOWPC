@@ -31,6 +31,15 @@ public class OrderItemEntity {
 
   private BigDecimal price;
 
+  /** 营销活动前原价（无活动时为空） */
+  private BigDecimal originalPrice;
+
+  /** 命中的营销活动 ID（满减活动不落到商品行） */
+  private Long campaignId;
+
+  /** 该商品行的活动优惠金额 */
+  private BigDecimal campaignDiscount;
+
   private Integer quantity;
 
   private BigDecimal subtotal;

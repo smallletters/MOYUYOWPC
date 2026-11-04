@@ -77,6 +77,7 @@
             {{ $t('goodsDetail.memberPrice') }} ${{ formatPrice(memberPrice) }}
           </view>
         </view>
+        <text v-if="campaignTag" class="campaign-detail-tag">{{ campaignTag }}</text>
         <view v-if="product.shortDetail" class="short-desc">{{ product.shortDetail }}</view>
       </view>
 
@@ -279,13 +280,39 @@ export default {
       // 使用 base64 1x1 透明图避免空 src 在部分端报 warn
       return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjxjaXJjbGUgZmlsbD0iI2VlZTllNGQiIGN4PSIwLjUiIGN5PSIwLjUiIHI9IjAuNSIvPjwvc3ZnPg=='
     },
-    // 当前展示价：SKU 命中走 SKU 价,否则用商品主价
-    currentPrice() {
+    // 商品基础价（SKU 命中走 SKU 价，否则用商品主价）
+    basePrice() {
       const skuPrice = this.currentSku && this.currentSku.price
       const price = skuPrice != null ? skuPrice : this.product?.price
       return parseFloat(price) || 0
     },
+    // 营销活动价：百分比折扣/直降按当前 SKU 价实时计算；满减不改商品价
+    campaignPrice() {
+      const p = this.product
+      if (!p || !p.campaignType || p.campaignType === 'THRESHOLD') return 0
+      const value = Number(p.campaignValue)
+      if (!Number.isFinite(value) || value <= 0) return 0
+      if (p.campaignType === 'PERCENT') {
+        return Number((this.basePrice * value).toFixed(2))
+      }
+      if (p.campaignType === 'DIRECT') {
+        return Math.max(0, Number((this.basePrice - value).toFixed(2)))
+      }
+      return 0
+    },
+    // 当前展示价：活动价优先，否则基础价
+    currentPrice() {
+      const campaign = this.campaignPrice
+      return campaign > 0 && campaign < this.basePrice ? campaign : this.basePrice
+    },
+    campaignTag() {
+      return this.product?.campaignTag || ''
+    },
     originalPriceNum() {
+      // 有活动价时用基础价做划线价，否则用商品原价
+      if (this.campaignPrice > 0 && this.campaignPrice < this.basePrice) {
+        return this.basePrice
+      }
       return parseFloat(this.product?.originalPrice) || 0
     },
     // 会员价（如后端 attributes JSON 中携带,否则隐藏标签）
@@ -678,8 +705,8 @@ export default {
      * 从 attributes JSON 抽取会员价(若有)
      */
     parseMemberPrice() {
-      // 秒杀商品不叠加会员价（后端标记），也不能用 attributes 的历史会员价兜底
-      if (this.product?.flashSaleActive === true) return null
+      // 秒杀/营销活动商品不叠加会员价（后端标记）
+      if (this.product?.flashSaleActive === true || this.product?.campaignId != null) return null
       // 优先用后端返回的折扣系数 × 当前 SKU 价，避免不同 SKU 价格时展示错价
       const rate = Number(this.product?.memberPriceRate)
       if (Number.isFinite(rate) && rate > 0 && rate < 1) {
@@ -925,7 +952,7 @@ export default {
         productId: this.product.id,
         name: this.product.name,
         image: this.galleryImages[0]?.url || this.product.mainImage,
-        price: parseFloat(this.product.price) || 0,
+        price: this.currentPrice,
         quantity: 1,
         stock: sku?.stock ?? this.stock,
         attrs: this.selectedAttrs,
@@ -962,7 +989,7 @@ export default {
         productId: this.product.id,
         name: this.product.name,
         image: this.galleryImages[0]?.url || this.product.mainImage,
-        price: parseFloat(this.product.price) || 0,
+        price: this.currentPrice,
         quantity: 1,
         stock: sku?.stock ?? this.stock,
         attrs: this.selectedAttrs,
@@ -1203,6 +1230,17 @@ export default {
   color: var(--text-400, #9a948c);
   text-decoration: line-through;
   font-variant-numeric: tabular-nums;
+}
+
+/* 营销活动标签 */
+.campaign-detail-tag {
+  display: inline-block;
+  margin-top: 12rpx;
+  padding: 4rpx 14rpx;
+  font-size: 22rpx;
+  color: #e5484d;
+  background: rgba(229, 72, 77, 0.1);
+  border-radius: 8rpx;
 }
 
 .member-tag {

@@ -29,21 +29,35 @@ public class FlashSaleServiceImpl implements FlashSaleService {
     private final ProductMapper productMapper;
 
     @Override
-    public Page<FlashSaleEntity> listActive(int page, int size) {
+    public Page<FlashSaleEntity> listActive(int page, int size, String session) {
         LocalDateTime now = LocalDateTime.now();
-        Page<FlashSaleEntity> result = flashSaleMapper.selectPage(new Page<>(page, size),
-                new LambdaQueryWrapper<FlashSaleEntity>()
-                        .eq(FlashSaleEntity::getActive, true)
-                        .le(FlashSaleEntity::getStartTime, now)
-                        .ge(FlashSaleEntity::getEndTime, now)
-                        .orderByAsc(FlashSaleEntity::getEndTime));
-        // 活动时间窗口内但商品已被下架/删除的秒杀不再露出
+        LambdaQueryWrapper<FlashSaleEntity> wrapper = new LambdaQueryWrapper<>();
+        if ("upcoming".equals(session)) {
+            // 即将开始：启用中且尚未到开始时间，按开始时间正序
+            wrapper.eq(FlashSaleEntity::getActive, true)
+                    .gt(FlashSaleEntity::getStartTime, now)
+                    .orderByAsc(FlashSaleEntity::getStartTime);
+        } else if ("ended".equals(session)) {
+            // 已结束：结束时间已过（包含被停用的历史活动），按结束时间倒序
+            wrapper.lt(FlashSaleEntity::getEndTime, now)
+                    .orderByDesc(FlashSaleEntity::getEndTime);
+        } else {
+            // 进行中（含未传 session 的旧调用）：启用中且处于活动时间窗口内
+            wrapper.eq(FlashSaleEntity::getActive, true)
+                    .le(FlashSaleEntity::getStartTime, now)
+                    .ge(FlashSaleEntity::getEndTime, now)
+                    .orderByAsc(FlashSaleEntity::getEndTime);
+        }
+        Page<FlashSaleEntity> result = flashSaleMapper.selectPage(new Page<>(page, size), wrapper);
+        // 商品已被下架/删除的秒杀不再露出，并注入商品名/主图供 APP 展示
         // 注：只裁剪当前页 records，不动 total（否则会把未过滤页算进去导致全局总数失真）
         if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {
             List<FlashSaleEntity> kept = new ArrayList<>();
             for (FlashSaleEntity f : result.getRecords()) {
                 ProductEntity p = productMapper.selectById(f.getProductId());
                 if (p != null && Boolean.TRUE.equals(p.getOnSale())) {
+                    f.setProductName(p.getName());
+                    f.setProductImage(p.getMainImage());
                     kept.add(f);
                 }
             }
@@ -56,6 +70,12 @@ public class FlashSaleServiceImpl implements FlashSaleService {
     public FlashSaleEntity getFlashSaleDetail(Long id) {
         FlashSaleEntity entity = flashSaleMapper.selectById(id);
         if (entity == null) throw new IllegalArgumentException("活动不存在");
+        // 详情接口同样补齐商品名称与主图，避免前端需要额外请求商品接口
+        ProductEntity product = productMapper.selectById(entity.getProductId());
+        if (product != null) {
+            entity.setProductName(product.getName());
+            entity.setProductImage(product.getMainImage());
+        }
         return entity;
     }
 

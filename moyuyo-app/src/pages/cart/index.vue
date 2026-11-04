@@ -63,6 +63,15 @@
               <view class="item-bottom">
                 <view class="price-wrap">
                   <text class="item-price">${{ item.price.toFixed(2) }}</text>
+                  <text
+                    v-if="item.originalPrice && item.originalPrice > item.price"
+                    class="item-original"
+                  >
+                    ${{ item.originalPrice.toFixed(2) }}
+                  </text>
+                  <text v-if="item.campaignTag" class="item-campaign-tag">
+                    {{ item.campaignTag }}
+                  </text>
                   <!-- 缺货标记:仍展示在购物车,但不可勾选结算 -->
                   <text v-if="item.cartStatus === 'OUT_OF_STOCK'" class="out-stock-text">
                     {{ $t('cart.outOfStockLabel') }}
@@ -1216,8 +1225,23 @@ export default {
 .price-wrap {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10rpx;
   min-width: 0;
+}
+
+.item-original {
+  font-size: 20rpx;
+  color: var(--color-text-tertiary);
+  text-decoration: line-through;
+}
+
+.item-campaign-tag {
+  font-size: 18rpx;
+  color: #e5484d;
+  background: rgba(229, 72, 77, 0.1);
+  border-radius: 6rpx;
+  padding: 2rpx 8rpx;
 }
 
 .out-stock-text {

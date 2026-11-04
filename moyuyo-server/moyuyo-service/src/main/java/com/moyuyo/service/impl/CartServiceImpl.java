@@ -37,6 +37,7 @@ public class CartServiceImpl implements CartService {
   private final AddressMapper addressMapper;
   private final ShippingZoneService shippingZoneService;
   private final OrderService orderService;
+  private final CampaignPricingServiceImpl campaignPricingService;
 
   @Override
   @SuppressWarnings("null")
@@ -48,6 +49,8 @@ public class CartServiceImpl implements CartService {
     // - stock 用于限制加购数量上限
     // - cartStatus 用于购物车页分区展示（可售/缺货/已下架/失效）
     fillAvailability(carts);
+    // 填充营销活动价（活动商品不参与会员价，规则与下单保持一致）
+    campaignPricingService.fillCartItems(carts, userId);
     return carts;
   }
 

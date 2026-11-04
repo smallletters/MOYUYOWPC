@@ -46,6 +46,48 @@ public class MarketingCampaignEntity {
   /** 成本 */
   private BigDecimal cost;
 
+  /** 适用商品范围：全部商品/指定品类/指定商品 */
+  private String productScope;
+
+  /** 适用品类（逗号分隔，productScope=指定品类 时有效） */
+  private String productCategories;
+
+  /** 折扣类型：直降/百分比折扣/满减 */
+  private String discountType;
+
+  /** 折扣值（如 30、30%） */
+  private String discountValue;
+
+  /** 每人限用次数 */
+  private Integer perLimit;
+
+  /** 是否启用库存限制 */
+  private Boolean stockLimit;
+
+  /** 发放总量 */
+  private Integer totalCount;
+
+  /** 审批人 */
+  private String approver;
+
+  /** 审批备注 */
+  private String remark;
+
+  /** 满减门槛金额 */
+  private BigDecimal minOrderAmount;
+
+  /** 指定商品 ID（逗号分隔） */
+  private String productIds;
+
+  /** 指定分类 ID（逗号分隔） */
+  private String productCategoryIds;
+
+  /** 已占用活动件数 */
+  private Integer usedCount;
+
+  /** 已占用活动优惠金额 */
+  private BigDecimal usedAmount;
+
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createTime;
 

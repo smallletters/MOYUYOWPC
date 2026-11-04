@@ -110,6 +110,7 @@
               ${{ p.regularPrice }}
             </text>
           </view>
+          <text v-if="p.campaignTag" class="campaign-tag">{{ p.campaignTag }}</text>
         </view>
       </view>
       <view v-if="loading" class="loading">{{ $t('common.loading') }}</view>
@@ -208,14 +209,23 @@ export default {
         }
         const res = await productApi.getProductList(params)
         const list = res.records || res || []
-        const mapped = list.map((p) => ({
-          id: p.id,
-          name: p.name,
-          image: p.mainImage || p.images?.[0]?.src || '',
-          price: parseFloat(p.price) || 0,
-          regularPrice: parseFloat(p.regularPrice || p.regular_price) || 0,
-          ip: p.brandIpId ? this.resolveIpName(p.brandIpId) : null,
-        }))
+        const mapped = list.map((p) => {
+          const basePrice = parseFloat(p.price) || 0
+          const campaignPrice = p.campaignPrice != null ? parseFloat(p.campaignPrice) : null
+          const hasCampaignPrice = campaignPrice != null && campaignPrice < basePrice
+          return {
+            id: p.id,
+            name: p.name,
+            image: p.mainImage || p.images?.[0]?.src || '',
+            // 活动价低于原价时优先展示活动价，并把原价作为划线价
+            price: hasCampaignPrice ? campaignPrice : basePrice,
+            regularPrice: hasCampaignPrice
+              ? basePrice
+              : parseFloat(p.regularPrice || p.regular_price) || 0,
+            campaignTag: p.campaignTag || '',
+            ip: p.brandIpId ? this.resolveIpName(p.brandIpId) : null,
+          }
+        })
         this.products.push(...mapped)
         this.noMore = list.length < 20
         this.page += 1
@@ -421,6 +431,17 @@ export default {
   display: flex;
   align-items: baseline;
   gap: 4rpx;
+}
+
+/* 营销活动标签 */
+.campaign-tag {
+  display: inline-block;
+  margin-top: 8rpx;
+  padding: 2rpx 10rpx;
+  font-size: 20rpx;
+  color: #e5484d;
+  background: rgba(229, 72, 77, 0.1);
+  border-radius: 6rpx;
 }
 
 .loading,

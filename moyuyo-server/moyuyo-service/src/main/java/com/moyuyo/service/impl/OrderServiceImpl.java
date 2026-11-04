@@ -86,6 +86,8 @@ public class OrderServiceImpl implements OrderService {
   private final FlashSaleMapper flashSaleMapper;
   // 资金安全：运费由服务端按 zone × method 重算覆盖前端传的 freight，防止改包刷价
   private final ShippingRateService shippingRateService;
+  // 营销活动执行：活动价、满减、限购/预算/总量占用
+  private final CampaignPricingServiceImpl campaignPricingService;
 
   @Override
   @Transactional
@@ -101,22 +103,27 @@ public class OrderServiceImpl implements OrderService {
                                  String couponId, BigDecimal couponDiscount, Integer pointsUsed,
                                  BigDecimal pointsDiscount, String shippingMethod, BigDecimal freight) {
     return createOrderInternal(userId, items, addressId, remark, couponId, couponDiscount,
-            pointsUsed, pointsDiscount, shippingMethod, freight, null);
+            pointsUsed, pointsDiscount, shippingMethod, freight, null, null);
   }
 
   /**
    * 创建订单内部实现。
    *
    * @param knownMemberDiscount 调用方已计算的会员优惠金额；为 null 时在此处按会员等级计算
+   * @param knownCampaignPricing 调用方已计算的活动计价；为 null 时在此处计算
    */
   private OrderEntity createOrderInternal(Long userId, List<OrderItemEntity> items, Long addressId, String remark,
                                           String couponId, BigDecimal couponDiscount, Integer pointsUsed,
                                           BigDecimal pointsDiscount, String shippingMethod, BigDecimal freight,
-                                          BigDecimal knownMemberDiscount) {
+                                          BigDecimal knownMemberDiscount,
+                                          CampaignPricingServiceImpl.OrderPricing knownCampaignPricing) {
     // 生产防护：禁止空商品列表创建零金额订单
     if (items == null || items.isEmpty()) {
       throw new IllegalArgumentException("订单商品不能为空");
     }
+    // 营销活动计价：活动价 + 满减（调用方已计算时直接复用，避免重复查询）
+    CampaignPricingServiceImpl.OrderPricing campaignPricing = knownCampaignPricing != null
+        ? knownCampaignPricing : campaignPricingService.applyToOrder(userId, items);
     // 生成订单号: ORD + yyyyMMdd + 8位雪花ID后缀
     String datePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
     String snowId = String.valueOf(IdWorker.getId());
@@ -181,13 +188,14 @@ public class OrderServiceImpl implements OrderService {
     BigDecimal safeMemberDiscount = knownMemberDiscount != null
         ? knownMemberDiscount : computeMemberDiscount(userId, items);
 
-    // M1 修复：payAmount = 商品总金额 + 运费 - 会员优惠 - 优惠券减免 - 积分抵扣，下限 0
-    // 原实现直接 payAmount = goodsAmount，导致前端展示的优惠金额与实际扣款金额不一致
+    // M1 修复：payAmount = 商品总金额 + 运费 - 会员优惠 - 营销活动满减 - 优惠券减免 - 积分抵扣，下限 0
+    // 商品级活动价已在 items.price 中体现，这里只需再减整单满减
     BigDecimal payAmount = goodsAmount
             .subtract(safeMemberDiscount)
             .add(safeFreight)
             .subtract(safeCouponDiscount)
-            .subtract(safePointsDiscount);
+            .subtract(safePointsDiscount)
+            .subtract(campaignPricing.orderDiscount);
     if (payAmount.compareTo(BigDecimal.ZERO) < 0) {
       payAmount = BigDecimal.ZERO;
     }
@@ -200,6 +208,7 @@ public class OrderServiceImpl implements OrderService {
     order.setFreight(safeFreight);
     order.setCouponDiscount(safeCouponDiscount);
     order.setMemberDiscount(safeMemberDiscount);
+    order.setCampaignDiscount(campaignPricing.totalDiscount);
     order.setPointsDiscount(safePointsDiscount);
     order.setPointsUsed(safePointsUsed);
     order.setPayAmount(payAmount);
@@ -236,6 +245,9 @@ public class OrderServiceImpl implements OrderService {
       orderItemMapper.insert(item);
     }
 
+    // 占用活动额度：活动总量/预算/每人限购，取消或超时自动释放
+    campaignPricingService.reserveUsage(userId, order.getId(), order.getOrderNo(), campaignPricing);
+
     return order;
   }
 
@@ -270,6 +282,10 @@ public class OrderServiceImpl implements OrderService {
       items.add(item);
     }
 
+    // 营销活动计价：活动价 + 满减（必须在优惠券/会员/积分之前计算，保证按活动后金额算门槛）
+    CampaignPricingServiceImpl.OrderPricing campaignPricing =
+        campaignPricingService.applyToOrder(userId, items);
+
     // 服务端重算金额项（资金安全：不信任前端传入的减免数值）：
     // 1) 商品小计 = 服务端价格 × 数量
     BigDecimal goodsSubtotal = BigDecimal.ZERO;
@@ -297,10 +313,11 @@ public class OrderServiceImpl implements OrderService {
       // 余额上限：可用积分按 100 积分 = 1 元折算（DOWN），沿用原口径
       BigDecimal maxByBalance = BigDecimal.valueOf(balance)
           .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.DOWN);
-      // 剩余金额上限：会员优惠 + 优惠券抵扣后剩余的商品金额（运费不允许用积分抵扣）
+      // 剩余金额上限：会员优惠 + 优惠券 + 满减后剩余的商品金额（运费不允许用积分抵扣）
       BigDecimal maxByRemaining = goodsSubtotal
           .subtract(serverMemberDiscount)
           .subtract(serverCouponDiscount)
+          .subtract(campaignPricing.orderDiscount)
           .max(BigDecimal.ZERO);
 
       // 客户端"请求抵扣额"：优先取 pointsDiscount（前端结算页实际展示、并用于计算 total 的金额），
@@ -346,7 +363,7 @@ public class OrderServiceImpl implements OrderService {
     OrderEntity order = createOrderInternal(userId, items, request.getAddressId(), request.getRemark(),
             null, serverCouponDiscount,
             serverPointsUsed, serverPointsDiscount,
-            request.getShippingMethod(), serverFreight, serverMemberDiscount);
+            request.getShippingMethod(), serverFreight, serverMemberDiscount, campaignPricing);
 
     // 优惠券：以服务端 couponUserId 为准（不信任前端 couponId/couponDiscount）
     if (serverCouponDiscount.compareTo(BigDecimal.ZERO) > 0 && request.getCouponUserId() != null) {
@@ -420,6 +437,10 @@ public class OrderServiceImpl implements OrderService {
         continue;
       }
       if (item.getProductId() != null && flashSaleProductIds.contains(item.getProductId())) {
+        continue;
+      }
+      // 营销活动商品不叠加会员折扣
+      if (item.getCampaignId() != null) {
         continue;
       }
       eligibleAmount = eligibleAmount.add(
@@ -622,6 +643,13 @@ public class OrderServiceImpl implements OrderService {
     // 仅在成功抢占取消后恢复已扣减的库存，避免并发双倍回补导致超卖
     restoreStockForOrderItems(orderId);
 
+    // 释放营销活动占用额度（活动总量/预算/每人限购）
+    try {
+      campaignPricingService.releaseUsage(orderId);
+    } catch (Exception e) {
+      log.warn("[order] 取消订单释放活动额度失败: orderId={}, reason={}", orderId, e.getMessage());
+    }
+
     // 取消未支付订单：释放本次下单"占用(LOCKED)"的优惠券，供用户重新使用。
     // releaseCoupon 内部条件更新(LOCKED & usedOrderId=orderId)，重复取消/并发取消命中 0 行不报错（幂等）。
     if (order.getUserCouponId() != null) {
@@ -713,6 +741,14 @@ public class OrderServiceImpl implements OrderService {
     order.setPaidAt(paidAt);
     order.setPayChannel(payChannel);
     order.setPayTransactionId(transactionId);
+
+    // 营销活动用量转正式消耗（失败不阻断支付，记日志人工核对）
+    try {
+      campaignPricingService.confirmUsage(order.getId());
+    } catch (Exception e) {
+      log.error("[campaign] 支付成功确认活动用量失败 orderNo={}, reason={}",
+          order.getOrderNo(), e.getMessage());
+    }
 
     // 记录支付流水
     PaymentEntity payment = new PaymentEntity();

@@ -2955,12 +2955,13 @@ onMounted(() => {
 }
 
 .bubble-self {
-  background: var(--color-primary);
+  /* 自己发送的气泡统一使用白色（浅色主题下 --color-surface 为 #ffffff） */
+  background: var(--color-surface);
   border-radius: 28rpx 28rpx 8rpx 28rpx;
 }
 
 .bubble-self .bubble-text {
-  color: #ffffff;
+  color: var(--color-text);
 }
 
 /* 商品卡片 */
@@ -3215,7 +3216,8 @@ onMounted(() => {
 }
 
 .msg-voice--self {
-  background: var(--color-primary);
+  /* 语音气泡同样保持白色 */
+  background: var(--color-surface);
   border-radius: 28rpx 28rpx 8rpx 28rpx;
 }
 
@@ -3229,7 +3231,7 @@ onMounted(() => {
 }
 
 .msg-voice--self .voice-icon {
-  color: #ffffff;
+  color: var(--color-text);
 }
 
 .voice-wave {
@@ -3262,7 +3264,7 @@ onMounted(() => {
 }
 
 .msg-voice--self .voice-wave-bar {
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--color-text-secondary);
 }
 
 .voice-duration {
@@ -3275,7 +3277,7 @@ onMounted(() => {
 }
 
 .msg-voice--self .voice-duration {
-  color: #ffffff;
+  color: var(--color-text-secondary);
 }
 
 /* 文件消息气泡 */
@@ -3673,6 +3675,7 @@ onMounted(() => {
 }
 
 .bubble-self .bubble-mention {
-  color: #ffe08a;
+  /* 白底气泡下使用主题色，保证 @ 昵称可读 */
+  color: var(--color-primary);
 }
 </style>

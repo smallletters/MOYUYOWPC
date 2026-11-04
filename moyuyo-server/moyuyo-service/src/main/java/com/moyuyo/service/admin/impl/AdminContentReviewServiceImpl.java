@@ -8,9 +8,11 @@ import com.moyuyo.common.utils.JsonUtils;
 import com.moyuyo.dao.admin.entity.ContentReviewEntity;
 import com.moyuyo.dao.admin.mapper.ContentReviewMapper;
 import com.moyuyo.dao.entity.CommunityPostEntity;
+import com.moyuyo.dao.entity.DmConversationEntity;
 import com.moyuyo.dao.entity.DmMessageEntity;
 import com.moyuyo.dao.entity.UserEntity;
 import com.moyuyo.dao.mapper.CommunityPostMapper;
+import com.moyuyo.dao.mapper.DmConversationMapper;
 import com.moyuyo.dao.mapper.DmMessageMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.NotificationService;
@@ -26,8 +28,11 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -50,7 +55,11 @@ public class AdminContentReviewServiceImpl implements AdminContentReviewService 
   private final UserMapper userMapper;
   private final CommunityPostMapper communityPostMapper;
   private final DmMessageMapper dmMessageMapper;
+  private final DmConversationMapper dmConversationMapper;
   private final NotificationService notificationService;
+
+  /** 举报详情页最多展示的历史消息条数（误报排查足够，同时避免大会话拖慢管理端） */
+  private static final int DM_CHAT_CONTEXT_LIMIT = 100;
 
   /**
    * 举报结果回告：审核动作完成后给举报人写一条站内通知。
@@ -153,7 +162,111 @@ public class AdminContentReviewServiceImpl implements AdminContentReviewService 
         postMap = Map.of(post.getId(), post);
       }
     }
-    return toReviewVO(entity, userMap, postMap);
+    Map<String, Object> vo = toReviewVO(entity, userMap, postMap);
+    // 私信举报：补充举报双方信息与聊天记录，供审核员判断上下文
+    fillDmChatContext(entity, vo);
+    return vo;
+  }
+
+  /**
+   * 私信举报补充上下文：举报人 / 被举报人 + 举报时间之前的最近聊天记录。
+   *
+   * <p>DM_MESSAGE 通过被举报消息定位会话；DM_USER 通过举报人与被举报人的单聊会话定位。
+   * 聊天记录只读，不影响 C 端消息的已读/删除状态。</p>
+   */
+  private void fillDmChatContext(ContentReviewEntity entity, Map<String, Object> vo) {
+    String type = entity.getContentType();
+    if (!"DM_MESSAGE".equalsIgnoreCase(type) && !"DM_USER".equalsIgnoreCase(type)) return;
+
+    Long conversationId = null;
+    Long reportedMessageId = null;
+    if ("DM_MESSAGE".equalsIgnoreCase(type) && entity.getContentId() != null) {
+      DmMessageEntity msg = dmMessageMapper.selectById(entity.getContentId());
+      if (msg != null) {
+        conversationId = msg.getConversationId();
+        reportedMessageId = msg.getId();
+      }
+    } else if (entity.getReporterId() != null && entity.getUserId() != null) {
+      // 单聊会话以 user_a < user_b 存储，按双方 ID 排序后唯一命中
+      Long userA = Math.min(entity.getReporterId(), entity.getUserId());
+      Long userB = Math.max(entity.getReporterId(), entity.getUserId());
+      DmConversationEntity conv = dmConversationMapper.selectOne(
+          new LambdaQueryWrapper<DmConversationEntity>()
+              .eq(DmConversationEntity::getType, "SINGLE")
+              .eq(DmConversationEntity::getUserA, userA)
+              .eq(DmConversationEntity::getUserB, userB)
+              .last("LIMIT 1"));
+      if (conv != null) conversationId = conv.getId();
+    }
+
+    vo.put("reportedMessageId", reportedMessageId);
+    vo.put("chatConversationId", conversationId);
+
+    // 最近聊天记录：以举报提交时间为界，避免把举报之后的新消息纳入审核范围
+    Set<Long> userIds = new LinkedHashSet<>();
+    if (entity.getReporterId() != null) userIds.add(entity.getReporterId());
+    if (entity.getUserId() != null) userIds.add(entity.getUserId());
+
+    List<DmMessageEntity> rows = Collections.emptyList();
+    if (conversationId != null) {
+      LocalDateTime cutoff = entity.getCreateTime() == null
+          ? LocalDateTime.now() : entity.getCreateTime();
+      rows = dmMessageMapper.selectList(
+          new LambdaQueryWrapper<DmMessageEntity>()
+              .eq(DmMessageEntity::getConversationId, conversationId)
+              .le(DmMessageEntity::getCreateTime, cutoff)
+              .orderByDesc(DmMessageEntity::getCreateTime)
+              .orderByDesc(DmMessageEntity::getId)
+              .last("LIMIT " + DM_CHAT_CONTEXT_LIMIT));
+      // 查询按时间倒序取最近 N 条，展示前恢复为正序
+      Collections.reverse(rows);
+      for (DmMessageEntity msg : rows) {
+        if (msg.getSenderId() != null) userIds.add(msg.getSenderId());
+      }
+    }
+
+    // 批量补昵称 / 头像（群聊举报时会话内可能有多个发送者）
+    Map<Long, UserEntity> userMap = userIds.isEmpty() ? Collections.emptyMap()
+        : userMapper.selectBatchIds(userIds).stream()
+            .collect(Collectors.toMap(UserEntity::getId, u -> u));
+
+    // 会话双方信息（供审核员区分聊天记录中的举报人与被举报人）
+    UserEntity reporter = entity.getReporterId() == null
+        ? null : userMap.get(entity.getReporterId());
+    UserEntity target = entity.getUserId() == null
+        ? null : userMap.get(entity.getUserId());
+    vo.put("reporterName", reporter == null ? null : reporter.getNickname());
+    vo.put("reporterAvatar", reporter == null ? null : reporter.getAvatar());
+    vo.put("targetName", target == null ? null : target.getNickname());
+    vo.put("targetAvatar", target == null ? null : target.getAvatar());
+
+    // 举报用户时没有具体消息摘要，用被举报人信息兜底，避免详情"内容预览"空白
+    if ("DM_USER".equalsIgnoreCase(type)) {
+      String name = target == null || target.getNickname() == null
+          ? "用户" + entity.getUserId() : target.getNickname();
+      vo.put("content", "举报用户：" + name + "（ID: " + entity.getUserId() + "）");
+    }
+
+    List<Map<String, Object>> chatMessages = new ArrayList<>();
+    for (DmMessageEntity msg : rows) {
+      UserEntity sender = msg.getSenderId() == null ? null : userMap.get(msg.getSenderId());
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("id", msg.getId());
+      item.put("senderId", msg.getSenderId());
+      item.put("senderName", sender == null ? null : sender.getNickname());
+      item.put("senderAvatar", sender == null ? null : sender.getAvatar());
+      item.put("contentType", msg.getContentType());
+      // 已撤回消息正文已被清空，这里统一按占位文本展示
+      item.put("content", Integer.valueOf(1).equals(msg.getRecalled()) ? "" : msg.getContent());
+      item.put("mediaDuration", msg.getMediaDuration());
+      item.put("mediaName", msg.getMediaName());
+      item.put("recalled", msg.getRecalled());
+      item.put("createTime", msg.getCreateTime());
+      item.put("fromReporter", Objects.equals(msg.getSenderId(), entity.getReporterId()));
+      item.put("reported", Objects.equals(msg.getId(), reportedMessageId));
+      chatMessages.add(item);
+    }
+    vo.put("chatMessages", chatMessages);
   }
 
   /**

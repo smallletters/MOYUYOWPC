@@ -451,14 +451,19 @@ async function loadReviewItems() {
           .map(u => resolveMediaUrl(u))
           .filter(Boolean)
         const avatarUrl = item.avatar ? resolveMediaUrl(item.avatar) : ''
+        // 私信举报类型：列表用中文标签；举报用户时摘要为空，给出查看指引
+        const CONTENT_TYPE_LABEL_MAP = { DM_MESSAGE: '私信消息', DM_USER: '私信用户' }
+        const rawType = item.contentType || ''
+        const isDmType = rawType === 'DM_MESSAGE' || rawType === 'DM_USER'
         // 后端返回完整 content（contentType=POST 时取自原帖）,不再是 500 字摘要
-        const fullContent = item.content || item.contentExcerpt || ''
+        const fullContent = item.content || item.contentExcerpt
+          || (rawType === 'DM_USER' ? '举报用户（点击详情查看聊天记录）' : '')
         return {
           id: item.id,
           // 头像用 item.avatar；多图九宫格用 imageList（替代了之前的单图 imageUrl + emoji thumb）
           imageList,
-          contentType: item.contentType || (item.rating ? '评论' : '图文'),
-          contentTypeClass: item.contentType === '视频' ? 'tag-orange' : item.contentType === '图片' ? 'tag-blue' : 'tag-green',
+          contentType: CONTENT_TYPE_LABEL_MAP[rawType] || rawType || (item.rating ? '评论' : '图文'),
+          contentTypeClass: isDmType ? 'tag-orange' : item.contentType === '视频' ? 'tag-orange' : item.contentType === '图片' ? 'tag-blue' : 'tag-green',
           autoResult: STATUS_LABEL_MAP[rawStatus] || rawStatus || '待审核',
           statusTagClass: STATUS_TAG_CLASS_MAP[rawStatus] || 'tag-gray',
           // DELETED 状态的记录视为"已处理"，4 个审核按钮全部禁用（仅保留"详情"）

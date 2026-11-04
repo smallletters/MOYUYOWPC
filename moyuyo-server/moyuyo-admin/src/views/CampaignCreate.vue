@@ -76,13 +76,33 @@
             </el-radio-group>
           </el-form-item>
           <el-form-item label="选择品类" v-if="basicForm.productScope === '指定品类'">
-            <el-checkbox-group v-model="basicForm.categories">
-              <el-checkbox value="CARE 洗护">CARE 洗护</el-checkbox>
-              <el-checkbox value="GEAR 出行">GEAR 出行</el-checkbox>
-              <el-checkbox value="PLAY 玩具">PLAY 玩具</el-checkbox>
-              <el-checkbox value="STYLE 服饰">STYLE 服饰</el-checkbox>
-              <el-checkbox value="HOME 家居">HOME 家居</el-checkbox>
-            </el-checkbox-group>
+            <el-select v-model="basicForm.categories" multiple filterable placeholder="请选择分类" style="width:100%">
+              <el-option
+                v-for="c in categoryOptions"
+                :key="c.id"
+                :label="c.name"
+                :value="c.id"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="选择商品" v-if="basicForm.productScope === '指定商品'">
+            <el-select
+              v-model="basicForm.productIds"
+              multiple
+              filterable
+              remote
+              :remote-method="searchProducts"
+              :loading="productSearching"
+              placeholder="输入关键字搜索商品（名称/SPU 编码）"
+              style="width:100%"
+            >
+              <el-option
+                v-for="p in productOptions"
+                :key="p.id"
+                :label="`${p.name}${p.spuCode ? ' (' + p.spuCode + ')' : ''}`"
+                :value="p.id"
+              />
+            </el-select>
           </el-form-item>
         </el-form>
         <div class="step-actions">
@@ -102,7 +122,10 @@
             </el-select>
           </el-form-item>
           <el-form-item label="折扣值" required>
-            <el-input v-model="discountForm.discountValue" placeholder="例如：30 或 30%" />
+            <el-input v-model="discountForm.discountValue" placeholder="例如：30% / 7折 / 立减 20 元" />
+          </el-form-item>
+          <el-form-item label="满减门槛(USD)" v-if="discountForm.discountType === '满减'">
+            <el-input-number v-model="discountForm.minOrderAmount" :min="0" :precision="2" style="width:200px" />
           </el-form-item>
           <el-form-item label="每人限用次数">
             <el-input-number v-model="discountForm.perLimit" :min="0" style="width:200px" />
@@ -263,7 +286,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getCampaigns, createCampaign, updateCampaign, deleteCampaign, saveCampaignDraft } from '../api/admin'
+import { getCampaigns, createCampaign, updateCampaign, deleteCampaign, saveCampaignDraft, getCategoryList, searchProductsLite } from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
 // ===== Tab 状态 =====
@@ -290,6 +313,18 @@ function nextStep(from) {
     if (!basicForm.name) { ElMessage.warning('请输入活动名称'); return }
     if (!basicForm.type) { ElMessage.warning('请选择活动类型'); return }
     if (!basicForm.dateRange || basicForm.dateRange.length !== 2) { ElMessage.warning('请选择活动时间范围'); return }
+    if (basicForm.productScope === '指定品类' && basicForm.categories.length === 0) {
+      ElMessage.warning('请选择至少一个品类'); return
+    }
+    if (basicForm.productScope === '指定商品' && basicForm.productIds.length === 0) {
+      ElMessage.warning('请选择至少一个商品'); return
+    }
+  }
+  if (from === 'discount') {
+    if (!discountForm.discountValue) { ElMessage.warning('请输入折扣值'); return }
+    if (discountForm.discountType === '满减' && Number(discountForm.minOrderAmount) <= 0) {
+      ElMessage.warning('满减门槛必须大于 0'); return
+    }
   }
   currentStep.value = steps[stepIndex(from) + 1].key
 }
@@ -305,8 +340,35 @@ const basicForm = reactive({
   dateRange: null,
   description: '',
   productScope: '全部商品',
-  categories: ['CARE 洗护', 'GEAR 出行', 'PLAY 玩具']
+  categories: [],
+  productIds: []
 })
+
+// 分类/商品选择器数据源
+const categoryOptions = ref([])
+const productOptions = ref([])
+const productSearching = ref(false)
+
+async function loadCategories() {
+  try {
+    const res = await getCategoryList()
+    categoryOptions.value = toArray(res)
+  } catch (e) {
+    console.error('加载分类失败', e)
+  }
+}
+
+async function searchProducts(keyword) {
+  productSearching.value = true
+  try {
+    const res = await searchProductsLite({ keyword: keyword || '', size: 50 })
+    productOptions.value = toArray(res)
+  } catch (e) {
+    console.error('搜索商品失败', e)
+  } finally {
+    productSearching.value = false
+  }
+}
 
 const dateRangeText = computed(() => {
   if (!basicForm.dateRange || basicForm.dateRange.length !== 2) return '（未选择）'
@@ -317,6 +379,7 @@ const dateRangeText = computed(() => {
 const discountForm = reactive({
   discountType: '百分比折扣',
   discountValue: '30%',
+  minOrderAmount: 0,
   perLimit: 1,
   budget: 50000,
   stockLimit: true,
@@ -329,6 +392,32 @@ const publishForm = reactive({
   remark: ''
 })
 
+// 组装创建/草稿提交的完整表单数据（与后端 CampaignRequest 字段一一对应）
+function buildCampaignPayload() {
+  return {
+    name: basicForm.name,
+    type: basicForm.type,
+    status: basicForm.status,
+    description: basicForm.description,
+    startDate: basicForm.dateRange ? formatDateTime(basicForm.dateRange[0]) : '',
+    endDate: basicForm.dateRange ? formatDateTime(basicForm.dateRange[1]) : '',
+    budget: discountForm.budget,
+    productScope: basicForm.productScope,
+    // 仅“指定品类”时保存选中的分类 ID；仅“指定商品”时保存商品 ID
+    productCategories: basicForm.productScope === '指定品类' ? basicForm.categories.join(',') : '',
+    productCategoryIds: basicForm.productScope === '指定品类' ? basicForm.categories.join(',') : '',
+    productIds: basicForm.productScope === '指定商品' ? basicForm.productIds.join(',') : '',
+    discountType: discountForm.discountType,
+    discountValue: discountForm.discountValue,
+    minOrderAmount: discountForm.discountType === '满减' ? discountForm.minOrderAmount : 0,
+    perLimit: discountForm.perLimit,
+    stockLimit: discountForm.stockLimit,
+    totalCount: discountForm.totalCount,
+    approver: publishForm.approver,
+    remark: publishForm.remark
+  }
+}
+
 // 提交审批：调用 createCampaign
 async function submitCampaign() {
   if (!basicForm.name || !basicForm.type) {
@@ -338,14 +427,7 @@ async function submitCampaign() {
     return
   }
   try {
-    await createCampaign({
-      name: basicForm.name,
-      type: basicForm.type,
-      description: basicForm.description,
-      budget: discountForm.budget,
-      startDate: basicForm.dateRange ? formatDate(basicForm.dateRange[0]) : '',
-      endDate: basicForm.dateRange ? formatDate(basicForm.dateRange[1]) : ''
-    })
+    await createCampaign(buildCampaignPayload())
     ElMessage.success('活动已创建并提交审批')
     resetForm()
     await loadCampaigns()
@@ -358,14 +440,7 @@ async function submitCampaign() {
 async function saveDraft() {
   if (!basicForm.name) { ElMessage.warning('请输入活动名称'); return }
   try {
-    const res = await saveCampaignDraft({
-      name: basicForm.name,
-      type: basicForm.type,
-      description: basicForm.description,
-      startDate: basicForm.dateRange && basicForm.dateRange[0] || undefined,
-      endDate: basicForm.dateRange && basicForm.dateRange[1] || undefined,
-      budget: basicForm.budget
-    })
+    const res = await saveCampaignDraft(buildCampaignPayload())
     ElMessage.success('草稿已保存：' + (res?.id ? '#' + res.id : basicForm.name))
   } catch (e) {
     ElMessage.error('草稿保存失败：' + (e?.message || '未知错误'))
@@ -373,16 +448,17 @@ async function saveDraft() {
 }
 
 /**
- * 将 el-date-picker 返回的 Date 格式化为后端可解析的 "yyyy-MM-dd"
- * 后端 CampaignEntity.startDate/endDate 是 LocalDate 类型,
- * Spring 默认 ISO.DATE 解析仅接受 yyyy-MM-dd，不支持 ISO 8601 带时区的字符串
+ * 将 el-date-picker 返回的 Date 对象或字符串格式化为后端可解析的 "yyyy-MM-dd HH:mm:ss"
+ * - 传入 null/undefined 返回空串
+ * - 传入 Date 直接取本地时区的年月日时分秒
+ * - 传入字符串兼容 "yyyy-MM-dd HH:mm:ss" / ISO 格式
  */
-function formatDate(val) {
+function formatDateTime(val) {
   if (val == null || val === '') return ''
-  const d = val instanceof Date ? val : new Date(val)
+  const d = val instanceof Date ? val : new Date(String(val).replace(' ', 'T'))
   if (Number.isNaN(d.getTime())) return ''
   const pad = (n) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
 // 重置创建表单
@@ -393,9 +469,11 @@ function resetForm() {
   basicForm.dateRange = null
   basicForm.description = ''
   basicForm.productScope = '全部商品'
-  basicForm.categories = ['CARE 洗护', 'GEAR 出行', 'PLAY 玩具']
+  basicForm.categories = []
+  basicForm.productIds = []
   discountForm.discountType = '百分比折扣'
   discountForm.discountValue = '30%'
+  discountForm.minOrderAmount = 0
   discountForm.perLimit = 1
   discountForm.budget = 50000
   discountForm.stockLimit = true
@@ -497,7 +575,7 @@ function handleEdit(row) {
   isEdit.value = true
   dialogTitle.value = '编辑活动'
   Object.assign(editForm, row)
-  dateRange.value = [new Date(row.startDate), new Date(row.endDate)]
+  dateRange.value = [new Date(String(row.startDate).replace(' ', 'T')), new Date(String(row.endDate).replace(' ', 'T'))]
   dialogVisible.value = true
 }
 
@@ -526,8 +604,8 @@ async function handleSave() {
         type: editForm.type,
         description: editForm.description,
         budget: editForm.budget,
-        startDate: dateRange.value ? formatDate(dateRange.value[0]) : '',
-        endDate: dateRange.value ? formatDate(dateRange.value[1]) : ''
+        startDate: dateRange.value ? formatDateTime(dateRange.value[0]) : '',
+        endDate: dateRange.value ? formatDateTime(dateRange.value[1]) : ''
       })
       ElMessage.success('编辑成功')
     } else {
@@ -536,8 +614,8 @@ async function handleSave() {
         type: editForm.type,
         description: editForm.description,
         budget: editForm.budget,
-        startDate: dateRange.value ? formatDate(dateRange.value[0]) : '',
-        endDate: dateRange.value ? formatDate(dateRange.value[1]) : ''
+        startDate: dateRange.value ? formatDateTime(dateRange.value[0]) : '',
+        endDate: dateRange.value ? formatDateTime(dateRange.value[1]) : ''
       })
       ElMessage.success('创建成功')
     }
@@ -548,7 +626,10 @@ async function handleSave() {
   }
 }
 
-onMounted(() => { loadCampaigns() })
+onMounted(() => {
+  loadCategories()
+  loadCampaigns()
+})
 </script>
 
 <style scoped>

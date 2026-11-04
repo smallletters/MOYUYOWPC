@@ -34,6 +34,9 @@ public class OrderEntity {
   /** 会员等级优惠金额（按商品销售价 × (1 - 等级折扣系数)，秒杀商品不参与） */
   private BigDecimal memberDiscount;
 
+  /** 营销活动优惠金额（活动价优惠 + 满减） */
+  private BigDecimal campaignDiscount;
+
   private BigDecimal payAmount;
 
   private String currency;

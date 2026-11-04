@@ -135,6 +135,92 @@
         <img :src="previewUrl" class="preview-fullscreen" />
       </el-dialog>
 
+      <!-- 私信举报：聊天记录上下文 -->
+      <div v-if="isDmReview" class="detail-panel">
+        <div class="detail-panel-header">
+          <h3 class="detail-panel-title">聊天记录</h3>
+          <span class="content-stats">
+            共 {{ detail.chatMessages.length }} 条（举报时间之前）
+          </span>
+        </div>
+        <div class="detail-panel-body">
+          <!-- 举报双方 -->
+          <div class="dm-chat-party">
+            <span class="party-item">
+              <span class="party-tag">举报人</span>
+              <span class="party-name">{{ detail.reporterName || ('#' + (detail.reporterId || '—')) }}</span>
+            </span>
+            <span class="party-arrow">→</span>
+            <span class="party-item">
+              <span class="party-tag party-tag-target">被举报人</span>
+              <span class="party-name">{{ detail.targetName || ('#' + (detail.userId || '—')) }}</span>
+            </span>
+          </div>
+
+          <div v-if="detail.reason || detail.reviewComment" class="dm-report-meta">
+            <span v-if="detail.reason">举报原因：{{ detail.reason }}</span>
+            <span v-if="detail.reviewComment">补充说明：{{ detail.reviewComment }}</span>
+          </div>
+
+          <div v-if="!detail.chatMessages.length" class="dm-chat-empty">
+            未找到会话记录（会话可能已被删除，或举报时未产生聊天消息）
+          </div>
+          <div v-else class="dm-chat-list">
+            <div
+              v-for="msg in detail.chatMessages"
+              :key="msg.id"
+              class="dm-msg"
+              :class="{ 'dm-msg-mine': msg.fromReporter, 'dm-msg-reported': msg.reported }"
+            >
+              <img
+                v-if="msg.senderAvatar"
+                :src="msg.senderAvatar"
+                class="dm-msg-avatar"
+                @error="$event.target.style.display = 'none'"
+              />
+              <div class="dm-msg-main">
+                <div class="dm-msg-meta">
+                  <span class="dm-msg-sender">{{ msg.senderName || ('用户' + msg.senderId) }}</span>
+                  <span class="dm-msg-time">{{ formatTime(msg.createTime) }}</span>
+                  <span v-if="msg.reported" class="dm-msg-flag">被举报消息</span>
+                </div>
+                <div class="dm-msg-bubble">
+                  <!-- 图片：点击可查看大图 -->
+                  <img
+                    v-if="msg.contentType === 'IMAGE' && msg.content && !isMediaBroken(msg.id)"
+                    :src="msg.content"
+                    class="dm-msg-image"
+                    @click="openImagePreview(msg.content)"
+                    @error="markMediaBroken(msg.id)"
+                  />
+                  <!-- 语音：直接在审核页试听 -->
+                  <audio
+                    v-else-if="msg.contentType === 'VOICE' && msg.content && !isMediaBroken(msg.id)"
+                    :src="msg.content"
+                    class="dm-msg-audio"
+                    controls
+                    preload="none"
+                    @error="markMediaBroken(msg.id)"
+                  ></audio>
+                  <!-- 文件：新窗口打开 / 下载 -->
+                  <a
+                    v-else-if="msg.contentType === 'FILE' && msg.content && !isMediaBroken(msg.id)"
+                    :href="msg.content"
+                    class="dm-msg-file"
+                    target="_blank"
+                    rel="noopener"
+                    download
+                  >
+                    📄 {{ msg.mediaName || '下载文件' }}
+                  </a>
+                  <template v-else>{{ dmMessageText(msg) }}</template>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 审核操作卡片 -->
       <div class="detail-panel">
         <div class="detail-panel-header">
@@ -207,6 +293,7 @@ const detail = reactive({
   contentType: '',
   contentId: '',
   userId: '',
+  reporterId: '',
   contentExcerpt: '',
   content: '',   // 后端返回的完整内容（contentType=POST 时来自原帖）
   images: '',    // 后端 images 原始字段（String 或 Array）
@@ -218,8 +305,47 @@ const detail = reactive({
   reviewTime: '',
   autoFlag: 0,
   autoScore: null,
-  createTime: ''
+  createTime: '',
+  // 私信举报上下文
+  reporterName: '',
+  targetName: '',
+  reportedMessageId: null,
+  chatConversationId: null,
+  chatMessages: [] // 举报时间之前的聊天记录（升序）
 })
+
+// 私信举报类型：需要展示聊天记录
+const isDmReview = computed(() =>
+  detail.contentType === 'DM_MESSAGE' || detail.contentType === 'DM_USER'
+)
+
+/** 聊天消息正文（媒体消息转为占位文案；资源加载失败时提示已失效） */
+function dmMessageText(msg) {
+  if (!msg) return ''
+  if (Number(msg.recalled) === 1) return '[已撤回]'
+  const broken = isMediaBroken(msg.id)
+  if (msg.contentType === 'IMAGE') return broken ? '[图片已失效或已删除]' : '[图片]'
+  if (msg.contentType === 'VOICE') {
+    if (broken) return '[语音已失效或已删除]'
+    return msg.mediaDuration ? `[语音] ${msg.mediaDuration}"` : '[语音]'
+  }
+  if (msg.contentType === 'FILE') {
+    if (broken) return '[文件已失效或已删除]'
+    return `[文件] ${msg.mediaName || ''}`.trim()
+  }
+  return msg.content || ''
+}
+
+// 加载失败（404/损坏）的媒体消息 ID 集合：用于降级为占位文案，避免空白气泡
+const brokenMedia = reactive(new Set())
+
+function markMediaBroken(id) {
+  if (id != null) brokenMedia.add(id)
+}
+
+function isMediaBroken(id) {
+  return brokenMedia.has(id)
+}
 
 // 图片大图预览弹层
 const previewVisible = ref(false)
@@ -258,7 +384,7 @@ const contentId = computed(() => route.query.id || route.params.id || '')
 const hasData = computed(() => !!detail.id)
 
 const contentTypeIcon = computed(() => {
-  const map = { POST: '📝', COMMENT: '💬', IMAGE: '🖼', VIDEO: '🎬' }
+  const map = { POST: '📝', COMMENT: '💬', IMAGE: '🖼', VIDEO: '🎬', DM_MESSAGE: '💬', DM_USER: '🚩' }
   return map[detail.contentType] || '📄'
 })
 
@@ -290,7 +416,14 @@ function statusLabel(status) {
 
 // 内容类型 -> 中文
 function contentTypeLabel(type) {
-  const map = { POST: '社区帖子', COMMENT: '评论', IMAGE: '图片', VIDEO: '视频' }
+  const map = {
+    POST: '社区帖子',
+    COMMENT: '评论',
+    IMAGE: '图片',
+    VIDEO: '视频',
+    DM_MESSAGE: '私信消息',
+    DM_USER: '私信用户'
+  }
   return map[type] || type || '其他'
 }
 
@@ -333,6 +466,7 @@ async function loadDetail() {
         contentType: res.contentType || '',
         contentId: res.contentId || '',
         userId: res.userId || '',
+        reporterId: res.reporterId || '',
         contentExcerpt: res.contentExcerpt || '',
         content: res.content || '',
         images: rawImages,
@@ -344,7 +478,12 @@ async function loadDetail() {
         reviewTime: res.reviewTime || '',
         autoFlag: res.autoFlag ?? 0,
         autoScore: res.autoScore ?? null,
-        createTime: res.createTime || ''
+        createTime: res.createTime || '',
+        reporterName: res.reporterName || '',
+        targetName: res.targetName || '',
+        reportedMessageId: res.reportedMessageId ?? null,
+        chatConversationId: res.chatConversationId ?? null,
+        chatMessages: Array.isArray(res.chatMessages) ? res.chatMessages : []
       })
     } else {
       loadError.value = `内容「${id}」不存在或已被删除`
@@ -630,6 +769,126 @@ onMounted(() => {
   margin-top: 12px;
   font-size: 12px;
   color: var(--text-400);
+}
+
+/* 私信举报：聊天记录上下文 */
+.dm-chat-party {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-700);
+  margin-bottom: 10px;
+}
+.party-item { display: flex; align-items: center; gap: 6px; }
+.party-tag {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--background-200);
+  color: var(--text-500);
+}
+.party-tag-target { background: var(--state-error-surface); color: var(--state-error); }
+.party-name { font-weight: 600; }
+.party-arrow { color: var(--text-400); }
+.dm-report-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-500);
+  padding: 8px 12px;
+  background: var(--background-50);
+  border-radius: var(--radius-sm);
+  margin-bottom: 14px;
+}
+.dm-chat-empty {
+  padding: 24px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-400);
+  background: var(--background-50);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+}
+.dm-chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding: 4px;
+}
+.dm-msg { display: flex; gap: 10px; align-items: flex-start; }
+.dm-msg-mine { flex-direction: row-reverse; }
+.dm-msg-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.dm-msg-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 70%;
+}
+.dm-msg-mine .dm-msg-main { align-items: flex-end; }
+.dm-msg-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-400);
+}
+.dm-msg-mine .dm-msg-meta { flex-direction: row-reverse; }
+.dm-msg-sender { color: var(--text-500); }
+.dm-msg-bubble {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--background-50);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-700);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.dm-msg-mine .dm-msg-bubble { background: rgba(64, 150, 255, 0.1); }
+/* 被举报消息高亮，便于审核员快速定位 */
+.dm-msg-reported .dm-msg-bubble {
+  border-color: var(--state-error);
+  background: var(--state-error-surface);
+}
+.dm-msg-flag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border: 1px solid var(--state-error);
+  border-radius: 4px;
+  color: var(--state-error);
+}
+.dm-msg-image {
+  display: block;
+  max-width: 220px;
+  max-height: 220px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+/* 语音消息：审核页内直接试听 */
+.dm-msg-audio {
+  width: 260px;
+  max-width: 100%;
+  height: 36px;
+}
+/* 文件消息：点击新窗口打开 / 下载 */
+.dm-msg-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--brand-500);
+  text-decoration: underline;
+  word-break: break-all;
 }
 
 /* 空态 */

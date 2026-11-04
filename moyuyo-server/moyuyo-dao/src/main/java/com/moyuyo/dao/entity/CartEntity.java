@@ -50,6 +50,26 @@ public class CartEntity {
     @TableField(exist = false)
     private String cartStatus;
 
+    /** 命中的营销活动 ID */
+    @TableField(exist = false)
+    private Long campaignId;
+
+    /** 营销活动名称 */
+    @TableField(exist = false)
+    private String campaignName;
+
+    /** 活动价（服务端计算） */
+    @TableField(exist = false)
+    private BigDecimal campaignPrice;
+
+    /** 活动优惠金额 */
+    @TableField(exist = false)
+    private BigDecimal campaignDiscount;
+
+    /** 活动标签文案 */
+    @TableField(exist = false)
+    private String campaignTag;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

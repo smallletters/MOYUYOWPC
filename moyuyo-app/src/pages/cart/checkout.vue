@@ -262,6 +262,10 @@
             <text class="sum-label">{{ $t('checkout.summary.memberDiscount') }}</text>
             <text class="sum-value">−${{ memberDiscount.toFixed(2) }}</text>
           </view>
+          <view v-if="campaignOrderDiscount > 0" class="sum-row">
+            <text class="sum-label">活动满减</text>
+            <text class="sum-value">−${{ campaignOrderDiscount.toFixed(2) }}</text>
+          </view>
           <view v-if="activeCoupon" class="sum-row">
             <text class="sum-label">{{ $t('checkout.summary.couponDiscount') }}</text>
             <text class="sum-value">−${{ discount.toFixed(2) }}</text>
@@ -357,7 +361,7 @@
 </template>
 
 <script>
-import { orderApi, pointsApi, addressApi, couponApi, memberApi } from '@/api'
+import { orderApi, pointsApi, addressApi, couponApi, memberApi, marketingApi } from '@/api'
 import { getShippingMethods, getAvailablePaymentMethods } from '@/api/order'
 import { getFlashSales } from '@/api/flashSale'
 import { useCartStore } from '@/store'
@@ -419,6 +423,8 @@ export default {
       memberDiscountRate: 1,
       // 进行中的秒杀商品 ID：秒杀价不叠加会员折扣
       activeFlashSaleProductIds: [],
+      // 活动整单满减优惠（由后端营销试算接口返回）
+      campaignOrderDiscount: 0,
       orderRemark: '',
       selectedPayment: 'googlepay',
       // 步骤指示器：地址 1、支付 2、复核 3、下单 4；按实际状态自动推进
@@ -617,6 +623,8 @@ export default {
         if (productId != null && this.activeFlashSaleProductIds.includes(productId)) {
           return sum
         }
+        // 营销活动商品不叠加会员折扣
+        if (item && item.campaignId) return sum
         return sum + (Number(item && item.price) || 0) * (Number(item && item.quantity) || 0)
       }, 0)
       return Number((eligibleSubtotal * (1 - rate)).toFixed(2))
@@ -628,7 +636,8 @@ export default {
           this.selectedShippingPrice -
           this.memberDiscount -
           this.discount -
-          this.pointsDiscount,
+          this.pointsDiscount -
+          this.campaignOrderDiscount,
       )
     },
   },
@@ -640,6 +649,7 @@ export default {
     this.loadMemberDiscount()
     this.loadActiveFlashSales()
     this.loadPaymentMethods()
+    this.loadCampaignQuote()
   },
 
   // 从地址页返回时才会触发（uni-app 中 navigateBack 不会重触发 onLoad）
@@ -938,6 +948,43 @@ export default {
       } catch (e) {
         console.warn('[checkout] load flash sales failed', e)
         this.activeFlashSaleProductIds = []
+      }
+    },
+
+    /** 拉取营销活动试算：活动满减与限购预校验（不占用额度） */
+    async loadCampaignQuote() {
+      try {
+        const items = this.checkoutItems.map((it) => ({
+          productId: it.productId,
+          skuId: it.skuId,
+          quantity: it.quantity,
+          price: it.price,
+        }))
+        if (!items.length) return
+        const res = await marketingApi.quoteMarketing(items)
+        this.campaignOrderDiscount = Number(res?.orderDiscount) || 0
+        // 用服务端试算结果回写展示价，避免限购/满减变化后客户端价格与服务端不一致
+        if (Array.isArray(res?.items)) {
+          for (const q of res.items) {
+            const item = this.checkoutItems.find(
+              (it) =>
+                String(it.productId) === String(q.productId) &&
+                String(it.skuId || '') === String(q.skuId || ''),
+            )
+            if (!item) continue
+            item.price = Number(q.price) || item.price
+            item.originalPrice =
+              q.originalPrice != null && Number(q.originalPrice) > Number(q.price)
+                ? Number(q.originalPrice)
+                : null
+            item.campaignId = q.campaignId || null
+            item.campaignTag = q.campaignTag || ''
+          }
+          this.cartStore.persist()
+        }
+      } catch (e) {
+        console.warn('[checkout] load campaign quote failed', e)
+        this.campaignOrderDiscount = 0
       }
     },
 

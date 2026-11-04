@@ -287,6 +287,30 @@ async function handleSave() {
     ElMessage.warning('请填写完整信息')
     return
   }
+  // 秒杀价必须为正数，且不能高于原价（原价未填时跳过比较）
+  const flashPrice = Number(form.flashPrice)
+  const originalPrice = Number(form.originalPrice || 0)
+  if (!(flashPrice > 0)) {
+    ElMessage.warning('秒杀价必须大于 0')
+    return
+  }
+  if (originalPrice > 0 && flashPrice > originalPrice) {
+    ElMessage.warning('秒杀价不能高于原价')
+    return
+  }
+  // 结束时间必须晚于开始时间（两个时间都填写时才校验）
+  if (form.startTime && form.endTime) {
+    const start = new Date(form.startTime).getTime()
+    const end = new Date(form.endTime).getTime()
+    if (Number.isNaN(start) || Number.isNaN(end)) {
+      ElMessage.warning('开始/结束时间格式不正确')
+      return
+    }
+    if (end <= start) {
+      ElMessage.warning('结束时间必须晚于开始时间')
+      return
+    }
+  }
   try {
     const payload = {
       name: form.name,
