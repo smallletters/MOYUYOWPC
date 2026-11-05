@@ -79,6 +79,32 @@
       </div>
     </section>
 
+    <!-- 会员规则配置（签到/评价/邀请/补签/抵扣，保存到 mo_system_config） -->
+    <section class="section-block">
+      <div class="section-header">
+        <h2 class="section-title">会员规则配置</h2>
+        <button class="btn btn-primary" :disabled="membershipRuleSaving" @click="saveMembershipRule">
+          {{ membershipRuleSaving ? '保存中...' : '保存规则' }}
+        </button>
+      </div>
+      <p class="rule-desc">
+        以下数值同时作用于 C 端会员规则页与实际发放逻辑，修改后即时生效；未配置时使用系统默认值。
+      </p>
+      <div class="rule-grid">
+        <div v-for="f in membershipRuleFields" :key="f.key" class="form-group">
+          <label>{{ f.label }}</label>
+          <input
+            v-model.number="membershipRule[f.field]"
+            type="number"
+            :min="f.min"
+            :max="f.max"
+            step="1"
+            class="input"
+          />
+        </div>
+      </div>
+    </section>
+
     <!-- 积分活动管理 -->
     <section class="section-block">
       <div class="section-header">
@@ -242,6 +268,42 @@ const pointsRule = ref({
   levelRates: { NORMAL: 1.0, SILVER: 1.1, GOLD: 1.2, PLATINUM: 1.5, DIAMOND: 2.0 }
 })
 const ruleSaving = ref(false)
+
+// ---- 会员规则配置（mo_system_config：points.checkin/review/invite/makeup/deduct.*） ----
+const membershipRule = ref({
+  checkinPoints: 5,
+  checkinStreakDays: 7,
+  checkinStreakMultiplier: 2,
+  reviewPoints: 10,
+  inviteRewardPoints: 200,
+  inviteMonthlyLimit: 20,
+  makeupFreePerMonth: 1,
+  makeupPointsCost: 50,
+  pointsPerCurrencyUnit: 100,
+  maxDeductPercent: 30,
+  rankBonus1: 1000,
+  rankBonus2: 700,
+  rankBonus3: 500,
+  rankBonus4To10: 200
+})
+const membershipRuleSaving = ref(false)
+// 会员规则配置项：与后端 MembershipRuleConfigService 的 key 一一对应
+const membershipRuleFields = [
+  { field: 'checkinPoints', key: 'points.checkin.points', label: '每日签到积分', min: 1 },
+  { field: 'checkinStreakDays', key: 'points.checkin.streak_days', label: '连续签到天数', min: 1 },
+  { field: 'checkinStreakMultiplier', key: 'points.checkin.streak_multiplier', label: '连续签到奖励倍数', min: 1 },
+  { field: 'reviewPoints', key: 'points.review.points', label: '评价奖励积分', min: 1 },
+  { field: 'inviteRewardPoints', key: 'points.invite.reward_points', label: '邀请首单奖励（每人）', min: 1 },
+  { field: 'inviteMonthlyLimit', key: 'points.invite.monthly_limit', label: '每月邀请计奖上限（条）', min: 1 },
+  { field: 'makeupFreePerMonth', key: 'points.makeup.free_per_month', label: '每月免费补签次数', min: 0 },
+  { field: 'makeupPointsCost', key: 'points.makeup.points_cost', label: '补签消耗积分（每次）', min: 1 },
+  { field: 'pointsPerCurrencyUnit', key: 'points.deduct.points_per_unit', label: '积分抵扣换算（N 积分 = 1 美元）', min: 1 },
+  { field: 'maxDeductPercent', key: 'points.deduct.max_percent', label: '最高抵扣比例（%）', min: 1, max: 100 },
+  { field: 'rankBonus1', key: 'points.invite.rank_bonus_1', label: '月度排行第 1 名奖励', min: 0 },
+  { field: 'rankBonus2', key: 'points.invite.rank_bonus_2', label: '月度排行第 2 名奖励', min: 0 },
+  { field: 'rankBonus3', key: 'points.invite.rank_bonus_3', label: '月度排行第 3 名奖励', min: 0 },
+  { field: 'rankBonus4To10', key: 'points.invite.rank_bonus_4_10', label: '月度排行第 4-10 名奖励', min: 0 }
+]
 // 五档展示顺序与默认倍率（后端未配置时使用）
 const levelRateFields = [
   { code: 'NORMAL', label: '普通会员', defaultRate: 1.0 },
@@ -268,6 +330,15 @@ async function fetchPointsRule() {
     levelRateFields.forEach((field) => {
       const value = Number(map[`points.level_rate.${field.code}`])
       pointsRule.value.levelRates[field.code] = Number.isFinite(value) && value > 0 ? value : field.defaultRate
+    })
+    // 会员规则：缺失/非法时保留页面默认值
+    membershipRuleFields.forEach((field) => {
+      const raw = map[field.key]
+      if (raw == null || String(raw).trim() === '') return
+      const value = Number(raw)
+      if (Number.isFinite(value) && value >= field.min && (field.max == null || value <= field.max)) {
+        membershipRule.value[field.field] = value
+      }
     })
   } catch (err) {
     console.error('获取积分规则配置失败:', err)
@@ -310,6 +381,33 @@ async function savePointsRule() {
     ElMessage.error('保存失败：' + (err?.message || '未知错误'))
   } finally {
     ruleSaving.value = false
+  }
+}
+
+// 保存会员规则：只提交会员规则配置键，不会覆盖其它系统配置
+async function saveMembershipRule() {
+  for (const field of membershipRuleFields) {
+    const value = Number(membershipRule.value[field.field])
+    const range = field.max != null ? `${field.min} ~ ${field.max}` : `${field.min} 及以上`
+    if (!Number.isInteger(value) || value < field.min || (field.max != null && value > field.max)) {
+      ElMessage.warning(`${field.label}需为${range}的整数`)
+      return
+    }
+  }
+  membershipRuleSaving.value = true
+  try {
+    await saveSystemConfig(
+      membershipRuleFields.map((field) => ({
+        key: field.key,
+        value: String(membershipRule.value[field.field])
+      }))
+    )
+    ElMessage.success('会员规则已保存，C 端即时生效')
+  } catch (err) {
+    console.error('保存会员规则失败', err)
+    ElMessage.error('保存失败：' + (err?.message || '未知错误'))
+  } finally {
+    membershipRuleSaving.value = false
   }
 }
 

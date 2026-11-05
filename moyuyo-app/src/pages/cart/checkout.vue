@@ -208,7 +208,9 @@
               <text class="reward-label">
                 {{ $t('checkout.coupon.points.label', { balance: pointsBalance }) }}
               </text>
-              <text class="reward-sub">{{ $t('checkout.coupon.points.rule') }}</text>
+              <text class="reward-sub">
+                {{ $t('checkout.coupon.points.rule', pointsRuleParams) }}
+              </text>
             </view>
             <switch
               :checked="usePoints"
@@ -418,6 +420,8 @@ export default {
       addressList: [],
       usePoints: false,
       pointsBalance: 0,
+      // 积分抵扣规则：跟随后台“会员规则配置”（N 积分 = $1，最高抵扣 X%）
+      pointsRule: { pointsPerUnit: 100, maxPercent: 30 },
       pointsLoaded: false,
       // 会员价折扣系数（1.00 = 原价，0.95 = 9.5 折），由 /api/v1/member/price-discount 拉取
       memberDiscountRate: 1,
@@ -593,23 +597,40 @@ export default {
       })
     },
     /**
-     * 会员优惠与优惠券抵扣后剩余的商品金额。
+     * 会员优惠、优惠券、活动满减后剩余的商品金额。
      * 积分只能抵扣这部分，不能抵运费，也不能把订单抵成负数。
      */
     pointsEligibleBase() {
-      return Math.max(0, this.subtotal - this.memberDiscount - this.discount)
+      return Math.max(
+        0,
+        this.subtotal - this.memberDiscount - this.discount - this.campaignOrderDiscount,
+      )
     },
-    // 章节 3.1：100 积分 = $1，最高抵扣商品金额 30%，且不超过剩余商品金额
+    // 章节 3.1：N 积分 = $1，最高抵扣商品金额 X%，且不超过剩余商品金额
+    // 与后端 OrderServiceImpl 口径一致：比例上限 HALF_UP 到分、余额上限 DOWN 到分
     pointsDiscount() {
       if (!this.usePoints) return 0
-      const maxByRate = this.subtotal * 0.3
-      const maxByBalance = this.pointsBalance / 100
-      return Math.min(maxByRate, maxByBalance, this.pointsEligibleBase)
+      const pointsPerUnit = Math.max(Number(this.pointsRule.pointsPerUnit) || 100, 1)
+      const maxRate = Math.max(Number(this.pointsRule.maxPercent) || 0, 0) / 100
+      const maxByRate = this.roundHalfUp2(this.subtotal * maxRate)
+      const maxByBalance = this.floor2(this.pointsBalance / pointsPerUnit)
+      // 最终抵扣额同样取整到分，避免二进制浮点误差导致与后端差 1 分/1 积分
+      return this.roundHalfUp2(Math.min(maxByRate, maxByBalance, this.pointsEligibleBase))
     },
     maxPointsUsable() {
-      return Math.floor(
-        Math.min(this.pointsBalance, this.subtotal * 0.3 * 100, this.pointsEligibleBase * 100),
-      )
+      const pointsPerUnit = Math.max(Number(this.pointsRule.pointsPerUnit) || 100, 1)
+      const maxRate = Math.max(Number(this.pointsRule.maxPercent) || 0, 0) / 100
+      const maxByRate = this.roundHalfUp2(this.subtotal * maxRate)
+      const maxByBalance = this.floor2(this.pointsBalance / pointsPerUnit)
+      const cap = this.roundHalfUp2(Math.min(maxByRate, maxByBalance, this.pointsEligibleBase))
+      return Math.max(0, Math.floor(cap * pointsPerUnit))
+    },
+    // 积分规则文案参数（后台可配置）
+    pointsRuleParams() {
+      return {
+        points: this.pointsRule.pointsPerUnit,
+        percent: this.pointsRule.maxPercent,
+      }
     },
     /**
      * 会员优惠金额：按会员等级统一折扣，作用于非秒杀商品的销售价小计。
@@ -645,6 +666,7 @@ export default {
   onLoad() {
     this.loadAddress()
     this.loadPoints()
+    this.loadPointsRule()
     this.loadMyCoupons()
     this.loadMemberDiscount()
     this.loadActiveFlashSales()
@@ -683,6 +705,14 @@ export default {
   },
 
   methods: {
+    /** 金额四舍五入到分（与后端 BigDecimal HALF_UP 口径一致） */
+    roundHalfUp2(value) {
+      return Math.round((Number(value) + Number.EPSILON) * 100) / 100
+    },
+    /** 金额向下取整到分（与后端 BigDecimal DOWN 口径一致） */
+    floor2(value) {
+      return Math.floor(Number(value) * 100) / 100
+    },
     /**
      * 单张优惠券的实际抵扣金额（与服务端 computeCouponDiscount 口径一致）：
      * PERCENT 的 discountValue 是价格百分比（95 = 9.5 折），AMOUNT 为固定金额；
@@ -1000,6 +1030,20 @@ export default {
       }
     },
 
+    /** 拉取积分抵扣规则（后台会员规则配置：N 积分 = $1，最高抵扣 X%） */
+    async loadPointsRule() {
+      try {
+        const rules = await memberApi.getMembershipRules()
+        const use = rules?.use || {}
+        const pointsPerUnit = Number(use.pointsPerCurrencyUnit)
+        const maxPercent = Number(use.maxDeductPercent)
+        if (pointsPerUnit > 0) this.pointsRule.pointsPerUnit = pointsPerUnit
+        if (maxPercent > 0 && maxPercent <= 100) this.pointsRule.maxPercent = maxPercent
+      } catch (e) {
+        console.warn('[checkout] load points rule failed', e)
+      }
+    },
+
     /** 章节 3.1：查询可用积分余额 */
     async loadPoints() {
       try {
@@ -1042,7 +1086,8 @@ export default {
       this.currentStep = 4
       try {
         const items = this.checkoutItems
-        const usedPoints = this.usePoints ? Math.floor(this.pointsDiscount * 100) : 0
+        const pointsPerUnit = Math.max(Number(this.pointsRule.pointsPerUnit) || 100, 1)
+        const usedPoints = this.usePoints ? Math.floor(this.pointsDiscount * pointsPerUnit) : 0
         const orderData = {
           items: items.map((it) => ({
             skuId: it.skuId || null,

@@ -22,6 +22,12 @@ public class InviteEntity {
 
   private Integer pointsAwarded;
 
+  /** 触发邀请奖励的订单 ID（退款时用于精确扣回该笔奖励） */
+  private Long triggerOrderId;
+
+  /** 邀请奖励发放时间（用于月度计奖上限统计） */
+  private LocalDateTime rewardTime;
+
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createTime;
 }

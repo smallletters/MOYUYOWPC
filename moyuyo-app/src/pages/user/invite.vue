@@ -119,11 +119,10 @@
       <view class="ranking-banner-icon"><text class="luc luc-trophy" /></view>
       <view class="ranking-banner-info">
         <text class="ranking-banner-title">{{ $t('invite.rankingTitle') }}</text>
-        <text class="ranking-banner-desc">{{ $t('invite.rankingDesc') }}</text>
+        <text class="ranking-banner-desc">{{ $t('invite.rankingDesc', rankBonusParams) }}</text>
       </view>
       <view class="ranking-banner-rank">
-        <text class="rank-number">{{ stats.rank }}</text>
-        <text class="rank-unit">th</text>
+        <text class="rank-number">{{ rankText }}</text>
         <text class="rank-label">{{ $t('invite.rankingLabel') }}</text>
       </view>
     </view>
@@ -132,6 +131,7 @@
 
 <script>
 import { inviteApi } from '@/api'
+import { config } from '@/utils/config'
 import { i18n } from '@/i18n'
 
 export default {
@@ -147,6 +147,8 @@ export default {
         rank: 0,
       },
       inviteHistory: [],
+      // 月度排行奖励金额（来自排行接口，后台可配置）
+      rankBonus: null,
       localeVersion: 0,
       unsubLocale: null,
     }
@@ -154,6 +156,30 @@ export default {
 
   onLoad() {
     this.loadInviteData()
+  },
+
+  computed: {
+    // 名次展示：英文 1st/2nd/3rd/11th；中文「第 N 名」；未上榜显示 -
+    rankText() {
+      void this.localeVersion // 语言切换时重新计算
+      const n = this.stats.rank
+      if (!n) return '-'
+      if (i18n.locale.startsWith('zh')) return `第 ${n} 名`
+      const suffix = ['th', 'st', 'nd', 'rd']
+      const v = n % 100
+      return `${n}${suffix[(v - 20) % 10] || suffix[v] || suffix[0]}`
+    },
+
+    // 排行奖励金额参数：接口未返回时使用默认值兜底
+    rankBonusParams() {
+      const bonus = this.rankBonus || {}
+      return {
+        first: bonus.rank1 ?? 1000,
+        second: bonus.rank2 ?? 700,
+        third: bonus.rank3 ?? 500,
+        rest: bonus.rank4To10 ?? 200,
+      }
+    },
   },
 
   created() {
@@ -176,11 +202,11 @@ export default {
         const ordered = it.status === 'ORDERED'
         return {
           id: it.id,
-          initial: (it.inviteeUserId || 'U').toString().slice(-1).toUpperCase(),
+          initial: (it.invitedUserId || 'U').toString().slice(-1).toUpperCase(),
           name: ordered
-            ? i18n.t('invite.friendName', { id: it.inviteeUserId })
+            ? i18n.t('invite.friendName', { id: it.invitedUserId })
             : i18n.t('invite.pendingName', {
-                id: it.inviteeUserId || i18n.t('invite.registering'),
+                id: it.invitedUserId || i18n.t('invite.registering'),
               }),
           time: it.createTime ? new Date(it.createTime).toLocaleDateString(i18n.locale) : '',
           status: ordered ? 'ordered' : 'pending',
@@ -193,10 +219,12 @@ export default {
     async loadInviteData() {
       try {
         // request.js 已解包外层 envelope,直接拿 payload
-        const [code, stats, historyPage] = await Promise.all([
+        const [code, stats, historyPage, ranking] = await Promise.all([
           inviteApi.getInviteCode(),
           inviteApi.getInviteStats(),
           inviteApi.getInviteHistory({ page: 1, size: 20 }),
+          // 排行接口失败不影响邀请主数据展示
+          inviteApi.getInviteRanking().catch(() => null),
         ])
         // getInviteCode 直接返回字符串;为兼容可能包对象的写法,做宽松判定
         this.inviteCode = typeof code === 'string' ? code : code?.code || ''
@@ -204,8 +232,9 @@ export default {
           invited: stats.invitedCount || 0,
           ordered: stats.completedOrders || 0,
           points: stats.earnedPoints || 0,
-          rank: 0, // 排行暂未接入后端
+          rank: ranking?.rank || 0,
         }
+        this.rankBonus = ranking?.rankBonus || null
         const records = Array.isArray(historyPage?.records)
           ? historyPage.records
           : Array.isArray(historyPage)
@@ -217,6 +246,7 @@ export default {
         console.warn('[invite] load failed', e)
         this.inviteCode = ''
         this.stats = { invited: 0, ordered: 0, points: 0, rank: 0 }
+        this.rankBonus = null
         this._inviteRecords = []
         this.inviteHistory = []
       }
@@ -232,11 +262,28 @@ export default {
       })
     },
 
+    // 生成分享链接：H5 直接用当前站点（注册页已在 history 路由下），原生端回落到官网域名
+    buildShareUrl() {
+      // #ifdef H5
+      if (typeof window !== 'undefined' && window.location?.origin) {
+        return (
+          window.location.origin +
+          '/pages/user/register?inviteCode=' +
+          encodeURIComponent(this.inviteCode)
+        )
+      }
+      // #endif
+      return (
+        config.wpBase + '/pages/user/register?inviteCode=' + encodeURIComponent(this.inviteCode)
+      )
+    },
+
     onShareMessenger() {
       // Messenger 没有标准的 web share URL;
       // 这里统一走复制链接 + 提示用户在 Messenger 内粘贴兜底
       // (要做真唤起需要 Facebook SDK + fb-messenger-share-dialog,后续按需接入)
-      const url = 'https://moyuyo.com/invite/' + this.inviteCode
+      if (!this.inviteCode) return
+      const url = this.buildShareUrl()
       uni.setClipboardData({
         data: url,
         success: () => uni.showToast({ title: i18n.t('invite.toastPasteMessenger'), icon: 'none' }),
@@ -245,7 +292,8 @@ export default {
 
     onShareWhatsApp() {
       // H5/通用浏览器可通过 wa.me 唤起 WhatsApp;原生端若无插件,复制链接兜底
-      const url = 'https://moyuyo.com/invite/' + this.inviteCode
+      if (!this.inviteCode) return
+      const url = this.buildShareUrl()
       const waUrl =
         'https://wa.me/?text=' + encodeURIComponent(`Join MOYUYO with my invite: ${url}`)
       // 优先通过系统浏览器跳 wa.me
@@ -264,7 +312,8 @@ export default {
 
     onShareX() {
       // X (Twitter) 提供官方 web intent URL,会唤起 tweet 弹窗
-      const url = 'https://moyuyo.com/invite/' + this.inviteCode
+      if (!this.inviteCode) return
+      const url = this.buildShareUrl()
       const text = `Join MOYUYO with my invite: ${url}`
       const xUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text)
       // #ifdef H5
@@ -283,7 +332,7 @@ export default {
     onCopyLink() {
       if (!this.inviteCode) return
       uni.setClipboardData({
-        data: 'https://moyuyo.com/invite/' + this.inviteCode,
+        data: this.buildShareUrl(),
         success: () => {
           uni.showToast({ title: i18n.t('invite.copied'), icon: 'none' })
         },

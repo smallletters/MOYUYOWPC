@@ -23,6 +23,7 @@ import com.moyuyo.dao.mapper.PaymentMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.CouponService;
+import com.moyuyo.service.InviteService;
 import com.moyuyo.service.MemberPriceService;
 import com.moyuyo.service.MemberService;
 import com.moyuyo.service.ShippingRateService;
@@ -88,6 +89,9 @@ class OrderServiceTest {
 
   @Mock
   private AddressMapper addressMapper;
+
+  @Mock
+  private InviteService inviteService;
 
   @InjectMocks
   private OrderServiceImpl orderService;

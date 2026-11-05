@@ -478,6 +478,24 @@ export default {
       uni.navigateTo({ url: '/pages/user/login' })
     },
 
+    /**
+     * 未登录点击需登录的功能入口时的统一引导：
+     * 先弹窗说明"请先登录"，用户确认后再进登录页，避免误入功能页后报"网络异常"
+     */
+    promptLogin() {
+      uni.showModal({
+        title: i18n.t('userCenter.loginRequiredTitle'),
+        content: i18n.t('userCenter.loginRequiredContent'),
+        confirmText: i18n.t('userCenter.goLogin'),
+        cancelText: i18n.t('userCenter.maybeLater'),
+        success: (res) => {
+          if (res.confirm) {
+            uni.navigateTo({ url: '/pages/user/login' })
+          }
+        },
+      })
+    },
+
     goProfile() {
       uni.navigateTo({ url: '/pages/user/profile' })
     },
@@ -538,6 +556,22 @@ export default {
         help: '/pages/user/help',
         settings: '/pages/user/settings',
         about: '/pages/user/about',
+      }
+      // 这些功能依赖登录态：未登录时直接引导登录，
+      // 避免进入功能页后接口 401（H5 跨源时读不到 401 响应）被误报成"网络异常"
+      const loginRequired = [
+        'checkin',
+        'missions',
+        'invite',
+        'membership',
+        'address',
+        'pets',
+        'favorites',
+        'history',
+      ]
+      if (loginRequired.includes(f.id) && !this.userStore.isLoggedIn) {
+        this.promptLogin()
+        return
       }
       if (map[f.id]) {
         uni.navigateTo({ url: map[f.id] })

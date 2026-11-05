@@ -30,6 +30,10 @@ public class RegisterRequest {
     @Schema(description = "手机号路径下必填的 6 位短信验证码", example = "123456")
     private String smsCode;
 
+    @Size(max = 6, message = "邮箱验证码为 6 位")
+    @Schema(description = "邮箱注册路径必填的 6 位邮箱验证码", example = "123456")
+    private String emailCode;
+
     @NotBlank(message = "密码不能为空")
     @Size(min = 8, max = 64, message = "密码长度需8-64位")
     @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,64}$",
@@ -53,4 +57,8 @@ public class RegisterRequest {
 
     @Schema(description = "是否同意营销邮件", example = "false")
     private Boolean marketingOptIn;
+
+    @Size(max = 32, message = "邀请码最长32个字符")
+    @Schema(description = "邀请码（可选，注册时绑定邀请关系）", example = "MYA1B2C3D4")
+    private String inviteCode;
 }

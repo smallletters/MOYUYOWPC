@@ -25,6 +25,7 @@ import com.moyuyo.dao.mapper.PaymentMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.CouponService;
+import com.moyuyo.service.InviteService;
 import com.moyuyo.service.MemberPriceService;
 import com.moyuyo.service.MemberService;
 import com.moyuyo.service.MissionService;
@@ -32,6 +33,7 @@ import com.moyuyo.service.NotificationService;
 import com.moyuyo.service.OrderService;
 import com.moyuyo.service.ShippingRateService;
 import com.moyuyo.service.WooCommerceSyncService;
+import com.moyuyo.service.config.MembershipRuleConfigService;
 import com.moyuyo.service.mq.NotificationMessageProducer;
 import static com.moyuyo.common.enums.OrderStatusEnum.*;
 import lombok.RequiredArgsConstructor;
@@ -77,6 +79,8 @@ public class OrderServiceImpl implements OrderService {
   private final NotificationService notificationService;
   // 消费返积分：付款回调后按 1 USD = 10 积分发放，首单 2 倍
   private final PointsRewardServiceImpl pointsRewardService;
+  /** 邀请奖励：被邀请人首单支付成功后给双方发放积分 */
+  private final InviteService inviteService;
   // 资金安全：下单优惠金额必须服务端重算（券核验/积分抵扣），不能信任前端传入数值
   private final CouponService couponService;
   private final MemberService memberService;
@@ -86,6 +90,8 @@ public class OrderServiceImpl implements OrderService {
   private final FlashSaleMapper flashSaleMapper;
   // 资金安全：运费由服务端按 zone × method 重算覆盖前端传的 freight，防止改包刷价
   private final ShippingRateService shippingRateService;
+  /** 积分抵扣换算/抵扣上限从会员规则配置读取（后台可调） */
+  private final MembershipRuleConfigService ruleConfigService;
   // 营销活动执行：活动价、满减、限购/预算/总量占用
   private final CampaignPricingServiceImpl campaignPricingService;
 
@@ -307,12 +313,15 @@ public class OrderServiceImpl implements OrderService {
             && request.getPointsDiscount().compareTo(BigDecimal.ZERO) > 0);
     if (wantsPoints) {
       int balance = Math.max(memberService.getPointsBalance(userId), 0);
-      // 比例上限：商品小计 30%（HALF_UP），沿用原口径
-      BigDecimal maxByRate = goodsSubtotal.multiply(new BigDecimal("0.3"))
+      // 积分抵扣规则：后台可配置（N 积分 = 1 美元，最高抵扣商品小计的 X%）
+      MembershipRuleConfigService.MembershipRuleConfig rule = ruleConfigService.getConfig();
+      BigDecimal pointsPerUnit = BigDecimal.valueOf(rule.pointsPerCurrencyUnit());
+      // 比例上限：商品小计 X%（HALF_UP）
+      BigDecimal maxByRate = goodsSubtotal.multiply(rule.maxDeductRate())
           .setScale(2, java.math.RoundingMode.HALF_UP);
-      // 余额上限：可用积分按 100 积分 = 1 元折算（DOWN），沿用原口径
+      // 余额上限：可用积分按 N 积分 = 1 美元折算（DOWN）
       BigDecimal maxByBalance = BigDecimal.valueOf(balance)
-          .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.DOWN);
+          .divide(pointsPerUnit, 2, java.math.RoundingMode.DOWN);
       // 剩余金额上限：会员优惠 + 优惠券 + 满减后剩余的商品金额（运费不允许用积分抵扣）
       BigDecimal maxByRemaining = goodsSubtotal
           .subtract(serverMemberDiscount)
@@ -334,14 +343,15 @@ public class OrderServiceImpl implements OrderService {
         requested = request.getPointsDiscount().setScale(2, java.math.RoundingMode.HALF_UP);
       } else if (request.getPointsUsed() != null && request.getPointsUsed() > 0) {
         requested = BigDecimal.valueOf(request.getPointsUsed())
-            .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.DOWN);
+            .divide(pointsPerUnit, 2, java.math.RoundingMode.DOWN);
       } else {
         requested = null;
       }
       // 四值取 min：客户端请求值 与 比例/余额/剩余金额三个上限
       BigDecimal cap = maxByRate.min(maxByBalance).min(maxByRemaining);
       serverPointsDiscount = requested == null ? cap : requested.min(cap);
-      serverPointsUsed = serverPointsDiscount.multiply(BigDecimal.valueOf(100))
+      serverPointsUsed = serverPointsDiscount
+          .multiply(pointsPerUnit)
           .setScale(0, java.math.RoundingMode.DOWN).intValue();
 
       // 2b：勾选了积分但服务端算下来可用抵扣为 0。
@@ -863,6 +873,13 @@ public class OrderServiceImpl implements OrderService {
       pointsRewardService.rewardForOrder(order);
     } catch (Exception e) {
       log.warn("[order] grant reward points failed: orderNo={}, reason={}", orderNo, e.getMessage());
+    }
+
+    // 邀请奖励：被邀请人首单支付成功后双方各得 200 积分（内部幂等，重复回调不会重复发放）
+    try {
+      inviteService.markOrderedByInvitee(order.getUserId(), order.getId());
+    } catch (Exception e) {
+      log.warn("[order] grant invite reward failed: orderNo={}, reason={}", orderNo, e.getMessage());
     }
   }
 

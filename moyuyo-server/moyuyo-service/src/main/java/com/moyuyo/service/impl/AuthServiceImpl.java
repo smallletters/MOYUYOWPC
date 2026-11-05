@@ -12,6 +12,7 @@ import com.moyuyo.dao.mapper.SmsCodeMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.AuthService;
 import com.moyuyo.service.EmailService;
+import com.moyuyo.service.InviteService;
 import com.moyuyo.service.SmsService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -58,6 +59,8 @@ public class AuthServiceImpl implements AuthService {
     private final StringRedisTemplate redisTemplate;
     /** 统一密码编码器 Bean，强度由 moyuyo.password.bcrypt-strength 控制（默认 12） */
     private final PasswordEncoder passwordEncoder;
+    /** 注册时按邀请码绑定邀请关系 */
+    private final InviteService inviteService;
     /** 登录失败计数 Redis 不可用计数器：便于 Prometheus 告警 */
     private final Counter loginFailureCounter;
     /** Magic Link 跳转的 H5 基础地址（与 EmailServiceImpl 默认值保持一致） */
@@ -75,6 +78,7 @@ public class AuthServiceImpl implements AuthService {
                            JwtUtil jwtUtil,
                            StringRedisTemplate redisTemplate,
                            PasswordEncoder passwordEncoder,
+                           InviteService inviteService,
                            MeterRegistry meterRegistry) {
         this.userMapper = userMapper;
         this.smsCodeMapper = smsCodeMapper;
@@ -85,6 +89,7 @@ public class AuthServiceImpl implements AuthService {
         this.jwtUtil = jwtUtil;
         this.redisTemplate = redisTemplate;
         this.passwordEncoder = passwordEncoder;
+        this.inviteService = inviteService;
         this.loginFailureCounter = Counter.builder("moyuyo_login_failure_redis_unavailable_total")
                 .description("登录失败计数因 Redis 不可用而失败降级放行的次数（fail-open 行为需运维感知）")
                 .tag("reason", "redis_unavailable")
@@ -173,6 +178,8 @@ public class AuthServiceImpl implements AuthService {
             if (count != null && count > 0) {
                 throw new IllegalArgumentException("Email already registered");
             }
+            // 邮箱验证码校验：必须与服务端下发的一致，防止用任意邮箱注册
+            verifyRegisterEmailCode(email, request.getEmailCode());
         }
         // phone 路径:必传 smsCode,且验证码必须有效
         if (hasPhone && (request.getSmsCode() == null || request.getSmsCode().isBlank())) {
@@ -204,7 +211,8 @@ public class AuthServiceImpl implements AuthService {
         user.setNickname(request.getNickname());
         user.setCountry(request.getCountry());
         user.setMarketingOptIn(request.getMarketingOptIn() != null && request.getMarketingOptIn());
-        user.setEmailVerified(false);
+        // 邮箱注册已校验验证码，直接标记邮箱已验证；手机注册的占位邮箱保持未验证
+        user.setEmailVerified(hasEmail);
         user.setStatus(1);
         user.setPoints(0);
         user.setTwoFactorEnabled(false);
@@ -212,8 +220,28 @@ public class AuthServiceImpl implements AuthService {
 
         userMapper.insert(user);
 
+        // 邀请关系绑定：邀请码非法/已被自己使用时不阻断注册，由 bindInvitee 返回 null 兜底
+        if (request.getInviteCode() != null && !request.getInviteCode().isBlank()) {
+            inviteService.bindInvitee(request.getInviteCode().trim(), user.getId());
+        }
+
         log.info("User registered: id={}, email={}, phone={}", user.getId(), user.getEmail(), user.getPhone());
         return generateTokenPair(user);
+    }
+
+    /**
+     * 注册邮箱验证码校验：校验通过后立即删除，保证一次性使用。
+     */
+    private void verifyRegisterEmailCode(String email, String emailCode) {
+        if (emailCode == null || emailCode.isBlank()) {
+            throw new IllegalArgumentException("邮箱注册需提供邮箱验证码");
+        }
+        String key = REDIS_KEY_VERIFY_CODE + email;
+        String storedCode = redisTemplate.opsForValue().get(key);
+        if (storedCode == null || !storedCode.equals(emailCode.trim())) {
+            throw new IllegalArgumentException("邮箱验证码错误或已过期");
+        }
+        redisTemplate.delete(key);
     }
 
     /**

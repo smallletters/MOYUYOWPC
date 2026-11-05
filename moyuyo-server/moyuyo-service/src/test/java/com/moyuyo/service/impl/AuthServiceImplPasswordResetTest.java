@@ -11,6 +11,7 @@ import com.moyuyo.dao.mapper.SmsCodeMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.AuthService;
 import com.moyuyo.service.EmailService;
+import com.moyuyo.service.InviteService;
 import com.moyuyo.service.SmsService;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -76,6 +77,8 @@ class AuthServiceImplPasswordResetTest {
     @Mock
     private PasswordEncoder passwordEncoder;
     @Mock
+    private InviteService inviteService;
+    @Mock
     private ValueOperations<String, String> valueOps;
 
     private AuthService authService;
@@ -101,7 +104,7 @@ class AuthServiceImplPasswordResetTest {
         authService = new AuthServiceImpl(userMapper, smsCodeMapper,
                 orderMapper, dataExportRequestMapper,
                 smsServiceProvider, emailServiceProvider,
-                jwtUtil, redisTemplate, passwordEncoder, meterRegistry);
+                jwtUtil, redisTemplate, passwordEncoder, inviteService, meterRegistry);
     }
 
     @Test

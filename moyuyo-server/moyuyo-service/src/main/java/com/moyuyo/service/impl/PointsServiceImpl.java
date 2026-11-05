@@ -14,6 +14,7 @@ import com.moyuyo.dao.mapper.PointsLogMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.MemberService;
 import com.moyuyo.service.PointsService;
+import com.moyuyo.service.config.MembershipRuleConfigService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,12 +37,11 @@ public class PointsServiceImpl implements PointsService {
 
   private static final DateTimeFormatter YM = DateTimeFormatter.ofPattern("yyyy-MM");
 
-  /** 章节 2.1：补签从第 2 次起每次消耗 50 积分 */
-  private static final int MAKEUP_POINTS_COST = 50;
-
   private final PointsGoodsMapper pointsGoodsMapper;
   private final PointsExchangeMapper pointsExchangeMapper;
   private final CheckinMakeupMapper checkinMakeupMapper;
+  /** 补签次数/消耗积分、签到积分从会员规则配置读取（后台可调） */
+  private final MembershipRuleConfigService ruleConfigService;
   private final UserMapper userMapper;
   private final PointsLogMapper pointsLogMapper;
   private final MemberService memberService;
@@ -170,8 +170,9 @@ public class PointsServiceImpl implements PointsService {
             .eq(CheckinMakeupEntity::getYmonth, ym));
 
     int currentCount = record == null ? 0 : (record.getCount() == null ? 0 : record.getCount());
-    boolean free = currentCount == 0;
-    int cost = free ? 0 : MAKEUP_POINTS_COST;
+    MembershipRuleConfigService.MembershipRuleConfig rule = ruleConfigService.getConfig();
+    boolean free = currentCount < rule.makeupFreePerMonth();
+    int cost = free ? 0 : rule.makeupPointsCost();
 
     if (cost > 0) {
       int balance = memberService.getPointsBalance(userId);
@@ -181,9 +182,10 @@ public class PointsServiceImpl implements PointsService {
       memberService.spendPoints(userId, cost, ym, "漏签补签消耗积分");
     }
 
-    // 写流水（CHECKIN +5），created_at 回填到被补签那天（沿用当前时刻，便于流水列表展示）
-    memberService.addPointsAt(userId, 5, "CHECKIN", "makeup:" + target,
-        "漏签补签 +5 积分（" + target + "）", target.atTime(LocalTime.now()));
+    // 写流水（CHECKIN +签到积分），created_at 回填到被补签那天（沿用当前时刻，便于流水列表展示）
+    memberService.addPointsAt(userId, rule.checkinPoints(), "CHECKIN", "makeup:" + target,
+        "漏签补签 +" + rule.checkinPoints() + " 积分（" + target + "）",
+        target.atTime(LocalTime.now()));
 
     // 累加当月补签次数
     if (record == null) {

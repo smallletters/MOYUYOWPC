@@ -2,6 +2,7 @@ package com.moyuyo.api.controller.admin;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.moyuyo.common.Result;
+import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.dao.admin.entity.AuditLogEntity;
 import com.moyuyo.dao.admin.mapper.AuditLogMapper;
 import com.moyuyo.service.admin.SystemConfigService;
@@ -43,6 +44,8 @@ public class AdminSystemConfigController {
 
     @Operation(summary = "保存配置")
     @PutMapping("/config")
+    @AdminAudit(action = "UPDATE", module = "SYSTEM",
+            resourceId = "system-config", detail = "管理员保存系统/积分规则配置")
     public Result<Map<String, Object>> saveConfig(@RequestParam(defaultValue = "basic") String group,
                                                    @RequestBody List<Map<String, Object>> configs) {
         // 将前端传入的 List 转换为 Map

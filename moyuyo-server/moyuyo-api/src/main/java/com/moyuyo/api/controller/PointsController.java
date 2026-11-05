@@ -9,6 +9,7 @@ import com.moyuyo.dao.entity.PointsLogEntity;
 import com.moyuyo.service.MemberService;
 import com.moyuyo.service.MissionService;
 import com.moyuyo.service.PointsService;
+import com.moyuyo.service.config.MembershipRuleConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -28,12 +29,11 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class PointsController {
 
-  /** 连续签到判定的回溯天数（从昨天起往前算，不含今天） */
-  private static final int STREAK_LOOKBACK_DAYS = 7;
-
   private final MemberService memberService;
   private final MissionService missionService;
   private final PointsService pointsService;
+  /** 会员规则配置（签到/连续签到奖励等，后台可调） */
+  private final MembershipRuleConfigService ruleConfigService;
 
   @Operation(summary = "获取积分流水")
   @GetMapping("/log")
@@ -59,18 +59,21 @@ public class PointsController {
   public Result<Map<String, Object>> checkin() {
     Long userId = UserContextHolder.getUserId();
     LocalDate today = LocalDate.now();
+    // 签到规则从 mo_system_config 读取，后台修改后立即生效
+    MembershipRuleConfigService.MembershipRuleConfig rule = ruleConfigService.getConfig();
+    int streakDays = Math.max(rule.checkinStreakDays(), 1);
 
-    // 连续签到判定统一走"按日期查签到流水"（回溯 7 天 + 今天），
+    // 连续签到判定统一走"按日期查签到流水"（回溯 streakDays 天 + 今天），
     // 不再用"最近 N 条积分流水"分页窗口：任务奖励/订单等流水会把签到记录挤出窗口，
     // 导致重复签到校验失效、连续天数漏判，并进而让"连续签到 30 天"成就被误重置
-    Set<LocalDate> checkinDates = memberService.getRecentCheckinDates(userId, STREAK_LOOKBACK_DAYS + 1);
+    Set<LocalDate> checkinDates = memberService.getRecentCheckinDates(userId, streakDays + 1);
     if (checkinDates.contains(today)) {
       throw new IllegalStateException("今日已签到，请明天再来");
     }
 
     int streak = 0;
     LocalDate cursor = today.minusDays(1);
-    for (int i = 0; i < STREAK_LOOKBACK_DAYS; i++) {
+    for (int i = 0; i < streakDays; i++) {
       if (!checkinDates.contains(cursor)) {
         break;
       }
@@ -78,11 +81,13 @@ public class PointsController {
       cursor = cursor.minusDays(1);
     }
     int consecutiveDays = streak + 1;
-    int basePoints = 5;
-    int finalPoints = consecutiveDays >= 7 ? basePoints * 2 : basePoints;
+    int basePoints = rule.checkinPoints();
+    int finalPoints = consecutiveDays >= streakDays
+        ? basePoints * rule.checkinStreakMultiplier()
+        : basePoints;
 
-    String remark = consecutiveDays >= 7
-        ? "每日签到 +" + finalPoints + "（连续 7 天双倍奖励）"
+    String remark = consecutiveDays >= streakDays
+        ? "每日签到 +" + finalPoints + "（连续 " + streakDays + " 天双倍奖励）"
         : "每日签到 +" + finalPoints + "（连续 " + consecutiveDays + " 天）";
     memberService.addPoints(userId, finalPoints, "CHECKIN", null, remark);
 

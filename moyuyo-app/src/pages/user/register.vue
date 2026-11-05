@@ -52,6 +52,18 @@
             >
           </view>
 
+          <!-- 邀请码：从邀请链接带入，也可手动填写；不填不影响注册 -->
+          <view class="field">
+            <text class="field-label">{{ $t('auth.inviteCodeLabel') }}</text>
+            <input
+              v-model="inviteCode"
+              class="field-input"
+              type="text"
+              maxlength="32"
+              :placeholder="$t('auth.inviteCodePlaceholder')"
+            >
+          </view>
+
           <!-- 注册方式切换(移动端segmented控件) -->
           <view class="segmented">
             <view
@@ -257,7 +269,7 @@
 <script>
 import { useUserStore } from '@/store'
 import { i18n } from '@/i18n'
-import { sendEmailVerification, confirmEmailVerification, sendPhoneCode } from '@/api/user'
+import { sendEmailVerification, sendPhoneCode } from '@/api/user'
 
 export default {
   pageTitleKey: 'pageTitle.userRegister',
@@ -267,6 +279,7 @@ export default {
       localeVersion: 0,
       activeTab: 'email', // 美国用户首选Email注册(符合Amazon/Target/Shein主流程)
       nickname: '',
+      inviteCode: '',
       phone: '',
       email: '',
       smsCode: '',
@@ -328,7 +341,9 @@ export default {
     },
   },
 
-  onLoad() {
+  onLoad(options) {
+    // 邀请链接 ?inviteCode=xxx 带入邀请码，注册时绑定邀请关系
+    this.inviteCode = (options?.inviteCode || options?.code || '').toString().trim()
     // 订阅语言切换,刷新 tabs/petTypes 等本地化文案
     this._unsubLocale = i18n.subscribe(() => {
       this.localeVersion += 1
@@ -358,8 +373,11 @@ export default {
           phone: isPhone ? this.countryCode + this.phone : null,
           // 手机号注册必传短信验证码(后端 verifyPhoneCode 校验)
           smsCode: isPhone ? this.smsCode : null,
+          // 邮箱注册必传邮箱验证码（后端校验 Redis 中下发的验证码）
+          emailCode: isPhone ? null : this.emailCode,
           password: this.password,
           petType: this.petType,
+          inviteCode: this.inviteCode || null,
         })
         uni.hideLoading()
         uni.showToast({ title: i18n.t('auth.registerSuccess'), icon: 'success' })

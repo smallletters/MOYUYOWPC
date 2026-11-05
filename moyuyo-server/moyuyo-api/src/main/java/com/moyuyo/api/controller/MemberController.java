@@ -50,6 +50,12 @@ public class MemberController {
     return Result.success(memberService.listLevels());
   }
 
+  @Operation(summary = "会员规则（等级档位 + 积分获取/使用规则）")
+  @GetMapping("/rules")
+  public Result<Map<String, Object>> membershipRules() {
+    return Result.success(memberService.getMembershipRules());
+  }
+
   @Operation(summary = "当前用户积分倍率")
   @GetMapping("/points-rate")
   public Result<Double> currentPointsRate() {

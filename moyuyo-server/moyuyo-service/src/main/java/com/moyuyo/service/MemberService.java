@@ -100,6 +100,9 @@ public interface MemberService {
   /** 等级列表 + 倍率（前端会员页对比表） */
   List<Map<String, Object>> listLevels();
 
+  /** 会员规则聚合：等级档位 + 积分获取/使用规则（会员规则页直接渲染） */
+  Map<String, Object> getMembershipRules();
+
   /** 当前用户的积分倍率 */
   double getCurrentPointsRate(Long userId);
 

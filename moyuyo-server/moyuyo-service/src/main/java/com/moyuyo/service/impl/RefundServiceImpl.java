@@ -22,6 +22,7 @@ import com.moyuyo.dao.mapper.RefundMapper;
 import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.common.enums.RefundChannelEnum;
 import com.moyuyo.service.MemberService;
+import com.moyuyo.service.InviteService;
 import com.moyuyo.service.RefundChannelService;
 import com.moyuyo.service.RefundService;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,8 @@ public class RefundServiceImpl implements RefundService {
     private final OrderItemMapper orderItemMapper;
     private final RefundChannelService refundChannelService;
     private final MemberService memberService;
+    /** 退款联动：扣回由该订单触发的邀请首单奖励 */
+    private final InviteService inviteService;
     private final PointsLogMapper pointsLogMapper;
     // 财务流水 Mapper：退款完成时写入 mo_finance_record
     private final FinanceRecordMapper financeRecordMapper;
@@ -266,6 +269,15 @@ public class RefundServiceImpl implements RefundService {
             } catch (Exception e) {
                 // 积分联动失败不影响退款主流程，但需记录便于对账
                 log.error("[refund] 积分联动失败 refundId={}, orderNo={}, reason={}",
+                        refundId, order.getOrderNo(), e.getMessage(), e);
+            }
+
+            // 邀请奖励联动：仅当该订单是触发邀请首单奖励的订单时，扣回双方各 200 积分
+            try {
+                inviteService.revokeInviteRewardOnRefund(
+                        order.getId(), order.getOrderNo(), order.getUserId());
+            } catch (Exception e) {
+                log.error("[refund] 邀请积分扣回失败 refundId={}, orderNo={}, reason={}",
                         refundId, order.getOrderNo(), e.getMessage(), e);
             }
 

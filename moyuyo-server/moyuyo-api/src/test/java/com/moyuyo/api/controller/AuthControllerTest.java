@@ -24,6 +24,11 @@ class AuthControllerTest extends BaseIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    private void prepareEmailCode(String email) {
+        // 与 AuthServiceImpl 的邮箱验证码 Redis key 前缀保持一致
+        valueOperations.set("auth:verify:" + email, "123456");
+    }
+
     @Test
     @DisplayName("注册成功应返回200")
     void register_ShouldReturnSuccess() throws Exception {
@@ -31,6 +36,8 @@ class AuthControllerTest extends BaseIntegrationTest {
         request.setEmail("test@moyuyo.com");
         request.setPassword("Password123!");
         request.setNickname("TestUser");
+        prepareEmailCode(request.getEmail());
+        request.setEmailCode("123456");
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -49,6 +56,8 @@ class AuthControllerTest extends BaseIntegrationTest {
         request.setEmail("duplicate@moyuyo.com");
         request.setPassword("Password123!");
         request.setNickname("User1");
+        prepareEmailCode(request.getEmail());
+        request.setEmailCode("123456");
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -68,6 +77,8 @@ class AuthControllerTest extends BaseIntegrationTest {
         reg.setEmail("login-test@moyuyo.com");
         reg.setPassword("Password123!");
         reg.setNickname("LoginUser");
+        prepareEmailCode(reg.getEmail());
+        reg.setEmailCode("123456");
         mockMvc.perform(post("/api/v1/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(reg)));

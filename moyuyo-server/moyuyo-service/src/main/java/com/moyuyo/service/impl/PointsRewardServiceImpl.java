@@ -10,6 +10,7 @@ import com.moyuyo.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -51,11 +52,13 @@ public class PointsRewardServiceImpl {
 
     /**
      * 发放订单消费返积分
+     * <p>
+     * 使用独立事务：发放失败只回滚自身，避免异常把支付回调主事务标记为 rollback-only。
      *
      * @param order 已支付订单
      * @return 实际发放积分数；非首单/无金额等场景返回 0
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int rewardForOrder(OrderEntity order) {
         if (order == null || order.getUserId() == null) {
             return 0;

@@ -3,6 +3,7 @@ package com.moyuyo.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyuyo.common.constant.MembershipRuleConstants;
 import com.moyuyo.common.dto.member.MemberVO;
 import com.moyuyo.common.dto.member.WalletVO;
 import com.moyuyo.dao.admin.entity.SystemConfigEntity;
@@ -19,6 +20,7 @@ import com.moyuyo.dao.mapper.PointsLogMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.dao.mapper.WalletMapper;
 import com.moyuyo.service.MemberService;
+import com.moyuyo.service.config.MembershipRuleConfigService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,7 @@ import java.time.YearMonth;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,7 +48,7 @@ import java.util.stream.Collectors;
 public class MemberServiceImpl implements MemberService {
 
   /** 积分有效期：12 个月 */
-  private static final int POINTS_VALID_MONTHS = 12;
+  private static final int POINTS_VALID_MONTHS = MembershipRuleConstants.POINTS_VALID_MONTHS;
 
   /** 配置项前缀：会员等级积分倍率（points.level_rate.NORMAL / SILVER / GOLD / PLATINUM / DIAMOND） */
   public static final String CONFIG_LEVEL_RATE_PREFIX = "points.level_rate.";
@@ -65,6 +68,8 @@ public class MemberServiceImpl implements MemberService {
   private final WalletMapper walletMapper;
   private final PointsLogMapper pointsLogMapper;
   private final SystemConfigMapper systemConfigMapper;
+  /** 会员规则配置（签到/评价/邀请/补签/抵扣，后台可调） */
+  private final MembershipRuleConfigService ruleConfigService;
 
   @Override
   public MemberVO getMemberInfo(Long userId) {
@@ -383,14 +388,14 @@ public class MemberServiceImpl implements MemberService {
 
   @Override
   public List<Map<String, Object>> listPrivileges(Long userId) {
-    // 基础特权对所有会员开放；进阶特权仅 L3+
-    boolean isAdvanced = isAtLeast(userId, "GOLD");
+    // 基础特权对所有会员开放；进阶特权仅 L5+
+    boolean isAdvanced = isAtLeast(userId, "DIAMOND");
     List<Map<String, Object>> list = new java.util.ArrayList<>();
     list.add(privilege("tag", "新品优先购", "新品提前48小时购买权"));
     list.add(privilege("star", "会员日特惠", "每月8号会员专属折扣"));
     list.add(privilege("package", "专属IP周边", "MOYUYO IP限定周边"));
     if (isAdvanced) {
-      list.add(privilege("heart", "免费宠物体检", "年度一次基础体检（L3+ 专享）"));
+      list.add(privilege("heart", "免费宠物体检", "年度一次基础体检（L5+ 专享）"));
     }
     return list;
   }
@@ -436,6 +441,58 @@ public class MemberServiceImpl implements MemberService {
       }
     }
     throw new IllegalStateException("会员卡号分配失败，请稍后重试");
+  }
+
+  /**
+   * 会员规则聚合：等级档位 + 积分获取/使用规则，供 C 端会员规则页直接渲染，
+   * 数值与后端实际发放逻辑共用 {@link MembershipRuleConstants} 及后台配置，避免页面文案失真。
+   */
+  @Override
+  public Map<String, Object> getMembershipRules() {
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("levels", listLevels());
+
+    MembershipRuleConfigService.MembershipRuleConfig rule = ruleConfigService.getConfig();
+
+    Map<String, Object> earn = new LinkedHashMap<>();
+    earn.put("checkinPoints", rule.checkinPoints());
+    earn.put("checkinStreakDays", rule.checkinStreakDays());
+    earn.put("checkinStreakMultiplier", rule.checkinStreakMultiplier());
+    earn.put("pointsPerCurrency",
+        readPositiveIntConfig(PointsRewardServiceImpl.CONFIG_USD_RATE, 10));
+    earn.put("firstOrderMultiplier",
+        readPositiveIntConfig(PointsRewardServiceImpl.CONFIG_FIRST_ORDER_MULTIPLIER, 2));
+    earn.put("reviewPoints", rule.reviewPoints());
+    earn.put("invitePoints", rule.inviteRewardPoints());
+    earn.put("inviteMonthlyLimit", rule.inviteMonthlyLimit());
+    result.put("earn", earn);
+
+    Map<String, Object> use = new LinkedHashMap<>();
+    use.put("pointsPerCurrencyUnit", rule.pointsPerCurrencyUnit());
+    use.put("maxDeductPercent", rule.maxDeductPercent());
+    use.put("makeupFreePerMonth", rule.makeupFreePerMonth());
+    use.put("makeupPoints", rule.makeupPointsCost());
+    result.put("use", use);
+
+    result.put("pointsValidMonths", MembershipRuleConstants.POINTS_VALID_MONTHS);
+    return result;
+  }
+
+  /** 读取正整数配置项，缺失/非法/≤0 时回退默认值 */
+  private int readPositiveIntConfig(String key, int defaultValue) {
+    try {
+      SystemConfigEntity entity = systemConfigMapper.selectOne(
+          new LambdaQueryWrapper<SystemConfigEntity>()
+              .eq(SystemConfigEntity::getConfigKey, key));
+      if (entity == null || entity.getConfigValue() == null || entity.getConfigValue().isBlank()) {
+        return defaultValue;
+      }
+      int value = Integer.parseInt(entity.getConfigValue().trim());
+      return value > 0 ? value : defaultValue;
+    } catch (Exception e) {
+      log.warn("读取会员规则配置失败，使用默认值: key={}, reason={}", key, e.getMessage());
+      return defaultValue;
+    }
   }
 
   private boolean isAtLeast(Long userId, String minLevel) {

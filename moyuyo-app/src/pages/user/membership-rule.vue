@@ -58,9 +58,9 @@
             <view class="rule-body">
               <view class="rule-row-head">
                 <text class="rule-title">{{ t(r.titleKey) }}</text>
-                <text class="rule-value">+{{ t(r.valueKey) }}</text>
+                <text class="rule-value">+{{ t(r.valueKey, r.valueParams) }}</text>
               </view>
-              <text class="rule-desc">{{ t(r.descKey) }}</text>
+              <text class="rule-desc">{{ t(r.descKey, r.descParams) }}</text>
             </view>
           </view>
         </view>
@@ -79,9 +79,9 @@
             <view class="rule-body">
               <view class="rule-row-head">
                 <text class="rule-title">{{ t(r.titleKey) }}</text>
-                <text class="rule-value">-{{ t(r.valueKey) }}</text>
+                <text class="rule-value">-{{ t(r.valueKey, r.valueParams) }}</text>
               </view>
-              <text class="rule-desc">{{ t(r.descKey) }}</text>
+              <text class="rule-desc">{{ t(r.descKey, r.descParams) }}</text>
             </view>
           </view>
         </view>
@@ -109,8 +109,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { i18n } from '@/i18n'
+import { memberApi } from '@/api'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 usePageTitle('pageTitle.userMembershipRule')
 
@@ -122,8 +123,8 @@ function t(key, params) {
   return i18n.t(key, params)
 }
 
-// 等级阶梯（与后端 listLevels 字段对齐）
-const levels = [
+// 等级阶梯：默认值兜底，页面加载后以 /api/v1/member/rules 返回的真实配置覆盖
+const levels = ref([
   { code: 'L1', name: 'Member', threshold: 0, descKey: 'membershipRule.levelDesc.L1', rate: 1.0 },
   { code: 'L2', name: 'Silver', threshold: 500, descKey: 'membershipRule.levelDesc.L2', rate: 1.1 },
   { code: 'L3', name: 'Gold', threshold: 2000, descKey: 'membershipRule.levelDesc.L3', rate: 1.2 },
@@ -141,14 +142,35 @@ const levels = [
     descKey: 'membershipRule.levelDesc.L5',
     rate: 2.0,
   },
-]
+])
 
-// 积分获取规则（文案走 i18n，key 指向 membershipRule.earn.*）
-const earnRules = [
+// 规则数值：默认值兜底，接口返回后覆盖（后端与发放逻辑共用同一份常量/配置）
+const rules = ref({
+  checkinPoints: 5,
+  checkinStreakDays: 7,
+  checkinStreakMultiplier: 2,
+  pointsPerCurrency: 10,
+  firstOrderMultiplier: 2,
+  reviewPoints: 10,
+  invitePoints: 200,
+  inviteMonthlyLimit: 20,
+  pointsPerCurrencyUnit: 100,
+  maxDeductPercent: 30,
+  makeupFreePerMonth: 1,
+  makeupPoints: 50,
+})
+
+// 积分获取规则（文案走 i18n，数值来自接口）
+const earnRules = computed(() => [
   {
     titleKey: 'membershipRule.earn.checkinTitle',
     valueKey: 'membershipRule.earn.checkinValue',
+    valueParams: { points: rules.value.checkinPoints },
     descKey: 'membershipRule.earn.checkinDesc',
+    descParams: {
+      days: rules.value.checkinStreakDays,
+      multiplier: rules.value.checkinStreakMultiplier,
+    },
     icon: 'luc-calendar-check',
     bg: '#e8f2ff',
     color: '#007aff',
@@ -156,23 +178,19 @@ const earnRules = [
   {
     titleKey: 'membershipRule.earn.purchaseTitle',
     valueKey: 'membershipRule.earn.purchaseValue',
+    valueParams: { points: rules.value.pointsPerCurrency },
     descKey: 'membershipRule.earn.purchaseDesc',
+    descParams: { firstOrder: rules.value.firstOrderMultiplier },
     icon: 'luc-shopping-bag',
     bg: '#e9f9ee',
     color: '#34c759',
   },
   {
-    titleKey: 'membershipRule.earn.orderTitle',
-    valueKey: 'membershipRule.earn.orderValue',
-    descKey: 'membershipRule.earn.orderDesc',
-    icon: 'luc-package-check',
-    bg: '#e8f2ff',
-    color: '#0064d6',
-  },
-  {
     titleKey: 'membershipRule.earn.reviewTitle',
     valueKey: 'membershipRule.earn.reviewValue',
+    valueParams: { points: rules.value.reviewPoints },
     descKey: 'membershipRule.earn.reviewDesc',
+    descParams: { points: rules.value.reviewPoints },
     icon: 'luc-message-square',
     bg: '#fff4e5',
     color: '#ff9500',
@@ -180,7 +198,12 @@ const earnRules = [
   {
     titleKey: 'membershipRule.earn.inviteTitle',
     valueKey: 'membershipRule.earn.inviteValue',
+    valueParams: { points: rules.value.invitePoints },
     descKey: 'membershipRule.earn.inviteDesc',
+    descParams: {
+      points: rules.value.invitePoints,
+      limit: rules.value.inviteMonthlyLimit,
+    },
     icon: 'luc-user-plus',
     bg: '#e9f9ee',
     color: '#34c759',
@@ -193,14 +216,16 @@ const earnRules = [
     bg: '#f3e8ff',
     color: '#af52de',
   },
-]
+])
 
-// 积分使用规则（文案走 i18n，key 指向 membershipRule.use.*）
-const useRules = [
+// 积分使用规则（文案走 i18n，数值来自接口）
+const useRules = computed(() => [
   {
     titleKey: 'membershipRule.use.deductTitle',
     valueKey: 'membershipRule.use.deductValue',
+    valueParams: { points: rules.value.pointsPerCurrencyUnit },
     descKey: 'membershipRule.use.deductDesc',
+    descParams: { percent: rules.value.maxDeductPercent },
     icon: 'luc-coins',
     bg: '#ffecea',
     color: '#ff3b30',
@@ -216,12 +241,38 @@ const useRules = [
   {
     titleKey: 'membershipRule.use.makeupTitle',
     valueKey: 'membershipRule.use.makeupValue',
+    valueParams: { points: rules.value.makeupPoints },
     descKey: 'membershipRule.use.makeupDesc',
+    descParams: {
+      free: rules.value.makeupFreePerMonth,
+      points: rules.value.makeupPoints,
+    },
     icon: 'luc-calendar-off',
     bg: '#fff4e5',
     color: '#ff9500',
   },
-]
+])
+
+// 拉取后端真实规则；失败时保留默认值，页面仍可正常展示
+async function loadRules() {
+  try {
+    const data = await memberApi.getMembershipRules()
+    if (Array.isArray(data?.levels) && data.levels.length) {
+      levels.value = data.levels.map((lv) => ({
+        code: lv.code,
+        name: lv.name,
+        // 后端字段名为 growthThreshold / pointsRate，兼容旧的 threshold / rate 写法
+        threshold: Number(lv.growthThreshold ?? lv.threshold) || 0,
+        rate: Number(lv.pointsRate ?? lv.rate) || 1,
+        descKey: `membershipRule.levelDesc.${lv.code}`,
+      }))
+    }
+    if (data?.earn) Object.assign(rules.value, data.earn)
+    if (data?.use) Object.assign(rules.value, data.use)
+  } catch (e) {
+    console.warn('[membership-rule] load rules failed', e)
+  }
+}
 
 // 重要条款（存 i18n key，按顺序渲染）
 const terms = [
@@ -234,6 +285,8 @@ const terms = [
 ]
 
 onMounted(() => {
+  // 拉取后端真实规则（失败时保留默认值）
+  loadRules()
   // 订阅语言切换，触发模板与本页 t() 依赖重新求值
   _unsubLocale = i18n.subscribe(() => {
     localeVersion.value += 1

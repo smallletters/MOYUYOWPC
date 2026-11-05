@@ -30,6 +30,11 @@ export function getMemberLevels() {
   return get('/api/v1/member/levels')
 }
 
+// 会员规则聚合（等级档位 + 积分获取/使用规则）
+export function getMembershipRules() {
+  return get('/api/v1/member/rules')
+}
+
 export function getPointsRate() {
   return get('/api/v1/member/points-rate')
 }
@@ -51,6 +56,7 @@ export default {
   recharge,
   withdraw,
   getMemberLevels,
+  getMembershipRules,
   getPointsRate,
   getMemberPrivileges,
   getMemberPriceDiscount,

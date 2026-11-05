@@ -39,6 +39,8 @@ public class ReviewServiceImpl implements ReviewService {
     private final UserMapper userMapper;
     private final OrderItemMapper orderItemMapper;
     private final OrderMapper orderMapper;
+    /** 评价奖励积分从会员规则配置读取（后台可调） */
+    private final com.moyuyo.service.config.MembershipRuleConfigService ruleConfigService;
 
     @Override
     public Page<ReviewVO> getProductReviews(Long productId, int page, int size) {
@@ -108,7 +110,8 @@ public class ReviewServiceImpl implements ReviewService {
 
         UserEntity user = userMapper.selectById(userId);
         if (user != null) {
-            user.setPoints(user.getPoints() == null ? 10 : user.getPoints() + 10);
+            int reviewReward = ruleConfigService.getConfig().reviewPoints();
+            user.setPoints(user.getPoints() == null ? reviewReward : user.getPoints() + reviewReward);
             userMapper.updateById(user);
         }
 

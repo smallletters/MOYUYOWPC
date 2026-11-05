@@ -12,8 +12,13 @@ export function getInviteHistory(params = {}) {
   return get('/api/v1/invites/history', params)
 }
 
+export function getInviteRanking() {
+  return get('/api/v1/invites/ranking')
+}
+
 export default {
   getInviteCode,
   getInviteStats,
   getInviteHistory,
+  getInviteRanking,
 }
