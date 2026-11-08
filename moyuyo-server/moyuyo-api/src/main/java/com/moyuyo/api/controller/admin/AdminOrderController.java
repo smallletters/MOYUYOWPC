@@ -8,10 +8,13 @@ import com.moyuyo.common.dto.admin.OperationResult;
 import com.moyuyo.common.dto.admin.order.OrderAddressUpdateRequest;
 import com.moyuyo.common.dto.admin.order.OrderLogisticsRequest;
 import com.moyuyo.common.dto.admin.order.OrderLogisticsVO;
+import com.moyuyo.common.dto.admin.order.OrderRefundRequest;
 import com.moyuyo.common.dto.admin.order.OrderShipRequest;
 import com.moyuyo.common.dto.logistics.LogisticsVO;
 import com.moyuyo.common.dto.order.CancelOrderRequest;
+import com.moyuyo.common.dto.refund.RefundVO;
 import com.moyuyo.common.enums.OrderStatusEnum;
+import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.common.utils.PageParamGuard;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
@@ -23,12 +26,14 @@ import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.LogisticsService;
 import com.moyuyo.service.OrderService;
+import com.moyuyo.service.RefundService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -54,6 +59,8 @@ public class AdminOrderController {
   private final com.moyuyo.dao.mapper.LogisticsMapper logisticsMapper;
   // 注入 WooCommerce 同步服务：手动重推订单到 WooCommerce
   private final com.moyuyo.service.WooCommerceSyncService wooCommerceSyncService;
+  // 退款服务：订单详情展示退款汇总 + 管理员直接发起退款
+  private final RefundService refundService;
 
   @Operation(summary = "订单统计数据")
   @GetMapping("/stats")
@@ -176,6 +183,19 @@ public class AdminOrderController {
     if (order == null) {
       return Result.error(404, "订单不存在");
     }
+
+    // 若订单已推送到 WooCommerce，主动从 WC 拉取最新承运商/运单号回写本地，
+    // 避免管理后台看到的运单信息落后于 WC 后台（管理员在 WC 后台补录运单号的场景）
+    // 注意：该方法内部会按 ID 重新查询并返回新的 OrderEntity，必须放在 items/payMethodName
+    // 等 transient 字段填充之前，否则这些字段会丢失
+    if (order.getWooOrderId() != null) {
+      try {
+        order = wooCommerceSyncService.syncOrderTrackingFromWooCommerce(id);
+      } catch (Exception e) {
+        // WC 拉取失败不影响主流程：仍返回本地数据
+      }
+    }
+
     List<OrderItemEntity> items = orderService.getOrderItems(id);
 
     // ==================== 管理后台订单详情视图所需字段补全 ====================
@@ -232,14 +252,21 @@ public class AdminOrderController {
     //    后续如果订单主表存了 pay_method，可再进一步细化到 Google Pay / Venmo / Apple Pay 等
     order.setPayMethodName(resolvePayMethodName(order.getPayChannel()));
 
-    // 若订单已推送到 WooCommerce，主动从 WC 拉取最新承运商/运单号回写本地，
-    // 避免管理后台看到的运单信息落后于 WC 后台（管理员在 WC 后台补录运单号的场景）
-    if (order.getWooOrderId() != null) {
-      try {
-        order = wooCommerceSyncService.syncOrderTrackingFromWooCommerce(id);
-      } catch (Exception e) {
-        // WC 拉取失败不影响主流程：仍返回本地数据
-      }
+    // 3) 退款汇总：填充退款记录与已退/剩余可退金额，供订单详情页退款弹窗使用
+    try {
+      List<RefundVO> refunds = refundService.listOrderRefunds(id);
+      order.setRefunds(refunds);
+      BigDecimal refunded = refunds.stream()
+          .filter(r -> "COMPLETED".equals(r.getStatus()) || "PROCESSING".equals(r.getStatus()))
+          .map(RefundVO::getAmount)
+          .filter(Objects::nonNull)
+          .reduce(BigDecimal.ZERO, BigDecimal::add);
+      order.setRefundedAmount(refunded);
+      BigDecimal payAmount = order.getPayAmount() == null ? BigDecimal.ZERO : order.getPayAmount();
+      order.setRefundableAmount(payAmount.subtract(refunded).max(BigDecimal.ZERO));
+    } catch (Exception e) {
+      // 退款数据查询失败不影响订单详情主流程，仅记录日志
+      log.warn("[order-detail] 查询订单退款记录失败 orderId={}", id, e);
     }
     return Result.success(order);
   }
@@ -322,6 +349,28 @@ public class AdminOrderController {
     result.setId(id);
     result.setMessage("发货成功");
     return Result.success(result);
+  }
+
+  @Operation(summary = "订单退款（管理员发起，真实调用支付渠道）")
+  @PostMapping("/{id}/refund")
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "#id", detail = "管理员在订单详情页发起退款")
+  public Result<Map<String, Object>> refund(@PathVariable Long id,
+      @RequestBody(required = false) OrderRefundRequest request) {
+    // 二次校验：退款属于资金操作，只允许超管/运营/财务（Filter 层已拦截，这里做纵深防御）
+    String role = UserContextHolder.getRole();
+    if (!com.moyuyo.api.config.AdminPermissionFilter.REFUND_ALLOWED_ROLES.contains(role)) {
+      return Result.error(403, "无权限发起退款");
+    }
+    try {
+      // operatorId 从当前登录管理员上下文获取，用于退款审计
+      return Result.success(refundService.adminRefundOrder(id, request, UserContextHolder.getUserId()));
+    } catch (IllegalArgumentException | IllegalStateException e) {
+      return Result.error(e.getMessage());
+    } catch (Exception e) {
+      log.error("[admin-refund] 订单退款失败 orderId={}", id, e);
+      return Result.error("退款失败: " + e.getMessage());
+    }
   }
 
   @Operation(summary = "取消订单（管理后台）")

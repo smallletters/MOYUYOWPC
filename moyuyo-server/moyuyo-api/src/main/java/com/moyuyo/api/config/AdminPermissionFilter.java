@@ -37,6 +37,17 @@ public class AdminPermissionFilter implements Filter {
     /** 超级管理员角色编码：拥有全部权限 */
     private static final String SUPER_ADMIN = "SUPER_ADMIN";
 
+    /**
+     * 订单退款（资金操作）允许的角色白名单。
+     * 退款接口不按通用 RBAC 的 orders:create 校验（财务角色没有 orders:create，
+     * 但财务必须能退款），改为显式角色白名单，避免客服/只读等角色越权操作资金。
+     */
+    public static final Set<String> REFUND_ALLOWED_ROLES = Set.of(SUPER_ADMIN, "OPERATOR", "FINANCE");
+
+    /** 订单详情页发起退款的端点：POST /api/admin/orders/{id}/refund */
+    private static final java.util.regex.Pattern ORDER_REFUND_PATH =
+            java.util.regex.Pattern.compile("^/api/admin/orders/\\d+/refund/?$");
+
     /** 无需模块权限的路径前缀（登录态由 JwtAuthFilter 保证） */
     private static final String AUTH_PATH_PREFIX = "/api/admin/auth/";
 
@@ -76,6 +87,17 @@ public class AdminPermissionFilter implements Filter {
         // 无角色（双保险，正常已被 JwtAuthFilter 拦截）
         if (role == null || role.isBlank()) {
             sendForbidden(response, "Admin role required");
+            return;
+        }
+
+        // 订单退款属于资金操作：只允许超管/运营/财务，不按通用 orders:create 放行
+        if ("POST".equals(request.getMethod()) && ORDER_REFUND_PATH.matcher(path).matches()) {
+            if (!REFUND_ALLOWED_ROLES.contains(role)) {
+                log.warn("管理员角色 [{}] 无权发起退款，路径: {}", role, path);
+                sendForbidden(response, "无权限发起退款");
+                return;
+            }
+            chain.doFilter(request, response);
             return;
         }
 

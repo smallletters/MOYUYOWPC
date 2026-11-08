@@ -1,7 +1,11 @@
 package com.moyuyo.service;
 
+import com.moyuyo.common.dto.admin.order.OrderRefundRequest;
 import com.moyuyo.common.dto.refund.RefundApplyRequest;
 import com.moyuyo.common.dto.refund.RefundVO;
+
+import java.util.List;
+import java.util.Map;
 
 public interface RefundService {
 
@@ -39,4 +43,26 @@ public interface RefundService {
      * @return Map&lt;String, Long&gt; key=PENDING/APPROVED/REJECTED/COMPLETED/REFUNDING，value=数量；缺省键为 0
      */
     java.util.Map<String, Long> countRefundsByStatus(String type);
+
+    /**
+     * 查询某订单的全部退款记录（管理后台订单详情用）。
+     *
+     * @param orderId 订单 ID
+     * @return 退款记录列表，按创建时间倒序
+     */
+    List<RefundVO> listOrderRefunds(Long orderId);
+
+    /**
+     * 管理后台在订单详情页直接发起退款（对齐 WooCommerce 退款操作）。
+     * <p>
+     * 一次完成「创建退款单 → 审核通过 → 调用渠道退款/手动录入流水号」，
+     * AUTO 模式下真实调用 Stripe / PayPal 等渠道退款 API，失败则整体回滚。
+     * 部分退款完成后订单状态恢复为退款前状态；全额退款则置为 REFUNDED。
+     *
+     * @param orderId    订单 ID
+     * @param request    退款参数
+     * @param operatorId 操作管理员 ID
+     * @return 退款结果（refundId / refundNo / amount / transactionId / status）
+     */
+    Map<String, Object> adminRefundOrder(Long orderId, OrderRefundRequest request, Long operatorId);
 }

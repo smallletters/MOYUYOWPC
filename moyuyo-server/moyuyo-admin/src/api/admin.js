@@ -1502,6 +1502,9 @@ export function getCarrierOptions() { return getCarrierList() }
 // 订单 WooCommerce 手动重推
 export function syncOrderToWoo(id) { return api.post(`/orders/${id}/sync-to-woo`) }
 
+// 订单详情页退款（对齐 WooCommerce）：mode=AUTO 自动原路退回，mode=MANUAL 录入线下流水号
+export function refundOrder(id, data) { return api.post(`/orders/${id}/refund`, data) }
+
 // WC 同步开关（订单列表工具栏）：查询 / 设置是否将订单同步到 WooCommerce
 export function getWcSyncSwitch() { return api.get('/orders/wc-sync/switch') }
 export function updateWcSyncSwitch(enabled) { return api.put('/orders/wc-sync/switch', { enabled }) }

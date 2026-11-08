@@ -1,6 +1,7 @@
 package com.moyuyo.dao.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.moyuyo.common.dto.refund.RefundVO;
 import com.moyuyo.common.enums.OrderStatusEnum;
 import lombok.Data;
 
@@ -118,6 +119,18 @@ public class OrderEntity {
    */
   @TableField(exist = false)
   private String payMethodName;
+
+  /** 已退款金额（非表字段，管理后台详情展示用；含退款中与已完成） */
+  @TableField(exist = false)
+  private BigDecimal refundedAmount;
+
+  /** 剩余可退金额（非表字段，管理后台退款弹窗默认值） */
+  @TableField(exist = false)
+  private BigDecimal refundableAmount;
+
+  /** 该订单的退款记录（非表字段，管理后台详情页退款历史展示用） */
+  @TableField(exist = false)
+  private List<RefundVO> refunds;
 
   // ===== 领域方法 =====
 

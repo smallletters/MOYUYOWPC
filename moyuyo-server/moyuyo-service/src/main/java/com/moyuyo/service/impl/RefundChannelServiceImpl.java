@@ -44,18 +44,18 @@ public class RefundChannelServiceImpl implements RefundChannelService {
 
     @Override
     public String refund(RefundChannelEnum channel, String payTransactionId, String orderNo,
-                         BigDecimal refundAmount, String refundNo) {
+                         BigDecimal refundAmount, String refundNo, String currency) {
         if (channel == null) {
             throw new IllegalArgumentException("退款渠道不能为空");
         }
-        log.info("Refund channel call: channel={}, orderNo={}, refundNo={}, amount={}",
-                channel, orderNo, refundNo, refundAmount);
+        log.info("Refund channel call: channel={}, orderNo={}, refundNo={}, amount={}, currency={}",
+                channel, orderNo, refundNo, refundAmount, currency);
 
         switch (channel) {
             case STRIPE:
                 return callStripeRefund(payTransactionId, refundAmount, refundNo);
             case PAYPAL:
-                return callPayPalRefund(payTransactionId, refundAmount, refundNo);
+                return callPayPalRefund(payTransactionId, refundAmount, refundNo, currency);
             case WECHAT:
                 return callWechatRefund(payTransactionId, refundAmount, orderNo, refundNo);
             case ALIPAY:
@@ -71,26 +71,58 @@ public class RefundChannelServiceImpl implements RefundChannelService {
         }
     }
 
+    @Override
+    public boolean isAutoRefundSupported(RefundChannelEnum channel) {
+        if (channel == null) {
+            return false;
+        }
+        switch (channel) {
+            case STRIPE:
+                return config.isStripeEnabled();
+            case PAYPAL:
+                return config.isPaypalEnabled();
+            case WECHAT:
+                return config.isWechatEnabled();
+            case ALIPAY:
+                return config.isAlipayEnabled();
+            case UNIONPAY:
+                return config.isUnionpayEnabled();
+            case WALLET:
+            case POINTS:
+                // 内部账户退款无需第三方密钥
+                return true;
+            default:
+                return false;
+        }
+    }
+
     // ============= Stripe Refund =============
     private String callStripeRefund(String paymentIntentId, BigDecimal amount, String refundNo) {
         if (!config.isStripeEnabled()) {
             log.warn("Stripe 未配置，退款降级为本地模式: refundNo={}", refundNo);
             return "DEV_STRIPE_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
         }
+        if (paymentIntentId == null || paymentIntentId.isBlank()) {
+            throw new IllegalArgumentException("订单缺少 Stripe 支付流水号，无法自动退款，请改用手动模式");
+        }
         try {
             // Stripe Refund API: POST https://api.stripe.com/v1/refunds
-            // amount 单位为最小货币单位（美分）
+            // amount 单位为最小货币单位（分/美分）
             long amountCents = amount.multiply(BigDecimal.valueOf(100))
                     .setScale(0, RoundingMode.HALF_UP).longValueExact();
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
             headers.setBasicAuth(config.getStripeSecretKey(), "");
+            // Stripe 幂等键必须通过请求头传递，body 中的 idempotency_key 会被忽略
+            headers.add("Idempotency-Key", refundNo);
 
-            String body = "payment_intent=" + urlEncode(paymentIntentId)
+            // 解析本地存储的交易号：cs_（Checkout Session）/ pi_（PaymentIntent）/ ch_（Charge）
+            String targetParam = resolveStripeRefundTarget(paymentIntentId.trim(), headers);
+
+            String body = targetParam
                     + "&amount=" + amountCents
-                    + "&metadata[refund_no]=" + urlEncode(refundNo)
-                    + "&idempotency_key=" + urlEncode(refundNo);
+                    + "&metadata[refund_no]=" + urlEncode(refundNo);
 
             HttpEntity<String> entity = new HttpEntity<>(body, headers);
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
@@ -101,28 +133,69 @@ public class RefundChannelServiceImpl implements RefundChannelService {
             Map<String, Object> result = response.getBody();
             if (result == null || result.containsKey("error")) {
                 log.error("Stripe refund failed: {}", result);
-                throw new RuntimeException("Stripe 退款失败");
+                throw new RuntimeException("Stripe 退款失败: " + extractChannelError(result == null ? null : result.toString()));
             }
             String refundId = (String) result.get("id");
             log.info("Stripe refund success: refundId={}", refundId);
             return refundId;
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            log.error("Stripe refund rejected: status={}, body={}",
+                    e.getStatusCode(), e.getResponseBodyAsString());
+            throw new RuntimeException("Stripe 退款失败: " + extractChannelError(e.getResponseBodyAsString()));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Stripe refund exception", e);
-            throw new RuntimeException("Stripe 退款服务不可用");
+            throw new RuntimeException("Stripe 退款服务不可用: " + e.getMessage());
         }
     }
 
+    /**
+     * 解析 Stripe 退款入参：Stripe 退款接口只接受 payment_intent 或 charge。
+     * 本系统真实支付回调落库的是 Checkout Session ID（cs_xxx），需要先换取 payment_intent。
+     */
+    private String resolveStripeRefundTarget(String transactionId, HttpHeaders headers) {
+        if (transactionId.startsWith("pi_")) {
+            return "payment_intent=" + urlEncode(transactionId);
+        }
+        if (transactionId.startsWith("ch_")) {
+            return "charge=" + urlEncode(transactionId);
+        }
+        if (transactionId.startsWith("cs_")) {
+            ResponseEntity<Map<String, Object>> sessionResp = restTemplate.exchange(
+                    "https://api.stripe.com/v1/checkout/sessions/" + urlEncode(transactionId),
+                    org.springframework.http.HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    new ParameterizedTypeReference<Map<String, Object>>() {});
+            Map<String, Object> session = sessionResp.getBody();
+            Object paymentIntent = session == null ? null : session.get("payment_intent");
+            if (paymentIntent == null || String.valueOf(paymentIntent).isBlank()) {
+                throw new IllegalStateException("Stripe Checkout Session 尚未关联 payment_intent，无法退款");
+            }
+            return "payment_intent=" + urlEncode(String.valueOf(paymentIntent));
+        }
+        // 历史数据兜底：统一按 payment_intent 处理
+        return "payment_intent=" + urlEncode(transactionId);
+    }
+
     // ============= PayPal Refund =============
-    private String callPayPalRefund(String captureId, BigDecimal amount, String refundNo) {
+    private String callPayPalRefund(String payTransactionId, BigDecimal amount, String refundNo, String currency) {
         if (!config.isPaypalEnabled()) {
             log.warn("PayPal 未配置，退款降级为本地模式: refundNo={}", refundNo);
             return "DEV_PAYPAL_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        }
+        if (payTransactionId == null || payTransactionId.isBlank()) {
+            throw new IllegalArgumentException("订单缺少 PayPal 支付流水号，无法自动退款，请改用手动模式");
         }
         try {
             String accessToken = getPayPalAccessToken();
             String baseUrl = "sandbox".equals(config.getPaypalMode())
                     ? "https://api-m.sandbox.paypal.com"
                     : "https://api-m.paypal.com";
+
+            // PayPal 退款接口要求 capture_id；本系统支付回调落库的是 PayPal order_id，
+            // 需要先按订单查询 captures 拿到 capture_id（旧的 capture_id 数据则直接使用）
+            String captureId = resolvePayPalCaptureId(payTransactionId.trim(), baseUrl, accessToken);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -133,9 +206,10 @@ public class RefundChannelServiceImpl implements RefundChannelService {
             // PayPal Refund API: POST /v2/payments/captures/{capture_id}/refund
             // amount.value 保留两位小数
             BigDecimal amountStr = amount.setScale(2, RoundingMode.HALF_UP);
+            String currencyCode = currency == null || currency.isBlank() ? "USD" : currency.trim().toUpperCase();
             String body = String.format(
-                    "{\"amount\":{\"value\":\"%s\",\"currency_code\":\"USD\"},\"note\":\"%s\"}",
-                    amountStr.toPlainString(), refundNo);
+                    "{\"amount\":{\"value\":\"%s\",\"currency_code\":\"%s\"},\"note\":\"%s\"}",
+                    amountStr.toPlainString(), currencyCode, refundNo);
 
             HttpEntity<String> entity = new HttpEntity<>(body, headers);
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
@@ -159,10 +233,60 @@ public class RefundChannelServiceImpl implements RefundChannelService {
             }
             log.info("PayPal refund success: refundId={}, status={}", refundId, status);
             return refundId;
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            log.error("PayPal refund rejected: status={}, body={}",
+                    e.getStatusCode(), e.getResponseBodyAsString());
+            throw new RuntimeException("PayPal 退款失败: " + extractChannelError(e.getResponseBodyAsString()));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
         } catch (Exception e) {
             log.error("PayPal refund exception", e);
-            throw new RuntimeException("PayPal 退款服务不可用");
+            throw new RuntimeException("PayPal 退款服务不可用: " + e.getMessage());
         }
+    }
+
+    /**
+     * 解析 PayPal 退款目标 ID：优先按 order_id 查询订单并取第一条 capture_id；
+     * 若传入的本身就是 capture_id（GET 订单 404），则直接使用原值。
+     */
+    private String resolvePayPalCaptureId(String transactionId, String baseUrl, String accessToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        try {
+            ResponseEntity<Map<String, Object>> resp = restTemplate.exchange(
+                    baseUrl + "/v2/checkout/orders/" + urlEncode(transactionId),
+                    org.springframework.http.HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    new ParameterizedTypeReference<Map<String, Object>>() {});
+            Map<String, Object> order = resp.getBody();
+            String captureId = extractFirstCaptureId(order);
+            if (captureId != null) {
+                log.info("PayPal order resolved to capture: orderId={}, captureId={}", transactionId, captureId);
+                return captureId;
+            }
+        } catch (Exception e) {
+            // 传入的可能是 capture_id 或已被清理的订单，继续按 capture_id 处理
+            log.debug("PayPal order lookup skipped: id={}, reason={}", transactionId, e.getMessage());
+        }
+        return transactionId;
+    }
+
+    /** 从 PayPal 订单响应中取出第一条 capture.id */
+    @SuppressWarnings("unchecked")
+    private String extractFirstCaptureId(Map<String, Object> order) {
+        if (order == null) return null;
+        Object unitsObj = order.get("purchase_units");
+        if (!(unitsObj instanceof java.util.List<?> units) || units.isEmpty()) return null;
+        Object first = units.get(0);
+        if (!(first instanceof Map<?, ?> unit)) return null;
+        Object paymentsObj = unit.get("payments");
+        if (!(paymentsObj instanceof Map<?, ?> payments)) return null;
+        Object capturesObj = payments.get("captures");
+        if (!(capturesObj instanceof java.util.List<?> captures) || captures.isEmpty()) return null;
+        Object capture = captures.get(0);
+        if (!(capture instanceof Map<?, ?> captureMap)) return null;
+        Object id = captureMap.get("id");
+        return id == null ? null : id.toString();
     }
 
     /** PayPal OAuth 客户端凭据模式获取 access_token */
@@ -311,6 +435,20 @@ public class RefundChannelServiceImpl implements RefundChannelService {
 
     private static String urlEncode(String value) {
         return java.net.URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * 从渠道错误响应中提取可读错误信息（Stripe/PayPal 均返回 JSON 且包含 message 字段）。
+     * 解析失败时直接返回原始响应体，便于运维排查。
+     */
+    private static String extractChannelError(String body) {
+        if (body == null || body.isBlank()) {
+            return "渠道未返回错误信息";
+        }
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("\"message\"\\s*:\\s*\"([^\"]*)\"")
+                .matcher(body);
+        return matcher.find() ? matcher.group(1) : body;
     }
 
     private static String toJson(Map<String, String> map) {

@@ -20,6 +20,7 @@
         </button>
         <button class="btn btn-outline" @click="showAddressModal = true">修改地址</button>
         <button class="btn btn-outline" @click="showNoteModal = true">备注</button>
+        <button v-if="canUseRefund" class="btn btn-danger" :disabled="!canRefund" @click="openRefundModal">退款</button>
       </div>
     </div>
 
@@ -101,6 +102,13 @@
             <div class="price-row"><span>商品金额</span><span class="money">{{ formatCurrency(priceSummary.goodsAmount, currencySymbol) }}</span></div>
             <div class="price-row"><span>运费</span><span class="money">{{ formatCurrency(priceSummary.freight, currencySymbol) }}</span></div>
             <div class="price-row"><span>优惠减免</span><span class="money">-{{ formatCurrency(priceSummary.discount, currencySymbol) }}</span></div>
+            <!-- 已发生退款时展示退款金额与剩余可退金额（对齐 WooCommerce 订单详情） -->
+            <div v-if="refundInfo.refundedAmount > 0" class="price-row refunded-row">
+              <span>已退款</span><span class="money refund-amount">-{{ formatCurrency(refundInfo.refundedAmount, currencySymbol) }}</span>
+            </div>
+            <div v-if="refundInfo.refundedAmount > 0" class="price-row">
+              <span>剩余可退</span><span class="money">{{ formatCurrency(refundInfo.refundableAmount, currencySymbol) }}</span>
+            </div>
             <div class="price-row total"><span>实付金额</span><span class="money total-amount">{{ formatCurrency(priceSummary.total, currencySymbol) }}</span></div>
           </div>
         </div>
@@ -215,15 +223,89 @@
         </div>
       </div>
     </div>
+
+    <!-- 退款弹窗（对齐 WooCommerce 退款操作） -->
+    <div v-if="showRefundModal" class="modal-overlay" @click.self="closeRefundModal">
+      <div class="modal-content refund-modal">
+        <div class="modal-header">
+          <h3>订单退款</h3>
+          <button class="modal-close" @click="closeRefundModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="refund-summary">
+            <div class="refund-summary-item"><span>订单实付</span><strong>{{ formatCurrency(priceSummary.total, currencySymbol) }}</strong></div>
+            <div class="refund-summary-item"><span>已退款</span><strong class="refund-amount">{{ formatCurrency(refundInfo.refundedAmount, currencySymbol) }}</strong></div>
+            <div class="refund-summary-item"><span>剩余可退</span><strong>{{ formatCurrency(refundInfo.refundableAmount, currencySymbol) }}</strong></div>
+          </div>
+          <div class="form-group">
+            <label>退款金额</label>
+            <input
+              v-model="refundForm.amount"
+              type="number"
+              min="0.01"
+              step="0.01"
+              :max="refundInfo.refundableAmount"
+              placeholder="请输入退款金额"
+            />
+          </div>
+          <div class="form-group">
+            <label>退款原因</label>
+            <select v-model="refundForm.reason">
+              <option v-for="r in refundReasons" :key="r" :value="r">{{ r }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>退款备注（可选）</label>
+            <textarea v-model="refundForm.description" rows="2" placeholder="补充说明，将写入退款单备注"></textarea>
+          </div>
+          <div class="form-group">
+            <label>退款方式</label>
+            <div class="refund-mode-list">
+              <label class="refund-mode-item" :class="{ active: refundForm.mode === 'AUTO' }">
+                <input type="radio" value="AUTO" v-model="refundForm.mode" />
+                <span>自动原路退回（{{ orderInfo.payMethodName || orderInfo.payChannel || '原支付渠道' }}）</span>
+              </label>
+              <label class="refund-mode-item" :class="{ active: refundForm.mode === 'MANUAL' }">
+                <input type="radio" value="MANUAL" v-model="refundForm.mode" />
+                <span>手动录入流水号（线下已退款）</span>
+              </label>
+            </div>
+          </div>
+          <div v-if="refundForm.mode === 'MANUAL'" class="form-group">
+            <label>第三方退款流水号</label>
+            <input v-model="refundForm.transactionId" placeholder="例如 Stripe / PayPal 后台的退款交易号" />
+          </div>
+          <div class="refund-hint">
+            自动退款会真实调用支付渠道接口，提交后立即发起退款且不可撤销；渠道退款失败时本次操作整体回滚。
+          </div>
+          <div v-if="refundInfo.refunds.length" class="refund-history">
+            <div class="refund-history-title">退款记录</div>
+            <div class="refund-history-item" v-for="r in refundInfo.refunds" :key="r.id">
+              <span class="refund-no">{{ r.refundNo }}</span>
+              <span class="refund-history-amount">{{ formatCurrency(r.amount, currencySymbol) }}</span>
+              <span class="refund-status" :class="'is-' + String(r.status || '').toLowerCase()">{{ refundStatusLabel(r.status) }}</span>
+              <span class="refund-history-time">{{ formatTimelineTime(r.createTime) }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" @click="closeRefundModal">取消</button>
+          <button class="btn btn-danger" :disabled="refundSubmitting" @click="submitRefund">
+            {{ refundSubmitting ? '退款中…' : '确认退款' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getOrderDetail, shipOrder, updateOrderAddress, updateOrderRemark, syncOrderToWoo,
-  getOrderTimeline } from '../api/admin'
+  refundOrder, getOrderTimeline } from '../api/admin'
+import { getAdminInfo } from '../api/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -255,6 +337,7 @@ const orderInfo = reactive({
   currency: 'USD',
   source: '',
   status: '',
+  statusCode: '',   // 原始英文状态码，用于退款等业务判断
   statusClass: ''
 })
 
@@ -271,6 +354,49 @@ const shippingInfo = reactive({
 const showAddressModal = ref(false)
 const showNoteModal = ref(false)
 const noteContent = ref('')
+
+// 退款相关状态（对齐 WooCommerce 订单详情退款弹窗）
+const showRefundModal = ref(false)
+const refundSubmitting = ref(false)
+const currentRole = ref('')  // 当前登录管理员角色，用于退款按钮权限控制
+// 允许发起退款的角色（与后端 AdminPermissionFilter.REFUND_ALLOWED_ROLES 保持一致）
+const REFUND_ALLOWED_ROLES = ['SUPER_ADMIN', 'OPERATOR', 'FINANCE']
+const refundReasons = ['买家申请退款', '商品缺货', '商品损坏/质量问题', '重复下单', '买家未收到货', '其他']
+const refundForm = reactive({
+  amount: '',
+  reason: refundReasons[0],
+  description: '',
+  mode: 'AUTO',       // AUTO=自动原路退回，MANUAL=手动录入线下流水号
+  transactionId: ''
+})
+// 退款汇总（来自订单详情接口）
+const refundInfo = reactive({
+  refundedAmount: 0,
+  refundableAmount: 0,
+  refunds: []
+})
+
+// 仅超管/运营/财务可发起退款（按钮可见性）
+const canUseRefund = computed(() => REFUND_ALLOWED_ROLES.includes(currentRole.value))
+
+// 可退款订单状态（与后端 RefundServiceImpl.adminRefundOrder 保持一致）
+// REFUNDED 兜底：历史部分退款可能把订单置为已退款，但仍有剩余可退金额
+const REFUNDABLE_STATUS = ['PAID', 'PENDING_SHIP', 'SHIPPED', 'RECEIVED', 'COMPLETED', 'REFUNDED']
+const canRefund = computed(() => {
+  if (!canUseRefund.value) return false
+  if (refundSubmitting.value) return false
+  if (!REFUNDABLE_STATUS.includes(orderInfo.statusCode)) return false
+  return Number(refundInfo.refundableAmount) > 0
+})
+
+// 退款单状态 → 中文标签
+function refundStatusLabel(status) {
+  const map = {
+    PENDING: '待处理', APPROVED: '已批准', PROCESSING: '退款中',
+    COMPLETED: '已完成', REJECTED: '已拒绝'
+  }
+  return map[String(status || '').toUpperCase()] || status || '-'
+}
 
 // WC 同步状态
 const syncingWoo = ref(false)
@@ -461,8 +587,16 @@ async function fetchOrderDetail() {
         currency: data.currency || 'USD',
         source: data.source || '',
         status: statusLabel(data.status),
+        statusCode: String(data.status || '').toUpperCase(),
         statusClass: mapStatusClass(data.status)
       })
+
+      // 退款汇总：后端返回 refundedAmount / refundableAmount / refunds
+      refundInfo.refundedAmount = Number(data.refundedAmount || 0)
+      refundInfo.refundableAmount = data.refundableAmount != null
+        ? Number(data.refundableAmount)
+        : Math.max(0, Number(data.payAmount || 0) - refundInfo.refundedAmount)
+      refundInfo.refunds = Array.isArray(data.refunds) ? data.refunds : []
 
       Object.assign(shippingInfo, {
         name: data.receiverName || data.shippingName || '',
@@ -558,7 +692,93 @@ async function confirmNote() {
   }
 }
 
+// 打开退款弹窗：默认按剩余可退金额填充
+function openRefundModal() {
+  if (!canRefund.value) return
+  refundForm.amount = Number(refundInfo.refundableAmount).toFixed(2)
+  refundForm.reason = refundReasons[0]
+  refundForm.description = ''
+  refundForm.mode = 'AUTO'
+  refundForm.transactionId = ''
+  showRefundModal.value = true
+}
+
+function closeRefundModal() {
+  if (refundSubmitting.value) return
+  showRefundModal.value = false
+}
+
+// 提交退款：AUTO 模式会真实调用支付渠道退款接口
+async function submitRefund() {
+  const id = route.params.id
+  if (!id || refundSubmitting.value) return
+
+  const amount = Number(refundForm.amount)
+  if (!(amount > 0)) {
+    ElMessage.warning('请输入大于 0 的退款金额')
+    return
+  }
+  if (amount > Number(refundInfo.refundableAmount) + 1e-6) {
+    ElMessage.warning(`退款金额不能超过剩余可退 ${formatCurrency(refundInfo.refundableAmount, currencySymbol.value)}`)
+    return
+  }
+  if (refundForm.mode === 'MANUAL' && !refundForm.transactionId.trim()) {
+    ElMessage.warning('手动退款必须填写第三方退款流水号')
+    return
+  }
+  // AUTO 是内部自动退款的保留值，手动模式下禁止使用，避免被后端误判为自动退款
+  if (refundForm.mode === 'MANUAL' && refundForm.transactionId.trim().toUpperCase() === 'AUTO') {
+    ElMessage.warning('第三方退款流水号不能填写 AUTO，请填写渠道后台的真实退款交易号')
+    return
+  }
+
+  const confirmText = refundForm.mode === 'AUTO'
+    ? `确认通过「${orderInfo.payMethodName || orderInfo.payChannel || '原支付渠道'}」原路退回 ${formatCurrency(amount, currencySymbol.value)}？该操作会真实调用支付渠道接口。`
+    : `确认登记手动退款 ${formatCurrency(amount, currencySymbol.value)}？请确保已在线下完成退款。`
+  try {
+    await ElMessageBox.confirm(confirmText, '确认退款', {
+      type: 'warning',
+      confirmButtonText: '确认退款',
+      cancelButtonText: '取消'
+    })
+  } catch (e) {
+    return
+  }
+
+  refundSubmitting.value = true
+  try {
+    const res = await refundOrder(id, {
+      amount,
+      reason: refundForm.reason,
+      description: refundForm.description,
+      mode: refundForm.mode,
+      transactionId: refundForm.mode === 'MANUAL' ? refundForm.transactionId.trim() : null
+    })
+    const data = res?.data || res || {}
+    ElMessage.success(`退款成功：${data.refundNo || ''}，渠道流水号 ${data.transactionId || '-'}`)
+    showRefundModal.value = false
+    await fetchOrderDetail()
+  } catch (err) {
+    ElMessage.error('退款失败: ' + (err.response?.data?.message || err.message))
+  } finally {
+    refundSubmitting.value = false
+  }
+}
+
+// 加载当前管理员角色：仅超管/运营/财务展示退款按钮
+async function loadCurrentRole() {
+  try {
+    const info = await getAdminInfo()
+    currentRole.value = String(info?.role || '').toUpperCase()
+  } catch (err) {
+    // 角色获取失败按无权限处理，前端不展示退款入口（后端仍会二次校验）
+    currentRole.value = ''
+    console.warn('获取管理员角色失败:', err?.message || err)
+  }
+}
+
 onMounted(() => {
+  loadCurrentRole()
   fetchOrderDetail()
 })
 
@@ -1018,5 +1238,131 @@ function mapTimelineTypeToStatus(type) {
 
 .form-group + .form-group {
   margin-top: 12px;
+}
+
+/* ===== 退款弹窗（对齐 WooCommerce 退款操作） ===== */
+.refund-modal {
+  max-width: 640px;
+}
+
+.refund-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--background);
+}
+
+.refund-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-500);
+}
+
+.refund-summary-item strong {
+  font-size: 15px;
+  color: var(--text-900);
+}
+
+.refund-amount {
+  color: var(--state-error) !important;
+}
+
+.refund-mode-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.refund-mode-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.refund-mode-item.active {
+  border-color: var(--state-error);
+  background: var(--background-100);
+}
+
+.refund-hint {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--background-100);
+  color: var(--text-500);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.refund-history {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.refund-history-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.refund-history-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--text-600);
+  border-bottom: 1px dashed var(--border);
+}
+
+.refund-history-item:last-child {
+  border-bottom: none;
+}
+
+.refund-no {
+  font-family: monospace;
+  color: var(--text-800);
+}
+
+.refund-history-amount {
+  color: var(--state-error);
+}
+
+.refund-status {
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: var(--background-100);
+}
+
+.refund-status.is-completed {
+  color: #16a34a;
+  background: #dcfce7;
+}
+
+.refund-status.is-rejected {
+  color: var(--state-error);
+  background: #fee2e2;
+}
+
+.refund-history-time {
+  margin-left: auto;
+  color: var(--text-400);
+}
+
+.refunded-row .money {
+  color: var(--state-error);
 }
 </style>
