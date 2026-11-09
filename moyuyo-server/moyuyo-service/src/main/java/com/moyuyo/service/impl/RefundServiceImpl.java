@@ -5,9 +5,11 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.common.dto.admin.order.OrderRefundRequest;
 import com.moyuyo.common.dto.refund.RefundApplyRequest;
+import com.moyuyo.common.dto.refund.RefundItemVO;
 import com.moyuyo.common.dto.refund.RefundVO;
 import com.moyuyo.common.utils.PageUtils;
 import com.moyuyo.dao.admin.entity.FinanceRecordEntity;
@@ -15,10 +17,12 @@ import com.moyuyo.dao.admin.mapper.FinanceRecordMapper;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.PointsLogEntity;
+import com.moyuyo.dao.entity.ProductSkuEntity;
 import com.moyuyo.dao.entity.RefundEntity;
 import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.PointsLogMapper;
+import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.dao.mapper.RefundMapper;
 import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.common.enums.RefundChannelEnum;
@@ -33,10 +37,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -48,6 +57,8 @@ public class RefundServiceImpl implements RefundService {
     private final RefundMapper refundMapper;
     private final OrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
+    /** 退款列表展示 SKU 编码：按 skuId / productId 批量回查 mo_product_sku */
+    private final ProductSkuMapper productSkuMapper;
     private final RefundChannelService refundChannelService;
     private final MemberService memberService;
     /** 退款联动：扣回由该订单触发的邀请首单奖励 */
@@ -661,7 +672,30 @@ public class RefundServiceImpl implements RefundService {
             }
         }
         IPage<RefundEntity> entityPage = refundMapper.selectPage(new Page<>(page, size), wrapper);
-        return toRefundVOPage(entityPage);
+        List<RefundEntity> records = entityPage.getRecords();
+        // 批量补齐关联订单号：一次 IN 查询避免 N+1，前端列表可直接展示业务订单号而非订单主键
+        Map<Long, String> orderNoMap = new HashMap<>();
+        List<Long> orderIds = records.stream()
+                .map(RefundEntity::getOrderId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (!orderIds.isEmpty()) {
+            orderMapper.selectBatchIds(orderIds)
+                    .forEach(order -> orderNoMap.put(order.getId(), order.getOrderNo()));
+        }
+        // 批量补齐退款商品明细（图片/标题/SKU）：拆单退款使用退款子项，整单退款回退到订单商品
+        Map<Long, List<OrderItemEntity>> orderItemMap = loadOrderItemsWithSkuCode(orderIds);
+        Map<Long, List<RefundItemVO>> productItemsMap = new HashMap<>();
+        for (RefundEntity refund : records) {
+            List<RefundItemVO> productItems = parseRefundItems(refund.getItems(), orderItemMap.get(refund.getOrderId()));
+            if (productItems.isEmpty()) {
+                productItems = toProductItems(orderItemMap.getOrDefault(refund.getOrderId(), List.of()));
+            }
+            productItemsMap.put(refund.getId(), productItems);
+        }
+        return PageUtils.convertPage(entityPage,
+                e -> toRefundVO(e, orderNoMap.get(e.getOrderId()), productItemsMap.get(e.getId())));
     }
 
     /** 退款业务状态白名单 */
@@ -714,11 +748,118 @@ public class RefundServiceImpl implements RefundService {
     }
 
     private RefundVO toRefundVO(RefundEntity entity) {
+        return toRefundVO(entity, null, null);
+    }
+
+    /**
+     * 退款实体 → VO
+     * @param orderNo 关联订单号，无法获取时传 null
+     * @param productItems 退款商品明细（列表展示图片/标题/SKU），无法获取时传 null
+     */
+    private RefundVO toRefundVO(RefundEntity entity, String orderNo, List<RefundItemVO> productItems) {
         return new RefundVO(
-                entity.getId(), entity.getOrderId(), entity.getRefundNo(),
+                entity.getId(), entity.getOrderId(), orderNo, entity.getRefundNo(),
                 entity.getType(), entity.getAmount(), entity.getReason(),
                 entity.getDescription(), entity.getImages(), entity.getItems(), entity.getStatus(),
-                entity.getCreateTime(), entity.getCompleteTime());
+                entity.getCreateTime(), entity.getCompleteTime(), productItems);
+    }
+
+    /**
+     * 批量加载订单商品明细，并补齐 SKU 编码
+     * 编码来源：先按 skuId 精确匹配；简单商品（skuId 为空）或 SKU 已删除时按 productId 取默认 SKU 兜底
+     */
+    private Map<Long, List<OrderItemEntity>> loadOrderItemsWithSkuCode(List<Long> orderIds) {
+        if (orderIds == null || orderIds.isEmpty()) return new HashMap<>();
+        Map<Long, List<OrderItemEntity>> itemMap = orderItemMapper.selectList(
+                new LambdaQueryWrapper<OrderItemEntity>().in(OrderItemEntity::getOrderId, orderIds))
+                .stream().collect(Collectors.groupingBy(OrderItemEntity::getOrderId));
+        Set<Long> skuIds = new HashSet<>();
+        Set<Long> productIds = new HashSet<>();
+        itemMap.values().forEach(list -> list.forEach(item -> {
+            if (item.getSkuId() != null) skuIds.add(item.getSkuId());
+            if (item.getProductId() != null) productIds.add(item.getProductId());
+        }));
+        // skuId → skuCode
+        Map<Long, String> skuCodeMap = new HashMap<>();
+        if (!skuIds.isEmpty()) {
+            productSkuMapper.selectBatchIds(skuIds)
+                    .forEach(sku -> skuCodeMap.put(sku.getId(), sku.getSkuCode()));
+        }
+        // productId → 默认 SKU 编码（按 SKU ID 升序取第一条）
+        Map<Long, String> defaultSkuCodeMap = new HashMap<>();
+        if (!productIds.isEmpty()) {
+            productSkuMapper.selectList(new LambdaQueryWrapper<ProductSkuEntity>()
+                            .in(ProductSkuEntity::getProductId, productIds)
+                            .orderByAsc(ProductSkuEntity::getId))
+                    .forEach(sku -> defaultSkuCodeMap.putIfAbsent(sku.getProductId(), sku.getSkuCode()));
+        }
+        itemMap.values().forEach(list -> list.forEach(item -> {
+            String code = skuCodeMap.get(item.getSkuId());
+            if (code == null || code.isEmpty()) {
+                code = defaultSkuCodeMap.get(item.getProductId());
+            }
+            item.setSkuCode(code);
+        }));
+        return itemMap;
+    }
+
+    /**
+     * 解析拆单退款 items JSON，并与订单商品快照匹配，生成展示用商品明细
+     * 匹配不到（如 SKU 已删除）时返回空列表，由调用方回退到整单商品
+     */
+    private List<RefundItemVO> parseRefundItems(String itemsJson, List<OrderItemEntity> orderItems) {
+        if (itemsJson == null || itemsJson.isBlank() || orderItems == null || orderItems.isEmpty()) {
+            return List.of();
+        }
+        try {
+            List<Map<String, Object>> nodes = objectMapper.readValue(itemsJson,
+                    new TypeReference<List<Map<String, Object>>>() { });
+            List<RefundItemVO> items = new ArrayList<>();
+            for (Map<String, Object> node : nodes) {
+                Long skuId = toLong(node.get("skuId"));
+                OrderItemEntity matched = orderItems.stream()
+                        .filter(item -> skuId != null && skuId.equals(item.getSkuId()))
+                        .findFirst().orElse(null);
+                if (matched == null) continue;
+                Integer quantity = toInt(node.get("quantity"));
+                items.add(new RefundItemVO(
+                        matched.getProductId(), matched.getSkuId(), matched.getProductName(),
+                        matched.getMainImage(), matched.getSkuCode(), matched.getSkuSpec(),
+                        quantity != null ? quantity : matched.getQuantity(),
+                        toDecimal(node.get("amount"))));
+            }
+            return items;
+        } catch (Exception e) {
+            log.warn("[refund-list] 解析退款子项失败，回退订单商品 items={}", itemsJson, e);
+            return List.of();
+        }
+    }
+
+    /** 整单退款：直接用订单商品快照生成展示明细 */
+    private List<RefundItemVO> toProductItems(List<OrderItemEntity> orderItems) {
+        if (orderItems == null || orderItems.isEmpty()) return List.of();
+        return orderItems.stream()
+                .map(item -> new RefundItemVO(item.getProductId(), item.getSkuId(), item.getProductName(),
+                        item.getMainImage(), item.getSkuCode(), item.getSkuSpec(),
+                        item.getQuantity(), item.getSubtotal()))
+                .toList();
+    }
+
+    private Long toLong(Object value) {
+        return value instanceof Number number ? number.longValue() : null;
+    }
+
+    private Integer toInt(Object value) {
+        return value instanceof Number number ? number.intValue() : null;
+    }
+
+    private BigDecimal toDecimal(Object value) {
+        if (value == null) return null;
+        try {
+            return new BigDecimal(value.toString());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private IPage<RefundVO> toRefundVOPage(IPage<RefundEntity> entityPage) {

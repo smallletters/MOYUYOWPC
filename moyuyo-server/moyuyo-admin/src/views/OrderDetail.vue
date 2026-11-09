@@ -7,6 +7,12 @@
       <span class="current">订单详情</span>
     </div>
 
+    <!-- 订单不存在（如已被删除）时的空状态，避免详情页空白 -->
+    <el-empty v-if="orderNotFound" description="订单不存在或已被删除">
+      <button class="btn btn-primary" @click="router.push('/orders')">返回订单列表</button>
+    </el-empty>
+
+    <template v-else>
     <!-- 标题栏 -->
     <div class="page-header">
       <div class="page-header-left">
@@ -296,6 +302,7 @@
         </div>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
@@ -313,6 +320,8 @@ const route = useRoute()
 const currentStep = ref(0)
 const orderNo = ref('')
 const loading = ref(false)
+// 订单不存在/已删除标记：为 true 时展示空状态而不是空白页
+const orderNotFound = ref(false)
 
 const progressSteps = ref([])
 const orderItems = ref([])
@@ -551,7 +560,11 @@ function onImageError(e) {
 // 获取订单详情
 async function fetchOrderDetail() {
   const id = route.params.id
-  if (!id) return
+  if (!id) {
+    orderNotFound.value = true
+    return
+  }
+  orderNotFound.value = false
   loading.value = true
   try {
     const res = await getOrderDetail(id)
@@ -616,7 +629,12 @@ async function fetchOrderDetail() {
     }
   } catch (err) {
     console.error('获取订单详情失败:', err)
-    ElMessage.error('获取订单详情失败')
+    // 订单不存在（如已被软删除）时展示空状态，避免详情页完全空白
+    if (err?.code === 404) {
+      orderNotFound.value = true
+    } else {
+      ElMessage.error('获取订单详情失败')
+    }
   } finally {
     loading.value = false
   }

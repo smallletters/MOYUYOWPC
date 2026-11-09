@@ -172,6 +172,15 @@ public class AdminRefundController {
       Map<String, Object> item = new LinkedHashMap<>();
       item.put("id", entity.getId());
       item.put("orderId", entity.getOrderId());
+      // 关联订单号：订单可能已被软删除，查不到时保持为空，前端回退展示订单 ID
+      String orderNo = null;
+      if (entity.getOrderId() != null) {
+        var order = orderMapper.selectById(entity.getOrderId());
+        if (order != null) {
+          orderNo = order.getOrderNo();
+        }
+      }
+      item.put("orderNo", orderNo);
       item.put("refundNo", entity.getRefundNo());
       item.put("type", entity.getType());
       item.put("amount", entity.getAmount() != null ? entity.getAmount().toString() : "0.00");

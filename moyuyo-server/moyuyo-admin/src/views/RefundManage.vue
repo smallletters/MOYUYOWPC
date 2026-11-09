@@ -55,7 +55,13 @@
         <div class="refund-top">
           <div class="refund-info">
             <span class="refund-no table-link" @click="handleDetail(item)">{{ item.refundNo }}</span>
-            <span class="refund-order">订单 {{ item.orderId }}</span>
+            <!-- 订单号可点击，跳转到订单详情页（跳转使用订单主键 orderId） -->
+            <span
+              v-if="item.orderId"
+              class="refund-order table-link"
+              @click="handleOrderClick(item.orderId)"
+            >订单 {{ item.orderNo || item.orderId }}</span>
+            <span v-else class="refund-order">订单 -</span>
           </div>
           <div class="refund-sla" :class="item.slaClass">
             <span class="sla-icon">{{ item.slaIcon }}</span>
@@ -64,10 +70,39 @@
         </div>
         <div class="refund-body">
           <div class="refund-product">
-            <div class="refund-thumb">📦</div>
+            <!-- 商品主图：下单快照有图则展示，无图保留 📦 占位 -->
+            <div class="refund-thumb">
+              <img
+                v-if="item.primaryItem && item.primaryItem.image"
+                :src="resolveImageUrl(item.primaryItem.image)"
+                :alt="item.primaryItem.name || '商品图'"
+                class="refund-thumb-img"
+                @error="onImageError"
+              />
+              <span v-else>📦</span>
+            </div>
             <div class="refund-meta">
-              <div class="refund-type">{{ typeLabel(item.type) }}</div>
-              <div class="refund-time">{{ item.createTime }}</div>
+              <div class="refund-item-title" :title="item.primaryItem ? item.primaryItem.name : ''">
+                {{ (item.primaryItem && item.primaryItem.name) || '订单商品' }}
+              </div>
+              <div class="refund-item-sub">
+                <span class="sku-text">SKU: {{ skuText(item.primaryItem) }}</span>
+                <span class="qty-text" v-if="item.primaryItem && item.primaryItem.quantity">
+                  ×{{ item.primaryItem.quantity }}
+                </span>
+                <span class="more-text" v-if="item.productItems.length > 1">
+                  共 {{ item.totalQuantity }} 件 / {{ item.productItems.length }} 种
+                </span>
+              </div>
+              <div class="refund-type-time">
+                <span class="refund-type">{{ typeLabel(item.type) }}</span>
+                <span class="refund-time">{{ item.createTime }}</span>
+                <button
+                  v-if="item.productItems.length > 1"
+                  class="expand-link"
+                  @click="toggleItems(item.id)"
+                >{{ expandedItems[item.id] ? '收起商品' : '查看全部商品' }}</button>
+              </div>
             </div>
           </div>
           <div class="refund-amount">
@@ -76,6 +111,27 @@
           </div>
           <div class="refund-status">
             <span class="tag" :class="item.statusClass">{{ item.statusLabel }}</span>
+          </div>
+        </div>
+        <!-- 多商品退款：展开后展示全部商品明细（图片/标题/SKU/数量/金额） -->
+        <div class="refund-item-list" v-if="expandedItems[item.id] && item.productItems.length > 1">
+          <div class="refund-item-row" v-for="(pi, idx) in item.productItems" :key="idx">
+            <div class="refund-item-thumb">
+              <img
+                v-if="pi.image"
+                :src="resolveImageUrl(pi.image)"
+                :alt="pi.name || '商品图'"
+                class="refund-thumb-img"
+                @error="onImageError"
+              />
+              <span v-else>📦</span>
+            </div>
+            <div class="refund-item-info">
+              <div class="refund-item-title">{{ pi.name || '订单商品' }}</div>
+              <div class="refund-item-sku">SKU: {{ skuText(pi) }}</div>
+            </div>
+            <div class="refund-item-qty">×{{ pi.quantity || 0 }}</div>
+            <div class="refund-item-amount" v-if="pi.amount !== '' && pi.amount !== null">¥{{ pi.amount }}</div>
           </div>
         </div>
         <div class="refund-actions" v-if="item.statusLabel === '待处理'">
@@ -140,7 +196,12 @@
         </div>
         <div class="detail-row">
           <span class="detail-label">关联订单</span>
-          <span class="detail-value">{{ detail.orderId }}</span>
+          <span class="detail-value" v-if="detail.orderId">
+            <span class="table-link" @click="handleOrderClick(detail.orderId)">
+              {{ detail.orderNo || detail.orderId }}
+            </span>
+          </span>
+          <span class="detail-value" v-else>-</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">退款类型</span>
@@ -210,6 +271,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getRefundStats, getRefundList, getRefundDetail, getRefundReasonDistribution, getRefundStatusCount, approveRefund, rejectRefund, completeRefund, batchApproveRefund } from '../api/admin'
 import { toArray } from '../utils/safeArray'
@@ -237,6 +299,38 @@ const selectAll = ref(false)
 const selectedItems = ref(new Set())
 const loading = ref(false)
 const refunds = ref([])
+
+const router = useRouter()
+
+// 点击订单号跳转到订单详情页（/orders/:id）
+function handleOrderClick(orderId) {
+  if (!orderId) return
+  router.push(`/orders/${orderId}`)
+}
+
+// SKU 展示：优先展示 SKU 编码，其次规格文本，均缺失时显示 -
+function skuText(pi) {
+  if (!pi) return '-'
+  return pi.skuCode || pi.skuSpec || '-'
+}
+
+// 商品图片地址：http(s) 原样返回；/uploads/... 等同源路径直接使用（生产由后端/网关提供静态资源）
+function resolveImageUrl(path) {
+  if (!path) return ''
+  if (/^https?:\/\//i.test(path)) return path
+  return path.startsWith('/') ? path : `/${path}`
+}
+
+// 图片加载失败时隐藏，避免列表出现红叉占位
+function onImageError(e) {
+  if (e?.target) e.target.style.display = 'none'
+}
+
+// 多商品退款：按退款单 id 记录展开状态
+const expandedItems = reactive({})
+function toggleItems(id) {
+  expandedItems[id] = !expandedItems[id]
+}
 
 // 详情弹窗状态
 const detailVisible = ref(false)
@@ -374,10 +468,27 @@ async function fetchRefunds() {
     const list = toArray(res)
     refunds.value = list.map(item => {
       const sla = calcSla(item.createTime, item.status)
+      // 商品明细：后端已按退款子项（拆单）/订单商品（整单）补齐图片、标题、SKU
+      const productItems = toArray(item.productItems).map(pi => ({
+        productId: pi.productId || null,
+        skuId: pi.skuId || null,
+        name: pi.name || '',
+        image: pi.image || '',
+        skuCode: pi.skuCode || '',
+        skuSpec: pi.skuSpec || '',
+        quantity: Number(pi.quantity || 0),
+        amount: pi.amount ?? ''
+      }))
       return {
         id: item.id,
         refundNo: item.refundNo || 'REF' + item.id,
         orderId: item.orderId || '',
+        // 业务订单号（后端批量补齐，缺失时前端回退展示订单主键）
+        orderNo: item.orderNo || '',
+        // 主商品与合计数量：卡片头部只展示首件，多件时可展开查看全部
+        productItems,
+        primaryItem: productItems[0] || null,
+        totalQuantity: productItems.reduce((sum, pi) => sum + (pi.quantity || 0), 0),
         type: item.type || '',
         reasonLabel: item.reason || '其他',
         reasonClass: 'tag-orange',
@@ -760,6 +871,12 @@ onMounted(() => {
   color: var(--text-400);
 }
 
+/* 订单号悬停时高亮为链接样式，提示可点击进入订单详情 */
+.refund-order.table-link:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
 .refund-sla {
   display: flex;
   align-items: center;
@@ -797,11 +914,13 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   flex: 1;
+  min-width: 0;
 }
 
+/* 商品主图：56px 方形缩略图，符合电商售后列表「先看图再核对 SKU」的浏览习惯 */
 .refund-thumb {
-  width: 44px;
-  height: 44px;
+  width: 56px;
+  height: 56px;
   border-radius: 8px;
   background: var(--background-200);
   display: flex;
@@ -809,23 +928,155 @@ onMounted(() => {
   justify-content: center;
   font-size: 20px;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.refund-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .refund-meta {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* 商品标题：单行省略，hover 时通过 title 属性查看全文 */
+.refund-item-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.refund-item-sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-400);
+}
+
+.sku-text {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--background-200);
+  color: var(--text-600);
+}
+
+.qty-text {
+  color: var(--text-500);
+}
+
+.more-text {
+  color: var(--primary);
+}
+
+.refund-type-time {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-400);
 }
 
 .refund-type {
-  font-size: 13px;
-  color: var(--text-800);
+  font-size: 12px;
+  color: var(--text-600);
   font-weight: 500;
 }
 
 .refund-time {
   font-size: 11px;
   color: var(--text-400);
+}
+
+.expand-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.expand-link:hover {
+  text-decoration: underline;
+}
+
+/* 多商品展开区：浅底面板，逐行展示图片 / 标题 / SKU / 数量 / 金额 */
+.refund-item-list {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+  padding: 4px 12px;
+  background: var(--background-100);
+  border-radius: 8px;
+}
+
+.refund-item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.refund-item-row:last-child {
+  border-bottom: none;
+}
+
+.refund-item-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--background-200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.refund-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.refund-item-info .refund-item-title {
+  font-size: 12px;
+}
+
+.refund-item-sku {
+  font-size: 11px;
+  color: var(--text-400);
+}
+
+.refund-item-qty {
+  min-width: 36px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-600);
+}
+
+.refund-item-amount {
+  min-width: 64px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--state-error);
 }
 
 .refund-amount {
