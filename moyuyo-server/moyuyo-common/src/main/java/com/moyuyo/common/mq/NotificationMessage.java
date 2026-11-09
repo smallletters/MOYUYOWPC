@@ -27,6 +27,9 @@ public class NotificationMessage {
     /** 通知类型：ORDER / ACTIVITY / SYSTEM */
     private String type;
 
+    /** 业务类型：ORDER（订单）/ AFTER_SALE（售后），APP 点击跳转依据 */
+    private String bizType;
+
     /** 通知标题 */
     private String title;
 

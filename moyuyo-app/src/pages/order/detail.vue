@@ -158,14 +158,24 @@
       <view v-if="order.status === 'COMPLETED'" class="btn btn-primary" @click="onReview">
         {{ $t('orderReviewDetail.title') }}
       </view>
-      <!-- 自助退款入口：与后端 applyRefund 的状态白名单保持一致
-           （PAID/PENDING_SHIP 已付款未发货、SHIPPED 已发货、RECEIVED 已收货、COMPLETED 已完成） -->
+      <!-- 售后入口（对齐亚马逊）：未发货只能仅退款；已发货走退货退款/换货 -->
       <view
-        v-if="['PAID', 'PENDING_SHIP', 'SHIPPED', 'RECEIVED', 'COMPLETED'].includes(order.status)"
+        v-if="['PAID', 'PENDING_SHIP'].includes(order.status)"
         class="btn btn-outline"
         @click="onRefund"
       >
-        {{ $t('orderDetail.refund') }}
+        {{ $t('orderDetail.refundOnly') }}
+      </view>
+      <view
+        v-if="['SHIPPED', 'RECEIVED', 'COMPLETED'].includes(order.status)"
+        class="btn btn-outline"
+        @click="onReturnRefund"
+      >
+        {{ $t('orderDetail.returnRefund') }}
+      </view>
+      <!-- 仅在该订单确实存在售后申请时展示，避免无售后也出现空入口 -->
+      <view v-if="order.afterSalesId" class="btn btn-outline" @click="onAfterSales">
+        {{ $t('orderDetail.afterSales') }}
       </view>
     </view>
   </view>
@@ -224,6 +234,14 @@ export default {
     this.orderId = query.id
     this.loadOrder()
     this.loadLogistics()
+  },
+
+  onShow() {
+    // 从售后申请页/售后详情返回时刷新订单，确保 afterSalesId 等字段为最新；
+    // 首次进入时 order 仍为空，由 onLoad 负责加载，避免重复请求
+    if (this.order) {
+      this.loadOrder()
+    }
   },
 
   methods: {
@@ -333,6 +351,16 @@ export default {
 
     onRefund() {
       uni.navigateTo({ url: `/pages/order/refund?orderId=${this.orderId}` })
+    },
+
+    /** 已发货订单：进入售后申请（退货退款/仅退款/换货可选） */
+    onReturnRefund() {
+      uni.navigateTo({ url: `/pages/order/returns?orderId=${this.orderId}` })
+    },
+
+    /** 已有售后申请：进入该订单的售后记录列表（分次退货可查看全部历史） */
+    onAfterSales() {
+      uni.navigateTo({ url: `/pages/order/after-sales?orderId=${this.orderId}` })
     },
 
     onCS() {

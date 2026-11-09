@@ -45,9 +45,18 @@ public class NotificationMessageProducer {
      * 兼容便捷方法：使用基础字段快速构造消息
      */
     public void send(Long userId, String type, String title, String content, Long relatedId) {
+        send(userId, type, null, title, content, relatedId);
+    }
+
+    /**
+     * 带业务类型的便捷方法（bizType 用于 APP 点击跳转：ORDER / AFTER_SALE）
+     */
+    public void send(Long userId, String type, String bizType, String title, String content,
+                     Long relatedId) {
         send(NotificationMessage.builder()
                 .userId(userId)
                 .type(type)
+                .bizType(bizType)
                 .title(title)
                 .content(content)
                 .relatedId(relatedId)

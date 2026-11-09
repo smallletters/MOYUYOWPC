@@ -16,6 +16,9 @@ public class NotificationEntity {
 
   private String type;
 
+  /** 业务类型：ORDER（订单）/ AFTER_SALE（售后），APP 据此决定点击跳转目标 */
+  private String bizType;
+
   private String title;
 
   private String content;

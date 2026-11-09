@@ -576,6 +576,20 @@
       }
     },
     {
+      "path": "pages/order/returns",
+      "style": {
+        "navigationBarTitleText": "申请售后",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/order/after-sales-detail",
+      "style": {
+        "navigationBarTitleText": "售后详情",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/user/service-booking",
       "style": {
         "navigationBarTitleText": "服务预约",

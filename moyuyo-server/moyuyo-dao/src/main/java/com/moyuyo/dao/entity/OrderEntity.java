@@ -132,6 +132,14 @@ public class OrderEntity {
   @TableField(exist = false)
   private List<RefundVO> refunds;
 
+  /** 该订单最近一条售后记录 ID（非表字段，无售后为 null，APP 据此决定是否展示"售后记录"入口） */
+  @TableField(exist = false)
+  private Long afterSalesId;
+
+  /** 最近一条售后记录状态（非表字段） */
+  @TableField(exist = false)
+  private String afterSalesStatus;
+
   // ===== 领域方法 =====
 
   /** 获取订单状态枚举 */

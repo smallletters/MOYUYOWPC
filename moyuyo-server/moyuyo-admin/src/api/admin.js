@@ -194,6 +194,38 @@ export function batchApproveRefund(data) {
   return api.put('/refunds/batch-approve', data)
 }
 
+// ==================== 售后管理 ====================
+export function getAfterSalesList(params) {
+  return api.get('/after-sales/list', { params })
+}
+
+export function getAfterSalesDetail(id) {
+  return api.get(`/after-sales/${id}`)
+}
+
+/** 审核通过：body { deliveryType: 'RETURN_SHIP' | 'NO_RETURN', remark } */
+export function approveAfterSales(id, data) {
+  return api.put(`/after-sales/${id}/approve`, data)
+}
+
+export function rejectAfterSales(id, reason) {
+  return api.put(`/after-sales/${id}/reject`, { reason })
+}
+
+export function receiveAfterSales(id) {
+  return api.put(`/after-sales/${id}/receive`)
+}
+
+/** 客服补录/修正退货运单号：body { company, trackingNo } */
+export function submitAfterSalesLogistics(id, data) {
+  return api.put(`/after-sales/${id}/return-logistics`, data)
+}
+
+/** 完成售后：body { mode: 'AUTO' | 'MANUAL', transactionId } */
+export function completeAfterSales(id, data) {
+  return api.put(`/after-sales/${id}/complete`, data)
+}
+
 // ==================== 库存 ====================
 export function getInventoryOverview() {
   return api.get('/inventory/overview')

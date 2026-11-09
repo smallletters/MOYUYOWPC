@@ -128,6 +128,7 @@ const topNavItems = [
   { path: '/image-space', icon: '🖼️', label: '图片空间' },
   { path: '/category-setting', icon: '🏷️', label: '分类设置' },
   { path: '/refund', icon: '💰', label: '退款管理' },
+  { path: '/after-sales', icon: '↩️', label: '售后管理' },
   { path: '/users', icon: '👥', label: '用户管理' },
   { path: '/cs-sessions', icon: '💬', label: '客服会话' },
   { path: '/marketing', icon: '📢', label: '营销管理' },
@@ -159,6 +160,7 @@ const navGroups = [
     icon: '🛒',
     label: '订单运营',
     children: [
+      { path: '/after-sales', label: '售后管理' },
       { path: '/order-export', label: '订单导出' },
       { path: '/order-intercept', label: '订单拦截' },
       { path: '/order-monitor', label: '订单监控' },

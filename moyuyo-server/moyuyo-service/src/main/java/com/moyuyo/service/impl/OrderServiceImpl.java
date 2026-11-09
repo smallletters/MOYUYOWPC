@@ -664,6 +664,16 @@ public class OrderServiceImpl implements OrderService {
       log.warn("[order] 取消订单释放活动额度失败: orderId={}, reason={}", orderId, e.getMessage());
     }
 
+    // 订单取消通知（用户主动取消与超时自动取消都会走这里）
+    try {
+      String content = "您的订单 " + order.getOrderNo() + " 已取消"
+          + (reason == null || reason.isBlank() ? "" : "，原因：" + reason);
+      notificationService.notifyUser(order.getUserId(), "ORDER", "ORDER",
+          "订单已取消", content, order.getId());
+    } catch (Exception e) {
+      log.warn("[order] 取消通知发送失败: orderNo={}, reason={}", order.getOrderNo(), e.getMessage());
+    }
+
     // 取消未支付订单：释放本次下单"占用(LOCKED)"的优惠券，供用户重新使用。
     // releaseCoupon 内部条件更新(LOCKED & usedOrderId=orderId)，重复取消/并发取消命中 0 行不报错（幂等）。
     if (order.getUserCouponId() != null) {
@@ -859,14 +869,15 @@ public class OrderServiceImpl implements OrderService {
       String orderTitle = "订单支付成功";
       String orderContent = "您的订单 " + order.getOrderNo() + " 已支付成功，商家将尽快为您发货";
       try {
+        // bizType=ORDER：APP 点击通知跳转订单详情（relatedId 为订单 ID）
         notificationMessageProducer.send(
-                order.getUserId(), "ORDER", orderTitle, orderContent, order.getId());
+                order.getUserId(), "ORDER", "ORDER", orderTitle, orderContent, order.getId());
       } catch (Exception mqEx) {
         // MQ 不可用降级：直接同步落库，保证用户侧能看到通知
         log.warn("MQ 发送失败，降级同步落库通知: orderNo={}, reason={}",
                 orderNo, mqEx.getMessage());
         notificationService.saveNotification(
-                order.getUserId(), "ORDER", orderTitle, orderContent, order.getId());
+                order.getUserId(), "ORDER", "ORDER", orderTitle, orderContent, order.getId());
       }
     } catch (Exception e) {
       log.warn("[order] send notification failed: orderNo={}, reason={}", orderNo, e.getMessage());
@@ -898,9 +909,20 @@ public class OrderServiceImpl implements OrderService {
     if (!SHIPPED.name().equals(order.getStatus())) {
       throw new IllegalStateException("当前订单状态不允许确认收货");
     }
+    // 原子抢占（SHIPPED → RECEIVED）：并发重复确认时只有一次成功，
+    // 避免重复覆盖收货时间与重复发送收货通知
+    LocalDateTime receivedTime = LocalDateTime.now();
+    int claimed = orderMapper.update(null,
+        new LambdaUpdateWrapper<OrderEntity>()
+            .eq(OrderEntity::getId, orderId)
+            .eq(OrderEntity::getStatus, SHIPPED.name())
+            .set(OrderEntity::getStatus, RECEIVED.name())
+            .set(OrderEntity::getReceivedTime, receivedTime));
+    if (claimed == 0) {
+      throw new IllegalStateException("当前订单状态不允许确认收货");
+    }
     order.setStatus(RECEIVED.name());
-    order.setReceivedTime(LocalDateTime.now());
-    orderMapper.updateById(order);
+    order.setReceivedTime(receivedTime);
     // 同步写入物流签收时间：物流页的 currentStatus 依赖 mo_logistics.received_at，
     // 只更新订单会导致"订单已收货、物流页仍显示运输中"，且轮询任务只扫 SHIPPED 订单，
     // 该物流记录的签收时间将永远补不上。
@@ -909,6 +931,16 @@ public class OrderServiceImpl implements OrderService {
             .eq(LogisticsEntity::getOrderId, orderId)
             .isNull(LogisticsEntity::getReceivedAt)
             .set(LogisticsEntity::getReceivedAt, order.getReceivedTime()));
+
+    // 确认收货通知
+    try {
+      notificationService.notifyUser(order.getUserId(), "ORDER", "ORDER",
+          "订单已确认收货",
+          "您的订单 " + order.getOrderNo() + " 已确认收货，感谢选购，期待您的评价",
+          order.getId());
+    } catch (Exception e) {
+      log.warn("[order] 收货通知发送失败: orderNo={}, reason={}", order.getOrderNo(), e.getMessage());
+    }
   }
 
   @Override

@@ -45,6 +45,7 @@ public class NotificationConsumer implements RocketMQListener<NotificationMessag
             notificationService.saveNotification(
                     message.getUserId(),
                     message.getType(),
+                    message.getBizType(),
                     message.getTitle(),
                     message.getContent(),
                     message.getRelatedId());

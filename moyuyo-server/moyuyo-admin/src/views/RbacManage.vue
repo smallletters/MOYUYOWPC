@@ -554,6 +554,7 @@ const permModules = [
   { key: 'finance', name: '财务管理' },
   { key: 'exchanges', name: '换货管理' },
   { key: 'refunds', name: '退款管理' },
+  { key: 'after-sales', name: '售后管理' },
   { key: 'review', name: '评价管理' },
   { key: 'content-review', name: '内容审核' },
   { key: 'cms', name: '内容管理' },

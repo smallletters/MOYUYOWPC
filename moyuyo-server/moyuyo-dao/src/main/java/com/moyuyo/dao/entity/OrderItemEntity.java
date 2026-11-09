@@ -53,6 +53,18 @@ public class OrderItemEntity {
   @TableField(exist = false)
   private String skuCode;
 
+  /** 已申请售后的数量（非表字段，APP 分次退货展示与校验用） */
+  @TableField(exist = false)
+  private Integer afterSalesQuantity;
+
+  /** 剩余可申请售后的数量 = 购买数量 - 已申请数量（非表字段） */
+  @TableField(exist = false)
+  private Integer returnableQuantity;
+
+  /** 剩余可申请售后的金额 = 小计 - 已申请售后金额（非表字段） */
+  @TableField(exist = false)
+  private BigDecimal returnableAmount;
+
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createTime;
 }

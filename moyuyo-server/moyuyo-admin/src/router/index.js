@@ -96,6 +96,12 @@ const routes = [
         meta: { title: '退款管理' }
       },
       {
+        path: 'after-sales',
+        name: 'AfterSalesManage',
+        component: () => import('../views/AfterSalesManage.vue'),
+        meta: { title: '售后管理' }
+      },
+      {
         path: 'products/add',
         name: 'ProductAdd',
         component: () => import('../views/ProductEdit.vue'),

@@ -66,6 +66,8 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
   private final YanWenLabelService yanWenLabelService;
   // 用于在打印列表 / 打印详情里回填历史订单缺失的收货快照（与 OrderServiceImpl.getOrderDetail 行为一致）
   private final OrderService orderService;
+  /** 批量发货后给用户发站内信/推送 */
+  private final com.moyuyo.service.NotificationService notificationService;
   // P1：打印设置 JSON 序列化
   private final ObjectMapper objectMapper;
   // 独立 Bean：用于跨 Bean 调用以触发事务代理（同类内部调用 @Transactional 不生效）
@@ -279,6 +281,15 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
         entity.setTrackingNumber(trackingNo);
         entity.setStatus(OrderStatusEnum.SHIPPED.name());
         orderMapper.updateById(entity);
+        // 发货通知：与单订单发货保持一致
+        try {
+          notificationService.notifyUser(entity.getUserId(), "ORDER", "ORDER",
+              "订单已发货",
+              "您的订单 " + entity.getOrderNo() + " 已发货，承运商：" + carrier + "，运单号：" + trackingNo,
+              entity.getId());
+        } catch (Exception e) {
+          log.warn("[order-ops] 批量发货通知失败: orderId={}, reason={}", id, e.getMessage());
+        }
       }
     });
   }

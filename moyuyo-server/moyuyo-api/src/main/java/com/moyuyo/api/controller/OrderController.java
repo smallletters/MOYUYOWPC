@@ -4,10 +4,12 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.moyuyo.common.Result;
 import com.moyuyo.common.dto.order.CancelOrderRequest;
 import com.moyuyo.common.dto.order.CreateOrderRequest;
+import com.moyuyo.common.dto.aftersales.AfterSalesVO;
 import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.common.utils.PageParamGuard;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
+import com.moyuyo.service.AfterSalesService;
 import com.moyuyo.service.OrderService;
 import com.moyuyo.service.RefundService;
 import io.github.resilience4j.ratelimiter.RequestNotPermitted;
@@ -32,6 +34,38 @@ public class OrderController {
 
   private final OrderService orderService;
   private final RefundService refundService;
+  private final AfterSalesService afterSalesService;
+
+  /**
+   * 分次退货：为订单各商品行填充已申请售后数量与剩余可退数量/金额。
+   * <p>
+   * 数据来源 mo_after_sales（排除已拒绝/已取消），APP 退款申请页据此限制数量与金额，
+   * 服务端 createAfterSales 会再做一次权威校验。
+   */
+  private void fillAfterSalesQuota(OrderEntity order) {
+    List<OrderItemEntity> items = order.getItems();
+    if (items == null || items.isEmpty()) {
+      return;
+    }
+    Map<Long, Integer> appliedQty = afterSalesService.getAppliedQuantityByOrder(
+        order.getId(), order.getUserId());
+    Map<Long, BigDecimal> appliedAmount = afterSalesService.getAppliedAmountByOrder(
+        order.getId(), order.getUserId());
+    for (OrderItemEntity item : items) {
+      int bought = item.getQuantity() == null ? 0 : item.getQuantity();
+      int applied = appliedQty.getOrDefault(item.getId(), 0);
+      item.setAfterSalesQuantity(applied);
+      item.setReturnableQuantity(Math.max(bought - applied, 0));
+
+      BigDecimal subtotal = item.getSubtotal();
+      if (subtotal == null && item.getPrice() != null) {
+        subtotal = item.getPrice().multiply(BigDecimal.valueOf(bought));
+      }
+      BigDecimal appliedTotal = appliedAmount.getOrDefault(item.getId(), BigDecimal.ZERO);
+      item.setReturnableAmount(subtotal == null ? BigDecimal.ZERO
+          : subtotal.subtract(appliedTotal).max(BigDecimal.ZERO));
+    }
+  }
 
   @Operation(summary = "创建订单")
   @PostMapping
@@ -97,6 +131,17 @@ public class OrderController {
     order.setRefundableAmount(order.getPayAmount() == null
         ? BigDecimal.ZERO
         : order.getPayAmount().subtract(refunded).max(BigDecimal.ZERO));
+
+    // 该订单最近一条售后记录：APP 仅在存在售后时才展示"售后记录"入口
+    AfterSalesVO latestAfterSales =
+        afterSalesService.getLatestAfterSales(id, UserContextHolder.getUserId());
+    if (latestAfterSales != null) {
+      order.setAfterSalesId(latestAfterSales.getId());
+      order.setAfterSalesStatus(latestAfterSales.getStatus());
+    }
+
+    // 分次退货：为每个商品行填充「已申请售后数量/金额」，APP 据此限制可退数量与金额上限
+    fillAfterSalesQuota(order);
     return Result.success(order);
   }
 

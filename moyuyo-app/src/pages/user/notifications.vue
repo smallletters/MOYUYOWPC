@@ -6,8 +6,13 @@
         <text class="back-icon luc-arrow-left" />
       </view>
       <text class="header-title">{{ $t('notifications.title') }}</text>
-      <view class="header-action" @click="markAllRead">
-        <text class="header-action-text">{{ $t('notifications.markAllRead') }}</text>
+      <view class="header-actions">
+        <view class="header-action" @click="markAllRead">
+          <text class="header-action-text">{{ $t('notifications.markAllRead') }}</text>
+        </view>
+        <view class="header-action" @click="clearAll">
+          <text class="header-action-text danger">{{ $t('notifications.clearAll') }}</text>
+        </view>
       </view>
     </view>
 
@@ -52,6 +57,11 @@
             <text class="notif-title">{{ item.title }}</text>
             <text class="notif-desc">{{ item.description }}</text>
             <text class="notif-time">{{ item.time }}</text>
+          </view>
+
+          <!-- 删除：@click.stop 避免触发整条通知的跳转 -->
+          <view class="notif-del" @click.stop="onDelete(item)">
+            <text class="luc luc-trash-2" />
           </view>
         </view>
       </view>
@@ -154,6 +164,9 @@ export default {
         // 后端 read 字段：0 未读，1 已读
         unread: item.read === 0,
         type,
+        // 业务类型与业务主键：用于点击后跳转订单/售后详情
+        bizType: String(item.bizType || '').toLowerCase(),
+        relatedId: item.relatedId,
         icon: visual.icon,
         iconBg: visual.iconBg,
       }
@@ -187,8 +200,69 @@ export default {
           // 静默失败
         }
       }
-      // 跳转到消息详情页（复用 messages.vue），把通知 id 带过去
+      // 业务通知直接跳到对应详情页：
+      // - bizType=after_sale → 售后详情（relatedId 为售后单 ID）
+      // - bizType=order 或历史数据未记录 bizType 的订单通知 → 订单详情（relatedId 为订单 ID）
+      // - 其它（活动/系统）保持原有消息详情页
+      if (item.relatedId && item.bizType === 'after_sale') {
+        uni.navigateTo({ url: `/pages/order/after-sales-detail?id=${item.relatedId}` })
+        return
+      }
+      if (
+        item.relatedId &&
+        (item.bizType === 'order' || (!item.bizType && item.type === 'order'))
+      ) {
+        uni.navigateTo({ url: `/pages/order/detail?id=${item.relatedId}` })
+        return
+      }
       uni.navigateTo({ url: `/pages/user/messages?id=${item.id}` })
+    },
+
+    /** 清空当前 tab 的通知：全部 tab 清空所有，其它 tab 只清该分类 */
+    clearAll() {
+      const tab = this.currentTab
+      if (!this.filteredList.length) {
+        uni.showToast({ title: i18n.t('notifications.empty'), icon: 'none' })
+        return
+      }
+      const tabLabel = this.tabs.find((item) => item.key === tab)?.label || ''
+      uni.showModal({
+        title: i18n.t('notifications.clearConfirmTitle'),
+        content:
+          tab === 'all'
+            ? i18n.t('notifications.clearConfirmContent')
+            : i18n.t('notifications.clearTabConfirmContent', { name: tabLabel }),
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            // 非"全部"tab 时只删除该分类，后端按 UPPER(type) 忽略大小写匹配
+            await notificationApi.deleteNotifications(undefined, tab === 'all' ? undefined : tab)
+            this.notifications =
+              tab === 'all' ? [] : this.notifications.filter((n) => n.type !== tab)
+            uni.showToast({ title: i18n.t('notifications.cleared'), icon: 'success' })
+          } catch {
+            uni.showToast({ title: i18n.t('notifications.clearFailed'), icon: 'none' })
+          }
+        },
+      })
+    },
+
+    /** 删除单条通知：二次确认后调用接口，成功才从列表移除 */
+    onDelete(item) {
+      uni.showModal({
+        title: i18n.t('notifications.deleteConfirmTitle'),
+        content: i18n.t('notifications.deleteConfirmContent'),
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            await notificationApi.deleteNotification(item.id)
+            this.notifications = this.notifications.filter((n) => n.id !== item.id)
+            uni.showToast({ title: i18n.t('notifications.deleted'), icon: 'success' })
+          } catch {
+            uni.showToast({ title: i18n.t('notifications.deleteFailed'), icon: 'none' })
+          }
+        },
+      })
     },
   },
 }
@@ -261,12 +335,18 @@ export default {
   letter-spacing: -0.02em;
 }
 
-.header-action {
+.header-actions {
   position: absolute;
-  right: 16rpx;
+  right: 8rpx;
   /* 绝对定位元素吃不到父级 padding，需自行下移状态栏高度 */
   top: var(--status-bar-height, 0px);
   top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
+  display: inline-flex;
+  align-items: center;
+  height: 72rpx;
+}
+
+.header-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -277,6 +357,10 @@ export default {
 .header-action-text {
   font-size: 28rpx;
   color: var(--color-primary);
+}
+
+.header-action-text.danger {
+  color: var(--color-danger);
 }
 
 /* Tab 栏 */
@@ -394,6 +478,19 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 8rpx;
+}
+
+/* 删除按钮 */
+.notif-del {
+  flex-shrink: 0;
+  width: 56rpx;
+  height: 56rpx;
+  margin-top: 4rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  color: var(--color-text-tertiary);
 }
 
 .notif-title {

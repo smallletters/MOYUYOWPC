@@ -28,6 +28,7 @@ import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.common.enums.RefundChannelEnum;
 import com.moyuyo.service.MemberService;
 import com.moyuyo.service.InviteService;
+import com.moyuyo.service.NotificationService;
 import com.moyuyo.service.RefundChannelService;
 import com.moyuyo.service.RefundService;
 import lombok.RequiredArgsConstructor;
@@ -68,6 +69,8 @@ public class RefundServiceImpl implements RefundService {
     private final FinanceRecordMapper financeRecordMapper;
     /** 全局复用的 Jackson 实例（由 Spring Boot 自动注入） */
     private final ObjectMapper objectMapper;
+    /** 退款完成通知用户 */
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -429,8 +432,26 @@ public class RefundServiceImpl implements RefundService {
                         refundId, order.getOrderNo(), e.getMessage(), e);
             }
         }
+        // 退款完成通知：售后发起的退款已由售后模块单独通知，这里只处理普通退款，避免重复
+        if (order != null && !isAfterSalesRefund(entity)) {
+            try {
+                notificationService.notifyUser(order.getUserId(), "ORDER", "ORDER",
+                        "退款已完成",
+                        "您的订单 " + order.getOrderNo() + " 已退款 "
+                                + (entity.getAmount() == null ? "0" : entity.getAmount().toPlainString())
+                                + "，款项将原路退回，请留意到账通知",
+                        order.getId());
+            } catch (Exception e) {
+                log.warn("[refund] 退款完成通知发送失败 refundId={}, reason={}", refundId, e.getMessage());
+            }
+        }
         log.info("Refund completed: refundId={}, operatorId={}, transactionId={}",
                 refundId, operatorId, finalTransactionId);
+    }
+
+    /** 是否为售后退款（AfterSalesServiceImpl 创建退款单时约定 reason 前缀） */
+    private boolean isAfterSalesRefund(RefundEntity entity) {
+        return entity.getReason() != null && entity.getReason().startsWith("售后退款");
     }
 
     @Override

@@ -13,6 +13,7 @@ import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.common.util.IdempotencyHelper;
 import com.moyuyo.service.LogisticsService;
 import com.moyuyo.service.LogisticsTrackProvider;
+import com.moyuyo.service.NotificationService;
 import com.moyuyo.service.config.LogisticsTrackProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +41,7 @@ public class LogisticsServiceImpl implements LogisticsService {
     private final OrderMapper orderMapper;
     private final ObjectMapper objectMapper;
     private final LogisticsTrackProperties logisticsTrackProperties;
+    private final NotificationService notificationService;
     // P0：幂等表读写，避免并发 / 重试造成的重复发货
     private final JdbcTemplate jdbcTemplate;
 
@@ -151,6 +153,16 @@ public class LogisticsServiceImpl implements LogisticsService {
         orderMapper.updateById(order);
 
         log.info("Order shipped: orderId={}, carrier={}, tracking={}", orderId, carrier, trackingNumber);
+        // 发货通知：用户点击通知可直接进入订单物流
+        try {
+            notificationService.notifyUser(order.getUserId(), "ORDER", "ORDER",
+                    "订单已发货",
+                    "您的订单 " + order.getOrderNo() + " 已发货，承运商：" + carrier
+                            + "，运单号：" + trackingNumber,
+                    order.getId());
+        } catch (Exception e) {
+            log.warn("[logistics] 发货通知发送失败: orderId={}, reason={}", orderId, e.getMessage());
+        }
         return logistics;
     }
 

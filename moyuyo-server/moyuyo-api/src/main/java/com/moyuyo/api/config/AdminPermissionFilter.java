@@ -50,6 +50,17 @@ public class AdminPermissionFilter implements Filter {
     private static final java.util.regex.Pattern ORDER_REFUND_PATH =
             java.util.regex.Pattern.compile("^/api/admin/orders/\\d+/refund/?$");
 
+    /**
+     * 售后管理允许的角色：客服可审核/查看/确认收货，但「完成退款」涉及资金，
+     * 仅允许超管/运营/财务（见 AFTER_SALES_COMPLETE_PATH）。
+     */
+    public static final Set<String> AFTER_SALES_ALLOWED_ROLES =
+            Set.of(SUPER_ADMIN, "OPERATOR", "FINANCE", "CUSTOMER_SVC");
+
+    /** 售后完成退款端点：PUT /api/admin/after-sales/{id}/complete */
+    private static final java.util.regex.Pattern AFTER_SALES_COMPLETE_PATH =
+            java.util.regex.Pattern.compile("^/api/admin/after-sales/\\d+/complete/?$");
+
     /** 无需模块权限的路径前缀（登录态由 JwtAuthFilter 保证） */
     private static final String AUTH_PATH_PREFIX = "/api/admin/auth/";
 
@@ -134,6 +145,19 @@ public class AdminPermissionFilter implements Filter {
             if (!REFUND_ALLOWED_ROLES.contains(role)) {
                 log.warn("管理员角色 [{}] 无权发起退款，路径: {}", role, path);
                 sendForbidden(response, "无权限发起退款");
+                return;
+            }
+            chain.doFilter(request, response);
+            return;
+        }
+
+        // 售后管理：客服可处理退货流转；完成退款属于资金操作，仅超管/运营/财务可执行
+        if (path.startsWith("/api/admin/after-sales")) {
+            boolean completeRefund = AFTER_SALES_COMPLETE_PATH.matcher(path).matches();
+            Set<String> allowed = completeRefund ? REFUND_ALLOWED_ROLES : AFTER_SALES_ALLOWED_ROLES;
+            if (!allowed.contains(role)) {
+                log.warn("管理员角色 [{}] 无权操作售后，路径: {}", role, path);
+                sendForbidden(response, completeRefund ? "无权限完成售后退款" : "无权限处理售后");
                 return;
             }
             chain.doFilter(request, response);

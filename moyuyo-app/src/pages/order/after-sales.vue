@@ -4,9 +4,9 @@
       <view class="header-btn" @click="goBack">
         <text class="back-icon luc-arrow-left" />
       </view>
-      <text class="header-title">售后记录</text>
+      <text class="header-title">{{ $t('afterSales.title') }}</text>
       <view class="header-btn right" @click="onApply">
-        <text class="apply-text">申请售后</text>
+        <text class="apply-text">{{ $t('afterSales.apply') }}</text>
       </view>
     </view>
 
@@ -24,7 +24,7 @@
     </view>
 
     <scroll-view scroll-y class="scroll" @scrolltolower="onLoadMore">
-      <view v-if="filteredList.length === 0" class="empty-state">
+      <view v-if="!loading && filteredList.length === 0" class="empty-state">
         <view class="empty-icon">
           <view class="empty-box">
             <view class="empty-file">
@@ -37,9 +37,9 @@
             <text class="search-icon luc luc-search" />
           </view>
         </view>
-        <text class="empty-title">暂无售后记录</text>
-        <text class="empty-desc">您的售后申请记录将在这里展示</text>
-        <view class="empty-btn" @click="goShopping">去购物</view>
+        <text class="empty-title">{{ $t('afterSales.empty') }}</text>
+        <text class="empty-desc">{{ $t('afterSales.emptyDesc') }}</text>
+        <view class="empty-btn" @click="goShopping">{{ $t('afterSales.goShopping') }}</view>
       </view>
 
       <view
@@ -49,17 +49,19 @@
         @click="goDetail(item)">
         <view class="card-header">
           <view class="card-tags">
-            <text class="tag-status" :class="`tag-${item.status}`">{{ item.statusLabel }}</text>
-            <text class="tag-type">{{ item.typeLabel }}</text>
+            <text class="tag-status" :class="statusClass(item.status)">
+              {{ statusLabel(item) }}
+            </text>
+            <text class="tag-type">{{ typeLabel(item) }}</text>
           </view>
           <text class="card-arrow luc-chevron-right" />
         </view>
 
         <view class="card-body">
-          <image :src="resolveItemImage(item.image)" mode="aspectFill" class="card-img" />
+          <image :src="resolveItemImage(item.mainImage)" mode="aspectFill" class="card-img" />
           <view class="card-info">
-            <text class="card-name">{{ item.productName }}</text>
-            <text class="card-sku">{{ item.sku }}</text>
+            <text class="card-name">{{ item.productName || '-' }}</text>
+            <text class="card-sku">{{ item.skuSpec || '' }}</text>
           </view>
         </view>
 
@@ -67,30 +69,41 @@
 
         <view class="card-footer">
           <view class="card-amount">
-            <text class="amount-label">退款金额</text>
-            <text class="amount-value">-${{ item.refundAmount }}</text>
+            <text class="amount-label">{{ $t('afterSales.refundAmount') }}</text>
+            <text v-if="item.type !== 'EXCHANGE'" class="amount-value">-${{ item.amount }}</text>
+            <text v-else class="amount-value">{{ $t('afterSales.noRefund') }}</text>
           </view>
-          <text class="card-time">{{ item.applyTime }} {{ $t('afterSales.applyAction') }}</text>
+          <text class="card-time">{{ formatDate(item.createTime) }}</text>
         </view>
 
         <view class="card-progress">
           <view class="progress-bar">
             <view
-              v-for="(step, idx) in item.progressSteps"
+              v-for="(step, idx) in progressOf(item).steps"
               :key="idx"
               class="progress-step"
-              :class="{ filled: idx < item.progressIndex, current: idx === item.progressIndex }"
+              :class="{
+                filled: idx < progressOf(item).index,
+                current: idx === progressOf(item).index,
+              }"
             />
           </view>
           <view class="progress-labels">
             <text
-              v-for="(label, idx) in item.progressSteps"
+              v-for="(label, idx) in progressOf(item).steps"
               :key="idx"
               class="progress-label"
-              :class="{ active: idx <= item.progressIndex }"
+              :class="{ active: idx <= progressOf(item).index }"
             >
               {{ label }}
             </text>
+          </view>
+        </view>
+
+        <!-- 审核通过且需寄回：列表内直接填写退货运单号，少一级跳转 -->
+        <view v-if="canFillLogistics(item)" class="card-action">
+          <view class="mini-btn" @click.stop="openLogistics(item)">
+            {{ $t('afterSalesDetail.fillLogistics') }}
           </view>
         </view>
       </view>
@@ -102,28 +115,64 @@
 
       <view class="policy-section">
         <view class="policy-header" @click="showPolicy = !showPolicy">
-          <text class="policy-title">售后政策</text>
-          <text class="policy-toggle">{{ showPolicy ? '收起' : '查看' }}</text>
+          <text class="policy-title">{{ $t('afterSales.policyTitle') }}</text>
+          <text class="policy-toggle">
+            {{ showPolicy ? $t('afterSales.policyCollapse') : $t('afterSales.policyExpand') }}
+          </text>
         </view>
         <view v-if="showPolicy" class="policy-content">
-          <text class="policy-text">
-            自签收之日起 7
-            个自然日内，商品完好且不影响二次销售的情况下，可申请无理由退货。退款将在审核通过后 3-5
-            个工作日内原路退回。
-          </text>
+          <text class="policy-text">{{ $t('afterSales.policyText') }}</text>
           <view class="policy-contact">
-            <text class="contact-text">售后服务热线：400-888-6688</text>
-            <text class="contact-text">服务时间：09:00 - 21:00</text>
+            <text class="contact-text">{{ $t('afterSales.policyEmail') }}</text>
           </view>
         </view>
       </view>
     </scroll-view>
+
+    <!-- 填写退货物流弹层（列表内直接操作） -->
+    <view v-if="logisticsTarget" class="sheet-mask" @click="closeLogistics">
+      <view class="sheet" @click.stop>
+        <view class="sheet-header">
+          <text class="sheet-title">{{ $t('afterSalesDetail.logisticsDialogTitle') }}</text>
+          <text class="sheet-close luc luc-x" @click="closeLogistics" />
+        </view>
+        <picker :value="companyIndex" :range="companyOptions" @change="onCompanyChange">
+          <view class="sheet-picker">
+            <text>{{ logisticsForm.company || $t('afterSalesDetail.companyPlaceholder') }}</text>
+            <text class="arrow luc-chevron-right" />
+          </view>
+        </picker>
+        <input
+          v-model="logisticsForm.trackingNo"
+          class="sheet-input"
+          :placeholder="$t('afterSalesDetail.trackingPlaceholder')"
+        >
+        <view class="sheet-actions">
+          <view class="btn-outline" @click="closeLogistics">
+            {{ $t('afterSalesDetail.cancel') }}
+          </view>
+          <view class="btn-primary" :class="{ disabled: submitting }" @click="submitLogistics">
+            {{ submitting ? $t('afterSalesDetail.submitting') : $t('afterSalesDetail.submit') }}
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script>
 import { afterSalesApi } from '@/api'
+import { i18n, t } from '@/i18n'
 import { toAbsoluteImageUrl } from '@/utils/imageUrl'
+
+// tab 与服务端状态筛选参数一一对应，避免前端本地过滤导致分页数据丢失
+const TAB_STATUS = {
+  all: 'ALL',
+  pending: 'PENDING',
+  processing: 'PROCESSING',
+  completed: 'COMPLETED',
+  closed: 'CLOSED',
+}
 
 export default {
   pageTitleKey: 'pageTitle.orderAfterSales',
@@ -135,25 +184,59 @@ export default {
       loading: false,
       noMore: false,
       page: 1,
-      tabs: [
-        { label: '全部', value: 'all' },
-        { label: '待处理', value: 'pending' },
-        { label: '处理中', value: 'processing' },
-        { label: '已完成', value: 'completed' },
-      ],
+      // 订单维度筛选：从订单详情进入时只展示该订单的售后记录
+      orderId: null,
       records: [],
+      // 退货物流弹层
+      logisticsTarget: null,
+      submitting: false,
+      companyIndex: 0,
+      companyOptions: ['UPS', 'USPS', 'FedEx', 'DHL', '顺丰速运', '其他'],
+      logisticsForm: {
+        company: '',
+        trackingNo: '',
+      },
     }
   },
 
   computed: {
+    /** tab 文案走 i18n，切换语言时随 locale 响应式刷新 */
+    tabs() {
+      return [
+        { label: t('afterSales.tabs.all'), value: 'all' },
+        { label: t('afterSales.tabs.pending'), value: 'pending' },
+        { label: t('afterSales.tabs.processing'), value: 'processing' },
+        { label: t('afterSales.tabs.completed'), value: 'completed' },
+        { label: t('afterSales.tabs.closed'), value: 'closed' },
+      ]
+    },
+
     filteredList() {
-      if (this.activeTab === 'all') return this.records
-      return this.records.filter((r) => r.status === this.activeTab)
+      // 状态筛选已下推到服务端，此处直接展示当前页数据
+      return this.records
+    },
+
+    /** 当前 tab 对应的服务端筛选值 */
+    currentStatus() {
+      return TAB_STATUS[this.activeTab] || 'ALL'
     },
   },
 
-  onLoad() {
-    this.loadAfterSales()
+  watch: {
+    activeTab() {
+      // 切换 tab 时先清空旧数据，避免加载期间展示上一状态的数据
+      this.records = []
+      this.reload()
+    },
+  },
+
+  onLoad(query) {
+    this.orderId = (query && query.orderId) || null
+  },
+
+  onShow() {
+    // 首次进入与从申请页/详情页返回时都刷新，避免新提交的售后不显示
+    this.reload()
   },
 
   methods: {
@@ -169,13 +252,79 @@ export default {
       uni.navigateBack()
     },
 
+    formatDate(value) {
+      if (!value) return ''
+      const d = new Date(value)
+      if (Number.isNaN(d.getTime())) return String(value)
+      return d.toLocaleDateString(i18n.locale)
+    },
+
+    statusLabel(item) {
+      // 仅退款没有寄回/收货环节，审核通过后统一显示"待退款"
+      if (
+        item.type === 'REFUND_ONLY' &&
+        (item.status === 'RECEIVED' ||
+          (item.status === 'APPROVED' && item.deliveryType === 'NO_RETURN'))
+      ) {
+        return t('afterSales.refundPending')
+      }
+      const key = `afterSales.status.${item.status}`
+      const label = t(key)
+      return label && label !== key ? label : item.statusLabel || item.status
+    },
+
+    typeLabel(item) {
+      const key = `afterSales.types.${item.type}`
+      const label = t(key)
+      return label && label !== key ? label : item.typeLabel || item.type
+    },
+
+    statusClass(status) {
+      if (status === 'PENDING') return 'tag-pending'
+      if (status === 'COMPLETED') return 'tag-completed'
+      if (status === 'REJECTED' || status === 'CANCELLED') return 'tag-closed'
+      return 'tag-processing'
+    },
+
+    /**
+     * 进度节点：仅退款 3 步（申请→审核→退款），退货退款/换货 5 步
+     * index 来自后端 progressIndex，拒绝/取消为 -1 不点亮任何节点
+     */
+    progressOf(item) {
+      const submit = t('afterSalesDetail.progress.submit')
+      const review = t('afterSalesDetail.progress.review')
+      const refund = t('afterSalesDetail.progress.refund')
+      const ship = t('afterSalesDetail.progress.ship')
+      const receive = t('afterSalesDetail.progress.receive')
+      const finish = t('afterSalesDetail.progress.finish')
+      const steps =
+        item.type === 'REFUND_ONLY'
+          ? [submit, review, refund]
+          : [submit, review, ship, receive, item.type === 'EXCHANGE' ? finish : refund]
+      return { steps, index: item.progressIndex == null ? 0 : Number(item.progressIndex) }
+    },
+
+    /** 重置分页并重新加载（切 tab / 页面重新显示时使用） */
+    reload() {
+      this.page = 1
+      this.noMore = false
+      this.loadAfterSales()
+    },
+
     async loadAfterSales() {
       this.loading = true
       try {
-        const res = await afterSalesApi.getAfterSales({ page: this.page })
-        const data = res.data || []
+        const size = 10
+        const res = await afterSalesApi.getAfterSales({
+          page: this.page,
+          size,
+          status: this.currentStatus,
+          orderId: this.orderId || undefined,
+        })
+        // 后端返回 MyBatis-Plus 分页对象 { records, total, current, size }
+        const data = (res && res.records) || []
         this.records = this.page === 1 ? data : [...this.records, ...data]
-        this.noMore = data.length === 0
+        this.noMore = data.length < size
       } catch (err) {
         uni.showToast({ title: this.$t('afterSales.loadFailed'), icon: 'none' })
       } finally {
@@ -184,7 +333,12 @@ export default {
     },
 
     onApply() {
-      uni.navigateTo({ url: '/pages/order/apply-after-sales' })
+      // 从售后记录进入时没有订单上下文，申请页会先让用户选择订单；
+      // 若当前已按订单筛选，则直接带入该订单
+      const url = this.orderId
+        ? `/pages/order/returns?orderId=${this.orderId}`
+        : '/pages/order/returns'
+      uni.navigateTo({ url })
     },
 
     onLoadMore() {
@@ -194,7 +348,57 @@ export default {
     },
 
     goDetail(item) {
-      uni.navigateTo({ url: `/pages/order/detail?id=${item.id}` })
+      uni.navigateTo({ url: `/pages/order/after-sales-detail?id=${item.id}` })
+    },
+
+    /** 待寄回、已寄回都可填写/更正运单号 */
+    canFillLogistics(item) {
+      return Boolean(
+        item &&
+        item.deliveryType === 'RETURN_SHIP' &&
+        ['APPROVED', 'RETURNING'].includes(item.status),
+      )
+    },
+
+    openLogistics(item) {
+      this.logisticsTarget = item
+      this.companyIndex = 0
+      this.logisticsForm.company = this.companyOptions[0]
+      this.logisticsForm.trackingNo = ''
+    },
+
+    closeLogistics() {
+      if (this.submitting) return
+      this.logisticsTarget = null
+    },
+
+    onCompanyChange(e) {
+      this.companyIndex = Number(e.detail.value)
+      this.logisticsForm.company = this.companyOptions[this.companyIndex]
+    },
+
+    async submitLogistics() {
+      if (!this.logisticsTarget || this.submitting) return
+      const trackingNo = (this.logisticsForm.trackingNo || '').trim()
+      if (!this.logisticsForm.company || !trackingNo) {
+        uni.showToast({ title: t('afterSalesDetail.logisticsRequired'), icon: 'none' })
+        return
+      }
+      this.submitting = true
+      try {
+        await afterSalesApi.submitReturnLogistics(this.logisticsTarget.id, {
+          company: this.logisticsForm.company,
+          trackingNo,
+        })
+        uni.showToast({ title: t('afterSalesDetail.logisticsSubmitted'), icon: 'success' })
+        this.logisticsTarget = null
+        // 重新拉取列表，状态更新为"已寄回待收货"
+        this.reload()
+      } catch (e) {
+        uni.showToast({ title: e.message || t('afterSalesDetail.logisticsFailed'), icon: 'none' })
+      } finally {
+        this.submitting = false
+      }
     },
 
     goShopping() {
@@ -206,9 +410,13 @@ export default {
 
 <style lang="scss" scoped>
 .after-sales {
+  width: 100%;
+  box-sizing: border-box;
   min-height: 100vh;
   background: var(--color-background);
   padding-bottom: 48rpx;
+  /* 禁止整页横向滚动：任何超宽子元素都不能把容器撑出屏幕 */
+  overflow-x: hidden;
 }
 
 .header {
@@ -279,7 +487,9 @@ export default {
 }
 
 .tab {
-  flex: 1;
+  flex: 1 1 0;
+  /* min-width:0 允许 flex 子项收缩，5 个 tab 在窄屏 + 英文文案下不会撑宽容器 */
+  min-width: 0;
   text-align: center;
   padding: 24rpx 0;
   font-size: 26rpx;
@@ -304,10 +514,16 @@ export default {
 }
 
 .scroll {
+  /* 内容区宽度跟随屏幕：box-sizing 让 padding 不额外撑宽，横向溢出内容被裁剪 */
+  width: 100%;
+  box-sizing: border-box;
   padding: 20rpx;
+  overflow-x: hidden;
 }
 
 .card {
+  width: 100%;
+  box-sizing: border-box;
   background: var(--color-surface);
   border: 1rpx solid var(--color-divider);
   border-radius: var(--radius-md);
@@ -352,6 +568,11 @@ export default {
   &.tag-completed {
     background: #e9f9ee;
     color: #34c759;
+  }
+
+  &.tag-closed {
+    background: var(--color-divider);
+    color: var(--color-text-tertiary);
   }
 }
 
@@ -591,11 +812,15 @@ export default {
 }
 
 .policy-section {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   margin-top: 32rpx;
   padding: 24rpx;
   background: var(--color-surface);
   border: 1rpx solid var(--color-divider);
   border-radius: var(--radius-md);
+  overflow: hidden;
 }
 
 .policy-header {
@@ -626,6 +851,9 @@ export default {
   font-size: 24rpx;
   color: var(--color-text-secondary);
   line-height: 1.6;
+  /* 长英文/连续字符强制换行，避免撑破政策容器 */
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .policy-contact {
@@ -645,5 +873,124 @@ export default {
   padding: 40rpx;
   color: var(--color-text-tertiary);
   font-size: 26rpx;
+}
+
+.card-action {
+  padding: 0 24rpx 24rpx;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.mini-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 64rpx;
+  padding: 0 32rpx;
+  border-radius: 999rpx;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: 24rpx;
+  font-weight: var(--font-weight-semibold);
+}
+
+.sheet-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+}
+
+.sheet {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 32rpx 24rpx calc(32rpx + env(safe-area-inset-bottom));
+  background: var(--color-surface);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.sheet-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.sheet-close {
+  font-size: 36rpx;
+  color: var(--color-text-tertiary);
+}
+
+.sheet-picker {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 16rpx;
+  background: var(--color-background);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  margin-bottom: 16rpx;
+}
+
+.arrow {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-tertiary);
+}
+
+.sheet-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 20rpx 16rpx;
+  background: var(--color-background);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.sheet-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.btn-outline {
+  flex: 1;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid var(--color-divider);
+  border-radius: 999rpx;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+}
+
+.btn-primary {
+  flex: 1;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary);
+  color: #ffffff;
+  border-radius: 999rpx;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.btn-primary.disabled {
+  opacity: 0.6;
 }
 </style>
