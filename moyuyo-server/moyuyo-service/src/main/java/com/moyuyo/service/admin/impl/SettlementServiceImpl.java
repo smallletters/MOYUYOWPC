@@ -33,10 +33,16 @@ public class SettlementServiceImpl implements SettlementService {
   /** 佣金率 */
   private static final BigDecimal COMMISSION_RATE = new BigDecimal("0.05");
 
-  /** 已支付状态的订单列表，用于结算聚合 */
+  /**
+   * 已支付状态的订单列表，用于结算聚合。
+   * <p>
+   * 必须包含 PENDING_SHIP：支付成功后订单会直接进入 PENDING_SHIP（系统内不存在长期 PAID 状态），
+   * 漏配会把「已付款未发货」的订单排除在结算之外，造成财务少结算。
+   */
   private static final List<String> PAID_STATUSES = List.of(
-      OrderStatusEnum.PAID.name(), OrderStatusEnum.SHIPPED.name(),
-      OrderStatusEnum.COMPLETED.name(), OrderStatusEnum.RECEIVED.name());
+      OrderStatusEnum.PAID.name(), OrderStatusEnum.PENDING_SHIP.name(),
+      OrderStatusEnum.SHIPPED.name(), OrderStatusEnum.RECEIVED.name(),
+      OrderStatusEnum.COMPLETED.name());
 
   @Override
   public List<Map<String, Object>> listAll(String status) {

@@ -37,7 +37,9 @@ class SensitiveWordFilterTest {
   @Test
   void shouldDetectRegexWord() {
     SensitiveWordEntity word = new SensitiveWordEntity();
-    word.setWord("\\b假\\S*货\\b");
+    // 注意：Java 的 \b 只在「单词字符/非单词字符」交界生效，中文两侧都不是 \w，
+    // 用 \b假\S*货\b 会永远匹配不到中文文本；这里用不含 \b 的中文正则。
+    word.setWord("假\\S*货");
     word.setMatchMode("REGEX");
     word.setStatus("ENABLED");
 

@@ -17,6 +17,9 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/refunds")
 @RequiredArgsConstructor
+// 安全约束：本控制器仅保留 C 端用户能力（申请/查看自己的退款）。
+// 审核、拒绝、完成退款、全量退款列表属于管理端资金操作，统一由 /api/admin/refunds（AdminRefundController + RBAC）提供，
+// 禁止在此重新暴露，避免任意登录用户越权操作退款。
 public class RefundController {
 
     private final RefundService refundService;
@@ -41,37 +44,5 @@ public class RefundController {
         // 分页参数统一守卫
         int[] pageParams = PageParamGuard.normalize(page, size, 10);
         return Result.success(refundService.listUserRefunds(UserContextHolder.getUserId(), pageParams[0], pageParams[1]));
-    }
-
-    @Operation(summary = "审核退款（运营）")
-    @PostMapping("/{id}/approve")
-    public Result<Void> approveRefund(@PathVariable Long id) {
-        refundService.approveRefund(id, UserContextHolder.getUserId());
-        return Result.success();
-    }
-
-    @Operation(summary = "拒绝退款（运营）")
-    @PostMapping("/{id}/reject")
-    public Result<Void> rejectRefund(@PathVariable Long id, @RequestBody String reason) {
-        refundService.rejectRefund(id, UserContextHolder.getUserId(), reason);
-        return Result.success();
-    }
-
-    @Operation(summary = "完成退款（财务）")
-    @PostMapping("/{id}/complete")
-    public Result<Void> completeRefund(@PathVariable Long id, @RequestParam String transactionId) {
-        refundService.completeRefund(id, UserContextHolder.getUserId(), transactionId);
-        return Result.success();
-    }
-
-    @Operation(summary = "全部退款列表（运营）")
-    @GetMapping
-    public Result<IPage<RefundVO>> listAll(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String status) {
-        // 分页参数统一守卫
-        int[] pageParams = PageParamGuard.normalize(page, size, 20);
-        return Result.success(refundService.listAllRefunds(pageParams[0], pageParams[1], status));
     }
 }

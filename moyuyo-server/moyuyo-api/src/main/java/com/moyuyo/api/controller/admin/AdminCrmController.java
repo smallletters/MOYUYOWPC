@@ -122,14 +122,15 @@ public class AdminCrmController {
             .lt(OrderEntity::getCreateTime, tomorrowStart));
 
     // 今日销售额：已支付及后续正向状态的订单 pay_amount 之和
-    // 注意：历史上曾误用旧枚举值 "DELIVERED"，与 OrderStatusEnum.SHIPPED 不匹配，会漏算已发货但未收货的订单。
-    // 这里统一按 OrderStatusEnum 当前枚举写出，避免后续枚举再改名时再出现同类口径漂移。
+    // 必须包含 PENDING_SHIP：支付成功后订单直接进入 PENDING_SHIP，漏配会漏算「已付款未发货」订单
+    // （这正是当天新成交订单的主体）。历史上曾误用旧枚举值 "DELIVERED"，这里统一按枚举写出。
     List<OrderEntity> todayOrdersList = orderMapper.selectList(
         new LambdaQueryWrapper<OrderEntity>()
             .ge(OrderEntity::getCreateTime, todayStart)
             .lt(OrderEntity::getCreateTime, tomorrowStart)
             .in(OrderEntity::getStatus,
                 OrderStatusEnum.PAID.name(),
+                OrderStatusEnum.PENDING_SHIP.name(),
                 OrderStatusEnum.SHIPPED.name(),
                 OrderStatusEnum.RECEIVED.name(),
                 OrderStatusEnum.COMPLETED.name()));
@@ -195,12 +196,14 @@ public class AdminCrmController {
     int currentHour = LocalTime.now().getHour();
 
     // 一次性查"昨天 00:00 ~ 明天 00:00（不含）"范围内的已支付订单，内存按小时分桶，避免两条 SQL
+    // 状态集合必须含 PENDING_SHIP（支付成功即进入该状态），否则刚成交的订单不会计入 GMV
     List<OrderEntity> orders = orderMapper.selectList(
         new LambdaQueryWrapper<OrderEntity>()
             .ge(OrderEntity::getCreateTime, yesterdayStart)
             .lt(OrderEntity::getCreateTime, todayStart.plusDays(1))
             .in(OrderEntity::getStatus,
                 OrderStatusEnum.PAID.name(),
+                OrderStatusEnum.PENDING_SHIP.name(),
                 OrderStatusEnum.SHIPPED.name(),
                 OrderStatusEnum.RECEIVED.name(),
                 OrderStatusEnum.COMPLETED.name())
@@ -287,9 +290,11 @@ public class AdminCrmController {
     LocalDateTime todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
     LocalDateTime tomorrowStart = todayStart.plusDays(1);
 
-    // 仅统计处于"正向状态"（PAID/SHIPPED/RECEIVED/COMPLETED）的订单项，
-    // 避免把今日创建但仍处 PENDING_PAY / CANCELLED / REFUNDED / REFUNDING 的数量计入"今日销量"
+    // 仅统计处于"正向状态"（PAID/PENDING_SHIP/SHIPPED/RECEIVED/COMPLETED）的订单项，
+    // 避免把今日创建但仍处 PENDING_PAY / CANCELLED / REFUNDED / REFUNDING 的数量计入"今日销量"。
+    // 注意必须包含 PENDING_SHIP：支付成功即进入该状态，漏配会漏掉当天刚成交的订单。
     String positiveStatusSql = "'" + OrderStatusEnum.PAID.name() + "','"
+        + OrderStatusEnum.PENDING_SHIP.name() + "','"
         + OrderStatusEnum.SHIPPED.name() + "','"
         + OrderStatusEnum.RECEIVED.name() + "','"
         + OrderStatusEnum.COMPLETED.name() + "'";

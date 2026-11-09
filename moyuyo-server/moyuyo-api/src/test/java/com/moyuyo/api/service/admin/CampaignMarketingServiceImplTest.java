@@ -54,6 +54,16 @@ class CampaignMarketingServiceImplTest {
   @Mock
   private FlashSaleMapper flashSaleMapper;
 
+  // CampaignMarketingServiceImpl 现有依赖：缺任一 Mock 都会在对应维度方法中 NPE
+  @Mock
+  private com.moyuyo.dao.mapper.UserCouponMapper userCouponMapper;
+
+  @Mock
+  private com.moyuyo.dao.mapper.FlashSaleOrderMapper flashSaleOrderMapper;
+
+  @Mock
+  private com.moyuyo.dao.mapper.InviteMapper inviteMapper;
+
   @InjectMocks
   private CampaignMarketingServiceImpl service;
 
@@ -84,8 +94,8 @@ class CampaignMarketingServiceImplTest {
     assertEquals("618大促", vo1.getName());
     assertEquals("DISCOUNT", vo1.getType());
     assertEquals("ACTIVE", vo1.getStatus());
-    assertEquals("2026-06-01", vo1.getStartDate(), "LocalDateTime 应格式化为 yyyy-MM-dd");
-    assertEquals("2026-06-18", vo1.getEndDate());
+    assertEquals("2026-06-01 00:00:00", vo1.getStartDate(), "LocalDateTime 应格式化为 yyyy-MM-dd HH:mm:ss");
+    assertEquals("2026-06-18 00:00:00", vo1.getEndDate());
     assertEquals(new BigDecimal("10000.00"), vo1.getBudget());
     assertEquals(new BigDecimal("5000.00"), vo1.getGmv());
     assertEquals(new BigDecimal("800.00"), vo1.getCost());
@@ -455,7 +465,6 @@ class CampaignMarketingServiceImplTest {
   @Test
   void getCouponEffects_无券数据_指标全为0不抛异常() {
     when(couponMapper.selectList(any())).thenReturn(List.of());
-    when(orderMapper.selectList(any())).thenReturn(List.of());
 
     CouponEffectResponse result = service.getCouponEffects(7);
 
@@ -483,7 +492,8 @@ class CampaignMarketingServiceImplTest {
     assertEquals(BigDecimal.ZERO, result.getGmv());
     assertEquals(1, result.getItems().size());
     assertEquals("测试券", result.getItems().get(0).getName());
-    assertEquals(50, result.getItems().get(0).getIssued());
+    // 明细中的 issued 为累计发放量（claimedCount=100），used 为累计核销量（50）
+    assertEquals(100, result.getItems().get(0).getIssued());
     assertEquals(50, result.getItems().get(0).getUsed());
   }
 
@@ -512,8 +522,7 @@ class CampaignMarketingServiceImplTest {
     f.setStartTime(LocalDateTime.now().minusHours(1));
     f.setEndTime(LocalDateTime.now().plusHours(1));
     when(flashSaleMapper.selectList(any())).thenReturn(List.of(f));
-    when(orderMapper.selectList(any())).thenReturn(List.of());
-    when(orderMapper.selectCount(any())).thenReturn(0L);
+    // 该场次无秒杀订单（flashSaleOrderMapper 默认返回空列表），订单相关统计不会触发 orderMapper 查询
 
     FlashEffectResponse result = service.getFlashEffects(7);
 

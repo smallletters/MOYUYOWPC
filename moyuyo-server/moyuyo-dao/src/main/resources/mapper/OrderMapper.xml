@@ -22,7 +22,7 @@
       SUM(o.pay_amount) AS mAmount
     FROM mo_order o
     LEFT JOIN mo_user u ON u.id = o.user_id
-    WHERE o.status IN ('PAID', 'SHIPPED', 'COMPLETED')
+    WHERE o.status IN ('PAID', 'PENDING_SHIP', 'SHIPPED', 'RECEIVED', 'COMPLETED')
     AND o.delete_status = 0
     GROUP BY o.user_id, u.id, u.nickname
     ORDER BY mAmount DESC

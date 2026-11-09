@@ -151,14 +151,15 @@ class AdminOrderOpsControllerTest {
   void recordPrint_有效请求_使用请求中的值() {
     OrderPrintRecordRequest request = new OrderPrintRecordRequest();
     request.setOrderId(100L);
-    request.setPrintType("SHIPPING");
+    // printType 受白名单约束（PICK/PACK/SHIP/LABEL/SHIPPING_LABEL），快递面单用 SHIPPING_LABEL
+    request.setPrintType("SHIPPING_LABEL");
     request.setTemplateName("快递单模板A");
     request.setPaperSize("A5");
     request.setOperator("张三");
 
     adminOrderOpsController.recordPrint(request);
 
-    verify(adminOrderOpsService).recordPrint(100L, "SHIPPING", "快递单模板A", "A5", "张三");
+    verify(adminOrderOpsService).recordPrint(100L, "SHIPPING_LABEL", "快递单模板A", "A5", "张三");
   }
 
   @Test
@@ -168,8 +169,9 @@ class AdminOrderOpsControllerTest {
 
     adminOrderOpsController.recordPrint(request);
 
-    // printType 默认 PICK, templateName 默认"默认模板", paperSize 默认 A4, operator 默认"系统"
-    verify(adminOrderOpsService).recordPrint(100L, "PICK", "默认模板", "A4", "系统");
+    // printType 默认 PICK，templateName 默认"默认模板"，operator 默认"系统"；
+    // paperSize 不做默认值填充，留空交由 Service.normalizePaperSize() 归一化，因此透传 null
+    verify(adminOrderOpsService).recordPrint(100L, "PICK", "默认模板", null, "系统");
   }
 
   // ============ createPriceModify ============

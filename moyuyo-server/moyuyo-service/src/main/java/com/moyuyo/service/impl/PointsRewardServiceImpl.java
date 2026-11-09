@@ -1,7 +1,6 @@
 package com.moyuyo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.dao.admin.entity.SystemConfigEntity;
 import com.moyuyo.dao.admin.mapper.SystemConfigMapper;
 import com.moyuyo.dao.entity.OrderEntity;
@@ -118,12 +117,17 @@ public class PointsRewardServiceImpl {
 
     /**
      * 判断用户是否首单（当前订单之前没有任何已支付订单）
+     * <p>
+     * 关键：不能用 {@code status = 'PAID'} 判定。支付成功后订单会直接推进到 PENDING_SHIP，
+     * 系统内不存在长期停留在 PAID 的订单，按状态过滤会永远查不到历史订单，
+     * 导致每笔订单都被判为首单、首单倍率被重复发放。
+     * 这里改为判定「已写入支付时间 paid_at」，覆盖所有支付过的订单（含已退款/已完成）。
      */
     private boolean isFirstPaidOrder(Long userId, Long currentOrderId) {
         Long count = orderMapper.selectCount(
                 new LambdaQueryWrapper<OrderEntity>()
                         .eq(OrderEntity::getUserId, userId)
-                        .eq(OrderEntity::getStatus, OrderStatusEnum.PAID.name())
+                        .isNotNull(OrderEntity::getPaidAt)
                         .ne(OrderEntity::getId, currentOrderId));
         return count == null || count == 0;
     }

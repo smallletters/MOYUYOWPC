@@ -121,7 +121,7 @@ public class Track17TrackProvider implements LogisticsTrackProvider {
      * 设计要点：
      * <ul>
      *   <li>不传 carrier 参数让 17TRACK 自动识别（避免维护 SF->数字 carrier 映射表）</li>
-     *   <li>HTTP 429 限流直接返回空列表（重试会放大限流），等下次定时轮询</li>
+     *   <li>HTTP 429 限流：直接吞掉异常返回空列表，避免 @Retry 重试放大限流</li>
      *   <li>code=0 + rejected 含 -18019902（未注册）：自动注册一次，本次返回空轨迹</li>
      *   <li>code=0 + rejected 含 -18019909（暂无信息）：返回空列表，等下次轮询</li>
      *   <li>异常一律抛 RuntimeException，由 @Retry / @CircuitBreaker 决定是否重试</li>
@@ -141,8 +141,16 @@ public class Track17TrackProvider implements LogisticsTrackProvider {
         String url = API_BASE + "/gettrackinfo";
         log.debug("17TRACK query: url={}, tracking={}", url, trackingNumber);
 
-        ResponseEntity<String> response = restTemplate.exchange(
-                url, HttpMethod.POST, entity, String.class);
+        ResponseEntity<String> response;
+        try {
+            response = restTemplate.exchange(
+                    url, HttpMethod.POST, entity, String.class);
+        } catch (HttpClientErrorException.TooManyRequests tooManyRequests) {
+            // 429 是平台限流信号：重试只会继续被拒并拖垮熔断统计，
+            // 这里直接返回空轨迹，等下一轮轮询（轮询任务自带 350ms 逐笔节流）
+            log.warn("17TRACK rate limited (429), skip and retry on next poll, tracking={}", trackingNumber);
+            return Collections.emptyList();
+        }
 
         return parseResponse(response.getBody(), trackingNumber);
     }
@@ -208,6 +216,10 @@ public class Track17TrackProvider implements LogisticsTrackProvider {
         // 取第一个匹配结果（不传 carrier 时如有多个，取最新注册的一条）
         JsonNode firstAccepted = accepted.get(0);
 
+        // 17TRACK 的权威状态字段：accepted[].last_status（如 Delivered / Undelivered）。
+        // events 与紧凑 z1 格式不一定带 status，忽略它会让自动签收只能依赖描述关键词（本地化描述会漏判）。
+        String lastStatus = firstAccepted.path("last_status").asText("");
+
         // 兼容新版 events 数组格式（time/location/description/status）
         JsonNode events = firstAccepted.path("events");
         if (events.isArray() && !events.isEmpty()) {
@@ -220,8 +232,9 @@ public class Track17TrackProvider implements LogisticsTrackProvider {
                 item.setStatus(ev.path("status").asText(""));
                 items.add(item);
             }
-            // 统一按时间倒序（最新在前），不依赖第三方返回顺序
-            items.sort(Comparator.comparing(LogisticsVO.TraceItem::getTime).reversed());
+            // 统一按真实时间倒序（最新在前）：直接比较字符串在时区/格式不同时会排错
+            items.sort(Comparator.comparingLong((LogisticsVO.TraceItem t) -> timeSortKey(t.getTime())).reversed());
+            applyLastStatus(items, lastStatus);
             return items;
         }
 
@@ -238,7 +251,8 @@ public class Track17TrackProvider implements LogisticsTrackProvider {
                 items.add(item);
             }
             // z1 通常已倒序，但仍统一排序：顺序变化会导致首条不是最新，签收判定取错事件
-            items.sort(Comparator.comparing(LogisticsVO.TraceItem::getTime).reversed());
+            items.sort(Comparator.comparingLong((LogisticsVO.TraceItem t) -> timeSortKey(t.getTime())).reversed());
+            applyLastStatus(items, lastStatus);
             return items;
         }
 
@@ -249,10 +263,55 @@ public class Track17TrackProvider implements LogisticsTrackProvider {
             item.setTime(z0.path("a").asText(""));
             item.setLocation(z0.path("c").asText(""));
             item.setDesc(z0.path("z").asText(""));
+            item.setStatus(lastStatus);
             return List.of(item);
         }
 
         return Collections.emptyList();
+    }
+
+    /**
+     * 用 17TRACK 的 last_status 补齐"最新一条"轨迹的状态
+     * <p>
+     * last_status 是平台侧的权威状态（Delivered / Undelivered / InTransit 等），
+     * 而 events / z1 明细里可能没有 status 字段；不补这一步，自动签收只能依赖描述关键词。
+     */
+    private void applyLastStatus(List<LogisticsVO.TraceItem> items, String lastStatus) {
+        if (items.isEmpty() || lastStatus == null || lastStatus.isBlank()) {
+            return;
+        }
+        // 仅覆盖空状态，避免丢失明细中更精确的状态（如 "Delivered" 细分事件）
+        if (items.get(0).getStatus() == null || items.get(0).getStatus().isBlank()) {
+            items.get(0).setStatus(lastStatus);
+        }
+    }
+
+    /**
+     * 轨迹时间排序键（毫秒时间戳）
+     * <p>
+     * 17TRACK 同时存在 ISO8601 带时区（events.time）与 "yyyy-MM-dd HH:mm(:ss)" 本地时间（z1.a）两种格式，
+     * 直接按字符串排序会在时区/格式混排时把最新事件排到后面，进而导致签收判定取错事件。
+     * 无法解析的时间返回 Long.MIN_VALUE（视为最旧，倒序后排在末尾）。
+     */
+    private static long timeSortKey(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return Long.MIN_VALUE;
+        }
+        String trimmed = raw.trim();
+        try {
+            // ISO8601 带时区偏移，如 2024-01-01T12:00:00+00:00
+            return java.time.OffsetDateTime.parse(trimmed).toInstant().toEpochMilli();
+        } catch (Exception ignore) {
+            // 继续尝试本地时间格式
+        }
+        try {
+            // "2024-01-01 12:00:00" / "2024-01-01 12:00"
+            String normalized = trimmed.replace(' ', 'T');
+            return java.time.LocalDateTime.parse(normalized)
+                    .atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        } catch (Exception ignore) {
+            return Long.MIN_VALUE;
+        }
     }
 
     /**

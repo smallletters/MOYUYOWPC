@@ -10,6 +10,7 @@ import com.moyuyo.common.dto.order.CreateOrderRequest;
 import com.moyuyo.common.dto.order.OrderItemRequest;
 import com.moyuyo.dao.entity.AddressEntity;
 import com.moyuyo.dao.entity.FlashSaleEntity;
+import com.moyuyo.dao.entity.LogisticsEntity;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.ProductEntity;
@@ -18,6 +19,7 @@ import com.moyuyo.dao.entity.PaymentEntity;
 import com.moyuyo.dao.admin.mapper.FinanceRecordMapper;
 import com.moyuyo.dao.mapper.AddressMapper;
 import com.moyuyo.dao.mapper.FlashSaleMapper;
+import com.moyuyo.dao.mapper.LogisticsMapper;
 import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.PaymentMapper;
@@ -83,6 +85,10 @@ class OrderServiceTest {
 
   @Mock
   private FlashSaleMapper flashSaleMapper;
+
+  // OrderServiceImpl#confirmReceived 会同步写 mo_logistics.received_at，必须注入 Mock 否则 NPE
+  @Mock
+  private LogisticsMapper logisticsMapper;
 
   @Mock
   private MemberPriceService memberPriceService;
@@ -152,6 +158,8 @@ class OrderServiceTest {
     TableInfoHelper.initTableInfo(assistant, ProductEntity.class);
     TableInfoHelper.initTableInfo(assistant, ProductSkuEntity.class);
     TableInfoHelper.initTableInfo(assistant, PaymentEntity.class);
+    // confirmReceived 使用 LambdaUpdateWrapper<LogisticsEntity>，同样需要初始化元数据
+    TableInfoHelper.initTableInfo(assistant, LogisticsEntity.class);
   }
 
   /** 构造一个可用的收货地址，供服务端运费计算使用 */

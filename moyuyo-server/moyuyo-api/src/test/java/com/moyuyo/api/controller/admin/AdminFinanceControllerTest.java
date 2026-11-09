@@ -184,7 +184,8 @@ class AdminFinanceControllerTest {
     // Controller 应再查一次并返回原记录
     SettlementEntity raceWinner = buildSettlement(99L, "2026-10-10",
       new BigDecimal("8888.00"), "PENDING");
-    when(settlementMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(raceWinner);
+    // 第一次应用层判重未命中（返回 null），INSERT 撞唯一索引后再查一次才拿到并发写入的原记录
+    when(settlementMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null, raceWinner);
     doThrow(new DuplicateKeyException("Duplicate entry 'SET-20261010' for key 'uk_settlement_no'"))
       .when(settlementMapper).insert(any(SettlementEntity.class));
 
@@ -199,7 +200,7 @@ class AdminFinanceControllerTest {
     // then
     assertEquals(0, result.getCode(), "应返回成功,而不是错误");
     assertEquals(99L, result.getData().getId(), "返回原记录的 id");
-    assertEquals("当日结算单已存在,已返回原记录", result.getData().getMessage());
+    assertEquals("当日结算单已存在，已返回原记录", result.getData().getMessage());
     // 不应再插入一条 finance_record(避免重复流水)
     verify(financeRecordMapper, never()).insert(any(FinanceRecordEntity.class));
   }

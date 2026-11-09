@@ -439,14 +439,12 @@ public class GlobalExceptionHandler {
                     .body(Result.error(503, "缓存服务异常，请稍后重试"));
         }
         log.error("未预期异常: {}", sanitizeErrorMessage(e.getMessage()), e);
-        // 返回脱敏后的 message，便于前端精准提示用户；不再固定写死「服务器内部错误」
-        String msg = sanitizeErrorMessage(e.getMessage());
-        if (msg == null || msg.isBlank()) {
-            msg = "服务器内部错误";
-        }
+        // 兜底异常不回显原始 message：脱敏规则只能覆盖 SQL/路径/KV 凭据等已知模式，
+        // 无法可靠剥离自由文本中的内部细节（如连接串、账号口令），存在信息泄露风险。
+        // 详细内容只进日志（已脱敏），对客户端统一返回固定文案。
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Result.error(500, msg));
+                .body(Result.error(500, "服务器内部错误，请稍后重试"));
     }
 
     // ========== 错误消息脱敏工具方法 ==========

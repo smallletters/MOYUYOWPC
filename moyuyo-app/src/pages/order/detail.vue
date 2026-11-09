@@ -158,10 +158,10 @@
       <view v-if="order.status === 'COMPLETED'" class="btn btn-primary" @click="onReview">
         {{ $t('orderReviewDetail.title') }}
       </view>
-      <!-- COMPLETED 状态下"评价"按钮只读展示已提交评价，跳只读页；
-      其它状态下才允许继续写评价（理论上不会出现：review 页对 COMPLETED 订单不应再写） -->
+      <!-- 自助退款入口：与后端 applyRefund 的状态白名单保持一致
+           （PAID/PENDING_SHIP 已付款未发货、SHIPPED 已发货、RECEIVED 已收货、COMPLETED 已完成） -->
       <view
-        v-if="order.status === 'PAID' || order.status === 'RECEIVED'"
+        v-if="['PAID', 'PENDING_SHIP', 'SHIPPED', 'RECEIVED', 'COMPLETED'].includes(order.status)"
         class="btn btn-outline"
         @click="onRefund"
       >

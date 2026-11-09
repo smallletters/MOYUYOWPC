@@ -3,7 +3,8 @@
     <view v-if="order" class="card order-info">
       <text class="card-title">Order #{{ order.orderNo }}</text>
       <text class="order-amount">
-        {{ $t('orderRefund.amountLabel') }}: {{ currencySymbol }}{{ order.payAmount }}
+        {{ $t('orderRefund.amountLabel') }}: {{ currencySymbol
+        }}{{ order.refundableAmount != null ? order.refundableAmount : order.payAmount }}
       </text>
     </view>
 

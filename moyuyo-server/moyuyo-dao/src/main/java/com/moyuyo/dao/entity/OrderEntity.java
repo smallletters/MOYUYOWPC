@@ -153,10 +153,11 @@ public class OrderEntity {
     return s == OrderStatusEnum.PENDING_PAY || s == OrderStatusEnum.PAID;
   }
 
-  /** 是否可以申请退款（已发货/已收货/已完成可申请） */
+  /** 是否可以申请退款（已支付（含待发货）/已发货/已收货/已完成可申请） */
   public boolean canRefund() {
     OrderStatusEnum s = getStatusEnum();
-    return s == OrderStatusEnum.SHIPPED || s == OrderStatusEnum.RECEIVED
+    return s == OrderStatusEnum.PAID || s == OrderStatusEnum.PENDING_SHIP
+      || s == OrderStatusEnum.SHIPPED || s == OrderStatusEnum.RECEIVED
       || s == OrderStatusEnum.COMPLETED;
   }
 

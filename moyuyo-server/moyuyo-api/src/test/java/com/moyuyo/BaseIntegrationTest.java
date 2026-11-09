@@ -1,6 +1,7 @@
 package com.moyuyo;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -8,6 +9,8 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
+import com.moyuyo.dao.admin.entity.AdminUserEntity;
+import com.moyuyo.dao.admin.mapper.AdminUserMapper;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -38,6 +41,32 @@ public abstract class BaseIntegrationTest {
 
   @MockitoBean
   protected SetOperations<String, String> setOperations;
+
+  @Autowired
+  protected AdminUserMapper adminUserMapper;
+
+  /**
+   * 插入一个启用的管理员账号。
+   * <p>
+   * AdminPermissionFilter 会实时校验管理员账号状态（禁用/删除/改角色立即生效），
+   * 因此管理端接口测试使用的 token 必须对应 mo_admin_user 中真实存在的 ACTIVE 账号。
+   *
+   * @param id       管理员 ID（需与 JWT 中的 userId 一致）
+   * @param role     角色编码（SUPER_ADMIN 拥有全部权限）
+   * @param email    登录邮箱
+   * @param password 明文密码对应的 BCrypt 密文
+   */
+  protected void insertActiveAdmin(Long id, String role, String email, String password) {
+    AdminUserEntity admin = new AdminUserEntity();
+    admin.setId(id);
+    admin.setUsername("admin" + id);
+    admin.setName("测试管理员" + id);
+    admin.setEmail(email);
+    admin.setPassword(password);
+    admin.setRole(role);
+    admin.setStatus("ACTIVE");
+    adminUserMapper.insert(admin);
+  }
 
   /** 内存模拟 Redis String 存储 */
   private final Map<String, String> redisStore = new ConcurrentHashMap<>();

@@ -60,7 +60,8 @@ class SensitiveWordFilterStandaloneTest {
   @Test
   void shouldDetectRegexWord() {
     Word w = new Word();
-    w.text = "\\b假\\S*货\\b";
+    // 注意：\b 对中文字符不生效（中文不属于 \w），原 \b假\S*货\b 永远匹配不到，这里去掉 \b
+    w.text = "假\\S*货";
     w.mode = "REGEX";
     w.status = "ENABLED";
     TestableFilter filter = new TestableFilter(List.of(w));

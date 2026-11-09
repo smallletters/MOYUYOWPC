@@ -13,8 +13,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * 支付回调 Webhook 集成测试
- * 覆盖 Stripe/PayPal 回调签名验证、重复回调幂等、退款回调场景
- * 注意：webhook 端点总是返回 200（Result.success），业务异常仅记录日志
+ * 覆盖 Stripe/PayPal 回调签名验证路径
+ * <p>
+ * 注意：当前实现为 fail-closed —— 无法通过签名校验的回调会抛 RuntimeException，
+ * 由全局异常处理器返回 500，让支付渠道按重试策略重投；只有在验签通过且业务处理成功后
+ * 才会返回 200 Result.success。测试环境无真实渠道密钥，因此这里统一断言 500。
  */
 @AutoConfigureMockMvc
 class PaymentCallbackTest extends BaseIntegrationTest {
@@ -23,7 +26,7 @@ class PaymentCallbackTest extends BaseIntegrationTest {
     private MockMvc mockMvc;
 
     @Test
-    void stripeWebhook_WithValidPayload_ShouldReturn200() throws Exception {
+    void stripeWebhook_WithUnverifiableSignature_ShouldReturn500() throws Exception {
         String payload = """
                 {
                     "id": "evt_test_1",
@@ -41,11 +44,11 @@ class PaymentCallbackTest extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Stripe-Signature", "test_sig")
                         .content(payload))
-                .andExpect(status().isOk());
+                .andExpect(status().isInternalServerError());
     }
 
     @Test
-    void stripeWebhook_MissingSignature_ShouldReturn200() throws Exception {
+    void stripeWebhook_NullSignatureHeader_ShouldReturn500() throws Exception {
         String payload = """
                 {
                     "id": "evt_test_2",
@@ -63,11 +66,11 @@ class PaymentCallbackTest extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Stripe-Signature", "test_sig")
                         .content(payload))
-                .andExpect(status().isOk());
+                .andExpect(status().isInternalServerError());
     }
 
     @Test
-    void stripeWebhook_UnsupportedEventType_ShouldReturn200() throws Exception {
+    void stripeWebhook_UnsupportedEventType_ShouldReturn500() throws Exception {
         String payload = """
                 {
                     "id": "evt_test_3",
@@ -84,20 +87,20 @@ class PaymentCallbackTest extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Stripe-Signature", "test_sig")
                         .content(payload))
-                .andExpect(status().isOk());
+                .andExpect(status().isInternalServerError());
     }
 
     @Test
-    void stripeWebhook_InvalidPayload_ShouldReturn200() throws Exception {
+    void stripeWebhook_InvalidPayload_ShouldReturn500() throws Exception {
         mockMvc.perform(post("/api/v1/payments/stripe/webhook")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Stripe-Signature", "test_sig")
                         .content("not valid json"))
-                .andExpect(status().isOk());
+                .andExpect(status().isInternalServerError());
     }
 
     @Test
-    void paypalWebhook_ShouldReturn200() throws Exception {
+    void paypalWebhook_UnverifiableSignature_ShouldReturn500() throws Exception {
         String payload = """
                 {
                     "id": "evt_paypal_1",
@@ -109,6 +112,6 @@ class PaymentCallbackTest extends BaseIntegrationTest {
         mockMvc.perform(post("/api/v1/payments/paypal/webhook")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
-                .andExpect(status().isOk());
+                .andExpect(status().isInternalServerError());
     }
 }

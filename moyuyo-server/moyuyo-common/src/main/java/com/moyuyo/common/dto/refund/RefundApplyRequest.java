@@ -11,8 +11,9 @@ import java.util.List;
 /**
  * 退款申请请求
  * 支持两种场景：
- * 1) 整单退款：仅传 orderId + type=FULL + amount（可选，不传则取订单实付）
+ * 1) 整单退款：仅传 orderId + type=FULL + amount（可选，不传则退「剩余可退金额」= 实付 - 已退/退款中）
  * 2) 拆单退款：传 items 数组指定每个 SKU 的退款数量与金额（type=PARTIAL 强制要求）
+ *    type=PARTIAL 未传 items 时按「金额部分退款」处理，仅校验金额 ≤ 剩余可退金额
  */
 @Data
 @Schema(description = "退款申请请求")
@@ -26,7 +27,7 @@ public class RefundApplyRequest {
     @Schema(description = "退款类型: FULL（全单）/ PARTIAL（拆单）", example = "PARTIAL")
     private String type;
 
-    @Schema(description = "退款金额（type=FULL 且不传时取订单实付金额）", example = "25.00")
+    @Schema(description = "退款金额（type=FULL 且不传时退剩余可退金额）", example = "25.00")
     private BigDecimal amount;
 
     @NotBlank(message = "退款原因不能为空")

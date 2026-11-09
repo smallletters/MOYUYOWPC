@@ -20,6 +20,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -41,6 +42,13 @@ public class LogisticsServiceImpl implements LogisticsService {
     private final LogisticsTrackProperties logisticsTrackProperties;
     // P0：幂等表读写，避免并发 / 重试造成的重复发货
     private final JdbcTemplate jdbcTemplate;
+
+    /**
+     * 编程式事务模板：自动签收是同类私有方法调用，@Transactional 代理不生效，
+     * 需用它把"订单状态 + 物流签收时间"两次写入包在同一事务里，避免出现
+     * 订单已收货但物流 received_at 为空（轮询只扫 SHIPPED，将永远无法补写）的不一致状态。
+     */
+    private final TransactionTemplate transactionTemplate;
 
     /**
      * 物流轨迹查询 Provider（按 moyuyo.logistics.provider 配置自动注入对应实现）
@@ -253,15 +261,16 @@ public class LogisticsServiceImpl implements LogisticsService {
 
     @Override
     @Transactional
-    public void confirmReceived(Long orderId) {
-        doConfirmReceived(orderId);
+    public boolean confirmReceived(Long orderId) {
+        return doConfirmReceived(orderId);
     }
 
     /**
      * 确认收货核心逻辑（条件更新，幂等）
      * <p>
-     * 外部调用经 Spring 代理走 @Transactional；自动签收是同类内部调用，事务不生效。
-     * 因此先更新订单、成功后再写物流：订单不在 SHIPPED（已取消/已完成）时不会误写物流签收时间。
+     * 外部调用（confirmReceived）经 Spring 代理走 @Transactional；
+     * 自动签收由 {@link #triggerConfirmReceived} 用 TransactionTemplate 包裹，保证两次写入同事务。
+     * 先更新订单、成功后再写物流：订单不在 SHIPPED（已取消/已完成）时不会误写物流签收时间。
      *
      * @return true=订单本次确实流转为已收货
      */
@@ -297,15 +306,16 @@ public class LogisticsServiceImpl implements LogisticsService {
     /**
      * 触发自动确认收货（幂等，重复调用不会产生副作用）
      * <p>
-     * 同类内部调用无法经过 Spring 事务代理，直接执行带条件的核心逻辑；
-     * 条件更新保证幂等，失败时下次查询会重试。
+     * 同类内部调用无法经过 Spring 事务代理，这里用 TransactionTemplate 显式开启事务，
+     * 保证"订单状态置 RECEIVED"和"物流 received_at 写签收时间"要么同时成功、要么同时回滚。
      *
      * @return true=确认收货成功（可用于同步内存对象的状态）
      */
     private boolean triggerConfirmReceived(Long orderId) {
         try {
             // 只有订单真正流转成功才返回 true，调用方据此同步内存中的签收状态
-            return doConfirmReceived(orderId);
+            Boolean confirmed = transactionTemplate.execute(status -> doConfirmReceived(orderId));
+            return Boolean.TRUE.equals(confirmed);
         } catch (Exception e) {
             log.warn("Auto-confirm received failed (will retry on next query): orderId={}, msg={}",
                     orderId, e.getMessage());

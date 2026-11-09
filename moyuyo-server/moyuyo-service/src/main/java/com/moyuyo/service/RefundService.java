@@ -53,6 +53,16 @@ public interface RefundService {
     List<RefundVO> listOrderRefunds(Long orderId);
 
     /**
+     * 统计某订单已发生（退款中/已完成）的退款金额合计。
+     * <p>
+     * 供订单详情计算"剩余可退金额"，用户端退款页据此展示整单退款的实际可退金额。
+     *
+     * @param orderId 订单 ID
+     * @return 已退/退款中金额合计；无记录返回 0
+     */
+    java.math.BigDecimal refundedAmount(Long orderId);
+
+    /**
      * 管理后台在订单详情页直接发起退款（对齐 WooCommerce 退款操作）。
      * <p>
      * 一次完成「创建退款单 → 审核通过 → 调用渠道退款/手动录入流水号」，

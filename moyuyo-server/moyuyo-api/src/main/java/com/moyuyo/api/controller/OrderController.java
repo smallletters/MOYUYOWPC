@@ -9,6 +9,7 @@ import com.moyuyo.common.utils.PageParamGuard;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.service.OrderService;
+import com.moyuyo.service.RefundService;
 import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.math.BigDecimal;
 
 @Tag(name = "订单管理")
 @RestController
@@ -29,6 +31,7 @@ import java.util.Map;
 public class OrderController {
 
   private final OrderService orderService;
+  private final RefundService refundService;
 
   @Operation(summary = "创建订单")
   @PostMapping
@@ -87,6 +90,13 @@ public class OrderController {
       return Result.error(400, "订单不存在");
     }
     order.setItems(orderService.getOrderItems(id));
+    // 填充退款金额快照，供 APP 退款页展示"剩余可退金额"：
+    // 整单退款实际退的是剩余可退（实付 - 已退/退款中），已部分退过时小于实付金额
+    BigDecimal refunded = refundService.refundedAmount(id);
+    order.setRefundedAmount(refunded);
+    order.setRefundableAmount(order.getPayAmount() == null
+        ? BigDecimal.ZERO
+        : order.getPayAmount().subtract(refunded).max(BigDecimal.ZERO));
     return Result.success(order);
   }
 

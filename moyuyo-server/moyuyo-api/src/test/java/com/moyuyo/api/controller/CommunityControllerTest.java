@@ -22,17 +22,19 @@ class CommunityControllerTest extends BaseIntegrationTest {
 
     @Test
     void listPosts_ShouldReturnPage() throws Exception {
-        // 预置问题：/api/v1/community 路径需要 JWT 认证，返回 401
+        // 帖子列表已按设计对匿名用户开放（仅 GET，JWT 白名单 /api/v1/community/posts）
         mockMvc.perform(get("/api/v1/community/posts")
                         .param("page", "1")
                         .param("size", "10"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(401));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
     }
 
     @Test
     void getPostDetail_WithInvalidId_ShouldReturnError() throws Exception {
+        // 不存在的帖子抛 IllegalArgumentException，由全局异常处理器归一化为 400
         mockMvc.perform(get("/api/v1/community/posts/99999"))
-                .andExpect(status().is4xxClientError());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400));
     }
 }

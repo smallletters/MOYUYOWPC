@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -34,10 +35,16 @@ class AdminControllerTest extends BaseIntegrationTest {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     private String adminToken;
 
     @BeforeEach
     void setUp() {
+        // 管理端接口会实时校验管理员账号状态，必须在库里存在对应的 ACTIVE 账号；
+        // 账户 id 与 JWT 中的 userId 一致，登录用例复用同一账号。
+        insertActiveAdmin(1L, "SUPER_ADMIN", "admin@moyuyo.com", passwordEncoder.encode("Admin123!"));
         // 生成有效 JWT token 用于认证（管理端需携带角色，否则被过滤器拦截 403）
         adminToken = "Bearer " + jwtUtil.generate(1L, "admin@moyuyo.com", "SUPER_ADMIN");
     }

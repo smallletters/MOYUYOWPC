@@ -62,95 +62,136 @@ public class RefundServiceImpl implements RefundService {
     @Transactional
     public RefundVO applyRefund(Long userId, RefundApplyRequest request) {
         // 1) 订单归属与状态校验
-        OrderEntity order = orderMapper.selectById(request.getOrderId());
+        // 行锁：同一订单的并发退款申请串行化，避免「先查在途、再插入」被两个请求同时通过判重产生两笔 PENDING
+        OrderEntity order = orderMapper.selectByIdForUpdate(request.getOrderId());
         if (order == null || !order.getUserId().equals(userId)) {
             throw new IllegalArgumentException("订单不存在");
         }
+        // 支付成功后订单会从 PENDING_PAY 直接推进到 PENDING_SHIP（见 OrderServiceImpl#markOrderPaid），
+        // 因此 PENDING_SHIP 才是"已付款未发货"的常态；漏配它会导致用户付款后既不能取消也不能退款。
+        // REFUNDED 也放行：历史数据中部分退款曾被整单置为 REFUNDED，只要仍有剩余可退金额就允许继续申请
+        // （是否真的还能退由下方"剩余可退金额 > 0"兜底判断）。
         if (!OrderStatusEnum.PAID.name().equals(order.getStatus())
+                && !OrderStatusEnum.PENDING_SHIP.name().equals(order.getStatus())
                 && !OrderStatusEnum.RECEIVED.name().equals(order.getStatus())
                 && !OrderStatusEnum.SHIPPED.name().equals(order.getStatus())
-                && !OrderStatusEnum.COMPLETED.name().equals(order.getStatus())) {
+                && !OrderStatusEnum.COMPLETED.name().equals(order.getStatus())
+                && !OrderStatusEnum.REFUNDED.name().equals(order.getStatus())) {
             throw new IllegalStateException("当前订单状态不允许申请退款");
         }
 
-        // 2) 同一订单不能同时存在进行中的退款申请
+        // 2) 同一订单不能同时存在进行中的退款申请（PROCESSING 也算在途，与管理端口径保持一致）
         long pendingCount = refundMapper.selectCount(
                 new LambdaQueryWrapper<RefundEntity>()
                         .eq(RefundEntity::getOrderId, request.getOrderId())
-                        .in(RefundEntity::getStatus, "PENDING", "APPROVED"));
+                        .in(RefundEntity::getStatus, "PENDING", "APPROVED", "PROCESSING"));
         if (pendingCount > 0) {
             throw new IllegalStateException("该订单已有进行中的退款申请");
         }
 
-        // 3) 拆单校验：若 type=PARTIAL 则 items 必填
+        // 2.5) 剩余可退金额 = 实付金额 - 已退/退款中金额。
+        // 自助退款必须以"剩余可退"为上限，否则二次退款（如先部分退款再点整单退款）会被审核后的
+        // 累计校验拒绝，退款单停在 APPROVED、订单卡在 REFUNDING，用户无法继续操作。
+        BigDecimal payAmount = order.getPayAmount();
+        if (payAmount == null || payAmount.signum() <= 0) {
+            throw new IllegalStateException("订单实付金额异常，暂不支持自助退款，请联系客服");
+        }
+        BigDecimal refundable = payAmount.subtract(sumRefundAmount(order.getId()));
+        if (refundable.signum() <= 0) {
+            throw new IllegalStateException("该订单已全额退款，不能重复退款");
+        }
+
+        // 3) 拆单校验：type=PARTIAL 时，提供 items 走按 SKU 拆单校验；
+        //    未提供 items 则视为"按金额部分退款"（APP 退款页仅填金额），只做金额校验。
         BigDecimal refundAmount = request.getAmount();
         String itemsJson = null;
         if ("PARTIAL".equalsIgnoreCase(request.getType())) {
             List<RefundApplyRequest.RefundItem> items = request.getItems();
             if (items == null || items.isEmpty()) {
-                throw new IllegalArgumentException("拆单退款必须指定退款子项");
-            }
-            // 加载订单子项用于校验
-            List<OrderItemEntity> orderItems = orderItemMapper.selectByOrderId(request.getOrderId());
-            if (orderItems == null || orderItems.isEmpty()) {
-                throw new IllegalStateException("订单无子项记录");
-            }
-            Map<Long, OrderItemEntity> itemMap = new HashMap<>();
-            for (OrderItemEntity oi : orderItems) {
-                itemMap.put(oi.getSkuId(), oi);
-            }
+                // 金额部分退款：必须有明确金额（正数与上限在下方统一校验）
+                if (refundAmount == null) {
+                    throw new IllegalArgumentException("部分退款必须填写退款金额");
+                }
+            } else {
+                // 加载订单子项用于校验
+                List<OrderItemEntity> orderItems = orderItemMapper.selectByOrderId(request.getOrderId());
+                if (orderItems == null || orderItems.isEmpty()) {
+                    throw new IllegalStateException("订单无子项记录");
+                }
+                // 同一 SKU 可能拆成多条订单行，按 SKU 合并数量与金额后再校验，
+                // 避免后写入的行覆盖先前行导致可退数量/金额被低估
+                Map<Long, OrderItemEntity> itemMap = new HashMap<>();
+                for (OrderItemEntity oi : orderItems) {
+                    OrderItemEntity merged = itemMap.get(oi.getSkuId());
+                    if (merged == null) {
+                        OrderItemEntity copy = new OrderItemEntity();
+                        copy.setSkuId(oi.getSkuId());
+                        copy.setQuantity(oi.getQuantity());
+                        copy.setSubtotal(oi.getSubtotal());
+                        itemMap.put(oi.getSkuId(), copy);
+                    } else {
+                        merged.setQuantity(merged.getQuantity() + oi.getQuantity());
+                        merged.setSubtotal(merged.getSubtotal().add(oi.getSubtotal()));
+                    }
+                }
 
-            BigDecimal itemsTotal = BigDecimal.ZERO;
-            for (RefundApplyRequest.RefundItem ri : items) {
-                OrderItemEntity oi = itemMap.get(ri.getSkuId());
-                if (oi == null) {
-                    throw new IllegalArgumentException("退款子项 SKU 不属于该订单: " + ri.getSkuId());
+                BigDecimal itemsTotal = BigDecimal.ZERO;
+                for (RefundApplyRequest.RefundItem ri : items) {
+                    OrderItemEntity oi = itemMap.get(ri.getSkuId());
+                    if (oi == null) {
+                        throw new IllegalArgumentException("退款子项 SKU 不属于该订单: " + ri.getSkuId());
+                    }
+                    if (ri.getQuantity() == null || ri.getQuantity() <= 0) {
+                        throw new IllegalArgumentException("子项数量必须为正数: " + ri.getSkuId());
+                    }
+                    if (ri.getQuantity() > oi.getQuantity()) {
+                        throw new IllegalArgumentException(
+                                "SKU " + ri.getSkuId() + " 退款数量(" + ri.getQuantity()
+                                        + ") 超过购买数量(" + oi.getQuantity() + ")");
+                    }
+                    if (ri.getAmount() == null || ri.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                        throw new IllegalArgumentException("子项退款金额必须为正数: " + ri.getSkuId());
+                    }
+                    // 单子项退款金额不能超过其 subtotal * (qty/qty)
+                    BigDecimal singleMax = oi.getSubtotal()
+                            .multiply(BigDecimal.valueOf(ri.getQuantity()))
+                            .divide(BigDecimal.valueOf(oi.getQuantity()), 2, java.math.RoundingMode.HALF_UP);
+                    if (ri.getAmount().compareTo(singleMax) > 0) {
+                        throw new IllegalArgumentException(
+                                "SKU " + ri.getSkuId() + " 退款金额超过可退金额上限");
+                    }
+                    itemsTotal = itemsTotal.add(ri.getAmount());
                 }
-                if (ri.getQuantity() == null || ri.getQuantity() <= 0) {
-                    throw new IllegalArgumentException("子项数量必须为正数: " + ri.getSkuId());
-                }
-                if (ri.getQuantity() > oi.getQuantity()) {
-                    throw new IllegalArgumentException(
-                            "SKU " + ri.getSkuId() + " 退款数量(" + ri.getQuantity()
-                                    + ") 超过购买数量(" + oi.getQuantity() + ")");
-                }
-                if (ri.getAmount() == null || ri.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
-                    throw new IllegalArgumentException("子项退款金额必须为正数: " + ri.getSkuId());
-                }
-                // 单子项退款金额不能超过其 subtotal * (qty/qty)
-                BigDecimal singleMax = oi.getSubtotal()
-                        .multiply(BigDecimal.valueOf(ri.getQuantity()))
-                        .divide(BigDecimal.valueOf(oi.getQuantity()), 2, java.math.RoundingMode.HALF_UP);
-                if (ri.getAmount().compareTo(singleMax) > 0) {
-                    throw new IllegalArgumentException(
-                            "SKU " + ri.getSkuId() + " 退款金额超过可退金额上限");
-                }
-                itemsTotal = itemsTotal.add(ri.getAmount());
-            }
 
-            // 请求 amount 必须等于 items 合计
-            if (refundAmount == null) {
-                refundAmount = itemsTotal;
-            } else if (refundAmount.compareTo(itemsTotal) != 0) {
-                throw new IllegalArgumentException(
-                        "请求退款金额(" + refundAmount + ") 与子项合计(" + itemsTotal + ") 不一致");
-            }
-            try {
-                itemsJson = objectMapper.writeValueAsString(items);
-            } catch (JsonProcessingException e) {
-                throw new IllegalStateException("子项 JSON 序列化失败", e);
+                // 请求 amount 必须等于 items 合计
+                if (refundAmount == null) {
+                    refundAmount = itemsTotal;
+                } else if (refundAmount.compareTo(itemsTotal) != 0) {
+                    throw new IllegalArgumentException(
+                            "请求退款金额(" + refundAmount + ") 与子项合计(" + itemsTotal + ") 不一致");
+                }
+                try {
+                    itemsJson = objectMapper.writeValueAsString(items);
+                } catch (JsonProcessingException e) {
+                    throw new IllegalStateException("子项 JSON 序列化失败", e);
+                }
             }
         } else if ("FULL".equalsIgnoreCase(request.getType())) {
+            // 整单退款 = 退还「剩余可退金额」（已发生部分退款时不能再按全额申请）
             if (refundAmount == null) {
-                refundAmount = order.getPayAmount();
+                refundAmount = refundable;
             }
         } else {
             throw new IllegalArgumentException("不支持的退款类型: " + request.getType());
         }
 
-        // 4) 金额上限校验（总金额 ≤ 订单实付）
-        if (refundAmount.compareTo(order.getPayAmount()) > 0) {
-            throw new IllegalArgumentException("退款金额超过订单实付金额");
+        // 4) 金额合法性与上限校验（总金额必须为正且 ≤ 剩余可退金额）
+        if (refundAmount == null || refundAmount.signum() <= 0) {
+            throw new IllegalArgumentException("退款金额必须大于 0");
+        }
+        if (refundAmount.compareTo(refundable) > 0) {
+            throw new IllegalArgumentException(
+                    "退款金额超过剩余可退金额（剩余 " + refundable.toPlainString() + "）");
         }
 
         // 5) 生成退款单
@@ -191,11 +232,48 @@ public class RefundServiceImpl implements RefundService {
         entity.setStatus("APPROVED");
         refundMapper.updateById(entity);
 
-        if (order != null) {
+        // 只有「本次退款 + 已完成退款 ≥ 实付金额」的全额退款才把订单置为退款中。
+        // 部分退款保留订单原状态（已支付/已发货/已收货/已完成），否则整单会被误标为退款中，
+        // 后续剩余金额也无法再次申请（applyRefund 不接受 REFUNDING/REFUNDED 订单）。
+        if (order != null && isFullRefund(order, entity)) {
             order.setStatus(OrderStatusEnum.REFUNDING.name());
             orderMapper.updateById(order);
         }
         log.info("Refund approved: refundId={}, operatorId={}", refundId, operatorId);
+    }
+
+    /**
+     * 判断该退款单是否构成「全额退款」：
+     * 已完成退款合计 + 本单金额 ≥ 订单实付金额（无法取得实付金额时按全额处理，与线上原逻辑保持一致）
+     */
+    private boolean isFullRefund(OrderEntity order, RefundEntity entity) {
+        if (order == null || entity.getAmount() == null) {
+            return false;
+        }
+        if (order.getPayAmount() == null) {
+            return true;
+        }
+        return sumCompletedRefundAmount(order.getId())
+                .add(entity.getAmount())
+                .compareTo(order.getPayAmount()) >= 0;
+    }
+
+    /**
+     * 历史数据兼容：审核阶段曾把「部分退款」订单置为 REFUNDING，完成后按时间戳还原真实状态。
+     * 正常链路（新版）不会进入此分支，因为部分退款在审核阶段就不改订单状态。
+     */
+    private String resolveStatusBeforeRefunding(OrderEntity order) {
+        if (order.getReceivedTime() != null) {
+            return OrderStatusEnum.RECEIVED.name();
+        }
+        if (order.getDeliverTime() != null) {
+            return OrderStatusEnum.SHIPPED.name();
+        }
+        // 已支付未发货：支付成功后订单的规范状态就是 PENDING_SHIP（而非 PAID）
+        if (order.getPaidAt() != null) {
+            return OrderStatusEnum.PENDING_SHIP.name();
+        }
+        return OrderStatusEnum.PAID.name();
     }
 
     @Override
@@ -211,6 +289,14 @@ public class RefundServiceImpl implements RefundService {
         entity.setRejectOperatorId(operatorId);
         entity.setRejectTime(LocalDateTime.now());
         refundMapper.updateById(entity);
+
+        // 审核阶段若已把订单置为退款中（全额退款场景），拒绝后必须还原订单状态，
+        // 否则订单会永久停留在 REFUNDING，用户无法再次申请退款。
+        OrderEntity order = orderMapper.selectById(entity.getOrderId());
+        if (order != null && OrderStatusEnum.REFUNDING.name().equals(order.getStatus())) {
+            order.setStatus(resolveStatusBeforeRefunding(order));
+            orderMapper.updateById(order);
+        }
         log.info("Refund rejected: refundId={}, operatorId={}, reason={}", refundId, operatorId, reason);
     }
 
@@ -233,12 +319,16 @@ public class RefundServiceImpl implements RefundService {
 
         // 累计退款上限校验：防止「后台直退 + 用户分次退款」等多笔部分退款合计超过订单实付金额。
         // 只统计已完成退款，当前退款单此时仍为 APPROVED，尚未计入。
+        BigDecimal completedBefore = order == null ? BigDecimal.ZERO : sumCompletedRefundAmount(order.getId());
         if (order != null && entity.getAmount() != null && order.getPayAmount() != null) {
-            BigDecimal completedBefore = sumCompletedRefundAmount(order.getId());
             if (completedBefore.add(entity.getAmount()).compareTo(order.getPayAmount()) > 0) {
                 throw new IllegalStateException("累计退款金额超过订单实付金额，禁止退款");
             }
         }
+        // 是否「全额退完」：决定订单最终状态与邀请奖励扣回，部分退款不能整单置为已退款
+        boolean fullyRefunded = order != null && (order.getPayAmount() == null
+                || completedBefore.add(entity.getAmount() == null ? BigDecimal.ZERO : entity.getAmount())
+                        .compareTo(order.getPayAmount()) >= 0);
 
         // 原子抢占：仅 APPROVED 可进入完成流程(PROCESSING→COMPLETED)。
         // 防止并发重复点击/Webhook 重试导致"多次三方退款 + 多次积分返还/扣回"。
@@ -281,8 +371,15 @@ public class RefundServiceImpl implements RefundService {
         refundMapper.updateById(entity);
 
         if (order != null) {
-            order.setStatus(OrderStatusEnum.REFUNDED.name());
-            orderMapper.updateById(order);
+            // 全额退完 → 已退款；部分退款保留订单原状态，避免整单被误标为 REFUNDED
+            if (fullyRefunded) {
+                order.setStatus(OrderStatusEnum.REFUNDED.name());
+                orderMapper.updateById(order);
+            } else if (OrderStatusEnum.REFUNDING.name().equals(order.getStatus())) {
+                // 兼容历史数据：审核阶段曾把部分退款订单置为退款中，完成后按时间戳还原
+                order.setStatus(resolveStatusBeforeRefunding(order));
+                orderMapper.updateById(order);
+            }
 
             // 退款联动积分：原路返还抵扣积分 + 按比例扣回 REWARD 奖励积分
             try {
@@ -294,10 +391,7 @@ public class RefundServiceImpl implements RefundService {
             }
 
             // 邀请奖励联动：仅当该订单是触发邀请首单奖励的订单，且本次为「全额退完」时才扣回双方积分。
-            // 部分退款按比例扣回邀请奖励不合理（原先只要发生任何退款就全额扣回），这里改为累计退款额判断。
-            BigDecimal totalCompleted = sumCompletedRefundAmount(order.getId());
-            boolean fullyRefunded = order.getPayAmount() == null
-                    || totalCompleted.compareTo(order.getPayAmount()) >= 0;
+            // 部分退款按比例扣回邀请奖励不合理，这里用累计退款额判断。
             if (fullyRefunded) {
                 // 邀请奖励联动：仅当该订单是触发邀请首单奖励的订单时，扣回双方各 200 积分
                 try {
@@ -336,6 +430,11 @@ public class RefundServiceImpl implements RefundService {
                                 .eq(RefundEntity::getOrderId, orderId)
                                 .orderByDesc(RefundEntity::getCreateTime))
                 .stream().map(this::toRefundVO).toList();
+    }
+
+    @Override
+    public BigDecimal refundedAmount(Long orderId) {
+        return sumRefundAmount(orderId);
     }
 
     @Override
@@ -445,16 +544,17 @@ public class RefundServiceImpl implements RefundService {
         entity.setStatus("PENDING");
         refundMapper.insert(entity);
 
-        // 6) 复用既有审核 + 完成链路：审核置 APPROVED/REFUNDING，完成时调用三方退款
+        // 6) 复用既有审核 + 完成链路
         String originalStatus = order.getStatus();
         approveRefund(entity.getId(), operatorId);
         // 自动模式传入 null（约定为空即自动退款），避免使用可被人工输入复用的 "AUTO" 哨兵值
         completeRefund(entity.getId(), operatorId,
                 "MANUAL".equals(mode) ? manualTransactionId : null);
 
-        // 7) 部分退款不改变原订单状态（completeRefund 统一置 REFUNDED，这里恢复）
+        // 7) 兜底：部分退款不改变原订单状态（新版审核/完成链路已不修改状态，这里仅在
+        //    历史数据把订单置为 REFUNDING/REFUNDED 时恢复原状态，保证重复退款可继续）
         BigDecimal totalAfter = refunded.add(amount);
-        if (totalAfter.compareTo(payAmount) < 0 && !OrderStatusEnum.REFUNDED.name().equals(originalStatus)) {
+        if (totalAfter.compareTo(payAmount) < 0) {
             orderMapper.update(null, new LambdaUpdateWrapper<OrderEntity>()
                     .eq(OrderEntity::getId, orderId)
                     .set(OrderEntity::getStatus, originalStatus));
@@ -504,6 +604,13 @@ public class RefundServiceImpl implements RefundService {
     public RefundVO getRefundDetail(Long refundId, Long userId) {
         RefundEntity entity = refundMapper.selectById(refundId);
         if (entity == null) throw new IllegalArgumentException("退款申请不存在");
+        // 越权修复：mo_refund 表无 user_id 列，必须通过关联订单校验归属，
+        // 否则任意登录用户遍历 refundId 即可读取他人退款金额/原因/流水号。
+        // 不匹配时与"不存在"返回同一提示，避免通过错误信息探测退款单是否存在。
+        OrderEntity order = orderMapper.selectById(entity.getOrderId());
+        if (order == null || userId == null || !userId.equals(order.getUserId())) {
+            throw new IllegalArgumentException("退款申请不存在");
+        }
         return toRefundVO(entity);
     }
 

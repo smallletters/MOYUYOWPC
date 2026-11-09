@@ -41,6 +41,8 @@ class AdminRbacControllerTest extends BaseIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        // AdminPermissionFilter 会实时校验管理员账号存在且启用，测试 token 必须对应库内 ACTIVE 账号
+        insertActiveAdmin(1L, "SUPER_ADMIN", "admin@moyuyo.com", "$test$");
         adminToken = "Bearer " + jwtUtil.generate(1L, "admin@moyuyo.com", "SUPER_ADMIN");
     }
 
