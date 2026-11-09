@@ -13,6 +13,13 @@ import java.util.Map;
 public interface DmConversationMapper extends BaseMapper<DmConversationEntity> {
 
     /**
+     * 锁定单聊会话行：陌生人防骚扰校验期间串行化同一会话的并发发送，
+     * 避免并行请求同时判定「对方未回复」而绕过条数限制。
+     */
+    @Select("SELECT id FROM mo_dm_conversation WHERE id = #{id} FOR UPDATE")
+    Long lockById(@Param("id") Long id);
+
+    /**
      * 汇总当前用户的单聊未读数。
      * 群聊未读由 DmGroupMemberMapper#sumUnread 单独统计。
      */

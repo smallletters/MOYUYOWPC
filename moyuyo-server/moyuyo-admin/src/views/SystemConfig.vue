@@ -318,6 +318,29 @@
       </div>
     </div>
 
+    <!-- ====== 私信安全 ====== -->
+    <div v-show="activeTab === 'dm'" class="tab-content">
+      <div class="section-title">陌生人私信限制</div>
+      <div class="config-card">
+        <div class="config-section">
+          <div class="config-row">
+            <div>
+              <div class="config-label">首条消息上限</div>
+              <div class="config-desc">对方未回复前，最多可发送的消息条数；对方回复后解除限制，0 表示不限制</div>
+            </div>
+            <input v-model="form.dmStrangerFirstLimit" type="number" class="config-input" style="max-width: 100px;" min="0">
+          </div>
+          <div class="config-row">
+            <div>
+              <div class="config-label">每日消息上限</div>
+              <div class="config-desc">对方未回复的会话中，每天最多可发送的消息条数，0 表示不限制</div>
+            </div>
+            <input v-model="form.dmStrangerDailyLimit" type="number" class="config-input" style="max-width: 100px;" min="0">
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 底部保存栏 -->
     <div class="save-bar">
       <button class="save-btn" @click="handleSave">保存配置</button>
@@ -338,7 +361,8 @@ const tabs = [
   { key: 'order', label: '订单设置' },
   { key: 'payment', label: '支付设置' },
   { key: 'shipping', label: '物流配置' },
-  { key: 'notification', label: '通知设置' }
+  { key: 'notification', label: '通知设置' },
+  { key: 'dm', label: '私信安全' }
 ]
 
 const cancelOptions = [
@@ -418,7 +442,10 @@ const form = reactive({
   maxWeight: 20,
   // 运费计算规则（示例数据）
   shippingMethod: 'weight',
-  baseFee: 12
+  baseFee: 12,
+  // 私信安全（0 = 不限制）
+  dmStrangerFirstLimit: 1,
+  dmStrangerDailyLimit: 10
 })
 
 const paymentMethods = ref([
@@ -470,6 +497,17 @@ async function loadConfig() {
         // 运费计算规则
         if (item.key === 'shippingMethod') form.shippingMethod = item.value || form.shippingMethod
         if (item.key === 'baseFee') form.baseFee = Number(item.value) || form.baseFee
+        // 私信安全：0 是合法值（表示不限制），不能用 || 回退默认值；空值保持表单默认
+        if (item.key === 'dm.guard.stranger_first_limit'
+            && item.value !== '' && item.value !== null && item.value !== undefined
+            && !Number.isNaN(Number(item.value))) {
+          form.dmStrangerFirstLimit = Math.max(0, Math.trunc(Number(item.value)))
+        }
+        if (item.key === 'dm.guard.stranger_daily_limit'
+            && item.value !== '' && item.value !== null && item.value !== undefined
+            && !Number.isNaN(Number(item.value))) {
+          form.dmStrangerDailyLimit = Math.max(0, Math.trunc(Number(item.value)))
+        }
         if (item.key === 'shippingTiers') {
           try {
             const list = JSON.parse(item.value)
@@ -531,6 +569,9 @@ function handleUploadLogo() {
 // 保存系统配置
 async function handleSave() {
   try {
+    // 私信安全阈值：先归一化为非负整数，空值/非法值回退默认，避免保存空串后前后端理解不一致
+    form.dmStrangerFirstLimit = normalizeLimit(form.dmStrangerFirstLimit, 1)
+    form.dmStrangerDailyLimit = normalizeLimit(form.dmStrangerDailyLimit, 10)
     // 将表单数据转换为后端需要的配置项列表格式
     const configs = [
       { key: 'siteName', value: form.siteName, type: 'text', label: '站点名称' },
@@ -552,7 +593,10 @@ async function handleSave() {
       // 运费计算规则
       { key: 'shippingMethod', value: form.shippingMethod, type: 'text', label: '运费计算方式' },
       { key: 'baseFee', value: String(form.baseFee), type: 'text', label: '基础运费' },
-      { key: 'shippingTiers', value: JSON.stringify(shippingTiers.value), type: 'json', label: '运费阶梯价格表' }
+      { key: 'shippingTiers', value: JSON.stringify(shippingTiers.value), type: 'json', label: '运费阶梯价格表' },
+      // 私信安全（0 = 不限制）
+      { key: 'dm.guard.stranger_first_limit', value: String(form.dmStrangerFirstLimit), type: 'number', label: '陌生人首条上限' },
+      { key: 'dm.guard.stranger_daily_limit', value: String(form.dmStrangerDailyLimit), type: 'number', label: '陌生人每日上限' }
     ]
     // 将支付方式状态也加入配置保存
     paymentMethods.value.forEach(method => {
@@ -568,6 +612,12 @@ async function handleSave() {
   } catch (e) {
     ElMessage.error('保存配置失败')
   }
+}
+
+// 防骚扰阈值归一化：非负整数；空值或非法值回退默认
+function normalizeLimit(value, defaultValue) {
+  const num = Number(value)
+  return Number.isFinite(num) && num >= 0 ? Math.trunc(num) : defaultValue
 }
 
 // 添加一行阶梯价格（示例数据）

@@ -276,6 +276,30 @@ public class AfterSalesServiceImpl implements AfterSalesService {
     return result;
   }
 
+  /** 规范化运单号：去除空白并转大写，同时校验长度与字符集，避免写入无效数据 */
+  private String normalizeTrackingNo(String trackingNo) {
+    String value = trackingNo == null ? "" : trackingNo.replaceAll("\\s+", "").toUpperCase();
+    if (value.isEmpty()) {
+      throw new IllegalArgumentException("请填写运单号");
+    }
+    if (!value.matches("[A-Z0-9-]{6,40}")) {
+      throw new IllegalArgumentException("运单号格式不正确，仅支持 6-40 位字母、数字或连字符");
+    }
+    return value;
+  }
+
+  /** 规范化物流公司名称：去空白并限制长度（表字段为 VARCHAR(100)，这里限制 50 更合理） */
+  private String normalizeReturnCompany(String company) {
+    String value = company == null ? "" : company.trim();
+    if (value.isEmpty()) {
+      throw new IllegalArgumentException("请选择或填写物流公司");
+    }
+    if (value.length() > 50) {
+      throw new IllegalArgumentException("物流公司名称不能超过 50 个字符");
+    }
+    return value;
+  }
+
   @Override
   @Transactional
   public AfterSalesVO submitReturnLogistics(Long userId, Long id, String company, String trackingNo) {
@@ -285,15 +309,31 @@ public class AfterSalesServiceImpl implements AfterSalesService {
         || (!"APPROVED".equals(entity.getStatus()) && !"RETURNING".equals(entity.getStatus()))) {
       throw new IllegalStateException("当前售后状态不允许填写退货物流");
     }
-    entity.setReturnCompany(company.trim());
-    entity.setReturnTrackingNo(trackingNo.trim());
-    if (entity.getReturnTime() == null) {
-      entity.setReturnTime(LocalDateTime.now());
+    String resolvedCompany = normalizeReturnCompany(company);
+    String resolvedTrackingNo = normalizeTrackingNo(trackingNo);
+    // 首次填写才记寄回时间，更正运单号时保留原始寄回时间
+    LocalDateTime returnTime =
+        entity.getReturnTime() == null ? LocalDateTime.now() : entity.getReturnTime();
+    // 条件更新（APPROVED/RETURNING → RETURNING）：避免与商家"确认收货"并发时，
+    // 用读到的陈旧实体整行回写把 RECEIVED 覆盖回 RETURNING，进而二次回补库存
+    int updated = afterSalesMapper.update(null,
+        new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<AfterSalesEntity>()
+            .eq(AfterSalesEntity::getId, id)
+            .eq(AfterSalesEntity::getUserId, userId)
+            .in(AfterSalesEntity::getStatus, "APPROVED", "RETURNING")
+            .set(AfterSalesEntity::getStatus, "RETURNING")
+            .set(AfterSalesEntity::getReturnCompany, resolvedCompany)
+            .set(AfterSalesEntity::getReturnTrackingNo, resolvedTrackingNo)
+            .set(AfterSalesEntity::getReturnTime, returnTime));
+    if (updated == 0) {
+      throw new IllegalStateException("售后状态已变更，请刷新后重试");
     }
     entity.setStatus("RETURNING");
-    afterSalesMapper.updateById(entity);
+    entity.setReturnCompany(resolvedCompany);
+    entity.setReturnTrackingNo(resolvedTrackingNo);
+    entity.setReturnTime(returnTime);
     log.info("[after-sales] 用户填写退货物流 afterSaleNo={}, company={}, trackingNo={}",
-        entity.getAfterSaleNo(), company, trackingNo);
+        entity.getAfterSaleNo(), entity.getReturnCompany(), entity.getReturnTrackingNo());
     return toVO(entity, findOrderNo(entity.getOrderId()));
   }
 
@@ -464,18 +504,33 @@ public class AfterSalesServiceImpl implements AfterSalesService {
         || (!"APPROVED".equals(entity.getStatus()) && !"RETURNING".equals(entity.getStatus()))) {
       throw new IllegalStateException("当前售后状态不允许补录退货物流");
     }
-    entity.setReturnCompany(company.trim());
-    entity.setReturnTrackingNo(trackingNo.trim());
-    if (entity.getReturnTime() == null) {
-      entity.setReturnTime(LocalDateTime.now());
+    String resolvedCompany = normalizeReturnCompany(company);
+    String resolvedTrackingNo = normalizeTrackingNo(trackingNo);
+    LocalDateTime returnTime =
+        entity.getReturnTime() == null ? LocalDateTime.now() : entity.getReturnTime();
+    // 同上：条件更新保证只在待寄回/已寄回时补录，不会覆盖并发的收货/退款状态
+    int updated = afterSalesMapper.update(null,
+        new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<AfterSalesEntity>()
+            .eq(AfterSalesEntity::getId, id)
+            .in(AfterSalesEntity::getStatus, "APPROVED", "RETURNING")
+            .set(AfterSalesEntity::getStatus, "RETURNING")
+            .set(AfterSalesEntity::getReturnCompany, resolvedCompany)
+            .set(AfterSalesEntity::getReturnTrackingNo, resolvedTrackingNo)
+            .set(AfterSalesEntity::getReturnTime, returnTime)
+            .set(AfterSalesEntity::getOperatorId, operatorId));
+    if (updated == 0) {
+      throw new IllegalStateException("售后状态已变更，请刷新后重试");
     }
     entity.setStatus("RETURNING");
+    entity.setReturnCompany(resolvedCompany);
+    entity.setReturnTrackingNo(resolvedTrackingNo);
+    entity.setReturnTime(returnTime);
     entity.setOperatorId(operatorId);
-    afterSalesMapper.updateById(entity);
     log.info("[after-sales] 客服补录退货物流 afterSaleNo={}, company={}, trackingNo={}, operatorId={}",
-        entity.getAfterSaleNo(), company, trackingNo, operatorId);
+        entity.getAfterSaleNo(), entity.getReturnCompany(), entity.getReturnTrackingNo(), operatorId);
     notifyUserSafely(entity.getUserId(), "退货物流已更新",
-        "售后单 " + entity.getAfterSaleNo() + " 退货物流已更新为 " + company + " " + trackingNo,
+        "售后单 " + entity.getAfterSaleNo() + " 退货物流已更新为 "
+            + entity.getReturnCompany() + " " + entity.getReturnTrackingNo(),
         entity.getId());
     return toVO(entity, findOrderNo(entity.getOrderId()));
   }

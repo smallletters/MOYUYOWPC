@@ -136,17 +136,41 @@
           <text class="sheet-title">{{ $t('afterSalesDetail.logisticsDialogTitle') }}</text>
           <text class="sheet-close luc luc-x" @click="closeLogistics" />
         </view>
+        <text class="sheet-field-label">{{ $t('afterSalesDetail.logisticsCompanyLabel') }}</text>
         <picker :value="companyIndex" :range="companyOptions" @change="onCompanyChange">
           <view class="sheet-picker">
-            <text>{{ logisticsForm.company || $t('afterSalesDetail.companyPlaceholder') }}</text>
+            <text :class="{ placeholder: !selectedCompany }">
+              {{ selectedCompany || $t('afterSalesDetail.companyPlaceholder') }}
+            </text>
             <text class="arrow luc-chevron-right" />
           </view>
         </picker>
+        <!-- 选择"其他"时允许手动输入承运商名称 -->
         <input
-          v-model="logisticsForm.trackingNo"
+          v-if="isOtherCarrier"
+          v-model="customCompany"
           class="sheet-input"
-          :placeholder="$t('afterSalesDetail.trackingPlaceholder')"
+          :placeholder="$t('afterSalesDetail.customCarrierPlaceholder')"
+          :maxlength="50"
         >
+
+        <text class="sheet-field-label">{{ $t('afterSalesDetail.trackingNoLabel') }}</text>
+        <view class="sheet-input-wrap">
+          <input
+            v-model="logisticsForm.trackingNo"
+            class="sheet-input"
+            type="text"
+            :maxlength="40"
+            :placeholder="$t('afterSalesDetail.trackingPlaceholder')"
+            @blur="onTrackingBlur"
+          >
+          <text
+            v-if="logisticsForm.trackingNo"
+            class="sheet-input-clear luc luc-x"
+            @click="logisticsForm.trackingNo = ''"
+          />
+        </view>
+        <text class="sheet-hint">{{ $t('afterSalesDetail.trackingHint') }}</text>
         <view class="sheet-actions">
           <view class="btn-outline" @click="closeLogistics">
             {{ $t('afterSalesDetail.cancel') }}
@@ -190,10 +214,12 @@ export default {
       // 退货物流弹层
       logisticsTarget: null,
       submitting: false,
+      // 常用承运商；首项占位与末尾"其他"由 computed 组装，选中后可手动输入公司名
+      carriers: ['UPS', 'USPS', 'FedEx', 'DHL', '顺丰速运'],
+      // 0 指向占位项"请选择物流公司"，避免用户不操作时被默认记成 UPS
       companyIndex: 0,
-      companyOptions: ['UPS', 'USPS', 'FedEx', 'DHL', '顺丰速运', '其他'],
+      customCompany: '',
       logisticsForm: {
-        company: '',
         trackingNo: '',
       },
     }
@@ -219,6 +245,26 @@ export default {
     /** 当前 tab 对应的服务端筛选值 */
     currentStatus() {
       return TAB_STATUS[this.activeTab] || 'ALL'
+    },
+
+    /** 承运商选项：首项为占位项，避免 picker 默认选中某个真实承运商 */
+    companyOptions() {
+      return [
+        t('afterSalesDetail.companyPlaceholder'),
+        ...this.carriers,
+        t('afterSalesDetail.otherCarrier'),
+      ]
+    },
+
+    /** "其他"在选项列表中的下标（占位项占用了 0） */
+    isOtherCarrier() {
+      return this.companyIndex === this.carriers.length + 1
+    },
+
+    selectedCompany() {
+      if (this.companyIndex <= 0) return ''
+      if (this.isOtherCarrier) return this.customCompany.trim()
+      return this.carriers[this.companyIndex - 1] || ''
     },
   },
 
@@ -362,9 +408,19 @@ export default {
 
     openLogistics(item) {
       this.logisticsTarget = item
-      this.companyIndex = 0
-      this.logisticsForm.company = this.companyOptions[0]
-      this.logisticsForm.trackingNo = ''
+      const company = item.returnCompany || ''
+      const idx = this.carriers.indexOf(company)
+      // 已填过物流时预填原值，便于修正填错的运单号
+      if (company && idx === -1) {
+        // 历史物流不在常用列表：落到"其他"并回填名称
+        this.companyIndex = this.carriers.length + 1
+        this.customCompany = company
+      } else {
+        // 无历史物流保持 0（占位项），有历史则映射到对应常用承运商
+        this.companyIndex = idx >= 0 ? idx + 1 : 0
+        this.customCompany = ''
+      }
+      this.logisticsForm.trackingNo = item.returnTrackingNo || ''
     },
 
     closeLogistics() {
@@ -374,20 +430,37 @@ export default {
 
     onCompanyChange(e) {
       this.companyIndex = Number(e.detail.value)
-      this.logisticsForm.company = this.companyOptions[this.companyIndex]
+      if (!this.isOtherCarrier) this.customCompany = ''
+    },
+
+    /**
+     * 运单号失焦归一化：统一转大写并去空格。
+     * 不能放在 @input 里实时改写——uni-app H5 输入框对 value 有 100ms 防抖回写，
+     * 父组件改写后的值会晚于用户输入到达，把刚输入的内容覆盖成旧值，表现为"无法输入"。
+     */
+    onTrackingBlur(e) {
+      const raw = String((e && e.detail && e.detail.value) || this.logisticsForm.trackingNo || '')
+      this.logisticsForm.trackingNo = raw.replace(/\s+/g, '').toUpperCase()
     },
 
     async submitLogistics() {
       if (!this.logisticsTarget || this.submitting) return
-      const trackingNo = (this.logisticsForm.trackingNo || '').trim()
-      if (!this.logisticsForm.company || !trackingNo) {
+      const company = this.selectedCompany
+      // 与后端保持一致：去空格、转大写后再校验
+      const trackingNo = (this.logisticsForm.trackingNo || '').replace(/\s+/g, '').toUpperCase()
+      if (!company || !trackingNo) {
         uni.showToast({ title: t('afterSalesDetail.logisticsRequired'), icon: 'none' })
+        return
+      }
+      // 与后端保持一致：6-40 位字母、数字或连字符
+      if (!/^[A-Z0-9-]{6,40}$/.test(trackingNo)) {
+        uni.showToast({ title: t('afterSalesDetail.invalidTrackingNo'), icon: 'none' })
         return
       }
       this.submitting = true
       try {
         await afterSalesApi.submitReturnLogistics(this.logisticsTarget.id, {
-          company: this.logisticsForm.company,
+          company,
           trackingNo,
         })
         uni.showToast({ title: t('afterSalesDetail.logisticsSubmitted'), icon: 'success' })
@@ -951,11 +1024,57 @@ export default {
 
 .sheet-input {
   width: 100%;
+  /* 必须给出确定高度：uni-input 默认仅 1.4em，border-box 下垂直 padding 会把内容区压成 0 高度，导致无法点击/输入 */
+  height: 88rpx;
   box-sizing: border-box;
-  padding: 20rpx 16rpx;
+  padding: 0 16rpx;
   background: var(--color-background);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
+}
+
+/* 表单字段标签与提示 */
+.sheet-field-label {
+  display: block;
+  margin: 20rpx 0 10rpx;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.sheet-hint {
+  display: block;
+  margin-top: 8rpx;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  line-height: 1.5;
+}
+
+.placeholder {
+  color: var(--color-text-tertiary);
+}
+
+/* 运单号输入框：右侧预留清空按钮位置 */
+.sheet-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.sheet-input-wrap .sheet-input {
+  padding-right: 64rpx;
+}
+
+.sheet-input-clear {
+  position: absolute;
+  right: 16rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40rpx;
+  height: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
 }
 
 .sheet-actions {

@@ -36,14 +36,20 @@
       <view class="dp-preview" :style="{ backgroundImage: previewBg }">
         <view class="dp-preview-mask" />
         <view class="dp-preview-content">
-          <!-- 渲染选中形象:图片 / 3D 模型 / 占位 -->
+          <!-- 渲染选中形象:图片 / 3D 模型 / 占位(按 avatarScale 实时缩放) -->
           <image
             v-if="previewType === 'image'"
             :src="$img(selectedAvatarItem.src)"
             mode="aspectFit"
             class="dp-preview-img"
+            :style="previewScaleStyle"
           />
-          <view v-else-if="previewType === 'model3d'" :id="canvasId" class="dp-preview-canvas" />
+          <view
+            v-else-if="previewType === 'model3d'"
+            :id="canvasId"
+            class="dp-preview-canvas"
+            :style="previewScaleStyle"
+          />
           <view v-else class="dp-preview-empty">
             <text class="luc luc-paw-print" />
           </view>
@@ -51,6 +57,24 @@
             <text>{{ previewTip }}</text>
           </view>
         </view>
+      </view>
+
+      <!-- 形象大小调节:实时缩放预览,确认后同步到宠物场景 -->
+      <view v-if="previewType !== 'empty'" class="dp-scale">
+        <text class="dp-scale-label">{{ $t('dressPopup.sizeLabel') }}</text>
+        <slider
+          class="dp-scale-slider"
+          :value="Math.round(avatarScale * 100)"
+          :min="60"
+          :max="140"
+          :step="5"
+          active-color="#dbc98a"
+          background-color="rgba(0, 0, 0, 0.08)"
+          block-size="20"
+          @changing="onScaleChanging"
+          @change="onScaleChanging"
+        />
+        <text class="dp-scale-value">{{ Math.round(avatarScale * 100) }}%</text>
       </view>
 
       <!-- 底部选项列表 -->
@@ -192,6 +216,8 @@ export default {
     initialBgId: { type: String, default: '' },
     // 自定义上传的形象列表(从父组件传入,持久化由父组件负责)
     customAvatarList: { type: Array, default: () => [] },
+    // 初始形象缩放比例(1 为原始大小)
+    initialAvatarScale: { type: Number, default: 1 },
   },
 
   data() {
@@ -204,6 +230,8 @@ export default {
       selectedAvatarItem: null,
       selectedBgId: '',
       selectedBgItem: null,
+      // 预览形象的缩放比例(0.6~1.4),确认后由父组件持久化
+      avatarScale: 1,
       // three.js 实例(放 data 外,避免 Vue 响应式代理 three 对象)
       canvasId: 'dress-canvas-' + Math.random().toString(36).slice(2, 9),
       threeInst: null,
@@ -260,6 +288,11 @@ export default {
       return 'linear-gradient(135deg, #f7e9d7, #e6c9a3)'
     },
 
+    // 预览形象的缩放样式:图片与 3D 画布共用
+    previewScaleStyle() {
+      return { transform: `scale(${this.avatarScale})` }
+    },
+
     // 预览区下方提示文案
     previewTip() {
       const item = this.selectedAvatarItem
@@ -289,9 +322,13 @@ export default {
   methods: {
     // 打开弹窗(由父组件调用)
     open() {
-      // 重置选中状态为初始值
-      this.selectedAvatarId = this.initialAvatarId || (this.pet?.avatar ? 'pet-self' : '')
+      // 重置选中状态为初始值：不再因为"有宠物头像"就默认选中 pet-self，
+      // 否则用户只是打开弹窗再点确认，就会被当成已设置形象
+      this.selectedAvatarId = this.initialAvatarId || ''
       this.selectedBgId = this.initialBgId || 'b1'
+      // 缩放比例:越界值统一夹到 0.6~1.4
+      const scale = Number(this.initialAvatarScale)
+      this.avatarScale = Number.isFinite(scale) ? Math.min(1.4, Math.max(0.6, scale)) : 1
       this.selectedAvatarItem = this.findAvatarItem(this.selectedAvatarId)
       this.selectedBgItem = this.bgList.find((b) => b.id === this.selectedBgId) || this.bgList[0]
       // 打开弹窗(挂载 DOM)
@@ -306,19 +343,10 @@ export default {
       this.$emit('close')
     },
 
-    // 查找形象项(内置/自定义/特殊 pet-self)
+    // 查找形象项(内置/自定义)
+    // 兼容历史本地缓存里的 'pet-self'：已废弃，直接视为未选择
     findAvatarItem(id) {
-      if (!id) return null
-      if (id === 'pet-self') {
-        return this.pet?.avatar
-          ? {
-              id: 'pet-self',
-              name: this.pet.name || this.$t('petHub.petSelfFallback'),
-              src: this.pet.avatar,
-              type: 'image',
-            }
-          : null
-      }
+      if (!id || id === 'pet-self') return null
       return (
         this.builtinAvatars.find((a) => a.id === id) ||
         this.customAvatars.find((a) => a.id === id) ||
@@ -336,6 +364,13 @@ export default {
     selectBg(bg) {
       this.selectedBgId = bg.id
       this.selectedBgItem = bg
+    },
+
+    // 滑动调节形象大小:slider 的 value 是百分比(60~140)
+    onScaleChanging(e) {
+      const percent = Number(e?.detail?.value)
+      if (!Number.isFinite(percent)) return
+      this.avatarScale = Math.min(1.4, Math.max(0.6, percent / 100))
     },
 
     // 删除自定义形象
@@ -682,6 +717,7 @@ export default {
       this.$emit('confirm', {
         avatar: this.selectedAvatarItem,
         background: this.selectedBgItem,
+        scale: this.avatarScale,
       })
       this.close()
     },
@@ -806,6 +842,35 @@ export default {
   font-size: 22rpx;
   color: #ffffff;
   white-space: nowrap;
+}
+
+/* 形象大小调节条 */
+.dp-scale {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 8rpx 24rpx;
+  background: var(--color-surface);
+  border-bottom: 1rpx solid var(--color-divider);
+}
+
+.dp-scale-label {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+}
+
+.dp-scale-slider {
+  flex: 1;
+  margin: 0;
+}
+
+.dp-scale-value {
+  width: 72rpx;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 24rpx;
+  color: var(--color-text-tertiary);
 }
 
 /* 底部选项列表 */

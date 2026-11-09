@@ -9,6 +9,14 @@ let careSummarySeq = 0
 // 装扮持久化 key(按账号隔离;未登录时不持久化)
 const DRESS_STORAGE_KEY = 'moyuyo:dress:'
 
+// 形象缩放区间:0.6~1.4 倍,避免过小看不见或撑出预览区/场景
+const AVATAR_SCALE_MIN = 0.6
+const AVATAR_SCALE_MAX = 1.4
+
+function clampScale(value) {
+  return Math.min(AVATAR_SCALE_MAX, Math.max(AVATAR_SCALE_MIN, value))
+}
+
 // 动态引入 IDB 删除工具,避免小程序端 import 报错
 function safeIdbDeleteWithURL(key) {
   try {
@@ -36,6 +44,8 @@ export const usePetStore = defineStore('pet', {
     customAvatars: [],
     selectedAvatarId: '',
     selectedBgId: '',
+    // 形象缩放比例(0.6~1.4)，1 为原始大小
+    avatarScale: 1,
   }),
 
   getters: {
@@ -200,6 +210,9 @@ export const usePetStore = defineStore('pet', {
           this.customAvatars = Array.isArray(data.customAvatars) ? data.customAvatars : []
           this.selectedAvatarId = data.selectedAvatarId || ''
           this.selectedBgId = data.selectedBgId || ''
+          // 旧版本没有 avatarScale 字段时回退到 1（原始大小）
+          const scale = Number(data.avatarScale)
+          this.avatarScale = Number.isFinite(scale) ? clampScale(scale) : 1
         }
       } catch (e) {
         console.warn('[pet] loadDress local failed', e)
@@ -249,6 +262,7 @@ export const usePetStore = defineStore('pet', {
           customAvatars: this.customAvatars,
           selectedAvatarId: this.selectedAvatarId,
           selectedBgId: this.selectedBgId,
+          avatarScale: this.avatarScale,
         })
       } catch (e) {
         // 配额超限等场景;提示用户清理
@@ -325,6 +339,13 @@ export const usePetStore = defineStore('pet', {
     // 设置选中的背景
     setSelectedBg(id) {
       this.selectedBgId = id || ''
+      this._saveDress()
+    },
+
+    // 设置形象缩放比例(与装扮弹窗的取值区间保持一致:0.6~1.4)
+    setAvatarScale(value) {
+      const n = Number(value)
+      this.avatarScale = Number.isFinite(n) ? clampScale(n) : 1
       this._saveDress()
     },
   },

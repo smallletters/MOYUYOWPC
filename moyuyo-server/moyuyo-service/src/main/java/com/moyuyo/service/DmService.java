@@ -5,8 +5,10 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.dao.admin.entity.ContentReviewEntity;
 import com.moyuyo.dao.admin.entity.SensitiveWordEntity;
+import com.moyuyo.dao.admin.entity.SystemConfigEntity;
 import com.moyuyo.dao.admin.mapper.ContentReviewMapper;
 import com.moyuyo.dao.admin.mapper.SensitiveWordMapper;
+import com.moyuyo.dao.admin.mapper.SystemConfigMapper;
 import com.moyuyo.dao.entity.BlockEntity;
 import com.moyuyo.dao.entity.DmConversationEntity;
 import com.moyuyo.dao.entity.DmGroupMemberEntity;
@@ -32,9 +34,11 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -110,6 +114,24 @@ public class DmService {
     /** 私信频控 Redis Key 前缀 */
     private static final String SEND_RATE_KEY_PREFIX = "moyuyo:dm:send:";
 
+    /** 陌生人防骚扰：对方未回复前最多发送条数（配置键，0=不限制） */
+    private static final String KEY_DM_STRANGER_FIRST_LIMIT = "dm.guard.stranger_first_limit";
+
+    /** 陌生人防骚扰：未互动会话每天最多发送条数（配置键，0=不限制） */
+    private static final String KEY_DM_STRANGER_DAILY_LIMIT = "dm.guard.stranger_daily_limit";
+
+    /** 陌生人防骚扰默认值：对方未回复前最多发 1 条 */
+    private static final int DEFAULT_STRANGER_FIRST_LIMIT = 1;
+
+    /** 陌生人防骚扰默认值：未互动会话每天最多发 10 条 */
+    private static final int DEFAULT_STRANGER_DAILY_LIMIT = 10;
+
+    /** 陌生人防骚扰每日计数 Redis Key 前缀 */
+    private static final String DAILY_RATE_KEY_PREFIX = "moyuyo:dm:daily:";
+
+    /** 防骚扰配置本地缓存 TTL：后台修改后最多 1 分钟生效 */
+    private static final long DM_GUARD_CONFIG_CACHE_MS = 60_000L;
+
     /** 会话内搜索关键词最大长度 */
     private static final int SEARCH_KEYWORD_MAX_LENGTH = 50;
 
@@ -120,6 +142,10 @@ public class DmService {
     private volatile List<SensitiveWordEntity> sensitiveWordCache = Collections.emptyList();
     private volatile long sensitiveWordCacheAt = 0L;
 
+    /** 防骚扰配置本地缓存（避免每条消息都查 mo_system_config） */
+    private volatile Map<String, String> dmGuardConfigCache = Collections.emptyMap();
+    private volatile long dmGuardConfigCacheAt = 0L;
+
     private final DmConversationMapper conversationMapper;
     private final DmMessageMapper messageMapper;
     private final DmMessageDeleteMapper messageDeleteMapper;
@@ -128,6 +154,7 @@ public class DmService {
     private final BlockMapper blockMapper;
     private final SensitiveWordMapper sensitiveWordMapper;
     private final ContentReviewMapper contentReviewMapper;
+    private final SystemConfigMapper systemConfigMapper;
     private final StringRedisTemplate redisTemplate;
     private final ApplicationEventPublisher eventPublisher;
     private final NotificationService notificationService;
@@ -676,7 +703,7 @@ public class DmService {
      * @param mediaName     文件名，仅 FILE 必填
      * @param mediaSize     文件大小（字节），仅 FILE 必填
      */
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public DmMessageEntity sendMessage(Long userId, Long conversationId, String content,
                                        String contentType, Long quoteMessageId,
                                        Integer mediaDuration, String mediaName, Long mediaSize) {
@@ -744,6 +771,9 @@ public class DmService {
                 : (Objects.equals(conv.getUserA(), userId) ? conv.getUserB() : conv.getUserA());
         // 群聊不做双方拉黑/隐私开关校验；单聊保持原有校验
         if (!group) {
+            // 串行化同一会话的发送：防止并发请求同时通过条数校验而绕过防骚扰限制；
+            // 会话行在后续更新摘要时本来也会加锁，这里只是把加锁时机提前
+            conversationMapper.lockById(conversationId);
             // 双向拉黑校验：我拉黑对方 或 对方拉黑我，都不允许发送
             if (isBlocked(userId, receiverId) || isBlocked(receiverId, userId)) {
                 throw new IllegalStateException("无法向该用户发送私信");
@@ -753,6 +783,8 @@ public class DmService {
             if (receiver != null && Boolean.FALSE.equals(receiver.getAllowMessages())) {
                 throw new IllegalStateException("对方已关闭私信");
             }
+            // 陌生人防骚扰：对方未回复前限制发送条数 + 未互动会话每日条数
+            checkStrangerGuard(userId, conversationId, receiverId);
         }
 
         DmMessageEntity message = new DmMessageEntity();
@@ -1170,6 +1202,100 @@ public class DmService {
         sensitiveWordCache = fresh == null ? Collections.emptyList() : fresh;
         sensitiveWordCacheAt = now;
         return sensitiveWordCache;
+    }
+
+    /**
+     * 陌生人防骚扰校验（仅单聊，群聊不限制）。
+     *
+     * 判定「陌生人」：对方在本会话中从未发送过消息。
+     * 规则：
+     * 1. 对方未回复前，我方最多发送 N 条（默认 1 条），对方任意回复后解除；
+     * 2. 对方未回复前，同一会话每天最多发送 M 条（默认 10 条），跨天重置。
+     * 两个阈值均可在管理后台配置，0 表示关闭对应限制。
+     */
+    private void checkStrangerGuard(Long userId, Long conversationId, Long receiverId) {
+        // 调用方已对单聊会话行加锁，且事务隔离级别为 READ_COMMITTED，
+        // 因此这里的普通查询能读到其他事务刚提交的回复/消息
+        if (messageMapper.selectAnyId(conversationId, receiverId) != null) {
+            return;
+        }
+        Map<String, String> config = dmGuardConfig();
+        int firstLimit = intConfig(config, KEY_DM_STRANGER_FIRST_LIMIT,
+                DEFAULT_STRANGER_FIRST_LIMIT);
+        int dailyLimit = intConfig(config, KEY_DM_STRANGER_DAILY_LIMIT,
+                DEFAULT_STRANGER_DAILY_LIMIT);
+
+        // 首条上限：只需取前 N 条判断是否已达上限，避免大会话全量统计
+        if (firstLimit > 0
+                && messageMapper.selectIds(conversationId, userId, firstLimit).size()
+                >= firstLimit) {
+            throw new IllegalStateException("对方回复后才能继续发送");
+        }
+        // 每日上限：Redis 按「用户 + 会话 + 日期」计数
+        if (dailyLimit > 0) {
+            checkDailyLimit(userId, conversationId, dailyLimit);
+        }
+    }
+
+    /** 陌生人每日发送上限：Redis 异常时 fail-open，避免聊天整体不可用 */
+    private void checkDailyLimit(Long userId, Long conversationId, int dailyLimit) {
+        String key = DAILY_RATE_KEY_PREFIX + userId + ":" + conversationId + ":" + LocalDate.now();
+        Long count;
+        try {
+            count = redisTemplate.opsForValue().increment(key);
+            if (count != null && count == 1L) {
+                // 次日零点过期，避免跨天后仍占用当日额度
+                long seconds = Duration.between(LocalDateTime.now(),
+                        LocalDate.now().plusDays(1).atStartOfDay()).getSeconds();
+                redisTemplate.expire(key, Duration.ofSeconds(Math.max(60L, seconds)));
+            }
+        } catch (Exception e) {
+            log.error("私信每日频控 fail-open（Redis 不可用）, userId={}, conversationId={}",
+                    userId, conversationId, e);
+            return;
+        }
+        if (count != null && count > dailyLimit) {
+            throw new IllegalStateException("今日向该用户发送的消息已达上限");
+        }
+    }
+
+    /** 读取 dm.guard.* 配置（60 秒本地缓存，避免每条消息都查库） */
+    private Map<String, String> dmGuardConfig() {
+        long now = System.currentTimeMillis();
+        if (now - dmGuardConfigCacheAt < DM_GUARD_CONFIG_CACHE_MS) {
+            return dmGuardConfigCache;
+        }
+        Map<String, String> map = new LinkedHashMap<>();
+        try {
+            List<SystemConfigEntity> list = systemConfigMapper.selectList(
+                    new LambdaQueryWrapper<SystemConfigEntity>()
+                            .likeRight(SystemConfigEntity::getConfigKey, "dm.guard."));
+            for (SystemConfigEntity entity : list) {
+                if (entity.getConfigKey() != null && entity.getConfigValue() != null) {
+                    map.put(entity.getConfigKey(), entity.getConfigValue());
+                }
+            }
+            dmGuardConfigCache = map;
+        } catch (Exception e) {
+            // 读取失败时沿用旧缓存，并延迟 60 秒重试，避免每条消息都打库
+            log.warn("读取私信防骚扰配置失败，沿用旧配置: {}", e.getMessage());
+        }
+        dmGuardConfigCacheAt = now;
+        return dmGuardConfigCache;
+    }
+
+    /** 解析非负整数配置，非法或缺失时回退默认值 */
+    private int intConfig(Map<String, String> config, String key, int defaultValue) {
+        String raw = config.get(key);
+        if (raw == null || raw.isBlank()) {
+            return defaultValue;
+        }
+        try {
+            int value = Integer.parseInt(raw.trim());
+            return value >= 0 ? value : defaultValue;
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
 
     /** 发送频控：用户维度分钟级计数；Redis 异常时 fail-open，避免聊天整体不可用 */

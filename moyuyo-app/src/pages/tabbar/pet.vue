@@ -55,16 +55,21 @@
           </scroll-view>
         </view>
 
-        <!-- 中央:当前装扮形象(用户自定义 / 内置) - 3D 模型 / 图片 -->
+        <!-- 中央:当前装扮形象(用户自定义 / 内置) - 3D 模型 / 图片，大小跟随装扮设置 -->
         <view v-if="dressedAvatar" class="scene-figure" @click.stop>
           <image
             v-if="dressedAvatar.type !== 'model3d'"
             class="scene-figure-img"
             :src="$img(dressedAvatar.src)"
             mode="aspectFit"
+            :style="figureScaleStyle"
           />
           <!-- 3D 模型嵌入 canvas(仅 H5/APP) -->
-          <view v-else :id="figureCanvasId" class="scene-figure-canvas" />
+          <view
+            v-else
+            :id="figureCanvasId"
+            class="scene-figure-canvas"
+            :style="figureScaleStyle" />
         </view>
 
         <!-- 左上：宠物信息浮层 -->
@@ -154,6 +159,7 @@
       :pet="activePet"
       :initial-avatar-id="petStore.selectedAvatarId"
       :initial-bg-id="petStore.selectedBgId"
+      :initial-avatar-scale="petStore.avatarScale"
       :custom-avatar-list="petStore.customAvatars"
       @confirm="onDressConfirm"
       @upload-avatar="onUploadAvatar"
@@ -290,29 +296,22 @@ export default {
       return '/static/pet/pet-hub-scene.jpg'
     },
 
-    // 当前场景中央显示的形象(用户选中的装扮)
-    // 优先级:customAvatars 中匹配 selectedAvatarId > 内置 builtinAvatars 匹配 > 默认 pet-self
+    // 当前场景中央显示的形象(仅用户主动选中的装扮)
+    // 未选装扮时不再回退宠物档案头像,避免"没设置形象却显示头像"
     dressedAvatar() {
       const sid = this.petStore.selectedAvatarId
-      if (sid) {
-        // 1. 自定义形象(id 通常是 'cu-xxx')
-        const custom = (this.petStore.customAvatars || []).find((a) => a.id === sid)
-        if (custom) return custom
-        // 2. 内置形象(id 是 a1~a4),从本地常量查 src
-        const builtin = this.builtinAvatars.find((a) => a.id === sid)
-        if (builtin) return builtin
-      }
-      // 未选装扮时:用当前宠物头像作为默认形象
-      const pet = this.activePet
-      if (pet?.avatar) {
-        return {
-          id: 'pet-self',
-          name: pet.name || this.$t('petHub.petSelfFallback'),
-          src: pet.avatar,
-          type: 'image',
-        }
-      }
-      return null
+      if (!sid) return null
+      // 1. 自定义形象(id 通常是 'cu-xxx')
+      const custom = (this.petStore.customAvatars || []).find((a) => a.id === sid)
+      if (custom) return custom
+      // 2. 内置形象(id 是 a1~a4),从本地常量查 src
+      return this.builtinAvatars.find((a) => a.id === sid) || null
+    },
+
+    // 场景形象缩放：与装扮弹窗里的"形象大小"保持一致
+    figureScaleStyle() {
+      const scale = Number(this.petStore.avatarScale) || 1
+      return { transform: `scale(${scale})` }
     },
 
     // 护理卡：由 care-summary 聚合项驱动（最近记录 + 提醒配置），无宠物时显示占位卡
@@ -511,6 +510,8 @@ export default {
       if (!payload) return
       if (payload.avatar) this.petStore.setSelectedAvatar(payload.avatar.id)
       if (payload.background) this.petStore.setSelectedBg(payload.background.id)
+      // 形象大小与形象一起保存，场景中央同步缩放
+      if (payload.scale) this.petStore.setAvatarScale(payload.scale)
       uni.showToast({ title: this.$t('petHub.dressApplied'), icon: 'success' })
     },
 

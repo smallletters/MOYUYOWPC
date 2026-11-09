@@ -268,6 +268,9 @@ const SERVER_ERROR_MAP = {
   消息已撤回: 'serverMsg.dmAlreadyRecalled',
   // 私信发送频控
   '发送过于频繁，请稍后再试': 'serverMsg.dmTooFrequent',
+  // 陌生人防骚扰（对方未回复前的条数/每日条数限制）
+  对方回复后才能继续发送: 'serverMsg.dmStrangerFirstLimit',
+  今日向该用户发送的消息已达上限: 'serverMsg.dmStrangerDailyLimit',
   // 引用回复 / 举报校验
   引用的消息不存在或已撤回: 'serverMsg.dmQuoteMissing',
   请勿重复举报: 'serverMsg.dmDuplicateReport',
