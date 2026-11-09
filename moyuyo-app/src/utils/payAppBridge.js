@@ -37,6 +37,51 @@ function getScheme(url) {
   }
 }
 
+// Android intent:// 只允许跳转这些支付相关包/scheme，避免被第三方页面用来唤起任意 App/组件
+const ALLOWED_INTENT_PACKAGES = [
+  'com.paypal.android.p2pmobile',
+  'com.google.android.apps.nbu.paisa.user',
+]
+const ALLOWED_INTENT_SCHEMES = ['paypal', 'paypalme', 'paypalpay', 'googlepay', 'gpay']
+
+/**
+ * 判断是否为允许在支付 WebView 内加载的 http(s) URL。
+ * 安全策略：
+ *  - 只允许 https（支付 / 3DS 页面必须加密传输）
+ *  - 仅放行 localhost / 127.0.0.1 的 http，便于本地联调
+ * 说明：Stripe Checkout 的 3DS 校验会跳到各家发卡行域名，无法用固定域名白名单，
+ * 因此这里采用「强制 HTTPS」这一不破坏支付流程的最小安全边界。
+ *
+ * @param {string} url 待校验 URL
+ * @returns {boolean}
+ */
+export function isSafeHttpUrl(url) {
+  if (!url || typeof url !== 'string') return false
+  if (/^https:\/\//i.test(url)) return true
+  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(url)) return true
+  return false
+}
+
+/**
+ * 校验 Android intent:// URL 的目标是否属于支付白名单。
+ * 解析 `#Intent;...;package=xxx;...;scheme=yyy;end` 片段。
+ *
+ * @param {string} url intent:// 形式的 URL
+ * @returns {boolean}
+ */
+function isAllowedIntentUrl(url) {
+  if (typeof url !== 'string' || url.indexOf('intent://') !== 0) return false
+  const fragIdx = url.indexOf('#Intent;')
+  if (fragIdx === -1) return false
+  const frag = url.slice(fragIdx)
+  const pkgMatch = frag.match(/package=([^;]+)/)
+  const schemeMatch = frag.match(/scheme=([^;]+)/)
+  if (pkgMatch && ALLOWED_INTENT_PACKAGES.indexOf(pkgMatch[1]) !== -1) return true
+  if (schemeMatch && ALLOWED_INTENT_SCHEMES.indexOf(schemeMatch[1].toLowerCase()) !== -1)
+    return true
+  return false
+}
+
 /**
  * 判断一个 URL 属于"要跳外部 APP 的自定义 scheme"。
  * 命中后一律调用 plus.runtime.openURL。
@@ -46,11 +91,14 @@ function getScheme(url) {
 function isExternalAppScheme(url) {
   const scheme = getScheme(url)
   if (!scheme) return false
+  // Android intent://：只允许支付白名单目标，防止被用来唤起任意 App/组件
+  if (scheme === 'intent' || url.indexOf('intent://') === 0) {
+    return isAllowedIntentUrl(url)
+  }
   // 已知要跳外 APP 的 scheme（持续收集扩展）
   // 美国市场方案：只保留实际支付链路需要的 scheme
   // - paypal / paypalme / paypalpay: PayPal 官方 SDK
   // - googlepay / gpay: Google Pay APP
-  // - intent: Android intent:// URL（Stripe Checkout 跳 G Pay 用）
   // - applepay / com-apple-payment-pass: iOS Apple Pay PassKit scheme
   // - itms-*: App Store（用户未安装对应 APP 时可能跳到 App Store 提示下载）
   const open = [
@@ -61,8 +109,6 @@ function isExternalAppScheme(url) {
     // Google Pay
     'googlepay',
     'gpay',
-    // Android intent:// URLs
-    'intent',
     // iOS Apple Pay
     'applepay',
     'com-apple-payment-pass',
@@ -71,10 +117,7 @@ function isExternalAppScheme(url) {
     'itms-services',
     'itms',
   ]
-  if (open.indexOf(scheme) !== -1) return true
-  // Android intent:// URLs
-  if (url.indexOf('intent://') === 0) return true
-  return false
+  return open.indexOf(scheme) !== -1
 }
 
 /**
@@ -128,29 +171,33 @@ export function createPaymentWebView(opts) {
         const url = event.url
         if (!url) return
 
-        // 调试日志：方便在真机排查 Stripe Checkout 触发的 scheme 类型
-        console.log('[payAppBridge] intercept url:', url)
+        // 调试日志：只打印 scheme，避免把带 session/clientSecret 的完整支付 URL 落到日志
+        console.log('[payAppBridge] intercept scheme:', getScheme(url))
 
         // 1) 命中 Moyuyo 自定义 scheme 回跳 → 告诉调用方（关 WebView + 处理结果）
         const ret = parseMoyuyoReturn(url)
         if (ret) {
-          console.log('[payAppBridge] moyuyo return, status=', ret.status, 'orderNo=', ret.orderNo)
+          console.log('[payAppBridge] moyuyo return, status=', ret.status)
           onReturn(ret)
           return
         }
 
-        // 2) 支付自定义 scheme → 跳对方 APP
+        // 2) 支付自定义 scheme → 跳对方 APP（scheme 已在 isExternalAppScheme 内做白名单校验）
         if (isExternalAppScheme(url)) {
-          console.log('[payAppBridge] external scheme, openURL:', url)
+          console.log('[payAppBridge] external scheme:', getScheme(url))
           openExternalApp(url)
           return
         }
 
-        // 3) http(s) 正常继续加载
-        try {
-          wv.loadURL(url)
-        } catch (e) {
-          // ignore
+        // 3) http(s)：只放行安全 URL（强制 HTTPS），明文 http / 其它协议一律拦截
+        if (isSafeHttpUrl(url)) {
+          try {
+            wv.loadURL(url)
+          } catch (e) {
+            // ignore
+          }
+        } else {
+          console.warn('[payAppBridge] blocked unsafe url:', String(url).slice(0, 80))
         }
       },
       function (err) {
@@ -160,16 +207,21 @@ export function createPaymentWebView(opts) {
   }
 
   function openExternalApp(url) {
+    // 二次防御：即使上游判断被绕过，这里也只放行白名单 scheme
+    if (!isExternalAppScheme(url)) {
+      console.warn('[payAppBridge] blocked external scheme:', getScheme(url))
+      return
+    }
     if (typeof plus === 'undefined' || !plus.runtime) {
       // 开发时非 APP 环境不做处理，打印即可
-      console.warn('[payAppBridge] skip openURL (非 APP 环境):', url)
+      console.warn('[payAppBridge] skip openURL (非 APP 环境):', getScheme(url))
       return
     }
     plus.runtime.openURL(url, function (err) {
-      console.warn('[payAppBridge] openURL 失败，用户可能未安装对应 APP:', url, err)
-      // 兜底：如果是 Android intent://，把 fallback URL 抽出来再加载回 WebView
+      console.warn('[payAppBridge] openURL 失败，用户可能未安装对应 APP:', getScheme(url), err)
+      // 兜底：如果是 Android intent://，把 fallback URL 抽出来，且必须仍是安全 https 才加载
       const fallback = parseIntentFallback(url)
-      if (fallback && webview) webview.loadURL(fallback)
+      if (fallback && isSafeHttpUrl(fallback) && webview) webview.loadURL(fallback)
     })
   }
 
@@ -194,14 +246,14 @@ export function createPaymentWebView(opts) {
           typeof plus !== 'undefined' && plus.webview && plus.webview.currentWebview
             ? plus.webview.currentWebview()
             : null
+        // 安全：支付子 WebView 加载的是第三方远程页面，必须收窄原生能力暴露面：
+        // - 不注入 plus API（去掉 plusrequire:'ahead'，远程页面拿不到原生能力）
+        // - 不放开 file:// 跨源/通用访问（防止本地文件被远程页面读取）
+        // - 仅保留内联媒体播放（Stripe 结账页展示需要）
         const styles = {
-          plusrequire: 'ahead',
           cache: { clear: false },
           statusbar: { background: '#FFFFFF' },
-          // iOS 侧允许：applepay://、alipays:// 这类 scheme 跳转（overrideUrlLoading 再精细控制）
           allowsInlineMediaPlayback: true,
-          allowFileAccessFromFileURLs: true,
-          allowUniversalAccessFromFileURLs: true,
         }
         const current =
           typeof plus !== 'undefined' && plus.webview
@@ -281,14 +333,19 @@ export function createPaymentWebView(opts) {
      * 如果 plus 还没 ready，会缓存 URL，plus ready 后自动 loadURL。
      */
     async loadURL(url) {
-      const wv = await ensureReady()
-      if (!wv) {
-        pendingUrl = url
+      // 安全：只允许加载安全的 http(s) URL（强制 HTTPS），防止任意协议/明文站点进入支付 WebView
+      let target = url || pendingUrl
+      if (!isSafeHttpUrl(target)) {
+        console.warn('[payAppBridge] blocked unsafe loadURL:', String(target).slice(0, 80))
         return null
       }
-      if (pendingUrl && !url) url = pendingUrl
+      const wv = await ensureReady()
+      if (!wv) {
+        pendingUrl = target
+        return null
+      }
       pendingUrl = ''
-      wv.loadURL(url)
+      wv.loadURL(target)
       return wv
     },
     /**

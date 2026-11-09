@@ -27,7 +27,7 @@ import java.time.Instant;
  * <p>
  * 设计要点：
  * 1. 滑动窗口（ZSet）：每个 IP 每分钟最多 N 次，超出立即返回 429
- * 2. 滑动窗口 key 含分钟戳（auth:ip:{ip}:{minute}）：自动过期，无需显式清理
+ * 2. 滑动窗口 key 含分钟戳与端点（auth:ip:{ip}:{minute}:{endpoint}）：自动过期，无需显式清理
  * 3. Redis 不可用时 fail-open：放行请求并 ERROR 日志 + Prometheus 计数器，便于告警
  * 4. 仅对白名单外的敏感端点生效（登录/支付/注册/邮箱验证/密码重置）
  * 5. 与 UserRateLimitFilter 解耦：IP 限流针对未鉴权流量，用户限流针对已鉴权流量
@@ -55,13 +55,27 @@ public class IpRateLimitFilter implements Filter {
     /** ZSet member 长度硬上限：超过则截断，避免攻击者用超长 member 撑爆 Redis 内存 */
     private static final int MAX_MEMBER_LENGTH = 64;
 
-    /** 受限路径：未鉴权敏感端点 */
+    /** 受限路径：未鉴权敏感端点（按路径分桶，避免一个端点耗尽同 IP 的所有配额） */
     private static final String[] SENSITIVE_PATHS = {
             "/api/v1/auth/login",
             "/api/v1/auth/register",
             "/api/v1/auth/email/verify",
+            // 验证码确认同样匿名可调，必须做 IP 限流，防止 6 位码被脚本穷举
+            "/api/v1/auth/email/verify-confirm",
             "/api/v1/auth/password/forgot",
+            // 重置密码与发码同属匿名敏感端点，必须做 IP 维度限流，防止 6 位码被脚本穷举
+            "/api/v1/auth/password/reset",
             "/api/v1/auth/magic-link/send",
+            // Magic Link 验证同样匿名可调，限制枚举与重放频率
+            "/api/v1/auth/magic-link/verify",
+            // 手机号发码/登录：防止短信轰炸与验证码枚举
+            "/api/v1/auth/phone/send-code",
+            "/api/v1/auth/phone/login",
+            // 2FA 发码/校验：防止登录挑战被刷
+            "/api/v1/auth/2fa/send",
+            "/api/v1/auth/2fa/verify",
+            // 管理端登录：高价值目标，单独做 IP 维度限流
+            "/api/admin/auth/login",
             "/api/v1/payments/create"
     };
 
@@ -101,7 +115,8 @@ public class IpRateLimitFilter implements Filter {
         }
 
         // 非敏感路径：放行（由 UserRateLimitFilter 处理已鉴权流量）
-        if (!isSensitivePath(path)) {
+        String sensitivePath = matchSensitivePath(path);
+        if (sensitivePath == null) {
             chain.doFilter(request, response);
             return;
         }
@@ -116,7 +131,8 @@ public class IpRateLimitFilter implements Filter {
         }
 
         long minute = Instant.now().getEpochSecond() / 60;
-        String key = REDIS_KEY_PREFIX + ip + ":" + minute;
+        // 按「IP + 分钟 + 端点」分桶：单个端点被刷满时不会挤占同 IP 的其他端点配额
+        String key = REDIS_KEY_PREFIX + ip + ":" + minute + ":" + sensitivePath.replace('/', '_');
 
         try {
             long currentCount = incrementAndCount(key, ip);
@@ -176,13 +192,14 @@ public class IpRateLimitFilter implements Filter {
         return count != null ? count : 0L;
     }
 
-    private boolean isSensitivePath(String path) {
+    /** 返回命中的敏感路径（用于分桶 key）；未命中返回 null */
+    private String matchSensitivePath(String path) {
         for (String prefix : SENSITIVE_PATHS) {
             if (path.equals(prefix) || path.startsWith(prefix + "/")) {
-                return true;
+                return prefix;
             }
         }
-        return false;
+        return null;
     }
 
     private void sendError(HttpServletResponse response, int status, String message) throws IOException {

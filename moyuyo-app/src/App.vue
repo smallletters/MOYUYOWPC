@@ -15,7 +15,7 @@ import { triggerSessionExpired } from '@/utils/request'
 // 内部已经处理同日幂等，不会变成 N 次请求。
 import { reportActiveHeartbeat } from '@/utils/heartbeat'
 // 私信 WebSocket：全局维持连接，收到新私信时刷新消息 Tab 未读角标
-import { messageApi } from '@/api'
+import { messageApi, orderApi } from '@/api'
 import { connectDmSocket, onDmSocketEvent, syncMessageTabBadge } from '@/utils/dmSocket'
 
 // APP 端全局 scheme 监听：
@@ -141,6 +141,26 @@ function tryProbe(userStore, reason) {
   userStore.fetchProfile().catch(handleProbeError)
 }
 
+/**
+ * 通过 orderNo 反查订单主键 id。
+ * 支付回跳 scheme 只携带 orderNo，而订单详情接口按主键 id 查询，
+ * 因此需要拉一页最近订单做匹配（刚支付完的订单必然排在列表顶部）。
+ *
+ * @param {string} orderNo 订单号
+ * @returns {Promise<number|null>} 命中返回 id，未命中/请求失败返回 null
+ */
+async function resolveOrderIdByNo(orderNo) {
+  try {
+    const res = await orderApi.getOrderList({ page: 1, size: 20 })
+    const list = Array.isArray(res?.records) ? res.records : Array.isArray(res) ? res : []
+    const hit = list.find((o) => o && o.orderNo === orderNo)
+    return hit ? hit.id : null
+  } catch (e) {
+    console.warn('[App.scheme] resolveOrderIdByNo failed:', e?.message)
+    return null
+  }
+}
+
 function ensureSchemeRegistered() {
   if (_schemeCleanup) return
   // 非 APP 端没有 plus.runtime,直接早退避免后续 try 块不可达
@@ -148,22 +168,9 @@ function ensureSchemeRegistered() {
   try {
     _schemeCleanup = registerMoyuyoScheme((ret) => {
       if (!ret || !ret.orderNo) return
-      // 1) 存入支付结果 storage，pay.vue 的 readPayResultFromStorage 会消费
-      try {
-        uni.setStorageSync(
-          'moyuyo_pay_result',
-          JSON.stringify({
-            type: 'pay_result',
-            status: ret.status || '',
-            orderNo: ret.orderNo,
-            raw: ret.raw,
-            timestamp: Date.now(),
-          }),
-        )
-      } catch (e) {
-        /* 写入失败可忽略 */
-      }
-      // 2) 如果当前在支付页/订单列表，不要硬跳，交给 pay.vue 的 onShow 处理
+      // 安全：moyuyo:// 可被任意网页/其它 App 构造，ret.status 不可信。
+      // 不再把 scheme 里的 status 写入本地 storage，订单是否支付成功一律由服务端订单详情决定。
+      // 1) 支付页/详情页/列表在前台：交给页面自身 onShow 向服务端回查，避免重复跳转
       const pages = getCurrentPages()
       const top = (pages && pages[pages.length - 1]) || {}
       const route = (top.route || top.$page?.path || '').replace(/^\/+/, '')
@@ -171,12 +178,17 @@ function ensureSchemeRegistered() {
         route === 'pages/order/pay' ||
         route === 'pages/order/detail' ||
         route === 'pages/order/list'
-      if (!isPayOrDetail) {
-        // 支付后回到首页、商品详情等场景 → 跳去订单详情
-        uni.redirectTo({
-          url: `/pages/order/detail?orderNo=${encodeURIComponent(ret.orderNo)}`,
-        })
-      }
+      if (isPayOrDetail) return
+      // 2) 其它场景（如支付后回到首页/冷启动）→ 按 orderNo 反查 id 后跳订单详情，
+      //    详情页会重新拉取服务端状态，绝不凭 scheme 展示"支付成功"
+      resolveOrderIdByNo(ret.orderNo).then((id) => {
+        if (id) {
+          uni.redirectTo({ url: `/pages/order/detail?id=${id}` })
+        } else {
+          // 反查不到（订单已被清理等）→ 退到订单列表，避免跳到无效详情页
+          uni.redirectTo({ url: '/pages/order/list' })
+        }
+      })
     })
   } catch (e) {
     /* APP 端运行时报错可忽略(H5 等平台没有 plus.runtime) */

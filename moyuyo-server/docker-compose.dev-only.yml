@@ -213,6 +213,10 @@ services:
       MOYUYO_LOGISTICS_CUSTOMER: "${MOYUYO_LOGISTICS_CUSTOMER:-}"
       MOYUYO_LOGISTICS_POLL_INTERVAL: "${MOYUYO_LOGISTICS_POLL_INTERVAL:-30}"
       MOYUYO_LOGISTICS_POLL_BATCH_SIZE: "${MOYUYO_LOGISTICS_POLL_BATCH_SIZE:-100}"
+      # 只轮询最近 N 天内发货的未签收运单（超期不再自动刷新轨迹）
+      MOYUYO_LOGISTICS_POLL_WINDOW_DAYS: "${MOYUYO_LOGISTICS_POLL_WINDOW_DAYS:-30}"
+      # 轨迹内存缓存最大条目数（防止无界增长）
+      MOYUYO_LOGISTICS_CACHE_MAX_SIZE: "${MOYUYO_LOGISTICS_CACHE_MAX_SIZE:-5000}"
       # Google Maps 位置服务（留空时 /api/v1/geo/* 返回"地图服务未配置"）
       GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY:-}"
       # CSP 白名单：默认值与 SecurityHeadersFilter 的 @Value 默认一致，

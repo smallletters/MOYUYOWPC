@@ -6,9 +6,12 @@ import com.moyuyo.dao.admin.entity.AdminRoleEntity;
 import com.moyuyo.dao.admin.entity.AdminUserEntity;
 import com.moyuyo.dao.admin.mapper.AdminRoleMapper;
 import com.moyuyo.dao.admin.mapper.AdminUserMapper;
+import com.moyuyo.service.admin.AdminAccountStateService;
 import com.moyuyo.service.admin.AdminStaffService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +34,13 @@ public class AdminStaffServiceImpl implements AdminStaffService {
   private final AdminRoleMapper adminRoleMapper;
   /** 统一密码编码器 Bean，强度由 moyuyo.password.bcrypt-strength 控制（默认 12） */
   private final PasswordEncoder passwordEncoder;
+  /** Redis：管理员改密后递增 token 版本号，使旧 access token 立即失效 */
+  private final StringRedisTemplate redisTemplate;
+  /** 管理员账号状态缓存：禁用/删除/改角色后主动清理，保证权限立即失效 */
+  private final AdminAccountStateService adminAccountStateService;
+
+  /** 与 JwtAuthFilter 中 admin 命名空间保持一致的版本号 key */
+  private static final String REDIS_KEY_ADMIN_TOKEN_VERSION = "auth:admin-token-version:";
 
   /**
    * 校验角色编码是否合法（RBAC 与 admin_user.role 字段一致性约束）
@@ -191,6 +201,8 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     }
 
     adminUserMapper.updateById(entity);
+    // 状态/角色变更后立即失效账号状态缓存，避免旧 token 在 60 秒缓存窗口内继续生效
+    adminAccountStateService.evict(id);
 
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("id", id);
@@ -244,6 +256,8 @@ public class AdminStaffServiceImpl implements AdminStaffService {
       // 若未来启用多管理员并发操作超管，需在此处改为 SELECT ... FOR UPDATE 行锁。
     }
     adminUserMapper.deleteById(id);
+    // 删除后立即失效账号状态缓存，旧 token 的下一次请求即被拒绝
+    adminAccountStateService.evict(id);
   }
 
   @Override
@@ -251,6 +265,10 @@ public class AdminStaffServiceImpl implements AdminStaffService {
   public void resetPassword(Long id, String newPassword) {
     if (newPassword == null || newPassword.trim().isEmpty()) {
       throw new IllegalArgumentException("新密码不能为空");
+    }
+    // 安全修复：服务层兜底密码强度校验，避免调用方漏校验产生弱口令管理员
+    if (newPassword.length() < 12) {
+      throw new IllegalArgumentException("新密码至少 12 位");
     }
     AdminUserEntity entity = adminUserMapper.selectById(id);
     if (entity == null) {
@@ -265,5 +283,12 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     // 重置密码使用统一密码编码器，强度由 moyuyo.password.bcrypt-strength 控制
     entity.setPassword(passwordEncoder.encode(newPassword));
     adminUserMapper.updateById(entity);
+    // 递增管理员 token 版本：旧 access token 立即失效；失败抛异常回滚密码变更
+    try {
+      redisTemplate.opsForValue().increment(REDIS_KEY_ADMIN_TOKEN_VERSION + id);
+    } catch (DataAccessException e) {
+      log.error("递增管理员 token version 失败，中止改密，adminId={}", id, e);
+      throw new IllegalStateException("系统繁忙，请稍后再试", e);
+    }
   }
 }

@@ -2,12 +2,16 @@ package com.moyuyo.service.impl;
 
 import com.moyuyo.common.exception.BusinessException;
 import com.moyuyo.service.SmsService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
+
 /**
- * 短信服务兜底实现：仅打日志，不实际发送。
+ * 短信服务兜底实现：dev profile 仅打日志不实际发送；非 dev profile 直接 fail-closed。
  *
  * 启用条件：moyuyo.sms.provider 不是 aliyun（包括为空/未配置）。
  * 与 {@link AliyunSmsServiceImpl} 的 @ConditionalOnProperty(provider=aliyun) 严格互斥。
@@ -16,20 +20,33 @@ import org.springframework.stereotype.Service;
  * 在普通 @Service 组件扫描下条件评估时机不可控，会导致 provider 为空时兜底 Bean
  * 未被注册，进而使依赖 SmsService 的 PushManageServiceImpl 启动失败。
  *
- * 生产环境必须配置 moyuyo.sms.provider=aliyun，否则手机号登录不可用。
- * 此 Bean 让应用在 dev 启动不报错，但日志会发出 WARN 提示。
+ * 生产环境必须配置 moyuyo.sms.provider=aliyun。非 dev 环境未配置时，
+ * sendCode 会抛 503 并拒绝发送，避免验证码写入日志或“假发送成功”。
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 @ConditionalOnExpression("'${moyuyo.sms.provider:}' != 'aliyun'")
 public class NoopSmsServiceImpl implements SmsService {
 
+    private final Environment environment;
+
     @Override
     public void sendCode(String phone, String code, String purpose) {
-        log.warn("[sms] NoopSmsService active. code={}, phone={}, purpose={}. "
-                        + "生产环境必须配置 moyuyo.sms.provider=aliyun 启用真实发送。",
+        // 安全修复：非 dev 环境如果误用 Noop（未配置 provider=aliyun），
+        // 不能把验证码写进日志，也不能假装发送成功，必须 fail-closed。
+        if (!isDevProfile()) {
+            log.error("[sms] NoopSmsService active in non-dev profile，验证码未真实发送，purpose={}；"
+                    + "生产环境必须配置 moyuyo.sms.provider=aliyun", purpose);
+            throw new BusinessException(503, "短信服务未配置，请联系管理员");
+        }
+        // 仅 dev 输出验证码，便于本地联调；生产环境不会走到这里
+        log.warn("[sms][dev-only] NoopSmsService active. code={}, phone={}, purpose={}",
                 code, phone, purpose);
-        // 兜底不抛异常：保证 dev 登录流程可跑通（前端可看到验证码打印）
+    }
+
+    private boolean isDevProfile() {
+        return Arrays.asList(environment.getActiveProfiles()).contains("dev");
     }
 
     @Override

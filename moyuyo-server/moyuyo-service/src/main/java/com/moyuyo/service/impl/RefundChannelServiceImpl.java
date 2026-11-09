@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -17,6 +18,7 @@ import org.springframework.web.client.RestTemplate;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -29,9 +31,9 @@ import java.util.Base64;
  * 支持：Stripe / PayPal / 微信支付 / 支付宝 / 银联
  *
  * 设计要点：
- * 1) 渠道未配置时降级为"本地生成流水号"模式（不调三方），便于 dev / staging 联调
- * 2) prod 渠道配置由 ProdConfigValidator 校验非空，否则启动失败
- * 3) 三方调用失败抛出 RuntimeException，事务回滚，由 Controller 返回错误
+ * 1) 渠道未配置时：仅 dev/test 降级为"本地生成流水号"模式（不调三方）；
+ *    非 dev/test 一律抛 IllegalStateException，杜绝生产"假退款成功"
+ * 2) 三方调用失败抛出 RuntimeException，事务回滚，由 Controller 返回错误
  */
 @Slf4j
 @Service
@@ -41,6 +43,28 @@ public class RefundChannelServiceImpl implements RefundChannelService {
     private final RefundChannelConfig config;
     @Qualifier("restTemplate")
     private final RestTemplate restTemplate;
+    /** 运行环境：仅 dev/test 允许本地假流水号 */
+    private final Environment environment;
+
+    /**
+     * 渠道未配置时的统一处理：dev/test 允许本地假流水号，其余环境直接失败。
+     */
+    private void ensureMockRefundAllowed(String channel, String refundNo) {
+        if (!isDevOrTestProfile()) {
+            log.error("[refund] 退款渠道未配置，拒绝自动退款: channel={}, refundNo={}", channel, refundNo);
+            throw new IllegalStateException(channel + " 退款渠道未配置，无法自动退款；请配置密钥或改用手动模式");
+        }
+        log.warn("{} 未配置，退款降级为本地模式（仅 dev/test）: refundNo={}", channel, refundNo);
+    }
+
+    private boolean isDevOrTestProfile() {
+        if (environment == null) {
+            return false;
+        }
+        String[] active = environment.getActiveProfiles();
+        return active != null && (Arrays.asList(active).contains("dev")
+                || Arrays.asList(active).contains("test"));
+    }
 
     @Override
     public String refund(RefundChannelEnum channel, String payTransactionId, String orderNo,
@@ -99,7 +123,7 @@ public class RefundChannelServiceImpl implements RefundChannelService {
     // ============= Stripe Refund =============
     private String callStripeRefund(String paymentIntentId, BigDecimal amount, String refundNo) {
         if (!config.isStripeEnabled()) {
-            log.warn("Stripe 未配置，退款降级为本地模式: refundNo={}", refundNo);
+            ensureMockRefundAllowed("Stripe", refundNo);
             return "DEV_STRIPE_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
         }
         if (paymentIntentId == null || paymentIntentId.isBlank()) {
@@ -181,7 +205,7 @@ public class RefundChannelServiceImpl implements RefundChannelService {
     // ============= PayPal Refund =============
     private String callPayPalRefund(String payTransactionId, BigDecimal amount, String refundNo, String currency) {
         if (!config.isPaypalEnabled()) {
-            log.warn("PayPal 未配置，退款降级为本地模式: refundNo={}", refundNo);
+            ensureMockRefundAllowed("PayPal", refundNo);
             return "DEV_PAYPAL_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
         }
         if (payTransactionId == null || payTransactionId.isBlank()) {
@@ -319,7 +343,7 @@ public class RefundChannelServiceImpl implements RefundChannelService {
     // ============= WeChat Pay Refund =============
     private String callWechatRefund(String transactionId, BigDecimal amount, String orderNo, String refundNo) {
         if (!config.isWechatEnabled()) {
-            log.warn("微信支付未配置，退款降级为本地模式: refundNo={}", refundNo);
+            ensureMockRefundAllowed("微信支付", refundNo);
             return "DEV_WECHAT_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
         }
         try {
@@ -358,7 +382,7 @@ public class RefundChannelServiceImpl implements RefundChannelService {
     // ============= Alipay Refund =============
     private String callAlipayRefund(String tradeNo, BigDecimal amount, String orderNo, String refundNo) {
         if (!config.isAlipayEnabled()) {
-            log.warn("支付宝未配置，退款降级为本地模式: refundNo={}", refundNo);
+            ensureMockRefundAllowed("支付宝", refundNo);
             return "DEV_ALIPAY_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
         }
         try {
@@ -396,7 +420,7 @@ public class RefundChannelServiceImpl implements RefundChannelService {
     // ============= UnionPay Refund =============
     private String callUnionpayRefund(String transactionId, BigDecimal amount, String orderNo, String refundNo) {
         if (!config.isUnionpayEnabled()) {
-            log.warn("银联未配置，退款降级为本地模式: refundNo={}", refundNo);
+            ensureMockRefundAllowed("银联", refundNo);
             return "DEV_UNIONPAY_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
         }
         try {

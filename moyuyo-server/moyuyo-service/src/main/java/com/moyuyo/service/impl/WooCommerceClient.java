@@ -147,12 +147,15 @@ public class WooCommerceClient {
     // ========== Fallback 方法（熔断/重试耗尽时触发）==========
 
     /**
-     * 列表型 fallback：返回空列表
+     * 列表型 fallback：抛出明确异常。
+     * <p>
+     * 安全修复：历史实现返回空列表，导致 WC 超时/熔断时同步逻辑把“0 条”当成成功；
+     * 现在改为抛出业务异常，让上层明确感知上游失败。
      */
     @SuppressWarnings("unused")
     private <T> List<T> fallbackList(String path, TypeReference<List<T>> typeRef, Throwable t) {
         logFallback("GET", path, t);
-        return new ArrayList<>();
+        throw new WooCommerceSyncException("WooCommerce 列表查询失败（上游不可用）: " + path, t);
     }
 
     /**

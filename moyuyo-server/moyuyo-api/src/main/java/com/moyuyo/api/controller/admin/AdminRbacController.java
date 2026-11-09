@@ -78,6 +78,7 @@ public class AdminRbacController {
       Map.entry("settings", "系统设置"),
       Map.entry("app-version", "版本管理"),
       Map.entry("batch-import", "批量导入"),
+      Map.entry("woocommerce", "WooCommerce同步"),
       Map.entry("audit-log", "审计日志")
   );
 
@@ -381,7 +382,14 @@ public class AdminRbacController {
   @PostMapping("/users/{id}/reset-password")
   public Result<Map<String, Object>> resetPassword(@PathVariable Long id, @RequestBody Map<String, String> body) {
     try {
-      String newPassword = body.getOrDefault("password", "123456");
+      // 安全修复：禁止缺省弱密码兜底（历史实现缺省时重置为 "123456"）
+      String newPassword = body == null ? null : body.get("password");
+      if (newPassword == null || newPassword.isBlank()) {
+        return Result.error(400, "新密码不能为空");
+      }
+      if (newPassword.length() < 12) {
+        return Result.error(400, "新密码至少 12 位");
+      }
       adminStaffService.resetPassword(id, newPassword);
       Map<String, Object> result = new LinkedHashMap<>();
       result.put("id", id);

@@ -3,9 +3,10 @@ package com.moyuyo.service;
 /**
  * 邮件发送服务：密码重置、邮箱验证、Magic Link 等业务邮件统一入口。
  * <p>
- * dev 未配置 SMTP 时 {@link com.moyuyo.service.impl.EmailServiceImpl} 内部为
- * "fail-open + 日志告警"模式，不会阻塞业务接口返回；生产需强制通过
- * SPRING_MAIL_HOST / SPRING_MAIL_USERNAME / SPRING_MAIL_PASSWORD 注入真实 SMTP 配置。
+ * {@link com.moyuyo.service.impl.EmailServiceImpl} 的失败策略：
+ * dev profile 未配置 SMTP 时走 log-only（不输出验证码，不阻断本地联调）；
+ * 非 dev 环境未配置 SMTP 时抛 503，发送失败抛 502，避免"接口成功但邮件未发"。
+ * 生产必须通过 SPRING_MAIL_HOST / SPRING_MAIL_USERNAME / SPRING_MAIL_PASSWORD 注入真实 SMTP。
  */
 public interface EmailService {
 

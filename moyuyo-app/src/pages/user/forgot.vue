@@ -111,7 +111,7 @@ export default {
     async onReset() {
       if (!this.canReset) return
       try {
-        await this.userStore.resetPassword(this.code, this.newPassword)
+        await this.userStore.resetPassword(this.email, this.code, this.newPassword)
         uni.showToast({ title: i18n.t('forgot.resetSuccess'), icon: 'success' })
         setTimeout(() => uni.navigateBack(), 1000)
       } catch (e) {

@@ -47,13 +47,6 @@ public class Kuaidi100LogisticsTrackProvider implements LogisticsTrackProvider {
     }
 
     @Override
-    public boolean isDelivered(String carrier, String trackingNumber) {
-        // TODO 解析 lastResult.state = "3" 视为已签收
-        log.warn("Kuaidi100LogisticsTrackProvider.isDelivered not implemented, carrier={}, tracking={}", carrier, trackingNumber);
-        return false;
-    }
-
-    @Override
     public String getProviderName() {
         return "kuaidi100";
     }

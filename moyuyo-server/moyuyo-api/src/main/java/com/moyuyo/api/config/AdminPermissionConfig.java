@@ -1,6 +1,7 @@
 package com.moyuyo.api.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.moyuyo.service.admin.AdminAccountStateService;
 import com.moyuyo.service.admin.AdminPermissionService;
 import jakarta.servlet.Filter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -24,9 +25,12 @@ public class AdminPermissionConfig {
 
     @Bean
     public FilterRegistrationBean<Filter> adminPermissionFilterRegistration(
-            AdminPermissionService permissionService, ObjectMapper objectMapper) {
+            AdminPermissionService permissionService,
+            AdminAccountStateService adminAccountStateService,
+            ObjectMapper objectMapper) {
         FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>();
-        registration.setFilter(new AdminPermissionFilter(permissionService, objectMapper));
+        registration.setFilter(new AdminPermissionFilter(
+                permissionService, adminAccountStateService, objectMapper));
         registration.addUrlPatterns("/api/admin/*");
         registration.setOrder(5);
         return registration;

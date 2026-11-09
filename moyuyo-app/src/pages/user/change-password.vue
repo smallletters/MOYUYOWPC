@@ -109,8 +109,11 @@ export default {
       }
       try {
         await this.userStore.changePassword(this.oldPassword, this.newPassword)
+        // 后端改密后已递增 token 版本并吊销 refresh token，当前本地 token 立即失效；
+        // 主动清理登录态并跳登录页，避免用户回到页面后收到 401 / 反复弹“登录已过期”
+        this.userStore.forceLogout()
         uni.showToast({ title: i18n.t('changePassword.submitted'), icon: 'success' })
-        setTimeout(() => uni.navigateBack(), 1000)
+        setTimeout(() => uni.reLaunch({ url: '/pages/user/login' }), 1000)
       } catch (e) {
         uni.showToast({ title: e.message || i18n.t('changePassword.failed'), icon: 'none' })
       }

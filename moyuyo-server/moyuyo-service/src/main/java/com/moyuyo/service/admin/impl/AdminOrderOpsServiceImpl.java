@@ -20,6 +20,7 @@ import com.moyuyo.common.dto.logistics.YanWenLabelResponse;
 import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.common.exception.OrderStatusGuard;
 import com.moyuyo.common.security.UserContextHolder;
+import com.moyuyo.common.utils.XssSanitizer;
 import com.moyuyo.service.admin.AdminOrderOpsService;
 import com.moyuyo.service.admin.YanWenLabelService;
 import com.moyuyo.service.OrderService;
@@ -503,7 +504,8 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
       m.put("description", e.getDescription());
       // 模板 HTML 正文（占位符语法 {{order.xxx}} / {{items}} / {{time}} / {{paper}}）。
       // 可能为 null（数据库新增列后老数据行还没回填），统一空字符串返回便于前端判断"是否自定义"。
-      m.put("contentTemplate", e.getContentTemplate() != null ? e.getContentTemplate() : "");
+      m.put("contentTemplate", e.getContentTemplate() != null
+          ? XssSanitizer.sanitizePrintTemplate(e.getContentTemplate()) : "");
       m.put("isDefault", Boolean.TRUE.equals(e.getIsDefault()));
       m.put("sortOrder", e.getSortOrder());
       result.add(m);
@@ -525,7 +527,7 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
     // contentTemplate 允许传 null/空串（重置为代码默认模板），与 description 同策略（ALWAYS）。
     // 由于 entity 字段标记了 updateStrategy=ALWAYS，传 null 也会写入；这里仍做非 null 判断，
     // 是为了区分"前端没传该字段"和"前端主动清空"两种语义 —— 没传则不动库。
-    if (contentTemplate != null) entity.setContentTemplate(contentTemplate);
+    if (contentTemplate != null) entity.setContentTemplate(XssSanitizer.sanitizePrintTemplate(contentTemplate));
     if (sortOrder != null) entity.setSortOrder(sortOrder);
     if (Boolean.TRUE.equals(isDefault)) {
       // 设为默认时，先把其他模板的 isDefault 清掉（保证唯一默认）

@@ -44,6 +44,11 @@ public class LogisticsTrackProperties {
     private int pollBatchSize = 100;
 
     /**
+     * 轨迹内存缓存最大条目数（防止无界增长）
+     */
+    private int cacheMaxSize = 5000;
+
+    /**
      * HTTP 连接超时（毫秒）
      */
     private int connectTimeoutMs = 5000;

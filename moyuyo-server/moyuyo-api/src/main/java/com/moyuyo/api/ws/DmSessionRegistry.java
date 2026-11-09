@@ -4,9 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,6 +25,15 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 @RequiredArgsConstructor
 public class DmSessionRegistry {
+
+    /**
+     * 自定义关闭码：token 被强制失效（4000-4999 为应用自定义区间）。
+     * 客户端收到该关闭码后必须停止自动重连，引导用户重新登录。
+     */
+    public static final int SESSION_INVALIDATED_CLOSE_CODE = 4001;
+
+    private static final CloseStatus SESSION_INVALIDATED_CLOSE_STATUS =
+            new CloseStatus(SESSION_INVALIDATED_CLOSE_CODE, "token invalidated");
 
     private final ObjectMapper objectMapper;
 
@@ -72,6 +85,65 @@ public class DmSessionRegistry {
                 unregister(userId, session);
             }
         }
+    }
+
+    /**
+     * 强制关闭指定用户的全部在线连接（改密/重置密码后旧 token 失效）。
+     * <p>
+     * 先下发 {@code session_invalidated} 消息，再以自定义关闭码 4001 关闭；
+     * 客户端据此停止自动重连，避免用已失效 token 反复握手。
+     * <p>
+     * 注意：当前为单机内存注册表，多实例部署时只能关闭当前实例上的连接；
+     * 若后续改为多实例，需要配合 Redis Pub/Sub 广播该失效事件。
+     */
+    public void closeUserSessions(Long userId, String reason) {
+        if (userId == null) {
+            return;
+        }
+        Set<WebSocketSession> set = sessions.get(userId);
+        if (set == null || set.isEmpty()) {
+            return;
+        }
+        // 先拷贝快照：关闭过程中 afterConnectionClosed 会并发 unregister 修改原集合
+        List<WebSocketSession> snapshot = new ArrayList<>(set);
+
+        String message = null;
+        try {
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("reason", reason == null ? "" : reason);
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("type", "session_invalidated");
+            payload.put("data", data);
+            message = objectMapper.writeValueAsString(payload);
+        } catch (Exception e) {
+            log.warn("[dm-ws] 序列化失效通知失败，直接关闭连接，userId={}", userId, e);
+        }
+
+        int closed = 0;
+        for (WebSocketSession session : snapshot) {
+            if (session == null) {
+                continue;
+            }
+            if (!session.isOpen()) {
+                unregister(userId, session);
+                continue;
+            }
+            try {
+                synchronized (session) {
+                    if (message != null) {
+                        session.sendMessage(new TextMessage(message));
+                    }
+                    session.close(SESSION_INVALIDATED_CLOSE_STATUS);
+                }
+                closed++;
+            } catch (Exception e) {
+                log.warn("[dm-ws] 强制关闭连接失败, userId={}, session={}", userId, session.getId(), e);
+            } finally {
+                unregister(userId, session);
+            }
+        }
+        log.info("[dm-ws] token 失效强制下线: userId={}, total={}, closed={}, reason={}",
+                userId, snapshot.size(), closed, reason);
     }
 
     /** 当前在线连接数（仅用于日志/排查） */

@@ -26,6 +26,20 @@ class JwtUtilTest {
     }
 
     @Test
+    void generate_WithTokenVersion_ShouldExposeVersionClaim() {
+        String token = jwtUtil.generate(7L, "v@test.com", "OPERATOR", 3L);
+        assertEquals(3L, jwtUtil.getTokenVersionFromClaims(jwtUtil.parseClaims(token)));
+        assertEquals("OPERATOR", jwtUtil.getRoleFromClaims(jwtUtil.parseClaims(token)));
+    }
+
+    @Test
+    void generate_LegacyOverload_ShouldHaveNoVersionClaim() {
+        String token = jwtUtil.generate(7L, "v@test.com");
+        assertNull(jwtUtil.getTokenVersionFromClaims(jwtUtil.parseClaims(token)),
+                "历史 3 参调用不写版本号，鉴权侧按版本 0 兼容");
+    }
+
+    @Test
     void validate_WithExpiredToken_ShouldReturnFalse() throws Exception {
         JwtUtil shortLived = new JwtUtil("TestSecretKeyForUnitTestsAtLeast32Bytes!!", 0);
         String token = shortLived.generate(1L, "test@test.com");

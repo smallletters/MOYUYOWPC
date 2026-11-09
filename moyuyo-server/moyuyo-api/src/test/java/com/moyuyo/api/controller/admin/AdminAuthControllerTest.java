@@ -173,7 +173,7 @@ class AdminAuthControllerTest {
         body.put("password", "password123");
 
         when(adminUserMapper.selectOne(any())).thenReturn(activeAdmin);
-        when(jwtUtil.generate(anyLong(), anyString(), anyString())).thenReturn("mock.jwt.token");
+        when(jwtUtil.generateAdmin(anyLong(), anyString(), anyString(), anyLong())).thenReturn("mock.jwt.token");
 
         Result<Map<String, Object>> result = controller.login(body);
 

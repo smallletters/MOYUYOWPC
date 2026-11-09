@@ -153,7 +153,9 @@ admin:
   username: ${ADMIN_USERNAME:moyuyo_admin}
   # 改用腾讯企业邮真实地址，与 SMTP SPRING_MAIL_USERNAME / MOYUYO_MAIL_FROM 对齐，便于忘了密码流程能给真实邮箱发码
   email: ${ADMIN_EMAIL:moyuyo@moyuyoshop.com}
-  password: ${ADMIN_PASSWORD:moyuyo_Dev#2026!}
+  # 安全修复：不再内置默认管理员密码，必须由 .env / 环境变量显式注入；
+  # 未注入时 AdminInitializer 会跳过初始化（不会再创建带弱默认口令的账号）。
+  password: ${ADMIN_PASSWORD:}
 
 # MyBatis-Plus SQL 日志：dev 用 stdout
 mybatis-plus:

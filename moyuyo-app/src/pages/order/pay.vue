@@ -60,7 +60,20 @@ import { i18n } from '@/i18n'
 //   - 命中 moyuyo://pay/return 时关闭 WebView + 处理结果
 // 美国市场目前支持：Google Pay / Apple Pay / PayPal / Credit Card。
 // 暂不集成第三方 Stripe 原生插件（无开源免费版），靠 Stripe Checkout + scheme 拦截兜底。
-import { createPaymentWebView, registerMoyuyoScheme } from '@/utils/payAppBridge'
+import { createPaymentWebView, registerMoyuyoScheme, isSafeHttpUrl } from '@/utils/payAppBridge'
+
+// 后端订单支付成功后的状态集合：支付回调后订单可能从 PAID 继续推进到 PENDING_SHIP 等，
+// 轮询与回调判定必须覆盖后续状态，避免漏判导致页面一直停在"处理中"。
+const PAID_STATUSES = ['PAID', 'PENDING_SHIP', 'SHIPPED', 'RECEIVED', 'COMPLETED']
+
+/**
+ * 判断订单是否处于"已支付（含已进入履约流程）"状态。
+ * @param {string} status 后端订单状态
+ * @returns {boolean}
+ */
+function isPaidStatus(status) {
+  return PAID_STATUSES.indexOf(status) !== -1
+}
 
 export default {
   pageTitleKey: 'pageTitle.orderPay',
@@ -159,10 +172,12 @@ export default {
     if (this.clientType === 'APP') {
       try {
         this.schemeOff = registerMoyuyoScheme((ret) => {
-          this.handlePayResult(
-            ret.status,
-            ret.status === 'success' ? '' : i18n.t('orderPay.payCancelled'),
-          )
+          // 安全：scheme 参数可被伪造，成功状态必须回查服务端订单后再展示
+          if (ret.status === 'success') {
+            this.confirmOrderPaid()
+          } else {
+            this.handlePayResult('cancelled', i18n.t('orderPay.payCancelled'))
+          }
         })
       } catch (e) {
         /* APP 端运行时报错可忽略 */
@@ -305,8 +320,20 @@ export default {
           setTimeout(() => this.goDetail(), 1500)
           return
         }
-        this.payUrl = finalUrl
-        this.openPayPage(finalUrl)
+        // 安全：收银台地址必须是安全 https（本地联调除外），防止明文/异常协议进入 web-view
+        if (!isSafeHttpUrl(finalUrl)) {
+          this.status = 'failed'
+          this.statusText = i18n.t('orderPay.payFailed')
+          return
+        }
+        // APP 端由 payAppBridge 创建原生子 WebView，不能再赋 payUrl，
+        // 否则模板 <web-view v-if="payUrl"> 会与原生子 WebView 重复加载支付页
+        if (this.clientType === 'APP') {
+          this.openPayPage(finalUrl)
+        } else {
+          // H5 / 小程序端继续用 <web-view> 组件渲染
+          this.payUrl = finalUrl
+        }
         this.startPolling()
       } catch (e) {
         uni.hideLoading()
@@ -329,21 +356,30 @@ export default {
         createPaymentWebView({
           page: this,
           onReturn: (ret) => {
-            this.handlePayResult(
-              ret.status || '',
-              ret.status === 'success' ? '' : i18n.t('orderPay.payCancelled'),
-            )
+            // 安全：scheme 参数可被伪造，成功状态必须回查服务端订单
+            if (ret.status === 'success') {
+              this.confirmOrderPaid()
+            } else {
+              this.handlePayResult('cancelled', i18n.t('orderPay.payCancelled'))
+            }
           },
           onMessage: (e) => {
             const data = e.detail?.data?.[0]
-            if (data?.type === 'pay_result') this.handlePayResult(data.status, data.message)
+            if (!data || data.type !== 'pay_result') return
+            // 安全：远程支付页写入的 localStorage 可被伪造，成功状态必须回查服务端订单
+            if (data.status === 'success') {
+              this.confirmOrderPaid()
+            } else {
+              this.handlePayResult(data.status, data.message)
+            }
           },
         })
       this.appBridge = bridge
       bridge.loadURL(url).then((wv) => {
         if (!wv) {
-          // plus/webview 不可用（例如 H5 运行期），继续走 uni <web-view> 兜底
-          this.payUrl = url
+          // plus/webview 不可用（例如 H5 运行期），继续走 uni <web-view> 兜底；
+          // 兜底前仍校验 URL 安全，避免不安全 URL 绕过 bridge 的校验
+          if (isSafeHttpUrl(url)) this.payUrl = url
         }
       })
     },
@@ -390,7 +426,7 @@ export default {
       this.pollTimer = setInterval(async () => {
         try {
           const order = await orderApi.getOrderDetail(this.orderId)
-          if (order.status === 'PAID') {
+          if (isPaidStatus(order.status)) {
             this.status = 'success'
             this.statusText = i18n.t('orderPay.statusText.success')
             this.stopPolling()
@@ -417,7 +453,11 @@ export default {
 
     onWebviewMessage(e) {
       const data = e.detail?.data?.[0]
-      if (data?.type === 'pay_result') {
+      if (!data || data.type !== 'pay_result') return
+      // 安全：web-view 页面可伪造 postMessage，成功状态必须回查服务端订单
+      if (data.status === 'success') {
+        this.confirmOrderPaid()
+      } else {
         this.handlePayResult(data.status, data.message)
       }
     },
@@ -442,7 +482,12 @@ export default {
         uni.setStorageSync('moyuyo_pay_result_handled', String(data.timestamp))
         uni.removeStorageSync('moyuyo_pay_result')
         uni.removeStorageSync('moyuyo_pay_result_timestamp')
-        this.handlePayResult(data.status, data.message)
+        // 安全：localStorage 内容可被篡改/伪造，成功状态必须回查服务端订单
+        if (data.status === 'success') {
+          this.confirmOrderPaid()
+        } else {
+          this.handlePayResult(data.status, data.message)
+        }
       } catch (e) {
         // ignore
       }
@@ -454,13 +499,36 @@ export default {
     async pollOrderOnce() {
       try {
         const order = await orderApi.getOrderDetail(this.orderId)
-        if (order.status === 'PAID') {
+        if (isPaidStatus(order.status)) {
           this.handlePayResult('success', '')
         } else if (order.status === 'CANCELLED') {
           this.handlePayResult('cancelled', i18n.t('orderPay.cancelReason'))
         }
       } catch (e) {
         // ignore
+      }
+    },
+
+    /**
+     * 回查服务端订单状态后再展示结果。
+     * scheme / web-view postMessage / localStorage 三种回调都可能被伪造，
+     * 只有服务端返回 PAID 才算支付成功。
+     */
+    async confirmOrderPaid() {
+      if (!this.orderId) return
+      try {
+        const order = await orderApi.getOrderDetail(this.orderId)
+        if (order && isPaidStatus(order.status)) {
+          this.handlePayResult('success', '')
+        } else if (order && order.status === 'CANCELLED') {
+          this.handlePayResult('cancelled', i18n.t('orderPay.cancelReason'))
+        } else {
+          // 仍是待支付/处理中：保持当前 UI，继续等待轮询
+          uni.showToast({ title: i18n.t('orderPay.statusText.waiting'), icon: 'none' })
+        }
+      } catch (e) {
+        // 查询失败时不能误判为成功，保持等待
+        console.warn('[pay] confirm order status failed', e)
       }
     },
 

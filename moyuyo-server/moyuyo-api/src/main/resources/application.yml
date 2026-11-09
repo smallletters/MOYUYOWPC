@@ -458,6 +458,46 @@ resilience4j:
         limit-refresh-period: 1m
         limit-for-period: 100
         timeout-duration: 500ms
+      # 认证相关端点按用途拆分独立实例，避免一个端点耗尽全局认证配额
+      #（dev/prod 可按需覆盖，未覆盖时使用这里的默认值）
+      authLogin:
+        limit-refresh-period: 1m
+        limit-for-period: 300
+        timeout-duration: 500ms
+      authHeartbeat:
+        limit-refresh-period: 1m
+        # 心跳是高频正常流量（每个在线用户进入首页都会触发），阈值需远高于登录，
+        # 但仍保留全局上限防止恶意刷写统计接口
+        limit-for-period: 60000
+        timeout-duration: 500ms
+      authEmailVerify:
+        limit-refresh-period: 1m
+        limit-for-period: 60
+        timeout-duration: 0
+      authForgot:
+        limit-refresh-period: 1m
+        limit-for-period: 60
+        timeout-duration: 0
+      authReset:
+        limit-refresh-period: 1m
+        limit-for-period: 60
+        timeout-duration: 0
+      authMagicLink:
+        limit-refresh-period: 1m
+        limit-for-period: 60
+        timeout-duration: 0
+      authPhoneSend:
+        limit-refresh-period: 1m
+        limit-for-period: 120
+        timeout-duration: 0
+      authPhoneLogin:
+        limit-refresh-period: 1m
+        limit-for-period: 120
+        timeout-duration: 0
+      adminAuthLogin:
+        limit-refresh-period: 1m
+        limit-for-period: 60
+        timeout-duration: 0
 
 # HTTP 客户端通用配置（RestTemplateBootstrapConfig 读取）
 # 仅给非敏感默认值；生产环境可由 MOYUYO_HTTP_CONNECT_TIMEOUT_MS / MOYUYO_HTTP_READ_TIMEOUT_MS 覆盖
@@ -489,6 +529,8 @@ moyuyo:
   # provider=aliyun 启用 AliyunSmsServiceImpl（生产环境必填）；
   # 未配置或 provider 为空时由 NoopSmsServiceImpl 接管（开发环境兜底，仅打日志不真实发送）
   sms:
+    # 全站每分钟短信发送总量上限（跨实例共享 Redis 计数），防止短信成本被恶意刷高
+    global-limit-per-minute: ${MOYUYO_SMS_GLOBAL_LIMIT_PER_MINUTE:100}
     provider: ${MOYUYO_SMS_PROVIDER:}
     access-key-id: ${MOYUYO_SMS_ACCESS_KEY_ID:}
     access-key-secret: ${MOYUYO_SMS_ACCESS_KEY_SECRET:}
@@ -533,6 +575,10 @@ moyuyo:
     poll-interval-minutes: ${MOYUYO_LOGISTICS_POLL_INTERVAL:30}
     # 单次拉取最大运单数（防止批量调用撑爆第三方配额）
     poll-batch-size: ${MOYUYO_LOGISTICS_POLL_BATCH_SIZE:100}
+    # 只轮询最近 N 天内发货的未签收运单（超期运单不再自动刷新轨迹）
+    poll-window-days: ${MOYUYO_LOGISTICS_POLL_WINDOW_DAYS:30}
+    # 轨迹内存缓存最大条目数（防止无界增长）
+    cache-max-size: ${MOYUYO_LOGISTICS_CACHE_MAX_SIZE:5000}
     # 请求超时（毫秒）
     connect-timeout-ms: ${MOYUYO_LOGISTICS_CONNECT_TIMEOUT_MS:5000}
     read-timeout-ms: ${MOYUYO_LOGISTICS_READ_TIMEOUT_MS:15000}

@@ -505,7 +505,17 @@ export default {
         // 成功
         this.stopCountdown()
         this.verifyModal.visible = false
-        uni.showToast({ title: i18n.t('security.twoFactorOn'), icon: 'none' })
+        uni.showToast({
+          title: i18n.t('security.twoFactorOnRelogin'),
+          icon: 'none',
+          duration: 1500,
+        })
+        // 后端开启 2FA 时已递增 token 版本并吊销 refresh token，当前会话立即失效；
+        // 主动清理本地登录态并跳登录页，避免后续请求 401 / 反复弹“登录已过期”
+        setTimeout(() => {
+          this.userStore.forceLogout()
+          uni.reLaunch({ url: '/pages/user/login' })
+        }, 1200)
       } catch (e) {
         // 区分错误:验证码错 / 其它服务端错误
         // 后端错误体结构见 src/utils/request.js 的 success/fail 回调:

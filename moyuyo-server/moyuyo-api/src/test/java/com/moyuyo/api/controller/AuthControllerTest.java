@@ -3,6 +3,7 @@ package com.moyuyo.api.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.BaseIntegrationTest;
 import com.moyuyo.common.dto.auth.LoginRequest;
+import com.moyuyo.common.dto.auth.PhoneLoginRequest;
 import com.moyuyo.common.dto.auth.RegisterRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -119,6 +120,20 @@ class AuthControllerTest extends BaseIntegrationTest {
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("匿名手机号登录应进入业务逻辑而不是被 JWT 拦截")
+    void phoneLogin_Anonymous_ShouldNotBeInterceptedByJwtFilter() throws Exception {
+        PhoneLoginRequest request = new PhoneLoginRequest();
+        request.setPhone("+8613800000001");
+        request.setCode("123456");
+
+        mockMvc.perform(post("/api/v1/auth/phone/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                // 验证码不存在属于业务错误 400；若返回 401 说明公开端点被 JwtAuthFilter 白名单遗漏
                 .andExpect(status().isBadRequest());
     }
 

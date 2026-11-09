@@ -10,6 +10,12 @@ import lombok.Data;
 @Schema(description = "重置密码请求")
 public class ResetPasswordRequest {
 
+    @NotBlank(message = "邮箱不能为空")
+    @jakarta.validation.constraints.Email(message = "邮箱格式不正确")
+    @Size(max = 254, message = "邮箱长度超限")
+    @Schema(description = "接收重置验证码的邮箱（与验证码强绑定）", example = "user@example.com")
+    private String email;
+
     @NotBlank(message = "重置验证码不能为空")
     @Size(min = 6, max = 6, message = "重置验证码必须为 6 位数字")
     @Pattern(regexp = "^\\d{6}$", message = "重置验证码必须为 6 位数字")

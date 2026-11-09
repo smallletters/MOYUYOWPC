@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="webview-doc">
     <!-- URL 不在白名单:展示拦截提示,绝不加载 -->
     <view v-if="!allowed" class="block-screen">
@@ -16,7 +16,7 @@ import { isUrlAllowed } from '@/utils/webview-guard'
 
 /**
  * 通用外链展示容器：用于 about 页等需要打开 H5 协议/资质页的场景。
- * 仅承载 web-view,不轮询支付状态,避免和 pages/webview/pay.vue 混淆。
+ * 仅承载 web-view,不轮询支付状态,避免与支付页混淆。
  * 安全：通过 webview-guard 白名单校验 host,避免任意 URL 被加载。
  */
 export default {

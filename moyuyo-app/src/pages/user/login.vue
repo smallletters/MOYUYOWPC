@@ -48,7 +48,7 @@
               :key="t.value"
               class="segmented-item"
               :class="{ active: activeTab === t.value }"
-              @click="activeTab = t.value"
+              @click="onTabChange(t.value)"
             >
               {{ t.label }}
             </view>
@@ -124,9 +124,32 @@
             </view>
           </view>
 
+          <!-- 两步验证：账号开启 2FA 时，首次提交后由后端返回 TWO_FACTOR_REQUIRED 并发送验证码 -->
+          <view v-if="twoFactorRequired" class="two-factor-section">
+            <text class="tf-title">{{ $t('auth.twoFactorRequiredTitle') }}</text>
+            <text class="tf-sub">{{ $t('auth.twoFactorRequiredSub') }}</text>
+            <input
+              v-model="twoFactorCode"
+              class="field-input tf-input"
+              type="number"
+              maxlength="6"
+              inputmode="numeric"
+              :placeholder="$t('auth.twoFactorCodePlaceholder')"
+            >
+            <text class="tf-resend" @click="onResendTwoFactor">
+              {{ $t('auth.twoFactorResend') }}
+            </text>
+          </view>
+
           <!-- 主CTA:全宽实心胶囊按钮(与注册页同款) -->
           <view class="cta-btn" :class="{ disabled: !canSubmit }" @click="onLogin">
-            <text class="cta-text">{{ $t('auth.signInBtn') || $t('auth.login') }}</text>
+            <text class="cta-text">
+              {{
+                twoFactorRequired
+                  ? $t('auth.twoFactorVerifyBtn')
+                  : $t('auth.signInBtn') || $t('auth.login')
+              }}
+            </text>
           </view>
 
           <!-- 条款:勾选框+超链接(Clickwrap合规,参考Shein/Amazon) -->
@@ -216,6 +239,9 @@ export default {
       email: '',
       password: '',
       smsCode: '',
+      // 两步验证：后端返回 TWO_FACTOR_REQUIRED 后展示验证码输入
+      twoFactorRequired: false,
+      twoFactorCode: '',
       showPassword: false,
       codeCountdown: 0,
       codeTimer: null,
@@ -245,6 +271,8 @@ export default {
     canSubmit() {
       // Clickwrap合规:必须勾选条款才能提交
       if (!this.termsAgreed) return false
+      // 2FA 验证阶段只校验 6 位验证码；账号密码已在上一次提交中校验通过
+      if (this.twoFactorRequired) return this.twoFactorCode.length === 6
       if (this.activeTab === 'phone') {
         return this.phone.length >= 8 && this.smsCode.length >= 4
       }
@@ -288,11 +316,13 @@ export default {
       if (!this.canSubmit) return
       uni.showLoading({ title: i18n.t('auth.loggingIn'), mask: true })
       try {
+        // 2FA 验证阶段：把已输入的验证码一并提交；否则只提交账号密码
+        const twoFactorCode = this.twoFactorRequired ? this.twoFactorCode : undefined
         if (this.activeTab === 'phone') {
           // 手机号 + 验证码登录：直接走 loginByPhone,未注册时后端自动创建账号
           const fullPhone = this.countryCode + this.phone
           // 通过专门的手机登录函数 loginByPhone 调用后端,拿到 accessToken/refreshToken 后注入 store
-          const result = await loginByPhone(fullPhone, this.smsCode)
+          const result = await loginByPhone(fullPhone, this.smsCode, twoFactorCode)
           // 手动写入 store:模拟 login() 成功路径
           this.userStore.token = result.accessToken
           this.userStore.refreshToken = result.refreshToken
@@ -302,14 +332,14 @@ export default {
           this.userStore.startAutoRefresh()
           await this.userStore.fetchProfile()
         } else {
-          const credentials = { username: this.email, password: this.password }
-          const result = await this.userStore.login(credentials)
-          if (result?.requiresTwoFactor) {
-            uni.hideLoading()
-            uni.navigateTo({ url: '/pages/user/two-factor' })
-            return
+          const credentials = {
+            username: this.email,
+            password: this.password,
+            twoFactorCode,
           }
+          await this.userStore.login(credentials)
         }
+        this.resetTwoFactorState()
         uni.hideLoading()
         // 检测是否从注销流程跳转来:是的话弹"注销已自动撤销"提示
         // （业内"登录即后悔药"模式,参考微信/京东；后端会在 login 流程中清 deleteScheduledAt）
@@ -333,11 +363,74 @@ export default {
         }
       } catch (e) {
         uni.hideLoading()
+        // 两步验证流程控制：后端不签发 token，只返回特定错误码
+        if (e?.message === 'TWO_FACTOR_REQUIRED') {
+          this.twoFactorRequired = true
+          this.twoFactorCode = ''
+          uni.showToast({ title: i18n.t('auth.twoFactorCodeSent'), icon: 'none', duration: 3000 })
+          return
+        }
+        if (e?.message === 'TWO_FACTOR_INVALID') {
+          this.twoFactorCode = ''
+          uni.showToast({ title: i18n.t('auth.twoFactorInvalid'), icon: 'none', duration: 3000 })
+          return
+        }
+        if (e?.message === 'TWO_FACTOR_EMAIL_REQUIRED') {
+          uni.showToast({
+            title: i18n.t('auth.twoFactorEmailRequired'),
+            icon: 'none',
+            duration: 3000,
+          })
+          return
+        }
+        if (e?.message === 'TWO_FACTOR_SEND_FAILED') {
+          uni.showToast({ title: i18n.t('auth.twoFactorSendFailed'), icon: 'none', duration: 3000 })
+          return
+        }
         // 修复:把后端真实错误消息完整透出(避免 "Request failed (403)" 这种掩盖问题)
         const msg = e?.message || i18n.t('auth.loginFailed')
         uni.showToast({ title: msg, icon: 'none', duration: 3000 })
         // 调试日志:console 可见原始错误对象,便于排查 403/400
         console.error('[login] error:', e)
+      }
+    },
+
+    /** 切换登录方式：清空上一轮 2FA 状态，避免手机号/邮箱流程互相污染 */
+    onTabChange(value) {
+      if (this.activeTab === value) return
+      this.activeTab = value
+      this.resetTwoFactorState()
+    },
+
+    /** 重置两步验证状态（登录成功或切换登录方式时调用） */
+    resetTwoFactorState() {
+      this.twoFactorRequired = false
+      this.twoFactorCode = ''
+    },
+
+    /** 重新发送两步验证码：再次提交账号密码但不带 2FA 验证码，由后端触发发信 */
+    async onResendTwoFactor() {
+      if (!this.twoFactorRequired) return
+      try {
+        if (this.activeTab === 'phone') {
+          const fullPhone = this.countryCode + this.phone
+          await loginByPhone(fullPhone, this.smsCode)
+        } else {
+          await this.userStore.login({ username: this.email, password: this.password })
+        }
+        this.twoFactorCode = ''
+        uni.showToast({ title: i18n.t('auth.twoFactorCodeSent'), icon: 'none', duration: 3000 })
+      } catch (e) {
+        if (e?.message === 'TWO_FACTOR_REQUIRED') {
+          this.twoFactorCode = ''
+          uni.showToast({ title: i18n.t('auth.twoFactorCodeSent'), icon: 'none', duration: 3000 })
+          return
+        }
+        uni.showToast({
+          title: i18n.t('auth.twoFactorSendFailed'),
+          icon: 'none',
+          duration: 3000,
+        })
       }
     },
 
@@ -968,5 +1061,41 @@ export default {
   font-size: 26rpx;
   color: var(--color-text-secondary);
   font-weight: 600;
+}
+
+/* 两步验证：登录页二次验证码输入区 */
+.two-factor-section {
+  margin-top: 32rpx;
+  padding: 32rpx;
+  border-radius: var(--radius-md);
+  background: rgba(0, 122, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.tf-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.tf-sub {
+  font-size: 26rpx;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+.tf-input {
+  letter-spacing: 8rpx;
+  text-align: center;
+  font-weight: 600;
+}
+
+.tf-resend {
+  align-self: flex-end;
+  font-size: 26rpx;
+  color: var(--color-primary-dark);
+  padding: 8rpx 0;
 }
 </style>

@@ -5,8 +5,10 @@ import com.moyuyo.BaseIntegrationTest;
 import com.moyuyo.common.JwtUtil;
 import com.moyuyo.dao.admin.entity.AdminPermissionEntity;
 import com.moyuyo.dao.admin.entity.AdminRoleEntity;
+import com.moyuyo.dao.admin.entity.AdminUserEntity;
 import com.moyuyo.dao.admin.mapper.AdminPermissionMapper;
 import com.moyuyo.dao.admin.mapper.AdminRoleMapper;
+import com.moyuyo.dao.admin.mapper.AdminUserMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,8 +41,17 @@ class AdminPermissionFilterTest extends BaseIntegrationTest {
     @Autowired
     private AdminPermissionMapper adminPermissionMapper;
 
+    @Autowired
+    private AdminUserMapper adminUserMapper;
+
     @BeforeEach
     void setUpRoleData() {
+        // AdminPermissionFilter 现在会校验管理员账号最新状态（禁用/删除/改角色），
+        // 因此测试 token 对应的管理员必须真实存在于 mo_admin_user。
+        insertAdmin(1L, "test_super_admin", "SUPER_ADMIN", "ACTIVE");
+        insertAdmin(2L, "test_operator", "TEST_ROLE", "ACTIVE");
+        insertAdmin(3L, "test_empty_role", "EMPTY_ROLE", "ACTIVE");
+        insertAdmin(4L, "test_disabled_role", "DISABLED_ROLE", "ACTIVE");
         // 测试角色：仅授予 dashboard:view 权限
         AdminRoleEntity role = new AdminRoleEntity();
         role.setName("测试角色");
@@ -143,7 +154,16 @@ class AdminPermissionFilterTest extends BaseIntegrationTest {
         String token = "Bearer " + jwtUtil.generate(2L, "test@moyuyo.com", "TEST_ROLE");
         mockMvc.perform(get("/api/admin/auth/me")
                         .header("Authorization", token))
-                // userId=2 不在 mo_admin_user 表，返回业务 401，但不应被权限过滤器拦截为 403
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("管理员账号不存在/被禁用时返回 401（登录态失效）")
+    void disabledOrMissingAdmin_shouldReturn401() throws Exception {
+        String token = "Bearer " + jwtUtil.generate(999L, "ghost@moyuyo.com", "TEST_ROLE");
+        mockMvc.perform(get("/api/admin/dashboard/stats")
+                        .header("Authorization", token))
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(401));
     }
 
@@ -168,6 +188,19 @@ class AdminPermissionFilterTest extends BaseIntegrationTest {
                         .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0));
+    }
+
+    /** 插入测试管理员账号（AdminPermissionFilter 会实时校验账号状态） */
+    private void insertAdmin(Long id, String username, String role, String status) {
+        AdminUserEntity admin = new AdminUserEntity();
+        admin.setId(id);
+        admin.setUsername(username);
+        admin.setName(username);
+        admin.setEmail(username + "@moyuyo.com");
+        admin.setPassword("$test$");
+        admin.setRole(role);
+        admin.setStatus(status);
+        adminUserMapper.insert(admin);
     }
 
     /** 为指定角色追加一条权限（resource:action），用于构造子模块校验场景 */

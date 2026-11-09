@@ -11,6 +11,7 @@ import com.moyuyo.dao.entity.AddressEntity;
 import com.moyuyo.dao.admin.entity.FinanceRecordEntity;
 import com.moyuyo.dao.admin.mapper.FinanceRecordMapper;
 import com.moyuyo.dao.entity.FlashSaleEntity;
+import com.moyuyo.dao.entity.LogisticsEntity;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.PaymentEntity;
@@ -19,6 +20,7 @@ import com.moyuyo.dao.entity.ProductSkuEntity;
 import com.moyuyo.dao.entity.UserCouponEntity;
 import com.moyuyo.dao.mapper.AddressMapper;
 import com.moyuyo.dao.mapper.FlashSaleMapper;
+import com.moyuyo.dao.mapper.LogisticsMapper;
 import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.PaymentMapper;
@@ -71,6 +73,8 @@ public class OrderServiceImpl implements OrderService {
   private final FinanceRecordMapper financeRecordMapper;
   // 地址表 Mapper：用于创建订单时快照地址详情，以及详情接口对历史订单按 addressId 回填
   private final AddressMapper addressMapper;
+  // 物流表 Mapper：用户确认收货时同步写入 mo_logistics.received_at
+  private final LogisticsMapper logisticsMapper;
   // 注入 WooCommerce 同步服务：付款回调完成后自动推送订单到 WooCommerce
   private final WooCommerceSyncService wooCommerceSyncService;
   // 任务中心埋点：付款回调后触发"完成 1 单购物 / 首单完成 / 累计消费满 500"
@@ -897,6 +901,14 @@ public class OrderServiceImpl implements OrderService {
     order.setStatus(RECEIVED.name());
     order.setReceivedTime(LocalDateTime.now());
     orderMapper.updateById(order);
+    // 同步写入物流签收时间：物流页的 currentStatus 依赖 mo_logistics.received_at，
+    // 只更新订单会导致"订单已收货、物流页仍显示运输中"，且轮询任务只扫 SHIPPED 订单，
+    // 该物流记录的签收时间将永远补不上。
+    logisticsMapper.update(null,
+        new LambdaUpdateWrapper<LogisticsEntity>()
+            .eq(LogisticsEntity::getOrderId, orderId)
+            .isNull(LogisticsEntity::getReceivedAt)
+            .set(LogisticsEntity::getReceivedAt, order.getReceivedTime()));
   }
 
   @Override

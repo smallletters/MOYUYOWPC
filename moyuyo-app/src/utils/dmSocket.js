@@ -1,13 +1,15 @@
 /**
  * 私信 WebSocket 客户端
  *
- * 连接地址：ws(s)://<后端地址>/ws/dm?token=<JWT>
+ * 连接地址：ws(s)://<后端地址>/ws/dm?ticket=<一次性票据>
+ * - ticket 通过 REST /api/v1/auth/ws-ticket 换取，60 秒有效且只能使用一次
  * - 自动重连（指数退避，最长 30s）
  * - 25s 心跳，避免代理层回收空闲连接
  * - 单例连接，多页面共享；页面通过 onDmSocketEvent 订阅消息
  */
 import { config } from '@/utils/config'
 import { getStorage, STORAGE_KEYS } from '@/utils/storage'
+import { getWsTicket } from '@/api/user'
 
 /** 消息 Tab 在 tabBar 中的索引（pages.json 顺序：首页/宠物/社区/消息/我的） */
 export const MESSAGE_TAB_INDEX = 3
@@ -15,6 +17,8 @@ export const MESSAGE_TAB_INDEX = 3
 const HEARTBEAT_MS = 25 * 1000
 const RETRY_MIN_MS = 3 * 1000
 const RETRY_MAX_MS = 30 * 1000
+/** 与服务端 DmSessionRegistry.SESSION_INVALIDATED_CLOSE_CODE 保持一致 */
+const SESSION_INVALIDATED_CLOSE_CODE = 4001
 
 let socketTask = null
 let connecting = false
@@ -37,13 +41,12 @@ function resolveWsBase() {
   return ''
 }
 
-/** 拼接带 token 的连接地址 */
-function buildSocketUrl() {
-  const token = getStorage(STORAGE_KEYS.TOKEN, '')
-  if (!token) return ''
+/** 拼接带一次性 ticket 的连接地址 */
+function buildSocketUrl(ticket) {
+  if (!ticket) return ''
   const base = resolveWsBase()
   if (!base) return ''
-  return `${base.replace(/\/$/, '')}/ws/dm?token=${encodeURIComponent(token)}`
+  return `${base.replace(/\/$/, '')}/ws/dm?ticket=${encodeURIComponent(ticket)}`
 }
 
 function stopHeartbeat() {
@@ -76,17 +79,45 @@ function scheduleReconnect() {
 }
 
 /** 建立连接（幂等；已连接或连接中直接返回） */
-export function connectDmSocket() {
+export async function connectDmSocket() {
   if (socketTask || connecting) return
-  const url = buildSocketUrl()
-  if (!url) return
+  // 未登录不建立连接
+  if (!getStorage(STORAGE_KEYS.TOKEN, '')) return
   manualClosed = false
   connecting = true
 
-  const task = uni.connectSocket({
-    url,
-    complete: () => {},
-  })
+  // 先换取一次性 ticket，再建立连接；ticket 不落 URL 日志且一次性有效
+  let ticket = ''
+  try {
+    const res = await getWsTicket()
+    ticket = res && res.ticket ? res.ticket : ''
+  } catch (e) {
+    connecting = false
+    if (!manualClosed) scheduleReconnect()
+    return
+  }
+  if (manualClosed) {
+    connecting = false
+    return
+  }
+  const url = buildSocketUrl(ticket)
+  if (!url) {
+    connecting = false
+    if (!manualClosed) scheduleReconnect()
+    return
+  }
+
+  let task
+  try {
+    task = uni.connectSocket({
+      url,
+      complete: () => {},
+    })
+  } catch (e) {
+    connecting = false
+    if (!manualClosed) scheduleReconnect()
+    return
+  }
   socketTask = task
 
   task.onOpen(() => {
@@ -106,6 +137,11 @@ export function connectDmSocket() {
       return
     }
     if (!payload || payload.type === 'pong') return
+    // 服务端改密后强制下线：停止自动重连，避免用已失效 token 反复握手
+    if (payload.type === 'session_invalidated') {
+      manualClosed = true
+      return
+    }
     listeners.forEach((fn) => {
       try {
         fn(payload)
@@ -119,11 +155,20 @@ export function connectDmSocket() {
     // onClose 会跟着触发，重连逻辑集中在 onClose
   })
 
-  task.onClose(() => {
+  task.onClose((res) => {
     if (socketTask !== task) return
     socketTask = null
     connecting = false
     stopHeartbeat()
+    // 4001 = 服务端主动使 token 失效（改密/重置密码），此时不再自动重连
+    if (res && res.code === SESSION_INVALIDATED_CLOSE_CODE) {
+      manualClosed = true
+      if (retryTimer) {
+        clearTimeout(retryTimer)
+        retryTimer = null
+      }
+      return
+    }
     scheduleReconnect()
   })
 }

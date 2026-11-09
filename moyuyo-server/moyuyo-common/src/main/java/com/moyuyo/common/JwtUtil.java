@@ -26,8 +26,18 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
+    /** Token 版本号 claim：每次改密/重置密码后服务端递增，旧版本 token 立即失效 */
+    public static final String CLAIM_TOKEN_VERSION = "ver";
+
     private final SecretKey secretKey;
     private final long expireMs;
+
+    /**
+     * 管理端 token 有效期（小时）：管理端没有 refresh token，
+     * 使用更短有效期降低账号被禁用/降权后的残留窗口。默认 4 小时。
+     */
+    @Value("${jwt.admin-expire-hours:4}")
+    private long adminExpireHours = 4;
 
     public JwtUtil(
             @Value("${jwt.secret}") String secret,
@@ -37,23 +47,52 @@ public class JwtUtil {
     }
 
     /**
-     * 生成 Token（C 端用户，无角色）
+     * 生成 Token（C 端用户，无角色、无版本号；仅用于测试/兼容历史调用）
      */
     public String generate(Long userId, String email) {
-        return generate(userId, email, null);
+        return generate(userId, email, null, null);
     }
 
     /**
-     * 生成 Token，可携带角色（管理端传入管理员角色，用于接口鉴权）
+     * 生成 Token（兼容历史调用：不携带版本号，等价于版本 0）
      */
     public String generate(Long userId, String email, String role) {
+        return generate(userId, email, role, null);
+    }
+
+    /**
+     * 生成 Token，可携带角色（管理端传入管理员角色，用于接口鉴权）与 token 版本号。
+     * <p>
+     * tokenVersion 为服务端当前版本（Redis 中保存）。改密后版本递增，
+     * 旧 token 携带的版本号与服务端不一致，会在 JwtAuthFilter 中被拒绝。
+     *
+     * @param tokenVersion 当前版本号；null 表示不写入 claim（历史兼容，按 0 处理）
+     */
+    public String generate(Long userId, String email, String role, Long tokenVersion) {
+        return generateWithExpiry(userId, email, role, tokenVersion, expireMs);
+    }
+
+    /**
+     * 生成管理端 Token：使用更短的 {@code jwt.admin-expire-hours}（默认 4 小时）。
+     * 管理端没有 refresh token，缩短有效期可降低禁用/降权后的残留窗口。
+     */
+    public String generateAdmin(Long userId, String email, String role, Long tokenVersion) {
+        long adminExpireMs = Math.max(1L, adminExpireHours) * 3600L * 1000L;
+        return generateWithExpiry(userId, email, role, tokenVersion, adminExpireMs);
+    }
+
+    private String generateWithExpiry(Long userId, String email, String role,
+                                      Long tokenVersion, long ttlMillis) {
         var builder = Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("email", email)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expireMs));
+                .expiration(new Date(System.currentTimeMillis() + ttlMillis));
         if (role != null && !role.isBlank()) {
             builder.claim("role", role);
+        }
+        if (tokenVersion != null) {
+            builder.claim(CLAIM_TOKEN_VERSION, tokenVersion);
         }
         return builder.signWith(secretKey).compact();
     }
@@ -121,5 +160,23 @@ public class JwtUtil {
      */
     public String getRoleFromClaims(Claims claims) {
         return claims.get("role", String.class);
+    }
+
+    /**
+     * 从 Claims 中提取 token 版本号；历史 token 没有该 claim 时返回 null（调用方按 0 处理）。
+     */
+    public Long getTokenVersionFromClaims(Claims claims) {
+        Object raw = claims.get(CLAIM_TOKEN_VERSION);
+        if (raw instanceof Number number) {
+            return number.longValue();
+        }
+        if (raw instanceof String str && !str.isBlank()) {
+            try {
+                return Long.parseLong(str.trim());
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
     }
 }

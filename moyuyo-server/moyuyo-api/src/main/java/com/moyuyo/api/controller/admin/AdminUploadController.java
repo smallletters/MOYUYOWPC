@@ -6,6 +6,7 @@ import com.moyuyo.common.dto.admin.UploadPage;
 import com.moyuyo.common.dto.admin.UploadResult;
 import com.moyuyo.common.dto.admin.UploadedFile;
 import com.moyuyo.common.Result;
+import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.dao.admin.entity.UploadFileEntity;
 import com.moyuyo.dao.admin.mapper.UploadFileMapper;
 import com.moyuyo.dao.mapper.DmConversationMapper;
@@ -43,7 +44,8 @@ import java.util.stream.Stream;
  * 管理端文件上传 Controller（本地存储 + 静态服务）。
  * <p>
  * 设计要点：
- * 1. 仅支持图片（PNG / JPG / JPEG / GIF / WebP / SVG），通过文件扩展名 + Content-Type 双重白名单校验
+ * 1. 仅支持图片（PNG / JPG / JPEG / GIF / WebP），通过文件扩展名 + Content-Type 双重白名单校验
+ *    2026-11 安全修复：移除 SVG —— SVG 可携带内联脚本，作为同源静态资源直接打开会形成存储型 XSS
  * 2. 文件大小上限由 application.yml spring.servlet.multipart 控制（默认 20MB）
  * 3. 按日期分目录（yyyy/MM/dd）避免单目录文件过多，便于运维清理
  * 4. 文件名使用 UUID + 原始扩展名，避免中文 / 特殊字符与同名覆盖
@@ -75,14 +77,17 @@ public class AdminUploadController {
     /** 管理端素材场景：图片空间只展示该场景 */
     private static final String SCENE_ADMIN = "ADMIN";
 
+    /** 允许删除素材库文件的后台角色：删除为破坏性操作，仅超管/运营可执行 */
+    private static final Set<String> DELETE_ALLOWED_ROLES = Set.of("SUPER_ADMIN", "OPERATOR");
+
     /** 场景索引只回填一次（首次访问图片空间时触发） */
     private final AtomicBoolean sceneIndexReady = new AtomicBoolean(false);
 
-    /** 图片白名单：扩展名 + Content-Type 双重校验 */
+    /** 图片白名单：扩展名 + Content-Type 双重校验（禁止 SVG，防同源存储型 XSS） */
     private static final Set<String> ALLOWED_EXT = new HashSet<>(
-            Arrays.asList("png", "jpg", "jpeg", "gif", "webp", "svg"));
+            Arrays.asList("png", "jpg", "jpeg", "gif", "webp"));
     private static final Set<String> ALLOWED_CT = new HashSet<>(
-            Arrays.asList("image/png", "image/jpg", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"));
+            Arrays.asList("image/png", "image/jpg", "image/jpeg", "image/gif", "image/webp"));
 
     /** 3D 模型白名单：仅校验扩展名（模型文件 Content-Type 多为 application/octet-stream） */
     private static final Set<String> ALLOWED_MODEL_EXT = new HashSet<>(
@@ -469,6 +474,13 @@ public class AdminUploadController {
     @DeleteMapping("/image")
     @Operation(summary = "删除已上传图片")
     public Result<Void> deleteImage(@RequestParam("url") String url) {
+        // 2026-11 安全修复：删除属于破坏性操作，上传接口虽对全部后台角色开放，
+        // 但删除必须限制为运营/超管，且只能删管理端素材库（ADMIN 场景）文件。
+        // 防止客服/财务/只读等角色越权删除用户私信图片、社区图片等 C 端内容。
+        String role = UserContextHolder.getRole();
+        if (role == null || !DELETE_ALLOWED_ROLES.contains(role)) {
+            return Result.forbidden("无权限删除素材库文件");
+        }
         if (url == null || url.isBlank()) {
             return Result.badRequest("url 不能为空");
         }
@@ -476,7 +488,20 @@ public class AdminUploadController {
         if (!url.startsWith(urlPrefix)) {
             return Result.badRequest("非法 URL");
         }
-        String relative = url.substring(urlPrefix.length());
+        String normalizedUrl = url.trim();
+        UploadFileEntity mapping = uploadFileMapper.selectOne(
+                new LambdaQueryWrapper<UploadFileEntity>()
+                        .eq(UploadFileEntity::getUrl, normalizedUrl)
+                        .eq(UploadFileEntity::getScene, SCENE_ADMIN));
+        if (mapping == null) {
+            // 非管理端素材（用户图片/聊天图片/头像等）一律拒绝，避免越权删除用户内容
+            return Result.forbidden("仅允许删除管理端素材库文件");
+        }
+        String relative = normalizedUrl.substring(urlPrefix.length());
+        // 二道防线：即使历史上被误标为 ADMIN，私信目录 dm/ 下的文件也绝不允许后台删除
+        if (relative.startsWith(CHAT_UPLOAD_DIR + "/")) {
+            return Result.forbidden("仅允许删除管理端素材库文件");
+        }
         Path target = uploadPath.resolve(relative).normalize();
         if (!target.startsWith(uploadPath)) {
             return Result.badRequest("路径穿越拒绝");
@@ -513,7 +538,7 @@ public class AdminUploadController {
 
     /**
      * 从 Content-Type 推断文件扩展名(兜底方案)
-     * 比 UserUploadController 多覆盖 svg(SVG 在 C 端不允许但管理后台允许)。
+     * 2026-11 安全修复：不再覆盖 svg，避免通过伪造 Content-Type 绕过扩展名白名单。
      */
     private String extractExtFromContentType(String contentType) {
         if (contentType == null) return null;
@@ -523,7 +548,6 @@ public class AdminUploadController {
             case "image/jpg":         return "jpg";
             case "image/gif":         return "gif";
             case "image/webp":        return "webp";
-            case "image/svg+xml":     return "svg";
             case "video/mp4":         return "mp4";
             case "video/quicktime":   return "mov";
             case "video/webm":        return "webm";

@@ -8,9 +8,11 @@ import com.moyuyo.dao.entity.UserEntity;
 import com.moyuyo.dao.mapper.MemberMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.admin.AdminUserManageService;
+import com.moyuyo.service.event.UserTokenInvalidatedEvent;
 import static com.moyuyo.common.enums.GeneralStatusEnum.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -39,6 +41,12 @@ public class AdminUserManageServiceImpl implements AdminUserManageService {
   /** Redis 封禁状态 key 前缀：供 JwtAuthFilter 快速拦截被封禁用户（值为封禁提示文案） */
   public static final String REDIS_KEY_USER_BAN = "auth:user:ban:";
 
+  /** C 端 token 版本号 key（与 JwtAuthFilter / AuthServiceImpl 保持一致） */
+  private static final String REDIS_KEY_TOKEN_VERSION = "auth:token-version:";
+  /** refresh token 及其反向索引 key（与管理端重置用户密码时吊销会话使用） */
+  private static final String REDIS_KEY_USER_REFRESH = "auth:user-refresh:";
+  private static final String REDIS_KEY_REFRESH = "auth:refresh:";
+
   private static final DateTimeFormatter BAN_TIME_FORMATTER =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
@@ -46,6 +54,8 @@ public class AdminUserManageServiceImpl implements AdminUserManageService {
   private final MemberMapper memberMapper;
   private final PasswordEncoder passwordEncoder;
   private final StringRedisTemplate redisTemplate;
+  /** 事件发布器：管理端重置用户密码后，通知 api 模块关闭该用户的 WebSocket 会话 */
+  private final ApplicationEventPublisher eventPublisher;
 
   @Override
   public Map<String, Object> getStats() {
@@ -374,6 +384,47 @@ public class AdminUserManageServiceImpl implements AdminUserManageService {
     String hashed = passwordEncoder.encode(newPassword);
     user.setPasswordHash(hashed);
     int updated = userMapper.updateById(user);
+
+    // 管理端重置用户密码后，必须让该用户所有旧会话立即失效：
+    // 1) 递增 token 版本 → 旧 access token 被 JwtAuthFilter 拒绝
+    // 2) 吊销 refresh token 反向索引 → 旧 refresh token 不能再换新 access token
+    bumpTokenVersionOrThrow(id);
+    revokeUserRefreshTokensOrThrow(id);
+    // 事务提交后由 api 模块监听并强制关闭该用户已建立的 WebSocket 长连接
+    try {
+      eventPublisher.publishEvent(new UserTokenInvalidatedEvent(id, "ADMIN_RESET_PASSWORD"));
+    } catch (Exception e) {
+      // 事件失败不影响重置密码主流程
+      log.error("[admin-user] 发布 token 失效事件失败，userId={}", id, e);
+    }
+
     log.info("[admin-user] resetPassword: userId={}, updatedRows={}", id, updated);
+  }
+
+  /** 递增用户 token 版本号；失败抛异常让事务回滚，避免"密码已改但旧 token 仍有效" */
+  private void bumpTokenVersionOrThrow(Long userId) {
+    try {
+      redisTemplate.opsForValue().increment(REDIS_KEY_TOKEN_VERSION + userId);
+    } catch (DataAccessException e) {
+      log.error("[admin-user] 递增 token version 失败，中止重置密码: userId={}", userId, e);
+      throw new IllegalStateException("系统繁忙，请稍后再试", e);
+    }
+  }
+
+  /** 吊销用户全部 refresh token；失败抛异常让事务回滚，确保旧会话不能续期 */
+  private void revokeUserRefreshTokensOrThrow(Long userId) {
+    try {
+      String userRefreshKey = REDIS_KEY_USER_REFRESH + userId;
+      java.util.Set<String> tokens = redisTemplate.opsForSet().members(userRefreshKey);
+      if (tokens != null && !tokens.isEmpty()) {
+        redisTemplate.delete(tokens.stream()
+            .map(token -> REDIS_KEY_REFRESH + token)
+            .collect(Collectors.toList()));
+      }
+      redisTemplate.delete(userRefreshKey);
+    } catch (DataAccessException e) {
+      log.error("[admin-user] 吊销 refresh token 失败，中止重置密码: userId={}", userId, e);
+      throw new IllegalStateException("系统繁忙，请稍后再试", e);
+    }
   }
 }

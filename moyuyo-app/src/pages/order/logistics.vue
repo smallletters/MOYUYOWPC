@@ -1,8 +1,14 @@
 <template>
   <view class="logistics">
-    <view v-if="!logistics" class="loading">Loading...</view>
+    <view v-if="loading" class="loading">{{ $t('common.loading') }}</view>
 
-    <template v-else>
+    <!-- 加载失败：给出提示与重试入口，避免页面永久停在 Loading -->
+    <view v-else-if="loadError" class="card error-card">
+      <text class="error-text">{{ $t('orderLogistics.loadFailed') }}</text>
+      <view class="retry-btn" @click="loadLogistics">{{ $t('common.retry') }}</view>
+    </view>
+
+    <template v-else-if="logistics">
       <view class="card status-card">
         <text class="status-title">{{ statusLabel }}</text>
         <text v-if="logistics.carrier" class="status-desc">
@@ -21,9 +27,14 @@
           <view class="timeline-content">
             <text class="timeline-title">{{ t.desc }}</text>
             <text v-if="t.location" class="timeline-desc">{{ t.location }}</text>
-            <text class="timeline-time">{{ t.time }}</text>
+            <text class="timeline-time">{{ formatTraceTime(t.time) }}</text>
           </view>
         </view>
+      </view>
+
+      <!-- 无轨迹空态：单号未注册或承运商尚未推送事件 -->
+      <view v-else class="card empty-card">
+        <text class="empty-text">{{ $t('orderLogistics.noLogistics') }}</text>
       </view>
 
       <view v-if="logistics.carrier" class="card info-card">
@@ -39,6 +50,7 @@
 <script>
 import { orderApi } from '@/api'
 import { i18n } from '@/i18n'
+import { formatTraceTime as formatTraceTimeUtil } from '@/utils/traceTime'
 
 export default {
   pageTitleKey: 'pageTitle.orderLogistics',
@@ -47,6 +59,8 @@ export default {
     return {
       orderId: null,
       logistics: null,
+      loading: true,
+      loadError: false,
       localeVersion: 0,
     }
   },
@@ -75,11 +89,23 @@ export default {
 
   methods: {
     async loadLogistics() {
+      this.loading = true
+      this.loadError = false
       try {
         this.logistics = await orderApi.getLogistics(this.orderId)
       } catch (e) {
         console.error('[logistics] load error', e)
+        this.loadError = true
+      } finally {
+        this.loading = false
       }
+    },
+
+    /**
+     * 轨迹时间格式化（复用 utils/traceTime）
+     */
+    formatTraceTime(value) {
+      return formatTraceTimeUtil(value)
     },
   },
 }
@@ -118,6 +144,30 @@ export default {
   font-size: var(--font-size-sm);
   color: var(--color-text-tertiary);
   margin-top: 8rpx;
+}
+
+.error-card,
+.empty-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 48rpx 24rpx;
+  margin-bottom: 16rpx;
+  text-align: center;
+}
+
+.error-text,
+.empty-text {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}
+
+.retry-btn {
+  margin-top: 24rpx;
+  padding: 16rpx 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-primary-dark);
+  text-decoration: underline;
 }
 
 .timeline {

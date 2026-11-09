@@ -15,6 +15,7 @@ import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductSkuEntity;
 import com.moyuyo.dao.entity.PaymentEntity;
+import com.moyuyo.dao.admin.mapper.FinanceRecordMapper;
 import com.moyuyo.dao.mapper.AddressMapper;
 import com.moyuyo.dao.mapper.FlashSaleMapper;
 import com.moyuyo.dao.mapper.OrderItemMapper;
@@ -26,10 +27,18 @@ import com.moyuyo.service.CouponService;
 import com.moyuyo.service.InviteService;
 import com.moyuyo.service.MemberPriceService;
 import com.moyuyo.service.MemberService;
+import com.moyuyo.service.MissionService;
+import com.moyuyo.service.NotificationService;
 import com.moyuyo.service.ShippingRateService;
+import com.moyuyo.service.WooCommerceSyncService;
+import com.moyuyo.service.config.MembershipRuleConfigService;
+import com.moyuyo.service.impl.CampaignPricingServiceImpl;
 import com.moyuyo.service.impl.OrderServiceImpl;
+import com.moyuyo.service.impl.PointsRewardServiceImpl;
+import com.moyuyo.service.mq.NotificationMessageProducer;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -93,8 +102,46 @@ class OrderServiceTest {
   @Mock
   private InviteService inviteService;
 
+  // OrderServiceImpl 近期新增的依赖：补全 Mock，避免 @InjectMocks 留 null 导致 NPE
+  @Mock
+  private FinanceRecordMapper financeRecordMapper;
+
+  @Mock
+  private WooCommerceSyncService wooCommerceSyncService;
+
+  @Mock
+  private MissionService missionService;
+
+  @Mock
+  private NotificationMessageProducer notificationMessageProducer;
+
+  @Mock
+  private NotificationService notificationService;
+
+  @Mock
+  private PointsRewardServiceImpl pointsRewardService;
+
+  @Mock
+  private MembershipRuleConfigService ruleConfigService;
+
+  @Mock
+  private CampaignPricingServiceImpl campaignPricingService;
+
   @InjectMocks
   private OrderServiceImpl orderService;
+
+  @BeforeEach
+  void setUpCampaignPricing() {
+    // 默认无营销活动：返回非 null 的零优惠计价，避免 OrderServiceImpl 解引用 NPE
+    lenient().when(campaignPricingService.applyToOrder(anyLong(), anyList()))
+        .thenAnswer(invocation -> new CampaignPricingServiceImpl.OrderPricing());
+    // 积分抵扣规则默认值：100 积分抵 1 货币单位，最多抵扣 100%
+    lenient().when(ruleConfigService.getConfig()).thenReturn(
+        new MembershipRuleConfigService.MembershipRuleConfig(
+            10, 7, 2, 50, 100, 10, 1, 100,
+            100, 100, BigDecimal.ONE,
+            0, 0, 0, 0));
+  }
 
   /** 初始化 MyBatis-Plus Lambda 元数据，避免纯 Mockito 单测触发 "lambda cache" 异常 */
   @BeforeAll

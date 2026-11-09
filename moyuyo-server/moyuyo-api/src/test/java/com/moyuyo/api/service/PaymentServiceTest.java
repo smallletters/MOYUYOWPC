@@ -3,6 +3,7 @@ package com.moyuyo.api.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.common.dto.payment.CreatePaymentRequest;
 import com.moyuyo.common.dto.payment.CreatePaymentResponse;
+import com.moyuyo.common.exception.BusinessException;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.PaymentEntity;
 import com.moyuyo.dao.mapper.OrderMapper;
@@ -23,6 +24,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.core.env.Environment;
 import org.springframework.web.client.RestTemplate;
 
 import javax.crypto.Mac;
@@ -62,6 +64,10 @@ class PaymentServiceTest {
   /** 后台支付开关：默认全部放行（各用例不关心开关时无需单独配置） */
   @Mock
   private PaymentMethodConfigService paymentMethodConfigService;
+
+  /** 运行环境：测试默认无激活 profile（按非 dev/test 处理，占位符密钥会 fail-closed） */
+  @Mock
+  private Environment environment;
 
   @InjectMocks
   private PaymentServiceImpl paymentService;
@@ -161,6 +167,30 @@ class PaymentServiceTest {
     assertEquals("cs_test_123", savedPayment.getTransactionId());
     assertEquals(new BigDecimal("99.99"), savedPayment.getAmount());
     assertEquals("PENDING", savedPayment.getStatus());
+  }
+
+  @Test
+  void createPayment_placeholderStripeKey_prod_shouldFailClosed() throws Exception {
+    // 非 dev/test（Environment mock 无激活 profile）+ 占位符密钥 → 必须 503，不能返回 mock 支付页
+    setField("stripeSecretKey", "sk_test_placeholder");
+
+    OrderEntity order = new OrderEntity();
+    order.setId(2L);
+    order.setUserId(100L);
+    order.setOrderNo("ORD20260721000002");
+    order.setStatus("PENDING_PAY");
+    order.setPayAmount(new BigDecimal("88.88"));
+    when(orderService.getOrderByOrderNo("ORD20260721000002")).thenReturn(order);
+
+    CreatePaymentRequest request = new CreatePaymentRequest();
+    request.setOrderNo("ORD20260721000002");
+    request.setPayChannel("STRIPE");
+    request.setPayMethod("CARD");
+
+    BusinessException error = assertThrows(BusinessException.class,
+        () -> paymentService.createPayment(100L, request));
+    assertEquals(503, error.getCode(), "占位符密钥在非 dev/test 环境必须 fail-closed");
+    verify(paymentMapper, never()).insert(any(PaymentEntity.class));
   }
 
   @Test

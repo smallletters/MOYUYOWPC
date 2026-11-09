@@ -47,6 +47,32 @@ public final class XssSanitizer {
             .toFactory();
 
     /**
+     * 打印模板策略：订单打印模板是完整 HTML 片段，需要保留布局标签、class 与内联样式，
+     * 因此不能复用 RICH_TEXT_POLICY。这里允许常见布局/表格标签、class 与 style，
+     * 但剥离 script、事件处理器（onload/onerror 等）与 javascript: 等危险协议。
+     * <p>
+     * 说明：style 属性由 OWASP 内置 CSS 校验器处理；style 元素仅允许纯 CSS 文本，
+     * 由于现代浏览器 CSS 无法执行脚本，保留 style 元素可兼容历史打印模板。
+     */
+    private static final PolicyFactory PRINT_TEMPLATE_POLICY = new HtmlPolicyBuilder()
+            .allowElements(
+                    "div", "span", "p", "br", "hr", "h1", "h2", "h3", "h4", "h5", "h6",
+                    "table", "thead", "tbody", "tfoot", "tr", "th", "td",
+                    "ul", "ol", "li", "img", "a", "b", "strong", "i", "em", "u",
+                    "small", "code", "pre", "header", "footer", "section", "article",
+                    "label", "style"
+            )
+            .allowAttributes("class").globally()
+            // 允许所有元素的 style 属性，并由内置 CSS 校验器过滤危险表达式
+            .allowStyling()
+            .allowAttributes("src", "alt", "width", "height").onElements("img")
+            .allowAttributes("href", "title").onElements("a")
+            .allowAttributes("colspan", "rowspan").onElements("th", "td")
+            .allowUrlProtocols("http", "https", "mailto")
+            .allowTextIn("style")
+            .toFactory();
+
+    /**
      * 净化富文本：保留允许的标签和属性，移除脚本、事件处理器等危险内容。
      *
      * @param input 用户输入的原始文本，可能为 null
@@ -57,6 +83,20 @@ public final class XssSanitizer {
             return "";
         }
         return RICH_TEXT_POLICY.sanitize(input);
+    }
+
+    /**
+     * 净化订单打印模板 HTML：在保留打印布局（style / class / 表格 / 图片）的前提下，
+     * 移除 script、内联事件与 javascript: 等可执行内容，防止后台模板造成存储型 XSS。
+     *
+     * @param input 运营编辑的模板 HTML，可能为 null
+     * @return 净化后的安全 HTML；输入为 null 时返回空字符串
+     */
+    public static String sanitizePrintTemplate(String input) {
+        if (input == null || input.isEmpty()) {
+            return "";
+        }
+        return PRINT_TEMPLATE_POLICY.sanitize(input);
     }
 
     /**

@@ -44,6 +44,8 @@ public class AdminAuthController {
     private static final String REDIS_KEY_ADMIN_LOGIN_FAIL = "auth:admin-login-fail:";
     // 管理员账户锁定 Key
     private static final String REDIS_KEY_ADMIN_LOCK = "auth:admin-lock:";
+    // 管理员 token 版本号：重置密码后递增，旧 access token 立即失效
+    private static final String REDIS_KEY_ADMIN_TOKEN_VERSION = "auth:admin-token-version:";
     // 管理员连续失败 3 次后锁定（高价值目标，更严格
     private static final int MAX_ADMIN_LOGIN_FAILS = 3;
     // 管理员失败计数窗口：30 分钟
@@ -131,11 +133,28 @@ public class AdminAuthController {
         adminUserMapper.updateById(adminUser);
 
         Map<String, Object> data = new HashMap<>();
-        // 管理端 token 携带角色，JwtAuthFilter 会校验 /api/admin/** 的角色
-        data.put("token", jwtUtil.generate(adminUser.getId(), email, adminUser.getRole()));
+        // 管理端 token 携带角色，JwtAuthFilter 会校验 /api/admin/** 的角色；
+        // 同时携带 token 版本号，重置密码后旧的 access token 会立即失效
+        long tokenVersion = currentAdminTokenVersion(adminUser.getId());
+        data.put("token", jwtUtil.generateAdmin(adminUser.getId(), email, adminUser.getRole(), tokenVersion));
         data.put("name", adminUser.getName());
         data.put("role", adminUser.getRole());
         return Result.success(data);
+    }
+
+    /**
+     * 读取管理员当前 token 版本号；Redis 缺失/异常时按 0 处理。
+     * <p>
+     * 重置密码后版本递增，旧 token 会在 JwtAuthFilter 的 admin 命名空间校验中被拒绝。
+     */
+    private long currentAdminTokenVersion(Long adminId) {
+        try {
+            String value = redisTemplate.opsForValue().get(REDIS_KEY_ADMIN_TOKEN_VERSION + adminId);
+            return value == null ? 0L : Long.parseLong(value.trim());
+        } catch (Exception e) {
+            log.error("读取管理员 token version 失败（按 0 处理），adminId={}", adminId, e);
+            return 0L;
+        }
     }
 
     /** 记录管理员登录失败次数，达到阈值时锁定账号 */

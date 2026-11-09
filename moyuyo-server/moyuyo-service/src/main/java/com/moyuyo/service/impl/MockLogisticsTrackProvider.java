@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -22,7 +21,7 @@ import java.util.Locale;
  * <p>
  * 支持场景（按运单号前缀路由）：
  * <ul>
- *   <li>{@code MOCK-DELIVERED-XXX}     → 已签收（多节点轨迹，最后一条含 delivered 关键字）</li>
+ *   <li>{@code MOCK-DELIVERED-XXX}     → 已签收（多节点轨迹，最新一条（数组首位）含 delivered 关键字）</li>
  *   <li>{@code MOCK-INTRANSIT-XXX}     → 运输中（多节点轨迹，未签收）</li>
  *   <li>{@code MOCK-PENDING-XXX}       → 仅发货（1 条发货轨迹）</li>
  *   <li>{@code MOCK-EMPTY-XXX}         → 空轨迹（模拟暂无信息，触发 LogisticsServiceImpl 兜底 DB.traces）</li>
@@ -43,13 +42,6 @@ public class MockLogisticsTrackProvider implements LogisticsTrackProvider {
      */
     private static final DateTimeFormatter ISO_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.ROOT);
-
-    /**
-     * 签收关键字（与 Track17TrackProvider 一致，便于 isDelivered 判定）
-     */
-    private static final List<String> DELIVERED_KEYWORDS = Arrays.asList(
-            "delivered", "signed", "received", "签收", "妥投", "已签收", "已妥投"
-    );
 
     @Override
     public List<LogisticsVO.TraceItem> queryTracks(String carrier, String trackingNumber) {
@@ -99,18 +91,6 @@ public class MockLogisticsTrackProvider implements LogisticsTrackProvider {
         // 默认场景：通用运输中轨迹
         log.info("Mock scenario: DEFAULT (in-transit)");
         return buildInTransitScenario(trackingNumber);
-    }
-
-    @Override
-    public boolean isDelivered(String carrier, String trackingNumber) {
-        List<LogisticsVO.TraceItem> tracks = queryTracks(carrier, trackingNumber);
-        if (tracks.isEmpty()) {
-            return false;
-        }
-        // 取最新一条（已按时间倒序排列，index 0 即最新）
-        LogisticsVO.TraceItem latest = tracks.get(0);
-        return containsDeliveredKeyword(latest.getDesc())
-                || containsDeliveredKeyword(latest.getStatus());
     }
 
     @Override
@@ -175,21 +155,5 @@ public class MockLogisticsTrackProvider implements LogisticsTrackProvider {
         item.setDesc(desc);
         item.setStatus(status);
         return item;
-    }
-
-    /**
-     * 签收关键字匹配（忽略大小写），与 Track17TrackProvider 实现一致
-     */
-    private boolean containsDeliveredKeyword(String text) {
-        if (text == null || text.isBlank()) {
-            return false;
-        }
-        String lower = text.toLowerCase(Locale.ROOT);
-        for (String kw : DELIVERED_KEYWORDS) {
-            if (lower.contains(kw.toLowerCase(Locale.ROOT))) {
-                return true;
-            }
-        }
-        return false;
     }
 }

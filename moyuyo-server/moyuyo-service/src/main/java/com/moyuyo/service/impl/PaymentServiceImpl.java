@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.common.annotation.OperationLog;
 import com.moyuyo.common.dto.payment.CreatePaymentRequest;
 import com.moyuyo.common.dto.payment.CreatePaymentResponse;
+import com.moyuyo.common.exception.BusinessException;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.PaymentEntity;
 import com.moyuyo.dao.mapper.OrderMapper;
@@ -25,6 +26,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.script.RedisScript;
@@ -38,6 +40,7 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Objects;
@@ -91,6 +94,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final PrimeService primeService;
     /** 后台「支付设置」开关（渠道/方式是否可用） */
     private final PaymentMethodConfigService paymentMethodConfigService;
+    /** 运行环境：仅 dev/test 允许占位符密钥走 mock 支付，其余环境 fail-closed */
+    private final Environment environment;
     /** 全局复用的 Jackson 实例，避免每次 new ObjectMapper 浪费资源 */
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -118,7 +123,8 @@ public class PaymentServiceImpl implements PaymentService {
                                @Qualifier("restTemplate") RestTemplate restTemplate,
                                StringRedisTemplate redisTemplate,
                                PrimeService primeService,
-                               PaymentMethodConfigService paymentMethodConfigService) {
+                               PaymentMethodConfigService paymentMethodConfigService,
+                               Environment environment) {
         this.orderService = orderService;
         this.paymentMapper = paymentMapper;
         this.orderMapper = orderMapper;
@@ -126,6 +132,7 @@ public class PaymentServiceImpl implements PaymentService {
         this.redisTemplate = redisTemplate;
         this.primeService = primeService;
         this.paymentMethodConfigService = paymentMethodConfigService;
+        this.environment = environment;
     }
 
     @Value("${payment.stripe.secret-key}")
@@ -303,6 +310,21 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     /**
+     * 是否 dev/test 环境。
+     * <p>
+     * 仅 dev/test 允许占位符密钥走 mock 支付；prod/预发等环境必须 fail-closed，
+     * 避免生产漏配密钥时给用户返回"支付成功"假页面。
+     */
+    private boolean isDevOrTestProfile() {
+        if (environment == null) {
+            return false;
+        }
+        String[] active = environment.getActiveProfiles();
+        return active != null && (Arrays.asList(active).contains("dev")
+                || Arrays.asList(active).contains("test"));
+    }
+
+    /**
      * 生成 mock 支付页 URL（仅用于密钥未配置时的本地/联调/APP 打包 UI 测试）。
      * 返回 return.html + status=success 参数，这样 H5 WebView 会显示"支付成功"，
      * APP 端通过 payAppBridge 拦截 URL 返回成功信号，完整演练"下单→跳转→回跳→订单刷新"全链路。
@@ -331,6 +353,11 @@ public class PaymentServiceImpl implements PaymentService {
                     : "moyuyo://pay/return";
         }
         if (isPlaceholderKey(stripeSecretKey)) {
+            if (!isDevOrTestProfile()) {
+                log.error("[payment] Stripe secret key 未配置或为占位符，拒绝创建支付: orderNo={}",
+                        order.getOrderNo());
+                throw new BusinessException(503, "Stripe 支付渠道未配置，请联系管理员");
+            }
             String mockUrl = buildMockCheckoutUrl(request, order.getOrderNo(), isApp, schemeBase);
             log.warn("[payment] Stripe secret key is placeholder, returning MOCK checkout URL: {}", mockUrl);
             saveOrReusePaymentRecord(order.getId(), "STRIPE", "MOCK-" + order.getOrderNo(), order.getPayAmount());
@@ -544,6 +571,11 @@ public class PaymentServiceImpl implements PaymentService {
                     : "moyuyo://pay/return";
         }
         if (isPlaceholderKey(paypalClientId) || isPlaceholderKey(paypalClientSecret)) {
+            if (!isDevOrTestProfile()) {
+                log.error("[payment] PayPal clientId/secret 未配置或为占位符，拒绝创建支付: orderNo={}",
+                        order.getOrderNo());
+                throw new BusinessException(503, "PayPal 支付渠道未配置，请联系管理员");
+            }
             String mockUrl = buildMockCheckoutUrl(request, order.getOrderNo(), isApp, schemeBase);
             log.warn("[payment] PayPal clientId/secret is placeholder, returning MOCK approval URL: {}", mockUrl);
             saveOrReusePaymentRecord(order.getId(), "PAYPAL", "MOCK-" + order.getOrderNo(), order.getPayAmount());

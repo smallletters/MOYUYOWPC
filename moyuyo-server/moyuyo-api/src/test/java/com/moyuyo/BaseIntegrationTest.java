@@ -68,6 +68,12 @@ public abstract class BaseIntegrationTest {
       redisStore.get(invocation.getArgument(0).toString())
     );
 
+    // multiGet(keys) → 按顺序返回各 key 的值（JwtAuthFilter 用它一次性取黑名单 + token 版本）
+    when(valueOperations.multiGet(any())).thenAnswer(invocation -> {
+      Collection<String> keys = invocation.getArgument(0);
+      return keys.stream().map(redisStore::get).collect(java.util.stream.Collectors.toList());
+    });
+
     // 连接 redisTemplate.opsForSet() 到内存 mock
     when(redisTemplate.opsForSet()).thenReturn(setOperations);
 

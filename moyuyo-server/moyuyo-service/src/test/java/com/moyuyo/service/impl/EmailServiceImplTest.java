@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mock.env.MockEnvironment;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.ByteArrayOutputStream;
@@ -30,9 +31,10 @@ import static org.mockito.Mockito.when;
  * 2) 6 位验证码 HTML 正文不能含 String.format 风格 % 占位
  * 3) 主题/收件人精确匹配
  * 4) Magic Link 链接 & 转义
- * 5) mailEnabled=false 时不抛异常不调用 JavaMail
- * 6) JavaMailSender Bean 不存在时降级不抛异常
- * 7) 海外节点配置约束（hwsmtp.exmail.qq.com:465 SSL）
+ * 5) dev profile + mailEnabled=false：log-only 降级，不抛异常不调用 JavaMail
+ * 6) dev profile + JavaMailSender Bean 不存在：log-only 降级不抛异常
+ * 7) 非 dev（prod）未配置 SMTP：统一抛 503，不伪造成功
+ * 8) 海外节点配置约束（hwsmtp.exmail.qq.com:465 SSL）
  */
 @ExtendWith(MockitoExtension.class)
 class EmailServiceImplTest {
@@ -48,10 +50,15 @@ class EmailServiceImplTest {
 
     private EmailServiceImpl emailService;
 
+    /** 单元测试统一使用 dev profile，验证 log-only 降级路径 */
+    private MockEnvironment environment;
+
     @BeforeEach
     void setUp() {
         when(mailSenderProvider.getIfAvailable()).thenReturn(javaMailSender);
-        emailService = new EmailServiceImpl(mailSenderProvider);
+        environment = new MockEnvironment();
+        environment.setActiveProfiles("dev");
+        emailService = new EmailServiceImpl(mailSenderProvider, environment);
         ReflectionTestUtils.setField(emailService, "fromAddress", "noreply@example.com");
         ReflectionTestUtils.setField(emailService, "fromPersonal", "MOYUYO Support");
         ReflectionTestUtils.setField(emailService, "h5Base", "https://www.moyuyo.com");
@@ -118,7 +125,7 @@ class EmailServiceImplTest {
     }
 
     @Test
-    @DisplayName("mailEnabled=false：log-only 降级，不调 JavaMailSender.send，不抛异常")
+    @DisplayName("dev profile + mailEnabled=false：log-only 降级，不调 JavaMailSender.send，不抛异常")
     void disabledMail_neverSendsAndDoesNotThrow() {
         ReflectionTestUtils.setField(emailService, "mailEnabled", false);
         assertDoesNotThrow(() -> emailService.sendPasswordResetCode("x@example.com", "666666", 30));
@@ -127,10 +134,10 @@ class EmailServiceImplTest {
     }
 
     @Test
-    @DisplayName("JavaMailSender Bean 不存在：log-only 降级，不抛异常")
+    @DisplayName("dev profile + JavaMailSender Bean 不存在：log-only 降级，不抛异常")
     void noMailSenderBean_neverSendsAndDoesNotThrow() {
         when(mailSenderProvider.getIfAvailable()).thenReturn(null);
-        EmailServiceImpl degraded = new EmailServiceImpl(mailSenderProvider);
+        EmailServiceImpl degraded = new EmailServiceImpl(mailSenderProvider, environment);
         ReflectionTestUtils.setField(degraded, "mailEnabled", true);
         ReflectionTestUtils.setField(degraded, "fromAddress", "noreply@example.com");
         ReflectionTestUtils.setField(degraded, "fromPersonal", "MOYUYO");
@@ -138,10 +145,26 @@ class EmailServiceImplTest {
     }
 
     @Test
-    @DisplayName("sendNotification：未配置 SMTP 时明确失败，不伪造成功")
-    void sendNotificationWithoutSmtp_shouldThrow() {
+    @DisplayName("prod profile 未配置 SMTP：验证码邮件统一抛 503")
+    void sendPasswordResetCodeWithoutSmtp_inProd_shouldThrow() {
         when(mailSenderProvider.getIfAvailable()).thenReturn(null);
-        EmailServiceImpl degraded = new EmailServiceImpl(mailSenderProvider);
+        MockEnvironment prod = new MockEnvironment();
+        prod.setActiveProfiles("prod");
+        EmailServiceImpl degraded = new EmailServiceImpl(mailSenderProvider, prod);
+        ReflectionTestUtils.setField(degraded, "mailEnabled", true);
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> degraded.sendPasswordResetCode("x@example.com", "666666", 30));
+        assertEquals(503, error.getCode(), "未配置邮件服务应返回 503 而不是静默成功");
+    }
+
+    @Test
+    @DisplayName("prod profile 未配置 SMTP + sendNotification：同样抛 503（行为已统一）")
+    void sendNotificationWithoutSmtp_inProd_shouldThrow() {
+        when(mailSenderProvider.getIfAvailable()).thenReturn(null);
+        MockEnvironment prod = new MockEnvironment();
+        prod.setActiveProfiles("prod");
+        EmailServiceImpl degraded = new EmailServiceImpl(mailSenderProvider, prod);
         ReflectionTestUtils.setField(degraded, "mailEnabled", true);
 
         BusinessException error = assertThrows(BusinessException.class,

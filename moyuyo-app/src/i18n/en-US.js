@@ -63,7 +63,6 @@ export default {
     petMemory: 'Memories',
     petHealthCalendar: 'Health Calendar',
     petCareRecords: 'Care Records',
-    webviewPay: 'Payment',
     webviewDocument: 'Web Page',
     debugPluginTest: 'Plugin Test',
     userAbout: 'About Us',
@@ -882,6 +881,7 @@ export default {
       'Your account was created using the method below. Linking additional providers is not yet available.',
     // 2FA toggle feedback
     twoFactorOn: 'Two-factor auth enabled',
+    twoFactorOnRelogin: 'Two-factor auth enabled. Please sign in again to verify your identity.',
     twoFactorOff: 'Two-factor auth disabled',
     twoFactorFailed: 'Failed to toggle two-factor auth, please retry',
     twoFactorEnableTitle: 'Enable Two-Factor Auth',
@@ -1515,11 +1515,12 @@ export default {
     trackingNo: 'Tracking Number',
     carrier: 'Carrier',
     noLogistics: 'No tracking info yet',
+    loadFailed: 'Failed to load tracking info',
     status: {
       PENDING: 'Pending Shipment',
       SHIPPED: 'Shipped',
       IN_TRANSIT: 'In Transit',
-      DELIVERED: 'Out for Delivery',
+      DELIVERED: 'Delivered',
       SIGNED: 'Signed',
     },
   },
@@ -2508,6 +2509,16 @@ export default {
     passwordTooShort: 'Password must be at least 8 characters',
     loginSuccess: 'Logged in successfully',
     loginFailed: 'Login failed',
+    // Two-factor authentication (login page)
+    twoFactorRequiredTitle: 'Two-Factor Verification',
+    twoFactorRequiredSub: 'A 6-digit code has been sent to your registered email. Please enter it.',
+    twoFactorCodePlaceholder: '6-digit code',
+    twoFactorVerifyBtn: 'Verify',
+    twoFactorResend: 'Resend code',
+    twoFactorCodeSent: 'Verification code sent to your email',
+    twoFactorInvalid: 'Invalid or expired code',
+    twoFactorEmailRequired: 'No valid email bound. Two-factor verification is unavailable.',
+    twoFactorSendFailed: 'Failed to send verification code. Please try again later.',
     // Deletion auto-revoked notification (login page checks DELETION_REQUESTED flag)
     deletionRevokedTitle: 'Deletion Cancelled',
     deletionRevokedContent:
@@ -4242,12 +4253,6 @@ export default {
 
   // Order recycle bin (pages/order/recycle-bin.vue)
   // Refund request (pages/order/returns.vue)
-  // Logistics tracking (pages/order/logistics-tracking.vue)
-  logistics: {
-    callSfCarrier: 'Please contact SF Express at 95338',
-    refreshing: 'Refreshing…',
-    refreshed: 'Refreshed',
-  },
 
   // Customer-service rating (pages/order/cs-rating.vue)
   // After-sales records (pages/order/after-sales.vue)
@@ -4793,13 +4798,6 @@ export default {
     memberRequired: 'Select at least one member',
     creating: 'Creating…',
     createFailed: 'Failed to create group, please retry',
-  },
-  webviewPay: {
-    loading: 'Loading payment page...',
-    success: 'Payment successful!',
-    cancelled: 'Order cancelled',
-    failedPrefix: 'Payment failed: ',
-    loadFailed: 'Failed to load payment page',
   },
   validate: {
     emailRequired: 'Email is required',

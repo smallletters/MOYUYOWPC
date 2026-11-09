@@ -3,6 +3,7 @@ package com.moyuyo.api.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.common.Result;
 import com.moyuyo.common.security.UserContextHolder;
+import com.moyuyo.service.admin.AdminAccountStateService;
 import com.moyuyo.service.admin.AdminPermissionService;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
@@ -32,6 +33,7 @@ import java.util.Set;
 public class AdminPermissionFilter implements Filter {
 
     private final AdminPermissionService permissionService;
+    private final AdminAccountStateService adminAccountStateService;
     private final ObjectMapper objectMapper;
 
     /** 超级管理员角色编码：拥有全部权限 */
@@ -56,6 +58,8 @@ public class AdminPermissionFilter implements Filter {
      * 商品、内容、客服等模块都需要上传图片，若按 upload:create 校验，
      * 所有非超管角色都会因缺少该权限而无法上传；上传接口内部已做类型/大小/路径校验，
      * 风险由登录态与业务模块权限共同控制。
+     * 2026-11 安全加固：上传已移除 SVG（防存储型 XSS）；删除接口在
+     * AdminUploadController#deleteImage 内单独限制角色（超管/运营）且仅允许删除 ADMIN 场景文件。
      */
     private static final String UPLOAD_PATH_PREFIX = "/api/admin/upload";
 
@@ -67,7 +71,42 @@ public class AdminPermissionFilter implements Filter {
 
         String path = request.getRequestURI();
 
-        // 认证相关接口（登录/登出/当前用户信息）不做模块权限校验
+        // CORS 预检放行：预检请求不携带 Authorization，若在此拦截会让浏览器判定 CORS 失败。
+        // 与 JwtAuthFilter 行为保持一致，由 Spring MVC 的 CORS 处理器回写响应头。
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        // 登录接口本身必须匿名可访问，不查管理员状态
+        if ("/api/admin/auth/login".equals(path)) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        // 管理端其他所有请求都校验账号最新状态：禁用/删除/改角色最多 60 秒生效，
+        // 正常的管理端修改路径会主动 evict 缓存，立即生效。
+        Long adminId = UserContextHolder.getUserId();
+        if (adminId == null) {
+            sendUnauthorized(response, "Admin role required");
+            return;
+        }
+        String currentRole = adminAccountStateService.getActiveRole(adminId);
+        if (currentRole == null) {
+            // 401 而不是 403：账号被禁用/删除属于登录态失效，前端应清 token 并重新登录
+            log.warn("管理员账号不存在或已被禁用, adminId={}, path={}", adminId, path);
+            sendUnauthorized(response, "账号已被禁用或不存在");
+            return;
+        }
+        String tokenRole = UserContextHolder.getRole();
+        if (!currentRole.equals(tokenRole)) {
+            // JWT 中的角色是签发时快照；角色变更后以数据库最新角色为准，权限立即生效
+            log.info("管理员角色已变更，使用最新角色: adminId={}, tokenRole={}, currentRole={}",
+                    adminId, tokenRole, currentRole);
+            UserContextHolder.setRole(currentRole);
+        }
+
+        // 认证相关接口（登出/当前用户信息）不做模块权限校验
         // 上传接口仅校验登录态，避免各业务角色因缺少 upload 权限而无法上传图片
         if (path.startsWith(AUTH_PATH_PREFIX)
                 || path.equals(UPLOAD_PATH_PREFIX)
@@ -76,7 +115,7 @@ public class AdminPermissionFilter implements Filter {
             return;
         }
 
-        String role = UserContextHolder.getRole();
+        String role = currentRole;
 
         // 超级管理员放行全部管理端接口
         if (SUPER_ADMIN.equals(role)) {
@@ -151,13 +190,25 @@ public class AdminPermissionFilter implements Filter {
     }
 
     /**
-     * 写入 403 JSON 响应
+     * 写入 401 JSON 响应（账号被禁用/删除等登录态失效场景）。
      * <p>
      * 防御性检查：response.isCommitted() 为 true 时（如上游过滤器已 flush / Tomcat 内部已写入 headers），
      * 直接调用 getWriter() / writeValue 会抛 IllegalStateException，污染 Spring 异常处理链路
      * （被 GlobalExceptionHandler#handleException 兜底为 500，掩盖真实的权限拦截意图）。
      * 此处前置判断：已 commit 仅记录 ERROR 日志，不再尝试二次写入。
      */
+    private void sendUnauthorized(HttpServletResponse response, String message) throws IOException {
+        if (response.isCommitted()) {
+            log.error("response 已 commit，无法写入 401 响应。message={}", message);
+            return;
+        }
+        response.setContentType("application/json;charset=UTF-8");
+        response.setStatus(401);
+        Result<Void> result = Result.unauthorized(message);
+        objectMapper.writeValue(response.getWriter(), result);
+    }
+
+    /** 写入 403 JSON 响应（防御 isCommitted 异常，与 JwtAuthFilter#sendForbidden 对齐） */
     private void sendForbidden(HttpServletResponse response, String message) throws IOException {
         if (response.isCommitted()) {
             log.error("response 已 commit，无法写入 403 响应。message={}", message);

@@ -14,11 +14,13 @@ import com.moyuyo.service.AuthService;
 import com.moyuyo.service.EmailService;
 import com.moyuyo.service.InviteService;
 import com.moyuyo.service.SmsService;
+import com.moyuyo.service.event.UserTokenInvalidatedEvent;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -53,7 +55,7 @@ public class AuthServiceImpl implements AuthService {
     // 使用 ObjectProvider 支持可选注入：未配置 SMS Provider 时 SmsService Bean 可能不存在（NoopSmsServiceImpl 在 Spring 6.x 下因
     // @Service + @ConditionalOnMissingBean 顺序问题不一定会被注册），避免构造器装配失败导致 dev 启动阻塞
     private final ObjectProvider<SmsService> smsServiceProvider;
-    /** EmailService 可选注入：未配置 spring.mail.* 时也不阻断启动，发送阶段内部走 log-only 降级 */
+    /** EmailService 可选注入：Bean 缺失时不阻断启动；但具体发送由 EmailServiceImpl 按环境决定 log-only / fail-closed */
     private final ObjectProvider<EmailService> emailServiceProvider;
     private final JwtUtil jwtUtil;
     private final StringRedisTemplate redisTemplate;
@@ -61,11 +63,17 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     /** 注册时按邀请码绑定邀请关系 */
     private final InviteService inviteService;
+    /** 事件发布器：改密后发布 token 失效事件，由 api 模块监听并强制关闭该用户 WebSocket 会话 */
+    private final ApplicationEventPublisher eventPublisher;
     /** 登录失败计数 Redis 不可用计数器：便于 Prometheus 告警 */
     private final Counter loginFailureCounter;
     /** Magic Link 跳转的 H5 基础地址（与 EmailServiceImpl 默认值保持一致） */
     @Value("${moyuyo.h5-base:http://localhost:5174}")
     private String h5Base;
+
+    /** 全站每分钟短信发送总量上限（可通过 MOYUYO_SMS_GLOBAL_LIMIT_PER_MINUTE 调整） */
+    @Value("${moyuyo.sms.global-limit-per-minute:100}")
+    private long phoneGlobalLimitPerMinute = 100;
 
     // MeterRegistry 与 Counter 通过 @RequiredArgsConstructor 不便注入，改用显式构造注入
     // 这里通过构造注入 MeterRegistry 创建 Prometheus 计数器
@@ -79,6 +87,7 @@ public class AuthServiceImpl implements AuthService {
                            StringRedisTemplate redisTemplate,
                            PasswordEncoder passwordEncoder,
                            InviteService inviteService,
+                           ApplicationEventPublisher eventPublisher,
                            MeterRegistry meterRegistry) {
         this.userMapper = userMapper;
         this.smsCodeMapper = smsCodeMapper;
@@ -90,6 +99,7 @@ public class AuthServiceImpl implements AuthService {
         this.redisTemplate = redisTemplate;
         this.passwordEncoder = passwordEncoder;
         this.inviteService = inviteService;
+        this.eventPublisher = eventPublisher;
         this.loginFailureCounter = Counter.builder("moyuyo_login_failure_redis_unavailable_total")
                 .description("登录失败计数因 Redis 不可用而失败降级放行的次数（fail-open 行为需运维感知）")
                 .tag("reason", "redis_unavailable")
@@ -129,6 +139,9 @@ public class AuthServiceImpl implements AuthService {
     private static final long RESET_TOKEN_EXPIRE_SECONDS = 1800;
     private static final long MAGIC_LINK_EXPIRE_SECONDS = 900;
     private static final long TWO_FACTOR_CODE_EXPIRE_SECONDS = 300;
+    /** WebSocket 一次性握手票据：60 秒有效，使用后立即删除 */
+    private static final long WS_TICKET_EXPIRE_SECONDS = 60;
+    private static final String REDIS_KEY_WS_TICKET = "auth:ws-ticket:";
 
     private static final String REDIS_KEY_REFRESH = "auth:refresh:";
     // 心跳同日幂等：{userId}:{yyyyMMdd} 存在即视为今日已上报过活跃,避免冗余 UPDATE
@@ -137,16 +150,37 @@ public class AuthServiceImpl implements AuthService {
     // 反向索引：userId -> refresh token 集合，用于登出时批量吊销
     private static final String REDIS_KEY_USER_REFRESH = "auth:user-refresh:";
     private static final String REDIS_KEY_BLACKLIST = "auth:blacklist:";
+    /** access token 版本号：改密/重置密码后 INCR，旧 access token 与旧 refresh token 立即失效 */
+    private static final String REDIS_KEY_TOKEN_VERSION = "auth:token-version:";
     private static final String REDIS_KEY_VERIFY_CODE = "auth:verify:";
-    // 6 位数字重置验证码（新范式，与前端 forgot.vue 6-digit input 对齐），value 存 email
+    // 邮箱验证码失败计数：每次错误 INCR，达到上限立即作废验证码
+    private static final String REDIS_KEY_VERIFY_FAIL = "auth:verify-fail:";
+    // 同邮箱发送冷却 60 秒，防邮件轰炸
+    private static final String REDIS_KEY_VERIFY_COOLDOWN = "auth:verify-cooldown:";
+    // 同邮箱 24 小时发送总量上限，防止被当作邮件轰炸器
+    private static final String REDIS_KEY_VERIFY_DAILY = "auth:verify-daily:";
+    private static final long VERIFY_CODE_SEND_INTERVAL_SECONDS = 60;
+    private static final long VERIFY_CODE_DAILY_LIMIT = 10;
+    private static final int MAX_VERIFY_CODE_FAIL_ATTEMPTS = 5;
+    // 6 位数字重置验证码（新范式，与前端 forgot.vue 6-digit input 对齐）
+    // 2026-11 安全修复：key 由 code 改为 email，验证码与邮箱强绑定，避免全局 6 位 code key 被撞码/覆盖
     private static final String REDIS_KEY_RESET_CODE = "auth:resetcode:";
     // 重置验证码失败次数：每错一次 INCR，超过 5 次强制失效（避免 6 位数被暴力穷举）
     private static final String REDIS_KEY_RESET_FAIL = "auth:resetcode-fail:";
-    @Deprecated(since = "reset-code 范式迁移后保留 1 个版本的兼容读：已不再写入")
-    private static final String REDIS_KEY_RESET_TOKEN = "auth:reset:";
+    // 发送冷却：同一邮箱 60 秒内只允许触发一封重置邮件，避免被当作邮件轰炸器
+    private static final String REDIS_KEY_RESET_COOLDOWN = "auth:resetcode-cooldown:";
+    private static final long RESET_CODE_SEND_INTERVAL_SECONDS = 60;
     private static final String REDIS_KEY_MAGIC_LINK = "auth:magiclink:";
     private static final String REDIS_KEY_2FA_CODE = "auth:2fa:";
     private static final String REDIS_KEY_2FA_VERIFIED = "auth:2fa-verified:";
+    // 2FA 验证码失败计数：每次错误 INCR，达到上限立即作废
+    private static final String REDIS_KEY_2FA_FAIL = "auth:2fa-fail:";
+    // 2FA 发送冷却与每日上限，防止登录流程被当作邮件轰炸器
+    private static final String REDIS_KEY_2FA_SEND_COOLDOWN = "auth:2fa-send:";
+    private static final String REDIS_KEY_2FA_DAILY = "auth:2fa-daily:";
+    private static final long TWO_FACTOR_SEND_INTERVAL_SECONDS = 60;
+    private static final long TWO_FACTOR_DAILY_LIMIT = 10;
+    private static final int MAX_2FA_FAIL_ATTEMPTS = 5;
     // 登录失败计数 Redis Key
     private static final String REDIS_KEY_LOGIN_FAIL = "auth:login-fail:";
     // 账户锁定 Redis Key
@@ -237,11 +271,70 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("邮箱注册需提供邮箱验证码");
         }
         String key = REDIS_KEY_VERIFY_CODE + email;
-        String storedCode = redisTemplate.opsForValue().get(key);
-        if (storedCode == null || !storedCode.equals(emailCode.trim())) {
+        String failKey = REDIS_KEY_VERIFY_FAIL + email;
+
+        String storedCode;
+        try {
+            storedCode = redisTemplate.opsForValue().get(key);
+        } catch (DataAccessException e) {
+            loginFailureCounter.increment();
+            log.error("verifyRegisterEmailCode 读取 Redis 失败，email.len={}", email.length(), e);
+            throw new BusinessException(503, "系统繁忙，请稍后再试", e);
+        }
+        int failCount = readVerifyFailCount(email, failKey);
+        if (failCount >= MAX_VERIFY_CODE_FAIL_ATTEMPTS) {
+            clearVerifyCodeState(email, key, failKey);
             throw new IllegalArgumentException("邮箱验证码错误或已过期");
         }
-        redisTemplate.delete(key);
+        // 错误文案与“验证码不存在”保持一致，避免邮箱枚举
+        if (storedCode == null || !storedCode.equals(emailCode.trim())) {
+            recordVerifyCodeFailure(email, key, failKey);
+            throw new IllegalArgumentException("邮箱验证码错误或已过期");
+        }
+        clearVerifyCodeState(email, key, failKey);
+    }
+
+    /** 读取邮箱验证码失败次数；Redis 异常时抛 503，脏数据按 0 */
+    private int readVerifyFailCount(String email, String failKey) {
+        try {
+            String value = redisTemplate.opsForValue().get(failKey);
+            return value == null ? 0 : Integer.parseInt(value);
+        } catch (DataAccessException e) {
+            loginFailureCounter.increment();
+            log.error("读取邮箱验证码失败计数 Redis 失败，email.len={}", email.length(), e);
+            throw new BusinessException(503, "系统繁忙，请稍后再试", e);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /** 记录一次邮箱验证码错误；达到上限立即作废验证码 */
+    private void recordVerifyCodeFailure(String email, String key, String failKey) {
+        try {
+            Long count = redisTemplate.opsForValue().increment(failKey);
+            if (count != null && count == 1L) {
+                redisTemplate.expire(failKey, VERIFICATION_CODE_EXPIRE_SECONDS, TimeUnit.SECONDS);
+            }
+            if (count != null && count >= MAX_VERIFY_CODE_FAIL_ATTEMPTS) {
+                clearVerifyCodeState(email, key, failKey);
+            }
+            log.warn("Email verification code mismatch, email.len={}, failCount={}", email.length(), count);
+        } catch (DataAccessException e) {
+            loginFailureCounter.increment();
+            log.error("记录邮箱验证码失败次数 Redis 失败，email.len={}", email.length(), e);
+        }
+    }
+
+    /** 清理验证码、失败计数与发送冷却（成功消费或超限作废时使用） */
+    private void clearVerifyCodeState(String email, String key, String failKey) {
+        try {
+            redisTemplate.delete(key);
+            redisTemplate.delete(failKey);
+            redisTemplate.delete(REDIS_KEY_VERIFY_COOLDOWN + email);
+        } catch (DataAccessException e) {
+            loginFailureCounter.increment();
+            log.error("清理邮箱验证码状态 Redis 失败，email={}", email, e);
+        }
     }
 
     /**
@@ -368,11 +461,48 @@ public class AuthServiceImpl implements AuthService {
         // 2. 登录成功，清除失败计数（Redis 不可用不阻断成功登录流程）
         clearLoginFailureRecords(email);
 
+        // 3. 两步验证：开启 2FA 的账号，密码正确后必须再通过邮箱验证码，否则不签发 token
+        if (Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
+            enforceTwoFactorForLogin(user, request.getTwoFactorCode());
+        }
+
         user.setLastLoginTime(LocalDateTime.now());
         userMapper.updateById(user);
 
         log.info("User logged in: id={}, email={}", user.getId(), user.getEmail());
         return generateTokenPair(user);
+    }
+
+    /**
+     * 登录场景的两步验证。
+     * <p>
+     * 未提供验证码时：发送验证码（有 60 秒冷却）并返回 {@code TWO_FACTOR_REQUIRED}，
+     * 客户端带上验证码重新提交登录即可；已提供时校验验证码，错误 5 次作废。
+     * <p>
+     * 这里不签发任何 token，避免"密码正确但 2FA 未通过"的会话建立。
+     */
+    private void enforceTwoFactorForLogin(UserEntity user, String twoFactorCode) {
+        if (twoFactorCode == null || twoFactorCode.isBlank()) {
+            try {
+                sendTwoFactorCode(user.getId());
+            } catch (IllegalArgumentException e) {
+                // 邮箱未绑定/无效等用户侧问题，直接透出可读提示
+                throw new BusinessException(400, "TWO_FACTOR_EMAIL_REQUIRED");
+            } catch (IllegalStateException e) {
+                throw new BusinessException(502, "TWO_FACTOR_SEND_FAILED", e);
+            } catch (BusinessException e) {
+                // EmailService 发送失败等业务异常：统一收敛为客户端可识别的发码失败，
+                // 避免把下游原始错误直接抛给登录页
+                throw new BusinessException(502, "TWO_FACTOR_SEND_FAILED", e);
+            }
+            throw new BusinessException(428, "TWO_FACTOR_REQUIRED");
+        }
+        verifyTwoFactorCodeForLogin(user.getId(), twoFactorCode);
+    }
+
+    /** 登录 2FA 校验：只消费验证码，不写入“开启 2FA 的二次确认”缓存 */
+    private void verifyTwoFactorCodeForLogin(Long userId, String code) {
+        verifyTwoFactorCodeInternal(userId, code, "TWO_FACTOR_INVALID");
     }
 
     /**
@@ -451,9 +581,9 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public TokenResponse refreshToken(RefreshTokenRequest request) {
         String key = REDIS_KEY_REFRESH + request.getRefreshToken();
-        String userIdStr;
+        String stored;
         try {
-            userIdStr = redisTemplate.opsForValue().get(key);
+            stored = redisTemplate.opsForValue().get(key);
         } catch (DataAccessException e) {
             // Redis 不可用时 fail-open：让用户重新走登录流程，避免静默 500 给客户端
             // 与登录路径 fail-open 语义对齐：业务可用性优先
@@ -463,30 +593,50 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Invalid or expired refresh token");
         }
 
-        if (userIdStr == null) {
+        if (stored == null) {
             throw new IllegalArgumentException("Invalid or expired refresh token");
         }
 
-        // 删除旧 refresh token，并从反向索引中移除
+        // refresh token 的 value 格式：userId:tokenVersion
+        // 历史数据是纯 userId（无冒号），按版本 0 处理，保证升级前已登录用户仍可正常续期
         Long userId;
+        long refreshTokenVersion;
         try {
-            userId = Long.parseLong(userIdStr);
+            int separator = stored.indexOf(':');
+            if (separator > 0) {
+                userId = Long.parseLong(stored.substring(0, separator));
+                refreshTokenVersion = Long.parseLong(stored.substring(separator + 1));
+            } else {
+                userId = Long.parseLong(stored);
+                refreshTokenVersion = 0L;
+            }
+        } catch (NumberFormatException e) {
+            log.error("refresh token 内容解析失败，stored.len={}", stored.length(), e);
+            throw new IllegalArgumentException("Invalid or expired refresh token");
+        }
+
+        // 一次性消费：先删除旧 refresh token，并从反向索引中移除
+        try {
             redisTemplate.delete(key);
             redisTemplate.opsForSet().remove(REDIS_KEY_USER_REFRESH + userId, request.getRefreshToken());
         } catch (DataAccessException e) {
             loginFailureCounter.increment();
-            log.error("刷新 Token 清理 Redis 不可用（fail-open 继续生成新 token），userId={}", userIdStr, e);
-            userId = Long.parseLong(userIdStr);
-        } catch (NumberFormatException e) {
-            // refresh token 关联的 userId 解析失败（不应发生）：fail-open 但不继续，避免业务异常
-            log.error("refresh token userId 解析失败，userIdStr={}", userIdStr, e);
-            throw new IllegalArgumentException("Invalid or expired refresh token");
+            log.error("刷新 Token 清理 Redis 不可用（fail-open 继续校验），userId={}", userId, e);
         }
 
         UserEntity user = userMapper.selectById(userId);
         if (user == null) {
             throw new IllegalArgumentException("User not found");
         }
+
+        // 关键：改密后版本号已递增，旧 refresh token 不允许再换新 access token
+        long currentVersion = currentTokenVersion(userId);
+        if (refreshTokenVersion != currentVersion) {
+            log.warn("refresh token version mismatch（改密后旧 refresh token 失效）: userId={}, tokenVer={}, currentVer={}",
+                    userId, refreshTokenVersion, currentVersion);
+            throw new IllegalArgumentException("Invalid or expired refresh token");
+        }
+
         // 刷新 Token 时再次校验封禁状态，避免已封禁用户通过旧 refresh token 续期
         ensureLoginAllowed(user);
 
@@ -509,6 +659,17 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // 2. 通过反向索引批量吊销该用户所有 refresh token，防止登出后旧 token 仍可换取新 access token
+        revokeAllRefreshTokens(userId);
+
+        log.info("User logged out: id={}", userId);
+    }
+
+    /**
+     * 按 userId 批量吊销全部 refresh token（登出 / 改密复用）。
+     * <p>
+     * Redis 不可用时 fail-open：refresh token 到期后自然失效，不影响主流程。
+     */
+    private void revokeAllRefreshTokens(Long userId) {
         try {
             String userRefreshKey = REDIS_KEY_USER_REFRESH + userId;
             Set<String> refreshTokens = redisTemplate.opsForSet().members(userRefreshKey);
@@ -517,21 +678,22 @@ public class AuthServiceImpl implements AuthService {
                         .map(token -> REDIS_KEY_REFRESH + token)
                         .collect(Collectors.toList());
                 redisTemplate.delete(keys);
-                redisTemplate.delete(userRefreshKey);
             }
-        } catch (DataAccessException e) {
-            // Redis 不可用：fail-open，refresh token 7 天后自然到期；用户重新登录后旧 refresh 也无法匹配新 user
+            redisTemplate.delete(userRefreshKey);
+        } catch (Exception e) {
             loginFailureCounter.increment();
-            log.error("logout 批量吊销 refresh token Redis 不可用（fail-open），userId={}", userId, e);
+            log.error("批量吊销 refresh token Redis 不可用（fail-open），userId={}", userId, e);
         }
-
-        log.info("User logged out: id={}", userId);
     }
 
     @Override
     public void sendEmailVerification(EmailVerifyRequest request) {
         // 规范化邮箱，避免大小写不一致导致缓存 Key 与数据库查询不匹配
         String email = normalizeEmail(request.getEmail());
+        if (email == null || email.isBlank()) {
+            log.info("Email verification requested without email, ignored");
+            return;
+        }
 
         // 注册流程必须能发验证码（邮箱尚未入库），所以这里不查 user 表。
         // 用户已注册且邮箱已验证时仍跳过发送，避免对同一邮箱重复骚扰。
@@ -542,22 +704,55 @@ public class AuthServiceImpl implements AuthService {
             return;
         }
 
+        // 同邮箱 60 秒发送冷却，避免验证码接口被当作邮件轰炸器
+        String cooldownKey = REDIS_KEY_VERIFY_COOLDOWN + email;
+        try {
+            Boolean firstSend = redisTemplate.opsForValue().setIfAbsent(
+                    cooldownKey, "1", VERIFY_CODE_SEND_INTERVAL_SECONDS, TimeUnit.SECONDS);
+            if (Boolean.FALSE.equals(firstSend)) {
+                log.info("Email verification code already sent recently, email.len={}", email.length());
+                return;
+            }
+        } catch (DataAccessException e) {
+            log.warn("Email verification cooldown check failed, continue sending, email.len={}", email.length(), e);
+        }
+
+        // 同邮箱 24 小时总量上限：即使换 IP 也不能无限轰炸同一邮箱
+        try {
+            Long dailyCount = redisTemplate.execute(
+                    INCR_WITH_EXPIRE_IF_NEW,
+                    Collections.singletonList(REDIS_KEY_VERIFY_DAILY + email),
+                    String.valueOf(24 * 3600));
+            if (dailyCount != null && dailyCount > VERIFY_CODE_DAILY_LIMIT) {
+                log.warn("Email verification daily limit reached, email.len={}", email.length());
+                return;
+            }
+        } catch (DataAccessException e) {
+            log.warn("Email verification daily limit check failed, continue sending, email.len={}", email.length(), e);
+        }
+
         String code = String.format("%06d", SECURE_RANDOM.nextInt(1000000));
-        redisTemplate.opsForValue().set(
-                REDIS_KEY_VERIFY_CODE + email,
-                code,
-                VERIFICATION_CODE_EXPIRE_SECONDS,
-                TimeUnit.SECONDS);
+        String codeKey = REDIS_KEY_VERIFY_CODE + email;
+        String failKey = REDIS_KEY_VERIFY_FAIL + email;
+        redisTemplate.opsForValue().set(codeKey, code, VERIFICATION_CODE_EXPIRE_SECONDS, TimeUnit.SECONDS);
+        // 新验证码重置失败计数，避免历史失败次数影响本次验证
+        redisTemplate.opsForValue().set(failKey, "0", VERIFICATION_CODE_EXPIRE_SECONDS, TimeUnit.SECONDS);
 
         // 不记录验证码明文，避免日志泄露导致账号接管（真实发送由 EmailService 落地）
         EmailService emailService = emailServiceProvider.getIfAvailable();
         if (emailService == null) {
             log.warn("[email-verify] EmailService Bean 不存在，仅在日志模式下生成验证码：{}", email);
         } else {
-            emailService.sendEmailVerificationCode(
-                    email,
-                    code,
-                    (int) (VERIFICATION_CODE_EXPIRE_SECONDS / 60));
+            try {
+                emailService.sendEmailVerificationCode(
+                        email,
+                        code,
+                        (int) (VERIFICATION_CODE_EXPIRE_SECONDS / 60));
+            } catch (RuntimeException e) {
+                // 发送失败释放冷却与验证码，避免用户 60 秒内重试时“接口成功但收不到邮件”
+                clearVerifyCodeState(email, codeKey, failKey);
+                throw e;
+            }
         }
         log.info("Verification code sent to {}", email);
     }
@@ -566,14 +761,36 @@ public class AuthServiceImpl implements AuthService {
     public void confirmEmailVerification(EmailVerifyConfirmRequest request) {
         // 规范化邮箱，确保与发送验证码时使用的 Key 一致
         String email = normalizeEmail(request.getEmail());
+        if (email == null || email.isBlank() || request.getCode() == null) {
+            throw new IllegalArgumentException("Invalid or expired verification code");
+        }
         String key = REDIS_KEY_VERIFY_CODE + email;
-        String storedCode = redisTemplate.opsForValue().get(key);
+        String failKey = REDIS_KEY_VERIFY_FAIL + email;
 
-        if (storedCode == null || !storedCode.equals(request.getCode())) {
+        String storedCode;
+        try {
+            storedCode = redisTemplate.opsForValue().get(key);
+        } catch (DataAccessException e) {
+            loginFailureCounter.increment();
+            log.error("confirmEmailVerification 读取 Redis 失败，email.len={}", email.length(), e);
+            throw new BusinessException(503, "系统繁忙，请稍后再试", e);
+        }
+
+        int failCount = readVerifyFailCount(email, failKey);
+        if (failCount >= MAX_VERIFY_CODE_FAIL_ATTEMPTS) {
+            clearVerifyCodeState(email, key, failKey);
+            throw new IllegalArgumentException("Invalid or expired verification code");
+        }
+        if (storedCode == null) {
+            throw new IllegalArgumentException("Invalid or expired verification code");
+        }
+        // 每次错误必须计数，超过 5 次立即作废验证码，防止 6 位码被穷举
+        if (!storedCode.equals(request.getCode())) {
+            recordVerifyCodeFailure(email, key, failKey);
             throw new IllegalArgumentException("Invalid or expired verification code");
         }
 
-        redisTemplate.delete(key);
+        clearVerifyCodeState(email, key, failKey);
 
         UserEntity user = userMapper.selectOne(
                 new LambdaQueryWrapper<UserEntity>()
@@ -590,6 +807,11 @@ public class AuthServiceImpl implements AuthService {
     public void sendPasswordReset(EmailVerifyRequest request) {
         // 规范化邮箱，确保后续 resetPassword 查询数据库时能匹配
         String email = normalizeEmail(request.getEmail());
+        // 兜底：即使绕过 Bean Validation，也不能让 eq(email, null) 在 not_null 策略下退化为全表查询
+        if (email == null || email.isBlank()) {
+            log.info("Password reset requested without email, ignored");
+            return;
+        }
         UserEntity user = userMapper.selectOne(
                 new LambdaQueryWrapper<UserEntity>()
                         .eq(UserEntity::getEmail, email));
@@ -601,24 +823,46 @@ public class AuthServiceImpl implements AuthService {
             return;
         }
 
-        // 2026/08 架构对齐：与 forgot.vue 表单（6-digit input）一致，生成 6 位数字验证码，
-        // 而不是原实现的 UUID 32 位 token；Redis key 由 code → email，验证阶段直接用用户输入查。
+        // 发送冷却：同一邮箱 60 秒内只生成一次验证码，避免重置接口被当作邮件轰炸器
+        // Redis 不可用时 fail-open（继续发送），可用性优先；真正的防爆破依赖下方 resetPassword 的失败计数
+        String cooldownKey = REDIS_KEY_RESET_COOLDOWN + email;
+        try {
+            Boolean firstSend = redisTemplate.opsForValue().setIfAbsent(
+                    cooldownKey, "1", RESET_CODE_SEND_INTERVAL_SECONDS, TimeUnit.SECONDS);
+            if (Boolean.FALSE.equals(firstSend)) {
+                log.info("Password reset code already sent recently, email.len={}", email.length());
+                return;
+            }
+        } catch (DataAccessException e) {
+            log.warn("Password reset cooldown check failed, continue sending, email.len={}", email.length(), e);
+        }
+
+        // 2026/08 架构对齐：与 forgot.vue 表单（6-digit input）一致，生成 6 位数字验证码。
+        // 2026-11 安全修复：验证码与邮箱强绑定，key 改为 email（value 存 code），
+        // 避免原实现"全局 code -> email"映射导致的撞码覆盖与跨账号重置。
         String resetCode = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
-        String codeKey = REDIS_KEY_RESET_CODE + resetCode;
-        String failKey = REDIS_KEY_RESET_FAIL + resetCode;
-        // code → email 存 30 分钟（与原 TTL 一致）；失败计数 key 用相同 TTL 便于同步过期
-        redisTemplate.opsForValue().set(codeKey, email, RESET_TOKEN_EXPIRE_SECONDS, TimeUnit.SECONDS);
+        String codeKey = REDIS_KEY_RESET_CODE + email;
+        String failKey = REDIS_KEY_RESET_FAIL + email;
+        // 验证码与失败计数都存 30 分钟，TTL 一致便于同步过期
+        redisTemplate.opsForValue().set(codeKey, resetCode, RESET_TOKEN_EXPIRE_SECONDS, TimeUnit.SECONDS);
         redisTemplate.opsForValue().set(failKey, "0", RESET_TOKEN_EXPIRE_SECONDS, TimeUnit.SECONDS);
 
-        // 真实发送邮件（失败时 EmailServiceImpl 会抛 502 中断流程，避免用户误以为"已发"）
+        // 真实发送邮件（EmailServiceImpl 在非 dev 未配置 SMTP 时抛 503，发送失败抛 502，
+        // 均中断流程，避免用户误以为"已发"）
         EmailService emailService = emailServiceProvider.getIfAvailable();
         if (emailService == null) {
             log.warn("[password-reset] EmailService Bean 不存在，进入 log-only 降级：to={}", email);
         } else {
-            emailService.sendPasswordResetCode(
-                    email,
-                    resetCode,
-                    (int) (RESET_TOKEN_EXPIRE_SECONDS / 60));
+            try {
+                emailService.sendPasswordResetCode(
+                        email,
+                        resetCode,
+                        (int) (RESET_TOKEN_EXPIRE_SECONDS / 60));
+            } catch (RuntimeException e) {
+                // 发送失败时释放冷却，避免用户在 60 秒内重试时"接口返回成功但收不到邮件"
+                clearResetCooldown(email);
+                throw e;
+            }
         }
 
         // 不记录 reset code 明文，避免日志泄露
@@ -628,53 +872,50 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        // Bean Validation 已保证 request.token 是 "^\\d{6}$"，直接查 code → email
+        // 验证码与邮箱强绑定：必须同时提供 email + 6 位 code，避免仅凭全局 code 重置任意账号
+        String email = normalizeEmail(request.getEmail());
         String code = request.getToken();
-        String codeKey = REDIS_KEY_RESET_CODE + code;
-        String failKey = REDIS_KEY_RESET_FAIL + code;
-        // 兼容读：旧 UUID token 范式（1 个版本过渡期，之后移除）
-        String legacyKey = REDIS_KEY_RESET_TOKEN + code;
-        boolean usedLegacyToken = false;
+        if (email == null || email.isBlank() || code == null || code.isBlank()) {
+            throw new IllegalArgumentException("Invalid or expired reset code");
+        }
+        String codeKey = REDIS_KEY_RESET_CODE + email;
+        String failKey = REDIS_KEY_RESET_FAIL + email;
 
-        String email;
+        String storedCode;
         try {
-            email = redisTemplate.opsForValue().get(codeKey);
-            if (email == null && code != null && code.length() == 32) {
-                email = redisTemplate.opsForValue().get(legacyKey);
-                usedLegacyToken = true;
-            }
+            storedCode = redisTemplate.opsForValue().get(codeKey);
         } catch (DataAccessException e) {
             loginFailureCounter.increment();
-            log.error("resetPassword 读取 Redis 不可用，code={}", maskCode(code), e);
+            log.error("resetPassword 读取 Redis 不可用，email.len={}", email.length(), e);
             throw new IllegalArgumentException("系统繁忙，请稍后再试");
         }
 
-        if (email == null) {
+        // 6 位 code 防爆破：先查失败次数，≥5 则立刻失效（同 PHONE_CODE_MAX_FAIL）
+        int failCount;
+        try {
+            String failStr = redisTemplate.opsForValue().get(failKey);
+            failCount = failStr == null ? 0 : Integer.parseInt(failStr);
+        } catch (DataAccessException e) {
+            loginFailureCounter.increment();
+            log.error("resetPassword 读取失败计数 Redis 不可用，email.len={}", email.length(), e);
+            throw new IllegalArgumentException("系统繁忙，请稍后再试");
+        } catch (NumberFormatException e) {
+            failCount = 0;
+        }
+        if (failCount >= MAX_RESET_CODE_FAIL_ATTEMPTS) {
+            deleteResetCode(codeKey, failKey, email);
+            // 与"验证码不存在"返回同一文案：避免攻击者通过该分支判断邮箱是否已注册
             throw new IllegalArgumentException("Invalid or expired reset code");
         }
 
-        // 6 位 code 防爆破：先查失败次数，≥5 则立刻失效（同 PHONE_CODE_MAX_FAIL）
-        if (!usedLegacyToken) {
-            int failCount = 0;
-            try {
-                String failStr = redisTemplate.opsForValue().get(failKey);
-                if (failStr != null) {
-                    failCount = Integer.parseInt(failStr);
-                }
-            } catch (DataAccessException | NumberFormatException e) {
-                failCount = 0;
-            }
-            if (failCount >= MAX_RESET_CODE_FAIL_ATTEMPTS) {
-                // 失败达上限：主动删除 codeKey + failKey，要求用户重新申请
-                try {
-                    redisTemplate.delete(codeKey);
-                    redisTemplate.delete(failKey);
-                } catch (DataAccessException de) {
-                    loginFailureCounter.increment();
-                    log.error("resetPassword 超限清理 Redis 失败, code={}", maskCode(code), de);
-                }
-                throw new IllegalArgumentException("验证码错误次数过多，请重新获取");
-            }
+        if (storedCode == null) {
+            throw new IllegalArgumentException("Invalid or expired reset code");
+        }
+        // 每次失败都必须计数并落库到 Redis，否则 6 位码可被无限穷举
+        // 错误文案必须与"code 不存在"完全一致，避免攻击者据此判断邮箱是否已注册
+        if (!storedCode.equals(code)) {
+            recordResetCodeFailure(email, codeKey, failKey);
+            throw new IllegalArgumentException("Invalid or expired reset code");
         }
 
         UserEntity user = userMapper.selectOne(
@@ -690,20 +931,67 @@ public class AuthServiceImpl implements AuthService {
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userMapper.updateById(user);
 
+        // 先递增 token 版本：失败会抛异常回滚事务，确保"密码已改但旧 token 仍有效"不会发生
+        bumpTokenVersion(user.getId());
+        // 事务提交后由 api 模块监听并强制关闭该用户已建立的 WebSocket 长连接
+        publishTokenInvalidated(user.getId(), "PASSWORD_RESET");
+
         // 一次性消费：成功后立刻删 Redis，防止同一 code 被重复改密码（会话劫持场景）
-        try {
-            if (usedLegacyToken) {
-                redisTemplate.delete(legacyKey);
-            } else {
-                redisTemplate.delete(codeKey);
-                redisTemplate.delete(failKey);
-            }
-        } catch (DataAccessException e) {
-            loginFailureCounter.increment();
-            log.error("resetPassword 清理 Redis 失败（密码已更新成功），email={}", email, e);
-        }
+        deleteResetCode(codeKey, failKey, email);
+        clearResetCooldown(email);
+
+        // 改密后立刻吊销该用户全部 refresh token，避免旧会话（及被盗会话）继续续期
+        revokeAllRefreshTokens(user.getId());
 
         log.info("Password reset completed for: {}", email);
+    }
+
+    /**
+     * 记录一次重置验证码失败：INCR 失败计数，达到上限立即作废验证码。
+     * <p>
+     * 安全要点：必须对"无效 code"和"有效 code 但不匹配"都计数，否则攻击者可以无限猜码。
+     */
+    private void recordResetCodeFailure(String email, String codeKey, String failKey) {
+        try {
+            Long count = redisTemplate.opsForValue().increment(failKey);
+            // 首次失败时补一次 TTL（发送阶段已初始化 TTL；这里兜底 key 已过期的场景）
+            if (count != null && count == 1L) {
+                redisTemplate.expire(failKey, RESET_TOKEN_EXPIRE_SECONDS, TimeUnit.SECONDS);
+            }
+            if (count != null && count >= MAX_RESET_CODE_FAIL_ATTEMPTS) {
+                // 达到上限立刻作废验证码，必须重新申请
+                deleteResetCode(codeKey, failKey, email);
+            }
+            log.warn("Password reset code mismatch, email.len={}, failCount={}", email.length(), count);
+        } catch (DataAccessException e) {
+            loginFailureCounter.increment();
+            log.error("记录重置验证码失败次数 Redis 不可用，email.len={}", email.length(), e);
+        }
+    }
+
+    /**
+     * 清理重置验证码与失败计数。
+     * <p>
+     * 注意：刻意不删除发送冷却 key —— 失败/超限后仍需等待 60 秒才能重新发码，
+     * 避免攻击者通过"5 次猜错 → 立刻重发"绕过频率限制。
+     */
+    private void deleteResetCode(String codeKey, String failKey, String email) {
+        try {
+            redisTemplate.delete(codeKey);
+            redisTemplate.delete(failKey);
+        } catch (DataAccessException e) {
+            loginFailureCounter.increment();
+            log.error("resetPassword 清理验证码 Redis 失败，email={}", email, e);
+        }
+    }
+
+    /** 改密成功后清除发送冷却，允许用户下次正常申请 */
+    private void clearResetCooldown(String email) {
+        try {
+            redisTemplate.delete(REDIS_KEY_RESET_COOLDOWN + email);
+        } catch (DataAccessException e) {
+            log.warn("resetPassword 清理发送冷却 Redis 失败，email={}", email, e);
+        }
     }
 
     @Override
@@ -720,6 +1008,12 @@ public class AuthServiceImpl implements AuthService {
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userMapper.updateById(user);
+
+        // 递增版本号：当前 access token 立即失效；同时吊销 refresh token，强制所有设备重新登录
+        bumpTokenVersion(userId);
+        revokeAllRefreshTokens(userId);
+        // 事务提交后由 api 模块监听并强制关闭该用户已建立的 WebSocket 长连接
+        publishTokenInvalidated(userId, "PASSWORD_CHANGED");
 
         log.info("Password changed for user: {}", userId);
     }
@@ -859,6 +1153,14 @@ public class AuthServiceImpl implements AuthService {
 
         ensureLoginAllowed(user);
 
+        // 已开启 2FA 的账号不允许用 Magic Link 直接登录：
+        // Magic Link 仅证明邮箱可达，与 2FA 的邮箱验证码是同一个因子，无法构成第二因子。
+        // 强制其走“密码 + 两步验证码”登录，避免绕过 2FA。
+        if (Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
+            log.warn("Magic link login blocked by 2FA policy: userId={}", user.getId());
+            throw new BusinessException(403, "该账号已开启两步验证，请使用密码登录并完成验证");
+        }
+
         // 注销冻结期校验：与 password/phone login 路径一致（期内登录即撤销）
         if (user.getDeleteScheduledAt() != null) {
             LocalDateTime now = LocalDateTime.now();
@@ -885,32 +1187,62 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("User not found");
         }
         String email = normalizeEmail(user.getEmail());
-        if (email == null) {
-            throw new IllegalArgumentException("用户未绑定邮箱,无法发送两步验证验证码");
+        // 手机号注册用户的占位邮箱（phone@phone.moyuyo.local）无法收信，明确拒绝
+        if (email == null || email.endsWith("@phone.moyuyo.local")) {
+            throw new IllegalArgumentException("用户未绑定有效邮箱,无法发送两步验证验证码");
+        }
+
+        // 发送冷却：同一用户 60 秒内只生成一次验证码，避免登录流程被当作邮件轰炸器
+        String cooldownKey = REDIS_KEY_2FA_SEND_COOLDOWN + userId;
+        try {
+            Boolean firstSend = redisTemplate.opsForValue().setIfAbsent(
+                    cooldownKey, "1", TWO_FACTOR_SEND_INTERVAL_SECONDS, TimeUnit.SECONDS);
+            if (Boolean.FALSE.equals(firstSend)) {
+                log.info("[2FA] code already sent recently, userId={}", userId);
+                return;
+            }
+        } catch (DataAccessException e) {
+            log.warn("[2FA] cooldown check failed, continue sending, userId={}", userId, e);
+        }
+
+        // 24 小时发送上限，防止同一账号被反复触发发信
+        try {
+            Long dailyCount = redisTemplate.execute(
+                    INCR_WITH_EXPIRE_IF_NEW,
+                    Collections.singletonList(REDIS_KEY_2FA_DAILY + userId),
+                    String.valueOf(24 * 3600));
+            if (dailyCount != null && dailyCount > TWO_FACTOR_DAILY_LIMIT) {
+                log.warn("[2FA] daily limit reached, userId={}", userId);
+                return;
+            }
+        } catch (DataAccessException e) {
+            log.warn("[2FA] daily limit check failed, continue sending, userId={}", userId, e);
         }
 
         String code = String.format("%06d", SECURE_RANDOM.nextInt(1000000));
-        redisTemplate.opsForValue().set(
-                REDIS_KEY_2FA_CODE + userId,
-                code,
-                TWO_FACTOR_CODE_EXPIRE_SECONDS,
-                TimeUnit.SECONDS);
+        String codeKey = REDIS_KEY_2FA_CODE + userId;
+        String failKey = REDIS_KEY_2FA_FAIL + userId;
+        redisTemplate.opsForValue().set(codeKey, code, TWO_FACTOR_CODE_EXPIRE_SECONDS, TimeUnit.SECONDS);
+        // 新验证码重置失败计数
+        redisTemplate.opsForValue().set(failKey, "0", TWO_FACTOR_CODE_EXPIRE_SECONDS, TimeUnit.SECONDS);
 
-        // 真发邮件:与 sendEmailVerificationCode 复用同一 SMTP 通道;
-        // EmailServiceImpl 内部对"无 JavaMailSender Bean"的场景自动降级为 log-only
-        // 并在 dev 模式下把验证码输出到日志便于联调;生产需配置 SPRING_MAIL_*。
-        // EmailService 抛 BusinessException 时(真实发送失败),这里不 catch,
-        // 让 GlobalExceptionHandler 兜底返回 502,前端提示"邮件发送失败"。
+        // 真发邮件：与 sendEmailVerificationCode 复用同一 SMTP 通道；
+        // EmailServiceImpl 在 dev 未配置 SMTP 时走 log-only，非 dev 环境直接抛 503，
+        // 避免"接口成功但用户收不到两步验证码"。
         EmailService emailService = emailServiceProvider.getIfAvailable();
         if (emailService == null) {
-            // EmailService Bean 不存在是配置问题(例如 dev 未装配邮件模块),
-            // 不能默默写 Redis 却不发邮件——否则用户永远收不到码。
-            // 删除已写入 Redis 的验证码,避免脏数据
-            redisTemplate.delete(REDIS_KEY_2FA_CODE + userId);
+            // 删除已写入的验证码/失败计数/冷却，避免用户永远收不到码
+            clearTwoFactorSendState(userId, codeKey, failKey, cooldownKey);
             log.error("[2FA] EmailService Bean 未注册,无法发送验证码(userId={})", userId);
             throw new IllegalStateException("邮件服务未配置,无法发送两步验证验证码");
         }
-        emailService.sendTwoFactorCode(email, code, (int) (TWO_FACTOR_CODE_EXPIRE_SECONDS / 60));
+        try {
+            emailService.sendTwoFactorCode(email, code, (int) (TWO_FACTOR_CODE_EXPIRE_SECONDS / 60));
+        } catch (RuntimeException e) {
+            // 发送失败释放冷却，允许用户立刻重试
+            clearTwoFactorSendState(userId, codeKey, failKey, cooldownKey);
+            throw e;
+        }
 
         // 不记录 2FA 验证码明文,避免日志泄露;
         // EmailService 自身已对收件人邮箱做了 mask 脱敏日志
@@ -919,19 +1251,94 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void verifyTwoFactorCode(Long userId, String code) {
-        String key = REDIS_KEY_2FA_CODE + userId;
-        String storedCode = redisTemplate.opsForValue().get(key);
-
-        if (storedCode == null || !storedCode.equals(code)) {
-            throw new IllegalArgumentException("Invalid or expired verification code");
+        // 开启 2FA 前的二次身份确认：与登录 2FA 共用校验逻辑与失败计数
+        verifyTwoFactorCodeInternal(userId, code, "Invalid or expired verification code");
+        try {
+            String verifiedKey = REDIS_KEY_2FA_VERIFIED + userId;
+            redisTemplate.opsForValue().set(verifiedKey, "1", 7200, TimeUnit.SECONDS);
+        } catch (DataAccessException e) {
+            log.error("[2FA] 写入 verified 缓存失败，userId={}", userId, e);
+            throw new BusinessException(503, "系统繁忙，请稍后再试", e);
         }
-
-        redisTemplate.delete(key);
-
-        String verifiedKey = REDIS_KEY_2FA_VERIFIED + userId;
-        redisTemplate.opsForValue().set(verifiedKey, "1", 7200, TimeUnit.SECONDS);
-
         log.info("2FA verified for user: {}", userId);
+    }
+
+    /**
+     * 2FA 验证码校验（登录与开启 2FA 共用）：
+     * 失败计数 ≥5 立即作废；每次错误 INCR；成功后一次性消费验证码。
+     * <p>
+     * 失败/超限时刻意不释放发送冷却，避免“5 次猜错后立刻重发”绕过频率限制。
+     */
+    private void verifyTwoFactorCodeInternal(Long userId, String code, String invalidMessage) {
+        String codeKey = REDIS_KEY_2FA_CODE + userId;
+        String failKey = REDIS_KEY_2FA_FAIL + userId;
+        String storedCode;
+        try {
+            storedCode = redisTemplate.opsForValue().get(codeKey);
+        } catch (DataAccessException e) {
+            log.error("[2FA] 读取验证码 Redis 失败，userId={}", userId, e);
+            throw new BusinessException(503, "系统繁忙，请稍后再试", e);
+        }
+        int failCount = readTwoFactorFailCount(userId, failKey);
+        if (failCount >= MAX_2FA_FAIL_ATTEMPTS) {
+            clearTwoFactorCode(userId, codeKey, failKey);
+            throw new IllegalArgumentException(invalidMessage);
+        }
+        if (storedCode == null || !storedCode.equals(code)) {
+            recordTwoFactorFailure(userId, codeKey, failKey);
+            throw new IllegalArgumentException(invalidMessage);
+        }
+        clearTwoFactorCode(userId, codeKey, failKey);
+    }
+
+    /** 读取 2FA 失败次数；Redis 异常抛 503，脏数据按 0 */
+    private int readTwoFactorFailCount(Long userId, String failKey) {
+        try {
+            String value = redisTemplate.opsForValue().get(failKey);
+            return value == null ? 0 : Integer.parseInt(value);
+        } catch (DataAccessException e) {
+            log.error("[2FA] 读取失败计数 Redis 失败，userId={}", userId, e);
+            throw new BusinessException(503, "系统繁忙，请稍后再试", e);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /** 记录一次 2FA 错误；达到上限立即作废验证码（保留发送冷却） */
+    private void recordTwoFactorFailure(Long userId, String codeKey, String failKey) {
+        try {
+            Long count = redisTemplate.opsForValue().increment(failKey);
+            if (count != null && count == 1L) {
+                redisTemplate.expire(failKey, TWO_FACTOR_CODE_EXPIRE_SECONDS, TimeUnit.SECONDS);
+            }
+            if (count != null && count >= MAX_2FA_FAIL_ATTEMPTS) {
+                clearTwoFactorCode(userId, codeKey, failKey);
+            }
+            log.warn("[2FA] code mismatch, userId={}, failCount={}", userId, count);
+        } catch (DataAccessException e) {
+            log.error("[2FA] 记录失败次数 Redis 失败，userId={}", userId, e);
+        }
+    }
+
+    /** 消费/作废验证码：只删验证码与失败计数，保留发送冷却 */
+    private void clearTwoFactorCode(Long userId, String codeKey, String failKey) {
+        try {
+            redisTemplate.delete(codeKey);
+            redisTemplate.delete(failKey);
+        } catch (DataAccessException e) {
+            log.error("[2FA] 清理验证码 Redis 失败，userId={}", userId, e);
+        }
+    }
+
+    /** 发送失败时清理验证码、失败计数与冷却，允许用户立即重试 */
+    private void clearTwoFactorSendState(Long userId, String codeKey, String failKey, String cooldownKey) {
+        try {
+            redisTemplate.delete(codeKey);
+            redisTemplate.delete(failKey);
+            redisTemplate.delete(cooldownKey);
+        } catch (DataAccessException e) {
+            log.error("[2FA] 清理发送状态 Redis 失败，userId={}", userId, e);
+        }
     }
 
     /**
@@ -976,6 +1383,16 @@ public class AuthServiceImpl implements AuthService {
         user.setTwoFactorEnabled(enabled);
         userMapper.updateById(user);
         if (enabled && !alreadyOn) {
+            // 开启 2FA 后，之前签发的所有会话都不再可信：
+            // 1) 递增 token 版本 → 旧 access token 立即失效（所有设备）
+            // 2) 吊销 refresh token → 旧 refresh token 不能续期；
+            //    即使吊销因 Redis 抖动失败，refresh 侧也会因版本不匹配拒绝
+            // 3) 广播 token 失效事件 → 关闭各实例上的 WebSocket 长连接
+            // 版本递增失败会抛异常并回滚本次 2FA 开启，避免"2FA 已开但旧会话仍有效"
+            bumpTokenVersion(userId);
+            revokeAllRefreshTokens(userId);
+            publishTokenInvalidated(userId, "TWO_FACTOR_ENABLED");
+
             // 开启成功后立刻消费 verified 缓存:
             // 开启是单次身份确认动作,不持久保留 verified 标记
             try {
@@ -1069,6 +1486,11 @@ public class AuthServiceImpl implements AuthService {
     /** 同号 1 小时最多 5 条 */
     private static final long PHONE_HOURLY_LIMIT = 5;
     private static final long PHONE_HOURLY_WINDOW_SECONDS = 3600;
+    /** 全站短信总量统计窗口（秒）：略大于 60 秒，避免分钟边界抖动 */
+    private static final long PHONE_GLOBAL_WINDOW_SECONDS = 70;
+    /** 允许的短信验证码用途：客户端不可传任意字符串 */
+    private static final Set<String> PHONE_PURPOSE_WHITELIST =
+            Set.of("LOGIN", "REGISTER", "RESET_PASSWORD", "CHANGE_PHONE");
 
     // ==================== 账号注销 ====================
 
@@ -1089,6 +1511,28 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void sendPhoneCode(String phone, String purpose) {
+        // 0. 用途白名单：防止客户端传入任意 purpose 污染数据或绕过用途语义
+        String normalizedPurpose = purpose == null ? "LOGIN" : purpose.trim().toUpperCase();
+        if (!PHONE_PURPOSE_WHITELIST.contains(normalizedPurpose)) {
+            throw new IllegalArgumentException("无效的验证码用途");
+        }
+
+        // 0.1 全站每分钟短信总量上限：即使攻击者不断更换手机号，也不能无限刷短信成本
+        String globalKey = "auth:phone-global:" + (System.currentTimeMillis() / 60000);
+        Long globalCount;
+        try {
+            globalCount = redisTemplate.execute(INCR_WITH_EXPIRE_IF_NEW,
+                    Collections.singletonList(globalKey),
+                    String.valueOf(PHONE_GLOBAL_WINDOW_SECONDS));
+        } catch (DataAccessException e) {
+            // Redis 不可用 fail-open：优先保证验证码可用
+            log.error("Redis 不可用,phone global 限流降级", e);
+            globalCount = 1L;
+        }
+        if (globalCount != null && globalCount > phoneGlobalLimitPerMinute) {
+            throw new BusinessException(429, "短信发送过于频繁,请稍后再试");
+        }
+
         // 1. 频次限流（Redis 原子 INCR + EXPIRE）
         String hourlyKey = "auth:phone-hourly:" + phone;
         Long count;
@@ -1127,20 +1571,24 @@ public class AuthServiceImpl implements AuthService {
         SmsCodeEntity entity = new SmsCodeEntity();
         entity.setPhone(phone);
         entity.setCode(code);
-        entity.setPurpose(purpose);
+        entity.setPurpose(normalizedPurpose);
         entity.setUsed(0);
         entity.setFailCount(0);
         entity.setExpireAt(LocalDateTime.now().plusSeconds(PHONE_CODE_EXPIRE_SECONDS));
         smsCodeMapper.insert(entity);
 
-        // 5. 调用 SMS Provider 发送（Aliyun 实现，Noop 实现仅打日志）
-        try {
-            SmsService smsService = smsServiceProvider.getIfAvailable();
-            if (smsService == null) {
-                log.warn("[sms] 未找到 SmsService Bean（moyuyo.sms.provider 未配置），跳过发送。phone={}, purpose={}", phone, purpose);
-                return;
+        // 5. 调用 SMS Provider 发送（Aliyun 实现，Noop 实现仅 dev 打日志）
+        SmsService smsService = smsServiceProvider.getIfAvailable();
+        if (smsService == null) {
+            // 无 Provider 时不能静默返回成功：清理 Redis 限流 key，并明确失败
+            try {
+                redisTemplate.delete(intervalKey);
+            } catch (DataAccessException ignored) {
             }
-            smsService.sendCode(phone, code, purpose);
+            throw new BusinessException(503, "短信服务未配置，请联系管理员");
+        }
+        try {
+            smsService.sendCode(phone, code, normalizedPurpose);
         } catch (Exception e) {
             // 发送失败回滚：删除刚才插入的记录 + 解除 interval 限流 key
             smsCodeMapper.deleteById(entity.getId());
@@ -1148,14 +1596,19 @@ public class AuthServiceImpl implements AuthService {
                 redisTemplate.delete(intervalKey);
             } catch (DataAccessException ignored) {
             }
-            throw new BusinessException(502, "短信发送失败: " + e.getMessage());
+            // 保留 Provider 抛出的业务码（如 Noop 在非 dev 环境的 503），
+            // 其余未知异常统一收敛为 502，避免把底层错误细节返回给客户端
+            if (e instanceof BusinessException be) {
+                throw be;
+            }
+            throw new BusinessException(502, "短信发送失败，请稍后再试");
         }
-        log.info("Phone code sent: phone={}, purpose={}", phone, purpose);
+        log.info("Phone code sent: phone={}, purpose={}", phone, normalizedPurpose);
     }
 
     @Override
     @Transactional
-    public TokenResponse loginByPhone(String phone, String code) {
+    public TokenResponse loginByPhone(String phone, String code, String twoFactorCode) {
         // 1. 查询最近一条未使用、未过期、purpose=LOGIN 的验证码记录
         SmsCodeEntity record = smsCodeMapper.selectOne(
                 new LambdaQueryWrapper<SmsCodeEntity>()
@@ -1181,11 +1634,7 @@ public class AuthServiceImpl implements AuthService {
             smsCodeMapper.updateById(record);
             throw new IllegalArgumentException("验证码错误");
         }
-        // 4. 标记已使用
-        record.setUsed(1);
-        smsCodeMapper.updateById(record);
-
-        // 5. 查找或自动创建用户
+        // 4. 查找或自动创建用户
         UserEntity user = userMapper.selectOne(
                 new LambdaQueryWrapper<UserEntity>().eq(UserEntity::getPhone, phone));
         if (user == null) {
@@ -1218,9 +1667,19 @@ public class AuthServiceImpl implements AuthService {
                 user.setStatus(USER_STATUS_ACTIVE);
                 log.info("Phone login during deletion grace period, auto-revoke: userId={}", user.getId());
             }
+            // 5. 两步验证：短信验证码通过后，已开启 2FA 的账号仍需邮箱验证码
+            //    注意：此时尚未消费短信验证码，2FA 失败/未提供时用户可以用同一短信码重试
+            if (Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
+                enforceTwoFactorForLogin(user, twoFactorCode);
+            }
             user.setLastLoginTime(LocalDateTime.now());
             userMapper.updateById(user);
         }
+
+        // 6. 2FA（如有）通过后才消费短信验证码，避免重试时提示“验证码已过期”
+        record.setUsed(1);
+        smsCodeMapper.updateById(record);
+
         return generateTokenPair(user);
     }
 
@@ -1261,14 +1720,41 @@ public class AuthServiceImpl implements AuthService {
         throw new IllegalArgumentException("账号已被永久封禁。原因：" + reason);
     }
 
+    /**
+     * 签发一次性 WebSocket 握手票据：60 秒有效，使用后由握手拦截器原子删除。
+     * <p>
+     * Redis 不可用时 fail-closed（抛 503），避免退化为把长期 token 放回 URL。
+     */
+    @Override
+    public String issueWsTicket(Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("未登录");
+        }
+        String ticket = UUID.randomUUID().toString().replace("-", "");
+        try {
+            redisTemplate.opsForValue().set(
+                    REDIS_KEY_WS_TICKET + ticket,
+                    String.valueOf(userId),
+                    WS_TICKET_EXPIRE_SECONDS,
+                    TimeUnit.SECONDS);
+        } catch (DataAccessException e) {
+            log.error("签发 WS ticket 失败（Redis 不可用），userId={}", userId, e);
+            throw new BusinessException(503, "系统繁忙，请稍后再试");
+        }
+        return ticket;
+    }
+
     private TokenResponse generateTokenPair(UserEntity user) {
-        String accessToken = jwtUtil.generate(user.getId(), user.getEmail());
+        // 读取当前版本号并写入 access token / refresh token：
+        // 改密后版本递增，旧 access token 在 JwtAuthFilter 被拒，旧 refresh token 也无法续期
+        long tokenVersion = currentTokenVersion(user.getId());
+        String accessToken = jwtUtil.generate(user.getId(), user.getEmail(), null, tokenVersion);
 
         String refreshToken = UUID.randomUUID().toString().replace("-", "");
         try {
             redisTemplate.opsForValue().set(
                     REDIS_KEY_REFRESH + refreshToken,
-                    String.valueOf(user.getId()),
+                    user.getId() + ":" + tokenVersion,
                     REFRESH_TOKEN_EXPIRE_SECONDS,
                     TimeUnit.SECONDS);
 
@@ -1286,6 +1772,49 @@ public class AuthServiceImpl implements AuthService {
                 refreshToken,
                 "Bearer",
                 ACCESS_TOKEN_EXPIRE_SECONDS);
+    }
+
+    /**
+     * 读取用户当前 access token 版本号。
+     * <p>
+     * Redis 缺失/异常/脏数据一律按 0 处理：保证登录、续期等主流程不因缓存抖动而失败；
+     * 若服务端实际版本大于 0 而读取失败，新 token 会被后续鉴权拒绝，用户重新登录即可（fail-closed）。
+     */
+    private long currentTokenVersion(Long userId) {
+        try {
+            String value = redisTemplate.opsForValue().get(REDIS_KEY_TOKEN_VERSION + userId);
+            return value == null ? 0L : Long.parseLong(value.trim());
+        } catch (DataAccessException | NumberFormatException e) {
+            loginFailureCounter.increment();
+            log.error("读取 token version 失败（按 0 处理），userId={}", userId, e);
+            return 0L;
+        }
+    }
+
+    /**
+     * 递增 access token 版本号：旧 access token / 旧 refresh token 立即失效。
+     * <p>
+     * 失败直接抛异常，让上层 {@code @Transactional} 回滚密码变更，
+     * 避免出现"密码已改但旧 token 仍有效"的不一致状态。
+     */
+    private void bumpTokenVersion(Long userId) {
+        try {
+            redisTemplate.opsForValue().increment(REDIS_KEY_TOKEN_VERSION + userId);
+        } catch (DataAccessException e) {
+            loginFailureCounter.increment();
+            log.error("递增 token version 失败，中止改密，userId={}", userId, e);
+            throw new IllegalStateException("系统繁忙，请稍后再试", e);
+        }
+    }
+
+    /** 发布 token 失效事件：监听方（api 模块）负责关闭该用户已建立的 WebSocket 会话 */
+    private void publishTokenInvalidated(Long userId, String reason) {
+        try {
+            eventPublisher.publishEvent(new UserTokenInvalidatedEvent(userId, reason));
+        } catch (Exception e) {
+            // 事件失败不影响改密主流程；旧 HTTP token 已因版本号失效，WS 连接最多保留到下次断开
+            log.error("发布 token 失效事件失败（WebSocket 连接可能不会被强制关闭），userId={}", userId, e);
+        }
     }
 
     // ==================== 账号注销 ====================
@@ -1552,14 +2081,5 @@ public class AuthServiceImpl implements AuthService {
      */
     private String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase();
-    }
-
-    /**
-     * 重置验证码脱敏：仅展示首位 + **** + 末位（6 位数字 → 形如 1****6），
-     * 防止日志里泄露完整明文被暴力利用。
-     */
-    private String maskCode(String code) {
-        if (code == null || code.length() < 2) return "****";
-        return code.charAt(0) + "****" + code.charAt(code.length() - 1);
     }
 }

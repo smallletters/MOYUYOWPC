@@ -10,7 +10,11 @@
       <text class="status-title">{{ statusTitle }}</text>
       <text class="status-desc">{{ statusDesc }}</text>
       <text
-        v-if="order.status === 'PENDING_SHIP' || order.status === 'PENDING_RECEIVE'"
+        v-if="
+          order.status === 'PENDING_SHIP' ||
+            order.status === 'SHIPPED' ||
+            order.status === 'PENDING_RECEIVE'
+        "
         class="status-eta"
       >
         {{ $t('orderDetail.eta', { date: estimatedDelivery }) }}
@@ -30,7 +34,7 @@
           <view class="timeline-dot" />
           <view class="timeline-body">
             <text class="timeline-desc">{{ t.desc }}</text>
-            <text class="timeline-time">{{ t.time }}</text>
+            <text class="timeline-time">{{ formatTraceTime(t.time) }}</text>
             <text v-if="t.location" class="timeline-location">{{ t.location }}</text>
           </view>
         </view>
@@ -134,13 +138,21 @@
         {{ $t('orderDetail.pay') }}
       </view>
       <view
-        v-if="order.status === 'PENDING_SHIP' || order.status === 'PENDING_RECEIVE'"
+        v-if="
+          order.status === 'PENDING_SHIP' ||
+            order.status === 'SHIPPED' ||
+            order.status === 'PENDING_RECEIVE'
+        "
         class="btn btn-primary"
         @click="onTrack"
       >
         {{ $t('orderDetail.track') }}
       </view>
-      <view v-if="order.status === 'PENDING_RECEIVE'" class="btn btn-outline" @click="onConfirm">
+      <view
+        v-if="order.status === 'SHIPPED' || order.status === 'PENDING_RECEIVE'"
+        class="btn btn-outline"
+        @click="onConfirm"
+      >
         {{ $t('orderDetail.confirmReceive') }}
       </view>
       <view v-if="order.status === 'COMPLETED'" class="btn btn-primary" @click="onReview">
@@ -164,6 +176,7 @@
 import { orderApi } from '@/api'
 import { i18n, t } from '@/i18n'
 import { toAbsoluteImageUrl } from '@/utils/imageUrl'
+import { formatTraceTime as formatTraceTimeUtil } from '@/utils/traceTime'
 
 const DEFAULT_PRODUCT_IMAGE = '/static/images/default-product.png'
 
@@ -253,6 +266,13 @@ export default {
       const d = new Date(dateStr)
       // 跟随当前 locale
       return d.toLocaleString(i18n.locale)
+    },
+
+    /**
+     * 轨迹时间格式化（复用 utils/traceTime）
+     */
+    formatTraceTime(value) {
+      return formatTraceTimeUtil(value)
     },
 
     goBack() {

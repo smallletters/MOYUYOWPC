@@ -8,6 +8,7 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -16,6 +17,7 @@ import org.springframework.util.StringUtils;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 /**
  * JavaMailSender 实现：通过 spring-boot-starter-mail 自动装配的 JavaMailSender
@@ -23,11 +25,11 @@ import java.nio.charset.StandardCharsets;
  * <p>
  * 可靠性策略（与 SmsService 保持一致）：
  * 1) 使用 {@link org.springframework.mail.javamail.JavaMailSender} 真实 SMTP 发送；
- * 2) 若 SMTP 未配置（host/username/password 全空，本地开发常见场景）降级为
- *    "log-only 模式"——不抛异常，避免阻断本地联调，邮件正文打 WARN 日志，
- *    配合 MailHog（SMTP 默认即 127.0.0.1:1025）可真实接收；
- * 3) 若部分配置存在但发送失败，抛出 502 BusinessException，前端提示"邮件发送失败"
- *    避免用户误以为成功，导致忘记密码流程无法继续。
+ * 2) dev profile 未配置 SMTP（host/username/password 为空或 Bean 缺失）时，
+ *    降级为 log-only：只记录动作名与脱敏收件人，不输出验证码，不阻断本地联调；
+ * 3) 非 dev 环境（prod / test / 预发）未配置 SMTP 时 fail-closed，统一抛 503，
+ *    避免出现"接口返回成功但用户收不到验证码/重置邮件"；
+ * 4) 配置存在但发送失败时抛出 502 BusinessException，前端提示"邮件发送失败"。
  * <p>
  * 注：使用 ObjectProvider&lt;JavaMailSender&gt; 可选注入，避免生产 SMTP 临时撤下或
  * 本地忘记启动 MailHog 时因 MailSenderAutoConfiguration 条件触发差异导致启动阻塞。
@@ -36,8 +38,11 @@ import java.nio.charset.StandardCharsets;
 @Service
 public class EmailServiceImpl implements EmailService {
 
-    /** JavaMailSender 可选注入：未配置真实 SMTP 时为 null，走 log-only 降级 */
+    /** JavaMailSender 可选注入：未配置真实 SMTP 时为 null，走 dev log-only / 非 dev fail-closed */
     private final JavaMailSender javaMailSender;
+
+    /** 运行环境：仅 dev profile 允许邮件 log-only 降级，其余环境一律失败 */
+    private final Environment environment;
 
     /** 发件邮箱（生产必填） */
     @Value("${moyuyo.mail.from:noreply@moyuyo.local}")
@@ -64,11 +69,12 @@ public class EmailServiceImpl implements EmailService {
      * - 配置了 spring.mail.host 时 MailSenderAutoConfiguration 会注册 Bean，此处正常拿到实例；
      * - 本地未起 MailHog 且未填 env 时 Bean 可能不存在 → javaMailSender 为 null → send() 走 log-only。
      */
-    public EmailServiceImpl(ObjectProvider<JavaMailSender> javaMailSenderProvider) {
+    public EmailServiceImpl(ObjectProvider<JavaMailSender> javaMailSenderProvider, Environment environment) {
         this.javaMailSender = javaMailSenderProvider.getIfAvailable();
+        this.environment = environment;
         if (this.javaMailSender == null) {
-            log.warn("[mail] JavaMailSender Bean 未注册（spring.mail.* 未配置），" +
-                    "所有业务邮件将进入 log-only 降级模式；请配置 MailHog（127.0.0.1:1025）或真实 SMTP。");
+            log.warn("[mail] JavaMailSender Bean 未注册（spring.mail.* 未配置）；"
+                    + "dev 将走 log-only，非 dev 环境发送邮件时直接失败");
         }
     }
 
@@ -84,7 +90,7 @@ public class EmailServiceImpl implements EmailService {
                 "This code expires in " + ttlMinutes + " minutes. If you didn't request a password reset, you can safely ignore this email.",
                 null
         );
-        send(to, subject, html, "sendPasswordResetCode", code);
+        send(to, subject, html, "sendPasswordResetCode");
     }
 
     @Override
@@ -97,7 +103,7 @@ public class EmailServiceImpl implements EmailService {
                 "This code expires in " + ttlMinutes + " minutes. Please enter it in the app to complete email verification.",
                 null
         );
-        send(to, subject, html, "sendEmailVerificationCode", code);
+        send(to, subject, html, "sendEmailVerificationCode");
     }
 
     @Override
@@ -115,7 +121,7 @@ public class EmailServiceImpl implements EmailService {
                 "Why am I getting this? You (or someone with access to your account) " +
                 "are about to turn on two-factor authentication. We never ask for it by phone."
         );
-        send(to, subject, html, "sendTwoFactorCode", code);
+        send(to, subject, html, "sendTwoFactorCode");
     }
 
     @Override
@@ -135,16 +141,11 @@ public class EmailServiceImpl implements EmailService {
                         "<span style=\"word-break:break-all;color:#444;\">" + escapeText(magicLink) + "</span>"
         );
         // magicLink 包含 token，不落日志
-        send(to, subject, html, "sendMagicLink", null);
+        send(to, subject, html, "sendMagicLink");
     }
 
     @Override
     public void sendNotification(String to, String subject, String content) {
-        // 群发场景：未配置 SMTP 时明确失败，避免把"仅打日志"误报为发送成功
-        if (!mailEnabled || javaMailSender == null) {
-            log.warn("[mail] 邮件服务未配置，通知邮件未发送: to={}", mask(to));
-            throw new BusinessException(503, "邮件服务未配置，通知未发送");
-        }
         // 正文使用 pre-wrap 保留用户输入的换行；escapeText 防止 HTML 注入
         String html = buildHtml(
                 subject,
@@ -154,35 +155,28 @@ public class EmailServiceImpl implements EmailService {
                 "This message was sent by MOYUYO. You can manage your notification preferences in the app.",
                 null
         );
-        send(to, subject, html, "sendNotification", null);
+        send(to, subject, html, "sendNotification");
     }
 
     // ======================= 内部辅助 =======================
 
     /**
      * 统一发送入口：SMTP 发送 + 异常兜底 + dev 降级告警。
-     * @param to 收件人
-     * @param subject 主题
-     * @param html 正文 HTML
-     * @param actionName 业务动作名（仅日志/异常语义）
-     * @param sensitiveValue 敏感值（纯 dev log-only 模式下，才会在日志里追加前缀「dev-only:」输出，
-     *                       便于 MailHog 没起时也能复制验证码继续联调；生产不输出）。
+     * <p>
+     * 安全约定：日志只记录动作名与脱敏收件人，绝不输出验证码/重置链接等敏感值，
+     * 避免生产环境漏配 SMTP 时验证码随日志外泄。
      */
-    private void send(String to, String subject, String html, String actionName, String sensitiveValue) {
-        // 1) 未启用邮件时：直接 log-only 降级，不抛异常
-        if (!mailEnabled) {
-            log.warn("[mail][dev-only] {} 邮件跳过真实发送（moyuyo.mail.enabled=false），" +
-                            "to={}, sensitive={}",
-                    actionName, mask(to), sensitiveValue == null ? "n/a" : "dev-only:" + sensitiveValue);
-            return;
-        }
-
-        // 2) JavaMailSender Bean 未注册（未填 spring.mail.* / 环境未装配）→ log-only 降级，
-        //    不抛异常；但在 dev-only 模式下把敏感值输出，便于不启 MailHog 时也能复制验证码继续联调
-        if (javaMailSender == null) {
-            log.warn("[mail][dev-only] {} 邮件因无 JavaMailSender Bean 进入降级发送，" +
-                            "to={}, sensitive={}",
-                    actionName, mask(to), sensitiveValue == null ? "n/a" : "dev-only:" + sensitiveValue);
+    private void send(String to, String subject, String html, String actionName) {
+        // 1) 邮件服务不可用：统一失败策略
+        //    - dev：仅告警并按 log-only 降级，便于本地无 MailHog 联调
+        //    - 非 dev（生产/测试/预发等）：明确抛 503，避免"接口成功但邮件未发"
+        if (!mailEnabled || javaMailSender == null) {
+            if (!isDevProfile()) {
+                log.error("[mail] 邮件服务未配置，拒绝发送: action={}, to={}", actionName, mask(to));
+                throw new BusinessException(503, "邮件服务未配置，请联系管理员");
+            }
+            log.warn("[mail][dev-only] {} 邮件未真实发送（未配置 SMTP 或已禁用），to={}",
+                    actionName, mask(to));
             return;
         }
 
@@ -203,6 +197,20 @@ public class EmailServiceImpl implements EmailService {
             log.error("[mail] {} 发送失败, to={}", actionName, mask(to), e);
             throw new BusinessException(502, "邮件发送失败，请稍后再试");
         }
+    }
+
+    /**
+     * 是否 dev profile。
+     * <p>
+     * 仅 dev 允许邮件 log-only 降级；其余环境（含 test/prod/预发）在邮件未配置时
+     * 一律 fail-closed，避免出现"接口返回成功但用户收不到验证码/重置邮件"。
+     */
+    private boolean isDevProfile() {
+        if (environment == null) {
+            return false;
+        }
+        String[] active = environment.getActiveProfiles();
+        return active != null && Arrays.asList(active).contains("dev");
     }
 
     /**

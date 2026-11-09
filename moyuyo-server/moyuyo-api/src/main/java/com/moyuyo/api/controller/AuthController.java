@@ -60,6 +60,22 @@ public class AuthController {
     }
 
     /**
+     * 签发一次性 WebSocket 握手票据（60 秒有效、使用一次即失效）。
+     * <p>
+     * 安全修复：私信 WebSocket 不再把长期 access token 放到 URL 查询串，
+     * 避免被 Nginx/代理访问日志记录。客户端连接前先调用本接口换取 ticket。
+     */
+    @Operation(summary = "签发 WebSocket 握手票据")
+    @PostMapping("/ws-ticket")
+    public Result<Map<String, String>> issueWsTicket() {
+        Long userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.error(401, "未登录");
+        }
+        return Result.success(Map.of("ticket", authService.issueWsTicket(userId)));
+    }
+
+    /**
      * 心跳接口 - 用于"今日活跃用户"统计信号。
      * <p>
      * APP 端建议在首页 onShow 时调用（已登录态）。
@@ -70,12 +86,12 @@ public class AuthController {
      * 鉴权：依赖 JwtAuthFilter 已认证的 token；token 失效由 401 处理器自动弹 modal。
      * 未登录态允许调用，此时后端不做任何 DB 写入，只返回当日 dateKey 让前端按需缓存。
      * <p>
-     * 复用 authLogin 限流：避免被恶意脚本刷写，
+     * 独立 authHeartbeat 限流：避免心跳流量挤占登录/注册等认证接口的全局配额；
      * 正常用户每天打开 APP 多次也只命中 1 次，限流阈值远高于合理调用频次。
      */
     @Operation(summary = "心跳（今日活跃统计）")
     @PostMapping("/heartbeat")
-    @RateLimiter(name = "authLogin", fallbackMethod = "heartbeatRateLimitFallback")
+    @RateLimiter(name = "authHeartbeat", fallbackMethod = "heartbeatRateLimitFallback")
     public Result<com.moyuyo.service.AuthService.HeartbeatAck> heartbeat() {
         Long userId = UserContextHolder.getUserId();
         return Result.success(authService.heartbeat(userId));
@@ -89,7 +105,7 @@ public class AuthController {
 
     @Operation(summary = "发送邮箱验证码")
     @PostMapping("/email/verify")
-    @RateLimiter(name = "authLogin", fallbackMethod = "rateLimitFallback")
+    @RateLimiter(name = "authEmailVerify", fallbackMethod = "rateLimitFallback")
     public Result<Void> sendEmailVerification(@Valid @RequestBody EmailVerifyRequest request) {
         authService.sendEmailVerification(request);
         return Result.success();
@@ -104,7 +120,7 @@ public class AuthController {
 
     @Operation(summary = "发送密码重置邮件")
     @PostMapping("/password/forgot")
-    @RateLimiter(name = "authLogin", fallbackMethod = "rateLimitFallback")
+    @RateLimiter(name = "authForgot", fallbackMethod = "rateLimitFallback")
     public Result<Void> forgotPassword(@Valid @RequestBody EmailVerifyRequest request) {
         authService.sendPasswordReset(request);
         return Result.success();
@@ -112,7 +128,7 @@ public class AuthController {
 
     @Operation(summary = "重置密码")
     @PostMapping("/password/reset")
-    @RateLimiter(name = "authLogin", fallbackMethod = "resetPasswordRateLimitFallback")
+    @RateLimiter(name = "authReset", fallbackMethod = "resetPasswordRateLimitFallback")
     public Result<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         authService.resetPassword(request);
         return Result.success();
@@ -133,7 +149,7 @@ public class AuthController {
 
     @Operation(summary = "发送 Magic Link 邮件")
     @PostMapping("/magic-link/send")
-    @RateLimiter(name = "authLogin", fallbackMethod = "rateLimitFallback")
+    @RateLimiter(name = "authMagicLink", fallbackMethod = "rateLimitFallback")
     public Result<Void> sendMagicLink(@Valid @RequestBody EmailVerifyRequest request) {
         authService.sendMagicLink(request);
         return Result.success();
@@ -224,7 +240,7 @@ public class AuthController {
 
     @Operation(summary = "发送手机验证码")
     @PostMapping("/phone/send-code")
-    @RateLimiter(name = "authLogin", fallbackMethod = "phoneSendCodeRateLimitFallback")
+    @RateLimiter(name = "authPhoneSend", fallbackMethod = "phoneSendCodeRateLimitFallback")
     public Result<Void> sendPhoneCode(@Valid @RequestBody PhoneSendCodeRequest request) {
         authService.sendPhoneCode(request.getPhone(), request.getPurpose() == null ? "LOGIN" : request.getPurpose());
         return Result.success();
@@ -238,9 +254,10 @@ public class AuthController {
 
     @Operation(summary = "手机号 + 验证码登录（未注册自动创建账号）")
     @PostMapping("/phone/login")
-    @RateLimiter(name = "authLogin", fallbackMethod = "phoneLoginRateLimitFallback")
+    @RateLimiter(name = "authPhoneLogin", fallbackMethod = "phoneLoginRateLimitFallback")
     public Result<TokenResponse> loginByPhone(@Valid @RequestBody PhoneLoginRequest request) {
-        return Result.success(authService.loginByPhone(request.getPhone(), request.getCode()));
+        return Result.success(authService.loginByPhone(
+                request.getPhone(), request.getCode(), request.getTwoFactorCode()));
     }
 
     /** phone/login 限流降级：签名与 loginByPhone 一致 */

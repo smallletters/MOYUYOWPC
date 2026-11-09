@@ -27,17 +27,6 @@ public interface LogisticsTrackProvider {
     List<LogisticsVO.TraceItem> queryTracks(String carrier, String trackingNumber);
 
     /**
-     * 判断运单是否已签收
-     * <p>
-     * 用于定时任务触发订单自动确认收货。
-     *
-     * @param carrier        承运商代码
-     * @param trackingNumber 运单号
-     * @return 已签收返回 true；未签收或查询失败返回 false
-     */
-    boolean isDelivered(String carrier, String trackingNumber);
-
-    /**
      * 提供商标识（none / 17track / kuaidi100 / aftership），用于日志与监控
      */
     String getProviderName();

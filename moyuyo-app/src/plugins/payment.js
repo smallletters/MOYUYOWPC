@@ -60,9 +60,8 @@ export function createPay(params) {
   // #endif
 
   // #ifdef H5
-  // H5 降级: 跳转 Web 支付页
-  uni.navigateTo({ url: `/pages/webview/pay?orderNo=${orderNo}&method=${payMethod}` })
-  return Promise.resolve({ transactionId: '' })
+  // legacy 的 pages/webview/pay 已下线：H5 端统一走 pages/order/pay 收银台
+  return Promise.reject(new Error(t('paymentPlugin.unsupported')))
   // #endif
 
   // #ifdef MP-WEIXIN

@@ -13,6 +13,14 @@ public interface AuthService {
 
     void logout(Long userId, String accessToken);
 
+    /**
+     * 签发一次性 WebSocket 握手票据。
+     * <p>
+     * 客户端建立 /ws/dm 连接前先调用本方法换取 60 秒有效、只能使用一次的 ticket，
+     * 避免把长期有效的 access token 放进 WebSocket URL（会被 Nginx 访问日志记录）。
+     */
+    String issueWsTicket(Long userId);
+
     void sendEmailVerification(EmailVerifyRequest request);
 
     void confirmEmailVerification(EmailVerifyConfirmRequest request);
@@ -53,7 +61,7 @@ public interface AuthService {
      * 手机号 + 验证码登录。
      * 若手机号未注册则自动创建账号（生成随机密码、默认昵称），已注册则返回 JWT。
      */
-    TokenResponse loginByPhone(String phone, String code);
+    TokenResponse loginByPhone(String phone, String code, String twoFactorCode);
 
     /**
      * 已登录用户更换/绑定手机号。

@@ -4,9 +4,12 @@ export function register(data) {
   return post('/api/v1/auth/register', data)
 }
 
-export function login(username, password) {
+export function login(username, password, twoFactorCode) {
   // showError:false 让 onLogin 自己处理 toast,避免重复弹窗且能看到后端真实 message
-  return post('/api/v1/auth/login', { email: username, password }, { showError: false })
+  const body = { email: username, password }
+  // 开启 2FA 的账号：首次登录会返回 TWO_FACTOR_REQUIRED，带上两步验证码重新提交
+  if (twoFactorCode) body.twoFactorCode = twoFactorCode
+  return post('/api/v1/auth/login', body, { showError: false })
 }
 
 export function refreshToken(refreshToken) {
@@ -18,6 +21,14 @@ export function refreshToken(refreshToken) {
 
 export function logout() {
   return post('/api/v1/auth/logout')
+}
+
+/**
+ * 换取私信 WebSocket 一次性握手票据（60 秒有效、使用一次即失效）。
+ * 避免把长期 access token 放进 WebSocket URL 被访问日志记录。
+ */
+export function getWsTicket() {
+  return post('/api/v1/auth/ws-ticket', {}, { showError: false })
 }
 
 export function getUserInfo() {
@@ -48,8 +59,9 @@ export function forgotPassword(email) {
   return post('/api/v1/auth/password/forgot', { email })
 }
 
-export function resetPassword(token, newPassword) {
-  return post('/api/v1/auth/password/reset', { token, newPassword })
+// 2026-11 安全修复：后端要求 email + token 同时提交（验证码与邮箱强绑定，防止撞码重置他人账号）
+export function resetPassword(email, token, newPassword) {
+  return post('/api/v1/auth/password/reset', { email, token, newPassword })
 }
 
 export function changePassword(oldPassword, newPassword) {
@@ -105,9 +117,11 @@ export function sendPhoneCode(phone, purpose = 'LOGIN', options = { showError: f
 }
 
 /** 手机号 + 验证码登录（后端会在未注册时自动创建账号） */
-export function loginByPhone(phone, code) {
+export function loginByPhone(phone, code, twoFactorCode) {
   // 与 login() 一致：自己处理错误 toast,避免 request.js 默认 showError 重复弹窗
-  return post('/api/v1/auth/phone/login', { phone, code }, { showError: false })
+  const body = { phone, code }
+  if (twoFactorCode) body.twoFactorCode = twoFactorCode
+  return post('/api/v1/auth/phone/login', body, { showError: false })
 }
 
 /**

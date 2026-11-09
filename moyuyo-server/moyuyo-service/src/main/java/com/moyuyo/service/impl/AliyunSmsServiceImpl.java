@@ -90,7 +90,8 @@ public class AliyunSmsServiceImpl implements SmsService {
     @Override
     public void sendCode(String phone, String code, String purpose) {
         if (client == null) {
-            log.warn("[sms] Aliyun client unavailable, code={}, phone={}, purpose={}", code, phone, purpose);
+            // 安全修复：不把验证码写进日志
+            log.warn("[sms] Aliyun client unavailable, phone={}, purpose={}", phone, purpose);
             throw new BusinessException(503, "短信服务暂不可用，请稍后再试");
         }
         String templateCode = switch (purpose) {

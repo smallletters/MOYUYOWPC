@@ -57,14 +57,6 @@ public class Track17TrackProvider implements LogisticsTrackProvider {
     private static final String HEADER_TOKEN = "17token";
 
     /**
-     * 签收关键字（忽略大小写匹配 description / last_status）
-     * 中英文混合匹配，覆盖国内外运输商推送文案
-     */
-    private static final Set<String> DELIVERED_KEYWORDS = Set.of(
-            "delivered", "signed", "received", "签收", "妥投", "已签收", "已妥投"
-    );
-
-    /**
      * 17TRACK 错误码：单号未注册，需要先调用 /register 订阅
      */
     private static final int ERR_NOT_REGISTERED = -18019902;
@@ -114,18 +106,6 @@ public class Track17TrackProvider implements LogisticsTrackProvider {
             return Collections.emptyList();
         }
         return doQueryTracks(trackingNumber);
-    }
-
-    @Override
-    public boolean isDelivered(String carrier, String trackingNumber) {
-        List<LogisticsVO.TraceItem> tracks = queryTracks(carrier, trackingNumber);
-        if (tracks.isEmpty()) {
-            return false;
-        }
-        // 签收判定：检查最新轨迹的 desc / status 字段
-        LogisticsVO.TraceItem latest = tracks.get(0);
-        return containsDeliveredKeyword(latest.getDesc())
-                || containsDeliveredKeyword(latest.getStatus());
     }
 
     @Override
@@ -227,25 +207,52 @@ public class Track17TrackProvider implements LogisticsTrackProvider {
 
         // 取第一个匹配结果（不传 carrier 时如有多个，取最新注册的一条）
         JsonNode firstAccepted = accepted.get(0);
+
+        // 兼容新版 events 数组格式（time/location/description/status）
         JsonNode events = firstAccepted.path("events");
-
-        if (!events.isArray() || events.isEmpty()) {
-            return Collections.emptyList();
+        if (events.isArray() && !events.isEmpty()) {
+            List<LogisticsVO.TraceItem> items = new ArrayList<>(events.size());
+            for (JsonNode ev : events) {
+                LogisticsVO.TraceItem item = new LogisticsVO.TraceItem();
+                item.setTime(ev.path("time").asText(""));
+                item.setLocation(ev.path("location").asText(""));
+                item.setDesc(ev.path("description").asText(""));
+                item.setStatus(ev.path("status").asText(""));
+                items.add(item);
+            }
+            // 统一按时间倒序（最新在前），不依赖第三方返回顺序
+            items.sort(Comparator.comparing(LogisticsVO.TraceItem::getTime).reversed());
+            return items;
         }
 
-        // 映射字段：17TRACK description -> TraceItem.desc；并倒序输出（最新轨迹置顶）
-        List<LogisticsVO.TraceItem> items = new ArrayList<>(events.size());
-        for (JsonNode ev : events) {
+        // V1 API 实际返回的紧凑格式：track.z1 为轨迹数组（a=时间/c=地点/z=描述）
+        JsonNode track = firstAccepted.path("track");
+        JsonNode z1 = track.path("z1");
+        if (z1.isArray() && !z1.isEmpty()) {
+            List<LogisticsVO.TraceItem> items = new ArrayList<>(z1.size());
+            for (JsonNode ev : z1) {
+                LogisticsVO.TraceItem item = new LogisticsVO.TraceItem();
+                item.setTime(ev.path("a").asText(""));
+                item.setLocation(ev.path("c").asText(""));
+                item.setDesc(ev.path("z").asText(""));
+                items.add(item);
+            }
+            // z1 通常已倒序，但仍统一排序：顺序变化会导致首条不是最新，签收判定取错事件
+            items.sort(Comparator.comparing(LogisticsVO.TraceItem::getTime).reversed());
+            return items;
+        }
+
+        // 兜底：仅返回最新一条 z0 时也能展示
+        JsonNode z0 = track.path("z0");
+        if (z0.isObject()) {
             LogisticsVO.TraceItem item = new LogisticsVO.TraceItem();
-            item.setTime(ev.path("time").asText(""));
-            item.setLocation(ev.path("location").asText(""));
-            item.setDesc(ev.path("description").asText(""));
-            item.setStatus(ev.path("status").asText(""));
-            items.add(item);
+            item.setTime(z0.path("a").asText(""));
+            item.setLocation(z0.path("c").asText(""));
+            item.setDesc(z0.path("z").asText(""));
+            return List.of(item);
         }
-        // 原始顺序可能为升序（最旧先），统一倒序输出
-        Collections.reverse(items);
-        return items;
+
+        return Collections.emptyList();
     }
 
     /**
@@ -277,22 +284,6 @@ public class Track17TrackProvider implements LogisticsTrackProvider {
         } catch (Exception e) {
             log.warn("17TRACK register unexpected error: tracking={}", trackingNumber, e);
         }
-    }
-
-    /**
-     * 签收关键字匹配（忽略大小写）
-     */
-    private boolean containsDeliveredKeyword(String text) {
-        if (text == null || text.isBlank()) {
-            return false;
-        }
-        String lower = text.toLowerCase(Locale.ROOT);
-        for (String kw : DELIVERED_KEYWORDS) {
-            if (lower.contains(kw.toLowerCase(Locale.ROOT))) {
-                return true;
-            }
-        }
-        return false;
     }
 
     // ========== Fallback ==========

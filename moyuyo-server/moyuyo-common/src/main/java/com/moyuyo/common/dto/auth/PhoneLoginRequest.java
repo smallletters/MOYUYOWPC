@@ -3,6 +3,7 @@ package com.moyuyo.common.dto.auth;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
@@ -23,4 +24,12 @@ public class PhoneLoginRequest {
     @Pattern(regexp = "^\\d{6}$", message = "验证码必须为 6 位数字")
     @Schema(description = "6 位短信验证码", example = "123456")
     private String code;
+
+    /**
+     * 两步验证码（可选）：已开启 2FA 的账号，短信验证通过后仍需提交该验证码。
+     */
+    @Size(min = 6, max = 6, message = "两步验证码必须为 6 位数字")
+    @Pattern(regexp = "^\\d{6}$", message = "两步验证码必须为 6 位数字")
+    @Schema(description = "6 位两步验证码（开启 2FA 的账号必填）", example = "123456")
+    private String twoFactorCode;
 }

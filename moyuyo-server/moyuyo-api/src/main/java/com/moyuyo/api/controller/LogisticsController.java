@@ -1,5 +1,6 @@
 package com.moyuyo.api.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyuyo.common.Result;
 import com.moyuyo.common.dto.logistics.LogisticsVO;
 import com.moyuyo.common.dto.logistics.ShipRequest;
@@ -24,6 +25,8 @@ public class LogisticsController {
 
     private final LogisticsService logisticsService;
     private final OrderService orderService;
+    /** 复用 Spring 容器内的 ObjectMapper，避免每次请求都新建实例 */
+    private final ObjectMapper objectMapper;
 
     @Operation(summary = "发货")
     @PostMapping("/ship")
@@ -63,9 +66,8 @@ public class LogisticsController {
 
         if (entity.getTraces() != null && !entity.getTraces().isBlank()) {
             try {
-                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                List<LogisticsVO.TraceItem> traces = mapper.readValue(entity.getTraces(),
-                        mapper.getTypeFactory().constructCollectionType(List.class, LogisticsVO.TraceItem.class));
+                List<LogisticsVO.TraceItem> traces = objectMapper.readValue(entity.getTraces(),
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, LogisticsVO.TraceItem.class));
                 vo.setTraces(traces);
             } catch (Exception e) {
                 vo.setTraces(Collections.emptyList());

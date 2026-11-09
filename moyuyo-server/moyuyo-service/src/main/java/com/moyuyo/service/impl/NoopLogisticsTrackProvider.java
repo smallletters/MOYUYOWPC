@@ -27,11 +27,6 @@ public class NoopLogisticsTrackProvider implements LogisticsTrackProvider {
     }
 
     @Override
-    public boolean isDelivered(String carrier, String trackingNumber) {
-        return false;
-    }
-
-    @Override
     public String getProviderName() {
         return "none";
     }

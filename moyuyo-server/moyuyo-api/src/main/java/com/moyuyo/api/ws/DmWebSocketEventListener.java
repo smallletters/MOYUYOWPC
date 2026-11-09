@@ -6,6 +6,7 @@ import com.moyuyo.service.event.DmGroupMessageSentEvent;
 import com.moyuyo.service.event.DmMessageReadEvent;
 import com.moyuyo.service.event.DmMessageRecalledEvent;
 import com.moyuyo.service.event.DmMessageSentEvent;
+import com.moyuyo.service.event.UserTokenInvalidatedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -24,6 +25,8 @@ import java.util.Map;
 public class DmWebSocketEventListener {
 
     private final DmSessionRegistry sessionRegistry;
+    /** token 失效跨实例广播（Redis Pub/Sub），多实例部署时关闭其他节点上的连接 */
+    private final TokenInvalidationBroadcaster tokenInvalidationBroadcaster;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onMessageSent(DmMessageSentEvent event) {
@@ -115,6 +118,20 @@ public class DmWebSocketEventListener {
         event.memberIds().stream()
                 .filter(memberId -> memberId != null)
                 .forEach(memberId -> sessionRegistry.sendToUser(memberId, payload));
+    }
+
+    /**
+     * token 失效（改密 / 重置密码）→ 强制关闭该用户全部在线连接。
+     * <p>
+     * 使用 AFTER_COMMIT：只有密码真正落库后才断开，避免事务回滚时误踢用户；
+     * fallbackExecution=true 兼容非事务调用场景。
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onTokenInvalidated(UserTokenInvalidatedEvent event) {
+        if (event == null || event.userId() == null) return;
+        // 先关闭本实例上的连接，再广播给其他实例（忽略本实例自己发出的广播）
+        sessionRegistry.closeUserSessions(event.userId(), event.reason());
+        tokenInvalidationBroadcaster.publish(event.userId(), event.reason());
     }
 
     /**

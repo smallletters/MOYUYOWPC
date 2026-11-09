@@ -240,6 +240,8 @@ public class WooCommerceSyncServiceImpl implements WooCommerceSyncService {
             log.info("WooCommerce product sync completed: total={}", totalSynced);
         } catch (Exception e) {
             log.error("WooCommerce product sync failed", e);
+            // 安全修复：不再吞掉异常，让 Controller / 后台异步任务能明确感知失败
+            throw new WooCommerceSyncException("WooCommerce 商品同步失败，请检查 WooCommerce 配置或稍后重试", e);
         }
     }
 
@@ -415,6 +417,8 @@ public class WooCommerceSyncServiceImpl implements WooCommerceSyncService {
             log.info("WooCommerce category sync completed: total={}", synced);
         } catch (Exception e) {
             log.error("WooCommerce category sync failed", e);
+            // 安全修复：不再吞掉异常，避免上游故障被当作“同步成功 0 条”
+            throw new WooCommerceSyncException("WooCommerce 分类同步失败，请检查 WooCommerce 配置或稍后重试", e);
         }
     }
 

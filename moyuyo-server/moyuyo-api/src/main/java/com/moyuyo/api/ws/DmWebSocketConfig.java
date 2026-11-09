@@ -9,7 +9,7 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 /**
  * 私信 WebSocket 配置
  *
- * 端点：ws(s)://<host>/ws/dm?token=<JWT>
+ * 端点：ws(s)://<host>/ws/dm?ticket=<一次性票据>
  * 注意：该路径不在 /api/* 下，因此 JwtAuthFilter 不会拦截，
  * 鉴权由 DmWebSocketAuthInterceptor 在握手阶段完成。
  */

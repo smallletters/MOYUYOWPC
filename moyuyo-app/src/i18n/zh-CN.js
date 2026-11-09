@@ -67,7 +67,6 @@ export default {
     petMemory: '记忆',
     petHealthCalendar: '健康日历',
     petCareRecords: '护理记录',
-    webviewPay: '支付',
     webviewDocument: '网页',
     debugPluginTest: '插件通信测试',
     userAbout: '关于我们',
@@ -892,6 +891,7 @@ export default {
     oauthNote: '您的账号当前通过下方方式注册,多渠道绑定暂未开放',
     // 2FA 切换反馈
     twoFactorOn: '两步验证已开启',
+    twoFactorOnRelogin: '两步验证已开启，请重新登录以验证身份',
     twoFactorOff: '两步验证已关闭',
     twoFactorFailed: '两步验证切换失败,请稍后重试',
     twoFactorEnableTitle: '开启两步验证',
@@ -1529,11 +1529,12 @@ export default {
     trackingNo: '运单号',
     carrier: '承运商',
     noLogistics: '暂无物流信息',
+    loadFailed: '物流信息加载失败',
     status: {
       PENDING: '待发货',
       SHIPPED: '已发货',
       IN_TRANSIT: '运输中',
-      DELIVERED: '派送中',
+      DELIVERED: '已签收',
       SIGNED: '已签收',
     },
   },
@@ -2515,6 +2516,16 @@ export default {
     passwordTooShort: '密码至少 8 位',
     loginSuccess: '登录成功',
     loginFailed: '登录失败',
+    // 两步验证（登录页）
+    twoFactorRequiredTitle: '两步验证',
+    twoFactorRequiredSub: '验证码已发送至你的注册邮箱，请输入 6 位验证码',
+    twoFactorCodePlaceholder: '6 位验证码',
+    twoFactorVerifyBtn: '验证',
+    twoFactorResend: '重新发送验证码',
+    twoFactorCodeSent: '验证码已发送至邮箱',
+    twoFactorInvalid: '验证码错误或已过期',
+    twoFactorEmailRequired: '账号未绑定有效邮箱，无法完成两步验证',
+    twoFactorSendFailed: '验证码发送失败，请稍后再试',
     // 注销已自动撤销提示（登录页检测 DELETION_REQUESTED 标记后展示）
     deletionRevokedTitle: '注销已撤销',
     deletionRevokedContent:
@@ -4220,12 +4231,6 @@ export default {
 
   // 订单回收站（pages/order/recycle-bin.vue）
   // 退货申请（pages/order/returns.vue）
-  // 物流追踪（pages/order/logistics-tracking.vue）
-  logistics: {
-    callSfCarrier: '请联系顺丰客服 95338',
-    refreshing: '刷新中…',
-    refreshed: '已刷新',
-  },
 
   // 客服评价（pages/order/cs-rating.vue）
   // 售后记录（pages/order/after-sales.vue）
@@ -4759,13 +4764,6 @@ export default {
     memberRequired: '请至少选择一位群成员',
     creating: '创建中…',
     createFailed: '创建失败，请重试',
-  },
-  webviewPay: {
-    loading: '加载支付页面...',
-    success: '支付成功！',
-    cancelled: '订单已取消',
-    failedPrefix: '支付失败：',
-    loadFailed: '加载支付页面失败',
   },
   validate: {
     emailRequired: '邮箱不能为空',

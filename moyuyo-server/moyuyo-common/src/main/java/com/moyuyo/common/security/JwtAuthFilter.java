@@ -50,6 +50,12 @@ public class JwtAuthFilter implements Filter {
     /** 用户封禁标记 key 前缀：值为 C 端展示的封禁提示文案，由管理端封禁操作写入 */
     private static final String REDIS_KEY_USER_BAN = "auth:user:ban:";
 
+    /** C 端 token 版本号 key：改密/重置密码后递增，旧 access token 立即失效 */
+    private static final String REDIS_KEY_TOKEN_VERSION = "auth:token-version:";
+
+    /** 管理端 token 版本号 key：与 C 端 userId 命名空间隔离，避免同 ID 互相影响 */
+    private static final String REDIS_KEY_ADMIN_TOKEN_VERSION = "auth:admin-token-version:";
+
     /**
      * 公开路径白名单：不需要 JWT 校验的端点
      * <p>
@@ -73,8 +79,13 @@ public class JwtAuthFilter implements Filter {
             new WhiteListEntry("/api/v1/auth/email/verify-confirm", false),
             new WhiteListEntry("/api/v1/auth/password/forgot", false),
             new WhiteListEntry("/api/v1/auth/password/reset", false),
-            // 手机号验证码发送:注册 / 登录前都要能调,需公开访问
+            // 手机号验证码发送/登录:注册、登录前都要能调,需公开访问
+            // （漏配 phone/login 会导致匿名用户手机号登录被 401 拦截，登录流程不可用）
             new WhiteListEntry("/api/v1/auth/phone/send-code", false),
+            new WhiteListEntry("/api/v1/auth/phone/login", false),
+            // Magic Link 登录：发信与验证均发生在未登录状态，必须公开
+            new WhiteListEntry("/api/v1/auth/magic-link/send", false),
+            new WhiteListEntry("/api/v1/auth/magic-link/verify", false),
             // 支付渠道 Webhook（精确匹配，签名校验在内部完成）
             new WhiteListEntry("/api/v1/payments/stripe/webhook", false),
             new WhiteListEntry("/api/v1/payments/paypal/webhook", false),
@@ -158,8 +169,10 @@ public class JwtAuthFilter implements Filter {
                         sendUnauthorized(response, "Invalid or expired token");
                         return;
                     }
-                    if (isBlacklisted(token)) {
-                        sendUnauthorized(response, "Token has been revoked");
+                    Long adminUserId = jwtUtil.getUserIdFromClaims(claims);
+                    // 黑名单 + token 版本号一次性校验；改密后旧 access token 在此被拒绝
+                    if (!isTokenActive(token, adminUserId, claims, true)) {
+                        sendUnauthorized(response, "Invalid or expired token");
                         return;
                     }
                     String adminRole = jwtUtil.getRoleFromClaims(claims);
@@ -168,7 +181,7 @@ public class JwtAuthFilter implements Filter {
                         return;
                     }
                     // admin 路径校验通过，缓存到 ThreadLocal，后续 admin permission filter 复用
-                    UserContextHolder.setUserId(jwtUtil.getUserIdFromClaims(claims));
+                    UserContextHolder.setUserId(adminUserId);
                     UserContextHolder.setToken(token);
                     UserContextHolder.setRole(adminRole);
                     chain.doFilter(request, response);
@@ -205,15 +218,15 @@ public class JwtAuthFilter implements Filter {
                 return;
             }
 
-            // 检查 Token 是否在黑名单中（已登出）。fail-closed 语义，Redis 不可用时拒绝请求
-            if (isBlacklisted(token)) {
-                sendUnauthorized(response, "Token has been revoked");
-                return;
-            }
-
             // C 端接口：仅设置 userId，不强制角色要求
             // 管理端接口已在兜底块中强制校验角色并放行，不会走到这里
             Long currentUserId = jwtUtil.getUserIdFromClaims(claims);
+
+            // 黑名单 + token 版本号一次性校验；改密后旧 access token 在此被拒绝
+            if (!isTokenActive(token, currentUserId, claims, false)) {
+                sendUnauthorized(response, "Invalid or expired token");
+                return;
+            }
             // 封禁拦截：管理端封禁时写入 Redis 标记，已登录用户下次请求即被拒绝并收到封禁提示
             String banMessage = getBanMessage(currentUserId);
             if (banMessage != null) {
@@ -250,35 +263,68 @@ public class JwtAuthFilter implements Filter {
     }
 
     /**
-     * 查询 JWT 黑名单（统一收敛点）
+     * 校验 token 是否仍然有效：黑名单（登出）+ token 版本号（改密后失效）。
      * <p>
-     * 安全语义：fail-closed。
-     * 与 IP / 用户限流的 fail-open 刻意区分：限流优先业务可用性，黑名单优先安全
-     * （防 Redis 抖动期间被吊销 token 仍能通过鉴权）。
+     * 安全语义：fail-closed。Redis 不可用时拒绝请求，避免被吊销的 token 仍能通过鉴权。
      * <p>
-     * 二次防御：入口先校验 token 长度，避免与 extractBearerToken 之外的入口绕过长度限制，
-     * 构造超长 Redis key 拖慢 Redis 集群的 SCAN / KEYS 类命令。
+     * 性能：用一次 {@code multiGet} 同时取黑名单与版本号，避免每请求 2 次 Redis RTT。
+     * <p>
+     * 二次防御：入口先校验 token 长度，避免构造超长 Redis key 拖慢 Redis 集群。
      *
-     * @return true=已吊销（拒绝）；false=未吊销；Redis 不可用时返回 true（拒绝）
+     * @param admin true=管理端命名空间（避免与 C 端 userId 撞 key）
+     * @return true=有效；false=已吊销/版本过期/Redis 不可用
      */
-    private boolean isBlacklisted(String token) {
-        if (token == null || token.length() > MAX_TOKEN_LENGTH) {
-            return true;
+    private boolean isTokenActive(String token, Long userId, Claims claims, boolean admin) {
+        if (token == null || token.length() > MAX_TOKEN_LENGTH || userId == null) {
+            return false;
         }
-        String key = REDIS_KEY_BLACKLIST + token;
-        if (key.length() > MAX_BLACKLIST_KEY_LENGTH) {
+        String blacklistKey = REDIS_KEY_BLACKLIST + token;
+        if (blacklistKey.length() > MAX_BLACKLIST_KEY_LENGTH) {
             // 兜底：极端情况下 key 过长直接拒绝（不查 Redis）
-            return true;
+            return false;
         }
+        String versionKey = (admin ? REDIS_KEY_ADMIN_TOKEN_VERSION : REDIS_KEY_TOKEN_VERSION) + userId;
         try {
-            String blacklisted = redisTemplate.opsForValue().get(key);
-            return blacklisted != null;
+            List<String> values = redisTemplate.opsForValue()
+                    .multiGet(List.of(blacklistKey, versionKey));
+            if (values == null || values.size() < 2) {
+                jwtBlacklistFailClosedCounter.increment();
+                log.error("JWT 状态查询返回 null（fail-closed，拒绝请求），userId={}", userId);
+                return false;
+            }
+            // 命中黑名单：已登出/被踢下线
+            if (values.get(0) != null) {
+                return false;
+            }
+            long currentVersion = parseTokenVersion(values.get(1), userId);
+            Long tokenVersion = jwtUtil.getTokenVersionFromClaims(claims);
+            // 历史 token 没有 ver claim，按版本 0 处理
+            long version = tokenVersion == null ? 0L : tokenVersion;
+            if (version != currentVersion) {
+                log.debug("JWT token 版本不匹配（改密后旧 token 失效）: userId={}, tokenVer={}, currentVer={}",
+                        userId, version, currentVersion);
+                return false;
+            }
+            return true;
         } catch (DataAccessException e) {
-            // fail-closed：Redis 不可用时拒绝请求，避免被吊销的 token 仍能通过鉴权
+            // fail-closed：Redis 不可用时拒绝请求
             // DataAccessException 是 RedisConnectionFailureException 的父类，单一捕获即可覆盖所有 Redis / DB 异常
             jwtBlacklistFailClosedCounter.increment();
-            log.error("JWT 黑名单查询失败（fail-closed，拒绝请求），token.length={}", token.length(), e);
-            return true;
+            log.error("JWT 状态查询失败（fail-closed，拒绝请求），userId={}", userId, e);
+            return false;
+        }
+    }
+
+    /** 解析 Redis 中的版本号；缺失按 0，非法值按 0 并记录日志 */
+    private long parseTokenVersion(String value, Long userId) {
+        if (value == null || value.isBlank()) {
+            return 0L;
+        }
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException e) {
+            log.error("token version 值非法，按 0 处理: userId={}, value={}", userId, value);
+            return 0L;
         }
     }
 
@@ -297,10 +343,12 @@ public class JwtAuthFilter implements Filter {
         }
         try {
             Claims claims = jwtUtil.parseClaims(token);
-            if (isBlacklisted(token)) {
+            Long userId = jwtUtil.getUserIdFromClaims(claims);
+            // 白名单路径的可选身份同样必须校验黑名单与 token 版本
+            if (!isTokenActive(token, userId, claims, false)) {
                 return;
             }
-            UserContextHolder.setUserId(jwtUtil.getUserIdFromClaims(claims));
+            UserContextHolder.setUserId(userId);
             UserContextHolder.setToken(token);
             UserContextHolder.setRole(jwtUtil.getRoleFromClaims(claims));
         } catch (JwtException | IllegalArgumentException e) {

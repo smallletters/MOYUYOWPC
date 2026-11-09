@@ -6,6 +6,7 @@ import com.moyuyo.dao.admin.mapper.CmsContentMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,6 +23,7 @@ import java.util.Map;
  * 供 APP 首页拉取 CMS 后台配置的营销横幅。无须鉴权（已在 JwtAuthFilter 白名单）。
  * 仅返回 ACTIVE 状态、当前时间在投放区间内的记录，按 sortOrder 升序。
  */
+@Slf4j
 @Tag(name = "C 端 - CMS Banner")
 @RestController
 @RequiredArgsConstructor
@@ -64,7 +66,9 @@ public class CmsBannerController {
             }
             return Result.success(result);
         } catch (Exception e) {
-            return Result.error("查询Banner失败: " + e.getMessage());
+            // 安全修复：公开接口不返回底层异常信息，避免泄露 SQL/表结构等内部细节
+            log.error("[cms] 查询 Banner 失败", e);
+            return Result.error("查询Banner失败，请稍后重试");
         }
     }
 

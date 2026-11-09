@@ -87,7 +87,15 @@ public class SecurityHeadersFilter implements Filter {
 
         // CSP：限制资源加载来源，禁止内联脚本/样式以缓解 XSS
         // connect-src/img-src/font-src 由环境变量注入，便于动态扩展支付/监控域名
-        response.setHeader("Content-Security-Policy", buildCsp());
+        String path = request.getRequestURI();
+        if (isUploadedExecutableDoc(path)) {
+            // 2026-11 安全修复：/uploads/** 是用户/后台上传内容，历史可能残留 SVG/HTML。
+            // 对这类可执行文档强制下载 + 禁用全部脚本，避免同源存储型 XSS。
+            response.setHeader("Content-Disposition", "attachment");
+            response.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+        } else {
+            response.setHeader("Content-Security-Policy", buildCsp());
+        }
 
         // 控制引用来源，防止 Referer 泄露完整 URL 到第三方
         response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -135,6 +143,34 @@ public class SecurityHeadersFilter implements Filter {
                 // 允许 Element Plus el-message 等使用的 data:/blob: URL Worker（setTimeout shim）
                 "worker-src 'self' blob: data:; " +
                 "object-src 'none'";
+    }
+
+    /**
+     * 判断是否为上传目录下的“可执行文档”类型。
+     * <p>
+     * 这类文件直接导航时可能被浏览器当作 HTML/SVG 执行，必须强制下载并禁用脚本。
+     * 图片（png/jpg/webp/gif）与 PDF 不在名单内，保持原有内联展示能力。
+     */
+    private boolean isUploadedExecutableDoc(String path) {
+        if (path == null || !path.startsWith("/uploads/")) {
+            return false;
+        }
+        // 解码 + 去掉矩阵参数（如 x.svg;v=1）后再判断，防止用编码/分号绕过扩展名检测
+        String normalized = path;
+        try {
+            normalized = java.net.URLDecoder.decode(path, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException ignored) {
+            // 非法编码保持原始值，后续仍按后缀判断
+        }
+        int semicolon = normalized.indexOf(';');
+        if (semicolon >= 0) {
+            normalized = normalized.substring(0, semicolon);
+        }
+        String lower = normalized.toLowerCase();
+        return lower.endsWith(".svg") || lower.endsWith(".svgz")
+                || lower.endsWith(".html") || lower.endsWith(".htm")
+                || lower.endsWith(".xhtml") || lower.endsWith(".xml") || lower.endsWith(".js")
+                || lower.endsWith(".mhtml") || lower.endsWith(".shtml");
     }
 
     /** 拼接 CSP 源列表：过滤空值，空集合返回空串（不影响拼接） */

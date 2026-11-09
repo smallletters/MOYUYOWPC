@@ -30,7 +30,13 @@ export const useUserStore = defineStore('user', {
 
   actions: {
     async login(credentials) {
-      const result = await userApi.login(credentials.username, credentials.password)
+      // 开启 2FA 的账号：未带 twoFactorCode 时后端抛 TWO_FACTOR_REQUIRED 且不签发 token，
+      // 登录页据此展示验证码输入框；带码重新提交成功后才写入登录态
+      const result = await userApi.login(
+        credentials.username,
+        credentials.password,
+        credentials.twoFactorCode,
+      )
       this.token = result.accessToken
       this.refreshToken = result.refreshToken
       setStorage(STORAGE_KEYS.TOKEN, result.accessToken)
@@ -41,9 +47,6 @@ export const useUserStore = defineStore('user', {
       // 注册/刷新当前设备到后端;登录路径同步等待,避免进入"我的设备页"看不到本机
       // upsertCurrentDevice 内部已 try/catch,失败不阻断登录
       await this.upsertCurrentDevice()
-      if (this.userInfo?.twoFactorEnabled) {
-        return { requiresTwoFactor: true }
-      }
       return true
     },
 
@@ -236,8 +239,8 @@ export const useUserStore = defineStore('user', {
       await userApi.forgotPassword(email)
     },
 
-    async resetPassword(token, newPassword) {
-      await userApi.resetPassword(token, newPassword)
+    async resetPassword(email, token, newPassword) {
+      await userApi.resetPassword(email, token, newPassword)
     },
 
     async changePassword(oldPassword, newPassword) {

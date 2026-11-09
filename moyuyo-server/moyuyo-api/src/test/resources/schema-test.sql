@@ -7,20 +7,54 @@ CREATE TABLE mo_user (
     nickname VARCHAR(100),
     avatar VARCHAR(500),
     birthday DATE,
+    gender VARCHAR(16),
+    bio VARCHAR(500),
     country VARCHAR(64),
+    registration_channel VARCHAR(32),
     locale VARCHAR(32),
     timezone VARCHAR(64),
     points INT DEFAULT 0,
+    points_frozen INT DEFAULT 0,
     two_factor_enabled BIT DEFAULT 0,
     email_verified BIT DEFAULT 0,
     marketing_opt_in BIT DEFAULT 0,
+    public_favorites BIT DEFAULT 1,
+    allow_view_profile BIT DEFAULT 1,
+    show_online_status BIT DEFAULT 1,
+    allow_messages BIT DEFAULT 1,
+    data_export_requested_at DATETIME,
     status INT DEFAULT 1,
+    ban_reason VARCHAR(500),
+    banned_at DATETIME,
+    ban_expires_at DATETIME,
     last_login_time DATETIME,
     delete_scheduled_at DATETIME,
     oauth_provider VARCHAR(32),
     oauth_uid VARCHAR(128),
     created_at DATETIME,
     updated_at DATETIME
+);
+
+DROP TABLE IF EXISTS mo_upload_file;
+CREATE TABLE mo_upload_file (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    url VARCHAR(500),
+    scene VARCHAR(32),
+    size BIGINT,
+    group_id BIGINT,
+    create_time DATETIME
+);
+
+DROP TABLE IF EXISTS mo_sms_code;
+CREATE TABLE mo_sms_code (
+    id BIGINT PRIMARY KEY,
+    phone VARCHAR(32),
+    code VARCHAR(16),
+    purpose VARCHAR(32),
+    used INT DEFAULT 0,
+    fail_count INT DEFAULT 0,
+    expire_at DATETIME,
+    create_time DATETIME
 );
 
 DROP TABLE IF EXISTS mo_member;
