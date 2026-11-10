@@ -15,11 +15,13 @@ import com.moyuyo.dao.entity.FlashSaleEntity;
 import com.moyuyo.dao.entity.FlashSaleOrderEntity;
 import com.moyuyo.dao.entity.InviteEntity;
 import com.moyuyo.dao.entity.OrderEntity;
+import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.UserCouponEntity;
 import com.moyuyo.dao.mapper.CouponMapper;
 import com.moyuyo.dao.mapper.FlashSaleMapper;
 import com.moyuyo.dao.mapper.FlashSaleOrderMapper;
 import com.moyuyo.dao.mapper.InviteMapper;
+import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.UserCouponMapper;
 import com.moyuyo.service.admin.CampaignMarketingService;
@@ -36,8 +38,10 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.moyuyo.common.enums.OrderStatusEnum.COMPLETED;
@@ -52,6 +56,7 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
   private final MarketingCampaignMapper marketingCampaignMapper;
   private final AbTestMapper abTestMapper;
   private final OrderMapper orderMapper;
+  private final OrderItemMapper orderItemMapper;
   private final CouponMapper couponMapper;
   private final UserCouponMapper userCouponMapper;
   private final FlashSaleMapper flashSaleMapper;
@@ -71,6 +76,13 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
     List<CampaignResponse> records = pageResult.getRecords().stream()
         .map(this::toResponse)
         .collect(Collectors.toList());
+
+    // 真实指标：按订单明细的活动归因聚合，覆盖活动表中的历史静态值
+    Map<Long, CampaignStats> statsMap = aggregateCampaignStats(
+        pageResult.getRecords().stream().map(MarketingCampaignEntity::getId).collect(Collectors.toList()));
+    for (CampaignResponse vo : records) {
+      applyRealStats(vo, statsMap.get(vo.getId()));
+    }
 
     PageResponse<CampaignResponse> result = new PageResponse<>();
     result.setRecords(records);
@@ -111,6 +123,87 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
     vo.setUsedAmount(c.getUsedAmount());
     vo.setCreateTime(c.getCreateTime());
     return vo;
+  }
+
+  /** 单个活动的真实效果统计（仅统计已完成订单） */
+  private static class CampaignStats {
+    /** 去重下单用户 */
+    private final Set<Long> userIds = new HashSet<>();
+    /** 带动 GMV（订单实付金额） */
+    private BigDecimal gmv = BigDecimal.ZERO;
+    /** 关联订单数 */
+    private int orderCount = 0;
+  }
+
+  /**
+   * 按订单明细的活动归因聚合真实效果。
+   * <p>
+   * 归因来源：mo_order_item.campaign_id（下单时由计价服务写入），
+   * 仅统计状态为 COMPLETED 的订单；满减类活动不落商品行，因此不会归因到任何订单。
+   * 一笔订单命中多个活动时，订单金额会计入每个命中活动（口径：活动带动订单）。
+   */
+  private Map<Long, CampaignStats> aggregateCampaignStats(List<Long> campaignIds) {
+    Map<Long, CampaignStats> result = new HashMap<>();
+    if (campaignIds == null || campaignIds.isEmpty()) {
+      return result;
+    }
+
+    List<OrderItemEntity> items = orderItemMapper.selectList(
+        new LambdaQueryWrapper<OrderItemEntity>()
+            .in(OrderItemEntity::getCampaignId, campaignIds));
+    if (items.isEmpty()) {
+      return result;
+    }
+
+    // orderId -> 命中的活动 ID 集合
+    Map<Long, Set<Long>> orderCampaigns = new HashMap<>();
+    for (OrderItemEntity item : items) {
+      if (item.getOrderId() == null || item.getCampaignId() == null) {
+        continue;
+      }
+      orderCampaigns.computeIfAbsent(item.getOrderId(), k -> new HashSet<>()).add(item.getCampaignId());
+    }
+    if (orderCampaigns.isEmpty()) {
+      return result;
+    }
+
+    List<OrderEntity> orders = orderMapper.selectList(
+        new LambdaQueryWrapper<OrderEntity>()
+            .in(OrderEntity::getId, orderCampaigns.keySet())
+            .eq(OrderEntity::getStatus, COMPLETED.name()));
+    for (OrderEntity order : orders) {
+      Set<Long> hits = orderCampaigns.get(order.getId());
+      if (hits == null) {
+        continue;
+      }
+      BigDecimal payAmount = order.getPayAmount() != null ? order.getPayAmount() : BigDecimal.ZERO;
+      for (Long campaignId : hits) {
+        CampaignStats stats = result.computeIfAbsent(campaignId, k -> new CampaignStats());
+        stats.orderCount++;
+        stats.gmv = stats.gmv.add(payAmount);
+        if (order.getUserId() != null) {
+          stats.userIds.add(order.getUserId());
+        }
+      }
+    }
+    return result;
+  }
+
+  /** 将聚合后的真实指标写入 VO，ROI 按 实际 GMV / 预算 计算 */
+  private void applyRealStats(CampaignResponse vo, CampaignStats stats) {
+    int participants = stats != null ? stats.userIds.size() : 0;
+    BigDecimal gmv = (stats != null ? stats.gmv : BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+    vo.setParticipants(participants);
+    vo.setGmv(gmv);
+    vo.setRoi(calculateRoi(gmv, vo.getBudget()));
+  }
+
+  /** ROI = GMV / 预算；预算为空或 0 时返回 0，避免除零 */
+  private BigDecimal calculateRoi(BigDecimal gmv, BigDecimal budget) {
+    if (budget == null || budget.compareTo(BigDecimal.ZERO) <= 0) {
+      return BigDecimal.ZERO;
+    }
+    return gmv.divide(budget, 2, RoundingMode.HALF_UP);
   }
 
   @Override
@@ -201,28 +294,24 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
     CampaignDetailResponse resp = new CampaignDetailResponse();
     resp.setCampaign(toResponse(entity));
 
-    // 查询已完成订单统计(用于计算客单价)
-    LambdaQueryWrapper<OrderEntity> orderWrapper = new LambdaQueryWrapper<OrderEntity>()
-        .eq(OrderEntity::getStatus, COMPLETED.name());
-    Long totalOrders = orderMapper.selectCount(orderWrapper);
-    BigDecimal totalPayAmount = orderMapper.selectList(orderWrapper).stream()
-        .map(o -> o.getPayAmount() != null ? o.getPayAmount() : BigDecimal.ZERO)
-        .reduce(BigDecimal.ZERO, BigDecimal::add);
-    BigDecimal avgOrderValue = totalOrders > 0
-        ? totalPayAmount.divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP)
-        : BigDecimal.ZERO;
+    // 真实效果：按订单明细的活动归因聚合，覆盖活动表中的静态值
+    CampaignStats stats = aggregateCampaignStats(List.of(id)).get(id);
+    BigDecimal gmv = (stats != null ? stats.gmv : BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+    int orderCount = stats != null ? stats.orderCount : 0;
+    CampaignResponse campaign = resp.getCampaign();
+    campaign.setParticipants(stats != null ? stats.userIds.size() : 0);
+    campaign.setGmv(gmv);
+    campaign.setRoi(calculateRoi(gmv, campaign.getBudget()));
 
     CampaignDetailResponse.Effects effects = new CampaignDetailResponse.Effects();
+    // 订单增幅/转化增幅需要对比周期数据，当前无基线，保持 0
     effects.setOrderIncrease(0);
     effects.setConversionIncrease(0);
-    effects.setAvgOrderValue(avgOrderValue);
-    // ROI = gmv / budget,budget 为 0 时返回 0
-    if (entity.getGmv() != null && entity.getBudget() != null
-        && entity.getBudget().compareTo(BigDecimal.ZERO) > 0) {
-      effects.setRoi(entity.getGmv().divide(entity.getBudget(), 2, RoundingMode.HALF_UP));
-    } else {
-      effects.setRoi(0);
-    }
+    // 客单价 = 活动带动 GMV / 活动关联订单数
+    effects.setAvgOrderValue(orderCount > 0
+        ? gmv.divide(BigDecimal.valueOf(orderCount), 2, RoundingMode.HALF_UP)
+        : BigDecimal.ZERO);
+    effects.setRoi(campaign.getRoi());
     resp.setEffects(effects);
     return resp;
   }

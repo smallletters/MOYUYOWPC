@@ -97,7 +97,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getCampaigns, getCouponStats, getFlashSaleStats, getPointsStats } from '../api/admin'
+import { getCampaigns, getCouponStats, getFlashSaleStats, getPointsStats, getDistributionEffects } from '../api/admin'
 import { ElMessage } from 'element-plus'
 import { toArray } from '../utils/safeArray'
 
@@ -176,20 +176,21 @@ async function fetchCampaigns() {
 // 从各子模块 API 获取模块指标数据
 async function fetchModules() {
   try {
-    // 并行请求三个模块的统计数据
-    const [couponRes, flashSaleRes, pointsRes] = await Promise.allSettled([
+    // 并行请求各模块的统计数据
+    const [couponRes, flashSaleRes, pointsRes, distributionRes] = await Promise.allSettled([
       getCouponStats(),
       getFlashSaleStats(),
-      getPointsStats()
+      getPointsStats(),
+      getDistributionEffects({ days: 30 })
     ])
 
-    // 更新优惠券管理指标
+    // 更新优惠券管理指标（0 是有效值，用 ?? 而非 || 兜底）
     if (couponRes.status === 'fulfilled' && couponRes.value) {
       const data = couponRes.value
       modules.value[0].metrics = [
-        { value: String(data.activeCount || data.active || '-'), label: '活跃券' },
-        { value: String(data.expiringCount || data.expiring || '-'), label: '即将过期' },
-        { value: String(data.totalCount || data.total || '-'), label: '总计' }
+        { value: String(data.activeCount ?? data.active ?? '-'), label: '活跃券' },
+        { value: String(data.expiringCount ?? data.expiring ?? '-'), label: '即将过期' },
+        { value: String(data.totalCount ?? data.total ?? '-'), label: '总计' }
       ]
     }
 
@@ -197,9 +198,9 @@ async function fetchModules() {
     if (flashSaleRes.status === 'fulfilled' && flashSaleRes.value) {
       const data = flashSaleRes.value
       modules.value[1].metrics = [
-        { value: String(data.activeCount || data.active || '-'), label: '进行中' },
-        { value: String(data.participants || data.joinCount || '-'), label: '参与' },
-        { value: String(data.conversionRate != null ? data.conversionRate + '%' : '-'), label: '转化率' }
+        { value: String(data.activeCount ?? data.active ?? '-'), label: '进行中' },
+        { value: String(data.participants ?? data.joinCount ?? '-'), label: '参与' },
+        { value: data.conversionRate != null ? data.conversionRate + '%' : '-', label: '转化率' }
       ]
     }
 
@@ -207,9 +208,23 @@ async function fetchModules() {
     if (pointsRes.status === 'fulfilled' && pointsRes.value) {
       const data = pointsRes.value
       modules.value[2].metrics = [
-        { value: String(data.activeCount || data.active || '-'), label: '进行中' },
-        { value: String(data.exchangedCount || data.exchanged || '-'), label: '已兑换' },
-        { value: String(data.pointValue || data.value || '-'), label: '积分价值' }
+        { value: String(data.activeCount ?? data.active ?? '-'), label: '进行中' },
+        { value: String(data.exchangedCount ?? data.exchanged ?? '-'), label: '已兑换' },
+        { value: String(data.pointValue ?? data.value ?? '-'), label: '积分价值' }
+      ]
+    }
+
+    // 更新分销管理指标（真实推荐关系 + 已完成订单聚合）
+    if (distributionRes.status === 'fulfilled' && distributionRes.value) {
+      const data = distributionRes.value
+      const gmv = Number(data.gmv ?? 0)
+      const commission = Number(data.commission ?? 0)
+      // 佣金率 = 佣金支出 / 分销 GMV，GMV 为 0 时展示 0%
+      const commissionRate = gmv > 0 ? ((commission / gmv) * 100).toFixed(0) + '%' : '0%'
+      modules.value[3].metrics = [
+        { value: String(data.distributorCount ?? '-'), label: '分销商' },
+        { value: `$${gmv.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, label: '分销额' },
+        { value: commissionRate, label: '佣金率' }
       ]
     }
   } catch (err) {

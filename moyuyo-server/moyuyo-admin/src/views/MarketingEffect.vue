@@ -323,6 +323,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCampaigns, getMarketingEffects, getCouponEffects, getFlashEffects, getDistributionEffects, deleteCampaign, createCampaign, updateCampaign } from '../api/admin'
+import { toArray } from '../utils/safeArray'
 
 // ===== 维度 Tab =====
 const dimTabs = [
@@ -422,7 +423,8 @@ async function loadCampaignEffects() {
       getCampaigns(),
       getMarketingEffects({ days: 7 }).catch(() => null)
     ])
-    const list = campaignData && campaignData.list ? campaignData.list : (campaignData || [])
+    // 列表接口返回 PageResponse（records），统一用 toArray 兼容数组/分页结构
+    const list = toArray(campaignData)
     allCampaigns.value = list.map(item => ({
       id: item.id,
       name: item.name || '',

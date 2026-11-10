@@ -31,7 +31,7 @@ public class CampaignDetailResponse {
     /** 客单价 */
     private BigDecimal avgOrderValue;
 
-    /** ROI = gmv / budget,budget 为 0 时返回 0 */
-    private Object roi;
+    /** ROI = 实际带动 GMV / 预算，预算为 0 时返回 0 */
+    private BigDecimal roi;
   }
 }

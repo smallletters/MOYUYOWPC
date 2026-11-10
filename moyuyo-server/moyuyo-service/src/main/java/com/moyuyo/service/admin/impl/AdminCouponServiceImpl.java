@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -223,9 +224,20 @@ public class AdminCouponServiceImpl implements AdminCouponService {
     long activeCount = couponMapper.selectCount(
         new LambdaQueryWrapper<CouponEntity>().eq(CouponEntity::getActive, true));
     long totalIssued = userCouponMapper.selectCount(new LambdaQueryWrapper<>());
+    // 即将过期：启用中且 7 天内到期
+    LocalDateTime now = LocalDateTime.now();
+    long expiringCount = couponMapper.selectCount(
+        new LambdaQueryWrapper<CouponEntity>()
+            .eq(CouponEntity::getActive, true)
+            .isNotNull(CouponEntity::getEndTime)
+            .between(CouponEntity::getEndTime, now, now.plusDays(7)));
     stats.put("totalCoupons", total);
     stats.put("activeCoupons", activeCount);
     stats.put("totalIssued", totalIssued);
+    // 与营销管理页的字段名对齐，避免前端取值落空显示 "-"
+    stats.put("activeCount", activeCount);
+    stats.put("expiringCount", expiringCount);
+    stats.put("totalCount", total);
     return stats;
   }
 }

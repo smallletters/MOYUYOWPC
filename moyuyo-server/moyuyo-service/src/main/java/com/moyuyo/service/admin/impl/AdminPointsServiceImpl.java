@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 
 /**
@@ -169,12 +171,23 @@ public class AdminPointsServiceImpl implements AdminPointsService {
     // 参与用户数
     long totalUsers = allLogs.stream()
         .map(PointsLogEntity::getUserId).distinct().count();
+    // 已兑换次数：消耗积分的流水条数
+    long exchangedCount = allLogs.stream()
+        .filter(l -> l.getChangeValue() != null && l.getChangeValue() < 0)
+        .count();
+    // 积分价值：系统按 100 积分 = 1 货币单位抵扣
+    BigDecimal pointValue = BigDecimal.valueOf(totalSpent)
+        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
 
     // 与前端字段名对齐
     stats.put("totalIssued", totalEarned);
     stats.put("totalConsumed", totalSpent);
     stats.put("activeActivities", activeTypes);
     stats.put("totalUsers", totalUsers);
+    // 营销管理页所需字段
+    stats.put("activeCount", activeTypes);
+    stats.put("exchangedCount", exchangedCount);
+    stats.put("pointValue", pointValue);
     // 保留后端旧字段名以兼容
     stats.put("totalLogs", totalLogs);
     stats.put("totalEarned", totalEarned);

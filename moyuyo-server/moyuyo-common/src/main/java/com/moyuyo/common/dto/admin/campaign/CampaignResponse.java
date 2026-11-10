@@ -35,8 +35,11 @@ public class CampaignResponse {
   /** 参与人数 */
   private Integer participants;
 
-  /** GMV */
+  /** GMV（按订单明细活动归因实时统计，非活动表静态值） */
   private BigDecimal gmv;
+
+  /** ROI = 实际带动 GMV / 预算 */
+  private BigDecimal roi;
 
   /** 预算 */
   private BigDecimal budget;

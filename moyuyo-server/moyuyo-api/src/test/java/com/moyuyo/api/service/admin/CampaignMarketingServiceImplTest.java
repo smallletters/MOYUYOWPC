@@ -49,6 +49,9 @@ class CampaignMarketingServiceImplTest {
   private OrderMapper orderMapper;
 
   @Mock
+  private com.moyuyo.dao.mapper.OrderItemMapper orderItemMapper;
+
+  @Mock
   private CouponMapper couponMapper;
 
   @Mock
@@ -78,6 +81,15 @@ class CampaignMarketingServiceImplTest {
     page.setRecords(List.of(c1, c2));
     page.setTotal(2);
     when(marketingCampaignMapper.selectPage(any(), any())).thenReturn(page);
+    // 订单明细归因：活动1 有 1 笔已完成订单，活动2 无订单
+    com.moyuyo.dao.entity.OrderItemEntity item = new com.moyuyo.dao.entity.OrderItemEntity();
+    item.setOrderId(900L);
+    item.setCampaignId(1L);
+    when(orderItemMapper.selectList(any())).thenReturn(List.of(item));
+    OrderEntity paidOrder = buildOrder(new BigDecimal("5000.00"));
+    paidOrder.setId(900L);
+    paidOrder.setUserId(1001L);
+    when(orderMapper.selectList(any())).thenReturn(List.of(paidOrder));
 
     // when
     PageResponse<CampaignResponse> result = service.listCampaigns(1, 15);
@@ -97,9 +109,14 @@ class CampaignMarketingServiceImplTest {
     assertEquals("2026-06-01 00:00:00", vo1.getStartDate(), "LocalDateTime 应格式化为 yyyy-MM-dd HH:mm:ss");
     assertEquals("2026-06-18 00:00:00", vo1.getEndDate());
     assertEquals(new BigDecimal("10000.00"), vo1.getBudget());
+    // 真实指标覆盖活动表静态值：1 个用户、GMV 5000、ROI=5000/10000
+    assertEquals(1, vo1.getParticipants());
     assertEquals(new BigDecimal("5000.00"), vo1.getGmv());
-    assertEquals(new BigDecimal("800.00"), vo1.getCost());
-    assertEquals(100, vo1.getParticipants());
+    assertEquals(new BigDecimal("0.50"), vo1.getRoi());
+    // 无归因订单的活动展示真实 0
+    CampaignResponse vo2 = result.getRecords().get(1);
+    assertEquals(0, vo2.getParticipants());
+    assertEquals(0, BigDecimal.ZERO.compareTo(vo2.getGmv()));
   }
 
   // ============ createCampaign ============
@@ -178,16 +195,20 @@ class CampaignMarketingServiceImplTest {
 
   @Test
   void getCampaignDetail_活动存在_返回详情含效果统计() {
-    // given:活动存在,gmv=1000,budget=100,期望 ROI=10
+    // given:活动预算 100，静态 GMV 1000 应被真实归因值覆盖
     MarketingCampaignEntity entity = buildCampaign(1L, "618大促", "ACTIVE");
     entity.setGmv(new BigDecimal("1000"));
     entity.setBudget(new BigDecimal("100"));
     when(marketingCampaignMapper.selectById(1L)).thenReturn(entity);
-    // 已完成订单统计
-    when(orderMapper.selectCount(any())).thenReturn(2L);
-    OrderEntity o1 = buildOrder(new BigDecimal("100"));
-    OrderEntity o2 = buildOrder(new BigDecimal("200"));
-    when(orderMapper.selectList(any())).thenReturn(List.of(o1, o2));
+    // 订单明细归因：该活动关联 1 笔已完成订单，实付 200
+    com.moyuyo.dao.entity.OrderItemEntity item = new com.moyuyo.dao.entity.OrderItemEntity();
+    item.setOrderId(900L);
+    item.setCampaignId(1L);
+    when(orderItemMapper.selectList(any())).thenReturn(List.of(item));
+    OrderEntity paidOrder = buildOrder(new BigDecimal("200"));
+    paidOrder.setId(900L);
+    paidOrder.setUserId(1001L);
+    when(orderMapper.selectList(any())).thenReturn(List.of(paidOrder));
 
     // when
     CampaignDetailResponse result = service.getCampaignDetail(1L);
@@ -196,9 +217,11 @@ class CampaignMarketingServiceImplTest {
     assertNotNull(result);
     assertEquals(1L, result.getCampaign().getId());
     assertEquals("618大促", result.getCampaign().getName());
-    // 效果统计:客单价 = (100+200)/2 = 150,ROI = 1000/100 = 10
-    assertEquals(new BigDecimal("150.00"), result.getEffects().getAvgOrderValue());
-    assertEquals(new BigDecimal("10.00"), result.getEffects().getRoi());
+    // 真实指标：参与 1 人、GMV 200、客单价 200、ROI = 200/100 = 2
+    assertEquals(1, result.getCampaign().getParticipants());
+    assertEquals(new BigDecimal("200.00"), result.getCampaign().getGmv());
+    assertEquals(new BigDecimal("200.00"), result.getEffects().getAvgOrderValue());
+    assertEquals(new BigDecimal("2.00"), result.getEffects().getRoi());
   }
 
   @Test
@@ -207,12 +230,13 @@ class CampaignMarketingServiceImplTest {
     entity.setGmv(new BigDecimal("1000"));
     entity.setBudget(BigDecimal.ZERO);
     when(marketingCampaignMapper.selectById(1L)).thenReturn(entity);
-    when(orderMapper.selectCount(any())).thenReturn(0L);
-    when(orderMapper.selectList(any())).thenReturn(List.of());
+    // 无归因订单：GMV 与 ROI 都应为真实 0
+    when(orderItemMapper.selectList(any())).thenReturn(List.of());
 
     CampaignDetailResponse result = service.getCampaignDetail(1L);
 
-    assertEquals(0, result.getEffects().getRoi(), "budget 为 0 时 ROI 应为 0");
+    assertEquals(BigDecimal.ZERO, result.getEffects().getRoi(), "budget 为 0 时 ROI 应为 0");
+    assertEquals(0, BigDecimal.ZERO.compareTo(result.getCampaign().getGmv()), "不应再展示活动表里的静态 GMV");
   }
 
   // ============ updateCampaign ============
