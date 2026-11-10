@@ -664,10 +664,13 @@ public class AdminOrderOpsController {
   @Operation(summary = "监控规则列表")
   @GetMapping("/monitor/rules")
   public Result<List<Map<String, Object>>> monitorRules() {
-    // 查询所有规则，按优先级升序、ID 升序
-    String sql = "SELECT id, name, condition_text, action_type, enabled, priority, creator, " +
+    // 查询所有规则，按优先级升序、ID 升序；exec_count/last_exec_time 来自执行记录表，
+    // 让运营能看到规则是否真的在跑（历史版本只有 CRUD，无法判断是否生效）。
+    String sql = "SELECT id, name, scene, threshold_hours, threshold_percent, condition_text, action_type, enabled, priority, version, creator, " +
                  "DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%s') AS create_time, " +
-                 "DATE_FORMAT(update_time, '%Y-%m-%d %H:%i:%s') AS update_time " +
+                 "DATE_FORMAT(update_time, '%Y-%m-%d %H:%i:%s') AS update_time, " +
+                 "(SELECT COUNT(*) FROM mo_order_monitor_log l WHERE l.rule_id = mo_order_monitor_rule.id) AS exec_count, " +
+                 "(SELECT DATE_FORMAT(MAX(l.create_time), '%Y-%m-%d %H:%i:%s') FROM mo_order_monitor_log l WHERE l.rule_id = mo_order_monitor_rule.id) AS last_exec_time " +
                  "FROM mo_order_monitor_rule ORDER BY priority ASC, id ASC";
     try {
       List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
@@ -698,24 +701,38 @@ public class AdminOrderOpsController {
     String condition = body.get("condition") != null ? body.get("condition").toString().trim() : "";
     String action = body.get("action") != null ? body.get("action").toString() : "FLAG";
     boolean enabled = body.get("enabled") == null || Boolean.TRUE.equals(body.get("enabled"));
-    Integer priority = body.get("priority") != null ? Integer.valueOf(body.get("priority").toString()) : 100;
+    // 非法 priority 不应导致 500，统一回退默认值
+    Integer priority = parseInteger(body.get("priority"));
+    if (priority == null) {
+      priority = 100;
+    }
     String creator = body.get("creator") != null ? body.get("creator").toString() : "系统";
+    // 结构化条件：scene + 阈值，定时任务按这两个字段真正执行规则
+    String scene = body.get("scene") != null ? body.get("scene").toString().trim().toUpperCase() : "";
+    Integer thresholdHours = parseInteger(body.get("thresholdHours"));
+    Integer thresholdPercent = parseInteger(body.get("thresholdPercent"));
 
     if (name.isEmpty()) {
       return Result.error(400, "规则名称不能为空");
     }
-    if (condition.isEmpty()) {
-      return Result.error(400, "触发条件不能为空");
-    }
-    // 限制 action 取值
     if (!List.of("FLAG", "INTERCEPT", "CANCEL").contains(action)) {
       return Result.error(400, "动作类型非法，应为 FLAG/INTERCEPT/CANCEL");
     }
+    String sceneError = validateSceneRule(scene, action, thresholdHours, thresholdPercent);
+    if (sceneError != null) {
+      return Result.error(400, sceneError);
+    }
+    if (condition.isEmpty()) {
+      condition = buildConditionText(scene, thresholdHours, thresholdPercent);
+    }
 
-    String sql = "INSERT INTO mo_order_monitor_rule(name, condition_text, action_type, enabled, priority, creator, create_time, update_time) " +
-                 "VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())";
+    String sql = "INSERT INTO mo_order_monitor_rule(name, scene, threshold_hours, threshold_percent, condition_text, action_type, enabled, priority, creator, create_time, update_time) " +
+                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
     try {
-      jdbcTemplate.update(sql, name, condition, action, enabled ? 1 : 0, priority, creator);
+      jdbcTemplate.update(sql, name, scene,
+          "AMOUNT_DEVIATION".equals(scene) ? null : thresholdHours,
+          "AMOUNT_DEVIATION".equals(scene) ? thresholdPercent : null,
+          condition, action, enabled ? 1 : 0, priority, creator);
       Long newId = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
       Map<String, Object> result = new LinkedHashMap<>();
       result.put("id", newId);
@@ -737,23 +754,54 @@ public class AdminOrderOpsController {
     String condition = body.get("condition") != null ? body.get("condition").toString().trim() : "";
     String action = body.get("action") != null ? body.get("action").toString() : "FLAG";
     boolean enabled = body.get("enabled") == null || Boolean.TRUE.equals(body.get("enabled"));
-    Integer priority = body.get("priority") != null ? Integer.valueOf(body.get("priority").toString()) : 100;
+    // 前端编辑表单不提交 priority：传 null 时保留数据库原值，避免编辑后被重置为 100
+    Integer priority = parseInteger(body.get("priority"));
+    String scene = body.get("scene") != null ? body.get("scene").toString().trim().toUpperCase() : "";
+    Integer thresholdHours = parseInteger(body.get("thresholdHours"));
+    Integer thresholdPercent = parseInteger(body.get("thresholdPercent"));
 
-    if (name.isEmpty() || condition.isEmpty()) {
-      return Result.error(400, "规则名称和触发条件不能为空");
+    if (name.isEmpty()) {
+      return Result.error(400, "规则名称不能为空");
     }
     if (!List.of("FLAG", "INTERCEPT", "CANCEL").contains(action)) {
       return Result.error(400, "动作类型非法");
     }
+    String sceneError = validateSceneRule(scene, action, thresholdHours, thresholdPercent);
+    if (sceneError != null) {
+      return Result.error(400, sceneError);
+    }
+    if (condition.isEmpty()) {
+      condition = buildConditionText(scene, thresholdHours, thresholdPercent);
+    }
+    Integer effectiveHours = "AMOUNT_DEVIATION".equals(scene) ? null : thresholdHours;
+    Integer effectivePercent = "AMOUNT_DEVIATION".equals(scene) ? thresholdPercent : null;
 
-    String sql = "UPDATE mo_order_monitor_rule SET name = ?, condition_text = ?, action_type = ?, " +
-                 "enabled = ?, priority = ?, update_time = NOW() WHERE id = ?";
+    // 规则条件（场景/动作/阈值）变化时 version+1：
+    // 定时任务按 (rule_id, rule_version, order_id) 判重，版本递增后历史订单会按新条件重新评估
+    int versionBump = 0;
     try {
-      int affected = jdbcTemplate.update(sql, name, condition, action, enabled ? 1 : 0, priority, id);
+      Map<String, Object> current = jdbcTemplate.queryForMap(
+          "SELECT scene, action_type, threshold_hours, threshold_percent FROM mo_order_monitor_rule WHERE id = ?", id);
+      if (!sameValue(scene, current.get("scene"))
+          || !sameValue(action, current.get("action_type"))
+          || !sameValue(effectiveHours, current.get("threshold_hours"))
+          || !sameValue(effectivePercent, current.get("threshold_percent"))) {
+        versionBump = 1;
+      }
+    } catch (EmptyResultDataAccessException e) {
+      return Result.error(404, "规则不存在");
+    }
+
+    String sql = "UPDATE mo_order_monitor_rule SET name = ?, scene = ?, threshold_hours = ?, threshold_percent = ?, " +
+                 "condition_text = ?, action_type = ?, enabled = ?, priority = COALESCE(?, priority), " +
+                 "version = version + ?, update_time = NOW() WHERE id = ?";
+    try {
+      int affected = jdbcTemplate.update(sql, name, scene, effectiveHours, effectivePercent,
+          condition, action, enabled ? 1 : 0, priority, versionBump, id);
       if (affected == 0) {
         return Result.error(404, "规则不存在");
       }
-      return Result.success(Map.of("id", id, "message", "规则已更新"));
+      return Result.success(Map.of("id", id, "message", versionBump == 1 ? "规则已更新，将按新条件重新评估" : "规则已更新"));
     } catch (Exception e) {
       log.error("更新监控规则失败", e);
       return Result.error(500, "更新监控规则失败：" + e.getMessage());
@@ -802,6 +850,117 @@ public class AdminOrderOpsController {
       log.error("删除监控规则失败", e);
       return Result.error(500, "删除监控规则失败：" + e.getMessage());
     }
+  }
+
+  @Operation(summary = "重新评估监控规则")
+  @PostMapping("/monitor/rules/{id}/reset")
+  @Transactional
+  @AdminAudit(action = "UPDATE", module = "ORDER",
+      resourceId = "#id", detail = "管理员重置订单监控规则（重新评估订单）")
+  public Result<Map<String, Object>> resetMonitorRule(@PathVariable Long id) {
+    // 版本递增后，定时任务会把已有订单按当前条件重新评估一遍（历史执行记录保留，便于审计）
+    int affected = jdbcTemplate.update(
+        "UPDATE mo_order_monitor_rule SET version = version + 1, update_time = NOW() WHERE id = ?", id);
+    if (affected == 0) {
+      return Result.error(404, "规则不存在");
+    }
+    return Result.success(Map.of("id", id, "message", "已重置，下一轮将按当前条件重新评估"));
+  }
+
+  @Operation(summary = "监控规则执行记录")
+  @GetMapping("/monitor/rules/{id}/logs")
+  public Result<Map<String, Object>> monitorRuleLogs(
+      @PathVariable Long id,
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(defaultValue = "10") int size) {
+    int safeSize = Math.min(100, Math.max(1, size));
+    int offset = Math.max(0, (Math.max(1, page) - 1) * safeSize);
+    try {
+      Long total = jdbcTemplate.queryForObject(
+          "SELECT COUNT(*) FROM mo_order_monitor_log WHERE rule_id = ?", Long.class, id);
+      List<Map<String, Object>> records = jdbcTemplate.queryForList(
+          "SELECT id, order_id, order_no, scene, action_type, result, retry_count, message, rule_version, " +
+          "DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%s') AS create_time " +
+          "FROM mo_order_monitor_log WHERE rule_id = ? " +
+          "ORDER BY create_time DESC, id DESC LIMIT ? OFFSET ?",
+          id, safeSize, offset);
+      Map<String, Object> data = new LinkedHashMap<>();
+      data.put("records", records);
+      data.put("total", total == null ? 0 : total);
+      return Result.success(data);
+    } catch (Exception e) {
+      log.warn("查询规则执行记录失败：ruleId={}, err={}", id, e.getMessage());
+      return Result.success(Map.of("records", new ArrayList<>(), "total", 0));
+    }
+  }
+
+  // ==================== 订单监控规则辅助方法 ====================
+
+  /** 场景白名单及其支持的动作：保存时校验，避免配置出无法执行或不合理的组合 */
+  private static final Map<String, java.util.Set<String>> SCENE_ACTIONS = Map.of(
+      "TIMEOUT_PAY", java.util.Set.of("FLAG", "INTERCEPT", "CANCEL"),
+      "TIMEOUT_SHIP", java.util.Set.of("FLAG", "INTERCEPT"),
+      "LOGISTICS_STALL", java.util.Set.of("FLAG"),
+      "AMOUNT_DEVIATION", java.util.Set.of("FLAG", "INTERCEPT"));
+
+  /**
+   * 宽松比较两个值（用于判断规则条件是否变化）：null 与 null 视为相同，其余按字符串比较。
+   */
+  private static boolean sameValue(Object left, Object right) {
+    String a = left == null ? null : left.toString();
+    String b = right == null ? null : right.toString();
+    return a == null ? b == null : a.equals(b);
+  }
+
+  /**
+   * 解析请求体里的数值字段；非法值返回 null，交由 {@link #validateSceneRule} 拦截。
+   */
+  private static Integer parseInteger(Object value) {
+    if (value instanceof Number number) {
+      return number.intValue();
+    }
+    if (value == null) {
+      return null;
+    }
+    try {
+      return Integer.parseInt(value.toString().trim());
+    } catch (NumberFormatException e) {
+      return null;
+    }
+  }
+
+  /**
+   * 校验场景、动作、阈值组合；返回 null 表示通过。
+   */
+  private static String validateSceneRule(String scene, String action, Integer hours, Integer percent) {
+    java.util.Set<String> allowed = SCENE_ACTIONS.get(scene);
+    if (allowed == null) {
+      return "触发场景非法，应为 TIMEOUT_PAY/TIMEOUT_SHIP/LOGISTICS_STALL/AMOUNT_DEVIATION";
+    }
+    if (!allowed.contains(action)) {
+      return "场景 " + scene + " 不支持动作 " + action + "（允许：" + allowed + "）";
+    }
+    if ("AMOUNT_DEVIATION".equals(scene)) {
+      if (percent == null || percent < 1 || percent > 100) {
+        return "金额偏差阈值需在 1~100 之间";
+      }
+    } else if (hours == null || hours < 1 || hours > 720) {
+      return "超时阈值需在 1~720 小时之间";
+    }
+    return null;
+  }
+
+  /**
+   * 条件描述为空时按场景自动生成，保证列表可读。
+   */
+  private static String buildConditionText(String scene, Integer hours, Integer percent) {
+    return switch (scene) {
+      case "TIMEOUT_PAY" -> "下单超过 " + hours + "h 未完成支付";
+      case "TIMEOUT_SHIP" -> "支付后超过 " + hours + "h 未发货";
+      case "LOGISTICS_STALL" -> "发货后超过 " + hours + "h 物流无更新";
+      case "AMOUNT_DEVIATION" -> "实付金额与商品金额偏差超过 " + percent + "%";
+      default -> "";
+    };
   }
 
   // ==================== 燕文国家目录调试辅助方法 ====================

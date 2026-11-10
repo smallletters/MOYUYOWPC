@@ -22,6 +22,9 @@ public class LogisticsEntity {
 
   private String traces;
 
+  /** 轨迹最后更新时间（用于"物流停滞"监控规则精确判断，人工录入轨迹时刷新） */
+  private LocalDateTime lastTrackTime;
+
   private LocalDateTime shippedAt;
 
   private LocalDateTime receivedAt;

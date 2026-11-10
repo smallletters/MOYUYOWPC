@@ -1700,6 +1700,16 @@ const monitorCrud = (base) => ({
 
 export const orderMonitorRuleApi = monitorCrud('/order-ops/monitor')
 
+// 规则执行记录（分页）
+export function getOrderMonitorRuleLogs(id, params) {
+  return api.get(`/order-ops/monitor/rules/${id}/logs`, { params })
+}
+
+// 重新评估规则：规则版本 +1，下一轮定时任务按当前条件重新处理订单
+export function resetOrderMonitorRule(id) {
+  return api.post(`/order-ops/monitor/rules/${id}/reset`)
+}
+
 
 // ==================== 意见反馈（用户 App 提交的建议/缺陷/投诉） ====================
 // 数据源与"投诉管理"同为 mo_feedback，但这里是完整的用户反馈箱：

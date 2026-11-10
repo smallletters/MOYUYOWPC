@@ -134,6 +134,8 @@ public class LogisticsServiceImpl implements LogisticsService {
         logistics.setTrackingNumber(trackingNumber);
         logistics.setShippedAt(LocalDateTime.now());
         logistics.setTraces(toTracesJson("Shipped", carrier, trackingNumber));
+        // 发货即产生首条轨迹，最后更新时间取发货时间
+        logistics.setLastTrackTime(logistics.getShippedAt());
         try {
             // V20260929_07 后 mo_logistics.order_id 已加 UNIQUE 索引。
             //   配合上面的幂等键抢锁，正常情况不会冲突；
@@ -230,14 +232,23 @@ public class LogisticsServiceImpl implements LogisticsService {
         // 拉取成功：序列化为 JSON 写库 + 更新缓存
         String freshTracesJson = serializeTraces(freshTracks);
         boolean delivered = checkDelivered(freshTracks);
+        // 轨迹节点最后时间：物流停滞监控规则的判断依据。
+        // 承运商时间格式无法解析时，说明"本次确实刷新过轨迹"，用当前时间兜底，
+        // 避免把刚更新过的运单误判为停滞。
+        LocalDateTime lastTrackTime = latestTraceTime(freshTracks);
+        if (lastTrackTime == null) {
+            lastTrackTime = LocalDateTime.now();
+        }
 
-        // 写库（仅 traces 字段，避免覆盖 receivedAt 等）
+        // 写库（仅 traces / lastTrackTime 字段，避免覆盖 receivedAt 等）
         try {
             LogisticsEntity patch = new LogisticsEntity();
             patch.setId(entity.getId());
             patch.setTraces(freshTracesJson);
+            patch.setLastTrackTime(lastTrackTime);
             logisticsMapper.updateById(patch);
             entity.setTraces(freshTracesJson);
+            entity.setLastTrackTime(lastTrackTime);
         } catch (Exception e) {
             log.warn("Failed to persist fresh traces, returning in-memory only: orderId={}, msg={}",
                     orderId, e.getMessage());
@@ -263,6 +274,8 @@ public class LogisticsServiceImpl implements LogisticsService {
         LogisticsEntity entity = logisticsMapper.selectById(logisticsId);
         if (entity == null) throw new IllegalArgumentException("物流记录不存在");
         entity.setTraces(traces);
+        // 人工录入轨迹视为一次更新，刷新最后轨迹时间
+        entity.setLastTrackTime(LocalDateTime.now());
         logisticsMapper.updateById(entity);
         // 人工更新轨迹时失效缓存，下次查询会重新拉取
         if (entity.getTrackingNumber() != null) {
@@ -404,6 +417,49 @@ public class LogisticsServiceImpl implements LogisticsService {
         } catch (JsonProcessingException e) {
             log.error("Serialize tracks failed", e);
             return "[]";
+        }
+    }
+
+    /**
+     * 取轨迹节点中的最后更新时间。
+     * <p>
+     * TraceItem.time 可能来自不同承运商：17TRACK 多为带时区偏移的 ISO8601
+     * （2024-01-01T12:00:00+00:00），本地写入的是 LocalDateTime（2026-11-09T10:00:00）。
+     * 两种格式都尝试解析，全部失败返回 null，由调用方回落到 shippedAt 判断。
+     */
+    private LocalDateTime latestTraceTime(List<LogisticsVO.TraceItem> tracks) {
+        if (tracks == null || tracks.isEmpty()) {
+            return null;
+        }
+        LocalDateTime latest = null;
+        for (LogisticsVO.TraceItem item : tracks) {
+            LocalDateTime time = parseTraceTime(item == null ? null : item.getTime());
+            if (time != null && (latest == null || time.isAfter(latest))) {
+                latest = time;
+            }
+        }
+        return latest;
+    }
+
+    /**
+     * 解析单个轨迹时间，兼容带时区偏移与本地时间两种格式。
+     */
+    private static LocalDateTime parseTraceTime(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String trimmed = raw.trim();
+        try {
+            return java.time.OffsetDateTime.parse(trimmed)
+                    .atZoneSameInstant(java.time.ZoneId.systemDefault())
+                    .toLocalDateTime();
+        } catch (Exception ignored) {
+            // 继续尝试本地时间格式
+        }
+        try {
+            return LocalDateTime.parse(trimmed.replace(' ', 'T'));
+        } catch (Exception ignored) {
+            return null;
         }
     }
 

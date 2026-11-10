@@ -1220,17 +1220,17 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
   public Map<String, Object> getMonitorData() {
     Map<String, Object> result = new LinkedHashMap<>();
 
-    // 今日订单统计
-    LocalDateTime todayStart = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
+    // 今日订单统计：用 atStartOfDay 清零时分秒与纳秒，避免漏掉 00:00:00.xxx 的订单
+    LocalDateTime todayStart = LocalDate.now().atStartOfDay();
     LambdaQueryWrapper<OrderEntity> todayWrapper = new LambdaQueryWrapper<>();
     todayWrapper.ge(OrderEntity::getCreateTime, todayStart);
-    long todayOrders = orderMapper.selectCount(todayWrapper);
+    long todayOrders = orderMapper.selectCount(notDeleted(todayWrapper));
     result.put("todayOrders", todayOrders);
 
     // 待发货订单
     LambdaQueryWrapper<OrderEntity> shipWrapper = new LambdaQueryWrapper<>();
     shipWrapper.eq(OrderEntity::getStatus, OrderStatusEnum.PENDING_SHIP.name());
-    long pendingShip = orderMapper.selectCount(shipWrapper);
+    long pendingShip = orderMapper.selectCount(notDeleted(shipWrapper));
     result.put("pendingShip", pendingShip);
 
     // 异常订单（超时未付款 - 超过24小时的待付款订单）
@@ -1238,7 +1238,7 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
     LambdaQueryWrapper<OrderEntity> timeoutPaymentWrapper = new LambdaQueryWrapper<>();
     timeoutPaymentWrapper.eq(OrderEntity::getStatus, OrderStatusEnum.PENDING_PAY.name())
         .le(OrderEntity::getCreateTime, timeoutPay);
-    long timeoutPayment = orderMapper.selectCount(timeoutPaymentWrapper);
+    long timeoutPayment = orderMapper.selectCount(notDeleted(timeoutPaymentWrapper));
     result.put("timeoutPayment", timeoutPayment);
 
     // 异常订单（超时未发货 - 超过72小时的待发货订单）
@@ -1246,16 +1246,17 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
     LambdaQueryWrapper<OrderEntity> timeoutShipWrapper = new LambdaQueryWrapper<>();
     timeoutShipWrapper.eq(OrderEntity::getStatus, OrderStatusEnum.PENDING_SHIP.name())
         .le(OrderEntity::getCreateTime, timeoutShip);
-    long timeoutShipCount = orderMapper.selectCount(timeoutShipWrapper);
+    long timeoutShipCount = orderMapper.selectCount(notDeleted(timeoutShipWrapper));
     result.put("timeoutShip", timeoutShipCount);
 
-    // 被拦截中的订单数
-    LambdaQueryWrapper<OrderInterceptEntity> interceptWrapper = new LambdaQueryWrapper<>();
-    interceptWrapper.eq(OrderInterceptEntity::getStatus, "ACTIVE");
-    long intercepting = interceptMapper.selectCount(interceptWrapper);
+    // 拦截中：按订单状态 HOLD 统计（与列表"已拦截"页签同口径），
+    // 不再统计 mo_order_intercept 的 ACTIVE 记录行数，避免同一订单多次拦截被重复计数
+    LambdaQueryWrapper<OrderEntity> holdWrapper = new LambdaQueryWrapper<>();
+    holdWrapper.eq(OrderEntity::getStatus, OrderStatusEnum.HOLD.name());
+    long intercepting = orderMapper.selectCount(notDeleted(holdWrapper));
     result.put("intercepting", intercepting);
 
-    // 异常订单总数
+    // 异常订单总数：三种状态互斥（待付款 / 待发货 / 已拦截），相加不会重复计数
     result.put("abnormalOrders", timeoutPayment + timeoutShipCount + intercepting);
 
     return result;
@@ -1445,32 +1446,61 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
 
   @Override
   public Page<Map<String, Object>> listAbnormalOrders(String abnormalType, int page, int size) {
-    Page<OrderEntity> resultPage = new Page<>(page, size);
+    // 超时阈值：与 getMonitorData 的 KPI 统计保持一致，保证"数字 = 列表条数"
+    LocalDateTime timeoutPay = LocalDateTime.now().minusHours(24);
+    LocalDateTime timeoutShip = LocalDateTime.now().minusHours(72);
+    String type = abnormalType == null ? "" : abnormalType;
 
-    if ("timeoutPayment".equals(abnormalType)) {
-      // 超时未付款
-      LocalDateTime timeout = LocalDateTime.now().minusHours(24);
-      LambdaQueryWrapper<OrderEntity> wrapper = new LambdaQueryWrapper<>();
-      wrapper.eq(OrderEntity::getStatus, OrderStatusEnum.PENDING_PAY.name())
-          .le(OrderEntity::getCreateTime, timeout)
-          .orderByAsc(OrderEntity::getCreateTime);
-      resultPage = orderMapper.selectPage(new Page<>(page, size), wrapper);
-    } else if ("timeoutShip".equals(abnormalType)) {
-      // 超时未发货
-      LocalDateTime timeout = LocalDateTime.now().minusHours(72);
-      LambdaQueryWrapper<OrderEntity> wrapper = new LambdaQueryWrapper<>();
-      wrapper.eq(OrderEntity::getStatus, OrderStatusEnum.PENDING_SHIP.name())
-          .le(OrderEntity::getCreateTime, timeout)
-          .orderByAsc(OrderEntity::getCreateTime);
-      resultPage = orderMapper.selectPage(new Page<>(page, size), wrapper);
-    } else {
-      // 全部异常：HOLD（被运营拦截）+ CANCELLED（已取消，已包含退款类目）
-      // 注意：用 OrderStatusEnum.HOLD.name() 而非字面量 "HOLD"，避免枚举改名时脱节。
-      LambdaQueryWrapper<OrderEntity> wrapper = new LambdaQueryWrapper<>();
-      wrapper.in(OrderEntity::getStatus, OrderStatusEnum.HOLD.name(), OrderStatusEnum.CANCELLED.name())
-          .orderByDesc(OrderEntity::getCreateTime);
-      resultPage = orderMapper.selectPage(new Page<>(page, size), wrapper);
+    Page<OrderEntity> resultPage;
+    switch (type) {
+      case "timeoutPayment" -> {
+        // 超时未付款
+        LambdaQueryWrapper<OrderEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(OrderEntity::getStatus, OrderStatusEnum.PENDING_PAY.name())
+            .le(OrderEntity::getCreateTime, timeoutPay)
+            .orderByAsc(OrderEntity::getCreateTime);
+        resultPage = orderMapper.selectPage(new Page<>(page, size), notDeleted(wrapper));
+      }
+      case "timeoutShip" -> {
+        // 超时未发货
+        LambdaQueryWrapper<OrderEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(OrderEntity::getStatus, OrderStatusEnum.PENDING_SHIP.name())
+            .le(OrderEntity::getCreateTime, timeoutShip)
+            .orderByAsc(OrderEntity::getCreateTime);
+        resultPage = orderMapper.selectPage(new Page<>(page, size), notDeleted(wrapper));
+      }
+      case "intercepted" -> {
+        // 已拦截：运营拦截后订单状态为 HOLD
+        LambdaQueryWrapper<OrderEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(OrderEntity::getStatus, OrderStatusEnum.HOLD.name())
+            .orderByDesc(OrderEntity::getCreateTime);
+        resultPage = orderMapper.selectPage(new Page<>(page, size), notDeleted(wrapper));
+      }
+      case "cancelled" -> {
+        // 已取消（用户主动取消 / 超时自动取消），单独页签查看，不再混入"全部异常"
+        LambdaQueryWrapper<OrderEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(OrderEntity::getStatus, OrderStatusEnum.CANCELLED.name())
+            .orderByDesc(OrderEntity::getCreateTime);
+        resultPage = orderMapper.selectPage(new Page<>(page, size), notDeleted(wrapper));
+      }
+      default -> {
+        // 全部异常：超时未付款 ∪ 超时未发货 ∪ 已拦截，与 KPI「异常订单」同口径。
+        // 三种状态互斥，同一条订单不会命中多个分支，因此不会重复计数。
+        LambdaQueryWrapper<OrderEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.and(w -> w
+                .and(t -> t.eq(OrderEntity::getStatus, OrderStatusEnum.PENDING_PAY.name())
+                    .le(OrderEntity::getCreateTime, timeoutPay))
+                .or(t -> t.eq(OrderEntity::getStatus, OrderStatusEnum.PENDING_SHIP.name())
+                    .le(OrderEntity::getCreateTime, timeoutShip))
+                .or(t -> t.eq(OrderEntity::getStatus, OrderStatusEnum.HOLD.name())))
+            .orderByDesc(OrderEntity::getCreateTime);
+        resultPage = orderMapper.selectPage(new Page<>(page, size), notDeleted(wrapper));
+      }
     }
+
+    // 一次性查出本页订单的商品明细，避免循环内逐条查询（N+1）
+    Map<Long, List<com.moyuyo.dao.entity.OrderItemEntity>> itemsByOrderId = batchLoadItems(
+        resultPage.getRecords().stream().map(OrderEntity::getId).collect(Collectors.toList()));
 
     Page<Map<String, Object>> mappedPage = new Page<>(resultPage.getCurrent(), resultPage.getSize(), resultPage.getTotal());
     mappedPage.setRecords(resultPage.getRecords().stream().map(e -> {
@@ -1482,8 +1512,62 @@ public class AdminOrderOpsServiceImpl implements AdminOrderOpsService {
       item.put("receiverName", e.getReceiverName());
       item.put("receiverPhone", e.getReceiverPhone());
       item.put("createTime", e.getCreateTime());
+      // 异常类型：按订单当前状态与超时阈值推导，供前端"异常类型"列展示
+      item.put("abnormalType", resolveAbnormalType(e, timeoutPay, timeoutShip));
+      // 商品：拼接"商品名 x数量"，供前端"商品"列展示
+      List<com.moyuyo.dao.entity.OrderItemEntity> items =
+          itemsByOrderId.getOrDefault(e.getId(), java.util.Collections.emptyList());
+      item.put("product", items.stream()
+          .map(it -> (it.getProductName() != null ? it.getProductName() : "")
+              + " x" + (it.getQuantity() != null ? it.getQuantity() : 0))
+          .collect(Collectors.joining("; ")));
+      // 金额：实付金额 + 币种，前端按币种渲染符号（订单默认币种为 USD）
+      item.put("amount", e.getPayAmount());
+      item.put("currency", e.getCurrency());
+      // 更新时间：取消/收货等流程走 UpdateWrapper 更新，自动填充的 update_time 不会刷新，
+      // 因此取"各状态节点时间"与 update_time 的最晚值，避免展示成下单时间
+      LocalDateTime lastUpdate = e.getUpdateTime();
+      for (LocalDateTime t : new LocalDateTime[]{
+          e.getPaidAt(), e.getDeliverTime(), e.getReceivedTime(), e.getCancelTime()}) {
+        if (t != null && (lastUpdate == null || t.isAfter(lastUpdate))) {
+          lastUpdate = t;
+        }
+      }
+      item.put("updateTime", lastUpdate);
       return item;
     }).collect(Collectors.toList()));
     return mappedPage;
+  }
+
+  /**
+   * 排除软删除订单（delete_status 为 NULL 视为未删除），与订单运营统计口径保持一致。
+   */
+  private LambdaQueryWrapper<OrderEntity> notDeleted(LambdaQueryWrapper<OrderEntity> wrapper) {
+    return wrapper.and(w -> w.isNull(OrderEntity::getDeleteStatus).or().eq(OrderEntity::getDeleteStatus, 0));
+  }
+
+  /**
+   * 推导订单的异常类型标签（用于列表展示）。
+   * <p>
+   * 与 listAbnormalOrders / getMonitorData 的超时阈值保持一致，避免列表分类与 KPI 口径漂移。
+   */
+  private String resolveAbnormalType(OrderEntity order, LocalDateTime timeoutPay, LocalDateTime timeoutShip) {
+    String status = order.getStatus();
+    if (OrderStatusEnum.HOLD.name().equals(status)) {
+      return "已拦截";
+    }
+    if (OrderStatusEnum.CANCELLED.name().equals(status)) {
+      return "已取消";
+    }
+    if (order.getCreateTime() == null) {
+      return null;
+    }
+    if (OrderStatusEnum.PENDING_PAY.name().equals(status) && !order.getCreateTime().isAfter(timeoutPay)) {
+      return "超时未付款";
+    }
+    if (OrderStatusEnum.PENDING_SHIP.name().equals(status) && !order.getCreateTime().isAfter(timeoutShip)) {
+      return "超时未发货";
+    }
+    return null;
   }
 }
