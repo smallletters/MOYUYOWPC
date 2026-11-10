@@ -24,6 +24,7 @@ android {
 
 dependencies {
   compileOnly fileTree(dir: '../libs', include: ['uniapp-v8-release.aar'])
+  compileOnly 'com.alibaba:fastjson:1.2.83'
   implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
   // EncryptedSharedPreferences：密钥托管在 Android Keystore，密文写入 SharedPreferences
   // 1.1.0-alpha06 为当前 uniapp 离线打包可用的稳定分支（minSdk 23+，本项目 minSdk 24）

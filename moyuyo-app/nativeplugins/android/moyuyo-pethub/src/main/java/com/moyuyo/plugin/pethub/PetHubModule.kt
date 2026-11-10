@@ -38,7 +38,7 @@ class PetHubModule : UniModule() {
       return
     }
 
-    val intent = Intent(mContext, PetHubActivity::class.java).apply {
+    val intent = Intent(requireContext(), PetHubActivity::class.java).apply {
       putExtra("petId", petId)
       putExtra("petType", petType)
       params.getString("breed")?.let { putExtra("breed", it) }
@@ -114,9 +114,18 @@ class PetHubModule : UniModule() {
     })
   }
 
+  /** UniModule 未暴露 mContext，统一从 mUniSDKInstance 取宿主 Context */
+  private fun requireContext(): android.content.Context {
+    return mUniSDKInstance?.context
+      ?: throw IllegalStateException("UniSDKInstance context is unavailable")
+  }
+
   private fun startActivity(intent: Intent) {
-    if (mContext is Activity) {
-      (mContext as Activity).startActivity(intent)
+    val ctx = requireContext()
+    if (ctx !is Activity) {
+      // 非 Activity 上下文（Application）必须加 NEW_TASK，否则 Android 会抛 RuntimeException
+      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
+    ctx.startActivity(intent)
   }
 }

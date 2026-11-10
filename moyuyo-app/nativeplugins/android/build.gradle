@@ -19,13 +19,8 @@ buildscript {
   }
 }
 
-allprojects {
-  repositories {
-    google()
-    mavenCentral()
-    maven { url 'https://artifact.bytedance.com/repository/byte_trident_repo/' }
-  }
-}
+// 依赖仓库统一在 settings.gradle 的 dependencyResolutionManagement 中声明：
+// 本项目启用了 RepositoriesMode.FAIL_ON_PROJECT_REPOS，若在 allprojects 里再声明会直接构建失败
 
 tasks.register('clean', Delete) {
   delete rootProject.layout.buildDirectory
