@@ -17,10 +17,12 @@ import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.service.admin.AdminAnalysisService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -39,6 +41,7 @@ public class AdminAnalysisServiceImpl implements AdminAnalysisService {
   private final CartMapper cartMapper;
   private final SearchLogMapper searchLogMapper;
   private final VisitLogMapper visitLogMapper;
+  private final JdbcTemplate jdbcTemplate;
 
   @Override
   public List<Map<String, Object>> funnel() {
@@ -110,6 +113,7 @@ public class AdminAnalysisServiceImpl implements AdminAnalysisService {
       int mScore = mAmount.compareTo(mHigh) >= 0 ? 5
           : mAmount.compareTo(mLow) >= 0 ? 3 : 1;
 
+      item.put("userId", row.get("userId"));
       item.put("customerName", row.get("customerName"));
       item.put("rDays", rDays);
       item.put("fCount", fCount);
@@ -177,6 +181,25 @@ public class AdminAnalysisServiceImpl implements AdminAnalysisService {
     result.put("totalUsers", totalUsers);
     result.put("hotKeywords", hotKeywords);
     return result;
+  }
+
+  @Override
+  public List<Map<String, Object>> zeroResultKeywords(int limit) {
+    int safeLimit = limit <= 0 ? 10 : Math.min(limit, 100);
+    // 零结果搜索词：按关键词聚合，仅统计 result_count = 0 的记录；
+    // 排除已在后台标记为「已处理」的关键词，避免处理后仍反复出现
+    return searchLogMapper.selectMaps(
+        new QueryWrapper<SearchLogEntity>()
+            .select("keyword, COUNT(*) as count")
+            .eq("result_count", 0)
+            .isNotNull("keyword")
+            .ne("keyword", "")
+            .notInSql("keyword",
+                "SELECT keyword FROM mo_search_keyword_action WHERE action_type = 'RESOLVED'")
+            .groupBy("keyword")
+            .orderByDesc("count")
+            .last("LIMIT " + safeLimit)
+    );
   }
 
   @Override
@@ -448,6 +471,87 @@ public class AdminAnalysisServiceImpl implements AdminAnalysisService {
     }
     List<Object> list = cartMapper.selectObjs(wrapper);
     return list.isEmpty() || list.get(0) == null ? 0L : ((Number) list.get(0)).longValue();
+  }
+
+  // ==================== 用户画像 ====================
+
+  @Override
+  public Map<String, Object> userProfile() {
+    Map<String, Object> result = new LinkedHashMap<>();
+
+    // 新老用户占比：按历史订单数判断（1 单=新用户，>1 单=老用户）
+    Map<String, Object> userRow;
+    try {
+      userRow = jdbcTemplate.queryForMap(
+          "SELECT SUM(CASE WHEN order_cnt = 1 THEN 1 ELSE 0 END) AS new_users, " +
+              "SUM(CASE WHEN order_cnt > 1 THEN 1 ELSE 0 END) AS old_users FROM (" +
+              "SELECT user_id, COUNT(*) AS order_cnt FROM mo_order " +
+              "WHERE delete_status = 0 AND user_id IS NOT NULL GROUP BY user_id) t");
+    } catch (Exception e) {
+      userRow = Collections.emptyMap();
+    }
+    long newUsers = userRow.get("new_users") == null ? 0L : ((Number) userRow.get("new_users")).longValue();
+    long oldUsers = userRow.get("old_users") == null ? 0L : ((Number) userRow.get("old_users")).longValue();
+    long userTotal = newUsers + oldUsers;
+    int newPct = userTotal > 0 ? (int) Math.round(newUsers * 100.0 / userTotal) : 0;
+    result.put("newUsers", newPct);
+    result.put("oldUsers", userTotal > 0 ? 100 - newPct : 0);
+
+    // 设备分布：按 user_agent 归类近 30 天独立会话
+    List<Map<String, Object>> deviceRows = visitLogMapper.selectMaps(
+        new QueryWrapper<VisitLogEntity>()
+            .select("CASE " +
+                "WHEN user_agent LIKE '%iPhone%' OR user_agent LIKE '%iPad%' THEN 'iOS' " +
+                "WHEN user_agent LIKE '%Android%' THEN 'Android' " +
+                "WHEN user_agent LIKE '%Windows%' OR user_agent LIKE '%Macintosh%' THEN 'PC' " +
+                "ELSE '其他' END AS device, COUNT(DISTINCT session_id) AS visits")
+            .ge("create_time", LocalDate.now().minusDays(29).atStartOfDay())
+            .groupBy("device")
+            .orderByDesc("visits"));
+    long deviceTotal = deviceRows.stream()
+        .mapToLong(d -> d.get("visits") == null ? 0L : ((Number) d.get("visits")).longValue())
+        .sum();
+    List<Map<String, Object>> devices = new ArrayList<>();
+    for (Map<String, Object> row : deviceRows) {
+      long visits = row.get("visits") == null ? 0L : ((Number) row.get("visits")).longValue();
+      String device = String.valueOf(row.get("device"));
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("name", device);
+      item.put("visits", visits);
+      item.put("percent", deviceTotal > 0 ? Math.round(visits * 1000.0 / deviceTotal) / 10.0 : 0d);
+      item.put("icon", "iOS".equals(device) ? "📱" : "Android".equals(device) ? "🤖"
+          : "PC".equals(device) ? "💻" : "📊");
+      devices.add(item);
+    }
+    result.put("devices", devices);
+    return result;
+  }
+
+  // ==================== 渠道访问统计 ====================
+
+  @Override
+  public List<Map<String, Object>> channelStats() {
+    List<Map<String, Object>> rows = visitLogMapper.selectMaps(
+        new QueryWrapper<VisitLogEntity>()
+            .select("COALESCE(channel, '直接访问') AS channel, COUNT(DISTINCT session_id) AS visits")
+            .ge("create_time", LocalDate.now().minusDays(29).atStartOfDay())
+            .groupBy("channel")
+            .orderByDesc("visits"));
+
+    long total = rows.stream()
+        .mapToLong(r -> r.get("visits") == null ? 0L : ((Number) r.get("visits")).longValue())
+        .sum();
+
+    List<Map<String, Object>> result = new ArrayList<>();
+    for (Map<String, Object> row : rows) {
+      long visits = row.get("visits") == null ? 0L : ((Number) row.get("visits")).longValue();
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("name", String.valueOf(row.get("channel")));
+      item.put("visits", visits);
+      item.put("percent", total > 0 ? Math.round(visits * 1000.0 / total) / 10.0 : 0d);
+      result.add(item);
+    }
+    return result;
   }
 
   /** 安全转换为 long（兼容 Integer/Long/BigDecimal 等） */

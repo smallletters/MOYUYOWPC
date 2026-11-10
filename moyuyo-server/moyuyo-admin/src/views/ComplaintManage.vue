@@ -132,13 +132,13 @@
       </div>
     </div>
 
-    <!-- 升级链路与投诉趋势 - 双列布局 -->
-    <div class="chart-grid">
-      <!-- 升级链路展示 - 时间线（示例数据，无真实 API） -->
-      <section class="chart-section">
-        <div class="section-title">升级链路</div>
-        <div class="section-subtitle">TS-20240705-008 处理记录</div>
-        <div class="timeline">
+      <!-- 最近处理记录与投诉趋势 - 双列布局 -->
+      <div class="chart-grid">
+        <!-- 最近处理记录 - 时间线（真实数据） -->
+        <section class="chart-section">
+          <div class="section-title">最近处理记录</div>
+          <div class="section-subtitle">最新 10 条投诉处理流水</div>
+          <div class="timeline">
           <div v-for="node in escalationChain" :key="node.level" :class="['timeline-node', node.status]">
             <div :class="['timeline-dot', node.status]">{{ node.level }}</div>
             <div class="timeline-content">
@@ -150,7 +150,7 @@
         </div>
       </section>
 
-      <!-- 投诉趋势图 - 近7天 CSS 柱状图（示例数据，无真实 API） -->
+      <!-- 投诉趋势图 - 近7天 CSS 柱状图（真实数据） -->
       <section class="chart-section">
         <div class="section-title">投诉趋势（近7天）</div>
         <div class="chart-container">
@@ -228,7 +228,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getComplaintList, createComplaint, startComplaintProcess, closeComplaint } from '../api/admin'
+import { getComplaintList, createComplaint, startComplaintProcess, closeComplaint, getComplaintTrend, getComplaintProcessRecent } from '../api/admin'
 
 const router = useRouter()
 const currentPage = ref(1)
@@ -259,58 +259,58 @@ const editForm = reactive({
 const tableData = ref([])
 const allList = ref([])
 
-// 升级链路示例数据（无真实 API，先用结构化示例数据展示）
-const escalationChain = [
-  {
-    level: 'L1',
-    status: 'completed',
-    title: '一线客服 - 受理处理',
-    desc: '客服小王受理投诉，核实订单信息后提交退款申请，告知用户3-5个工作日到账。',
-    time: '2024-07-05 14:23',
-    handler: '小王 (CS-10234)'
-  },
-  {
-    level: 'L2',
-    status: 'completed',
-    title: '客服主管 - 跟进升级',
-    desc: '用户反馈超时未到账，主管介入核实财务流水，发现退款通道异常，协调财务加急处理。',
-    time: '2024-07-06 10:15',
-    handler: '李主管 (CS-SUP-001)'
-  },
-  {
-    level: 'L3',
-    status: 'completed',
-    title: '客服经理 - 方案决策',
-    desc: '经核实，系统退款模块存在 Bug 导致批量退款延迟。经理批准先行垫付退款 + 补偿优惠券方案。',
-    time: '2024-07-07 09:30',
-    handler: '张经理 (CS-MGR-003)'
-  },
-  {
-    level: 'L4',
-    status: 'completed',
-    title: '运营总监 - 最终审批',
-    desc: '审批垫付方案，要求技术团队 48 小时内修复退款模块。用户已确认收到退款并表示满意。',
-    time: '2024-07-07 16:45',
-    handler: '周总监 (OPS-DIR-001)'
-  }
-]
+// 最近投诉处理记录（升级链路时间线，来自 /complaint/process-recent）
+const escalationChain = ref([])
 
-// 投诉趋势（近7天）示例数据（无真实 API，先用结构化示例数据展示）
-const trendData = [
-  { label: '7/2', value: 6, height: '50%', color: 'var(--brand-500)' },
-  { label: '7/3', value: 9, height: '75%', color: 'var(--brand-500)' },
-  { label: '7/4', value: 7, height: '58%', color: 'var(--brand-500)' },
-  { label: '7/5', value: 12, height: '100%', color: 'var(--state-error)' },
-  { label: '7/6', value: 8, height: '67%', color: 'var(--brand-500)' },
-  { label: '7/7', value: 10, height: '83%', color: 'var(--state-warning)' },
-  { label: '7/8', value: 7, height: '58%', color: 'var(--brand-500)' }
-]
+// 投诉趋势（近7天，来自 /complaint/trend）
+const trendData = ref([])
 
-// 近7天日均投诉量（基于示例数据计算）
+// 近7天日均投诉量（基于真实趋势数据）
 const avgDaily = computed(() => {
-  const sum = trendData.reduce((acc, item) => acc + item.value, 0)
-  return (sum / trendData.length).toFixed(1)
+  if (!trendData.value.length) return '0.0'
+  const sum = trendData.value.reduce((acc, item) => acc + item.value, 0)
+  return (sum / trendData.value.length).toFixed(1)
 })
+
+// 加载最近处理记录
+async function loadProcessRecent() {
+  try {
+    const list = await getComplaintProcessRecent(10)
+    escalationChain.value = (list || []).map((p, idx) => ({
+      level: 'L' + (idx + 1),
+      status: 'completed',
+      title: `${p.action || '处理'} · ${p.complaintNo || ''}`,
+      desc: p.remark || '-',
+      time: p.createTime ? String(p.createTime).replace('T', ' ').slice(0, 16) : '-',
+      handler: p.operator || '-'
+    }))
+  } catch (e) {
+    console.error('获取投诉处理记录失败', e)
+    escalationChain.value = []
+  }
+}
+
+// 加载近7天投诉趋势
+async function loadTrend() {
+  try {
+    const list = await getComplaintTrend(7)
+    const max = Math.max(...(list || []).map(i => i.count), 1)
+    trendData.value = (list || []).map(i => {
+      const value = Number(i.count || 0)
+      const ratio = value / max
+      // 柱高按最大值归一化；颜色按占比分级（>=80% 预警 / >=50% 偏高）
+      return {
+        label: i.label,
+        value,
+        height: Math.max(6, Math.round(ratio * 100)) + '%',
+        color: ratio >= 0.8 ? 'var(--state-error)' : ratio >= 0.5 ? 'var(--state-warning)' : 'var(--brand-500)'
+      }
+    })
+  } catch (e) {
+    console.error('获取投诉趋势失败', e)
+    trendData.value = []
+  }
+}
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 
@@ -433,7 +433,11 @@ async function handleSave() {
   }
 }
 
-onMounted(() => { loadData() })
+onMounted(() => {
+  loadData()
+  loadProcessRecent()
+  loadTrend()
+})
 </script>
 
 <style scoped>

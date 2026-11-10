@@ -66,20 +66,21 @@
           </div>
         </div>
 
-        <!-- 拦截渠道分布（分段条） -->
+        <!-- 风险等级分布（分段条） -->
         <div class="chart-card">
-          <div class="chart-title">拦截渠道分布</div>
+          <div class="chart-title">风险等级分布</div>
           <div class="segment-bar">
-            <div class="segment-item" v-for="item in channelDist" :key="item.name"
+            <div class="segment-item" v-for="item in levelDist" :key="item.name"
               :style="{ width: item.percent + '%', background: item.color }"></div>
           </div>
           <div class="segment-legend">
-            <div class="segment-legend-item" v-for="item in channelDist" :key="item.name">
+            <div class="segment-legend-item" v-for="item in levelDist" :key="item.name">
               <span class="segment-dot" :style="{ background: item.color }"></span>
               <span class="segment-name">{{ item.name }}</span>
               <span class="segment-percent">{{ item.percent }}%</span>
             </div>
           </div>
+          <div v-if="levelDist.length === 0" class="segment-name">暂无风险等级数据</div>
         </div>
       </div>
 
@@ -92,17 +93,20 @@
               <th>时间</th>
               <th>类型</th>
               <th>用户</th>
-              <th>金额</th>
+              <th>业务ID</th>
               <th>处置</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="ev in latestEvents" :key="ev.time">
+            <tr v-for="ev in latestEvents" :key="ev.id">
               <td>{{ ev.time }}</td>
               <td><span class="event-type-tag" :class="eventTypeClass(ev.type)">{{ ev.type }}</span></td>
               <td class="event-user">{{ ev.user }}</td>
-              <td class="event-amount">{{ ev.amount }}</td>
+              <td class="event-amount">{{ ev.businessId || '-' }}</td>
               <td><span class="action-tag" :class="ev.actionType">{{ ev.action }}</span></td>
+            </tr>
+            <tr v-if="latestEvents.length === 0">
+              <td colspan="5" style="text-align:center;color:var(--text-400)">暂无风险事件</td>
             </tr>
           </tbody>
         </table>
@@ -211,7 +215,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getRiskRules, deleteRiskRule, createRiskRule, updateRiskRule } from '../api/admin'
+import { getRiskRules, deleteRiskRule, createRiskRule, updateRiskRule, getRiskOverview } from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
 // ==================== Tab 切换 ====================
@@ -222,63 +226,67 @@ function switchTab(name) {
   activeTab.value = name
 }
 
-// ==================== 风控总览（示例数据） ====================
-// 说明：暂无风控总览统计接口，以下均为结构化示例数据，接入后端后可替换
+// ==================== 风控总览（真实数据） ====================
 
 // KPI 指标卡片：今日拦截 / 拦截命中率 / 待处理事件 / 风控规则数
-const kpiList = [
-  { label: '今日拦截', value: 12, unit: '单', sub: '较昨日 +3 单', color: 'red' },
-  { label: '拦截命中率', value: '6.8', unit: '%', sub: '较昨日 +0.4%', color: 'orange' },
-  { label: '待处理事件', value: 8, unit: '单', sub: '最久等待 2h 15min', color: 'red' },
-  { label: '风控规则数', value: 23, unit: '条', sub: '启用 22 / 停用 1', color: 'blue' }
-]
+const kpiList = ref([])
 
 // 风险事件趋势（近 7 天）：total 为风控触发总数，blocked 为拦截数
-const trendData = [
-  { date: '07-26', total: 42, blocked: 9 },
-  { date: '07-27', total: 38, blocked: 7 },
-  { date: '07-28', total: 51, blocked: 11 },
-  { date: '07-29', total: 45, blocked: 8 },
-  { date: '07-30', total: 62, blocked: 14 },
-  { date: '07-31', total: 49, blocked: 10 },
-  { date: '08-01', total: 56, blocked: 12 }
-]
+const trendData = ref([])
+
+// 趋势最大值（用于柱高归一化）
+const trendMax = ref(1)
 
 // 计算柱状图高度百分比（相对最大值）
 function barHeight(value) {
-  const max = Math.max(...trendData.map(d => d.total), 1)
-  return Math.round((value / max) * 100)
+  return Math.round((value / trendMax.value) * 100)
 }
 
 // 风险类型分布（水平条形图）
-const typeDist = [
-  { name: '账号异常', count: 342, percent: 38, color: 'var(--state-error)' },
-  { name: '支付风险', count: 243, percent: 27, color: 'var(--chart-3)' },
-  { name: '薅羊毛', count: 189, percent: 21, color: 'var(--primary)' },
-  { name: '设备异常', count: 81, percent: 9, color: 'var(--chart-4)' },
-  { name: '其他', count: 45, percent: 5, color: 'var(--text-400)' }
-]
+const typeDist = ref([])
 
-// 拦截渠道分布（分段条）
-const channelDist = [
-  { name: 'App 客户端', percent: 46, color: 'var(--primary)' },
-  { name: 'Web 网页', percent: 28, color: 'var(--state-success)' },
-  { name: 'H5 移动端', percent: 18, color: 'var(--chart-3)' },
-  { name: 'API 接口', percent: 8, color: 'var(--state-error)' }
-]
+// 风险等级分布（分段条）
+const levelDist = ref([])
 
-// 最新风险事件列表（时间 / 类型 / 用户 / 金额 / 处置）
-const latestEvents = [
-  { time: '08-01 10:23', type: '账号异常', user: 'user_3829', amount: '¥1,299.00', action: '已拦截', actionType: 'block' },
-  { time: '08-01 09:58', type: '支付风险', user: 'user_1562', amount: '¥568.00', action: '人工审核', actionType: 'review' },
-  { time: '08-01 09:31', type: '薅羊毛', user: 'user_8841', amount: '¥45.00', action: '已拦截', actionType: 'block' },
-  { time: '08-01 08:47', type: '设备异常', user: 'user_2037', amount: '¥0.00', action: '二次验证', actionType: 'verify' },
-  { time: '07-31 22:15', type: '支付风险', user: 'user_6710', amount: '¥2,340.00', action: '已放行', actionType: 'pass' }
-]
+// 最新风险事件列表（时间 / 类型 / 用户 / 业务ID / 处置）
+const latestEvents = ref([])
+
+// 加载风控总览
+async function loadOverview() {
+  try {
+    const res = await getRiskOverview()
+    if (!res) return
+    const kpi = res.kpi || {}
+    kpiList.value = [
+      { label: '今日拦截', value: kpi.todayBlocked ?? 0, unit: '单', sub: `今日触发 ${kpi.todayTotal ?? 0} 次`, color: 'red' },
+      { label: '拦截命中率', value: kpi.hitRate ?? 0, unit: '%', sub: '今日拦截 / 今日触发', color: 'orange' },
+      { label: '待处理事件', value: kpi.pendingCount ?? 0, unit: '单', sub: '状态为 PENDING', color: 'red' },
+      { label: '风控规则数', value: kpi.ruleTotal ?? 0, unit: '条', sub: `启用 ${kpi.ruleEnabled ?? 0} / 停用 ${(kpi.ruleTotal ?? 0) - (kpi.ruleEnabled ?? 0)}`, color: 'blue' }
+    ]
+    trendData.value = res.trend || []
+    trendMax.value = Math.max(...trendData.value.map(d => d.total), 1)
+    typeDist.value = (res.typeDist || []).map((item, idx) => ({
+      ...item,
+      color: ['var(--state-error)', 'var(--chart-3)', 'var(--primary)', 'var(--chart-4)', 'var(--text-400)'][idx % 5]
+    }))
+    levelDist.value = (res.levelDist || []).map((item, idx) => ({
+      ...item,
+      color: ['var(--state-error)', 'var(--state-warning)', 'var(--primary)', 'var(--state-success)'][idx % 4]
+    }))
+    latestEvents.value = res.latestEvents || []
+  } catch (e) {
+    console.error('获取风控总览失败', e)
+    kpiList.value = []
+    trendData.value = []
+    typeDist.value = []
+    levelDist.value = []
+    latestEvents.value = []
+  }
+}
 
 // 事件类型 → 标签颜色修饰类
 function eventTypeClass(type) {
-  const map = { '账号异常': 'red', '支付风险': 'orange', '薅羊毛': 'blue', '设备异常': 'purple' }
+  const map = { '登录风险': 'red', '支付风险': 'orange', '下单风险': 'blue' }
   return map[type] || 'gray'
 }
 
@@ -428,7 +436,10 @@ async function handleDelete(row) {
   }
 }
 
-onMounted(() => { loadData() })
+onMounted(() => {
+  loadData()
+  loadOverview()
+})
 </script>
 
 <style scoped>

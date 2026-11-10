@@ -13,13 +13,13 @@
 
     <!-- 双 Tab：策略配置 + 拆包记录 -->
     <el-tabs v-model="activeTab" class="page-tabs">
-      <!-- ===== Tab 1：策略配置（补齐设计稿区块；无真实 API，均为示例数据） ===== -->
+      <!-- ===== Tab 1：策略配置（真实后端数据） ===== -->
       <el-tab-pane label="策略配置" name="strategy">
-        <!-- 规则版本信息条（示例数据） -->
+        <!-- 规则版本信息条 -->
         <div class="version-bar">
           <div class="version-bar-left">
-            <span class="sp-badge sp-badge-blue">v2.3</span>
-            <span class="version-text">上次发布：2026-07-01</span>
+            <span class="sp-badge sp-badge-blue">{{ strategyVersion.versionCode || '—' }}</span>
+            <span class="version-text">上次发布：{{ strategyVersion.createTime ? String(strategyVersion.createTime).slice(0, 10) : '—' }}</span>
           </div>
           <div class="version-actions">
             <el-button size="small">版本历史</el-button>
@@ -28,48 +28,46 @@
           </div>
         </div>
 
-        <!-- 拆包效果统计卡片（示例数据，纯 CSS 实现） -->
+        <!-- 拆包效果统计卡片（本月真实数据） -->
         <section class="split-kpi">
           <div class="kpi-card">
             <div class="kpi-card-header">
               <span class="kpi-card-label">本月拆包率</span>
               <span class="kpi-card-icon">%</span>
             </div>
-            <div class="kpi-card-value">12.3%</div>
+            <div class="kpi-card-value">{{ splitStats.splitRate }}%</div>
             <div class="kpi-card-trend">
-              <span class="kpi-trend-down">↓ 0.5%</span>
-              <span class="kpi-trend-text">较上月</span>
+              <span class="kpi-trend-text">拆包裹 {{ splitStats.splitOrders }} 单 / 订单 {{ splitStats.orderCount }} 单</span>
             </div>
           </div>
           <div class="kpi-card">
             <div class="kpi-card-header">
-              <span class="kpi-card-label">拆包节省成本</span>
-              <span class="kpi-card-icon kpi-card-icon-green">$</span>
+              <span class="kpi-card-label">本月拆包裹数</span>
+              <span class="kpi-card-icon kpi-card-icon-green">包</span>
             </div>
-            <div class="kpi-card-value">$2,340</div>
+            <div class="kpi-card-value">{{ splitStats.totalPackages }}</div>
             <div class="kpi-card-trend">
-              <span class="kpi-trend-up">↑ $180</span>
-              <span class="kpi-trend-text">较上月</span>
+              <span class="kpi-trend-text">拆包后生成的包裹总数</span>
             </div>
           </div>
           <div class="kpi-card">
             <div class="kpi-card-header">
-              <span class="kpi-card-label">平均拆包时效影响</span>
-              <span class="kpi-card-icon kpi-card-icon-orange">天</span>
+              <span class="kpi-card-label">平均拆分数</span>
+              <span class="kpi-card-icon kpi-card-icon-orange">件</span>
             </div>
-            <div class="kpi-card-value">+0.5 天</div>
+            <div class="kpi-card-value">{{ splitStats.avgSplits }}</div>
             <div class="kpi-card-trend">
-              <span class="kpi-trend-text">拆包后平均增加配送时长</span>
+              <span class="kpi-trend-text">每个拆包裹的平均分包数</span>
             </div>
           </div>
         </section>
 
-        <!-- 拆包规则列表（示例数据） -->
+        <!-- 拆包规则列表（真实数据） -->
         <section class="config-section">
           <div class="section-header">
             <div class="section-title">
               <span class="section-title-text">拆包规则列表</span>
-              <span class="sp-badge sp-badge-blue">5 条规则</span>
+              <span class="sp-badge sp-badge-blue">{{ splitRules.length }} 条规则</span>
             </div>
             <el-button size="small">导出</el-button>
           </div>
@@ -103,12 +101,12 @@
           </el-table>
         </section>
 
-        <!-- 策略配置表单（示例数据：按重量上限 / 按订单金额 / 按商品数量） -->
+        <!-- 策略配置表单（真实持久化） -->
         <section class="config-section">
           <div class="section-header">
             <div class="section-title">
               <span class="section-title-text">拆包策略配置</span>
-              <span class="sp-badge sp-badge-gray">示例数据</span>
+              <span class="sp-badge sp-badge-green">实时生效</span>
             </div>
           </div>
           <el-form :model="strategyForm" label-width="140px" class="strategy-form">
@@ -140,7 +138,7 @@
           </el-form>
         </section>
 
-        <!-- 最近拆包日志（示例数据） -->
+        <!-- 最近拆包日志（真实数据） -->
         <section class="config-section">
           <div class="section-header">
             <div class="section-title">
@@ -270,13 +268,12 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getSplitPackages, createSplitPackage, updateSplitPackage, deleteSplitPackage, getSplitPackageVersions, getSplitPackageRules } from '../api/admin'
-import api from '../api'
+import { getSplitPackages, createSplitPackage, updateSplitPackage, deleteSplitPackage, getSplitPackageVersions, getSplitPackageRules, getSplitPackageStats, getSplitPackageStrategy, saveSplitPackageStrategy, createSplitPackageRule, updateSplitPackageRule } from '../api/admin'
 
 const pageTitle = '拆包策略配置'
 const activeTab = ref('strategy')
 
-// ===== 策略配置 Tab：示例数据（无真实 API，接口就绪后替换为真实调用） =====
+// ===== 策略配置 Tab：真实数据 =====
 
 // 真实后端：拆包规则列表（来自 mo_split_package_rule + mo_split_package_rule_version）
 const splitRules = ref([])
@@ -285,7 +282,7 @@ const splitLogs = ref([])
 // 真实后端：策略版本
 const strategyVersion = ref({ id: null, versionCode: '', description: '' })
 
-// 示例数据：策略配置表单
+// 策略配置表单
 const strategyForm = reactive({
   type: 'weight',
   param: 30,
@@ -321,7 +318,7 @@ function handleEditRule(row) {
   Object.assign(ruleForm, {
     name: row.name || '',
     condition: row.condition || '',
-    priority: row.priority || 1,
+    priority: row.priorityValue || 1,
     enabled: !!row.enabled
   })
   ruleDialogVisible.value = true
@@ -338,38 +335,78 @@ async function confirmRule() {
   }
   try {
     if (ruleDialogMode.value === 'add') {
-      await createSplitPackage({ ...ruleForm, type: 'RULE' })
+      await createSplitPackageRule({
+        ruleName: ruleForm.name,
+        condition: ruleForm.condition,
+        priority: ruleForm.priority,
+        enabled: ruleForm.enabled
+      })
       ElMessage.success('规则已创建：' + ruleForm.name)
     } else if (currentRule.value) {
-      await updateSplitPackage(currentRule.value.id, ruleForm)
+      await updateSplitPackageRule(currentRule.value.id, {
+        ruleName: ruleForm.name,
+        condition: ruleForm.condition,
+        priority: ruleForm.priority,
+        enabled: ruleForm.enabled
+      })
       ElMessage.success('规则已更新：' + ruleForm.name)
     }
     ruleDialogVisible.value = false
+    await loadSplitRules()
   } catch (e) {
-    ElMessage.success('规则已' + (ruleDialogMode.value === 'add' ? '创建' : '更新') + '（本地模式）：' + ruleForm.name)
-    ruleDialogVisible.value = false
+    ElMessage.error('保存失败：' + (e.message || '未知错误'))
   }
 }
 
 async function handleToggleRule(row) {
   const next = !row.enabled
   try {
-    await updateSplitPackage(row.id, { enabled: next })
+    // 规则表 ID 必须走规则接口，不能复用拆包记录的 split-packages 接口
+    await updateSplitPackageRule(row.id, { enabled: next })
     row.enabled = next
     ElMessage.success('规则「' + row.name + '」已' + (next ? '启用' : '停用'))
   } catch (e) {
-    row.enabled = next
-    ElMessage.success('规则「' + row.name + '」已' + (next ? '启用' : '停用') + '（本地模式）')
+    ElMessage.error('操作失败：' + (e.message || '未知错误'))
+  }
+}
+
+// 拆包效果统计（本月真实数据）
+const splitStats = ref({ splitRate: 0, splitOrders: 0, totalPackages: 0, avgSplits: 0, orderCount: 0 })
+
+// 加载拆包效果统计
+async function loadStats() {
+  try {
+    const res = await getSplitPackageStats()
+    if (res) splitStats.value = { ...splitStats.value, ...res }
+  } catch (e) {
+    console.error('获取拆包效果统计失败', e)
+  }
+}
+
+// 加载全局策略配置
+async function loadStrategy() {
+  try {
+    const res = await getSplitPackageStrategy()
+    if (res) {
+      Object.assign(strategyForm, {
+        type: res.type || 'weight',
+        param: Number(res.param) || 30,
+        method: res.method || 'weight-avg',
+        enabled: res.enabled !== false
+      })
+    }
+  } catch (e) {
+    console.error('获取拆包策略配置失败', e)
   }
 }
 
 async function handleSaveStrategy() {
   try {
-    // 真实场景调用：POST /logistics/split-packages/strategy
-    await api.post('/logistics/split-packages/strategy', strategyForm)
+    await saveSplitPackageStrategy({ ...strategyForm })
     ElMessage.success('策略配置已保存')
+    await loadStats()
   } catch (e) {
-    ElMessage.success('策略配置已保存（本地模式）')
+    ElMessage.error('保存失败：' + (e.message || '未知错误'))
   }
 }
 
@@ -408,6 +445,14 @@ async function loadData() {
     }
     tableData.value = filtered
     total.value = filtered.length
+    // 最近拆包日志：取真实拆包记录前 5 条
+    splitLogs.value = filtered.slice(0, 5).map(item => ({
+      time: item.createTime ? String(item.createTime).replace('T', ' ').slice(0, 16) : '-',
+      orderNo: item.orderNo || '-',
+      rule: '自动拆包',
+      ruleType: 'auto',
+      result: `商品 ${item.productCount || 0} 件 → ${item.splitCount || 0} 个包裹（${item.status || '-'}）`
+    }))
   } catch (error) {
     console.error('获取拆包数据失败:', error)
     ElMessage.error('获取拆包数据失败')
@@ -457,6 +502,8 @@ onMounted(() => {
   loadData()
   loadStrategyVersion()
   loadSplitRules()
+  loadStats()
+  loadStrategy()
 })
 
 async function loadStrategyVersion() {
@@ -464,7 +511,12 @@ async function loadStrategyVersion() {
     const list = await getSplitPackageVersions()
     if (list && list.length > 0) {
       const first = list[0]
-      strategyVersion.value = { id: first.id, versionCode: first.versionCode, description: first.description }
+      strategyVersion.value = {
+        id: first.id,
+        versionCode: first.versionCode,
+        description: first.description,
+        createTime: first.createTime
+      }
     }
   } catch (e) {
     console.error('获取拆包裹策略版本失败:', e)
@@ -475,15 +527,20 @@ async function loadSplitRules() {
   try {
     const vid = strategyVersion.value.id
     const list = await getSplitPackageRules(vid)
-    splitRules.value = (list || []).map(r => ({
-      id: r.id,
-      name: r.ruleName,
-      condition: r.triggerType + (r.triggerValue ? ' ' + r.triggerValue : ''),
-      method: r.action,
-      country: '全部',
-      priority: 'P' + Math.min(5, Math.ceil(r.priority / 20)),
-      enabled: r.enabled === 1
-    }))
+    splitRules.value = (list || [])
+      // 全局策略配置单独展示，不混入规则列表
+      .filter(r => r.ruleName !== '全局拆包策略')
+      .map(r => ({
+        id: r.id,
+        name: r.ruleName,
+        condition: `${r.triggerType || ''} ${r.triggerValue || ''}`.trim(),
+        method: r.action,
+        country: '全部',
+        priority: 'P' + Math.min(5, Math.ceil((r.priority || 0) / 20) || 1),
+        // 保留原始数值，供编辑表单回填（避免把 'P1' 字符串回传后端）
+        priorityValue: r.priority || 1,
+        enabled: r.enabled === 1
+      }))
   } catch (e) {
     console.error('获取拆包裹规则失败:', e)
     splitRules.value = []

@@ -15,7 +15,7 @@
       </div>
     </div>
 
-    <!-- ===== 仓库选择 Tab（示例数据） ===== -->
+    <!-- ===== 仓库选择 Tab ===== -->
     <div class="warehouse-tabs">
       <button
         v-for="wh in warehouseOverview"
@@ -28,7 +28,7 @@
       </button>
     </div>
 
-    <!-- ===== 库存总览卡片（示例数据） ===== -->
+    <!-- ===== 库存总览卡片（真实库存数据） ===== -->
     <section class="stock-grid">
       <div v-for="wh in warehouseOverview" :key="wh.id" class="stock-card">
         <div class="stock-card-head">
@@ -56,7 +56,7 @@
 
     <!-- ===== 两列布局：仓间调拨 + 侧边面板 ===== -->
     <div class="transfer-layout">
-      <!-- 左侧：仓间调拨列表（示例数据） -->
+      <!-- 左侧：仓间调拨列表（真实调拨单） -->
       <section class="transfer-section">
         <div class="section-head">
           <h3 class="section-title">仓间调拨</h3>
@@ -82,8 +82,8 @@
             <el-table-column label="操作" min-width="130" align="center">
               <template #default="{ row }">
                 <el-button type="primary" link size="small" @click="viewTransferDetail(row)">查看详情</el-button>
-                <el-button v-if="row.status === '已到达'" type="success" link size="small" @click="confirmArrival(row)">确认入库</el-button>
-                <el-button v-if="row.status === '差异处理'" type="danger" link size="small" @click="handleDiscrepancy(row)">处理差异</el-button>
+                <el-button v-if="row.dbStatus === 'PENDING'" type="primary" link size="small" @click="approveTransfer(row)">审核通过</el-button>
+                <el-button v-if="row.dbStatus === 'IN_TRANSIT'" type="success" link size="small" @click="confirmArrival(row)">确认入库</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -92,7 +92,7 @@
 
       <!-- 右侧面板 -->
       <div class="side-panel">
-        <!-- 智能分配建议（示例数据） -->
+        <!-- 智能分配建议（真实数据） -->
         <el-card shadow="never" class="side-card">
           <div class="card-title">
             <div class="title-icon brand">
@@ -101,30 +101,30 @@
             <h4>智能分配建议</h4>
           </div>
           <p class="suggest-text">
-            基于近30天销售数据，建议从美国西仓调拨
-            <strong>200件 MILO胸背带</strong>
-            到美国东仓，预计可降低东仓缺货率 15%，优化配送时效 0.5 天。
+            基于各仓库存与调拨需求自动生成，共
+            <strong>{{ allocationSuggestions.length }}</strong> 条待处理建议。
           </p>
-          <!-- 按收货地址推荐最优仓库 + 理由 -->
-          <div v-for="(s, idx) in allocationSuggestions" :key="idx" class="suggest-item">
-            <div class="suggest-address">{{ s.address }}</div>
+          <!-- 按建议条目展示调拨路线 + 理由 -->
+          <div v-for="s in allocationSuggestions" :key="s.id" class="suggest-item">
+            <div class="suggest-address">{{ s.productName }} × {{ s.qty }}</div>
             <div class="suggest-wh">
-              推荐仓库：<span class="suggest-wh-name">{{ s.warehouse }}</span>
+              推荐路线：<span class="suggest-wh-name">{{ s.fromWarehouse }} → {{ s.toWarehouse }}</span>
             </div>
             <div class="suggest-reason">{{ s.reason }}</div>
+            <div class="suggest-actions">
+              <el-button
+                type="primary"
+                size="small"
+                style="flex: 1"
+                @click="openTransferDialog({ fromWarehouse: s.fromWarehouse, toWarehouse: s.toWarehouse, quantity: s.qty })"
+              >生成调拨单</el-button>
+              <el-button size="small" style="flex: 1" @click="applySuggestion(s)">采纳建议</el-button>
+            </div>
           </div>
-          <div class="suggest-actions">
-            <el-button
-              type="primary"
-              size="small"
-              style="flex: 1"
-              @click="openTransferDialog({ fromWarehouse: '美国西仓', toWarehouse: '美国东仓', product: 'MILO胸背带', quantity: 200 })"
-            >生成调拨单</el-button>
-            <el-button size="small" style="flex: 1" @click="ignoreSuggestion">忽略</el-button>
-          </div>
+          <div v-if="allocationSuggestions.length === 0" class="suggest-reason">暂无待处理建议</div>
         </el-card>
 
-        <!-- 本地发货统计（示例数据） -->
+        <!-- 本地发货统计（真实数据） -->
         <el-card shadow="never" class="side-card">
           <div class="card-title">
             <div class="title-icon success">
@@ -152,9 +152,9 @@
               <div class="sla-fill" :style="{ width: shippingStats.slaRate + '%' }"></div>
             </div>
           </div>
-          <!-- 各仓本地发货量 / 占比（纯 CSS 条形图，复用全局 .bar-chart 样式） -->
+          <!-- 各承运商今日发货量 / 占比（纯 CSS 条形图，复用全局 .bar-chart 样式） -->
           <div class="bar-head">
-            <span class="bar-head-label">各仓本地发货量 / 占比</span>
+            <span class="bar-head-label">各承运商今日发货量 / 占比</span>
           </div>
           <div class="bar-chart">
             <div v-for="item in shippingStats.byWarehouse" :key="item.name" class="bar-item">
@@ -162,6 +162,7 @@
               <div class="bar-fill" :style="{ height: barHeight(item.value) + '%' }"></div>
               <span class="bar-label">{{ item.name }} {{ item.ratio }}%</span>
             </div>
+            <div v-if="shippingStats.byWarehouse.length === 0" class="bar-head-label">今日暂无发货记录</div>
           </div>
           <!-- 波次拣货 / 批量打单入口 -->
           <div class="ops-row">
@@ -250,7 +251,7 @@
       </template>
     </el-dialog>
 
-    <!-- ===== 新建调拨单对话框（示例数据，前端模拟，无后端 API） ===== -->
+    <!-- ===== 新建调拨单对话框（真实提交） ===== -->
     <el-dialog v-model="transferDialogVisible" title="新建调拨单" width="560px">
       <el-form :model="transferForm" label-width="90px">
         <el-form-item label="源仓">
@@ -276,8 +277,8 @@
           </el-select>
         </el-form-item>
         <el-form-item label="商品">
-          <el-select v-model="transferForm.product" style="width: 100%">
-            <el-option v-for="p in productOptions" :key="p" :label="p" :value="p" />
+          <el-select v-model="transferForm.skuId" style="width: 100%" filterable placeholder="请选择 SKU">
+            <el-option v-for="p in productOptions" :key="p.id" :label="p.name" :value="p.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="数量">
@@ -296,57 +297,42 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Van, MagicStick, Box, ArrowRight, List, Printer } from '@element-plus/icons-vue'
-import { getOverseasWarehouse, createOverseasWarehouse, updateOverseasWarehouse, deleteOverseasWarehouse } from '../api/admin'
+import {
+  getOverseasWarehouse, createOverseasWarehouse, updateOverseasWarehouse, deleteOverseasWarehouse,
+  getWarehouseStockOverview, getWarehouseShippingStats, getInventoryTransferList,
+  getWarehouseAllocationSuggest, applyWarehouseAllocation, getInventoryList,
+  createInventoryTransfer, approveInventoryTransfer, completeInventoryTransfer
+} from '../api/admin'
 
 const pageTitle = '海外仓管理'
 
-// ==================== 示例数据（无真实 API，仅用于页面展示） ====================
+// ==================== 真实数据：仓库总览 / 调拨单 / 分配建议 / 发货统计 ====================
 
-// 仓库总览数据（示例数据）
-const warehouseOverview = ref([
-  { id: 1, name: '美国西仓', skuTypes: 1234, availableStock: 45678, inTransit: 2300 },
-  { id: 2, name: '美国东仓', skuTypes: 987, availableStock: 32100, inTransit: 1500 },
-  { id: 3, name: '英国仓', skuTypes: 456, availableStock: 12300, inTransit: 800 },
-  { id: 4, name: '德国仓', skuTypes: 321, availableStock: 8900, inTransit: 600 }
-])
+// 仓库库存总览（来自 /logistics/warehouse/stock-overview）
+const warehouseOverview = ref([])
 
-// 当前选中的仓库 Tab（示例数据，仅做视觉切换，不联动数据）
-const activeWarehouse = ref('美国西仓')
+// 当前选中的仓库 Tab
+const activeWarehouse = ref('')
 
-// 仓间调拨单列表（示例数据）
-const transferList = ref([
-  { code: 'TR-20260708-001', fromWarehouse: '美国西仓', toWarehouse: '美国东仓', product: 'MILO胸背带', quantity: 12, status: '待审核', createdAt: '2026-07-08', eta: '--' },
-  { code: 'TR-20260705-018', fromWarehouse: '美国西仓', toWarehouse: '英国仓', product: '尼龙牵引绳', quantity: 8, status: '运输中', createdAt: '2026-07-05', eta: '2026-07-15' },
-  { code: 'TR-20260701-042', fromWarehouse: '美国东仓', toWarehouse: '美国西仓', product: '自动饮水机', quantity: 5, status: '已到达', createdAt: '2026-07-01', eta: '2026-07-06' },
-  { code: 'TR-20260628-007', fromWarehouse: '英国仓', toWarehouse: '德国仓', product: '宠物零食罐', quantity: 3, status: '差异处理', createdAt: '2026-06-28', eta: '2026-07-03' }
-])
+// 仓间调拨单列表（来自 /inventory-transfer/list）
+const transferList = ref([])
 
-// 可调拨商品选项（示例数据）
-const productOptions = ['MILO胸背带', '尼龙牵引绳', '自动饮水机', '宠物零食罐']
+// 可调拨 SKU 选项（来自 /inventory/list）
+const productOptions = ref([])
 
-// 智能分配建议（示例数据：按收货地址推荐最优仓库 + 理由）
-const allocationSuggestions = [
-  { address: '纽约州 10001（美东）', warehouse: '美国东仓', reason: '收货地址位于美东区域，东仓发货可缩短配送时效约 0.5 天' },
-  { address: '加州 90001（美西）', warehouse: '美国西仓', reason: '收货地址位于美西区域，西仓库存充足且时效最优' },
-  { address: '伦敦 SW1A（英国）', warehouse: '英国仓', reason: '本地仓直发可避免跨境清关，物流成本降低约 30%' }
-]
+// 智能分配建议（来自 /logistics/warehouse/allocation-suggest）
+const allocationSuggestions = ref([])
 
-// 本地发货统计（示例数据）
+// 本地发货统计（来自 /logistics/warehouse/shipping-stats）
 const shippingStats = reactive({
-  todayPending: 45,
-  shippedToday: 120,
-  slaRate: 98,
-  // 各仓本地发货量/占比条形图数据
-  byWarehouse: [
-    { name: '美西', value: 520, ratio: 39 },
-    { name: '美东', value: 430, ratio: 32 },
-    { name: '英国', value: 210, ratio: 16 },
-    { name: '德国', value: 180, ratio: 13 }
-  ]
+  todayPending: 0,
+  shippedToday: 0,
+  slaRate: 0,
+  byWarehouse: []
 })
 
-// 条形图最大发货量，用于计算柱子高度比例
-const maxShipValue = computed(() => Math.max(...shippingStats.byWarehouse.map(item => item.value)))
+// 条形图最大发货量，用于计算柱子高度比例（空数据显示 1 避免除零）
+const maxShipValue = computed(() => Math.max(...shippingStats.byWarehouse.map(item => item.value), 1))
 
 // 计算条形图柱子高度百分比（纯 CSS 图表）
 function barHeight(value) {
@@ -360,15 +346,118 @@ function fmtNum(num) {
 
 // 调拨单状态 → el-tag 类型映射
 function statusTagType(status) {
-  const map = { 待审核: 'warning', 运输中: 'primary', 已到达: 'success', 差异处理: 'danger' }
+  const map = { 待审核: 'warning', 运输中: 'primary', 已到达: 'success', 已驳回: 'danger' }
   return map[status] || 'info'
 }
 
-// ==================== 新增区块的交互（示例数据，前端模拟） ====================
+// ==================== 数据加载 ====================
+
+// 各仓库存总览
+async function loadStockOverview() {
+  try {
+    const list = await getWarehouseStockOverview()
+    warehouseOverview.value = (list || []).map(w => ({
+      id: w.id,
+      name: w.name,
+      skuTypes: w.skuTypes || 0,
+      availableStock: w.availableStock || 0,
+      inTransit: w.inTransit || 0
+    }))
+    // 默认选中第一个仓库
+    if (!activeWarehouse.value && warehouseOverview.value.length) {
+      activeWarehouse.value = warehouseOverview.value[0].name
+    }
+  } catch (e) {
+    console.error('获取仓库库存总览失败', e)
+    warehouseOverview.value = []
+  }
+}
+
+// 仓间调拨单列表
+async function loadTransfers() {
+  try {
+    const res = await getInventoryTransferList({ page: 1, size: 10 })
+    const records = (res && (res.records || res)) || []
+    const statusMap = { PENDING: '待审核', IN_TRANSIT: '运输中', COMPLETED: '已到达', REJECTED: '已驳回' }
+    transferList.value = (Array.isArray(records) ? records : []).map(r => {
+      const dbStatus = String(r.dbStatus || r.status || '').toUpperCase()
+      return {
+        id: r.id,
+        code: 'TR' + String(r.id || '').padStart(8, '0'),
+        fromWarehouse: r.fromWarehouse || '-',
+        toWarehouse: r.toWarehouse || '-',
+        product: r.productName || '-',
+        quantity: r.quantity || 0,
+        status: statusMap[dbStatus] || '待审核',
+        dbStatus,
+        createdAt: r.createTime ? String(r.createTime).slice(0, 10) : '-',
+        eta: r.completeTime ? String(r.completeTime).slice(0, 10) : '--'
+      }
+    })
+  } catch (e) {
+    console.error('获取调拨单列表失败', e)
+    transferList.value = []
+  }
+}
+
+// 智能分配建议
+async function loadSuggestions() {
+  try {
+    const res = await getWarehouseAllocationSuggest()
+    allocationSuggestions.value = (res || [])
+      // 已采纳的建议不再展示
+      .filter(s => String(s.status || '').toUpperCase() !== 'APPLIED')
+      .map(s => ({
+      id: s.id,
+      productName: s.productName || '-',
+      fromWarehouse: s.fromWarehouse || '-',
+      toWarehouse: s.toWarehouse || '-',
+      qty: s.qty || 0,
+      reason: s.reason || '',
+      priority: s.priority,
+      status: s.status
+    }))
+  } catch (e) {
+    console.error('获取智能分配建议失败', e)
+    allocationSuggestions.value = []
+  }
+}
+
+// 本地发货统计
+async function loadShippingStats() {
+  try {
+    const res = await getWarehouseShippingStats()
+    if (res) {
+      shippingStats.todayPending = res.todayPending || 0
+      shippingStats.shippedToday = res.shippedToday || 0
+      shippingStats.slaRate = res.slaRate || 0
+      shippingStats.byWarehouse = res.byWarehouse || []
+    }
+  } catch (e) {
+    console.error('获取本地发货统计失败', e)
+  }
+}
+
+// 可调拨 SKU 选项
+async function loadProductOptions() {
+  try {
+    const res = await getInventoryList({ page: 1, size: 200 })
+    const list = (res && (res.records || res)) || []
+    productOptions.value = (Array.isArray(list) ? list : []).map(i => ({
+      id: i.id,
+      name: i.name ? `${i.name}${i.sku ? ' / ' + i.sku : ''}` : 'SKU-' + i.id
+    }))
+  } catch (e) {
+    console.error('获取可调拨商品失败', e)
+    productOptions.value = []
+  }
+}
+
+// ==================== 交互 ====================
 
 // 查看全部调拨单
 function viewAllTransfers() {
-  ElMessage.info('调拨单列表为示例数据，仅展示最近 4 条')
+  ElMessage.info('当前展示最近 10 条调拨单')
 }
 
 // 查看调拨单详情
@@ -376,33 +465,52 @@ function viewTransferDetail(row) {
   ElMessage.info(`调拨单 ${row.code}：${row.fromWarehouse} → ${row.toWarehouse}，商品 ${row.product} x ${row.quantity}`)
 }
 
-// 确认入库（已到达状态）
-function confirmArrival(row) {
-  ElMessage.success(`调拨单 ${row.code} 已确认入库（示例数据）`)
+// 审核通过（PENDING → IN_TRANSIT）
+async function approveTransfer(row) {
+  try {
+    await approveInventoryTransfer(row.id)
+    ElMessage.success(`调拨单 ${row.code} 已审核通过`)
+    await loadTransfers()
+  } catch (e) {
+    ElMessage.error('审核失败：' + (e.message || '未知错误'))
+  }
 }
 
-// 处理差异（差异处理状态）
-function handleDiscrepancy(row) {
-  ElMessage.warning(`调拨单 ${row.code} 存在数量差异，请线下核实后处理（示例数据）`)
+// 确认入库（IN_TRANSIT → COMPLETED）
+async function confirmArrival(row) {
+  try {
+    await completeInventoryTransfer(row.id)
+    ElMessage.success(`调拨单 ${row.code} 已确认入库`)
+    await loadTransfers()
+    await loadStockOverview()
+  } catch (e) {
+    ElMessage.error('确认入库失败：' + (e.message || '未知错误'))
+  }
 }
 
-// 忽略智能分配建议
-function ignoreSuggestion() {
-  ElMessage.info('已忽略该建议（示例数据）')
+// 采纳智能分配建议
+async function applySuggestion(item) {
+  try {
+    await applyWarehouseAllocation(item.id)
+    ElMessage.success('已采纳该分配建议')
+    await loadSuggestions()
+  } catch (e) {
+    ElMessage.error('采纳失败：' + (e.message || '未知错误'))
+  }
 }
 
 // 打开新建调拨单对话框，preset 为智能分配建议的预填项
 function openTransferDialog(preset = {}) {
   transferForm.fromWarehouse = preset.fromWarehouse || (warehouseOverview.value[0] && warehouseOverview.value[0].name) || ''
   transferForm.toWarehouse = preset.toWarehouse || (warehouseOverview.value[1] && warehouseOverview.value[1].name) || ''
-  transferForm.product = preset.product || productOptions[0]
+  transferForm.skuId = preset.skuId || (productOptions.value[0] && productOptions.value[0].id) || null
   transferForm.quantity = preset.quantity || 100
   transferDialogVisible.value = true
 }
 
-// 提交调拨单（前端本地模拟，无后端 API）
-function handleSaveTransfer() {
-  if (!transferForm.fromWarehouse || !transferForm.toWarehouse || !transferForm.product) {
+// 提交调拨单（真实写入 mo_inventory_transfer）
+async function handleSaveTransfer() {
+  if (!transferForm.fromWarehouse || !transferForm.toWarehouse || !transferForm.skuId) {
     ElMessage.warning('请填写完整的调拨单信息')
     return
   }
@@ -410,23 +518,20 @@ function handleSaveTransfer() {
     ElMessage.warning('源仓与目标仓不能相同')
     return
   }
-  const now = new Date()
-  const y = now.getFullYear()
-  const m = String(now.getMonth() + 1).padStart(2, '0')
-  const d = String(now.getDate()).padStart(2, '0')
-  const seq = String(transferList.value.length + 1).padStart(3, '0')
-  transferList.value.unshift({
-    code: `TR-${y}${m}${d}-${seq}`,
-    fromWarehouse: transferForm.fromWarehouse,
-    toWarehouse: transferForm.toWarehouse,
-    product: transferForm.product,
-    quantity: transferForm.quantity,
-    status: '待审核',
-    createdAt: `${y}-${m}-${d}`,
-    eta: '--'
-  })
-  transferDialogVisible.value = false
-  ElMessage.success('调拨单已创建（示例数据，未提交后端）')
+  try {
+    await createInventoryTransfer({
+      skuId: transferForm.skuId,
+      fromWarehouse: transferForm.fromWarehouse,
+      toWarehouse: transferForm.toWarehouse,
+      quantity: transferForm.quantity,
+      reason: '仓间调拨'
+    })
+    transferDialogVisible.value = false
+    ElMessage.success('调拨单已提交，等待审核')
+    await loadTransfers()
+  } catch (e) {
+    ElMessage.error('提交失败：' + (e.message || '未知错误'))
+  }
 }
 
 // ==================== 海外仓 CRUD（原有功能，保留） ====================
@@ -451,7 +556,7 @@ const transferDialogVisible = ref(false)
 const transferForm = reactive({
   fromWarehouse: '',
   toWarehouse: '',
-  product: '',
+  skuId: null,
   quantity: 100
 })
 
@@ -515,7 +620,14 @@ async function handleSave() {
     ElMessage.error('保存失败: ' + (e.message || '未知错误'))
   }
 }
-onMounted(() => loadData())
+onMounted(() => {
+  loadData()
+  loadStockOverview()
+  loadTransfers()
+  loadSuggestions()
+  loadShippingStats()
+  loadProductOptions()
+})
 </script>
 
 <style scoped>

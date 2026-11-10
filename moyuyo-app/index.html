@@ -9,11 +9,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
       // 注入构建期环境变量到全局（仅 H5）
+      // 安全：绝不注入 Consumer Secret / OAuth Client Secret 等敏感凭证（会暴露给浏览器）
       window.__MOYUYO_CONFIG__ = {
         API_BASE: '%VITE_API_BASE%',
         WP_BASE: '%VITE_WP_BASE%',
-        CONSUMER_KEY: '%VITE_CONSUMER_KEY%',
-        CONSUMER_SECRET: '%VITE_CONSUMER_SECRET%'
+        CONSUMER_KEY: '%VITE_CONSUMER_KEY%'
       }
     </script>
     <style>

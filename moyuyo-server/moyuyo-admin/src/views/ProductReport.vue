@@ -244,7 +244,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getProductAnalysisReport, getProductAnalysisList, createOrderExport } from '../api/admin'
+import { getProductAnalysisReport, getProductAnalysisList, createOrderExport, getProductReportList, handleProductReport } from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
 // ===== Tab 状态 =====
@@ -371,54 +371,35 @@ const reportTabs = [
 ]
 const activeReportTab = ref('all')
 
-// 举报数据（与设计稿一致）
-const reports = ref([
-  {
-    id: 1, productName: '进口天然有机猫粮 成猫专用', type: '虚假宣传', typeClass: 'fake-ad',
-    reason: '商品描述标注"进口天然有机"，但实际配料表含有多种人工添加剂，涉嫌虚假宣传误导消费者。',
-    reporter: '用户 1**8', time: '2026-07-07 14:30', sla: '剩余 6h 12m',
-    status: 'PENDING', statusLabel: '待处理', statusClass: 'pending',
-    suggestion: '核查商品配料表与认证证书，若描述不符应下架并整改。'
-  },
-  {
-    id: 2, productName: '宠物自动饮水机 静音循环过滤', type: '质量问题', typeClass: 'quality',
-    reason: '饮水机使用不到一周出现漏水问题，且过滤芯存在异味，怀疑材料不达标存在安全隐患。',
-    reporter: '用户 3**2', time: '2026-07-06 09:15', sla: '剩余 18h 45m',
-    status: 'PROCESSING', statusLabel: '处理中', statusClass: 'processing',
-    suggestion: '联系商家提供质检报告，安排抽检并跟踪退换货处理。'
-  },
-  {
-    id: 3, productName: 'MOYUYO联名宠物服饰 设计师限定款', type: '侵权投诉', typeClass: 'infringement',
-    reason: '该商品未经授权使用我方注册商标"MOYUYO"，且商品图片盗用官方宣传素材，严重侵犯商标权及著作权。',
-    reporter: '用户 6**5', time: '2026-07-07 18:42', sla: '剩余 2h 08m',
-    status: 'PENDING', statusLabel: '待处理', statusClass: 'pending',
-    suggestion: '核实授权文件，确认侵权后立即下架并通知商家。'
-  },
-  {
-    id: 4, productName: '进口宠物保健药品 免处方驱虫', type: '违禁品', typeClass: 'banned',
-    reason: '该商品为处方类兽药，需持兽医处方购买，商家无资质销售处方药涉嫌违规，且部分成分属于管制药物。',
-    reporter: '用户 9**1', time: '2026-07-05 11:20', sla: '',
-    status: 'DONE', statusLabel: '已完成', statusClass: 'done',
-    suggestion: '已核实为处方药违规销售，商品已下架并处罚商家。'
-  },
-  {
-    id: 5, productName: '宠物智能 GPS 定位项圈 防丢防水', type: '虚假宣传', typeClass: 'fake-ad',
-    reason: '宣传"全球精准定位"实际定位误差超过500米，且防水等级虚假标注，正常淋水即损坏。',
-    reporter: '用户 2**7', time: '2026-07-08 08:05', sla: '剩余 22h 55m',
-    status: 'PENDING', statusLabel: '待处理', statusClass: 'pending',
-    suggestion: '对定位与防水功能进行实测，虚假宣传应整改详情页并处罚。'
-  }
-])
+// 商品举报列表（来自 /product-report/list）
+const reports = ref([])
 
-// SLA 汇总统计
+// 加载商品举报
+async function loadReports() {
+  try {
+    const res = await getProductReportList()
+    reports.value = toArray(res)
+  } catch (e) {
+    console.error('加载商品举报失败:', e)
+    reports.value = []
+  }
+}
+
+// SLA 汇总统计（基于真实举报数据）
 const slaStats = computed(() => {
-  const pending = reports.value.filter(r => r.status === 'PENDING')
-  const urgent = pending.filter(r => r.sla && r.sla.includes('2h')).length
-  const emergency = pending.filter(r => r.type === '侵权投诉').length
+  const pending = reports.value.filter(r => r.status === 'PENDING' || r.status === 'PROCESSING')
+  // 24h 内需响应：剩余时间不足 24h 或已超时
+  const urgent = pending.filter(r => {
+    if (!r.sla) return false
+    if (r.sla === '已超时') return true
+    const matched = String(r.sla).match(/(\d+)\s*h/)
+    return matched ? Number(matched[1]) < 24 : false
+  }).length
+  const emergency = pending.filter(r => r.typeClass === 'infringement').length
   return {
-    urgent: Math.max(urgent, 1),
+    urgent,
     warning: pending.length,
-    emergency: Math.max(emergency, 1)
+    emergency
   }
 })
 
@@ -451,23 +432,29 @@ function handleReport(item) {
   handleVisible.value = true
 }
 
-function confirmHandle() {
+async function confirmHandle() {
   if (!handleResult.value) {
     ElMessage.warning('请选择处理结果')
     return
   }
-  const item = currentReport.value
-  item.status = 'DONE'
-  item.statusLabel = '已完成'
-  item.statusClass = 'done'
-  item.sla = ''
-  item.reason += '（已处理：' + handleResult.value + (handleComment.value ? '，' + handleComment.value : '') + '）'
-  handleVisible.value = false
-  detailVisible.value = false
-  ElMessage.success('举报已处理完成')
+  try {
+    await handleProductReport(currentReport.value.id, {
+      result: handleResult.value,
+      comment: handleComment.value
+    })
+    ElMessage.success('举报已处理完成')
+    handleVisible.value = false
+    detailVisible.value = false
+    await loadReports()
+  } catch (e) {
+    ElMessage.error('处理失败：' + (e.message || '未知错误'))
+  }
 }
 
-onMounted(() => { loadData() })
+onMounted(() => {
+  loadData()
+  loadReports()
+})
 </script>
 
 <style scoped>

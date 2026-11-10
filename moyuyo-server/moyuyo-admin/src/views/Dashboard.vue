@@ -204,7 +204,7 @@ function handleQuickAction(action) {
 }
 
 onMounted(() => {
-  if (!localStorage.getItem(TOKEN_KEY)) {
+  if (!sessionStorage.getItem(TOKEN_KEY)) {
     router.push('/login')
     return
   }

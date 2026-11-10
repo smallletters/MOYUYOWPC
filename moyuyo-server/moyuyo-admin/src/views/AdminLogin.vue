@@ -105,7 +105,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { login } from '../api/auth'
@@ -128,6 +128,20 @@ const loading = ref(false)
 // 账号被锁倒计时（秒）。由后端 423 响应触发；为 0 表示未锁定
 const lockRemaining = ref(0)
 let lockTimer = null
+
+// "记住我"：登录页打开时回填上次记住的邮箱（token 不再持久化，仅记住邮箱）
+onMounted(() => {
+  const remembered = localStorage.getItem('admin_email')
+  if (remembered) {
+    form.email = remembered
+    form.remember = true
+    return
+  }
+  const sessionEmail = sessionStorage.getItem('admin_email')
+  if (sessionEmail) {
+    form.email = sessionEmail
+  }
+})
 
 // 邮箱格式校验
 const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
@@ -156,10 +170,11 @@ async function handleLogin() {
   try {
     const res = await login({ email: form.email, password: form.password })
     if (res && res.token) {
-      // 始终写入 localStorage，确保 router 守卫与请求拦截器都能读到 token；
-      // sessionStorage 写入一份用于兼容"非记住我"场景的关闭浏览器失效行为
-      localStorage.setItem('admin_token', res.token)
+      // 安全：管理端 token 仅写入 sessionStorage（关闭标签页即失效），
+      // 不再持久化到 localStorage，降低 XSS 窃取 token 后的长期残留风险；
+      // "记住我"现在仅记住登录邮箱，不持久化 token。
       sessionStorage.setItem('admin_token', res.token)
+      localStorage.removeItem('admin_token')
       if (form.remember) {
         localStorage.setItem('admin_email', form.email)
       } else {

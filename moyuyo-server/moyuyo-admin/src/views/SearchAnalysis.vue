@@ -93,7 +93,7 @@
           </el-table-column>
         </el-table>
         <div class="block-footer">
-          以上搜索词在近 7 天内无任何搜索结果，建议补充相关商品以提升用户搜索体验。
+          以上搜索词在历史搜索记录中无任何结果，建议补充相关商品以提升用户搜索体验。
         </div>
       </el-card>
 
@@ -163,47 +163,17 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getSearchAnalysis } from '../api/admin'
+import { getSearchAnalysis, getZeroResultKeywords } from '../api/admin'
 import api from '../api'
 
 const kpi = ref({ totalSearches: '—', searchUsers: '—', noResultRate: '—', avgSearches: '—' })
 const tableData = ref([])
 
-// ===== 零结果搜索词（示例数据：后端暂无对应接口，结构固定便于后续接入） =====
-const zeroResultList = ref([
-  { keyword: 'hypoallergenic dog shampoo', count: 89 },
-  { keyword: 'large breed dog harness', count: 67 },
-  { keyword: 'eco-friendly cat litter', count: 45 },
-  { keyword: 'pet stroller for cats', count: 38 },
-  { keyword: 'grain free senior dog food', count: 32 },
-  { keyword: 'waterproof dog booties', count: 21 }
-])
+// ===== 零结果搜索词（来自 /analysis/search/zero-result 真实聚合） =====
+const zeroResultList = ref([])
 
-// ===== 搜索词云（示例数据：基于热门搜索词热度模拟权重，weight 范围 0~100） =====
-const cloudWords = ref([
-  { word: 'dog harness', weight: 100 },
-  { word: 'cat shampoo', weight: 88 },
-  { word: 'pet food', weight: 78 },
-  { word: 'dog leash', weight: 70 },
-  { word: 'cat toy', weight: 62 },
-  { word: 'pet bed', weight: 55 },
-  { word: 'dog collar', weight: 50 },
-  { word: 'organic pet treats', weight: 42 },
-  { word: 'pet carrier', weight: 36 },
-  { word: 'cat tree', weight: 30 },
-  { word: 'dog food', weight: 26 },
-  { word: 'cat litter', weight: 22 },
-  { word: 'pet supplements', weight: 18 },
-  { word: 'dog grooming', weight: 15 },
-  { word: 'pet bowl', weight: 12 },
-  { word: 'cat harness', weight: 10 },
-  { word: 'pet sweater', weight: 8 },
-  { word: 'dog jacket', weight: 6 },
-  { word: 'fish tank', weight: 5 },
-  { word: 'bird cage', weight: 4 },
-  { word: 'reptile heater', weight: 3 },
-  { word: 'hamster wheel', weight: 2 }
-])
+// ===== 搜索词云（基于热门搜索词的真实词频归一化权重） =====
+const cloudWords = ref([])
 
 async function loadData() {
   try {
@@ -225,9 +195,26 @@ async function loadData() {
         userCount: '—',
         conversionRate: '—'
       }))
+      // 词云权重按最高搜索次数归一化到 0~100
+      const maxCount = Math.max(...keywords.map(k => Number(k.count || 0)), 1)
+      cloudWords.value = keywords.slice(0, 20).map(k => ({
+        word: k.keyword,
+        weight: Math.round((Number(k.count || 0) / maxCount) * 100)
+      }))
     }
   } catch (err) {
     console.error('获取搜索分析数据失败', err)
+  }
+  // 零结果搜索词单独加载，失败不影响主 KPI
+  try {
+    const list = await getZeroResultKeywords(10)
+    zeroResultList.value = (list || []).map(item => ({
+      keyword: item.keyword,
+      count: Number(item.count || 0)
+    }))
+  } catch (err) {
+    console.error('获取零结果搜索词失败', err)
+    zeroResultList.value = []
   }
 }
 
@@ -259,8 +246,10 @@ async function handleSuggest(row, action) {
   try {
     await api.post('/analysis/search/suggest/resolve', { keyword: row.keyword })
     ElMessage.success('已标记已处理：' + row.keyword)
+    // 刷新后该关键词会被后端排除
+    await loadData()
   } catch (e) {
-    ElMessage.success('已标记已处理：' + row.keyword + '（本地模式）')
+    ElMessage.error('标记失败：' + (e.message || '未知错误'))
   }
 }
 
@@ -281,8 +270,7 @@ async function submitSourcing() {
     ElMessage.success('已发起选品需求：' + suggestKeyword.value)
     suggestDialogVisible.value = false
   } catch (e) {
-    ElMessage.success('已发起选品需求（本地模式）：' + suggestKeyword.value)
-    suggestDialogVisible.value = false
+    ElMessage.error('发起选品需求失败：' + (e.message || '未知错误'))
   }
 }
 

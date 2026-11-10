@@ -26,7 +26,7 @@
     AND o.delete_status = 0
     GROUP BY o.user_id, u.id, u.nickname
     ORDER BY mAmount DESC
-    LIMIT 50
+    LIMIT 5000
   </select>
 
   <!-- 漏斗分析：最近 N 天内的下单与支付独立用户数 -->

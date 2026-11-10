@@ -40,7 +40,7 @@
           <h3>用户群组矩阵</h3>
           <span class="section-sub">按 R/F/M 三维高低划分 8 个用户群组，点击格子筛选下方群组用户</span>
         </div>
-        <span class="section-meta">总用户 15,382 人 | 总 GMV $1,280,000</span>
+        <span class="section-meta">总用户 {{ summary.totalUsers }} 人 | 总 GMV ${{ fmtMoney(summary.totalGmv) }}</span>
       </div>
       <div class="matrix-blocks">
         <!-- R 高组与 R 低组两块矩阵 -->
@@ -79,7 +79,7 @@
           </div>
         </div>
       </div>
-      <div class="matrix-note">注：矩阵统计数据为示例数据，待后端 RFM 群组统计接口接入后替换。</div>
+      <div class="matrix-note">注：按 R/F/M 三维值的三分位阈值划分群组，数据来自订单实时聚合。</div>
     </el-card>
 
     <!-- ===== 群组用户详情 + LTV 预测（并排） ===== -->
@@ -129,7 +129,7 @@
             </template>
           </el-table-column>
         </el-table>
-        <div class="table-note">注：群组用户列表为示例数据，待后端按群组查询接口接入后替换。</div>
+        <div class="table-note">注：展示当前群组下的真实用户，按累计消费金额倒序。</div>
       </el-card>
 
       <!-- LTV 预测（新增：纯 CSS 条形图 + 说明） -->
@@ -140,17 +140,17 @@
             <h3>LTV 预测</h3>
           </div>
           <div class="ltv-hero">
-            <div class="ltv-hero-label">平均 LTV</div>
-            <div class="ltv-hero-value">$186</div>
-            <div class="ltv-hero-sub">全量用户生命周期价值均值（示例数据）</div>
+            <div class="ltv-hero-label">平均消费</div>
+            <div class="ltv-hero-value">${{ fmtMoney(summary.avgSpend) }}</div>
+            <div class="ltv-hero-sub">全量用户累计消费均值（真实数据）</div>
           </div>
           <div class="ltv-cac">
-            <div class="ltv-hero-label">LTV / CAC 比值</div>
+            <div class="ltv-hero-label">平均购买频次</div>
             <div class="ltv-cac-row">
-              <span class="ltv-cac-value">3.2</span>
-              <span class="ltv-cac-health">健康</span>
+              <span class="ltv-cac-value">{{ summary.avgBuyCount }}</span>
+              <span class="ltv-cac-health">次/人</span>
             </div>
-            <div class="ltv-hero-sub">行业基准 3.0+</div>
+            <div class="ltv-hero-sub">全量用户平均下单次数</div>
           </div>
         </el-card>
         <el-card shadow="never" class="ltv-card">
@@ -159,7 +159,7 @@
             <h3>分群组 LTV</h3>
           </div>
           <div class="ltv-bar-list">
-            <div v-for="item in LTV_DATA" :key="item.name" class="ltv-bar-row">
+            <div v-for="item in ltvData" :key="item.name" class="ltv-bar-row">
               <span class="ltv-bar-name">{{ item.name }}</span>
               <div class="ltv-bar-track">
                 <div class="ltv-bar-fill" :style="{ width: barWidth(item.value) + '%', background: item.color }"></div>
@@ -169,7 +169,7 @@
           </div>
           <div class="ltv-note">
             <p>LTV（生命周期价值）≈ 平均客单价 × 年均购买频次 × 平均留存年数，用于评估各群组长期收益潜力。</p>
-            <p>以上为示例数据，请以实际结算数据为准。</p>
+            <p>当前条形图展示各群组人均累计消费金额，数据来自订单实时聚合。</p>
           </div>
         </el-card>
       </div>
@@ -264,12 +264,16 @@ async function loadData() {
         mValue: item.mAmount || 0,
         level: item.rfmLevel || ''
       }))
+      // 用真实数据聚合 8 个群组、用户明细与概览指标
+      calcGroups(list)
     } else {
       kpi.value = { avgR: '—', avgF: '—', avgM: '—' }
       tableData.value = []
+      calcGroups([])
     }
   } catch (err) {
     console.error('获取RFM数据失败', err)
+    calcGroups([])
   }
 }
 
@@ -287,17 +291,17 @@ function handleEdit(row) {
 
 onMounted(() => loadData())
 
-// ===== 新增：用户群组矩阵（示例数据，标注示例数据注释） =====
-// 示例数据：8 个 RFM 群组的统计信息（rHigh/fHigh/mHigh 标记各维度高低，用于矩阵布局与分色）
-const GROUP_META = [
-  { name: '重要价值', rHigh: true, fHigh: true, mHigh: true, count: 1234, pct: '8%', gmvPct: 35, tone: 'success' },
-  { name: '重要发展', rHigh: true, fHigh: false, mHigh: true, count: 2567, pct: '16%', gmvPct: 22, tone: 'primary' },
-  { name: '重要保持', rHigh: true, fHigh: true, mHigh: false, count: 1890, pct: '12%', gmvPct: 18, tone: 'primary' },
-  { name: '重要挽留', rHigh: true, fHigh: false, mHigh: false, count: 567, pct: '4%', gmvPct: 8, tone: 'error' },
-  { name: '一般价值', rHigh: false, fHigh: true, mHigh: true, count: 3456, pct: '22%', gmvPct: 10, tone: 'gray' },
-  { name: '一般发展', rHigh: false, fHigh: false, mHigh: true, count: 2100, pct: '13%', gmvPct: 4, tone: 'gray' },
-  { name: '一般保持', rHigh: false, fHigh: true, mHigh: false, count: 1678, pct: '11%', gmvPct: 2, tone: 'gray' },
-  { name: '一般挽留', rHigh: false, fHigh: false, mHigh: false, count: 890, pct: '6%', gmvPct: 1, tone: 'error' }
+// ===== 用户群组矩阵：基于真实 RFM 数据按三分位阈值划分 =====
+// 8 个群组的维度组合定义（rHigh/fHigh/mHigh 表示该维度是否高于阈值）
+const GROUP_DEFS = [
+  { name: '重要价值', rHigh: true, fHigh: true, mHigh: true, tone: 'success' },
+  { name: '重要发展', rHigh: true, fHigh: false, mHigh: true, tone: 'primary' },
+  { name: '重要保持', rHigh: true, fHigh: true, mHigh: false, tone: 'primary' },
+  { name: '重要挽留', rHigh: true, fHigh: false, mHigh: false, tone: 'error' },
+  { name: '一般价值', rHigh: false, fHigh: true, mHigh: true, tone: 'gray' },
+  { name: '一般发展', rHigh: false, fHigh: false, mHigh: true, tone: 'gray' },
+  { name: '一般保持', rHigh: false, fHigh: true, mHigh: false, tone: 'gray' },
+  { name: '一般挽留', rHigh: false, fHigh: false, mHigh: false, tone: 'error' }
 ]
 
 // 群组名称 → 矩阵/徽章色调映射
@@ -317,21 +321,96 @@ function groupToneOf(name) {
   return GROUP_TONE[name] || 'gray'
 }
 
-// 当前选中的群组（默认选中高价值群组）
+// 群组统计（由真实用户数据计算填充）
+const groupMeta = ref(GROUP_DEFS.map(g => ({ ...g, count: 0, gmv: 0, pct: '0%', gmvPct: 0 })))
+// 全量真实用户（用于群组用户列表）
+const allUsers = ref([])
+// 概览指标（真实数据）
+const summary = ref({ totalUsers: 0, totalGmv: 0, avgSpend: 0, avgBuyCount: 0 })
+
+// 取排序数组的百分位值
+function percentile(sorted, pct) {
+  if (!sorted.length) return 0
+  const idx = Math.min(Math.floor((sorted.length * pct) / 100), sorted.length - 1)
+  return sorted[idx]
+}
+
+// 金额格式化（千分位 + 两位小数）
+function fmtMoney(value) {
+  return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+}
+
+// 根据真实用户列表计算 8 个群组统计与用户归属
+function calcGroups(list) {
+  const rValues = list.map(u => Number(u.rDays || 0)).sort((a, b) => a - b)
+  const fValues = list.map(u => Number(u.fCount || 0)).sort((a, b) => a - b)
+  const mValues = list.map(u => Number(u.mAmount || 0)).sort((a, b) => a - b)
+  // R 越小越好，取 33 分位；F/M 越大越好，取 66 分位（与后端 RFM 评分口径一致）
+  const rThreshold = percentile(rValues, 33)
+  const fThreshold = percentile(fValues, 66)
+  const mThreshold = percentile(mValues, 66)
+
+  const stats = GROUP_DEFS.map(g => ({ ...g, count: 0, gmv: 0 }))
+  const totalGmv = mValues.reduce((sum, v) => sum + v, 0)
+
+  const users = list.map((item) => {
+    const rDays = Number(item.rDays || 0)
+    const fCount = Number(item.fCount || 0)
+    const mAmount = Number(item.mAmount || 0)
+    const rHigh = rDays <= rThreshold
+    const fHigh = fCount >= fThreshold
+    const mHigh = mAmount >= mThreshold
+    const def = GROUP_DEFS.find(g => g.rHigh === rHigh && g.fHigh === fHigh && g.mHigh === mHigh) || GROUP_DEFS[7]
+    const target = stats.find(s => s.name === def.name)
+    if (target) {
+      target.count += 1
+      target.gmv += mAmount
+    }
+    return {
+      id: item.userId || '-',
+      name: item.customerName || '匿名用户',
+      group: def.name,
+      // 1~10 分制展示，映射后端 1/3/5 分档
+      rScore: rHigh ? (rDays <= rThreshold / 2 ? 10 : 6) : 2,
+      fScore: fHigh ? 10 : (fCount > 0 ? 6 : 2),
+      mScore: mHigh ? 10 : 2,
+      lastBuy: rDays + ' 天前',
+      buyCount: fCount,
+      totalSpend: '$' + fmtMoney(mAmount)
+    }
+  })
+
+  groupMeta.value = stats.map(s => ({
+    ...s,
+    pct: list.length ? ((s.count / list.length) * 100).toFixed(1) + '%' : '0%',
+    gmvPct: totalGmv > 0 ? Math.round((s.gmv / totalGmv) * 100) : 0
+  }))
+  allUsers.value = users
+  summary.value = {
+    totalUsers: list.length,
+    totalGmv,
+    avgSpend: list.length ? Math.round(totalGmv / list.length) : 0,
+    avgBuyCount: list.length
+      ? (list.reduce((sum, u) => sum + Number(u.fCount || 0), 0) / list.length).toFixed(1)
+      : '0.0'
+  }
+}
+
+// 当前选中的群组（默认选中重要价值）
 const selectedGroup = ref('重要价值')
 const groupTone = computed(() => groupToneOf(selectedGroup.value))
 
 // 按 R 维度分组矩阵格子：R 高组 / R 低组，每组内按 M 高 / M 低分行，行内按 F 高 / F 低分列
 const matrixGroups = computed(() => ({
   rHigh: {
-    label: 'R 高 · 近 30 天有购买',
-    mHigh: GROUP_META.filter((g) => g.rHigh && g.mHigh),
-    mLow: GROUP_META.filter((g) => g.rHigh && !g.mHigh)
+    label: 'R 高 · 最近有购买',
+    mHigh: groupMeta.value.filter((g) => g.rHigh && g.mHigh),
+    mLow: groupMeta.value.filter((g) => g.rHigh && !g.mHigh)
   },
   rLow: {
-    label: 'R 低 · 超 30 天未购买',
-    mHigh: GROUP_META.filter((g) => !g.rHigh && g.mHigh),
-    mLow: GROUP_META.filter((g) => !g.rHigh && !g.mHigh)
+    label: 'R 低 · 长期未购买',
+    mHigh: groupMeta.value.filter((g) => !g.rHigh && g.mHigh),
+    mLow: groupMeta.value.filter((g) => !g.rHigh && !g.mHigh)
   }
 }))
 
@@ -340,30 +419,9 @@ function selectGroup(name) {
   selectedGroup.value = name
 }
 
-// ===== 新增：群组用户详情（示例数据，标注示例数据注释） =====
-// 示例数据：各群组用户列表（无真实按群组查询接口，展示用示例数据）
-const SAMPLE_USERS = [
-  { id: 'U-100234', name: 'Sarah Johnson', group: '重要价值', rScore: 9.2, fScore: 8.5, mScore: 9.8, lastBuy: '2 天前', buyCount: 28, totalSpend: '$2,450' },
-  { id: 'U-100891', name: 'Mike Chen', group: '重要价值', rScore: 8.7, fScore: 7.3, mScore: 9.1, lastBuy: '5 天前', buyCount: 22, totalSpend: '$1,890' },
-  { id: 'U-101456', name: 'Emily Davis', group: '重要价值', rScore: 7.5, fScore: 6.8, mScore: 8.4, lastBuy: '8 天前', buyCount: 19, totalSpend: '$1,560' },
-  { id: 'U-101001', name: 'Chris Wong', group: '重要发展', rScore: 8.1, fScore: 4.6, mScore: 8.9, lastBuy: '6 天前', buyCount: 6, totalSpend: '$1,240' },
-  { id: 'U-101309', name: 'Anna Kim', group: '重要发展', rScore: 7.8, fScore: 4.1, mScore: 8.2, lastBuy: '12 天前', buyCount: 5, totalSpend: '$1,080' },
-  { id: 'U-102014', name: 'David Li', group: '重要保持', rScore: 6.9, fScore: 8.8, mScore: 5.6, lastBuy: '20 天前', buyCount: 24, totalSpend: '$860' },
-  { id: 'U-102157', name: 'Maria Garcia', group: '重要保持', rScore: 6.4, fScore: 8.1, mScore: 5.2, lastBuy: '26 天前', buyCount: 21, totalSpend: '$790' },
-  { id: 'U-102400', name: 'Tom Nguyen', group: '重要挽留', rScore: 5.8, fScore: 3.2, mScore: 6.1, lastBuy: '45 天前', buyCount: 4, totalSpend: '$520' },
-  { id: 'U-102655', name: 'Lisa Brown', group: '重要挽留', rScore: 5.1, fScore: 2.8, mScore: 5.7, lastBuy: '60 天前', buyCount: 3, totalSpend: '$430' },
-  { id: 'U-103001', name: 'Kevin Zhang', group: '一般价值', rScore: 4.8, fScore: 7.6, mScore: 6.3, lastBuy: '35 天前', buyCount: 17, totalSpend: '$680' },
-  { id: 'U-103220', name: 'Nina Patel', group: '一般价值', rScore: 4.2, fScore: 7.1, mScore: 5.9, lastBuy: '40 天前', buyCount: 15, totalSpend: '$590' },
-  { id: 'U-103488', name: 'Jack Wilson', group: '一般发展', rScore: 4.5, fScore: 2.4, mScore: 6.8, lastBuy: '38 天前', buyCount: 3, totalSpend: '$460' },
-  { id: 'U-103777', name: 'Amy Taylor', group: '一般发展', rScore: 3.9, fScore: 2.1, mScore: 6.2, lastBuy: '42 天前', buyCount: 2, totalSpend: '$380' },
-  { id: 'U-104001', name: 'Ryan Moore', group: '一般保持', rScore: 3.6, fScore: 6.4, mScore: 3.8, lastBuy: '70 天前', buyCount: 13, totalSpend: '$290' },
-  { id: 'U-104300', name: 'Grace Chen', group: '一般保持', rScore: 3.1, fScore: 5.9, mScore: 3.4, lastBuy: '85 天前', buyCount: 11, totalSpend: '$240' },
-  { id: 'U-104512', name: 'Sam Rivera', group: '一般挽留', rScore: 2.8, fScore: 1.6, mScore: 3.1, lastBuy: '120 天前', buyCount: 2, totalSpend: '$180' },
-  { id: 'U-104890', name: 'Olivia Park', group: '一般挽留', rScore: 2.2, fScore: 1.2, mScore: 2.6, lastBuy: '150 天前', buyCount: 1, totalSpend: '$120' }
-]
-
-// 按当前选中群组过滤出详情列表
-const filteredUsers = computed(() => SAMPLE_USERS.filter((u) => u.group === selectedGroup.value))
+// ===== 群组用户详情：来自真实订单 RFM 数据 =====
+// 按当前选中群组过滤出详情列表（已按累计消费倒序）
+const filteredUsers = computed(() => allUsers.value.filter((u) => u.group === selectedGroup.value))
 
 // 得分徽章色调：≥7 绿 / ≥4 蓝 / 其余橙
 function scoreTone(score) {
@@ -393,8 +451,8 @@ async function confirmExport() {
     URL.revokeObjectURL(url)
     ElMessage.success('已导出 RFM 报表')
   } catch (e) {
-    // 本地降级：从当前 segments 导出 CSV
-    const rows = segments.map(s => ({ segment: s.name, count: s.count, percentage: s.percent }))
+    // 本地降级：从当前真实群组统计导出 CSV
+    const rows = groupMeta.value.map(s => ({ segment: s.name, count: s.count, percentage: s.pct }))
     const csv = [
       '分层,人数,占比',
       ...rows.map(r => [r.segment, r.count, r.percentage].join(','))
@@ -412,25 +470,31 @@ async function confirmExport() {
   }
 }
 
-// ===== 新增：LTV 预测（示例数据，标注示例数据注释） =====
-// 示例数据：各群组人均 LTV（生命周期价值，单位美元），颜色对应群组色调
-const LTV_DATA = [
-  { name: '重要价值', value: 520, color: 'var(--state-success)' },
-  { name: '重要发展', value: 245, color: 'var(--primary)' },
-  { name: '重要保持', value: 198, color: 'var(--primary)' },
-  { name: '重要挽留', value: 88, color: 'var(--state-error)' },
-  { name: '一般价值', value: 86, color: 'var(--text-500)' },
-  { name: '一般发展', value: 52, color: 'var(--text-400)' },
-  { name: '一般保持', value: 41, color: 'var(--text-400)' },
-  { name: '一般挽留', value: 24, color: 'var(--state-error)' }
-]
+// ===== 分群组人均消费（真实数据派生） =====
+// 各群组人均累计消费金额，颜色对应群组色调
+const GROUP_COLOR = {
+  '重要价值': 'var(--state-success)',
+  '重要发展': 'var(--primary)',
+  '重要保持': 'var(--primary)',
+  '重要挽留': 'var(--state-error)',
+  '一般价值': 'var(--text-500)',
+  '一般发展': 'var(--text-400)',
+  '一般保持': 'var(--text-400)',
+  '一般挽留': 'var(--state-error)'
+}
 
-// 条形图最大基准值（取最大群组 LTV），用于计算条宽百分比
-const ltvMax = Math.max(...LTV_DATA.map((item) => item.value))
+const ltvData = computed(() => groupMeta.value.map((g) => ({
+  name: g.name,
+  value: g.count > 0 ? Math.round(g.gmv / g.count) : 0,
+  color: GROUP_COLOR[g.name] || 'var(--text-400)'
+})))
+
+// 条形图最大基准值（取最大群组人均消费），用于计算条宽百分比
+const ltvMax = computed(() => Math.max(...ltvData.value.map((item) => item.value), 1))
 
 // 计算 LTV 条形宽度百分比
 function barWidth(value) {
-  return Math.round((value / ltvMax) * 100)
+  return Math.round((value / ltvMax.value) * 100)
 }
 </script>
 

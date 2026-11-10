@@ -21,17 +21,17 @@
         <div class="kpi-card">
           <span class="kpi-label">问卷回收率</span>
           <span class="kpi-value">{{ surveyKpi.rate }}</span>
-          <span class="kpi-trend up">+3% 较上周</span>
+          <span class="kpi-trend up">近30天完成订单口径</span>
         </div>
         <div class="kpi-card">
           <span class="kpi-label">平均满意度</span>
           <span class="kpi-value">{{ kpi.avgScore }}</span>
-          <span class="kpi-trend up">+0.2 较上周</span>
+          <span class="kpi-trend up">实时统计</span>
         </div>
         <div class="kpi-card">
           <span class="kpi-label">低分预警数</span>
           <span class="kpi-value danger">{{ surveyKpi.lowScore }}</span>
-          <span class="kpi-trend down">+3 较上周</span>
+          <span class="kpi-trend down">近30天评分≤3</span>
         </div>
       </div>
     </section>
@@ -43,12 +43,12 @@
       </div>
       <div class="admin-card">
         <!-- 触发时机开关 -->
-        <div v-for="rule in triggerRules" :key="rule.label" class="rule-item">
+        <div v-for="rule in triggerRules" :key="rule.id" class="rule-item">
           <div>
             <div class="rule-label">{{ rule.label }}</div>
             <div class="rule-desc">{{ rule.desc }}</div>
           </div>
-          <el-switch v-model="rule.enabled" />
+          <el-switch v-model="rule.enabled" @change="onRuleToggle(rule)" />
         </div>
         <!-- 触发延迟 -->
         <div class="rule-item rule-column">
@@ -58,7 +58,7 @@
               <div class="rule-desc">事件发生后等待多久发送问卷</div>
             </div>
             <div class="rule-row-inline">
-              <el-input-number v-model="delayHours" :min="1" :max="168" size="small" controls-position="right" />
+              <el-input-number v-model="delayHours" :min="1" :max="168" size="small" controls-position="right" @change="saveSettings" />
               <span class="rule-unit">小时后</span>
             </div>
           </div>
@@ -92,7 +92,7 @@
         <el-link type="primary" :underline="false" @click="onViewAllTemplates">查看全部</el-link>
       </div>
       <div class="admin-card">
-        <div v-for="tpl in surveyTemplates" :key="tpl.name" class="template-row">
+        <div v-for="tpl in surveyTemplates" :key="tpl.id" class="template-row">
           <div class="template-top">
             <div>
               <div class="template-name">{{ tpl.name }}</div>
@@ -345,7 +345,12 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getSatisfactionStats, getSatisfactionList, createSatisfactionSurvey, replySatisfactionSurvey } from '../api/admin'
+import {
+  getSatisfactionStats, getSatisfactionList, createSatisfactionSurvey, replySatisfactionSurvey,
+  getSatisfactionTemplates, updateSatisfactionTemplate, getSatisfactionRules,
+  toggleSatisfactionRule, saveSatisfactionRuleSettings, getSatisfactionTrend,
+  getSatisfactionLowScore, getSatisfactionOverview
+} from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
 const rateColors = ['#f56c6c', '#e6a23c', '#5cb87a', '#1989fa', '#f59e0b']
@@ -354,91 +359,136 @@ const rateColors = ['#f56c6c', '#e6a23c', '#5cb87a', '#1989fa', '#f59e0b']
 const kpi = ref({ avgScore: '—', totalCount: '—' })
 const tableData = ref([])
 
-// 示例数据：调研概览补充指标（回收率 / 低分预警数暂无真实 API，演示用）
-const surveyKpi = reactive({ rate: '78%', lowScore: 12 })
+// ---- 真实 API：调研概览补充指标 ----
+const surveyKpi = reactive({ rate: '0%', lowScore: 0, surveyCount: 0, completedOrders: 0 })
 
-// 示例数据：调研触发规则（无真实 API，仅前端交互状态）
-const triggerRules = ref([
-  { label: '订单完成后', desc: '用户确认收货后触发调研', enabled: true },
-  { label: '客服关闭后', desc: '客服工单完结后触发调研', enabled: true },
-  { label: '退款完成后', desc: '退款到账后触发调研', enabled: false }
-])
+// 调研触发规则（来自 /satisfaction/rules）
+const triggerRules = ref([])
 const delayHours = ref(24)
 const channelOptions = ['App 内', '邮件', '短信']
-const selectedChannels = ref(['App 内', '邮件'])
+const selectedChannels = ref([])
 
-// 示例数据：问卷模板列表（无真实 API）
-const surveyTemplates = ref([
-  { name: '订单满意度调研', desc: '订单完成后评估购物体验', questions: 8, minutes: 2, status: 'active', statusText: '使用中' },
-  { name: '客服满意度调研', desc: '客服会话结束后评估服务', questions: 5, minutes: 1, status: 'active', statusText: '使用中' },
-  { name: '退款体验调研', desc: '退款完成后了解用户反馈', questions: 6, minutes: 1.5, status: 'disabled', statusText: '已停用' },
-  { name: '物流体验调研', desc: '评估配送时效与包裹完好性', questions: 4, minutes: 1, status: 'draft', statusText: '草稿' }
-])
+// 问卷模板列表（来自 /satisfaction/templates）
+const surveyTemplates = ref([])
 
-// 示例数据：近 30 天满意度趋势（无真实 API，固定公式生成，保证每次渲染一致）
-const trendData = Array.from({ length: 30 }, (_, i) => {
-  const d = new Date()
-  d.setDate(d.getDate() - (29 - i))
-  return {
-    date: `${d.getMonth() + 1}/${d.getDate()}`,
-    score: Number((4.1 + Math.sin(i / 3) * 0.4).toFixed(1)),
-    count: 80 + Math.round(Math.sin(i / 2.5) * 30 + i * 2)
-  }
-})
-// 回收量最大值，用于柱状图高度归一化
-const MAX_COUNT = Math.max(...trendData.map(t => t.count))
+// 近 30 天满意度趋势（来自 /satisfaction/trend）
+const trendData = ref([])
+
+// 趋势图最大值与坐标（随真实数据变化）
+const MAX_COUNT = computed(() => Math.max(...trendData.value.map(t => t.count), 1))
 
 // 柱状图高度（百分比，基于最大值）
 function barHeight(item) {
-  return ((item.count / MAX_COUNT) * 100).toFixed(1) + '%'
+  return ((item.count / MAX_COUNT.value) * 100).toFixed(1) + '%'
 }
 
 // SVG 折线坐标（viewBox 0 0 340 150，分数 5.0 对应顶部）
-const linePoints = trendData.map((item, i) => {
-  const x = (i / (trendData.length - 1)) * 340
-  const y = (5 - item.score) * 26 + 8
-  return `${x.toFixed(1)},${y.toFixed(1)}`
-}).join(' ')
+const linePoints = computed(() => {
+  const list = trendData.value
+  if (list.length < 2) return ''
+  return list.map((item, i) => {
+    const x = (i / (list.length - 1)) * 340
+    const y = (5 - Number(item.score || 0)) * 26 + 8
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+})
 
 // X 轴刻度：取首、1/4、1/2、3/4、末 五个日期
 const axisLabels = computed(() => {
-  const n = trendData.length
-  return [0, Math.floor(n / 4), Math.floor(n / 2), Math.floor(n * 3 / 4), n - 1].map(i => trendData[i].date)
+  const list = trendData.value
+  const n = list.length
+  if (!n) return []
+  return [0, Math.floor(n / 4), Math.floor(n / 2), Math.floor(n * 3 / 4), n - 1].map(i => list[i].date)
 })
 
-// 示例数据：最新低分反馈（无真实 API）
-const lowScoreFeedbacks = ref([
-  {
-    id: 1,
-    user: '138****5621',
-    time: '2026-07-07 14:23',
-    score: 2,
-    content: '发货速度太慢，等了快一周才收到。包装也有点破损，希望能改善物流合作方。',
-    source: '订单 #2026070103847',
-    status: 'pending',
-    statusText: '待跟进'
-  },
-  {
-    id: 2,
-    user: '159****8834',
-    time: '2026-07-06 09:15',
-    score: 3,
-    content: '客服回复速度太慢，在线等了半个小时才有人应答。问题也没有得到有效解决。',
-    source: '客服会话 #CS2026070512',
-    status: 'active',
-    statusText: '已跟进'
-  },
-  {
-    id: 3,
-    user: '176****2290',
-    time: '2026-07-05 18:47',
-    score: 1,
-    content: '商品与描述不符，色差很大。申请退货后退款流程过于复杂，体验很差。',
-    source: '订单 #2026070206153',
-    status: 'pending',
-    statusText: '待跟进'
+// 最新低分反馈（来自 /satisfaction/low-score）
+const lowScoreFeedbacks = ref([])
+
+// ---- 加载调研概览补充指标 ----
+async function loadOverview() {
+  try {
+    const res = await getSatisfactionOverview()
+    if (res) {
+      surveyKpi.rate = (res.recycleRate ?? 0) + '%'
+      surveyKpi.lowScore = res.lowScore ?? 0
+      surveyKpi.surveyCount = res.surveyCount ?? 0
+      surveyKpi.completedOrders = res.completedOrders ?? 0
+    }
+  } catch (e) {
+    console.error('获取调研概览失败', e)
   }
-])
+}
+
+// ---- 加载触发规则与发送设置 ----
+async function loadRules() {
+  try {
+    const res = await getSatisfactionRules()
+    triggerRules.value = (res?.rules || []).map(r => ({ ...r }))
+    const settings = res?.settings || {}
+    delayHours.value = settings.delayHours ?? 24
+    selectedChannels.value = Array.isArray(settings.channels) ? settings.channels : []
+  } catch (e) {
+    console.error('获取调研规则失败', e)
+    triggerRules.value = []
+  }
+}
+
+// 规则开关切换：真实保存
+async function onRuleToggle(rule) {
+  try {
+    await toggleSatisfactionRule(rule.id, rule.enabled)
+    ElMessage.success(`规则「${rule.label}」已${rule.enabled ? '启用' : '禁用'}`)
+  } catch (e) {
+    rule.enabled = !rule.enabled
+    ElMessage.error('更新规则失败：' + (e.message || '未知错误'))
+  }
+}
+
+// 保存延迟与渠道设置
+async function saveSettings() {
+  try {
+    await saveSatisfactionRuleSettings({
+      delayHours: delayHours.value,
+      channels: selectedChannels.value
+    })
+    ElMessage.success('发送设置已保存')
+  } catch (e) {
+    ElMessage.error('保存失败：' + (e.message || '未知错误'))
+  }
+}
+
+// ---- 加载问卷模板 ----
+async function loadTemplates() {
+  try {
+    const res = await getSatisfactionTemplates()
+    surveyTemplates.value = toArray(res)
+  } catch (e) {
+    console.error('获取问卷模板失败', e)
+    surveyTemplates.value = []
+  }
+}
+
+// ---- 加载近 30 天趋势 ----
+async function loadTrend() {
+  try {
+    const res = await getSatisfactionTrend(30)
+    trendData.value = toArray(res)
+  } catch (e) {
+    console.error('获取满意度趋势失败', e)
+    trendData.value = []
+  }
+}
+
+// ---- 加载最新低分反馈 ----
+async function loadLowScore() {
+  try {
+    const res = await getSatisfactionLowScore(10)
+    lowScoreFeedbacks.value = toArray(res)
+  } catch (e) {
+    console.error('获取低分反馈失败', e)
+    lowScoreFeedbacks.value = []
+  }
+}
 
 // 弹窗状态
 const createDialogVisible = ref(false)
@@ -481,25 +531,37 @@ async function loadList() {
   }
 }
 
-// ---- 调研触发规则：渠道多选 ----
+// ---- 调研触发规则：渠道多选（变更后立即保存） ----
 function toggleChannel(ch) {
   if (selectedChannels.value.includes(ch)) {
     selectedChannels.value = selectedChannels.value.filter(c => c !== ch)
   } else {
     selectedChannels.value = [...selectedChannels.value, ch]
   }
+  saveSettings()
 }
 
 // ---- 问卷模板详情查看 ----
-// 模板保存
-function saveTemplate() {
+// 模板保存（真实更新 mo_satisfaction_template）
+async function saveTemplate() {
   if (!currentTemplate.value?.name) {
     ElMessage.warning('请输入模板名称')
     return
   }
-  // 真实场景：调用 PUT /satisfaction/template
-  ElMessage.success('模板已保存：' + currentTemplate.value.name)
-  templateDialogVisible.value = false
+  try {
+    await updateSatisfactionTemplate(currentTemplate.value.id, {
+      name: currentTemplate.value.name,
+      desc: currentTemplate.value.desc,
+      questions: currentTemplate.value.questions,
+      minutes: currentTemplate.value.minutes,
+      status: currentTemplate.value.status
+    })
+    ElMessage.success('模板已保存：' + currentTemplate.value.name)
+    templateDialogVisible.value = false
+    await loadTemplates()
+  } catch (e) {
+    ElMessage.error('保存失败：' + (e.message || '未知错误'))
+  }
 }
 
 // 模板详情弹窗
@@ -548,13 +610,12 @@ function onTrendDetail() {
 
 async function onViewAllFeedbacks() {
   allFeedbacksDialogVisible.value = true
-  // 尝试从后端拉取低分反馈列表
+  // 低分反馈真实数据（score <= 3）
   try {
-    const res = await getSatisfactionList()
-    const list = toArray(res)
-    allFeedbacks.value = list.length > 0 ? list.filter(item => (item.score || 0) <= 2) : lowScoreFeedbacks.value
+    allFeedbacks.value = await getSatisfactionLowScore(100)
   } catch (e) {
-    allFeedbacks.value = lowScoreFeedbacks.value
+    console.error('获取低分反馈失败', e)
+    allFeedbacks.value = []
   }
 }
 
@@ -563,14 +624,13 @@ function onViewFeedback(fb) {
   feedbackDialogVisible.value = true
 }
 
-// 模板数据分析（按模板聚合，模拟）
+// 模板数据分析：按近 30 天整体调研数据展示（模板级明细待埋点接入）
 const templateAnalytics = ref({ sent: 0, replies: 0, avgScore: 0 })
 async function loadTemplateAnalytics(tpl) {
-  // 真实场景：请求 /satisfaction/template/{name}/analytics
   templateAnalytics.value = {
-    sent: 200 + Math.floor(Math.random() * 800),
-    replies: 80 + Math.floor(Math.random() * 220),
-    avgScore: (4 + Math.random()).toFixed(2)
+    sent: surveyKpi.completedOrders,
+    replies: surveyKpi.surveyCount,
+    avgScore: Number(kpi.value.avgScore) || 0
   }
 }
 
@@ -643,6 +703,11 @@ function handleView(row) {
 onMounted(() => {
   loadStats()
   loadList()
+  loadOverview()
+  loadRules()
+  loadTemplates()
+  loadTrend()
+  loadLowScore()
 })
 </script>
 

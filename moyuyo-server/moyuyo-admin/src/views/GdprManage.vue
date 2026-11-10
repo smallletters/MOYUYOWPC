@@ -123,7 +123,7 @@
       </el-table>
     </el-card>
 
-    <!-- 快速操作（示例数据：操作入口为前端演示，无真实后端接口） -->
+    <!-- 快速操作（真实后端：写入 GDPR 快速操作流水） -->
     <el-card shadow="never" class="section-card">
       <template #header>
         <div class="card-header-row">
@@ -150,7 +150,7 @@
       </div>
     </el-card>
 
-    <!-- 未成年人保护（示例数据：年龄验证统计与列表为演示数据） -->
+    <!-- 未成年人保护（真实数据：年龄验证统计与列表） -->
     <el-card shadow="never" class="section-card">
       <template #header>
         <div class="card-header-row">
@@ -317,7 +317,7 @@ const requestTabs = [
   { label: '数据修正', value: 'RECTIFY' }
 ]
 
-// ---- 快速操作（示例数据：前端演示入口，无真实后端接口） ----
+// ---- 快速操作（真实后端：写入 GDPR 快速操作流水） ----
 const quickActions = [
   {
     key: 'export',

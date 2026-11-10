@@ -171,7 +171,7 @@
       <div class="config-card">
         <div class="config-section">
           <div class="config-label">承运商列表</div>
-          <div class="config-desc">可启用的物流承运商（示例数据）</div>
+          <div class="config-desc">可启用的物流承运商（来自承运商档案，状态在承运商管理中维护）</div>
           <div class="carrier-list">
             <div v-for="carrier in carriers" :key="carrier.key" class="carrier-item">
               <div class="carrier-left">
@@ -180,17 +180,9 @@
                   <div class="config-desc">{{ carrier.desc }}</div>
                 </div>
               </div>
-              <div
-                class="toggle-track"
-                role="switch"
-                :aria-checked="String(carrier.enabled)"
-                tabindex="0"
-                @click="carrier.enabled = !carrier.enabled"
-                @keydown.enter.prevent="carrier.enabled = !carrier.enabled"
-                @keydown.space.prevent="carrier.enabled = !carrier.enabled"
-              >
-                <div class="toggle-thumb"></div>
-              </div>
+              <el-tag :type="carrier.enabled ? 'success' : 'info'" size="small">
+                {{ carrier.enabled ? '启用' : '停用' }}
+              </el-tag>
             </div>
           </div>
         </div>
@@ -243,36 +235,36 @@
         </div>
         <div class="config-section">
           <div class="config-label">基础运费</div>
-          <div class="config-desc">首重 / 首件 / 订单基础运费价格（示例数据）</div>
+          <div class="config-desc">首重 / 首件 / 订单基础运费价格</div>
           <div class="number-input-wrap">
             <span class="input-prefix">¥</span>
             <input v-model="form.baseFee" type="number" class="config-input" style="max-width: 100px;" min="0">
           </div>
         </div>
         <div class="config-section">
-          <div class="config-label">阶梯价格表</div>
-          <div class="config-desc">按区间设置运费（示例数据）</div>
+          <div class="config-label">运费规则</div>
+          <div class="config-desc">来自运费规则配置（只读，前往发货策略维护）</div>
           <table class="tier-table">
             <thead>
               <tr>
-                <th>区间下限</th>
-                <th>区间上限</th>
-                <th>运费（¥）</th>
-                <th></th>
+                <th>计费方式</th>
+                <th>首费</th>
+                <th>续费</th>
+                <th>包邮门槛</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(tier, idx) in shippingTiers" :key="idx">
-                <td><input v-model="tier.min" type="number" class="tier-input" min="0"></td>
-                <td><input v-model="tier.max" type="number" class="tier-input" min="0"></td>
-                <td><input v-model="tier.price" type="number" class="tier-input" min="0"></td>
-                <td class="tier-actions">
-                  <button class="tier-remove" @click="removeTier(idx)">删除</button>
-                </td>
+              <tr v-for="rate in shippingRates" :key="rate.id">
+                <td>{{ rate.chargeType }}</td>
+                <td>{{ rate.currency }} {{ rate.firstCharge }}</td>
+                <td>{{ rate.currency }} {{ rate.continueCharge }}</td>
+                <td>{{ rate.freeThreshold }}</td>
+              </tr>
+              <tr v-if="shippingRates.length === 0">
+                <td colspan="4" style="text-align:center;color:var(--text-400)">暂无运费规则</td>
               </tr>
             </tbody>
           </table>
-          <button class="add-tier-btn" @click="addTier">+ 添加阶梯</button>
         </div>
       </div>
     </div>
@@ -351,7 +343,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getSystemConfig, saveSystemConfig, getPaymentMethods } from '../api/admin'
+import { getSystemConfig, saveSystemConfig, getPaymentMethods, getCarriers, getShippingRates } from '../api/admin'
 
 const activeTab = ref('basic')
 
@@ -371,7 +363,7 @@ const cancelOptions = [
   { label: '2 小时', value: 120 }
 ]
 
-// 语言选项（示例数据）
+// 语言选项（选项字典）
 const languageOptions = [
   { label: '简体中文', value: 'zh-CN' },
   { label: 'English', value: 'en-US' },
@@ -379,7 +371,7 @@ const languageOptions = [
   { label: '한국어', value: 'ko-KR' }
 ]
 
-// 币种选项（示例数据）
+// 币种选项（选项字典）
 const currencyOptions = [
   { label: 'CNY (¥)', value: 'CNY' },
   { label: 'USD ($)', value: 'USD' },
@@ -387,7 +379,7 @@ const currencyOptions = [
   { label: 'JPY (¥)', value: 'JPY' }
 ]
 
-// 时区选项（示例数据）
+// 时区选项（选项字典）
 const timezoneOptions = [
   { label: 'UTC+8（中国标准时间）', value: 'UTC+8' },
   { label: 'UTC+9（日本标准时间）', value: 'UTC+9' },
@@ -395,34 +387,62 @@ const timezoneOptions = [
   { label: 'UTC-5（美东时间）', value: 'UTC-5' }
 ]
 
-// 包装类型选项（示例数据）
+// 包装类型选项（选项字典）
 const packageTypeOptions = [
   { label: '小号包裹（30×20×15cm）', value: 'S' },
   { label: '中号包裹（40×30×20cm）', value: 'M' },
   { label: '大号包裹（60×40×35cm）', value: 'L' }
 ]
 
-// 运费计算方式选项（示例数据）
+// 运费计算方式选项（选项字典）
 const shippingMethodOptions = [
   { label: '按重量', value: 'weight' },
   { label: '按件数', value: 'count' },
   { label: '按金额', value: 'amount' }
 ]
 
-// 承运商列表（示例数据，无真实 API 时使用）
-const carriers = ref([
-  { key: 'sf', name: '顺丰速运', desc: '时效快，支持上门取件', enabled: true },
-  { key: 'zto', name: '中通快递', desc: '经济型快递，覆盖范围广', enabled: true },
-  { key: 'yto', name: '圆通速递', desc: '性价比快递，大件支持好', enabled: false },
-  { key: 'ems', name: 'EMS 邮政', desc: '偏远地区可送达', enabled: false }
-])
+// 承运商列表（来自 /logistics/carriers 真实档案）
+const carriers = ref([])
 
-// 运费阶梯价格表（示例数据，无真实 API 时使用）
-const shippingTiers = ref([
-  { min: 1, max: 2, price: 12 },
-  { min: 2, max: 5, price: 18 },
-  { min: 5, max: 10, price: 30 }
-])
+// 运费规则（来自 /logistics/shipping-rates 真实配置）
+const shippingRates = ref([])
+
+// 计费方式编码 → 中文
+const CHARGE_TYPE_TEXT = { 1: '按件', 2: '按重', 3: '按金额' }
+
+// 加载真实承运商列表
+async function loadCarriers() {
+  try {
+    const list = await getCarriers()
+    carriers.value = (list || []).map(c => ({
+      key: c.code || String(c.id),
+      name: c.name || '-',
+      desc: [c.transportMode, c.avgDeliveryDays ? '平均 ' + c.avgDeliveryDays + ' 天' : ''].filter(Boolean).join(' · '),
+      enabled: String(c.status || '').toUpperCase() === 'ACTIVE'
+    }))
+  } catch (e) {
+    console.error('获取承运商列表失败', e)
+    carriers.value = []
+  }
+}
+
+// 加载真实运费规则
+async function loadShippingRates() {
+  try {
+    const list = await getShippingRates()
+    shippingRates.value = (list || []).map(r => ({
+      id: r.id,
+      chargeType: CHARGE_TYPE_TEXT[r.chargeType] || '按件',
+      firstCharge: Number(r.firstCharge || 0),
+      continueCharge: Number(r.continueCharge || 0),
+      freeThreshold: r.freeThreshold == null ? '不包邮' : '￥' + r.freeThreshold,
+      currency: r.currency || 'USD'
+    }))
+  } catch (e) {
+    console.error('获取运费规则失败', e)
+    shippingRates.value = []
+  }
+}
 
 const form = reactive({
   siteName: 'MOYUYO',
@@ -482,18 +502,6 @@ async function loadConfig() {
         if (item.key === 'defaultCarrier') form.defaultCarrier = item.value || form.defaultCarrier
         if (item.key === 'packageType') form.packageType = item.value || form.packageType
         if (item.key === 'maxWeight') form.maxWeight = Number(item.value) || form.maxWeight
-        if (item.key === 'carriers') {
-          try {
-            const list = JSON.parse(item.value)
-            if (Array.isArray(list) && list.length > 0) {
-              // 合并后端返回的启用状态到示例数据列表
-              list.forEach(c => {
-                const existing = carriers.value.find(item2 => item2.key === c.key)
-                if (existing) existing.enabled = c.enabled === true || c.enabled === 'true'
-              })
-            }
-          } catch (e) { /* 忽略解析失败，保留默认值 */ }
-        }
         // 运费计算规则
         if (item.key === 'shippingMethod') form.shippingMethod = item.value || form.shippingMethod
         if (item.key === 'baseFee') form.baseFee = Number(item.value) || form.baseFee
@@ -507,12 +515,6 @@ async function loadConfig() {
             && item.value !== '' && item.value !== null && item.value !== undefined
             && !Number.isNaN(Number(item.value))) {
           form.dmStrangerDailyLimit = Math.max(0, Math.trunc(Number(item.value)))
-        }
-        if (item.key === 'shippingTiers') {
-          try {
-            const list = JSON.parse(item.value)
-            if (Array.isArray(list) && list.length > 0) shippingTiers.value = list
-          } catch (e) { /* 忽略解析失败，保留默认值 */ }
         }
         // 从配置中恢复支付方式状态
         if (item.key && item.key.startsWith('payment_')) {
@@ -589,11 +591,9 @@ async function handleSave() {
       { key: 'defaultCarrier', value: form.defaultCarrier, type: 'text', label: '默认承运商' },
       { key: 'packageType', value: form.packageType, type: 'text', label: '默认包装类型' },
       { key: 'maxWeight', value: String(form.maxWeight), type: 'text', label: '单件最大重量' },
-      { key: 'carriers', value: JSON.stringify(carriers.value), type: 'json', label: '承运商列表' },
       // 运费计算规则
       { key: 'shippingMethod', value: form.shippingMethod, type: 'text', label: '运费计算方式' },
       { key: 'baseFee', value: String(form.baseFee), type: 'text', label: '基础运费' },
-      { key: 'shippingTiers', value: JSON.stringify(shippingTiers.value), type: 'json', label: '运费阶梯价格表' },
       // 私信安全（0 = 不限制）
       { key: 'dm.guard.stranger_first_limit', value: String(form.dmStrangerFirstLimit), type: 'number', label: '陌生人首条上限' },
       { key: 'dm.guard.stranger_daily_limit', value: String(form.dmStrangerDailyLimit), type: 'number', label: '陌生人每日上限' }
@@ -620,17 +620,11 @@ function normalizeLimit(value, defaultValue) {
   return Number.isFinite(num) && num >= 0 ? Math.trunc(num) : defaultValue
 }
 
-// 添加一行阶梯价格（示例数据）
-function addTier() {
-  shippingTiers.value.push({ min: 0, max: 0, price: 0 })
-}
-
-// 删除一行阶梯价格
-function removeTier(idx) {
-  shippingTiers.value.splice(idx, 1)
-}
-
-onMounted(() => { loadConfig() })
+onMounted(() => {
+  loadConfig()
+  loadCarriers()
+  loadShippingRates()
+})
 </script>
 
 <style scoped>

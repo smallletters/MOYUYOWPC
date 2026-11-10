@@ -24,6 +24,11 @@ public interface AdminAnalysisService {
   Map<String, Object> searchStats();
 
   /**
+   * 零结果搜索词 TOP N（result_count = 0 的关键词聚合）
+   */
+  List<Map<String, Object>> zeroResultKeywords(int limit);
+
+  /**
    * 流量统计
    */
   Map<String, Object> trafficStats();
@@ -39,4 +44,14 @@ public interface AdminAnalysisService {
    * 返回 map：{ repurchaseRate, trend:与上一周期对比的百分点变化 }
    */
   Map<String, Object> repurchase(int days);
+
+  /**
+   * 用户画像（新老用户占比 + 设备分布）
+   */
+  Map<String, Object> userProfile();
+
+  /**
+   * 渠道访问统计（近 30 天，按渠道聚合独立会话数）
+   */
+  List<Map<String, Object>> channelStats();
 }

@@ -145,7 +145,7 @@ public class AdminUploadController {
             ext = extractExtFromContentType(ct);
         }
         if (ext == null || !ALLOWED_EXT.contains(ext.toLowerCase())) {
-            return Result.badRequest("不支持的文件类型，仅允许 PNG/JPG/JPEG/GIF/WebP/SVG");
+            return Result.badRequest("不支持的文件类型，仅允许 PNG/JPG/JPEG/GIF/WebP");
         }
 
         // Content-Type 校验：防止扩展名伪造(空值不阻断,已通过扩展名兜底分支)

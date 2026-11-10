@@ -51,7 +51,8 @@ api.interceptors.request.use(config => {
       delete config.headers['content-type']
     }
   }
-  const token = localStorage.getItem('admin_token')
+  // 安全：token 仅存于 sessionStorage，不再从 localStorage 读取长期凭证
+  const token = sessionStorage.getItem('admin_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }

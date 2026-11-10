@@ -198,14 +198,13 @@ const customFunnel = reactive({
   timeRange: '7d'
 })
 
-// 漏斗可选步骤
+// 漏斗可选步骤（与后端 /analysis/funnel 返回的 stage 名称保持一致）
 const funnelStepOptions = [
-  { key: 'visit', label: '访问' },
-  { key: 'view_product', label: '浏览商品' },
-  { key: 'add_cart', label: '加入购物车' },
-  { key: 'checkout', label: '结算' },
-  { key: 'submit_order', label: '提交订单' },
-  { key: 'pay', label: '完成支付' }
+  { key: '浏览商品', label: '浏览商品' },
+  { key: '加入购物车', label: '加入购物车' },
+  { key: '提交订单', label: '提交订单' },
+  { key: '支付成功', label: '支付成功' },
+  { key: '完成交易', label: '完成交易' }
 ]
 
 function openCustomFunnelDialog() {
@@ -226,34 +225,31 @@ async function applyCustomFunnel() {
     return
   }
   try {
-    // 调用后端：POST /analysis/custom-funnel
+    // 后端漏斗固定返回完整阶段，这里按用户选择的起止阶段裁剪真实数据
     const days = customFunnel.timeRange === '30d' ? 30 : 7
-    const res = await getFunnelAnalysis({ days, from: customFunnel.startStep, to: customFunnel.endStep })
-    const funnelList = toArray(res)
-    if (funnelList.length > 0) {
-      const maxCount = Math.max(...funnelList.map(s => s.userCount || 0), 1)
-      funnelSteps.splice(0, funnelSteps.length, ...funnelList.map((s, idx) => ({
-        key: s.key || s.id || idx,
-        label: s.label || s.name || funnelStepOptions.find(o => o.key === s.key)?.label || '步骤',
-        count: s.userCount || 0,
-        width: Math.round(((s.userCount || 0) / maxCount) * 100),
-        rate: idx === 0 ? '100%' : Math.round(((s.userCount || 0) / funnelList[0].userCount || 0) * 100) + '%'
-      })))
+    const res = await getFunnelAnalysis({ days })
+    const list = toArray(res)
+    const fromIdx = list.findIndex(s => s.stage === customFunnel.startStep)
+    const toIdx = list.findIndex(s => s.stage === customFunnel.endStep)
+    if (fromIdx < 0 || toIdx < 0 || fromIdx >= toIdx) {
+      ElMessage.warning('请选择有效的起止步骤（结束阶段需在开始阶段之后）')
+      return
     }
+    const slice = list.slice(fromIdx, toIdx + 1)
+    const baseCount = slice[0].userCount || 0
+    const maxCount = Math.max(...slice.map(s => s.userCount || 0), 1)
+    funnelSteps.splice(0, funnelSteps.length, ...slice.map((s, idx) => ({
+      key: s.stage || idx,
+      label: s.stage || '',
+      count: s.userCount || 0,
+      width: Math.round(((s.userCount || 0) / maxCount) * 100),
+      // 相对起始阶段计算转化率
+      rate: idx === 0 ? '100%' : ((s.userCount || 0) / (baseCount || 1) * 100).toFixed(1) + '%'
+    })))
     ElMessage.success('已应用自定义漏斗：' + customFunnel.name)
     customFunnelVisible.value = false
   } catch (e) {
-    // 本地降级：基于现有 funnelSteps 裁剪
-    const fromIdx = funnelStepOptions.findIndex(o => o.key === customFunnel.startStep)
-    const toIdx = funnelStepOptions.findIndex(o => o.key === customFunnel.endStep)
-    if (fromIdx >= 0 && toIdx >= 0 && fromIdx <= toIdx && funnelSteps.length > 0) {
-      const slice = funnelSteps.slice(fromIdx, toIdx + 1)
-      funnelSteps.splice(0, funnelSteps.length, ...slice)
-      ElMessage.success('已应用自定义漏斗（本地模式）：' + customFunnel.name)
-    } else {
-      ElMessage.info('已应用：' + customFunnel.name)
-    }
-    customFunnelVisible.value = false
+    ElMessage.error('应用自定义漏斗失败：' + (e.message || '未知错误'))
   }
 }
 

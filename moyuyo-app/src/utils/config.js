@@ -22,9 +22,7 @@ const ENV = {
   VITE_WP_BASE: process.env.VITE_WP_BASE,
   VITE_PAY_RETURN_BASE: process.env.VITE_PAY_RETURN_BASE,
   VITE_CONSUMER_KEY: process.env.VITE_CONSUMER_KEY,
-  VITE_CONSUMER_SECRET: process.env.VITE_CONSUMER_SECRET,
   VITE_OAUTH_CLIENT_ID: process.env.VITE_OAUTH_CLIENT_ID,
-  VITE_OAUTH_CLIENT_SECRET: process.env.VITE_OAUTH_CLIENT_SECRET,
   VITE_CURRENCY: process.env.VITE_CURRENCY,
   VITE_THEME_MODE: process.env.VITE_THEME_MODE,
   VITE_TERMS_URL: process.env.VITE_TERMS_URL,
@@ -60,13 +58,10 @@ export const config = {
   // MOYUYO 后端 API 域名（H1 修复：用于支付成功/取消回跳的绝对 URL，避免与 WP 域名混淆）
   // dev 默认留空，使用 Vite proxy 同源；prod 必须填 https://api.moyuyo.com
   payReturnBase: getEnv('VITE_PAY_RETURN_BASE', ''),
-  // WooCommerce REST API 凭证
+  // WooCommerce REST API 公开标识（Consumer Secret 绝对不能出现在前端，必须由后端代理持有）
   consumerKey: getEnv('VITE_CONSUMER_KEY', ''),
-  consumerSecret: getEnv('VITE_CONSUMER_SECRET', ''),
-  // WP OAuth Server 配置（MiniOrange）
-  // 在 WP 后台 → WP OAuth Server → Client 中创建 App 获取
+  // WP OAuth Server 公开 Client ID（Client Secret 必须由后端持有，前端不再读取）
   oauthClientId: getEnv('VITE_OAUTH_CLIENT_ID', ''),
-  oauthClientSecret: getEnv('VITE_OAUTH_CLIENT_SECRET', ''),
   // OAuth 端点（WP OAuth Server 插件）
   oauthTokenEndpoint: '/api/v1/token', // POST: grant_type=password 登录
   oauthUserInfoEndpoint: '/api/v1/userinfo', // GET: 获取当前用户信息

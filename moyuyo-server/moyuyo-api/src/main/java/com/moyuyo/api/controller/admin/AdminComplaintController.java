@@ -1,6 +1,7 @@
 package com.moyuyo.api.controller.admin;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.moyuyo.common.annotation.AdminAudit;
 import com.moyuyo.common.Result;
 import com.moyuyo.dao.admin.entity.ComplaintProcessEntity;
@@ -13,6 +14,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -74,8 +78,99 @@ public class AdminComplaintController {
     return Result.success(result);
   }
 
+  @Operation(summary = "投诉趋势（近 N 天）")
+  @GetMapping("/trend")
+  public Result<List<Map<String, Object>>> trend(@RequestParam(defaultValue = "7") int days) {
+    int safeDays = days <= 0 ? 7 : Math.min(days, 30);
+    LocalDateTime since = LocalDate.now().minusDays(safeDays - 1L).atStartOfDay();
+
+    List<Map<String, Object>> rows = feedbackMapper.selectMaps(
+        new QueryWrapper<FeedbackEntity>()
+            .select("DATE(create_time) AS date, COUNT(*) AS count")
+            .ge("create_time", since)
+            .groupBy("DATE(create_time)"));
+
+    Map<String, Object> countByDate = new HashMap<>();
+    for (Map<String, Object> row : rows) {
+      if (row.get("date") != null) {
+        countByDate.put(String.valueOf(row.get("date")), row.get("count"));
+      }
+    }
+
+    List<Map<String, Object>> result = new ArrayList<>();
+    for (int i = 0; i < safeDays; i++) {
+      LocalDate date = LocalDate.now().minusDays(safeDays - 1L - i);
+      Object count = countByDate.get(date.toString());
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("label", date.getMonthValue() + "/" + date.getDayOfMonth());
+      item.put("fullDate", date.toString());
+      item.put("count", count == null ? 0L : ((Number) count).longValue());
+      result.add(item);
+    }
+    return Result.success(result);
+  }
+
+  @Operation(summary = "最近投诉处理记录（时间线）")
+  @GetMapping("/process-recent")
+  public Result<List<Map<String, Object>>> processRecent(@RequestParam(defaultValue = "10") int limit) {
+    int safeLimit = limit <= 0 ? 10 : Math.min(limit, 50);
+    List<ComplaintProcessEntity> processes = complaintProcessMapper.selectList(
+        new LambdaQueryWrapper<ComplaintProcessEntity>()
+            .orderByDesc(ComplaintProcessEntity::getCreateTime)
+            .last("LIMIT " + safeLimit));
+
+    List<Map<String, Object>> result = new ArrayList<>();
+    int index = 1;
+    for (ComplaintProcessEntity p : processes) {
+      FeedbackEntity feedback = feedbackMapper.selectById(p.getComplaintId());
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("id", p.getId());
+      item.put("complaintId", p.getComplaintId());
+      item.put("complaintNo", "CP" + p.getComplaintId());
+      item.put("type", feedback != null ? feedback.getType() : null);
+      item.put("level", "L" + index);
+      item.put("action", p.getAction());
+      item.put("operator", p.getOperator());
+      item.put("remark", p.getRemark());
+      item.put("createTime", p.getCreateTime());
+      result.add(item);
+      index++;
+    }
+    return Result.success(result);
+  }
+
+  @Operation(summary = "投诉分类分布")
+  @GetMapping("/category-distribution")
+  public Result<List<Map<String, Object>>> categoryDistribution() {
+    List<Map<String, Object>> rows = feedbackMapper.selectMaps(
+        new QueryWrapper<FeedbackEntity>()
+            .select("COALESCE(NULLIF(type, ''), '其他') AS type, COUNT(*) AS count")
+            .ge("create_time", LocalDate.now().minusDays(29).atStartOfDay())
+            .groupBy("type")
+            .orderByDesc("count"));
+
+    long total = 0L;
+    for (Map<String, Object> row : rows) {
+      total += row.get("count") == null ? 0L : ((Number) row.get("count")).longValue();
+    }
+
+    List<Map<String, Object>> result = new ArrayList<>();
+    for (Map<String, Object> row : rows) {
+      long count = row.get("count") == null ? 0L : ((Number) row.get("count")).longValue();
+      BigDecimal percent = total > 0
+          ? BigDecimal.valueOf(count * 100L).divide(BigDecimal.valueOf(total), 1, RoundingMode.HALF_UP)
+          : BigDecimal.ZERO;
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("type", row.get("type"));
+      item.put("count", count);
+      item.put("percent", percent);
+      result.add(item);
+    }
+    return Result.success(result);
+  }
+
   @Operation(summary = "投诉详情")
-  @GetMapping("/{id}")
+  @GetMapping("/{id:\\d+}")
   public Result<Map<String, Object>> detail(@PathVariable Long id) {
     // 从 feedback 表查询投诉详情
     FeedbackEntity feedback = feedbackMapper.selectById(id);

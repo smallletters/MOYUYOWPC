@@ -220,29 +220,31 @@ async function handleDetail(row) {
 }
 
 // ==================== 自动处理规则 ====================
-// 规则列表：从后端拉取，支持失败时降级到本地示例数据，保证页面可使用
+// 规则列表：从后端拉取真实规则，失败时展示空态
 const ruleList = ref([])
 const ruleLoaded = ref(false)
+
+// 规则动作：后端编码 ↔ 前端中文
+const ACTION_TEXT = { FLAG: '标记提醒', INTERCEPT: '拦截冻结', CANCEL: '自动取消' }
+const ACTION_CODE = { '标记提醒': 'FLAG', '拦截冻结': 'INTERCEPT', '自动取消': 'CANCEL' }
 
 async function loadRules() {
   try {
     const res = await orderMonitorRuleApi.list()
-    const list = toArray(res)
-    ruleList.value = list.length > 0 ? list : [
-      { id: 1, name: '超时未付款自动取消', condition: '下单超过 24h 未完成支付，自动取消订单并释放库存', action: '自动取消', enabled: true },
-      { id: 2, name: '超时未发货自动提醒', condition: '支付后超过 48h 未发货，自动发送站内信提醒商家', action: '标记提醒', enabled: true },
-      { id: 3, name: '物流停滞自动核查', condition: '物流超过 72h 无更新记录，自动向物流公司发起查询工单', action: '标记提醒', enabled: true },
-      { id: 4, name: '金额异常自动冻结', condition: '实付金额与商品标价偏差超过 50%，自动冻结订单等待审核', action: '拦截冻结', enabled: false }
-    ]
+    // 后端字段为 condition_text / action_type，需要映射为页面字段并转中文动作
+    ruleList.value = toArray(res).map(r => ({
+      id: r.id,
+      name: r.name || '-',
+      condition: r.condition_text || r.condition || '-',
+      action: ACTION_TEXT[r.action_type] || r.action || '标记提醒',
+      enabled: r.enabled === true || r.enabled === 1,
+      priority: r.priority == null ? 100 : r.priority
+    }))
     ruleLoaded.value = true
   } catch (e) {
-    // 接口未接入时使用本地示例数据
-    ruleList.value = [
-      { id: 1, name: '超时未付款自动取消', condition: '下单超过 24h 未完成支付，自动取消订单并释放库存', action: '自动取消', enabled: true },
-      { id: 2, name: '超时未发货自动提醒', condition: '支付后超过 48h 未发货，自动发送站内信提醒商家', action: '标记提醒', enabled: true },
-      { id: 3, name: '物流停滞自动核查', condition: '物流超过 72h 无更新记录，自动向物流公司发起查询工单', action: '标记提醒', enabled: true },
-      { id: 4, name: '金额异常自动冻结', condition: '实付金额与商品标价偏差超过 50%，自动冻结订单等待审核', action: '拦截冻结', enabled: false }
-    ]
+    console.error('获取自动处理规则失败', e)
+    ruleList.value = []
+    ruleLoaded.value = true
   }
 }
 
@@ -304,7 +306,8 @@ async function handleSaveRule() {
   const payload = {
     name: formData.name.trim(),
     condition: formData.condition.trim(),
-    action: formData.action,
+    // 后端只接受 FLAG/INTERCEPT/CANCEL，不能直接提交中文
+    action: ACTION_CODE[formData.action] || 'FLAG',
     enabled: formData.enabled
   }
   try {
@@ -318,19 +321,8 @@ async function handleSaveRule() {
     await loadRules()
     dialogVisible.value = false
   } catch (e) {
-    // 后端接口未接入时回退到本地操作
-    if (isEditing.value) {
-      const target = ruleList.value.find(item => item.id === editingId.value)
-      if (target) {
-        Object.assign(target, payload)
-      }
-      ElMessage.success('规则已更新（本地模式）')
-    } else {
-      const maxId = ruleList.value.reduce((max, item) => Math.max(max, item.id || 0), 0)
-      ruleList.value.push({ id: maxId + 1, ...payload })
-      ElMessage.success('规则已创建（本地模式）')
-    }
-    dialogVisible.value = false
+    // 失败时不再伪造本地成功，保持数据与后端一致
+    ElMessage.error('保存失败：' + (e.message || '未知错误'))
   }
 }
 
@@ -341,7 +333,9 @@ async function handleToggleRule(row) {
     await orderMonitorRuleApi.toggle(row.id, { enabled: nextState })
     ElMessage.success('规则「' + row.name + '」已' + (nextState ? '启用' : '禁用'))
   } catch (e) {
-    ElMessage.success('规则「' + row.name + '」已' + (nextState ? '启用' : '禁用') + '（本地模式）')
+    // 失败回滚开关状态，避免界面与后端不一致
+    row.enabled = !nextState
+    ElMessage.error('操作失败：' + (e.message || '未知错误'))
   }
 }
 
@@ -357,8 +351,7 @@ async function handleDeleteRule(row) {
     ElMessage.success('规则已删除')
     await loadRules()
   } catch (e) {
-    ruleList.value = ruleList.value.filter(item => item.id !== row.id)
-    ElMessage.success('规则已删除（本地模式）')
+    ElMessage.error('删除失败：' + (e.message || '未知错误'))
   }
 }
 

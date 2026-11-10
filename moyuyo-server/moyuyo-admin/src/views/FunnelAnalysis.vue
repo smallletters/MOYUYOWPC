@@ -111,15 +111,14 @@
             <h3>最大流失节点</h3>
             <p class="max-drop-name">{{ maxDropNode.from }} → {{ maxDropNode.to }}</p>
             <p class="max-drop-desc">流失率 {{ maxDropNode.rate.toFixed(1) }}%，流失用户 {{ fmtNum(maxDropNode.lostUsers) }} 人</p>
-            <div class="max-drop-trend">📈 较上期流失增加 5.2%（示例数据）</div>
           </div>
         </div>
 
-        <!-- 流失原因推测（示例数据） -->
+        <!-- 流失原因（真实数据：近7天取消原因聚合） -->
         <div class="content-card analysis-card">
           <div class="content-card-header">
-            <span>流失原因推测</span>
-            <span class="content-card-sub">示例数据</span>
+            <span>流失原因</span>
+            <span class="content-card-sub">近7天取消原因</span>
           </div>
           <div class="reason-list">
             <div v-for="reason in dropReasons" :key="reason.name" class="reason-item">
@@ -141,7 +140,7 @@
           <h2>流失用户画像</h2>
         </div>
 
-        <!-- 新老用户占比 + 设备分布（示例数据） -->
+        <!-- 新老用户占比 + 设备分布（真实数据） -->
         <div class="content-card analysis-card">
           <div class="user-type-grid">
             <div class="user-type-box">
@@ -172,45 +171,32 @@
       </div>
     </div>
 
-    <!-- 渠道漏斗对比（示例数据） -->
+    <!-- 渠道访问对比（真实数据） -->
     <div class="section-header">
       <span class="section-header-icon">🔀</span>
-      <h2>渠道漏斗对比</h2>
+      <h2>渠道访问对比</h2>
     </div>
     <div class="content-card">
       <div class="channel-body">
         <!-- 渠道图例 -->
         <div class="channel-legend">
-          <span v-for="item in channelList" :key="item.name" class="legend-item">
+          <span v-for="item in channelRows" :key="item.name" class="legend-item">
             <span class="legend-dot" :style="{ background: item.color }"></span>{{ item.name }}
           </span>
         </div>
 
-        <!-- 三列：各阶段 × 各渠道人数对比条形图 -->
+        <!-- 近30天各渠道访问量对比条形图 -->
         <div class="channel-grid">
-          <div v-for="stage in channelData" :key="stage.name" class="channel-col">
-            <div class="channel-col-title">{{ stage.name }}</div>
-            <div v-for="(row, j) in stage.rows" :key="row.shortName" class="channel-row">
+          <div class="channel-col">
+            <div class="channel-col-title">近30天渠道访问（独立会话）</div>
+            <div v-for="row in channelRows" :key="row.name" class="channel-row">
               <span class="channel-row-label">{{ row.shortName }}</span>
               <div class="channel-track">
-                <div class="channel-fill" :style="{ width: row.percent + '%', background: channelList[j].color }"></div>
+                <div class="channel-fill" :style="{ width: row.percent + '%', background: row.color }"></div>
               </div>
               <span class="channel-row-value">{{ fmtNum(row.count) }}</span>
             </div>
-          </div>
-        </div>
-
-        <!-- 分隔线 -->
-        <div class="channel-divider"></div>
-
-        <!-- 各渠道最终转化率 -->
-        <div>
-          <span class="channel-rate-title">各渠道最终转化率</span>
-          <div class="channel-rate-grid">
-            <div v-for="rate in channelRates" :key="rate.name" class="channel-rate-box">
-              <span class="channel-rate-label">{{ rate.name }}</span>
-              <p class="channel-rate-value" :style="{ color: rate.color }">{{ rate.rate }}%</p>
-            </div>
+            <div v-if="channelRows.length === 0" class="channel-row-label">暂无渠道访问数据</div>
           </div>
         </div>
       </div>
@@ -220,7 +206,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getFunnelAnalysis } from '../api/admin'
+import { getFunnelAnalysis, getChurnAnalysis, getAnalysisProfile, getAnalysisChannels } from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
 const funnelData = ref([])
@@ -266,67 +252,67 @@ const maxDropNode = computed(() => {
   return nodes.find(n => n.isMax) || null
 })
 
-// ===== 流失原因推测（示例数据：无真实接口，与设计稿保持一致） =====
-const dropReasons = [
-  { icon: '🚚', name: '运费过高', desc: '未达免邮门槛', percent: 38 },
-  { icon: '🏷️', name: '价格偏高', desc: '对比竞品后放弃', percent: 29 },
-  { icon: '💳', name: '支付方式', desc: '不支持期望的支付方式', percent: 18 },
-  { icon: '⋯', name: '其他原因', desc: '页面异常/犹豫不决等', percent: 15 }
-]
+// ===== 流失原因（真实数据：订单取消原因聚合） =====
+const dropReasons = ref([])
 
-// ===== 流失用户画像（示例数据：无真实接口，与设计稿保持一致） =====
-const userProfile = {
-  newUsers: 72,
-  oldUsers: 28,
-  devices: [
-    { name: 'iOS', percent: 58, icon: '📱' },
-    { name: 'Android', percent: 35, icon: '🤖' },
-    { name: 'PC', percent: 7, icon: '💻' }
-  ]
+// 加载流失原因
+async function loadChurn() {
+  try {
+    const res = await getChurnAnalysis(7)
+    const detail = res?.churnReasonsDetail || []
+    const total = detail.reduce((sum, item) => sum + Number(item.orderCount || 0), 0)
+    dropReasons.value = detail.slice(0, 5).map((item) => ({
+      icon: '•',
+      name: item.reason || '未填写原因',
+      desc: `${item.orderCount || 0} 单 · 损失 $${item.lostAmount || 0}`,
+      percent: total > 0 ? Math.round(Number(item.orderCount || 0) / total * 100) : 0
+    }))
+  } catch (e) {
+    console.error('获取流失原因失败', e)
+    dropReasons.value = []
+  }
 }
 
-// ===== 渠道漏斗对比（示例数据：无真实接口，与设计稿保持一致） =====
-// 渠道图例与配色
-const channelList = [
-  { name: '自然搜索', color: 'var(--primary)' },
-  { name: '付费广告', color: 'var(--state-success)' },
-  { name: '社交媒体', color: 'var(--state-warning)' }
-]
+// ===== 流失用户画像（真实数据） =====
+const userProfile = ref({ newUsers: 0, oldUsers: 0, devices: [] })
 
-// 各阶段 × 各渠道人数（percent 为条形宽度占比，与设计稿一致）
-const channelData = [
-  {
-    name: '浏览商品',
-    rows: [
-      { shortName: '自然', count: 5820, percent: 100 },
-      { shortName: '广告', count: 3960, percent: 68 },
-      { shortName: '社交', count: 2800, percent: 48 }
-    ]
-  },
-  {
-    name: '加入购物车',
-    rows: [
-      { shortName: '自然', count: 2211, percent: 38 },
-      { shortName: '广告', count: 1633, percent: 28 },
-      { shortName: '社交', count: 182, percent: 16 }
-    ]
-  },
-  {
-    name: '完成支付',
-    rows: [
-      { shortName: '自然', count: 930, percent: 16 },
-      { shortName: '广告', count: 245, percent: 10 },
-      { shortName: '社交', count: 83, percent: 5 }
-    ]
+// 加载用户画像
+async function loadProfile() {
+  try {
+    const res = await getAnalysisProfile()
+    if (res) {
+      userProfile.value = {
+        newUsers: res.newUsers ?? 0,
+        oldUsers: res.oldUsers ?? 0,
+        devices: res.devices || []
+      }
+    }
+  } catch (e) {
+    console.error('获取用户画像失败', e)
   }
-]
+}
 
-// 各渠道最终转化率
-const channelRates = [
-  { name: '自然搜索', rate: '16.0', color: 'var(--primary)' },
-  { name: '付费广告', rate: '6.2', color: 'var(--state-success)' },
-  { name: '社交媒体', rate: '3.0', color: 'var(--state-warning)' }
-]
+// ===== 渠道访问对比（真实数据：近 30 天独立会话） =====
+const CHANNEL_COLORS = ['var(--primary)', 'var(--state-success)', 'var(--state-warning)', '#5856d6', 'var(--text-400)']
+const channelRows = ref([])
+
+// 加载渠道访问统计
+async function loadChannels() {
+  try {
+    const list = await getAnalysisChannels()
+    const max = Math.max(...(list || []).map(i => Number(i.visits || 0)), 1)
+    channelRows.value = (list || []).map((item, idx) => ({
+      name: item.name,
+      shortName: String(item.name || '其他').slice(0, 4),
+      count: Number(item.visits || 0),
+      percent: Math.round(Number(item.visits || 0) / max * 100),
+      color: CHANNEL_COLORS[idx % CHANNEL_COLORS.length]
+    }))
+  } catch (e) {
+    console.error('获取渠道访问统计失败', e)
+    channelRows.value = []
+  }
+}
 
 function fmtNum(n) {
   return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })
@@ -354,7 +340,12 @@ function getColor(index) {
   return colors[index]
 }
 
-onMounted(() => loadData())
+onMounted(() => {
+  loadData()
+  loadChurn()
+  loadProfile()
+  loadChannels()
+})
 </script>
 
 <style scoped>

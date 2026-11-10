@@ -103,7 +103,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getComplaintList, closeComplaint, assignComplaint } from '../api/admin'
+import { getComplaintList, closeComplaint, assignComplaint, getComplaintCategoryDistribution } from '../api/admin'
 
 const pageTitle = '投诉处理详情'
 const filters = reactive({ keyword: '' })
@@ -125,15 +125,33 @@ const editForm = reactive({
 // 类型标签映射
 const typeLabelMap = { '售后': '售后问题', '咨询': '售前咨询', '投诉': '用户投诉' }
 
-// 投诉分类分布示例数据（无真实统计 API，先用结构化示例数据展示图表形态）
-// 颜色沿用设计稿：产品质量-红 / 物流配送-蓝 / 服务态度-橙 / 价格问题-紫 / 其他-灰
-const categoryData = [
-  { name: '产品质量', percent: 35, color: 'var(--state-error)' },
-  { name: '物流配送', percent: 28, color: 'var(--brand-500)' },
-  { name: '服务态度', percent: 15, color: '#ff9500' },
-  { name: '价格问题', percent: 12, color: '#5856d6' },
-  { name: '其他', percent: 10, color: 'var(--text-400)' }
-]
+// 投诉分类分布（来自 /complaint/category-distribution，近30天）
+const CATEGORY_COLORS = {
+  '售后': 'var(--brand-500)',
+  '咨询': '#5856d6',
+  '投诉': 'var(--state-error)',
+  '其他': 'var(--text-400)'
+}
+const categoryData = ref([])
+
+// 加载投诉分类分布
+async function loadCategoryDistribution() {
+  try {
+    const list = await getComplaintCategoryDistribution()
+    categoryData.value = (list || []).map(item => {
+      const type = item.type || '其他'
+      return {
+        name: typeLabelMap[type] || type,
+        percent: Number(item.percent || 0),
+        count: item.count || 0,
+        color: CATEGORY_COLORS[type] || 'var(--text-400)'
+      }
+    })
+  } catch (e) {
+    console.error('获取投诉分类分布失败', e)
+    categoryData.value = []
+  }
+}
 
 // 从API加载投诉列表数据
 async function loadData() {
@@ -212,7 +230,10 @@ async function handleSave() {
     ElMessage.error('保存失败：' + (e?.response?.data?.message || e?.message || '未知错误'))
   }
 }
-onMounted(() => loadData())
+onMounted(() => {
+  loadData()
+  loadCategoryDistribution()
+})
 </script>
 
 <style scoped>

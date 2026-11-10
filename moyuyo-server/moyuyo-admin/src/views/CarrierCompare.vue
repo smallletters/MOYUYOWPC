@@ -4,7 +4,7 @@
     <div class="page-header">
       <div>
         <h2>承运商对比与优选</h2>
-        <p class="page-desc">多承运商时效 / 价格 / 妥投率评分对比，智能推荐最优物流方案</p>
+        <p class="page-desc">多承运商时效 / 价格 / 好评率评分对比，智能推荐最优物流方案</p>
       </div>
       <div class="header-actions">
         <el-button type="primary" @click="handleAdd">新建</el-button>
@@ -16,7 +16,7 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">承运商对比</span>
-          <span class="card-subtitle">勾选 2-3 家高亮对比 · 绿色为各指标最优值 · 示例数据</span>
+          <span class="card-subtitle">勾选 2-3 家高亮对比 · 绿色为各指标最优值</span>
         </div>
       </template>
       <el-table
@@ -58,14 +58,14 @@
             <span class="score-text" :class="scoreClass(row.priceScore)">{{ row.priceScore }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="妥投率" width="100" align="center">
+        <el-table-column label="好评率" width="100" align="center">
           <template #default="{ row }">
             <span class="cell-value" :class="{ 'cell-best': row.deliverRate === bestValues.deliverRate }">{{ row.deliverRate }}%</span>
           </template>
         </el-table-column>
-        <el-table-column label="破损率" width="100" align="center">
+        <el-table-column label="续重价格(元)" width="110" align="center">
           <template #default="{ row }">
-            <span class="cell-value" :class="{ 'cell-best': row.damageRate === bestValues.damageRate }">{{ row.damageRate }}%</span>
+            <span class="cell-value">￥{{ row.renewWeightPrice }}</span>
           </template>
         </el-table-column>
         <el-table-column label="综合评分" width="120" align="center">
@@ -86,7 +86,7 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">承运商绩效统计</span>
-          <span class="card-subtitle">近 30 天趋势 · 示例数据</span>
+          <span class="card-subtitle">基于承运商档案实时统计</span>
         </div>
       </template>
 
@@ -112,7 +112,7 @@
         </div>
         <div class="kpi-card">
           <div class="kpi-card-header">
-            <span class="kpi-card-label">平均妥投率</span>
+            <span class="kpi-card-label">平均好评率</span>
           </div>
           <div class="kpi-card-value">{{ perfKpi.avgDeliver }}<span class="kpi-unit"> %</span></div>
           <div class="kpi-card-trend">
@@ -130,53 +130,49 @@
         </div>
       </div>
 
-      <!-- 近30天妥投率 / 平均时效 CSS 柱状图 -->
+      <!-- 各承运商平均时效 / 首重价格对比（真实档案数据） -->
       <el-row :gutter="16">
         <el-col :span="12">
           <div class="chart-box">
-            <div class="chart-title">近 30 天妥投率趋势（%）</div>
-            <div class="trend-chart">
-              <div v-for="(v, i) in DELIVER_TREND" :key="i" class="trend-col">
-                <div
-                  class="trend-bar"
-                  :class="{ 'trend-bar-best': v >= 98 }"
-                  :style="{ height: barHeight(v, deliverRange.min, deliverRange.max) }"
-                  :title="'第 ' + (i + 1) + ' 天: ' + v + '%'"
-                ></div>
+            <div class="chart-title">各承运商平均时效（天）</div>
+            <div class="hbar-list">
+              <div v-for="c in compareData" :key="c.id" class="hbar-item">
+                <span class="hbar-name">{{ c.name }}</span>
+                <div class="hbar-track">
+                  <div
+                    class="hbar-fill"
+                    :class="{ 'hbar-best': c.avgDays === bestValues.avgDays }"
+                    :style="{ width: hbarWidth(c.avgDays, maxCompareDays) }"
+                  ></div>
+                </div>
+                <span class="hbar-value" :class="{ 'hbar-value-best': c.avgDays === bestValues.avgDays }">{{ c.avgDays }} 天</span>
               </div>
-            </div>
-            <div class="chart-axis">
-              <span>1天</span>
-              <span>15天</span>
-              <span>30天</span>
             </div>
           </div>
         </el-col>
         <el-col :span="12">
           <div class="chart-box">
-            <div class="chart-title">近 30 天平均时效趋势（天）</div>
-            <div class="trend-chart">
-              <div v-for="(v, i) in DAYS_TREND" :key="i" class="trend-col">
-                <div
-                  class="trend-bar trend-bar-warn"
-                  :class="{ 'trend-bar-good': v <= 4.2 }"
-                  :style="{ height: barHeight(v, daysRange.min, daysRange.max) }"
-                  :title="'第 ' + (i + 1) + ' 天: ' + v + ' 天'"
-                ></div>
+            <div class="chart-title">各承运商首重价格（元）</div>
+            <div class="hbar-list">
+              <div v-for="c in compareData" :key="c.id" class="hbar-item">
+                <span class="hbar-name">{{ c.name }}</span>
+                <div class="hbar-track">
+                  <div
+                    class="hbar-fill"
+                    :class="{ 'hbar-best': c.firstWeightPrice === bestValues.firstWeightPrice }"
+                    :style="{ width: hbarWidth(c.firstWeightPrice, maxComparePrice) }"
+                  ></div>
+                </div>
+                <span class="hbar-value" :class="{ 'hbar-value-best': c.firstWeightPrice === bestValues.firstWeightPrice }">￥{{ c.firstWeightPrice }}</span>
               </div>
-            </div>
-            <div class="chart-axis">
-              <span>1天</span>
-              <span>15天</span>
-              <span>30天</span>
             </div>
           </div>
         </el-col>
       </el-row>
 
-      <!-- 各承运商妥投率水平条形对比 -->
+      <!-- 各承运商好评率水平条形对比 -->
       <div class="hbar-section">
-        <div class="chart-title">各承运商妥投率对比（%）</div>
+        <div class="chart-title">各承运商好评率对比（%）</div>
         <div class="hbar-list">
           <div v-for="c in compareData" :key="c.id" class="hbar-item">
             <span class="hbar-name">{{ c.name }}</span>
@@ -212,7 +208,7 @@
             <span class="tag tag-blue">推荐</span>
           </div>
           <div class="recommend-meta">
-            {{ bestCarrier.transportMode }} · 平均时效 {{ bestCarrier.avgDays }} 天 · 首重 ￥{{ bestCarrier.firstWeightPrice }} · 妥投率 {{ bestCarrier.deliverRate }}% · 综合评分 {{ bestCarrier.totalScore }}
+            {{ bestCarrier.transportMode }} · 平均时效 {{ bestCarrier.avgDays }} 天 · 首重 ￥{{ bestCarrier.firstWeightPrice }} · 好评率 {{ bestCarrier.deliverRate }}% · 综合评分 {{ bestCarrier.totalScore }}
           </div>
           <div class="recommend-reason-title">推荐理由</div>
           <ul class="recommend-reasons">
@@ -344,61 +340,87 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCarriers, createCarrier, updateCarrier, deleteCarrier } from '../api/admin'
 
 // ============================================================
-// 示例数据：对比优选 / 绩效统计区块暂无独立接口，
-// 以下为结构化示例数据（含时效、价格、妥投率、破损率、综合评分），
-// 接入真实 API 后替换 COMPARE_SAMPLE 数据源即可。
-// ============================================================
-const COMPARE_SAMPLE = [
-  { id: 1, name: '顺丰速运', transportMode: '空运', avgDays: 2.5, timeScore: 4.8, firstWeightPrice: 23, priceScore: 3.2, deliverRate: 99.1, damageRate: 0.1, totalScore: 4.6 },
-  { id: 2, name: '京东物流', transportMode: '陆运', avgDays: 3, timeScore: 4.5, firstWeightPrice: 12, priceScore: 4.0, deliverRate: 98.6, damageRate: 0.2, totalScore: 4.4 },
-  { id: 3, name: '中通快递', transportMode: '陆运', avgDays: 3.8, timeScore: 4.0, firstWeightPrice: 8, priceScore: 4.6, deliverRate: 97.4, damageRate: 0.3, totalScore: 4.1 },
-  { id: 4, name: '圆通速递', transportMode: '陆运', avgDays: 4.5, timeScore: 3.5, firstWeightPrice: 7, priceScore: 4.8, deliverRate: 96.8, damageRate: 0.4, totalScore: 3.9 },
-  { id: 5, name: '韵达快递', transportMode: '陆运', avgDays: 4.8, timeScore: 3.2, firstWeightPrice: 7, priceScore: 4.8, deliverRate: 96.2, damageRate: 0.5, totalScore: 3.7 },
-  { id: 6, name: 'EMS 国际', transportMode: '空运', avgDays: 5.2, timeScore: 3.0, firstWeightPrice: 35, priceScore: 2.5, deliverRate: 95.1, damageRate: 0.6, totalScore: 3.3 }
-]
-
-// 示例数据：近 30 天妥投率（%），固定波动模拟
-const DELIVER_TREND = Array.from({ length: 30 }, (_, i) => +(98.1 - Math.sin(i / 3.2) * 0.6 - (i % 5) * 0.12).toFixed(1))
-// 示例数据：近 30 天平均时效（天）
-const DAYS_TREND = Array.from({ length: 30 }, (_, i) => +(4.4 + Math.sin(i / 4) * 0.45 + (i % 6) * 0.06).toFixed(1))
-
-// ============================================================
-// 承运商对比与优选（示例数据驱动）
+// 承运商对比与优选：数据来自 /logistics/carriers 真实档案
+// 字段映射：avgDeliveryDays→时效、firstWeightPrice→首重、praiseRate→好评率；
+// 评分指标按当前承运商集合归一化派生（不引入外部假数据）。
 // ============================================================
 const MAX_COMPARE = 3
-const compareData = ref([...COMPARE_SAMPLE])
+const compareData = ref([])
 const compareTableRef = ref(null)
 const selectedRows = ref([])
 
-// 各指标最优值（时效/价格越低越好，妥投率越高越好，破损率越低越好）
+// 将承运商档案映射为对比行，并计算相对评分
+function buildCompareData(list) {
+  if (!list.length) return []
+  const daysList = list.map(c => Number(c.avgDeliveryDays || 0))
+  const priceList = list.map(c => Number(c.firstWeightPrice || 0))
+  const minDays = Math.min(...daysList)
+  const maxDays = Math.max(...daysList)
+  const minPrice = Math.min(...priceList)
+  const maxPrice = Math.max(...priceList)
+  return list.map(c => {
+    const avgDays = Number(c.avgDeliveryDays || 0)
+    const price = Number(c.firstWeightPrice || 0)
+    const praise = Number(c.praiseRate || 0)
+    // 时效/价格越低越好，归一化到 1~5 分；好评率直接按百分比折算
+    const timeScore = +(1 + (maxDays === minDays ? 1 : (maxDays - avgDays) / (maxDays - minDays)) * 4).toFixed(1)
+    const priceScore = +(1 + (maxPrice === minPrice ? 1 : (maxPrice - price) / (maxPrice - minPrice)) * 4).toFixed(1)
+    const praiseScore = +(praise / 20).toFixed(1)
+    return {
+      id: c.id,
+      name: c.name || '-',
+      transportMode: c.transportMode || '-',
+      avgDays,
+      timeScore,
+      firstWeightPrice: price,
+      renewWeightPrice: Number(c.renewWeightPrice || 0),
+      priceScore,
+      deliverRate: praise,
+      totalScore: +(timeScore * 0.4 + priceScore * 0.3 + praiseScore * 0.3).toFixed(1)
+    }
+  })
+}
+
+// 各指标最优值（时效/价格越低越好，好评率越高越好）
 const bestValues = computed(() => {
   const list = compareData.value
+  if (!list.length) return { avgDays: 0, firstWeightPrice: 0, deliverRate: 0 }
   return {
     avgDays: Math.min(...list.map(i => i.avgDays)),
     firstWeightPrice: Math.min(...list.map(i => i.firstWeightPrice)),
-    deliverRate: Math.max(...list.map(i => i.deliverRate)),
-    damageRate: Math.min(...list.map(i => i.damageRate))
+    deliverRate: Math.max(...list.map(i => i.deliverRate))
   }
 })
 
-// 综合评分最高的承运商（优选建议对象）
-const bestCarrier = computed(() => compareData.value.reduce((a, b) => (b.totalScore > a.totalScore ? b : a)))
+// 综合评分最高的承运商（优选建议对象），空数据时给占位对象避免模板报错
+const bestCarrier = computed(() => {
+  const list = compareData.value
+  if (!list.length) {
+    return { name: '-', transportMode: '-', avgDays: '-', firstWeightPrice: '-', deliverRate: '-', totalScore: '-' }
+  }
+  // 注意：不能用字符串占位对象作为 reduce 初始值，否则数值比较恒为 false
+  return list.reduce((a, b) => (Number(b.totalScore) > Number(a.totalScore) ? b : a))
+})
 
 // 根据最优承运商动态生成推荐理由
 const recommendationReasons = computed(() => {
   const carrier = bestCarrier.value
+  if (!compareData.value.length) return ['暂无承运商数据，请先在下方维护承运商档案']
   const best = bestValues.value
   const reasons = [`综合评分 ${carrier.totalScore} 分，在全部承运商中排名第一`]
-  if (carrier.deliverRate === best.deliverRate) reasons.push(`妥投率 ${carrier.deliverRate}% 领先所有承运商，履约最稳定`)
-  if (carrier.damageRate === best.damageRate) reasons.push(`破损率仅 ${carrier.damageRate}%，货物损耗风险最低`)
+  if (carrier.deliverRate === best.deliverRate) reasons.push(`好评率 ${carrier.deliverRate}% 领先所有承运商，履约最稳定`)
   if (carrier.avgDays === best.avgDays) reasons.push(`平均时效 ${carrier.avgDays} 天，配送速度最快`)
-  if (reasons.length < 3) reasons.push('时效达成率与综合评分表现均衡，适合作为默认发货渠道')
+  if (carrier.firstWeightPrice === best.firstWeightPrice) reasons.push(`首重价格 ￥${carrier.firstWeightPrice}，物流成本最低`)
+  if (reasons.length < 3) reasons.push('时效、价格与好评率表现均衡，适合作为默认发货渠道')
   return reasons
 })
 
 // KPI 指标汇总
 const perfKpi = computed(() => {
   const list = compareData.value
+  if (!list.length) {
+    return { carrierCount: 0, transportTypes: 0, avgDays: '0.0', avgDeliver: '0.0', bestScore: '-' }
+  }
   const avgDays = list.reduce((s, i) => s + i.avgDays, 0) / list.length
   const avgDeliver = list.reduce((s, i) => s + i.deliverRate, 0) / list.length
   return {
@@ -410,15 +432,9 @@ const perfKpi = computed(() => {
   }
 })
 
-// 趋势柱状图数值范围
-const deliverRange = {
-  min: Math.min(...DELIVER_TREND),
-  max: Math.max(...DELIVER_TREND)
-}
-const daysRange = {
-  min: Math.min(...DAYS_TREND),
-  max: Math.max(...DAYS_TREND)
-}
+// 时效 / 首重价格水平条形图的最大值（用于条宽归一化）
+const maxCompareDays = computed(() => Math.max(...compareData.value.map(i => i.avgDays), 1))
+const maxComparePrice = computed(() => Math.max(...compareData.value.map(i => i.firstWeightPrice), 1))
 
 // 勾选处理：最多勾选 3 家，超出部分自动取消
 function handleSelectionChange(rows) {
@@ -441,12 +457,6 @@ function scoreClass(score) {
   if (score >= 4.5) return 'score-high'
   if (score >= 3.5) return 'score-mid'
   return 'score-low'
-}
-
-// 柱状图高度映射（范围 6% - 100%）
-function barHeight(value, min, max) {
-  const pct = ((value - min) / (max - min)) * 100
-  return Math.max(6, Math.min(100, pct)) + '%'
 }
 
 // 水平条形宽度映射（相对最大值，最小 4% 便于展示）
@@ -491,6 +501,8 @@ async function loadData() {
     }
     tableData.value = filtered
     total.value = filtered.length
+    // 同步刷新对比与优选区块（真实承运商档案）
+    compareData.value = buildCompareData(filtered)
   } catch (error) {
     console.error('获取承运商数据失败:', error)
     ElMessage.error('获取承运商数据失败')

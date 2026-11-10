@@ -899,7 +899,7 @@ async function handleSetDefault(tpl) {
   }
 }
 
-// ==================== 打印设置（示例数据：本地默认值，保存后写入 localStorage） ====================
+// ==================== 打印设置（本地默认值，保存后写入 localStorage） ====================
 const printSettings = reactive({
   paperSize: 'a4',
   copies: 1,

@@ -62,7 +62,7 @@
     <!-- ===== 价格优先级 + 营销活动互斥矩阵 并排展示 ===== -->
     <div class="dual-col">
 
-      <!-- 价格优先级说明（示例数据） -->
+      <!-- 价格优先级说明（业务规则） -->
       <el-card shadow="never" class="config-card">
         <template #header>
           <div class="card-title-row">
@@ -87,7 +87,7 @@
         </div>
       </el-card>
 
-      <!-- 营销活动互斥矩阵（示例数据） -->
+      <!-- 营销活动互斥矩阵（业务规则） -->
       <el-card shadow="never" class="config-card">
         <template #header>
           <div class="card-title-row">
@@ -178,57 +178,40 @@
       </el-table>
     </el-card>
 
-    <!-- ===== 调价审批队列（示例数据） ===== -->
+    <!-- ===== 最近改价记录（真实数据） ===== -->
     <el-card shadow="never" class="config-card">
       <template #header>
         <div class="card-title-row card-title-between">
           <div class="card-title-row">
             <span class="section-icon" style="color:var(--brand-500)">☑</span>
-            <span class="section-title">调价审批队列</span>
+            <span class="section-title">最近改价记录</span>
           </div>
-          <el-tag type="primary" effect="light">{{ pendingCount }} 待审批</el-tag>
+          <el-tag type="primary" effect="light">{{ priceModifyList.length }} 条</el-tag>
         </div>
       </template>
-      <el-table :data="approvalList">
-        <el-table-column prop="productName" label="商品名称" min-width="160">
+      <el-table :data="priceModifyList">
+        <el-table-column prop="orderNo" label="订单编号" min-width="160" />
+        <el-table-column prop="product" label="商品" min-width="150" show-overflow-tooltip />
+        <el-table-column label="原金额" width="110" align="center">
           <template #default="{ row }">
-            <span style="font-weight:600;color:var(--text-800)">{{ row.productName }}</span>
+            <span style="color:var(--text-400)">¥{{ row.originalAmount }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="原价" width="100" align="center">
+        <el-table-column label="调整金额" width="110" align="center">
           <template #default="{ row }">
-            <span style="text-decoration:line-through;color:var(--text-400)">¥{{ row.originalPrice }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="新价" width="100" align="center">
-          <template #default="{ row }">
-            <span style="font-weight:700;color:var(--primary)">¥{{ row.newPrice }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="幅度" width="110" align="center">
-          <template #default="{ row }">
-            <span class="change-badge" :class="row.changeRate >= 0 ? 'change-up' : 'change-down'">
-              {{ row.changeRate >= 0 ? '+' : '' }}{{ row.changeRate }}%
+            <span class="change-badge" :class="row.adjustAmount >= 0 ? 'change-up' : 'change-down'">
+              {{ row.adjustAmount >= 0 ? '+' : '' }}{{ row.adjustAmount }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="applicant" label="申请人" width="100" align="center" />
-        <el-table-column label="状态" width="110" align="center">
+        <el-table-column label="最终金额" width="110" align="center">
           <template #default="{ row }">
-            <el-tag :type="statusTagType(row.status)" effect="light" size="small">
-              {{ row.status }}
-            </el-tag>
+            <span style="font-weight:700;color:var(--primary)">¥{{ row.finalAmount }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" align="center">
-          <template #default="{ row }">
-            <template v-if="row.status === '待审批'">
-              <el-button size="small" type="success" plain @click="handleApprove(row, 'approve')">通过</el-button>
-              <el-button size="small" type="danger" plain @click="handleApprove(row, 'reject')">驳回</el-button>
-            </template>
-            <span v-else style="color:var(--text-400)">--</span>
-          </template>
-        </el-table-column>
+        <el-table-column prop="reason" label="改价原因" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="operator" label="操作人" width="110" align="center" />
+        <el-table-column prop="createTime" label="改价时间" width="170" align="center" />
       </el-table>
     </el-card>
 
@@ -267,7 +250,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getPriceList, createPrice, updatePrice,
-  getMemberPriceConfigs, saveMemberPriceConfigs
+  getMemberPriceConfigs, saveMemberPriceConfigs, getPriceModifyList
 } from '../api/admin'
 
 // ===== 价格 CRUD（原有逻辑保留） =====
@@ -374,7 +357,7 @@ async function handleSave() {
   }
 }
 
-// ===== 价格优先级（示例数据，未接入真实接口） =====
+// ===== 价格优先级（业务规则说明） =====
 const priorityLevels = [
   { name: '秒杀价', level: 'P1 最高', width: '100%', color: 'var(--state-error)', background: 'var(--state-error-surface)' },
   { name: '会员价', level: 'P2', width: '92%', color: 'var(--brand-500)', background: 'var(--brand-50)' },
@@ -382,7 +365,7 @@ const priorityLevels = [
   { name: '原价', level: 'P4 最低', width: '76%', color: 'var(--text-400)', background: 'var(--background-200)' }
 ]
 
-// ===== 营销活动互斥矩阵（示例数据，未接入真实接口） =====
+// ===== 营销活动互斥矩阵（业务规则说明） =====
 // 矩阵为对称矩阵：'yes' 可叠加，'no' 互斥，'-' 自身
 const activityNames = ['优惠券', '满减', '秒杀', '会员价', '积分', '礼品卡']
 const matrixRows = [
@@ -459,44 +442,24 @@ async function handleSaveMemberConfig() {
   }
 }
 
-// ===== 调价审批队列（示例数据，未接入真实接口） =====
-const approvalList = ref([
-  { id: 1, productName: '宠物潮流外套', originalPrice: 299, newPrice: 249, changeRate: -16.7, applicant: '张运营', status: '待审批' },
-  { id: 2, productName: '高端猫粮 5kg装', originalPrice: 389, newPrice: 429, changeRate: 10.3, applicant: '李采购', status: '待审批' },
-  { id: 3, productName: '智能饮水机 Pro', originalPrice: 599, newPrice: 499, changeRate: -16.7, applicant: '王商品', status: '待审批' },
-  { id: 4, productName: '宠物 GPS 定位器', originalPrice: 459, newPrice: 379, changeRate: -17.4, applicant: '赵技术', status: '已通过' },
-  { id: 5, productName: '自动喂食器标准版', originalPrice: 199, newPrice: 129, changeRate: -35.2, applicant: '张运营', status: '已拒绝' }
-])
+// ===== 最近改价记录（真实数据：/order-ops/price-modify/list） =====
+const priceModifyList = ref([])
 
-// 待审批数量
-const pendingCount = computed(() => approvalList.value.filter(item => item.status === '待审批').length)
-
-// 状态对应的标签类型
-function statusTagType(status) {
-  if (status === '待审批') return 'primary'
-  if (status === '已通过') return 'success'
-  return 'danger'
-}
-
-// 通过 / 驳回审批（示例数据，本地更新状态）
-async function handleApprove(row, action) {
-  const text = action === 'approve' ? '通过' : '驳回'
+// 加载最近改价记录
+async function loadPriceModifyList() {
   try {
-    await ElMessageBox.confirm(`确定${text}「${row.productName}」的调价申请吗？`, '调价审批', {
-      type: 'warning',
-      confirmButtonText: `确认${text}`,
-      cancelButtonText: '取消'
-    })
-    row.status = action === 'approve' ? '已通过' : '已拒绝'
-    ElMessage.success(`${text}成功（示例数据，未接入真实接口）`)
+    const res = await getPriceModifyList({ page: 1, size: 10 })
+    priceModifyList.value = Array.isArray(res) ? res : (res?.records || [])
   } catch (e) {
-    // 用户取消，不做处理
+    console.error('获取改价记录失败', e)
+    priceModifyList.value = []
   }
 }
 
 onMounted(() => {
   loadData()
   loadMemberConfigs()
+  loadPriceModifyList()
 })
 </script>
 

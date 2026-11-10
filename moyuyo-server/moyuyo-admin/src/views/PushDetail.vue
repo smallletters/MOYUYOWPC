@@ -64,7 +64,7 @@
       </div>
     </el-card>
 
-    <!-- 最近发送记录（示例数据：无真实接口，用于展示区块结构） -->
+    <!-- 最近发送记录（取自推送记录真实数据） -->
     <el-card shadow="never" class="recent-card">
       <template #header>
         <div class="recent-card-header">
@@ -162,7 +162,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPushRecords, createPush, updatePush, deletePush } from '../api/admin'
 
@@ -175,14 +175,18 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 
-// 示例数据：最近发送记录（无真实接口，仅用于展示区块结构，后续可替换为真实 API）
-const recentRecords = ref([
-  { time: '2026-07-08 10:00', title: '夏日大促开始啦！精选商品低至5折', target: '全量用户', status: '已完成' },
-  { time: '2026-07-07 14:30', title: '新品上市：有机冻干零食系列', target: '全量用户', status: '已完成' },
-  { time: '2026-07-07 09:15', title: '您的订单已发货，预计3天内送达', target: '指定用户', status: '已完成' },
-  { time: '2026-07-06 16:00', title: '系统维护通知：7月10日凌晨升级', target: '全量用户', status: '失败' },
-  { time: '2026-07-05 11:45', title: '专属推荐：根据您的宠物喜好精选', target: '标签：高活跃', status: '发送中' }
-])
+// 最近发送记录：取真实推送记录的前 5 条
+const recentRecords = computed(() => tableData.value.slice(0, 5).map(r => {
+  const rawStatus = String(r.status || '')
+  const statusMap = { SENT: '已完成', SUCCESS: '已完成', FAILED: '失败', SCHEDULED: '待发送', SENDING: '发送中' }
+  const targetMap = { all: '全量用户', users: '指定用户', tags: '指定标签' }
+  return {
+    time: r.createTime || r.sendTime || '-',
+    title: r.title || '-',
+    target: targetMap[r.targetType] || (r.targetType || '全量用户'),
+    status: statusMap[rawStatus.toUpperCase()] || rawStatus || '发送中'
+  }
+}))
 
 // 新建/编辑表单：推送内容 + 发送设置
 const editForm = reactive({

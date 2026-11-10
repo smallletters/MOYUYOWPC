@@ -222,13 +222,13 @@ VITE_API_BASE=https://your-wp-site.com/wp-json
 # WordPress 站点地址
 VITE_WP_BASE=https://your-wp-site.com
 
-# WooCommerce REST API 凭证
+# WooCommerce REST API Consumer Key（公开标识）
+# 注：Consumer Secret 绝不能放前端，必须由后端代理持有
 VITE_CONSUMER_KEY=your_consumer_key
-VITE_CONSUMER_SECRET=your_consumer_secret
 
-# WP OAuth Server（MiniOrange）OAuth 凭证
+# WP OAuth Server（MiniOrange）OAuth Client ID
+# 注：Client Secret 必须由后端持有，前端不得配置
 VITE_OAUTH_CLIENT_ID=your_oauth_client_id
-VITE_OAUTH_CLIENT_SECRET=your_oauth_client_secret
 
 # 结算货币（默认 USD）
 VITE_CURRENCY=USD
@@ -323,8 +323,8 @@ npm run format
 4. **配置 .env**：
 
    ```env
+   # 仅前端可持有公开 Client ID；Client Secret 必须由后端保管
    VITE_OAUTH_CLIENT_ID=你的ClientID
-   VITE_OAUTH_CLIENT_SECRET=你的ClientSecret
    ```
 
 5. **社交登录配合**（可选）：

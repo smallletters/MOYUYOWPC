@@ -41,7 +41,7 @@
         </el-card>
       </el-col>
     </el-row>
-    <!-- 短信模板管理（示例数据，后端暂无模板管理 API） -->
+    <!-- 短信模板管理（真实数据） -->
     <el-card shadow="never" class="template-card">
       <div class="template-header">
         <span class="template-title">短信模板</span>
@@ -198,7 +198,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getSmsStats, getSmsRecords, sendSms } from '../api/admin'
+import { getSmsStats, getSmsRecords, sendSms, getSmsTemplates, createSmsTemplate, updateSmsTemplate, toggleSmsTemplate } from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
 const currentPage = ref(1)
@@ -293,7 +293,7 @@ function handleDetail(row) {
   ElMessage.info('短信内容：' + row.content)
 }
 
-// ==================== 短信模板（示例数据，后端暂无模板管理 API） ====================
+// ==================== 短信模板（真实数据） ====================
 const templateDialogVisible = ref(false)
 const templateSubmitting = ref(false)
 
@@ -316,16 +316,19 @@ function parseVars(content) {
   return vars
 }
 
-// 示例数据：短信模板列表
-const templateList = ref([
-  { id: 1, name: '登录验证码', type: '验证码', templateId: 'SMS_20240101', content: '您的验证码为 ${code}，有效期5分钟，请勿泄露给他人。', status: '已通过', rejectReason: '', enabled: true },
-  { id: 2, name: '发货通知', type: '通知', templateId: 'SMS_20240102', content: '您的订单 ${orderNo} 已发货，快递单号 ${trackingNo}，请注意查收。', status: '已通过', rejectReason: '', enabled: true },
-  { id: 3, name: '促销活动推送', type: '营销', templateId: 'SMS_20240103', content: '亲爱的会员，MOYUYO 限时特惠来袭！${productName} 低至 ${discount} 折，快来抢购。', status: '审核中', rejectReason: '', enabled: true },
-  { id: 4, name: '退款通知', type: '通知', templateId: 'SMS_20240104', content: '您的退款 ${amount} 元已处理，预计 1-3 个工作日到账。', status: '已拒绝', rejectReason: '模板内容包含敏感词汇，请修改后重新提交', enabled: true }
-])
+// 短信模板列表（来自 /sms/templates）
+const templateList = ref([])
 
-// 为示例数据预解析变量列表
-templateList.value.forEach(tpl => { tpl.vars = parseVars(tpl.content) })
+// 加载真实模板列表
+async function loadTemplates() {
+  try {
+    const res = await getSmsTemplates()
+    templateList.value = toArray(res)
+  } catch (e) {
+    console.error('获取短信模板失败', e)
+    templateList.value = []
+  }
+}
 
 // 弹窗中根据当前内容实时解析变量
 const templateFormVars = computed(() => parseVars(templateForm.content))
@@ -338,7 +341,7 @@ function templateTypeTag(type) {
 
 // 模板审核状态对应的标签样式
 function templateStatusTag(status) {
-  const map = { '已通过': 'success', '审核中': 'warning', '已拒绝': 'danger' }
+  const map = { '已通过': 'success', '审核中': 'warning', '待审核': 'warning', '已拒绝': 'danger', '已驳回': 'danger' }
   return map[status] || 'info'
 }
 
@@ -354,7 +357,7 @@ function handleEditTemplate(tpl) {
   templateDialogVisible.value = true
 }
 
-// 保存模板（示例数据：本地新增/更新，无后端 API）
+// 保存模板（真实写入 mo_sms_template）
 async function handleSaveTemplate() {
   if (!templateForm.name || !templateForm.type || !templateForm.content) {
     ElMessage.warning('请填写完整的模板信息')
@@ -363,43 +366,44 @@ async function handleSaveTemplate() {
   templateSubmitting.value = true
   try {
     if (templateForm.id) {
-      // 编辑：更新已有模板并重新解析变量
-      const tpl = templateList.value.find(t => t.id === templateForm.id)
-      if (tpl) {
-        tpl.name = templateForm.name
-        tpl.type = templateForm.type
-        tpl.content = templateForm.content
-        tpl.vars = parseVars(templateForm.content)
-      }
-      ElMessage.success('模板更新成功')
-    } else {
-      // 新建：追加到本地示例列表，状态默认为审核中
-      templateList.value.unshift({
-        id: Date.now(),
+      await updateSmsTemplate(templateForm.id, {
         name: templateForm.name,
         type: templateForm.type,
-        templateId: 'SMS_' + Date.now().toString().slice(-8),
-        content: templateForm.content,
-        status: '审核中',
-        rejectReason: '',
-        enabled: true,
-        vars: parseVars(templateForm.content)
+        content: templateForm.content
+      })
+      ElMessage.success('模板更新成功')
+    } else {
+      await createSmsTemplate({
+        name: templateForm.name,
+        type: templateForm.type,
+        content: templateForm.content
       })
       ElMessage.success('模板创建成功，等待审核')
     }
     templateDialogVisible.value = false
+    await loadTemplates()
+  } catch (e) {
+    ElMessage.error('保存失败：' + (e.message || '未知错误'))
   } finally {
     templateSubmitting.value = false
   }
 }
 
-// 启用/禁用模板（示例数据：本地切换，无后端 API）
-function handleToggleTemplate(tpl) {
-  tpl.enabled = !tpl.enabled
-  ElMessage.success(tpl.enabled ? `模板「${tpl.name}」已启用` : `模板「${tpl.name}」已禁用`)
+// 启用/禁用模板（真实更新）
+async function handleToggleTemplate(tpl) {
+  try {
+    await toggleSmsTemplate(tpl.id, !tpl.enabled)
+    ElMessage.success(tpl.enabled ? `模板「${tpl.name}」已禁用` : `模板「${tpl.name}」已启用`)
+    await loadTemplates()
+  } catch (e) {
+    ElMessage.error('操作失败：' + (e.message || '未知错误'))
+  }
 }
 
-onMounted(() => { loadData() })
+onMounted(() => {
+  loadData()
+  loadTemplates()
+})
 </script>
 
 <style scoped>

@@ -263,6 +263,58 @@
         />
       </div>
     </el-card>
+
+    <!-- 入仓计划列表 -->
+    <div class="wh-section" style="margin-top: 24px">
+      <div class="wh-section-header">
+        <h3 class="wh-section-title">入仓计划</h3>
+        <div style="display: flex; gap: 8px; align-items: center">
+          <el-select
+            v-model="inboundStatus"
+            placeholder="全部状态"
+            clearable
+            style="width: 140px"
+            @change="handleInboundSearch"
+          >
+            <el-option label="待入库" value="PENDING" />
+            <el-option label="已完成" value="COMPLETED" />
+            <el-option label="已取消" value="CANCELLED" />
+          </el-select>
+          <el-button size="small" @click="handleInboundSearch">刷新</el-button>
+        </div>
+      </div>
+      <el-card shadow="never">
+        <el-table :data="inboundPlans" stripe v-loading="inboundLoading">
+          <el-table-column prop="productName" label="商品名称" min-width="160" />
+          <el-table-column label="SKU" width="140">
+            <template #default="{ row }">{{ row.sku || '-' }}</template>
+          </el-table-column>
+          <el-table-column prop="warehouseName" label="目标仓库" width="140" />
+          <el-table-column prop="quantity" label="计划数量" width="100" align="center" />
+          <el-table-column label="预计入库" width="120">
+            <template #default="{ row }">{{ row.expectedAt || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="状态" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag :type="inboundStatusTag(row.status)" size="small">{{ inboundStatusText(row.status) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="创建时间" width="170">
+            <template #default="{ row }">{{ row.createTime || '-' }}</template>
+          </el-table-column>
+        </el-table>
+        <div style="display: flex; justify-content: flex-end; padding: 16px 0 0">
+          <el-pagination
+            v-model:current-page="inboundPage"
+            v-model:page-size="inboundSize"
+            :total="inboundTotal"
+            layout="total, sizes, prev, pager, next"
+            @change="loadInboundPlans"
+          />
+        </div>
+      </el-card>
+    </div>
+
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="700px">
       <el-form :model="editForm" label-width="110px">
         <el-form-item label="仓库名称">
@@ -346,7 +398,7 @@ import { OfficeBuilding, Box, Switch, Check, ArrowRight } from '@element-plus/ic
 import {
   getWarehouses, createWarehouse, updateWarehouse, deleteWarehouse, createInventoryTransfer,
   getWarehouseKpi, getWarehouseAllocationSuggest, applyWarehouseAllocation,
-  getWarehouseCategoryStocks, getWarehouseSmartPicks,
+  getWarehouseCategoryStocks, getWarehouseSmartPicks, createInboundPlan, getInboundPlanList,
   getInventoryTransferList
 } from '../api/admin'
 
@@ -422,8 +474,8 @@ async function handleExecuteSuggestion(item) {
   } catch { return }
   try {
     await createInventoryTransfer({
-      productName: item?.name,
-      sku: item?.sku,
+      // 调拨接口要求 skuId 必填，用选品建议的 id 兜底
+      skuId: item?.id,
       fromWarehouse: item?.warehouse,
       quantity: 1,
       remark: '智能选品建议自动发起'
@@ -480,20 +532,67 @@ async function confirmAddToPlan() {
     return
   }
   try {
-    await createInventoryTransfer({
+    // 入仓计划写入独立表，参数与后端接口一致
+    await createInboundPlan({
       productName: planForm.name,
       sku: planForm.sku,
-      toWarehouse: planForm.warehouse,
+      warehouse: planForm.warehouse,
       quantity: planForm.quantity || 1,
       expectedAt: planForm.expectedAt,
       remark: '入仓计划'
     })
     ElMessage.success('已加入入仓计划：' + planForm.name)
     planDialogVisible.value = false
+    await loadInboundPlans()
   } catch (e) {
-    ElMessage.success('已加入入仓计划（本地模式）：' + planForm.name)
-    planDialogVisible.value = false
+    ElMessage.error('加入入仓计划失败：' + (e?.message || '未知错误'))
   }
+}
+
+// ==================== 入仓计划列表 ====================
+const inboundPlans = ref([])
+const inboundLoading = ref(false)
+const inboundStatus = ref('')
+const inboundPage = ref(1)
+const inboundSize = ref(15)
+const inboundTotal = ref(0)
+
+// 状态文案与标签颜色
+function inboundStatusText(status) {
+  const map = { PENDING: '待入库', COMPLETED: '已完成', CANCELLED: '已取消' }
+  return map[status] || status || '-'
+}
+
+function inboundStatusTag(status) {
+  if (status === 'COMPLETED') return 'success'
+  if (status === 'CANCELLED') return 'info'
+  return 'warning'
+}
+
+// 加载入仓计划
+async function loadInboundPlans() {
+  inboundLoading.value = true
+  try {
+    const res = await getInboundPlanList({
+      status: inboundStatus.value || undefined,
+      page: inboundPage.value,
+      size: inboundSize.value
+    })
+    inboundPlans.value = (res && res.records) || []
+    inboundTotal.value = (res && res.total) || 0
+  } catch (e) {
+    console.error('获取入仓计划失败', e)
+    inboundPlans.value = []
+    inboundTotal.value = 0
+  } finally {
+    inboundLoading.value = false
+  }
+}
+
+// 筛选：回到第一页
+function handleInboundSearch() {
+  inboundPage.value = 1
+  loadInboundPlans()
 }
 
 // ==================== 原有仓库 CRUD ====================
@@ -683,6 +782,7 @@ onMounted(() => {
   loadTransfers()
   loadCategoryStocks()
   loadSmartPicks()
+  loadInboundPlans()
 })
 </script>
 

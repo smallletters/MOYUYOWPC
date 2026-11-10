@@ -404,6 +404,21 @@ export function assignComplaint(id, data) {
   return api.put(`/complaint/${id}/assign`, data)
 }
 
+// 投诉趋势（近 N 天）
+export function getComplaintTrend(days = 7) {
+  return api.get('/complaint/trend', { params: { days } })
+}
+
+// 最近投诉处理记录（时间线）
+export function getComplaintProcessRecent(limit = 10) {
+  return api.get('/complaint/process-recent', { params: { limit } })
+}
+
+// 投诉分类分布
+export function getComplaintCategoryDistribution() {
+  return api.get('/complaint/category-distribution')
+}
+
 // ==================== 评价审核 ====================
 export function getReviewList(params = {}) {
   return api.get('/review/list', params)
@@ -894,6 +909,23 @@ export function sendSms(data) {
   return api.post('/sms/send', data)
 }
 
+// ==================== 短信模板 ====================
+export function getSmsTemplates() {
+  return api.get('/sms/templates')
+}
+
+export function createSmsTemplate(data) {
+  return api.post('/sms/templates/create', data)
+}
+
+export function updateSmsTemplate(id, data) {
+  return api.put(`/sms/templates/${id}`, data)
+}
+
+export function toggleSmsTemplate(id, enabled) {
+  return api.put(`/sms/templates/${id}/toggle`, { enabled })
+}
+
 // ==================== 敏感词 ====================
 export function getSensitiveList() {
   return api.get('/sensitive/list')
@@ -948,6 +980,11 @@ export function getRiskEventStats() {
   return api.get('/risk/event-stats')
 }
 
+// 风控总览（KPI / 趋势 / 类型分布 / 最新事件）
+export function getRiskOverview() {
+  return api.get('/risk/overview')
+}
+
 // ==================== 满意度 ====================
 export function getSatisfactionStats() {
   return api.get('/satisfaction/stats')
@@ -963,6 +1000,47 @@ export function createSatisfactionSurvey(data) {
 
 export function replySatisfactionSurvey(id, data) {
   return api.put(`/satisfaction/${id}/reply`, data)
+}
+
+// ==================== 满意度：模板 / 规则 / 趋势 ====================
+export function getSatisfactionTemplates() {
+  return api.get('/satisfaction/templates')
+}
+
+export function createSatisfactionTemplate(data) {
+  return api.post('/satisfaction/templates/create', data)
+}
+
+export function updateSatisfactionTemplate(id, data) {
+  return api.put(`/satisfaction/templates/${id}`, data)
+}
+
+export function deleteSatisfactionTemplate(id) {
+  return api.delete(`/satisfaction/templates/${id}`)
+}
+
+export function getSatisfactionRules() {
+  return api.get('/satisfaction/rules')
+}
+
+export function toggleSatisfactionRule(id, enabled) {
+  return api.put(`/satisfaction/rules/${id}`, { enabled })
+}
+
+export function saveSatisfactionRuleSettings(data) {
+  return api.put('/satisfaction/rules/settings/save', data)
+}
+
+export function getSatisfactionTrend(days = 30) {
+  return api.get('/satisfaction/trend', { params: { days } })
+}
+
+export function getSatisfactionLowScore(limit = 10) {
+  return api.get('/satisfaction/low-score', { params: { limit } })
+}
+
+export function getSatisfactionOverview() {
+  return api.get('/satisfaction/overview')
 }
 
 // ==================== GDPR ====================
@@ -1054,6 +1132,26 @@ export function getWarehouseKpi() {
   return api.get('/logistics/warehouse/kpi')
 }
 
+// 各仓库存总览（SKU 种类 / 可用库存 / 在途）
+export function getWarehouseStockOverview() {
+  return api.get('/logistics/warehouse/stock-overview')
+}
+
+// 本地发货统计（今日待发货 / 已发货 / SLA / 承运商分布）
+export function getWarehouseShippingStats() {
+  return api.get('/logistics/warehouse/shipping-stats')
+}
+
+// 创建入仓计划
+export function createInboundPlan(data) {
+  return api.post('/logistics/warehouse/inbound-plan', data)
+}
+
+// 入仓计划列表（支持 status / warehouse 筛选与分页）
+export function getInboundPlanList(params = {}) {
+  return api.get('/logistics/warehouse/inbound-plan/list', { params })
+}
+
 export function getWarehouseAllocationSuggest() {
   return api.get('/logistics/warehouse/allocation-suggest')
 }
@@ -1076,6 +1174,33 @@ export function getSplitPackageVersions() {
 
 export function getSplitPackageRules(versionId) {
   return api.get('/logistics/split-package/rules', { params: { versionId } })
+}
+
+// 拆包规则 CRUD（写 mo_split_package_rule，区别于拆包记录的 split-packages）
+export function createSplitPackageRule(data) {
+  return api.post('/logistics/split-package/rules', data)
+}
+
+export function updateSplitPackageRule(id, data) {
+  return api.put(`/logistics/split-package/rules/${id}`, data)
+}
+
+export function deleteSplitPackageRule(id) {
+  return api.delete(`/logistics/split-package/rules/${id}`)
+}
+
+// 拆包效果统计（本月）
+export function getSplitPackageStats() {
+  return api.get('/logistics/split-package/stats')
+}
+
+// 全局拆包策略配置
+export function getSplitPackageStrategy() {
+  return api.get('/logistics/split-package/strategy')
+}
+
+export function saveSplitPackageStrategy(data) {
+  return api.put('/logistics/split-package/strategy', data)
 }
 
 // 直播监控规则 / 违规告警 - 真实后端
@@ -1151,8 +1276,31 @@ export function getSearchAnalysis() {
   return api.get('/analysis/search')
 }
 
+export function getZeroResultKeywords(limit = 10) {
+  return api.get('/analysis/search/zero-result', { params: { limit } })
+}
+
 export function getTrafficAnalysis() {
   return api.get('/analysis/traffic')
+}
+
+// 用户画像（新老用户占比 / 设备分布）
+export function getAnalysisProfile() {
+  return api.get('/analysis/profile')
+}
+
+// ==================== 商品举报 ====================
+export function getProductReportList(params = {}) {
+  return api.get('/product-report/list', { params })
+}
+
+export function handleProductReport(id, data) {
+  return api.put(`/product-report/${id}/handle`, data)
+}
+
+// 渠道访问统计（近 30 天）
+export function getAnalysisChannels() {
+  return api.get('/analysis/channels')
 }
 
 // ==================== App版本 ====================

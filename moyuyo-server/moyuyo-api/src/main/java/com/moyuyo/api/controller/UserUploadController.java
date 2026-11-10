@@ -73,6 +73,12 @@ public class UserUploadController {
             Arrays.asList("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
                     "txt", "md", "csv", "zip", "rar", "7z"));
 
+    /** 各类型单文件大小上限：配合 application.yml 的全局 120MB 兜底，按业务类型进一步收紧 */
+    private static final long IMAGE_MAX_SIZE = 10L * 1024 * 1024;   // 图片 10MB
+    private static final long VIDEO_MAX_SIZE = 100L * 1024 * 1024;  // 视频 100MB
+    private static final long VOICE_MAX_SIZE = 15L * 1024 * 1024;   // 语音 15MB
+    private static final long FILE_MAX_SIZE = 30L * 1024 * 1024;    // 文档/压缩包 30MB
+
     /** 与 AdminUploadController 共用 moyuyo.upload.dir 默认值 */
     @Value("${moyuyo.upload.dir:/tmp/moyuyo-uploads}")
     private String uploadDir;
@@ -139,6 +145,10 @@ public class UserUploadController {
         if (file == null || file.isEmpty()) {
             return Result.badRequest("文件为空");
         }
+        // 按类型的大小上限校验：即使全局 multipart 放宽，也不允许图片超出 10MB
+        if (file.getSize() > IMAGE_MAX_SIZE) {
+            return Result.badRequest("图片不能超过 10MB");
+        }
 
         String original = file.getOriginalFilename();
         String ct = file.getContentType();
@@ -157,6 +167,13 @@ public class UserUploadController {
         if (ct != null && !ct.isBlank() && !ALLOWED_CT.contains(ct.toLowerCase())) {
             return Result.badRequest("文件 Content-Type 不匹配");
         }
+        // 文件头（魔数）识别真实类型：允许扩展名与真实格式不一致（如 PNG 改名 .jpg），
+        // 只要内容属于 PNG/JPEG/GIF/WebP 即接受，并用真实类型作为落盘扩展名
+        String detectedExt = detectImageExt(file);
+        if (detectedExt == null) {
+            return Result.badRequest("图片内容非法或已损坏");
+        }
+        ext = detectedExt;
 
         // 构造日期分目录路径：yyyy/MM/dd
         String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
@@ -229,6 +246,44 @@ public class UserUploadController {
     }
 
     /**
+     * 根据文件头（魔数）识别真实图片类型，返回 png/jpg/gif/webp；无法识别返回 null。
+     * 允许扩展名与真实格式不一致（如 PNG 改名 .jpg），只要内容属于支持格式即通过，
+     * 上层会用返回的真实类型作为落盘扩展名，避免"扩展名与内容不符导致浏览器无法渲染"。
+     */
+    private String detectImageExt(MultipartFile file) {
+        byte[] header = new byte[12];
+        int read;
+        try (var in = file.getInputStream()) {
+            read = in.readNBytes(header, 0, header.length);
+        } catch (IOException e) {
+            log.warn("[user-upload] 读取文件头失败：{}", e.getMessage());
+            return null;
+        }
+        if (read < 4) {
+            return null;
+        }
+        // PNG: 89 50 4E 47
+        if ((header[0] & 0xFF) == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47) {
+            return "png";
+        }
+        // JPEG: FF D8 FF
+        if ((header[0] & 0xFF) == 0xFF && (header[1] & 0xFF) == 0xD8 && (header[2] & 0xFF) == 0xFF) {
+            return "jpg";
+        }
+        // GIF: GIF8
+        if (header[0] == 'G' && header[1] == 'I' && header[2] == 'F' && header[3] == '8') {
+            return "gif";
+        }
+        // WebP: RIFF....WEBP
+        if (read >= 12
+                && header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F'
+                && header[8] == 'W' && header[9] == 'E' && header[10] == 'B' && header[11] == 'P') {
+            return "webp";
+        }
+        return null;
+    }
+
+    /**
      * 从原始文件名抽取扩展名(不带点号)
      * 注意:uni-app H5 / 部分客户端 上传时会把 name 改成 file-<timestamp> 丢失扩展名,
      * 此时调用方应改用 extractExtFromContentType 兜底。
@@ -286,6 +341,10 @@ public class UserUploadController {
 
         if (file == null || file.isEmpty()) {
             return Result.badRequest("文件为空");
+        }
+        // 按类型的大小上限校验：视频单独放宽到 100MB
+        if (file.getSize() > VIDEO_MAX_SIZE) {
+            return Result.badRequest("视频不能超过 100MB");
         }
 
         String original = file.getOriginalFilename();
@@ -351,6 +410,10 @@ public class UserUploadController {
         if (file == null || file.isEmpty()) {
             return Result.badRequest("文件为空");
         }
+        // 按类型的大小上限校验：语音 15MB
+        if (file.getSize() > VOICE_MAX_SIZE) {
+            return Result.badRequest("语音不能超过 15MB");
+        }
 
         String original = file.getOriginalFilename();
         String ct = file.getContentType();
@@ -391,6 +454,10 @@ public class UserUploadController {
         }
         if (file == null || file.isEmpty()) {
             return Result.badRequest("文件为空");
+        }
+        // 按类型的大小上限校验：文档/压缩包 30MB
+        if (file.getSize() > FILE_MAX_SIZE) {
+            return Result.badRequest("文件不能超过 30MB");
         }
 
         String original = file.getOriginalFilename();

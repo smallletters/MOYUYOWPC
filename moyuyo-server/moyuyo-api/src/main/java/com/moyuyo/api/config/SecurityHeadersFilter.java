@@ -129,10 +129,10 @@ public class SecurityHeadersFilter implements Filter {
      */
     private String buildCsp() {
         return "default-src 'self'; " +
-                // 管理后台 SPA 注入的内联 bootstrap / 错误处理脚本必须允许 inline 才能渲染
-                // （'unsafe-inline' + 'unsafe-eval' 已被 Vite/Vue3 ESM 加载链路依赖）；
-                // 通过严格 default-src / connect-src / object-src / frame-ancestors 兜底避免 XSS 扩散面
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+                // 管理后台 SPA 注入的内联 bootstrap / 错误处理脚本必须允许 inline 才能渲染；
+                // 已移除 'unsafe-eval'（Vue3 生产运行时构建不依赖 eval / new Function），
+                // 避免攻击者借助 eval 类 API 放大 XSS 影响；其余指令继续做纵深防御
+                "script-src 'self' 'unsafe-inline'; " +
                 "style-src 'self' 'unsafe-inline'; " +
                 "img-src 'self' " + joinSources(cspImgSrc) + "; " +
                 "font-src 'self' " + joinSources(cspFontSrc) + "; " +

@@ -209,10 +209,11 @@ spring:
   servlet:
     multipart:
       enabled: true
-      # 单文件 200MB：覆盖社区视频上传场景（30s 内短视频通常 10~80MB）
-      max-file-size: 200MB
+      # 单文件 120MB：覆盖社区视频上传场景（30s 内短视频通常 10~80MB），
+      # 收紧历史上限（原 200MB）以降低大文件上传造成的磁盘/带宽耗尽风险
+      max-file-size: 120MB
       # 整次请求略大于单文件留余量
-      max-request-size: 210MB
+      max-request-size: 130MB
       file-size-threshold: 2MB
       # 强制写入临时文件：超过 file-size-threshold 的数据不再走堆内存，避免大文件 OOM
       # resolve-lazily=true 推迟参数解析，减少文件上传早期阶段的拒绝服务面

@@ -385,6 +385,230 @@ public class AdminLogisticsController {
     return Result.success(result);
   }
 
+  @Operation(summary = "各仓库存总览（SKU 种类 / 可用库存 / 在途）")
+  @GetMapping("/warehouse/stock-overview")
+  public Result<List<Map<String, Object>>> warehouseStockOverview() {
+    try {
+      // 仓库数量少，一次查询即可
+      List<WarehouseEntity> warehouses = warehouseMapper.selectList(
+          new LambdaQueryWrapper<WarehouseEntity>().orderByAsc(WarehouseEntity::getId));
+
+      // 库存按仓库聚合：一次 SQL 完成 SKU 去重计数与在库件数求和
+      // 走 idx_inventory_warehouse(warehouse_id) 索引，避免全表数据加载到内存
+      Map<Long, Map<String, Object>> stockByWarehouse = new HashMap<>();
+      jdbcTemplate.query(
+          "SELECT warehouse_id, COUNT(DISTINCT product_id) AS sku_types, " +
+              "COALESCE(SUM(quantity), 0) AS available_stock " +
+              "FROM mo_inventory WHERE warehouse_id IS NOT NULL GROUP BY warehouse_id",
+          rs -> {
+            Map<String, Object> stat = new HashMap<>(2);
+            stat.put("skuTypes", rs.getLong("sku_types"));
+            stat.put("availableStock", rs.getLong("available_stock"));
+            stockByWarehouse.put(rs.getLong("warehouse_id"), stat);
+          });
+
+      // 在途按调入仓聚合：仅统计 IN_TRANSIT 记录，走 idx_status 索引
+      Map<Long, Long> inTransitByWarehouse = new HashMap<>();
+      jdbcTemplate.query(
+          "SELECT to_warehouse_id, COALESCE(SUM(quantity), 0) AS in_transit " +
+              "FROM mo_inventory_transfer " +
+              "WHERE status = 'IN_TRANSIT' AND to_warehouse_id IS NOT NULL " +
+              "GROUP BY to_warehouse_id",
+          rs -> {
+            inTransitByWarehouse.put(rs.getLong("to_warehouse_id"), rs.getLong("in_transit"));
+          });
+
+      List<Map<String, Object>> list = new ArrayList<>();
+      for (WarehouseEntity w : warehouses) {
+        Map<String, Object> stat = stockByWarehouse.get(w.getId());
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", w.getId());
+        item.put("name", w.getName());
+        item.put("city", w.getCity());
+        item.put("skuTypes", stat == null ? 0L : stat.get("skuTypes"));
+        item.put("availableStock", stat == null ? 0L : stat.get("availableStock"));
+        item.put("inTransit", inTransitByWarehouse.getOrDefault(w.getId(), 0L));
+        list.add(item);
+      }
+      return Result.success(list);
+    } catch (Exception e) {
+      // 兜底：表缺失或 SQL 异常时返回业务错误，避免直接 500
+      log.error("各仓库存总览查询失败", e);
+      return Result.error("各仓库存总览查询失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "创建入仓计划")
+  @PostMapping("/warehouse/inbound-plan")
+  public Result<Map<String, Object>> createInboundPlan(@RequestBody Map<String, Object> body) {
+    String productName = body.get("productName") == null ? "" : String.valueOf(body.get("productName")).trim();
+    if (productName.isEmpty()) {
+      return Result.error(400, "参数错误：商品名称不能为空");
+    }
+    // 兼容 warehouse / toWarehouse 两种字段名
+    String warehouse = body.get("warehouse") != null
+        ? String.valueOf(body.get("warehouse")).trim()
+        : (body.get("toWarehouse") != null ? String.valueOf(body.get("toWarehouse")).trim() : "");
+    if (warehouse.isEmpty()) {
+      return Result.error(400, "参数错误：目标仓库不能为空");
+    }
+    int quantity = 1;
+    if (body.get("quantity") != null) {
+      try {
+        quantity = Math.max(1, Integer.parseInt(String.valueOf(body.get("quantity"))));
+      } catch (NumberFormatException e) {
+        return Result.error(400, "参数错误：数量必须为整数");
+      }
+    }
+    // 预计入库日期（YYYY-MM-DD，可空）
+    LocalDate expectedAt = null;
+    if (body.get("expectedAt") != null && !String.valueOf(body.get("expectedAt")).isBlank()) {
+      try {
+        expectedAt = LocalDate.parse(String.valueOf(body.get("expectedAt")).trim());
+      } catch (Exception e) {
+        return Result.error(400, "参数错误：预计入库日期格式应为 YYYY-MM-DD");
+      }
+    }
+
+    jdbcTemplate.update(
+        "INSERT INTO mo_warehouse_inbound_plan (product_name, sku, warehouse_name, quantity, expected_at, remark) " +
+            "VALUES (?, ?, ?, ?, ?, ?)",
+        productName,
+        body.get("sku") == null ? null : String.valueOf(body.get("sku")),
+        warehouse,
+        quantity,
+        expectedAt == null ? null : java.sql.Date.valueOf(expectedAt),
+        body.get("remark") == null ? null : String.valueOf(body.get("remark")));
+
+    return Result.success(Map.of("message", "已加入入仓计划"));
+  }
+
+  @Operation(summary = "入仓计划列表")
+  @GetMapping("/warehouse/inbound-plan/list")
+  public Result<Map<String, Object>> inboundPlanList(
+      @RequestParam(required = false) String status,
+      @RequestParam(required = false) String warehouse,
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(defaultValue = "15") int size) {
+    try {
+      StringBuilder where = new StringBuilder(" WHERE 1 = 1");
+      List<Object> args = new ArrayList<>();
+      if (status != null && !status.isBlank()) {
+        where.append(" AND status = ?");
+        args.add(status);
+      }
+      if (warehouse != null && !warehouse.isBlank()) {
+        where.append(" AND warehouse_name = ?");
+        args.add(warehouse);
+      }
+
+      // 总数
+      Long total = jdbcTemplate.queryForObject(
+          "SELECT COUNT(*) FROM mo_warehouse_inbound_plan" + where, Long.class, args.toArray());
+
+      // 分页参数兜底，避免负偏移与超大分页
+      int safePage = Math.max(1, page);
+      int safeSize = size <= 0 ? 15 : Math.min(size, 100);
+      int offset = (safePage - 1) * safeSize;
+
+      List<Object> listArgs = new ArrayList<>(args);
+      listArgs.add(safeSize);
+      listArgs.add(offset);
+
+      List<Map<String, Object>> records = jdbcTemplate.query(
+          "SELECT id, product_name, sku, warehouse_name, quantity, expected_at, remark, status, " +
+              "create_time, update_time FROM mo_warehouse_inbound_plan" + where +
+              " ORDER BY create_time DESC LIMIT ? OFFSET ?",
+          (rs, rowNum) -> {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", rs.getLong("id"));
+            item.put("productName", rs.getString("product_name"));
+            item.put("sku", rs.getString("sku"));
+            item.put("warehouseName", rs.getString("warehouse_name"));
+            item.put("quantity", rs.getInt("quantity"));
+            java.sql.Date expectedAt = rs.getDate("expected_at");
+            item.put("expectedAt", expectedAt == null ? null : expectedAt.toLocalDate().toString());
+            item.put("remark", rs.getString("remark"));
+            item.put("status", rs.getString("status"));
+            Timestamp createTime = rs.getTimestamp("create_time");
+            item.put("createTime", createTime == null
+                ? null : createTime.toLocalDateTime().toString().replace('T', ' '));
+            Timestamp updateTime = rs.getTimestamp("update_time");
+            item.put("updateTime", updateTime == null
+                ? null : updateTime.toLocalDateTime().toString().replace('T', ' '));
+            return item;
+          },
+          listArgs.toArray());
+
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("records", records);
+      result.put("total", total == null ? 0L : total);
+      result.put("page", safePage);
+      result.put("size", safeSize);
+      return Result.success(result);
+    } catch (Exception e) {
+      log.error("查询入仓计划失败", e);
+      return Result.error("入仓计划查询失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "本地发货统计（今日待发货 / 已发货 / SLA / 承运商分布）")
+  @GetMapping("/warehouse/shipping-stats")
+  public Result<Map<String, Object>> warehouseShippingStats() {
+    LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+    LocalDateTime todayEnd = todayStart.plusDays(1);
+
+    // 今日待发货订单数
+    long todayPending = orderMapper.selectCount(new LambdaQueryWrapper<OrderEntity>()
+        .eq(OrderEntity::getStatus, "PENDING_SHIP")
+        .eq(OrderEntity::getDeleteStatus, 0));
+
+    // 今日已发货订单（按发货时间统计）
+    List<OrderEntity> todayShipped = orderMapper.selectList(new LambdaQueryWrapper<OrderEntity>()
+        .ge(OrderEntity::getDeliverTime, todayStart)
+        .lt(OrderEntity::getDeliverTime, todayEnd)
+        .eq(OrderEntity::getDeleteStatus, 0));
+
+    // 近 30 天 SLA：支付后 48 小时内发货的占比
+    List<OrderEntity> recentShipped = orderMapper.selectList(new LambdaQueryWrapper<OrderEntity>()
+        .isNotNull(OrderEntity::getPaidAt)
+        .isNotNull(OrderEntity::getDeliverTime)
+        .ge(OrderEntity::getDeliverTime, LocalDateTime.now().minusDays(30))
+        .eq(OrderEntity::getDeleteStatus, 0));
+    long onTime = recentShipped.stream()
+        .filter(o -> ChronoUnit.HOURS.between(o.getPaidAt(), o.getDeliverTime()) <= 48)
+        .count();
+    double slaRate = recentShipped.isEmpty()
+        ? 0d
+        : Math.round(onTime * 1000.0 / recentShipped.size()) / 10.0;
+
+    // 今日已发货按承运商分布
+    Map<String, Long> byCarrier = new LinkedHashMap<>();
+    for (OrderEntity o : todayShipped) {
+      String carrier = o.getShippingCarrier();
+      if (carrier == null || carrier.isBlank()) carrier = "未指定承运商";
+      byCarrier.merge(carrier, 1L, Long::sum);
+    }
+    long totalShipped = byCarrier.values().stream().mapToLong(Long::longValue).sum();
+    List<Map<String, Object>> carrierList = new ArrayList<>();
+    for (Map.Entry<String, Long> entry : byCarrier.entrySet()) {
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("name", entry.getKey());
+      item.put("value", entry.getValue());
+      item.put("ratio", totalShipped > 0
+          ? Math.round(entry.getValue() * 1000.0 / totalShipped) / 10.0 : 0d);
+      carrierList.add(item);
+    }
+
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("todayPending", todayPending);
+    result.put("shippedToday", todayShipped.size());
+    result.put("slaRate", slaRate);
+    // 字段名沿用前端模板：实际为按承运商的今日发货分布
+    result.put("byWarehouse", carrierList);
+    return Result.success(result);
+  }
+
   @Operation(summary = "仓库品类库存分布")
   @GetMapping("/warehouse/category-stocks")
   public Result<Map<String, Object>> warehouseCategoryStocks(
@@ -588,6 +812,232 @@ public class AdminLogisticsController {
     } catch (Exception e) {
       return Result.error("海外仓列表查询失败: " + e.getMessage());
     }
+  }
+
+  @Operation(summary = "拆包规则版本列表")
+  @GetMapping("/split-package/versions")
+  public Result<List<Map<String, Object>>> splitPackageVersions() {
+    List<Map<String, Object>> list = jdbcTemplate.query(
+        "SELECT id, version_code, description, enabled, creator, create_time " +
+            "FROM mo_split_package_rule_version ORDER BY id DESC",
+        (rs, rowNum) -> {
+          Map<String, Object> item = new LinkedHashMap<>();
+          item.put("id", rs.getLong("id"));
+          item.put("versionCode", rs.getString("version_code"));
+          item.put("description", rs.getString("description"));
+          item.put("enabled", rs.getInt("enabled") == 1);
+          item.put("creator", rs.getString("creator"));
+          Timestamp ts = rs.getTimestamp("create_time");
+          item.put("createTime", ts == null ? null : ts.toLocalDateTime().toString());
+          return item;
+        });
+    return Result.success(list);
+  }
+
+  @Operation(summary = "拆包规则明细")
+  @GetMapping("/split-package/rules")
+  public Result<List<Map<String, Object>>> splitPackageRules(
+      @RequestParam(required = false) Long versionId) {
+    // 未指定版本时取最新启用版本
+    Long targetVersionId = versionId;
+    if (targetVersionId == null) {
+      List<Long> ids = jdbcTemplate.query(
+          "SELECT id FROM mo_split_package_rule_version WHERE enabled = 1 ORDER BY id DESC LIMIT 1",
+          (rs, rowNum) -> rs.getLong("id"));
+      if (!ids.isEmpty()) targetVersionId = ids.get(0);
+    }
+    if (targetVersionId == null) {
+      return Result.success(Collections.emptyList());
+    }
+    List<Map<String, Object>> list = jdbcTemplate.query(
+        "SELECT id, version_id, rule_name, trigger_type, trigger_value, action, priority, enabled " +
+            "FROM mo_split_package_rule WHERE version_id = ? ORDER BY priority ASC",
+        (rs, rowNum) -> {
+          Map<String, Object> item = new LinkedHashMap<>();
+          item.put("id", rs.getLong("id"));
+          item.put("versionId", rs.getLong("version_id"));
+          item.put("ruleName", rs.getString("rule_name"));
+          item.put("triggerType", rs.getString("trigger_type"));
+          item.put("triggerValue", rs.getString("trigger_value"));
+          item.put("action", rs.getString("action"));
+          item.put("priority", rs.getInt("priority"));
+          item.put("enabled", rs.getInt("enabled"));
+          return item;
+        }, targetVersionId);
+    return Result.success(list);
+  }
+
+  @Operation(summary = "新增拆包规则")
+  @PostMapping("/split-package/rules")
+  public Result<Map<String, Object>> createSplitPackageRule(@RequestBody Map<String, Object> body) {
+    String ruleName = body.get("ruleName") == null ? "" : String.valueOf(body.get("ruleName")).trim();
+    if (ruleName.isEmpty()) {
+      return Result.error(400, "参数错误：规则名称不能为空");
+    }
+    String condition = body.get("condition") == null ? "" : String.valueOf(body.get("condition")).trim();
+    // 约定格式："WEIGHT >10kg"：第一个空格前为触发类型，其余为触发值
+    String triggerType = "CUSTOM";
+    String triggerValue = condition;
+    int splitIdx = condition.indexOf(' ');
+    if (splitIdx > 0) {
+      triggerType = condition.substring(0, splitIdx).toUpperCase();
+      triggerValue = condition.substring(splitIdx + 1).trim();
+    }
+
+    Long versionId = resolveDefaultRuleVersionId();
+    int priority = body.get("priority") == null ? 100 : Integer.parseInt(String.valueOf(body.get("priority")));
+    boolean enabled = body.get("enabled") == null || Boolean.parseBoolean(String.valueOf(body.get("enabled")));
+
+    jdbcTemplate.update(
+        "INSERT INTO mo_split_package_rule (version_id, rule_name, trigger_type, trigger_value, action, priority, enabled) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        versionId, ruleName, triggerType, triggerValue,
+        body.get("action") == null ? "SPLIT" : String.valueOf(body.get("action")),
+        priority, enabled ? 1 : 0);
+
+    return Result.success(Map.of("message", "规则已创建"));
+  }
+
+  @Operation(summary = "更新拆包规则")
+  @PutMapping("/split-package/rules/{id}")
+  public Result<Map<String, Object>> updateSplitPackageRule(@PathVariable Long id,
+                                                            @RequestBody Map<String, Object> body) {
+    List<Long> existing = jdbcTemplate.query(
+        "SELECT id FROM mo_split_package_rule WHERE id = ?",
+        (rs, rowNum) -> rs.getLong("id"), id);
+    if (existing.isEmpty()) {
+      return Result.error(404, "规则不存在");
+    }
+    // 部分更新：仅更新传入字段
+    if (body.get("ruleName") != null) {
+      jdbcTemplate.update("UPDATE mo_split_package_rule SET rule_name = ? WHERE id = ?",
+          String.valueOf(body.get("ruleName")), id);
+    }
+    if (body.get("condition") != null) {
+      String condition = String.valueOf(body.get("condition")).trim();
+      String triggerType = "CUSTOM";
+      String triggerValue = condition;
+      int splitIdx = condition.indexOf(' ');
+      if (splitIdx > 0) {
+        triggerType = condition.substring(0, splitIdx).toUpperCase();
+        triggerValue = condition.substring(splitIdx + 1).trim();
+      }
+      jdbcTemplate.update("UPDATE mo_split_package_rule SET trigger_type = ?, trigger_value = ? WHERE id = ?",
+          triggerType, triggerValue, id);
+    }
+    if (body.get("priority") != null) {
+      jdbcTemplate.update("UPDATE mo_split_package_rule SET priority = ? WHERE id = ?",
+          Integer.parseInt(String.valueOf(body.get("priority"))), id);
+    }
+    if (body.get("enabled") != null) {
+      jdbcTemplate.update("UPDATE mo_split_package_rule SET enabled = ? WHERE id = ?",
+          Boolean.parseBoolean(String.valueOf(body.get("enabled"))) ? 1 : 0, id);
+    }
+    return Result.success(Map.of("id", id, "message", "规则已更新"));
+  }
+
+  @Operation(summary = "删除拆包规则")
+  @DeleteMapping("/split-package/rules/{id}")
+  public Result<Map<String, Object>> deleteSplitPackageRule(@PathVariable Long id) {
+    jdbcTemplate.update("DELETE FROM mo_split_package_rule WHERE id = ?", id);
+    return Result.success(Map.of("id", id, "message", "规则已删除"));
+  }
+
+  /** 取当前启用的规则版本 ID（无则返回 1） */
+  private Long resolveDefaultRuleVersionId() {
+    List<Long> ids = jdbcTemplate.query(
+        "SELECT id FROM mo_split_package_rule_version ORDER BY enabled DESC, id DESC LIMIT 1",
+        (rs, rowNum) -> rs.getLong("id"));
+    return ids.isEmpty() ? 1L : ids.get(0);
+  }
+
+  @Operation(summary = "拆包效果统计（本月）")
+  @GetMapping("/split-package/stats")
+  public Result<Map<String, Object>> splitPackageStats() {
+    LocalDateTime monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+
+    // 本月拆包裹单数 / 包裹总数 / 平均拆分数
+    Map<String, Object> splitRow = jdbcTemplate.queryForMap(
+        "SELECT COUNT(*) AS split_orders, COALESCE(SUM(split_count), 0) AS total_packages, " +
+            "COALESCE(AVG(split_count), 0) AS avg_splits " +
+            "FROM mo_split_package WHERE create_time >= ?", monthStart);
+    long splitOrders = ((Number) splitRow.get("split_orders")).longValue();
+    long totalPackages = ((Number) splitRow.get("total_packages")).longValue();
+    double avgSplits = Math.round(((Number) splitRow.get("avg_splits")).doubleValue() * 10) / 10.0;
+
+    // 本月订单数（拆包率分母）
+    Long orderCount = jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM mo_order WHERE delete_status = 0 AND create_time >= ?",
+        Long.class, monthStart);
+    long orders = orderCount == null ? 0L : orderCount;
+    double splitRate = orders > 0 ? Math.round(splitOrders * 1000.0 / orders) / 10.0 : 0d;
+
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("splitRate", splitRate);
+    result.put("splitOrders", splitOrders);
+    result.put("totalPackages", totalPackages);
+    result.put("avgSplits", avgSplits);
+    result.put("orderCount", orders);
+    return Result.success(result);
+  }
+
+  @Operation(summary = "全局拆包策略配置")
+  @GetMapping("/split-package/strategy")
+  public Result<Map<String, Object>> splitPackageStrategy() {
+    List<Map<String, Object>> rows = jdbcTemplate.query(
+        "SELECT trigger_type, trigger_value, action, enabled FROM mo_split_package_rule " +
+            "WHERE rule_name = '全局拆包策略' ORDER BY id DESC LIMIT 1",
+        (rs, rowNum) -> {
+          Map<String, Object> item = new LinkedHashMap<>();
+          item.put("type", rs.getString("trigger_type"));
+          item.put("param", rs.getString("trigger_value"));
+          item.put("method", rs.getString("action"));
+          item.put("enabled", rs.getInt("enabled") == 1);
+          return item;
+        });
+    if (rows.isEmpty()) {
+      Map<String, Object> defaults = new LinkedHashMap<>();
+      defaults.put("type", "weight");
+      defaults.put("param", "30");
+      defaults.put("method", "weight-avg");
+      defaults.put("enabled", true);
+      defaults.put("exists", false);
+      return Result.success(defaults);
+    }
+    Map<String, Object> result = rows.get(0);
+    result.put("exists", true);
+    return Result.success(result);
+  }
+
+  @Operation(summary = "保存全局拆包策略配置")
+  @PutMapping("/split-package/strategy")
+  public Result<Map<String, Object>> saveSplitPackageStrategy(@RequestBody Map<String, Object> body) {
+    String type = body.get("type") == null ? "weight" : String.valueOf(body.get("type"));
+    String param = body.get("param") == null ? "30" : String.valueOf(body.get("param"));
+    String method = body.get("method") == null ? "weight-avg" : String.valueOf(body.get("method"));
+    boolean enabled = body.get("enabled") == null || Boolean.parseBoolean(String.valueOf(body.get("enabled")));
+
+    // 取当前启用版本作为归属版本
+    List<Long> versionIds = jdbcTemplate.query(
+        "SELECT id FROM mo_split_package_rule_version ORDER BY enabled DESC, id DESC LIMIT 1",
+        (rs, rowNum) -> rs.getLong("id"));
+    long versionId = versionIds.isEmpty() ? 1L : versionIds.get(0);
+
+    List<Long> existing = jdbcTemplate.query(
+        "SELECT id FROM mo_split_package_rule WHERE rule_name = '全局拆包策略' ORDER BY id DESC LIMIT 1",
+        (rs, rowNum) -> rs.getLong("id"));
+
+    if (existing.isEmpty()) {
+      jdbcTemplate.update(
+          "INSERT INTO mo_split_package_rule (version_id, rule_name, trigger_type, trigger_value, action, priority, enabled) " +
+              "VALUES (?, '全局拆包策略', ?, ?, ?, 0, ?)",
+          versionId, type, param, method, enabled ? 1 : 0);
+    } else {
+      jdbcTemplate.update(
+          "UPDATE mo_split_package_rule SET trigger_type = ?, trigger_value = ?, action = ?, enabled = ? WHERE id = ?",
+          type, param, method, enabled ? 1 : 0, existing.get(0));
+    }
+    return Result.success(Map.of("message", "策略配置已保存"));
   }
 
   @Operation(summary = "合包管理列表")
