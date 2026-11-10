@@ -258,7 +258,8 @@ const dropReasons = ref([])
 // 加载流失原因
 async function loadChurn() {
   try {
-    const res = await getChurnAnalysis(7)
+    // 必须传对象作为查询参数：axios 会按对象转 query string，传数字会抛 "target must be an object"
+    const res = await getChurnAnalysis({ days: 7 })
     const detail = res?.churnReasonsDetail || []
     const total = detail.reduce((sum, item) => sum + Number(item.orderCount || 0), 0)
     dropReasons.value = detail.slice(0, 5).map((item) => ({
