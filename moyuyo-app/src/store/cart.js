@@ -87,6 +87,13 @@ export const useCartStore = defineStore('cart', {
               quantity: item.quantity,
               // 服务端返回的当前可用库存,用于前端限制加购数量上限
               stock: typeof item.stock === 'number' ? item.stock : null,
+              // 允许缺货订购时前端不限制数量上限
+              allowBackorder: !!item.allowBackorder,
+              // 虚拟商品：结算时无需收货地址
+              isVirtual: !!item.isVirtual,
+              // 税费信息：结算页预估税费使用
+              taxStatus: item.taxStatus || 'taxable',
+              taxClass: item.taxClass || 'standard',
               // 服务端计算的可用状态(可售/缺货/已下架/失效)
               cartStatus: item.cartStatus || null,
               // 失效/缺货一律不勾；有效商品优先沿用本地勾选，本地无记录才用服务端
@@ -109,9 +116,11 @@ export const useCartStore = defineStore('cart', {
     async addItem(product, quantity = 1) {
       const key = product.skuId || product.variationId || product.productId
       const exist = this.items.find((i) => (i.skuId || i.variationId || i.productId) === key)
-      // 库存上限:仅当传入数字库存时才限制(缺失时交由后端校验)
+      // 库存上限:仅当传入数字库存且不允许缺货订购时才限制(缺失时交由后端校验)
       const stockLimit =
-        typeof product.stock === 'number' && Number.isFinite(product.stock)
+        !product.allowBackorder &&
+        typeof product.stock === 'number' &&
+        Number.isFinite(product.stock)
           ? Math.max(0, product.stock)
           : null
 
@@ -144,6 +153,10 @@ export const useCartStore = defineStore('cart', {
           price: product.price,
           quantity,
           stock: typeof product.stock === 'number' ? product.stock : null,
+          allowBackorder: !!product.allowBackorder,
+          isVirtual: !!product.isVirtual,
+          taxStatus: product.taxStatus || 'taxable',
+          taxClass: product.taxClass || 'standard',
           sku: product.sku || '',
           attrs: product.attrs || [],
           checked: true,
@@ -178,9 +191,11 @@ export const useCartStore = defineStore('cart', {
       if (!item) return
       const before = item.quantity
       const isIncrease = quantity > before
-      // 库存上限:仅增加数量时封顶(数字库存才限制,缺失时交由后端校验)
+      // 库存上限:仅增加数量且不允许缺货订购时封顶(缺失时交由后端校验)
       const stockLimit =
-        typeof item.stock === 'number' && Number.isFinite(item.stock) ? item.stock : null
+        !item.allowBackorder && typeof item.stock === 'number' && Number.isFinite(item.stock)
+          ? item.stock
+          : null
 
       let target = Math.max(1, quantity)
       if (isIncrease && stockLimit !== null) {

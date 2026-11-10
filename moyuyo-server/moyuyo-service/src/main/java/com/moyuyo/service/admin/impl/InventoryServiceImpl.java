@@ -39,10 +39,11 @@ public class InventoryServiceImpl implements InventoryService {
       // 查询所有SKU数量
       Long totalSku = productSkuMapper.selectCount(new LambdaQueryWrapper<>());
 
-      // 查询低库存SKU（库存小于阈值的）
+      // 查询低库存SKU：阈值优先取商品自定义 low_stock_amount，未设置时回退安全库存 20
       List<ProductSkuEntity> lowStockSkus = productSkuMapper.selectList(
         new LambdaQueryWrapper<ProductSkuEntity>()
-          .lt(ProductSkuEntity::getStock, SAFETY_STOCK_THRESHOLD));
+          .apply("stock < COALESCE((SELECT CAST(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(p.attributes, '$.low_stock_amount')), '') AS SIGNED) "
+            + "FROM mo_product p WHERE p.id = mo_product_sku.product_id), " + SAFETY_STOCK_THRESHOLD + ")"));
 
       // 批量查询对应的商品名称
       Set<Long> productIds = lowStockSkus.stream()
@@ -51,10 +52,16 @@ public class InventoryServiceImpl implements InventoryService {
 
       // 构建商品ID -> 商品名称的映射
       Map<Long, String> productNameMap = new HashMap<>();
+      Map<Long, Integer> thresholdMap = new HashMap<>();
       if (!productIds.isEmpty()) {
         List<ProductEntity> products = productMapper.selectBatchIds(productIds);
         productNameMap = products.stream()
           .collect(Collectors.toMap(ProductEntity::getId, ProductEntity::getName));
+        for (ProductEntity p : products) {
+          Integer custom = com.moyuyo.service.support.ProductAttributes.intValue(
+            com.moyuyo.service.support.ProductAttributes.parse(p.getAttributes()), "low_stock_amount");
+          thresholdMap.put(p.getId(), custom != null && custom >= 0 ? custom : SAFETY_STOCK_THRESHOLD);
+        }
       }
 
       // 构建预警列表
@@ -64,7 +71,7 @@ public class InventoryServiceImpl implements InventoryService {
         alert.put("sku", sku.getSkuCode());
         alert.put("name", productNameMap.getOrDefault(sku.getProductId(), "未知商品"));
         alert.put("stock", sku.getStock());
-        alert.put("threshold", SAFETY_STOCK_THRESHOLD);
+        alert.put("threshold", thresholdMap.getOrDefault(sku.getProductId(), SAFETY_STOCK_THRESHOLD));
         alerts.add(alert);
       }
 
@@ -121,10 +128,11 @@ public class InventoryServiceImpl implements InventoryService {
   @Override
   public List<Map<String, Object>> getAlertList() {
     try {
-      // 查询低库存SKU（库存小于阈值的）
+      // 查询低库存SKU：阈值优先取商品自定义 low_stock_amount，未设置时回退安全库存 20
       List<ProductSkuEntity> lowStockSkus = productSkuMapper.selectList(
         new LambdaQueryWrapper<ProductSkuEntity>()
-          .lt(ProductSkuEntity::getStock, SAFETY_STOCK_THRESHOLD));
+          .apply("stock < COALESCE((SELECT CAST(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(p.attributes, '$.low_stock_amount')), '') AS SIGNED) "
+            + "FROM mo_product p WHERE p.id = mo_product_sku.product_id), " + SAFETY_STOCK_THRESHOLD + ")"));
 
       // 批量查询对应的商品名称
       Set<Long> productIds = lowStockSkus.stream()

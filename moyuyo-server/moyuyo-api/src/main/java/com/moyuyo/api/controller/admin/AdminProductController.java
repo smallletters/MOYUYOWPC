@@ -129,7 +129,8 @@ public class AdminProductController {
   public Result<?> searchLite(
       @RequestParam(required = false) String keyword,
       @RequestParam(defaultValue = "50") int size,
-      @RequestParam(required = false) Long excludeId) {
+      @RequestParam(required = false) Long excludeId,
+      @RequestParam(required = false) String ids) {
     try {
       // 限制 size 上限，避免单次返回过多
       int limit = Math.max(1, Math.min(size, 100));
@@ -140,9 +141,25 @@ public class AdminProductController {
               .orderByDesc("on_sale")
               .orderByDesc("update_time")
               .last("LIMIT " + limit);
-      if (keyword != null && !keyword.isBlank()) {
-        // 关键字命中：商品名称 OR SPU 编码（按 WC 搜索行为对齐）
-        qw.and(w -> w.like("name", keyword).or().like("spu_code", keyword));
+      // ids：用于回显已选关联商品的名称（逗号分隔），与关键词搜索互斥
+      if (ids != null && !ids.isBlank()) {
+        java.util.List<Long> idList = new java.util.ArrayList<>();
+        for (String part : ids.split(",")) {
+          try {
+            if (!part.isBlank()) idList.add(Long.valueOf(part.trim()));
+          } catch (NumberFormatException ignored) {
+            // 忽略非法 id
+          }
+        }
+        if (idList.isEmpty()) {
+          return Result.success(java.util.Collections.emptyList());
+        }
+        qw.in("id", idList.stream().distinct().limit(100).toList());
+      } else if (keyword != null && !keyword.isBlank()) {
+        // 关键字命中：商品名称 OR SPU 编码 OR GTIN（按 WC 搜索行为对齐）
+        qw.and(w -> w.like("name", keyword).or().like("spu_code", keyword)
+            .or().apply("JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.global_unique_id')) LIKE CONCAT('%', {0}, '%')",
+                keyword));
       }
       if (excludeId != null) {
         qw.ne("id", excludeId);
@@ -649,14 +666,16 @@ public class AdminProductController {
         new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ProductEntity>()
             .eq(catIdLong != null, ProductEntity::getCategoryId, catIdLong);
     if (org.apache.commons.lang3.StringUtils.isNotBlank(keyword)) {
-      // 与 ProductServiceImpl.listProducts 的 keyword 条件保持一致：name / spuCode / mo_product_sku.sku_code 三路匹配
+      // 与 ProductServiceImpl.listProducts 的 keyword 条件保持一致：name / spuCode / SKU / GTIN 四路匹配
       wrapper.and(w -> w.like(ProductEntity::getName, keyword)
           .or().like(ProductEntity::getSpuCode, keyword)
-          .or().exists("(SELECT 1 FROM mo_product_sku s WHERE s.product_id = mo_product.id AND s.sku_code LIKE CONCAT('%', {0}, '%'))", keyword));
+          .or().exists("(SELECT 1 FROM mo_product_sku s WHERE s.product_id = mo_product.id AND s.sku_code LIKE CONCAT('%', {0}, '%'))", keyword)
+          .or().apply("JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.global_unique_id')) LIKE CONCAT('%', {0}, '%')", keyword));
     }
     if (org.apache.commons.lang3.StringUtils.isNotBlank(stockStatus)) {
       if ("low".equals(stockStatus)) {
-        wrapper.le(ProductEntity::getStock, 10).gt(ProductEntity::getStock, 0);
+        // 低库存阈值优先取商品自定义 low_stock_amount，未设置时回退 10
+        wrapper.apply("stock > 0 AND stock <= COALESCE(CAST(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.low_stock_amount')), '') AS SIGNED), 10)");
       } else if ("out".equals(stockStatus)) {
         wrapper.le(ProductEntity::getStock, 0);
       }

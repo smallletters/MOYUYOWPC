@@ -15,15 +15,18 @@ import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.CartService;
 import com.moyuyo.service.OrderService;
 import com.moyuyo.service.admin.ShippingZoneService;
+import com.moyuyo.service.support.ProductAttributes;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -71,7 +74,9 @@ public class CartServiceImpl implements CartService {
         throw new IllegalArgumentException("商品已失效或已下架,无法再次加入购物车: " + existing.getProductName());
       }
       int target = existing.getQuantity() + quantity;
-      checkQuantityWithinStock(existing.getProductName(), skuId, target);
+      // 单独出售商品：合并后也不能超过 1 件
+      ensureSellableQuantity(existProduct, target);
+      checkQuantityWithinStock(existProduct, skuId, target);
       existing.setQuantity(target);
       cartMapper.updateById(existing);
       return existing;
@@ -90,8 +95,10 @@ public class CartServiceImpl implements CartService {
     if (!Boolean.TRUE.equals(product.getOnSale())) {
       throw new IllegalArgumentException("商品已下架,无法加入购物车: " + product.getName());
     }
-    // 校验加购数量是否超过库存
-    checkQuantityWithinStock(product.getName(), skuId, quantity);
+    // 单独出售商品：只能购买 1 件
+    ensureSellableQuantity(product, quantity);
+    // 校验加购数量是否超过库存（允许缺货订购时不拦截）
+    checkQuantityWithinStock(product, skuId, quantity);
 
     CartEntity cart = new CartEntity();
     cart.setUserId(userId);
@@ -99,7 +106,10 @@ public class CartServiceImpl implements CartService {
     cart.setProductId(sku.getProductId());
     cart.setProductName(product == null ? null : product.getName());
     cart.setMainImage(product == null ? null : product.getMainImage());
-    cart.setPrice(sku.getPrice());
+    // 加购快照价同样按销售期口径计算
+    cart.setPrice(ProductAttributes.effectivePrice(
+        ProductAttributes.parse(product.getAttributes()),
+        sku.getSkuCode(), sku.getSpec(), sku.getPrice(), product.getOriginalPrice()));
     cart.setQuantity(quantity);
     cart.setSelected(true);
     cartMapper.insert(cart);
@@ -134,8 +144,9 @@ public class CartServiceImpl implements CartService {
       throw new IllegalArgumentException("该规格已失效,请从购物车移除后重新选择");
     }
 
-    // 改数量同样受库存上限约束
-    checkQuantityWithinStock(existing.getProductName(), skuId, quantity);
+    // 改数量同样受「单独出售」与库存上限约束
+    ensureSellableQuantity(product, quantity);
+    checkQuantityWithinStock(product, skuId, quantity);
     existing.setQuantity(quantity);
     cartMapper.updateById(existing);
     return existing;
@@ -201,23 +212,9 @@ public class CartServiceImpl implements CartService {
       throw new IllegalArgumentException("请选择要结算的商品");
     }
 
-    // 兜底：地址可发货校验。运营通过后台"发货区域"控制可发货国家；
-    // 即便 APP 端未及时校验或被绕过，下单时再拒绝一次。
-    AddressEntity address = addressMapper.selectById(addressId);
-    if (address == null) {
-      throw new IllegalArgumentException("收货地址不存在");
-    }
-    String country = address.getCountry();
-    if (country == null || country.isBlank()) {
-      throw new IllegalArgumentException("收货地址国家不能为空");
-    }
-    if (!shippingZoneService.loadShippableCountries().contains(country.trim().toUpperCase())) {
-      log.warn("Cart checkout rejected (unshippable country): userId={}, addressId={}, country={}",
-          userId, addressId, country);
-      throw new BusinessException(400, "We currently do not ship to " + country);
-    }
-
+    // 先构建订单项并判断是否全部为虚拟商品：虚拟订单无需收货地址与运费
     List<OrderItemEntity> items = new java.util.ArrayList<>();
+    boolean allVirtual = true;
     for (CartEntity cart : selected) {
       ProductSkuEntity sku = productSkuMapper.selectById(cart.getSkuId());
       if (sku == null) {
@@ -227,18 +224,42 @@ public class CartServiceImpl implements CartService {
       if (product == null) {
         throw new IllegalArgumentException("商品不存在: " + sku.getProductId());
       }
+      Map<String, Object> attrs = ProductAttributes.parse(product.getAttributes());
+      if (!ProductAttributes.bool(attrs, "is_virtual", false)) {
+        allVirtual = false;
+      }
 
       OrderItemEntity item = new OrderItemEntity();
       item.setSkuId(cart.getSkuId());
       item.setProductId(product.getId());
       item.setProductName(product.getName());
       item.setMainImage(product.getMainImage());
-      item.setPrice(sku.getPrice());
+      // 服务端权威价：销售期外回退常规价，避免过期促销价被结算
+      item.setPrice(ProductAttributes.effectivePrice(
+          attrs, sku.getSkuCode(), sku.getSpec(), sku.getPrice(), product.getOriginalPrice()));
       item.setQuantity(cart.getQuantity());
       items.add(item);
     }
 
-    OrderEntity order = orderService.createOrder(userId, items, addressId, remark, couponId);
+    // 兜底：实物订单地址可发货校验。运营通过后台"发货区域"控制可发货国家；
+    // 即便 APP 端未及时校验或被绕过，下单时再拒绝一次。虚拟订单跳过。
+    if (!allVirtual) {
+      AddressEntity address = addressMapper.selectById(addressId);
+      if (address == null) {
+        throw new IllegalArgumentException("收货地址不存在");
+      }
+      String country = address.getCountry();
+      if (country == null || country.isBlank()) {
+        throw new IllegalArgumentException("收货地址国家不能为空");
+      }
+      if (!shippingZoneService.loadShippableCountries().contains(country.trim().toUpperCase())) {
+        log.warn("Cart checkout rejected (unshippable country): userId={}, addressId={}, country={}",
+            userId, addressId, country);
+        throw new BusinessException(400, "We currently do not ship to " + country);
+      }
+    }
+
+    OrderEntity order = orderService.createOrder(userId, items, allVirtual ? null : addressId, remark, couponId);
 
     // 关键：购物车清空失败不能让整个事务回滚（订单已经成功下发，可能已扣库存）
     // 失败仅记日志，由用户在下次进入购物车时手动清空；不影响订单本身。
@@ -314,20 +335,68 @@ public class CartServiceImpl implements CartService {
         stock = product.getStock();
         status = stock != null && stock <= 0 ? "OUT_OF_STOCK" : "VALID";
       }
+      // 允许缺货订购的商品：库存为 0 仍可结算，并告知 APP 放宽数量上限
+      Map<String, Object> attrs = ProductAttributes.parse(product == null ? null : product.getAttributes());
+      boolean allowBackorder = product != null
+          && !"no".equalsIgnoreCase(ProductAttributes.str(attrs, "backorders", "no"));
+      if ("OUT_OF_STOCK".equals(status) && allowBackorder) {
+        status = "VALID";
+      }
       cart.setStock(stock);
       cart.setCartStatus(status);
+      cart.setAllowBackorder(allowBackorder);
+      cart.setIsVirtual(product != null && ProductAttributes.bool(attrs, "is_virtual", false));
+      cart.setTaxStatus(ProductAttributes.str(attrs, "tax_status", "taxable"));
+      cart.setTaxClass(ProductAttributes.str(attrs, "tax_class", "standard"));
+      if (product != null) {
+        // 销售期外：购物车展示价回退到常规价（与商品详情口径一致）
+        cart.setPrice(ProductAttributes.effectivePrice(
+            attrs,
+            sku != null ? sku.getSkuCode() : null,
+            sku != null ? sku.getSpec() : null,
+            cart.getPrice(),
+            product.getOriginalPrice()));
+      }
     }
   }
 
   /**
-   * 校验加购/改数量是否超过库存上限，超过则抛业务异常
+   * 单独出售（sold_individually）校验：每个订单最多购买 1 件。
    */
-  private void checkQuantityWithinStock(String productName, Long skuId, int quantity) {
+  private void ensureSellableQuantity(ProductEntity product, int quantity) {
     if (quantity < 1) {
       throw new IllegalArgumentException("商品数量必须大于0");
     }
+    Map<String, Object> attrs = ProductAttributes.parse(product == null ? null : product.getAttributes());
+    if (ProductAttributes.bool(attrs, "sold_individually", false) && quantity > 1) {
+      String label = product == null || product.getName() == null ? "" : ": " + product.getName();
+      throw new IllegalArgumentException("该商品每单限购 1 件" + label);
+    }
+  }
+
+  /** 是否允许缺货订购（backorders = notify / yes） */
+  private boolean allowsBackorder(ProductEntity product) {
+    if (product == null) {
+      return false;
+    }
+    Map<String, Object> attrs = ProductAttributes.parse(product.getAttributes());
+    return !"no".equalsIgnoreCase(ProductAttributes.str(attrs, "backorders", "no"));
+  }
+
+  /**
+   * 校验加购/改数量是否超过库存上限，超过则抛业务异常。
+   * 允许缺货订购时跳过库存上限校验（下单环节同样放开扣减）。
+   */
+  private void checkQuantityWithinStock(ProductEntity product, Long skuId, int quantity) {
+    if (quantity < 1) {
+      throw new IllegalArgumentException("商品数量必须大于0");
+    }
+    if (allowsBackorder(product)) {
+      return;
+    }
     int available = resolveAvailableStock(skuId);
     if (available != Integer.MAX_VALUE && quantity > available) {
+      String productName = product == null ? null : product.getName();
       String label = productName == null || productName.isBlank() ? String.valueOf(skuId) : productName;
       throw new IllegalArgumentException("商品库存不足，当前仅剩 " + available + " 件: " + label);
     }
@@ -360,5 +429,52 @@ public class CartServiceImpl implements CartService {
       }
     }
     return Integer.MAX_VALUE;
+  }
+
+  /**
+   * 购物车凑单推荐：读取购物车商品 attributes 中的 upsell_ids / cross_sell_ids，
+   * 返回仍在上架、且不在当前购物车中的商品（最多 8 个）。
+   */
+  @Override
+  public List<ProductEntity> getRecommendations(Long userId) {
+    List<CartEntity> carts = cartMapper.selectList(
+        new LambdaQueryWrapper<CartEntity>().eq(CartEntity::getUserId, userId));
+    if (carts.isEmpty()) {
+      return Collections.emptyList();
+    }
+    Set<Long> cartProductIds = carts.stream()
+        .map(CartEntity::getProductId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
+    if (cartProductIds.isEmpty()) {
+      return Collections.emptyList();
+    }
+    // 收集购物车商品的关联商品 id（保持配置顺序，先 upsell 后 cross-sell）
+    LinkedHashSet<Long> referenceIds = new LinkedHashSet<>();
+    for (ProductEntity product : productMapper.selectBatchIds(cartProductIds)) {
+      Map<String, Object> attrs = ProductAttributes.parse(product.getAttributes());
+      referenceIds.addAll(ProductAttributes.longList(attrs, "upsell_ids"));
+      referenceIds.addAll(ProductAttributes.longList(attrs, "cross_sell_ids"));
+    }
+    referenceIds.removeAll(cartProductIds);
+    if (referenceIds.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<ProductEntity> candidates = productMapper.selectBatchIds(referenceIds.stream().limit(20).toList());
+    List<ProductEntity> result = new java.util.ArrayList<>();
+    for (ProductEntity candidate : candidates) {
+      if (!Boolean.TRUE.equals(candidate.getOnSale())) {
+        continue;
+      }
+      // 与商品详情/购物车保持同一价格口径（销售期外回退常规价）
+      Map<String, Object> attrs = ProductAttributes.parse(candidate.getAttributes());
+      candidate.setPrice(ProductAttributes.effectivePrice(
+          attrs, null, null, candidate.getPrice(), candidate.getOriginalPrice()));
+      result.add(candidate);
+      if (result.size() >= 8) {
+        break;
+      }
+    }
+    return result;
   }
 }

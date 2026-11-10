@@ -4,6 +4,11 @@ export function getCart() {
   return get('/api/v1/cart')
 }
 
+// 购物车凑单推荐（后端根据 upsell / cross-sell 配置返回）
+export function getRecommendations() {
+  return get('/api/v1/cart/recommendations')
+}
+
 export function addItem(skuId, quantity = 1) {
   return post('/api/v1/cart', { skuId, quantity })
 }
@@ -53,6 +58,7 @@ export function removeFavorite(productId, skuId) {
 
 export default {
   getCart,
+  getRecommendations,
   addItem,
   updateQuantity,
   removeItem,

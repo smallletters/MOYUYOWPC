@@ -41,6 +41,22 @@ public class CartEntity {
     @TableField(exist = false)
     private Integer stock;
 
+    /** 是否允许缺货订购（非表字段，来自商品 attributes.backorders，供 APP 放宽数量上限） */
+    @TableField(exist = false)
+    private Boolean allowBackorder;
+
+    /** 是否虚拟商品（非表字段，来自商品 attributes.is_virtual，虚拟订单免地址/免运费） */
+    @TableField(exist = false)
+    private Boolean isVirtual;
+
+    /** 税状态（非表字段，来自商品 attributes.tax_status） */
+    @TableField(exist = false)
+    private String taxStatus;
+
+    /** 税类（非表字段，来自商品 attributes.tax_class） */
+    @TableField(exist = false)
+    private String taxClass;
+
     /**
      * 购物车条目可用状态（非表字段，查询时联查计算），取值：
      * VALID=可售 / OUT_OF_STOCK=缺货 / OFF_SALE=已下架 /

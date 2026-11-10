@@ -41,7 +41,8 @@
       </view>
     </view>
 
-    <view class="card address-card">
+    <!-- 虚拟商品订单没有收货地址，隐藏地址卡片 -->
+    <view v-if="order.receiverName || order.receiverAddress" class="card address-card">
       <text class="card-title">{{ $t('orderDetail.address') }}</text>
       <text class="address-name">{{ order.receiverName }} · {{ order.receiverPhone }}</text>
       <text class="address-detail">
@@ -101,6 +102,12 @@
         <text>{{ $t('orderDetail.price.total') }}</text>
         <text class="total-amount">${{ order.payAmount }}</text>
       </view>
+    </view>
+
+    <!-- 购买须知（来自商品 attributes.purchase_note） -->
+    <view v-if="order.purchaseNote" class="card notice-card">
+      <text class="card-title">{{ $t('orderDetail.purchaseNote') }}</text>
+      <text class="notice-text">{{ order.purchaseNote }}</text>
     </view>
 
     <view class="card info-card">
@@ -520,6 +527,15 @@ export default {
   font-weight: var(--font-weight-semibold);
   margin-bottom: 16rpx;
   display: block;
+}
+
+/* 购买须知 */
+.notice-text {
+  display: block;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
 }
 
 .items-card {

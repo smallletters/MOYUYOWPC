@@ -116,6 +116,18 @@
         <div class="config-section">
           <div class="config-row">
             <div>
+              <div class="config-label">商品税率</div>
+              <div class="config-desc">下单按商品税状态/税类计算税费，0 表示不计税</div>
+            </div>
+            <div class="number-input-wrap">
+              <input v-model.number="form.productTaxRate" type="number" class="config-input" style="max-width: 100px;" min="0" step="0.01">
+              <span class="input-suffix">%</span>
+            </div>
+          </div>
+        </div>
+        <div class="config-section">
+          <div class="config-row">
+            <div>
               <div class="config-label">自动确认收货</div>
               <div class="config-desc">发货后超过设定天数自动确认收货</div>
             </div>
@@ -267,6 +279,27 @@
           </table>
         </div>
       </div>
+
+      <!-- 运费类系数 -->
+      <div class="section-title">运费类系数</div>
+      <div class="config-card">
+        <div class="config-section">
+          <div class="config-label">计费重量系数</div>
+          <div class="config-desc">按商品运费类放大计费重量，1 = 不放大；用于冷链 / 大件 / 海外直邮等附加运费</div>
+          <div class="multiplier-grid">
+            <label v-for="item in shippingClassOptions" :key="item.value" class="multiplier-item">
+              <span class="config-label">{{ item.label }}</span>
+              <input
+                v-model.number="form.shippingClassMultiplier[item.value]"
+                type="number"
+                class="config-input"
+                min="0"
+                step="0.01"
+              >
+            </label>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ====== 通知设置 ====== -->
@@ -401,6 +434,14 @@ const shippingMethodOptions = [
   { label: '按金额', value: 'amount' }
 ]
 
+// 运费类系数选项（与商品编辑页的运费类保持一致）
+const shippingClassOptions = [
+  { label: '标准配送', value: 'standard' },
+  { label: '冷链配送', value: 'cold' },
+  { label: '大件物流', value: 'bulky' },
+  { label: '海外直邮', value: 'oversea' }
+]
+
 // 承运商列表（来自 /logistics/carriers 真实档案）
 const carriers = ref([])
 
@@ -449,6 +490,8 @@ const form = reactive({
   icpNumber: '京ICP备2025XXXXXX号',
   autoCancel: 30,
   autoConfirm: true,
+  // 商品税率（百分比，0 = 不计税）
+  productTaxRate: 0,
   emailNotify: true,
   smsNotify: false,
   // 语言与地区（示例数据）
@@ -463,6 +506,8 @@ const form = reactive({
   // 运费计算规则（示例数据）
   shippingMethod: 'weight',
   baseFee: 12,
+  // 运费类计费重量系数（1 = 不放大）
+  shippingClassMultiplier: { standard: 1, cold: 1, bulky: 1, oversea: 1 },
   // 私信安全（0 = 不限制）
   dmStrangerFirstLimit: 1,
   dmStrangerDailyLimit: 10
@@ -485,6 +530,15 @@ async function loadConfig() {
         if (item.key === 'siteName') form.siteName = item.value || form.siteName
         if (item.key === 'icpNumber') form.icpNumber = item.value || form.icpNumber
         if (item.key === 'autoCancel') form.autoCancel = Number(item.value) || form.autoCancel
+        if (item.key === 'product_tax_rate') form.productTaxRate = Number(item.value) || 0
+        if (item.key === 'shipping_class_multiplier') {
+          try {
+            const multipliers = JSON.parse(item.value)
+            if (multipliers && typeof multipliers === 'object') {
+              Object.assign(form.shippingClassMultiplier, multipliers)
+            }
+          } catch (e) { /* 忽略非法 JSON，保留默认系数 */ }
+        }
         if (item.key === 'autoConfirm') form.autoConfirm = item.value === 'true' || item.value === true
         if (item.key === 'emailNotify') form.emailNotify = item.value === 'true' || item.value === true
         if (item.key === 'smsNotify') form.smsNotify = item.value === 'true' || item.value === true
@@ -579,6 +633,7 @@ async function handleSave() {
       { key: 'siteName', value: form.siteName, type: 'text', label: '站点名称' },
       { key: 'icpNumber', value: form.icpNumber, type: 'text', label: '备案号' },
       { key: 'autoCancel', value: String(form.autoCancel), type: 'text', label: '自动取消时间' },
+      { key: 'product_tax_rate', value: String(form.productTaxRate || 0), type: 'number', label: '商品税率' },
       { key: 'autoConfirm', value: String(form.autoConfirm), type: 'text', label: '自动确认收货' },
       { key: 'emailNotify', value: String(form.emailNotify), type: 'text', label: '邮件通知' },
       { key: 'smsNotify', value: String(form.smsNotify), type: 'text', label: '短信通知' },
@@ -594,6 +649,7 @@ async function handleSave() {
       // 运费计算规则
       { key: 'shippingMethod', value: form.shippingMethod, type: 'text', label: '运费计算方式' },
       { key: 'baseFee', value: String(form.baseFee), type: 'text', label: '基础运费' },
+      { key: 'shipping_class_multiplier', value: JSON.stringify(form.shippingClassMultiplier || {}), type: 'json', label: '运费类系数' },
       // 私信安全（0 = 不限制）
       { key: 'dm.guard.stranger_first_limit', value: String(form.dmStrangerFirstLimit), type: 'number', label: '陌生人首条上限' },
       { key: 'dm.guard.stranger_daily_limit', value: String(form.dmStrangerDailyLimit), type: 'number', label: '陌生人每日上限' }
@@ -1053,5 +1109,18 @@ onMounted(() => {
 }
 .save-btn:hover {
   filter: brightness(0.96);
+}
+
+/* 运费类系数 */
+.multiplier-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+.multiplier-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 </style>

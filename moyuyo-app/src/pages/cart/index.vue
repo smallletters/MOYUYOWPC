@@ -223,8 +223,8 @@
 </template>
 
 <script>
-import { useCartStore } from '@/store'
-import { addressApi, couponApi, memberApi } from '@/api'
+import { useCartStore, useUserStore } from '@/store'
+import { addressApi, couponApi, memberApi, cartApi } from '@/api'
 import { getShippingMethods } from '@/api/order'
 import { getFlashSales } from '@/api/flashSale'
 
@@ -242,6 +242,8 @@ export default {
     this.loadMemberDiscountRate()
     this.loadUnusedCoupons()
     this.loadActiveFlashSales()
+    // 凑单推荐：后端按购物车商品的 upsell / cross-sell 配置返回
+    this.loadUpsell()
   },
   onShow() {
     // onLoad 已首次加载；后续回到购物车时刷新地址/会员/优惠券，避免离开期间变更导致金额过期
@@ -253,6 +255,7 @@ export default {
     this.loadMemberDiscountRate()
     this.loadUnusedCoupons()
     this.loadActiveFlashSales()
+    this.loadUpsell()
   },
   onUnload() {
     if (this.shippingTimer) {
@@ -287,6 +290,9 @@ export default {
   computed: {
     cartStore() {
       return useCartStore()
+    },
+    userStore() {
+      return useUserStore()
     },
     /**
      * 有效商品列表：可售(VALID) + 缺货(OUT_OF_STOCK,置灰不可结算)
@@ -562,9 +568,9 @@ export default {
         this.onDelete(item)
         return
       }
-      // 库存上限:加购数量不允许超过库存(缺失库存信息时交由后端校验拦截)
+      // 库存上限:允许缺货订购时不限制;缺失库存信息时交由后端校验
       const stockLimit =
-        typeof item.stock === 'number' && Number.isFinite(item.stock)
+        !item.allowBackorder && typeof item.stock === 'number' && Number.isFinite(item.stock)
           ? Math.max(0, item.stock)
           : null
       if (delta > 0 && stockLimit !== null && item.quantity >= stockLimit) {
@@ -600,6 +606,26 @@ export default {
       // 清理可能残留的“立即购买”临时单品，避免劫持购物车结算
       this.cartStore.clearBuyNow()
       uni.navigateTo({ url: '/pages/cart/checkout' })
+    },
+    // 凑单推荐：后端根据购物车商品的 upsell / cross-sell 配置返回
+    async loadUpsell() {
+      // 未登录不请求，避免触发 401 重新登录弹窗
+      if (!this.userStore.isLoggedIn) {
+        this.upsellItems = []
+        return
+      }
+      try {
+        const list = await cartApi.getRecommendations()
+        this.upsellItems = (list || []).map((p) => ({
+          id: p.id,
+          name: p.name,
+          image: p.mainImage || '',
+          price: Number(p.price) || 0,
+        }))
+      } catch (e) {
+        // 推荐失败不影响购物车主体
+        this.upsellItems = []
+      }
     },
     onUpsellClick(item) {
       uni.navigateTo({

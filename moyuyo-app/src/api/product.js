@@ -72,7 +72,7 @@ function mapSortBy(orderby, sortBy) {
   // 兼容 WooCommerce 风格与新风格
   if (sortBy) return sortBy
   const m = {
-    menu_order: 'createdAt',
+    menu_order: 'menuOrder',
     popularity: 'sales',
     price: 'price',
     date: 'createdAt',
@@ -86,6 +86,20 @@ function mapSortBy(orderby, sortBy) {
 export function getProductDetail(id, options = {}) {
   // 商品详情接口包含图集/SKU/评价聚合,接口较重,给足 60s
   return uniGet(`/api/v1/products/${id}`, {}, { timeout: options.timeout || 60000 })
+}
+
+// 按短链(slug)查商品详情：用于分享链接
+export function getProductDetailBySlug(slug, options = {}) {
+  return uniGet(
+    `/api/v1/products/slug/${encodeURIComponent(slug)}`,
+    {},
+    { timeout: options.timeout || 60000 },
+  )
+}
+
+// 商品税率（百分比），用于结算页预估税费
+export function getProductTaxRate() {
+  return uniGet('/api/v1/products/config/tax-rate')
 }
 
 export function getCategoryList() {
@@ -103,6 +117,8 @@ export function getCategoryChildren(parentId) {
 export default {
   getProductList,
   getProductDetail,
+  getProductDetailBySlug,
+  getProductTaxRate,
   getCategoryList,
   searchProducts,
   getCategoryChildren,

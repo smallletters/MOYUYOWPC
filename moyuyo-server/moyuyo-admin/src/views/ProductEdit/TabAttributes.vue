@@ -102,8 +102,8 @@ function addAttribute() {
 }
 
 function removeAttribute(idx) {
+  // 仅删除属性，不自动重建变体：避免用户已手动编辑的变体被静默清空
   props.form.customAttributes.splice(idx, 1)
-  emit('regenerate-variations')
 }
 
 function expandAll(state) {

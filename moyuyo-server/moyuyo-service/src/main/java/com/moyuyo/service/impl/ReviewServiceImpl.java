@@ -11,13 +11,16 @@ import com.moyuyo.common.utils.PageUtils;
 import com.moyuyo.common.utils.XssSanitizer;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
+import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductReviewEntity;
 import com.moyuyo.dao.entity.UserEntity;
 import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
+import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductReviewMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.ReviewService;
+import com.moyuyo.service.support.ProductAttributes;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,6 +42,7 @@ public class ReviewServiceImpl implements ReviewService {
     private final UserMapper userMapper;
     private final OrderItemMapper orderItemMapper;
     private final OrderMapper orderMapper;
+    private final ProductMapper productMapper;
     /** 评价奖励积分从会员规则配置读取（后台可调） */
     private final com.moyuyo.service.config.MembershipRuleConfigService ruleConfigService;
 
@@ -80,6 +84,12 @@ public class ReviewServiceImpl implements ReviewService {
         if (!OrderStatusEnum.RECEIVED.name().equals(status)
             && !OrderStatusEnum.COMPLETED.name().equals(status)) {
             throw new IllegalArgumentException("订单需确认收货/完成后才能评价");
+        }
+        // 商品评论开关：reviews_allowed=false 时禁止提交评价
+        ProductEntity product = productMapper.selectById(request.getProductId());
+        if (product != null && !ProductAttributes.bool(
+            ProductAttributes.parse(product.getAttributes()), "reviews_allowed", true)) {
+            throw new IllegalArgumentException("该商品已关闭评价");
         }
         // 防重复评价（唯一索引 user_id+order_item_id 兜底）
         Long duplicate = productReviewMapper.selectCount(

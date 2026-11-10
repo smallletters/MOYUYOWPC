@@ -76,6 +76,26 @@ public class ProductEntity {
     @TableField(exist = false)
     private Integer reviewCount;
 
+    /** 是否允许评论（非表字段，来自 attributes.reviews_allowed，默认允许） */
+    @TableField(exist = false)
+    private Boolean reviewsAllowed;
+
+    /** 是否允许缺货订购（非表字段，来自 attributes.backorders，默认不允许） */
+    @TableField(exist = false)
+    private Boolean allowBackorder;
+
+    /** 是否虚拟商品（非表字段，来自 attributes.is_virtual，虚拟订单免运费/免地址） */
+    @TableField(exist = false)
+    private Boolean isVirtual;
+
+    /** 税状态（非表字段，来自 attributes.tax_status，APP 结算页预估税费） */
+    @TableField(exist = false)
+    private String taxStatus;
+
+    /** 税类（非表字段，来自 attributes.tax_class，APP 结算页预估税费） */
+    @TableField(exist = false)
+    private String taxClass;
+
     /** 会员价（仅 Controller 层按当前用户会员等级动态注入，无对应数据库列） */
     @TableField(exist = false)
     private BigDecimal memberPrice;

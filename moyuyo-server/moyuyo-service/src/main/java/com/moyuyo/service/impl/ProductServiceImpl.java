@@ -11,6 +11,8 @@ import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.ProductService;
 import com.moyuyo.service.WooCommerceSyncService;
+import com.moyuyo.service.support.ProductAttributes;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -45,35 +47,25 @@ public class ProductServiceImpl implements ProductService {
         .and(StringUtils.isNotBlank(keyword), w -> w
             .like(ProductEntity::getName, keyword)
             .or().like(ProductEntity::getSpuCode, keyword)
-            .or().exists("(SELECT 1 FROM mo_product_sku s WHERE s.product_id = mo_product.id AND s.sku_code LIKE CONCAT('%', {0}, '%'))", keyword));
+            .or().exists("(SELECT 1 FROM mo_product_sku s WHERE s.product_id = mo_product.id AND s.sku_code LIKE CONCAT('%', {0}, '%'))", keyword)
+            // GTIN/UPC/EAN/ISBN 也参与关键词搜索（存储于 attributes JSON）
+            .or().apply("JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.global_unique_id')) LIKE CONCAT('%', {0}, '%')", keyword));
 
     // 状态筛选：active=在售, inactive=已下架, 不传则不过滤
     if (StringUtils.isNotBlank(status)) {
       wrapper.eq(ProductEntity::getOnSale, "active".equals(status));
     }
 
-    // 库存状态筛选
+    // 库存状态筛选（低库存阈值优先取商品自定义 low_stock_amount，未设置时回退 10）
     if (StringUtils.isNotBlank(stockStatus)) {
       if ("low".equals(stockStatus)) {
-        wrapper.le(ProductEntity::getStock, 10).gt(ProductEntity::getStock, 0);
+        wrapper.apply("stock > 0 AND stock <= COALESCE(CAST(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.low_stock_amount')), '') AS SIGNED), 10)");
       } else if ("out".equals(stockStatus)) {
         wrapper.le(ProductEntity::getStock, 0);
       }
     }
 
-    if (StringUtils.isNotBlank(sortBy)) {
-      boolean asc = !"desc".equalsIgnoreCase(sortOrder);
-      if ("price".equalsIgnoreCase(sortBy)) {
-        wrapper.orderBy(true, asc, ProductEntity::getPrice);
-      } else if ("createTime".equalsIgnoreCase(sortBy) || "create_time".equalsIgnoreCase(sortBy)) {
-        wrapper.orderBy(true, asc, ProductEntity::getCreateTime);
-      } else if ("sales".equalsIgnoreCase(sortBy)) {
-        wrapper.orderBy(true, asc, ProductEntity::getSales);
-      }
-    } else {
-      wrapper.orderByDesc(ProductEntity::getCreateTime);
-    }
-
+    applySort(wrapper, sortBy, sortOrder);
     return productMapper.selectPage(new Page<>(page, size), wrapper);
   }
 
@@ -82,24 +74,49 @@ public class ProductServiceImpl implements ProductService {
     LambdaQueryWrapper<ProductEntity> wrapper = new LambdaQueryWrapper<ProductEntity>()
         .in(categoryIds != null && !categoryIds.isEmpty(), ProductEntity::getCategoryId, categoryIds)
         .eq(brandIpId != null, ProductEntity::getBrandIpId, brandIpId)
-        .like(StringUtils.isNotBlank(keyword), ProductEntity::getName, keyword);
+        // 关键词搜索与主列表保持一致：名称 / SPU / SKU / GTIN
+        .and(StringUtils.isNotBlank(keyword), w -> w
+            .like(ProductEntity::getName, keyword)
+            .or().like(ProductEntity::getSpuCode, keyword)
+            .or().exists("(SELECT 1 FROM mo_product_sku s WHERE s.product_id = mo_product.id AND s.sku_code LIKE CONCAT('%', {0}, '%'))", keyword)
+            .or().apply("JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.global_unique_id')) LIKE CONCAT('%', {0}, '%')", keyword));
     // 状态筛选：active=在售, inactive=已下架, 不传则不过滤
     if (StringUtils.isNotBlank(status)) {
       wrapper.eq(ProductEntity::getOnSale, "active".equals(status));
     }
-    if (StringUtils.isNotBlank(sortBy)) {
-      boolean asc = !"desc".equalsIgnoreCase(sortOrder);
-      if ("price".equalsIgnoreCase(sortBy)) {
-        wrapper.orderBy(true, asc, ProductEntity::getPrice);
-      } else if ("createTime".equalsIgnoreCase(sortBy) || "create_time".equalsIgnoreCase(sortBy)) {
-        wrapper.orderBy(true, asc, ProductEntity::getCreateTime);
-      } else if ("sales".equalsIgnoreCase(sortBy)) {
-        wrapper.orderBy(true, asc, ProductEntity::getSales);
-      }
+    applySort(wrapper, sortBy, sortOrder);
+    return productMapper.selectPage(new Page<>(page, size), wrapper);
+  }
+
+  /**
+   * 统一排序规则。
+   * <p>
+   * 补充 createdAt / updatedAt / menuOrder 三种 APP 端常用排序：
+   * - menuOrder 读取 attributes JSON 中的 menu_order，未填写按 0 处理
+   * - 未知排序字段回退按创建时间倒序，避免 SQL 无 ORDER BY 导致分页结果不稳定
+   */
+  private void applySort(LambdaQueryWrapper<ProductEntity> wrapper, String sortBy, String sortOrder) {
+    if (StringUtils.isBlank(sortBy)) {
+      wrapper.orderByDesc(ProductEntity::getCreateTime);
+      return;
+    }
+    boolean asc = !"desc".equalsIgnoreCase(sortOrder);
+    if ("price".equalsIgnoreCase(sortBy)) {
+      wrapper.orderBy(true, asc, ProductEntity::getPrice);
+    } else if ("createTime".equalsIgnoreCase(sortBy) || "create_time".equalsIgnoreCase(sortBy)
+        || "createdAt".equalsIgnoreCase(sortBy) || "created_at".equalsIgnoreCase(sortBy)) {
+      wrapper.orderBy(true, asc, ProductEntity::getCreateTime);
+    } else if ("updateTime".equalsIgnoreCase(sortBy) || "update_time".equalsIgnoreCase(sortBy)
+        || "updatedAt".equalsIgnoreCase(sortBy)) {
+      wrapper.orderBy(true, asc, ProductEntity::getUpdateTime);
+    } else if ("sales".equalsIgnoreCase(sortBy)) {
+      wrapper.orderBy(true, asc, ProductEntity::getSales);
+    } else if ("menuOrder".equalsIgnoreCase(sortBy) || "menu_order".equalsIgnoreCase(sortBy)) {
+      wrapper.last("ORDER BY COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.menu_order')) AS SIGNED), 0) "
+          + (asc ? "ASC" : "DESC") + ", id ASC");
     } else {
       wrapper.orderByDesc(ProductEntity::getCreateTime);
     }
-    return productMapper.selectPage(new Page<>(page, size), wrapper);
   }
 
   /**
@@ -177,6 +194,24 @@ public class ProductServiceImpl implements ProductService {
   }
 
   @Override
+  public ProductEntity getProductWithDetailsBySlug(String slug) {
+    if (slug == null || slug.isBlank()) {
+      throw new IllegalArgumentException("商品短链不能为空");
+    }
+    // slug 存储在 attributes JSON 中，MySQL 的 JSON_EXTRACT 可直接用作条件
+    ProductEntity product = productMapper.selectOne(
+        new LambdaQueryWrapper<ProductEntity>()
+            .apply("JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.slug')) = {0}", slug.trim())
+            .last("LIMIT 1"));
+    if (product == null) {
+      throw new IllegalArgumentException("商品不存在");
+    }
+    product.setSkus(getSkusByProductId(product.getId()));
+    product.setImages(getImagesByProductId(product.getId()));
+    return product;
+  }
+
+  @Override
   @Transactional
   public ProductEntity createProduct(Map<String, Object> body) {
     ProductEntity entity = new ProductEntity();
@@ -186,6 +221,10 @@ public class ProductServiceImpl implements ProductService {
     }
     if (body.get("originalPrice") != null) {
       entity.setOriginalPrice(new java.math.BigDecimal(body.get("originalPrice").toString()));
+    }
+    // 售价留空时按原价出售（与编辑页“留空则使用原价出售”的提示保持一致）
+    if (entity.getPrice() == null && entity.getOriginalPrice() != null) {
+      entity.setPrice(entity.getOriginalPrice());
     }
     // 支持 category(前端字符串) 和 categoryId(后端Long) 两种格式
     if (body.get("categoryId") != null) {
@@ -227,6 +266,8 @@ public class ProductServiceImpl implements ProductService {
     Object attrsObj = body.get("attributes");
     if (attrsObj != null) {
       entity.setAttributes(attrsObj.toString());
+      // slug 短链唯一性校验（SPU 之外，slug 需要全局唯一才能按短链定位商品）
+      checkSlugUnique(null, body);
     }
 
     // 产品类型：支持 productType/product_type，默认 simple
@@ -292,8 +333,18 @@ public class ProductServiceImpl implements ProductService {
     }
 
     if (body.get("name") != null) entity.setName((String) body.get("name"));
-    if (body.get("price") != null) entity.setPrice(new java.math.BigDecimal(body.get("price").toString()));
+    // 先写原价，便于售价被清空时回退到原价
     if (body.get("originalPrice") != null) entity.setOriginalPrice(new java.math.BigDecimal(body.get("originalPrice").toString()));
+    if (body.containsKey("price")) {
+      // 售价显式传 null/空 = 清空促销价，按原价出售（之前会被忽略，导致旧促销价残留）
+      Object priceObj = body.get("price");
+      if (priceObj != null && !priceObj.toString().isBlank()) {
+        entity.setPrice(new java.math.BigDecimal(priceObj.toString()));
+      } else {
+        // price 为 NOT NULL 列：原价也缺失时置 0，避免旧促销价残留
+        entity.setPrice(entity.getOriginalPrice() != null ? entity.getOriginalPrice() : java.math.BigDecimal.ZERO);
+      }
+    }
     // 支持 category(前端字符串) 和 categoryId(后端Long) 两种格式
     if (body.get("categoryId") != null) {
       entity.setCategoryId(Long.valueOf(body.get("categoryId").toString()));
@@ -324,6 +375,7 @@ public class ProductServiceImpl implements ProductService {
     if (body.containsKey("tags")) entity.setTags((String) body.get("tags"));
     if (body.containsKey("attributes") && body.get("attributes") != null) {
       entity.setAttributes(body.get("attributes").toString());
+      checkSlugUnique(id, body);
     }
     if (body.containsKey("productType")) entity.setProductType((String) body.get("productType"));
     else if (body.containsKey("product_type")) entity.setProductType((String) body.get("product_type"));
@@ -357,6 +409,40 @@ public class ProductServiceImpl implements ProductService {
     // 事务提交后异步推送到 WooCommerce（避免阻塞主流程与事务回滚）
     registerWooCommercePush(entity, "update");
     return entity;
+  }
+
+  /**
+   * 校验 attributes.slug 短链唯一性：APP 分享链接会按 slug 反查商品，重复会导致定位到错误商品。
+   *
+   * @param excludeId 更新时排除自身 id；新增传 null
+   */
+  private void checkSlugUnique(Long excludeId, Map<String, Object> body) {
+    Object raw = body.get("attributes");
+    if (raw == null) {
+      return;
+    }
+    Map<String, Object> attrs;
+    if (raw instanceof String text) {
+      attrs = ProductAttributes.parse(text);
+    } else {
+      try {
+        attrs = objectMapper.convertValue(raw, new TypeReference<Map<String, Object>>() {
+        });
+      } catch (Exception e) {
+        return;
+      }
+    }
+    String slug = ProductAttributes.str(attrs, "slug", "");
+    if (slug.isEmpty()) {
+      return;
+    }
+    Long count = productMapper.selectCount(
+        new LambdaQueryWrapper<ProductEntity>()
+            .apply("JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.slug')) = {0}", slug)
+            .ne(excludeId != null, ProductEntity::getId, excludeId));
+    if (count != null && count > 0) {
+      throw new IllegalArgumentException("商品短链(slug)已存在: " + slug);
+    }
   }
 
   /**

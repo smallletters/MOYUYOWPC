@@ -17,13 +17,15 @@
         @keyup.enter="loadList(true)"
       />
       <button class="btn btn-outline" @click="loadList(true)">搜索</button>
-      <span class="picker-count">已选 {{ selectedIds.length }} 个 · 共 {{ list.length }} 条</span>
+      <span class="picker-count">已选 {{ pickedIds.length }} 个 · 共 {{ list.length }} 条</span>
     </div>
 
     <el-table
+      ref="tableRef"
       :data="list"
       height="400"
-      @selection-change="onSelectionChange"
+      @select="onSelect"
+      @select-all="onSelectAll"
       v-loading="loading"
       empty-text="暂无匹配商品"
       size="small"
@@ -47,35 +49,55 @@
 
     <div class="picker-footer">
       <button class="btn btn-outline" @click="close">取消</button>
-      <button class="btn btn-primary" @click="confirm">确定（{{ selectedIds.length }}）</button>
+      <button class="btn btn-primary" @click="confirm">确定（{{ pickedIds.length }}）</button>
     </div>
   </el-dialog>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 // Element Plus 组件已在 main.js 中全局注册，无需单独引入
 import { searchProductsLite } from '../../api/admin'
 
 const props = defineProps({
   modelValue: Boolean,
   title: { type: String, default: '选择商品' },
-  excludeId: { type: [Number, String], default: null }
+  excludeId: { type: [Number, String], default: null },
+  // 打开弹窗时需要回显的已选商品 id
+  selectedIds: { type: Array, default: () => [] }
 })
 const emit = defineEmits(['update:modelValue', 'confirm'])
 
 const keyword = ref('')
 const list = ref([])
 const loading = ref(false)
-const selectedIds = ref([])
-const selectedRows = ref([])
+const tableRef = ref(null)
+// 已选商品：跨关键词搜索保留；pickedIds 仅用于计数/展示（响应式）
+const pickedRows = new Map()
+const pickedIds = ref([])
 
 watch(() => props.modelValue, (v) => {
-  if (v) loadList(true)
+  if (v) {
+    // 每次打开都以父组件当前已选 id 为基准重置
+    resetPickedFromProps()
+    loadList()
+  }
 })
 
-async function loadList(reset = false) {
-  if (reset) selectedIds.value = []
+// 用父组件传入的 id 初始化已选集合（此时只有 id，名称等确认后由父组件补齐）
+function resetPickedFromProps() {
+  pickedRows.clear()
+  ;(props.selectedIds || []).forEach(id => {
+    if (id != null) pickedRows.set(String(id), { id })
+  })
+  syncPickedIds()
+}
+
+function syncPickedIds() {
+  pickedIds.value = [...pickedRows.keys()]
+}
+
+async function loadList() {
   loading.value = true
   try {
     const res = await searchProductsLite({
@@ -85,6 +107,9 @@ async function loadList(reset = false) {
     })
     const data = Array.isArray(res) ? res : (res?.records || res?.list || res?.data?.records || [])
     list.value = data.filter(p => !props.excludeId || String(p.id) !== String(props.excludeId))
+    // 数据渲染完成后回显已选商品（跨搜索的已选项不受影响）
+    await nextTick()
+    preselect()
   } catch (e) {
     console.error('搜索商品失败:', e)
     list.value = []
@@ -93,9 +118,35 @@ async function loadList(reset = false) {
   }
 }
 
-function onSelectionChange(rows) {
-  selectedRows.value = rows
-  selectedIds.value = rows.map(r => r.id)
+// 按已选集合勾选当前列表中的行
+function preselect() {
+  if (!tableRef.value) return
+  list.value.forEach(row => {
+    if (pickedRows.has(String(row.id))) {
+      tableRef.value.toggleRowSelection(row, true)
+    }
+  })
+}
+
+// 用户勾选/取消单行：同步到跨搜索保留的集合
+function onSelect(selection, row) {
+  const id = String(row.id)
+  if (selection.some(r => String(r.id) === id)) {
+    pickedRows.set(id, row)
+  } else {
+    pickedRows.delete(id)
+  }
+  syncPickedIds()
+}
+
+// 全选/取消全选：仅作用于当前搜索结果
+function onSelectAll(selection) {
+  if (selection.length > 0) {
+    selection.forEach(row => pickedRows.set(String(row.id), row))
+  } else {
+    list.value.forEach(row => pickedRows.delete(String(row.id)))
+  }
+  syncPickedIds()
 }
 
 function close() {
@@ -103,7 +154,10 @@ function close() {
 }
 
 function confirm() {
-  emit('confirm', selectedRows.value)
+  // 当前列表中能查到的行用完整对象，其余用 { id } 占位
+  const rows = [...pickedRows.entries()].map(([id, fallback]) =>
+    list.value.find(r => String(r.id) === id) || fallback)
+  emit('confirm', rows)
   close()
 }
 </script>

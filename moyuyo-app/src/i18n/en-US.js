@@ -1021,6 +1021,7 @@ export default {
     address: 'Shipping Address',
     logistics: 'Logistics',
     items: 'Items',
+    purchaseNote: 'Purchase Note',
     pay: 'Pay Now',
     cancel: 'Cancel Order',
     confirmReceive: 'Confirm Receipt',
@@ -1363,6 +1364,7 @@ export default {
   // Checkout /pages/cart/checkout
   checkout: {
     steps: ['Shipping', 'Payment', 'Review', 'Place'],
+    virtualNoAddress: 'Virtual products — no shipping address required',
     sections: {
       address: '1. Shipping address',
       payment: '2. Payment method',
@@ -1404,7 +1406,7 @@ export default {
       empty: 'No shipping methods available for this address',
       freeShortBy: 'Spend ${amount} more for FREE shipping',
       etaUnit: 'days',
-      etaRange: 'Estimated delivery in ${min}-${max} days',
+      etaRange: 'Estimated delivery in {min}-{max} days',
     },
     coupon: {
       apply: 'Apply a coupon',
@@ -1426,6 +1428,7 @@ export default {
     summary: {
       items: 'Items ({count}):',
       shipping: 'Shipping & handling:',
+      tax: 'Tax:',
       memberDiscount: 'Member discount:',
       couponDiscount: 'Coupon discount:',
       pointsDiscount: 'Points discount:',

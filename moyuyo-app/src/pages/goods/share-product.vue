@@ -175,6 +175,8 @@ export default {
   data() {
     return {
       productId: null,
+      // 商品短链：存在时优先用 slug 生成分享链接
+      productSlug: '',
       product: {
         name: this.$t('shareProduct.defaultProductName'),
         shortDetail: '',
@@ -250,19 +252,38 @@ export default {
      * 构造分享链接：H5 用当前 origin，App/小程序用 VITE_PAY_RETURN_BASE 兜底
      */
     buildShareLink() {
+      // 有 slug 时优先走短链，没有则回退商品 id
+      const query = this.productSlug
+        ? `slug=${encodeURIComponent(this.productSlug)}`
+        : `id=${this.productId || ''}`
       // #ifdef H5
       if (typeof window !== 'undefined' && window.location) {
-        return `${window.location.origin}/pages/goods/detail?id=${this.productId || ''}`
+        return `${window.location.origin}/pages/goods/detail?${query}`
       }
       // #endif
       // 原生端：必须显式配置 payReturnBase；未配置时回退到 #/detail?id= 前缀的 SPA 路由
-      return `/pages/goods/detail?id=${this.productId || ''}`
+      return `/pages/goods/detail?${query}`
     },
 
     async loadProduct() {
       try {
         const data = await productApi.getProductDetail(this.productId)
         if (!data) return
+        // 解析 attributes 中的 slug，存在则切换为短链分享
+        try {
+          const attrs =
+            typeof data.attributes === 'string'
+              ? JSON.parse(data.attributes)
+              : data.attributes || {}
+          this.productSlug = (attrs && attrs.slug) || ''
+        } catch (e) {
+          this.productSlug = ''
+        }
+        if (this.productSlug) {
+          this.shareLink = this.buildShareLink()
+          // 二维码同步换成短链
+          this.qrUrl = shareApi.getShareQrUrl(this.shareLink, 200)
+        }
         this.product = {
           name: data.name || this.$t('shareProduct.defaultProductName'),
           shortDetail: data.shortDetail || '',

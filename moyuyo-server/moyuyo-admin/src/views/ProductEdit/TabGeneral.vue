@@ -44,7 +44,7 @@
       <div class="form-row">
         <div class="form-group">
           <label>Permanalink 短链 (slug)</label>
-          <input v-model="form.slug" placeholder="自动从名称生成" />
+          <input v-model="form.slug" placeholder="自动从名称生成" @input="emit('slug-manual')" />
           <span class="field-hint">WooCommerce: slug</span>
         </div>
         <div class="form-group">
@@ -178,7 +178,7 @@ const props = defineProps({
   topCategories: { type: Array, default: () => [] },
   subCategories: { type: Array, default: () => [] }
 })
-const emit = defineEmits(['permalink-change'])
+const emit = defineEmits(['permalink-change', 'slug-manual'])
 
 // 切换一级分类时清空二级分类，避免残留上一次的选项
 function onParentCategoryChange() {

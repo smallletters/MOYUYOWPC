@@ -21,36 +21,42 @@
       <view class="block">
         <view class="block-head">
           <text class="block-title">{{ $t('checkout.sections.address') }}</text>
-          <text class="block-action" @click="onSelectAddress">
+          <text v-if="!allVirtual" class="block-action" @click="onSelectAddress">
             {{ $t('checkout.address.change') }}
           </text>
         </view>
         <view class="block-body">
-          <view
-            v-if="selectedAddress"
-            class="addr-line"
-            :class="{ 'addr-unshippable': selectedAddressUnshippable }"
-          >
-            <text class="addr-name">
-              {{ selectedAddress.receiverName || selectedAddress.first_name }}
-            </text>
-            <text class="addr-detail">
-              {{ selectedAddress.addressLine || selectedAddress.address_1 }}
-              {{ selectedAddress.city || '' }} {{ selectedAddress.state || '' }}
-              {{ selectedAddress.zipCode || selectedAddress.postcode || '' }}
-            </text>
-            <text class="addr-phone">
-              {{ $t('checkout.address.phone') }}
-              {{ selectedAddress.receiverPhone || selectedAddress.phone }}
-            </text>
-            <!-- 不可发货：底部红字提示，引导用户回 /pages/user/address 换地址 -->
-            <text v-if="selectedAddressUnshippable" class="addr-warn-text">
-              {{ $t('address.unshippable') }}
-            </text>
+          <!-- 全部为虚拟商品：无需收货地址 -->
+          <view v-if="allVirtual" class="addr-line addr-empty">
+            <text class="addr-empty-text">{{ $t('checkout.virtualNoAddress') }}</text>
           </view>
-          <view v-else class="addr-line addr-empty" @click="onSelectAddress">
-            <text class="addr-empty-text">{{ $t('checkout.address.addNew') }}</text>
-          </view>
+          <template v-else>
+            <view
+              v-if="selectedAddress"
+              class="addr-line"
+              :class="{ 'addr-unshippable': selectedAddressUnshippable }"
+            >
+              <text class="addr-name">
+                {{ selectedAddress.receiverName || selectedAddress.first_name }}
+              </text>
+              <text class="addr-detail">
+                {{ selectedAddress.addressLine || selectedAddress.address_1 }}
+                {{ selectedAddress.city || '' }} {{ selectedAddress.state || '' }}
+                {{ selectedAddress.zipCode || selectedAddress.postcode || '' }}
+              </text>
+              <text class="addr-phone">
+                {{ $t('checkout.address.phone') }}
+                {{ selectedAddress.receiverPhone || selectedAddress.phone }}
+              </text>
+              <!-- 不可发货：底部红字提示，引导用户回 /pages/user/address 换地址 -->
+              <text v-if="selectedAddressUnshippable" class="addr-warn-text">
+                {{ $t('address.unshippable') }}
+              </text>
+            </view>
+            <view v-else class="addr-line addr-empty" @click="onSelectAddress">
+              <text class="addr-empty-text">{{ $t('checkout.address.addNew') }}</text>
+            </view>
+          </template>
         </view>
       </view>
 
@@ -126,9 +132,9 @@
           </view>
         </view>
 
-        <!-- 配送方式 -->
-        <view class="block-divider" />
-        <view class="block-sub">
+        <!-- 配送方式（虚拟商品无需配送） -->
+        <view v-if="!allVirtual" class="block-divider" />
+        <view v-if="!allVirtual" class="block-sub">
           <text class="sub-title">{{ $t('checkout.shipping.choose') }}</text>
 
           <!-- 加载中 / 空态 -->
@@ -260,6 +266,10 @@
               }}
             </text>
           </view>
+          <view v-if="taxAmount > 0" class="sum-row">
+            <text class="sum-label">{{ $t('checkout.summary.tax') }}</text>
+            <text class="sum-value">${{ taxAmount.toFixed(2) }}</text>
+          </view>
           <view v-if="memberDiscount > 0" class="sum-row">
             <text class="sum-label">{{ $t('checkout.summary.memberDiscount') }}</text>
             <text class="sum-value">−${{ memberDiscount.toFixed(2) }}</text>
@@ -363,7 +373,15 @@
 </template>
 
 <script>
-import { orderApi, pointsApi, addressApi, couponApi, memberApi, marketingApi } from '@/api'
+import {
+  orderApi,
+  pointsApi,
+  addressApi,
+  couponApi,
+  memberApi,
+  marketingApi,
+  productApi,
+} from '@/api'
 import { getShippingMethods, getAvailablePaymentMethods } from '@/api/order'
 import { getFlashSales } from '@/api/flashSale'
 import { useCartStore } from '@/store'
@@ -429,6 +447,8 @@ export default {
       activeFlashSaleProductIds: [],
       // 活动整单满减优惠（由后端营销试算接口返回）
       campaignOrderDiscount: 0,
+      // 商品税率（百分比），由 /api/v1/products/config/tax-rate 拉取，用于预估税费
+      productTaxRate: 0,
       orderRemark: '',
       selectedPayment: 'googlepay',
       // 步骤指示器：地址 1、支付 2、复核 3、下单 4；按实际状态自动推进
@@ -507,6 +527,8 @@ export default {
       return useCartStore()
     },
     selectedShippingPrice() {
+      // 虚拟订单不需要运费
+      if (this.allVirtual) return 0
       // 从已加载的后端 VO 里取 freight；运费由服务端权威计算（freight 已套免邮门槛）
       const method = this.shippingMethods.find((s) => s.code === this.selectedShipping)
       if (!method) return 0
@@ -515,6 +537,7 @@ export default {
     },
     /** 当前选中方式的免邮差额（>0 表示未达免邮门槛） */
     selectedShippingFreeShortBy() {
+      if (this.allVirtual) return 0
       const method = this.shippingMethods.find((s) => s.code === this.selectedShipping)
       if (!method) return 0
       const f = Number(method.freeShortBy)
@@ -523,6 +546,11 @@ export default {
     /** 当前结算商品列表:立即购买临时单品优先,否则取购物车选中项 */
     checkoutItems() {
       return this.cartStore.buyNowItem ? [this.cartStore.buyNowItem] : this.cartStore.selectedItems
+    },
+    /** 是否全部为虚拟商品：虚拟订单免收货地址、免运费 */
+    allVirtual() {
+      const items = this.checkoutItems || []
+      return items.length > 0 && items.every((item) => item && item.isVirtual)
     },
     /** 当前结算商品总件数 */
     checkoutQuantity() {
@@ -650,11 +678,46 @@ export default {
       }, 0)
       return Number((eligibleSubtotal * (1 - rate)).toFixed(2))
     },
+    /**
+     * 预估税费：与服务端 computeTaxAmount 口径保持一致。
+     * 应税商品金额按会员价/活动满减/优惠券占比扣减后 × 税率；shipping 税状态对运费计税。
+     */
+    taxAmount() {
+      const ratePercent = Number(this.productTaxRate) || 0
+      if (ratePercent <= 0) return 0
+      const rate = ratePercent / 100
+      let taxableGoods = 0
+      let taxShipping = false
+      for (const item of this.checkoutItems) {
+        const status = item.taxStatus || 'taxable'
+        if (status === 'none') continue
+        if (status === 'shipping') {
+          taxShipping = true
+          continue
+        }
+        const taxClass = item.taxClass || 'standard'
+        const multiplier = taxClass === 'zero-rate' ? 0 : taxClass === 'reduced-rate' ? 0.5 : 1
+        taxableGoods += (Number(item.price) || 0) * (Number(item.quantity) || 0) * multiplier
+      }
+      const subtotal = this.subtotal
+      const goodsDiscount = this.memberDiscount + this.campaignOrderDiscount + this.discount
+      if (taxableGoods > 0 && subtotal > 0 && goodsDiscount > 0) {
+        taxableGoods = Math.max(
+          0,
+          taxableGoods - Math.min(goodsDiscount, subtotal) * (taxableGoods / subtotal),
+        )
+      }
+      if (taxShipping) {
+        taxableGoods += this.selectedShippingPrice
+      }
+      return Number((taxableGoods * rate).toFixed(2))
+    },
     total() {
       return Math.max(
         0,
         this.subtotal +
-          this.selectedShippingPrice -
+          this.selectedShippingPrice +
+          this.taxAmount -
           this.memberDiscount -
           this.discount -
           this.pointsDiscount -
@@ -672,6 +735,8 @@ export default {
     this.loadActiveFlashSales()
     this.loadPaymentMethods()
     this.loadCampaignQuote()
+    // 税率用于结算页预估税费，避免展示金额与下单金额不一致
+    this.loadProductTaxRate()
   },
 
   // 从地址页返回时才会触发（uni-app 中 navigateBack 不会重触发 onLoad）
@@ -904,6 +969,13 @@ export default {
 
     /** 从后端拉取当前地址可用的配送方式及运费 */
     async loadShippingMethods() {
+      // 虚拟订单无需配送方式
+      if (this.allVirtual) {
+        this.shippingMethods = []
+        this.shippingLoaded = true
+        this.shippingLoading = false
+        return
+      }
       if (!this.selectedAddress || !this.selectedAddress.country) return
       // 兜底：下单成功后 onSubmit 会清空购物车/buyNowItem，触发 subtotal watcher 重跑此方法，
       // 此时 checkoutItems 已为空，传给后端会被 @NotEmpty 拦截为 400。
@@ -1030,6 +1102,18 @@ export default {
       }
     },
 
+    /** 拉取商品税率（百分比），用于结算页预估税费 */
+    async loadProductTaxRate() {
+      try {
+        const res = await productApi.getProductTaxRate()
+        const rate = Number(res && res.rate)
+        this.productTaxRate = Number.isFinite(rate) && rate > 0 ? rate : 0
+      } catch (e) {
+        console.warn('[checkout] load product tax rate failed', e)
+        this.productTaxRate = 0
+      }
+    },
+
     /** 拉取积分抵扣规则（后台会员规则配置：N 积分 = $1，最高抵扣 X%） */
     async loadPointsRule() {
       try {
@@ -1061,13 +1145,14 @@ export default {
 
     /** 提交订单 */
     async onSubmit() {
-      if (!this.selectedAddress) {
+      // 虚拟商品订单无需收货地址
+      if (!this.allVirtual && !this.selectedAddress) {
         uni.showToast({ title: i18n.t('checkout.toast.selectAddress'), icon: 'none' })
         return
       }
       // 兜底校验：所选地址国家不在运营配置的可发货集中时，提前阻止下单
       // （后端 CartServiceImpl.checkout 也会校验，但前端友好提示避免 400）
-      if (this.selectedAddressUnshippable) {
+      if (!this.allVirtual && this.selectedAddressUnshippable) {
         uni.showToast({
           title: i18n.t('address.unshippable'),
           icon: 'none',
@@ -1094,7 +1179,7 @@ export default {
             productId: it.productId,
             quantity: it.quantity,
           })),
-          addressId: this.selectedAddress.id || null,
+          addressId: this.allVirtual ? null : this.selectedAddress?.id || null,
           remark: this.orderRemark,
           // 优先用 auto-selected activeCoupon(支持 AMOUNT/PERCENT 两种)。
           // couponUserId 来自后端 /coupons/mine 返回的用户券记录 id(必传，服务端据此核销/重算减免)；
@@ -1105,8 +1190,8 @@ export default {
           couponDiscount: this.discount,
           pointsUsed: usedPoints,
           pointsDiscount: this.usePoints ? this.pointsDiscount : 0,
-          shippingMethod: this.selectedShipping,
-          freight: this.selectedShippingPrice,
+          shippingMethod: this.allVirtual ? 'standard' : this.selectedShipping,
+          freight: this.allVirtual ? 0 : this.selectedShippingPrice,
         }
         const order = await orderApi.createOrder(orderData)
         uni.hideLoading()

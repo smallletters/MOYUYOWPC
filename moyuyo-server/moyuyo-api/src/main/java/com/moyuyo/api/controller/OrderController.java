@@ -9,9 +9,12 @@ import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.common.utils.PageParamGuard;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
+import com.moyuyo.dao.entity.ProductEntity;
+import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.service.AfterSalesService;
 import com.moyuyo.service.OrderService;
 import com.moyuyo.service.RefundService;
+import com.moyuyo.service.support.ProductAttributes;
 import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,8 +25,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.math.BigDecimal;
 
 @Tag(name = "订单管理")
@@ -35,6 +40,7 @@ public class OrderController {
   private final OrderService orderService;
   private final RefundService refundService;
   private final AfterSalesService afterSalesService;
+  private final ProductMapper productMapper;
 
   /**
    * 分次退货：为订单各商品行填充已申请售后数量与剩余可退数量/金额。
@@ -64,6 +70,35 @@ public class OrderController {
       BigDecimal appliedTotal = appliedAmount.getOrDefault(item.getId(), BigDecimal.ZERO);
       item.setReturnableAmount(subtotal == null ? BigDecimal.ZERO
           : subtotal.subtract(appliedTotal).max(BigDecimal.ZERO));
+    }
+  }
+
+  /**
+   * 填充购买须知：汇总订单内各商品 attributes.purchase_note（去重），供 APP 订单详情展示。
+   */
+  private void fillPurchaseNote(OrderEntity order) {
+    List<OrderItemEntity> items = order.getItems();
+    if (items == null || items.isEmpty()) {
+      return;
+    }
+    List<Long> productIds = items.stream()
+        .map(OrderItemEntity::getProductId)
+        .filter(Objects::nonNull)
+        .distinct()
+        .toList();
+    if (productIds.isEmpty()) {
+      return;
+    }
+    LinkedHashSet<String> notes = new LinkedHashSet<>();
+    for (ProductEntity product : productMapper.selectBatchIds(productIds)) {
+      String note = ProductAttributes.str(
+          ProductAttributes.parse(product.getAttributes()), "purchase_note", "");
+      if (!note.isEmpty()) {
+        notes.add(note);
+      }
+    }
+    if (!notes.isEmpty()) {
+      order.setPurchaseNote(String.join("\n", notes));
     }
   }
 
@@ -124,6 +159,8 @@ public class OrderController {
       return Result.error(400, "订单不存在");
     }
     order.setItems(orderService.getOrderItems(id));
+    // 购买须知：从商品 attributes 读取并在订单详情展示
+    fillPurchaseNote(order);
     // 填充退款金额快照，供 APP 退款页展示"剩余可退金额"：
     // 整单退款实际退的是剩余可退（实付 - 已退/退款中），已部分退过时小于实付金额
     BigDecimal refunded = refundService.refundedAmount(id);

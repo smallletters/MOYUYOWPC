@@ -56,6 +56,7 @@
             :topCategories="topCategories"
             :subCategories="subCategories"
             @permalink-change="onPermalinkChange"
+            @slug-manual="slugManuallyEdited = true"
           />
         </div>
         <div v-show="activeTab === 'inventory'" class="tab-pane">
@@ -67,6 +68,7 @@
         <div v-show="activeTab === 'linked'" class="tab-pane">
           <TabLinked
             :form="form"
+            :names="linkedNames"
             @open-upsell="openProductPicker('upsell')"
             @open-cross="openProductPicker('cross')"
           />
@@ -188,6 +190,7 @@
       v-model="pickerVisible"
       :title="pickerTitle"
       :exclude-id="form.id"
+      :selected-ids="pickerSelectedIds"
       @confirm="onPickerConfirm"
     />
   </div>
@@ -200,7 +203,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getProductDetail, createProduct, updateProduct,
   getCategoryList, pushProductToWoo, pullProductFromWoo,
-  syncProductStock
+  syncProductStock, searchProductsLite
 } from '../api/admin'
 
 import TabGeneral from './ProductEdit/TabGeneral.vue'
@@ -227,6 +230,19 @@ const activeTab = ref('general')
 const pickerVisible = ref(false)
 const pickerTitle = ref('')
 const pickerTarget = ref('') // upsell | cross
+// 弹窗打开时需要回显的已选商品 id
+const pickerSelectedIds = computed(() =>
+  pickerTarget.value === 'upsell' ? form.upsellIds : form.crossSellIds
+)
+// 关联商品 id -> 名称，用于标签回显（页面内选择后即时生效，重新加载时通过接口补齐）
+const linkedNames = reactive({})
+// slug 是否被手动编辑过：未编辑时随商品名称自动生成
+const slugManuallyEdited = ref(false)
+
+let attrUidSeq = 0
+function nextAttrUid() {
+  return 'attr_' + (++attrUidSeq) + '_' + Math.random().toString(36).slice(2, 6)
+}
 
 // 默认 form 字段（含本次新增）
 function blankForm() {
@@ -349,9 +365,9 @@ function syncVirtualDownloadable() {
   // 仅 UI 联动，由 tabs.showIf 控制
 }
 
-// 当常规选项卡名称变化时更新 permalink
+// 当常规选项卡名称变化时更新 permalink（用户手动改过 slug 后不再覆盖）
 function onPermalinkChange(name) {
-  if (!form.slug || form.slug === slugify(form.name)) {
+  if (!slugManuallyEdited.value) {
     form.slug = slugify(name)
   }
 }
@@ -414,6 +430,10 @@ async function fetchProduct() {
       })
       // 解析 attributes JSON（dimensions + WC 新字段 + 自定义属性 + 变体）
       parseAllFromAttributes(res.attributes)
+      // 已有 slug 视为手动值，避免编辑名称时被覆盖
+      slugManuallyEdited.value = !!form.slug
+      // 补齐已选关联商品名称
+      fetchLinkedNames()
     }
   } catch (err) {
     console.error('获取商品详情失败:', err)
@@ -459,8 +479,24 @@ function parseAllFromAttributes(attrsJson) {
   form.reviewsAllowed = attrs.reviews_allowed !== false
   form.upsellIds = Array.isArray(attrs.upsell_ids) ? attrs.upsell_ids : []
   form.crossSellIds = Array.isArray(attrs.cross_sell_ids) ? attrs.cross_sell_ids : []
-  form.customAttributes = Array.isArray(attrs.custom_attributes) ? attrs.custom_attributes : []
-  form.variations = Array.isArray(attrs.variations) ? attrs.variations : []
+  // 自定义属性：为回显补齐 uid / expanded，避免 v-for key 重复且默认收起
+  form.customAttributes = (Array.isArray(attrs.custom_attributes) ? attrs.custom_attributes : []).map(a => ({
+    ...a,
+    uid: a.uid || nextAttrUid(),
+    name: a.name || '',
+    options: Array.isArray(a.options) ? a.options : [],
+    visible: a.visible !== false,
+    variation: !!a.variation,
+    expanded: a.expanded === undefined ? true : !!a.expanded
+  }))
+  // 变体：补齐缺失的 dimensions / image，避免模板读取 undefined
+  form.variations = (Array.isArray(attrs.variations) ? attrs.variations : []).map(v => ({
+    ...v,
+    attributes: Array.isArray(v.attributes) ? v.attributes : [],
+    dimensions: v.dimensions || { length: '', width: '', height: '' },
+    image: v.image || { id: null, src: '', alt: '' },
+    expanded: !!v.expanded
+  }))
 }
 
 async function handleSave() {
@@ -536,21 +572,9 @@ async function handleSave() {
 }
 
 // 序列化所有 attributes JSON（dimensions + 新增 WC 字段）
+// 注意：这里始终写入全部字段。此前用 hasNewFields 做短路判断，导致
+// 「把某个字段改回默认值/清空」时旧 JSON 值残留（例如税状态改回 taxable、删掉最后一个关联商品）。
 function serializeAllAttributes() {
-  const hasDimensions = dimensions.length || dimensions.width || dimensions.height
-  const hasNewFields =
-    form.slug || form.salePriceDatesFrom || form.salePriceDatesTo ||
-    form.taxStatus !== 'taxable' || form.taxClass !== 'standard' ||
-    form.globalUniqueId || form.backorders !== 'no' || form.lowStockAmount ||
-    form.soldIndividually || form.shippingClass ||
-    form.isVirtual || form.isDownloadable ||
-    form.productUrl || form.buttonText ||
-    form.purchaseNote || form.menuOrder !== 0 || !form.reviewsAllowed ||
-    form.upsellIds.length || form.crossSellIds.length ||
-    form.customAttributes.length || form.variations.length
-
-  if (!hasDimensions && !hasNewFields && !form.attributes) return form.attributes
-
   let attrs = {}
   try {
     if (form.attributes) {
@@ -559,36 +583,45 @@ function serializeAllAttributes() {
     }
   } catch (e) { attrs = {} }
 
-  if (hasDimensions) {
-    attrs.dimensions = {
-      length: dimensions.length || '0',
-      width: dimensions.width || '0',
-      height: dimensions.height || '0'
+  attrs.dimensions = {
+    length: dimensions.length || '0',
+    width: dimensions.width || '0',
+    height: dimensions.height || '0'
+  }
+  attrs.slug = form.slug || ''
+  attrs.sale_price_dates_from = form.salePriceDatesFrom || ''
+  attrs.sale_price_dates_to = form.salePriceDatesTo || ''
+  attrs.tax_status = form.taxStatus
+  attrs.tax_class = form.taxClass
+  attrs.global_unique_id = form.globalUniqueId || ''
+  attrs.backorders = form.backorders
+  attrs.low_stock_amount = form.lowStockAmount || ''
+  attrs.sold_individually = form.soldIndividually
+  attrs.shipping_class = form.shippingClass || ''
+  attrs.is_virtual = form.isVirtual
+  attrs.is_downloadable = form.isDownloadable
+  attrs.product_url = form.productUrl || ''
+  attrs.button_text = form.buttonText || ''
+  attrs.purchase_note = form.purchaseNote || ''
+  attrs.menu_order = form.menuOrder || 0
+  attrs.reviews_allowed = form.reviewsAllowed
+  attrs.upsell_ids = form.upsellIds
+  attrs.cross_sell_ids = form.crossSellIds
+  // 属性/变体剥离仅 UI 使用的字段（uid / expanded / 上传状态），保持 JSON 干净
+  attrs.custom_attributes = (form.customAttributes || []).map(a => {
+    const { uid, expanded, ...rest } = a
+    return {
+      ...rest,
+      name: a.name || '',
+      options: (a.options || []).map(normalizeOption).filter(v => v !== ''),
+      visible: a.visible !== false,
+      variation: !!a.variation
     }
-  }
-  if (hasNewFields) {
-    attrs.slug = form.slug || ''
-    attrs.sale_price_dates_from = form.salePriceDatesFrom || ''
-    attrs.sale_price_dates_to = form.salePriceDatesTo || ''
-    attrs.tax_status = form.taxStatus
-    attrs.tax_class = form.taxClass
-    attrs.global_unique_id = form.globalUniqueId || ''
-    attrs.backorders = form.backorders
-    attrs.low_stock_amount = form.lowStockAmount || ''
-    attrs.sold_individually = form.soldIndividually
-    attrs.shipping_class = form.shippingClass || ''
-    attrs.is_virtual = form.isVirtual
-    attrs.is_downloadable = form.isDownloadable
-    attrs.product_url = form.productUrl || ''
-    attrs.button_text = form.buttonText || ''
-    attrs.purchase_note = form.purchaseNote || ''
-    attrs.menu_order = form.menuOrder || 0
-    attrs.reviews_allowed = form.reviewsAllowed
-    attrs.upsell_ids = form.upsellIds
-    attrs.cross_sell_ids = form.crossSellIds
-    attrs.custom_attributes = form.customAttributes
-    attrs.variations = form.variations
-  }
+  })
+  attrs.variations = (form.variations || []).map(v => {
+    const { expanded, _imageUploading, ...rest } = v
+    return rest
+  })
   return JSON.stringify(attrs)
 }
 
@@ -676,10 +709,32 @@ function openProductPicker(target) {
 }
 
 function onPickerConfirm(selected) {
+  const ids = selected.map(p => p.id)
+  // 缓存名称，标签区即时显示商品名而不是纯 id
+  selected.forEach(p => {
+    if (p.name) linkedNames[p.id] = p.name
+  })
   if (pickerTarget.value === 'upsell') {
-    form.upsellIds = selected.map(p => p.id)
+    form.upsellIds = ids
   } else {
-    form.crossSellIds = selected.map(p => p.id)
+    form.crossSellIds = ids
+  }
+}
+
+// 重新加载商品后，按 id 批量补齐关联商品名称（lite 接口支持 ids 参数）
+async function fetchLinkedNames() {
+  const ids = [...form.upsellIds, ...form.crossSellIds]
+    .filter(id => id != null)
+    .map(String)
+  if (!ids.length) return
+  try {
+    const res = await searchProductsLite({ ids: ids.join(','), size: 100 })
+    const data = Array.isArray(res) ? res : (res?.records || res?.list || [])
+    data.forEach(p => {
+      if (p && p.id != null && p.name) linkedNames[p.id] = p.name
+    })
+  } catch (e) {
+    console.debug('获取关联商品名称失败:', e)
   }
 }
 

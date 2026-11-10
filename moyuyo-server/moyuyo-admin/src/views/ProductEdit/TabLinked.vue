@@ -12,7 +12,7 @@
       </div>
       <div v-if="form.upsellIds.length" class="linked-tag-list">
         <span v-for="id in form.upsellIds" :key="id" class="linked-tag">
-          #{{ id }}
+          {{ names[id] || ('#' + id) }}
           <button class="tag-remove" @click="removeUpsell(id)">×</button>
         </span>
       </div>
@@ -29,7 +29,7 @@
       </div>
       <div v-if="form.crossSellIds.length" class="linked-tag-list">
         <span v-for="id in form.crossSellIds" :key="id" class="linked-tag">
-          #{{ id }}
+          {{ names[id] || ('#' + id) }}
           <button class="tag-remove" @click="removeCross(id)">×</button>
         </span>
       </div>
@@ -39,7 +39,9 @@
 
 <script setup>
 const props = defineProps({
-  form: { type: Object, required: true }
+  form: { type: Object, required: true },
+  // id -> 商品名称，用于回显已选商品（缺少时展示 #id）
+  names: { type: Object, default: () => ({}) }
 })
 const emit = defineEmits(['open-upsell', 'open-cross'])
 

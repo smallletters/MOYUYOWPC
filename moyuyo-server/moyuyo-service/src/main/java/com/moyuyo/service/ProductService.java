@@ -36,6 +36,9 @@ public interface ProductService {
 
   ProductEntity getProductWithDetails(Long productId);
 
+  /** 按 attributes.slug 短链查询商品详情（供 APP 分享链接使用） */
+  ProductEntity getProductWithDetailsBySlug(String slug);
+
   /** 创建商品，含SPU编码唯一性校验 */
   ProductEntity createProduct(Map<String, Object> body);
 

@@ -35,8 +35,10 @@ import com.moyuyo.service.NotificationService;
 import com.moyuyo.service.OrderService;
 import com.moyuyo.service.ShippingRateService;
 import com.moyuyo.service.WooCommerceSyncService;
+import com.moyuyo.service.admin.SystemConfigService;
 import com.moyuyo.service.config.MembershipRuleConfigService;
 import com.moyuyo.service.mq.NotificationMessageProducer;
+import com.moyuyo.service.support.ProductAttributes;
 import static com.moyuyo.common.enums.OrderStatusEnum.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -98,6 +100,8 @@ public class OrderServiceImpl implements OrderService {
   private final MembershipRuleConfigService ruleConfigService;
   // 营销活动执行：活动价、满减、限购/预算/总量占用
   private final CampaignPricingServiceImpl campaignPricingService;
+  /** 系统配置：读取商品税率、运费类系数等后台可调参数 */
+  private final SystemConfigService systemConfigService;
 
   @Override
   @Transactional
@@ -141,6 +145,8 @@ public class OrderServiceImpl implements OrderService {
 
     // 校验库存并计算商品总金额；M2 修复：非 SKU 商品也走原子 UPDATE 扣减 stock，防止并发超卖
     BigDecimal goodsAmount = BigDecimal.ZERO;
+    // 缓存本次下单商品，供税费计算、虚拟商品判定复用，避免重复查库
+    Map<Long, ProductEntity> productMap = new java.util.HashMap<>();
     for (OrderItemEntity item : items) {
       // 校验商品是否存在且在上架状态
       ProductEntity product = productMapper.selectById(item.getProductId());
@@ -150,17 +156,28 @@ public class OrderServiceImpl implements OrderService {
       if (product.getOnSale() == null || !product.getOnSale()) {
         throw new IllegalArgumentException("商品已下架: " + product.getName());
       }
+      productMap.put(product.getId(), product);
+      Map<String, Object> attrs = ProductAttributes.parse(product.getAttributes());
+      int quantity = item.getQuantity() == null ? 0 : item.getQuantity();
+      // 单独出售：每个订单最多购买 1 件
+      if (ProductAttributes.bool(attrs, "sold_individually", false) && quantity > 1) {
+        throw new IllegalArgumentException("该商品每单限购 1 件: " + product.getName());
+      }
+      // 允许缺货订购（backorders = notify / yes）时放开库存校验，允许扣成负库存
+      boolean allowBackorder = !"no".equalsIgnoreCase(ProductAttributes.str(attrs, "backorders", "no"));
       if (item.getSkuId() != null) {
         // 走 SKU 原子扣减
         ProductSkuEntity sku = productSkuMapper.selectById(item.getSkuId());
         if (sku == null) {
           throw new IllegalArgumentException("SKU不存在: " + item.getSkuId());
         }
-        // 原子扣减：UPDATE mo_product_sku SET stock = stock - qty WHERE id = ? AND stock >= qty
+        // 原子扣减：UPDATE mo_product_sku SET stock = stock - qty WHERE id = ? [AND stock >= qty]
         LambdaUpdateWrapper<ProductSkuEntity> stockWrapper = new LambdaUpdateWrapper<>();
         stockWrapper.eq(ProductSkuEntity::getId, item.getSkuId())
-            .setSql("stock = stock - " + item.getQuantity())
-            .apply("stock >= {0}", item.getQuantity());
+            .setSql("stock = stock - " + quantity);
+        if (!allowBackorder) {
+          stockWrapper.apply("stock >= {0}", quantity);
+        }
         int affected = productSkuMapper.update(null, stockWrapper);
         if (affected == 0) {
           throw new IllegalStateException("商品库存不足: " + product.getName());
@@ -174,14 +191,16 @@ public class OrderServiceImpl implements OrderService {
         // 原实现只比较 product.getStock() 但不真扣减，多人并发会同时通过校验导致超卖
         LambdaUpdateWrapper<ProductEntity> productStockWrapper = new LambdaUpdateWrapper<>();
         productStockWrapper.eq(ProductEntity::getId, item.getProductId())
-            .setSql("stock = stock - " + item.getQuantity())
-            .apply("stock >= {0}", item.getQuantity());
+            .setSql("stock = stock - " + quantity);
+        if (!allowBackorder) {
+          productStockWrapper.apply("stock >= {0}", quantity);
+        }
         int affected = productMapper.update(null, productStockWrapper);
         if (affected == 0) {
           throw new IllegalStateException("商品库存不足: " + product.getName());
         }
       }
-      goodsAmount = goodsAmount.add(item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+      goodsAmount = goodsAmount.add(item.getPrice().multiply(BigDecimal.valueOf(quantity)));
     }
 
     // 金额兜底：null 转 0，避免 NPE 与下游 BigDecimal 计算异常
@@ -191,18 +210,29 @@ public class OrderServiceImpl implements OrderService {
 
     // 服务端权威运费：按 (country, shippingMethod) 重算覆盖前端传的 freight
     // 防改包刷价；不可达 zone（未配置运费规则）时降级用前端传入值（不阻断下单）
-    BigDecimal safeFreight = resolveServerFreight(userId, addressId, items, goodsAmount, shippingMethod, freight);
+    // 全虚拟商品订单不产生运费（无需物流）
+    BigDecimal safeFreight = isAllVirtual(items, productMap)
+        ? BigDecimal.ZERO
+        : resolveServerFreight(userId, addressId, items, goodsAmount, shippingMethod, freight);
 
+    // 税费：按商品 tax_status / tax_class 与服务端配置的税率计算
     // 会员价：按会员等级统一折扣，作用于商品销售价，与优惠券叠加；秒杀商品不参与
     // 调用方（createOrderFromRequest）已计算过则直接复用，避免重复查询
     BigDecimal safeMemberDiscount = knownMemberDiscount != null
         ? knownMemberDiscount : computeMemberDiscount(userId, items);
 
-    // M1 修复：payAmount = 商品总金额 + 运费 - 会员优惠 - 营销活动满减 - 优惠券减免 - 积分抵扣，下限 0
+    // 税基按「优惠后金额」计算：会员价/活动满减/优惠券分摊扣减；积分属于支付抵扣，不降低税基
+    BigDecimal goodsDiscount = safeMemberDiscount
+        .add(campaignPricing.orderDiscount)
+        .add(safeCouponDiscount);
+    BigDecimal taxAmount = computeTaxAmount(items, safeFreight, productMap, goodsAmount, goodsDiscount);
+
+    // M1 修复：payAmount = 商品总金额 + 运费 + 税费 - 会员优惠 - 营销活动满减 - 优惠券减免 - 积分抵扣，下限 0
     // 商品级活动价已在 items.price 中体现，这里只需再减整单满减
     BigDecimal payAmount = goodsAmount
             .subtract(safeMemberDiscount)
             .add(safeFreight)
+            .add(taxAmount)
             .subtract(safeCouponDiscount)
             .subtract(safePointsDiscount)
             .subtract(campaignPricing.orderDiscount);
@@ -216,6 +246,7 @@ public class OrderServiceImpl implements OrderService {
     order.setUserId(userId);
     order.setGoodsAmount(goodsAmount);
     order.setFreight(safeFreight);
+    order.setTaxAmount(taxAmount);
     order.setCouponDiscount(safeCouponDiscount);
     order.setMemberDiscount(safeMemberDiscount);
     order.setCampaignDiscount(campaignPricing.totalDiscount);
@@ -289,6 +320,14 @@ public class OrderServiceImpl implements OrderService {
         item.setSkuId(itemReq.getSkuId());
         item.setPrice(sku.getPrice());
       }
+      // 服务端权威价：销售期外回退常规价，避免前端缓存/改包使用过期促销价
+      Map<String, Object> attrs = ProductAttributes.parse(product.getAttributes());
+      item.setPrice(ProductAttributes.effectivePrice(
+          attrs,
+          sku != null ? sku.getSkuCode() : null,
+          sku != null ? sku.getSpec() : null,
+          item.getPrice(),
+          product.getOriginalPrice()));
       items.add(item);
     }
 
@@ -1019,6 +1058,8 @@ public class OrderServiceImpl implements OrderService {
     }
 
     // 转换 items -> ShippingQuoteRequest.Item（含重量：商品 weight × quantity，无则按 500g 默认）
+    // 运费类系数整单读取一次，避免每个商品都全表查询系统配置
+    Map<String, BigDecimal> classMultipliers = readShippingClassMultipliers();
     List<com.moyuyo.common.dto.shipping.ShippingQuoteRequest.Item> quoteItems = new ArrayList<>(items.size());
     for (OrderItemEntity it : items) {
       com.moyuyo.common.dto.shipping.ShippingQuoteRequest.Item qi =
@@ -1026,7 +1067,7 @@ public class OrderServiceImpl implements OrderService {
       qi.setProductId(it.getProductId());
       qi.setSkuId(it.getSkuId());
       qi.setQuantity(it.getQuantity() == null ? 0 : it.getQuantity());
-      Integer grams = lookupProductWeightGrams(it.getProductId());
+      Integer grams = lookupChargeableWeightGrams(it.getProductId(), classMultipliers);
       qi.setWeightGrams(grams);
       quoteItems.add(qi);
     }
@@ -1067,18 +1108,177 @@ public class OrderServiceImpl implements OrderService {
   }
 
   /**
-   * 查询商品单件重量（克）。SKU 没重量字段时回退到商品重量；都没有返回 null（由 ShippingRateService 兜底 500g）。
-   * <p>
-   * 性能：N 个商品 → N 次单查；非热点路径（下单），不做缓存。
+   * 判断订单是否全部为虚拟商品（全部 is_virtual=true 时不产生运费）。
    */
-  private Integer lookupProductWeightGrams(Long productId) {
+  private boolean isAllVirtual(List<OrderItemEntity> items, Map<Long, ProductEntity> productMap) {
+    if (items == null || items.isEmpty()) {
+      return false;
+    }
+    for (OrderItemEntity item : items) {
+      ProductEntity product = productMap.get(item.getProductId());
+      Map<String, Object> attrs = ProductAttributes.parse(product == null ? null : product.getAttributes());
+      if (!ProductAttributes.bool(attrs, "is_virtual", false)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * 计算订单税费。
+   * <p>
+   * 税率来自系统配置 product_tax_rate（百分比，默认 0 = 不计税）：
+   * - tax_status=none      不计税
+   * - tax_status=shipping  仅对运费计税
+   * - tax_status=taxable   按商品金额计税
+   * - tax_class=zero-rate  税率为 0；reduced-rate 按标准税率的一半
+   * <p>
+   * 税基按优惠后金额计算：商品级优惠按应税商品金额占比分摊后扣减，运费优惠不参与分摊。
+   */
+  private BigDecimal computeTaxAmount(List<OrderItemEntity> items, BigDecimal freight,
+                                      Map<Long, ProductEntity> productMap,
+                                      BigDecimal goodsAmount, BigDecimal goodsDiscount) {
+    BigDecimal ratePercent = readProductTaxRatePercent();
+    if (ratePercent.compareTo(BigDecimal.ZERO) <= 0) {
+      return BigDecimal.ZERO;
+    }
+    BigDecimal rate = ratePercent.divide(BigDecimal.valueOf(100), 6, java.math.RoundingMode.HALF_UP);
+    BigDecimal taxableGoods = BigDecimal.ZERO;
+    boolean taxShipping = false;
+    for (OrderItemEntity item : items) {
+      ProductEntity product = productMap.get(item.getProductId());
+      Map<String, Object> attrs = ProductAttributes.parse(product == null ? null : product.getAttributes());
+      String taxStatus = ProductAttributes.str(attrs, "tax_status", "taxable");
+      if ("none".equalsIgnoreCase(taxStatus)) {
+        continue;
+      }
+      if ("shipping".equalsIgnoreCase(taxStatus)) {
+        taxShipping = true;
+        continue;
+      }
+      String taxClass = ProductAttributes.str(attrs, "tax_class", "standard");
+      BigDecimal classMultiplier = BigDecimal.ONE;
+      if ("zero-rate".equalsIgnoreCase(taxClass)) {
+        classMultiplier = BigDecimal.ZERO;
+      } else if ("reduced-rate".equalsIgnoreCase(taxClass)) {
+        classMultiplier = new BigDecimal("0.5");
+      }
+      if (item.getPrice() == null || classMultiplier.compareTo(BigDecimal.ZERO) == 0) {
+        continue;
+      }
+      BigDecimal lineAmount = item.getPrice()
+          .multiply(BigDecimal.valueOf(item.getQuantity() == null ? 0 : item.getQuantity()));
+      taxableGoods = taxableGoods.add(lineAmount.multiply(classMultiplier));
+    }
+
+    BigDecimal taxableBase = taxableGoods;
+    // 优惠按应税商品占比分摊（优惠后金额计税）
+    if (taxableGoods.compareTo(BigDecimal.ZERO) > 0
+        && goodsAmount != null && goodsAmount.compareTo(BigDecimal.ZERO) > 0
+        && goodsDiscount != null && goodsDiscount.compareTo(BigDecimal.ZERO) > 0) {
+      BigDecimal ratio = taxableGoods.divide(goodsAmount, 6, java.math.RoundingMode.HALF_UP);
+      BigDecimal discountShare = goodsDiscount.min(goodsAmount)
+          .multiply(ratio)
+          .setScale(2, java.math.RoundingMode.HALF_UP);
+      taxableBase = taxableGoods.subtract(discountShare).max(BigDecimal.ZERO);
+    }
+    if (taxShipping && freight != null) {
+      taxableBase = taxableBase.add(freight);
+    }
+    return taxableBase.multiply(rate).setScale(2, java.math.RoundingMode.HALF_UP);
+  }
+
+  /** 读取系统配置中的商品税率（百分比），未配置或非法时按 0 处理 */
+  private BigDecimal readProductTaxRatePercent() {
+    try {
+      Map<String, Object> config = systemConfigService.getConfig("order");
+      Object value = config == null ? null : config.get("product_tax_rate");
+      if (value == null || String.valueOf(value).isBlank()) {
+        return BigDecimal.ZERO;
+      }
+      return new BigDecimal(String.valueOf(value).trim());
+    } catch (Exception e) {
+      log.warn("[order] 读取商品税率失败，按 0 处理: {}", e.getMessage());
+      return BigDecimal.ZERO;
+    }
+  }
+
+  /**
+   * 读取运费类系数（可选配置 shipping_class_multiplier，JSON 形如 {"cold":1.2,"bulky":2}）。
+   * 未配置时返回空 Map，统一按 1 倍处理，不影响现有运费。
+   */
+  private Map<String, BigDecimal> readShippingClassMultipliers() {
+    Map<String, BigDecimal> result = new java.util.HashMap<>();
+    try {
+      Map<String, Object> config = systemConfigService.getConfig("shipping");
+      Object raw = config == null ? null : config.get("shipping_class_multiplier");
+      if (raw == null || String.valueOf(raw).isBlank()) {
+        return result;
+      }
+      for (Map.Entry<String, Object> entry : ProductAttributes.parse(String.valueOf(raw)).entrySet()) {
+        BigDecimal value = toDecimal(entry.getValue());
+        if (value != null && value.compareTo(BigDecimal.ZERO) > 0) {
+          result.put(entry.getKey(), value);
+        }
+      }
+    } catch (Exception e) {
+      log.warn("[order] 读取运费类系数失败，按 1 倍处理: {}", e.getMessage());
+    }
+    return result;
+  }
+
+  /**
+   * 查询商品计费重量（克）：取「实际重量」与「体积重」较大值，再乘以运费类系数。
+   * <p>
+   * 体积重按行业通用公式 长×宽×高(cm³)/5000(kg)，换算为克即 /5；尺寸或重量缺失时按可用值处理，
+   * 全部缺失返回 null 由 ShippingRateService 兜底 500g。
+   */
+  private Integer lookupChargeableWeightGrams(Long productId, Map<String, BigDecimal> classMultipliers) {
     try {
       ProductEntity p = productMapper.selectById(productId);
-      if (p == null || p.getWeight() == null) return null;
-      // mo_product.weight 是 BigDecimal，按"克"为单位（与 ShippingRateService 一致）；小数向上取整
-      return p.getWeight().setScale(0, java.math.RoundingMode.CEILING).intValue();
+      if (p == null) {
+        return null;
+      }
+      Integer grams = p.getWeight() == null ? null
+          : p.getWeight().setScale(0, java.math.RoundingMode.CEILING).intValue();
+      Map<String, Object> attrs = ProductAttributes.parse(p.getAttributes());
+      Object dimensions = attrs.get("dimensions");
+      if (dimensions instanceof Map<?, ?> dims) {
+        BigDecimal length = toDecimal(dims.get("length"));
+        BigDecimal width = toDecimal(dims.get("width"));
+        BigDecimal height = toDecimal(dims.get("height"));
+        if (length != null && width != null && height != null
+            && length.compareTo(BigDecimal.ZERO) > 0
+            && width.compareTo(BigDecimal.ZERO) > 0
+            && height.compareTo(BigDecimal.ZERO) > 0) {
+          int volumeGrams = length.multiply(width).multiply(height)
+              .divide(BigDecimal.valueOf(5), 0, java.math.RoundingMode.CEILING).intValue();
+          grams = grams == null ? volumeGrams : Math.max(grams, volumeGrams);
+        }
+      }
+      String shippingClass = ProductAttributes.str(attrs, "shipping_class", "");
+      BigDecimal multiplier = shippingClass.isEmpty() ? BigDecimal.ONE
+          : classMultipliers.getOrDefault(shippingClass, BigDecimal.ONE);
+      if (grams != null && multiplier.compareTo(BigDecimal.ONE) != 0) {
+        grams = BigDecimal.valueOf(grams).multiply(multiplier)
+            .setScale(0, java.math.RoundingMode.CEILING).intValue();
+      }
+      return grams;
     } catch (Exception e) {
-      log.debug("[order] 查商品重量异常 productId={}", productId);
+      log.debug("[order] 查商品计费重量异常 productId={}", productId);
+      return null;
+    }
+  }
+
+  /** 安全地把配置/JSON 中的数字转为 BigDecimal，非法返回 null */
+  private BigDecimal toDecimal(Object value) {
+    if (value == null) {
+      return null;
+    }
+    try {
+      String text = String.valueOf(value).trim();
+      return text.isEmpty() ? null : new BigDecimal(text);
+    } catch (NumberFormatException e) {
       return null;
     }
   }

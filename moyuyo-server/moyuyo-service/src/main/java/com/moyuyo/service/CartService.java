@@ -21,5 +21,8 @@ public interface CartService {
 
   void clear(Long userId);
 
+  /** 购物车凑单推荐（基于购物车商品的 upsell / cross-sell 配置） */
+  List<com.moyuyo.dao.entity.ProductEntity> getRecommendations(Long userId);
+
   OrderEntity checkout(Long userId, Long addressId, String remark, String couponId);
 }

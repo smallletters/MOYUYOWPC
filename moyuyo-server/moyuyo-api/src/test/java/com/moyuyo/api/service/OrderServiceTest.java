@@ -133,6 +133,10 @@ class OrderServiceTest {
   @Mock
   private CampaignPricingServiceImpl campaignPricingService;
 
+  // 税率/运费类系数读取依赖：未 Mock 时会走 null 分支并打印告警日志
+  @Mock
+  private com.moyuyo.service.admin.SystemConfigService systemConfigService;
+
   @InjectMocks
   private OrderServiceImpl orderService;
 

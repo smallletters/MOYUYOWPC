@@ -7,6 +7,7 @@ import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.dao.entity.FlashSaleEntity;
 import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductReviewEntity;
+import com.moyuyo.dao.entity.ProductSkuEntity;
 import com.moyuyo.dao.mapper.FlashSaleMapper;
 import com.moyuyo.dao.mapper.ProductReviewMapper;
 import com.moyuyo.dao.entity.CategoryEntity;
@@ -14,6 +15,8 @@ import com.moyuyo.dao.mapper.CategoryMapper;
 import com.moyuyo.service.MemberPriceService;
 import com.moyuyo.service.MissionService;
 import com.moyuyo.service.ProductService;
+import com.moyuyo.service.admin.SystemConfigService;
+import com.moyuyo.service.support.ProductAttributes;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -49,6 +52,8 @@ public class ProductController {
   private final FlashSaleMapper flashSaleMapper;
   private final StringRedisTemplate redisTemplate;
   private final com.moyuyo.service.impl.CampaignPricingServiceImpl campaignPricingService;
+  // 系统配置：读取商品税率供 APP 结算页预估税费
+  private final SystemConfigService systemConfigService;
 
   @Operation(summary = "商品列表（分页+筛选+排序+搜索）")
   @GetMapping
@@ -105,6 +110,10 @@ public class ProductController {
         }
       }
     }
+    // 销售期生效：列表价格与详情页保持同一口径
+    if (result != null && result.getRecords() != null) {
+      result.getRecords().forEach(this::applySaleWindow);
+    }
     // 注入营销活动价（列表批量一次查询，避免 N+1）
     if (result != null && result.getRecords() != null) {
       campaignPricingService.fillProductCampaigns(result.getRecords(), UserContextHolder.getUserId());
@@ -112,17 +121,84 @@ public class ProductController {
     return Result.success(result);
   }
 
+  @Operation(summary = "商品税率（APP 结算页预估税费）")
+  @GetMapping("/config/tax-rate")
+  public Result<Map<String, Object>> getProductTaxRate() {
+    BigDecimal rate = BigDecimal.ZERO;
+    try {
+      Object value = systemConfigService.getConfig("order").get("product_tax_rate");
+      if (value != null && !String.valueOf(value).isBlank()) {
+        rate = new BigDecimal(String.valueOf(value).trim());
+      }
+    } catch (Exception e) {
+      // 配置读取失败按 0 处理，不阻断结算页
+      log.warn("[product] 读取商品税率失败: {}", e.getMessage());
+    }
+    Map<String, Object> result = new java.util.LinkedHashMap<>();
+    result.put("rate", rate);
+    return Result.success(result);
+  }
+
   @Operation(summary = "商品详情（含 SKU 和图片）")
   @GetMapping("/{id}")
   public Result<ProductEntity> getProductDetail(@PathVariable Long id) {
-    ProductEntity product = productService.getProductWithDetails(id);
+    return buildDetailResult(productService.getProductWithDetails(id));
+  }
+
+  @Operation(summary = "按短链(slug)查询商品详情")
+  @GetMapping("/slug/{slug}")
+  public Result<ProductEntity> getProductDetailBySlug(@PathVariable String slug) {
+    return buildDetailResult(productService.getProductWithDetailsBySlug(slug));
+  }
+
+  /**
+   * 详情统一组装：销售期校验 → 营销活动 → 会员价 → 浏览任务。
+   * ID 与 slug 两个入口共用，避免逻辑分叉。
+   */
+  private Result<ProductEntity> buildDetailResult(ProductEntity product) {
+    // 销售起止日期生效：不在促销期时恢复原价展示
+    applySaleWindow(product);
+    Map<String, Object> attrs = ProductAttributes.parse(product.getAttributes());
+    // 评论开关：APP 据此隐藏评价 Tab / 入口
+    product.setReviewsAllowed(ProductAttributes.bool(attrs, "reviews_allowed", true));
+    // 缺货订购：APP 据此允许库存为 0 时继续加购/下单
+    product.setAllowBackorder(!"no".equalsIgnoreCase(ProductAttributes.str(attrs, "backorders", "no")));
+    // 虚拟商品：APP 结算时不再强制要求收货地址
+    product.setIsVirtual(ProductAttributes.bool(attrs, "is_virtual", false));
+    // 税费信息：APP 结算页按税率与税状态/税类预估税费
+    product.setTaxStatus(ProductAttributes.str(attrs, "tax_status", "taxable"));
+    product.setTaxClass(ProductAttributes.str(attrs, "tax_class", "standard"));
     // 营销活动价优先于会员价；活动商品不再展示会员价
     campaignPricingService.fillProductCampaign(product, UserContextHolder.getUserId());
     // 会员价：按当前登录用户的会员等级动态计算展示价（未登录/无折扣时为 null）
     fillMemberPrice(product);
     // 浏览商品触发"浏览 5 个商品"任务进度（同一商品 5 分钟内不重复计数，避免刷新刷分）
-    triggerViewMission(id);
+    triggerViewMission(product.getId());
     return Result.success(product);
+  }
+
+  /**
+   * 销售期生效：配置了 sale_price_dates_from / to 且当前不在区间内时，
+   * 商品价与所有 SKU 价统一回退到常规价，避免过期促销价继续在 APP 展示。
+   */
+  private void applySaleWindow(ProductEntity product) {
+    if (product == null) {
+      return;
+    }
+    Map<String, Object> attrs = ProductAttributes.parse(product.getAttributes());
+    if (ProductAttributes.isSaleWindowActive(attrs)) {
+      return;
+    }
+    BigDecimal regularPrice = product.getOriginalPrice();
+    product.setPrice(ProductAttributes.effectivePrice(
+        attrs, null, null, product.getPrice(), regularPrice));
+    // 详情接口会带 SKU：逐条回退，保证 APP 选规格时拿到的是生效价
+    if (product.getSkus() != null) {
+      for (ProductSkuEntity sku : product.getSkus()) {
+        sku.setPrice(ProductAttributes.effectivePrice(
+            attrs, sku.getSkuCode(), sku.getSpec(), sku.getPrice(), regularPrice));
+      }
+    }
   }
 
   /** 按当前用户会员等级计算会员展示价；折扣与下单时使用的配置一致 */

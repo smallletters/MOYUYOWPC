@@ -242,6 +242,8 @@ export default {
   data() {
     return {
       productId: null,
+      // 分享短链进入时携带的 slug
+      productSlug: '',
       product: null,
       loading: true,
       errorMessage: '',
@@ -269,11 +271,16 @@ export default {
     },
     // Tab 名称走 i18n：必须放在 computed 里，放在 data 里切语言不会重新求值
     tabs() {
-      return [
+      const list = [
         { key: 'detail', label: this.$t('goodsDetail.tabDetail') },
         { key: 'spec', label: this.$t('goodsDetail.tabSpec') },
         { key: 'review', label: this.$t('goodsDetail.tabReview') },
       ]
+      // 商品关闭评论（reviews_allowed=false）时不展示评价 Tab
+      if (this.product && this.product.reviewsAllowed === false) {
+        return list.filter((t) => t.key !== 'review')
+      }
+      return list
     },
     // 默认头像兜底:指向静态资源,确保 image 永远有 src
     defaultAvatar() {
@@ -366,7 +373,10 @@ export default {
         return i18n.t('goodsDetail.selectSpec')
       }
       if (!this.selectedAttrs.length) return ''
-      if (this.stock === 0) return i18n.t('goodsDetail.outOfStock')
+      if (this.stock === 0) {
+        // 允许缺货订购时不提示“缺货”，仍可加购/下单；也避免落到下面的“仅剩 0 件”
+        return this.product?.allowBackorder ? '' : i18n.t('goodsDetail.outOfStock')
+      }
       if (this.stock <= 5) return i18n.t('goodsDetail.stockLow', { count: this.stock })
       return ''
     },
@@ -452,7 +462,9 @@ export default {
   },
 
   onLoad(query) {
-    this.productId = query.id
+    this.productId = query.id || ''
+    // 分享链接可只带 slug
+    this.productSlug = query.slug || ''
     // 重置页面状态,防止从商品 A 跳到商品 B 时残留 A 的数据导致"数据闪烁"
     this.product = null
     this.galleryImages = []
@@ -477,8 +489,18 @@ export default {
     async loadDetail(retry = 0) {
       this.loading = true
       try {
-        const data = await productApi.getProductDetail(this.productId)
+        const data = this.productId
+          ? await productApi.getProductDetail(this.productId)
+          : await productApi.getProductDetailBySlug(this.productSlug)
+        // slug 入口：回填真实商品 id，后续收藏/加购/浏览历史都使用 id
+        if (data && data.id != null) {
+          this.productId = data.id
+        }
         this.product = data
+        // 商品关闭评论时，避免停留在评价 Tab
+        if (data && data.reviewsAllowed === false && this.activeTab === 'review') {
+          this.activeTab = 'detail'
+        }
         // 记录本次浏览（仅本地存储，不调用后端）；缺字段时按空字符串兜底
         browsingHistory.recordView({
           id: data.id ?? this.productId,
@@ -955,6 +977,10 @@ export default {
         price: this.currentPrice,
         quantity: 1,
         stock: sku?.stock ?? this.stock,
+        allowBackorder: !!this.product.allowBackorder,
+        isVirtual: !!this.product.isVirtual,
+        taxStatus: this.product.taxStatus || 'taxable',
+        taxClass: this.product.taxClass || 'standard',
         attrs: this.selectedAttrs,
       })
       // 库存不足等被拦截时 store 已提示,不再弹加购成功
@@ -977,9 +1003,9 @@ export default {
         uni.showToast({ title: this.$t('goodsDetail.invalidSku'), icon: 'none' })
         return
       }
-      // 规格已无库存时禁止直接下单,与加购口径一致(无 SKU 的简单商品用商品主库存)
+      // 规格已无库存时禁止直接下单，允许缺货订购的商品除外
       const stockVal = sku?.stock != null ? Number(sku.stock) : Number(this.stock)
-      if (stockVal <= 0) {
+      if (stockVal <= 0 && !this.product.allowBackorder) {
         uni.showToast({ title: this.$t('goodsDetail.skuOutOfStock'), icon: 'none' })
         return
       }
@@ -992,6 +1018,10 @@ export default {
         price: this.currentPrice,
         quantity: 1,
         stock: sku?.stock ?? this.stock,
+        allowBackorder: !!this.product.allowBackorder,
+        isVirtual: !!this.product.isVirtual,
+        taxStatus: this.product.taxStatus || 'taxable',
+        taxClass: this.product.taxClass || 'standard',
         attrs: this.selectedAttrs,
       })
       uni.navigateTo({ url: '/pages/cart/checkout' })

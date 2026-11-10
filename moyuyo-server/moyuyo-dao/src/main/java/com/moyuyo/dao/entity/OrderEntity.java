@@ -87,6 +87,10 @@ public class OrderEntity {
 
   private String deliveryNote;
 
+  /** 购买须知（非表字段，来自订单商品 attributes.purchase_note，去重拼接） */
+  @TableField(exist = false)
+  private String purchaseNote;
+
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createTime;
 

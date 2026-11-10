@@ -1030,6 +1030,7 @@ export default {
     address: '收货地址',
     logistics: '物流跟踪',
     items: '商品',
+    purchaseNote: '购买须知',
     pay: '立即支付',
     cancel: '取消订单',
     confirmReceive: '确认收货',
@@ -1375,6 +1376,7 @@ export default {
   checkout: {
     // 步骤条
     steps: ['收货', '支付', '复核', '下单'],
+    virtualNoAddress: '虚拟商品订单，无需填写收货地址',
     // 区块标题
     sections: {
       address: '1. 收货地址',
@@ -1419,7 +1421,7 @@ export default {
       empty: '当前收货地址暂无可用配送方式',
       freeShortBy: '还差 ${amount} 即可包邮',
       etaUnit: '天',
-      etaRange: '预计 ${min}-${max} 天送达',
+      etaRange: '预计 {min}-{max} 天送达',
     },
     // 优惠 / 积分
     coupon: {
@@ -1444,6 +1446,7 @@ export default {
     summary: {
       items: '商品 ({count}):',
       shipping: '运费:',
+      tax: '税费:',
       memberDiscount: '会员优惠:',
       couponDiscount: '优惠券抵扣:',
       pointsDiscount: '积分抵扣:',

@@ -28,6 +28,12 @@ public class CartController {
     return Result.success(cartService.getUserCart(UserContextHolder.getUserId()));
   }
 
+  @Operation(summary = "购物车凑单推荐")
+  @GetMapping("/recommendations")
+  public Result<List<com.moyuyo.dao.entity.ProductEntity>> getRecommendations() {
+    return Result.success(cartService.getRecommendations(UserContextHolder.getUserId()));
+  }
+
   @Operation(summary = "添加商品到购物车")
   @PostMapping
   public Result<CartEntity> addItem(@RequestBody CartRequest request) {
