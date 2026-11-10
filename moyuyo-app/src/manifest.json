@@ -249,6 +249,62 @@
                     "pid" : "",
                     "parameters" : {}
                 }
+            },
+            "MOYUYO-Auth" : {
+                "__plugin_info__" : {
+                    "name" : "MOYUYO-Auth",
+                    "description" : "MOYUYO 社交登录（Google / Facebook / Apple）",
+                    "platforms" : "Android,iOS",
+                    "url" : "",
+                    "android_package_name" : "",
+                    "ios_bundle_id" : "",
+                    "isCloud" : false,
+                    "bought" : -1,
+                    "pid" : "",
+                    "parameters" : {}
+                }
+            },
+            "MOYUYO-Biometric" : {
+                "__plugin_info__" : {
+                    "name" : "MOYUYO-Biometric",
+                    "description" : "MOYUYO 生物识别（Android BiometricPrompt / iOS Face ID·Touch ID）",
+                    "platforms" : "Android,iOS",
+                    "url" : "",
+                    "android_package_name" : "",
+                    "ios_bundle_id" : "",
+                    "isCloud" : false,
+                    "bought" : -1,
+                    "pid" : "",
+                    "parameters" : {}
+                }
+            },
+            "MOYUYO-Camera" : {
+                "__plugin_info__" : {
+                    "name" : "MOYUYO-Camera",
+                    "description" : "MOYUYO 相机（拍照 / 相册选择 / 图片压缩）",
+                    "platforms" : "Android,iOS",
+                    "url" : "",
+                    "android_package_name" : "",
+                    "ios_bundle_id" : "",
+                    "isCloud" : false,
+                    "bought" : -1,
+                    "pid" : "",
+                    "parameters" : {}
+                }
+            },
+            "MOYUYO-Location" : {
+                "__plugin_info__" : {
+                    "name" : "MOYUYO-Location",
+                    "description" : "MOYUYO 定位与地图选点（Google Play Services / iOS CoreLocation）",
+                    "platforms" : "Android,iOS",
+                    "url" : "",
+                    "android_package_name" : "",
+                    "ios_bundle_id" : "",
+                    "isCloud" : false,
+                    "bought" : -1,
+                    "pid" : "",
+                    "parameters" : {}
+                }
             }
         }
     },
