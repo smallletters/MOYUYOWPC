@@ -470,6 +470,10 @@ services:
       MOYUYO_MAIL_ENABLED: ${MOYUYO_MAIL_ENABLED:-true}
       # 上传文件落盘目录：必须与上方 moyuyo-uploads 卷挂载目标保持一致
       MOYUYO_UPLOAD_DIR: ${MOYUYO_UPLOAD_DIR:-/app/uploads}
+      # 私信媒体签名密钥（≥32 位随机串）：不配置则使用进程级随机密钥，重启后旧签名失效；
+      # 多实例部署必须配置同一个值，否则跨实例签名校验会失败（图片随机 403）
+      MOYUYO_UPLOAD_MEDIA_SIGN_SECRET: ${MOYUYO_UPLOAD_MEDIA_SIGN_SECRET:-}
+      MOYUYO_UPLOAD_MEDIA_SIGN_TTL_SECONDS: ${MOYUYO_UPLOAD_MEDIA_SIGN_TTL_SECONDS:-21600}
       JVM_XMS: ${JVM_XMS:-1g}
       JVM_XMX: ${JVM_XMX:-2g}
       # ---- Flyway 容错（用于手动基线场景）----

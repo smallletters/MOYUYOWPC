@@ -39,6 +39,19 @@ public class UserController {
   public Result<Map<String, Object>> profile(@PathVariable Long id) {
     UserEntity u = userMapper.selectById(id);
     if (u == null) throw new IllegalArgumentException("用户不存在");
+    Long viewerId = UserContextHolder.getUserId();
+    boolean self = viewerId != null && viewerId.equals(id);
+    // 隐私开关：allowViewProfile=false 且非本人访问时，仅返回最小身份信息，
+    // 不返回 bio / 积分 / 关注粉丝数 / 发帖数（该开关在 /me 中返回，属有效业务开关）
+    if (!self && Boolean.FALSE.equals(u.getAllowViewProfile())) {
+      Map<String, Object> hidden = new HashMap<>();
+      hidden.put("id", u.getId());
+      hidden.put("nickname", u.getNickname());
+      hidden.put("avatar", u.getAvatar());
+      hidden.put("isFollowing", false);
+      hidden.put("profileHidden", true);
+      return Result.success(hidden);
+    }
     // 关注/粉丝数只统计真实"在关注"的关系(FOLLOWING),与 FollowController.following/followers 保持一致
     long following = followMapper.selectCount(
         new LambdaQueryWrapper<FollowEntity>()
@@ -61,7 +74,10 @@ public class UserController {
     p.put("gender", u.getGender());
     // bio 走真实 DB 字段,NULL/空串都返回 null,前端统一展示默认文案
     p.put("bio", u.getBio());
-    p.put("points", u.getPoints());
+    // 积分属资产类数据：仅本人可见，避免通过他人主页接口读取他人积分余额
+    if (self) {
+      p.put("points", u.getPoints());
+    }
     p.put("following", following);
     p.put("followers", followers);
     p.put("posts", posts);
@@ -81,8 +97,10 @@ public class UserController {
       @RequestParam(required = false) String keyword,
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "20") int size) {
+    // 分页参数统一守卫：size=100000 这类请求会被截断到 100，防止全站用户被一次性拉取
+    int[] pageParams = com.moyuyo.common.utils.PageParamGuard.normalize(page, size, 20);
     com.baomidou.mybatisplus.extension.plugins.pagination.Page<UserEntity> pageReq =
-        new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size);
+        new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(pageParams[0], pageParams[1]);
     LambdaQueryWrapper<UserEntity> wrapper = new LambdaQueryWrapper<>();
     if (keyword != null && !keyword.trim().isEmpty()) {
       String safe = keyword.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");

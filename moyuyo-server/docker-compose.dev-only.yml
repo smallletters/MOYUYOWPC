@@ -181,6 +181,9 @@ services:
       # 上传文件落盘目录：必须与下方 moyuyo-uploads 卷挂载目标保持一致，
       # 否则容器重建后用户上传的图片/视频会丢失（默认 /tmp 在容器可写层）
       MOYUYO_UPLOAD_DIR: ${MOYUYO_UPLOAD_DIR:-/app/uploads}
+      # 私信媒体签名密钥：dev 单实例可不配（进程级随机）；若本 compose 用 prod profile 则必须配置
+      MOYUYO_UPLOAD_MEDIA_SIGN_SECRET: ${MOYUYO_UPLOAD_MEDIA_SIGN_SECRET:-}
+      MOYUYO_UPLOAD_MEDIA_SIGN_TTL_SECONDS: ${MOYUYO_UPLOAD_MEDIA_SIGN_TTL_SECONDS:-21600}
       # ---- 应用功能开关与第三方服务（与生产 compose 对齐，此前未透传）----
       # 默认值均取自 application-dev.yml / application.yml 的 dev 内置默认，
       # 未在 .env 中配置时行为与补齐前完全相同

@@ -21,6 +21,7 @@ import com.moyuyo.dao.mapper.DmGroupMemberMapper;
 import com.moyuyo.dao.mapper.DmMessageDeleteMapper;
 import com.moyuyo.dao.mapper.DmMessageMapper;
 import com.moyuyo.dao.mapper.UserMapper;
+import com.moyuyo.common.security.MediaUrlSigner;
 import com.moyuyo.service.event.DmConversationChangedEvent;
 import com.moyuyo.service.event.DmGroupMessageRecalledEvent;
 import com.moyuyo.service.event.DmGroupMessageSentEvent;
@@ -164,6 +165,8 @@ public class DmService {
     private final StringRedisTemplate redisTemplate;
     private final ApplicationEventPublisher eventPublisher;
     private final NotificationService notificationService;
+    /** 私信媒体签名器：dm 目录下的图片/语音/文件返回前追加短时效签名 */
+    private final MediaUrlSigner mediaUrlSigner;
 
     /**
      * 获取或创建与目标用户的会话（幂等）。
@@ -562,6 +565,10 @@ public class DmService {
             enrichGroupSenders(records);
         }
         pageObj.setRecords(records);
+        // 私信媒体 URL 追加短时效签名：/uploads/dm/** 不再允许匿名直接访问
+        for (DmMessageEntity record : records) {
+            signMediaInPlace(record);
+        }
         return pageObj;
     }
 
@@ -830,6 +837,9 @@ public class DmService {
         }
         conversationMapper.update(null, uw);
 
+        // 返回实体与 WebSocket 推送共用同一对象，先签名保证客户端拿到可访问的媒体 URL
+        signMediaInPlace(message);
+
         UserEntity sender = userMapper.selectById(userId);
         String senderNickname = sender == null ? "" : sender.getNickname();
         String senderAvatar = sender == null ? null : sender.getAvatar();
@@ -855,6 +865,25 @@ public class DmService {
                     receiverId, conversationId, message, senderNickname, senderAvatar));
         }
         return message;
+    }
+
+    /**
+     * 为私信媒体消息的 content 追加访问签名（原地修改，不落库）。
+     * <p>
+     * 仅 VOICE/IMAGE/FILE 且 content 为 /uploads/dm/ 路径时生效；文本消息与已撤回消息无副作用。
+     */
+    private void signMediaInPlace(DmMessageEntity message) {
+        if (message == null || message.getContent() == null) {
+            return;
+        }
+        // 只处理媒体消息：文本内容恰好以 /uploads/dm/ 开头时不能被改写
+        String type = message.getContentType();
+        if (!"IMAGE".equals(type) && !"VOICE".equals(type) && !"FILE".equals(type)) {
+            return;
+        }
+        if (mediaUrlSigner.isProtectedPath(message.getContent())) {
+            message.setContent(mediaUrlSigner.sign(message.getContent()));
+        }
     }
 
     /** 主动标记会话已读（前端返回消息页时可兜底调用） */
@@ -1364,6 +1393,10 @@ public class DmService {
                 || url.startsWith("http://")
                 || url.startsWith("https://");
         if (!allowedPrefix || url.contains(" ") || url.contains("\n") || url.contains("\r")) {
+            throw new IllegalArgumentException(label + "地址无效");
+        }
+        // 本地上传路径禁止包含 ..，避免路径穿越（历史迁移/静态资源解析都以该路径为准）
+        if (url.startsWith("/uploads/") && url.contains("..")) {
             throw new IllegalArgumentException(label + "地址无效");
         }
     }

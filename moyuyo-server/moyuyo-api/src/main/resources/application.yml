@@ -10,11 +10,12 @@ server:
   # 优雅停机：在 spring.lifecycle.timeout-per-shutdown-phase 之前先拒绝新请求，
   # 配合 docker-compose stop_grace_period=45s 避免 SIGKILL 强切。
   shutdown: graceful
-  # 启用 ForwardedHeaderFilter：让 Spring 正确识别前置反向代理设置的 X-Forwarded-* 头
-  # 配合 server.tomcat.remoteip.internal-proxies 白名单使用，避免攻击者伪造 X-Forwarded-For
-  # framework 模式比 native 模式更安全（native 模式无条件信任所有 X-Forwarded-* 头，
-  # framework 模式由 Spring 显式处理 + Tomcat internalProxies 二次校验）
-  forward-headers-strategy: framework
+  # 反向代理头解析策略（安全关键）
+  # 必须用 native（Tomcat RemoteIpValve）：它只对「直连对端命中 remoteip.internal-proxies」的请求
+  # 才采信 X-Forwarded-* 并改写 remoteAddr；直连 8080 的外部请求无法通过伪造 XFF 污染 remoteAddr。
+  # 历史配置 framework 模式的 ForwardedHeaderFilter 不做代理信任校验，会无条件按客户端提交的
+  # X-Forwarded-For 改写 getRemoteAddr()，导致 IP 维度限流可被伪造头绕过（P1 安全修复）。
+  forward-headers-strategy: native
   servlet:
     encoding:
       charset: UTF-8
@@ -95,7 +96,7 @@ server:
     # 远程 IP 校验：仅信任前置 Nginx/反向代理所在的私有网段，避免客户端伪造 X-Forwarded-For
     # 默认 Tomcat internalProxies 包含 10.x.x.x, 192.168.x.x, 127.x.x.x，覆盖典型反向代理部署
     remoteip:
-      internal-proxies: 10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|169\.254\.\d{1,3}\.\d{1,3}|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}|0:0:0:0:0:0:0:1
+      internal-proxies: 10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|169\.254\.\d{1,3}\.\d{1,3}|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}|0:0:0:0:0:0:0:1|::1
       # 仅信任代理头中的 X-Forwarded-Proto / X-Forwarded-For，不解析 RemoteIpValve 自定义头
       remote-ip-header: X-Forwarded-For
       protocol-header: X-Forwarded-Proto
@@ -503,6 +504,18 @@ resilience4j:
 # HTTP 客户端通用配置（RestTemplateBootstrapConfig 读取）
 # 仅给非敏感默认值；生产环境可由 MOYUYO_HTTP_CONNECT_TIMEOUT_MS / MOYUYO_HTTP_READ_TIMEOUT_MS 覆盖
 moyuyo:
+  # 私信媒体访问签名（/uploads/dm/** 不再允许匿名直接访问）
+  # - media-sign-secret：HMAC 密钥，生产必须配置且 ≥32 位；未配置时使用进程级随机密钥（仅适合本地）
+  #   配置了但短于 32 位会启动失败，避免弱密钥导致签名可被伪造
+  # - media-sign-ttl-seconds：签名有效期，默认 6 小时；消息列表每次返回都会重新签发
+  upload:
+    media-sign-secret: ${MOYUYO_UPLOAD_MEDIA_SIGN_SECRET:}
+    media-sign-ttl-seconds: ${MOYUYO_UPLOAD_MEDIA_SIGN_TTL_SECONDS:21600}
+    # 历史私信附件迁移：把落在公开目录的私信图片/语音/文件搬到 dm/ 并更新消息记录
+    # 幂等、可关闭；迁移完成后可设为 false 减少启动期一次查询
+    migrate-legacy-dm: ${MOYUYO_MIGRATE_LEGACY_DM:true}
+    migrate-batch-size: ${MOYUYO_MIGRATE_LEGACY_DM_BATCH:200}
+    migrate-max-total: ${MOYUYO_MIGRATE_LEGACY_DM_MAX:20000}
   http:
     connect-timeout-ms: 5000
     read-timeout-ms: 15000

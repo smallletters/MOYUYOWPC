@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -37,6 +38,15 @@ public class ShareController {
     private final MissionService missionService;
     private final RestTemplate restTemplate;
 
+    /**
+     * 允许生成二维码的站点域名（逗号分隔，支持子域名）。
+     * <p>
+     * 该接口匿名可用且会把 text 原样转发给第三方 QR 服务，必须限制为本站链接，
+     * 避免被当成任意文本的免费二维码代理（外泄用户输入 / 滥用第三方配额）。
+     */
+    @Value("${moyuyo.share.qr-allowed-hosts:moyuyoshop.com,www.moyuyoshop.com,api.moyuyoshop.com}")
+    private String qrAllowedHosts;
+
     @Operation(summary = "分享商品埋点")
     @PostMapping("/product")
     public Result<Map<String, Object>> shareProduct() {
@@ -59,9 +69,16 @@ public class ShareController {
             @RequestParam("text") String text,
             @RequestParam(value = "size", defaultValue = "240") int size) {
         // 兜底：文本过长截断，避免下游 URL 过长导致 414/生成失败
-        if (text == null || text.isEmpty()) {
+        if (text == null || text.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
+        String normalizedText = text.trim();
+        // 仅允许本站链接：防止接口被当作任意文本的二维码代理
+        if (!isAllowedShareUrl(normalizedText)) {
+            log.warn("[share-qr] rejected non-site url: len={}", normalizedText.length());
+            return ResponseEntity.badRequest().build();
+        }
+        text = normalizedText;
         if (text.length() > 500) {
             text = text.substring(0, 500);
         }
@@ -84,5 +101,54 @@ public class ShareController {
             log.warn("[share-qr] upstream call failed: text.len={}, size={}", text.length(), clampedSize, e);
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY).build();
         }
+    }
+
+    /**
+     * 校验二维码文本是否为允许的站内链接：
+     * 必须是 http/https 链接，且 host 命中白名单（精确或子域名）。
+     * <p>
+     * 不用 URI.create：分享链接的 path/query 可能含中文（商品 slug），
+     * URI 解析会抛 IllegalArgumentException，把合法链接误判为非法。
+     */
+    private boolean isAllowedShareUrl(String text) {
+        int schemeSep = text.indexOf("://");
+        if (schemeSep <= 0) {
+            return false;
+        }
+        String scheme = text.substring(0, schemeSep).toLowerCase();
+        if (!"http".equals(scheme) && !"https".equals(scheme)) {
+            return false;
+        }
+        String rest = text.substring(schemeSep + 3);
+        // 去掉 userinfo：https://moyuyoshop.com@evil.com 的真实 host 是 evil.com
+        int at = rest.lastIndexOf('@');
+        if (at >= 0) {
+            rest = rest.substring(at + 1);
+        }
+        // authority 截到第一个 / ? # 为止
+        int end = rest.length();
+        for (char delimiter : new char[]{'/', '?', '#'}) {
+            int index = rest.indexOf(delimiter);
+            if (index >= 0 && index < end) {
+                end = index;
+            }
+        }
+        String authority = rest.substring(0, end);
+        // 去掉端口号（分享链接不涉及 IPv6 字面量）
+        int colon = authority.lastIndexOf(':');
+        String host = (colon > 0 ? authority.substring(0, colon) : authority).toLowerCase();
+        if (host.isBlank()) {
+            return false;
+        }
+        for (String allowed : qrAllowedHosts.split(",")) {
+            String domain = allowed.trim().toLowerCase();
+            if (domain.isEmpty()) {
+                continue;
+            }
+            if (host.equals(domain) || host.endsWith("." + domain)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

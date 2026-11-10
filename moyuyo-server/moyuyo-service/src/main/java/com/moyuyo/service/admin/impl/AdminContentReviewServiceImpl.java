@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.annotation.OperationLog;
+import com.moyuyo.common.security.MediaUrlSigner;
 import com.moyuyo.common.utils.JsonUtils;
 import com.moyuyo.dao.admin.entity.ContentReviewEntity;
 import com.moyuyo.dao.admin.mapper.ContentReviewMapper;
@@ -57,6 +58,8 @@ public class AdminContentReviewServiceImpl implements AdminContentReviewService 
   private final DmMessageMapper dmMessageMapper;
   private final DmConversationMapper dmConversationMapper;
   private final NotificationService notificationService;
+  /** 私信媒体签名器：审核端展示聊天图片/语音/文件时需要带签名，否则 dm 目录会返回 403 */
+  private final MediaUrlSigner mediaUrlSigner;
 
   /** 举报详情页最多展示的历史消息条数（误报排查足够，同时避免大会话拖慢管理端） */
   private static final int DM_CHAT_CONTEXT_LIMIT = 100;
@@ -294,7 +297,13 @@ public class AdminContentReviewServiceImpl implements AdminContentReviewService 
       item.put("senderAvatar", sender == null ? null : sender.getAvatar());
       item.put("contentType", msg.getContentType());
       // 已撤回消息正文已被清空，这里统一按占位文本展示
-      item.put("content", Integer.valueOf(1).equals(msg.getRecalled()) ? "" : msg.getContent());
+      // 仅媒体类型签名：文本内容即使以 /uploads/dm/ 开头也不能被改写
+      String content = Integer.valueOf(1).equals(msg.getRecalled()) ? "" : msg.getContent();
+      String msgType = msg.getContentType();
+      if ("IMAGE".equals(msgType) || "VOICE".equals(msgType) || "FILE".equals(msgType)) {
+        content = mediaUrlSigner.sign(content);
+      }
+      item.put("content", content);
       item.put("mediaDuration", msg.getMediaDuration());
       item.put("mediaName", msg.getMediaName());
       item.put("recalled", msg.getRecalled());

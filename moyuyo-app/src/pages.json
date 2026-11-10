@@ -366,13 +366,6 @@
       }
     },
     {
-      "path": "pages/debug/plugin-test",
-      "style": {
-        "navigationBarTitleText": "插件通信测试",
-        "navigationStyle": "custom"
-      }
-    },
-    {
       "path": "pages/user/about",
       "style": {
         "navigationBarTitleText": "关于我们"

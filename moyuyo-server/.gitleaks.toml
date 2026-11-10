@@ -4,12 +4,16 @@
 
 title = "MOYUYO gitleaks config"
 
-# 允许误报的文件（CI 配置文件中的示例密钥等）
+# 全局允许列表（TOML 不允许重复定义同名表，所有豁免必须集中在这里）
+# paths 使用正则匹配文件路径：文档 + 仅含占位值的模板/开发配置文件
 [allowlist]
 paths = [
   '''dependency-check-suppressions.xml''',
   '''README.md''',
   '''docs/RUNBOOK.md''',
+  '''\.env\.example$''',
+  '''application-dev\.yml$''',
+  '''application-test\.yml$''',
 ]
 
 # 项目自定义规则
@@ -24,13 +28,6 @@ id = "moyuyo-mysql-password"
 description = "MySQL 密码（明文）"
 regex = '''(?i)(MYSQL_PASSWORD|DB_PASSWORD)\s*=\s*['"]?[a-zA-Z0-9_!@#$%^&*]{6,}['"]?'''
 tags = ["secret", "database"]
-# 仅在 prod 文件中告警；dev/test 用 mock 密码不告警
-[allowlist]
-regexTarget = "file"
-regexes = [
-  '''application-dev\.yml''',
-  '''application-test\.yml''',
-]
 
 [[rules]]
 id = "moyuyo-stripe-secret"

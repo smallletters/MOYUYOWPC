@@ -220,7 +220,9 @@ public class ProdConfigValidator implements ApplicationListener<ApplicationEnvir
             new String[] { "mysql.exporter.password", "MYSQL_EXPORTER_PASSWORD" },
             new String[] { "redis.exporter.password", "REDIS_EXPORTER_PASSWORD" },
             // CORS 允许的来源域名：prod 必须显式设置，禁止使用空 / 通配符
-            new String[] { "moyuyo.cors.allowed-origins", "MOYUYO_CORS_ORIGINS" });
+            new String[] { "moyuyo.cors.allowed-origins", "MOYUYO_CORS_ORIGINS" },
+            // 私信媒体签名密钥：多实例/重启后必须保持一致，否则历史消息图片会随机 403
+            new String[] { "moyuyo.upload.media-sign-secret", "MOYUYO_UPLOAD_MEDIA_SIGN_SECRET" });
 
     /**
      * 弱配置占位符：复制 .env.example 后未修改

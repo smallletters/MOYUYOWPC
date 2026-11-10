@@ -30,9 +30,15 @@ spring:
   # 直连本机进程（dev 不用 docker）则保持默认 127.0.0.1
   datasource:
     url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:moyuyo_dev}?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
-    username: root
-    # ⚠️ 弱默认值，仅本地开发
-    password: ${MYSQL_PASSWORD:dev123456}
+    # 本地开发同样使用最小权限账号，避免 root 凭据泄露后整库被拖走。
+    # 首次使用请先在 MySQL 中创建账号（密码需自行替换为强随机值）：
+    #   CREATE DATABASE IF NOT EXISTS moyuyo_dev DEFAULT CHARSET utf8mb4;
+    #   CREATE USER IF NOT EXISTS 'moyuyo'@'%' IDENTIFIED BY '<强随机密码>';
+    #   GRANT ALL PRIVILEGES ON moyuyo_dev.* TO 'moyuyo'@'%';
+    username: ${MYSQL_USER:moyuyo}
+    # 不提供弱默认密码：未注入 MYSQL_PASSWORD 时启动直接失败（fail-closed），
+    # 避免开发库使用 dev123456 这类可猜测口令
+    password: ${MYSQL_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
     # dev 环境显式置空 truststore（application.yml 默认值 file:/opt/mysql-certs/mysql-ca.p12 在本地不存在时会启动失败）
     hikari:
@@ -112,6 +118,9 @@ jwt:
 moyuyo:
   cors:
     allowed-origins: ${MOYUYO_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost,http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:8080,http://127.0.0.1:8080,http://192.168.64.103:8080,http://192.168.64.103:5173,http://192.168.64.103:5174}
+  # 分享二维码仅允许本站域名：dev 额外放行 localhost / 127.0.0.1，便于本地调试
+  share:
+    qr-allowed-hosts: ${MOYUYO_SHARE_QR_ALLOWED_HOSTS:moyuyoshop.com,www.moyuyoshop.com,api.moyuyoshop.com,localhost,127.0.0.1}
   # dev 环境降低密码哈希强度（避免注册/登录阻塞开发体验）；
   # 平时建议不动；如做性能测试可调高（受 Moyuyo 范围 4~31 约束）
   password:

@@ -2,6 +2,7 @@ package com.moyuyo.api.controller;
 
 import com.moyuyo.common.dto.admin.UploadResult;
 import com.moyuyo.common.Result;
+import com.moyuyo.common.security.MediaUrlSigner;
 import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.service.admin.AdminUploadGroupService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -48,6 +49,9 @@ public class UserUploadController {
 
     /** 上传元数据服务：记录图片场景（图片空间只展示 ADMIN） */
     private final AdminUploadGroupService adminUploadGroupService;
+
+    /** 私信媒体签名器：dm 目录的返回 URL 必须带签名，否则前端上传后立即回显会被 403 */
+    private final MediaUrlSigner mediaUrlSigner;
 
     /** 图片白名单：扩展名 + Content-Type 双重校验（与 AdminUploadController 一致） */
     private static final Set<String> ALLOWED_EXT = new HashSet<>(
@@ -201,7 +205,8 @@ public class UserUploadController {
         String url = urlPrefix + (subDir.isEmpty() ? "" : subDir + "/") + datePart + "/" + filename;
 
         UploadResult result = new UploadResult();
-        result.setUrl(url);
+        // 私信目录 URL 追加签名（公开图片路径 sign 会原样返回）
+        result.setUrl(mediaUrlSigner.sign(url));
         result.setFilename(filename);
         result.setOriginalName(original);
         result.setSize(size);
@@ -285,6 +290,128 @@ public class UserUploadController {
     }
 
     /**
+     * 视频文件头校验：
+     * - MP4/MOV：ISO BMFF 的 {@code ftyp} 盒子，或首盒为 moov/mdat/wide/free（部分 MOV 无 ftyp）
+     * - WebM：EBML 魔数 1A 45 DF A3
+     */
+    private boolean matchesVideoContent(MultipartFile file, String ext) {
+        byte[] h = readHeader(file, 16);
+        if (h.length < 8) {
+            return false;
+        }
+        boolean webm = (h[0] & 0xFF) == 0x1A && (h[1] & 0xFF) == 0x45
+                && (h[2] & 0xFF) == 0xDF && (h[3] & 0xFF) == 0xA3;
+        if ("webm".equalsIgnoreCase(ext)) {
+            return webm;
+        }
+        boolean isoTyp = h.length >= 12 && h[4] == 'f' && h[5] == 't' && h[6] == 'y' && h[7] == 'p';
+        boolean quickTimeBox = (h[4] == 'm' && h[5] == 'o' && h[6] == 'o' && h[7] == 'v')
+                || (h[4] == 'm' && h[5] == 'd' && h[6] == 'a' && h[7] == 't')
+                || (h[4] == 'w' && h[5] == 'i' && h[6] == 'd' && h[7] == 'e')
+                || (h[4] == 'f' && h[5] == 'r' && h[6] == 'e' && h[7] == 'e');
+        return isoTyp || quickTimeBox;
+    }
+
+    /**
+     * 语音文件头校验（按扩展名匹配对应魔数）：
+     * MP3(ID3/帧同步) / M4A(ftyp) / AAC(ADTS) / WAV(RIFF+WAVE) / OGG(OggS) / WebM(EBML)
+     */
+    private boolean matchesVoiceContent(MultipartFile file, String ext) {
+        byte[] h = readHeader(file, 12);
+        if (h.length < 4) {
+            return false;
+        }
+        switch (ext.toLowerCase()) {
+            case "mp3":
+                return (h.length >= 3 && h[0] == 'I' && h[1] == 'D' && h[2] == '3')
+                        || ((h[0] & 0xFF) == 0xFF && (h[1] & 0xE0) == 0xE0);
+            case "m4a":
+                return h.length >= 12 && h[4] == 'f' && h[5] == 't' && h[6] == 'y' && h[7] == 'p';
+            case "aac":
+                return (h[0] & 0xFF) == 0xFF && (h[1] & 0xF0) == 0xF0;
+            case "wav":
+                return h.length >= 12 && h[0] == 'R' && h[1] == 'I' && h[2] == 'F' && h[3] == 'F'
+                        && h[8] == 'W' && h[9] == 'A' && h[10] == 'V' && h[11] == 'E';
+            case "ogg":
+                return h[0] == 'O' && h[1] == 'g' && h[2] == 'g' && h[3] == 'S';
+            case "webm":
+                return (h[0] & 0xFF) == 0x1A && (h[1] & 0xFF) == 0x45
+                        && (h[2] & 0xFF) == 0xDF && (h[3] & 0xFF) == 0xA3;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * 文档/压缩包文件头校验：
+     * - PDF: %PDF
+     * - ZIP/OOXML(docx/xlsx/pptx): PK 头
+     * - 旧版 Office(doc/xls/ppt): OLE2 复合文档头
+     * - RAR / 7Z: 对应魔数
+     * - TXT/MD/CSV: 前 512 字节不得包含 NUL（否则视为二进制伪装）
+     */
+    private boolean matchesFileContent(MultipartFile file, String ext) {
+        String lower = ext.toLowerCase();
+        if (lower.equals("txt") || lower.equals("md") || lower.equals("csv")) {
+            return !containsNul(file);
+        }
+        byte[] h = readHeader(file, 8);
+        if (h.length < 4) {
+            return false;
+        }
+        switch (lower) {
+            case "pdf":
+                return h.length >= 4 && h[0] == '%' && h[1] == 'P' && h[2] == 'D' && h[3] == 'F';
+            case "zip":
+            case "docx":
+            case "xlsx":
+            case "pptx":
+                return h[0] == 'P' && h[1] == 'K' && (h[2] == 3 || h[2] == 5 || h[2] == 7) && h[3] == 4;
+            case "doc":
+            case "xls":
+            case "ppt":
+                return h.length >= 8 && (h[0] & 0xFF) == 0xD0 && (h[1] & 0xFF) == 0xCF
+                        && (h[2] & 0xFF) == 0x11 && (h[3] & 0xFF) == 0xE0;
+            case "rar":
+                return h[0] == 'R' && h[1] == 'a' && h[2] == 'r' && h[3] == '!';
+            case "7z":
+                return h.length >= 6 && (h[0] & 0xFF) == 0x37 && (h[1] & 0xFF) == 0x7A
+                        && (h[2] & 0xFF) == 0xBC && (h[3] & 0xFF) == 0xAF
+                        && (h[4] & 0xFF) == 0x27 && (h[5] & 0xFF) == 0x1C;
+            default:
+                return false;
+        }
+    }
+
+    /** 读取文件头（最多 max 字节）；读取失败返回空数组，由调用方按不合法处理 */
+    private byte[] readHeader(MultipartFile file, int max) {
+        byte[] buffer = new byte[max];
+        try (var in = file.getInputStream()) {
+            int read = in.readNBytes(buffer, 0, max);
+            return read <= 0 ? new byte[0] : Arrays.copyOf(buffer, read);
+        } catch (IOException e) {
+            log.warn("[user-upload] 读取文件头失败：{}", e.getMessage());
+            return new byte[0];
+        }
+    }
+
+    /** 前 512 字节是否包含 NUL（文本文件不应出现） */
+    private boolean containsNul(MultipartFile file) {
+        byte[] buffer = new byte[512];
+        try (var in = file.getInputStream()) {
+            int read = in.readNBytes(buffer, 0, buffer.length);
+            for (int i = 0; i < read; i++) {
+                if (buffer[i] == 0) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (IOException e) {
+            return true;
+        }
+    }
+
+    /**
      * 从原始文件名抽取扩展名(不带点号)
      * 注意:uni-app H5 / 部分客户端 上传时会把 name 改成 file-<timestamp> 丢失扩展名,
      * 此时调用方应改用 extractExtFromContentType 兜底。
@@ -363,6 +490,10 @@ public class UserUploadController {
         if (ct != null && !ct.isBlank() && !ALLOWED_VIDEO_CT.contains(ct.toLowerCase())) {
             return Result.badRequest("视频 Content-Type 不匹配");
         }
+        // 文件头校验：防止把任意二进制改名为 .mp4/.mov 上传
+        if (!matchesVideoContent(file, ext)) {
+            return Result.badRequest("视频内容非法或已损坏");
+        }
 
         String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
         String filename = UUID.randomUUID().toString().replace("-", "") + "." + ext.toLowerCase();
@@ -436,8 +567,12 @@ public class UserUploadController {
                 return Result.badRequest("语音 Content-Type 不匹配");
             }
         }
+        // 文件头校验：防止任意内容伪装成音频
+        if (!matchesVoiceContent(file, ext)) {
+            return Result.badRequest("语音内容非法或已损坏");
+        }
 
-        return store(file, ext, original, ct, userId, "语音");
+        return store(file, ext, original, ct, userId, "语音", CHAT_UPLOAD_DIR);
     }
 
     /**
@@ -468,17 +603,27 @@ public class UserUploadController {
             return Result.badRequest("不支持的文件类型，仅允许 PDF/Word/Excel/PPT/TXT/MD/CSV/ZIP/RAR/7Z");
         }
         // 文件类型主要依赖扩展名白名单；浏览器/APP 常传 application/octet-stream，不做强 CT 校验
+        // 但必须校验文件头，避免把任意二进制改名为 .pdf/.zip 后当作文档中转
+        if (!matchesFileContent(file, ext)) {
+            return Result.badRequest("文件内容与扩展名不匹配");
+        }
 
-        return store(file, ext, original, ct, userId, "文件");
+        return store(file, ext, original, ct, userId, "文件", CHAT_UPLOAD_DIR);
     }
 
-    /** 统一落盘：日期分目录 + UUID 文件名，返回相对 URL */
+    /**
+     * 统一落盘：日期分目录 + UUID 文件名，返回相对 URL。
+     * <p>
+     * subDir 为 dm 时落到受访问控制的私信目录（静态资源需签名才能读取），
+     * 为空时落到公开上传目录（商品/社区等公开图片场景）。
+     */
     private Result<UploadResult> store(MultipartFile file, String ext, String original,
-                                       String ct, Long userId, String label) {
+                                       String ct, Long userId, String label, String subDir) {
         String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
         String filename = UUID.randomUUID().toString().replace("-", "") + "." + ext.toLowerCase();
 
-        Path target = uploadPath.resolve(datePart).resolve(filename).normalize();
+        Path basePath = subDir == null || subDir.isEmpty() ? uploadPath : uploadPath.resolve(subDir);
+        Path target = basePath.resolve(datePart).resolve(filename).normalize();
         if (!target.startsWith(uploadPath)) {
             return Result.badRequest("非法文件路径");
         }
@@ -494,10 +639,12 @@ public class UserUploadController {
         }
 
         long size = file.getSize();
-        String url = urlPrefix + datePart + "/" + filename;
+        String url = urlPrefix + (subDir == null || subDir.isEmpty() ? "" : subDir + "/")
+                + datePart + "/" + filename;
 
         UploadResult result = new UploadResult();
-        result.setUrl(url);
+        // 私信目录 URL 追加签名（公开图片路径 sign 会原样返回）
+        result.setUrl(mediaUrlSigner.sign(url));
         result.setFilename(filename);
         result.setOriginalName(original);
         result.setSize(size);

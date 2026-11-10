@@ -302,6 +302,10 @@ moyuyo:
   # WebMvcConfig 在未配置时会拒绝注册 CORS 映射，等同于"全拒绝跨域"
   cors:
     allowed-origins: ${MOYUYO_CORS_ALLOWED_ORIGINS:}
+  # 私信媒体签名密钥：生产必须显式配置（无默认值，缺失则启动失败）
+  # 多实例/重启后必须保持同一密钥，否则跨实例签名校验失败（历史消息图片随机 403）
+  upload:
+    media-sign-secret: ${MOYUYO_UPLOAD_MEDIA_SIGN_SECRET}
   # 密码编码器强度：可通过环境变量覆盖（范围 4~31，默认 12）
   # 调高会显著增加登录/注册 CPU 成本（cost=14 约 1s/次），但安全强度倍增
   password:

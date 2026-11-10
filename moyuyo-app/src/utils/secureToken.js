@@ -31,6 +31,23 @@ let secureEnabled = false
 /** 初始化单例，避免并发首次调用重复解密 */
 let initPromise = null
 
+/**
+ * 是否要求凭证必须加密落盘。
+ * <p>
+ * APP 端：插件不可用时拒绝明文写入（只保留内存会话，重启后需重新登录），
+ * 避免 refresh token 以明文形式暴露在设备存储/系统备份中。
+ * H5/小程序：没有原生 Keychain/Keystore，保持原有 localStorage 行为。
+ */
+function isAppPlatform() {
+  let flag = false
+  // #ifdef APP-PLUS
+  flag = true
+  // #endif
+  return flag
+}
+
+const ENFORCE_SECURE_STORAGE = isAppPlatform()
+
 function readLegacy(key) {
   try {
     return getStorage(key, '') || ''
@@ -76,8 +93,14 @@ async function initOne(secureKey, legacyKey, stored) {
   if (!stored.success) {
     // 插件不可用（H5 / 未打自定义基座）或读取失败：以明文为准。
     // 同时尽力回写密文：否则"读取失败但写入可用"的场景下，下次启动会读到旧密文并删掉新明文
-    if (legacy && (await writeSecureItem(secureKey, legacy))) {
-      removeLegacy(legacyKey)
+    if (legacy) {
+      if (await writeSecureItem(secureKey, legacy)) {
+        removeLegacy(legacyKey)
+      } else if (ENFORCE_SECURE_STORAGE) {
+        // APP 端不允许明文落盘：清掉遗留明文，本次仅在内存中保留（重启后重新登录）
+        console.error('[secureToken] 加密存储不可用，已清除明文凭证，重启后需重新登录')
+        removeLegacy(legacyKey)
+      }
     }
     return legacy
   }
@@ -89,8 +112,14 @@ async function initOne(secureKey, legacyKey, stored) {
   if (!legacy) return ''
   // 密文里没有值，但本地还有明文 → 老版本升级迁移
   const ok = await writeSecureItem(secureKey, legacy)
-  if (ok) removeLegacy(legacyKey)
-  else console.warn('[secureToken] 迁移加密失败，暂保留明文:', legacyKey)
+  if (ok || ENFORCE_SECURE_STORAGE) {
+    removeLegacy(legacyKey)
+    if (!ok) {
+      console.error('[secureToken] 迁移加密失败，已清除明文凭证，重启后需重新登录')
+    }
+  } else {
+    console.warn('[secureToken] 迁移加密失败，暂保留明文:', legacyKey)
+  }
   return legacy
 }
 
@@ -119,6 +148,11 @@ export function initSecureTokens() {
     secureEnabled = false
     cachedAccessToken = readLegacy(LEGACY_ACCESS_KEY)
     cachedRefreshToken = readLegacy(LEGACY_REFRESH_KEY)
+    // APP 端解密链路异常时，同样不允许明文凭证继续留在设备上
+    if (ENFORCE_SECURE_STORAGE) {
+      removeLegacy(LEGACY_ACCESS_KEY)
+      removeLegacy(LEGACY_REFRESH_KEY)
+    }
   })
   return initPromise
 }
@@ -168,6 +202,11 @@ async function persistOne(secureKey, legacyKey, value) {
   // 关键：必须清掉旧密文。否则下次启动 init 会优先读旧密文，并删除刚写入的明文，
   // 表现为"刚登录完重启就退回上一个会话"
   await removeSecureItem(secureKey)
+  if (ENFORCE_SECURE_STORAGE) {
+    // APP 端加密链路不可用时拒绝明文落盘：内存中仍可用，重启后需重新登录
+    console.error('[secureToken] 加密写入失败，已拒绝明文落盘:', legacyKey)
+    return
+  }
   writeLegacy(legacyKey, value)
 }
 

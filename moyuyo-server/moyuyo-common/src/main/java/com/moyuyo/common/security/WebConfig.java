@@ -6,7 +6,9 @@ import com.moyuyo.common.filter.IpRateLimitFilter;
 import com.moyuyo.common.filter.SignatureFilter;
 import com.moyuyo.common.filter.TraceIdFilter;
 import com.moyuyo.common.filter.UserRateLimitFilter;
+import com.moyuyo.common.utils.ClientIpResolver;
 import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.Filter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -16,6 +18,15 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 
 @Configuration
 public class WebConfig {
+
+    /** Tomcat 可信代理白名单：ClientIpResolver 复用它判断代理头是否可采信，避免两处配置漂移 */
+    @Value("${server.tomcat.remoteip.internal-proxies:}")
+    private String internalProxies;
+
+    @PostConstruct
+    public void initClientIpResolver() {
+        ClientIpResolver.configureTrustedProxies(internalProxies);
+    }
 
     @Bean
     public RequestLoggingFilter requestLoggingFilter() {

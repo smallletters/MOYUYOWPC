@@ -12,6 +12,19 @@ on:
       - 'moyuyo-server/**'
 
 jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # 只扫描当前工作树（不扫历史）：防止再次把 .env / 密钥提交进仓库。
+      # 历史中的旧 .env 已确认凭据全部轮换，若要彻底清理需单独做 git 历史重写。
+      - name: Install gitleaks
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz | tar -xz
+          sudo mv gitleaks /usr/local/bin/
+      - name: Scan working tree
+        run: gitleaks detect --source moyuyo-server --config moyuyo-server/.gitleaks.toml --no-git --redact --no-banner
+
   build-and-test:
     runs-on: ubuntu-latest
 
