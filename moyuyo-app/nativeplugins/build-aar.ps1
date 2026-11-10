@@ -135,9 +135,9 @@ if (-not $androidSdk) {
 
 $platform34 = Join-Path $androidSdk 'platforms\android-34'
 if (-not (Test-Path $platform34)) {
-  Write-Host "[错误] Android SDK 已找到（$androidSdk），但缺少 platforms\android-34。" -ForegroundColor Red
-  Write-Host "请在 SDK Manager 里补装 Android 14.0 (API 34)。"
-  exit 1
+  # 不直接退出：AGP 8.2 默认开启 sdkDownload，会在构建时自动补装缺失的 platform / build-tools
+  Write-Host "[警告] 未检测到 platforms\android-34，交由 Gradle 自动下载（需要网络）。" -ForegroundColor Yellow
+  Write-Host "       若构建报 SDK 缺失，请在 Android Studio SDK Manager 手动安装 Android 14.0 (API 34) 后重试。" -ForegroundColor Yellow
 }
 
 # local.properties 记录 SDK 路径；用正斜杠避免 Windows 反斜杠转义问题
