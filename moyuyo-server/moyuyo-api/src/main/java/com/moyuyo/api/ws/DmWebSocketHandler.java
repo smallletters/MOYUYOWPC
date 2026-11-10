@@ -45,9 +45,9 @@ public class DmWebSocketHandler extends TextWebSocketHandler {
         String payload = message.getPayload();
         // 只处理心跳；业务消息一律走 REST，避免 WebSocket 出现第二套写入路径
         if (payload != null && payload.contains("\"ping\"")) {
-            synchronized (session) {
-                session.sendMessage(new TextMessage(PONG_PAYLOAD));
-            }
+            Long userId = (Long) session.getAttributes().get(DmWebSocketAuthInterceptor.USER_ID_ATTR);
+            // 走注册表异步回包：不在容器读线程上做网络写，且与业务推送复用同一个装饰 session
+            sessionRegistry.replyPong(userId, session, PONG_PAYLOAD);
         }
     }
 

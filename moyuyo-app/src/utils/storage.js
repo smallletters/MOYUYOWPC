@@ -28,9 +28,9 @@ export const STORAGE_KEYS = {
   DELETION_REQUESTED: `${STORAGE_PREFIX}deletion_requested`,
   // APP 国家选择器缓存：地址编辑/列表 picker 离线可用。结构 { countries: string[], ts: number }
   SUPPORTED_COUNTRIES_CACHE: `${STORAGE_PREFIX}supported_countries_cache`,
-  // 心跳本地去重缓存：值 = 后端返回的 dateKey (yyyyMMdd)
-  // 与服务端 dateKey 一致才跳过心跳调用,跨日自动失效
-  HEARTBEAT_DATE_KEY: `${STORAGE_PREFIX}heartbeat_date_key`,
+  // 活跃心跳本地节流：值 = 上次上报的时间戳(ms)
+  // 服务端按"最近活跃"维护 30 分钟在线窗口，客户端 5 分钟上报一次即可喂饱该窗口
+  HEARTBEAT_LAST_AT: `${STORAGE_PREFIX}heartbeat_last_at`,
 }
 
 export function setStorage(key, value) {

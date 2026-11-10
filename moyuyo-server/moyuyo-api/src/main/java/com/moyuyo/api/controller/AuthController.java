@@ -94,7 +94,8 @@ public class AuthController {
     @RateLimiter(name = "authHeartbeat", fallbackMethod = "heartbeatRateLimitFallback")
     public Result<com.moyuyo.service.AuthService.HeartbeatAck> heartbeat() {
         Long userId = UserContextHolder.getUserId();
-        return Result.success(authService.heartbeat(userId));
+        // 一并带上当前 access token：服务端据此区分同一账号的不同设备，登出时按设备清理在线状态
+        return Result.success(authService.heartbeat(userId, UserContextHolder.getToken()));
     }
 
     /** heartbeat 限流降级：签名与 heartbeat 一致 */

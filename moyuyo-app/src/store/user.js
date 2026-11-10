@@ -215,6 +215,8 @@ export const useUserStore = defineStore('user', {
       clearTokens().catch(() => {})
       // 清 deviceList 缓存,防止下一账号冷启动读到本账号的列表
       removeStorage(STORAGE_KEYS.DEVICE_LIST)
+      // 清心跳节流时间戳：否则换账号登录后 5 分钟内不会上报活跃，在线统计会延迟计入
+      removeStorage(STORAGE_KEYS.HEARTBEAT_LAST_AT)
       // 断开私信 WebSocket 并清除消息 Tab 红点，避免登出后仍收到上一账号的私信
       closeDmSocket()
       syncMessageTabBadge(0)

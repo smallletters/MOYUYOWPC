@@ -136,11 +136,23 @@ public interface AuthService {
      *       (AdminUserManageServiceImpl.getStats / AdminDashboardServiceImpl 均基于 last_login_time >= today 计数)</li>
      *   <li>返回今日日期 Key(YYYYMMDD),前端可缓存用于客户端去重,跨日(0 点后下一次心跳)自动重新计数</li>
      *   <li>不影响 token / 凭证 / 会员等级,纯统计信号</li>
+     *   <li>每次心跳同时刷新"最近活跃"(在线人数)与"活跃设备"(登出时按设备清理)</li>
+     *   <li>按用户限流：同一用户每分钟超过阈值的心跳直接静默丢弃，不写库也不刷新在线状态</li>
      * </ol>
      *
+     * @param userId      当前登录用户，未登录时传 null（只返回 dateKey）
+     * @param accessToken 当前请求的 access token，仅用于生成设备指纹（不落库、不进日志）
      * @return 今日 dateKey + 服务端当前时间(epoch millis)
      */
-    HeartbeatAck heartbeat(Long userId);
+    HeartbeatAck heartbeat(Long userId, String accessToken);
+
+    /**
+     * 实时在线用户数：最近 30 分钟内有活跃心跳的去重用户数。
+     * <p>
+     * 与 {@code last_login_time}（每日活跃/访客统计）解耦：后者每天只写一次，
+     * 无法反映用户是否仍在在线。实现以 Redis ZSET 为准，Redis 不可用时降级为旧口径。
+     */
+    long onlineUserCount();
 
     /** 心跳响应 VO */
     @lombok.Data

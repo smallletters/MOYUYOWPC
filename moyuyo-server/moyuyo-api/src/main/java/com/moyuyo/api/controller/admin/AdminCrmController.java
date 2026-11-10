@@ -14,6 +14,7 @@ import com.moyuyo.dao.entity.UserEntity;
 import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.UserMapper;
+import com.moyuyo.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class AdminCrmController {
   private final OrderItemMapper orderItemMapper;
   private final CsPerformanceMapper csPerformanceMapper;
   private final AdminUserMapper adminUserMapper;
+  private final AuthService authService;
 
   @Operation(summary = "客服绩效列表")
   @GetMapping("/cs-performance")
@@ -138,11 +140,9 @@ public class AdminCrmController {
         .map(o -> o.getPayAmount() != null ? o.getPayAmount() : BigDecimal.ZERO)
         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-    // 在线用户数（最近30分钟内有登录记录的用户）
-    LocalDateTime thirtyMinutesAgo = LocalDateTime.now().minusMinutes(30);
-    Long onlineUsers = userMapper.selectCount(
-        new LambdaQueryWrapper<UserEntity>()
-            .ge(UserEntity::getLastLoginTime, thirtyMinutesAgo));
+    // 在线用户数：以客户端活跃心跳为准（Redis 30 分钟滑动窗口 + userId 去重）。
+    // 不能用 last_login_time 判定在线 —— 该字段每天只写一次，用户在线超过 30 分钟后会被误判为离线
+    long onlineUsers = authService.onlineUserCount();
 
     // 今日访客数（今日有登录记录的用户）
     Long todayVisitors = userMapper.selectCount(

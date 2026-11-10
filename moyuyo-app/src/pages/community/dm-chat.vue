@@ -543,6 +543,10 @@ let visualViewportHandler = null
 let localMessageSeq = 0
 // 草稿防抖计时器
 let draftTimer = null
+// 已读上报节流计时器：群聊连发时把 N 条消息合并成一次 markRead + unreadCount
+let readSyncTimer = null
+/** 已读上报节流窗口：窗口内的连续新消息只发一次请求 */
+const READ_SYNC_DEBOUNCE_MS = 500
 // 会话内搜索面板状态
 const searchVisible = ref(false)
 const searchKeyword = ref('')
@@ -817,6 +821,25 @@ function showTimeDivider(index) {
 }
 
 /**
+ * 合并上报「已读 + 未读角标」。
+ * 原实现每收到一条私信就打 2 个 REST（markRead + unreadCount），
+ * 群聊高频时请求量会放大到 2N；合并后同一时间窗内只发一次。
+ */
+function scheduleReadSync() {
+  if (readSyncTimer) clearTimeout(readSyncTimer)
+  readSyncTimer = setTimeout(() => {
+    readSyncTimer = null
+    const convId = conversationId.value
+    if (!convId) return
+    messageApi
+      .markRead(convId)
+      .then(() => messageApi.unreadCount())
+      .then((count) => syncMessageTabBadge(count))
+      .catch(() => {})
+  }, READ_SYNC_DEBOUNCE_MS)
+}
+
+/**
  * WebSocket 私信事件处理
  * - dm_message：接收方实时上屏，并立即标记已读
  * - dm_recall：双方原地更新为“已撤回”占位
@@ -902,11 +925,8 @@ function onSocketEvent(payload) {
     scrollToId.value = `msg-${messages.value.length - 1}`
   })
 
-  messageApi
-    .markRead(conversationId.value)
-    .then(() => messageApi.unreadCount())
-    .then((count) => syncMessageTabBadge(count))
-    .catch(() => {})
+  // 合并上报已读：群聊连发时避免每条消息都打 markRead + unreadCount 两个接口
+  scheduleReadSync()
 }
 
 /** 订阅私信实时推送（单例连接，多页面共享） */
@@ -944,6 +964,14 @@ onUnmounted(() => {
   if (mentionBlurTimer) {
     clearTimeout(mentionBlurTimer)
     mentionBlurTimer = null
+  }
+  // 退出页面时若还有待上报的已读，立即补发一次：
+  // 否则刚看完就返回列表时，这批消息会一直显示未读
+  if (readSyncTimer) {
+    clearTimeout(readSyncTimer)
+    readSyncTimer = null
+    const convId = conversationId.value
+    if (convId) messageApi.markRead(convId).catch(() => {})
   }
 })
 

@@ -80,6 +80,15 @@ nano .env
 
 **HTTPS**：在 1Panel 申请 Let's Encrypt 证书并启用。
 
+**WebSocket**：1Panel 反向代理默认不转发 Upgrade 头，必须在反代配置里为 `/ws/` 启用 WebSocket
+（`proxy_http_version 1.1` + `Upgrade $http_upgrade` + `Connection "upgrade"`，`proxy_read_timeout ≥ 120s`）。
+私信实时推送依赖 `/ws/dm`，漏配时客户端握手会 404 并进入重连循环。
+
+> **部署约束：私信推送只支持单实例。**
+> WebSocket 在线会话保存在后端进程内存（`DmSessionRegistry`），只有 token 失效事件通过 Redis 广播；
+> 普通私信推送不会跨实例投递，连在不同实例上的用户收不到实时消息。
+> 需要横向扩容前必须先实现 Redis Pub/Sub 消息广播，当前请保持后端单实例。
+
 **HSTS**：在 1Panel 网站设置 → 配置 Nginx 头部：
 
 ```

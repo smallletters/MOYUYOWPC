@@ -30,6 +30,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -143,11 +146,30 @@ public class AuthServiceImpl implements AuthService {
     /** WebSocket 一次性握手票据：60 秒有效，使用后立即删除 */
     private static final long WS_TICKET_EXPIRE_SECONDS = 60;
     private static final String REDIS_KEY_WS_TICKET = "auth:ws-ticket:";
+    /** ws-ticket 按用户限流：正常重连每分钟 1~2 次，10 次足以覆盖网络抖动，同时挡住重连循环刷接口 */
+    private static final String REDIS_KEY_WS_TICKET_RATE = "auth:ws-ticket-rate:";
+    private static final int WS_TICKET_RATE_LIMIT = 10;
+    private static final long WS_TICKET_RATE_WINDOW_SECONDS = 60;
 
     private static final String REDIS_KEY_REFRESH = "auth:refresh:";
     // 心跳同日幂等：{userId}:{yyyyMMdd} 存在即视为今日已上报过活跃,避免冗余 UPDATE
     // TTL 选 48h 是为了给"凌晨 0 点附近"留出 24h 余量,防止跨日竞态下旧 Key 误判
     private static final String REDIS_KEY_HEARTBEAT = "auth:heartbeat:";
+    // 实时在线用户：ZSET(member=userId, score=最近活跃毫秒时间戳)
+    // 在线判定只看"活跃心跳"，不能复用 last_login_time（该字段每天只写一次，
+    // 用户连续在线超过窗口时长后会被误判为离线）
+    private static final String REDIS_KEY_ACTIVE_USERS = "auth:active:users";
+    /** 活跃设备集合：每用户一个 ZSET，member=access token 指纹，score=最近活跃毫秒 */
+    private static final String REDIS_KEY_ACTIVE_DEVICES = "auth:active:devices:";
+    /** 心跳按用户限流计数：{userId}，TTL=1 分钟 */
+    private static final String REDIS_KEY_HEARTBEAT_RATE = "auth:heartbeat-rate:";
+    /** 心跳每分钟最多 20 次（客户端正常 5 分钟一次，留足切前后台/切 tab 的抖动余量） */
+    private static final int HEARTBEAT_RATE_LIMIT = 20;
+    private static final long HEARTBEAT_RATE_WINDOW_SECONDS = 60;
+    /** 在线判定窗口（分钟）：与客户端 5 分钟心跳间隔配合，误差不超过 5 分钟 */
+    private static final int ONLINE_WINDOW_MINUTES = 30;
+    /** 在线 ZSET 的 TTL：窗口 + 5 分钟余量，无人访问时也能自动过期，避免 Key 无限增长 */
+    private static final long ACTIVE_USERS_TTL_MINUTES = ONLINE_WINDOW_MINUTES + 5L;
     // 反向索引：userId -> refresh token 集合，用于登出时批量吊销
     private static final String REDIS_KEY_USER_REFRESH = "auth:user-refresh:";
     private static final String REDIS_KEY_BLACKLIST = "auth:blacklist:";
@@ -588,7 +610,9 @@ public class AuthServiceImpl implements AuthService {
         String key = REDIS_KEY_REFRESH + request.getRefreshToken();
         String stored;
         try {
-            stored = redisTemplate.opsForValue().get(key);
+            // 原子读取并删除（GETDEL）：同一 refresh token 并发续期时只有一个线程能拿到值，
+            // 避免"先 GET 再 DELETE"之间被另一个线程重复消费，导致一次性语义失效
+            stored = redisTemplate.opsForValue().getAndDelete(key);
         } catch (DataAccessException e) {
             // Redis 不可用时 fail-open：让用户重新走登录流程，避免静默 500 给客户端
             // 与登录路径 fail-open 语义对齐：业务可用性优先
@@ -620,13 +644,12 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Invalid or expired refresh token");
         }
 
-        // 一次性消费：先删除旧 refresh token，并从反向索引中移除
+        // 一次性消费：token 已在上面通过 GETDEL 原子删除，这里只需清理反向索引
         try {
-            redisTemplate.delete(key);
             redisTemplate.opsForSet().remove(REDIS_KEY_USER_REFRESH + userId, request.getRefreshToken());
         } catch (DataAccessException e) {
             loginFailureCounter.increment();
-            log.error("刷新 Token 清理 Redis 不可用（fail-open 继续校验），userId={}", userId, e);
+            log.error("刷新 Token 清理反向索引 Redis 不可用（fail-open 继续校验），userId={}", userId, e);
         }
 
         UserEntity user = userMapper.selectById(userId);
@@ -665,6 +688,9 @@ public class AuthServiceImpl implements AuthService {
 
         // 2. 通过反向索引批量吊销该用户所有 refresh token，防止登出后旧 token 仍可换取新 access token
         revokeAllRefreshTokens(userId);
+
+        // 3. 在线状态按设备清理：多端登录时只有最后一个设备登出才会从在线集合移除
+        removeActiveDevice(userId, accessToken);
 
         log.info("User logged out: id={}", userId);
     }
@@ -1739,6 +1765,24 @@ public class AuthServiceImpl implements AuthService {
         if (userId == null) {
             throw new IllegalArgumentException("未登录");
         }
+        // 按用户限流：客户端每次建立连接前都要换票据，异常重连循环会把该接口打成高频接口。
+        // 命中限流直接 429，客户端按自身退避策略稍后重试；Redis 异常时 fail-open，
+        // 因为紧接着的签票写入同样会失败并返回 503。
+        try {
+            // 原子脚本计数：避免 INCR 成功但 EXPIRE 失败导致 Key 永不过期（用户被永久限流）
+            Long used = redisTemplate.execute(
+                    INCR_WITH_EXPIRE_IF_NEW,
+                    Collections.singletonList(REDIS_KEY_WS_TICKET_RATE + userId),
+                    String.valueOf(WS_TICKET_RATE_WINDOW_SECONDS));
+            if (used != null && used > WS_TICKET_RATE_LIMIT) {
+                throw new BusinessException(429, "请求过于频繁，请稍后再试");
+            }
+        } catch (BusinessException e) {
+            throw e;
+        } catch (DataAccessException e) {
+            log.warn("ws-ticket 限流计数失败（fail-open），userId={}", userId, e);
+        }
+
         String ticket = UUID.randomUUID().toString().replace("-", "");
         try {
             redisTemplate.opsForValue().set(
@@ -1818,6 +1862,8 @@ public class AuthServiceImpl implements AuthService {
 
     /** 发布 token 失效事件：监听方（api 模块）负责关闭该用户已建立的 WebSocket 会话 */
     private void publishTokenInvalidated(Long userId, String reason) {
+        // 改密后所有设备都必须重新登录，在线状态立即清空（不必等 30 分钟活跃窗口自然过期）
+        clearOnlineState(userId);
         try {
             eventPublisher.publishEvent(new UserTokenInvalidatedEvent(userId, reason));
         } catch (Exception e) {
@@ -2045,17 +2091,26 @@ public class AuthServiceImpl implements AuthService {
      *   <li>Redis 不可用时降级 fail-open：直接走 DB UPDATE，保证统计正确性；
      *       牺牲一点"同日去重"，但不会丢活跃信号</li>
      *   <li>不影响 token / 凭证 / 注销状态，仅写 last_login_time 字段</li>
+     *   <li>每次心跳都会刷新 Redis ZSET {@code auth:active:users} 中的最近活跃时间，
+     *       供 {@link #onlineUserCount()} 统计"实时在线用户"，与 last_login_time 的每日口径解耦</li>
      *   <li>不抛异常给前端调用方（包括用户不存在）：保持纯"上报"语义,
      *       让 APP 端无需根据业务错误码做不同处理</li>
      * </ul>
      */
     @Override
-    public HeartbeatAck heartbeat(Long userId) {
+    public HeartbeatAck heartbeat(Long userId, String accessToken) {
         LocalDateTime now = LocalDateTime.now();
         long nowMillis = now.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
         String dateKey = now.toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
         if (userId == null) {
             // 未登录调用:返回空 dateKey,前端可直接丢弃
+            return new HeartbeatAck(dateKey, nowMillis);
+        }
+
+        // 0) 按用户限流：客户端 5 分钟一次，正常一天不足 300 次；
+        //    阈值取 20 次/分钟，足以覆盖切前后台/切 tab 的抖动，异常循环调用直接静默丢弃。
+        //    心跳是统计信号，静默丢弃比返回 429 更友好（不会触发客户端弹窗）。
+        if (!allowHeartbeat(userId)) {
             return new HeartbeatAck(dateKey, nowMillis);
         }
 
@@ -2081,7 +2136,132 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
+        // 3) 记录最近活跃时间：在线人数以活跃心跳为准（last_login_time 每天只写一次，
+        //    不能作为在线判定依据），失败不影响心跳主流程
+        touchActiveUser(userId, nowMillis, accessToken);
+
         return new HeartbeatAck(dateKey, nowMillis);
+    }
+
+    /** 心跳按用户限流：Redis 异常时 fail-open（宁可放行，不丢活跃信号） */
+    private boolean allowHeartbeat(Long userId) {
+        try {
+            // 用原子脚本（INCR + 首次设置 TTL）：分成两条命令时，EXPIRE 失败会留下永不过期的计数器，
+            // 该用户之后的心跳会被永久丢弃
+            Long used = redisTemplate.execute(
+                    INCR_WITH_EXPIRE_IF_NEW,
+                    Collections.singletonList(REDIS_KEY_HEARTBEAT_RATE + userId),
+                    String.valueOf(HEARTBEAT_RATE_WINDOW_SECONDS));
+            return used == null || used <= HEARTBEAT_RATE_LIMIT;
+        } catch (Exception e) {
+            log.warn("[heartbeat] 限流计数失败（fail-open），userId={}", userId, e);
+            return true;
+        }
+    }
+
+    /**
+     * 实时在线用户数：最近 {@link #ONLINE_WINDOW_MINUTES} 分钟内有活跃心跳的去重用户数。
+     * <p>
+     * 以 Redis ZSET 为准（多实例共享）；Redis 不可用时降级为
+     * {@code last_login_time} 口径，避免大屏直接显示 0 造成误判。
+     */
+    @Override
+    public long onlineUserCount() {
+        long windowStart = System.currentTimeMillis() - ONLINE_WINDOW_MINUTES * 60_000L;
+        try {
+            // 先清掉窗口外的历史成员，防止 ZSET 随历史用户无限增长
+            redisTemplate.opsForZSet().removeRangeByScore(REDIS_KEY_ACTIVE_USERS, 0, windowStart);
+            Long count = redisTemplate.opsForZSet()
+                    .count(REDIS_KEY_ACTIVE_USERS, windowStart, Double.POSITIVE_INFINITY);
+            return count == null ? 0L : count;
+        } catch (Exception e) {
+            log.warn("[online] 读取在线用户数失败，降级为 last_login_time 口径: {}", e.getMessage());
+            Long count = userMapper.selectCount(new LambdaQueryWrapper<UserEntity>()
+                    .ge(UserEntity::getLastLoginTime, LocalDateTime.now().minusMinutes(ONLINE_WINDOW_MINUTES)));
+            return count == null ? 0L : count;
+        }
+    }
+
+    /**
+     * 刷新用户最近活跃时间（Redis ZSET）与活跃设备集合；任何异常都吞掉，不能影响心跳返回。
+     * <p>
+     * 在线用户集合按 userId 去重；设备集合按 access token 指纹区分，用于登出时"最后一个设备退出才离线"。
+     */
+    private void touchActiveUser(Long userId, long nowMillis, String accessToken) {
+        try {
+            redisTemplate.opsForZSet().add(REDIS_KEY_ACTIVE_USERS, String.valueOf(userId), nowMillis);
+            // 每次刷新都续期 TTL：保证全量用户下线后 Key 能自然过期
+            redisTemplate.expire(REDIS_KEY_ACTIVE_USERS,
+                    java.time.Duration.ofMinutes(ACTIVE_USERS_TTL_MINUTES));
+        } catch (Exception e) {
+            log.warn("[online] 刷新活跃时间失败（fail-open），userId={}", userId, e);
+        }
+
+        String fingerprint = tokenFingerprint(accessToken);
+        if (fingerprint == null) return;
+        try {
+            String devicesKey = REDIS_KEY_ACTIVE_DEVICES + userId;
+            redisTemplate.opsForZSet().add(devicesKey, fingerprint, nowMillis);
+            redisTemplate.expire(devicesKey, java.time.Duration.ofMinutes(ACTIVE_USERS_TTL_MINUTES));
+        } catch (Exception e) {
+            log.warn("[online] 刷新活跃设备失败（fail-open），userId={}", userId, e);
+        }
+    }
+
+    /**
+     * 登出时移除当前设备：只有该用户所有设备都不在在线窗口内，才把用户从在线集合移除。
+     * <p>
+     * 多端登录场景下，A 设备登出不应让仍在线的 B 设备被误判为离线。
+     */
+    private void removeActiveDevice(Long userId, String accessToken) {
+        String fingerprint = tokenFingerprint(accessToken);
+        if (userId == null || fingerprint == null) return;
+        try {
+            String devicesKey = REDIS_KEY_ACTIVE_DEVICES + userId;
+            redisTemplate.opsForZSet().remove(devicesKey, fingerprint);
+            // 清理窗口外（已超时）的历史设备，避免过期设备让用户永久"在线"
+            long windowStart = System.currentTimeMillis() - ONLINE_WINDOW_MINUTES * 60_000L;
+            redisTemplate.opsForZSet().removeRangeByScore(devicesKey, 0, windowStart);
+            Long remaining = redisTemplate.opsForZSet()
+                    .count(devicesKey, windowStart, Double.POSITIVE_INFINITY);
+            if (remaining == null || remaining == 0) {
+                redisTemplate.delete(devicesKey);
+                redisTemplate.opsForZSet().remove(REDIS_KEY_ACTIVE_USERS, String.valueOf(userId));
+            }
+        } catch (Exception e) {
+            log.warn("[online] 登出清理在线状态失败（fail-open），userId={}", userId, e);
+        }
+    }
+
+    /** 改密/重置密码后所有设备都需重新登录：直接清空在线状态，不等 30 分钟窗口自然过期 */
+    private void clearOnlineState(Long userId) {
+        if (userId == null) return;
+        try {
+            redisTemplate.delete(REDIS_KEY_ACTIVE_DEVICES + userId);
+            redisTemplate.opsForZSet().remove(REDIS_KEY_ACTIVE_USERS, String.valueOf(userId));
+        } catch (Exception e) {
+            log.warn("[online] 清理在线状态失败（fail-open），userId={}", userId, e);
+        }
+    }
+
+    /**
+     * access token 指纹：仅用于在"同一用户的设备集合"里区分设备，不做安全校验。
+     * 使用 SHA-256 前 128 位，避免把明文 token 写进 Redis。
+     */
+    private String tokenFingerprint(String accessToken) {
+        if (accessToken == null || accessToken.isBlank()) return null;
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(accessToken.getBytes(StandardCharsets.UTF_8));
+            StringBuilder builder = new StringBuilder(32);
+            for (int i = 0; i < 16; i++) {
+                builder.append(Character.forDigit((digest[i] >> 4) & 0xF, 16));
+                builder.append(Character.forDigit(digest[i] & 0xF, 16));
+            }
+            return builder.toString();
+        } catch (NoSuchAlgorithmException e) {
+            return null;
+        }
     }
 
     /**

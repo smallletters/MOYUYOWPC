@@ -141,6 +141,12 @@ public class DmService {
     /** 敏感词本地缓存（volatile 保证多线程可见性，定时刷新） */
     private volatile List<SensitiveWordEntity> sensitiveWordCache = Collections.emptyList();
     private volatile long sensitiveWordCacheAt = 0L;
+    /**
+     * 敏感词缓存刷新锁（对象级锁，不锁整个 Service）。
+     * 只在缓存过期时进入，正常发送消息走无锁快路径，避免高频发送被串行化。
+     * 内联初始化后 Lombok 不会把它算进构造器参数。
+     */
+    private final Object sensitiveWordLock = new Object();
 
     /** 防骚扰配置本地缓存（避免每条消息都查 mo_system_config） */
     private volatile Map<String, String> dmGuardConfigCache = Collections.emptyMap();
@@ -1190,18 +1196,30 @@ public class DmService {
     /**
      * 启用的敏感词列表（本地缓存 60s）。
      * 管理端修改敏感词后最多延迟 1 分钟生效，换取私信高频发送时不再逐条查全表。
+     * <p>
+     * 并发设计：快路径无锁读 volatile 字段；只有缓存过期时才加锁重建，
+     * 并在锁内二次校验（双重检查），避免并发场景下多个线程重复查库。
+     * 原实现把整个方法标记为 synchronized，会让所有私信发送串行化在同一把监视器上。
      */
-    private synchronized List<SensitiveWordEntity> enabledSensitiveWords() {
+    private List<SensitiveWordEntity> enabledSensitiveWords() {
         long now = System.currentTimeMillis();
         if (now - sensitiveWordCacheAt < SENSITIVE_WORD_CACHE_MS) {
+            // 快路径：缓存有效，直接返回（无锁）
             return sensitiveWordCache;
         }
-        List<SensitiveWordEntity> fresh = sensitiveWordMapper.selectList(
-                new LambdaQueryWrapper<SensitiveWordEntity>()
-                        .eq(SensitiveWordEntity::getStatus, "ENABLED"));
-        sensitiveWordCache = fresh == null ? Collections.emptyList() : fresh;
-        sensitiveWordCacheAt = now;
-        return sensitiveWordCache;
+        synchronized (sensitiveWordLock) {
+            // 双重检查：等锁期间可能已被其他线程刷新
+            long lockedNow = System.currentTimeMillis();
+            if (lockedNow - sensitiveWordCacheAt < SENSITIVE_WORD_CACHE_MS) {
+                return sensitiveWordCache;
+            }
+            List<SensitiveWordEntity> fresh = sensitiveWordMapper.selectList(
+                    new LambdaQueryWrapper<SensitiveWordEntity>()
+                            .eq(SensitiveWordEntity::getStatus, "ENABLED"));
+            sensitiveWordCache = fresh == null ? Collections.emptyList() : fresh;
+            sensitiveWordCacheAt = lockedNow;
+            return sensitiveWordCache;
+        }
     }
 
     /**

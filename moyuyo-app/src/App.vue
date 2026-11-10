@@ -9,10 +9,9 @@ import { useUserStore } from '@/store'
 import { registerMoyuyoScheme } from '@/utils/payAppBridge'
 // 探活 forceLogout 后弹登录过期 modal 用
 import { triggerSessionExpired } from '@/utils/request'
-// 全局心跳：保证"用户在任意页面 → 后台切回 APP"都能刷新 last_login_time，
+// 全局心跳：保证"用户在任意页面 → 后台切回 APP / 长时间停留在同一页"都能持续上报活跃，
 // 让管理后台 实时大屏 的 30 分钟在线窗口能持续计入。
-// 复用 home.vue 的三重去重实现（本地 dateKey + 服务端 Redis SETNX + 失败兜底），
-// 内部已经处理同日幂等，不会变成 N 次请求。
+// 内部按 5 分钟节流（服务端再按天幂等写库），不会变成 N 次请求。
 import { reportActiveHeartbeat } from '@/utils/heartbeat'
 import { initSecureTokens, peekAccessToken, peekRefreshToken } from '@/utils/secureToken'
 // 私信 WebSocket：全局维持连接，收到新私信时刷新消息 Tab 未读角标
@@ -54,6 +53,27 @@ let appLaunched = false
 let _dmSocketUnsub = null
 /** 收到私信后防抖刷新未读角标 */
 let _dmBadgeTimer = null
+/** 前台活跃心跳定时器（5 分钟一次） */
+let _activeHeartbeatTimer = null
+/**
+ * 前台心跳间隔：与服务端 30 分钟在线窗口配合。
+ * 用户长时间停留在同一页面（不切 tab、不切前后台）时，仅靠 onShow 上报会被判为离线，
+ * 因此前台期间用定时器持续喂窗口；reportActiveHeartbeat 内部还有 5 分钟节流，重复调用无副作用。
+ */
+const ACTIVE_HEARTBEAT_MS = 5 * 60 * 1000
+
+/** 启动前台活跃心跳（幂等） */
+function startActiveHeartbeat() {
+  if (_activeHeartbeatTimer) return
+  _activeHeartbeatTimer = setInterval(reportActiveHeartbeat, ACTIVE_HEARTBEAT_MS)
+}
+
+/** 停止前台活跃心跳：进入后台后不再上报，避免无意义的网络请求 */
+function stopActiveHeartbeat() {
+  if (!_activeHeartbeatTimer) return
+  clearInterval(_activeHeartbeatTimer)
+  _activeHeartbeatTimer = null
+}
 
 /** 拉取私信未读数并同步消息 Tab 角标 */
 function refreshDmBadge() {
@@ -226,6 +246,10 @@ export default {
       tryProbe(userStore, 'onLaunch')
       // 建立私信 WebSocket 并同步消息 Tab 未读角标
       ensureDmSocket()
+      // 冷启动即上报一次活跃并启动前台定时器：
+      // 避免极端时序下首个 onShow 被早退，导致长时间不再上报在线信号
+      reportActiveHeartbeat()
+      startActiveHeartbeat()
     }
 
     // 凭证加密存储：异步解密后回填 store，完成后补跑冷启动预热
@@ -272,13 +296,16 @@ export default {
     tryProbe(userStore, 'onShow')
     // 后台期间 WebSocket 可能被系统/网络断开，回前台时重连并刷新未读角标
     ensureDmSocket()
-    // 全局上报今日活跃：与 home.vue 共用同一份去重实现，
-    // 即便用户停留在「我的 / 社区 / 宠物」等非首页 tab，从后台切回也会刷新 last_login_time。
-    // 同一用户多设备登录只会 UPDATE 同一 userId 行 → 实时在线用户 COUNT 物理去重。
+    // 全局上报活跃：与 home.vue 共用同一份节流实现，
+    // 即便用户停留在「我的 / 社区 / 宠物」等非首页 tab，从后台切回也会上报一次；
+    // 之后由前台定时器每 5 分钟续报，喂饱服务端 30 分钟在线窗口。
+    // 同一用户多设备登录只会刷新同一个 ZSET member → 实时在线人数按 userId 去重。
     reportActiveHeartbeat()
+    startActiveHeartbeat()
   },
   onHide() {
-    // 进入后台
+    // 进入后台：停止前台活跃心跳上报
+    stopActiveHeartbeat()
   },
 }
 </script>

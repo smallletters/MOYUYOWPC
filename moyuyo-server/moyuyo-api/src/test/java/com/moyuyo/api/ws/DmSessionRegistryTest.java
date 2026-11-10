@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
  */
 class DmSessionRegistryTest {
 
-    private final DmSessionRegistry registry = new DmSessionRegistry(new ObjectMapper());
+    private final DmSessionRegistry registry = new DmSessionRegistry(new ObjectMapper(), new DmPushExecutor());
 
     @Test
     void closeUserSessions_shouldSendInvalidatedMessageThenCloseWith4001() throws Exception {

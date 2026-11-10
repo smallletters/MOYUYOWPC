@@ -17,6 +17,8 @@ export const MESSAGE_TAB_INDEX = 3
 const HEARTBEAT_MS = 25 * 1000
 const RETRY_MIN_MS = 3 * 1000
 const RETRY_MAX_MS = 30 * 1000
+/** 握手超时：超时未 onOpen 主动断开并重连，避免平台不回调 onClose 时永久卡在"假在线" */
+const CONNECT_TIMEOUT_MS = 10 * 1000
 /** 与服务端 DmSessionRegistry.SESSION_INVALIDATED_CLOSE_CODE 保持一致 */
 const SESSION_INVALIDATED_CLOSE_CODE = 4001
 
@@ -26,6 +28,7 @@ let manualClosed = false
 let retryTimer = null
 let retryDelay = RETRY_MIN_MS
 let heartbeatTimer = null
+let connectTimer = null
 const listeners = new Set()
 
 /** WebSocket 根地址：优先环境变量，其次当前页面 origin（H5） */
@@ -56,6 +59,14 @@ function stopHeartbeat() {
   }
 }
 
+/** 清除握手超时计时器 */
+function stopConnectTimer() {
+  if (connectTimer) {
+    clearTimeout(connectTimer)
+    connectTimer = null
+  }
+}
+
 function startHeartbeat(task) {
   stopHeartbeat()
   heartbeatTimer = setInterval(() => {
@@ -68,13 +79,24 @@ function startHeartbeat(task) {
   }, HEARTBEAT_MS)
 }
 
+/**
+ * 下一次重连延时：指数退避 + ±20% 随机抖动。
+ * 不加抖动时，服务端重启/发版后所有客户端会在同一时间窗口重连（惊群），
+ * 且每次重连都要先换一次 ws-ticket，瞬间打满认证接口。
+ */
+function nextRetryDelay() {
+  const jittered = retryDelay * (0.8 + Math.random() * 0.4)
+  return Math.min(Math.max(jittered, RETRY_MIN_MS), RETRY_MAX_MS)
+}
+
 function scheduleReconnect() {
   if (manualClosed || retryTimer) return
   if (!peekAccessToken()) return
+  const delay = nextRetryDelay()
   retryTimer = setTimeout(() => {
     retryTimer = null
     connectDmSocket()
-  }, retryDelay)
+  }, delay)
   retryDelay = Math.min(retryDelay * 2, RETRY_MAX_MS)
 }
 
@@ -127,8 +149,26 @@ export async function connectDmSocket() {
   }
   socketTask = task
 
+  // 握手超时保护：部分平台/代理下既不会回调 onOpen 也不会回调 onClose，
+  // 不主动断开就会永久占位（socketTask 非空 → 后续 connect 全部幂等返回），
+  // 表现为"假在线"：没有心跳、不会重连、也收不到任何消息
+  stopConnectTimer()
+  connectTimer = setTimeout(() => {
+    connectTimer = null
+    if (socketTask !== task) return
+    socketTask = null
+    connecting = false
+    try {
+      task.close({})
+    } catch (e) {
+      // 忽略关闭异常
+    }
+    scheduleReconnect()
+  }, CONNECT_TIMEOUT_MS)
+
   task.onOpen(() => {
     if (socketTask !== task) return
+    stopConnectTimer()
     connecting = false
     retryDelay = RETRY_MIN_MS
     startHeartbeat(task)
@@ -166,6 +206,7 @@ export async function connectDmSocket() {
     if (socketTask !== task) return
     socketTask = null
     connecting = false
+    stopConnectTimer()
     stopHeartbeat()
     // 4001 = 服务端主动使 token 失效（改密/重置密码），此时不再自动重连
     if (res && res.code === SESSION_INVALIDATED_CLOSE_CODE) {
@@ -191,6 +232,7 @@ export function onDmSocketEvent(fn) {
 export function closeDmSocket() {
   manualClosed = true
   stopHeartbeat()
+  stopConnectTimer()
   if (retryTimer) {
     clearTimeout(retryTimer)
     retryTimer = null
