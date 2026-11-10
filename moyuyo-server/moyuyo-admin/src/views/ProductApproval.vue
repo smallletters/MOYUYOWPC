@@ -4,9 +4,9 @@
       <h2>商品审核</h2>
       <div class="header-actions">
         <el-select v-model="statusFilter" placeholder="审核状态" clearable style="width:140px" @change="loadData">
-          <el-option label="待审核" value="pending" />
-          <el-option label="已通过" value="approved" />
-          <el-option label="已驳回" value="rejected" />
+          <el-option label="待审核" value="PENDING" />
+          <el-option label="已通过" value="APPROVED" />
+          <el-option label="已驳回" value="REJECTED" />
         </el-select>
       </div>
     </div>
@@ -17,7 +17,7 @@
         <el-table-column prop="productName" label="商品名称" min-width="160" show-overflow-tooltip />
         <el-table-column prop="type" label="类型" width="100">
           <template #default="{ row }">
-            <el-tag size="small">{{ row.type === 'new' ? '新品上架' : '信息修改' }}</el-tag>
+            <el-tag size="small">{{ row.type === 'NEW' ? '新品上架' : (row.type === 'UPDATE' ? '信息修改' : (row.type || '-')) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
@@ -28,9 +28,9 @@
         <el-table-column prop="submitTime" label="提交时间" width="170" />
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="row.status === 'pending'" type="success" link size="small" @click="handleApprove(row)">通过</el-button>
-            <el-button v-if="row.status === 'pending'" type="warning" link size="small" @click="handleReject(row)">驳回</el-button>
-            <el-button v-if="row.status === 'pending'" type="primary" link size="small" @click="handleUrgent(row)">加急</el-button>
+            <el-button v-if="row.status === 'PENDING'" type="success" link size="small" @click="handleApprove(row)">通过</el-button>
+            <el-button v-if="row.status === 'PENDING'" type="warning" link size="small" @click="handleReject(row)">驳回</el-button>
+            <el-button v-if="row.status === 'PENDING'" type="primary" link size="small" @click="handleUrgent(row)">加急</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -60,8 +60,8 @@ const rejectReason = ref('')
 const currentRejectId = ref(null)
 
 const { getStatusText, getStatusType } = useStatusTag(
-  { approved: '已通过', rejected: '已驳回', pending: '待审核' },
-  { approved: 'success', rejected: 'danger', pending: 'warning' }
+  { APPROVED: '已通过', REJECTED: '已驳回', PENDING: '待审核', URGENT: '待审核' },
+  { APPROVED: 'success', REJECTED: 'danger', PENDING: 'warning', URGENT: 'warning' }
 )
 
 async function loadData() {
@@ -69,7 +69,14 @@ async function loadData() {
     const params = {}
     if (statusFilter.value) params.status = statusFilter.value
     const res = await getProductApprovalList(params)
-    tableData.value = toArray(res)
+    // 后端返回大写枚举值，这里统一归一化并补全商品名称/提交时间展示字段
+    tableData.value = toArray(res).map(row => ({
+      ...row,
+      status: String(row.status || '').toUpperCase(),
+      type: String(row.type || '').toUpperCase(),
+      productName: row.productName || (row.productId != null ? `商品#${row.productId}` : '-'),
+      submitTime: row.submitTime || row.createTime || ''
+    }))
   } catch (e) {
     ElMessage.error('获取审核列表失败')
   }

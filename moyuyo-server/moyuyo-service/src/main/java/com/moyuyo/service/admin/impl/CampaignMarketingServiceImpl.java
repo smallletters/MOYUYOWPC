@@ -194,6 +194,7 @@ public class CampaignMarketingServiceImpl implements CampaignMarketingService {
     int participants = stats != null ? stats.userIds.size() : 0;
     BigDecimal gmv = (stats != null ? stats.gmv : BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
     vo.setParticipants(participants);
+    vo.setOrderCount(stats != null ? stats.orderCount : 0);
     vo.setGmv(gmv);
     vo.setRoi(calculateRoi(gmv, vo.getBudget()));
   }

@@ -24,7 +24,10 @@ public class SettlementDetailResponse {
   /** 总金额 */
   private BigDecimal totalAmount;
 
-  /** 手续费(按 1% 估算) */
+  /** 手续费率(百分比，来自系统配置 settlement.fee_rate) */
+  private BigDecimal feeRate;
+
+  /** 手续费(按配置费率计算) */
   private BigDecimal fee;
 
   /** 净额(总金额 - 手续费) */

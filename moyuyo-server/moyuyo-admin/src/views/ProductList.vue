@@ -51,8 +51,8 @@
         </div>
         <div class="form-group">
           <label>商品状态</label>
-          <select v-model="filters.status" class="select-wrapper">
-            <option value="">全部状态</option>
+          <select v-model="activeTab" class="select-wrapper">
+            <option value="all">全部状态</option>
             <option value="active">在售</option>
             <option value="inactive">已下架</option>
             <option value="draft">草稿</option>
@@ -251,7 +251,6 @@ const tabs = ref([
 
 const filters = reactive({
   search: '',
-  status: '',
   category: '',
   stock: ''
 })
@@ -293,13 +292,22 @@ async function fetchProducts() {
     if (res) {
       const list = toArray(res)
       // 字段映射：后端 ProductEntity 用 onSale(Boolean)，前端期望 status/statusClass
-      // 这里将 onSale 转为 status 显示字段，避免 UI 显示空状态
+      // 草稿/待审核 Tab 下按当前筛选状态展示，避免错误显示为"在售/已下架"
       productList.value = list.map(p => {
         const isOnSale = p.onSale === true || p.onSale === 1 || p.onSale === 'true'
+        let status = isOnSale ? '在售' : '已下架'
+        let statusClass = isOnSale ? 'green' : 'gray'
+        if (activeTab.value === 'draft') {
+          status = '草稿'
+          statusClass = 'gray'
+        } else if (activeTab.value === 'pending') {
+          status = '待审核'
+          statusClass = 'gray'
+        }
         return {
           ...p,
-          status: isOnSale ? '在售' : '已下架',
-          statusClass: isOnSale ? 'green' : 'gray',
+          status,
+          statusClass,
           // 商品封面图：优先取 mainImage（已同步自 images[0]），回退到 images 数组第一张
           coverImage: p.mainImage || (Array.isArray(p.images) && p.images.length ? (p.images[0]?.url || p.images[0]) : null)
         }
@@ -350,17 +358,25 @@ function toggleSelectAll() {
 }
 
 function handleSearch() {
-  currentPage.value = 1
-  fetchProducts()
+  // 页码变化由 currentPage watch 触发查询，避免重复请求
+  if (currentPage.value !== 1) {
+    currentPage.value = 1
+  } else {
+    fetchProducts()
+  }
 }
 
 function handleReset() {
   filters.search = ''
-  filters.status = ''
   filters.category = ''
   filters.stock = ''
-  currentPage.value = 1
-  fetchProducts()
+  // 状态筛选与顶部 Tab 共用 activeTab：切换时由 watch 负责刷新，避免重复请求
+  if (activeTab.value === 'all') {
+    currentPage.value = 1
+    fetchProducts()
+  } else {
+    activeTab.value = 'all'
+  }
 }
 
 /** 切换每页条数：回到第 1 页（页码变化由 watch 触发查询，已在第 1 页则直接查询） */
@@ -524,10 +540,13 @@ async function fetchCategories() {
   }
 }
 
-// 切换 tab 时重新加载数据
+// 切换 tab 时重新加载数据（页码变化由 currentPage watch 统一触发，避免重复请求）
 watch(activeTab, () => {
-  currentPage.value = 1
-  fetchProducts()
+  if (currentPage.value !== 1) {
+    currentPage.value = 1
+  } else {
+    fetchProducts()
+  }
 })
 
 // 监听页码变化，重新加载数据

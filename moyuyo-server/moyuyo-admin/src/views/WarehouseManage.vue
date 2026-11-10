@@ -201,12 +201,12 @@
               <p class="wh-metric-value">{{ p.warehouse }}</p>
             </div>
             <div>
-              <span class="wh-metric-label">预测月销量</span>
-              <p class="wh-metric-value wh-metric-sales">{{ p.sales }}</p>
+              <span class="wh-metric-label">近30天销量</span>
+              <p class="wh-metric-value wh-metric-sales">{{ p.sales30 }}</p>
             </div>
             <div>
-              <span class="wh-metric-label">预计利润</span>
-              <p class="wh-metric-value wh-metric-profit">{{ p.profit }}</p>
+              <span class="wh-metric-label">可用库存</span>
+              <p class="wh-metric-value wh-metric-profit">{{ p.availableStock }}</p>
             </div>
           </div>
           <div class="wh-selection-action">

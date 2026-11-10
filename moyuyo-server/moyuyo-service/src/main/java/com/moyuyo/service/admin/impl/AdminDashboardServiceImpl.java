@@ -14,6 +14,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 管理后台仪表盘服务实现
@@ -143,6 +144,16 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
             .last("LIMIT 5")
     );
 
+    // 批量查询下单用户，用于展示真实昵称/邮箱，避免"用户{id}"占位文案
+    Set<Long> userIds = orders.stream()
+        .map(OrderEntity::getUserId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
+    Map<Long, UserEntity> userMap = userIds.isEmpty()
+        ? Collections.emptyMap()
+        : userMapper.selectBatchIds(userIds).stream()
+            .collect(Collectors.toMap(UserEntity::getId, u -> u, (a, b) -> a));
+
     List<Map<String, Object>> list = new ArrayList<>();
     for (OrderEntity order : orders) {
       // 获取订单的商品名称（取第一个商品，多于1件时加"等N件商品"）
@@ -159,13 +170,19 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         }
       }
 
+      UserEntity user = order.getUserId() == null ? null : userMap.get(order.getUserId());
+      String userName = user == null ? "用户" + order.getUserId()
+          : (user.getNickname() != null && !user.getNickname().isBlank() ? user.getNickname()
+              : (user.getEmail() != null && !user.getEmail().isBlank() ? user.getEmail()
+                  : "用户" + order.getUserId()));
+
       Map<String, Object> item = new LinkedHashMap<>();
       item.put("orderNo", order.getOrderNo());
       item.put("productName", productName);
       item.put("amount", order.getPayAmount());
       item.put("status", order.getStatus());
       item.put("time", order.getCreateTime());
-      item.put("userName", "用户" + order.getUserId());
+      item.put("userName", userName);
       list.add(item);
     }
     return list;

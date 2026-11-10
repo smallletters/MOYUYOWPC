@@ -181,12 +181,12 @@ import { Clock, CircleCheck, CircleClose, TrendCharts, DataAnalysis } from '@ele
 import { getReviewList, approveReview, replyReview, rejectReview, getReviewTodayStats } from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
-// 今日审核统计：默认占位（接口失败 / 首次加载时使用），成功后再用真实数据替换
+// 今日审核统计：加载前不展示趋势文案，接口成功后用真实数据替换
 const todayStatCards = ref([
-  { label: '今日待审核', value: 0, icon: Clock, iconClass: 'icon-pending', valueClass: 'value-pending', trend: '较昨日 +0', trendClass: 'trend-up' },
-  { label: '今日已通过', value: 0, icon: CircleCheck, iconClass: 'icon-approved', valueClass: 'value-approved', trend: '较昨日 +0', trendClass: 'trend-up' },
-  { label: '今日已驳回', value: 0, icon: CircleClose, iconClass: 'icon-rejected', valueClass: 'value-rejected', trend: '较昨日 +0', trendClass: 'trend-down' },
-  { label: '今日通过率', value: '0%', icon: TrendCharts, iconClass: 'icon-passrate', valueClass: 'value-passrate', trend: '较昨日 +0%', trendClass: 'trend-up' }
+  { label: '今日待审核', value: 0, icon: Clock, iconClass: 'icon-pending', valueClass: 'value-pending', trend: '', trendClass: 'trend-flat' },
+  { label: '今日已通过', value: 0, icon: CircleCheck, iconClass: 'icon-approved', valueClass: 'value-approved', trend: '', trendClass: 'trend-flat' },
+  { label: '今日已驳回', value: 0, icon: CircleClose, iconClass: 'icon-rejected', valueClass: 'value-rejected', trend: '', trendClass: 'trend-flat' },
+  { label: '今日通过率', value: '0%', icon: TrendCharts, iconClass: 'icon-passrate', valueClass: 'value-passrate', trend: '', trendClass: 'trend-flat' }
 ])
 
 // 数值差值转趋势文案：正值加"+"，0保持"+0"，负值保留负号

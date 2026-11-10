@@ -10,13 +10,22 @@ import com.moyuyo.dao.admin.entity.InventoryTransferEntity;
 import com.moyuyo.dao.admin.entity.WarehouseEntity;
 import com.moyuyo.dao.admin.mapper.InventoryTransferMapper;
 import com.moyuyo.dao.admin.mapper.WarehouseMapper;
+import com.moyuyo.dao.entity.ProductEntity;
+import com.moyuyo.dao.entity.ProductSkuEntity;
+import com.moyuyo.dao.mapper.ProductMapper;
+import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.admin.AdminInventoryTransferService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 库存调拨服务实现
@@ -29,6 +38,8 @@ public class AdminInventoryTransferServiceImpl implements AdminInventoryTransfer
 
   private final InventoryTransferMapper inventoryTransferMapper;
   private final WarehouseMapper warehouseMapper;
+  private final ProductSkuMapper productSkuMapper;
+  private final ProductMapper productMapper;
 
   @Override
   public PageResponse<InventoryTransferVO> listAll(int page, int size, String status) {
@@ -42,9 +53,27 @@ public class AdminInventoryTransferServiceImpl implements AdminInventoryTransfer
 
     Page<InventoryTransferEntity> pageObj = inventoryTransferMapper.selectPage(new Page<>(page, size), wrapper);
 
+    // 批量查询 SKU 与商品名称，避免逐行查询
+    Set<Long> skuIds = pageObj.getRecords().stream()
+        .map(InventoryTransferEntity::getSkuId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
+    Map<Long, ProductSkuEntity> skuMap = skuIds.isEmpty()
+        ? Collections.emptyMap()
+        : productSkuMapper.selectBatchIds(skuIds).stream()
+            .collect(Collectors.toMap(ProductSkuEntity::getId, s -> s, (a, b) -> a));
+    Set<Long> productIds = skuMap.values().stream()
+        .map(ProductSkuEntity::getProductId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
+    Map<Long, ProductEntity> productMap = productIds.isEmpty()
+        ? Collections.emptyMap()
+        : productMapper.selectBatchIds(productIds).stream()
+            .collect(Collectors.toMap(ProductEntity::getId, p -> p, (a, b) -> a));
+
     // DB 实体 → 前端 VO
     List<InventoryTransferVO> records = pageObj.getRecords().stream()
-        .map(this::toVO)
+        .map(e -> toVO(e, skuMap, productMap))
         .toList();
 
     PageResponse<InventoryTransferVO> result = new PageResponse<>();
@@ -58,7 +87,9 @@ public class AdminInventoryTransferServiceImpl implements AdminInventoryTransfer
   /**
    * DB 实体 → 前端 VO,状态值通过枚举统一映射
    */
-  private InventoryTransferVO toVO(InventoryTransferEntity entity) {
+  private InventoryTransferVO toVO(InventoryTransferEntity entity,
+                                   Map<Long, ProductSkuEntity> skuMap,
+                                   Map<Long, ProductEntity> productMap) {
     InventoryTransferVO vo = new InventoryTransferVO();
     vo.setId(entity.getId());
     vo.setSkuId(entity.getSkuId());
@@ -67,7 +98,7 @@ public class AdminInventoryTransferServiceImpl implements AdminInventoryTransfer
     vo.setToWarehouseId(entity.getToWarehouseId());
     vo.setFromWarehouse(lookupWarehouseName(entity.getFromWarehouseId()));
     vo.setToWarehouse(lookupWarehouseName(entity.getToWarehouseId()));
-    vo.setProductName("SKU-" + entity.getSkuId());
+    vo.setProductName(lookupProductName(entity.getSkuId(), skuMap, productMap));
     vo.setQuantity(entity.getQuantity());
     vo.setReason(entity.getReason());
     // 状态值通过枚举统一映射,数据库值若异常则降级为 PENDING
@@ -95,6 +126,17 @@ public class AdminInventoryTransferServiceImpl implements AdminInventoryTransfer
     } catch (Exception ex) {
       return "仓库-" + warehouseId;
     }
+  }
+
+  /** 查询商品名称；SKU/商品记录缺失时才降级为 SKU-{id} */
+  private String lookupProductName(Long skuId,
+                                   Map<Long, ProductSkuEntity> skuMap,
+                                   Map<Long, ProductEntity> productMap) {
+    if (skuId == null) return "";
+    ProductSkuEntity sku = skuMap.get(skuId);
+    if (sku == null) return "SKU-" + skuId;
+    ProductEntity product = sku.getProductId() == null ? null : productMap.get(sku.getProductId());
+    return product != null && product.getName() != null ? product.getName() : "SKU-" + skuId;
   }
 
   @Override

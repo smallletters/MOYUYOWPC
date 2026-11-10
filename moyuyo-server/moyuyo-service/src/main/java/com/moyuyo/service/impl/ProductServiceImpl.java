@@ -51,10 +51,8 @@ public class ProductServiceImpl implements ProductService {
             // GTIN/UPC/EAN/ISBN 也参与关键词搜索（存储于 attributes JSON）
             .or().apply("JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.global_unique_id')) LIKE CONCAT('%', {0}, '%')", keyword));
 
-    // 状态筛选：active=在售, inactive=已下架, 不传则不过滤
-    if (StringUtils.isNotBlank(status)) {
-      wrapper.eq(ProductEntity::getOnSale, "active".equals(status));
-    }
+    // 状态筛选：active=在售；inactive/draft/pending 基于真实审核记录派生
+    applyStatusFilter(wrapper, status);
 
     // 库存状态筛选（低库存阈值优先取商品自定义 low_stock_amount，未设置时回退 10）
     if (StringUtils.isNotBlank(stockStatus)) {
@@ -80,12 +78,50 @@ public class ProductServiceImpl implements ProductService {
             .or().like(ProductEntity::getSpuCode, keyword)
             .or().exists("(SELECT 1 FROM mo_product_sku s WHERE s.product_id = mo_product.id AND s.sku_code LIKE CONCAT('%', {0}, '%'))", keyword)
             .or().apply("JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.global_unique_id')) LIKE CONCAT('%', {0}, '%')", keyword));
-    // 状态筛选：active=在售, inactive=已下架, 不传则不过滤
-    if (StringUtils.isNotBlank(status)) {
-      wrapper.eq(ProductEntity::getOnSale, "active".equals(status));
-    }
+    // 状态筛选：active=在售；inactive/draft/pending 基于真实审核记录派生
+    applyStatusFilter(wrapper, status);
     applySort(wrapper, sortBy, sortOrder);
     return productMapper.selectPage(new Page<>(page, size), wrapper);
+  }
+
+  /**
+   * 商品状态筛选（真实数据源）：
+   * - active：on_sale=1
+   * - pending：on_sale=0 且存在 PENDING/URGENT 审核记录
+   * - inactive：on_sale=0 且存在已审核记录（APPROVED/REJECTED），且没有待审核记录
+   * - draft：on_sale=0 且从未进入审核流程（无任何审核记录）
+   * 说明：mo_product 本身没有草稿/审核状态字段，这里以审核流水表作为真实状态来源。
+   * 审核通过前商品默认不对外销售（on_sale=0），因此四个 Tab 可以保持互斥且与计数口径一致。
+   */
+  private void applyStatusFilter(LambdaQueryWrapper<ProductEntity> wrapper, String status) {
+    if (StringUtils.isBlank(status)) {
+      return;
+    }
+    switch (status) {
+      case "pending":
+        wrapper.eq(ProductEntity::getOnSale, false)
+            .inSql(ProductEntity::getId,
+                "SELECT product_id FROM mo_product_approval WHERE status IN ('PENDING','URGENT')");
+        break;
+      case "active":
+        wrapper.eq(ProductEntity::getOnSale, true);
+        break;
+      case "inactive":
+        wrapper.eq(ProductEntity::getOnSale, false)
+            .inSql(ProductEntity::getId,
+                "SELECT product_id FROM mo_product_approval WHERE status IN ('APPROVED','REJECTED')")
+            .notInSql(ProductEntity::getId,
+                "SELECT product_id FROM mo_product_approval WHERE status IN ('PENDING','URGENT')");
+        break;
+      case "draft":
+        wrapper.eq(ProductEntity::getOnSale, false)
+            .notInSql(ProductEntity::getId, "SELECT product_id FROM mo_product_approval");
+        break;
+      default:
+        // 未知状态按在售处理，保持与历史行为一致（非 active 视为下架）
+        wrapper.eq(ProductEntity::getOnSale, "active".equals(status));
+        break;
+    }
   }
 
   /**

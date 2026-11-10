@@ -55,8 +55,9 @@ public class AdminPushController {
             item.put("channel", e.getType());
             item.put("status", e.getStatus());
             item.put("sentCount", e.getSuccessCount() != null ? e.getSuccessCount() : 0);
-            item.put("openCount", 0);
-            item.put("clickCount", 0);
+            // 当前未接入打开/点击埋点，返回 null 由前端展示占位符，禁止伪造 0 数据
+            item.put("openCount", null);
+            item.put("clickCount", null);
             item.put("sendTime", e.getSentTime());
             list.add(item);
         }

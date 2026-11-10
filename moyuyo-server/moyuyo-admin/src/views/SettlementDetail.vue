@@ -20,6 +20,7 @@
         <el-descriptions-item label="结算时间">{{ summary.settleTime || '—' }}</el-descriptions-item>
         <el-descriptions-item label="订单总数">{{ summary.orderCount }}</el-descriptions-item>
         <el-descriptions-item label="总金额">￥{{ Number(summary.totalAmount || 0).toFixed(2) }}</el-descriptions-item>
+        <el-descriptions-item label="手续费率">{{ summary.feeRate != null ? summary.feeRate + '%' : '—' }}</el-descriptions-item>
         <el-descriptions-item label="手续费">￥{{ Number(summary.fee || 0).toFixed(2) }}</el-descriptions-item>
         <el-descriptions-item label="实际结算">￥{{ Number(summary.netAmount || 0).toFixed(2) }}</el-descriptions-item>
       </el-descriptions>

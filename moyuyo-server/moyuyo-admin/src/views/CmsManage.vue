@@ -146,11 +146,54 @@
             <el-option label="TOPIC" value="TOPIC" />
           </el-select>
         </el-form-item>
-        <el-form-item label="封面图片URL">
-          <el-input v-model="editForm.imageUrl" placeholder="请输入封面图片 URL" />
+        <el-form-item label="封面图片">
+          <div class="cover-picker">
+            <div
+              class="cover-thumb"
+              :style="{ backgroundImage: editForm.imageUrl ? `url(${editForm.imageUrl})` : 'none' }"
+            >
+              <span v-if="!editForm.imageUrl">暂无封面</span>
+            </div>
+            <div class="cover-picker-main">
+              <el-input v-model="editForm.imageUrl" placeholder="图片空间 URL 或外部图片链接" />
+              <el-button class="cover-picker-btn" @click="imagePickerVisible = true">
+                从图片空间选择
+              </el-button>
+            </div>
+          </div>
         </el-form-item>
         <el-form-item label="链接URL">
-          <el-input v-model="editForm.linkUrl" placeholder="请输入跳转链接" />
+          <el-select
+            v-model="editForm.linkUrl"
+            filterable
+            allow-create
+            default-first-option
+            clearable
+            :loading="linkProductLoading"
+            placeholder="选择站内页面 / 商品详情，或输入自定义链接"
+            style="width:100%"
+          >
+            <el-option-group
+              v-for="group in linkGroups"
+              :key="group.label"
+              :label="group.label"
+            >
+              <el-option
+                v-for="opt in group.options"
+                :key="opt.value"
+                :label="opt.label"
+                :value="opt.value"
+              />
+            </el-option-group>
+            <el-option-group v-if="productLinkOptions.length" label="商品详情">
+              <el-option
+                v-for="opt in productLinkOptions"
+                :key="opt.value"
+                :label="opt.label"
+                :value="opt.value"
+              />
+            </el-option-group>
+          </el-select>
         </el-form-item>
         <el-form-item label="内容描述">
           <el-input
@@ -181,14 +224,22 @@
         <el-button type="primary" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 图片空间选择器 -->
+    <ImageSpacePicker
+      v-model="imagePickerVisible"
+      title="选择 Banner 封面图"
+      @confirm="onCoverPicked"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getCmsList, createCms, updateCms, deleteCms, updateCmsStatus, reorderCms } from '../api/admin'
+import { getCmsList, createCms, updateCms, deleteCms, updateCmsStatus, reorderCms, searchProductsLite } from '../api/admin'
+import ImageSpacePicker from './ProductEdit/ImageSpacePicker.vue'
 
 const router = useRouter()
 
@@ -196,6 +247,8 @@ const activeTab = ref('banner')
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const editForm = ref({})
+// 图片空间选择器开关
+const imagePickerVisible = ref(false)
 
 const tabList = [
   { key: 'banner', label: 'Banner' },
@@ -203,6 +256,119 @@ const tabList = [
   { key: 'topic', label: '专题页' },
   { key: 'push', label: 'Push推送' }
 ]
+
+// 站内链接下拉选项：值直接写入 link_url，APP 端按 /pages/** 识别为站内页面
+// 仍保留 allow-create，运营可手动输入商品详情等带参数链接或外部 HTTPS 链接
+const linkGroups = [
+  {
+    label: '底部 Tab',
+    options: [
+      { label: '首页', value: '/pages/tabbar/home' },
+      { label: '分类', value: '/pages/tabbar/category' },
+      { label: 'Pet Hub', value: '/pages/tabbar/pet' },
+      { label: '社区', value: '/pages/tabbar/community' },
+      { label: '消息', value: '/pages/tabbar/messages' },
+      { label: '我的', value: '/pages/tabbar/user' }
+    ]
+  },
+  {
+    label: '商品与购物',
+    options: [
+      { label: '商品列表', value: '/pages/goods/list' },
+      { label: '商品搜索', value: '/pages/goods/search' },
+      { label: '限时抢购', value: '/pages/goods/flash-sale' },
+      { label: '购物车', value: '/pages/cart/index' },
+      { label: '我的订单', value: '/pages/order/list' }
+    ]
+  },
+  {
+    label: '营销与会员',
+    options: [
+      { label: '活动中心', value: '/pages/user/festival-event' },
+      { label: '领券中心', value: '/pages/user/coupon-center' },
+      { label: '积分商城', value: '/pages/user/points-shop' },
+      { label: '每日签到', value: '/pages/user/check-in' },
+      { label: '邀请好友', value: '/pages/user/invite' },
+      { label: '会员等级', value: '/pages/user/membership' }
+    ]
+  },
+  {
+    label: '用户中心',
+    options: [
+      { label: '我的钱包', value: '/pages/user/wallet' },
+      { label: '我的收藏', value: '/pages/user/favorites' },
+      { label: '浏览记录', value: '/pages/user/browsing-history' },
+      { label: '通知', value: '/pages/user/notifications' },
+      { label: '设置', value: '/pages/user/settings' }
+    ]
+  },
+  {
+    label: '帮助与客服',
+    options: [
+      { label: '帮助中心', value: '/pages/user/help' },
+      { label: '客服中心', value: '/pages/user/customer-service' },
+      { label: '意见反馈', value: '/pages/user/feedback' },
+      { label: '关于我们', value: '/pages/user/about' }
+    ]
+  }
+]
+
+// 商品详情下拉：从商品库加载商品，选中后生成 /pages/goods/detail?id=商品ID
+const linkProducts = ref([])
+const linkProductLoading = ref(false)
+const productLinkOptions = computed(() =>
+  linkProducts.value.map(p => ({
+    label: p.sku ? `${p.name}（${p.sku}）` : p.name,
+    value: `/pages/goods/detail?id=${p.id}`
+  }))
+)
+
+/** 加载商品详情候选项（最多 100 个，支持在下拉框内输入商品名筛选） */
+async function loadLinkProducts() {
+  linkProductLoading.value = true
+  try {
+    const res = await searchProductsLite({ size: 100 })
+    const list = Array.isArray(res) ? res : (res?.records || [])
+    linkProducts.value = list.map(p => ({
+      id: p.id,
+      name: p.name || `商品#${p.id}`,
+      sku: p.spuCode || p.sku || ''
+    }))
+  } catch (e) {
+    console.error('加载商品详情选项失败', e)
+    linkProducts.value = []
+  } finally {
+    linkProductLoading.value = false
+  }
+}
+
+/** 编辑已有商品链接时，确保该商品出现在下拉选项中 */
+async function ensureLinkProductOption(url) {
+  const match = String(url || '').match(/\/pages\/goods\/detail\?id=(\d+)/)
+  if (!match) return
+  const id = match[1]
+  if (linkProducts.value.some(p => String(p.id) === id)) return
+  try {
+    const res = await searchProductsLite({ ids: id, size: 1 })
+    const list = Array.isArray(res) ? res : (res?.records || [])
+    const product = list.find(p => String(p.id) === id)
+    if (product) {
+      linkProducts.value.unshift({
+        id: product.id,
+        name: product.name || `商品#${product.id}`,
+        sku: product.spuCode || product.sku || ''
+      })
+    }
+  } catch (e) {
+    console.error('回显商品详情选项失败', e)
+  }
+}
+
+/** 打开弹窗时先加载商品选项，再回显当前商品链接 */
+async function prepareLinkProducts(url) {
+  await loadLinkProducts()
+  await ensureLinkProductOption(url)
+}
 
 // Banner 列表（通过API获取）
 const bannerData = ref([])
@@ -294,6 +460,7 @@ function handleEdit(item) {
   dialogTitle.value = '编辑 Banner'
   editForm.value = { ...item }
   dialogVisible.value = true
+  prepareLinkProducts(editForm.value.linkUrl)
 }
 
 // 新建 Banner
@@ -311,6 +478,7 @@ function handleAdd() {
     status: 'PAUSED'
   }
   dialogVisible.value = true
+  prepareLinkProducts('')
 }
 
 // 上下移动排序
@@ -351,6 +519,14 @@ async function handleToggleStatus(item) {
   } catch (e) {
     ElMessage.error('状态更新失败')
   }
+}
+
+// 图片空间选择确认：单图封面，取第一张
+function onCoverPicked(selected) {
+  const image = (selected || []).find(img => img && img.url)
+  if (!image) return
+  editForm.value.imageUrl = image.url
+  ElMessage.success('已选择封面图片')
 }
 
 // 保存Banner编辑/新建
@@ -417,6 +593,7 @@ function openAddDialog(type, title, statusDefault) {
     status: statusDefault || 'PAUSED'
   }
   dialogVisible.value = true
+  prepareLinkProducts('')
 }
 
 function handleAddRecommend() {
@@ -690,6 +867,39 @@ onMounted(() => {
   background: var(--state-error-surface);
   color: var(--state-error);
 }
+
+/* 封面图片选择 */
+.cover-picker {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+}
+.cover-thumb {
+  width: 112px;
+  height: 70px;
+  flex: 0 0 112px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background-color: var(--background-200);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--text-400);
+  overflow: hidden;
+}
+.cover-picker-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cover-picker-btn { flex-shrink: 0; }
 
 /* 空面板 */
 .empty-panel {

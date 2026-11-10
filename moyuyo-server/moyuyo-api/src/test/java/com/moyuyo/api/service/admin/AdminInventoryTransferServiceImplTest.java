@@ -8,6 +8,8 @@ import com.moyuyo.dao.admin.entity.InventoryTransferEntity;
 import com.moyuyo.dao.admin.entity.WarehouseEntity;
 import com.moyuyo.dao.admin.mapper.InventoryTransferMapper;
 import com.moyuyo.dao.admin.mapper.WarehouseMapper;
+import com.moyuyo.dao.mapper.ProductMapper;
+import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.admin.impl.AdminInventoryTransferServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +41,12 @@ class AdminInventoryTransferServiceImplTest {
 
   @Mock
   private WarehouseMapper warehouseMapper;
+
+  @Mock
+  private ProductSkuMapper productSkuMapper;
+
+  @Mock
+  private ProductMapper productMapper;
 
   @InjectMocks
   private AdminInventoryTransferServiceImpl service;

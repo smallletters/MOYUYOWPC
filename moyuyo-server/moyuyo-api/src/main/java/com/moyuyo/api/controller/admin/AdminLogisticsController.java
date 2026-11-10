@@ -728,54 +728,114 @@ public class AdminLogisticsController {
         .orderByDesc(ProductEntity::getSales)
         .last("LIMIT " + top);
     List<ProductEntity> products = productMapper.selectList(wrapper);
-    // 候选仓库清单：循环外一次查出，循环内 hash 分桶，避免 N+1 查询 + 全部推荐同一个仓库
-    List<WarehouseEntity> activeOverseas = warehouseMapper.selectList(
+
+    // 启用中的仓库，用作真实库存推荐候选
+    List<WarehouseEntity> activeWarehouses = warehouseMapper.selectList(
         new LambdaQueryWrapper<WarehouseEntity>()
-            .eq(WarehouseEntity::getType, "OVERSEAS")
             .eq(WarehouseEntity::getStatus, "ACTIVE")
             .orderByAsc(WarehouseEntity::getId));
-    List<WarehouseEntity> activeSelf = warehouseMapper.selectList(
-        new LambdaQueryWrapper<WarehouseEntity>()
-            .eq(WarehouseEntity::getType, "SELF")
-            .eq(WarehouseEntity::getStatus, "ACTIVE")
-            .orderByAsc(WarehouseEntity::getId));
+    Map<Long, String> warehouseNames = new HashMap<>();
+    for (WarehouseEntity w : activeWarehouses) {
+      warehouseNames.put(w.getId(), w.getName());
+    }
+
+    List<Long> productIds = products.stream()
+        .map(ProductEntity::getId)
+        .filter(Objects::nonNull)
+        .collect(java.util.stream.Collectors.toList());
+
+    // 近 30 天真实销量（仅统计已完成订单）
+    Map<Long, Long> sales30 = loadProductSalesLast30Days(productIds);
+
+    // 按商品/仓库汇总真实可用库存（在库 - 锁定），并按商品汇总安全库存
+    Map<Long, Integer> availableTotal = new HashMap<>();
+    Map<Long, Integer> safetyTotal = new HashMap<>();
+    Map<Long, Map<Long, Integer>> availableByWarehouse = new HashMap<>();
+    if (!productIds.isEmpty()) {
+      List<InventoryEntity> inventories = inventoryMapper.selectList(
+          new LambdaQueryWrapper<InventoryEntity>().in(InventoryEntity::getProductId, productIds));
+      for (InventoryEntity inv : inventories) {
+        if (inv.getProductId() == null) continue;
+        int quantity = inv.getQuantity() != null ? inv.getQuantity() : 0;
+        int locked = inv.getLockedQuantity() != null ? inv.getLockedQuantity() : 0;
+        int available = Math.max(0, quantity - locked);
+        availableTotal.merge(inv.getProductId(), available, Integer::sum);
+        safetyTotal.merge(inv.getProductId(), inv.getSafetyStock() != null ? inv.getSafetyStock() : 0, Integer::sum);
+        if (inv.getWarehouseId() != null) {
+          availableByWarehouse
+              .computeIfAbsent(inv.getProductId(), k -> new HashMap<>())
+              .merge(inv.getWarehouseId(), available, Integer::sum);
+        }
+      }
+    }
+
     List<Map<String, Object>> list = new ArrayList<>();
-    int idx = 0;
     for (ProductEntity p : products) {
       Map<String, Object> item = new LinkedHashMap<>();
       item.put("id", p.getId());
       item.put("name", p.getName());
       item.put("sku", p.getSpuCode());
-      // 简单 tag 判定
+
+      int available = availableTotal.getOrDefault(p.getId(), 0);
+      int safety = safetyTotal.getOrDefault(p.getId(), 0);
+      // 标签完全基于真实库存水位判定
       String tag;
       String tagClass;
-      if (Boolean.TRUE.equals(p.getManageStock()) && p.getStock() != null && p.getStock() < 100) {
+      if (available <= 0) {
+        tag = "无库存";
+        tagClass = "tag-red";
+      } else if ((safety > 0 && available < safety) || (safety == 0 && available < 10)) {
         tag = "需补货";
         tagClass = "tag-orange";
-      } else if (p.getSales() != null && p.getSales() > 500) {
-        tag = "爆款";
-        tagClass = "tag-red";
       } else {
-        tag = "潜力款";
+        tag = "库存充足";
         tagClass = "tag-green";
       }
       item.put("tag", tag);
       item.put("tagClass", tagClass);
-      // 推荐仓库：商品 id 取模分桶，避免所有商品推荐同一仓
-      List<WarehouseEntity> pool = !activeOverseas.isEmpty() ? activeOverseas : activeSelf;
-      WarehouseEntity target = pool.isEmpty() ? null
-          : pool.get(Math.floorMod(p.getId() == null ? idx : p.getId().hashCode(), pool.size()));
-      item.put("warehouse", target != null ? target.getName() : "上海自营仓");
-      item.put("sales", p.getSales() == null ? 0 : p.getSales());
-      BigDecimal profit = p.getPrice() == null ? BigDecimal.ZERO
-          : p.getPrice().multiply(BigDecimal.valueOf(0.15))
-              .multiply(BigDecimal.valueOf(p.getSales() == null ? 0 : p.getSales()))
-              .setScale(2, RoundingMode.HALF_UP);
-      item.put("profit", "¥" + profit.toPlainString());
+
+      // 推荐仓库：取该商品可用库存最多的启用仓库，无库存则不推荐
+      Map<Long, Integer> warehouseStock = availableByWarehouse.getOrDefault(p.getId(), Collections.emptyMap());
+      Long bestWarehouseId = warehouseStock.entrySet().stream()
+          .filter(e -> warehouseNames.containsKey(e.getKey()) && e.getValue() > 0)
+          .max(Map.Entry.comparingByValue())
+          .map(Map.Entry::getKey)
+          .orElse(null);
+      item.put("warehouse", bestWarehouseId != null
+          ? warehouseNames.get(bestWarehouseId)
+          : "-");
+      item.put("sales30", sales30.getOrDefault(p.getId(), 0L));
+      item.put("availableStock", available);
       list.add(item);
-      idx++;
     }
     return Result.success(list);
+  }
+
+  /** 近 30 天各商品真实销量（已完成订单），无数据返回 0 */
+  private Map<Long, Long> loadProductSalesLast30Days(List<Long> productIds) {
+    Map<Long, Long> result = new HashMap<>();
+    if (productIds == null || productIds.isEmpty()) {
+      return result;
+    }
+    String placeholders = String.join(",", Collections.nCopies(productIds.size(), "?"));
+    List<Object> args = new ArrayList<>();
+    args.add(Timestamp.valueOf(LocalDateTime.now().minusDays(30)));
+    args.addAll(productIds);
+    List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+        "SELECT oi.product_id AS productId, COALESCE(SUM(oi.quantity), 0) AS qty "
+            + "FROM mo_order_item oi JOIN mo_order o ON o.id = oi.order_id "
+            + "WHERE o.status = 'COMPLETED' AND o.create_time >= ? "
+            + "AND oi.product_id IN (" + placeholders + ") "
+            + "GROUP BY oi.product_id",
+        args.toArray());
+    for (Map<String, Object> row : rows) {
+      Object pid = row.get("productId") != null ? row.get("productId") : row.get("product_id");
+      Object qty = row.get("qty");
+      if (pid instanceof Number) {
+        result.put(((Number) pid).longValue(), qty instanceof Number ? ((Number) qty).longValue() : 0L);
+      }
+    }
+    return result;
   }
 
   @Operation(summary = "海外仓列表")

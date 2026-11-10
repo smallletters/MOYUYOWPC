@@ -108,16 +108,14 @@
         <!-- 活动 GMV 对比 -->
         <div class="admin-card">
           <div class="card-head">
-            <h2>活动 GMV 对比</h2>
+            <h2>活动 GMV（实时归因）</h2>
             <div class="chart-legend">
-              <span class="legend-item"><i class="sq" style="background:var(--primary)"></i>活动期间</span>
-              <span class="legend-item"><i class="sq" style="background:var(--background-300)"></i>活动前</span>
+              <span class="legend-item"><i class="sq" style="background:var(--primary)"></i>活动带动 GMV</span>
             </div>
           </div>
           <div class="bar-chart">
             <div class="bar-group" v-for="g in gmvCompare" :key="g.label">
               <div class="bar-pair">
-                <div class="bar" :style="{ height: g.before + '%', background: 'var(--background-300)' }" :data-value="g.beforeVal"></div>
                 <div class="bar" :style="{ height: g.after + '%', background: 'var(--primary)' }" :data-value="g.afterVal"></div>
               </div>
               <div class="bar-label">{{ g.label }}</div>
@@ -433,26 +431,30 @@ async function loadCampaignEffects() {
       startDate: item.startDate || '',
       endDate: item.endDate || '',
       participants: item.participants ?? 0,
+      orderCount: item.orderCount ?? 0,
       gmv: item.gmv != null ? item.gmv : '-',
       budget: item.budget != null ? item.budget : '-',
       description: item.description || ''
     }))
     applyFilters()
 
-    // 活动效果指标（来自 effects 接口）
-    if (effectsData) {
-      const totalOrders = effectsData.totalOrders || 0
-      const campaignOrders = effectsData.campaignOrders || 0
-      const ratio = effectsData.campaignRatio || 0
-      activityMetrics.value = [
-        { label: '活动 GMV', value: formatGmv(effectsData.campaignGmv), sub: `占总 GMV ${ratio}%` },
-        { label: '活动订单数', value: campaignOrders.toLocaleString(), sub: `总订单 ${totalOrders.toLocaleString()}` },
-        { label: '拉新用户', value: '-', sub: '需对接行为埋点' },
-        { label: '投入产出比', value: '-', sub: '需对接预算汇总' }
-      ]
-    }
+    // 活动效果指标：按活动列表中的真实归因 GMV / 订单数 / 预算聚合
+    const campaignGmvTotal = allCampaigns.value.reduce((sum, c) => sum + (Number(c.gmv) || 0), 0)
+    const campaignOrderTotal = allCampaigns.value.reduce((sum, c) => sum + (Number(c.orderCount) || 0), 0)
+    const budgetTotal = allCampaigns.value.reduce((sum, c) => sum + (Number(c.budget) || 0), 0)
+    // 期间总 GMV：用 effects 接口的趋势按天数据求和，保证与活动 GMV 同一时间口径
+    const periodGmv = toArray(effectsData, 'trend')
+      .reduce((sum, t) => sum + (Number(t.gmv) || 0), 0)
+    const ratio = periodGmv > 0 ? (campaignGmvTotal / periodGmv * 100).toFixed(1) : '0.0'
+    const roi = budgetTotal > 0 ? (campaignGmvTotal / budgetTotal).toFixed(2) : '0.00'
+    activityMetrics.value = [
+      { label: '活动 GMV', value: formatGmv(campaignGmvTotal), sub: `占期间总 GMV ${ratio}%` },
+      { label: '活动订单数', value: campaignOrderTotal.toLocaleString(), sub: `总订单 ${(effectsData?.totalOrders || 0).toLocaleString()}` },
+      { label: '拉新用户', value: '-', sub: '暂无统计口径' },
+      { label: '投入产出比', value: roi, sub: '活动 GMV / 预算' }
+    ]
 
-    // 活动 GMV 对比：取前 3 个已有 gmv 数据的活动，没有则用最近 3 个
+    // 活动 GMV 对比：取前 3 个已有真实归因 GMV 的活动
     const withGmv = allCampaigns.value.filter(c => Number(c.gmv) > 0).slice(0, 3)
     if (withGmv.length > 0) {
       const max = Math.max(...withGmv.map(c => Number(c.gmv)))
@@ -461,9 +463,7 @@ async function loadCampaignEffects() {
         const ratio = max > 0 ? Math.round(gmv / max * 100) : 0
         return {
           label: c.name.length > 8 ? c.name.slice(0, 8) + '…' : c.name,
-          before: Math.max(20, ratio - 15),
           after: ratio,
-          beforeVal: formatGmv(gmv * 0.5),
           afterVal: formatGmv(gmv)
         }
       })
@@ -605,11 +605,15 @@ async function loadDistributionEffects() {
   try {
     const data = await getDistributionEffects({ days: 7 })
     if (!data) return
+    const gmv = Number(data.gmv || 0)
+    const commission = Number(data.commission || 0)
+    // 佣金率 = 佣金支出 / 分销 GMV，GMV 为 0 时不展示虚构比例
+    const commissionRate = gmv > 0 ? ((commission / gmv) * 100).toFixed(1) + '%' : '0%'
     distMetrics.value = [
       { label: '分销员总数', value: (data.distributorCount || 0).toLocaleString(), sub: '最近 7 天' },
       { label: '活跃占比', value: `${data.activeRate || 0}%`, sub: '有订单 / 总分销员', color: 'var(--primary)' },
       { label: '分销 GMV', value: formatGmv(data.gmv), sub: '已完成订单' },
-      { label: '佣金支出', value: formatGmv(data.commission), sub: '佣金率 10.0%' }
+      { label: '佣金支出', value: formatGmv(data.commission), sub: `佣金率 ${commissionRate}` }
     ]
     // 渠道占比映射到模板
     const ch = data.channels || []

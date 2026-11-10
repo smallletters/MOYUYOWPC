@@ -12,6 +12,7 @@ import com.moyuyo.dao.admin.mapper.FinanceRecordMapper;
 import com.moyuyo.dao.admin.mapper.SettlementMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.service.admin.FinanceService;
+import com.moyuyo.service.admin.SystemConfigService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -47,6 +48,9 @@ class AdminFinanceControllerTest {
 
   @Mock
   private FinanceRecordMapper financeRecordMapper;
+
+  @Mock
+  private SystemConfigService systemConfigService;
 
   @InjectMocks
   private AdminFinanceController adminFinanceController;
@@ -124,10 +128,27 @@ class AdminFinanceControllerTest {
     assertEquals(1L, data.getId());
     assertEquals("SET-20260804", data.getSettlementNo());
     assertEquals(new BigDecimal("1000.00"), data.getTotalAmount());
+    assertEquals(new BigDecimal("1"), data.getFeeRate(), "未配置时应回退默认 1%");
     assertEquals(new BigDecimal("10.00"), data.getFee(), "手续费应为 1%");
     assertEquals(new BigDecimal("990.00"), data.getNetAmount());
     assertEquals("COMPLETED", data.getStatus());
     assertEquals(0, data.getOrderCount());
+  }
+
+  @Test
+  void settlementDetail_配置手续费率_按配置计算手续费() {
+    when(settlementMapper.selectById(1L))
+        .thenReturn(buildSettlement(1L, "2026-08-04", new BigDecimal("1000.00"), "COMPLETED"));
+    when(orderMapper.selectList(any())).thenReturn(List.of());
+    when(systemConfigService.getConfig("finance"))
+        .thenReturn(Map.of("settlement.fee_rate", "2.5"));
+
+    Result<SettlementDetailResponse> result = adminFinanceController.settlementDetail(1L);
+
+    SettlementDetailResponse data = result.getData();
+    assertEquals(new BigDecimal("2.5"), data.getFeeRate());
+    assertEquals(new BigDecimal("25.00"), data.getFee());
+    assertEquals(new BigDecimal("975.00"), data.getNetAmount());
   }
 
   // ============ createSettlement ============

@@ -131,6 +131,7 @@
 <script>
 import { cmsApi } from '@/api'
 import { reportActiveHeartbeat } from '@/utils/heartbeat'
+import { toAbsoluteImageUrl } from '@/utils/imageUrl'
 import { useThemeStore } from '@/store'
 
 /**
@@ -247,9 +248,10 @@ export default {
         const list = await cmsApi.getBannerList()
         if (Array.isArray(list) && list.length > 0) {
           // 映射后端字段 → u-swiper 期望的 image/title
+          // 图片空间返回的是 /uploads/** 相对路径，APP 端必须补成绝对地址，否则原生 <image> 会空白
           this.banners = list.map((b) => ({
             id: b.id,
-            image: b.imageUrl,
+            image: toAbsoluteImageUrl(b.imageUrl),
             title: b.title,
             link: b.linkUrl,
             tag: b.tag,

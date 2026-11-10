@@ -355,26 +355,7 @@ public class FinanceServiceImpl implements FinanceService {
         alerts.add(item);
       }
 
-      // 没有真实告警时，回退到 refund 总览/财务概览的"已完成但有差异"的占位告警，确保页面有数据可看
-      if (alerts.isEmpty()) {
-        // 取最近 5 条已完成的退款，若 reason 非空 → 标记为"差异待复核"
-        List<RefundEntity> recent = refundMapper.selectList(
-          new LambdaQueryWrapper<RefundEntity>()
-            .eq(RefundEntity::getStatus, "COMPLETED")
-            .orderByDesc(RefundEntity::getCompleteTime)
-            .last("LIMIT 5"));
-        for (RefundEntity r : recent) {
-          Map<String, Object> item = new LinkedHashMap<>();
-          item.put("id", "R" + r.getId());
-          item.put("type", "退款已处理");
-          item.put("level", "success");
-          item.put("status", "已处理");
-          item.put("desc", String.format("退款单 %s 已完成打款，金额 ¥%s",
-            r.getRefundNo() == null ? String.valueOf(r.getId()) : r.getRefundNo(),
-            r.getAmount() == null ? "0.00" : String.format("%.2f", r.getAmount())));
-          alerts.add(item);
-        }
-      }
+      // 仅返回真实存在的异常；没有数据时保持空列表，禁止用占位告警填充页面
       return alerts;
     } catch (Exception e) {
       return Collections.emptyList();

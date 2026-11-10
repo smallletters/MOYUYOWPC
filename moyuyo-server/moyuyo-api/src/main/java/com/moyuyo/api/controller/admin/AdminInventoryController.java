@@ -9,20 +9,22 @@ import com.moyuyo.common.dto.admin.inventory.InventoryItemResponse;
 import com.moyuyo.common.dto.admin.inventory.StockUpdateRequest;
 import com.moyuyo.dao.admin.entity.InventoryBatchEntity;
 import com.moyuyo.dao.admin.entity.InventoryCheckEntity;
+import com.moyuyo.dao.admin.entity.InventoryEntity;
 import com.moyuyo.dao.admin.mapper.InventoryBatchMapper;
 import com.moyuyo.dao.admin.mapper.InventoryCheckMapper;
+import com.moyuyo.dao.admin.mapper.InventoryMapper;
 import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductSkuEntity;
 import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.admin.InventoryService;
+import com.moyuyo.service.support.ProductAttributes;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -37,6 +39,7 @@ public class AdminInventoryController {
   private final ProductMapper productMapper;
   private final InventoryCheckMapper inventoryCheckMapper;
   private final InventoryBatchMapper inventoryBatchMapper;
+  private final InventoryMapper inventoryMapper;
 
   @Operation(summary = "库存概览")
   @GetMapping("/overview")
@@ -131,6 +134,21 @@ public class AdminInventoryController {
           .collect(Collectors.toMap(ProductEntity::getId, p -> p));
       }
 
+      // 批量查询 SKU 维度的锁定库存（mo_inventory.locked_quantity）
+      Set<Long> skuIds = skuPage.getRecords().stream()
+        .map(ProductSkuEntity::getId)
+        .collect(Collectors.toSet());
+      Map<Long, Integer> lockedStockMap = new HashMap<>();
+      if (!skuIds.isEmpty()) {
+        List<InventoryEntity> inventories = inventoryMapper.selectList(
+          new LambdaQueryWrapper<InventoryEntity>().in(InventoryEntity::getSkuId, skuIds));
+        for (InventoryEntity inv : inventories) {
+          if (inv.getSkuId() == null) continue;
+          int locked = inv.getLockedQuantity() != null ? inv.getLockedQuantity() : 0;
+          lockedStockMap.merge(inv.getSkuId(), locked, Integer::sum);
+        }
+      }
+
       // 构建返回数据
       List<Map<String, Object>> list = new ArrayList<>();
       for (ProductSkuEntity sku : skuPage.getRecords()) {
@@ -140,13 +158,16 @@ public class AdminInventoryController {
         item.put("sku", sku.getSkuCode());
         item.put("name", product != null ? product.getName() : "未知商品");
         item.put("category", product != null ? product.getCategoryId() : null);
-        item.put("stock", sku.getStock() != null ? sku.getStock() : 0);
-        // 锁定库存：暂时保留为0，后续从订单未完成数量统计
-        item.put("lockedStock", 0);
-        item.put("availableStock", sku.getStock() != null ? sku.getStock() : 0);
-        // 安全库存：取当前库存的10%作为安全库存线
-        BigDecimal stockBd = new BigDecimal(sku.getStock() != null ? sku.getStock() : 0);
-        item.put("safeThreshold", stockBd.multiply(new BigDecimal("0.1")).setScale(0, RoundingMode.HALF_UP).intValue());
+        int stock = sku.getStock() != null ? sku.getStock() : 0;
+        int lockedStock = Math.min(stock, lockedStockMap.getOrDefault(sku.getId(), 0));
+        item.put("stock", stock);
+        item.put("lockedStock", lockedStock);
+        item.put("availableStock", Math.max(0, stock - lockedStock));
+        // 安全库存：优先取商品自定义 low_stock_amount，未设置时回退 10
+        Integer lowStockAmount = product != null
+          ? ProductAttributes.intValue(ProductAttributes.parse(product.getAttributes()), "low_stock_amount")
+          : null;
+        item.put("safeThreshold", lowStockAmount != null ? lowStockAmount : 10);
         item.put("price", sku.getPrice() != null ? sku.getPrice() : BigDecimal.ZERO);
         // 真实返回 updateTime（V20260819_03 迁移新增 update_time 列）
         item.put("updateTime", sku.getUpdateTime());

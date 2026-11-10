@@ -21,62 +21,65 @@
     <u-popup v-model:show="filterVisible" mode="right" width="80%">
       <view class="filter-panel">
         <view class="filter-title">{{ $t('goodsList.filtersTitle') }}</view>
-        <view class="filter-section">
-          <text class="filter-label">{{ $t('goodsList.petType') }}</text>
-          <view class="filter-options">
-            <view
-              v-for="opt in petTypes"
-              :key="opt.value"
-              class="filter-chip"
-              :class="{ active: filter.petType === opt.value }"
-              @click="filter.petType = filter.petType === opt.value ? '' : opt.value"
-            >
-              {{ opt.label }}
+        <!-- 筛选条件区域独立滚动，保证底部操作按钮始终可见 -->
+        <scroll-view scroll-y class="filter-body">
+          <view class="filter-section">
+            <text class="filter-label">{{ $t('goodsList.petType') }}</text>
+            <view class="filter-options">
+              <view
+                v-for="opt in petTypes"
+                :key="opt.value"
+                class="filter-chip"
+                :class="{ active: filter.petType === opt.value }"
+                @click="filter.petType = filter.petType === opt.value ? '' : opt.value"
+              >
+                {{ opt.label }}
+              </view>
             </view>
           </view>
-        </view>
-        <view class="filter-section">
-          <text class="filter-label">{{ $t('goodsList.ip') }}</text>
-          <view class="filter-options">
-            <view
-              v-for="opt in ipOptions"
-              :key="opt"
-              class="filter-chip"
-              :class="{ active: filter.ip === opt }"
-              @click="filter.ip = filter.ip === opt ? '' : opt"
-            >
-              {{ opt }}
+          <view class="filter-section">
+            <text class="filter-label">{{ $t('goodsList.ip') }}</text>
+            <view class="filter-options">
+              <view
+                v-for="opt in ipOptions"
+                :key="opt"
+                class="filter-chip"
+                :class="{ active: filter.ip === opt }"
+                @click="filter.ip = filter.ip === opt ? '' : opt"
+              >
+                {{ opt }}
+              </view>
             </view>
           </view>
-        </view>
-        <view class="filter-section">
-          <text class="filter-label">{{ $t('goodsList.size') }}</text>
-          <view class="filter-options">
-            <view
-              v-for="opt in sizes"
-              :key="opt"
-              class="filter-chip"
-              :class="{ active: filter.size === opt }"
-              @click="filter.size = filter.size === opt ? '' : opt"
-            >
-              {{ opt }}
+          <view class="filter-section">
+            <text class="filter-label">{{ $t('goodsList.size') }}</text>
+            <view class="filter-options">
+              <view
+                v-for="opt in sizes"
+                :key="opt"
+                class="filter-chip"
+                :class="{ active: filter.size === opt }"
+                @click="filter.size = filter.size === opt ? '' : opt"
+              >
+                {{ opt }}
+              </view>
             </view>
           </view>
-        </view>
-        <view class="filter-section">
-          <text class="filter-label">{{ $t('goodsList.priceRange') }}</text>
-          <view class="filter-options">
-            <view
-              v-for="opt in priceRanges"
-              :key="opt.value"
-              class="filter-chip"
-              :class="{ active: filter.priceRange === opt.value }"
-              @click="filter.priceRange = filter.priceRange === opt.value ? '' : opt.value"
-            >
-              {{ opt.label }}
+          <view class="filter-section">
+            <text class="filter-label">{{ $t('goodsList.priceRange') }}</text>
+            <view class="filter-options">
+              <view
+                v-for="opt in priceRanges"
+                :key="opt.value"
+                class="filter-chip"
+                :class="{ active: filter.priceRange === opt.value }"
+                @click="filter.priceRange = filter.priceRange === opt.value ? '' : opt.value"
+              >
+                {{ opt.label }}
+              </view>
             </view>
           </view>
-        </view>
+        </scroll-view>
         <view class="filter-footer">
           <view class="btn btn-outline" @click="resetFilter">{{ $t('goodsList.reset') }}</view>
           <view class="btn btn-primary" @click="applyFilter">{{ $t('goodsList.apply') }}</view>
@@ -330,16 +333,28 @@ export default {
 }
 
 .filter-panel {
-  padding: 32rpx 24rpx;
   height: 100%;
   display: flex;
   flex-direction: column;
+  padding: 0;
+  overflow: hidden;
 }
 
 .filter-title {
+  flex-shrink: 0;
+  padding: 32rpx 24rpx 0;
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   margin-bottom: 24rpx;
+}
+
+/* 筛选条件独立滚动，footer 不参与滚动，避免小屏被裁切 */
+.filter-body {
+  flex: 1;
+  min-height: 0;
+  height: 0;
+  padding: 0 24rpx;
+  box-sizing: border-box;
 }
 
 .filter-section {
@@ -373,9 +388,14 @@ export default {
 }
 
 .filter-footer {
-  margin-top: auto;
+  flex-shrink: 0;
   display: flex;
   gap: 16rpx;
+  padding: 24rpx;
+  /* 适配 iPhone 底部安全区，避免按钮被 Home Indicator 遮挡 */
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+  background: var(--color-surface);
+  border-top: 1rpx solid var(--color-divider);
 }
 
 .filter-footer .btn {

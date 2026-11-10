@@ -311,12 +311,9 @@ async function loadNotifications() {
       readStatus: n.readStatus
     }))
   } catch (err) {
-    // 接口异常兜底：使用与原前端静态文案一致的回退，避免空状态
-    notifList.value = [
-      { id: 'n1', type: 'refund', text: '您有 3 笔退款待审批', time: '刚刚' },
-      { id: 'n2', type: 'order', text: '近 24 小时有 12 笔订单需处理', time: '10 分钟前' },
-      { id: 'n3', type: 'risk', text: '风控告警 1 条：异常登录', time: '1 小时前' }
-    ]
+    // 接口异常时保持空列表，不展示任何伪造通知，避免误导运营
+    notifList.value = []
+    console.error('获取通知失败', err)
   }
 }
 

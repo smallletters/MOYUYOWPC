@@ -214,22 +214,22 @@ public class AdminProductController {
       }
     }
     // 统计各状态商品数（用于顶部 tab 标签计数）。
-    // 与列表查询共享 keyword / categoryId / stockStatus 条件，但忽略 status，
-    // 保证"全部/在售/已下架/草稿/待审核"计数反映当前关键词/分类/库存筛选下的真实分布。
-    // 注意：当前数据模型仅有 onSale 布尔字段，没有真正的 draft / pending 状态列，
-    // 因此 draft / pending 暂记为 0，前端若需要后续可加字段再补。
+    // 与列表查询共享 keyword / categoryId / stockStatus 条件，
+    // 保证"全部/在售/已下架/草稿/待审核"计数反映当前筛选条件下的真实分布。
+    // 真实状态来源：active 取 on_sale；pending/inactive/draft 基于 mo_product_approval 审核流水派生。
     // MyBatis-Plus 的 AbstractWrapper.clone() 为 protected，不能外部调用，
-    // 所以三个 count 各自重新构造 wrapper，避免污染共享对象
+    // 所以每个 count 各自重新构造 wrapper，避免污染共享对象
     long allCount = productMapper.selectCount(buildCountWrapper(catIdLong, keyword, stockStatus, null));
-    long activeCount = productMapper.selectCount(buildCountWrapper(catIdLong, keyword, stockStatus, Boolean.TRUE));
-    long inactiveCount = productMapper.selectCount(buildCountWrapper(catIdLong, keyword, stockStatus, Boolean.FALSE));
+    long activeCount = productMapper.selectCount(buildCountWrapper(catIdLong, keyword, stockStatus, "active"));
+    long inactiveCount = productMapper.selectCount(buildCountWrapper(catIdLong, keyword, stockStatus, "inactive"));
+    long draftCount = productMapper.selectCount(buildCountWrapper(catIdLong, keyword, stockStatus, "draft"));
+    long pendingCount = productMapper.selectCount(buildCountWrapper(catIdLong, keyword, stockStatus, "pending"));
     java.util.Map<String, Long> tabCounts = new java.util.LinkedHashMap<>();
     tabCounts.put("all", allCount);
     tabCounts.put("active", activeCount);
     tabCounts.put("inactive", inactiveCount);
-    // draft / pending 当前数据模型无对应字段，先返回 0 占位；后续若加 status 字段可补真实统计
-    tabCounts.put("draft", 0L);
-    tabCounts.put("pending", 0L);
+    tabCounts.put("draft", draftCount);
+    tabCounts.put("pending", pendingCount);
     // 把 Page 数据显式构造为 Map 返回，避免 Page 内部 Map 结构对 Jackson 序列化产生影响，
     // 同时新增 tabCounts 字段供前端顶部 tab 标签显示真实计数
     // 防御性 null 短路:理论上 selectPage 不会返回 null,但 JDT 静态分析无法跨方法判定,
@@ -657,11 +657,11 @@ public class AdminProductController {
 
   /**
    * 构造商品计数 wrapper：与列表查询共享 keyword / categoryId / stockStatus 条件，
-   * 可选附加 onSale 条件（null=不限，true=在售，false=已下架）。
+   * 并按 status 应用与 ProductServiceImpl.listProducts 完全一致的状态口径。
    * 每个调用都返回新的 wrapper 实例，避免 AbstractWrapper.clone() 是 protected 无法外部调用的问题。
    */
   private com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ProductEntity> buildCountWrapper(
-      Long catIdLong, String keyword, String stockStatus, Boolean onSale) {
+      Long catIdLong, String keyword, String stockStatus, String status) {
     com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ProductEntity> wrapper =
         new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ProductEntity>()
             .eq(catIdLong != null, ProductEntity::getCategoryId, catIdLong);
@@ -680,8 +680,32 @@ public class AdminProductController {
         wrapper.le(ProductEntity::getStock, 0);
       }
     }
-    if (onSale != null) {
-      wrapper.eq(ProductEntity::getOnSale, onSale);
+    // 状态口径与 ProductServiceImpl.applyStatusFilter 保持一致
+    if (org.apache.commons.lang3.StringUtils.isNotBlank(status)) {
+      switch (status) {
+        case "pending":
+          wrapper.eq(ProductEntity::getOnSale, false)
+              .inSql(ProductEntity::getId,
+                  "SELECT product_id FROM mo_product_approval WHERE status IN ('PENDING','URGENT')");
+          break;
+        case "active":
+          wrapper.eq(ProductEntity::getOnSale, true);
+          break;
+        case "inactive":
+          wrapper.eq(ProductEntity::getOnSale, false)
+              .inSql(ProductEntity::getId,
+                  "SELECT product_id FROM mo_product_approval WHERE status IN ('APPROVED','REJECTED')")
+              .notInSql(ProductEntity::getId,
+                  "SELECT product_id FROM mo_product_approval WHERE status IN ('PENDING','URGENT')");
+          break;
+        case "draft":
+          wrapper.eq(ProductEntity::getOnSale, false)
+              .notInSql(ProductEntity::getId, "SELECT product_id FROM mo_product_approval");
+          break;
+        default:
+          wrapper.eq(ProductEntity::getOnSale, "active".equals(status));
+          break;
+      }
     }
     return wrapper;
   }

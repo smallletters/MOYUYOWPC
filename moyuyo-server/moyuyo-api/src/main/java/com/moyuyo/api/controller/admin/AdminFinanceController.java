@@ -16,6 +16,7 @@ import com.moyuyo.dao.admin.mapper.SettlementMapper;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.service.admin.FinanceService;
+import com.moyuyo.service.admin.SystemConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,12 @@ public class AdminFinanceController {
   private final OrderMapper orderMapper;
   private final SettlementMapper settlementMapper;
   private final FinanceRecordMapper financeRecordMapper;
+  private final SystemConfigService systemConfigService;
+
+  /** 结算手续费率配置键（百分比，例如 1 表示 1%） */
+  private static final String SETTLEMENT_FEE_RATE_KEY = "settlement.fee_rate";
+  /** 未配置时的默认手续费率（百分比） */
+  private static final BigDecimal DEFAULT_SETTLEMENT_FEE_RATE = new BigDecimal("1");
 
   @Operation(summary = "财务概览")
   @GetMapping("/overview")
@@ -151,14 +158,16 @@ public class AdminFinanceController {
       data.setSettlementNo(settlement.getSettlementNo());
       data.setPeriod(settlement.getPeriod());
 
-      // amount 字段作为总金额，计算手续费和净额(统一2位小数)
+      // amount 字段作为总金额，手续费率读取系统配置（默认 1%），统一 2 位小数
       BigDecimal totalAmount = settlement.getAmount() != null
         ? settlement.getAmount().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
-      BigDecimal fee = totalAmount.multiply(BigDecimal.valueOf(0.01))
-        .setScale(2, RoundingMode.HALF_UP);
+      BigDecimal feeRate = resolveSettlementFeeRate();
+      BigDecimal fee = totalAmount.multiply(feeRate)
+        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
       BigDecimal netAmount = totalAmount.subtract(fee);
 
       data.setTotalAmount(totalAmount);
+      data.setFeeRate(feeRate);
       data.setFee(fee);
       data.setNetAmount(netAmount);
       data.setStatus(settlement.getStatus());
@@ -181,7 +190,7 @@ public class AdminFinanceController {
               .orderByDesc(OrderEntity::getCreateTime));
 
           for (OrderEntity order : orderList) {
-            orders.add(toOrderSummary(order));
+            orders.add(toOrderSummary(order, feeRate));
           }
         } catch (DateTimeParseException e) {
           // 尝试解析周期范围格式（如 "2026-06-01~2026-06-15" 或 "2026-06-01 to 2026-06-15"）
@@ -204,7 +213,7 @@ public class AdminFinanceController {
                   .le(OrderEntity::getCreateTime, rangeEnd)
                   .orderByDesc(OrderEntity::getCreateTime));
               for (OrderEntity ord : rangedOrders) {
-                orders.add(toOrderSummary(ord));
+                orders.add(toOrderSummary(ord, feeRate));
               }
             }
           } catch (Exception ex) {
@@ -221,18 +230,38 @@ public class AdminFinanceController {
     }
   }
 
-  /** 将订单实体转换为结算详情中的订单摘要 */
-  private static SettlementDetailResponse.OrderSummary toOrderSummary(OrderEntity order) {
+  /** 将订单实体转换为结算详情中的订单摘要（手续费按配置费率计算） */
+  private static SettlementDetailResponse.OrderSummary toOrderSummary(OrderEntity order, BigDecimal feeRate) {
     SettlementDetailResponse.OrderSummary summary = new SettlementDetailResponse.OrderSummary();
     summary.setOrderNo(order.getOrderNo());
     summary.setAmount(order.getPayAmount() != null ? order.getPayAmount() : BigDecimal.ZERO);
-    // 估算手续费(1%)
     BigDecimal orderFee = order.getPayAmount() != null
-      ? order.getPayAmount().multiply(BigDecimal.valueOf(0.01)).setScale(2, RoundingMode.HALF_UP)
+      ? order.getPayAmount().multiply(feeRate)
+          .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
       : BigDecimal.ZERO;
     summary.setFee(orderFee);
     summary.setPayTime(order.getPaidAt() != null ? order.getPaidAt() : order.getCreateTime());
     return summary;
+  }
+
+  /**
+   * 读取结算手续费率（百分比）。
+   * 配置键：settlement.fee_rate；未配置或非法时回退默认 1%，并限制在 0~100 之间。
+   */
+  private BigDecimal resolveSettlementFeeRate() {
+    try {
+      Map<String, Object> config = systemConfigService.getConfig("finance");
+      Object raw = config == null ? null : config.get(SETTLEMENT_FEE_RATE_KEY);
+      if (raw != null) {
+        BigDecimal rate = new BigDecimal(String.valueOf(raw).trim());
+        if (rate.compareTo(BigDecimal.ZERO) >= 0 && rate.compareTo(BigDecimal.valueOf(100)) <= 0) {
+          return rate;
+        }
+      }
+    } catch (Exception e) {
+      log.warn("读取结算手续费率配置失败，使用默认值 {}%", DEFAULT_SETTLEMENT_FEE_RATE, e);
+    }
+    return DEFAULT_SETTLEMENT_FEE_RATE;
   }
 
   @Operation(summary = "创建结算记录")

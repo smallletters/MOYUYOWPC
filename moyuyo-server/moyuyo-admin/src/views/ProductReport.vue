@@ -44,7 +44,7 @@
             <span class="kpi-card-icon">📈</span>
             <span class="kpi-card-label">总利润</span>
           </div>
-          <div class="kpi-card-value">¥{{ fmtNum(totalProfit) }}</div>
+          <div class="kpi-card-value">{{ profitKnown ? '¥' + fmtNum(totalProfit) : '—' }}</div>
           <div class="kpi-card-trend"><span class="kpi-trend-up">毛利合计</span></div>
         </div>
         <div class="kpi-card">
@@ -52,7 +52,7 @@
             <span class="kpi-card-icon">⚖️</span>
             <span class="kpi-card-label">平均利润率</span>
           </div>
-          <div class="kpi-card-value">{{ avgProfitRate }}%</div>
+          <div class="kpi-card-value">{{ avgProfitRate === '—' ? '—' : avgProfitRate + '%' }}</div>
           <div class="kpi-card-trend"><span class="kpi-trend-text">加权平均</span></div>
         </div>
       </div>
@@ -105,9 +105,12 @@
               <td class="mono-cell">{{ row.sku }}</td>
               <td class="num-cell">{{ fmtNum(row.sales) }}</td>
               <td class="money">¥{{ fmtNum(row.revenue) }}</td>
-              <td :class="row.profit >= 0 ? 'profit-up' : 'profit-down'">¥{{ fmtNum(row.profit) }}</td>
+              <td :class="row.profit == null ? '' : (row.profit >= 0 ? 'profit-up' : 'profit-down')">
+                {{ row.profit == null ? '—' : '¥' + fmtNum(row.profit) }}
+              </td>
               <td>
-                <span :class="row.profitRate >= 0 ? 'tag tag-green' : 'tag tag-red'">{{ row.profitRate }}%</span>
+                <span v-if="row.profitRate == null" class="tag tag-gray">—</span>
+                <span v-else :class="row.profitRate >= 0 ? 'tag tag-green' : 'tag tag-red'">{{ row.profitRate }}%</span>
               </td>
               <td>
                 <div class="cell-actions">
@@ -269,11 +272,13 @@ const allMapped = ref([])
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
-// KPI 汇总（基于全量报表数据）
+// KPI 汇总（基于全量报表数据，利润仅在存在真实数据时参与统计）
 const totalRevenue = computed(() => allMapped.value.reduce((s, d) => s + d.revenue, 0))
 const totalSales = computed(() => allMapped.value.reduce((s, d) => s + d.sales, 0))
-const totalProfit = computed(() => allMapped.value.reduce((s, d) => s + d.profit, 0))
+const profitKnown = computed(() => allMapped.value.some(d => d.profit != null))
+const totalProfit = computed(() => allMapped.value.reduce((s, d) => s + (d.profit || 0), 0))
 const avgProfitRate = computed(() => {
+  if (!profitKnown.value) return '—'
   const rev = totalRevenue.value
   if (rev <= 0) return '0.0'
   return (totalProfit.value / rev * 100).toFixed(1)
@@ -283,16 +288,16 @@ function fmtNum(n) {
   return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })
 }
 
-// 将后端字段映射到表格所需字段，缺失字段补 0/空
+// 将后端字段映射到表格所需字段，缺失字段保持为空（不做任何估算）
 function mapRow(d) {
   const sales = Number(d.sales || 0)
   const price = Number(d.price || 0)
   const revenue = d.revenue != null ? Number(d.revenue) : sales * price
-  // 利润：缺少成本字段时按销售额 30% 估算
-  const profit = d.profit != null ? Number(d.profit) : Math.round(revenue * 0.3 * 100) / 100
+  // 利润仅使用后端真实字段，缺失时展示占位符，禁止按比例估算
+  const profit = d.profit != null ? Number(d.profit) : null
   const profitRate = d.profitRate != null
     ? Number(d.profitRate)
-    : (revenue > 0 ? Math.round((profit / revenue) * 10000) / 100 : 0)
+    : (profit != null && revenue > 0 ? Math.round((profit / revenue) * 10000) / 100 : null)
   return {
     id: d.id,
     productName: d.name || d.productName || '-',

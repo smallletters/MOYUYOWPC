@@ -147,6 +147,33 @@
       </div>
     </div>
 
+    <!-- ====== 财务设置 ====== -->
+    <div v-show="activeTab === 'finance'" class="tab-content">
+      <div class="section-title">结算配置</div>
+      <div class="config-card">
+        <div class="config-section">
+          <div class="config-row">
+            <div>
+              <div class="config-label">结算手续费率</div>
+              <div class="config-desc">结算详情按此比例计算手续费，0 表示不收取</div>
+            </div>
+            <div class="number-input-wrap">
+              <input
+                v-model.number="form.settlementFeeRate"
+                type="number"
+                class="config-input"
+                style="max-width: 100px;"
+                min="0"
+                max="100"
+                step="0.01"
+              >
+              <span class="input-suffix">%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ====== 支付设置 ====== -->
     <div v-show="activeTab === 'payment'" class="tab-content">
       <div class="section-title">支付方式</div>
@@ -384,6 +411,7 @@ const tabs = [
   { key: 'basic', label: '基本设置' },
   { key: 'locale', label: '语言与地区' },
   { key: 'order', label: '订单设置' },
+  { key: 'finance', label: '财务设置' },
   { key: 'payment', label: '支付设置' },
   { key: 'shipping', label: '物流配置' },
   { key: 'notification', label: '通知设置' },
@@ -492,6 +520,8 @@ const form = reactive({
   autoConfirm: true,
   // 商品税率（百分比，0 = 不计税）
   productTaxRate: 0,
+  // 结算手续费率（百分比，0 = 不收取）
+  settlementFeeRate: 1,
   emailNotify: true,
   smsNotify: false,
   // 语言与地区（示例数据）
@@ -531,6 +561,12 @@ async function loadConfig() {
         if (item.key === 'icpNumber') form.icpNumber = item.value || form.icpNumber
         if (item.key === 'autoCancel') form.autoCancel = Number(item.value) || form.autoCancel
         if (item.key === 'product_tax_rate') form.productTaxRate = Number(item.value) || 0
+        // 结算手续费率：0 是合法值，仅拦截空值与非法值
+        if (item.key === 'settlement.fee_rate'
+            && item.value !== '' && item.value !== null && item.value !== undefined
+            && !Number.isNaN(Number(item.value))) {
+          form.settlementFeeRate = Math.min(100, Math.max(0, Number(item.value)))
+        }
         if (item.key === 'shipping_class_multiplier') {
           try {
             const multipliers = JSON.parse(item.value)
@@ -628,12 +664,20 @@ async function handleSave() {
     // 私信安全阈值：先归一化为非负整数，空值/非法值回退默认，避免保存空串后前后端理解不一致
     form.dmStrangerFirstLimit = normalizeLimit(form.dmStrangerFirstLimit, 1)
     form.dmStrangerDailyLimit = normalizeLimit(form.dmStrangerDailyLimit, 10)
+    // 结算手续费率：限制在 0~100，避免保存越界值后被后端回退为默认值
+    const feeRate = Number(form.settlementFeeRate)
+    if (!Number.isFinite(feeRate) || feeRate < 0 || feeRate > 100) {
+      ElMessage.warning('结算手续费率需在 0 ~ 100 之间')
+      return
+    }
+    form.settlementFeeRate = Number(feeRate.toFixed(2))
     // 将表单数据转换为后端需要的配置项列表格式
     const configs = [
       { key: 'siteName', value: form.siteName, type: 'text', label: '站点名称' },
       { key: 'icpNumber', value: form.icpNumber, type: 'text', label: '备案号' },
       { key: 'autoCancel', value: String(form.autoCancel), type: 'text', label: '自动取消时间' },
       { key: 'product_tax_rate', value: String(form.productTaxRate || 0), type: 'number', label: '商品税率' },
+      { key: 'settlement.fee_rate', value: String(form.settlementFeeRate ?? 1), type: 'number', label: '结算手续费率' },
       { key: 'autoConfirm', value: String(form.autoConfirm), type: 'text', label: '自动确认收货' },
       { key: 'emailNotify', value: String(form.emailNotify), type: 'text', label: '邮件通知' },
       { key: 'smsNotify', value: String(form.smsNotify), type: 'text', label: '短信通知' },

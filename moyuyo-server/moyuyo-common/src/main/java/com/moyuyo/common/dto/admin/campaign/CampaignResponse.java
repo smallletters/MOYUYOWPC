@@ -35,6 +35,9 @@ public class CampaignResponse {
   /** 参与人数 */
   private Integer participants;
 
+  /** 关联订单数（按订单明细活动归因实时统计） */
+  private Integer orderCount;
+
   /** GMV（按订单明细活动归因实时统计，非活动表静态值） */
   private BigDecimal gmv;
 

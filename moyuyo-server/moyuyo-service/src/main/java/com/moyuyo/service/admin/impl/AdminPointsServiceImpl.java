@@ -129,14 +129,19 @@ public class AdminPointsServiceImpl implements AdminPointsService {
     Page<PointsLogEntity> pageResult = pointsLogMapper.selectPage(new Page<>(page, size), wrapper);
 
     List<Map<String, Object>> list = new ArrayList<>();
+    // 同一用户在当前页可能有多条流水，按 userId 缓存余额，避免重复查询
+    Map<Long, Integer> balanceCache = new HashMap<>();
     for (PointsLogEntity log : pageResult.getRecords()) {
       Map<String, Object> item = new LinkedHashMap<>();
       item.put("id", log.getId());
       item.put("userId", log.getUserId());
       item.put("points", Math.abs(log.getChangeValue()));
       item.put("changeType", log.getChangeValue() >= 0 ? "EARN" : "SPEND");
-      // balance 从数据库无法实时计算，返回 0 占位
-      item.put("balance", 0);
+      // 余额取用户当前可用积分，缺失用户 ID 时返回 0
+      Integer balance = log.getUserId() == null
+          ? 0
+          : balanceCache.computeIfAbsent(log.getUserId(), memberService::getPointsBalance);
+      item.put("balance", balance);
       item.put("type", log.getType());
       item.put("description", log.getRemark());
       item.put("remark", log.getRemark());
