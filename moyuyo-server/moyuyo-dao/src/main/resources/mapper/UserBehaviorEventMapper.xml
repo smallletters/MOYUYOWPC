@@ -16,18 +16,10 @@
   </select>
 
   <!--
-    旧接口：保留以兼容已有调用方，但已在 mapper 接口标记 @Deprecated。
-    新代码必须改用 aggregateEventCountByFieldSafe（基于 @SelectProvider，Provider 入口硬校验白名单）。
-    注意：${field} 直接拼接到 SQL 标识符位置，禁止在未调用 validateAggregateField 时直接使用本方法。
-    保留本方法仅作为兼容层，新接入代码严禁调用；后续清理时同步删除。
+    已移除历史遗留的 aggregateEventCountByField（使用 ${field} 拼接 SQL 标识符）。
+    该方法无任何调用方，且 ${} 拼接属于 SQL 注入面，直接从 XML 删除以避免后续误接入。
+    如需按字段聚合，请使用基于 @SelectProvider 的 Safe 版本（Provider 入口做白名单硬校验）。
   -->
-  <select id="aggregateEventCountByField" resultType="java.util.Map">
-    SELECT `${field}` AS bucket, COUNT(*) AS count
-    FROM mo_user_behavior_event
-    WHERE user_id = #{userId}
-      AND `${field}` IS NOT NULL
-    GROUP BY `${field}`
-  </select>
 
   <!--
     aggregateEventCountByFieldSafe 不在此处声明，已通过 @SelectProvider 在 mapper 接口绑定。

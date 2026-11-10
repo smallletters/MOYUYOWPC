@@ -192,6 +192,64 @@
                 "miniOSVersion" : "13.0"
             },
             "sdkConfigs" : {}
+        },
+        "nativePlugins" : {
+            "MOYUYO-Payment" : {
+                "__plugin_info__" : {
+                    "name" : "MOYUYO-Payment",
+                    "description" : "MOYUYO 支付（Stripe / Google Pay / Apple Pay / PayPal）",
+                    "platforms" : "Android,iOS",
+                    "url" : "",
+                    "android_package_name" : "",
+                    "ios_bundle_id" : "",
+                    "isCloud" : false,
+                    "bought" : -1,
+                    "pid" : "",
+                    "parameters" : {}
+                }
+            },
+            "MOYUYO-PetHub3D" : {
+                "__plugin_info__" : {
+                    "name" : "MOYUYO-PetHub3D",
+                    "description" : "MOYUYO 3D 宠物空间（Android Filament / iOS SceneKit·Metal）",
+                    "platforms" : "Android,iOS",
+                    "url" : "",
+                    "android_package_name" : "",
+                    "ios_bundle_id" : "",
+                    "isCloud" : false,
+                    "bought" : -1,
+                    "pid" : "",
+                    "parameters" : {}
+                }
+            },
+            "MOYUYO-Push" : {
+                "__plugin_info__" : {
+                    "name" : "MOYUYO-Push",
+                    "description" : "MOYUYO 推送（Android FCM / iOS APNs）",
+                    "platforms" : "Android,iOS",
+                    "url" : "",
+                    "android_package_name" : "",
+                    "ios_bundle_id" : "",
+                    "isCloud" : false,
+                    "bought" : -1,
+                    "pid" : "",
+                    "parameters" : {}
+                }
+            },
+            "MOYUYO-SecureStorage" : {
+                "__plugin_info__" : {
+                    "name" : "MOYUYO-SecureStorage",
+                    "description" : "MOYUYO 凭证加密存储（Android EncryptedSharedPreferences / iOS Keychain）",
+                    "platforms" : "Android,iOS",
+                    "url" : "",
+                    "android_package_name" : "",
+                    "ios_bundle_id" : "",
+                    "isCloud" : false,
+                    "bought" : -1,
+                    "pid" : "",
+                    "parameters" : {}
+                }
+            }
         }
     },
     "quickapp" : {},

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- 加密存储插件不申请任何权限：仅使用本应用私有的 Keystore 与 SharedPreferences -->
+</manifest>

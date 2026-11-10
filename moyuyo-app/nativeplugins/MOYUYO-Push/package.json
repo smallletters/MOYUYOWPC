@@ -1,0 +1,33 @@
+{
+  "name" : "MOYUYO-Push",
+  "id" : "MOYUYO-Push",
+  "version" : "1.0.0",
+  "description" : "MOYUYO 推送（Android FCM / iOS APNs）",
+  "_dp_type" : "nativeplugin",
+  "_dp_nativeplugin" : {
+    "android" : {
+      "plugins" : [
+        {
+          "type" : "module",
+          "name" : "MOYUYO-Push",
+          "class" : "com.moyuyo.plugin.push.PushModule"
+        }
+      ],
+      "integrateType" : "aar",
+      "minSdkVersion" : 24,
+      "dependencies" : [ "com.google.firebase:firebase-messaging:23.4.1" ]
+    },
+    "ios" : {
+      "plugins" : [
+        {
+          "type" : "module",
+          "name" : "MOYUYO-Push",
+          "class" : "PushModule"
+        }
+      ],
+      "integrateType" : "framework",
+      "deploymentTarget" : "12.0",
+      "frameworks" : [ "UserNotifications.framework" ]
+    }
+  }
+}

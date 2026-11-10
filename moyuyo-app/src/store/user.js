@@ -1,6 +1,13 @@
 import { defineStore } from 'pinia'
 import { userApi, deviceApi } from '@/api'
 import { setStorage, getStorage, removeStorage, STORAGE_KEYS } from '@/utils/storage'
+import {
+  saveTokens,
+  clearTokens,
+  peekAccessToken,
+  peekRefreshToken,
+  hasSessionHint,
+} from '@/utils/secureToken'
 import { getDeviceFingerprint } from '@/utils/deviceFingerprint'
 import { registerPush } from '@/plugins/push'
 import { closeDmSocket, syncMessageTabBadge } from '@/utils/dmSocket'
@@ -17,14 +24,18 @@ let autoRefreshTimer = null
 
 export const useUserStore = defineStore('user', {
   state: () => ({
-    token: getStorage(STORAGE_KEYS.TOKEN, ''),
-    refreshToken: getStorage('moyuyo_refresh_token', ''),
+    // 凭证的密文由 secureToken 统一管理：这里读的是"升级前明文"的快速兜底，
+    // 启动后 App.vue 会用解密结果回填（applySecureTokens）
+    token: peekAccessToken() || getStorage(STORAGE_KEYS.TOKEN, ''),
+    refreshToken: peekRefreshToken() || getStorage('moyuyo_refresh_token', ''),
+    // 会话存在标记（明文，不含任何凭证）：解密窗口内用它保证 UI 不被误判为未登录
+    hasSession: hasSessionHint(),
     userInfo: getStorage(STORAGE_KEYS.USER_INFO, null),
     deviceList: getStorage(STORAGE_KEYS.DEVICE_LIST, []),
   }),
 
   getters: {
-    isLoggedIn: (state) => !!state.token && !!state.userInfo,
+    isLoggedIn: (state) => (state.hasSession || !!state.token) && !!state.userInfo,
     userId: (state) => state.userInfo?.id || null,
   },
 
@@ -39,8 +50,9 @@ export const useUserStore = defineStore('user', {
       )
       this.token = result.accessToken
       this.refreshToken = result.refreshToken
-      setStorage(STORAGE_KEYS.TOKEN, result.accessToken)
-      setStorage('moyuyo_refresh_token', result.refreshToken)
+      this.hasSession = true
+      // 凭证加密落盘（插件不可用时自动降级明文）
+      await saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken })
       // 登录成功：启动 accessToken 主动续期定时器（2h 过期 → 1h 周期续期，避免后台切回掉登录）
       this.startAutoRefresh()
       await this.fetchProfile()
@@ -54,8 +66,8 @@ export const useUserStore = defineStore('user', {
       const result = await userApi.register(userData)
       this.token = result.accessToken
       this.refreshToken = result.refreshToken
-      setStorage(STORAGE_KEYS.TOKEN, result.accessToken)
-      setStorage('moyuyo_refresh_token', result.refreshToken)
+      this.hasSession = true
+      await saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken })
       // 注册成功同样启动续期定时器
       this.startAutoRefresh()
       await this.fetchProfile()
@@ -113,8 +125,21 @@ export const useUserStore = defineStore('user', {
       const result = await userApi.refreshToken(this.refreshToken)
       this.token = result.accessToken
       this.refreshToken = result.refreshToken
-      setStorage(STORAGE_KEYS.TOKEN, result.accessToken)
-      setStorage('moyuyo_refresh_token', result.refreshToken)
+      await saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken })
+    },
+
+    /**
+     * 加密存储解密完成后回填凭证
+     * <p>
+     * Pinia state 初始化时只能读到"升级前明文"的兜底值，真正的密文要等
+     * initSecureTokens() 异步解密完成，由 App.vue onLaunch 回调本方法注入。
+     * @param {{accessToken?: string, refreshToken?: string}} tokens 解密后的凭证
+     */
+    applySecureTokens(tokens) {
+      const { accessToken, refreshToken } = tokens || {}
+      if (accessToken) this.token = accessToken
+      if (refreshToken) this.refreshToken = refreshToken
+      if (accessToken || refreshToken) this.hasSession = true
     },
 
     /**
@@ -182,11 +207,12 @@ export const useUserStore = defineStore('user', {
     _clearLocalState() {
       this.token = ''
       this.refreshToken = ''
+      this.hasSession = false
       this.userInfo = null
       this.deviceList = []
-      removeStorage(STORAGE_KEYS.TOKEN)
       removeStorage(STORAGE_KEYS.USER_INFO)
-      removeStorage('moyuyo_refresh_token')
+      // 加密项 + 明文降级键 + 会话标记一并清理；内存缓存同步清空，立即进入未登录态
+      clearTokens().catch(() => {})
       // 清 deviceList 缓存,防止下一账号冷启动读到本账号的列表
       removeStorage(STORAGE_KEYS.DEVICE_LIST)
       // 断开私信 WebSocket 并清除消息 Tab 红点，避免登出后仍收到上一账号的私信
@@ -272,8 +298,8 @@ export const useUserStore = defineStore('user', {
       const result = await userApi.verifyMagicLink(token)
       this.token = result.accessToken
       this.refreshToken = result.refreshToken
-      setStorage(STORAGE_KEYS.TOKEN, result.accessToken)
-      setStorage('moyuyo_refresh_token', result.refreshToken)
+      this.hasSession = true
+      await saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken })
       // 魔法链接登录成功：启动续期定时器
       this.startAutoRefresh()
       await this.fetchProfile()

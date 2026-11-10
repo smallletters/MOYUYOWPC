@@ -63,7 +63,9 @@ public class CouponController {
         // 避免 C 端按字面值展示金额时把"9 折"显示为"90 元"。
         // 另外必须暴露 userCouponId(mo_user_coupon.id)：前端下单要拿它核销券，
         // 原实现只返回券模板，导致 checkout 提交的 couponUserId 永远为 undefined（P0 资金口径缺陷）。
-        List<UserCouponEntity> list = couponService.listUserCoupons(UserContextHolder.getUserId(), status);
+        // 该 GET 路径命中 JwtAuthFilter 的前缀白名单，匿名请求会以 userId=null 进入，
+        // 必须显式要求登录（requireUserId 抛 401），不能依赖 "user_id = NULL 查不到" 的隐含行为
+        List<UserCouponEntity> list = couponService.listUserCoupons(UserContextHolder.requireUserId(), status);
         List<CouponView> views = new ArrayList<>(list.size());
         if (!list.isEmpty()) {
             // 批量查券模板，避免 N+1
@@ -99,7 +101,8 @@ public class CouponController {
     @Operation(summary = "我的优惠券详情")
     @GetMapping("/user-coupon/{userCouponId}")
     public Result<java.util.Map<String, Object>> userCouponDetail(@PathVariable Long userCouponId) {
-        Long userId = UserContextHolder.getUserId();
+        // 同上：GET 前缀白名单放行，此处必须强制登录
+        Long userId = UserContextHolder.requireUserId();
         UserCouponEntity uc = userCouponMapper.selectById(userCouponId);
         if (uc == null || !uc.getUserId().equals(userId)) {
             throw new IllegalArgumentException("用户优惠券不存在");

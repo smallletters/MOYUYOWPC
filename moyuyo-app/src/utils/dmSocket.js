@@ -8,7 +8,7 @@
  * - 单例连接，多页面共享；页面通过 onDmSocketEvent 订阅消息
  */
 import { config } from '@/utils/config'
-import { getStorage, STORAGE_KEYS } from '@/utils/storage'
+import { ready, peekAccessToken } from '@/utils/secureToken'
 import { getWsTicket } from '@/api/user'
 
 /** 消息 Tab 在 tabBar 中的索引（pages.json 顺序：首页/宠物/社区/消息/我的） */
@@ -70,7 +70,7 @@ function startHeartbeat(task) {
 
 function scheduleReconnect() {
   if (manualClosed || retryTimer) return
-  if (!getStorage(STORAGE_KEYS.TOKEN, '')) return
+  if (!peekAccessToken()) return
   retryTimer = setTimeout(() => {
     retryTimer = null
     connectDmSocket()
@@ -81,10 +81,17 @@ function scheduleReconnect() {
 /** 建立连接（幂等；已连接或连接中直接返回） */
 export async function connectDmSocket() {
   if (socketTask || connecting) return
-  // 未登录不建立连接
-  if (!getStorage(STORAGE_KEYS.TOKEN, '')) return
-  manualClosed = false
+  // 先同步占位再 await：ready() 期间若并发调用 connectDmSocket，两个调用都会通过上面的
+  // 幂等判断而重复建连（模块只保留最后一个 socketTask，前一个会泄漏且消息重复）
   connecting = true
+  // 凭证解密完成后再判断登录态，避免冷启动时误判为未登录而不建连
+  await ready()
+  // 未登录不建立连接
+  if (!peekAccessToken()) {
+    connecting = false
+    return
+  }
+  manualClosed = false
 
   // 先换取一次性 ticket，再建立连接；ticket 不落 URL 日志且一次性有效
   let ticket = ''

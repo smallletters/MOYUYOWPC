@@ -105,7 +105,7 @@ public class CommunityController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) Long petId) {
-        return Result.success(communityService.listMyPosts(UserContextHolder.getUserId(), petId, page, size));
+        return Result.success(communityService.listMyPosts(UserContextHolder.requireUserId(), petId, page, size));
     }
 
     @Operation(summary = "点赞")
@@ -216,7 +216,7 @@ public class CommunityController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
         return Result.success(communityService.listCollectedPosts(
-                UserContextHolder.getUserId(), page, size));
+                UserContextHolder.requireUserId(), page, size));
     }
 
     /**
@@ -231,7 +231,7 @@ public class CommunityController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
         return Result.success(communityService.listLikedPosts(
-                UserContextHolder.getUserId(), page, size));
+                UserContextHolder.requireUserId(), page, size));
     }
 
     /**

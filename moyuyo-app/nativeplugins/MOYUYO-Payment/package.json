@@ -1,0 +1,36 @@
+{
+  "name" : "MOYUYO-Payment",
+  "id" : "MOYUYO-Payment",
+  "version" : "1.0.0",
+  "description" : "MOYUYO 支付（Stripe / Google Pay / Apple Pay / PayPal）",
+  "_dp_type" : "nativeplugin",
+  "_dp_nativeplugin" : {
+    "android" : {
+      "plugins" : [
+        {
+          "type" : "module",
+          "name" : "MOYUYO-Payment",
+          "class" : "com.moyuyo.plugin.payment.PaymentModule"
+        }
+      ],
+      "integrateType" : "aar",
+      "minSdkVersion" : 24,
+      "dependencies" : [
+        "com.stripe:stripe-android:20.50.0",
+        "com.google.android.gms:play-services-wallet:19.3.0"
+      ]
+    },
+    "ios" : {
+      "plugins" : [
+        {
+          "type" : "module",
+          "name" : "MOYUYO-Payment",
+          "class" : "PaymentModule"
+        }
+      ],
+      "integrateType" : "framework",
+      "deploymentTarget" : "12.0",
+      "frameworks" : [ "PassKit.framework" ]
+    }
+  }
+}

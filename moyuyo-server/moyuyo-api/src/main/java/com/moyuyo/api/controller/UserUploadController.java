@@ -136,7 +136,8 @@ public class UserUploadController {
 
     /** 图片上传通用实现：subDir 为空时存根目录，否则存到该子目录下 */
     private Result<UploadResult> uploadImageInternal(MultipartFile file, String subDir, String scene) {
-        // 隐式登录态校验:未登录时 UserContextHolder.getUserId() 抛异常被全局处理器转 401
+        // 显式登录态校验：UserContextHolder.getUserId() 未登录时返回 null（不会抛异常），
+        // 因此这里必须自行判空返回 401，不能依赖全局异常处理器兜底
         Long userId = UserContextHolder.getUserId();
         if (userId == null) {
             return Result.error(401, "请先登录");

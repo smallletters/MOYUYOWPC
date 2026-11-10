@@ -4,7 +4,7 @@
  * dev 模式代理前缀：/api/v1/*
  * 生产由 nginx 反代统一对外。
  */
-import { getStorage, STORAGE_KEYS } from '@/utils/storage'
+import { peekAccessToken } from '@/utils/secureToken'
 
 // 后端 API 绝对地址：vite.config.js 的 define 会把 process.env.VITE_ADMIN_API_BASE
 // 在编译期静态替换成字符串字面量。uni-app APP 端 process 由引擎 polyfill，
@@ -19,7 +19,7 @@ function buildUrl(path) {
 
 /** 构造请求头：登录后自动带上 JWT，便于后端获取 userId（任务进度等场景） */
 function buildAuthHeader() {
-  const token = getStorage(STORAGE_KEYS.TOKEN)
+  const token = peekAccessToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 

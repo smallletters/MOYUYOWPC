@@ -1,10 +1,18 @@
 import { config, REQUEST_TIMEOUT, RESPONSE_CODE } from './config'
-import { getStorage, removeStorage, setStorage, STORAGE_KEYS } from './storage'
+import { removeStorage, STORAGE_KEYS } from './storage'
 import { t } from '@/i18n'
 // 静态 import(替代原 import('@/api/user') 动态 import):
 //   HBuilder(uni-app 3.8.12)在编译期看到 dynamic import 会启用 Rollup
 //   代码分割,但其 output.format 默认 iife,二者冲突 → build failed.
 import { refreshToken } from '@/api/user'
+import {
+  ready,
+  peekAccessToken,
+  peekRefreshToken,
+  hasSessionHint,
+  saveTokens,
+  clearTokens,
+} from './secureToken'
 
 const pendingRequests = new Map()
 
@@ -13,18 +21,8 @@ function genRequestId() {
 }
 
 /**
- * 安全的 storage 读取:storage 抛异常(被注入异常 key、底层崩溃)
- * 时返回空值,不让 401 处理链路整体崩溃。
+ * 安全的 storage 删除:storage 抛异常时吞掉,不让登出链路整体崩溃。
  */
-function safeGet(key) {
-  try {
-    return getStorage(key)
-  } catch (e) {
-    console.warn('[request] safeGet failed for key:', key, e)
-    return ''
-  }
-}
-
 function safeRemove(key) {
   try {
     removeStorage(key)
@@ -33,16 +31,10 @@ function safeRemove(key) {
   }
 }
 
-function safeSet(key, value) {
-  try {
-    setStorage(key, value)
-  } catch (e) {
-    console.warn('[request] safeSet failed for key:', key, e)
-  }
-}
-
 function getBearerToken() {
-  return safeGet(STORAGE_KEYS.TOKEN)
+  // accessToken 走加密存储（内存缓存）：request() 入口已 await ready()，
+  // 这里同步读缓存即可，不会出现"解密未完成就发请求"的情况
+  return peekAccessToken()
 }
 
 // 401 刷新去抖锁：并发请求共用一次 refresh，避免 5+ 个接口同时触发 5+ 个 modal
@@ -75,13 +67,19 @@ let isExpiredModalShown = false
  * @param {object} options 触发 401 的原请求 options（用于重发）
  * @returns {Promise} resolve = 重发结果；reject = 刷新失败或重发失败
  */
-function handleUnauthorized(options) {
-  const refreshTokenVal = safeGet('moyuyo_refresh_token')
+async function handleUnauthorized(options) {
+  // 凭证采用加密存储：先确保解密完成，再从内存缓存同步取（插件异步回调不阻塞业务同步读）
+  await ready()
+  // 本次请求是否真的带了 access token：用于区分"登录过期"与"游客访问需登录接口"。
+  // 同时结合会话标记：解密失败导致缓存为空但本机曾登录过时，仍需提示重新登录
+  const hadSession = !!peekAccessToken() || hasSessionHint()
+  const refreshTokenVal = peekRefreshToken()
   if (!refreshTokenVal) {
-    // 无 refresh token：清凭证 + 弹窗确认再跳转
-    safeRemove(STORAGE_KEYS.TOKEN)
+    // 无 refresh token：清凭证（加密项 + 明文降级键 + 会话标记）+ 弹窗确认再跳转
+    await clearTokens()
     safeRemove(STORAGE_KEYS.USER_INFO)
-    promptReLogin()
+    // 游客态（请求本来就没带 token）静默失败：不能把"未登录访问需登录接口"误报成"登录已过期"
+    if (hadSession) promptReLogin()
     return Promise.reject(new Error('Unauthorized'))
   }
   if (isRefreshing) {
@@ -107,10 +105,11 @@ function handleUnauthorized(options) {
       throw err
     })
     .then(async (newTokens) => {
-      safeSet(STORAGE_KEYS.TOKEN, newTokens.accessToken)
-      if (newTokens.refreshToken) {
-        safeSet('moyuyo_refresh_token', newTokens.refreshToken)
-      }
+      // 新凭证统一加密落盘（插件不可用时自动降级明文）
+      await saveTokens({
+        accessToken: newTokens.accessToken,
+        refreshToken: newTokens.refreshToken || undefined,
+      })
       // 先发当前 options（caller 期望的结果），失败直接抛出进 catch
       let currentResult
       try {
@@ -136,13 +135,13 @@ function handleUnauthorized(options) {
       }
       return currentResult
     })
-    .catch((err) => {
+    .catch(async (err) => {
       // 关键：只有 refresh 自身失败（_isRefreshFailure=true）才清凭证+弹 modal
       // 首项重发的业务错误（4xx/5xx/network）透传给 caller，token 仍有效
       if (err && err._isRefreshFailure) {
-        safeRemove(STORAGE_KEYS.TOKEN)
+        // 凭证（加密项 + 明文降级键 + 会话标记）一并清理
+        await clearTokens()
         safeRemove(STORAGE_KEYS.USER_INFO)
-        safeRemove('moyuyo_refresh_token')
         const queue = pendingUnauthorizedHandlers.slice()
         pendingUnauthorizedHandlers.length = 0
         queue.forEach(({ reject }) => reject(new Error('Unauthorized')))
@@ -353,6 +352,11 @@ function localizeServerMessage(msg) {
 }
 
 export function request(options) {
+  // 凭证解密完成前不发请求：避免带着空 token 打出 401，触发"登录已过期"误提示
+  return ready().then(() => doRequest(options))
+}
+
+function doRequest(options) {
   // _isRetry 标记：refresh 后重发请求时为 true，避免新 token 仍 401 时再次进入 refresh 死循环
   const isRetry = options._isRetry === true
   // _silent 标记：内部调用（如 refreshToken）失败时静默处理，不弹 toast、不标记 isNetworkError

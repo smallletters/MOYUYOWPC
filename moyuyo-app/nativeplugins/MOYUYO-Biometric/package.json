@@ -1,0 +1,33 @@
+{
+  "name" : "MOYUYO-Biometric",
+  "id" : "MOYUYO-Biometric",
+  "version" : "1.0.0",
+  "description" : "MOYUYO 生物识别（Android BiometricPrompt / iOS Face ID·Touch ID）",
+  "_dp_type" : "nativeplugin",
+  "_dp_nativeplugin" : {
+    "android" : {
+      "plugins" : [
+        {
+          "type" : "module",
+          "name" : "MOYUYO-Biometric",
+          "class" : "com.moyuyo.plugin.biometric.BiometricModule"
+        }
+      ],
+      "integrateType" : "aar",
+      "minSdkVersion" : 24,
+      "dependencies" : [ "androidx.biometric:biometric:1.2.0-alpha05" ]
+    },
+    "ios" : {
+      "plugins" : [
+        {
+          "type" : "module",
+          "name" : "MOYUYO-Biometric",
+          "class" : "BiometricModule"
+        }
+      ],
+      "integrateType" : "framework",
+      "deploymentTarget" : "12.0",
+      "frameworks" : [ "LocalAuthentication.framework" ]
+    }
+  }
+}

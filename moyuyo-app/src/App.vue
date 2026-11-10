@@ -14,6 +14,7 @@ import { triggerSessionExpired } from '@/utils/request'
 // 复用 home.vue 的三重去重实现（本地 dateKey + 服务端 Redis SETNX + 失败兜底），
 // 内部已经处理同日幂等，不会变成 N 次请求。
 import { reportActiveHeartbeat } from '@/utils/heartbeat'
+import { initSecureTokens, peekAccessToken, peekRefreshToken } from '@/utils/secureToken'
 // 私信 WebSocket：全局维持连接，收到新私信时刷新消息 Tab 未读角标
 import { messageApi, orderApi } from '@/api'
 import { connectDmSocket, onDmSocketEvent, syncMessageTabBadge } from '@/utils/dmSocket'
@@ -208,7 +209,14 @@ export default {
 
     // 校验已保存的 Token 是否有效
     const userStore = useUserStore()
-    if (userStore.token) {
+
+    // 冷启动预热：设备上报 + 续期定时器 + 探活 + 私信长连接。
+    // 抽成函数是因为凭证改为加密存储后，token 可能在 onLaunch 返回后才解密完成，
+    // 不能再用同步的 if (userStore.token) 一次性判断（否则 APP 端冷启动会漏掉探活/建连）。
+    let warmupDone = false
+    const runStartupWarmup = () => {
+      if (warmupDone || !userStore.token) return
+      warmupDone = true
       // 注册/刷新当前设备到后端,让"我的设备列表"能展示此 APP 实例
       // 不阻塞启动,失败仅打 warn
       userStore.upsertCurrentDevice()
@@ -219,6 +227,20 @@ export default {
       // 建立私信 WebSocket 并同步消息 Tab 未读角标
       ensureDmSocket()
     }
+
+    // 凭证加密存储：异步解密后回填 store，完成后补跑冷启动预热
+    initSecureTokens()
+      .then(() => {
+        userStore.applySecureTokens({
+          accessToken: peekAccessToken(),
+          refreshToken: peekRefreshToken(),
+        })
+        runStartupWarmup()
+      })
+      .catch((e) => console.warn('[secure-token] init failed:', e?.message))
+
+    // 兼容同步可用场景（H5 / 升级前明文）：立即预热，不等待解密
+    runStartupWarmup()
 
     // APP 端：支付回跳 scheme 监听（冷启动时，若系统带 url 唤起 APP）
     ensureSchemeRegistered()

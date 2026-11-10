@@ -1,0 +1,38 @@
+{
+  "name" : "MOYUYO-PetHub3D",
+  "id" : "MOYUYO-PetHub3D",
+  "version" : "1.0.0",
+  "description" : "MOYUYO 3D 宠物空间（Android Filament / iOS SceneKit·Metal）",
+  "_dp_type" : "nativeplugin",
+  "_dp_nativeplugin" : {
+    "android" : {
+      "plugins" : [
+        {
+          "type" : "module",
+          "name" : "MOYUYO-PetHub3D",
+          "class" : "com.moyuyo.plugin.pethub.PetHubModule"
+        }
+      ],
+      "integrateType" : "aar",
+      "minSdkVersion" : 24,
+      "dependencies" : [
+        "com.google.android.filament:filament-android:1.51.0",
+        "com.google.android.filament:gltfio-android:1.51.0",
+        "androidx.compose.ui:ui:1.6.0",
+        "androidx.compose.material3:material3:1.2.0"
+      ]
+    },
+    "ios" : {
+      "plugins" : [
+        {
+          "type" : "module",
+          "name" : "MOYUYO-PetHub3D",
+          "class" : "PetHubModule"
+        }
+      ],
+      "integrateType" : "framework",
+      "deploymentTarget" : "12.0",
+      "frameworks" : [ "SceneKit.framework", "Metal.framework", "MetalKit.framework" ]
+    }
+  }
+}

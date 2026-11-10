@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.moyuyo.common.JwtUtil;
 import com.moyuyo.common.dto.auth.*;
 import com.moyuyo.common.security.UserContextHolder;
+import com.moyuyo.common.utils.LogMasker;
 import com.moyuyo.common.exception.BusinessException;
 import com.moyuyo.dao.entity.SmsCodeEntity;
 import com.moyuyo.dao.entity.UserEntity;
@@ -259,7 +260,8 @@ public class AuthServiceImpl implements AuthService {
             inviteService.bindInvitee(request.getInviteCode().trim(), user.getId());
         }
 
-        log.info("User registered: id={}, email={}, phone={}", user.getId(), user.getEmail(), user.getPhone());
+        log.info("User registered: id={}, email={}, phone={}", user.getId(),
+                LogMasker.maskEmail(user.getEmail()), LogMasker.maskPhone(user.getPhone()));
         return generateTokenPair(user);
     }
 
@@ -333,7 +335,7 @@ public class AuthServiceImpl implements AuthService {
             redisTemplate.delete(REDIS_KEY_VERIFY_COOLDOWN + email);
         } catch (DataAccessException e) {
             loginFailureCounter.increment();
-            log.error("清理邮箱验证码状态 Redis 失败，email={}", email, e);
+            log.error("清理邮箱验证码状态 Redis 失败，email={}", LogMasker.maskEmail(email), e);
         }
     }
 
@@ -404,7 +406,8 @@ public class AuthServiceImpl implements AuthService {
             } catch (DataAccessException e) {
                 remainSeconds = null;
             }
-            log.warn("Login attempt rejected: account locked, email={}, remainSeconds={}", email, remainSeconds);
+            log.warn("Login attempt rejected: account locked, email={}, remainSeconds={}",
+                    LogMasker.maskEmail(email), remainSeconds);
             throw new IllegalArgumentException("账号登录失败次数过多，请 " + (remainSeconds != null ? remainSeconds / 60 : 15) + " 分钟后再试");
         }
 
@@ -469,7 +472,7 @@ public class AuthServiceImpl implements AuthService {
         user.setLastLoginTime(LocalDateTime.now());
         userMapper.updateById(user);
 
-        log.info("User logged in: id={}, email={}", user.getId(), user.getEmail());
+        log.info("User logged in: id={}, email={}", user.getId(), LogMasker.maskEmail(user.getEmail()));
         return generateTokenPair(user);
     }
 
@@ -541,7 +544,8 @@ public class AuthServiceImpl implements AuthService {
             return;
         }
 
-        log.warn("Login failed: email={}, reason={}, failCount={}", email, reason, failCount);
+        log.warn("Login failed: email={}, reason={}, failCount={}",
+                LogMasker.maskEmail(email), reason, failCount);
 
         // 连续失败超过阈值，锁定账户
         if (failCount >= MAX_LOGIN_FAIL_ATTEMPTS) {
@@ -551,7 +555,8 @@ public class AuthServiceImpl implements AuthService {
                         ACCOUNT_LOCK_DURATION_SECONDS, TimeUnit.SECONDS);
                 // 锁定后清除失败计数，解锁后重新计数
                 redisTemplate.delete(failKey);
-                log.warn("Account locked due to too many failed login attempts: email={}", email);
+                log.warn("Account locked due to too many failed login attempts: email={}",
+                        LogMasker.maskEmail(email));
             } catch (DataAccessException e) {
                 // 锁定失败：fail-open + 计数器累加，运维第一时间感知
                 loginFailureCounter.increment();
@@ -741,7 +746,8 @@ public class AuthServiceImpl implements AuthService {
         // 不记录验证码明文，避免日志泄露导致账号接管（真实发送由 EmailService 落地）
         EmailService emailService = emailServiceProvider.getIfAvailable();
         if (emailService == null) {
-            log.warn("[email-verify] EmailService Bean 不存在，仅在日志模式下生成验证码：{}", email);
+            log.warn("[email-verify] EmailService Bean 不存在，仅在日志模式下生成验证码：{}",
+                    LogMasker.maskEmail(email));
         } else {
             try {
                 emailService.sendEmailVerificationCode(
@@ -754,7 +760,7 @@ public class AuthServiceImpl implements AuthService {
                 throw e;
             }
         }
-        log.info("Verification code sent to {}", email);
+        log.info("Verification code sent to {}", LogMasker.maskEmail(email));
     }
 
     @Override
@@ -799,7 +805,7 @@ public class AuthServiceImpl implements AuthService {
         if (user != null) {
             user.setEmailVerified(true);
             userMapper.updateById(user);
-            log.info("Email verified: {}", email);
+            log.info("Email verified: {}", LogMasker.maskEmail(email));
         }
     }
 
@@ -851,7 +857,8 @@ public class AuthServiceImpl implements AuthService {
         // 均中断流程，避免用户误以为"已发"）
         EmailService emailService = emailServiceProvider.getIfAvailable();
         if (emailService == null) {
-            log.warn("[password-reset] EmailService Bean 不存在，进入 log-only 降级：to={}", email);
+            log.warn("[password-reset] EmailService Bean 不存在，进入 log-only 降级：to={}",
+                    LogMasker.maskEmail(email));
         } else {
             try {
                 emailService.sendPasswordResetCode(
@@ -866,7 +873,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // 不记录 reset code 明文，避免日志泄露
-        log.info("Password reset code sent to {}", email);
+        log.info("Password reset code sent to {}", LogMasker.maskEmail(email));
     }
 
     @Override
@@ -943,7 +950,7 @@ public class AuthServiceImpl implements AuthService {
         // 改密后立刻吊销该用户全部 refresh token，避免旧会话（及被盗会话）继续续期
         revokeAllRefreshTokens(user.getId());
 
-        log.info("Password reset completed for: {}", email);
+        log.info("Password reset completed for: {}", LogMasker.maskEmail(email));
     }
 
     /**
@@ -981,7 +988,7 @@ public class AuthServiceImpl implements AuthService {
             redisTemplate.delete(failKey);
         } catch (DataAccessException e) {
             loginFailureCounter.increment();
-            log.error("resetPassword 清理验证码 Redis 失败，email={}", email, e);
+            log.error("resetPassword 清理验证码 Redis 失败，email={}", LogMasker.maskEmail(email), e);
         }
     }
 
@@ -990,7 +997,7 @@ public class AuthServiceImpl implements AuthService {
         try {
             redisTemplate.delete(REDIS_KEY_RESET_COOLDOWN + email);
         } catch (DataAccessException e) {
-            log.warn("resetPassword 清理发送冷却 Redis 失败，email={}", email, e);
+            log.warn("resetPassword 清理发送冷却 Redis 失败，email={}", LogMasker.maskEmail(email), e);
         }
     }
 
@@ -1120,7 +1127,8 @@ public class AuthServiceImpl implements AuthService {
         String magicLink = h5Base + "/pages/user/magic-link?token=" + token;
         EmailService emailService = emailServiceProvider.getIfAvailable();
         if (emailService == null) {
-            log.warn("[magic-link] EmailService Bean 不存在，进入 log-only 降级：to={}", email);
+            log.warn("[magic-link] EmailService Bean 不存在，进入 log-only 降级：to={}",
+                    LogMasker.maskEmail(email));
         } else {
             emailService.sendMagicLink(
                     email,
@@ -1129,7 +1137,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // 不记录 magic link token 明文，避免日志泄露
-        log.info("Magic link sent to {}", email);
+        log.info("Magic link sent to {}", LogMasker.maskEmail(email));
     }
 
     @Override
@@ -1603,7 +1611,7 @@ public class AuthServiceImpl implements AuthService {
             }
             throw new BusinessException(502, "短信发送失败，请稍后再试");
         }
-        log.info("Phone code sent: phone={}, purpose={}", phone, normalizedPurpose);
+        log.info("Phone code sent: phone={}, purpose={}", LogMasker.maskPhone(phone), normalizedPurpose);
     }
 
     @Override
@@ -1652,7 +1660,8 @@ public class AuthServiceImpl implements AuthService {
             user.setMarketingOptIn(false);
             user.setLastLoginTime(LocalDateTime.now());
             userMapper.insert(user);
-            log.info("Phone login auto-registered user: id={}, phone={}", user.getId(), phone);
+            log.info("Phone login auto-registered user: id={}, phone={}", user.getId(),
+                    LogMasker.maskPhone(phone));
         } else {
             // 封禁/禁用校验：到期自动解封，未到期提示原因与解封时间
             ensureLoginAllowed(user);

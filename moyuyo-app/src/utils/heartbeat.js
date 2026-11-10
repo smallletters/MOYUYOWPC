@@ -18,6 +18,7 @@
 
 import { heartbeat as heartbeatApi } from '@/api/user'
 import { getStorage, setStorage, STORAGE_KEYS } from '@/utils/storage'
+import { peekAccessToken } from '@/utils/secureToken'
 
 const LOG_TAG = '[heartbeat]'
 
@@ -45,7 +46,7 @@ function todayDateKey() {
 export function reportActiveHeartbeat() {
   try {
     // 1) 未登录(token 为空)直接返回,不浪费一次请求
-    const token = getStorage(STORAGE_KEYS.TOKEN)
+    const token = peekAccessToken()
     if (!token) return
 
     // 2) 客户端预检:本地 dateKey 与今日一致 → 同一日重复切首页不发请求

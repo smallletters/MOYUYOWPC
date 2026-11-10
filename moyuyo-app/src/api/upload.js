@@ -1,4 +1,4 @@
-import { getStorage, STORAGE_KEYS } from '@/utils/storage'
+import { ready, peekAccessToken } from '@/utils/secureToken'
 import { t } from '@/i18n'
 
 /**
@@ -71,9 +71,11 @@ export async function uploadImages(filePaths, scene) {
  * @param {(percent: number) => void} [onProgress] 上传进度回调(0~100)
  * @returns {Promise<{url: string, filename: string, size: number, ...}>}
  */
-export function uploadVideo(filePath, onProgress) {
+export async function uploadVideo(filePath, onProgress) {
+  // 凭证解密完成后再读 token，避免上传接口因空 token 被 401
+  await ready()
   return new Promise((resolve, reject) => {
-    const token = getStorage(STORAGE_KEYS.TOKEN)
+    const token = peekAccessToken()
     const header = token ? { Authorization: `Bearer ${token}` } : {}
     const task = uni.uploadFile({
       url: resolveUploadUrl('/api/v1/file/upload/video'),
@@ -112,11 +114,13 @@ export function uploadVideo(filePath, onProgress) {
  * @param {string} filename 文件名（H5 Blob 上传时用于扩展名判定）
  * @param {string} [scene] 上传场景（ADMIN 由后端管理端接口固定，此处用于用户端图片分类）
  */
-function uploadTo(endpoint, source, filename, scene) {
+async function uploadTo(endpoint, source, filename, scene) {
+  // 凭证解密完成后再读 token，避免上传接口因空 token 被 401
+  await ready()
   // #ifdef H5
   if (typeof Blob !== 'undefined' && source instanceof Blob) {
     return new Promise((resolve, reject) => {
-      const token = getStorage(STORAGE_KEYS.TOKEN)
+      const token = peekAccessToken()
       const form = new FormData()
       form.append('file', source, filename || 'file')
       if (scene) form.append('scene', scene)
@@ -141,7 +145,7 @@ function uploadTo(endpoint, source, filename, scene) {
   }
   // #endif
   return new Promise((resolve, reject) => {
-    const token = getStorage(STORAGE_KEYS.TOKEN)
+    const token = peekAccessToken()
     const header = token ? { Authorization: `Bearer ${token}` } : {}
     uni.uploadFile({
       url: resolveUploadUrl(endpoint),

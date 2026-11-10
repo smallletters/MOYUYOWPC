@@ -1,0 +1,36 @@
+{
+  "name" : "MOYUYO-Location",
+  "id" : "MOYUYO-Location",
+  "version" : "1.0.0",
+  "description" : "MOYUYO 定位与地图选点（Google Play Services / iOS CoreLocation）",
+  "_dp_type" : "nativeplugin",
+  "_dp_nativeplugin" : {
+    "android" : {
+      "plugins" : [
+        {
+          "type" : "module",
+          "name" : "MOYUYO-Location",
+          "class" : "com.moyuyo.plugin.location.LocationModule"
+        }
+      ],
+      "integrateType" : "aar",
+      "minSdkVersion" : 24,
+      "dependencies" : [
+        "com.google.android.gms:play-services-location:21.1.0",
+        "com.google.android.gms:play-services-maps:18.2.0"
+      ]
+    },
+    "ios" : {
+      "plugins" : [
+        {
+          "type" : "module",
+          "name" : "MOYUYO-Location",
+          "class" : "LocationModule"
+        }
+      ],
+      "integrateType" : "framework",
+      "deploymentTarget" : "12.0",
+      "frameworks" : [ "CoreLocation.framework", "MapKit.framework" ]
+    }
+  }
+}

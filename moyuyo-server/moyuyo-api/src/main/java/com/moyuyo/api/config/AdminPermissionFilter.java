@@ -80,7 +80,10 @@ public class AdminPermissionFilter implements Filter {
         HttpServletRequest request = (HttpServletRequest) servletRequest;
         HttpServletResponse response = (HttpServletResponse) servletResponse;
 
-        String path = request.getRequestURI();
+        // 统一使用归一化后的路径做权限判定。
+        // Spring MVC 默认 removeSemicolonContent=true，"/orders/1/refund;x=1" 仍会映射到退款接口，
+        // 若用原始 getRequestURI() 匹配退款角色白名单正则，会被路径参数绕过（降级为通用 orders:create 校验）。
+        String path = normalizePath(request.getRequestURI());
 
         // CORS 预检放行：预检请求不携带 Authorization，若在此拦截会让浏览器判定 CORS 失败。
         // 与 JwtAuthFilter 行为保持一致，由 Spring MVC 的 CORS 处理器回写响应头。
@@ -183,6 +186,27 @@ public class AdminPermissionFilter implements Filter {
         }
 
         chain.doFilter(request, response);
+    }
+
+    /**
+     * 归一化请求路径：剥离每一段的 URL 路径参数（分号及其后内容）。
+     * <p>
+     * 与 Spring MVC 的 handler 映射行为（UrlPathHelper#removeSemicolonContent 默认 true）对齐，
+     * 防止通过 "/api/admin/orders/1/refund;x=1" 这类变形让资金操作端点的角色白名单正则失配。
+     * 不含分号时原样返回，不改变其它路径的判定行为。
+     */
+    private String normalizePath(String uri) {
+        if (uri == null || uri.indexOf(';') < 0) {
+            return uri;
+        }
+        StringBuilder sb = new StringBuilder(uri.length());
+        for (String segment : uri.split("/", -1)) {
+            int semicolon = segment.indexOf(';');
+            sb.append(semicolon >= 0 ? segment.substring(0, semicolon) : segment).append('/');
+        }
+        // 循环里每段都补了一个 '/'，去掉末尾多余的这一个
+        sb.setLength(sb.length() - 1);
+        return sb.toString();
     }
 
     /**

@@ -417,6 +417,13 @@ export default {
 
     /** 拉取当前用户未使用的优惠券，供订单摘要自动挑选最优券 */
     async loadUnusedCoupons() {
+      // 未登录不请求 /coupons/mine：该接口强制登录（匿名返回 401），
+      // 而购物车对游客开放，不做拦截会误弹"登录已过期"
+      if (!this.userStore.isLoggedIn) {
+        this.unusedCoupons = []
+        this.couponsLoaded = true
+        return
+      }
       try {
         const list = await couponApi.getMyCoupons('UNUSED')
         this.unusedCoupons = Array.isArray(list) ? list : []

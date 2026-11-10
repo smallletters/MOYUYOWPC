@@ -223,7 +223,8 @@
 import { useUserStore } from '@/store'
 import { sendPhoneCode, loginByPhone } from '@/api/user'
 import { config } from '@/utils/config'
-import { setStorage, getStorage, removeStorage, STORAGE_KEYS } from '@/utils/storage'
+import { getStorage, removeStorage, STORAGE_KEYS } from '@/utils/storage'
+import { saveTokens } from '@/utils/secureToken'
 import { i18n } from '@/i18n'
 
 export default {
@@ -326,8 +327,12 @@ export default {
           // 手动写入 store:模拟 login() 成功路径
           this.userStore.token = result.accessToken
           this.userStore.refreshToken = result.refreshToken
-          setStorage(STORAGE_KEYS.TOKEN, result.accessToken)
-          setStorage('moyuyo_refresh_token', result.refreshToken)
+          this.userStore.hasSession = true
+          // 凭证加密落盘（插件不可用时自动降级明文）
+          await saveTokens({
+            accessToken: result.accessToken,
+            refreshToken: result.refreshToken,
+          })
           // 启动 accessToken 主动续期定时器（与 store.login() 行为一致）
           this.userStore.startAutoRefresh()
           await this.userStore.fetchProfile()

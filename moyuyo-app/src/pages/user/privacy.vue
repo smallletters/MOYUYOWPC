@@ -100,6 +100,7 @@ import { i18n } from '@/i18n'
 // 通过相对路径 import store：uni-app Vite 在 Vue SFC 中不支持 CommonJS require('@/...')
 import { useUserStore } from '@/store/user'
 import { removeStorage, setStorage, getStorage, STORAGE_KEYS } from '@/utils/storage'
+import { clearTokens } from '@/utils/secureToken'
 
 export default {
   pageTitleKey: 'pageTitle.userPrivacy',
@@ -347,9 +348,9 @@ export default {
       } catch (e) {
         // store 异常兜底:用 STORAGE_KEYS 常量直接清,避免硬编码 key 漂移
         console.warn('[privacy] forceLogout failed, fallback to removeStorage', e)
-        removeStorage(STORAGE_KEYS.TOKEN)
-        removeStorage('moyuyo_refresh_token')
         removeStorage(STORAGE_KEYS.USER_INFO)
+        // 凭证（加密项 + 明文降级键 + 会话标记）统一清理（forceLogout 抛异常时的兜底路径）
+        clearTokens().catch(() => {})
       }
 
       // 计算冻结天数(默认 15,与后端常量对齐)
