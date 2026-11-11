@@ -70,7 +70,7 @@
             <span class="section-title">价格优先级</span>
           </div>
         </template>
-        <p class="section-desc">结算时系统自动匹配最优价格，高优先级覆盖低优先级</p>
+        <p class="section-desc">结算时先命中秒杀价 / 活动价，会员折扣在此基础上叠加，均未命中时使用销售价</p>
         <div class="priority-ladder">
           <div
             v-for="(item, idx) in priorityLevels"
@@ -250,7 +250,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getPriceList, createPrice, updatePrice,
-  getMemberPriceConfigs, saveMemberPriceConfigs, getPriceModifyList
+  getMemberPriceConfigs, saveMemberPriceConfigs, getPriceModifyList, getPriceRules
 } from '../api/admin'
 
 // ===== 价格 CRUD（原有逻辑保留） =====
@@ -357,25 +357,34 @@ async function handleSave() {
   }
 }
 
-// ===== 价格优先级（业务规则说明） =====
-const priorityLevels = [
-  { name: '秒杀价', level: 'P1 最高', width: '100%', color: 'var(--state-error)', background: 'var(--state-error-surface)' },
-  { name: '会员价', level: 'P2', width: '92%', color: 'var(--brand-500)', background: 'var(--brand-50)' },
-  { name: '满减价', level: 'P3', width: '84%', color: 'var(--chart-3)', background: '#fff8e8' },
-  { name: '原价', level: 'P4 最低', width: '76%', color: 'var(--text-400)', background: 'var(--background-200)' }
+// ===== 价格优先级与营销叠加矩阵（真实口径：GET /price/rules） =====
+// 仅保留阶梯的视觉样式，优先级内容与叠加关系全部由后端返回
+const PRIORITY_STYLES = [
+  { width: '100%', color: 'var(--state-error)', background: 'var(--state-error-surface)' },
+  { width: '92%', color: 'var(--brand-500)', background: 'var(--brand-50)' },
+  { width: '84%', color: 'var(--chart-3)', background: '#fff8e8' },
+  { width: '76%', color: 'var(--text-400)', background: 'var(--background-200)' }
 ]
+const priorityLevels = ref([])
+const activityNames = ref([])
+const matrixRows = ref([])
 
-// ===== 营销活动互斥矩阵（业务规则说明） =====
-// 矩阵为对称矩阵：'yes' 可叠加，'no' 互斥，'-' 自身
-const activityNames = ['优惠券', '满减', '秒杀', '会员价', '积分', '礼品卡']
-const matrixRows = [
-  { name: '优惠券', cells: ['-', 'yes', 'no', 'no', 'yes', 'yes'] },
-  { name: '满减', cells: ['yes', '-', 'no', 'yes', 'yes', 'yes'] },
-  { name: '秒杀', cells: ['no', 'no', '-', 'no', 'no', 'no'] },
-  { name: '会员价', cells: ['no', 'yes', 'no', '-', 'yes', 'yes'] },
-  { name: '积分', cells: ['yes', 'yes', 'no', 'yes', '-', 'yes'] },
-  { name: '礼品卡', cells: ['yes', 'yes', 'no', 'yes', 'yes', '-'] }
-]
+/** 加载后端计价规则（优先级 + 叠加矩阵） */
+async function loadPriceRules() {
+  try {
+    const res = await getPriceRules()
+    const list = Array.isArray(res?.priority) ? res.priority : []
+    priorityLevels.value = list.map((item, idx) => ({
+      ...item,
+      ...(PRIORITY_STYLES[idx] || PRIORITY_STYLES[PRIORITY_STYLES.length - 1])
+    }))
+    activityNames.value = Array.isArray(res?.activityNames) ? res.activityNames : []
+    matrixRows.value = Array.isArray(res?.matrixRows) ? res.matrixRows : []
+  } catch (e) {
+    console.error('获取价格规则失败:', e)
+    ElMessage.error('获取价格规则失败')
+  }
+}
 
 // ===== 会员价配置（五档会员等级统一折扣，真实接口） =====
 // 后端 discountRate 为折扣系数（1.00 = 原价），页面展示为"折"（0.95 → 9.5 折）
@@ -460,6 +469,7 @@ onMounted(() => {
   loadData()
   loadMemberConfigs()
   loadPriceModifyList()
+  loadPriceRules()
 })
 </script>
 

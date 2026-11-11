@@ -198,14 +198,8 @@ const customFunnel = reactive({
   timeRange: '7d'
 })
 
-// 漏斗可选步骤（与后端 /analysis/funnel 返回的 stage 名称保持一致）
-const funnelStepOptions = [
-  { key: '浏览商品', label: '浏览商品' },
-  { key: '加入购物车', label: '加入购物车' },
-  { key: '提交订单', label: '提交订单' },
-  { key: '支付成功', label: '支付成功' },
-  { key: '完成交易', label: '完成交易' }
-]
+// 漏斗可选步骤：由 /analysis/funnel 返回的 stage 动态生成，避免与后端阶段定义脱节
+const funnelStepOptions = ref([])
 
 function openCustomFunnelDialog() {
   customFunnel.name = ''
@@ -270,6 +264,10 @@ async function loadFunnelData() {
         width: (s.userCount || 0) / maxCount * 100,
         rate: (s.conversionRate != null ? s.conversionRate + '%' : '0%')
       })))
+      // 自定义漏斗的起止步骤跟随后端返回的阶段顺序
+      funnelStepOptions.value = funnelList
+        .filter(s => s.stage)
+        .map(s => ({ key: s.stage, label: s.stage }))
     }
     // 从 API 返回值中提取流失分析与复购率数据（如果后端返回了这些字段则覆盖默认值）
     if (res && typeof res === 'object') {

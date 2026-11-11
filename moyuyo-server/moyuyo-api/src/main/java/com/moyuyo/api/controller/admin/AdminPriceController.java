@@ -84,6 +84,54 @@ public class AdminPriceController {
     return Result.success(resultPage);
   }
 
+  // ==================== 价格规则（优先级与营销叠加矩阵） ====================
+
+  @Operation(summary = "价格规则：价格优先级与营销活动叠加矩阵")
+  @GetMapping("/rules")
+  public Result<Map<String, Object>> rules() {
+    // 口径来源：OrderServiceImpl.createOrder 与 CampaignPricingServiceImpl.applyToOrder，
+    // 计价逻辑调整时必须同步本接口，避免管理端展示与真实结算规则不一致
+    List<Map<String, Object>> priority = new ArrayList<>();
+    priority.add(ruleItem("秒杀价", "P1 最高"));
+    priority.add(ruleItem("活动价", "P2"));
+    priority.add(ruleItem("会员价", "P3"));
+    priority.add(ruleItem("销售价", "P4 最低"));
+
+    // 叠加说明：'-' 表示自身，yes 可叠加，no 互斥
+    // 秒杀走独立下单接口（FlashSaleServiceImpl.placeFlashOrder），不支持优惠券/积分，
+    // 且普通结算中秒杀商品会跳过商品级活动与会员折扣，故与其他优惠均互斥；
+    // 会员折扣作用于活动价之后的成交价，与活动价、优惠券、满减、积分均可叠加
+    List<String> activityNames = List.of("优惠券", "满减", "秒杀", "会员价", "积分");
+    List<Map<String, Object>> matrixRows = new ArrayList<>();
+    matrixRows.add(matrixRow("优惠券", "-", "yes", "no", "yes", "yes"));
+    matrixRows.add(matrixRow("满减", "yes", "-", "no", "yes", "yes"));
+    matrixRows.add(matrixRow("秒杀", "no", "no", "-", "no", "no"));
+    matrixRows.add(matrixRow("会员价", "yes", "yes", "no", "-", "yes"));
+    matrixRows.add(matrixRow("积分", "yes", "yes", "no", "yes", "-"));
+
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("priority", priority);
+    result.put("activityNames", activityNames);
+    result.put("matrixRows", matrixRows);
+    return Result.success(result);
+  }
+
+  /** 价格优先级条目 */
+  private Map<String, Object> ruleItem(String name, String level) {
+    Map<String, Object> item = new LinkedHashMap<>();
+    item.put("name", name);
+    item.put("level", level);
+    return item;
+  }
+
+  /** 营销叠加矩阵行：cells 与 activityNames 顺序一一对应 */
+  private Map<String, Object> matrixRow(String name, String... cells) {
+    Map<String, Object> row = new LinkedHashMap<>();
+    row.put("name", name);
+    row.put("cells", Arrays.asList(cells));
+    return row;
+  }
+
   // ==================== 会员价配置（按会员等级统一折扣） ====================
 
   @Operation(summary = "会员价配置列表（五档等级）")

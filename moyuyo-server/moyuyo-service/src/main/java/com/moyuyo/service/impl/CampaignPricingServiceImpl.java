@@ -295,6 +295,8 @@ public class CampaignPricingServiceImpl {
       int eligibleCount = 0;
       for (OrderItemEntity item : items) {
         if (item.getCampaignId() != null || item.getPrice() == null) continue;
+        // 秒杀商品不参与营销活动：不计入满减门槛，避免秒杀价被再次参与满减
+        if (item.getProductId() != null && ctx.flashSaleProductIds.contains(item.getProductId())) continue;
         ProductEntity product = item.getProductId() == null ? null : productMapper.selectById(item.getProductId());
         if (product == null || !matchesScope(c, product)) continue;
         eligibleAmount = eligibleAmount.add(item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));

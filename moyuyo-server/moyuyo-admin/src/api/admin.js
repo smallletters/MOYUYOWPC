@@ -663,6 +663,11 @@ export function saveMemberPriceConfigs(configs) {
   return api.put('/price/member-configs', configs)
 }
 
+// 价格规则：价格优先级与营销活动叠加矩阵（后端计价口径）
+export function getPriceRules() {
+  return api.get('/price/rules')
+}
+
 export function deletePrice(id) {
   return api.delete(`/price/${id}`)
 }
