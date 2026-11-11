@@ -11,7 +11,7 @@
         v-for="tab in tabs"
         :key="tab.key"
         :class="['config-tab', { active: activeTab === tab.key }]"
-        @click="activeTab = tab.key"
+        @click="selectTab(tab.key)"
       >{{ tab.label }}</button>
     </div>
 
@@ -393,6 +393,128 @@
       </div>
     </div>
 
+    <!-- ====== AI 客服（扣子） ====== -->
+    <div v-show="activeTab === 'ai'" class="tab-content">
+      <div class="section-title">AI 智能客服</div>
+      <div class="config-card">
+        <div class="config-section">
+          <div class="config-row">
+            <div>
+              <div class="config-label">启用 AI 自动回复</div>
+              <div class="config-desc">开启后用户咨询由 AI 先接待；转人工后该会话不再自动回复</div>
+            </div>
+            <div
+              class="toggle-track"
+              role="switch"
+              :aria-checked="String(form.aiCsEnabled)"
+              tabindex="0"
+              @click="form.aiCsEnabled = !form.aiCsEnabled"
+              @keydown.enter.prevent="form.aiCsEnabled = !form.aiCsEnabled"
+              @keydown.space.prevent="form.aiCsEnabled = !form.aiCsEnabled"
+            >
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <div class="config-row">
+            <div>
+              <div class="config-label">服务商</div>
+              <div class="config-desc">扣子 Coze：智能体发布 API 渠道；扣子编程：coze.site 部署的智能体</div>
+            </div>
+            <select v-model="form.aiCsProvider" class="config-input" style="max-width: 200px;">
+              <option value="none">不启用</option>
+              <option value="coze">扣子 Coze（OpenAPI）</option>
+              <option value="coze-site">扣子编程（coze.site）</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">扣子对接参数</div>
+      <div class="config-card">
+        <div class="config-section">
+          <div class="config-row">
+            <div>
+              <div class="config-label">Bot ID</div>
+              <div class="config-desc">服务商选「扣子 Coze」时填写：智能体发布到「API」渠道后获取的 bot_id；扣子编程留空即可</div>
+            </div>
+            <input v-model.trim="form.aiCsBotId" class="config-input" placeholder="7xxxxxxxxxxxxxxx">
+          </div>
+          <div class="config-row">
+            <div>
+              <div class="config-label">Project ID</div>
+              <div class="config-desc">服务商选「扣子编程」时填写：部署页调用示例里的 project_id；示例中的 session_id 由系统按会话自动生成，无需填写</div>
+            </div>
+            <input v-model.trim="form.aiCsProjectId" class="config-input" placeholder="7632333768757608448" style="max-width: 260px;">
+          </div>
+          <div class="config-row">
+            <div>
+              <div class="config-label">访问令牌</div>
+              <div class="config-desc">扣子 Coze 填 PAT（pat_ 开头）；扣子编程填部署页「API Token」生成的令牌。仅后端持有，保存后只显示掩码，留空表示不修改</div>
+            </div>
+            <input
+              v-model.trim="form.aiCsToken"
+              type="password"
+              class="config-input"
+              :placeholder="form.aiCsTokenMask ? `已配置：${form.aiCsTokenMask}` : 'pat_xxxxxxxx'"
+              autocomplete="new-password"
+              style="max-width: 420px;"
+            >
+          </div>
+          <div class="config-row">
+            <div>
+              <div class="config-label">接口地址</div>
+              <div class="config-desc">扣子 Coze 填 https://api.coze.cn；扣子编程填部署域名（如 https://43h2prm35k.coze.site），后端自动拼接 /stream_run，直接粘贴完整地址也可以</div>
+            </div>
+            <input v-model.trim="form.aiCsBaseUrl" class="config-input" placeholder="https://api.coze.cn 或 https://xxx.coze.site" style="max-width: 420px;">
+          </div>
+          <div class="config-row">
+            <div>
+              <div class="config-label">单次超时</div>
+              <div class="config-desc">毫秒；超时后回复兜底话术，不阻塞用户发消息</div>
+            </div>
+            <input v-model.number="form.aiCsTimeoutMs" type="number" class="config-input" style="max-width: 120px;" min="1000" max="30000">
+          </div>
+          <div class="config-row">
+            <div>
+              <div class="config-label">转人工标记</div>
+              <div class="config-desc">智能体回复中出现该标记即转人工，标记本身不会展示给用户</div>
+            </div>
+            <input v-model.trim="form.aiCsHumanMarker" class="config-input" style="max-width: 160px;" placeholder="[[HUMAN]]">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">成本保护</div>
+      <div class="config-card">
+        <div class="config-section">
+          <div class="config-row">
+            <div>
+              <div class="config-label">按用户限流</div>
+              <div class="config-desc">防止单账号高频提问刷爆第三方 token 配额</div>
+            </div>
+            <div
+              class="toggle-track"
+              role="switch"
+              :aria-checked="String(form.aiCsRateLimitEnabled)"
+              tabindex="0"
+              @click="form.aiCsRateLimitEnabled = !form.aiCsRateLimitEnabled"
+              @keydown.enter.prevent="form.aiCsRateLimitEnabled = !form.aiCsRateLimitEnabled"
+              @keydown.space.prevent="form.aiCsRateLimitEnabled = !form.aiCsRateLimitEnabled"
+            >
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <div class="config-row">
+            <div>
+              <div class="config-label">每分钟上限</div>
+              <div class="config-desc">单用户每分钟最多触发的 AI 轮次，超限只提示不消耗额度</div>
+            </div>
+            <input v-model.number="form.aiCsRateLimitPerMinute" type="number" class="config-input" style="max-width: 100px;" min="1" max="60">
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 底部保存栏 -->
     <div class="save-bar">
       <button class="save-btn" @click="handleSave">保存配置</button>
@@ -407,6 +529,17 @@ import { getSystemConfig, saveSystemConfig, getPaymentMethods, getCarriers, getS
 
 const activeTab = ref('basic')
 
+// 配置是否成功从后端读取：读取失败时不允许回写，避免用表单默认值覆盖线上配置
+const configLoaded = ref(false)
+// 是否进入过 AI 客服 tab：未进入则不提交 ai_cs_*，避免误改线上 AI 配置
+const aiTabVisited = ref(false)
+
+// 切换 tab：记录是否查看过 AI 客服配置
+function selectTab(key) {
+  activeTab.value = key
+  if (key === 'ai') aiTabVisited.value = true
+}
+
 const tabs = [
   { key: 'basic', label: '基本设置' },
   { key: 'locale', label: '语言与地区' },
@@ -415,7 +548,8 @@ const tabs = [
   { key: 'payment', label: '支付设置' },
   { key: 'shipping', label: '物流配置' },
   { key: 'notification', label: '通知设置' },
-  { key: 'dm', label: '私信安全' }
+  { key: 'dm', label: '私信安全' },
+  { key: 'ai', label: 'AI 客服' }
 ]
 
 const cancelOptions = [
@@ -540,7 +674,19 @@ const form = reactive({
   shippingClassMultiplier: { standard: 1, cold: 1, bulky: 1, oversea: 1 },
   // 私信安全（0 = 不限制）
   dmStrangerFirstLimit: 1,
-  dmStrangerDailyLimit: 10
+  dmStrangerDailyLimit: 10,
+  // AI 客服（扣子）：token 只在重新填写时提交，aiCsTokenMask 仅用于展示已配置的掩码
+  aiCsEnabled: false,
+  aiCsProvider: 'coze',
+  aiCsBotId: '',
+  aiCsProjectId: '',
+  aiCsToken: '',
+  aiCsTokenMask: '',
+  aiCsBaseUrl: 'https://api.coze.cn',
+  aiCsTimeoutMs: 8000,
+  aiCsHumanMarker: '[[HUMAN]]',
+  aiCsRateLimitEnabled: true,
+  aiCsRateLimitPerMinute: 10
 })
 
 const paymentMethods = ref([
@@ -554,6 +700,8 @@ const paymentMethods = ref([
 async function loadConfig() {
   try {
     const res = await getSystemConfig()
+    // 读取成功才允许后续回写，防止拿表单默认值覆盖线上配置
+    configLoaded.value = true
     const configList = res || []
       // 将后端返回的配置项列表映射到 form 中
       configList.forEach(item => {
@@ -605,6 +753,27 @@ async function loadConfig() {
             && item.value !== '' && item.value !== null && item.value !== undefined
             && !Number.isNaN(Number(item.value))) {
           form.dmStrangerDailyLimit = Math.max(0, Math.trunc(Number(item.value)))
+        }
+        // AI 客服：token 后端只返回掩码，此处仅用于展示「已配置」状态
+        if (item.key === 'ai_cs_enabled') form.aiCsEnabled = item.value === 'true' || item.value === '1' || item.value === true
+        if (item.key === 'ai_cs_provider') form.aiCsProvider = item.value || form.aiCsProvider
+        if (item.key === 'ai_cs_bot_id') form.aiCsBotId = item.value || ''
+        if (item.key === 'ai_cs_project_id') form.aiCsProjectId = item.value || ''
+        if (item.key === 'ai_cs_token') form.aiCsTokenMask = item.value || ''
+        if (item.key === 'ai_cs_base_url') form.aiCsBaseUrl = item.value || form.aiCsBaseUrl
+        if (item.key === 'ai_cs_human_marker') form.aiCsHumanMarker = item.value || form.aiCsHumanMarker
+        if (item.key === 'ai_cs_rate_limit_enabled') {
+          form.aiCsRateLimitEnabled = item.value === 'true' || item.value === '1' || item.value === true
+        }
+        if (item.key === 'ai_cs_timeout_ms'
+            && item.value !== '' && item.value !== null && item.value !== undefined
+            && !Number.isNaN(Number(item.value))) {
+          form.aiCsTimeoutMs = Math.min(30000, Math.max(1000, Math.trunc(Number(item.value))))
+        }
+        if (item.key === 'ai_cs_rate_limit_per_minute'
+            && item.value !== '' && item.value !== null && item.value !== undefined
+            && !Number.isNaN(Number(item.value))) {
+          form.aiCsRateLimitPerMinute = Math.min(60, Math.max(1, Math.trunc(Number(item.value))))
         }
         // 从配置中恢复支付方式状态
         if (item.key && item.key.startsWith('payment_')) {
@@ -661,6 +830,11 @@ function handleUploadLogo() {
 // 保存系统配置
 async function handleSave() {
   try {
+    // 配置没读到就保存会把表单默认值写回数据库，覆盖线上全部配置
+    if (!configLoaded.value) {
+      ElMessage.warning('配置加载失败，请刷新页面后重试')
+      return
+    }
     // 私信安全阈值：先归一化为非负整数，空值/非法值回退默认，避免保存空串后前后端理解不一致
     form.dmStrangerFirstLimit = normalizeLimit(form.dmStrangerFirstLimit, 1)
     form.dmStrangerDailyLimit = normalizeLimit(form.dmStrangerDailyLimit, 10)
@@ -671,6 +845,27 @@ async function handleSave() {
       return
     }
     form.settlementFeeRate = Number(feeRate.toFixed(2))
+    // AI 客服开启前必须凭据齐全，否则后端 usable() 为 false，会静默退回关键词回复
+    // 只在用户确实打开过 AI tab 时校验，避免阻塞其它 tab 的保存
+    if (form.aiCsEnabled && aiTabVisited.value) {
+      if (!form.aiCsProvider || form.aiCsProvider === 'none') {
+        ElMessage.warning('已开启 AI 自动回复，请选择服务商')
+        return
+      }
+      // 两种扣子部署形态的必填项不同：OpenAPI 要 bot_id，扣子编程要 project_id
+      if (form.aiCsProvider === 'coze' && !form.aiCsBotId) {
+        ElMessage.warning('已开启 AI 自动回复，请填写 Bot ID')
+        return
+      }
+      if (form.aiCsProvider === 'coze-site' && !form.aiCsProjectId) {
+        ElMessage.warning('已开启 AI 自动回复，请填写 Project ID')
+        return
+      }
+      if (!form.aiCsToken && !form.aiCsTokenMask) {
+        ElMessage.warning('已开启 AI 自动回复，请填写访问令牌')
+        return
+      }
+    }
     // 将表单数据转换为后端需要的配置项列表格式
     const configs = [
       { key: 'siteName', value: form.siteName, type: 'text', label: '站点名称' },
@@ -698,6 +893,24 @@ async function handleSave() {
       { key: 'dm.guard.stranger_first_limit', value: String(form.dmStrangerFirstLimit), type: 'number', label: '陌生人首条上限' },
       { key: 'dm.guard.stranger_daily_limit', value: String(form.dmStrangerDailyLimit), type: 'number', label: '陌生人每日上限' }
     ]
+    // AI 客服：仅在用户确实打开过该 tab 时提交，避免在别的 tab 点保存时把 AI 配置一起回写
+    if (aiTabVisited.value) {
+      configs.push(
+        { key: 'ai_cs_enabled', value: String(form.aiCsEnabled), type: 'text', label: 'AI 客服开关' },
+        { key: 'ai_cs_provider', value: form.aiCsProvider, type: 'text', label: 'AI 服务商' },
+        { key: 'ai_cs_bot_id', value: form.aiCsBotId, type: 'text', label: '扣子 Bot ID' },
+        { key: 'ai_cs_project_id', value: form.aiCsProjectId, type: 'text', label: '扣子编程 Project ID' },
+        { key: 'ai_cs_base_url', value: form.aiCsBaseUrl, type: 'text', label: '扣子接口地址' },
+        { key: 'ai_cs_timeout_ms', value: String(form.aiCsTimeoutMs), type: 'number', label: 'AI 单次超时' },
+        { key: 'ai_cs_human_marker', value: form.aiCsHumanMarker, type: 'text', label: '转人工标记' },
+        { key: 'ai_cs_rate_limit_enabled', value: String(form.aiCsRateLimitEnabled), type: 'text', label: 'AI 限流开关' },
+        { key: 'ai_cs_rate_limit_per_minute', value: String(form.aiCsRateLimitPerMinute), type: 'number', label: 'AI 每分钟上限' }
+      )
+      // 令牌只在填写了新值时提交，避免把掩码写回数据库
+      if (form.aiCsToken) {
+        configs.push({ key: 'ai_cs_token', value: form.aiCsToken, type: 'text', label: '扣子访问令牌' })
+      }
+    }
     // 将支付方式状态也加入配置保存
     paymentMethods.value.forEach(method => {
       configs.push({
@@ -708,6 +921,9 @@ async function handleSave() {
       })
     })
     await saveSystemConfig(configs)
+    // 清空令牌输入框并回读配置，让掩码反映最新值
+    form.aiCsToken = ''
+    await loadConfig()
     ElMessage.success('配置保存成功')
   } catch (e) {
     ElMessage.error('保存配置失败')

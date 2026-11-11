@@ -49,6 +49,12 @@ public class CsSessionEntity {
     /** 会话状态：WAITING/PROCESSING/CLOSED */
     private String status;
 
+    /** 是否允许 AI 自动回复：1=允许 0=已转人工（人工接管后机器人不得抢答） */
+    private Integer aiEnabled;
+
+    /** 第三方智能体会话 ID（扣子 conversation_id），用于复用多轮上下文 */
+    private String aiConversationId;
+
     /** 渠道 */
     private String channel;
 

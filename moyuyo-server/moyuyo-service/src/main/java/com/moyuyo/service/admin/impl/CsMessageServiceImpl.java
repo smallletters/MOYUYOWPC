@@ -1,6 +1,7 @@
 package com.moyuyo.service.admin.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.moyuyo.dao.admin.entity.CsMessageEntity;
 import com.moyuyo.dao.admin.entity.CsSessionEntity;
 import com.moyuyo.dao.admin.mapper.CsMessageMapper;
@@ -94,11 +95,16 @@ public class CsMessageServiceImpl implements CsMessageService {
 
     csMessageMapper.insert(message);
 
-    // 同步更新会话：message_count++、last_message_at = now
-    int newCount = (session.getMessageCount() == null ? 0 : session.getMessageCount()) + 1;
-    session.setMessageCount(newCount);
-    session.setLastMessageAt(message.getCreateTime());
-    csSessionMapper.updateById(session);
+    // 同步更新会话：message_count 走 SQL 自增、只改必要字段，避免整行回写覆盖并发的 AI 回复计数
+    LambdaUpdateWrapper<CsSessionEntity> update = new LambdaUpdateWrapper<CsSessionEntity>()
+        .eq(CsSessionEntity::getId, session.getId())
+        .set(CsSessionEntity::getLastMessageAt, message.getCreateTime())
+        .setSql("message_count = IFNULL(message_count, 0) + 1");
+    // 人工坐席一旦回复即视为接管：关闭该会话的 AI 自动回复，避免机器人与人工抢答
+    if ("AGENT".equals(message.getSenderType())) {
+      update.set(CsSessionEntity::getAiEnabled, 0);
+    }
+    csSessionMapper.update(null, update);
     return message;
   }
 
@@ -127,9 +133,13 @@ public class CsMessageServiceImpl implements CsMessageService {
   public CsSessionEntity closeSession(Long sessionId) {
     CsSessionEntity s = csSessionMapper.selectById(sessionId);
     if (s == null) throw new IllegalArgumentException("会话不存在: " + sessionId);
+    // 只更新状态与关闭时间，避免整行回写覆盖并发 AI 回复自增的 message_count
     s.setStatus("CLOSED");
     if (s.getCloseTime() == null) s.setCloseTime(LocalDateTime.now());
-    csSessionMapper.updateById(s);
+    csSessionMapper.update(null, new LambdaUpdateWrapper<CsSessionEntity>()
+        .eq(CsSessionEntity::getId, sessionId)
+        .set(CsSessionEntity::getStatus, "CLOSED")
+        .set(CsSessionEntity::getCloseTime, s.getCloseTime()));
     return s;
   }
 
@@ -145,7 +155,7 @@ public class CsMessageServiceImpl implements CsMessageService {
     s.setCsStaffId(newOperatorId);
     // 乐观锁：先读旧 msgCount，转接前再 UPDATE WHERE id=? AND message_count=? 防止并发覆盖
     Integer oldCount = s.getMessageCount();
-    s.setMessageCount(oldCount == null ? 0 : oldCount + 1);
+    s.setMessageCount(oldCount == null ? 1 : oldCount + 1);
     s.setLastMessageAt(LocalDateTime.now());
     int updated = csMessageService_updateByIdOptimistic(s, oldCount);
     if (updated == 0) {
@@ -210,13 +220,17 @@ public class CsMessageServiceImpl implements CsMessageService {
    * 用 MyBatis-Plus 的 LambdaUpdate + 手动条件实现，避免引入新依赖。
    */
   private int csMessageService_updateByIdOptimistic(CsSessionEntity s, Integer expectedCount) {
-    com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<CsSessionEntity> uw =
-        new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<CsSessionEntity>()
-            .eq(CsSessionEntity::getId, s.getId())
-            .eq(CsSessionEntity::getMessageCount, expectedCount)
-            .set(CsSessionEntity::getCsStaffId, s.getCsStaffId())
-            .set(CsSessionEntity::getMessageCount, s.getMessageCount())
-            .set(CsSessionEntity::getLastMessageAt, s.getLastMessageAt());
+    LambdaUpdateWrapper<CsSessionEntity> uw = new LambdaUpdateWrapper<CsSessionEntity>()
+        .eq(CsSessionEntity::getId, s.getId())
+        .set(CsSessionEntity::getCsStaffId, s.getCsStaffId())
+        .set(CsSessionEntity::getMessageCount, s.getMessageCount())
+        .set(CsSessionEntity::getLastMessageAt, s.getLastMessageAt());
+    // 旧值为 null 时必须用 IS NULL 匹配：eq(column, null) 生成的是 = NULL，恒不成立会误报并发冲突
+    if (expectedCount == null) {
+      uw.isNull(CsSessionEntity::getMessageCount);
+    } else {
+      uw.eq(CsSessionEntity::getMessageCount, expectedCount);
+    }
     return csSessionMapper.update(null, uw);
   }
 }

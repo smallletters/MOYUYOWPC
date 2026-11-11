@@ -571,6 +571,28 @@ moyuyo:
       bundle-id: ${MOYUYO_APNS_BUNDLE_ID:}
       # prod（生产）/ dev 或 sandbox（开发沙箱）
       environment: ${MOYUYO_APNS_ENVIRONMENT:prod}
+  # AI 智能客服（第三方智能体接入）
+  # provider 取值：
+  #   none - 默认，不调用第三方，客服仍走 CsService.autoReply 内置关键词回复
+  #   coze - 扣子 OpenAPI（CozeAiCsProvider），需配置 bot-id + token
+  # 注意：token 属于后端机密，只能通过环境变量注入，禁止写入前端 .env 或下发到 APP
+  ai-cs:
+    enabled: ${MOYUYO_AI_CS_ENABLED:false}
+    provider: ${MOYUYO_AI_CS_PROVIDER:none}
+    # 国内版 https://api.coze.cn；切勿使用国际版 api.coze.com（涉及数据出境）
+    base-url: ${MOYUYO_AI_CS_BASE_URL:https://api.coze.cn}
+    bot-id: ${MOYUYO_AI_CS_BOT_ID:}
+    token: ${MOYUYO_AI_CS_TOKEN:}
+    # 单次对话总等待上限，超时降级为提示话术，不阻塞用户发消息
+    timeout-ms: ${MOYUYO_AI_CS_TIMEOUT_MS:8000}
+    poll-interval-ms: ${MOYUYO_AI_CS_POLL_INTERVAL_MS:500}
+    connect-timeout-ms: ${MOYUYO_AI_CS_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${MOYUYO_AI_CS_READ_TIMEOUT_MS:15000}
+    # 智能体输出该标记表示要求转人工，标记本身不会展示给用户
+    human-marker: "${MOYUYO_AI_CS_HUMAN_MARKER:[[HUMAN]]}"
+    # 单用户限流：防止高频提问刷爆第三方 token 配额（Redis 不可用时 fail-open 放行）
+    rate-limit-enabled: ${MOYUYO_AI_CS_RATE_LIMIT_ENABLED:true}
+    rate-limit-per-minute: ${MOYUYO_AI_CS_RATE_LIMIT_PER_MINUTE:10}
   # 物流轨迹 API（第三方平台对接，未配置时由 NoopLogisticsTrackProvider 占位，仅人工维护）
   # provider 取值：
   #   none       - 默认，本地占位，仅人工维护轨迹（NoopLogisticsTrackProvider）

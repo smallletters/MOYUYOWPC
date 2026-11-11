@@ -9,9 +9,13 @@ import com.moyuyo.dao.admin.mapper.CsMessageMapper;
 import com.moyuyo.dao.admin.mapper.CsSessionMapper;
 import com.moyuyo.dao.entity.UserEntity;
 import com.moyuyo.dao.mapper.UserMapper;
+import com.moyuyo.service.ai.AiCsReplyService;
+import com.moyuyo.service.config.AiCsConfigService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,6 +33,8 @@ public class CsService {
   private final CsMessageMapper messageMapper;
   private final UserMapper userMapper;
   private final CsChatContextService csChatContextService;
+  private final AiCsConfigService aiCsConfigService;
+  private final AiCsReplyService aiCsReplyService;
 
   public Page<CsSessionEntity> listUserSessions(Long userId, int page, int size) {
     return sessionMapper.selectPage(new Page<>(page, size),
@@ -62,7 +68,20 @@ public class CsService {
     if (exist != null) {
       // 复用等待中的会话时，更新用户本次进入客服携带的商品/订单上下文
       applyChatContext(exist, productId, productName, orderNo);
-      sessionMapper.updateById(exist);
+      // 只更新本次可能变化的字段：整行回写会把并发 AI 回复自增的 message_count 覆盖掉
+      LambdaUpdateWrapper<CsSessionEntity> update = new LambdaUpdateWrapper<CsSessionEntity>()
+          .eq(CsSessionEntity::getId, exist.getId())
+          .set(CsSessionEntity::getProductId, exist.getProductId())
+          .set(CsSessionEntity::getProductName, exist.getProductName())
+          .set(CsSessionEntity::getProductImage, exist.getProductImage())
+          .set(CsSessionEntity::getOrderNo, exist.getOrderNo());
+      // 用户重新进入客服视为新一轮咨询：把「AI 转人工」时关掉的自动回复重新打开。
+      // 但若最后一条消息是人工坐席发的，说明人工已接管，此时不能再让 AI 抢答
+      if (!agentRepliedLast(exist.getId())) {
+        exist.setAiEnabled(1);
+        update.set(CsSessionEntity::getAiEnabled, 1);
+      }
+      sessionMapper.update(null, update);
       return exist;
     }
     CsSessionEntity s = new CsSessionEntity();
@@ -74,6 +93,18 @@ public class CsService {
     applyChatContext(s, productId, productName, orderNo);
     sessionMapper.insert(s);
     return s;
+  }
+
+  /**
+   * 会话最后一条消息是否由人工坐席发出（坐席回复即视为人工已接管）
+   */
+  private boolean agentRepliedLast(Long sessionId) {
+    CsMessageEntity last = messageMapper.selectOne(
+        new LambdaQueryWrapper<CsMessageEntity>()
+            .eq(CsMessageEntity::getSessionId, sessionId)
+            .orderByDesc(CsMessageEntity::getId)
+            .last("LIMIT 1"));
+    return last != null && "AGENT".equals(last.getSenderType());
   }
 
   /**
@@ -112,30 +143,43 @@ public class CsService {
     msg.setReadFlag(0);
     messageMapper.insert(msg);
 
-    session.setLastMessageAt(LocalDateTime.now());
-    session.setMessageCount(session.getMessageCount() == null ? 1 : session.getMessageCount() + 1);
-    if ("WAITING".equals(session.getStatus())) session.setStatus("PROCESSING");
-    sessionMapper.updateById(session);
-    autoReply(session, content);
+    // 状态流转单独定向更新，消息数走 SQL 自增，避免与异步 AI 回复的并发写互相覆盖
+    if ("WAITING".equals(session.getStatus())) {
+      session.setStatus("PROCESSING");
+      sessionMapper.update(null, new LambdaUpdateWrapper<CsSessionEntity>()
+          .eq(CsSessionEntity::getId, sessionId)
+          .set(CsSessionEntity::getStatus, "PROCESSING"));
+    }
+    touchSession(sessionId);
+    // AI 客服开启且凭据齐全时异步请求第三方智能体；否则保持原有内置关键词回复
+    if (aiCsConfigService.current().usable()) {
+      triggerAiReplyAfterCommit(userId, sessionId, content);
+    } else {
+      autoReply(session, content);
+    }
     return msg;
   }
 
-  private void autoReply(CsSessionEntity session, String userText) {
-    String reply;
-    String text = userText == null ? "" : userText.toLowerCase();
-    if (text.contains("物流") || text.contains("快递") || text.contains("发货")) {
-      reply = "您的订单一般在支付后 24 小时内出库，可在「我的-订单」中查看物流。";
-    } else if (text.contains("退款") || text.contains("退货")) {
-      reply = "退款申请请到「我的-订单-申请退款」，原路退回 1-7 个工作日。";
-    } else if (text.contains("发票")) {
-      reply = "电子发票将在订单完成后 1-3 个工作日开具，请到「我的-发票」查看。";
-    } else if (text.contains("优惠券") || text.contains("积分")) {
-      reply = "积分可在「积分商城」兑换礼品，结算时也可抵扣（100 积分 = ¥1）。";
-    } else if (text.contains("你好") || text.contains("hi")) {
-      reply = "您好，我是 MOYUYO 智能客服小助手，请问需要什么帮助？";
-    } else {
-      reply = "已收到您的消息，客服将在工作时间尽快回复您。";
+  /**
+   * 事务提交后再触发 AI 回复
+   * <p>
+   * 异步线程需要读到已提交的用户消息与会话状态，否则会基于旧数据计数、覆盖消息数。
+   */
+  private void triggerAiReplyAfterCommit(Long userId, Long sessionId, String content) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      aiCsReplyService.replyAsync(sessionId, userId, content);
+      return;
     }
+    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+      @Override
+      public void afterCommit() {
+        aiCsReplyService.replyAsync(sessionId, userId, content);
+      }
+    });
+  }
+
+  private void autoReply(CsSessionEntity session, String userText) {
+    String reply = CsKeywordReply.reply(userText);
     CsMessageEntity ai = new CsMessageEntity();
     ai.setSessionId(session.getId());
     ai.setSenderType("SYSTEM");
@@ -144,18 +188,30 @@ public class CsService {
     ai.setContentType("TEXT");
     ai.setReadFlag(0);
     messageMapper.insert(ai);
-    session.setLastMessageAt(LocalDateTime.now());
-    session.setMessageCount(session.getMessageCount() == null ? 2 : session.getMessageCount() + 1);
-    sessionMapper.updateById(session);
+    touchSession(session.getId());
+  }
+
+  /**
+   * 刷新会话最后消息时间并自增消息数
+   * <p>
+   * 用 SQL 自增而不是「读到内存加一再整行回写」，否则和异步 AI 回复的并发自增会互相覆盖计数。
+   */
+  private void touchSession(Long sessionId) {
+    sessionMapper.update(null, new LambdaUpdateWrapper<CsSessionEntity>()
+        .eq(CsSessionEntity::getId, sessionId)
+        .set(CsSessionEntity::getLastMessageAt, LocalDateTime.now())
+        .setSql("message_count = IFNULL(message_count, 0) + 1"));
   }
 
   @Transactional
   public void closeSession(Long userId, Long sessionId) {
     CsSessionEntity s = sessionMapper.selectById(sessionId);
     if (s == null || !s.getUserId().equals(userId)) throw new IllegalStateException("无权关闭该会话");
-    s.setStatus("CLOSED");
-    s.setCloseTime(LocalDateTime.now());
-    sessionMapper.updateById(s);
+    // 只更新状态与关闭时间，避免整行回写覆盖并发 AI 回复自增的 message_count
+    sessionMapper.update(null, new LambdaUpdateWrapper<CsSessionEntity>()
+        .eq(CsSessionEntity::getId, sessionId)
+        .set(CsSessionEntity::getStatus, "CLOSED")
+        .set(CsSessionEntity::getCloseTime, LocalDateTime.now()));
   }
 
   public long countUnread(Long userId) {
