@@ -14,6 +14,34 @@
     </view>
 
     <view class="section">
+      <text class="section-title">{{ $t('pointsShop.rewardsTitle') }}</text>
+      <view v-for="item in rewards" :key="item.id" class="card reward-card">
+        <image class="reward-image" :src="$img(item.image)" mode="aspectFill" />
+        <view class="reward-info">
+          <text class="reward-name">{{ item.name }}</text>
+          <text class="reward-desc">{{ item.description }}</text>
+          <view class="reward-bottom">
+            <!-- 库存 -1 表示不限，其余展示剩余件数 -->
+            <text class="reward-points">
+              {{ item.points }} {{ $t('pointsShop.pointsUnit') }}
+              <text v-if="item.stock >= 0" class="reward-stock">
+                {{ $t('pointsShop.stockLeft', { stock: item.stock }) }}
+              </text>
+            </text>
+            <view
+              class="btn btn-sm"
+              :class="{ disabled: points < item.points || item.stock === 0 }"
+              @click="onRedeem(item)"
+            >
+              {{ $t('pointsShop.redeem') }}
+            </view>
+          </view>
+        </view>
+      </view>
+      <view v-if="!rewards.length && !loading" class="empty">{{ $t('pointsShop.noRewards') }}</view>
+    </view>
+
+    <view class="section">
       <text class="section-title">{{ $t('pointsShop.historyTitle') }}</text>
       <view v-for="log in logs" :key="log.id" class="log-item">
         <text class="log-type">{{ logLabel(log.type) }}</text>
@@ -102,11 +130,32 @@ export default {
     },
 
     onRedeem(item) {
+      // 积分专属库存为 0 时禁止兑换（-1 表示不限）
+      if (item.stock === 0) {
+        uni.showToast({ title: i18n.t('pointsShop.outOfStock'), icon: 'none' })
+        return
+      }
       if (this.points < item.points) {
         uni.showToast({ title: i18n.t('pointsShop.notEnoughPoints'), icon: 'none' })
         return
       }
       if (this.redeemingId) return
+      const skus = Array.isArray(item.skus) ? item.skus : []
+      // 变体商品需先选规格：后台按 SKU 拣货发货，订单必须带具体规格
+      if (skus.length > 1) {
+        uni.showActionSheet({
+          itemList: skus.map((s) => s.spec || s.skuCode || `#${s.id}`),
+          success: (res) => {
+            const sku = skus[res.tapIndex]
+            if (sku) this.confirmRedeem(item, sku.id)
+          },
+        })
+        return
+      }
+      this.confirmRedeem(item, skus.length === 1 ? skus[0].id : null)
+    },
+
+    confirmRedeem(item, skuId) {
       uni.showModal({
         title: i18n.t('pointsShop.redeemTitle', { name: item.name }),
         content: i18n.t('pointsShop.redeemContent', { points: item.points }),
@@ -115,7 +164,7 @@ export default {
           try {
             this.redeemingId = item.id
             uni.showLoading({ title: i18n.t('pointsShop.redeeming'), mask: true })
-            await pointsApi.exchangePointsGoods(item.id)
+            await pointsApi.exchangePointsGoods(item.id, skuId)
             uni.hideLoading()
             uni.showToast({ title: i18n.t('pointsShop.redeemSuccess'), icon: 'success' })
             // 重新拉取积分余额,保证与服务端一致
@@ -216,6 +265,18 @@ export default {
   font-size: var(--font-size-sm);
   color: var(--color-primary);
   font-weight: var(--font-weight-semibold);
+}
+.reward-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+}
+.reward-stock {
+  margin-left: 8rpx;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  font-weight: normal;
 }
 .log-item {
   display: flex;

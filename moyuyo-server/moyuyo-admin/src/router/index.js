@@ -396,6 +396,12 @@ const routes = [
         meta: { title: '积分管理' }
       },
       {
+        path: 'points-exchange',
+        name: 'PointsExchange',
+        component: () => import('../views/PointsExchange.vue'),
+        meta: { title: '积分兑换记录' }
+      },
+      {
         path: 'blacklist',
         name: 'BlacklistManage',
         component: () => import('../views/BlacklistManage.vue'),

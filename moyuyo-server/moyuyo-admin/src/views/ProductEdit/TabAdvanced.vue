@@ -66,6 +66,35 @@
         </div>
       </div>
     </div>
+    <div class="options-group">
+      <div class="group-title">积分兑换</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>开启积分兑换</label>
+          <div class="status-toggle" style="margin-top:4px">
+            <label class="toggle-switch">
+              <input type="checkbox" v-model="form.allowPointsExchange" />
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="status-text">{{ form.allowPointsExchange ? '积分商城可见' : '不参与' }}</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>兑换所需积分</label>
+          <input v-model.number="form.pointsPrice" type="number" min="0" placeholder="0"
+                 :disabled="!form.allowPointsExchange" />
+          <span class="field-hint">0 表示未配置，商品不会出现在积分商城</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>积分兑换库存</label>
+          <input v-model.number="form.pointsStock" type="number" min="-1" placeholder="0"
+                 :disabled="!form.allowPointsExchange" />
+          <span class="field-hint">与销售库存相互独立；-1 表示不限量</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 

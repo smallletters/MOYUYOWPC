@@ -38,6 +38,9 @@ public class OrderEntity {
   /** 营销活动优惠金额（活动价优惠 + 满减） */
   private BigDecimal campaignDiscount;
 
+  /** 整单活动优惠（满减），已从实付中扣减；活动价优惠已体现在订单项价格里，不重复计算 */
+  private BigDecimal orderCampaignDiscount;
+
   private BigDecimal payAmount;
 
   private String currency;

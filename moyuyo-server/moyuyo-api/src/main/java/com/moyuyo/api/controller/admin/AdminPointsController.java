@@ -125,6 +125,20 @@ public class AdminPointsController {
     }
   }
 
+  @Operation(summary = "积分兑换记录列表")
+  @GetMapping("/exchanges")
+  public Result<Map<String, Object>> exchanges(
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(defaultValue = "20") int size,
+      @RequestParam(required = false) String orderStatus,
+      @RequestParam(required = false) Long userId) {
+    try {
+      return Result.success(adminPointsService.listExchanges(page, size, orderStatus, userId));
+    } catch (Exception e) {
+      return Result.error("查询积分兑换记录失败: " + e.getMessage());
+    }
+  }
+
   @Operation(summary = "积分统计")
   @GetMapping("/stats")
   public Result<Map<String, Object>> stats() {

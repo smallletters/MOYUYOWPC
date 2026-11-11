@@ -149,7 +149,7 @@
             <td>
               <span :class="getStatusTagClass(order.statusEnum || order.status)">
                 <span :class="getStatusDotClass(order.statusEnum || order.status)"></span>
-                {{ statusLabel(order.statusEnum || order.status) }}
+                {{ orderStatusText(order.statusEnum || order.status) }}
               </span>
             </td>
             <td>
@@ -351,6 +351,7 @@ import {
 } from '../api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { toArray } from '../utils/safeArray'
+import { orderStatusText, orderStatusTone } from '../constants/orderStatus'
 
 const router = useRouter()
 
@@ -480,71 +481,27 @@ function orderItemsSummary(order) {
   return head.join('、') + (items.length > 2 ? ` 等${items.length}件` : '')
 }
 
-// 订单状态映射为 CSS class 后缀
-function statusClass(status) {
-  if (!status) return 'default'
-  const s = String(status).toUpperCase()
-  const map = {
-    PENDING: 'pending', PAID: 'paid', HOLD: 'hold',
-    SHIPPED: 'shipped', IN_TRANSIT: 'transit',
-    DELIVERED: 'delivered', RECEIVED: 'received',
-    COMPLETED: 'completed', CANCELLED: 'canceled', CANCELED: 'canceled',
-    REFUNDING: 'refunding', REFUNDED: 'refunded'
-  }
-  return map[s] || s.toLowerCase()
-}
-
 // 订单状态映射为 tag 样式（统一 design system）
 function getStatusTagClass(status) {
-  const cls = statusClass(status)
   // 映射到 design-system 提供的颜色
   const colorMap = {
-    pending: 'tag tag-yellow',
-    paid: 'tag tag-blue',
-    hold: 'tag tag-orange',
-    shipped: 'tag tag-blue',
-    transit: 'tag tag-blue',
-    delivered: 'tag tag-green',
-    received: 'tag tag-green',
-    completed: 'tag tag-green',
-    canceled: 'tag tag-gray',
-    refunding: 'tag tag-yellow',
-    refunded: 'tag tag-gray',
-    default: 'tag tag-gray'
+    warning: 'tag tag-yellow',
+    info: 'tag tag-blue',
+    success: 'tag tag-green',
+    danger: 'tag tag-gray'
   }
-  return colorMap[cls] || 'tag tag-gray'
+  return colorMap[orderStatusTone(status)] || 'tag tag-gray'
 }
 
 // 状态点颜色
 function getStatusDotClass(status) {
-  const cls = statusClass(status)
   const colorMap = {
-    pending: 'status-dot yellow',
-    paid: 'status-dot green',
-    hold: 'status-dot yellow',
-    shipped: 'status-dot green',
-    transit: 'status-dot green',
-    delivered: 'status-dot green',
-    received: 'status-dot green',
-    completed: 'status-dot green',
-    canceled: 'status-dot gray',
-    refunding: 'status-dot yellow',
-    refunded: 'status-dot gray',
-    default: 'status-dot gray'
+    warning: 'status-dot yellow',
+    info: 'status-dot green',
+    success: 'status-dot green',
+    danger: 'status-dot gray'
   }
-  return colorMap[cls] || 'status-dot gray'
-}
-
-// 订单状态映射为中文标签
-function statusLabel(status) {
-  const map = {
-    PENDING: '待付款', PAID: '已付款', HOLD: '挂起',
-    SHIPPED: '已发货', IN_TRANSIT: '运输中',
-    DELIVERED: '已签收', RECEIVED: '已签收',
-    COMPLETED: '已完成', CANCELLED: '已取消', CANCELED: '已取消',
-    REFUNDING: '退款中', REFUNDED: '已退款'
-  }
-  return map[String(status || '').toUpperCase()] || (status || '未知')
+  return colorMap[orderStatusTone(status)] || 'status-dot gray'
 }
 
 // 时间格式化为 yyyy-MM-dd HH:mm

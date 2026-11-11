@@ -118,6 +118,8 @@ public class OrderServiceImpl implements OrderService {
   // ===== 预售相关常量 =====
   private static final String ORDER_TYPE_NORMAL = "NORMAL";
   private static final String ORDER_TYPE_PRESALE = "PRESALE";
+  // 积分兑换订单：0 元成交，直接进入待发货，财务/GMV 统计需按该类型排除
+  private static final String ORDER_TYPE_POINTS = "POINTS";
   // 订阅订单：支付成功后开通/续期订阅，不进入发货流程
   private static final String ORDER_TYPE_SUBSCRIPTION = "SUBSCRIPTION";
   private static final String PRESALE_TYPE_DISPLAY = "DISPLAY";
@@ -272,6 +274,8 @@ public class OrderServiceImpl implements OrderService {
     order.setCouponDiscount(safeCouponDiscount);
     order.setMemberDiscount(safeMemberDiscount);
     order.setCampaignDiscount(campaignPricing.totalDiscount);
+    // 单独记录整单满减，供订单详情把活动优惠计入金额合计（商品级活动价已体现在订单项价格里）
+    order.setOrderCampaignDiscount(campaignPricing.orderDiscount);
     order.setPointsDiscount(safePointsDiscount);
     order.setPointsUsed(safePointsUsed);
     order.setPayAmount(payAmount);
@@ -458,6 +462,95 @@ public class OrderServiceImpl implements OrderService {
         log.info("订单抵扣积分已冻结: orderId={}, orderNo={}, pointsUsed={}",
                 order.getId(), order.getOrderNo(), serverPointsUsed);
     }
+    return order;
+  }
+
+  @Override
+  @Transactional
+  public OrderEntity createPointsExchangeOrder(Long userId, Long productId, Integer quantity,
+      Long skuId, Long addressId, int pointsCost) {
+    ProductEntity product = productMapper.selectById(productId);
+    if (product == null) {
+      throw new IllegalArgumentException("商品不存在: " + productId);
+    }
+    if (product.getOnSale() == null || !product.getOnSale()) {
+      throw new IllegalArgumentException("商品已下架: " + product.getName());
+    }
+    if (!Boolean.TRUE.equals(product.getAllowPointsExchange())
+        || product.getPointsPrice() == null || product.getPointsPrice() <= 0) {
+      throw new IllegalArgumentException("该商品未开放积分兑换");
+    }
+    // 变体商品必须绑定 SKU：后台按 SKU 拣货发货，订单明细缺规格会导致无法出库
+    ProductSkuEntity sku = null;
+    if (skuId != null) {
+      sku = productSkuMapper.selectById(skuId);
+      if (sku == null || !productId.equals(sku.getProductId())) {
+        throw new IllegalArgumentException("商品规格不存在: " + skuId);
+      }
+    }
+    int qty = quantity == null || quantity <= 0 ? 1 : quantity;
+
+    // 积分专属库存原子扣减：-1 表示不限不扣减；其余值需保证扣后不为负，防止并发超兑
+    Integer pointsStock = product.getPointsStock();
+    if (pointsStock != null && pointsStock >= 0) {
+      int affected = productMapper.update(null,
+          new LambdaUpdateWrapper<ProductEntity>()
+              .eq(ProductEntity::getId, productId)
+              .setSql("points_stock = points_stock - " + qty)
+              .apply("points_stock >= {0}", qty));
+      if (affected == 0) {
+        throw new IllegalStateException("积分库存不足");
+      }
+    }
+
+    // 订单号用 PTS 前缀与普通订单区分，便于财务/GMV 报表按前缀与 order_type 排除
+    String datePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+    String snowId = String.valueOf(IdWorker.getId());
+    String orderNo = "PTS" + datePart + snowId.substring(snowId.length() - 8);
+
+    OrderEntity order = new OrderEntity();
+    order.setOrderNo(orderNo);
+    order.setUserId(userId);
+    // 积分商品不产生任何金额，避免污染 GMV 与财务结算
+    order.setGoodsAmount(BigDecimal.ZERO);
+    order.setFreight(BigDecimal.ZERO);
+    order.setTaxAmount(BigDecimal.ZERO);
+    order.setCouponDiscount(BigDecimal.ZERO);
+    order.setMemberDiscount(BigDecimal.ZERO);
+    order.setCampaignDiscount(BigDecimal.ZERO);
+    order.setOrderCampaignDiscount(BigDecimal.ZERO);
+    order.setPointsDiscount(BigDecimal.ZERO);
+    order.setPointsUsed(pointsCost);
+    order.setPayAmount(BigDecimal.ZERO);
+    order.setPayChannel("POINTS");
+    // 积分已即时扣减，订单直接视为已支付并进入待发货
+    order.setStatus(PENDING_SHIP.name());
+    order.setPaidAt(LocalDateTime.now());
+    order.setOrderType(ORDER_TYPE_POINTS);
+    order.setAddressId(addressId);
+    order.setShippingMethod("standard");
+    order.setDeleteStatus(0);
+    // 标记为已同步：积分订单是站内 0 元履约单，不能出现在 WooCommerce 待补推队列中
+    // （syncAllPendingOrders 会捞 sync_status=-1 或 woo_order_id 为空的订单）
+    order.setSyncStatus(1);
+    snapshotAddress(order, addressId, userId);
+    orderMapper.insert(order);
+
+    // 订单项单价 0，仅承载商品信息，供后台按 SKU 发货、售后与订单详情展示
+    OrderItemEntity item = new OrderItemEntity();
+    item.setOrderId(order.getId());
+    item.setProductId(product.getId());
+    item.setSkuId(sku == null ? null : sku.getId());
+    item.setSkuSpec(sku == null ? null : sku.getSpec());
+    item.setProductName(product.getName());
+    item.setMainImage(product.getMainImage());
+    item.setPrice(BigDecimal.ZERO);
+    item.setQuantity(qty);
+    item.setSubtotal(BigDecimal.ZERO);
+    orderItemMapper.insert(item);
+
+    log.info("积分兑换订单已创建: orderNo={}, userId={}, productId={}, points={}",
+        orderNo, userId, productId, pointsCost);
     return order;
   }
 
@@ -741,6 +834,7 @@ public class OrderServiceImpl implements OrderService {
     order.setCouponDiscount(BigDecimal.ZERO);
     order.setMemberDiscount(BigDecimal.ZERO);
     order.setCampaignDiscount(BigDecimal.ZERO);
+    order.setOrderCampaignDiscount(BigDecimal.ZERO);
     order.setPointsDiscount(BigDecimal.ZERO);
     order.setPointsUsed(0);
     order.setPayAmount(payAmount);

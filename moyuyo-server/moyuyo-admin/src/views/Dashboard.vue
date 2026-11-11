@@ -107,6 +107,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getDashboardStats, getRecentOrders, getSalesTrend } from '../api/admin'
+import { orderStatusText } from '../constants/orderStatus'
 
 const TOKEN_KEY = 'admin_token'
 
@@ -158,20 +159,13 @@ async function loadRecentOrders() {
         'CANCELLED': 'red',
         'REFUNDED': 'red'
       }
-      const statusMap = {
-        'PENDING_PAY': '待支付',
-        'PENDING_SHIP': '待发货',
-        'SHIPPED': '已发货',
-        'COMPLETED': '已完成',
-        'CANCELLED': '已取消',
-        'REFUNDED': '已退款'
-      }
       return {
         id: order.orderNo || '',
         no: order.orderNo || '',
         user: order.userName || order.productName || '',
         amount: order.payAmount != null ? String(order.payAmount) : (order.amount != null ? String(order.amount) : '0.00'),
-        status: statusMap[order.status] || order.status || '未知',
+        // 状态文案统一走共享字典，未知状态回退「未知」
+        status: orderStatusText(order.status, '未知'),
         statusClass: statusClassMap[order.status] || 'gray',
         time: order.createTime ? order.createTime.substring(0, 10) : (order.paidAt ? order.paidAt.substring(0, 10) : '')
       }

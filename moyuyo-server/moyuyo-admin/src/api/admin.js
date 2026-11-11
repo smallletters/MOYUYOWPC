@@ -1597,6 +1597,8 @@ export function deletePointsActivity(id) {
 }
 export function getPointsLogs(params) { return api.get('/points/logs', { params }) }
 export function getPointsStats() { return api.get('/points/stats') }
+// 积分兑换记录（关联生成的 0 元积分订单）
+export function getPointsExchanges(params) { return api.get('/points/exchanges', { params }) }
 
 // ==================== 黑名单 ====================
 export function getBlacklistList(params) { return api.get('/blacklist/list', { params }) }

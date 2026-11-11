@@ -367,6 +367,32 @@ public class MemberServiceImpl implements MemberService {
 
   @Override
   @Transactional
+  public boolean spendAvailablePoints(Long userId, int points, String type, String bizNo, String remark) {
+    if (points <= 0) {
+      return true;
+    }
+    // 原子条件更新：仅当「可用 = points - points_frozen >= points」时才扣减，
+    // 用 affected rows 判定，避免两笔兑换并发时都通过"先查余额再扣"的校验造成超兑。
+    int updated = userMapper.update(null,
+        new LambdaUpdateWrapper<UserEntity>()
+            .eq(UserEntity::getId, userId)
+            .apply("points - points_frozen >= {0}", points)
+            .setSql("points = points - " + points));
+    if (updated == 0) {
+      log.warn("[points] 可用积分扣减失败(余额不足): userId={}, points={}", userId, points);
+      return false;
+    }
+    // 扣减流水（调用方指定类型，如 EXCHANGE），用于用户侧"积分明细"留痕
+    insertPointsLog(userId, -points, type, bizNo, remark, null, LocalDateTime.now());
+    // 总积分已变，按总积分同步会员等级/成长值（仅升不降，扣分不会掉级）
+    recalculateLevel(userId);
+    log.info("[points] 可用积分扣减成功: userId={}, points={}, type={}, bizNo={}",
+        userId, points, type, bizNo);
+    return true;
+  }
+
+  @Override
+  @Transactional
   public WalletVO recharge(Long userId, BigDecimal amount, String channel) {
     if (amount.compareTo(BigDecimal.ZERO) <= 0) {
       throw new IllegalArgumentException("充值金额必须大于零");

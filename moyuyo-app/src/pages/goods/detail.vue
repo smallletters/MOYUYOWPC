@@ -266,7 +266,7 @@
 
 <script>
 import { productApi, reviewApi, cartApi } from '@/api'
-import { useCartStore } from '@/store'
+import { useCartStore, useUserStore } from '@/store'
 import browsingHistory from '@/utils/browsingHistory'
 import { i18n } from '@/i18n'
 
@@ -302,6 +302,9 @@ export default {
   computed: {
     cartStore() {
       return useCartStore()
+    },
+    userStore() {
+      return useUserStore()
     },
     // Tab 名称走 i18n：必须放在 computed 里，放在 data 里切语言不会重新求值
     tabs() {
@@ -688,16 +691,20 @@ export default {
         }
 
         // 4. 查询该商品是否已被当前用户收藏(用于初始化心形状态)
-        try {
-          const favRes = await cartApi.getFavorites()
-          const favList = favRes?.data || favRes?.records || favRes?.items || favRes || []
-          const records = Array.isArray(favList) ? favList : []
-          // 雪花 ID(19 位)超过 JS Number.MAX_SAFE_INTEGER,Number() 会丢精度,
-          // 一律按字符串比较;后端 JacksonLongToStringConfig 已把 Long 序列化成 string
-          this.wishlisted = records.some((f) => String(f.productId) === String(this.productId))
-        } catch (e) {
-          // 未登录/未授权时静默失败,保持 wishlisted = false
-          console.warn('[detail] favorite status load failed', e)
+        // 未登录不请求 /favorites：该接口强制登录，匿名 401 响应不带 CORS 头，
+        // H5 端会被浏览器拦成 request fail → 误弹"网络异常"，游客直接跳过
+        if (this.userStore.isLoggedIn) {
+          try {
+            const favRes = await cartApi.getFavorites()
+            const favList = favRes?.data || favRes?.records || favRes?.items || favRes || []
+            const records = Array.isArray(favList) ? favList : []
+            // 雪花 ID(19 位)超过 JS Number.MAX_SAFE_INTEGER,Number() 会丢精度,
+            // 一律按字符串比较;后端 JacksonLongToStringConfig 已把 Long 序列化成 string
+            this.wishlisted = records.some((f) => String(f.productId) === String(this.productId))
+          } catch (e) {
+            // 未登录/未授权时静默失败,保持 wishlisted = false
+            console.warn('[detail] favorite status load failed', e)
+          }
         }
 
         // 5. 加载评价(失败不影响主流程)
@@ -1049,6 +1056,11 @@ export default {
      */
     async onWishToggle() {
       if (!this.product) return
+      // 未登录：收藏接口强制登录，先引导登录，避免 401 被误报成"网络异常"
+      if (!this.userStore.isLoggedIn) {
+        this.promptLogin()
+        return
+      }
       const next = !this.wishlisted
       this.wishlisted = next
       try {
@@ -1083,6 +1095,24 @@ export default {
       })
     },
 
+    /**
+     * 未登录引导：仅在"加入购物车 / 立即购买"这类需要登录态的操作时弹窗，
+     * 浏览商品本身不打扰游客
+     */
+    promptLogin() {
+      uni.showModal({
+        title: this.$t('goodsDetail.loginRequiredTitle'),
+        content: this.$t('goodsDetail.loginRequiredContent'),
+        confirmText: this.$t('goodsDetail.goLogin'),
+        cancelText: this.$t('goodsDetail.maybeLater'),
+        success: (res) => {
+          if (res.confirm) {
+            uni.navigateTo({ url: '/pages/user/login' })
+          }
+        },
+      })
+    },
+
     async onAddCart() {
       if (!this.product) return
       // 全款/定金预售不支持加入购物车，避免与现货订单混合结算
@@ -1095,6 +1125,7 @@ export default {
         uni.showToast({ title: this.$t('goodsDetail.offShelf'), icon: 'none' })
         return
       }
+      // 未登录也允许加购：购物车支持游客本地暂存（登录后再同步到服务端）
       // 取当前选中规格对应的 SKU(含真实库存),与购物车数量上限保持一致
       const sku = this.currentSku
       // 有规格选项但当前组合匹配不到 SKU:禁止加入,避免加错规格
@@ -1127,6 +1158,11 @@ export default {
       // 下架商品禁止购买
       if (!this.isOnSale) {
         uni.showToast({ title: this.$t('goodsDetail.offShelf'), icon: 'none' })
+        return
+      }
+      // 未登录：先引导登录，不再进入结算
+      if (!this.userStore.isLoggedIn) {
+        this.promptLogin()
         return
       }
       // 全款/定金预售：跳过现货库存校验，按预售配置进入结算

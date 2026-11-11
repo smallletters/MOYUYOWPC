@@ -177,6 +177,7 @@ const navGroups = [
       { path: '/coupon-manage', label: '优惠券管理' },
       { path: '/flash-sale-manage', label: '秒杀管理' },
       { path: '/points-manage', label: '积分管理' },
+      { path: '/points-exchange', label: '积分兑换记录' },
       { path: '/marketing-effect', label: '营销效果' },
       { path: '/ab-test', label: 'A/B测试' }
     ]

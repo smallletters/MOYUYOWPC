@@ -147,7 +147,7 @@
       </view>
       <view class="info-row">
         <text>{{ $t('orderDetail.info.paymentMethod') }}</text>
-        <text>{{ order.payChannel || '-' }}</text>
+        <text>{{ payChannelLabel }}</text>
       </view>
       <view class="info-row">
         <text>{{ $t('orderDetail.info.orderTime') }}</text>
@@ -292,6 +292,13 @@ export default {
     /** 是否订阅订单（无商品行，展示订阅信息卡） */
     isSubscriptionOrder() {
       return this.order?.orderType === 'SUBSCRIPTION'
+    },
+    /** 支付方式展示名：POINTS 为积分兑换订单，其余渠道原样展示 */
+    payChannelLabel() {
+      const code = this.order?.payChannel
+      if (!code) return '-'
+      if (code === 'POINTS') return t('orderDetail.pointsPay')
+      return code
     },
     /** 订阅方案名：优先用后端回查的 subscribePlanName，兼容旧数据时回退解析 remark */
     subscriptionPlanName() {

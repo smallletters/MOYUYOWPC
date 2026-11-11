@@ -149,13 +149,13 @@ public class PointsController {
     return Result.success(pointsService.listGoods(category));
   }
 
-  /** 章节 3.2：兑换积分礼品 */
+  /** 章节 3.2：兑换积分礼品（积分商品来自主商品表，兑换后生成 0 元积分订单） */
   @Operation(summary = "兑换积分礼品")
   @PostMapping("/goods/exchange")
   public Result<PointsExchangeEntity> exchange(@RequestBody ExchangeRequest request) {
     Long userId = UserContextHolder.getUserId();
     return Result.success(pointsService.exchange(
-        userId, request.getGoodsId(),
+        userId, request.getGoodsId(), request.getSkuId(), request.getAddressId(),
         request.getReceiverName(), request.getReceiverPhone(), request.getReceiverAddress()));
   }
 
@@ -170,6 +170,10 @@ public class PointsController {
   @lombok.Data
   public static class ExchangeRequest {
     private Long goodsId;
+    /** 规格 ID；变体商品必传，后台按 SKU 发货 */
+    private Long skuId;
+    /** 收货地址 ID；实物商品不传时后端回退到用户默认地址 */
+    private Long addressId;
     private String receiverName;
     private String receiverPhone;
     private String receiverAddress;

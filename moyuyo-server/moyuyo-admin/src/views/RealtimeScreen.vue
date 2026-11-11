@@ -107,7 +107,7 @@
               </el-table-column>
               <el-table-column prop="status" label="状态" width="100">
                 <template #default="{ row }">
-                  <el-tag :type="PAID_STATUS_KEYS.includes(row.status) ? 'success' : 'warning'" size="small">{{ formatOrderStatus(row.status) }}</el-tag>
+                  <el-tag :type="PAID_STATUS_KEYS.includes(row.status) ? 'success' : 'warning'" size="small">{{ orderStatusText(row.status, '—') }}</el-tag>
                 </template>
               </el-table-column>
               <el-table-column prop="orderTime" label="时间" width="160" />
@@ -136,6 +136,7 @@ import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getRealtimeData, getRealtimeOrderFlow, getRealtimeTopProducts, getRealtimeGmvTrend, getRealtimeShipping } from '../api/admin'
 import { toArray } from '../utils/safeArray'
+import { orderStatusText } from '../constants/orderStatus'
 
 const kpi = reactive({
   onlineUsers: '—',
@@ -154,24 +155,6 @@ const shipping = reactive({
   shipped: '—'
 })
 
-// 订单状态 → 中文映射（后端返回的是 PAID/SHIPPED 等枚举值，前端负责本地化显示）
-const ORDER_STATUS_LABEL = {
-  PENDING_PAY: '待支付',
-  PAID: '支付成功',
-  PENDING_SHIP: '待发货',
-  SHIPPED: '已发货',
-  RECEIVED: '已收货',
-  COMPLETED: '已完成',
-  CANCELLED: '已取消',
-  REFUNDING: '退款中',
-  REFUNDED: '已退款',
-  EXCHANGING: '换货中',
-  EXCHANGED: '已换货',
-  HOLD: '已拦截'
-}
-function formatOrderStatus(s) {
-  return ORDER_STATUS_LABEL[s] || s || '—'
-}
 // 支付成功状态用于表格颜色高亮
 const PAID_STATUS_KEYS = ['PAID', 'PENDING_SHIP', 'SHIPPED', 'RECEIVED', 'COMPLETED']
 

@@ -67,4 +67,12 @@ public class CsController {
   public Result<Long> unreadCount() {
     return Result.success(csService.countUnread(UserContextHolder.getUserId()));
   }
+
+  /**
+   * 客服概览：消息页展示最近一次客服会话的最后消息与未读数
+   */
+  @GetMapping("/overview")
+  public Result<Map<String, Object>> overview() {
+    return Result.success(csService.latestOverview(UserContextHolder.getUserId()));
+  }
 }

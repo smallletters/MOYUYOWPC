@@ -10,12 +10,22 @@ import java.util.Map;
 
 public interface PointsService {
 
-  /** 章节 3.2：上架的积分礼品列表 */
+  /** 章节 3.2：上架的积分礼品列表（数据来自 mo_product 中已开启积分兑换的商品，含可选 SKU） */
   List<PointsGoodsEntity> listGoods(String category);
 
-  /** 章节 3.2：兑换礼品，扣减积分 + 写流水 + 创建兑换记录 */
-  PointsExchangeEntity exchange(Long userId, Long goodsId, String receiverName,
-      String receiverPhone, String receiverAddress);
+  /**
+   * 章节 3.2：兑换礼品。
+   * 扣减积分 + 写流水 + 扣减积分专属库存 + 生成 0 元积分订单 + 写兑换记录。
+   *
+   * @param goodsId         商品 ID（积分商品即 mo_product.id）
+   * @param skuId           规格 ID；变体商品必传，简单商品可为空
+   * @param addressId       收货地址 ID；为空时自动使用用户默认地址
+   * @param receiverName    收货人（addressId 为空且无默认地址时才使用）
+   * @param receiverPhone   收货电话
+   * @param receiverAddress 收货地址详情
+   */
+  PointsExchangeEntity exchange(Long userId, Long goodsId, Long skuId, Long addressId,
+      String receiverName, String receiverPhone, String receiverAddress);
 
   /** 当前用户的兑换记录 */
   List<PointsExchangeEntity> listMyExchanges(Long userId);

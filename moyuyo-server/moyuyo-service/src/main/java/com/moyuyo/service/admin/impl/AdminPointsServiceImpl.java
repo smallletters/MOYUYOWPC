@@ -2,8 +2,12 @@ package com.moyuyo.service.admin.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyuyo.dao.entity.OrderEntity;
+import com.moyuyo.dao.entity.PointsExchangeEntity;
 import com.moyuyo.dao.entity.PointsLogEntity;
 import com.moyuyo.dao.entity.UserEntity;
+import com.moyuyo.dao.mapper.OrderMapper;
+import com.moyuyo.dao.mapper.PointsExchangeMapper;
 import com.moyuyo.dao.mapper.PointsLogMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.MemberService;
@@ -15,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 积分服务实现
@@ -26,6 +31,10 @@ public class AdminPointsServiceImpl implements AdminPointsService {
   private final PointsLogMapper pointsLogMapper;
   private final UserMapper userMapper;
   private final MemberService memberService;
+  /** 积分兑换记录：后台兑换记录页数据来源 */
+  private final PointsExchangeMapper pointsExchangeMapper;
+  /** 兑换生成的 0 元订单：用于展示订单号、订单状态与物流单号 */
+  private final OrderMapper orderMapper;
 
   @Override
   public List<Map<String, Object>> listActivities() {
@@ -146,6 +155,80 @@ public class AdminPointsServiceImpl implements AdminPointsService {
       item.put("description", log.getRemark());
       item.put("remark", log.getRemark());
       item.put("createTime", log.getCreatedAt());
+      list.add(item);
+    }
+
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("list", list);
+    result.put("total", pageResult.getTotal());
+    result.put("page", pageResult.getCurrent());
+    result.put("size", pageResult.getSize());
+    return result;
+  }
+
+  @Override
+  public Map<String, Object> listExchanges(int page, int size, String orderStatus, Long userId) {
+    LambdaQueryWrapper<PointsExchangeEntity> wrapper = new LambdaQueryWrapper<PointsExchangeEntity>()
+        .orderByDesc(PointsExchangeEntity::getCreateTime);
+    if (userId != null) {
+      wrapper.eq(PointsExchangeEntity::getUserId, userId);
+    }
+    // 履约状态以订单为准：用带参数的子查询直接在库内过滤，
+    // 避免「先把匹配订单 ID 全查回应用层再拼 IN」导致订单量大时内存与 SQL 长度膨胀
+    if (orderStatus != null && !orderStatus.isBlank()) {
+      wrapper.apply(
+          "order_id IN (SELECT id FROM mo_order WHERE order_type = 'POINTS' AND status = {0})",
+          orderStatus);
+    }
+    Page<PointsExchangeEntity> pageResult =
+        pointsExchangeMapper.selectPage(new Page<>(page, size), wrapper);
+    List<PointsExchangeEntity> records = pageResult.getRecords();
+
+    // 批量查询用户与订单，避免逐条查询造成 N+1
+    Set<Long> userIds = records.stream()
+        .map(PointsExchangeEntity::getUserId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
+    Map<Long, UserEntity> userMap = userIds.isEmpty() ? Map.of()
+        : userMapper.selectBatchIds(userIds).stream()
+            .collect(Collectors.toMap(UserEntity::getId, u -> u));
+
+    Set<Long> orderIds = records.stream()
+        .map(PointsExchangeEntity::getOrderId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
+    Map<Long, OrderEntity> orderMap = orderIds.isEmpty() ? Map.of()
+        : orderMapper.selectBatchIds(orderIds).stream()
+            .collect(Collectors.toMap(OrderEntity::getId, o -> o));
+
+    List<Map<String, Object>> list = new ArrayList<>();
+    for (PointsExchangeEntity exchange : records) {
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("id", exchange.getId());
+      item.put("userId", exchange.getUserId());
+      UserEntity user = userMap.get(exchange.getUserId());
+      String nickName = user == null ? null : user.getNickname();
+      item.put("userName", nickName != null && !nickName.isBlank()
+          ? nickName : (user == null ? null : user.getEmail()));
+      item.put("userEmail", user == null ? null : user.getEmail());
+      item.put("goodsId", exchange.getGoodsId());
+      item.put("productId", exchange.getProductId());
+      item.put("goodsName", exchange.getGoodsName());
+      item.put("pointsCost", exchange.getPointsCost());
+
+      OrderEntity order = exchange.getOrderId() == null ? null : orderMap.get(exchange.getOrderId());
+      item.put("orderId", exchange.getOrderId());
+      item.put("orderNo", order == null ? null : order.getOrderNo());
+      item.put("orderStatus", order == null ? null : order.getStatus());
+      // 物流单号优先取订单（发货后由订单维护），历史兑换记录回退自身字段
+      item.put("trackingNo", order != null && order.getTrackingNumber() != null
+          ? order.getTrackingNumber() : exchange.getTrackingNo());
+
+      item.put("receiverName", exchange.getReceiverName());
+      item.put("receiverPhone", exchange.getReceiverPhone());
+      item.put("receiverAddress", exchange.getReceiverAddress());
+      item.put("status", exchange.getStatus());
+      item.put("createTime", exchange.getCreateTime());
       list.add(item);
     }
 

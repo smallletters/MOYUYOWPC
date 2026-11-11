@@ -437,6 +437,11 @@ export default {
 
     /** 拉取当前用户会员价折扣系数（无会员/无配置时后端返回 1.00） */
     async loadMemberDiscountRate() {
+      // 未登录不请求 /member/price-discount：该接口强制登录，匿名 401 会被误报成"网络异常"
+      if (!this.userStore.isLoggedIn) {
+        this.memberDiscountRate = 1
+        return
+      }
       try {
         const res = await memberApi.getMemberPriceDiscount()
         const rate = Number(res && res.discountRate)
@@ -449,6 +454,11 @@ export default {
 
     /** 拉取进行中的秒杀商品，这些商品不叠加会员折扣 */
     async loadActiveFlashSales() {
+      // 未登录不请求 /flash-sales：该接口强制登录，匿名 401 会被误报成"网络异常"
+      if (!this.userStore.isLoggedIn) {
+        this.activeFlashSaleProductIds = []
+        return
+      }
       try {
         const res = await getFlashSales({ page: 1, size: 100 })
         const list = Array.isArray(res) ? res : (res && res.records) || []
@@ -466,6 +476,11 @@ export default {
      * 购物车未强制选地址，因此无地址时订单摘要显示"结算时计算"，而不是错误的"免运费"。
      */
     async loadShippingCountry() {
+      // 未登录不请求 /addresses：该接口强制登录，匿名 401 会被误报成"网络异常"
+      if (!this.userStore.isLoggedIn) {
+        this.shippingCountry = ''
+        return
+      }
       try {
         const list = await addressApi.getAddressList()
         const addresses = Array.isArray(list) ? list : []

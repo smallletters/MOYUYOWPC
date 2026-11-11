@@ -151,6 +151,8 @@ import { toAbsoluteImageUrl } from '@/utils/imageUrl'
 usePageTitle('pageTitle.userCustomerService')
 
 const sessionId = ref(null)
+// 从消息页带入的已有会话 id：存在时直接展示历史消息，不再新建会话
+const presetSessionId = ref('')
 
 const messages = ref([])
 const draft = ref('')
@@ -216,6 +218,8 @@ function parseQuery(options) {
     console.warn('[cs] decode orderNo failed', e)
     orderNo.value = ''
   }
+  // 会话 id 为后端雪花数字 id，无需 decode
+  presetSessionId.value = q.sessionId ? String(q.sessionId) : ''
 }
 
 function formatTime(t) {
@@ -293,6 +297,20 @@ function openCard(m) {
 
 async function ensureSession() {
   try {
+    // 从消息页带已有会话 id 进入：直接加载历史消息，避免 createSession 新建空会话
+    if (presetSessionId.value) {
+      try {
+        sessionId.value = presetSessionId.value
+        messages.value = await fetchMessagesWithRetry(sessionId.value)
+        scrollToBottom()
+        return
+      } catch (e) {
+        // 会话不存在/无权访问时回退为创建新会话
+        console.warn('[cs] resume session failed', e)
+        sessionId.value = null
+        presetSessionId.value = ''
+      }
+    }
     // 带商品/订单上下文时使用 PRODUCT 类目,便于后台客服识别来源
     const category = productName.value || orderNo.value ? 'PRODUCT' : 'GENERAL'
     // 把商品/订单上下文写入会话,后台客服会话页可直接展示商品图与订单

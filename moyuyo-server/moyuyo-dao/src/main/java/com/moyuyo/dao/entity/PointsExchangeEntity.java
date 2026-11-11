@@ -20,6 +20,12 @@ public class PointsExchangeEntity {
 
   private Long goodsId;
 
+  /** 对应主商品 ID（积分商品复用 mo_product 后用于回查商品） */
+  private Long productId;
+
+  /** 兑换生成 0 元积分订单 ID，便于后台按订单发货与追溯 */
+  private Long orderId;
+
   private String goodsName;
 
   private Integer pointsCost;

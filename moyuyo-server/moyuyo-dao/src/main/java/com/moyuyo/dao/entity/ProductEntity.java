@@ -54,6 +54,15 @@ public class ProductEntity {
 
     private Boolean onSale;
 
+    /** 是否支持积分兑换：0否 1是（积分商城仅展示开启且配置了积分价的商品） */
+    private Boolean allowPointsExchange;
+
+    /** 兑换所需积分，0 表示未配置积分兑换 */
+    private Integer pointsPrice;
+
+    /** 积分兑换专属库存，-1 表示不限；与销售库存 stock 相互独立 */
+    private Integer pointsStock;
+
     private LocalDateTime wooModified;
 
     @TableField(fill = FieldFill.INSERT)

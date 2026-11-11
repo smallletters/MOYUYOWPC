@@ -38,6 +38,22 @@ public interface OrderService {
   OrderEntity createOrderFromRequest(Long userId, CreateOrderRequest request);
 
   /**
+   * 创建 0 元积分兑换订单。
+   * <p>
+   * 积分商品复用主商品表：本方法只负责扣减积分专属库存（points_stock）并落一张
+   * 已支付待发货（PENDING_SHIP）的 0 元订单，后续发货/物流/售后全部复用普通订单流程。
+   * 积分扣减由调用方在同一事务内完成。
+   *
+   * @param productId  主商品 ID
+   * @param quantity   兑换数量
+   * @param skuId      规格 ID；变体商品必传，后台按 SKU 拣货发货；简单商品为空
+   * @param addressId  收货地址 ID（虚拟商品可为空）
+   * @param pointsCost 本次消耗积分，用于订单记录
+   */
+  OrderEntity createPointsExchangeOrder(Long userId, Long productId, Integer quantity, Long skuId,
+      Long addressId, int pointsCost);
+
+  /**
    * 创建预售订单。
    * <p>
    * FULL 全款预售：按 presalePrice 直接成单；

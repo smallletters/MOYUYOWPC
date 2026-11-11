@@ -34,6 +34,27 @@ public class WebConfig {
     }
 
     /**
+     * 最前置的 CORS 响应头过滤器：保证 JwtAuthFilter / SignatureFilter / AdminPermissionFilter
+     * 等"DispatcherServlet 之前"直接写出的 401/403/429 也带 CORS 头，避免 H5 端
+     * 因浏览器拦截响应而把"未登录"误报成"网络异常"。
+     * 白名单与 WebMvcConfig 共用 moyuyo.cors.allowed-origins。
+     */
+    @Bean
+    public CorsHeaderFilter corsHeaderFilter(@Value("${moyuyo.cors.allowed-origins:}") String allowedOrigins) {
+        return new CorsHeaderFilter(allowedOrigins);
+    }
+
+    @Bean
+    public FilterRegistrationBean<Filter> corsHeaderFilterRegistration(CorsHeaderFilter corsHeaderFilter) {
+        FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(corsHeaderFilter);
+        registration.addUrlPatterns("/api/*");
+        // 必须早于 SignatureFilter(2) / JwtAuthFilter(4) / AdminPermissionFilter(5)
+        registration.setOrder(-10);
+        return registration;
+    }
+
+    /**
      * TraceIdFilter 不再依赖 brave.Tracer Bean，改为纯 MDC + UUID 管理
      * 关键修复：Spring Boot 3.x 默认走 micrometer-tracing（OTel 桥接），
      * moyuyo-api 只通过 micrometer-tracing-bridge-brave 可选引入 Brave，

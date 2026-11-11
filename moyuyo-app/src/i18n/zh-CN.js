@@ -523,6 +523,8 @@ export default {
     requestFailedHttp: 'Request failed ({status})',
     requestTimeout: '请求超时',
     networkError: '网络异常',
+    // 游客调用"需要登录"的接口时替代"网络异常"的提示
+    loginRequired: '需要登录',
     // Webview 白名单拦截（utils/webview-guard.js）
     urlBlocked: '外链不在白名单,已拦截',
     // 各页面通用文案（community/home/cart/social-grid/empty-state 等共享）
@@ -1112,6 +1114,7 @@ export default {
     subscriptionAmount: '订阅金额',
     subscriptionActivated: '已开通',
     subscriptionActivatedDesc: '订阅服务已开通，可在订阅页查看有效期',
+    pointsPay: '积分兑换',
   },
 
   // 个人资料 /pages/user/profile
@@ -2062,6 +2065,9 @@ export default {
     operateFailed: '操作失败，请重试',
     loadMore: '加载更多',
     loadingMore: '加载中…',
+    csTitle: '客服中心',
+    csProductCard: '[商品]',
+    csOrderCard: '[订单]',
   },
 
   // 通知中心 /pages/user/notifications
@@ -3019,6 +3025,12 @@ export default {
     loading: '加载中…',
     checkedIn: '今日已签到',
     checkIn: '签到 +5',
+    rewardsTitle: '积分兑换',
+    noRewards: '暂无可兑换商品',
+    pointsUnit: '积分',
+    stockLeft: '剩 {stock} 件',
+    redeem: '兑换',
+    outOfStock: '已兑完',
     historyTitle: '积分明细',
     noHistory: '暂无记录',
     checkinSuccess: '签到成功 +{points} 积分',
@@ -3393,6 +3405,11 @@ export default {
     ariaShare: '分享',
     ariaFavorite: '收藏',
     retry: '重新加载',
+    // 未登录点击"加入购物车 / 立即购买"时的登录引导弹窗
+    loginRequiredTitle: '请先登录',
+    loginRequiredContent: '登录后即可继续操作',
+    goLogin: '去登录',
+    maybeLater: '稍后再说',
     // 评价标签跨语言映射：把其它语言提交的预设标签统一翻回当前语言，表外的自定义标签按原文展示
     reviewTagMap: {
       'Great Quality': '质量好',

@@ -44,7 +44,7 @@
         </view>
       </view>
 
-      <!-- 私信会话列表 -->
+      <!-- 私信会话列表（客服会话按最近消息时间混排，不单独置顶） -->
       <view class="section-head">
         <view class="section-left">
           <text class="section-title">{{ t('messagesCenter.dmTitle') }}</text>
@@ -55,9 +55,9 @@
         </text>
       </view>
 
-      <view v-if="conversations.length" class="conv-list">
+      <view v-if="displayConversations.length" class="conv-list">
         <view
-          v-for="conv in conversations"
+          v-for="conv in displayConversations"
           :key="conv.id"
           class="conv-item"
           @tap="openConversation(conv)"
@@ -69,6 +69,9 @@
             class="conv-avatar-img"
             mode="aspectFill"
           />
+          <view v-else-if="conv.type === 'CS'" class="conv-avatar conv-avatar-cs">
+            <text class="luc luc-headphones" />
+          </view>
           <view v-else class="conv-avatar">{{ avatarLetter(conv) }}</view>
           <view class="conv-body">
             <view class="conv-row">
@@ -98,7 +101,7 @@
       </view>
 
       <!-- 空态：引导去发起私信 -->
-      <view v-if="!conversations.length" class="empty">
+      <view v-if="!displayConversations.length" class="empty">
         <text class="empty-icon luc luc-message-square" />
         <text class="empty-text">{{ t('messagesCenter.dmEmpty') }}</text>
         <view class="empty-btn" @tap="goStartChat">
@@ -110,7 +113,7 @@
 </template>
 
 <script>
-import { messageApi, notificationApi } from '@/api'
+import { messageApi, notificationApi, csApi } from '@/api'
 import { useUserStore, useThemeStore } from '@/store'
 import { i18n } from '@/i18n'
 import { toAbsoluteImageUrl } from '@/utils/imageUrl'
@@ -135,6 +138,8 @@ export default {
       dmUnread: 0,
       // 各类通知未读数：all/activity/order/system
       unreadByType: { all: 0, activity: 0, order: 0, system: 0 },
+      // 客服概览：最近会话 + 最后一条消息 + 未读数
+      csOverview: null,
     }
   },
 
@@ -158,6 +163,59 @@ export default {
         { key: 'order', icon: 'luc-package', label: i18n.t('messagesCenter.noticeOrder') },
         { key: 'system', icon: 'luc-bell', label: i18n.t('messagesCenter.noticeSystem') },
       ]
+    },
+    /** 客服未读数 */
+    csUnread() {
+      return Number((this.csOverview && this.csOverview.unreadCount) || 0)
+    },
+    /** 客服最近消息时间 */
+    csLastAt() {
+      const overview = this.csOverview
+      if (!overview) return ''
+      return (
+        overview.lastMessageAt || (overview.lastMessage && overview.lastMessage.createTime) || ''
+      )
+    },
+    /** 客服最近消息摘要：卡片/图片消息用占位文案 */
+    csPreview() {
+      void this.localeVersion
+      const msg = this.csOverview && this.csOverview.lastMessage
+      if (!msg) return ''
+      const type = String(msg.contentType || 'TEXT').toUpperCase()
+      if (type === 'PRODUCT') return i18n.t('messagesCenter.csProductCard')
+      if (type === 'ORDER') return i18n.t('messagesCenter.csOrderCard')
+      if (type === 'IMAGE') return i18n.t('messagesCenter.imageMessage')
+      return msg.content || ''
+    },
+    /** 客服会话：仅在客服有消息时混入私信列表，无消息不展示 */
+    csConversation() {
+      void this.localeVersion
+      const overview = this.csOverview || {}
+      if (!overview.sessionId || !overview.lastMessage) return null
+      return {
+        id: 'cs-center',
+        type: 'CS',
+        sessionId: String(overview.sessionId),
+        status: overview.status || '',
+        name: i18n.t('messagesCenter.csTitle'),
+        avatar: '',
+        avatarUrl: '',
+        lastMessage: this.csPreview,
+        lastMessageType: 'TEXT',
+        updatedAt: this.csLastAt,
+        unread: this.csUnread,
+        pinned: false,
+      }
+    },
+    /** 私信列表 + 客服会话：置顶优先，其余按最近消息时间倒序 */
+    displayConversations() {
+      const list = this.conversations.slice()
+      const csConv = this.csConversation
+      if (csConv) list.push(csConv)
+      return list.sort((a, b) => {
+        if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1
+        return this.timeValue(b.updatedAt) - this.timeValue(a.updatedAt)
+      })
     },
   },
 
@@ -214,12 +272,49 @@ export default {
       if (!this.userStore.isLoggedIn) {
         this.conversations = []
         this.dmUnread = 0
+        this.csOverview = null
         this.unreadByType = { all: 0, activity: 0, order: 0, system: 0 }
         this.syncTabBarBadge()
         return
       }
-      await Promise.all([this.loadConversations(), this.loadUnread(), this.loadDmUnread()])
+      await Promise.all([
+        this.loadConversations(),
+        this.loadUnread(),
+        this.loadDmUnread(),
+        this.loadCsOverview(),
+      ])
       this.syncTabBarBadge()
+    },
+
+    /** 拉取客服概览（最近会话 + 最后一条消息 + 未读数） */
+    async loadCsOverview() {
+      try {
+        this.csOverview = await csApi.getOverview()
+      } catch (e) {
+        // 客服接口异常不影响通知与私信展示
+        this.csOverview = null
+      }
+    },
+
+    /** 进入客服会话：优先复用未关闭的最近会话，避免新建会话后丢失历史消息 */
+    openCs() {
+      if (!this.userStore.isLoggedIn) {
+        this.goLogin()
+        return
+      }
+      const { sessionId, status } = this.csConversation || {}
+      const canResume = sessionId && status !== 'CLOSED'
+      const url = canResume
+        ? `/pages/user/customer-service?sessionId=${sessionId}`
+        : '/pages/user/customer-service'
+      uni.navigateTo({ url })
+    },
+
+    /** 会话时间转毫秒：无效时间按 0 处理，保证排序稳定 */
+    timeValue(time) {
+      if (!time) return 0
+      const ms = new Date(time).getTime()
+      return Number.isNaN(ms) ? 0 : ms
     },
 
     /** 后端会话列表：映射为页面展示结构（reset=true 重置到第一页） */
@@ -338,6 +433,11 @@ export default {
      */
     openConversation(conv) {
       if (!conv) return
+      // 客服会话：进入客服中心并复用会话
+      if (conv.type === 'CS') {
+        this.openCs()
+        return
+      }
       const name = conv.name || ''
       const letter = this.avatarLetter(conv)
       // 群聊：q.id 是会话ID（groupId），单聊：q.id 是目标用户ID
@@ -356,6 +456,8 @@ export default {
     /** 长按会话：置顶/取消置顶 + 删除会话 */
     onLongPressConversation(conv) {
       if (!conv) return
+      // 客服会话不支持置顶/删除（由后台会话管理）
+      if (conv.type === 'CS') return
       const pinLabel = conv.pinned
         ? this.t('messagesCenter.unpinConversation')
         : this.t('messagesCenter.pinConversation')
@@ -661,6 +763,11 @@ export default {
   border-radius: 50%;
   flex-shrink: 0;
   background: var(--color-background);
+}
+/* 客服会话头像：耳机图标代替文字 */
+.conv-avatar-cs .luc {
+  font-size: 40rpx;
+  color: #fff;
 }
 .conv-unread {
   min-width: 32rpx;

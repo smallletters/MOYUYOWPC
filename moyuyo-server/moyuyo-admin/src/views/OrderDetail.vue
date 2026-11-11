@@ -107,6 +107,33 @@
           <div class="card-body">
             <div class="price-row"><span>商品金额</span><span class="money">{{ formatCurrency(priceSummary.goodsAmount, currencySymbol) }}</span></div>
             <div class="price-row"><span>运费</span><span class="money">{{ formatCurrency(priceSummary.freight, currencySymbol) }}</span></div>
+            <!-- 税费：只有产生了税费的订单才展示 -->
+            <div v-if="Number(priceSummary.taxAmount) > 0" class="price-row">
+              <span>税费</span>
+              <span class="money">{{ formatCurrency(priceSummary.taxAmount, currencySymbol) }}</span>
+            </div>
+            <!-- 优惠明细：实际使用了才展示，便于运营核对订单用了哪些优惠 -->
+            <div v-if="Number(priceSummary.memberDiscount) > 0" class="price-row discount-detail">
+              <span>会员优惠</span>
+              <span class="money">-{{ formatCurrency(priceSummary.memberDiscount, currencySymbol) }}</span>
+            </div>
+            <div v-if="Number(priceSummary.couponDiscount) > 0" class="price-row discount-detail">
+              <span>优惠券</span>
+              <span class="money">-{{ formatCurrency(priceSummary.couponDiscount, currencySymbol) }}</span>
+            </div>
+            <div v-if="Number(priceSummary.orderCampaignDiscount) > 0" class="price-row discount-detail">
+              <span>活动优惠</span>
+              <span class="money">-{{ formatCurrency(priceSummary.orderCampaignDiscount, currencySymbol) }}</span>
+            </div>
+            <div v-if="Number(priceSummary.pointsDiscount) > 0" class="price-row discount-detail">
+              <span>积分抵扣（{{ priceSummary.pointsUsed }} 积分）</span>
+              <span class="money">-{{ formatCurrency(priceSummary.pointsDiscount, currencySymbol) }}</span>
+            </div>
+            <!-- 纯积分兑换订单：pointsDiscount 为 0，只有积分消耗没有金额减免 -->
+            <div v-else-if="priceSummary.pointsUsed > 0" class="price-row discount-detail">
+              <span>积分兑换（消耗 {{ priceSummary.pointsUsed }} 积分）</span>
+              <span class="money">—</span>
+            </div>
             <div class="price-row"><span>优惠减免</span><span class="money">-{{ formatCurrency(priceSummary.discount, currencySymbol) }}</span></div>
             <!-- 已发生退款时展示退款金额与剩余可退金额（对齐 WooCommerce 订单详情） -->
             <div v-if="refundInfo.refundedAmount > 0" class="price-row refunded-row">
@@ -313,6 +340,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getOrderDetail, shipOrder, updateOrderAddress, updateOrderRemark, syncOrderToWoo,
   refundOrder, getOrderTimeline } from '../api/admin'
 import { getAdminInfo } from '../api/auth'
+import { orderStatusText } from '../constants/orderStatus'
 
 const router = useRouter()
 const route = useRoute()
@@ -331,6 +359,16 @@ const operationLogs = ref([])
 const priceSummary = reactive({
   goodsAmount: '0.00',
   freight: '0.00',
+  // 税费：欧美 VAT 等，参与实付金额计算
+  taxAmount: '0.00',
+  // 优惠明细：有值才在页面展示
+  memberDiscount: '0.00',
+  couponDiscount: '0.00',
+  // 整单活动满减（不含已体现在商品价里的活动价优惠）
+  orderCampaignDiscount: '0.00',
+  pointsDiscount: '0.00',
+  // 消耗积分数（积分抵扣 + 积分兑换订单都会记录）
+  pointsUsed: 0,
   discount: '0.00',
   total: '0.00'
 })
@@ -471,18 +509,6 @@ function mapStatusClass(status) {
   return map[s] || 'tag tag-gray'
 }
 
-// 状态英文码 → 中文标签（与 mapStatusClass 保持一致）
-function statusLabel(status) {
-  const s = String(status || '').toUpperCase()
-  const map = {
-    'PENDING_PAY': '待支付', 'PAID': '已支付', 'PENDING_SHIP': '待发货',
-    'SHIPPED': '已发货', 'IN_TRANSIT': '运输中', 'COMPLETED': '已完成',
-    'DELIVERED': '已送达', 'RECEIVED': '已收货', 'CANCELLED': '已取消',
-    'REFUNDING': '退款中', 'REFUNDED': '已退款'
-  }
-  return map[s] || status || '-'
-}
-
 // 生成基本操作日志（基于已有数据时间字段）
 function buildOperationLogs(data) {
   const logs = []
@@ -583,8 +609,17 @@ async function fetchOrderDetail() {
 
       priceSummary.goodsAmount = data.goodsAmount || '0.00'
       priceSummary.freight = data.freight || '0.00'
-      // 后端返回的字段：memberDiscount + couponDiscount + pointsDiscount
-      const discount = Number(data.memberDiscount || 0) + Number(data.couponDiscount || 0) + Number(data.pointsDiscount || 0)
+      priceSummary.taxAmount = data.taxAmount || '0.00'
+      // 优惠明细：分别记录会员优惠 / 优惠券 / 活动满减 / 积分抵扣，供价格汇总逐项展示
+      priceSummary.memberDiscount = data.memberDiscount || '0.00'
+      priceSummary.couponDiscount = data.couponDiscount || '0.00'
+      // 只取整单满减：campaignDiscount 含「活动价优惠 + 满减」，活动价已体现在商品项价格里
+      priceSummary.orderCampaignDiscount = data.orderCampaignDiscount || '0.00'
+      priceSummary.pointsDiscount = data.pointsDiscount || '0.00'
+      priceSummary.pointsUsed = Number(data.pointsUsed || 0)
+      // 优惠合计 = 会员优惠 + 优惠券 + 整单满减 + 积分抵扣（与实付金额口径一致）
+      const discount = Number(data.memberDiscount || 0) + Number(data.couponDiscount || 0)
+          + Number(data.orderCampaignDiscount || 0) + Number(data.pointsDiscount || 0)
       priceSummary.discount = discount > 0 ? discount.toFixed(2) : (data.discount || '0.00')
       // 实付金额优先用 payAmount
       priceSummary.total = data.payAmount || data.total || '0.00'
@@ -599,7 +634,7 @@ async function fetchOrderDetail() {
         payMethodName: data.payMethodName || '',
         currency: data.currency || 'USD',
         source: data.source || '',
-        status: statusLabel(data.status),
+        status: orderStatusText(data.status),
         statusCode: String(data.status || '').toUpperCase(),
         statusClass: mapStatusClass(data.status)
       })
@@ -1107,6 +1142,13 @@ function mapTimelineTypeToStatus(type) {
   padding: 6px 0;
   font-size: 13px;
   color: var(--text-600);
+}
+
+/* 优惠明细行：缩进弱化，与合计行区分 */
+.price-row.discount-detail {
+  padding: 2px 0 2px 12px;
+  font-size: 12px;
+  color: var(--text-500);
 }
 
 .price-row.total {

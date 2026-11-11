@@ -571,6 +571,7 @@ import {
   getPrintSettings, savePrintSettings
 } from '../api/admin'
 import { toArray } from '../utils/safeArray'
+import { orderStatusText } from '../constants/orderStatus'
 
 const route = useRoute()
 const router = useRouter()
@@ -1855,26 +1856,10 @@ function orderStatusTagType(status) {
 }
 
 /**
- * P1：状态 fallback 文本 —— 当后端没返回 statusLabel 时，按 enum 翻译为中文。
+ * P1：状态 fallback 文本 —— 当后端没返回 statusLabel 时，按统一字典翻译为中文。
  */
 function orderStatusFallback(status) {
-  if (!status) return '未知'
-  switch (String(status).toUpperCase()) {
-    case 'PENDING_PAY': return '待付款'
-    case 'PAID': return '已支付'
-    case 'PENDING_SHIP': return '待发货'
-    case 'SHIPPED': return '已发货'
-    case 'RECEIVED': return '已收货'
-    case 'COMPLETED': return '已完成'
-    case 'CANCELLED':
-    case 'CANCELED': return '已取消'
-    case 'REFUNDING': return '退款中'
-    case 'REFUNDED': return '已退款'
-    case 'EXCHANGING': return '换货中'
-    case 'EXCHANGED': return '已换货'
-    case 'HOLD': return '已拦截'
-    default: return status
-  }
+  return orderStatusText(status, '未知')
 }
 
 /**

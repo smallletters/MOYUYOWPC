@@ -79,7 +79,13 @@ async function handleUnauthorized(options) {
     await clearTokens()
     safeRemove(STORAGE_KEYS.USER_INFO)
     // 游客态（请求本来就没带 token）静默失败：不能把"未登录访问需登录接口"误报成"登录已过期"
-    if (hadSession) promptReLogin()
+    if (hadSession) {
+      promptReLogin()
+    } else if (options.showError !== false) {
+      // 后端 401 补齐 CORS 头后 H5 能读到真实状态码：游客访问需登录接口提示"需要登录"
+      uni.hideToast()
+      uni.showToast({ title: t('common.loginRequired'), icon: 'none' })
+    }
     return Promise.reject(new Error('Unauthorized'))
   }
   if (isRefreshing) {
@@ -383,6 +389,8 @@ function doRequest(options) {
 
   const token = getBearerToken()
   if (token) reqHeader.Authorization = `Bearer ${token}`
+  // 是否为游客请求（没带任何 token）：用于 fail 分支区分"需要登录"与"真网络故障"
+  const isGuest = !token
 
   const requestId = genRequestId()
 
@@ -459,6 +467,9 @@ function doRequest(options) {
           reject(new Error(`Network fail (silent): ${err.errMsg || 'unknown'}`))
           return
         }
+        // 游客请求需要登录的接口：H5 跨源读不到 401（缺 CORS 头）→ 走 fail，
+        // 本质是"未登录"而非网络故障，最终提示"需要登录"
+        const needLogin = isGuest && !isPublicApi(fullUrl, method)
         // 30 分钟后台切回：OS 网络栈 keep-alive 失效会导致 uni.request fail（timeout / socket reset），
         // 但实际网络是通的。探测一次网络状态：若可用则重试一次原请求，否则才报"网络异常"
         // _isRetry=true 时不再重试（避免失败请求无限重试）
@@ -466,18 +477,18 @@ function doRequest(options) {
           probeNetwork().then((hasNetwork) => {
             if (hasNetwork) {
               console.warn('[request] fail but network ok, retry once:', fullUrl, err)
-              // 隐式重试：不再弹 toast（让最终结果决定是否提示）
-              request({ ...options, _isRetry: true, showError })
+              // 隐式重试：不再弹 toast（showError:false），让最终结果决定是否提示
+              request({ ...options, _isRetry: true, showError: false })
                 .then(resolve)
                 .catch((retryErr) => {
                   // 重试仍失败：按 fail 原逻辑提示
-                  handleNetworkFailToast(retryErr.errMsg, fullUrl, showError)
+                  handleNetworkFailToast(retryErr.errMsg, fullUrl, showError, needLogin)
                   reject(retryErr)
                 })
               return
             }
-            // 真的无网络：走原 fail 提示
-            handleNetworkFailToast(err.errMsg, fullUrl, showError)
+            // 真的无网络：走原 fail 提示（设备无网络一定是网络故障，不能提示"需要登录"）
+            handleNetworkFailToast(err.errMsg, fullUrl, showError, false)
             const e = new Error(t('common.networkError'))
             e.isNetworkError = true
             e.url = fullUrl
@@ -486,9 +497,10 @@ function doRequest(options) {
           return
         }
         // 重试仍 fail：按原逻辑提示
-        handleNetworkFailToast(err.errMsg, fullUrl, showError)
-        const e = new Error(t('common.networkError'))
-        e.isNetworkError = true
+        handleNetworkFailToast(err.errMsg, fullUrl, showError, needLogin)
+        const e = new Error(needLogin ? t('common.loginRequired') : t('common.networkError'))
+        // 游客请求需登录接口不是网络故障：不标记 isNetworkError，避免被 withRetry 反复重试
+        e.isNetworkError = !needLogin
         e.url = fullUrl
         reject(e)
       },
@@ -501,17 +513,66 @@ function doRequest(options) {
 /**
  * 网络失败的 toast 提示（从 fail 分支抽出来复用）
  * <p>
- * 区分 timeout 与其他网络错误：timeout 通常是后台 keep-alive 失效，给"请求超时"提示更友好
+ * 区分 timeout 与其他网络错误：timeout 通常是后台 keep-alive 失效，给"请求超时"提示更友好。
+ * <p>
+ * 关键：后端"需要登录"的接口在 H5 跨源场景下，401 响应由 JwtAuthFilter 直接写出、缺少 CORS 头，
+ * 浏览器会把响应拦掉 → uni.request 走 fail 分支，历史上被误报成"网络异常"。
+ * 这里按后端公开白名单判断：游客（无 token）请求非公开接口失败，本质是"未登录"，提示"需要登录"。
  */
-function handleNetworkFailToast(errMsg, fullUrl, showError) {
+function handleNetworkFailToast(errMsg, fullUrl, showError, needLogin) {
   const isTimeout = errMsg?.includes('timeout')
-  const msg = isTimeout ? t('common.requestTimeout') : t('common.networkError')
-  console.warn('[request] network fail:', fullUrl, errMsg)
+  const msg = needLogin
+    ? t('common.loginRequired')
+    : isTimeout
+      ? t('common.requestTimeout')
+      : t('common.networkError')
+  console.warn(
+    '[request] network fail:',
+    fullUrl,
+    needLogin ? '(guest, auth required)' : '',
+    errMsg,
+  )
   if (showError) {
     // 先 hide 避免与 modal 冲突
     uni.hideToast()
     uni.showToast({ title: msg, icon: 'none' })
   }
+}
+
+/**
+ * 后端公开（匿名可访问）的接口前缀，与 JwtAuthFilter 的白名单保持一致。
+ * 前缀条目仅对 GET 生效（白名单只放行只读请求）；鉴权类接口无论方法都公开。
+ */
+const PUBLIC_API_PREFIXES = [
+  '/api/v1/products',
+  '/api/v1/categories',
+  '/api/v1/community/posts',
+  '/api/v1/community/search',
+  '/api/v1/community/topics',
+  '/api/v1/coupons',
+  '/api/v1/help',
+  '/api/v1/cms/banners',
+  '/api/v1/policies',
+  '/api/v1/pet-space/models',
+  '/api/v1/shares/qr',
+]
+/** 精确公开的鉴权接口（GET/POST 均可匿名调用） */
+const PUBLIC_AUTH_PREFIX = '/api/v1/auth'
+
+/**
+ * 判断请求是否命中后端公开白名单（游客可匿名访问）
+ * @param {string} url 完整请求地址（可能是绝对地址）
+ * @param {string} method 请求方法
+ * @returns {boolean}
+ */
+function isPublicApi(url, method) {
+  // 去掉协议 + host + query，只保留 path 做前缀比较
+  const path = String(url || '')
+    .replace(/^https?:\/\/[^/]+/i, '')
+    .split('?')[0]
+  if (path === PUBLIC_AUTH_PREFIX || path.startsWith(`${PUBLIC_AUTH_PREFIX}/`)) return true
+  if (String(method).toUpperCase() !== 'GET') return false
+  return PUBLIC_API_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))
 }
 
 export const get = (url, params = {}, options = {}) => {

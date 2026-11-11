@@ -146,6 +146,7 @@ public class SubscribeServiceImpl implements SubscribeService {
       order.setCouponDiscount(BigDecimal.ZERO);
       order.setMemberDiscount(BigDecimal.ZERO);
       order.setCampaignDiscount(BigDecimal.ZERO);
+      order.setOrderCampaignDiscount(BigDecimal.ZERO);
       order.setPointsDiscount(BigDecimal.ZERO);
       order.setPointsUsed(0);
       order.setPayAmount(plan.getPrice());

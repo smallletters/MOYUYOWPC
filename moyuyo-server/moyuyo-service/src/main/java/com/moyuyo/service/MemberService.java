@@ -93,6 +93,17 @@ public interface MemberService {
    */
   boolean consumeFrozenPoints(Long userId, int points, String bizNo, String remark);
 
+  /**
+   * 可用积分直接扣减（不涉及冻结）：原子条件更新 points −= points，
+   * 仅当可用积分(points − points_frozen) ≥ points 时成功。
+   * <p>
+   * 用于积分兑换等"即时成交"场景：addPoints 是「先查后写」，并发下两笔兑换
+   * 可能同时通过余额校验并互相覆盖，导致超兑；本方法用 affected rows 判定杜绝该竞态。
+   *
+   * @return true=扣减成功；false=可用积分不足（未做任何变更）
+   */
+  boolean spendAvailablePoints(Long userId, int points, String type, String bizNo, String remark);
+
   WalletVO getWallet(Long userId);
 
   WalletVO recharge(Long userId, BigDecimal amount, String channel);

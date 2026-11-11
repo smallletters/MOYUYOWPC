@@ -514,6 +514,8 @@ export default {
     requestFailedHttp: 'Request failed ({status})',
     requestTimeout: 'Request timeout',
     networkError: 'Network error',
+    // Shown instead of "Network error" when a guest calls a sign-in-required endpoint
+    loginRequired: 'Sign-in required',
     // Webview URL whitelist guard (utils/webview-guard.js)
     urlBlocked: 'This link is not on the allowlist and has been blocked.',
     // Shared across community/home/cart/social-grid/empty-state pages
@@ -1104,6 +1106,7 @@ export default {
     subscriptionActivated: 'Activated',
     subscriptionActivatedDesc:
       'Your subscription is active. Check the subscription page for validity.',
+    pointsPay: 'Points redemption',
   },
 
   // 个人资料 /pages/user/profile
@@ -2052,6 +2055,9 @@ export default {
     operateFailed: 'Action failed, please retry',
     loadMore: 'Load more',
     loadingMore: 'Loading…',
+    csTitle: 'Customer Service',
+    csProductCard: '[Product]',
+    csOrderCard: '[Order]',
   },
 
   // 通知中心 /pages/user/notifications
@@ -3023,6 +3029,12 @@ export default {
     loading: 'Loading…',
     checkedIn: 'Checked in today',
     checkIn: 'Check in +5',
+    rewardsTitle: 'Redeem with Points',
+    noRewards: 'No rewards available',
+    pointsUnit: 'points',
+    stockLeft: '{stock} left',
+    redeem: 'Redeem',
+    outOfStock: 'Sold out',
     historyTitle: 'Points History',
     noHistory: 'No history',
     checkinSuccess: 'Checked in +{points} points',
@@ -3407,6 +3419,11 @@ export default {
     ariaShare: 'Share',
     ariaFavorite: 'Favorite',
     retry: 'Retry',
+    // Sign-in prompt shown when a guest taps "Add to Cart" / "Buy Now"
+    loginRequiredTitle: 'Please sign in',
+    loginRequiredContent: 'Sign in to continue',
+    goLogin: 'Sign in',
+    maybeLater: 'Not now',
     // Cross-language map for review preset tags: translate tags submitted in other languages,
     // custom tags not listed here are displayed as-is
     reviewTagMap: {

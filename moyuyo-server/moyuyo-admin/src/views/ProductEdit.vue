@@ -299,6 +299,10 @@ function blankForm() {
     crossSellIds: [],
     customAttributes: [],
     variations: [],
+    // 积分兑换配置（复用主商品表：启用后商品出现在 APP 积分商城）
+    allowPointsExchange: false,
+    pointsPrice: 0,
+    pointsStock: 0,
     // 预售配置（1:1 商品，独立表 mo_product_presale）
     presale: blankPresale()
   }
@@ -458,7 +462,11 @@ async function fetchProduct() {
         wooModified: res.wooModified || null,
         brandId: res.brandId || null,
         brandIpId: res.brandIpId || null,
-        attributes: res.attributes || null
+        attributes: res.attributes || null,
+        // 积分兑换配置回显
+        allowPointsExchange: !!res.allowPointsExchange,
+        pointsPrice: res.pointsPrice != null ? res.pointsPrice : 0,
+        pointsStock: res.pointsStock != null ? res.pointsStock : 0
       })
       // 解析 attributes JSON（dimensions + WC 新字段 + 自定义属性 + 变体）
       parseAllFromAttributes(res.attributes)
@@ -648,6 +656,10 @@ async function handleSave() {
       on_sale: form.onSale,
       brandId: form.brandId || null,
       brandIpId: form.brandIpId || null,
+      // 积分兑换配置（关闭时积分价/库存归零，避免残留脏配置）
+      allowPointsExchange: !!form.allowPointsExchange,
+      pointsPrice: form.allowPointsExchange ? Number(form.pointsPrice || 0) : 0,
+      pointsStock: form.allowPointsExchange ? Number(form.pointsStock || 0) : 0,
       // 预售配置（独立表，后端按 enabled 决定新增/更新/删除）
       presale: serializePresale()
     }

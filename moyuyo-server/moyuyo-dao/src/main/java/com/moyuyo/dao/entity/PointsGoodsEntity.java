@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @TableName("mo_points_goods")
@@ -41,6 +42,10 @@ public class PointsGoodsEntity {
   private Integer status;
 
   private Integer sortOrder;
+
+  /** 非表字段：可兑换的 SKU 列表，APP 兑换变体商品时选择规格使用 */
+  @TableField(exist = false)
+  private List<ProductSkuEntity> skus;
 
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createTime;

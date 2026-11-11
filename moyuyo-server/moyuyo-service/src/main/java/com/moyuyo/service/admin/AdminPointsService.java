@@ -29,6 +29,15 @@ public interface AdminPointsService {
   Map<String, Object> listLogs(int page, int size, Long userId);
 
   /**
+   * 积分兑换记录分页列表（关联用户昵称、邮箱与生成的 0 元积分订单）
+   *
+   * @param orderStatus 关联订单状态过滤（PENDING_SHIP / SHIPPED / COMPLETED / CANCELLED 等），为空不过滤。
+   *                    兑换记录自身 status 不随履约变化，履约状态以订单为准。
+   * @param userId      用户 ID 过滤，为空不过滤
+   */
+  Map<String, Object> listExchanges(int page, int size, String orderStatus, Long userId);
+
+  /**
    * 删除积分活动（按活动ID/type删除对应的积分流水记录）
    */
   void deleteActivity(String type);

@@ -355,6 +355,11 @@ public class ProductServiceImpl implements ProductService {
     if (ss == null) ss = (String) body.get("stock_status");
     entity.setStockStatus(ss != null ? ss : "IN_STOCK");
 
+    // 积分兑换配置：开关 + 兑换所需积分 + 独立兑换库存（默认关闭/0，不影响现有商品）
+    entity.setAllowPointsExchange(parseBool(body.get("allowPointsExchange"), false));
+    entity.setPointsPrice(parseInt(body.get("pointsPrice"), 0));
+    entity.setPointsStock(parseInt(body.get("pointsStock"), 0));
+
     // 重量：支持 weight
     if (body.get("weight") != null) {
       try {
@@ -457,6 +462,16 @@ public class ProductServiceImpl implements ProductService {
     else if (ms != null) entity.setManageStock(Boolean.valueOf(ms.toString()));
     if (body.containsKey("stockStatus")) entity.setStockStatus((String) body.get("stockStatus"));
     else if (body.containsKey("stock_status")) entity.setStockStatus((String) body.get("stock_status"));
+    // 积分兑换配置：仅在请求携带时更新，避免部分更新把已配置的积分价清空
+    if (body.containsKey("allowPointsExchange")) {
+      entity.setAllowPointsExchange(parseBool(body.get("allowPointsExchange"), false));
+    }
+    if (body.containsKey("pointsPrice")) {
+      entity.setPointsPrice(parseInt(body.get("pointsPrice"), 0));
+    }
+    if (body.containsKey("pointsStock")) {
+      entity.setPointsStock(parseInt(body.get("pointsStock"), 0));
+    }
     if (body.get("weight") != null) {
       try {
         entity.setWeight(new java.math.BigDecimal(body.get("weight").toString()));
@@ -1211,5 +1226,33 @@ public class ProductServiceImpl implements ProductService {
       }
     }
     return count;
+  }
+
+  /** 宽松解析布尔值：兼容前端传 true/false、"true"/"1"/1 */
+  private Boolean parseBool(Object value, boolean defaultValue) {
+    if (value == null) {
+      return defaultValue;
+    }
+    if (value instanceof Boolean b) {
+      return b;
+    }
+    String text = value.toString().trim();
+    if (text.isEmpty()) {
+      return defaultValue;
+    }
+    return "1".equals(text) || "true".equalsIgnoreCase(text);
+  }
+
+  /** 宽松解析整数：非法值回退默认值，避免编辑页脏数据导致保存失败 */
+  private Integer parseInt(Object value, int defaultValue) {
+    if (value == null) {
+      return defaultValue;
+    }
+    try {
+      return Integer.valueOf(value.toString().trim());
+    } catch (NumberFormatException e) {
+      log.warn("Invalid integer value from frontend: {}", value);
+      return defaultValue;
+    }
   }
 }

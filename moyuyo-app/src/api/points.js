@@ -32,9 +32,9 @@ export function getPointsGoods(params = {}) {
   return get('/api/v1/points/goods', params)
 }
 
-/** 兑换积分礼品（积分扣减 + 写流水） */
-export function exchangePointsGoods(goodsId, addressId) {
-  return post('/api/v1/points/goods/exchange', { goodsId, addressId })
+/** 兑换积分礼品（积分扣减 + 扣积分库存 + 生成 0 元积分订单）；skuId 为变体商品规格，addressId 不传时用默认地址 */
+export function exchangePointsGoods(goodsId, skuId, addressId) {
+  return post('/api/v1/points/goods/exchange', { goodsId, skuId, addressId })
 }
 
 export default {

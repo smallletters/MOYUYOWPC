@@ -388,6 +388,7 @@ import {
   getCsSessionUserOrders, getUserCsSessions, searchProductsLite
 } from '../api/admin'
 import { toArray } from '../utils/safeArray'
+import { orderStatusText } from '../constants/orderStatus'
 
 const tableData = ref([])
 const stats = ref({})
@@ -547,16 +548,6 @@ function formatAmount(value, currency) {
   if (value === null || value === undefined || value === '') return '-'
   const n = Number(value)
   return `${currencySymbolOf(currency)}${Number.isFinite(n) ? n.toFixed(2) : value}`
-}
-
-const ORDER_STATUS_TEXT = {
-  PENDING_PAY: '待支付', PAID: '已支付', PENDING_SHIP: '待发货', SHIPPED: '已发货',
-  RECEIVED: '已收货', CANCELLED: '已取消', REFUNDING: '退款中', REFUNDED: '已退款',
-  COMPLETED: '已完成', EXCHANGING: '换货中', EXCHANGED: '已换货', HOLD: '已拦截'
-}
-
-function orderStatusText(status) {
-  return ORDER_STATUS_TEXT[status] || status || '-'
 }
 
 function orderCoverImage(order) {

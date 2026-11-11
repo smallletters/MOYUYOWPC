@@ -18,6 +18,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -220,5 +221,47 @@ public class CsService {
             .ne(CsMessageEntity::getSenderType, "USER")
             .eq(CsMessageEntity::getReadFlag, 0)
             .inSql(CsMessageEntity::getSessionId, "SELECT id FROM mo_cs_session WHERE user_id = " + userId));
+  }
+
+  /**
+   * 客服概览：供 APP 消息页展示最近一次客服会话的摘要与未读数。
+   * <p>
+   * 这里不能复用 listMessages：那个方法会把客服消息标记为已读，
+   * 若在消息页调用会导致未读角标被清零。
+   */
+  public Map<String, Object> latestOverview(Long userId) {
+    Map<String, Object> overview = new HashMap<>();
+    overview.put("unreadCount", countUnread(userId));
+    CsSessionEntity session = sessionMapper.selectOne(
+        new LambdaQueryWrapper<CsSessionEntity>()
+            .eq(CsSessionEntity::getUserId, userId)
+            .orderByDesc(CsSessionEntity::getLastMessageAt)
+            .orderByDesc(CsSessionEntity::getId)
+            .last("LIMIT 1"));
+    if (session == null) {
+      return overview;
+    }
+    overview.put("sessionId", session.getId());
+    overview.put("status", session.getStatus());
+    overview.put("productName", session.getProductName());
+    overview.put("orderNo", session.getOrderNo());
+    overview.put("lastMessageAt", session.getLastMessageAt());
+    // 会话最后一条消息作为消息页预览（雪花 id 递增，直接取最大 id）
+    CsMessageEntity last = messageMapper.selectOne(
+        new LambdaQueryWrapper<CsMessageEntity>()
+            .eq(CsMessageEntity::getSessionId, session.getId())
+            .orderByDesc(CsMessageEntity::getId)
+            .last("LIMIT 1"));
+    if (last != null) {
+      Map<String, Object> message = new HashMap<>();
+      message.put("content", last.getContent());
+      message.put("senderType", last.getSenderType());
+      message.put("senderName", last.getSenderName());
+      message.put("contentType", last.getContentType());
+      message.put("createTime", last.getCreateTime());
+      overview.put("lastMessage", message);
+      overview.put("lastMessageAt", last.getCreateTime());
+    }
+    return overview;
   }
 }
