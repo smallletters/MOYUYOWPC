@@ -47,6 +47,8 @@ tmp/
 
 # Android 插件 Gradle 构建产物（只提交 aar 与源码，不提交 intermediates）
 moyuyo-app/nativeplugins/android/*/build/
+# 根级 Gradle 构建目录（含 reports/problems 等构建报告）
+moyuyo-app/nativeplugins/android/build/
 
 # Android 本地 SDK 路径（含机器绝对路径，禁止提交）
 local.properties
