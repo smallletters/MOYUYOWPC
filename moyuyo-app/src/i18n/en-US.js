@@ -939,6 +939,33 @@ export default {
     langChanged: 'Switched to {name}',
   },
 
+  // Presale (product detail / checkout / orders)
+  presale: {
+    badgeDisplay: 'Presale',
+    badgeFull: 'Full Prepayment',
+    badgeDeposit: 'Deposit Presale',
+    badgeBalance: 'Balance Due',
+    priceLabel: 'Presale Price',
+    depositLabel: 'Deposit',
+    offsetLabel: 'Deposit Offset',
+    balanceLabel: 'Balance',
+    periodLabel: 'Presale Period',
+    shipDateLabel: 'Est. Ship Date',
+    noticeLabel: 'Presale Notice',
+    reserveNow: 'Pre-order Now',
+    depositPay: 'Pay Deposit',
+    addCartBlocked: 'Presale items can only be pre-ordered',
+    notStarted: 'Presale has not started',
+    ended: 'Presale has ended',
+    soldOut: 'Presale sold out',
+    payBalance: 'Pay Balance',
+    balanceNotStart: 'Balance payment has not started',
+    balanceEnded: 'Balance payment has ended',
+    balanceCreated: 'Balance order created, please complete payment',
+    depositPaidHint: 'Deposit paid. Please pay the balance within the balance window',
+    balancePaidHint: 'Balance paid. Your order will be shipped soon',
+  },
+
   // 订单列表 /pages/order/list
   orderList: {
     title: 'My Orders',
@@ -953,6 +980,7 @@ export default {
       toReview: 'To Review',
       completed: 'Completed',
       cancelled: 'Cancelled',
+      subscription: 'Subscription',
     },
     actionTrack: 'Track',
     actionReview: 'Write Review',
@@ -1065,6 +1093,17 @@ export default {
     confirmReceivedTitle: 'Confirm received?',
     confirmFailed: 'Failed',
     csComingSoon: 'Customer service coming soon',
+  },
+
+  // 订阅订单通用文案（订单列表 / 订单详情共用）
+  order: {
+    subscriptionOrder: 'Subscription',
+    subscriptionService: 'Subscription service',
+    subscriptionPlan: 'Plan',
+    subscriptionAmount: 'Amount',
+    subscriptionActivated: 'Activated',
+    subscriptionActivatedDesc:
+      'Your subscription is active. Check the subscription page for validity.',
   },
 
   // 个人资料 /pages/user/profile
@@ -1683,10 +1722,15 @@ export default {
     historyTitle: 'Past Subscriptions',
     historyEmpty: 'No past subscriptions',
     dateRange: '{start} to {end}',
+    historySubscribe: 'Subscribed',
+    historyRenew: 'Renewed',
+    historyUnknownPlan: 'Subscription plan',
     loadFailed: 'Failed to load plans',
     alreadyCurrent: 'This is your current plan',
     subscribeSuccess: 'Subscribed',
     subscribeFailed: 'Subscription failed',
+    // 方案周期（n = durationMonths）
+    months: '{n} months',
     // 功能对比清单(key 与 featureList 对应)
     features: {
       browse: 'Product Browsing',

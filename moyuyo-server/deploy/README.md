@@ -243,6 +243,53 @@ docker compose --env-file .env exec app sh
 java -cp app.jar org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 ```
 
+### Q6：如何轮换 Redis 密码 / 重建监控账号？
+
+Redis 通过 `--aclfile /data/users.acl` 持久化 ACL 用户（`default` 与监控账号 `exporter`），
+ACL 文件保存在 `redis-data` 卷内，**Redis 重启不会丢失**，因此密码轮换必须同步更新该文件。
+
+#### 轮换 Redis 密码（REDIS_PASSWORD）
+
+```bash
+# 1. 修改 .env 中的 REDIS_PASSWORD
+nano .env
+
+# 2. 停止 Redis，并删除卷内旧 ACL 文件（否则仍按旧密码认证）
+docker compose --env-file .env stop redis
+docker run --rm -v moyuyo-server_redis-data:/data redis:7.2-alpine rm -f /data/users.acl
+
+# 3. 重新拉起：redis-acl-seed 会用新密码重建 ACL 文件，Redis 随后加载
+docker compose --env-file .env up -d redis
+
+# 4. 验证
+docker compose --env-file .env ps redis
+docker exec moyuyo-redis redis-cli -a "<新密码>" --no-auth-warning ping          # 期望 PONG
+docker exec moyuyo-redis redis-cli -a "<新密码>" --no-auth-warning ACL LIST      # 应包含 default / exporter
+```
+
+> - 卷名默认是 `moyuyo-server_redis-data`，若项目目录名不同请用 `docker volume ls | grep redis-data` 确认。
+> - 应用（Lettuce）会自动重连，无需重启；若日志仍出现 `WRONGPASS`，再执行 `docker compose --env-file .env restart app`。
+
+#### 轮换监控密码（REDIS_EXPORTER_PASSWORD）
+
+```bash
+# 1. 修改 .env 中的 REDIS_EXPORTER_PASSWORD
+# 2. 同步 ACL 并落盘（redis-acl-init 会重置 exporter 权限后执行 ACL SAVE）
+docker compose --env-file .env up -d redis-acl-init redis-exporter
+# 3. 验证监控
+curl -s http://127.0.0.1:9121/metrics | grep '^redis_up '   # 期望 redis_up 1
+```
+
+#### MySQL 监控账号说明
+
+`exporter` 账号由 `docker/mysql-init/01-create-exporter-user.sh` 在 `mysql-data` 卷**首次初始化**时自动创建。
+若重建了数据卷或误删了账号，重新执行初始化脚本即可（MySQL 容器已注入 `MYSQL_EXPORTER_PASSWORD`）：
+
+```bash
+docker compose --env-file .env exec mysql bash /docker-entrypoint-initdb.d/01-create-exporter-user.sh
+curl -s http://127.0.0.1:9104/metrics | grep '^mysql_up '   # 期望 mysql_up 1
+```
+
 ---
 
 ## 安全检查清单（部署后 5 分钟自查）

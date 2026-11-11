@@ -1,6 +1,7 @@
 package com.moyuyo.common;
 
 import com.moyuyo.common.exception.BusinessException;
+import com.moyuyo.common.ratelimit.RateLimitExceededException;
 import com.moyuyo.common.utils.LogMasker;
 import io.github.resilience4j.bulkhead.BulkheadFullException;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
@@ -16,6 +17,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.serializer.SerializationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -176,6 +178,14 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Result<Void> handleIllegalArgument(IllegalArgumentException e) {
         return Result.error(400, sanitizeErrorMessage(e.getMessage()));
+    }
+
+    /** 分布式限流（Redis 滑动窗口）触发：返回 429 + Retry-After，与 IP/用户维度限流过滤器保持一致 */
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<Result<Void>> handleRateLimitExceeded(RateLimitExceededException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(Math.max(1, e.getRetryAfterSeconds())))
+                .body(Result.error(429, e.getMessage()));
     }
 
     /**

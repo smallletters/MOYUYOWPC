@@ -62,6 +62,9 @@
         <div v-show="activeTab === 'inventory'" class="tab-pane">
           <TabInventory :form="form" />
         </div>
+        <div v-show="activeTab === 'presale'" class="tab-pane">
+          <TabPresale :form="form" />
+        </div>
         <div v-show="activeTab === 'shipping'" class="tab-pane">
           <TabShipping :form="form" :dimensions="dimensions" :shippingClasses="shippingClasses" />
         </div>
@@ -208,6 +211,7 @@ import {
 
 import TabGeneral from './ProductEdit/TabGeneral.vue'
 import TabInventory from './ProductEdit/TabInventory.vue'
+import TabPresale from './ProductEdit/TabPresale.vue'
 import TabShipping from './ProductEdit/TabShipping.vue'
 import TabLinked from './ProductEdit/TabLinked.vue'
 import TabAttributes from './ProductEdit/TabAttributes.vue'
@@ -294,7 +298,34 @@ function blankForm() {
     upsellIds: [],
     crossSellIds: [],
     customAttributes: [],
-    variations: []
+    variations: [],
+    // 预售配置（1:1 商品，独立表 mo_product_presale）
+    presale: blankPresale()
+  }
+}
+
+// 预售默认值（与后端 ProductPresaleEntity 字段一一对应）
+function blankPresale() {
+  return {
+    enabled: false,
+    presaleType: 'FULL',
+    status: 'DRAFT',
+    presalePrice: '',
+    startTime: '',
+    endTime: '',
+    shipDate: '',
+    stockLimit: '',
+    soldCount: 0,
+    limitPerUser: '',
+    autoCancelMinutes: '',
+    depositAmount: '',
+    depositOffset: '',
+    balanceStart: '',
+    balanceEnd: '',
+    depositRefundable: true,
+    noticeText: '',
+    compensationDays: '',
+    compensationPercent: ''
   }
 }
 
@@ -345,6 +376,7 @@ const wooProductUrl = computed(() => {
 const tabs = computed(() => [
   { key: 'general', label: '常规 General' },
   { key: 'inventory', label: '库存 Inventory' },
+  { key: 'presale', label: '预售 Presale' },
   { key: 'shipping', label: '物流 Shipping', showIf: () => !form.isVirtual && form.productType !== 'grouped' && form.productType !== 'external' },
   { key: 'linked', label: '关联商品 Linked Products' },
   { key: 'attributes', label: '属性 Attributes' },
@@ -430,6 +462,8 @@ async function fetchProduct() {
       })
       // 解析 attributes JSON（dimensions + WC 新字段 + 自定义属性 + 变体）
       parseAllFromAttributes(res.attributes)
+      // 预售配置回显
+      parsePresaleFromDetail(res.presaleInfo)
       // 已有 slug 视为手动值，避免编辑名称时被覆盖
       slugManuallyEdited.value = !!form.slug
       // 补齐已选关联商品名称
@@ -499,6 +533,72 @@ function parseAllFromAttributes(attrsJson) {
   }))
 }
 
+// 预售配置回显：后端时间返回 ISO 字符串（2026-11-11T10:00:00），需转成日期控件要求的格式
+function parsePresaleFromDetail(info) {
+  form.presale = blankPresale()
+  if (!info) return
+  form.presale = {
+    ...blankPresale(),
+    enabled: true,
+    presaleType: info.presaleType || 'FULL',
+    status: info.status || 'DRAFT',
+    presalePrice: info.presalePrice != null ? String(info.presalePrice) : '',
+    startTime: toDateTimeText(info.startTime),
+    endTime: toDateTimeText(info.endTime),
+    shipDate: toDateText(info.shipDate),
+    stockLimit: info.stockLimit != null ? String(info.stockLimit) : '',
+    soldCount: info.soldCount != null ? Number(info.soldCount) : 0,
+    limitPerUser: info.limitPerUser != null ? String(info.limitPerUser) : '',
+    autoCancelMinutes: info.autoCancelMinutes != null ? String(info.autoCancelMinutes) : '',
+    depositAmount: info.depositAmount != null ? String(info.depositAmount) : '',
+    depositOffset: info.depositOffset != null ? String(info.depositOffset) : '',
+    balanceStart: toDateTimeText(info.balanceStart),
+    balanceEnd: toDateTimeText(info.balanceEnd),
+    depositRefundable: info.depositRefundable !== false,
+    noticeText: info.noticeText || '',
+    compensationDays: info.compensationDays != null ? String(info.compensationDays) : '',
+    compensationPercent: info.compensationPercent != null ? String(info.compensationPercent) : ''
+  }
+}
+
+// 后端 LocalDateTime → "YYYY-MM-DD HH:mm:ss"
+function toDateTimeText(value) {
+  if (!value) return ''
+  return String(value).replace('T', ' ').slice(0, 19)
+}
+
+// 后端 LocalDate / 时间字符串 → "YYYY-MM-DD"
+function toDateText(value) {
+  if (!value) return ''
+  return String(value).slice(0, 10)
+}
+
+// 预售配置提交体：未启用时只传 enabled=false，由后端删除预售配置
+function serializePresale() {
+  const p = form.presale || {}
+  if (!p.enabled) return { enabled: false }
+  const numOrNull = v => (v === '' || v == null ? null : Number(v))
+  return {
+    enabled: true,
+    presaleType: p.presaleType,
+    presalePrice: numOrNull(p.presalePrice),
+    startTime: p.startTime || null,
+    endTime: p.endTime || null,
+    shipDate: p.shipDate || null,
+    stockLimit: numOrNull(p.stockLimit),
+    limitPerUser: numOrNull(p.limitPerUser),
+    autoCancelMinutes: numOrNull(p.autoCancelMinutes),
+    depositAmount: numOrNull(p.depositAmount),
+    depositOffset: numOrNull(p.depositOffset),
+    balanceStart: p.balanceStart || null,
+    balanceEnd: p.balanceEnd || null,
+    depositRefundable: !!p.depositRefundable,
+    noticeText: p.noticeText || null,
+    compensationDays: numOrNull(p.compensationDays),
+    compensationPercent: numOrNull(p.compensationPercent)
+  }
+}
+
 async function handleSave() {
   if (!form.name.trim()) {
     ElMessage.warning('商品名称不能为空')
@@ -547,7 +647,9 @@ async function handleSave() {
       short_detail: form.shortDetail || null,
       on_sale: form.onSale,
       brandId: form.brandId || null,
-      brandIpId: form.brandIpId || null
+      brandIpId: form.brandIpId || null,
+      // 预售配置（独立表，后端按 enabled 决定新增/更新/删除）
+      presale: serializePresale()
     }
 
     const id = productId.value
@@ -565,7 +667,10 @@ async function handleSave() {
     router.push('/products')
   } catch (err) {
     console.error('保存商品失败:', err)
-    ElMessage.error('保存商品失败')
+    // 业务错误（HTTP 200 + code≠0，如预售校验未通过）由响应拦截器 reject 且不弹提示，
+    // 这里必须展示后端返回的具体原因，否则用户只能看到笼统的“保存商品失败”
+    const backendMsg = err && err.business ? err.message : ''
+    ElMessage.error(backendMsg || '保存商品失败')
   } finally {
     saving.value = false
   }

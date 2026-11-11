@@ -51,6 +51,25 @@ public class OrderEntity {
 
   private String status;
 
+  /** 订单类型：NORMAL 普通 / PRESALE 预售 / SUBSCRIPTION 订阅 */
+  private String orderType;
+
+  /** 预售配置 ID（mo_product_presale.id），普通单为空 */
+  private Long presaleId;
+
+  /** 预售阶段：FULL 全款 / DEPOSIT 定金 / BALANCE 尾款 */
+  private String presaleStage;
+
+  /** 父订单 ID：尾款单指向对应定金单，普通单为空 */
+  private Long parentOrderId;
+
+  /** 订阅方案 ID（mo_subscribe_plan.id），仅 order_type = SUBSCRIPTION 时有值 */
+  private Long subscribePlanId;
+
+  /** 订阅方案名称（非表字段，订阅订单列表/详情展示用，由后端按 subscribePlanId 回查填充） */
+  @TableField(exist = false)
+  private String subscribePlanName;
+
   private String payChannel;
 
   private String payTransactionId;
@@ -145,6 +164,16 @@ public class OrderEntity {
   private String afterSalesStatus;
 
   // ===== 领域方法 =====
+
+  /** 是否预售订单 */
+  public boolean isPresale() {
+    return "PRESALE".equals(orderType);
+  }
+
+  /** 是否订阅订单（支付成功后开通/续期订阅） */
+  public boolean isSubscription() {
+    return "SUBSCRIPTION".equals(orderType);
+  }
 
   /** 获取订单状态枚举 */
   public OrderStatusEnum getStatusEnum() {

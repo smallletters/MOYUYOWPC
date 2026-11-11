@@ -4,6 +4,19 @@ export function createOrder(data) {
   return post('/api/v1/orders', data)
 }
 
+/**
+ * 创建预售订单（全款/定金）。
+ * 价格、限购、预售库存均由服务端按 mo_product_presale 配置计算，前端不传金额。
+ */
+export function createPresaleOrder(data) {
+  return post('/api/v1/orders/presale', data)
+}
+
+/** 支付尾款：为已支付定金的订单生成尾款单（服务端幂等） */
+export function createBalanceOrder(id) {
+  return post(`/api/v1/orders/${id}/presale-balance`)
+}
+
 export function getOrderList(params = {}) {
   return get('/api/v1/orders', params)
 }
@@ -78,6 +91,8 @@ export function getShippingMethods(payload) {
 
 export default {
   createOrder,
+  createPresaleOrder,
+  createBalanceOrder,
   getOrderList,
   getOrderDetail,
   cancelOrder,

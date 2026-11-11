@@ -70,7 +70,7 @@
           class="toggle-switch"
           :checked="autoRenew"
           color="var(--color-primary)"
-          @change="autoRenew = $event.detail.value"
+          @change="onToggleAutoRenew"
         />
       </view>
 
@@ -107,13 +107,14 @@
           <view v-for="item in historyList" :key="item.id" class="history-item">
             <view class="history-left">
               <text class="history-plan">{{ item.plan }}</text>
-              <text class="history-date">
-                {{ $t('subscribeService.dateRange', { start: item.startDate, end: item.endDate }) }}
+              <text class="history-date">{{ item.date }}</text>
+            </view>
+            <view class="history-right">
+              <text class="history-amount">{{ item.amount }}</text>
+              <text class="history-status" :class="'status-' + item.status">
+                {{ item.statusText }}
               </text>
             </view>
-            <text class="history-status" :class="'status-' + item.status">
-              {{ item.statusText }}
-            </text>
           </view>
         </view>
         <view v-else class="history-empty">
@@ -125,7 +126,7 @@
 </template>
 
 <script>
-import { subscribeApi } from '@/api'
+import { subscribeApi, orderApi } from '@/api'
 import { i18n } from '@/i18n'
 
 export default {
@@ -133,7 +134,8 @@ export default {
 
   data() {
     return {
-      currentPlan: null,
+      // 后端原始订阅记录（UserSubscriptionEntity：planId/endTime/autoRenew/status）
+      currentSub: null,
       selectedPlan: '',
       autoRenew: true,
       plans: [],
@@ -150,6 +152,10 @@ export default {
         { key: 'birthday', free: false },
       ],
       historyList: [],
+      // 是否已跳转支付：支付返回本页（onShow）时重新拉取订阅状态
+      payPending: false,
+      // 支付前基线：回跳后据此判断订阅是否真的发生变化，避免回调未到/用户取消时误报成功
+      payBaseline: { planId: '', endTime: '', historyCount: 0 },
     }
   },
 
@@ -163,6 +169,17 @@ export default {
         label: i18n.t('subscribeService.features.' + item.key),
       }))
     },
+    // 当前订阅展示模型：把后端订阅记录映射为页面字段（名称/价格取自方案列表）
+    currentPlan() {
+      if (!this.currentSub) return null
+      const plan = this.plans.find((p) => String(p.id) === String(this.currentSub.planId))
+      return {
+        key: String(this.currentSub.planId),
+        label: plan ? plan.name : '',
+        price: this.formatPrice(plan ? plan.price : null),
+        nextBilling: this.formatDate(this.currentSub.endTime),
+      }
+    },
   },
 
   onUnload() {
@@ -173,8 +190,17 @@ export default {
     this._unsubLocale = i18n.subscribe(() => {
       this.localeVersion += 1
     })
-    this.loadPlans()
+    // 历史记录需要方案名，等方案列表加载完再拉取
+    this.loadPlans().then(() => this.loadHistory())
     this.loadMySubscription()
+  },
+
+  onShow() {
+    // 从 Stripe Checkout 返回：重新拉取订阅状态，支付回调成功后即可看到最新有效期
+    if (this.payPending) {
+      this.payPending = false
+      this.refreshAfterPay()
+    }
   },
 
   methods: {
@@ -185,7 +211,15 @@ export default {
     async loadPlans() {
       try {
         const res = await subscribeApi.getSubscribePlans()
-        this.plans = res.data || []
+        // 后端返回 SubscribePlanEntity（id/name/price/durationMonths），映射为卡片展示模型
+        const list = Array.isArray(res) ? res : []
+        this.plans = list.map((p) => ({
+          id: p.id,
+          key: String(p.id),
+          name: p.name,
+          price: this.formatPrice(p.price),
+          period: i18n.t('subscribeService.months', { n: p.durationMonths }),
+        }))
         if (this.plans.length > 0 && !this.selectedPlan) {
           this.selectedPlan = this.plans[0].key
         }
@@ -197,13 +231,39 @@ export default {
     async loadMySubscription() {
       try {
         const res = await subscribeApi.getMySubscription()
-        this.currentPlan = res.data || null
-        if (this.currentPlan) {
-          this.selectedPlan = this.currentPlan.key
-          this.autoRenew = this.currentPlan.autoRenew !== false
+        // 后端"无有效订阅时回退最新一条历史"可能返回 EXPIRED/CANCELLED，只有 ACTIVE 才算当前订阅
+        const sub = res || null
+        this.currentSub = sub && sub.status === 'ACTIVE' ? sub : null
+        if (this.currentSub) {
+          this.selectedPlan = String(this.currentSub.planId)
+          this.autoRenew = this.currentSub.autoRenew !== false
         }
       } catch (err) {
         console.error('加载订阅信息失败', err)
+      }
+    },
+
+    /** 订阅历史：后端返回 planId/action/amount/createTime，这里映射为展示模型 */
+    async loadHistory() {
+      try {
+        const res = await subscribeApi.getSubscribeHistory()
+        const list = Array.isArray(res) ? res : []
+        this.historyList = list.map((h) => {
+          const plan = this.plans.find((p) => String(p.id) === String(h.planId))
+          const isRenew = h.action === 'RENEW'
+          return {
+            id: h.id,
+            plan: plan ? plan.name : i18n.t('subscribeService.historyUnknownPlan'),
+            date: this.formatDate(h.createTime),
+            amount: this.formatPrice(h.amount),
+            status: isRenew ? 'renew' : 'subscribe',
+            statusText: i18n.t(
+              isRenew ? 'subscribeService.historyRenew' : 'subscribeService.historySubscribe',
+            ),
+          }
+        })
+      } catch (err) {
+        console.error('加载订阅历史失败', err)
       }
     },
 
@@ -213,15 +273,122 @@ export default {
         return
       }
       try {
-        const res = await subscribeApi.subscribe(this.selectedPlan)
-        this.currentPlan = res.data
-        uni.showToast({ title: i18n.t('subscribeService.subscribeSuccess'), icon: 'success' })
+        // 1) 创建订阅订单（待支付），由服务端按方案定价，前端不传金额
+        const order = await subscribeApi.subscribe(this.selectedPlan)
+        if (!order || !order.orderNo) {
+          throw new Error(i18n.t('subscribeService.subscribeFailed'))
+        }
+        // 2) 复用订单支付接口发起 Stripe Checkout（渠道/参数与订单支付页保持一致）
+        const client = this.buildPayClient()
+        const pay = await orderApi.createPayment({
+          orderNo: order.orderNo,
+          payChannel: 'STRIPE',
+          payMethod: 'CARD',
+          returnUrl: this.buildReturnUrl(),
+          clientType: client.clientType,
+          schemeBase: client.schemeBase,
+        })
+        // 3) 跳转支付页；支付完成返回本页后由 onShow 重新拉取订阅状态
+        if (pay && pay.sessionUrl) {
+          // 记录支付前基线，回跳后据此判断订阅是否真的开通/续期
+          this.payBaseline = {
+            planId: this.currentSub ? this.currentSub.planId : '',
+            endTime: this.currentSub ? this.currentSub.endTime : '',
+            historyCount: this.historyList.length,
+          }
+          this.payPending = true
+          this.openPayUrl(pay.sessionUrl)
+          return
+        }
+        throw new Error(i18n.t('subscribeService.subscribeFailed'))
       } catch (err) {
         uni.showToast({
           title: err.message || i18n.t('subscribeService.subscribeFailed'),
           icon: 'none',
         })
       }
+    },
+
+    // 支付返回本页：重新拉取订阅与历史，确认订阅真的发生变化后再提示成功。
+    // 支付回调可能晚于页面回跳，最多轮询 3 次，避免"回调未到/用户取消"被误报为订阅成功。
+    async refreshAfterPay() {
+      const before = this.payBaseline
+      for (let i = 0; i < 3; i++) {
+        await Promise.all([this.loadMySubscription(), this.loadHistory()])
+        if (this.subscriptionChanged(before)) {
+          uni.showToast({ title: i18n.t('subscribeService.subscribeSuccess'), icon: 'success' })
+          return
+        }
+        if (i < 2) await new Promise((resolve) => setTimeout(resolve, 1500))
+      }
+    },
+
+    /** 订阅是否发生变化：方案/到期时间变化，或新增了一条订阅历史（覆盖长期有效订阅续费） */
+    subscriptionChanged(before) {
+      if (!before) return false
+      if (this.historyList.length > (before.historyCount || 0)) return true
+      if (!this.currentSub) return false
+      return (
+        String(this.currentSub.planId || '') !== String(before.planId || '') ||
+        String(this.currentSub.endTime || '') !== String(before.endTime || '')
+      )
+    },
+
+    // 支付客户端类型：APP 端用自定义 scheme 回跳，H5 走中转页
+    buildPayClient() {
+      let clientType = 'H5'
+      // #ifdef APP-PLUS
+      clientType = 'APP'
+      // #endif
+      return {
+        clientType,
+        schemeBase: clientType === 'APP' ? 'moyuyo://pay/return' : '',
+      }
+    },
+
+    // 支付回跳地址：与订单支付页一致，H5 取当前域名
+    buildReturnUrl() {
+      return typeof window !== 'undefined' ? window.location.origin : ''
+    },
+
+    // 打开 Stripe Checkout：APP 用系统浏览器，H5 整页跳转
+    openPayUrl(url) {
+      // #ifdef APP-PLUS
+      plus.runtime.openURL(url)
+      // #endif
+      // #ifdef H5
+      window.location.href = url
+      // #endif
+    },
+
+    // 自动续费开关：变更后同步服务端，失败时回滚，避免界面与服务端状态不一致
+    async onToggleAutoRenew(e) {
+      const next = e.detail.value
+      const previous = this.autoRenew
+      this.autoRenew = next
+      // 尚未订阅时只保留本地值，订阅时后端默认开启自动续费
+      if (!this.currentSub) return
+      try {
+        await subscribeApi.toggleAutoRenew(next)
+      } catch (err) {
+        this.autoRenew = previous
+        uni.showToast({
+          title: err.message || i18n.t('subscribeService.subscribeFailed'),
+          icon: 'none',
+        })
+      }
+    },
+
+    formatPrice(value) {
+      if (value === null || value === undefined || value === '') return ''
+      const num = Number(value)
+      return Number.isNaN(num) ? String(value) : `${i18n.currencySymbol}${num.toFixed(2)}`
+    },
+
+    // 后端 LocalDateTime 序列化为 2026-11-11T10:00:00，这里截断为 2026-11-11 10:00
+    formatDate(value) {
+      if (!value) return ''
+      return String(value).replace('T', ' ').slice(0, 16)
     },
   },
 }
@@ -555,6 +722,18 @@ export default {
   color: var(--color-text-tertiary);
 }
 
+.history-right {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.history-amount {
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
 .history-status {
   font-size: 24rpx;
   font-weight: var(--font-weight-medium);
@@ -565,6 +744,12 @@ export default {
 .status-cancelled {
   background: var(--color-divider);
   color: var(--color-text-tertiary);
+}
+
+.status-subscribe,
+.status-renew {
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
 }
 
 .history-empty {

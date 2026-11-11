@@ -1,13 +1,18 @@
 package com.moyuyo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductImageEntity;
+import com.moyuyo.dao.entity.ProductPresaleEntity;
 import com.moyuyo.dao.entity.ProductSkuEntity;
+import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.ProductImageMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
+import com.moyuyo.dao.mapper.ProductPresaleMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.ProductService;
 import com.moyuyo.service.WooCommerceSyncService;
@@ -24,15 +29,28 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
 
+  /** 预售类型：展示型（不改变下单价格，仅展示预售时间/发货时间） */
+  private static final String PRESALE_TYPE_DISPLAY = "DISPLAY";
+  /** 预售类型：全款预售 */
+  private static final String PRESALE_TYPE_FULL = "FULL";
+  /** 预售类型：定金 + 尾款 */
+  private static final String PRESALE_TYPE_DEPOSIT = "DEPOSIT";
+
   private final ProductMapper productMapper;
   private final ProductSkuMapper productSkuMapper;
   private final ProductImageMapper productImageMapper;
+  // 商品预售配置 Mapper（mo_product_presale，1:1 商品）
+  private final ProductPresaleMapper productPresaleMapper;
+  // 订单 Mapper：删除预售配置前校验是否仍有未完结的定金单
+  private final OrderMapper orderMapper;
   // 注入 WooCommerce 同步服务：商品变更后自动推送到 WooCommerce
   private final WooCommerceSyncService wooCommerceSyncService;
   // Jackson 解析器：解析 attributes JSON 中的变体数据，用于 SKU 落库
@@ -226,7 +244,20 @@ public class ProductServiceImpl implements ProductService {
     List<ProductImageEntity> images = getImagesByProductId(productId);
     product.setSkus(skus);
     product.setImages(images);
+    // 预售配置：后台编辑页回显 + APP 详情页展示预售信息
+    product.setPresaleInfo(getPresaleByProductId(productId));
     return product;
+  }
+
+  @Override
+  public ProductPresaleEntity getPresaleByProductId(Long productId) {
+    if (productId == null) {
+      return null;
+    }
+    return productPresaleMapper.selectOne(
+        new LambdaQueryWrapper<ProductPresaleEntity>()
+            .eq(ProductPresaleEntity::getProductId, productId)
+            .last("LIMIT 1"));
   }
 
   @Override
@@ -244,6 +275,8 @@ public class ProductServiceImpl implements ProductService {
     }
     product.setSkus(getSkusByProductId(product.getId()));
     product.setImages(getImagesByProductId(product.getId()));
+    // 分享链接进入同样需要展示预售信息
+    product.setPresaleInfo(getPresaleByProductId(product.getId()));
     return product;
   }
 
@@ -355,6 +388,9 @@ public class ProductServiceImpl implements ProductService {
     // 变体商品 SKU 落库：把 attributes.variations 拆成 mo_product_sku 行
     saveSkusForVariations(entity.getId(), entity.getSpuCode(), body);
 
+    // 预售配置落库（body 未带 presale 时不处理，保持无预售）
+    savePresale(entity.getId(), entity, body.get("presale"));
+
     // 事务提交后异步推送到 WooCommerce（避免阻塞主流程与事务回滚）
     registerWooCommercePush(entity, "create");
     return entity;
@@ -442,9 +478,354 @@ public class ProductServiceImpl implements ProductService {
       saveSkusForVariations(id, entity.getSpuCode(), body);
     }
 
+    // 预售配置落库（body 未带 presale 时不处理）
+    savePresale(id, entity, body.get("presale"));
+
     // 事务提交后异步推送到 WooCommerce（避免阻塞主流程与事务回滚）
     registerWooCommercePush(entity, "update");
     return entity;
+  }
+
+  /**
+   * 保存商品预售配置（1:1）。
+   * <p>
+   * 前端约定：body.presale = { enabled, presaleType, presalePrice, ... }。
+   * - presale 缺省：不处理（保持现状）
+   * - enabled=false：删除该商品的预售配置
+   * - enabled=true：按 presaleType 校验后新增或更新
+   */
+  private void savePresale(Long productId, ProductEntity product, Object presaleObj) {
+    // 未传 presale：说明客户端本次不涉及预售，保持库中原状
+    if (presaleObj == null) {
+      return;
+    }
+    if (!(presaleObj instanceof Map)) {
+      throw new IllegalArgumentException("预售配置格式不正确");
+    }
+    @SuppressWarnings("unchecked")
+    Map<String, Object> body = (Map<String, Object>) presaleObj;
+    ProductPresaleEntity existing = getPresaleByProductId(productId);
+
+    // enabled 缺省视为开启（兼容只传预售字段的场景）
+    Object enabledObj = body.get("enabled");
+    boolean enabled = enabledObj == null || Boolean.parseBoolean(String.valueOf(enabledObj));
+    if (!enabled) {
+      if (existing != null) {
+        // 存在未完结定金单时禁止删除：删掉配置会让定金单失去 balance_end/deposit_refundable，
+        // 导致尾款逾期退定金任务找不到配置，订单永远停留在已付定金状态
+        assertNoActiveDepositOrders(existing.getId());
+        productPresaleMapper.deleteById(existing.getId());
+      }
+      return;
+    }
+
+    ProductPresaleEntity presale = new ProductPresaleEntity();
+    presale.setProductId(productId);
+    String type = strOf(body.get("presaleType"));
+    presale.setPresaleType(type != null ? type.toUpperCase() : PRESALE_TYPE_FULL);
+    presale.setPresalePrice(decimalOf(body.get("presalePrice")));
+    presale.setStartTime(dateTimeOf(body.get("startTime")));
+    presale.setEndTime(dateTimeOf(body.get("endTime")));
+    presale.setShipDate(dateOf(body.get("shipDate")));
+    presale.setStockLimit(intOf(body.get("stockLimit")));
+    // 已售数量由订单侧维护：编辑商品时保留库中原值，避免后台误改
+    // sold_count 为 NOT NULL 列，必须保证写入非 null
+    Integer soldCount = existing != null ? existing.getSoldCount() : intOf(body.get("soldCount"));
+    presale.setSoldCount(soldCount != null ? soldCount : 0);
+    presale.setLimitPerUser(intOf(body.get("limitPerUser")));
+    presale.setAutoCancelMinutes(intOf(body.get("autoCancelMinutes")));
+    presale.setDepositAmount(decimalOf(body.get("depositAmount")));
+    presale.setDepositOffset(decimalOf(body.get("depositOffset")));
+    presale.setBalanceStart(dateTimeOf(body.get("balanceStart")));
+    presale.setBalanceEnd(dateTimeOf(body.get("balanceEnd")));
+    Object refundable = body.get("depositRefundable");
+    presale.setDepositRefundable(refundable == null || Boolean.parseBoolean(String.valueOf(refundable)));
+    presale.setNoticeText(strOf(body.get("noticeText")));
+    presale.setCompensationDays(intOf(body.get("compensationDays")));
+    presale.setCompensationPercent(decimalOf(body.get("compensationPercent")));
+
+    // 校验 + 归一化（清理与当前类型无关的字段）
+    validatePresale(presale, product);
+    presale.setStatus(resolvePresaleStatus(presale));
+
+    if (existing == null) {
+      productPresaleMapper.insert(presale);
+      return;
+    }
+    // 更新：显式 set 每一列，允许把定金/尾款等字段置空
+    // （全局 update-strategy=not_null 会让 updateById 跳过 null，导致切换预售类型后旧值残留）
+    LambdaUpdateWrapper<ProductPresaleEntity> uw = new LambdaUpdateWrapper<ProductPresaleEntity>()
+        .eq(ProductPresaleEntity::getId, existing.getId())
+        .set(ProductPresaleEntity::getPresaleType, presale.getPresaleType())
+        .set(ProductPresaleEntity::getStatus, presale.getStatus())
+        .set(ProductPresaleEntity::getPresalePrice, presale.getPresalePrice())
+        .set(ProductPresaleEntity::getStartTime, presale.getStartTime())
+        .set(ProductPresaleEntity::getEndTime, presale.getEndTime())
+        .set(ProductPresaleEntity::getShipDate, presale.getShipDate())
+        .set(ProductPresaleEntity::getStockLimit, presale.getStockLimit())
+        .set(ProductPresaleEntity::getSoldCount, presale.getSoldCount())
+        .set(ProductPresaleEntity::getLimitPerUser, presale.getLimitPerUser())
+        .set(ProductPresaleEntity::getAutoCancelMinutes, presale.getAutoCancelMinutes())
+        .set(ProductPresaleEntity::getDepositAmount, presale.getDepositAmount())
+        .set(ProductPresaleEntity::getDepositOffset, presale.getDepositOffset())
+        .set(ProductPresaleEntity::getBalanceStart, presale.getBalanceStart())
+        .set(ProductPresaleEntity::getBalanceEnd, presale.getBalanceEnd())
+        .set(ProductPresaleEntity::getDepositRefundable, presale.getDepositRefundable())
+        .set(ProductPresaleEntity::getNoticeText, presale.getNoticeText())
+        .set(ProductPresaleEntity::getCompensationDays, presale.getCompensationDays())
+        .set(ProductPresaleEntity::getCompensationPercent, presale.getCompensationPercent())
+        .set(ProductPresaleEntity::getUpdateTime, java.time.LocalDateTime.now());
+    productPresaleMapper.update(null, uw);
+  }
+
+  /**
+   * 校验该预售下是否仍有"未完结"的定金单，删除配置前调用。
+   * <p>
+   * 未完结定义：
+   * 1) 定金单待支付（PENDING_PAY）；
+   * 2) 定金已支付（PAID），但还没有已生效的尾款单（不存在，或尾款单仍待支付/已取消）。
+   * <p>
+   * 尾款已支付或尾款已退款说明交易已进入履约/结束阶段，不再阻止删除配置；
+   * 否则定金单被删掉配置后就永远等不到退定金任务处理。
+   */
+  private void assertNoActiveDepositOrders(Long presaleId) {
+    List<OrderEntity> depositOrders = orderMapper.selectList(
+        new LambdaQueryWrapper<OrderEntity>()
+            .select(OrderEntity::getId)
+            .eq(OrderEntity::getPresaleId, presaleId)
+            .eq(OrderEntity::getOrderType, "PRESALE")
+            .eq(OrderEntity::getPresaleStage, "DEPOSIT")
+            .in(OrderEntity::getStatus, "PENDING_PAY", "PAID")
+            .eq(OrderEntity::getDeleteStatus, 0));
+    if (depositOrders.isEmpty()) {
+      return;
+    }
+    List<Long> depositIds = depositOrders.stream().map(OrderEntity::getId).toList();
+    // 已生效尾款单：非"待支付/已取消"即视为已履约或已退款结束
+    List<OrderEntity> effectiveBalances = orderMapper.selectList(
+        new LambdaQueryWrapper<OrderEntity>()
+            .select(OrderEntity::getParentOrderId)
+            .in(OrderEntity::getParentOrderId, depositIds)
+            .notIn(OrderEntity::getStatus, "PENDING_PAY", "CANCELLED"));
+    Set<Long> finishedDepositIds = effectiveBalances.stream()
+        .map(OrderEntity::getParentOrderId)
+        .collect(Collectors.toSet());
+    long active = depositOrders.stream()
+        .filter(order -> !finishedDepositIds.contains(order.getId()))
+        .count();
+    if (active > 0) {
+      throw new IllegalArgumentException(
+          "该商品存在 " + active + " 笔未完结的定金预售订单，暂不能关闭预售");
+    }
+  }
+
+  /**
+   * 预售配置校验：类型合法性、时间区间、库存、定金/尾款金额关系。
+   * 校验失败抛 IllegalArgumentException，由 Controller 转成 400。
+   */
+  private void validatePresale(ProductPresaleEntity presale, ProductEntity product) {
+    String type = presale.getPresaleType();
+    if (!PRESALE_TYPE_DISPLAY.equals(type) && !PRESALE_TYPE_FULL.equals(type) && !PRESALE_TYPE_DEPOSIT.equals(type)) {
+      throw new IllegalArgumentException("不支持的预售类型: " + type);
+    }
+    if (presale.getStartTime() != null && presale.getEndTime() != null
+        && !presale.getEndTime().isAfter(presale.getStartTime())) {
+      throw new IllegalArgumentException("预售结束时间必须晚于预售开始时间");
+    }
+    if (presale.getStockLimit() != null && presale.getStockLimit() <= 0) {
+      throw new IllegalArgumentException("预售库存上限必须大于 0");
+    }
+    if (presale.getSoldCount() != null && presale.getSoldCount() < 0) {
+      throw new IllegalArgumentException("已售预售数量不能为负数");
+    }
+    if (presale.getSoldCount() != null && presale.getStockLimit() != null
+        && presale.getSoldCount() > presale.getStockLimit()) {
+      throw new IllegalArgumentException("已售预售数量不能超过预售库存上限");
+    }
+    if (presale.getLimitPerUser() != null && presale.getLimitPerUser() <= 0) {
+      throw new IllegalArgumentException("每人限购数量必须大于 0");
+    }
+    if (presale.getAutoCancelMinutes() != null && presale.getAutoCancelMinutes() <= 0) {
+      throw new IllegalArgumentException("未付款自动取消时间必须大于 0 分钟");
+    }
+
+    // 全款 / 展示型不涉及定金与尾款，清空相关字段，避免切换类型后旧值残留
+    if (!PRESALE_TYPE_DEPOSIT.equals(type)) {
+      presale.setDepositAmount(null);
+      presale.setDepositOffset(null);
+      presale.setBalanceStart(null);
+      presale.setBalanceEnd(null);
+      presale.setDepositRefundable(true);
+    }
+    // 展示型预售只展示时间与发货日期，不校验价格
+    if (PRESALE_TYPE_DISPLAY.equals(type)) {
+      presale.setPresalePrice(null);
+      return;
+    }
+
+    if (presale.getPresalePrice() == null || presale.getPresalePrice().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+      throw new IllegalArgumentException("预售价格必须大于 0");
+    }
+    // 预售价格不得高于商品售价（避免预售比现货更贵）
+    if (product.getPrice() != null && presale.getPresalePrice().compareTo(product.getPrice()) > 0) {
+      throw new IllegalArgumentException("预售价格不能高于商品售价 " + product.getPrice().toPlainString());
+    }
+
+    if (!PRESALE_TYPE_DEPOSIT.equals(type)) {
+      return;
+    }
+    if (presale.getDepositAmount() == null || presale.getDepositAmount().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+      throw new IllegalArgumentException("定金预售必须填写大于 0 的定金金额");
+    }
+    if (presale.getDepositAmount().compareTo(presale.getPresalePrice()) >= 0) {
+      throw new IllegalArgumentException("定金金额必须小于预售价格");
+    }
+    // 未填抵扣金额时默认按"定金全额抵扣"处理
+    if (presale.getDepositOffset() == null) {
+      presale.setDepositOffset(presale.getDepositAmount());
+    }
+    if (presale.getDepositOffset().compareTo(presale.getPresalePrice()) > 0) {
+      throw new IllegalArgumentException("定金抵扣金额不能高于预售价格");
+    }
+    if (presale.getPresalePrice().subtract(presale.getDepositOffset()).compareTo(java.math.BigDecimal.ZERO) <= 0) {
+      throw new IllegalArgumentException("尾款金额必须大于 0（预售价 - 定金抵扣金额）");
+    }
+    // 尾款必须在预售结束后才能支付
+    if (presale.getBalanceStart() != null && presale.getEndTime() != null
+        && !presale.getBalanceStart().isAfter(presale.getEndTime())) {
+      throw new IllegalArgumentException("尾款支付开始时间必须晚于预售结束时间");
+    }
+    if (presale.getBalanceStart() != null && presale.getBalanceEnd() != null
+        && !presale.getBalanceEnd().isAfter(presale.getBalanceStart())) {
+      throw new IllegalArgumentException("尾款支付结束时间必须晚于开始时间");
+    }
+  }
+
+  /** 按时间与库存推导预售状态（保存时统一计算，避免前端随意写入状态） */
+  private String resolvePresaleStatus(ProductPresaleEntity presale) {
+    java.time.LocalDateTime now = java.time.LocalDateTime.now();
+    java.time.LocalDateTime start = presale.getStartTime();
+    java.time.LocalDateTime end = presale.getEndTime();
+    // 未配置预售时间：视为草稿
+    if (start == null && end == null) {
+      return "DRAFT";
+    }
+    // 已过结束时间：已结束（优先级最高，避免已结束活动仍显示售罄）
+    if (end != null && now.isAfter(end)) {
+      return "ENDED";
+    }
+    // 未到开始时间：待开始
+    if (start != null && now.isBefore(start)) {
+      return "SCHEDULED";
+    }
+    // 库存售罄
+    if (presale.getStockLimit() != null && presale.getSoldCount() != null
+        && presale.getSoldCount() >= presale.getStockLimit()) {
+      return "SOLD_OUT";
+    }
+    return "ONGOING";
+  }
+
+  /**
+   * 按时间/库存刷新预售状态。
+   * <p>
+   * 只更新状态与读取时一致的记录（乐观条件），避免覆盖并发下单刚写入的 SOLD_OUT。
+   */
+  @Override
+  public int refreshPresaleStatuses() {
+    List<ProductPresaleEntity> presales = productPresaleMapper.selectList(
+        new LambdaQueryWrapper<ProductPresaleEntity>());
+    int changed = 0;
+    for (ProductPresaleEntity presale : presales) {
+      String next = resolvePresaleStatus(presale);
+      if (next.equals(presale.getStatus())) {
+        continue;
+      }
+      LambdaUpdateWrapper<ProductPresaleEntity> uw = new LambdaUpdateWrapper<ProductPresaleEntity>()
+          .eq(ProductPresaleEntity::getId, presale.getId());
+      // 状态可能为 null（历史数据），条件必须区分 is null / eq，否则永远匹配不到
+      if (presale.getStatus() == null) {
+        uw.isNull(ProductPresaleEntity::getStatus);
+      } else {
+        uw.eq(ProductPresaleEntity::getStatus, presale.getStatus());
+      }
+      uw.set(ProductPresaleEntity::getStatus, next)
+          .set(ProductPresaleEntity::getUpdateTime, java.time.LocalDateTime.now());
+      changed += productPresaleMapper.update(null, uw);
+    }
+    return changed;
+  }
+
+  /** 字符串取值：null / 空串统一返回 null */
+  private String strOf(Object value) {
+    if (value == null) {
+      return null;
+    }
+    String text = String.valueOf(value).trim();
+    return text.isEmpty() ? null : text;
+  }
+
+  /** 金额取值：空串 / 非法值返回 null */
+  private java.math.BigDecimal decimalOf(Object value) {
+    String text = strOf(value);
+    if (text == null) {
+      return null;
+    }
+    try {
+      return new java.math.BigDecimal(text);
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException("金额格式不正确: " + text);
+    }
+  }
+
+  /** 整数取值：空串 / 非法值返回 null */
+  private Integer intOf(Object value) {
+    String text = strOf(value);
+    if (text == null) {
+      return null;
+    }
+    try {
+      return Integer.valueOf(text);
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException("数字格式不正确: " + text);
+    }
+  }
+
+  /** 日期时间取值：兼容 "yyyy-MM-dd HH:mm:ss" 与 ISO "yyyy-MM-ddTHH:mm:ss(.SSS)" */
+  private java.time.LocalDateTime dateTimeOf(Object value) {
+    String text = strOf(value);
+    if (text == null) {
+      return null;
+    }
+    String normalized = text.replace('T', ' ');
+    if (normalized.length() > 19) {
+      normalized = normalized.substring(0, 19);
+    }
+    for (String pattern : new String[]{"yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm"}) {
+      try {
+        return java.time.LocalDateTime.parse(normalized,
+            java.time.format.DateTimeFormatter.ofPattern(pattern));
+      } catch (java.time.format.DateTimeParseException ignored) {
+        // 尝试下一种格式
+      }
+    }
+    throw new IllegalArgumentException("时间格式不正确: " + text);
+  }
+
+  /** 日期取值：兼容 "yyyy-MM-dd" 与完整日期时间字符串 */
+  private java.time.LocalDate dateOf(Object value) {
+    String text = strOf(value);
+    if (text == null) {
+      return null;
+    }
+    if (text.length() > 10) {
+      text = text.substring(0, 10);
+    }
+    try {
+      return java.time.LocalDate.parse(text, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+    } catch (java.time.format.DateTimeParseException e) {
+      throw new IllegalArgumentException("日期格式不正确: " + text);
+    }
   }
 
   /**

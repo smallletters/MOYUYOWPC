@@ -522,7 +522,7 @@ class OrderServiceTest {
         .thenReturn(mockPage);
 
     // 执行
-    IPage<OrderEntity> result = orderService.listOrders(1L, 1, 10, "PENDING_PAY");
+    IPage<OrderEntity> result = orderService.listOrders(1L, 1, 10, "PENDING_PAY", null, null);
 
     // 验证
     assertNotNull(result);
@@ -546,7 +546,7 @@ class OrderServiceTest {
         .thenReturn(mockPage);
 
     // 执行：userId = null 表示管理员
-    IPage<OrderEntity> result = orderService.listOrders(null, 1, 20, null);
+    IPage<OrderEntity> result = orderService.listOrders(null, 1, 20, null, null, null);
 
     // 验证
     assertNotNull(result);

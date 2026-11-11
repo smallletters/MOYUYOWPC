@@ -2,6 +2,7 @@ package com.moyuyo.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.moyuyo.common.dto.order.CreateOrderRequest;
+import com.moyuyo.common.dto.order.CreatePresaleOrderRequest;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 
@@ -36,7 +37,45 @@ public interface OrderService {
    */
   OrderEntity createOrderFromRequest(Long userId, CreateOrderRequest request);
 
-  IPage<OrderEntity> listOrders(Long userId, int page, int size, String status);
+  /**
+   * 创建预售订单。
+   * <p>
+   * FULL 全款预售：按 presalePrice 直接成单；
+   * DEPOSIT 定金预售：按 depositAmount 生成定金单，尾款期再调用 {@link #createBalanceOrder(Long, Long)}。
+   * 价格、限购、预售库存全部由服务端按 mo_product_presale 配置校验。
+   */
+  OrderEntity createPresaleOrder(Long userId, CreatePresaleOrderRequest request);
+
+  /**
+   * 支付尾款：为已支付定金的订单生成尾款单（幂等，已存在未取消的尾款单时直接返回）。
+   *
+   * @param depositOrderId 定金单 ID
+   * @param userId         下单用户 ID
+   */
+  OrderEntity createBalanceOrder(Long depositOrderId, Long userId);
+
+  /**
+   * 处理尾款期结束仍未支付尾款的定金单：
+   * <p>
+   * 1) 关闭尚未支付的尾款单，避免退款后用户继续支付；
+   * 2) 定金可退（deposit_refundable=true）时原路退回定金，否则没收定金并关闭订单；
+   * 3) 释放定金占用的预售库存。
+   *
+   * @param depositOrderId 定金单 ID
+   * @param reason         订单关闭原因（写入 cancel_reason，便于审计）
+   * @return true=本次已处理；false=状态不满足（未支付定金/已有生效尾款单/尾款期未结束）
+   */
+  boolean handleExpiredDepositOrder(Long depositOrderId, String reason);
+
+  /**
+   * 分页查询订单。
+   *
+   * @param status           状态过滤，支持逗号分隔多状态
+   * @param orderType        订单类型过滤（如 SUBSCRIPTION，订阅 tab 使用），为空不过滤
+   * @param excludeOrderType 排除的订单类型（如 SUBSCRIPTION，待发货 tab 使用），为空不过滤
+   */
+  IPage<OrderEntity> listOrders(Long userId, int page, int size, String status,
+      String orderType, String excludeOrderType);
 
   OrderEntity getOrderDetail(Long orderId, Long userId);
 

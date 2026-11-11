@@ -133,15 +133,9 @@ export default {
 
         // 加载订阅方案
         const sr = await subscribeApi.getSubscribePlans()
+        // 仅使用后端真实方案：兜底的假方案 id 是字符串（week/month），无法通过后端 Long 校验
         const list = (sr && sr.data) || sr || []
-        this.plans =
-          Array.isArray(list) && list.length
-            ? list
-            : [
-                { id: 'week', name: this.$t('productSubscribe.cycleWeek'), price: 9.9 },
-                { id: 'month', name: this.$t('productSubscribe.cycleMonth'), price: 29.9 },
-                { id: 'quart', name: this.$t('productSubscribe.cycleQuarter'), price: 79.9 },
-              ]
+        this.plans = Array.isArray(list) ? list : []
         this.planId = this.plans[0]?.id || null
       } catch (e) {
         console.warn('[product-subscribe] load failed', e)

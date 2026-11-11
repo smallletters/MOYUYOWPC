@@ -3,6 +3,7 @@ package com.moyuyo.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductImageEntity;
+import com.moyuyo.dao.entity.ProductPresaleEntity;
 import com.moyuyo.dao.entity.ProductSkuEntity;
 
 import java.util.List;
@@ -50,4 +51,17 @@ public interface ProductService {
 
   /** 批量操作商品（上架/下架/删除） */
   int batchProductAction(String action, List<Long> ids);
+
+  /** 查询商品预售配置（无预售返回 null） */
+  ProductPresaleEntity getPresaleByProductId(Long productId);
+
+  /**
+   * 按预售时间/库存重新推导并写回预售状态（SCHEDULED / ONGOING / SOLD_OUT / ENDED）。
+   * <p>
+   * 状态本身由时间窗口与 sold_count 决定，定时刷新只是把推导结果落库，
+   * 避免后台列表长期停留在保存时的旧状态。
+   *
+   * @return 实际更新的预售配置条数
+   */
+  int refreshPresaleStatuses();
 }

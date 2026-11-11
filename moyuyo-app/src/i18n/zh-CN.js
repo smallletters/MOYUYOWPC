@@ -948,6 +948,33 @@ export default {
     langChanged: '已切换到 {name}',
   },
 
+  // 预售（商品详情 / 结算 / 订单）
+  presale: {
+    badgeDisplay: '预售',
+    badgeFull: '全款预售',
+    badgeDeposit: '定金预售',
+    badgeBalance: '尾款单',
+    priceLabel: '预售价',
+    depositLabel: '定金',
+    offsetLabel: '定金抵扣',
+    balanceLabel: '尾款',
+    periodLabel: '预售时间',
+    shipDateLabel: '预计发货',
+    noticeLabel: '预售须知',
+    reserveNow: '立即预订',
+    depositPay: '支付定金',
+    addCartBlocked: '预售商品请直接预订',
+    notStarted: '预售尚未开始',
+    ended: '预售已结束',
+    soldOut: '预售已售罄',
+    payBalance: '支付尾款',
+    balanceNotStart: '尾款支付尚未开始',
+    balanceEnded: '尾款支付已结束',
+    balanceCreated: '尾款单已创建，请完成支付',
+    depositPaidHint: '定金已支付，请在尾款期内支付尾款',
+    balancePaidHint: '尾款已支付，商家将尽快为您发货',
+  },
+
   // 订单列表 /pages/order/list
   orderList: {
     title: '我的订单',
@@ -962,6 +989,7 @@ export default {
       toReview: '待评价',
       completed: '已完成',
       cancelled: '已取消',
+      subscription: '订阅',
     },
     actionTrack: '查看物流',
     actionReview: '评价晒单',
@@ -1074,6 +1102,16 @@ export default {
     confirmReceivedTitle: '确定已收到货？',
     confirmFailed: '操作失败',
     csComingSoon: '客服功能即将上线',
+  },
+
+  // 订阅订单通用文案（订单列表 / 订单详情共用）
+  order: {
+    subscriptionOrder: '订阅订单',
+    subscriptionService: '订阅服务',
+    subscriptionPlan: '订阅方案',
+    subscriptionAmount: '订阅金额',
+    subscriptionActivated: '已开通',
+    subscriptionActivatedDesc: '订阅服务已开通，可在订阅页查看有效期',
   },
 
   // 个人资料 /pages/user/profile
@@ -1697,10 +1735,15 @@ export default {
     historyTitle: '历史订阅',
     historyEmpty: '暂无历史订阅记录',
     dateRange: '{start} 至 {end}',
+    historySubscribe: '开通',
+    historyRenew: '续费',
+    historyUnknownPlan: '订阅方案',
     loadFailed: '加载订阅方案失败',
     alreadyCurrent: '已是当前方案',
     subscribeSuccess: '订阅成功',
     subscribeFailed: '订阅失败',
+    // 方案周期（n = durationMonths）
+    months: '{n} 个月',
     // 功能对比清单(key 与 featureList 对应)
     features: {
       browse: '商品浏览',

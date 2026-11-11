@@ -547,6 +547,11 @@ export default {
     checkoutItems() {
       return this.cartStore.buyNowItem ? [this.cartStore.buyNowItem] : this.cartStore.selectedItems
     },
+    /** 是否预售结算：商品详情立即预订时会给 buyNowItem 打上 presaleType */
+    isPresaleCheckout() {
+      const type = this.cartStore.buyNowItem?.presaleType
+      return type === 'FULL' || type === 'DEPOSIT'
+    },
     /** 是否全部为虚拟商品：虚拟订单免收货地址、免运费 */
     allVirtual() {
       const items = this.checkoutItems || []
@@ -608,6 +613,8 @@ export default {
      * 当前生效优惠券的实际抵扣金额(用于价格明细行展示)
      */
     discount() {
+      // 预售订单不参与优惠券/会员/活动/积分抵扣，避免展示金额与实际支付不一致
+      if (this.isPresaleCheckout) return 0
       const coupon = this.activeCoupon
       if (!coupon) return 0
       return this.calculateCouponDiscount(coupon)
@@ -637,6 +644,7 @@ export default {
     // 章节 3.1：N 积分 = $1，最高抵扣商品金额 X%，且不超过剩余商品金额
     // 与后端 OrderServiceImpl 口径一致：比例上限 HALF_UP 到分、余额上限 DOWN 到分
     pointsDiscount() {
+      if (this.isPresaleCheckout) return 0
       if (!this.usePoints) return 0
       const pointsPerUnit = Math.max(Number(this.pointsRule.pointsPerUnit) || 100, 1)
       const maxRate = Math.max(Number(this.pointsRule.maxPercent) || 0, 0) / 100
@@ -665,6 +673,8 @@ export default {
      * 与优惠券叠加；秒杀商品不参与，与后端下单计算口径保持一致。
      */
     memberDiscount() {
+      // 预售订单不参与会员折扣
+      if (this.isPresaleCheckout) return 0
       const rate = Number(this.memberDiscountRate)
       if (!(rate > 0 && rate < 1)) return 0
       const eligibleSubtotal = this.checkoutItems.reduce((sum, item) => {
@@ -713,6 +723,10 @@ export default {
       return Number((taxableGoods * rate).toFixed(2))
     },
     total() {
+      // 预售订单只收商品金额 + 运费 + 税费，不叠加任何优惠
+      if (this.isPresaleCheckout) {
+        return Math.max(0, this.subtotal + this.selectedShippingPrice + this.taxAmount)
+      }
       return Math.max(
         0,
         this.subtotal +
@@ -1171,29 +1185,64 @@ export default {
       this.currentStep = 4
       try {
         const items = this.checkoutItems
-        const pointsPerUnit = Math.max(Number(this.pointsRule.pointsPerUnit) || 100, 1)
-        const usedPoints = this.usePoints ? Math.floor(this.pointsDiscount * pointsPerUnit) : 0
-        const orderData = {
-          items: items.map((it) => ({
-            skuId: it.skuId || null,
-            productId: it.productId,
-            quantity: it.quantity,
-          })),
-          addressId: this.allVirtual ? null : this.selectedAddress?.id || null,
-          remark: this.orderRemark,
-          // 优先用 auto-selected activeCoupon(支持 AMOUNT/PERCENT 两种)。
-          // couponUserId 来自后端 /coupons/mine 返回的用户券记录 id(必传，服务端据此核销/重算减免)；
-          // couponId 仅作展示参考，改用券模板 id(activeCoupon.couponId)，不再传恒为 undefined 的 code。
-          // 注意：真正的资金判据在服务端(couponUserId)，前端这两个值只是提示。
-          couponId: this.activeCoupon?.couponId != null ? String(this.activeCoupon.couponId) : null,
-          couponUserId: this.activeCoupon?.userCouponId || null,
-          couponDiscount: this.discount,
-          pointsUsed: usedPoints,
-          pointsDiscount: this.usePoints ? this.pointsDiscount : 0,
-          shippingMethod: this.allVirtual ? 'standard' : this.selectedShipping,
-          freight: this.allVirtual ? 0 : this.selectedShippingPrice,
+        // 先记录应付金额：下单成功后会清空 buyNowItem / 移除购物车项，
+        // 之后再读 this.total 会按空商品重算成 0，导致本地待付款记录金额错误。
+        const payableAmount = this.total
+        let order = null
+        if (this.isPresaleCheckout) {
+          // 预售下单：价格、限购、预售库存全部由服务端按预售配置计算，不传优惠/积分
+          const item = this.cartStore.buyNowItem
+          order = await orderApi.createPresaleOrder({
+            productId: item.productId,
+            skuId: item.skuId && item.skuId !== item.productId ? item.skuId : null,
+            quantity: item.quantity || 1,
+            addressId: this.selectedAddress?.id || null,
+            remark: this.orderRemark,
+            shippingMethod: this.selectedShipping,
+          })
+          this.cartStore.clearBuyNow()
+          this.cartStore.selectedCoupon = null
+        } else {
+          const pointsPerUnit = Math.max(Number(this.pointsRule.pointsPerUnit) || 100, 1)
+          const usedPoints = this.usePoints ? Math.floor(this.pointsDiscount * pointsPerUnit) : 0
+          const orderData = {
+            items: items.map((it) => ({
+              skuId: it.skuId || null,
+              productId: it.productId,
+              quantity: it.quantity,
+            })),
+            addressId: this.allVirtual ? null : this.selectedAddress?.id || null,
+            remark: this.orderRemark,
+            // 优先用 auto-selected activeCoupon(支持 AMOUNT/PERCENT 两种)。
+            // couponUserId 来自后端 /coupons/mine 返回的用户券记录 id(必传，服务端据此核销/重算减免)；
+            // couponId 仅作展示参考，改用券模板 id(activeCoupon.couponId)，不再传恒为 undefined 的 code。
+            // 注意：真正的资金判据在服务端(couponUserId)，前端这两个值只是提示。
+            couponId:
+              this.activeCoupon?.couponId != null ? String(this.activeCoupon.couponId) : null,
+            couponUserId: this.activeCoupon?.userCouponId || null,
+            couponDiscount: this.discount,
+            pointsUsed: usedPoints,
+            pointsDiscount: this.usePoints ? this.pointsDiscount : 0,
+            shippingMethod: this.allVirtual ? 'standard' : this.selectedShipping,
+            freight: this.allVirtual ? 0 : this.selectedShippingPrice,
+          }
+          order = await orderApi.createOrder(orderData)
+
+          // 立即购买场景只清临时单品
+          if (this.cartStore.buyNowItem) {
+            this.cartStore.clearBuyNow()
+            this.cartStore.selectedCoupon = null
+          } else {
+            // 购物车结算：只移除本次已结算的勾选项，保留未勾选/失效商品
+            this.cartStore.selectedCoupon = null
+            const cartKeys = items
+              .map((it) => it.skuId || it.variationId || it.productId)
+              .filter(Boolean)
+            for (const k of cartKeys) {
+              await this.cartStore.removeItem(k)
+            }
+          }
         }
-        const order = await orderApi.createOrder(orderData)
         uni.hideLoading()
 
         // 下单成功即写入本地未支付记录,便于待付款列表展示(即使未支付/支付失败也不丢失)
@@ -1203,7 +1252,7 @@ export default {
             id: orderId,
             orderNo: order?.orderNo || String(orderId),
             status: 'PENDING_PAY',
-            payAmount: this.total,
+            payAmount: payableAmount,
             createdAt: Date.now(),
             items: items.map((it) => ({
               id: it.productId,
@@ -1212,21 +1261,6 @@ export default {
               quantity: it.quantity,
             })),
           })
-        }
-
-        // 立即购买场景只清临时单品
-        if (this.cartStore.buyNowItem) {
-          this.cartStore.clearBuyNow()
-          this.cartStore.selectedCoupon = null
-        } else {
-          // 购物车结算：只移除本次已结算的勾选项，保留未勾选/失效商品
-          this.cartStore.selectedCoupon = null
-          const cartKeys = items
-            .map((it) => it.skuId || it.variationId || it.productId)
-            .filter(Boolean)
-          for (const k of cartKeys) {
-            await this.cartStore.removeItem(k)
-          }
         }
 
         uni.showToast({ title: i18n.t('checkout.toast.orderPlaced'), icon: 'success' })

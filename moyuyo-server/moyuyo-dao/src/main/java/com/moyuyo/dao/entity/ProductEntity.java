@@ -139,4 +139,8 @@ public class ProductEntity {
     /** 活动标签文案，如“限时 7 折”“立减 10 元”“满 100 减 20” */
     @TableField(exist = false)
     private String campaignTag;
+
+    /** 预售配置（来自 mo_product_presale，后台编辑回显 + APP 详情页展示；无预售时为 null） */
+    @TableField(exist = false)
+    private ProductPresaleEntity presaleInfo;
 }

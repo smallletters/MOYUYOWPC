@@ -3,7 +3,9 @@ package com.moyuyo.service.order;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.moyuyo.common.enums.OrderStatusEnum;
 import com.moyuyo.dao.entity.OrderEntity;
+import com.moyuyo.dao.entity.ProductPresaleEntity;
 import com.moyuyo.dao.mapper.OrderMapper;
+import com.moyuyo.dao.mapper.ProductPresaleMapper;
 import com.moyuyo.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,7 +14,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 订单超时自动取消定时任务
@@ -33,6 +40,7 @@ import java.util.List;
 public class OrderTimeoutCancelJob {
 
     private final OrderMapper orderMapper;
+    private final ProductPresaleMapper productPresaleMapper;
     private final OrderService orderService;
 
     @Value("${moyuyo.order.timeout.enabled:true}")
@@ -57,14 +65,19 @@ public class OrderTimeoutCancelJob {
             return;
         }
         try {
-            LocalDateTime threshold = LocalDateTime.now().minusMinutes(timeoutMinutes);
-            // 仅查 PENDING_PAY 状态的订单，删除状态 0 表示未删除
-            List<OrderEntity> expired = orderMapper.selectList(
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime threshold = now.minusMinutes(timeoutMinutes);
+            // 普通订单 + 订阅订单：按全局超时阈值扫描 PENDING_PAY 且删除状态 0
+            // 订阅单无实物库存，但未支付长期滞留会产生无效订单与对账噪音，同样纳入超时取消
+            List<OrderEntity> expired = new ArrayList<>(orderMapper.selectList(
                     new LambdaQueryWrapper<OrderEntity>()
                             .eq(OrderEntity::getStatus, OrderStatusEnum.PENDING_PAY.name())
                             .eq(OrderEntity::getDeleteStatus, 0)
+                            .in(OrderEntity::getOrderType, "NORMAL", "SUBSCRIPTION")
                             .lt(OrderEntity::getCreateTime, threshold)
-                            .last("LIMIT " + Math.max(1, batchSize)));
+                            .last("LIMIT " + Math.max(1, batchSize))));
+            // 预售订单：按商品级 auto_cancel_minutes 超时，可能早于全局阈值，需单独扫描
+            expired.addAll(selectExpiredPresaleOrders(now));
             if (expired.isEmpty()) {
                 return;
             }
@@ -85,5 +98,45 @@ public class OrderTimeoutCancelJob {
             // 任何异常都不能让定时任务挂掉，下一分钟继续
             log.error("[order-timeout] 定时任务异常", e);
         }
+    }
+
+    /**
+     * 查询已超时的预售未支付订单（全款/定金）。
+     * <p>
+     * 预售商品的自动取消时间配置在 mo_product_presale.auto_cancel_minutes，
+     * 可能小于全局阈值，因此先按 1 分钟粗筛，再按商品配置在内存中精确过滤。
+     * 已取消/已支付订单由 cancelOrder 内部状态机兜底，不会重复处理。
+     */
+    private List<OrderEntity> selectExpiredPresaleOrders(LocalDateTime now) {
+        List<OrderEntity> pending = orderMapper.selectList(
+                new LambdaQueryWrapper<OrderEntity>()
+                        .eq(OrderEntity::getStatus, OrderStatusEnum.PENDING_PAY.name())
+                        .eq(OrderEntity::getDeleteStatus, 0)
+                        .eq(OrderEntity::getOrderType, "PRESALE")
+                        // 尾款单同样可能长期未支付，一并纳入超时取消；取消后可重新生成尾款单
+                        .in(OrderEntity::getPresaleStage, "FULL", "DEPOSIT", "BALANCE")
+                        .lt(OrderEntity::getCreateTime, now.minusMinutes(1))
+                        .last("LIMIT " + Math.max(1, batchSize)));
+        if (pending.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> presaleIds = pending.stream()
+                .map(OrderEntity::getPresaleId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        Map<Long, ProductPresaleEntity> presaleMap = presaleIds.isEmpty()
+                ? Map.of()
+                : productPresaleMapper.selectBatchIds(presaleIds).stream()
+                    .collect(Collectors.toMap(ProductPresaleEntity::getId, Function.identity()));
+        List<OrderEntity> result = new ArrayList<>();
+        for (OrderEntity order : pending) {
+            ProductPresaleEntity presale = presaleMap.get(order.getPresaleId());
+            int minutes = presale != null && presale.getAutoCancelMinutes() != null
+                    ? presale.getAutoCancelMinutes() : timeoutMinutes;
+            if (order.getCreateTime() != null && order.getCreateTime().isBefore(now.minusMinutes(minutes))) {
+                result.add(order);
+            }
+        }
+        return result;
     }
 }

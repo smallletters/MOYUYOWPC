@@ -40,12 +40,26 @@
           @click="onCardClick(o, $event)"
         >
           <view class="card-header">
-            <text class="order-no">#{{ o.orderNo }}</text>
+            <view class="order-no-row">
+              <text class="order-no">#{{ o.orderNo }}</text>
+              <text v-if="presaleLabel(o)" class="presale-tag">{{ presaleLabel(o) }}</text>
+            </view>
             <text class="order-status" :class="`status-${o.status}`">
-              {{ statusText(o.status) }}
+              {{ displayStatus(o) }}
             </text>
           </view>
-          <view class="order-items">
+          <!-- 订阅订单没有 mo_order_item，渲染订阅专属信息区，避免出现空商品行 -->
+          <view v-if="o.orderType === 'SUBSCRIPTION'" class="subscription-card">
+            <view class="subscription-head">
+              <text class="subscription-tag">{{ $t('order.subscriptionOrder') }}</text>
+              <text class="subscription-plan text-ellipsis-2">{{ subscriptionPlanName(o) }}</text>
+            </view>
+            <view class="subscription-amount-row">
+              <text class="subscription-label">{{ $t('order.subscriptionAmount') }}</text>
+              <text class="subscription-amount">{{ money(payableOf(o)) }}</text>
+            </view>
+          </view>
+          <view v-else class="order-items">
             <view v-for="item in (o.items || []).slice(0, 2)" :key="item.id" class="item-row">
               <image
                 mode="aspectFill"
@@ -99,7 +113,12 @@
             <text class="total">
               {{ $t('orderList.totalLabel', { amount: money(payableOf(o)) }) }}
             </text>
-            <view class="btn btn-primary action-btn" @click.stop="onAction(o)">
+            <!-- 订阅订单支付成功即开通，没有发货动作，不展示「等待发货」按钮 -->
+            <view
+              v-if="!(o.orderType === 'SUBSCRIPTION' && o.status === 'PAID')"
+              class="btn btn-primary action-btn"
+              @click.stop="onAction(o)"
+            >
               {{ o.status === 'RECEIVED' ? receivedActionText(o) : actionText(o.status) }}
             </view>
           </view>
@@ -171,9 +190,10 @@ export default {
       // - SHIPPED → 已发货、待收货
       // - RECEIVED → 已收货（待评价）
       // - COMPLETED → 已完成（已评价）
-      // 6 个 tab,语义对齐用户视角:
+      // 6 个状态 tab + 1 个订阅 tab，语义对齐用户视角:
       // - RECEIVED (待评价) 与 COMPLETED (已完成) 拆分,避免同一 tab 内按钮一会"去评价"一会"查看"
       // - 待发货 PAID/PENDING_SHIP 仍合并,后端 listOrders 已支持逗号分隔多状态 in 查询
+      // - 订阅订单支付后停留在 PAID，若混在待发货 tab 会误导用户，独立订阅 tab 展示（已开通/待付款）
       return [
         { value: 'all', label: i18n.t('orderList.statusTabs.all') },
         { value: 'PENDING_PAY', label: i18n.t('orderList.statusTabs.pendingPay') },
@@ -181,6 +201,7 @@ export default {
         { value: 'SHIPPED', label: i18n.t('orderList.statusTabs.pendingReceive') },
         { value: 'RECEIVED', label: i18n.t('orderList.statusTabs.toReview') },
         { value: 'COMPLETED', label: i18n.t('orderList.statusTabs.completed') },
+        { value: 'SUBSCRIPTION', label: i18n.t('orderList.statusTabs.subscription') },
       ]
     },
     currencySymbol() {
@@ -302,7 +323,14 @@ export default {
         // 20 仍属安全值。
         const params = { page: this.page, size: 20 }
         this._lastPageSize = params.size
-        if (this.activeTab !== 'all') params.status = this.activeTab
+        if (this.activeTab === 'SUBSCRIPTION') {
+          // 订阅 tab：按订单类型查询，包含待付款/已开通/已取消的订阅单
+          params.orderType = 'SUBSCRIPTION'
+        } else {
+          if (this.activeTab !== 'all') params.status = this.activeTab
+          // 待发货 tab 排除订阅单：订阅支付成功即开通，没有发货动作，避免与实物订单混淆
+          if (this.activeTab === 'PAID,PENDING_SHIP') params.excludeOrderType = 'SUBSCRIPTION'
+        }
         // request.js 已解包外层 envelope,result 即 IPage { records, total, size, current, ... }
         const result = await orderApi.getOrderList(params)
         let list = Array.isArray(result?.records)
@@ -411,6 +439,35 @@ export default {
       const v = i18n.t(key)
       // i18n.t 在 key 缺失时返回原 key,这里回退到 status 本身
       return v === key ? status : v
+    },
+
+    /** 列表状态展示：订阅订单支付成功即开通，不进入发货流程，避免显示「待发货」 */
+    displayStatus(order) {
+      void this.localeVersion
+      if (order?.orderType === 'SUBSCRIPTION' && order.status === 'PAID') {
+        return i18n.t('order.subscriptionActivated')
+      }
+      return this.statusText(order?.status)
+    },
+
+    /** 预售订单标签：定金单 / 尾款单 / 全款预售，普通订单返回空 */
+    presaleLabel(order) {
+      void this.localeVersion
+      if (order?.orderType !== 'PRESALE') return ''
+      if (order.presaleStage === 'DEPOSIT') return i18n.t('presale.badgeDeposit')
+      if (order.presaleStage === 'BALANCE') return i18n.t('presale.badgeBalance')
+      return i18n.t('presale.badgeFull')
+    },
+
+    /** 订阅方案名：优先用后端回查的 subscribePlanName，兼容旧数据时回退解析 remark */
+    subscriptionPlanName(order) {
+      void this.localeVersion
+      const serverName = String(order?.subscribePlanName || '').trim()
+      if (serverName) return serverName
+      const name = String(order?.remark || '')
+        .replace(/^订阅：/, '')
+        .trim()
+      return name || i18n.t('order.subscriptionService')
     },
 
     actionText(status) {
@@ -655,9 +712,13 @@ export default {
       }
       try {
         await orderApi.cancelOrder(order.id, t('orderList.cancelReason'))
-        // 取消成功后:如果当前 tab 不含 CANCELLED,把该订单从当前列表隐藏
-        // 当 tab 不是 ALL / CANCELLED 时隐藏
-        if (this.activeTab !== 'all' && this.activeTab !== 'CANCELLED') {
+        // 取消成功后:如果当前 tab 不含 CANCELLED,把该订单从当前列表隐藏。
+        // 订阅 tab 本身包含已取消单,就地刷新状态,避免"取消后消失、刷新后又出现"
+        if (
+          this.activeTab !== 'all' &&
+          this.activeTab !== 'CANCELLED' &&
+          this.activeTab !== 'SUBSCRIPTION'
+        ) {
           this.orders = this.orders.filter((o) => o.id !== order.id)
         } else {
           // 刷新该订单显示状态
@@ -690,13 +751,17 @@ export default {
   display: flex;
   background: var(--color-surface);
   border-bottom: 1rpx solid var(--color-divider);
+  /* 7 个 tab + 英文长文案：允许横向滚动，避免挤压换行撑破布局 */
+  overflow-x: auto;
 }
 
 .tab {
-  flex: 1;
+  flex: 0 0 auto;
+  min-width: 120rpx;
   text-align: center;
-  padding: 24rpx 0;
+  padding: 24rpx 16rpx;
   font-size: 26rpx;
+  white-space: nowrap;
   color: var(--color-text-secondary);
   position: relative;
 
@@ -790,12 +855,34 @@ export default {
   color: var(--color-text-secondary);
 }
 
+/* 预售订单标识（定金单/尾款单/全款预售） */
+.order-no-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.presale-tag {
+  padding: 2rpx 10rpx;
+  font-size: 20rpx;
+  line-height: 1.6;
+  border-radius: 6rpx;
+  color: var(--brand-500, #dbc98a);
+  background-color: var(--brand-50, #f8f3e6);
+  border: 1rpx solid var(--brand-200, #eadcc0);
+}
+
 .order-status {
   font-size: 26rpx;
   font-weight: 600;
 
   &.status-PENDING_PAY {
     color: var(--color-warning);
+  }
+  &.status-PAID {
+    /* 订阅订单支付成功即开通（定金单也停在该状态），用成功色区分 */
+    color: var(--color-success);
   }
   &.status-PENDING_SHIP {
     color: var(--color-info);
@@ -846,6 +933,56 @@ export default {
   font-size: 24rpx;
   color: var(--color-text-tertiary);
   padding: 8rpx;
+}
+
+/* 订阅订单信息区（无商品行，避免空商品区） */
+.subscription-card {
+  padding: 16rpx 20rpx;
+  background: var(--color-background);
+  border-radius: 12rpx;
+}
+
+.subscription-head {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.subscription-tag {
+  flex-shrink: 0;
+  padding: 2rpx 10rpx;
+  font-size: 20rpx;
+  line-height: 1.6;
+  border-radius: 6rpx;
+  color: var(--brand-500, #dbc98a);
+  background-color: var(--brand-50, #f8f3e6);
+  border: 1rpx solid var(--brand-200, #eadcc0);
+}
+
+.subscription-plan {
+  flex: 1;
+  min-width: 0;
+  font-size: 26rpx;
+  color: var(--color-text);
+}
+
+.subscription-amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.subscription-label {
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+}
+
+.subscription-amount {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
 }
 
 /* 待付款订单金额明细：与结算页同口径（商品/运费/优惠券/积分/实付）。

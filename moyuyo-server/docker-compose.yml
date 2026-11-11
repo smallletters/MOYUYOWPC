@@ -28,6 +28,8 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-moyuyo_prod}
       MYSQL_USER: ${MYSQL_USER:-moyuyo}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
+      # 监控专用账号密码：仅用于数据卷首次初始化时创建 exporter 账号
+      MYSQL_EXPORTER_PASSWORD: ${MYSQL_EXPORTER_PASSWORD:?MYSQL_EXPORTER_PASSWORD must be set}
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
       MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
       # 显式声明容器内时区，避免容器时区与宿主机/JVM 不一致导致 NOW()/TIMESTAMP 漂移
@@ -69,6 +71,8 @@ services:
       - mysql-data:/var/lib/mysql
       # 慢日志与错误日志挂载到命名卷，便于运维 tail / grep
       - moyuyo-mysql-logs:/var/log/mysql
+      # 首次初始化数据卷时创建 exporter 监控账号，避免重建数据卷后监控失效
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       # 注意：在 docker-compose 中，"$$" 是字面 "$" 的转义，shell 中最终看到 "${MYSQL_ROOT_PASSWORD}"。
       # 这样密码值里的 $ 不会被 docker-compose 字符串替换器吞掉。
@@ -126,11 +130,45 @@ services:
         chmod 644 /certs/mysql-ca.p12
         echo "[mysql-certs] 信任库已生成：/certs/mysql-ca.p12（alias=moyuyo-mysql-ca）"
 
+  # Redis ACL 文件种子（一次性任务）
+  # 背景：Redis 启用 --aclfile 后，文件不存在会直接启动失败
+  #       （Aborting Redis startup because of ACL errors），
+  #       因此必须在 redis 启动前把 default / exporter 用户写入 /data/users.acl（随 redis-data 卷持久化）
+  redis-acl-seed:
+    image: redis:7.2-alpine
+    container_name: moyuyo-redis-acl-seed
+    restart: "no"
+    # 与 redis 容器同用户（uid:gid=999:1000），保证 users.acl 属主可被 redis 读写（ACL SAVE 需要写权限）
+    user: "999:1000"
+    volumes:
+      - redis-data:/data
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      REDIS_EXPORTER_PASSWORD: ${REDIS_EXPORTER_PASSWORD:?REDIS_EXPORTER_PASSWORD must be set}
+    command:
+      - sh
+      - -c
+      - |
+        if [ -f /data/users.acl ]; then
+          echo "[redis-acl] users.acl 已存在，跳过"
+          exit 0
+        fi
+        cat > /data/users.acl <<ACL
+        user default on >$${REDIS_PASSWORD} ~* &* +@all
+        user exporter on >$${REDIS_EXPORTER_PASSWORD} ~* +@read +@connection +info +config|get +client|list +memory|stats +slowlog|get +slowlog|len +latency +role +dbsize
+        ACL
+        chmod 600 /data/users.acl
+        echo "[redis-acl] users.acl 已生成"
+
   # Redis 缓存
   redis:
     image: redis:7.2-alpine
     container_name: moyuyo-redis
     restart: unless-stopped
+    # ACL 种子必须先完成，否则 --aclfile 指向的文件不存在会导致 Redis 启动失败
+    depends_on:
+      redis-acl-seed:
+        condition: service_completed_successfully
     # 资源限制：Redis 单进程，CPU 不限
     # P1 优化：mem_limit 必须 >= --maxmemory + Redis 自身开销（fork COW、AOF rewrite 等）
     # 原配置 mem_limit=1G 但 maxmemory=800m，剩余 200M 在 fork/rewrite 高峰时被宿主机 OOM-killer 杀掉
@@ -144,8 +182,10 @@ services:
         hard: 65536
     command:
       - "redis-server"
-      - "--requirepass"
-      - "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}"
+      # 使用 ACL 文件持久化用户（default + exporter），替代 --requirepass：
+      # --requirepass 只是 memory 中的 default 用户配置，ACL 用户重启即丢失
+      - "--aclfile"
+      - "/data/users.acl"
       # 限制最大客户端连接数：避免异常连接耗尽 fd
       - "--maxclients"
       - "10000"
@@ -609,11 +649,16 @@ services:
     image: prom/mysqld-exporter:v0.15.1
     container_name: moyuyo-mysqld-exporter
     restart: unless-stopped
-    # 必须以 root 连接 MySQL 才能采集 information_schema / performance_schema
+    # v0.15.1 已移除 DATA_SOURCE_NAME（旧配置会被忽略，报 "no user specified"），
+    # 改用 --mysqld.address / --mysqld.username + MYSQLD_EXPORTER_PASSWORD 环境变量
+    # 使用独立的 exporter 账号（PROCESS / REPLICATION CLIENT / SELECT），禁止 root
     # 安全：由 docker-compose 内部网络访问，外网不可达
     environment:
-      DATA_SOURCE_NAME: "exporter:${MYSQL_EXPORTER_PASSWORD:?MYSQL_EXPORTER_PASSWORD must be set}@(mysql:3306)/"
+      MYSQLD_EXPORTER_PASSWORD: ${MYSQL_EXPORTER_PASSWORD:?MYSQL_EXPORTER_PASSWORD must be set}
       TZ: Asia/Shanghai
+    command:
+      - "--mysqld.address=mysql:3306"
+      - "--mysqld.username=exporter"
     ports:
       - "127.0.0.1:9104:9104"
     depends_on:
@@ -640,8 +685,9 @@ services:
     restart: unless-stopped
     environment:
       REDIS_ADDR: "redis://redis:6379"
-      # 强制使用独立的 redis_exporter 监控密码（不允许与 REDIS_PASSWORD 复用），
-      # ProdConfigValidator 在应用启动期校验；如复用会让 exporter 被入侵后获得完整 Redis 权限
+      # 必须使用独立 ACL 监控账号（禁与 default 用户/REDIS_PASSWORD 复用）
+      # 该账号由下方 redis-acl-init 一次性任务在每次 up 时确保存在
+      REDIS_USER: exporter
       REDIS_PASSWORD: ${REDIS_EXPORTER_PASSWORD:?REDIS_EXPORTER_PASSWORD must be set}
       TZ: Asia/Shanghai
     ports:
@@ -649,18 +695,38 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      # 等 ACL 账号初始化完成，避免首次启动时 exporter 认证失败
+      redis-acl-init:
+        condition: service_completed_successfully
     # 资源限制：redis_exporter 是单进程 Go 应用，常驻内存约 30MB；
     # 设置 mem_limit=128M 给 metrics 解析 + buffer 留余量
     # CPU 不设限：宿主机 4 核自然调度
     mem_limit: 128M
     mem_reservation: 32M
-    # 健康检查：避免 exporter 进程崩溃但端口仍可达时被 Prometheus 抓取到空指标
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9121/metrics >/dev/null 2>&1 || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+    # 注意：官方镜像是 distroless（无 sh/wget/curl），无法用容器内探针做健康检查，
+    # 这里不配置 healthcheck；可用 Prometheus 的 redis_up 指标判断真实可用性
+
+  # Redis 监控 ACL 账号初始化（一次性任务）
+  # 背景：Redis 使用 --aclfile 持久化，但 .env 中的密码/权限可能变化；
+  #       每次 compose up 用该任务同步 exporter 账号并 ACL SAVE 落盘，保证重启后仍可用。
+  redis-acl-init:
+    image: redis:7.2-alpine
+    container_name: moyuyo-redis-acl-init
+    restart: "no"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      # redis-cli 默认用 default 用户 + REDIS_PASSWORD 鉴权（具备 ACL 管理权限）
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      REDIS_EXPORTER_PASSWORD: ${REDIS_EXPORTER_PASSWORD:?REDIS_EXPORTER_PASSWORD must be set}
+    command:
+      - sh
+      - -c
+      - >
+        redis-cli -h redis --no-auth-warning ACL SETUSER exporter reset on ">$${REDIS_EXPORTER_PASSWORD}" "~*"
+        +@read +@connection +info "+config|get" "+client|list" "+memory|stats" "+slowlog|get" "+slowlog|len" +latency +role +dbsize
+        && redis-cli -h redis --no-auth-warning ACL SAVE
 
   # RocketMQ 监控导出器（rocketmq-exporter）
   # 抓取 RocketMQ broker / consumer / topic 指标（消息堆积、broker 延迟、生产消费比）

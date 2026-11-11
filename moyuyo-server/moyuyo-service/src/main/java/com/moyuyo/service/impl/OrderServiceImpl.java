@@ -5,7 +5,9 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyuyo.common.dto.admin.order.OrderRefundRequest;
 import com.moyuyo.common.dto.order.CreateOrderRequest;
+import com.moyuyo.common.dto.order.CreatePresaleOrderRequest;
 import com.moyuyo.common.dto.order.OrderItemRequest;
 import com.moyuyo.dao.entity.AddressEntity;
 import com.moyuyo.dao.admin.entity.FinanceRecordEntity;
@@ -16,6 +18,7 @@ import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
 import com.moyuyo.dao.entity.PaymentEntity;
 import com.moyuyo.dao.entity.ProductEntity;
+import com.moyuyo.dao.entity.ProductPresaleEntity;
 import com.moyuyo.dao.entity.ProductSkuEntity;
 import com.moyuyo.dao.entity.UserCouponEntity;
 import com.moyuyo.dao.mapper.AddressMapper;
@@ -25,6 +28,7 @@ import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
 import com.moyuyo.dao.mapper.PaymentMapper;
 import com.moyuyo.dao.mapper.ProductMapper;
+import com.moyuyo.dao.mapper.ProductPresaleMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.service.CouponService;
 import com.moyuyo.service.InviteService;
@@ -33,7 +37,9 @@ import com.moyuyo.service.MemberService;
 import com.moyuyo.service.MissionService;
 import com.moyuyo.service.NotificationService;
 import com.moyuyo.service.OrderService;
+import com.moyuyo.service.RefundService;
 import com.moyuyo.service.ShippingRateService;
+import com.moyuyo.service.SubscribeService;
 import com.moyuyo.service.WooCommerceSyncService;
 import com.moyuyo.service.admin.SystemConfigService;
 import com.moyuyo.service.config.MembershipRuleConfigService;
@@ -102,6 +108,22 @@ public class OrderServiceImpl implements OrderService {
   private final CampaignPricingServiceImpl campaignPricingService;
   /** 系统配置：读取商品税率、运费类系数等后台可调参数 */
   private final SystemConfigService systemConfigService;
+  // 商品预售配置：预售下单价格、限购、库存全部以该表为准
+  private final ProductPresaleMapper productPresaleMapper;
+  // 尾款逾期退定金：复用现有退款链路（生成退款单 + 调用原支付渠道 + 写财务流水）
+  private final RefundService refundService;
+  // 订阅订单：支付成功回调内开通/续期订阅（SubscribeServiceImpl 只依赖 dao mapper，不会循环依赖）
+  private final SubscribeService subscribeService;
+
+  // ===== 预售相关常量 =====
+  private static final String ORDER_TYPE_NORMAL = "NORMAL";
+  private static final String ORDER_TYPE_PRESALE = "PRESALE";
+  // 订阅订单：支付成功后开通/续期订阅，不进入发货流程
+  private static final String ORDER_TYPE_SUBSCRIPTION = "SUBSCRIPTION";
+  private static final String PRESALE_TYPE_DISPLAY = "DISPLAY";
+  private static final String PRESALE_STAGE_FULL = "FULL";
+  private static final String PRESALE_STAGE_DEPOSIT = "DEPOSIT";
+  private static final String PRESALE_STAGE_BALANCE = "BALANCE";
 
   @Override
   @Transactional
@@ -254,6 +276,8 @@ public class OrderServiceImpl implements OrderService {
     order.setPointsUsed(safePointsUsed);
     order.setPayAmount(payAmount);
     order.setStatus(PENDING_PAY.name());
+    // 普通订单显式落库订单类型，避免依赖数据库默认值
+    order.setOrderType(ORDER_TYPE_NORMAL);
     order.setAddressId(addressId);
     order.setRemark(remark);
     order.setCouponId(couponId);
@@ -262,20 +286,7 @@ public class OrderServiceImpl implements OrderService {
 
     // 按 addressId 查询地址并快照收件人/电话/详细地址到订单表，
     // 防止用户后续修改或删除地址后，订单的历史收货信息丢失。
-    if (addressId != null) {
-      try {
-        AddressEntity address = addressMapper.selectById(addressId);
-        if (address != null) {
-          order.setReceiverName(address.getReceiver());
-          order.setReceiverPhone(address.getPhone());
-          order.setReceiverAddress(formatFullAddress(address));
-          order.setReceiverZip(address.getZipCode());
-        }
-      } catch (Exception e) {
-        // 地址查询失败只记录日志，不阻断下单（避免地址表异常导致整个下单链路不可用）
-        log.warn("[order] 创建订单快照地址失败，addressId={}, orderNo={}", addressId, orderNo, e);
-      }
-    }
+    snapshotAddress(order, addressId, userId);
 
     orderMapper.insert(order);
 
@@ -330,6 +341,10 @@ public class OrderServiceImpl implements OrderService {
           product.getOriginalPrice()));
       items.add(item);
     }
+
+    // 预售商品（全款/定金）必须走预售下单接口，避免按现货价购买预售商品造成价格穿透。
+    // 展示型预售不改变价格与下单流程，仍允许普通下单。
+    assertNoActivePresaleProduct(items);
 
     // 营销活动计价：活动价 + 满减（必须在优惠券/会员/积分之前计算，保证按活动后金额算门槛）
     CampaignPricingServiceImpl.OrderPricing campaignPricing =
@@ -446,6 +461,468 @@ public class OrderServiceImpl implements OrderService {
     return order;
   }
 
+  // ==================== 预售订单 ====================
+
+  @Override
+  @Transactional
+  public OrderEntity createPresaleOrder(Long userId, CreatePresaleOrderRequest request) {
+    ProductEntity product = productMapper.selectById(request.getProductId());
+    if (product == null) {
+      throw new IllegalArgumentException("商品不存在: " + request.getProductId());
+    }
+    if (product.getOnSale() == null || !product.getOnSale()) {
+      throw new IllegalArgumentException("商品已下架: " + product.getName());
+    }
+    ProductPresaleEntity presale = getPresaleByProductId(product.getId());
+    if (presale == null) {
+      throw new IllegalArgumentException("该商品未配置预售");
+    }
+    String presaleType = presale.getPresaleType();
+    if (PRESALE_TYPE_DISPLAY.equalsIgnoreCase(presaleType)) {
+      throw new IllegalArgumentException("展示型预售不改变下单价格，请按普通商品下单");
+    }
+    if (!PRESALE_STAGE_FULL.equalsIgnoreCase(presaleType) && !PRESALE_STAGE_DEPOSIT.equalsIgnoreCase(presaleType)) {
+      throw new IllegalArgumentException("不支持的预售类型: " + presaleType);
+    }
+    // 预售窗口校验：草稿/已结束/未开始/已过期都不允许下单
+    LocalDateTime now = LocalDateTime.now();
+    if ("DRAFT".equals(presale.getStatus())) {
+      throw new IllegalArgumentException("预售尚未发布");
+    }
+    if ("ENDED".equals(presale.getStatus())) {
+      throw new IllegalArgumentException("预售已结束");
+    }
+    if (presale.getStartTime() != null && now.isBefore(presale.getStartTime())) {
+      throw new IllegalArgumentException("预售尚未开始");
+    }
+    if (presale.getEndTime() != null && now.isAfter(presale.getEndTime())) {
+      throw new IllegalArgumentException("预售已结束");
+    }
+    int quantity = request.getQuantity() == null ? 0 : request.getQuantity();
+    if (quantity <= 0) {
+      throw new IllegalArgumentException("购买数量必须大于 0");
+    }
+
+    // 每人限购：统计该用户在当前预售下未取消订单的购买数量
+    checkPresaleLimit(userId, presale, quantity);
+
+    // 原子占用预售库存（sold_count + 上限校验），失败即库存不足
+    reservePresaleStock(presale.getId(), quantity, product.getName());
+
+    // SKU 仅用于记录规格与履约，不扣减 SKU 库存（预售卖的是未来货）
+    ProductSkuEntity sku = null;
+    if (request.getSkuId() != null && !request.getSkuId().equals(product.getId())) {
+      sku = productSkuMapper.selectById(request.getSkuId());
+      if (sku == null || !product.getId().equals(sku.getProductId())) {
+        throw new IllegalArgumentException("SKU不存在: " + request.getSkuId());
+      }
+    }
+
+    boolean isDeposit = PRESALE_STAGE_DEPOSIT.equalsIgnoreCase(presaleType);
+    BigDecimal unitPrice = isDeposit ? presale.getDepositAmount() : presale.getPresalePrice();
+    // 配置缺失时直接失败，避免空金额下单或 NPE
+    if (unitPrice == null || unitPrice.compareTo(BigDecimal.ZERO) <= 0) {
+      throw new IllegalArgumentException(isDeposit ? "预售定金配置异常" : "预售价格配置异常");
+    }
+
+    OrderItemEntity item = new OrderItemEntity();
+    item.setProductId(product.getId());
+    item.setSkuId(sku != null ? sku.getId() : null);
+    item.setProductName(product.getName());
+    item.setMainImage(product.getMainImage());
+    item.setSkuSpec(sku != null ? sku.getSpec() : null);
+    item.setPrice(unitPrice);
+    item.setQuantity(quantity);
+
+    return insertPresaleOrder(userId, product, item, request.getAddressId(), request.getRemark(),
+        request.getShippingMethod(), presale, isDeposit ? PRESALE_STAGE_DEPOSIT : PRESALE_STAGE_FULL, null);
+  }
+
+  @Override
+  @Transactional
+  public OrderEntity createBalanceOrder(Long depositOrderId, Long userId) {
+    // FOR UPDATE 锁定定金单：串行化同一笔定金的尾款单创建，避免双击/并发产生两笔尾款单
+    OrderEntity depositOrder = orderMapper.selectOne(
+        new LambdaQueryWrapper<OrderEntity>()
+            .eq(OrderEntity::getId, depositOrderId)
+            .last("FOR UPDATE"));
+    if (depositOrder == null || !depositOrder.isPresale()
+        || !PRESALE_STAGE_DEPOSIT.equals(depositOrder.getPresaleStage())) {
+      throw new IllegalArgumentException("定金订单不存在或不支持支付尾款");
+    }
+    // 仅允许操作本人定金单：userId 为空（非用户态调用）一律拒绝，避免绕过归属校验
+    if (userId == null || !userId.equals(depositOrder.getUserId())) {
+      throw new IllegalArgumentException("无权操作该订单");
+    }
+    // 幂等：已存在未取消的尾款单时直接返回，避免重复点击生成多笔尾款
+    OrderEntity existing = orderMapper.selectOne(
+        new LambdaQueryWrapper<OrderEntity>()
+            .eq(OrderEntity::getParentOrderId, depositOrderId)
+            .ne(OrderEntity::getStatus, CANCELLED.name())
+            .last("LIMIT 1"));
+    if (existing != null) {
+      return existing;
+    }
+    // 定金必须已支付，否则不能进入尾款环节
+    if (!depositOrder.isPaid()) {
+      throw new IllegalStateException("定金尚未支付，暂不能支付尾款");
+    }
+    ProductPresaleEntity presale = productPresaleMapper.selectById(depositOrder.getPresaleId());
+    if (presale == null) {
+      throw new IllegalArgumentException("预售配置不存在");
+    }
+    LocalDateTime now = LocalDateTime.now();
+    if (presale.getBalanceStart() != null && now.isBefore(presale.getBalanceStart())) {
+      throw new IllegalStateException("尾款支付尚未开始");
+    }
+    if (presale.getBalanceEnd() != null && now.isAfter(presale.getBalanceEnd())) {
+      throw new IllegalStateException("尾款支付已结束");
+    }
+    BigDecimal depositOffset = presale.getDepositOffset() != null
+        ? presale.getDepositOffset() : presale.getDepositAmount();
+    if (presale.getPresalePrice() == null || depositOffset == null) {
+      throw new IllegalStateException("预售价格配置异常");
+    }
+    BigDecimal balanceUnit = presale.getPresalePrice().subtract(depositOffset);
+    if (balanceUnit.compareTo(BigDecimal.ZERO) <= 0) {
+      throw new IllegalStateException("尾款金额必须大于 0");
+    }
+    List<OrderItemEntity> depositItems = orderItemMapper.selectList(
+        new LambdaQueryWrapper<OrderItemEntity>()
+            .eq(OrderItemEntity::getOrderId, depositOrderId));
+    if (depositItems == null || depositItems.isEmpty()) {
+      throw new IllegalStateException("定金订单商品信息缺失");
+    }
+    OrderItemEntity depositItem = depositItems.get(0);
+    ProductEntity product = productMapper.selectById(depositItem.getProductId());
+
+    // 复制定金单商品行，价格替换为尾款单价（预售价 - 定金抵扣）
+    OrderItemEntity balanceItem = new OrderItemEntity();
+    balanceItem.setProductId(depositItem.getProductId());
+    balanceItem.setSkuId(depositItem.getSkuId());
+    balanceItem.setProductName(depositItem.getProductName());
+    balanceItem.setMainImage(depositItem.getMainImage());
+    balanceItem.setSkuSpec(depositItem.getSkuSpec());
+    balanceItem.setPrice(balanceUnit);
+    balanceItem.setQuantity(depositItem.getQuantity());
+
+    return insertPresaleOrder(depositOrder.getUserId(), product, balanceItem,
+        depositOrder.getAddressId(), depositOrder.getRemark(), depositOrder.getShippingMethod(),
+        presale, PRESALE_STAGE_BALANCE, depositOrder.getId());
+  }
+
+  @Override
+  @Transactional
+  public boolean handleExpiredDepositOrder(Long depositOrderId, String reason) {
+    // 行锁：与用户支付尾款、退款并发时串行化，避免"退款成功但尾款同时支付"
+    OrderEntity depositOrder = orderMapper.selectOne(
+        new LambdaQueryWrapper<OrderEntity>()
+            .eq(OrderEntity::getId, depositOrderId)
+            .last("FOR UPDATE"));
+    if (depositOrder == null || !depositOrder.isPresale()
+        || !PRESALE_STAGE_DEPOSIT.equals(depositOrder.getPresaleStage())) {
+      return false;
+    }
+    // 只处理"定金已支付、尚未退款/关闭"的订单；REFUNDED/CANCELLED 天然幂等跳过
+    if (!PAID.name().equals(depositOrder.getStatus())) {
+      return false;
+    }
+    ProductPresaleEntity presale = productPresaleMapper.selectById(depositOrder.getPresaleId());
+    if (presale == null || presale.getBalanceEnd() == null) {
+      return false;
+    }
+    LocalDateTime now = LocalDateTime.now();
+    if (now.isBefore(presale.getBalanceEnd())) {
+      return false;
+    }
+    // 已有生效尾款单（已支付/已发货等）说明预售正常履约，不再退定金
+    List<OrderEntity> balanceOrders = orderMapper.selectList(
+        new LambdaQueryWrapper<OrderEntity>()
+            .eq(OrderEntity::getParentOrderId, depositOrder.getId()));
+    for (OrderEntity balance : balanceOrders) {
+      String balanceStatus = balance.getStatus();
+      if (CANCELLED.name().equals(balanceStatus)) {
+        continue;
+      }
+      if (!PENDING_PAY.name().equals(balanceStatus)) {
+        return false;
+      }
+      // 尾款期已结束：关闭未支付的尾款单，防止退款后用户还能继续支付
+      int cancelled = orderMapper.update(null, new LambdaUpdateWrapper<OrderEntity>()
+          .eq(OrderEntity::getId, balance.getId())
+          .eq(OrderEntity::getStatus, PENDING_PAY.name())
+          .set(OrderEntity::getStatus, CANCELLED.name())
+          .set(OrderEntity::getCancelTime, now)
+          .set(OrderEntity::getCancelReason, "尾款期结束，尾款单自动关闭"));
+      if (cancelled == 0) {
+        // 尾款单刚被支付（与支付回调并发）：本单已履约，不能退定金，留待下轮按已支付尾款单跳过
+        return false;
+      }
+    }
+
+    // deposit_refundable 仅显式 false 才视为"定金不退"，历史数据为 null 时按可退处理
+    boolean refundable = !Boolean.FALSE.equals(presale.getDepositRefundable());
+    if (refundable) {
+      OrderRefundRequest refundRequest = new OrderRefundRequest();
+      refundRequest.setMode("AUTO");
+      refundRequest.setAmount(depositOrder.getPayAmount());
+      refundRequest.setReason(reason);
+      refundRequest.setDescription("尾款期结束仍未支付尾款，自动原路退还定金");
+      // operatorId=null：系统自动退款；退款完成后订单状态由退款链路置为 REFUNDED
+      refundService.adminRefundOrder(depositOrder.getId(), refundRequest, null);
+      // 补充关闭原因，便于售后/客服追溯订单被关闭的原因
+      orderMapper.update(null, new LambdaUpdateWrapper<OrderEntity>()
+          .eq(OrderEntity::getId, depositOrder.getId())
+          .set(OrderEntity::getCancelTime, now)
+          .set(OrderEntity::getCancelReason, reason));
+    } else {
+      int closed = orderMapper.update(null, new LambdaUpdateWrapper<OrderEntity>()
+          .eq(OrderEntity::getId, depositOrder.getId())
+          .eq(OrderEntity::getStatus, PAID.name())
+          .set(OrderEntity::getStatus, CANCELLED.name())
+          .set(OrderEntity::getCancelTime, now)
+          .set(OrderEntity::getCancelReason, reason + "（定金按约定不予退还）"));
+      if (closed == 0) {
+        // 状态已被其他流程改变：不释放库存、不发通知，避免重复处理
+        return false;
+      }
+      try {
+        notificationService.notifyUser(depositOrder.getUserId(), "ORDER", "ORDER",
+            "预售订单已关闭",
+            "您的预售定金订单 " + depositOrder.getOrderNo()
+                + " 尾款期已结束且未支付尾款，订单已关闭，定金按约定不予退还",
+            depositOrder.getId());
+      } catch (Exception e) {
+        log.warn("[presale] 定金不退通知发送失败 orderNo={}, reason={}",
+            depositOrder.getOrderNo(), e.getMessage());
+      }
+    }
+
+    // 交易终止：释放定金单占用的预售库存（尾款单不占用库存，无需释放）
+    releasePresaleStock(depositOrder);
+    log.info("[presale] 尾款逾期处理完成 orderNo={}, refundable={}, payAmount={}",
+        depositOrder.getOrderNo(), refundable, depositOrder.getPayAmount());
+    return true;
+  }
+
+  /**
+   * 预售订单落库。
+   * <p>
+   * 定金单只收定金（不含运费/税费），尾款单与全款单按地址重新计算运费与税费。
+   * 预售订单不占用商品/SKU 现货库存，库存由 mo_product_presale.sold_count 单独维护。
+   */
+  private OrderEntity insertPresaleOrder(Long userId, ProductEntity product, OrderItemEntity item,
+                                         Long addressId, String remark, String shippingMethod,
+                                         ProductPresaleEntity presale, String stage, Long parentOrderId) {
+    int quantity = item.getQuantity() == null ? 0 : item.getQuantity();
+    BigDecimal goodsAmount = item.getPrice().multiply(BigDecimal.valueOf(quantity));
+    BigDecimal freight = BigDecimal.ZERO;
+    BigDecimal taxAmount = BigDecimal.ZERO;
+    // 定金单不合并运费/税费，留到尾款单收取，避免用户为未确定的履约重复付费
+    if (!PRESALE_STAGE_DEPOSIT.equals(stage) && product != null) {
+      Map<Long, ProductEntity> productMap = new java.util.HashMap<>();
+      productMap.put(product.getId(), product);
+      List<OrderItemEntity> singleItem = Collections.singletonList(item);
+      freight = isAllVirtual(singleItem, productMap) ? BigDecimal.ZERO
+          : resolveServerFreight(userId, addressId, singleItem, goodsAmount, shippingMethod, BigDecimal.ZERO);
+      taxAmount = computeTaxAmount(singleItem, freight, productMap, goodsAmount, BigDecimal.ZERO);
+    }
+    BigDecimal payAmount = goodsAmount.add(freight).add(taxAmount);
+    if (payAmount.compareTo(BigDecimal.ZERO) < 0) {
+      payAmount = BigDecimal.ZERO;
+    }
+
+    OrderEntity order = new OrderEntity();
+    order.setOrderNo(generateOrderNo());
+    order.setUserId(userId);
+    order.setGoodsAmount(goodsAmount);
+    order.setFreight(freight);
+    order.setTaxAmount(taxAmount);
+    order.setCouponDiscount(BigDecimal.ZERO);
+    order.setMemberDiscount(BigDecimal.ZERO);
+    order.setCampaignDiscount(BigDecimal.ZERO);
+    order.setPointsDiscount(BigDecimal.ZERO);
+    order.setPointsUsed(0);
+    order.setPayAmount(payAmount);
+    order.setStatus(PENDING_PAY.name());
+    order.setOrderType(ORDER_TYPE_PRESALE);
+    order.setPresaleId(presale.getId());
+    order.setPresaleStage(stage);
+    order.setParentOrderId(parentOrderId);
+    order.setAddressId(addressId);
+    order.setRemark(remark);
+    order.setShippingMethod(shippingMethod == null ? "standard" : shippingMethod);
+    order.setDeleteStatus(0);
+    snapshotAddress(order, addressId, userId);
+    orderMapper.insert(order);
+
+    item.setOrderId(order.getId());
+    item.setSubtotal(item.getPrice().multiply(BigDecimal.valueOf(quantity)));
+    orderItemMapper.insert(item);
+    return order;
+  }
+
+  /** 按商品 ID 查预售配置（1:1） */
+  private ProductPresaleEntity getPresaleByProductId(Long productId) {
+    if (productId == null) {
+      return null;
+    }
+    return productPresaleMapper.selectOne(
+        new LambdaQueryWrapper<ProductPresaleEntity>()
+            .eq(ProductPresaleEntity::getProductId, productId)
+            .last("LIMIT 1"));
+  }
+
+  /** 普通下单拦截：全款/定金预售进行中时，禁止绕过预售入口按现货价下单 */
+  private void assertNoActivePresaleProduct(List<OrderItemEntity> items) {
+    if (items == null || items.isEmpty()) {
+      return;
+    }
+    List<Long> productIds = items.stream()
+        .map(OrderItemEntity::getProductId)
+        .filter(Objects::nonNull)
+        .distinct()
+        .collect(Collectors.toList());
+    if (productIds.isEmpty()) {
+      return;
+    }
+    List<ProductPresaleEntity> presales = productPresaleMapper.selectList(
+        new LambdaQueryWrapper<ProductPresaleEntity>()
+            .in(ProductPresaleEntity::getProductId, productIds));
+    LocalDateTime now = LocalDateTime.now();
+    for (ProductPresaleEntity presale : presales) {
+      if (isPresalePurchasable(presale, now)) {
+        throw new com.moyuyo.common.exception.BusinessException(400, "该商品正在预售，请从预售入口下单");
+      }
+    }
+  }
+
+  /** 全款/定金预售当前是否处于可下单窗口 */
+  private boolean isPresalePurchasable(ProductPresaleEntity presale, LocalDateTime now) {
+    if (presale == null || PRESALE_TYPE_DISPLAY.equalsIgnoreCase(presale.getPresaleType())) {
+      return false;
+    }
+    if ("DRAFT".equals(presale.getStatus()) || "ENDED".equals(presale.getStatus())) {
+      return false;
+    }
+    if (presale.getStartTime() != null && now.isBefore(presale.getStartTime())) {
+      return false;
+    }
+    if (presale.getEndTime() != null && now.isAfter(presale.getEndTime())) {
+      return false;
+    }
+    return true;
+  }
+
+  /** 是否为定金预售订单（定金阶段支付后不发货） */
+  private boolean isDepositPresale(OrderEntity order) {
+    return order != null && order.isPresale() && PRESALE_STAGE_DEPOSIT.equals(order.getPresaleStage());
+  }
+
+  /** 每人限购校验：已购数量取该用户该预售下有效订单的商品数量之和（已取消/已退款不计入） */
+  private void checkPresaleLimit(Long userId, ProductPresaleEntity presale, int quantity) {
+    Integer limit = presale.getLimitPerUser();
+    if (userId == null || limit == null || limit <= 0) {
+      return;
+    }
+    List<OrderEntity> orders = orderMapper.selectList(
+        new LambdaQueryWrapper<OrderEntity>()
+            .eq(OrderEntity::getUserId, userId)
+            .eq(OrderEntity::getPresaleId, presale.getId())
+            .eq(OrderEntity::getOrderType, ORDER_TYPE_PRESALE)
+            .eq(OrderEntity::getDeleteStatus, 0)
+            // 已退款（如尾款逾期退定金）说明交易未成立，不再占用限购名额
+            .notIn(OrderEntity::getStatus, CANCELLED.name(), REFUNDED.name())
+            .in(OrderEntity::getPresaleStage, PRESALE_STAGE_FULL, PRESALE_STAGE_DEPOSIT));
+    if (orders == null || orders.isEmpty()) {
+      return;
+    }
+    List<Long> orderIds = orders.stream().map(OrderEntity::getId).collect(Collectors.toList());
+    List<OrderItemEntity> items = orderItemMapper.selectList(
+        new LambdaQueryWrapper<OrderItemEntity>()
+            .in(OrderItemEntity::getOrderId, orderIds));
+    int bought = items == null ? 0 : items.stream()
+        .filter(it -> it.getQuantity() != null && it.getQuantity() > 0)
+        .mapToInt(OrderItemEntity::getQuantity).sum();
+    if (bought + quantity > limit) {
+      throw new IllegalArgumentException("该预售商品每人限购 " + limit + " 件，您已购买 " + bought + " 件");
+    }
+  }
+
+  /**
+   * 原子占用预售库存。
+   * 条件 UPDATE 保证并发下不会超卖；达到上限时同步把状态置为 SOLD_OUT。
+   * 注意 MySQL 的 SET 子句从左到右求值，因此 status 必须写在 sold_count 之前。
+   */
+  private void reservePresaleStock(Long presaleId, int quantity, String productName) {
+    LambdaUpdateWrapper<ProductPresaleEntity> wrapper = new LambdaUpdateWrapper<>();
+    wrapper.eq(ProductPresaleEntity::getId, presaleId)
+        .apply("(stock_limit IS NULL OR sold_count + {0} <= stock_limit)", quantity)
+        .setSql("status = IF(stock_limit IS NOT NULL AND sold_count + " + quantity
+            + " >= stock_limit, 'SOLD_OUT', status), sold_count = sold_count + " + quantity);
+    int affected = productPresaleMapper.update(null, wrapper);
+    if (affected == 0) {
+      throw new IllegalStateException("预售库存不足: " + productName);
+    }
+  }
+
+  /** 取消预售订单时释放预售库存（尾款单不重复释放，定金已占用过库存） */
+  private void releasePresaleStock(OrderEntity order) {
+    if (order.getPresaleId() == null) {
+      return;
+    }
+    List<OrderItemEntity> items = orderItemMapper.selectList(
+        new LambdaQueryWrapper<OrderItemEntity>()
+            .eq(OrderItemEntity::getOrderId, order.getId()));
+    int quantity = items == null ? 0 : items.stream()
+        .filter(it -> it.getQuantity() != null && it.getQuantity() > 0)
+        .mapToInt(OrderItemEntity::getQuantity).sum();
+    if (quantity <= 0) {
+      return;
+    }
+    // status 先在旧 sold_count 上判断是否需要从 SOLD_OUT 恢复，再扣减 sold_count
+    LambdaUpdateWrapper<ProductPresaleEntity> wrapper = new LambdaUpdateWrapper<>();
+    wrapper.eq(ProductPresaleEntity::getId, order.getPresaleId())
+        .setSql("status = IF(status = 'SOLD_OUT' AND (end_time IS NULL OR end_time > NOW()), 'ONGOING', status), "
+            + "sold_count = GREATEST(sold_count - " + quantity + ", 0)");
+    productPresaleMapper.update(null, wrapper);
+  }
+
+  /** 生成订单号：ORD + yyyyMMdd + 8 位雪花 ID 后缀 */
+  private String generateOrderNo() {
+    String datePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+    String snowId = String.valueOf(IdWorker.getId());
+    return "ORD" + datePart + snowId.substring(snowId.length() - 8);
+  }
+
+  /**
+   * 按 addressId 快照收件人信息到订单。
+   * 查询失败只记录日志，不阻断下单。
+   */
+  private void snapshotAddress(OrderEntity order, Long addressId, Long userId) {
+    if (addressId == null) {
+      return;
+    }
+    AddressEntity address;
+    try {
+      address = addressMapper.selectById(addressId);
+    } catch (Exception e) {
+      log.warn("[order] 创建订单快照地址失败，addressId={}, orderNo={}", addressId, order.getOrderNo(), e);
+      return;
+    }
+    if (address == null) {
+      return;
+    }
+    // 越权防护：只能使用本人收货地址，否则订单快照会泄露他人姓名/电话/详细地址
+    if (userId != null && !userId.equals(address.getUserId())) {
+      throw new IllegalArgumentException("收货地址不存在或无权使用");
+    }
+    order.setReceiverName(address.getReceiver());
+    order.setReceiverPhone(address.getPhone());
+    order.setReceiverAddress(formatFullAddress(address));
+    order.setReceiverZip(address.getZipCode());
+  }
+
   /**
    * 计算会员折扣金额：按会员等级统一折扣，作用于非秒杀商品的销售价。
    *
@@ -553,7 +1030,8 @@ public class OrderServiceImpl implements OrderService {
   }
 
   @Override
-  public IPage<OrderEntity> listOrders(Long userId, int page, int size, String status) {
+  public IPage<OrderEntity> listOrders(Long userId, int page, int size, String status,
+      String orderType, String excludeOrderType) {
     LambdaQueryWrapper<OrderEntity> wrapper = new LambdaQueryWrapper<OrderEntity>()
         .eq(OrderEntity::getDeleteStatus, 0);
     // 管理员(userId=null)查看全部订单，不限制userId
@@ -574,6 +1052,14 @@ public class OrderServiceImpl implements OrderService {
       } else {
         wrapper.eq(OrderEntity::getStatus, status);
       }
+    }
+
+    // 订单类型过滤：订阅 tab 只查 SUBSCRIPTION；待发货 tab 排除订阅单（订阅支付即开通，无发货动作）
+    if (orderType != null && !orderType.isEmpty()) {
+      wrapper.eq(OrderEntity::getOrderType, orderType);
+    }
+    if (excludeOrderType != null && !excludeOrderType.isEmpty()) {
+      wrapper.ne(OrderEntity::getOrderType, excludeOrderType);
     }
 
     wrapper.orderByDesc(OrderEntity::getCreateTime);
@@ -640,6 +1126,10 @@ public class OrderServiceImpl implements OrderService {
     try {
       AddressEntity address = addressMapper.selectById(order.getAddressId());
       if (address == null) return;
+      // 越权兜底：历史脏数据中若地址不属于下单用户，不回填，避免订单详情泄露他人收货信息
+      if (order.getUserId() != null && !order.getUserId().equals(address.getUserId())) {
+        return;
+      }
       order.setReceiverName(address.getReceiver());
       order.setReceiverPhone(address.getPhone());
       order.setReceiverAddress(formatFullAddress(address));
@@ -694,7 +1184,14 @@ public class OrderServiceImpl implements OrderService {
     order.setCancelReason(reason);
 
     // 仅在成功抢占取消后恢复已扣减的库存，避免并发双倍回补导致超卖
-    restoreStockForOrderItems(orderId);
+    if (order.isPresale()) {
+      // 预售订单未扣现货库存，只释放预售占用量；尾款单不重复释放（定金单已占用）
+      if (!PRESALE_STAGE_BALANCE.equals(order.getPresaleStage())) {
+        releasePresaleStock(order);
+      }
+    } else {
+      restoreStockForOrderItems(orderId);
+    }
 
     // 释放营销活动占用额度（活动总量/预算/每人限购）
     try {
@@ -785,12 +1282,16 @@ public class OrderServiceImpl implements OrderService {
       throw new IllegalArgumentException("订单不存在");
     }
     // 原子抢占：仅 PENDING_PAY 能进入"已支付"，与取消/超时取消并发时后提交方不会覆盖状态
+    // 定金单与订阅单支付后都停在"已支付"：定金单避免提前发货，订阅单无实物履约
+    boolean depositOrder = isDepositPresale(order);
+    String paidStatus = (depositOrder || order.isSubscription())
+        ? PAID.name() : PENDING_SHIP.name();
     LocalDateTime paidAt = LocalDateTime.now();
     int claimed = orderMapper.update(null,
         new LambdaUpdateWrapper<OrderEntity>()
             .eq(OrderEntity::getId, order.getId())
             .eq(OrderEntity::getStatus, PENDING_PAY.name())
-            .set(OrderEntity::getStatus, PENDING_SHIP.name())
+            .set(OrderEntity::getStatus, paidStatus)
             .set(OrderEntity::getPaidAt, paidAt)
             .set(OrderEntity::getPayChannel, payChannel)
             .set(OrderEntity::getPayTransactionId, transactionId));
@@ -800,7 +1301,7 @@ public class OrderServiceImpl implements OrderService {
       return;
     }
     // 同步内存对象，供下方任务/Woo/通知使用
-    order.setStatus(PENDING_SHIP.name());
+    order.setStatus(paidStatus);
     order.setPaidAt(paidAt);
     order.setPayChannel(payChannel);
     order.setPayTransactionId(transactionId);
@@ -841,6 +1342,12 @@ public class OrderServiceImpl implements OrderService {
 
     log.info("支付回调处理成功: orderNo={}, transactionId={}", orderNo, transactionId);
 
+    // 订阅开通：与支付回调同事务，开通失败则整体回滚，
+    // 由支付渠道重投，避免"钱到账但订阅未开通"
+    if (order.isSubscription()) {
+      subscribeService.activateByOrder(order);
+    }
+
     // 优惠券闭环：支付成功后才把"占用中(LOCKED)"的券真正核销为"已使用(USED)"。
     // 抢占式状态更新（PENDING_PAY→PENDING_SHIP）保证本段每个订单只执行一次；
     // 核销失败仅告警，不阻断支付主流程（钱已到账）。
@@ -872,29 +1379,33 @@ public class OrderServiceImpl implements OrderService {
       }
     }
 
-    // 任务中心埋点：付款成功即视为完成一单；首单触发"首单完成"；按订单实付金额累加"累计消费"
-    try {
-      missionService.incrementByKeyword(order.getUserId(), "WEEKLY", "完成 1 单购物", 1);
-      missionService.incrementByKeyword(order.getUserId(), "ACHIEVEMENT", "首单完成", 1);
-      if (order.getPayAmount() != null) {
-        // payAmount 已是美元金额（PayController.createPay 已统一汇率换算），直接按整数累加
-        int amountInt = order.getPayAmount().intValue();
-        if (amountInt > 0) {
-          missionService.accumulateByKeyword(order.getUserId(), "ACHIEVEMENT", "累计消费", amountInt);
+    // 订阅订单不计入购物任务与累计消费
+    if (!order.isSubscription()) {
+      // 任务中心埋点：付款成功即视为完成一单；首单触发"首单完成"；按订单实付金额累加"累计消费"
+      try {
+        missionService.incrementByKeyword(order.getUserId(), "WEEKLY", "完成 1 单购物", 1);
+        missionService.incrementByKeyword(order.getUserId(), "ACHIEVEMENT", "首单完成", 1);
+        if (order.getPayAmount() != null) {
+          // payAmount 已是美元金额（PayController.createPay 已统一汇率换算），直接按整数累加
+          int amountInt = order.getPayAmount().intValue();
+          if (amountInt > 0) {
+            missionService.accumulateByKeyword(order.getUserId(), "ACHIEVEMENT", "累计消费", amountInt);
+          }
         }
+      } catch (Exception e) {
+        // 任务进度失败不应影响支付主流程
+        log.warn("[order] trigger mission failed: orderNo={}, reason={}", orderNo, e.getMessage());
       }
-    } catch (Exception e) {
-      // 任务进度失败不应影响支付主流程
-      log.warn("[order] trigger mission failed: orderNo={}, reason={}", orderNo, e.getMessage());
     }
 
     // 付款确认后实时同步到 WooCommerce
     // 受管理后台"WC 同步"开关控制：关闭时不推送，避免开关被支付回调绕过
     // syncOrderToWooCommerce 内部已有 try-catch，失败时仅记录 syncStatus=-1，不影响主流程
     try {
-      if (wooCommerceSyncService.isOrderSyncEnabled()) {
+      // 定金单尚未履约、订阅单为虚拟服务，均不推送到 WooCommerce
+      if (!depositOrder && !order.isSubscription() && wooCommerceSyncService.isOrderSyncEnabled()) {
         wooCommerceSyncService.syncOrderToWooCommerce(order);
-      } else {
+      } else if (!depositOrder && !order.isSubscription()) {
         log.info("WooCommerce 订单同步开关已关闭，跳过推送: orderNo={}", orderNo);
       }
     } catch (Exception e) {
@@ -905,8 +1416,18 @@ public class OrderServiceImpl implements OrderService {
 
     // 发送订单支付成功通知（异步 + MQ 不可用时降级为同步落库）
     try {
-      String orderTitle = "订单支付成功";
-      String orderContent = "您的订单 " + order.getOrderNo() + " 已支付成功，商家将尽快为您发货";
+      String orderTitle;
+      String orderContent;
+      if (depositOrder) {
+        orderTitle = "预售定金支付成功";
+        orderContent = "您的预售定金订单 " + order.getOrderNo() + " 已支付成功，请在尾款期内支付尾款";
+      } else if (order.isSubscription()) {
+        orderTitle = "订阅开通成功";
+        orderContent = "您的订阅 " + order.getOrderNo() + " 已开通成功，可在订阅页查看有效期";
+      } else {
+        orderTitle = "订单支付成功";
+        orderContent = "您的订单 " + order.getOrderNo() + " 已支付成功，商家将尽快为您发货";
+      }
       try {
         // bizType=ORDER：APP 点击通知跳转订单详情（relatedId 为订单 ID）
         notificationMessageProducer.send(
@@ -922,18 +1443,24 @@ public class OrderServiceImpl implements OrderService {
       log.warn("[order] send notification failed: orderNo={}, reason={}", orderNo, e.getMessage());
     }
 
-    // 消费返积分：1 USD = 10 积分，首单 2 倍；失败仅打日志不影响支付主流程
-    try {
-      pointsRewardService.rewardForOrder(order);
-    } catch (Exception e) {
-      log.warn("[order] grant reward points failed: orderNo={}, reason={}", orderNo, e.getMessage());
+    // 订阅订单不参与消费返积分
+    if (!order.isSubscription()) {
+      // 消费返积分：1 USD = 10 积分，首单 2 倍；失败仅打日志不影响支付主流程
+      try {
+        pointsRewardService.rewardForOrder(order);
+      } catch (Exception e) {
+        log.warn("[order] grant reward points failed: orderNo={}, reason={}", orderNo, e.getMessage());
+      }
     }
 
-    // 邀请奖励：被邀请人首单支付成功后双方各得 200 积分（内部幂等，重复回调不会重复发放）
-    try {
-      inviteService.markOrderedByInvitee(order.getUserId(), order.getId());
-    } catch (Exception e) {
-      log.warn("[order] grant invite reward failed: orderNo={}, reason={}", orderNo, e.getMessage());
+    // 订阅订单不计入被邀请人首单奖励
+    if (!order.isSubscription()) {
+      // 邀请奖励：被邀请人首单支付成功后双方各得 200 积分（内部幂等，重复回调不会重复发放）
+      try {
+        inviteService.markOrderedByInvitee(order.getUserId(), order.getId());
+      } catch (Exception e) {
+        log.warn("[order] grant invite reward failed: orderNo={}, reason={}", orderNo, e.getMessage());
+      }
     }
   }
 

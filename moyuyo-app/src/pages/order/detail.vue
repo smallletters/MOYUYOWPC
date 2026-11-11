@@ -7,8 +7,10 @@
       <text class="header-title">{{ $t('orderDetail.title') }}</text>
     </view>
     <view class="status-banner" :class="`status-${order.status}`">
+      <text v-if="presaleStageLabel" class="presale-stage-tag">{{ presaleStageLabel }}</text>
       <text class="status-title">{{ statusTitle }}</text>
-      <text class="status-desc">{{ statusDesc }}</text>
+      <text v-if="canPayBalance" class="status-desc">{{ $t('presale.depositPaidHint') }}</text>
+      <text v-else class="status-desc">{{ statusDesc }}</text>
       <text
         v-if="
           order.status === 'PENDING_SHIP' ||
@@ -22,7 +24,7 @@
     </view>
 
     <!-- Logistics Timeline -->
-    <view v-if="logisticsTraces.length" class="card logistics-card">
+    <view v-if="!isSubscriptionOrder && logisticsTraces.length" class="card logistics-card">
       <text class="card-title">{{ $t('orderDetail.logistics') }}</text>
       <view class="timeline">
         <view
@@ -41,8 +43,11 @@
       </view>
     </view>
 
-    <!-- 虚拟商品订单没有收货地址，隐藏地址卡片 -->
-    <view v-if="order.receiverName || order.receiverAddress" class="card address-card">
+    <!-- 虚拟商品订单没有收货地址，隐藏地址卡片；订阅订单同样不展示 -->
+    <view
+      v-if="!isSubscriptionOrder && (order.receiverName || order.receiverAddress)"
+      class="card address-card"
+    >
       <text class="card-title">{{ $t('orderDetail.address') }}</text>
       <text class="address-name">{{ order.receiverName }} · {{ order.receiverPhone }}</text>
       <text class="address-detail">
@@ -51,7 +56,32 @@
       <text v-if="order.receiverZip" class="address-zip">{{ order.receiverZip }}</text>
     </view>
 
-    <view class="card items-card">
+    <!-- 订阅订单没有 mo_order_item，用订阅信息卡替代商品卡，避免空商品区 -->
+    <view v-if="isSubscriptionOrder" class="card subscription-card">
+      <text class="card-title">{{ $t('order.subscriptionOrder') }}</text>
+      <view class="info-row">
+        <text>{{ $t('order.subscriptionPlan') }}</text>
+        <text>{{ subscriptionPlanName }}</text>
+      </view>
+      <view class="info-row">
+        <text>{{ $t('orderDetail.info.orderNumber') }}</text>
+        <text>#{{ order.orderNo }}</text>
+      </view>
+      <view class="info-row">
+        <text>{{ $t('order.subscriptionAmount') }}</text>
+        <text>${{ order.payAmount }}</text>
+      </view>
+      <view class="info-row">
+        <text>{{ $t('orderDetail.status') }}</text>
+        <text>{{ statusTitle }}</text>
+      </view>
+      <view class="info-row">
+        <text>{{ $t('orderDetail.info.orderTime') }}</text>
+        <text>{{ formatDate(order.createTime) }}</text>
+      </view>
+    </view>
+
+    <view v-else-if="(order.items || []).length" class="card items-card">
       <text class="card-title">{{ $t('orderDetail.items') }}</text>
       <view v-for="item in order.items" :key="item.id" class="item-row">
         <image
@@ -138,17 +168,23 @@
         <text class="cs-icon luc-message-circle" />
         <text>{{ $t('orderDetail.contactCS') }}</text>
       </view>
+      <!-- 订阅订单仅隐藏实物履约按钮；未支付时仍允许取消 -->
       <view v-if="order.status === 'PENDING_PAY'" class="btn btn-outline" @click="onCancel">
         {{ $t('orderDetail.cancel') }}
       </view>
       <view v-if="order.status === 'PENDING_PAY'" class="btn btn-primary" @click="onPay">
         {{ $t('orderDetail.pay') }}
       </view>
+      <!-- 定金已支付：尾款期内可生成尾款单并支付 -->
+      <view v-if="canPayBalance" class="btn btn-primary" @click="onPayBalance">
+        {{ $t('presale.payBalance') }}
+      </view>
       <view
         v-if="
-          order.status === 'PENDING_SHIP' ||
-            order.status === 'SHIPPED' ||
-            order.status === 'PENDING_RECEIVE'
+          !isSubscriptionOrder &&
+            (order.status === 'PENDING_SHIP' ||
+              order.status === 'SHIPPED' ||
+              order.status === 'PENDING_RECEIVE')
         "
         class="btn btn-primary"
         @click="onTrack"
@@ -156,7 +192,9 @@
         {{ $t('orderDetail.track') }}
       </view>
       <view
-        v-if="order.status === 'SHIPPED' || order.status === 'PENDING_RECEIVE'"
+        v-if="
+          !isSubscriptionOrder && (order.status === 'SHIPPED' || order.status === 'PENDING_RECEIVE')
+        "
         class="btn btn-outline"
         @click="onConfirm"
       >
@@ -167,21 +205,25 @@
       </view>
       <!-- 售后入口（对齐亚马逊）：未发货只能仅退款；已发货走退货退款/换货 -->
       <view
-        v-if="['PAID', 'PENDING_SHIP'].includes(order.status)"
+        v-if="!isSubscriptionOrder && ['PAID', 'PENDING_SHIP'].includes(order.status)"
         class="btn btn-outline"
         @click="onRefund"
       >
         {{ $t('orderDetail.refundOnly') }}
       </view>
       <view
-        v-if="['SHIPPED', 'RECEIVED', 'COMPLETED'].includes(order.status)"
+        v-if="!isSubscriptionOrder && ['SHIPPED', 'RECEIVED', 'COMPLETED'].includes(order.status)"
         class="btn btn-outline"
         @click="onReturnRefund"
       >
         {{ $t('orderDetail.returnRefund') }}
       </view>
       <!-- 仅在该订单确实存在售后申请时展示，避免无售后也出现空入口 -->
-      <view v-if="order.afterSalesId" class="btn btn-outline" @click="onAfterSales">
+      <view
+        v-if="!isSubscriptionOrder && order.afterSalesId"
+        class="btn btn-outline"
+        @click="onAfterSales"
+      >
         {{ $t('orderDetail.afterSales') }}
       </view>
     </view>
@@ -212,6 +254,10 @@ export default {
     statusTitle() {
       const code = this.order?.status
       if (!code) return ''
+      // 订阅订单支付成功即开通，不进入发货流程
+      if (this.isSubscriptionOrder && code === 'PAID') {
+        return t('order.subscriptionActivated')
+      }
       // 优先用全局订单状态字典
       const localized = t(`orderStatus.${code}`)
       if (localized && localized !== `orderStatus.${code}`) return localized
@@ -220,6 +266,10 @@ export default {
     statusDesc() {
       const code = this.order?.status
       if (!code) return ''
+      // 订阅订单不存在发货/物流环节，单独给一句说明
+      if (this.isSubscriptionOrder && code === 'PAID') {
+        return t('order.subscriptionActivatedDesc')
+      }
       const localized = t(`orderDetail.statusDesc.${code}`)
       if (localized && localized !== `orderDetail.statusDesc.${code}`) return localized
       return ''
@@ -234,6 +284,39 @@ export default {
         month: isZh ? 'long' : 'short',
         day: 'numeric',
       })
+    },
+    /** 是否预售订单 */
+    isPresaleOrder() {
+      return this.order?.orderType === 'PRESALE'
+    },
+    /** 是否订阅订单（无商品行，展示订阅信息卡） */
+    isSubscriptionOrder() {
+      return this.order?.orderType === 'SUBSCRIPTION'
+    },
+    /** 订阅方案名：优先用后端回查的 subscribePlanName，兼容旧数据时回退解析 remark */
+    subscriptionPlanName() {
+      const serverName = String(this.order?.subscribePlanName || '').trim()
+      if (serverName) return serverName
+      const name = String(this.order?.remark || '')
+        .replace(/^订阅：/, '')
+        .trim()
+      return name || t('order.subscriptionService')
+    },
+    /** 预售阶段标识：定金单 / 尾款单 / 全款预售 */
+    presaleStageLabel() {
+      if (!this.isPresaleOrder) return ''
+      const stage = this.order?.presaleStage
+      if (stage === 'DEPOSIT') return t('presale.badgeDeposit')
+      if (stage === 'BALANCE') return t('presale.badgeBalance')
+      return t('presale.badgeFull')
+    },
+    /** 定金已支付且未生成可支付尾款单时，才展示「支付尾款」按钮 */
+    canPayBalance() {
+      return (
+        this.isPresaleOrder &&
+        this.order?.presaleStage === 'DEPOSIT' &&
+        this.order?.status === 'PAID'
+      )
     },
   },
 
@@ -308,6 +391,23 @@ export default {
       uni.navigateTo({
         url: `/pages/order/pay?orderId=${this.orderId}&amount=${this.order.payAmount}`,
       })
+    },
+
+    /** 支付尾款：先调用服务端生成（幂等）尾款单，再进入收银台 */
+    async onPayBalance() {
+      try {
+        uni.showLoading({ title: t('common.loading'), mask: true })
+        const balance = await orderApi.createBalanceOrder(this.orderId)
+        uni.hideLoading()
+        uni.showToast({ title: t('presale.balanceCreated'), icon: 'none' })
+        const balanceId = balance?.id || balance
+        setTimeout(() => {
+          uni.navigateTo({ url: `/pages/order/pay?orderId=${balanceId}` })
+        }, 800)
+      } catch (e) {
+        uni.hideLoading()
+        uni.showToast({ title: e?.message || t('presale.balanceNotStart'), icon: 'none' })
+      }
     },
 
     onCancel() {
@@ -439,6 +539,18 @@ export default {
   font-weight: var(--font-weight-bold);
   display: block;
   color: var(--color-text);
+}
+
+/* 预售阶段标识（定金单/尾款单/全款预售） */
+.presale-stage-tag {
+  display: inline-block;
+  margin-bottom: 12rpx;
+  padding: 4rpx 16rpx;
+  font-size: 22rpx;
+  border-radius: 9999rpx;
+  color: var(--brand-500, #dbc98a);
+  background-color: var(--brand-50, #f8f3e6);
+  border: 1rpx solid var(--brand-200, #eadcc0);
 }
 .status-desc {
   font-size: var(--font-size-sm);

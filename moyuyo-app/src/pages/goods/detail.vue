@@ -77,6 +77,40 @@
             {{ $t('goodsDetail.memberPrice') }} ${{ formatPrice(memberPrice) }}
           </view>
         </view>
+        <!-- 预售信息：全款/定金预售展示价格、时间与须知，展示型预售仅提示 -->
+        <view v-if="presaleDisplay" class="presale-card">
+          <view class="presale-head">
+            <text class="presale-badge">{{ presaleBadgeText }}</text>
+            <text v-if="presalePeriodText" class="presale-period">
+              {{ $t('presale.periodLabel') }}: {{ presalePeriodText }}
+            </text>
+          </view>
+          <view v-if="presaleType !== 'DISPLAY'" class="presale-row">
+            <text class="presale-label">{{ $t('presale.priceLabel') }}</text>
+            <text class="presale-value">${{ formatPrice(presalePrice) }}</text>
+          </view>
+          <template v-if="presaleType === 'DEPOSIT'">
+            <view class="presale-row">
+              <text class="presale-label">{{ $t('presale.depositLabel') }}</text>
+              <text class="presale-value">${{ formatPrice(presaleDeposit) }}</text>
+            </view>
+            <view class="presale-row">
+              <text class="presale-label">{{ $t('presale.offsetLabel') }}</text>
+              <text class="presale-value">${{ formatPrice(presaleOffset) }}</text>
+            </view>
+            <view class="presale-row">
+              <text class="presale-label">{{ $t('presale.balanceLabel') }}</text>
+              <text class="presale-value">${{ formatPrice(presaleBalance) }}</text>
+            </view>
+          </template>
+          <view v-if="presaleShipDate" class="presale-row">
+            <text class="presale-label">{{ $t('presale.shipDateLabel') }}</text>
+            <text class="presale-value">{{ presaleShipDate }}</text>
+          </view>
+          <text v-if="presaleNotice" class="presale-notice">
+            {{ $t('presale.noticeLabel') }}: {{ presaleNotice }}
+          </text>
+        </view>
         <text v-if="campaignTag" class="campaign-detail-tag">{{ campaignTag }}</text>
         <view v-if="product.shortDetail" class="short-desc">{{ product.shortDetail }}</view>
       </view>
@@ -219,7 +253,7 @@
         {{ isOnSale ? $t('goodsDetail.addCart') : $t('goodsDetail.soldOut') }}
       </view>
       <view class="bar-btn buy-btn" :class="{ 'is-off': !isOnSale }" @tap="onBuyNow">
-        {{ isOnSale ? $t('goodsDetail.buyNow') : $t('goodsDetail.soldOut') }}
+        {{ buyBtnText }}
       </view>
     </view>
   </view>
@@ -364,6 +398,97 @@ export default {
     /** 是否在售：下架商品详情仍可浏览(收藏/历史进入),但禁用加购与立即购买 */
     isOnSale() {
       return !this.product || this.product.onSale !== false
+    },
+    /** 预售配置（后端 ProductEntity.presaleInfo，未配置时为 null） */
+    presale() {
+      return this.product?.presaleInfo || null
+    },
+    presaleType() {
+      return this.presale?.presaleType || ''
+    },
+    /** 是否展示预售卡片：草稿状态不对外展示 */
+    presaleDisplay() {
+      return !!this.presale && this.presale.status !== 'DRAFT'
+    },
+    /** 当前是否处于可下单的预售窗口（展示型预售不改变下单流程） */
+    presaleOrderable() {
+      const p = this.presale
+      if (!p || p.presaleType === 'DISPLAY') return false
+      if (p.status === 'DRAFT' || p.status === 'ENDED' || p.status === 'SOLD_OUT') return false
+      const now = Date.now()
+      if (p.startTime && now < new Date(p.startTime).getTime()) return false
+      if (p.endTime && now > new Date(p.endTime).getTime()) return false
+      return true
+    },
+    /** 预售商品（全款/定金）：加入购物车与普通下单均不适用 */
+    isPresaleBuy() {
+      return this.presaleType === 'FULL' || this.presaleType === 'DEPOSIT'
+    },
+    presaleBadgeText() {
+      if (this.presaleType === 'FULL') return i18n.t('presale.badgeFull')
+      if (this.presaleType === 'DEPOSIT') return i18n.t('presale.badgeDeposit')
+      return i18n.t('presale.badgeDisplay')
+    },
+    presalePrice() {
+      return Number(this.presale?.presalePrice) || 0
+    },
+    presaleDeposit() {
+      return Number(this.presale?.depositAmount) || 0
+    },
+    presaleOffset() {
+      return Number(this.presale?.depositOffset) || 0
+    },
+    /** 尾款单价 = 预售价 - 定金抵扣 */
+    presaleBalance() {
+      return Math.max(0, this.presalePrice - this.presaleOffset)
+    },
+    /** 预售实际下单单价：定金预售按定金，全款预售按预售价 */
+    presaleUnitPrice() {
+      return this.presaleType === 'DEPOSIT' ? this.presaleDeposit : this.presalePrice
+    },
+    presalePeriodText() {
+      const p = this.presale
+      if (!p?.startTime && !p?.endTime) return ''
+      const fmt = (v) => {
+        if (!v) return ''
+        const d = new Date(v)
+        const isZh = i18n.locale === 'zh-CN'
+        return d.toLocaleDateString(isZh ? 'zh-CN' : 'en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        })
+      }
+      return `${fmt(p.startTime)} - ${fmt(p.endTime)}`
+    },
+    presaleShipDate() {
+      const v = this.presale?.shipDate
+      if (!v) return ''
+      const d = new Date(v)
+      const isZh = i18n.locale === 'zh-CN'
+      return d.toLocaleDateString(isZh ? 'zh-CN' : 'en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+    },
+    presaleNotice() {
+      return this.presale?.noticeText || ''
+    },
+    /** 底部购买按钮文案：预售窗口内显示「立即预订 / 支付定金」 */
+    buyBtnText() {
+      if (!this.isOnSale) return i18n.t('goodsDetail.soldOut')
+      if (!this.isPresaleBuy) return i18n.t('goodsDetail.buyNow')
+      // 未开始/已结束/已售罄时直接给出状态，避免用户点击后才看到提示
+      if (!this.presaleOrderable) {
+        if (this.presale?.status === 'SOLD_OUT') return i18n.t('presale.soldOut')
+        if (this.presale?.endTime && Date.now() > new Date(this.presale.endTime).getTime()) {
+          return i18n.t('presale.ended')
+        }
+        return i18n.t('presale.notStarted')
+      }
+      if (this.presaleType === 'DEPOSIT') return i18n.t('presale.depositPay')
+      return i18n.t('presale.reserveNow')
     },
     stockState() {
       void this.localeVersion
@@ -960,6 +1085,11 @@ export default {
 
     async onAddCart() {
       if (!this.product) return
+      // 全款/定金预售不支持加入购物车，避免与现货订单混合结算
+      if (this.isPresaleBuy) {
+        uni.showToast({ title: i18n.t('presale.addCartBlocked'), icon: 'none' })
+        return
+      }
       // 下架商品禁止加购(按钮已置灰,此处兜底)
       if (!this.isOnSale) {
         uni.showToast({ title: this.$t('goodsDetail.offShelf'), icon: 'none' })
@@ -997,6 +1127,46 @@ export default {
       // 下架商品禁止购买
       if (!this.isOnSale) {
         uni.showToast({ title: this.$t('goodsDetail.offShelf'), icon: 'none' })
+        return
+      }
+      // 全款/定金预售：跳过现货库存校验，按预售配置进入结算
+      if (this.isPresaleBuy) {
+        if (!this.presaleOrderable) {
+          let key = 'presale.notStarted'
+          if (this.presale?.status === 'SOLD_OUT') {
+            key = 'presale.soldOut'
+          } else if (
+            this.presale?.endTime &&
+            Date.now() > new Date(this.presale.endTime).getTime()
+          ) {
+            key = 'presale.ended'
+          }
+          uni.showToast({ title: i18n.t(key), icon: 'none' })
+          return
+        }
+        const presaleSku = this.currentSku
+        if (!presaleSku && this.variations.length) {
+          uni.showToast({ title: this.$t('goodsDetail.invalidSku'), icon: 'none' })
+          return
+        }
+        // 预售价格由服务端权威计算，这里的 price 仅用于结算页展示
+        this.cartStore.setBuyNow({
+          skuId: presaleSku?.id || this.product.id,
+          productId: this.product.id,
+          name: this.product.name,
+          image: this.galleryImages[0]?.url || this.product.mainImage,
+          price: this.presaleUnitPrice,
+          quantity: 1,
+          stock: 9999,
+          allowBackorder: true,
+          isVirtual: !!this.product.isVirtual,
+          taxStatus: this.product.taxStatus || 'taxable',
+          taxClass: this.product.taxClass || 'standard',
+          attrs: this.selectedAttrs,
+          presaleType: this.presaleType,
+          presaleId: this.presale?.id || null,
+        })
+        uni.navigateTo({ url: '/pages/cart/checkout' })
         return
       }
       // 取当前选中规格对应的 SKU(含真实库存),保证立即购买与结算对象一致
@@ -1295,6 +1465,64 @@ export default {
   display: block;
   margin-top: 16rpx;
   font-size: 26rpx;
+  line-height: 1.5;
+  color: var(--text-500, #7a746c);
+}
+
+/* ====== 预售信息卡片 ====== */
+.presale-card {
+  margin-top: 20rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 16rpx;
+  border: 1rpx solid var(--brand-200, #eadcc0);
+  background-color: var(--brand-50, #f8f3e6);
+}
+
+.presale-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.presale-badge {
+  padding: 4rpx 16rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+  border-radius: 9999rpx;
+  background-color: var(--brand-500, #dbc98a);
+  color: #ffffff;
+}
+
+.presale-period {
+  font-size: 22rpx;
+  color: var(--text-500, #7a746c);
+}
+
+.presale-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6rpx 0;
+}
+
+.presale-label {
+  font-size: 24rpx;
+  color: var(--text-500, #7a746c);
+}
+
+.presale-value {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--text-800, #2e2b29);
+}
+
+.presale-notice {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 22rpx;
   line-height: 1.5;
   color: var(--text-500, #7a746c);
 }
