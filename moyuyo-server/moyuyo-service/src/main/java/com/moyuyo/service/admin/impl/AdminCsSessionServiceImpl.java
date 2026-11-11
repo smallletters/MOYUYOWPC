@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,9 +48,40 @@ public class AdminCsSessionServiceImpl implements AdminCsSessionService {
             .orderByDesc(CsMessageEntity::getCreateTime)
             .last("LIMIT 1")
     );
-    if (last == null || last.getContent() == null) return "";
-    String s = last.getContent();
-    return s.length() > 50 ? s.substring(0, 50) + "..." : s;
+    return last == null ? "" : previewOf(last.getContent());
+  }
+
+  /** 消息预览：超过 50 字截断 */
+  private String previewOf(String content) {
+    if (content == null) return "";
+    return content.length() > 50 ? content.substring(0, 50) + "..." : content;
+  }
+
+  /** 批量统计消息数，避免列表逐条 COUNT */
+  private Map<Long, Long> messageCountMap(List<Long> sessionIds) {
+    if (sessionIds.isEmpty()) return Map.of();
+    Map<Long, Long> map = new HashMap<>();
+    for (Map<String, Object> row : csMessageMapper.countBySessionIds(sessionIds)) {
+      Object sid = row.get("sessionId");
+      Object cnt = row.get("cnt");
+      if (sid instanceof Number && cnt instanceof Number) {
+        map.put(((Number) sid).longValue(), ((Number) cnt).longValue());
+      }
+    }
+    return map;
+  }
+
+  /** 批量取最后一条消息预览，避免列表逐条查询 */
+  private Map<Long, String> lastMessageMap(List<Long> sessionIds) {
+    if (sessionIds.isEmpty()) return Map.of();
+    Map<Long, String> map = new HashMap<>();
+    for (Map<String, Object> row : csMessageMapper.selectLatestContentBySessionIds(sessionIds)) {
+      Object sid = row.get("sessionId");
+      if (sid instanceof Number) {
+        map.put(((Number) sid).longValue(), previewOf(row.get("content") == null ? null : String.valueOf(row.get("content"))));
+      }
+    }
+    return map;
   }
 
   @Override
@@ -61,12 +93,23 @@ public class AdminCsSessionServiceImpl implements AdminCsSessionService {
     if (sessionId != null && !sessionId.isEmpty()) {
       wrapper.eq(CsSessionEntity::getSessionId, sessionId);
     }
-    if (userId != null && !userId.isEmpty()) {
-      wrapper.eq(CsSessionEntity::getUserId, Long.valueOf(userId));
+    if (userId != null && !userId.isBlank()) {
+      try {
+        wrapper.eq(CsSessionEntity::getUserId, Long.valueOf(userId.trim()));
+      } catch (NumberFormatException e) {
+        // 用户ID只能是数字：非法输入直接返回空列表，避免抛异常变成 500
+        return emptyPage(page, size);
+      }
     }
     wrapper.orderByDesc(CsSessionEntity::getCreateTime);
 
     Page<CsSessionEntity> pageObj = csSessionMapper.selectPage(new Page<>(page, size), wrapper);
+    // 消息条数与最后一条消息改为两次批量查询，避免逐条 COUNT / LIMIT 1
+    List<Long> sessionIds = pageObj.getRecords().stream()
+        .map(CsSessionEntity::getId)
+        .collect(Collectors.toList());
+    Map<Long, Long> countMap = messageCountMap(sessionIds);
+    Map<Long, String> lastMap = lastMessageMap(sessionIds);
 
     List<Map<String, Object>> mappedList = pageObj.getRecords().stream().map(entity -> {
       Map<String, Object> item = new LinkedHashMap<>();
@@ -80,9 +123,9 @@ public class AdminCsSessionServiceImpl implements AdminCsSessionService {
       item.put("updateTime", entity.getUpdateTime());
       // 计算字段：基于 update_time - create_time 推算会话持续时长
       item.put("duration", computeDuration(entity.getCreateTime(), entity.getUpdateTime()));
-      // 从消息表实时统计消息条数与最后一条消息预览（替换原硬编码 0）
-      item.put("messageCount", countMessages(entity.getId()));
-      item.put("lastMessage", lastMessageOf(entity.getId()));
+      // 从批量统计结果取消息条数与最后一条消息预览
+      item.put("messageCount", countMap.getOrDefault(entity.getId(), 0L));
+      item.put("lastMessage", lastMap.getOrDefault(entity.getId(), ""));
       item.put("userName", entity.getUserId() != null ? "用户" + entity.getUserId() : "");
       item.put("agentName", entity.getCsStaffId() != null ? "客服" + entity.getCsStaffId() : "");
       item.put("createdAt", entity.getCreateTime());
@@ -141,6 +184,45 @@ public class AdminCsSessionServiceImpl implements AdminCsSessionService {
     CsSessionEntity session = csSessionMapper.selectById(sessionId);
     if (session == null || session.getUserId() == null) return List.of();
     return csChatContextService.listUserOrders(session.getUserId(), limit);
+  }
+
+  @Override
+  public List<Map<String, Object>> listByUserId(Long userId, int limit) {
+    if (userId == null) return List.of();
+    // 限制单次返回条数，避免历史会话过多的用户拖慢侧栏加载
+    int safeLimit = limit <= 0 ? 20 : Math.min(limit, 100);
+    List<CsSessionEntity> rows = csSessionMapper.selectList(
+        new LambdaQueryWrapper<CsSessionEntity>()
+            .eq(CsSessionEntity::getUserId, userId)
+            .orderByDesc(CsSessionEntity::getCreateTime)
+            .last("LIMIT " + safeLimit)
+    );
+    if (rows.isEmpty()) return List.of();
+    List<Long> sessionIds = rows.stream().map(CsSessionEntity::getId).collect(Collectors.toList());
+    Map<Long, Long> countMap = messageCountMap(sessionIds);
+    Map<Long, String> lastMap = lastMessageMap(sessionIds);
+    return rows.stream().map(entity -> {
+      Map<String, Object> item = new LinkedHashMap<>();
+      item.put("id", entity.getId());
+      item.put("sessionId", entity.getSessionId());
+      item.put("userId", entity.getUserId());
+      item.put("status", entity.getStatus());
+      item.put("createTime", entity.getCreateTime());
+      item.put("messageCount", countMap.getOrDefault(entity.getId(), 0L));
+      item.put("lastMessage", lastMap.getOrDefault(entity.getId(), ""));
+      item.put("consultTitle", consultTitleOf(entity));
+      return item;
+    }).collect(Collectors.toList());
+  }
+
+  /** 分页参数非法时的空结果（保持与正常返回相同的字段结构） */
+  private Map<String, Object> emptyPage(int page, int size) {
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("list", List.of());
+    result.put("total", 0L);
+    result.put("page", page);
+    result.put("size", size);
+    return result;
   }
 
   /** 会话咨询上下文标题：优先订单，其次商品 */

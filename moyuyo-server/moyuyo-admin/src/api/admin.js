@@ -1638,6 +1638,10 @@ export function transferCsSession(id, payload) {
 export function getCsSessionUserOrders(id, limit = 10) {
   return api.get(`/cs-sessions/${id}/user-orders`, { params: { limit } })
 }
+// 某用户的历史会话（客服聊天侧栏切换查看同一用户的其他会话）
+export function getUserCsSessions(userId, limit = 20) {
+  return api.get(`/cs-sessions/user/${userId}/sessions`, { params: { limit } })
+}
 
 // ==================== 风控告警 ====================
 export function getRiskAlertConfigs() { return api.get('/risk-alert/configs') }

@@ -24,6 +24,11 @@ public interface AdminCsSessionService {
   List<Map<String, Object>> listUserOrders(Long sessionId, int limit);
 
   /**
+   * 某用户的历史会话列表（客服聊天侧栏切换查看同一用户的其他会话）
+   */
+  List<Map<String, Object>> listByUserId(Long userId, int limit);
+
+  /**
    * 客服会话统计
    */
   Map<String, Object> getStats();

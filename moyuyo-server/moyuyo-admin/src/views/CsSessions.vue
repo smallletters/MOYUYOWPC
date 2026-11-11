@@ -143,6 +143,29 @@
             <el-descriptions-item label="消息数">{{ activeSession.messageCount || messages.length }}</el-descriptions-item>
           </el-descriptions>
 
+          <!-- 同一用户的其它历史会话：点击切换查看（切换后仍可正常回复） -->
+          <el-divider content-position="left">该用户历史会话</el-divider>
+          <div v-loading="historyLoading" class="history-list">
+            <div
+              v-for="h in historySessions"
+              :key="h.id"
+              class="history-item"
+              :class="{ 'history-item--active': activeSession.id === h.id }"
+              @click="switchSession(h)"
+            >
+              <div class="history-head">
+                <el-tag :type="getStatusType(h.status)" size="small">{{ getStatusText(h.status) }}</el-tag>
+                <span class="history-time">{{ formatTime(h.createTime) }}</span>
+              </div>
+              <div class="history-sub">
+                <span class="history-id">{{ h.sessionId || ('#' + h.id) }}</span>
+                <span class="history-count">{{ h.messageCount || 0 }} 条</span>
+              </div>
+              <div v-if="h.consultTitle" class="history-title">{{ h.consultTitle }}</div>
+            </div>
+            <p v-if="!historyLoading && historySessions.length === 0" class="side-tip">该用户暂无历史会话</p>
+          </div>
+
           <!-- 用户进入客服时携带的商品 / 订单上下文 -->
           <el-divider content-position="left">用户咨询</el-divider>
           <div
@@ -362,7 +385,7 @@ import {
   getCsSessionList, getCsSessionDetail, getCsSessionStats,
   getCsSessionMessages, pollCsSessionMessages, sendCsSessionMessage,
   markCsSessionRead, closeCsSession, transferCsSession, getRbacUsers,
-  getCsSessionUserOrders, searchProductsLite
+  getCsSessionUserOrders, getUserCsSessions, searchProductsLite
 } from '../api/admin'
 import { toArray } from '../utils/safeArray'
 
@@ -448,6 +471,11 @@ const unreadHint = ref(0)
 // 用户最近订单 + 推荐商品弹窗
 const userOrders = ref([])
 const ordersLoading = ref(false)
+// 同一用户的历史会话（侧栏切换查看）
+const historySessions = ref([])
+const historyLoading = ref(false)
+// 会话切换令牌：丢弃过期的切换请求结果
+let sessionSwitchToken = 0
 const sendingCard = ref(false)
 const productPickerVisible = ref(false)
 const productKeyword = ref('')
@@ -593,12 +621,63 @@ async function loadUserOrders(sessionId) {
   ordersLoading.value = true
   try {
     const list = await getCsSessionUserOrders(sessionId, 10)
+    // 期间已切换会话：丢弃旧会话的订单，避免侧栏串数据
+    if (!activeSession.value || activeSession.value.id !== sessionId) return
     userOrders.value = toArray(list)
   } catch (e) {
-    userOrders.value = []
+    if (activeSession.value && activeSession.value.id === sessionId) userOrders.value = []
   } finally {
-    ordersLoading.value = false
+    if (activeSession.value && activeSession.value.id === sessionId) ordersLoading.value = false
   }
+}
+
+/** 加载该用户的历史会话列表（含当前会话，当前会话高亮） */
+async function loadUserHistory(userId) {
+  if (!userId) {
+    historySessions.value = []
+    return
+  }
+  historyLoading.value = true
+  try {
+    const list = await getUserCsSessions(userId)
+    historySessions.value = toArray(list)
+  } catch (e) {
+    historySessions.value = []
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+/** 切换到同一用户的另一条会话：重建消息上下文并重启轮询 */
+async function switchSession(item) {
+  if (!item || !item.id || !activeSession.value || item.id === activeSession.value.id) return
+  // 切换令牌：快速连点时只让最后一次切换生效，避免旧请求覆盖新会话
+  const token = ++sessionSwitchToken
+  // 同一用户的会话共用用户信息，沿用原展示名，避免标题退化为"用户{id}"
+  const keepUserName = activeSession.value.userName
+  // 先停止旧会话轮询，避免旧会话的新消息追加到当前列表
+  stopPoll()
+  let detail = item
+  try {
+    const fresh = await getCsSessionDetail(item.id)
+    if (fresh && (fresh.id || fresh.sessionId)) detail = { ...item, ...fresh }
+  } catch (e) {
+    // 详情失败时用侧栏行数据兜底
+  }
+  // 请求期间又切换了会话 / 抽屉已关闭：丢弃本次结果
+  if (token !== sessionSwitchToken || !chatVisible.value) return
+  activeSession.value = { ...detail, userName: detail.userName || keepUserName || `用户${detail.userId}` }
+  messages.value = []
+  userOrders.value = []
+  draft.value = ''
+  lastSeenAt.value = null
+  unreadHint.value = 0
+  await loadAllMessages(detail.id)
+  if (token !== sessionSwitchToken) return
+  await markCsSessionReadSafe()
+  await loadUserOrders(detail.id)
+  if (token !== sessionSwitchToken) return
+  startPoll()
 }
 
 /** 发送商品/订单卡片消息（快照由后端生成，前端只传类型与 ID） */
@@ -663,6 +742,8 @@ async function searchRecommendProducts() {
 }
 
 async function openChat(row) {
+  // 打开新会话时作废进行中的切换请求
+  const token = ++sessionSwitchToken
   // 先确保详情最新（包含 messageCount 真实值）
   let detail = row
   try {
@@ -671,27 +752,35 @@ async function openChat(row) {
   } catch (e) {
     // fallback 用列表行
   }
+  // 请求期间又打开了别的会话：丢弃本次结果
+  if (token !== sessionSwitchToken) return
   activeSession.value = detail
   chatVisible.value = true
   messages.value = []
   userOrders.value = []
+  historySessions.value = []
   lastSeenAt.value = null
   unreadHint.value = 0
-  await loadAllMessages()
+  await loadAllMessages(detail.id)
   await markCsSessionReadSafe()
   await loadUserOrders(detail.id)
+  await loadUserHistory(detail.userId)
   startPoll()
 }
 
-async function loadAllMessages() {
+async function loadAllMessages(expectedId) {
   if (!activeSession.value) return
+  const targetId = expectedId || activeSession.value.id
   try {
-    const list = await getCsSessionMessages(activeSession.value.id)
+    const list = await getCsSessionMessages(targetId)
+    // 等待期间已切换到其它会话：丢弃本次结果，避免消息串到新会话
+    if (!activeSession.value || activeSession.value.id !== targetId) return
     messages.value = toArray(list)
     if (messages.value.length > 0) {
       const last = messages.value[messages.value.length - 1]
-      // 始终把 ISO 时间戳转成 UTC ISO 字符串再传给后端（避免 Spring @DateTimeFormat LOCAL_DATE_TIME 解析时区错位）
-      lastSeenAt.value = new Date(last.createTime).toISOString()
+      // 原样回传后端的本地时间字符串：后端 since 按 LocalDateTime 比较，
+      // 若在此转成 UTC ISO 会偏移时区（东八区回退 8 小时），导致轮询重复返回已加载消息
+      lastSeenAt.value = last.createTime
     }
     scrollToBottom()
   } catch (e) {
@@ -711,9 +800,11 @@ function startPoll() {
     if (!chatVisible.value || !activeSession.value) return
     try {
       const list = await pollCsSessionMessages(activeSession.value.id, lastSeenAt.value)
-      const newMsgs = toArray(list)
+      // 后端按 >= 拉取（避免同秒消息丢失），这里按消息 id 去重
+      const knownIds = new Set(messages.value.map(m => String(m.id)))
+      const newMsgs = toArray(list).filter(m => !knownIds.has(String(m.id)))
       if (newMsgs.length > 0) {
-        // 第一次追加：避免重复（lastSeenAt 用半开区间，理论上不会重复）
+        // 按 id 去重后追加：后端 since 为闭区间，会重复返回最后一条已加载的消息
         messages.value = messages.value.concat(newMsgs)
         lastSeenAt.value = newMsgs[newMsgs.length - 1].createTime
         // 仅当抽屉隐藏/不可见时不滚动（此处抽屉打开，新消息追加到底部）
@@ -736,10 +827,13 @@ function stopPoll() {
 }
 
 function onChatClosed() {
+  // 作废进行中的切换请求，避免关闭抽屉后又被异步结果写回
+  sessionSwitchToken++
   stopPoll()
   activeSession.value = null
   messages.value = []
   userOrders.value = []
+  historySessions.value = []
   draft.value = ''
   productPickerVisible.value = false
   loadData() // 关闭抽屉后刷新列表的 messageCount/lastMessage
@@ -787,7 +881,11 @@ function scrollToBottom() {
 
 function syncSessionCountFromMessages() {
   if (!activeSession.value) return
-  activeSession.value.messageCount = messages.value.length
+  const count = messages.value.length
+  activeSession.value.messageCount = count
+  // 侧栏历史会话里的同一条同步更新，避免切换后计数过期
+  const item = historySessions.value.find(h => h.id === activeSession.value.id)
+  if (item) item.messageCount = count
 }
 
 // ============ 会话操作：关闭 / 转接 ============
@@ -1047,6 +1145,38 @@ onBeforeUnmount(() => { stopPoll() })
 }
 .context-sub { margin-top: 4px; display: flex; align-items: center; }
 .money { color: #e6a23c; font-weight: 600; }
+
+/* 侧栏：该用户历史会话 */
+.history-list { max-height: 220px; overflow-y: auto; }
+.history-item {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color .2s;
+}
+.history-item:hover { border-color: #2563eb; }
+.history-item--active { border-color: #2563eb; background: #eff6ff; cursor: default; }
+.history-head { display: flex; justify-content: space-between; align-items: center; }
+.history-time { font-size: 11px; color: var(--text-400); }
+.history-sub {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-600);
+}
+.history-id { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-count { color: var(--text-400); flex-shrink: 0; margin-left: 8px; }
+.history-title {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* 侧栏：用户订单列表 */
 .order-list { max-height: 240px; overflow-y: auto; }

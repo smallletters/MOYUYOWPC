@@ -49,8 +49,9 @@ public class CsMessageServiceImpl implements CsMessageService {
     LambdaQueryWrapper<CsMessageEntity> qw = new LambdaQueryWrapper<CsMessageEntity>()
         .eq(CsMessageEntity::getSessionId, sessionId);
     if (since != null) {
-      // 只取 create_time > since 的新消息（半开区间，让 since 时刻的消息下次轮询还能拿到，避免丢消息）
-      qw.gt(CsMessageEntity::getCreateTime, since);
+      // 用 >= 而不是 >：create_time 是 DATETIME（秒精度），同一秒内先加载的消息与新消息时间相同，
+      // 用 > 会永久漏掉这些同秒消息。重复返回的那一条由前端按消息 id 去重。
+      qw.ge(CsMessageEntity::getCreateTime, since);
     }
     return csMessageMapper.selectList(qw.orderByAsc(CsMessageEntity::getCreateTime));
   }

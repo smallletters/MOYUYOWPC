@@ -57,6 +57,14 @@ public class AdminCsSessionController {
         return Result.success(adminCsSessionService.listUserOrders(id, limit));
     }
 
+    @Operation(summary = "某用户的历史会话列表（客服聊天侧栏切换查看）")
+    @GetMapping("/user/{userId}/sessions")
+    public Result<List<Map<String, Object>>> userSessions(
+        @PathVariable Long userId,
+        @RequestParam(defaultValue = "20") int limit) {
+        return Result.success(adminCsSessionService.listByUserId(userId, limit));
+    }
+
     // ========== 客服在线聊天相关接口 ==========
 
     @Operation(summary = "会话的全部消息（按时间升序）")
