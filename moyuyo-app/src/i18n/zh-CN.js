@@ -3350,6 +3350,14 @@ export default {
     ariaShare: '分享',
     ariaFavorite: '收藏',
     retry: '重新加载',
+    // 评价标签跨语言映射：把其它语言提交的预设标签统一翻回当前语言，表外的自定义标签按原文展示
+    reviewTagMap: {
+      'Great Quality': '质量好',
+      'Smells Good': '味道好',
+      'Pet Loves It': '宠物喜爱',
+      'True to Size': '尺码合适',
+      'Fast Delivery': '送货快',
+    },
   },
 
   // 客服中心会话页 /pages/user/customer-service

@@ -102,7 +102,10 @@
           :key="p.id"
           class="product-card"
           @click="goDetail(p.id)">
-          <image :src="$img(p.image)" class="product-image" mode="aspectFill" />
+          <!-- 图片容器按卡片宽度撑出 1:1 高度，规避 uni-image 固定 240px 高度在宽屏下只拉宽不拉高 -->
+          <view class="product-image-wrap">
+            <image :src="$img(p.image)" class="product-image" mode="aspectFill" />
+          </view>
           <view v-if="p.ip" class="product-ip" :class="`tag-${p.ip.toLowerCase()}`">
             {{ p.ip }}
           </view>
@@ -421,9 +424,22 @@ export default {
   overflow: hidden;
 }
 
-.product-image {
+/* 图片容器：padding-top 百分比相对卡片宽度，高度始终等于宽度（1:1）。
+   uni-image 自带 240px 固定高度，直接写 aspect-ratio 在宽屏下不生效，会导致图片被横向裁切 */
+.product-image-wrap {
+  position: relative;
   width: 100%;
-  aspect-ratio: 1;
+  padding-top: 100%;
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+}
+
+.product-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   border-radius: var(--radius-sm);
   background: var(--color-background);
 }

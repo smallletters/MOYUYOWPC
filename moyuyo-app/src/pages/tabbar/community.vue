@@ -112,7 +112,7 @@
             :key="idx"
             :src="resolveImageUrl(img)"
             class="post-image"
-            mode="aspectFill"
+            :mode="p.images.length === 1 ? 'widthFix' : 'aspectFill'"
             lazy-load
             :show-menu-by-longpress="false"
             @error="onImageError"
@@ -885,7 +885,7 @@ export default {
   letter-spacing: -2rpx;
 }
 
-/* 帖子图片:九宫格布局(1张大图 / 2列 / 3列,宽高全部1:1一致)
+/* 帖子图片:1张按原图比例 / 2-9张九宫格(参考小红书)
    关键技巧——用 vw 直接算 cell 边长,绕开 uni-image 自带尺寸与 aspect-ratio 在 grid 中失效的问题 */
 .post-image-wrap {
   padding: 0 20rpx 12rpx;
@@ -897,9 +897,11 @@ export default {
 .post-image-wrap.grid-single {
   grid-template-columns: 1fr;
 }
+/* 单图:高度交给 widthFix 按原图比例算(与帖子详情页一致)。
+   原先固定 480rpx,宽屏下宽度被拉长而高度不变,图片会被裁成扁条 */
 .post-image-wrap.grid-single .post-image {
   width: 100%;
-  height: 480rpx;
+  height: auto;
   border-radius: 20rpx;
   background: var(--color-background);
 }

@@ -67,7 +67,7 @@
               v-if="item.thumb"
               :src="$img(item.thumb)"
               class="tl-thumb"
-              mode="aspectFill" />
+              mode="widthFix" />
           </view>
         </view>
       </view>
@@ -564,7 +564,8 @@ export default {
 /* 缩略图（日记文案首图 / 记录附图） */
 .tl-thumb {
   width: 100%;
-  height: 200rpx;
+  /* 单图按原图比例自适应高度：固定 200rpx 在折叠屏展开/平板等宽屏下只拉宽不拉高，图片会被裁成一条 */
+  height: auto;
   border-radius: var(--radius-sm, 12rpx);
   background: var(--color-background);
   margin-top: 4rpx;

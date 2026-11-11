@@ -97,7 +97,11 @@
             :key="p.id"
             class="recommend-card"
             @click="goDetail(p.id)">
-            <image :src="resolveImage(p)" class="recommend-image" mode="aspectFill" />
+            <!-- 图片容器负责撑出 1:1 高度：uni-image 自带固定 240px 高度，
+                 直接给它 aspect-ratio 无效，宽屏（折叠屏展开/平板）下会只拉宽不拉高 -->
+            <view class="recommend-image-wrap">
+              <image :src="resolveImage(p)" class="recommend-image" mode="aspectFill" />
+            </view>
             <view class="recommend-body">
               <text class="recommend-name">{{ p.name }}</text>
               <!-- 只展示纯文本简短描述，避免回退到富文本 detail 露出 HTML 标签 -->
@@ -526,21 +530,23 @@ export default {
 .banner :deep(.uni-swiper-wrapper),
 .banner swiper {
   width: 100%;
-  height: 320rpx;
+  /* 海报源图为 16:9，高度按容器宽度（屏宽 - 左右各 32rpx 外边距）等比计算：
+     固定 320rpx 在折叠屏展开/平板等宽屏下只拉宽不拉高，图片会被裁切 */
+  height: calc((100vw - 64rpx) * 0.5625);
 }
 .banner swiper-item,
 .banner :deep(.uni-swiper-item) {
   width: 100%;
-  height: 320rpx;
+  height: calc((100vw - 64rpx) * 0.5625);
 }
 .banner-item {
   position: relative;
   width: 100%;
-  height: 320rpx;
+  height: calc((100vw - 64rpx) * 0.5625);
 }
 .banner-img {
   width: 100%;
-  height: 320rpx;
+  height: calc((100vw - 64rpx) * 0.5625);
   display: block;
 }
 /* 无图兜底：本地纯色块，不依赖公网图片 */
@@ -676,10 +682,21 @@ export default {
   border: 1rpx solid var(--color-divider);
 }
 
-.recommend-image {
+/* 图片容器：padding-top 百分比相对卡片宽度计算，高度始终等于宽度（1:1 方形）。
+   这样折叠屏展开、平板等宽屏下卡片变宽时，图片高度同步变高，不会被 uni-image 的 240px 固定高度裁切。 */
+.recommend-image-wrap {
+  position: relative;
   width: 100%;
-  aspect-ratio: 1;
+  padding-top: 100%;
   background: var(--color-background);
+}
+
+.recommend-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   display: block;
 }
 

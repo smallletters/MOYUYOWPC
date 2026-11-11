@@ -3363,6 +3363,15 @@ export default {
     ariaShare: 'Share',
     ariaFavorite: 'Favorite',
     retry: 'Retry',
+    // Cross-language map for review preset tags: translate tags submitted in other languages,
+    // custom tags not listed here are displayed as-is
+    reviewTagMap: {
+      质量好: 'Great Quality',
+      味道好: 'Smells Good',
+      宠物喜爱: 'Pet Loves It',
+      尺码合适: 'True to Size',
+      送货快: 'Fast Delivery',
+    },
   },
 
   // 客服中心会话页 /pages/user/customer-service

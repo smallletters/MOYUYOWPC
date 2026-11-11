@@ -918,9 +918,13 @@ export default {
 .scene {
   position: relative;
   width: 100%;
-  height: 50vh;
+  /* 手机竖屏仍以屏高一半为准；宽屏（折叠屏展开/平板/桌面）下屏高不变而宽度被拉长，
+     只按 50vh 会压成一条扁横条，这里再取 50vw 保证高度随宽度等比增长 */
+  height: max(50vh, 50vw);
   min-height: 720rpx;
-  max-height: 920rpx;
+  /* 上限同样不能被 rpx 固定值卡住（H5 窗口 >960px 时 rpx 不再随宽度放大），
+     否则宽屏的高度仍会被压回 920rpx；取视口高度兜底保证不裁掉按宽度算出的高度 */
+  max-height: max(920rpx, 100vh);
   overflow: hidden;
 }
 .scene-bg {

@@ -353,8 +353,19 @@ export default {
       this.pet3dPush('closeDiag')
     },
 
+    /**
+     * 退出 3D 空间，回到宠物主页。
+     * 正常从宠物页 navigateTo 进入时页面栈 > 1，直接出栈；
+     * 分享直链 / 地址栏直接打开本页时栈内只有当前页，navigateBack 不会生效
+     * （H5 下既不跳转也不一定回调 fail），所以先判断栈长度，再兜底 switchTab。
+     */
     goBack() {
-      uni.navigateBack()
+      const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : []
+      if (pages.length > 1) {
+        uni.navigateBack({ delta: 1 })
+      } else {
+        uni.switchTab({ url: '/pages/tabbar/pet' })
+      }
     },
 
     /**

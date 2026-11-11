@@ -393,12 +393,15 @@ export default {
     },
     reviewTags() {
       // 从评价 tags 聚合 Top 4
+      // 先按映射表把其它语言提交的预设标签翻成当前语言，再聚合，避免同义标签各算一条
+      const tagMap = i18n.t('goodsDetail.reviewTagMap')
       const counter = new Map()
       this.reviews.forEach((r) => {
         if (Array.isArray(r.tags)) {
           r.tags.forEach((t) => {
             if (!t) return
-            counter.set(t, (counter.get(t) || 0) + 1)
+            const label = tagMap && typeof tagMap === 'object' ? tagMap[t] || t : t
+            counter.set(label, (counter.get(label) || 0) + 1)
           })
         }
       })
@@ -1180,7 +1183,10 @@ export default {
 
 .swiper {
   width: 100%;
-  height: 750rpx;
+  /* 主图为 1:1 方图，容器高度需保证内部图片区域也是正方形：
+     图片宽 = 屏宽 - 左右内边距(32rpx)；再加回上下内边距(24rpx)，即 100vw - 8rpx。
+     固定 750rpx 在折叠屏展开/平板等宽屏下只拉宽不拉高，主图会被裁切 */
+  height: calc(100vw - 8rpx);
   padding: 16rpx 16rpx 8rpx;
   box-sizing: border-box;
 }
