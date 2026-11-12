@@ -81,17 +81,10 @@
               <view v-if="selectedPayment === p.id" class="pay-radio-dot" />
             </view>
             <view class="pay-icon-box">
-              <!-- 品牌标识改为纯 view + text 绘制，不再走 <image>：
-                   APP 端 <image> 对 SVG / SVG base64 data URI 渲染不可靠
-                   （SVG 需要解释器，且 data URI 依赖 btoa/TextEncoder 等宿主能力），
-                   色块 + 文字的方案不依赖任何图片解码，H5 与真机表现一致 -->
-              <view v-if="p.iconKey === 'card'" class="pay-badge pay-badge-card">
-                <view class="pay-card-stripe" />
-                <view class="pay-card-chip" />
-              </view>
-              <view v-else class="pay-badge" :class="`pay-badge-${p.iconKey}`">
-                <text class="pay-badge-text">{{ p.iconText }}</text>
-              </view>
+              <!-- 品牌 logo 用 CSS 背景图加载 /static/payment 下的 SVG：
+                   APP 端 <image> 对 SVG 渲染不可靠，而 background-image 由 webview 直接渲染，
+                   H5 与真机表现一致 -->
+              <view class="pay-badge" :class="`pay-badge-${p.iconKey}`" />
             </view>
             <view class="pay-info">
               <text class="pay-name">{{ p.name }}</text>
@@ -406,7 +399,6 @@ const PAYMENT_METHOD_CATALOG = [
     nameKey: 'orderPay.methods.googlepay.name',
     descKey: 'orderPay.methods.googlepay.desc',
     iconKey: 'googlepay',
-    iconText: 'G Pay',
   },
   {
     id: 'applepay',
@@ -414,7 +406,6 @@ const PAYMENT_METHOD_CATALOG = [
     nameKey: 'orderPay.methods.applepay.name',
     descKey: 'orderPay.methods.applepay.desc',
     iconKey: 'applepay',
-    iconText: 'Pay',
   },
   {
     id: 'paypal',
@@ -422,7 +413,6 @@ const PAYMENT_METHOD_CATALOG = [
     nameKey: 'orderPay.methods.paypal.name',
     descKey: 'orderPay.methods.paypal.desc',
     iconKey: 'paypal',
-    iconText: 'PP',
   },
   {
     id: 'card',
@@ -430,7 +420,6 @@ const PAYMENT_METHOD_CATALOG = [
     nameKey: 'orderPay.methods.card.name',
     descKey: 'orderPay.methods.card.desc',
     iconKey: 'card',
-    iconText: 'CARD',
   },
 ]
 
@@ -475,7 +464,7 @@ export default {
       shippingLoaded: false,
       // 默认选中第一个 ACTIVE method；地址变更或 subtotal 变化时重新拉取并保持选中态
       selectedShipping: '',
-      // 支付方式展示目录,文案走 i18n;品牌标识用 iconKey + iconText 由 view/text 绘制。
+      // 支付方式展示目录，文案走 i18n；品牌 logo 由 iconKey 映射 /static/payment 下的 SVG。
       // 初始为本地全量目录，onLoad 后按后端开关过滤（接口异常时保留全量兜底）
       paymentMethods: PAYMENT_METHOD_CATALOG.slice(),
     }
@@ -1663,78 +1652,34 @@ export default {
   border-color: var(--color-primary);
 }
 
-/* 支付方式品牌标识：纯 view + text 绘制，不依赖 <image>（APP 端 SVG/data URI 不可靠）
- * 统一铺满图标框（80 x 56rpx），用品牌色块 + 短文字表达，H5 与真机渲染一致 */
+/* 支付方式品牌 logo：背景图铺满图标框（80 x 56rpx），SVG 由 webview 原生渲染 */
 .pay-badge {
   width: 100%;
   height: 100%;
   border-radius: 4rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4rpx;
-  box-sizing: border-box;
-  overflow: hidden;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
 }
 
-.pay-badge-text {
-  font-size: 20rpx;
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: 0.5rpx;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Google Pay：浅灰底 + 深灰字 */
+/* Google Pay */
 .pay-badge-googlepay {
-  background: #f1f3f4;
-  border: 1rpx solid #dadce0;
-}
-.pay-badge-googlepay .pay-badge-text {
-  color: #3c4043;
+  background-image: url('/static/payment/googlepay.svg');
 }
 
-/* Apple Pay：苹果官方黑底白字 */
+/* Apple Pay */
 .pay-badge-applepay {
-  background: #000000;
-}
-.pay-badge-applepay .pay-badge-text {
-  color: #ffffff;
+  background-image: url('/static/payment/applepay.svg');
 }
 
-/* PayPal：品牌深蓝底 + 白字 PP */
+/* PayPal */
 .pay-badge-paypal {
-  background: #003087;
-}
-.pay-badge-paypal .pay-badge-text {
-  color: #ffffff;
+  background-image: url('/static/payment/paypal.svg');
 }
 
-/* Card：深蓝卡面 + 金色磁条 + 白色芯片 */
+/* 银行卡 */
 .pay-badge-card {
-  background: #1a1f71;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
-  padding: 0;
-}
-.pay-card-stripe {
-  width: 100%;
-  height: 10rpx;
-  background: #f0c14b;
-  flex-shrink: 0;
-}
-.pay-card-chip {
-  width: 36%;
-  height: 8rpx;
-  margin: 10rpx 0 0 8rpx;
-  border-radius: 2rpx;
-  background: #ffffff;
-  opacity: 0.85;
-  flex-shrink: 0;
+  background-image: url('/static/payment/card.svg');
 }
 
 .pay-info {

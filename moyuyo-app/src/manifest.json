@@ -227,6 +227,10 @@
         "template" : "index.html"
     },
     "vueVersion" : "3",
-    "locale" : "auto",
+    // 默认语言固定英文，不要用 "auto"：
+    // "auto" 会让 App 原生 tabBar / 内置组件跟随手机系统语言，
+    // 中文系统首次启动时底部导航栏会显示中文，与 App 自身默认 en-US 不一致。
+    // 用户在设置页切换语言后由 uni.setLocale 持久化，不受此项影响。
+    "locale" : "en",
     "fallbackLocale" : "en"
 }
