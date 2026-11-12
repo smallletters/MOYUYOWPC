@@ -24,6 +24,8 @@ public class TopicConstant {
     public static final String USER_REGISTER = "user_register";
     /** 通知发送 */
     public static final String NOTIFICATION_SEND = "notification_send";
+    /** 社区兴趣画像更新（异步） */
+    public static final String COMMUNITY_INTEREST = "community_interest";
 
     // ==================== 消费组 ====================
     /** 订单相关消费组 */
@@ -32,6 +34,8 @@ public class TopicConstant {
     public static final String CONSUMER_GROUP_WOO = "woo-consumer-group";
     /** 通知发送消费组 */
     public static final String CONSUMER_GROUP_NOTIFICATION = "notification-consumer-group";
+    /** 社区兴趣画像消费组 */
+    public static final String CONSUMER_GROUP_COMMUNITY_INTEREST = "community-interest-consumer-group";
 
     private TopicConstant() {
         // 工具类禁止实例化

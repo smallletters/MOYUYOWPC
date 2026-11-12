@@ -56,38 +56,51 @@
       </view>
 
       <view v-if="displayConversations.length" class="conv-list">
-        <view
-          v-for="conv in displayConversations"
-          :key="conv.id"
-          class="conv-item"
-          @tap="openConversation(conv)"
-          @longpress="onLongPressConversation(conv)"
-        >
-          <image
-            v-if="conv.avatarUrl"
-            :src="conv.avatarUrl"
-            class="conv-avatar-img"
-            mode="aspectFill"
-          />
-          <view v-else-if="conv.type === 'CS'" class="conv-avatar conv-avatar-cs">
-            <text class="luc luc-headphones" />
-          </view>
-          <view v-else class="conv-avatar">{{ avatarLetter(conv) }}</view>
-          <view class="conv-body">
-            <view class="conv-row">
-              <view class="conv-name-wrap">
-                <text v-if="conv.pinned" class="conv-pin luc luc-bookmark" />
-                <text class="conv-name">
-                  {{ conv.name || t('messagesCenter.defaultName') }}
-                </text>
-              </view>
-              <text class="conv-time">{{ formatTime(conv.updatedAt) }}</text>
+        <view v-for="conv in displayConversations" :key="conv.id" class="conv-swipe">
+          <!-- 左滑露出的删除按钮（客服会话由后台管理，不提供删除） -->
+          <view v-if="canSwipeDelete(conv)" class="conv-swipe-actions">
+            <view class="conv-swipe-btn" @tap.stop="confirmDeleteConversation(conv)">
+              <text class="conv-swipe-btn-text">{{ t('messagesCenter.delete') }}</text>
             </view>
-            <view class="conv-row">
-              <text class="conv-preview">
-                {{ convPreview(conv) }}
-              </text>
-              <view v-if="conv.unread > 0" class="conv-unread">{{ badgeText(conv.unread) }}</view>
+          </view>
+
+          <view
+            class="conv-item"
+            :class="{ 'conv-item--swiping': isSwiping && touchingId === conv.id }"
+            :style="{ transform: `translateX(${conv.swipeOffset || 0}px)` }"
+            @tap="onConversationTap(conv)"
+            @longpress="onLongPressConversation(conv)"
+            @touchstart="onTouchStart($event, conv)"
+            @touchmove="onTouchMove($event, conv)"
+            @touchend="onTouchEnd($event, conv)"
+            @touchcancel="onTouchEnd($event, conv)"
+          >
+            <image
+              v-if="conv.avatarUrl"
+              :src="conv.avatarUrl"
+              class="conv-avatar-img"
+              mode="aspectFill"
+            />
+            <view v-else-if="conv.type === 'CS'" class="conv-avatar conv-avatar-cs">
+              <text class="luc luc-headphones" />
+            </view>
+            <view v-else class="conv-avatar">{{ avatarLetter(conv) }}</view>
+            <view class="conv-body">
+              <view class="conv-row">
+                <view class="conv-name-wrap">
+                  <text v-if="conv.pinned" class="conv-pin luc luc-bookmark" />
+                  <text class="conv-name">
+                    {{ conv.name || t('messagesCenter.defaultName') }}
+                  </text>
+                </view>
+                <text class="conv-time">{{ formatTime(conv.updatedAt) }}</text>
+              </view>
+              <view class="conv-row">
+                <text class="conv-preview">
+                  {{ convPreview(conv) }}
+                </text>
+                <view v-if="conv.unread > 0" class="conv-unread">{{ badgeText(conv.unread) }}</view>
+              </view>
             </view>
           </view>
         </view>
@@ -113,10 +126,12 @@
 </template>
 
 <script>
+import { reactive } from 'vue'
 import { messageApi, notificationApi, csApi } from '@/api'
 import { useUserStore, useThemeStore } from '@/store'
 import { i18n } from '@/i18n'
 import { toAbsoluteImageUrl } from '@/utils/imageUrl'
+import { deleteCachedConversation } from '@/utils/messageCache'
 import { connectDmSocket, onDmSocketEvent, syncMessageTabBadge } from '@/utils/dmSocket'
 
 export default {
@@ -140,6 +155,16 @@ export default {
       unreadByType: { all: 0, activity: 0, order: 0, system: 0 },
       // 客服概览：最近会话 + 最后一条消息 + 未读数
       csOverview: null,
+      // 左滑删除：起始坐标 / 起始位移 / 当前触摸的会话ID / 已展开的会话ID
+      touchStartX: 0,
+      touchStartY: 0,
+      touchStartOffset: 0,
+      touchingId: '',
+      swipedId: '',
+      // 是否判定为水平滑动（用于跟手时关闭过渡动画）
+      isSwiping: false,
+      // 最近一次滑动结束时间：拦截滑动后补发的 tap，避免误进会话
+      justSwipedAt: 0,
     }
   },
 
@@ -192,7 +217,8 @@ export default {
       void this.localeVersion
       const overview = this.csOverview || {}
       if (!overview.sessionId || !overview.lastMessage) return null
-      return {
+      // 用 reactive 包装：客服会话对象不在 conversations 中，只有响应式对象才能让左滑位移实时生效
+      return reactive({
         id: 'cs-center',
         type: 'CS',
         sessionId: String(overview.sessionId),
@@ -205,7 +231,8 @@ export default {
         updatedAt: this.csLastAt,
         unread: this.csUnread,
         pinned: false,
-      }
+        swipeOffset: 0,
+      })
     },
     /** 私信列表 + 客服会话：置顶优先，其余按最近消息时间倒序 */
     displayConversations() {
@@ -339,9 +366,12 @@ export default {
           unread: Number(conv.unreadCount || 0),
           // 置顶状态（后端已按置顶优先排序）
           pinned: !!conv.pinned,
+          // 左滑位移（px）：0 表示收起，负值表示已左滑展开删除按钮
+          swipeOffset: 0,
         }))
         if (reset) {
           this.conversations = mapped
+          this.swipedId = ''
         } else {
           // 追加时按 id 去重，避免与 WebSocket 触发的刷新交叉产生重复项
           const existing = new Set(this.conversations.map((c) => c.id))
@@ -453,6 +483,82 @@ export default {
       })
     },
 
+    /** 点击会话：刚滑动过或有展开项时只做收起，避免误进会话 */
+    onConversationTap(conv) {
+      if (!conv) return
+      // 滑动抬手后会补发 tap，300ms 内忽略
+      if (Date.now() - this.justSwipedAt < 300) return
+      if (this.swipedId) {
+        this.closeSwipe()
+        return
+      }
+      this.openConversation(conv)
+    },
+
+    /** 左滑删除：私信是删除会话，客服会话是结束当前会话 */
+    canSwipeDelete(conv) {
+      return !!conv
+    },
+
+    /** 左滑按钮宽度（px）：与样式中的 140rpx 保持一致 */
+    swipeBtnPx() {
+      return uni.upx2px(140)
+    },
+
+    /** 收起所有已展开的会话 */
+    closeSwipe() {
+      this.conversations.forEach((c) => {
+        c.swipeOffset = 0
+      })
+      // 客服会话由 computed 生成、不在 conversations 中，需要单独复位
+      if (this.csConversation) this.csConversation.swipeOffset = 0
+      this.swipedId = ''
+    },
+
+    /** 触摸开始：记录起点坐标与当前位移 */
+    onTouchStart(e, conv) {
+      if (!this.canSwipeDelete(conv)) return
+      // 展开其他会话时先收起，保证同时只有一个操作区
+      if (this.swipedId && this.swipedId !== conv.id) this.closeSwipe()
+      const t = e.touches[0] || e.changedTouches[0]
+      this.touchingId = conv.id
+      this.touchStartX = t.clientX
+      this.touchStartY = t.clientY
+      this.touchStartOffset = conv.swipeOffset || 0
+      this.isSwiping = false
+    },
+
+    /** 触摸移动：水平位移明显时才跟手左移，垂直滑动交给页面滚动 */
+    onTouchMove(e, conv) {
+      if (this.touchingId !== conv.id) return
+      const t = e.touches[0] || e.changedTouches[0]
+      const dx = t.clientX - this.touchStartX
+      const dy = t.clientY - this.touchStartY
+      // 水平位移需大于 10px 且明显大于垂直位移，避免误判为左滑
+      if (!this.isSwiping && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        this.isSwiping = true
+      }
+      if (!this.isSwiping) return
+      const full = this.swipeBtnPx()
+      // 双向 clamp：最多露出一个按钮宽度，且不允许右滑露出空白
+      const next = Math.max(-full, Math.min(0, this.touchStartOffset + dx))
+      conv.swipeOffset = next
+    },
+
+    /** 触摸结束：超过一半展开，否则回弹收起 */
+    onTouchEnd(e, conv) {
+      if (this.touchingId !== conv.id) return
+      // 真正滑动过才记录时间，普通点击不受影响
+      if (this.isSwiping) this.justSwipedAt = Date.now()
+      const full = this.swipeBtnPx()
+      const current = conv.swipeOffset || 0
+      const target = current < -full / 2 ? -full : 0
+      conv.swipeOffset = target
+      this.swipedId = target ? conv.id : ''
+      this.touchingId = ''
+      this.isSwiping = false
+    },
+
     /** 长按会话：置顶/取消置顶 + 删除会话 */
     onLongPressConversation(conv) {
       if (!conv) return
@@ -487,11 +593,16 @@ export default {
       }
     },
 
-    /** 删除会话前的二次确认 */
+    /** 删除会话前的二次确认：客服会话使用"结束会话"文案 */
     confirmDeleteConversation(conv) {
+      const isCs = conv.type === 'CS'
       uni.showModal({
-        title: this.t('messagesCenter.deleteConfirmTitle'),
-        content: this.t('messagesCenter.deleteConfirmContent'),
+        title: this.t(
+          isCs ? 'messagesCenter.csDeleteConfirmTitle' : 'messagesCenter.deleteConfirmTitle',
+        ),
+        content: this.t(
+          isCs ? 'messagesCenter.csDeleteConfirmContent' : 'messagesCenter.deleteConfirmContent',
+        ),
         confirmText: this.t('common.confirm'),
         cancelText: this.t('common.cancel'),
         success: (res) => {
@@ -500,14 +611,35 @@ export default {
       })
     },
 
-    /** 删除会话（仅自己隐藏）：本地移除并同步未读角标 */
+    /** 删除会话：私信仅自己隐藏；客服会话没有删除接口，用关闭会话实现结束并隐藏 */
     async removeConversation(conv) {
+      const userId = String(this.userStore.userId || '')
       try {
-        await messageApi.deleteConversation(conv.id)
-        this.conversations = this.conversations.filter((c) => c.id !== conv.id)
-        await this.loadDmUnread()
-        this.syncTabBarBadge()
-        uni.showToast({ title: this.t('messagesCenter.deletedToast'), icon: 'none' })
+        if (conv.type === 'CS') {
+          await csApi.closeSession(conv.sessionId)
+          // 后端 overview 已过滤 CLOSED，本地同步清空客服卡片与缓存
+          this.csOverview = null
+          deleteCachedConversation({
+            scope: 'cs',
+            userId,
+            conversationId: String(conv.sessionId),
+          })
+        } else {
+          await messageApi.deleteConversation(conv.id)
+          this.conversations = this.conversations.filter((c) => c.id !== conv.id)
+          // 会话删除后同步清理本地消息缓存，避免重新打开时还能看到旧内容
+          deleteCachedConversation({ scope: 'dm', userId, conversationId: conv.id })
+          await this.loadDmUnread()
+          this.syncTabBarBadge()
+        }
+        // 删除的是当前展开项时清空展开状态
+        if (this.swipedId === conv.id) this.swipedId = ''
+        uni.showToast({
+          title: this.t(
+            conv.type === 'CS' ? 'messagesCenter.csDeletedToast' : 'messagesCenter.deletedToast',
+          ),
+          icon: 'none',
+        })
       } catch (e) {
         uni.showToast({ title: this.t('messagesCenter.operateFailed'), icon: 'none' })
       }
@@ -731,18 +863,62 @@ export default {
   background: var(--color-surface);
   overflow: hidden;
 }
+/* 左滑容器：底层放删除按钮，上层卡片平移露出 */
+.conv-swipe {
+  position: relative;
+  overflow: hidden;
+}
+/* 首尾项自身也带圆角，避免左滑时删除按钮在列表边角露出直角 */
+.conv-swipe:first-child {
+  border-top-left-radius: 24rpx;
+  border-top-right-radius: 24rpx;
+}
+.conv-swipe:last-child {
+  border-bottom-left-radius: 24rpx;
+  border-bottom-right-radius: 24rpx;
+}
+.conv-swipe-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+  z-index: 1;
+}
+.conv-swipe-btn {
+  width: 140rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ff4d4f;
+}
+.conv-swipe-btn-text {
+  color: #fff;
+  font-size: var(--font-size-sm);
+}
 .conv-item {
+  position: relative;
+  /* 必须有不透明背景，否则左滑后会透出底层删除按钮 */
+  background: var(--color-surface);
+  z-index: 2;
+  transition: transform 0.2s ease;
   display: flex;
   align-items: center;
   gap: 20rpx;
   padding: 24rpx;
   border-bottom: 1rpx solid var(--color-divider);
 }
-.conv-item:last-child {
+/* 跟手拖动时关闭过渡，避免延迟感 */
+.conv-item--swiping {
+  transition: none;
+}
+.conv-swipe:last-child .conv-item {
   border-bottom: none;
 }
 .conv-item:active {
-  background: rgba(0, 0, 0, 0.04);
+  /* 用不透明底色，避免按住时透出底层删除按钮 */
+  background: var(--color-fill, #f2f2f7);
 }
 .conv-avatar {
   width: 88rpx;

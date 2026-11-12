@@ -148,6 +148,13 @@ import { i18n } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 import { getPageQuery } from '@/utils/pageQuery'
 import { toAbsoluteImageUrl } from '@/utils/imageUrl'
+import { useUserStore } from '@/store'
+import {
+  loadCachedMessages,
+  saveCachedMessages,
+  deleteCachedConversation,
+  MESSAGE_CACHE_RETENTION_DAYS,
+} from '@/utils/messageCache'
 usePageTitle('pageTitle.userCustomerService')
 
 const sessionId = ref(null)
@@ -295,12 +302,40 @@ function openCard(m) {
   }
 }
 
+/** 当前登录用户 ID：本地缓存按用户隔离 */
+function currentUserId() {
+  return String(useUserStore().userId || '')
+}
+
+/** 把客服会话消息写入本地缓存（供下次秒开与弱网查看） */
+function cacheSessionMessages(sid, records) {
+  if (!sid) return
+  saveCachedMessages({
+    scope: 'cs',
+    userId: currentUserId(),
+    conversationId: String(sid),
+    messages: Array.isArray(records) ? records : [],
+    retentionDays: MESSAGE_CACHE_RETENTION_DAYS,
+  })
+}
+
 async function ensureSession() {
   try {
     // 从消息页带已有会话 id 进入：直接加载历史消息，避免 createSession 新建空会话
     if (presetSessionId.value) {
       try {
         sessionId.value = presetSessionId.value
+        // 本地优先：先渲染缓存，弱网/离线也能看到最近记录，云端返回后再覆盖
+        const cached = await loadCachedMessages({
+          scope: 'cs',
+          userId: currentUserId(),
+          conversationId: String(presetSessionId.value),
+          retentionDays: MESSAGE_CACHE_RETENTION_DAYS,
+        })
+        if (cached.length) {
+          messages.value = cached
+          scrollToBottom()
+        }
         messages.value = await fetchMessagesWithRetry(sessionId.value)
         scrollToBottom()
         return
@@ -399,7 +434,10 @@ async function sendText(text) {
  */
 async function fetchMessagesWithRetry(sid) {
   const list = await csApi.listMessages(sid)
-  return Array.isArray(list) ? list : list?.records || []
+  const records = Array.isArray(list) ? list : list?.records || []
+  // 拉取成功后覆盖本地缓存，保证下次进入可秒开
+  cacheSessionMessages(sid, records)
+  return records
 }
 
 function sendCurrent() {
@@ -466,11 +504,14 @@ function stopIdleCheck() {
 async function resetSession() {
   try {
     if (sessionId.value) {
+      const closedSid = String(sessionId.value)
       try {
         await csApi.closeSession(sessionId.value)
       } catch (e) {
         /* 忽略 */
       }
+      // 旧会话已结束，清掉它的本地缓存，避免残留到新会话
+      deleteCachedConversation({ scope: 'cs', userId: currentUserId(), conversationId: closedSid })
     }
     sessionId.value = null
     messages.value = []
@@ -506,6 +547,8 @@ function startPolling() {
       if (tailId !== lastRenderedId) {
         messages.value = real
         lastRenderedId = tailId
+        // 轮询发现新消息时同步本地缓存，保证下次进入可秒开
+        cacheSessionMessages(sessionId.value, real)
         scrollToBottom()
         // 收到服务端新消息也算一次活跃,延长超时
         touchActive()
@@ -535,6 +578,8 @@ const onShowRefresh = async () => {
       if (tailId !== lastRenderedId) {
         messages.value = real
         lastRenderedId = tailId
+        // 从其他页面返回发现新消息时同步本地缓存
+        cacheSessionMessages(sessionId.value, real)
         scrollToBottom()
         touchActive()
       }

@@ -307,6 +307,7 @@ export default {
       species: 'Species',
       breed: 'Breed',
       breedPlaceholder: 'e.g. Golden Retriever',
+      preferredIp: 'Preferred IP',
       gender: 'Gender',
       birthday: 'Birthday',
       weight: 'Weight',
@@ -2048,9 +2049,14 @@ export default {
     pinnedToast: 'Pinned',
     unpinnedToast: 'Unpinned',
     deleteConversation: 'Delete conversation',
+    delete: 'Delete',
     deleteConfirmTitle: 'Delete conversation',
     deleteConfirmContent:
       'The conversation will be removed from your list and will reappear when a new message arrives.',
+    csDeleteConfirmTitle: 'End customer service chat',
+    csDeleteConfirmContent:
+      'The conversation will be removed from your messages. Start a new chat anytime if you need more help.',
+    csDeletedToast: 'Chat ended',
     deletedToast: 'Deleted',
     operateFailed: 'Action failed, please retry',
     loadMore: 'Load more',

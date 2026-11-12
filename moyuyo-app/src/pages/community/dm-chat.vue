@@ -493,6 +493,11 @@ import { messageApi, blockApi } from '@/api'
 import { uploadChatImage, uploadVoice, uploadFile } from '@/api/upload'
 import { toAbsoluteImageUrl } from '@/utils/imageUrl'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
+import {
+  loadCachedMessages,
+  saveCachedMessages,
+  MESSAGE_CACHE_RETENTION_DAYS,
+} from '@/utils/messageCache'
 import { useUserStore } from '@/store'
 import { connectDmSocket, onDmSocketEvent, syncMessageTabBadge } from '@/utils/dmSocket'
 usePageTitle('pageTitle.communityDmChat')
@@ -727,26 +732,131 @@ function mapMessages(records) {
   }))
 }
 
-/** 加载会话历史消息（默认取最新一页，单页内按时间正序） */
+/** 当前登录用户 ID：本地缓存按用户隔离，避免换号后串数据 */
+function currentUserId() {
+  return String(useUserStore().userId || '')
+}
+
+/** 雪花 ID 用字符串比较，避免转 Number 精度丢失 */
+function compareMessageId(a, b) {
+  const sa = String(a || '')
+  const sb = String(b || '')
+  if (sa.length !== sb.length) return sa.length - sb.length
+  if (sa === sb) return 0
+  return sa < sb ? -1 : 1
+}
+
+/** 合并两批消息：按 id 去重后按 id 升序（雪花 ID 递增，等价于时间顺序） */
+function mergeMessages(base, incoming) {
+  const map = new Map()
+  ;[...(base || []), ...(incoming || [])].forEach((m) => {
+    if (m && m.id) map.set(String(m.id), m)
+  })
+  return Array.from(map.values()).sort((a, b) => compareMessageId(a.id, b.id))
+}
+
+// 本地缓存写入防抖计时器：连续上屏/已读同步时避免频繁写 IndexedDB
+let persistTimer = null
+
+/**
+ * 把当前会话已发送成功的消息写入本地缓存。
+ * 发送中/发送失败的消息不落盘，避免重启后出现无法重试的残留气泡。
+ * @param {boolean} immediate 立即写入（页面卸载时使用）
+ */
+function persistMessages(immediate = false) {
+  if (!conversationId.value) return
+  const write = () => {
+    persistTimer = null
+    const userId = currentUserId()
+    if (!userId) return
+    saveCachedMessages({
+      scope: 'dm',
+      userId,
+      conversationId: String(conversationId.value),
+      messages: messages.value.filter((m) => m && (!m.status || m.status === 'sent')),
+      retentionDays: MESSAGE_CACHE_RETENTION_DAYS,
+    })
+  }
+  if (persistTimer) clearTimeout(persistTimer)
+  if (immediate) write()
+  else persistTimer = setTimeout(write, 300)
+}
+
+/**
+ * 加载会话历史消息：本地缓存优先，云端增量补齐。
+ * 有缓存时以「缓存最后一条消息 ID」为游标只拉新消息；无缓存时拉最新一页。
+ */
 async function loadMessages() {
   if (!conversationId.value) return
   loading.value = true
   try {
-    const page = await messageApi.listMessages(conversationId.value, {
-      page: 1,
-      size: MESSAGE_PAGE_SIZE,
+    // 1) 先渲染本地缓存，保证秒开与弱网下可读
+    const cached = await loadCachedMessages({
+      scope: 'dm',
+      userId: currentUserId(),
+      conversationId: String(conversationId.value),
+      retentionDays: MESSAGE_CACHE_RETENTION_DAYS,
     })
-    const records = (page && page.records) || []
-    messages.value = mapMessages(records)
-    messagePage.value = 1
-    messageTotal.value = Number((page && page.total) ?? records.length)
-    hasMore.value = records.length > 0 && messages.value.length < messageTotal.value
+    if (cached.length) {
+      messages.value = cached
+      messageTotal.value = cached.length
+      hasMore.value = true
+      nextTick(() => {
+        scrollToId.value = `msg-${messages.value.length - 1}`
+      })
+    }
+
+    // 2) 云端同步：增量循环补齐缓存之后的新消息（长时间未打开可能超过一页），
+    //    再拉最新一页刷新旧消息的媒体签名与已读状态（签名时效短，缓存后容易过期）
+    const lastCached = cached.length ? cached[cached.length - 1] : null
+    let records = []
+    let total = 0
+    if (lastCached) {
+      let cursor = lastCached.id
+      // 最多补 20 页（1000 条），防止异常数据导致无限请求
+      for (let round = 0; round < 20; round += 1) {
+        const resp = await messageApi.listMessages(conversationId.value, {
+          afterId: cursor,
+          size: MESSAGE_PAGE_SIZE,
+        })
+        const pageRecords = (resp && resp.records) || []
+        total = Math.max(total, Number((resp && resp.total) || 0))
+        records = records.concat(pageRecords)
+        if (pageRecords.length < MESSAGE_PAGE_SIZE) break
+        const nextCursor = pageRecords[pageRecords.length - 1].id
+        // 游标未前进说明后端忽略了 afterId（旧版本），直接停止避免重复请求
+        if (!nextCursor || String(nextCursor) === String(cursor)) break
+        cursor = nextCursor
+      }
+      const latest = await messageApi.listMessages(conversationId.value, {
+        page: 1,
+        size: MESSAGE_PAGE_SIZE,
+      })
+      records = records.concat((latest && latest.records) || [])
+      total = Math.max(total, Number((latest && latest.total) || 0))
+    } else {
+      const page = await messageApi.listMessages(conversationId.value, {
+        page: 1,
+        size: MESSAGE_PAGE_SIZE,
+      })
+      records = (page && page.records) || []
+      total = Number((page && page.total) || 0)
+      messagePage.value = 1
+    }
+    const merged = mergeMessages(messages.value, mapMessages(records))
+    messages.value = merged
+    messageTotal.value = Math.max(total, merged.length)
+    hasMore.value = merged.length < messageTotal.value
     nextTick(() => {
       if (messages.value.length) scrollToId.value = `msg-${messages.value.length - 1}`
     })
+    persistMessages()
   } catch (e) {
     console.warn('[dm-chat] load messages failed', e)
-    uni.showToast({ title: t('messagesCenter.loadFailed'), icon: 'none' })
+    // 有缓存时云端失败不打断阅读，仅无任何内容时提示
+    if (!messages.value.length) {
+      uni.showToast({ title: t('messagesCenter.loadFailed'), icon: 'none' })
+    }
   } finally {
     loading.value = false
   }
@@ -757,25 +867,71 @@ async function loadOlderMessages() {
   if (!conversationId.value || !hasMore.value || loadingOlder.value) return
   loadingOlder.value = true
   try {
-    const nextPage = messagePage.value + 1
-    const page = await messageApi.listMessages(conversationId.value, {
-      page: nextPage,
-      size: MESSAGE_PAGE_SIZE,
-    })
-    const records = (page && page.records) || []
-    // 按 id 去重，避免与 WebSocket 新消息/重复请求交叉时出现重复气泡
-    const existing = new Set(messages.value.map((m) => m.id))
-    const older = mapMessages(records).filter((m) => !existing.has(m.id))
-    if (older.length) {
-      messages.value = older.concat(messages.value)
-      messagePage.value = nextPage
+    let added = []
+    let finished = false
+    const oldest = messages.value[0]
+
+    // 优先用 beforeId 游标：本地缓存可能已跨多页，游标能精确取「当前最旧消息之前」的一页，
+    // 一次请求即可拿到更早消息，不会因整页与缓存重合而反复空请求
+    if (oldest && oldest.id) {
+      const resp = await messageApi.listMessages(conversationId.value, {
+        beforeId: oldest.id,
+        size: MESSAGE_PAGE_SIZE,
+      })
+      const records = (resp && resp.records) || []
+      messageTotal.value = Math.max(messageTotal.value, Number((resp && resp.total) || 0))
+      const existing = new Set(messages.value.map((m) => m.id))
+      const older = mapMessages(records).filter((m) => !existing.has(m.id))
+      if (older.length) {
+        messages.value = older.concat(messages.value)
+        added = older
+        persistMessages()
+        finished = true
+      } else if (!records.length) {
+        // 该消息之前确实没有更多历史
+        hasMore.value = false
+        finished = true
+      }
+      // records 非空但全部重合：后端尚未支持 beforeId（旧版本），继续走页码兜底
     }
-    messageTotal.value = Math.max(messageTotal.value, Number((page && page.total) || 0))
-    hasMore.value = records.length > 0 && messages.value.length < messageTotal.value
+
+    if (!finished) {
+      let pageNo = messagePage.value
+      let reachedEnd = false
+      // 页码兜底：逐页向前找未缓存消息（最多 40 页，防止极端场景无限请求）
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        pageNo += 1
+        const page = await messageApi.listMessages(conversationId.value, {
+          page: pageNo,
+          size: MESSAGE_PAGE_SIZE,
+        })
+        const records = (page && page.records) || []
+        messageTotal.value = Math.max(messageTotal.value, Number((page && page.total) || 0))
+        if (!records.length) {
+          pageNo -= 1
+          reachedEnd = true
+          break
+        }
+        // 按 id 去重，避免与本地缓存/WebSocket 新消息交叉时出现重复气泡
+        const existing = new Set(messages.value.map((m) => m.id))
+        const older = mapMessages(records).filter((m) => !existing.has(m.id))
+        if (older.length) {
+          messages.value = older.concat(messages.value)
+          added = older
+          persistMessages()
+          break
+        }
+      }
+      messagePage.value = pageNo
+      hasMore.value = !reachedEnd && messages.value.length < messageTotal.value
+    } else if (added.length) {
+      hasMore.value = messages.value.length < messageTotal.value
+    }
+
     // 旧内容插入后，把原来第一条消息滚动回视口顶部附近
-    if (older.length) {
+    if (added.length) {
       nextTick(() => {
-        scrollToId.value = `msg-${older.length}`
+        scrollToId.value = `msg-${added.length}`
       })
     }
   } catch (e) {
@@ -856,6 +1012,8 @@ function onSocketEvent(payload) {
     messages.value.forEach((m) => {
       if (m.isSelf) m.readFlag = true
     })
+    // 已读状态写入本地缓存，避免下次从缓存恢复后回执丢失
+    persistMessages()
     return
   }
 
@@ -865,6 +1023,7 @@ function onSocketEvent(payload) {
     if (target) {
       target.recalled = true
       target.content = ''
+      persistMessages()
     }
     messageApi
       .unreadCount()
@@ -878,6 +1037,7 @@ function onSocketEvent(payload) {
     if (data.action === 'messages_deleted' && Array.isArray(data.messageIds)) {
       const idSet = new Set(data.messageIds.map(String))
       messages.value = messages.value.filter((m) => !idSet.has(String(m.id)))
+      persistMessages()
     }
     // 群成员变更：刷新群成员/群主信息
     if ((data.action === 'members_changed' || data.action === 'created') && isGroup.value) {
@@ -924,6 +1084,7 @@ function onSocketEvent(payload) {
   nextTick(() => {
     scrollToId.value = `msg-${messages.value.length - 1}`
   })
+  persistMessages()
 
   // 合并上报已读：群聊连发时避免每条消息都打 markRead + unreadCount 两个接口
   scheduleReadSync()
@@ -937,6 +1098,12 @@ function subscribeSocket() {
 }
 
 onUnmounted(() => {
+  // 页面退出时立即把待写入的消息落盘，避免防抖窗口内丢失最后一批消息
+  if (persistTimer) {
+    clearTimeout(persistTimer)
+    persistTimer = null
+  }
+  persistMessages(true)
   if (unsubDmSocket) {
     unsubDmSocket()
     unsubDmSocket = null
@@ -1528,6 +1695,8 @@ async function processMediaMessage(msg) {
     target.id = String(saved.id)
     target.time = saved.createTime
     target.status = 'sent'
+    // 发送成功后立即写入本地缓存，重启/弱网时可直接看到
+    persistMessages()
     return ''
   } catch (e) {
     const error = (e && e.message) || t('dmChat.sendFailed')
@@ -1552,6 +1721,8 @@ async function pushMessage(msg) {
     target.id = String(saved.id)
     target.time = saved.createTime
     target.status = 'sent'
+    // 发送成功后立即写入本地缓存，重启/弱网时可直接看到
+    persistMessages()
     return ''
   } catch (e) {
     const error = (e && e.message) || t('dmChat.sendFailed')
@@ -1644,6 +1815,8 @@ async function confirmDeleteSelected() {
         }
         const idSet = new Set(ids)
         messages.value = messages.value.filter((m) => !idSet.has(m.id))
+        // 删除后同步更新本地缓存，避免重启后被删消息又出现
+        persistMessages()
         exitSelectMode()
         uni.showToast({ title: t('dmChat.deleteMessagesDone'), icon: 'none' })
       } catch (e) {
@@ -2436,6 +2609,8 @@ async function onRecallMessage(msg) {
     await messageApi.recallMessage(conversationId.value, msg.id)
     msg.recalled = true
     msg.content = ''
+    // 撤回后同步本地缓存，避免重启后仍显示原内容
+    persistMessages()
     uni.showToast({ title: t('dmChat.recallSuccess'), icon: 'none' })
   } catch (e) {
     uni.showToast({ title: (e && e.message) || t('dmChat.recallFailed'), icon: 'none' })
@@ -2479,7 +2654,10 @@ async function bootstrap(options) {
       subscribeSocket()
     } catch (e) {
       console.warn('[dm-chat] load group chat failed', e)
-      uni.showToast({ title: t('messagesCenter.loadFailed'), icon: 'none' })
+      // 已从本地缓存渲染出内容时不打断阅读（离线/弱网场景）
+      if (!messages.value.length) {
+        uni.showToast({ title: t('messagesCenter.loadFailed'), icon: 'none' })
+      }
     }
     return
   }
@@ -2493,10 +2671,19 @@ async function bootstrap(options) {
     const savedDraft = getStorage(draftKey.value, '')
     if (savedDraft) inputText.value = String(savedDraft)
   }
+  // 本地优先：上次进入过该用户会话时，先用记录的会话ID 渲染缓存，
+  // 保证弱网/离线场景也能立刻看到最近聊天记录
+  const mappedConvId = getStorage(`dm_conv_${targetUser.value.id}`, '')
+  if (mappedConvId) {
+    conversationId.value = String(mappedConvId)
+    await loadMessages()
+  }
   // 后端幂等创建会话 + 拉取历史消息
   try {
     const conv = await messageApi.ensureConversation(targetUser.value.id)
     conversationId.value = String(conv.id)
+    // 记录目标用户 ↔ 会话ID 映射，供下次离线优先命中本地缓存
+    setStorage(`dm_conv_${targetUser.value.id}`, conv.id)
     if (conv.nickname) targetUser.value.name = conv.nickname
     // 对方真实头像：优先使用会话接口返回的 avatar URL，空时回落到昵称首字母
     targetUser.value.avatarUrl = conv.avatar ? toAbsoluteImageUrl(conv.avatar) : ''
@@ -2508,7 +2695,10 @@ async function bootstrap(options) {
     subscribeSocket()
   } catch (e) {
     console.warn('[dm-chat] ensure conversation failed', e)
-    uni.showToast({ title: t('messagesCenter.loadFailed'), icon: 'none' })
+    // 已用本地缓存的会话ID 渲染出内容时不再提示，避免离线阅读被打断
+    if (!messages.value.length) {
+      uni.showToast({ title: t('messagesCenter.loadFailed'), icon: 'none' })
+    }
   }
 }
 

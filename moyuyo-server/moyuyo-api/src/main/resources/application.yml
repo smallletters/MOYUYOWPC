@@ -539,6 +539,13 @@ moyuyo:
     # 可通过环境变量 MOYUYO_AUDIT_QUEUE_CAPACITY 覆盖
     # 写入慢 / DB 抖动导致队列堆积时调高避免丢审计；内存吃紧时调低
     queue-capacity: ${MOYUYO_AUDIT_QUEUE_CAPACITY:10000}
+  # 私信/客服消息保留期清理（dev 默认关闭，生产由 application-prod.yml 开启）
+  # APP 端在本地 IndexedDB 保留同周期缓存，云端清理后仍可查看近 30 天记录
+  message:
+    retention-enabled: false
+    retention-days: 30
+    retention-batch-size: 1000
+    retention-max-batches: 100
   # 短信服务（手机验证码登录依赖）
   # provider=aliyun 启用 AliyunSmsServiceImpl（生产环境必填）；
   # 未配置或 provider 为空时由 NoopSmsServiceImpl 接管（开发环境兜底，仅打日志不真实发送）

@@ -112,6 +112,7 @@
 <script>
 import { productApi } from '@/api'
 import { tCategoryName } from '@/i18n'
+import { readCache, writeCache } from '@/utils/contentCache'
 import { useThemeStore } from '@/store'
 
 export default {
@@ -224,13 +225,31 @@ export default {
       this.loadProducts(true)
     },
 
+    /** 列表缓存 key：一级/二级分类 + 排序决定接口结果 */
+    cacheKey() {
+      return ['category:goods', this.activeTopId ?? '-', this.activeSubId || '-', this.sortBy].join(
+        ':',
+      )
+    },
+
     async loadProducts(reset = false) {
+      const cacheKey = this.cacheKey()
       if (reset) {
         this.page = 1
-        this.products = []
         this.noMore = false
       }
+      // 先置 loading，避免读缓存期间触发触底加载
       this.loading = true
+      // 只缓存首页数据，避免无限翻页把本地存储撑大
+      const isFirstPage = this.page === 1
+      if (reset) {
+        // 先渲染本地缓存，弱网/离线时首屏不空白；接口成功后覆盖
+        const cached = await readCache(cacheKey)
+        // 等待期间分类/排序已变化时丢弃本次缓存，避免串数据
+        if (cacheKey === this.cacheKey()) {
+          this.products = cached && Array.isArray(cached.data) ? cached.data : []
+        }
+      }
       try {
         // 排序映射：前端 sortBy → 后端 sortBy/sortOrder
         const sortMap = {
@@ -269,7 +288,13 @@ export default {
           description: this.stripHtml(p.shortDetail || '').slice(0, 80),
           ip: this.detectIP(p),
         }))
-        this.products.push(...mapped)
+        if (isFirstPage) {
+          // 首页用接口结果整体覆盖缓存，避免与缓存数据重复
+          this.products = mapped
+          if (mapped.length) writeCache(cacheKey, mapped)
+        } else {
+          this.products.push(...mapped)
+        }
         this.page += 1
         if (list.length < this.pageSize) this.noMore = true
       } catch (e) {

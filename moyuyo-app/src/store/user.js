@@ -11,6 +11,7 @@ import {
 import { getDeviceFingerprint } from '@/utils/deviceFingerprint'
 import { registerPush } from '@/plugins/push'
 import { closeDmSocket, syncMessageTabBadge } from '@/utils/dmSocket'
+import { clearUserMessageCache } from '@/utils/messageCache'
 
 /**
  * 主动续期定时器引用（模块级 closure）
@@ -205,6 +206,8 @@ export const useUserStore = defineStore('user', {
      * logout() 调服务端成功后、forceLogout() token 已失效时复用
      */
     _clearLocalState() {
+      // 先取当前用户 ID：消息缓存按用户隔离，登出后清理避免换号后串数据
+      const cachedUserId = this.userId ? String(this.userId) : ''
       this.token = ''
       this.refreshToken = ''
       this.hasSession = false
@@ -220,6 +223,8 @@ export const useUserStore = defineStore('user', {
       // 断开私信 WebSocket 并清除消息 Tab 红点，避免登出后仍收到上一账号的私信
       closeDmSocket()
       syncMessageTabBadge(0)
+      // 清理该账号的本地聊天消息缓存（IndexedDB），防止换号后看到上一账号的聊天记录
+      if (cachedUserId) clearUserMessageCache(cachedUserId).catch(() => {})
     },
 
     async logout() {

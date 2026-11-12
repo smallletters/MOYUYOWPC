@@ -23,6 +23,15 @@ export function getCommunityPosts(params = {}) {
 }
 
 /**
+ * 个性化社区信息流（推荐/关注）。
+ * 返回 { records, nextCursor, hasMore, feedVersion, snapshotId }；
+ * 翻页时把上一页的 nextCursor 原样回传。
+ */
+export function getCommunityFeed(params = {}) {
+  return get('/api/v1/community/feed', params)
+}
+
+/**
  * 按 userId 拉取指定用户已发布的帖子（用于他人 profile 页的"帖子" tab）。
  * 后端会忽略 keyword/topic 参数,只按 userId 过滤 status=1 的帖子。
  */
@@ -166,6 +175,7 @@ export function sensitiveCheck(text) {
 
 export default {
   getCommunityPosts,
+  getCommunityFeed,
   getUserPosts,
   searchCommunityPosts,
   searchCommunityUsers,

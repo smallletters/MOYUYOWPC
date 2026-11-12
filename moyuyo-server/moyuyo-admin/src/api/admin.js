@@ -504,6 +504,16 @@ export function getCategoryList() {
   return api.get('/products/categories')
 }
 
+// 品牌列表：编辑页品牌输入框的下拉候选
+export function getBrandOptions() {
+  return api.get('/products/brands')
+}
+
+// 按名称查找或创建品牌，返回 { id, name }
+export function resolveBrand(name) {
+  return api.post('/products/brands/resolve', { name })
+}
+
 // 分类设置：一级 / 二级分类维护（nameI18n 为多语言名称 JSON 字符串）
 export function createCategory(data) {
   return api.post('/products/categories', data)

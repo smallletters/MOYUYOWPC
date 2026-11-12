@@ -301,6 +301,12 @@ public class ProductServiceImpl implements ProductService {
     } else if (body.get("category") != null) {
       entity.setCategoryId(getCategoryIdFromName((String) body.get("category")));
     }
+    // 品牌：前端传 brandId（编辑页手动输入品牌名称后由后端解析为品牌 ID，可为空）
+    Object createBrandObj = body.get("brandId");
+    if (createBrandObj == null) createBrandObj = body.get("brand_id");
+    if (createBrandObj != null && !createBrandObj.toString().isBlank()) {
+      entity.setBrandId(Long.valueOf(createBrandObj.toString()));
+    }
     entity.setMainImage((String) body.get("mainImage"));
     // 支持 description(前端) 和 detail(后端) 两种格式
     String detail = (String) body.get("description");
@@ -427,6 +433,20 @@ public class ProductServiceImpl implements ProductService {
       entity.setCategoryId(Long.valueOf(body.get("categoryId").toString()));
     } else if (body.get("category") != null) {
       entity.setCategoryId(getCategoryIdFromName((String) body.get("category")));
+    }
+    // 品牌：请求携带时更新，空值表示清空品牌
+    if (body.containsKey("brandId") || body.containsKey("brand_id")) {
+      Object brandObj = body.containsKey("brandId") ? body.get("brandId") : body.get("brand_id");
+      Long brandId = (brandObj == null || brandObj.toString().isBlank())
+          ? null : Long.valueOf(brandObj.toString());
+      // 记录原品牌：updateById 默认跳过 null 字段，只有原值非空且本次要清空时才需显式 SET
+      Long oldBrandId = entity.getBrandId();
+      entity.setBrandId(brandId);
+      if (brandId == null && oldBrandId != null) {
+        productMapper.update(null, new LambdaUpdateWrapper<ProductEntity>()
+            .eq(ProductEntity::getId, id)
+            .set(ProductEntity::getBrandId, null));
+      }
     }
     if (body.get("mainImage") != null) entity.setMainImage((String) body.get("mainImage"));
     if (body.get("description") != null) entity.setDetail((String) body.get("description"));

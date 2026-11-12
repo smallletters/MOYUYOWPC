@@ -160,6 +160,7 @@
 import { getCurrentInstance } from 'vue'
 import { communityApi } from '@/api'
 import { get } from '@/utils/request'
+import { readCache, writeCache, removeCacheByPrefix } from '@/utils/contentCache'
 import { useUserStore, useThemeStore } from '@/store'
 import { usePageTitle } from '@/utils/i18nPageMixin'
 import { i18n } from '@/i18n'
@@ -205,6 +206,10 @@ export default {
       noMore: false,
       page: 1,
       pageSize: 20,
+      // 个性化信息流：服务端快照游标，翻页时原样回传
+      feedCursor: '',
+      feedSnapshotId: '',
+      feedVersion: '',
       deleting: [],
       // localeVersion 用于触发依赖 i18n 文案的 computed/方法在 locale 切换时重算
       localeVersion: 0,
@@ -297,35 +302,72 @@ export default {
     },
 
     /**
-     * 根据当前 Tab 拉取数据源。
-     *  - recommend：GET /community/posts（带可选手 topic）
-     *  - follow：    GET /follows/feed（关注的人发布的帖子，未登录返回空）
-     *  - topic：     初次进入等价 recommend（已加白名单可匿名浏览），等用户点具体话题再过滤
+     * 信息流缓存 key：Tab + 账号隔离。
+     * 关注流/点赞态与账号相关，key 带 userId 避免换账号后串数据。
+     */
+    feedCacheKey() {
+      const userStore = useUserStore()
+      const uid = (userStore.isLoggedIn && userStore.userInfo && userStore.userInfo.id) || 'guest'
+      return `community:feed:${this.activeTab}:${uid}:${this.pageSize}`
+    },
+
+    /**
+     * 拉取个性化信息流。
+     *  - 推荐：后端多路召回 + 兴趣打分，通过快照游标分页
+     *  - 关注：收件箱 + 关注关系召回，按时间倒序
+     *  - 未登录关注流直接置空，避免无意义请求
      */
     async loadPosts(reset = false) {
+      const cacheKey = this.feedCacheKey()
       if (reset) {
         this.page = 1
         this.noMore = false
-        this.posts = []
+        this.feedCursor = ''
+        this.feedSnapshotId = ''
       }
+      // 先置 loading，避免读缓存期间触发触底加载
       this.loading = true
-      try {
-        const params = { page: this.page, size: this.pageSize }
-        const userStore = useUserStore()
-        let res
-        if (this.activeTab === 'follow') {
-          if (!userStore.isLoggedIn) {
-            this.posts = []
-            this.noMore = true
-            return
-          }
-          res = await communityApi.getFollowFeed(params)
-        } else {
-          res = await communityApi.getCommunityPosts(params)
+      // 只缓存首页数据，避免无限翻页把本地存储撑大
+      const isFirstPage = this.page === 1
+      if (reset) {
+        // 个性化排序变化快，首页缓存只保留 10 分钟
+        const cached = await readCache(cacheKey, { maxAge: 10 * 60 * 1000 })
+        // 等待期间已切 Tab/账号时丢弃本次缓存，避免串数据
+        if (cacheKey === this.feedCacheKey()) {
+          this.posts = cached && Array.isArray(cached.data) ? cached.data : []
         }
-        const list = res?.records || res || []
-        this.posts.push(...list)
-        this.noMore = list.length < this.pageSize
+      }
+      try {
+        const userStore = useUserStore()
+        if (this.activeTab === 'follow' && !userStore.isLoggedIn) {
+          this.posts = []
+          this.noMore = true
+          return
+        }
+        const params = {
+          tab: this.activeTab === 'follow' ? 'follow' : 'recommend',
+          size: this.pageSize,
+        }
+        if (this.feedCursor) params.cursor = this.feedCursor
+        const res = await communityApi.getCommunityFeed(params)
+        // 请求期间已切 Tab/账号时丢弃旧响应，避免新列表被覆盖
+        if (cacheKey !== this.feedCacheKey()) return
+        const list = res?.records || []
+        // 兼容旧 Page 返回：没有 hasMore 时按本页是否满页判断
+        const hasMore = res?.hasMore !== undefined ? !!res.hasMore : list.length >= this.pageSize
+        if (isFirstPage) {
+          // 首页用接口结果整体覆盖缓存，避免与缓存数据重复
+          this.posts = list
+          if (list.length) writeCache(cacheKey, list)
+        } else {
+          // 追加时按 id 去重，防止快照边界重复
+          const seen = new Set(this.posts.map((p) => String(p.id)))
+          this.posts.push(...list.filter((p) => !seen.has(String(p.id))))
+        }
+        this.feedCursor = res?.nextCursor || ''
+        this.feedSnapshotId = res?.snapshotId || ''
+        this.feedVersion = res?.feedVersion || ''
+        this.noMore = !hasMore
         this.page += 1
       } catch (e) {
         console.warn('[community] load error', e)
@@ -439,6 +481,8 @@ export default {
       try {
         await communityApi.markNotInterested(p.id)
         this.posts = this.posts.filter((x) => x.id !== p.id)
+        // 主动失效本地信息流缓存：下次进入按新画像重新拉取
+        removeCacheByPrefix('community:feed:')
         uni.showToast({
           title: this.$t('community.actions.notInterestedSubmitted'),
           icon: 'none',
@@ -496,6 +540,9 @@ export default {
           this.deleting.push(p.id)
           try {
             await communityApi.deletePost(p.id)
+            // 主动失效：所有账号的帖子详情缓存 + 信息流缓存
+            removeCacheByPrefix(`community:post:${p.id}:`)
+            removeCacheByPrefix('community:feed:')
             uni.showToast({ title: this.$t('community.actions.deleteSuccess'), icon: 'success' })
             this.posts = this.posts.filter((x) => x.id !== p.id)
           } catch (e) {

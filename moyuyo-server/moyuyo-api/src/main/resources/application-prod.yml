@@ -330,6 +330,14 @@ moyuyo:
     batch-size: ${MOYUYO_AUDIT_BATCH_SIZE:200}
     # flusher 线程拉取间隔（毫秒）；间隔短 → 低延迟，间隔长 → 高吞吐
     flush-interval-ms: ${MOYUYO_AUDIT_FLUSH_INTERVAL_MS:1000}
+  # 私信/客服消息保留期清理：每天 04:30 清理超过 retention-days 的历史消息
+  # APP 端本地 IndexedDB 保留同周期缓存，云端清理后用户仍可查看近 30 天记录
+  # 关闭方式：moyuyo.message.retention-enabled=false
+  message:
+    retention-enabled: ${MOYUYO_MESSAGE_RETENTION_ENABLED:true}
+    retention-days: ${MOYUYO_MESSAGE_RETENTION_DAYS:30}
+    retention-batch-size: ${MOYUYO_MESSAGE_RETENTION_BATCH_SIZE:1000}
+    retention-max-batches: ${MOYUYO_MESSAGE_RETENTION_MAX_BATCHES:100}
   # IP 维度限流（保护登录/支付/下单端点）
   # 仅对敏感端点生效，防止单 IP 抢占 @RateLimiter 全局配额
   # 开关可由 MOYUYO_IP_RATELIMIT_ENABLED 环境变量覆盖（.env.example 中声明但 yml 默认 true）

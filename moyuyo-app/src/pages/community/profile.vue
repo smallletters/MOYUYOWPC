@@ -185,6 +185,7 @@ import followApi from '@/api/follow'
 import { useUserStore } from '@/store'
 import { i18n } from '@/i18n'
 import { toAbsoluteImageUrl } from '@/utils/imageUrl'
+import { readCache, writeCache, removeCacheByPrefix } from '@/utils/contentCache'
 import { setStorage, STORAGE_KEYS } from '@/utils/storage'
 
 // 单页大小：与其它分页列表一致
@@ -558,11 +559,16 @@ export default {
         // 登录态下再查一次 /follows/{id}/status 拿真实状态（未登录/失败时保持 false）
         this.isFollowing = !!(profile && profile.isFollowing)
         if (this.userStore.isLoggedIn) {
+          const cacheKey = this.followCacheKey(this.viewedUserId)
+          // 先用缓存兜底，避免弱网/离线时关注按钮状态丢失
+          const cached = await readCache(cacheKey)
+          if (cached && typeof cached.data === 'boolean') this.isFollowing = cached.data
           try {
             const status = await followApi.followStatus(this.viewedUserId)
             this.isFollowing = !!(status && status.following)
+            writeCache(cacheKey, this.isFollowing)
           } catch (e) {
-            // 静默失败：按钮仍可点击,点按时会做登录引导或错误提示
+            // 静默失败：保留缓存值，按钮仍可点击
             console.warn('[profile] load follow status failed', e)
           }
         }
@@ -583,6 +589,16 @@ export default {
       } finally {
         this.otherProfileLoading = false
       }
+    },
+
+    /**
+     * 关注态缓存 key：被查看者 + 当前账号隔离（与帖子详情页共用同一份关注态）
+     */
+    followCacheKey(userId) {
+      const uid =
+        (this.userStore.isLoggedIn && this.userStore.userInfo && this.userStore.userInfo.id) ||
+        'guest'
+      return `community:follow:${userId}:${uid}`
     },
 
     /**
@@ -620,6 +636,9 @@ export default {
           this.statFollowers = Math.max(0, this.statFollowers - 1)
           uni.showToast({ title: this.t('community.postActions.unfollowDone'), icon: 'none' })
         }
+        // 主动更新关注态缓存，帖子详情页离线时也能保持一致
+        writeCache(this.followCacheKey(this.viewedUserId), next)
+        removeCacheByPrefix('community:feed:')
       } catch (e) {
         // 请求失败回滚按钮状态
         this.isFollowing = before

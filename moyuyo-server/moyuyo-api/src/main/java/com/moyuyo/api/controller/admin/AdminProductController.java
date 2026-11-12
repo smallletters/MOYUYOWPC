@@ -25,6 +25,8 @@ public class AdminProductController {
   private final ProductService productService;
   private final com.moyuyo.dao.mapper.CategoryMapper categoryMapper;
   private final com.moyuyo.dao.mapper.ProductMapper productMapper;
+  // 品牌表 Mapper：编辑页品牌支持手动输入，按名称查找或自动创建品牌
+  private final com.moyuyo.dao.mapper.BrandMapper brandMapper;
   // 分类维护服务：供「分类设置」页面维护一级 / 二级分类及多语言名称
   private final com.moyuyo.service.CategoryService categoryService;
   // 注入 WooCommerce 同步服务：手动触发商品的双向同步
@@ -112,15 +114,59 @@ public class AdminProductController {
   @GetMapping("/brands")
   public Result<?> brands() {
     try {
-      // 当前数据模型没有独立的品牌表，从商品表去重获取 brandId
-      java.util.List<java.util.Map<String, Object>> rows = productMapper.selectMaps(
-          new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.moyuyo.dao.entity.ProductEntity>()
-              .select("DISTINCT brand_id AS brandId")
-              .isNotNull("brand_id")
-              .ne("brand_id", 0));
+      // 品牌来源 mo_brand：供编辑页品牌输入框下拉候选与名称回显
+      java.util.List<com.moyuyo.dao.entity.BrandEntity> list = brandMapper.selectList(
+          new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.moyuyo.dao.entity.BrandEntity>()
+              .orderByAsc("name"));
+      java.util.List<java.util.Map<String, Object>> rows = new ArrayList<>();
+      for (com.moyuyo.dao.entity.BrandEntity brand : list) {
+        java.util.Map<String, Object> row = new LinkedHashMap<>();
+        row.put("id", brand.getId());
+        row.put("name", brand.getName());
+        rows.add(row);
+      }
       return Result.success(rows);
     } catch (Exception e) {
       return Result.error("查询品牌列表失败: " + e.getMessage());
+    }
+  }
+
+  @Operation(summary = "按名称查找或创建品牌")
+  @PostMapping("/brands/resolve")
+  public Result<?> resolveBrand(@RequestBody Map<String, String> body) {
+    // 该接口主体是「查找」，仅在名称不存在时隐式创建品牌，
+    // 因此不单独记录审计日志（品牌变更随商品保存的审计一并留痕）
+    String name = body.get("name") == null ? "" : body.get("name").trim();
+    if (name.isEmpty()) {
+      return Result.badRequest("品牌名称不能为空");
+    }
+    if (name.length() > 64) {
+      return Result.badRequest("品牌名称不能超过 64 个字符");
+    }
+    try {
+      // 名称匹配已有品牌，命中直接复用，避免重复创建（name 上已有唯一索引）
+      com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.moyuyo.dao.entity.BrandEntity> qw =
+          new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.moyuyo.dao.entity.BrandEntity>()
+              .eq("name", name)
+              .last("LIMIT 1");
+      com.moyuyo.dao.entity.BrandEntity brand = brandMapper.selectOne(qw);
+      if (brand == null) {
+        try {
+          brand = new com.moyuyo.dao.entity.BrandEntity();
+          brand.setName(name);
+          brandMapper.insert(brand);
+        } catch (org.springframework.dao.DuplicateKeyException dup) {
+          // 并发下同名品牌已被其他请求创建，回查后复用
+          brand = brandMapper.selectOne(qw);
+          if (brand == null) throw dup;
+        }
+      }
+      java.util.Map<String, Object> row = new LinkedHashMap<>();
+      row.put("id", brand.getId());
+      row.put("name", brand.getName());
+      return Result.success(row);
+    } catch (Exception e) {
+      return Result.error("保存品牌失败: " + e.getMessage());
     }
   }
 
@@ -252,6 +298,13 @@ public class AdminProductController {
   public Result<?> detail(@PathVariable Long id) {
     try {
       ProductEntity entity = productService.getProductWithDetails(id);
+      // 回填品牌名称：编辑页品牌输入框按名称展示（brand_id 引用 mo_brand）
+      if (entity != null && entity.getBrandId() != null) {
+        com.moyuyo.dao.entity.BrandEntity brand = brandMapper.selectById(entity.getBrandId());
+        if (brand != null) {
+          entity.setBrandName(brand.getName());
+        }
+      }
       return Result.success(entity);
     } catch (IllegalArgumentException e) {
       return Result.error(e.getMessage());

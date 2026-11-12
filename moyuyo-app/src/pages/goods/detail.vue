@@ -268,6 +268,7 @@
 import { productApi, reviewApi, cartApi } from '@/api'
 import { useCartStore, useUserStore } from '@/store'
 import browsingHistory from '@/utils/browsingHistory'
+import { readCache, writeCache } from '@/utils/contentCache'
 import { i18n } from '@/i18n'
 
 export default {
@@ -614,24 +615,108 @@ export default {
 
   methods: {
     /**
+     * 详情缓存 key：按商品 id 归档。
+     * slug 入口首次需联网拿到 id 后才写缓存，之后按 id 打开可离线查看。
+     */
+    detailCacheKey(id = this.productId) {
+      return id ? `goods:detail:${id}` : ''
+    },
+
+    /** 评价缓存 key：按商品 id 归档 */
+    reviewCacheKey(id = this.productId) {
+      return id ? `goods:reviews:${id}` : ''
+    },
+
+    /** 先用缓存填充评价，弱网/离线时评价区不空白；接口成功后覆盖 */
+    async applyCachedReviews() {
+      const key = this.reviewCacheKey()
+      if (!key || this.reviews.length) return
+      const cached = await readCache(key)
+      if (cached && cached.data) {
+        this.reviews = Array.isArray(cached.data.list) ? cached.data.list : []
+        this.reviewTotalCount = Number(cached.data.total) || this.reviews.length
+      }
+    },
+
+    /**
+     * 把接口/缓存数据落到页面状态（商品本体、图集、规格与默认选中）
+     */
+    applyProductDetail(data) {
+      // slug 入口：回填真实商品 id，后续收藏/加购/浏览历史都使用 id
+      if (data && data.id != null) {
+        this.productId = data.id
+      }
+      this.product = data
+      // 商品关闭评论时，避免停留在评价 Tab
+      if (data && data.reviewsAllowed === false && this.activeTab === 'review') {
+        this.activeTab = 'detail'
+      }
+
+      // 1. 组装图集(主图 + images[] + 变体图,去重)
+      this.galleryImages = this.buildGallery(data)
+      // 保存后端原始图集,切规格时基于它叠变体图(避免旧变体图残留)
+      this.defaultImages = [...this.galleryImages]
+
+      // 2. 解析 attributes:custom_attributes + variations
+      const parsed = this.parseAttributes(data.attributes)
+      this.attributeGroups = parsed.attributeGroups
+      this.variations = parsed.variations
+
+      // 3. 默认选中第一个 SKU 的规格(若有)
+      const firstSku = data.skus?.[0]
+      // firstSku.spec 解析后非空才视为有效选中(spec 为空串/纯分隔符时跳过)
+      const firstSkuAttrs = firstSku?.spec ? this.parseSpecString(firstSku.spec) : []
+      if (firstSkuAttrs.length) {
+        this.selectedAttrs = firstSkuAttrs
+        this.stock = firstSku.stock ?? 0
+      } else if (this.attributeGroups.length === 1) {
+        // 单维度变体自动选中第一个值
+        this.selectedAttrs = [
+          {
+            name: this.attributeGroups[0].name,
+            value: this.attributeGroups[0].options[0],
+          },
+        ]
+        this.syncStockBySelection()
+      } else if (this.attributeGroups.length > 1) {
+        // 多维度变体:优先用 data.skus[0] 兜底,避免 variations 解析时被过滤导致与业务数据源不一致
+        const firstVar =
+          (firstSkuAttrs.length &&
+            this.variations.find((v) =>
+              v.attrs.every((a) =>
+                firstSkuAttrs.some((sa) => sa.name === a.name && sa.value === a.value),
+              ),
+            )) ||
+          this.variations[0]
+        if (firstVar) {
+          this.selectedAttrs = [...firstVar.attrs]
+          this.syncStockBySelection()
+        }
+      } else {
+        // 非变体商品：用商品主库存
+        this.stock = firstSku?.stock ?? data.stock ?? 0
+      }
+    },
+
+    /**
      * 加载商品详情。带 1 次自动重试 + 延长超时
      * 后端 / Spring Boot / DB 任一环节慢都会触发超时
      */
     async loadDetail(retry = 0) {
       this.loading = true
+      // 先用本地缓存渲染，弱网/离线也能查看商品详情；接口成功后覆盖
+      const cacheKey = this.detailCacheKey()
+      if (cacheKey && !this.product) {
+        const cached = await readCache(cacheKey)
+        if (cached && cached.data) this.applyProductDetail(cached.data)
+      }
+      // 评价也用缓存兜底：离线时商品主体可看，评价区不应空白
+      await this.applyCachedReviews()
       try {
         const data = this.productId
           ? await productApi.getProductDetail(this.productId)
           : await productApi.getProductDetailBySlug(this.productSlug)
-        // slug 入口：回填真实商品 id，后续收藏/加购/浏览历史都使用 id
-        if (data && data.id != null) {
-          this.productId = data.id
-        }
-        this.product = data
-        // 商品关闭评论时，避免停留在评价 Tab
-        if (data && data.reviewsAllowed === false && this.activeTab === 'review') {
-          this.activeTab = 'detail'
-        }
+        this.applyProductDetail(data)
         // 记录本次浏览（仅本地存储，不调用后端）；缺字段时按空字符串兜底
         browsingHistory.recordView({
           id: data.id ?? this.productId,
@@ -644,51 +729,8 @@ export default {
             '',
           price: data.price,
         })
-
-        // 1. 组装图集(主图 + images[] + 变体图,去重)
-        this.galleryImages = this.buildGallery(data)
-        // 保存后端原始图集,切规格时基于它叠变体图(避免旧变体图残留)
-        this.defaultImages = [...this.galleryImages]
-
-        // 2. 解析 attributes:custom_attributes + variations
-        const parsed = this.parseAttributes(data.attributes)
-        this.attributeGroups = parsed.attributeGroups
-        this.variations = parsed.variations
-
-        // 3. 默认选中第一个 SKU 的规格(若有)
-        const firstSku = data.skus?.[0]
-        // firstSku.spec 解析后非空才视为有效选中(spec 为空串/纯分隔符时跳过)
-        const firstSkuAttrs = firstSku?.spec ? this.parseSpecString(firstSku.spec) : []
-        if (firstSkuAttrs.length) {
-          this.selectedAttrs = firstSkuAttrs
-          this.stock = firstSku.stock ?? 0
-        } else if (this.attributeGroups.length === 1) {
-          // 单维度变体自动选中第一个值
-          this.selectedAttrs = [
-            {
-              name: this.attributeGroups[0].name,
-              value: this.attributeGroups[0].options[0],
-            },
-          ]
-          this.syncStockBySelection()
-        } else if (this.attributeGroups.length > 1) {
-          // 多维度变体:优先用 data.skus[0] 兜底,避免 variations 解析时被过滤导致与业务数据源不一致
-          const firstVar =
-            (firstSkuAttrs.length &&
-              this.variations.find((v) =>
-                v.attrs.every((a) =>
-                  firstSkuAttrs.some((sa) => sa.name === a.name && sa.value === a.value),
-                ),
-              )) ||
-            this.variations[0]
-          if (firstVar) {
-            this.selectedAttrs = [...firstVar.attrs]
-            this.syncStockBySelection()
-          }
-        } else {
-          // 非变体商品：用商品主库存
-          this.stock = firstSku?.stock ?? data.stock ?? 0
-        }
+        // 详情内容写入本地缓存，供下次离线打开
+        writeCache(this.detailCacheKey(), data)
 
         // 4. 查询该商品是否已被当前用户收藏(用于初始化心形状态)
         // 未登录不请求 /favorites：该接口强制登录，匿名 401 响应不带 CORS 头，
@@ -716,10 +758,14 @@ export default {
           this.reviews = rev?.records || rev || []
           this.reviewTotalCount =
             rev?.total ?? (Array.isArray(this.reviews) ? this.reviews.length : 0)
+          // 评价内容写入本地缓存，供下次离线打开
+          writeCache(this.reviewCacheKey(), {
+            list: this.reviews,
+            total: this.reviewTotalCount,
+          })
         } catch (e) {
+          // 网络失败时保留缓存评价，避免离线打开评价区被清空
           console.warn('[detail] reviews load failed', e)
-          this.reviews = []
-          this.reviewTotalCount = 0
         }
       } catch (e) {
         console.error('[detail] load error', e)
@@ -729,6 +775,8 @@ export default {
           console.warn('[detail] retry load detail once')
           return this.loadDetail(retry + 1)
         }
+        // 有缓存数据时静默降级，避免离线打开详情页弹错误
+        if (this.product) return
         this.errorMessage = e?.message || this.$t('common.loadingFailed')
         uni.showToast({
           title: e?.message?.includes('timeout')

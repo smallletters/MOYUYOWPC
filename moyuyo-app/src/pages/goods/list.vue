@@ -130,6 +130,7 @@
 
 <script>
 import { productApi } from '@/api'
+import { readCache, writeCache } from '@/utils/contentCache'
 
 export default {
   pageTitleKey: 'pageTitle.goodsList',
@@ -194,13 +195,35 @@ export default {
   },
 
   methods: {
+    /** 列表缓存 key：只包含真正影响接口结果的维度 */
+    cacheKey() {
+      return [
+        'goods:list',
+        this.keyword || '-',
+        this.category || '-',
+        this.sortBy,
+        this.filter.ip || '-',
+      ].join(':')
+    },
+
     async loadProducts(reset = false) {
+      const cacheKey = this.cacheKey()
       if (reset) {
         this.page = 1
         this.noMore = false
-        this.products = []
       }
+      // 先置 loading，避免读缓存期间触发触底加载
       this.loading = true
+      // 只缓存首页数据，避免无限翻页把本地存储撑大
+      const isFirstPage = this.page === 1
+      if (reset) {
+        // 先渲染本地缓存，弱网/离线时首屏不空白；接口成功后覆盖
+        const cached = await readCache(cacheKey)
+        // 等待期间排序/筛选已变化时丢弃本次缓存，避免串数据
+        if (cacheKey === this.cacheKey()) {
+          this.products = cached && Array.isArray(cached.data) ? cached.data : []
+        }
+      }
       try {
         const params = {
           page: this.page,
@@ -232,7 +255,13 @@ export default {
             ip: p.brandIpId ? this.resolveIpName(p.brandIpId) : null,
           }
         })
-        this.products.push(...mapped)
+        if (isFirstPage) {
+          // 首页用接口结果整体覆盖缓存，避免与缓存数据重复
+          this.products = mapped
+          if (mapped.length) writeCache(cacheKey, mapped)
+        } else {
+          this.products.push(...mapped)
+        }
         this.noMore = list.length < 20
         this.page += 1
       } catch (e) {

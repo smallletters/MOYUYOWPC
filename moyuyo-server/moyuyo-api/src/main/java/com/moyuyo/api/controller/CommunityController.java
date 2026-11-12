@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyuyo.common.Result;
 import com.moyuyo.common.dto.community.CommunityCommentCreateRequest;
+import com.moyuyo.common.dto.community.CommunityFeedPageVO;
 import com.moyuyo.common.dto.community.CommunityPostCreateRequest;
 import com.moyuyo.common.dto.community.CommunityPostVO;
 import com.moyuyo.common.security.UserContextHolder;
@@ -13,8 +14,10 @@ import com.moyuyo.dao.entity.CommunityCollectEntity;
 import com.moyuyo.dao.entity.CommunityTopicV2Entity;
 import com.moyuyo.dao.mapper.CommunityCollectMapper;
 import com.moyuyo.dao.mapper.CommunityTopicV2Mapper;
+import com.moyuyo.service.CommunityFeedService;
 import com.moyuyo.service.CommunityService;
 import com.moyuyo.service.impl.SensitiveWordFilter;
+import com.moyuyo.service.mq.CommunityInterestMessageProducer;
 import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,9 +41,22 @@ import java.util.Map;
 public class CommunityController {
 
     private final CommunityService communityService;
+    private final CommunityFeedService communityFeedService;
+    private final CommunityInterestMessageProducer communityInterestProducer;
     private final CommunityCollectMapper collectMapper;
     private final CommunityTopicV2Mapper topicMapper;
     private final SensitiveWordMapper sensitiveWordMapper;
+
+    @Operation(summary = "社区个性化信息流（推荐/关注）")
+    @GetMapping("/feed")
+    public Result<CommunityFeedPageVO> feed(
+            @RequestParam(defaultValue = "recommend") String tab,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String topic) {
+        return Result.success(communityFeedService.getFeed(
+                UserContextHolder.getUserId(), tab, cursor, size, topic));
+    }
 
     @Operation(summary = "帖子列表（公开）")
     @GetMapping("/posts")
@@ -198,15 +214,21 @@ public class CommunityController {
         c.setUserId(userId);
         c.setPostId(id);
         collectMapper.insert(c);
+        // 收藏行为累加到兴趣画像（MQ 异步）
+        communityInterestProducer.onCollect(userId, id, true);
         return Result.success();
     }
 
     @Operation(summary = "取消收藏")
     @DeleteMapping("/posts/{id}/collect")
     public Result<Void> uncollect(@PathVariable Long id) {
-        collectMapper.delete(new LambdaQueryWrapper<CommunityCollectEntity>()
-                .eq(CommunityCollectEntity::getUserId, UserContextHolder.getUserId())
+        Long userId = UserContextHolder.getUserId();
+        int deleted = collectMapper.delete(new LambdaQueryWrapper<CommunityCollectEntity>()
+                .eq(CommunityCollectEntity::getUserId, userId)
                 .eq(CommunityCollectEntity::getPostId, id));
+        if (deleted > 0) {
+            communityInterestProducer.onCollect(userId, id, false);
+        }
         return Result.success();
     }
 

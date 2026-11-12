@@ -49,8 +49,17 @@
         </div>
         <div class="form-group">
           <label>品牌</label>
-          <input :value="form.brandId || ''" disabled placeholder="待接入品牌选择器" />
-          <span class="field-hint">brandId（占位字段）</span>
+          <input
+            v-model="form.brandName"
+            list="brand-options"
+            :placeholder="form.brandUnresolved && form.brandId
+              ? '品牌库中不存在该品牌，留空保存将保留原值'
+              : '输入或选择品牌名称'"
+          />
+          <datalist id="brand-options">
+            <option v-for="brand in brandOptions" :key="brand.id" :value="brand.name" />
+          </datalist>
+          <span class="field-hint">可直接手动输入品牌名称，保存时不存在会自动创建</span>
         </div>
       </div>
 
@@ -176,7 +185,9 @@ import ImageUploader from './ImageUploader.vue'
 const props = defineProps({
   form: { type: Object, required: true },
   topCategories: { type: Array, default: () => [] },
-  subCategories: { type: Array, default: () => [] }
+  subCategories: { type: Array, default: () => [] },
+  // 品牌下拉候选：{ id, name }
+  brandOptions: { type: Array, default: () => [] }
 })
 const emit = defineEmits(['permalink-change', 'slug-manual'])
 

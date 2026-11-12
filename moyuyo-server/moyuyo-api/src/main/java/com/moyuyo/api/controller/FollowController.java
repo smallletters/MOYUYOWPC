@@ -12,6 +12,7 @@ import com.moyuyo.dao.mapper.CommunityPostMapper;
 import com.moyuyo.dao.mapper.FollowMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.dao.entity.UserEntity;
+import com.moyuyo.service.mq.CommunityInterestMessageProducer;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +34,7 @@ public class FollowController {
   private final FollowMapper followMapper;
   private final CommunityPostMapper postMapper;
   private final UserMapper userMapper;
+  private final CommunityInterestMessageProducer communityInterestProducer;
 
   @PostMapping
   public Result<Void> follow(@RequestBody Map<String, Long> body) {
@@ -49,14 +51,20 @@ public class FollowController {
     f.setTargetId(targetId);
     f.setStatus("FOLLOWING");
     followMapper.insert(f);
+    // 关注行为累加作者兴趣权重（MQ 异步）
+    communityInterestProducer.onFollow(userId, targetId, true);
     return Result.success();
   }
 
   @DeleteMapping("/{targetId}")
   public Result<Void> unfollow(@PathVariable Long targetId) {
-    followMapper.delete(new QueryWrapper<FollowEntity>()
-        .eq("user_id", UserContextHolder.getUserId())
+    Long userId = UserContextHolder.getUserId();
+    int deleted = followMapper.delete(new QueryWrapper<FollowEntity>()
+        .eq("user_id", userId)
         .eq("target_id", targetId));
+    if (deleted > 0) {
+      communityInterestProducer.onFollow(userId, targetId, false);
+    }
     return Result.success();
   }
 

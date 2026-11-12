@@ -69,6 +69,7 @@
 import { orderApi, reviewApi } from '@/api'
 import { uploadImage } from '@/api/upload'
 import { toAbsoluteImageUrl } from '@/utils/imageUrl'
+import { removeCache } from '@/utils/contentCache'
 import { i18n } from '@/i18n'
 
 export default {
@@ -192,6 +193,12 @@ export default {
             images: item.images || [],
           })
         }
+        // 主动失效：评价已入库，对应商品详情/评价缓存需要刷新（评分、评价数变化）
+        this.orderItems.forEach((item) => {
+          if (!item.productId) return
+          removeCache(`goods:detail:${item.productId}`)
+          removeCache(`goods:reviews:${item.productId}`)
+        })
         uni.hideLoading()
         uni.showToast({ title: i18n.t('orderReview.submitted'), icon: 'success' })
         setTimeout(() => uni.navigateBack(), 1000)

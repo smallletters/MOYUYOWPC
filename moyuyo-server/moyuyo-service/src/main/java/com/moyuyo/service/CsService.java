@@ -220,7 +220,9 @@ public class CsService {
         new LambdaQueryWrapper<CsMessageEntity>()
             .ne(CsMessageEntity::getSenderType, "USER")
             .eq(CsMessageEntity::getReadFlag, 0)
-            .inSql(CsMessageEntity::getSessionId, "SELECT id FROM mo_cs_session WHERE user_id = " + userId));
+            .inSql(CsMessageEntity::getSessionId,
+                "SELECT id FROM mo_cs_session WHERE user_id = " + userId
+                    + " AND IFNULL(status, '') <> 'CLOSED'"));
   }
 
   /**
@@ -235,6 +237,8 @@ public class CsService {
     CsSessionEntity session = sessionMapper.selectOne(
         new LambdaQueryWrapper<CsSessionEntity>()
             .eq(CsSessionEntity::getUserId, userId)
+            // 已关闭的会话不再展示：用户在消息页删除客服会话时即调用 close 接口
+            .ne(CsSessionEntity::getStatus, "CLOSED")
             .orderByDesc(CsSessionEntity::getLastMessageAt)
             .orderByDesc(CsSessionEntity::getId)
             .last("LIMIT 1"));

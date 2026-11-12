@@ -98,6 +98,8 @@ public class JwtAuthFilter implements Filter {
             // 社区帖子：匿名可浏览列表/搜索/话题(只读),点赞/评论/发布仍需登录
             new WhiteListEntry("/api/v1/community/posts", true),
             new WhiteListEntry("/api/v1/community/posts/", true),
+            // 个性化信息流：匿名也可拉热门+新鲜（GET）
+            new WhiteListEntry("/api/v1/community/feed", true),
             new WhiteListEntry("/api/v1/community/search", true),
             new WhiteListEntry("/api/v1/community/search/", true),
             new WhiteListEntry("/api/v1/community/topics", true),

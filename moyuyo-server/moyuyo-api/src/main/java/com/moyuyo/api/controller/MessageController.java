@@ -47,8 +47,13 @@ public class MessageController {
   public Result<Page<DmMessageEntity>> listMessages(
       @PathVariable Long id,
       @RequestParam(defaultValue = "1") int page,
-      @RequestParam(defaultValue = "20") int size) {
-    return Result.success(dmService.listMessages(UserContextHolder.getUserId(), id, page, clampSize(size)));
+      @RequestParam(defaultValue = "20") int size,
+      // 增量同步游标：传入后只返回该消息 ID 之后的消息，客户端本地缓存优先时使用
+      @RequestParam(required = false) Long afterId,
+      // 历史游标：传入后返回该消息 ID 之前的一页历史，本地缓存跨多页时精确加载更早消息
+      @RequestParam(required = false) Long beforeId) {
+    return Result.success(dmService.listMessages(
+        UserContextHolder.getUserId(), id, page, clampSize(size), afterId, beforeId));
   }
 
   @Operation(summary = "会话内搜索消息（仅匹配未撤回的文本消息）")

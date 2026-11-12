@@ -55,6 +55,7 @@
             :form="form"
             :topCategories="topCategories"
             :subCategories="subCategories"
+            :brandOptions="brandOptions"
             @permalink-change="onPermalinkChange"
             @slug-manual="slugManuallyEdited = true"
           />
@@ -205,7 +206,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getProductDetail, createProduct, updateProduct,
-  getCategoryList, pushProductToWoo, pullProductFromWoo,
+  getCategoryList, getBrandOptions, resolveBrand,
+  pushProductToWoo, pullProductFromWoo,
   syncProductStock, searchProductsLite
 } from '../api/admin'
 
@@ -227,6 +229,8 @@ const syncing = ref(false)
 const syncMessage = ref('')
 const syncStatus = ref('')
 const categories = ref([])
+// 品牌候选列表：{ id, name }，用于品牌输入框下拉与名称回显
+const brandOptions = ref([])
 const pullResult = ref(null)
 const activeTab = ref('general')
 
@@ -275,6 +279,9 @@ function blankForm() {
     wooProductId: null,
     wooModified: null,
     brandId: null,
+    brandName: '',
+    // brand_id 在品牌库中查不到（无法回显名称），保存时需保留原值避免被清空
+    brandUnresolved: false,
     brandIpId: null,
     attributes: null,
     // 新增 - 对齐 WC
@@ -422,6 +429,16 @@ async function fetchCategories() {
   }
 }
 
+// 拉取品牌候选列表（mo_brand），供品牌输入框下拉与名称回显
+async function fetchBrands() {
+  try {
+    const list = await getBrandOptions()
+    brandOptions.value = list || []
+  } catch (e) {
+    console.error('获取品牌列表失败:', e)
+  }
+}
+
 async function fetchProduct() {
   const id = productId.value
   if (!id || isNew.value) return
@@ -438,6 +455,10 @@ async function fetchProduct() {
         }
       }
       // 先填基本字段
+      // 品牌回显：优先用详情接口回填的名称，缺失时按 brandId 在候选列表中反查；
+      // 两者都拿不到说明 brand_id 在品牌库中不存在，标记后保存时保留原值，避免被静默清空
+      const matchedBrand = brandOptions.value.find(b => String(b.id) === String(res.brandId))
+      const resolvedBrandName = res.brandName || matchedBrand?.name || ''
       Object.assign(form, blankForm(), {
         id: res.id,
         name: res.name || '',
@@ -461,6 +482,8 @@ async function fetchProduct() {
         wooProductId: res.wooProductId || null,
         wooModified: res.wooModified || null,
         brandId: res.brandId || null,
+        brandName: resolvedBrandName,
+        brandUnresolved: !!res.brandId && !resolvedBrandName,
         brandIpId: res.brandIpId || null,
         attributes: res.attributes || null,
         // 积分兑换配置回显
@@ -626,6 +649,32 @@ async function handleSave() {
 
   saving.value = true
   try {
+    // 品牌：按名称匹配已有品牌，名称不存在时由后端创建后返回新品牌 ID
+    let brandId = null
+    const brandName = (form.brandName || '').trim()
+    if (brandName) {
+      const matched = brandOptions.value.find(
+        b => String(b.name || '').trim().toLowerCase() === brandName.toLowerCase()
+      )
+      if (matched) {
+        brandId = matched.id
+      } else {
+        const created = await resolveBrand(brandName)
+        if (created && created.id) {
+          brandId = created.id
+          brandOptions.value.push({ id: created.id, name: created.name })
+        }
+      }
+      form.brandUnresolved = false
+    } else if (form.brandUnresolved && form.brandId) {
+      // 品牌库中不存在该 brand_id 且用户未重新输入：保留原品牌，避免静默清空历史数据；
+      // 标记继续保持，防止保存失败后重试时丢失原品牌
+      brandId = form.brandId
+    } else {
+      form.brandUnresolved = false
+    }
+    form.brandId = brandId
+
     const body = {
       name: form.name,
       categoryId: categoryId || null,
@@ -654,7 +703,7 @@ async function handleSave() {
       product_type: form.productType || 'simple',
       short_detail: form.shortDetail || null,
       on_sale: form.onSale,
-      brandId: form.brandId || null,
+      brandId: brandId,
       brandIpId: form.brandIpId || null,
       // 积分兑换配置（关闭时积分价/库存归零，避免残留脏配置）
       allowPointsExchange: !!form.allowPointsExchange,
@@ -964,8 +1013,9 @@ function handleCancel() {
 }
 
 onMounted(async () => {
-  // 先加载分类树，再回填商品，保证历史商品的「一级分类」能正确推导
+  // 先加载分类树与品牌列表，再回填商品，保证历史商品的「一级分类」与品牌名称能正确回显
   await fetchCategories()
+  await fetchBrands()
   await fetchProduct()
 })
 </script>

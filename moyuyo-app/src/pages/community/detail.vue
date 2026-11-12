@@ -125,6 +125,7 @@
 import { communityApi } from '@/api'
 import followApi from '@/api/follow'
 import { useUserStore } from '@/store'
+import { readCache, writeCache, removeCache, removeCacheByPrefix } from '@/utils/contentCache'
 import { i18n } from '@/i18n'
 import { applyPageTitle, resolvePageTitle } from '@/utils/i18nPageMixin'
 
@@ -257,42 +258,90 @@ export default {
   },
 
   methods: {
-    async loadDetail() {
-      try {
-        const data = await communityApi.getPostDetail(this.postId)
-        // 后端 VO 用 List<String> 存图片 URL；相对路径(/uploads/...)需拼上后端 base，否则 H5/APP 加载 404
-        const toAbs = (u) => {
-          if (!u) return u
-          if (/^https?:\/\//i.test(u)) return u
-          const base = process.env.VITE_ADMIN_API_BASE
-          if (String(u).startsWith('/') && base) return `${base}${u}`
-          return u
-        }
-        this.post = {
-          ...data,
-          images: Array.isArray(data?.images) ? data.images.map(toAbs) : [],
-          cover: toAbs(data?.cover),
-          avatar: toAbs(data?.avatar),
-        }
-        // 登录态下补查关注状态(后端没在 detail 里直接返回 isFollowingAuthor)
-        this.loadFollowStatus()
-      } catch (e) {
-        uni.showToast({ title: this.t('community.postActions.loadFailed'), icon: 'none' })
+    /** 详情缓存 key：帖子 + 账号隔离（liked/collected 与账号相关） */
+    postCacheKey() {
+      const uid =
+        (this.userStore.isLoggedIn && this.userStore.userInfo && this.userStore.userInfo.id) ||
+        'guest'
+      return `community:post:${this.postId}:${uid}`
+    },
+
+    /** 关注态缓存 key：作者 + 当前账号隔离（同一作者在详情/主页共用） */
+    followCacheKey(userId) {
+      const uid =
+        (this.userStore.isLoggedIn && this.userStore.userInfo && this.userStore.userInfo.id) ||
+        'guest'
+      return `community:follow:${userId}:${uid}`
+    },
+
+    /**
+     * 统一把后端相对路径图片补成绝对地址（页面与缓存共用）
+     */
+    normalizePost(data) {
+      // 后端 VO 用 List<String> 存图片 URL；相对路径(/uploads/...)需拼上后端 base，否则 H5/APP 加载 404
+      const toAbs = (u) => {
+        if (!u) return u
+        if (/^https?:\/\//i.test(u)) return u
+        const base = process.env.VITE_ADMIN_API_BASE
+        if (String(u).startsWith('/') && base) return `${base}${u}`
+        return u
+      }
+      return {
+        ...data,
+        images: Array.isArray(data?.images) ? data.images.map(toAbs) : [],
+        cover: toAbs(data?.cover),
+        avatar: toAbs(data?.avatar),
       }
     },
 
-    /** 加载"是否已关注作者"状态 */
-    async loadFollowStatus() {
+    /** 点赞/收藏后把最新状态写回缓存，保证离线时看到的是最新计数 */
+    syncPostCache() {
+      if (this.post) writeCache(this.postCacheKey(), this.post)
+    },
+
+    async loadDetail() {
+      const cacheKey = this.postCacheKey()
+      // 先用本地缓存渲染，弱网/离线也能查看帖子详情；接口成功后覆盖
+      if (!this.post) {
+        const cached = await readCache(cacheKey)
+        if (cached && cached.data) {
+          this.post = cached.data
+          // 离线时也把关注态从缓存补上；先等缓存读完，避免和下面接口结果互相覆盖
+          await this.loadFollowStatus({ cacheOnly: true })
+        }
+      }
+      try {
+        const data = await communityApi.getPostDetail(this.postId)
+        this.post = this.normalizePost(data)
+        writeCache(cacheKey, this.post)
+        // 登录态下补查关注状态(后端没在 detail 里直接返回 isFollowingAuthor)
+        this.loadFollowStatus()
+      } catch (e) {
+        // 有缓存时静默降级，避免离线打开详情页弹错误
+        if (!this.post) {
+          uni.showToast({ title: this.t('community.postActions.loadFailed'), icon: 'none' })
+        }
+      }
+    },
+
+    /** 加载"是否已关注作者"状态（cacheOnly=true 时只用本地缓存，供离线兜底） */
+    async loadFollowStatus({ cacheOnly = false } = {}) {
       if (!this.post || !this.userStore.isLoggedIn) return
       const me = this.userStore.userInfo && this.userStore.userInfo.id
       if (!me || String(this.post.userId) === String(me)) return
+      const cacheKey = this.followCacheKey(this.post.userId)
+      // 先用缓存兜底，避免弱网/离线时关注按钮状态丢失
+      const cached = await readCache(cacheKey)
+      if (cached && typeof cached.data === 'boolean') this.isFollowingAuthor = cached.data
+      if (cacheOnly) return
       try {
         const r = await followApi.followStatus(this.post.userId)
         // 接口返回 {following: boolean},降级兜底直接当 false
         this.isFollowingAuthor = !!(r && r.following)
+        writeCache(cacheKey, this.isFollowingAuthor)
       } catch (e) {
-        // 静默失败,按钮仍可点,错误在 onToggleFollow 里提示
-        this.isFollowingAuthor = false
+        // 静默失败：保留缓存值；无缓存时保持默认 false，按钮仍可点
+        console.warn('[post-detail] load follow status failed', e)
       }
     },
 
@@ -334,6 +383,10 @@ export default {
         } else {
           await communityApi.unlikePost(this.postId)
         }
+        // 主动更新缓存：点赞态/计数已变化，离线时也应看到最新值
+        this.syncPostCache()
+        // 兴趣画像已变化，本地信息流首页缓存失效
+        removeCacheByPrefix('community:feed:')
       } catch (e) {
         // 失败回滚
         this.post.liked = before.liked
@@ -375,6 +428,9 @@ export default {
         } else {
           await communityApi.uncollectPost(this.postId)
         }
+        // 主动更新缓存：收藏态已变化
+        this.syncPostCache()
+        removeCacheByPrefix('community:feed:')
         uni.showToast({
           title: this.t(
             next ? 'community.postActions.collected' : 'community.postActions.uncollected',
@@ -420,6 +476,9 @@ export default {
           await followApi.unfollow(this.post.userId)
           uni.showToast({ title: this.t('community.postActions.unfollowDone'), icon: 'none' })
         }
+        // 主动更新关注态缓存，作者主页/详情页离线时保持一致
+        writeCache(this.followCacheKey(this.post.userId), next)
+        removeCacheByPrefix('community:feed:')
       } catch (e) {
         this.isFollowingAuthor = before
         uni.showToast({ title: this.t('community.postActions.followFailed'), icon: 'none' })
@@ -444,6 +503,8 @@ export default {
         await communityApi.addComment(this.postId, this.commentText)
         this.commentText = ''
         uni.showToast({ title: this.t('community.postActions.commentPosted'), icon: 'success' })
+        // 评论会改变推荐权重，失效本地信息流首页缓存
+        removeCacheByPrefix('community:feed:')
         this.loadDetail()
       } catch (e) {
         uni.showToast({ title: this.t('community.postActions.commentFailed'), icon: 'none' })
@@ -472,6 +533,9 @@ export default {
           this.deleting = true
           try {
             await communityApi.deletePost(this.postId)
+            // 主动失效：当前账号的详情缓存 + 所有信息流缓存
+            removeCache(this.postCacheKey())
+            removeCacheByPrefix('community:feed:')
             uni.showToast({
               title: this.t('community.actions.deleteSuccess'),
               icon: 'success',

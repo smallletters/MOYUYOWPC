@@ -73,6 +73,19 @@
             >
           </view>
           <view class="form-item">
+            <text class="form-label">{{ $t('petProfile.fields.preferredIp') }}</text>
+            <picker
+              mode="selector"
+              :range="ipOptions"
+              :value="ipIndex"
+              @change="onIpChange">
+              <view class="form-picker">
+                {{ form.preferredIpCode || $t('petProfile.fields.selectPlaceholder') }}
+                <text class="luc luc-chevron-right" />
+              </view>
+            </picker>
+          </view>
+          <view class="form-item">
             <text class="form-label">{{ $t('petProfile.fields.gender') }}</text>
             <view class="gender-row">
               <view
@@ -197,11 +210,14 @@ export default {
       defaultAvatar: 'https://picsum.photos/200/200?random=50',
       saving: false,
       avatarUploading: false,
+      // 偏好 IP：社区推荐会结合该字段做内容匹配
+      ipOptions: ['MILO', 'LUNA', 'ATLAS', 'OLIVE'],
       form: {
         id: null,
         name: '',
         species: '',
         breed: '',
+        preferredIpCode: '',
         gender: '',
         status: 'ACTIVE',
         birthday: '',
@@ -228,6 +244,10 @@ export default {
         { value: 'female', label: g.female },
         { value: 'other', label: g.other },
       ]
+    },
+    ipIndex() {
+      const idx = this.ipOptions.indexOf(this.form.preferredIpCode)
+      return idx >= 0 ? idx : 0
     },
     allTags() {
       return this.$t('petProfile.tags')
@@ -316,6 +336,7 @@ export default {
         name: '',
         species: '',
         breed: '',
+        preferredIpCode: '',
         gender: '',
         status: 'ACTIVE',
         birthday: '',
@@ -392,6 +413,10 @@ export default {
 
     onSpeciesChange(e) {
       this.form.species = this.speciesOptions[e.detail.value]
+    },
+
+    onIpChange(e) {
+      this.form.preferredIpCode = this.ipOptions[e.detail.value] || ''
     },
 
     onBirthdayChange(e) {
@@ -535,6 +560,8 @@ export default {
           name: this.form.name || null,
           species: this.form.species || null,
           breed: this.form.breed || null,
+          // 用空串而非 null，便于用户清空已设置的偏好 IP（null 会被 MyBatis-Plus 跳过）
+          preferredIpCode: this.form.preferredIpCode || '',
           gender: this.form.gender || null,
           birthday: this.form.birthday || null,
           // 加入家庭时间：LocalDate(yyyy-MM-dd)，空值置空避免 409

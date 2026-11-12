@@ -641,6 +641,7 @@
 import { communityApi, geoApi, petApi, uploadApi } from '@/api'
 import { useUserStore } from '@/store'
 import { STORAGE_KEYS } from '@/utils/storage'
+import { removeCacheByPrefix } from '@/utils/contentCache'
 
 export default {
   pageTitleKey: 'pageTitle.communityCreate',
@@ -3431,12 +3432,14 @@ export default {
         this.clearDraft({ silent: true })
         // 标记为已发布,避免 onUnload 兜底保存旧草稿
         this._draftDiscarded = true
-        // 发布成功后通知上一页刷新列表
+        // 主动失效：发帖后清空所有信息流缓存，返回列表时拉取最新数据
+        removeCacheByPrefix('community:feed:')
+        // 发布成功后通知上一页刷新列表（重置快照，确保新帖可见）
         const pages = getCurrentPages()
         if (pages.length >= 2) {
           const prevPage = pages[pages.length - 2]
           if (prevPage && typeof prevPage.$vm?.loadPosts === 'function') {
-            prevPage.$vm.loadPosts()
+            prevPage.$vm.loadPosts(true)
           }
         }
         setTimeout(() => uni.navigateBack(), 800)

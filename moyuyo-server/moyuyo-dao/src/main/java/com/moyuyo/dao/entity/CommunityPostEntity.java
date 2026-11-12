@@ -32,9 +32,18 @@ public class CommunityPostEntity {
 
     private String topic;
 
+    /** 内容所属 IP（发帖时从宠物偏好冗余，用于个性化召回） */
+    private String ipCode;
+
+    /** 内容关联宠物类型 DOG/CAT/OTHER（发帖时从宠物档案冗余） */
+    private String petType;
+
     private Integer likes;
 
     private Integer comments;
+
+    /** 热度分：定时任务按点赞/评论 + 时间衰减刷新 */
+    private java.math.BigDecimal hotScore;
 
     /** 状态：1=已发布，0=隐藏（数据库列 tinyint） */
     private Integer status;

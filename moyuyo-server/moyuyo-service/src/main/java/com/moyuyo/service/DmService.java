@@ -545,9 +545,65 @@ public class DmService {
      */
     @Transactional
     public Page<DmMessageEntity> listMessages(Long userId, Long conversationId, int page, int size) {
+        return listMessages(userId, conversationId, page, size, null);
+    }
+
+    @Transactional
+    public Page<DmMessageEntity> listMessages(
+            Long userId, Long conversationId, int page, int size, Long afterId) {
+        return listMessages(userId, conversationId, page, size, afterId, null);
+    }
+
+    /**
+     * 会话消息，支持本地缓存双向游标同步。
+     * <p>
+     * afterId 不为空时返回该消息之后的新消息（升序）；
+     * beforeId 不为空时返回该消息之前的一页历史（升序），用于客户端本地缓存跨多页时
+     * 精确加载更早消息，避免按页码请求与缓存重合导致反复空请求。
+     * 两者都为空时按分页返回最近一页（历史行为不变）。
+     */
+    @Transactional
+    public Page<DmMessageEntity> listMessages(
+            Long userId, Long conversationId, int page, int size, Long afterId, Long beforeId) {
         DmConversationEntity conv = requireConversation(userId, conversationId);
         markReadInternal(userId, conv);
         List<Long> hiddenIds = hiddenMessageIds(userId, conversationId);
+
+        if (afterId != null || beforeId != null) {
+            LambdaQueryWrapper<DmMessageEntity> wrapper = new LambdaQueryWrapper<DmMessageEntity>()
+                    .eq(DmMessageEntity::getConversationId, conversationId)
+                    // 用户级删除：只对自己隐藏，不影响对方
+                    .notIn(!hiddenIds.isEmpty(), DmMessageEntity::getId, hiddenIds);
+            List<DmMessageEntity> records;
+            if (afterId != null) {
+                records = messageMapper.selectList(wrapper
+                        .gt(DmMessageEntity::getId, afterId)
+                        .orderByAsc(DmMessageEntity::getId)
+                        .last("LIMIT " + size));
+            } else {
+                // 取 beforeId 之前最近的 size 条，查询倒序后反转为正序返回
+                records = messageMapper.selectList(wrapper
+                        .lt(DmMessageEntity::getId, beforeId)
+                        .orderByDesc(DmMessageEntity::getId)
+                        .last("LIMIT " + size));
+                Collections.reverse(records);
+            }
+            if (isGroup(conv)) {
+                enrichGroupSenders(records);
+            }
+            for (DmMessageEntity record : records) {
+                signMediaInPlace(record);
+            }
+            // total 返回会话内可见消息总数，供客户端判断是否还有更早历史
+            long total = messageMapper.selectCount(
+                    new LambdaQueryWrapper<DmMessageEntity>()
+                            .eq(DmMessageEntity::getConversationId, conversationId)
+                            .notIn(!hiddenIds.isEmpty(), DmMessageEntity::getId, hiddenIds));
+            Page<DmMessageEntity> result = new Page<>(1, size);
+            result.setRecords(records);
+            result.setTotal(total);
+            return result;
+        }
 
         Page<DmMessageEntity> pageObj = messageMapper.selectPage(
                 new Page<>(page, size),

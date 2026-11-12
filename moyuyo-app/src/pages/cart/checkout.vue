@@ -386,6 +386,7 @@ import { getShippingMethods, getAvailablePaymentMethods } from '@/api/order'
 import { getFlashSales } from '@/api/flashSale'
 import { useCartStore } from '@/store'
 import { savePendingOrder } from '@/utils/storage'
+import { removeCache } from '@/utils/contentCache'
 import { i18n } from '@/i18n'
 import { useAddressCountries } from '@/composables/useAddressCountries'
 
@@ -1244,6 +1245,11 @@ export default {
           }
         }
         uni.hideLoading()
+
+        // 主动失效：下单成功后库存可能已变化，清掉这些商品的详情缓存
+        items.forEach((it) => {
+          if (it.productId) removeCache(`goods:detail:${it.productId}`)
+        })
 
         // 下单成功即写入本地未支付记录,便于待付款列表展示(即使未支付/支付失败也不丢失)
         const orderId = order?.id || order

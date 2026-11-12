@@ -136,6 +136,7 @@
 import { cmsApi } from '@/api'
 import { reportActiveHeartbeat } from '@/utils/heartbeat'
 import { toAbsoluteImageUrl } from '@/utils/imageUrl'
+import { readCache, writeCache } from '@/utils/contentCache'
 import { useThemeStore } from '@/store'
 
 /**
@@ -273,15 +274,29 @@ export default {
     },
 
     async loadRecommend() {
+      // 缓存 key 按推荐 Tab 区分：先渲染缓存实现秒开/离线可看，再用接口结果覆盖
+      const activeTab = this.activeTab
+      const cacheKey = `home:recommend:${activeTab}`
       this.recommendLoading = true
+      const cached = await readCache(cacheKey)
+      // 等待期间已切 Tab 时丢弃本次缓存，避免串数据
+      if (activeTab === this.activeTab && cached && Array.isArray(cached.data)) {
+        this.recommend = cached.data
+      }
       try {
-        const list = await cmsApi.getRecommendProducts(this.activeTab, 10)
+        const list = await cmsApi.getRecommendProducts(activeTab, 10)
+        // 过期请求（Tab 已切走）不再覆盖当前列表
+        if (activeTab !== this.activeTab) return
         this.recommend = Array.isArray(list) ? list : []
+        if (this.recommend.length) writeCache(cacheKey, this.recommend)
       } catch (e) {
         console.warn('[home] load recommend failed', e)
-        this.recommend = []
+        if (activeTab !== this.activeTab) return
+        // 有缓存时保留缓存内容，避免弱网下推荐区被清空
+        if (!cached) this.recommend = []
       } finally {
-        this.recommendLoading = false
+        // 仅当前 Tab 的请求负责结束 loading，避免旧请求把新请求的 loading 提前关掉
+        if (activeTab === this.activeTab) this.recommendLoading = false
       }
     },
 

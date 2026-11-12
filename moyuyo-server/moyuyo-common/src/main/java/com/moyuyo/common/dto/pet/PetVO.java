@@ -21,6 +21,9 @@ public class PetVO {
 
   private String breed;
 
+  /** 用户偏好 IP：MILO/LUNA/ATLAS/OLIVE（社区推荐使用） */
+  private String preferredIpCode;
+
   private String gender;
 
   /** 宠物状态：ACTIVE(正常)/DIED(去世)/ACCIDENT(意外) */

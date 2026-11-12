@@ -22,6 +22,10 @@ public class ProductEntity {
 
     private Long brandId;
 
+    /** 品牌名称（仅 Controller 层动态注入，无对应数据库列） */
+    @TableField(exist = false)
+    private String brandName;
+
     private Long brandIpId;
 
     private String name;

@@ -13,9 +13,11 @@ import com.moyuyo.dao.admin.mapper.ContentReviewMapper;
 import com.moyuyo.dao.admin.mapper.SensitiveWordMapper;
 import com.moyuyo.dao.entity.*;
 import com.moyuyo.dao.mapper.*;
+import com.moyuyo.service.CommunityFeedService;
 import com.moyuyo.service.CommunityService;
 import com.moyuyo.service.MissionService;
 import com.moyuyo.service.NotificationService;
+import com.moyuyo.service.mq.CommunityInterestMessageProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -47,6 +49,12 @@ public class CommunityServiceImpl implements CommunityService {
     private final ContentReviewMapper contentReviewMapper;
     private final NotificationService notificationService;
     private final SensitiveWordMapper sensitiveWordMapper;
+    // 兴趣画像：点赞/评论/收藏/负反馈通过 MQ 异步累加
+    private final CommunityInterestMessageProducer communityInterestProducer;
+    // 推荐快照：负反馈后立即失效，避免已隐藏内容继续出现在分页中
+    private final CommunityFeedService communityFeedService;
+    // 关注流收件箱：发帖后写扩散到粉丝 Redis ZSET
+    private final CommunityInboxService communityInboxService;
     // 任务中心埋点：发布帖子触发"发布 1 条社区笔记 / 累计发布 10 条笔记"
     private final MissionService missionService;
 
@@ -58,17 +66,10 @@ public class CommunityServiceImpl implements CommunityService {
         if (topic != null && !topic.isEmpty()) {
             wrapper.eq(CommunityPostEntity::getTopic, topic);
         }
-        // 推荐流负反馈：过滤当前用户已标记「不感兴趣」的帖子（匿名用户不过滤）
+        // 推荐流负反馈：用子查询过滤当前用户已标记「不感兴趣」的帖子（匿名用户不过滤）
         if (userId != null) {
-            List<Long> hiddenIds = notInterestedMapper.selectList(
-                    new LambdaQueryWrapper<CommunityNotInterestedEntity>()
-                            .select(CommunityNotInterestedEntity::getPostId)
-                            .eq(CommunityNotInterestedEntity::getUserId, userId))
-                    .stream()
-                    .map(CommunityNotInterestedEntity::getPostId)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-            wrapper.notIn(!hiddenIds.isEmpty(), CommunityPostEntity::getId, hiddenIds);
+            wrapper.notInSql(CommunityPostEntity::getId,
+                    "SELECT post_id FROM mo_community_not_interested WHERE user_id = " + userId);
         }
 
         Page<CommunityPostEntity> entityPage = postMapper.selectPage(new Page<>(page, size), wrapper);
@@ -158,10 +159,21 @@ public class CommunityServiceImpl implements CommunityService {
         rejectSensitiveContent(cleanContent);
 
         // 关联宠物归属校验：petId 可选，传了必须是当前用户自己的宠物
+        PetEntity pet = null;
         if (petId != null) {
-            PetEntity pet = petMapper.selectById(petId);
+            pet = petMapper.selectById(petId);
             if (pet == null || !Objects.equals(pet.getUserId(), userId)) {
                 throw new IllegalArgumentException("关联宠物不存在或无权使用");
+            }
+        }
+        // 未关联宠物时，用用户第一只宠物推断偏好 IP / 宠物类型，供推荐召回
+        if (pet == null) {
+            List<PetEntity> pets = petMapper.selectList(
+                    new LambdaQueryWrapper<PetEntity>()
+                            .eq(PetEntity::getUserId, userId)
+                            .last("LIMIT 1"));
+            if (pets != null && !pets.isEmpty()) {
+                pet = pets.get(0);
             }
         }
 
@@ -176,6 +188,9 @@ public class CommunityServiceImpl implements CommunityService {
         // cover 仅视频帖有意义；与 video 同样走 URL 白名单
         entity.setCover(XssSanitizer.sanitizeUrl(cover));
         entity.setTopic(XssSanitizer.sanitizePlainText(topic));
+        // 推荐召回特征：从宠物档案冗余 IP / 宠物类型，避免推荐时反复 join
+        entity.setIpCode(pet == null ? null : pet.getPreferredIpCode());
+        entity.setPetType(pet == null ? null : pet.getType());
         entity.setLikes(0);
         entity.setComments(0);
         // 状态判定：
@@ -197,6 +212,9 @@ public class CommunityServiceImpl implements CommunityService {
         // 否则帖子还没发出去任务就已经完成了
         if (!isScheduled) {
             triggerPostMissions(userId);
+            // 立即发布：写入粉丝收件箱，关注流可优先从 Redis 读取
+            communityInboxService.fanoutPost(userId, entity.getId(),
+                    entity.getCreateTime() == null ? LocalDateTime.now() : entity.getCreateTime());
         }
 
         return toVO(entity);
@@ -221,12 +239,14 @@ public class CommunityServiceImpl implements CommunityService {
             post.setLikes(post.getLikes() == null ? 1 : post.getLikes() + 1);
             postMapper.updateById(post);
         }
+        // 兴趣画像：话题 +1、作者 +0.5（MQ 异步，失败自动降级同步）
+        communityInterestProducer.onLike(userId, postId, true);
     }
 
     @Override
     @Transactional
     public void unlikePost(Long userId, Long postId) {
-        likeMapper.delete(
+        int deleted = likeMapper.delete(
                 new LambdaQueryWrapper<CommunityLikeEntity>()
                         .eq(CommunityLikeEntity::getUserId, userId)
                         .eq(CommunityLikeEntity::getPostId, postId));
@@ -235,6 +255,10 @@ public class CommunityServiceImpl implements CommunityService {
         if (post != null && post.getLikes() != null && post.getLikes() > 0) {
             post.setLikes(post.getLikes() - 1);
             postMapper.updateById(post);
+        }
+        // 只有确实取消过点赞才回退兴趣权重，避免重复调用把权重越扣越多
+        if (deleted > 0) {
+            communityInterestProducer.onLike(userId, postId, false);
         }
     }
 
@@ -257,6 +281,8 @@ public class CommunityServiceImpl implements CommunityService {
             post.setComments(post.getComments() == null ? 1 : post.getComments() + 1);
             postMapper.updateById(post);
         }
+        // 兴趣画像：话题 +1.2、作者 +0.6
+        communityInterestProducer.onComment(userId, postId);
 
         // 评论中 @ 提及用户,发通知(排除作者 + 排除帖子原作者,避免骚扰)
         notifyMentionedUsers(userId, cleanContent, comment.getId(), "COMMENT", "评论中 @ 了你");
@@ -376,12 +402,20 @@ public class CommunityServiceImpl implements CommunityService {
         CommunityNotInterestedEntity record = new CommunityNotInterestedEntity();
         record.setUserId(userId);
         record.setPostId(postId);
+        boolean inserted = false;
         try {
             notInterestedMapper.insert(record);
+            inserted = true;
         } catch (org.springframework.dao.DuplicateKeyException ignored) {
             // 重复标记：唯一索引兜底，忽略即可
         }
         log.info("[community] post marked not interested: postId={}, userId={}", postId, userId);
+        // 仅首次标记时记负反馈，避免重复点击把权重越扣越多
+        if (inserted) {
+            communityInterestProducer.onNotInterested(userId, postId);
+            // 立即失效推荐快照：用户继续翻页时会重建，不再出现已隐藏帖子
+            communityFeedService.invalidateUserSnapshots(userId);
+        }
     }
 
     @Override
@@ -450,6 +484,8 @@ public class CommunityServiceImpl implements CommunityService {
             log.info("[community-schedule] post published: postId={}, scheduledAt={}", p.getId(), p.getScheduledAt());
             // 到点真正发布后才计入任务进度（创建时未计分）
             triggerPostMissions(p.getUserId());
+            // 定时帖子发布后同样写扩散到粉丝收件箱
+            communityInboxService.fanoutPost(p.getUserId(), p.getId(), now);
         }
         return published;
     }
