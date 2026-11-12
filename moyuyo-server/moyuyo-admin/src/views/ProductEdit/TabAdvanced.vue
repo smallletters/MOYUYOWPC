@@ -95,6 +95,22 @@
         </div>
       </div>
     </div>
+    <div class="options-group">
+      <div class="group-title">积分抵扣（结算）</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>允许使用积分抵扣</label>
+          <div class="status-toggle" style="margin-top:4px">
+            <label class="toggle-switch">
+              <input type="checkbox" v-model="form.allowPointsDeduct" />
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="status-text">{{ form.allowPointsDeduct ? 'APP 结算页可展示积分抵扣' : 'APP 结算页隐藏积分抵扣' }}</span>
+          </div>
+          <span class="field-hint">关闭后，订单中包含该商品时结算页不展示积分抵扣</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 

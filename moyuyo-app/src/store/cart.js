@@ -104,6 +104,14 @@ export const useCartStore = defineStore('cart', {
                 : false,
               sku: item.skuSpec || '',
               attrs: item.skuSpec ? [{ name: t('cart.attrSpecName'), value: item.skuSpec }] : [],
+              // 服务端购物车不含预售信息，沿用本地已记录的预售标识
+              presaleType: prior?.presaleType || null,
+              presaleId: prior?.presaleId || null,
+              // 积分抵扣开关以服务端为准，缺失时沿用本地记录（默认允许）
+              allowPointsDeduct:
+                item.allowPointsDeduct != null
+                  ? !!item.allowPointsDeduct
+                  : prior?.allowPointsDeduct !== false,
             }
           })
           this.persist()
@@ -160,6 +168,11 @@ export const useCartStore = defineStore('cart', {
           sku: product.sku || '',
           attrs: product.attrs || [],
           checked: true,
+          // 预售标识（展示型预售）：结算页据此展示「预售」
+          presaleType: product.presaleType || null,
+          presaleId: product.presaleId || null,
+          // 商品级积分抵扣开关：默认允许
+          allowPointsDeduct: product.allowPointsDeduct !== false,
         })
       }
       this.persist()
@@ -303,6 +316,11 @@ export const useCartStore = defineStore('cart', {
         sku: product.sku || '',
         attrs: product.attrs || [],
         checked: true,
+        // 透传预售信息：结算页据此展示「预售」标识并走预售下单接口
+        presaleType: product.presaleType || null,
+        presaleId: product.presaleId || null,
+        // 透传积分抵扣开关：结算页据此决定是否展示积分抵扣
+        allowPointsDeduct: product.allowPointsDeduct !== false,
       }
       this.buyNowItem = item
       setStorage(STORAGE_KEYS.BUYNOW_ITEM, item)

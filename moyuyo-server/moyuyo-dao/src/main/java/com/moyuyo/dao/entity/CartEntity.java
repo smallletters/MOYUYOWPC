@@ -57,6 +57,10 @@ public class CartEntity {
     @TableField(exist = false)
     private String taxClass;
 
+    /** 是否允许积分抵扣（非表字段，来自商品 allow_points_deduct，结算页据此隐藏积分抵扣） */
+    @TableField(exist = false)
+    private Boolean allowPointsDeduct;
+
     /**
      * 购物车条目可用状态（非表字段，查询时联查计算），取值：
      * VALID=可售 / OUT_OF_STOCK=缺货 / OFF_SALE=已下架 /

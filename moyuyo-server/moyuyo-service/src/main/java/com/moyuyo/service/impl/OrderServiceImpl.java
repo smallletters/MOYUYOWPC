@@ -312,11 +312,16 @@ public class OrderServiceImpl implements OrderService {
   public OrderEntity createOrderFromRequest(Long userId, CreateOrderRequest request) {
     // 将请求中的商品信息转换为订单项实体（含 SKU/商品校验）
     List<OrderItemEntity> items = new ArrayList<>();
+    // 商品级积分抵扣开关：订单中存在任一关闭该开关的商品时，整单不允许积分抵扣
+    boolean pointsDeductAllowed = true;
     for (OrderItemRequest itemReq : request.getItems()) {
       ProductSkuEntity sku = productSkuMapper.selectById(itemReq.getSkuId());
       ProductEntity product = productMapper.selectById(itemReq.getProductId());
       if (product == null) {
         throw new IllegalArgumentException("商品不存在: " + itemReq.getProductId());
+      }
+      if (Boolean.FALSE.equals(product.getAllowPointsDeduct())) {
+        pointsDeductAllowed = false;
       }
 
       OrderItemEntity item = new OrderItemEntity();
@@ -370,9 +375,15 @@ public class OrderServiceImpl implements OrderService {
     //    语义：最终抵扣 = min(客户端请求抵扣额, 比例上限 30%, 余额上限, 剩余商品金额)。
     BigDecimal serverPointsDiscount = BigDecimal.ZERO;
     int serverPointsUsed = 0;
-    boolean wantsPoints = (request.getPointsUsed() != null && request.getPointsUsed() > 0)
+    boolean requestedPoints = (request.getPointsUsed() != null && request.getPointsUsed() > 0)
         || (request.getPointsDiscount() != null
             && request.getPointsDiscount().compareTo(BigDecimal.ZERO) > 0);
+    // 请求了积分但订单含不支持积分的商品：直接拒绝，避免静默丢弃积分导致实付金额高于结算页展示
+    if (requestedPoints && !pointsDeductAllowed) {
+      throw new com.moyuyo.common.exception.BusinessException(400,
+          "订单中存在不支持积分抵扣的商品，请返回结算页刷新后重试");
+    }
+    boolean wantsPoints = pointsDeductAllowed && requestedPoints;
     if (wantsPoints) {
       int balance = Math.max(memberService.getPointsBalance(userId), 0);
       // 积分抵扣规则：后台可配置（N 积分 = 1 美元，最高抵扣商品小计的 X%）

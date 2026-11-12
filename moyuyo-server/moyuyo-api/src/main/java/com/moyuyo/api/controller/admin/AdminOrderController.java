@@ -18,10 +18,12 @@ import com.moyuyo.common.security.UserContextHolder;
 import com.moyuyo.common.utils.PageParamGuard;
 import com.moyuyo.dao.entity.OrderEntity;
 import com.moyuyo.dao.entity.OrderItemEntity;
+import com.moyuyo.dao.entity.ProductEntity;
 import com.moyuyo.dao.entity.ProductSkuEntity;
 import com.moyuyo.dao.entity.UserEntity;
 import com.moyuyo.dao.mapper.OrderItemMapper;
 import com.moyuyo.dao.mapper.OrderMapper;
+import com.moyuyo.dao.mapper.ProductMapper;
 import com.moyuyo.dao.mapper.ProductSkuMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.service.LogisticsService;
@@ -53,6 +55,8 @@ public class AdminOrderController {
   private final OrderMapper orderMapper;
   private final OrderItemMapper orderItemMapper;
   private final ProductSkuMapper productSkuMapper;
+  // 商品主图兜底：历史订单项 main_image 为空时按 productId 回查当前商品主图
+  private final ProductMapper productMapper;
   private final UserMapper userMapper;
   private final LogisticsService logisticsService;
   // 物流弹窗写回 mo_logistics 使用（与 logisticsService 查询结果共享同一张表）
@@ -242,6 +246,24 @@ public class AdminOrderController {
         if (item.getSkuId() != null) code = skuIdToCode.get(item.getSkuId());
         if (code == null && item.getProductId() != null) code = productIdToCode.get(item.getProductId());
         item.setSkuCode(code);
+      }
+
+      // 商品主图兜底：main_image 是下单时的快照，历史订单/预售订单可能为空，
+      // 按 productId 批量补当前商品主图，保证订单详情「商品明细」能显示商品图
+      List<Long> missingImageProductIds = items.stream()
+          .filter(it -> (it.getMainImage() == null || it.getMainImage().isBlank()) && it.getProductId() != null)
+          .map(OrderItemEntity::getProductId)
+          .distinct()
+          .collect(Collectors.toList());
+      if (!missingImageProductIds.isEmpty()) {
+        Map<Long, String> productIdToImage = productMapper.selectBatchIds(missingImageProductIds).stream()
+            .filter(p -> p.getMainImage() != null && !p.getMainImage().isBlank())
+            .collect(Collectors.toMap(ProductEntity::getId, ProductEntity::getMainImage, (a, b) -> a));
+        for (OrderItemEntity item : items) {
+          if (item.getMainImage() == null || item.getMainImage().isBlank()) {
+            item.setMainImage(productIdToImage.get(item.getProductId()));
+          }
+        }
       }
     }
     order.setItems(items);

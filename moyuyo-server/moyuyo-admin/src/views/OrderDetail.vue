@@ -565,17 +565,15 @@ function formatCurrency(v, symbol) {
 
 /**
  * 解析商品图片 URL：
- * - 已经是 http(s)://  → 直接用
- * - 以 /uploads/ 开头 → 拼接后端 base 地址（VITE_BASE_URL/api）
- * - 其他相对路径    → VITE_BASE_URL/api 拼接
+ * - 已经是 http(s):// → 直接用
+ * - /uploads/... 由后端静态资源映射提供，与后台同源，直接走相对路径
+ *   （dev 由 Vite 代理 /uploads/，prod 由 nginx 或后端直接响应）
+ * - 注意：不能拼 /api 前缀，/api/** 需要 JWT，img 标签不会带 Token，会 401
  */
 function resolveImageUrl(path) {
   if (!path) return ''
   if (/^https?:\/\//i.test(path)) return path
-  const base = (import.meta.env.VITE_BASE_URL || '/api').replace(/\/$/, '')
-  // Windows 路径不用处理，生产部署统一用 /uploads/xxx
-  if (path.startsWith('/')) return `${base}${path}`
-  return `${base}/${path}`
+  return path.startsWith('/') ? path : `/${path}`
 }
 
 /** 图片加载失败：静默隐藏，避免红叉图影响后台视觉 */

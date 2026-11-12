@@ -365,6 +365,8 @@ public class ProductServiceImpl implements ProductService {
     entity.setAllowPointsExchange(parseBool(body.get("allowPointsExchange"), false));
     entity.setPointsPrice(parseInt(body.get("pointsPrice"), 0));
     entity.setPointsStock(parseInt(body.get("pointsStock"), 0));
+    // 积分抵扣开关：默认允许，关闭后 APP 结算页不展示积分抵扣
+    entity.setAllowPointsDeduct(parseBool(body.get("allowPointsDeduct"), true));
 
     // 重量：支持 weight
     if (body.get("weight") != null) {
@@ -491,6 +493,10 @@ public class ProductServiceImpl implements ProductService {
     }
     if (body.containsKey("pointsStock")) {
       entity.setPointsStock(parseInt(body.get("pointsStock"), 0));
+    }
+    // 积分抵扣开关：仅在请求携带时更新，缺省保持原值
+    if (body.containsKey("allowPointsDeduct")) {
+      entity.setAllowPointsDeduct(parseBool(body.get("allowPointsDeduct"), true));
     }
     if (body.get("weight") != null) {
       try {

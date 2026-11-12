@@ -310,6 +310,8 @@ function blankForm() {
     allowPointsExchange: false,
     pointsPrice: 0,
     pointsStock: 0,
+    // 积分抵扣开关（关闭后 APP 结算页不展示该商品的积分抵扣）
+    allowPointsDeduct: true,
     // 预售配置（1:1 商品，独立表 mo_product_presale）
     presale: blankPresale()
   }
@@ -489,7 +491,9 @@ async function fetchProduct() {
         // 积分兑换配置回显
         allowPointsExchange: !!res.allowPointsExchange,
         pointsPrice: res.pointsPrice != null ? res.pointsPrice : 0,
-        pointsStock: res.pointsStock != null ? res.pointsStock : 0
+        pointsStock: res.pointsStock != null ? res.pointsStock : 0,
+        // 积分抵扣开关回显（后端缺省视为允许）
+        allowPointsDeduct: res.allowPointsDeduct !== false
       })
       // 解析 attributes JSON（dimensions + WC 新字段 + 自定义属性 + 变体）
       parseAllFromAttributes(res.attributes)
@@ -709,6 +713,8 @@ async function handleSave() {
       allowPointsExchange: !!form.allowPointsExchange,
       pointsPrice: form.allowPointsExchange ? Number(form.pointsPrice || 0) : 0,
       pointsStock: form.allowPointsExchange ? Number(form.pointsStock || 0) : 0,
+      // 积分抵扣开关：默认允许
+      allowPointsDeduct: form.allowPointsDeduct !== false,
       // 预售配置（独立表，后端按 enabled 决定新增/更新/删除）
       presale: serializePresale()
     }

@@ -250,10 +250,12 @@
         <text class="bar-label">{{ $t('goodsDetail.service') }}</text>
       </view>
       <view class="bar-btn cart-btn" :class="{ 'is-off': !isOnSale }" @tap="onAddCart">
-        {{ isOnSale ? $t('goodsDetail.addCart') : $t('goodsDetail.soldOut') }}
+        <text class="bar-btn-text">
+          {{ isOnSale ? $t('goodsDetail.addCart') : $t('goodsDetail.soldOut') }}
+        </text>
       </view>
       <view class="bar-btn buy-btn" :class="{ 'is-off': !isOnSale }" @tap="onBuyNow">
-        {{ buyBtnText }}
+        <text class="bar-btn-text">{{ buyBtnText }}</text>
       </view>
     </view>
   </view>
@@ -1194,6 +1196,11 @@ export default {
         taxStatus: this.product.taxStatus || 'taxable',
         taxClass: this.product.taxClass || 'standard',
         attrs: this.selectedAttrs,
+        // 展示型预售只做标识展示，仍走普通加购流程
+        presaleType: this.presaleDisplay ? this.presaleType : null,
+        presaleId: this.presaleDisplay ? this.presale?.id || null : null,
+        // 商品级积分抵扣开关：默认允许
+        allowPointsDeduct: this.product.allowPointsDeduct !== false,
       })
       // 库存不足等被拦截时 store 已提示,不再弹加购成功
       if (ok !== false) {
@@ -1280,6 +1287,11 @@ export default {
         taxStatus: this.product.taxStatus || 'taxable',
         taxClass: this.product.taxClass || 'standard',
         attrs: this.selectedAttrs,
+        // 展示型预售只做标识展示，仍走普通下单流程
+        presaleType: this.presaleDisplay ? this.presaleType : null,
+        presaleId: this.presaleDisplay ? this.presale?.id || null : null,
+        // 商品级积分抵扣开关：默认允许
+        allowPointsDeduct: this.product.allowPointsDeduct !== false,
       })
       uni.navigateTo({ url: '/pages/cart/checkout' })
     },
@@ -1926,9 +1938,9 @@ export default {
   box-sizing: content-box;
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  gap: 8rpx;
   height: 120rpx;
-  padding: 0 32rpx;
+  padding: 0 12rpx;
   /* 必须走 design token：原先是写死的 rgba(255,255,255,.95)，深色模式下
      没有任何规则能覆盖它 → 底栏保持白底，与首页原生 tabBar(#2a2724) 不一致。
      --color-surface = 浅色 #ffffff / 深色 #2a2724，与 tabBar 同一套取色。 */
@@ -1973,13 +1985,27 @@ export default {
 
 .bar-btn {
   flex: 1;
+  /* 允许按钮在窄屏下收缩，避免文字把按钮撑出可视区域 */
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   height: 80rpx;
-  font-size: 26rpx;
+  padding: 0 8rpx;
+  /* 缩到 21rpx，为英文长文案（Add to Cart / Pre-order Now）留出空间 */
+  font-size: 21rpx;
   font-weight: 600;
   border-radius: 9999rpx;
+}
+
+/* 按钮文案：英文长文案（如 Pre-order Now）不换行，超出时省略 */
+.bar-btn-text {
+  display: block;
+  max-width: 100%;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cart-btn {
@@ -1989,6 +2015,8 @@ export default {
 }
 
 .buy-btn {
+  /* 主购买按钮文案更长（如 Pre-order Now），分配略宽的空间 */
+  flex: 1.2;
   background-color: var(--brand-500, #dbc98a);
   color: var(--primary-foreground, #ffffff);
 }

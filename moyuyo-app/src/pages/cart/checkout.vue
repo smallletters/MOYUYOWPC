@@ -122,8 +122,12 @@
                 {{ $t('checkout.item.soldBy') }} {{ item.seller }}
               </text>
               <view class="item-stock">
-                <text class="stock-dot" />
-                <text class="stock-text">{{ $t('checkout.item.inStock') }}</text>
+                <text class="stock-dot" :class="{ 'presale-dot': isPresaleItem(item) }" />
+                <text class="stock-text" :class="{ 'presale-text': isPresaleItem(item) }">
+                  {{
+                    isPresaleItem(item) ? $t('presale.badgeDisplay') : $t('checkout.item.inStock')
+                  }}
+                </text>
               </view>
             </view>
             <view class="item-price-wrap">
@@ -209,7 +213,7 @@
               <text class="chev">›</text>
             </view>
           </view>
-          <view class="reward-row">
+          <view v-if="pointsDeductAllowed && !isPresaleCheckout" class="reward-row">
             <view class="reward-left">
               <text class="reward-label">
                 {{ $t('checkout.coupon.points.label', { balance: pointsBalance }) }}
@@ -553,6 +557,12 @@ export default {
       const type = this.cartStore.buyNowItem?.presaleType
       return type === 'FULL' || type === 'DEPOSIT'
     },
+    /** 订单内商品是否全部允许积分抵扣：任一商品关闭该开关则不展示积分抵扣 */
+    pointsDeductAllowed() {
+      const items = this.checkoutItems || []
+      if (!items.length) return false
+      return items.every((item) => item?.allowPointsDeduct !== false)
+    },
     /** 是否全部为虚拟商品：虚拟订单免收货地址、免运费 */
     allVirtual() {
       const items = this.checkoutItems || []
@@ -646,6 +656,8 @@ export default {
     // 与后端 OrderServiceImpl 口径一致：比例上限 HALF_UP 到分、余额上限 DOWN 到分
     pointsDiscount() {
       if (this.isPresaleCheckout) return 0
+      // 商品关闭积分抵扣时整单不可抵扣
+      if (!this.pointsDeductAllowed) return 0
       if (!this.usePoints) return 0
       const pointsPerUnit = Math.max(Number(this.pointsRule.pointsPerUnit) || 100, 1)
       const maxRate = Math.max(Number(this.pointsRule.maxPercent) || 0, 0) / 100
@@ -785,6 +797,11 @@ export default {
   },
 
   methods: {
+    /** 是否为预售商品：全款/定金/展示型预售均展示「预售」标识 */
+    isPresaleItem(item) {
+      const type = item?.presaleType
+      return type === 'FULL' || type === 'DEPOSIT' || type === 'DISPLAY'
+    },
     /** 金额四舍五入到分（与后端 BigDecimal HALF_UP 口径一致） */
     roundHalfUp2(value) {
       return Math.round((Number(value) + Number.EPSILON) * 100) / 100
@@ -1819,6 +1836,15 @@ export default {
   font-weight: 500;
 }
 
+/* 预售商品标识：与有货的绿色区分 */
+.presale-dot {
+  background: #c45500;
+}
+
+.presale-text {
+  color: #c45500;
+}
+
 .item-price-wrap {
   flex-shrink: 0;
   display: flex;
@@ -2362,6 +2388,14 @@ export default {
   }
   .stock-dot {
     background: #6bbf9c;
+  }
+
+  /* 预售标识提亮 */
+  .presale-text {
+    color: #f08a5d;
+  }
+  .presale-dot {
+    background: #f08a5d;
   }
 
   /* 优惠券弹窗红/灰元素 */

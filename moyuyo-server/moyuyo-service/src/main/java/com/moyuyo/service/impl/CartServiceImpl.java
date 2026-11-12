@@ -348,6 +348,8 @@ public class CartServiceImpl implements CartService {
       cart.setIsVirtual(product != null && ProductAttributes.bool(attrs, "is_virtual", false));
       cart.setTaxStatus(ProductAttributes.str(attrs, "tax_status", "taxable"));
       cart.setTaxClass(ProductAttributes.str(attrs, "tax_class", "standard"));
+      // 积分抵扣开关：APP 结算页据此决定是否展示积分抵扣
+      cart.setAllowPointsDeduct(product == null || !Boolean.FALSE.equals(product.getAllowPointsDeduct()));
       if (product != null) {
         // 销售期外：购物车展示价回退到常规价（与商品详情口径一致）
         cart.setPrice(ProductAttributes.effectivePrice(

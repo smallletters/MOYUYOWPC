@@ -67,6 +67,9 @@ public class ProductEntity {
     /** 积分兑换专属库存，-1 表示不限；与销售库存 stock 相互独立 */
     private Integer pointsStock;
 
+    /** 是否允许积分抵扣：0否 1是（关闭后结算页不展示积分抵扣） */
+    private Boolean allowPointsDeduct;
+
     private LocalDateTime wooModified;
 
     @TableField(fill = FieldFill.INSERT)
