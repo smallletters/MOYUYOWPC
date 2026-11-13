@@ -1194,11 +1194,20 @@ export default {
       L4: '荣耀之选',
       L5: '王者归来',
     },
-    // 专属特权兜底
+    // 专属特权（按真实等级配置动态生成）
     privileges: {
-      newArrival: { title: '新品优先购', desc: '新品提前48小时购买权' },
-      memberDay: { title: '会员日特惠', desc: '每月8号会员专属折扣' },
-      ipMerch: { title: '专属IP周边', desc: 'MOYUYO IP限定周边' },
+      unlocked: '已解锁',
+      lockedAt: '{level} 解锁',
+      memberPrice: {
+        title: '会员价折扣',
+        descUnlocked: '结算自动享会员价（{value}）',
+        descLocked: '升级至 {level} 解锁会员价（{value}）',
+      },
+      pointsBoost: {
+        title: '积分加速',
+        descUnlocked: '消费积分按 {value} 倍率累计',
+        descLocked: '升级至 {level} 享 {value} 倍率积分',
+      },
     },
   },
 

@@ -127,15 +127,18 @@
       <view class="privilege-grid">
         <view
           v-for="(item, idx) in privileges"
-          :key="item.titleKey || item.title"
+          :key="item.key"
           class="privilege-card"
-          :class="`pg-${idx % 4}`"
+          :class="[`pg-${idx % 4}`, { 'is-locked': !item.unlocked }]"
         >
           <view class="privilege-icon-wrap">
             <text class="privilege-emoji luc" :class="$luc(item.icon)" />
           </view>
-          <text class="privilege-title">{{ item.titleKey ? t(item.titleKey) : item.title }}</text>
-          <text class="privilege-desc">{{ item.descKey ? t(item.descKey) : item.desc }}</text>
+          <text class="privilege-title">{{ item.title }}</text>
+          <text class="privilege-desc">{{ item.desc }}</text>
+          <text class="privilege-badge" :class="{ unlocked: item.unlocked }">
+            {{ item.badge }}
+          </text>
         </view>
       </view>
     </view>
@@ -279,24 +282,68 @@ const progressHint = computed(() => {
   return t('membership.distanceNext', { next: next.name, need })
 })
 
-// 专属特权（来自后端 /api/v1/member/privileges，未返回时使用兜底）
-const privileges = ref([
-  {
-    icon: 'tag',
-    titleKey: 'membership.privileges.newArrival.title',
-    descKey: 'membership.privileges.newArrival.desc',
-  },
-  {
-    icon: 'star',
-    titleKey: 'membership.privileges.memberDay.title',
-    descKey: 'membership.privileges.memberDay.desc',
-  },
-  {
-    icon: 'package',
-    titleKey: 'membership.privileges.ipMerch.title',
-    descKey: 'membership.privileges.ipMerch.desc',
-  },
-])
+// 会员专属特权：按后端下发的真实等级配置动态生成，不再使用写死的营销文案
+// - 会员价折扣：取当前等级 priceDiscountRate（与商品详情/下单结算同一份配置）
+// - 积分加速：取当前等级 pointsRate（与积分实际发放倍率一致）
+// 当前等级尚未生效的权益展示“升级解锁”，并给出目标等级的倍率/折扣
+const privileges = computed(() => {
+  const cur = currentLevel.value || {}
+
+  // 会员价折扣：0.88 → 8.8折；>= 1 表示原价（未解锁）
+  const curDiscount = Number(cur.priceDiscountRate)
+  const discountUnlocked = curDiscount > 0 && curDiscount < 1
+  const discountTarget = discountUnlocked
+    ? cur
+    : levels.value.find((lv) => {
+        const rate = Number(lv.priceDiscountRate)
+        return rate > 0 && rate < 1
+      })
+
+  // 积分倍率：> 1 表示有加速
+  const curPointsRate = Number(cur.pointsRate)
+  const pointsUnlocked = curPointsRate > 1
+  const pointsTarget = pointsUnlocked ? cur : levels.value.find((lv) => Number(lv.pointsRate) > 1)
+
+  const list = []
+  // 折扣权益：无任何等级配置折扣时不展示，避免出现与实际不符的权益
+  if (discountTarget) {
+    list.push({
+      key: 'memberPrice',
+      icon: 'tag',
+      unlocked: discountUnlocked,
+      title: t('membership.privileges.memberPrice.title'),
+      desc: discountUnlocked
+        ? t('membership.privileges.memberPrice.descUnlocked', {
+            value: formatDiscount(curDiscount),
+          })
+        : t('membership.privileges.memberPrice.descLocked', {
+            level: discountTarget.name,
+            value: formatDiscount(discountTarget.priceDiscountRate),
+          }),
+      badge: discountUnlocked
+        ? t('membership.privileges.unlocked')
+        : t('membership.privileges.lockedAt', { level: discountTarget.code }),
+    })
+  }
+  if (pointsTarget) {
+    list.push({
+      key: 'pointsBoost',
+      icon: 'star',
+      unlocked: pointsUnlocked,
+      title: t('membership.privileges.pointsBoost.title'),
+      desc: pointsUnlocked
+        ? t('membership.privileges.pointsBoost.descUnlocked', { value: `${curPointsRate}x` })
+        : t('membership.privileges.pointsBoost.descLocked', {
+            level: pointsTarget.name,
+            value: `${Number(pointsTarget.pointsRate)}x`,
+          }),
+      badge: pointsUnlocked
+        ? t('membership.privileges.unlocked')
+        : t('membership.privileges.lockedAt', { level: pointsTarget.code }),
+    })
+  }
+  return list
+})
 
 function mapLevelCode(apiLevel) {
   // 后端 mo_member.level 枚举：NORMAL/SILVER/GOLD/PLATINUM/DIAMOND
@@ -349,15 +396,6 @@ async function loadLevels() {
   }
 }
 
-async function loadPrivileges() {
-  try {
-    const arr = (await memberApi.getMemberPrivileges()) || []
-    if (Array.isArray(arr) && arr.length) privileges.value = arr
-  } catch (e) {
-    console.warn('[membership] load privileges failed', e)
-  }
-}
-
 function goRules() {
   // 了解会员规则
   uni.navigateTo({ url: '/pages/user/membership-rule' })
@@ -372,7 +410,6 @@ function goPoints() {
 onMounted(() => {
   loadMemberInfo()
   loadLevels()
-  loadPrivileges()
   // 订阅语言切换，触发模板与本页 t() 依赖重新求值
   _unsubLocale = i18n.subscribe(() => {
     localeVersion.value += 1
@@ -380,7 +417,6 @@ onMounted(() => {
 })
 onActivated(() => {
   loadMemberInfo()
-  loadPrivileges()
 })
 onBeforeUnmount(() => {
   if (_unsubLocale) _unsubLocale()
@@ -928,6 +964,30 @@ onBeforeUnmount(() => {
   line-height: 1.5;
   position: relative;
   z-index: 2;
+}
+/* 权益状态徽标：已解锁 / Lx 解锁 */
+.privilege-badge {
+  position: absolute;
+  top: 20rpx;
+  right: 20rpx;
+  z-index: 3;
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  font-size: 18rpx;
+  font-weight: 700;
+  letter-spacing: 1rpx;
+  color: var(--color-text-tertiary);
+  background: var(--color-background);
+  border: 1rpx solid var(--color-divider);
+}
+.privilege-badge.unlocked {
+  color: #8c7a4a;
+  background: rgba(219, 201, 138, 0.28);
+  border-color: rgba(179, 138, 90, 0.35);
+}
+/* 未解锁权益整体弱化，与已解锁项形成层级 */
+.privilege-card.is-locked {
+  opacity: 0.72;
 }
 
 // ===== 底部链接 =====

@@ -1186,14 +1186,20 @@ export default {
       L4: 'A choice of honor',
       L5: 'Welcome back, champion',
     },
-    // 专属特权兜底
+    // 专属特权（按真实等级配置动态生成）
     privileges: {
-      newArrival: { title: 'Early Access to New Arrivals', desc: 'Shop new items 48 hours early' },
-      memberDay: {
-        title: 'Member Day Deals',
-        desc: 'Member-only discounts on the 8th of each month',
+      unlocked: 'Unlocked',
+      lockedAt: 'Unlock at {level}',
+      memberPrice: {
+        title: 'Member Pricing',
+        descUnlocked: 'Member price applied automatically at checkout ({value})',
+        descLocked: 'Upgrade to {level} to unlock member pricing ({value})',
       },
-      ipMerch: { title: 'Exclusive IP Merch', desc: 'Limited-edition MOYUYO IP merchandise' },
+      pointsBoost: {
+        title: 'Points Boost',
+        descUnlocked: 'Earn points at {value}',
+        descLocked: 'Upgrade to {level} to earn points at {value}',
+      },
     },
   },
 
