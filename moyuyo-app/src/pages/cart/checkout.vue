@@ -523,6 +523,8 @@ export default {
     selectedShippingPrice() {
       // 虚拟订单不需要运费
       if (this.allVirtual) return 0
+      // 定金单不收取运费，留到支付尾款时随尾款单收取
+      if (this.isDepositPresale) return 0
       // 从已加载的后端 VO 里取 freight；运费由服务端权威计算（freight 已套免邮门槛）
       const method = this.shippingMethods.find((s) => s.code === this.selectedShipping)
       if (!method) return 0
@@ -545,6 +547,10 @@ export default {
     isPresaleCheckout() {
       const type = this.cartStore.buyNowItem?.presaleType
       return type === 'FULL' || type === 'DEPOSIT'
+    },
+    /** 是否定金预售结算：定金单只收定金，运费/税费由尾款单收取（与后端一致） */
+    isDepositPresale() {
+      return this.cartStore.buyNowItem?.presaleType === 'DEPOSIT'
     },
     /** 订单内商品是否全部允许积分抵扣：任一商品关闭该开关则不展示积分抵扣 */
     pointsDeductAllowed() {
@@ -695,6 +701,8 @@ export default {
      * 应税商品金额按会员价/活动满减/优惠券占比扣减后 × 税率；shipping 税状态对运费计税。
      */
     taxAmount() {
+      // 定金单不计税费，留到支付尾款时随尾款单计算
+      if (this.isDepositPresale) return 0
       const ratePercent = Number(this.productTaxRate) || 0
       if (ratePercent <= 0) return 0
       const rate = ratePercent / 100
@@ -1076,6 +1084,12 @@ export default {
 
     /** 拉取营销活动试算：活动满减与限购预校验（不占用额度） */
     async loadCampaignQuote() {
+      // 预售订单不参与营销活动；若继续试算，服务端会回写商品现价，
+      // 把详情页设置的定金/预售价覆盖成全款，导致结算金额错误
+      if (this.isPresaleCheckout) {
+        this.campaignOrderDiscount = 0
+        return
+      }
       try {
         const items = this.checkoutItems.map((it) => ({
           productId: it.productId,

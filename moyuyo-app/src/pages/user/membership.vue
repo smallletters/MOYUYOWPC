@@ -36,6 +36,12 @@
               </view>
             </view>
 
+            <!-- 当前等级对应的会员价折扣 -->
+            <view class="card-discount">
+              <text class="card-discount-label">{{ t('membership.myDiscountLabel') }}</text>
+              <text class="card-discount-val">{{ currentDiscountText }}</text>
+            </view>
+
             <view class="card-progress">
               <view class="card-progress-row">
                 <text class="card-progress-label">{{ progressHint }}</text>
@@ -97,6 +103,11 @@
               <view class="meta-item">
                 <text class="meta-label">{{ $t('membership.growthLabel') }}</text>
                 <text class="meta-val">{{ lv.growthThreshold }}</text>
+              </view>
+              <view class="meta-divider" />
+              <view class="meta-item">
+                <text class="meta-label">{{ $t('membership.priceDiscountLabel') }}</text>
+                <text class="meta-val strong">{{ formatDiscount(lv.priceDiscountRate) }}</text>
               </view>
             </view>
           </view>
@@ -170,6 +181,7 @@ const levels = ref([
     descKey: 'membership.levelDesc.L1',
     growthThreshold: 0,
     pointsRate: 1.0,
+    priceDiscountRate: 1.0,
   },
   {
     code: 'L2',
@@ -177,6 +189,7 @@ const levels = ref([
     descKey: 'membership.levelDesc.L2',
     growthThreshold: 500,
     pointsRate: 1.1,
+    priceDiscountRate: 0.95,
   },
   {
     code: 'L3',
@@ -184,6 +197,7 @@ const levels = ref([
     descKey: 'membership.levelDesc.L3',
     growthThreshold: 2000,
     pointsRate: 1.2,
+    priceDiscountRate: 0.88,
   },
   {
     code: 'L4',
@@ -191,6 +205,7 @@ const levels = ref([
     descKey: 'membership.levelDesc.L4',
     growthThreshold: 8000,
     pointsRate: 1.5,
+    priceDiscountRate: 0.85,
   },
   {
     code: 'L5',
@@ -198,6 +213,7 @@ const levels = ref([
     descKey: 'membership.levelDesc.L5',
     growthThreshold: 25000,
     pointsRate: 2.0,
+    priceDiscountRate: 0.8,
   },
 ])
 
@@ -207,6 +223,27 @@ const levelLabel = computed(() => {
   const lv = levels.value.find((l) => l.code === currentLevelCode.value)
   return lv ? lv.name : t('membership.memberFallback')
 })
+
+/** 当前等级档位（含后端下发的会员价折扣系数） */
+const currentLevel = computed(
+  () => levels.value.find((l) => l.code === currentLevelCode.value) || null,
+)
+
+/** 当前用户的会员价折扣文案，如 8.8折 / 12% off */
+const currentDiscountText = computed(() => formatDiscount(currentLevel.value?.priceDiscountRate))
+
+/**
+ * 会员价折扣文案：0.88 → 8.8折，1.00 → 无折扣
+ * 英文展示为折扣百分比，避免中英文单位差异
+ */
+function formatDiscount(rate) {
+  const r = Number(rate)
+  if (!(r > 0 && r < 1)) return t('membership.noDiscount')
+  if (i18n.locale === 'zh-CN') {
+    return `${Number((r * 10).toFixed(2))}${t('membership.discountUnit')}`
+  }
+  return t('membership.discountOff', { percent: Math.round((1 - r) * 100) })
+}
 
 // 问候语：根据等级切换，赋予身份感
 const greeting = computed(() => t('membership.greeting.' + currentLevelCode.value))
@@ -298,7 +335,15 @@ async function loadMemberInfo() {
 async function loadLevels() {
   try {
     const arr = (await memberApi.getMemberLevels()) || []
-    if (Array.isArray(arr) && arr.length) levels.value = arr
+    if (Array.isArray(arr) && arr.length) {
+      // 兼容旧后端未下发 priceDiscountRate 的场景，按等级回退到默认折扣，避免展示成“无折扣”
+      const fallbackRates = new Map(levels.value.map((lv) => [lv.code, lv.priceDiscountRate]))
+      levels.value = arr.map((lv) => ({
+        ...lv,
+        priceDiscountRate:
+          lv.priceDiscountRate != null ? lv.priceDiscountRate : fallbackRates.get(lv.code),
+      }))
+    }
   } catch (e) {
     console.warn('[membership] load levels failed', e)
   }
@@ -529,6 +574,28 @@ onBeforeUnmount(() => {
   font-weight: 800;
   color: #2e2b29; /* 设计为金色底深字，两态一致：.member-card 为金色渐变，深色下保持不变 */
   letter-spacing: 1rpx;
+  font-family: Georgia, serif;
+}
+
+/* 当前等级会员价折扣（金色卡面上的深色信息条） */
+.card-discount {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -12rpx 0 28rpx;
+  padding: 12rpx 20rpx;
+  border-radius: 12rpx;
+  background: rgba(46, 43, 41, 0.08);
+}
+.card-discount-label {
+  font-size: 20rpx;
+  color: rgba(46, 43, 41, 0.65);
+  letter-spacing: 1rpx;
+}
+.card-discount-val {
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #2e2b29;
   font-family: Georgia, serif;
 }
 

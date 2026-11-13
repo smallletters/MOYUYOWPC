@@ -19,6 +19,7 @@ import com.moyuyo.dao.mapper.MemberMapper;
 import com.moyuyo.dao.mapper.PointsLogMapper;
 import com.moyuyo.dao.mapper.UserMapper;
 import com.moyuyo.dao.mapper.WalletMapper;
+import com.moyuyo.service.MemberPriceService;
 import com.moyuyo.service.MemberService;
 import com.moyuyo.service.config.MembershipRuleConfigService;
 import lombok.RequiredArgsConstructor;
@@ -70,6 +71,8 @@ public class MemberServiceImpl implements MemberService {
   private final SystemConfigMapper systemConfigMapper;
   /** 会员规则配置（签到/评价/邀请/补签/抵扣，后台可调） */
   private final MembershipRuleConfigService ruleConfigService;
+  /** 会员价折扣配置：等级阶梯展示各档会员折扣用 */
+  private final MemberPriceService memberPriceService;
 
   @Override
   public MemberVO getMemberInfo(Long userId) {
@@ -561,11 +564,17 @@ public class MemberServiceImpl implements MemberService {
     // 等级档位（按成长值门槛排序），倍率统一从后台配置读取
     Map<Level, Double> rates = readLevelRates();
     List<Map<String, Object>> levels = new java.util.ArrayList<>();
-    levels.add(level("L1", "Member", "注册即获得", 0, rates.get(Level.NORMAL)));
-    levels.add(level("L2", "Silver", "完成首单 + 几次签到", 500, rates.get(Level.SILVER)));
-    levels.add(level("L3", "Gold", "活跃用户", 2000, rates.get(Level.GOLD)));
-    levels.add(level("L4", "Platinum", "高频消费用户", 8000, rates.get(Level.PLATINUM)));
-    levels.add(level("L5", "Black", "顶级 VIP", 25000, rates.get(Level.DIAMOND)));
+    // 会员价折扣与商品详情/下单共用同一份配置，避免展示与实际结算不一致
+    levels.add(level("L1", "Member", "注册即获得", 0, rates.get(Level.NORMAL),
+        memberPriceService.getDiscountByLevel("NORMAL")));
+    levels.add(level("L2", "Silver", "完成首单 + 几次签到", 500, rates.get(Level.SILVER),
+        memberPriceService.getDiscountByLevel("SILVER")));
+    levels.add(level("L3", "Gold", "活跃用户", 2000, rates.get(Level.GOLD),
+        memberPriceService.getDiscountByLevel("GOLD")));
+    levels.add(level("L4", "Platinum", "高频消费用户", 8000, rates.get(Level.PLATINUM),
+        memberPriceService.getDiscountByLevel("PLATINUM")));
+    levels.add(level("L5", "Black", "顶级 VIP", 25000, rates.get(Level.DIAMOND),
+        memberPriceService.getDiscountByLevel("DIAMOND")));
     return levels;
   }
 
@@ -609,13 +618,16 @@ public class MemberServiceImpl implements MemberService {
     return rates;
   }
 
-  private Map<String, Object> level(String code, String name, String desc, int threshold, double rate) {
+  private Map<String, Object> level(String code, String name, String desc, int threshold, double rate,
+                                    BigDecimal priceDiscountRate) {
     Map<String, Object> m = new java.util.HashMap<>();
     m.put("code", code);
     m.put("name", name);
     m.put("description", desc);
     m.put("growthThreshold", threshold);
     m.put("pointsRate", rate);
+    // 会员价折扣系数：1.00 表示无折扣，0.88 表示 88 折（与商品详情/下单口径一致）
+    m.put("priceDiscountRate", priceDiscountRate == null ? BigDecimal.ONE : priceDiscountRate);
     return m;
   }
 

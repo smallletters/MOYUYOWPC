@@ -914,6 +914,10 @@ export default {
     parseMemberPrice() {
       // 秒杀/营销活动商品不叠加会员价（后端标记）
       if (this.product?.flashSaleActive === true || this.product?.campaignId != null) return null
+      // 全款/定金预售下单不参与会员折扣（结算与后端均按 0 会员优惠处理），
+      // 展示会员价会与实际支付金额不一致，因此隐藏；展示型预售仍按现货下单，保留会员价
+      const presaleType = this.product?.presaleInfo?.presaleType
+      if (presaleType === 'FULL' || presaleType === 'DEPOSIT') return null
       // 优先用后端返回的折扣系数 × 当前 SKU 价，避免不同 SKU 价格时展示错价
       const rate = Number(this.product?.memberPriceRate)
       if (Number.isFinite(rate) && rate > 0 && rate < 1) {
