@@ -25,6 +25,13 @@
         },
         "modules" : {
             "Push" : {},
+            // Apple 登录：uni.login({ provider: 'apple' }) 依赖 OAuth 模块
+            // 对应 iOS capability com.apple.developer.applesignin（已配置在 distribute.ios.capabilities）
+            "OAuth" : {
+                "apple" : {}
+            },
+            // 定位：uni.getLocation 依赖定位模块（uni.chooseLocation 还需配置 sdkConfigs.maps）
+            "Geolocation" : {},
             // 支付模块：启用 PayPal 官方通道（uni.requestPayment 可直接调起 PayPal）
             // 参考：https://uniapp.dcloud.net.cn/tutorial/app-payment-paypal.html
             // 美国市场方案：APP 端走 Stripe Checkout WebView + payAppBridge 拦截 Apple Pay/Google Pay/PayPal scheme
@@ -191,7 +198,16 @@
                 },
                 "miniOSVersion" : "13.0"
             },
-            "sdkConfigs" : {}
+            "sdkConfigs" : {
+                // Google Maps：App 端 uni.chooseLocation（地图选点）依赖此配置
+                // APIKey 不要硬编码在仓库：构建时由 vite.config.js 从 .env 的
+                // VITE_GOOGLE_MAPS_API_KEY 注入，未配置时为空字符串（App 端地图选点不可用）
+                "maps" : {
+                    "google" : {
+                        "APIKey" : ""
+                    }
+                }
+            }
         },
         "nativePlugins" : {
             "MOYUYO-SecureStorage" : {

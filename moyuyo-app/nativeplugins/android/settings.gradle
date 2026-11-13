@@ -22,12 +22,6 @@ dependencyResolutionManagement {
 
 rootProject.name = 'moyuyo-plugins'
 
-include ':moyuyo-pethub'
-include ':moyuyo-ar'
-include ':moyuyo-payment'
-include ':moyuyo-auth'
 include ':moyuyo-push'
-include ':moyuyo-camera'
-include ':moyuyo-location'
 include ':moyuyo-biometric'
 include ':moyuyo-secure'

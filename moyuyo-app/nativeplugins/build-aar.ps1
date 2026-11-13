@@ -28,13 +28,7 @@ $sdkAar = Join-Path $androidProject 'libs\uniapp-v8-release.aar'
 
 # 模块目录名 → HBuilderX 本地插件包目录名（与各插件 package.json 的 id 一致）
 $moduleMap = [ordered]@{
-  'moyuyo-ar'        = 'MOYUYO-AR'
-  'moyuyo-auth'      = 'MOYUYO-Auth'
   'moyuyo-biometric' = 'MOYUYO-Biometric'
-  'moyuyo-camera'    = 'MOYUYO-Camera'
-  'moyuyo-location'  = 'MOYUYO-Location'
-  'moyuyo-payment'   = 'MOYUYO-Payment'
-  'moyuyo-pethub'    = 'MOYUYO-PetHub3D'
   'moyuyo-push'      = 'MOYUYO-Push'
   'moyuyo-secure'    = 'MOYUYO-SecureStorage'
 }

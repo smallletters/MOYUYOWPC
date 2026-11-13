@@ -1,9 +1,0 @@
-{
-  "plugins": [
-    {
-      "type": "module",
-      "name": "MOYUYO-Location",
-      "class": "com.moyuyo.plugin.location.LocationModule"
-    }
-  ]
-}

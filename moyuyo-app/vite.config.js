@@ -1,21 +1,57 @@
 import { defineConfig, loadEnv } from 'vite'
 import uni from '@dcloudio/vite-plugin-uni'
 import path from 'path'
+import fs from 'fs'
+
+/**
+ * 把 .env 中的 Google Maps Key 注入 manifest.json
+ * manifest.json 是纯 JSON，无法在运行时读取环境变量，只能在构建前回写（DCloud 官方推荐做法）。
+ * 未配置 VITE_GOOGLE_MAPS_API_KEY 时不做任何修改，避免把空值或占位符写进仓库。
+ * @param {String} apiKey Google Maps API Key
+ */
+function injectMapsApiKey(apiKey) {
+  if (!apiKey) return null
+  const manifestPath = path.resolve(__dirname, 'src/manifest.json')
+  const raw = fs.readFileSync(manifestPath, { encoding: 'utf-8' })
+  // 只替换 app-plus.sdkConfigs.maps.google.APIKey 的空值，不影响其它 APIKey 字段
+  const next = raw.replace(
+    /(["']maps["']\s*:\s*\{[\s\S]*?["']APIKey["']\s*:\s*)[^\n]*/,
+    `$1"${apiKey}"`,
+  )
+  if (next === raw) return null
+  fs.writeFileSync(manifestPath, next, { encoding: 'utf-8' })
+  // 返回恢复函数：构建结束后还原源文件，避免 Key 被误提交到仓库
+  return () => fs.writeFileSync(manifestPath, raw, { encoding: 'utf-8' })
+}
 
 // Vite 配置：uni-app 项目入口指向 src/main.js
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
   // 手动加载当前 mode 下的环境变量（uni-app 默认 mode=production）
   // 拿到后用于下面的 define，把所有 process.env.VITE_* 在编译期字面量替换进 bundle
   // 这是因为 APP 端运行时 typeof process 通常是 undefined 或空对象，
   // 直接读 process.env.VITE_* 拿不到 .env 里写的值，必须靠 define 做静态替换。
-  const env = loadEnv(mode, process.cwd(), 'VITE_')
+  // 第二个参数用 __dirname（配置文件所在绝对路径）：HBuilderX 中 cwd 不一定是项目根
+  const env = loadEnv(mode, __dirname, 'VITE_')
   const processEnvDefine = Object.fromEntries(
     Object.entries(env).map(([k, v]) => [`process.env.${k}`, JSON.stringify(v)]),
   )
 
+  // App 端地图选点所需的 Google Maps Key：构建前写入 manifest.json
+  // 仅 build 时注入；dev 不需要，避免源文件残留 Key
+  const restoreManifest =
+    command === 'build' ? injectMapsApiKey(env.VITE_GOOGLE_MAPS_API_KEY) : null
+
   return {
     plugins: [
       uni(),
+      // 构建结束后把 manifest.json 还原为不含 Key 的版本，防止敏感信息进入仓库
+      {
+        name: 'moyuyo-restore-manifest',
+        apply: 'build',
+        closeBundle() {
+          if (restoreManifest) restoreManifest()
+        },
+      },
       // APP 端构建时,uni 内部插件(uniUniModulesExtApiPlugin)会把 output.format 设为 'iife',
       // 而 iife 不支持 code-splitting。项目中 three / idb-storage 等使用了动态 import(),
       // Rollup 会尝试拆 chunk,导致编译报错 "Invalid value iife for option output.format"。

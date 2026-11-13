@@ -23,7 +23,7 @@
             <image src="/static/icons/google.svg" class="social-logo" mode="aspectFit" />
             <text class="social-label">{{ $t('auth.signInWithGoogle') }}</text>
           </view>
-          <view class="social-btn apple" @click="onSocial('apple')">
+          <view v-if="showAppleLogin" class="social-btn apple" @click="onSocial('apple')">
             <image
               src="/static/icons/apple.svg"
               class="social-logo social-logo-apple"
@@ -71,7 +71,7 @@
                   maxlength="11"
                   inputmode="numeric"
                   :placeholder="$t('auth.phoneInputHint')"
-                >
+                />
               </view>
             </view>
             <view class="field">
@@ -84,7 +84,7 @@
                   maxlength="6"
                   inputmode="numeric"
                   :placeholder="$t('auth.codeInputHint')"
-                >
+                />
                 <view class="code-btn" :class="{ disabled: codeCountdown > 0 }" @click="onSendCode">
                   <text v-if="codeCountdown === 0">{{ $t('auth.sendCode') }}</text>
                   <text v-else>{{ codeCountdown }}s</text>
@@ -102,7 +102,7 @@
                 class="field-input"
                 type="email"
                 :placeholder="$t('auth.emailInputHint')"
-              >
+              />
             </view>
             <view class="field">
               <view class="pwd-header">
@@ -115,7 +115,7 @@
                   class="field-input pwd-input"
                   :type="showPassword ? 'text' : 'password'"
                   :placeholder="$t('auth.passwordHint')"
-                >
+                />
                 <text class="toggle-pwd" @click="showPassword = !showPassword">
                   <text v-if="showPassword" class="luc luc-eye-off" />
                   <text v-else class="luc luc-eye" />
@@ -135,7 +135,7 @@
               maxlength="6"
               inputmode="numeric"
               :placeholder="$t('auth.twoFactorCodePlaceholder')"
-            >
+            />
             <text class="tf-resend" @click="onResendTwoFactor">
               {{ $t('auth.twoFactorResend') }}
             </text>
@@ -278,6 +278,19 @@ export default {
         return this.phone.length >= 8 && this.smsCode.length >= 4
       }
       return this.email.includes('@') && this.password.length >= 8
+    },
+    // Apple 登录可用性：仅 iOS App 与微信小程序支持
+    // - Android App：uni.login({ provider: 'apple' }) 不支持，隐藏入口避免点击必失败
+    // - H5：暂无 Apple JS SDK，同样隐藏
+    showAppleLogin() {
+      let supported = false
+      // #ifdef APP-PLUS
+      supported = uni.getSystemInfoSync().platform === 'ios'
+      // #endif
+      // #ifdef MP-WEIXIN
+      supported = true
+      // #endif
+      return supported
     },
     // 根据当前countryCode查找对应国旗emoji(模板使用)
     countryFlag() {

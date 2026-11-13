@@ -1,9 +1,0 @@
-{
-  "plugins": [
-    {
-      "type": "module",
-      "name": "MOYUYO-PetHub3D",
-      "class": "PetHubModule"
-    }
-  ]
-}

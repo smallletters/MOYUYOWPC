@@ -1,9 +1,0 @@
-{
-  "plugins": [
-    {
-      "type": "module",
-      "name": "MOYUYO-Camera",
-      "class": "com.moyuyo.plugin.camera.CameraModule"
-    }
-  ]
-}

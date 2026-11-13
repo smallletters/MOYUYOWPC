@@ -1,48 +1,28 @@
 /**
- * 定位/地图原生插件调用封装
- * 插件标识: MOYUYO-Location
- * 功能: GPS 定位、地址选择、物流轨迹地图
+ * 定位/地图调用封装（uni 官方 API）
+ *
+ * 原 MOYUYO-Location 原生插件已移除（桩实现），统一改用：
+ * - 定位：uni.getLocation
+ * - 地图选点：uni.chooseLocation（App 端需在 manifest.json 配置地图模块）
+ * - 地理编码/物流地图：uni 无官方能力，明确降级
  */
 import { t } from '@/i18n'
-/* eslint-disable no-unreachable */
-
-const PLUGIN_NAME = 'MOYUYO-Location'
 
 /**
  * 获取当前定位
  * @param {Object} [options]
  * @param {Boolean} [options.highAccuracy] 是否使用高精度模式
- * @returns {Promise<Object>} { latitude, longitude, address, country, city }
+ * @returns {Promise<Object>} { latitude, longitude }
  */
 export function getCurrentLocation(options = {}) {
-  // #ifdef APP-PLUS
-  const plugin = uni.requireNativePlugin(PLUGIN_NAME)
-  return new Promise((resolve, reject) => {
-    plugin.getCurrentLocation({ highAccuracy: options.highAccuracy !== false }, (result) => {
-      if (result.success) {
-        resolve({
-          latitude: result.latitude,
-          longitude: result.longitude,
-          address: result.address,
-          country: result.country,
-          city: result.city,
-        })
-      } else {
-        reject(new Error(result.message || t('locationPlugin.locateFailed')))
-      }
-    })
-  })
-  // #endif
-
-  // #ifndef APP-PLUS
   return new Promise((resolve, reject) => {
     uni.getLocation({
       type: 'wgs84',
+      isHighAccuracy: options.highAccuracy !== false,
       success: (res) => resolve({ latitude: res.latitude, longitude: res.longitude }),
       fail: () => reject(new Error(t('locationPlugin.locatePermission'))),
     })
   })
-  // #endif
 }
 
 /**
@@ -53,63 +33,42 @@ export function getCurrentLocation(options = {}) {
  * @returns {Promise<Object>} { latitude, longitude, address, name }
  */
 export function openMapSelector(options = {}) {
-  // #ifdef APP-PLUS
-  const plugin = uni.requireNativePlugin(PLUGIN_NAME)
   return new Promise((resolve, reject) => {
-    plugin.openMapSelector(options, (result) => {
-      if (result.success) {
+    // 仅在传入坐标时设置初始位置，避免把 undefined 传给地图选点
+    const params = {}
+    if (options.latitude != null && options.longitude != null) {
+      params.latitude = options.latitude
+      params.longitude = options.longitude
+    }
+    uni.chooseLocation({
+      ...params,
+      success: (res) =>
         resolve({
-          latitude: result.latitude,
-          longitude: result.longitude,
-          address: result.address,
-          name: result.name,
-        })
-      } else {
-        reject(new Error(result.message || t('locationPlugin.chooseAddressCancelled')))
-      }
+          latitude: res.latitude,
+          longitude: res.longitude,
+          address: res.address,
+          name: res.name,
+        }),
+      fail: () => reject(new Error(t('locationPlugin.chooseAddressCancelled'))),
     })
   })
-  // #endif
-  /* #ifndef APP-PLUS */
-  return Promise.reject(new Error(t('locationPlugin.unsupported')))
-  /* #endif */
 }
 
 /**
  * 打开物流轨迹地图
- * @param {Object} params
- * @param {String} params.trackingNumber 运单号
- * @param {String} params.carrierCode 承运商代码
- * @param {Array<Object>} [params.trackingPoints] 可选追踪点 [{ latitude, longitude, timestamp }]
+ * uni 无官方物流地图 API，保留签名并提示不支持
  */
-export function showLogisticsMap(params) {
-  // #ifdef APP-PLUS
-  const plugin = uni.requireNativePlugin(PLUGIN_NAME)
-  plugin.showLogisticsMap(params, () => {})
-  // #endif
+export function showLogisticsMap() {
+  uni.showToast({ title: t('locationPlugin.unsupported'), icon: 'none' })
 }
 
 /**
  * 地理编码：地址转坐标
- * @param {String} address 地址文本
- * @returns {Promise<Object>} { latitude, longitude }
+ * uni 无官方能力，需由后端提供
+ * @returns {Promise<never>}
  */
-export function geocode(address) {
-  // #ifdef APP-PLUS
-  const plugin = uni.requireNativePlugin(PLUGIN_NAME)
-  return new Promise((resolve, reject) => {
-    plugin.geocode({ address }, (result) => {
-      if (result.success) {
-        resolve({ latitude: result.latitude, longitude: result.longitude })
-      } else {
-        reject(new Error(result.message || t('locationPlugin.geocodeFailed')))
-      }
-    })
-  })
-  // #endif
-  /* #ifndef APP-PLUS */
+export function geocode() {
   return Promise.reject(new Error(t('locationPlugin.unsupported')))
-  /* #endif */
 }
 
 export default { getCurrentLocation, openMapSelector, showLogisticsMap, geocode }

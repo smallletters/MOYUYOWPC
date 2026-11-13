@@ -21,8 +21,8 @@ export interface PluginResult<T = void> {
 /** 3D 场景类型 */
 export type PetScene = 'grassland' | 'livingroom' | 'training' | 'studio'
 
-/** 支付渠道 */
-export type PaymentChannel = 'apple_pay' | 'google_pay'
+/** 支付渠道（paypal 为 uni 官方 API 唯一支持的原生渠道） */
+export type PaymentChannel = 'paypal' | 'apple_pay' | 'google_pay'
 
 /** 社交登录提供商 */
 export type AuthProvider = 'apple' | 'google' | 'facebook'

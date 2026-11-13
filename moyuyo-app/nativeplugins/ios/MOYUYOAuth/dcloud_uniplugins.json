@@ -1,9 +1,0 @@
-{
-  "plugins": [
-    {
-      "type": "module",
-      "name": "MOYUYO-Auth",
-      "class": "AuthModule"
-    }
-  ]
-}

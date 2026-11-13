@@ -562,51 +562,21 @@ export function startPayPalNative(opts) {
 }
 
 /**
- * iOS Apple Pay：通过系统 PassKit 调起支付面板。
- * 注：此实现依赖 Stripe 官方原生插件或自研原生插件；
- *     如果打包时未集成对应 nativePlugin，将直接返回 fallback=true 让上层走 WebView。
+ * Apple Pay：uni 无官方 App 端通道，统一回落到 WebView 收银台。
+ * Stripe Checkout 页面内自带 Apple Pay 按钮，用户体验不受影响。
  *
  * @param {Object} opts
  * @param {string} opts.clientSecret   Stripe PaymentIntent client_secret（后端下发）
- * @param {string} opts.merchantId     Apple Pay Merchant ID（需与 entitlements & Stripe Dashboard 一致）
+ * @param {string} opts.merchantId     Apple Pay Merchant ID（保留参数，WebView 内由 Stripe 处理）
  * @param {string} opts.countryCode    US
  * @param {string} opts.currencyCode   USD
  * @returns {Promise<{ success: boolean, fallback?: boolean, error?: any }>}
  */
-export function startApplePayNative(opts) {
-  return new Promise((resolve) => {
-    // 仅 iOS 且集成了 Stripe 原生插件时才会命中；否则直接回落 WebView（Stripe Checkout 页内自带 Apple Pay 按钮）
-    if (typeof plus === 'undefined') {
-      return resolve({ success: false, fallback: true, error: new Error('not APP environment') })
-    }
-    try {
-      // 尝试调 MOYUYO-Payment 原生插件（与 nativeplugins/*/dcloud_uniplugins.json 声明名一致）
-      const paymentModule =
-        uni && uni.requireNativePlugin ? uni.requireNativePlugin('MOYUYO-Payment') : null
-      if (!paymentModule || typeof paymentModule.startApplePay !== 'function') {
-        return resolve({
-          success: false,
-          fallback: true,
-          error: new Error('native plugin MOYUYOPayment.startApplePay unavailable'),
-        })
-      }
-      paymentModule.startApplePay(
-        {
-          clientSecret: opts?.clientSecret || '',
-          merchantId: opts?.merchantId || 'merchant.com.moyuyo.app',
-          countryCode: opts?.countryCode || 'US',
-          currencyCode: opts?.currencyCode || 'USD',
-        },
-        (res) => {
-          if (res && res.success) {
-            resolve({ success: true })
-          } else {
-            resolve({ success: false, fallback: true, error: res?.message || 'apple pay failed' })
-          }
-        },
-      )
-    } catch (e) {
-      resolve({ success: false, fallback: true, error: e })
-    }
+export function startApplePayNative(_opts) {
+  // 原 MOYUYO-Payment 原生插件已移除：Apple Pay 统一走 WebView 收银台
+  return Promise.resolve({
+    success: false,
+    fallback: true,
+    error: new Error('apple pay requires webview checkout'),
   })
 }

@@ -174,17 +174,11 @@ moyuyo-app/
 │   ├── pages.json
 │   └── uni.scss
 ├── nativeplugins/             # 原生插件（Android + iOS）
-│   ├── android/               # Android UTSDK 插件（9 个模块）
-│   │   ├── moyuyo-payment/    # 支付
-│   │   ├── moyuyo-auth/       # 社交登录
-│   │   ├── moyuyo-pethub/     # PetHub 3D
-│   │   ├── moyuyo-ar/         # AR 试穿
+│   ├── android/               # Android UTSDK 插件（3 个模块）
 │   │   ├── moyuyo-push/       # 推送
-│   │   ├── moyuyo-camera/     # 相机
-│   │   ├── moyuyo-location/   # 定位
 │   │   ├── moyuyo-biometric/  # 生物识别
-│   │   └── moyuyo-biometric/  # 生物识别
-│   └── ios/                   # iOS UTSDK 插件（9 个模块）
+│   │   └── moyuyo-secure/     # 凭证加密存储
+│   └── ios/                   # iOS UTSDK 插件（3 个模块）
 ├── .env                       # 环境变量（**不入 Git**）
 ├── .env.example               # 环境变量模板
 ├── .eslintrc.js               # ESLint 配置
@@ -277,18 +271,23 @@ npm run format
 
 ## 原生插件体系
 
-项目通过 uni-app UTSDK 桥接原生能力，支持 iOS (Swift) 和 Android (Kotlin) 双端。
+项目仅保留必须自研的原生模块，其余能力已全部改为 uni 官方 API。
 
-| 插件      | iOS 模块        | Android 模块     | 能力                                   |
-| :-------- | :-------------- | :--------------- | :------------------------------------- |
-| 支付      | MOYUYOPayment   | moyuyo-payment   | Apple Pay / Google Pay                 |
-| 社交登录  | MOYUYOAuth      | moyuyo-auth      | Sign in with Apple / Google / Facebook |
-| PetHub 3D | MOYUYOPetHub3D  | moyuyo-pethub    | 3D 宠物模型加载/场景切换/交互          |
-| AR 试穿   | MOYUYOAR        | moyuyo-ar        | ARKit / ARCore 商品试穿                |
-| 推送      | MOYUYOPush      | moyuyo-push      | APNs / FCM 推送                        |
-| 相机      | MOYUYOCamera    | moyuyo-camera    | 拍照 / 相册选择 / 图片压缩             |
-| 定位      | MOYUYOLocation  | moyuyo-location  | 定位 / 地图选择                        |
-| 生物识别  | MOYUYOBiometric | moyuyo-biometric | Face ID / 指纹                         |
+| 插件     | iOS 模块            | Android 模块     | 能力                                  |
+| :------- | :------------------ | :--------------- | :------------------------------------ |
+| 推送     | MOYUYOPush          | moyuyo-push      | APNs / FCM 推送                       |
+| 生物识别 | MOYUYOBiometric     | moyuyo-biometric | Face ID / 指纹                        |
+| 凭证存储 | MOYUYOSecureStorage | moyuyo-secure    | Keychain / EncryptedSharedPreferences |
+
+已改用官方 API 的能力（对应原生插件已移除）：
+
+| 能力     | 官方 API                                                                           |
+| :------- | :--------------------------------------------------------------------------------- |
+| 支付     | `uni.requestPayment({ provider: 'paypal' })`（Apple Pay/Stripe 走 WebView 收银台） |
+| 社交登录 | `uni.login({ provider: 'apple' })`（Google/Facebook 走 Web OAuth）                 |
+| 相机     | `uni.chooseImage` / `uni.compressImage`                                            |
+| 定位     | `uni.getLocation` / `uni.chooseLocation`                                           |
+| AR / 3D  | uni 无官方能力，相关桩插件已移除                                                   |
 
 插件桥接协议定义见 [`src/plugins/types.ts`](file:///d:/MOYUYOWPC/moyuyo-app/src/plugins/types.ts)。
 

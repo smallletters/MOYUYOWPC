@@ -1,165 +1,114 @@
 /**
- * 支付原生插件调用封装
- * 插件标识: MOYUYO-Payment
- * 功能: Stripe / PayPal / Apple Pay / Google Pay 原生支付
+ * 支付调用封装（uni 官方 API）
+ *
+ * 原 MOYUYO-Payment 原生插件已移除（桩实现），改为 uni.requestPayment：
+ * - PayPal：provider = 'paypal'（App 端，需在 manifest 配置 Payment.paypal）
+ * - Apple Pay / Stripe：uni 无官方通道，继续走 WebView 收银台
  */
 import { t } from '@/i18n'
 /* eslint-disable no-unreachable */
 
-const PLUGIN_NAME = 'MOYUYO-Payment'
+/** 官方 API 支持的支付渠道 */
+const OFFICIAL_CHANNELS = ['PAYPAL']
+
+/** 统一渠道标识格式：apple-pay / apple_pay → APPLE_PAY */
+function normalizeChannel(channel) {
+  return String(channel || '')
+    .toUpperCase()
+    .replace(/-/g, '_')
+}
 
 /**
  * 获取当前设备支持的支付渠道
- * @returns {Promise<String[]>} 渠道列表 ['STRIPE', 'APPLE_PAY', 'GOOGLE_PAY', 'PAYPAL']
+ * @returns {Promise<String[]>} 渠道列表 ['PAYPAL']
  */
 export function getPaymentChannels() {
   // #ifdef APP-PLUS
-  const plugin = uni.requireNativePlugin(PLUGIN_NAME)
-  return new Promise((resolve) => {
-    plugin.getAvailableChannels({}, (result) => {
-      resolve(result.channels || [])
-    })
-  })
+  return Promise.resolve(OFFICIAL_CHANNELS)
   // #endif
-  // #ifndef APP-PLUS
-  return Promise.resolve(['STRIPE', 'PAYPAL'])
-  // #endif
+  /* #ifndef APP-PLUS */
+  return Promise.resolve([])
+  /* #endif */
 }
 
 /**
  * 发起支付
- * @param {Object} params 支付参数
+ * @param {Object} params
  * @param {String} params.orderNo 订单号
- * @param {String} params.payMethod 支付方式 STRIPE | APPLE_PAY | GOOGLE_PAY | PAYPAL
- * @param {Number} params.amount 金额（分）
- * @param {String} params.currency 币种，默认 USD
- * @returns {Promise<Object>} { success, transactionId }
+ * @param {String} params.payMethod 支付方式，官方通道仅 PAYPAL
+ * @param {Object} params.orderInfo PayPal 下单参数 { clientId, orderId, environment, currency }
+ * @returns {Promise<Object>} { transactionId }
  */
-export function createPay(params) {
-  const { orderNo, payMethod, amount, currency = 'USD' } = params
+export function createPay(params = {}) {
+  const { payMethod, orderInfo } = params
+  if (normalizeChannel(payMethod) !== 'PAYPAL') {
+    return Promise.reject(new Error(t('paymentPlugin.unsupported')))
+  }
+  if (!orderInfo || !orderInfo.clientId || !orderInfo.orderId) {
+    return Promise.reject(new Error(t('paymentPlugin.payFailed')))
+  }
 
   // #ifdef APP-PLUS
-  const plugin = uni.requireNativePlugin(PLUGIN_NAME)
   return new Promise((resolve, reject) => {
-    plugin.pay(
-      {
-        orderNo,
-        payMethod,
-        amount,
-        currency,
-      },
-      (result) => {
-        if (result.success) {
-          resolve({ transactionId: result.transactionId })
-        } else {
-          reject(new Error(result.message || t('paymentPlugin.payFailed')))
+    uni.requestPayment({
+      provider: 'paypal',
+      orderInfo,
+      success: (res) => {
+        let transactionId = orderInfo.orderId
+        try {
+          const raw = typeof res.rawdata === 'string' ? JSON.parse(res.rawdata) : res.rawdata
+          if (raw && raw.orderId) transactionId = raw.orderId
+        } catch (e) {
+          // rawdata 解析失败时沿用订单号
         }
+        resolve({ transactionId })
       },
-    )
-  })
-  // #endif
-
-  // #ifdef H5
-  // legacy 的 pages/webview/pay 已下线：H5 端统一走 pages/order/pay 收银台
-  return Promise.reject(new Error(t('paymentPlugin.unsupported')))
-  // #endif
-
-  // #ifdef MP-WEIXIN
-  // 小程序支付通过 uni.requestPayment 实现
-  return Promise.reject(new Error(t('paymentPlugin.useMiniProgramPay')))
-  // #endif
-}
-
-/**
- * 查询订单支付状态
- * @param {String} orderNo 订单号
- * @returns {Promise<Object>} { status, transactionId }
- */
-export function queryPaymentStatus(orderNo) {
-  // #ifdef APP-PLUS
-  const plugin = uni.requireNativePlugin(PLUGIN_NAME)
-  return new Promise((resolve, reject) => {
-    plugin.queryStatus({ orderNo }, (result) => {
-      if (result.success) {
-        resolve({ status: result.status, transactionId: result.transactionId })
-      } else {
-        reject(new Error(result.message || t('paymentPlugin.queryFailed')))
-      }
+      fail: (err) => reject(new Error(err.errMsg || t('paymentPlugin.payFailed'))),
     })
   })
   // #endif
+
   /* #ifndef APP-PLUS */
   return Promise.reject(new Error(t('paymentPlugin.unsupported')))
   /* #endif */
 }
 
 /**
- * 处理支付回调（Deep Link / URL Scheme）
- * @param {Object} callbackData 回调数据
+ * 查询订单支付状态
+ * uni 无官方支付状态 API，需调用后端订单接口
+ * @returns {Promise<never>}
  */
-export function handlePaymentCallback(callbackData) {
-  // #ifdef APP-PLUS
-  const plugin = uni.requireNativePlugin(PLUGIN_NAME)
-  plugin.handleCallback(callbackData)
-  // #endif
+export function queryPaymentStatus() {
+  return Promise.reject(new Error(t('paymentPlugin.unsupported')))
 }
 
 /**
- * 支付插件调用封装（composable）
- * 与 payment.ts 中 usePaymentPlugin 保持一致
- * - pay: 把协议入参映射为原生 { orderNo, payMethod, amount, currency }
- * - isAvailable: 走原生 getAvailableChannels 二次判断目标 channel 是否被支持
+ * 处理支付回调
+ * 官方通道的结果由 uni.requestPayment 回调直接返回，无需额外转发
+ */
+export function handlePaymentCallback() {
+  // no-op
+}
+
+/**
+ * 支付调用封装（composable）
  * @returns {{ pay: Function, isAvailable: Function }}
  */
 export function usePaymentPlugin() {
-  const call = (method, args) => {
-    return new Promise((resolve) => {
-      // #ifdef APP-PLUS
-      const plugin = uni.requireNativePlugin(PLUGIN_NAME)
-      if (!plugin) {
-        resolve({ success: false, error: t('paymentPlugin.nativeUnavailable') })
-        return
-      }
-      plugin[method](args, (res) => resolve(res))
-      // #endif
-      // #ifndef APP-PLUS
-      resolve({ success: false, error: t('paymentPlugin.nativeUnavailable') })
-      // #endif
-    })
-  }
-
-  // 内部专用：拉取原生支持的渠道列表
-  const getAvailableChannels = () => {
-    return new Promise((resolve) => {
-      // #ifdef APP-PLUS
-      const plugin = uni.requireNativePlugin(PLUGIN_NAME)
-      if (!plugin) {
-        resolve({ success: false, error: t('paymentPlugin.nativeUnavailable') })
-        return
-      }
-      plugin.getAvailableChannels({}, (res) => resolve(res || {}))
-      // #endif
-      // #ifndef APP-PLUS
-      resolve({ success: false, error: t('paymentPlugin.nativeUnavailable') })
-      // #endif
-    })
-  }
-
   return {
     pay: (channel, orderInfo) =>
-      call('pay', {
-        // 协议入参用 channel，原生 pay 用 payMethod；做一次映射
-        orderNo: orderInfo.orderNo,
-        payMethod: channel,
-        amount: orderInfo.amount,
-        currency: orderInfo.currency || 'USD',
-      }),
-    // 通过 getAvailableChannels 判断目标 channel 是否被原生支持
+      createPay({
+        orderNo: orderInfo?.orderNo,
+        payMethod: normalizeChannel(channel),
+        amount: orderInfo?.amount,
+        currency: orderInfo?.currency || 'USD',
+        orderInfo,
+      })
+        .then((result) => ({ success: true, data: result }))
+        .catch((error) => ({ success: false, error: error.message })),
     isAvailable: async (channel) => {
-      const result = await getAvailableChannels()
-      if (!result.success) return result
-      const list = (result.data && result.data.channels) || []
-      return { success: true, data: list.includes(channel) }
+      const list = await getPaymentChannels()
+      return { success: true, data: list.includes(normalizeChannel(channel)) }
     },
   }
 }

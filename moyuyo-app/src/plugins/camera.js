@@ -1,85 +1,50 @@
 /**
- * 相机/相册原生插件调用封装
- * 插件标识: MOYUYO-Camera
- * 功能: 拍照、选图、压缩、裁剪
+ * 相机/相册调用封装（uni 官方 API）
+ *
+ * 原 MOYUYO-Camera 原生插件已移除（桩实现），统一改用：
+ * - 拍照/选图：uni.chooseImage（全平台）
+ * - 压缩：uni.compressImage（App/小程序；H5 直接返回原图）
  */
 import { t } from '@/i18n'
 /* eslint-disable no-unreachable */
 
-const PLUGIN_NAME = 'MOYUYO-Camera'
-
 /**
  * 拍照
  * @param {Object} [options]
- * @param {Boolean} [options.enableCrop] 是否裁剪
- * @param {Number} [options.maxWidth] 最大宽度
- * @param {Number} [options.maxHeight] 最大高度
- * @returns {Promise<Object>} { imagePath, thumbnailPath, fileSize }
+ * @param {Array<String>} [options.sizeType] 图片尺寸 compressed | original
+ * @returns {Promise<Object>} { imagePath }
  */
 export function takePhoto(options = {}) {
-  // #ifdef APP-PLUS
-  const plugin = uni.requireNativePlugin(PLUGIN_NAME)
-  return new Promise((resolve, reject) => {
-    plugin.takePhoto(options, (result) => {
-      if (result.success) {
-        resolve({
-          imagePath: result.imagePath,
-          thumbnailPath: result.thumbnailPath,
-          fileSize: result.fileSize,
-        })
-      } else {
-        reject(new Error(result.message || t('cameraPlugin.takePhotoFailed')))
-      }
-    })
-  })
-  // #endif
-
-  // #ifndef APP-PLUS
-  // H5/小程序降级: 使用 uni 内置 API
+  const { sizeType = ['compressed'] } = options
   return new Promise((resolve, reject) => {
     uni.chooseImage({
       count: 1,
       sourceType: ['camera'],
+      sizeType,
       success: (res) => resolve({ imagePath: res.tempFilePaths[0] }),
       fail: () => reject(new Error(t('cameraPlugin.takePhotoCancelled'))),
     })
   })
-  // #endif
 }
 
 /**
  * 从相册选择图片
  * @param {Object} [options]
  * @param {Number} [options.count] 最多选择数
- * @param {Boolean} [options.enableCrop] 是否裁剪
+ * @param {Array<String>} [options.sizeType] 图片尺寸 compressed | original
  * @returns {Promise<String[]>} 图片路径数组
  */
 export function pickImage(options = {}) {
-  const { count = 1, enableCrop = false } = options
-
-  // #ifdef APP-PLUS
-  const plugin = uni.requireNativePlugin(PLUGIN_NAME)
-  return new Promise((resolve, reject) => {
-    plugin.pickFromGallery({ count, enableCrop }, (result) => {
-      if (result.success) {
-        resolve(result.images || [])
-      } else {
-        reject(new Error(result.message || t('cameraPlugin.pickFailed')))
-      }
-    })
-  })
-  // #endif
-
-  // #ifndef APP-PLUS
+  const { count = 1, sizeType = ['compressed'] } = options
   return new Promise((resolve, reject) => {
     uni.chooseImage({
       count,
       sourceType: ['album'],
+      sizeType,
       success: (res) => resolve(res.tempFilePaths),
       fail: () => reject(new Error(t('cameraPlugin.pickCancelled'))),
     })
   })
-  // #endif
 }
 
 /**
@@ -87,25 +52,15 @@ export function pickImage(options = {}) {
  * @param {String} imagePath 原图路径
  * @param {Object} [options]
  * @param {Number} [options.quality] 压缩质量 0-100
- * @param {Number} [options.maxWidth] 最大宽度
- * @param {Number} [options.maxHeight] 最大高度
  * @returns {Promise<String>} 压缩后路径
  */
 export function compressImage(imagePath, options = {}) {
-  // #ifdef APP-PLUS
-  const plugin = uni.requireNativePlugin(PLUGIN_NAME)
-  return new Promise((resolve, reject) => {
-    plugin.compress({ imagePath, ...options }, (result) => {
-      if (result.success) {
-        resolve(result.compressedPath)
-      } else {
-        reject(new Error(result.message || t('cameraPlugin.compressFailed')))
-      }
-    })
-  })
+  // #ifdef H5
+  // H5 端不支持 uni.compressImage，直接返回原路径
+  return Promise.resolve(imagePath)
   // #endif
 
-  // #ifndef APP-PLUS
+  // #ifndef H5
   return new Promise((resolve, reject) => {
     uni.compressImage({
       src: imagePath,

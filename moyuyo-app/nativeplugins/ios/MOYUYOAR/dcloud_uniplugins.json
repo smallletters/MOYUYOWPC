@@ -1,9 +1,0 @@
-{
-  "plugins": [
-    {
-      "type": "module",
-      "name": "MOYUYO-AR",
-      "class": "ArTryOnModule"
-    }
-  ]
-}

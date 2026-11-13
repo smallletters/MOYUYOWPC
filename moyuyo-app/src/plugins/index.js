@@ -1,12 +1,10 @@
 /**
- * 原生插件统一导出
- * - 提供所有原生插件的统一入口
- * - 支持 APP 端直接调用、H5 端降级处理
+ * 插件统一导出
+ * - 官方 API 封装：支付 / 登录 / 相机 / 定位
+ * - 自研原生插件：推送 / 生物识别 / 凭证存储
  */
 export { createPay, getPaymentChannels } from './payment'
 export { loginWithApple, loginWithGoogle, loginWithFacebook } from './auth'
-export { openPetHub3d, applyPetCosmetic } from './petHub3d'
-export { startArTryOn, captureArPhoto } from './arTryOn'
 export { registerPush, handlePushMessage, getPushToken } from './push'
 export { takePhoto, pickImage, compressImage } from './camera'
 export { getCurrentLocation, openMapSelector } from './location'

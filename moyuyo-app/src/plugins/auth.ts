@@ -1,67 +1,66 @@
 /**
- * 社交登录原生插件封装
+ * 社交登录封装（uni 官方 API）
  *
- * 调用端通过 uni.requireNativePlugin('MOYUYO-Auth') 调用原生社交登录。
- * 降级策略：H5 端使用 WebView OAuth 跳转。
+ * 原 MOYUYO-Auth 原生插件已移除（桩实现），改为：
+ * - Apple：uni.login({ provider: 'apple' })
+ * - Google / Facebook：uni 无 App 端官方能力，走 Web OAuth 降级
  */
+/* eslint-disable no-unreachable */
 import type { AuthPluginProtocol, AuthProvider, PluginResult, AuthUserInfo } from './types'
 
-// 与原生 dcloud_uniplugins.json 中声明的插件名保持一致（"MOYUYO-Auth"）
-const PLUGIN_NAME = 'MOYUYO-Auth'
-
-let plugin: any = null
-
-function getPlugin(): any {
-  if (!plugin) {
-    try {
-      plugin = uni.requireNativePlugin(PLUGIN_NAME)
-    } catch {
-      console.warn('[Auth] 原生插件不可用')
-      return null
-    }
-  }
-  return plugin
-}
-
-function isNativeAvailable(): boolean {
+/**
+ * Apple 登录（仅 App 端可用）
+ */
+function loginWithApple(): Promise<AuthUserInfo> {
   // #ifdef APP-PLUS
-  return !!getPlugin()
+  return new Promise((resolve, reject) => {
+    uni.login({
+      provider: 'apple',
+      success: (res) => {
+        // Apple 的完整登录信息在 appleInfo（App 3.4.3+），authResult 只有通用认证数据
+        const info: any = (res as any).appleInfo || {}
+        const auth: any = res.authResult || {}
+        const fullName = info.fullName
+        resolve({
+          provider: 'apple',
+          id: info.user || auth.openid || '',
+          email: info.email || auth.email || '',
+          // fullName 是对象（givenName/familyName 等），统一转成展示用字符串
+          name:
+            typeof fullName === 'string'
+              ? fullName
+              : [fullName?.givenName, fullName?.familyName].filter(Boolean).join(' '),
+          accessToken: info.identityToken || auth.identityToken || '',
+        })
+      },
+      fail: (err) => reject(new Error(err.errMsg || 'Apple 登录失败')),
+    })
+  })
   // #endif
   // #ifndef APP-PLUS
-  return false
+  return Promise.reject(new Error('Apple 登录仅支持 App 端'))
   // #endif
 }
 
 /**
  * 社交登录插件调用封装
- * - login: 把协议 provider 映射到原生 loginWithApple / loginWithGoogle / loginWithFacebook
- * - logout: 直接调原生 logout，原生侧按 provider 自行清理凭据
- * - isAuthorized: 走原生 isAppInstalled；后续可叠加本地 token 缓存判断（当前先返回是否安装）
+ * 仅 Apple 走官方 uni.login，其余 provider 明确降级
  */
 export function useAuthPlugin(): AuthPluginProtocol {
-  // 通用调用：T 默认 void，可按调用点显式标注返回 data 的类型
-  const call = <T = void>(method: string, args?: any): Promise<PluginResult<T>> => {
-    return new Promise((resolve) => {
-      if (!isNativeAvailable()) {
-        resolve({ success: false, error: '原生登录插件不可用' } as PluginResult<T>)
-        return
-      }
-      getPlugin()[method](args, (res: any) => {
-        resolve(res as PluginResult<T>)
-      })
-    })
-  }
-
-  // 协议 provider 到原生方法名的映射
-  const loginMethodMap: Record<AuthProvider, string> = {
-    apple: 'loginWithApple',
-    google: 'loginWithGoogle',
-    facebook: 'loginWithFacebook',
+  const login = async (provider: AuthProvider): Promise<PluginResult<AuthUserInfo>> => {
+    if (provider !== 'apple') {
+      return { success: false, error: `${provider} 登录请走 Web OAuth` }
+    }
+    try {
+      return { success: true, data: await loginWithApple() }
+    } catch (error: any) {
+      return { success: false, error: error?.message || '登录失败' }
+    }
   }
 
   return {
-    login: (provider: AuthProvider) => call<AuthUserInfo>(loginMethodMap[provider], {}),
-    logout: (provider: AuthProvider) => call('logout', { provider }),
-    isAuthorized: (provider: AuthProvider) => call<boolean>('isAppInstalled', { provider }),
+    login,
+    logout: async () => ({ success: true }),
+    isAuthorized: async () => ({ success: true, data: false }),
   }
 }
