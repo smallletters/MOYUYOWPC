@@ -23,9 +23,37 @@
  * - H5:fetch + URL.createObjectURL,缓存到 IndexedDB(下一次启动复用)
  */
 
-import { getStorage, setStorage } from './storage'
+import { getStorage, setStorage, removeStorage } from './storage'
 
 const MODEL_META_PREFIX = 'moyuyo_model_meta_' // 单个模型的 etag/lastModified 元信息
+
+// 单文件下载/落盘的整体超时（毫秒）。
+// 旧实现没有任何超时：网络半断、APP 端 saveFile 不回调时 Promise 永不 settle，
+// 页面会永远停在「下载中 100%」的黑屏加载态（是真机实测到的症状）。
+const DOWNLOAD_TIMEOUT_MS = 180000
+
+/**
+ * 给下载/落盘 Promise 加超时。超时后 reject，让页面进入明确的错误态而不是无限等待。
+ * onTimeout 用于顺手中止底层请求（H5 的 fetch），避免超时后还在后台空跑流量。
+ */
+function withTimeout(promise, ms, message, onTimeout) {
+  let timer = null
+  const timeout = new Promise((resolve, reject) => {
+    timer = setTimeout(() => {
+      if (typeof onTimeout === 'function') {
+        try {
+          onTimeout()
+        } catch (e) {
+          /* ignore */
+        }
+      }
+      reject(new Error(message || '下载超时'))
+    }, ms)
+  })
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer)
+  })
+}
 
 /**
  * 把后端相对路径解析为可下载的绝对 URL,行为与 utils/request.js#resolveBaseUrl 对齐
@@ -73,8 +101,10 @@ function writeMeta(name, meta) {
 /**
  * APP / 小程序:下载文件到本地沙盒目录
  * 使用 uni.downloadFile + uni.saveFile,落地到 _doc/uniapp_pet_models/<name>
+ *
+ * @param {(task:object)=>void} [onTask] 回传下载任务，供超时时调用 task.abort()
  */
-function downloadToLocalApp(remoteUrl, name, onProgress) {
+function downloadToLocalApp(remoteUrl, name, onProgress, onTask) {
   return new Promise((resolve, reject) => {
     const task = uni.downloadFile({
       url: remoteUrl,
@@ -99,20 +129,59 @@ function downloadToLocalApp(remoteUrl, name, onProgress) {
         if (typeof e.progress === 'number') onProgress(Math.min(100, Math.max(0, e.progress)))
       })
     }
+    // 把任务句柄交出去：超时由外层调用 task.abort()，避免下载还在后台继续
+    if (task && typeof onTask === 'function') onTask(task)
   })
 }
 
 /**
- * H5 端:fetch 拿到 ArrayBuffer,用 Blob URL 喂给 GLTFLoader。
+ * H5 端:fetch 拿到二进制,用 Blob URL 喂给 GLTFLoader。
  * 注:H5 不会"持久化缓存",浏览器 HTTP 缓存(强缓存/304)由 nginx 控制;
  * IndexedDB 缓存会让 APP 与 H5 行为差异过大,这里不做。
+ *
+ * 进度:优先用 response.body 流式读取，按已读字节数回调真实百分比
+ * （旧实现只在整包下载完后回调一次 100%，界面上看着像卡住）。
+ * 浏览器不支持流式读取时退化为 arrayBuffer + 最后一次 100%。
  */
-async function downloadToH5(remoteUrl, onProgress) {
-  const resp = await fetch(remoteUrl, { credentials: 'omit' })
-  if (!resp.ok) throw new Error(`模型下载失败 statusCode=${resp.statusCode}`)
-  const buf = await resp.arrayBuffer()
-  if (typeof onProgress === 'function') onProgress(100)
-  const blob = new Blob([buf], { type: 'model/gltf-binary' })
+async function downloadToH5(remoteUrl, onProgress, signal) {
+  const resp = await fetch(remoteUrl, { credentials: 'omit', signal })
+  if (!resp.ok) throw new Error(`模型下载失败 statusCode=${resp.status}`)
+
+  const total = Number(resp.headers.get('content-length')) || 0
+  const chunks = []
+  let loaded = 0
+  // 进度节流：流式读取的 chunk 很小（十几 KB），每块都回调会让页面疯狂重渲染，
+  // 实测把 26MB 的下载从 1s 拖到 30s。这里限制为「百分比变化 + 200ms 间隔」。
+  let lastPct = -1
+  let lastAt = 0
+  const report = (pct, force) => {
+    if (typeof onProgress !== 'function') return
+    const now = Date.now()
+    if (!force && (pct <= lastPct || now - lastAt < 200)) return
+    lastPct = pct
+    lastAt = now
+    onProgress(pct)
+  }
+
+  if (resp.body && typeof resp.body.getReader === 'function') {
+    const reader = resp.body.getReader()
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      chunks.push(value)
+      loaded += value.length
+      // 留 1% 给"下载完成但还没建 Blob"的收尾阶段
+      if (total > 0) report(Math.min(99, Math.round((loaded / total) * 100)))
+    }
+  } else {
+    const buf = await resp.arrayBuffer()
+    chunks.push(new Uint8Array(buf))
+    loaded = buf.byteLength
+  }
+
+  if (!loaded) throw new Error('模型下载失败：响应为空')
+  report(100, true)
+  const blob = new Blob(chunks, { type: 'model/gltf-binary' })
   return URL.createObjectURL(blob)
 }
 
@@ -256,17 +325,33 @@ export async function ensureLocalModel(path, onProgress) {
     writeMeta(name, null)
   }
 
-  // 4. 缓存未命中,按平台下载
+  // 4. 缓存未命中,按平台下载（整体带超时，避免请求/落盘挂起后无限等待）
   if (isH5()) {
-    return downloadToH5(remoteUrl, onProgress)
+    const controller = typeof AbortController === 'function' ? new AbortController() : null
+    return withTimeout(
+      downloadToH5(remoteUrl, onProgress, controller ? controller.signal : undefined),
+      DOWNLOAD_TIMEOUT_MS,
+      `模型下载超时：${name}`,
+      () => controller && controller.abort(),
+    )
   }
-  return downloadToLocalApp(remoteUrl, name, onProgress).then((savedPath) => {
-    // 记下体积，下次进入才能比对。
-    // 探针失败时 remoteSize 为 null：isCacheValid 会因 typeof remoteSize !== 'number'
-    // 直接沿用缓存，因此不会出现"每次进页面都重下 25MB"的流量问题。
-    writeMeta(name, { savedFilePath: savedPath, savedAt: Date.now(), remoteSize })
-    return savedPath
-  })
+  let downloadTask = null
+  return withTimeout(
+    downloadToLocalApp(remoteUrl, name, onProgress, (task) => {
+      downloadTask = task
+    }).then((savedPath) => {
+      // 记下体积，下次进入才能比对。
+      // 探针失败时 remoteSize 为 null：isCacheValid 会因 typeof remoteSize !== 'number'
+      // 直接沿用缓存，因此不会出现"每次进页面都重下 25MB"的流量问题。
+      writeMeta(name, { savedFilePath: savedPath, savedAt: Date.now(), remoteSize })
+      return savedPath
+    }),
+    DOWNLOAD_TIMEOUT_MS,
+    `模型下载超时：${name}`,
+    () => {
+      if (downloadTask && typeof downloadTask.abort === 'function') downloadTask.abort()
+    },
+  )
 }
 
 /**
@@ -276,6 +361,50 @@ export function clearModelCache(name) {
   const meta = readMeta(name)
   removeLocalFile(meta?.savedFilePath)
   writeMeta(name, null)
+}
+
+/** 列出全部模型缓存元信息 key（统一前缀便于设置页统计/清理） */
+function listMetaKeys() {
+  try {
+    return ((uni.getStorageInfoSync() || {}).keys || []).filter((key) =>
+      key.startsWith(MODEL_META_PREFIX),
+    )
+  } catch (e) {
+    console.warn('[modelDownload] 读取模型缓存列表失败', e)
+    return []
+  }
+}
+
+/**
+ * 统计模型缓存占用（字节）
+ * 以元信息里的 remoteSize 为准，缺失时按 0 计
+ * @returns {{count:number, size:number}}
+ */
+export function getModelCacheStats() {
+  let count = 0
+  let size = 0
+  listMetaKeys().forEach((key) => {
+    const meta = getStorage(key, null)
+    if (!meta || !meta.savedFilePath) return
+    count += 1
+    size += Number(meta.remoteSize) || 0
+  })
+  return { count, size }
+}
+
+/**
+ * 清空全部模型缓存：删除沙盒文件 + 元信息
+ * 供设置页「清除缓存」使用；下次进入 3D 页面会自动重新下载
+ * @returns {number} 清理的模型数量
+ */
+export function clearAllModelCache() {
+  const keys = listMetaKeys()
+  keys.forEach((key) => {
+    const meta = getStorage(key, null)
+    if (meta && meta.savedFilePath) removeLocalFile(meta.savedFilePath)
+    removeStorage(key)
+  })
+  return keys.length
 }
 
 export default {

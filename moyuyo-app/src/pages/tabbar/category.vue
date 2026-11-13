@@ -40,7 +40,14 @@
       </scroll-view>
 
       <!-- 右侧内容 -->
-      <scroll-view scroll-y class="main" @scrolltolower="onLoadMore">
+      <scroll-view
+        scroll-y
+        class="main"
+        :refresher-enabled="true"
+        :refresher-triggered="refreshing"
+        @refresherrefresh="onRefresh"
+        @scrolltolower="onLoadMore"
+      >
         <!-- 排序 -->
         <view class="sort-bar">
           <view
@@ -150,6 +157,8 @@ export default {
       noMore: false,
       page: 1,
       pageSize: 20,
+      // scroll-view 下拉刷新状态（本页滚动由 scroll-view 接管，页面级下拉不会触发）
+      refreshing: false,
     }
   },
 
@@ -218,6 +227,17 @@ export default {
       if (this.activeSubId === id) return
       this.activeSubId = id
       this.loadProducts(true)
+    },
+
+    // 下拉刷新：保持当前分类/排序，重拉第一页商品（价格/库存/活动价可能已变化）
+    async onRefresh() {
+      if (this.refreshing) return
+      this.refreshing = true
+      try {
+        await this.loadProducts(true)
+      } finally {
+        this.refreshing = false
+      }
     },
 
     onSortChange(v) {

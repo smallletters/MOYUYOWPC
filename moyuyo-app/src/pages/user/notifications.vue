@@ -33,7 +33,13 @@
     </scroll-view>
 
     <!-- 通知列表 -->
-    <scroll-view class="list" scroll-y>
+    <scroll-view
+      class="list"
+      scroll-y
+      :refresher-enabled="true"
+      :refresher-triggered="refreshing"
+      @refresherrefresh="onRefresh"
+    >
       <view v-if="filteredList.length > 0" class="list-inner">
         <view
           v-for="item in filteredList"
@@ -88,6 +94,8 @@ export default {
       // tabs 改为 computed
       notifications: [],
       localeVersion: 0,
+      // scroll-view 下拉刷新状态（本页滚动由 scroll-view 接管）
+      refreshing: false,
     }
   },
 
@@ -134,6 +142,17 @@ export default {
 
     onTabChange(key) {
       this.currentTab = key
+    },
+
+    // 下拉刷新：重新拉取通知列表
+    async onRefresh() {
+      if (this.refreshing) return
+      this.refreshing = true
+      try {
+        await this.loadNotifications()
+      } finally {
+        this.refreshing = false
+      }
     },
 
     async loadNotifications() {

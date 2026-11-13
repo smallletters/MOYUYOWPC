@@ -108,6 +108,18 @@ export default {
     this.loadPosts(true)
   },
 
+  /**
+   * 下拉刷新：重置分页后重新拉第一页，确保新发布的帖子能出现。
+   */
+  async onPullDownRefresh() {
+    this.page = 1
+    try {
+      await this.loadPosts(false)
+    } finally {
+      uni.stopPullDownRefresh()
+    }
+  },
+
   methods: {
     /**
      * 加载话题下的帖子列表。

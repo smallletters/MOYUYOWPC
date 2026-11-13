@@ -253,6 +253,51 @@ location /api/ {
     proxy_pass http://127.0.0.1:8080;
 }
 
+# 3D 模型（/static/models/*.glb、*.fbx）：单个 26~30MB，
+# 默认 60s 读超时在弱网下会中断传输，必须单独放宽
+location /static/models/ {
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_pass http://127.0.0.1:8080;
+
+    proxy_connect_timeout 30s;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+    proxy_buffering off;
+
+    default_type application/octet-stream;
+    expires 365d;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+}
+
+# 其它后端静态资源 / 上传文件：同样放宽大文件超时
+location /static/ {
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_pass http://127.0.0.1:8080;
+
+    proxy_connect_timeout 30s;
+    proxy_read_timeout 120s;
+    proxy_send_timeout 120s;
+}
+
+location /uploads/ {
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_pass http://127.0.0.1:8080;
+
+    proxy_connect_timeout 30s;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+    proxy_buffering off;
+}
+
 location / {
     proxy_set_header Host              $host;
     proxy_set_header X-Real-IP         $remote_addr;

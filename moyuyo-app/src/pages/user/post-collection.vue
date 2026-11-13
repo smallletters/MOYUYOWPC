@@ -36,6 +36,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { onPullDownRefresh } from '@dcloudio/uni-app'
 import { get } from '@/utils/request'
 import { communityApi } from '@/api'
 import { usePageTitle } from '@/utils/i18nPageMixin'
@@ -88,6 +89,15 @@ function goBack() {
 
 onMounted(() => {
   loadCollected()
+})
+
+// 下拉刷新：重新拉取收藏的帖子（他人删帖 / 收藏状态变化后可及时同步）
+onPullDownRefresh(async () => {
+  try {
+    await loadCollected()
+  } finally {
+    uni.stopPullDownRefresh()
+  }
 })
 </script>
 

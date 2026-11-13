@@ -334,7 +334,7 @@ public class CommunityFeedServiceImpl implements CommunityFeedService {
       wrapper.in(CommunityPostEntity::getUserId,
           followed.stream().limit(MAX_AUTHOR_IDS).collect(Collectors.toList()));
     } else if (userId != null) {
-      wrapper.ne(CommunityPostEntity::getUserId, userId);
+      // 推荐流降级分页同样不排除作者自己的帖子
       wrapper.notInSql(CommunityPostEntity::getId,
           "SELECT post_id FROM mo_community_not_interested WHERE user_id = " + userId);
     }
@@ -363,7 +363,7 @@ public class CommunityFeedServiceImpl implements CommunityFeedService {
     LambdaQueryWrapper<CommunityPostEntity> wrapper = new LambdaQueryWrapper<CommunityPostEntity>()
         .eq(CommunityPostEntity::getStatus, 1);
     if (userId != null) {
-      wrapper.ne(CommunityPostEntity::getUserId, userId);
+      // 不再排除作者自己的帖子：作者发布会后能在推荐流里看到自己的新内容
       if (!hidden.isEmpty()) {
         // 用子查询代替 NOT IN 大列表，避免负反馈累积后 SQL 膨胀
         wrapper.notInSql(CommunityPostEntity::getId,
@@ -417,7 +417,7 @@ public class CommunityFeedServiceImpl implements CommunityFeedService {
 
   private boolean accept(CommunityPostEntity post, Long userId, Set<Long> hidden, String topic) {
     if (post == null || !Objects.equals(post.getStatus(), 1)) return false;
-    if (userId != null && Objects.equals(post.getUserId(), userId)) return false;
+    // 允许作者在推荐流中看到自己的帖子（与 baseWrapper 保持一致）
     if (post.getId() != null && hidden.contains(post.getId())) return false;
     if (topic != null && !topic.equals(post.getTopic())) return false;
     return true;

@@ -1,5 +1,22 @@
 <template>
-  <view class="space-3d">
+  <!--
+    逻辑层 → 视图层通信：只能用 :change: 属性绑定。
+
+    APP 端 renderjs 与逻辑层是两个独立 JS 环境，官方只支持 WXS 式的通信：
+    - 视图层 → 逻辑层：this.$ownerInstance.callMethod()（本页 onPet3dState / onPet3dViewReady）
+    - 逻辑层 → 视图层：模板上的 :change: 属性（本页 boot / 化身 / 命令三条通道）
+    旧实现用 this.pet3d.onHostCommand() 直接调用，只在 H5（同环境 mixin）成立，
+    APP 端指令下不到视图层 → 引擎永远不启动 → 黑屏停在下载 100% 进度。
+  -->
+  <view
+    class="space-3d"
+    :petboot="bootPayload"
+    :change:petboot="pet3d.onBootPayload"
+    :petavatars="avatarPayload"
+    :change:petavatars="pet3d.onAvatarPayload"
+    :petcmd="viewCommand"
+    :change:petcmd="pet3d.onViewCommand"
+  >
     <!--
       3D 画布（全屏，无顶部返回栏）
       全屏化改造说明：
@@ -32,7 +49,8 @@
       <!-- 加载状态 -->
       <view v-if="loading" class="loading">
         <text class="loading-text">{{ loadingText }}</text>
-        <view v-if="progress > 0 && progress < 100" class="progress-bar">
+        <!-- 进度条：100% 也要显示（旧条件 progress < 100 会在满进度时隐藏，看起来像卡死） -->
+        <view v-if="progress > 0" class="progress-bar">
           <view class="progress-fill" :style="{ width: progress + '%' }" />
         </view>
       </view>
@@ -176,6 +194,8 @@ const TEMPLATE_LABEL_KEYS = ['downloading', 'parsing']
 
 // 视图层迟迟不上报就绪时的兜底提示，避免一直卡在"加载中"
 const BOOT_TIMEOUT_MS = 10000
+// boot 指令下发后，引擎若迟迟没有回传任何状态（说明视图层没起来），给出明确报错
+const BOOT_ACK_TIMEOUT_MS = 15000
 
 export default {
   data() {
@@ -213,7 +233,10 @@ export default {
 
       // ===== 壳自身状态 =====
       viewReady: false,
-      booted: false,
+      // 下发给视图层的三条通道（模板里用 :change: 绑定到 renderjs 方法）
+      bootPayload: null,
+      avatarPayload: null,
+      viewCommand: null,
     }
   },
 
@@ -235,11 +258,11 @@ export default {
   },
 
   onShow() {
-    this.pet3dPush('show')
+    this.sendViewCommand('show')
   },
 
   onHide() {
-    this.pet3dPush('hide')
+    this.sendViewCommand('hide')
   },
 
   onUnload() {
@@ -247,7 +270,12 @@ export default {
       clearTimeout(this._bootTimer)
       this._bootTimer = null
     }
-    this.pet3dPush('destroy')
+    if (this._bootAckTimer) {
+      clearTimeout(this._bootAckTimer)
+      this._bootAckTimer = null
+    }
+    // 引擎的资源释放由 renderjs 模块自身的 unmounted/beforeDestroy 完成，
+    // 页面卸载时属性更新已不可靠，这里不再下发 destroy 指令
   },
 
   methods: {
@@ -262,35 +290,75 @@ export default {
     async onPet3dViewReady() {
       if (this.viewReady) return
       this.viewReady = true
-      this.booted = false
+      this.prepareAndBoot()
+    },
 
-      // 1. 先向后台拉取当前启用的模型地址（失败时回退到内置默认模型）
-      const modelUrls = await this.resolveModelUrls()
+    /**
+     * 准备模型并启动引擎。
+     *
+     * 与旧流程的区别：
+     * 1. 只等「场景模型」下载完就 boot，房间先出来；两个人物 FBX 在后台继续下载，
+     *    完成后再通过 avatars 通道送进视图层替换兜底几何体（合计约 87MB，旧流程
+     *    要全部下载完才启动，弱网下会长时间黑屏）。
+     * 2. 通过 :change: 属性下发 boot 指令（APP 端唯一受支持的逻辑层→视图层方式）。
+     * 3. 下发后启动 ack 超时：视图层若没回传任何状态，直接报错，不再无限等待。
+     */
+    async prepareAndBoot() {
+      // 防止重复点击重试 / 重复上报就绪时并发下载同一份模型
+      if (this._preparing) return
+      this._preparing = true
+      try {
+        this.loading = true
+        this.errorMsg = ''
+        this.progress = 0
 
-      // 2. 在逻辑层把三个模型落地（下载 / 命中缓存）
+        // 1. 先向后台拉取当前启用的模型地址（失败时回退到内置默认模型）
+        const modelUrls = await this.resolveModelUrls()
+
+        // 2. 只下载场景模型（下载器内部已带超时）
+        let sceneSource
+        try {
+          sceneSource = await this.loadModelSource(modelUrls.scene)
+        } catch (e) {
+          console.error('[space-3d] 场景模型准备失败', e)
+          this.errorMsg = this.$t('petHub3d.modelDownloadFailed')
+          this.loading = false
+          return
+        }
+
+        // 3. 通过 :change: 通道把 boot 指令送到视图层
+        this._bootSeq = (this._bootSeq || 0) + 1
+        this.bootPayload = {
+          seq: this._bootSeq,
+          canvasId: this.canvasId,
+          labels: this.buildLabels(),
+          models: { [modelUrls.scene]: sceneSource },
+          modelUrls,
+        }
+        this.armBootAckWatchdog()
+
+        // 4. 人物模型放后台下载，不阻塞首屏
+        this.prepareAvatarSources(modelUrls)
+      } finally {
+        this._preparing = false
+      }
+    },
+
+    /**
+     * 后台准备人物 FBX（静态 0.fbx / 走路 1.fbx），完成后通过 avatars 通道下发。
+     * 失败不阻断场景：视图层会用几何体兜底。
+     */
+    async prepareAvatarSources(modelUrls) {
       const models = {}
       try {
-        for (const key of Object.keys(modelUrls)) {
+        // silent：此时 3D 已经渲染出来，不要再改写 loadingText/progress
+        for (const key of ['avatarIdle', 'avatarWalk']) {
           const url = modelUrls[key]
-          models[url] = await this.loadModelSource(url)
+          models[url] = await this.loadModelSource(url, { silent: true })
         }
+        this.avatarPayload = models
       } catch (e) {
-        console.error('[space-3d] 模型准备失败', e)
-        this.errorMsg = this.$t('petHub3d.modelDownloadFailed')
-        this.loading = false
-        return
-      }
-
-      // 3. 交给视图层起引擎
-      this.booted = this.pet3dPush('boot', {
-        canvasId: this.canvasId,
-        labels: this.buildLabels(),
-        models,
-        modelUrls,
-      })
-      if (!this.booted) {
-        this.errorMsg = this.$t('petHub3d.engineBootTimeout')
-        this.loading = false
+        console.warn('[space-3d] 人物模型准备失败，使用兜底几何体', e)
       }
     },
 
@@ -324,6 +392,18 @@ export default {
      */
     onPet3dState(patch) {
       if (!patch || typeof patch !== 'object') return
+      // 收到第一条状态即说明视图层引擎已经跑起来，撤掉 boot ack 兜底计时
+      if (!this._engineAck) {
+        this._engineAck = true
+        if (this._bootAckTimer) {
+          clearTimeout(this._bootAckTimer)
+          this._bootAckTimer = null
+        }
+        // 引擎只是启动得慢（超过了 15s 兜底）：撤掉误报，避免错误遮罩盖在已渲染的场景上
+        if (this.errorMsg === this.$t('petHub3d.engineBootTimeout')) {
+          this.errorMsg = ''
+        }
+      }
       Object.keys(patch).forEach((k) => {
         // 只接受壳里声明过的字段，避免引擎新增内部字段污染 data
         if (Object.prototype.hasOwnProperty.call(this.$data, k)) {
@@ -346,11 +426,24 @@ export default {
     onPet3dRetry() {
       this.errorMsg = ''
       this.progress = 0
-      this.pet3dPush('retry')
+      this.loading = true
+
+      // 已经准备好了 boot payload → 用新 seq 重新下发，视图层会先 teardown 再重建引擎。
+      // 不复用 engine.initScene()：那条路径不会释放旧的 renderer / 动画循环 / 场景，
+      // 重试一次就会多出一个 canvas 和一条 rAF，反复重试直接卡死。
+      if (this.bootPayload) {
+        this._bootSeq = (this._bootSeq || 0) + 1
+        this.bootPayload = { ...this.bootPayload, seq: this._bootSeq }
+        this.armBootAckWatchdog()
+        return
+      }
+
+      // 模型还没准备好（下载就失败）→ 重新走准备流程
+      this.prepareAndBoot()
     },
 
     onPet3dCloseDiag() {
-      this.pet3dPush('closeDiag')
+      this.sendViewCommand('closeDiag')
     },
 
     /**
@@ -369,20 +462,14 @@ export default {
     },
 
     /**
-     * 视图层不在（比如 renderjs 编译异常）时安全降级：
-     * this.pet3d 在 APP 是一个代理对象、在 H5 就是页面实例本身，
-     * 两者都可能取不到，统一 try/catch。
+     * 逻辑层 → 视图层的命令通道。
+     *
+     * 通过模板上 :petcmd 属性 + :change: 绑定送达 renderjs 的 onViewCommand。
+     * seq 自增保证「同样的命令重复下发」也能触发属性变化。
      */
-    pet3dPush(action, payload) {
-      try {
-        const mod = this.pet3d
-        if (!mod || typeof mod.onHostCommand !== 'function') return false
-        mod.onHostCommand(action, payload)
-        return true
-      } catch (e) {
-        console.warn('[space-3d] 指令下发失败', action, e)
-        return false
-      }
+    sendViewCommand(action) {
+      this._cmdSeq = (this._cmdSeq || 0) + 1
+      this.viewCommand = { action, seq: this._cmdSeq }
     },
 
     buildLabels() {
@@ -402,10 +489,20 @@ export default {
      * 单个模型的「本地路径 + 远程兜底」
      * - primary：逻辑层下载/缓存好的路径（APP 是 _doc/...，H5 是 blob:）
      * - fallback：远程 HTTP 地址。APP 视图层读不到 _doc/ 文件时由引擎自动回退
+     *
+     * @param {string} path 模型地址
+     * @param {{silent?:boolean}} [options] silent=true 时不再改写 loadingText/progress
+     *        （人物模型在首屏渲染后后台下载，不能覆盖引擎自己的加载文案）
      */
-    async loadModelSource(path) {
-      this.loadingText = this.$t('petHub3d.downloading', { p: 0 })
+    async loadModelSource(path, options = {}) {
+      const silent = !!(options && options.silent)
+      if (!silent) {
+        // 每个文件从 0 开始，避免沿用上一个文件的 100%
+        this.progress = 0
+        this.loadingText = this.$t('petHub3d.downloading', { p: 0 })
+      }
       const primary = await ensureLocalModel(path, (p) => {
+        if (silent) return
         this.progress = p
         this.loadingText = this.$t('petHub3d.downloading', { p })
       })
@@ -427,6 +524,22 @@ export default {
         this.debugInfo = 'pet3d 视图层未在 10s 内就绪'
       }, BOOT_TIMEOUT_MS)
     },
+
+    /**
+     * boot 指令下发后的兜底：视图层必须回传至少一条状态。
+     * 不回传说明 :change: 通道没通或视图层异常，直接报错，不再无限停在加载态。
+     */
+    armBootAckWatchdog() {
+      this._engineAck = false
+      if (this._bootAckTimer) clearTimeout(this._bootAckTimer)
+      this._bootAckTimer = setTimeout(() => {
+        this._bootAckTimer = null
+        if (this._engineAck) return
+        this.errorMsg = this.$t('petHub3d.engineBootTimeout')
+        this.loading = false
+        this.debugInfo = 'boot 指令已下发，但视图层没有回传状态'
+      }, BOOT_ACK_TIMEOUT_MS)
+    },
   },
 }
 </script>
@@ -444,14 +557,44 @@ import { createEngine } from '../../utils/pet3d/create-engine'
  *  - APP：本模块被编译进 app-view.js，在 webview 里执行 —— 有 document / WebGL
  *  - H5 ：被 uni 作为 mixin 合入页面组件（this.pet3d === this），也在 DOM 环境里
  *
- * 与逻辑层的两个方向：
- *  - 逻辑层 → 这里：this.pet3d.onHostCommand(action, payload)
+ * 与逻辑层的两个方向（APP 端官方只支持这两种）：
+ *  - 逻辑层 → 这里：模板 :change: 绑定到本模块的方法
+ *      petboot    → onBootPayload    启动引擎（场景模型已就绪）
+ *      petavatars → onAvatarPayload  人物模型就绪后替换兜底几何体
+ *      petcmd     → onViewCommand    运行期指令（重试 / 关闭诊断 / 前后台）
  *  - 这里 → 逻辑层：this.$ownerInstance.callMethod('onPet3dState', patch)
  */
 
 // 一个页面视图只有一份引擎
 let engine = null
 let unbindInput = null
+// 模型路径表：键是后台配置的 URL，值是逻辑层准备好的 { primary, fallback }
+// 引擎的 modelResolver 闭包直接引用这个对象，人物模型后到时往这里补即可
+let modelSourceTable = {}
+
+/**
+ * APP 视图层是 file:// 源的 webview，逻辑层给的 _doc/... 相对路径在 XHR 里读不到。
+ * 用 plus.io 转成真实的 file:// 绝对路径；H5 / 转换失败时原样返回。
+ */
+function toViewLocalUrl(path) {
+  if (!path) return path
+  if (/^(https?:|blob:|data:|file:)/.test(path)) return path
+  if (
+    typeof plus === 'undefined' ||
+    !plus.io ||
+    typeof plus.io.convertLocalFileSystemURL !== 'function'
+  ) {
+    return path
+  }
+  try {
+    const abs = plus.io.convertLocalFileSystemURL(path)
+    if (!abs) return path
+    return abs.startsWith('file://') ? abs : 'file://' + abs
+  } catch (e) {
+    console.warn('[pet3d] 本地模型路径转换失败', path, e)
+    return path
+  }
+}
 
 const findTouch = (e) =>
   (e && e.changedTouches && e.changedTouches[0]) || (e && e.touches && e.touches[0]) || null
@@ -492,21 +635,44 @@ export default {
       setTimeout(() => this.notifyReady(attempt + 1), 100)
     },
 
-    /** 逻辑层下发的指令 */
-    onHostCommand(action, payload) {
-      if (action === 'boot') {
-        this.boot(payload || {})
-        return
-      }
+    /**
+     * 逻辑层 → 视图层：boot 通道（场景模型已下载好）。
+     * :change: 在属性变化时触发，seq 用于忽略重复/过期的下发。
+     */
+    onBootPayload(payload) {
+      if (!payload || !payload.canvasId) return
+      if (payload.seq && payload.seq <= this._lastBootSeq) return
+      this._lastBootSeq = payload.seq || 0
+      this.boot(payload)
+    },
+
+    /**
+     * 逻辑层 → 视图层：人物模型通道。
+     * 场景先渲染，两个 FBX 后台下载完再补进来，替换兜底几何体。
+     */
+    onAvatarPayload(sources) {
+      if (!sources || typeof sources !== 'object') return
+      Object.keys(sources).forEach((url) => {
+        modelSourceTable[url] = sources[url]
+      })
+      if (!engine) return
+      engine.reloadFigureAvatar().catch((e) => {
+        console.warn('[pet3d] 人物化身替换失败', e)
+      })
+    },
+
+    /** 逻辑层 → 视图层：运行期指令通道 */
+    onViewCommand(cmd) {
+      if (!cmd || !cmd.action) return
+      if (cmd.seq && cmd.seq <= this._lastCmdSeq) return
+      this._lastCmdSeq = cmd.seq || 0
       if (!engine) return
       try {
-        if (action === 'retry') engine.initScene()
-        else if (action === 'closeDiag') engine.closeDiag()
-        else if (action === 'hide') engine.onHide()
-        else if (action === 'show') engine.onShow()
-        else if (action === 'destroy') this.teardown()
+        if (cmd.action === 'closeDiag') engine.closeDiag()
+        else if (cmd.action === 'hide') engine.onHide()
+        else if (cmd.action === 'show') engine.onShow()
       } catch (e) {
-        console.error('[pet3d] 指令执行失败', action, e)
+        console.error('[pet3d] 指令执行失败', cmd.action, e)
       }
     },
 
@@ -515,7 +681,9 @@ export default {
 
       const owner = this.$ownerInstance
       const labels = cfg.labels || {}
-      const models = cfg.models || {}
+      // 场景模型此时已就绪；人物模型可能还没到（后续通过 onAvatarPayload 补）。
+      // 合并而不是覆盖：重试重新 boot 时，已经送达的人物模型不能丢。
+      modelSourceTable = { ...modelSourceTable, ...(cfg.models || {}) }
       // 后台启用的模型地址（逻辑层已拉取），引擎按用途使用
       const modelUrls = cfg.modelUrls || {}
 
@@ -550,11 +718,19 @@ export default {
         },
 
         // 模型路径由逻辑层给：它已经下载好并算出了远程兜底地址
+        // 直接读 modelSourceTable（而不是闭包里的快照），人物模型后到时才能命中
         modelResolver: async (url) => {
-          const hit = models[url]
-          if (hit) return hit
-          return { primary: url, fallback: null }
+          const hit = modelSourceTable[url]
+          if (!hit) return { primary: url, fallback: null }
+          return {
+            // APP 端 _doc/... 视图层读不到，这里转成 file:// 绝对路径
+            primary: toViewLocalUrl(hit.primary),
+            fallback: hit.fallback || null,
+          }
         },
+
+        // 人物模型是否已经送到（首屏只送场景，避免引擎先跑一次必然失败的 FBX 请求）
+        hasModelSource: (url) => !!modelSourceTable[url],
       })
 
       // 手势必须先绑：APP 端模板事件在逻辑层，拿不到视图层的手势序列

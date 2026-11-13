@@ -117,6 +117,18 @@
           <text class="chevron luc luc-chevron-right" />
         </view>
         <view class="divider indent" />
+        <!-- 清除缓存：仅清理内容列表缓存与 3D 模型缓存，保留登录凭证与个人设置 -->
+        <view class="item" hover-class="item-hover" @click="onClearCache">
+          <view class="item-left">
+            <text class="item-icon luc luc-trash-2" />
+            <text class="item-label">{{ $t('settings.clearCache') }}</text>
+          </view>
+          <view class="item-right">
+            <text class="item-value">{{ cacheSizeText }}</text>
+            <text class="chevron luc luc-chevron-right" />
+          </view>
+        </view>
+        <view class="divider indent" />
         <view class="item" hover-class="item-hover" @click="navTo('/pages/user/about')">
           <view class="item-left">
             <text class="item-icon luc luc-info" />
@@ -178,7 +190,23 @@ import { useUserStore } from '@/store'
 import { useThemeStore } from '@/store'
 import { i18n, getSupportedLanguages } from '@/i18n'
 import { getStorage, setStorage, STORAGE_KEYS } from '@/utils/storage'
+import { getCacheStats, clearAllCache } from '@/utils/contentCache'
+import { getModelCacheStats, clearAllModelCache } from '@/utils/modelDownload'
 import { togglePushNotification } from '@/plugins/push'
+
+/** 把字节数格式化为可读文案（B / KB / MB / GB） */
+function formatBytes(bytes) {
+  const n = Number(bytes) || 0
+  if (n < 1024) return `${n} B`
+  const units = ['KB', 'MB', 'GB']
+  let value = n / 1024
+  let i = 0
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024
+    i += 1
+  }
+  return `${value.toFixed(1)} ${units[i]}`
+}
 
 export default {
   pageTitleKey: 'pageTitle.userSettings',
@@ -195,10 +223,18 @@ export default {
       supportedLanguages: [],
       // 自定义语言选择弹窗的可见性(替代 uni.showActionSheet)
       langPickerVisible: false,
+      // 缓存占用字节数(内容列表缓存 + 3D 模型缓存)，onShow 时统计
+      cacheBytes: 0,
+      // 清理进行中的并发保护，避免连续点击弹多个确认框
+      cacheClearing: false,
     }
   },
 
   computed: {
+    /** 缓存占用展示文案 */
+    cacheSizeText() {
+      return formatBytes(this.cacheBytes)
+    },
     /**
      * 当前 locale 的"自身显示名"
      * 例:locale=zh-CN 时返回 '简体中文';locale=en-US 时返回 'English'
@@ -250,6 +286,8 @@ export default {
   onShow() {
     // 从「我的」等页面返回时刷新一次脱敏手机号
     this.darkModeEnabled = !!useThemeStore().darkMode
+    // 重新统计缓存占用（其他页面可能刚写入新的列表/模型缓存）
+    this.refreshCacheSize()
   },
 
   onUnload() {
@@ -346,6 +384,54 @@ export default {
             await this.userStore.logout()
             uni.reLaunch({ url: '/pages/tabbar/user' })
           }
+        },
+      })
+    },
+
+    /** 统计内容列表缓存 + 3D 模型缓存占用 */
+    async refreshCacheSize() {
+      try {
+        const content = await getCacheStats()
+        const model = getModelCacheStats()
+        this.cacheBytes = (Number(content && content.size) || 0) + (Number(model.size) || 0)
+      } catch (e) {
+        console.warn('[settings] 统计缓存占用失败', e)
+        this.cacheBytes = 0
+      }
+    },
+
+    /**
+     * 清除缓存：二次确认后清理内容列表缓存与 3D 模型缓存
+     * 不调用 uni.clearStorageSync，避免误删登录凭证、购物车、语言/主题等用户数据
+     */
+    onClearCache() {
+      if (this.cacheClearing) return
+      this.cacheClearing = true
+      uni.showModal({
+        title: i18n.t('settings.clearCacheTitle'),
+        content: i18n.t('settings.clearCacheConfirm'),
+        success: async (res) => {
+          if (!res.confirm) {
+            this.cacheClearing = false
+            return
+          }
+          uni.showLoading({ title: i18n.t('settings.clearingCache'), mask: true })
+          try {
+            await clearAllCache()
+            clearAllModelCache()
+            this.cacheBytes = 0
+            uni.hideLoading()
+            uni.showToast({ title: i18n.t('settings.cacheCleared'), icon: 'success' })
+          } catch (err) {
+            console.warn('[settings] 清除缓存失败', err)
+            uni.hideLoading()
+            uni.showToast({ title: i18n.t('settings.clearCacheFailed'), icon: 'none' })
+          } finally {
+            this.cacheClearing = false
+          }
+        },
+        fail: () => {
+          this.cacheClearing = false
         },
       })
     },

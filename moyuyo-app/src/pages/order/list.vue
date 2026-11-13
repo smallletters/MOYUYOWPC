@@ -15,8 +15,12 @@
     <scroll-view
       scroll-y
       class="scroll"
+      :refresher-enabled="true"
+      :refresher-triggered="refreshing"
+      @refresherrefresh="onRefresh"
       @scrolltolower="onLoadMore"
-      @click="closeAllSwipe">
+      @click="closeAllSwipe"
+    >
       <view v-for="o in orders" :key="o.id" class="swipe-wrapper">
         <!-- 底层操作按钮（被卡片覆盖；左滑后露出） -->
         <view class="swipe-actions">
@@ -154,6 +158,8 @@ export default {
       loading: false,
       noMore: false,
       page: 1,
+      // scroll-view 下拉刷新状态（本页滚动由 scroll-view 接管，页面级下拉不会触发）
+      refreshing: false,
       localeVersion: 0,
 
       // --- 左滑删除状态 ---
@@ -306,11 +312,34 @@ export default {
       item.mainImage = DEFAULT_PRODUCT_IMAGE
     },
 
-    async loadOrders(reset = false) {
+    /**
+     * scroll-view 下拉刷新：重置分页并重拉当前 Tab 的订单。
+     * 订单状态（支付/发货/退款）由服务端推进，回到列表顶部下拉即可同步。
+     */
+    async onRefresh() {
+      if (this.refreshing) return
+      this.refreshing = true
+      try {
+        // keepList=true：刷新期间保留旧列表，成功后再整体替换，避免闪空态
+        await this.loadOrders(true, true)
+      } finally {
+        this.refreshing = false
+      }
+    },
+
+    /**
+     * @param {boolean} reset 是否从第一页重新拉取
+     * @param {boolean} keepList 重置时是否保留当前列表（下拉刷新用），
+     *        接口成功后再整体替换，避免刷新瞬间列表闪成空态
+     */
+    async loadOrders(reset = false, keepList = false) {
+      // 记录刷新前的分页状态：请求失败时回滚，避免后续触底加载重复追加第 1 页
+      const prevPage = this.page
+      const prevNoMore = this.noMore
       if (reset) {
         this.page = 1
         this.noMore = false
-        this.orders = []
+        if (!keepList) this.orders = []
       }
       this.loading = true
       try {
@@ -363,7 +392,12 @@ export default {
         list = Array.isArray(list) ? list : []
         // 每条加 swipeOffset: 0（左滑展开标记）
         const normalized = list.map((o) => ({ ...o, swipeOffset: 0 }))
-        this.orders.push(...normalized)
+        if (reset && keepList) {
+          // 下拉刷新：拿到第一页后整体替换，刷新期间旧列表保持可见
+          this.orders = normalized
+        } else {
+          this.orders.push(...normalized)
+        }
         // 优先使用后端 total;老接口返回数组时,根据当前次拉取数量判定
         const total = Number(result?.total)
         if (Number.isFinite(total) && total >= 0) {
@@ -379,6 +413,11 @@ export default {
         }
       } catch (e) {
         console.error('[order-list] error', e)
+        if (reset && keepList) {
+          // 刷新失败：恢复原分页状态，旧列表继续可用
+          this.page = prevPage
+          this.noMore = prevNoMore
+        }
       } finally {
         this.loading = false
       }

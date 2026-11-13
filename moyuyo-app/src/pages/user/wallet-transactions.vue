@@ -87,6 +87,11 @@ export default {
     if (this._unsubLocale) this._unsubLocale()
   },
 
+  // 下拉刷新：重新拉取交易流水
+  onPullDownRefresh() {
+    this.loadTransactions().finally(() => uni.stopPullDownRefresh())
+  },
+
   methods: {
     async loadTransactions() {
       this.loading = true

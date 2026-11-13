@@ -177,6 +177,11 @@ export default {
     }
   },
 
+  // 下拉刷新：重新拉券列表，同步最新领取状态/库存
+  onPullDownRefresh() {
+    this.loadCoupons().finally(() => uni.stopPullDownRefresh())
+  },
+
   methods: {
     async loadCoupons() {
       try {

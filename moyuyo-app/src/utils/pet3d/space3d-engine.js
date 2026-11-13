@@ -45,6 +45,17 @@ export function setModelResolver(fn) {
   if (typeof fn === 'function') ensureLocalModel = fn
 }
 
+/**
+ * 模型来源是否已就绪（宿主注入）。
+ * 首屏只送场景模型，人物 FBX 稍后才通过 avatars 通道到达；
+ * 引擎据此决定「先挂兜底几何体」还是「直接加载真模型」，避免白跑一次失败请求。
+ */
+let hasModelSource = () => true
+
+export function setModelSourceChecker(fn) {
+  if (typeof fn === 'function') hasModelSource = fn
+}
+
 /** 逻辑层能力桥（返回按钮 / toast 这类只在逻辑层能做的事） */
 let uniHostBridge = null
 
@@ -158,6 +169,36 @@ const DIAG_HOLD_MS = 800
 // Draco 解码器路径：优先本地 static（离线可用），失败再退 CDN
 const DRACO_LOCAL_PATH = '/static/draco/'
 const DRACO_CDN_PATH = 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/'
+
+/**
+ * 把以 / 开头的包内静态路径转成 APP 视图层可访问的 file:// 绝对路径。
+ *
+ * APP 的 webview 用 file:///android_asset/apps/__UNI__XXX/www/__uniappview.html 加载，
+ * 直接写 /static/draco/ 会被解析成文件系统根目录（file:///static/draco/）→ 读不到，
+ * 于是本地解码器永远走不通、只能退 CDN，离线/内网环境就表现为"模型加载失败"。
+ * H5 / 转换失败时原样返回。
+ */
+function toLocalAssetUrl(path) {
+  if (!path) return path
+  if (/^(https?:|blob:|data:|file:)/.test(path)) return path
+  if (
+    typeof plus === 'undefined' ||
+    !plus.io ||
+    typeof plus.io.convertLocalFileSystemURL !== 'function'
+  ) {
+    return path
+  }
+  try {
+    const abs = plus.io.convertLocalFileSystemURL('_www' + path)
+    if (!abs) return path
+    let result = abs.startsWith('file://') ? abs : 'file://' + abs
+    // convertLocalFileSystemURL 可能吃掉目录末尾的 /，DRACOLoader 依赖它拼接文件名
+    if (path.endsWith('/') && !result.endsWith('/')) result += '/'
+    return result
+  } catch (e) {
+    return path
+  }
+}
 
 export const pageOptions = {
   data() {
@@ -1016,6 +1057,8 @@ export const pageOptions = {
       // 第二层兜底：本地缓存文件读不出来时改走远程地址（CORS 允许跨域）
       const remoteFallback = this._glbFallbackUrl || null
       let retriedWithRemote = false
+      // 本地解码器路径：APP 端转成 file:// 绝对路径（/static/draco/ 在 webview 里读不到）
+      const localDecoderPath = toLocalAssetUrl(DRACO_LOCAL_PATH)
 
       const attempt = (decoderPath) => {
         const dracoLoader = new DRACOLoader()
@@ -1036,7 +1079,7 @@ export const pageOptions = {
           onProgress,
           (err) => {
             // 第一次失败且用的是本地路径 → 换 CDN 再试一次
-            if (!retriedWithCdn && decoderPath === DRACO_LOCAL_PATH) {
+            if (!retriedWithCdn && decoderPath === localDecoderPath) {
               retriedWithCdn = true
               console.warn('[space-3d] 本地 Draco 解码器加载失败，回退 CDN', err)
               // 重新挂一个 CDN 路径的解码器
@@ -1057,7 +1100,7 @@ export const pageOptions = {
         )
       }
 
-      attempt(DRACO_LOCAL_PATH)
+      attempt(localDecoderPath)
     },
 
     /**
@@ -1636,34 +1679,116 @@ export const pageOptions = {
      * 两个 FBX 同时挂在场景里，根据 figureState(idle/walk)切换可见性 + 走路动画播放
      * 模型远程地址通过 ensureLocalModel 走"远程下载 + 本地缓存"
      */
-    async loadFigureAvatar() {
+    loadFigureAvatar() {
       const t = this.three
-      if (!t.scene) return
+      if (!t.scene) return Promise.resolve()
+      // 已经加载过（含兜底几何体）就不再重复挂节点
+      if (t.figureLoaded) return Promise.resolve()
+      // 同一时刻只跑一次；并发调用复用同一个 Promise
+      if (t._figurePromise) return t._figurePromise
 
-      // 并行下载 + 解析两个 FBX(0=静态 / 1=走路)
-      // 失败不致命:任一缺失时不显示对应化身(不影响另一个生效)
-      const results = await Promise.allSettled([
-        this.loadFigureFbx(modelUrls.avatarIdle, 'idle'),
-        this.loadFigureFbx(modelUrls.avatarWalk, 'walk'),
-      ])
-      const ok = results.filter((r) => r.status === 'fulfilled')
-
-      // 任一 FBX 缺失时,用 procedural 几何体(胶囊体)做兜底化身,
-      // 至少在第三人称模式下玩家能看见"自己",不再"模型加载失败但啥都没有"
-      if (ok.length < 2) {
-        const reasons = results
-          .map(
-            (r, i) =>
-              `${i === 0 ? 'idle' : 'walk'}: ${r.status === 'rejected' ? r.reason?.message || r.reason : 'ok'}`,
-          )
-          .join(' | ')
-        console.warn('[space-3d] 化身加载不完整,启用几何体兜底 →', reasons)
-        this.debugInfo = `化身加载不完整,已用兜底几何体(${reasons})`
+      // 人物模型还没送到（首屏只送场景）→ 先挂兜底几何体，
+      // 等 avatars 通道到达后由 reloadFigureAvatar() 换成真模型
+      if (!hasModelSource(modelUrls.avatarIdle) || !hasModelSource(modelUrls.avatarWalk)) {
         if (!t.figureIdleGroup) this.buildFallbackFigure('idle')
         if (!t.figureWalkGroup) this.buildFallbackFigure('walk')
         this.syncFigureState()
         this.figureFallback = true
+        t.figureLoaded = true
+        return Promise.resolve()
       }
+
+      t._figurePromise = (async () => {
+        // 并行下载 + 解析两个 FBX(0=静态 / 1=走路)
+        // 失败不致命:任一缺失时不显示对应化身(不影响另一个生效)
+        const results = await Promise.allSettled([
+          this.loadFigureFbx(modelUrls.avatarIdle, 'idle'),
+          this.loadFigureFbx(modelUrls.avatarWalk, 'walk'),
+        ])
+        const ok = results.filter((r) => r.status === 'fulfilled')
+
+        // 任一 FBX 缺失时,用 procedural 几何体(胶囊体)做兜底化身,
+        // 至少在第三人称模式下玩家能看见"自己",不再"模型加载失败但啥都没有"
+        if (ok.length < 2) {
+          const reasons = results
+            .map(
+              (r, i) =>
+                `${i === 0 ? 'idle' : 'walk'}: ${r.status === 'rejected' ? r.reason?.message || r.reason : 'ok'}`,
+            )
+            .join(' | ')
+          console.warn('[space-3d] 化身加载不完整,启用几何体兜底 →', reasons)
+          this.debugInfo = `化身加载不完整,已用兜底几何体(${reasons})`
+          if (!t.figureIdleGroup) this.buildFallbackFigure('idle')
+          if (!t.figureWalkGroup) this.buildFallbackFigure('walk')
+          this.syncFigureState()
+          this.figureFallback = true
+        }
+        t.figureLoaded = true
+      })()
+        .catch((e) => {
+          console.warn('[space-3d] 化身加载异常', e)
+        })
+        .finally(() => {
+          t._figurePromise = null
+        })
+
+      return t._figurePromise
+    },
+
+    /**
+     * 人物模型后到时替换化身。
+     *
+     * 首屏只等场景模型，人物 FBX 往往先用兜底几何体顶上；等逻辑层把 FBX 下载好
+     * 通过 avatars 通道送进来后，这里把旧节点（可能是兜底胶囊体）摘掉，重新加载真模型。
+     */
+    async reloadFigureAvatar() {
+      const t = this.three
+      if (!t.scene || t._disposed) return
+      // 等正在进行的首次加载结束，避免清掉刚挂上的节点后又不再加载
+      if (t._figurePromise) {
+        try {
+          await t._figurePromise
+        } catch (e) {
+          /* 内部已处理 */
+        }
+      }
+      if (t._disposed || !t.scene) return
+      this.disposeFigureGroups()
+      t.figureLoaded = false
+      await this.loadFigureAvatar()
+    },
+
+    /** 摘除并释放当前化身节点（等待真模型替换时用） */
+    disposeFigureGroups() {
+      const t = this.three
+      const removeGroup = (group) => {
+        if (!group || !t.scene) return
+        t.scene.remove(group)
+        group.traverse((child) => {
+          if (!child.isMesh) return
+          if (child.geometry) child.geometry.dispose()
+          const mats = Array.isArray(child.material) ? child.material : [child.material]
+          mats.forEach((m) => {
+            if (m && typeof m.dispose === 'function') m.dispose()
+          })
+        })
+      }
+
+      removeGroup(t.figureIdleGroup)
+      removeGroup(t.figureWalkGroup)
+      t.figureIdleGroup = null
+      t.figureWalkGroup = null
+      if (t.figureWalkMixer) {
+        try {
+          t.figureWalkMixer.stopAllAction()
+        } catch (e) {
+          /* ignore */
+        }
+      }
+      t.figureWalkMixer = null
+      t.figureWalkAction = null
+      t.figureWalkClock = null
+      this.figureFallback = false
     },
 
     /**

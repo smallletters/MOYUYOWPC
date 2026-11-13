@@ -98,6 +98,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { onPullDownRefresh } from '@dcloudio/uni-app'
 import { getPointsLog, getPointsBalance } from '@/api/points'
 import { i18n } from '@/i18n'
 import { usePageTitle } from '@/utils/i18nPageMixin'
@@ -299,6 +300,15 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => {
   if (_unsubLocale) _unsubLocale()
+})
+
+// 下拉刷新：余额与流水一起重拉，回到最新一页
+onPullDownRefresh(async () => {
+  try {
+    await Promise.all([loadBalance(), loadList(true)])
+  } finally {
+    uni.stopPullDownRefresh()
+  }
 })
 </script>
 

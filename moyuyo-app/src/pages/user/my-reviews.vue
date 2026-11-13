@@ -9,7 +9,13 @@
       <view class="header-right" />
     </view>
 
-    <scroll-view scroll-y class="scroll">
+    <scroll-view
+      scroll-y
+      class="scroll"
+      :refresher-enabled="true"
+      :refresher-triggered="refreshing"
+      @refresherrefresh="onRefresh"
+    >
       <!-- 统计概览 -->
       <view class="stats-section">
         <view class="stats-card">
@@ -145,6 +151,8 @@ export default {
         highQuality: 0,
       },
       reviews: [],
+      // scroll-view 下拉刷新状态（本页滚动由 scroll-view 接管）
+      refreshing: false,
     }
   },
   computed: {
@@ -175,6 +183,16 @@ export default {
     this.loadReviews()
   },
   methods: {
+    // 下拉刷新：审评状态（待审核/已通过）由后台推进，下拉即可同步
+    async onRefresh() {
+      if (this.refreshing) return
+      this.refreshing = true
+      try {
+        await this.loadReviews()
+      } finally {
+        this.refreshing = false
+      }
+    },
     async loadReviews() {
       try {
         const res = await reviewApi.getMyReviews()

@@ -944,6 +944,13 @@ export default {
     privacy: '隐私设置',
     help: '帮助中心',
     feedback: '意见反馈',
+    // 清除缓存（内容列表缓存 + 3D 模型缓存，保留登录凭证与个人设置）
+    clearCache: '清除缓存',
+    clearCacheTitle: '清除缓存',
+    clearCacheConfirm: '将清除本地列表数据和 3D 模型缓存，不会影响登录状态和个人设置。',
+    clearingCache: '清理中...',
+    cacheCleared: '缓存已清除',
+    clearCacheFailed: '清除失败，请重试',
     about: '关于我们',
     logout: '退出登录',
     logoutTitle: '提示',

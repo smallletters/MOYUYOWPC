@@ -68,8 +68,9 @@
     {
       "path": "pages/goods/list",
       "style": {
-        "navigationBarTitleText": "商品列表",
-        "enablePullDownRefresh": true
+        // 下拉刷新由页面内 scroll-view 的 refresher 负责，无需开启页面级下拉，
+        // 否则 App 端会出现原生转圈无人关闭的问题
+        "navigationBarTitleText": "商品列表"
       }
     },
     {
@@ -249,7 +250,9 @@
     {
       "path": "pages/community/profile",
       "style": {
-        "navigationBarTitleText": "我的主页"
+        "navigationBarTitleText": "我的主页",
+        // 开启原生下拉刷新，与 profile.vue 的 onPullDownRefresh 配套
+        "enablePullDownRefresh": true
       }
     },
     {
@@ -262,13 +265,16 @@
     {
       "path": "pages/user/points-shop",
       "style": {
-        "navigationBarTitleText": "积分商城"
+        "navigationBarTitleText": "积分商城",
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/user/favorites",
       "style": {
-        "navigationBarTitleText": "我的收藏"
+        "navigationBarTitleText": "我的收藏",
+        // 开启原生下拉刷新，与 favorites.vue 的 onPullDownRefresh 配套
+        "enablePullDownRefresh": true
       }
     },
     {
@@ -297,7 +303,8 @@
     {
       "path": "pages/user/coupon-center",
       "style": {
-        "navigationBarTitleText": "领券中心"
+        "navigationBarTitleText": "领券中心",
+        "enablePullDownRefresh": true
       }
     },
     {
@@ -592,7 +599,8 @@
     {
       "path": "pages/user/community-topic",
       "style": {
-        "navigationBarTitleText": "话题广场"
+        "navigationBarTitleText": "话题广场",
+        "enablePullDownRefresh": true
       }
     },
     {
@@ -618,7 +626,8 @@
     {
       "path": "pages/user/post-collection",
       "style": {
-        "navigationBarTitleText": "我的收藏"
+        "navigationBarTitleText": "我的收藏",
+        "enablePullDownRefresh": true
       }
     },
     {
@@ -666,7 +675,8 @@
     {
       "path": "pages/user/wallet-transactions",
       "style": {
-        "navigationBarTitleText": "交易记录"
+        "navigationBarTitleText": "交易记录",
+        "enablePullDownRefresh": true
       }
     },
     {
@@ -732,7 +742,8 @@
     {
       "path": "pages/user/points-detail",
       "style": {
-        "navigationBarTitleText": "积分明细"
+        "navigationBarTitleText": "积分明细",
+        "enablePullDownRefresh": true
       }
     },
     {

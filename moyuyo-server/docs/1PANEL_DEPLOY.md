@@ -150,6 +150,54 @@ server {
         proxy_pass http://127.0.0.1:8080;
     }
 
+    # 3D 模型静态资源（/static/models/*.glb、*.fbx）：单文件 26~30MB。
+    # 默认 proxy_read_timeout 60s 在弱网/移动网络下会在传输中途断开，
+    # 必须单独放宽；proxy_buffering off 让大文件边收边发，不落临时磁盘。
+    location /static/models/ {
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://127.0.0.1:8080;
+
+        proxy_connect_timeout 30s;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+        proxy_buffering off;
+
+        default_type application/octet-stream;
+        # 换模型请换文件名（home-v2.glb）或 URL 加 ?v=2，否则同名文件会吃满一年缓存
+        expires 365d;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    # 其它后端静态资源（Draco 解码器、站点图标等）
+    location /static/ {
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://127.0.0.1:8080;
+
+        proxy_connect_timeout 30s;
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+    }
+
+    # 用户上传文件（图片/视频，可能包含后台新增的 3D 模型）
+    location /uploads/ {
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://127.0.0.1:8080;
+
+        proxy_connect_timeout 30s;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+        proxy_buffering off;
+    }
+
     # 管理后台（强制 HTTPS + IP 白名单，可选）
     location / {
         proxy_set_header Host              $host;

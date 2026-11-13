@@ -935,6 +935,14 @@ export default {
     privacy: 'Privacy',
     help: 'Help Center',
     feedback: 'Feedback',
+    // Clear cache (list content cache + 3D model cache; keeps credentials and preferences)
+    clearCache: 'Clear Cache',
+    clearCacheTitle: 'Clear Cache',
+    clearCacheConfirm:
+      'This will clear local list data and 3D model cache. Your sign-in status and preferences will not be affected.',
+    clearingCache: 'Clearing...',
+    cacheCleared: 'Cache cleared',
+    clearCacheFailed: 'Failed to clear cache. Please try again.',
     about: 'About',
     logout: 'Sign Out',
     logoutTitle: 'Notice',

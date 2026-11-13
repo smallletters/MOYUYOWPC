@@ -319,6 +319,88 @@ export async function removeCache(key) {
 }
 
 /**
+ * 统计当前内容缓存的条数与占用（字符数近似字节数）
+ * 供设置页「清除缓存」展示占用大小
+ * @returns {Promise<{count:number, size:number}>}
+ */
+export async function getCacheStats() {
+  let count = 0
+  let size = 0
+
+  if (!idbBroken) {
+    try {
+      await withStore('readonly', (store) => {
+        const req = store.openCursor()
+        req.onsuccess = () => {
+          const cursor = req.result
+          if (!cursor) return
+          count += 1
+          try {
+            // 按序列化后的字符数估算占用，避免额外存储体积字段
+            size += JSON.stringify(cursor.value && cursor.value.data).length
+          } catch (e) {
+            /* 单条序列化失败不影响整体统计 */
+          }
+          cursor.continue()
+        }
+        return true
+      })
+    } catch (e) {
+      markIdbBroken(e)
+    }
+  }
+
+  // 一并统计历史上降级写入 uni Storage 的副本（写入时已记录 size 字段）
+  try {
+    const keys = ((uni.getStorageInfoSync() || {}).keys || []).filter((key) =>
+      key.startsWith(`${FALLBACK_PREFIX}:`),
+    )
+    keys.forEach((key) => {
+      const record = getStorage(key, null)
+      count += 1
+      size += Number(record && record.size) || 0
+    })
+  } catch (e) {
+    console.warn('[contentCache] 统计降级缓存失败', e)
+  }
+
+  return { count, size }
+}
+
+/**
+ * 清空全部内容缓存（设置页「清除缓存」使用）
+ * 同时清理 IndexedDB 与降级存储副本，不影响登录凭证与其他业务数据
+ * @returns {Promise<boolean>} 是否执行过清理
+ */
+export async function clearAllCache() {
+  let cleared = false
+
+  if (!idbBroken) {
+    try {
+      await withStore('readwrite', (store) => {
+        store.clear()
+        return true
+      })
+      cleared = true
+    } catch (e) {
+      markIdbBroken(e)
+    }
+  }
+
+  try {
+    const keys = ((uni.getStorageInfoSync() || {}).keys || []).filter((key) =>
+      key.startsWith(`${FALLBACK_PREFIX}:`),
+    )
+    keys.forEach((key) => removeStorage(key))
+    if (keys.length) cleared = true
+  } catch (e) {
+    console.warn('[contentCache] 清理降级缓存失败', e)
+  }
+
+  return cleared
+}
+
+/**
  * 按前缀批量删除缓存（如发帖后失效所有 Tab/账号的信息流缓存）
  * @param {string} prefix 业务 key 前缀，如 `community:feed:`
  * @returns {Promise<boolean>} 是否至少删除了一条

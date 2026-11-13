@@ -14,7 +14,13 @@
  *
  * 业务代码一行没改，只换了宿主。
  */
-import { pageOptions, setModelResolver, setHostBridge, setModelUrls } from './space3d-engine'
+import {
+  pageOptions,
+  setModelResolver,
+  setHostBridge,
+  setModelUrls,
+  setModelSourceChecker,
+} from './space3d-engine'
 
 /**
  * 需要镜像到逻辑层（也就是要显示在 HUD 上）的字段。
@@ -71,6 +77,7 @@ export function createEngine(host) {
   if (host.modelResolver) setModelResolver(host.modelResolver)
   if (host.modelUrls) setModelUrls(host.modelUrls)
   if (host.onHostAction) setHostBridge(host.onHostAction)
+  if (host.hasModelSource) setModelSourceChecker(host.hasModelSource)
 
   const engine = {}
 

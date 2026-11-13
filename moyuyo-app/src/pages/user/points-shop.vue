@@ -77,6 +77,11 @@ export default {
     this.loadData()
   },
 
+  // 下拉刷新：积分余额、流水与商品库存都可能变化
+  onPullDownRefresh() {
+    this.loadData().finally(() => uni.stopPullDownRefresh())
+  },
+
   methods: {
     async loadData() {
       this.loading = true
