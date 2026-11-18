@@ -69,48 +69,58 @@ static NSDictionary *MYResult(BOOL success, NSString *message) {
 
 @implementation SecureStorageModule
 
-UNI_EXPORT_METHOD_SYNC(setItem, ^(NSDictionary *params, UniJSCallback callback) {
+UNI_EXPORT_METHOD(@selector(setItem:callback:))
+
+- (void)setItem:(NSDictionary *)params callback:(UniModuleKeepAliveCallback)callback {
   MYEnsureFreshInstall();
   NSString *key = params[@"key"];
   NSString *value = params[@"value"];
   if (key.length == 0 || value == nil) {
-    callback(MYResult(NO, @"key/value 不能为空"));
+    callback(MYResult(NO, @"key/value 不能为空"), NO);
     return;
   }
   OSStatus status = MYSetItem(key, value);
-  callback(MYResult(status == errSecSuccess, [NSString stringWithFormat:@"status=%d", (int)status]));
-})
+  callback(MYResult(status == errSecSuccess, [NSString stringWithFormat:@"status=%d", (int)status]), NO);
+}
 
-UNI_EXPORT_METHOD_SYNC(getItem, ^(NSDictionary *params, UniJSCallback callback) {
+UNI_EXPORT_METHOD(@selector(getItem:callback:))
+
+- (void)getItem:(NSDictionary *)params callback:(UniModuleKeepAliveCallback)callback {
   MYEnsureFreshInstall();
   NSString *key = params[@"key"];
   if (key.length == 0) {
-    callback(MYResult(NO, @"key 不能为空"));
+    callback(MYResult(NO, @"key 不能为空"), NO);
     return;
   }
   NSString *value = MYGetItem(key);
-  callback(@{@"success": @YES, @"value": value ?: @""});
-})
+  callback(@{@"success": @YES, @"value": value ?: @""}, NO);
+}
 
-UNI_EXPORT_METHOD_SYNC(removeItem, ^(NSDictionary *params, UniJSCallback callback) {
+UNI_EXPORT_METHOD(@selector(removeItem:callback:))
+
+- (void)removeItem:(NSDictionary *)params callback:(UniModuleKeepAliveCallback)callback {
   MYEnsureFreshInstall();
   NSString *key = params[@"key"];
   if (key.length == 0) {
-    callback(MYResult(NO, @"key 不能为空"));
+    callback(MYResult(NO, @"key 不能为空"), NO);
     return;
   }
-  callback(MYResult(MYRemoveItem(key), @""));
-})
+  callback(MYResult(MYRemoveItem(key), @""), NO);
+}
 
-UNI_EXPORT_METHOD_SYNC(clear, ^(NSDictionary *params, UniJSCallback callback) {
+UNI_EXPORT_METHOD(@selector(clear:callback:))
+
+- (void)clear:(NSDictionary *)params callback:(UniModuleKeepAliveCallback)callback {
   MYEnsureFreshInstall();
-  callback(MYResult(MYRemoveItem(nil), @""));
-})
+  callback(MYResult(MYRemoveItem(nil), @""), NO);
+}
 
 /// 能力探测：前端据此决定是否启用加密链路
-UNI_EXPORT_METHOD_SYNC(isAvailable, ^(NSDictionary *params, UniJSCallback callback) {
+UNI_EXPORT_METHOD(@selector(isAvailable:callback:))
+
+- (void)isAvailable:(NSDictionary *)params callback:(UniModuleKeepAliveCallback)callback {
   MYEnsureFreshInstall();
-  callback(@{@"available": @YES, @"backend": @"Keychain"});
-})
+  callback(@{@"available": @YES, @"backend": @"Keychain"}, NO);
+}
 
 @end

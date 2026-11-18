@@ -34,7 +34,9 @@ static void MOYUYOPushDidFail(id self, SEL _cmd, UIApplication *application, NSE
 
 @implementation PushModule
 
-UNI_EXPORT_METHOD_SYNC(register, ^(NSDictionary *params, UniJSCallback callback) {
+UNI_EXPORT_METHOD(@selector(register:callback:))
+
+- (void)register:(NSDictionary *)params callback:(UniModuleKeepAliveCallback)callback {
     [[NSUserDefaults standardUserDefaults] setBool:YES forKey:kMOYUYOPushEnabledKey];
     [PushModule installAppDelegateHook];
 
@@ -49,38 +51,48 @@ UNI_EXPORT_METHOD_SYNC(register, ^(NSDictionary *params, UniJSCallback callback)
             NSString *cached = [PushModule cachedToken];
             // deviceToken 回调是异步的：首次注册最多等 1.5 秒，避免每次都返回空
             if (cached.length > 0 || !granted) {
-                callback(@{@"success": @YES, @"token": cached ?: @"", @"granted": @(granted)});
+                callback(@{@"success": @YES, @"token": cached ?: @"", @"granted": @(granted)}, NO);
                 return;
             }
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                callback(@{@"success": @YES, @"token": [PushModule cachedToken] ?: @"", @"granted": @(granted)});
+                callback(@{@"success": @YES, @"token": [PushModule cachedToken] ?: @"", @"granted": @(granted)}, NO);
             });
         });
     }];
-})
+}
 
-UNI_EXPORT_METHOD_SYNC(getToken, ^(NSDictionary *params, UniJSCallback callback) {
+UNI_EXPORT_METHOD(@selector(getToken:callback:))
+
+- (void)getToken:(NSDictionary *)params callback:(UniModuleKeepAliveCallback)callback {
     NSString *token = [PushModule cachedToken];
-    callback(@{@"token": token ?: @""});
-})
+    callback(@{@"token": token ?: @""}, NO);
+}
 
-UNI_EXPORT_METHOD_SYNC(handleMessage, ^(NSDictionary *params, UniJSCallback callback) {
+UNI_EXPORT_METHOD(@selector(handleMessage:callback:))
+
+- (void)handleMessage:(NSDictionary *)params callback:(UniModuleKeepAliveCallback)callback {
     // 前台展示由 UNUserNotificationCenter 控制，这里仅确认收到
-    callback(@{@"success": @YES});
-})
+    callback(@{@"success": @YES}, NO);
+}
 
-UNI_EXPORT_METHOD_SYNC(setBadge, ^(NSDictionary *params, UniJSCallback callback) {
+UNI_EXPORT_METHOD(@selector(setBadge:callback:))
+
+- (void)setBadge:(NSDictionary *)params callback:(UniModuleKeepAliveCallback)callback {
     NSInteger count = [params[@"count"] integerValue];
     [UIApplication sharedApplication].applicationIconBadgeNumber = count;
-    callback(@{@"success": @YES});
-})
+    callback(@{@"success": @YES}, NO);
+}
 
-UNI_EXPORT_METHOD_SYNC(clearBadge, ^(NSDictionary *params, UniJSCallback callback) {
+UNI_EXPORT_METHOD(@selector(clearBadge:callback:))
+
+- (void)clearBadge:(NSDictionary *)params callback:(UniModuleKeepAliveCallback)callback {
     [UIApplication sharedApplication].applicationIconBadgeNumber = 0;
-    callback(@{@"success": @YES});
-})
+    callback(@{@"success": @YES}, NO);
+}
 
-UNI_EXPORT_METHOD_SYNC(setEnabled, ^(NSDictionary *params, UniJSCallback callback) {
+UNI_EXPORT_METHOD(@selector(setEnabled:callback:))
+
+- (void)setEnabled:(NSDictionary *)params callback:(UniModuleKeepAliveCallback)callback {
     BOOL enabled = [params[@"enabled"] boolValue];
     [[NSUserDefaults standardUserDefaults] setBool:enabled forKey:kMOYUYOPushEnabledKey];
     if (enabled) {
@@ -89,14 +101,16 @@ UNI_EXPORT_METHOD_SYNC(setEnabled, ^(NSDictionary *params, UniJSCallback callbac
     } else {
         [[UIApplication sharedApplication] unregisterForRemoteNotifications];
     }
-    callback(@{@"success": @YES});
-})
+    callback(@{@"success": @YES}, NO);
+}
 
-UNI_EXPORT_METHOD_SYNC(isEnabled, ^(NSDictionary *params, UniJSCallback callback) {
+UNI_EXPORT_METHOD(@selector(isEnabled:callback:))
+
+- (void)isEnabled:(NSDictionary *)params callback:(UniModuleKeepAliveCallback)callback {
     NSNumber *value = [[NSUserDefaults standardUserDefaults] objectForKey:kMOYUYOPushEnabledKey];
     BOOL enabled = value == nil ? YES : value.boolValue;
-    callback(@{@"enabled": @(enabled)});
-})
+    callback(@{@"enabled": @(enabled)}, NO);
+}
 
 #pragma mark - 内部实现
 
