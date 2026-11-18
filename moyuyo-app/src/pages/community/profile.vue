@@ -344,9 +344,12 @@ export default {
       this.bioText = this.resolveBioText()
     })
     // 解析 query.id：有传 id 即"查看他人 profile"
+    // 雪花 ID(19 位)超出 JS Number.MAX_SAFE_INTEGER，Number() 会丢精度
+    // (如 2120457235478487042 被转成 2120457235478487000)，请求 profile 时后端查不到用户
+    // 因此必须用 String 承接，全程以字符串透传给接口
     const rawId = query && (query.id ?? query.userId)
-    const parsedId = Number(rawId)
-    this.viewedUserId = Number.isFinite(parsedId) && parsedId > 0 ? parsedId : 0
+    const idStr = rawId === null || rawId === undefined ? '' : String(rawId).trim()
+    this.viewedUserId = /^\d+$/.test(idStr) && idStr !== '0' ? idStr : 0
     // 标题依赖 viewedUserId(自己/他人),越早设越好:
     // mounted 里 mixin 还会再设一次(H5 需等 head DOM 就绪),两处幂等;
     // 此处提前设置可避免 pages.json 默认标题"我的主页"在他人主页上短暂闪现。
@@ -847,9 +850,10 @@ export default {
       }
       // liked / collected tab 中可能含他人帖子,userId != 自己时不能删
       // (后端 deletePost 仅作者本人可删,非作者会 403)。
-      const myId = Number(this.userStore.userId)
-      const ownerId = Number(post.userId)
-      const canDelete = this.activeTab === 'posts' || (!Number.isNaN(ownerId) && ownerId === myId)
+      // 雪花 ID 超出 JS 安全整数范围,必须用字符串比较,Number() 会丢精度导致误判
+      const myId = this.userStore.userId == null ? '' : String(this.userStore.userId)
+      const ownerId = post.userId == null ? '' : String(post.userId)
+      const canDelete = this.activeTab === 'posts' || (!!ownerId && ownerId === myId)
       if (!canDelete) {
         uni.showToast({
           title: this.t('community.actions.deleteFailed') || '该帖子无法删除',
