@@ -3,7 +3,7 @@
     <!-- 简化的首页占位背景 -->
     <view class="home-placeholder">
       <text class="home-emoji luc-home" />
-      <text class="home-text">MOYUYO 首页</text>
+      <text class="home-text">MOYUYO 商店</text>
     </view>
 
     <!-- 开屏营销弹窗 -->

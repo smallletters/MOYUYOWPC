@@ -11,7 +11,7 @@ import { config } from '@/utils/config'
 import { ready, peekAccessToken } from '@/utils/secureToken'
 import { getWsTicket } from '@/api/user'
 
-/** 消息 Tab 在 tabBar 中的索引（pages.json 顺序：首页/宠物/社区/消息/我的） */
+/** 消息 Tab 在 tabBar 中的索引（pages.json 顺序：宠物/首页/社区/消息/我的） */
 export const MESSAGE_TAB_INDEX = 3
 
 const HEARTBEAT_MS = 25 * 1000

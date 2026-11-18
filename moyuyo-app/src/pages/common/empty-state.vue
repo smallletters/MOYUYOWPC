@@ -275,7 +275,7 @@ const errorStates = ref([
     title: '页面不存在',
     desc: '你访问的页面可能已被移除或地址有误',
     btnIcon: 'home',
-    btnText: '返回首页',
+    btnText: '返回商店',
     action: () => uni.switchTab({ url: '/pages/tabbar/home' }),
   },
 ])

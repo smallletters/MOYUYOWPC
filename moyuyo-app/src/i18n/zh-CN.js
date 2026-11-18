@@ -364,7 +364,7 @@ export default {
   },
 
   tabBar: {
-    home: '首页',
+    home: '商店',
     category: '分类',
     messages: '消息',
     pet: 'Pet',

@@ -354,7 +354,7 @@ export default {
   },
 
   tabBar: {
-    home: 'Home',
+    home: 'Shop',
     category: 'Categories',
     messages: 'Messages',
     pet: 'Pets',
