@@ -1,0 +1,445 @@
+/* ==========================================================================
+   MOYUYO ATELIER · 设计规范可视化页
+   css/spec.css —— 复用 app.css 的 token 与组件类，
+   这里只补「文档排版」外壳（桌面阅读，用 px，不参与 rpx 换算）
+   ========================================================================== */
+
+body.spec {
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.6;
+}
+
+body.spec code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .88em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--color-fill);
+  color: var(--color-text-secondary);
+}
+
+/* ---------- 页头 ---------- */
+.shead {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 32px;
+  background: var(--color-surface-veil-92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.shead__brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+
+.shead__mark {
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: .16em;
+  color: var(--color-text);
+}
+
+.shead__sub { font-size: 12px; color: var(--color-text-label); letter-spacing: .04em; }
+
+.shead__tools { display: flex; align-items: center; gap: 8px; }
+
+.sbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-line-strong);
+  color: var(--color-text);
+  font-size: 12.5px;
+  text-decoration: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 120ms linear;
+}
+.sbtn:hover { background: var(--color-fill); }
+.sbtn .luc { font-size: 14px; }
+.sbtn--icon { width: 34px; padding: 0; justify-content: center; }
+
+/* ---------- 布局 ---------- */
+.slayout {
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 32px 96px;
+}
+
+.snav {
+  position: sticky;
+  top: 84px;
+  flex: 0 0 168px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+  border-left: 1px solid var(--color-divider);
+}
+
+.snav a {
+  padding: 6px 0 6px 14px;
+  margin-left: -1px;
+  border-left: 2px solid transparent;
+  color: var(--color-text-label);
+  font-size: 12.5px;
+  text-decoration: none;
+  letter-spacing: .01em;
+  transition: color 120ms linear, border-color 120ms linear;
+}
+.snav a:hover { color: var(--color-text); border-left-color: var(--color-primary); }
+
+.sbody { flex: 1 1 auto; min-width: 0; }
+
+/* ---------- 区块 ---------- */
+.ssec { margin-bottom: 64px; scroll-margin-top: 84px; }
+
+.ssec__head {
+  position: relative;
+  padding-left: 0;
+  margin-bottom: 24px;
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 0 4px;
+  align-items: baseline;
+}
+
+.ssec__num {
+  grid-row: span 2;
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--color-primary);
+  letter-spacing: -.02em;
+  line-height: 1;
+}
+
+.ssec__head h2 {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  color: var(--color-text);
+  line-height: 1.3;
+}
+
+.ssec__head p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--color-text-label);
+  max-width: 68ch;
+}
+
+.ssh {
+  margin: 28px 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--color-text-label);
+}
+.ssh:first-of-type { margin-top: 8px; }
+
+/* ---------- 色卡 ---------- */
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+  gap: 12px;
+}
+
+.sw {
+  border-radius: 12px;
+  border: 1px solid var(--color-divider);
+  overflow: hidden;
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+}
+
+.sw i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 62px;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-divider);
+}
+.sw__t { background: var(--color-surface); letter-spacing: -.01em; }
+.sw__t--gold { background: var(--color-surface); }
+.sw__solid { background: var(--color-danger-solid); color: #fff; }
+.sw__onprimary { background: var(--color-primary); color: var(--on-primary); }
+/* 必须提高选择器权重：后面的 `.sw span` 说明文字规则会命中这里，金底上掉到 1.36:1 */
+.sw i.sw__onprimary span,
+.sw .sw__onprimary span { color: inherit; font-size: 12px; }
+
+.sw b {
+  display: block;
+  padding: 8px 10px 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--color-text);
+  letter-spacing: -.02em;
+  word-break: break-all;
+}
+
+.sw span {
+  display: block;
+  padding: 2px 10px 10px;
+  font-size: 11px;
+  color: var(--color-text-label);
+}
+
+/* ---------- 表格 ---------- */
+.stbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  background: var(--color-surface);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.stbl th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--color-text-label);
+  background: var(--color-fill);
+  white-space: nowrap;
+}
+.stbl td {
+  padding: 10px 14px;
+  border-top: 1px solid var(--color-divider);
+  color: var(--color-text);
+  vertical-align: baseline;
+}
+.stbl td:nth-child(2), .stbl td:nth-child(3) {
+  color: var(--color-text-label);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.t3xl { font-family: var(--font-display); font-size: 28px; font-weight: 600; letter-spacing: -.02em; }
+.t2xl { font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+.txl { font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+.tlg { font-size: 16px; font-weight: 600; }
+.tmd { font-size: 15px; font-weight: 600; color: var(--ink-gold); font-variant-numeric: tabular-nums; }
+.tbase { font-size: 14px; }
+.tsm { font-size: 13px; color: var(--color-text-label); }
+.txs { font-size: 11px; font-weight: 500; letter-spacing: .02em; color: var(--color-text-label); }
+
+/* ---------- 圆角 / 间距 / 阴影 ---------- */
+.grid-demo {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+}
+
+.rad {
+  height: 74px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-fill);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.spacer-demo {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 8px 20px;
+}
+
+.sp { display: flex; align-items: center; gap: 8px; font-size: 11.5px; }
+.sp b {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--color-text);
+  min-width: 110px;
+}
+.sp i { height: 10px; background: var(--color-primary); border-radius: 2px; flex: 0 0 auto; }
+.sp span { color: var(--color-text-label); }
+
+.shd {
+  height: 84px;
+  border-radius: 14px;
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 11.5px;
+}
+.shd b { font-size: 11px; font-family: ui-monospace, Menlo, monospace; font-weight: 500; }
+.shd span { color: var(--color-text-label); font-size: 11px; }
+
+/* ---------- 组件演示区 ---------- */
+.demo {
+  /* --rpx 由 js 设为 0.5px：组件按 375pt 真机比例渲染 */
+  --rpx: .5px;
+  padding: 20px;
+  background: var(--color-surface-sunken);
+  border-radius: 14px;
+  border: 1px solid var(--color-divider);
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.demo + .demo { margin-top: 0; }
+
+.demo__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.demo__row--center { align-items: center; }
+.demo__row .pbtn { min-width: 0; }
+
+.demo-chip { pointer-events: none; }
+
+.caph {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--color-text-label);
+  margin-bottom: 8px;
+}
+.caph-inline { font-size: 11px; color: var(--color-text-label); }
+
+.line-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: .06em;
+}
+
+/* 卡片四型：两列排布 */
+.demo--wide .cardtypes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
+  gap: 22px 20px;
+  align-items: start;
+}
+.cardtypes > div { min-width: 0; }
+
+/* 五态 */
+.states {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+.states > div { min-width: 0; }
+
+/* ---------- 说明与清单 ---------- */
+.snb {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--color-text-label);
+}
+.snb b { color: var(--color-text); font-weight: 600; }
+
+.checks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 2px;
+  background: var(--color-surface);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.checks li {
+  position: relative;
+  padding: 11px 16px 11px 40px;
+  font-size: 12.5px;
+  color: var(--color-text);
+  border-top: 1px solid var(--color-divider);
+}
+.checks li:first-child { border-top: 0; }
+
+.checks li::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  top: 15px;
+  width: 11px;
+  height: 6px;
+  border-left: 2px solid var(--ink-ok);
+  border-bottom: 2px solid var(--ink-ok);
+  transform: rotate(-45deg);
+}
+
+.sfoot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 28px;
+  border-top: 1px solid var(--color-divider);
+  font-size: 11.5px;
+  color: var(--color-text-tertiary);
+}
+.sfoot__brand {
+  font-family: var(--font-display);
+  letter-spacing: .18em;
+  color: var(--color-text-label);
+  font-size: 12px;
+}
+
+/* ---------- 窄屏 ---------- */
+@media (max-width: 880px) {
+  .slayout { flex-direction: column; padding: 20px 16px 64px; gap: 20px; }
+  .snav {
+    position: static;
+    flex: 0 0 auto;
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    border-left: 0;
+    border-bottom: 1px solid var(--color-divider);
+    padding-bottom: 12px;
+  }
+  .snav a {
+    padding: 4px 10px;
+    border-left: 0;
+    border-radius: 999px;
+    background: var(--color-fill);
+  }
+  .snav a:hover { border-left: 0; }
+  .shead { padding: 10px 16px; }
+  .shead__sub { display: none; }
+}

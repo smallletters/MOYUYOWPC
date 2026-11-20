@@ -1,0 +1,2019 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="theme-light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>MOYUYO ATELIER · Linen &amp; Brass · Phase 3 交互原型</title>
+<style id="lucide-css">/*LUCIDE_INLINE*/</style>
+<style>
+/* ==========================================================================
+   MOYUYO · Linen & Brass — Phase 3 可交互原型
+   视觉真值源：phase1-visual-direction.md v1.5 + phase2-ux-spec.md v1.1
+   §4 的 48+ token 原样搬入；单位换算见 §6.13.5（1rpx ≈ 0.52px @390 视口）
+   注释中的 rpx 数字 = 真实 uni-app 实现侧应填的数值
+   ========================================================================== */
+
+/* ---------- §4 共享设计系统 ---------- */
+:root{
+  /* ===== 既有 token（variables.scss 原文） ===== */
+  --color-primary:#dbc98a; --color-primary-light:#e8ddb5; --color-primary-dark:#b8a66b;
+  --color-background:#f6f2ee; --color-surface:#ffffff;
+  --color-text:#2e2b29; --color-text-secondary:#6e6962; --color-text-tertiary:#9a948c;
+  --color-divider:#eae5dd;
+  --color-fill:#f2f2f7; --color-fill-hi:#f7f7fa; --color-fill-raised:#ffffff;
+  --color-overlay-subtle:rgba(0,0,0,.04);
+  --color-fill-dim:#d1d1d6; --color-fill-dim-strong:#c7c7cc;
+  --color-surface-veil-88:rgba(255,255,255,.88);
+  --color-surface-veil-92:rgba(255,255,255,.92);
+  --color-surface-veil-95:rgba(255,255,255,.95);
+  --color-accent:#b38a5a; --color-success:#abb9ad; --color-warm:#d9b4b0;
+  --color-warning:#e6b97a; --color-danger:#c96e5f; --color-info:#8fa8b6;
+  --color-card:#ffffff;
+  --state-success:#abb9ad; --state-success-surface:rgba(171,185,173,.15);
+  --state-error:#c96e5f;  --state-error-surface:rgba(201,110,95,.15);
+  --state-warning:#e6b97a;--state-warning-surface:rgba(230,185,122,.15);
+  --color-error:#c96e5f; --secondary:#f2f2f7; --secondary-foreground:#2e2b29;
+  --color-text-primary:#2e2b29; --color-primary-bg:rgba(219,201,138,.15);
+  --color-care:#dbc98a; --color-gear:#abb9ad; --color-play:#b38a5a; --color-home:#d9b4b0;
+
+  /* ===== §4.1 品牌强调梯度（v1.2 会员卡改暗古铜） ===== */
+  --brand-gradient-vip:linear-gradient(135deg,#7E6B36 0%,#6B5F3A 50%,#554A26 100%);
+  --brand-gradient-hero:linear-gradient(135deg,#E6D59A 0%,#C9B47A 100%);
+  --brand-gradient-ink:linear-gradient(180deg,rgba(46,43,41,0) 0%,rgba(46,43,41,.18) 42%,rgba(46,43,41,.62) 100%);
+  --brand-scrim-flat:rgba(46,43,41,.52);
+  --accent-soft:rgba(219,201,138,.18);
+  --accent-strong:rgba(219,201,138,.34);
+  --text-on-accent:#2E2B29;
+  --text-inverse:#F6F2EE;
+
+  /* ===== §4.2 分级表面 ===== */
+  --surface-elevated:#FFFFFF;
+  --surface-sunken:#F0ECE6;
+  --surface-mute:#FAF8F5;
+  --surface-inverse:#2E2B29;
+
+  /* ===== §4.3 图片占位与渐变遮罩 ===== */
+  --img-placeholder:linear-gradient(135deg,#ECE6DD 0%,#E3DCD1 100%);
+  --img-placeholder-flat:#ECE6DD;
+  --img-ratio-square:100%;
+  --img-ratio-landscape:75%;
+  --img-ratio-portrait:133%;
+  --img-ratio-banner:56.25%;
+
+  /* ===== §4.4 标签 chip ===== */
+  --chip-bg:#F0ECE6;
+  --chip-bg-strong:#E6E0D6;
+  --chip-text:#6E6962;
+  --chip-text-strong:#2E2B29;
+  --chip-accent-bg:#F5EFDD;
+  --chip-accent-text:#6B5F3A;
+
+  /* ===== §4.5 分割线两级 ===== */
+  --divider-weak:#F0ECE6;
+  --divider-strong:#E2DCD3;
+
+  /* ===== §4.6 骨架屏（v1.3 补 --skeleton-gradient） ===== */
+  --skeleton-base:#EFE9E1;
+  --skeleton-highlight:#F7F3ED;
+  --skeleton-radius:4.2px;   /* 8rpx */
+  --skeleton-duration:1.4s;
+  --skeleton-gradient:linear-gradient(90deg,var(--skeleton-base) 25%,var(--skeleton-highlight) 50%,var(--skeleton-base) 75%);
+
+  /* ===== §4.7 文字/交互/圆角/阴影/字体/布局 ===== */
+  --text-secondary-strong:#55504A;
+  --text-link:#8A7844;
+  --text-muted-inverse:rgba(246,242,238,.72);
+  --state-press:rgba(46,43,41,.06);
+  --state-hover:rgba(46,43,41,.03);
+  --focus-ring:rgba(138,120,68,.45);
+  --radius-xs:3.1px;    /* 6rpx  */
+  --radius-sm:4.2px;    /* 8rpx  */
+  --radius-md:8.3px;    /* 16rpx */
+  --radius-lg:12.5px;   /* 24rpx */
+  --radius-xl:16.6px;   /* 32rpx */
+  --radius-2xl:20.8px;  /* 40rpx */
+  --radius-pill:9999px;
+  --radius-circle:50%;
+  --shadow-brand:0 4.2px 12.5px rgba(138,120,68,.26);
+  --shadow-brand-sm:0 2.1px 6.3px rgba(138,120,68,.20);
+  --shadow-none:none;
+  --font-display:'Playfair Display',Georgia,'Songti SC','STSong','Noto Serif CJK SC',serif;
+  --font-sans:'Inter',-apple-system,BlinkMacSystemFont,'Helvetica Neue','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+  --tracking-kicker:.18em;
+  --tracking-tight:-.01em;
+  --gutter:16.6px;      /* 32rpx */
+  --section-gap:25px;   /* 48rpx */
+  --stack-gap:12.5px;   /* 24rpx */
+  --icon-xs:12.5px; --icon-sm:16.6px; --icon-md:20.8px; --icon-lg:25px; --icon-xl:29.1px;
+
+  /* ===== §4.7 v1.2 新增 --color-danger-strong（承载文字的危险表面） ===== */
+  --color-danger-strong:#B3574B;
+  --on-danger:#FFFFFF;
+
+  /* ===== §4.7 v1.3 新增动效 / 层级 / 禁用态 ===== */
+  --duration-fast:120ms; --duration-base:200ms; --duration-slow:320ms;
+  --ease-out:cubic-bezier(.22,1,.36,1);
+  --z-sticky:20; --z-fab:60; --z-sheet:80; --z-modal:100;
+  --state-disabled-bg:#D1D1D6; --state-disabled-text:#9A948C;
+
+  /* ===== §4.8 字号阶 ===== */
+  --font-size-2xs:10.4px; /* 20rpx */
+  --font-size-xs:11.4px;  /* 22rpx */
+  --font-size-sm:13.5px;  /* 26rpx */
+  --font-size-base:14.6px;/* 28rpx */
+  --font-size-md:15.6px;  /* 30rpx */
+  --font-size-lg:16.6px;  /* 32rpx */
+  --font-size-xl:18.7px;  /* 36rpx */
+  --font-size-2xl:22.9px; /* 44rpx — Hero 标题（唯一使用处）*/
+  --font-size-3xl:29.1px; /* 56rpx — 会员卡等级名（唯一使用处）*/
+  --font-size-4xl:35.4px; /* 68rpx — 预留，当前 5 tab 不使用 */
+
+  /* ===== 既有圆角/间距/阴影 ===== */
+  --space-xs:4.2px; --space-sm:8.3px; --space-md:12.5px; --space-lg:16.6px; --space-xl:25px; --space-2xl:33.2px;
+  --shadow-sm:0 .5px 2px rgba(46,43,41,.04);
+  --shadow-md:0 2.1px 8.3px rgba(46,43,41,.06);
+  --shadow-lg:0 4.2px 12.5px rgba(46,43,41,.1);
+  --shadow-card-sm:0 1px 4px rgba(46,43,41,.04);
+  --shadow-card-md:0 1px 6px rgba(46,43,41,.04);
+  --shadow-card-lg:0 1px 8px rgba(46,43,41,.04);
+  --shadow-pop:0 3.1px 10px rgba(46,43,41,.04);
+
+  /* ===== 原型专用：状态条/状态栏尺寸 ===== */
+  --statusbar-h:44px;
+  --tabbar-h:56px;
+  --home-indicator-h:22px;
+
+  /* ===== 原型专用：浅色模式下可安全作文字的金色 =====
+     §4.10：--text-link #8A7844 在亚麻底仅 3.89:1，未达 AA；
+     故浅色端统一改用 --chip-accent-text #6B5F3A（5.68:1 达标），深色端用 --text-link #C9B47A */
+  --link-text:var(--chip-accent-text);
+}
+
+/* ---------- 暗色：按 §5 各页第 5 小节逐条实现（非 filter 反色） ---------- */
+.theme-dark{
+  --color-background:#1a1816; --color-surface:#2a2724;
+  --color-text:#f6f2ee; --color-text-secondary:#b8b0a5; --color-text-tertiary:#8c857c;
+  --color-divider:#3a3530;
+  --color-fill:#35312d; --color-fill-hi:#403b36; --color-fill-raised:#403b36;
+  --color-overlay-subtle:rgba(255,255,255,.07);
+  --color-fill-dim:#45403a; --color-fill-dim-strong:#4e4944;
+  --color-card:#2a2724; --secondary:#35312d; --secondary-foreground:#f6f2ee;
+  --color-text-primary:#f6f2ee; --color-primary-bg:rgba(201,180,122,.2);
+  --color-surface-veil-88:rgba(42,39,36,.88);
+  --color-surface-veil-92:rgba(42,39,36,.92);
+  --color-surface-veil-95:rgba(42,39,36,.95);
+  --color-primary:#c9b47a; --color-primary-light:#d9c68f; --color-primary-dark:#a8964f;
+  --color-danger:#D9836F;
+  --state-error:#D9836F; --state-error-surface:rgba(217,131,111,.16);
+  --shadow-sm:0 .5px 2px rgba(0,0,0,.3); --shadow-md:0 2.1px 8.3px rgba(0,0,0,.4);
+  --shadow-lg:0 4.2px 12.5px rgba(0,0,0,.5);
+  --shadow-card-sm:0 1px 4px rgba(0,0,0,.4); --shadow-card-md:0 1px 6px rgba(0,0,0,.4);
+  --shadow-card-lg:0 1px 8px rgba(0,0,0,.4); --shadow-pop:0 3.1px 10px rgba(0,0,0,.45);
+
+  /* §4.1 深色 */
+  --brand-gradient-vip:linear-gradient(135deg,#4A432C 0%,#3A341F 55%,#2A2619 100%);
+  --brand-gradient-hero:linear-gradient(135deg,#5A5030 0%,#3A3423 100%);
+  --brand-gradient-ink:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.30) 42%,rgba(0,0,0,.72) 100%);
+  --brand-scrim-flat:rgba(0,0,0,.62);
+  --accent-soft:rgba(201,180,122,.16);
+  --accent-strong:rgba(201,180,122,.28);
+  --text-on-accent:#1A1816;
+  --text-inverse:#F6F2EE;
+  /* §4.2 深色 */
+  --surface-elevated:#322E2A; --surface-sunken:#211E1B; --surface-mute:#262320; --surface-inverse:#F6F2EE;
+  /* §4.3 深色 */
+  --img-placeholder:linear-gradient(135deg,#2C2926 0%,#232120 100%);
+  --img-placeholder-flat:#2C2926;
+  /* §4.4 深色 */
+  --chip-bg:#322E2A; --chip-bg-strong:#3B3630; --chip-text:#B8B0A5;
+  --chip-text-strong:#F6F2EE; --chip-accent-bg:#383122; --chip-accent-text:#D9C68F;
+  /* §4.5 深色 */
+  --divider-weak:#2F2B27; --divider-strong:#453F39;
+  /* §4.6 深色 */
+  --skeleton-base:#2E2A27; --skeleton-highlight:#3C3732;
+  /* §4.7 深色 */
+  --text-secondary-strong:#CFC7BB; --text-link:#C9B47A;
+  --state-press:rgba(255,255,255,.08); --state-hover:rgba(255,255,255,.05);
+  --focus-ring:rgba(201,180,122,.55);
+  --shadow-brand:0 4.2px 12.5px rgba(138,120,68,.22);
+  --shadow-brand-sm:0 2.1px 6.3px rgba(0,0,0,.45);
+  --link-text:var(--text-link);
+  /* v1.2：深色端 --color-danger-strong 承文字必须用 Charcoal 字 */
+  --color-danger-strong:#D9836F;
+  --on-danger:#2E2B29;
+  --state-disabled-bg:#4E4944; --state-disabled-text:#807A72;
+}
+
+/* ==========================================================================
+   原型外壳
+   ========================================================================== */
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{background:#262320;font-family:var(--font-sans);color:#e9e4dd;-webkit-font-smoothing:antialiased;}
+.proto-bar{
+  position:sticky;top:0;z-index:120;background:#1b1917;border-bottom:1px solid #3a3530;
+  padding:10px 18px;display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;
+}
+.pb-brand{display:flex;flex-direction:column;line-height:1.2;margin-right:6px;}
+.pb-brand b{font-family:var(--font-display);font-size:16px;font-weight:500;letter-spacing:var(--tracking-kicker);color:#e9e4dd;}
+.pb-brand span{font-size:11px;color:#9a948c;letter-spacing:.06em;}
+.pb-group{display:flex;align-items:center;gap:8px;}
+.pb-label{font-size:11px;color:#8f8981;letter-spacing:.08em;text-transform:uppercase;}
+.pb-tabs{display:flex;gap:4px;background:#262320;border:1px solid #3a3530;border-radius:8px;padding:3px;}
+.pb-tabs button{display:flex;align-items:center;gap:5px;background:transparent;border:0;color:#b8b0a5;font-family:inherit;font-size:12px;padding:6px 10px;border-radius:6px;cursor:pointer;transition:background .16s,color .16s;}
+.pb-tabs button i{font-size:14px;}
+.pb-tabs button:hover{background:#33302c;color:#e9e4dd;}
+.pb-tabs button.on{background:#dbc98a;color:#2E2B29;}
+.seg{display:flex;background:#262320;border:1px solid #3a3530;border-radius:8px;padding:3px;}
+.seg button{background:transparent;border:0;color:#b8b0a5;font-family:inherit;font-size:12px;padding:6px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;}
+.seg button i{font-size:13px;}
+.seg button.on{background:#3b3630;color:#f6f2ee;}
+.pb-sel{background:#262320;border:1px solid #3a3530;color:#e9e4dd;font-family:inherit;font-size:12px;padding:7px 10px;border-radius:8px;min-width:210px;cursor:pointer;}
+.pb-btn{background:#3b3630;border:1px solid #4a443e;color:#e9e4dd;font-family:inherit;font-size:12px;padding:7px 12px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;}
+.pb-btn:hover{background:#474139;}
+.pb-btn.accent{background:#dbc98a;color:#2E2B29;border-color:#dbc98a;font-weight:500;}
+.pb-btn.accent:hover{background:#c9b47a;}
+.pb-btn i{font-size:13px;}
+
+.stage{display:flex;gap:26px;align-items:flex-start;justify-content:center;padding:26px 20px 70px;flex-wrap:wrap;}
+
+.phone{
+  width:390px;height:844px;flex:0 0 390px;position:relative;background:var(--color-background);
+  border-radius:44px;overflow:hidden;
+  box-shadow:0 30px 70px rgba(0,0,0,.55),0 0 0 11px #171514,0 0 0 12px #3a3530;
+}
+.phone-screen{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--color-background);transition:background .2s ease;}
+.statusbar{
+  flex:0 0 var(--statusbar-h);height:var(--statusbar-h);display:flex;align-items:center;justify-content:space-between;
+  padding:0 22px 0 26px;position:relative;z-index:60;background:var(--color-background);color:var(--color-text);
+  font-size:13px;font-weight:600;letter-spacing:.02em;
+}
+.statusbar .sb-right{display:flex;align-items:center;gap:5px;}
+.viewport{flex:1 1 auto;position:relative;overflow:hidden;background:var(--color-background);}
+.page{
+  position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;color:var(--color-text);
+  opacity:0;transform:translateY(8px);pointer-events:none;
+  transition:opacity var(--duration-base) ease,transform var(--duration-base) ease;
+  -webkit-overflow-scrolling:touch;
+}
+.page.is-active{opacity:1;transform:none;pointer-events:auto;}
+.page::-webkit-scrollbar{width:0;}
+
+.tabbar{
+  flex:0 0 var(--tabbar-h);height:var(--tabbar-h);display:flex;align-items:stretch;
+  background:var(--color-surface);border-top:1px solid var(--divider-weak);position:relative;z-index:50;
+}
+.tb-item{
+  flex:1;background:transparent;border:0;cursor:pointer;position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  color:var(--color-text-tertiary);font-family:inherit;font-size:10px;letter-spacing:.02em;transition:color var(--duration-fast);
+}
+.tb-item i{font-size:21px;}
+.tb-item.on{color:var(--color-primary);}
+/* 角标：只有 messages 挂数字；一律不用金色 */
+.tb-badge{
+  position:absolute;top:4px;left:calc(50% + 6px);min-width:15px;height:15px;padding:0 4px;
+  border-radius:var(--radius-pill);background:var(--color-danger-strong);color:var(--on-danger);
+  font-size:10px;line-height:15px;text-align:center;font-weight:500;
+}
+.home-indicator{flex:0 0 var(--home-indicator-h);height:var(--home-indicator-h);background:var(--color-surface);display:flex;align-items:center;justify-content:center;}
+.home-indicator span{width:134px;height:5px;border-radius:3px;background:var(--color-text);opacity:.28;}
+
+.spec{
+  flex:0 0 400px;width:400px;max-height:calc(100vh - 132px);background:#1b1917;border:1px solid #3a3530;border-radius:14px;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.spec.is-collapsed{flex-basis:0;width:0;border:0;}
+.spec-head{padding:12px 14px;border-bottom:1px solid #3a3530;display:flex;align-items:center;gap:8px;background:#211f1d;}
+.spec-head h3{margin:0;font-family:var(--font-display);font-size:15px;font-weight:500;letter-spacing:.04em;color:#f0ebe4;}
+.spec-head .sub{font-size:11px;color:#8f8981;margin-left:auto;}
+.spec-body{overflow-y:auto;padding:10px 12px 22px;}
+.spec-body::-webkit-scrollbar{width:6px;}
+.spec-body::-webkit-scrollbar-thumb{background:#3a3530;border-radius:3px;}
+.spec-card{border:1px solid #35312d;border-radius:10px;padding:10px 11px;margin-bottom:9px;background:#201e1c;}
+.spec-card h4{margin:0 0 7px;font-size:12.5px;font-weight:600;color:#dbc98a;display:flex;align-items:center;gap:7px;}
+.spec-card h4 .role{margin-left:auto;font-size:10px;font-weight:400;padding:2px 7px;border-radius:999px;background:#332f2b;color:#b8b0a5;border:1px solid #403b36;white-space:nowrap;}
+.spec-card h4 .role.hero{background:rgba(219,201,138,.16);color:#dbc98a;border-color:rgba(219,201,138,.35);}
+.spec-card dl{margin:0;display:grid;grid-template-columns:76px 1fr;gap:4px 8px;}
+.spec-card dt{font-size:10.5px;color:#8f8981;letter-spacing:.04em;padding-top:1px;}
+.spec-card dd{margin:0;font-size:11.5px;line-height:1.55;color:#c9c2b9;}
+.spec-card dd b{color:#e9e4dd;font-weight:600;}
+.spec-card dd .warn{color:#d9c68f;}
+.spec-empty{color:#8f8981;font-size:12px;text-align:center;padding:30px 0;}
+.spec-filter{display:flex;gap:6px;padding:0 12px 10px;}
+.spec-filter button{flex:1;background:#262320;border:1px solid #3a3530;color:#b8b0a5;font-family:inherit;font-size:11px;padding:5px 6px;border-radius:7px;cursor:pointer;}
+.spec-filter button.on{background:#3b3630;color:#f6f2ee;border-color:#4a443e;}
+
+/* ==========================================================================
+   通用零件
+   ========================================================================== */
+.app-header{
+  position:sticky;top:0;z-index:var(--z-sticky);min-height:50px;padding:0 var(--gutter);
+  display:flex;align-items:center;gap:10px;
+  background:var(--color-surface-veil-95);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--divider-weak);
+}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .app-header{background:var(--color-surface);}
+}
+.ah-left{display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0;}
+.wordmark{font-family:var(--font-display);font-size:14.6px;font-weight:500;letter-spacing:var(--tracking-kicker);color:var(--color-text);}
+.ah-right{margin-left:auto;display:flex;align-items:center;gap:2px;}
+.icon-btn{
+  width:38px;height:38px;border:0;border-radius:var(--radius-circle);background:transparent;
+  display:flex;align-items:center;justify-content:center;color:var(--color-text);cursor:pointer;position:relative;transition:background var(--duration-fast);
+}
+.icon-btn i{font-size:20.8px;}
+.icon-btn:hover{background:var(--state-hover);}
+.icon-btn .dot{position:absolute;top:8px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--color-danger);}
+.icon-btn .dot.sm{width:6px;height:6px;top:9px;right:9px;}
+
+.kicker{font-size:var(--font-size-2xs);letter-spacing:var(--tracking-kicker);text-transform:uppercase;color:var(--color-text-tertiary);font-weight:400;}
+.kicker.on-img{color:var(--text-muted-inverse);}
+.display{font-family:var(--font-display);font-weight:400;color:var(--color-text);}
+.link-text{color:var(--link-text);background:none;border:0;font-family:inherit;font-size:var(--font-size-sm);cursor:pointer;padding:0;}
+
+.ph{position:relative;overflow:hidden;background:var(--img-placeholder);border-radius:var(--radius-md);}
+.ph > img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+.ph .ph-fallback{position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:var(--color-text-tertiary);}
+.ph .ph-fallback i{font-size:21px;}
+.ph.is-broken > img{opacity:0;}
+.ph.is-broken .ph-fallback{display:flex;}
+.ratio-sq{position:relative;padding-top:100%;}
+.ratio-43{position:relative;padding-top:75%;}
+.ratio-34{position:relative;padding-top:133%;}
+.ratio-169{position:relative;padding-top:56.25%;}
+
+.sk{border-radius:var(--skeleton-radius);background:var(--skeleton-gradient);background-size:200% 100%;animation:sk-shine var(--skeleton-duration) ease infinite;}
+@keyframes sk-shine{0%{background-position:100% 50%}100%{background-position:0 50%}}
+@media (prefers-reduced-motion:reduce){.sk{animation:none;background:var(--skeleton-base);}.page{transition:none;}}
+
+/* 空态 / 错误条（X10：解释性文字一律 secondary） */
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:46px 16px 26px;}
+.empty-ico{width:62px;height:62px;border-radius:var(--radius-circle);background:var(--chip-bg);display:flex;align-items:center;justify-content:center;color:var(--color-text-tertiary);margin-bottom:var(--stack-gap);}
+.empty-ico i{font-size:29px;}
+.empty h4{margin:0;font-size:var(--font-size-base);font-weight:500;color:var(--color-text);}
+.empty p{margin:5px 0 0;font-size:var(--font-size-sm);line-height:1.55;color:var(--color-text-secondary);}
+.empty .btn{margin-top:16px;}
+.btn{height:37px;padding:0 20px;border-radius:var(--radius-pill);border:0;cursor:pointer;font-family:inherit;font-size:var(--font-size-sm);font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.btn.primary{height:46px;padding:0 24px;background:var(--color-primary);color:var(--text-on-accent);box-shadow:var(--shadow-brand-sm);}
+.btn.ghost{background:transparent;border:1px solid var(--divider-strong);color:var(--link-text);}
+.btn.primary:active{background:var(--accent-strong);}
+.btn i{font-size:15px;}
+.errbar{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:var(--radius-md);background:var(--state-error-surface);font-size:var(--font-size-sm);color:var(--color-text-secondary);}
+.errbar i{font-size:15px;color:var(--color-danger);}
+.errbar .btn-retry{margin-left:auto;background:none;border:0;font-family:inherit;font-size:var(--font-size-sm);color:var(--link-text);cursor:pointer;padding:0;}
+
+.brand-footer{text-align:center;padding:26px 0 20px;}
+.brand-footer .rule{display:block;height:1px;background:var(--divider-strong);margin:0 25px 14px;}
+.brand-footer .slogan{font-family:var(--font-sans);font-weight:300;font-size:13.5px;letter-spacing:.04em;color:var(--color-text-secondary);margin:0;}
+.brand-footer .copy{font-size:var(--font-size-2xs);color:var(--color-text-tertiary);margin:6px 0 0;}
+
+.toast{
+  position:absolute;left:50%;bottom:calc(var(--tabbar-h) + var(--home-indicator-h) + 16px);transform:translateX(-50%);
+  background:var(--surface-inverse);color:var(--text-inverse);font-size:var(--font-size-sm);padding:9px 15px;border-radius:var(--radius-pill);
+  z-index:var(--z-modal);opacity:0;pointer-events:none;transition:opacity var(--duration-base) ease,transform var(--duration-base) ease;max-width:300px;text-align:center;line-height:1.4;
+}
+.theme-dark .toast{background:#f0ebe4;color:#1a1816;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
+
+.overlay{position:absolute;inset:0;background:rgba(0,0,0,.44);z-index:var(--z-modal);display:none;align-items:center;justify-content:center;padding:24px;}
+.overlay.show{display:flex;animation:fade var(--duration-base) ease;}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{width:100%;background:var(--surface-elevated);border-radius:var(--radius-2xl);padding:18px 16px 12px;text-align:center;}
+.theme-dark .sheet{border:1px solid rgba(255,255,255,.05);}
+.sheet h4{margin:0 0 8px;font-size:var(--font-size-lg);font-weight:500;color:var(--color-text);}
+.sheet p{margin:0;font-size:var(--font-size-sm);line-height:1.6;color:var(--color-text-secondary);}
+.sheet .actions{display:flex;gap:8px;margin-top:16px;}
+.sheet .actions button{flex:1;height:40px;border-radius:var(--radius-pill);border:0;font-family:inherit;font-size:var(--font-size-base);cursor:pointer;}
+.sheet .act-cancel{background:var(--chip-bg);color:var(--color-text);}
+.sheet .act-ok{background:var(--color-primary);color:var(--text-on-accent);font-weight:500;}
+.sheet .act-danger{background:var(--color-danger-strong);color:var(--on-danger);font-weight:500;}
+.asheet{width:100%;border-radius:var(--radius-2xl);overflow:hidden;background:var(--surface-elevated);}
+.asheet button{display:block;width:100%;padding:13px 16px;border:0;background:transparent;font-family:inherit;font-size:var(--font-size-base);color:var(--color-text);cursor:pointer;border-bottom:1px solid var(--divider-weak);}
+.asheet button:last-child{border-bottom:0;}
+.asheet button.danger{color:var(--color-danger);}
+.asheet .cancel{background:var(--chip-bg);color:var(--color-text-secondary);font-weight:500;}
+
+/* 产品线 chip（§4.4.1 v1.2）：中性底 + 强文字 + 左侧 8rpx 产品线色竖条 */
+.linechip{
+  display:inline-flex;align-items:center;gap:4px;height:21px;padding:0 7px 0 4px;
+  border-radius:var(--radius-xs);background:var(--chip-bg);color:var(--chip-text-strong);
+  font-size:var(--font-size-2xs);font-weight:500;letter-spacing:.02em;white-space:nowrap;
+}
+.linechip .bar{width:4.2px;height:13px;border-radius:var(--radius-xs);flex:0 0 4.2px;}
+.linechip.care .bar{background:var(--color-care);}
+.linechip.gear .bar{background:var(--color-gear);}
+.linechip.play .bar{background:var(--color-play);}
+.linechip.home .bar{background:var(--color-home);}
+
+/* ==========================================================================
+   §5.1 HOME
+   ========================================================================== */
+.search-hairline{
+  height:37px;margin:0 var(--gutter);display:flex;align-items:center;gap:6px;
+  border-bottom:1px solid var(--divider-weak);cursor:pointer;
+}
+.search-hairline i{font-size:16.6px;color:var(--color-text-tertiary);}
+.search-hairline .ph-text{font-size:var(--font-size-sm);color:var(--color-text-tertiary);}
+.search-hairline .act{margin-left:auto;font-size:var(--font-size-xs);color:var(--color-text-secondary);}
+
+.hero{padding:12px var(--gutter) 0;}
+.hero-frame{position:relative;border-radius:var(--radius-lg);overflow:hidden;box-shadow:0 5px 14px rgba(46,43,41,.10);}
+.theme-dark .hero-frame{box-shadow:0 5px 14px rgba(0,0,0,.55);}
+.hero-frame .ph{border-radius:0;}
+.hero-ink{position:absolute;inset:0;background:var(--brand-gradient-ink);}
+.hero-copy{position:absolute;left:14px;right:14px;bottom:13px;color:var(--text-inverse);}
+.hero-title{font-family:var(--font-display);font-size:var(--font-size-2xl);line-height:1.15;color:var(--text-inverse);margin:5px 0 0;letter-spacing:var(--tracking-tight);max-width:92%;}
+.hero-sub{font-size:var(--font-size-sm);color:var(--text-muted-inverse);margin:5px 0 0;max-width:88%;line-height:1.4;}
+.hero-dots{display:flex;gap:4px;margin:8px 0 0 2px;}
+.hero-dots i{width:16.6px;height:2.1px;border-radius:2px;background:rgba(46,43,41,.18);}
+.theme-dark .hero-dots i{background:rgba(255,255,255,.22);}
+.hero-dots i.on{background:var(--color-primary);}
+.hero-fallback{
+  position:relative;border-radius:var(--radius-lg);padding-top:56.25%;
+  background:var(--brand-gradient-hero);display:flex;align-items:center;justify-content:center;overflow:hidden;
+}
+.hero-fallback span{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;padding:0 16px;font-family:var(--font-sans);font-weight:500;font-size:var(--font-size-sm);letter-spacing:var(--tracking-kicker);color:var(--text-on-accent);text-transform:uppercase;line-height:1.7;}
+
+.quick-rail{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--stack-gap);padding:10px var(--gutter) 0;}
+.qr-item{background:none;border:0;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:inherit;}
+.qr-ico{width:50px;height:50px;border-radius:var(--radius-sm);background:var(--chip-bg);display:flex;align-items:center;justify-content:center;color:var(--color-text-secondary);}
+.qr-ico i{font-size:22.9px;}
+.qr-item.is-primary .qr-ico{background:var(--accent-soft);color:var(--color-primary-dark);}
+.qr-item.is-primary .qr-label{color:var(--color-text);font-weight:500;}
+.qr-label{font-size:var(--font-size-sm);color:var(--color-text-secondary);letter-spacing:var(--tracking-tight);}
+
+.shelf{padding:var(--section-gap) var(--gutter) 0;}
+.shelf-head{display:flex;align-items:flex-end;gap:10px;}
+.shelf-title{font-family:var(--font-sans);font-weight:600;font-size:var(--font-size-xl);margin:3px 0 0;line-height:1.3;color:var(--color-text);}
+.more{margin-left:auto;display:flex;align-items:center;gap:1px;background:none;border:0;font-family:inherit;font-size:var(--font-size-sm);color:var(--color-text-secondary);cursor:pointer;padding:0 0 2px;}
+.more i{font-size:13px;}
+/* 首页产品线索引行（4 chip 横滑，pill 样式，与排序 tab 纯文字样式区分） */
+.line-index{display:flex;gap:7px;overflow-x:auto;padding:12px 0 2px;white-space:nowrap;position:relative;}
+.line-index::-webkit-scrollbar{height:0;}
+.line-chip{
+  display:inline-flex;align-items:center;gap:5px;height:29px;padding:0 12px 0 8px;border-radius:var(--radius-pill);
+  background:var(--chip-bg);color:var(--chip-text-strong);font-family:inherit;font-size:var(--font-size-xs);font-weight:500;
+  cursor:pointer;flex:0 0 auto;border:0;
+}
+.line-chip .bar{width:4.2px;height:15px;border-radius:var(--radius-xs);flex:0 0 4.2px;}
+.line-chip.care .bar{background:var(--color-care);}
+.line-chip.gear .bar{background:var(--color-gear);}
+.line-chip.play .bar{background:var(--color-play);}
+.line-chip.home .bar{background:var(--color-home);}
+.shelf-tabs{display:flex;gap:20px;height:37px;align-items:center;margin-top:var(--stack-gap);}
+.shelf-tab{background:none;border:0;font-family:inherit;font-size:var(--font-size-sm);color:var(--color-text-tertiary);cursor:pointer;padding:6px 0;position:relative;}
+.shelf-tab.on{color:var(--color-text);font-weight:600;}
+.shelf-tab.on::after{content:"";position:absolute;left:50%;transform:translateX(-50%);bottom:-4px;width:20.8px;height:2.1px;border-radius:2px;background:var(--color-primary);}
+.shelf-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--stack-gap);}
+.prod-card{cursor:pointer;background:none;border:0;padding:0;text-align:left;font-family:inherit;}
+.prod-card .ph{border-radius:var(--radius-md);}
+.theme-dark .prod-card .ph{border:1px solid rgba(255,255,255,.06);}
+.prod-name{font-size:var(--font-size-sm);font-weight:400;color:var(--color-text);margin:6px 0 0;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.prod-desc{font-size:var(--font-size-xs);color:var(--color-text-tertiary);margin:3px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.prod-price{font-size:var(--font-size-md);font-weight:600;color:var(--color-text);margin:6px 0 0;display:flex;align-items:baseline;gap:1px;}
+.prod-price .cur{font-size:var(--font-size-xs);font-weight:400;}
+.prod-price s{font-size:var(--font-size-xs);font-weight:400;color:var(--color-text-tertiary);margin-left:5px;}
+.prod-rate{font-size:var(--font-size-xs);color:var(--color-text-secondary);display:flex;align-items:center;gap:3px;margin:3px 0 0;}
+.prod-rate i{font-size:11.4px;color:var(--color-warning);}
+.prod-rate .cnt{color:var(--color-text-tertiary);}
+
+/* ==========================================================================
+   §5.2 COMMUNITY
+   ========================================================================== */
+.masthead{display:flex;align-items:center;}
+.mast-title{font-family:var(--font-sans);font-weight:600;font-size:var(--font-size-xl);margin:0;line-height:1.2;color:var(--color-text);}
+.masthead .kicker{margin-top:2px;}
+.issue-nav{display:flex;background:var(--color-surface-veil-95);border-bottom:1px solid var(--divider-weak);position:sticky;top:50px;z-index:19;}
+.issue-tab{flex:1;background:none;border:0;font-family:inherit;font-size:var(--font-size-base);color:var(--color-text-tertiary);height:50px;cursor:pointer;position:relative;font-weight:400;}
+.issue-tab.on{color:var(--color-text);font-weight:600;}
+.issue-tab.on::after{content:"";position:absolute;left:12.5px;right:12.5px;bottom:0;height:1.6px;border-radius:2px;background:var(--color-primary);}
+/* 话题栏：仅话题 tab；右缘渐隐遮罩（§5.2.2③ v1.4）+ pointer-events:none */
+.topic-rail{display:flex;gap:6px;overflow-x:auto;padding:10px var(--gutter);white-space:nowrap;position:relative;}
+.topic-rail::-webkit-scrollbar{height:0;}
+.topic-rail::after{
+  content:"";position:absolute;right:0;top:0;bottom:0;width:25px;pointer-events:none;z-index:1;
+  background:linear-gradient(90deg,rgba(246,242,238,0),var(--color-background) 100%);
+}
+.theme-dark .topic-rail::after{background:linear-gradient(90deg,rgba(26,24,22,0),var(--color-background) 100%);}
+.topic-chip{
+  display:inline-flex;align-items:center;gap:5px;height:29px;padding:0 12px;border-radius:var(--radius-pill);border:0;
+  background:var(--chip-bg);color:var(--chip-text);font-family:inherit;font-size:var(--font-size-xs);cursor:pointer;flex:0 0 auto;
+}
+.topic-chip .cnt{color:var(--color-text-tertiary);font-size:var(--font-size-2xs);}
+.topic-chip.on{background:var(--chip-accent-bg);color:var(--chip-accent-text);font-weight:500;}
+.topic-chip.on .cnt{color:var(--chip-accent-text);opacity:.75;}
+/* 发现入口形态（推荐 tab）：chip + 右箭头，表示「去独立话题页」 */
+.topic-chip.entry .go{font-size:12px;opacity:.6;}
+/* 话题 tab 默认态：chip 选择器网格（Phase 1 §5.2.2③ / Phase 2 T2） */
+.topic-selector{padding:6px var(--gutter) 0;}
+.topic-sel-head{text-align:center;padding:16px 8px 18px;}
+.topic-sel-head h4{font-family:var(--font-sans);font-weight:600;font-size:var(--font-size-lg);margin:5px 0 0;color:var(--color-text);}
+.topic-sel-head p{font-size:var(--font-size-sm);color:var(--color-text-secondary);margin:5px 0 0;line-height:1.55;}
+.topic-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.topic-grid .topic-chip{height:33px;justify-content:flex-start;}
+/* 选中后：选择器收起为顶部一行已选 chip（Phase 2 §8 #35） */
+.topic-selected{display:flex;gap:6px;padding:10px var(--gutter) 2px;align-items:center;}
+.topic-selected .topic-chip.on{height:29px;}
+.topic-selected .topic-chip i{font-size:11px;margin-left:2px;}
+
+.lead-post{padding:var(--stack-gap) var(--gutter) 0;}
+.post-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.avatar{width:33px;height:33px;border-radius:50%;background:var(--chip-bg);color:var(--color-text-secondary);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;overflow:hidden;flex:0 0 auto;cursor:pointer;border:0;font-family:inherit;}
+.avatar img{width:100%;height:100%;object-fit:cover;}
+.avatar.sm{width:26px;height:26px;font-size:12px;}
+.post-user{display:flex;flex-direction:column;min-width:0;gap:1px;}
+.post-user .nm{font-size:var(--font-size-sm);font-weight:500;color:var(--color-text);}
+.post-user .tm{font-size:var(--font-size-xs);color:var(--color-text-tertiary);}
+.post-more{margin-left:auto;background:none;border:0;color:var(--color-text-tertiary);cursor:pointer;padding:4px;}
+.post-more i{font-size:16.6px;}
+.lead-post .ph{border-radius:var(--radius-lg);}
+.theme-dark .lead-post .ph,.theme-dark .feed-post .ph{border:1px solid rgba(255,255,255,.06);}
+.lead-body{font-size:var(--font-size-md);font-weight:400;line-height:1.7;color:var(--color-text);margin:8px 0 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.post-actions{display:flex;align-items:center;gap:16px;margin-top:8px;}
+.pa{display:flex;align-items:center;gap:4px;background:none;border:0;font-family:inherit;font-size:var(--font-size-xs);color:var(--color-text-tertiary);cursor:pointer;padding:0;}
+.pa i{font-size:15px;}
+.pa.on{color:var(--color-text-secondary);}
+.pa.on i{color:var(--color-danger);}
+.pa .n{font-weight:400;}
+
+.feed{padding:0 var(--gutter);}
+.feed-post{display:flex;gap:10px;padding:12px 0;border-bottom:1px solid var(--divider-weak);}
+.feed-post .ph{width:100px;flex:0 0 100px;border-radius:var(--radius-md);}
+.theme-dark .feed-post{background:var(--surface-elevated);border-radius:var(--radius-lg);border-bottom:0;padding:12px;margin-bottom:10px;}
+.theme-dark .feed-post .ph{border:1px solid rgba(255,255,255,.06);}
+.feed-main{min-width:0;flex:1;}
+.feed-body{font-size:var(--font-size-base);font-weight:400;line-height:1.6;color:var(--color-text);margin:5px 0 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.feed-post .post-actions{margin-top:6px;gap:14px;}
+.end-note{text-align:center;font-size:var(--font-size-xs);color:var(--color-text-tertiary);padding:18px 0 6px;}
+.grid9{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:8px;}
+.grid9 .ph,.grid9 .ph > img{border-radius:2px;}
+
+.fab{
+  position:absolute;right:var(--gutter);bottom:calc(var(--tabbar-h) + var(--home-indicator-h) + 14px);
+  width:54px;height:54px;border-radius:50%;border:0;background:var(--color-primary);color:var(--text-on-accent);
+  box-shadow:var(--shadow-brand);cursor:pointer;display:none;align-items:center;justify-content:center;z-index:var(--z-fab);
+}
+.fab.show{display:flex;}
+.fab i{font-size:22.9px;}
+
+/* ==========================================================================
+   §5.3 MESSAGES（Phase 2 §2.4.4 两段式 Tab）
+   ========================================================================== */
+.inbox{margin:12px var(--gutter) 0;background:var(--surface-elevated);border-radius:var(--radius-lg);overflow:hidden;}
+.theme-dark .inbox{border:1px solid rgba(255,255,255,.05);}
+.msg-seg{display:flex;border-bottom:1px solid var(--divider-weak);}
+.theme-dark .msg-seg{border-bottom:1px solid var(--color-divider);}
+.msg-seg-tab{
+  flex:1;background:none;border:0;font-family:var(--font-sans);font-size:var(--font-size-sm);color:var(--color-text-tertiary);
+  height:37px;cursor:pointer;position:relative;font-weight:400;display:flex;align-items:center;justify-content:center;gap:5px;
+}
+.msg-seg-tab.on{color:var(--color-text);font-weight:600;}
+.msg-seg-tab.on::after{content:"";position:absolute;left:50%;transform:translateX(-50%);bottom:0;width:20.8px;height:2.1px;border-radius:2px;background:var(--color-primary);}
+.msg-seg-badge{min-width:15px;height:15px;padding:0 4px;border-radius:var(--radius-pill);background:var(--chip-bg-strong);color:var(--chip-text-strong);font-size:10px;line-height:15px;text-align:center;font-weight:400;}
+.msg-panel{padding-bottom:2px;}
+.notice-row{display:grid;grid-template-columns:repeat(4,1fr);padding:14px 8px 12px;}
+.nr-item{background:none;border:0;font-family:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:0;}
+.nr-ico{width:29px;height:29px;border-radius:var(--radius-sm);background:var(--chip-bg);display:flex;align-items:center;justify-content:center;color:var(--color-text-secondary);position:relative;}
+.nr-ico i{font-size:16.6px;}
+.nr-item.is-primary .nr-ico{background:var(--accent-soft);color:var(--color-primary-dark);}
+.nr-ico .dot{position:absolute;top:-1px;right:-1px;width:7px;height:7px;border-radius:50%;background:var(--color-danger);}
+.nr-label{font-size:var(--font-size-xs);color:var(--text-secondary-strong);}
+.nr-item.is-primary .nr-label{color:var(--color-text);font-weight:500;}
+.notice-sep{height:1px;background:var(--divider-weak);margin:0 16px;}
+.theme-dark .notice-sep{background:var(--color-divider);}
+.filter-row{display:flex;gap:6px;overflow-x:auto;padding:0 12px 10px;white-space:nowrap;}
+.filter-row::-webkit-scrollbar{height:0;}
+.filter-chip{flex:0 0 auto;height:27px;padding:0 12px;border-radius:var(--radius-pill);border:0;background:var(--chip-bg);color:var(--chip-text);font-family:inherit;font-size:var(--font-size-xs);cursor:pointer;}
+.filter-chip.on{background:var(--chip-accent-bg);color:var(--chip-accent-text);font-weight:500;}
+.conv-list{}
+.conv-row{position:relative;overflow:hidden;border-bottom:1px solid var(--divider-weak);}
+.conv-row:last-child{border-bottom:0;}
+.theme-dark .conv-row{border-bottom:1px solid var(--color-divider);}
+.conv-body{position:relative;z-index:2;background:var(--surface-elevated);display:flex;align-items:center;gap:9px;padding:12px 12px 12px 0;min-height:56px;transition:transform var(--duration-base) cubic-bezier(.22,.61,.36,1);}
+.conv-unread-bar{position:absolute;left:0;top:10px;bottom:10px;width:3.1px;border-radius:0 2px 2px 0;background:var(--color-primary);}
+.conv-avatar{width:44px;height:44px;border-radius:50%;flex:0 0 44px;background:var(--chip-bg);color:var(--color-text-secondary);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;overflow:hidden;}
+.theme-dark .conv-avatar{background:var(--color-fill);}
+.conv-avatar img{width:100%;height:100%;object-fit:cover;}
+.conv-avatar i{font-size:20.8px;}
+.conv-main{flex:1;min-width:0;}
+.conv-title{display:flex;align-items:center;gap:5px;}
+.conv-title .pin{color:var(--color-primary);font-size:12px;}
+.conv-title .nm{font-size:var(--font-size-base);font-weight:400;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.conv-row.unread .conv-title .nm{font-weight:600;}
+.conv-title .cnt{background:var(--chip-bg-strong);color:var(--chip-text-strong);font-size:var(--font-size-xs);border-radius:var(--radius-pill);padding:1px 7px;margin-left:auto;font-weight:400;}
+.conv-sum{font-size:var(--font-size-xs);color:var(--text-secondary-strong);margin:3px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.conv-time{font-size:var(--font-size-xs);color:var(--color-text-tertiary);align-self:flex-start;padding-top:2px;white-space:nowrap;}
+.swipe-del{
+  position:absolute;right:0;top:0;bottom:0;width:68px;border:0;background:var(--color-danger-strong);color:var(--on-danger);
+  font-family:inherit;font-size:var(--font-size-sm);cursor:pointer;z-index:1;
+}
+.load-more{text-align:center;font-size:var(--font-size-xs);color:var(--color-text-tertiary);padding:16px 0;cursor:pointer;}
+.ws-note{display:flex;align-items:center;justify-content:center;gap:5px;font-size:var(--font-size-xs);color:var(--color-text-tertiary);padding:0 0 8px;}
+.ws-note i{font-size:12px;}
+.notif-item{display:flex;gap:9px;align-items:flex-start;padding:11px 12px;border-top:1px solid var(--divider-weak);}
+.notif-item .ni-ico{width:29px;height:29px;border-radius:var(--radius-sm);background:var(--chip-bg);display:flex;align-items:center;justify-content:center;color:var(--color-text-secondary);flex:0 0 29px;}
+.notif-item .ni-ico i{font-size:16.6px;}
+.notif-item .ni-t{font-size:var(--font-size-sm);color:var(--color-text);font-weight:500;}
+.notif-item .ni-s{font-size:var(--font-size-xs);color:var(--text-secondary-strong);margin-top:2px;}
+.notif-item .ni-time{font-size:var(--font-size-xs);color:var(--color-text-tertiary);margin-left:auto;flex:0 0 auto;}
+
+/* ==========================================================================
+   §5.4 USER
+   ========================================================================== */
+.account{display:flex;align-items:center;gap:11px;padding:24px var(--gutter);border-bottom:1px solid var(--divider-weak);background:var(--color-background);position:sticky;top:0;z-index:18;}
+.theme-dark .account{background:var(--surface-elevated);border-bottom:1px solid var(--color-divider);}
+.account .avatar-lg{width:56px;height:56px;border-radius:50%;border:2px solid var(--divider-strong);background:var(--img-placeholder-flat);display:flex;align-items:center;justify-content:center;color:var(--color-text);overflow:hidden;flex:0 0 56px;font-size:22px;}
+.theme-dark .account .avatar-lg{border-color:rgba(201,180,122,.30);}
+.account .avatar-lg img{width:100%;height:100%;object-fit:cover;}
+.account-info{min-width:0;flex:1;}
+.account-nick{font-family:var(--font-sans);font-weight:600;font-size:var(--font-size-lg);color:var(--color-text);margin:0;line-height:1.3;}
+.account-mail{font-size:var(--font-size-xs);color:var(--text-secondary-strong);margin:3px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mchip{display:inline-flex;align-items:center;height:21px;padding:0 9px;border-radius:999px;background:var(--chip-accent-bg);color:var(--chip-accent-text);font-size:var(--font-size-xs);font-weight:500;margin-top:5px;}
+.account .chev{color:var(--color-text-tertiary);font-size:16.6px;}
+.login-prompt{display:flex;align-items:center;gap:11px;padding:24px var(--gutter);border-bottom:1px solid var(--divider-weak);}
+.login-prompt .avatar-lg{width:56px;height:56px;border-radius:50%;background:var(--img-placeholder-flat);display:flex;align-items:center;justify-content:center;color:var(--color-text-tertiary);}
+.login-prompt h3{font-family:var(--font-sans);font-weight:600;font-size:var(--font-size-lg);margin:0;color:var(--color-text);}
+.login-prompt p{font-size:var(--font-size-xs);color:var(--color-text-secondary);margin:3px 0 0;}
+/* v1.4 补强 F15：未登录态必须保留会员体系的可感知入口 */
+.vip-hint{display:flex;align-items:center;gap:6px;padding:10px var(--gutter) 0;}
+.vip-hint button{background:none;border:0;font-family:inherit;font-size:var(--font-size-xs);color:var(--link-text);cursor:pointer;padding:0;display:flex;align-items:center;gap:4px;}
+.vip-hint i{font-size:13px;}
+
+.vip-card{
+  position:relative;margin:14px var(--gutter) 0;height:116px;border-radius:var(--radius-xl);
+  background:var(--brand-gradient-vip);box-shadow:var(--shadow-brand);
+  padding:12px 14px;color:var(--text-inverse);overflow:hidden;cursor:pointer;
+}
+.theme-dark .vip-card{box-shadow:0 4.2px 12.5px rgba(138,120,68,.22),0 0 0 0.5px rgba(201,180,122,.22);}
+.vip-kicker{font-size:var(--font-size-2xs);letter-spacing:.2em;color:var(--text-muted-inverse);text-transform:uppercase;}
+.vip-level{display:flex;align-items:baseline;gap:7px;margin-top:5px;}
+.vip-level-en{font-family:var(--font-display);font-size:var(--font-size-3xl);font-weight:500;line-height:1.05;letter-spacing:var(--tracking-tight);font-variant-numeric:lining-nums;color:var(--text-inverse);}
+.vip-level-cn{font-family:var(--font-sans);font-weight:500;font-size:var(--font-size-base);color:var(--text-muted-inverse);}
+.theme-dark .vip-card{color:#E8DDB5;}
+.theme-dark .vip-level-en,.theme-dark .vip-level-cn{color:#E8DDB5;}
+.vip-tip{font-size:var(--font-size-xs);color:var(--text-muted-inverse);margin-top:4px;}
+.vip-crown{position:absolute;right:13px;top:12px;color:#fff;opacity:.38;font-size:20.8px;}
+.vip-chev{position:absolute;right:13px;bottom:16px;color:#fff;opacity:.55;font-size:16.6px;}
+.vip-prog{position:absolute;left:0;right:0;bottom:0;height:2.1px;background:rgba(255,255,255,.25);}
+.theme-dark .vip-prog{background:rgba(255,255,255,.14);}
+.vip-prog i{display:block;height:100%;background:var(--color-primary-light);}
+.theme-dark .vip-prog i{background:var(--color-primary);}
+/* 刻度条右端 22rpx 精确成长值 */
+.vip-prog-num{position:absolute;right:13px;bottom:6px;font-size:var(--font-size-xs);color:var(--text-muted-inverse);font-variant-numeric:lining-nums;}
+
+.band{margin:14px var(--gutter) 0;background:var(--surface-elevated);border-radius:var(--radius-lg);padding:14px 8px;display:grid;grid-template-columns:repeat(4,1fr);}
+.theme-dark .band{border:1px solid rgba(255,255,255,.05);}
+.band-item{text-align:center;position:relative;padding:0 2px;background:none;border:0;font-family:inherit;cursor:pointer;}
+.band-item + .band-item::before{content:"";position:absolute;left:0;top:25%;bottom:25%;width:1px;background:var(--divider-weak);}
+.theme-dark .band-item + .band-item::before{background:var(--color-divider);}
+/* 裁定 1（Phase 1 v1.3/v1.4 收敛）：展示体只有 3 类 Latin 短文本（wordmark / Hero 标题 / 会员卡等级名）。
+   数据带数字属「仪表盘」语境 → sans + 600，靠字重与字号承重，不与会员卡等级名抢视觉语汇 */
+.band-item .num{font-family:var(--font-sans);font-size:var(--font-size-xl);font-weight:600;color:var(--color-text);line-height:1.2;}
+.band-item .lb{font-size:var(--font-size-xs);color:var(--text-secondary-strong);margin-top:3px;}
+.social-band .band-item i{font-size:16.6px;color:var(--color-primary-dark);display:block;margin-bottom:4px;}
+.theme-dark .social-band .band-item i{color:var(--color-primary);}
+.social-band .band-item .num{font-size:var(--font-size-lg);}
+.order-band .band-item{position:relative;}
+.order-band .band-item i{font-size:22.9px;color:var(--color-text-secondary);display:block;margin-bottom:5px;}
+.order-band .badge{position:absolute;top:-3px;left:calc(50% + 6px);min-width:15px;height:15px;padding:0 4px;border-radius:999px;background:var(--color-danger-strong);color:var(--on-danger);font-size:10px;line-height:15px;text-align:center;font-weight:500;}
+
+.feature-group{padding:0 var(--gutter);margin-top:var(--section-gap);}
+.feature-group h3{font-family:var(--font-sans);font-weight:600;font-size:var(--font-size-lg);margin:0 0 8px;color:var(--color-text);}
+.feature-group .rows{border-top:1px solid var(--divider-weak);}
+.theme-dark .feature-group .rows{border-top:1px solid var(--color-divider);}
+.feature-row{display:flex;align-items:center;gap:10px;height:50px;width:100%;background:none;border:0;border-bottom:1px solid var(--divider-weak);padding:0;font-family:inherit;font-size:var(--font-size-base);color:var(--color-text);cursor:pointer;text-align:left;}
+.theme-dark .feature-row{border-bottom:1px solid var(--color-divider);}
+.feature-ico{width:29px;height:29px;border-radius:var(--radius-sm);background:var(--chip-bg);color:var(--color-text-secondary);display:flex;align-items:center;justify-content:center;flex:0 0 29px;}
+.theme-dark .feature-ico{background:var(--color-fill);border:1px solid rgba(255,255,255,.06);}
+.feature-ico i{font-size:16.6px;}
+.feature-row .fr-name{flex:1;}
+.feature-row .lock{color:var(--color-text-tertiary);font-size:12px;}
+
+/* ==========================================================================
+   §5.5 PET
+   ========================================================================== */
+.pet-scene{position:relative;height:330px;overflow:hidden;}
+.pet-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.pet-veil{position:absolute;inset:0;background:var(--brand-gradient-ink);}
+.pet-glass{
+  position:absolute;left:var(--gutter);right:var(--gutter);bottom:16px;
+  background:rgba(255,255,255,.20);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.16);border-radius:var(--radius-lg);padding:12px 14px;color:#fff;
+}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.pet-glass{background:rgba(46,43,41,.62);}}
+.pet-glass .kicker{color:rgba(246,242,238,.72);}
+.pet-name{font-family:var(--font-sans);font-weight:600;font-size:var(--font-size-2xl);margin:3px 0 0;color:#fff;line-height:1.15;}
+.pet-meta{font-size:var(--font-size-sm);color:rgba(246,242,238,.82);margin-top:4px;}
+.pet-switch{display:flex;gap:6px;padding:12px var(--gutter) 0;}
+.pet-sw{flex:1;background:var(--chip-bg);border:0;border-radius:var(--radius-md);padding:8px 4px;cursor:pointer;font-family:var(--font-sans);font-weight:600;font-size:var(--font-size-base);color:var(--color-text-secondary);display:flex;flex-direction:column;align-items:center;gap:2px;}
+.pet-sw small{font-family:var(--font-sans);font-weight:400;font-size:11px;color:var(--color-text-secondary);}
+.pet-sw.on{background:var(--surface-elevated);color:var(--color-text);box-shadow:var(--shadow-card-sm);}
+.care-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--stack-gap);padding:16px var(--gutter) 0;}
+.care-card{background:var(--surface-elevated);border-radius:var(--radius-lg);padding:11px 10px;box-shadow:var(--shadow-card-sm);}
+.theme-dark .care-card{border:1px solid rgba(255,255,255,.05);}
+.care-card .cc-t{font-size:var(--font-size-sm);color:var(--color-text-secondary);}
+.care-card .cc-v{font-size:var(--font-size-sm);font-weight:500;color:var(--color-text-secondary);margin-top:5px;display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:var(--radius-pill);background:var(--surface-mute);}
+.care-card .cc-v i{font-size:13px;}
+.care-card .cc-v.ok{background:var(--state-success-surface);}
+.care-card .cc-v.ok i{color:var(--color-success);}
+.care-card .cc-v.warn{background:var(--state-error-surface);}
+.care-card .cc-v.warn i{color:var(--color-danger);}
+.pet-actions{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:16px var(--gutter) 0;}
+.pa-item{background:none;border:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;font-family:inherit;font-size:var(--font-size-2xs);color:var(--color-text-secondary);}
+.pa-item .pi{width:38px;height:38px;border-radius:var(--radius-circle);background:var(--chip-bg);display:flex;align-items:center;justify-content:center;color:var(--color-text-secondary);}
+.pa-item .pi i{font-size:18.7px;}
+
+.hidden{display:none !important;}
+.fill{position:absolute;inset:0;}
+.pulse{display:inline-flex;gap:4px;}
+.pulse i{width:5px;height:5px;border-radius:50%;background:var(--color-primary);animation:pulse 1.1s infinite ease-in-out;}
+.pulse i:nth-child(2){animation-delay:.18s}.pulse i:nth-child(3){animation-delay:.36s}
+@keyframes pulse{0%,80%,100%{opacity:.25;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.pulse i{animation:none;opacity:.6}}
+</style>
+</head>
+<body>
+
+<!-- ============ 原型控制条 ============ -->
+<header class="proto-bar">
+  <div class="pb-brand">
+    <b>MOYUYO ATELIER</b>
+    <span>Linen &amp; Brass · Phase 3 可交互原型 · 390×844 · Phase1 v1.5 + Phase2 v1.1</span>
+  </div>
+  <div class="pb-group"><span class="pb-label">Tab</span><div class="pb-tabs" id="pbTabs"></div></div>
+  <div class="pb-group">
+    <span class="pb-label">主题</span>
+    <div class="seg" id="pbTheme">
+      <button data-theme="light" class="on"><i class="luc luc-sun"></i>浅色</button>
+      <button data-theme="dark"><i class="luc luc-moon"></i>深色</button>
+    </div>
+  </div>
+  <div class="pb-group"><span class="pb-label">状态态</span><select class="pb-sel" id="pbState"></select></div>
+  <div class="pb-group">
+    <button class="pb-btn accent" id="pbSpec"><i class="luc luc-file-text"></i>Spec 面板</button>
+    <button class="pb-btn" id="pbShot"><i class="luc luc-camera"></i>提示</button>
+  </div>
+</header>
+
+<main class="stage">
+  <div class="phone" id="phone">
+    <div class="phone-screen" id="phoneScreen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right">
+          <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor" aria-hidden="true"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg>
+          <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor" aria-hidden="true"><path d="M8 10.2 6.2 8.3a2.6 2.6 0 0 1 3.6 0L8 10.2Zm4-3.3-1.3-1.3a5.3 5.3 0 0 0-5.4 0L4 6.9a7.1 7.1 0 0 1 8 0Zm2.7-2.7L13 2.6a9.4 9.4 0 0 0-10 0L1.3 4.2a11.1 11.1 0 0 1 13.4 0Z"/></svg>
+          <svg width="25" height="12" viewBox="0 0 25 12" aria-hidden="true"><rect x="0.5" y="0.5" width="21" height="11" rx="3" stroke="currentColor" fill="none" opacity=".5"/><rect x="2" y="2" width="15" height="8" rx="1.6" fill="currentColor"/><path d="M23 4v4a2.1 2.1 0 0 0 0-4Z" fill="currentColor" opacity=".5"/></svg>
+        </span>
+      </div>
+
+      <div class="viewport" id="viewport">
+        <section class="page" id="page-pet"></section>
+        <section class="page" id="page-home"></section>
+        <section class="page" id="page-community"></section>
+        <section class="page" id="page-messages"></section>
+        <section class="page" id="page-user"></section>
+      </div>
+
+      <nav class="tabbar" id="tabbar"></nav>
+      <div class="home-indicator"><span></span></div>
+
+      <button class="fab" id="fab" data-act="action-sheet" aria-label="发布帖子"><i class="luc luc-camera"></i></button>
+      <div class="toast" id="toast"></div>
+      <div class="overlay" id="overlay"></div>
+    </div>
+  </div>
+
+  <aside class="spec" id="spec">
+    <div class="spec-head">
+      <h3>Spec 面板</h3>
+      <span class="sub" id="specSub">home</span>
+    </div>
+    <div class="spec-filter" id="specFilter"></div>
+    <div class="spec-body" id="specBody"></div>
+  </aside>
+</main>
+
+<script>
+/* ==========================================================================
+   Phase 3 原型脚本：数据驱动 + 原生 JS（无构建、无 ES module、无 fetch）
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  var TABS = [
+    { key:'pet',       name:'宠物', icon:'luc-paw-print' },      /* 原生 codepoint \ue956 */
+    { key:'home',      name:'商店', icon:'luc-home' },           /* \ue93c */
+    { key:'community', name:'社区', icon:'luc-message-circle' }, /* \ue94c */
+    { key:'messages',  name:'消息', icon:'luc-message-square' }, /* \ue94d */
+    { key:'user',      name:'我的', icon:'luc-user' }           /* \ue982 */
+  ];
+
+  var STATES = {
+    pet:       [ {v:'normal', t:'常态 · 沉浸场景（仅视觉层次）'}, {v:'empty', t:'空 · 无宠物档案'} ],
+    home:      [
+      {v:'normal',   t:'常态 · 橱窗陈列'},
+      {v:'loading',  t:'加载 · 骨架屏'},
+      {v:'empty',    t:'空 · 无推荐商品'},
+      {v:'error',    t:'错误 · 推荐接口失败'},
+      {v:'fallback', t:'错误 · banner 兜底'}
+    ],
+    community: [
+      {v:'normal',   t:'常态 · 杂志信息流（已登录）'},
+      {v:'loading',  t:'加载 · 骨架帖'},
+      {v:'empty',    t:'空 · 推荐流无内容'},
+      {v:'login',    t:'未登录 · 登录引导段'},
+      {v:'error',    t:'错误 · inline 错误条'}
+    ],
+    messages:  [
+      {v:'normal',   t:'常态 · 私信段含未读'},
+      {v:'loading',  t:'加载 · 骨架'},
+      {v:'empty',    t:'空 · 无会话'},
+      {v:'login',    t:'未登录 · 容器内占位段'},
+      {v:'offline',  t:'错误 · WebSocket 断开'}
+    ],
+    user:      [
+      {v:'normal',   t:'常态 · 已登录'},
+      {v:'loading',  t:'加载 · 会员卡骨架'},
+      {v:'login',    t:'未登录 · 隐藏全部数据带'},
+      {v:'vipError', t:'错误 · 会员接口失败'}
+    ]
+  };
+
+  var S = {
+    page:'home', theme:'light',
+    states:{ pet:'normal', home:'normal', community:'normal', messages:'normal', user:'normal' },
+    sub:{ homeTab:0, communityTab:0, topic:-1, pet:0, msgSeg:0, notifFilter:0 },
+    liked:{}, unreadDm:2, deleted:false, pinned:false, specAll:false
+  };
+
+  /* ---------- 内容数据 ---------- */
+  var HERO = [
+    { img:'assets/photo/s-walk.jpg',    title:'把秋天，留在家里', sub:'秋冬宠物家居与护理精选' },
+    { img:'assets/photo/s-cat-sofa.jpg', title:'黄铜与亚麻的日常', sub:'一只猫的午后材质实验' },
+    { img:'assets/photo/s-dog2.jpg',    title:'为它挑一件好物', sub:'像挑一件家具那样挑宠物用品' }
+  ];
+  /* Hero kicker 恒定：PET LIFESTYLE · 策展精选（标题/图/标签由 CMS 轮播） */
+  var HERO_KICKER = 'PET LIFESTYLE · 策展精选';
+
+  /* §4.4.2 产品线 ID 唯一真值源：1=MILO→GEAR / 2=LUNA→CARE / 3=ATLAS→PLAY / 4=OLIVE→HOME */
+  var LINES = {
+    care:{ ip:'LUNA',  cn:'洗护', en:'CARE' },
+    gear:{ ip:'MILO',  cn:'出行', en:'GEAR' },
+    play:{ ip:'ATLAS', cn:'玩具', en:'PLAY' },
+    home:{ ip:'OLIVE', cn:'家居', en:'HOME' }
+  };
+
+  var PRODUCTS = [
+    { img:'assets/photo/p-care-shampoo.jpg', name:'亚麻质宠物洗护露', desc:'温和低泡 · 燕麦精华', price:128, old:168, rate:4.9, cnt:'268 好评', line:'care' },
+    { img:'assets/photo/p-home-bowl.png',    name:'陶瓷宠物食碗',   desc:'宽口防噎 · 哑光釉',   price:168, old:'',   rate:4.8, cnt:'512 好评', line:'home' },
+    { img:'assets/photo/p-gear-leash.jpg',   name:'植鞣真皮牵引绳', desc:'黄铜扣具 · 越用越亮', price:198, old:258, rate:4.9, cnt:'341 好评', line:'gear' },
+    { img:'assets/photo/p-play-toy.jpg',     name:'天然橡胶咬咬玩具', desc:'可食级 · 耐咬不变形', price:88,  old:'',   rate:4.7, cnt:'196 好评', line:'play' },
+    { img:'assets/photo/p-care-treats.jpg',  name:'低敏冻干鸡肉粒', desc:'单一蛋白 · 0 谷物',  price:118, old:'',   rate:4.9, cnt:'429 好评', line:'care' },
+    { img:'assets/photo/p-gear-carrier.jpg', name:'帆布宠物外出包', desc:'可机洗 · 透气网面',   price:258, old:298, rate:4.8, cnt:'133 好评', line:'gear' }
+  ];
+
+  var HOME_TABS = ['猜你喜欢','今日爆款','口碑好评'];
+
+  var TOPICS = [
+    { name:'宠物穿搭', cnt:128 }, { name:'夏日护理', cnt:96 }, { name:'新品速递', cnt:74 },
+    { name:'猫咪专区', cnt:213 }, { name:'狗狗日常', cnt:187 }, { name:'新手养宠', cnt:64 }
+  ];
+
+  var LEAD = {
+    user:'MOMO 的铲屎官', time:'12 分钟前', line:'home',
+    img:'assets/photo/s-cat3.jpg',
+    body:'把客厅的旧木箱刷成亚麻色，铺上她睡惯的那块羊毛毯，就成了她的专属角落。养宠第三年才明白：它们要的不是一个漂亮的窝，而是「自己的位置」。',
+    likes:248, comments:32
+  };
+
+  var FEED = [
+    { user:'阿柴不拆家', time:'1 小时前', line:'gear', img:'assets/photo/s-dog.jpg',
+      body:'换了这条植鞣皮牵引绳之后，遛弯变成了一件有仪式感的事。扣具是黄铜的，越用越亮。', likes:96, comments:8 },
+    { user:'洗澡的小桃子', time:'3 小时前', line:'care', img:'assets/photo/s-bath.jpg',
+      body:'低泡配方真的省事，冲两遍就干净了，猫主子全程没炸毛。倒出来是淡淡的亚麻味。', likes:312, comments:21 },
+    { user:'周末去公园', time:'昨天', line:'play', img:'assets/photo/s-cat.jpg',
+      body:'秋天的傍晚六点半，公园的光刚刚好。这样的时刻，一天只有一次。',
+      grid9:['assets/photo/p-play-scratch.png','assets/photo/p-play-jacket.jpg','assets/photo/p-home-bowl.png',
+             'assets/photo/p-gear-fountain.png','assets/photo/p-gear-flask.png','assets/photo/p-care-dental.jpg',
+             'assets/photo/p-care-biscuits.jpg','assets/photo/s-bath2.jpg','assets/photo/s-cat2.jpg'],
+      likes:154, comments:12 }
+  ];
+
+  var FOLLOW_FEED = [
+    { user:'小鹿不迷路', time:'8 分钟前', line:'care', img:'assets/photo/p-care-biscuits.jpg',
+      body:'新到的冻干试了三个口味，MOMO 只挑鸡肉粒，其他看都不看。', likes:41, comments:6 },
+    { user:'奶糖的饲养日记', time:'2 小时前', line:'home', img:'assets/photo/s-cat2.jpg',
+      body:'换了新的猫窝之后终于不在沙发角落掉毛了，一周一次打扫变成一个月一次。', likes:78, comments:11 }
+  ];
+
+  var TOPIC_FEED = {
+    0:[{ user:'穿搭研究所', time:'22 分钟前', line:'play', img:'assets/photo/p-play-jacket.jpg',
+         body:'这一季的轻薄防护衣终于不用穿脱三次了，肩背两处开口设计，拉链在侧边。', likes:133, comments:14 }],
+    3:[{ user:'橘座观察日记', time:'41 分钟前', line:'home', img:'assets/photo/s-cat.jpg',
+         body:'猫的「我的位置」不是买来的，是让出来的。把那张旧毯子放到角落，它自己就会选。', likes:207, comments:23 }],
+    4:[{ user:'公园遛狗小组', time:'昨天', line:'gear', img:'assets/photo/s-walk.jpg',
+         body:'六点半的公园光最好看。这条牵引绳的扣具是黄铜的，握把被磨得发亮。', likes:186, comments:17 }]
+  };
+
+  var CONVS = [
+    { avatar:'icon:headphones', name:'MOYUYO 客服中心', sum:'[订单] 您的订单已发货 · 顺丰 SF1234567890', time:'10:24', unread:2, unreadRow:true },
+    { avatar:'L', name:'林小满', sum:'[图片] 你家猫真的很上镜', time:'09:12', pinned:true },
+    { avatar:'周', name:'周末去公园', sum:'下周约一次线下宠物市集？', time:'昨天' },
+    { avatar:'M', name:'MOYUYO 官方', sum:'「夏日护理」话题精选已更新', time:'周一' },
+    { avatar:'阿', name:'阿柴不拆家', sum:'已读不回是我的新造型吗', time:'07-12' }
+  ];
+
+  var NOTIFS = [
+    { i:'luc-package', t:'订单已发货', s:'顺丰 SF1234567890 已从上海仓发出', time:'10:24' },
+    { i:'luc-sparkles', t:'林小满赞了你的帖子', s:'「把秋天，留在家里」收到 1 个新赞', time:'09:40' },
+    { i:'luc-bell', t:'会员权益更新', s:'铂金会员本月积分倍率已生效', time:'昨天' }
+  ];
+
+  var PETS = [
+    { name:'MILO', meta:'金毛 · 3 岁 · 状态良好', img:'assets/photo/s-dog.jpg',  scene:'下午的客厅，MILO 趴在羊毛毯上打盹。' },
+    { name:'LUNA', meta:'布偶 · 2 岁 · 洗护到期', img:'assets/photo/s-cat.jpg',  scene:'窗边的猫爬架，LUNA 正在整理自己的毛。' },
+    { name:'NOOR', meta:'柯基 · 1 岁 · 今日驱虫', img:'assets/photo/s-dog2.jpg', scene:'门口的新鞋垫，NOOR 已经准备好出门了。' }
+  ];
+
+  /* 钱包带：积分余额按 §5.4.2③ 放在第 2 格 */
+  var USER_WALLET = [
+    {n:'6', l:'优惠券'}, {n:'2,480', l:'积分'}, {n:'48', l:'收藏'}, {n:'128', l:'足迹'}
+  ];
+  var USER_SOCIAL = [
+    {i:'luc-user-plus', n:'86', l:'关注'}, {i:'luc-users', n:'1,204', l:'粉丝'},
+    {i:'luc-bookmark', n:'312', l:'收藏'}, {i:'luc-award', n:'24', l:'个人中心'}
+  ];
+  var USER_ORDERS = [
+    {i:'luc-credit-card', l:'待付款', b:'2'}, {i:'luc-shopping-cart', l:'购物车', b:'1'},
+    {i:'luc-package', l:'待收货', b:'3'}, {i:'luc-check-circle', l:'待评价', b:''}
+  ];
+  var USER_FEATURES_A = [
+    {i:'luc-calendar', l:'每日签到'}, {i:'luc-target', l:'任务中心'}, {i:'luc-users', l:'邀请好友'},
+    {i:'luc-crown', l:'会员中心'}, {i:'luc-map-pin', l:'收货地址'}, {i:'luc-paw-print', l:'宠物档案'},
+    {i:'luc-bookmark', l:'我的收藏'}, {i:'luc-clock', l:'浏览足迹'}
+  ];
+  var USER_FEATURES_B = [
+    {i:'luc-help-circle', l:'帮助中心'}, {i:'luc-settings', l:'设置'}, {i:'luc-award', l:'关于我们'}
+  ];
+
+  /* ---------- 通用零件 ---------- */
+  function ph(inner, ratio, extraCls) {
+    return '<div class="ph ' + (ratio||'ratio-sq') + ' ' + (extraCls||'') + '">' + inner +
+      '<span class="ph-fallback"><i class="luc luc-image"></i></span></div>';
+  }
+  function imgTag(src, alt) { return '<img src="' + src + '" alt="' + (alt||'') + '" loading="eager" />'; }
+  function sk(w, h, style) { return '<div class="sk" style="width:' + w + ';height:' + h + (style?';' + style : '') + '"></div>'; }
+  function emptyState(icon, title, sub, btnLabel, act) {
+    return '<div class="empty">' +
+      '<div class="empty-ico"><i class="luc ' + icon + '"></i></div>' +
+      '<h4>' + title + '</h4><p>' + sub + '</p>' +
+      (btnLabel ? '<button class="btn ' + (act === 'primary' ? 'primary' : 'ghost') + '" data-act="' + (act === 'primary' ? 'primary-cta' : 'ghost-cta') + '">' + btnLabel + '</button>' : '') +
+      '</div>';
+  }
+  function errBar(text, retryLabel) {
+    return '<div class="errbar"><i class="luc luc-alert-triangle"></i><span>' + text + '</span>' +
+      '<button class="btn-retry" data-act="retry">' + (retryLabel || '重试') + '</button></div>';
+  }
+  function lineChip(key) {
+    var L = LINES[key];
+    return '<span class="linechip ' + key + '"><i class="bar"></i>' + L.en + ' ' + L.cn + '</span>';
+  }
+
+  /* ==========================================================================
+     §5.1 HOME
+     ========================================================================== */
+  function renderHome(state) {
+    var html = '';
+    html += '<header class="app-header"><div class="ah-left"><span class="wordmark">MOYUYO</span></div>' +
+      '<div class="ah-right">' +
+      '<button class="icon-btn" data-act="toast" data-msg="打开相机 · 扫一扫识别商品"><i class="luc luc-camera"></i></button>' +
+      '<button class="icon-btn" data-act="toast" data-msg="3 条新通知"><i class="luc luc-bell"></i><span class="dot"></span></button>' +
+      '</div></header>';
+
+    html += '<div class="search-hairline" data-act="toast" data-msg="进入搜索页：搜索宠物好物、品牌、攻略">' +
+      '<i class="luc luc-search"></i><span class="ph-text">搜索宠物好物、品牌、攻略</span><span class="act">搜索</span></div>';
+
+    var heroIdx = S.sub.homeTab % HERO.length;
+    var h = HERO[heroIdx];
+    if (state === 'loading') {
+      html += '<section class="hero"><div class="hero-frame">' +
+        '<div class="ph ratio-169"><div class="sk fill"></div></div></div>' +
+        '<div class="hero-dots"><i></i><i></i><i></i></div></section>';
+    } else if (state === 'fallback') {
+      html += '<section class="hero"><div class="hero-fallback"><span>' + HERO_KICKER + '<br>今日主推暂不可用</span></div>' +
+        '<div class="hero-dots"><i></i><i></i><i></i></div></section>';
+    } else {
+      html += '<section class="hero"><div class="hero-frame" data-act="toast" data-msg="Hero 主视觉 · 3 帧 swiper">' +
+        ph(imgTag(h.img, h.title), 'ratio-169') +
+        '<div class="hero-ink"></div>' +
+        '<div class="hero-copy">' +
+        '<div class="kicker on-img">' + HERO_KICKER + '</div>' +
+        '<h2 class="hero-title">' + h.title + '</h2>' +
+        '<p class="hero-sub">' + h.sub + '</p>' +
+        '</div></div>' +
+        '<div class="hero-dots">' +
+        HERO.map(function(_, i){ return '<i class="' + (i === heroIdx ? 'on' : '') + '"></i>'; }).join('') +
+        '</div></section>';
+    }
+
+    if (state === 'loading') {
+      html += '<section class="quick-rail">' + [0,1,2,3].map(function(){
+        return '<div style="display:flex;flex-direction:column;align-items:center;gap:6px">' +
+          sk('50px','50px','border-radius:var(--radius-sm)') + sk('46px','9px') + '</div>';
+      }).join('') + '</section>';
+    } else {
+      var qr = [
+        {i:'luc-layout-grid', l:'分类', primary:true},
+        {i:'luc-crown', l:'会员'}, {i:'luc-gift', l:'领券'}, {i:'luc-clock', l:'限时'}
+      ];
+      html += '<section class="quick-rail">' + qr.map(function(q){
+        return '<button class="qr-item ' + (q.primary ? 'is-primary' : '') + '" data-act="toast" data-msg="打开「' + q.l + '」">' +
+          '<span class="qr-ico"><i class="luc ' + q.i + '"></i></span><span class="qr-label">' + q.l + '</span></button>';
+      }).join('') + '</section>';
+    }
+
+    html += '<section class="shelf">' +
+      '<div class="shelf-head"><div>' +
+      '<div class="kicker">CURATED</div>' +
+      '<h3 class="shelf-title">为你挑的</h3></div>' +
+      '<button class="more" data-act="toast" data-msg="查看全部商品">查看全部 <i class="luc luc-chevron-right"></i></button>' +
+      '</div>';
+
+    /* 首页产品线索引行（4 chip 横滑；pill 样式，与纯文字排序 tab 区分） */
+    if (state !== 'loading') {
+      html += '<div class="line-index">' + Object.keys(LINES).map(function(k){
+        return '<button class="line-chip ' + k + '" data-act="toast" data-msg="进入分类页 ?line=' + LINES[k].ip + '">' +
+          '<i class="bar"></i>' + LINES[k].en + ' ' + LINES[k].cn + '</button>';
+      }).join('') + '</div>';
+    }
+
+    var tabsHtml = '<div class="shelf-tabs">' + HOME_TABS.map(function(t,i){
+      return '<button class="shelf-tab ' + (i===S.sub.homeTab?'on':'') + '" data-act="home-tab" data-i="' + i + '">' + t + '</button>';
+    }).join('') + '</div>';
+
+    if (state === 'loading') {
+      html += '<div class="shelf-tabs"><span class="sk" style="width:56px;height:13px"></span><span class="sk" style="width:56px;height:13px"></span><span class="sk" style="width:56px;height:13px"></span></div>';
+      html += '<div class="shelf-grid">' + [0,1].map(function(){
+        return '<div>' + '<div class="ph ratio-sq"><div class="sk fill"></div></div>' +
+          sk('86%','11px','margin-top:8px') + sk('56%','9px','margin-top:6px') + '</div>';
+      }).join('') + '</div>';
+    } else if (state === 'empty') {
+      html += tabsHtml;
+      html += emptyState('luc-paw-print', '暂时还没有为你挑好', '换换口味，去分类看看', '去分类逛逛', 'ghost');
+    } else if (state === 'error') {
+      html += tabsHtml;
+      html += errBar('推荐内容加载失败');
+    } else {
+      html += tabsHtml;
+      html += '<div class="shelf-grid">' + PRODUCTS.map(function(p){
+        return '<div class="prod-card" role="button" tabindex="0" data-act="toast" data-msg="打开商品：' + p.name + '">' +
+          ph(imgTag(p.img, p.name), 'ratio-sq') +
+          '<h4 class="prod-name">' + p.name + '</h4>' +
+          '<p class="prod-desc">' + p.desc + '</p>' +
+          '<div class="prod-price"><span class="cur">¥</span>' + p.price + (p.old ? '<s>¥' + p.old + '</s>' : '') + '</div>' +
+          '<div class="prod-rate"><i class="luc luc-star"></i>' + p.rate + '<span class="cnt">' + p.cnt + '</span></div>' +
+          '</div>';
+      }).join('') + '</div>';
+    }
+    html += '</section>';
+
+    html += '<footer class="brand-footer"><span class="rule"></span>' +
+      '<p class="slogan">每段旅程，与你同行。</p>' +
+      '<p class="copy">MOYUYO ATELIER v1.0.0</p></footer>';
+    html += '<div style="height:22px"></div>';
+    return html;
+  }
+
+  /* ==========================================================================
+     §5.2 COMMUNITY
+     ========================================================================== */
+  function renderCommunity(state) {
+    var loggedIn = state !== 'login';
+    var html = '';
+
+    html += '<header class="app-header masthead"><div class="ah-left">' +
+      '<h1 class="mast-title">社区</h1><div class="kicker">社区 · 宠物生活志</div></div>' +
+      '<div class="ah-right">' +
+      '<button class="icon-btn" data-act="toast" data-msg="搜索帖子、用户、话题…"><i class="luc luc-search"></i></button>' +
+      '<button class="icon-btn" data-act="toast" data-msg="2 条新通知"><i class="luc luc-bell"></i><span class="dot sm"></span></button>' +
+      '</div></header>';
+
+    var tabs = ['推荐','关注','话题'];
+    html += '<nav class="issue-nav">' + tabs.map(function(t,i){
+      return '<button class="issue-tab ' + (i===S.sub.communityTab?'on':'') + '" data-act="community-tab" data-i="' + i + '">' + t + '</button>';
+    }).join('') + '</nav>';
+
+    /* 搜索条：三个 tab 都有（Phase 2 #23） */
+    html += '<div class="search-hairline" data-act="toast" data-msg="搜索帖子、用户、话题…">' +
+      '<i class="luc luc-search"></i><span class="ph-text">搜索帖子、用户、话题…</span></div>';
+
+    /* Topic Rail 双重定位（Phase 1 §5.2.2③ v1.5 / Phase 2 §8 #23）：
+       推荐 tab = 发现入口（点 chip → 跳独立话题页）；话题 tab = 筛选器（点 chip → 就地过滤 feed） */
+    if (S.sub.communityTab === 0 && state !== 'loading') {
+      html += '<div class="topic-rail">' + TOPICS.map(function(t,i){
+        return '<button class="topic-chip entry" data-act="topic-entry" data-i="' + i + '">' +
+          t.name + '<span class="cnt">' + t.cnt + '</span><i class="luc luc-chevron-right go"></i></button>';
+      }).join('') + '</div>';
+    }
+
+    if (state === 'loading') {
+      html += '<section class="lead-post">';
+      for (var i = 0; i < 3; i++) {
+        html += '<div style="margin-bottom:22px">' +
+          '<div class="post-head"><div class="avatar sm sk" style="width:33px;height:33px"></div>' +
+          '<div style="flex:1">' + sk('42%','10px') + sk('28%','9px','margin-top:6px') + '</div></div>' +
+          '<div class="ph ratio-43"><div class="sk fill"></div></div></div>';
+      }
+      html += '</section>';
+    } else if (state === 'error') {
+      html += '<div class="lead-post">' + errBar('内容加载失败') + '</div>';
+    } else if (state === 'empty') {
+      html += emptyState('luc-sparkles', '这里还很安静', '发布第一条，让别人听见你的宠物故事', '发布第一条', 'primary');
+    } else if (S.sub.communityTab === 1 && !loggedIn) {
+      html += emptyState('luc-user', '登录后查看你关注的人', '关注的人在更新，这里会第一时间出现他们的帖子', '去登录', 'primary');
+    } else if (S.sub.communityTab === 2 && S.sub.topic < 0) {
+      /* 话题 tab 默认态 = 未选话题 → 选择器态（不是空态三件套，Phase 2 T2 / §8 #34） */
+      html += '<div class="topic-selector"><div class="topic-sel-head">' +
+        '<div class="kicker">TOPIC</div>' +
+        '<h4>选择一个话题开始浏览</h4>' +
+        '<p>话题下的帖子会按最新排序集中展示</p></div>' +
+        '<div class="topic-grid">' + TOPICS.map(function(t,i){
+          return '<button class="topic-chip" data-act="topic" data-i="' + i + '">' +
+            t.name + '<span class="cnt">' + t.cnt + '</span></button>';
+        }).join('') + '</div></div>';
+    } else {
+      if (S.sub.communityTab === 2) {
+        /* 选择器收起 → 顶部一行已选 chip（可清除） */
+        html += '<div class="topic-selected"><button class="topic-chip on" data-act="topic-clear">' +
+          TOPICS[S.sub.topic].name + '<span class="cnt">' + TOPICS[S.sub.topic].cnt + '</span>' +
+          '<i class="luc luc-x"></i></button></div>';
+      }
+      if (S.sub.communityTab === 0) {
+        html += '<article class="lead-post">' +
+          '<div class="post-head">' +
+          '<button class="avatar" data-act="author" data-name="' + LEAD.user + '">M</button>' +
+          '<div class="post-user"><span class="nm">' + LEAD.user + '</span><span class="tm">' + LEAD.time + '</span></div>' +
+          '<button class="post-more" data-act="post-more"><i class="luc luc-more-horizontal"></i></button>' +
+          '</div>' +
+          lineChip(LEAD.line) +
+          '<div style="margin-top:8px">' + ph(imgTag(LEAD.img, '头条帖封面'), 'ratio-43') + '</div>' +
+          '<p class="lead-body">' + LEAD.body + '</p>' +
+          '<div class="post-actions">' +
+          '<button class="pa ' + (S.liked.lead ? 'on' : '') + '" data-act="like" data-k="lead"><i class="luc luc-heart"></i><span class="n">' + (LEAD.likes + (S.liked.lead ? 1 : 0)) + '</span></button>' +
+          '<button class="pa" data-act="toast" data-msg="' + LEAD.comments + ' 条评论"><i class="luc luc-message-circle"></i><span class="n">' + LEAD.comments + '</span></button>' +
+          '<button class="pa" data-act="toast" data-msg="已收藏"><i class="luc luc-bookmark"></i></button>' +
+          '</div></article>';
+      }
+
+      var posts = S.sub.communityTab === 0 ? FEED
+                : S.sub.communityTab === 1 ? FOLLOW_FEED
+                : (TOPIC_FEED[S.sub.topic] || []);
+      html += '<section class="feed">';
+      posts.forEach(function(f, idx){
+        html += '<article class="feed-post" data-act="post" data-name="' + f.user + '">' +
+          '<div class="ph ratio-34" style="width:100px;flex:0 0 100px;border-radius:var(--radius-md)">' + imgTag(f.img, f.user) +
+          '<span class="ph-fallback"><i class="luc luc-image"></i></span></div>' +
+          '<div class="feed-main">' +
+          '<div class="post-head" style="margin-bottom:0">' +
+          '<button class="avatar sm" data-act="author" data-name="' + f.user + '">' + f.user.slice(0,1) + '</button>' +
+          '<div class="post-user"><span class="nm" style="font-size:var(--font-size-sm)">' + f.user + '</span>' +
+          '<span class="tm">' + f.time + '</span></div>' +
+          '</div>' +
+          lineChip(f.line) +
+          '<p class="feed-body">' + f.body + '</p>' +
+          (f.grid9 ? '<div class="grid9">' + f.grid9.map(function(g){
+            return '<div class="ph ratio-sq" style="border-radius:2px">' + imgTag(g, '') + '</div>';
+          }).join('') + '</div>' : '') +
+          '<div class="post-actions">' +
+          '<button class="pa ' + (S.liked['f'+idx] ? 'on' : '') + '" data-act="like" data-k="f'+idx + '"><i class="luc luc-heart"></i><span class="n">' + (f.likes + (S.liked['f'+idx] ? 1 : 0)) + '</span></button>' +
+          '<button class="pa" data-act="toast" data-msg="' + f.comments + ' 条评论"><i class="luc luc-message-circle"></i><span class="n">' + f.comments + '</span></button>' +
+          '</div></div></article>';
+      });
+      html += '</section>';
+      html += '<div class="end-note">— 已经到底了 —</div>';
+    }
+
+    html += '<div style="height:72px"></div>';
+    return html;
+  }
+
+  /* ==========================================================================
+     §5.3 MESSAGES（两段式）
+     ========================================================================== */
+  function renderMessages(state) {
+    var html = '';
+    html += '<header class="app-header"><div class="ah-left">' +
+      '<h1 class="mast-title">Messages</h1><div class="kicker">收件箱</div></div>' +
+      '<div class="ah-right">' +
+      '<button class="icon-btn" data-act="toast" data-msg="通知中心"><i class="luc luc-bell"></i><span class="dot"></span></button>' +
+      '<button class="icon-btn" data-act="toast" data-msg="发起群聊"><i class="luc luc-users"></i></button>' +
+      '<button class="icon-btn" data-act="toast" data-msg="发起私信"><i class="luc luc-user-plus"></i></button>' +
+      '</div></header>';
+
+    html += '<div class="inbox">';
+    html += '<nav class="msg-seg">' +
+      '<button class="msg-seg-tab ' + (S.sub.msgSeg===0?'on':'') + '" data-act="msg-seg" data-i="0">私信' +
+      (S.unreadDm > 0 ? '<span class="msg-seg-badge">' + S.unreadDm + '</span>' : '') + '</button>' +
+      '<button class="msg-seg-tab ' + (S.sub.msgSeg===1?'on':'') + '" data-act="msg-seg" data-i="1">通知</button>' +
+      '</nav>';
+
+    if (S.sub.msgSeg === 1) {
+      if (state === 'login') {
+        html += emptyState('luc-user', '登录后查看通知', '订单状态、互动提醒会在这里汇总', '去登录', 'primary');
+      } else if (state === 'loading') {
+        html += '<div class="notice-row">' + [0,1,2,3].map(function(){
+          return '<div style="display:flex;flex-direction:column;align-items:center;gap:5px">' +
+            sk('29px','29px','border-radius:var(--radius-sm)') + sk('38px','9px') + '</div>';
+        }).join('') + '</div>';
+      } else {
+        var notices = [
+          {i:'luc-inbox', l:'全部通知'}, {i:'luc-sparkles', l:'互动通知'},
+          {i:'luc-package', l:'订单通知'}, {i:'luc-bell', l:'系统通知'}
+        ];
+        html += '<div class="notice-row">' + notices.map(function(n, i){
+          return '<button class="nr-item ' + (i === S.sub.notifFilter ? 'is-primary' : '') + '" data-act="notif-filter" data-i="' + i + '">' +
+            '<span class="nr-ico"><i class="luc ' + n.i + '"></i>' + (i === S.sub.notifFilter ? '<span class="dot"></span>' : '') + '</span>' +
+            '<span class="nr-label">' + n.l + '</span></button>';
+        }).join('') + '</div>';
+        html += '<div class="filter-row">' + ['全部','互动','订单','系统'].map(function(f,i){
+          return '<button class="filter-chip ' + (i===S.sub.notifFilter?'on':'') + '" data-act="notif-filter" data-i="' + i + '">' + f + '</button>';
+        }).join('') + '</div>';
+        html += '<div style="border-top:1px solid var(--divider-weak)">' + NOTIFS.map(function(n){
+          return '<div class="notif-item"><span class="ni-ico"><i class="luc ' + n.i + '"></i></span>' +
+            '<div style="flex:1;min-width:0"><div class="ni-t">' + n.t + '</div><div class="ni-s">' + n.s + '</div></div>' +
+            '<span class="ni-time">' + n.time + '</span></div>';
+        }).join('') + '</div>';
+      }
+    } else {
+      if (state === 'login') {
+        html += emptyState('luc-message-square', '登录后查看消息', '登录后可接收私信与订单通知', '去登录', 'primary');
+      } else if (state === 'empty') {
+        html += emptyState('luc-message-square', '还没有会话', '发起一段对话，或等朋友先开口', '发起私信', 'primary');
+      } else {
+        if (state === 'loading') {
+          for (var i = 0; i < 4; i++) {
+            html += '<div class="conv-row"><div class="conv-body">' +
+              '<div class="conv-avatar sk" style="width:44px;height:44px;flex:0 0 44px;border-radius:50%"></div>' +
+              '<div class="conv-main">' + sk('52%','11px') + sk('86%','9px','margin-top:7px') + '</div>' +
+              '</div></div>';
+          }
+        } else {
+          if (state === 'offline') {
+            html += '<div style="padding:14px 12px 4px">' + errBar('会话加载失败') + '</div>';
+          }
+          var list = CONVS.filter(function(c){ return !(S.deleted && c.name === '林小满'); });
+          html += list.map(function(c){ return convRow(c); }).join('');
+        }
+        if (state !== 'loading' && state !== 'offline') {
+          html += '<div class="load-more" data-act="toast" data-msg="加载更多会话">加载更多</div>';
+        }
+        if (state === 'offline') {
+          html += '<div class="ws-note"><i class="luc luc-wifi"></i>实时连接已断开，刷新以同步</div>';
+        }
+      }
+    }
+    html += '</div>';
+    html += '<div style="height:22px"></div>';
+    return html;
+  }
+
+  function convRow(c) {
+    var av = c.avatar.indexOf('icon:') === 0 ? '<i class="luc luc-' + c.avatar.slice(5) + '"></i>' : c.avatar;
+    return '<div class="conv-row ' + (c.unreadRow ? 'unread' : '') + '" data-conv data-name="' + c.name + '">' +
+      '<button class="swipe-del" data-act="delete-conv" data-name="' + c.name + '">删除</button>' +
+      '<div class="conv-body" data-conv-body>' +
+      (c.unreadRow ? '<span class="conv-unread-bar"></span>' : '') +
+      '<div class="conv-avatar">' + av + '</div>' +
+      '<div class="conv-main">' +
+      '<div class="conv-title">' +
+      (c.pinned && S.pinned ? '<i class="luc luc-bookmark pin"></i>' : '') +
+      '<span class="nm">' + c.name + '</span>' +
+      (c.unread ? '<span class="cnt">' + c.unread + '</span>' : '') +
+      '</div>' +
+      '<p class="conv-sum">' + c.sum + '</p>' +
+      '</div>' +
+      '<div class="conv-time">' + c.time + '</div>' +
+      '</div></div>';
+  }
+
+  /* ==========================================================================
+     §5.4 USER
+     ========================================================================== */
+  function renderUser(state) {
+    var html = '';
+
+    if (state === 'login') {
+      html += '<div class="login-prompt">' +
+        '<div class="avatar-lg"><i class="luc luc-user"></i></div>' +
+        '<div style="flex:1;min-width:0">' +
+        '<h3>登录 / 注册</h3><p>登录后享受更多会员权益</p>' +
+        '<button class="btn primary" style="height:30px;margin-top:8px;padding:0 14px" data-act="login">登录</button>' +
+        '</div></div>' +
+        '<div class="vip-hint"><button data-act="login"><i class="luc luc-crown"></i>登录解锁会员权益 · 查看等级</button></div>';
+    } else {
+      html += '<div class="account">' +
+        '<div class="avatar-lg"><span>M</span></div>' +
+        '<div class="account-info">' +
+        '<p class="account-nick">Momo</p>' +
+        '<p class="account-mail">momo@moyuyo.co</p>' +
+        '<span class="mchip">铂金会员</span>' +
+        '</div>' +
+        '<i class="luc luc-chevron-right chev"></i>' +
+        '</div>';
+    }
+
+    if (state === 'login') {
+      /* 未登录：会员卡 / 钱包带 / 社交带 / 订单带 全部不渲染（0 值误导） */
+    } else if (state === 'loading') {
+      html += '<div class="vip-card" style="background:var(--img-placeholder);box-shadow:none;display:flex;align-items:center;justify-content:center">' +
+        '<span style="font-size:var(--font-size-xs);color:var(--color-text-tertiary)">会员信息加载中…</span></div>';
+    } else if (state === 'vipError') {
+      html += '<div style="margin:14px var(--gutter) 0">' + errBar('会员信息加载失败') + '</div>';
+    } else {
+      html += '<div class="vip-card" data-act="toast" data-msg="打开会员中心">' +
+        '<div class="vip-kicker">MEMBERSHIP</div>' +
+        '<div class="vip-level"><span class="vip-level-en">Platinum</span><span class="vip-level-cn">铂金</span></div>' +
+        '<div class="vip-tip">再消费约 ¥320 升级至 黑卡</div>' +
+        '<i class="luc luc-crown vip-crown"></i>' +
+        '<i class="luc luc-chevron-right vip-chev"></i>' +
+        '<div class="vip-prog"><i style="width:15.5%"></i></div>' +
+        '<div class="vip-prog-num">1,240 / 8,000</div>' +
+        '</div>';
+    }
+
+    if (state === 'login') {
+      /* 未登录：仅功能清单 */
+    } else {
+      html += '<div class="band wallet-band">' + USER_WALLET.map(function(w){
+        return '<div class="band-item" role="button" tabindex="0" data-act="toast" data-msg="' + w.l + '">' +
+          (state === 'loading' ? '<div class="sk" style="width:30px;height:19px;margin:0 auto"></div>'
+            : '<div class="num">' + w.n + '</div>') +
+          '<div class="lb">' + w.l + '</div></div>';
+      }).join('') + '</div>';
+
+      html += '<div class="band social-band">' + USER_SOCIAL.map(function(s){
+        return '<div class="band-item" role="button" tabindex="0" data-act="toast" data-msg="' + s.l + '">' +
+          (state === 'loading' ? '<div class="sk" style="width:20px;height:16px;margin:0 auto"></div>'
+            : '<i class="luc ' + s.i + '"></i>') +
+          (state === 'loading' ? '<div class="sk" style="width:26px;height:14px;margin:5px auto 0"></div>'
+            : '<div class="num">' + s.n + '</div>') +
+          '<div class="lb">' + s.l + '</div></div>';
+      }).join('') + '</div>';
+
+      html += '<div class="band order-band">' + USER_ORDERS.map(function(o){
+        return '<div class="band-item" role="button" tabindex="0" data-act="toast" data-msg="我的订单 · ' + o.l + '">' +
+          (o.b ? '<span class="badge">' + o.b + '</span>' : '') +
+          (state === 'loading' ? '<div class="sk" style="width:23px;height:23px;margin:0 auto 5px"></div>'
+            : '<i class="luc ' + o.i + '"></i>') +
+          '<div class="lb" style="color:var(--color-text-secondary)">' + o.l + '</div></div>';
+      }).join('') + '</div>';
+    }
+
+    function featureGroup(title, items, locked) {
+      var g = '<div class="feature-group"><h3>' + title + '</h3><div class="rows">';
+      items.forEach(function(it){
+        g += '<button class="feature-row" data-act="' + (locked ? 'need-login' : 'toast') + '" data-msg="' + it.l + '">' +
+          '<span class="feature-ico"><i class="luc ' + it.i + '"></i></span>' +
+          '<span class="fr-name">' + it.l + '</span>' +
+          '<i class="luc luc-chevron-right" style="font-size:16.6px;color:var(--color-text-tertiary)"></i>' +
+          '</button>';
+      });
+      return g + '</div></div>';
+    }
+    html += featureGroup('我的服务', USER_FEATURES_A, state === 'login');
+    html += featureGroup('设置与关于', USER_FEATURES_B, false);
+
+    html += '<footer class="brand-footer"><span class="rule"></span>' +
+      '<p class="slogan">每段旅程，与你同行。</p>' +
+      '<p class="copy">MOYUYO ATELIER v1.0.0</p></footer>';
+    html += '<div style="height:22px"></div>';
+    return html;
+  }
+
+  /* ==========================================================================
+     §5.5 PET
+     ========================================================================== */
+  function renderPet(state) {
+    if (state === 'empty') {
+      return '<header class="app-header"><div class="ah-left"><span class="wordmark">MOYUYO</span></div>' +
+        '<div class="ah-right"><button class="icon-btn" data-act="toast" data-msg="宠物档案"><i class="luc luc-paw-print"></i></button></div></header>' +
+        emptyState('luc-paw-print', '开启宠物互动新体验', '添加一只宠物档案，解锁护理提醒与 3D 小空间', '添加宠物档案', 'primary') +
+        '<div style="height:22px"></div>';
+    }
+    var idx = S.sub.pet;
+    var p = PETS[idx];
+    var html = '';
+    html += '<header class="app-header"><div class="ah-left"><span class="wordmark">MOYUYO</span></div>' +
+      '<div class="ah-right">' +
+      '<button class="icon-btn" data-act="toast" data-msg="切换 3D 空间"><i class="luc luc-grid"></i></button>' +
+      '<button class="icon-btn" data-act="toast" data-msg="宠物档案"><i class="luc luc-paw-print"></i></button>' +
+      '</div></header>';
+
+    html += '<div class="pet-scene">' +
+      '<img class="pet-bg" src="' + p.img + '" alt="' + p.name + '" />' +
+      '<div class="pet-veil"></div>' +
+      '<div class="pet-glass">' +
+      '<div class="kicker">PET HUB · ' + (idx + 1) + ' / 3</div>' +
+      '<h2 class="pet-name">' + p.name + '</h2>' +
+      '<div class="pet-meta">' + p.meta + '</div>' +
+      '<div class="pet-meta" style="opacity:.72;margin-top:2px">' + p.scene + '</div>' +
+      '</div></div>';
+
+    html += '<div class="pet-switch">' + PETS.map(function(x,i){
+      return '<button class="pet-sw ' + (i===idx?'on':'') + '" data-act="pet" data-i="' + i + '">' +
+        x.name + '<small>' + x.meta.split(' · ')[1] + '</small></button>';
+    }).join('') + '</div>';
+
+    var care = [
+      {t:'洗护', v:'状态良好', k:'ok', i:'luc-sparkles'},
+      {t:'驱虫', v:'已到期', k:'warn', i:'luc-clock'},
+      {t:'体检', v:'待安排', k:'', i:'luc-heart'}
+    ];
+    html += '<div class="care-cards">' + care.map(function(c){
+      return '<div class="care-card"><div class="cc-t">' + c.t + '</div>' +
+        '<div class="cc-v ' + c.k + '"><i class="luc ' + c.i + '"></i>' + c.v + '</div></div>';
+    }).join('') + '</div>';
+
+    var acts = [
+      {i:'luc-shopping-bag', l:'购买'}, {i:'luc-share-2', l:'晒宠'}, {i:'luc-calendar', l:'日历'},
+      {i:'luc-book-open', l:'记忆'}, {i:'luc-target', l:'体重'}
+    ];
+    html += '<div class="pet-actions">' + acts.map(function(a){
+      return '<button class="pa-item" data-act="toast" data-msg="宠物操作：' + a.l + '">' +
+        '<span class="pi"><i class="luc ' + a.i + '"></i></span>' + a.l + '</button>';
+    }).join('') + '</div>';
+    html += '<div style="height:26px"></div>';
+    return html;
+  }
+
+  /* ==========================================================================
+     渲染调度
+     ========================================================================== */
+  function renderPage(key) {
+    var el = document.getElementById('page-' + key);
+    var state = S.states[key];
+    if (key === 'pet') el.innerHTML = renderPet(state);
+    else if (key === 'home') el.innerHTML = renderHome(state);
+    else if (key === 'community') el.innerHTML = renderCommunity(state);
+    else if (key === 'messages') el.innerHTML = renderMessages(state);
+    else if (key === 'user') el.innerHTML = renderUser(state);
+  }
+
+  function renderTabbar() {
+    document.getElementById('tabbar').innerHTML = TABS.map(function(t){
+      var badge = (t.key === 'messages' && S.unreadDm > 0)
+        ? '<span class="tb-badge">' + (S.unreadDm > 99 ? '99+' : S.unreadDm) + '</span>' : '';
+      return '<button class="tb-item" data-page="' + t.key + '"><i class="luc ' + t.icon + '"></i><span>' + t.name + '</span>' + badge + '</button>';
+    }).join('');
+  }
+
+  function applyActive() {
+    TABS.forEach(function(t){
+      document.getElementById('page-' + t.key).classList.toggle('is-active', t.key === S.page);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.pb-tabs button'), function(b){
+      b.classList.toggle('on', b.getAttribute('data-page') === S.page);
+    });
+    document.getElementById('fab').classList.toggle('show', S.page === 'community');
+    document.getElementById('specSub').textContent = S.specAll ? '全部页面' : S.page;
+    renderSpec();
+  }
+
+  function goPage(key) {
+    if (['pet','home','community','messages','user'].indexOf(key) < 0) return;
+    S.page = key;
+    renderPage(key);
+    renderTabbar();
+    applyActive();
+    syncStateSelect();
+  }
+
+  function buildChrome() {
+    document.getElementById('pbTabs').innerHTML = TABS.map(function(t){
+      return '<button data-page="' + t.key + '"><i class="luc ' + t.icon + '"></i>' + t.name + '</button>';
+    }).join('');
+    renderTabbar();
+  }
+
+  function syncStateSelect() {
+    document.getElementById('pbState').innerHTML = STATES[S.page].map(function(s){
+      return '<option value="' + s.v + '" ' + (S.states[S.page] === s.v ? 'selected' : '') + '>' + s.t + '</option>';
+    }).join('');
+  }
+
+  function setTheme(t) {
+    S.theme = t;
+    document.documentElement.classList.toggle('theme-dark', t === 'dark');
+    document.documentElement.classList.toggle('theme-light', t === 'light');
+    Array.prototype.forEach.call(document.querySelectorAll('#pbTheme button'), function(b){
+      b.classList.toggle('on', b.getAttribute('data-theme') === t);
+    });
+  }
+
+  var toastTimer = null;
+  function toast(msg) {
+    var el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 1700);
+  }
+
+  var overlay = document.getElementById('overlay');
+  function closeOverlay() { overlay.classList.remove('show'); overlay.innerHTML = ''; }
+  function showModal(opts) {
+    overlay.innerHTML = '<div class="sheet"><h4>' + opts.title + '</h4><p>' + opts.content + '</p>' +
+      '<div class="actions">' +
+      '<button class="act-cancel" data-act="overlay-close">' + (opts.cancelText || '取消') + '</button>' +
+      '<button class="' + (opts.danger ? 'act-danger' : 'act-ok') + '" data-act="overlay-ok">' + (opts.okText || '确定') + '</button>' +
+      '</div></div>';
+    overlay.classList.add('show');
+    overlay.setAttribute('data-mode', 'modal');
+    overlay.setAttribute('data-msg', opts.okMsg || '');
+  }
+  function showActionSheet(items) {
+    overlay.innerHTML = '<div class="asheet">' +
+      items.map(function(it,i){ return '<button class="' + (it.danger ? 'danger' : '') + '" data-act="sheet-item" data-i="' + i + '">' + it.label + '</button>'; }).join('') +
+      '<button class="cancel" data-act="overlay-close">取消</button></div>';
+    overlay.classList.add('show');
+    overlay.setAttribute('data-mode', 'sheet');
+    overlay.setAttribute('data-items', JSON.stringify(items));
+  }
+
+  /* ==========================================================================
+     Spec 面板数据（§6.13.6 六字段 + v1.4 新增「数据依赖」）
+     ========================================================================== */
+  var SPEC = [
+    { page:'global', block:'§4 共享设计系统（48+ token）',
+      spec:'§4.1–§4.7 全部 token 原样搬入原型 CSS（品牌强调梯度 8 / 分级表面 4 / 图片占位 7 / chip 6 / 分割线 2 / 骨架屏 4 / 文字·交互·圆角·阴影·字体·布局 17）+ v1.2 <code>--color-danger-strong</code> + v1.3 <code>--skeleton-gradient</code> / 动效 / 层级 / 禁用态。字号阶 §4.8、间距栅格 §4.9、对比度实测表 §4.10。',
+      role:'让位（基础设施）',
+      impl:'CSS 变量写入 <code>variables.scss</code> 的 <code>:root</code>，深色值同时写入 <code>@media (prefers-color-scheme: dark) :root:not(.theme-light)</code> 与 <code>.theme-dark</code> 两块（§6 约束 13 双块写入）。原型只有两态（浅/深），实现侧三态（system/light/dark）。',
+      states:'常态 / 加载 / 空 / 错误 / 未登录 共用同一套 token，不新增状态色。',
+      dark:'全部 token 都有深色值；不是 filter 反色。',
+      data:'可用 · 无后端依赖（纯设计系统）' },
+
+    { page:'global', block:'§3 + §4.8 展示体位置收敛（3 类 Latin 短文本）',
+      spec:'展示体只用 3 处：① wordmark <code>MOYUYO</code>（14.6px / 500 / 0.18em）② <b>Hero 标题 44rpx</b>（<code>--font-size-2xl</code>）③ <b>会员卡等级名英文 56rpx</b>（<code>--font-size-3xl</code>）。<b>所有中文标题（页面标题 / 区块标题 / 卡片标题 / 昵称）一律 <code>--font-sans</code> + 500/600</b> —— Playfair Display 不含中文字形，中文用展示体会 fallback 宋体。slogan v1.5 取消斜体（中文 sans 300 正体）。',
+      role:'让位（排印语法）',
+      impl:'原型用同名字体栈（Playfair 未安装 → Georgia → 中文走系统 sans/宋体链），正好验证 §6.6.5「排版不塌」。实现侧 <code>@font-face</code> + <code>font-display:swap</code> + Latin 子集 woff2 ≤120KB；<b>v1.5 起不需要 italic 字体文件</b>（全 App 不用斜体）。',
+      states:'同浅色。',
+      dark:'同浅色。',
+      data:'可用 · 无后端依赖' },
+
+    { page:'global', block:'§4.4.1 / §4.4.2 产品线色三用法则 + ID 唯一真值源',
+      spec:'浅色模式下产品线色（Care/Gear/Play/Home）<b>永不可做文字</b>（实测 1.40–2.45:1），只做图形；深色模式可做文字（4.74–9.00:1）。chip 最终形态 = 底 <code>--chip-bg</code> + 字 <code>--chip-text-strong</code> + <b>左侧 8rpx（4.2px）产品线色圆角色条</b> + 产品线名称文字。映射唯一真值源：<code>1=MILO→GEAR 出行 / 2=LUNA→CARE 洗护 / 3=ATLAS→PLAY 玩具 / 4=OLIVE→HOME 家居</code>。',
+      role:'让位（语义色系统）',
+      impl:'前端建共享常量（如 <code>src/constants/brandIp.js</code>）导出 <code>idToIp / ipToId / ipToLine</code>，<b>禁止各页面各写一份 map</b>；<code>.tag-*</code> 同时定义 IP 别名（MILO/LUNA/ATLAS/OLIVE）与语义别名（CARE/GEAR/PLAY/HOME）。验收：MILO→灰绿、LUNA→金黄、ATLAS→棕金、OLIVE→粉。',
+      states:'常态 / 加载 / 空 / 错误 全部不渲染产品线 chip（无数据不渲染、不留空位）。',
+      dark:'chip 底 <code>--chip-bg</code>#322E2A + 字 <code>--chip-text-strong</code>#F6F2EE；色条用产品线色原色（深底上更易辨）。',
+      data:'可用 · 商品侧 <code>product.brandIpId</code> 已有；社区侧 <code>mo_community_post.ip_code</code> <b>已在库且有索引</b>，发布时自动继承 —— 仅 <code>CommunityPostVO</code> 未透出（后端 1 行）。注意 · 必须先修 <code>goods/detail.vue:370</code> 的 1/2 相反 bug，否则色条挂错。' },
+
+    { page:'global', block:'§4.10 对比度落实 · 原型侧修正（需 Phase 4 同步）',
+      spec:'（a）浅色「金色做文字」全部走 <code>--chip-accent-text</code> #6B5F3A（5.68:1），不用 <code>--text-link</code> #8A7844（3.89:1）；原型新增 <code>--link-text</code> 变量承接（浅=chip-accent-text / 深=text-link #C9B47A 7.28:1）。（b）按 §4.10「关键信息改 secondary」，会话摘要 / 通知标签 / 数据带标签 / 账户邮箱 → <code>--text-secondary-strong</code>。（c）X10：空态副标 / 错误条正文 / 表单说明一律 <code>--color-text-secondary</code>，tertiary 只留给时间 / 计数。（d）点赞态按 §5.2.2 ④ <b>只有图标</b>用 <code>--color-danger</code>。',
+      role:'让位（可访问性底座）',
+      impl:'需 Phase 4 在 variables.scss 落 <code>--link-text</code>；保留 tertiary 的位置（时间 / 计数 / kicker / 未选中 tab / placeholder）均按 §4.10「三级文字仅用于非关键元信息」执行。',
+      states:'四态一致。',
+      dark:'深色 tertiary #8C857C；摘要/标签用 --text-secondary-strong #CFC7BB（8.0:1）。',
+      data:'可用 · 无后端依赖' },
+
+    { page:'global', block:'【Phase 4 实施约束】登录回跳 / 原生组件 / 构建关系',
+      spec:'（1）<b><code>switchTab</code> 路径后不能带参数</b>（<code>uni.d.ts:5391</code> 原文）→ 登录回跳必须<b>分两条路径</b>：回非 tabBar 页 → <code>uni.redirectTo({url: redirectUrl})</code>（参数在 URL）；回 tabBar 页（messages/user/community）→ <code>uni.switchTab({url: 裸路径})</code> + <b>storage 传 action</b>，由<b>目标页 onShow 消费</b>（不是 login 页消费）。防护三条：<code>ts</code> 时间戳 + 有效期 ≤5min + 消费后立即 <code>removeStorage</code> + action 白名单化。注意 · <b>原型自绘 tabBar 带 query 可行、真机静默丢参，别照抄原型</b>。<br>（2）<b>红线条目</b>：<code>community.vue</code> L295/L641 + <code>create.vue</code> L778 现用 <code>uni.reLaunch</code> 跳登录 → <b>必须改 <code>uni.navigateTo</code></b>（reLaunch 销毁 tabBar 栈 + 丢发帖草稿）。<br>（3）社区草稿已本地持久化（<code>COMMUNITY_POST_DRAFTS</code>，30 天清理），但<b>图片路径无法持久化</b> → 登录回跳后需<b>提示「图片需重新选择」</b>，不能静默丢图。<br>（3b）<b>R14 / R15 / R16（Phase 2 v1.4）</b>：登录回跳的<b>路径分类必须在拦截登录那一刻就确定</b>，且<b>分两字段存</b>（<code>redirectUrl</code> = 非 tabBar 页带 query / <code>redirectTab</code> = tabBar 页裸路径）—— 重要 ·<b>不要把两种目标混在一个 <code>redirect</code> 字段里</b>，登录成功后才判类型就没有机会选 API 了；<b>pending action 由目标页 <code>onShow</code> 消费</b>（login 页只负责导航，不负责执行动作）；<code>reLaunch</code> → <code>navigateTo</code> 是红线。可抄 <code>home.vue:404-410</code> 的既有分类逻辑（先把 path 的 query 段去掉再判断是否 tabBar 页）。<br>（3c）<b>共享常量最终定名</b>：<code>src/constants/brandIp.js</code>（<code>idToIp / ipToId / ipToLine</code>）+ <code>src/constants/tabBar.js</code>（<code>TAB_BAR_ITEMS</code>：path + labelKey + iconClass + iconfont.{text,selectedText,fontSize}，顺序 = pages.json tabBar.list）。三处消费方（<code>theme.js</code> 删 <code>TAB_BAR_ICON_FALLBACK</code> / <code>category.vue</code> 删 <code>tabbarItems</code> / <code>home.vue</code> 删 <code>TAB_BAR_PAGES</code>）全部 import + 单测比对 pages.json 防漂移。<br>（3d）<b>P0 线上 bug（Phase 4 必须先止血）</b>：<code>theme.js</code> 的 <code>TAB_BAR_ICON_FALLBACK</code> 与 <code>category.vue</code> 的 <code>tabbarItems</code> <b>前两项顺序与 pages.json 相反</b>（home↔pet 对调）→ APP 端读不到 <code>__uniConfig</code> 时回落 fallback 且按 index 套用 → <b>底栏前两个图标互换</b>，「宠物优先」决策在 APP 端失效；<b>H5 不复现，必须 Android 真机验证</b>。P0 止血与 P1 常量抽取<b>分两个提交</b>。注意 · 5 个 codepoint 与 lucide 类名映射本身是对的，<b>只改顺序</b>。<br>（4）<code>user.vue</code> 走<b>方案乙</b>（原生 page 滚动 + <code>position:sticky</code> 账户条 + <code>padding-bottom:calc(112rpx + env(safe-area-inset-bottom))</code>），<code>pages.json</code> <b>已配 <code>enablePullDownRefresh</code>，不用改</b>；sticky + 原生下拉的手势冲突只能真机验，异常则降级为「账户条不吸顶」。<br>（5）<b>H5 的 page 标题与原生 tabBar 文案走系统字体栈</b>，不受 CSS <code>font-family</code> 影响，别为统一字体去改造原生组件。<br>（6）<b>构建关系</b>：<code>_template.html</code> 是<b>源</b>（含 lucide 内联占位符），<code>index.html</code> 是<b>产物</b>；改完源文件必须跑 <code>python _build.py</code> 重新生成，<b>不要直接改 index.html</b>（会被覆盖）。<code>_build.py</code> 同时把项目真实 <code>lucide.css</code> + <code>lucide.ttf</code> 转成 base64 内联并注入（规避 file:// 跨源字体被拦）。',
+      role:'让位（工程约束）',
+      impl:'落地顺序：先改 <code>src/styles/variables.scss</code>（新增 token 深浅<b>双写</b>：<code>@media (prefers-color-scheme: dark) :root:not(.theme-light)</code> + <code>.theme-dark</code>），再改 <code>common.scss</code> 的 <code>.tag-*</code>（<b>两套别名都定义</b>：IP 别名 tag-milo/luna/atlas/olive + 语义别名 tag-care/gear/play/home，指向同一 chip 规格），最后改页面。共享常量放 <code>src/constants/brandIp.js</code>，导出 <code>idToIp / ipToId / ipToLine</code>，<b>禁止各页各写一份 map</b>。',
+      states:'—',
+      dark:'新增 token 的深色值必须两个块都写，否则「系统深色正常、App 内切深色失效」。',
+      data:'可用 · 均为前端改造；<code>CommunityPostVO</code> 透出 <code>ipCode</code> 为唯一后端项（1 行，零迁移）' },
+
+    { page:'global', block:'§6 约束 1 / 7 图标与占位',
+      spec:'图标 5 档 24/32/40/48/56rpx；图片未加载时暖灰渐变占位 + lucide 图标，禁止冷灰、禁止 SVG data-uri。',
+      role:'让位',
+      impl:'原型用<b>项目真实的 lucide.ttf 图标字体</b>（base64 内联，规避 file:// 跨源字体被拦），类名取自 <code>src/styles/lucide.css</code> 封闭集合（已核对 <code>luc-tag</code> 存在、<code>luc-tags</code> 不存在）。<b>真实实现同样是 <code>&lt;text class="luc luc-search" /&gt;</code>，不用 SVG sprite</b>（APP 端 SVG 会不可见）。原型仅状态栏信号/电量用 SVG 模拟（真机系统绘制）。',
+      states:'加载态用骨架块；错误态用 lucide 三角形图标；图片失败 → 暖灰渐变 + luc-image 兜底。',
+      dark:'图标底色 chip-bg 深色 #322E2A；列表图标底改 --color-fill #35312D。',
+      data:'可用 · 无后端依赖' },
+
+    { page:'global', block:'§6 约束 2 / 原生组件与 tabBar',
+      spec:'原生 swiper 指示器、<code>uni.setTabBarStyle</code>、<code>showModal.confirmColor</code> 不吃 CSS 变量。',
+      role:'让位',
+      impl:'原型自绘 3 段短线指示器替代 <code>indicator-dots</code>；自绘 tabBar 随 CSS 变量自动变色，<b>真实原生 tabBar 必须靠 theme.js 的 TAB_BAR_PALETTE + uni.setTabBarStyle() 手动同步</b>；原型自绘弹层，真实用 uni.showModal，<code>confirmColor</code> 只能写字面量（浅 #8A7844 / 深 #C9B47A；破坏性用 #C96E5F / #D9836F）。',
+      states:'—',
+      dark:'tabBar 选中色浅 #DBC98A / 深 #C9B47A。',
+      data:'可用 · 无后端依赖' },
+
+    { page:'home', block:'§5.1.2 ① Brand Header',
+      spec:'96rpx 高 + 状态栏安全区；wordmark <b>展示体</b> 28rpx/500/0.18em；图标按钮 72rpx 触控区、图标 40rpx；铃铛角标 24rpx 实心圆 <code>--color-danger</code>（<b>红点无数字</b>）；无圆角无阴影。',
+      role:'让位（二级）',
+      impl:'原型：flex + <code>position:sticky</code>。实现：<code>padding-top:max(var(--status-bar-height,0px),env(safe-area-inset-top,0px))</code>（取大值不相加）。',
+      states:'常态 / 加载 / 错误均保留；未登录态铃铛角标隐藏。',
+      dark:'veil-95 换 rgba(42,39,36,.95)，不额外加深。',
+      data:'可用 · 无后端依赖' },
+
+    { page:'home', block:'§5.1.2 ② Search Hairline',
+      spec:'高 72rpx；<b>无填充底</b>，仅底边 1rpx <code>--divider-weak</code>；luc-search 32rpx + placeholder 26rpx tertiary；左右 <code>--gutter</code>。',
+      role:'让位',
+      impl:'原型：flex + border-bottom。实现：同构。',
+      states:'加载 / 空 / 错误态均保持（它是入口不是数据）。',
+      dark:'同浅色。',
+      data:'可用 · 无后端依赖' },
+
+    { page:'home', block:'§5.1.2 ③ Hero Poster ［主角］',
+      spec:'16:9，高 <code>calc((100vw - 64rpx) * 0.5625)</code>；圆角 <code>--radius-lg</code>；<b>--shadow-pop（全页唯一 pop 级阴影）</b>；文字遮罩 <code>--brand-gradient-ink</code> 满幅渐变；<b>kicker 恒定 <code>PET LIFESTYLE · 策展精选</code></b>（标题/图/标签由 CMS 轮播，兜底时品牌句仍成立）；标题<b>展示体 44rpx</b>；指示器 3 段 32×4rpx 圆角短线，自绘、置于 swiper <b>外部</b>左下角。',
+      role:'［主角］视觉主角（大图 + 44rpx 展示体标题 + 唯一 pop 阴影）',
+      impl:'原型用 <code>padding-top:56.25%</code> 撑高。实现必须写 <code>height:calc((100vw - 64rpx) * 0.5625)</code>（不固定 320rpx）；图片 <code>mode="aspectFill"</code>，容器底 <code>--img-placeholder</code>；指示器自绘放 swiper 外部，可随主题切换。',
+      states:'加载 = 渐变占位 + 扫光占同尺寸（防跳版）；<b>banner 接口失败 = <code>--brand-gradient-hero</code> 品牌块 + 恒定 kicker + Charcoal 字（<code>--text-on-accent</code>，白字在 #E6D59A 上仅 1.46:1 未达标），不弹 toast</b>。',
+      dark:'遮罩末端 0.62 → 0.72；阴影改 0 5px 14px rgba(0,0,0,.55)；指示器未选段 rgba(255,255,255,.22)。',
+      data:'可用 · banner 接口（home.vue 现有）' },
+
+    { page:'home', block:'§5.1.2 ④ Quick Rail（金刚区）',
+      spec:'4 列 grid gap 24rpx；<b>无卡片、无阴影、无边框</b>；图标底 96×96rpx <code>--radius-sm</code> 底 <code>--chip-bg</code>，图标 44rpx secondary；「分类」项图标底 <code>--accent-soft</code>、图标 <code>--color-primary-dark</code>、标签 <code>--color-text</code> 500。',
+      role:'让位（二级）',
+      impl:'原型：grid + 无外壳。实现：删除现状 .kingkong 白卡。',
+      states:'加载 = 4 个 96rpx 骨架方块 + 骨架条；空 / 错误态保持 4 入口。',
+      dark:'chip-bg 深色 #322E2A，与背景拉开 2 级明度。',
+      data:'可用 · 分类接口（首页已有）' },
+
+    { page:'home', block:'§5.1.2 ⑤ 产品线索引行（新增）+ Curated Shelf',
+      spec:'<b>产品线索引行</b>：Shelf 区块头下方 4 个 <b>pill</b> chip（Care/Gear/Play/Home），<b>与排序 tab 的纯文字样式视觉可区分</b>，chip = 底 <code>--chip-bg</code> + 字 <code>--chip-text-strong</code> + 左侧 8rpx 产品线色条。<br><b>Shelf</b>：区块头 = kicker 20rpx + 标题 36rpx sans 600 + 「查看全部 ›」；3-tab 文字切换器，选中 = sans 600 + 下方 4×40rpx 金色短线（<b>金色只做指示线，文字用 --color-text</b>）；网格 2 列 gap 24rpx；<b>商品卡无白卡、无边框、无阴影</b>；图 1:1；商品名 26rpx/400；价格 30rpx/600 <code>--color-text</code>。',
+      role:'让位（二级）',
+      impl:'原型：overflow-x:auto + nowrap + flex 子项（与 §6 约束 4 的 APP 写法一致）。索引行点击 → 分类页 <code>?line=</code>；排序 tab 持久化（离开再回保持选中）。',
+      states:'加载 = 2 列骨架卡；空 = 保留区块头 + 三件套空态 + ghost 按钮「去分类逛逛」；错误 = <b>inline 错误条</b>（只重试 Shelf 接口，Hero 不重新请求）。',
+      dark:'商品图加 1rpx rgba(255,255,255,.06) 描边；tertiary 提到 #8C857C。',
+      data:'可用 · <code>product.brandIpId</code>（1=CARE / 2=GEAR / 3=PLAY / 4=HOME，<code>goods/detail.vue</code> L371 在用）→ 索引行与商品卡 chip 均可落地。注意 · 须先修 <code>goods/detail.vue:370</code> 的 1/2 相反 bug' },
+
+    { page:'home', block:'§5.1.2 ⑥ Brand Footer',
+      spec:'上方 1rpx <code>--divider-strong</code> + 居中 slogan 26rpx <b>正体（v1.5 取消斜体）</b>：中文 <code>--font-sans</code> 300 / 英文 <code>--font-display</code>；色 <code>--color-text-secondary</code> + 版本号 20rpx tertiary。',
+      role:'让位（收尾）',
+      impl:'实现：<code>font-style</code> 全局 <code>normal</code> → <b>不需要 playfair italic 字体文件</b>。编辑感由字距与细分割线表达。',
+      states:'四态均显示。',
+      dark:'同浅色。',
+      data:'可用 · 无后端依赖' },
+
+    { page:'community', block:'§5.2.2 ① Masthead（刊头）',
+      spec:'标题「社区」36rpx <b>sans 600</b>（v1.3：中文标题不用展示体）+ 下方 kicker「社区 · 宠物生活志」20rpx tertiary；右 luc-search / luc-bell（12rpx 红点，无数字）；高 96rpx；veil-95 + blur。',
+      role:'让位（页面身份）',
+      impl:'原型：sticky flex。实现：同构 + 状态栏安全区 padding。',
+      states:'四态均保留。',
+      dark:'同浅色。',
+      data:'可用 · 无后端依赖' },
+
+    { page:'community', block:'§5.2.2 ② Issue Nav + 搜索条（Phase 2 #23）',
+      spec:'3 等分；高 96rpx；未选 28rpx tertiary/400；选中 = <b>sans 600 + <code>--color-text</code></b>（浅色下金色字 2.41:1 违反 X1，金色只留给指示线）；指示器 = 满宽 3rpx 圆角实线（两端内缩 24rpx）色 <code>--color-primary</code>。<br><b>搜索条三个 tab 都有</b>；<b>话题栏只在话题 tab</b>（v1.5 修正 Phase 1 的「仅推荐 tab」）。',
+      role:'让位（二级）',
+      impl:'原型：button::after 绝对定位；话题栏右缘 48rpx <b>渐隐遮罩</b>（<code>linear-gradient(90deg,rgba(246,242,238,0),var(--color-background) 100%)</code>，z-index 1 + pointer-events:none）+ 内容末端 48rpx padding，渐隐底必须用 <code>--color-background</code>（用 surface 会出现色差带）。',
+      states:'加载 / 空 / 错误态仍显示（它是锚点）。',
+      dark:'渐隐遮罩换深色背景值；选中 tab 文字可用 <code>--color-primary</code>。',
+      data:'可用 · <code>GET /api/v1/community/topics</code>（失败时用本地兜底）' },
+
+    { page:'community', block:'§5.2.2 ③ Topic Rail（话题条 · 发现入口 + 筛选器）',
+      spec:'横向 scroll-view scroll-x；chip pill，高 56rpx，字 24rpx <code>--chip-text</code>，<b>带帖数</b>；选中底 <code>--chip-accent-bg</code> 字 <code>--chip-accent-text</code>。<b>只出现在「话题」tab</b>；未选话题时列表区显示「选一个话题，看看大家都在聊什么」+ 话题选择器（Phase 2 #34）。',
+      role:'让位',
+      impl:'原型：overflow-x:auto + nowrap + flex 子项；APP 端需 <code>display:inline-flex</code> 才不换行；条内不嵌 swiper。切 tab 传真实 <code>topic</code> 参数（后端已支持，零后端改动）。',
+      states:'加载态隐藏话题栏。',
+      dark:'chip-accent-bg #383122 / chip-accent-text #D9C68F；渐隐遮罩用深底。',
+      data:'可用 · <code>GET /api/v1/community/topics</code> + 帖子按 topic 精确过滤（后端已支持，需修「话题 tab 未真正过滤」bug）' },
+
+    { page:'community', block:'§5.2.2 ④ Lead Post（头条帖）［主角］',
+      spec:'头像 64rpx 圆（<b>点头像进作者主页，@tap.stop 不触发帖子跳转</b>）+ 昵称 26rpx/500 + 时间 22rpx tertiary + more 图标；<b>产品线 chip</b>（底 <code>--chip-bg</code> + 字 <code>--chip-text-strong</code> + 左侧 8rpx 语义色条 + 名称文字）；大图 4:3 圆角 24rpx；正文 <b>30rpx / 400 / 行高 1.7</b>，最多 3 行；互动行左对齐、图标 30rpx + 数字 24rpx/400，<b>点赞态只有图标用 <code>--color-danger</code></b>；与下条间距 48rpx；<b>帖子不自动挂商品卡</b>。',
+      role:'［主角］视觉主角（全页唯一「图大于文」版式）',
+      impl:'原型：<code>-webkit-line-clamp:3</code>。实现：APP 端 WebView 支持 line-clamp；图片 <code>mode="aspectFill"</code>；头像 <code>@tap.stop</code>。',
+      states:'加载 = 骨架帖；错误 = 顶部 inline 错误条（不清空已有内容）。',
+      dark:'<b>帖子容器必须给 --surface-elevated #322E2A + 24rpx 圆角</b>；图片加 1rpx rgba(255,255,255,.06) 描边；点赞态 danger → #D9836F。',
+      data:'<b>原型已按真实 IP 数据呈现</b>；Phase 4 需后端 <code>CommunityPostVO</code> 透出已有字段 <code>ipCode</code>（1 行，零迁移）</b> —— 字段 <code>mo_community_post.ip_code</code> 已在库、有索引，发布时已自动从宠物档案继承（<code>CommunityServiceImpl:192</code>），<b>不是"待加字段"</b>。色条取色走三层链路 <code>ip_code → ipToLine() → 语义线 token</code>，<b>不读 DB <code>color_hint</code></b>（E1–E5 五条证据判定其非权威）；IP→语义线映射待产品侧书面确认，确认前按 §4.4.2 实现' },
+
+    { page:'community', block:'§5.2.2 ⑤ Feed（碎片流）',
+      spec:'左图右文：3:4 缩略图（padding-top:133%）圆角 16rpx 宽约 200rpx + 右侧文字组（昵称 26rpx/500 + 正文 28rpx/400/1.6 最多 3 行 + 互动行 22rpx）；<b>卡片外壳无白底、无边框、无阴影</b>，仅 divider-weak 分隔；九宫格图片 3 列；加载更多 3 点脉冲 + 「— 已经到底了 —」。',
+      role:'让位（二级）',
+      impl:'九宫格用 <code>grid-auto-rows:calc((100vw - 64rpx - 24rpx) / 3)</code>（不要依赖 aspect-ratio）。<b>切 tab 必须按 tab 分别存游标</b>（feedCursor / feedSnapshotId / feedVersion 现状是单份，会串游标）。',
+      states:'加载（翻页）= 底部 3 点脉冲，不整页替换。',
+      dark:'<b>透明卡片 → --surface-elevated + 24rpx 圆角</b>；分隔线用 --color-divider。',
+      data:'可用 · 帖子流接口已有；注意 · 游标需按 tab 分存（前端改造）' },
+
+    { page:'community', block:'§5.2.2 ⑥ FAB（发布）',
+      spec:'104rpx 圆；底 <code>--color-primary</code>；图标 luc-camera 44rpx 色 <code>--text-on-accent</code>；阴影 <code>--shadow-brand</code>；右 32rpx，底 calc(112rpx + env(safe-area-inset-bottom))。',
+      role:'二级（唯一实心金色控件）',
+      impl:'原型：手机框内绝对定位。实现：<code>position:fixed</code>，bottom 按 calc(112rpx + env(safe-area-inset-bottom))。<b>未登录点击 → modal「登录后即可发布」，登录后回 community 且草稿保留</b>。',
+      states:'未登录 → 弹登录引导。',
+      dark:'金色底偏亮，靠 --shadow-brand 保持浮起；图标 <code>--text-on-accent</code>#1A1816。',
+      data:'可用 · 已有' },
+
+    { page:'community', block:'§5.2.2 ⑦ 帖子更多菜单（Phase 2 #28 #29）',
+      spec:'「⋯」→ Action Sheet：<b>举报</b>（→ 二级 Action Sheet 列出 3 个原因：骚扰辱骂 / 广告营销 / 其他）→ <b>不感兴趣</b> → <b>删除（自己的帖，排在最后）</b>；删除前有确认 modal（按钮文案「删除」，用动作词不用「确定」）。',
+      role:'让位',
+      impl:'原型：自绘 Action Sheet；真实用 <code>uni.showActionSheet</code> / <code>uni.showModal</code>（confirmColor 只能写字面量）。',
+      states:'—',
+      dark:'破坏性确认键用 <code>--color-danger-strong</code> + Charcoal 字。',
+      data:'可用 · 举报 / 不感兴趣 / 删除接口已有' },
+
+    { page:'messages', block:'§5.3.2 ① Inbox Header',
+      spec:'标题「Messages」36rpx <b>sans 600</b> + kicker「收件箱」；右 luc-bell（<b>红点无数字</b>）/ luc-users / luc-user-plus 40rpx；高 96rpx；veil-95 + blur。',
+      role:'让位（页面身份）',
+      impl:'原型：sticky flex。实现：同构。',
+      states:'四态均保留。',
+      dark:'veil-95 = rgba(42,39,36,.95)。',
+      data:'可用 · 无后端依赖' },
+
+    { page:'messages', block:'【Phase 2 §2.4.4】两段式 Tab「通知 / 私信」',
+      spec:'容器顶部两段 Tab，<b>默认「私信」段</b>（与 tabBar 角标语义一致）；段切换指示器 = 选中段 26rpx sans 600 + 下方 4rpx×40rpx 金色短线（<b>金色只做指示线</b>，文字用 <code>--color-text</code>，避免浅色金色文字 2.41:1 违反 X1）；私信段有未读时 tab 上带数字 chip；<b>点通知 4 宫格 = 切段 + 筛类型（零跨页）</b>；通知段内含 chip 筛选行（全部 / 互动 / 订单 / 系统）+ 4 宫格 + 通知列表。<b>未登录态用同一容器内的占位段</b>（不跳独立卡片、不换布局）。',
+      role:'让位（二级导航）',
+      impl:'原型：页内两段 Tab + 面板切换。实现：与原 4 宫格跳 <code>/pages/user/notifications</code> 的行为<b>完全替换</b>；点击宫格改为切到通知段 + 设置筛选态。<b>切段不销毁容器</b>，避免基线截图里「整页只有一张登录卡 + 大片空白」的割裂感。',
+      states:'未登录 → 容器原位，私信段 / 通知段各自显示登录引导占位段；会话接口失败 → <b>通知段照常显示</b>，只有私信段显示错误条。',
+      dark:'同浅色。',
+      data:'可用 · 通知分类与列表接口已有（不再需要跨页跳转）' },
+
+    { page:'messages', block:'§5.3.2 ② Inbox Container（单一容器）',
+      spec:'<b>把通知聚合与私信列表合并到同一个 --surface-elevated 容器</b>；圆角 24rpx，无阴影；margin 左右 32rpx。',
+      role:'让位（容器语义）',
+      impl:'原型：border-radius + overflow:hidden。实现：同构。',
+      states:'空 / 未登录态与登录后共用同一容器骨架（位置不变）。',
+      dark:'--surface-elevated #322E2A + 关闭阴影 + 1rpx rgba(255,255,255,.05) 描边。',
+      data:'可用 · 无后端依赖' },
+
+    { page:'messages', block:'§5.3.2 ②a Notice Row（通知 4 宫格）',
+      spec:'4 等分 grid；每项 = 56rpx <b>圆角方</b>图标底（<code>--chip-bg</code>）+ 22rpx 标签（<code>--text-secondary-strong</code>）；「全部」项图标底 <code>--accent-soft</code>、图标 <code>--color-primary-dark</code>、标签 500；未读点 12rpx 实心圆 <code>--color-danger</code> 贴右上角。',
+      role:'让位（二级）',
+      impl:'原型：grid 4 列。实现：<b>点击不再跳页</b>，改为切到通知段 + 设置筛选类型。',
+      states:'加载 = 4 个 56rpx 骨架方块 + 骨架条；部分失败不整体崩。',
+      dark:'深色 danger → #D9836F。',
+      data:'可用 · 通知分类接口已有' },
+
+    { page:'messages', block:'§5.3.2 ②b Conversation List ［主角］',
+      spec:'行最小高 112rpx；头像 88rpx 圆，客服会话 luc-headphones 40rpx + 底 <code>--chip-bg</code>；<b>未读标识 = 整行左侧 6rpx 金色竖条</b> —— 全页唯一强色彩；会话名 28rpx 未读 600 / 已读 400；置顶 luc-bookmark 24rpx <code>--color-primary</code>；摘要 24rpx（<code>--text-secondary-strong</code>，媒体用 [图片]/[语音]/[文件]）；时间 22rpx tertiary；<b>未读数字改 <code>--chip-bg-strong</code> 底 + <code>--chip-text-strong</code> 字 pill</b>；行间 divider-weak；<b>左滑删除按钮底 <code>--color-danger-strong</code></b>（浅 #B3574B 白字 4.79:1 / 深 #D9836F <b>必须 Charcoal 字</b> 4.97:1，白字 2.83:1 未达标），宽 140rpx，不透明底是硬要求。',
+      role:'［主角］视觉主角（金色竖条 = 唯一强色彩）',
+      impl:'原型：pointer 拖拽 + translateX 模拟左滑。实现：手写 <code>@touchstart/@touchmove/@touchend</code> + translateX，<b>300ms 内忽略补发的 tap</b>；<b>长按 350ms 出 Action Sheet（置顶 / 删除），长按期间不触发滚动置顶</b>。',
+      states:'加载 = 4 行骨架；401 → 切换到容器内登录引导段，不弹 toast。',
+      dark:'容器描边 1rpx rgba(255,255,255,.05)；竖条用 --color-primary #C9B47A；头像 fallback 底改 --color-fill #35312D；行分隔用 --color-divider。',
+      data:'可用 · 消息列表 + dmSocket 已有；WebSocket 原型用定时器模拟' },
+
+    { page:'messages', block:'§5.3.2 ③ Load More / ④ Empty·Login + 角标语义',
+      spec:'「加载更多」居中 24rpx tertiary，点击区高 72rpx，加载中 3 点脉冲；空态 = 120rpx 圆 <code>--chip-bg</code> + luc-message-square + 标题 + 副标（<code>--color-text-secondary</code>）+ 主按钮；未登录 = 96rpx 圆 + luc-user +「登录后查看消息」+「去登录」，<b>结构与空态一致</b>。<br><b>角标语义</b>：<b>tabBar 只有 messages 挂数字</b>（私信未读，&gt;99 显示 99+），其余 4 tab 无角标；顶栏铃铛一律红点无数字；<b>角标一律不用金色</b>（红点 = 外部新东西，金色 = 我的未读与身份，仅用于页面内）。',
+      role:'让位',
+      impl:'原型：自绘 tabBar + 段 badge（chip 底，页面内语义）。真实原生 tabBar 角标需 <code>uni.setTabBarBadge / removeTabBarBadge</code>，不能吃 CSS 变量。',
+      states:'空 / 未登录 / 加载 / 错误四态齐备。',
+      dark:'同浅色（--chip-bg 深色 #322E2A）。',
+      data:'可用 · 私信未读数已有（tabBar 角标数据源 = 私信未读）' },
+
+    { page:'user', block:'§5.4.2 ① Account Header（账户条）',
+      spec:'<b>通栏</b>（无左右 margin、无圆角、无阴影），底边 1rpx divider-weak，内边距 48rpx 32rpx；头像 112rpx 圆 + 2rpx <code>--divider-strong</code> 描边；昵称 32rpx <b>sans 600</b>（中文昵称不用展示体）；email 24rpx；会员等级 chip 高 40rpx pill 底 <code>--chip-accent-bg</code> 字 <code>--chip-accent-text</code>；右端 chevron。',
+      role:'让位（二级，身份条）',
+      impl:'原型：sticky。实现：<b>方案乙</b> —— 根节点改普通 view、page 原生滚动、账户条 <code>position:sticky;top:0;z-index:20</code> + blur；<code>padding-bottom:calc(112rpx + env(safe-area-inset-bottom))</code> 是 tabBar 遮挡的唯一防线。',
+      states:'未登录 → 默认头像 +「登录 / 注册」32rpx sans 600 + 副标 secondary + 金色主按钮「登录」；<b>并保留「登录解锁会员权益 · 查看等级」22rpx 文字链接（v1.4 补强 F15，避免会员体系在未登录态彻底消失）</b>。',
+      dark:'<b>必须给 --surface-elevated #322E2A 底</b>；头像描边改 rgba(201,180,122,.30) 金色；行分隔用 --color-divider。',
+      data:'可用 · 用户信息接口已有' },
+
+    { page:'user', block:'§5.4.2 ② Membership Card（会员卡）［主角］',
+      spec:'高 224rpx；圆角 <code>--radius-xl</code> 32rpx；<b>背景 <code>--brand-gradient-vip</code> = <code>linear-gradient(135deg,#7E6B36 0%,#6B5F3A 50%,#554A26 100%)</code></b>（暗古铜，v1.2：原亮黄铜 #B8A66B 白字仅 2.17:1 未达标）；阴影 <code>--shadow-brand</code>；kicker「MEMBERSHIP」20rpx/0.2em 白 72% 恒定英文；<b>等级名 <code>Platinum</code> 56rpx 展示体</b>（v1.4 裁定：56rpx = 身份，<b>不是积分余额、不是百分比</b>）+ 中文副标「铂金」24rpx sans 500；<b>22rpx 精确成长值 <code>1,240 / 8,000</code> 置于刻度条右端上方</b>；tip 22rpx <b>动态文案</b>「再消费约 ¥320 升级至 黑卡」；4rpx 刻度条（进度 = 成长值，与右端数字同源）；crown 右上 40rpx；chevron 右下 28rpx。<b>积分余额完全不在卡上出现</b>（唯一出处 = 钱包带第 2 格）。',
+      role:'［主角］全页唯一视觉主角（唯一大面积金属色 + 唯一 shadow-brand + 唯一 56rpx 展示体）',
+      impl:'等级 / 成长值 / 门槛 / 进度算法<b>全部复用 <code>membership.vue</code> L264-283 的 <code>progressPercent / progressHint</code></b>，不另立规则。等级名展示名沿用 <code>levels</code> 数组：L1 Member 会员 / L2 Silver 白银 / L3 Gold 黄金 / L4 <b>Platinum 铂金</b> / L5 <b>Black 黑卡</b>（后端枚举是 DIAMOND，展示名是 Black）。tip 的成长值→金额折算率 <b>业务未确认 → Phase 3 用占位文案，Phase 4 落码前不硬编</b>。',
+      states:'加载 = <code>--img-placeholder</code> 渐变块占 224rpx 同尺寸（不先渲染渐变卡再变）；会员接口失败 = 位置替换 inline 错误条，<b>其余区块照常显示旧数据或 0</b>。',
+      dark:'渐变换 <code>linear-gradient(135deg,#4A432C 0%,#3A341F 55%,#2A2619 100%)</code>；文字 <code>#E8DDB5</code>（on #4A432C = 7.25:1）；<b>阴影改 <code>0 8rpx 24rpx rgba(138,120,68,.22)</code> + <code>0 0 0 1rpx rgba(201,180,122,.22)</code> 金色描边</b>（深底上黑阴影无分离作用）。',
+      data:'可用 · <code>memberApi.getMemberInfo()</code> → level / growthValue / pointsRate；待确认 · tip 金额折算率业务未确认 → 用占位文案' },
+
+    { page:'user', block:'§5.4.2 ③④⑤ 钱包 / 社交 / 订单带',
+      spec:'钱包 4 等分：<b>积分余额在第 2 格</b>（36rpx 展示体 <code>--color-text</code>，不用金色）+ 标签 22rpx + 列间 1rpx divider-weak 竖线，外壳 <code>--surface-elevated</code> 圆角 24rpx；社交带：lucide 32rpx <code>--color-primary-dark</code>、<b>删除 56rpx 圆角方图标底</b>、取消硬编码 rgba(219,201,138,.18) → 无底；订单带：luc-credit-card / shopping-cart / package / check-circle 44rpx secondary（<b>禁止 emoji</b>）+ 角标（<b>小数字，danger-strong 底，非金色</b>）。',
+      role:'让位（二级，数据面板）',
+      impl:'原型：grid 4 列 + ::before 竖分隔线。实现：同构；社交带图标<b>无底色</b>，避免 4 个彩色方块与会员卡抢焦点。',
+      states:'加载 = 数字位骨架条 / 订单图标骨架；<b>数据为 0 时正常显示「0」，不显示骨架（骨架只用于"未知"）</b>；列表接口失败只在对应区块内显示小错误文案。',
+      dark:'数字 --color-text；社交图标改 --color-primary；清单图标底改 --color-fill #35312D + 1rpx 描边；竖分隔线用 --color-divider。',
+      data:'可用 · 钱包 <code>memberApi.points</code> / 社交 <code>followApi</code>+<code>communityApi</code>+<code>browseApi</code>.total / 订单 <code>orderApi.getOrderList</code>.total' },
+
+    { page:'user', block:'§5.4.2 ⑥ Feature List（功能清单）',
+      spec:'2 组：「我的服务」8 项（签到 / 任务 / 邀请 / 会员 / 地址 / 宠物档案 / 收藏 / 足迹）+「设置与关于」3 项（帮助 / 设置 / 关于）；组标题 28rpx <b>sans 600</b>；行高 96rpx；图标 36rpx 放在 56rpx 圆角方 <code>--chip-bg</code> 底；文字 28rpx；右端 chevron；行间 divider-weak 左缩进 76rpx。<b>未登录时<b>不加锁图标</b>、改为按需拦截</b>（Phase 2 v1.5 §9.1 O8 呈现形式裁定）：点 8 项（签到/任务/邀请/会员/地址/宠物档案/收藏/足迹）→ L2 modal「<b>登录后即可查看{该功能}</b>」+「去登录」/「再看看」；点 3 项（帮助/设置/关于）直接进入（<b>「设置」里的主题/语言绝不拦截</b>）。',
+      role:'让位',
+      impl:'原型：flex 行 + 伪元素分隔。实现：同构；点「签到 / 任务 / 邀请 / 会员 / 地址 / 宠物档案 / 收藏 / 足迹」→ modal 引导登录；点「帮助 / 设置 / 关于」直接进入。<b>登录页用 navigateTo + <code>?redirect=</code>，禁止 reLaunch</b>（会销毁 tabBar 栈 + 丢社区草稿）。',
+      states:'未登录 = 清单保留 + 锁标记 + 登录引导 modal。',
+      dark:'图标底 --color-fill #35312D + 1rpx 描边；分隔线用 --color-divider。',
+      data:'可用 · 无后端依赖（登录态接口已有）' },
+
+    { page:'user', block:'§5.4.2 ⑦ Brand Footer',
+      spec:'上下各 1rpx <code>--divider-strong</code> + 居中 slogan 26rpx <b>正体</b>（v1.5 取消斜体）+ 版本号 20rpx tertiary。',
+      role:'让位（收尾）',
+      impl:'同 home 页脚；<b>v1.5 起不需要 italic 字体文件</b>。',
+      states:'四态均显示。',
+      dark:'同浅色。',
+      data:'可用 · 无后端依赖' },
+
+    { page:'pet', block:'§5.5 PET · 沉浸场景 + token 收敛',
+      spec:'<b>本次不改结构</b>，只做 token 收敛：删除 <code>--hub-card / --hub-line / --hub-muted / --hub-ok / --hub-err / --hub-ok-bg / --hub-err-bg</code> 共 7 个本地旁路变量，全改共享 token；.care-card 统一 <code>--radius-lg</code> 24rpx + <b>无边框</b> + <code>--shadow-card-sm</code>；玻璃层保留 rgba(255,255,255,.2)+blur(20rpx)（全 App 唯一模糊层），补 1rpx rgba(255,255,255,.16) 描边 + 不透明兜底；浮层标题改 <code>--font-sans</code> 600（中文不用展示体）；<b>护理卡语义色只做图标 + <code>--state-*-surface</code> 底，文字用 secondary</b>（<code>--color-success</code> 直接做文字仅 2.04:1）。',
+      role:'［主角］视觉主角（宠物形象 / 3D 场景）',
+      impl:'原型用静态场景图 + CSS 玻璃层模拟（<b>不还原 3D 交互</b>）。真实实现是 canvas + renderjs（逻辑层无 DOM）；玻璃层必须先声明不透明底再声明 backdrop-filter。',
+      states:'pet 页：常态 + <b>空态三件套</b>（图形 + 一句 +「添加宠物档案」按钮）+ 深浅两套。',
+      dark:'玻璃层描边与不透明兜底同样适用；护理卡底 --surface-elevated。',
+      data:'可用 · pet 3D 模型 / 装扮（renderjs canvas）已有；仅还原视觉层次，不还原交互' }
+  ];
+
+  function renderSpec() {
+    var body = document.getElementById('specBody');
+    var list = S.specAll ? SPEC : SPEC.filter(function(s){ return s.page === S.page; });
+    if (!list.length) { body.innerHTML = '<div class="spec-empty">该页面暂无区块登记</div>'; return; }
+    body.innerHTML = list.map(function(s){
+      var roleCls = /主角/.test(s.role) ? 'hero' : '';
+      return '<div class="spec-card">' +
+        '<h4>' + s.block + '<span class="role ' + roleCls + '">' + s.role + '</span></h4>' +
+        '<dl>' +
+        '<dt>关键规格</dt><dd>' + s.spec + '</dd>' +
+        '<dt>视觉主角</dt><dd>' + s.role + '</dd>' +
+        '<dt>真实实现</dt><dd><span class="warn">' + s.impl + '</span></dd>' +
+        '<dt>状态态</dt><dd>' + s.states + '</dd>' +
+        '<dt>深浅差异</dt><dd>' + s.dark + '</dd>' +
+        '<dt>数据依赖</dt><dd>' + (s.data || '可用 · 无后端依赖') + '</dd>' +
+        '</dl></div>';
+    }).join('');
+    document.getElementById('specFilter').innerHTML =
+      '<button data-scope="page" class="' + (S.specAll ? '' : 'on') + '">当前页</button>' +
+      '<button data-scope="all" class="' + (S.specAll ? 'on' : '') + '">全部页面</button>';
+  }
+
+  /* ==========================================================================
+     事件
+     ========================================================================== */
+  function onClick(e) {
+    var pageBtn = e.target.closest && e.target.closest('[data-page]');
+    if (pageBtn) { goPage(pageBtn.getAttribute('data-page')); return; }
+    var themeBtn = e.target.closest && e.target.closest('[data-theme]');
+    if (themeBtn) { setTheme(themeBtn.getAttribute('data-theme')); return; }
+
+    var el = e.target.closest && e.target.closest('[data-act]');
+    if (!el) return;
+    var act = el.getAttribute('data-act');
+    var msg = el.getAttribute('data-msg');
+
+    switch (act) {
+      case 'toast': toast(msg || 'OK'); break;
+      case 'home-tab': S.sub.homeTab = +el.getAttribute('data-i'); renderPage('home'); break;
+      case 'community-tab':
+        S.sub.communityTab = +el.getAttribute('data-i'); S.sub.topic = -1; renderPage('community'); break;
+      case 'topic':
+        S.sub.topic = (S.sub.topic === +el.getAttribute('data-i')) ? -1 : +el.getAttribute('data-i');
+        renderPage('community'); break;
+      case 'topic-entry':
+        toast('跳转独立话题页 /pages/user/community-topic?topic=' + TOPICS[+el.getAttribute('data-i')].name);
+        break;
+      case 'topic-clear':
+        S.sub.topic = -1; renderPage('community'); break;
+      case 'notif-filter':
+        S.sub.notifFilter = +el.getAttribute('data-i'); S.sub.msgSeg = 1; renderPage('messages'); break;
+      case 'msg-seg': S.sub.msgSeg = +el.getAttribute('data-i'); renderPage('messages'); break;
+      case 'pet': S.sub.pet = +el.getAttribute('data-i'); renderPage('pet'); break;
+      case 'like':
+        if (S.states.community === 'login') {
+          showModal({ title:'登录后即可点赞', content:'登录后即可点赞', okText:'去登录', cancelText:'再看看', okMsg:'跳转登录页（带 ?redirect=community）' });
+          break;
+        }
+        var k = el.getAttribute('data-k');
+        S.liked[k] = !S.liked[k];
+        renderPage('community');
+        break;
+      case 'retry': toast('正在重试…'); break;
+      case 'ghost-cta': toast('进入分类页 · 全部分类'); break;
+      case 'primary-cta': toast('进入发布页'); break;
+      case 'author': toast('进入作者主页：' + (msg || '')); break;
+      case 'post': toast('进入帖子详情'); break;
+      case 'post-more':
+        showActionSheet([{ label:'举报', danger:true }, { label:'不感兴趣' }, { label:'删除', danger:true }]);
+        break;
+      case 'login':
+        showModal({ title:'登录', content:'登录后享受更多会员权益', okText:'去登录', cancelText:'稍后再说', okMsg:'跳转登录页（带 ?redirect=）' }); break;
+      case 'need-login':
+        /* Phase 1 §5.4.2⑥ / Phase 2 v1.5 §9.1 O8 呈现形式裁定：
+           功能清单不加锁图标，改为按需拦截。
+           文案统一「登录后即可查看{该功能}」——让用户知道点对了、只是需要登录，而不是被拒绝。 */
+        showModal({ title:'登录后即可查看', content:'登录后即可查看「' + (msg || '该功能') + '」', okText:'去登录', cancelText:'再看看', okMsg:'跳转登录页（带 ?redirect=）' });
+        break;
+      case 'action-sheet':
+        if (S.states.community === 'login') {
+          showModal({ title:'登录后即可发布', content:'登录后即可发布，登录成功会回到本页并保留草稿', okText:'去登录', cancelText:'再看看', okMsg:'跳转登录页（带 ?redirect=community）' });
+          break;
+        }
+        showActionSheet([{ label:'举报', danger:true }, { label:'不感兴趣' }, { label:'复制链接' }]);
+        break;
+      case 'delete-conv':
+        showModal({ title:'删除会话', content:'删除后会话会从列表移除，收到新消息后会重新出现。', okText:'删除', cancelText:'取消', danger:true, okMsg:'已删除' });
+        break;
+      case 'overlay-close': closeOverlay(); break;
+      case 'overlay-ok': {
+        var m = overlay.getAttribute('data-msg') || '已确认';
+        if (m === '已删除') { S.deleted = true; S.unreadDm = Math.max(0, S.unreadDm - 1); renderPage('messages'); renderTabbar(); }
+        closeOverlay(); toast(m); break;
+      }
+      case 'sheet-item': {
+        var items = JSON.parse(overlay.getAttribute('data-items') || '[]');
+        var it = items[+el.getAttribute('data-i')];
+        var label = it ? it.label : '';
+        closeOverlay();
+        if (label === '举报') {
+          showActionSheet([{ label:'骚扰辱骂' }, { label:'广告营销' }, { label:'其他' }]);
+        } else if (label === '删除') {
+          showModal({ title:'删除这条帖子？', content:'删除后无法恢复，确定删除这条帖子吗？', okText:'删除', cancelText:'取消', danger:true, okMsg:'已删除' });
+        } else {
+          toast(label);
+        }
+        break;
+      }
+    }
+  }
+
+  function onStateChange() {
+    S.states[S.page] = document.getElementById('pbState').value;
+    if (S.page === 'messages') {
+      S.unreadDm = (S.states.messages === 'empty' || S.states.messages === 'login') ? 0 : 2;
+      renderTabbar();
+    }
+    renderPage(S.page);
+  }
+
+  /* ---------- 消息页：左滑删除 + 长按 Action Sheet ---------- */
+  function bindSwipe() {
+    var startX = 0, startY = 0, cur = null;
+    var msgPage = document.getElementById('page-messages');
+    var lpTimer = null;
+
+    msgPage.addEventListener('touchstart', function(e){
+      var body = e.target.closest('[data-conv-body]');
+      if (!body) return;
+      cur = body; startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+      clearTimeout(lpTimer);
+      lpTimer = setTimeout(function(){
+        showActionSheet([{ label:'置顶会话' }, { label:'删除会话', danger:true }]);
+        cur = null;
+      }, 350);
+    }, { passive:true });
+    msgPage.addEventListener('touchmove', function(e){
+      if (!cur) return;
+      var dx = e.touches[0].clientX - startX;
+      var dy = e.touches[0].clientY - startY;
+      if (Math.abs(dx) < 6 && Math.abs(dy) > Math.abs(dx)) { cur = null; clearTimeout(lpTimer); return; }
+      clearTimeout(lpTimer);
+      cur.style.transform = 'translateX(' + Math.min(0, Math.max(-68, dx)) + 'px)';
+    }, { passive:true });
+    document.addEventListener('touchend', function(){
+      clearTimeout(lpTimer);
+      if (!cur) return;
+      var mm = cur.style.transform.match(/-?[\d.]+/);
+      var off = mm ? parseFloat(mm[0]) : 0;
+      cur.style.transform = off < -34 ? 'translateX(-68px)' : 'translateX(0)';
+      cur = null;
+    });
+
+    var mDown = false, mStart = 0, mBody = null;
+    msgPage.addEventListener('mousedown', function(e){
+      var body = e.target.closest('[data-conv-body]');
+      if (!body || e.target.closest('[data-act]')) return;
+      mDown = true; mStart = e.clientX; mBody = body; e.preventDefault();
+    });
+    document.addEventListener('mousemove', function(e){
+      if (!mDown) return;
+      var dx = e.clientX - mStart;
+      mBody.style.transform = 'translateX(' + Math.min(0, Math.max(-68, dx)) + 'px)';
+    });
+    document.addEventListener('mouseup', function(){
+      if (!mDown) return;
+      mDown = false;
+      if (!mBody) return;
+      var mm = mBody.style.transform.match(/-?[\d.]+/);
+      var off = mm ? parseFloat(mm[0]) : 0;
+      mBody.style.transform = off < -34 ? 'translateX(-68px)' : 'translateX(0)';
+      mBody = null;
+    });
+  }
+
+  document.addEventListener('error', function(e){
+    var t = e.target;
+    if (t && t.tagName === 'IMG' && t.parentNode) { t.parentNode.classList.add('is-broken'); t.remove(); }
+  }, true);
+
+  /* ==========================================================================
+     启动
+     ========================================================================== */
+  function boot() {
+    buildChrome();
+    ['pet','home','community','messages','user'].forEach(renderPage);
+    syncStateSelect();
+    setTheme('light');
+    bindSwipe();
+
+    document.addEventListener('click', onClick);
+    document.getElementById('pbState').addEventListener('change', onStateChange);
+    document.getElementById('pbSpec').addEventListener('click', function(){
+      document.getElementById('spec').classList.toggle('is-collapsed');
+      this.classList.toggle('accent');
+    });
+    document.getElementById('pbShot').addEventListener('click', function(){ toast('用 Playwright 截图请见 _shots/ 目录'); });
+    document.getElementById('specFilter').addEventListener('click', function(e){
+      var b = e.target.closest('button[data-scope]');
+      if (!b) return;
+      S.specAll = b.getAttribute('data-scope') === 'all';
+      renderSpec();
+    });
+    document.getElementById('overlay').addEventListener('click', function(e){ if (e.target === this) closeOverlay(); });
+
+    goPage('home');
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

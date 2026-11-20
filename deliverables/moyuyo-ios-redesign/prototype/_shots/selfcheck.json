@@ -1,0 +1,235 @@
+{
+  "startedAt": "2026-11-19T04:10:06.330Z",
+  "page": "file://D:/MOYUYOWPC/deliverables/moyuyo-ios-redesign/prototype/index.html",
+  "checks": [
+    {
+      "name": "5 屏 TabBar 切换并截图",
+      "pass": true,
+      "detail": "pet, home, community, messages, user"
+    },
+    {
+      "name": "无页面 JS 异常",
+      "pass": true,
+      "detail": "0 个"
+    },
+    {
+      "name": "无控制台 error",
+      "pass": true,
+      "detail": "0 个"
+    },
+    {
+      "name": "无资源加载失败",
+      "pass": true,
+      "detail": "0 个"
+    },
+    {
+      "name": "无断链图片 (naturalWidth>0)",
+      "pass": true,
+      "detail": "全部图片加载正常"
+    },
+    {
+      "name": "全站 0 处 :hover",
+      "pass": true,
+      "detail": "实际 0 处"
+    },
+    {
+      "name": "无禁用十六进制色值",
+      "pass": true,
+      "detail": "已扫描 36 个色值"
+    },
+    {
+      "name": "无禁用 CSS 模式（蓝渐变/金色文字/:hover）",
+      "pass": true,
+      "detail": "通过"
+    },
+    {
+      "name": "金色实心块内无白字",
+      "pass": true,
+      "detail": "通过"
+    },
+    {
+      "name": "无 emoji 图标",
+      "pass": true,
+      "detail": "通过"
+    },
+    {
+      "name": "页面左右边距统一 16pt",
+      "pass": true,
+      "detail": "通过"
+    },
+    {
+      "name": "可点元素命中区 ≥ 44×44pt（Segmented Control 按 §4.2 记为例外）",
+      "pass": true,
+      "detail": "通过"
+    },
+    {
+      "name": "Segmented Control 指示胶囊位移",
+      "pass": true,
+      "detail": "translateX(0px) → translateX(118px)"
+    },
+    {
+      "name": "商品网格随 tab 切换重排",
+      "pass": true,
+      "detail": "当前 12 个商品"
+    },
+    {
+      "name": "产品线 chip 切换商品数据源",
+      "pass": true,
+      "detail": "亚麻鬃梳 · 黄铜针梳 → 焦糖皮革外出包"
+    },
+    {
+      "name": "点赞：计数 +1 且心形填充",
+      "pass": true,
+      "detail": "12 → 13，filled=true"
+    },
+    {
+      "name": "Large Title 折叠（大标题淡出 + 小标题淡入）",
+      "pass": true,
+      "detail": "{\"lt\":\"0.0000\",\"ct\":\"1.0000\",\"p\":\"1.0000\"}"
+    },
+    {
+      "name": "进入会话：未读清零 → TabBar 角标 -1",
+      "pass": true,
+      "detail": "3 → 2"
+    },
+    {
+      "name": "会话左滑删除：跟手 + 阈值吸附展开",
+      "pass": true,
+      "detail": "open=true transform=translateX(-80px)"
+    },
+    {
+      "name": "Banner 自动轮播 3s",
+      "pass": true,
+      "detail": "slide 1 → 2"
+    },
+    {
+      "name": "切态不引起首屏纵向位移",
+      "pass": true,
+      "detail": "screen Δ=0.00 nav Δ=0.00"
+    },
+    {
+      "name": "未登录点赞被拦截",
+      "pass": true,
+      "detail": "toast=登录后即可点赞"
+    },
+    {
+      "name": "每屏 5 态齐备（正常/加载/空/错误/未登录）",
+      "pass": true,
+      "detail": "{\"pet\":5,\"home\":5,\"community\":5,\"messages\":5,\"user\":5}"
+    },
+    {
+      "name": "核心令牌均已定义",
+      "pass": true,
+      "detail": "16 项全部存在"
+    },
+    {
+      "name": "令牌集合与设计系统 §3.8 一致（零缺失、零额外）",
+      "pass": true,
+      "detail": "§3.8 147 个令牌，缺失 0 个，非 §3.8 的额外令牌 0 个"
+    },
+    {
+      "name": "原始 index.html 文本级扫描（禁用色值 / :hover / 金色文字 / emoji）",
+      "pass": true,
+      "detail": "通过"
+    }
+  ],
+  "errors": [],
+  "consoleErrors": [],
+  "failedRequests": [],
+  "interactions": {
+    "segment": {
+      "before": "translateX(0px)",
+      "after": "translateX(118px)",
+      "moved": true
+    },
+    "gridCount": 12,
+    "chip": {
+      "before": "亚麻鬃梳 · 黄铜针梳",
+      "after": "焦糖皮革外出包",
+      "changed": true
+    },
+    "like": {
+      "before": {
+        "n": "12",
+        "on": false
+      },
+      "after": {
+        "n": "13",
+        "on": true
+      }
+    },
+    "collapse": {
+      "lt": "0.0000",
+      "ct": "1.0000",
+      "p": "1.0000"
+    },
+    "badge": {
+      "before": "3",
+      "after": "2"
+    },
+    "swipe": {
+      "open": true,
+      "tf": "translateX(-80px)"
+    },
+    "carousel": {
+      "before": 1,
+      "after": 2
+    },
+    "stateShift": {
+      "dScreen": 0,
+      "dNav": 0
+    },
+    "guest": {
+      "n": "13",
+      "toast": "登录后即可点赞"
+    }
+  },
+  "tokenParity": {
+    "dsCount": 147,
+    "myCount": 153,
+    "missing": [],
+    "extra": []
+  },
+  "hexPalette": [
+    "#0A0908",
+    "#14110F",
+    "#2E2B29",
+    "#4A6A7D",
+    "#4E6152",
+    "#6E5C30",
+    "#6E6962",
+    "#7A5836",
+    "#8A4F49",
+    "#8A5A1E",
+    "#8E3F35",
+    "#8FA8B6",
+    "#9A948C",
+    "#ABB9AD",
+    "#B38A5A",
+    "#B4574A",
+    "#B8A66B",
+    "#C09A6A",
+    "#C96E5F",
+    "#D2CCC2",
+    "#D9B4B0",
+    "#DBC98A",
+    "#DCD6CC",
+    "#E6B97A",
+    "#E8DDB5",
+    "#ECE6DD",
+    "#EDE7DE",
+    "#EEF1EF",
+    "#F0E8DE",
+    "#F1EDE7",
+    "#F6F2EE",
+    "#F7F0EF",
+    "#F7F3E5",
+    "#F8F5F1",
+    "#FBF9F6",
+    "#FFFFFF"
+  ],
+  "passCount": 26,
+  "failCount": 0,
+  "total": 26,
+  "passed": true
+}

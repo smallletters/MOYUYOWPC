@@ -166,38 +166,182 @@ const DIAG_CLOSE_GUARD = 350
 // 取 800ms：短于它会被当成普通摇杆操作误触发，长于它玩家会以为没反应。
 const DIAG_HOLD_MS = 800
 
-// Draco 解码器路径：优先本地 static（离线可用），失败再退 CDN
+// Draco 解码器路径：随包内置，离线可用（H5 下由构建产物 /static 提供）
 const DRACO_LOCAL_PATH = '/static/draco/'
-const DRACO_CDN_PATH = 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/'
+// APK 内 www 目录的相对前缀，plus.io.resolveLocalFileSystemURL 直接支持这种写法
+const APP_WWW_PREFIX = '_www'
 
 /**
- * 把以 / 开头的包内静态路径转成 APP 视图层可访问的 file:// 绝对路径。
- *
- * APP 的 webview 用 file:///android_asset/apps/__UNI__XXX/www/__uniappview.html 加载，
- * 直接写 /static/draco/ 会被解析成文件系统根目录（file:///static/draco/）→ 读不到，
- * 于是本地解码器永远走不通、只能退 CDN，离线/内网环境就表现为"模型加载失败"。
- * H5 / 转换失败时原样返回。
+ * 把 _www / _doc 相对路径转成绝对 file:// 地址（XHR 需要绝对地址）。
  */
-function toLocalAssetUrl(path) {
-  if (!path) return path
-  if (/^(https?:|blob:|data:|file:)/.test(path)) return path
-  if (
-    typeof plus === 'undefined' ||
-    !plus.io ||
-    typeof plus.io.convertLocalFileSystemURL !== 'function'
-  ) {
-    return path
+function toAbsoluteLocalUrl(fileUrl) {
+  if (!fileUrl) return fileUrl
+  if (/^(file|https?|blob|data):/i.test(fileUrl)) return fileUrl
+  if (typeof plus === 'undefined' || !plus.io || !plus.io.convertLocalFileSystemURL) {
+    return fileUrl
   }
   try {
-    const abs = plus.io.convertLocalFileSystemURL('_www' + path)
-    if (!abs) return path
-    let result = abs.startsWith('file://') ? abs : 'file://' + abs
-    // convertLocalFileSystemURL 可能吃掉目录末尾的 /，DRACOLoader 依赖它拼接文件名
-    if (path.endsWith('/') && !result.endsWith('/')) result += '/'
-    return result
+    const abs = plus.io.convertLocalFileSystemURL(fileUrl)
+    if (!abs) return fileUrl
+    return /^file:/i.test(abs) ? abs : 'file://' + abs
   } catch (e) {
-    return path
+    return fileUrl
   }
+}
+
+/**
+ * 用 XHR 读取本地文件。
+ *
+ * three r150+ 的 FileLoader 改成了 fetch()，而 WebView 的 fetch 不支持 file://；
+ * 但 XHR 在 App 的 webview 里可以读本地文件（r150 之前 three 就是这么工作的）。
+ * 注意 file:// 成功时 status 为 0，不能按 http 状态码判断。
+ *
+ * @param {string} fileUrl 绝对本地路径
+ * @param {'text'|'buffer'} resultType
+ */
+function readLocalFileByXhr(fileUrl, resultType) {
+  return new Promise((resolve, reject) => {
+    try {
+      const xhr = new XMLHttpRequest()
+      xhr.open('GET', fileUrl, true)
+      xhr.responseType = resultType === 'text' ? 'text' : 'arraybuffer'
+      xhr.timeout = 60000
+      xhr.onload = () => {
+        const ok = xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300)
+        if (!ok) {
+          reject(new Error('读取文件失败 status=' + xhr.status))
+          return
+        }
+        if (resultType === 'text') {
+          resolve(xhr.response == null ? '' : String(xhr.response))
+        } else if (xhr.response instanceof ArrayBuffer) {
+          resolve(xhr.response)
+        } else {
+          reject(new Error('XHR 未返回 ArrayBuffer'))
+        }
+      }
+      xhr.onerror = () => reject(new Error('XHR 读取失败'))
+      xhr.ontimeout = () => reject(new Error('XHR 读取超时'))
+      xhr.send()
+    } catch (e) {
+      reject(e)
+    }
+  })
+}
+
+/** data:...;base64,xxx → ArrayBuffer */
+function base64ToArrayBuffer(dataUrl) {
+  const base64 = String(dataUrl || '').replace(/^data:[^;]*;base64,/, '')
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+  return bytes.buffer
+}
+
+/**
+ * 用 plus.io.FileReader 兜底读取。
+ * 注意：plus.io.FileReader 只有 readAsText / readAsDataURL，没有 readAsArrayBuffer，
+ * 二进制要读成 dataURL 再转 ArrayBuffer。整段包超时，避免回调不触发时永久卡住。
+ */
+function readByPlusFileReader(fileUrl, resultType, absoluteUrl) {
+  return new Promise((resolve, reject) => {
+    if (typeof plus === 'undefined' || !plus.io || !plus.io.FileReader) {
+      reject(new Error('plus.io.FileReader 不可用'))
+      return
+    }
+    let settled = false
+    let timer = null
+    const done = (fn, val) => {
+      if (settled) return
+      settled = true
+      if (timer) clearTimeout(timer)
+      fn(val)
+    }
+    const fail = (err) => done(reject, err)
+    timer = setTimeout(() => fail(new Error('读取文件超时: ' + fileUrl)), 60000)
+    try {
+      plus.io.resolveLocalFileSystemURL(
+        absoluteUrl,
+        (entry) => {
+          try {
+            entry.file(
+              (file) => {
+                try {
+                  const reader = new plus.io.FileReader()
+                  const finish = (e) => {
+                    const raw = e && e.target ? e.target.result : reader.result
+                    try {
+                      if (resultType === 'text') done(resolve, raw == null ? '' : String(raw))
+                      else done(resolve, base64ToArrayBuffer(raw))
+                    } catch (err) {
+                      fail(err)
+                    }
+                  }
+                  reader.onload = finish
+                  reader.onloadend = finish
+                  reader.onerror = () => fail(new Error('FileReader 读取失败'))
+                  if (resultType === 'text') reader.readAsText(file)
+                  else reader.readAsDataURL(file)
+                } catch (e) {
+                  fail(e)
+                }
+              },
+              () => fail(new Error('读取文件失败: ' + fileUrl)),
+            )
+          } catch (e) {
+            fail(e)
+          }
+        },
+        () => fail(new Error('无法解析文件路径: ' + fileUrl)),
+      )
+    } catch (e) {
+      fail(e)
+    }
+  })
+}
+
+/**
+ * 读取 APP 包内 / 沙盒内的文件。
+ *
+ * 为什么不用 fetch：three r160 的 FileLoader 内部走 fetch()，而 Android WebView
+ * 的 fetch 不支持 file:// 协议，本地 GLB / FBX / Draco 解码器都会失败。
+ * 这里优先 XHR（无 base64 内存开销），失败再退 plus.io.FileReader。
+ *
+ * @param {string} fileUrl 本地路径（_doc/...、file://... 均可）
+ * @param {'text'|'buffer'} resultType 返回文本还是 ArrayBuffer
+ */
+async function readAppFile(fileUrl, resultType) {
+  if (!fileUrl) throw new Error('空文件路径')
+  const absoluteUrl = toAbsoluteLocalUrl(fileUrl)
+  try {
+    return await readLocalFileByXhr(absoluteUrl, resultType)
+  } catch (e) {
+    console.warn('[space-3d] XHR 读取本地文件失败，尝试 FileReader', absoluteUrl, e)
+  }
+  return readByPlusFileReader(fileUrl, resultType, absoluteUrl)
+}
+
+// Draco 解码器文件及读取类型：wasm 版优先，draco_decoder.js 供不支持 wasm 的环境
+const DRACO_DECODER_FILES = {
+  'draco_wasm_wrapper.js': 'text',
+  'draco_decoder.wasm': 'buffer',
+  'draco_decoder.js': 'text',
+}
+// 解码器只读一次（wasm 约 280KB，重复读没必要）
+const __dracoAssetCache = {}
+
+/**
+ * 从包内读取单个 Draco 解码器文件。
+ * DRACOLoader 默认用 fetch 取 draco_wasm_wrapper.js / draco_decoder.wasm，
+ * APP 端 file:// 取不到，所以这里预读后由 _loadLibrary 直接返回。
+ */
+function loadLocalDracoAsset(name) {
+  const readType = DRACO_DECODER_FILES[name]
+  if (!readType) return Promise.reject(new Error('未知的 Draco 解码器文件: ' + name))
+  if (!__dracoAssetCache[name]) {
+    __dracoAssetCache[name] = readAppFile(APP_WWW_PREFIX + DRACO_LOCAL_PATH + name, readType)
+  }
+  return __dracoAssetCache[name]
 }
 
 export const pageOptions = {
@@ -832,7 +976,7 @@ export const pageOptions = {
         })
         localUrl = source.primary
         // 本地路径（APP 的 _doc/...）在 webview 里可能读不到，
-        // 记下远程地址交给 _loadGltfWithDracoFallback 兜底
+        // 记下远程地址交给 _loadGltfModel 兜底
         this._glbFallbackUrl = source.fallback
       } catch (e) {
         console.error('[space-3d] 远程模型下载失败', e)
@@ -843,10 +987,12 @@ export const pageOptions = {
       // GLTFLoader 是单独加载的，不能从 THREE 取
       const loader = new GLTFLoader()
       // home.glb 是 Draco 压缩的 GLB，必须挂 DRACOLoader 才能解析。
-      // 旧实现把解码器写死成 jsDelivr CDN —— 内网 / 离线 / CDN 不可达时 404，
-      // 表面症状是"模型加载失败"，真实原因却是解码器取不到。
-      // 现在统一交给 _loadGltfWithDracoFallback：本地 static 优先，CDN 兜底。
-      this._loadGltfWithDracoFallback(loader, localUrl, {
+      // APP 端本地文件不能用 fetch 取（file:// 不受支持），因此：
+      //   1) 模型：FileReader 读成 ArrayBuffer 后 loader.parse()
+      //   2) 解码器：本地 static 文件读进内存，覆盖 _loadLibrary 提供
+      const dracoLoader = this._createDracoLoader()
+      loader.setDRACOLoader(dracoLoader)
+      this._loadGltfModel(loader, localUrl, this._glbFallbackUrl, {
         onProgress: (xhr) => {
           if (xhr.lengthComputable) {
             // 模型文件已落到本地,这里仅 GLTFLoader 解析阶段的进度,合并到 50~99%
@@ -862,6 +1008,12 @@ export const pageOptions = {
           this.loading = false
         },
         onLoaded: (gltf) => {
+          // 解码器用完即释放 worker，避免长驻内存
+          try {
+            dracoLoader.dispose()
+          } catch (e) {
+            /* ignore */
+          }
           // 异步回调期间用户可能已返回页面,scene 已置 null,
           // 直接 return 避免对已 dispose 的资源继续操作触发 warn
           if (this.three._disposed || !this.three.scene) return
@@ -1040,67 +1192,91 @@ export const pageOptions = {
     },
 
     /**
-     * 用 GLTFLoader 加载 Draco 压缩模型，解码器优先本地 static，失败退 CDN。
+     * 创建 DRACOLoader。
      *
-     * 为什么要兜底：DRACOLoader 内部用 fetch 拉解码器，失败时只在 console 留一条
-     * warning，真正的异常会等到 loader.load 的 onError 才暴露，而错误信息是
-     * 泛化的 "THREE.GLTFLoader: Missing minVersion..."，很难定位。
-     * 这里显式做一次本地→CDN 的重试，把"解码器取不到"从"模型加载失败"里分离出来。
+     * APP 端把解码器文件用 FileReader 读进内存，覆盖 _loadLibrary 直接返回，
+     * 绕开 DRACOLoader 内部 fetch(file://) 的限制；H5 下 /static/draco/ 是
+     * 正常的 http 路径，保持默认实现即可。
+     */
+    _createDracoLoader() {
+      const dracoLoader = new DRACOLoader()
+      dracoLoader.setDecoderPath(DRACO_LOCAL_PATH)
+      if (typeof plus !== 'undefined' && plus.io) {
+        // 0.160.1 的 DRACOLoader 用 _loadLibrary(url, responseType) 取解码器，
+        // 返回 Promise<string | ArrayBuffer>；这里改成从包内文件读取。
+        dracoLoader._loadLibrary = (url) => {
+          const name = String(url || '')
+            .split('/')
+            .filter(Boolean)
+            .pop()
+          return loadLocalDracoAsset(name)
+        }
+      }
+      return dracoLoader
+    },
+
+    /**
+     * 加载 GLB：APP 端本地文件先读成 ArrayBuffer 再 parse()，
+     * H5 / http / blob 地址保持 loader.load()（fetch 可用）。
      *
      * @param {object} loader 已 setDRACOLoader 的 GLTFLoader
-     * @param {string} url 本地/Blob URL
+     * @param {string} localUrl 本地缓存路径或远程地址
+     * @param {string|null} remoteUrl 本地失败时的远程兜底地址
      * @param {{onLoaded:Function,onProgress:Function,onError:Function}} handlers 回调
      */
-    _loadGltfWithDracoFallback(loader, url, handlers) {
-      const { onLoaded, onProgress, onError } = handlers
-      let retriedWithCdn = false
-      // 第二层兜底：本地缓存文件读不出来时改走远程地址（CORS 允许跨域）
-      const remoteFallback = this._glbFallbackUrl || null
-      let retriedWithRemote = false
-      // 本地解码器路径：APP 端转成 file:// 绝对路径（/static/draco/ 在 webview 里读不到）
-      const localDecoderPath = toLocalAssetUrl(DRACO_LOCAL_PATH)
+    async _loadGltfModel(loader, localUrl, remoteUrl, handlers) {
+      const { onProgress } = handlers
+      const isLocalPath = !!localUrl && !/^(https?:|blob:|data:)/i.test(localUrl)
 
-      const attempt = (decoderPath) => {
-        const dracoLoader = new DRACOLoader()
-        dracoLoader.setDecoderPath(decoderPath)
-        loader.setDRACOLoader(dracoLoader)
+      // 加一层看门狗：文件读取 / Draco 解码 / parse 任一处卡住时，
+      // 页面不能永远停在“正在加载模型...”，超时后按失败处理并留下日志。
+      let settled = false
+      let watchdog = null
+      const once = (fn) => (arg) => {
+        if (settled) return
+        settled = true
+        if (watchdog) clearTimeout(watchdog)
+        fn(arg)
+      }
+      const onLoaded = once(handlers.onLoaded)
+      const onError = once(handlers.onError)
+      const safeHandlers = { onLoaded, onProgress, onError }
+      watchdog = setTimeout(() => {
+        console.error('[space-3d] 模型加载超时(180s), localUrl=', localUrl)
+        onError(new Error('模型加载超时(180s)'))
+      }, 180000)
 
-        loader.load(
-          url,
-          (gltf) => {
-            // 解码器加载完就释放 worker，避免长驻内存
-            try {
-              dracoLoader.dispose()
-            } catch (e) {
-              /* ignore */
-            }
-            onLoaded(gltf)
-          },
-          onProgress,
-          (err) => {
-            // 第一次失败且用的是本地路径 → 换 CDN 再试一次
-            if (!retriedWithCdn && decoderPath === localDecoderPath) {
-              retriedWithCdn = true
-              console.warn('[space-3d] 本地 Draco 解码器加载失败，回退 CDN', err)
-              // 重新挂一个 CDN 路径的解码器
-              const cdnDraco = new DRACOLoader()
-              cdnDraco.setDecoderPath(DRACO_CDN_PATH)
-              loader.setDRACOLoader(cdnDraco)
-              loader.load(url, onLoaded, onProgress, onError)
-              return
-            }
-            if (!retriedWithRemote && remoteFallback) {
-              retriedWithRemote = true
-              console.warn('[space-3d] 本地模型文件读取失败，回退远程地址', remoteFallback, err)
-              loader.load(remoteFallback, onLoaded, onProgress, onError)
-              return
-            }
-            onError(err)
-          },
-        )
+      if (isLocalPath && typeof plus !== 'undefined' && plus.io) {
+        try {
+          const buffer = await readAppFile(localUrl, 'buffer')
+          // 文件读取没有进度事件，直接推到 99% 进入解析阶段
+          if (onProgress) onProgress({ lengthComputable: true, loaded: 1, total: 1 })
+          loader.parse(buffer, '', onLoaded, (err) => {
+            console.error('[space-3d] 本地模型解析失败', err)
+            this._loadRemoteGltf(loader, remoteUrl, safeHandlers, err)
+          })
+          return
+        } catch (e) {
+          console.warn('[space-3d] 本地模型文件读取失败，回退远程地址', localUrl, e)
+          this._loadRemoteGltf(loader, remoteUrl, safeHandlers, e)
+          return
+        }
       }
 
-      attempt(localDecoderPath)
+      // 走到这里说明不是 APP 可读的本地路径（或 plus 不可用），
+      // 失败时同样退回远程地址，避免直接停在“模型加载失败”
+      loader.load(localUrl, onLoaded, onProgress, (err) => {
+        this._loadRemoteGltf(loader, remoteUrl, safeHandlers, err)
+      })
+    },
+
+    /** 远程兜底：没有远程地址时把原始错误抛给调用方 */
+    _loadRemoteGltf(loader, remoteUrl, handlers, cause) {
+      if (!remoteUrl) {
+        handlers.onError(cause)
+        return
+      }
+      loader.load(remoteUrl, handlers.onLoaded, handlers.onProgress, handlers.onError)
     },
 
     /**
@@ -1137,6 +1313,11 @@ export const pageOptions = {
       this._onWindowTouchStart = (e) => {
         // 仅在场景未就绪时拒绝;loading=true 但相机已就绪也允许响应(支持边加载边旋转)
         if (!t.camera || !t.scene) return
+        // HUD 上的可交互元素（返回键 / 诊断面板 / 重试按钮）不参与视角拖动：
+        // 这里一旦 preventDefault，浏览器就不会再合成 click 事件，@click 永远不触发，
+        // 表现为「点按钮没反应」。模板里这些节点都带 data-pet3d-ui 标记。
+        const el = e.target
+        if (el && typeof el.closest === 'function' && el.closest('[data-pet3d-ui]')) return
         // 找到第一个不在摇杆/按钮区的 touch
         for (const touch of e.touches) {
           if (this.isInControlArea(touch.clientX, touch.clientY)) continue
@@ -1470,14 +1651,18 @@ export const pageOptions = {
     // 这样只有一处更新 yaw/pitch,避免元素冒泡 + capture 同时跑导致视角速度翻倍
     onCanvasTouchStart() {
       const t = this.three
-      // 尝试 PointerLock（H5 桌面浏览器有效，APP webview 多半失败，会自动 catch）
+      if (!t.controls || this.pointerLocked) return
+      // Pointer Lock 只在桌面鼠标环境可用；APP WebView 调用会触发 pointerlockerror，
+      // 且 requestPointerLock() 返回的 Promise 拒绝无法被 try/catch 捕获
+      if (typeof window.matchMedia !== 'function' || !window.matchMedia('(pointer: fine)').matches)
+        return
       // 必须在 canvas 元素的用户手势里调用,全局 capture 不行
-      if (t.controls && !this.pointerLocked) {
-        try {
-          t.controls.lock()
-        } catch (err) {
-          console.warn('PointerLock 不可用，改用触摸旋转', err)
-        }
+      try {
+        const p = t.controls.domElement.requestPointerLock()
+        // 新版 Chromium 异步返回 Promise，失败时吞掉拒绝，避免 unhandled rejection
+        if (p && typeof p.catch === 'function') p.catch(() => {})
+      } catch (err) {
+        console.warn('PointerLock 不可用，改用触摸旋转', err)
       }
     },
 
@@ -2028,147 +2213,155 @@ export const pageOptions = {
       const source = await this.resolveModelSource(url)
       const localUrl = source.primary
       const remoteUrl = source.fallback
+      const loader = new FBXLoader()
+      // 本地 FBX 同样是 file://，fetch 读不到，先读成 ArrayBuffer 交给 parse()
+      let buffer = null
+      const isLocalPath = !!localUrl && !/^(https?:|blob:|data:)/i.test(localUrl)
+      if (isLocalPath && typeof plus !== 'undefined' && plus.io) {
+        try {
+          buffer = await readAppFile(localUrl, 'buffer')
+        } catch (e) {
+          console.warn('[space-3d] fbx 本地读取失败，回退远程地址', localUrl, e)
+        }
+      }
       return new Promise((resolve, reject) => {
-        const loader = new FBXLoader()
-        loader.load(
-          localUrl,
-          (fbx) => {
-            // 异步回调期间用户可能已返回页面,scene 已置 null,直接 reject 走兜底
-            if (this.three._disposed || !this.three.scene) {
-              reject(new Error('页面已卸载,取消 fbx 加载'))
-              return
-            }
-            // 1. 包围盒 + 自动缩放到目标身高 1.7m(人类正常身高)
-            // 旧逻辑硬编码 "size.y / 100" 假定 FBX 单位是厘米,导致:
-            //   - 已经是米的 FBX(原始身高 100) → rawHeightMeters=1 → scale=1 → 化身 100m 高
-            //   - Mixamo 厘米单位 → 正确缩到 1m,但目标身高 1m 太矮相机视高 0.5m 看着像看脚
-            // 改为:不假定单位,直接把"原始 size.y"当成身高原始单位,缩到 1.7m。
-            //  - 100m 高的原始 → 缩到 1.7m
-            //  - 100 厘米的原始(Mixamo) → 缩到 1.7m
-            //  - 1m 高的原始 → 缩到 1.7m
-            const box = new THREE.Box3().setFromObject(fbx)
-            const size = box.getSize(new THREE.Vector3())
-            const maxAxis = Math.max(size.x, size.y, size.z) || 1
-            const targetHeight = 1.7 // 米
-            const rawHeight = size.y // FBX y 方向当作身高(人物都是 y-up)
-            // 边界保护:rawHeight 异常(0 / 极小)时退化为最大边
-            const scale = rawHeight > 0.1 ? targetHeight / rawHeight : targetHeight / maxAxis
-            fbx.scale.setScalar(scale)
-            fbx.rotation.x = 0
-            fbx.rotation.y = 0
-            fbx.rotation.z = 0
-            fbx.updateMatrixWorld(true)
-            const finalBox = new THREE.Box3().setFromObject(fbx)
-            // 底部对齐 y=0(踩在地面网格上)
-            fbx.position.y = -finalBox.min.y
+        const onLoaded = (fbx) => {
+          // 异步回调期间用户可能已返回页面,scene 已置 null,直接 reject 走兜底
+          if (this.three._disposed || !this.three.scene) {
+            reject(new Error('页面已卸载,取消 fbx 加载'))
+            return
+          }
+          // 1. 包围盒 + 自动缩放到目标身高 1.7m(人类正常身高)
+          // 旧逻辑硬编码 "size.y / 100" 假定 FBX 单位是厘米,导致:
+          //   - 已经是米的 FBX(原始身高 100) → rawHeightMeters=1 → scale=1 → 化身 100m 高
+          //   - Mixamo 厘米单位 → 正确缩到 1m,但目标身高 1m 太矮相机视高 0.5m 看着像看脚
+          // 改为:不假定单位,直接把"原始 size.y"当成身高原始单位,缩到 1.7m。
+          //  - 100m 高的原始 → 缩到 1.7m
+          //  - 100 厘米的原始(Mixamo) → 缩到 1.7m
+          //  - 1m 高的原始 → 缩到 1.7m
+          const box = new THREE.Box3().setFromObject(fbx)
+          const size = box.getSize(new THREE.Vector3())
+          const maxAxis = Math.max(size.x, size.y, size.z) || 1
+          const targetHeight = 1.7 // 米
+          const rawHeight = size.y // FBX y 方向当作身高(人物都是 y-up)
+          // 边界保护:rawHeight 异常(0 / 极小)时退化为最大边
+          const scale = rawHeight > 0.1 ? targetHeight / rawHeight : targetHeight / maxAxis
+          fbx.scale.setScalar(scale)
+          fbx.rotation.x = 0
+          fbx.rotation.y = 0
+          fbx.rotation.z = 0
+          fbx.updateMatrixWorld(true)
+          const finalBox = new THREE.Box3().setFromObject(fbx)
+          // 底部对齐 y=0(踩在地面网格上)
+          fbx.position.y = -finalBox.min.y
 
-            // 2. 材质兜底:FBX 经常不嵌贴图,默认材质在暗场景里看不见,
-            // 这里给个暖白色 + 中等亮度,确保裸模型可见
-            fbx.traverse((child) => {
-              if (child.isMesh) {
-                if (child.geometry && !child.geometry.attributes.normal) {
-                  child.geometry.computeVertexNormals()
-                }
-                child.frustumCulled = false
-                if (!child.material) {
-                  child.material = new THREE.MeshStandardMaterial({
-                    color: 0xd9b48a,
-                    roughness: 0.7,
-                    metalness: 0.1,
-                  })
-                } else {
-                  // 有材质但没贴图的情况:给 emissive 一点点,确保暗处可见
-                  const mats = Array.isArray(child.material) ? child.material : [child.material]
-                  mats.forEach((m) => {
-                    if (!m.emissive) m.emissive = new THREE.Color(0x000000)
-                    m.emissive = new THREE.Color(0x222222)
-                    m.needsUpdate = true
-                  })
-                }
+          // 2. 材质兜底:FBX 经常不嵌贴图,默认材质在暗场景里看不见,
+          // 这里给个暖白色 + 中等亮度,确保裸模型可见
+          fbx.traverse((child) => {
+            if (child.isMesh) {
+              if (child.geometry && !child.geometry.attributes.normal) {
+                child.geometry.computeVertexNormals()
               }
-            })
-
-            const group = new THREE.Group()
-            group.add(fbx)
-            group.position.set(0, 0, 0)
-            t.scene.add(group)
-
-            // 3. 朝向自动判定
-            //
-            // 旧实现到处硬编码 `rotation.y = yaw + Math.PI`，依赖
-            // "FBX 模型默认朝 +Z" 这个假设。换一个朝 -Z 或 +X 导出的模型，
-            // 人物就会背对移动方向走路（第三人称下非常明显）。
-            //
-            // 判定方法：人物模型通常有明显的「前厚后薄」特征——胸口/面部/脚掌
-            // 让 +Z 方向伸出更多，而背部/后脑更平。用几何重心相对包围盒中心的
-            // 偏移量判断模型默认朝向的轴向，偏移最大的方向即模型正面。
-            // 无法判定时（例如完全对称的胶囊体兜底模型）返回 0，退回"默认 -Z 为正面"。
-            // 只用 0.fbx（idle）判定一次朝向，然后让 1.fbx（walk）复用同一个偏移。
-            // 理由：两个 FBX 是同一套骨骼/同一管线的导出，朝向必然一致；
-            // 而 idle 通常先加载完成（Promise.allSettled 顺序），
-            // 用它做基准可保证 walk 不会在 idle 之前抢先写出一个半成品偏移。
-            if (kind === 'idle') {
-              t.figureYawOffset = this.detectFigureFacing(fbx)
-            }
-
-            if (kind === 'idle') {
-              t.figureIdleGroup = group
-            } else {
-              t.figureWalkGroup = group
-              // 走路动画:fbx.animations[0] 即为 AnimationClip
-              if (fbx.animations && fbx.animations.length > 0) {
-                const mixer = new THREE.AnimationMixer(fbx)
-                const action = mixer.clipAction(fbx.animations[0])
-                action.play()
-                t.figureWalkMixer = mixer
-                t.figureWalkAction = action
-                t.figureWalkClock = new THREE.Clock()
+              child.frustumCulled = false
+              if (!child.material) {
+                child.material = new THREE.MeshStandardMaterial({
+                  color: 0xd9b48a,
+                  roughness: 0.7,
+                  metalness: 0.1,
+                })
               } else {
-                console.warn('[space-3d] 1.fbx 不含骨骼动画,走路模型仅作为静态显示')
+                // 有材质但没贴图的情况:给 emissive 一点点,确保暗处可见
+                const mats = Array.isArray(child.material) ? child.material : [child.material]
+                mats.forEach((m) => {
+                  if (!m.emissive) m.emissive = new THREE.Color(0x000000)
+                  m.emissive = new THREE.Color(0x222222)
+                  m.needsUpdate = true
+                })
               }
             }
-            // 两个 group 都就绪(或一个就绪)后,统一按当前 figureState 同步可见性 + 动画,
-            // 避免加载期间玩家已按键导致 group.visible 停留在加载瞬间的状态
-            this.syncFigureState()
+          })
 
-            // 调试信息:输出化身包围盒 + 房间模型尺寸,方便对账高度链
-            const figureSize = finalBox.getSize(new THREE.Vector3())
-            // eslint-disable-next-line
-            console.log(
-              '[space-3d] fbx 加载完成 kind=',
-              kind,
-              '原始尺寸=',
-              size,
-              'scale=',
-              scale,
-              '最终尺寸(m)=',
-              { x: figureSize.x, y: figureSize.y, z: figureSize.z },
-              'facingOffset=',
-              t.figureYawOffset,
-            )
-            // 拼到页面 debug 信息(显示在左上角)
-            this.debugInfo = `化身 ${kind}: 原始${size.x.toFixed(2)}×${size.y.toFixed(2)}×${size.z.toFixed(2)} | 化身scale=${scale.toFixed(3)} | 最终${figureSize.x.toFixed(2)}×${figureSize.y.toFixed(2)}×${figureSize.z.toFixed(2)}m`
-            if (t.modelSize) {
-              this.debugInfo += ` | 房间 ${t.modelSize.x.toFixed(2)}×${t.modelSize.y.toFixed(2)}×${t.modelSize.z.toFixed(2)}m`
-            }
+          const group = new THREE.Group()
+          group.add(fbx)
+          group.position.set(0, 0, 0)
+          t.scene.add(group)
 
-            resolve(group)
-          },
-          undefined,
-          (err) => {
-            // 本地缓存文件读不出来 → 用远程地址再试一次
-            if (remoteUrl) {
-              console.warn('[space-3d] fbx 本地读取失败，回退远程地址', remoteUrl, err)
-              loader.load(remoteUrl, resolve, undefined, (err2) => {
-                console.error('[space-3d] fbx 兜底也失败 url=', url, err2)
-                reject(err2)
-              })
-              return
+          // 3. 朝向自动判定
+          //
+          // 旧实现到处硬编码 `rotation.y = yaw + Math.PI`，依赖
+          // "FBX 模型默认朝 +Z" 这个假设。换一个朝 -Z 或 +X 导出的模型，
+          // 人物就会背对移动方向走路（第三人称下非常明显）。
+          //
+          // 判定方法：人物模型通常有明显的「前厚后薄」特征——胸口/面部/脚掌
+          // 让 +Z 方向伸出更多，而背部/后脑更平。用几何重心相对包围盒中心的
+          // 偏移量判断模型默认朝向的轴向，偏移最大的方向即模型正面。
+          // 无法判定时（例如完全对称的胶囊体兜底模型）返回 0，退回"默认 -Z 为正面"。
+          // 只用 0.fbx（idle）判定一次朝向，然后让 1.fbx（walk）复用同一个偏移。
+          // 理由：两个 FBX 是同一套骨骼/同一管线的导出，朝向必然一致；
+          // 而 idle 通常先加载完成（Promise.allSettled 顺序），
+          // 用它做基准可保证 walk 不会在 idle 之前抢先写出一个半成品偏移。
+          if (kind === 'idle') {
+            t.figureYawOffset = this.detectFigureFacing(fbx)
+          }
+
+          if (kind === 'idle') {
+            t.figureIdleGroup = group
+          } else {
+            t.figureWalkGroup = group
+            // 走路动画:fbx.animations[0] 即为 AnimationClip
+            if (fbx.animations && fbx.animations.length > 0) {
+              const mixer = new THREE.AnimationMixer(fbx)
+              const action = mixer.clipAction(fbx.animations[0])
+              action.play()
+              t.figureWalkMixer = mixer
+              t.figureWalkAction = action
+              t.figureWalkClock = new THREE.Clock()
+            } else {
+              console.warn('[space-3d] 1.fbx 不含骨骼动画,走路模型仅作为静态显示')
             }
-            console.error('[space-3d] fbx 加载失败 url=', url, err)
-            reject(err)
-          },
-        )
+          }
+          // 两个 group 都就绪(或一个就绪)后,统一按当前 figureState 同步可见性 + 动画,
+          // 避免加载期间玩家已按键导致 group.visible 停留在加载瞬间的状态
+          this.syncFigureState()
+
+          // 调试信息:输出化身包围盒 + 房间模型尺寸,方便对账高度链
+          const figureSize = finalBox.getSize(new THREE.Vector3())
+          // eslint-disable-next-line
+          console.log(
+            '[space-3d] fbx 加载完成 kind=',
+            kind,
+            '原始尺寸=',
+            size,
+            'scale=',
+            scale,
+            '最终尺寸(m)=',
+            { x: figureSize.x, y: figureSize.y, z: figureSize.z },
+            'facingOffset=',
+            t.figureYawOffset,
+          )
+          // 拼到页面 debug 信息(显示在左上角)
+          this.debugInfo = `化身 ${kind}: 原始${size.x.toFixed(2)}×${size.y.toFixed(2)}×${size.z.toFixed(2)} | 化身scale=${scale.toFixed(3)} | 最终${figureSize.x.toFixed(2)}×${figureSize.y.toFixed(2)}×${figureSize.z.toFixed(2)}m`
+          if (t.modelSize) {
+            this.debugInfo += ` | 房间 ${t.modelSize.x.toFixed(2)}×${t.modelSize.y.toFixed(2)}×${t.modelSize.z.toFixed(2)}m`
+          }
+
+          resolve(group)
+        }
+        const onError = (err) => {
+          // 本地缓存文件读不出来 → 用远程地址再试一次
+          if (remoteUrl) {
+            console.warn('[space-3d] fbx 本地读取失败，回退远程地址', remoteUrl, err)
+            loader.load(remoteUrl, resolve, undefined, (err2) => {
+              console.error('[space-3d] fbx 兜底也失败 url=', url, err2)
+              reject(err2)
+            })
+            return
+          }
+          console.error('[space-3d] fbx 加载失败 url=', url, err)
+          reject(err)
+        }
+        if (buffer) loader.parse(buffer, '', onLoaded, onError)
+        else loader.load(localUrl, onLoaded, undefined, onError)
       })
     },
 

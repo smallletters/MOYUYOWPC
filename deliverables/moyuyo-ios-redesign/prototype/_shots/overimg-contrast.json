@@ -1,0 +1,38 @@
+{
+  "measuredAt": "2026-11-19T04:16:00.851Z",
+  "screens": {
+    "pet": {
+      "total": 0,
+      "fail": 0,
+      "worst": null,
+      "bad": []
+    },
+    "home": {
+      "total": 0,
+      "fail": 0,
+      "worst": null,
+      "bad": []
+    },
+    "community": {
+      "total": 0,
+      "fail": 0,
+      "worst": null,
+      "bad": []
+    },
+    "messages": {
+      "total": 0,
+      "fail": 0,
+      "worst": null,
+      "bad": []
+    },
+    "user": {
+      "total": 0,
+      "fail": 0,
+      "worst": null,
+      "bad": []
+    }
+  },
+  "worstOverall": null,
+  "failCount": 0,
+  "passed": true
+}

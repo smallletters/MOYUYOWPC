@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOYUYO · 五页重设计</title>
+<style>
+:root{
+  --paper:#F6F2EE;
+  --surface:#FFFFFF;
+  --ink:#2E2B29;
+  --sub:#6E6962;
+  --mute:#9A948C;
+  --line:#EAE5DD;
+  --gold:#DBC98A;
+  --gold-light:#E8DDB5;
+  --gold-dark:#B8A66B;
+  --brass:#B38A5A;
+  --brand:#82683A;
+  --tint:rgba(219,201,138,.18);
+  --tint-2:rgba(219,201,138,.30);
+  --red:#C96052;
+  --red-solid:#B04A3F;
+  --green:#7E9B83;
+  --orange:#D98B4A;
+  --blue:#7C9BB0;
+  --shadow:0 8px 24px rgba(46,43,41,.08);
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,sans-serif;
+  --num:"SF Pro Display",-apple-system,"PingFang SC",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;width:393px;height:852px;overflow:hidden;background:#fff}
+body{font-family:var(--font);color:var(--ink);-webkit-font-smoothing:antialiased}
+button{font-family:inherit;color:inherit}
+.sprite{position:absolute;width:0;height:0;overflow:hidden}
+.ic{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;display:block;flex:none}
+.ic-12{width:12px;height:12px}.ic-14{width:14px;height:14px}.ic-16{width:16px;height:16px}.ic-18{width:18px;height:18px}.ic-20{width:20px;height:20px}.ic-24{width:24px;height:24px}.ic-28{width:28px;height:28px}
+.screen{position:relative;width:393px;height:852px;overflow:hidden;background:var(--paper)}
+.content{position:absolute;left:0;right:0;top:59px;bottom:83px;overflow:hidden}
+.num{font-family:var(--num);font-variant-numeric:tabular-nums}
+.card{background:var(--surface);border-radius:18px;box-shadow:var(--shadow)}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin:0 16px 10px}
+.section-head h3{font-size:17px;line-height:22px;font-weight:600;margin:0;letter-spacing:-.2px}
+.section-head span{font-size:12px;color:var(--brand)}
+
+/* 状态栏 */
+.status{position:absolute;left:0;right:0;top:0;height:59px;z-index:70;pointer-events:none;color:var(--ink)}
+.status .time{position:absolute;left:32px;top:15px;font:600 15px/20px var(--num);letter-spacing:.2px}
+.status .right{position:absolute;right:30px;top:17px;display:flex;align-items:center;gap:6px}
+.status .right svg{width:18px;height:13px;fill:currentColor}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:124px;height:36px;border-radius:999px;background:#050505;z-index:71;box-shadow:inset 0 0 0 .5px rgba(255,255,255,.06)}
+.island::after{content:"";position:absolute;right:11px;top:12px;width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#2b3a48,#0b1016 72%)}
+.home-indicator{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);width:134px;height:5px;border-radius:99px;background:var(--ink);z-index:80}
+
+/* 底部导航 */
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:83px;z-index:60;display:flex;align-items:flex-start;padding-top:6px;background:rgba(250,247,244,.92);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-top:.5px solid rgba(46,43,41,.12)}
+.tab{flex:1;height:49px;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--mute)}
+.tab .ic{width:23px;height:23px}
+.tab span{font-size:11px;line-height:13px}
+.tab.on{color:var(--brand)}
+.tab.on .ic{stroke-width:2}
+
+/* ---------------- 宠物页 ---------------- */
+.pet-hero{position:absolute;left:0;right:0;top:0;height:348px;overflow:hidden;background:#6E8375}
+.pet-hero>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 38%}
+.pet-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(24,21,18,.50) 0%,rgba(24,21,18,.10) 38%,rgba(246,242,238,.02) 66%,var(--paper) 100%)}
+.hero-top{position:absolute;z-index:2;top:16px;left:16px;right:16px;display:flex;align-items:center;justify-content:space-between}
+.pet-stack{display:flex;align-items:center}
+.pet-stack .mini{width:34px;height:34px;border-radius:50%;border:2px solid rgba(255,255,255,.85);margin-left:-8px;overflow:hidden;background:#ddd}
+.pet-stack .mini:first-child{margin-left:0}
+.pet-stack .mini img{width:100%;height:100%;object-fit:cover;display:block}
+.hero-actions{display:flex;gap:8px}
+.round-glass{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.18);border:.5px solid rgba(255,255,255,.38);color:#fff;backdrop-filter:blur(10px)}
+.round-glass .ic{width:18px;height:18px}
+.hero-copy{position:absolute;z-index:2;left:16px;bottom:56px;color:#fff}
+.hero-copy .eyebrow{font-size:11px;letter-spacing:1.4px;opacity:.85;text-transform:uppercase}
+.hero-copy h1{font-size:44px;line-height:48px;font-weight:700;letter-spacing:-1.2px;margin:2px 0 3px}
+.hero-copy p{font-size:13px;line-height:18px;margin:0;opacity:.92}
+.mood{position:absolute;z-index:2;right:16px;bottom:60px;width:112px;padding:10px 12px;border-radius:16px;background:rgba(255,255,255,.18);border:.5px solid rgba(255,255,255,.38);color:#fff;backdrop-filter:blur(14px)}
+.mood b{display:block;font:700 24px/28px var(--num)}
+.mood span{font-size:11px;opacity:.9}
+.care-card{position:absolute;z-index:4;top:314px;left:16px;right:16px;height:150px;background:var(--surface);border-radius:22px;box-shadow:0 12px 30px rgba(46,43,41,.13);padding:14px}
+.care-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.care-head h3{font-size:16px;line-height:20px;margin:0;font-weight:600}
+.care-head span{font-size:12px;color:var(--brand)}
+.care-items{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.care-item{border-radius:14px;background:var(--paper);padding:9px 4px;text-align:center}
+.care-item .ic{width:20px;height:20px;margin:0 auto 5px}
+.care-item b{display:block;font-size:13px;line-height:17px}
+.care-item small{display:block;font-size:10px;color:var(--sub);margin-top:2px}
+.care-item.ok{color:var(--green)}.care-item.warn{color:var(--orange)}.care-item.due{color:var(--red)}
+.pet-section{position:absolute;top:482px;left:0;right:0}
+.quick-pet{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:0 16px}
+.qpet{text-align:center}
+.qpet .bub{width:50px;height:50px;margin:0 auto 6px;border-radius:17px;background:var(--surface);box-shadow:var(--shadow);display:grid;place-items:center;color:var(--brand)}
+.qpet span{font-size:11px;color:var(--sub)}
+.log-card{position:absolute;top:574px;left:16px;right:16px;height:126px;background:var(--surface);border-radius:20px;box-shadow:var(--shadow);padding:10px 14px}
+.log-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.log-head h3{font-size:16px;line-height:20px;margin:0}
+.log-head span{font-size:11px;color:var(--mute)}
+.log-row{display:flex;align-items:center;gap:10px;padding:3px 0;border-top:.5px solid var(--line)}
+.log-row:first-of-type{border-top:0}
+.log-ic{width:30px;height:30px;border-radius:10px;background:var(--tint);color:var(--brand);display:grid;place-items:center;flex:none}
+.log-ic .ic{width:16px;height:16px}
+.log-row .t{flex:1;min-width:0}
+.log-row .t b{display:block;font-size:13px;line-height:17px}
+.log-row .t small{font-size:10px;color:var(--mute)}
+.log-row .v{font-size:12px;color:var(--brand);white-space:nowrap}
+
+/* ---------------- 商城页 ---------------- */
+.searchbar{position:absolute;top:12px;left:16px;right:16px;height:38px;border-radius:19px;background:var(--paper);display:flex;align-items:center;gap:8px;padding:0 13px;color:var(--mute);font-size:14px}
+.searchbar .ic{width:17px;height:17px}
+.searchbar .actions{margin-left:auto;display:flex;gap:12px;color:var(--brand)}
+.shop-hero{position:absolute;top:62px;left:16px;right:16px;height:188px;border-radius:22px;overflow:hidden;background:#ddd}
+.shop-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.shop-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(24,21,18,.66) 0%,rgba(24,21,18,.28) 58%,rgba(24,21,18,.05) 100%)}
+.shop-hero .copy{position:absolute;z-index:2;left:18px;bottom:18px;color:#fff;max-width:230px}
+.shop-hero .kicker{display:inline-block;font-size:10px;letter-spacing:1.3px;background:rgba(255,255,255,.22);border:.5px solid rgba(255,255,255,.45);padding:4px 8px;border-radius:99px}
+.shop-hero h1{font-size:25px;line-height:31px;letter-spacing:-.5px;margin:9px 0 5px;font-weight:700}
+.shop-hero p{font-size:12px;margin:0 0 12px;opacity:.9}
+.shop-hero .cta{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 12px;border-radius:99px;background:var(--gold);color:var(--ink);font-size:12px;font-weight:600}
+.categories{position:absolute;top:262px;left:16px;right:16px;display:flex;gap:8px;overflow:hidden}
+.cat{height:30px;padding:0 13px;border-radius:15px;background:var(--surface);border:.5px solid var(--line);display:flex;align-items:center;font-size:12px;color:var(--sub);white-space:nowrap}
+.cat.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.shop-section{position:absolute;top:310px;left:0;right:0}
+.featured{position:absolute;top:344px;left:16px;right:16px;height:82px;background:var(--surface);border-radius:16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:11px;padding:9px;overflow:hidden}
+.featured img{width:90px;height:64px;border-radius:11px;object-fit:cover;flex:none}
+.featured .info{flex:1;min-width:0}
+.featured .info b{display:block;font-size:14px;line-height:18px}
+.featured .info small{display:block;font-size:11px;color:var(--mute);margin:2px 0 5px}
+.featured .info strong{font:700 16px/20px var(--num);color:var(--brand)}
+.featured .info .tag{float:right;font-size:10px;color:var(--red);background:rgba(201,96,82,.12);padding:2px 6px;border-radius:99px}
+.product-grid{position:absolute;top:440px;left:16px;right:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.product{height:126px;background:var(--surface);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
+.product .ph{height:62px;position:relative;overflow:hidden;background:var(--paper)}
+.product .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.product .ph .flag{position:absolute;left:8px;top:8px;font-size:10px;line-height:16px;padding:0 7px;border-radius:99px;background:rgba(255,255,255,.9);color:var(--brand)}
+.product .pb{padding:6px 9px}
+.product .pb b{display:block;font-size:12px;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.product .pb small{display:block;font-size:10px;line-height:13px;color:var(--mute);margin-top:1px}
+.product .price{display:flex;align-items:baseline;gap:4px;margin-top:3px}
+.product .price strong{font:700 15px/17px var(--num)}
+.product .price del{font-size:10px;color:var(--mute)}
+.product .price em{font-style:normal;font-size:10px;color:var(--brand);margin-left:auto}
+
+/* ---------------- 社区页 ---------------- */
+.community-top{position:absolute;top:12px;left:16px;right:16px;display:flex;align-items:center;justify-content:space-between}
+.community-top h1{font-size:34px;line-height:41px;font-weight:700;letter-spacing:-.5px;margin:0}
+.community-top .icons{display:flex;gap:8px}
+.icon-btn{width:34px;height:34px;border-radius:50%;border:.5px solid var(--line);background:var(--surface);display:grid;place-items:center;color:var(--ink);position:relative}
+.icon-btn .ic{width:18px;height:18px}
+.icon-btn i{position:absolute;top:7px;right:7px;width:6px;height:6px;border-radius:50%;background:var(--red-solid);box-shadow:0 0 0 1.5px var(--surface)}
+.stories{position:absolute;top:74px;left:16px;right:16px;display:flex;gap:13px;overflow:hidden}
+.story{width:54px;text-align:center;flex:none}
+.story .ring{width:50px;height:50px;border-radius:50%;padding:2px;background:linear-gradient(135deg,var(--gold-light),var(--gold-dark));margin:0 auto 4px}
+.story .ring img{width:100%;height:100%;border-radius:50%;border:2px solid var(--paper);object-fit:cover;display:block}
+.story span{display:block;font-size:10px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.comm-tabs{position:absolute;top:144px;left:16px;right:16px;height:36px;display:flex;gap:24px;border-bottom:.5px solid var(--line)}
+.comm-tabs button{border:0;background:transparent;padding:0 0 9px;font-size:15px;color:var(--mute);position:relative}
+.comm-tabs button.on{font-size:17px;font-weight:600;color:var(--brand)}
+.comm-tabs button.on::after{content:"";position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:22px;height:2px;border-radius:2px;background:var(--brand)}
+.chips{position:absolute;top:190px;left:16px;right:16px;display:flex;gap:8px;overflow:hidden}
+.chip{height:28px;padding:0 11px;border-radius:14px;background:var(--surface);border:.5px solid var(--line);display:flex;align-items:center;font-size:11px;color:var(--sub);white-space:nowrap}
+.chip.on{background:var(--tint);color:var(--brand);border-color:rgba(130,104,58,.25)}
+.post1{position:absolute;top:228px;left:16px;right:16px;height:278px;background:var(--surface);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+.post1 .cover{height:138px;position:relative;overflow:hidden}
+.post1 .cover img{width:100%;height:100%;object-fit:cover;display:block}
+.post1 .cover .badge{position:absolute;left:12px;top:12px;height:22px;line-height:22px;padding:0 9px;border-radius:99px;background:rgba(255,255,255,.9);color:var(--brand);font-size:11px;font-weight:600}
+.post1 .body{padding:10px 12px}
+.post1 .who{display:flex;align-items:center;gap:8px}
+.post1 .who img{width:26px;height:26px;border-radius:50%;object-fit:cover}
+.post1 .who b{font-size:13px}
+.post1 .who small{font-size:10px;color:var(--mute);margin-left:auto}
+.post1 p{font-size:13px;line-height:18px;margin:8px 0 10px;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.post-actions{display:flex;align-items:center;gap:20px;border-top:.5px solid var(--line);padding-top:9px;color:var(--sub);font-size:11px}
+.post-actions span{display:flex;align-items:center;gap:5px}
+.post-actions .ic{width:16px;height:16px}
+.post2{position:absolute;top:518px;left:16px;right:16px;height:184px;background:var(--surface);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+.post2 .head{display:flex;align-items:center;gap:8px;padding:8px 12px}
+.post2 .head img{width:26px;height:26px;border-radius:50%;object-fit:cover}
+.post2 .head b{font-size:13px}
+.post2 .head small{font-size:10px;color:var(--mute);margin-left:auto}
+.post2 .grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:0 10px}
+.post2 .grid img{width:100%;height:68px;border-radius:9px;object-fit:cover}
+.post2 p{font-size:12px;line-height:16px;margin:6px 12px;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.post2 .post-actions{margin:0 12px;padding-top:6px}
+.fab{position:absolute;right:18px;bottom:96px;width:52px;height:52px;border:0;border-radius:18px;background:var(--ink);color:#fff;display:grid;place-items:center;box-shadow:0 10px 24px rgba(46,43,41,.24);z-index:20}
+
+/* ---------------- 消息页 ---------------- */
+.msg-top{position:absolute;top:12px;left:16px;right:16px;display:flex;align-items:center;justify-content:space-between}
+.msg-top h1{font-size:34px;line-height:41px;font-weight:700;letter-spacing:-.5px;margin:0}
+.notice-grid{position:absolute;top:126px;left:16px;right:16px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.notice{height:86px;background:var(--surface);border-radius:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;position:relative}
+.notice .ring{width:36px;height:36px;border-radius:50%;background:var(--tint);color:var(--brand);display:grid;place-items:center}
+.notice .ring .ic{width:19px;height:19px}
+.notice b{font-size:12px;font-weight:600}
+.notice i{position:absolute;top:13px;right:12px;width:7px;height:7px;border-radius:50%;background:var(--red-solid);box-shadow:0 0 0 2px var(--surface)}
+.msg-search{position:absolute;top:224px;left:16px;right:16px;height:34px;border-radius:17px;background:var(--paper);display:flex;align-items:center;gap:8px;padding:0 12px;color:var(--mute);font-size:13px}
+.msg-search .ic{width:16px;height:16px}
+.msg-tabs{position:absolute;top:270px;left:16px;right:16px;display:flex;gap:8px}
+.msg-tabs .chip{height:30px;border-radius:15px;padding:0 13px}
+.msg-tabs .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.conv-list{position:absolute;top:320px;left:16px;right:16px;bottom:12px;background:var(--surface);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+.conv{height:74px;display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:.5px solid var(--line);position:relative}
+.conv:last-child{border-bottom:0}
+.conv img.avatar{width:46px;height:46px;border-radius:50%;object-fit:cover;flex:none;background:var(--tint)}
+.conv .main{flex:1;min-width:0}
+.conv .line1{display:flex;align-items:center;gap:4px}
+.conv .line1 .pin{width:11px;height:11px;color:var(--mute);transform:rotate(35deg)}
+.conv .line1 b{font-size:15px;font-weight:600}
+.conv .line1 time{margin-left:auto;font:400 11px/14px var(--num);color:var(--mute)}
+.conv p{font-size:12px;line-height:16px;color:var(--sub);margin:6px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:22px}
+.conv .badge{position:absolute;right:12px;bottom:14px;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--red-solid);color:#fff;font:600 10px/18px var(--num);text-align:center}
+
+/* ---------------- 我的页 ---------------- */
+.user-top{position:absolute;top:10px;left:16px;right:16px;display:flex;align-items:center;justify-content:space-between}
+.user-top h1{font-size:17px;line-height:22px;font-weight:600;margin:0}
+.profile{position:absolute;top:52px;left:16px;right:16px;height:126px;border-radius:22px;background:linear-gradient(135deg,#E8DDB5 0%,#DBC98A 52%,#B38A5A 100%);padding:16px;display:flex;align-items:center;gap:14px;color:var(--ink);box-shadow:0 8px 24px rgba(179,138,90,.22);overflow:hidden}
+.profile::after{content:"";position:absolute;right:-42px;bottom:-72px;width:190px;height:190px;border-radius:50%;border:1px solid rgba(46,43,41,.10);box-shadow:0 0 0 20px rgba(46,43,41,.04),0 0 0 42px rgba(46,43,41,.03)}
+.profile img{position:relative;z-index:1;width:68px;height:68px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.72);flex:none}
+.profile .info{position:relative;z-index:1;flex:1;min-width:0}
+.profile h2{font-size:20px;line-height:25px;font-weight:700;margin:0}
+.profile p{font-size:11px;line-height:15px;margin:3px 0 8px;opacity:.74;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.profile .level{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 9px;border-radius:99px;background:rgba(46,43,41,.13);font-size:11px;font-weight:600}
+.vip{position:absolute;top:192px;left:16px;right:16px;height:104px;background:#2E2B29;border-radius:20px;color:#F6F2EE;padding:14px 16px;display:flex;align-items:center;overflow:hidden}
+.vip::after{content:"";position:absolute;right:-34px;top:-58px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(219,201,138,.30),rgba(219,201,138,.02) 70%)}
+.vip .left{z-index:1;flex:1}
+.vip .label{font-size:11px;opacity:.72;letter-spacing:.6px}
+.vip .pts{font:700 28px/34px var(--num);color:var(--gold);margin-top:2px}
+.vip .pts small{font-size:12px;font-weight:600;margin-left:5px;color:#F6F2EE}
+.vip .bar{width:196px;height:5px;border-radius:99px;background:rgba(255,255,255,.16);margin-top:8px;overflow:hidden}
+.vip .bar i{display:block;width:72%;height:100%;border-radius:99px;background:var(--gold)}
+.vip .tip{font-size:10px;opacity:.68;margin-top:5px}
+.vip .chev{z-index:1;color:var(--gold)}
+.stats{position:absolute;top:310px;left:16px;right:16px;height:74px;background:var(--surface);border-radius:18px;box-shadow:var(--shadow);display:grid;grid-template-columns:repeat(4,1fr);align-items:center}
+.stat{text-align:center}
+.stat b{display:block;font:700 17px/22px var(--num)}
+.stat span{font-size:10px;color:var(--mute)}
+.orders{position:absolute;top:398px;left:16px;right:16px;height:120px;background:var(--surface);border-radius:18px;box-shadow:var(--shadow);padding:12px}
+.orders h3{font-size:15px;line-height:20px;margin:0 0 10px}
+.orders h3 em{font-style:normal;float:right;font-size:11px;color:var(--brand);font-weight:400}
+.order-grid{display:grid;grid-template-columns:repeat(4,1fr)}
+.order{text-align:center;position:relative}
+.order .bub{width:42px;height:42px;border-radius:14px;background:var(--tint);color:var(--brand);display:grid;place-items:center;margin:0 auto 5px}
+.order .bub .ic{width:20px;height:20px}
+.order span{font-size:10px;color:var(--sub)}
+.order i{position:absolute;top:-4px;right:12px;min-width:15px;height:15px;line-height:15px;border-radius:99px;background:var(--red-solid);color:#fff;font:600 9px/15px var(--num);font-style:normal}
+.services{position:absolute;top:524px;left:16px;right:16px;bottom:8px}
+.services h3{font-size:15px;line-height:20px;margin:0 0 6px}
+.svc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.svc{height:56px;background:var(--surface);border-radius:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--brand);font-size:10px}
+.svc .ic{width:18px;height:18px}
+.list-card{margin-top:8px;background:var(--surface);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+.list-row{height:38px;display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:.5px solid var(--line);font-size:13px}
+.list-row:last-child{border-bottom:0}
+.list-row .ic{width:17px;height:17px;color:var(--brand)}
+.list-row span{flex:1}
+.list-row .chev{width:12px;height:12px;color:var(--mute)}
+</style>
+</head>
+<body>
+
+<svg class="sprite" aria-hidden="true">
+<defs>
+<symbol id="i-paw" viewBox="0 0 24 24"><circle cx="6.7" cy="8.8" r="1.7"/><circle cx="12" cy="6.6" r="1.7"/><circle cx="17.3" cy="8.8" r="1.7"/><path d="M12 10.2c-2.6 0-5 2.3-5 4.8 0 1.8 1.5 2.9 3.1 2.4 1.3-.4 2.5-.4 3.8 0 1.6.5 3.1-.6 3.1-2.4 0-2.5-2.4-4.8-5-4.8Z"/></symbol>
+<symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l1 12.5H4L5 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20v-1.2A4.8 4.8 0 0 1 7.8 14h2.4A4.8 4.8 0 0 1 15 18.8V20"/><path d="M16 5.2a3.2 3.2 0 0 1 0 6M17.5 14.2A4.8 4.8 0 0 1 21 19v1"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M20.5 11.5a8 8 0 0 1-8 8 8.7 8.7 0 0 1-3.6-.8L4 20.5l1.8-4.7A8 8 0 1 1 20.5 11.5Z"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20.5v-1A5.5 5.5 0 0 1 10 14h4a5.5 5.5 0 0 1 5.5 5.5v1"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4.2 4.2"/></symbol>
+<symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M4 12h16"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 6-2.5 7-2.5 7h17S18 14 18 8Z"/><path d="M10 19a2 2 0 0 0 4 0"/></symbol>
+<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 8.5 7 12l5-7 5 7 4-3.5-1.6 9.5H4.6L3 8.5Z"/><path d="M4.8 18.5h14.4"/></symbol>
+<symbol id="i-ticket" viewBox="0 0 24 24"><path d="M4 7.5h16v3a1.5 1.5 0 0 0 0 3v3H4v-3a1.5 1.5 0 0 0 0-3v-3Z"/><path d="M12 7.5v9" stroke-dasharray="2 2"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9L12 3.5Z"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7.5-4.6-7.5-9.6A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 2.8C19.5 15.4 12 20 12 20Z"/></symbol>
+<symbol id="i-comment" viewBox="0 0 24 24"><path d="M20 5.5H4A1.5 1.5 0 0 0 2.5 7v8A1.5 1.5 0 0 0 4 16.5h4l4 3 4-3h4a1.5 1.5 0 0 0 1.5-1.5V7A1.5 1.5 0 0 0 20 5.5Z"/></symbol>
+<symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3.5M8 7l4-4 4 4"/><path d="M6 12H5a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-1"/></symbol>
+<symbol id="i-bath" viewBox="0 0 24 24"><path d="M3 12h18v3a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4v-3ZM5 12V6.5a2.5 2.5 0 0 1 5 0M7 19v1.5M17 19v1.5"/></symbol>
+<symbol id="i-syringe" viewBox="0 0 24 24"><path d="m14 4 6 6M17 7l-8.5 8.5-3 3M8.5 15.5 6 13M12 12l2 2M5 19l-1.5 1.5"/></symbol>
+<symbol id="i-pill" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="8" rx="4" transform="rotate(-35 12 12)"/><path d="M8.5 8.5 15.5 15.5"/></symbol>
+<symbol id="i-bag2" viewBox="0 0 24 24"><path d="M5 8h14l1 12.5H4L5 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13.5" r="3.3"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3M9 14l2 2 4-4"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v16H5.5A1.5 1.5 0 0 0 4 20.5v-16Z"/><path d="M4 20.5A1.5 1.5 0 0 1 5.5 19H19v2H5.5A1.5 1.5 0 0 1 4 20.5ZM8 7h7M8 10.5h5"/></symbol>
+<symbol id="i-scale" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M8 9a4 4 0 0 1 8 0M12 9l2-2M7 16h10"/></symbol>
+<symbol id="i-userplus" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.4"/><path d="M3 20v-1a5.5 5.5 0 0 1 11 0v1M18 8v6M15 11h6"/></symbol>
+<symbol id="i-users2" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20v-1.2A4.8 4.8 0 0 1 7.8 14h2.4A4.8 4.8 0 0 1 15 18.8V20"/><path d="M16 5.2a3.2 3.2 0 0 1 0 6"/></symbol>
+<symbol id="i-headset" viewBox="0 0 24 24"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="3" y="12.5" width="4" height="6" rx="2"/><rect x="17" y="12.5" width="4" height="6" rx="2"/><path d="M20 18v1a3 3 0 0 1-3 3h-2"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 3.5h6l-.7 5 3 3v1.5H6.7V11.5l3-3-.7-5ZM12 13.5V20.5"/></symbol>
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></symbol>
+<symbol id="i-gift" viewBox="0 0 24 24"><rect x="3.5" y="9" width="17" height="11" rx="1.5"/><path d="M3.5 13h17M12 9v11M12 9S9 9 8 7.8 8.3 5 9.6 5 12 9 12 9Zm0 0s3 0 4-1.2S15.7 5 14.4 5 12 9 12 9Z"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3v-4h.2a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V3h4v.2a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1H21v4h-.2a1.7 1.7 0 0 0-1.4 1Z"/></symbol>
+<symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.2 1-1.2 1.9M12 17h.01"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+<symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h3"/></symbol>
+<symbol id="i-cart" viewBox="0 0 24 24"><circle cx="9" cy="19" r="1.3"/><circle cx="17" cy="19" r="1.3"/><path d="M3 4h2l2.2 10.5h10L19 7H6"/></symbol>
+<symbol id="i-truck" viewBox="0 0 24 24"><path d="M3 6h11v10H3zM14 9h4l3 3v4h-7z"/><circle cx="7" cy="18" r="1.5"/><circle cx="17.5" cy="18" r="1.5"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.6"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8.2 8.2 0 1 0 20 14.5Z"/></symbol>
+<symbol id="i-sparkle" viewBox="0 0 24 24"><path d="m12 3 1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8L12 3ZM18.5 15l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9.9-2.1Z"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M4 6h.01M4 12h.01M4 18h.01M8 6h12M8 12h12M8 18h12"/></symbol>
+<symbol id="i-mappin" viewBox="0 0 24 24"><path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+</defs>
+</svg>
+
+<!-- 宠物页 -->
+<section class="screen" data-screen="pet">
+  <div class="content">
+    <div class="pet-hero">
+      <img src="../assets/pet-hub-scene.jpg" alt="">
+      <div class="hero-top">
+        <div class="pet-stack">
+          <div class="mini"><img src="../assets/photo/s-dog2.jpg" alt=""></div>
+          <div class="mini"><img src="../assets/photo/s-cat.jpg" alt=""></div>
+          <div class="mini"><img src="../assets/photo/s-golden.jpg" alt=""></div>
+        </div>
+        <div class="hero-actions">
+          <div class="round-glass"><svg class="ic"><use href="#i-search"/></svg></div>
+          <div class="round-glass"><svg class="ic"><use href="#i-plus"/></svg></div>
+        </div>
+      </div>
+      <div class="hero-copy">
+        <div class="eyebrow">GOOD MORNING</div>
+        <h1>Luna</h1>
+        <p>边境牧羊犬 · 妹妹 · 3 岁</p>
+      </div>
+      <div class="mood"><b>92</b><span>今日心情 · 想玩球</span></div>
+    </div>
+
+    <div class="care-card">
+      <div class="care-head"><h3>今日照护</h3><span>3 项待关注</span></div>
+      <div class="care-items">
+        <div class="care-item ok"><svg class="ic"><use href="#i-bath"/></svg><b>洗护</b><small>12 天前</small></div>
+        <div class="care-item warn"><svg class="ic"><use href="#i-syringe"/></svg><b>疫苗</b><small>3 天后</small></div>
+        <div class="care-item due"><svg class="ic"><use href="#i-pill"/></svg><b>驱虫</b><small>今天</small></div>
+      </div>
+    </div>
+
+    <div class="pet-section">
+      <div class="section-head"><h3>快捷操作</h3><span>全部服务 ›</span></div>
+      <div class="quick-pet">
+        <div class="qpet"><div class="bub"><svg class="ic ic-20"><use href="#i-bag2"/></svg></div><span>商城</span></div>
+        <div class="qpet"><div class="bub"><svg class="ic ic-20"><use href="#i-camera"/></svg></div><span>晒宠</span></div>
+        <div class="qpet"><div class="bub"><svg class="ic ic-20"><use href="#i-calendar"/></svg></div><span>健康日历</span></div>
+        <div class="qpet"><div class="bub"><svg class="ic ic-20"><use href="#i-book"/></svg></div><span>记忆</span></div>
+        <div class="qpet"><div class="bub"><svg class="ic ic-20"><use href="#i-scale"/></svg></div><span>体重</span></div>
+      </div>
+    </div>
+
+    <div class="log-card">
+      <div class="log-head"><h3>今日记录</h3><span>查看时间线 ›</span></div>
+      <div class="log-row">
+        <div class="log-ic"><svg class="ic"><use href="#i-pill"/></svg></div>
+        <div class="t"><b>体外驱虫</b><small>19:30 · 已添加提醒</small></div>
+        <div class="v">待完成</div>
+      </div>
+      <div class="log-row">
+        <div class="log-ic"><svg class="ic"><use href="#i-bath"/></svg></div>
+        <div class="t"><b>梳毛护理</b><small>08:20 · 时长 12 分钟</small></div>
+        <div class="v">已完成</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 商城页 -->
+<section class="screen" data-screen="home">
+  <div class="content">
+    <div class="searchbar">
+      <svg class="ic"><use href="#i-search"/></svg><span>搜索宠物好物</span>
+      <div class="actions"><svg class="ic"><use href="#i-scan"/></svg><svg class="ic"><use href="#i-bell"/></svg></div>
+    </div>
+
+    <div class="shop-hero">
+      <img src="../assets/photo/s-cat-sofa.jpg" alt="">
+      <div class="copy">
+        <span class="kicker">MOYUYO SELECT</span>
+        <h1>给 TA 一个<br>温暖的窝</h1>
+        <p>秋日家居系列 · 限时 8 折</p>
+        <div class="cta">立即逛逛 <svg class="ic ic-12"><use href="#i-chevron"/></svg></div>
+      </div>
+    </div>
+
+    <div class="categories">
+      <div class="cat on">精选</div><div class="cat">洗护</div><div class="cat">出行</div><div class="cat">玩具</div><div class="cat">家居</div>
+    </div>
+
+    <div class="shop-section">
+      <div class="section-head"><h3>编辑推荐</h3><span>查看全部 ›</span></div>
+    </div>
+
+    <div class="featured">
+      <img src="../assets/photo/p-home-bed.jpg" alt="">
+      <div class="info">
+        <b>云端羊绒宠物窝</b>
+        <small>柔软保暖 · 可拆洗</small>
+        <strong>¥89.00</strong><span class="tag">编辑首选</span>
+      </div>
+    </div>
+
+    <div class="product-grid">
+      <div class="product">
+        <div class="ph"><img src="../assets/photo/p-gear-leash.jpg" alt=""><span class="flag">人气</span></div>
+        <div class="pb"><b>复古皮革牵引绳</b><small>耐磨手柄 · 复古质感</small><div class="price"><strong>¥39</strong><del>¥59</del><em>4.8 ★</em></div></div>
+      </div>
+      <div class="product">
+        <div class="ph"><img src="../assets/photo/p-home-bowl.png" alt=""></div>
+        <div class="pb"><b>陶瓷慢食碗</b><small>防打翻 · 健康进食</small><div class="price"><strong>¥29</strong><del>¥45</del><em>4.9 ★</em></div></div>
+      </div>
+      <div class="product">
+        <div class="ph"><img src="../assets/photo/p-play-scratch.png" alt=""><span class="flag">新品</span></div>
+        <div class="pb"><b>亚麻猫抓板窝</b><small>磨爪休息两用</small><div class="price"><strong>¥49</strong><del>¥69</del><em>4.7 ★</em></div></div>
+      </div>
+      <div class="product">
+        <div class="ph"><img src="../assets/photo/p-gear-fountain.png" alt=""></div>
+        <div class="pb"><b>恒温宠物饮水机</b><small>循环过滤 · 静音省心</small><div class="price"><strong>¥119</strong><del>¥169</del><em>4.9 ★</em></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 社区页 -->
+<section class="screen" data-screen="community">
+  <div class="content">
+    <div class="community-top">
+      <h1>社区</h1>
+      <div class="icons">
+        <div class="icon-btn"><svg class="ic"><use href="#i-search"/></svg></div>
+        <div class="icon-btn"><svg class="ic"><use href="#i-bell"/></svg><i></i></div>
+      </div>
+    </div>
+
+    <div class="stories">
+      <div class="story"><div class="ring"><img src="../assets/photo/s-dog.jpg" alt=""></div><span>布丁妈妈</span></div>
+      <div class="story"><div class="ring"><img src="../assets/photo/s-cat.jpg" alt=""></div><span>Luna 的窝</span></div>
+      <div class="story"><div class="ring"><img src="../assets/photo/s-golden.jpg" alt=""></div><span>阿柴</span></div>
+      <div class="story"><div class="ring"><img src="../assets/photo/s-cat2.jpg" alt=""></div><span>小满</span></div>
+      <div class="story"><div class="ring"><img src="../assets/photo/s-cat3.jpg" alt=""></div><span>Momo</span></div>
+    </div>
+
+    <div class="comm-tabs">
+      <button class="on">推荐</button><button>关注</button><button>话题</button>
+    </div>
+
+    <div class="chips">
+      <div class="chip on">全部</div><div class="chip">#萌宠日常</div><div class="chip">#新家开箱</div><div class="chip">#好物测评</div>
+    </div>
+
+    <div class="post1">
+      <div class="cover">
+        <img src="../assets/photo/s-walk.jpg" alt="">
+        <span class="badge">#萌宠日常</span>
+      </div>
+      <div class="body">
+        <div class="who"><img src="../assets/photo/s-dog.jpg" alt=""><b>布丁妈妈</b><small>2 小时前</small></div>
+        <p>周末带布丁去公园，第一次踩草地，小心翼翼又兴奋得不行，记录一下这个可爱瞬间～</p>
+        <div class="post-actions">
+          <span><svg class="ic"><use href="#i-heart"/></svg>128</span>
+          <span><svg class="ic"><use href="#i-comment"/></svg>24</span>
+          <span><svg class="ic"><use href="#i-share"/></svg>分享</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="post2">
+      <div class="head"><img src="../assets/photo/s-cat.jpg" alt=""><b>Luna 的窝</b><small>5 小时前 · #新家开箱</small></div>
+      <div class="grid"><img src="../assets/photo/p-home-bed.jpg" alt=""><img src="../assets/photo/s-cat-sofa.jpg" alt=""></div>
+      <p>新买的云端羊绒宠物窝到了，质感真的很好，和家里的装修也超搭！开箱分享给各位家长。</p>
+      <div class="post-actions">
+        <span><svg class="ic"><use href="#i-heart"/></svg>86</span>
+        <span><svg class="ic"><use href="#i-comment"/></svg>12</span>
+        <span><svg class="ic"><use href="#i-share"/></svg>分享</span>
+      </div>
+    </div>
+
+    <button class="fab"><svg class="ic ic-24"><use href="#i-plus"/></svg></button>
+  </div>
+</section>
+
+<!-- 消息页 -->
+<section class="screen" data-screen="messages">
+  <div class="content">
+    <div class="msg-top">
+      <h1>消息</h1>
+      <div class="icons">
+        <div class="icon-btn"><svg class="ic"><use href="#i-users"/></svg></div>
+        <div class="icon-btn"><svg class="ic"><use href="#i-userplus"/></svg></div>
+      </div>
+    </div>
+
+    <div class="notice-grid">
+      <div class="notice"><div class="ring"><svg class="ic"><use href="#i-grid"/></svg></div><b>全部</b></div>
+      <div class="notice"><div class="ring"><svg class="ic"><use href="#i-heart"/></svg></div><b>互动</b><i></i></div>
+      <div class="notice"><div class="ring"><svg class="ic"><use href="#i-truck"/></svg></div><b>订单</b></div>
+      <div class="notice"><div class="ring"><svg class="ic"><use href="#i-bell"/></svg></div><b>系统</b><i></i></div>
+    </div>
+
+    <div class="msg-search"><svg class="ic"><use href="#i-search"/></svg><span>搜索会话或宠友</span></div>
+
+    <div class="msg-tabs">
+      <div class="chip on">全部</div><div class="chip">未读 3</div><div class="chip">群聊</div><div class="chip">客服</div>
+    </div>
+
+    <div class="conv-list">
+      <div class="conv">
+        <img class="avatar" src="../assets/photo/a-cs.jpg" alt="">
+        <div class="main"><div class="line1"><b>客服中心</b><time>09:41</time></div><p>您好，有什么可以帮您？</p></div>
+      </div>
+      <div class="conv">
+        <img class="avatar" src="../assets/photo/s-cat.jpg" alt="">
+        <div class="main"><div class="line1"><svg class="ic ic-12 pin"><use href="#i-pin"/></svg><b>Luna 妈妈</b><time>09:28</time></div><p>昨天寄的宠物窝收到了吗？</p></div>
+        <span class="badge">2</span>
+      </div>
+      <div class="conv">
+        <img class="avatar" src="../assets/photo/s-hero.jpg" alt="">
+        <div class="main"><div class="line1"><b>宠物友好酒店</b><time>昨天</time></div><p>您的预订已确认，期待入住</p></div>
+      </div>
+      <div class="conv">
+        <img class="avatar" src="../assets/photo/s-dog2.jpg" alt="">
+        <div class="main"><div class="line1"><b>布丁爸爸</b><time>星期三</time></div><p>周末一起带狗狗去遛弯呀</p></div>
+        <span class="badge">1</span>
+      </div>
+      <div class="conv">
+        <img class="avatar" src="../assets/photo/a-brand.jpg" alt="">
+        <div class="main"><div class="line1"><b>领券小助手</b><time>周二</time></div><p>您有一张 20 元优惠券待领取</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 我的页 -->
+<section class="screen" data-screen="user">
+  <div class="content">
+    <div class="user-top"><h1>我的</h1><div class="icon-btn"><svg class="ic"><use href="#i-moon"/></svg></div></div>
+
+    <div class="profile">
+      <img src="../assets/photo/s-cat.jpg" alt="">
+      <div class="info">
+        <h2>Momo 的家长</h2>
+        <p>momo.family@example.com</p>
+        <span class="level"><svg class="ic ic-12"><use href="#i-crown"/></svg>黄金会员</span>
+      </div>
+      <svg class="ic chev"><use href="#i-chevron"/></svg>
+    </div>
+
+    <div class="vip">
+      <div class="left">
+        <div class="label">MOYUYO MEMBER</div>
+        <div class="pts">2,480 <small>Points</small></div>
+        <div class="bar"><i></i></div>
+        <div class="tip">再消费 ¥320 可升级铂金会员</div>
+      </div>
+      <svg class="ic chev"><use href="#i-chevron"/></svg>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b>128</b><span>浏览足迹</span></div>
+      <div class="stat"><b>2,480</b><span>积分</span></div>
+      <div class="stat"><b>6</b><span>优惠券</span></div>
+      <div class="stat"><b>23</b><span>收藏</span></div>
+    </div>
+
+    <div class="orders">
+      <h3>我的订单 <em>查看全部 ›</em></h3>
+      <div class="order-grid">
+        <div class="order"><div class="bub"><svg class="ic"><use href="#i-card"/></svg></div><span>待付款</span><i>2</i></div>
+        <div class="order"><div class="bub"><svg class="ic"><use href="#i-cart"/></svg></div><span>购物车</span></div>
+        <div class="order"><div class="bub"><svg class="ic"><use href="#i-truck"/></svg></div><span>待收货</span><i>1</i></div>
+        <div class="order"><div class="bub"><svg class="ic"><use href="#i-star"/></svg></div><span>待评价</span></div>
+      </div>
+    </div>
+
+    <div class="services">
+      <h3>常用服务</h3>
+      <div class="svc-grid">
+        <div class="svc"><svg class="ic"><use href="#i-calendar"/></svg>签到</div>
+        <div class="svc"><svg class="ic"><use href="#i-list"/></svg>任务</div>
+        <div class="svc"><svg class="ic"><use href="#i-gift"/></svg>邀请</div>
+        <div class="svc"><svg class="ic"><use href="#i-paw"/></svg>宠物</div>
+      </div>
+      <div class="list-card">
+        <div class="list-row"><svg class="ic"><use href="#i-mappin"/></svg><span>收货地址</span><svg class="ic chev"><use href="#i-chevron"/></svg></div>
+        <div class="list-row"><svg class="ic"><use href="#i-settings"/></svg><span>设置</span><svg class="ic chev"><use href="#i-chevron"/></svg></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function(){
+  var key = new URLSearchParams(location.search).get('screen') || 'pet';
+  var screens = Array.prototype.slice.call(document.querySelectorAll('.screen'));
+  screens.forEach(function(s){ if(s.dataset.screen !== key) s.parentNode.removeChild(s); });
+  var screen = document.querySelector('.screen');
+  if(!screen) return;
+  document.body.setAttribute('data-screen', key);
+  document.title = 'MOYUYO · ' + key;
+
+  var statusHTML =
+    '<div class="status">'+
+      '<div class="time">9:41</div>'+
+      '<div class="right">'+
+        '<svg viewBox="0 0 20 14"><rect x="1" y="9" width="3" height="4" rx="1"/><rect x="6" y="6.5" width="3" height="6.5" rx="1"/><rect x="11" y="3.5" width="3" height="9.5" rx="1"/><rect x="16" y="1" width="3" height="12" rx="1"/></svg>'+
+        '<svg viewBox="0 0 18 14"><path d="M9 12.5 2.4 6a9.4 9.4 0 0 1 13.2 0L9 12.5Z"/></svg>'+
+        '<svg viewBox="0 0 26 14"><rect x="1" y="2" width="21" height="10" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="3" y="4" width="16" height="6" rx="1.2"/><path d="M24 5.2v3.6a2 2 0 0 0 0-3.6Z"/></svg>'+
+      '</div>'+
+    '</div><div class="island"></div>';
+
+  var tabs = [
+    ['pet','宠物','i-paw'],
+    ['home','商城','i-bag'],
+    ['community','社区','i-users'],
+    ['messages','消息','i-chat'],
+    ['user','我的','i-user']
+  ];
+  var tabHTML = tabs.map(function(t){
+    return '<button class="tab'+(t[0]===key?' on':'')+'"><svg class="ic"><use href="#'+t[2]+'"></use></svg><span>'+t[1]+'</span></button>';
+  }).join('');
+  screen.insertAdjacentHTML('afterbegin', statusHTML);
+  screen.insertAdjacentHTML('beforeend',
+    '<div class="tabbar">'+tabHTML+'</div><div class="home-indicator"></div>'
+  );
+})();
+</script>
+</body>
+</html>

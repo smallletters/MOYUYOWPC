@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="theme-light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOYUYO ATELIER · 设计规范可视化（五 Tab）</title>
+<link rel="stylesheet" href="assets/lucide.css">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/spec.css">
+</head>
+<body class="spec">
+
+<header class="shead">
+  <div class="shead__brand">
+    <span class="shead__mark">MOYUYO</span>
+    <span class="shead__sub">ATELIER · 设计规范可视化</span>
+  </div>
+  <div class="shead__tools">
+    <a class="sbtn" href="index.html"><span class="luc luc-smartphone"></span> 打开可交互原型</a>
+    <button class="sbtn sbtn--icon" id="themeBtn" aria-label="切换主题"><span class="luc luc-moon"></span></button>
+  </div>
+</header>
+
+<div class="slayout">
+
+  <nav class="snav" aria-label="目录">
+    <a href="#c-color">01 色彩</a>
+    <a href="#c-type">02 字号</a>
+    <a href="#c-radius">03 圆角与间距</a>
+    <a href="#c-shadow">04 阴影与层级</a>
+    <a href="#c-btn">05 按钮</a>
+    <a href="#c-chip">06 标签与角标</a>
+    <a href="#c-card">07 卡片四型</a>
+    <a href="#c-list">08 列表与图标底</a>
+    <a href="#c-nav">09 顶栏三变体</a>
+    <a href="#c-state">10 状态与反馈</a>
+    <a href="#c-red">11 红线清单</a>
+  </nav>
+
+  <main class="sbody">
+
+    <!-- ============ 01 色彩 ============ -->
+    <section id="c-color" class="ssec">
+      <div class="ssec__head">
+        <span class="ssec__num">01</span>
+        <h2>色彩 · 三级表面 + Ink 文字族</h2>
+        <p>金色是「镀层」不是「面料」：填充用 <code>--color-primary</code>，文字只用 <code>--ink-gold</code>。</p>
+      </div>
+
+      <h3 class="ssh">表面（Canvas / Container / Chip）</h3>
+      <div class="swatches">
+        <div class="sw"><i style="background:var(--color-background)"></i><b>--color-background</b><span>Canvas 页面底</span></div>
+        <div class="sw"><i style="background:var(--color-surface)"></i><b>--color-surface</b><span>Container 一级卡</span></div>
+        <div class="sw"><i style="background:var(--color-surface-sunken)"></i><b>--color-surface-sunken</b><span>二级凹陷</span></div>
+        <div class="sw"><i style="background:var(--color-fill)"></i><b>--color-fill</b><span>Chip 图标底</span></div>
+        <div class="sw"><i style="background:var(--color-fill-hi)"></i><b>--color-fill-hi</b><span>抬升 chip</span></div>
+        <div class="sw"><i style="background:var(--color-divider)"></i><b>--color-divider</b><span>装饰分隔 1rpx</span></div>
+      </div>
+
+      <h3 class="ssh">文字（承载信息的对比度 ≥ 4.5:1）</h3>
+      <div class="swatches">
+        <div class="sw"><i class="sw__t" style="color:var(--color-text)">Aa 12.6:1</i><b>--color-text</b><span>标题/正文</span></div>
+        <div class="sw"><i class="sw__t" style="color:var(--color-text-secondary)">Aa 4.88:1</i><b>--color-text-secondary</b><span>次要正文</span></div>
+        <div class="sw"><i class="sw__t" style="color:var(--color-text-label)">Aa 4.88:1</i><b>--color-text-label</b><span>时间/数量/状态</span></div>
+        <div class="sw"><i class="sw__t" style="color:var(--color-text-tertiary)">Aa 2.70:1</i><b>--color-text-tertiary</b><span>仅装饰，不承载信息</span></div>
+        <div class="sw"><i class="sw__t" style="color:var(--color-text-disabled)">Aa 2.18:1</i><b>--color-text-disabled</b><span>禁用</span></div>
+      </div>
+
+      <h3 class="ssh">金色（职责拆分）</h3>
+      <div class="swatches">
+        <div class="sw"><i style="background:var(--color-primary)"></i><b>--color-primary</b><span>仅填充</span></div>
+        <div class="sw"><i class="sw__t sw__t--gold" style="color:var(--ink-gold)">Aa 5.83:1</i><b>--ink-gold</b><span>金色文字唯一合法值</span></div>
+        <div class="sw"><i style="background:var(--color-primary-soft)"></i><b>--color-primary-soft</b><span>未读行/话题 chip</span></div>
+        <div class="sw"><i class="sw__onprimary"><span>炭字 8.52:1</span></i><b>--on-primary</b><span>金底上的唯一文字色</span></div>
+      </div>
+      <p class="snb">硬规则：金色实心块<b>只能</b>放 <code>--on-primary</code>；金色作文字<b>只能</b>用 <code>--ink-gold</code>；金色描边 ≤ 2rpx，不加 glow。</p>
+
+      <h3 class="ssh">语义色（墨色 for 文字 / 弱底 for 填充）</h3>
+      <div class="swatches">
+        <div class="sw"><i class="sw__t" style="color:var(--ink-ok)">良好 4.67:1</i><b>--ink-ok</b><span>--color-ok-soft</span></div>
+        <div class="sw"><i class="sw__t" style="color:var(--ink-warn)">临近 4.46:1</i><b>--ink-warn</b><span>--color-warn-soft</span></div>
+        <div class="sw"><i class="sw__t" style="color:var(--ink-err)">已过期 4.74:1</i><b>--ink-err</b><span>--color-err-soft</span></div>
+        <div class="sw"><i class="sw__t" style="color:var(--ink-rose)">情感 4.83:1</i><b>--ink-rose</b><span>--color-warm</span></div>
+        <div class="sw"><i class="sw__solid">白字 4.77:1</i><b>--color-danger-solid</b><span>角标/删除/已赞</span></div>
+      </div>
+
+      <h3 class="ssh">四产品线（弱底 + 墨字）</h3>
+      <div class="swatches">
+        <div class="sw"><i style="background:var(--color-care)"></i><b>CARE</b><span>--color-care</span></div>
+        <div class="sw"><i style="background:var(--color-gear)"></i><b>GEAR</b><span>--color-gear</span></div>
+        <div class="sw"><i style="background:var(--color-play)"></i><b>PLAY</b><span>--color-play</span></div>
+        <div class="sw"><i style="background:var(--color-home)"></i><b>HOME</b><span>--color-home</span></div>
+      </div>
+    </section>
+
+    <!-- ============ 02 字号 ============ -->
+    <section id="c-type" class="ssec">
+      <div class="ssec__head">
+        <span class="ssec__num">02</span>
+        <h2>字号 · 8 档，每档一个语义</h2>
+        <p>22rpx 为下限。拉丁大字走系统衬线（Georgia 近似），中文标题走无衬线 600 + 负字距。</p>
+      </div>
+      <table class="stbl">
+        <thead><tr><th>Token</th><th>值</th><th>375 下 ≈</th><th>唯一语义</th><th>样本</th></tr></thead>
+        <tbody>
+          <tr><td><code>3xl</code></td><td>56rpx</td><td>28px</td><td>营销大数字（积分）</td><td><span class="t3xl">1,280</span></td></tr>
+          <tr><td><code>2xl</code></td><td>44rpx</td><td>22px</td><td>页面大标题（社区）</td><td><span class="t2xl">社区</span></td></tr>
+          <tr><td><code>xl</code></td><td>36rpx</td><td>18px</td><td>模块主标题 / 用户名</td><td><span class="txl">消息</span></td></tr>
+          <tr><td><code>lg</code></td><td>32rpx</td><td>16px</td><td>卡片标题 / 会话名</td><td><span class="tlg">拿铁妈</span></td></tr>
+          <tr><td><code>md</code></td><td>30rpx</td><td>15px</td><td>价格 / 强调正文</td><td><span class="tmd">¥128</span></td></tr>
+          <tr><td><code>base</code></td><td>28rpx</td><td>14px</td><td>正文默认</td><td><span class="tbase">秋天的第一场遛弯。</span></td></tr>
+          <tr><td><code>sm</code></td><td>26rpx</td><td>13px</td><td>次要正文 / 预览</td><td><span class="tsm">反光织带 · 三档长度</span></td></tr>
+          <tr><td><code>xs</code></td><td>22rpx</td><td>11px</td><td>标签 / 时间 / 角标（下限）</td><td><span class="txs">2 小时前</span></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============ 03 圆角与间距 ============ -->
+    <section id="c-radius" class="ssec">
+      <div class="ssec__head">
+        <span class="ssec__num">03</span>
+        <h2>圆角与间距 · 单一映射</h2>
+        <p>面积越大圆角越大，父子圆角差 ≥ 8rpx；页面左边缘全站 32rpx 一条线。</p>
+      </div>
+      <div class="grid-demo">
+        <div class="rad" style="border-radius:4px">8rpx</div>
+        <div class="rad" style="border-radius:8px">16rpx</div>
+        <div class="rad" style="border-radius:12px">24rpx</div>
+        <div class="rad" style="border-radius:16px">32rpx</div>
+        <div class="rad" style="border-radius:999px">pill</div>
+      </div>
+      <div class="spacer-demo">
+        <div class="sp"><b>--page-gutter</b><i style="width:16px"></i><span>32rpx 页面左右</span></div>
+        <div class="sp"><b>--card-gap</b><i style="width:12px"></i><span>24rpx 卡间距</span></div>
+        <div class="sp"><b>--section-gap</b><i style="width:24px"></i><span>48rpx 分区间</span></div>
+        <div class="sp"><b>--card-pad</b><i style="width:12px"></i><span>24rpx 卡内距</span></div>
+        <div class="sp"><b>--row-h</b><i style="width:52px"></i><span>104rpx 列表行高</span></div>
+        <div class="sp"><b>--control-h</b><i style="width:44px"></i><span>88rpx 最小触摸</span></div>
+      </div>
+    </section>
+
+    <!-- ============ 04 阴影 ============ -->
+    <section id="c-shadow" class="ssec">
+      <div class="ssec__head">
+        <span class="ssec__num">04</span>
+        <h2>阴影与层级</h2>
+        <p>默认卡片不用阴影也不用描边；需要「离开纸面」时才用双阴影。</p>
+      </div>
+      <div class="grid-demo">
+        <div class="shd"><b>无</b><span>Canvas / List 组</span></div>
+        <div class="shd" style="box-shadow:var(--shadow-card)"><b>--shadow-card</b><span>商品卡 / 帖子卡</span></div>
+        <div class="shd" style="box-shadow:var(--shadow-float)"><b>--shadow-float</b><span>Banner / FAB</span></div>
+        <div class="shd" style="box-shadow:var(--shadow-overlay)"><b>--shadow-overlay</b><span>弹层</span></div>
+      </div>
+      <p class="snb">禁止：彩色阴影、金色 glow、<code>0 4rpx 24rpx rgba(0,0,0,.08)</code> 这类大范围灰雾。</p>
+    </section>
+
+    <!-- ============ 05 按钮 ============ -->
+    <section id="c-btn" class="ssec">
+      <div class="ssec__head">
+        <span class="ssec__num">05</span>
+        <h2>按钮 · 四类 × 三尺寸</h2>
+        <p>同一视图只允许一个主按钮。热区不足 88rpx 的用透明 padding 补足，不用负 margin。</p>
+      </div>
+      <div class="demo">
+        <div class="demo__row">
+          <button class="pbtn pbtn--primary">主按钮 L/M</button>
+          <button class="pbtn pbtn--secondary">次按钮</button>
+          <button class="pbtn pbtn--primary pbtn--s">S 尺寸</button>
+          <button class="pbtn pbtn--danger">危险</button>
+          <button class="tbtn">文字按钮 <span class="luc luc-chevron-right"></span></button>
+        </div>
+        <div class="demo__row">
+          <button class="pbtn pbtn--primary" disabled style="opacity:.45;background:var(--color-fill);color:var(--color-text-disabled)">禁用态</button>
+          <span class="snb" style="margin:0">主 <code>--on-primary</code> 8.52:1 · 危险白字 4.77:1</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 06 标签与角标 ============ -->
+    <section id="c-chip" class="ssec">
+      <div class="ssec__head">
+        <span class="ssec__num">06</span>
+        <h2>标签、角标与徽标</h2>
+        <p>chip 视觉 56rpx、热区 88rpx；角标 32rpx 高、22rpx 字，永不用 20rpx。</p>
+      </div>
+      <div class="demo">
+        <div class="demo__row">
+          <button class="chip demo-chip"><span class="chip__c"># 秋日遛狗</span></button>
+          <span class="banner__tag" style="position:static">今日限定</span>
+          <span class="badge badge--inline" style="display:inline-block;vertical-align:middle">3</span>
+          <span class="badge badge--inline" style="display:inline-block;vertical-align:middle">99+</span>
+          <span style="position:relative;display:inline-flex;width:52px;height:44px;align-items:center;justify-content:center;color:var(--color-text)">
+            <span class="luc luc-bell" style="font-size:21px"></span>
+            <i class="dot" style="width:7px;height:7px;background:var(--color-danger-solid)"></i>
+          </span>
+        </div>
+        <div class="demo__row">
+          <span class="line-tag" style="background:rgba(219,201,138,.15);color:var(--ink-gold)">CARE</span>
+          <span class="line-tag" style="background:rgba(171,185,173,.15);color:var(--ink-ok)">GEAR</span>
+          <span class="line-tag" style="background:rgba(179,138,90,.15);color:var(--ink-gold)">PLAY</span>
+          <span class="line-tag" style="background:rgba(217,180,176,.15);color:var(--ink-rose)">HOME</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 07 卡片四型 ============ -->
+    <section id="c-card" class="ssec">
+      <div class="ssec__head">
+        <span class="ssec__num">07</span>
+        <h2>卡片四型 · 三级表面</h2>
+        <p>禁止「白卡 + 1rpx 描边 + 阴影」三重叠加；同屏 Container 级卡片 ≤ 3 个。</p>
+      </div>
+      <div class="demo demo--wide">
+        <div class="cardtypes">
+          <div>
+            <span class="caph">Hero · 32 内距 32</span>
+            <div class="care" style="margin:0">
+              <div class="care__grid">
+                <div class="care__col">
+                  <div class="care__bar"><i style="background:var(--ink-ok)"></i></div>
+                  <span class="ibox ibox--64 ibox--ok"><span class="luc luc-droplet"></span></span>
+                  <span class="care__label">洗护</span><span class="care__value">12 天前</span>
+                  <span class="care__status care__status--ok">状态良好</span>
+                </div>
+                <div class="care__col">
+                  <div class="care__bar"><i style="background:var(--ink-warn)"></i></div>
+                  <span class="ibox ibox--64 ibox--warn"><span class="luc luc-syringe"></span></span>
+                  <span class="care__label">疫苗</span><span class="care__value">3 天前</span>
+                  <span class="care__status care__status--warn">即将到期</span>
+                </div>
+                <div class="care__col">
+                  <div class="care__bar"><i style="background:var(--ink-err)"></i></div>
+                  <span class="ibox ibox--64 ibox--err"><span class="luc luc-pill"></span></span>
+                  <span class="care__label">驱虫</span><span class="care__value">今天</span>
+                  <span class="care__status care__status--err">已到期</span>
+                </div>
+              </div>
+              <div class="care__divider"></div>
+              <div class="care__row" style="pointer-events:none">
+                <span class="lbl">下次护理</span><span class="val">12 天</span>
+                <span class="care__more"><span class="luc luc-more-horizontal"></span></span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <span class="caph">Standard · 24 内距 24</span>
+            <div class="stat4" style="margin:0">
+              <div class="stat"><span class="ibox ibox--56"><span class="luc luc-history"></span></span><span class="stat__num num">26</span><span class="stat__label">浏览历史</span></div>
+              <div class="stat"><span class="ibox ibox--56"><span class="luc luc-award"></span></span><span class="stat__num num">1,280</span><span class="stat__label">积分</span></div>
+              <div class="stat"><span class="ibox ibox--56"><span class="luc luc-ticket"></span></span><span class="stat__num num">3</span><span class="stat__label">优惠券</span></div>
+              <div class="stat"><span class="ibox ibox--56 ibox--gold"><span class="luc luc-bookmark"></span></span><span class="stat__num num">12</span><span class="stat__label">收藏</span></div>
+            </div>
+          </div>
+
+          <div>
+            <span class="caph">Media · 图撑满、文字区 20</span>
+            <div class="pcard" style="width:100%">
+              <div class="art ratio-1x1" style="--c1:#DBC98A;--c2:#B39F66">
+                <span class="luc luc-package art__ico"></span><span class="art__tag">CARE</span>
+              </div>
+              <div class="pcard__body">
+                <h3 class="pcard__name">秋日护理礼盒套装</h3>
+                <p class="pcard__desc">洗护 + 护毛 + 梳理三件套</p>
+                <div class="pcard__price"><span class="pcard__now">128</span><span class="pcard__was">199</span></div>
+                <div class="pcard__meta"><span class="luc luc-star"></span><span>4.8</span><span class="sep">·</span><span>1.2k 人已买</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <span class="caph">List · 行高 104 无阴影</span>
+            <div class="list list--plain" style="margin:0;background:var(--color-surface);border-radius:12px">
+              <div class="lrow lrow--inset"><span class="lrow__ico"><span class="luc luc-check-circle"></span></span><span class="lrow__text">每日签到</span><span class="lrow__chev"><span class="luc luc-chevron-right"></span></span></div>
+              <div class="lrow lrow--inset"><span class="lrow__ico"><span class="luc luc-target"></span></span><span class="lrow__text">任务中心</span><span class="lrow__chev"><span class="luc luc-chevron-right"></span></span></div>
+              <div class="lrow lrow--inset"><span class="lrow__ico"><span class="luc luc-settings"></span></span><span class="lrow__text">设置</span><span class="lrow__chev"><span class="luc luc-chevron-right"></span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 08 列表与图标底 ============ -->
+    <section id="c-list" class="ssec">
+      <div class="ssec__head">
+        <span class="ssec__num">08</span>
+        <h2>图标底圆、头像与列表行</h2>
+        <p>图标底一律 <code>--color-fill</code> 圆形；字母兜底走 fill 底 + 墨色字，不用金底白字。</p>
+      </div>
+      <div class="demo">
+        <div class="demo__row demo__row--center">
+          <span class="ibox ibox--56"><span class="luc luc-bell"></span></span>
+          <span class="ibox ibox--64"><span class="luc luc-heart"></span></span>
+          <span class="ibox ibox--72"><span class="luc luc-truck"></span></span>
+          <span class="ibox ibox--80"><span class="luc luc-camera"></span></span>
+          <span class="ibox ibox--96"><span class="luc luc-layout-grid"></span></span>
+          <span class="caph-inline">56 / 64 / 72 / 80 / 96</span>
+        </div>
+        <div class="demo__row demo__row--center">
+          <span class="avatar avatar--72">拿</span>
+          <span class="avatar avatar--88">布</span>
+          <span class="avatar avatar--88"><span class="luc luc-headphones"></span></span>
+          <span class="avatar avatar--120">林</span>
+          <span class="caph-inline">字母兜底 = fill 底 + 墨色字</span>
+        </div>
+      </div>
+      <div class="demo">
+        <span class="caph">会话行：未读 = 整行浅金 + 名称 700 + 红色 pill（三重表达）</span>
+        <div class="card card--list card--shadow" style="margin:0;border-radius:12px">
+          <div class="conv"><div class="conv__slider is-unread" style="pointer-events:none">
+            <span class="avatar avatar--88">拿</span>
+            <div class="conv__body"><span class="conv__name">拿铁妈</span><span class="conv__preview">好的呀，那周六上午十点公园门口见～</span></div>
+            <div class="conv__side"><span class="conv__time">14:20</span><span class="conv__pill">1</span></div>
+          </div></div>
+          <div class="hr hr--inset"></div>
+          <div class="conv"><div class="conv__slider" style="pointer-events:none">
+            <span class="avatar avatar--88"><span class="luc luc-headphones"></span></span>
+            <div class="conv__body"><span class="conv__name">客服小助手</span><span class="conv__preview">您好，请问有什么可以帮您？</span></div>
+            <div class="conv__side"><span class="conv__time">昨天</span><span class="conv__pill is-out"></span></div>
+          </div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 09 顶栏 ============ -->
+    <section id="c-nav" class="ssec">
+      <div class="ssec__head">
+        <span class="ssec__num">09</span>
+        <h2>顶栏三变体 · 内容高统一 88rpx</h2>
+        <p>切 Tab 时顶部不跳；安全区取 max(status-bar, env) 而非相加。</p>
+      </div>
+
+      <div class="demo">
+        <span class="caph">A1 搜索型（Home）</span>
+        <div class="nav" style="border-radius:12px;box-shadow:0 0 0 1px var(--color-divider)">
+          <button class="searchbar"><span class="searchbar__c"><span class="luc luc-search"></span><span class="searchbar__ph">搜索想要的…</span></span></button>
+          <div class="nav__actions">
+            <span class="icon-btn"><span class="luc luc-scan-line"></span></span>
+            <span class="icon-btn" style="position:relative"><span class="luc luc-bell"></span><span class="badge">5</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo">
+        <span class="caph">A2 标题型（Messages） + 3 个 88rpx 图标</span>
+        <div class="nav" style="border-radius:12px;box-shadow:0 0 0 1px var(--color-divider)">
+          <h1 class="nav__title">消息</h1>
+          <div class="nav__actions">
+            <span class="icon-btn" style="position:relative"><span class="luc luc-bell"></span><span class="badge">5</span></span>
+            <span class="icon-btn"><span class="luc luc-users"></span></span>
+            <span class="icon-btn"><span class="luc luc-user-plus"></span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo">
+        <span class="caph">B Serif（Community）· 标题 44/600 中文走 ui</span>
+        <div class="nav nav--serif" style="border-radius:12px">
+          <h1 class="nav__title">社区</h1>
+          <div class="nav__actions">
+            <span class="icon-btn"><span class="luc luc-search"></span></span>
+            <span class="icon-btn" style="position:relative"><span class="luc luc-bell"></span><span class="badge">3</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo">
+        <span class="caph">Tab 下划线 48×4rpx 位移 200ms</span>
+        <div class="tabs" data-active="0" style="border-radius:12px;background:var(--color-surface)">
+          <span class="tabs__item is-on">猜你喜欢</span>
+          <span class="tabs__item">今日爆款</span>
+          <span class="tabs__item">口碑好评</span>
+          <span class="tabs__bar" style="transform:translateX(72px)"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 10 状态 ============ -->
+    <section id="c-state" class="ssec">
+      <div class="ssec__head">
+        <span class="ssec__num">10</span>
+        <h2>五态与反馈</h2>
+        <p>空态必须给「下一步动作」；错误态必须给「重试」；未登录是独立卡，不是空态。</p>
+      </div>
+      <div class="demo demo--wide">
+        <div class="states">
+          <div>
+            <span class="caph">空态 empty</span>
+            <div class="card card--shadow" style="margin:0;border-radius:12px">
+              <div class="empty" style="padding:24px 16px">
+                <span class="luc luc-package empty__ico" style="font-size:60px"></span>
+                <h3 class="empty__title">暂时没有推荐</h3>
+                <p class="empty__desc">换个分类看看，或到领券中心逛逛。</p>
+                <div class="empty__act"><span class="pbtn pbtn--secondary">去分类看看</span></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <span class="caph">错误 error</span>
+            <div class="card card--shadow" style="margin:0;border-radius:12px">
+              <div class="empty" style="padding:24px 16px">
+                <span class="luc luc-cloud empty__ico" style="font-size:60px"></span>
+                <h3 class="empty__title">加载失败，请检查网络</h3>
+                <p class="empty__desc">网络恢复后点重试即可。</p>
+                <div class="empty__act"><span class="pbtn pbtn--primary">重试</span></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <span class="caph">未登录 guest（不是空态）</span>
+            <div class="card card--shadow" style="margin:0;border-radius:12px">
+              <div class="empty" style="padding:24px 16px">
+                <span class="luc luc-lock empty__ico" style="font-size:60px"></span>
+                <h3 class="empty__title">关注流需要登录</h3>
+                <p class="empty__desc">登录后查看你关注的人的动态。</p>
+                <div class="empty__act"><span class="pbtn pbtn--primary">去登录</span></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <span class="caph">骨架 loading（1200ms 扫光）</span>
+            <div class="sk-card" style="background:var(--color-surface);box-shadow:var(--shadow-card);padding:12px;border-radius:12px">
+              <div style="display:flex;gap:8px;align-items:center">
+                <div class="sk sk-circle" style="width:36px;height:36px"></div>
+                <div style="flex:1"><div class="sk" style="height:13px;width:40%"></div><div class="sk" style="height:10px;width:24%;margin-top:6px"></div></div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:8px">
+                <div class="sk" style="height:0;padding-top:100%;border-radius:8px"></div>
+                <div class="sk" style="height:0;padding-top:100%;border-radius:8px"></div>
+                <div class="sk" style="height:0;padding-top:100%;border-radius:8px"></div>
+              </div>
+              <div class="sk" style="height:12px;width:88%;margin-top:8px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo">
+        <span class="caph">弱网提示条 · 必须带上次更新时间</span>
+        <div class="stale-bar" style="border-radius:8px"><span class="luc luc-signal"></span><span>离线内容 · 10 分钟前</span></div>
+      </div>
+
+      <div class="demo">
+        <span class="caph">Toast 1200ms · 底部 120px 居中</span>
+        <div style="position:relative;height:52px;background:var(--color-surface-sunken);border-radius:8px;overflow:hidden">
+          <div class="toast is-in" style="bottom:14px;opacity:1;transform:translate(-50%,0)">链接已复制</div>
+        </div>
+      </div>
+
+      <div class="demo">
+        <span class="caph">FAB · 金底炭图标 112rpx（禁白图标）</span>
+        <div style="position:relative;height:80px;background:var(--color-surface-sunken);border-radius:8px">
+          <span class="fab" style="position:absolute;bottom:12px"><span class="luc luc-camera"></span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 11 红线 ============ -->
+    <section id="c-red" class="ssec">
+      <div class="ssec__head">
+        <span class="ssec__num">11</span>
+        <h2>红线检查清单</h2>
+        <p>原型已逐条通过（浅色 + 深色 + 三档尺寸）。</p>
+      </div>
+      <ul class="checks">
+        <li>任意文字与背景对比度 ≥ 4.5:1（大字 ≥ 3:1），金色文字只用 <code>--ink-gold</code></li>
+        <li>金色填充上无白字，一律 <code>--on-primary</code>（8.52:1）</li>
+        <li>所有可点元素热区 ≥ 88×88rpx（原型 5 页审出 0 处例外）</li>
+        <li>无 <code>#ff4d4f</code> / <code>#007aff</code> / <code>#34c759</code> / <code>#ff3b30</code> 等非品牌色</li>
+        <li>无 20rpx 及以下字号承载信息，22rpx 为下限</li>
+        <li>页面左右边距 = 32rpx（沉浸页除外）</li>
+        <li>无「白卡 + 1rpx 描边 + 阴影」三重叠加</li>
+        <li>深色模式下无白色残留块、无不可见文字</li>
+        <li>无 <code>&lt;svg&gt;</code> / data-URI 占位图，图标只用 <code>luc luc-xxx</code></li>
+        <li>衬线字体仅用于拉丁字符，中文标题走 ui 600 + 负字距</li>
+        <li>FAB 距 tabBar = 32rpx（390 / 430 / 375 三档实测 32.0）</li>
+        <li>tabBar 选中色 <code>#DBC98A</code> 与页内 <code>--ink-gold</code> 刻意不一致（勿修）</li>
+      </ul>
+    </section>
+
+    <footer class="sfoot">
+      <span class="sfoot__brand">MOYUYO ATELIER</span>
+      <span>设计规范可视化 · 对应 01-visual-spec v1.9 / 02-ux-spec</span>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var btn = document.getElementById('themeBtn');
+  var dark = false;
+  btn.addEventListener('click', function () {
+    dark = !dark;
+    root.className = dark ? 'theme-dark' : 'theme-light';
+    btn.innerHTML = '<span class="luc luc-' + (dark ? 'sun' : 'moon') + '"></span>';
+    btn.setAttribute('aria-label', dark ? '切换到浅色' : '切换到深色');
+  });
+  // 组件按 375pt 真机比例渲染（1rpx = 0.5px）
+  document.querySelectorAll('.demo').forEach(function (el) {
+    el.style.setProperty('--rpx', '0.5px');
+  });
+})();
+</script>
+</body>
+</html>

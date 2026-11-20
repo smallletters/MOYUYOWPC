@@ -56,7 +56,7 @@
       </view>
 
       <!-- 错误提示 -->
-      <view v-if="errorMsg" class="error-mask">
+      <view v-if="errorMsg" class="error-mask" data-pet3d-ui>
         <text class="error-text">{{ errorMsg }}</text>
         <view class="retry-btn" @click="onPet3dRetry">
           <text>{{ $t('common.retry') }}</text>
@@ -73,7 +73,7 @@
           · 线框 / 诊断：纯调试功能，已挪到诊断面板按需排查
           返回键是唯一的显式退出入口，不能删（否则只能靠系统返回手势）。
         -->
-        <view class="hud-actions hud-actions-left">
+        <view class="hud-actions hud-actions-left" data-pet3d-ui>
           <view class="hud-btn hud-btn-back" @click="goBack">
             <text class="luc luc-arrow-left" />
           </view>
@@ -105,8 +105,8 @@
           closeDiag 里用 DIAG_CLOSE_GUARD 静默掉触发后的这段时间内的点击，
           与面板位置无关，布局怎么改都不会复发。
         -->
-        <view v-if="showDiag" class="diag-mask" @click="onPet3dCloseDiag" />
-        <view v-if="showDiag" class="diag-panel">
+        <view v-if="showDiag" class="diag-mask" data-pet3d-ui @click="onPet3dCloseDiag" />
+        <view v-if="showDiag" class="diag-panel" data-pet3d-ui>
           <text class="diag-title">{{ $t('petHub3d.diagTitle') }}</text>
           <text class="diag-line">{{ $t('petHub3d.diagPlatformLabel') }}: {{ diagPlatform }}</text>
           <text class="diag-line">
@@ -253,19 +253,41 @@ export default {
     },
   },
 
+  onLoad() {
+    // #ifdef APP-PLUS
+    // 本页强制横屏。
+    // manifest 里的 screenOrientation 只在自定义基座 / 云打包后写进原生清单，
+    // HBuilderX 标准基座真机调试时不会生效，所以必须在运行时锁定方向。
+    plus.screen.lockOrientation('landscape')
+    // 3D 空间是沉浸式游戏视图：隐藏系统状态栏，Android 再隐藏底部虚拟导航键
+    plus.navigator.setFullscreen(true)
+    if (plus.os.name === 'Android') plus.navigator.hideSystemNavigation()
+    // #endif
+  },
+
   onReady() {
     this.armBootWatchdog()
   },
 
   onShow() {
     this.sendViewCommand('show')
+    // #ifdef APP-PLUS
+    // 从其它页面返回时可能已被恢复成竖屏/非全屏，这里重新设置
+    plus.screen.lockOrientation('landscape')
+    plus.navigator.setFullscreen(true)
+    if (plus.os.name === 'Android') plus.navigator.hideSystemNavigation()
+    // #endif
   },
 
   onHide() {
     this.sendViewCommand('hide')
+    // 离开本页恢复竖屏 + 非全屏：App 其余页面全部按竖屏布局设计
+    this.restorePortrait()
   },
 
   onUnload() {
+    // switchTab 关闭本页时 onHide 不一定先触发，这里再兜底还原一次
+    this.restorePortrait()
     if (this._bootTimer) {
       clearTimeout(this._bootTimer)
       this._bootTimer = null
@@ -447,18 +469,27 @@ export default {
     },
 
     /**
-     * 退出 3D 空间，回到宠物主页。
-     * 正常从宠物页 navigateTo 进入时页面栈 > 1，直接出栈；
-     * 分享直链 / 地址栏直接打开本页时栈内只有当前页，navigateBack 不会生效
-     * （H5 下既不跳转也不一定回调 fail），所以先判断栈长度，再兜底 switchTab。
+     * 恢复全局竖屏 + 非全屏。
+     * 3D 空间是 App 里唯一的横屏页面，所有离开路径（返回键 / onHide / onUnload）
+     * 都必须还原方向，否则其余竖屏页面会一直停在横屏。
+     */
+    restorePortrait() {
+      // #ifdef APP-PLUS
+      plus.screen.lockOrientation('portrait-primary')
+      plus.navigator.setFullscreen(false)
+      if (plus.os.name === 'Android') plus.navigator.showSystemNavigation()
+      // #endif
+    },
+
+    /**
+     * 退出 3D 空间，固定回到 Pets 标签页。
+     * 不用 navigateBack：从消息/分享等入口进入时，出栈会回到任意来源页，
+     * 而返回键的语义是「退出 3D 空间」→ 统一 switchTab 到 Pets 页。
      */
     goBack() {
-      const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : []
-      if (pages.length > 1) {
-        uni.navigateBack({ delta: 1 })
-      } else {
-        uni.switchTab({ url: '/pages/tabbar/pet' })
-      }
+      // 先还原竖屏再切页，避免目标页先以横屏渲染一帧
+      this.restorePortrait()
+      uni.switchTab({ url: '/pages/tabbar/pet' })
     },
 
     /**
@@ -855,7 +886,8 @@ export default {
    （原来 0.45 实测偏灰）。 */
 .hud-actions {
   position: absolute;
-  top: calc(var(--status-bar-height, 0) + 10px);
+  /* 页面已全屏（状态栏隐藏），按钮直接贴页面顶部，不再预留状态栏高度 */
+  top: 12px;
   display: flex;
   gap: 8px;
   pointer-events: auto;
@@ -870,7 +902,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  /* 圆形按钮：半径取宽度一半，避免不同机型圆角被压缩 */
+  border-radius: 50%;
   background: rgba(0, 0, 0, 0.55);
   border: 1px solid rgba(219, 201, 138, 0.45);
   color: #f6f2ee;

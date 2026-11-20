@@ -1,0 +1,341 @@
+{
+ "homeFold": {
+  "at0": {
+   "scrollTop": 0,
+   "searchH": 36,
+   "searchOpacity": "1",
+   "titleMidOpacity": "0",
+   "titleMidText": "商城",
+   "vars": {
+    "p": "0.0000",
+    "searchH": "36.00px",
+    "searchO": "1.0000",
+    "ctO": "0.0000"
+   }
+  },
+  "at30": {
+   "scrollTop": 30,
+   "searchH": 32,
+   "searchOpacity": "0",
+   "titleMidOpacity": "0.0769",
+   "titleMidText": "商城",
+   "vars": {
+    "p": "0.5769",
+    "searchH": "32.00px",
+    "searchO": "0.0000",
+    "ctO": "0.0769"
+   }
+  },
+  "at120": {
+   "scrollTop": 120,
+   "searchH": 32,
+   "searchOpacity": "0",
+   "titleMidOpacity": "1",
+   "titleMidText": "商城",
+   "vars": {
+    "p": "1.0000",
+    "searchH": "32.00px",
+    "searchO": "0.0000",
+    "ctO": "1.0000"
+   }
+  },
+  "at400": {
+   "scrollTop": 400,
+   "searchH": 32,
+   "searchOpacity": "0",
+   "titleMidOpacity": "1",
+   "titleMidText": "商城",
+   "vars": {
+    "p": "1.0000",
+    "searchH": "32.00px",
+    "searchO": "0.0000",
+    "ctO": "1.0000"
+   }
+  }
+ },
+ "communityMedia": [
+  {
+   "n": 1,
+   "w": 361,
+   "h": 240,
+   "radius": "12px",
+   "objectPosition": "50% 38%",
+   "图到正文": 12,
+   "正文到话题": null,
+   "作者行到图": 8,
+   "图到互动行": 84,
+   "正文行高": "26px",
+   "正文字号": "17px",
+   "正文字重": "400"
+  },
+  {
+   "n": 1,
+   "w": 361,
+   "h": 240,
+   "radius": "12px",
+   "objectPosition": "50% 38%",
+   "图到正文": 12,
+   "正文到话题": null,
+   "作者行到图": 8,
+   "图到互动行": 84,
+   "正文行高": "26px",
+   "正文字号": "17px",
+   "正文字重": "400"
+  },
+  {
+   "n": 4,
+   "w": 179,
+   "h": 179,
+   "radius": "8px",
+   "objectPosition": "50% 50%",
+   "图到正文": 195,
+   "正文到话题": null,
+   "作者行到图": 8,
+   "图到互动行": 267,
+   "正文行高": "26px",
+   "正文字号": "17px",
+   "正文字重": "400"
+  },
+  {
+   "n": 2,
+   "w": 179,
+   "h": 179,
+   "radius": "8px",
+   "objectPosition": "50% 50%",
+   "图到正文": 12,
+   "正文到话题": null,
+   "作者行到图": 8,
+   "图到互动行": 84,
+   "正文行高": "26px",
+   "正文字号": "17px",
+   "正文字重": "400"
+  },
+  {
+   "n": 1,
+   "w": 0,
+   "h": 0,
+   "radius": "12px",
+   "objectPosition": "50% 38%",
+   "图到正文": 0,
+   "正文到话题": null,
+   "作者行到图": 0,
+   "图到互动行": 0,
+   "正文行高": "26px",
+   "正文字号": "17px",
+   "正文字重": "400"
+  }
+ ],
+ "stateShift": {
+  "pet": [
+   {
+    "navH": null,
+    "firstTop": 104,
+    "scrollTop": 0
+   },
+   {
+    "navH": null,
+    "firstTop": 104,
+    "scrollTop": 0
+   },
+   {
+    "navH": null,
+    "firstTop": 104,
+    "scrollTop": 0
+   },
+   {
+    "navH": null,
+    "firstTop": 104,
+    "scrollTop": 0
+   },
+   {
+    "navH": null,
+    "firstTop": 104,
+    "scrollTop": 0
+   }
+  ],
+  "home": [
+   {
+    "navH": 103,
+    "firstTop": 211,
+    "scrollTop": 0
+   },
+   {
+    "navH": 103,
+    "firstTop": 219,
+    "scrollTop": 0
+   },
+   {
+    "navH": 103,
+    "firstTop": 207,
+    "scrollTop": 0
+   },
+   {
+    "navH": 103,
+    "firstTop": 207,
+    "scrollTop": 0
+   },
+   {
+    "navH": 103,
+    "firstTop": 219,
+    "scrollTop": 0
+   }
+  ],
+  "community": [
+   {
+    "navH": 103,
+    "firstTop": 268,
+    "scrollTop": 0
+   },
+   {
+    "navH": 103,
+    "firstTop": 268,
+    "scrollTop": 0
+   },
+   {
+    "navH": 103,
+    "firstTop": 268,
+    "scrollTop": 0
+   },
+   {
+    "navH": 103,
+    "firstTop": 268,
+    "scrollTop": 0
+   },
+   {
+    "navH": 103,
+    "firstTop": 280,
+    "scrollTop": 0
+   }
+  ],
+  "messages": [
+   {
+    "navH": 103,
+    "firstTop": 268,
+    "scrollTop": 0
+   },
+   {
+    "navH": 103,
+    "firstTop": 284,
+    "scrollTop": 0
+   },
+   {
+    "navH": 103,
+    "firstTop": 268,
+    "scrollTop": 0
+   },
+   {
+    "navH": 103,
+    "firstTop": 268,
+    "scrollTop": 0
+   },
+   {
+    "navH": 103,
+    "firstTop": 284,
+    "scrollTop": 0
+   }
+  ],
+  "user": [
+   {
+    "navH": 103,
+    "firstTop": 104,
+    "scrollTop": 0
+   },
+   {
+    "navH": 103,
+    "firstTop": 207,
+    "scrollTop": 0
+   },
+   {
+    "navH": 103,
+    "firstTop": 104,
+    "scrollTop": 0
+   },
+   {
+    "navH": 103,
+    "firstTop": 104,
+    "scrollTop": 0
+   },
+   {
+    "navH": 103,
+    "firstTop": 104,
+    "scrollTop": 0
+   }
+  ]
+ },
+ "memberCard": {
+  "w": 361,
+  "h": 132,
+  "n": 47652
+ },
+ "memberTextContrast": [
+  {
+   "cls": "member__title",
+   "text": "MOYUYO 会员",
+   "fs": 17,
+   "fw": "600",
+   "最差": 8.95,
+   "最差底色": [
+    222,
+    206,
+    150
+   ],
+   "最佳": 10.05
+  },
+  {
+   "cls": "member__points",
+   "text": "积分 —",
+   "fs": 28,
+   "fw": "700",
+   "最差": 5.23,
+   "最差底色": [
+    188,
+    152,
+    101
+   ],
+   "最佳": 9.86
+  },
+  {
+   "cls": "member__tip",
+   "text": "权益每月更新，登录后查看你的专属额度",
+   "fs": 13,
+   "fw": "400",
+   "最差": 5.09,
+   "最差底色": [
+    185,
+    150,
+    98
+   ],
+   "最佳": 9.49
+  }
+ ],
+ "reducedMotion": [
+  "@media (prefers-reduced-motion: reduce) {\n  *, ::before, ::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }\n  .skel {",
+  "MEDIA (prefers-reduced-motion: reduce)"
+ ],
+ "pressRules": {
+  "activeRuleCount": 27,
+  "samples": [
+   ".chip:active { transform: scale(0.97); background: var(--press); }",
+   ".icon-btn:active { transform: scale(0.97); background: var(--press); }",
+   ".segment__item:active { transform: scale(0.96); }",
+   ".chip-pill:active { transform: scale(0.97); background: var(--press); }",
+   ".row:active { background: var(--press); }",
+   ".btn:active { transform: scale(0.97); background: var(--press); }",
+   ".btn--text:active { background: transparent; }",
+   ".statebox__action:active { background: transparent; }"
+  ]
+ },
+ "shadowCount": {
+  "rgba(46, 43, 41, 0.26) 0px 30px 60px, rgba(46, 43, 41, 0.18) 0px 2px 8px": 1,
+  "var(--shadow-card)": 4,
+  "inset 0 0 0 var(--hairline) var(--ink-care)": 1,
+  "inset 0 0 0 var(--hairline) var(--ink-gear)": 1,
+  "inset 0 0 0 var(--hairline) var(--ink-play)": 1,
+  "inset 0 0 0 var(--hairline) var(--ink-home)": 1,
+  "inset 0 0 0 var(--hairline) var(--ink-gold)": 2,
+  "var(--shadow-float)": 2,
+  "0 0 0 4px color-mix(in srgb, var(--color-primary) 45%, transparent)": 1,
+  "inset 0 0 0 10px color-mix(in srgb, var(--color-accent) 16%, transparent), inset 0 0 0 11px color-mix(in srgb, var(--color-accent) 34%, transparent), inset 0 0 0 26px color-mix(in srgb, var(--color-accent) 12%, transparent), inset 0 0 0 27px color-mix(in srgb, var(--color-accent) 26%, transparent)": 1,
+  "0 0 0 3px var(--color-primary)": 2
+ }
+}

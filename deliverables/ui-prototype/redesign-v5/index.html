@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MOYUYO · v5 MIST SLATE 原型</title>
+<style>
+/* ============ MIST SLATE 雾银石墨 · 静奢矿物 ============ */
+:root{
+  --slate:#3A4B5C; --slate-deep:#2B3A4A;
+  --ink-1:#1F2D3D; --ink-2:#566573; --ink-3:#8A97A5;
+  --accent:#945048; --accent-fill:#9C564E; --signal:#B04A3F;
+  --on-slate:#FFFFFF;
+  --bg-canvas:#EEF1F3; --bg-surface:#FFFFFF;
+  --fill-2:#E4E9ED; --fill-3:#D6DEE4; --hairline:#D6DEE4;
+  --tint:rgba(58,75,92,.10); --veil:rgba(238,241,243,.82);
+  --veil-blur:saturate(160%) blur(20px);
+  --shade-photo:linear-gradient(to top, rgba(31,45,61,.62), transparent 55%);
+  --shadow-1:0 2px 10px rgba(31,45,61,.06);
+  --shadow-2:0 2px 10px rgba(31,45,61,.10);
+  --shadow-float:0 2px 10px rgba(31,45,61,.12);
+  --r-card:16px; --r-vip:20px; --r-banner:18px; --r-icon:14px; --r-pill:9999px; --r-avatar:50%;
+  --font-sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","PingFang SC","Helvetica Neue",sans-serif;
+  --ease-ios:cubic-bezier(.2,.9,.25,1);
+  --vw:393px; --vh:852px; --safe-top:59px; --safe-bottom:34px; --tab-h:83px;
+  --gutter:16px; --card-w:361px; --prod-w:174.5px; --grid-col:82.25px; --pad-bottom:107px;
+}
+.theme-dark{
+  --bg-canvas:#151C24; --bg-surface:#202B36; --fill-2:#2B3845; --fill-3:#374554; --hairline:#374554;
+  --ink-1:#E8EDF1; --ink-2:#B8C4CF; --ink-3:#7E8D9C;
+  --slate:#9FB4C6; --slate-deep:#2B3845; --accent:#C98078; --accent-fill:#9C564E; --signal:#C05A50;
+  --tint:rgba(159,180,198,.14); --veil:rgba(21,28,36,.82);
+  --shadow-1:0 2px 10px rgba(0,0,0,.28); --shadow-2:0 2px 10px rgba(0,0,0,.34); --shadow-float:0 2px 10px rgba(0,0,0,.40);
+}
+*,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{font-family:var(--font-sans);color:var(--ink-1);background:#C9D0D6;font-size:16px;line-height:1.35;-webkit-font-smoothing:antialiased}
+.num,strong.num,.price{font-variant-numeric:tabular-nums}
+.ic{width:24px;height:24px;display:block;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ic-28{width:28px;height:28px}.ic-20{width:20px;height:20px}.ic-18{width:18px;height:18px}.ic-13{width:13px;height:13px}.ic-64{width:64px;height:64px}
+.screen{position:relative;width:var(--vw);height:var(--vh);overflow:hidden;background:var(--bg-canvas);margin:0 auto}
+.statusbar{position:absolute;top:0;left:0;right:0;height:var(--safe-top);z-index:40;pointer-events:none;color:var(--ink-1)}
+.statusbar .sb-time{position:absolute;left:32px;top:15px;font:600 15px/20px var(--font-sans);letter-spacing:.2px;font-variant-numeric:tabular-nums}
+.statusbar .sb-right{position:absolute;right:30px;top:17px;display:flex;align-items:center;gap:6px}
+.statusbar .sb-right svg{width:18px;height:13px;fill:currentColor}
+.app-body{position:absolute;inset:0;overflow:hidden}
+.page{position:absolute;inset:0;display:none}.page.active{display:block}
+.scroll{position:absolute;left:0;right:0;top:0;bottom:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.scroll.home{padding-top:calc(var(--safe-top) + 44px)}
+.scroll.community,.scroll.messages{padding-top:calc(var(--safe-top) + 96px)}
+.scroll.user{padding-top:0}
+
+/* 卡片 / 行 */
+.group-card{margin:0 var(--gutter) 16px;background:var(--bg-surface);border:1px solid var(--hairline);border-radius:var(--r-card);box-shadow:var(--shadow-1);overflow:hidden}
+.section-head{padding:20px var(--gutter) 8px;font-size:13px;color:var(--ink-2);font-weight:400}
+.row{min-height:52px;padding:12px var(--gutter);display:flex;align-items:center;gap:12px;position:relative;border:0;background:transparent;color:var(--ink-1);text-align:left;font:inherit}
+.row + .row::before{content:"";position:absolute;left:56px;right:0;top:0;height:1px;background:var(--hairline)}
+.row .row-label{font-size:15px;font-weight:400;flex:1}
+.row .chevron{width:13px;height:13px;color:var(--ink-3);flex:none}
+.tile{width:52px;height:52px;border-radius:var(--r-icon);background:var(--fill-2);color:var(--slate);display:flex;align-items:center;justify-content:center}
+.func-icon{width:28px;height:28px;border-radius:8px;background:var(--fill-2);color:var(--slate);display:flex;align-items:center;justify-content:center;flex:none}
+.ring{width:40px;height:40px;border-radius:var(--r-avatar);background:var(--fill-2);color:var(--slate);display:flex;align-items:center;justify-content:center;position:relative}
+/* 角标 */
+.badge-num{min-width:16px;height:16px;padding:0 4px;border-radius:var(--r-pill);background:var(--signal);color:#fff;font:600 11px/16px var(--font-sans);text-align:center;font-variant-numeric:tabular-nums}
+.badge-dot{width:8px;height:8px;border-radius:var(--r-avatar);background:var(--signal);box-shadow:0 0 0 1.5px var(--veil)}
+.pill{height:18px;min-width:18px;padding:0 5px;border-radius:var(--r-pill);background:var(--signal);color:#fff;font:600 11px/18px var(--font-sans);text-align:center;font-variant-numeric:tabular-nums;display:inline-block}
+.odot{position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;line-height:16px;padding:0 4px;border-radius:var(--r-pill);background:var(--signal);color:#fff;font:600 11px/16px var(--font-sans);text-align:center}
+/* 胶囊 / chip */
+.search-pill{height:36px;flex:1;display:flex;align-items:center;gap:6px;padding:0 12px;border:0;border-radius:var(--r-pill);background:var(--fill-2);color:var(--ink-2);font-size:13px}
+.search-pill .ic{width:16px;height:16px}
+.chip{flex:none;height:32px;padding:0 14px;border-radius:var(--r-pill);background:var(--fill-2);color:var(--ink-2);font-size:13px;border:1px solid transparent;white-space:nowrap}
+.chip.on{background:var(--tint);color:var(--slate);border-color:rgba(58,75,92,.18)}
+.chip .topic{color:var(--accent)}
+/* 分段 tab */
+.seg-tabs{position:sticky;top:var(--safe-top);z-index:15;height:44px;display:flex;align-items:stretch;background:var(--veil);backdrop-filter:var(--veil-blur);-webkit-backdrop-filter:var(--veil-blur);border-bottom:1px solid var(--hairline)}
+.seg-tab{flex:1;border:0;background:transparent;color:var(--ink-2);font-size:15px;font-weight:400;cursor:pointer}
+.seg-tab.on{color:var(--slate);font-weight:600}
+.seg-indicator{position:absolute;bottom:0;left:0;width:20px;height:3px;border-radius:2px;background:var(--slate)}
+.seg-indicator.underline{width:24px;height:2px}
+/* nav */
+.nav{position:absolute;left:0;right:0;top:0;z-index:20}
+.nav-compact{height:44px;top:var(--safe-top);background:var(--veil);backdrop-filter:var(--veil-blur);-webkit-backdrop-filter:var(--veil-blur);border-bottom:1px solid var(--hairline);display:flex;align-items:center;justify-content:center}
+.compact-title{font-size:17px;font-weight:600;color:var(--ink-1)}
+.nav-compact .toolbar{position:absolute;left:0;right:0;top:0}
+.nav-large{height:96px;top:var(--safe-top);background:var(--bg-canvas)}
+.nav-large .large-title{position:absolute;left:var(--gutter);bottom:12px;font-size:34px;font-weight:700;letter-spacing:-.5px;color:var(--ink-1)}
+.nav-user{height:44px;top:var(--safe-top);background:transparent;border-bottom:0}
+.nav-user.scrolled{background:var(--veil);backdrop-filter:var(--veil-blur);-webkit-backdrop-filter:var(--veil-blur);border-bottom:1px solid var(--hairline)}
+.nav-user .user-title{position:absolute;left:0;right:0;text-align:center;line-height:44px;font-size:17px;font-weight:600;color:var(--ink-1);opacity:0}
+.nav-user.scrolled .user-title{opacity:1}
+.toolbar{height:44px;display:flex;align-items:center;gap:8px;padding:0 var(--gutter)}
+.nav-btn{position:relative;width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:var(--slate)}
+.nav-btn .badge-num{position:absolute;top:6px;right:5px}
+.nav-btn .badge-dot{position:absolute;top:12px;right:12px}
+.nav-right{justify-content:flex-end;margin-left:auto}
+/* tabBar */
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:var(--tab-h);z-index:25;display:flex;align-items:flex-start;background:var(--veil);backdrop-filter:var(--veil-blur);-webkit-backdrop-filter:var(--veil-blur);border-top:1px solid var(--hairline)}
+.tab{position:relative;flex:1;min-width:0;height:56px;border:0;background:transparent;color:var(--ink-3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font:inherit;cursor:pointer}
+.tab .tab-label{font-size:11px;font-weight:400;white-space:nowrap}
+.tab.active{color:var(--slate)}
+.tab.active .tab-label{font-weight:600}
+.tab.active .ic{fill:rgba(58,75,92,.16);stroke:var(--slate)}
+.tab .tbadge{position:absolute;top:5px;left:calc(50% + 6px);min-width:16px;height:16px;line-height:16px;padding:0 4px;border-radius:var(--r-pill);background:var(--signal);color:#fff;font:600 11px/16px var(--font-sans);text-align:center;font-variant-numeric:tabular-nums}
+/* 商品卡 */
+.product-grid{display:grid;grid-template-columns:repeat(2,var(--prod-w));gap:12px;padding:12px var(--gutter) 0}
+.product-panel{display:none}.product-panel.on{display:block}
+.product-card{width:var(--prod-w);background:var(--bg-surface);border:1px solid var(--hairline);border-radius:var(--r-card);overflow:hidden;box-shadow:var(--shadow-1)}
+.pthumb{position:relative;width:100%;aspect-ratio:1;background:var(--fill-2);overflow:hidden}
+.pthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.pinfo{padding:8px 10px 10px}
+.pname{font-size:13px;font-weight:600;line-height:17px;color:var(--ink-1);height:34px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.pdesc{font-size:11px;font-weight:400;line-height:15px;color:var(--ink-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pprice-row{display:flex;align-items:baseline;gap:6px;margin-top:6px}
+.price-now{font-size:17px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.price-old{font-size:11px;font-weight:400;color:var(--ink-3);text-decoration:line-through;font-variant-numeric:tabular-nums}
+.prate{display:flex;align-items:center;gap:3px;margin-top:4px;font-size:11px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.prate .star{color:var(--accent)}
+/* Banner */
+.banner{position:relative;margin:0 var(--gutter) 16px;width:var(--card-w);height:203px;border-radius:var(--r-banner);overflow:hidden;box-shadow:var(--shadow-1);background:var(--fill-2)}
+.banner-slide{position:absolute;inset:0;opacity:0;transition:opacity 500ms ease-in-out}
+.banner-slide.on{opacity:1}
+.banner-slide img{width:100%;height:100%;object-fit:cover;display:block}
+.banner-shade{position:absolute;inset:0;background:var(--shade-photo);pointer-events:none}
+.banner-copy{position:absolute;left:16px;bottom:24px;right:16px}
+.banner-tag{display:inline-block;height:20px;line-height:20px;padding:0 8px;border-radius:var(--r-pill);background:var(--accent-fill);color:#fff;font-size:11px;font-weight:600;margin-bottom:6px}
+.banner-title{font-size:22px;line-height:27px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.banner-dots{position:absolute;left:0;right:0;bottom:12px;display:flex;justify-content:center;gap:6px;align-items:center}
+.banner-dots button{border:0;padding:0;height:4px;width:4px;border-radius:var(--r-pill);background:rgba(255,255,255,.45)}
+.banner-dots button.on{width:12px;background:var(--slate)}
+/* 金刚区 */
+.quick-grid{display:grid;grid-template-columns:repeat(4,1fr);padding:8px var(--gutter) 12px}
+.quick-cell{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:8px;padding:4px 0;color:var(--ink-1)}
+.quick-cell .tile{color:var(--slate)}
+.quick-cell span{font-size:12px}
+/* 帖子卡 */
+.post-card{margin:12px var(--gutter) 16px;background:var(--bg-surface);border:1px solid var(--hairline);border-radius:var(--r-card);box-shadow:var(--shadow-1);overflow:hidden}
+.post-head{display:flex;align-items:center;gap:10px;padding:12px}
+.avatar{width:36px;height:36px;border-radius:var(--r-avatar);overflow:hidden;flex:none;background:var(--fill-2)}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.post-who{flex:1;min-width:0}
+.post-author{font-size:15px;font-weight:600;color:var(--ink-1)}
+.post-time{font-size:11px;font-weight:400;color:var(--ink-3)}
+.post-topic{font-size:11px;color:var(--accent)}
+.post-text{padding:0 12px 10px;font-size:15px;font-weight:400;line-height:21px;color:var(--ink-1);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.post-media{padding:0 12px}
+.post-media img,.media-cell img{width:100%;height:100%;object-fit:cover;display:block}
+.post-media.single{height:176px;border-radius:12px;overflow:hidden}
+.media-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+.media-grid.two{grid-template-columns:repeat(2,1fr)}
+.media-cell{aspect-ratio:1;border-radius:6px;overflow:hidden;background:var(--fill-2)}
+.post-actions{display:flex;align-items:center;gap:20px;padding:10px 12px;font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums;border-top:1px solid var(--hairline)}
+.post-actions .act{display:flex;align-items:center;gap:5px}
+.post-actions .act.liked{color:var(--signal)}
+.post-actions .act.liked .ic{fill:var(--signal)}
+.search-row{margin:12px var(--gutter) 0;height:36px;border-radius:var(--r-pill);background:var(--fill-2);display:flex;align-items:center;gap:7px;padding:0 12px;color:var(--ink-2);font-size:13px}
+.search-row .ic{width:16px;height:16px}
+.chip-scroll{display:flex;gap:8px;overflow-x:auto;padding:12px var(--gutter) 4px;scrollbar-width:none}
+.chip-scroll::-webkit-scrollbar{display:none}
+/* 会话行 */
+.conv-list{background:var(--bg-surface);border-top:1px solid var(--hairline);border-bottom:1px solid var(--hairline)}
+.conv-row{position:relative;height:76px;display:flex;align-items:center;gap:12px;padding:0 var(--gutter);background:var(--bg-surface)}
+.conv-row:not(:last-child)::after{content:"";position:absolute;left:76px;right:0;bottom:0;height:1px;background:var(--hairline);z-index:2}
+.conv-avatar{width:48px;height:48px;border-radius:var(--r-avatar);overflow:hidden;flex:none;background:var(--fill-2)}
+.conv-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.conv-avatar.service{background:var(--fill-2);color:var(--slate);display:flex;align-items:center;justify-content:center}
+.conv-main{flex:1;min-width:0}
+.conv-line1{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.conv-name{font-size:15px;font-weight:600;color:var(--ink-1)}
+.conv-time{font-size:11px;font-weight:400;color:var(--ink-3);font-variant-numeric:tabular-nums;flex:none}
+.conv-sum{font-size:13px;font-weight:400;color:var(--ink-2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.section-bar{height:36px;margin:24px var(--gutter) 8px;display:flex;align-items:center;gap:8px}
+.section-bar h3{font-size:17px;font-weight:600;margin:0;color:var(--ink-1)}
+.section-bar .link{margin-left:auto;font-size:15px;color:var(--slate)}
+.notice-grid{display:grid;grid-template-columns:repeat(4,var(--grid-col));padding:16px;height:88px;align-items:center}
+.notice-item{display:flex;flex-direction:column;align-items:center;gap:6px;border:0;background:transparent;font-size:13px;color:var(--ink-1)}
+/* VIP */
+.vip-card{position:relative;margin:0 var(--gutter) 16px;height:132px;border-radius:var(--r-vip);overflow:hidden;color:#fff;background:linear-gradient(135deg,var(--slate) 0%,var(--slate-deep) 100%);box-shadow:var(--shadow-2)}
+.vip-card::before{content:"";position:absolute;inset:0;opacity:.06;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E")}
+.vip-in{position:relative;z-index:1;padding:18px 20px;height:100%;display:flex;flex-direction:column;justify-content:center}
+.vip-title{font-size:20px;font-weight:700}
+.vip-points{font-size:28px;line-height:34px;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums}
+.vip-points small{font-size:13px;font-weight:600}
+.vip-tip{font-size:12px;color:rgba(255,255,255,.80);margin-top:2px}
+.vip-chev{position:absolute;right:18px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:rgba(255,255,255,.9)}
+/* 宫格 / 订单 */
+.grid-card{display:grid;grid-template-columns:repeat(4,1fr);margin:0 var(--gutter) 16px}
+.grid-cell{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:4px;min-height:76px;justify-content:center}
+.grid-cell.social{min-height:92px}
+.grid-cell .gv{font-size:17px;font-weight:600;color:var(--ink-1);font-variant-numeric:tabular-nums}
+.grid-cell .gl{font-size:11px;color:var(--ink-2)}
+.grid-cell .gi{color:var(--slate)}
+.order-head{height:48px;padding:0 var(--gutter);display:flex;align-items:center;border-bottom:1px solid var(--hairline)}
+.order-head h3{font-size:17px;font-weight:600;margin:0}
+.order-head .link{margin-left:auto;font-size:13px;color:var(--slate)}
+.order-grid{display:grid;grid-template-columns:repeat(4,1fr);padding:16px 8px 18px}
+.order-cell{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;border:0;background:transparent;font-size:11px;color:var(--ink-1)}
+/* 头像 header / 页脚 */
+.user-header{padding:66px var(--gutter) 8px;background:var(--bg-canvas)}
+.user-profile{display:flex;align-items:center;gap:14px}
+.lg-avatar{width:72px;height:72px;border-radius:var(--r-avatar);overflow:hidden;flex:none;box-shadow:0 0 0 3px var(--bg-surface),0 2px 8px rgba(31,45,61,.10)}
+.lg-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.u-info{flex:1;min-width:0}
+.u-name{font-size:22px;line-height:28px;font-weight:700;color:var(--ink-1)}
+.u-mail{font-size:13px;color:var(--ink-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.u-level{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 9px;border-radius:var(--r-pill);background:var(--tint);color:var(--accent);font-size:12px;font-weight:600;margin-top:6px}
+.footer{padding:20px 0 var(--pad-bottom);text-align:center;color:var(--ink-2)}
+.footer .brand{font-size:15px;font-weight:700;color:var(--slate);font-family:Georgia,"Songti SC",serif}
+.footer .slogan{font-size:12px;margin-top:4px}
+/* FAB / Home Indicator */
+.fab{position:absolute;right:16px;bottom:calc(var(--tab-h) + 16px);width:56px;height:56px;border-radius:var(--r-avatar);border:0;background:var(--slate-deep);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-float);z-index:24}
+.home-indicator{position:absolute;left:0;right:0;bottom:0;height:var(--safe-bottom);z-index:30;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;pointer-events:none}
+.home-indicator i{display:block;width:134px;height:5px;border-radius:var(--r-pill);background:var(--ink-1);opacity:.85}
+/* 宠物占位 */
+.pet-placeholder{position:absolute;left:0;right:0;top:var(--safe-top);bottom:var(--tab-h);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px}
+.pet-placeholder .stone-paw{width:112px;height:112px;color:var(--fill-3);opacity:.85;position:relative}
+.pet-placeholder .stone-paw::after{content:"";position:absolute;inset:0;opacity:.10;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E")}
+.pet-placeholder .ptxt{font-size:17px;font-weight:600;color:var(--slate)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-paw" viewBox="0 0 24 24"><circle cx="6.7" cy="8.8" r="1.7"/><circle cx="12" cy="6.6" r="1.7"/><circle cx="17.3" cy="8.8" r="1.7"/><path d="M12 10.2c-2.6 0-5 2.3-5 4.8 0 1.8 1.5 2.9 3.1 2.4 1.3-.4 2.5-.4 3.8 0 1.6.5 3.1-.6 3.1-2.4 0-2.5-2.4-4.8-5-4.8Z"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20a1 1 0 0 0 1 1H17.5a1 1 0 0 0 1-1V9.5"/><path d="M9.5 21v-6h5v6"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20v-1.2A4.8 4.8 0 0 1 7.8 14h2.4A4.8 4.8 0 0 1 15 18.8V20"/><path d="M16 5.2a3.2 3.2 0 0 1 0 6"/><path d="M17.5 14.2A4.8 4.8 0 0 1 21 19v1"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M20.5 11.5a8 8 0 0 1-8 8 8.7 8.7 0 0 1-3.6-.8L4 20.5l1.8-4.7A8 8 0 1 1 20.5 11.5Z"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20.5v-1A5.5 5.5 0 0 1 10 14h4a5.5 5.5 0 0 1 5.5 5.5v1"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4.2 4.2"/></symbol>
+<symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 6-2.5 7-2.5 7h17S18 14 18 8Z"/><path d="M10 19a2 2 0 0 0 4 0"/></symbol>
+<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></symbol>
+<symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 8.5 7 12l5-7 5 7 4-3.5-1.6 9.5H4.6L3 8.5Z"/><path d="M4.8 18.5h14.4"/></symbol>
+<symbol id="i-ticket" viewBox="0 0 24 24"><path d="M4 7.5h16v3a1.5 1.5 0 0 0 0 3v3H4v-3a1.5 1.5 0 0 0 0-3v-3Z"/><path d="M12 7.5v9" stroke-dasharray="2 2"/></symbol>
+<symbol id="i-zap" viewBox="0 0 24 24"><path d="M13.5 3 5 13h6l-.5 8L19 11h-6l.5-8Z"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9L12 3.5Z"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7.5-4.6-7.5-9.6A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 2.8C19.5 15.4 12 20 12 20Z"/></symbol>
+<symbol id="i-comment" viewBox="0 0 24 24"><path d="M20 5.5H4A1.5 1.5 0 0 0 2.5 7v8A1.5 1.5 0 0 0 4 16.5h4l4 3 4-3h4a1.5 1.5 0 0 0 1.5-1.5V7A1.5 1.5 0 0 0 20 5.5Z"/></symbol>
+<symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3.5"/><path d="m8 7 4-4 4 4"/><path d="M6 12H5a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-1"/></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-headset" viewBox="0 0 24 24"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="3" y="12.5" width="4" height="6" rx="2"/><rect x="17" y="12.5" width="4" height="6" rx="2"/><path d="M20 18v1a3 3 0 0 1-3 3h-2"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8.2 8.2 0 1 0 20 14.5Z"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/><path d="m9 14 2 2 4-4"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M4 6h.01M4 12h.01M4 18h.01"/><path d="M8 6h12M8 12h12M8 18h12"/></symbol>
+<symbol id="i-gift" viewBox="0 0 24 24"><rect x="3.5" y="9" width="17" height="11" rx="1.5"/><path d="M3.5 13h17M12 9v11"/><path d="M12 9S9 9 8 7.8 8.3 5 9.6 5 12 9 12 9Zm0 0s3 0 4-1.2S15.7 5 14.4 5 12 9 12 9Z"/></symbol>
+<symbol id="i-mappin" viewBox="0 0 24 24"><path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+<symbol id="i-foot" viewBox="0 0 24 24"><path d="M8 4.5c1.3 0 2.2 1.5 2.2 3.4S9.3 11.3 8 11.3 5.8 9.8 5.8 7.9 6.7 4.5 8 4.5Z"/><path d="M16.4 9c1.3 0 2.2 1.5 2.2 3.4s-.9 3.4-2.2 3.4-2.2-1.5-2.2-3.4.9-3.4 2.2-3.4Z"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1-2 2-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5v.2h-2.8v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1-2-2 .1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H4.4v-2.8h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1 2-2 .1.1a1.6 1.6 0 0 0 1.8.3 1.6 1.6 0 0 0 1-1.5V5h2.8v.2a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1 2 2-.1.1a1.6 1.6 0 0 0-.3 1.8 1.6 1.6 0 0 0 1.5 1h.2v2.8h-.2a1.6 1.6 0 0 0-1.5 1Z"/></symbol>
+<symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.2 1-1.2 1.9M12 17h.01"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+<symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h3"/></symbol>
+<symbol id="i-cart" viewBox="0 0 24 24"><circle cx="9" cy="19" r="1.3"/><circle cx="17" cy="19" r="1.3"/><path d="M3 4h2l2.2 10.5h10L19 7H6"/></symbol>
+<symbol id="i-truck" viewBox="0 0 24 24"><path d="M3 6h11v10H3zM14 9h4l3 3v4h-7z"/><circle cx="7" cy="18" r="1.5"/><circle cx="17.5" cy="18" r="1.5"/></symbol>
+<symbol id="i-package" viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7l-8-4Z"/><path d="m4 7 8 4 8-4M12 11v10"/></symbol>
+<symbol id="i-userplus" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.4"/><path d="M3 20v-1a5.5 5.5 0 0 1 11 0v1"/><path d="M18 8v6M15 11h6"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.6"/></symbol>
+</defs></svg>
+
+<div class="screen" id="screen">
+  <!-- 状态栏 -->
+  <div class="statusbar">
+    <div class="sb-time">9:41</div>
+    <div class="sb-right">
+      <svg viewBox="0 0 20 14"><rect x="1" y="9" width="3" height="4" rx="1"/><rect x="6" y="6.5" width="3" height="6.5" rx="1"/><rect x="11" y="3.5" width="3" height="9.5" rx="1"/><rect x="16" y="1" width="3" height="12" rx="1"/></svg>
+      <svg viewBox="0 0 18 14"><path d="M9 12.5 2.4 6a9.4 9.4 0 0 1 13.2 0L9 12.5Z" opacity=".95"/></svg>
+      <svg viewBox="0 0 26 14"><rect x="1" y="2" width="21" height="10" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="3" y="4" width="16" height="6" rx="1.2"/><path d="M24 5.2v3.6a2 2 0 0 0 0-3.6Z"/></svg>
+    </div>
+  </div>
+
+  <div class="app-body">
+    <!-- ========== 宠物占位 ========== -->
+    <section class="page active" data-page="pet">
+      <div class="nav nav-compact"><div class="compact-title">宠物</div></div>
+      <div class="pet-placeholder">
+        <div class="stone-paw"><svg class="ic" style="width:112px;height:112px" ><use href="#i-paw"/></svg></div>
+        <div class="ptxt">宠物 · 敬请期待</div>
+      </div>
+    </section>
+
+    <!-- ========== 商城 ========== -->
+    <section class="page" data-page="home">
+      <div class="nav nav-compact" id="nav-home">
+        <div class="toolbar">
+          <div class="search-pill"><svg class="ic"><use href="#i-search"/></svg><span>搜索宠物好物</span></div>
+          <button class="nav-btn"><svg class="ic"><use href="#i-scan"/></svg></button>
+          <button class="nav-btn"><svg class="ic"><use href="#i-bell"/></svg><span class="badge-num">3</span></button>
+        </div>
+      </div>
+      <div class="scroll home" id="scroll-home">
+        <div class="quick-grid">
+          <div class="quick-cell"><div class="tile"><svg class="ic ic-28"><use href="#i-grid"/></svg></div><span>分类</span></div>
+          <div class="quick-cell"><div class="tile"><svg class="ic ic-28"><use href="#i-crown"/></svg></div><span>会员</span></div>
+          <div class="quick-cell"><div class="tile"><svg class="ic ic-28"><use href="#i-ticket"/></svg></div><span>领券</span></div>
+          <div class="quick-cell"><div class="tile"><svg class="ic ic-28"><use href="#i-zap"/></svg></div><span>限时</span></div>
+        </div>
+        <div class="banner" id="banner">
+          <div class="banner-slide on"><img src="../assets/photo/s-dog2.jpg" alt=""></div>
+          <div class="banner-slide"><img src="../assets/photo/s-walk.jpg" alt=""></div>
+          <div class="banner-slide"><img src="../assets/photo/s-bath.jpg" alt=""></div>
+          <div class="banner-shade"></div>
+          <div class="banner-copy"><span class="banner-tag">品牌日</span><div class="banner-title">秋日焕新 · 给TA一个温暖的窝</div></div>
+          <div class="banner-dots"><button class="on"></button><button></button><button></button></div>
+        </div>
+        <div class="seg-tabs" id="homeTabs">
+          <button class="seg-tab on">猜你喜欢</button><button class="seg-tab">今日爆款</button><button class="seg-tab">口碑好评</button>
+          <div class="seg-indicator" id="homeIndicator"></div>
+        </div>
+        <div class="product-panel on" data-panel="0"><div class="product-grid" id="grid-0"></div></div>
+        <div class="product-panel" data-panel="1"><div class="product-grid" id="grid-1"></div></div>
+        <div class="product-panel" data-panel="2"><div class="product-grid" id="grid-2"></div></div>
+        <div style="height:var(--pad-bottom)"></div>
+      </div>
+    </section>
+
+    <!-- ========== 社区 ========== -->
+    <section class="page" data-page="community">
+      <div class="nav nav-large" id="nav-community">
+        <div class="toolbar nav-right">
+          <button class="nav-btn"><svg class="ic"><use href="#i-search"/></svg></button>
+          <button class="nav-btn"><svg class="ic"><use href="#i-bell"/></svg><span class="badge-dot"></span></button>
+        </div>
+        <div class="large-title">社区</div>
+      </div>
+      <div class="scroll community" id="scroll-community">
+        <div class="seg-tabs" id="communityTabs" style="top:59px">
+          <button class="seg-tab on">推荐</button><button class="seg-tab">关注</button><button class="seg-tab">话题</button>
+          <div class="seg-indicator underline" id="communityIndicator"></div>
+        </div>
+        <div class="search-row"><svg class="ic"><use href="#i-search"/></svg><span>搜索话题或用户</span></div>
+        <div class="chip-scroll">
+          <button class="chip on">全部</button>
+          <button class="chip"><span class="topic">#萌宠日常</span></button>
+          <button class="chip"><span class="topic">#新家开箱</span></button>
+          <button class="chip"><span class="topic">#喂养日记</span></button>
+          <button class="chip"><span class="topic">#好物测评</span></button>
+        </div>
+        <div id="postList"></div>
+        <div style="height:var(--pad-bottom)"></div>
+      </div>
+      <button class="fab"><svg class="ic ic-28"><use href="#i-plus"/></svg></button>
+    </section>
+
+    <!-- ========== 消息 ========== -->
+    <section class="page" data-page="messages">
+      <div class="nav nav-large" id="nav-messages">
+        <div class="toolbar nav-right">
+          <button class="nav-btn"><svg class="ic"><use href="#i-bell"/></svg><span class="badge-dot"></span></button>
+          <button class="nav-btn"><svg class="ic"><use href="#i-userplus"/></svg></button>
+          <button class="nav-btn"><svg class="ic"><use href="#i-chat"/></svg></button>
+        </div>
+        <div class="large-title">消息</div>
+      </div>
+      <div class="scroll messages" id="scroll-messages">
+        <div class="group-card" style="margin-top:4px">
+          <div class="notice-grid">
+            <div class="notice-item"><div class="ring"><svg class="ic ic-20"><use href="#i-grid"/></svg></div><span>全部</span></div>
+            <div class="notice-item"><div class="ring"><svg class="ic ic-20"><use href="#i-heart"/></svg><span class="odot" style="right:2px;top:0"></span></div><span>互动</span></div>
+            <div class="notice-item"><div class="ring"><svg class="ic ic-20"><use href="#i-package"/></svg></div><span>订单</span></div>
+            <div class="notice-item"><div class="ring"><svg class="ic ic-20"><use href="#i-bell"/></svg><span class="odot" style="right:2px;top:0"></span></div><span>系统</span></div>
+          </div>
+        </div>
+        <div class="section-bar"><h3>私信</h3><span class="pill">3</span><span class="link">发起私信</span></div>
+        <div class="conv-list" id="convList"></div>
+        <div style="height:var(--pad-bottom)"></div>
+      </div>
+    </section>
+
+    <!-- ========== 我的 ========== -->
+    <section class="page" data-page="user">
+      <div class="nav nav-user" id="nav-user">
+        <div class="user-title">我的</div>
+        <div class="toolbar nav-right"><button class="nav-btn" id="themeBtn"><svg class="ic"><use href="#i-moon"/></svg></button></div>
+      </div>
+      <div class="scroll user" id="scroll-user">
+        <div class="user-header">
+          <div class="user-profile">
+            <div class="lg-avatar"><img src="../assets/photo/s-cat2.jpg" alt=""></div>
+            <div class="u-info">
+              <div class="u-name">Momo 的家长</div>
+              <div class="u-mail">momo.family@example.com</div>
+              <span class="u-level"><svg class="ic ic-13"><use href="#i-crown"/></svg> 黄金会员</span>
+            </div>
+            <svg class="ic chevron"><use href="#i-chevron"/></svg>
+          </div>
+        </div>
+        <div class="vip-card">
+          <div class="vip-in">
+            <div class="vip-title">MOYUYO 会员</div>
+            <div class="vip-points">2,480 <small>Points</small></div>
+            <div class="vip-tip">再消费 ¥320 可升级铂金会员</div>
+            <svg class="ic vip-chev"><use href="#i-chevron"/></svg>
+          </div>
+        </div>
+        <div class="group-card"><div class="grid-card" id="walletGrid"></div></div>
+        <div class="group-card"><div class="grid-card" id="socialGrid"></div></div>
+        <div class="group-card">
+          <div class="order-head"><h3>我的订单</h3><span class="link">查看全部 ›</span></div>
+          <div class="order-grid" id="orderGrid"></div>
+        </div>
+        <div id="funcList"></div>
+        <div class="footer"><div class="brand">MOYUYO</div><div class="slogan">与爱同行 · 精致养宠日常</div></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- tabBar -->
+  <nav class="tabbar" id="tabbar">
+    <button class="tab active" data-tab="pet"><svg class="ic"><use href="#i-paw"/></svg><span class="tab-label">宠物</span></button>
+    <button class="tab" data-tab="home"><svg class="ic"><use href="#i-home"/></svg><span class="tab-label">商城</span></button>
+    <button class="tab" data-tab="community"><svg class="ic"><use href="#i-users"/></svg><span class="tab-label">社区</span></button>
+    <button class="tab" data-tab="messages"><svg class="ic"><use href="#i-chat"/></svg><span class="tab-label">消息</span><span class="tbadge">3</span></button>
+    <button class="tab" data-tab="user"><svg class="ic"><use href="#i-user"/></svg><span class="tab-label">我的</span></button>
+  </nav>
+  <div class="home-indicator"><i></i></div>
+</div>
+
+<script>
+const ASSET = '../assets/photo/';
+
+/* ---- 数据：冻结文案逐字 ---- */
+const products = {
+  0:[
+    ['云端羊绒宠物窝','柔软保暖 · 可拆洗','¥89.00','¥129.00','4.9','1.2k','p-home-bed.jpg'],
+    ['复古皮革牵引绳','耐磨手柄 · 复古质感','¥39.00','¥59.00','4.8','862','p-gear-leash.jpg'],
+    ['陶瓷慢食碗','防打翻 · 健康进食','¥29.00','¥45.00','4.9','2.1k','p-home-bowl.png'],
+    ['亚麻猫抓板窝','磨爪休息两用','¥49.00','¥69.00','4.7','534','p-play-scratch.png'],
+    ['静音逗猫棒套装','互动解闷 · 猫咪最爱','¥19.00','¥32.00','4.8','1.6k','p-play-toy.jpg'],
+    ['恒温宠物饮水机','循环过滤 · 静音省心','¥119.00','¥169.00','4.9','978','p-gear-fountain.png']
+  ],
+  1:[
+    ['云朵乳胶睡垫','整晚好眠 · 限时特惠','¥79.00','¥139.00','4.9','3.4k','s-cat-sofa.jpg'],
+    ['轻便可折叠航空箱','出行无忧 · 大空间','¥159.00','¥229.00','4.8','1.1k','p-gear-carrier.jpg'],
+    ['冻干混合猫粮 1.5kg','高蛋白 · 无谷物','¥99.00','¥149.00','4.9','5.2k','p-care-treats.jpg'],
+    ['实木猫爬架','剑麻柱 · 稳固不晃','¥199.00','¥299.00','4.7','689','s-cat3.jpg'],
+    ['硅胶折叠旅行碗','随身便携 · 外出必备','¥25.00','¥39.00','4.8','2.8k','p-gear-bowl.png'],
+    ['除毛梳毛刷','一梳即净 · 不伤皮肤','¥35.00','¥55.00','4.9','1.9k','s-bath.jpg']
+  ],
+  2:[
+    ['北欧风实木宠物餐桌','高颜值 · 护颈设计','¥139.00','¥189.00','5.0','421','s-dog.jpg'],
+    ['天然棉绳玩具套装','耐咬磨牙 · 安全无毒','¥29.00','¥49.00','4.9','1.3k','p-play-jacket.jpg'],
+    ['智能称重喂食器','定时定量 · 远程投喂','¥229.00','¥329.00','4.8','756','p-gear-fountain.png'],
+    ['羊羔绒保暖毯','亲肤柔软 · 四季可用','¥59.00','¥89.00','4.9','2.4k','s-cat2.jpg'],
+    ['宠物专用吹水机','低噪速干 · 居家洗护','¥269.00','¥369.00','4.7','318','p-care-shampoo.jpg'],
+    ['陶瓷浮雕慢食盘','美观实用 · 防滑底座','¥45.00','¥69.00','4.9','903','p-care-biscuits.jpg']
+  ]
+};
+function renderProducts(){
+  Object.keys(products).forEach(k=>{
+    document.getElementById('grid-'+k).innerHTML = products[k].map(p=>`
+      <div class="product-card">
+        <div class="pthumb"><img src="${ASSET}${p[6]}" alt=""></div>
+        <div class="pinfo">
+          <div class="pname">${p[0]}</div>
+          <div class="pdesc">${p[1]}</div>
+          <div class="pprice-row"><span class="price-now">${p[2]}</span><span class="price-old">${p[3]}</span></div>
+          <div class="prate"><svg class="ic ic-13 star" style="fill:currentColor"><use href="#i-star"/></svg><span>${p[4]}</span><span>·</span><span>${p[5]}</span></div>
+        </div>
+      </div>`).join('');
+  });
+}
+
+const posts = [
+  ['布丁妈妈','2小时前','#萌宠日常','周末带布丁去公园，第一次踩草地，小心翼翼又兴奋得不行，记录一下这个可爱瞬间～','128','24','s-dog.jpg',['s-walk.jpg']],
+  ['Luna 的窝','5小时前','#新家开箱','新买的云端羊绒宠物窝到了，质感真的很好，和家里的装修也超搭！开箱分享给各位家长。','86','12','s-cat.jpg',['p-home-bed.jpg','s-cat-sofa.jpg','p-home-bowl.png','s-cat3.jpg']],
+  ['阿柴的日常','昨天 21:30','#喂养日记','换粮第三周，肠胃适应得不错，便便也很健康。慢食碗果然有用，吃饭速度降下来了。','203','37','s-golden.jpg',['p-care-treats.jpg','p-home-bowl.png']],
+  ['小满同学','昨天 15:12','#萌宠日常','今天给主子梳毛，掉毛季真的是一场战斗，好在有除毛梳，沙发终于能看了😂 推荐给同样头疼的家长。','64','9','s-cat2.jpg',['s-bath.jpg']],
+  ['Momo 的家长','2天前','#好物测评','恒温饮水机用了半个月，滤芯更换很方便，猫咪喝水量明显变多了，静音效果也符合预期。','152','28','s-cat3.jpg',['p-gear-fountain.png','s-cat.jpg','p-gear-bowl.png']]
+];
+function renderPosts(){
+  document.getElementById('postList').innerHTML = posts.map(p=>{
+    let media;
+    if(p[7].length===1){ media=`<div class="post-media single"><img src="${ASSET}${p[7][0]}" alt=""></div>`; }
+    else { media=`<div class="post-media"><div class="media-grid ${p[7].length===2?'two':''}">${p[7].map(f=>`<div class="media-cell"><img src="${ASSET}${f}" alt=""></div>`).join('')}</div></div>`; }
+    return `<div class="post-card">
+      <div class="post-head"><div class="avatar"><img src="${ASSET}${p[6]}" alt=""></div>
+        <div class="post-who"><div class="post-author">${p[0]}</div><div><span class="post-time">${p[1]}</span> <span class="post-topic">${p[2]}</span></div></div>
+        <svg class="ic ic-20" style="color:var(--ink-3)"><use href="#i-more"/></svg></div>
+      ${media}
+      <div class="post-text">${p[3]}</div>
+      <div class="post-actions">
+        <div class="act liked"><svg class="ic ic-20"><use href="#i-heart"/></svg><span>${p[4]}</span></div>
+        <div class="act"><svg class="ic ic-20"><use href="#i-comment"/></svg><span>${p[5]}</span></div>
+        <div class="act"><svg class="ic ic-20"><use href="#i-share"/></svg><span>分享</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+const convs = [
+  ['客服中心','09:41','您好，有什么可以帮您？','','a-cs.jpg',true],
+  ['Luna 妈妈','09:28','昨天寄的宠物窝收到了吗？','2','s-cat.jpg',false],
+  ['宠物友好酒店','昨天','您的预订已确认，期待入住','','s-hero.jpg',false],
+  ['布丁爸爸','星期三','周末一起带狗狗去遛弯呀','1','s-dog2.jpg',false],
+  ['领券小助手','周二','您有一张 20 元优惠券待领取','','a-brand.jpg',false]
+];
+function renderConvs(){
+  document.getElementById('convList').innerHTML = convs.map(c=>`
+    <div class="conv-row">
+      <div class="conv-avatar ${c[5]?'service':''}">${c[5]?`<svg class="ic ic-20"><use href="#i-headset"/></svg>`:`<img src="${ASSET}${c[4]}" alt="">`}</div>
+      <div class="conv-main"><div class="conv-line1"><span class="conv-name">${c[0]}</span><span class="conv-time">${c[1]}</span></div><div class="conv-sum">${c[2]}</div></div>
+      ${c[3]?`<span class="conv-unread badge-num">${c[3]}</span>`:''}
+    </div>`).join('');
+}
+
+const wallet=[['128','浏览足迹'],['2,480','积分'],['6','优惠券'],['23','收藏']];
+const social=[['36','关注'],['1.2k','粉丝'],['23','收藏'],['','个人中心']];
+const orderItems=[['待付款','i-card','2'],['购物车','i-cart',''],['待收货','i-truck','1'],['待评价','i-star','']];
+const funcGroups=[
+  ['常用',[['签到','i-calendar'],['任务','i-list'],['邀请','i-gift'],['会员','i-crown']]],
+  ['账户与服务',[['地址','i-mappin'],['宠物','i-paw'],['收藏','i-heart'],['足迹','i-foot'],['设置','i-settings']]],
+  ['关于',[['帮助','i-help'],['关于','i-info']]]
+];
+function renderUser(){
+  document.getElementById('walletGrid').innerHTML = wallet.map(w=>`<div class="grid-cell"><div class="gv">${w[0]}</div><div class="gl">${w[1]}</div></div>`).join('');
+  document.getElementById('socialGrid').innerHTML = social.map(s=>`<div class="grid-cell social"><svg class="ic ic-20 gi"><use href="#i-user"/></svg><div class="gv">${s[0]}</div><div class="gl">${s[1]}</div></div>`).join('');
+  document.getElementById('orderGrid').innerHTML = orderItems.map(o=>`<div class="order-cell"><div class="ring" style="width:44px;height:44px;border-radius:14px"><svg class="ic ic-20"><use href="#${o[1]}"/></svg>${o[2]?`<span class="odot">${o[2]}</span>`:''}</div><span>${o[0]}</span></div>`).join('');
+  document.getElementById('funcList').innerHTML = funcGroups.map(g=>`
+    <div class="section-head">${g[0]}</div>
+    <div class="group-card">${g[1].map(f=>`<div class="row"><span class="func-icon"><svg class="ic ic-18"><use href="#${f[1]}"/></svg></span><span class="row-label">${f[0]}</span><svg class="ic chevron"><use href="#i-chevron"/></svg></div>`).join('')}</div>`).join('');
+}
+
+const PAGES=['pet','home','community','messages','user'];
+window.showPage=function(id){
+  if(!PAGES.includes(id)) id='home';
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===id));
+  document.querySelectorAll('.tab').forEach(t=>{const on=t.dataset.tab===id;t.classList.toggle('active',on);t.setAttribute('aria-selected',on?'true':'false');});
+  window.__currentPage=id;
+  return id;
+};
+function applyHash(){ window.showPage(location.hash.replace('#','')||'pet'); }
+window.addEventListener('hashchange',applyHash);
+
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>window.showPage(t.dataset.tab)));
+document.getElementById('themeBtn').addEventListener('click',()=>{document.documentElement.classList.toggle('theme-dark');});
+
+renderProducts(); renderPosts(); renderConvs(); renderUser(); applyHash();
+</script>
+</body>
+</html>

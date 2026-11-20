@@ -1,0 +1,330 @@
+[
+  {
+    "label": "首页",
+    "url": "http://192.168.64.103:5174/pages/tabbar/home",
+    "navErr": null,
+    "shotPath": "D:\\MOYUYOWPC\\.workbuddy\\design\\baseline\\01-home.png",
+    "scrollShotPath": "D:\\MOYUYOWPC\\.workbuddy\\design\\baseline\\01-home-scroll.png",
+    "isLong": true,
+    "info": {
+      "title": "MOYUYO",
+      "scrollHeight": 1491,
+      "innerHeight": 844,
+      "innerWidth": 390,
+      "textLen": 302,
+      "textSample": " Search products, brands, guides   Categories VIP Coupons Flash Sale HOT 欢迎使用MOYUYO For You Hot Today Top Rated 测试-定金预售商品(自动创建) 定金预售测试：先付定金10，尾款期支付90 $100 展示型预售-测试 $129 $159 05 $89 $129 普通商品-牵引绳 $39 $59 普通商品-自动喂食器 $259 $329 定金预售-测试 $68 $88 全款预售-测试 $199 $259  Pets  Shop  Community  Messages  Me",
+      "imgCount": 8,
+      "imgs": [
+        {
+          "src": "http://192.168.64.103:8080/uploads/2026/11/11/794ab7b2df01492a92006e4781e4a06d.jpg",
+          "w": 1368,
+          "h": 768,
+          "rect": {
+            "w": 357,
+            "h": 201,
+            "top": 156
+          }
+        },
+        {
+          "src": "http://192.168.64.103:8080/uploads/2026/11/11/a2ef4eeeefac41d9a67c5d3e304e8f45.jpg",
+          "w": 1024,
+          "h": 1024,
+          "rect": {
+            "w": 176,
+            "h": 176,
+            "top": 420
+          }
+        },
+        {
+          "src": "http://192.168.64.103:8080/uploads/2026/11/11/209531c9ce2b45b982c643986f369264.jpg",
+          "w": 1024,
+          "h": 1024,
+          "rect": {
+            "w": 176,
+            "h": 176,
+            "top": 420
+          }
+        },
+        {
+          "src": "http://192.168.64.103:8080/uploads/2026/11/11/ef9c1fd068f34cb5a37bf0ad4fe2d4d6.jpg",
+          "w": 1024,
+          "h": 1024,
+          "rect": {
+            "w": 176,
+            "h": 176,
+            "top": 692
+          }
+        },
+        {
+          "src": "http://192.168.64.103:8080/uploads/2026/11/11/9cada58b34924161a3d685718c1f3fe9.jpg",
+          "w": 1024,
+          "h": 1024,
+          "rect": {
+            "w": 176,
+            "h": 176,
+            "top": 692
+          }
+        },
+        {
+          "src": "http://192.168.64.103:8080/uploads/2026/11/11/a2ef4eeeefac41d9a67c5d3e304e8f45.jpg",
+          "w": 1024,
+          "h": 1024,
+          "rect": {
+            "w": 176,
+            "h": 176,
+            "top": 940
+          }
+        },
+        {
+          "src": "http://192.168.64.103:8080/uploads/2026/11/11/a2ef4eeeefac41d9a67c5d3e304e8f45.jpg",
+          "w": 1024,
+          "h": 1024,
+          "rect": {
+            "w": 176,
+            "h": 176,
+            "top": 940
+          }
+        },
+        {
+          "src": "http://192.168.64.103:8080/uploads/2026/11/11/ef0290425a944a94a0da1b4320c4676a.jpg",
+          "w": 1216,
+          "h": 912,
+          "rect": {
+            "w": 176,
+            "h": 176,
+            "top": 1187
+          }
+        }
+      ],
+      "bodyBg": "rgb(246, 242, 238)"
+    },
+    "consoleMsgs": [
+      {
+        "type": "debug",
+        "text": "[vite] connecting..."
+      },
+      {
+        "type": "debug",
+        "text": "[vite] connected."
+      },
+      {
+        "type": "log",
+        "text": "\n %c uview-plus V3 %c https://uview-plus.jiangruyi.com/ \n\n color: #ffffff; background: #3c9cff; padding:5px 0; color: #3c9cff;background: #ffffff; padding:5px 0;"
+      },
+      {
+        "type": "log",
+        "text": "[MOYUYO] App Launch"
+      },
+      {
+        "type": "error",
+        "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      }
+    ],
+    "pageErrors": [],
+    "failedReqs": [],
+    "httpErrors": []
+  },
+  {
+    "label": "社区",
+    "url": "http://192.168.64.103:5174/pages/tabbar/community",
+    "navErr": null,
+    "shotPath": "D:\\MOYUYOWPC\\.workbuddy\\design\\baseline\\02-community.png",
+    "scrollShotPath": null,
+    "isLong": false,
+    "info": {
+      "title": "Community",
+      "scrollHeight": 968,
+      "innerHeight": 844,
+      "innerWidth": 390,
+      "textLen": 246,
+      "textSample": "Community Recommended Following Topics Search posts, users, topics… #Cat Daily#Dog Daily#New Pet Owner#Pet Health#Pet Supplies#Pet Fashion#Daily Walk#Pet Training Test User 6 days ago ⋯ 测试 0 0 — No more —  Pets  Shop  Community  Messages  Me",
+      "imgCount": 2,
+      "imgs": [
+        {
+          "src": "http://192.168.64.103:8080/uploads/2026/11/11/97c4beb09dfe470c85038454867f1ea8.jpg",
+          "w": 1024,
+          "h": 1024,
+          "rect": {
+            "w": 37,
+            "h": 37,
+            "top": 201
+          }
+        },
+        {
+          "src": "http://192.168.64.103:8080/uploads/2026/11/12/ea9e80942d9b40e285df76224462b2ed.jpg",
+          "w": 1080,
+          "h": 1440,
+          "rect": {
+            "w": 351,
+            "h": 468,
+            "top": 249
+          }
+        }
+      ],
+      "bodyBg": "rgb(246, 242, 238)"
+    },
+    "consoleMsgs": [
+      {
+        "type": "debug",
+        "text": "[vite] connecting..."
+      },
+      {
+        "type": "debug",
+        "text": "[vite] connected."
+      },
+      {
+        "type": "log",
+        "text": "\n %c uview-plus V3 %c https://uview-plus.jiangruyi.com/ \n\n color: #ffffff; background: #3c9cff; padding:5px 0; color: #3c9cff;background: #ffffff; padding:5px 0;"
+      },
+      {
+        "type": "log",
+        "text": "[MOYUYO] App Launch"
+      }
+    ],
+    "pageErrors": [],
+    "failedReqs": [],
+    "httpErrors": []
+  },
+  {
+    "label": "消息",
+    "url": "http://192.168.64.103:5174/pages/tabbar/messages",
+    "navErr": null,
+    "shotPath": "D:\\MOYUYOWPC\\.workbuddy\\design\\baseline\\03-messages.png",
+    "scrollShotPath": null,
+    "isLong": false,
+    "info": {
+      "title": "Messages",
+      "scrollHeight": 927,
+      "innerHeight": 844,
+      "innerWidth": 390,
+      "textLen": 83,
+      "textSample": "Messages Sign in to view messages Sign In  Pets  Shop  Community  Messages  Me",
+      "imgCount": 0,
+      "imgs": [],
+      "bodyBg": "rgb(246, 242, 238)"
+    },
+    "consoleMsgs": [
+      {
+        "type": "debug",
+        "text": "[vite] connecting..."
+      },
+      {
+        "type": "debug",
+        "text": "[vite] connected."
+      },
+      {
+        "type": "log",
+        "text": "\n %c uview-plus V3 %c https://uview-plus.jiangruyi.com/ \n\n color: #ffffff; background: #3c9cff; padding:5px 0; color: #3c9cff;background: #ffffff; padding:5px 0;"
+      },
+      {
+        "type": "log",
+        "text": "[MOYUYO] App Launch"
+      }
+    ],
+    "pageErrors": [],
+    "failedReqs": [],
+    "httpErrors": []
+  },
+  {
+    "label": "我的",
+    "url": "http://192.168.64.103:5174/pages/tabbar/user",
+    "navErr": null,
+    "shotPath": "D:\\MOYUYOWPC\\.workbuddy\\design\\baseline\\04-user.png",
+    "scrollShotPath": null,
+    "isLong": false,
+    "info": {
+      "title": "Me",
+      "scrollHeight": 894,
+      "innerHeight": 844,
+      "innerWidth": 390,
+      "textLen": 376,
+      "textSample": "Log In / Sign Up Sign in to unlock more member benefits Log In 0 Following 0 Followers 0 Saved 0 Profile My Orders All To Pay Cart To Receive To Review Daily Check-in Missions Invite Friends Membership Shipping Address Pet Profiles My Favorites Browsing History Help Center Settings About MOYUYO ATELIER v1.0.0 Every Journey Together.  Pets  Shop  Community  Messages  Me",
+      "imgCount": 1,
+      "imgs": [
+        {
+          "src": "http://192.168.64.103:5174/static/images/default-avatar.png",
+          "w": 240,
+          "h": 240,
+          "rect": {
+            "w": 62,
+            "h": 62,
+            "top": 28
+          }
+        }
+      ],
+      "bodyBg": "rgb(246, 242, 238)"
+    },
+    "consoleMsgs": [
+      {
+        "type": "debug",
+        "text": "[vite] connecting..."
+      },
+      {
+        "type": "debug",
+        "text": "[vite] connected."
+      },
+      {
+        "type": "log",
+        "text": "\n %c uview-plus V3 %c https://uview-plus.jiangruyi.com/ \n\n color: #ffffff; background: #3c9cff; padding:5px 0; color: #3c9cff;background: #ffffff; padding:5px 0;"
+      },
+      {
+        "type": "log",
+        "text": "[MOYUYO] App Launch"
+      }
+    ],
+    "pageErrors": [],
+    "failedReqs": [],
+    "httpErrors": []
+  },
+  {
+    "label": "宠物",
+    "url": "http://192.168.64.103:5174/pages/tabbar/pet",
+    "navErr": null,
+    "shotPath": "D:\\MOYUYOWPC\\.workbuddy\\design\\baseline\\05-pet.png",
+    "scrollShotPath": null,
+    "isLong": false,
+    "info": {
+      "title": "Pet Hub",
+      "scrollHeight": 894,
+      "innerHeight": 844,
+      "innerWidth": 390,
+      "textLen": 230,
+      "textSample": "Dress Up 3D Room Add a Pet Profile Bath Not recorded Tap to record Vaccine Not recorded Tap to record Deworm Not recorded Tap to record Quick Actions Shop Showcase Calendar Memories Weight  Pets  Shop  Community  Messages  Me",
+      "imgCount": 1,
+      "imgs": [
+        {
+          "src": "http://192.168.64.103:5174/static/pet/pet-hub-scene.jpg",
+          "w": 1672,
+          "h": 941,
+          "rect": {
+            "w": 390,
+            "h": 422,
+            "top": 0
+          }
+        }
+      ],
+      "bodyBg": "rgb(246, 242, 238)"
+    },
+    "consoleMsgs": [
+      {
+        "type": "debug",
+        "text": "[vite] connecting..."
+      },
+      {
+        "type": "debug",
+        "text": "[vite] connected."
+      },
+      {
+        "type": "log",
+        "text": "\n %c uview-plus V3 %c https://uview-plus.jiangruyi.com/ \n\n color: #ffffff; background: #3c9cff; padding:5px 0; color: #3c9cff;background: #ffffff; padding:5px 0;"
+      },
+      {
+        "type": "log",
+        "text": "[MOYUYO] App Launch"
+      }
+    ],
+    "pageErrors": [],
+    "failedReqs": [],
+    "httpErrors": []
+  }
+]

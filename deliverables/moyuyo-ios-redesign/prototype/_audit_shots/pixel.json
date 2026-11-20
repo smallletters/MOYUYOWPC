@@ -1,0 +1,150 @@
+{
+ "bannerTitle": {
+  "samples": 1232,
+  "minRatio": 2.59,
+  "maxRatio": 17.31,
+  "brightestBg": [
+   171,
+   159,
+   145
+  ],
+  "darkestBg": [
+   33,
+   25,
+   19
+  ],
+  "caption": "Banner 主标题（17pt 白字）压图区最差对比度"
+ },
+ "bannerTag": {
+  "samples": 384,
+  "minRatio": 1.26,
+  "maxRatio": 8.52,
+  "brightestBg": [
+   74,
+   56,
+   35
+  ],
+  "darkestBg": [
+   219,
+   201,
+   138
+  ],
+  "caption": "Banner Tag（炭字 on 金底）最差对比度"
+ },
+ "heroKicker": {
+  "samples": 1377,
+  "minRatio": 7.17,
+  "maxRatio": 7.32,
+  "brightestBg": [
+   107,
+   83,
+   61
+  ],
+  "darkestBg": [
+   107,
+   81,
+   61
+  ],
+  "caption": "Hero 左上 kicker（12pt 白字）"
+ },
+ "heroTitle": {
+  "samples": 1782,
+  "minRatio": 7.06,
+  "maxRatio": 7.09,
+  "brightestBg": [
+   108,
+   84,
+   61
+  ],
+  "darkestBg": [
+   107,
+   84,
+   61
+  ],
+  "caption": "Hero 左上 宠物名（17pt 白字）"
+ },
+ "heroPill1": {
+  "samples": 2336,
+  "minRatio": 4.48,
+  "maxRatio": 6.98,
+  "brightestBg": [
+   133,
+   116,
+   101
+  ],
+  "darkestBg": [
+   105,
+   86,
+   66
+  ],
+  "caption": "Hero 右上「装扮」胶囊（13pt 白字）"
+ },
+ "heroPill2": {
+  "samples": 2976,
+  "minRatio": 4.67,
+  "maxRatio": 8.37,
+  "brightestBg": [
+   131,
+   113,
+   97
+  ],
+  "darkestBg": [
+   97,
+   73,
+   51
+  ],
+  "caption": "Hero 右上「3D 空间」胶囊（13pt 白字）"
+ },
+ "heroGeom": {
+  "panel": {
+   "x": 783.5,
+   "y": 178,
+   "w": 111.1875,
+   "h": 63,
+   "right": 894.6875,
+   "bottom": 241
+  },
+  "kicker": {
+   "x": 798.5,
+   "y": 189,
+   "w": 81.1875,
+   "h": 17,
+   "right": 879.6875,
+   "bottom": 206
+  },
+  "title": {
+   "x": 798.5,
+   "y": 208,
+   "w": 81.1875,
+   "h": 22,
+   "right": 879.6875,
+   "bottom": 230
+  },
+  "pills": [
+   {
+    "x": 970.375,
+    "y": 178,
+    "w": 73,
+    "h": 32,
+    "right": 1043.375,
+    "bottom": 210
+   },
+   {
+    "x": 1051.375,
+    "y": 178,
+    "w": 93.125,
+    "h": 32,
+    "right": 1144.5,
+    "bottom": 210
+   },
+   {
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0,
+    "right": 0,
+    "bottom": 0
+   }
+  ]
+ }
+}

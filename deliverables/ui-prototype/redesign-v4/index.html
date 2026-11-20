@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>墨屿 INK ATELIER · Neo-Editorial — 五页原型</title>
+<style>
+/* ============================================================
+   墨屿 INK ATELIER · Neo-Editorial  |  Phase 1 视觉系统
+   冷白纸感 × 单一信号色 · 刊物级排印
+   ============================================================ */
+:root{
+  --bg-canvas:#F5F8F7; --bg-surface:#FFFFFF; --bg-surface-2:#EDF3F0; --bg-inset:#E5EDE9; --bg-veil:rgba(245,248,247,.92);
+  --brand:#125C4E; --brand-pressed:#0A3830; --brand-deep:#0A3830; --brand-tint:rgba(18,92,78,.10); --on-brand:#FFFFFF;
+  --signal:#C6F24E; --on-signal:#1B2B00;
+  --ink-1:#102E28; --ink-2:#4A615B; --ink-3:#647B75; --ink-inverse:#F2F7F5;
+  --line:#E2EAE7; --line-strong:#CBD9D3;
+  --success:#127A52; --warning:#9A5B00; --danger:#C9363B; --info:#1F6FB8;
+  --line-care:#3D977D; --line-gear:#3E6FB0; --line-play:#6F901A; --line-home:#8A6FC0;
+
+  --serif:"Noto Serif SC","Songti SC","SimSun",Georgia,serif;
+  --sans:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  --num:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;min-height:100%;background:#d9e2de;display:flex;align-items:center;justify-content:center;font-family:var(--sans);color:var(--ink-1);-webkit-font-smoothing:antialiased}
+.num{font-family:var(--num);font-variant-numeric:tabular-nums}
+.serif{font-family:var(--serif)}
+button{font-family:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer}
+.ic{display:block;width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic-ff{fill:currentColor;stroke:none}
+.ic-12{width:12px;height:12px}.ic-14{width:14px;height:14px}.ic-16{width:16px;height:16px}.ic-18{width:18px;height:18px}.ic-20{width:20px;height:20px}.ic-24{width:24px;height:24px}.ic-28{width:28px;height:28px}
+
+/* ---------- Device frame ---------- */
+.screen{position:relative;width:393px;height:852px;background:var(--bg-canvas);overflow:hidden;isolation:isolate}
+
+/* ---------- Status bar ---------- */
+.status{position:absolute;left:0;right:0;top:0;height:59px;z-index:80;pointer-events:none;color:var(--ink-1);transition:color .2s}
+.status.light{color:#fff}
+.status .time{position:absolute;left:30px;top:16px;font:700 15px/20px var(--num);letter-spacing:.3px}
+.island{position:absolute;left:50%;top:11px;transform:translateX(-50%);width:124px;height:36px;border-radius:999px;background:#000;display:flex;align-items:center;justify-content:flex-end;padding-right:11px}
+.island::after{content:"";width:9px;height:9px;border-radius:50%;background:#16222c;box-shadow:inset 0 0 0 3px #05090c}
+.sysicons{position:absolute;right:26px;top:18px;display:flex;align-items:center;gap:6px}
+.battery{width:25px;height:13px;border:1.5px solid currentColor;border-radius:3.5px;position:relative;padding:1.5px}
+.battery::after{content:"";position:absolute;right:-3.5px;top:4px;width:2px;height:5px;border-radius:0 2px 2px 0;background:currentColor;opacity:.6}
+.battery i{display:block;height:100%;width:78%;background:currentColor;border-radius:1.5px}
+
+/* ---------- Pages ---------- */
+.pages{position:absolute;left:0;right:0;top:0;bottom:90px;overflow:hidden}
+.page{position:absolute;inset:0;display:none;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.page::-webkit-scrollbar{display:none}
+.page.active{display:block}
+.pad{padding-left:20px;padding-right:20px}
+.page-pad{padding-top:67px}          /* content below status bar */
+.card{background:var(--bg-surface);border:1px solid var(--line);border-radius:20px}
+.mt12{margin-top:12px}.mt16{margin-top:16px}
+.row{display:flex;align-items:center}
+
+/* section label */
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.sec-head h3{margin:0;font:700 16px/22px var(--serif);letter-spacing:.2px}
+.sec-head .more{font-size:12px;color:var(--brand);display:flex;align-items:center;gap:2px}
+
+/* ============================================================
+   PAGE 1 · PET HUB
+   ============================================================ */
+.pet-hero{position:relative;height:330px;background:linear-gradient(135deg,#29463f,#0a3830);overflow:hidden}
+.hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 40%}
+.hero-topshade{position:absolute;left:0;right:0;top:0;height:96px;background:linear-gradient(180deg,rgba(6,32,27,.42),transparent)}
+.hero-bottomshade{position:absolute;left:0;right:0;bottom:0;height:150px;background:linear-gradient(0deg,rgba(4,26,22,.92) 0%,rgba(6,32,27,.55) 46%,transparent 100%)}
+.hero-copy{position:absolute;left:20px;right:20px;bottom:20px;color:#fff}
+.hero-name{font:700 34px/42px var(--serif);letter-spacing:.5px;margin:0 0 2px}
+.hero-sub{font:400 14px/22px var(--sans);color:rgba(255,255,255,.88);margin-bottom:14px}
+.hero-actions{display:flex;gap:10px}
+.glass-pill{height:36px;padding:0 20px;border-radius:999px;background:rgba(10,56,48,.55);border:1px solid rgba(255,255,255,.42);color:#fff;font:600 13px/36px var(--sans);backdrop-filter:blur(8px);display:flex;align-items:center;gap:6px}
+.pet-body{padding-top:12px;padding-bottom:18px}
+/* care 3-col */
+.care-card{height:120px;display:grid;grid-template-columns:repeat(3,1fr);padding:0}
+.care-item{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center;padding:0 4px}
+.care-item + .care-item::before{content:"";position:absolute;left:0;top:22px;bottom:22px;width:1px;background:var(--line)}
+.care-ic{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;margin-bottom:6px}
+.care-label{font:600 14px/20px var(--sans)}
+.care-meta{font:500 12px/16px var(--sans);color:var(--ink-3)}
+.care-state{font:600 11px/16px var(--sans);display:flex;align-items:center;gap:4px;margin-top:2px}
+.care-state i{width:6px;height:6px;border-radius:50%;background:currentColor}
+/* reminder */
+.reminder{height:56px;display:flex;align-items:center;padding:0 14px;gap:12px}
+.reminder .r-ic{width:34px;height:34px;border-radius:11px;background:var(--brand-tint);color:var(--brand);display:grid;place-items:center;flex:none}
+.reminder .r-tx{flex:1;min-width:0}
+.reminder .r-tx b{display:block;font:600 14px/20px var(--sans)}
+.reminder .r-tx small{display:block;font:500 12px/16px var(--sans);color:var(--ink-3)}
+.reminder .r-date{font:600 12px/18px var(--sans);color:var(--brand);margin-right:2px}
+.reminder .chev{color:var(--ink-3)}
+/* quick 5 */
+.quick{height:96px;display:grid;grid-template-columns:repeat(5,1fr);padding:10px 4px}
+.q-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font:500 12px/16px var(--sans)}
+.q-ic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center}
+/* progress */
+.progress-card{height:72px;padding:12px 16px;display:flex;flex-direction:column;justify-content:center;gap:9px}
+.progress-top{display:flex;align-items:baseline;justify-content:space-between}
+.progress-top b{font:600 14px/20px var(--sans)}
+.progress-top span{font:700 24px/30px var(--num);color:var(--brand)}
+.progress-track{height:6px;border-radius:999px;background:var(--bg-inset);overflow:hidden}
+.progress-track i{display:block;height:100%;width:37.5%;border-radius:999px;background:var(--brand)}
+
+/* ============================================================
+   PAGE 2 · HOME / MALL
+   ============================================================ */
+.searchbar{height:56px;display:flex;align-items:center;gap:12px}
+.searchpill{flex:1;height:38px;border-radius:999px;background:var(--bg-surface-2);display:flex;align-items:center;gap:8px;padding:0 14px;color:var(--ink-3);font:400 14px/38px var(--sans)}
+.icon-btn{width:34px;height:34px;display:grid;place-items:center;color:var(--ink-1);position:relative;flex:none}
+.icon-btn .dot{position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:var(--danger);border:1.5px solid var(--bg-canvas)}
+.icon-btn .num-badge{position:absolute;top:-2px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--danger);color:#fff;font:700 10px/16px var(--num);text-align:center;border:1.5px solid var(--bg-canvas)}
+.king{height:92px;display:grid;grid-template-columns:repeat(4,1fr);padding:10px 4px}
+.king-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;font:500 12px/16px var(--sans)}
+.king-ic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center}
+.banner{position:relative;height:140px;margin-top:14px;border-radius:0;overflow:hidden;background:var(--brand-deep)}
+.banner img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 45%;opacity:.5}
+.banner-veil{position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,56,48,.96) 0%,rgba(10,56,48,.78) 48%,rgba(10,56,48,.35) 100%)}
+.brandday{position:absolute;top:12px;right:12px;background:var(--signal);color:var(--on-signal);font:700 11px/22px var(--sans);padding:0 10px;border-radius:6px;letter-spacing:.5px}
+.banner-copy{position:absolute;left:18px;bottom:22px;color:#fff}
+.banner-kicker{font:600 10px/16px var(--sans);letter-spacing:2px;color:var(--signal);margin-bottom:6px}
+.banner-title{font:700 22px/30px var(--serif)}
+.dots{position:absolute;bottom:10px;right:14px;display:flex;gap:5px}
+.dots i{width:5px;height:5px;border-radius:999px;background:rgba(255,255,255,.4)}
+.dots i.on{width:14px;background:var(--signal)}
+.tabs3{height:44px;display:flex;align-items:stretch;position:relative;margin-top:6px}
+.t3{flex:1;display:flex;align-items:center;justify-content:center;position:relative;font:500 14px/44px var(--sans);color:var(--ink-2)}
+.t3.on{color:var(--brand);font-weight:700}
+.t3.on::after{content:"";position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:24px;height:3px;border-radius:2px;background:var(--brand)}
+.product-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding-top:6px;padding-bottom:20px}
+.product{background:var(--bg-surface);border:1px solid var(--line);border-radius:20px;padding:8px;overflow:hidden}
+.product .pimg{position:relative;width:100%;aspect-ratio:1/1;border-radius:12px;overflow:hidden;background:var(--bg-surface-2)}
+.product .pimg img{width:100%;height:100%;object-fit:cover;display:block}
+.product .tag{position:absolute;left:8px;top:8px;font:600 10px/18px var(--sans);padding:0 8px;border-radius:999px;color:var(--ink-1);background:rgba(255,255,255,.92)}
+.product .pname{font:600 14px/22px var(--sans);margin:9px 4px 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.product .pdesc{font:400 12px/18px var(--sans);color:var(--ink-3);margin:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.product .price-row{display:flex;align-items:baseline;justify-content:space-between;margin:6px 4px 4px}
+.price-now{font:700 16px/22px var(--num);color:var(--brand)}
+.price-old{font:400 11px/16px var(--num);color:var(--ink-3);text-decoration:line-through;margin-left:4px}
+.rating{display:flex;align-items:center;gap:2px;font:600 11px/16px var(--num);color:var(--ink-2)}
+.rating .ic{color:var(--line-play)}
+
+/* ============================================================
+   PAGE 3 · COMMUNITY
+   ============================================================ */
+.page-head{height:56px;display:flex;align-items:center;justify-content:space-between}
+.page-head h1{margin:0;font:700 22px/30px var(--serif)}
+.head-actions{display:flex;align-items:center;gap:16px;color:var(--ink-1)}
+.head-actions .icon-btn{width:24px;height:24px}
+.head-actions .dot{top:0;right:0}
+.capsule-search{height:40px;border-radius:999px;background:var(--bg-surface-2);display:flex;align-items:center;gap:8px;padding:0 16px;color:var(--ink-3);font:400 13px/40px var(--sans);margin-top:6px}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:12px 0 4px;margin-left:-20px;margin-right:-20px;padding-left:20px;padding-right:20px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;height:30px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--bg-surface);font:500 12px/28px var(--sans);color:var(--ink-2);white-space:nowrap}
+.chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.post{padding:16px 0 14px;border-bottom:1px solid var(--line)}
+.post-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.avatar{border-radius:50%;object-fit:cover;flex:none;width:56px;height:56px;background:linear-gradient(135deg,var(--brand-tint),var(--bg-inset))}
+.post-head .who{flex:1;min-width:0}
+.post-head .who b{display:block;font:600 14px/20px var(--sans)}
+.post-head .who small{display:block;font:400 12px/16px var(--sans);color:var(--ink-3)}
+.post-head .topic{font:500 12px/18px var(--sans);color:var(--brand);margin-bottom:12px}
+.post-text{font:400 14px/22px var(--sans);color:var(--ink-1);margin:0 0 10px}
+.post-img{width:100%;height:190px;border-radius:12px;object-fit:cover;display:block;background:var(--bg-surface-2)}
+.post-actions{display:flex;align-items:center;gap:24px;margin-top:12px;color:var(--ink-2)}
+.act{display:flex;align-items:center;gap:6px;font:500 13px/20px var(--num)}
+.act.liked{color:var(--brand)}
+.act.liked .ic{fill:currentColor}
+.fab{position:absolute;right:20px;bottom:106px;width:56px;height:56px;border-radius:16px;background:var(--brand);color:var(--signal);display:none;place-items:center;box-shadow:0 8px 24px rgba(10,56,48,.24);z-index:70}
+.fab.show{display:grid}
+.fab .ic{width:28px;height:28px;stroke-width:2.2}
+
+/* ============================================================
+   PAGE 4 · MESSAGES
+   ============================================================ */
+.unread{height:120px;padding:14px 16px;display:flex;flex-direction:column}
+.unread-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.unread-top b{font:700 16px/22px var(--serif)}
+.unread-top span{font:500 12px/18px var(--sans);color:var(--brand)}
+.unread-grid{flex:1;display:grid;grid-template-columns:repeat(4,1fr)}
+.ug-item{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;font:500 12px/16px var(--sans);color:var(--ink-2)}
+.ug-ic{width:42px;height:42px;border-radius:14px;display:grid;place-items:center}
+.ug-item .rd{position:absolute;top:2px;right:calc(50% - 20px);width:8px;height:8px;border-radius:50%;background:var(--danger);border:1.5px solid #fff}
+.priv-row{height:72px;display:flex;align-items:center;gap:12px;padding:0 14px;margin-top:16px}
+.priv-ic{width:38px;height:38px;border-radius:12px;background:var(--brand-tint);color:var(--brand);display:grid;place-items:center;flex:none}
+.priv-row .pt{flex:1}
+.priv-row .pt b{font:600 14px/20px var(--sans)}
+.priv-row .pt small{display:block;font:400 12px/16px var(--sans);color:var(--ink-3)}
+.priv-row .pv{font:400 12px/18px var(--sans);color:var(--ink-3);max-width:132px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv-list{margin-top:8px;overflow:hidden}
+.conv{height:76px;display:flex;align-items:center;gap:12px;padding:0 14px;position:relative}
+.conv + .conv::before{content:"";position:absolute;left:76px;right:14px;top:0;height:1px;background:var(--line)}
+.conv .avatar{width:48px;height:48px}
+.conv .cv-main{flex:1;min-width:0}
+.conv .cv-main .nm{display:flex;align-items:center;gap:6px}
+.conv .cv-main .nm b{font:600 14px/20px var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv .pin{color:var(--ink-3);flex:none}
+.conv .cv-main p{margin:2px 0 0;font:400 12px/18px var(--sans);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv .cv-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:none}
+.conv .cv-right time{font:400 11px/16px var(--num);color:var(--ink-3)}
+.conv .badge{min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--danger);color:#fff;font:700 11px/18px var(--num);text-align:center}
+
+/* ============================================================
+   PAGE 5 · USER
+   ============================================================ */
+.user-body{padding-top:67px;padding-bottom:24px}
+.profile{height:120px;display:flex;align-items:center;gap:16px}
+.profile .avatar{width:96px;height:96px}
+.profile .pf b{display:block;font:700 22px/30px var(--serif)}
+.profile .pf .mail{font:400 12px/18px var(--sans);color:var(--ink-3);margin:2px 0 10px}
+.vip-pill{display:inline-flex;align-items:center;height:26px;padding:0 12px;border-radius:999px;background:var(--brand-deep);color:var(--signal);font:600 12px/26px var(--sans);gap:5px}
+.vip-card{height:132px;background:var(--brand-deep);border-radius:0;padding:16px 18px;color:#fff;display:flex;flex-direction:column}
+.vip-card .vip-tag{font:700 11px/16px var(--sans);letter-spacing:2px;color:var(--signal)}
+.vip-card .points{font:700 34px/42px var(--serif);color:var(--signal);margin-top:4px}
+.vip-card .upgr{font:400 14px/21px var(--sans);color:rgba(255,255,255,.9);margin-top:auto}
+.vip-track{height:6px;border-radius:999px;background:rgba(255,255,255,.2);margin-top:8px;overflow:hidden}
+.vip-track i{display:block;height:100%;width:78%;background:var(--signal);border-radius:999px}
+.wallet{height:88px;display:grid;grid-template-columns:repeat(4,1fr);padding:10px 4px}
+.w-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.w-item b{font:700 18px/24px var(--num);color:var(--brand)}
+.w-item small{font:500 12px/16px var(--sans);color:var(--ink-3)}
+.social{height:80px;display:grid;grid-template-columns:repeat(4,1fr);padding:8px 4px}
+.s-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font:500 12px/16px var(--sans);color:var(--ink-2)}
+.orders{height:96px;padding:12px 14px}
+.orders .oh{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.orders .oh b{font:700 15px/21px var(--serif)}
+.orders .oh .more{font:500 12px/18px var(--sans);color:var(--brand);display:flex;align-items:center;gap:2px}
+.orders-grid{display:grid;grid-template-columns:repeat(4,1fr)}
+.o-item{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;font:500 12px/16px var(--sans);color:var(--ink-2)}
+.o-ic{position:relative;color:var(--brand)}
+.o-item .ob{position:absolute;top:-4px;right:-10px;min-width:15px;height:15px;padding:0 3px;border-radius:999px;background:var(--danger);color:#fff;font:700 10px/15px var(--num);text-align:center}
+.func-list{overflow:hidden}
+.func{height:52px;display:flex;align-items:center;gap:14px;padding:0 16px;position:relative}
+.func + .func::before{content:"";position:absolute;left:54px;right:0;top:0;height:1px;background:var(--line)}
+.func .f-ic{width:22px;color:var(--brand);display:grid;place-items:center;flex:none}
+.func .f-tx{flex:1;font:400 14px/20px var(--sans)}
+.func .chev{color:var(--ink-3)}
+.footer{text-align:center;font:400 12px/18px var(--sans);color:var(--ink-3);padding:20px 0 8px;letter-spacing:.5px}
+
+/* ---------- Tab bar ---------- */
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:90px;z-index:80;background:var(--bg-veil);backdrop-filter:saturate(180%) blur(18px);-webkit-backdrop-filter:saturate(180%) blur(18px);border-top:1px solid var(--line)}
+.tabs{height:56px;display:flex;align-items:center;padding:0 4px}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--ink-3);font:500 10px/14px var(--sans)}
+.tab.on{color:var(--brand)}
+.tab .ic{width:24px;height:24px}
+.home-indicator{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);width:134px;height:5px;border-radius:999px;background:#20312c}
+
+/* ---------- Interaction toast ---------- */
+.toast{position:absolute;left:50%;bottom:110px;transform:translateX(-50%) translateY(10px);background:rgba(10,56,48,.94);color:#fff;font:500 13px/18px var(--sans);padding:9px 16px;border-radius:999px;z-index:99;opacity:0;pointer-events:none;transition:.25s;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- ===== Inline icon sprite ===== -->
+<svg class="sprite" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+<defs>
+  <symbol id="i-paw" viewBox="0 0 24 24"><circle cx="6.5" cy="8.5" r="2"/><circle cx="12" cy="6.5" r="2"/><circle cx="17.5" cy="8.5" r="2"/><path d="M12 11c-3.2 0-6 3-6 5.7 0 2 1.6 3 3.2 3 1.4 0 1.9-1 2.8-1s1.4 1 2.8 1c1.6 0 3.2-1 3.2-3 0-2.7-2.8-5.7-6-5.7z"/></symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24"><path d="M4.5 9h15l-1 11h-13z"/><path d="M9 9V6.5a3 3 0 0 1 6 0V9"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 15a3 3 0 0 1-3 3H9l-5 3V6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3z"/><path d="M8 10h8M8 13h5"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.5 8l8.5 6 8.5-6"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 6-2.5 7-2.5 8h17c0-1-2.5-2-2.5-8"/><path d="M10 21h4"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 9V6a2 2 0 0 1 2-2h3M15 4h3a2 2 0 0 1 2 2v3M20 15v3a2 2 0 0 1-2 2h-3M9 20H6a2 2 0 0 1-2-2v-3"/><path d="M4 12h16"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle class="ic-ff" cx="5" cy="12" r="1.6"/><circle class="ic-ff" cx="12" cy="12" r="1.6"/><circle class="ic-ff" cx="19" cy="12" r="1.6"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-7.5-10A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.5 2.9c0 5.4-7.5 10-7.5 10z"/></symbol>
+  <symbol id="i-comment" viewBox="0 0 24 24"><path d="M20 15a3 3 0 0 1-3 3H8l-4 3V6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3z"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3H7l3-3z"/><path d="M12 13v7"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path class="ic-ff" d="M12 3l2.8 5.6 6.2.9-4.5 4.4 1.1 6.1L12 17.2l-5.6 2.8 1-6.1L2.9 9.5l6.2-.9z"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.2"/></symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24"><path d="M4 8l4 3 4-6 4 6 4-3-1.5 10h-13z"/><path d="M5.5 18h13"/></symbol>
+  <symbol id="i-ticket" viewBox="0 0 24 24"><path d="M4 8a2 2 0 0 0 0 4v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2a2 2 0 0 0 0-4V8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2z"/><path d="M12 6v2M12 12v2M12 17v-1"/></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3s5 4.5 5 9a5 5 0 0 1-10 0c0-2 1-3.2 2-4.2 0 2 1 3 2 3 0-3 1-5 1-7.8z"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7z"/><path d="M18.5 15.5l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-syringe" viewBox="0 0 24 24"><path d="M14 4l6 6M11.5 6.5l6 6M4 20l5-5M8 7l9 9"/><path d="M3 21l3-1-2-2z"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><rect x="3" y="6.5" width="18" height="12.5" rx="2"/><circle cx="12" cy="12.8" r="3.3"/><path d="M8 6.5l1-2h6l1 2"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24"><path d="M12 4v16M5 9h14"/><path d="M5 9l-2 5h4zM19 9l-2 5h4z"/><path d="M8 20h8"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h4"/></symbol>
+  <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 5.5a3 3 0 0 1 0 5.5M18 20a6 6 0 0 0-1.5-4"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4l11-11-4-4L4 16z"/><path d="M14 6l4 4"/></symbol>
+  <symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="11" rx="2"/><path d="M3 13h18M12 9v11"/><path d="M12 9C9 9 7 8 7 6.2A2.2 2.2 0 0 1 11.4 6c.3 1.2.6 3 .6 3M12 9c3 0 5-1 5-2.8A2.2 2.2 0 0 0 12.6 6c-.3 1.2-.6 3-.6 3"/></symbol>
+  <symbol id="i-cart" viewBox="0 0 24 24"><circle class="ic-ff" cx="9" cy="20" r="1.4"/><circle class="ic-ff" cx="17" cy="20" r="1.4"/><path d="M3 4h2l2.4 11h9.8L20 8H6"/></symbol>
+  <symbol id="i-truck" viewBox="0 0 24 24"><rect x="2" y="7" width="12" height="10"/><path d="M14 10h4l3 3v4h-7z"/><circle cx="7" cy="18" r="1.5"/><circle cx="17.5" cy="18" r="1.5"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.6"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3.5h12v17l-6-4-6 4z"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2.2" fill="var(--bg-surface)"/><circle cx="15" cy="12" r="2.2" fill="var(--bg-surface)"/><circle cx="10" cy="17" r="2.2" fill="var(--bg-surface)"/></symbol>
+  <symbol id="i-pinloc" viewBox="0 0 24 24"><path d="M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l4.5 4.5L19 7"/></symbol>
+</defs>
+</svg>
+
+<div class="screen" id="app">
+
+  <!-- Status bar -->
+  <div class="status" id="status">
+    <span class="time">9:41</span>
+    <span class="island"></span>
+    <span class="sysicons">
+      <svg class="ic ic-16" viewBox="0 0 24 24" style="stroke-width:2.4"><path d="M4 18v-3M9 18v-6M14 18v-9M19 18V6"/></svg>
+      <svg class="ic ic-16" viewBox="0 0 24 24" style="stroke-width:2.2"><path d="M2.5 9a14 14 0 0 1 19 0M6 12.5a9 9 0 0 1 12 0M9.5 16a4.5 4.5 0 0 1 5 0"/><circle class="ic-ff" cx="12" cy="19" r="1.2"/></svg>
+      <span class="battery"><i></i></span>
+    </span>
+  </div>
+
+  <div class="pages">
+
+    <!-- ============ PAGE 1 : PET ============ -->
+    <section class="page active" data-page="pet">
+      <div class="pet-hero">
+        <img class="hero-img" src="../assets/pet-hub-scene.jpg" alt="Luna">
+        <div class="hero-topshade"></div>
+        <div class="hero-bottomshade"></div>
+        <div class="hero-copy">
+          <h1 class="hero-name">Luna, 3岁</h1>
+          <div class="hero-sub">边境牧羊犬 · 妹妹</div>
+          <div class="hero-actions">
+            <button class="glass-pill" data-toast="打开装扮工坊"><svg class="ic ic-16"><use href="#i-sparkle"/></svg>装扮</button>
+            <button class="glass-pill" data-toast="进入 3D 空间"><svg class="ic ic-16"><use href="#i-camera"/></svg>3D空间</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pad pet-body">
+        <div class="care-card card">
+          <div class="care-item">
+            <div class="care-ic" style="background:rgba(61,151,125,.12);color:var(--line-care)"><svg class="ic ic-20"><use href="#i-sparkle"/></svg></div>
+            <div class="care-label">洗护</div>
+            <div class="care-meta">12天前</div>
+            <div class="care-state" style="color:var(--line-care)"><i></i>状态良好</div>
+          </div>
+          <div class="care-item">
+            <div class="care-ic" style="background:rgba(154,91,0,.12);color:var(--warning)"><svg class="ic ic-20"><use href="#i-shield"/></svg></div>
+            <div class="care-label">疫苗</div>
+            <div class="care-meta">3天前</div>
+            <div class="care-state" style="color:var(--warning)"><i></i>即将到期</div>
+          </div>
+          <div class="care-item">
+            <div class="care-ic" style="background:rgba(201,54,59,.12);color:var(--danger)"><svg class="ic ic-20"><use href="#i-syringe"/></svg></div>
+            <div class="care-label">驱虫</div>
+            <div class="care-meta">今天</div>
+            <div class="care-state" style="color:var(--danger)"><i></i>该驱虫了</div>
+          </div>
+        </div>
+
+        <button class="reminder card mt12" style="width:100%;text-align:left" data-toast="查看护理提醒">
+          <span class="r-ic"><svg class="ic ic-20"><use href="#i-calendar"/></svg></span>
+          <span class="r-tx"><b>下次护理提醒</b><small>洗澡 · 洗护套餐</small></span>
+          <span class="r-date num">9月28日</span>
+          <svg class="ic ic-16 chev"><use href="#i-chev"/></svg>
+        </button>
+
+        <div class="quick card mt12">
+          <button class="q-item" data-toast="商城"><span class="q-ic" style="background:rgba(18,92,78,.10);color:var(--brand)"><svg class="ic ic-24"><use href="#i-bag"/></svg></span>商城</button>
+          <button class="q-item" data-toast="晒宠"><span class="q-ic" style="background:rgba(138,111,192,.12);color:var(--line-home)"><svg class="ic ic-24"><use href="#i-camera"/></svg></span>晒宠</button>
+          <button class="q-item" data-toast="健康日历"><span class="q-ic" style="background:rgba(62,111,176,.12);color:var(--line-gear)"><svg class="ic ic-24"><use href="#i-calendar"/></svg></span>健康日历</button>
+          <button class="q-item" data-toast="记忆"><span class="q-ic" style="background:rgba(61,151,125,.12);color:var(--line-care)"><svg class="ic ic-24"><use href="#i-bookmark"/></svg></span>记忆</button>
+          <button class="q-item" data-toast="体重"><span class="q-ic" style="background:rgba(111,144,26,.12);color:var(--line-play)"><svg class="ic ic-24"><use href="#i-scale"/></svg></span>体重</button>
+        </div>
+
+        <div class="progress-card card mt12">
+          <div class="progress-top"><b>护理进度</b><span class="num">3/8</span></div>
+          <div class="progress-track"><i></i></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 2 : HOME / MALL ============ -->
+    <section class="page page-pad" data-page="home">
+      <div class="pad">
+        <div class="searchbar">
+          <div class="searchpill" data-toast="搜索宠物好物"><svg class="ic ic-18"><use href="#i-search"/></svg><span>搜索宠物好物</span></div>
+          <button class="icon-btn" data-toast="扫一扫"><svg class="ic ic-24"><use href="#i-scan"/></svg></button>
+          <button class="icon-btn" data-toast="3 条通知"><svg class="ic ic-24"><use href="#i-bell"/></svg><i class="num-badge num">3</i></button>
+        </div>
+
+        <div class="king card">
+          <button class="king-item" data-toast="分类"><span class="king-ic" style="background:rgba(18,92,78,.10);color:var(--brand)"><svg class="ic ic-24"><use href="#i-grid"/></svg></span>分类</button>
+          <button class="king-item" data-toast="会员中心"><span class="king-ic" style="background:rgba(111,144,26,.12);color:var(--line-play)"><svg class="ic ic-24"><use href="#i-crown"/></svg></span>会员</button>
+          <button class="king-item" data-toast="领券中心"><span class="king-ic" style="background:rgba(201,54,59,.10);color:var(--danger)"><svg class="ic ic-24"><use href="#i-ticket"/></svg></span>领券</button>
+          <button class="king-item" data-toast="限时特惠"><span class="king-ic" style="background:rgba(154,91,0,.12);color:var(--warning)"><svg class="ic ic-24"><use href="#i-flame"/></svg></span>限时</button>
+        </div>
+
+        <div class="banner" data-toast="品牌日专场">
+          <img src="../assets/photo/s-golden.jpg" alt="">
+          <div class="banner-veil"></div>
+          <div class="brandday">品牌日</div>
+          <div class="banner-copy">
+            <div class="banner-kicker">MOYUYO SELECT</div>
+            <div class="banner-title">秋日焕新<br>给TA一个温暖的窝</div>
+          </div>
+          <div class="dots"><i class="on"></i><i></i><i></i></div>
+        </div>
+
+        <div class="tabs3" id="homeTabs">
+          <button class="t3 on" data-tab="0">猜你喜欢</button>
+          <button class="t3" data-tab="1">今日爆款</button>
+          <button class="t3" data-tab="2">口碑好评</button>
+        </div>
+
+        <div class="product-grid">
+          <article class="product">
+            <div class="pimg"><img src="../assets/photo/p-home-bed.jpg" alt="云端羊绒宠物窝"><span class="tag">家居</span></div>
+            <div class="pname">云端羊绒宠物窝</div><div class="pdesc">柔软保暖 · 可拆洗</div>
+            <div class="price-row"><span><span class="price-now num">￥89.00</span><span class="price-old num">￥199</span></span><span class="rating"><svg class="ic ic-12"><use href="#i-star"/></svg>4.9</span></div>
+          </article>
+          <article class="product">
+            <div class="pimg"><img src="../assets/photo/p-care-shampoo.jpg" alt="柔顺香波"><span class="tag">洗护</span></div>
+            <div class="pname">柔顺香波</div><div class="pdesc">温和低敏 · 蓬松顺毛</div>
+            <div class="price-row"><span><span class="price-now num">￥59.00</span><span class="price-old num">￥89</span></span><span class="rating"><svg class="ic ic-12"><use href="#i-star"/></svg>4.8</span></div>
+          </article>
+          <article class="product">
+            <div class="pimg"><img src="../assets/photo/p-care-treats.jpg" alt="洁齿零食"><span class="tag">零食</span></div>
+            <div class="pname">洁齿零食</div><div class="pdesc">清新口气 · 磨牙洁齿</div>
+            <div class="price-row"><span><span class="price-now num">￥39.00</span><span class="price-old num">￥69</span></span><span class="rating"><svg class="ic ic-12"><use href="#i-star"/></svg>4.7</span></div>
+          </article>
+          <article class="product">
+            <div class="pimg"><img src="../assets/photo/p-play-toy.jpg" alt="耐咬玩具套装"><span class="tag">玩具</span></div>
+            <div class="pname">耐咬玩具套装</div><div class="pdesc">互动解闷 · 安全无毒</div>
+            <div class="price-row"><span><span class="price-now num">￥29.00</span><span class="price-old num">￥49</span></span><span class="rating"><svg class="ic ic-12"><use href="#i-star"/></svg>4.8</span></div>
+          </article>
+          <article class="product">
+            <div class="pimg"><img src="../assets/photo/p-gear-fountain.png" alt="恒温饮水机"><span class="tag">用品</span></div>
+            <div class="pname">恒温饮水机</div><div class="pdesc">循环过滤 · 静音大容量</div>
+            <div class="price-row"><span><span class="price-now num">￥129.00</span><span class="price-old num">￥199</span></span><span class="rating"><svg class="ic ic-12"><use href="#i-star"/></svg>4.9</span></div>
+          </article>
+          <article class="product">
+            <div class="pimg"><img src="../assets/photo/p-gear-carrier2.jpg" alt="便携外出包"><span class="tag">出行</span></div>
+            <div class="pname">便携外出包</div><div class="pdesc">透气轻盈 · 可折叠收纳</div>
+            <div class="price-row"><span><span class="price-now num">￥149.00</span><span class="price-old num">￥229</span></span><span class="rating"><svg class="ic ic-12"><use href="#i-star"/></svg>4.6</span></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 3 : COMMUNITY ============ -->
+    <section class="page page-pad" data-page="community">
+      <div class="pad">
+        <div class="page-head">
+          <h1>社区</h1>
+          <div class="head-actions">
+            <button class="icon-btn" data-toast="搜索社区"><svg class="ic ic-20"><use href="#i-search"/></svg></button>
+            <button class="icon-btn" data-toast="3 条通知"><svg class="ic ic-20"><use href="#i-bell"/></svg><i class="dot"></i></button>
+          </div>
+        </div>
+        <div class="tabs3" id="commTabs">
+          <button class="t3 on">推荐</button>
+          <button class="t3">关注</button>
+          <button class="t3">话题</button>
+        </div>
+        <div class="capsule-search" data-toast="搜索话题或用户"><svg class="ic ic-16"><use href="#i-search"/></svg><span>搜索话题或用户</span></div>
+        <div class="chips">
+          <button class="chip on">#晒宠日常</button>
+          <button class="chip">#萌宠日常</button>
+          <button class="chip">#好物测评</button>
+          <button class="chip">#新家开箱</button>
+          <button class="chip">#遛狗日记</button>
+        </div>
+
+        <article class="post">
+          <div class="post-head">
+            <img class="avatar" src="../assets/photo/s-dog.jpg" alt="">
+            <div class="who"><b>Luna 妈妈</b><small>5小时前</small></div>
+            <button class="icon-btn" data-toast="更多"><svg class="ic ic-20"><use href="#i-more"/></svg></button>
+          </div>
+          <div class="topic">#新家开箱</div>
+          <p class="post-text">云端羊绒宠物窝到了，质感真的很好，和家里的装修也超搭！开箱分享给各位家长～</p>
+          <img class="post-img" src="../assets/photo/s-walk.jpg" alt="开箱分享">
+          <div class="post-actions">
+            <button class="act liked like-btn"><svg class="ic ic-18"><use href="#i-heart"/></svg><span>128</span></button>
+            <button class="act" data-toast="查看评论"><svg class="ic ic-18"><use href="#i-comment"/></svg><span>24</span></button>
+            <button class="act" data-toast="分享"><svg class="ic ic-18"><use href="#i-share"/></svg><span>分享</span></button>
+          </div>
+        </article>
+
+        <article class="post">
+          <div class="post-head">
+            <img class="avatar" src="../assets/photo/s-golden.jpg" alt="">
+            <div class="who"><b>布丁妈妈</b><small>2小时前</small></div>
+            <button class="icon-btn" data-toast="更多"><svg class="ic ic-20"><use href="#i-more"/></svg></button>
+          </div>
+          <div class="topic">#萌宠日常</div>
+          <p class="post-text">今天带布丁去公园，第一次踩草地，小心翼翼又兴奋得不行，记录一下这个可爱瞬间 🐾</p>
+          <img class="post-img" src="../assets/photo/s-dog2.jpg" alt="公园遛狗">
+          <div class="post-actions">
+            <button class="act like-btn"><svg class="ic ic-18"><use href="#i-heart"/></svg><span>86</span></button>
+            <button class="act" data-toast="查看评论"><svg class="ic ic-18"><use href="#i-comment"/></svg><span>12</span></button>
+            <button class="act" data-toast="分享"><svg class="ic ic-18"><use href="#i-share"/></svg><span>分享</span></button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 4 : MESSAGES ============ -->
+    <section class="page page-pad" data-page="messages">
+      <div class="pad">
+        <div class="page-head">
+          <h1>消息</h1>
+          <div class="head-actions">
+            <button class="icon-btn" data-toast="发起群聊"><svg class="ic ic-20"><use href="#i-people"/></svg></button>
+            <button class="icon-btn" data-toast="发起私信"><svg class="ic ic-20"><use href="#i-edit"/></svg></button>
+          </div>
+        </div>
+
+        <div class="unread card">
+          <div class="unread-top"><b>3条未读消息</b><span data-toast="全部标记已读">全部已读 ›</span></div>
+          <div class="unread-grid">
+            <button class="ug-item"><span class="ug-ic" style="background:rgba(18,92,78,.10);color:var(--brand)"><svg class="ic ic-20"><use href="#i-grid"/></svg></span><i class="rd"></i>全部</button>
+            <button class="ug-item"><span class="ug-ic" style="background:rgba(138,111,192,.12);color:var(--line-home)"><svg class="ic ic-20"><use href="#i-heart"/></svg></span><i class="rd"></i>互动</button>
+            <button class="ug-item"><span class="ug-ic" style="background:rgba(62,111,176,.12);color:var(--line-gear)"><svg class="ic ic-20"><use href="#i-bag"/></svg></span>订单</button>
+            <button class="ug-item"><span class="ug-ic" style="background:rgba(61,151,125,.12);color:var(--line-care)"><svg class="ic ic-20"><use href="#i-bell"/></svg></span>系统</button>
+          </div>
+        </div>
+
+        <button class="priv-row card" style="width:100%;text-align:left" data-toast="查看私信">
+          <span class="priv-ic"><svg class="ic ic-20"><use href="#i-msg"/></svg></span>
+          <span class="pt"><b>私信</b><small>与好友一对一交流</small></span>
+          <span class="pv">Luna 妈妈：太可爱啦！…</span>
+          <svg class="ic ic-16 chev" style="color:var(--ink-3)"><use href="#i-chev"/></svg>
+        </button>
+
+        <div class="conv-list card">
+          <button class="conv" data-toast="打开会话：客服中心" style="width:100%;text-align:left">
+            <img class="avatar" src="../assets/photo/a-cs.jpg" alt="">
+            <span class="cv-main"><span class="nm"><b>客服中心</b><svg class="ic ic-12 pin"><use href="#i-pin"/></svg></span><p>您好，有什么可以帮您？</p></span>
+            <span class="cv-right"><time>09:41</time><span class="badge num">2</span></span>
+          </button>
+          <button class="conv" data-toast="打开会话：Luna姐姐" style="width:100%;text-align:left">
+            <img class="avatar" src="../assets/photo/s-dog.jpg" alt="">
+            <span class="cv-main"><span class="nm"><b>Luna 姐姐</b></span><p>昨天寄的宠物窝收到了吗？</p></span>
+            <span class="cv-right"><time>09:28</time></span>
+          </button>
+          <button class="conv" data-toast="打开会话：带带好朋友" style="width:100%;text-align:left">
+            <img class="avatar" src="../assets/photo/s-cat2.jpg" alt="">
+            <span class="cv-main"><span class="nm"><b>带带好朋友</b><svg class="ic ic-12 pin"><use href="#i-pin"/></svg></span><p>周末一起带狗狗去公园吧～</p></span>
+            <span class="cv-right"><time>星期三</time><span class="badge num">1</span></span>
+          </button>
+          <button class="conv" data-toast="打开会话：布丁妈妈" style="width:100%;text-align:left">
+            <img class="avatar" src="../assets/photo/s-golden.jpg" alt="">
+            <span class="cv-main"><span class="nm"><b>布丁妈妈</b></span><p>照片拍得真好看，谢谢分享！</p></span>
+            <span class="cv-right"><time>星期二</time></span>
+          </button>
+          <button class="conv" data-toast="打开会话：宠物医院" style="width:100%;text-align:left">
+            <img class="avatar" src="../assets/photo/s-cat.jpg" alt="">
+            <span class="cv-main"><span class="nm"><b>宠物医院</b></span><p>您的疫苗预约提醒已到达</p></span>
+            <span class="cv-right"><time>周一</time></span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 5 : USER ============ -->
+    <section class="page user-body" data-page="user">
+      <div class="pad">
+        <div class="profile">
+          <img class="avatar" src="../assets/photo/s-cat2.jpg" alt="Momo">
+          <div class="pf">
+            <b>Momo 的家长</b>
+            <div class="mail">momo.family@example.com</div>
+            <span class="vip-pill"><svg class="ic ic-14"><use href="#i-crown"/></svg>黄金会员</span>
+          </div>
+        </div>
+
+        <div class="vip-card">
+          <div class="vip-tag">VIP MEMBER</div>
+          <div class="points num">2,480 Points</div>
+          <div class="upgr">再消费 ¥320 升级铂金</div>
+          <div class="vip-track"><i></i></div>
+        </div>
+
+        <div class="wallet card mt16">
+          <button class="w-item" data-toast="浏览足迹"><b class="num">128</b><small>浏览足迹</small></button>
+          <button class="w-item" data-toast="积分"><b class="num">2,480</b><small>积分</small></button>
+          <button class="w-item" data-toast="优惠券"><b class="num">6</b><small>优惠券</small></button>
+          <button class="w-item" data-toast="收藏"><b class="num">23</b><small>收藏</small></button>
+        </div>
+
+        <div class="social card mt12">
+          <button class="s-item" data-toast="关注"><svg class="ic ic-20" style="color:var(--brand)"><use href="#i-people"/></svg>关注</button>
+          <button class="s-item" data-toast="粉丝"><svg class="ic ic-20" style="color:var(--line-gear)"><use href="#i-user"/></svg>粉丝</button>
+          <button class="s-item" data-toast="收藏"><svg class="ic ic-20" style="color:var(--line-home)"><use href="#i-bookmark"/></svg>收藏</button>
+          <button class="s-item" data-toast="个人中心"><svg class="ic ic-20" style="color:var(--line-care)"><use href="#i-paw"/></svg>个人中心</button>
+        </div>
+
+        <div class="orders card mt16">
+          <div class="oh"><b>我的订单</b><span class="more" data-toast="查看全部订单">查看全部 <svg class="ic ic-12"><use href="#i-chev"/></svg></span></div>
+          <div class="orders-grid">
+            <button class="o-item" data-toast="待付款"><span class="o-ic"><svg class="ic ic-24"><use href="#i-ticket"/></svg><i class="ob num">2</i></span>待付款</button>
+            <button class="o-item" data-toast="购物车"><span class="o-ic"><svg class="ic ic-24"><use href="#i-cart"/></svg></span>购物车</button>
+            <button class="o-item" data-toast="待收货"><span class="o-ic"><svg class="ic ic-24"><use href="#i-truck"/></svg><i class="ob num">1</i></span>待收货</button>
+            <button class="o-item" data-toast="待评价"><span class="o-ic"><svg class="ic ic-24"><use href="#i-box"/></svg></span>待评价</button>
+          </div>
+        </div>
+
+        <div class="func-list card mt16">
+          <button class="func" data-toast="每日签到" style="width:100%;text-align:left"><span class="f-ic"><svg class="ic ic-20"><use href="#i-check"/></svg></span><span class="f-tx">签到</span><svg class="ic ic-16 chev"><use href="#i-chev"/></svg></button>
+          <button class="func" data-toast="任务中心" style="width:100%;text-align:left"><span class="f-ic"><svg class="ic ic-20"><use href="#i-clip"/></svg></span><span class="f-tx">任务</span><svg class="ic ic-16 chev"><use href="#i-chev"/></svg></button>
+          <button class="func" data-toast="邀请好友" style="width:100%;text-align:left"><span class="f-ic"><svg class="ic ic-20"><use href="#i-gift"/></svg></span><span class="f-tx">邀请</span><svg class="ic ic-16 chev"><use href="#i-chev"/></svg></button>
+          <button class="func" data-toast="地址管理" style="width:100%;text-align:left"><span class="f-ic"><svg class="ic ic-20"><use href="#i-pinloc"/></svg></span><span class="f-tx">地址</span><svg class="ic ic-16 chev"><use href="#i-chev"/></svg></button>
+          <button class="func" data-toast="我的宠物" style="width:100%;text-align:left"><span class="f-ic"><svg class="ic ic-20"><use href="#i-paw"/></svg></span><span class="f-tx">宠物</span><svg class="ic ic-16 chev"><use href="#i-chev"/></svg></button>
+          <button class="func" data-toast="设置与帮助" style="width:100%;text-align:left"><span class="f-ic"><svg class="ic ic-20"><use href="#i-settings"/></svg></span><span class="f-tx">设置与帮助</span><svg class="ic ic-16 chev"><use href="#i-chev"/></svg></button>
+        </div>
+
+        <div class="footer">与爱同行 · 精致养宠日常</div>
+      </div>
+    </section>
+
+  </div><!-- /pages -->
+
+  <!-- Community FAB -->
+  <button class="fab" id="fab" data-toast="发布新动态"><svg class="ic"><use href="#i-plus"/></svg></button>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Tab bar -->
+  <nav class="tabbar">
+    <div class="tabs" id="tabs">
+      <button class="tab on" data-tab="pet"><svg class="ic"><use href="#i-paw"/></svg><span>宠物</span></button>
+      <button class="tab" data-tab="home"><svg class="ic"><use href="#i-bag"/></svg><span>商城</span></button>
+      <button class="tab" data-tab="community"><svg class="ic"><use href="#i-chat"/></svg><span>社区</span></button>
+      <button class="tab" data-tab="messages"><svg class="ic"><use href="#i-msg"/></svg><span>消息</span></button>
+      <button class="tab" data-tab="user"><svg class="ic"><use href="#i-user"/></svg><span>我的</span></button>
+    </div>
+    <span class="home-indicator"></span>
+  </nav>
+
+</div><!-- /screen -->
+
+<script>
+(function(){
+  var status = document.getElementById('status');
+  var fab = document.getElementById('fab');
+  var toastEl = document.getElementById('toast');
+  var toastTimer = null;
+
+  window.switchTab = function(name){
+    document.querySelectorAll('.page').forEach(function(p){
+      var on = p.getAttribute('data-page') === name;
+      p.classList.toggle('active', on);
+      if(on) p.scrollTop = 0;
+    });
+    document.querySelectorAll('#tabs .tab').forEach(function(t){
+      t.classList.toggle('on', t.getAttribute('data-tab') === name);
+    });
+    status.classList.toggle('light', name === 'pet');
+    fab.classList.toggle('show', name === 'community');
+    window.__currentTab = name;
+  };
+
+  document.getElementById('tabs').addEventListener('click', function(e){
+    var t = e.target.closest('.tab');
+    if(t) switchTab(t.getAttribute('data-tab'));
+  });
+
+  // 3-tab selectors (home + community)
+  document.getElementById('homeTabs').addEventListener('click', function(e){
+    var t = e.target.closest('.t3'); if(!t) return;
+    this.querySelectorAll('.t3').forEach(function(x){x.classList.toggle('on', x===t);});
+  });
+  document.getElementById('commTabs').addEventListener('click', function(e){
+    var t = e.target.closest('.t3'); if(!t) return;
+    this.querySelectorAll('.t3').forEach(function(x){x.classList.toggle('on', x===t);});
+  });
+
+  // topic chips
+  document.querySelectorAll('.chips').forEach(function(box){
+    box.addEventListener('click', function(e){
+      var c = e.target.closest('.chip'); if(!c) return;
+      this.querySelectorAll('.chip').forEach(function(x){x.classList.toggle('on', x===c);});
+    });
+  });
+
+  // like toggle
+  document.querySelectorAll('.like-btn').forEach(function(b){
+    b.addEventListener('click', function(){
+      var liked = this.classList.toggle('liked');
+      var s = this.querySelector('span');
+      var n = parseInt(s.textContent, 10) || 0;
+      s.textContent = liked ? n + 1 : Math.max(0, n - 1);
+    });
+  });
+
+  // toast for any [data-toast]
+  document.addEventListener('click', function(e){
+    var el = e.target.closest('[data-toast]'); if(!el) return;
+    toastEl.textContent = el.getAttribute('data-toast');
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){toastEl.classList.remove('show');}, 1200);
+  });
+
+  // initial state
+  switchTab('pet');
+})();
+</script>
+</body>
+</html>
